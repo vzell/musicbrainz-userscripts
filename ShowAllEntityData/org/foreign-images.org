@@ -1,7 +1,7 @@
 #+TITLE: Image hover card, viewer and click routing on the non-MusicBrainz pageTypes
 #+STARTUP: showall
 
-* TODO Bring MusicBrainz's image card + viewer to the foreign tables
+* DONE Bring MusicBrainz's image card + viewer to the foreign tables
 
 add the same "image popup hover"/"detail image view"/"internal viewer handling" what we
 have on MB PTs to the non-MB-PTs. download neccessary detail referenced hrefs to investigate
@@ -313,7 +313,7 @@ The live specs below were still not re-run.
   =ShowAllEntityData_CHANGELOG.wip.json= with =scripts/fold-wip-changelog.py=, re-read the
   HELP sections the phases touched, re-read =PERFORMANCE.org= for prose made false.
 
-** Handoff: continuing on petri (2026-10-23)
+** DONE Handoff: continuing on petri (2026-10-23)
 
 Env: 2026-10-23 · from NB-3641 (session limit) to petri
 

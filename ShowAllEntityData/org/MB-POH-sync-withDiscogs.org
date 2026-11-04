@@ -1,7 +1,7 @@
 #+TITLE: MB POH ⇄ Discogs POH: look-and-feel sync
 #+STARTUP: showall
 
-* TODO MB POH sync with Discogs (resumable plan)
+* DONE MB POH sync with Discogs (resumable plan)
 
 Env: 2026-10-26 · cloud session (Claude Code on the web) · Linux 6.18.44 · browser n/a (plan + mockup only)
 

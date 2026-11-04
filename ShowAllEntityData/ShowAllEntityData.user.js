@@ -30,6 +30,7 @@
 // @include      /^https?:\/\/brucebase\.wikidot\.com\/(?:stats:relations|system:recent-changes)\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/brucebase\.wikidot\.com\/(?:\d{4}|1949-64)\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/brucebase\.wikidot\.com\/(?:home\/?)?(?:[?#].*)?$/
+// @include      /^https?:\/\/brucebase\.wikidot\.com\/[^?#]*(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?(?:master|release|artist|label)\/\d+(?:-[^\/?#]*)?\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?submissions\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?user\/[^\/?#]+\/?(?:[?#].*)?$/
@@ -41,6 +42,7 @@
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?sell\/release\/\d+\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?search\/?\?(?:[^#]*&)?q=[^&#]+.*$/
 // @include      /^https?:\/\/(?:www\.)?archive\.org\/search\/?\?(?:[^#]*&)?query=[^&#]+.*$/
+// @include      /^https?:\/\/(?:www\.)?archive\.org\/details\/(?!@)[^\/?#]+(?:\/[^?#]*)?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?setlist\.fm\/(?:venue|setlists)\/[^\/?#]+-[0-9a-f]+\.html(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?setlist\.fm\/search\?(?:[^#]*&)?artist=[^&#]+.*$/
 // @connect      raw.githubusercontent.com
@@ -16093,6 +16095,8 @@
         if (_dgPage().kind === 'release') {
             const rel = await keep(_dgPageUrl(1, def));
             _dgRun.masterId = Number(rel.master_id) || 0;
+            // The Tracks view is the release alone: no other versions.
+            if (def.features.dgView === 'tracks') return 1;
             return _dgRun.masterId ? 1 + pages(await keep(_dgPageUrl(2, def))) : 1;
         }
         if (_dgPage().kind === 'master') {
@@ -16592,13 +16596,489 @@
             `${_dgCell(v.format)}${_dgSearchCell(v.label, 'label')}${_dgCatnoCell(v.catno)}${_dgCell(v.country)}${_dgCell(v.year)}</tr>`;
     }
 
+    // ── A release's Tracks view (dg-release, as release-tracks) ─────────────
+    // org/foreign-detail-PTs.org, the Discogs step (vzell 2026-11-03: replace
+    // the view; Instruments, Vocals, Producer, Engineer, Mixed by, Arranged by
+    // as columns; release-wide credits stay a "Release credits" sub-table).
+    // From the one release answer the view already reads: a sub-table per
+    // medium, the track credits and the release credits that name tracks as
+    // role columns, and the head (`_dgReleaseHeadSpec()`). Probe
+    // scripts/probe-dg-release-shapes.py (2026-11-04, 52 releases): positions
+    // "1-1"/"2.10"/"CD-1"/"CDr.1"/"Vinyl.A" (disc, track), "A1"/"B"/"AA"
+    // (sides), "1".."n" (one medium, restarting under a heading on some);
+    // headings are media ("Record 1" over sides A/AA again) or sections in a
+    // disc ("Cologne 13/02/1981"); ranges "1-1 to 2-12", "A1 to A4, B2",
+    // "1, 3, 5", "A4, C1-C3, D" (a side), "Record 10" (a heading).
+
+    /** The role columns of the Tracks view, in their order; only those with a credit appear. */
+    const _DG_TRACK_ROLE_COLS = ['Instruments', 'Vocals', 'Producer', 'Engineer', 'Mixed by', 'Arranged by', 'Other credits'];
+
+    /**
+     * Roles that are no instrument and none of the named columns: writing,
+     * remixing, mastering and cutting, art, notes, crew, management,
+     * conducting and leading, featuring. Everything else a track credit
+     * names is an instrument (Discogs' role list has no categories in the API).
+     * @type {RegExp}
+     */
+    const _DG_OTHER_ROLE_RE = new RegExp(['writ', 'compos', 'lyric', 'music by', 'words', 'libretto', 'adapted', 'translat', 'remix', 'master',
+        'lacquer', 'cut by', 'edited', 'editor', 'programm', 'dj', 'compil', 'design', 'photo', 'artwork', 'art direct', 'illustrat', 'paint',
+        'layout', 'graphic', 'letter', 'cover', 'sleeve', 'liner', 'notes', 'crew', 'technician', 'coordinat', 'manage', 'a&r', 'executive',
+        'featuring', 'presenter', 'hosted', 'conduct', 'direct', 'leader', 'concertmaster', 'band', 'orchestra', 'ensemble', 'contractor',
+        'copyist', 'booking', 'legal', 'promot', 'other', 'concept', 'curat', 'sequenc', 'tracking', 'text by', 'thanks', 'research', 'restor',
+        'transfer', 'supervis', 'stylist', 'make-up', 'hair', 'film', 'video', 'camera', 'lighting', 'sound', 'score', 'transcri', 'publish',
+        'copyright', 'licens', 'tour', 'road', 'liaison', 'product', 'marketing', 'reissue', 'authored', 'interview', 'recorded by', 'record', 'consult',
+        'equipment', 'typograph', 'catering', 'security', 'driver', 'logistic', 'merchandis', 'secretar', 'assistant'].join('|'), 'i');
+
+    /**
+     * The Tracks view column of one Discogs role ("Lead Vocals",
+     * "Engineer [Assistant]", "Guitar [12-string]").
+     *
+     * @param {string} role - One role, its brackets kept.
+     * @returns {string} One of `_DG_TRACK_ROLE_COLS`.
+     */
+    function _dgRoleColumn(role) {
+        const base = String(role || '').replace(/\s*\[.*$/, '').trim();
+        if (/vocal|voice|choir|chorus|\brap\b|scat|whistl|beatbox|yodel/i.test(base)) return 'Vocals';
+        if (/producer|^produced by/i.test(base)) return 'Producer';
+        if (/engineer|^recorded by/i.test(base)) return 'Engineer';
+        if (/^mixed by|^mixing/i.test(base)) return 'Mixed by';
+        if (/^arranged by|arranger|^orchestrated by/i.test(base)) return 'Arranged by';
+        return _DG_OTHER_ROLE_RE.test(base) ? 'Other credits' : 'Instruments';
+    }
+
+    /**
+     * A Discogs role string's roles: split at the commas outside brackets
+     * ("Guitar [12-string, Electric], Vocals" is two).
+     *
+     * @param {string} role
+     * @returns {string[]}
+     */
+    function _dgSplitRoles(role) {
+        const out = [];
+        let depth = 0, cur = '';
+        for (const ch of String(role || '')) {
+            if (ch === '[') depth++;
+            else if (ch === ']') depth = Math.max(0, depth - 1);
+            if (ch === ',' && !depth) {
+                if (cur.trim()) out.push(cur.trim());
+                cur = '';
+            } else cur += ch;
+        }
+        if (cur.trim()) out.push(cur.trim());
+        return out;
+    }
+
+    /**
+     * Seconds of a Discogs duration ("4:30", "1:02:30"); 0 for none.
+     *
+     * @param {string} dur
+     * @returns {number}
+     */
+    function _dgDurSeconds(dur) {
+        const p = String(dur || '').trim().split(':').map(Number);
+        if (p.length < 2 || p.some(n => !Number.isFinite(n))) return 0;
+        return p.reduce((s, n) => s * 60 + n, 0);
+    }
+
+    /**
+     * The physical media of a release's formats, in order, one entry per
+     * unit ("2×Vinyl LP" is two): a label ("Vinyl LP", "CD", "Cassette") and
+     * the word a medium is called by ("Record", "Tape", "Disc", "Files").
+     * A box and "All Media" are no medium; files are one.
+     *
+     * @param {Object[]} formats - The answer's `formats`.
+     * @returns {Array<{label: string, word: string}>}
+     */
+    function _dgFormatUnits(formats) {
+        const out = [];
+        (formats || []).forEach((f) => {
+            const name = String(f.name || '').trim();
+            if (!name || /^(?:Box Set|All Media)$/i.test(name)) return;
+            const size = /^(?:Vinyl|Acetate|Shellac|Lathe Cut|Flexi-disc)$/i.test(name)
+                ? (f.descriptions || []).find(x => /^(?:LP|EP|\d+")$/.test(String(x).trim())) : '';
+            const label = size ? `${name} ${size}` : name;
+            const word = /Vinyl|Acetate|Shellac|Lathe|Flexi/i.test(name) ? 'Record' : /Cassette|Reel|8-Track|Tape|DAT|DCC/i.test(name) ? 'Tape'
+                : /^File$/i.test(name) ? 'Files' : 'Disc';
+            const qty = /^File$/i.test(name) ? 1 : Math.max(1, Math.min(200, parseInt(f.qty, 10) || 1));
+            for (let i = 0; i < qty; i++) out.push({ label, word });
+        });
+        return out;
+    }
+
+    /**
+     * A release's tracks split into media, as release-tracks has one
+     * sub-table per medium. A track's medium comes from its position: the
+     * part before the last "-" or "." ("1-1", "CD-1", "2.10", "Vinyl.A"); a
+     * side ("A1", "B", "AA") belongs to a record of two sides, a new record
+     * starting at a third side or a side seen again ("Record 2" over A/AA);
+     * a plain number starts a new medium when it counts down. A heading
+     * right before a new medium names it; a heading inside one is the
+     * Section of the tracks after it. An index track's sub-tracks are tracks
+     * of their own, carrying the index's title.
+     *
+     * @param {Object} d - The release answer.
+     * @returns {{media: Object[], tracks: Object[]}} Each track: pos, title,
+     *   indexTitle, dur, artists, credits, medium (index), section, side.
+     */
+    function _dgReleaseMedia(d) {
+        const media = [];
+        const tracks = [];
+        let cur = null;
+        let pending = [];
+        let section = '';
+        const start = (key, kind) => {
+            cur = { key, kind, title: pending.shift() || '', sides: [], last: 0, tracks: [] };
+            media.push(cur);
+            section = pending.join(' · ');
+            pending = [];
+        };
+        const add = (x, indexTitle) => {
+            const pos = String(x.position || '').trim();
+            const dm = /^(.*\S)\s*[-.]\s*(\d+[a-z]?|[A-Z]{1,2}\d*[a-z]?)$/i.exec(pos);
+            const sm = dm ? null : /^([A-Z]{1,2})(\d+)?[a-z]?$/i.exec(pos);
+            const nm = dm || sm ? null : /^(\d+)[a-z]?$/.exec(pos);
+            let side = '';
+            // "16.1" after plain "1".."15" is a part of track 16, not disc 16
+            // (Rare Trax Vol. 1, release 532687).
+            const part = dm && cur && cur.kind === 'plain' && /^\d+$/.test(dm[1]) &&
+                Number(dm[1]) >= cur.last && Number(dm[1]) <= cur.last + 1;
+            if (part) {
+                cur.last = Number(dm[1]);
+            } else if (dm) {
+                if (!cur || cur.kind !== 'disc' || cur.key !== dm[1]) start(dm[1], 'disc');
+            } else if (sm) {
+                side = sm[1].toUpperCase();
+                const fresh = !cur || cur.kind !== 'sides' ||
+                    (!cur.sides.includes(side) && cur.sides.length >= 2) ||
+                    (cur.sides.includes(side) && cur.sides[cur.sides.length - 1] !== side);
+                if (fresh) start('', 'sides');
+                if (!cur.sides.includes(side)) cur.sides.push(side);
+            } else if (nm) {
+                const n = Number(nm[1]);
+                if (!cur || cur.kind !== 'plain' || n <= cur.last) start('', 'plain');
+                cur.last = n;
+            } else if (!cur) {
+                start('', 'plain');
+            }
+            if (pending.length) {
+                section = pending.join(' · ');
+                pending = [];
+            }
+            const t = {
+                pos, title: String(x.title || '').trim(), indexTitle, dur: String(x.duration || '').trim(),
+                artists: Array.isArray(x.artists) ? x.artists.filter(a => a && a.name) : [],
+                credits: (x.extraartists || []).filter(a => a && a.name).map(_extDiscogsCredit),
+                medium: media.length - 1, section, side, range: [],
+            };
+            tracks.push(t);
+            cur.tracks.push(t);
+        };
+        (d.tracklist || []).forEach((x) => {
+            if (x.type_ === 'heading') {
+                const h = String(x.title || '').trim();
+                if (h) pending.push(h);
+            } else if (x.type_ === 'index') {
+                (x.sub_tracks || []).forEach(s => add(s, String(x.title || '').trim()));
+            } else {
+                add(x, '');
+            }
+        });
+        // A medium named by a heading that also has sections (a split LP:
+        // "Born To Run" over side A, "E. C. Was Here" over side B; release
+        // 15121926): its name is the first section, not the medium's.
+        media.forEach((md) => {
+            if (!md.title || !md.tracks.some(t => t.section) || md.tracks.every(t => t.section)) return;
+            md.tracks.forEach((t) => { if (!t.section) t.section = md.title; });
+            md.title = '';
+        });
+        return { media, tracks };
+    }
+
+    /**
+     * The tracks a release credit's `tracks` spec names, as indices into
+     * `tracks`, or null when any part of it cannot be placed (the credit
+     * then stays in the Release credits sub-table, with its spec). A part is
+     * a range "X to Y" or "X-Y" (each end a position, or a side's or disc's
+     * first or last track), a position, a side or a disc ("D", "CD1": all
+     * its tracks), or a heading's name ("Record 10").
+     *
+     * @param {string} spec
+     * @param {{media: Object[], tracks: Object[]}} m - `_dgReleaseMedia()`.
+     * @returns {?Set<number>}
+     */
+    function _dgExpandTrackSpec(spec, m) {
+        const { media, tracks } = m;
+        const norm = s => String(s || '').trim().toUpperCase();
+        const groupOf = (p) => {
+            const k = norm(p);
+            const hits = [];
+            tracks.forEach((t, i) => {
+                const md = media[t.medium];
+                if (norm(t.pos) === k || t.side === k || (md.kind === 'disc' && norm(md.key) === k) ||
+                        norm(md.title) === k || (t.section && norm(t.section) === k)) hits.push(i);
+            });
+            return hits;
+        };
+        const out = new Set();
+        for (const raw of String(spec || '').split(',')) {
+            const part = raw.trim();
+            if (!part) continue;
+            const exact = groupOf(part);
+            const r = /^(.+?)\s+to\s+(.+)$/i.exec(part) || (exact.length ? null : /^([^\s-]+)\s*-\s*([^\s-]+)$/.exec(part));
+            if (r) {
+                const a = groupOf(r[1]);
+                const b = groupOf(r[2]);
+                if (!a.length || !b.length || a[0] > b[b.length - 1]) return null;
+                for (let i = a[0]; i <= b[b.length - 1]; i++) out.add(i);
+            } else if (exact.length) {
+                exact.forEach(i => out.add(i));
+            } else {
+                return null;
+            }
+        }
+        return out.size ? out : null;
+    }
+
+    /**
+     * The Tracks view of a release (dg-release's first button): one
+     * sub-table per medium (`_dgReleaseMedia()`), named as release-tracks
+     * names a medium ("Disc 1 · CD · 49:50", "Record 1 · Vinyl LP · 39:26"),
+     * with # · Title · Artist (a compilation's) · Section (headings inside a
+     * medium) · Length and the role columns that have a credit
+     * (`_DG_TRACK_ROLE_COLS`): the track's own credits and the release
+     * credits whose spec names it (`_dgExpandTrackSpec()`), one line per
+     * credited name. Instruments, Vocals and Other credits read "Role – Name"
+     * (`_dgRoleHtml()`, for the 📊 Credit details); the named columns read
+     * the name, with the role when it says more ("Engineer [Assistant]").
+     * Then a "Release credits" sub-table: the credits naming no track, and
+     * those whose spec could not be placed (with it). The track tables carry
+     * `data-mb-dg-tracks`: no MusicBrainz column (`_dgMbDecorateTable()`).
+     *
+     * @param {Object} d - The release answer.
+     * @returns {string} HTML of the sub-tables.
+     */
+    function _dgReleaseTracksHtml(d) {
+        const m = _dgReleaseMedia(d);
+        const releaseCredits = [];
+        (d.extraartists || []).filter(a => a && a.name).map(_extDiscogsCredit).forEach((c) => {
+            const set = c.tracks ? _dgExpandTrackSpec(c.tracks, m) : null;
+            if (set) set.forEach(i => m.tracks[i].range.push(c));
+            else releaseCredits.push(c);
+        });
+        const link = c => (c.id ? `<a href="https://www.discogs.com/artist/${c.id}"${_DG_NEW_TAB}>${_rgEsc(c.anv || c.name)}</a>` : _rgEsc(c.anv || c.name));
+        const NAMED = { Producer: /^producer$/i, Engineer: /^engineer$/i, 'Mixed by': /^mixed by$/i, 'Arranged by': /^arranged by$/i };
+        // Every track's cells, by column, deduplicated.
+        const cells = m.tracks.map((t) => {
+            const byCol = {};
+            t.credits.concat(t.range).forEach((c) => {
+                const groups = {};
+                _dgSplitRoles(c.role).forEach((r) => {
+                    const col = _dgRoleColumn(r);
+                    (groups[col] = groups[col] || []).push(r);
+                });
+                Object.entries(groups).forEach(([col, roles]) => {
+                    const named = NAMED[col];
+                    let li;
+                    if (named) {
+                        // What a role says beyond the column: "Engineer [Assistant]"
+                        // reads "(Assistant)", "Co-producer" stays whole.
+                        const extra = roles.filter(r => !named.test(r)).map((r) => {
+                            const m = /^(.*?)\s*\[(.+)\]$/.exec(r);
+                            return m && named.test(m[1]) ? m[2].split(/,\s*/).map(x => `<span class="mb-credit-attr">${_rgEsc(x)}</span>`).join(', ')
+                                : _dgRoleHtml(r);
+                        });
+                        li = `<li>${link(c)}${extra.length ? ` <span class="mb-dg-crq">(${extra.join(', ')})</span>` : ''}</li>`;
+                    } else {
+                        li = `<li>${_dgRoleHtml(roles.join(', '))} – ${link(c)}</li>`;
+                    }
+                    const list = byCol[col] = byCol[col] || [];
+                    if (!list.includes(li)) list.push(li);
+                });
+            });
+            return byCol;
+        });
+        const roleCols = _DG_TRACK_ROLE_COLS.filter(col => cells.some(c => c[col]));
+        const hasArtist = m.tracks.some(t => t.artists.length);
+        const hasSection = m.tracks.some(t => t.section);
+        const cols = ['#', 'Title', ...(hasArtist ? ['Artist'] : []), ...(hasSection ? ['Section'] : []), 'Length', ...roleCols];
+        const artists = list => list.map((a, i) => (a.id ? `<a href="https://www.discogs.com/artist/${a.id}"${_DG_NEW_TAB}>` +
+            `${_rgEsc(a.anv || _extDiscogsName(a.name))}</a>` : _rgEsc(a.anv || _extDiscogsName(a.name))) +
+            (i < list.length - 1 ? _rgEsc(` ${String(a.join || ',').trim()} `).replace(/^ ,/, ',') : '')).join('');
+        const units = _dgFormatUnits(d.formats);
+        // A disc prefix ("CD", "DVD") against a format's label.
+        const norm = x => String(x || '').trim().toUpperCase();
+        const sameUnit = units.length && units.every(u => u.label === units[0].label) ? units[0] : null;
+        const html = m.media.map((md, k) => {
+            const unit = units.length === m.media.length ? units[k]
+                : (md.kind === 'disc' && units.find(u => norm(u.label).startsWith(norm(md.key).replace(/\d+$/, '')) && /\D/.test(md.key))) || sameUnit;
+            const word = (unit && unit.word) || (md.kind === 'sides' ? 'Record' : 'Disc');
+            const secs = md.tracks.reduce((s, t) => s + _dgDurSeconds(t.dur), 0);
+            const name = [`${word} ${k + 1}`, md.title, unit && unit.label, secs ? _iaLenText(secs) : ''].filter(Boolean).join(' · ');
+            const rows = md.tracks.map((t) => {
+                const i = m.tracks.indexOf(t);
+                const title = (t.indexTitle ? `<span class="mb-dg-index">${_rgEsc(t.indexTitle)} ›</span> ` : '') + _rgEsc(t.title);
+                return `<tr>${_dgCell(t.pos)}<td>${title}</td>${hasArtist ? `<td>${artists(t.artists)}</td>` : ''}` +
+                    `${hasSection ? _dgCell(t.section) : ''}<td class="mb-dg-when">${_rgEsc(t.dur)}</td>` +
+                    roleCols.map(col => `<td>${cells[i][col] ? `<ul>${cells[i][col].join('')}</ul>` : ''}</td>`).join('') + '</tr>';
+            });
+            return _dgTableHtml(name, cols, rows).replace('<table class="tbl"', '<table class="tbl" data-mb-dg-tracks="1"');
+        }).join('');
+        const rc = releaseCredits.map(c => `<tr><td>${_dgRoleHtml(c.role)}</td><td>${link(c)}</td>${_dgCell(c.tracks)}</tr>`);
+        return html + (rc.length ? _dgTableHtml('Release credits', _DG_HEADERS.release.Credits, rc) : '');
+    }
+
+    /**
+     * The release answer of the Tracks view's render (`_dgToHtml()`), for
+     * its head (`_dgReleaseHeadSpec()`). Null on any other view.
+     * @type {?Object}
+     */
+    let _dgRelRec = null;
+
+    /**
+     * The sales figures of Discogs' own Statistics box on this release's
+     * page (`#release-stats`, rendered by Discogs' page): Last Sold (a link
+     * to the sales history, its date), Low, Median and High (prices in the
+     * visitor's currency). Discogs' API has none of them (its marketplace
+     * stats give the lowest price only), so they are read from the page the
+     * tab already shows: no request. By label, as the box writes them
+     * ("Last Sold:"); a label it lacks is left out. Empty when the box is
+     * not there (not rendered yet, another layout).
+     *
+     * @returns {Object<string, {text: string, href: string}>} Keyed by the label, lower-case.
+     */
+    function _dgLiveStats() {
+        const out = {};
+        document.querySelectorAll('#app #release-stats li').forEach((li) => {
+            const name = li.querySelector('span');
+            if (!name) return;
+            const key = name.textContent.replace(/:\s*$/, '').trim().toLowerCase();
+            const val = name.nextElementSibling;
+            if (!key || !val) return;
+            const a = val.matches('a[href]') ? val : val.querySelector('a[href]');
+            out[key] = { text: val.textContent.replace(/\s+/g, ' ').trim(), href: a ? new URL(a.getAttribute('href'), location.origin).href : '' };
+        });
+        return out;
+    }
+
+    /**
+     * The head spec of a release's Tracks view (`_fdHeadSpec()`), from
+     * `_dgRelRec`: "~ Release by <artists> (released: country)"; Notes;
+     * Details — on the left the release's facts (label and catalogue
+     * number, format, country, released, series), External links (the
+     * release, its master, its edit history), Genres and styles,
+     * Contributors, then Community last (Discogs' Statistics box: have,
+     * want, rating and ratings linked to the release's statistics, the sales
+     * figures from the page, `_dgLiveStats()`; for sale, data quality); on the
+     * right the identifiers (vzell 2026-11-04: long, with long values);
+     * Images (Discogs' images, the primary first). Null on any other view or
+     * before the answer.
+     *
+     * @returns {?Object}
+     */
+    function _dgReleaseHeadSpec() {
+        const d = _dgRelRec;
+        const root = document.getElementById('mb-dg-root');
+        if (!d || !root || activeDefinition?.features?.dgView !== 'tracks') return null;
+        const artists = (d.artists || []).filter(a => a && a.name);
+        const by = artists.map((a, i) => (a.anv || _extDiscogsName(a.name)) + (i < artists.length - 1 ? ` ${String(a.join || ',').trim()} `.replace(/^ ,/, ',') : '')).join('');
+        // A value as Discogs' own page writes it: its parts linked where the
+        // page links them (a label and a series to their page, a format, a
+        // country and a year to the search, a genre or style to its page;
+        // debug/discogs-release-withMB-icons.html), the links previewing as
+        // any link of our section (`_extSource()`).
+        const DG = 'https://www.discogs.com';
+        const search = q => `${DG}/search/?${q}`;
+        const frag = (parts) => {
+            const f = document.createDocumentFragment();
+            parts.filter(x => x !== '' && x !== null && x !== undefined).forEach(x => f.append(x));
+            return f.childNodes.length ? f : '';
+        };
+        const sep = (list, glue) => list.flatMap((x, i) => (i ? [glue, ...x] : x));
+        const labels = frag(sep((d.labels || []).filter(l => l && l.name).map(l => [
+            l.id ? _fdLink(`${DG}/label/${l.id}`, _extDiscogsName(l.name)) : _extDiscogsName(l.name),
+            l.catno && l.catno !== 'none' ? ` – ${String(l.catno).trim()}` : '']), '; '));
+        const formats = frag(sep((d.formats || []).filter(f => f && f.name).map(f => [
+            `${Number(f.qty) > 1 ? `${f.qty}×` : ''}`, _fdLink(search(`format_exact=${encodeURIComponent(f.name)}`), String(f.name)),
+            ...[f.text || '', ...(f.descriptions || [])].filter(Boolean).map(x => `, ${x}`)]), ' + '));
+        const series = frag(sep((d.series || []).filter(x => x && x.name).map(x => [
+            x.id ? _fdLink(`${DG}/label/${x.id}`, _extDiscogsName(x.name)) : _extDiscogsName(x.name), x.catno ? ` – ${x.catno}` : '']), '; '));
+        const year = Number(d.year) || 0;
+        const released = String(d.released_formatted || d.released || '');
+        const cm = d.community || {};
+        // Discogs' Statistics box, linked as it links them: have, want and
+        // the ratings to the release's statistics; the sales figures read
+        // from that box on this page (`_dgLiveStats()`, the API has none).
+        const stats = `${DG}/release/stats/${d.id}`;
+        const live = _dgLiveStats();
+        const num = n => (typeof n === 'number' ? _fdLink(stats, String(n)) : '');
+        const liveVal = k => (live[k] ? (live[k].href ? _fdLink(live[k].href, live[k].text) : live[k].text) : '');
+        const contributors = (cm.contributors || []).map(c => String((c && c.username) || '')).filter(Boolean);
+        // An identifier's description goes with its value ("AL 33795 ·
+        // A-side label"), never into the label column: a long one
+        // ("A-side deadwax, stamped except …") took the card's whole width
+        // and left the values none (vzell, 2026-11-04).
+        const ids = (d.identifiers || []).filter(i => i && i.value).map((i) => {
+            const desc = String(i.description || '').trim();
+            const dim = desc ? Object.assign(document.createElement('span'), { className: 'mb-fd-dim', textContent: ` · ${desc}` }) : '';
+            return [String(i.type || '').trim(), frag([String(i.value).trim(), dim])];
+        });
+        const rel = `${DG}/release/${d.id}`;
+        const links = _fdChips([
+            ['Discogs', [['Release', rel], ...(d.master_id ? [['Master', `${DG}/master/${d.master_id}`]] : []),
+                ['History', `${rel}/history`]]],
+        ]);
+        const genres = [...(d.genres || []).map(g => [String(g), `${DG}/music/genre/${encodeURIComponent(String(g).toLowerCase())}`]),
+            ...(d.styles || []).map(g => [String(g), `${DG}/music/style/${encodeURIComponent(String(g).toLowerCase())}`])].filter(g => g[0]);
+        const images = _extDiscogsImages(d.images);
+        let sec = 0;
+        return {
+            root, h2: root.querySelector('h2.mb-dg-list-heading'),
+            sub: { what: 'Release', by, byHref: artists[0] && artists[0].id ? `${DG}/artist/${artists[0].id}` : '',
+                when: [released || (year ? String(year) : ''), d.country].filter(Boolean).join(': ') },
+            // Discogs' markup ([url=…], [r=…], [a=…]) as links, as the window shows it.
+            text: { title: 'Notes', body: String(d.notes || '').trim(), html: _extDiscogsMarkupHtml(String(d.notes || '').trim(), { names: true }) },
+            // vzell 2026-11-04: Release, the links, genres and styles, then
+            // Community last on the left; the identifiers (long, with long
+            // values: matrix / runout) on the right.
+            facts: [
+                ['release', 'Release', [['Label', labels], ['Format', formats],
+                    ['Country', d.country ? _fdLink(search(`country=${encodeURIComponent(d.country)}`), String(d.country)) : ''],
+                    ['Released', released ? (year ? _fdLink(search(`decade=${year - (year % 10)}&year=${year}`), released) : released) : ''],
+                    ['Series', series]]],
+                links && ['links', 'External links', links.count, links.body, false],
+                genres.length && ['genres', 'Genres and styles', genres.length, _fdPills(genres), false],
+                // Discogs' Contributors section: the submitter first, each a user's page.
+                contributors.length && ['contributors', 'Contributors', contributors.length,
+                    _fdPills(contributors.map(u => [u, `${DG}/user/${encodeURIComponent(u)}`])), false],
+                // Discogs' Statistics box (vzell 2026-11-04: all of it, linked),
+                // then the copies for sale (its Marketplace page) and the data quality.
+                ['community', 'Community', [['Have', num(cm.have)], ['Want', num(cm.want)],
+                    ['Avg rating', cm.rating && cm.rating.count ? `${Number(cm.rating.average).toFixed(2)} / 5` : ''],
+                    ['Ratings', cm.rating && cm.rating.count ? num(cm.rating.count) : ''],
+                    ['Last sold', liveVal('last sold')], ['Low', liveVal('low')], ['Median', liveVal('median')], ['High', liveVal('high')],
+                    ['For sale', Number(d.num_for_sale) > 0 ? _fdLink(`${DG}/sell/release/${d.id}`, String(d.num_for_sale)) : ''],
+                    ['Data quality', String(d.data_quality || cm.data_quality || '')]]],
+            ],
+            others: [
+                ['identifiers', 'Identifiers', ids],
+            ],
+            pictures: images.map((im) => {
+                sec += im.type === 'secondary' ? 1 : 0;
+                return { full: im.full, thumb: im.thumb, caption: im.type === 'primary' ? 'Primary' : `Secondary ${sec}` };
+            }),
+            picturesTitle: 'Images', title: `${by}${by ? ' – ' : ''}${String(d.title || '')}`, source: 'the release\'s Discogs answer',
+        };
+    }
+
     /**
      * One page of the API as a document of `table.tbl` (the pageRequest's
      * `toHtml`), its rows parsed by the readers' own row functions:
      *   - artist: one sub-table per role run (`_DG_ROLE_GROUPS`);
      *   - label, master: the one table;
-     *   - release page 1: Tracklist, Credits, Companies, etc. and Barcode
-     *     and Other Identifiers; pages 2 and on: Other versions (the release
+     *   - release page 1, the Tracks view (`features.dgView: 'tracks'`): a
+     *     sub-table per medium and Release credits (`_dgReleaseTracksHtml()`);
+     *     the other view: Credits, Companies, etc., Barcode and Other
+     *     Identifiers, Videos; pages 2 and on: Other versions (the release
      *     itself left out).
      *
      * @param {number} p
@@ -16616,13 +17096,6 @@
             if (!d || !d.title) throw bad('a release');
             const H = _DG_HEADERS.release;
             const artistLink = (c) => (c.id ? `https://www.discogs.com/artist/${c.id}` : '');
-            // A track's credits: one row each, "Role – Name" with the name
-            // linked to its artist page, a list the engine collapses like
-            // MusicBrainz's Instruments column (`collapsableColumns`).
-            const credits = (list) => (list.length ? '<td><ul>' + list.map(c => `<li>${c.role ? `${_dgRoleHtml(c.role)} – ` : ''}` +
-                `${c.id ? `<a href="${artistLink(c)}"${_DG_NEW_TAB}>${_rgEsc(c.anv || c.name)}</a>` : _rgEsc(c.anv || c.name)}</li>`).join('') + '</ul></td>' : '<td></td>');
-            const tracks = _extDiscogsTracklist(d.tracklist).filter(x => x.type === 'track')
-                .map(x => `<tr>${_dgCell(x.pos)}${_dgCell(x.title)}${_dgCell(x.dur)}${credits(x.credits)}</tr>`);
             const crs = (d.extraartists || []).filter(a => a && a.name).map(_extDiscogsCredit)
                 .map(c => `<tr>${_dgCell(c.role)}${_dgCell(c.anv || c.name, artistLink(c))}${_dgCell(c.tracks)}</tr>`);
             const cos = (d.companies || []).filter(c => c && c.name).map(c => `<tr>${_dgCell(String(c.entity_type_name || '').trim())}` +
@@ -16630,7 +17103,11 @@
                 `${_dgCell(c.catno && c.catno !== 'none' ? String(c.catno).trim() : '')}</tr>`);
             const ids = (d.identifiers || []).filter(i => i && i.value).map(i => `<tr>${_dgCell(String(i.type || '').trim())}` +
                 `${_dgCell(String(i.value).trim())}${_dgCell(String(i.description || '').trim())}</tr>`);
-            body = _dgTableHtml('Tracklist', H.Tracklist, tracks) + _dgTableHtml('Credits', H.Credits, crs) +
+            // The Tracks view (first button): media, role columns, the head's
+            // record; the other view: today's sub-tables but the Tracklist.
+            const tracksView = activeDefinition?.features?.dgView === 'tracks';
+            _dgRelRec = tracksView ? d : null;
+            body = tracksView ? _dgReleaseTracksHtml(d) : _dgTableHtml('Credits', H.Credits, crs) +
                 _dgTableHtml('Companies, etc.', H['Companies, etc.'], cos) +
                 _dgTableHtml('Barcode and Other Identifiers', H['Barcode and Other Identifiers'], ids) + _dgVideosTableHtml(d.videos);
         } else {
@@ -17205,7 +17682,7 @@
         const h2 = document.createElement('h2');
         h2.className = 'mb-dg-list-heading';
         h2.textContent = kind === 'user' ? (_DG_USER_LISTS[def.features.dgUserList] || {}).heading || 'Lists'
-            : { artist: 'Discography', label: 'Releases', master: 'Versions', release: 'Release', submissions: 'Submissions', history: 'History',
+            : { artist: 'Discography', label: 'Releases', master: 'Versions', release: def.features.dgView === 'tracks' ? 'Tracklist' : 'Release', submissions: 'Submissions', history: 'History',
                 ratings: 'Ratings', images: 'Images', entityImages: 'Images', sell: 'For sale', search: 'Search results' }[kind] || 'Discogs';
         const cols = kind === 'release' ? _DG_HEADERS.release.Tracklist : kind === 'user' ? _DG_HEADERS.user.releases
             : kind === 'history' ? _DG_HEADERS.history.Changes : _DG_HEADERS[kind];
@@ -17520,7 +17997,7 @@
      * @returns {void}
      */
     function _dgMbDecorateTable(table, heading) {
-        if (heading === 'Tracklist') return;
+        if (heading === 'Tracklist' || table.hasAttribute('data-mb-dg-tracks')) return;
         let cols;
         try {
             cols = JSON.parse(table.getAttribute('data-mb-col-headers') || 'null');
@@ -18347,14 +18824,15 @@
      * Whether a plain click on this link opens the preview window, with a
      * mouse too (a tap always does): on discogs.com, a link in one of OUR
      * tables (vzell, 2026-10-18: "Window, every link"), whose links all open
-     * a new tab otherwise (`_DG_NEW_TAB`). Never on MusicBrainz, never in
-     * Discogs' own page.
+     * a new tab otherwise (`_DG_NEW_TAB`), or in a release's head above them
+     * (`_fdHeadInsertSections()`: its values, notes and chips; 2026-11-04).
+     * Never on MusicBrainz, never in Discogs' own page.
      *
      * @param {Element} el - The link.
      * @returns {boolean}
      */
     function _dgTableClickOpens(el) {
-        return _isDgHost && !!(el && el.closest && el.closest('#mb-dg-root table.tbl'));
+        return _isDgHost && !!(el && el.closest && el.closest('#mb-dg-root table.tbl, #mb-dg-root .mb-fd-head, #mb-dg-root .mb-fd-sub'));
     }
 
     /**
@@ -18384,11 +18862,17 @@
      * setlist's artists with MusicBrainz's glyph, an artist window's "On
      * MusicBrainz"), the Live page and the editing history read with the
      * browser's musicbrainz.org cookies there too (`_mbPageGetForeign()`,
-     * vzell's consent of the same day). The source's id stays `dg-mb`:
-     * `_mbKindIconUrl()`, `_mbWinSource()` and the specs key on it.
+     * vzell's consent of the same day). Since 2026-11-03 also the four
+     * Springsteen sites and archive.org (G2 of NON-MB-COVERAGE.org, vzell's
+     * consent of that day, org/non-MB-coverage.org "Phase C": "yes, cookies
+     * too"): a musicbrainz.org link in any window there opened a new tab. The
+     * list names each host on purpose, never `_foreignHost`: a site added
+     * later does not inherit a consent given for these. The source's id
+     * stays `dg-mb`: `_mbKindIconUrl()`, `_mbWinSource()` and the specs key
+     * on it.
      * @type {boolean}
      */
-    const _MB_FOREIGN_POP_HOST = !!(_isDgHost || _isSfmHost);
+    const _MB_FOREIGN_POP_HOST = !!(_isDgHost || _isSfmHost || _isSlHost || _isJlHost || _isBsHost || _isBbHost || _isIaHost);
 
     /**
      * MusicBrainz links on discogs.com as a source of the popup engine
@@ -18416,9 +18900,12 @@
     function _dgMbSource() {
         // Also our own <h1> (`_dgPrepareLivePage()`): murdos' importer puts
         // its icon in front of the page's name there too (vzell, 2026-10-28:
-        // it had no card).
+        // it had no card). And Discogs' older layout, `#page_content`
+        // (submissions, history, images, user, ratings, sell), as
+        // `_DP_SITES['www.discogs.com'].extRoot` names it: an icon there had
+        // no card before a render (G5 of NON-MB-COVERAGE.org, 2026-11-03).
         const sel = '#mb-dg-root table.tbl > tbody a[href^="https://musicbrainz.org/"], #app a[href^="https://musicbrainz.org/"], ' +
-            '#mb-dg-root h1.mb-dg-h1 a[href^="https://musicbrainz.org/"]';
+            '#page_content a[href^="https://musicbrainz.org/"], #mb-dg-root h1.mb-dg-h1 a[href^="https://musicbrainz.org/"]';
         const resolve = (a) => {
             const m = _DG_MB_LINK_RE.exec(a.getAttribute('href') || '');
             const type = m && m[1].toLowerCase();
@@ -19405,6 +19892,7 @@
             body.mb-sa-host-ia img.mb-ia-thumb { display: block; width: 40px; height: 40px; object-fit: cover; border: 1px solid #ddd; background: #f2f2f2; }
             body.mb-sa-host-ia td.mb-ia-when { white-space: nowrap; font-variant-numeric: tabular-nums; }
             body.mb-sa-host-ia input.mb-col-filter-input { box-sizing: border-box; }
+            body.mb-sa-host-ia td.mb-ia-md5 { font: 11.5px/1.3 ui-monospace, Consolas, monospace; color: #555; }
         `);
         style.id = 'mb-ia-style';
     }
@@ -19436,12 +19924,64 @@
         const h1 = document.createElement('h1');
         h1.className = 'mb-ia-h1';
         const bdi = document.createElement('bdi');
-        const what = _iaSearchName();
-        bdi.textContent = what ? `Internet Archive: ${what}` : 'Internet Archive search';
+        // An item page (ia-details) is named after the item, a search page
+        // after its query.
+        const item = _IA_DETAILS_PATH_RE.test(window.location.pathname);
+        const what = item ? _iaDetailsName() : _iaSearchName();
+        bdi.textContent = what ? `Internet Archive: ${what}` : (item ? 'Internet Archive item' : 'Internet Archive search');
         h1.appendChild(bdi);
         root.appendChild(h1);
         document.body.insertBefore(root, document.body.firstChild);
         return h1;
+    }
+
+    /**
+     * archive.org's own parts no link preview belongs to, inside its shadow
+     * DOM: the site's navigation, header and footer (`<ia-topnav>` and the
+     * plain elements). Matched on every element from the link up through
+     * each shadow host (`_iaShadowLinkInScope()`).
+     * @type {string}
+     */
+    const _IA_SHADOW_SKIP = 'nav, header, footer, ia-topnav, ia-footer';
+
+    /**
+     * Whether a link on archive.org is one the link previews serve (G4 of
+     * NON-MB-COVERAGE.org, 2026-11-03). In the document itself: only the
+     * table's and our own section's, as `_DP_SITES['archive.org'].extRoot`
+     * says, and on an item page the item's own content (`#maincontent`). Inside the site's shadow DOM (its result list, written there by
+     * its web components after load, so no root selector reaches it): any
+     * link outside `_IA_SHADOW_SKIP`, crossing each shadow root to its host
+     * on the way up. `_extTarget()` then decides what it previews (an item's
+     * `/details/<id>`: the `iadetails` reader).
+     *
+     * @param {Element} a
+     * @returns {boolean}
+     */
+    function _iaShadowLinkInScope(a) {
+        if (!a || !a.getRootNode) return false;
+        // An item page (ia-details, 2026-11-03) is plain HTML: its own
+        // content — the description, the metadata list with its Brucebase
+        // and Databruce links — is `main#maincontent` (both kinds of item
+        // probed, debug/ia-1975-02-05-setlist-songs.html,
+        // ia-amanson-1973-video.html), outside the site's top bar.
+        if (!(a.getRootNode() instanceof ShadowRoot)) {
+            return !!a.closest(_IA_DETAILS_PATH_RE.test(window.location.pathname) ? 'table.tbl > tbody, #mb-ia-root, #maincontent' : 'table.tbl > tbody, #mb-ia-root');
+        }
+        // archive.org shows its own hover card on every result, in all three
+        // views (probe scripts/probe-ia-shadow-links.js v2, 2026-11-04: the
+        // Tile view's whole tile is one link, the List view's picture and
+        // title links have no text of their own, the Compact list's titles
+        // do). Ours shows next to it, on every result link: vzell's choice
+        // ("Always ours too"), as ours adds the tracks and Space's window.
+        for (let n = a; n;) {
+            if (n.matches && n.matches(_IA_SHADOW_SKIP)) return false;
+            if (n.parentElement) n = n.parentElement;
+            else {
+                const r = n.getRootNode();
+                n = r instanceof ShadowRoot ? r.host : null;
+            }
+        }
+        return true;
     }
 
     /**
@@ -19458,14 +19998,575 @@
         if (!def?.features?.iaToTable || document.querySelector('table.mb-ia-table')) return;
         const root = document.getElementById('mb-ia-root') || _iaPrepareLivePage()?.parentNode;
         if (!root) return;
+        const details = def.features.iaToTable === 'details';
         const h2 = document.createElement('h2');
         h2.className = 'mb-ia-list-heading';
-        h2.textContent = 'Items';
+        h2.textContent = details ? (def.features.iaView === 'files' ? 'Files' : 'Tracks') : 'Items';
         const table = document.createElement('table');
         table.className = 'tbl mb-ia-table';
-        table.innerHTML = `<thead><tr>${_IA_HEADERS.map(c => `<th>${_rgEsc(c)}</th>`).join('')}</tr></thead><tbody></tbody>`;
+        // An item (ia-details) is a multi-table render: each sub-table's
+        // head comes from the fetched answer (`data-mb-col-headers`).
+        const cols = details ? ['#', 'Title', 'Length'] : _IA_HEADERS;
+        table.innerHTML = `<thead><tr>${cols.map(c => `<th>${_rgEsc(c)}</th>`).join('')}</tr></thead><tbody></tbody>`;
         root.append(h2, table);
-        Lib.debug('init', 'applyIaToTable: empty ia-search table in place for the fetched pages.');
+        Lib.debug('init', `applyIaToTable: empty ${details ? 'ia-details' : 'ia-search'} table in place for the fetched pages.`);
+    }
+
+    // --- archive.org: an item (pageType ia-details, 2026-11-03) ------------
+    // org/foreign-detail-PTs.org (mockup https://claude.ai/artifact/ECoqApKnedJqbTMSuBBN14,
+    // tab "archive.org item"; vzell's answers: archive.org first, a file's
+    // derivatives as columns). Modelled on MusicBrainz's release-tracks: a
+    // sub-table per disc, the item's pictures and facts above the tables. An
+    // item page is server-rendered (no shadow DOM); its rows come from ONE
+    // anonymous request, `/metadata/<id>` — the answer the item's card and
+    // window read too (`_extIaItem()`), which gives the facts and pictures
+    // here as well. Probe scripts/probe-ia-details.py (2026-11-03, 18
+    // items): every show's FLAC originals carry track, title and length, and
+    // names such as "1-01. Intro.flac" give the disc (up to 3); a tape
+    // ("SideA.flac") has no disc; a video item has 1–3 video originals; a
+    // text item neither, and gets its files.
+
+    /** An item page's path, `/details/<id>[/<file>]`, never a user's (`/details/@name`). */
+    const _IA_DETAILS_PATH_RE = /^\/details\/(?!@)([^/?#]+)(?:\/.*)?$/;
+
+    /**
+     * The item id of this page (an `ia-details` page), or ''.
+     *
+     * @returns {string}
+     */
+    function _iaDetailsId() {
+        const m = _IA_DETAILS_PATH_RE.exec(window.location.pathname);
+        return m ? decodeURIComponent(m[1]) : '';
+    }
+
+    /**
+     * The item page's own title for the toolbar's name: archive.org's
+     * `h1.item-title`, else the document's title without " : Free … :
+     * Internet Archive", else the id.
+     *
+     * @returns {string}
+     */
+    function _iaDetailsName() {
+        const h = document.querySelector('h1.item-title');
+        const t = (h && h.textContent.trim()) || String(document.title || '').replace(/\s*:\s*.*Internet Archive\s*$/i, '').trim();
+        return t || _iaDetailsId();
+    }
+
+    /** The original audio formats, best first: a show's rows are its files of the first one it has. */
+    const _IA_DET_FORMAT_ORDER = ['flac', '24bit flac', 'shorten', 'wave', 'aiff', 'apple lossless audio', 'vbr mp3', 'mp3', '128kbps mp3', '64kbps mp3', 'ogg vorbis'];
+
+    /** Derivative formats that are audio: a column each. Spectrograms, waveform PNGs and peak files are not. */
+    const _IA_DET_DERIV_AUDIO_RE = /mp3|ogg|m4a|aac|flac/i;
+
+    /**
+     * The item read for the render (`_iaDetailsToHtml()`): `_extIaItem()`'s
+     * record, for the pictures and facts painted above the tables after the
+     * render (`_fdHeadInsertSections()`).
+     * @type {?Object}
+     */
+    let _iaDetailsRec = null;
+
+    /**
+     * A length in seconds as m:ss, or h:mm:ss from an hour.
+     *
+     * @param {number} sec
+     * @returns {string}
+     */
+    function _iaLenText(sec) {
+        const s = Math.round(Number(sec) || 0);
+        if (!s) return '';
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        const r = String(s % 60).padStart(2, '0');
+        return h ? `${h}:${String(m).padStart(2, '0')}:${r}` : `${m}:${r}`;
+    }
+
+    /**
+     * A size in bytes, always in MB so a column sorts by its numbers: one
+     * decimal from 1 MB, two below ("0.89 MB"), "< 0.01 MB" for a few KB.
+     *
+     * @param {number|string} bytes
+     * @returns {string}
+     */
+    function _iaSizeText(bytes) {
+        const b = Number(bytes) || 0;
+        if (!b) return '';
+        const mb = b / 1048576;
+        if (mb >= 1) return `${mb.toFixed(1)} MB`;
+        return mb >= 0.01 ? `${mb.toFixed(2)} MB` : '< 0.01 MB';
+    }
+
+    /**
+     * The `ia-details` answer as sub-tables (the fetch loop's `toHtml`): a
+     * show's tracks, one sub-table per disc; a video's files; anything else,
+     * or the "All files" button (`view` 'files'), every file. Keeps the item
+     * for the pictures and facts (`_iaDetailsRec`).
+     *
+     * @param {string} text - The metadata API's answer.
+     * @param {string} [view] - 'files' for every file.
+     * @returns {string} `<h3>` + `table.tbl[data-mb-col-headers]` pairs.
+     */
+    function _iaDetailsToHtml(text, view = '') {
+        let d;
+        try {
+            d = JSON.parse(text);
+        } catch (_) {
+            d = null;
+        }
+        if (!d || !d.metadata) {
+            _iaDetailsRec = null;
+            return _dgTableHtml('Tracks', ['#', 'Title', 'Length'], []);
+        }
+        _iaDetailsRec = _extIaItem(d);
+        const id = _iaDetailsRec.id || _iaDetailsId();
+        const files = Array.isArray(d.files) ? d.files : [];
+        if (view === 'files') return _iaDetailsFilesHtml(id, files);
+        const audio = files.filter(f => f.source === 'original' && _EXT_IA_AUDIO_RE.test(String(f.format || '')));
+        if (audio.length) return _iaDetailsTracksHtml(id, files, audio);
+        const video = files.filter(f => f.source === 'original' && _EXT_IA_VIDEO_RE.test(String(f.format || '')));
+        if (video.length) return _iaDetailsVideosHtml(id, video);
+        return _iaDetailsFilesHtml(id, files);
+    }
+
+    /**
+     * A show's tracks: its original audio files of the best format it has
+     * (`_IA_DET_FORMAT_ORDER`), a sub-table per disc ("1-01. …" in the
+     * name), else one; per row the track number, the title (linking the
+     * track on archive.org, which previews as that show with the track
+     * marked), the length, the file and its size, then one column per audio
+     * derivative format (VBR MP3, Ogg Vorbis) with that derivative's size,
+     * linking it, and ▶ (`sa_ia_play_in_place`): archive.org's own player.
+     *
+     * @param {string} id
+     * @param {Object[]} files
+     * @param {Object[]} audio - The original audio files.
+     * @returns {string}
+     */
+    function _iaDetailsTracksHtml(id, files, audio) {
+        const fmt = _IA_DET_FORMAT_ORDER.find(p => audio.some(f => String(f.format).toLowerCase() === p)) || String(audio[0].format).toLowerCase();
+        const rows = audio.filter(f => String(f.format).toLowerCase() === fmt)
+            .sort((a, b) => String(a.name).localeCompare(String(b.name), 'en', { numeric: true }));
+        const fmtName = String(rows[0].format);
+        const derivFmts = [];
+        const deriv = new Map();
+        for (const f of files) {
+            if (f.source !== 'derivative' || !f.original || !_IA_DET_DERIV_AUDIO_RE.test(String(f.format || ''))) continue;
+            if (String(f.format) === fmtName) continue;
+            if (!derivFmts.includes(f.format)) derivFmts.push(f.format);
+            deriv.set(`${f.original}\n${f.format}`, f);
+        }
+        const play = Lib.settings.sa_ia_play_in_place === true;
+        const cols = ['#', 'Title', 'Length', 'File', 'Size', ...derivFmts, ...(play ? ['Play'] : [])];
+        const disc = (f) => {
+            const m = /(?:^|\/)(\d+)-\d+/.exec(String(f.name));
+            return m ? Number(m[1]) : 0;
+        };
+        const groups = new Map();
+        rows.forEach((f) => {
+            const k = disc(f);
+            if (!groups.has(k)) groups.set(k, []);
+            groups.get(k).push(f);
+        });
+        const several = [...groups.keys()].some(k => k > 0);
+        return [...groups.entries()].sort((a, b) => (a[0] || 999) - (b[0] || 999)).map(([k, list]) => {
+            const secs = list.reduce((n, f) => n + _extIaSeconds(f.length), 0);
+            const heading = `${several ? (k ? `Disc ${k}` : 'Other') : 'Tracks'} · ${fmtName}${secs ? ` · ${_iaLenText(secs)}` : ''}`;
+            const trs = list.map((f, i) => {
+                const name = String(f.name);
+                const no = parseInt(String(f.track || ''), 10) || i + 1;
+                const title = String(f.title || '').trim() || name.split('/').pop().replace(/\.[^.]+$/, '');
+                const secs1 = _extIaSeconds(f.length);
+                const cells = [
+                    `<td class="mb-ia-when">${no}</td>`,
+                    `<td><a href="${_rgEsc(`https://archive.org/details/${encodeURIComponent(id)}/${name.split('/').map(encodeURIComponent).join('/')}`)}" target="_blank" rel="noopener noreferrer">${_rgEsc(title)}</a></td>`,
+                    `<td class="mb-ia-when">${_rgEsc(_iaLenText(secs1))}</td>`,
+                    `<td><a href="${_rgEsc(_iaFileUrl(id, name))}" target="_blank" rel="noopener noreferrer">${_rgEsc(name.split('/').pop())}</a></td>`,
+                    `<td class="mb-ia-when">${_rgEsc(_iaSizeText(f.size))}</td>`,
+                    ...derivFmts.map((df) => {
+                        const x = deriv.get(`${name}\n${df}`);
+                        return x ? `<td class="mb-ia-when"><a href="${_rgEsc(_iaFileUrl(id, x.name))}" target="_blank" rel="noopener noreferrer">${_rgEsc(_iaSizeText(x.size))}</a></td>` : '<td></td>';
+                    }),
+                ];
+                if (play) {
+                    cells.push(`<td class="mb-dg-playcell">${_ytTileHtml({ src: 'ia', kind: 'audio', id, file: name, list: '' }, { mini: true, title, dur: secs1 })}</td>`);
+                }
+                return `<tr>${cells.join('')}</tr>`;
+            });
+            return _dgTableHtml(heading, cols, trs);
+        }).join('');
+    }
+
+    /**
+     * A video item: its original video files (Title, Format, Length, Size,
+     * and a "Play here" tile with `sa_ia_play_in_place`).
+     *
+     * @param {string} id
+     * @param {Object[]} video - The original video files.
+     * @returns {string}
+     */
+    function _iaDetailsVideosHtml(id, video) {
+        const play = Lib.settings.sa_ia_play_in_place === true;
+        const cols = [...(play ? ['Play'] : []), 'Title', 'Format', 'Length', 'Size'];
+        const trs = video.map((f) => {
+            const name = String(f.name);
+            const title = String(f.title || '').trim() || name.split('/').pop().replace(/\.[^.]+$/, '');
+            const secs = _extIaSeconds(f.length);
+            const tile = play ? _ytTileHtml({ src: 'ia', kind: 'video', id, file: name, list: '' }, { bare: true, title, dur: secs }) : '';
+            return `<tr>${play ? `<td class="mb-dg-playcell">${tile}</td>` : ''}` +
+                `<td><a href="${_rgEsc(_iaFileUrl(id, name))}" target="_blank" rel="noopener noreferrer">${_rgEsc(title)}</a></td>` +
+                `<td>${_rgEsc(String(f.format || ''))}</td><td class="mb-ia-when">${_rgEsc(_iaLenText(secs))}</td>` +
+                `<td class="mb-ia-when">${_rgEsc(_iaSizeText(f.size))}</td></tr>`;
+        });
+        return _dgTableHtml('Videos', cols, trs);
+    }
+
+    /**
+     * Every file of the item, one row each, by name: format, source
+     * (original or derivative), what it was made from, size, length, MD5.
+     *
+     * @param {string} id
+     * @param {Object[]} files
+     * @returns {string}
+     */
+    function _iaDetailsFilesHtml(id, files) {
+        const cols = ['Name', 'Format', 'Source', 'Original', 'Size', 'Length', 'MD5'];
+        const trs = files.slice().sort((a, b) => String(a.name).localeCompare(String(b.name), 'en', { numeric: true })).map((f) => {
+            const name = String(f.name || '');
+            return `<tr><td><a href="${_rgEsc(_iaFileUrl(id, name))}" target="_blank" rel="noopener noreferrer">${_rgEsc(name)}</a></td>` +
+                `<td>${_rgEsc(String(f.format || ''))}</td><td>${_rgEsc(String(f.source || ''))}</td><td>${_rgEsc(String(f.original || ''))}</td>` +
+                `<td class="mb-ia-when">${_rgEsc(_iaSizeText(f.size))}</td><td class="mb-ia-when">${_rgEsc(_iaLenText(_extIaSeconds(f.length)))}</td>` +
+                `<td class="mb-ia-md5">${_rgEsc(String(f.md5 || ''))}</td></tr>`;
+        });
+        return _dgTableHtml('All files', cols, trs);
+    }
+
+    /** What an item's `mediatype` is called in the subheader ("~ Concert recording by …"). */
+    const _IA_DET_MEDIA_NAMES = { etree: 'Concert recording', audio: 'Audio', movies: 'Video', texts: 'Text', image: 'Images', software: 'Software', data: 'Data' };
+
+    // ── A foreign detail page's head, laid out as release-tracks ─────────────
+    // vzell 2026-11-04 ("emulate the MB PT for release-tracks"): above the
+    // data h2 of archive.org's item page (ia-details) and a Discogs release's
+    // Tracks view (dg-release), a subheader under the h1 and h2 sections that
+    // fold like the release page's — a text (Description, Notes) that starts
+    // closed as a release's Annotation, Details (the MusicBrainz Sidebar
+    // section's cards: `_sbInlineCard()`, `_sbInlineLayout()`) and the
+    // pictures (the Cover art section's tiles). Each site hands a spec
+    // (`_fdHeadSpec()`); one builder lays it out.
+
+    /**
+     * The rich hover card (`data-mbtt`) of a card heading in a foreign
+     * detail page's Details section: what it holds and how it folds.
+     *
+     * @param {string} name   The heading.
+     * @param {number} count  Its entries.
+     * @param {string} source Where the entries come from ("the item's metadata").
+     * @returns {string} HTML for `#mb-stat-tooltip`.
+     */
+    function _fdCardTip(name, count, source) {
+        return `<div class="mb-tt-title">${_mbttEscape(name)}</div>` +
+            `<div class="mb-tt-body">${_mbttCount(count)} ${count === 1 ? 'entry' : 'entries'}, read from ${_mbttEscape(source)} ` +
+            '(the one request of this render): nothing more is loaded.</div>' +
+            '<div class="mb-tt-body"><kbd>Click</kbd> (or <kbd>Enter</kbd> / <kbd>Space</kbd>): open or close this card.<br>' +
+            '<kbd>Ctrl</kbd>+<kbd>Click</kbd> (<kbd>Cmd</kbd>+<kbd>Click</kbd>): open or close every card, following this one.</div>';
+    }
+
+    /**
+     * A link of a foreign detail page's head: a new tab, never this page.
+     *
+     * @param {string} href
+     * @param {string} [text]
+     * @returns {HTMLAnchorElement}
+     */
+    function _fdLink(href, text) {
+        const a = document.createElement('a');
+        a.href = href;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        if (text !== undefined) a.textContent = text;
+        return a;
+    }
+
+    /**
+     * A card body of chips by kind, as the Sidebar section's link card
+     * (`.mb-sb-chips`): one row per kind, a chip per link.
+     *
+     * @param {Array<[string, Array<[string, string]>]>} rows - [kind, [[text, href], …]], empty kinds left out.
+     * @returns {?{body: HTMLElement, count: number}} Null when no row has a link.
+     */
+    function _fdChips(rows) {
+        rows = rows.filter(([, list]) => list.length);
+        if (!rows.length) return null;
+        const body = document.createElement('div');
+        body.className = 'mb-sb-chips';
+        let count = 0;
+        rows.forEach(([kind, list]) => {
+            const line = document.createElement('div');
+            line.className = 'mb-sb-chip-row';
+            const k = document.createElement('span');
+            k.className = 'mb-sb-chip-kind';
+            k.textContent = kind;
+            line.appendChild(k);
+            list.forEach(([text, href]) => {
+                const chip = document.createElement('span');
+                chip.className = 'mb-sb-chip';
+                chip.appendChild(_fdLink(href, text));
+                line.appendChild(chip);
+                count++;
+            });
+            body.appendChild(line);
+        });
+        return { body, count };
+    }
+
+    /**
+     * A card body of pills (collections, genres), as the Sidebar section's
+     * tag card; a pill given as [text, href] links that page.
+     *
+     * @param {Array<string|Array<string>>} list
+     * @returns {HTMLElement}
+     */
+    function _fdPills(list) {
+        const body = document.createElement('div');
+        body.className = 'mb-sb-chips';
+        const line = document.createElement('div');
+        line.className = 'mb-sb-chip-row';
+        list.forEach((t) => {
+            const pill = document.createElement('span');
+            pill.className = 'mb-sb-pill mb-sb-pill-tag';
+            if (Array.isArray(t)) pill.appendChild(_fdLink(t[1], t[0]));
+            else pill.textContent = t;
+            line.appendChild(pill);
+        });
+        body.appendChild(line);
+        return body;
+    }
+
+    /**
+     * The head of the page being rendered, from its site's record, or null:
+     * archive.org's item page (`_iaDetailsHeadSpec()`), a Discogs release's
+     * Tracks view (`_dgReleaseHeadSpec()`).
+     *
+     * A spec: `root` (our section) and `h2` (its data h2, the sections go
+     * before it); `sub` (the subheader: `what`, optional `by` with `byHref`,
+     * optional `when`); `text` ({title, body}, the section that starts
+     * closed; `html`, when given, is shown instead of `body`: a converter's
+     * output with its text escaped); `facts` (the left column) and `others`
+     * (beside it), each entry either [key, name, [[label, value(string|Node)], …]]
+     * or a built card [key, name, count, body, wide], in order;
+     * `pictures` ([{full, thumb, caption}]) under `picturesTitle`; `title`
+     * (the viewer's bar); `source` (the cards' hover text).
+     *
+     * @returns {?Object}
+     */
+    function _fdHeadSpec() {
+        const t = activeDefinition?.type;
+        if (t === 'ia-details') return _iaDetailsHeadSpec();
+        if (t === 'dg-release') return _dgReleaseHeadSpec();
+        return null;
+    }
+
+    /**
+     * Inserts the head of a foreign detail page (`_fdHeadSpec()`): a
+     * subheader `p.mb-fd-sub` after our h1, then `div.mb-fd-head` before the
+     * data h2 holding the h2 sections — the text (starts closed), Details
+     * (the Sidebar section's cards, folding through `_sbInlineWireFolds()`)
+     * and the pictures (the Cover art section's tiles; a click opens the
+     * artwork viewer through `_dpArtViewerClick()`, every picture in order).
+     * Called BEFORE `makeH2sCollapsible()` (the fetch tail and the disk-load
+     * tail, as `_releaseArtInsertSection()`), so the h2s fold like any other;
+     * `_fdHeadOpenSections()` opens Details and the pictures afterwards.
+     * Idempotent: a previous head is replaced. Nothing without a spec.
+     *
+     * @returns {void}
+     */
+    function _fdHeadInsertSections() {
+        const spec = _fdHeadSpec();
+        if (!spec || !spec.root || !spec.h2) return;
+        const { root, h2 } = spec;
+        root.querySelectorAll(':scope > .mb-fd-head, :scope > .mb-fd-sub').forEach(n => n.remove());
+        _sbInlineEnsureStyle();
+        _ensureReleaseArtStyle();
+        _ensureFdHeadStyle();
+        const el = (tag, cls, text) => {
+            const n = document.createElement(tag);
+            if (cls) n.className = cls;
+            if (text !== undefined) n.textContent = text;
+            return n;
+        };
+
+        // The subheader, as a release's "~ Release by <artist>".
+        const s = spec.sub || {};
+        const h1 = root.querySelector(':scope > h1');
+        const sub = el('p', 'mb-fd-sub', `~ ${s.what || 'Item'}${s.by ? ' by ' : ''}`);
+        if (s.by) sub.appendChild(s.byHref ? _fdLink(s.byHref, s.by) : el('span', 'mb-fd-by', s.by));
+        if (s.when) sub.append(' ', el('span', 'mb-fd-when', `(${s.when})`));
+        if (h1) h1.after(sub);
+
+        const head = el('div', 'mb-fd-head');
+        const section = (title, count, body, open) => {
+            const h = el('h2', 'mb-fd-h2', title);
+            if (count !== null) h.append(' ', el('span', 'mb-fd-n', `(${count})`));
+            if (open) h.dataset.mbFdOpen = '1';
+            head.append(h, body);
+        };
+
+        if (spec.text && spec.text.body) {
+            const box = el('div', 'mb-fd-text');
+            // `html`: a converter's output, its text escaped (`_extDiscogsMarkupHtml()`).
+            if (spec.text.html) box.innerHTML = spec.text.html;
+            else box.textContent = spec.text.body;
+            section(spec.text.title, null, box, false);
+        }
+
+        // Details: the left column, the right one beside it. Either may hold
+        // a facts entry ([key, name, rows]: a name → value list) or a card
+        // built by the site ([key, name, count, body, wide]).
+        const asCard = (entry) => {
+            if (!entry || entry.length !== 3) return entry;
+            const [key, name, rows0] = entry;
+            const rows = rows0.filter(r => r[1]);
+            if (!rows.length) return null;
+            const dl = el('dl');
+            rows.forEach(([k, v]) => {
+                dl.appendChild(el('dt', '', k));
+                const dd = el('dd');
+                if (v instanceof Node) dd.appendChild(v);
+                else dd.textContent = v;
+                dl.appendChild(dd);
+            });
+            return [key, name, rows.length, dl, false];
+        };
+        const facts = (spec.facts || []).map(asCard).filter(Boolean);
+        const others = (spec.others || []).map(asCard).filter(Boolean);
+        const card = ([key, name, count, body, wide]) => {
+            const c = _sbInlineCard(key, name, count, body, wide, true);
+            c.querySelector(':scope > .mb-sb-card-head').dataset.mbtt = _fdCardTip(name, count, spec.source || 'this page');
+            return c;
+        };
+        const total = facts.concat(others).reduce((n, c) => n + c[2], 0);
+        if (total) {
+            const sec = el('div', 'mb-sb-inline mb-fd-details');
+            sec.appendChild(_sbInlineLayout(facts.map(card), others.map(card)));
+            _sbInlineWireFolds(sec);
+            section('Details', total, sec, true);
+        }
+
+        // The pictures: the Cover art section's tiles.
+        const pics = spec.pictures || [];
+        if (pics.length) {
+            const sec = el('div', 'mb-release-art-sec mb-fd-art');
+            // The viewer's title (`_dpArtViewerClick()` reads it).
+            const t = el('span', 'mb-dp-xtitle', spec.title || '');
+            t.hidden = true;
+            const grid = el('div', 'mb-release-art-grid');
+            pics.forEach((p, i) => {
+                const fig = el('figure', 'mb-release-art-tile');
+                const a = _fdLink(p.full);
+                a.dataset.mbArtvExt = String(i + 1);
+                const img = el('img');
+                img.src = p.thumb || p.full;
+                img.alt = p.caption || '';
+                img.loading = 'lazy';
+                img.referrerPolicy = 'no-referrer';
+                a.appendChild(img);
+                fig.append(a, el('figcaption', '', p.caption || ''));
+                grid.appendChild(fig);
+            });
+            sec.append(t, grid);
+            sec.addEventListener('click', _dpArtViewerClick);
+            section(spec.picturesTitle || 'Pictures', pics.length, sec, true);
+        }
+        if (head.childElementCount) h2.before(head);
+    }
+
+    /**
+     * Opens the head's sections that start open (Details and the pictures:
+     * `data-mb-fd-open`) after `makeH2sCollapsible()`, which starts every h2
+     * but the data one closed. The text section stays closed.
+     *
+     * @returns {void}
+     */
+    function _fdHeadOpenSections() {
+        document.querySelectorAll('.mb-fd-head > h2[data-mb-fd-open]').forEach((h) => {
+            if (typeof h._mbToggle === 'function') h._mbToggle(true);
+        });
+    }
+
+    /**
+     * The style of a foreign detail page's head (`_fdHeadInsertSections()`),
+     * added once; the cards and tiles are the Sidebar section's and the
+     * Cover art section's own (`_sbInlineEnsureStyle()`,
+     * `_ensureReleaseArtStyle()`). Only on a page that has the head.
+     *
+     * @returns {void}
+     */
+    function _ensureFdHeadStyle() {
+        if (document.getElementById('mb-fd-head-style')) return;
+        const st = GM_addStyle(`
+            p.mb-fd-sub { margin: -2px 0 4px; color: #555; font: 13px/1.4 "Helvetica Neue", Helvetica, Arial, sans-serif; }
+            p.mb-fd-sub :is(.mb-fd-by, a) { color: #194880; }
+            p.mb-fd-sub .mb-fd-when { font-style: italic; color: #194880; }
+            .mb-fd-head { margin: 6px 0 0; }
+            /* MusicBrainz's section headings: orange text on the h2 bar; the
+               data h2 after them takes the colour too. */
+            h2.mb-fd-h2 { font: 700 17px/1.3 "Helvetica Neue", Helvetica, Arial, sans-serif; margin: 4px 0; color: #eb743b; }
+            .mb-fd-head ~ h2 { color: #eb743b; }
+            .mb-fd-n { font-weight: 400; }
+            .mb-fd-text { margin: 4px 0 10px 1.5em; max-width: 90ch; white-space: pre-line; font: 13px/1.5 Georgia, "Times New Roman", serif; color: #2b2622; }
+            .mb-fd-art { margin-left: 1.5em; max-width: min(1100px, calc(100vw - 32px - 1.5em)); }
+            .mb-fd-art .mb-release-art-tile a { cursor: zoom-in; }
+            p.mb-fd-lineage { margin: 0; padding: 6px 9px; overflow-wrap: anywhere; }
+            /* A label column as wide as its longest label took a card's whole
+               width once (Discogs' identifiers): capped, so a value always
+               has room. */
+            .mb-fd-details dl.mb-sb-card-body > dt { max-width: 11em; overflow-wrap: anywhere; }
+            .mb-fd-dim { color: #7a6d5c; }
+        `);
+        st.id = 'mb-fd-head-style';
+    }
+
+    /**
+     * The head spec of archive.org's item page (`_fdHeadSpec()`), from the
+     * item read for the render (`_iaDetailsRec`): "~ Concert recording by …
+     * (date: venue)"; Description; Details: Show and Item facts, External
+     * links (Brucebase, Databruce, the download list, the metadata),
+     * Collections, Lineage; Pictures (the uploader's scans, the cover first).
+     * Null before the item was read.
+     *
+     * @returns {?Object}
+     */
+    function _iaDetailsHeadSpec() {
+        const it = _iaDetailsRec;
+        const root = document.getElementById('mb-ia-root');
+        if (!it || !root) return null;
+        const runtime = it.tracks.reduce((n, x) => n + (x.len || 0), 0);
+        const size = it.size >= 1073741824 ? `${(it.size / 1073741824).toFixed(2)} GB` : _iaSizeText(it.size);
+        const id = encodeURIComponent(it.id);
+        const links = _fdChips([
+            ['Discography', [it.brucebase && ['Brucebase', it.brucebase], it.databruce && ['Databruce', it.databruce]].filter(Boolean)],
+            ['archive.org', [['Download', `https://archive.org/download/${id}`], ['Metadata', `https://archive.org/metadata/${id}`]]],
+        ]);
+        const lineage = it.lineage ? Object.assign(document.createElement('p'), { className: 'mb-fd-lineage', textContent: it.lineage }) : null;
+        return {
+            root, h2: root.querySelector('h2.mb-ia-list-heading'),
+            sub: { what: _IA_DET_MEDIA_NAMES[it.mediatype] || it.mediatype || 'Item', by: it.creator, when: [it.date, it.venue].filter(Boolean).join(': ') },
+            text: { title: 'Description', body: it.desc },
+            facts: [
+                ['show', 'Show', [['Date', it.date], ['Venue', it.venue], ['Source', it.source], ['Taper', it.taper],
+                    ['Transferred by', it.transferer], ['Running time', _iaLenText(runtime)]]],
+                ['item', 'Item', [['Identifier', it.id], ['Media type', it.mediatype], ['Files', it.files ? String(it.files) : ''],
+                    ['Size', size], ['Uploaded by', it.uploader], ['Added', it.added],
+                    ['Reviews', it.reviews ? `${it.reviews}${it.rating ? ` · ★ ${it.rating.toFixed(1)}` : ''}` : '']]],
+            ],
+            others: [
+                links && ['links', 'External links', links.count, links.body, true],
+                it.collections.length && ['collections', 'Collections', it.collections.length, _fdPills(it.collections), true],
+                lineage && ['lineage', 'Lineage', 1, lineage, true],
+            ],
+            pictures: it.pictures.map(p => ({ full: _iaFileUrl(it.id, p.name), thumb: _iaFileUrl(it.id, p.thumb || p.name),
+                caption: p.name.split('/').pop().replace(/\.[^.]+$/, '') })),
+            picturesTitle: 'Pictures', title: _iaDetailsName(), source: 'the item\'s metadata',
+        };
     }
 
     // --- setlist.fm: a venue's or an artist's setlists (sfm-venue, sfm-artist) --
@@ -22699,6 +23800,31 @@
     }
 
     /**
+     * The header container of a Brucebase page with link previews only
+     * (`bb-page`, 2026-11-04): a HIDDEN `<h1 class="mb-bb-h1 mb-bb-preview-only">`
+     * at the end of `<body>`, so init runs as on every pageType (the popup
+     * engine, every declaration of the script initialised) while nothing is
+     * shown and nothing of the wiki's page is touched: no side bar
+     * arrangement, no style, no title change (`_bbPrepareLivePage()` does
+     * those for the pageTypes with a table).
+     *
+     * @returns {?HTMLHeadingElement} The hidden `<h1>`, or null without a `<body>`.
+     */
+    function _bbPreviewOnlyHeader() {
+        const existing = document.querySelector('h1.mb-bb-preview-only');
+        if (existing) return existing;
+        if (!document.body) return null;
+        const h1 = document.createElement('h1');
+        h1.className = 'mb-bb-h1 mb-bb-preview-only';
+        h1.hidden = true;
+        const bdi = document.createElement('bdi');
+        bdi.textContent = String(document.title || '').replace(/\s*-\s*Brucebase.*$/i, '').trim() || 'Brucebase';
+        h1.appendChild(bdi);
+        document.body.appendChild(h1);
+        return h1;
+    }
+
+    /**
      * Prepares the Brucebase song list at init, standing in for the
      * MusicBrainz header lookup (the init block calls it right after that
      * lookup, for the Brucebase definition only). The page's only `<h1>` is
@@ -24269,9 +25395,9 @@
             // 2026-10-24: "on all BB PTs where an event href is involved in
             // a column or elsewhere"): any link to one previews under its
             // own setting, whatever `setting` says. `isDetailUrl` stays
-            // /song:, so /gig: links on other hosts (`_extDpTest()`) are
-            // left as they were; a Media icon (an `<img>` link) stays the
-            // image card's.
+            // /song:; on other hosts `_extDpTest()` takes these under the
+            // same setting (2026-11-03, G1 of NON-MB-COVERAGE.org); a Media
+            // icon (an `<img>` link) stays the image card's.
             ownLinks: {
                 // Venue and people pages too (2026-10-24: "all relations
                 // under On stage … should support detail hovering").
@@ -24332,14 +25458,19 @@
             livePrepare: null,
             // The React pages' root; the older, server-rendered ones
             // (submissions, a release's history, a user's ratings) have no
-            // `#app`, their content is `#page_content` (5a, 2026-10-24).
-            extRoot: '#app, #page_content'
+            // `#app`, their content is `#page_content` (5a, 2026-10-24). The
+            // search page (Next.js, `dg-search`) has neither: its content is
+            // `<main>`, outside Discogs' header (G4 of NON-MB-COVERAGE.org,
+            // 2026-11-03: no preview there before a render).
+            extRoot: '#app, #page_content, main'
         },
         // archive.org (2026-10-31): like discogs.com, no detail pages of its
         // own to parse — an item is the `iadetails` reader's
         // (`_EXT_READERS`). The site's own page is a web-component shell
-        // (its links in shadow DOM, out of reach), so the content area is
-        // our own section only.
+        // (its links in shadow DOM, out of reach of a root selector), so the
+        // content area is our own section only; the shadow DOM's links are
+        // reached since 2026-11-03 through `_dpEventTarget()` and
+        // `_iaShadowLinkInScope()` (G4 of NON-MB-COVERAGE.org).
         'archive.org': {
             setting: null,
             isDetailUrl: () => false,
@@ -24356,6 +25487,12 @@
         // `setlistfm` reader's (with its key). The content area is our own
         // section (`#mb-sfm-root`): without this entry `_extSource()`'s
         // selector threw on setlist.fm (found by tests/fixtures/sfm-list.spec.js).
+        // Since 2026-11-03 (G4 of NON-MB-COVERAGE.org) also setlist.fm's own
+        // list, before any render: its setlist cards (`.setlistPreview`, the
+        // Tour and setlist links, written relative and read against the page
+        // by `_extTarget()`) and a venue's info box (`.info`: its website,
+        // Wikipedia). Not the whole `.mainColumn`: its "Upcoming" list is
+        // ticket-shop affiliate links.
         'www.setlist.fm': {
             setting: null,
             isDetailUrl: () => false,
@@ -24365,7 +25502,7 @@
             liveHide: [],
             liveCss: '',
             livePrepare: null,
-            extRoot: '#mb-sfm-root'
+            extRoot: '#mb-sfm-root, .mainColumn .setlistPreview, .mainColumn .info'
         }
     };
 
@@ -31005,6 +32142,40 @@
     }
 
     /**
+     * The element an event of the popup engine really happened on. On
+     * archive.org the site's own result list is web components with open
+     * shadow roots (`<app-root>` and below), and a listener on the document
+     * gets `e.target` retargeted to the outermost shadow host; the first
+     * element of `composedPath()` is the one under the pointer (G4 of
+     * NON-MB-COVERAGE.org, 2026-11-03). On every other host `e.target`,
+     * unchanged: MusicBrainz's pages and the other sites have no shadow DOM
+     * the engine reads.
+     *
+     * @param {Event} e
+     * @returns {?EventTarget}
+     */
+    function _dpEventTarget(e) {
+        if (_isIaHost && typeof e.composedPath === 'function') {
+            const first = e.composedPath()[0];
+            if (first && first.closest) return first;
+        }
+        return e.target;
+    }
+
+    /**
+     * Whether `node` is inside archive.org's shadow DOM (G4 of
+     * NON-MB-COVERAGE.org): there the popup engine follows the pointer with
+     * `mousemove` instead of `mouseover`/`mouseout` (`_initDetailPreview()`).
+     * Always false on any other host.
+     *
+     * @param {?EventTarget} node
+     * @returns {boolean}
+     */
+    function _dpInIaShadow(node) {
+        return _isIaHost && !!node && typeof node.getRootNode === 'function' && node.getRootNode() instanceof ShadowRoot;
+    }
+
+    /**
      * Installs the popup engine (the detail-page preview's hover card and
      * pinned dialog) when one of its sources is enabled here (`_popSources()`:
      * a foreign host whose preview setting is on, a MusicBrainz release page
@@ -31033,6 +32204,11 @@
      * Hover handlers ignore a tap's compatibility mouse events
      * (`_isTouchCompatMouseEvent()`), as every tooltip of the script does.
      *
+     * On archive.org the site's own links are in shadow DOM; the handlers
+     * read the element under the pointer through `_dpEventTarget()` (G4 of
+     * NON-MB-COVERAGE.org, 2026-11-03). Everywhere else they read
+     * `e.target`, as before.
+     *
      * @returns {void}
      */
     function _initDetailPreview() {
@@ -31041,34 +32217,69 @@
         _installTouchInputTracker();
         _ensureDetailPreviewStyle();
         _h1KindDocInstall();
-        document.addEventListener('mouseover', (e) => {
-            _dpPeek.px = e.clientX;
-            _dpPeek.py = e.clientY;
+        // The pointer entered `node`.
+        const over = (e, node) => {
             // A link of the window's own Extracted view: what a click on it
             // opens there, or an image's preview (`_dpWinTarget()`).
-            const t = _popResolve(e.target) || _dpWinTarget(e.target);
+            const t = _popResolve(node) || _dpWinTarget(node);
             if (!t || t.el === _dpPeek.link || _isTouchCompatMouseEvent(e)) return;
             _dpPeek.hover = t.el;
             // Without Ctrl held, only remember the element: pressing Ctrl on
             // it shows the card (the keydown handler below).
             if (t.src.needsCtrl() && !e.ctrlKey) return;
             _dpSchedulePeek(t);
+        };
+        // The pointer left `node` for `related` (null: the window).
+        const out = (node, related) => {
+            const h = _dpPeek.hover;
+            if (h && h.contains(node) && !(related && h.contains(related))) _dpPeek.hover = null;
+            const a = _dpPeek.link;
+            if (!a || !a.contains(node)) return;
+            if (related && a.contains(related)) return;
+            _dpHidePeek();
+        };
+        document.addEventListener('mouseover', (e) => {
+            _dpPeek.px = e.clientX;
+            _dpPeek.py = e.clientY;
+            const node = _dpEventTarget(e);
+            if (_dpInIaShadow(node)) return;
+            over(e, node);
         }, true);
         document.addEventListener('mouseout', (e) => {
-            const h = _dpPeek.hover;
-            if (h && h.contains(e.target) && !(e.relatedTarget && h.contains(e.relatedTarget))) _dpPeek.hover = null;
-            const a = _dpPeek.link;
-            if (!a || !a.contains(e.target)) return;
-            if (e.relatedTarget && a.contains(e.relatedTarget)) return;
-            _dpHidePeek();
+            const node = _dpEventTarget(e);
+            if (_dpInIaShadow(node)) return;
+            out(node, e.relatedTarget);
         }, true);
+        // archive.org's shadow DOM (G4): a mouseover or mouseout whose target
+        // and relatedTarget both retarget to the same shadow host never
+        // reaches the document — a move from one result to the next inside
+        // `<app-root>` fires none here (seen in the G4 spec: no mouseout at
+        // all on leaving a result's link). mousemove always does, so on
+        // archive.org it follows the element under the pointer and runs the
+        // same two steps, with the exact elements on both sides; the two
+        // handlers above leave shadow-DOM elements to it.
+        if (_isIaHost) {
+            let under = null;
+            document.addEventListener('mousemove', (e) => {
+                const node = _dpEventTarget(e);
+                if (node === under) return;
+                const prev = under;
+                under = node;
+                if (!_dpInIaShadow(prev) && !_dpInIaShadow(node)) return;
+                _dpPeek.px = e.clientX;
+                _dpPeek.py = e.clientY;
+                if (_dpInIaShadow(prev)) out(prev, node);
+                if (_dpInIaShadow(node)) over(e, node);
+            }, true);
+        }
         document.addEventListener('focusin', (e) => {
-            const t = _popResolve(e.target) || _dpWinTarget(e.target);
-            if (!t || t.el !== e.target || t.el === _dpPeek.link) return;
+            const node = _dpEventTarget(e);
+            const t = _popResolve(node) || _dpWinTarget(node);
+            if (!t || t.el !== node || t.el === _dpPeek.link) return;
             if (_dpFocusVisible(t.el) && !t.src.needsCtrl()) _dpSchedulePeek(t);
         }, true);
         document.addEventListener('focusout', (e) => {
-            if (e.target === _dpPeek.link) _dpHidePeek();
+            if (_dpEventTarget(e) === _dpPeek.link) _dpHidePeek();
         }, true);
         document.addEventListener('mousedown', () => {
             if (_dpPeek.link) _dpHidePeek();
@@ -43602,6 +44813,24 @@
             },
             tableMode: 'single'
         },
+        {
+            // Every other Brucebase page (vzell, 2026-11-04: "previews should
+            // run on every Brucebase page"): a gig, a venue, a person, a song
+            // — link previews only. LAST of the Brucebase definitions: it
+            // matches any path. No button and nothing visible: its header is
+            // a hidden element (`_bbPreviewOnlyHeader()`), and init installs
+            // the popup engine as on every pageType. A real pageType rather
+            // than an early exit on purpose: an exit leaves every top-level
+            // declaration after it uninitialised, and the artwork viewer
+            // then threw "Cannot access '_artViewerState' before
+            // initialization" (tests/fixtures/bb-every-page.spec.js).
+            type: 'bb-page',
+            host: 'brucebase.wikidot.com',
+            match: () => true,
+            buttons: [],
+            features: { bbPreviewOnly: true },
+            tableMode: 'single'
+        },
 
         // discogs.com's own pages (2026-10-18): a master's versions, a
         // release's tracklist, credits, companies, identifiers and other
@@ -43633,17 +44862,23 @@
             type: 'dg-release',
             host: 'www.discogs.com',
             match: (path) => _dgEntityPageIs(path, 'release'),
+            // Tracks: the release as release-tracks shows one (a sub-table per
+            // medium, credits as role columns, Notes, Details and Images
+            // above); then today's sub-tables (vzell, 2026-11-03).
             buttons: [ {
-                label: 'Show tracklist, credits and other versions', shortLabel: 'Tracklist, credits, versions',
+                label: 'Show all tracks', shortLabel: 'Tracks', features: { dgView: 'tracks' },
+                description: 'One request: the release. A sub-table per disc or record, the credits as columns; its notes, facts and images above.'
+            }, {
+                label: 'Show credits, companies and other versions', shortLabel: 'Credits, versions', features: { dgView: 'more' },
                 get description() { return _dgCostPer('The release, then every other version of its master', 'versions', 'one request more for the release'); }
             } ],
             features: {
                 dgToTable: 'release',
                 decorateDoc: (doc) => _dgMbDecorateDoc(doc),
                 groupByH3: true,
-                // The Tracklist's per-track credits, one row each (vzell:
-                // like the Instruments column of release-tracks).
-                collapsableColumns: [ 'Credits', 'Cat#' ],
+                // The Tracks view's credit columns, one line per name (as the
+                // AR columns of release-tracks).
+                collapsableColumns: [ 'Instruments', 'Vocals', 'Producer', 'Engineer', 'Mixed by', 'Arranged by', 'Other credits', 'Cat#' ],
                 pageRequest: (p, def) => _dgPageRequest(p, def),
                 pageCountAsync: (def) => _dgPageCount(def)
             },
@@ -43948,6 +45183,41 @@
                 collapsableColumns: [ 'Collection' ]
             },
             tableMode: 'single'
+        },
+        {
+            // archive.org's item page (2026-11-03, org/foreign-detail-PTs.org):
+            // modelled on release-tracks — a sub-table per disc, a file's
+            // derivatives as columns, the item's pictures and facts above.
+            // One anonymous request, the metadata API. See the "archive.org:
+            // an item" block below applyIaToTable(); docs/claude/internet-archive.md.
+            type: 'ia-details',
+            host: 'archive.org',
+            match: (path) => _IA_DETAILS_PATH_RE.test(path),
+            buttons: [
+                {
+                    label: 'Show all tracks', shortLabel: 'Tracks',
+                    description: 'The item\'s tracks, a table per disc, with each file\'s size and its MP3 and other copies; above them its pictures and facts. One request to the Internet Archive.'
+                },
+                {
+                    label: 'Show all files', shortLabel: 'All files',
+                    description: 'Every file of the item, one row each: format, original or copy, what it was made from, size, length, MD5. One request to the Internet Archive.',
+                    features: { iaView: 'files' }
+                }
+            ],
+            features: {
+                iaToTable: 'details',
+                groupByH3: true,
+                pageRequest: (p, def) => {
+                    const url = `https://archive.org/metadata/${encodeURIComponent(_iaDetailsId())}`;
+                    return { url, fetchText: () => _iaFetchText(url), toHtml: (text) => _iaDetailsToHtml(text, def?.features?.iaView || '') };
+                },
+                pageCountAsync: () => 1,
+                integerColumns: [
+                    { sourceColumn: '#', align: 'C' }, { sourceColumn: 'Length', align: ':' }, { sourceColumn: 'Size', align: 'R' },
+                    { sourceColumn: 'VBR MP3', align: 'R' }, { sourceColumn: 'Ogg Vorbis', align: 'R' }
+                ]
+            },
+            tableMode: 'multi'
         },
         // setlist.fm (2026-11-02, org/setlistfm.org item 2 and Q9;
         // docs/claude/setlistfm.md): a venue's and an artist's setlists, ten a
@@ -56282,7 +57552,10 @@
      * scripts/probe-dg-poh-headerline.user.js P1: 1394 bytes of check vs
      * the 1.28 MB release page and its 183 KB /edits). vzell's consent:
      * org/POH-headerline.org item 3 — the second request of the popup
-     * engine that is not anonymous (the first: `_extDgImgDataGet()`). The
+     * engine that is not anonymous (the first: `_extDgImgDataGet()`).
+     * The hosts it runs on are `_MB_FOREIGN_POP_HOST`'s: discogs.com,
+     * setlist.fm (2026-11-03) and, by vzell's consent of 2026-11-03 (G2 of
+     * NON-MB-COVERAGE.org), the four Springsteen sites and archive.org. The
      * Web Service stays anonymous (`_mbWsGetForeign()`). The caller has
      * taken the MusicBrainz rate slot (`_MB_LIVE.awaitSlot`).
      *
@@ -66911,7 +68184,7 @@
             if (n.nodeType === 3) return _rgEsc(n.nodeValue);
             if (n.nodeType !== 1) return '';
             if (n.matches(SKIP)) return '';
-            if (n.tagName === 'TABLE') return `<p class="mb-rg-dim"><a href="${_rgEsc(page)}" target="_blank" rel="noopener noreferrer">A table: show it on Wikipedia ↗</a></p>`;
+            if (n.tagName === 'TABLE') return `<p class="mb-rg-dim"><a href="${_rgEsc(page)}" target="_blank" rel="noopener noreferrer" data-mb-dp-newtab>A table: show it on Wikipedia ↗</a></p>`;
             const inner = Array.from(n.childNodes).map(walk).join('');
             if (/^H[2-6]$/.test(n.tagName)) return `<h5 class="mb-wp-h">${_rgEsc(n.textContent.trim())}</h5>`;
             if (n.tagName === 'A') {
@@ -67657,11 +68930,13 @@
      * @param {object} t
      * @param {Object} sfm
      * @param {number} page
-     * @param {{force?: boolean, repaint?: ?function(): void, onSkip?: ?function(): void}} [how] - `onSkip`:
-     *   told when the load was forgotten unasked (the window left), which `_mbLoad()` says to no one.
+     * @param {{force?: boolean, repaint?: ?function(): void, onSkip?: ?function(): void, stopped?: ?function(): boolean}} [how] - `onSkip`:
+     *   told when the load was forgotten unasked (the window left, or the run was stopped), which `_mbLoad()`
+     *   says to no one. `stopped`: a run's Stop (`_extSfmRun()`), asked with the window after the rate slot,
+     *   so a page still waiting for its slot is never sent once Stop is pressed.
      * @returns {void}
      */
-    function _extSfmPageLoad(t, sfm, page, { force = false, repaint = null, onSkip = null } = {}) {
+    function _extSfmPageLoad(t, sfm, page, { force = false, repaint = null, onSkip = null, stopped = null } = {}) {
         const skipped = () => {
             if (onSkip) setTimeout(onSkip, 0);
             return { skipped: true };
@@ -67678,7 +68953,7 @@
             if (r.skipped) return skipped();
             if (r.out) return r.out.ok ? { ok: false, detail: `setlist.fm answered HTTP ${r.out.data.status}` } : r.out;
             return { ok: true, data: _extSfmListPage(r.data) };
-        }, { force, repaint, wanted: () => !!(_dpDialog.target && _dpDialog.target.key === t.key), version: _EXT_IDB_VERSION * 100 + _EXT_SFM_VERSION, ttlMs: _extTtlMs() });
+        }, { force, repaint, wanted: () => !(stopped && stopped()) && !!(_dpDialog.target && _dpDialog.target.key === t.key), version: _EXT_IDB_VERSION * 100 + _EXT_SFM_VERSION, ttlMs: _extTtlMs() });
     }
 
     // --- "Load all" in a setlist.fm list window (2026-11-03) ---------------
@@ -67794,6 +69069,10 @@
         const ui = _extSfmUiOf(t);
         if (ui.run) return;
         const run = { stopped: false, list, times };
+        // Asked by each load after its rate slot: a page waiting for its
+        // slot when Stop is pressed is never sent (tests/fixtures/popup-ext
+        // "item 3a, Stop", 2026-11-03: page 3 was asked ~0.5 s after Stop).
+        const stopped = () => run.stopped;
         Object.assign(ui, { run, warn: null, end: '' });
         const repaint = () => _extSfmRepaintSoon(t);
         repaint();
@@ -67809,7 +69088,7 @@
                 const p = ui.pages + 1;
                 const key = _extSfmPageKey(sfm, p);
                 ui.pages = p;
-                await _extSfmAwait(key, done => _extSfmPageLoad(t, sfm, p, { repaint: () => { done(); repaint(); }, onSkip: done }));
+                await _extSfmAwait(key, done => _extSfmPageLoad(t, sfm, p, { repaint: () => { done(); repaint(); }, onSkip: done, stopped }));
                 asked++;
                 const st = _mbPop.get(key);
                 if (!st) {
@@ -67827,7 +69106,7 @@
                 if (ui.timesUpTo >= goal) break;
                 const n = Math.floor(ui.timesUpTo / _EXT_SFM_SITE_PER) + 1;
                 const key = _extSfmSiteKey(sfm.kind, sfm.id, sfm.tour || '', n);
-                await _extSfmAwait(key, done => _extSfmSiteLoad(t, sfm.kind, sfm.id, sfm.tour || '', n, { repaint: () => { done(); repaint(); }, onSkip: done }));
+                await _extSfmAwait(key, done => _extSfmSiteLoad(t, sfm.kind, sfm.id, sfm.tour || '', n, { repaint: () => { done(); repaint(); }, onSkip: done, stopped }));
                 if (!_mbPop.get(key)) break;
                 ui.timesUpTo = Math.min(sfm.list.total, n * _EXT_SFM_SITE_PER);
                 repaint();
@@ -68068,11 +69347,11 @@
      * @param {string} id
      * @param {string} tour
      * @param {number} n
-     * @param {{force?: boolean, repaint?: ?function(): void, onSkip?: ?function(): void}} [how] - `onSkip`:
-     *   as `_extSfmPageLoad()`'s.
+     * @param {{force?: boolean, repaint?: ?function(): void, onSkip?: ?function(): void, stopped?: ?function(): boolean}} [how] - `onSkip`
+     *   and `stopped`: as `_extSfmPageLoad()`'s.
      * @returns {void}
      */
-    function _extSfmSiteLoad(t, kind, id, tour, n, { force = false, repaint = null, onSkip = null } = {}) {
+    function _extSfmSiteLoad(t, kind, id, tour, n, { force = false, repaint = null, onSkip = null, stopped = null } = {}) {
         const url = _extSfmSiteUrl(t, kind, n);
         _mbLoad(_extSfmSiteKey(kind, id, tour, n), async (wanted) => {
             // A tour's pages are setlist.fm's search: `_extSfmPageGet()`.
@@ -68085,7 +69364,7 @@
             if (checked) return { ok: false, detail: `setlist.fm answered with a bot check (${checked})` };
             if (res.error || res.status !== 200) return { ok: false, detail: res.error ? _extFailText(res) : `setlist.fm answered HTTP ${res.status}` };
             return { ok: true, data: _extSfmSiteParse(new DOMParser().parseFromString(res.body, 'text/html'), kind) };
-        }, { force, repaint, wanted: () => !!(_dpDialog.target && _dpDialog.target.key === t.key), version: _EXT_IDB_VERSION * 100 + _EXT_SFM_SITE_VERSION, ttlMs: _extTtlMs() });
+        }, { force, repaint, wanted: () => !(stopped && stopped()) && !!(_dpDialog.target && _dpDialog.target.key === t.key), version: _EXT_IDB_VERSION * 100 + _EXT_SFM_SITE_VERSION, ttlMs: _extTtlMs() });
     }
 
     /**
@@ -71077,7 +72356,7 @@
             `${_extDgNum(cst.n)} entr${cst.n === 1 ? 'y' : 'ies'}` : 'none'}${cst.done ? '' : ' so far'})`;
         const box = `<div class="mb-dg-box">Discogs' API lists only some of an artist's credits, the production ones${listed}. ` +
             'The website lists them all, written-by, instruments and vocals included. ' +
-            `<a href="https://www.discogs.com/artist/${dg.id}?type=Credits" target="_blank" rel="noopener noreferrer">All credits on Discogs ↗</a></div>`;
+            `<a href="https://www.discogs.com/artist/${dg.id}?type=Credits" target="_blank" rel="noopener noreferrer" data-mb-dp-newtab>All credits on Discogs ↗</a></div>`;
         const cparts = croles.map((role) => {
             const st = _extDgRoleState(vs, all, role);
             return `<div class="mb-dg-subsec">${_extDgSection(`a-c-${role.replace(/[^\w-]/g, '-')}`, role, _extDgSoFar(st),
@@ -71512,7 +72791,10 @@
      * toggle and "Show all track credits"; the versions' buttons, chips,
      * sort headers; an artist's or a label's controls
      * (`_extDgEntityAct()`, `_extDgEntityControl()`); a Discogs link or a
-     * version's row drills down.
+     * version's row drills down. Before the record has arrived (or when it
+     * failed) there are no controls, but a link is still a link: it opens in
+     * the window, as `_dpWinWhat()` already marks it (G8 of
+     * NON-MB-COVERAGE.org, 2026-11-03: it kept its new tab until then).
      *
      * @param {MouseEvent} e
      * @param {object} t
@@ -71521,7 +72803,11 @@
     function _extDiscogsAreaClick(e, t) {
         const st = _mbPop.get(t.key);
         const rec = st && st.status === 'done' ? st.data : null;
-        if (!rec || !rec.discogs || !(e.target instanceof Element)) return;
+        if (!(e.target instanceof Element)) return;
+        if (!rec || !rec.discogs) {
+            _extDgDrill(e, e.target.closest('a[href]'));
+            return;
+        }
         const ui = _extDgUiOf(t);
         const repaint = () => { if (_dpDialog.repaint) _dpDialog.repaint(); };
         // The edit history's controls (a release's window on a submissions list).
@@ -71647,13 +72933,16 @@
     }
 
     /**
-     * A detail page of one of the four sites, by that site's own test. On
-     * discogs.com also a page the site previews under a setting of its own
-     * (`ownLinks`: Brucebase's show, venue and people pages), so a Brucebase
-     * link in Discogs' content gets Brucebase's card, not a generic one
-     * (org/TODO.org "some more BB and MB fixes/enhancements" 5a, vzell
-     * 2026-10-24: "Discogs + Brucebase links"). Elsewhere, MusicBrainz above
-     * all, such a link stays the generic reader's, as before.
+     * A detail page of one of the four sites, by that site's own test, or a
+     * page the site previews under a setting of its own while that setting
+     * is on (`ownLinks`: Brucebase's show, venue and people pages, under
+     * `sa_bb_event_preview`), so a Brucebase link gets Brucebase's card, not
+     * a generic one, and opens in any window (`_DP_WIN_EXT_READERS`). First
+     * on discogs.com only (org/TODO.org "some more BB and MB
+     * fixes/enhancements" 5a, vzell 2026-10-24: "Discogs + Brucebase
+     * links"); on every host since 2026-11-03, MusicBrainz included (G1 of
+     * NON-MB-COVERAGE.org, vzell: "everywhere"): a Brucebase show window's
+     * own gig page, in its See also, opened a new tab.
      *
      * @param {URL} u
      * @returns {boolean}
@@ -71662,7 +72951,9 @@
         const key = _extDpSiteKey(u);
         if (!key) return false;
         const site = _DP_SITES[key];
-        return site.isDetailUrl(u) || (_isDgHost && !!site.ownLinks && site.ownLinks.test(u));
+        if (site.isDetailUrl(u)) return true;
+        const own = site.ownLinks;
+        return !!own && Lib.settings[own.setting] !== false && own.test(u);
     }
 
     /**
@@ -74330,7 +75621,13 @@
      * page fields, else null) replaces the source's; `liveUrl`, when not
      * '', is the Live page's address (a reader's `liveUrlFor()`).
      * `inWindow` takes a link IN the window (a Discogs window's own links,
-     * `_extDgDrill()`), which a hover never previews.
+     * `_extDgDrill()`), which a hover never previews. In the window, a link
+     * marked `data-mb-dp-newtab` is none: it names the website's own page of
+     * what the window already shows ("All credits on Discogs ↗", "A table:
+     * show it on Wikipedia ↗"), which no reader can show, so it keeps its new
+     * tab — a key built from it differs from the window's (a query, another
+     * spelling of a title) and would otherwise reopen the same record in
+     * place (G6, G7 of NON-MB-COVERAGE.org, 2026-11-03).
      *
      * @param {Element} a
      * @param {{inWindow?: boolean}} [opts]
@@ -74339,6 +75636,7 @@
      */
     function _extTarget(a, { inWindow = false } = {}) {
         if (!a || a.tagName !== 'A') return null;
+        if (inWindow && a.hasAttribute('data-mb-dp-newtab')) return null;
         const raw = (a.getAttribute('href') || '').trim();
         // MusicBrainz writes the sidebar's Wikidata link protocol-relative
         // (`//www.wikidata.org/wiki/Q…`, found by U3's live spec): read as
@@ -74352,6 +75650,17 @@
         // 5a, 2026-10-24). Only there: on MusicBrainz a relative link is
         // MusicBrainz's, never another site's.
         if (_isDgHost && /^\/[^/]/.test(href)) href = `${window.location.origin}${href}`;
+        // setlist.fm writes its own list's links relative to the page
+        // ("../search?artist=…&tour=…"), archive.org its result list's
+        // ("/details/<id>"): read against it, so they preview on the initial
+        // page (G4 of NON-MB-COVERAGE.org, 2026-11-03).
+        if ((_isSfmHost || _isIaHost) && href && !/^(?:[a-z][\w+.-]*:|\/\/|#)/i.test(href)) {
+            try {
+                href = new URL(href, window.location.href).href;
+            } catch (_) {
+                return null;
+            }
+        }
         if (!/^https?:\/\//i.test(href)) return null;
         let u;
         try {
@@ -74369,9 +75678,14 @@
         // a Discogs page a Discogs reader takes (2026-10-18: a release,
         // master, artist, label or its history, a user, a search).
         // On archive.org (2026-10-31): an item our table links, the
-        // `iadetails` reader's.
+        // `iadetails` reader's. On Brucebase, IN a window only (G3 of
+        // NON-MB-COVERAGE.org, 2026-11-03): a show on its year page
+        // (`/<yyyy>#<ddmmyy>`, the `bbdate` reader's) — a MusicBrainz event's
+        // Brucebase link, which kept its new tab here and opens in the window
+        // everywhere else. On the page itself such a link stays the site's.
         if (bare(host) === bare(window.location.hostname.toLowerCase()) &&
-            !(_isDgHost && _extDgSiteTest(u)) && !(_isIaHost && _extIaTest(u)) && !(_isSfmHost && _extSfmTest(u))) return null;
+            !(_isDgHost && _extDgSiteTest(u)) && !(_isIaHost && _extIaTest(u)) && !(_isSfmHost && _extSfmTest(u)) &&
+            !(_isBbHost && inWindow && _extBbDateTest(u))) return null;
         if (_EXT_SKIP_HOST_RE.test(host) || _EXT_SKIP_URL_RE.test(href)) return null;
         // A Relationships icon is an image link that IS the link: it gets
         // the card (2026-10-17). Elsewhere a link around an image is the
@@ -74420,7 +75734,11 @@
                     const root = _DP_SITES[_foreignHost].extRoot;
                     // `extRoot` may name several roots (discogs.com's two layouts).
                     const roots = root ? root.split(',').map(r => `, ${r.trim()} a[href]`).join('') : '';
-                    return `table.tbl > tbody a[href]${roots}`;
+                    // archive.org: any link too, for its shadow DOM, which no
+                    // root selector reaches; `resolve` keeps only the
+                    // shadow-DOM ones (`_iaShadowLinkInScope()`).
+                    // A foreign detail page's head (`_fdHeadInsertSections()`) too.
+                    return `table.tbl > tbody a[href], .mb-fd-head a[href], .mb-fd-sub a[href]${roots}${_isIaHost ? ', a[href]' : ''}`;
                 }
                 return _popSettingOn('sa_pop_mb_page') ? `${_EXT_SCOPE_SEL}, #page a[href]` : _EXT_SCOPE_SEL;
             },
@@ -74431,7 +75749,7 @@
             // `sa_enable_<site>` gate, so `sa_pop_ext` (on touch its twin) is
             // the one switch.
             enabled: () => _popSettingOn('sa_pop_ext'),
-            resolve: (a) => _extTarget(a),
+            resolve: (a) => (_isIaHost && !_iaShadowLinkInScope(a) ? null : _extTarget(a)),
             needsCtrl: _dpNeedsCtrl,
             // A reader may show another address than the link (U4: a
             // Brucebase date's year page as https).
@@ -88991,6 +90309,12 @@ a { color: #1565c0; }`;
     // has nothing for the script to do without the compact bar: stop here,
     // before any toolbar or heading is added, and say so at info level rather
     // than letting the required-elements check below log an error.
+    // A Brucebase page with link previews only (`bb-page`) inside a frame
+    // (an html block of a wiki page, under the same host): nothing to do.
+    if (baseDefinition?.features?.bbPreviewOnly && window.top !== window) {
+        Lib.info('init', `${pageType}: a frame — no link previews here.`);
+        return;
+    }
     if (baseDefinition?.features?.slNavOnly && Lib.settings.sa_sl_compact_nav !== true) {
         Lib.info('init', `${pageType}: navigation-only page and the compact bar (sa_sl_compact_nav) is off — nothing to do.`);
         return;
@@ -89054,8 +90378,9 @@ a { color: #1565c0; }`;
     } else if (baseDefinition?.host === 'brucebase.wikidot.com') {
         // Brucebase has an <h1>, but it is the wiki's site name in the page
         // header, which the generic fallback above would pick — see
-        // _bbPrepareLivePage().
-        headerContainer = _bbPrepareLivePage();
+        // _bbPrepareLivePage(). A page of `bb-page` (link previews only)
+        // gets a hidden header and nothing else.
+        headerContainer = baseDefinition.features?.bbPreviewOnly ? _bbPreviewOnlyHeader() : _bbPrepareLivePage();
     } else if (baseDefinition?.host === 'www.discogs.com') {
         // discogs.com's <h1> is inside Discogs' React page: the toolbar goes
         // to a section of our own above it — see _dgPrepareLivePage().
@@ -112960,11 +114285,15 @@ a { color: #1565c0; }`;
             // makeH2sCollapsible() so it becomes an ordinary collapsible h2, and
             // is opened right after (it starts uncollapsed, unlike other h2s).
             const _releaseArtH2 = _releaseArtInsertSection();
+            // A foreign detail page's head (archive.org's item page, a Discogs
+            // release's Tracks view): its sections, the same way (two start open).
+            _fdHeadInsertSections();
 
             // Make all H2s collapsible after rendering
             makeH2sCollapsible();
             if (_releaseArtH2 && _releaseArtH2._mbToggle) _releaseArtH2._mbToggle(true);
             _sbInlineOpen();
+            _fdHeadOpenSections();
 
             // Apply sticky headers for better scrolling experience
             if (Lib.settings.sa_enable_sticky_headers) {
@@ -120808,29 +122137,14 @@ a { color: #1565c0; }`;
         sec.appendChild(cards);
         wrap.append(h2, sec);
 
-        // Card folding, delegated: the section is never cloned. With `all`
-        // (Ctrl/Cmd) every card follows the clicked one's new state, the rule
-        // of makeH2sCollapsible()'s Ctrl+Click on peer h2s.
-        const setShut = (card, shut) => {
-            card.classList.toggle('mb-sb-card-shut', shut);
-            card.querySelector(':scope > .mb-sb-card-head').setAttribute('aria-expanded', String(!shut));
-        };
-        const fold = (head, all) => {
-            const shut = !head.parentElement.classList.contains('mb-sb-card-shut');
-            if (all) sec.querySelectorAll('.mb-sb-card').forEach(c => setShut(c, shut));
-            else setShut(head.parentElement, shut);
-        };
+        _sbInlineWireFolds(sec);
         sec.addEventListener('click', (e) => {
             // The Search card's switch: one heading, or all.
             const scope = e.target.closest('.mb-sb-scope-btn');
-            if (scope) {
-                const body = scope.closest('.mb-sb-search');
-                body.dataset.mbSbScope = scope.dataset.mbSbScope;
-                _sbSearchApply(body);
-                return;
-            }
-            const head = e.target.closest('.mb-sb-card-head');
-            if (head && !e.target.closest('a')) fold(head, e.ctrlKey || e.metaKey);
+            if (!scope) return;
+            const body = scope.closest('.mb-sb-search');
+            body.dataset.mbSbScope = scope.dataset.mbSbScope;
+            _sbSearchApply(body);
         });
         sec.addEventListener('input', (e) => {
             if (e.target.matches('.mb-sb-find')) _sbSearchApply(e.target.closest('.mb-sb-search'));
@@ -120842,14 +122156,43 @@ a { color: #1565c0; }`;
                 e.stopPropagation();
                 e.target.value = '';
                 _sbSearchApply(e.target.closest('.mb-sb-search'));
-                return;
             }
+        });
+        return wrap;
+    }
+
+    /**
+     * Card folding for a section of `_sbInlineCard()` cards, delegated on
+     * the section (never cloned): a click on a heading (not on a link in
+     * it), or Enter / Space on it, opens or closes its card; with Ctrl/Cmd
+     * every card follows the clicked one's new state, the rule of
+     * makeH2sCollapsible()'s Ctrl+Click on peer h2s. Used by the MusicBrainz
+     * "Sidebar" section (`_sbInlineBuild()`) and archive.org's item page
+     * (`_fdHeadInsertSections()`).
+     *
+     * @param {HTMLElement} sec
+     * @returns {void}
+     */
+    function _sbInlineWireFolds(sec) {
+        const setShut = (card, shut) => {
+            card.classList.toggle('mb-sb-card-shut', shut);
+            card.querySelector(':scope > .mb-sb-card-head').setAttribute('aria-expanded', String(!shut));
+        };
+        const fold = (head, all) => {
+            const shut = !head.parentElement.classList.contains('mb-sb-card-shut');
+            if (all) sec.querySelectorAll('.mb-sb-card').forEach(c => setShut(c, shut));
+            else setShut(head.parentElement, shut);
+        };
+        sec.addEventListener('click', (e) => {
             const head = e.target.closest('.mb-sb-card-head');
-            if (!head || (e.key !== 'Enter' && e.key !== ' ')) return;
+            if (head && sec.contains(head) && !e.target.closest('a')) fold(head, e.ctrlKey || e.metaKey);
+        });
+        sec.addEventListener('keydown', (e) => {
+            const head = e.target.closest('.mb-sb-card-head');
+            if (!head || !sec.contains(head) || (e.key !== 'Enter' && e.key !== ' ')) return;
             e.preventDefault();
             fold(head, e.ctrlKey || e.metaKey);
         });
-        return wrap;
     }
 
     /**
@@ -143227,9 +144570,11 @@ a { color: #1565c0; }`;
             // finalCleanup() placed the "Sidebar" section before this
             // relocation ran: place it again (no rebuild).
             _sbInlineInsertSection();
+            _fdHeadInsertSections();
 
             makeH2sCollapsible();
             _sbInlineOpen();
+            _fdHeadOpenSections();
 
             // ── Artist-Releasegroups: inject discography view buttons ─────────
             // Mirror the equivalent block in startFetchingProcess (lines

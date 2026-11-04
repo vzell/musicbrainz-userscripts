@@ -188,3 +188,115 @@ test.describe('external link previews on the Springsteen sites (U5)', () => {
         expect(await xhrLog(page)).toEqual([{ url: SHUFFLE, anonymous: true }]);
     });
 });
+
+// G2 and G3 of NON-MB-COVERAGE.org (2026-11-03): inside a window on a
+// Springsteen site, a musicbrainz.org link opens MusicBrainz's own window
+// (`_MB_FOREIGN_POP_HOST`, vzell's consent of that day; its Web Service
+// request stays anonymous), and on Brucebase a show on its year page
+// (`/<yyyy>#<ddmmyy>`, the page's own host) opens the Brucebase show reader.
+// Both kept their new tab before. The window is the wiki text's outside
+// link's (a generic page); the probe link is written as a window writes its
+// links (absolute, target=_blank).
+test.describe('links inside a window on Brucebase (G2, G3)', () => {
+    const BRUCE = '70248960-cb53-4ea4-943a-edb18f7d336f';
+    const YEAR = 'https://brucebase.wikidot.com/1985';
+
+    /**
+     * Loads stats:songs and opens the generic window of an outside link of
+     * its wiki text, with the GM answers the drill-downs need.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {Object} settings
+     * @returns {Promise<import('@playwright/test').Locator>} The window's title path.
+     */
+    async function openShuffleWindow(page, settings = {}) {
+        await answer(page, {
+            [SHUFFLE]: {
+                status: 200, responseHeaders: HTML_HEADERS,
+                responseText: '<!doctype html><html><head><title>Roll of the Dice – E Street Shuffle</title></head><body></body></html>',
+            },
+            [YEAR]: { status: 200, responseHeaders: HTML_HEADERS, responseText: fixture('bb-year-1985.html') },
+        });
+        const artist = fixture('ws2-pop-artist-bruce.json');
+        await page.context().addInitScript(([b, id]) => {
+            window.__gmXhrResponder = (opts) => {
+                const u = new URL(opts.url);
+                if (u.origin === 'https://musicbrainz.org' && u.pathname === `/ws/2/artist/${id}`) {
+                    return { status: 200, responseHeaders: 'Content-Type: application/json', responseText: b };
+                }
+                return undefined;
+            };
+        }, [artist, BRUCE]);
+        await loadBbSongsPage(page, {
+            settingsOverride: { sa_pop_ext: true, sa_rich_tooltip_delay_ms: 0, sa_pop_ext_hosts: ['estreetshuffle.com'], ...settings },
+        });
+        const link = await addLink(page, '#page-content', SHUFFLE, 'Roll of the Dice');
+        await ctrlHover(page, link);
+        await expect(card(page).locator('.mb-tt-title').first()).toHaveText('Roll of the Dice – E Street Shuffle');
+        await page.keyboard.press('Space');
+        const title = dialog(page).locator(':scope > div > span').first();
+        await expect(title).toHaveText('Web page');
+        return title;
+    }
+
+    /**
+     * Writes a link into the open window, as the window writes its own.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {string} href
+     * @param {string} text
+     * @returns {Promise<import('@playwright/test').Locator>}
+     */
+    async function linkInWindow(page, href, text) {
+        await page.evaluate(([h, x]) => {
+            const a = document.createElement('a');
+            a.className = 'g-probe';
+            a.href = h;
+            a.target = '_blank';
+            a.textContent = x;
+            document.querySelector('#mb-dp-dialog .mb-dp-area').appendChild(a);
+        }, [href, text]);
+        return dialog(page).locator('a.g-probe');
+    }
+
+    test('G2: a MusicBrainz link opens MusicBrainz\'s window in place; its Web Service request is anonymous; Back returns', async ({ page }) => {
+        const title = await openShuffleWindow(page, { sa_pop_mb: true });
+        const pages = [];
+        page.on('popup', (pp) => pages.push(pp.url()));
+        await (await linkInWindow(page, `https://musicbrainz.org/artist/${BRUCE}`, 'Bruce Springsteen')).click();
+        await expect(title, 'one step deeper in the same window').toContainText('›');
+        await expect(dialog(page).locator('.mb-dp-area')).toContainText('Bruce Springsteen');
+        const ws = (await xhrLog(page)).filter(r => r.url.startsWith(`https://musicbrainz.org/ws/2/artist/${BRUCE}`));
+        expect(ws.length, 'MusicBrainz\'s Web Service asked').toBeGreaterThan(0);
+        expect(ws.every(r => r.anonymous), 'the Web Service request carries no cookies').toBe(true);
+        expect(pages, 'no new tab').toEqual([]);
+        await page.keyboard.press('Backspace');
+        await expect(title).toHaveText('Web page');
+    });
+
+    test('G2: with MusicBrainz previews off (sa_pop_mb), the MusicBrainz link keeps its new tab', async ({ page }) => {
+        await openShuffleWindow(page, { sa_pop_mb: false });
+        const popup = page.waitForEvent('popup');
+        await page.context().route(`https://musicbrainz.org/artist/${BRUCE}`, (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<p>mb</p>' }));
+        await (await linkInWindow(page, `https://musicbrainz.org/artist/${BRUCE}`, 'Bruce Springsteen')).click();
+        expect((await popup).url()).toBe(`https://musicbrainz.org/artist/${BRUCE}`);
+    });
+
+    test('G3: a show on its Brucebase year page opens the show reader in the window, though it is this site\'s own link', async ({ page }) => {
+        const title = await openShuffleWindow(page);
+        const pages = [];
+        page.on('popup', (pp) => pages.push(pp.url()));
+        await (await linkInWindow(page, `${YEAR}#130185`, '1985-01-13 Carolina Coliseum')).click();
+        await expect(title, 'the Brucebase show, one step deeper').toHaveText('Web page › Brucebase show');
+        await expect.poll(async () => (await xhrLog(page)).map(r => r.url)).toContain(YEAR);
+        expect(pages, 'no new tab').toEqual([]);
+        // On the page itself such a link stays the site's own.
+        const onPage = await page.evaluate((h) => {
+            const a = document.createElement('a');
+            a.setAttribute('href', h);
+            document.querySelector('#page-content').appendChild(a);
+            return window.__saTest.popResolve(a);
+        }, `${YEAR}#130185`);
+        expect(onPage).toBeNull();
+    });
+});

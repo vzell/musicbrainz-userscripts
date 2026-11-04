@@ -1,0 +1,88 @@
+[
+  {
+    "version": "WIP.6",
+    "date": "2026-11-04",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Discogs release page: a new first button, Tracks, shows the release the way a MusicBrainz release page does, from one request. There is one table per disc or record (a vinyl record's two sides are one table, as on MusicBrainz), named like \"Disc 1 · CD · 49:50\" and after Discogs' heading when there is one per disc; headings inside a disc fill a Section column. The credits become columns, one line per name: Instruments, Vocals, Producer, Engineer, Mixed by, Arranged by and Other credits. A track's own credits and the release credits that name it (\"A1 to A4, B2 to B4\") both land on it; the credits naming no track form a Release credits table. Above the tables, as on a MusicBrainz release: \"~ Release by …\", Notes (closed to start with), Details (on the left Release, External links, Genres and styles, Contributors and Community: Discogs' Statistics box with its links, and the copies for sale; the Identifiers on the right) and Images. The previous view, without its tracklist, is the second button: Credits, versions. Its labels, formats, country, year, genres and styles and the links in the notes are links, as on Discogs' page, and preview like the tables' links."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.5",
+    "date": "2026-11-04",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "archive.org item page: the part above the tables is laid out like a MusicBrainz release page. Under the title a line \"~ Concert recording by … (date: venue)\", then three sections that fold like the release page's: Description (the uploader's text, closed to start with, like a release's Annotation), Details (the facts as cards in the look of the release page's Sidebar section: Show, Item, External links, Collections, Lineage; a click on a card's heading folds it) and Pictures (the scans as tiles, like the release page's Cover art; a click opens the viewer). Typing in a filter no longer rebuilds them."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.4",
+    "date": "2026-11-04",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Brucebase: link previews on every page of the wiki, not only on its song list, Relations, Recent changes, the year pages and the start page. On a show, venue, person or song page, rest the pointer on a link for Brucebase's own card (or another site's, Wikipedia for example), and Space opens the window. Nothing else changes on those pages: no buttons, no toolbar."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.3",
+    "date": "2026-11-03",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "archive.org item pages (archive.org/details/…) get two buttons, built like MusicBrainz's release page. \"Tracks\" lists a show's songs in one table per disc, each named with its format and running time: #, Title (with the item's card), Length, the file and its size, a column for each copy archive.org made (VBR MP3, …) and ▶ to play the song in archive.org's player. Above the tables: the item's pictures (a click opens the viewer) and its facts (date, venue, source, taper, running time, Brucebase and Databruce links, collections, lineage). A video item lists its video files with a \"Play here\" tile. \"All files\" lists every file of the item with its format, size, length and MD5. Both read the item in one request. Before any button, the item page's own links have cards too, its Brucebase link for example."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.2",
+    "date": "2026-11-03",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "setlist.fm windows, \"Load all\": Stop could still let one more page through. A page waiting its turn (one request a second) when you pressed Stop was read anyway, about half a second later. Now Stop finishes only the page already asked for; the next one is never asked, and \"Load all\" offers it again."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-11-03",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Link previews on other sites, before you press a button: on a Discogs search page a result's title has its card; on setlist.fm the site's own list does too (a setlist's Tour link, the venue box's website and Wikipedia links; a setlist's own link with the setlist.fm key), but not the Upcoming box's ticket links; on an archive.org search page the site's own result list does (an item's picture or title in any view, next to archive.org's own hover card; not its menu bar), although archive.org builds it in a way the previews could not reach before. On Discogs' older pages (submissions, history, images, user, ratings, sell) the MusicBrainz icons of murdos' importer get MusicBrainz's card there too.",
+          "Inside a preview window, more links open in the window instead of a new tab: a MusicBrainz link on springsteenlyrics.com, jungleland.it, brucespringsteen.it, Brucebase and archive.org now opens MusicBrainz's own window, as on discogs.com and setlist.fm (its Live page and editing history are read with your musicbrainz.org login, as there). A Brucebase gig, venue or person page now shows Brucebase's own card and window wherever you are, on MusicBrainz too (under \"Preview event, venue and people pages on hover\"), so a Brucebase show window's own gig page opens in the window. On Brucebase itself, a show link of the form brucebase.wikidot.com/1985#130185 in a window opens that show in the window.",
+          "A Discogs window opens a clicked link in the window even before its record has loaded; until now such a click opened a new tab."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "\"All credits on Discogs ↗\" in a Discogs artist window opened the same artist again inside the window; it opens Discogs' credits page in a new tab, as its ↗ says. The same for \"A table: show it on Wikipedia ↗\" in a Wikipedia window, which could reopen the same article in the window when the article had been reached by a redirect or another spelling of its name."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "The non-MusicBrainz coverage report (NON-MB-COVERAGE.html / .org, built from docs/non-mb-coverage.json) lists no open gaps: G1 to G8 of the first report are fixed. scripts/probe-ia-shadow-links.js is a console probe for archive.org's search page, to confirm the shape of its result links in a real browser."
+        ]
+      }
+    ]
+  }
+]

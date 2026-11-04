@@ -1,7 +1,7 @@
 #+TITLE: Tables in the popup window (POH) that grow with the window
 #+STARTUP: showall
 
-* TODO Let the POH tables use the window's height
+* DONE Let the POH tables use the window's height
 ** DONE initial
 
 On e.g. MB artist POHs (or on MB place POHs) could the "RELEASE GROUPS" ("SETLIST" section) section on the right,

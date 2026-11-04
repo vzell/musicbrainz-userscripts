@@ -2737,7 +2737,17 @@ userscript lists that host, so Tampermonkey does not ask first).
   A link to a **Brucebase** show or page, or to another Springsteen site's
   page (springsteenlyrics.com, jungleland.it, brucespringsteen.it), opens
   in the window too (an event's *Review* link, for example), when
-  *Preview external links on hover* is on.
+  *Preview external links on hover* is on. A Brucebase **gig, venue or
+  person** page (`/gig:…`, `/venue:…`, `/relation:…`) shows Brucebase's own
+  card and window wherever you are, on MusicBrainz too, while *Preview event,
+  venue and people pages on hover* (📚 Brucebase) is on.
+  On discogs.com, setlist.fm, archive.org and the four Springsteen sites, a
+  **MusicBrainz link** in any window opens MusicBrainz's own window there
+  too (*Preview linked entities on hover* on); its Live page and editing history are
+  read with your browser's musicbrainz.org login, as on discogs.com.
+  A link that names the website's own page of what the window already shows
+  keeps its new tab: *All credits on Discogs ↗* in an artist's window, *A
+  table: show it on Wikipedia ↗* in an article's.
 - **The path in the title bar** is a way back:
   - **Click a step** and the window shows it again, from memory; the steps
     after it are dropped.
@@ -2956,8 +2966,9 @@ once and without Tampermonkey asking first:
   Chips of different kinds narrow each other (*Vinyl or CD*, and *UK*); a line
   above the table says what is chosen, and *Clear filters* lifts them all. The master's
   main release and a release this page links are marked. A version's label
-  links Discogs' label search for that name, in a new tab: the list of
-  versions names a label without saying which one. A click on a version
+  links Discogs' label search for that name (the list of versions names a
+  label without saying which one); a click shows that search in the same
+  window, Ctrl-click opens it in a new tab. A click on a version
   shows it in the same window, and *Back* returns to the master; a click (or
   **Space**) on its small picture opens the viewer on that version's images
   instead, and a rest on the picture shows them all. A card never
@@ -3535,6 +3546,20 @@ that button by itself.
 </details>
 
 <details>
+<summary>Brucebase: link previews on every page</summary>
+
+On **every** Brucebase page — a show, a venue, a person, a song, not only the
+lists below — the links have their cards and windows: rest the pointer on a
+song, a show, a venue or a person for Brucebase's own card, on a link to
+another site (Wikipedia, YouTube, archive.org, …) for that site's; **Space**
+opens the window. Nothing else changes on those pages: no buttons, no
+toolbar. It follows the same switches: *Enable on the Brucebase song list*,
+*Preview song pages on the Brucebase song list*, *Preview event, venue and
+people pages on hover* and *Preview external links on hover*.
+
+</details>
+
+<details>
 <summary>Brucebase song list</summary>
 
 Not a MusicBrainz page either, and **on unless you switch it off**: ⚙️ Settings
@@ -3776,11 +3801,33 @@ section of its own above Discogs' page, with the toolbar and these buttons:
 - **Master — Show all versions:** every version in one table: a thumbnail,
   title, format, label, catalogue number, country and year; ★ marks the
   master's main release.
-- **Release — Show tracklist, credits and other versions:** five sub-tables:
-  **Tracklist** (with each track's credits), **Credits**, **Companies, etc.**,
-  **Barcode and Other Identifiers** and **Other versions** (every other
-  version of its master) — and a sixth, **Videos** (Play, Title, Length,
-  URL), when the release has videos: *Play* plays one in a row under it.
+- **Release — Tracks:** the release laid out like a MusicBrainz release page,
+  from one request:
+  - one table per disc or record ("Disc 1 · CD · 49:50", "Record 1 · Vinyl
+    LP · 39:20"; a vinyl record's two sides are one table, as on
+    MusicBrainz), named after Discogs' heading when it has one per disc; a
+    heading inside a disc ("Cologne 13/02/1981") fills a **Section** column;
+  - **#**, **Title**, **Artist** (a compilation's), **Length**, and the
+    credits as columns, one line per name: **Instruments**, **Vocals**,
+    **Producer**, **Engineer**, **Mixed by**, **Arranged by** and **Other
+    credits** (writing, mastering, design, …). A track's own credits and the
+    release's credits that name it ("A1 to A4, B2 to B4") both land on it;
+  - **Release credits**: the credits that name no track (and any whose
+    tracks Discogs gives in a form that doesn't match the tracklist, with
+    that text);
+  - above the tables, as on a MusicBrainz release: "~ Release by … (released:
+    country)", **Notes** (closed to start with), **Details** (cards: on the
+    left Release, External links, Genres and styles, Contributors and
+    Community — Discogs' Statistics box with its links (have, want, ratings,
+    last sold, low, median, high) and the copies for sale; the Identifiers on
+    the right) and
+    **Images** (a click opens the viewer). Labels, formats, the country, the
+    year, genres and styles and the links in the notes are links, as on
+    Discogs' page, with the same previews as the tables' links.
+- **Release — Credits, versions:** five sub-tables: **Credits**, **Companies,
+  etc.**, **Barcode and Other Identifiers** and **Other versions** (every
+  other version of its master) — and **Videos** (Play, Title, Length, URL),
+  when the release has videos: *Play* plays one in a row under it.
 - **Artist — Show the whole discography:** one sub-table per Discogs role, in
   Discogs' order: **Releases**, the credits Discogs' API gives (*Credits:
   Producer*, …), **Appearances**, **Track appearances**, **Unofficial**; with
@@ -3844,7 +3891,8 @@ section of its own above Discogs' page, with the toolbar and these buttons:
   in one table (**Type**, **Title**, **Format**, **Label**, **Year**; the
   thumbnails with a Discogs token only), from Discogs' API, 100 a request.
   Discogs' API gives at most the first 10,000 results of a search; the
-  button says so when there are more.
+  button says so when there are more. Before you press it, the results
+  Discogs shows already have their cards: rest on a title.
 - **For sale — Show every listing:** a release's Marketplace page
   (`/sell/release/<id>`): every listing in one table, read from the page's
   own pages, 250 at a time, in the order you chose there: the **Item**,
@@ -4018,13 +4066,48 @@ added (cover, back, booklet, …); a click on one, or on the picture above,
 opens them all in the viewer. A link to one track of a show opens the show's
 window with that track marked. A video item shows its picture, thumbnails and
 files. On an archive.org search page a collection's link has a card and a
-window too.
+window too, and so has archive.org's own result list before you press
+**Items**: rest on an item's picture or title in any view (its menu bar and
+header excepted). archive.org shows its own hover card there too; ours adds
+the item's tracks, and Space opens its window.
 
 With *Play archive.org tracks and videos in the window* on (the default),
 each song has a **▶**, and a video a "Play here" tile: a click plays it in
 archive.org's own player in the window. One track or video plays at a time,
 YouTube's included; **Esc** or **■ Stop** ends it. Where a page does not
 allow archive.org's player, a click opens the item on archive.org instead.
+
+On an **item page** (archive.org/details/…, a show or a video) the script adds
+its section above the page with two buttons, built like MusicBrainz's release
+page:
+
+- **Tracks** lists the show's songs, one table per disc (the files named
+  "1-01. …", "2-01. …"; a tape or a single set is one table), each named with
+  its format and running time: **#**, **Title** (it opens the track on
+  archive.org, and has the item's card), **Length**, the **File** and its
+  **Size**, a column for each copy archive.org made of it (**VBR MP3**, …,
+  linking that copy), and **▶** to play it in archive.org's player. A video
+  item lists its video files with a "Play here" tile.
+- **All files** lists every file of the item, one row each: format, original
+  or copy, what it was made from, size, length, MD5.
+
+Above the tables the page is laid out like a MusicBrainz release: under the
+title a line "~ Concert recording by … (date: venue)", then three sections
+that fold like the release page's:
+
+- **Description**, the uploader's text, closed to start with (as a release's
+  Annotation);
+- **Details**, the item's facts as cards in the look of the release page's
+  Sidebar section: *Show* (date, venue, source, taper, who transferred it,
+  running time), *Item* (identifier, files, size, uploader, date added,
+  reviews), *External links* (Brucebase, Databruce, the download list, the
+  metadata), *Collections* and *Lineage*. A click on a card's heading folds
+  it; Ctrl+click folds every card;
+- **Pictures**, the uploader's scans as tiles, as the release page's Cover
+  art; a click opens them in the viewer.
+
+Both read the item in one request. Before you press a button, the item's own
+page previews too: rest on its Brucebase link for the show's card.
 
 Switches, in ⚙️ Settings → 🏛 Internet Archive: *Enable on archive.org*,
 *Art column: the item's pictures on hover* and *Play archive.org tracks and
@@ -4060,6 +4143,10 @@ table's setlist, artist and venue links get their card and window here too.
 A **Tour** cell links setlist.fm's search for that artist's tour: its card
 and window need no key, they read setlist.fm's search page itself (the window
 lists its setlists with their set times, 10 at a time).
+Before you press the button, setlist.fm's own list previews the same way: a
+setlist's Tour link, the venue box's links (its website, Wikipedia) and, with
+the key, a setlist's own link. The Upcoming Shows box's ticket links have no
+card.
 
 Switch, in ⚙️ Settings → 🎤 setlist.fm: *Enable on setlist.fm*, on by default.
 

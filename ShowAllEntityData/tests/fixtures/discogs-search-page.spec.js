@@ -29,7 +29,7 @@ const PAGE_URL = (p) => `https://api.discogs.com/database/search?q=bruce%20sprin
  * @param {string} [url]
  * @returns {Promise<string[]>} Page errors.
  */
-async function open(page, url = 'https://www.discogs.com/search?q=bruce+springsteen&type=all') {
+async function open(page, url = 'https://www.discogs.com/search?q=bruce+springsteen&type=all', settings = {}) {
     const errors = [];
     page.on('pageerror', (e) => errors.push(String(e.stack || e.message || e)));
     await page.route(/^https?:\/\//, (route) => route.abort('blockedbyclient'));
@@ -37,7 +37,7 @@ async function open(page, url = 'https://www.discogs.com/search?q=bruce+springst
     d.pagination.pages = 2;
     const ans = { status: 200, responseHeaders: `Content-Type: ${FX.contentType}`, responseText: JSON.stringify(d) };
     await page.context().addInitScript((r) => { window.__gmXhrResponses = r; }, { [PAGE_URL(1)]: ans, [PAGE_URL(2)]: ans });
-    await loadUserscriptPage(page, { url, fixtureFile: FILE, testMode: true, settingsOverride: { sa_enable_discogs: true, sa_render_threshold: 100000 } });
+    await loadUserscriptPage(page, { url, fixtureFile: FILE, testMode: true, settingsOverride: { sa_enable_discogs: true, sa_render_threshold: 100000, ...settings } });
     return errors;
 }
 
@@ -88,5 +88,24 @@ test.describe('discogs.com: the search page (dg-search)', () => {
         await open(page, 'https://www.discogs.com/search?type=all&q=');
         await expect(page.locator('#mb-dg-root h1.mb-dg-h1')).toBeVisible();
         await expect(page.locator('#mb-dg-root button[data-label="Show all results"]')).toHaveCount(0);
+    });
+
+    test('G4: before any button, a result in the page\'s <main> previews (relative, as Discogs writes it); Discogs\' header does not', async ({ page }) => {
+        // Pins G4 of NON-MB-COVERAGE.org (2026-11-03): the search page
+        // (Next.js) has neither #app nor #page_content, its results are in
+        // <main>, which `_DP_SITES['www.discogs.com'].extRoot` did not name.
+        await open(page, undefined, { sa_pop_ext: true });
+        const r = await page.evaluate(() => {
+            const add = (sel, href) => {
+                const a = document.createElement('a');
+                a.setAttribute('href', href);
+                a.textContent = 'Born To Run';
+                document.querySelector(sel).appendChild(a);
+                return window.__saTest.popResolve(a);
+            };
+            return { main: add('main', '/release/1874253-Bruce-Springsteen-Born-To-Run'), header: add('header', '/release/1874253-Bruce-Springsteen-Born-To-Run') };
+        });
+        expect(r.main).toBe('ext|ext:discogs:https://www.discogs.com/release/1874253-Bruce-Springsteen-Born-To-Run');
+        expect(r.header, 'Discogs\' header').toBeNull();
     });
 });

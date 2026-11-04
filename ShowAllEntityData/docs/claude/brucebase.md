@@ -69,6 +69,31 @@ Other host-aware code:
 - **`initNavigationGuard()`** needs nothing: one page, the tabs are
   `javascript:;` links, and a song link is a different path.
 
+## Every other page — `bb-page`: link previews only (2026-11-04)
+
+vzell: "previews should run on every Brucebase page" (the G7 pre-test of
+org/non-MB-coverage.org found a venue page with none). A catch-all
+`@include` line lets the script onto every page of the wiki, and `bb-page`,
+the LAST Brucebase definition (`match: () => true`, no button,
+`features.bbPreviewOnly`), takes every page the others do not.
+
+- **A pageType, not an early exit.** The first version installed the popup
+  engine and returned from init. Init runs at the IIFE's top level, so
+  every top-level declaration after that `return` (347 of them) stays in
+  its temporal dead zone: the card and window worked, the artwork viewer
+  threw "Cannot access '_artViewerState' before initialization"
+  (tests/fixtures/bb-every-page.spec.js, which now drives card, window,
+  viewer and Esc and fails on any page error). As a pageType the page runs
+  the whole init like any other.
+- **Nothing visible**: `_bbPreviewOnlyHeader()` gives init a HIDDEN `<h1>`
+  at the end of `<body>`; `_bbPrepareLivePage()` (title hidden, side bar
+  arranged, styles) is not called. The spec pins `#page-content` equal to
+  the fixture's and `#page-title` visible.
+- **Frames**: a wiki html block under the same host matches `bb-page` too;
+  init stops there before anything (`window.top !== window`).
+- The existing switches apply: `sa_enable_brucebase` (the gate),
+  `sa_bb_detail_preview`, `sa_bb_event_preview`, `sa_pop_ext`.
+
 ## The toolbar anchor — `_bbPrepareLivePage()`
 
 The page HAS an `<h1>`, the wiki's name in `#header`, and the generic header

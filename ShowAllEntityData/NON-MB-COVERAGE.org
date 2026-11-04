@@ -13,72 +13,79 @@
 
 * 1a Sites with pageTypes
 
-| Site | Host                  | Switch                      | Previews             | extRoot             | Doc                              | PTs |
-|------+-----------------------+-----------------------------+----------------------+---------------------+----------------------------------+-----|
-| SL   | springsteenlyrics.com | sa_enable_springsteenlyrics | sa_sl_detail_preview | .project-detail     | docs/claude/springsteenlyrics.md | 6   |
-| JL   | jungleland.it         | sa_enable_jungleland        | sa_jl_detail_preview | -                   | docs/claude/jungleland.md        | 1   |
-| KF   | brucespringsteen.it   | sa_enable_brucespringsteen  | sa_bs_detail_preview | -                   | docs/claude/brucespringsteen.md  | 1   |
-| BB   | brucebase.wikidot.com | sa_enable_brucebase         | sa_bb_detail_preview | #page-content       | docs/claude/brucebase.md         | 5   |
-| DI   | www.discogs.com       | sa_enable_discogs           | sa_pop_ext           | #app, #page_content | docs/claude/discogs.md           | 14  |
-| IA   | archive.org           | sa_enable_internetarchive   | sa_pop_ext           | #mb-ia-root         | docs/claude/internet-archive.md  | 1   |
-| SFM  | www.setlist.fm        | sa_enable_setlistfm         | sa_pop_ext           | #mb-sfm-root        | docs/claude/setlistfm.md         | 3   |
+| Site | Host                  | Switch                      | Previews             | extRoot                                                      | Doc                              | PTs |
+|------+-----------------------+-----------------------------+----------------------+--------------------------------------------------------------+----------------------------------+-----|
+| SL   | springsteenlyrics.com | sa_enable_springsteenlyrics | sa_sl_detail_preview | .project-detail                                              | docs/claude/springsteenlyrics.md | 6   |
+| JL   | jungleland.it         | sa_enable_jungleland        | sa_jl_detail_preview | -                                                            | docs/claude/jungleland.md        | 1   |
+| KF   | brucespringsteen.it   | sa_enable_brucespringsteen  | sa_bs_detail_preview | -                                                            | docs/claude/brucespringsteen.md  | 1   |
+| BB   | brucebase.wikidot.com | sa_enable_brucebase         | sa_bb_detail_preview | #page-content                                                | docs/claude/brucebase.md         | 6   |
+| DI   | www.discogs.com       | sa_enable_discogs           | sa_pop_ext           | #app, #page_content, main                                    | docs/claude/discogs.md           | 14  |
+| IA   | archive.org           | sa_enable_internetarchive   | sa_pop_ext           | #mb-ia-root                                                  | docs/claude/internet-archive.md  | 2   |
+| SFM  | www.setlist.fm        | sa_enable_setlistfm         | sa_pop_ext           | #mb-sfm-root, .mainColumn .setlistPreview, .mainColumn .info | docs/claude/setlistfm.md         | 3   |
 
 * 1b pageTypes: previews on the initial page (IP) and the rendered table (FRP)
 
-| Site | pageType            | URL                                                                            | Mode   | IP               | FRP        | Why                                                                                                                                                                          |
-|------+---------------------+--------------------------------------------------------------------------------+--------+------------------+------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| SL   | sl-collection       | https://www.springsteenlyrics.com/collection.php?cmd=list&category=…           | single | yes (code)       | yes (code) | IP: Item title links (collection.php?item=N); outside links inside .project-detail.                                                                                          |
-| SL   | sl-collection-intro | https://www.springsteenlyrics.com/collection.php                               | single | yes (code)       | yes (code) | IP: As sl-collection.                                                                                                                                                        |
-| SL   | sl-bootlegs         | https://www.springsteenlyrics.com/bootlegs.php?cmd=list&category=…             | single | yes (code)       | yes (spec) | IP: Title links; the cover link is the image card's.                                                                                                                         |
-| SL   | sl-bootlegs-intro   | https://www.springsteenlyrics.com/bootlegs.php                                 | single | part (code)      | na (code)  | IP: Only while sa_sl_compact_nav is on (otherwise no pageType is installed); no item links, so only outside links in .project-detail.; FRP: No button, so no rendered table. |
-| SL   | sl-lyrics           | https://www.springsteenlyrics.com/lyrics.php?cmd=list&letter=B                 | single | yes (code)       | yes (spec) | IP: lyrics.php?song= links.                                                                                                                                                  |
-| SL   | sl-brucelegs        | https://www.springsteenlyrics.com/brucelegs.php?cmd=list                       | single | yes (code)       | yes (code) | IP: brucelegs.php?item=N links.                                                                                                                                              |
-| JL   | jl-list             | https://www.jungleland.it/html/list.htm (as its own tab)                       | single | yes (code)       | yes (spec) | IP: Show pages (/html/<date>.htm); no outside links, extRoot is null.                                                                                                        |
-| KF   | bs-records          | https://www.brucespringsteen.it/DB/records.aspx?tipe=…&sort=… (as its own tab) | single | yes (code)       | yes (spec) | IP: detrec.aspx?code= text links; no outside links, extRoot is null.                                                                                                         |
-| BB   | bb-songs            | https://brucebase.wikidot.com/stats:songs                                      | single | yes (spec)       | yes (spec) | IP: The song tabview.                                                                                                                                                        |
-| BB   | bb-relations        | https://brucebase.wikidot.com/stats:relations                                  | single | yes (code)       | yes (code) | IP: /relation: links, under sa_bb_event_preview.                                                                                                                             |
-| BB   | bb-recent-changes   | https://brucebase.wikidot.com/system:recent-changes                            | single | yes (spec)       | yes (code) | IP: A changed page's link.                                                                                                                                                   |
-| BB   | bb-year             | https://brucebase.wikidot.com/1985                                             | single | yes (code)       | yes (spec) | IP: Show links (/gig:, /nogig:, … : ownLinks).; FRP: Also the MB-Event glyph and the Venue column, table only.                                                               |
-| BB   | bb-home             | https://brucebase.wikidot.com/                                                 | single | part (code)      | yes (code) | IP: The year links are no detail links; outside links in #page-content only.                                                                                                 |
-| DI   | dg-master           | https://www.discogs.com/master/<id>                                            | single | yes (spec)       | yes (spec) | IP: #app.                                                                                                                                                                    |
-| DI   | dg-release          | https://www.discogs.com/release/<id>                                           | multi  | yes (spec)       | yes (code) | IP: #app, the MB importer's icons too.                                                                                                                                       |
-| DI   | dg-artist           | https://www.discogs.com/artist/<id>                                            | multi  | yes (code)       | yes (code) | IP: #app.                                                                                                                                                                    |
-| DI   | dg-label            | https://www.discogs.com/label/<id>                                             | single | yes (code)       | yes (code) | IP: #app.                                                                                                                                                                    |
-| DI   | dg-submissions      | https://www.discogs.com/submissions                                            | single | part (spec) → G5 | yes (spec) | IP: #page_content: outside links yes; the MB importer's icons get no card (dg-mb names #app only).                                                                           |
-| DI   | dg-history          | https://www.discogs.com/release/<id>/history                                   | multi  | part (code) → G5 | yes (spec) | IP: As dg-submissions.                                                                                                                                                       |
-| DI   | dg-images           | https://www.discogs.com/release/<id>/images                                    | single | part (code) → G5 | yes (code) | IP: As dg-submissions.                                                                                                                                                       |
-| DI   | dg-entity-images    | https://www.discogs.com/artist/<id>/images                                     | single | part (code) → G5 | yes (code) | IP: As dg-submissions.                                                                                                                                                       |
-| DI   | dg-image-history    | https://www.discogs.com/release/<id>/images/update                             | single | part (code) → G5 | yes (code) | IP: As dg-submissions.                                                                                                                                                       |
-| DI   | dg-user             | https://www.discogs.com/user/<name>                                            | multi  | part (code) → G5 | yes (code) | IP: As dg-submissions.                                                                                                                                                       |
-| DI   | dg-user-list        | https://www.discogs.com/user/<name>/collection                                 | multi  | yes (code)       | yes (code) | IP: #app or #page_content, by the page's layout.                                                                                                                             |
-| DI   | dg-ratings          | https://www.discogs.com/users/ratings/<name>                                   | single | part (code) → G5 | yes (code) | IP: As dg-submissions.                                                                                                                                                       |
-| DI   | dg-sell             | https://www.discogs.com/sell/release/<id>                                      | single | part (code) → G5 | yes (code) | IP: As dg-submissions.                                                                                                                                                       |
-| DI   | dg-search           | https://www.discogs.com/search?q=…                                             | single | no (code) → G4   | yes (code) | IP: The page's content is in <main>, which extRoot does not name.                                                                                                            |
-| IA   | ia-search           | https://archive.org/search?query=…                                             | single | no (code) → G4   | yes (spec) | IP: The site's links are in shadow DOM; extRoot is our own section.                                                                                                          |
-| SFM  | sfm-venue           | https://www.setlist.fm/venue/<slug>-<hex>.html                                 | single | no (code) → G4   | yes (spec) | IP: extRoot is our own section; the site's div.body is not covered.; FRP: The site's own setlist links need sa_pop_ext_setlistfm_key.                                        |
-| SFM  | sfm-artist          | https://www.setlist.fm/setlists/<slug>-<hex>.html                              | single | no (code) → G4   | yes (code) | IP: As sfm-venue.; FRP: As sfm-venue.                                                                                                                                        |
-| SFM  | sfm-search          | https://www.setlist.fm/search?artist=<id>&tour=…                               | single | no (code) → G4   | yes (code) | IP: As sfm-venue.; FRP: As sfm-venue.                                                                                                                                        |
+| Site | pageType            | URL                                                                            | Mode   | IP          | FRP        | Why                                                                                                                                                                                                                                 |
+|------+---------------------+--------------------------------------------------------------------------------+--------+-------------+------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| SL   | sl-collection       | https://www.springsteenlyrics.com/collection.php?cmd=list&category=…           | single | yes (code)  | yes (code) | IP: Item title links (collection.php?item=N); outside links inside .project-detail.                                                                                                                                                 |
+| SL   | sl-collection-intro | https://www.springsteenlyrics.com/collection.php                               | single | yes (code)  | yes (code) | IP: As sl-collection.                                                                                                                                                                                                               |
+| SL   | sl-bootlegs         | https://www.springsteenlyrics.com/bootlegs.php?cmd=list&category=…             | single | yes (code)  | yes (spec) | IP: Title links; the cover link is the image card's.                                                                                                                                                                                |
+| SL   | sl-bootlegs-intro   | https://www.springsteenlyrics.com/bootlegs.php                                 | single | part (code) | na (code)  | IP: Only while sa_sl_compact_nav is on (otherwise no pageType is installed); no item links, so only outside links in .project-detail.; FRP: No button, so no rendered table.                                                        |
+| SL   | sl-lyrics           | https://www.springsteenlyrics.com/lyrics.php?cmd=list&letter=B                 | single | yes (code)  | yes (spec) | IP: lyrics.php?song= links.                                                                                                                                                                                                         |
+| SL   | sl-brucelegs        | https://www.springsteenlyrics.com/brucelegs.php?cmd=list                       | single | yes (code)  | yes (code) | IP: brucelegs.php?item=N links.                                                                                                                                                                                                     |
+| JL   | jl-list             | https://www.jungleland.it/html/list.htm (as its own tab)                       | single | yes (code)  | yes (spec) | IP: Show pages (/html/<date>.htm); no outside links, extRoot is null.                                                                                                                                                               |
+| KF   | bs-records          | https://www.brucespringsteen.it/DB/records.aspx?tipe=…&sort=… (as its own tab) | single | yes (code)  | yes (spec) | IP: detrec.aspx?code= text links; no outside links, extRoot is null.                                                                                                                                                                |
+| BB   | bb-songs            | https://brucebase.wikidot.com/stats:songs                                      | single | yes (spec)  | yes (spec) | IP: The song tabview.                                                                                                                                                                                                               |
+| BB   | bb-relations        | https://brucebase.wikidot.com/stats:relations                                  | single | yes (code)  | yes (code) | IP: /relation: links, under sa_bb_event_preview.                                                                                                                                                                                    |
+| BB   | bb-recent-changes   | https://brucebase.wikidot.com/system:recent-changes                            | single | yes (spec)  | yes (code) | IP: A changed page's link.                                                                                                                                                                                                          |
+| BB   | bb-year             | https://brucebase.wikidot.com/1985                                             | single | yes (code)  | yes (spec) | IP: Show links (/gig:, /nogig:, … : ownLinks).; FRP: Also the MB-Event glyph and the Venue column, table only.                                                                                                                      |
+| BB   | bb-home             | https://brucebase.wikidot.com/                                                 | single | part (code) | yes (code) | IP: The year links are no detail links; outside links in #page-content only.                                                                                                                                                        |
+| BB   | bb-page             | https://brucebase.wikidot.com/gig:… (any other page: venue, relation, song, …) | single | yes (spec)  | na (code)  | IP: Link previews only (vzell, 2026-11-04: every Brucebase page): the site's own detail pages and other sites' links in #page-content; nothing visible added.; FRP: No button, no table.                                            |
+| DI   | dg-master           | https://www.discogs.com/master/<id>                                            | single | yes (spec)  | yes (spec) | IP: #app.                                                                                                                                                                                                                           |
+| DI   | dg-release          | https://www.discogs.com/release/<id>                                           | multi  | yes (spec)  | yes (code) | IP: #app, the MB importer's icons too.                                                                                                                                                                                              |
+| DI   | dg-artist           | https://www.discogs.com/artist/<id>                                            | multi  | yes (code)  | yes (code) | IP: #app.                                                                                                                                                                                                                           |
+| DI   | dg-label            | https://www.discogs.com/label/<id>                                             | single | yes (code)  | yes (code) | IP: #app.                                                                                                                                                                                                                           |
+| DI   | dg-submissions      | https://www.discogs.com/submissions                                            | single | yes (spec)  | yes (spec) | IP: #page_content: Discogs' links, and the MB importer's icons since 2026-11-03 (G5).                                                                                                                                               |
+| DI   | dg-history          | https://www.discogs.com/release/<id>/history                                   | multi  | yes (code)  | yes (spec) | IP: As dg-submissions.                                                                                                                                                                                                              |
+| DI   | dg-images           | https://www.discogs.com/release/<id>/images                                    | single | yes (code)  | yes (code) | IP: As dg-submissions.                                                                                                                                                                                                              |
+| DI   | dg-entity-images    | https://www.discogs.com/artist/<id>/images                                     | single | yes (code)  | yes (code) | IP: As dg-submissions.                                                                                                                                                                                                              |
+| DI   | dg-image-history    | https://www.discogs.com/release/<id>/images/update                             | single | yes (code)  | yes (code) | IP: As dg-submissions.                                                                                                                                                                                                              |
+| DI   | dg-user             | https://www.discogs.com/user/<name>                                            | multi  | yes (code)  | yes (code) | IP: As dg-submissions.                                                                                                                                                                                                              |
+| DI   | dg-user-list        | https://www.discogs.com/user/<name>/collection                                 | multi  | yes (code)  | yes (code) | IP: #app or #page_content, by the page's layout.                                                                                                                                                                                    |
+| DI   | dg-ratings          | https://www.discogs.com/users/ratings/<name>                                   | single | yes (code)  | yes (code) | IP: As dg-submissions.                                                                                                                                                                                                              |
+| DI   | dg-sell             | https://www.discogs.com/sell/release/<id>                                      | single | yes (code)  | yes (code) | IP: As dg-submissions.                                                                                                                                                                                                              |
+| DI   | dg-search           | https://www.discogs.com/search?q=…                                             | single | yes (spec)  | yes (code) | IP: The page's content is <main>, in extRoot since 2026-11-03 (G4).                                                                                                                                                                 |
+| IA   | ia-search           | https://archive.org/search?query=…                                             | single | yes (spec)  | yes (spec) | IP: The site's result list, in shadow DOM since 2026-11-03 (G4: composedPath(), mousemove); not its navigation. The spec builds the shadow DOM; the real page's shapes: scripts/probe-ia-shadow-links.js.                           |
+| IA   | ia-details          | https://archive.org/details/<id>                                               | multi  | yes (spec)  | yes (code) | IP: The item's own content (main#maincontent: description, the Brucebase and Databruce links); not the site's top bar.; FRP: A title links its track on archive.org (the iadetails card, the track marked).                         |
+| SFM  | sfm-venue           | https://www.setlist.fm/venue/<slug>-<hex>.html                                 | single | yes (spec)  | yes (spec) | IP: The setlist cards (.setlistPreview) and the venue box (.info) since 2026-11-03 (G4); not the Upcoming box's ticket links. A setlist's own link needs the key.; FRP: The site's own setlist links need sa_pop_ext_setlistfm_key. |
+| SFM  | sfm-artist          | https://www.setlist.fm/setlists/<slug>-<hex>.html                              | single | yes (code)  | yes (code) | IP: The setlist cards, as sfm-venue (no venue box here).; FRP: As sfm-venue.                                                                                                                                                        |
+| SFM  | sfm-search          | https://www.setlist.fm/search?artist=<id>&tour=…                               | single | yes (code)  | yes (code) | IP: The setlist cards, as sfm-venue (no venue box here).; FRP: As sfm-venue.                                                                                                                                                        |
 
 ** Specs behind the "spec" cells
 
-| pageType          | Part | Spec                                       | Test title contains                                                          |
-|-------------------+------+--------------------------------------------+------------------------------------------------------------------------------|
-| sl-bootlegs       | FRP  | tests/fixtures/detail-preview.spec.js      | springsteenlyrics.com: the card, then the Live page view                     |
-| sl-lyrics         | FRP  | tests/fixtures/detail-preview.spec.js      | springsteenlyrics.com lyrics index: a song                                   |
-| jl-list           | FRP  | tests/fixtures/detail-preview.spec.js      | jungleland.it: a windows-1252 page is decoded                                |
-| bs-records        | FRP  | tests/fixtures/detail-preview.spec.js      | a hover loads the page once, shows what it adds                              |
-| bb-songs          | IP   | tests/fixtures/detail-preview.spec.js      | a native song link shows its card, from one request                          |
-| bb-songs          | FRP  | tests/fixtures/detail-preview.spec.js      | Brucebase: the card's count and last show                                    |
-| bb-recent-changes | IP   | tests/fixtures/bb-event-preview.spec.js    | Recent changes: a changed event page's link previews it                      |
-| bb-year           | FRP  | tests/fixtures/bb-event-preview.spec.js    | Ctrl+hover on Event: ONE request                                             |
-| dg-master         | IP   | tests/fixtures/discogs-pages.spec.js       | a Discogs link in the table and in the page's content gets the card          |
-| dg-master         | FRP  | tests/fixtures/discogs-pages.spec.js       | a Discogs link in the table and in the page's content gets the card          |
-| dg-release        | IP   | tests/fixtures/discogs-pages.spec.js       | previews on discogs.com before any render                                    |
-| dg-submissions    | IP   | tests/fixtures/discogs-links.spec.js       | the older layout: #page_content's relative links preview on the initial page |
-| dg-submissions    | FRP  | tests/fixtures/discogs-submissions.spec.js | a release title on the list: "History, then the release"                     |
-| dg-history        | FRP  | tests/fixtures/discogs-links.spec.js       | "View changes" opens the window on that diff                                 |
-| ia-search         | FRP  | tests/fixtures/ia-search.spec.js           | a title in our table: its card and window                                    |
-| sfm-venue         | FRP  | tests/fixtures/sfm-list.spec.js            | a Tour cell (setlist.fm's own search link) has its card and window           |
+| pageType          | Part | Spec                                       | Test title contains                                                 |
+|-------------------+------+--------------------------------------------+---------------------------------------------------------------------|
+| sl-bootlegs       | FRP  | tests/fixtures/detail-preview.spec.js      | springsteenlyrics.com: the card, then the Live page view            |
+| sl-lyrics         | FRP  | tests/fixtures/detail-preview.spec.js      | springsteenlyrics.com lyrics index: a song                          |
+| jl-list           | FRP  | tests/fixtures/detail-preview.spec.js      | jungleland.it: a windows-1252 page is decoded                       |
+| bs-records        | FRP  | tests/fixtures/detail-preview.spec.js      | a hover loads the page once, shows what it adds                     |
+| bb-songs          | IP   | tests/fixtures/detail-preview.spec.js      | a native song link shows its card, from one request                 |
+| bb-songs          | FRP  | tests/fixtures/detail-preview.spec.js      | Brucebase: the card's count and last show                           |
+| bb-recent-changes | IP   | tests/fixtures/bb-event-preview.spec.js    | Recent changes: a changed event page's link previews it             |
+| bb-year           | FRP  | tests/fixtures/bb-event-preview.spec.js    | Ctrl+hover on Event: ONE request                                    |
+| bb-page           | IP   | tests/fixtures/bb-every-page.spec.js       | a gig page (no pageType)                                            |
+| dg-master         | IP   | tests/fixtures/discogs-pages.spec.js       | a Discogs link in the table and in the page's content gets the card |
+| dg-master         | FRP  | tests/fixtures/discogs-pages.spec.js       | a Discogs link in the table and in the page's content gets the card |
+| dg-release        | IP   | tests/fixtures/discogs-pages.spec.js       | previews on discogs.com before any render                           |
+| dg-submissions    | IP   | tests/fixtures/discogs-links.spec.js       | G5: the older layout: a MusicBrainz icon in #page_content           |
+| dg-submissions    | FRP  | tests/fixtures/discogs-submissions.spec.js | a release title on the list: "History, then the release"            |
+| dg-history        | FRP  | tests/fixtures/discogs-links.spec.js       | "View changes" opens the window on that diff                        |
+| dg-search         | IP   | tests/fixtures/discogs-search-page.spec.js | G4: before any button, a result in the page's <main> previews       |
+| ia-search         | IP   | tests/fixtures/ia-search.spec.js           | a result's title link: the item's card from its metadata            |
+| ia-search         | FRP  | tests/fixtures/ia-search.spec.js           | a title in our table: its card and window                           |
+| ia-details        | IP   | tests/fixtures/ia-details.spec.js          | before any button, the item's own content previews                  |
+| sfm-venue         | IP   | tests/fixtures/sfm-list.spec.js            | G4: before any button, setlist.fm's own list previews               |
+| sfm-venue         | FRP  | tests/fixtures/sfm-list.spec.js            | a Tour cell (setlist.fm's own search link) has its card and window  |
 
 * 2a Link families the preview reads
 
@@ -108,105 +115,105 @@ Columns: 1 MusicBrainz (musicbrainz.org/artist/<mbid>), 2 SL · JL · KF · BB s
 
 ** On musicbrainz.org
 
-| Window \ link              | 1 | 2 | 3    | 4 | 5    | 6 | 7    | 8 | 9 | 10 | 11 | 12 |
-|----------------------------+---+---+------+---+------+---+------+---+---+----+----+----|
-| MusicBrainz entity         | H | H | H/n2 | H | H/n3 | H | H    | H | H | H  | H  | H  |
-| Discogs (6 readers)        | H | H | H/n2 | H | H/n3 | H | H/n5 | H | H | H  | H  | H  |
-| Wikipedia                  | H | H | H/n2 | H | H/n3 | H | H    | H | H | H  | H  | H  |
-| Wikidata                   | H | H | H/n2 | H | H/n3 | H | H    | H | H | H  | H  | H  |
-| setlist.fm                 | H | H | H/n2 | H | H/n3 | H | H    | H | H | H  | H  | H  |
-| Springsteen detail         | H | H | T!G1 | H | H/n3 | H | T    | T | T | T  | T  | T  |
-| Brucebase show (year#date) | H | H | T!G1 | H | H/n3 | H | T    | T | T | T  | T  | T  |
-| archive.org item           | H | H | T!G1 | H | H/n3 | H | T    | T | T | T  | T  | T  |
-| YouTube                    | H | H | T!G1 | H | H/n3 | H | T    | T | T | T  | T  | T  |
-| Other web page             | H | H | T!G1 | H | H/n3 | H | T    | T | T | T  | T  | T  |
+| Window \ link              | 1    | 2 | 3    | 4 | 5    | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
+|----------------------------+------+---+------+---+------+---+---+---+---+----+----+----|
+| MusicBrainz entity         | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Discogs (6 readers)        | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Wikipedia                  | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Wikidata                   | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| setlist.fm                 | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Springsteen detail         | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| Brucebase show (year#date) | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| archive.org item           | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| YouTube                    | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| Other web page             | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
 
 ** On discogs.com
 
-| Window \ link              | 1 | 2 | 3 | 4 | 5    | 6 | 7    | 8    | 9 | 10 | 11 | 12 |
-|----------------------------+---+---+---+---+------+---+------+------+---+----+----+----|
-| MusicBrainz entity         | H | H | H | H | H/n3 | H | H    | T/n4 | H | H  | H  | H  |
-| Discogs (6 readers)        | H | H | H | H | H/n3 | H | H/n5 | T/n4 | H | H  | H  | H  |
-| Wikipedia                  | H | H | H | H | H/n3 | H | H    | T/n4 | H | H  | H  | H  |
-| Wikidata                   | H | H | H | H | H/n3 | H | H    | T/n4 | H | H  | H  | H  |
-| setlist.fm                 | H | H | H | H | H/n3 | H | H    | T/n4 | H | H  | H  | H  |
-| Springsteen detail         | H | H | H | H | H/n3 | H | T    | T/n4 | T | T  | T  | T  |
-| Brucebase show (year#date) | H | H | H | H | H/n3 | H | T    | T/n4 | T | T  | T  | T  |
-| archive.org item           | H | H | H | H | H/n3 | H | T    | T/n4 | T | T  | T  | T  |
-| YouTube                    | H | H | H | H | H/n3 | H | T    | T/n4 | T | T  | T  | T  |
-| Other web page             | H | H | H | H | H/n3 | H | T    | T/n4 | T | T  | T  | T  |
+| Window \ link              | 1    | 2 | 3    | 4 | 5    | 6 | 7 | 8    | 9 | 10 | 11 | 12 |
+|----------------------------+------+---+------+---+------+---+---+------+---+----+----+----|
+| MusicBrainz entity         | H/n2 | H | H/n5 | H | H/n3 | H | H | T/n4 | H | H  | H  | H  |
+| Discogs (6 readers)        | H/n2 | H | H/n5 | H | H/n3 | H | H | T/n4 | H | H  | H  | H  |
+| Wikipedia                  | H/n2 | H | H/n5 | H | H/n3 | H | H | T/n4 | H | H  | H  | H  |
+| Wikidata                   | H/n2 | H | H/n5 | H | H/n3 | H | H | T/n4 | H | H  | H  | H  |
+| setlist.fm                 | H/n2 | H | H/n5 | H | H/n3 | H | H | T/n4 | H | H  | H  | H  |
+| Springsteen detail         | H/n2 | H | H/n5 | H | H/n3 | H | T | T/n4 | T | T  | T  | T  |
+| Brucebase show (year#date) | H/n2 | H | H/n5 | H | H/n3 | H | T | T/n4 | T | T  | T  | T  |
+| archive.org item           | H/n2 | H | H/n5 | H | H/n3 | H | T | T/n4 | T | T  | T  | T  |
+| YouTube                    | H/n2 | H | H/n5 | H | H/n3 | H | T | T/n4 | T | T  | T  | T  |
+| Other web page             | H/n2 | H | H/n5 | H | H/n3 | H | T | T/n4 | T | T  | T  | T  |
 
 ** On setlist.fm
 
-| Window \ link              | 1 | 2 | 3    | 4 | 5    | 6 | 7    | 8 | 9 | 10 | 11 | 12 |
-|----------------------------+---+---+------+---+------+---+------+---+---+----+----+----|
-| MusicBrainz entity         | H | H | H/n2 | H | H/n3 | H | H    | H | H | H  | H  | H  |
-| Discogs (6 readers)        | H | H | H/n2 | H | H/n3 | H | H/n5 | H | H | H  | H  | H  |
-| Wikipedia                  | H | H | H/n2 | H | H/n3 | H | H    | H | H | H  | H  | H  |
-| Wikidata                   | H | H | H/n2 | H | H/n3 | H | H    | H | H | H  | H  | H  |
-| setlist.fm                 | H | H | H/n2 | H | H/n3 | H | H    | H | H | H  | H  | H  |
-| Springsteen detail         | H | H | T!G1 | H | H/n3 | H | T    | T | T | T  | T  | T  |
-| Brucebase show (year#date) | H | H | T!G1 | H | H/n3 | H | T    | T | T | T  | T  | T  |
-| archive.org item           | H | H | T!G1 | H | H/n3 | H | T    | T | T | T  | T  | T  |
-| YouTube                    | H | H | T!G1 | H | H/n3 | H | T    | T | T | T  | T  | T  |
-| Other web page             | H | H | T!G1 | H | H/n3 | H | T    | T | T | T  | T  | T  |
+| Window \ link              | 1    | 2 | 3    | 4 | 5    | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
+|----------------------------+------+---+------+---+------+---+---+---+---+----+----+----|
+| MusicBrainz entity         | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Discogs (6 readers)        | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Wikipedia                  | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Wikidata                   | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| setlist.fm                 | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Springsteen detail         | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| Brucebase show (year#date) | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| archive.org item           | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| YouTube                    | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| Other web page             | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
 
 ** On SL · JL · KF
 
-| Window \ link              | 1    | 2    | 3    | 4 | 5    | 6 | 7    | 8 | 9 | 10 | 11 | 12 |
-|----------------------------+------+------+------+---+------+---+------+---+---+----+----+----|
-| MusicBrainz entity         | -    | -    | -    | - | -    | - | -    | - | - | -  | -  | -  |
-| Discogs (6 readers)        | T!G2 | H/n1 | H/n2 | H | H/n3 | H | H/n5 | H | H | H  | H  | H  |
-| Wikipedia                  | T!G2 | H/n1 | H/n2 | H | H/n3 | H | H    | H | H | H  | H  | H  |
-| Wikidata                   | T!G2 | H/n1 | H/n2 | H | H/n3 | H | H    | H | H | H  | H  | H  |
-| setlist.fm                 | T!G2 | H/n1 | H/n2 | H | H/n3 | H | H    | H | H | H  | H  | H  |
-| Springsteen detail         | T!G2 | H/n1 | T!G1 | H | H/n3 | H | T    | T | T | T  | T  | T  |
-| Brucebase show (year#date) | T!G2 | H/n1 | T!G1 | H | H/n3 | H | T    | T | T | T  | T  | T  |
-| archive.org item           | T!G2 | H/n1 | T!G1 | H | H/n3 | H | T    | T | T | T  | T  | T  |
-| YouTube                    | T!G2 | H/n1 | T!G1 | H | H/n3 | H | T    | T | T | T  | T  | T  |
-| Other web page             | T!G2 | H/n1 | T!G1 | H | H/n3 | H | T    | T | T | T  | T  | T  |
+| Window \ link              | 1    | 2    | 3    | 4 | 5    | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
+|----------------------------+------+------+------+---+------+---+---+---+---+----+----+----|
+| MusicBrainz entity         | H/n2 | H/n1 | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Discogs (6 readers)        | H/n2 | H/n1 | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Wikipedia                  | H/n2 | H/n1 | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Wikidata                   | H/n2 | H/n1 | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| setlist.fm                 | H/n2 | H/n1 | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Springsteen detail         | H/n2 | H/n1 | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| Brucebase show (year#date) | H/n2 | H/n1 | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| archive.org item           | H/n2 | H/n1 | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| YouTube                    | H/n2 | H/n1 | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| Other web page             | H/n2 | H/n1 | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
 
 ** On Brucebase
 
-| Window \ link              | 1    | 2    | 3    | 4    | 5    | 6 | 7    | 8 | 9 | 10 | 11 | 12 |
-|----------------------------+------+------+------+------+------+---+------+---+---+----+----+----|
-| MusicBrainz entity         | -    | -    | -    | -    | -    | - | -    | - | - | -  | -  | -  |
-| Discogs (6 readers)        | T!G2 | H/n1 | H/n1 | T!G3 | H/n3 | H | H/n5 | H | H | H  | H  | H  |
-| Wikipedia                  | T!G2 | H/n1 | H/n1 | T!G3 | H/n3 | H | H    | H | H | H  | H  | H  |
-| Wikidata                   | T!G2 | H/n1 | H/n1 | T!G3 | H/n3 | H | H    | H | H | H  | H  | H  |
-| setlist.fm                 | T!G2 | H/n1 | H/n1 | T!G3 | H/n3 | H | H    | H | H | H  | H  | H  |
-| Springsteen detail         | T!G2 | H/n1 | H/n1 | T!G3 | H/n3 | H | T    | T | T | T  | T  | T  |
-| Brucebase show (year#date) | T!G2 | H/n1 | H/n1 | T!G3 | H/n3 | H | T    | T | T | T  | T  | T  |
-| archive.org item           | T!G2 | H/n1 | H/n1 | T!G3 | H/n3 | H | T    | T | T | T  | T  | T  |
-| YouTube                    | T!G2 | H/n1 | H/n1 | T!G3 | H/n3 | H | T    | T | T | T  | T  | T  |
-| Other web page             | T!G2 | H/n1 | H/n1 | T!G3 | H/n3 | H | T    | T | T | T  | T  | T  |
+| Window \ link              | 1    | 2    | 3    | 4 | 5    | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
+|----------------------------+------+------+------+---+------+---+---+---+---+----+----+----|
+| MusicBrainz entity         | H/n2 | H/n1 | H/n1 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Discogs (6 readers)        | H/n2 | H/n1 | H/n1 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Wikipedia                  | H/n2 | H/n1 | H/n1 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Wikidata                   | H/n2 | H/n1 | H/n1 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| setlist.fm                 | H/n2 | H/n1 | H/n1 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Springsteen detail         | H/n2 | H/n1 | H/n1 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| Brucebase show (year#date) | H/n2 | H/n1 | H/n1 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| archive.org item           | H/n2 | H/n1 | H/n1 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| YouTube                    | H/n2 | H/n1 | H/n1 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| Other web page             | H/n2 | H/n1 | H/n1 | H | H/n3 | H | T | T | T | T  | T  | T  |
 
 ** On archive.org
 
-| Window \ link              | 1    | 2 | 3    | 4 | 5    | 6 | 7    | 8 | 9 | 10 | 11 | 12 |
-|----------------------------+------+---+------+---+------+---+------+---+---+----+----+----|
-| MusicBrainz entity         | -    | - | -    | - | -    | - | -    | - | - | -  | -  | -  |
-| Discogs (6 readers)        | T!G2 | H | H/n2 | H | H/n3 | H | H/n5 | H | H | H  | H  | H  |
-| Wikipedia                  | T!G2 | H | H/n2 | H | H/n3 | H | H    | H | H | H  | H  | H  |
-| Wikidata                   | T!G2 | H | H/n2 | H | H/n3 | H | H    | H | H | H  | H  | H  |
-| setlist.fm                 | T!G2 | H | H/n2 | H | H/n3 | H | H    | H | H | H  | H  | H  |
-| Springsteen detail         | T!G2 | H | T!G1 | H | H/n3 | H | T    | T | T | T  | T  | T  |
-| Brucebase show (year#date) | T!G2 | H | T!G1 | H | H/n3 | H | T    | T | T | T  | T  | T  |
-| archive.org item           | T!G2 | H | T!G1 | H | H/n3 | H | T    | T | T | T  | T  | T  |
-| YouTube                    | T!G2 | H | T!G1 | H | H/n3 | H | T    | T | T | T  | T  | T  |
-| Other web page             | T!G2 | H | T!G1 | H | H/n3 | H | T    | T | T | T  | T  | T  |
+| Window \ link              | 1    | 2 | 3    | 4 | 5    | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
+|----------------------------+------+---+------+---+------+---+---+---+---+----+----+----|
+| MusicBrainz entity         | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Discogs (6 readers)        | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Wikipedia                  | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Wikidata                   | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| setlist.fm                 | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Springsteen detail         | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| Brucebase show (year#date) | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| archive.org item           | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| YouTube                    | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| Other web page             | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
 
 ** Notes
 
 - n1: On its own site a detail link opens in the site's own window; it needs that site's preview switch (Brucebase shows also sa_bb_event_preview).
-- n2: Read by the generic reader: the window shows a plain web page, not Brucebase's parsed show.
+- n2: Needs sa_pop_mb (Preview linked entities on hover). Off musicbrainz.org it is MusicBrainz's window read from the other site (dg-mb): its Web Service request anonymous, its Live page and editing history with the browser's musicbrainz.org cookies (vzell's consent: discogs.com and setlist.fm, then on 2026-11-03 the Springsteen sites and archive.org).
 - n3: setlist, artist and venue pages need sa_pop_ext_setlistfm_key; without it only /search?artist= is read, and on setlist.fm itself the others keep their new tab.
 - n4: On discogs.com a Discogs page no reader takes is the site's own link and keeps its new tab.
-- n5: Only once the record has loaded (see G8).
+- n5: Brucebase's own reader, under sa_bb_event_preview; with it off, the generic reader's (then here only in a window that opens every link).
 
 ** Windows
 
-- MusicBrainz entity: mb-entity on musicbrainz.org; dg-mb on discogs.com and setlist.fm
+- MusicBrainz entity: mb-entity on musicbrainz.org; dg-mb on every other site (_MB_FOREIGN_POP_HOST; the Springsteen sites and archive.org since 2026-11-03)
 - Discogs (6 readers): discogs, dguser, dgsearch, dgsupport, dghistory, dgimages: onAreaClick → _extDgDrill()
 - Wikipedia: allLinksReaders
 - Wikidata: allLinksReaders
@@ -219,50 +226,4 @@ Columns: 1 MusicBrainz (musicbrainz.org/artist/<mbid>), 2 SL · JL · KF · BB s
 
 * Gaps
 
-** G1 Brucebase gig, venue and relation links leave the window
-
-Evidence: code. Code: _extDpTest().
-
-Away from discogs.com and Brucebase itself, a Brucebase /gig:, /venue: or /relation: link in a Springsteen, Brucebase show, archive.org, YouTube or web-page window opens a new tab; in the other windows it opens as a plain web page. _extDpTest() adds the site's ownLinks on discogs.com only, so elsewhere these links are the generic reader's.
-
-** G2 MusicBrainz links leave the window on the Springsteen sites and archive.org
-
-Evidence: code. Code: _MB_FOREIGN_POP_HOST, _dgMbWinTarget().
-
-On springsteenlyrics.com, jungleland.it, brucespringsteen.it, brucebase.wikidot.com and archive.org, a musicbrainz.org link in any window opens a new tab: the MB entity source is off on a foreign host, and _MB_FOREIGN_POP_HOST covers discogs.com and setlist.fm only.
-
-** G3 A Brucebase show link on Brucebase leaves the window
-
-Evidence: code. Code: _extTarget(), _DP_SITES['brucebase.wikidot.com'].
-
-On brucebase.wikidot.com, a /<yyyy>#<ddmmyy> link in a window opens a new tab: it is the page's own host (_extTarget() returns null), and /<yyyy> is neither a detail URL nor one of the site's ownLinks.
-
-** G4 No previews on the initial page of dg-search, ia-search and the sfm-* pages
-
-Evidence: code. Code: _DP_SITES[…].extRoot.
-
-dg-search's content is in <main>, which _DP_SITES['www.discogs.com'].extRoot does not name. archive.org's links are in shadow DOM, and setlist.fm's extRoot names only our own section (#mb-sfm-root), not the site's div.body.
-
-** G5 The MB importer's icons on Discogs' older layout get no card before a render
-
-Evidence: code. Code: _dgMbSource().
-
-On the #page_content pages (submissions, history, images, user, ratings, sell), the dg-mb source's selector names #app only, so murdos' MusicBrainz icons in Discogs' own content have no card on the initial page. Not checked: whether the importer puts icons on those pages at all.
-
-** G6 "All credits on Discogs ↗" opens the same artist again in the window
-
-Evidence: code. Code: _extDgArtistHtml() (the mb-dg-box), _extDgDrill().
-
-The link is /artist/<id>?type=Credits. The discogs reader has no keyUrl, so its key differs from the artist window's own, and _extDgDrill() opens the same artist in place instead of the website's credits in a new tab.
-
-** G7 Wikipedia's "A table: show it on Wikipedia ↗" can reopen the same article
-
-Evidence: code. Code: _extWpLeadFor().
-
-The link is rebuilt from the API's resolved title with encodeURIComponent. When the window was opened from a redirect or from a URL spelled differently (a literal comma, as MusicBrainz stores them), the key differs and the click opens the same article in the window instead of Wikipedia in a new tab.
-
-** G8 A Discogs window opens nothing in place until its record has loaded
-
-Evidence: code. Code: _extDiscogsAreaClick().
-
-Before the record arrives, a click on a link in a Discogs window keeps its new tab, while the hover marks (_dpWinWhat()) already say it opens here.
+None open. Gaps found and fixed are recorded in org/non-MB-coverage.org.

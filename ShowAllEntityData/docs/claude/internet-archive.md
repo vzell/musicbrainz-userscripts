@@ -90,6 +90,111 @@ no button: advancedsearch.php does not index what it searches.
   `_extIaTest()` (as Discogs' `_extDgSiteTest()`), and `_DP_SITES['archive.org']`
   has `extRoot: '#mb-ia-root'`: the site's own links are in shadow DOM.
 
+## The site's own result list, in shadow DOM (G4, 2026-11-03)
+
+Before any button, archive.org's own results preview too (G4 of
+NON-MB-COVERAGE.org; vzell chose to implement it). Three pieces, all gated
+on `_isIaHost`, so no other host changes:
+
+- **`_dpEventTarget(e)`**: the popup engine's listeners sit on the document,
+  which sees an event inside `<app-root>` retargeted to `<app-root>`; the
+  first element of `composedPath()` is the one under the pointer.
+- **`mousemove`, not `mouseover`/`mouseout`, inside the shadow DOM**
+  (`_dpInIaShadow()`, in `_initDetailPreview()`): a boundary event whose
+  target and `relatedTarget` both retarget to the same shadow host never
+  reaches the document, so moving from a result's link to the empty space
+  beside it fired NO `mouseout` there (found by the G4 spec, which logged the
+  events). `mousemove` always does; the engine follows the element under the
+  pointer with it and runs the same over/out steps with the exact elements
+  on both sides. The two boundary handlers leave shadow-DOM elements to it.
+- **Scope** (`_iaShadowLinkInScope()`, `_IA_SHADOW_SKIP`): the `ext`
+  source's selector on archive.org adds a bare `a[href]` (no root selector
+  crosses a shadow root); `resolve` keeps a document link only in the table
+  or `#mb-ia-root`, and a shadow-DOM link anywhere but under `nav`, `header`,
+  `footer`, `<ia-topnav>` or `<ia-footer>`, walking up through each shadow
+  host. Result links are relative (`/details/<id>`); `_extTarget()` reads
+  them against the page on archive.org. **Every result link gets our card,
+  next to archive.org's own hover card** (vzell, 2026-11-04: "Always ours
+  too"; ours adds the tracks and Space's window). The probe
+  (`scripts/probe-ia-shadow-links.js` v2, three views,
+  debug/ia-{t,l,lx}-debug.log): the Tile view's whole tile is one link
+  whose picture and title sit in further shadow roots; in the List view
+  every item link (312) has no text of its own; only the Compact list's
+  title links carry text. A rule of the same morning that skipped
+  text-less links (it left the List view without cards and the Compact
+  list's double cards in place) was taken back.
+
+The fixture cannot hold shadow DOM (a saved page loses it), so
+tests/fixtures/ia-search.spec.js builds it. The real page's link shapes —
+whether a tile's link wraps its picture (then it is the image's, never a
+card), which custom elements hold the list — come from
+`scripts/probe-ia-shadow-links.js`, run in vzell's browser (paste it into
+the console on a search page, once per view).
+
+## An item page: `ia-details` (2026-11-03)
+
+Plan, mockup and vzell's answers: org/foreign-detail-PTs.org (mockup
+https://claude.ai/artifact/ECoqApKnedJqbTMSuBBN14, tab "archive.org item").
+Modelled on MusicBrainz's release-tracks.
+
+- **Match**: `_IA_DETAILS_PATH_RE`, `/details/<id>[/<file>]`, never
+  `/details/@user`; its own `@include` line. `_iaPrepareLivePage()` names
+  the section after the item (`_iaDetailsName()`: `h1.item-title`, else the
+  document title).
+- **The page is plain HTML** (both probed kinds:
+  debug/ia-1975-02-05-setlist-songs.html, ia-amanson-1973-video.html): no
+  `<app-root>`, the item's content is `main#maincontent`, which previews
+  before any button (`_iaShadowLinkInScope()` adds it on an item page).
+- **Rows**: ONE anonymous request, `/metadata/<id>` (`features.pageRequest`,
+  `pageCountAsync: () => 1`, `_iaFetchText()`); `_iaDetailsToHtml()` writes
+  `<h3>` + `table.tbl[data-mb-col-headers]` pairs (`groupByH3`, multi):
+  - a show (original audio files, the best format it has,
+    `_IA_DET_FORMAT_ORDER`): a sub-table per disc from "1-01." in the
+    name, else one ("Tracks"); its h3 names the format and the running
+    time. Columns: # · Title (the track's archive.org link: the item's card
+    with the track marked) · Length · File · Size · one column per AUDIO
+    derivative format (VBR MP3, Ogg Vorbis: the copy's size, linking it;
+    spectrograms, PNG waveforms and peak files are not columns) · Play
+    (`sa_ia_play_in_place`, archive.org's own player);
+  - a video item: its video files (Play · Title · Format · Length · Size);
+  - anything else, or the second button "All files" (`iaView: 'files'`):
+    every file, one row (Name · Format · Source · Original · Size · Length ·
+    MD5).
+  Sizes are always in MB (`_iaSizeText()`), so a size column sorts by its
+  numbers.
+- **The head, laid out as release-tracks** (vzell 2026-11-04, the shared
+  foreign-detail head `_fdHeadInsertSections()` with the spec
+  `_iaDetailsHeadSpec()`, which a Discogs release's Tracks view uses too; a no-op on any other pageType and before the
+  item was read): from the item record of `_extIaItem()` (`_iaDetailsRec`),
+  a subheader `p.mb-fd-sub` after the h1 ("~ Concert recording by …
+  (date: venue)", `_IA_DET_MEDIA_NAMES`), then `div.mb-fd-head` before
+  the data h2 holding three h2 sections: Description (starts closed, as a
+  release's Annotation), Details (the MusicBrainz Sidebar section's cards,
+  reused as they are: `_sbInlineCard()`, `_sbInlineLayout()`,
+  `_sbInlineEnsureStyle()`, folds through `_sbInlineWireFolds()`, each
+  heading's card `_fdCardTip()`) and Pictures (the Cover art
+  section's tile classes, `_ensureReleaseArtStyle()`; a click opens the
+  artwork viewer through `_dpArtViewerClick()`, every picture in order).
+  **It goes in BEFORE `makeH2sCollapsible()`** (the fetch tail and the
+  disk-load tail, as `_releaseArtInsertSection()`), so its h2s fold like
+  any other; `_fdHeadOpenSections()` opens Details and Pictures
+  afterwards (`data-mb-fd-open`). It used to run in the three after-render
+  tails, `runFilter()`'s included, which rebuilt it on every filter
+  keystroke; now a filter leaves it alone, folds included. The only shared
+  change is `_sbInlineWireFolds()`, the Sidebar section's fold wiring
+  moved out of `_sbInlineBuild()` unchanged (its Search-card scope switch
+  and find box keep their own listeners).
+- **Probe** `scripts/probe-ia-details.py` (2026-11-03, 18 items): every
+  show's FLAC originals carry `track`, `title` and `length`; disc prefixes
+  up to 3; one tape ("SideA.flac") without; video items 1–3 video
+  originals; a text item neither. Every audio item's raw page HTML embeds
+  the metadata JSON (`input.js-ia-metadata`), no video item's: the
+  pageType asks the API, which covers both.
+- **Not yet**: the pictures and facts are not saved with "Save to disk" (a
+  disk load shows the tables only); a song's Brucebase page (the mockup's
+  "Song (Brucebase)" column) needs matching a live title to a song, a later
+  step.
+
 ## The Art column's card and viewer (`_IA_FI`)
 
 vzell, 2026-11-01, after the first live check: "looks good, except image

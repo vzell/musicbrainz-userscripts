@@ -1558,22 +1558,69 @@ test.describe('setlist.fm bugs and new additions (org/setlistfm.org, 2026-11-03)
     });
 
     test('item 3a, Stop: the page under way finishes and no other is asked; Load all asks only what is missing', async ({ page }) => {
-        const area = await sfmWindow(page, SFM.artist, sfmShortAnswers(), { sa_pop_mb: true });
+        // Page 2's answer is held back, and Stop is pressed only once page 2
+        // has been asked, so "under way" is certain whatever the click's
+        // timing (it used to race: page 2 answered at once, and Stop met
+        // page 3 instead — see the next test).
+        const answers = sfmShortAnswers();
+        const p2 = `${SFM_API}/artist/${SFM_MBID}/setlists?p=2`;
+        answers[p2] = Object.assign({}, answers[p2], { delayMs: 3000 });
+        const area = await sfmWindow(page, SFM.artist, answers, { sa_pop_mb: true });
         await expect(area).toContainText('20 of 60 loaded');
         // Item 3b: "On MusicBrainz" opens MusicBrainz's artist here.
         await page.mouse.move(0, 0);
         await area.locator('dt:text-is("On MusicBrainz") + dd a:not(.mb-sfm-mb)').hover();
         await expect(dialog(page).locator('.mb-dp-wfoot')).toContainText('Opens here: ');
+        const pages = async () => (await sfmApiLog(page)).filter(u => u.includes('/setlists?p='));
         await sfmAct(area, 'all').click();
+        await expect.poll(pages, { message: 'page 2 asked' }).toHaveLength(2);
         await sfmAct(area, 'stop').click();
         await expect(area.locator('.mb-dg-pill')).not.toHaveText('Running', { timeout: 10000 });
-        await expect(area).toContainText('40 of 60 loaded');
-        const pages = async () => (await sfmApiLog(page)).filter(u => u.includes('/setlists?p='));
-        expect(await pages()).toHaveLength(2);
+        await expect(area, 'page 2, under way when Stop came, finished').toContainText('40 of 60 loaded');
+        expect(await pages(), 'no page after it').toHaveLength(2);
         await expect(sfmAct(area, 'all')).toHaveText('Load all 20 (1 request, about 1 s)');
         await sfmAct(area, 'all').click();
         await expect(area).toContainText('60 of 60 loaded', { timeout: 10000 });
         expect(await pages()).toHaveLength(3);
+    });
+
+    test('item 3a, Stop while the next page waits for its 1 s slot: that page is never sent', async ({ page }) => {
+        // Pins the fix of 2026-11-03: the loop had started page 3, which
+        // waited for setlist.fm's rate slot when Stop came, and was sent
+        // after the slot all the same (measured: page 3 asked ~0.5 s after
+        // Stop). Each load now asks the run's Stop with the window, after
+        // its slot (`_extSfmRun()`'s `stopped`). Page 2 is answered at once
+        // (the stub's next task), and page 3 waits 1 s after page 2 was
+        // sent for its slot; Stop is pressed as soon as the request log
+        // shows page 2 (polled every 50 ms, not the repainted count, which
+        // once came too late), well inside that second.
+        const area = await sfmWindow(page, SFM.artist, sfmShortAnswers());
+        await expect(area).toContainText('20 of 60 loaded');
+        const pages = async () => (await sfmApiLog(page)).filter(u => u.includes('/setlists?p='));
+        await sfmAct(area, 'all').click();
+        await expect.poll(pages, { message: 'page 2 sent', intervals: [50] }).toHaveLength(2);
+        await sfmAct(area, 'stop').click();
+        await expect(area.locator('.mb-dg-pill')).not.toHaveText('Running', { timeout: 10000 });
+        await expect(area).toContainText('40 of 60 loaded');
+        await expect(sfmAct(area, 'all')).toHaveText('Load all 20 (1 request, about 1 s)');
+        expect(await pages(), 'page 3 never sent').toHaveLength(2);
+    });
+
+    test('item 3a, Stop during "Load all with set times": no set-times page is sent after Stop', async ({ page }) => {
+        // The set-times loop (setlist.fm's own pages, their own 1 s gate)
+        // had the same gap as the list's: the page waiting for its slot was
+        // sent after Stop. Whatever was asked before the click may finish;
+        // nothing may be asked after it.
+        const area = await sfmWindow(page, SFM.artist, sfmShortAnswers());
+        await expect(area).toContainText('20 of 60 loaded');
+        const site = async () => (await sfmSiteLog(page)).map(r => r.url);
+        await sfmAct(area, 'alltimes').click();
+        await expect.poll(site, { message: 'the run has asked a set-times page' }).toContain(`${SFM.artist}?page=3`);
+        await sfmAct(area, 'stop').click();
+        const atStop = (await site()).length;
+        await expect(area.locator('.mb-dg-pill')).not.toHaveText('Running', { timeout: 10000 });
+        expect(await site(), 'no set-times page after Stop').toHaveLength(atStop);
+        expect(atStop, 'the run stopped before the last of setlist.fm\'s six pages').toBeLessThan(6);
     });
 
     test('item 3a, Load all with set times: the list and every set-times page, the two hosts in parallel', async ({ page }) => {
@@ -1808,6 +1855,45 @@ test.describe('the rich Wikidata and Wikipedia windows (branch B)', () => {
         await expect(dialog(page).locator(':scope > div > span').first(), 'a step deeper in the same window').toHaveText(/^Wikipedia › Wikipedia$/);
         await expect(dialog(page).locator('button', { hasText: 'Back' })).toBeVisible();
         expect(pages, 'no new tab').toEqual([]);
+    });
+
+    test('G7: a section\'s table becomes "A table: show it on Wikipedia ↗", which keeps its new tab even when spelled unlike the window\'s link', async ({ page }) => {
+        // Pins G7 of NON-MB-COVERAGE.org (2026-11-03). The table's link is
+        // rebuilt from the API's resolved title with encodeURIComponent, so
+        // when the window was opened from a redirect or another spelling
+        // (a literal comma, as MusicBrainz stores titles) its key differs
+        // and a click reopened the same article in the window. The link
+        // carries data-mb-dp-newtab now. The capture's section 1 has no
+        // table, so one is put into its HTML here.
+        await answerWiki(page);
+        await page.context().addInitScript(() => {
+            const prev = window.__gmXhrResponder;
+            window.__gmXhrResponder = (opts) => {
+                const r = prev(opts);
+                if (!r || !opts.url.startsWith('https://en.wikipedia.org/w/api.php') || !opts.url.includes('section=1')) return r;
+                const j = JSON.parse(r.responseText);
+                j.parse.text = j.parse.text.replace('</p>', '</p><table class="wikitable"><tr><td>Year</td></tr></table>');
+                return Object.assign({}, r, { responseText: JSON.stringify(j) });
+            };
+        });
+        await openEvent(page, { settings: { sa_pop_ext: true } });
+        await addAnnotationLinks(page, [WP_BRUCE]);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        const area = d.locator('.mb-dp-area');
+        await area.locator('[data-mb-wp-sec="1"]').click();
+        const tableLink = area.locator('.mb-wp-text a', { hasText: 'A table: show it on Wikipedia' });
+        await expect(tableLink).toHaveAttribute('data-mb-dp-newtab', '');
+        // As the link reads after a redirect: another spelling of the page.
+        const other = 'https://en.wikipedia.org/wiki/Bruce%20Springsteen';
+        await page.context().route(other, (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<p>wikipedia</p>' }));
+        await tableLink.evaluate((a, h) => a.setAttribute('href', h), other);
+        const popup = page.waitForEvent('popup');
+        await tableLink.click();
+        expect((await popup).url()).toBe(other);
+        await expect(d.locator(':scope > div > span').first(), 'no step deeper').toHaveText('Wikipedia');
     });
 });
 
@@ -2380,6 +2466,38 @@ test.describe('the Discogs window (2026-10-17)', () => {
             expect((await xhrFull(page)).map(r => r.url), `version ${v}: asked again`).toEqual(['https://api.discogs.com/releases/1874253']);
         }
     });
+
+    test('G8: before the record has arrived, a link in a Discogs window opens in the window, not a new tab', async ({ page }) => {
+        // Pins G8 of NON-MB-COVERAGE.org (2026-11-03): the window's click
+        // handler (`_extDiscogsAreaClick()`) returned at once while the
+        // record was not there, so a link kept its new tab, though the hover
+        // marks already said "opens here". The release's answer is held back
+        // here; a link as the window writes one (absolute, target=_blank) is
+        // put into the waiting window.
+        const rel = extAnswers('discogs-release')['https://api.discogs.com/releases/1874253'];
+        await openDiscogs(page, { responses: { 'https://api.discogs.com/releases/1874253': Object.assign({}, rel, { delayMs: 15000 }) } });
+        await page.keyboard.down('Control');
+        await probe(page, 0).hover();
+        await page.keyboard.up('Control');
+        await expect(card(page)).toBeVisible();
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        const title = d.locator(':scope > div > span').first();
+        await expect(title).toHaveText('Discogs release');
+        await page.evaluate((href) => {
+            const a = document.createElement('a');
+            a.id = 'g8-probe';
+            a.href = href;
+            a.target = '_blank';
+            a.textContent = 'Born To Run (master)';
+            document.querySelector('#mb-dp-dialog .mb-dp-area').appendChild(a);
+        }, DG.master);
+        const pages = [];
+        page.on('popup', (pp) => pages.push(pp.url()));
+        await d.locator('#g8-probe').click();
+        await expect(title, 'the master, one step deeper in the same window').toHaveText('Discogs release › Discogs master');
+        expect(pages, 'no new tab').toEqual([]);
+    });
 });
 
 // The Discogs artist and label windows (2026-10-18, mockup
@@ -2824,6 +2942,30 @@ test.describe('the Discogs artist and label windows (2026-10-18)', () => {
         await expect.poll(async () => (await read()).max - low.max).toBeGreaterThan(240);
         expect((await read()).max - low.max).toBeLessThanOrEqual(260);
     });
+
+    test('G6: "All credits on Discogs ↗" keeps its new tab, never the same artist again in the window', async ({ page }) => {
+        // Pins G6 of NON-MB-COVERAGE.org (2026-11-03): the link is
+        // /artist/<id>?type=Credits, whose key differs from the window's
+        // own, so a plain click reopened the same artist in place
+        // ("Discogs artist › Discogs artist") instead of the website's
+        // credits. The link carries data-mb-dp-newtab now.
+        const credits = 'https://www.discogs.com/artist/254876?type=Credits';
+        await page.context().route(credits, (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<p>credits</p>' }));
+        await openDiscogsEntities(page);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('Max Weinberg');
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        const title = d.locator(':scope > div > span').first();
+        const all = d.locator('[data-mb-dg-disco="artist"] [data-mb-dg-sec="a-credits"] .mb-dg-box a');
+        await expect(all).toHaveAttribute('href', credits);
+        await expect(all).toHaveAttribute('data-mb-dp-newtab', '');
+        await expect(title).toHaveText('Discogs artist');
+        const popup = page.waitForEvent('popup');
+        await all.click();
+        expect((await popup).url(), 'the website\'s credits, in a new tab').toBe(credits);
+        await expect(title, 'the window still shows the artist, one step deep').toHaveText('Discogs artist');
+    });
 });
 
 // U4: the four Springsteen sites' own parsers on links from MusicBrainz, and
@@ -2877,7 +3019,11 @@ function solidPng(w, h) {
 }
 
 test.describe('the Springsteen sites across hosts (U4)', () => {
-    test('which reader serves which link: the four sites\' detail pages, a Brucebase date; the rest generic', async ({ page }) => {
+    test('which reader serves which link: the four sites\' detail pages, a Brucebase date and show; the rest generic', async ({ page }) => {
+        // Pins: on MusicBrainz a Brucebase show (/gig:) is Brucebase's own
+        // reader's while sa_bb_event_preview is on — since 2026-11-03 (G1 of
+        // NON-MB-COVERAGE.org, vzell: "everywhere"); before, it was generic
+        // on every host but discogs.com.
         await openEvent(page, { settings: { sa_pop_ext: true } });
         await addAnnotationLinks(page, [
             SP.sl, SP.jl, SP.bs, SP.bb, BBD.stonePony,
@@ -2888,8 +3034,18 @@ test.describe('the Springsteen sites across hosts (U4)', () => {
             .map(a => window.__saTest.popResolve(a).split(':').slice(0, 2).join(':')));
         expect(keys).toEqual([
             'ext|ext:springsteen', 'ext|ext:springsteen', 'ext|ext:springsteen', 'ext|ext:springsteen', 'ext|ext:bbdate',
-            'ext|ext:generic', 'ext|ext:generic', 'ext|ext:generic', 'ext|ext:generic',
+            'ext|ext:generic', 'ext|ext:springsteen', 'ext|ext:generic', 'ext|ext:generic',
         ]);
+    });
+
+    test('a Brucebase show link on MusicBrainz is generic again with sa_bb_event_preview off', async ({ page }) => {
+        // Pins the other half of G1: Brucebase's own links follow their own
+        // setting on every host, as on Brucebase itself.
+        await openEvent(page, { settings: { sa_pop_ext: true, sa_bb_event_preview: false } });
+        await addAnnotationLinks(page, [SP.bb, 'https://brucebase.wikidot.com/gig:2025-10-26-stone-pony-asbury-park-nj']);
+        const keys = await page.evaluate(() => Array.from(document.querySelectorAll('.ext-probe a'))
+            .map(a => window.__saTest.popResolve(a).split(':').slice(0, 2).join(':')));
+        expect(keys).toEqual(['ext|ext:springsteen', 'ext|ext:generic']);
     });
 
     test('each site\'s own card, fetched anonymously; jungleland.it decoded as windows-1252', async ({ page }) => {

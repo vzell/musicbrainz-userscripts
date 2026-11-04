@@ -177,6 +177,32 @@ test.describe('setlist.fm list pages (sfm-venue, sfm-artist)', () => {
         })).toBe(null);
     });
 
+    test('G4: before any button, setlist.fm\'s own list previews — a card\'s Tour link (relative), the venue box\'s Wikipedia link — but not its "Upcoming" ticket links', async ({ page }) => {
+        // Pins G4 of NON-MB-COVERAGE.org (2026-11-03): `extRoot` named only
+        // our own section, so nothing of setlist.fm's own page previewed
+        // before a render; and setlist.fm writes its links relative to the
+        // page ("../search?artist=…"), which `_extTarget()` read on
+        // discogs.com only.
+        await open(page, '/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html', { sa_pop_ext: true, sa_pop_ext_setlistfm_key: '' });
+        const r = await page.evaluate(() => {
+            const R = (sel) => {
+                const a = document.querySelector(sel);
+                return a ? (window.__saTest.popResolve(a) || 'none') : 'missing';
+            };
+            return {
+                tour: R('.mainColumn .setlistPreview a[href*="search?artist="]'),
+                wiki: R('.mainColumn .info a[href^="https://en.wikipedia.org/"]'),
+                ticket: R('.upcomingSetlistsList a[href*="ticketmaster"]'),
+                table: document.querySelectorAll('#mb-sfm-root table.tbl').length,
+            };
+        });
+        expect(r.table, 'nothing rendered yet').toBe(0);
+        expect(r.tour.split(':').slice(0, 2).join(':')).toBe('ext|ext:setlistfm');
+        expect(r.tour, 'the relative link read against the page').toContain('https://www.setlist.fm/search?artist=');
+        expect(r.wiki).toBe('ext|ext:wikipedia:https://en.wikipedia.org/wiki/State_Farm_Arena_(Atlanta)');
+        expect(r.ticket, 'a ticket shop\'s affiliate link').toBe('none');
+    });
+
     test('on setlist.fm, a Tour cell (setlist.fm\'s own search link) has its card and window, key or not (vzell, 2026-11-03: "does not have the hover POH")', async ({ page }) => {
         await open(page, '/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html', { sa_pop_ext: true, sa_pop_ext_setlistfm_key: '' });
         await show(page, 'Show all setlists of this venue');

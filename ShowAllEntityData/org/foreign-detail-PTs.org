@@ -1,0 +1,421 @@
+#+TITLE: pageTypes on three foreign detail pages, modelled on release-tracks
+#+STARTUP: overview
+
+* TODO PTs for the setlist.fm setlist, archive.org item and Discogs release pages
+** request (vzell, 2026-11-03)
+
+Before tackling the open items, I'm connected remotely right now, create a new plan for: is it feasible to add proper
+PTs to the SFM setlist detail page, the IA detail page, the Discogs release detail page? If yes model it after the MB
+release-tracks PT and show me some rich HTML based mockups
+
+** mockups
+
+https://claude.ai/artifact/ECoqApKnedJqbTMSuBBN14 (=org/foreign-detail-PTs-mockups.html=, published copy built by
+=scripts/build-mockup-artifact.py=). Real data from the fixtures:
+- setlist.fm setlist 4bf0375a: =tests/fixtures/ext-sfm-setlist.json=
+- archive.org item bs1975-12-27: =ext-ia-metadata-bs1975-12-27.aud.jk.cb.hrubesh.flac16.json=
+- Discogs release 1874253: =ext-discogs-release.json=
+
+Each tab is a mock of the rendered page with notes beside it. A fourth tab holds the plan and the questions.
+
+Env: 2026-11-03 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · no browser (code reading, two Explore reports, fixtures) · n/a
+
+** findings
+
+*** release-tracks, the model
+
+- Top to bottom:
+  1. the h1 toolbar (Tracks · Credits);
+  2. "Cover art (N)" (chips, Grid / By type / Spreads, the viewer);
+  3. =h2.tracklist= with the global filter;
+  4. one h3 + =table.tbl= per medium ("1 - CD", collapsible, medium art);
+  5. the "Sidebar" cards.
+- Columns: # · Title · Artist · Length (⏱) · …, then the AR columns: Recording of work, Recorded at …, Performer,
+  Vocals, Instruments, Producer, Engineer, Mixer, ℗ …, plus dynamic ones. They are =collapsableColumns=, multi-row.
+- The Cover-art section, the medium art and the Sidebar cards are tied to MusicBrainz:
+  - =_sbInlineInsertSection()= returns on any =_foreignHost=;
+  - =_artSectionDesc()= is keyed on the pageType.
+- A foreign detail page therefore needs those generalised behind a provider, or equivalents of its own.
+
+*** Discogs release: =dg-release= exists (upgrade, not a new PT)
+
+- One API request plus the master's versions.
+- Sub-tables today:
+  - Tracklist (Pos, Title, Duration, one Credits cell per track);
+  - Credits (Role, Name, Tracks);
+  - Companies;
+  - Identifiers;
+  - Videos;
+  - Other versions.
+- Missing compared with release-tracks:
+  - no sub-table per side or disc: positions stay "A1", heading rows are dropped;
+  - no track artists;
+  - Duration is plain text: no duration sort, no ⏱;
+  - credits are not split into role columns, and the Credits table's "Tracks" ranges are not mapped onto tracks;
+  - no images section for the release's own images (the data is in the answer);
+  - no facts box (format, label, country, genres, notes, have/want);
+  - no MusicBrainz column on the Tracklist.
+
+*** archive.org item: new PT =ia-details=
+
+- =/details/<id>= is not =@include='d today; only the search page is.
+- The item page is server-rendered, NOT a web-component shell. Audio items embed the whole metadata JSON in
+  =input.js-ia-metadata= (seen in browser saves; unconfirmed for the raw server HTML).
+- One anonymous =/metadata/<id>= request (no key) has everything: the request the =iadetails= card already makes and
+  caches.
+- Per file: name, format, source (original or derivative), original, size, md5, length, title, track.
+- The current parse (=_extIaItem()=) drops track, size, md5 and the derivative relation, so a richer parse is needed
+  (bump =_EXT_IA_VERSION=).
+- Reusable: the pictures (=_IA_FI=, the viewer), the ▶ archive.org player (=_yt*=, source =ia=), and the Brucebase
+  and Databruce links.
+
+*** setlist.fm setlist: new PT =sfm-setlist=
+
+- =/setlist/…= is not =@include='d today.
+- The live page holds the whole list: =ol.songsList > li.setlistParts=.
+  - =.song=, with =a.songLabel=, =.infoPart=, a ▶;
+  - =.section= (a set name, or =.empty= for an unnamed break);
+  - =.encore=;
+  - =.tape=;
+  - ad items to skip.
+- Covers and guests are setlist.fm links; their MusicBrainz IDs come only from the API (key).
+- The set times have a parser already (=_extSfmSetlistTimes()=).
+- No parser reads the song list yet. Segues appear in no snapshot, so their markup is unknown.
+- Claude Code cannot fetch setlist.fm: page shapes must come from snapshots vzell saves. Existing ones:
+  - =debug/setlistfm-setlist.html=
+  - =setlistfm-2026-05-30.html=
+  - =setlistfm-venue-set-times.html=
+
+** plan (proposed; nothing built)
+
+1. *Shared pieces first.* An images section and a facts box that work off MusicBrainz:
+   - generalise =_releaseArt*= and =_sb*= behind a per-page provider (recommended: one viewer, one set of chips and
+     layouts), or write one small foreign-detail module.
+2. *archive.org =ia-details=*:
+   - =@include= for =/details/<id>= (not =@user=); a details variant of =_iaPrepareLivePage()=;
+   - the per-file parse; =pageRequest= with one page, the metadata answer;
+   - a sub-table per disc (the file name prefix or =track=), Pictures, facts, ▶;
+   - a second button "All files";
+   - probe five items first: audio, video, multi-disc, one without track numbers, one with only MP3s.
+3. *Discogs =dg-release= upgrade*:
+   - the per-medium split; credit role columns (the ranges spread onto tracks; release-wide credits stay a sub-table);
+   - Length as a duration; Images; facts; two buttons;
+   - probe about twenty releases of different shapes first: box set, 7", index tracks, sub-tracks, "1-1 to 1-5" ranges.
+4. *setlist.fm =sfm-setlist=*:
+   - =@include= for =/setlist/…=; a parser of =ol.songsList=;
+   - facts from the header and the set-times parser;
+   - with the key, one API request for the MusicBrainz IDs;
+   - first, vzell saves about ten setlist pages (segues, several encores, a festival, a tape intro, a guest-heavy show).
+5. Each one also needs:
+   - specs per shape and a mutation file;
+   - rows in =docs/non-mb-coverage.json= (=build-coverage-report.py --check= fails without them);
+   - HELP and its topic doc;
+   - a feature branch (see Q5).
+
+No performance cost on MusicBrainz: every new path is gated on its foreign host. The shared-pieces step touches
+MusicBrainz code (the Cover-art section and the Sidebar cards), so it needs the MusicBrainz fixture suite and a perf
+comparison of a release-tracks page.
+
+** questions
+
+1. Discogs: upgrade =dg-release= (button "Tracks", with today's sub-tables as a second button), or keep today's view
+   and add the release-tracks view as a second button?
+2. setlist.fm without a key: covers and guests as setlist.fm links only (no MusicBrainz glyph), or ask MusicBrainz by
+   name?
+3. archive.org: derivatives as columns (as drawn) or as their own sub-table per format?
+4. Discogs: which credit roles get their own column (drawn: Instruments, Vocals, Producer, Engineer, Mixed by,
+   Arranged by), and which go into one "Other credits" column?
+5. Order of the three; one branch for all or one each?
+
+** answers
+
+vzell, 2026-11-03:
+1. Discogs: *replace* the view. =dg-release='s first button becomes "Tracks" (the release-tracks view); today's
+   sub-tables (Credits, Companies, Identifiers, Videos, Other versions) move to a second button.
+2. setlist.fm without a key: covers and guests as *setlist.fm links only*; no MusicBrainz lookup by name.
+3. archive.org: derivatives *as columns* (as drawn).
+4. Discogs role columns: *as in the mockup* first: Instruments, Vocals, Producer, Engineer, Mixed by, Arranged by;
+   release-wide credits stay a "Release credits" sub-table.
+5. *One branch each*, in this order: archive.org (=ia-details=), Discogs (=dg-release= upgrade), setlist.fm
+   (=sfm-setlist=).
+
+** archive.org (=ia-details=) — built (2026-11-03, branch feat/ia-details, stacked on fix/non-mb-coverage-gaps)
+
+- Probe =scripts/probe-ia-details.py=, 18 items:
+  - every show's FLAC originals carry track, title and length, with disc prefixes up to 3;
+  - one tape has none;
+  - video items have 1–3 video originals; a text item has neither.
+  - Every audio page embeds the metadata JSON; no video page does. So the pageType asks the API.
+- Built as drawn: a sub-table per disc, the MP3 copy as a column (Q3), Play, then Pictures and facts above.
+  - Second button "All files".
+  - A video item gets its video files.
+  - The item page's own content (=main#maincontent=) previews before any button.
+- *Deviation from the plan, step 1 ("shared pieces first")*: the pictures and facts are host-scoped
+  (=_iaDetailsAfterRender()=, =_dpArtViewerClick()= for the viewer). The release-tracks code is not generalised:
+  CLAUDE.md's rule is that nothing may change for MusicBrainz, and "when in doubt, a host-scoped branch". Discogs
+  can reuse the same shape.
+- *Left out for now*:
+  - the mockup's "Song (Brucebase)" column (it needs matching a live title to a song);
+  - pictures and facts on a disk load.
+- Specs: =tests/fixtures/ia-details.spec.js= (6), =sl-include-regex.spec.js= (+1).
+- Mutations: =scripts/mutations/ia-details.json= (8, all caught).
+- Docs: =docs/claude/internet-archive.md= "An item page", HELP, the PAGETYPES reference #147, the coverage registry row.
+
+** Discogs (=dg-release= Tracks view) — built (2026-11-04, branch feat/dg-release, stacked on feat/ia-details)
+
+Env: 2026-11-04T03:46+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright Chromium, no Tampermonkey (GM stubs)
+
+- Probe =scripts/probe-dg-release-shapes.py=, 52 releases, anonymous (=--multi= for multi-disc, boxes, DVDs, cassettes):
+  - positions: disc-track (="1-1"=, ="2.10"=, ="CD-1"=, ="CDr.1"=, ="Vinyl.A"=), sides (="A1"=, ="B"=, ="AA"=), plain numbers;
+  - headings are either the media (="Record 1"= over sides A/AA again, a 10 × 7" box) or sections inside a disc;
+  - credit ranges: ="1-1 to 2-12"=, ="A1 to A4, B2"=, ="1, 3, 5"=, ="A4, C1-C3, D"= (a whole side), ="Record 10"= (a heading).
+  - =scripts/check-dg-release-media.js= runs the shipped splitter on the saved answers: 348 of 354 ranged credits placed;
+    the 6 left name positions the releases do not have, so they stay in "Release credits" with their range.
+- Built as answered: first button "Tracks", the second today's sub-tables minus the Tracklist; the role columns of the
+  mockup plus *Other credits* (writing, mastering, art, crew …, so no credit is lost); "Release credits" sub-table.
+- The head (Notes, Details, Images) is the archive.org one made shared: =_fdHeadInsertSections()= with one spec per site.
+- *Deviation from the mockup*: a vinyl record's two sides are ONE sub-table, as MusicBrainz has one medium per record;
+  per side, a 7" single became two one-row tables (and a 10 × 7" box twenty).
+- *Left out*: the MusicBrainz column on the track tables (a recording link needs the release's MusicBrainz match first).
+- Specs: =tests/fixtures/discogs-release-tracks.spec.js= (6), =discogs-mb-column.spec.js= (+1), =discogs-pages.spec.js= retargeted.
+- Mutations: =scripts/mutations/dg-release-tracks.json= (15, all caught); =ia-details.json= repointed (13, all caught).
+- After vzell's live tests (2026-11-04, all fixed, then "tested live, OK"): identifiers' descriptions moved to the
+  value (the label column had squeezed the values to 18 px); the head's values linked as on Discogs' page and
+  previewing; Notes' markup as links; cards placed left (Release, External links, Genres and styles, Contributors,
+  Community last) / right (Identifiers); Community = Discogs' Statistics box in full, sales figures read from the page
+  (=_dgLiveStats()=). Mutations now 27, all caught. Committed =89e6574b=.
+
+** pickup on NB-3641 (written 2026-11-04 on vzell-lap)
+
+Env: 2026-11-04T11:54+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · n/a (state of the repo)
+
+*** where things stand
+
+- =main= is at =2967a04a= (=@version 9.99.1533+2026-11-03=), untouched by this work.
+- One stack of three branches, each pushed, each containing the one below it:
+
+  | branch                     | head       | holds                                                                                                   |
+  |----------------------------+------------+---------------------------------------------------------------------------------------------------------|
+  | =fix/non-mb-coverage-gaps= | =6ad4efaf= | G1–G8 of NON-MB-COVERAGE (WIP.1), setlist.fm Stop fix (WIP.2), Brucebase previews on every page (WIP.4) |
+  | =feat/ia-details=          | =8201b1c4= | + archive.org item page =ia-details= (WIP.3) and its release-tracks head (WIP.5)                        |
+  | =feat/dg-release=          | =6aaef806= | + Discogs release Tracks view (WIP.6) and vzell's "add new todo"                                        |
+
+- =feat/dg-release= therefore holds everything (14 commits ahead of =main=). =ShowAllEntityData_CHANGELOG.wip.json=
+  has WIP.1 … WIP.6; no =@version= bump on the branches (main only).
+- vzell tested all of it live: G-fixes, setlist.fm Stop, Brucebase every page, the archive.org item page (both heads),
+  the Discogs Tracks view and its head ("tested live, OK").
+- Not yet run: =test:full= on the stack (only targeted specs ran on vzell-lap, as agreed: the full suite once, at the
+  end of a stack).
+
+*** on NB-3641, in this order
+
+1. Get the stack:
+   #+begin_src sh
+   cd ShowAllEntityData
+   git fetch origin
+   git checkout feat/dg-release && git pull --ff-only   # expect 6aaef806 or later
+   npm install                                          # no dependency change on the stack, but cheap
+   #+end_src
+2. Full suite on =feat/dg-release=:
+   #+begin_src sh
+   python3 scripts/run-test-full.py --log <scratchpad>/test-full.log
+   #+end_src
+   - 2625 tests now (=npx playwright test --list=, fixtures + mobile, 2026-11-04). NB-3641's last full run
+     (=tests/MEASUREMENTS.org=, 2026-10-15) was 1774 tests in 657 s; scaled by count, expect *about 16 min*. Its ETA
+     baseline is =~/.cache/sa-test-full/last-NB-3641.json= there.
+   - Known flakes, not this stack's: =discogs-mb-column.spec.js= "in a MusicBrainz window, a card showing through a
+     repaint still hides…" (failed once at 46 s under load on vzell-lap, passed 3/3 alone); =popup-ext.spec.js:1025=
+     (gate timing). Rerun a failure alone with =--repeat-each 3= before blaming the code.
+   - Known pre-existing failure: =scripts/verify-claudemd-anchors.sh= (duplicate anchors =const Lib == and
+     =function runFilter=), not part of the suite.
+3. If anything else fails: diagnose on the branch; a fix goes on =feat/dg-release= (follow-ups on the open branch).
+4. Merge — *only after vzell says so*: =/merge-push-remove= on =feat/dg-release=. That one merge brings all three
+   branches. The fold maps WIP.1 … WIP.6 to six new versions after 9.99.1533; read its dry run first. Afterwards
+   delete the two lower branches too, which the skill does not know about:
+   #+begin_src sh
+   git branch -d fix/non-mb-coverage-gaps feat/ia-details
+   git push origin --delete fix/non-mb-coverage-gaps feat/ia-details
+   #+end_src
+   Merge-time reads (CLAUDE.md): =PERFORMANCE.org= for prose this made false (nothing on the MusicBrainz hot path
+   changed; the one shared change is =_sbInlineWireFolds()=, extracted unchanged from the Sidebar section),
+   =audit-docs.py=, HELP against what shipped, =check-publish-ready.py= before a republish.
+
+*** optional re-checks on NB-3641
+
+- Mutation lists of this stack (each edits the live userscript for a while, restores and hash-verifies it):
+  =scripts/mutations/non-mb-coverage-gaps.json= (18), =ia-details.json= (13), =bb-every-page.json= (2),
+  =dg-release-tracks.json= (27).
+- =python3 scripts/build-coverage-report.py --check=, =python3 scripts/lint-summary.py --check=,
+  =python3 scripts/audit-docs.py=, =bash scripts/verify-doc-crossrefs.sh=: all green on vzell-lap at =89e6574b=.
+- The Discogs splitter on more releases: =python3 scripts/probe-dg-release-shapes.py DIR [N] [--multi]=, then
+  =node scripts/check-dg-release-media.js DIR [--roles]= (prints any credit range it cannot place).
+
+*** done on NB-3641 (2026-11-04)
+
+Env: 2026-11-04T12:12:46+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+- Step 1: =feat/dg-release= already at =481178e3=, level with origin; no dependency change, so no =npm install=.
+- Step 2: =test:full= 2619 passed, 6 failed, 21 m 54 s (2625 tests). Details in =tests/MEASUREMENTS.org=, same date.
+  - 5 were load flakes (each 3/3 alone).
+  - =popup-mb.spec.js:861= (the recording window's area chain) failed every time, on =main= too: a 5 s expect
+    timeout racing a chain the rate gate spaces at 1.1 s a step. Fixed in the spec (15 s on its three chain
+    waits); then 10/10 and its file 142/143 (the other, the grip test's ↓, passed 3/3 alone).
+- The four read-only checks (coverage, lint, =audit-docs.py=, doc cross-refs): all green at =481178e3=.
+- Mutation lists at =f0d11cd4= (13:01:54–13:10:22 CET): =non-mb-coverage-gaps.json= 18, =ia-details.json= 13,
+  =bb-every-page.json= 2, =dg-release-tracks.json= 27: all 60 caught, the userscript restored and hash-verified.
+- Merge: waits for vzell.
+
+*** next work (plan step 4, after the merge)
+
+- setlist.fm =sfm-setlist= on its own branch from =main= (Q5). Answer 2: covers and guests as setlist.fm links only.
+- *Needs vzell first*: about ten setlist pages saved from the browser into =debug/= (Claude Code cannot fetch
+  setlist.fm): segues, several encores, a festival, a tape intro, a guest-heavy show, one with covers, one with an
+  unnamed set break. Existing: =debug/setlistfm-setlist.html=, =setlistfm-2026-05-30.html=,
+  =setlistfm-venue-set-times.html=.
+- Model: the shared head (=_fdHeadInsertSections()=, a spec function per site, as =_iaDetailsHeadSpec()= and
+  =_dgReleaseHeadSpec()=).
+
+*** left open on the built ones
+
+- archive.org: the mockup's "Song (Brucebase)" column; the head after a disk load (=_iaDetailsRec= is not saved).
+- Discogs: the MusicBrainz column on the track tables (needs the release's MusicBrainz match first); the head after a
+  disk load (=_dgRelRec= likewise); Contributors/Community on a release whose page has no Statistics box only show the
+  API's figures (by design).
+- The new TODO below (murdos' MusicBrainz glyphs for every entity kind).
+
+
+* DONE summary - IA
+
+● The archive.org item page now works the way the mockup showed. It's on its own branch, feat/ia-details (commit dc1476c3), pushed and stacked on fix/non-mb-coverage-gaps. It has only been seen in tests, not
+  yet in a real browser.
+
+  What the item page gets (archive.org/details/…):
+  - Tracks: one table per disc (from "1-01." / "2-01." in the file names), each headed with its format and running time, for example "Disc 1 · Flac · 1:13:19". Columns: # · Title · Length · File · Size · VBR
+    MP3 (the copy's size, linked) · Play. The title links the track, so it has the item's card; Play uses archive.org's own player.
+  - Above the tables: the item's pictures (a click opens the full-size viewer) and fact cards: date, venue, source, taper, running time, the Brucebase and Databruce links, collections, lineage.
+  - All files: every file of the item, one row each, with format, original or copy, size, length and MD5.
+  - A video item lists its video files with a "Play here" tile.
+  - One anonymous request per press. Before any button, the item page's own links have cards too, for example its Brucebase link.
+
+  How I checked it:
+  - Before building, a probe of 18 real items; the shapes are as expected.
+  - 6 new tests plus 1 for the new @include, all passing; 8 planted defects, all caught.
+  - The coverage checker caught the missing registry row on its own before I added it.
+
+  Where I differed from the plan:
+  - The plan's first step was to make MusicBrainz's cover-art section and sidebar cards reusable. I wrote archive.org-only versions instead, because the project rule is that nothing may change for MusicBrainz.
+    Discogs can reuse the same shape.
+  - Not done yet: the mockup's "Song (Brucebase)" column, which needs live song titles matched to Brucebase songs. Also, pictures and facts don't come back on a disk load.
+
+  To try it, any item works, for example https://archive.org/details/bs1975-12-27.aud.jk.cb.hrubesh.flac16 (press "Tracks", then "All files").
+
+  Next comes the Discogs release upgrade on its own branch. Do you want to try archive.org in your browser first, or should I go straight on?
+
+* DONE make it nicer
+
+On the new IA PT for a detail page the parts before the h2 header line with the global filter could be made nicer
+
+#+begin_example
+@debug/ia-detail-final.html - FRP - https://archive.org/details/bs1977-02-28.aud.ntl-2.jems.flac16 - [Image #26]
+#+end_example
+
+Emulate the MB PT for 'release-tracks', e.g. https://musicbrainz.org/release/755eec4f-d7d7-4fec-9b97-3be7a9ad5012 - [Image #27]
+* DONE summary - Discogs
+
+● The Discogs release page now has a Tracks button that shows the release like a MusicBrainz release page, from one request. It's on the new branch feat/dg-release (stacked on feat/ia-details), not committed
+  yet.
+
+  What it shows:
+  - One table per disc or record, named like "Disc 1 · CD · Volume 1: Live In Europe, 1981 · 49:50" or "Record 1 · Vinyl LP · 39:20". Discogs headings name a disc when there's one per disc; headings inside a
+    disc go into a Section column.
+  - Columns: #, Title, Artist (only on compilations), Length, then the credits as columns with one line per name: Instruments, Vocals, Producer, Engineer, Mixed by, Arranged by and Other credits. A track's own
+    credits and the release credits whose range names it ("A1 to A4, B2 to B4") both land on the track.
+  - Release credits: a table for the credits that name no track.
+  - Above the tables: the same layout as the archive.org page — "~ Release by Bruce Springsteen (1975: US)", Notes (closed to start with), Details cards (Release, Community, Identifiers, External links, Genres
+    and styles) and Images, which open the viewer. The archive.org header code is now shared between the two sites rather than copied.
+  - The old view is the second button, "Credits, versions": the same tables as before, minus the Tracklist.
+
+  Where it differs from what you approved:
+  - One table per vinyl record, not per side. MusicBrainz treats a record as one medium. Per side, a 7-inch single would be two one-row tables, and a box of ten singles twenty.
+  - Other credits is an extra column. Writing, mastering, artwork, crew and similar roles have no place among the six columns you picked, and without it they would be dropped. Say if you'd rather have them in
+    Release credits instead.
+  - Not done: the MusicBrainz column on the track tables. A recording link first needs the release matched to its MusicBrainz release.
+
+  How I checked it:
+  - I probed 52 releases of different shapes first (singles, 10×7-inch box, 5-CD and 20-CD sets, DVDs, cassettes, compilations, a split LP). Running the new code on those saved releases placed 348 of the 354
+    credit ranges on tracks. The other 6 name tracks the releases don't have (Discogs data errors), so they stay in Release credits with their range shown.
+  - A new spec covers Born To Run plus four of the probed releases. 297 of 298 related tests passed; the one failure is a card-timing test that took 46 s under load and passes 3 of 3 when run alone.
+  - The mutation check catches all 15 new planted defects for Discogs and all 13 for archive.org after the shared-code change. Lint, the coverage check and the doc checks pass.
+  - HELP, docs/claude/discogs.md, the archive.org doc, CLAUDE.md, a WIP.6 changelog entry and a "built" section in org/foreign-detail-PTs.org are updated.
+
+  To try it: https://www.discogs.com/release/1874253 (Born To Run on vinyl) and https://www.discogs.com/release/2012001 (five CDs with headings). Press "Tracks". When it looks right, tell me to commit and
+  push.
+
+* DONE bugs on discogs release PT
+** DONE initial
+
+1.)
+
+There is a problem when rendering the "IDENTIFIERS" section on https://www.discogs.com/release/1874253-Bruce-Springsteen-Born-To-Run, see [Image #29]
+The values see to be missing for the subsections like "Rights Society", "Pressing Plant ID (Runouts)" etc
+
+2.)
+
+The hyperlinks inclusive POH support are missing on the values in the header sections, also they are present on the IP, e.g.
+
+#+begin_example
+Columbia - https://www.discogs.com/label/1866-Columbia
+US - https://www.discogs.com/search/?country=US
+Rock & Roll - https://www.discogs.com/music/style/rock%20&%20roll
+etc.
+#+end_example
+
+3.)
+
+In the notes section, the following URL is written as a raw string
+
+#+begin_example
+[url=http://www.discogs.com/release/567824]Canadian Pressing[/url] with the same cat no. also available.
+#+end_example
+
+instead of getting the hyperlink and PO support
+
+4.)
+
+in the "EXTERNAL LINKS" section, the "Release", "Master" and "History" buttons should alos get our POH support
+
+** DONE flip sides
+
+[Image #31] - Flip sides for the "EXTERNAL LINKS" and "GENRES AND STYLES" sections (they should go to the left side) and
+the "IDENTIFIERS" section should go to the right side, as the identifier section itself tends to be very long and also
+the values (like a "Matrix / Runout" value) tends to be very long
+
+The order of the sections on the left side should be
+
+#+begin_example
+RELEASE
+EXTERNAL LINKS
+GENRES AND STYLES
+... maybe others if present on the IP ... 
+COMMUNITY - always last
+#+end_example
+
+** DONE add the rest of the statistics
+
+currently the "COMMUNITY" card ([Image #33]) has not all the information available on the IP under the "Statistics"
+section, see [Image #34] and the hyperlinks are also missing
+
+
+* TODO add MB entity glyph handling for all entities whhich have one when the third party userscript from murdos is installed
+
+add MB entity glyph handling for all entities whhich have one when the third party userscript from murdos is installed
+
+
+
+
+* TODO add 2-column display in the "COMMUNITY" card of the Discogs release PT
+
+add 2-column display in the "COMMUNITY" card of the Discogs release PT, currently the ten entries are listed below each
+other but there is enough space to list them inside the card in two columns 5, entries each
+
+

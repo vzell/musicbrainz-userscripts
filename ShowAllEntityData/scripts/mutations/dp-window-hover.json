@@ -4,8 +4,8 @@
         "why": "Without _dpWinTarget() in the mouseover, a link of the window is never the hovered element, so neither Ctrl nor a rest shows its card or an image's preview.",
         "edits": [
             {
-                "find": "            const t = _popResolve(e.target) || _dpWinTarget(e.target);\n            if (!t || t.el === _dpPeek.link || _isTouchCompatMouseEvent(e)) return;",
-                "replace": "            const t = _popResolve(e.target);\n            if (!t || t.el === _dpPeek.link || _isTouchCompatMouseEvent(e)) return;"
+                "find": "            const t = _popResolve(node) || _dpWinTarget(node);\n            if (!t || t.el === _dpPeek.link || _isTouchCompatMouseEvent(e)) return;",
+                "replace": "            const t = _popResolve(node);\n            if (!t || t.el === _dpPeek.link || _isTouchCompatMouseEvent(e)) return;"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",

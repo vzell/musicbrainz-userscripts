@@ -190,6 +190,26 @@ test.describe('discogs.com: links that stay, every link in the window, View chan
         expect(errors).toEqual([]);
     });
 
+    test('G5: the older layout: a MusicBrainz icon in #page_content has MusicBrainz\'s card before any render', async ({ page }) => {
+        // Pins G5 of NON-MB-COVERAGE.org (2026-11-03): the dg-mb source's
+        // selector named #app only, so murdos' importer's icon in Discogs'
+        // older, server-rendered content (submissions, history, …) had no
+        // card on the initial page. The icon's markup as the importer
+        // writes it in #app (debug/bb-release-born-to-run-with-MB-links-initial.html).
+        const { errors } = await openDg(page, { settings: { sa_pop_mb: true } });
+        expect(await page.locator('#mb-dg-root table.tbl').count(), 'nothing rendered yet').toBe(0);
+        const r = await page.evaluate(() => {
+            const w = document.createElement('span');
+            w.className = 'mb_wrapper';
+            w.innerHTML = '<a href="https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f" target="_blank"><img src="data:," alt="MB"></a>';
+            document.querySelector('#page_content').appendChild(w);
+            return window.__saTest.popResolve(w.querySelector('a'));
+        });
+        expect(r).toMatch(/^dg-mb\|/);
+        expect(r).toContain('70248960-cb53-4ea4-943a-edb18f7d336f');
+        expect(errors).toEqual([]);
+    });
+
     test('a plain click on a table link opens the window instead of leaving; every table link would open a new tab', async ({ page }) => {
         const { errors } = await openDg(page, { url: MASTER, file: 'dg-master.html' });
         await press(page, 'Show all versions');

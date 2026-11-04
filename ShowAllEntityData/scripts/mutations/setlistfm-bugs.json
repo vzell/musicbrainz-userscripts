@@ -30,8 +30,8 @@
     "why": "Items 2a/3b: on setlist.fm a MusicBrainz link of the window left it (a new tab).",
     "edits": [
       {
-        "find": "    const _MB_FOREIGN_POP_HOST = !!(_isDgHost || _isSfmHost);",
-        "replace": "    const _MB_FOREIGN_POP_HOST = !!_isDgHost;"
+        "find": "    const _MB_FOREIGN_POP_HOST = !!(_isDgHost || _isSfmHost || _isSlHost || _isJlHost || _isBsHost || _isBbHost || _isIaHost);",
+        "replace": "    const _MB_FOREIGN_POP_HOST = !!(_isDgHost || _isSlHost || _isJlHost || _isBsHost || _isBbHost || _isIaHost);"
       }
     ],
     "spec": "tests/fixtures/sfm-list.spec.js",
@@ -157,6 +157,32 @@
     ],
     "spec": "tests/fixtures/popup-ext.spec.js",
     "grep": "item 3a, Load all: every page once",
+    "expect": "fail"
+  },
+  {
+    "name": "Stop leaves a list page waiting for its slot to be sent",
+    "why": "2026-11-03: page 3 waited for setlist.fm's 1 s slot when Stop came and was sent after it (measured ~0.5 s after Stop). The page load now asks the run's Stop after the slot.",
+    "edits": [
+      {
+        "find": "wanted: () => !(stopped && stopped()) && !!(_dpDialog.target && _dpDialog.target.key === t.key), version: _EXT_IDB_VERSION * 100 + _EXT_SFM_VERSION,",
+        "replace": "wanted: () => !!(_dpDialog.target && _dpDialog.target.key === t.key), version: _EXT_IDB_VERSION * 100 + _EXT_SFM_VERSION,"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "item 3a, Stop while the next page waits",
+    "expect": "fail"
+  },
+  {
+    "name": "Stop leaves a set-times page waiting for its slot to be sent",
+    "why": "The set-times loop (setlist.fm's own pages, their own gate) had the same gap as the list's.",
+    "edits": [
+      {
+        "find": "wanted: () => !(stopped && stopped()) && !!(_dpDialog.target && _dpDialog.target.key === t.key), version: _EXT_IDB_VERSION * 100 + _EXT_SFM_SITE_VERSION,",
+        "replace": "wanted: () => !!(_dpDialog.target && _dpDialog.target.key === t.key), version: _EXT_IDB_VERSION * 100 + _EXT_SFM_SITE_VERSION,"
+      }
+    ],
+    "spec": "tests/fixtures/popup-ext.spec.js",
+    "grep": "item 3a, Stop during \"Load all with set times\"",
     "expect": "fail"
   }
 ]

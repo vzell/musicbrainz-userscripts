@@ -30,8 +30,8 @@
         "why": "Submissions, a release's history and a user's ratings have no #app; their content is #page_content.",
         "edits": [
             {
-                "find": "            extRoot: '#app, #page_content'\n",
-                "replace": "            extRoot: '#app'\n"
+                "find": "            extRoot: '#app, #page_content, main'\n",
+                "replace": "            extRoot: '#app, main'\n"
             }
         ],
         "spec": "tests/fixtures/discogs-links.spec.js",
@@ -40,15 +40,15 @@
     },
     {
         "name": "Discogs: a root list joined as one selector",
-        "why": "'#app, #page_content a[href]' makes #app itself the match: closest() then returns the div, not the link.",
+        "why": "'#app, #page_content a[href]' makes #app itself the match: closest() then returns the div, not the link. Run on the older layout since 2026-11-03: extRoot names main too (G4 of NON-MB-COVERAGE.org), and the React fixture's <main> inside #app turns the joined selector's last part into a match that hides the defect there; the submissions page has neither #app nor main.",
         "edits": [
             {
                 "find": "                    const roots = root ? root.split(',').map(r => `, ${r.trim()} a[href]`).join('') : '';",
                 "replace": "                    const roots = root ? `, ${root} a[href]` : '';"
             }
         ],
-        "spec": "tests/fixtures/discogs-pages.spec.js",
-        "grep": "previews on discogs.com",
+        "spec": "tests/fixtures/discogs-links.spec.js",
+        "grep": "the older layout: #page_content's relative links",
         "expect": "fail"
     },
     {
@@ -56,8 +56,8 @@
         "why": "5a: on discogs.com a Brucebase show, venue or person link is Brucebase's reader's.",
         "edits": [
             {
-                "find": "        return site.isDetailUrl(u) || (_isDgHost && !!site.ownLinks && site.ownLinks.test(u));",
-                "replace": "        return site.isDetailUrl(u);"
+                "find": "        return !!own && Lib.settings[own.setting] !== false && own.test(u);",
+                "replace": "        return false;"
             }
         ],
         "spec": "tests/fixtures/discogs-pages.spec.js",
@@ -65,16 +65,29 @@
         "expect": "fail"
     },
     {
-        "name": "Brucebase show links on MusicBrainz change reader",
-        "why": "Nothing may change for MusicBrainz: there a /gig: link stays the generic reader's.",
+        "name": "Brucebase show links on MusicBrainz stay generic (G1 undone)",
+        "why": "G1 of NON-MB-COVERAGE.org (2026-11-03, vzell: everywhere): on MusicBrainz too a /gig: link is Brucebase's reader's. Until then this mutation's replace WAS the code, and the opposite one was the planted defect.",
         "edits": [
             {
-                "find": "        return site.isDetailUrl(u) || (_isDgHost && !!site.ownLinks && site.ownLinks.test(u));",
-                "replace": "        return site.isDetailUrl(u) || (!!site.ownLinks && site.ownLinks.test(u));"
+                "find": "        return !!own && Lib.settings[own.setting] !== false && own.test(u);",
+                "replace": "        return _isDgHost && !!own && Lib.settings[own.setting] !== false && own.test(u);"
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
-        "grep": "which reader serves which link",
+        "grep": "which reader serves which link: the four sites",
+        "expect": "fail"
+    },
+    {
+        "name": "Brucebase show links ignore sa_bb_event_preview off Brucebase",
+        "why": "G1: Brucebase's own links follow their own setting on every host; off, a /gig: link is generic again.",
+        "edits": [
+            {
+                "find": "        return !!own && Lib.settings[own.setting] !== false && own.test(u);",
+                "replace": "        return !!own && own.test(u);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "generic again with sa_bb_event_preview off",
         "expect": "fail"
     }
 ]

@@ -4179,3 +4179,36 @@ and the ratio of the arms' medians (branch / main):
 columnFilter at 1.20, all of it from one branch run (2580); the reversed pair puts both branch
 runs inside main's own range (1924–2203), and globalFilter, which reads the same strip list,
 went the other way. Every ratio is inside its arms' run-to-run spread.
+
+* 2026-11-04 — =npm run test:full= on =NB-3641=, the foreign-detail stack (feat/dg-release at 481178e3, main at 2967a04a, 9.99.1533)
+
+Env: 2026-11-04T12:12:46+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · node v24.19.0 · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+=python3 scripts/run-test-full.py= on =feat/dg-release=, the top of the
+three-branch stack (=fix/non-mb-coverage-gaps= ⊂ =feat/ia-details= ⊂
+=feat/dg-release=, 15 commits ahead of =main=). chromium-fixtures plus
+chromium-mobile, 14 workers.
+
+| Selection                         | Tests | Workers | Wall clock  | Basis                                      |
+|-----------------------------------+-------+---------+-------------+--------------------------------------------|
+| =npm run test:full=, merge check  |  2625 |      14 | *21 m 54 s* | =run-test-full.py=, 12:12:46–12:34:40 CET  |
+
+2619 passed, 6 failed. The ETA from the previous baseline (2502 tests in
+1066 s, 2026-10-29) scaled to about 18.6 m; this run took 18% longer than that.
+Playwright named =popup-ext.spec.js= the slowest file at 12.7 m.
+
+Each failure was rerun alone (=--repeat-each 3=, 12:35–12:36 CET):
+- 5 passed 3/3, so they were load timeouts, not this stack's code:
+  =caa-metadata-transient-503.spec.js:205=, =discogs-mb-column.spec.js:370=,
+  =filter-flag-scoping.spec.js:167=, =popup-mb.spec.js:3808=,
+  =rel-auto-retry-failed.spec.js:213= (@slow; 180 s timeout under load, 1.4 m alone).
+- =popup-mb.spec.js:861= (the recording window's area chain) failed 3/3. It also
+  failed 5/5 on =main= in a scratch worktree, so it predates the stack. Cause: the
+  chain's four steps each wait on the one before AND on a slot of the one
+  MusicBrainz rate gate (=_REL_WS2_SPACING_MS=, 1.1 s), queued behind the
+  window's credits and releases requests. That is about 6–7 s after Space,
+  against the default 5 s expect timeout; the failures show the chain still at ◌.
+  Fixed in the spec (a 15 s timeout on its three chain waits): then 10/10, and
+  the whole file 142/143. The one failure there, =popup-mb.spec.js:4108= (the
+  table grip's ↓ step, a one-shot =boxH()= read with no poll), passed 3/3 alone.
+  It passed in the full run, so it is a flake, not a regression.

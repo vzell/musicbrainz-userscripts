@@ -2501,7 +2501,11 @@ Mockup https://claude.ai/artifact/CpGp9328FvEZ2yGbXbZrKY
   window's MusicBrainz source is `dg-mb`, on for `_MB_FOREIGN_POP_HOST`
   (discogs.com, setlist.fm) — the Live page and the history read with the
   browser's musicbrainz.org cookies (`_mbPageGetForeign()`), vzell's consent
-  extended to setlist.fm the same day.
+  extended to setlist.fm the same day. And on 2026-11-03 (G2 of
+  NON-MB-COVERAGE.org) to the four Springsteen sites and archive.org, where a
+  musicbrainz.org link in any window had kept its new tab. The flag names
+  each host, never `_foreignHost`: a site added later does not inherit the
+  consent.
 - **Load all** (item 3a, `_extSfmRun()`, `_extSfmLoadAll()`,
   `_extSfmStatusHtml()`): "Load 20 more" stays (Q5); "Load all N" reads the
   list's other pages one after another; "Load all with set times" also
@@ -2512,6 +2516,14 @@ Mockup https://claude.ai/artifact/CpGp9328FvEZ2yGbXbZrKY
   again"); leaving the window ends it (`onSkip` on `_extSfmPageLoad()` and
   `_extSfmSiteLoad()`: `_mbLoad()` forgets a skipped load silently). No
   dialog (Q6); the table stays on its page while it grows (Q8).
+  **Stop drops a page still waiting for its slot** (2026-11-03): each load
+  of a run asks the run's `stopped()` with the window in its `wanted()`,
+  which `_extGet()` asks after the 1 s slot, so only a page already SENT
+  finishes. Before, the loop had moved on to the next page, which waited
+  for its slot when Stop came and was sent after it (measured: ~0.5 s after
+  Stop) — the "item 3a, Stop" spec failed 2 runs in 3 on `main`. A skipped
+  page is forgotten, `ui.pages` goes back by one, and "Load all N" offers
+  it again.
   `ui.timesUpTo` bounds the rows whose set times are read: the first page's,
   "Load 20 more"'s, none more by "Load all" (those rows show "·"), all by
   the second button; "Read set times for the other N" reads the rest.
@@ -3270,10 +3282,25 @@ the header's `@connect` and `_EXT_CONNECT_HOSTS` (the parent domain covers
   origin: never `_dpFetchText()`), `_extRecord()` for its status, then the
   site's `parse(doc, finalUrl)`, unchanged, as `rec.dp`. A page the parser
   finds nothing in keeps the generic record. The HTML goes to `_dpRawMem`,
-  so the Live page reuses the hover's fetch. On discogs.com only, a site's
-  `ownLinks` pages count too (Brucebase's shows, venues, people; 2026-10-24,
-  docs/claude/discogs.md "Link previews on discogs.com"); on MusicBrainz a
-  `/gig:` link stays generic (popup-ext U4 "which reader serves which link").
+  so the Live page reuses the hover's fetch. A site's `ownLinks` pages count
+  too (Brucebase's shows, venues, people) while their own setting is on
+  (`sa_bb_event_preview`): first on discogs.com only (2026-10-24,
+  docs/claude/discogs.md "Link previews on discogs.com"), on every host,
+  MusicBrainz included, since 2026-11-03 (G1 of NON-MB-COVERAGE.org, vzell:
+  "everywhere"). Before that a `/gig:` link on MusicBrainz stayed generic, so
+  a Brucebase show window's own gig page, in its See also, opened a new tab
+  (popup-ext "which reader serves which link: the four sites' …").
+- **The website's own page of what the window shows keeps its new tab**
+  (`data-mb-dp-newtab`, honoured by `_extTarget()` in a window; G6, G7 of
+  NON-MB-COVERAGE.org, 2026-11-03): "All credits on Discogs ↗"
+  (`/artist/<id>?type=Credits`) and Wikipedia's "A table: show it on
+  Wikipedia ↗". A key built from either differs from the window's own (a
+  query; another spelling of a title), so a plain click reopened the same
+  record in place. A new link of that kind gets the attribute.
+- **A Brucebase show inside a window on Brucebase** (G3, 2026-11-03):
+  `_extTarget()` takes `/<yyyy>#<ddmmyy>` on brucebase.wikidot.com itself
+  when `inWindow` (`_extBbDateTest()`), the `bbdate` reader's, as on every
+  other host. On the page itself such a link stays the site's own.
 - **Charset: `_extFetch()`'s `charset`** becomes `overrideMimeType`
   (`text/html; charset=windows-1252` for jungleland.it, which names none);
   `_extFetchText(url, charset)` and `_EXT_LIVE.fetchText` pass it on from

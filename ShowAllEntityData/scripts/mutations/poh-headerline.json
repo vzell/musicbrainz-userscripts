@@ -316,8 +316,8 @@
         "why": "_dgMbSource()'s selector covered our table bodies and Discogs' #app only (vzell, 2026-10-28).",
         "edits": [
             {
-                "find": "            '#mb-dg-root h1.mb-dg-h1 a[href^=\"https://musicbrainz.org/\"]';",
-                "replace": "            '#mb-dg-root h1.mb-dg-h1 a[href^=\"https://musicbrainz.org/x-none/\"]';"
+                "find": ", #mb-dg-root h1.mb-dg-h1 a[href^=\"https://musicbrainz.org/\"]';",
+                "replace": ", #mb-dg-root h1.mb-dg-h1 a[href^=\"https://musicbrainz.org/x-none/\"]';"
             }
         ],
         "spec": "tests/fixtures/discogs-mb-column.spec.js",

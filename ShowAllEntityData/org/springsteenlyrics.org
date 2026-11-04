@@ -711,7 +711,7 @@ https://www.springsteenlyrics.com/brucelegs.php?cmd=list
 
 1.)
 
-add columns for the  "PDF available" and "artwork available"
+add columns for the "PDF available" and "artwork available"
 
 2.)
 

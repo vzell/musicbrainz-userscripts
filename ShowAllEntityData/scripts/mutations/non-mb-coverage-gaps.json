@@ -1,0 +1,231 @@
+[
+    {
+        "name": "G6/G7: data-mb-dp-newtab ignored in a window (Discogs credits)",
+        "why": "G6 of NON-MB-COVERAGE.org: without the marker's check, \"All credits on Discogs ↗\" reopens the same artist in the window.",
+        "edits": [
+            {
+                "find": "        if (inWindow && a.hasAttribute('data-mb-dp-newtab')) return null;",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "G6:",
+        "expect": "fail"
+    },
+    {
+        "name": "G6/G7: data-mb-dp-newtab ignored in a window (Wikipedia table)",
+        "why": "G7: without the marker's check, the table's link spelled unlike the window's reopens the same article in the window.",
+        "edits": [
+            {
+                "find": "        if (inWindow && a.hasAttribute('data-mb-dp-newtab')) return null;",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "G7:",
+        "expect": "fail"
+    },
+    {
+        "name": "G6: the credits link without the marker",
+        "why": "G6: the Discogs artist window's credits link must carry data-mb-dp-newtab.",
+        "edits": [
+            {
+                "find": "rel=\"noopener noreferrer\" data-mb-dp-newtab>All credits",
+                "replace": "rel=\"noopener noreferrer\">All credits"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "G6:",
+        "expect": "fail"
+    },
+    {
+        "name": "G7: the table link without the marker",
+        "why": "G7: the Wikipedia window's table link must carry data-mb-dp-newtab.",
+        "edits": [
+            {
+                "find": "rel=\"noopener noreferrer\" data-mb-dp-newtab>A table",
+                "replace": "rel=\"noopener noreferrer\">A table"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "G7:",
+        "expect": "fail"
+    },
+    {
+        "name": "G8: a Discogs window drills nothing before its record",
+        "why": "G8: before the record has arrived, a link in a Discogs window must open in the window.",
+        "edits": [
+            {
+                "find": "            _extDgDrill(e, e.target.closest('a[href]'));",
+                "replace": "            void 0;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "G8:",
+        "expect": "fail"
+    },
+    {
+        "name": "G3: a Brucebase show link on Brucebase is the page's own again",
+        "why": "G3: in a window on brucebase.wikidot.com, /<yyyy>#<ddmmyy> must be the bbdate reader's despite the same host.",
+        "edits": [
+            {
+                "find": "            !(_isBbHost && inWindow && _extBbDateTest(u))) return null;",
+                "replace": "            true) return null;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext-foreign.spec.js",
+        "grep": "G3:",
+        "expect": "fail"
+    },
+    {
+        "name": "G3: the exception reaches the page itself too",
+        "why": "G3 is for links IN a window: on the page itself such a link stays the site's own.",
+        "edits": [
+            {
+                "find": "            !(_isBbHost && inWindow && _extBbDateTest(u))) return null;",
+                "replace": "            !(_isBbHost && _extBbDateTest(u))) return null;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext-foreign.spec.js",
+        "grep": "G3:",
+        "expect": "fail"
+    },
+    {
+        "name": "G2: MusicBrainz windows on discogs.com and setlist.fm only",
+        "why": "G2: on the Springsteen sites and archive.org a musicbrainz.org link in a window opens MusicBrainz's window (vzell's consent, 2026-11-03).",
+        "edits": [
+            {
+                "find": "const _MB_FOREIGN_POP_HOST = !!(_isDgHost || _isSfmHost || _isSlHost || _isJlHost || _isBsHost || _isBbHost || _isIaHost);",
+                "replace": "const _MB_FOREIGN_POP_HOST = !!(_isDgHost || _isSfmHost);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext-foreign.spec.js",
+        "grep": "G2: a MusicBrainz link opens",
+        "expect": "fail"
+    },
+    {
+        "name": "G5: dg-mb names #app only",
+        "why": "G5: an importer icon in Discogs' older layout (#page_content) must have MusicBrainz's card before a render.",
+        "edits": [
+            {
+                "find": "'#page_content a[href^=\"https://musicbrainz.org/\"], #mb-dg-root h1.mb-dg-h1",
+                "replace": "'#mb-dg-root h1.mb-dg-h1"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-links.spec.js",
+        "grep": "G5:",
+        "expect": "fail"
+    },
+    {
+        "name": "G4: discogs.com without <main>",
+        "why": "G4: the search page's results are in <main>; without it in extRoot nothing previews before a render.",
+        "edits": [
+            {
+                "find": "extRoot: '#app, #page_content, main'",
+                "replace": "extRoot: '#app, #page_content'"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-search-page.spec.js",
+        "grep": "G4:",
+        "expect": "fail"
+    },
+    {
+        "name": "G4: setlist.fm's extRoot our own section only",
+        "why": "G4: setlist.fm's own list (.setlistPreview, .info) must preview before a render.",
+        "edits": [
+            {
+                "find": "extRoot: '#mb-sfm-root, .mainColumn .setlistPreview, .mainColumn .info'",
+                "replace": "extRoot: '#mb-sfm-root'"
+            }
+        ],
+        "spec": "tests/fixtures/sfm-list.spec.js",
+        "grep": "G4:",
+        "expect": "fail"
+    },
+    {
+        "name": "G4: setlist.fm's relative links not read against the page",
+        "why": "G4: setlist.fm writes its Tour links relative (\"../search?…\"); unread, they preview nothing.",
+        "edits": [
+            {
+                "find": "if ((_isSfmHost || _isIaHost) && href",
+                "replace": "if ((_isIaHost) && href"
+            }
+        ],
+        "spec": "tests/fixtures/sfm-list.spec.js",
+        "grep": "G4:",
+        "expect": "fail"
+    },
+    {
+        "name": "G4: archive.org's relative links not read against the page",
+        "why": "G4: archive.org writes its result links relative (\"/details/<id>\"); unread, they preview nothing.",
+        "edits": [
+            {
+                "find": "if ((_isSfmHost || _isIaHost) && href",
+                "replace": "if ((_isSfmHost) && href"
+            }
+        ],
+        "spec": "tests/fixtures/ia-search.spec.js",
+        "grep": "a result's title link",
+        "expect": "fail"
+    },
+    {
+        "name": "G4: archive.org's events read at the shadow host",
+        "why": "G4: without composedPath() the document's listener sees only <app-root>, never the result's link.",
+        "edits": [
+            {
+                "find": "        if (_isIaHost && typeof e.composedPath === 'function') {",
+                "replace": "        if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/ia-search.spec.js",
+        "grep": "a result's title link",
+        "expect": "fail"
+    },
+    {
+        "name": "G4: no mousemove tracking inside archive.org's shadow DOM",
+        "why": "G4: a mouseout inside <app-root> never reaches the document, so without mousemove the card never hides on leaving the link.",
+        "edits": [
+            {
+                "find": "        if (_isIaHost) {",
+                "replace": "        if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/ia-search.spec.js",
+        "grep": "a result's title link",
+        "expect": "fail"
+    },
+    {
+        "name": "G4: archive.org's navigation previewed",
+        "why": "G4: <ia-topnav> and the plain nav/header/footer are skipped; a collection link there must show no card.",
+        "edits": [
+            {
+                "find": "const _IA_SHADOW_SKIP = 'nav, header, footer, ia-topnav, ia-footer';",
+                "replace": "const _IA_SHADOW_SKIP = 'x-none';"
+            }
+        ],
+        "spec": "tests/fixtures/ia-search.spec.js",
+        "grep": "navigation's link",
+        "expect": "fail"
+    },
+    {
+        "name": "G4: archive.org's link scope not checked",
+        "why": "G4: archive.org's selector takes any a[href] (shadow DOM has no root selector); _iaShadowLinkInScope() is what keeps its navigation out.",
+        "edits": [
+            {
+                "find": "            resolve: (a) => (_isIaHost && !_iaShadowLinkInScope(a) ? null : _extTarget(a)),",
+                "replace": "            resolve: (a) => _extTarget(a),"
+            }
+        ],
+        "spec": "tests/fixtures/ia-search.spec.js",
+        "grep": "navigation's link",
+        "expect": "fail"
+    },
+    {
+        "name": "G4: a text-less shadow link (a picture, a tile) gets no card",
+        "why": "vzell, 2026-11-04 (\"Always ours too\"): our card shows on every result link next to archive.org's own, a picture's and a tile's included; a rule of the same morning that skipped text-less links (List view: every link) was taken back.",
+        "edits": [{ "find": "        // (\"Always ours too\"), as ours adds the tracks and Space's window.", "replace": "        // (\"Always ours too\"), as ours adds the tracks and Space's window.\n        if (!(a.textContent || '').trim()) return false;" }],
+        "spec": "tests/fixtures/ia-search.spec.js",
+        "grep": "a result's title link",
+        "expect": "fail"
+    }
+]

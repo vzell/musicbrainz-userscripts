@@ -110,14 +110,43 @@ Make some suggestions here how to present to the user in one or more columns, us
 The whole feature should be configurable (default off, as the main userscript is normally used just with MusicBrainz)
 
 
+* TODO add additional PTs to BB
+
+add additional PTs to BB:
+
+we already have
+
+#+begin_example
+https://brucebase.wikidot.com/stats:songs - tabbed page
+#+end_example
+
+#+begin_example
+https://brucebase.wikidot.com/stats:songs-list - list page
+https://brucebase.wikidot.com/stats:handwritten-lyric-sheets - tabbed page
+https://brucebase.wikidot.com/stats:songs-official-video - tabbed page
+https://brucebase.wikidot.com/stats:orphaned-songs - tabbed page
+https://brucebase.wikidot.com/stats:lyrics - scans of the known Bruce Springsteen lyrics - tabbed page
+https://brucebase.wikidot.com/stats:songs-by-album - songs by album -  tabbed page
+https://brucebase.wikidot.com/stats:songs-count - songs count - multi-column statistics numbers
+
+https://brucebase.wikidot.com/stats:bootlegs -
+https://brucebase.wikidot.com/stats:bootlegs-label -
+https://brucebase.wikidot.com/stats:discography - tabs - but alos the actual images
+
+https://brucebase.wikidot.com/stats:songs-registered - text page - @debug/BB-songs-registered.html
+#+end_example
+
+
 * TODO create userscript which directly scrolls to the first difference on http://brucebase.wikidot.com/song:streets-of-minneapolis pages when clicking history
 
 create userscript which directly scrolls to the first difference on
 http://brucebase.wikidot.com/song:streets-of-minneapolis pages when clicking history
 
+
 * TODO render the sidebar handle at the top (like in the MB case)
 
 render the sidebar handle at the top (like in the MB case) and not in the middle of the page
+
 
 * TODO support hovering for all BB PTs
 
@@ -134,13 +163,16 @@ on BB PTs where images are involved, parse the image filename for further detail
 
 maybe create image sections with the found info
 
+
 * TODO recheck rendering all the right info on BB pages
 
 recheck rendering all the right info on BB pages
 
+
 * TODO make the standard BB page, rendered below our table h2/h3 click collapsable (also with Ctrl-Click for ALL sections)
 
-make the standard BB page, renderd below our table h2/h3 click collapsable (also with Ctrl-Click for ALL sections)
+make the standard BB page, rendered below our table h2/h3 click collapsable (also with Ctrl-Click for ALL sections)
+
 
 * TODO BB Steve van Zandt detail page needs overwhole
 
@@ -152,3 +184,6 @@ BB Steve van Zandt detail page needs overwhole
 Use the Discogs history diff format in other pageTypes, for example the BB “changes” button (you have to be logged in).
 
 
+* TODO BB detail page POHs should also get a history diff view of the current entity
+
+BB detail page POHs should also get a history diff view of the current entity

@@ -455,7 +455,7 @@ test.describe('foreign gallery: discogs.com', () => {
 
     test('a multi-table release page: the sub-table with images (Other versions) has its 🖼 after its count, after a filter too; the others none', async ({ page }) => {
         const errors = await openDg(page, 'https://www.discogs.com/release/1874253-Bruce-Springsteen-Born-To-Run', 'dg-release.html', { sa_pop_ext_discogs_token: 'tok-probe' });
-        await page.locator('#mb-dg-root button[data-label="Show tracklist, credits and other versions"]').click();
+        await page.locator('#mb-dg-root button[data-label="Show credits, companies and other versions"]').click();
         await waitForRenderComplete(page, { waitForAutoResize: false });
         const check = () => page.evaluate(() => Array.from(document.querySelectorAll('#mb-dg-root table.tbl')).map(t => {
             const withImages = !!t.querySelector('tbody > tr a.mb-dg-thumblink');

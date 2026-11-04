@@ -1,0 +1,365 @@
+[
+    {
+        "name": "dg-release: Tracks asks for the other versions",
+        "why": "The Tracks view is the release alone: one request.",
+        "edits": [
+            {
+                "find": "            if (def.features.dgView === 'tracks') return 1;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "one request; one record",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-release: Tracks shows today's view",
+        "why": "The first button writes the per-medium tables, the second today's sub-tables.",
+        "edits": [
+            {
+                "find": "            const tracksView = activeDefinition?.features?.dgView === 'tracks';",
+                "replace": "            const tracksView = false;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "one request; one record",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-release: sides are one sub-table each",
+        "why": "A record's two sides are one medium, as MusicBrainz has them.",
+        "edits": [
+            {
+                "find": "                    (!cur.sides.includes(side) && cur.sides.length >= 2) ||",
+                "replace": "                    (!cur.sides.includes(side) && cur.sides.length >= 1) ||"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "one request; one record",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-release: a side seen again is no new record",
+        "why": "A 10 × 7\" box repeats A/AA under each \"Record N\" heading: a new record each time.",
+        "edits": [
+            {
+                "find": "                    (cur.sides.includes(side) && cur.sides[cur.sides.length - 1] !== side);",
+                "replace": "                    false;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "ten 7-inch singles",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-release: 16.1 after 15 starts disc 16",
+        "why": "A dotted part of a plain-numbered track stays on its disc.",
+        "edits": [
+            {
+                "find": "                Number(dm[1]) >= cur.last && Number(dm[1]) <= cur.last + 1;",
+                "replace": "                false;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "dotted parts",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-release: a split LP's first heading names the record",
+        "why": "A named medium with sections turns its name into the first section.",
+        "edits": [
+            {
+                "find": "            if (!md.title || !md.tracks.some(t => t.section) || md.tracks.every(t => t.section)) return;",
+                "replace": "            return;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "dotted parts",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-release: headings inside a disc not as Section",
+        "why": "A heading inside a medium is the Section of the tracks after it.",
+        "edits": [
+            {
+                "find": "        const hasSection = m.tracks.some(t => t.section);",
+                "replace": "        const hasSection = false;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "five CDs",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-release: release credits not spread onto tracks",
+        "why": "A release credit's tracks spec places it on those tracks' role columns.",
+        "edits": [
+            {
+                "find": "            if (set) set.forEach(i => m.tracks[i].range.push(c));\n            else releaseCredits.push(c);",
+                "replace": "            releaseCredits.push(c);"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "one request; one record",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-release: a range end that is a side or heading",
+        "why": "\"Record 10\" (a heading) and a side name all its tracks.",
+        "edits": [
+            {
+                "find": "                        norm(md.title) === k || (t.section && norm(t.section) === k)) hits.push(i);",
+                "replace": "                        false) hits.push(i);"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "ten 7-inch singles",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-release: vocals as instruments",
+        "why": "A vocal role goes to the Vocals column.",
+        "edits": [
+            {
+                "find": "        if (/vocal|voice|choir|chorus|\\brap\\b|scat|whistl|beatbox|yodel/i.test(base)) return 'Vocals';",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "one request; one record",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-release: writing and conducting as instruments",
+        "why": "Roles that are no instrument go to Other credits.",
+        "edits": [
+            {
+                "find": "        return _DG_OTHER_ROLE_RE.test(base) ? 'Other credits' : 'Instruments';",
+                "replace": "        return 'Instruments';"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "one request; one record",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-release: the assistant's qualifier spelled in full",
+        "why": "\"Engineer [Assistant]\" in the Engineer column reads \"(Assistant)\".",
+        "edits": [
+            {
+                "find": "                            return m && named.test(m[1]) ? m[2]",
+                "replace": "                            return false ? m[2]"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "one request; one record",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-release: MusicBrainz column on a track table",
+        "why": "Track rows are tracks, not Discogs entities: no MusicBrainz column.",
+        "edits": [
+            {
+                "find": "        if (heading === 'Tracklist' || table.hasAttribute('data-mb-dg-tracks')) return;",
+                "replace": "        if (heading === 'Tracklist') return;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "Tracks view: no column",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-release: no head",
+        "why": "The Tracks view's head: subheader, Notes, Details, Images.",
+        "edits": [
+            {
+                "find": "        if (t === 'dg-release') return _dgReleaseHeadSpec();",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "the head as release-tracks",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-release: the head on the second view",
+        "why": "Only the Tracks view has the head (its answer kept in _dgRelRec).",
+        "edits": [
+            {
+                "find": "        if (!d || !root || activeDefinition?.features?.dgView !== 'tracks') return null;",
+                "replace": "        if (!d || !root) return null;"
+            },
+            {
+                "find": "            _dgRelRec = tracksView ? d : null;",
+                "replace": "            _dgRelRec = d;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "the second button",
+        "expect": "fail"
+    },
+    {
+        "name": "dg head: identifiers as before (description in the label, no cap)",
+        "why": "The bug vzell saw: a long description in the label column left the values no width.",
+        "edits": [
+            {
+                "find": "            .mb-fd-details dl.mb-sb-card-body > dt { max-width: 11em; overflow-wrap: anywhere; }\n",
+                "replace": ""
+            },
+            {
+                "find": "            return [String(i.type || '').trim(), frag([String(i.value).trim(), dim])];",
+                "replace": "            return [`${String(i.type || '').trim()}${desc ? ` (${desc})` : ''}`, String(i.value).trim()];"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "the head's values",
+        "expect": "fail"
+    },
+    {
+        "name": "dg head: identifiers' description in the label (cap kept)",
+        "why": "The description goes with the value; the label is the type alone.",
+        "edits": [
+            {
+                "find": "            return [String(i.type || '').trim(), frag([String(i.value).trim(), dim])];",
+                "replace": "            return [`${String(i.type || '').trim()}${desc ? ` (${desc})` : ''}`, String(i.value).trim()];"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "the head's values",
+        "expect": "fail"
+    },
+    {
+        "name": "dg head: no cap on the label column (description in the value)",
+        "why": "The cap is a second guard: with the descriptions in the values no label is long enough to need it here.",
+        "edits": [
+            {
+                "find": "            .mb-fd-details dl.mb-sb-card-body > dt { max-width: 11em; overflow-wrap: anywhere; }\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "the head's values",
+        "expect": "pass"
+    },
+    {
+        "name": "dg head: country not linked",
+        "why": "Values are linked as on Discogs' page.",
+        "edits": [
+            {
+                "find": "                    ['Country', d.country ? _fdLink(search(`country=${encodeURIComponent(d.country)}`), String(d.country)) : ''],",
+                "replace": "                    ['Country', String(d.country || '')],"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "the head's values",
+        "expect": "fail"
+    },
+    {
+        "name": "dg head: genres as plain pills",
+        "why": "A genre or style links its Discogs page.",
+        "edits": [
+            {
+                "find": "            if (Array.isArray(t)) pill.appendChild(_fdLink(t[1], t[0]));\n            else pill.textContent = t;",
+                "replace": "            pill.textContent = Array.isArray(t) ? t[0] : t;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "the head's values",
+        "expect": "fail"
+    },
+    {
+        "name": "dg head: notes' markup as raw text",
+        "why": "Discogs' [url=…] markup becomes links (_extDiscogsMarkupHtml()).",
+        "edits": [
+            {
+                "find": "            if (spec.text.html) box.innerHTML = spec.text.html;\n            else box.textContent = spec.text.body;",
+                "replace": "            box.textContent = spec.text.body;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "the head's values",
+        "expect": "fail"
+    },
+    {
+        "name": "dg head: no previews on the head's links",
+        "why": "The head's links preview as any link of our section.",
+        "edits": [
+            {
+                "find": "                    return `table.tbl > tbody a[href], .mb-fd-head a[href], .mb-fd-sub a[href]${roots}",
+                "replace": "                    return `table.tbl > tbody a[href]${roots}"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "the head's values",
+        "expect": "fail"
+    },
+    {
+        "name": "dg head: a plain click on a head link leaves for a new tab",
+        "why": "On discogs.com a plain click on our links opens the window.",
+        "edits": [
+            {
+                "find": "el.closest('#mb-dg-root table.tbl, #mb-dg-root .mb-fd-head, #mb-dg-root .mb-fd-sub')",
+                "replace": "el.closest('#mb-dg-root table.tbl')"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "the head's values",
+        "expect": "fail"
+    },
+    {
+        "name": "dg head: identifiers on the left",
+        "why": "vzell 2026-11-04: the long identifiers on the right, Community last on the left.",
+        "edits": [
+            {
+                "find": "            others: [\n                ['identifiers', 'Identifiers', ids],\n            ],",
+                "replace": "            others: [],"
+            },
+            {
+                "find": "                    ['Data quality', String(d.data_quality || cm.data_quality || '')]]],\n            ],",
+                "replace": "                    ['Data quality', String(d.data_quality || cm.data_quality || '')]]],\n                ['identifiers', 'Identifiers', ids],\n            ],"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "the head as release-tracks",
+        "expect": "fail"
+    },
+    {
+        "name": "dg head: no sales figures from the page",
+        "why": "Last sold, Low, Median and High come from Discogs' Statistics box on the page (the API has none).",
+        "edits": [
+            {
+                "find": "        document.querySelectorAll('#app #release-stats li').forEach((li) => {",
+                "replace": "        [].forEach((li) => {"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "the head as release-tracks",
+        "expect": "fail"
+    },
+    {
+        "name": "dg head: have/want/ratings unlinked",
+        "why": "Linked to the release's statistics, as Discogs' box links them.",
+        "edits": [
+            {
+                "find": "        const num = n => (typeof n === 'number' ? _fdLink(stats, String(n)) : '');",
+                "replace": "        const num = n => (typeof n === 'number' ? String(n) : '');"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "the head as release-tracks",
+        "expect": "fail"
+    },
+    {
+        "name": "dg head: no Contributors card",
+        "why": "Discogs' Contributors section, each user linked.",
+        "edits": [
+            {
+                "find": "                contributors.length && ['contributors', 'Contributors', contributors.length,",
+                "replace": "                false && ['contributors', 'Contributors', contributors.length,"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "the head as release-tracks",
+        "expect": "fail"
+    }
+]

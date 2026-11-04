@@ -264,6 +264,106 @@ test.describe('archive.org: a search page (ia-search)', () => {
     });
 });
 
+// G4 of NON-MB-COVERAGE.org (2026-11-03): archive.org's own result list is
+// written into shadow DOM by its web components after load, which a saved
+// page loses, so the spec builds it: open shadow roots under <app-root>, a
+// result's title link (relative, as the site writes it) inside one and a
+// navigation link inside <ia-topnav>. Before any button, a hover on the
+// result's link shows the item's card (the element under the pointer read
+// through `_dpEventTarget()`: the document's listener sees only <app-root>),
+// the navigation's shows nothing, and leaving the link hides the card.
+test.describe('archive.org: the site\'s own result list, in shadow DOM (G4)', () => {
+    /**
+     * Builds the shadow DOM a real search page has: <app-root> → <ia-topnav>
+     * (a navigation link) and <search-page> (a result's title link).
+     *
+     * @param {import('@playwright/test').Page} page
+     * @returns {Promise<void>}
+     */
+    async function buildShadowList(page) {
+        await page.evaluate((id) => {
+            const host = document.querySelector('app-root') || document.body.appendChild(document.createElement('app-root'));
+            const root = host.shadowRoot || host.attachShadow({ mode: 'open' });
+            root.innerHTML = '<ia-topnav></ia-topnav><search-page style="display:block;padding:40px"></search-page>';
+            // No <nav> around it: `_extTarget()`'s own skip list already
+            // drops a link in a <nav>, so this pins `_IA_SHADOW_SKIP`'s
+            // <ia-topnav> itself.
+            root.querySelector('ia-topnav').attachShadow({ mode: 'open' }).innerHTML =
+                '<div class="topnav"><a id="ia-nav" href="/details/etree" style="display:inline-block;padding:8px">Live Music Archive</a></div>';
+            const sp = root.querySelector('search-page').attachShadow({ mode: 'open' });
+            // As in archive.org's list views (probe of 2026-11-04): a
+            // result's picture link, its content in a further shadow root
+            // (no text of its own), then its title link.
+            sp.innerHTML = `<div class="tile"><a id="ia-pic" href="/details/${id}" style="display:inline-block;width:40px;height:40px"><item-image></item-image></a>` +
+                `<a id="ia-tile" href="/details/${id}" style="display:inline-block;padding:8px">Tower Theater 1975-12-27</a></div>`;
+            sp.querySelector('item-image').attachShadow({ mode: 'open' }).innerHTML = '<img alt="" style="width:40px;height:40px">';
+        }, SHOW);
+    }
+
+    const deep = (page, id) => page.locator('app-root').locator(`#${id}`);
+
+    test('a result\'s title link: the item\'s card from its metadata, Space opens the window; the navigation has none; leaving hides the card', async ({ page }) => {
+        const m = FX(`ia-metadata-${SHOW}`);
+        await open(page, S1975, Object.fromEntries([answer(FX('ia-search-1975-p1')), answer(m)]), { sa_pop_ext: true });
+        await buildShadowList(page);
+        const r = await page.evaluate(() => {
+            const sr = document.querySelector('app-root').shadowRoot;
+            const tile = sr.querySelector('search-page').shadowRoot.querySelector('#ia-tile');
+            const nav = sr.querySelector('ia-topnav').shadowRoot.querySelector('#ia-nav');
+            const pic = sr.querySelector('search-page').shadowRoot.querySelector('#ia-pic');
+            return { tile: window.__saTest.popResolve(tile), nav: window.__saTest.popResolve(nav), pic: window.__saTest.popResolve(pic) };
+        });
+        expect(r.tile).toBe(`ext|ext:iadetails:https://archive.org/details/${SHOW}`);
+        expect(r.nav, 'archive.org\'s navigation').toBeNull();
+        // A result's picture link, its content in a further shadow root (no
+        // text of its own): the item's card too, next to archive.org's own
+        // (vzell, 2026-11-04: "Always ours too").
+        expect(r.pic, 'a link without text of its own (a picture, a tile)').toBe(`ext|ext:iadetails:https://archive.org/details/${SHOW}`);
+
+        const card = page.locator('#mb-dp-peek');
+        await page.mouse.move(0, 0);
+        await page.keyboard.down('Control');
+        await deep(page, 'ia-tile').hover();
+        await page.keyboard.up('Control');
+        await expect(card.locator('.mb-tt-title')).toHaveText('Bruce Springsteen - 1975-12-27, Tower Theater, Philadelphia');
+        // Leaving the link to empty space of the same shadow root (left of
+        // it: the card opens to its right, and the pointer on the card keeps
+        // the card) hides it.
+        const box = await deep(page, 'ia-tile').boundingBox();
+        await page.mouse.move(box.x - 25, box.y + box.height / 2);
+        await expect(card).toBeHidden();
+        // Back on it, Space pins the window.
+        await page.keyboard.down('Control');
+        await deep(page, 'ia-tile').hover();
+        await page.keyboard.up('Control');
+        await expect(card.locator('.mb-tt-title')).toBeVisible();
+        await page.keyboard.press('Space');
+        await expect(page.locator('#mb-dp-dialog [data-mb-tbl="ia-setlist"] tbody tr')).toHaveCount(19);
+        expect((await apiLog(page)).filter(u => u.includes('/metadata/')), 'one request').toEqual([m.url]);
+    });
+
+    test('a hover on the navigation\'s link shows no card and asks nothing; the result\'s link, hovered the same way, does', async ({ page }) => {
+        const m = FX(`ia-metadata-${SHOW}`);
+        await open(page, S1975, Object.fromEntries([answer(FX('ia-search-1975-p1')), answer(m)]), { sa_pop_ext: true });
+        await buildShadowList(page);
+        const card = page.locator('#mb-dp-peek');
+        await page.mouse.move(0, 0);
+        await page.keyboard.down('Control');
+        await deep(page, 'ia-nav').hover();
+        await page.keyboard.up('Control');
+        // The control: the same hover on the result's link shows its card,
+        // so the hover works here. The card's delay is 0 (open()), so once
+        // this card is up the navigation's hover has long been handled, and
+        // the only metadata asked is the result's — the navigation's
+        // collection (etree) got no card and no request.
+        await page.keyboard.down('Control');
+        await deep(page, 'ia-tile').hover();
+        await page.keyboard.up('Control');
+        await expect(card.locator('.mb-tt-title')).toHaveText('Bruce Springsteen - 1975-12-27, Tower Theater, Philadelphia');
+        expect((await apiLog(page)).filter(u => u.includes('/metadata/')), 'nothing asked for the navigation').toEqual([m.url]);
+    });
+});
+
 test.describe('archive.org: the Art column\'s hover card and viewer (_IA_FI)', () => {
     const VIDEO = '1975-bruce-springsteen-widener-college-audience-cam';
     const DL = (id, name) => `https://archive.org/download/${encodeURIComponent(id)}/${encodeURIComponent(name)}`;
