@@ -4131,7 +4131,7 @@ videos in the window*, all on by default.
 </details>
 
 <details>
-<summary>setlist.fm: a venue's or an artist's setlists, a search, a setlist</summary>
+<summary>setlist.fm: a venue's or an artist's setlists, a search, a setlist, a festival</summary>
 
 On setlist.fm's list of a venue's setlists (setlist.fm/venue/…), an
 artist's (setlist.fm/setlists/…), or a search for an artist's setlists
@@ -4190,6 +4190,25 @@ setlist.fm for anything (the page already holds the whole list):
   the one on the most songs first, with how often ("Tom Morello ×2").
 
 A setlist without songs yet has no button.
+
+**A festival** gets a button on two pages:
+
+- an edition (setlist.fm/festival/2025/…): **Setlists**, every setlist of
+  the festival from the page itself, no request: one table per day
+  ("Friday · 2025-06-27"), by scheduled time — **Time**, **Artist** (its
+  setlist), **Stage**, **Attendees**. Above them: "~ Festival edition
+  (dates: venue)", and Details: **Festival** (dates, the festival, venue,
+  setlists, stages, attendances), **Stages** (each with its number of
+  setlists) and **Most attended** (the ten with the most attendees);
+- a festival (setlist.fm/festivals/…): **Editions**, every edition from
+  setlist.fm's pages, 20 a page — **Year**, **Edition**, **Stages**,
+  **Venues**, **Start**, **End** — with its facts (how often it took place,
+  how many artists, attendances) and its **Artist charts** above.
+
+A link to a festival or an edition — in these tables, on these pages before
+you press a button, at the top of an edition's page — has a card and a
+window without the API key: an edition's window lists its setlists by day,
+with a chip per stage; a festival's lists its editions.
 
 Switch, in ⚙️ Settings → 🎤 setlist.fm: *Enable on setlist.fm*, on by default.
 

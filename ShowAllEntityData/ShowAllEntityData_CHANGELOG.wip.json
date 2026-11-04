@@ -1,5 +1,30 @@
 [
     {
+        "version": "WIP.8",
+        "date": "2026-11-04",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "setlist.fm: a link to a festival or one of its editions has a card and a window, without the setlist.fm API key, wherever such links appear (setlist.fm's own festival pages before you press a button, the tables, the top of an edition's page, MusicBrainz). An edition's window lists all its setlists by day, with a chip per stage, its stages and its most attended setlists; a festival's window lists its editions and its Artist charts."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.7",
+        "date": "2026-11-04",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "setlist.fm: a festival edition's page (setlist.fm/festival/2025/…) gets a button, Setlists: every setlist of the festival from the page itself, one table per day, with Time, Artist (its setlist), Stage and Attendees. Above the tables: the dates and venue, and Details with the festival's facts (setlists, stages, attendances), its stages with their number of setlists, and the ten most attended setlists.",
+                    "setlist.fm: a festival's page (setlist.fm/festivals/…) gets a button, Editions: every edition as one table (Year, Edition, Stages, Venues, Start, End), with the festival's facts and its Artist charts above."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.6",
         "date": "2026-11-04",
         "sections": [

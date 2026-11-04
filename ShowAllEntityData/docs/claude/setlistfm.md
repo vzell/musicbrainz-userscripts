@@ -10,6 +10,7 @@ Two parts that share the host and a parser:
 |---|---|---|
 | pageTypes `sfm-venue`, `sfm-artist`, `sfm-search` | setlist.fm's list of a venue's or an artist's setlists, or its search for an artist's setlists (`/search?artist=…`, 2026-11-03) → one table of every setlist | `_sfm*()`, `applySfmToTable()`, `_sfmPrepareLivePage()` |
 | pageType `sfm-setlist` | a setlist's own page (`/setlist/<artist>/<year>/<venue>-<id>.html`, 2026-11-04) → a sub-table per set, the show's facts above, no request | `_sfmSetlist*()`; "A setlist's page" below |
+| pageTypes `sfm-festival`, `sfm-festivals` | a festival edition (`/festival/<year>/<slug>-<id>.html`) → a sub-table per day, no request; a festival's editions (`/festivals/<slug>-<id>.html`), page by page; a head on both (2026-11-04) | `_sfmFestival*()`; "Festival pages" below |
 | reader `setlistfm` | any setlist.fm setlist, artist, venue (or our tour) link → card on hover, window on Space, through the API with the user's key; setlist.fm's own search for an artist (`search?artist=…`, every Tour cell's link) read from its page, key or not (2026-11-03) | `_extSfm*()` in `_EXT_READERS`; docs/claude/detail-pages.md "setlist.fm through its API" and "Venue additions" |
 
 The reader's windows also read setlist.fm's pages (set times, a venue's
@@ -139,6 +140,9 @@ on every host, and only with `sa_pop_ext_setlistfm_key` set.
   those too, on ONE line: `build-coverage-report.py` reads it from the
   source line. The search fixtures now keep that layout
   (`build-setlistfm-fixtures.py`: a `searchFilter` page in `.rightColumn`).
+  The festival pages add `.viewBaseFestival` (a festival's editions table),
+  `.FestivalSetlists-root` (an edition's widget, drawn in the browser) and
+  `.breadCrumbBar` (it names the festival).
 
 ### The window would not scroll sideways (2026-11-03)
 
@@ -219,6 +223,66 @@ as setlist.fm links only, no MusicBrainz lookup by name. Snapshots
 - **Tests**: `tests/fixtures/sfm-setlist.spec.js` (6); mutations
   `scripts/mutations/sfm-setlist.json` (8, one recorded as a guard another
   covers).
+
+## Festival pages (sfm-festival, sfm-festivals, 2026-11-04)
+
+org/foreign-detail-PTs.org "add support for SFM festivals"; mockup
+https://claude.ai/artifact/1UiGQbvvqiRuyiBmDA5tE2 (`org/sfm-festival-mockups.html`);
+vzell's answers: an edition as a sub-table per day with Stage as a column; a
+head on both pages; festival links previewed now; Stages and Most attended.
+Snapshots: `debug/sfm-festival.html` (Glastonbury 2025), `debug/sfm-festivals.html`
+(Glastonbury Festival).
+
+- **An edition's page is drawn in the browser**: a React widget
+  (`FestivalSetlists-root`, "Group by: Day / Venue / Artists") mounted by an
+  inline script, `React.createElement(WidgetFestival.FestivalSetlistsWidget,
+  Object.assign({}, {"config": …, "setlists": […], "festival": {…}}))`.
+  `_sfmFestivalJson()` cuts that object out by its braces (strings respected)
+  and parses it. Each setlist: `current.eventDate`, `current.artist.name`,
+  `current.setTimes.scheduledStart` (553 of 661), `current.venue` (its
+  `name` is a stage when `mainVenue` is set; 516 of 661 name only the main
+  venue), `attendancesCount`, `deeplinks.web`. **Match the whole call**, and
+  skip a script whose object does not parse: in the test harness this
+  userscript is a page script too, and its source names the widget — the
+  first version returned null on it and the page got no button.
+- **`sfm-festival`**: `fetchText` hands over the live page (no request), as
+  `sfm-setlist`; `_sfmFestivalToHtml()`: a sub-table per day ("Friday ·
+  2025-06-27"), its setlists by scheduled time (none last), then name,
+  case ignored; Time · Artist (that setlist) · Stage · Attendees. `showIf`:
+  the JSON is there. Head `_sfmFestivalHeadSpec()`: "~ Festival edition (from
+  – to: venue)"; Festival (dates, the festival from the breadcrumb, venue,
+  and the info box's own counts: setlists, stages, attendances); Stages (each
+  with its count, then "no stage given ×N"); Most attended (the ten).
+- **`sfm-festivals`**: its native table (`.viewBaseFestival table`), 20
+  editions a page, the pager inside that block (`_sfmPageCount()`), every
+  page fetched as `sfm-venue`'s; `_sfmFestivalsToHtml()`: Year · Edition ·
+  Stages (the line under the name) · Venues · Start · End (ISO, the year from
+  the row; an end month before the start's is the next year). Head
+  `_sfmFestivalsHeadSpec()`: Festival (full name, took place, artists,
+  attendances, read from `.infoStats` by its sentence) and Artist charts
+  (`.rightColumn table.statsTable`; its links are Wicket actions, so pills
+  without links).
+- **The reader** (vzell's answer 3): `_extSfmPage()` knows `festival` and
+  `festivals`; with `search` they are `_EXT_SFM_SITE_KINDS`, read from
+  setlist.fm's own page without a key (`_extSfmFestivalLoad()` through
+  `_extSfmSearchGet()`; same-origin on setlist.fm, anonymous `_extGet()`
+  elsewhere — whether setlist.fm answers that off-site, as it does for venue
+  pages, is unconfirmed). Card: the dates, setlists and stages, or how often
+  it took place and the artists. Window `_extSfmFestivalWindow()`: an
+  edition's setlists in a List table grouped by day with a Stage chip, its
+  stages and most attended on the left; a festival's editions (the first
+  page) and its Artist charts. `_EXT_SFM_VERSION` 4.
+  `_mbPopKvHtml()` ESCAPES the name (`dt`): a linked name (Most attended)
+  needs its own `dl`; plain names go in as text, never pre-escaped.
+- **Fixtures** (`build-setlistfm-fixtures.py` `FESTIVAL_TARGETS`,
+  `FESTIVALS_TARGETS`): the edition's widget JSON cut to 39 of 661 setlists
+  (per day the first six by time, plus the ten most attended) in a
+  `type="text/plain"` script (the real one mounts React), plus a small
+  rendering of its rows with the snapshot's class names for the previews'
+  test; the festival page's info box, editions table with its pager, Artist
+  charts and breadcrumb.
+- **Tests**: `tests/fixtures/sfm-festival.spec.js` (5), `sl-include-regex.spec.js`
+  (+1); mutations `scripts/mutations/sfm-festival.json` (12, all caught).
 
 ## Tests
 

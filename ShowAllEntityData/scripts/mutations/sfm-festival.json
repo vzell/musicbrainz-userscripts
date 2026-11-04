@@ -1,0 +1,175 @@
+[
+    {
+        "name": "sfm-festival: the props found by the widget's name alone, the first failure the end",
+        "why": "Only the page's own call is the widget's props; a script that names the widget (this userscript in the harness) is skipped.",
+        "edits": [
+            {
+                "find": "        const CALL_RE = /React\\.createElement\\(\\s*WidgetFestival\\.FestivalSetlistsWidget\\s*,\\s*Object\\.assign\\(\\s*\\{\\s*\\}\\s*,\\s*(?=\\{\"config\")/;",
+                "replace": "        const CALL_RE = /WidgetFestival\\.FestivalSetlistsWidget[\\s\\S]*?(?=\\{\"config\")/;"
+            },
+            {
+                "find": "                        Lib.debug('init', `setlist.fm festival: the widget's props did not parse (${e && e.message}).`);\n                    }\n                    break;",
+                "replace": "                        Lib.debug('init', `setlist.fm festival: the widget's props did not parse (${e && e.message}).`);\n                    }\n                    return null;"
+            }
+        ],
+        "spec": "tests/fixtures/sfm-festival.spec.js",
+        "grep": "an edition: no request",
+        "expect": "fail"
+    },
+    {
+        "name": "sfm-festival: the page asked again",
+        "why": "No request: the live page's own HTML (fetchText).",
+        "edits": [
+            {
+                "find": "                    return { url, fetchText: async () => document.documentElement.outerHTML, toHtml: (text) => _sfmFestivalToHtml(text, url) };",
+                "replace": "                    return { url, toHtml: (text) => _sfmFestivalToHtml(text, url) };"
+            }
+        ],
+        "spec": "tests/fixtures/sfm-festival.spec.js",
+        "grep": "an edition: no request",
+        "expect": "fail"
+    },
+    {
+        "name": "sfm-festival: a day's setlists in the page's order",
+        "why": "By scheduled time (none last), then name.",
+        "edits": [
+            {
+                "find": "            const rows = days.get(d).slice().sort((p, q) => (p.time || '99') .localeCompare(q.time || '99') || p.artist.localeCompare(q.artist))",
+                "replace": "            const rows = days.get(d).slice()"
+            }
+        ],
+        "spec": "tests/fixtures/sfm-festival.spec.js",
+        "grep": "an edition: no request",
+        "expect": "fail"
+    },
+    {
+        "name": "sfm-festival: the main venue taken for a stage",
+        "why": "A setlist naming only the main venue has no stage.",
+        "edits": [
+            {
+                "find": "artist: flat((c.artist || {}).name), stage: v.mainVenue ? flat(v.name) : '',",
+                "replace": "artist: flat((c.artist || {}).name), stage: flat(v.name),"
+            }
+        ],
+        "spec": "tests/fixtures/sfm-festival.spec.js",
+        "grep": "an edition: no request",
+        "expect": "fail"
+    },
+    {
+        "name": "sfm-festival: no head",
+        "why": "_fdHeadSpec() hands an edition its head.",
+        "edits": [
+            {
+                "find": "        if (t === 'sfm-festival') return _sfmFestivalHeadSpec();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sfm-festival.spec.js",
+        "grep": "an edition's head",
+        "expect": "fail"
+    },
+    {
+        "name": "sfm-festival: Most attended in the page's order",
+        "why": "The ten with the most attendees, the most first.",
+        "edits": [
+            {
+                "find": "        const top = f.setlists.slice().sort((p, q) => q.attendees - p.attendees).filter(r => r.attendees).slice(0, 10);\n        const dl = document.createElement('dl');",
+                "replace": "        const top = f.setlists.slice().filter(r => r.attendees).slice(0, 10);\n        const dl = document.createElement('dl');"
+            }
+        ],
+        "spec": "tests/fixtures/sfm-festival.spec.js",
+        "grep": "an edition's head",
+        "expect": "fail"
+    },
+    {
+        "name": "sfm-festival: setlists without a stage left out of Stages",
+        "why": "Those that name no stage are counted too.",
+        "edits": [
+            {
+                "find": "        if (none) stageList.push(`no stage given ×${none}`);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sfm-festival.spec.js",
+        "grep": "an edition's head",
+        "expect": "fail"
+    },
+    {
+        "name": "sfm-festivals: no head",
+        "why": "_fdHeadSpec() hands a festival its head.",
+        "edits": [
+            {
+                "find": "        if (t === 'sfm-festivals') return _sfmFestivalsHeadSpec();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sfm-festival.spec.js",
+        "grep": "a festival: its editions",
+        "expect": "fail"
+    },
+    {
+        "name": "sfm-festivals: dates as the site writes them",
+        "why": "Start and End as ISO dates with the year.",
+        "edits": [
+            {
+                "find": "            if (after && d < after.slice(5)) y++;\n            return `${y}-${d}`;",
+                "replace": "            if (after && d < after.slice(5)) y++;\n            return flat(s);"
+            }
+        ],
+        "spec": "tests/fixtures/sfm-festival.spec.js",
+        "grep": "a festival: its editions",
+        "expect": "fail"
+    },
+    {
+        "name": "sfm festivals previews: the lists out of scope",
+        "why": "The editions table, the widget and the breadcrumb are in extRoot.",
+        "edits": [
+            {
+                "find": ", .viewBaseFestival, .FestivalSetlists-root, .breadCrumbBar'",
+                "replace": "'"
+            }
+        ],
+        "spec": "tests/fixtures/sfm-festival.spec.js",
+        "grep": "before any button, both pages",
+        "expect": "fail"
+    },
+    {
+        "name": "sfm festivals reader: a key needed",
+        "why": "A festival's pages are read from setlist.fm itself, no key (vzell's answer 3).",
+        "edits": [
+            {
+                "find": "    const _EXT_SFM_SITE_KINDS = new Set(['search', 'festival', 'festivals']);",
+                "replace": "    const _EXT_SFM_SITE_KINDS = new Set(['search']);"
+            }
+        ],
+        "spec": "tests/fixtures/sfm-festival.spec.js",
+        "grep": "before any button, both pages",
+        "expect": "fail"
+    },
+    {
+        "name": "sfm festivals reader: no load of its own",
+        "why": "The festival kinds load the page, not the API.",
+        "edits": [
+            {
+                "find": "        if (pg.kind === 'festival' || pg.kind === 'festivals') return _extSfmFestivalLoad(t, pg, wanted);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sfm-festival.spec.js",
+        "grep": "an edition link's card and window",
+        "expect": "fail"
+    },
+    {
+        "name": "sfm festivals reader: Most attended's links escaped again",
+        "why": "vzell 2026-11-04 (debug/sfm-festival-edition-POH.html): _mbPopKvHtml() escapes a name, so the linked names showed as their HTML.",
+        "edits": [
+            {
+                "find": "                out.left.push('<h4>Most attended</h4><dl class=\"mb-dp-kv\">' + top.map(r => `<dt>${_extSfmLinkHtml(r.url, r.artist)}</dt>` +\n                    `<dd>${n(r.attendees)}${r.stage ? ` · ${_rgEsc(r.stage)}` : ''}</dd>`).join('') + '</dl>');",
+                "replace": "                out.left.push(`<h4>Most attended</h4>` + _mbPopKvHtml(top.map(r => [_extSfmLinkHtml(r.url, r.artist),\n                    `${n(r.attendees)}${r.stage ? ` · ${_rgEsc(r.stage)}` : ''}`])));"
+            }
+        ],
+        "spec": "tests/fixtures/sfm-festival.spec.js",
+        "grep": "an edition link's card and window",
+        "expect": "fail"
+    }
+]

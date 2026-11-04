@@ -134,8 +134,8 @@
         "why": "A search page's cards are in .rightColumn (vzell 2026-11-04: no POH on the search pages).",
         "edits": [
             {
-                "find": "            extRoot: '#mb-sfm-root, .mainColumn .setlistPreview, .rightColumn .setlistPreview, .mainColumn .info, .setlistInfo .setlistHeadline, .setlistInfo .infoContainer > p, .setlistList'",
-                "replace": "            extRoot: '#mb-sfm-root, .mainColumn .setlistPreview, .mainColumn .info'"
+                "find": "            extRoot: '#mb-sfm-root, .mainColumn .setlistPreview, .rightColumn .setlistPreview, .mainColumn .info, .setlistInfo .setlistHeadline, .setlistInfo .infoContainer > p, .setlistList, .viewBaseFestival, .FestivalSetlists-root, .breadCrumbBar'",
+                "replace": "            extRoot: '#mb-sfm-root, .mainColumn .setlistPreview, .mainColumn .info, .setlistInfo .setlistHeadline, .setlistInfo .infoContainer > p, .setlistList, .viewBaseFestival, .FestivalSetlists-root, .breadCrumbBar'"
             }
         ],
         "spec": "tests/fixtures/sfm-list.spec.js",
@@ -147,8 +147,8 @@
         "why": "The headline, the Tour line and the song list are not .info.",
         "edits": [
             {
-                "find": "            extRoot: '#mb-sfm-root, .mainColumn .setlistPreview, .rightColumn .setlistPreview, .mainColumn .info, .setlistInfo .setlistHeadline, .setlistInfo .infoContainer > p, .setlistList'",
-                "replace": "            extRoot: '#mb-sfm-root, .mainColumn .setlistPreview, .rightColumn .setlistPreview, .mainColumn .info'"
+                "find": "            extRoot: '#mb-sfm-root, .mainColumn .setlistPreview, .rightColumn .setlistPreview, .mainColumn .info, .setlistInfo .setlistHeadline, .setlistInfo .infoContainer > p, .setlistList, .viewBaseFestival, .FestivalSetlists-root, .breadCrumbBar'",
+                "replace": "            extRoot: '#mb-sfm-root, .mainColumn .setlistPreview, .rightColumn .setlistPreview, .mainColumn .info, .viewBaseFestival, .FestivalSetlists-root, .breadCrumbBar'"
             }
         ],
         "spec": "tests/fixtures/sfm-setlist.spec.js",

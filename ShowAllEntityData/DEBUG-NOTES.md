@@ -28010,3 +28010,16 @@ Env: 2026-11-04T15:08+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) 
   half). Tests: `sfm-list.spec.js` "a search page's cards preview too" (three search pages), `sfm-setlist.spec.js`
   "the page's own links preview"; both fail with the old scope (`scripts/mutations/sfm-setlist.json`, the two
   "sfm previews" entries).
+
+## 2026-11-04 — setlist.fm festival edition window: Most attended showed its links as HTML text (feat/sfm-festival, WIP.8)
+
+Env: 2026-11-04T16:29+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs); vzell's report from his browser (version unknown), `debug/sfm-festival-edition-POH.html`
+
+- Report (vzell, live test of the branch): in an edition's window (Space on a festival edition link), "MOST
+  ATTENDED renders raw href garbage" — each row read `<a href="https://www.setlist.fm/setlist/pulp/…">Pulp</a>`.
+- Root cause: `_mbPopKvHtml(rows)` writes `<dt>${_rgEsc(k)}</dt><dd>${v}</dd>` — the NAME is escaped, the value is
+  HTML. `_extSfmFestivalWindow()` passed a link as the name. Its Stages and Artist-charts lists passed names already
+  through `_rgEsc()`, a double escape ("&amp;" for a stage named with "&").
+- Fix: Most attended builds its own `dl.mb-dp-kv` with the linked name; Stages and Artist charts pass plain names.
+- Why the spec missed it: it checked the heading "Most attended" only. It now asserts the first name is a link
+  ("Pulp", its setlist) and that the window's text has no `<a href`; a mutation restoring the old line fails it.

@@ -456,6 +456,24 @@ test.describe('@include coverage', () => {
         expect(others.filter((u) => injected(u))).toEqual([]);
     });
 
+    test('setlist.fm: a festival edition and a festival\'s editions (sfm-festival, sfm-festivals, 2026-11-04); not the festivals\' index or browse pages', () => {
+        const pages = [
+            'https://www.setlist.fm/festival/2025/glastonbury-festival-2025-3d581bb.html',
+            'https://setlist.fm/festival/2021/glastonbury-festival-presents-live-at-worthy-farm-2021-63d6a2c3.html#x',
+            'https://www.setlist.fm/festivals/glastonbury-festival-3d6bd17.html',
+            'https://www.setlist.fm/festivals/glastonbury-festival-3d6bd17.html?page=2',
+        ];
+        const others = [
+            'https://www.setlist.fm/festivals',
+            'https://www.setlist.fm/festivals/browse/g/1.html',
+            'https://www.setlist.fm/festival/glastonbury-festival-2025-3d581bb.html',
+            'https://www.setlist.fm/report/festival?festival=3d581bb',
+            'https://api.setlist.fm/festival/2025/glastonbury-festival-2025-3d581bb.html',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
     test('setlist.fm: a search by query (sfm-query, 2026-11-04): free text or "artist:(…) tour:(…)"; not an empty query', () => {
         const pages = [
             'https://www.setlist.fm/search?query=Bruce+Springsteen',

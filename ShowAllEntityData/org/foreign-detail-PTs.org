@@ -465,11 +465,88 @@ some SFM search pages have no PT yet, no action buttons
 @debug/sfm-search-artist-queury.html - IP - https://www.setlist.fm/search?query=artist%3A(Bruce%20Springsteen)%20tour%3A(Land%20of%20Hope%20%26%20Dreams%20American%20Tour)#mbid=70248960-cb53-4ea4-943a-edb18f7d336f -
 #+end_example
 
-* add support for SFM festivals
+* DONE add support for SFM festivals
+** DONE initial
 
 add support for the missing SFM festival pages, PTs and POH support (see our current added skills)
+
+** DONE mockup (2026-11-04, branch feat/sfm-festival, stacked on feat/sfm-setlist)
+
+https://claude.ai/artifact/1UiGQbvvqiRuyiBmDA5tE2 (=org/sfm-festival-mockups.html=, built by =scripts/build-mockup-artifact.py=).
+
+Env: 2026-11-04 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · n/a (the two snapshots, read by scratch scripts)
+
+- =/festivals/<slug>-<id>.html= (a festival): a native table of its editions (Year, Name + "1 venue (9 stages)",
+  Venues, Start, End), 20 a page, setlist.fm's pager (Glastonbury: 2 pages); an info box (took place 40 times, 4,138
+  artists, 115,460 attendances by 5,053 users); "Artist charts" in the right column (links are Wicket actions, no pages).
+- =/festival/<year>/<slug>-<id>.html= (an edition): a client-side React widget (=FestivalSetlists-root=, Group by Day /
+  Venue / Artists, Group by stage) whose props are inline JSON in the page: =setlists[]= (661 for Glastonbury 2025), each
+  with =current.eventDate=, =current.artist.name=, =current.setTimes.scheduledStart= (553 of 661), =current.venue=
+  (=name= the stage when =mainVenue= is set; 516 name only the main venue), =attendancesCount=, =deeplinks.web=.
+- Both pages' lists are outside the preview scope (=extRoot=): the editions table =.viewBaseFestival=, the widget
+  =.FestivalSetlists-root=.
+- Questions: (1) an edition: a sub-table per day, Stage a column? (2) the festival page: a head (facts, Artist charts)?
+  (3) festival links in previews (a reader of the page, no key) now or later? (4) the edition's right-hand cards:
+  Stages and Most attended?
 
 #+begin_example
 @debug/sfm-festivals.html - IP - https://www.setlist.fm/festivals/glastonbury-festival-3d6bd17.html
 @debug/sfm-festival.html - IP - https://www.setlist.fm/festival/2025/glastonbury-festival-2025-3d581bb.html
+#+end_example
+
+** DONE summary
+
+The festival mockup is published, and nothing is built yet: ⧉ https://claude.ai/artifact/1UiGQbvvqiRuyiBmDA5tE2
+
+It uses real data from your two Glastonbury snapshots. I opened the new branch feat/sfm-festival, stacked on feat/sfm-setlist.
+
+What the pages hold:
+- An edition (/festival/2025/…): the list is drawn in the browser by setlist.fm's own widget. Its data sits in the page as JSON: all 661 setlists, each with date, artist, scheduled time, stage, attendees and link. So the button needs no request, like the setlist page.
+- A festival (/festivals/…): a plain table of its editions, 20 a page, two pages for Glastonbury. Each page is fetched like a venue's list.
+- Previews: both lists are outside the preview scope today. That needs two narrow selectors, per the new skill.
+
+The mockup's three tabs:
+1. Edition: Glastonbury 2025.
+   - One table per day: Time (24-hour), Artist (that day's setlist), Stage, Attendees.
+   - Above the tables: a Festival card (dates, venue, 661 setlists, 9 stages, attendances), and on the right Stages (with counts) and Most attended (Pulp 258, Alanis Morissette 175, …).
+2. Festival: its editions. Year, Edition, Stages, Venues, Start, End. Above them, the page's own facts (40 editions, 4,138 artists) and its Artist charts.
+3. Plan and questions.
+
+Four questions:
+1. Edition grouping: I recommend a table per day with Stage as a column, five tables; the 📊 menu on Stage then filters one stage across all days. The alternatives are a table per day and stage (about 30 small ones), or per stage.
+2. A head on the festival page with its facts and Artist charts? I recommend yes; it's already on the page.
+3. Previews of festival links (on a setlist page's headline, in these tables): setlist.fm's API has no festivals, so this would mean reading the festival page itself, without a key. I recommend making it a later step.
+4. The edition's right-hand cards, Stages and Most attended? I recommend both.
+
+The mockup, the page shapes and the questions are recorded in org/foreign-detail-PTs.org. Once you answer, I'll build both pageTypes and the preview fix.
+
+** DONE answers
+
+1. Edition grouping: TABLE PER DAY WITH STAGE AS A COLUMN
+2. A head on the festival page with its facts and Artist charts? YES
+3. Previews of festival links (on a setlist page's headline, in these tables): YES, do it NOW
+4. The edition's right-hand cards, Stages and Most attended? BOTH
+
+** DONE built (2026-11-04, branch feat/sfm-festival)
+
+Env: 2026-11-04T16:10+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+- =sfm-festival= (an edition): a sub-table per day from the page's widget JSON (=_sfmFestivalJson()=, no request);
+  head with Festival, Stages, Most attended. =sfm-festivals= (a festival): its editions, page by page; head with its
+  facts and Artist charts. Previews before the button: =extRoot= + =.viewBaseFestival=, =.FestivalSetlists-root=,
+  =.breadCrumbBar=. Reader: kinds =festival= / =festivals=, no key, card and window (answer 3).
+- Found on the way: the test harness runs this userscript as a page script whose source names the widget; the
+  first =_sfmFestivalJson()= stopped at it. It now matches the whole call and skips what does not parse.
+- Specs: =tests/fixtures/sfm-festival.spec.js= (5), =sl-include-regex.spec.js= (+1); all 107 setlist.fm, include and
+  setlist popup tests pass. Mutations =scripts/mutations/sfm-festival.json= (12, all caught); five entries of other
+  lists repointed to the changed lines, all caught.
+- Unconfirmed: whether setlist.fm answers a festival page to an anonymous request from another site (MusicBrainz).
+
+** DONE bug in festival edition POH
+
+Everything renders fine except:
+bug in festival edition POH, the "MOST ATTENDED" section renders raw href garbage
+
+#+begin_example
+@debug/sfm-festival-edition-POH.html - POH - https://www.setlist.fm/festival/2025/glastonbury-festival-2025-3d581bb.html - [Image #6]
 #+end_example

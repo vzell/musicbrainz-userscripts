@@ -47,6 +47,8 @@
 // @include      /^https?:\/\/(?:www\.)?setlist\.fm\/search\?(?:[^#]*&)?artist=[^&#]+.*$/
 // @include      /^https?:\/\/(?:www\.)?setlist\.fm\/search\?(?:[^#]*&)?query=[^&#]+.*$/
 // @include      /^https?:\/\/(?:www\.)?setlist\.fm\/setlist\/[^\/?#]+\/\d{4}\/[^\/?#]+-[0-9a-f]+\.html(?:[?#].*)?$/
+// @include      /^https?:\/\/(?:www\.)?setlist\.fm\/festival\/\d{4}\/[^\/?#]+-[0-9a-f]+\.html(?:[?#].*)?$/
+// @include      /^https?:\/\/(?:www\.)?setlist\.fm\/festivals\/(?!browse\/)[^\/?#]+-[0-9a-f]+\.html(?:[?#].*)?$/
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
 // @connect      eventartarchive.org
@@ -20613,6 +20615,8 @@
         if (t === 'dg-release') return _dgReleaseHeadSpec();
         if (t === 'dg-master') return _dgMasterHeadSpec();
         if (t === 'sfm-setlist') return _sfmSetlistHeadSpec();
+        if (t === 'sfm-festival') return _sfmFestivalHeadSpec();
+        if (t === 'sfm-festivals') return _sfmFestivalsHeadSpec();
         return null;
     }
 
@@ -20894,6 +20898,9 @@
         // A setlist's page (sfm-setlist): a sub-table per set; Play only with
         // sa_yt_play_in_place (`_sfmSetlistToHtml()`).
         setlist: ['#', 'Song', 'Cover of', 'With', 'Tape', 'Info', 'Play'],
+        // A festival edition (a sub-table per day) and a festival's editions.
+        festival: ['Time', 'Artist', 'Stage', 'Attendees'],
+        festivals: ['Year', 'Edition', 'Stages', 'Venues', 'Start', 'End'],
     };
 
     /** The English month abbreviations of a `.dateBlock`. */
@@ -20917,6 +20924,9 @@
         // is 'query' (vzell 2026-11-04): its rows may be many artists'.
         if (path === '/search') return params.get('artist') ? 'search' : (params.get('query') || '').trim() ? 'query' : '';
         if (_SFM_SETLIST_PATH_RE.test(path)) return 'setlist';
+        // A festival edition and a festival's editions (2026-11-04).
+        if (_SFM_FESTIVAL_PATH_RE.test(path)) return 'festival';
+        if (_SFM_FESTIVALS_PATH_RE.test(path)) return 'festivals';
         const m = _SFM_LIST_PATH_RE.exec(path);
         return m ? (m[1].toLowerCase() === 'venue' ? 'venue' : 'artist') : '';
     }
@@ -21206,7 +21216,7 @@
         if (!root) return;
         const h2 = document.createElement('h2');
         h2.className = 'mb-sfm-list-heading';
-        h2.textContent = kind === 'setlist' ? 'Setlist' : 'Setlists';
+        h2.textContent = kind === 'setlist' ? 'Setlist' : kind === 'festivals' ? 'Editions' : 'Setlists';
         const table = document.createElement('table');
         table.className = 'tbl mb-sfm-table';
         table.innerHTML = `<thead><tr>${_SFM_HEADERS[kind].map(c => `<th>${_rgEsc(c)}</th>`).join('')}</tr></thead><tbody></tbody>`;
@@ -21454,6 +21464,308 @@
             ],
             pictures: [],
             title: `${artist.text}${iso ? ` – ${iso}` : ''}`, source: 'setlist.fm\'s page',
+        };
+    }
+
+    // ── setlist.fm's festival pages (2026-11-04) ─────────────────────────────
+    // org/foreign-detail-PTs.org "add support for SFM festivals"; mockup
+    // org/sfm-festival-mockups.html; vzell's answers: an edition as a
+    // sub-table per day with Stage as a column; a head on both pages (the
+    // facts, the Artist charts; Stages and Most attended); festival links
+    // previewed now. Snapshots: debug/sfm-festivals.html (a festival's
+    // editions), debug/sfm-festival.html (Glastonbury 2025). The parsers
+    // below serve the pageTypes, their heads and the `setlistfm` reader.
+
+    /**
+     * A festival edition's page (`/festival/<year>/<slug>-<id>.html`).
+     * @type {RegExp}
+     */
+    const _SFM_FESTIVAL_PATH_RE = /^\/festival\/\d{4}\/[^/]+-([0-9a-f]+)\.html$/i;
+
+    /**
+     * A festival's page, the list of its editions (`/festivals/<slug>-<id>.html`;
+     * not `/festivals/browse/…`).
+     * @type {RegExp}
+     */
+    const _SFM_FESTIVALS_PATH_RE = /^\/festivals\/(?!browse\/)[^/]+-([0-9a-f]+)\.html$/i;
+
+    /**
+     * The props setlist.fm's festival widget is mounted with: an inline
+     * script holds `React.createElement(WidgetFestival.FestivalSetlistsWidget,
+     * Object.assign({}, {"config": …, "setlists": […], "festival": {…}}))`,
+     * the whole list as JSON (the page draws it in the browser). The object
+     * is cut out by its braces, strings respected, and parsed. Null when the
+     * page has none (or it does not parse).
+     *
+     * @param {Document} doc
+     * @returns {?{setlists: Array<Object>, festival: ?Object}}
+     */
+    function _sfmFestivalJson(doc) {
+        // The whole call, so a script that merely names the widget (this
+        // userscript's own source, a page script in the test harness) is no
+        // match; a script whose object does not parse is skipped, not the end.
+        const CALL_RE = /React\.createElement\(\s*WidgetFestival\.FestivalSetlistsWidget\s*,\s*Object\.assign\(\s*\{\s*\}\s*,\s*(?=\{"config")/;
+        for (const sc of doc.querySelectorAll('script')) {
+            const s = sc.textContent || '';
+            const m = CALL_RE.exec(s);
+            if (!m) continue;
+            const start = m.index + m[0].length;
+            let depth = 0;
+            let inStr = false;
+            for (let i = start; i < s.length; i++) {
+                const ch = s[i];
+                if (inStr) {
+                    if (ch === '\\') i++;
+                    else if (ch === '"') inStr = false;
+                } else if (ch === '"') inStr = true;
+                else if (ch === '{') depth++;
+                else if (ch === '}' && --depth === 0) {
+                    try {
+                        const o = JSON.parse(s.slice(start, i + 1));
+                        if (Array.isArray(o.setlists)) return o;
+                    } catch (e) {
+                        Lib.debug('init', `setlist.fm festival: the widget's props did not parse (${e && e.message}).`);
+                    }
+                    break;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * A festival edition's page as data: its name, dates, info box (how many
+     * setlists, stages, attendances), the festival it belongs to (the
+     * breadcrumb), and every setlist (`_sfmFestivalJson()`): date, scheduled
+     * time, artist, stage ('' when only the main venue is named), main
+     * venue, attendees, link. Null without the widget's JSON.
+     *
+     * @param {Document} doc
+     * @param {string} base - The page's URL.
+     * @returns {?Object}
+     */
+    function _sfmFestivalParse(doc, base) {
+        const json = _sfmFestivalJson(doc);
+        if (!json) return null;
+        const flat = s => String(s || '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+        const abs = (href) => {
+            try { return href ? new URL(href, base).href : ''; } catch (e) { return ''; }
+        };
+        const setlists = json.setlists.map((x) => {
+            const c = (x && x.current) || {};
+            const v = c.venue || {};
+            return {
+                id: String((x && x.publicId) || ''), url: String(((x && x.deeplinks) || {}).web || ''),
+                date: String(c.eventDate || ''), time: String((c.setTimes || {}).scheduledStart || ''),
+                artist: flat((c.artist || {}).name), stage: v.mainVenue ? flat(v.name) : '',
+                venue: flat((v.mainVenue || v).displayString || (v.mainVenue || v).name),
+                attendees: Number(x && x.attendancesCount) || 0,
+            };
+        }).filter(r => r.url && r.artist);
+        const info = doc.querySelector('.festivalInfo');
+        const spans = info ? Array.from(info.querySelectorAll('.festivalContent span')).map(s => flat(s.textContent)) : [];
+        const num = re => ((spans.find(s => re.test(s)) || '').match(/[\d,]+/) || [''])[0];
+        const att = info && info.querySelector('.attendance');
+        const series = doc.querySelector('.breadCrumbBar a[href*="festivals/"]:not([href*="/browse/"])')
+            || doc.querySelector('a.nested[href*="festivals/"]:not([href*="/browse/"])');
+        const dates = setlists.map(r => r.date).filter(Boolean).sort();
+        return {
+            name: flat(((json.festival || {}).name) || (doc.querySelector('.festivalInfo h1') || {}).textContent).replace(/\s+Setlists$/i, ''),
+            from: dates[0] || '', to: dates[dates.length - 1] || '',
+            venue: (setlists.find(r => r.venue) || {}).venue || '',
+            setlistCount: num(/setlists?$/i), stageCount: num(/stages?$/i),
+            attendances: att ? flat(att.textContent) : '',
+            series: series ? { text: flat(series.textContent).replace(/^View all\s+|\s+setlists$/gi, ''), url: abs(series.getAttribute('href')) } : null,
+            setlists,
+        };
+    }
+
+    /**
+     * A festival's page (its editions) as data: its name, the info box's
+     * facts (the full name, how often it took place, how many artists have
+     * setlists, the attendances), the Artist charts box (name, count; its
+     * links are the site's internal actions, not pages), and the editions
+     * of this page (year, name and link, the line under it — "1 venue (9
+     * stages)" —, venues, start and end as ISO dates with the year).
+     *
+     * @param {Document} doc
+     * @param {string} base - The page's URL.
+     * @returns {Object}
+     */
+    function _sfmFestivalsParse(doc, base) {
+        const flat = s => String(s || '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+        const abs = (href) => {
+            try { return href ? new URL(href, base).href : ''; } catch (e) { return ''; }
+        };
+        // "Wed, Jun 25" in a year's edition → "2025-06-25"; an end month
+        // before the start's is the next year's.
+        const iso = (s, year, after = '') => {
+            const m = /([A-Za-z]{3})[a-z]*\s+(\d{1,2})/.exec(s || '');
+            const mo = m && _SFM_MONTHS[m[1].toLowerCase()];
+            if (!mo || !/^\d{4}$/.test(year)) return flat(s);
+            let y = Number(year);
+            const d = `${String(mo).padStart(2, '0')}-${m[2].padStart(2, '0')}`;
+            if (after && d < after.slice(5)) y++;
+            return `${y}-${d}`;
+        };
+        const editions = Array.from(doc.querySelectorAll('.viewBaseFestival table tbody tr')).map((tr) => {
+            const cell = c => tr.querySelector(`td.${c}`);
+            const a = tr.querySelector('td.name a[href]');
+            if (!a) return null;
+            const parts = Array.from(a.children).map(x => flat(x.textContent)).filter(Boolean);
+            const year = flat((cell('year') || {}).textContent);
+            const start = iso(flat((cell('start') || {}).textContent), year);
+            return {
+                year, name: parts[0] || flat(a.textContent), sub: parts.slice(1).join(' · '), url: abs(a.getAttribute('href')),
+                venues: Array.from(tr.querySelectorAll('td.venues a[href]')).map(v => ({ text: flat(v.textContent), url: abs(v.getAttribute('href')) })),
+                start, end: iso(flat((cell('end') || {}).textContent), year, start),
+            };
+        }).filter(Boolean);
+        const stats = doc.querySelector('.infoStats');
+        const strongs = stats ? Array.from(stats.querySelectorAll('strong, b, a:not([href*="faq"]), span')).map(x => flat(x.textContent)) : [];
+        const statText = flat(stats && stats.textContent);
+        const att = doc.querySelector('.attendanceCount .attendance');
+        const charts = Array.from(doc.querySelectorAll('.rightColumn table.statsTable td.songName')).map((td) => {
+            const n = flat((td.nextElementSibling || {}).textContent).replace(/\D/g, '');
+            return [flat(td.textContent), n];
+        }).filter(c => c[0] && c[1]);
+        return {
+            name: flat((doc.querySelector('.mainColumn h1') || {}).textContent).replace(/\s+Setlists$/i, ''),
+            fullName: (/^The\s+(.+?)\s+took place/i.exec(statText) || [])[1] || '',
+            tookPlace: (/took place\s+([\d,]+\s+times?)/i.exec(statText) || [])[1] || '',
+            artists: (/setlists of\s+([\d,]+)\s+different artists/i.exec(statText) || [])[1] || '',
+            attendances: att ? flat(att.textContent) : '', strongs, charts, editions,
+        };
+    }
+
+    /**
+     * The weekday of an ISO date, in English ("Wednesday").
+     *
+     * @param {string} iso
+     * @returns {string}
+     */
+    function _sfmWeekday(iso) {
+        const d = new Date(`${iso}T12:00:00Z`);
+        return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-GB', { weekday: 'long', timeZone: 'UTC' });
+    }
+
+    /**
+     * `toHtml` of sfm-festival (an edition): a sub-table per day ("Wednesday ·
+     * 2025-06-25", vzell's answer 1), its setlists by scheduled time (none
+     * last), then artist: Time · Artist (that day's setlist) · Stage ·
+     * Attendees. From the page's own JSON: no request. A page without it
+     * throws (a failed page, never "no rows").
+     *
+     * @param {string} text - The page's HTML.
+     * @param {string} base - Its URL.
+     * @returns {string} An HTML document.
+     * @throws {Error} When the page has no festival list (`status` 0).
+     */
+    function _sfmFestivalToHtml(text, base) {
+        const f = _sfmFestivalParse(new DOMParser().parseFromString(text, 'text/html'), base);
+        if (!f || !f.setlists.length) throw Object.assign(new Error('setlist.fm answered, but not with a festival\'s setlists'), { status: 0 });
+        const cols = _SFM_HEADERS.festival;
+        const days = new Map();
+        f.setlists.forEach(r => (days.get(r.date) || days.set(r.date, []).get(r.date)).push(r));
+        const a = (href, t) => `<a href="${_rgEsc(href)}" target="_blank" rel="noopener noreferrer">${_rgEsc(t)}</a>`;
+        const body = [...days.keys()].sort().map((d) => {
+            const rows = days.get(d).slice().sort((p, q) => (p.time || '99') .localeCompare(q.time || '99') || p.artist.localeCompare(q.artist))
+                .map(r => `<tr><td>${_rgEsc(r.time)}</td><td>${a(r.url, r.artist)}</td><td>${_rgEsc(r.stage)}</td><td>${r.attendees || ''}</td></tr>`);
+            return _dgTableHtml([_sfmWeekday(d), d].filter(Boolean).join(' · '), cols, rows);
+        }).join('');
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${body}</body></html>`;
+    }
+
+    /**
+     * `toHtml` of sfm-festivals (a festival's editions), one page: Year ·
+     * Edition (its page) · Stages (the line under its name) · Venues · Start ·
+     * End (ISO). A page without the table throws.
+     *
+     * @param {string} text - The page's HTML.
+     * @param {string} base - Its URL.
+     * @returns {string} An HTML document.
+     * @throws {Error} When the page has no editions table.
+     */
+    function _sfmFestivalsToHtml(text, base) {
+        const f = _sfmFestivalsParse(new DOMParser().parseFromString(text, 'text/html'), base);
+        if (!f.editions.length) throw new Error(`setlist.fm's page has no festival editions: ${base}`);
+        const a = (href, t) => `<a href="${_rgEsc(href)}" target="_blank" rel="noopener noreferrer">${_rgEsc(t)}</a>`;
+        const rows = f.editions.map(e => `<tr><td>${_rgEsc(e.year)}</td><td>${a(e.url, e.name)}</td><td>${_rgEsc(e.sub)}</td>` +
+            `<td>${e.venues.map(v => a(v.url, v.text)).join(', ')}</td><td>${_rgEsc(e.start)}</td><td>${_rgEsc(e.end)}</td></tr>`);
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${_dgTableHtml(null, _SFM_HEADERS.festivals, rows)}</body></html>`;
+    }
+
+    /**
+     * The head spec of a festival edition's page (`_fdHeadSpec()`), read
+     * from the page: "~ Festival edition (from – to: venue)"; Details — on the
+     * left Festival (dates, the festival, venue, setlists, stages,
+     * attendances), on the right Stages (each with its number of setlists,
+     * then those that name no stage) and Most attended (the ten setlists
+     * with the most attendees; vzell's answer 4). Null on another page.
+     *
+     * @returns {?Object}
+     */
+    function _sfmFestivalHeadSpec() {
+        const root = document.getElementById('mb-sfm-root');
+        if (!root || activeDefinition?.type !== 'sfm-festival') return null;
+        const f = _sfmFestivalParse(document, window.location.href);
+        if (!f) return null;
+        const stages = new Map();
+        let none = 0;
+        f.setlists.forEach((r) => { if (r.stage) stages.set(r.stage, (stages.get(r.stage) || 0) + 1); else none++; });
+        const stageList = [...stages.entries()].sort((p, q) => q[1] - p[1]).map(([s, n]) => `${s} ×${n}`);
+        if (none) stageList.push(`no stage given ×${none}`);
+        const top = f.setlists.slice().sort((p, q) => q.attendees - p.attendees).filter(r => r.attendees).slice(0, 10);
+        const dl = document.createElement('dl');
+        top.forEach((r) => {
+            const dt = document.createElement('dt');
+            dt.appendChild(_fdLink(r.url, r.artist));
+            const dd = document.createElement('dd');
+            dd.textContent = `${r.attendees.toLocaleString('en-US')}${r.stage ? ` · ${r.stage}` : ''}`;
+            dl.append(dt, dd);
+        });
+        const dates = [f.from, f.to].filter((x, i, l) => x && l.indexOf(x) === i).join(' – ');
+        return {
+            root, h2: root.querySelector('h2.mb-sfm-list-heading'),
+            sub: { what: 'Festival edition', when: [dates, f.venue].filter(Boolean).join(': ') },
+            facts: [
+                ['festival', 'Festival', [['Dates', dates], ['Festival', f.series ? _fdLink(f.series.url, f.series.text) : ''],
+                    ['Venue', f.venue], ['Setlists', f.setlistCount || String(f.setlists.length)],
+                    ['Stages', f.stageCount || (stages.size ? String(stages.size) : '')], ['Attendances', f.attendances]]],
+            ],
+            others: [
+                stageList.length && ['stages', 'Stages', stages.size, _fdPills(stageList), false],
+                top.length && ['top', 'Most attended', top.length, dl, false],
+            ],
+            pictures: [], title: f.name, source: 'setlist.fm\'s page',
+        };
+    }
+
+    /**
+     * The head spec of a festival's page, its editions (`_fdHeadSpec()`,
+     * vzell's answer 2), read from the page: "~ Festival"; Details — on the
+     * left Festival (its full name, how often it took place, how many
+     * artists have setlists, the attendances), on the right Artist charts
+     * (the box of the page: the artists with the most setlists there; no
+     * links, the box's are setlist.fm's internal actions). Null on another page.
+     *
+     * @returns {?Object}
+     */
+    function _sfmFestivalsHeadSpec() {
+        const root = document.getElementById('mb-sfm-root');
+        if (!root || activeDefinition?.type !== 'sfm-festivals') return null;
+        const f = _sfmFestivalsParse(document, window.location.href);
+        return {
+            root, h2: root.querySelector('h2.mb-sfm-list-heading'),
+            sub: { what: 'Festival', by: f.name },
+            facts: [
+                ['festival', 'Festival', [['Name', f.fullName], ['Took place', f.tookPlace],
+                    ['Artists', f.artists ? `${f.artists} with setlists` : ''], ['Attendances', f.attendances]]],
+            ],
+            others: [
+                f.charts.length && ['charts', 'Artist charts', f.charts.length, _fdPills(f.charts.map(([n, k]) => `${n} ×${k}`)), false],
+            ],
+            pictures: [], title: f.name, source: 'setlist.fm\'s page',
         };
     }
 
@@ -26048,6 +26360,9 @@
         // (sfm-search) included; and a setlist's page has its links in its
         // headline (artist, venue), its "Tour:" line and its song list
         // (covers, guests), none of them in `.info`.
+        // And the festival pages (2026-11-04): a festival's editions table
+        // (`.viewBaseFestival`), an edition's widget (`.FestivalSetlists-root`,
+        // drawn in the browser) and the breadcrumb that names the festival.
         'www.setlist.fm': {
             setting: null,
             isDetailUrl: () => false,
@@ -26057,7 +26372,7 @@
             liveHide: [],
             liveCss: '',
             livePrepare: null,
-            extRoot: '#mb-sfm-root, .mainColumn .setlistPreview, .rightColumn .setlistPreview, .mainColumn .info, .setlistInfo .setlistHeadline, .setlistInfo .infoContainer > p, .setlistList'
+            extRoot: '#mb-sfm-root, .mainColumn .setlistPreview, .rightColumn .setlistPreview, .mainColumn .info, .setlistInfo .setlistHeadline, .setlistInfo .infoContainer > p, .setlistList, .viewBaseFestival, .FestivalSetlists-root, .breadCrumbBar'
         }
     };
 
@@ -45928,6 +46243,56 @@
                 collapsableColumns: [ 'With' ]
             },
             tableMode: 'multi'
+        },
+        // A festival edition (2026-11-04, org/foreign-detail-PTs.org "add
+        // support for SFM festivals"): every setlist of it, a sub-table per
+        // day (vzell's answer 1), from the page's own JSON (its widget's
+        // props): no request; the head `_sfmFestivalHeadSpec()`.
+        {
+            type: 'sfm-festival',
+            host: 'www.setlist.fm',
+            match: (path) => _sfmKind(path) === 'festival',
+            buttons: [ {
+                label: 'Show all setlists of this festival', shortLabel: 'Setlists',
+                showIf: () => !!_sfmFestivalJson(document),
+                description: 'No request: every setlist of this festival from this page, a sub-table per day; time, artist, stage and attendees; its facts, stages and most attended setlists above.'
+            } ],
+            features: {
+                sfmToTable: 'festival',
+                groupByH3: true,
+                pageRequest: () => {
+                    const url = _sfmPageUrl(1);
+                    return { url, fetchText: async () => document.documentElement.outerHTML, toHtml: (text) => _sfmFestivalToHtml(text, url) };
+                },
+                pageCountAsync: () => 1,
+                integerColumns: [ { sourceColumn: 'Attendees', align: 'R' } ]
+            },
+            tableMode: 'multi'
+        },
+        // A festival's editions (2026-11-04): the page's table, 20 a page,
+        // every page fetched as a venue's list is; the head (vzell's answer
+        // 2) `_sfmFestivalsHeadSpec()`: its facts and Artist charts.
+        {
+            type: 'sfm-festivals',
+            host: 'www.setlist.fm',
+            match: (path) => _sfmKind(path) === 'festivals',
+            buttons: [ {
+                label: 'Show all editions of this festival', shortLabel: 'Editions',
+                get description() {
+                    const n = _sfmPageCount();
+                    return `Every edition of this festival as one table: ${n} page${n === 1 ? '' : 's'} of setlist.fm, 20 editions each; its facts and Artist charts above.`;
+                }
+            } ],
+            features: {
+                sfmToTable: 'festivals',
+                pageRequest: (p) => {
+                    const url = _sfmPageUrl(p);
+                    return { url, toHtml: (text) => _sfmFestivalsToHtml(text, url) };
+                },
+                pageCountAsync: () => _sfmPageCount(),
+                integerColumns: [ { sourceColumn: 'Year', align: 'R' } ]
+            },
+            tableMode: 'single'
         }
     ];
 
@@ -69026,8 +69391,11 @@
     /** The API's base. */
     const _EXT_SFM_API = 'https://api.setlist.fm/rest/1.0';
 
-    /** Version of the setlist.fm records kept in IndexedDB; bump when their shape changes. */
-    const _EXT_SFM_VERSION = 3;
+    /**
+     * Version of the setlist.fm records kept in IndexedDB; bump when their
+     * shape changes (4: festival and festivals kinds, 2026-11-04).
+     */
+    const _EXT_SFM_VERSION = 4;
 
     /**
      * A setlist.fm page the reader takes, by its path: a setlist
@@ -69216,6 +69584,116 @@
     }
 
     /**
+     * The kinds of the `setlistfm` reader read from setlist.fm's own pages
+     * rather than its API: they need no key (a search since 2026-11-03, a
+     * festival edition and a festival's editions since 2026-11-04).
+     * @type {Set<string>}
+     */
+    const _EXT_SFM_SITE_KINDS = new Set(['search', 'festival', 'festivals']);
+
+    /**
+     * Loads a festival edition's or a festival's page (vzell's answer 3,
+     * 2026-11-04): ONE request of the page, read through
+     * `_sfmFestivalParse()` / `_sfmFestivalsParse()` — the pageTypes'
+     * parsers. The card's facts and the window come from it; a page without
+     * its list is a failure ("not a festival page").
+     *
+     * @param {object} t - The target.
+     * @param {{kind: string, id: string, path: string}} pg - `_extSfmPage()`.
+     * @param {function(): boolean} wanted
+     * @returns {Promise<Object>}
+     */
+    async function _extSfmFestivalLoad(t, pg, wanted) {
+        const url = `https://www.setlist.fm${pg.path}`;
+        const r = await _extSfmSearchGet(t, url, wanted);
+        if (r.skipped) return { skipped: true };
+        if (r.out) return r.out;
+        const rec = _extApiRecord(t, 200, 'setlist.fm');
+        rec.links.push(['On setlist.fm', url]);
+        if (pg.kind === 'festival') {
+            const f = _sfmFestivalParse(r.doc, url);
+            if (!f) return { ok: false, detail: 'setlist.fm answered, but the page has no festival list' };
+            Object.assign(rec, { title: f.name, type: 'festival edition' });
+            rec.facts = [['Dates', [f.from, f.to].filter(Boolean).join(' – ')], ['Setlists', f.setlistCount || String(f.setlists.length)],
+                ['Stages', f.stageCount]].filter(x => x[1]);
+            rec.sfm = { kind: 'festival', id: pg.id, festival: f };
+        } else {
+            const f = _sfmFestivalsParse(r.doc, url);
+            if (!f.editions.length) return { ok: false, detail: 'setlist.fm answered, but the page has no festival editions' };
+            Object.assign(rec, { title: f.name, type: 'festival' });
+            rec.facts = [['Took place', f.tookPlace], ['Artists', f.artists]].filter(x => x[1]);
+            rec.sfm = { kind: 'festivals', id: pg.id, festivals: f, pages: _sfmPageCount(r.doc) };
+        }
+        return { ok: true, data: rec };
+    }
+
+    /**
+     * The window of a festival edition or a festival (2026-11-04). An
+     * edition: on the left its stages and its most attended setlists, on
+     * the right every setlist in a List table grouped by day (as the
+     * pageType's sub-tables; vzell's answer 1), Time · Artist · Stage ·
+     * Attendees, a chip per stage. A festival: on the left its Artist
+     * charts, on the right its editions of the page read (the first; "on
+     * setlist.fm" for the rest).
+     *
+     * @param {object} t
+     * @param {Object} sfm - `rec.sfm`.
+     * @returns {{left: string[], right: string[], full: string[]}}
+     */
+    function _extSfmFestivalWindow(t, sfm) {
+        const out = { left: [], right: [], full: [] };
+        const n = x => Number(x).toLocaleString('en-US');
+        if (sfm.kind === 'festival') {
+            const f = sfm.festival;
+            const stages = new Map();
+            f.setlists.forEach((r) => { if (r.stage) stages.set(r.stage, (stages.get(r.stage) || 0) + 1); });
+            const top = f.setlists.slice().sort((p, q) => q.attendees - p.attendees).filter(r => r.attendees).slice(0, 10);
+            if (stages.size) {
+                // `_mbPopKvHtml()` escapes the name itself: plain text in.
+                out.left.push(`<h4>Stages · ${stages.size}</h4>` + _mbPopKvHtml([...stages.entries()].sort((p, q) => q[1] - p[1])
+                    .map(([s, k]) => [s, `${k} setlist${k === 1 ? '' : 's'}`])));
+            }
+            if (top.length) {
+                // The name links its setlist, so the list is built here:
+                // `_mbPopKvHtml()` escapes a name (vzell 2026-11-04: the
+                // links showed as their HTML).
+                out.left.push('<h4>Most attended</h4><dl class="mb-dp-kv">' + top.map(r => `<dt>${_extSfmLinkHtml(r.url, r.artist)}</dt>` +
+                    `<dd>${n(r.attendees)}${r.stage ? ` · ${_rgEsc(r.stage)}` : ''}</dd>`).join('') + '</dl>');
+            }
+            const rows = f.setlists.slice().sort((p, q) => p.date.localeCompare(q.date) || (p.time || '99').localeCompare(q.time || '99') || p.artist.localeCompare(q.artist))
+                .map(r => Object.assign({}, r, { day: [_sfmWeekday(r.date), r.date].filter(Boolean).join(' · ') }));
+            const cols = [
+                { key: 'time', label: 'Time', val: x => x.time, html: x => _rgEsc(x.time) },
+                { key: 'artist', label: 'Artist', val: x => x.artist, html: x => _extSfmLinkHtml(x.url, x.artist) },
+                { key: 'stage', label: 'Stage', val: x => x.stage, html: (x, q) => _hlEsc(x.stage, q) },
+                { key: 'attendees', label: 'Attendees', num: true, cls: 'mb-rg-num', val: x => x.attendees, html: x => (x.attendees ? n(x.attendees) : '') },
+            ];
+            out.right.push(`<h4>Setlists · ${n(rows.length)}</h4>` + _dpListTableHtml(t, 'sfm-festival', cols, rows, {
+                initial: 'by day and time', placeholder: 'Filter the setlists: artist, stage', none: 'No setlists.',
+                group: x => x.day, groupCol: 'artist',
+                groupHead: (g, k, total) => (g ? `<span class="mb-dp-tsec-n">${_rgEsc(g)}</span><span class="mb-dp-tsec-c">${k < total ? `${k} of ${total}` : total}</span>` : ''),
+                facet: x => x.stage || 'no stage given', chipLabel: 'Stage',
+            }));
+            return out;
+        }
+        const f = sfm.festivals;
+        if (f.charts.length) {
+            out.left.push('<h4>Artist charts</h4>' + _mbPopKvHtml(f.charts.map(([a, k]) => [a, `${k} setlist${k === '1' ? '' : 's'}`])));
+        }
+        const cols = [
+            { key: 'year', label: 'Year', num: true, cls: 'mb-rg-num', val: x => Number(x.year) || 0, html: x => _rgEsc(x.year) },
+            { key: 'name', label: 'Edition', val: x => x.name, html: x => _extSfmLinkHtml(x.url, x.name) },
+            { key: 'sub', label: 'Stages', val: x => x.sub, html: (x, q) => _hlEsc(x.sub, q) },
+            { key: 'start', label: 'Start', val: x => x.start, html: x => _rgEsc(x.start) },
+            { key: 'end', label: 'End', val: x => x.end, html: x => _rgEsc(x.end) },
+        ];
+        const more = sfm.pages > 1 ? `<div class="mb-dp-xsub">The newest ${f.editions.length}; the others on setlist.fm's next page${sfm.pages > 2 ? 's' : ''}.</div>` : '';
+        out.right.push(`<h4>Editions · ${f.editions.length}${sfm.pages > 1 ? '+' : ''}</h4>${more}` +
+            _dpListTableHtml(t, 'sfm-festivals', cols, f.editions, { initial: 'newest first', placeholder: 'Filter the editions', none: 'No editions.' }));
+        return out;
+    }
+
+    /**
      * A tour's link (setlist.fm's search, `_EXT_SFM_TOUR_QUERY_RE`), the
      * artist's MBID in the fragment so the reader can open it through the
      * API; '' without a tour or an MBID (the cell stays plain text).
@@ -69240,6 +69718,12 @@
     function _extSfmPage(u) {
         if (!/^(?:www\.)?setlist\.fm$/i.test(u.hostname)) return null;
         if (u.pathname === '/search') return _extSfmTourPage(u) || _extSfmSearchPage(u);
+        // A festival edition and a festival's editions (2026-11-04): pages of
+        // the site, no API, no key.
+        const fe = _SFM_FESTIVAL_PATH_RE.exec(u.pathname);
+        if (fe) return { kind: 'festival', id: fe[1].toLowerCase(), name: '', path: u.pathname };
+        const fs = _SFM_FESTIVALS_PATH_RE.exec(u.pathname);
+        if (fs) return { kind: 'festivals', id: fs[1].toLowerCase(), name: '', path: u.pathname };
         const m = _EXT_SFM_PATH_RE.exec(u.pathname);
         if (!m) return null;
         if (m[1]) return { kind: 'setlist', id: m[2].toLowerCase(), name: '' };
@@ -69259,7 +69743,7 @@
      */
     function _extSfmTest(u) {
         const pg = _extSfmPage(u);
-        return !!pg && (pg.kind === 'search' || !!_extSfmKey());
+        return !!pg && (_EXT_SFM_SITE_KINDS.has(pg.kind) || !!_extSfmKey());
     }
 
     /**
@@ -69444,6 +69928,8 @@
         if (!pg) return { ok: false, detail: 'not a setlist.fm page the reader knows' };
         // setlist.fm's own search: its page, no API, no key (2026-11-03).
         if (pg.kind === 'search') return _extSfmSearchLoad(t, pg, wanted);
+        // A festival's pages: read from setlist.fm itself, no key (2026-11-04).
+        if (pg.kind === 'festival' || pg.kind === 'festivals') return _extSfmFestivalLoad(t, pg, wanted);
         if (!_extSfmKey()) return { ok: false, detail: _EXT_SFM_NO_KEY };
         const rec = _extApiRecord(t, 200, 'setlist.fm');
         rec.links.push(['On setlist.fm', t.url]);
@@ -70531,6 +71017,24 @@
                 ['Last edited', _rgEsc(s.updated)],
             ]);
         }
+        if (sfm.kind === 'festival') {
+            const f = sfm.festival;
+            return _mbPopKvHtml([
+                ['Dates', _rgEsc([f.from, f.to].filter((x, i, l) => x && l.indexOf(x) === i).join(' – '))],
+                ['Festival', f.series ? _extSfmLinkHtml(f.series.url, f.series.text) : ''],
+                ['Venue', _rgEsc(f.venue)],
+                ['Setlists', _rgEsc(f.setlistCount || String(f.setlists.length))],
+                ['Stages', _rgEsc(f.stageCount)],
+                ['Attendances', _rgEsc(f.attendances)],
+            ]);
+        }
+        if (sfm.kind === 'festivals') {
+            const f = sfm.festivals;
+            return _mbPopKvHtml([
+                ['Name', _rgEsc(f.fullName)], ['Took place', _rgEsc(f.tookPlace)],
+                ['Artists', _rgEsc(f.artists ? `${f.artists} with setlists` : '')], ['Attendances', _rgEsc(f.attendances)],
+            ]);
+        }
         const count = `${_extDgNum(sfm.list.total)} · ${sfm.list.per} a page`;
         if (sfm.kind === 'search') {
             const a = sfm.artist;
@@ -70579,6 +71083,7 @@
      */
     function _extSfmWindow(t, rec, how) {
         if (!rec.sfm) return { left: [], right: [], full: [] };
+        if (rec.sfm.kind === 'festival' || rec.sfm.kind === 'festivals') return _extSfmFestivalWindow(t, rec.sfm);
         return rec.sfm.kind === 'setlist' ? _extSfmSetlistWindow(t, rec.sfm.setlist, how) : _extSfmListWindow(t, rec, how);
     }
 
@@ -75673,7 +76178,7 @@
         {
             // setlist.fm through its API with the user's key (branch B, mockup 4).
             id: 'setlistfm', kind: 'setlist.fm', test: _extSfmTest, load: _extSfmLoad, noLive: true,
-            askHost: u => ((_extSfmPage(u) || {}).kind === 'search' ? 'www.setlist.fm' : 'api.setlist.fm'),
+            askHost: u => (_EXT_SFM_SITE_KINDS.has((_extSfmPage(u) || {}).kind) ? 'www.setlist.fm' : 'api.setlist.fm'),
             version: _EXT_IDB_VERSION * 100 + _EXT_SFM_VERSION, kindFor: _extSfmKind,
             window: _extSfmWindow, onAreaClick: _extSfmAreaClick, factsHtml: _extSfmFactsHtml,
         },

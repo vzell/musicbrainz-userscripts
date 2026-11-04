@@ -238,7 +238,7 @@
     "why": "It is read from setlist.fm's page, which needs no key (the session probe, 2026-11-02).",
     "edits": [
       {
-        "find": "        return !!pg && (pg.kind === 'search' || !!_extSfmKey());",
+        "find": "        return !!pg && (_EXT_SFM_SITE_KINDS.has(pg.kind) || !!_extSfmKey());",
         "replace": "        return !!pg && !!_extSfmKey();"
       }
     ],

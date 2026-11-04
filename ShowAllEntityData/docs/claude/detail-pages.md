@@ -2345,6 +2345,11 @@ browser would most likely get the same. API: https://api.setlist.fm/docs/1.0/ind
   (tours and venues, or artists and tours, with counts). `_EXT_SFM_VERSION`.
 - Specs: popup-ext.spec.js "setlist.fm through its API (branch B)" (4);
   mutations: scripts/mutations/wiki-setlistfm.json.
+- **Festival links** (2026-11-04, docs/claude/setlistfm.md "Festival pages"):
+  `/festival/<year>/<slug>-<id>.html` and `/festivals/<slug>-<id>.html` are
+  the kinds `festival` / `festivals`, read from the page without a key
+  (`_EXT_SFM_SITE_KINDS`, `_extSfmFestivalLoad()`, `_extSfmFestivalWindow()`);
+  the parsers are the pageTypes' (`_sfmFestivalParse()`, `_sfmFestivalsParse()`).
 
 ### Venue additions (org/setlistfm.org, 2026-11-02)
 

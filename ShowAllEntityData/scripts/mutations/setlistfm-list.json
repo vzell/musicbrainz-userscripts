@@ -134,8 +134,8 @@
     "why": "vzell 2026-11-03: \"setlist.fm artist search pages should also get their own PTs\".",
     "edits": [
       {
-        "find": "        if (path === '/search') return params.get('artist') ? 'search' : '';",
-        "replace": "        if (path === '/search') return '';"
+        "find": "        if (path === '/search') return params.get('artist') ? 'search' : (params.get('query') || '').trim() ? 'query' : '';",
+        "replace": "        if (path === '/search') return (params.get('query') || '').trim() ? 'query' : '';"
       }
     ],
     "spec": "tests/fixtures/sfm-list.spec.js",

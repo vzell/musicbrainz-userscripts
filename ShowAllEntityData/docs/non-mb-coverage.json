@@ -146,7 +146,7 @@
     },
     {
       "key": "sfm", "abbr": "SFM", "name": "setlist.fm", "host": "www.setlist.fm", "hostVar": "_isSfmHost",
-      "gate": "sa_enable_setlistfm", "preview": null, "extRoot": "#mb-sfm-root, .mainColumn .setlistPreview, .rightColumn .setlistPreview, .mainColumn .info, .setlistInfo .setlistHeadline, .setlistInfo .infoContainer > p, .setlistList",
+      "gate": "sa_enable_setlistfm", "preview": null, "extRoot": "#mb-sfm-root, .mainColumn .setlistPreview, .rightColumn .setlistPreview, .mainColumn .info, .setlistInfo .setlistHeadline, .setlistInfo .infoContainer > p, .setlistList, .viewBaseFestival, .FestivalSetlists-root, .breadCrumbBar",
       "doc": "docs/claude/setlistfm.md", "view": "sfm",
       "pts": [
         { "type": "sfm-venue", "url": "https://www.setlist.fm/venue/<slug>-<hex>.html", "mode": "single",
@@ -163,7 +163,13 @@
           "frp": { "state": "yes", "ev": "code", "why": "As sfm-venue." } },
         { "type": "sfm-setlist", "url": "https://www.setlist.fm/setlist/<artist>/<year>/<venue>-<id>.html", "mode": "multi",
           "ip": { "state": "yes", "ev": "spec", "why": "The headline (artist, venue), the Tour line, the song list (covers, guests) and the Note.", "spec": ["tests/fixtures/sfm-setlist.spec.js", "the page's own links preview"] },
-          "frp": { "state": "yes", "ev": "code", "why": "#mb-sfm-root: the songs, covers and guests of the tables and the head; setlist.fm links preview with the reader's key." } }
+          "frp": { "state": "yes", "ev": "code", "why": "#mb-sfm-root: the songs, covers and guests of the tables and the head; setlist.fm links preview with the reader's key." } },
+        { "type": "sfm-festival", "url": "https://www.setlist.fm/festival/<year>/<slug>-<id>.html", "mode": "multi",
+          "ip": { "state": "yes", "ev": "spec", "why": "The widget (.FestivalSetlists-root: each setlist, with the key) and the breadcrumb's festival link (no key).", "spec": ["tests/fixtures/sfm-festival.spec.js", "before any button, both pages"] },
+          "frp": { "state": "yes", "ev": "code", "why": "#mb-sfm-root: the tables' setlist links (key) and the head's festival link (no key)." } },
+        { "type": "sfm-festivals", "url": "https://www.setlist.fm/festivals/<slug>-<id>.html", "mode": "single",
+          "ip": { "state": "yes", "ev": "spec", "why": "The editions table (.viewBaseFestival): an edition's card and window without a key.", "spec": ["tests/fixtures/sfm-festival.spec.js", "an edition link's card and window"] },
+          "frp": { "state": "yes", "ev": "code", "why": "#mb-sfm-root: the editions and venues." } }
       ]
     }
   ],
@@ -179,7 +185,7 @@
     { "id": "dgsupport", "links": "support.discogs.com/hc/<lang>/articles/<id>", "asks": "support.discogs.com", "window": "The article" },
     { "id": "bbdate", "links": "brucebase.wikidot.com/<yyyy>#<ddmmyy>", "asks": "brucebase.wikidot.com (the year page)", "window": "The show from its year page" },
     { "id": "springsteen", "links": "SL item and song pages, jungleland.it/html/<x>.htm, brucespringsteen.it detrec.aspx, Brucebase /song: (and /gig:, /venue:, … on discogs.com)", "asks": "the link's own host", "window": "The site's page, parsed" },
-    { "id": "setlistfm", "links": "setlist.fm /setlist/…, /setlists/…, /venue/… (with the key); /search?artist=… (always)", "asks": "api.setlist.fm (key), www.setlist.fm", "window": "The setlist, the artist's or venue's list" },
+    { "id": "setlistfm", "links": "setlist.fm /setlist/…, /setlists/…, /venue/… (with the key); /search?artist=…, /festival/<year>/…, /festivals/… (always)", "asks": "api.setlist.fm (key), www.setlist.fm", "window": "The setlist, the artist's or venue's list; a festival edition's setlists by day, a festival's editions" },
     { "id": "iadetails", "links": "archive.org/details/<id>[/<file>]", "asks": "archive.org (/metadata)", "window": "The item, its files, Play here" },
     { "id": "generic", "links": "any other http(s) link to another host", "asks": "the link's host (its head tags)", "window": "Title, description, picture" }
   ],
