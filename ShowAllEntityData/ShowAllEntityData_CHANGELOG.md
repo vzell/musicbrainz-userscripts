@@ -4,9 +4,45 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1718 versions; the month pages hold all of them.
+This page shows the newest 100 of 1722 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1551 — 2026-11-04
+
+**🚀 Feature**
+
+- springsteenlyrics.com: an item's own page (collection.php?item=…, bootlegs.php?item=…, brucelegs.php?item=…) gets a button, Tracklist: the tracklist from the page itself, one table per disc or record (vinyl sides paired: A/B is Record 1), with Take and Note columns on bootlegs, Version, Note and Length on the CD and vinyl bootlegs, and an Artist column on various-artists albums. Above the tables: the item's facts (release, or show and recording), its runout etchings, its files, its scans or artwork (one section per copy, with the site's captions, opening in the viewer), the notes, and the original info file, which is read only when you open its section. Logged in, a "Your collection" card shows the MusicBrainz link (with its preview), Good scans, Kept in, the item number and the edit link, and "Private info" is shown closed; it never appears in a preview. A CD or vinyl bootleg whose page lists several versions (pressings) also gets All versions: every one of them as one table with the list's columns. The view uses the window's full width, as the lists do, instead of the site's centred 1170 px column. Mockups: https://claude.ai/artifact/GBFJp9Ebo8LDoGPSskVMkg
+
+
+## 9.99.1550 — 2026-11-04
+
+**🚀 Feature**
+
+- springsteenlyrics.com lists, logged in: the collection gets MusicBrainz, Good scans and Kept in columns (one column for every "In &lt;country&gt;" icon), the bootlegs a MusicBrainz column, all from the cards themselves, with no extra request. The MusicBrainz cell, and the site's own MusicBrainz icon on its cards, show MusicBrainz's card on hover and open in the window. Logged out, the tables are as before.
+- springsteenlyrics.com bootleg lists: the Info file cell links the bootleg's original info file. Its card names the file, and Space reads it into the window.
+- springsteenlyrics.com CD and vinyl bootleg lists: PDF and Artwork columns (vzell, although every card has both today); PDF links the item page, where the PDFs are.
+
+**🐛 Fix**
+
+- springsteenlyrics.com lists, logged in: the Version column was empty on every card, because a logged-in card puts its item number and a second marker before the title.
+
+
+## 9.99.1549 — 2026-11-04
+
+**🔧 Refactor**
+
+- springsteenlyrics.com previews: a page read while logged in and one read logged out are no longer one cache entry. Each record notes the login state it was read in, and a record of the other state is read again.
+
+
+## 9.99.1548 — 2026-11-04
+
+**🐛 Fix**
+
+- springsteenlyrics.com: the preview of a CD or vinyl bootleg (brucelegs.php?item=…) said "The page has no tracklist." It now shows the tracklist, with the lengths the page gives, the runout etchings and the release info.
+- springsteenlyrics.com: the preview of a box set with "Record 2: …" headers (the Born In The U.S.A. 12" Single Collection) showed record 1 only; the other records ended up in the notes.
+- springsteenlyrics.com: artwork in a preview carries the page's own captions ("front", "booklet p2,3").
+
 
 ## 9.99.1547 — 2026-11-04
 
@@ -875,36 +911,6 @@ This page shows the newest 100 of 1718 versions; the month pages hold all of the
 **🐛 Fix**
 
 - Opening a preview window with Space, or stepping through rows in it, no longer scrolls a wide table sideways. On a Brucebase year table the MB-Event column used to slide halfway under the Event column (with the side bar shown, almost all of it). The window still scrolls the page up or down to show its row.
-
-
-## 9.99.1451 — 2026-10-24
-
-**✨ Improve**
-
-- Brucebase year table: pointing at a Venue shows the VENUE's card, no longer the show's. It names the region, how often Springsteen played there, the first and last show and the venue's description. Space opens a window with every show there (each linked), the cancelled shows and other appearances, a street view link where the wiki has one, and the venue's photos; ← → step from venue to venue.
-- Venue pages get a card and window of their own wherever they are linked on Brucebase (a show's Venue link, a person's page, …).
-
-
-## 9.99.1450 — 2026-10-24
-
-**✨ Improve**
-
-- The SAED menu: View has a new row, 💾 Browser cache, between Statistics and Keyboard Shortcuts. It opens the browser cache overview (what the script keeps in your browser, how old it is, and what to delete) without a trip through ⚙️ Settings or the Statistics panel.
-
-
-## 9.99.1449 — 2026-10-24
-
-**✨ Improve**
-
-- Brucebase windows: a Ctrl+click (⌘+click on a Mac) on a section's heading folds or opens every section at once. A plain click still folds just that one.
-
-
-## 9.99.1448 — 2026-10-24
-
-**🐛 Fix**
-
-- The 🖼 images gallery: dragging it by its title bar no longer makes it grow to its whole list (on a Discogs master with many versions it reached past the bottom of the screen, its resize corner out of reach). Dragged or reopened, it now always stays inside the browser window.
-- Pressing on the gallery's resize corner no longer scrolls the list inside it: the list's scrollbar used to reach into that corner.
 
 
 ---
