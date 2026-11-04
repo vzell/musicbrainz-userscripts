@@ -28096,3 +28096,35 @@ Env: 2026-11-04T19:47:51+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.
 - Tests: `sl-item.spec.js` (41: six rows, all Rock Records, items 8/38–42; 281 and 41: the button absent / present),
   the width test now on 41. Mutation (`> 0`) caught.
 
+## 2026-11-04 — two flaky link-preview specs after the 9.99.1551 merge (fix/flaky-pop-specs)
+
+Env: 2026-11-04T20:51:17+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (GM stubs, no Tampermonkey)
+
+The merge gate of 9.99.1548–1551 (test:full 2026-11-04T19:54:47+01:00 → 20:12:25: 2667 passed, 2 failed) failed two
+specs outside the merged code; pushed on vzell's word, fixed here. Test-only changes; the userscript is unchanged.
+
+- **`discogs-mb-column.spec.js` "a card showing through a repaint still hides …"** (and its sibling "a card due while
+  the window repaints …"): 1/20 failing on pre-merge main, 4/20 merged, under `--repeat-each 20` in parallel workers.
+  Two failure modes:
+  - "Expected Tag, Received Artist": the card never came.
+  - "Expected hidden": the card stayed after the pointer left.
+
+  A probe logging mouseovers, `mouseout`s, area repaints and the card's display every 20 ms showed the window
+  repainting about once a second for six seconds (its follow-up answers, one per rate slot). In every failing run a
+  natural repaint fell inside the card's delay and moved the links, so the pointer, put on "americana", sat on
+  "heartland rock". The engine rightly found no card for the old link.
+
+  In the other mode, no `mouseout` fired at all when the pointer left. The hovered node had been detached by a natural
+  repaint after the forced one.
+
+  A product guard for the missing `mouseout` (a `mousemove` check of the pointer while a moved card's link is
+  unconfirmed) was tried and REVERTED: with the window settled, both tests pass 80/80 with and without it, so no spec
+  can show it is needed.
+
+  Fix: `openGenreWindow()` waits until the window has not repainted for 1.5 s (`windowQuiet()`, a MutationObserver on
+  the area). The tests force their own repaint; a natural one is not what they test. 80/80.
+- **`popup-mb.spec.js` "Ctrl-click on the tag window's Genre link …": "Expected …/user/vzell/tag/alternative%20rock,
+  Received undefined"**. 30/30 alone. The editor's tag page waits its MusicBrainz rate slot behind the tag window's own
+  kind list: 2.2–4.0 s after the click in 30 quiet runs (median 3.2 s), against `expect.poll`'s default 5 s. Under the
+  full suite it went past. Fix: a 20 s poll timeout. The test pins that the page is asked, not how soon.
+

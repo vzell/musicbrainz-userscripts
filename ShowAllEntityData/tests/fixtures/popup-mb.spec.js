@@ -2702,7 +2702,13 @@ test.describe('MusicBrainz link previews: tags, read from the page', () => {
         await expect(foot).toContainText('Ctrl-click: your own tag');
         await genre.click({ modifiers: ['Control'] });
         await expect(title).toHaveText('Tag › Editor\'s tag');
-        await expect.poll(() => log.html.filter(u => u.includes('/user/'))[0]).toBe('https://musicbrainz.org/user/vzell/tag/alternative%20rock');
+        // The request waits its MusicBrainz rate slot behind the tag window's
+        // own kind list (`/tag/<name>/recording`): 2.2-4.0 s after the click
+        // in 30 quiet runs (median 3.2 s, 2026-11-04), past the default 5 s
+        // under the full suite's load (one failure that day). What is pinned
+        // is THAT the page is asked, not how soon.
+        await expect.poll(() => log.html.filter(u => u.includes('/user/'))[0], { timeout: 20000 })
+            .toBe('https://musicbrainz.org/user/vzell/tag/alternative%20rock');
     });
 
     test('a link to a tag\'s kind page: the tag\'s card, its window on that kind', async ({ page }) => {

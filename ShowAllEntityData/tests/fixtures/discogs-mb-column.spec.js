@@ -649,7 +649,29 @@ test.describe('discogs.com: MusicBrainz cards for the MusicBrainz icons (2026-10
         await page.keyboard.press('Space');
         const genre = page.locator('#mb-dp-dialog .mb-dp-area a[href="https://musicbrainz.org/tag/americana"]');
         await expect(genre).toHaveClass(/\bmb-dp-l-here\b/);
+        await windowQuiet(page);
         return { errors, genre };
+    }
+
+    /**
+     * Waits until the window has not repainted for `ms`. Its follow-up
+     * answers keep repainting it for several seconds under load (one per
+     * rate slot), and a repaint can move the links: in 6 of 80 runs of the
+     * two tests below (2026-11-04) the pointer, put on "americana", sat on
+     * "heartland rock" after a natural repaint during the card's delay, so
+     * no Tag card came. These tests force their own repaint; a natural one
+     * is not what they test.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {number} [ms]
+     */
+    async function windowQuiet(page, ms = 1500) {
+        await page.evaluate(() => {
+            const area = document.querySelector('#mb-dp-dialog .mb-dp-area');
+            window.__mbAreaChangedAt = performance.now();
+            new MutationObserver(() => { window.__mbAreaChangedAt = performance.now(); }).observe(area, { childList: true });
+        });
+        await page.waitForFunction((q) => performance.now() - window.__mbAreaChangedAt >= q, ms, { timeout: 30000 });
     }
 
     /** Repaints the window's Extracted view the way `_dpAreaRepaint()` does. */
