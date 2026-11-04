@@ -50,7 +50,7 @@ the sentence said "seven" and "three" from 2026-10-18 until then, though
 
 | pageType     | Page                     | Button(s)                                                         | Table                                                                                                                       |
 |--------------|--------------------------|-------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
-| `dg-master`  | `/master/<id>`           | Show all versions                                                 | single: Image, Title (★ main release), Format, Label, Cat#, Country, Year                                                   |
+| `dg-master`  | `/master/<id>`           | Tracks (`dgView: 'tracks'`) · Versions (`dgView: 'versions'`)     | multi since 2026-11-04. Tracks: a sub-table per medium + Videos, the head above (see "A master's Tracks view"); Versions: one "Versions" sub-table: Image, Title (★ main release), Format, Label, Cat#, Country, Year |
 | `dg-release` | `/release/<id>`          | Tracks (`dgView: 'tracks'`) · Credits, versions (`dgView: 'more'`) | Tracks: multi, a sub-table per medium + Release credits, the head above (see "A release's Tracks view"); Credits, versions: Credits, Companies, etc., Barcode and Other Identifiers, Videos (when it has any), Other versions (the release itself left out) |
 | `dg-artist`  | `/artist/<id>`           | Show the whole discography                                        | multi: one sub-table per Discogs role run (Releases, Credits: Producer, …, Appearances, Track appearances, Unofficial)       |
 | `dg-label`   | `/label/<id>`            | Newest: 500 · 1,000 · 5,000 — Oldest: 500 · 1,000 — Then: All     | single: Image, Artist, Title, Format, Cat#, Year                                                                            |
@@ -913,3 +913,66 @@ credits as a "Release credits" sub-table.
   splitter on saved answers: 348 of 354 ranged credits placed, the 6 left
   name positions the releases do not have. Fixtures: 1874253 and four from
   the probe (`scripts/wrap-dg-release-fixtures.py`).
+
+## A master's Tracks view (dg-master, 2026-11-04)
+
+org/discogs.org, "the discogs master release PT"; mockup
+`org/dg-master-mockups.html`. vzell's answers the same day: Credits by person
+on the right, the number of versions in the head — configurable
+(`sa_dg_master_versions_count`, on) — Community grouped in two columns, the
+videos as a sub-table under the tracks.
+
+- **Two buttons, multi-table.** "Tracks" (`dgView: 'tracks'`) first, then
+  "Versions" (`dgView: 'versions'`, today's rows). The engine has one table
+  mode per page, so `dg-master` is `multi` with `groupByH3` since then: the
+  versions are ONE "Versions" sub-table (every page the same heading), as a
+  release's other versions.
+- **Requests.** `_dgPageCount()` keeps the master's record (`masters/<id>`,
+  `_dgPageUrl()` page 1 of the Tracks view) and, with the setting on, asks
+  versions page 1 — the same URL as the Versions view's page 1 — for
+  `pagination.items` (`_dgRun.versions`; a failure costs the count, not the
+  view). One page.
+- **Tracks.** A master's record has a release's tracklist, so `_dgToHtml()`
+  runs it through `_dgReleaseTracksHtml()` unchanged, then
+  `_dgVideosTableHtml()`. No `formats`: a medium is named by its positions
+  (sides → "Record", "1-1" → "Disc", plain numbers → "Disc"), by a heading
+  when there is one per disc. No release-wide credits: no Producer column on
+  most masters, no Release credits table.
+- **The head** (`_dgMasterHeadSpec()`, `_dgMasterRec`): "~ Master release by
+  <artists> (year)", Notes (a master rarely has any: 1 of 24 probed),
+  Details — left: Master release (Year linked to the search, the main
+  release ★, the newest release when it differs, Versions), External links
+  (Master, History, Main release, Newest release), Genres and styles,
+  Community; right: **Credits** (`_dgCreditsByPerson()`: a person per line,
+  the most tracks first, then first seen; roles on the same set of tracks
+  joined; tracks as runs in tracklist order, `_dgPosRuns()`: "A1–B2, B4").
+  Images.
+- **Community from the page.** A master's API answer has no `community`
+  block: Have, Want, Avg Rating and Ratings are read from Discogs'
+  Statistics box (`_dgLiveStats('#master-statistics')`, same markup as the
+  release's `#release-stats`), for sale, the price range and the formats on
+  sale from its For Sale box (`_dgLiveMasterSale()`, `#shopping-box-host`:
+  "From €1 to €4,000" → "€1 – €4,000", "Shop 3,064 Listings"); the API's
+  `num_for_sale` only when the box is missing. Data quality from the answer.
+  No request; on a disk load or before Discogs drew the boxes, the card has
+  only what the answer had.
+- **Two columns** (a release's Community card too): a facts entry
+  `[key, name, [left, right], { twoCol: true }]` in `_fdHeadInsertSections()`
+  becomes `div.mb-fd-2col` with two `dl.mb-fd-kv` (flex, 13em each, so one
+  under the other on a narrow card); a half without a row makes it one plain
+  list. Grouped: the collection and the data quality, then the market.
+- **The media split, a fix for both kinds**: a plain number with a letter
+  ("1b" after "1a", a medley's parts) is a part of the same track, not a new
+  medium — "The Very Best Of Stars On 45" (master 203805) was 147 tables.
+- **Probe** `scripts/probe-dg-master-shapes.py OUT [N]` (2026-11-04, 24 of his
+  225 masters, anonymous; the named shapes first — The River, Tracks, The
+  Promise, Essential, Greatest Hits — then a spread over the years, then
+  three he appears on), then `node scripts/check-dg-release-media.js OUT`
+  (now reads `master-<id>.json` too). Every master lacks `formats`, `labels`,
+  `identifiers`, `extraartists`, `community`, `released` and `country`;
+  shapes: 9-9 (Tracks: 4 discs), A9 (The River, Greatest Hits: 2 records;
+  The Promise: 3), 9, A, 9a. Fixtures: 26725 plus 1123030 (two discs named
+  by headings, and its versions page 1), 203805, 27194
+  (`scripts/wrap-dg-release-fixtures.py … master-<id> master-<id>-versions-p1`).
+- **Tests**: `tests/fixtures/discogs-master-tracks.spec.js`; mutations
+  `scripts/mutations/dg-master-tracks.json` (16).

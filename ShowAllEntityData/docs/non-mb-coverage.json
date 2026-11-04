@@ -87,7 +87,7 @@
       "gate": "sa_enable_discogs", "preview": null, "extRoot": "#app, #page_content, main",
       "doc": "docs/claude/discogs.md", "view": "dg",
       "pts": [
-        { "type": "dg-master", "url": "https://www.discogs.com/master/<id>", "mode": "single",
+        { "type": "dg-master", "url": "https://www.discogs.com/master/<id>", "mode": "multi",
           "ip": { "state": "yes", "ev": "spec", "why": "#app.", "spec": ["tests/fixtures/discogs-pages.spec.js", "a Discogs link in the table and in the page's content gets the card"] },
           "frp": { "state": "yes", "ev": "spec", "spec": ["tests/fixtures/discogs-pages.spec.js", "a Discogs link in the table and in the page's content gets the card"] } },
         { "type": "dg-release", "url": "https://www.discogs.com/release/<id>", "mode": "multi",

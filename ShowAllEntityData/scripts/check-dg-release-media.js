@@ -61,7 +61,9 @@ const roles = process.argv.includes('--roles');
 const roleCols = new Map();
 let unplaced = 0;
 let ranged = 0;
-for (const f of fs.readdirSync(dir).filter(x => /^release-\d+\.json$/.test(x)).sort()) {
+// A master's answer (scripts/probe-dg-master-shapes.py) has the same
+// tracklist; it has no formats and no release credits.
+for (const f of fs.readdirSync(dir).filter(x => /^(?:release|master)-\d+\.json$/.test(x)).sort()) {
     const d = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
     const m = api._dgReleaseMedia(d);
     const units = api._dgFormatUnits(d.formats).map(u => u.label);

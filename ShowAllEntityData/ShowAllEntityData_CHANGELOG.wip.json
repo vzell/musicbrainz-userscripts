@@ -1,0 +1,39 @@
+[
+    {
+        "version": "WIP.3",
+        "date": "2026-11-04",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Discogs Tracks view (a release's and a master's): track positions with a letter after the same number (\"1a\", \"1b\", …, a medley's parts) stay one table. Each part used to start a new disc: \"The Very Best Of Stars On 45\" came out as 147 tables of one row; now it is one table of 159 rows with a Section per medley."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.2",
+        "date": "2026-11-04",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "Discogs release page, Tracks: the Community card shows its rows in two columns: Have, Want, Avg rating, Ratings and Data quality on the left, Last sold, Low, Median, High and For sale on the right. When the card is narrow it is one column again. The counts have thousands separators, as on Discogs' own box."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.1",
+        "date": "2026-11-04",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "Discogs master page: a new first button, Tracks, shows the master the way the release page's Tracks button shows a release. There is one table per disc or record (named by its positions, or by Discogs' heading when there is one per disc), the credits as columns (Instruments, Vocals, Producer, Engineer, Mixed by, Arranged by, Other credits), and the master's videos in a table under the tracks, with Play. Above the tables: \"~ Master release by … (year)\", Notes, Details and Images. Details has on the left Master release (year, the main release ★, the newest release, the number of versions), External links, Genres and styles and Community (Have, Want, ratings and data quality; copies for sale, prices and formats, read from Discogs' own Statistics and For Sale boxes on the page). On the right is Credits: one line per person with their roles and the tracks each is on (\"Guitar A1–B2, B4 · Harmonica A1\"), the people on the most tracks first. The versions table is the second button, Versions, as before, now under one \"Versions\" sub-table heading.",
+                    "New setting: ⚙️ Settings → 💿 Discogs → \"Master page: the number of versions in the Tracks view\" (on). The count costs one request more, the master's first page of versions; off, Tracks asks only for the master."
+                ]
+            }
+        ]
+    }
+]

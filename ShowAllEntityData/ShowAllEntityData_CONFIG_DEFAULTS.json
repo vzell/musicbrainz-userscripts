@@ -2,11 +2,11 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1524+2026-11-02",
-    "schema_entries": 490,
+    "script_version": "9.99.1539+2026-11-04",
+    "schema_entries": 491,
     "sections": 54,
-    "settings": 436,
-    "settings_with_default": 431,
+    "settings": 437,
+    "settings_with_default": 432,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 259,
+      "checkbox": 260,
       "color_picker": 62,
       "divider": 54,
       "number": 53,
@@ -317,6 +317,7 @@
     "sa_count_stat_tooltip_color": "Row-count tooltip — foreground (text) color",
     "sa_credit_attr_color": "Credit attribute color",
     "sa_default_hidden_columns": "Default Hidden Columns per Page Type",
+    "sa_dg_master_versions_count": "Master page: the number of versions in the Tracks view",
     "sa_dg_mb_auto_lookup": "MusicBrainz column: look up missing rows automatically",
     "sa_dg_mb_column": "MusicBrainz column (with the Discogs importer userscript)",
     "sa_dg_tip_images": "Image column: all images of a row on hover",
@@ -754,6 +755,7 @@
     "sa_count_stat_tooltip_bg": "#fbf8f1",
     "sa_count_stat_tooltip_color": "#2b2622",
     "sa_credit_attr_color": "#2e7d32",
+    "sa_dg_master_versions_count": true,
     "sa_dg_mb_auto_lookup": true,
     "sa_dg_mb_column": true,
     "sa_dg_tip_images": true,

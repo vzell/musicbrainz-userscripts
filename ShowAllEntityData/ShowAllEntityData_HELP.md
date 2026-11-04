@@ -3798,7 +3798,21 @@ With ⚙️ Settings → *💿 Discogs* → *Enable on discogs.com* on (on by
 default), a master, release, artist or label page on discogs.com gets a
 section of its own above Discogs' page, with the toolbar and these buttons:
 
-- **Master — Show all versions:** every version in one table: a thumbnail,
+- **Master — Tracks:** the master laid out like a release's Tracks (below):
+  one table per disc or record (a master has no format, so it is named by its
+  positions: "Record 1 · 39:20", "Disc 2 · Lucky Town"), the credits as
+  columns, and its **Videos** under the tracks (*Play* plays one in a row under
+  it). Above the tables: "~ Master release by … (year)", **Notes**, **Details**
+  — on the left **Master release** (year, the main release ★, the newest
+  release, the number of versions), External links, Genres and styles and
+  **Community** (Discogs' Statistics and For Sale boxes of the page: have,
+  want, ratings, data quality; copies for sale, prices, formats); on the right
+  **Credits**: who played what, on which tracks ("Guitar A1–B2, B4 · Harmonica
+  A1"), the people on the most tracks first — and **Images**. Two requests:
+  the master, and its first page of versions for their number; with ⚙️
+  Settings → *💿 Discogs* → *Master page: the number of versions in the Tracks
+  view* off, one.
+- **Master — Versions:** every version in one table: a thumbnail,
   title, format, label, catalogue number, country and year; ★ marks the
   master's main release.
 - **Release — Tracks:** the release laid out like a MusicBrainz release page,
@@ -3818,9 +3832,10 @@ section of its own above Discogs' page, with the toolbar and these buttons:
   - above the tables, as on a MusicBrainz release: "~ Release by … (released:
     country)", **Notes** (closed to start with), **Details** (cards: on the
     left Release, External links, Genres and styles, Contributors and
-    Community — Discogs' Statistics box with its links (have, want, ratings,
-    last sold, low, median, high) and the copies for sale; the Identifiers on
-    the right) and
+    Community — Discogs' Statistics box with its links in two columns: have,
+    want, ratings and the data quality, then last sold, low, median, high and
+    the copies for sale (one column when the card is narrow); the Identifiers
+    on the right) and
     **Images** (a click opens the viewer). Labels, formats, the country, the
     year, genres and styles and the links in the notes are links, as on
     Discogs' page, with the same previews as the tables' links.

@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "7c3cda79f2d316622ca6d2d496fcdb876b6f831c",
-    "revisions_walked": 1140
+    "head": "3b8f05910ece56637507d07da493fc8c37918d0e",
+    "revisions_walked": 1157
   },
   "changes": [
     {
@@ -1124,6 +1124,7 @@
     "sa_enable_internetarchive": true,
     "sa_ia_tip_images": true,
     "sa_ia_play_in_place": true,
+    "sa_enable_setlistfm": true,
     "sa_pop_enabled": true,
     "sa_pop_initial_page": true,
     "sa_pop_mb": true,

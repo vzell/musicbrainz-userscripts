@@ -5112,6 +5112,16 @@
                          'nothing.'
         },
 
+        sa_dg_master_versions_count: {
+            label: 'Master page: the number of versions in the Tracks view',
+            type: 'checkbox',
+            default: true,
+            description: 'A master\'s Tracks button shows the master\'s number of versions among its facts. ' +
+                         'The master\'s own record does not have it, so it costs one request more: the first ' +
+                         'page of its versions. Off: the Tracks button asks only for the master, and the count ' +
+                         'is left out.'
+        },
+
         // ============================================================
         // INTERNET ARCHIVE (archive.org, 2026-10-31;
         // docs/claude/internet-archive.md)
@@ -15967,10 +15977,13 @@
     /**
      * What `_dgPageCount()` learned for the run under way: the release's
      * master, whose versions are the release page's pages 2 and on, and a
-     * master's main release, marked ★ in its versions. 0 for none.
-     * @type {{masterId: number, mainId: number}}
+     * master's main release, marked ★ in its versions. 0 for none. A
+     * master's Tracks view: `versions`, its number of versions for the head
+     * (versions page 1's `pagination.items`, `sa_dg_master_versions_count`),
+     * -1 when not asked or not answered.
+     * @type {{masterId: number, mainId: number, versions: number}}
      */
-    const _dgRun = { masterId: 0, mainId: 0 };
+    const _dgRun = { masterId: 0, mainId: 0, versions: -1 };
 
     /**
      * What this discogs.com page is: its kind and Discogs id, read from the
@@ -16066,6 +16079,8 @@
         const pg = _dgPage();
         if (pg.kind === 'artist') return _EXT_DG_LISTS.artist.url(String(pg.id), p);
         if (pg.kind === 'label') return _EXT_DG_LISTS.label.url(`${pg.id}:${def.features.dgOrder === 'asc' ? 'asc' : 'desc'}`, p);
+        // A master's Tracks view is the master's own record, one page.
+        if (pg.kind === 'master' && def.features.dgView === 'tracks') return `https://api.discogs.com/masters/${pg.id}`;
         if (pg.kind === 'master') return _EXT_DG_LISTS.versions.url(String(pg.id), p);
         return p === 1 ? `https://api.discogs.com/releases/${pg.id}` : _EXT_DG_LISTS.versions.url(String(_dgRun.masterId), p - 1);
     }
@@ -16076,8 +16091,11 @@
      * button's `features.pageCap` (a label's "Newest 500" is 5). A release
      * asks for itself and, when it has a master, that master's versions
      * page 1: 1 + their pages. A master also asks for its own record
-     * (`masters/<id>`), for its main release. What it asked is kept for the
-     * loop (`_dgTexts`).
+     * (`masters/<id>`), for its main release. A master's Tracks view is that
+     * record alone (one page), and, with `sa_dg_master_versions_count`,
+     * versions page 1 for the head's count (`_dgRun.versions`; a failure
+     * costs the count, not the view). What it asked is kept for the loop
+     * (`_dgTexts`).
      *
      * @param {object} def - The active merged pageDefinition.
      * @returns {Promise<number>}
@@ -16086,6 +16104,7 @@
         _dgTexts.clear();
         _dgRun.masterId = 0;
         _dgRun.mainId = 0;
+        _dgRun.versions = -1;
         const keep = async (url) => {
             const text = await _dgFetchText(url, false);
             _dgTexts.set(url, text);
@@ -16098,6 +16117,22 @@
             // The Tracks view is the release alone: no other versions.
             if (def.features.dgView === 'tracks') return 1;
             return _dgRun.masterId ? 1 + pages(await keep(_dgPageUrl(2, def))) : 1;
+        }
+        if (_dgPage().kind === 'master' && def.features.dgView === 'tracks') {
+            const m = await keep(_dgPageUrl(1, def));
+            _dgRun.mainId = Number(m && m.main_release) || 0;
+            // The head's number of versions: one request more, by setting
+            // (vzell 2026-11-04); the same URL as the Versions view's page 1.
+            if (Lib.settings.sa_dg_master_versions_count !== false) {
+                try {
+                    const v = _dgJson(await _dgFetchText(_EXT_DG_LISTS.versions.url(String(_dgPage().id), 1), false));
+                    const n = Number(v && v.pagination && v.pagination.items);
+                    _dgRun.versions = Number.isFinite(n) ? n : -1;
+                } catch (err) {
+                    Lib.warn('fetch', `Discogs master versions: ${err && err.message} — no count in the head.`);
+                }
+            }
+            return 1;
         }
         if (_dgPage().kind === 'master') {
             // Only for the ★: a failure here costs the mark, not the versions.
@@ -16755,7 +16790,12 @@
                 if (!cur.sides.includes(side)) cur.sides.push(side);
             } else if (nm) {
                 const n = Number(nm[1]);
-                if (!cur || cur.kind !== 'plain' || n <= cur.last) start('', 'plain');
+                // "1b" after "1a" is a part of the same track (a medley's,
+                // "The Very Best Of Stars On 45", master 203805: 159 parts in
+                // 147 media before), not a new medium; a bare number seen
+                // again still is.
+                const samePart = cur && cur.kind === 'plain' && n === cur.last && /[a-z]$/.test(pos);
+                if (!cur || cur.kind !== 'plain' || (n <= cur.last && !samePart)) start('', 'plain');
                 cur.last = n;
             } else if (!cur) {
                 start('', 'plain');
@@ -16944,11 +16984,15 @@
      * ("Last Sold:"); a label it lacks is left out. Empty when the box is
      * not there (not rendered yet, another layout).
      *
+     * A master's page has the same box as `#master-statistics` (Have, Want,
+     * Avg Rating, Ratings: its API answer has none of them).
+     *
+     * @param {string} [box] - The box's selector inside `#app`.
      * @returns {Object<string, {text: string, href: string}>} Keyed by the label, lower-case.
      */
-    function _dgLiveStats() {
+    function _dgLiveStats(box = '#release-stats') {
         const out = {};
-        document.querySelectorAll('#app #release-stats li').forEach((li) => {
+        document.querySelectorAll(`#app ${box} li`).forEach((li) => {
             const name = li.querySelector('span');
             if (!name) return;
             const key = name.textContent.replace(/:\s*$/, '').trim().toLowerCase();
@@ -17010,7 +17054,7 @@
         // from that box on this page (`_dgLiveStats()`, the API has none).
         const stats = `${DG}/release/stats/${d.id}`;
         const live = _dgLiveStats();
-        const num = n => (typeof n === 'number' ? _fdLink(stats, String(n)) : '');
+        const num = n => (typeof n === 'number' ? _fdLink(stats, n.toLocaleString('en-US')) : '');
         const liveVal = k => (live[k] ? (live[k].href ? _fdLink(live[k].href, live[k].text) : live[k].text) : '');
         const contributors = (cm.contributors || []).map(c => String((c && c.username) || '')).filter(Boolean);
         // An identifier's description goes with its value ("AL 33795 ·
@@ -17051,13 +17095,16 @@
                 contributors.length && ['contributors', 'Contributors', contributors.length,
                     _fdPills(contributors.map(u => [u, `${DG}/user/${encodeURIComponent(u)}`])), false],
                 // Discogs' Statistics box (vzell 2026-11-04: all of it, linked),
-                // then the copies for sale (its Marketplace page) and the data quality.
-                ['community', 'Community', [['Have', num(cm.have)], ['Want', num(cm.want)],
+                // then the copies for sale (its Marketplace page) and the data
+                // quality; in two columns (vzell 2026-11-04), grouped: the
+                // collection and the data quality, then the market.
+                ['community', 'Community', [[['Have', num(cm.have)], ['Want', num(cm.want)],
                     ['Avg rating', cm.rating && cm.rating.count ? `${Number(cm.rating.average).toFixed(2)} / 5` : ''],
                     ['Ratings', cm.rating && cm.rating.count ? num(cm.rating.count) : ''],
-                    ['Last sold', liveVal('last sold')], ['Low', liveVal('low')], ['Median', liveVal('median')], ['High', liveVal('high')],
-                    ['For sale', Number(d.num_for_sale) > 0 ? _fdLink(`${DG}/sell/release/${d.id}`, String(d.num_for_sale)) : ''],
-                    ['Data quality', String(d.data_quality || cm.data_quality || '')]]],
+                    ['Data quality', String(d.data_quality || cm.data_quality || '')]],
+                [['Last sold', liveVal('last sold')], ['Low', liveVal('low')], ['Median', liveVal('median')], ['High', liveVal('high')],
+                    ['For sale', Number(d.num_for_sale) > 0 ? _fdLink(`${DG}/sell/release/${d.id}`, Number(d.num_for_sale).toLocaleString('en-US')) : '']]],
+                { twoCol: true }],
             ],
             others: [
                 ['identifiers', 'Identifiers', ids],
@@ -17067,6 +17114,194 @@
                 return { full: im.full, thumb: im.thumb, caption: im.type === 'primary' ? 'Primary' : `Secondary ${sec}` };
             }),
             picturesTitle: 'Images', title: `${by}${by ? ' – ' : ''}${String(d.title || '')}`, source: 'the release\'s Discogs answer',
+        };
+    }
+
+    // ── A master's Tracks view (dg-master, as a release's; 2026-11-04) ──────
+    // org/discogs.org, "the discogs master release PT"; vzell's answers the
+    // same day: Credits by person on the right, the number of versions in
+    // the head (`sa_dg_master_versions_count`), Community grouped in two
+    // columns, the videos as a sub-table under the tracks.
+
+    /**
+     * The master answer of the Tracks view's render (`_dgToHtml()`), for
+     * its head (`_dgMasterHeadSpec()`). Null on the Versions view.
+     * @type {?Object}
+     */
+    let _dgMasterRec = null;
+
+    /**
+     * Discogs' For Sale box on a master's page (`#shopping-box-host`, drawn
+     * by Discogs' page): the price range ("From €1 to €4,000" → "€1 –
+     * €4,000"), the listings ("Shop 3,064 Listings") with their link, and
+     * the formats on sale, each linked to its listings. The API has only the
+     * count and a lowest price in an unnamed currency, so the page is read:
+     * no request. Null when the box is not there.
+     *
+     * @returns {?{prices: string, listings: string, href: string, formats: Array<[string, string]>}}
+     */
+    function _dgLiveMasterSale() {
+        const box = document.querySelector('#shopping-box-host');
+        if (!box || box.closest('#mb-dg-root')) return null;
+        const price = box.querySelector('.shopping-box-price');
+        const cta = box.querySelector('a.shopping-box-green-cta[href]');
+        return {
+            prices: price ? price.textContent.replace(/\s+/g, ' ').trim().replace(/^From\s+/i, '').replace(/\s+to\s+/i, ' – ') : '',
+            listings: cta ? ((/\d[\d,.]*/.exec(cta.textContent) || [''])[0]) : '',
+            href: cta ? cta.href : '',
+            formats: Array.from(box.querySelectorAll('.shopping-box-top-formats a[href]')).map(a => [a.textContent.trim(), a.href]).filter(f => f[0]),
+        };
+    }
+
+    /**
+     * Track positions as runs in tracklist order: "A1–A4, B1, B2, B4".
+     *
+     * @param {number[]} idx - Indexes into `tracks`, ascending.
+     * @param {Array<{pos: string}>} tracks - `_dgReleaseMedia()`'s tracks.
+     * @returns {string}
+     */
+    function _dgPosRuns(idx, tracks) {
+        const runs = [];
+        idx.forEach((i) => {
+            const last = runs[runs.length - 1];
+            if (last && i === last[1] + 1) last[1] = i;
+            else runs.push([i, i]);
+        });
+        const pos = i => String(tracks[i].pos || '').trim() || String(i + 1);
+        return runs.map(([a, b]) => (b - a >= 2 ? `${pos(a)}–${pos(b)}` : a === b ? pos(a) : `${pos(a)}, ${pos(b)}`)).join(', ');
+    }
+
+    /**
+     * The Credits card of a master's head (answer 1: the right column, as
+     * Discogs' own Credits box): one line per person, their roles each with
+     * the tracks it is on, roles on the same tracks joined ("Guitar, Vocals
+     * A1–A4, B1, B2, B4 · Harmonica A1"). People with the most tracks first,
+     * then in tracklist order. Null when no track has a credit.
+     *
+     * @param {Object} d - The master answer.
+     * @returns {?{body: HTMLElement, count: number}}
+     */
+    function _dgCreditsByPerson(d) {
+        const m = _dgReleaseMedia(d);
+        const people = new Map();
+        m.tracks.forEach((t, i) => t.credits.forEach((c) => {
+            const key = c.id ? `#${c.id}` : String(c.name);
+            const p = people.get(key) || { c, roles: new Map(), tracks: new Set(), first: i };
+            people.set(key, p);
+            p.tracks.add(i);
+            _dgSplitRoles(c.role).forEach((r) => {
+                const set = p.roles.get(r) || new Set();
+                set.add(i);
+                p.roles.set(r, set);
+            });
+        }));
+        if (!people.size) return null;
+        const dl = document.createElement('dl');
+        dl.className = 'mb-fd-people';
+        [...people.values()].sort((a, b) => b.tracks.size - a.tracks.size || a.first - b.first).forEach((p) => {
+            const dt = document.createElement('dt');
+            const name = p.c.anv || _extDiscogsName(p.c.name);
+            dt.appendChild(p.c.id ? _fdLink(`https://www.discogs.com/artist/${p.c.id}`, name) : document.createTextNode(name));
+            // Roles on the same tracks, joined, in the order first seen.
+            const byTracks = new Map();
+            p.roles.forEach((set, r) => {
+                const k = [...set].sort((a, b) => a - b).join(',');
+                const g = byTracks.get(k) || { roles: [], idx: [...set].sort((a, b) => a - b) };
+                g.roles.push(r);
+                byTracks.set(k, g);
+            });
+            const dd = document.createElement('dd');
+            [...byTracks.values()].forEach((g, i) => {
+                if (i) dd.append(' · ');
+                dd.append(`${g.roles.join(', ')} `);
+                const s = document.createElement('span');
+                s.className = 'mb-fd-tracks';
+                s.textContent = _dgPosRuns(g.idx, m.tracks);
+                dd.appendChild(s);
+            });
+            dl.append(dt, dd);
+        });
+        return { body: dl, count: people.size };
+    }
+
+    /**
+     * The head spec of a master's Tracks view (`_fdHeadSpec()`), from
+     * `_dgMasterRec`: "~ Master release by <artists> (year)"; Notes; Details
+     * — on the left Master release (year, main release ★, newest release,
+     * the number of versions: `_dgRun.versions`), External links, Genres and
+     * styles, Community last in two columns (Discogs' Statistics box and its
+     * For Sale box, both read from the page: `_dgLiveStats('#master-statistics')`,
+     * `_dgLiveMasterSale()`; the master's API answer has neither; then the
+     * data quality); on the right Credits by person (`_dgCreditsByPerson()`);
+     * Images. Null on the Versions view or before the answer.
+     *
+     * @returns {?Object}
+     */
+    function _dgMasterHeadSpec() {
+        const d = _dgMasterRec;
+        const root = document.getElementById('mb-dg-root');
+        if (!d || !root || activeDefinition?.features?.dgView !== 'tracks') return null;
+        const DG = 'https://www.discogs.com';
+        const artists = (d.artists || []).filter(a => a && a.name);
+        const by = artists.map((a, i) => (a.anv || _extDiscogsName(a.name)) + (i < artists.length - 1 ? ` ${String(a.join || ',').trim()} `.replace(/^ ,/, ',') : '')).join('');
+        const year = Number(d.year) || 0;
+        const rel = id => (Number(id) > 0 ? `${DG}/release/${id}` : '');
+        const main = rel(d.main_release);
+        const newest = d.most_recent_release && d.most_recent_release !== d.main_release ? rel(d.most_recent_release) : '';
+        const frag = (parts) => {
+            const f = document.createDocumentFragment();
+            parts.filter(x => x !== '' && x !== null && x !== undefined).forEach(x => f.append(x));
+            return f.childNodes.length ? f : '';
+        };
+        const star = Object.assign(document.createElement('span'), { className: 'mb-dg-main', textContent: '★ ', title: 'Main release' });
+        // Discogs' Statistics box, as the page links it; a count written as
+        // Discogs' box writes it, with thousands separators.
+        const live = _dgLiveStats('#master-statistics');
+        const big = t => (/^\d+$/.test(t) ? Number(t).toLocaleString('en-US') : t);
+        const liveVal = k => (live[k] ? (live[k].href ? _fdLink(live[k].href, big(live[k].text)) : live[k].text) : '');
+        const sale = _dgLiveMasterSale();
+        const sellAll = `${DG}/sell/list?master_id=${d.id}`;
+        const forSale = sale && sale.listings ? _fdLink(sale.href || sellAll, sale.listings)
+            : Number(d.num_for_sale) > 0 ? _fdLink(sellAll, Number(d.num_for_sale).toLocaleString('en-US')) : '';
+        const formats = sale && sale.formats.length ? frag(sale.formats.flatMap(([t, h], i) => [i ? ' · ' : '', _fdLink(h, t)])) : '';
+        const master = `${DG}/master/${d.id}`;
+        const links = _fdChips([
+            ['Discogs', [['Master', master], ['History', `${master}/history`],
+                ...(main ? [['Main release', main]] : []), ...(newest ? [['Newest release', newest]] : [])]],
+        ]);
+        const genres = [...(d.genres || []).map(g => [String(g), `${DG}/music/genre/${encodeURIComponent(String(g).toLowerCase())}`]),
+            ...(d.styles || []).map(g => [String(g), `${DG}/music/style/${encodeURIComponent(String(g).toLowerCase())}`])].filter(g => g[0]);
+        const credits = _dgCreditsByPerson(d);
+        const images = _extDiscogsImages(d.images);
+        let sec = 0;
+        return {
+            root, h2: root.querySelector('h2.mb-dg-list-heading'),
+            sub: { what: 'Master release', by, byHref: artists[0] && artists[0].id ? `${DG}/artist/${artists[0].id}` : '', when: year ? String(year) : '' },
+            text: { title: 'Notes', body: String(d.notes || '').trim(), html: _extDiscogsMarkupHtml(String(d.notes || '').trim(), { names: true }) },
+            facts: [
+                ['master', 'Master release', [
+                    ['Year', year ? _fdLink(`${DG}/search/?decade=${year - (year % 10)}&year=${year}`, String(year)) : ''],
+                    ['Main release', main ? frag([star, _fdLink(main, `release ${d.main_release}`)]) : ''],
+                    ['Newest release', newest ? _fdLink(newest, `release ${d.most_recent_release}`) : ''],
+                    ['Versions', _dgRun.versions >= 0 ? _dgRun.versions.toLocaleString('en-US') : '']]],
+                links && ['links', 'External links', links.count, links.body, false],
+                genres.length && ['genres', 'Genres and styles', genres.length, _fdPills(genres), false],
+                // Two columns, grouped as the release's: the collection and the
+                // data quality, then the market (vzell 2026-11-04).
+                ['community', 'Community', [[['Have', liveVal('have')], ['Want', liveVal('want')],
+                    ['Avg rating', liveVal('avg rating')], ['Ratings', liveVal('ratings')],
+                    ['Data quality', String(d.data_quality || '')]],
+                [['For sale', forSale], ['Prices', sale ? sale.prices : ''], ['Formats', formats]]],
+                { twoCol: true }],
+            ],
+            others: [
+                credits && ['credits', 'Credits', credits.count, credits.body, false],
+            ],
+            pictures: images.map((im) => {
+                sec += im.type === 'secondary' ? 1 : 0;
+                return { full: im.full, thumb: im.thumb, caption: im.type === 'primary' ? 'Primary' : `Secondary ${sec}` };
+            }),
+            picturesTitle: 'Images', title: `${by}${by ? ' – ' : ''}${String(d.title || '')}`, source: 'the master\'s Discogs answer',
         };
     }
 
@@ -17110,6 +17345,14 @@
             body = tracksView ? _dgReleaseTracksHtml(d) : _dgTableHtml('Credits', H.Credits, crs) +
                 _dgTableHtml('Companies, etc.', H['Companies, etc.'], cos) +
                 _dgTableHtml('Barcode and Other Identifiers', H['Barcode and Other Identifiers'], ids) + _dgVideosTableHtml(d.videos);
+        } else if (pg.kind === 'master' && activeDefinition?.features?.dgView === 'tracks') {
+            // A master's Tracks view (vzell 2026-11-04): its own record has a
+            // release's tracklist, so the release's splitter and columns; no
+            // formats (a medium is named by its positions), no release
+            // credits; then its videos (answer 4: under the tracks).
+            if (!d || !d.title || !Array.isArray(d.tracklist)) throw bad('a master');
+            _dgMasterRec = d;
+            body = _dgReleaseTracksHtml(d) + _dgVideosTableHtml(d.videos);
         } else {
             const kind = pg.kind === 'artist' ? 'artist' : pg.kind === 'label' ? 'label' : 'versions';
             const spec = _EXT_DG_LISTS[kind];
@@ -17130,7 +17373,10 @@
                 body = _dgTableHtml(null, _DG_HEADERS.label, rows.map(r => `<tr>${_dgThumbCell(r.thumb)}${_dgSearchCell(r.artist, 'artist')}` +
                     `${_dgCell(r.title, `https://www.discogs.com/release/${r.id}`)}${_dgCell(r.format)}${_dgCatnoCell(r.catno)}${_dgCell(r.year)}</tr>`));
             } else if (pg.kind === 'master') {
-                body = _dgTableHtml(null, _DG_HEADERS.master, rows.map(v => _dgVersionRow(v, _dgRun.mainId)));
+                // One "Versions" sub-table (every page the same heading): the
+                // page is multi-table since its Tracks view (2026-11-04).
+                _dgMasterRec = null;
+                body = _dgTableHtml('Versions', _DG_HEADERS.master, rows.map(v => _dgVersionRow(v, _dgRun.mainId)));
             } else {
                 body = _dgTableHtml('Other versions', _DG_HEADERS.release['Other versions'],
                     rows.filter(v => v.id !== pg.id).map(v => _dgVersionRow(v, 0)));
@@ -17682,7 +17928,8 @@
         const h2 = document.createElement('h2');
         h2.className = 'mb-dg-list-heading';
         h2.textContent = kind === 'user' ? (_DG_USER_LISTS[def.features.dgUserList] || {}).heading || 'Lists'
-            : { artist: 'Discography', label: 'Releases', master: 'Versions', release: def.features.dgView === 'tracks' ? 'Tracklist' : 'Release', submissions: 'Submissions', history: 'History',
+            : { artist: 'Discography', label: 'Releases', master: def.features.dgView === 'tracks' ? 'Tracklist' : 'Versions',
+                release: def.features.dgView === 'tracks' ? 'Tracklist' : 'Release', submissions: 'Submissions', history: 'History',
                 ratings: 'Ratings', images: 'Images', entityImages: 'Images', sell: 'For sale', search: 'Search results' }[kind] || 'Discogs';
         const cols = kind === 'release' ? _DG_HEADERS.release.Tracklist : kind === 'user' ? _DG_HEADERS.user.releases
             : kind === 'history' ? _DG_HEADERS.history.Changes : _DG_HEADERS[kind];
@@ -20362,6 +20609,7 @@
         const t = activeDefinition?.type;
         if (t === 'ia-details') return _iaDetailsHeadSpec();
         if (t === 'dg-release') return _dgReleaseHeadSpec();
+        if (t === 'dg-master') return _dgMasterHeadSpec();
         return null;
     }
 
@@ -20421,19 +20669,41 @@
         // Details: the left column, the right one beside it. Either may hold
         // a facts entry ([key, name, rows]: a name → value list) or a card
         // built by the site ([key, name, count, body, wide]).
+        const fillDl = (dl, rows) => rows.forEach(([k, v]) => {
+            dl.appendChild(el('dt', '', k));
+            const dd = el('dd');
+            if (v instanceof Node) dd.appendChild(v);
+            else dd.textContent = v;
+            dl.appendChild(dd);
+        });
+        // A facts entry: [key, name, rows], or [key, name, [left, right],
+        // {twoCol: true}] — two name → value lists side by side (the
+        // Community card, vzell 2026-11-04), one under the other when the
+        // card is narrow; a half left without a row makes it one list.
         const asCard = (entry) => {
-            if (!entry || entry.length !== 3) return entry;
-            const [key, name, rows0] = entry;
+            if (!entry || (entry.length !== 3 && !(entry.length === 4 && entry[3] && entry[3].twoCol))) return entry;
+            const [key, name, rows0, opts] = entry;
+            if (opts && opts.twoCol) {
+                const halves = rows0.map(h => h.filter(r => r[1])).filter(h => h.length);
+                const n = halves.reduce((s, h) => s + h.length, 0);
+                if (!n) return null;
+                if (halves.length === 1) {
+                    const dl = el('dl');
+                    fillDl(dl, halves[0]);
+                    return [key, name, n, dl, false];
+                }
+                const box = el('div', 'mb-fd-2col');
+                halves.forEach((h) => {
+                    const dl = el('dl', 'mb-fd-kv');
+                    fillDl(dl, h);
+                    box.appendChild(dl);
+                });
+                return [key, name, n, box, false];
+            }
             const rows = rows0.filter(r => r[1]);
             if (!rows.length) return null;
             const dl = el('dl');
-            rows.forEach(([k, v]) => {
-                dl.appendChild(el('dt', '', k));
-                const dd = el('dd');
-                if (v instanceof Node) dd.appendChild(v);
-                else dd.textContent = v;
-                dl.appendChild(dd);
-            });
+            fillDl(dl, rows);
             return [key, name, rows.length, dl, false];
         };
         const facts = (spec.facts || []).map(asCard).filter(Boolean);
@@ -20521,6 +20791,18 @@
                has room. */
             .mb-fd-details dl.mb-sb-card-body > dt { max-width: 11em; overflow-wrap: anywhere; }
             .mb-fd-dim { color: #7a6d5c; }
+            /* A two-column facts card (Discogs' Community): the two lists side
+               by side, one under the other once the card is narrower than two
+               of them; each list is a card body's dl. */
+            .mb-fd-2col { display: flex; flex-wrap: wrap; }
+            .mb-fd-2col > dl.mb-fd-kv { flex: 1 1 13em; min-width: 0; margin: 0; padding: 6px 9px; display: grid;
+                grid-template-columns: auto minmax(0, 1fr); gap: 1px 12px; align-content: start; }
+            .mb-fd-2col > dl.mb-fd-kv + dl.mb-fd-kv { border-left: 1px solid #e3dccf; }
+            .mb-fd-2col > dl.mb-fd-kv > dt { margin: 0; color: #7a6d5c; font-style: italic; font-weight: normal; max-width: 11em; }
+            .mb-fd-2col > dl.mb-fd-kv > dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+            /* The Credits card: a person, then their roles and tracks. */
+            .mb-fd-details dl.mb-fd-people > dt { font-style: normal; }
+            .mb-fd-details dl.mb-fd-people .mb-fd-tracks { color: #7a6d5c; white-space: nowrap; }
         `);
         st.id = 'mb-fd-head-style';
     }
@@ -44846,17 +45128,34 @@
             type: 'dg-master',
             host: 'www.discogs.com',
             match: (path) => _dgEntityPageIs(path, 'master'),
-            buttons: [ { label: 'Show all versions', shortLabel: 'Versions', get description() { return _dgCostPer('Every version of this master', 'versions', 'Born To Run: 387 versions, 4 requests'); } } ],
+            // Tracks: the master as a release's Tracks view shows a release
+            // (a sub-table per medium, credits as columns, Notes, Details and
+            // Images above, its videos); then the versions (vzell, 2026-11-04).
+            buttons: [ {
+                label: 'Show all tracks', shortLabel: 'Tracks', features: { dgView: 'tracks' },
+                get description() {
+                    return Lib.settings.sa_dg_master_versions_count !== false
+                        ? 'Two requests: the master, and its first page of versions for their number. A sub-table per disc or record, the credits as columns; its notes, facts and images above, its videos below.'
+                        : 'One request: the master. A sub-table per disc or record, the credits as columns; its notes, facts and images above, its videos below.';
+                }
+            }, {
+                label: 'Show all versions', shortLabel: 'Versions', features: { dgView: 'versions' },
+                get description() { return _dgCostPer('Every version of this master', 'versions', 'Born To Run: 387 versions, 4 requests'); }
+            } ],
             features: {
                 dgToTable: 'master',
                 decorateDoc: (doc) => _dgMbDecorateDoc(doc),
+                groupByH3: true,
                 pageRequest: (p, def) => _dgPageRequest(p, def),
                 pageCountAsync: (def) => _dgPageCount(def),
-                // Several catalog numbers in one cell, one row each (as Catalog#).
-                collapsableColumns: [ 'Cat#' ],
+                // The Tracks view's credit columns, one line per name (as a
+                // release's); several catalog numbers in one cell, one row each.
+                collapsableColumns: [ 'Instruments', 'Vocals', 'Producer', 'Engineer', 'Mixed by', 'Arranged by', 'Other credits', 'Cat#' ],
                 integerColumns: [ { sourceColumn: 'Year', align: 'R' } ]
             },
-            tableMode: 'single'
+            // Multi since the Tracks view (2026-11-04): the versions are one
+            // "Versions" sub-table, as a release's other versions.
+            tableMode: 'multi'
         },
         {
             type: 'dg-release',

@@ -169,14 +169,23 @@ test.describe('Discogs release: the Tracks view, as release-tracks (2026-11-04)'
         await expect(card('Release')).toContainText('FormatVinyl, Terre Haute Pressing, LP, Album, Stereo');
         // Community: Discogs' Statistics box, all of it, linked as there (vzell
         // 2026-11-04); have, want and ratings from the API answer, the sales
-        // figures from the page's box; then for sale and data quality.
+        // figures from the page's box; then for sale and data quality. In two
+        // columns (vzell 2026-11-04), grouped: the collection and the data
+        // quality, then the market.
         const comm = card('Community');
-        await expect(comm.locator('dt')).toHaveText(['Have', 'Want', 'Avg rating', 'Ratings', 'Last sold', 'Low', 'Median', 'High',
-            'For sale', 'Data quality']);
+        await expect(comm.locator('.mb-fd-2col > dl.mb-fd-kv')).toHaveCount(2);
+        await expect(comm.locator('dl.mb-fd-kv').first().locator('dt')).toHaveText(['Have', 'Want', 'Avg rating', 'Ratings', 'Data quality']);
+        await expect(comm.locator('dl.mb-fd-kv').nth(1).locator('dt')).toHaveText(['Last sold', 'Low', 'Median', 'High', 'For sale']);
+        // Side by side on this width, not one under the other.
+        const [l, r] = await comm.locator('dl.mb-fd-kv').evaluateAll(ds => ds.map(x => x.getBoundingClientRect()));
+        expect(r.left, 'the market beside the collection').toBeGreaterThan(l.left + 50);
+        expect(Math.abs(r.top - l.top), 'both columns start on one line').toBeLessThan(2);
+        await expect(card('Community').locator('.mb-sb-card-count')).toHaveText('10');
         const stats = 'https://www.discogs.com/release/stats/1874253';
-        await expect(comm.locator('dd a', { hasText: '18799' })).toHaveAttribute('href', stats);
-        await expect(comm.locator('dd a', { hasText: '2149' })).toHaveAttribute('href', stats);
-        await expect(comm.locator('dd a', { hasText: '1170' })).toHaveAttribute('href', stats);
+        // Counts as Discogs' box writes them, with thousands separators.
+        await expect(comm.locator('dd a', { hasText: '18,799' })).toHaveAttribute('href', stats);
+        await expect(comm.locator('dd a', { hasText: '2,149' })).toHaveAttribute('href', stats);
+        await expect(comm.locator('dd a', { hasText: '1,170' })).toHaveAttribute('href', stats);
         await expect(comm).toContainText('Avg rating4.34 / 5');
         await expect(comm.locator('dd a', { hasText: 'Oct 25, 2026' })).toHaveAttribute('href', 'https://www.discogs.com/sell/history/1874253');
         await expect(comm).toContainText('Low€6.67');
