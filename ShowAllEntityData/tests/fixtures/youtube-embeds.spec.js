@@ -799,7 +799,7 @@ test.describe('YouTube in place — Step 3: Discogs', () => {
                 sa_yt_play_in_place: true, sa_yt_stills: false,
             },
         });
-        await page.locator('#mb-dg-root button[data-label="Show tracklist, credits and other versions"]').click();
+        await page.locator('#mb-dg-root button[data-label="Show credits, companies and other versions"]').click();
         await waitForRenderComplete(page, { waitForAutoResize: false });
         // The heading carries its toggle and count around the name.
         const h3 = page.locator('#mb-dg-root h3').filter({ hasText: 'Videos' });

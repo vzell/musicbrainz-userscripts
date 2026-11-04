@@ -116,17 +116,17 @@ test.describe('archive.org: an item page (ia-details)', () => {
         const errors = await open(page, SHOW);
         await press(page, 'Show all tracks');
         // The subheader under the h1, as a release's "~ Release by …" (this item names no creator).
-        await expect(page.locator('#mb-ia-root > h1 + p.mb-ia-det-sub')).toHaveText('~ Audio (1975-12-27: Tower Theater, Philadelphia)');
-        const head = page.locator('#mb-ia-root .mb-ia-det-head');
-        const h2s = head.locator(':scope > h2.mb-ia-det-h2');
+        await expect(page.locator('#mb-ia-root > h1 + p.mb-fd-sub')).toHaveText('~ Audio (1975-12-27: Tower Theater, Philadelphia)');
+        const head = page.locator('#mb-ia-root .mb-fd-head');
+        const h2s = head.locator(':scope > h2.mb-fd-h2');
         await expect(h2s).toHaveText([/Description$/, /Details \(\d+\)$/, /Pictures \(7\)$/]);
         // Collapsible h2 sections (makeH2sCollapsible() ran after they went in): Description starts closed,
         // like a release's Annotation; Details and Pictures open.
         await expect(h2s.nth(0)).toHaveClass(/mb-toggle-h2/);
-        await expect(head.locator('.mb-ia-det-desc')).toBeHidden();
-        await expect(head.locator('.mb-ia-det-details')).toBeVisible();
+        await expect(head.locator('.mb-fd-text')).toBeHidden();
+        await expect(head.locator('.mb-fd-details')).toBeVisible();
         await h2s.nth(0).click();
-        await expect(head.locator('.mb-ia-det-desc')).toBeVisible();
+        await expect(head.locator('.mb-fd-text')).toBeVisible();
         // Details: the Sidebar section's cards.
         const show = head.locator('.mb-sb-card', { has: page.locator('.mb-sb-card-head', { hasText: /^Show/ }) });
         await expect(show).toContainText('1975-12-27');
@@ -142,12 +142,12 @@ test.describe('archive.org: an item page (ia-details)', () => {
         await show.locator('.mb-sb-card-head').click();
         await expect(show).not.toHaveClass(/mb-sb-card-shut/);
         // Pictures: the Cover art section's tiles, the cover first.
-        const tiles = head.locator('.mb-ia-det-art figure.mb-release-art-tile');
+        const tiles = head.locator('.mb-fd-art figure.mb-release-art-tile');
         await expect(tiles).toHaveCount(7);
         await expect(tiles.first().locator('figcaption')).toHaveText('Cover');
         // Above the data heading, as release-tracks' sections.
         expect(await page.evaluate(() => {
-            const h = document.querySelector('#mb-ia-root .mb-ia-det-head');
+            const h = document.querySelector('#mb-ia-root .mb-fd-head');
             return !!(h && h.nextElementSibling && h.nextElementSibling.matches('h2.mb-ia-list-heading'));
         })).toBe(true);
         // A filter re-render keeps the head as it is: not rebuilt, the folds kept.
@@ -155,7 +155,7 @@ test.describe('archive.org: an item page (ia-details)', () => {
         await page.locator('#mb-global-filter-input').fill('Jungleland');
         await expect(page.locator('#mb-ia-root h3', { hasText: 'Disc 2' })).toContainText('(1 of 9)');
         await expect(head).toHaveAttribute('data-mb-probe', '1');
-        await expect(head.locator('.mb-ia-det-desc')).toBeVisible();
+        await expect(head.locator('.mb-fd-text')).toBeVisible();
         await tiles.first().locator('a').click();
         await expect(page.locator('#mb-art-viewer')).toBeVisible();
         expect(errors).toEqual([]);

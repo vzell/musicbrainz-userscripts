@@ -3801,11 +3801,33 @@ section of its own above Discogs' page, with the toolbar and these buttons:
 - **Master — Show all versions:** every version in one table: a thumbnail,
   title, format, label, catalogue number, country and year; ★ marks the
   master's main release.
-- **Release — Show tracklist, credits and other versions:** five sub-tables:
-  **Tracklist** (with each track's credits), **Credits**, **Companies, etc.**,
-  **Barcode and Other Identifiers** and **Other versions** (every other
-  version of its master) — and a sixth, **Videos** (Play, Title, Length,
-  URL), when the release has videos: *Play* plays one in a row under it.
+- **Release — Tracks:** the release laid out like a MusicBrainz release page,
+  from one request:
+  - one table per disc or record ("Disc 1 · CD · 49:50", "Record 1 · Vinyl
+    LP · 39:20"; a vinyl record's two sides are one table, as on
+    MusicBrainz), named after Discogs' heading when it has one per disc; a
+    heading inside a disc ("Cologne 13/02/1981") fills a **Section** column;
+  - **#**, **Title**, **Artist** (a compilation's), **Length**, and the
+    credits as columns, one line per name: **Instruments**, **Vocals**,
+    **Producer**, **Engineer**, **Mixed by**, **Arranged by** and **Other
+    credits** (writing, mastering, design, …). A track's own credits and the
+    release's credits that name it ("A1 to A4, B2 to B4") both land on it;
+  - **Release credits**: the credits that name no track (and any whose
+    tracks Discogs gives in a form that doesn't match the tracklist, with
+    that text);
+  - above the tables, as on a MusicBrainz release: "~ Release by … (released:
+    country)", **Notes** (closed to start with), **Details** (cards: on the
+    left Release, External links, Genres and styles, Contributors and
+    Community — Discogs' Statistics box with its links (have, want, ratings,
+    last sold, low, median, high) and the copies for sale; the Identifiers on
+    the right) and
+    **Images** (a click opens the viewer). Labels, formats, the country, the
+    year, genres and styles and the links in the notes are links, as on
+    Discogs' page, with the same previews as the tables' links.
+- **Release — Credits, versions:** five sub-tables: **Credits**, **Companies,
+  etc.**, **Barcode and Other Identifiers** and **Other versions** (every
+  other version of its master) — and **Videos** (Play, Title, Length, URL),
+  when the release has videos: *Play* plays one in a row under it.
 - **Artist — Show the whole discography:** one sub-table per Discogs role, in
   Discogs' order: **Releases**, the credits Discogs' API gives (*Credits:
   Producer*, …), **Appearances**, **Track appearances**, **Unofficial**; with

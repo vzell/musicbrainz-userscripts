@@ -51,7 +51,7 @@ the sentence said "seven" and "three" from 2026-10-18 until then, though
 | pageType     | Page                     | Button(s)                                                         | Table                                                                                                                       |
 |--------------|--------------------------|-------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
 | `dg-master`  | `/master/<id>`           | Show all versions                                                 | single: Image, Title (★ main release), Format, Label, Cat#, Country, Year                                                   |
-| `dg-release` | `/release/<id>`          | Show tracklist, credits and other versions                        | multi: Tracklist, Credits, Companies, etc., Barcode and Other Identifiers, Videos (when it has any), Other versions (the release itself left out) |
+| `dg-release` | `/release/<id>`          | Tracks (`dgView: 'tracks'`) · Credits, versions (`dgView: 'more'`) | Tracks: multi, a sub-table per medium + Release credits, the head above (see "A release's Tracks view"); Credits, versions: Credits, Companies, etc., Barcode and Other Identifiers, Videos (when it has any), Other versions (the release itself left out) |
 | `dg-artist`  | `/artist/<id>`           | Show the whole discography                                        | multi: one sub-table per Discogs role run (Releases, Credits: Producer, …, Appearances, Track appearances, Unofficial)       |
 | `dg-label`   | `/label/<id>`            | Newest: 500 · 1,000 · 5,000 — Oldest: 500 · 1,000 — Then: All     | single: Image, Artist, Title, Format, Cat#, Year                                                                            |
 | `dg-submissions` | `/submissions?…`     | Show all submissions                                              | single: Artist, Title, Changed by, Changed, Matched artist, History (rows from the FLAT view's pages, not the API)            |
@@ -838,3 +838,78 @@ records are in the detail-page database as `mb:<key>`), `spacingS()` is
 `_extSpacingMs('api.discogs.com')`, and without a token the button names
 the token's pace too. On a multi-table page (dg-release) only the sub-table
 with images (Other versions) gets one.
+
+## A release's Tracks view (dg-release, 2026-11-04)
+
+org/foreign-detail-PTs.org, the Discogs step; vzell's answers 2026-11-03:
+replace the view (first button "Tracks", today's sub-tables but the
+Tracklist on the second), the role columns of the mockup, release-wide
+credits as a "Release credits" sub-table.
+
+- **One request**: the release. `_dgPageCount()` returns 1 for
+  `features.dgView === 'tracks'`, so the master's versions are not asked.
+  `_dgToHtml()` page 1 writes `_dgReleaseTracksHtml(d)` and keeps the answer
+  in `_dgRelRec` for the head; the other view clears it.
+- **Media** (`_dgReleaseMedia()`): a track's medium comes from its position —
+  the part before the last "-" or "." ("1-1", "CD-1", "2.10", "Vinyl.A");
+  sides ("A1", "B", "AA") pair into a record, a new one at a third side or a
+  side seen again (a 10 × 7" box: "Record N" headings over A/AA each time);
+  a plain number starts a new medium when it counts down; "16.1" right after
+  plain "15" is a part of track 16, not disc 16. A heading right before a
+  new medium names it; one inside a medium is the **Section** of the tracks
+  after it; a named medium with sections (a split LP, a heading per side)
+  turns its name into the first section. An index track's sub-tracks are
+  rows, the index title before theirs. **A vinyl record is ONE sub-table**
+  (its two sides), as MusicBrainz has one medium per record — the mockup
+  drew a sub-table per side, which made a single's two one-row tables.
+- **Names**: `_dgFormatUnits()` expands `formats` into units (2×LP is two,
+  a box and "All Media" none, files one); a medium takes the unit of its
+  index when the counts agree, else the one unit label, else a disc
+  prefix's ("CD", "DVD"). h3: word (Disc, Record, Tape, Files) and number,
+  the heading, the unit, the running time.
+- **Credits** (`_dgExpandTrackSpec()`): a release credit's `tracks` spec is
+  placed part by part — "X to Y" / "X-Y" (each end a position, or a side's,
+  disc's or heading's first or last track), a position, a side or disc
+  ("D", "CD1"), a heading's name ("Record 10"). Any part that cannot be
+  placed keeps the WHOLE credit in Release credits, its spec shown: Discogs'
+  data names discs that do not exist ("3-10" on a two-disc release).
+- **Columns** (`_dgRoleColumn()`): vocals → Vocals; producer, engineer and
+  recorded-by, mixed-by, arranged-by → their columns; `_DG_OTHER_ROLE_RE`
+  (writing, mastering, art, crew, conducting, featuring, …) → Other credits;
+  the rest → Instruments (the API has no role categories). Instruments,
+  Vocals and Other credits read "Role – Name" through `_dgRoleHtml()` (the
+  📊 Credit details sentinels); the named columns read the name, with what
+  the role adds ("Engineer [Assistant]" → "(Assistant)"). Only columns with
+  a credit appear; Artist and Section only when a track has one.
+- **Track tables carry `data-mb-dg-tracks`**: `_dgMbDecorateTable()` gives
+  them no MusicBrainz column (rows are tracks); Release credits gets one.
+- **The head** (`_dgReleaseHeadSpec()`) is the shared foreign-detail head
+  (`_fdHeadInsertSections()`, docs/claude/internet-archive.md "An item
+  page"): "~ Release by <artists> (released: country)", Notes, Details
+  (left: Release, External links, Genres and styles, Contributors (the
+  API's, the submitter first, each `/user/<name>`), Community last — Discogs'
+  Statistics box in full: have, want, avg rating and ratings from the API
+  answer, linked to `/release/stats/<id>` as the box links them, Last sold,
+  Low, Median and High read from that box on the page (`_dgLiveStats()`,
+  `#app #release-stats`, by label; Discogs' API has no sales figures, and the
+  page is already there: no request), then the copies for sale, linked to
+  `/sell/release/<id>`, and the data quality; right: Identifiers,
+  long and with long values; vzell 2026-11-04 — either column of the shared
+  head takes facts or built cards),
+  Images (`_extDiscogsImages()`, Primary / Secondary N). vzell's live test
+  (2026-11-04): values are linked as Discogs' own page links them (a label
+  or series to `/label/<id>`, format, country and year to the search, a
+  genre or style to `/music/genre|style/<name>`); Notes go through
+  `_extDiscogsMarkupHtml()` (`[url=…]`, `[r=…]`, `[a=…]` as links); an
+  identifier's description goes with its VALUE, never the label — a long one
+  ("A-side deadwax, stamped except …") made the label column the card's whole
+  width and the values 18 px wide (`.mb-fd-details dt` is capped too, as a
+  second guard). The head's links preview like the tables' (`_extSource()`'s
+  foreign selector names `.mb-fd-head`/`.mb-fd-sub`), and a plain click on
+  one opens the window (`_dgTableClickOpens()`).
+- **Probe** `scripts/probe-dg-release-shapes.py` (2026-11-04, 52 releases,
+  anonymous; `--multi` for multi-disc, boxes, DVDs, cassettes) and
+  `scripts/check-dg-release-media.js DIR [--roles]`, which runs the shipped
+  splitter on saved answers: 348 of 354 ranged credits placed, the 6 left
+  name positions the releases do not have. Fixtures: 1874253 and four from
+  the probe (`scripts/wrap-dg-release-fixtures.py`).

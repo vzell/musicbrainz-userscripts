@@ -30,8 +30,8 @@
         "why": "The item's subheader and its Description, Details and Pictures sections go above the tables, as release-tracks' (vzell 2026-11-04).",
         "edits": [
             {
-                "find": "        if (activeDefinition?.type !== 'ia-details') return;",
-                "replace": "        return;"
+                "find": "        if (t === 'ia-details') return _iaDetailsHeadSpec();",
+                "replace": ""
             }
         ],
         "spec": "tests/fixtures/ia-details.spec.js",
@@ -121,8 +121,8 @@
         "why": "Description starts closed, as a release's Annotation: only Details and Pictures carry data-mb-ia-open.",
         "edits": [
             {
-                "find": "            if (open) h.dataset.mbIaOpen = '1';",
-                "replace": "            h.dataset.mbIaOpen = '1';"
+                "find": "            if (open) h.dataset.mbFdOpen = '1';",
+                "replace": "            h.dataset.mbFdOpen = '1';"
             }
         ],
         "spec": "tests/fixtures/ia-details.spec.js",
@@ -147,12 +147,12 @@
         "why": "The sections go in BEFORE makeH2sCollapsible(), which makes their h2s collapsible; inserted after it they are plain headings.",
         "edits": [
             {
-                "find": "            // and Pictures sections, the same way (two start open).\n            _iaDetailsInsertSections();\n",
-                "replace": "            // and Pictures sections, the same way (two start open).\n"
+                "find": "            // release's Tracks view): its sections, the same way (two start open).\n            _fdHeadInsertSections();\n",
+                "replace": "            // release's Tracks view): its sections, the same way (two start open).\n"
             },
             {
-                "find": "            _sbInlineOpen();\n            _iaDetailsOpenSections();\n\n            // Apply sticky headers",
-                "replace": "            _sbInlineOpen();\n            _iaDetailsInsertSections();\n            _iaDetailsOpenSections();\n\n            // Apply sticky headers"
+                "find": "            _sbInlineOpen();\n            _fdHeadOpenSections();\n\n            // Apply sticky headers",
+                "replace": "            _sbInlineOpen();\n            _fdHeadInsertSections();\n            _fdHeadOpenSections();\n\n            // Apply sticky headers"
             }
         ],
         "spec": "tests/fixtures/ia-details.spec.js",

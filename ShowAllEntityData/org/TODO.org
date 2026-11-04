@@ -6337,3 +6337,6 @@ early), while the hover marks (=_dpWinWhat()=) already say it opens here. Report
 
 make the doubling of the IP information on non-MB PTs shine through instead of appending it again on the FRP
 
+* TODO BUG: When marking text on a POH and pressing "Ctrl-C", then text is not copied but instead the first table column is focused
+
+BUG: When marking text on a POH and pressing "Ctrl-C", then text is not copied but instead the first table column is focused

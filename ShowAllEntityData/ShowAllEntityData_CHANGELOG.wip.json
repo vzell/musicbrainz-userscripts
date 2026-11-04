@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.6",
+    "date": "2026-11-04",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Discogs release page: a new first button, Tracks, shows the release the way a MusicBrainz release page does, from one request. There is one table per disc or record (a vinyl record's two sides are one table, as on MusicBrainz), named like \"Disc 1 · CD · 49:50\" and after Discogs' heading when there is one per disc; headings inside a disc fill a Section column. The credits become columns, one line per name: Instruments, Vocals, Producer, Engineer, Mixed by, Arranged by and Other credits. A track's own credits and the release credits that name it (\"A1 to A4, B2 to B4\") both land on it; the credits naming no track form a Release credits table. Above the tables, as on a MusicBrainz release: \"~ Release by …\", Notes (closed to start with), Details (on the left Release, External links, Genres and styles, Contributors and Community: Discogs' Statistics box with its links, and the copies for sale; the Identifiers on the right) and Images. The previous view, without its tracklist, is the second button: Credits, versions. Its labels, formats, country, year, genres and styles and the links in the notes are links, as on Discogs' page, and preview like the tables' links."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.5",
     "date": "2026-11-04",
     "sections": [

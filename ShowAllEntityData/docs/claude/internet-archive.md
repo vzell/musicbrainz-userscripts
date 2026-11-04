@@ -162,22 +162,23 @@ Modelled on MusicBrainz's release-tracks.
     MD5).
   Sizes are always in MB (`_iaSizeText()`), so a size column sorts by its
   numbers.
-- **The head, laid out as release-tracks** (vzell 2026-11-04,
-  `_iaDetailsInsertSections()`; a no-op on any other pageType and before the
+- **The head, laid out as release-tracks** (vzell 2026-11-04, the shared
+  foreign-detail head `_fdHeadInsertSections()` with the spec
+  `_iaDetailsHeadSpec()`, which a Discogs release's Tracks view uses too; a no-op on any other pageType and before the
   item was read): from the item record of `_extIaItem()` (`_iaDetailsRec`),
-  a subheader `p.mb-ia-det-sub` after the h1 ("~ Concert recording by …
-  (date: venue)", `_IA_DET_MEDIA_NAMES`), then `div.mb-ia-det-head` before
+  a subheader `p.mb-fd-sub` after the h1 ("~ Concert recording by …
+  (date: venue)", `_IA_DET_MEDIA_NAMES`), then `div.mb-fd-head` before
   the data h2 holding three h2 sections: Description (starts closed, as a
   release's Annotation), Details (the MusicBrainz Sidebar section's cards,
   reused as they are: `_sbInlineCard()`, `_sbInlineLayout()`,
   `_sbInlineEnsureStyle()`, folds through `_sbInlineWireFolds()`, each
-  heading's card `_iaDetailsCardTip()`) and Pictures (the Cover art
+  heading's card `_fdCardTip()`) and Pictures (the Cover art
   section's tile classes, `_ensureReleaseArtStyle()`; a click opens the
   artwork viewer through `_dpArtViewerClick()`, every picture in order).
   **It goes in BEFORE `makeH2sCollapsible()`** (the fetch tail and the
   disk-load tail, as `_releaseArtInsertSection()`), so its h2s fold like
-  any other; `_iaDetailsOpenSections()` opens Details and Pictures
-  afterwards (`data-mb-ia-open`). It used to run in the three after-render
+  any other; `_fdHeadOpenSections()` opens Details and Pictures
+  afterwards (`data-mb-fd-open`). It used to run in the three after-render
   tails, `runFilter()`'s included, which rebuilt it on every filter
   keystroke; now a filter leaves it alone, folds included. The only shared
   change is `_sbInlineWireFolds()`, the Sidebar section's fold wiring

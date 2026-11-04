@@ -229,29 +229,20 @@ test.describe('discogs.com pages (2026-10-18)', () => {
         expect(errors).toEqual([]);
     });
 
-    test('a release: the release, then its master\'s versions — six sub-tables, the release itself not among its other versions', async ({ page }) => {
+    test('a release, second button: the release, then its master\'s versions — five sub-tables, the release itself not among its other versions', async ({ page }) => {
+        // Since 2026-11-04 the tracks are the first button's (discogs-release-tracks.spec.js).
         const { errors } = await openDg(page, 'release');
-        await press(page, 'Show tracklist, credits and other versions');
+        await press(page, 'Show credits, companies and other versions');
         expect(await apiLog(page)).toEqual([`${API}releases/1874253`, ...VERSIONS]);
         // Videos since org/youtube.org (decision 3): from the same answer, no request of its own.
-        expect(await h3s(page)).toEqual(['Tracklist', 'Credits', 'Companies, etc.', 'Barcode and Other Identifiers', 'Videos', 'Other versions']);
-        expect(await groupRows(page)).toEqual([8, 18, 12, 12, 3, 386]);
-        const tl = page.locator('#mb-dg-root table.tbl').nth(0);
-        expect(await heads(tl)).toEqual(expect.arrayContaining(['Pos', 'Title', 'Duration', 'Credits']));
-        await expect(tl.locator('tbody tr').first()).toContainText('Thunder Road');
-        // A track's credits: one row each, the name linked, collapsible like
-        // MusicBrainz's Instruments column.
-        const cr = await cell(tl, 0, 'Credits');
-        await expect(cr.locator('li')).toHaveCount(7);
-        await expect(cr.locator('li').first()).toHaveText('Backing Vocals – Mike Appel');
-        await expect(cr.locator('li a[href="https://www.discogs.com/artist/219990"]')).toHaveText('Mike Appel');
-        await expect(cr.locator('.mb-cell-collapse-toggle')).toHaveCount(1);
+        expect(await h3s(page)).toEqual(['Credits', 'Companies, etc.', 'Barcode and Other Identifiers', 'Videos', 'Other versions']);
+        expect(await groupRows(page)).toEqual([18, 12, 12, 3, 386]);
         // The fixture profile has sa_yt_play_in_place off: no Play column.
-        const vids = page.locator('#mb-dg-root table.tbl').nth(4);
+        const vids = page.locator('#mb-dg-root table.tbl').nth(3);
         expect(await heads(vids)).toEqual(expect.arrayContaining(['Title', 'Length', 'URL']));
         expect(await heads(vids)).not.toEqual(expect.arrayContaining(['Play']));
         await expect(vids.locator('.mb-yt-tile')).toHaveCount(0);
-        const other = page.locator('#mb-dg-root table.tbl').nth(5);
+        const other = page.locator('#mb-dg-root table.tbl').nth(4);
         expect(await heads(other)).toEqual(expect.arrayContaining(['Image', 'Title', 'Country']));
         await expect(other.locator('a[href="https://www.discogs.com/release/1874253"]')).toHaveCount(0);
         expect(errors).toEqual([]);
@@ -320,15 +311,17 @@ test.describe('discogs.com pages (2026-10-18)', () => {
         expect(errors).toEqual([]);
     });
 
-    test('a release\'s Credits column: a "Credit details - Role" 📊 section; ticking a role keeps its tracks and marks the role (vzell 2026-10-18)', async ({ page }) => {
+    test('a release\'s Vocals column: a "Credit details - Role" 📊 section; ticking a role keeps its tracks and marks the role (vzell 2026-10-18)', async ({ page }) => {
+        // The Tracks view's role columns since 2026-11-04 (the Tracklist's
+        // one Credits column before): the same sentinels, _dgRoleHtml().
         const { errors } = await openDg(page, 'release');
-        await press(page, 'Show tracklist, credits and other versions');
+        await press(page, 'Show all tracks');
         const tl = page.locator('#mb-dg-root table.tbl').nth(0);
         // The converter's sentinels: each role, each bracket word.
         const roleRows = await tl.evaluate(t => Array.from(t.tBodies[0].rows)
             .filter(r => Array.from(r.querySelectorAll('.mb-credit-role')).some(s => s.textContent.trim() === 'Backing Vocals')).length);
         expect(roleRows).toBeGreaterThan(0);
-        await openUniq(page, tl, 'Credits');
+        await openUniq(page, tl, 'Vocals');
         expect(await sectionLabels(page)).toEqual(expect.arrayContaining(['Credit details - Role']));
         await clickSynItem(page, 'Credit details - Role', '» role: Backing Vocals');
         await expect(tl.locator('tbody > tr')).toHaveCount(roleRows);
@@ -454,7 +447,7 @@ test.describe('discogs.com: Discogs\' own section headings under our tables (202
     test('a section\'s heading folds the section\'s content, never Discogs\' own button; Ctrl+click folds Discogs\' sections only', async ({ page }) => {
         const { errors } = await openDg(page, 'release');
         await addDiscogsSections(page);
-        await press(page, 'Show tracklist, credits and other versions');
+        await press(page, 'Show credits, companies and other versions');
         const h2 = (id) => page.locator(`#${id} > header > h2`);
         const content = (id) => page.locator(`#${id} > div.content_ETGfR`);
         const button = (id) => page.locator(`#${id} > header > button`);

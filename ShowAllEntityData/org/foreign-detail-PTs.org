@@ -163,7 +163,27 @@ vzell, 2026-11-03:
 - Docs: =docs/claude/internet-archive.md= "An item page", HELP, the PAGETYPES reference #147, the coverage registry row.
 
 
-* TODO summary
+** Discogs (=dg-release= Tracks view) — built (2026-11-04, branch feat/dg-release, stacked on feat/ia-details)
+
+Env: 2026-11-04T03:46+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright Chromium, no Tampermonkey (GM stubs)
+
+- Probe =scripts/probe-dg-release-shapes.py=, 52 releases, anonymous (=--multi= for multi-disc, boxes, DVDs, cassettes):
+  - positions: disc-track (="1-1"=, ="2.10"=, ="CD-1"=, ="CDr.1"=, ="Vinyl.A"=), sides (="A1"=, ="B"=, ="AA"=), plain numbers;
+  - headings are either the media (="Record 1"= over sides A/AA again, a 10 × 7" box) or sections inside a disc;
+  - credit ranges: ="1-1 to 2-12"=, ="A1 to A4, B2"=, ="1, 3, 5"=, ="A4, C1-C3, D"= (a whole side), ="Record 10"= (a heading).
+  - =scripts/check-dg-release-media.js= runs the shipped splitter on the saved answers: 348 of 354 ranged credits placed;
+    the 6 left name positions the releases do not have, so they stay in "Release credits" with their range.
+- Built as answered: first button "Tracks", the second today's sub-tables minus the Tracklist; the role columns of the
+  mockup plus *Other credits* (writing, mastering, art, crew …, so no credit is lost); "Release credits" sub-table.
+- The head (Notes, Details, Images) is the archive.org one made shared: =_fdHeadInsertSections()= with one spec per site.
+- *Deviation from the mockup*: a vinyl record's two sides are ONE sub-table, as MusicBrainz has one medium per record;
+  per side, a 7" single became two one-row tables (and a 10 × 7" box twenty).
+- *Left out*: the MusicBrainz column on the track tables (a recording link needs the release's MusicBrainz match first).
+- Specs: =tests/fixtures/discogs-release-tracks.spec.js= (6), =discogs-mb-column.spec.js= (+1), =discogs-pages.spec.js= retargeted.
+- Mutations: =scripts/mutations/dg-release-tracks.json= (15, all caught); =ia-details.json= repointed (13, all caught).
+
+
+* DONE summary - IA
 
 ● The archive.org item page now works the way the mockup showed. It's on its own branch, feat/ia-details (commit dc1476c3), pushed and stacked on fix/non-mb-coverage-gaps. It has only been seen in tests, not
   yet in a real browser.
@@ -190,7 +210,6 @@ vzell, 2026-11-03:
 
   Next comes the Discogs release upgrade on its own branch. Do you want to try archive.org in your browser first, or should I go straight on?
 
-
 * DONE make it nicer
 
 On the new IA PT for a detail page the parts before the h2 header line with the global filter could be made nicer
@@ -200,3 +219,93 @@ On the new IA PT for a detail page the parts before the h2 header line with the 
 #+end_example
 
 Emulate the MB PT for 'release-tracks', e.g. https://musicbrainz.org/release/755eec4f-d7d7-4fec-9b97-3be7a9ad5012 - [Image #27]
+* DONE summary - Discogs
+
+● The Discogs release page now has a Tracks button that shows the release like a MusicBrainz release page, from one request. It's on the new branch feat/dg-release (stacked on feat/ia-details), not committed
+  yet.
+
+  What it shows:
+  - One table per disc or record, named like "Disc 1 · CD · Volume 1: Live In Europe, 1981 · 49:50" or "Record 1 · Vinyl LP · 39:20". Discogs headings name a disc when there's one per disc; headings inside a
+    disc go into a Section column.
+  - Columns: #, Title, Artist (only on compilations), Length, then the credits as columns with one line per name: Instruments, Vocals, Producer, Engineer, Mixed by, Arranged by and Other credits. A track's own
+    credits and the release credits whose range names it ("A1 to A4, B2 to B4") both land on the track.
+  - Release credits: a table for the credits that name no track.
+  - Above the tables: the same layout as the archive.org page — "~ Release by Bruce Springsteen (1975: US)", Notes (closed to start with), Details cards (Release, Community, Identifiers, External links, Genres
+    and styles) and Images, which open the viewer. The archive.org header code is now shared between the two sites rather than copied.
+  - The old view is the second button, "Credits, versions": the same tables as before, minus the Tracklist.
+
+  Where it differs from what you approved:
+  - One table per vinyl record, not per side. MusicBrainz treats a record as one medium. Per side, a 7-inch single would be two one-row tables, and a box of ten singles twenty.
+  - Other credits is an extra column. Writing, mastering, artwork, crew and similar roles have no place among the six columns you picked, and without it they would be dropped. Say if you'd rather have them in
+    Release credits instead.
+  - Not done: the MusicBrainz column on the track tables. A recording link first needs the release matched to its MusicBrainz release.
+
+  How I checked it:
+  - I probed 52 releases of different shapes first (singles, 10×7-inch box, 5-CD and 20-CD sets, DVDs, cassettes, compilations, a split LP). Running the new code on those saved releases placed 348 of the 354
+    credit ranges on tracks. The other 6 name tracks the releases don't have (Discogs data errors), so they stay in Release credits with their range shown.
+  - A new spec covers Born To Run plus four of the probed releases. 297 of 298 related tests passed; the one failure is a card-timing test that took 46 s under load and passes 3 of 3 when run alone.
+  - The mutation check catches all 15 new planted defects for Discogs and all 13 for archive.org after the shared-code change. Lint, the coverage check and the doc checks pass.
+  - HELP, docs/claude/discogs.md, the archive.org doc, CLAUDE.md, a WIP.6 changelog entry and a "built" section in org/foreign-detail-PTs.org are updated.
+
+  To try it: https://www.discogs.com/release/1874253 (Born To Run on vinyl) and https://www.discogs.com/release/2012001 (five CDs with headings). Press "Tracks". When it looks right, tell me to commit and
+  push.
+
+* TODO bugs on discogs release PT
+** DONE initial
+
+1.)
+
+There is a problem when rendering the "IDENTIFIERS" section on https://www.discogs.com/release/1874253-Bruce-Springsteen-Born-To-Run, see [Image #29]
+The values see to be missing for the subsections like "Rights Society", "Pressing Plant ID (Runouts)" etc
+
+2.)
+
+The hyperlinks inclusive POH support are missing on the values in the header sections, also they are present on the IP, e.g.
+
+#+begin_example
+Columbia - https://www.discogs.com/label/1866-Columbia
+US - https://www.discogs.com/search/?country=US
+Rock & Roll - https://www.discogs.com/music/style/rock%20&%20roll
+etc.
+#+end_example
+
+3.)
+
+In the notes section, the following URL is written as a raw string
+
+#+begin_example
+[url=http://www.discogs.com/release/567824]Canadian Pressing[/url] with the same cat no. also available.
+#+end_example
+
+instead of getting the hyperlink and PO support
+
+4.)
+
+in the "EXTERNAL LINKS" section, the "Release", "Master" and "History" buttons should alos get our POH support
+
+** DONE flip sides
+
+[Image #31] - Flip sides for the "EXTERNAL LINKS" and "GENRES AND STYLES" sections (they should go to the left side) and
+the "IDENTIFIERS" section should go to the right side, as the identifier section itself tends to be very long and also
+the values (like a "Matrix / Runout" value) tends to be very long
+
+The order of the sections on the left side should be
+
+#+begin_example
+RELEASE
+EXTERNAL LINKS
+GENRES AND STYLES
+... maybe others if present on the IP ... 
+COMMUNITY - always last
+#+end_example
+
+** TODO add the rest of the statistics
+
+currently the "COMMUNITY" card ([Image #33]) has not all the information available on the IP under the "Statistics"
+section, see [Image #34] and the hyperlinks are also missing
+
+* TODO add MB entity glyph handling for all entities whhich have one when the third party userscript from murdos is installed
+
+add MB entity glyph handling for all entities whhich have one when the third party userscript from murdos is installed
+
+

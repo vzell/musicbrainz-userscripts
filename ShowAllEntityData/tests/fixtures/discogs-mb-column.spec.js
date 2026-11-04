@@ -187,7 +187,7 @@ const clickSynItem = (page, sectionLabel, itemLabel) => page.evaluate(([sec, lbl
 test.describe('discogs.com: the MusicBrainz column (2026-10-19)', () => {
     test('without the importer there is no MusicBrainz column, and MusicBrainz is never asked', async ({ page }) => {
         const { errors } = await openDg(page, 'release', { importer: false });
-        await press(page, 'Show tracklist, credits and other versions');
+        await press(page, 'Show credits, companies and other versions');
         const all = await page.locator('#mb-dg-root table.tbl').evaluateAll(ts => ts.map(t => Array.from(t.querySelectorAll('thead tr:first-child th'))
             .map(th => th.dataset.colName || th.textContent.trim())));
         expect(all.length).toBeGreaterThan(4);
@@ -197,24 +197,32 @@ test.describe('discogs.com: the MusicBrainz column (2026-10-19)', () => {
         expect(errors).toEqual([]);
     });
 
-    test('a release: the column right after Name/Title on Credits, Companies and Other versions; never on Tracklist or Identifiers', async ({ page }) => {
+    test('a release: the column right after Name/Title on Credits, Companies and Other versions; never on Identifiers', async ({ page }) => {
         const { errors } = await openDg(page, 'release');
-        await press(page, 'Show tracklist, credits and other versions');
+        await press(page, 'Show credits, companies and other versions');
         await settled(page);
         const cols = (h) => heads(sub(page, h));
         expect((await cols('Credits')).slice(0, 4)).toEqual(['Role', 'Name', 'MusicBrainz', 'Tracks']);
         expect((await cols('Companies, etc.')).slice(0, 4)).toEqual(['Role', 'Name', 'MusicBrainz', 'Cat#']);
         const ov = await cols('Other versions');
         expect(ov[ov.indexOf('Title') + 1]).toBe('MusicBrainz');
-        expect(await cols('Tracklist')).not.toContain('MusicBrainz');
         expect(await cols('Barcode and Other Identifiers')).not.toContain('MusicBrainz');
+        expect(errors).toEqual([]);
+    });
+
+    test('a release\'s Tracks view: no column on a track table (rows are tracks), the column on Release credits (2026-11-04)', async ({ page }) => {
+        const { errors } = await openDg(page, 'release');
+        await press(page, 'Show all tracks');
+        await settled(page);
+        expect(await heads(sub(page, 'Record 1'))).not.toContain('MusicBrainz');
+        expect((await heads(sub(page, 'Release credits'))).slice(0, 4)).toEqual(['Role', 'Name', 'MusicBrainz', 'Tracks']);
         expect(errors).toEqual([]);
     });
 
     test('cells: the importer\'s cache at once, MusicBrainz for the rest in ONE request (one inc for every type), a place before a label, all on one line', async ({ page }) => {
         const { errors } = await openDg(page, 'release');
         const before = await page.evaluate(k => localStorage.getItem(k), IMPORTER_KEY);
-        await press(page, 'Show tracklist, credits and other versions');
+        await press(page, 'Show credits, companies and other versions');
         await settled(page);
         await expandAll(page);
         const credits = sub(page, 'Credits');
@@ -266,13 +274,13 @@ test.describe('discogs.com: the MusicBrainz column (2026-10-19)', () => {
 
     test('our own store: a second visit asks MusicBrainz nothing (a "nothing found" is remembered too)', async ({ page }) => {
         await openDg(page, 'release');
-        await press(page, 'Show tracklist, credits and other versions');
+        await press(page, 'Show credits, companies and other versions');
         await settled(page);
         expect((await mbLog(page)).length).toBeGreaterThan(0);
         // The same browser profile loads the page again (the userscript is
         // injected by the loader, so a plain reload would run without it).
         await openDg(page, 'release');
-        await press(page, 'Show tracklist, credits and other versions');
+        await press(page, 'Show credits, companies and other versions');
         await settled(page);
         expect(await mbLog(page)).toEqual([]);
         await expandAll(page);
@@ -345,7 +353,7 @@ test.describe('discogs.com: the MusicBrainz column (2026-10-19)', () => {
 
     test('a late answer reaches the source rows: a multi-table re-render (a sort) keeps it', async ({ page }) => {
         await openDg(page, 'release');
-        await press(page, 'Show tracklist, credits and other versions');
+        await press(page, 'Show credits, companies and other versions');
         await settled(page);
         await expandAll(page);
         const companies = sub(page, 'Companies, etc.');
@@ -361,7 +369,7 @@ test.describe('discogs.com: the MusicBrainz column (2026-10-19)', () => {
 
     test('a failed lookup shows ⚠; clicking it asks again and fills the cell', async ({ page }) => {
         const { errors } = await openDg(page, 'release', { fail: true });
-        await press(page, 'Show tracklist, credits and other versions');
+        await press(page, 'Show credits, companies and other versions');
         await expect.poll(() => page.locator('#mb-dg-root td.mb-dg-mb-cell[data-mb-dg-state="error"]').count(), { timeout: 15000 }).toBeGreaterThan(0);
         await expandAll(page);
         const plant = mbCell(sub(page, 'Companies, etc.'), 'label/265540');
@@ -492,7 +500,7 @@ test.describe('discogs.com: MusicBrainz cards for the MusicBrainz icons (2026-10
         await page.route('https://musicbrainz.org/static/images/entity/**', (route) => route.fulfill({
             status: 200, contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"/>',
         }));
-        await press(page, 'Show tracklist, credits and other versions');
+        await press(page, 'Show credits, companies and other versions');
         await settled(page);
         await expandAll(page);
         await answerArtistCards(page);
@@ -533,7 +541,7 @@ test.describe('discogs.com: MusicBrainz cards for the MusicBrainz icons (2026-10
     // answers an anonymous page request with the check, as MusicBrainz does.
     test('a MusicBrainz window: ✎ Editing history ▾ and Live page, its pages read with the browser\'s cookies', async ({ page }) => {
         const { errors } = await openDg(page, 'release', { settings: { sa_pop_mb: true } });
-        await press(page, 'Show tracklist, credits and other versions');
+        await press(page, 'Show credits, companies and other versions');
         await settled(page);
         await expandAll(page);
         await answerArtistCards(page);
@@ -584,7 +592,7 @@ test.describe('discogs.com: MusicBrainz cards for the MusicBrainz icons (2026-10
     // MusicBrainz card knows, its page with the browser's cookies.
     test('in a MusicBrainz window, a genre\'s tag link opens here and has its card', async ({ page }) => {
         const { errors } = await openDg(page, 'release', { settings: { sa_pop_mb: true } });
-        await press(page, 'Show tracklist, credits and other versions');
+        await press(page, 'Show credits, companies and other versions');
         await settled(page);
         await expandAll(page);
         await answerArtistCards(page);
@@ -631,7 +639,7 @@ test.describe('discogs.com: MusicBrainz cards for the MusicBrainz icons (2026-10
      */
     async function openGenreWindow(page, settings) {
         const { errors } = await openDg(page, 'release', { settings: { sa_pop_mb: true, ...settings } });
-        await press(page, 'Show tracklist, credits and other versions');
+        await press(page, 'Show credits, companies and other versions');
         await settled(page);
         await expandAll(page);
         await answerArtistCards(page);
@@ -763,7 +771,7 @@ test.describe('discogs.com: MusicBrainz cards for the MusicBrainz icons (2026-10
 test.describe('discogs.com: MusicBrainz links inside the window (2026-10-26)', () => {
     test('a MusicBrainz link in the window: its card on a hover, the window on a click, Back returns', async ({ page }) => {
         const { errors } = await openDg(page, 'release', { settings: { sa_pop_mb: true } });
-        await press(page, 'Show tracklist, credits and other versions');
+        await press(page, 'Show credits, companies and other versions');
         await settled(page);
         await expandAll(page);
         await answerArtistCards(page);
