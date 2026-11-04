@@ -12783,6 +12783,61 @@
     const _SL_LYRICS_HEADERS = ['Title', 'Lyrics', 'Version', 'Type', 'Artist', 'Date', 'Show', 'No.', 'Letter'];
 
     /**
+     * Columns added after `_SL_LYRICS_HEADERS` while logged in
+     * (`_slLoggedIn(document)`): a logged-in line carries the song's number,
+     * `<a href="lyrics.php?item=N">N</a>`, and an edit link before its
+     * lyrics glyph (vzell, 2026-11-04; org/springsteenlyrics.org "Overwhole
+     * of the SL PTs and POHs"). The live document decides for every page of
+     * a run, as `_slHeaders()` does, so all rows have the same cells;
+     * logged out, the table is exactly as before.
+     * @type {string[]}
+     */
+    const _SL_LYRICS_LOGGED_IN_HEADERS = ['ID'];
+
+    /**
+     * The lyrics glyph of a song line: `bi-file-earmark-text` when the song
+     * page has lyrics, the plain `bi-file-earmark` when it says "Lyrics not
+     * available". Named, never "the line's first `<i>`": logged in, the
+     * first one is the edit pencil (`bi-pencil-square`), which made every
+     * row read ✗ (2026-11-04).
+     * @type {string}
+     */
+    const _SL_LYRICS_GLYPH_SEL = 'i.bi-file-earmark-text, i.bi-file-earmark';
+
+    /**
+     * The `sl-lyrics` pageType's `integerColumns`, read through a getter on
+     * its `features`: "No." and the date parts always, "ID" only while
+     * logged in, when the table has that column
+     * (`_SL_LYRICS_LOGGED_IN_HEADERS`). Declaring "ID" always would make
+     * every logged-out run warn that the column is missing. The merge in
+     * `startFetchingProcess()` spreads `features`, so the getter is read at
+     * the press, from the live page's login state.
+     *
+     * @returns {Array<{sourceColumn: string, align: string}>}
+     */
+    function _slLyricsIntegerColumns() {
+        const cols = [
+            { sourceColumn: 'No.', align: 'R' },
+            { sourceColumn: 'DD', align: 'R' }, { sourceColumn: 'MM', align: 'R' }, { sourceColumn: 'YYYY', align: 'C' }
+        ];
+        if (_slLoggedIn(document)) cols.push({ sourceColumn: 'ID', align: 'R' });
+        return cols;
+    }
+
+    /**
+     * Returns a lyrics letter page's own heading, `Starting with "B"` (an
+     * `h3.heading`, or the `h2.heading` it becomes once converted). The
+     * landing page `lyrics.php` has none.
+     *
+     * @param {Document} doc The live or a fetched document.
+     * @returns {?HTMLElement}
+     */
+    function _slLyricsLetterHeading(doc) {
+        return Array.from(doc.querySelectorAll('h3.heading, h2.heading'))
+            .find(h => /^Starting with\s*"/i.test(h.textContent.trim())) || null;
+    }
+
+    /**
      * Splits a lyrics line's bracketed version text into the table's fields.
      *
      * Type follows ordered rules taken from a survey of every bracket on the
@@ -12864,6 +12919,39 @@
     }
 
     /**
+     * Builds the logged-in ID cell of a lyrics line: the song's number,
+     * linking its page (`lyrics.php?item=N`, as the site links it), and the
+     * site's edit link (`lyrics.php?cmd=edit&item=N`) as an EMPTY
+     * `a.mb-sl-edit` whose pencil is CSS (`_ensureSlStyle()`), so the cell's
+     * text, its filter and its numeric sort see N alone. A line without a
+     * number gets an empty cell, so every row keeps the same cells.
+     *
+     * @param {Document} docContext The document the row is built in.
+     * @param {Element}  span       The line (`span.monospaced`).
+     * @returns {HTMLTableCellElement}
+     */
+    function _slLyricsIdCell(docContext, span) {
+        const td = docContext.createElement('td');
+        const idLink = Array.from(span.querySelectorAll('a[href*="lyrics.php?item="]'))
+            .find(x => /^\d+$/.test(x.textContent.trim()));
+        if (!idLink) return td;
+        const link = docContext.createElement('a');
+        link.setAttribute('href', idLink.getAttribute('href'));
+        link.textContent = idLink.textContent.trim();
+        td.appendChild(link);
+        const edit = span.querySelector('a[href*="cmd=edit"]');
+        if (edit) {
+            const e = docContext.createElement('a');
+            e.className = 'mb-sl-edit';
+            e.setAttribute('href', edit.getAttribute('href'));
+            e.setAttribute('title', 'Edit on springsteenlyrics.com');
+            e.setAttribute('aria-label', 'Edit on springsteenlyrics.com');
+            td.appendChild(e);
+        }
+        return td;
+    }
+
+    /**
      * Converts a springsteenlyrics.com lyrics letter page's song lines into a
      * `<table class="tbl">`, so the standard fetch / filter / sort pipeline
      * can process it — the counterpart of `applySlCardsToTable()` for the
@@ -12894,15 +12982,16 @@
         if (!def?.features?.slLyricsToTable) return;
         const lines = Array.from(docContext.querySelectorAll('span.monospaced'))
             .filter(span => span.querySelector('a[href*="lyrics.php?song="]') && !span.closest('.navbar, footer, table'));
-        const heading = Array.from(docContext.querySelectorAll('h3.heading, h2.heading'))
-            .find(h => /^Starting with\s*"/i.test(h.textContent.trim()));
+        const heading = _slLyricsLetterHeading(docContext);
         const letter = (heading?.textContent.match(/"(.*)"/) || [])[1] || '';
+        const loggedIn = _slLoggedIn(document);
+        const headers = loggedIn ? _SL_LYRICS_HEADERS.concat(_SL_LYRICS_LOGGED_IN_HEADERS) : _SL_LYRICS_HEADERS;
 
         const table = docContext.createElement('table');
         table.className = 'tbl mb-sl-table';
         const thead = docContext.createElement('thead');
         const hr = docContext.createElement('tr');
-        _SL_LYRICS_HEADERS.forEach(h => {
+        headers.forEach(h => {
             const th = docContext.createElement('th');
             th.textContent = h;
             hr.appendChild(th);
@@ -12936,7 +13025,7 @@
 
         lines.forEach(span => {
             const a = span.querySelector('a[href*="lyrics.php?song="]');
-            const icon = span.querySelector('i');
+            const icon = span.querySelector(_SL_LYRICS_GLYPH_SEL);
             const after = Array.from(span.childNodes).slice(Array.from(span.childNodes).indexOf(a) + 1)
                 .map(n => n.textContent).join('');
             const version = ((after.match(/\[([^\]]*)\]/) || [])[1] || '').replace(/\s+/g, ' ').trim();
@@ -12960,6 +13049,7 @@
                 td.textContent = value;
                 tr.appendChild(td);
             });
+            if (loggedIn) tr.appendChild(_slLyricsIdCell(docContext, span));
             tbody.appendChild(tr);
         });
 
@@ -13074,6 +13164,20 @@
         if (document.getElementById('mb-sl-style')) return;
         // GM_addStyle so this is exempt from page CSP style-src restrictions.
         const style = GM_addStyle(`
+            /* The lyrics index's logged-in ID cell: the site's edit link,
+               empty in the DOM (_slLyricsIdCell()), its pencil drawn here so
+               the cell's text stays the number alone. */
+            body.mb-sa-host-sl table.mb-sl-table a.mb-sl-edit {
+                margin-left: 0.4em;
+                text-decoration: none;
+                opacity: 0.6;
+            }
+            body.mb-sa-host-sl table.mb-sl-table a.mb-sl-edit::before {
+                content: "\\270E";
+            }
+            body.mb-sa-host-sl table.mb-sl-table a.mb-sl-edit:hover {
+                opacity: 1;
+            }
             body.mb-sa-host-sl h1.mb-sl-h1 {
                 font-size: 24px;
                 margin: 0 0 12px;
@@ -25540,9 +25644,13 @@
      *    track's `length`), a box set's `Record 2: "…" (catalogue # …)`
      *    headers (`_slParseTracklist()`), the CD and vinyl bootlegs' text
      *    sections, and artwork captions as image labels.
+     * 10: springsteenlyrics.com song pages: a logged-in page's "Private
+     *    Info" section is no longer a section of the record
+     *    (`_dpParseSlSong()`), so records that carried it are read again;
+     *    the record carries its login state (`session`).
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 9;
+    const _DP_PARSER_VERSION = 10;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -26387,6 +26495,13 @@
     }
 
     /**
+     * The heading of a logged-in springsteenlyrics.com song page's own
+     * notes ("Private Info"), which `_dpParseSlSong()` never reads.
+     * @type {RegExp}
+     */
+    const _SL_SONG_PRIVATE_RE = /^private info\b/i;
+
+    /**
      * Parses a springsteenlyrics.com song page (`lyrics.php?song=SLUG`, one
      * per version: the lyrics index's rows link to these).
      *
@@ -26403,6 +26518,11 @@
      * with nothing else is dropped. Available Versions gives a count; its
      * entries are the other versions' pages.
      *
+     * A logged-in page ends with "Private Info" (the account's own notes,
+     * after an `<hr>`; 2026-11-04 snapshot). It never becomes a section: a
+     * logged-in page's own notes stay out of every card, window and cache
+     * record (vzell, 2026-11-04; the item pages' rule in `_dpParseSl()`).
+     *
      * @param {Document} doc The fetched page.
      * @param {string}   url The page's URL.
      * @returns {?object} The record, or null when the page has no
@@ -26413,6 +26533,10 @@
         const head = pd && pd.querySelector(':scope > h3:not(.heading)');
         if (!head) return null;
         const data = _dpEmpty();
+        // Logged in, the page differs (the versions' numbers, a cover
+        // release's edit links), so a logged-in read and a public one are
+        // kept apart, as the item pages' are (`_dpSessionFits()`).
+        data.session = _slLoggedIn(doc) ? 'in' : 'out';
         data.title = _dpText(head.textContent);
         const em = head.nextElementSibling && head.nextElementSibling.querySelector('em');
         data.subtitle = em ? _dpText(em.textContent) : '';
@@ -26440,6 +26564,7 @@
                 box.appendChild(n.cloneNode(true));
             }
             const label = _dpText(h.textContent);
+            if (_SL_SONG_PRIVATE_RE.test(label)) return;
             const text = _dpBlockText(box).split('\n')
                 .filter(l => !/^SECTION NOT YET COMPLETED$/i.test(l)).join('\n').replace(/\n{3,}/g, '\n\n').trim();
             if (label === 'Available Versions') {
@@ -27065,6 +27190,11 @@
             isDetailUrl: (u) => (/^\/(?:collection|bootlegs|brucelegs)\.php$/.test(u.pathname) &&
                 /^\d+$/.test(u.searchParams.get('item') || '')) ||
                 (u.pathname === '/lyrics.php' && !!u.searchParams.get('song')) ||
+                // A song page by its number: the lyrics index's logged-in ID
+                // cell links it. Probed 2026-11-04 (logged out, curl): item=2099
+                // serves the page of song=babycomeback, "BABY COME BACK [Home
+                // demo version]", so _dpParseSlSong() reads it unchanged.
+                (u.pathname === '/lyrics.php' && /^\d+$/.test(u.searchParams.get('item') || '') && !u.searchParams.get('cmd')) ||
                 _SL_INFO_FILE_PATH_RE.test(u.pathname),
             // A bootleg's original info file (the list's Info file cell, the
             // item page's Files card): read on Space only (vzell's answer 2,
@@ -46347,25 +46477,39 @@
         // the same letter links. Song lines, not cards: own converter,
         // applySlLyricsToTable(). The pages are not numbered, so
         // `features.pageKeys` makes the letter links the page list
-        // (_readPageKeys()); from any of these pages one press fetches every
-        // letter. `?song=` (a song page) and `cmd=songslistedbyrelease` are
-        // not this list.
+        // (_readPageKeys()); "Show all lyrics" fetches every letter from any
+        // of these pages. A letter page shows "This letter" first, which
+        // converts that page alone, with no request: `pageKeys: null`
+        // switches the key list off, so the run is the numbered path's one
+        // widget-less page, the live one (vzell, 2026-11-04: on a letter
+        // page the one button used to load all 32). `?song=` (a song page)
+        // and `cmd=songslistedbyrelease` are not this list.
         {
             type: 'sl-lyrics',
             host: 'springsteenlyrics.com',
             match: (path, params) => path === '/lyrics.php' && !params.has('song') &&
                 (!params.has('cmd') || params.get('cmd') === 'intro' || params.get('cmd') === 'list'),
-            buttons: [ { label: 'Show all lyrics', shortLabel: 'Lyrics' } ],
+            buttons: [
+                {
+                    label: 'Show the lyrics of this letter', shortLabel: 'This letter',
+                    showIf: () => !!_slLyricsLetterHeading(document),
+                    description: 'No request: the songs of this letter page, as a table.',
+                    features: { pageKeys: null }
+                },
+                {
+                    label: 'Show all lyrics', shortLabel: 'Lyrics',
+                    description: 'Every letter of the lyrics index, one request per letter (32), as one table.'
+                }
+            ],
             features: {
                 slLyricsToTable: true,
                 pageKeys: { param: 'letter', selector: '.element-buttons a[href*="letter="]' },
                 columnExtractors: [
                     { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
                 ],
-                integerColumns: [
-                    { sourceColumn: 'No.', align: 'R' },
-                    { sourceColumn: 'DD', align: 'R' }, { sourceColumn: 'MM', align: 'R' }, { sourceColumn: 'YYYY', align: 'C' }
-                ],
+                // A getter: the logged-in ID column is numeric too, and it
+                // exists only while logged in (_slLyricsIntegerColumns()).
+                get integerColumns() { return _slLyricsIntegerColumns(); },
                 stickyColumn: 'Title'
             },
             tableMode: 'single'

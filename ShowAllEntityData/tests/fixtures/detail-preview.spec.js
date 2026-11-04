@@ -746,6 +746,55 @@ test.describe('the other hosts', () => {
         expect(errors).toEqual([]);
     });
 
+    test('springsteenlyrics.com, logged in: a song\'s "Private Info" reaches neither its card nor its window', async ({ page }) => {
+        // vzell, 2026-11-04: a logged-in page's own notes stay on that page.
+        // _dpParseSlSong() used to take every h3.heading section, the last of
+        // a logged-in song page ("Private Info") included, into the card, the
+        // window and the 30-day cache. The fixture's notes are scrubbed to a
+        // placeholder (scripts/build-sl-item-fixtures.py), which stands in
+        // for them here.
+        const errors = trackPageErrors(page);
+        const { spec } = await loadSlListPage(page, { kind: 'lyrics-b-logged-in', settingsOverride: { sa_sl_detail_preview: true } });
+        const { served } = await routeDetailPages(page, 'sl');
+        await page.click(`button[data-label="${spec.button}"]`);
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const html = fixtureHtml('detail-sl-song-backstreets-logged-in.html');
+        // The premise: the fixture page HAS the section, and its placeholder.
+        expect(html).toContain('<h3 class="heading">Private Info</h3>');
+        expect(html).toContain('private note removed for the fixture');
+        const rec = await page.evaluate(([h, u]) => window.__saTest.dpParse('springsteenlyrics.com', h, u),
+            [html, 'https://www.springsteenlyrics.com/lyrics.php?song=backstreets']);
+        expect(rec.sections.map((s) => s.label)).not.toContain('Private Info');
+        expect(JSON.stringify(rec)).not.toContain('private note removed');
+        // The sections before it are kept, Available Versions with its count.
+        expect(rec.sections.map((s) => s.label)).toEqual(expect.arrayContaining(['Lyrics', 'Info', 'Available Versions']));
+        expect(rec.fields).toContainEqual(['Versions on the site', '61']);
+        // Read logged in: kept apart from a public read in the cache.
+        expect(rec.session).toBe('in');
+
+        await peekAt(page, page.locator('table.tbl tbody a:not(.mb-fi-glyph)[href$="lyrics.php?song=backstreets"]'));
+        await expect(peek(page).locator('.mb-tt-title')).toHaveText('BACKSTREETS');
+        await expect(peek(page)).not.toContainText('private note removed');
+        expect(served).toEqual(['https://springsteenlyrics.com/lyrics.php?song=backstreets']);
+        await page.keyboard.press('Space');
+        const dialog = page.locator('#mb-dp-dialog');
+        await expect(dialog.locator('.mb-dp-xtitle')).toHaveText('BACKSTREETS');
+        await expect(dialog).toContainText('Available Versions');
+        await expect(dialog).not.toContainText('Private Info');
+        await expect(dialog).not.toContainText('private note removed');
+        await page.keyboard.press('Escape');
+        await expect(dialog).toHaveCount(0);
+
+        // The ID cell links the same song by its number (lyrics.php?item=N,
+        // probed 2026-11-04): it gets the song's card too.
+        await peekAt(page, page.locator('table.tbl tbody a[href="lyrics.php?item=2298"]'));
+        await expect(peek(page).locator('.mb-tt-title')).toHaveText('BACKSTREETS', { timeout: 15000 });
+        await expect(peek(page)).not.toContainText('private note removed');
+        expect(served).toEqual(['https://springsteenlyrics.com/lyrics.php?song=backstreets',
+            'https://springsteenlyrics.com/lyrics.php?item=2298']);
+        expect(errors).toEqual([]);
+    });
+
     test('jungleland.it: a windows-1252 page is decoded, and the parse survives a reload (IndexedDB)', async ({ page }) => {
         const errors = trackPageErrors(page);
         await loadJlListPage(page, { settingsOverride: { sa_jl_detail_preview: true } });

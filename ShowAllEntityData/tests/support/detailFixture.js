@@ -33,8 +33,15 @@ const DETAIL_HOSTS = {
     sl: {
         isDetail: (u) => /springsteenlyrics\.com$/.test(u.hostname) &&
             ((/^\/(?:collection|bootlegs|brucelegs)\.php$/.test(u.pathname) && u.searchParams.has('item')) ||
-             (u.pathname === '/lyrics.php' && u.searchParams.has('song'))),
+             (u.pathname === '/lyrics.php' && (u.searchParams.has('song') || /^\d+$/.test(u.searchParams.get('item') || '')))),
         fileFor: (u) => {
+            // A logged-in song page with its "Private Info" section
+            // (scrubbed: scripts/build-sl-item-fixtures.py).
+            // lyrics.php?item=2298 is the same page by its number (the
+            // lyrics index's logged-in ID cell links it).
+            if (u.searchParams.get('song') === 'backstreets' || (u.pathname === '/lyrics.php' && u.searchParams.get('item') === '2298')) {
+                return path.join(FIXTURE_DIR, 'detail-sl-song-backstreets-logged-in.html');
+            }
             const name = u.searchParams.has('song')
                 ? `detail-sl-lyrics-${u.searchParams.get('song')}.html`
                 : `detail-sl-${u.pathname.slice(1, -4)}-${u.searchParams.get('item')}.html`;

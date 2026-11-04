@@ -140,6 +140,19 @@ const SL_KINDS = {
         keyFiles: { '(': path.join(FIXTURE_DIR, 'sl-lyrics-paren.html'), b: path.join(FIXTURE_DIR, 'sl-lyrics-b.html') },
         cmds: ['list'],
     },
+    // The B letter page logged in (2026-11-04): each line also carries the
+    // song's number and an edit link. Its button is the letter page's own,
+    // "This letter", which fetches nothing.
+    'lyrics-b-logged-in': {
+        url: 'https://springsteenlyrics.com/lyrics.php?cmd=list&letter=b',
+        pathname: '/lyrics.php',
+        pages: [path.join(FIXTURE_DIR, 'sl-lyrics-b-logged-in.html')],
+        button: 'Show the lyrics of this letter',
+        pageParam: 'page',
+        keyParam: 'letter',
+        keyFiles: { '(': path.join(FIXTURE_DIR, 'sl-lyrics-paren.html'), b: path.join(FIXTURE_DIR, 'sl-lyrics-b-logged-in.html') },
+        cmds: ['list'],
+    },
     // The bootleg landing page: no cards, so no button and nothing fetched.
     // No `cmds`: nothing is served after the load, so a followed link is
     // aborted by the catch-all — specs assert on its href instead.
@@ -157,7 +170,7 @@ const SL_KINDS = {
  * Loads one SL list fixture with the userscript injected.
  *
  * @param {import('@playwright/test').Page} page
- * @param {{ kind: ('collection'|'collection-intro'|'sampler'|'memorabilia'|'bootlegs'|'brucelegs'|'collection-logged-in'|'bootlegs-logged-in'|'brucelegs-logged-in'|'lyrics-intro'|'lyrics-b'|'bootlegs-intro'), enabled?: boolean, titles?: boolean, settingsOverride?: Object<string, *>, startPage?: number, url?: string }} opts
+ * @param {{ kind: ('collection'|'collection-intro'|'sampler'|'memorabilia'|'bootlegs'|'brucelegs'|'collection-logged-in'|'bootlegs-logged-in'|'brucelegs-logged-in'|'lyrics-intro'|'lyrics-b'|'lyrics-b-logged-in'|'bootlegs-intro'), enabled?: boolean, titles?: boolean, settingsOverride?: Object<string, *>, startPage?: number, url?: string }} opts
  *   `titles` seeds `sa_foreign_mb_titles` and `sa_foreign_typography`
  *   (default `false` here, although both settings default to ON: these
  *   loaders serve the converter specs, which pin the site's text as

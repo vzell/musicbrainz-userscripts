@@ -30,7 +30,7 @@
           "ip": { "state": "part", "ev": "code", "why": "Only while sa_sl_compact_nav is on (otherwise no pageType is installed); no item links, so only outside links in .project-detail." },
           "frp": { "state": "na", "ev": "code", "why": "No button, so no rendered table." } },
         { "type": "sl-lyrics", "url": "https://www.springsteenlyrics.com/lyrics.php?cmd=list&letter=B", "mode": "single",
-          "ip": { "state": "yes", "ev": "code", "why": "lyrics.php?song= links." },
+          "ip": { "state": "yes", "ev": "code", "why": "lyrics.php?song= links; logged in, also the ID cell's lyrics.php?item=N (the same song page)." },
           "frp": { "state": "yes", "ev": "spec", "spec": ["tests/fixtures/detail-preview.spec.js", "springsteenlyrics.com lyrics index: a song"] } },
         { "type": "sl-brucelegs", "url": "https://www.springsteenlyrics.com/brucelegs.php?cmd=list", "mode": "single",
           "ip": { "state": "yes", "ev": "code", "why": "brucelegs.php?item=N links." },
