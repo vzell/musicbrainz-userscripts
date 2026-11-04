@@ -1,0 +1,210 @@
+[
+    {
+        "name": "dg-master: Tracks asks for every versions page",
+        "why": "The Tracks view is the master and, for the count, versions page 1: two requests, never the whole list.",
+        "edits": [
+            {
+                "find": "                    Lib.warn('fetch', `Discogs master versions: ${err && err.message} — no count in the head.`);\n                }\n            }\n            return 1;\n",
+                "replace": "                    Lib.warn('fetch', `Discogs master versions: ${err && err.message} — no count in the head.`);\n                }\n            }\n"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-master-tracks.spec.js",
+        "grep": "the master and its versions page 1",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-master: the count's setting is not asked",
+        "why": "sa_dg_master_versions_count off: one request, no Versions row.",
+        "edits": [
+            {
+                "find": "            if (Lib.settings.sa_dg_master_versions_count !== false) {",
+                "replace": "            if (true) {"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-master-tracks.spec.js",
+        "grep": "number of versions off",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-master: no Versions row in the head",
+        "why": "The head shows the count versions page 1 gave (vzell's answer 2).",
+        "edits": [
+            {
+                "find": "                    _dgRun.versions = Number.isFinite(n) ? n : -1;",
+                "replace": "                    _dgRun.versions = -1;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-master-tracks.spec.js",
+        "grep": "the head — subheader",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-master: Tracks renders the versions",
+        "why": "The first button writes the master's tracks, not its versions.",
+        "edits": [
+            {
+                "find": "        } else if (pg.kind === 'master' && activeDefinition?.features?.dgView === 'tracks') {",
+                "replace": "        } else if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-master-tracks.spec.js",
+        "grep": "the master and its versions page 1",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-master: no videos under the tracks",
+        "why": "vzell's answer 4: the master's videos are a sub-table under the tracks.",
+        "edits": [
+            {
+                "find": "            body = _dgReleaseTracksHtml(d) + _dgVideosTableHtml(d.videos);",
+                "replace": "            body = _dgReleaseTracksHtml(d);"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-master-tracks.spec.js",
+        "grep": "the master and its versions page 1",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-master: Versions without its sub-table heading",
+        "why": "The page is multi-table: the versions sit under one \"Versions\" sub-table.",
+        "edits": [
+            {
+                "find": "                body = _dgTableHtml('Versions', _DG_HEADERS.master, rows.map(v => _dgVersionRow(v, _dgRun.mainId)));",
+                "replace": "                body = _dgTableHtml(null, _DG_HEADERS.master, rows.map(v => _dgVersionRow(v, _dgRun.mainId)));"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-master-tracks.spec.js",
+        "grep": "Versions, the second button",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-master: no head",
+        "why": "_fdHeadSpec() hands a master's Tracks view its head.",
+        "edits": [
+            {
+                "find": "        if (t === 'dg-master') return _dgMasterHeadSpec();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-master-tracks.spec.js",
+        "grep": "the head — subheader",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-master: Community reads the release's box",
+        "why": "A master's Statistics box is #master-statistics; the API has no have/want/ratings.",
+        "edits": [
+            {
+                "find": "        const live = _dgLiveStats('#master-statistics');",
+                "replace": "        const live = _dgLiveStats();"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-master-tracks.spec.js",
+        "grep": "the head — subheader",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-master: the price range as the page writes it",
+        "why": "\"From €1 to €4,000\" reads \"€1 – €4,000\".",
+        "edits": [
+            {
+                "find": ".replace(/^From\\s+/i, '').replace(/\\s+to\\s+/i, ' – ') : '',",
+                "replace": " : '',"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-master-tracks.spec.js",
+        "grep": "the head — subheader",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-master: Credits in the order first seen",
+        "why": "People with the most tracks first (Bruce Springsteen before Mike Appel, both first seen on A1).",
+        "edits": [
+            {
+                "find": "sort((a, b) => b.tracks.size - a.tracks.size || a.first - b.first)",
+                "replace": "sort((a, b) => a.first - b.first)"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-master-tracks.spec.js",
+        "grep": "the head — subheader",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-master: Credits' roles not grouped by tracks",
+        "why": "Roles on the same tracks are joined, each group with its tracks (Charles Calello's two roles on B4).",
+        "edits": [
+            {
+                "find": "                const k = [...set].sort((a, b) => a - b).join(',');",
+                "replace": "                const k = r;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-master-tracks.spec.js",
+        "grep": "the head — subheader",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-master: track runs not collapsed",
+        "why": "Three or more tracks in a row read \"A1–A4\".",
+        "edits": [
+            {
+                "find": "(b - a >= 2 ? `${pos(a)}–${pos(b)}`",
+                "replace": "(false ? `${pos(a)}–${pos(b)}`"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-master-tracks.spec.js",
+        "grep": "the head — subheader",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-master: a medley's parts are new media again",
+        "why": "\"1b\" after \"1a\" is a part of the same track (Stars On 45: 147 tables before).",
+        "edits": [
+            {
+                "find": "                const samePart = cur && cur.kind === 'plain' && n === cur.last && /[a-z]$/.test(pos);",
+                "replace": "                const samePart = false;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-master-tracks.spec.js",
+        "grep": "a two-disc master",
+        "expect": "fail"
+    },
+    {
+        "name": "Community: one column again (release)",
+        "why": "vzell 2026-11-04: the Community card in two columns, grouped.",
+        "edits": [
+            {
+                "find": "                if (halves.length === 1) {",
+                "replace": "                if (true) {\n                    halves.splice(0, halves.length, halves.flat());"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "the head as release-tracks",
+        "expect": "fail"
+    },
+    {
+        "name": "Community: one column again (master)",
+        "why": "The master's Community card uses the same two columns.",
+        "edits": [
+            {
+                "find": "                if (halves.length === 1) {",
+                "replace": "                if (true) {\n                    halves.splice(0, halves.length, halves.flat());"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-master-tracks.spec.js",
+        "grep": "the head — subheader",
+        "expect": "fail"
+    },
+    {
+        "name": "Community: the two columns stacked",
+        "why": "Side by side when the card has room for both (13em each).",
+        "edits": [
+            {
+                "find": "            .mb-fd-2col { display: flex; flex-wrap: wrap; }",
+                "replace": "            .mb-fd-2col { display: flex; flex-direction: column; }"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "the head as release-tracks",
+        "expect": "fail"
+    }
+]

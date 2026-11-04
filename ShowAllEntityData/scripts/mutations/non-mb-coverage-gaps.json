@@ -134,7 +134,7 @@
         "why": "G4: setlist.fm's own list (.setlistPreview, .info) must preview before a render.",
         "edits": [
             {
-                "find": "extRoot: '#mb-sfm-root, .mainColumn .setlistPreview, .mainColumn .info'",
+                "find": "extRoot: '#mb-sfm-root, .mainColumn .setlistPreview, .rightColumn .setlistPreview, .mainColumn .info, .setlistInfo .setlistHeadline, .setlistInfo .infoContainer > p, .setlistList, .viewBaseFestival, .FestivalSetlists-root, .breadCrumbBar'",
                 "replace": "extRoot: '#mb-sfm-root'"
             }
         ],

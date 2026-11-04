@@ -217,3 +217,111 @@ when hovering a release in the left sidebar, ONLY the newest change should be sh
 
 the discogs master release PT should be enhanced the same way what we have done for the discogs release PT
 
+** mockup (2026-11-04, branch feat/dg-master)
+
+https://claude.ai/artifact/EkXt4tDwzA5AXFhLwFKwZ3 (=org/dg-master-mockups.html=, published copy built by
+=scripts/build-mockup-artifact.py=). Together with the release's Community card in two columns (TODO in
+=org/foreign-detail-PTs.org=). Data: =ext-discogs-master.json= (master 26725), =ext-discogs-master-versions-p1.json=,
+=ext-discogs-release.json=, the Statistics/For Sale boxes of =debug/discogs-master.html=.
+
+Env: 2026-11-04 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · n/a (code reading, fixtures, snapshots)
+
+- Tracks (first button): one request =masters/<id>=; the release's media split, role columns and head, shared.
+- Versions (second button): today's rows; the page becomes =multi=, so they sit under one sub-table heading.
+- Questions: (1) right Details column = Credits by person? (2) versions count in the head (+1 request)?
+  (3) Community grouped by meaning or split in Discogs' order? (4) Videos as a sub-table under the tracks?
+
+** answers (vzell, 2026-11-04)
+
+1. Right-hand Details column: *yes*, Credits by person.
+2. Number of versions in the head: *yes*, in the head (so Tracks asks two: the master, then versions page 1).
+   Then: "make 2. configurable" — a setting of its own, on by default (the non-MB rule); off, Tracks asks one.
+3. Community order: as recommended, *grouped by meaning* (collection and data quality left, market right).
+4. Videos: *yes*, a sub-table under the tracks.
+
+** built (2026-11-04, branch feat/dg-master)
+
+Env: 2026-11-04T14:30+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+- Probe =scripts/probe-dg-master-shapes.py= (24 of his 225 masters, anonymous): every master lacks formats, labels,
+  identifiers, extraartists, community, released, country; positions 9-9, A9, 9, A, 9a. The shipped splitter
+  (=check-dg-release-media.js=, now reading masters too) names them right — except "The Very Best Of Stars On 45"
+  (203805): 147 tables, its medley parts "1a", "1b" each a new medium. Fixed for releases too (WIP.3).
+- Built as drawn and answered: Tracks first (the master + versions page 1 for the count, =sa_dg_master_versions_count=,
+  on; off: one request), Versions second (one "Versions" sub-table: the page is =multi= now); the head =_dgMasterHeadSpec()=
+  with Credits by person, Community from the page's boxes in two columns; the release's Community in two columns (WIP.2).
+- Specs: =tests/fixtures/discogs-master-tracks.spec.js= (5), =discogs-release-tracks.spec.js= (Community). All 204
+  Discogs-related tests pass.
+- Mutations: =scripts/mutations/dg-master-tracks.json= (16, all caught); =dg-release-tracks.json=: 4 repointed, caught.
+- Docs: =docs/claude/discogs.md= "A master's Tracks view", HELP, PAGETYPES reference #105, the coverage registry
+  (mode multi), CLAUDE.md's doc map, WIP.1–WIP.3.
+- Left open: the head after a disk load (=_dgMasterRec= is not saved, as =_dgRelRec=).
+
+** DONE summary
+
+The mockup is up, but nothing is built yet: ⧉ https://claude.ai/artifact/EkXt4tDwzA5AXFhLwFKwZ3
+
+It uses the real data of the Born To Run master (26725): the API fixtures plus the Statistics and For Sale boxes from your saved master page. Your list named the master release PT twice, so I took item 2 to be the Community card in two columns. Say if you meant something else.
+
+It has four tabs:
+- Master: Tracks, the new first button. It takes one request, masters/26725. Today's Versions button takes 5 requests for this master.
+  - The head, the per-disc tables and the credit columns reuse the release page's code.
+  - A master has no labels, formats or identifiers, so a "Master release" card holds the year, the main release ★ and the newest release.
+  - Discogs' API gives a master no Have, Want or ratings. The Community card reads them from the page's own Statistics and For Sale boxes, as the release card already does for its sales figures.
+- Master: Versions, the second button, with today's rows. One visible change: the page becomes a multi-table page, so the versions sit under one sub-table heading, like a release's "Other versions". The engine has one table mode per page, not per button.
+- Release: Community, before and after: ten rows in one column, then two columns of five. It drops back to one column when the card is narrow, and the master uses the same card.
+- Plan and questions: seven steps. The first is a probe of about 15 masters of other shapes before building.
+
+Four questions before I build:
+1. Right-hand Details column: a release puts Identifiers there, but a master has none. I drew a "Credits by person"
+   card, who played what on which tracks, like Discogs' own Credits box. I recommend that over leaving the column empty.
+2. Number of versions in the head: it costs one more request. I recommend leaving it out, so Tracks stays at one
+   request.
+3. Community order: I drew the collection on the left (Have, Want, ratings, data quality) and the market on the right
+   (Last sold, Low, Median, High, For sale). That moves Data quality up. I recommend this grouping over Discogs' order
+   cut in half.
+4. Videos: on a release they're behind the second button, but a master's second button is the versions. I recommend a
+   Videos sub-table under the tracks, with ▶ Play here.
+
+I'm on the new branch feat/dg-master. The mockup source org/dg-master-mockups.html and a note with the link in org/discogs.org are written but not committed. Once you answer, I'll start with the probe.
+
+** DONE answers
+
+1. Right-hand Details column: YES
+2. Number of versions in the head: YES, in the head
+3. Community order: I go with your recommendation
+4. Videos: YES
+
+** DONE end summary
+
+Both TODOs are built on feat/dg-master but not committed. They're ready for you to try in the browser after re-importing the userscript. All 204 Discogs-related tests pass.
+
+Master page: Tracks (new first button), built as in the mockup, with your four answers:
+- One table per disc or record, the credits as columns, and the master's videos in a table under the tracks, with Play.
+- Above the tables: the byline, Notes and Images. Details has these cards:
+  - Master release: year, main release ★, newest release, number of versions.
+  - External links and Genres and styles.
+  - Community: Have, Want and ratings come from Discogs' own Statistics and For Sale boxes on the page, because the master's API answer has none of them.
+  - On the right, Credits by person, for example "Guitar A1–B2, B4 · Vocals A1–B4 · Harmonica A1".
+- The versions count is configurable: ⚙️ Settings → 💿 Discogs → "Master page: the number of versions in the Tracks view", on by default. On, Tracks asks 2 requests; off, 1.
+- Versions is the second button and shows the same rows as before. The one visible change is that they now sit under a "Versions" sub-table heading, because the page has become a multi-table page.
+
+Community in two columns, on both the release and the master page. The left column has the collection and data quality, the right one the market. It stacks into one column when the card is narrow, and the counts now have thousands separators.
+
+A fix found by the probe: I checked 24 of his 225 masters. The River, Tracks (4 discs), The Promise and Human Touch & Lucky Town all split correctly. But "The Very Best Of Stars On 45" came out as 147 one-row tables, because its medley parts ("1a", "1b", …) each started a new disc. It's now one table of 159 rows. The same fix applies to releases with such positions.
+
+Tests:
+- A new spec (5 tests) covers Born To Run, the setting turned off, a two-disc master, Stars On 45, The River and the Versions view.
+- All 16 new planted defects are caught. 4 entries of the release's mutation list pointed at lines I changed; I repointed them and they're caught again.
+- Lint, the coverage check and the doc checks pass.
+- HELP, docs/claude/discogs.md, the pageType reference, CLAUDE.md, three WIP changelog entries and a "built" note in org/discogs.org are updated.
+
+Not done: the head doesn't come back after a disk load. That's the same gap the release and archive.org pages have.
+
+To try it:
+- https://www.discogs.com/master/26725 (Born To Run)
+- https://www.discogs.com/master/27672 (Tracks, 4 discs)
+- https://www.discogs.com/master/27194 (The River)
+
+Press Tracks. When it looks right, tell me to commit and push.
+

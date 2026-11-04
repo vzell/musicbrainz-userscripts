@@ -27990,3 +27990,36 @@ log shows it, polled every 50 ms — a first version waited for the
 repainted "40 of 60" and once saw it too late); new "Stop during Load all
 with set times" (no setlist.fm page after Stop). 30/30 green with
 `--repeat-each 10`. Mutations: setlistfm-bugs.json +2, both caught.
+
+## 2026-11-04 — setlist.fm: no link previews before a render on a search page or a setlist page (feat/sfm-setlist, WIP.6)
+
+Env: 2026-11-04T15:08+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs); snapshots from vzell's browser (version unknown)
+
+- Report (vzell): "the SFM IPs doesn't seem to have POH support yet, e.g. the two search pages we just added"
+  (`debug/sfm-search-artist.html`, `debug/sfm-search-artist-queury.html`).
+- Root cause, from the snapshots' DOM: `_DP_SITES['www.setlist.fm'].extRoot` was `#mb-sfm-root, .mainColumn
+  .setlistPreview, .mainColumn .info`. A setlist.fm search page has no `.mainColumn`: its filter form, its ten
+  `.setlistPreview` cards and its pager are all in `.rightColumn col-md-9` (all three search snapshots, the older
+  `debug/setlistfm-artist-serch.html` included — so sfm-search had the same gap since 2026-11-03). On a setlist's own
+  page only setlist.fm's Note matched (`.mainColumn .info`); the headline, the "Tour:" line and the song list did not.
+- Why the specs missed it: `scripts/build-setlistfm-fixtures.py` put every list page's cards into a `.mainColumn`
+  skeleton, the venue page's layout; a search fixture could not show the bug. It now keeps a `searchFilter` page in
+  `.rightColumn`.
+- Fix: `extRoot` adds `.rightColumn .setlistPreview`, `.setlistInfo .setlistHeadline`, `.setlistInfo .infoContainer
+  > p`, `.setlistList` (one source line: `build-coverage-report.py` reads it from there; a split string made it read
+  half). Tests: `sfm-list.spec.js` "a search page's cards preview too" (three search pages), `sfm-setlist.spec.js`
+  "the page's own links preview"; both fail with the old scope (`scripts/mutations/sfm-setlist.json`, the two
+  "sfm previews" entries).
+
+## 2026-11-04 — setlist.fm festival edition window: Most attended showed its links as HTML text (feat/sfm-festival, WIP.8)
+
+Env: 2026-11-04T16:29+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs); vzell's report from his browser (version unknown), `debug/sfm-festival-edition-POH.html`
+
+- Report (vzell, live test of the branch): in an edition's window (Space on a festival edition link), "MOST
+  ATTENDED renders raw href garbage" — each row read `<a href="https://www.setlist.fm/setlist/pulp/…">Pulp</a>`.
+- Root cause: `_mbPopKvHtml(rows)` writes `<dt>${_rgEsc(k)}</dt><dd>${v}</dd>` — the NAME is escaped, the value is
+  HTML. `_extSfmFestivalWindow()` passed a link as the name. Its Stages and Artist-charts lists passed names already
+  through `_rgEsc()`, a double escape ("&amp;" for a stage named with "&").
+- Fix: Most attended builds its own `dl.mb-dp-kv` with the linked name; Stages and Artist charts pass plain names.
+- Why the spec missed it: it checked the heading "Most attended" only. It now asserts the first name is a link
+  ("Pulp", its setlist) and that the window's text has no `<a href`; a mutation restoring the old line fails it.

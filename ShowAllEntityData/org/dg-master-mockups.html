@@ -1,0 +1,733 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- SKELETON-END: everything above this line is dropped when the page is published as an Artifact. -->
+<title>Discogs Master Tracks</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+  Mockups for the Discogs master page (dg-master) upgraded like the release
+  page's Tracks view (org/foreign-detail-PTs.org, built 2026-11-04), and the
+  Community card in two columns (vzell's TODO of the same day).
+  2026-11-04, branch feat/dg-master.
+  Data: real. tests/fixtures/ext-discogs-master.json (master 26725, Born To
+  Run), ext-discogs-master-versions-p1.json, ext-discogs-release.json
+  (release 1874253); the master page's Statistics and For Sale boxes from
+  debug/discogs-master.html (saved 2026-10-17); the release page's sales
+  figures from debug/discogs-release-withMB-icons.html. Thumbnails: the
+  master's seven images at 150 px, inlined by scripts/build-mockup-artifact.py.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<!--EMBED-->
+<script type="application/json" id="mockup-images">{
+ "m26725-0": {
+  "u": "https://i.discogs.com/q9nrpd9qLutjQFir3x_zs9KbDcFLK43eqbDBsOfVIvs/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTEzODk2/NTI4LTE2MjY3MTI3/NDYtNDQ5My5qcGVn.jpeg"
+ },
+ "m26725-1": {
+  "u": "https://i.discogs.com/Iso4W2upsmTlOdUnMbC9sfB9YPrryv69V-5w_uG8gPs/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTEzODk2/NTI4LTE2MjY3MTI4/NzYtMjEzMS5qcGVn.jpeg"
+ },
+ "m26725-2": {
+  "u": "https://i.discogs.com/sByHEt-nnA6UYMil5iI32YVGXmFxlYs86s1_lNjv5ag/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTEzODk2/NTI4LTE2MjY3MTI4/OTMtNzQwOS5qcGVn.jpeg"
+ },
+ "m26725-3": {
+  "u": "https://i.discogs.com/aP_IZNRdEl08rc2jbpV3ot44S6mgbVI2eJ-3wVr6bfo/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTEzODk2/NTI4LTE2MjY3MTI5/MDktODQzMC5qcGVn.jpeg"
+ },
+ "m26725-4": {
+  "u": "https://i.discogs.com/Kah8Wd7rb0GnpVj8A_BfszJ-rs_WQjPZqWWVYP9oCzQ/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTEzODk2/NTI4LTE2ODUwMTg0/OTctNTY5MS5qcGVn.jpeg"
+ },
+ "m26725-5": {
+  "u": "https://i.discogs.com/Zq4sZrXcQJMarbwQ64lwcrObCyZ1LdTl0sxaTxNz770/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTEzODk2/NTI4LTE2ODUwMTgx/NjctODQ0NS5qcGVn.jpeg"
+ },
+ "m26725-6": {
+  "u": "https://i.discogs.com/B2lFnAaEgkNHdAw63QtDb9ReHh6lpOhM1jV77w-fEKo/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTEzODk2/NTI4LTE2ODUwMTgx/OTMtNzY5My5qcGVn.jpeg"
+ }
+}</script>
+<style>
+/* Layout: a design bench, as org/foreign-detail-PTs-mockups.html. Verdicts
+   first, then one tab per view; each tab is a mock browser window with the
+   rendered page and notes beside it. The window keeps Discogs' own plain
+   look (Arial, white), the bench around it is ours. */
+:root {
+    --bg: #e9edf1;
+    --surface: #f8fafc;
+    --ink: #18202b;
+    --muted: #556070;
+    --line: #cfd6df;
+    --accent: #24527f;
+    --accent-ink: #ffffff;
+    --accent-soft: #dbe6f1;
+    --ok: #2c7347;
+    --ok-soft: #dcefe2;
+    --warn: #8f5a00;
+    --warn-soft: #f6e8cc;
+    --shadow: 0 1px 0 rgba(20, 30, 45, 0.05), 0 12px 32px -18px rgba(20, 30, 45, 0.35);
+    --site-bg: #ffffff;
+    --site-ink: #222222;
+    --site-dim: #6b6b6b;
+    --site-line: #dddddd;
+    --site-head: #eceef1;
+    --site-even: #f6f7f9;
+    --site-link: #1d4f96;
+    --site-chrome: #f1f3f6;
+    --site-chrome-ink: #4d5664;
+    --site-tag: #e8eef7;
+    --site-flt: #fbfcfd;
+    --site-new: #fff4cf;
+    --dg: #333333;
+    --f-display: "Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+    --f-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, Consolas, "Courier New", monospace;
+    --f-site: Arial, Helvetica, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg: #11161d;
+        --surface: #19212b;
+        --ink: #e2e7ee;
+        --muted: #9aa5b4;
+        --line: #2c3746;
+        --accent: #8db8e3;
+        --accent-ink: #0d1520;
+        --accent-soft: #1f3349;
+        --ok: #7fcf9b;
+        --ok-soft: #1c3426;
+        --warn: #e8b764;
+        --warn-soft: #3a2c13;
+        --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 12px 32px -18px rgba(0, 0, 0, 0.8);
+        --site-bg: #1b1f25;
+        --site-ink: #e4e6ea;
+        --site-dim: #a2a8b2;
+        --site-line: #353b45;
+        --site-head: #262c35;
+        --site-even: #20252d;
+        --site-link: #8fb7ea;
+        --site-chrome: #232932;
+        --site-chrome-ink: #b4bcc8;
+        --site-tag: #2a3442;
+        --site-flt: #20252c;
+        --site-new: #3b3418;
+        --dg: #e4e6ea;
+        color-scheme: dark;
+    }
+}
+:root[data-theme="dark"] {
+    --bg: #11161d;
+    --surface: #19212b;
+    --ink: #e2e7ee;
+    --muted: #9aa5b4;
+    --line: #2c3746;
+    --accent: #8db8e3;
+    --accent-ink: #0d1520;
+    --accent-soft: #1f3349;
+    --ok: #7fcf9b;
+    --ok-soft: #1c3426;
+    --warn: #e8b764;
+    --warn-soft: #3a2c13;
+    --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 12px 32px -18px rgba(0, 0, 0, 0.8);
+    --site-bg: #1b1f25;
+    --site-ink: #e4e6ea;
+    --site-dim: #a2a8b2;
+    --site-line: #353b45;
+    --site-head: #262c35;
+    --site-even: #20252d;
+    --site-link: #8fb7ea;
+    --site-chrome: #232932;
+    --site-chrome-ink: #b4bcc8;
+    --site-tag: #2a3442;
+    --site-flt: #20252c;
+    --site-new: #3b3418;
+    --dg: #e4e6ea;
+    color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.55 var(--f-body);
+}
+.page {
+    max-width: 1320px;
+    margin: 0 auto;
+    padding-block: 28px 56px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: grid;
+    gap: 22px;
+}
+header.intro { display: grid; gap: 6px; }
+.eyebrow {
+    font: 500 12px/1.2 var(--f-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+h1.title {
+    font: 800 clamp(28px, 4vw, 40px)/1.05 var(--f-display);
+    font-stretch: 85%;
+    margin: 0;
+    text-wrap: balance;
+}
+.lede { margin: 0; max-width: 72ch; color: var(--muted); }
+.verdicts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.verdict {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: grid;
+    gap: 4px;
+}
+.verdict b { font: 700 15px/1.3 var(--f-display); }
+.verdict span { color: var(--muted); font-size: 14px; }
+.verdict .chip {
+    justify-self: start;
+    font: 500 11px/1 var(--f-mono);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 4px 7px;
+    border-radius: 999px;
+    background: var(--ok-soft);
+    color: var(--ok);
+}
+.verdict .chip.ask { background: var(--warn-soft); color: var(--warn); }
+nav.tabs { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid var(--line); }
+nav.tabs button {
+    font: 600 14px/1 var(--f-body);
+    padding: 10px 14px;
+    border: 1px solid transparent;
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+}
+nav.tabs button[aria-pressed="true"] { background: var(--surface); border-color: var(--line); color: var(--ink); margin-bottom: -1px; }
+nav.tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.bench { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 18px; align-items: start; }
+@media (max-width: 1060px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+aside.notes { display: grid; gap: 12px; font-size: 14px; }
+aside.notes section {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 14px;
+}
+aside.notes h3 { font: 700 14px/1.3 var(--f-display); margin: 0 0 6px; letter-spacing: 0.01em; }
+aside.notes ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+aside.notes code, .plan code { font: 13px var(--f-mono); }
+.tag-new {
+    font: 500 10px/1 var(--f-mono);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: var(--warn-soft);
+    color: var(--warn);
+    padding: 3px 5px;
+    border-radius: 3px;
+    vertical-align: 2px;
+}
+
+/* The mock browser window: Discogs' plain look. */
+.win {
+    background: var(--site-bg);
+    color: var(--site-ink);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    min-width: 0;
+    font: 13px/1.4 var(--f-site);
+}
+.win-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--site-chrome);
+    color: var(--site-chrome-ink);
+    border-bottom: 1px solid var(--site-line);
+    font: 12px var(--f-mono);
+    min-width: 0;
+}
+.win-bar .dots { display: flex; gap: 5px; flex: none; }
+.win-bar .dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--site-line); display: block; }
+.win-bar .url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dg-strip {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 8px 14px;
+    background: #000;
+    color: #fff;
+    font: 700 18px/1 var(--f-site);
+    letter-spacing: -0.02em;
+}
+.dg-strip span { font: 12px var(--f-site); color: #bbb; letter-spacing: 0; }
+.scroll { overflow-x: auto; }
+.root { padding: 10px 14px 16px; min-width: 760px; }
+.h1row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 4px; }
+.h1row h2 { font: 700 22px/1.25 var(--f-site); margin: 0; }
+.saed { display: inline-flex; border: 1px solid #9aa7b6; border-radius: 4px; overflow: hidden; font: 600 12px/1 var(--f-site); }
+.saed span { padding: 6px 10px; background: var(--site-chrome); color: var(--site-ink); border-left: 1px solid #9aa7b6; }
+.saed span:first-child { border-left: none; }
+.saed span.on { background: #2f6db4; color: #fff; }
+.byline { color: var(--site-dim); margin: 0 0 8px; }
+.byline a { color: var(--site-link); text-decoration: none; }
+.sec-h {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font: 700 16px/1.3 var(--f-site);
+    margin: 12px 0 6px;
+    padding-bottom: 3px;
+    border-bottom: 1px solid var(--site-line);
+}
+.sec-h .tw { font-size: 11px; color: var(--site-dim); width: 12px; }
+.sec-h small { font: 400 12px var(--f-site); color: var(--site-dim); }
+.notes-peek { color: var(--site-dim); margin: 0 0 4px 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.details { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: start; }
+.col { display: grid; gap: 10px; align-content: start; }
+.card { border: 1px solid var(--site-line); border-radius: 4px; background: var(--site-bg); }
+.card.new { box-shadow: 0 0 0 2px var(--site-new); }
+.card h4 {
+    margin: 0;
+    padding: 5px 8px;
+    background: var(--site-head);
+    font: 700 11px/1.3 var(--f-site);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    display: flex;
+    gap: 6px;
+}
+.card h4 small { font-weight: 400; letter-spacing: 0; color: var(--site-dim); }
+dl.kv { margin: 0; padding: 6px 8px; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 12px; }
+dl.kv dt { color: var(--site-dim); }
+dl.kv dd { margin: 0; min-width: 0; }
+dl.kv a, .card a, table.tbl a { color: var(--site-link); text-decoration: none; }
+.kv2 { display: grid; grid-template-columns: 1fr 1fr; }
+.kv2 dl.kv + dl.kv { border-left: 1px solid var(--site-line); }
+@container (max-width: 360px) { .kv2 { grid-template-columns: 1fr; } .kv2 dl.kv + dl.kv { border-left: none; border-top: 1px solid var(--site-line); } }
+.card.cq { container-type: inline-size; }
+.chips, .pills { display: flex; flex-wrap: wrap; gap: 5px; padding: 6px 8px; }
+.chips em { font-style: normal; color: var(--site-dim); margin-right: 2px; }
+.chips a, .pills a { background: var(--site-tag); border-radius: 10px; padding: 2px 8px; }
+.people { margin: 0; padding: 4px 8px 6px; list-style: none; display: grid; gap: 3px; }
+.people li { display: grid; grid-template-columns: 9.5em minmax(0, 1fr); gap: 8px; }
+.people .roles { color: var(--site-dim); }
+.people .roles b { font-weight: 400; color: var(--site-ink); }
+.thumbs { display: flex; flex-wrap: wrap; gap: 8px; }
+.thumbs figure { margin: 0; display: grid; gap: 3px; justify-items: center; font-size: 11px; color: var(--site-dim); }
+.thumbs img, .thumbs .ph { width: 96px; height: 96px; object-fit: cover; border: 1px solid var(--site-line); border-radius: 3px; background: var(--site-head); display: block; }
+.gf { display: flex; align-items: center; gap: 8px; margin-left: auto; font: 400 12px var(--f-site); }
+.gf input { font: 12px var(--f-site); padding: 3px 6px; width: 190px; border: 1px solid var(--site-line); border-radius: 3px; background: var(--site-flt); color: var(--site-ink); }
+.sub-h { display: flex; align-items: baseline; gap: 8px; font: 700 14px/1.3 var(--f-site); margin: 12px 0 4px; }
+.sub-h .tw { font-size: 10px; color: var(--site-dim); }
+.sub-h small { font: 400 12px var(--f-site); color: var(--site-dim); }
+table.tbl { border-collapse: collapse; width: 100%; font: 12px/1.35 var(--f-site); }
+table.tbl th {
+    text-align: left;
+    background: var(--site-head);
+    padding: 4px 6px;
+    border: 1px solid var(--site-line);
+    white-space: nowrap;
+    font-weight: 700;
+}
+table.tbl th .ic { font-weight: 400; color: var(--site-dim); margin-left: 3px; }
+table.tbl td { padding: 4px 6px; border: 1px solid var(--site-line); vertical-align: top; }
+table.tbl tr:nth-child(even) td { background: var(--site-even); }
+table.tbl td.num, table.tbl td.len { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+table.tbl ul { margin: 0; padding: 0; list-style: none; }
+table.tbl ul li { white-space: nowrap; }
+table.tbl ul li .r { color: var(--site-dim); }
+.more { color: var(--site-link); font-size: 11px; }
+.star { color: #c48a00; }
+.play { display: inline-block; border: 1px solid var(--site-line); border-radius: 3px; padding: 1px 6px; background: var(--site-tag); white-space: nowrap; }
+.callout {
+    margin: 10px 0 0;
+    padding: 8px 10px;
+    border-left: 3px solid #c48a00;
+    background: var(--site-new);
+    color: var(--site-ink);
+    font-size: 12px;
+}
+.compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; padding: 14px; }
+.compare > div { display: grid; gap: 6px; align-content: start; min-width: 0; }
+.compare .cap { font: 600 12px var(--f-site); color: var(--site-dim); text-transform: uppercase; letter-spacing: 0.06em; }
+
+/* Plan tab */
+.plan { display: grid; gap: 16px; }
+.plan section {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px 18px;
+    min-width: 0;
+}
+.plan h2 { font: 700 20px/1.2 var(--f-display); margin: 0 0 10px; text-wrap: balance; }
+.plan ol, .plan ul { margin: 0; padding-left: 22px; display: grid; gap: 8px; max-width: 90ch; }
+.plan .q { display: grid; gap: 4px; }
+.plan .q b { font-weight: 600; }
+.plan .rec { color: var(--ok); font-size: 14px; }
+.costs { overflow-x: auto; }
+.costs table { border-collapse: collapse; font-size: 14px; min-width: 520px; }
+.costs th, .costs td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.costs th { font: 600 12px var(--f-mono); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+@media (prefers-reduced-motion: no-preference) {
+    nav.tabs button { transition: background-color 120ms ease; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+    <header class="intro">
+        <div class="eyebrow">Mockup · branch feat/dg-master · 2026-11-04</div>
+        <h1 class="title">Discogs master page: a Tracks view like the release page</h1>
+        <p class="lede">The Born To Run master (26725), drawn with real data from the test fixtures and the saved master page. The master gets the same first button as a release: one request, the tracks with their credits as columns, and Notes, Details and Images above. The release page's Community card is redrawn in two columns.</p>
+    </header>
+
+    <section class="verdicts" aria-label="Verdicts">
+        <div class="verdict"><span class="chip">feasible</span><b>One request, as a release</b><span>The master's own answer (<code>masters/26725</code>) has the same tracklist, credits, images, videos, notes, genres and styles as a release.</span></div>
+        <div class="verdict"><span class="chip">reuse</span><b>Mostly the release's code</b><span>The media split, the credit columns and the head are shared with the release's Tracks view.</span></div>
+        <div class="verdict"><span class="chip">small</span><b>Community in two columns</b><span>A two-column card, for a release and a master. It falls back to one column when the card is narrow.</span></div>
+        <div class="verdict"><span class="chip ask">4 questions</span><b>Before I build</b><span>The right-hand Details card, a versions count, the Community grouping, Videos. See the last tab.</span></div>
+    </section>
+
+    <nav class="tabs" aria-label="Mockup">
+        <button type="button" id="tab-tracks" data-tab="tracks" aria-pressed="true">Master: Tracks</button>
+        <button type="button" id="tab-versions" data-tab="versions" aria-pressed="false">Master: Versions</button>
+        <button type="button" id="tab-community" data-tab="community" aria-pressed="false">Release: Community</button>
+        <button type="button" id="tab-plan" data-tab="plan" aria-pressed="false">Plan and questions</button>
+    </nav>
+
+    <!-- ===== Master: Tracks ===== -->
+    <section id="view-tracks" class="bench">
+        <div class="win">
+            <div class="win-bar"><span class="dots"><i></i><i></i><i></i></span><span class="url">https://www.discogs.com/master/26725-Bruce-Springsteen-Born-To-Run</span></div>
+            <div class="dg-strip">discogs <span>Discogs' own header</span></div>
+            <div class="scroll"><div class="root">
+                <div class="h1row">
+                    <h2>Bruce Springsteen – Born To Run</h2>
+                    <span class="saed"><span class="on">Tracks</span><span>Versions</span><span>☰</span></span>
+                </div>
+                <p class="byline">~ Master release by <a href="#">Bruce Springsteen</a> (1975)</p>
+
+                <div class="sec-h"><span class="tw">▶</span>Notes <small>closed to start with</small></div>
+                <p class="notes-peek">Third studio album, released in the U.S. on August 25, 1975, and reached #3 on the Billboard Top LPs &amp; Tape chart. Summary of U.S. LP versions: …</p>
+
+                <div class="sec-h"><span class="tw">▼</span>Details</div>
+                <div class="details">
+                    <div class="col">
+                        <div class="card">
+                            <h4>Master release</h4>
+                            <dl class="kv">
+                                <dt>Year</dt><dd><a href="#">1975</a></dd>
+                                <dt>Main release</dt><dd><span class="star">★</span> <a href="#">release 13896528</a></dd>
+                                <dt>Newest release</dt><dd><a href="#">release 38454438</a></dd>
+                                <dt>Videos</dt><dd>3 (below the tracks)</dd>
+                            </dl>
+                        </div>
+                        <div class="card">
+                            <h4>External links <small>4</small></h4>
+                            <div class="chips"><em>Discogs</em><a href="#">Master</a><a href="#">History</a><a href="#">Main release</a><a href="#">Newest release</a></div>
+                        </div>
+                        <div class="card">
+                            <h4>Genres and styles <small>3</small></h4>
+                            <div class="pills"><a href="#">Rock</a><a href="#">Pop Rock</a><a href="#">Rock &amp; Roll</a></div>
+                        </div>
+                        <div class="card cq new">
+                            <h4>Community <small>from the page's Statistics and For Sale boxes</small></h4>
+                            <div class="kv2">
+                                <dl class="kv">
+                                    <dt>Have</dt><dd><a href="#">160,081</a></dd>
+                                    <dt>Want</dt><dd><a href="#">84,131</a></dd>
+                                    <dt>Avg rating</dt><dd>4.42 / 5</dd>
+                                    <dt>Ratings</dt><dd><a href="#">11,245</a></dd>
+                                </dl>
+                                <dl class="kv">
+                                    <dt>For sale</dt><dd><a href="#">3,064</a></dd>
+                                    <dt>Prices</dt><dd>€1 – €4,000</dd>
+                                    <dt>Formats</dt><dd><a href="#">Vinyl</a> · <a href="#">CD</a> · <a href="#">DVD</a></dd>
+                                    <dt>Data quality</dt><dd>Correct</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="card new">
+                            <h4>Credits <small>17 · by person, as Discogs' Credits box</small></h4>
+                            <ul class="people">
+                                <li><a href="#">Bruce Springsteen</a><span class="roles"><b>Guitar, Vocals</b> A1–A4, B1, B2, B4 · <b>Harmonica</b> A1 · <b>Vocals</b> B3</span></li>
+                                <li><a href="#">Roy Bittan</a><span class="roles"><b>Piano</b> A3, A4, B2–B4 · <b>Organ</b> A4, B2, B4 · <b>Glockenspiel</b> A1, A3 · <b>Harpsichord</b> A3, B2 · <b>Electric Piano [Fender Rhodes], Backing Vocals</b> A1</span></li>
+                                <li><a href="#">Garry Tallent</a><span class="roles"><b>Bass Guitar</b> A1–A4, B1, B2, B4</span></li>
+                                <li><a href="#">Max Weinberg</a><span class="roles"><b>Drums</b> A1–A4, B2, B4</span></li>
+                                <li><a href="#">Clarence Clemons</a><span class="roles"><b>Saxophone</b> A1, A3, B1, B2 · <b>Tenor Saxophone</b> A2, B4</span></li>
+                                <li><a href="#">Randy Brecker</a><span class="roles"><b>Trumpet</b> A2, B3 · <b>Flugelhorn</b> A2</span></li>
+                                <li><a href="#">Charlie Calello</a><span class="roles"><b>Arranged By [Strings], Conductor [Strings]</b> B4</span></li>
+                                <li><a href="#">Louis Lahav</a><span class="roles"><b>Engineer</b> B1</span></li>
+                                <li><a href="#">Ernest Carter</a><span class="roles"><b>Drums</b> B1</span></li>
+                                <li><a href="#">David Sancious</a><span class="roles"><b>Keyboards</b> B1</span></li>
+                                <li><span class="more">▶ 7 more: Danny Federici, Richard Davis, David Sanborn, Michael Brecker, Wayne Andre, Mike Appel, Steve Van Zandt</span></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sec-h"><span class="tw">▼</span>Images <small>7 · a click opens the viewer</small></div>
+                <div class="thumbs" id="thumbs"></div>
+
+                <div class="sec-h"><span class="tw">▼</span>Tracklist <small>8 rows</small>
+                    <span class="gf"><input id="gf-tracks" type="text" placeholder="Filter all tables…" aria-label="Filter all tables"></span>
+                </div>
+                <div class="sub-h"><span class="tw">▼</span>Record 1 · 39:20 <small>8 rows · sides A and B, one table (as MusicBrainz's one medium)</small></div>
+                <table class="tbl">
+                    <thead><tr><th>#</th><th>Title</th><th>Length <span class="ic">⏱</span></th><th>Instruments <span class="ic">▼</span></th><th>Vocals <span class="ic">▼</span></th><th>Engineer</th><th>Arranged by</th><th>Other credits</th></tr></thead>
+                    <tbody>
+                        <tr><td>A1</td><td><a href="#">Thunder Road</a></td><td class="len">4:50</td>
+                            <td><ul><li><span class="r">Bass Guitar –</span> Garry Tallent</li><li><span class="r">Drums –</span> Max Weinberg</li><li><span class="r">Glockenspiel, Electric Piano [Fender Rhodes] –</span> Roy Bittan</li><li class="more">▶ 2 more</li></ul></td>
+                            <td><ul><li><span class="r">Backing Vocals –</span> Mike Appel</li><li><span class="r">Backing Vocals –</span> Steve Van Zandt</li><li><span class="r">Backing Vocals –</span> Roy Bittan</li><li class="more">▶ 1 more</li></ul></td>
+                            <td></td><td></td><td></td></tr>
+                        <tr><td>A2</td><td><a href="#">Tenth Avenue Freeze-Out</a></td><td class="len">3:11</td>
+                            <td><ul><li><span class="r">Baritone Saxophone –</span> David Sanborn</li><li><span class="r">Bass Guitar –</span> Garry Tallent</li><li><span class="r">Drums –</span> Max Weinberg</li><li class="more">▶ 5 more</li></ul></td>
+                            <td><ul><li><span class="r">Vocals –</span> Bruce Springsteen</li></ul></td>
+                            <td></td><td></td><td></td></tr>
+                        <tr><td>A3</td><td><a href="#">Night</a></td><td class="len">3:01</td>
+                            <td><ul><li><span class="r">Bass Guitar –</span> Garry Tallent</li><li><span class="r">Drums –</span> Max Weinberg</li><li><span class="r">Guitar –</span> Bruce Springsteen</li><li class="more">▶ 2 more</li></ul></td>
+                            <td><ul><li><span class="r">Vocals –</span> Bruce Springsteen</li></ul></td>
+                            <td></td><td></td><td></td></tr>
+                        <tr><td>A4</td><td><a href="#">Backstreets</a></td><td class="len">6:29</td>
+                            <td><ul><li><span class="r">Bass Guitar –</span> Garry Tallent</li><li><span class="r">Drums –</span> Max Weinberg</li><li><span class="r">Guitar –</span> Bruce Springsteen</li><li class="more">▶ 1 more</li></ul></td>
+                            <td><ul><li><span class="r">Vocals –</span> Bruce Springsteen</li></ul></td>
+                            <td></td><td></td><td></td></tr>
+                        <tr><td>B1</td><td><a href="#">Born To Run</a></td><td class="len">4:30</td>
+                            <td><ul><li><span class="r">Bass Guitar –</span> Garry Tallent</li><li><span class="r">Drums –</span> Ernest Carter</li><li><span class="r">Guitar –</span> Bruce Springsteen</li><li class="more">▶ 3 more</li></ul></td>
+                            <td><ul><li><span class="r">Vocals –</span> Bruce Springsteen</li></ul></td>
+                            <td>Louis Lahav</td><td></td><td></td></tr>
+                        <tr><td>B2</td><td><a href="#">She's The One</a></td><td class="len">4:30</td>
+                            <td><ul><li><span class="r">Bass Guitar –</span> Garry Tallent</li><li><span class="r">Drums –</span> Max Weinberg</li><li><span class="r">Guitar –</span> Bruce Springsteen</li><li class="more">▶ 2 more</li></ul></td>
+                            <td><ul><li><span class="r">Vocals –</span> Bruce Springsteen</li></ul></td>
+                            <td></td><td></td><td></td></tr>
+                        <tr><td>B3</td><td><a href="#">Meeting Across The River</a></td><td class="len">3:16</td>
+                            <td><ul><li><span class="r">Bass –</span> Richard Davis</li><li><span class="r">Piano –</span> Roy Bittan</li><li><span class="r">Trumpet –</span> Randy Brecker</li></ul></td>
+                            <td><ul><li><span class="r">Vocals –</span> Bruce Springsteen</li></ul></td>
+                            <td></td><td></td><td></td></tr>
+                        <tr><td>B4</td><td><a href="#">Jungleland</a></td><td class="len">9:33</td>
+                            <td><ul><li><span class="r">Bass Guitar –</span> Garry Tallent</li><li><span class="r">Drums –</span> Max Weinberg</li><li><span class="r">Guitar –</span> Bruce Springsteen</li><li class="more">▶ 2 more</li></ul></td>
+                            <td><ul><li><span class="r">Vocals –</span> Bruce Springsteen</li></ul></td>
+                            <td></td><td>Charlie Calello (Strings)</td><td><ul><li><span class="r">Conductor [Strings] –</span> Charlie Calello</li></ul></td></tr>
+                    </tbody>
+                </table>
+
+                <div class="sub-h"><span class="tw">▼</span>Videos <small>3 rows</small></div>
+                <table class="tbl">
+                    <thead><tr><th>Title</th><th>Duration</th><th>Play</th></tr></thead>
+                    <tbody>
+                        <tr><td><a href="#">Born to Run</a></td><td class="len">4:30</td><td><span class="play">▶ Play here</span></td></tr>
+                        <tr><td><a href="#">Bruce Springsteen - Born to Run 明日なき暴走 (Full Album) / 1975</a></td><td class="len"></td><td><span class="play">▶ Play here</span></td></tr>
+                        <tr><td><a href="#">1975 HITS ARCHIVE: Born To Run - Bruce Springsteen (stereo 45)</a></td><td class="len">4:31</td><td><span class="play">▶ Play here</span></td></tr>
+                    </tbody>
+                </table>
+            </div></div>
+        </div>
+        <aside class="notes">
+            <section>
+                <h3>What the Tracks button does</h3>
+                <ul>
+                    <li>One request: <code>masters/26725</code>. Today's Versions button costs 1 + 4 for this master.</li>
+                    <li>The head, the media split and the credit columns are the release's Tracks view, shared code.</li>
+                    <li>A master has no labels, formats or identifiers. So the Master release card holds the year, the main and the newest release.</li>
+                    <li>A master has no release-wide credits, so there is no Release credits table. Its producers are on its releases.</li>
+                </ul>
+            </section>
+            <section>
+                <h3>Where the numbers come from</h3>
+                <ul>
+                    <li>The master's API answer has no have, want or ratings, only <code>num_for_sale</code> and <code>lowest_price</code>. The Community card reads Discogs' Statistics and For Sale boxes from the page that is already open. That costs no request, but on a disk load the card has only what the answer had.</li>
+                    <li>The tracks have no format, so the table is named by the positions: sides make a "Record", "1-1" makes a "Disc".</li>
+                </ul>
+            </section>
+            <section>
+                <h3>New on this page <span class="tag-new">new</span></h3>
+                <ul>
+                    <li>The yellow-ringed cards: Community in two columns, and Credits by person (question 1).</li>
+                    <li>Videos as a sub-table under the tracks, with ▶ Play here (question 4).</li>
+                </ul>
+            </section>
+        </aside>
+    </section>
+
+    <!-- ===== Master: Versions ===== -->
+    <section id="view-versions" class="bench" hidden>
+        <div class="win">
+            <div class="win-bar"><span class="dots"><i></i><i></i><i></i></span><span class="url">https://www.discogs.com/master/26725-Bruce-Springsteen-Born-To-Run</span></div>
+            <div class="dg-strip">discogs <span>Discogs' own header</span></div>
+            <div class="scroll"><div class="root">
+                <div class="h1row">
+                    <h2>Bruce Springsteen – Born To Run</h2>
+                    <span class="saed"><span>Tracks</span><span class="on">Versions</span><span>☰</span></span>
+                </div>
+                <div class="sec-h"><span class="tw">▼</span>Versions <small>387 rows</small>
+                    <span class="gf"><input id="gf-versions" type="text" placeholder="Filter all tables…" aria-label="Filter all tables"></span>
+                </div>
+                <div class="sub-h"><span class="tw">▼</span>Versions <small>387 rows · one sub-table now</small></div>
+                <table class="tbl">
+                    <thead><tr><th>Image</th><th>Title</th><th>Format</th><th>Label</th><th>Cat#</th><th>Country</th><th>Year</th></tr></thead>
+                    <tbody>
+                        <tr><td><span class="ph-sm"></span></td><td><a href="#">Born To Run</a></td><td>LP, Album, Stereo</td><td><a href="#">Columbia</a></td><td>PC 33795</td><td>US</td><td class="num">1975</td></tr>
+                        <tr><td></td><td><a href="#">Born To Run</a></td><td>LP, Album, Stereo</td><td><a href="#">CBS</a></td><td><ul><li>S 69170</li><li>69170</li></ul></td><td>UK</td><td class="num">1975</td></tr>
+                        <tr><td></td><td><a href="#">Born To Run</a></td><td>LP, Album, Unofficial Release</td><td><a href="#">震撼</a></td><td>PRO-4041</td><td>Taiwan</td><td class="num">1975</td></tr>
+                        <tr><td></td><td><a href="#">Born To Run</a></td><td>Album</td><td><a href="#">CBS</a></td><td>C - 0740888</td><td>Indonesia</td><td class="num">1975</td></tr>
+                        <tr><td colspan="7" class="more">… 383 more rows; the main release keeps its ★</td></tr>
+                    </tbody>
+                </table>
+                <p class="callout">The rows are today's. What changes: the master page becomes a multi-table page (the Tracks view has a sub-table per disc), so the versions sit under one "Versions" sub-table heading, as a release's "Other versions" already do.</p>
+            </div></div>
+        </div>
+        <aside class="notes">
+            <section>
+                <h3>Second button, unchanged rows</h3>
+                <ul>
+                    <li>Same requests as today: the master record for the ★, then the versions pages (4 for this master).</li>
+                    <li>The engine has one table mode per page, not per button. Both views therefore render as sub-tables, which adds the sub-table filter here.</li>
+                    <li>No head on this view, as on the release's Credits, versions view.</li>
+                </ul>
+            </section>
+        </aside>
+    </section>
+
+    <!-- ===== Release: Community ===== -->
+    <section id="view-community" class="bench" hidden>
+        <div class="win">
+            <div class="win-bar"><span class="dots"><i></i><i></i><i></i></span><span class="url">https://www.discogs.com/release/1874253-Bruce-Springsteen-Born-To-Run</span></div>
+            <div class="compare">
+                <div>
+                    <span class="cap">Today: one column, ten rows</span>
+                    <div class="card">
+                        <h4>Community</h4>
+                        <dl class="kv">
+                            <dt>Have</dt><dd><a href="#">18799</a></dd>
+                            <dt>Want</dt><dd><a href="#">2149</a></dd>
+                            <dt>Avg rating</dt><dd>4.34 / 5</dd>
+                            <dt>Ratings</dt><dd><a href="#">1170</a></dd>
+                            <dt>Last sold</dt><dd><a href="#">Oct 16, 2026</a></dd>
+                            <dt>Low</dt><dd>€25.00</dd>
+                            <dt>Median</dt><dd>€46.72</dd>
+                            <dt>High</dt><dd>€150.00</dd>
+                            <dt>For sale</dt><dd><a href="#">60</a></dd>
+                            <dt>Data quality</dt><dd>Needs Vote</dd>
+                        </dl>
+                    </div>
+                </div>
+                <div>
+                    <span class="cap">Proposed: two columns of five</span>
+                    <div class="card cq new">
+                        <h4>Community</h4>
+                        <div class="kv2">
+                            <dl class="kv">
+                                <dt>Have</dt><dd><a href="#">18,799</a></dd>
+                                <dt>Want</dt><dd><a href="#">2,149</a></dd>
+                                <dt>Avg rating</dt><dd>4.34 / 5</dd>
+                                <dt>Ratings</dt><dd><a href="#">1,170</a></dd>
+                                <dt>Data quality</dt><dd>Needs Vote</dd>
+                            </dl>
+                            <dl class="kv">
+                                <dt>Last sold</dt><dd><a href="#">Oct 16, 2026</a></dd>
+                                <dt>Low</dt><dd>€25.00</dd>
+                                <dt>Median</dt><dd>€46.72</dd>
+                                <dt>High</dt><dd>€150.00</dd>
+                                <dt>For sale</dt><dd><a href="#">60</a></dd>
+                            </dl>
+                        </div>
+                    </div>
+                    <p class="callout">Left: the collection (Have, Want, ratings) and the data quality. Right: the market, Discogs' sales figures and the copies for sale. Below about 360 px of card width it is one column again.</p>
+                </div>
+            </div>
+        </div>
+        <aside class="notes">
+            <section>
+                <h3>The change</h3>
+                <ul>
+                    <li>A card of the shared head can say "two columns": the first half of its rows on the left, the rest on the right. The master's Community card uses it too.</li>
+                    <li>The two halves are grouped by meaning, so Data quality moves up to the left column (question 3).</li>
+                    <li>Numbers get thousands separators, as Discogs' own box writes them.</li>
+                    <li>A row the page does not have (no sales yet) is left out; the halves then stay as grouped and need not be even.</li>
+                </ul>
+            </section>
+        </aside>
+    </section>
+
+    <!-- ===== Plan and questions ===== -->
+    <section id="view-plan" class="plan" hidden>
+        <section>
+            <h2>Plan</h2>
+            <ol>
+                <li><b>dg-master gets two buttons.</b> "Tracks" first (<code>dgView: 'tracks'</code>), then today's "Versions". The page becomes <code>tableMode: 'multi'</code> with <code>groupByH3</code>, as dg-release. The Versions rows stay as they are.</li>
+                <li><b>One request for Tracks.</b> <code>_dgPageCount()</code> returns 1 for a master's Tracks view and keeps the answer. <code>_dgToHtml()</code> page 1 runs the master's answer through <code>_dgReleaseTracksHtml()</code>: the same media split and role columns. No formats means a medium is named by its positions. No release credits means no Release credits table. Then the Videos sub-table, <code>_dgVideosTableHtml()</code>.</li>
+                <li><b>The head.</b> A <code>_dgMasterHeadSpec()</code> beside <code>_dgReleaseHeadSpec()</code>, through the shared <code>_fdHeadInsertSections()</code>: the byline, Notes, Details (Master release, External links, Genres and styles, Community; Credits by person on the right), Images.</li>
+                <li><b>Community from the page.</b> The master page's Statistics and For Sale boxes, read by label like <code>_dgLiveStats()</code> reads a release's (no request). Then the data quality from the answer.</li>
+                <li><b>Two columns.</b> A facts card can take a second list of rows: two <code>dl</code>s in a grid that is one column below about 360 px. Both Community cards use it.</li>
+                <li><b>Before the build, a probe.</b> About 15 masters of other shapes, anonymous, as the release probe did: a CD master ("1-1"), a box set master, a single, one without a tracklist, one with sub-tracks. The shipped splitter then runs on the saved answers.</li>
+                <li><b>Tests and docs.</b> A fixture spec on master 26725 plus two probed masters; the master page's two boxes trimmed from <code>debug/discogs-master.html</code> into a fixture; a mutation list; <code>docs/claude/discogs.md</code>, HELP, the coverage registry, WIP changelog entries (WIP.1 the master's Tracks view, WIP.2 the two-column Community card).</li>
+            </ol>
+        </section>
+        <section>
+            <h2>Requests per press</h2>
+            <div class="costs">
+                <table>
+                    <thead><tr><th>Button</th><th>Today</th><th>Proposed</th><th>Born To Run</th></tr></thead>
+                    <tbody>
+                        <tr><td>Tracks</td><td>(none)</td><td>the master</td><td>1</td></tr>
+                        <tr><td>Versions</td><td>the master, then each versions page</td><td>unchanged</td><td>1 + 4</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        <section>
+            <h2>Questions for you</h2>
+            <ol>
+                <li class="q"><b>The right-hand Details column: Credits by person?</b> The release has Identifiers there; a master has none. Drawn: who did what, on which tracks, as Discogs' own Credits box. Or leave the column empty and let the left cards use the width.<span class="rec">I recommend Credits by person: it answers "who played on this" at a glance, which the columns answer only track by track.</span></li>
+                <li class="q"><b>The number of versions in the head?</b> The master's answer does not have it; one more request (versions page 1) does. Drawn without.<span class="rec">I recommend leaving it out: the Versions button's tooltip already tells the count's cost, and Tracks stays one request.</span></li>
+                <li class="q"><b>Community: grouped by meaning, or Discogs' order split in half?</b> Drawn grouped: the collection left, the market right, so Data quality moves up.<span class="rec">I recommend grouped.</span></li>
+                <li class="q"><b>Videos as a sub-table under the tracks?</b> On a release they are on the second button; on a master the second button is the versions.<span class="rec">I recommend under the tracks, as drawn.</span></li>
+            </ol>
+        </section>
+    </section>
+</div>
+<script>
+(function () {
+    const IMGS = JSON.parse(document.getElementById('mockup-images').textContent || '{}');
+    const EMBED = window.__EMBED || {};
+    const box = document.getElementById('thumbs');
+    Object.keys(IMGS).forEach((id, i) => {
+        const fig = document.createElement('figure');
+        const src = EMBED[id] || IMGS[id].u || '';
+        if (src) {
+            const img = document.createElement('img');
+            img.src = src;
+            img.alt = i ? `Secondary image ${i}` : 'Primary image';
+            fig.append(img);
+        } else {
+            const ph = document.createElement('div');
+            ph.className = 'ph';
+            fig.append(ph);
+        }
+        const cap = document.createElement('figcaption');
+        cap.textContent = i ? `Secondary ${i}` : 'Primary';
+        fig.append(cap);
+        box.append(fig);
+    });
+    const tabs = Array.from(document.querySelectorAll('nav.tabs button'));
+    const show = (key) => {
+        tabs.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tab === key)));
+        ['tracks', 'versions', 'community', 'plan'].forEach(k => { document.getElementById(`view-${k}`).hidden = k !== key; });
+        try { localStorage.setItem('dg-master-mockup-tab', key); } catch (e) { /* storage is optional */ }
+    };
+    tabs.forEach(b => b.addEventListener('click', () => show(b.dataset.tab)));
+    let start = 'tracks';
+    try { start = localStorage.getItem('dg-master-mockup-tab') || 'tracks'; } catch (e) { /* storage is optional */ }
+    show(tabs.some(b => b.dataset.tab === start) ? start : 'tracks');
+})();
+</script>
+</body>
+</html>

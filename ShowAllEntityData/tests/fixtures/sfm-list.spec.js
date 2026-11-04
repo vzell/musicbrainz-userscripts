@@ -32,6 +32,19 @@ const PAGES = {
     // A search for an artist's tour (2026-11-03): one page in the fixture.
     '/search': ['sfm-page-search-2bd6dcce-3daa95b.html'],
 };
+// `query=` searches (sfm-query, 2026-11-04), also /search: by their query.
+const QUERIES = {
+    'Bruce Springsteen': 'sfm-page-query-bruce-springsteen.html',
+    'artist:(Bruce Springsteen) tour:(Land of Hope & Dreams American Tour)': 'sfm-page-query-artist-tour.html',
+};
+/**
+ * The fixture of a setlist.fm URL: a `query=` search's by its query, else the list's page.
+ *
+ * @param {URL} u
+ * @returns {string|undefined}
+ */
+const fileFor = u => (u.searchParams.get('query') ? QUERIES[u.searchParams.get('query')]
+    : PAGES[u.pathname][Number(u.searchParams.get('page') || 1) - 1]);
 
 /**
  * Loads a setlist.fm list page (at `?page=1`, so the fetch of page 1, which
@@ -51,11 +64,11 @@ async function open(page, pathName, settings = {}) {
     await page.route((u) => u.hostname === 'www.setlist.fm' && Object.prototype.hasOwnProperty.call(PAGES, u.pathname), (route) => {
         const u = new URL(route.request().url());
         served.push(u.pathname + u.search);
-        const file = PAGES[u.pathname][Number(u.searchParams.get('page') || 1) - 1];
+        const file = fileFor(u);
         return file ? route.fulfill({ path: FX(file), contentType: 'text/html; charset=utf-8' }) : route.fulfill({ status: 404, body: '' });
     });
     await loadUserscriptPage(page, {
-        url: `${SFM}${pathName}${pathName.includes('?') ? '&' : '?'}page=1`, fixtureFile: FX(PAGES[pathName.split('?')[0]][0]), testMode: true,
+        url: `${SFM}${pathName}${pathName.includes('?') ? '&' : '?'}page=1`, fixtureFile: FX(fileFor(new URL(`${SFM}${pathName}`)) || PAGES[pathName.split('?')[0]][0]), testMode: true,
         settingsOverride: { ...FIXTURE_SETTINGS_OVERRIDE, sa_enable_setlistfm: true, sa_render_threshold: 100000, ...settings },
     });
     return { served, errors };
@@ -203,6 +216,27 @@ test.describe('setlist.fm list pages (sfm-venue, sfm-artist)', () => {
         expect(r.ticket, 'a ticket shop\'s affiliate link').toBe('none');
     });
 
+    test('before any button, a search page\'s cards preview too: they are in .rightColumn, not .mainColumn (vzell 2026-11-04: "the two search pages … no POH")', async ({ page }) => {
+        // Every setlist.fm search page puts its filter form, cards and pager
+        // in `.rightColumn`; `extRoot` named `.mainColumn .setlistPreview`
+        // only, so no card of a search previewed before a render.
+        const resolve = sel => page.evaluate((q) => {
+            const a = document.querySelector(q);
+            return a ? (window.__saTest.popResolve(a) || 'none') : 'missing';
+        }, sel);
+        for (const p of ['/search?query=Bruce+Springsteen', '/search?artist=2bd6dcce&tour=3daa95b',
+            `/search?query=${encodeURIComponent('artist:(Bruce Springsteen) tour:(Land of Hope & Dreams American Tour)')}`]) {
+            await open(page, p, { sa_pop_ext: true, sa_pop_ext_setlistfm_key: 'tok-probe' });
+            expect(await page.locator('#mb-sfm-root table.tbl').count(), `${p}: nothing rendered yet`).toBe(0);
+            expect(await page.locator('.rightColumn .setlistPreview').count(), `${p}: the cards where setlist.fm puts them`).toBe(10);
+            expect((await resolve('.rightColumn .setlistPreview h2 a[href]')).split(':').slice(0, 2).join(':'), `${p}: a setlist link`).toBe('ext|ext:setlistfm');
+        }
+        // A Tour link (setlist.fm's own search) needs no key.
+        await open(page, `/search?query=${encodeURIComponent('artist:(Bruce Springsteen) tour:(Land of Hope & Dreams American Tour)')}`,
+            { sa_pop_ext: true, sa_pop_ext_setlistfm_key: '' });
+        expect(await resolve('.rightColumn .setlistPreview a[href*="search?artist="]')).toContain('ext|ext:setlistfm:https://www.setlist.fm/search?artist=');
+    });
+
     test('on setlist.fm, a Tour cell (setlist.fm\'s own search link) has its card and window, key or not (vzell, 2026-11-03: "does not have the hover POH")', async ({ page }) => {
         await open(page, '/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html', { sa_pop_ext: true, sa_pop_ext_setlistfm_key: '' });
         await show(page, 'Show all setlists of this venue');
@@ -254,6 +288,32 @@ test.describe('setlist.fm list pages (sfm-venue, sfm-artist)', () => {
         expect(Object.keys(r[0]).filter(k => !k.endsWith('@'))).toEqual(['Date', 'Venue', 'Event', 'Tour', 'Doors', 'Start', 'End', 'Songs', 'Setlist']);
         expect(r.every(x => x.Tour === 'Land of Hope & Dreams American Tour')).toBe(true);
         expect(r.find(x => x.Date === '2026-05-30')).toMatchObject({ Doors: '18:00', Start: '19:30', End: '22:20' });
+        expect(errors).toEqual([]);
+    });
+
+    test('a free-text search (sfm-query, vzell 2026-11-04): named by its query; many artists, so Artist and Venue both', async ({ page }) => {
+        const { served, errors } = await open(page, '/search?query=Bruce+Springsteen');
+        await expect(page.locator('#mb-sfm-root h1.mb-sfm-h1 bdi')).toHaveText('setlist.fm search: Bruce Springsteen');
+        await show(page, 'Show all setlists of this search');
+        expect(served).toEqual(['/search?query=Bruce+Springsteen']);
+        const r = await rows(page);
+        expect(r).toHaveLength(10);
+        expect(Object.keys(r[0]).filter(k => !k.endsWith('@'))).toEqual(['Date', 'Artist', 'Venue', 'Event', 'Tour', 'Doors', 'Start', 'End', 'Songs', 'Setlist']);
+        // Other artists' setlists at "Bruce Springsteen Center for American Music".
+        expect(new Set(r.map(x => x.Artist)).size).toBeGreaterThan(3);
+        expect(r.find(x => x.Artist === 'Jackson Pines')).toMatchObject({ Venue: expect.stringContaining('Bruce Springsteen Center for American Music') });
+        expect(errors).toEqual([]);
+    });
+
+    test('an "artist:(…) tour:(…)" search, our own Tour links\' form (sfm-query): named by its query; its query kept for the fetch', async ({ page }) => {
+        const q = 'artist:(Bruce Springsteen) tour:(Land of Hope & Dreams American Tour)';
+        const { served, errors } = await open(page, `/search?query=${encodeURIComponent(q)}`);
+        await expect(page.locator('#mb-sfm-root h1.mb-sfm-h1 bdi')).toHaveText(`setlist.fm search: ${q}`);
+        await show(page, 'Show all setlists of this search');
+        expect(served.map(u => new URL(`${SFM}${u}`).searchParams.get('query'))).toEqual([q]);
+        const r = await rows(page);
+        expect(r).toHaveLength(10);
+        expect(r.every(x => x.Artist === 'Bruce Springsteen' && x.Tour === 'Land of Hope & Dreams American Tour')).toBe(true);
         expect(errors).toEqual([]);
     });
 

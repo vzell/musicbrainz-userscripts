@@ -9,6 +9,8 @@ Two parts that share the host and a parser:
 | Part | What | Where |
 |---|---|---|
 | pageTypes `sfm-venue`, `sfm-artist`, `sfm-search` | setlist.fm's list of a venue's or an artist's setlists, or its search for an artist's setlists (`/search?artist=…`, 2026-11-03) → one table of every setlist | `_sfm*()`, `applySfmToTable()`, `_sfmPrepareLivePage()` |
+| pageType `sfm-setlist` | a setlist's own page (`/setlist/<artist>/<year>/<venue>-<id>.html`, 2026-11-04) → a sub-table per set, the show's facts above, no request | `_sfmSetlist*()`; "A setlist's page" below |
+| pageTypes `sfm-festival`, `sfm-festivals` | a festival edition (`/festival/<year>/<slug>-<id>.html`) → a sub-table per day, no request; a festival's editions (`/festivals/<slug>-<id>.html`), page by page; a head on both (2026-11-04) | `_sfmFestival*()`; "Festival pages" below |
 | reader `setlistfm` | any setlist.fm setlist, artist, venue (or our tour) link → card on hover, window on Space, through the API with the user's key; setlist.fm's own search for an artist (`search?artist=…`, every Tour cell's link) read from its page, key or not (2026-11-03) | `_extSfm*()` in `_EXT_READERS`; docs/claude/detail-pages.md "setlist.fm through its API" and "Venue additions" |
 
 The reader's windows also read setlist.fm's pages (set times, a venue's
@@ -82,6 +84,13 @@ on every host, and only with `sa_pop_ext_setlistfm_key` set.
   filter form's selected options (`_sfmSearchChoices()`: "setlist.fm search:
   Bruce Springsteen · Land of Hope & Dreams American Tour"; the smallest of
   their counts is the number found). Its rows are an artist's (Venue).
+- `sfm-query` (vzell 2026-11-04, `debug/sfm-search-artist.html`,
+  `sfm-search-artist-queury.html`): a search with a non-empty `query=` and
+  no `artist=` — free text ("Bruce Springsteen": other artists' setlists at
+  the Bruce Springsteen Center for American Music too) or "artist:(…)
+  tour:(…)", the form of our own Tour links. The same cards; its rows carry
+  Artist AND Venue (`_SFM_HEADERS.query`); named by the query. Its own
+  `@include` line. Before 2026-11-04 these were left out on purpose.
 - `_sfmPrepareLivePage()`: `<section id="mb-sfm-root">` FIRST in `<body>`,
   as on archive.org — never inside setlist.fm's `div.body`: the sticky
   headers pin every `<body>` child but `_sphPageEl()`, which returns this
@@ -121,6 +130,19 @@ on every host, and only with `sa_pop_ext_setlistfm_key` set.
   "Upcoming" list is ticket-shop affiliate links. setlist.fm writes its links
   relative to the page (`../search?artist=…&tour=…`); `_extTarget()` reads
   them against it on setlist.fm (and archive.org), as on discogs.com.
+  **2026-11-04** (vzell: "the SFM IPs doesn't seem to have POH support
+  yet, e.g. the two search pages"): every search page — `search?artist=`
+  too — puts its form, cards and pager in `.rightColumn`; it has no
+  `.mainColumn`, so `.mainColumn .setlistPreview` reached none of its cards.
+  And a setlist's page has its links in `.setlistInfo .setlistHeadline`
+  (artist, venue), `.setlistInfo .infoContainer > p` ("Tour:") and
+  `.setlistList` (covers, guests), none of them `.info`. `extRoot` names
+  those too, on ONE line: `build-coverage-report.py` reads it from the
+  source line. The search fixtures now keep that layout
+  (`build-setlistfm-fixtures.py`: a `searchFilter` page in `.rightColumn`).
+  The festival pages add `.viewBaseFestival` (a festival's editions table),
+  `.FestivalSetlists-root` (an edition's widget, drawn in the browser) and
+  `.breadCrumbBar` (it names the festival).
 
 ### The window would not scroll sideways (2026-11-03)
 
@@ -142,6 +164,125 @@ whose venue is "NAC Opera Hall at National Arts Centre, Ottawa, ON,
 Canada" filled Event with the venue. The heading's place is no event when
 it is the venue's whole text or one of its `<strong>` parts
 (`_sfmCardData()`'s `venue.parts`).
+
+## A setlist's page (sfm-setlist, 2026-11-04)
+
+org/foreign-detail-PTs.org step 4; the mockup is the setlist.fm tab of
+`org/foreign-detail-PTs-mockups.html`; vzell's answer 2: covers and guests
+as setlist.fm links only, no MusicBrainz lookup by name. Snapshots
+(vzell, 2026-10-29 to 11-04): `debug/setlistfm-setlist.html`,
+`setlistfm-2026-05-30.html`, `sfm-2026-06-04/06-13/07-24/08-01/10-03.html`,
+`sfm-lohadt.html`, `sfm-solo-plus-jam.html`, `sfm-no-selist.html`.
+
+- **The page.** Server-rendered: `ol.songsList > li.setlistParts` holds the
+  whole list. `.song` (`.songPart a.songLabel`, the song's statistics),
+  `.tape` (`.songPart > span`, no link; a `.songTooltip` "Song played from
+  tape"), `.section` (a set's name in a `<span>`; `.section.empty` an
+  unnamed break), `.encore` ("Encore:"), and ad items
+  (`.setlistFluidAd`). `.infoPart small` is a run of "( … )" groups:
+  `(<a>Artist</a>&nbsp;cover)` — a tape's `(<a>Artist</a>&nbsp;song)` —,
+  `(with <a>Guest</a>)`, `(<span>a note</span>)`; a note may itself start
+  "with" (`(<span>with "It Takes Two" snippet interpolated</span>)`,
+  `(<span>with the ensemble</span>)`, `(<span>+ with Tom Morello & …</span>)`).
+  No segue, no second encore and no `/festival/` headline link in any
+  snapshot. A setlist without songs has `.setlistList > .emptySetlist` and no
+  `ol`.
+- **No request.** `features.pageRequest`'s `fetchText` returns
+  `document.documentElement.outerHTML`: the engine's "never the live
+  document" rule is about a site's pager, and this page has none.
+  `pageCountAsync` is 1. The button's `showIf` is `_sfmSetlistHasSongs()`.
+- **Sets** (`_sfmSetlistParse()`): one per `.section` / `.encore`, the songs
+  before any of them a first set; named as setlist.fm names them, else "Set
+  N" — N counts EVERY set, named or not (the break after "The River" is Set
+  3) —, an encore "Encore", "Encore 1/2…" when there are more; a name seen
+  twice gets " (2)" (`groupByH3` groups by heading). Songs are numbered on
+  through the sets, as setlist.fm numbers them; a tape is not. Empty sets
+  are dropped.
+- **Groups** (`_sfmSetlistInfo()`): read from the box's own child nodes, so
+  a note's parentheses never count. A group is a guest's when its first text
+  starts "with" AND it links someone (every guest is linked in the
+  snapshots); one link with "cover"/"song" after it is Cover of; every other
+  group is a note (Info, "; ").
+- **Columns** (`_SFM_HEADERS.setlist`): # · Song · Cover of · With (a guest
+  per `<li>`, `collapsableColumns`) · Tape · Info · Play (the YouTube-search
+  tile, `src: 'yts'`, "<artist> <song>", as the setlist window's ▶; only
+  with `sa_yt_play_in_place`).
+- **The head** (`_sfmSetlistHeadSpec()`, the shared `_fdHeadInsertSections()`;
+  read from the page, no request; a disk load is untested): "~ Setlist by
+  <artist> (date: venue)"; setlist.fm's Note (`.setlistList p.info
+  small.info`); Details — left: Show (Date from `.setlistInfo .dateBlock`,
+  Artist, Venue or Festival by the headline link's path, Tour read by its
+  "Tour:" label, "Were there" from `.setlistFooter .amount`), Set times
+  (`_extSfmSetlistTimes()`), Setlist (songs, sets, encores, covers, tapes);
+  right: Guests and Covered artists, pills with "×n", the most first.
+- **Fixtures**: `scripts/build-setlistfm-fixtures.py` `SETLIST_TARGETS` →
+  `tests/fixtures/sfm-page-setlist-<id>.html` (6: 4bf0375a, 2b4b60da,
+  37589df, 737652e9, 3b7c34e0, b7005be), the page's skeleton with
+  `.setlistInfo`, the first `.setTimesTimeline`, `.setlistList` and
+  `.setlistFooter`; the ads' `<li>`s stay, their scripts go.
+- **Tests**: `tests/fixtures/sfm-setlist.spec.js` (6); mutations
+  `scripts/mutations/sfm-setlist.json` (8, one recorded as a guard another
+  covers).
+
+## Festival pages (sfm-festival, sfm-festivals, 2026-11-04)
+
+org/foreign-detail-PTs.org "add support for SFM festivals"; mockup
+https://claude.ai/artifact/1UiGQbvvqiRuyiBmDA5tE2 (`org/sfm-festival-mockups.html`);
+vzell's answers: an edition as a sub-table per day with Stage as a column; a
+head on both pages; festival links previewed now; Stages and Most attended.
+Snapshots: `debug/sfm-festival.html` (Glastonbury 2025), `debug/sfm-festivals.html`
+(Glastonbury Festival).
+
+- **An edition's page is drawn in the browser**: a React widget
+  (`FestivalSetlists-root`, "Group by: Day / Venue / Artists") mounted by an
+  inline script, `React.createElement(WidgetFestival.FestivalSetlistsWidget,
+  Object.assign({}, {"config": …, "setlists": […], "festival": {…}}))`.
+  `_sfmFestivalJson()` cuts that object out by its braces (strings respected)
+  and parses it. Each setlist: `current.eventDate`, `current.artist.name`,
+  `current.setTimes.scheduledStart` (553 of 661), `current.venue` (its
+  `name` is a stage when `mainVenue` is set; 516 of 661 name only the main
+  venue), `attendancesCount`, `deeplinks.web`. **Match the whole call**, and
+  skip a script whose object does not parse: in the test harness this
+  userscript is a page script too, and its source names the widget — the
+  first version returned null on it and the page got no button.
+- **`sfm-festival`**: `fetchText` hands over the live page (no request), as
+  `sfm-setlist`; `_sfmFestivalToHtml()`: a sub-table per day ("Friday ·
+  2025-06-27"), its setlists by scheduled time (none last), then name,
+  case ignored; Time · Artist (that setlist) · Stage · Attendees. `showIf`:
+  the JSON is there. Head `_sfmFestivalHeadSpec()`: "~ Festival edition (from
+  – to: venue)"; Festival (dates, the festival from the breadcrumb, venue,
+  and the info box's own counts: setlists, stages, attendances); Stages (each
+  with its count, then "no stage given ×N"); Most attended (the ten).
+- **`sfm-festivals`**: its native table (`.viewBaseFestival table`), 20
+  editions a page, the pager inside that block (`_sfmPageCount()`), every
+  page fetched as `sfm-venue`'s; `_sfmFestivalsToHtml()`: Year · Edition ·
+  Stages (the line under the name) · Venues · Start · End (ISO, the year from
+  the row; an end month before the start's is the next year). Head
+  `_sfmFestivalsHeadSpec()`: Festival (full name, took place, artists,
+  attendances, read from `.infoStats` by its sentence) and Artist charts
+  (`.rightColumn table.statsTable`; its links are Wicket actions, so pills
+  without links).
+- **The reader** (vzell's answer 3): `_extSfmPage()` knows `festival` and
+  `festivals`; with `search` they are `_EXT_SFM_SITE_KINDS`, read from
+  setlist.fm's own page without a key (`_extSfmFestivalLoad()` through
+  `_extSfmSearchGet()`; same-origin on setlist.fm, anonymous `_extGet()`
+  elsewhere — whether setlist.fm answers that off-site, as it does for venue
+  pages, is unconfirmed). Card: the dates, setlists and stages, or how often
+  it took place and the artists. Window `_extSfmFestivalWindow()`: an
+  edition's setlists in a List table grouped by day with a Stage chip, its
+  stages and most attended on the left; a festival's editions (the first
+  page) and its Artist charts. `_EXT_SFM_VERSION` 4.
+  `_mbPopKvHtml()` ESCAPES the name (`dt`): a linked name (Most attended)
+  needs its own `dl`; plain names go in as text, never pre-escaped.
+- **Fixtures** (`build-setlistfm-fixtures.py` `FESTIVAL_TARGETS`,
+  `FESTIVALS_TARGETS`): the edition's widget JSON cut to 39 of 661 setlists
+  (per day the first six by time, plus the ten most attended) in a
+  `type="text/plain"` script (the real one mounts React), plus a small
+  rendering of its rows with the snapshot's class names for the previews'
+  test; the festival page's info box, editions table with its pager, Artist
+  charts and breadcrumb.
+- **Tests**: `tests/fixtures/sfm-festival.spec.js` (5), `sl-include-regex.spec.js`
+  (+1); mutations `scripts/mutations/sfm-festival.json` (12, all caught).
 
 ## Tests
 

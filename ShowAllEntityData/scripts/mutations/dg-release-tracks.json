@@ -186,8 +186,8 @@
         "why": "Only the Tracks view has the head (its answer kept in _dgRelRec).",
         "edits": [
             {
-                "find": "        if (!d || !root || activeDefinition?.features?.dgView !== 'tracks') return null;",
-                "replace": "        if (!d || !root) return null;"
+                "find": "        const d = _dgRelRec;\n        const root = document.getElementById('mb-dg-root');\n        if (!d || !root || activeDefinition?.features?.dgView !== 'tracks') return null;",
+                "replace": "        const d = _dgRelRec;\n        const root = document.getElementById('mb-dg-root');\n        if (!d || !root) return null;"
             },
             {
                 "find": "            _dgRelRec = tracksView ? d : null;",
@@ -311,12 +311,8 @@
         "why": "vzell 2026-11-04: the long identifiers on the right, Community last on the left.",
         "edits": [
             {
-                "find": "            others: [\n                ['identifiers', 'Identifiers', ids],\n            ],",
-                "replace": "            others: [],"
-            },
-            {
-                "find": "                    ['Data quality', String(d.data_quality || cm.data_quality || '')]]],\n            ],",
-                "replace": "                    ['Data quality', String(d.data_quality || cm.data_quality || '')]]],\n                ['identifiers', 'Identifiers', ids],\n            ],"
+                "find": "                { twoCol: true }],\n            ],\n            others: [\n                ['identifiers', 'Identifiers', ids],\n            ],",
+                "replace": "                { twoCol: true }],\n                ['identifiers', 'Identifiers', ids],\n            ],\n            others: [],"
             }
         ],
         "spec": "tests/fixtures/discogs-release-tracks.spec.js",
@@ -328,7 +324,7 @@
         "why": "Last sold, Low, Median and High come from Discogs' Statistics box on the page (the API has none).",
         "edits": [
             {
-                "find": "        document.querySelectorAll('#app #release-stats li').forEach((li) => {",
+                "find": "        document.querySelectorAll(`#app ${box} li`).forEach((li) => {",
                 "replace": "        [].forEach((li) => {"
             }
         ],
@@ -341,8 +337,8 @@
         "why": "Linked to the release's statistics, as Discogs' box links them.",
         "edits": [
             {
-                "find": "        const num = n => (typeof n === 'number' ? _fdLink(stats, String(n)) : '');",
-                "replace": "        const num = n => (typeof n === 'number' ? String(n) : '');"
+                "find": "        const num = n => (typeof n === 'number' ? _fdLink(stats, n.toLocaleString('en-US')) : '');",
+                "replace": "        const num = n => (typeof n === 'number' ? n.toLocaleString('en-US') : '');"
             }
         ],
         "spec": "tests/fixtures/discogs-release-tracks.spec.js",

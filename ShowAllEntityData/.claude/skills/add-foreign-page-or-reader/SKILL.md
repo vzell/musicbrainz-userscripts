@@ -10,6 +10,13 @@ readers `dghistory`, `dguser`, `dgsearch`, `dgsupport`, full-size images,
 in-window links). Every step below was needed at least once; every trap in
 "Known traps" was hit.
 
+Two later skills take over parts of this area: **foreign-detail-pagetype**
+(one entity's page laid out as release-tracks: ia-details, dg-release and
+dg-master Tracks, sfm-setlist — the shared head, a probe that runs the
+shipped code on saved answers) and **foreign-preview-scope** (previews
+missing on a foreign page: `extRoot`, the page's real layout, fixtures that
+can show it).
+
 Read first: `CLAUDE.md` ("Scope: one table engine, MusicBrainz first"),
 `docs/claude/<site>.md` (discogs.md for Discogs), and for readers
 `docs/claude/detail-pages.md` ("Links to other sites", "Readers of known

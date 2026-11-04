@@ -45,6 +45,10 @@
 // @include      /^https?:\/\/(?:www\.)?archive\.org\/details\/(?!@)[^\/?#]+(?:\/[^?#]*)?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?setlist\.fm\/(?:venue|setlists)\/[^\/?#]+-[0-9a-f]+\.html(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?setlist\.fm\/search\?(?:[^#]*&)?artist=[^&#]+.*$/
+// @include      /^https?:\/\/(?:www\.)?setlist\.fm\/search\?(?:[^#]*&)?query=[^&#]+.*$/
+// @include      /^https?:\/\/(?:www\.)?setlist\.fm\/setlist\/[^\/?#]+\/\d{4}\/[^\/?#]+-[0-9a-f]+\.html(?:[?#].*)?$/
+// @include      /^https?:\/\/(?:www\.)?setlist\.fm\/festival\/\d{4}\/[^\/?#]+-[0-9a-f]+\.html(?:[?#].*)?$/
+// @include      /^https?:\/\/(?:www\.)?setlist\.fm\/festivals\/(?!browse\/)[^\/?#]+-[0-9a-f]+\.html(?:[?#].*)?$/
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
 // @connect      eventartarchive.org
@@ -5110,6 +5114,16 @@
                          'request for that row only, the same record the artwork viewer and the link preview ' +
                          'use, so a later click or preview costs nothing; moving on before its turn asks ' +
                          'nothing.'
+        },
+
+        sa_dg_master_versions_count: {
+            label: 'Master page: the number of versions in the Tracks view',
+            type: 'checkbox',
+            default: true,
+            description: 'A master\'s Tracks button shows the master\'s number of versions among its facts. ' +
+                         'The master\'s own record does not have it, so it costs one request more: the first ' +
+                         'page of its versions. Off: the Tracks button asks only for the master, and the count ' +
+                         'is left out.'
         },
 
         // ============================================================
@@ -15967,10 +15981,13 @@
     /**
      * What `_dgPageCount()` learned for the run under way: the release's
      * master, whose versions are the release page's pages 2 and on, and a
-     * master's main release, marked ★ in its versions. 0 for none.
-     * @type {{masterId: number, mainId: number}}
+     * master's main release, marked ★ in its versions. 0 for none. A
+     * master's Tracks view: `versions`, its number of versions for the head
+     * (versions page 1's `pagination.items`, `sa_dg_master_versions_count`),
+     * -1 when not asked or not answered.
+     * @type {{masterId: number, mainId: number, versions: number}}
      */
-    const _dgRun = { masterId: 0, mainId: 0 };
+    const _dgRun = { masterId: 0, mainId: 0, versions: -1 };
 
     /**
      * What this discogs.com page is: its kind and Discogs id, read from the
@@ -16066,6 +16083,8 @@
         const pg = _dgPage();
         if (pg.kind === 'artist') return _EXT_DG_LISTS.artist.url(String(pg.id), p);
         if (pg.kind === 'label') return _EXT_DG_LISTS.label.url(`${pg.id}:${def.features.dgOrder === 'asc' ? 'asc' : 'desc'}`, p);
+        // A master's Tracks view is the master's own record, one page.
+        if (pg.kind === 'master' && def.features.dgView === 'tracks') return `https://api.discogs.com/masters/${pg.id}`;
         if (pg.kind === 'master') return _EXT_DG_LISTS.versions.url(String(pg.id), p);
         return p === 1 ? `https://api.discogs.com/releases/${pg.id}` : _EXT_DG_LISTS.versions.url(String(_dgRun.masterId), p - 1);
     }
@@ -16076,8 +16095,11 @@
      * button's `features.pageCap` (a label's "Newest 500" is 5). A release
      * asks for itself and, when it has a master, that master's versions
      * page 1: 1 + their pages. A master also asks for its own record
-     * (`masters/<id>`), for its main release. What it asked is kept for the
-     * loop (`_dgTexts`).
+     * (`masters/<id>`), for its main release. A master's Tracks view is that
+     * record alone (one page), and, with `sa_dg_master_versions_count`,
+     * versions page 1 for the head's count (`_dgRun.versions`; a failure
+     * costs the count, not the view). What it asked is kept for the loop
+     * (`_dgTexts`).
      *
      * @param {object} def - The active merged pageDefinition.
      * @returns {Promise<number>}
@@ -16086,6 +16108,7 @@
         _dgTexts.clear();
         _dgRun.masterId = 0;
         _dgRun.mainId = 0;
+        _dgRun.versions = -1;
         const keep = async (url) => {
             const text = await _dgFetchText(url, false);
             _dgTexts.set(url, text);
@@ -16098,6 +16121,22 @@
             // The Tracks view is the release alone: no other versions.
             if (def.features.dgView === 'tracks') return 1;
             return _dgRun.masterId ? 1 + pages(await keep(_dgPageUrl(2, def))) : 1;
+        }
+        if (_dgPage().kind === 'master' && def.features.dgView === 'tracks') {
+            const m = await keep(_dgPageUrl(1, def));
+            _dgRun.mainId = Number(m && m.main_release) || 0;
+            // The head's number of versions: one request more, by setting
+            // (vzell 2026-11-04); the same URL as the Versions view's page 1.
+            if (Lib.settings.sa_dg_master_versions_count !== false) {
+                try {
+                    const v = _dgJson(await _dgFetchText(_EXT_DG_LISTS.versions.url(String(_dgPage().id), 1), false));
+                    const n = Number(v && v.pagination && v.pagination.items);
+                    _dgRun.versions = Number.isFinite(n) ? n : -1;
+                } catch (err) {
+                    Lib.warn('fetch', `Discogs master versions: ${err && err.message} — no count in the head.`);
+                }
+            }
+            return 1;
         }
         if (_dgPage().kind === 'master') {
             // Only for the ★: a failure here costs the mark, not the versions.
@@ -16755,7 +16794,12 @@
                 if (!cur.sides.includes(side)) cur.sides.push(side);
             } else if (nm) {
                 const n = Number(nm[1]);
-                if (!cur || cur.kind !== 'plain' || n <= cur.last) start('', 'plain');
+                // "1b" after "1a" is a part of the same track (a medley's,
+                // "The Very Best Of Stars On 45", master 203805: 159 parts in
+                // 147 media before), not a new medium; a bare number seen
+                // again still is.
+                const samePart = cur && cur.kind === 'plain' && n === cur.last && /[a-z]$/.test(pos);
+                if (!cur || cur.kind !== 'plain' || (n <= cur.last && !samePart)) start('', 'plain');
                 cur.last = n;
             } else if (!cur) {
                 start('', 'plain');
@@ -16944,11 +16988,15 @@
      * ("Last Sold:"); a label it lacks is left out. Empty when the box is
      * not there (not rendered yet, another layout).
      *
+     * A master's page has the same box as `#master-statistics` (Have, Want,
+     * Avg Rating, Ratings: its API answer has none of them).
+     *
+     * @param {string} [box] - The box's selector inside `#app`.
      * @returns {Object<string, {text: string, href: string}>} Keyed by the label, lower-case.
      */
-    function _dgLiveStats() {
+    function _dgLiveStats(box = '#release-stats') {
         const out = {};
-        document.querySelectorAll('#app #release-stats li').forEach((li) => {
+        document.querySelectorAll(`#app ${box} li`).forEach((li) => {
             const name = li.querySelector('span');
             if (!name) return;
             const key = name.textContent.replace(/:\s*$/, '').trim().toLowerCase();
@@ -17010,7 +17058,7 @@
         // from that box on this page (`_dgLiveStats()`, the API has none).
         const stats = `${DG}/release/stats/${d.id}`;
         const live = _dgLiveStats();
-        const num = n => (typeof n === 'number' ? _fdLink(stats, String(n)) : '');
+        const num = n => (typeof n === 'number' ? _fdLink(stats, n.toLocaleString('en-US')) : '');
         const liveVal = k => (live[k] ? (live[k].href ? _fdLink(live[k].href, live[k].text) : live[k].text) : '');
         const contributors = (cm.contributors || []).map(c => String((c && c.username) || '')).filter(Boolean);
         // An identifier's description goes with its value ("AL 33795 ·
@@ -17051,13 +17099,16 @@
                 contributors.length && ['contributors', 'Contributors', contributors.length,
                     _fdPills(contributors.map(u => [u, `${DG}/user/${encodeURIComponent(u)}`])), false],
                 // Discogs' Statistics box (vzell 2026-11-04: all of it, linked),
-                // then the copies for sale (its Marketplace page) and the data quality.
-                ['community', 'Community', [['Have', num(cm.have)], ['Want', num(cm.want)],
+                // then the copies for sale (its Marketplace page) and the data
+                // quality; in two columns (vzell 2026-11-04), grouped: the
+                // collection and the data quality, then the market.
+                ['community', 'Community', [[['Have', num(cm.have)], ['Want', num(cm.want)],
                     ['Avg rating', cm.rating && cm.rating.count ? `${Number(cm.rating.average).toFixed(2)} / 5` : ''],
                     ['Ratings', cm.rating && cm.rating.count ? num(cm.rating.count) : ''],
-                    ['Last sold', liveVal('last sold')], ['Low', liveVal('low')], ['Median', liveVal('median')], ['High', liveVal('high')],
-                    ['For sale', Number(d.num_for_sale) > 0 ? _fdLink(`${DG}/sell/release/${d.id}`, String(d.num_for_sale)) : ''],
-                    ['Data quality', String(d.data_quality || cm.data_quality || '')]]],
+                    ['Data quality', String(d.data_quality || cm.data_quality || '')]],
+                [['Last sold', liveVal('last sold')], ['Low', liveVal('low')], ['Median', liveVal('median')], ['High', liveVal('high')],
+                    ['For sale', Number(d.num_for_sale) > 0 ? _fdLink(`${DG}/sell/release/${d.id}`, Number(d.num_for_sale).toLocaleString('en-US')) : '']]],
+                { twoCol: true }],
             ],
             others: [
                 ['identifiers', 'Identifiers', ids],
@@ -17067,6 +17118,194 @@
                 return { full: im.full, thumb: im.thumb, caption: im.type === 'primary' ? 'Primary' : `Secondary ${sec}` };
             }),
             picturesTitle: 'Images', title: `${by}${by ? ' – ' : ''}${String(d.title || '')}`, source: 'the release\'s Discogs answer',
+        };
+    }
+
+    // ── A master's Tracks view (dg-master, as a release's; 2026-11-04) ──────
+    // org/discogs.org, "the discogs master release PT"; vzell's answers the
+    // same day: Credits by person on the right, the number of versions in
+    // the head (`sa_dg_master_versions_count`), Community grouped in two
+    // columns, the videos as a sub-table under the tracks.
+
+    /**
+     * The master answer of the Tracks view's render (`_dgToHtml()`), for
+     * its head (`_dgMasterHeadSpec()`). Null on the Versions view.
+     * @type {?Object}
+     */
+    let _dgMasterRec = null;
+
+    /**
+     * Discogs' For Sale box on a master's page (`#shopping-box-host`, drawn
+     * by Discogs' page): the price range ("From €1 to €4,000" → "€1 –
+     * €4,000"), the listings ("Shop 3,064 Listings") with their link, and
+     * the formats on sale, each linked to its listings. The API has only the
+     * count and a lowest price in an unnamed currency, so the page is read:
+     * no request. Null when the box is not there.
+     *
+     * @returns {?{prices: string, listings: string, href: string, formats: Array<[string, string]>}}
+     */
+    function _dgLiveMasterSale() {
+        const box = document.querySelector('#shopping-box-host');
+        if (!box || box.closest('#mb-dg-root')) return null;
+        const price = box.querySelector('.shopping-box-price');
+        const cta = box.querySelector('a.shopping-box-green-cta[href]');
+        return {
+            prices: price ? price.textContent.replace(/\s+/g, ' ').trim().replace(/^From\s+/i, '').replace(/\s+to\s+/i, ' – ') : '',
+            listings: cta ? ((/\d[\d,.]*/.exec(cta.textContent) || [''])[0]) : '',
+            href: cta ? cta.href : '',
+            formats: Array.from(box.querySelectorAll('.shopping-box-top-formats a[href]')).map(a => [a.textContent.trim(), a.href]).filter(f => f[0]),
+        };
+    }
+
+    /**
+     * Track positions as runs in tracklist order: "A1–A4, B1, B2, B4".
+     *
+     * @param {number[]} idx - Indexes into `tracks`, ascending.
+     * @param {Array<{pos: string}>} tracks - `_dgReleaseMedia()`'s tracks.
+     * @returns {string}
+     */
+    function _dgPosRuns(idx, tracks) {
+        const runs = [];
+        idx.forEach((i) => {
+            const last = runs[runs.length - 1];
+            if (last && i === last[1] + 1) last[1] = i;
+            else runs.push([i, i]);
+        });
+        const pos = i => String(tracks[i].pos || '').trim() || String(i + 1);
+        return runs.map(([a, b]) => (b - a >= 2 ? `${pos(a)}–${pos(b)}` : a === b ? pos(a) : `${pos(a)}, ${pos(b)}`)).join(', ');
+    }
+
+    /**
+     * The Credits card of a master's head (answer 1: the right column, as
+     * Discogs' own Credits box): one line per person, their roles each with
+     * the tracks it is on, roles on the same tracks joined ("Guitar, Vocals
+     * A1–A4, B1, B2, B4 · Harmonica A1"). People with the most tracks first,
+     * then in tracklist order. Null when no track has a credit.
+     *
+     * @param {Object} d - The master answer.
+     * @returns {?{body: HTMLElement, count: number}}
+     */
+    function _dgCreditsByPerson(d) {
+        const m = _dgReleaseMedia(d);
+        const people = new Map();
+        m.tracks.forEach((t, i) => t.credits.forEach((c) => {
+            const key = c.id ? `#${c.id}` : String(c.name);
+            const p = people.get(key) || { c, roles: new Map(), tracks: new Set(), first: i };
+            people.set(key, p);
+            p.tracks.add(i);
+            _dgSplitRoles(c.role).forEach((r) => {
+                const set = p.roles.get(r) || new Set();
+                set.add(i);
+                p.roles.set(r, set);
+            });
+        }));
+        if (!people.size) return null;
+        const dl = document.createElement('dl');
+        dl.className = 'mb-fd-people';
+        [...people.values()].sort((a, b) => b.tracks.size - a.tracks.size || a.first - b.first).forEach((p) => {
+            const dt = document.createElement('dt');
+            const name = p.c.anv || _extDiscogsName(p.c.name);
+            dt.appendChild(p.c.id ? _fdLink(`https://www.discogs.com/artist/${p.c.id}`, name) : document.createTextNode(name));
+            // Roles on the same tracks, joined, in the order first seen.
+            const byTracks = new Map();
+            p.roles.forEach((set, r) => {
+                const k = [...set].sort((a, b) => a - b).join(',');
+                const g = byTracks.get(k) || { roles: [], idx: [...set].sort((a, b) => a - b) };
+                g.roles.push(r);
+                byTracks.set(k, g);
+            });
+            const dd = document.createElement('dd');
+            [...byTracks.values()].forEach((g, i) => {
+                if (i) dd.append(' · ');
+                dd.append(`${g.roles.join(', ')} `);
+                const s = document.createElement('span');
+                s.className = 'mb-fd-tracks';
+                s.textContent = _dgPosRuns(g.idx, m.tracks);
+                dd.appendChild(s);
+            });
+            dl.append(dt, dd);
+        });
+        return { body: dl, count: people.size };
+    }
+
+    /**
+     * The head spec of a master's Tracks view (`_fdHeadSpec()`), from
+     * `_dgMasterRec`: "~ Master release by <artists> (year)"; Notes; Details
+     * — on the left Master release (year, main release ★, newest release,
+     * the number of versions: `_dgRun.versions`), External links, Genres and
+     * styles, Community last in two columns (Discogs' Statistics box and its
+     * For Sale box, both read from the page: `_dgLiveStats('#master-statistics')`,
+     * `_dgLiveMasterSale()`; the master's API answer has neither; then the
+     * data quality); on the right Credits by person (`_dgCreditsByPerson()`);
+     * Images. Null on the Versions view or before the answer.
+     *
+     * @returns {?Object}
+     */
+    function _dgMasterHeadSpec() {
+        const d = _dgMasterRec;
+        const root = document.getElementById('mb-dg-root');
+        if (!d || !root || activeDefinition?.features?.dgView !== 'tracks') return null;
+        const DG = 'https://www.discogs.com';
+        const artists = (d.artists || []).filter(a => a && a.name);
+        const by = artists.map((a, i) => (a.anv || _extDiscogsName(a.name)) + (i < artists.length - 1 ? ` ${String(a.join || ',').trim()} `.replace(/^ ,/, ',') : '')).join('');
+        const year = Number(d.year) || 0;
+        const rel = id => (Number(id) > 0 ? `${DG}/release/${id}` : '');
+        const main = rel(d.main_release);
+        const newest = d.most_recent_release && d.most_recent_release !== d.main_release ? rel(d.most_recent_release) : '';
+        const frag = (parts) => {
+            const f = document.createDocumentFragment();
+            parts.filter(x => x !== '' && x !== null && x !== undefined).forEach(x => f.append(x));
+            return f.childNodes.length ? f : '';
+        };
+        const star = Object.assign(document.createElement('span'), { className: 'mb-dg-main', textContent: '★ ', title: 'Main release' });
+        // Discogs' Statistics box, as the page links it; a count written as
+        // Discogs' box writes it, with thousands separators.
+        const live = _dgLiveStats('#master-statistics');
+        const big = t => (/^\d+$/.test(t) ? Number(t).toLocaleString('en-US') : t);
+        const liveVal = k => (live[k] ? (live[k].href ? _fdLink(live[k].href, big(live[k].text)) : live[k].text) : '');
+        const sale = _dgLiveMasterSale();
+        const sellAll = `${DG}/sell/list?master_id=${d.id}`;
+        const forSale = sale && sale.listings ? _fdLink(sale.href || sellAll, sale.listings)
+            : Number(d.num_for_sale) > 0 ? _fdLink(sellAll, Number(d.num_for_sale).toLocaleString('en-US')) : '';
+        const formats = sale && sale.formats.length ? frag(sale.formats.flatMap(([t, h], i) => [i ? ' · ' : '', _fdLink(h, t)])) : '';
+        const master = `${DG}/master/${d.id}`;
+        const links = _fdChips([
+            ['Discogs', [['Master', master], ['History', `${master}/history`],
+                ...(main ? [['Main release', main]] : []), ...(newest ? [['Newest release', newest]] : [])]],
+        ]);
+        const genres = [...(d.genres || []).map(g => [String(g), `${DG}/music/genre/${encodeURIComponent(String(g).toLowerCase())}`]),
+            ...(d.styles || []).map(g => [String(g), `${DG}/music/style/${encodeURIComponent(String(g).toLowerCase())}`])].filter(g => g[0]);
+        const credits = _dgCreditsByPerson(d);
+        const images = _extDiscogsImages(d.images);
+        let sec = 0;
+        return {
+            root, h2: root.querySelector('h2.mb-dg-list-heading'),
+            sub: { what: 'Master release', by, byHref: artists[0] && artists[0].id ? `${DG}/artist/${artists[0].id}` : '', when: year ? String(year) : '' },
+            text: { title: 'Notes', body: String(d.notes || '').trim(), html: _extDiscogsMarkupHtml(String(d.notes || '').trim(), { names: true }) },
+            facts: [
+                ['master', 'Master release', [
+                    ['Year', year ? _fdLink(`${DG}/search/?decade=${year - (year % 10)}&year=${year}`, String(year)) : ''],
+                    ['Main release', main ? frag([star, _fdLink(main, `release ${d.main_release}`)]) : ''],
+                    ['Newest release', newest ? _fdLink(newest, `release ${d.most_recent_release}`) : ''],
+                    ['Versions', _dgRun.versions >= 0 ? _dgRun.versions.toLocaleString('en-US') : '']]],
+                links && ['links', 'External links', links.count, links.body, false],
+                genres.length && ['genres', 'Genres and styles', genres.length, _fdPills(genres), false],
+                // Two columns, grouped as the release's: the collection and the
+                // data quality, then the market (vzell 2026-11-04).
+                ['community', 'Community', [[['Have', liveVal('have')], ['Want', liveVal('want')],
+                    ['Avg rating', liveVal('avg rating')], ['Ratings', liveVal('ratings')],
+                    ['Data quality', String(d.data_quality || '')]],
+                [['For sale', forSale], ['Prices', sale ? sale.prices : ''], ['Formats', formats]]],
+                { twoCol: true }],
+            ],
+            others: [
+                credits && ['credits', 'Credits', credits.count, credits.body, false],
+            ],
+            pictures: images.map((im) => {
+                sec += im.type === 'secondary' ? 1 : 0;
+                return { full: im.full, thumb: im.thumb, caption: im.type === 'primary' ? 'Primary' : `Secondary ${sec}` };
+            }),
+            picturesTitle: 'Images', title: `${by}${by ? ' – ' : ''}${String(d.title || '')}`, source: 'the master\'s Discogs answer',
         };
     }
 
@@ -17110,6 +17349,14 @@
             body = tracksView ? _dgReleaseTracksHtml(d) : _dgTableHtml('Credits', H.Credits, crs) +
                 _dgTableHtml('Companies, etc.', H['Companies, etc.'], cos) +
                 _dgTableHtml('Barcode and Other Identifiers', H['Barcode and Other Identifiers'], ids) + _dgVideosTableHtml(d.videos);
+        } else if (pg.kind === 'master' && activeDefinition?.features?.dgView === 'tracks') {
+            // A master's Tracks view (vzell 2026-11-04): its own record has a
+            // release's tracklist, so the release's splitter and columns; no
+            // formats (a medium is named by its positions), no release
+            // credits; then its videos (answer 4: under the tracks).
+            if (!d || !d.title || !Array.isArray(d.tracklist)) throw bad('a master');
+            _dgMasterRec = d;
+            body = _dgReleaseTracksHtml(d) + _dgVideosTableHtml(d.videos);
         } else {
             const kind = pg.kind === 'artist' ? 'artist' : pg.kind === 'label' ? 'label' : 'versions';
             const spec = _EXT_DG_LISTS[kind];
@@ -17130,7 +17377,10 @@
                 body = _dgTableHtml(null, _DG_HEADERS.label, rows.map(r => `<tr>${_dgThumbCell(r.thumb)}${_dgSearchCell(r.artist, 'artist')}` +
                     `${_dgCell(r.title, `https://www.discogs.com/release/${r.id}`)}${_dgCell(r.format)}${_dgCatnoCell(r.catno)}${_dgCell(r.year)}</tr>`));
             } else if (pg.kind === 'master') {
-                body = _dgTableHtml(null, _DG_HEADERS.master, rows.map(v => _dgVersionRow(v, _dgRun.mainId)));
+                // One "Versions" sub-table (every page the same heading): the
+                // page is multi-table since its Tracks view (2026-11-04).
+                _dgMasterRec = null;
+                body = _dgTableHtml('Versions', _DG_HEADERS.master, rows.map(v => _dgVersionRow(v, _dgRun.mainId)));
             } else {
                 body = _dgTableHtml('Other versions', _DG_HEADERS.release['Other versions'],
                     rows.filter(v => v.id !== pg.id).map(v => _dgVersionRow(v, 0)));
@@ -17682,7 +17932,8 @@
         const h2 = document.createElement('h2');
         h2.className = 'mb-dg-list-heading';
         h2.textContent = kind === 'user' ? (_DG_USER_LISTS[def.features.dgUserList] || {}).heading || 'Lists'
-            : { artist: 'Discography', label: 'Releases', master: 'Versions', release: def.features.dgView === 'tracks' ? 'Tracklist' : 'Release', submissions: 'Submissions', history: 'History',
+            : { artist: 'Discography', label: 'Releases', master: def.features.dgView === 'tracks' ? 'Tracklist' : 'Versions',
+                release: def.features.dgView === 'tracks' ? 'Tracklist' : 'Release', submissions: 'Submissions', history: 'History',
                 ratings: 'Ratings', images: 'Images', entityImages: 'Images', sell: 'For sale', search: 'Search results' }[kind] || 'Discogs';
         const cols = kind === 'release' ? _DG_HEADERS.release.Tracklist : kind === 'user' ? _DG_HEADERS.user.releases
             : kind === 'history' ? _DG_HEADERS.history.Changes : _DG_HEADERS[kind];
@@ -20362,6 +20613,10 @@
         const t = activeDefinition?.type;
         if (t === 'ia-details') return _iaDetailsHeadSpec();
         if (t === 'dg-release') return _dgReleaseHeadSpec();
+        if (t === 'dg-master') return _dgMasterHeadSpec();
+        if (t === 'sfm-setlist') return _sfmSetlistHeadSpec();
+        if (t === 'sfm-festival') return _sfmFestivalHeadSpec();
+        if (t === 'sfm-festivals') return _sfmFestivalsHeadSpec();
         return null;
     }
 
@@ -20421,19 +20676,41 @@
         // Details: the left column, the right one beside it. Either may hold
         // a facts entry ([key, name, rows]: a name → value list) or a card
         // built by the site ([key, name, count, body, wide]).
+        const fillDl = (dl, rows) => rows.forEach(([k, v]) => {
+            dl.appendChild(el('dt', '', k));
+            const dd = el('dd');
+            if (v instanceof Node) dd.appendChild(v);
+            else dd.textContent = v;
+            dl.appendChild(dd);
+        });
+        // A facts entry: [key, name, rows], or [key, name, [left, right],
+        // {twoCol: true}] — two name → value lists side by side (the
+        // Community card, vzell 2026-11-04), one under the other when the
+        // card is narrow; a half left without a row makes it one list.
         const asCard = (entry) => {
-            if (!entry || entry.length !== 3) return entry;
-            const [key, name, rows0] = entry;
+            if (!entry || (entry.length !== 3 && !(entry.length === 4 && entry[3] && entry[3].twoCol))) return entry;
+            const [key, name, rows0, opts] = entry;
+            if (opts && opts.twoCol) {
+                const halves = rows0.map(h => h.filter(r => r[1])).filter(h => h.length);
+                const n = halves.reduce((s, h) => s + h.length, 0);
+                if (!n) return null;
+                if (halves.length === 1) {
+                    const dl = el('dl');
+                    fillDl(dl, halves[0]);
+                    return [key, name, n, dl, false];
+                }
+                const box = el('div', 'mb-fd-2col');
+                halves.forEach((h) => {
+                    const dl = el('dl', 'mb-fd-kv');
+                    fillDl(dl, h);
+                    box.appendChild(dl);
+                });
+                return [key, name, n, box, false];
+            }
             const rows = rows0.filter(r => r[1]);
             if (!rows.length) return null;
             const dl = el('dl');
-            rows.forEach(([k, v]) => {
-                dl.appendChild(el('dt', '', k));
-                const dd = el('dd');
-                if (v instanceof Node) dd.appendChild(v);
-                else dd.textContent = v;
-                dl.appendChild(dd);
-            });
+            fillDl(dl, rows);
             return [key, name, rows.length, dl, false];
         };
         const facts = (spec.facts || []).map(asCard).filter(Boolean);
@@ -20521,6 +20798,18 @@
                has room. */
             .mb-fd-details dl.mb-sb-card-body > dt { max-width: 11em; overflow-wrap: anywhere; }
             .mb-fd-dim { color: #7a6d5c; }
+            /* A two-column facts card (Discogs' Community): the two lists side
+               by side, one under the other once the card is narrower than two
+               of them; each list is a card body's dl. */
+            .mb-fd-2col { display: flex; flex-wrap: wrap; }
+            .mb-fd-2col > dl.mb-fd-kv { flex: 1 1 13em; min-width: 0; margin: 0; padding: 6px 9px; display: grid;
+                grid-template-columns: auto minmax(0, 1fr); gap: 1px 12px; align-content: start; }
+            .mb-fd-2col > dl.mb-fd-kv + dl.mb-fd-kv { border-left: 1px solid #e3dccf; }
+            .mb-fd-2col > dl.mb-fd-kv > dt { margin: 0; color: #7a6d5c; font-style: italic; font-weight: normal; max-width: 11em; }
+            .mb-fd-2col > dl.mb-fd-kv > dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+            /* The Credits card: a person, then their roles and tracks. */
+            .mb-fd-details dl.mb-fd-people > dt { font-style: normal; }
+            .mb-fd-details dl.mb-fd-people .mb-fd-tracks { color: #7a6d5c; white-space: nowrap; }
         `);
         st.id = 'mb-fd-head-style';
     }
@@ -20588,6 +20877,13 @@
     const _SFM_LIST_PATH_RE = /^\/(venue|setlists)\/[^/]+-[0-9a-f]+\.html$/i;
 
     /**
+     * A setlist's own page (sfm-setlist, 2026-11-04):
+     * `/setlist/<artist>/<year>/<venue>-<id>.html`.
+     * @type {RegExp}
+     */
+    const _SFM_SETLIST_PATH_RE = /^\/setlist\/[^/]+\/\d{4}\/[^/]+-([0-9a-f]+)\.html$/i;
+
+    /**
      * The columns of a fetched page, by kind (vzell's Q1: Doors, Start and
      * End as three columns here; Q7: Songs "12+" from the page). A search
      * names one artist (`artist=`), so its rows are an artist's.
@@ -20597,13 +20893,22 @@
         venue: ['Date', 'Artist', 'Event', 'Tour', 'Doors', 'Start', 'End', 'Songs', 'Setlist'],
         artist: ['Date', 'Venue', 'Event', 'Tour', 'Doors', 'Start', 'End', 'Songs', 'Setlist'],
         search: ['Date', 'Venue', 'Event', 'Tour', 'Doors', 'Start', 'End', 'Songs', 'Setlist'],
+        // A `query=` search (2026-11-04): many artists' setlists, so both.
+        query: ['Date', 'Artist', 'Venue', 'Event', 'Tour', 'Doors', 'Start', 'End', 'Songs', 'Setlist'],
+        // A setlist's page (sfm-setlist): a sub-table per set; Play only with
+        // sa_yt_play_in_place (`_sfmSetlistToHtml()`).
+        setlist: ['#', 'Song', 'Cover of', 'With', 'Tape', 'Info', 'Play'],
+        // A festival edition (a sub-table per day) and a festival's editions.
+        festival: ['Time', 'Artist', 'Stage', 'Attendees'],
+        festivals: ['Year', 'Edition', 'Stages', 'Venues', 'Start', 'End'],
     };
 
     /** The English month abbreviations of a `.dateBlock`. */
     const _SFM_MONTHS = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
 
     /**
-     * Which list this page is: 'venue', 'artist', 'search' (setlist.fm's
+     * Which page this is: 'setlist' (a setlist's own page,
+     * `_SFM_SETLIST_PATH_RE`, 2026-11-04), or which list: 'venue', 'artist', 'search' (setlist.fm's
      * search for an artist's setlists, `/search?artist=<id>` with any of
      * `tour`, `country`, `city`, `venue`, …; vzell 2026-11-03), or '' for
      * none. A search without `artist=` is not one (its rows would be many
@@ -20614,7 +20919,14 @@
      * @returns {string}
      */
     function _sfmKind(path = window.location.pathname, params = new URLSearchParams(window.location.search)) {
-        if (path === '/search') return params.get('artist') ? 'search' : '';
+        // A search for an artist (`artist=`) is 'search'; any other with a
+        // `query=` (free text, or "artist:(…) tour:(…)", our own Tour links)
+        // is 'query' (vzell 2026-11-04): its rows may be many artists'.
+        if (path === '/search') return params.get('artist') ? 'search' : (params.get('query') || '').trim() ? 'query' : '';
+        if (_SFM_SETLIST_PATH_RE.test(path)) return 'setlist';
+        // A festival edition and a festival's editions (2026-11-04).
+        if (_SFM_FESTIVAL_PATH_RE.test(path)) return 'festival';
+        if (_SFM_FESTIVALS_PATH_RE.test(path)) return 'festivals';
         const m = _SFM_LIST_PATH_RE.exec(path);
         return m ? (m[1].toLowerCase() === 'venue' ? 'venue' : 'artist') : '';
     }
@@ -20766,16 +21078,16 @@
      * when it ends in "...") and those songs.
      *
      * @param {Element} card
-     * @param {string} kind - 'venue', 'artist' or 'search'.
+     * @param {string} kind - 'venue', 'artist', 'search' or 'query' (Artist and Venue both).
      * @param {string} base - The page's URL.
      * @returns {?string} A `<tr>`, or null for a card without its setlist link.
      */
     function _sfmCardRow(card, kind, base) {
         const d = _sfmCardData(card, base);
         if (!d) return null;
-        const who = kind === 'venue' ? d.artist : d.venue;
+        const who = kind === 'venue' ? [d.artist] : kind === 'query' ? [d.artist, d.venue] : [d.venue];
         const cells = [
-            d.dateHtml, who.html, _rgEsc(d.event), d.tour.html,
+            d.dateHtml, ...who.map(w => w.html), _rgEsc(d.event), d.tour.html,
             _rgEsc(d.times.doors), _rgEsc(d.times.start), _rgEsc(d.times.end),
             d.songs.length ? `${d.songs.length}${d.more ? '+' : ''}` : '',
             _rgEsc(d.songs.join(' · ') + (d.more ? ' …' : '')),
@@ -20790,7 +21102,7 @@
      * card is a failure (a bot check, a changed page), never "no rows".
      *
      * @param {string} text - The page.
-     * @param {string} kind - 'venue', 'artist' or 'search'.
+     * @param {string} kind - 'venue', 'artist', 'search' or 'query' (Artist and Venue both).
      * @param {string} base - Its URL.
      * @returns {string} An HTML document.
      * @throws {Error} When the page holds no setlist.
@@ -20875,7 +21187,10 @@
         // A search page has no <h1>: its filter's choices name it
         // ("setlist.fm search: Bruce Springsteen · Land of Hope & Dreams American Tour").
         const choices = _sfmKind() === 'search' ? _sfmSearchChoices().names : [];
-        bdi.textContent = choices.length ? `setlist.fm search: ${choices.join(' · ')}`
+        // A `query=` search is named by its query, as setlist.fm's title names it.
+        const query = _sfmKind() === 'query' ? (new URLSearchParams(window.location.search).get('query') || '').replace(/\s+/g, ' ').trim() : '';
+        bdi.textContent = query ? `setlist.fm search: ${query}`
+            : choices.length ? `setlist.fm search: ${choices.join(' · ')}`
             : (own && own.textContent.replace(/\s+/g, ' ').trim()) || 'setlist.fm setlists';
         h1.appendChild(bdi);
         root.appendChild(h1);
@@ -20901,12 +21216,557 @@
         if (!root) return;
         const h2 = document.createElement('h2');
         h2.className = 'mb-sfm-list-heading';
-        h2.textContent = 'Setlists';
+        h2.textContent = kind === 'setlist' ? 'Setlist' : kind === 'festivals' ? 'Editions' : 'Setlists';
         const table = document.createElement('table');
         table.className = 'tbl mb-sfm-table';
         table.innerHTML = `<thead><tr>${_SFM_HEADERS[kind].map(c => `<th>${_rgEsc(c)}</th>`).join('')}</tr></thead><tbody></tbody>`;
         root.append(h2, table);
         Lib.debug('init', `applySfmToTable: empty sfm-${kind} table in place for the fetched pages.`);
+    }
+
+    // ── A setlist's own page (sfm-setlist, 2026-11-04) ──────────────────────
+    // org/foreign-detail-PTs.org step 4 (mockup: org/foreign-detail-PTs-mockups.html,
+    // the setlist.fm tab; vzell's answer 2: covers and guests as setlist.fm
+    // links only, no MusicBrainz lookup by name). The page is server-rendered:
+    // `ol.songsList > li.setlistParts` holds the whole list — `.song`, `.tape`
+    // (a `<span>` name, no song link), `.section` (a set's name; `.empty` for
+    // an unnamed break), `.encore` ("Encore:"), and ads (`.setlistFluidAd`),
+    // which are skipped. A song's `.infoPart small` is a run of "( … )"
+    // groups: "(<a>Artist</a> cover)" (a tape: "song"), "(with <a>Guest</a>
+    // …)", "(<span>a note</span>)". Snapshots: debug/setlistfm-setlist.html,
+    // setlistfm-2026-05-30.html, sfm-2026-*.html, sfm-solo-plus-jam.html,
+    // sfm-no-selist.html (vzell, 2026-11-04); no segue in any of them.
+
+    /**
+     * Whether this setlist page has a song (or a tape) to show: a setlist
+     * without one has `.emptySetlist` ("Sorry, there are no songs in this
+     * setlist yet") and no list, and gets no button (`showIf`).
+     *
+     * @param {Document} [doc]
+     * @returns {boolean}
+     */
+    function _sfmSetlistHasSongs(doc = document) {
+        return !!doc.querySelector('ol.songsList > li.setlistParts.song, ol.songsList > li.setlistParts.tape');
+    }
+
+    /**
+     * One song's `.infoPart` as its parts: the covered artist (or a tape's
+     * artist, "song"), the guests ("with …", each linked), and the notes
+     * (every other group: "first time since 2019", "acoustic, Bruce solo",
+     * "with "It Takes Two" snippet interpolated" — a group is a guest's only
+     * when it starts "(with" AND links someone). Groups are read from the
+     * box's own child nodes, so parentheses inside a note's `<span>` do not
+     * count.
+     *
+     * @param {?Element} box - `.infoPart small` (or `.infoPart`).
+     * @param {function(string): string} abs - A link's href, absolute.
+     * @returns {{cover: Array<{text: string, href: string}>, coverKind: string, with: Array<{text: string, href: string}>, info: string[]}}
+     */
+    function _sfmSetlistInfo(box, abs) {
+        const out = { cover: [], coverKind: '', with: [], info: [] };
+        if (!box) return out;
+        const flat = s => String(s || '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+        const groups = [];
+        let cur = null;
+        let depth = 0;
+        box.childNodes.forEach((node) => {
+            if (node.nodeType === 3) {
+                // Text: split at the parentheses of THIS level.
+                String(node.textContent).split(/([()])/).forEach((part) => {
+                    if (part === '(') {
+                        if (depth++ === 0) { cur = []; groups.push(cur); return; }
+                    } else if (part === ')') {
+                        if (depth > 0 && --depth === 0) { cur = null; return; }
+                    }
+                    if (cur && part) cur.push(part);
+                });
+            } else if (cur && node.nodeType === 1) {
+                cur.push(node);
+            }
+        });
+        groups.forEach((g) => {
+            const links = g.filter(x => typeof x !== 'string' && x.matches('a[href]'));
+            const text = flat(g.map(x => (typeof x === 'string' ? x : x.textContent)).join(''));
+            const first = typeof g[0] === 'string' ? g[0] : '';
+            const link = a => ({ text: flat(a.textContent), href: abs(a.getAttribute('href')) });
+            const tail = /\b(cover|song)$/i.exec(text);
+            if (links.length && /^\s*with\b/i.test(first)) out.with.push(...links.map(link));
+            else if (links.length === 1 && tail) {
+                out.cover.push(link(links[0]));
+                out.coverKind = tail[1].toLowerCase();
+            } else if (text) out.info.push(text);
+        });
+        return out;
+    }
+
+    /**
+     * A setlist page's list as sets: one per `.section` (its name, '' for an
+     * unnamed break) or `.encore`, the songs before any of them a first set;
+     * a set's name is setlist.fm's, else "Set N" (N counts every set, named
+     * or not, so a break after "The River" is the set after it), an encore
+     * "Encore" (or "Encore 1", "Encore 2" … when there are more). A name
+     * seen twice gets " (2)" (sub-tables are grouped by their heading).
+     * Songs are numbered on through the sets, as setlist.fm numbers them; a
+     * tape is not numbered. Sets without a song are left out.
+     *
+     * @param {Document} doc
+     * @param {string} base - The page's URL, for its relative links.
+     * @returns {{artist: {text: string, href: string}, sets: Array<{name: string, kind: string, rows: Object[]}>}}
+     */
+    function _sfmSetlistParse(doc, base) {
+        const flat = s => String(s || '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+        const abs = (href) => {
+            try { return href ? new URL(href, base).href : ''; } catch (e) { return ''; }
+        };
+        const sets = [];
+        let cur = null;
+        let n = 0;
+        const open = (name, kind) => { cur = { name, kind, rows: [] }; sets.push(cur); };
+        doc.querySelectorAll('ol.songsList > li.setlistParts').forEach((li) => {
+            const c = li.classList;
+            if (c.contains('section')) return open(flat(li.textContent), 'set');
+            if (c.contains('encore')) return open('', 'encore');
+            const tape = c.contains('tape');
+            if (!tape && !c.contains('song')) return;
+            const label = li.querySelector('.songPart a.songLabel[href]');
+            const song = flat((label || li.querySelector('.songPart') || {}).textContent);
+            if (!song) return;
+            if (!cur) open('', 'set');
+            const info = _sfmSetlistInfo(li.querySelector('.infoPart small') || li.querySelector('.infoPart'), abs);
+            cur.rows.push({ n: tape ? 0 : ++n, song, href: label ? abs(label.getAttribute('href')) : '', tape, ...info });
+        });
+        const kept = sets.filter(s => s.rows.length);
+        const encores = kept.filter(s => s.kind === 'encore').length;
+        let setNo = 0;
+        let encNo = 0;
+        const seen = new Map();
+        kept.forEach((s) => {
+            if (s.kind === 'encore') s.name = encores > 1 ? `Encore ${++encNo}` : 'Encore';
+            else {
+                setNo++;
+                if (!s.name) s.name = `Set ${setNo}`;
+            }
+            const k = (seen.get(s.name) || 0) + 1;
+            seen.set(s.name, k);
+            if (k > 1) s.name = `${s.name} (${k})`;
+        });
+        const a = doc.querySelector('.setlistHeadline h1 strong a[href]');
+        return { artist: { text: flat(a && a.textContent), href: a ? abs(a.getAttribute('href')) : '' }, sets: kept };
+    }
+
+    /**
+     * `toHtml` of sfm-setlist: the setlist as a sub-table per set
+     * (`_sfmSetlistParse()`): # · Song (its statistics on setlist.fm) ·
+     * Cover of (the covered artist's setlists; a tape's artist) · With (a
+     * guest per line) · Tape · Info (the notes, "; ") · Play (a YouTube
+     * search for artist and song, played in place, as the setlist window's
+     * ▶; only with `sa_yt_play_in_place`). Links are absolute and open in a
+     * new tab. A page without the list throws, so the run records a failed
+     * page, never "no rows".
+     *
+     * @param {string} text - The page's HTML.
+     * @param {string} base - Its URL.
+     * @returns {string} An HTML document.
+     * @throws {Error} When the page has no song list (`status` 0).
+     */
+    function _sfmSetlistToHtml(text, base) {
+        const doc = new DOMParser().parseFromString(text, 'text/html');
+        if (!_sfmSetlistHasSongs(doc)) throw Object.assign(new Error('setlist.fm answered, but not with a setlist\'s songs'), { status: 0 });
+        const { artist, sets } = _sfmSetlistParse(doc, base);
+        const play = _ytOn();
+        const cols = _SFM_HEADERS.setlist.filter(c => play || c !== 'Play');
+        const a = (x) => (x.href ? `<a href="${_rgEsc(x.href)}" target="_blank" rel="noopener noreferrer">${_rgEsc(x.text)}</a>` : _rgEsc(x.text));
+        const body = sets.map((s) => {
+            const rows = s.rows.map((r) => {
+                const q = `${artist.text} ${r.song}`.trim();
+                const tile = play ? _ytTileHtml({ src: 'yts', kind: 'video', id: '', list: '', q }, { bare: true, title: r.song }) : '';
+                return `<tr><td>${r.n || ''}</td><td>${a({ text: r.song, href: r.href })}</td>` +
+                    `<td>${r.cover.map(a).join(', ')}</td>` +
+                    `<td>${r.with.length ? `<ul>${r.with.map(x => `<li>${a(x)}</li>`).join('')}</ul>` : ''}</td>` +
+                    `<td>${r.tape ? 'from tape' : ''}</td><td>${_rgEsc(r.info.join('; '))}</td>` +
+                    `${play ? `<td class="mb-dg-playcell">${tile}</td>` : ''}</tr>`;
+            });
+            return `<h3>${_rgEsc(s.name)}</h3><table class="tbl" data-mb-col-headers="${_rgEsc(JSON.stringify(cols))}">` +
+                `<thead><tr>${cols.map(c => `<th>${_rgEsc(c)}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>`;
+        }).join('');
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${body}</body></html>`;
+    }
+
+    /**
+     * The head spec of a setlist's page (`_fdHeadSpec()`), read from the
+     * page itself (setlist.fm renders it whole; no request): "~ Setlist by
+     * <artist> (date: venue)"; setlist.fm's Note; Details — on the left Show
+     * (date, artist, venue or festival, tour, how many setlist.fm users
+     * were there), Set times (`_extSfmSetlistTimes()`: doors, scheduled,
+     * start, end, length), Setlist (songs, sets, encores, covers, tapes); on
+     * the right Guests and Covered artists, each a setlist.fm link with how
+     * often (vzell's answer 2: setlist.fm links only). Null on another page.
+     *
+     * @returns {?Object}
+     */
+    function _sfmSetlistHeadSpec() {
+        const root = document.getElementById('mb-sfm-root');
+        if (!root || activeDefinition?.type !== 'sfm-setlist' || !_sfmSetlistHasSongs()) return null;
+        const flat = s => String(s || '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+        const base = window.location.href;
+        const abs = (href) => {
+            try { return href ? new URL(href, base).href : ''; } catch (e) { return ''; }
+        };
+        const linkOf = a => (a ? _fdLink(abs(a.getAttribute('href')), flat(a.textContent)) : '');
+        const { artist, sets } = _sfmSetlistParse(document, base);
+        const head = document.querySelector('.setlistHeadline h1');
+        const venueA = head && head.querySelector(':scope > span a[href]');
+        const venueWord = venueA && /\/festival\//.test(venueA.getAttribute('href') || '') ? 'Festival' : 'Venue';
+        const db = document.querySelector('.setlistInfo .dateBlock');
+        const part = sel => flat((db && db.querySelector(sel) || {}).textContent);
+        const month = _SFM_MONTHS[part('.month').slice(0, 3).toLowerCase()];
+        const iso = month && /^\d{4}$/.test(part('.year')) ? `${part('.year')}-${String(month).padStart(2, '0')}-${part('.day').padStart(2, '0')}` : '';
+        const tourP = Array.from(document.querySelectorAll('.setlistInfo .infoContainer p'))
+            .find(p => /^Tour:?$/i.test(flat((p.querySelector(':scope > span') || {}).textContent)));
+        const tourA = tourP && tourP.querySelector(':scope > span a[href]');
+        const note = document.querySelector('.setlistList p.info small.info');
+        const attend = flat((document.querySelector('.setlistFooter .amount') || {}).textContent);
+        const attendN = (/^([\d,]+)/.exec(attend) || [])[1] || '';
+        const t = _extSfmSetlistTimes(document) || {};
+        const rows = sets.flatMap(s => s.rows);
+        const tally = (pick) => {
+            const m = new Map();
+            rows.forEach(r => pick(r).forEach((x) => {
+                const e = m.get(x.href || x.text) || { x, n: 0 };
+                e.n++;
+                m.set(x.href || x.text, e);
+            }));
+            return [...m.values()].sort((p, q) => q.n - p.n).map(e => [`${e.x.text}${e.n > 1 ? ` ×${e.n}` : ''}`, e.x.href]);
+        };
+        const guests = tally(r => r.with);
+        const covered = tally(r => (r.tape ? [] : r.cover));
+        const count = (k, word) => (k ? `${k} ${word}${k === 1 ? '' : 's'}` : '');
+        return {
+            root, h2: root.querySelector('h2.mb-sfm-list-heading'),
+            sub: { what: 'Setlist', by: artist.text, byHref: artist.href,
+                when: [iso, flat(venueA && venueA.textContent)].filter(Boolean).join(': ') },
+            text: { title: 'Note', body: flat(note && note.textContent) },
+            facts: [
+                ['show', 'Show', [['Date', iso], ['Artist', artist.href ? _fdLink(artist.href, artist.text) : artist.text],
+                    [venueWord, linkOf(venueA)], ['Tour', linkOf(tourA)],
+                    ['Were there', attendN ? `${attendN} setlist.fm users` : '']]],
+                ['times', 'Set times', [['Doors', t.doors || ''], ['Scheduled', t.scheduled || ''], ['Start', t.start || ''],
+                    ['End', t.end || ''], ['Length', t.long || '']]],
+                ['setlist', 'Setlist', [['Songs', String(rows.filter(r => !r.tape).length)],
+                    ['Sets', count(sets.filter(s => s.kind === 'set').length, 'set')],
+                    ['Encores', count(sets.filter(s => s.kind === 'encore').length, 'encore')],
+                    ['Covers', count(rows.filter(r => !r.tape && r.cover.length).length, 'cover')],
+                    ['Tapes', count(rows.filter(r => r.tape).length, 'tape')]]],
+            ],
+            others: [
+                guests.length && ['guests', 'Guests', guests.length, _fdPills(guests), false],
+                covered.length && ['covers', 'Covered artists', covered.length, _fdPills(covered), false],
+            ],
+            pictures: [],
+            title: `${artist.text}${iso ? ` – ${iso}` : ''}`, source: 'setlist.fm\'s page',
+        };
+    }
+
+    // ── setlist.fm's festival pages (2026-11-04) ─────────────────────────────
+    // org/foreign-detail-PTs.org "add support for SFM festivals"; mockup
+    // org/sfm-festival-mockups.html; vzell's answers: an edition as a
+    // sub-table per day with Stage as a column; a head on both pages (the
+    // facts, the Artist charts; Stages and Most attended); festival links
+    // previewed now. Snapshots: debug/sfm-festivals.html (a festival's
+    // editions), debug/sfm-festival.html (Glastonbury 2025). The parsers
+    // below serve the pageTypes, their heads and the `setlistfm` reader.
+
+    /**
+     * A festival edition's page (`/festival/<year>/<slug>-<id>.html`).
+     * @type {RegExp}
+     */
+    const _SFM_FESTIVAL_PATH_RE = /^\/festival\/\d{4}\/[^/]+-([0-9a-f]+)\.html$/i;
+
+    /**
+     * A festival's page, the list of its editions (`/festivals/<slug>-<id>.html`;
+     * not `/festivals/browse/…`).
+     * @type {RegExp}
+     */
+    const _SFM_FESTIVALS_PATH_RE = /^\/festivals\/(?!browse\/)[^/]+-([0-9a-f]+)\.html$/i;
+
+    /**
+     * The props setlist.fm's festival widget is mounted with: an inline
+     * script holds `React.createElement(WidgetFestival.FestivalSetlistsWidget,
+     * Object.assign({}, {"config": …, "setlists": […], "festival": {…}}))`,
+     * the whole list as JSON (the page draws it in the browser). The object
+     * is cut out by its braces, strings respected, and parsed. Null when the
+     * page has none (or it does not parse).
+     *
+     * @param {Document} doc
+     * @returns {?{setlists: Array<Object>, festival: ?Object}}
+     */
+    function _sfmFestivalJson(doc) {
+        // The whole call, so a script that merely names the widget (this
+        // userscript's own source, a page script in the test harness) is no
+        // match; a script whose object does not parse is skipped, not the end.
+        const CALL_RE = /React\.createElement\(\s*WidgetFestival\.FestivalSetlistsWidget\s*,\s*Object\.assign\(\s*\{\s*\}\s*,\s*(?=\{"config")/;
+        for (const sc of doc.querySelectorAll('script')) {
+            const s = sc.textContent || '';
+            const m = CALL_RE.exec(s);
+            if (!m) continue;
+            const start = m.index + m[0].length;
+            let depth = 0;
+            let inStr = false;
+            for (let i = start; i < s.length; i++) {
+                const ch = s[i];
+                if (inStr) {
+                    if (ch === '\\') i++;
+                    else if (ch === '"') inStr = false;
+                } else if (ch === '"') inStr = true;
+                else if (ch === '{') depth++;
+                else if (ch === '}' && --depth === 0) {
+                    try {
+                        const o = JSON.parse(s.slice(start, i + 1));
+                        if (Array.isArray(o.setlists)) return o;
+                    } catch (e) {
+                        Lib.debug('init', `setlist.fm festival: the widget's props did not parse (${e && e.message}).`);
+                    }
+                    break;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * A festival edition's page as data: its name, dates, info box (how many
+     * setlists, stages, attendances), the festival it belongs to (the
+     * breadcrumb), and every setlist (`_sfmFestivalJson()`): date, scheduled
+     * time, artist, stage ('' when only the main venue is named), main
+     * venue, attendees, link. Null without the widget's JSON.
+     *
+     * @param {Document} doc
+     * @param {string} base - The page's URL.
+     * @returns {?Object}
+     */
+    function _sfmFestivalParse(doc, base) {
+        const json = _sfmFestivalJson(doc);
+        if (!json) return null;
+        const flat = s => String(s || '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+        const abs = (href) => {
+            try { return href ? new URL(href, base).href : ''; } catch (e) { return ''; }
+        };
+        const setlists = json.setlists.map((x) => {
+            const c = (x && x.current) || {};
+            const v = c.venue || {};
+            return {
+                id: String((x && x.publicId) || ''), url: String(((x && x.deeplinks) || {}).web || ''),
+                date: String(c.eventDate || ''), time: String((c.setTimes || {}).scheduledStart || ''),
+                artist: flat((c.artist || {}).name), stage: v.mainVenue ? flat(v.name) : '',
+                venue: flat((v.mainVenue || v).displayString || (v.mainVenue || v).name),
+                attendees: Number(x && x.attendancesCount) || 0,
+            };
+        }).filter(r => r.url && r.artist);
+        const info = doc.querySelector('.festivalInfo');
+        const spans = info ? Array.from(info.querySelectorAll('.festivalContent span')).map(s => flat(s.textContent)) : [];
+        const num = re => ((spans.find(s => re.test(s)) || '').match(/[\d,]+/) || [''])[0];
+        const att = info && info.querySelector('.attendance');
+        const series = doc.querySelector('.breadCrumbBar a[href*="festivals/"]:not([href*="/browse/"])')
+            || doc.querySelector('a.nested[href*="festivals/"]:not([href*="/browse/"])');
+        const dates = setlists.map(r => r.date).filter(Boolean).sort();
+        return {
+            name: flat(((json.festival || {}).name) || (doc.querySelector('.festivalInfo h1') || {}).textContent).replace(/\s+Setlists$/i, ''),
+            from: dates[0] || '', to: dates[dates.length - 1] || '',
+            venue: (setlists.find(r => r.venue) || {}).venue || '',
+            setlistCount: num(/setlists?$/i), stageCount: num(/stages?$/i),
+            attendances: att ? flat(att.textContent) : '',
+            series: series ? { text: flat(series.textContent).replace(/^View all\s+|\s+setlists$/gi, ''), url: abs(series.getAttribute('href')) } : null,
+            setlists,
+        };
+    }
+
+    /**
+     * A festival's page (its editions) as data: its name, the info box's
+     * facts (the full name, how often it took place, how many artists have
+     * setlists, the attendances), the Artist charts box (name, count; its
+     * links are the site's internal actions, not pages), and the editions
+     * of this page (year, name and link, the line under it — "1 venue (9
+     * stages)" —, venues, start and end as ISO dates with the year).
+     *
+     * @param {Document} doc
+     * @param {string} base - The page's URL.
+     * @returns {Object}
+     */
+    function _sfmFestivalsParse(doc, base) {
+        const flat = s => String(s || '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+        const abs = (href) => {
+            try { return href ? new URL(href, base).href : ''; } catch (e) { return ''; }
+        };
+        // "Wed, Jun 25" in a year's edition → "2025-06-25"; an end month
+        // before the start's is the next year's.
+        const iso = (s, year, after = '') => {
+            const m = /([A-Za-z]{3})[a-z]*\s+(\d{1,2})/.exec(s || '');
+            const mo = m && _SFM_MONTHS[m[1].toLowerCase()];
+            if (!mo || !/^\d{4}$/.test(year)) return flat(s);
+            let y = Number(year);
+            const d = `${String(mo).padStart(2, '0')}-${m[2].padStart(2, '0')}`;
+            if (after && d < after.slice(5)) y++;
+            return `${y}-${d}`;
+        };
+        const editions = Array.from(doc.querySelectorAll('.viewBaseFestival table tbody tr')).map((tr) => {
+            const cell = c => tr.querySelector(`td.${c}`);
+            const a = tr.querySelector('td.name a[href]');
+            if (!a) return null;
+            const parts = Array.from(a.children).map(x => flat(x.textContent)).filter(Boolean);
+            const year = flat((cell('year') || {}).textContent);
+            const start = iso(flat((cell('start') || {}).textContent), year);
+            return {
+                year, name: parts[0] || flat(a.textContent), sub: parts.slice(1).join(' · '), url: abs(a.getAttribute('href')),
+                venues: Array.from(tr.querySelectorAll('td.venues a[href]')).map(v => ({ text: flat(v.textContent), url: abs(v.getAttribute('href')) })),
+                start, end: iso(flat((cell('end') || {}).textContent), year, start),
+            };
+        }).filter(Boolean);
+        const stats = doc.querySelector('.infoStats');
+        const strongs = stats ? Array.from(stats.querySelectorAll('strong, b, a:not([href*="faq"]), span')).map(x => flat(x.textContent)) : [];
+        const statText = flat(stats && stats.textContent);
+        const att = doc.querySelector('.attendanceCount .attendance');
+        const charts = Array.from(doc.querySelectorAll('.rightColumn table.statsTable td.songName')).map((td) => {
+            const n = flat((td.nextElementSibling || {}).textContent).replace(/\D/g, '');
+            return [flat(td.textContent), n];
+        }).filter(c => c[0] && c[1]);
+        return {
+            name: flat((doc.querySelector('.mainColumn h1') || {}).textContent).replace(/\s+Setlists$/i, ''),
+            fullName: (/^The\s+(.+?)\s+took place/i.exec(statText) || [])[1] || '',
+            tookPlace: (/took place\s+([\d,]+\s+times?)/i.exec(statText) || [])[1] || '',
+            artists: (/setlists of\s+([\d,]+)\s+different artists/i.exec(statText) || [])[1] || '',
+            attendances: att ? flat(att.textContent) : '', strongs, charts, editions,
+        };
+    }
+
+    /**
+     * The weekday of an ISO date, in English ("Wednesday").
+     *
+     * @param {string} iso
+     * @returns {string}
+     */
+    function _sfmWeekday(iso) {
+        const d = new Date(`${iso}T12:00:00Z`);
+        return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-GB', { weekday: 'long', timeZone: 'UTC' });
+    }
+
+    /**
+     * `toHtml` of sfm-festival (an edition): a sub-table per day ("Wednesday ·
+     * 2025-06-25", vzell's answer 1), its setlists by scheduled time (none
+     * last), then artist: Time · Artist (that day's setlist) · Stage ·
+     * Attendees. From the page's own JSON: no request. A page without it
+     * throws (a failed page, never "no rows").
+     *
+     * @param {string} text - The page's HTML.
+     * @param {string} base - Its URL.
+     * @returns {string} An HTML document.
+     * @throws {Error} When the page has no festival list (`status` 0).
+     */
+    function _sfmFestivalToHtml(text, base) {
+        const f = _sfmFestivalParse(new DOMParser().parseFromString(text, 'text/html'), base);
+        if (!f || !f.setlists.length) throw Object.assign(new Error('setlist.fm answered, but not with a festival\'s setlists'), { status: 0 });
+        const cols = _SFM_HEADERS.festival;
+        const days = new Map();
+        f.setlists.forEach(r => (days.get(r.date) || days.set(r.date, []).get(r.date)).push(r));
+        const a = (href, t) => `<a href="${_rgEsc(href)}" target="_blank" rel="noopener noreferrer">${_rgEsc(t)}</a>`;
+        const body = [...days.keys()].sort().map((d) => {
+            const rows = days.get(d).slice().sort((p, q) => (p.time || '99') .localeCompare(q.time || '99') || p.artist.localeCompare(q.artist))
+                .map(r => `<tr><td>${_rgEsc(r.time)}</td><td>${a(r.url, r.artist)}</td><td>${_rgEsc(r.stage)}</td><td>${r.attendees || ''}</td></tr>`);
+            return _dgTableHtml([_sfmWeekday(d), d].filter(Boolean).join(' · '), cols, rows);
+        }).join('');
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${body}</body></html>`;
+    }
+
+    /**
+     * `toHtml` of sfm-festivals (a festival's editions), one page: Year ·
+     * Edition (its page) · Stages (the line under its name) · Venues · Start ·
+     * End (ISO). A page without the table throws.
+     *
+     * @param {string} text - The page's HTML.
+     * @param {string} base - Its URL.
+     * @returns {string} An HTML document.
+     * @throws {Error} When the page has no editions table.
+     */
+    function _sfmFestivalsToHtml(text, base) {
+        const f = _sfmFestivalsParse(new DOMParser().parseFromString(text, 'text/html'), base);
+        if (!f.editions.length) throw new Error(`setlist.fm's page has no festival editions: ${base}`);
+        const a = (href, t) => `<a href="${_rgEsc(href)}" target="_blank" rel="noopener noreferrer">${_rgEsc(t)}</a>`;
+        const rows = f.editions.map(e => `<tr><td>${_rgEsc(e.year)}</td><td>${a(e.url, e.name)}</td><td>${_rgEsc(e.sub)}</td>` +
+            `<td>${e.venues.map(v => a(v.url, v.text)).join(', ')}</td><td>${_rgEsc(e.start)}</td><td>${_rgEsc(e.end)}</td></tr>`);
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${_dgTableHtml(null, _SFM_HEADERS.festivals, rows)}</body></html>`;
+    }
+
+    /**
+     * The head spec of a festival edition's page (`_fdHeadSpec()`), read
+     * from the page: "~ Festival edition (from – to: venue)"; Details — on the
+     * left Festival (dates, the festival, venue, setlists, stages,
+     * attendances), on the right Stages (each with its number of setlists,
+     * then those that name no stage) and Most attended (the ten setlists
+     * with the most attendees; vzell's answer 4). Null on another page.
+     *
+     * @returns {?Object}
+     */
+    function _sfmFestivalHeadSpec() {
+        const root = document.getElementById('mb-sfm-root');
+        if (!root || activeDefinition?.type !== 'sfm-festival') return null;
+        const f = _sfmFestivalParse(document, window.location.href);
+        if (!f) return null;
+        const stages = new Map();
+        let none = 0;
+        f.setlists.forEach((r) => { if (r.stage) stages.set(r.stage, (stages.get(r.stage) || 0) + 1); else none++; });
+        const stageList = [...stages.entries()].sort((p, q) => q[1] - p[1]).map(([s, n]) => `${s} ×${n}`);
+        if (none) stageList.push(`no stage given ×${none}`);
+        const top = f.setlists.slice().sort((p, q) => q.attendees - p.attendees).filter(r => r.attendees).slice(0, 10);
+        const dl = document.createElement('dl');
+        top.forEach((r) => {
+            const dt = document.createElement('dt');
+            dt.appendChild(_fdLink(r.url, r.artist));
+            const dd = document.createElement('dd');
+            dd.textContent = `${r.attendees.toLocaleString('en-US')}${r.stage ? ` · ${r.stage}` : ''}`;
+            dl.append(dt, dd);
+        });
+        const dates = [f.from, f.to].filter((x, i, l) => x && l.indexOf(x) === i).join(' – ');
+        return {
+            root, h2: root.querySelector('h2.mb-sfm-list-heading'),
+            sub: { what: 'Festival edition', when: [dates, f.venue].filter(Boolean).join(': ') },
+            facts: [
+                ['festival', 'Festival', [['Dates', dates], ['Festival', f.series ? _fdLink(f.series.url, f.series.text) : ''],
+                    ['Venue', f.venue], ['Setlists', f.setlistCount || String(f.setlists.length)],
+                    ['Stages', f.stageCount || (stages.size ? String(stages.size) : '')], ['Attendances', f.attendances]]],
+            ],
+            others: [
+                stageList.length && ['stages', 'Stages', stages.size, _fdPills(stageList), false],
+                top.length && ['top', 'Most attended', top.length, dl, false],
+            ],
+            pictures: [], title: f.name, source: 'setlist.fm\'s page',
+        };
+    }
+
+    /**
+     * The head spec of a festival's page, its editions (`_fdHeadSpec()`,
+     * vzell's answer 2), read from the page: "~ Festival"; Details — on the
+     * left Festival (its full name, how often it took place, how many
+     * artists have setlists, the attendances), on the right Artist charts
+     * (the box of the page: the artists with the most setlists there; no
+     * links, the box's are setlist.fm's internal actions). Null on another page.
+     *
+     * @returns {?Object}
+     */
+    function _sfmFestivalsHeadSpec() {
+        const root = document.getElementById('mb-sfm-root');
+        if (!root || activeDefinition?.type !== 'sfm-festivals') return null;
+        const f = _sfmFestivalsParse(document, window.location.href);
+        return {
+            root, h2: root.querySelector('h2.mb-sfm-list-heading'),
+            sub: { what: 'Festival', by: f.name },
+            facts: [
+                ['festival', 'Festival', [['Name', f.fullName], ['Took place', f.tookPlace],
+                    ['Artists', f.artists ? `${f.artists} with setlists` : ''], ['Attendances', f.attendances]]],
+            ],
+            others: [
+                f.charts.length && ['charts', 'Artist charts', f.charts.length, _fdPills(f.charts.map(([n, k]) => `${n} ×${k}`)), false],
+            ],
+            pictures: [], title: f.name, source: 'setlist.fm\'s page',
+        };
     }
 
     // --- discogs.com: a user's page (pageType dg-user) -----------------------
@@ -25493,6 +26353,16 @@
         // by `_extTarget()`) and a venue's info box (`.info`: its website,
         // Wikipedia). Not the whole `.mainColumn`: its "Upcoming" list is
         // ticket-shop affiliate links.
+        // 2026-11-04 (vzell: "the SFM IPs doesn't seem to have POH support
+        // yet, e.g. the two search pages"): a search page puts its cards in
+        // `.rightColumn` (its filter form is the left column), so
+        // `.mainColumn .setlistPreview` never reached them — `search?artist=`
+        // (sfm-search) included; and a setlist's page has its links in its
+        // headline (artist, venue), its "Tour:" line and its song list
+        // (covers, guests), none of them in `.info`.
+        // And the festival pages (2026-11-04): a festival's editions table
+        // (`.viewBaseFestival`), an edition's widget (`.FestivalSetlists-root`,
+        // drawn in the browser) and the breadcrumb that names the festival.
         'www.setlist.fm': {
             setting: null,
             isDetailUrl: () => false,
@@ -25502,7 +26372,7 @@
             liveHide: [],
             liveCss: '',
             livePrepare: null,
-            extRoot: '#mb-sfm-root, .mainColumn .setlistPreview, .mainColumn .info'
+            extRoot: '#mb-sfm-root, .mainColumn .setlistPreview, .rightColumn .setlistPreview, .mainColumn .info, .setlistInfo .setlistHeadline, .setlistInfo .infoContainer > p, .setlistList, .viewBaseFestival, .FestivalSetlists-root, .breadCrumbBar'
         }
     };
 
@@ -44846,17 +45716,34 @@
             type: 'dg-master',
             host: 'www.discogs.com',
             match: (path) => _dgEntityPageIs(path, 'master'),
-            buttons: [ { label: 'Show all versions', shortLabel: 'Versions', get description() { return _dgCostPer('Every version of this master', 'versions', 'Born To Run: 387 versions, 4 requests'); } } ],
+            // Tracks: the master as a release's Tracks view shows a release
+            // (a sub-table per medium, credits as columns, Notes, Details and
+            // Images above, its videos); then the versions (vzell, 2026-11-04).
+            buttons: [ {
+                label: 'Show all tracks', shortLabel: 'Tracks', features: { dgView: 'tracks' },
+                get description() {
+                    return Lib.settings.sa_dg_master_versions_count !== false
+                        ? 'Two requests: the master, and its first page of versions for their number. A sub-table per disc or record, the credits as columns; its notes, facts and images above, its videos below.'
+                        : 'One request: the master. A sub-table per disc or record, the credits as columns; its notes, facts and images above, its videos below.';
+                }
+            }, {
+                label: 'Show all versions', shortLabel: 'Versions', features: { dgView: 'versions' },
+                get description() { return _dgCostPer('Every version of this master', 'versions', 'Born To Run: 387 versions, 4 requests'); }
+            } ],
             features: {
                 dgToTable: 'master',
                 decorateDoc: (doc) => _dgMbDecorateDoc(doc),
+                groupByH3: true,
                 pageRequest: (p, def) => _dgPageRequest(p, def),
                 pageCountAsync: (def) => _dgPageCount(def),
-                // Several catalog numbers in one cell, one row each (as Catalog#).
-                collapsableColumns: [ 'Cat#' ],
+                // The Tracks view's credit columns, one line per name (as a
+                // release's); several catalog numbers in one cell, one row each.
+                collapsableColumns: [ 'Instruments', 'Vocals', 'Producer', 'Engineer', 'Mixed by', 'Arranged by', 'Other credits', 'Cat#' ],
                 integerColumns: [ { sourceColumn: 'Year', align: 'R' } ]
             },
-            tableMode: 'single'
+            // Multi since the Tracks view (2026-11-04): the versions are one
+            // "Versions" sub-table, as a release's other versions.
+            tableMode: 'multi'
         },
         {
             type: 'dg-release',
@@ -45298,6 +46185,112 @@
                 pageCountAsync: () => _sfmPageCount(),
                 integerColumns: [ { sourceColumn: 'Songs', align: 'R' } ],
                 collapsableColumns: [ 'Setlist' ]
+            },
+            tableMode: 'single'
+        },
+        // A `query=` search (vzell 2026-11-04: "some SFM search pages have no
+        // PT yet"): free text ("Bruce Springsteen": many artists' setlists),
+        // or "artist:(…) tour:(…)", the form of our own Tour links. Artist and
+        // Venue both; named by the query (`_sfmPrepareLivePage()`).
+        {
+            type: 'sfm-query',
+            host: 'www.setlist.fm',
+            match: (path, params) => _sfmKind(path, params) === 'query',
+            buttons: [ {
+                label: 'Show all setlists of this search', shortLabel: 'Setlists',
+                get description() {
+                    const n = _sfmPageCount();
+                    return `Every setlist this search finds as one table: ${n} page${n === 1 ? '' : 's'} of setlist.fm, 10 setlists each, read one after another.`;
+                }
+            } ],
+            features: {
+                sfmToTable: 'query',
+                pageRequest: (p) => {
+                    const url = _sfmPageUrl(p);
+                    return { url, toHtml: (text) => _sfmListToHtml(text, 'query', url) };
+                },
+                pageCountAsync: () => _sfmPageCount(),
+                integerColumns: [ { sourceColumn: 'Songs', align: 'R' } ],
+                collapsableColumns: [ 'Setlist' ]
+            },
+            tableMode: 'single'
+        },
+        // A setlist's own page (2026-11-04; org/foreign-detail-PTs.org step
+        // 4): the setlist as release-tracks shows a release — a sub-table per
+        // set or encore, covers, guests, tapes and notes as columns, the
+        // show's facts above (`_sfmSetlistHeadSpec()`). No request: the page
+        // is server-rendered and holds the whole list, so `fetchText` hands
+        // the engine the live page's own HTML. No button on a setlist
+        // without songs yet (`.emptySetlist`).
+        {
+            type: 'sfm-setlist',
+            host: 'www.setlist.fm',
+            match: (path) => _sfmKind(path) === 'setlist',
+            buttons: [ {
+                label: 'Show the setlist', shortLabel: 'Setlist',
+                showIf: () => _sfmSetlistHasSongs(),
+                description: 'No request: the setlist from this page, a sub-table per set or encore, its covers, guests, tapes and notes as columns; the show\'s facts above.'
+            } ],
+            features: {
+                sfmToTable: 'setlist',
+                groupByH3: true,
+                pageRequest: () => {
+                    const url = _sfmPageUrl(1);
+                    return { url, fetchText: async () => document.documentElement.outerHTML, toHtml: (text) => _sfmSetlistToHtml(text, url) };
+                },
+                pageCountAsync: () => 1,
+                integerColumns: [ { sourceColumn: '#', align: 'R' } ],
+                collapsableColumns: [ 'With' ]
+            },
+            tableMode: 'multi'
+        },
+        // A festival edition (2026-11-04, org/foreign-detail-PTs.org "add
+        // support for SFM festivals"): every setlist of it, a sub-table per
+        // day (vzell's answer 1), from the page's own JSON (its widget's
+        // props): no request; the head `_sfmFestivalHeadSpec()`.
+        {
+            type: 'sfm-festival',
+            host: 'www.setlist.fm',
+            match: (path) => _sfmKind(path) === 'festival',
+            buttons: [ {
+                label: 'Show all setlists of this festival', shortLabel: 'Setlists',
+                showIf: () => !!_sfmFestivalJson(document),
+                description: 'No request: every setlist of this festival from this page, a sub-table per day; time, artist, stage and attendees; its facts, stages and most attended setlists above.'
+            } ],
+            features: {
+                sfmToTable: 'festival',
+                groupByH3: true,
+                pageRequest: () => {
+                    const url = _sfmPageUrl(1);
+                    return { url, fetchText: async () => document.documentElement.outerHTML, toHtml: (text) => _sfmFestivalToHtml(text, url) };
+                },
+                pageCountAsync: () => 1,
+                integerColumns: [ { sourceColumn: 'Attendees', align: 'R' } ]
+            },
+            tableMode: 'multi'
+        },
+        // A festival's editions (2026-11-04): the page's table, 20 a page,
+        // every page fetched as a venue's list is; the head (vzell's answer
+        // 2) `_sfmFestivalsHeadSpec()`: its facts and Artist charts.
+        {
+            type: 'sfm-festivals',
+            host: 'www.setlist.fm',
+            match: (path) => _sfmKind(path) === 'festivals',
+            buttons: [ {
+                label: 'Show all editions of this festival', shortLabel: 'Editions',
+                get description() {
+                    const n = _sfmPageCount();
+                    return `Every edition of this festival as one table: ${n} page${n === 1 ? '' : 's'} of setlist.fm, 20 editions each; its facts and Artist charts above.`;
+                }
+            } ],
+            features: {
+                sfmToTable: 'festivals',
+                pageRequest: (p) => {
+                    const url = _sfmPageUrl(p);
+                    return { url, toHtml: (text) => _sfmFestivalsToHtml(text, url) };
+                },
+                pageCountAsync: () => _sfmPageCount(),
+                integerColumns: [ { sourceColumn: 'Year', align: 'R' } ]
             },
             tableMode: 'single'
         }
@@ -68398,8 +69391,11 @@
     /** The API's base. */
     const _EXT_SFM_API = 'https://api.setlist.fm/rest/1.0';
 
-    /** Version of the setlist.fm records kept in IndexedDB; bump when their shape changes. */
-    const _EXT_SFM_VERSION = 3;
+    /**
+     * Version of the setlist.fm records kept in IndexedDB; bump when their
+     * shape changes (4: festival and festivals kinds, 2026-11-04).
+     */
+    const _EXT_SFM_VERSION = 4;
 
     /**
      * A setlist.fm page the reader takes, by its path: a setlist
@@ -68588,6 +69584,116 @@
     }
 
     /**
+     * The kinds of the `setlistfm` reader read from setlist.fm's own pages
+     * rather than its API: they need no key (a search since 2026-11-03, a
+     * festival edition and a festival's editions since 2026-11-04).
+     * @type {Set<string>}
+     */
+    const _EXT_SFM_SITE_KINDS = new Set(['search', 'festival', 'festivals']);
+
+    /**
+     * Loads a festival edition's or a festival's page (vzell's answer 3,
+     * 2026-11-04): ONE request of the page, read through
+     * `_sfmFestivalParse()` / `_sfmFestivalsParse()` — the pageTypes'
+     * parsers. The card's facts and the window come from it; a page without
+     * its list is a failure ("not a festival page").
+     *
+     * @param {object} t - The target.
+     * @param {{kind: string, id: string, path: string}} pg - `_extSfmPage()`.
+     * @param {function(): boolean} wanted
+     * @returns {Promise<Object>}
+     */
+    async function _extSfmFestivalLoad(t, pg, wanted) {
+        const url = `https://www.setlist.fm${pg.path}`;
+        const r = await _extSfmSearchGet(t, url, wanted);
+        if (r.skipped) return { skipped: true };
+        if (r.out) return r.out;
+        const rec = _extApiRecord(t, 200, 'setlist.fm');
+        rec.links.push(['On setlist.fm', url]);
+        if (pg.kind === 'festival') {
+            const f = _sfmFestivalParse(r.doc, url);
+            if (!f) return { ok: false, detail: 'setlist.fm answered, but the page has no festival list' };
+            Object.assign(rec, { title: f.name, type: 'festival edition' });
+            rec.facts = [['Dates', [f.from, f.to].filter(Boolean).join(' – ')], ['Setlists', f.setlistCount || String(f.setlists.length)],
+                ['Stages', f.stageCount]].filter(x => x[1]);
+            rec.sfm = { kind: 'festival', id: pg.id, festival: f };
+        } else {
+            const f = _sfmFestivalsParse(r.doc, url);
+            if (!f.editions.length) return { ok: false, detail: 'setlist.fm answered, but the page has no festival editions' };
+            Object.assign(rec, { title: f.name, type: 'festival' });
+            rec.facts = [['Took place', f.tookPlace], ['Artists', f.artists]].filter(x => x[1]);
+            rec.sfm = { kind: 'festivals', id: pg.id, festivals: f, pages: _sfmPageCount(r.doc) };
+        }
+        return { ok: true, data: rec };
+    }
+
+    /**
+     * The window of a festival edition or a festival (2026-11-04). An
+     * edition: on the left its stages and its most attended setlists, on
+     * the right every setlist in a List table grouped by day (as the
+     * pageType's sub-tables; vzell's answer 1), Time · Artist · Stage ·
+     * Attendees, a chip per stage. A festival: on the left its Artist
+     * charts, on the right its editions of the page read (the first; "on
+     * setlist.fm" for the rest).
+     *
+     * @param {object} t
+     * @param {Object} sfm - `rec.sfm`.
+     * @returns {{left: string[], right: string[], full: string[]}}
+     */
+    function _extSfmFestivalWindow(t, sfm) {
+        const out = { left: [], right: [], full: [] };
+        const n = x => Number(x).toLocaleString('en-US');
+        if (sfm.kind === 'festival') {
+            const f = sfm.festival;
+            const stages = new Map();
+            f.setlists.forEach((r) => { if (r.stage) stages.set(r.stage, (stages.get(r.stage) || 0) + 1); });
+            const top = f.setlists.slice().sort((p, q) => q.attendees - p.attendees).filter(r => r.attendees).slice(0, 10);
+            if (stages.size) {
+                // `_mbPopKvHtml()` escapes the name itself: plain text in.
+                out.left.push(`<h4>Stages · ${stages.size}</h4>` + _mbPopKvHtml([...stages.entries()].sort((p, q) => q[1] - p[1])
+                    .map(([s, k]) => [s, `${k} setlist${k === 1 ? '' : 's'}`])));
+            }
+            if (top.length) {
+                // The name links its setlist, so the list is built here:
+                // `_mbPopKvHtml()` escapes a name (vzell 2026-11-04: the
+                // links showed as their HTML).
+                out.left.push('<h4>Most attended</h4><dl class="mb-dp-kv">' + top.map(r => `<dt>${_extSfmLinkHtml(r.url, r.artist)}</dt>` +
+                    `<dd>${n(r.attendees)}${r.stage ? ` · ${_rgEsc(r.stage)}` : ''}</dd>`).join('') + '</dl>');
+            }
+            const rows = f.setlists.slice().sort((p, q) => p.date.localeCompare(q.date) || (p.time || '99').localeCompare(q.time || '99') || p.artist.localeCompare(q.artist))
+                .map(r => Object.assign({}, r, { day: [_sfmWeekday(r.date), r.date].filter(Boolean).join(' · ') }));
+            const cols = [
+                { key: 'time', label: 'Time', val: x => x.time, html: x => _rgEsc(x.time) },
+                { key: 'artist', label: 'Artist', val: x => x.artist, html: x => _extSfmLinkHtml(x.url, x.artist) },
+                { key: 'stage', label: 'Stage', val: x => x.stage, html: (x, q) => _hlEsc(x.stage, q) },
+                { key: 'attendees', label: 'Attendees', num: true, cls: 'mb-rg-num', val: x => x.attendees, html: x => (x.attendees ? n(x.attendees) : '') },
+            ];
+            out.right.push(`<h4>Setlists · ${n(rows.length)}</h4>` + _dpListTableHtml(t, 'sfm-festival', cols, rows, {
+                initial: 'by day and time', placeholder: 'Filter the setlists: artist, stage', none: 'No setlists.',
+                group: x => x.day, groupCol: 'artist',
+                groupHead: (g, k, total) => (g ? `<span class="mb-dp-tsec-n">${_rgEsc(g)}</span><span class="mb-dp-tsec-c">${k < total ? `${k} of ${total}` : total}</span>` : ''),
+                facet: x => x.stage || 'no stage given', chipLabel: 'Stage',
+            }));
+            return out;
+        }
+        const f = sfm.festivals;
+        if (f.charts.length) {
+            out.left.push('<h4>Artist charts</h4>' + _mbPopKvHtml(f.charts.map(([a, k]) => [a, `${k} setlist${k === '1' ? '' : 's'}`])));
+        }
+        const cols = [
+            { key: 'year', label: 'Year', num: true, cls: 'mb-rg-num', val: x => Number(x.year) || 0, html: x => _rgEsc(x.year) },
+            { key: 'name', label: 'Edition', val: x => x.name, html: x => _extSfmLinkHtml(x.url, x.name) },
+            { key: 'sub', label: 'Stages', val: x => x.sub, html: (x, q) => _hlEsc(x.sub, q) },
+            { key: 'start', label: 'Start', val: x => x.start, html: x => _rgEsc(x.start) },
+            { key: 'end', label: 'End', val: x => x.end, html: x => _rgEsc(x.end) },
+        ];
+        const more = sfm.pages > 1 ? `<div class="mb-dp-xsub">The newest ${f.editions.length}; the others on setlist.fm's next page${sfm.pages > 2 ? 's' : ''}.</div>` : '';
+        out.right.push(`<h4>Editions · ${f.editions.length}${sfm.pages > 1 ? '+' : ''}</h4>${more}` +
+            _dpListTableHtml(t, 'sfm-festivals', cols, f.editions, { initial: 'newest first', placeholder: 'Filter the editions', none: 'No editions.' }));
+        return out;
+    }
+
+    /**
      * A tour's link (setlist.fm's search, `_EXT_SFM_TOUR_QUERY_RE`), the
      * artist's MBID in the fragment so the reader can open it through the
      * API; '' without a tour or an MBID (the cell stays plain text).
@@ -68612,6 +69718,12 @@
     function _extSfmPage(u) {
         if (!/^(?:www\.)?setlist\.fm$/i.test(u.hostname)) return null;
         if (u.pathname === '/search') return _extSfmTourPage(u) || _extSfmSearchPage(u);
+        // A festival edition and a festival's editions (2026-11-04): pages of
+        // the site, no API, no key.
+        const fe = _SFM_FESTIVAL_PATH_RE.exec(u.pathname);
+        if (fe) return { kind: 'festival', id: fe[1].toLowerCase(), name: '', path: u.pathname };
+        const fs = _SFM_FESTIVALS_PATH_RE.exec(u.pathname);
+        if (fs) return { kind: 'festivals', id: fs[1].toLowerCase(), name: '', path: u.pathname };
         const m = _EXT_SFM_PATH_RE.exec(u.pathname);
         if (!m) return null;
         if (m[1]) return { kind: 'setlist', id: m[2].toLowerCase(), name: '' };
@@ -68631,7 +69743,7 @@
      */
     function _extSfmTest(u) {
         const pg = _extSfmPage(u);
-        return !!pg && (pg.kind === 'search' || !!_extSfmKey());
+        return !!pg && (_EXT_SFM_SITE_KINDS.has(pg.kind) || !!_extSfmKey());
     }
 
     /**
@@ -68816,6 +69928,8 @@
         if (!pg) return { ok: false, detail: 'not a setlist.fm page the reader knows' };
         // setlist.fm's own search: its page, no API, no key (2026-11-03).
         if (pg.kind === 'search') return _extSfmSearchLoad(t, pg, wanted);
+        // A festival's pages: read from setlist.fm itself, no key (2026-11-04).
+        if (pg.kind === 'festival' || pg.kind === 'festivals') return _extSfmFestivalLoad(t, pg, wanted);
         if (!_extSfmKey()) return { ok: false, detail: _EXT_SFM_NO_KEY };
         const rec = _extApiRecord(t, 200, 'setlist.fm');
         rec.links.push(['On setlist.fm', t.url]);
@@ -69903,6 +71017,24 @@
                 ['Last edited', _rgEsc(s.updated)],
             ]);
         }
+        if (sfm.kind === 'festival') {
+            const f = sfm.festival;
+            return _mbPopKvHtml([
+                ['Dates', _rgEsc([f.from, f.to].filter((x, i, l) => x && l.indexOf(x) === i).join(' – '))],
+                ['Festival', f.series ? _extSfmLinkHtml(f.series.url, f.series.text) : ''],
+                ['Venue', _rgEsc(f.venue)],
+                ['Setlists', _rgEsc(f.setlistCount || String(f.setlists.length))],
+                ['Stages', _rgEsc(f.stageCount)],
+                ['Attendances', _rgEsc(f.attendances)],
+            ]);
+        }
+        if (sfm.kind === 'festivals') {
+            const f = sfm.festivals;
+            return _mbPopKvHtml([
+                ['Name', _rgEsc(f.fullName)], ['Took place', _rgEsc(f.tookPlace)],
+                ['Artists', _rgEsc(f.artists ? `${f.artists} with setlists` : '')], ['Attendances', _rgEsc(f.attendances)],
+            ]);
+        }
         const count = `${_extDgNum(sfm.list.total)} · ${sfm.list.per} a page`;
         if (sfm.kind === 'search') {
             const a = sfm.artist;
@@ -69951,6 +71083,7 @@
      */
     function _extSfmWindow(t, rec, how) {
         if (!rec.sfm) return { left: [], right: [], full: [] };
+        if (rec.sfm.kind === 'festival' || rec.sfm.kind === 'festivals') return _extSfmFestivalWindow(t, rec.sfm);
         return rec.sfm.kind === 'setlist' ? _extSfmSetlistWindow(t, rec.sfm.setlist, how) : _extSfmListWindow(t, rec, how);
     }
 
@@ -75045,7 +76178,7 @@
         {
             // setlist.fm through its API with the user's key (branch B, mockup 4).
             id: 'setlistfm', kind: 'setlist.fm', test: _extSfmTest, load: _extSfmLoad, noLive: true,
-            askHost: u => ((_extSfmPage(u) || {}).kind === 'search' ? 'www.setlist.fm' : 'api.setlist.fm'),
+            askHost: u => (_EXT_SFM_SITE_KINDS.has((_extSfmPage(u) || {}).kind) ? 'www.setlist.fm' : 'api.setlist.fm'),
             version: _EXT_IDB_VERSION * 100 + _EXT_SFM_VERSION, kindFor: _extSfmKind,
             window: _extSfmWindow, onAreaClick: _extSfmAreaClick, factsHtml: _extSfmFactsHtml,
         },

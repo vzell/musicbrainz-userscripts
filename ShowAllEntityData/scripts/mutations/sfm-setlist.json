@@ -1,0 +1,158 @@
+[
+    {
+        "name": "sfm-setlist: a button on a setlist without songs",
+        "why": "A setlist without songs yet (.emptySetlist) gets no button.",
+        "edits": [
+            {
+                "find": "                showIf: () => _sfmSetlistHasSongs(),\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sfm-setlist.spec.js",
+        "grep": "without songs yet",
+        "expect": "fail"
+    },
+    {
+        "name": "sfm-setlist: the page asked again",
+        "why": "No request: the live page's own HTML is the one page (fetchText).",
+        "edits": [
+            {
+                "find": "                    return { url, fetchText: async () => document.documentElement.outerHTML, toHtml: (text) => _sfmSetlistToHtml(text, url) };",
+                "replace": "                    return { url, toHtml: (text) => _sfmSetlistToHtml(text, url) };"
+            }
+        ],
+        "spec": "tests/fixtures/sfm-setlist.spec.js",
+        "grep": "Los Angeles 2016",
+        "expect": "fail"
+    },
+    {
+        "name": "sfm-setlist: a tape numbered",
+        "why": "setlist.fm numbers songs, not tapes.",
+        "edits": [
+            {
+                "find": "            cur.rows.push({ n: tape ? 0 : ++n, song,",
+                "replace": "            cur.rows.push({ n: ++n, song,"
+            }
+        ],
+        "spec": "tests/fixtures/sfm-setlist.spec.js",
+        "grep": "Philadelphia 2026",
+        "expect": "fail"
+    },
+    {
+        "name": "sfm-setlist: a note starting \"with\" taken for a guest",
+        "why": "A \"(with …)\" group that links nobody is a note. Every such note in the snapshots is \"(<span>with …</span>)\", which the first-node test already keeps out of With; the guard is for \"(with \" as bare text without a link, which no snapshot has, so the spec cannot see it removed.",
+        "edits": [
+            {
+                "find": "            if (links.length && /^\\s*with\\b/i.test(first)) out.with.push(...links.map(link));",
+                "replace": "            if (/^\\s*with\\b/i.test(first)) out.with.push(...links.map(link));"
+            }
+        ],
+        "spec": "tests/fixtures/sfm-setlist.spec.js",
+        "grep": "Philadelphia 2026",
+        "expect": "pass"
+    },
+    {
+        "name": "sfm-setlist: an unnamed set counted without the named ones",
+        "why": "\"Set N\" counts every set: the break after \"The River\" is Set 3.",
+        "edits": [
+            {
+                "find": "                setNo++;\n                if (!s.name) s.name = `Set ${setNo}`;",
+                "replace": "                if (!s.name) s.name = `Set ${++setNo}`;"
+            }
+        ],
+        "spec": "tests/fixtures/sfm-setlist.spec.js",
+        "grep": "Los Angeles 2016",
+        "expect": "fail"
+    },
+    {
+        "name": "sfm-setlist: a cover read as a note",
+        "why": "\"(<a>Artist</a> cover)\" is the Cover of column, a tape's \"(<a>Artist</a> song)\" too.",
+        "edits": [
+            {
+                "find": "            const tail = /\\b(cover|song)$/i.exec(text);",
+                "replace": "            const tail = null;"
+            }
+        ],
+        "spec": "tests/fixtures/sfm-setlist.spec.js",
+        "grep": "Philadelphia 2026",
+        "expect": "fail"
+    },
+    {
+        "name": "sfm-setlist: no head",
+        "why": "_fdHeadSpec() hands a setlist page its head.",
+        "edits": [
+            {
+                "find": "        if (t === 'sfm-setlist') return _sfmSetlistHeadSpec();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sfm-setlist.spec.js",
+        "grep": "the head: subheader",
+        "expect": "fail"
+    },
+    {
+        "name": "sfm-setlist: guests in the order first seen",
+        "why": "The guest on the most songs first (Tom Morello).",
+        "edits": [
+            {
+                "find": "            return [...m.values()].sort((p, q) => q.n - p.n).map(",
+                "replace": "            return [...m.values()].reverse().map("
+            }
+        ],
+        "spec": "tests/fixtures/sfm-setlist.spec.js",
+        "grep": "set times when entered",
+        "expect": "fail"
+    },
+    {
+        "name": "sfm-query: a query search is no page of ours",
+        "why": "A /search with a query= and no artist= is sfm-query (vzell 2026-11-04).",
+        "edits": [
+            {
+                "find": "(params.get('query') || '').trim() ? 'query' : '';",
+                "replace": "'';"
+            }
+        ],
+        "spec": "tests/fixtures/sfm-list.spec.js",
+        "grep": "a free-text search",
+        "expect": "fail"
+    },
+    {
+        "name": "sfm-query: no Artist column's cells",
+        "why": "A query finds many artists' setlists: Artist and Venue both.",
+        "edits": [
+            {
+                "find": "kind === 'query' ? [d.artist, d.venue] : [d.venue];",
+                "replace": "[d.venue];"
+            }
+        ],
+        "spec": "tests/fixtures/sfm-list.spec.js",
+        "grep": "a free-text search",
+        "expect": "fail"
+    },
+    {
+        "name": "sfm previews: a search page's cards out of scope again",
+        "why": "A search page's cards are in .rightColumn (vzell 2026-11-04: no POH on the search pages).",
+        "edits": [
+            {
+                "find": "            extRoot: '#mb-sfm-root, .mainColumn .setlistPreview, .rightColumn .setlistPreview, .mainColumn .info, .setlistInfo .setlistHeadline, .setlistInfo .infoContainer > p, .setlistList, .viewBaseFestival, .FestivalSetlists-root, .breadCrumbBar'",
+                "replace": "            extRoot: '#mb-sfm-root, .mainColumn .setlistPreview, .mainColumn .info, .setlistInfo .setlistHeadline, .setlistInfo .infoContainer > p, .setlistList, .viewBaseFestival, .FestivalSetlists-root, .breadCrumbBar'"
+            }
+        ],
+        "spec": "tests/fixtures/sfm-list.spec.js",
+        "grep": "a search page's cards preview too",
+        "expect": "fail"
+    },
+    {
+        "name": "sfm previews: a setlist page's headline and list out of scope again",
+        "why": "The headline, the Tour line and the song list are not .info.",
+        "edits": [
+            {
+                "find": "            extRoot: '#mb-sfm-root, .mainColumn .setlistPreview, .rightColumn .setlistPreview, .mainColumn .info, .setlistInfo .setlistHeadline, .setlistInfo .infoContainer > p, .setlistList, .viewBaseFestival, .FestivalSetlists-root, .breadCrumbBar'",
+                "replace": "            extRoot: '#mb-sfm-root, .mainColumn .setlistPreview, .rightColumn .setlistPreview, .mainColumn .info, .viewBaseFestival, .FestivalSetlists-root, .breadCrumbBar'"
+            }
+        ],
+        "spec": "tests/fixtures/sfm-setlist.spec.js",
+        "grep": "the page's own links preview",
+        "expect": "fail"
+    }
+]

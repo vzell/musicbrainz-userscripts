@@ -647,6 +647,7 @@ B2- ROSALITA (COME OUT TONIGHT) ==> https://www.springsteenlyrics.com/lyrics.php
 
 also URLify the SL tracklist to MB song URLs
 
+
 * TODO Support song SL URL PTs
 
 Support song SL URL PTs, e.g. https://www.springsteenlyrics.com/lyrics.php?song=kittysback
@@ -663,61 +664,84 @@ parse a couple and make some suggestions, nice rich HTML based mockups
 
 - click toogle section headers (Ctrl-click all sections at once) 
 
-  
+
 * TODO Support bootleg SL URL PTs
 
-Support bootleg SL URL PTs e.g. https://www.springsteenlyrics.com/bootlegs.php?item=2567&category=aud_live1984
+
+
+
+* Add new SL PTs and POHs, see skills:
+
+Add new SL PTs and POHs, see skills:
+
+The following SL detail IPs from different "COLLECTION" and "BOOTLEGS" sections are in @debug
+
+#+begin_example
+sl-collection-vid_live-detail.html
+sl-collection-aud_live_1988-detail.html
+sl-collection-video-movie-detail.html
+sl-collection-covers-detail.html
+sl-collection-guest-detail.html
+sl-collection-VA-detail.html
+sl-collection-nugsnet-detail.html
+sl-collection-single-detail.html
+sl-collection-sampler-detail.html
+sl-collection-official-detail.html
+sl-collection-audioboot-detail.html
+#+end_example
+
+and these ones from the Stefan bootlegs
+
+#+begin_example
+sl-brucelegs-detail.html
+sl-brucelegs-2-detail.html
+#+end_example
+
+parse a couple by yourself to get a better overview and make some suggestions, nice rich HTML based mockups
+
+** SL collection pages - list page - e.g. https://www.springsteenlyrics.com/collection.php?cmd=list&category=<category>&f_date_main=<date>
 
 1.)
 
-parse a couple and make some suggestions, nice rich HTML based mockups
-
-- click toogle section headers (Ctrl-click all sections at once) 
-- Original info file - https://www.springsteenlyrics.com/bootlegs/aud_live1984/2567_infofile.txt
-- internal viewer for image scans
-
-  
-* TODO collection pages
-
-https://www.springsteenlyrics.com/collection.php?cmd=list&category=album&f_date_main=1984-06-04
-
-1.)
-
-the MB icon on logged in pages should get the POH treatment
+the MB icon on logged in pages should get the POH treatment, in the list overview PT and the detail page
 
 2.)
 
-add columns for the "MusicBrainz link", "Good scans" and "In Switzerland" icons with UVD sections
+add columns for the "MusicBrainz link", "Good scans" and "In Switzerland" icons with UVD sections in the list overview PT
 
 #+begin_example
 https://www.springsteenlyrics.com/collection.php?item=8983&category=album&f_date_main=1984-06-04
 #+end_example
 
-
-* TODO bootleg pages
+** bootleg pages - aud_live<year> etc. - e.g. https://www.springsteenlyrics.com/bootlegs.php?cmd=list&category=<category>
 
 1.)
 
-add columns for the "MusicBrainz link", " artwork available" and "original info file available"
+add columns for the "MusicBrainz link", " artwork available" and "original info file available" in the list overview PT
 
 #+begin_example
 https://www.springsteenlyrics.com/bootlegs.php?item=4554&category=aud_live1967
 #+end_example
 
+2.)
 
-* TODO stefano pages
+Support bootleg SL URL PTs e.g. https://www.springsteenlyrics.com/bootlegs.php?item=2567&category=aud_live1984
 
-https://www.springsteenlyrics.com/brucelegs.php?cmd=list
+- click toogle section headers (Ctrl-click all sections at once) 
+- Original info file - https://www.springsteenlyrics.com/bootlegs/aud_live1984/2567_infofile.txt
+- internal viewer for image scans
+
+** Stefano bootleg pages (brucelegs) - https://www.springsteenlyrics.com/brucelegs.php?cmd=list
 
 1.)
 
-add columns for the "PDF available" and "artwork available"
+add columns for the "PDF available" and "artwork available" in the list overview PT
 
 2.)
 
 https://www.springsteenlyrics.com/brucelegs.php?item=281&f_format=vinyl
 
-There is a tracklistm but its MISSING from the POH on the overview page at https://www.springsteenlyrics.com/brucelegs.php?cmd=list
+There is a tracklist but its MISSING from the POH on the overview page at https://www.springsteenlyrics.com/brucelegs.php?cmd=list
 
 #+begin_example
 TRACKLIST

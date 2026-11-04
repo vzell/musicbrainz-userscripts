@@ -27,6 +27,8 @@ spaces. Re-run after re-saving a snapshot:
     python3 scripts/build-setlistfm-fixtures.py
 """
 
+import html as htmlmod
+import json
 import os
 import re
 import sys
@@ -54,6 +56,43 @@ PAGE_TARGETS = [
     ('debug/setlistfm-artist.html', 'tests/fixtures/sfm-page-artist-2bd6dcce-p1.html', 'transparentBox border', 0),
     # A search for an artist's tour (2026-11-03): no <h1>, its filter form names it.
     ('debug/setlistfm-artist-serch.html', 'tests/fixtures/sfm-page-search-2bd6dcce-3daa95b.html', 'searchFilter', 0),
+    # `query=` searches (sfm-query, 2026-11-04): free text, many artists' setlists; and
+    # "artist:(…) tour:(…)", the form of our own Tour links. One page each.
+    ('debug/sfm-search-artist.html', 'tests/fixtures/sfm-page-query-bruce-springsteen.html', 'searchFilter', 0),
+    ('debug/sfm-search-artist-queury.html', 'tests/fixtures/sfm-page-query-artist-tour.html', 'searchFilter', 0),
+]
+
+# The sfm-setlist pageType (2026-11-04, org/foreign-detail-PTs.org step 4): a
+# setlist's own page, its rows read from the page itself. Kept: the date and
+# headline (`.setlistInfo`, with the tour), the first "Set Times" box, the
+# list with setlist.fm's note (`.setlistList`), the attendance
+# (`.setlistFooter`); the ads' `<li>`s stay (their scripts go), as the parser
+# must skip them. The fixture is named by the setlist's id, read from the page.
+# (snapshot, what it shows)
+SETLIST_TARGETS = [
+    ('debug/setlistfm-setlist.html', 'a named set ("The River"), an unnamed break, an encore, a cover; no set times'),
+    ('debug/setlistfm-2026-05-30.html', 'guests, covers, a note in a song, an encore, a tape at the end'),
+    ('debug/sfm-2026-10-03.html', 'a festival, "(+ with …; first time since …)" notes, a tape with its artist'),
+    ('debug/sfm-2026-06-04.html', 'an event instead of a venue, a "[traditional] cover", a guest band'),
+    ('debug/sfm-solo-plus-jam.html', 'named sets from the first song ("Solo Acoustic", "With the jam band")'),
+    ('debug/sfm-no-selist.html', 'an event without a setlist yet: `.emptySetlist`, no list'),
+]
+
+# setlist.fm's festival pages (sfm-festival, sfm-festivals, 2026-11-04):
+#   debug/sfm-festival.html   Glastonbury Festival 2025, an edition: its info box, the breadcrumb, and the
+#                             widget's props (inline JSON, 661 setlists), cut to a subset: per day the first
+#                             six by time, every setlist without a stage among them kept as found, and the
+#                             ten most attended; in a `type="text/plain"` script so it does not run (the
+#                             real one mounts a React widget the fixture has no code for). A small rendering
+#                             of the widget's rows (its class names, as in the snapshot) is written from the
+#                             same subset, for the link previews' spec.
+#   debug/sfm-festivals.html  Glastonbury Festival, its editions: the info box, the editions table (page 1, the
+#                             pager dropped), the Artist charts box, the breadcrumb.
+FESTIVAL_TARGETS = [
+    ('debug/sfm-festival.html', 'tests/fixtures/sfm-page-festival-3d581bb.html'),
+]
+FESTIVALS_TARGETS = [
+    ('debug/sfm-festivals.html', 'tests/fixtures/sfm-page-festivals-3d6bd17.html'),
 ]
 
 DIV_TAG_RE = re.compile(r'<(/?)div\b[^>]*>', re.I)
@@ -192,20 +231,160 @@ def build_page(snapshot, out, heading_cls, last_page):
         note += f' and its pager, cut to {last_page} pages'
     note += '; do not edit by hand.'
     body = '\n'.join(parts)
+    # A search page (its filter form, `searchFilter`) has no `.mainColumn`:
+    # the form, the cards and the pager are all in `.rightColumn`, as on
+    # setlist.fm (2026-11-04: the link previews' scope missed them there).
+    if heading_cls == 'searchFilter':
+        columns = f'<div class="rightColumn col-xs-12 col-md-9">\n{body}\n</div>'
+    else:
+        columns = f'<div class="mainColumn col-xs-12 col-md-8">\n{body}\n</div><div class="rightColumn col-xs-12 col-md-4"></div>'
+    with open(os.path.join(ROOT, out), 'w', encoding='utf-8', newline='\n') as fh:
+        fh.write(f'<!-- {note} -->\n<!DOCTYPE html>\n<html><head><meta charset="utf-8"><title>setlist.fm</title></head><body>\n'
+                 '<div class="body">\n<div class="header"><div class="container">setlist.fm</div></div>\n'
+                 f'<div class="container"><div class="row main">{columns}</div></div>\n</div>\n</body></html>\n')
+    return f'{snapshot} -> {out}: {len(previews)} setlists{f", pager to {last_page}" if last_page else ""}'
+
+
+def build_setlist(snapshot, what):
+    """Writes one live-page fixture of a setlist (sfm-setlist).
+
+    Args:
+        snapshot: Repo-relative snapshot path.
+        what: What the page shows, for the fixture's note.
+
+    Returns:
+        A one-line summary.
+    """
+    with open(os.path.join(ROOT, snapshot), encoding='utf-8') as fh:
+        html = fh.read().lstrip('﻿')
+    m = re.search(r'edit\?setlist=([0-9a-f]+)', html)
+    if not m:
+        sys.exit(f'{snapshot}: no setlist id')
+    sid = m.group(1)
+    canon = re.search(r'<link rel="canonical" href="([^"]+)"', html)
+    parts = [block(html, 'setlistInfo', snapshot)]
+    if class_div_starts(html, 'setTimesTimeline'):
+        parts.append(block(html, 'setTimesTimeline', snapshot))
+    parts += [block(html, 'setlistList', snapshot), block(html, 'setlistFooter', snapshot)]
+    out = f'tests/fixtures/sfm-page-setlist-{sid}.html'
+    note = (f'Generated by scripts/build-setlistfm-fixtures.py from {snapshot} ({what})'
+            f'{f"; page {canon.group(1)}" if canon else ""}: setlist.fm\'s page skeleton, the date and headline, '
+            'the set times, the list with its note, the attendance; do not edit by hand.')
+    body = '\n'.join(parts)
     with open(os.path.join(ROOT, out), 'w', encoding='utf-8', newline='\n') as fh:
         fh.write(f'<!-- {note} -->\n<!DOCTYPE html>\n<html><head><meta charset="utf-8"><title>setlist.fm</title></head><body>\n'
                  '<div class="body">\n<div class="header"><div class="container">setlist.fm</div></div>\n'
                  '<div class="container"><div class="row main"><div class="mainColumn col-xs-12 col-md-8">\n'
                  f'{body}\n</div><div class="rightColumn col-xs-12 col-md-4"></div></div></div>\n</div>\n</body></html>\n')
-    return f'{snapshot} -> {out}: {len(previews)} setlists{f", pager to {last_page}" if last_page else ""}'
+    return f'{snapshot} -> {out}: {len(body)} chars'
+
+
+def page_html(note, main, right=''):
+    """A fixture page in setlist.fm's skeleton.
+
+    Args:
+        note: The generated-by comment's text.
+        main: The main column's HTML.
+        right: The right column's HTML.
+
+    Returns:
+        The page.
+    """
+    return (f'<!-- {note} -->\n<!DOCTYPE html>\n<html><head><meta charset="utf-8"><title>setlist.fm</title></head><body>\n'
+            '<div class="body">\n<div class="header"><div class="container">setlist.fm</div></div>\n'
+            f'<div class="container"><div class="row main"><div class="mainColumn col-xs-12 col-md-8">\n{main}\n</div>'
+            f'<div class="rightColumn col-xs-12 col-md-4">\n{right}\n</div></div></div>\n</div>\n</body></html>\n')
+
+
+def breadcrumb(html):
+    """The page's breadcrumb (`ol.breadCrumbBar`), squeezed, or ''."""
+    m = re.search(r'<ol class="breadCrumbBar.*?</ol>', html, re.S)
+    return squeeze(m.group(0)) if m else ''
+
+
+def build_festival(snapshot, out):
+    """Writes the fixture of a festival edition's page (sfm-festival).
+
+    Args:
+        snapshot: Repo-relative snapshot path.
+        out: Repo-relative fixture path.
+
+    Returns:
+        A one-line summary.
+    """
+    with open(os.path.join(ROOT, snapshot), encoding='utf-8') as fh:
+        html = fh.read().lstrip('\ufeff')
+    at = html.find('WidgetFestival.FestivalSetlistsWidget')
+    start = html.find('{"config"', at)
+    props, _ = json.JSONDecoder().raw_decode(html[start:])
+    sl = props['setlists']
+    day = lambda x: x['current']['eventDate']
+    when = lambda x: ((x['current'].get('setTimes') or {}).get('scheduledStart') or '99', x['current']['artist']['name'])
+    keep = []
+    for d in sorted({day(x) for x in sl}):
+        keep += sorted((x for x in sl if day(x) == d), key=when)[:6]
+    for x in sorted(sl, key=lambda x: -(x.get('attendancesCount') or 0))[:10]:
+        if x not in keep:
+            keep.append(x)
+    small = {'config': {k: v for k, v in props['config'].items() if k != 'initialApolloClientCache'},
+             'setlists': keep, 'festival': props['festival']}
+    payload = json.dumps(small, ensure_ascii=False, separators=(',', ':')).replace('</', '<\\/')
+    script = ('<script type="text/plain">var element = React.createElement(WidgetFestival.FestivalSetlistsWidget, '
+              f'Object.assign({{}}, {payload}));</script>')
+    items = '\n'.join(
+        '<div class="FestivalSetlistListItem-root"><div class="FestivalSetlistListItem-artist">'
+        f'<a class="Link-root Link-root_color-blue" href="{htmlmod.escape(x["deeplinks"]["web"])}">{htmlmod.escape(x["current"]["artist"]["name"])}</a>'
+        '</div></div>' for x in keep[:6])
+    widget = ('<div id="setlist-widget-festival-FestivalSetlistsWidget"><div class="FestivalSetlists-root">'
+              f'<div class="FestivalSetlistList-items">\n{items}\n</div></div></div>')
+    main = '\n'.join([breadcrumb(html), '<div class="visiblePrint">', block(html, 'row contentBox festivalInfo', snapshot), '</div>',
+                       '<div class="visiblePrint embeddedFullWidthWidget">', widget, script, '</div>'])
+    note = (f'Generated by scripts/build-setlistfm-fixtures.py from {snapshot}: the breadcrumb, the info box, the widget\'s '
+            f'props cut to {len(keep)} of {len(sl)} setlists (not run), a small rendering of its rows; do not edit by hand.')
+    with open(os.path.join(ROOT, out), 'w', encoding='utf-8', newline='\n') as fh:
+        fh.write(page_html(note, main))
+    return f'{snapshot} -> {out}: {len(keep)} of {len(sl)} setlists'
+
+
+def build_festivals(snapshot, out):
+    """Writes the fixture of a festival's page, its editions (sfm-festivals).
+
+    Args:
+        snapshot: Repo-relative snapshot path.
+        out: Repo-relative fixture path.
+
+    Returns:
+        A one-line summary.
+    """
+    with open(os.path.join(ROOT, snapshot), encoding='utf-8') as fh:
+        html = fh.read().lstrip('\ufeff')
+    head = re.search(r'<div class="col-xs-12">\s*<h1>.*?</h1>\s*</div>', html, re.S)
+    charts = re.search(r'<table[^>]*class="[^"]*\bstatsTable\b[^"]*"[^>]*>.*?</table>', html, re.S)
+    main = '\n'.join([breadcrumb(html), '<div class="row contentBox visiblePrint">', squeeze(head.group(0)), '<div class="col-xs-12">',
+                       block(html, 'infoStats', snapshot), block(html, 'attendanceCount', snapshot), '<h2>Festivals</h2>',
+                       block(html, 'viewBaseFestival', snapshot), '</div></div>'])
+    right = ('<div class="row contentBox"><div class="col-xs-12"><h2>Artist charts</h2></div><div class="col-xs-12">'
+             f'{squeeze(charts.group(0)) if charts else ""}</div></div>')
+    rows = len(re.findall(r'<td class="year">', main))
+    note = (f'Generated by scripts/build-setlistfm-fixtures.py from {snapshot}: the breadcrumb, the info box, the editions '
+            f'table ({rows}, page 1, no pager), the Artist charts; do not edit by hand.')
+    with open(os.path.join(ROOT, out), 'w', encoding='utf-8', newline='\n') as fh:
+        fh.write(page_html(note, main, right))
+    return f'{snapshot} -> {out}: {rows} editions'
 
 
 def main():
-    """Builds every fixture in TARGETS and PAGE_TARGETS."""
+    """Builds every fixture in TARGETS, PAGE_TARGETS, SETLIST_TARGETS and the festival targets."""
     for target in TARGETS:
         print(build(*target))
     for target in PAGE_TARGETS:
         print(build_page(*target))
+    for target in SETLIST_TARGETS:
+        print(build_setlist(*target))
+    for target in FESTIVAL_TARGETS:
+        print(build_festival(*target))
+    for target in FESTIVALS_TARGETS:
+        print(build_festivals(*target))
 
 
 if __name__ == '__main__':

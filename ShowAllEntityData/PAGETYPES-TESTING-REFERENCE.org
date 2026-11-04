@@ -265,7 +265,7 @@ skill for turning a =planned= row into a =captured= one.
 | 102 | url-overview                  | multi        | /url/URL                                       | relDetailsToTables; first /url/ pageType (@include line names 'url')                                                       |
 | 103 | bb-relations                  | single       | brucebase.wikidot.com /stats:relations         | NOT MusicBrainz, opt-in; tabs → table (bbRelationsToTable), Name/Sort name/Type/Letter                                     |
 | 104 | bb-recent-changes             | single       | brucebase.wikidot.com /system:recent-changes   | NOT MusicBrainz, opt-in; AJAX pages (features.pageRequest), 200/1,000/5,000 changes                                        |
-| 105 | dg-master                     | single       | discogs.com /master/ID                         | NOT MusicBrainz, opt-in; API pages (pageRequest.fetchText), all versions, ★ main                                          |
+| 105 | dg-master                     | multi        | discogs.com /master/ID                         | NOT MusicBrainz, opt-in; Tracks (as dg-release's) + Versions (★ main); API pages (pageRequest.fetchText)                  |
 | 106 | dg-release                    | multi        | discogs.com /release/ID                        | NOT MusicBrainz, opt-in; the release + its master's versions, 5 sub-tables                                                 |
 | 107 | dg-artist                     | multi        | discogs.com /artist/ID                         | NOT MusicBrainz, opt-in; whole discography, one sub-table per role run                                                     |
 | 108 | dg-label                      | single       | discogs.com /label/ID                          | NOT MusicBrainz, opt-in; newest 500/1,000/5,000, oldest 500/1,000, all                                                     |
@@ -309,6 +309,10 @@ skill for turning a =planned= row into a =captured= one.
 | 146 | sfm-search                    | single       | setlist.fm /search?artist=ID&…                 | NOT MusicBrainz, opt-in; as #145 for a search (tour, country, city, …); named by its filter's choices                     |
 | 147 | ia-details                    | multi        | archive.org /details/ID                        | NOT MusicBrainz, opt-in; release-tracks for an item: a sub-table per disc, MP3 copy as a column; one /metadata request   |
 | 148 | bb-page                       | single       | brucebase.wikidot.com, any other page          | NOT MusicBrainz, opt-in; link previews only, no button, nothing visible (catch-all, last)                                  |
+| 150 | sfm-query                     | single       | setlist.fm /search?query=…                     | NOT MusicBrainz, opt-in; as #146 for a query (free text, "artist:(…) tour:(…)"): Artist and Venue both                    |
+| 151 | sfm-festival                  | multi        | setlist.fm /festival/YEAR/SLUG-ID.html         | NOT MusicBrainz, opt-in; a festival edition: a sub-table per day from the page's widget JSON, no request; head          |
+| 152 | sfm-festivals                 | single       | setlist.fm /festivals/SLUG-ID.html             | NOT MusicBrainz, opt-in; a festival's editions, 20 a page, every page fetched; head (facts, Artist charts)              |
+| 149 | sfm-setlist                   | multi        | setlist.fm /setlist/ARTIST/YEAR/VENUE-ID.html  | NOT MusicBrainz, opt-in; a setlist's own page: a sub-table per set, no request (the live page's list); head as release-tracks |
 
 * Page type details
 ** 1. taglookup
@@ -1020,11 +1024,11 @@ lists converted into sortable tables), tableMode =multi=.
 ** 105. dg-master / 106. dg-release / 107. dg-artist / 108. dg-label
 - URL: [[https://www.discogs.com/master/26725-Bruce-Springsteen-Born-To-Run][discogs.com/master/26725]], [[https://www.discogs.com/release/1874253-Bruce-Springsteen-Born-To-Run][/release/1874253]], [[https://www.discogs.com/artist/219986-Bruce-Springsteen][/artist/219986]], [[https://www.discogs.com/label/1866-Columbia][/label/1866]] (a language prefix and a slug allowed; not their sub-pages such as =/image/…=)
 - Match: =_dgPage(path).kind= (=_EXT_DISCOGS_PATH_RE=), host =www.discogs.com= only; one =@include= line.
-- Buttons: master "Show all versions"; release "Show all tracks" (the Tracks view, as release-tracks) and "Show credits, companies and other versions"; artist "Show the whole discography"; label Newest 500 / 1,000 / 5,000, Oldest 500 / 1,000, Then All (=features.dgOrder=, =pageCap=; =groupLabel= per button).
-- tableMode: single (master, label), multi (release, artist: =groupByH3=, =data-mb-col-headers= per sub-table).
+- Buttons: master "Show all tracks" (the Tracks view, as a release's; 2026-11-04) and "Show all versions"; release "Show all tracks" (the Tracks view, as release-tracks) and "Show credits, companies and other versions"; artist "Show the whole discography"; label Newest 500 / 1,000 / 5,000, Oldest 500 / 1,000, Then All (=features.dgOrder=, =pageCap=; =groupLabel= per button).
+- tableMode: single (label), multi (master since 2026-11-04, release, artist: =groupByH3=, =data-mb-col-headers= per sub-table).
 - Not MusicBrainz; under =sa_enable_discogs=.
 - Features exercised: =features.pageRequest= with =fetchText()= (=_extGet()=: GM_xmlhttpRequest, the host's gate, the token), =features.pageCountAsync= (page 1's =pagination.pages=, before the gates; Springsteen's 68 pages meet "⚠️ High Page Count"); =dgToTable= (live page: an empty table in =#mb-dg-root=); =integerColumns= Year (and Have/Want); link previews on discogs.com (=_DP_SITES['www.discogs.com'].extRoot= ='#app'=).
-- Coverage: =tests/fixtures/discogs-pages.spec.js= (gate, placement, request order, rows and sub-tables per type, the release not among its versions, role groups, toolbar name, High Page Count, label buttons and orders, previews in table and content but not header/footer), =discogs-pages.mobile.spec.js= (tap → table, tap → window), =sl-include-regex.spec.js=; page shells =dg-{master,release,artist,label}.html= (=scripts/build-discogs-fixtures.py=) + =ext-discogs-*.json= (=scripts/capture-ext-fixtures.py=); mutations in =scripts/mutations/discogs-pages.json=. No live spec yet.
+- Coverage: =tests/fixtures/discogs-pages.spec.js= (gate, placement, request order, rows and sub-tables per type, the release not among its versions, role groups, toolbar name, High Page Count, label buttons and orders, previews in table and content but not header/footer), =discogs-pages.mobile.spec.js= (tap → table, tap → window), =sl-include-regex.spec.js=; page shells =dg-{master,release,artist,label}.html= (=scripts/build-discogs-fixtures.py=) + =ext-discogs-*.json= (=scripts/capture-ext-fixtures.py=); mutations in =scripts/mutations/discogs-pages.json=. The Tracks views: =discogs-release-tracks.spec.js=, =discogs-master-tracks.spec.js= (mutations =dg-release-tracks.json=, =dg-master-tracks.json=). No live spec yet.
 
 ** 109. dg-submissions
 - URL: [[https://www.discogs.com/submissions?mode=list&id=599283&page=1&view=flat][discogs.com/submissions?mode=list&id=599283&view=flat]] (flat view), the same without =view=flat= (browser view).
@@ -1192,6 +1196,31 @@ lists converted into sortable tables), tableMode =multi=.
 - Match: the catch-all, LAST of the Brucebase definitions (=match: () => true=); its own catch-all =@include= line. Not in a frame.
 - Buttons: none. Link previews only (=features.bbPreviewOnly=); a hidden header (=_bbPreviewOnlyHeader()=), nothing of the wiki's page changed.
 - Coverage: =tests/fixtures/bb-every-page.spec.js= (3: card, window, viewer, no page error, the page untouched; a venue page's Wikipedia link; switched off), =sl-include-regex.spec.js=; mutations =scripts/mutations/bb-every-page.json=.
+
+** 149. sfm-setlist
+- URL: [[https://www.setlist.fm/setlist/bruce-springsteen/2016/los-angeles-sports-arena-los-angeles-ca-4bf0375a.html][setlist.fm: Bruce Springsteen, Los Angeles Sports Arena, 2016-03-19]] (2026-11-04, org/foreign-detail-PTs.org step 4).
+- Match: =_SFM_SETLIST_PATH_RE= (=/setlist/<artist>/<year>/<venue>-<id>.html=) / =_sfmKind()= = ='setlist'=; its own =@include= line.
+- Buttons: "Show the setlist" (=showIf=: =_sfmSetlistHasSongs()=; a setlist without songs, =.emptySetlist=, has none).
+- tableMode: multi (=groupByH3=): a sub-table per set or encore (=_sfmSetlistParse()=), # · Song · Cover of · With · Tape · Info · Play (=_SFM_HEADERS.setlist=).
+- Rows: NO request — =features.pageRequest='s =fetchText= hands the engine the live page's own HTML (server-rendered, the whole list); =_sfmSetlistToHtml()=. The head (=_sfmSetlistHeadSpec()=, the shared =_fdHeadInsertSections()=) reads the page too.
+- Coverage: =tests/fixtures/sfm-setlist.spec.js= (6), =sl-include-regex.spec.js=; fixtures =sfm-page-setlist-*.html= (6, =scripts/build-setlistfm-fixtures.py= =SETLIST_TARGETS=); mutations =scripts/mutations/sfm-setlist.json= (8). Unseen in any snapshot: a segue, two encores, a =/festival/= headline link.
+
+** 150. sfm-query
+- URL: [[https://www.setlist.fm/search?query=Bruce+Springsteen][setlist.fm search: Bruce Springsteen]], [[https://www.setlist.fm/search?query=artist%3A(Bruce%20Springsteen)%20tour%3A(Land%20of%20Hope%20%26%20Dreams%20American%20Tour)][artist:(Bruce Springsteen) tour:(…)]] (vzell 2026-11-04: "some SFM search pages have no PT yet").
+- Match: =_sfmKind()= on =/search= without =artist== and with a non-empty =query==; its own =@include= line.
+- As #146 otherwise, but =_SFM_HEADERS.query=: Artist AND Venue (a free-text search finds many artists' setlists); its section named by the query. Coverage: =tests/fixtures/sfm-list.spec.js= (2), =sl-include-regex.spec.js=; fixtures =sfm-page-query-*.html= (one page each, the pager dropped); mutations =scripts/mutations/sfm-setlist.json=.
+
+** 151. sfm-festival
+- URL: [[https://www.setlist.fm/festival/2025/glastonbury-festival-2025-3d581bb.html][setlist.fm: Glastonbury Festival 2025]] (2026-11-04).
+- Match: =_SFM_FESTIVAL_PATH_RE= / =_sfmKind()= = ='festival'=; its own =@include= line. Button "Show all setlists of this festival" (=showIf=: =_sfmFestivalJson()=).
+- tableMode: multi (=groupByH3=), a sub-table per day; Time · Artist · Stage · Attendees. Rows: NO request, the live page's widget JSON (=fetchText=, =_sfmFestivalToHtml()=). Head =_sfmFestivalHeadSpec()=.
+- Coverage: =tests/fixtures/sfm-festival.spec.js=, =sl-include-regex.spec.js=; fixture =sfm-page-festival-3d581bb.html= (39 of 661 setlists); mutations =scripts/mutations/sfm-festival.json=.
+
+** 152. sfm-festivals
+- URL: [[https://www.setlist.fm/festivals/glastonbury-festival-3d6bd17.html][setlist.fm: Glastonbury Festival]] (2026-11-04).
+- Match: =_SFM_FESTIVALS_PATH_RE= (not =/festivals/browse/=) / =_sfmKind()= = ='festivals'=; its own =@include= line. Button "Show all editions of this festival".
+- tableMode: single; every page of its pager fetched same-origin (=_sfmFestivalsToHtml()=); Year · Edition · Stages · Venues · Start · End (ISO). Head =_sfmFestivalsHeadSpec()=.
+- Coverage: =tests/fixtures/sfm-festival.spec.js=; fixture =sfm-page-festivals-3d6bd17.html=.
 
 ** Relationship-tables buttons on existing pageTypes (not pageTypes of their own)
 =_relTablesButton()= adds a second button to series-releases, work-recordings, releasegroup-releases, recording-releases (with "Related works" as "Via <work>" tables), label-relationships and artist-relationships ("Relationship lists"), and release-tracks ("Credits", the release's own =#release-relationships= and its group's =#release-group-relationships=, never the per-medium track credits). Each runs as its own pageType for that render (=series-relationship-tables=, =work-relationship-tables=, =releasegroup-relationship-tables=, =recording-relationship-tables=, =label-relationship-tables=, =artist-relationship-tables=, =release-credit-tables=; =buttonConfig.type= switches =pageType= in =startFetchingProcess()=), with only its own features (=replaceFeatures=), and removes the page's main data section (=removeMain=, =_relRemoveMainSections()=). A saved file records that pageType and loads back as the same button (=_activateButtonForSavedPageType()=). Hidden with =sa_enable_relationship_tables= off (=showIf=). Coverage: =tests/fixtures/rel-tables-recording.spec.js= (incl. the main button unchanged and a Save → Load round trip) and =rel-tables-pages.spec.js=, raw captures =tests/fixtures/rel-{series,work,label-rels,artist-rels,release-group,recording,release}-overview.html=.
