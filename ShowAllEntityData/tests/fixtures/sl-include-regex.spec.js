@@ -418,7 +418,7 @@ test.describe('@include coverage', () => {
         expect(others.filter((u) => injected(u))).toEqual([]);
     });
 
-    test('setlist.fm: a venue\'s or an artist\'s setlists (sfm-venue, sfm-artist, 2026-11-02), any page; not a setlist, a search or statistics', () => {
+    test('setlist.fm: a venue\'s or an artist\'s setlists (sfm-venue, sfm-artist, 2026-11-02), any page; not a search or statistics', () => {
         const pages = [
             'https://www.setlist.fm/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html',
             'https://www.setlist.fm/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html?page=2',
@@ -428,8 +428,6 @@ test.describe('@include coverage', () => {
             'https://setlist.fm/setlists/journey-3d6b507.html#top',
         ];
         const others = [
-            'https://www.setlist.fm/setlist/bruce-springsteen/2026/merriweather-post-pavilion-pavilion-stage-columbia-md-37589df.html',
-            'https://www.setlist.fm/search?query=artist:(Journey)+tour:(Final+Frontier+Tour)',
             'https://www.setlist.fm/stats/bruce-springsteen-2bd6dcce.html',
             'https://www.setlist.fm/venue/',
             'https://www.setlist.fm/venues',
@@ -440,7 +438,42 @@ test.describe('@include coverage', () => {
         expect(others.filter((u) => injected(u))).toEqual([]);
     });
 
-    test('setlist.fm: a search for an artist\'s setlists (sfm-search, 2026-11-03), with any other filter; not one without an artist', () => {
+    test('setlist.fm: a setlist\'s own page (sfm-setlist, 2026-11-04), any artist and year; not its edit, statistics or another path', () => {
+        const pages = [
+            'https://www.setlist.fm/setlist/bruce-springsteen/2026/merriweather-post-pavilion-pavilion-stage-columbia-md-37589df.html',
+            'https://www.setlist.fm/setlist/bruce-springsteen/2016/los-angeles-sports-arena-los-angeles-ca-4bf0375a.html',
+            'https://setlist.fm/setlist/jackson-pines/2026/bruce-springsteen-center-for-american-music-klose-amphitheater-long-branch-nj-b7005be.html',
+            'https://www.setlist.fm/setlist/bruce-springsteen/2026/xfinity-mobile-arena-philadelphia-pa-2b4b60da.html#comments',
+        ];
+        const others = [
+            'https://www.setlist.fm/setlist/bruce-springsteen/2026/',
+            'https://www.setlist.fm/setlist/bruce-springsteen/xfinity-mobile-arena-philadelphia-pa-2b4b60da.html',
+            'https://www.setlist.fm/edit?setlist=2b4b60da&step=song',
+            'https://www.setlist.fm/setlist/attend?setlist=4bf0375a',
+            'https://api.setlist.fm/setlist/bruce-springsteen/2026/xfinity-mobile-arena-philadelphia-pa-2b4b60da.html',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
+    test('setlist.fm: a search by query (sfm-query, 2026-11-04): free text or "artist:(…) tour:(…)"; not an empty query', () => {
+        const pages = [
+            'https://www.setlist.fm/search?query=Bruce+Springsteen',
+            'https://www.setlist.fm/search?query=artist:(Journey)+tour:(Final+Frontier+Tour)',
+            'https://www.setlist.fm/search?query=artist%3A(Bruce%20Springsteen)%20tour%3A(Land%20of%20Hope%20%26%20Dreams%20American%20Tour)#mbid=70248960-cb53-4ea4-943a-edb18f7d336f',
+            'https://www.setlist.fm/search?page=2&query=Bruce+Springsteen',
+        ];
+        const others = [
+            'https://www.setlist.fm/search?query=',
+            'https://www.setlist.fm/search?tour=3daa95b',
+            'https://www.setlist.fm/search',
+            'https://www.setlist.fm/searchx?query=Bruce',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
+    test('setlist.fm: a search for an artist\'s setlists (sfm-search, 2026-11-03), with any other filter; not one without an artist or a query', () => {
         const pages = [
             'https://www.setlist.fm/search?artist=2bd6dcce&tour=3daa95b&country=us&city=bd6bde6',
             'https://www.setlist.fm/search?artist=2bd6dcce&tour=3daa95b&country=us',
@@ -451,7 +484,6 @@ test.describe('@include coverage', () => {
         const others = [
             'https://www.setlist.fm/search?tour=3daa95b',
             'https://www.setlist.fm/search?artist=',
-            'https://www.setlist.fm/search?query=artist:(Journey)+tour:(Final+Frontier+Tour)',
             'https://www.setlist.fm/search',
             'https://www.setlist.fm/searchx?artist=2bd6dcce',
         ];

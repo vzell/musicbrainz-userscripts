@@ -1,5 +1,29 @@
 [
     {
+        "version": "WIP.5",
+        "date": "2026-11-04",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "setlist.fm: a search by words (setlist.fm/search?query=…, such as \"Bruce Springsteen\", or \"artist:(Bruce Springsteen) tour:(…)\" as the Tour links open) gets the Setlists button too. Its table has both an Artist and a Venue column, as such a search can find other artists' setlists; its section is named after the query. These searches had no button before."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.4",
+        "date": "2026-11-04",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "setlist.fm: a setlist's own page (setlist.fm/setlist/…) gets a button, Setlist, that lays the setlist out like a MusicBrainz release page, without asking setlist.fm for anything (the page already holds the whole list). One table per set, named as setlist.fm names it (\"The River\", \"Solo Acoustic\"), else Set 1, Set 2 …, and Encore. Columns: # (numbered on through the sets, a tape has none), Song (its statistics on setlist.fm), Cover of, With (each guest on a line), Tape, Info (setlist.fm's notes such as \"first time since 2019\") and Play, which finds the song on YouTube and plays it in place. Above the tables: \"~ Setlist by … (date: venue)\", setlist.fm's Note, and Details: Show (date, artist, venue, tour, how many setlist.fm users were there), Set times, Setlist (songs, sets, encores, covers, tapes), and on the right Guests and Covered artists, the one on the most songs first (\"Tom Morello ×2\"). A setlist without songs yet has no button."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.3",
         "date": "2026-11-04",
         "sections": [

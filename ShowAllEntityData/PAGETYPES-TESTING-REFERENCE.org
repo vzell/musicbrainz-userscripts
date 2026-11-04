@@ -309,6 +309,8 @@ skill for turning a =planned= row into a =captured= one.
 | 146 | sfm-search                    | single       | setlist.fm /search?artist=ID&…                 | NOT MusicBrainz, opt-in; as #145 for a search (tour, country, city, …); named by its filter's choices                     |
 | 147 | ia-details                    | multi        | archive.org /details/ID                        | NOT MusicBrainz, opt-in; release-tracks for an item: a sub-table per disc, MP3 copy as a column; one /metadata request   |
 | 148 | bb-page                       | single       | brucebase.wikidot.com, any other page          | NOT MusicBrainz, opt-in; link previews only, no button, nothing visible (catch-all, last)                                  |
+| 150 | sfm-query                     | single       | setlist.fm /search?query=…                     | NOT MusicBrainz, opt-in; as #146 for a query (free text, "artist:(…) tour:(…)"): Artist and Venue both                    |
+| 149 | sfm-setlist                   | multi        | setlist.fm /setlist/ARTIST/YEAR/VENUE-ID.html  | NOT MusicBrainz, opt-in; a setlist's own page: a sub-table per set, no request (the live page's list); head as release-tracks |
 
 * Page type details
 ** 1. taglookup
@@ -1192,6 +1194,19 @@ lists converted into sortable tables), tableMode =multi=.
 - Match: the catch-all, LAST of the Brucebase definitions (=match: () => true=); its own catch-all =@include= line. Not in a frame.
 - Buttons: none. Link previews only (=features.bbPreviewOnly=); a hidden header (=_bbPreviewOnlyHeader()=), nothing of the wiki's page changed.
 - Coverage: =tests/fixtures/bb-every-page.spec.js= (3: card, window, viewer, no page error, the page untouched; a venue page's Wikipedia link; switched off), =sl-include-regex.spec.js=; mutations =scripts/mutations/bb-every-page.json=.
+
+** 149. sfm-setlist
+- URL: [[https://www.setlist.fm/setlist/bruce-springsteen/2016/los-angeles-sports-arena-los-angeles-ca-4bf0375a.html][setlist.fm: Bruce Springsteen, Los Angeles Sports Arena, 2016-03-19]] (2026-11-04, org/foreign-detail-PTs.org step 4).
+- Match: =_SFM_SETLIST_PATH_RE= (=/setlist/<artist>/<year>/<venue>-<id>.html=) / =_sfmKind()= = ='setlist'=; its own =@include= line.
+- Buttons: "Show the setlist" (=showIf=: =_sfmSetlistHasSongs()=; a setlist without songs, =.emptySetlist=, has none).
+- tableMode: multi (=groupByH3=): a sub-table per set or encore (=_sfmSetlistParse()=), # · Song · Cover of · With · Tape · Info · Play (=_SFM_HEADERS.setlist=).
+- Rows: NO request — =features.pageRequest='s =fetchText= hands the engine the live page's own HTML (server-rendered, the whole list); =_sfmSetlistToHtml()=. The head (=_sfmSetlistHeadSpec()=, the shared =_fdHeadInsertSections()=) reads the page too.
+- Coverage: =tests/fixtures/sfm-setlist.spec.js= (6), =sl-include-regex.spec.js=; fixtures =sfm-page-setlist-*.html= (6, =scripts/build-setlistfm-fixtures.py= =SETLIST_TARGETS=); mutations =scripts/mutations/sfm-setlist.json= (8). Unseen in any snapshot: a segue, two encores, a =/festival/= headline link.
+
+** 150. sfm-query
+- URL: [[https://www.setlist.fm/search?query=Bruce+Springsteen][setlist.fm search: Bruce Springsteen]], [[https://www.setlist.fm/search?query=artist%3A(Bruce%20Springsteen)%20tour%3A(Land%20of%20Hope%20%26%20Dreams%20American%20Tour)][artist:(Bruce Springsteen) tour:(…)]] (vzell 2026-11-04: "some SFM search pages have no PT yet").
+- Match: =_sfmKind()= on =/search= without =artist== and with a non-empty =query==; its own =@include= line.
+- As #146 otherwise, but =_SFM_HEADERS.query=: Artist AND Venue (a free-text search finds many artists' setlists); its section named by the query. Coverage: =tests/fixtures/sfm-list.spec.js= (2), =sl-include-regex.spec.js=; fixtures =sfm-page-query-*.html= (one page each, the pager dropped); mutations =scripts/mutations/sfm-setlist.json=.
 
 ** Relationship-tables buttons on existing pageTypes (not pageTypes of their own)
 =_relTablesButton()= adds a second button to series-releases, work-recordings, releasegroup-releases, recording-releases (with "Related works" as "Via <work>" tables), label-relationships and artist-relationships ("Relationship lists"), and release-tracks ("Credits", the release's own =#release-relationships= and its group's =#release-group-relationships=, never the per-medium track credits). Each runs as its own pageType for that render (=series-relationship-tables=, =work-relationship-tables=, =releasegroup-relationship-tables=, =recording-relationship-tables=, =label-relationship-tables=, =artist-relationship-tables=, =release-credit-tables=; =buttonConfig.type= switches =pageType= in =startFetchingProcess()=), with only its own features (=replaceFeatures=), and removes the page's main data section (=removeMain=, =_relRemoveMainSections()=). A saved file records that pageType and loads back as the same button (=_activateButtonForSavedPageType()=). Hidden with =sa_enable_relationship_tables= off (=showIf=). Coverage: =tests/fixtures/rel-tables-recording.spec.js= (incl. the main button unchanged and a Save → Load round trip) and =rel-tables-pages.spec.js=, raw captures =tests/fixtures/rel-{series,work,label-rels,artist-rels,release-group,recording,release}-overview.html=.

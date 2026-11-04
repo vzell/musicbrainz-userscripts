@@ -9,6 +9,7 @@ Two parts that share the host and a parser:
 | Part | What | Where |
 |---|---|---|
 | pageTypes `sfm-venue`, `sfm-artist`, `sfm-search` | setlist.fm's list of a venue's or an artist's setlists, or its search for an artist's setlists (`/search?artist=…`, 2026-11-03) → one table of every setlist | `_sfm*()`, `applySfmToTable()`, `_sfmPrepareLivePage()` |
+| pageType `sfm-setlist` | a setlist's own page (`/setlist/<artist>/<year>/<venue>-<id>.html`, 2026-11-04) → a sub-table per set, the show's facts above, no request | `_sfmSetlist*()`; "A setlist's page" below |
 | reader `setlistfm` | any setlist.fm setlist, artist, venue (or our tour) link → card on hover, window on Space, through the API with the user's key; setlist.fm's own search for an artist (`search?artist=…`, every Tour cell's link) read from its page, key or not (2026-11-03) | `_extSfm*()` in `_EXT_READERS`; docs/claude/detail-pages.md "setlist.fm through its API" and "Venue additions" |
 
 The reader's windows also read setlist.fm's pages (set times, a venue's
@@ -82,6 +83,13 @@ on every host, and only with `sa_pop_ext_setlistfm_key` set.
   filter form's selected options (`_sfmSearchChoices()`: "setlist.fm search:
   Bruce Springsteen · Land of Hope & Dreams American Tour"; the smallest of
   their counts is the number found). Its rows are an artist's (Venue).
+- `sfm-query` (vzell 2026-11-04, `debug/sfm-search-artist.html`,
+  `sfm-search-artist-queury.html`): a search with a non-empty `query=` and
+  no `artist=` — free text ("Bruce Springsteen": other artists' setlists at
+  the Bruce Springsteen Center for American Music too) or "artist:(…)
+  tour:(…)", the form of our own Tour links. The same cards; its rows carry
+  Artist AND Venue (`_SFM_HEADERS.query`); named by the query. Its own
+  `@include` line. Before 2026-11-04 these were left out on purpose.
 - `_sfmPrepareLivePage()`: `<section id="mb-sfm-root">` FIRST in `<body>`,
   as on archive.org — never inside setlist.fm's `div.body`: the sticky
   headers pin every `<body>` child but `_sphPageEl()`, which returns this
@@ -142,6 +150,65 @@ whose venue is "NAC Opera Hall at National Arts Centre, Ottawa, ON,
 Canada" filled Event with the venue. The heading's place is no event when
 it is the venue's whole text or one of its `<strong>` parts
 (`_sfmCardData()`'s `venue.parts`).
+
+## A setlist's page (sfm-setlist, 2026-11-04)
+
+org/foreign-detail-PTs.org step 4; the mockup is the setlist.fm tab of
+`org/foreign-detail-PTs-mockups.html`; vzell's answer 2: covers and guests
+as setlist.fm links only, no MusicBrainz lookup by name. Snapshots
+(vzell, 2026-10-29 to 11-04): `debug/setlistfm-setlist.html`,
+`setlistfm-2026-05-30.html`, `sfm-2026-06-04/06-13/07-24/08-01/10-03.html`,
+`sfm-lohadt.html`, `sfm-solo-plus-jam.html`, `sfm-no-selist.html`.
+
+- **The page.** Server-rendered: `ol.songsList > li.setlistParts` holds the
+  whole list. `.song` (`.songPart a.songLabel`, the song's statistics),
+  `.tape` (`.songPart > span`, no link; a `.songTooltip` "Song played from
+  tape"), `.section` (a set's name in a `<span>`; `.section.empty` an
+  unnamed break), `.encore` ("Encore:"), and ad items
+  (`.setlistFluidAd`). `.infoPart small` is a run of "( … )" groups:
+  `(<a>Artist</a>&nbsp;cover)` — a tape's `(<a>Artist</a>&nbsp;song)` —,
+  `(with <a>Guest</a>)`, `(<span>a note</span>)`; a note may itself start
+  "with" (`(<span>with "It Takes Two" snippet interpolated</span>)`,
+  `(<span>with the ensemble</span>)`, `(<span>+ with Tom Morello & …</span>)`).
+  No segue, no second encore and no `/festival/` headline link in any
+  snapshot. A setlist without songs has `.setlistList > .emptySetlist` and no
+  `ol`.
+- **No request.** `features.pageRequest`'s `fetchText` returns
+  `document.documentElement.outerHTML`: the engine's "never the live
+  document" rule is about a site's pager, and this page has none.
+  `pageCountAsync` is 1. The button's `showIf` is `_sfmSetlistHasSongs()`.
+- **Sets** (`_sfmSetlistParse()`): one per `.section` / `.encore`, the songs
+  before any of them a first set; named as setlist.fm names them, else "Set
+  N" — N counts EVERY set, named or not (the break after "The River" is Set
+  3) —, an encore "Encore", "Encore 1/2…" when there are more; a name seen
+  twice gets " (2)" (`groupByH3` groups by heading). Songs are numbered on
+  through the sets, as setlist.fm numbers them; a tape is not. Empty sets
+  are dropped.
+- **Groups** (`_sfmSetlistInfo()`): read from the box's own child nodes, so
+  a note's parentheses never count. A group is a guest's when its first text
+  starts "with" AND it links someone (every guest is linked in the
+  snapshots); one link with "cover"/"song" after it is Cover of; every other
+  group is a note (Info, "; ").
+- **Columns** (`_SFM_HEADERS.setlist`): # · Song · Cover of · With (a guest
+  per `<li>`, `collapsableColumns`) · Tape · Info · Play (the YouTube-search
+  tile, `src: 'yts'`, "<artist> <song>", as the setlist window's ▶; only
+  with `sa_yt_play_in_place`).
+- **The head** (`_sfmSetlistHeadSpec()`, the shared `_fdHeadInsertSections()`;
+  read from the page, no request; a disk load is untested): "~ Setlist by
+  <artist> (date: venue)"; setlist.fm's Note (`.setlistList p.info
+  small.info`); Details — left: Show (Date from `.setlistInfo .dateBlock`,
+  Artist, Venue or Festival by the headline link's path, Tour read by its
+  "Tour:" label, "Were there" from `.setlistFooter .amount`), Set times
+  (`_extSfmSetlistTimes()`), Setlist (songs, sets, encores, covers, tapes);
+  right: Guests and Covered artists, pills with "×n", the most first.
+- **Fixtures**: `scripts/build-setlistfm-fixtures.py` `SETLIST_TARGETS` →
+  `tests/fixtures/sfm-page-setlist-<id>.html` (6: 4bf0375a, 2b4b60da,
+  37589df, 737652e9, 3b7c34e0, b7005be), the page's skeleton with
+  `.setlistInfo`, the first `.setTimesTimeline`, `.setlistList` and
+  `.setlistFooter`; the ads' `<li>`s stay, their scripts go.
+- **Tests**: `tests/fixtures/sfm-setlist.spec.js` (6); mutations
+  `scripts/mutations/sfm-setlist.json` (8, one recorded as a guard another
+  covers).
 
 ## Tests
 

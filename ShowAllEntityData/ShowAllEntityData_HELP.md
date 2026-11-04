@@ -4131,7 +4131,7 @@ videos in the window*, all on by default.
 </details>
 
 <details>
-<summary>setlist.fm: a venue's or an artist's setlists, a search</summary>
+<summary>setlist.fm: a venue's or an artist's setlists, a search, a setlist</summary>
 
 On setlist.fm's list of a venue's setlists (setlist.fm/venue/…), an
 artist's (setlist.fm/setlists/…), or a search for an artist's setlists
@@ -4139,7 +4139,10 @@ artist's (setlist.fm/setlists/…), or a search for an artist's setlists
 the script adds its own section above the site with one button,
 **Setlists**. It lists every setlist of that venue, artist or search as one
 table you can filter and sort; a search's section is named after its
-choices ("Bruce Springsteen · Land of Hope & Dreams American Tour"):
+choices ("Bruce Springsteen · Land of Hope & Dreams American Tour"). A search
+by words (setlist.fm/search?query=…, such as "Bruce Springsteen" or
+"artist:(Bruce Springsteen) tour:(…)") gets the same button; its table has
+both **Artist** and **Venue**, as it can find many artists' setlists:
 
 - **Date** (it opens the setlist on setlist.fm), **Artist** on a venue's list
   or **Venue** on an artist's (a stage at a venue shows both, each linked),
@@ -4162,6 +4165,29 @@ Before you press the button, setlist.fm's own list previews the same way: a
 setlist's Tour link, the venue box's links (its website, Wikipedia) and, with
 the key, a setlist's own link. The Upcoming Shows box's ticket links have no
 card.
+
+**A setlist's own page** (setlist.fm/setlist/…) gets one button, **Setlist**,
+which lays the setlist out like a MusicBrainz release page, without asking
+setlist.fm for anything (the page already holds the whole list):
+
+- one table per set, named as setlist.fm names it ("The River", "Solo
+  Acoustic"), else **Set 1**, **Set 2** …; an encore is **Encore** (**Encore
+  1**, **Encore 2** … when there are more);
+- **#** (numbered on through the sets, as on setlist.fm; a tape has none),
+  **Song** (its statistics on setlist.fm), **Cover of** (the covered artist;
+  for a tape, the song's artist), **With** (each guest on a line of their
+  own), **Tape** ("from tape"), **Info** (setlist.fm's notes: "acoustic,
+  Bruce solo", "first time since 2019"), and **Play**: a click finds the song
+  on YouTube and plays it in a row under it (with *Play YouTube videos in
+  place* on). Covers and guests link their setlists on setlist.fm.
+- Above the tables: "~ Setlist by … (date: venue)", setlist.fm's **Note**
+  (closed to start with), and **Details**: on the left **Show** (date,
+  artist, venue or festival, tour, how many setlist.fm users were there),
+  **Set times** (where someone entered them) and **Setlist** (songs, sets,
+  encores, covers, tapes); on the right **Guests** and **Covered artists**,
+  the one on the most songs first, with how often ("Tom Morello ×2").
+
+A setlist without songs yet has no button.
 
 Switch, in ⚙️ Settings → 🎤 setlist.fm: *Enable on setlist.fm*, on by default.
 

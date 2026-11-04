@@ -185,6 +185,25 @@ Env: 2026-11-04T03:46+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1
   Community last) / right (Identifiers); Community = Discogs' Statistics box in full, sales figures read from the page
   (=_dgLiveStats()=). Mutations now 27, all caught. Committed =89e6574b=.
 
+** setlist.fm (=sfm-setlist=, and =sfm-query=) — built (2026-11-04, branch feat/sfm-setlist, stacked on feat/dg-master)
+
+Env: 2026-11-04T14:50+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+- Snapshots from vzell: =debug/sfm-2026-06-04/06-13/07-24/08-01/10-03.html=, =sfm-lohadt.html=, =sfm-solo-plus-jam.html=,
+  =sfm-no-selist.html= (no songs yet), plus =setlistfm-setlist.html= and =setlistfm-2026-05-30.html=. Shapes: songs, tapes,
+  named sets, an unnamed break, one encore, covers (also "[traditional]"), guests, notes in spans (some starting "with").
+  Not in any snapshot: a segue, two encores, a =/festival/= headline link.
+- Built as drawn (the setlist.fm tab of the mockup) with answer 2 (setlist.fm links only): a sub-table per set (setlist.fm's
+  names, else "Set N", N counting every set), # · Song · Cover of · With · Tape · Info · Play; the shared head with Show,
+  Set times, Setlist, and Guests / Covered artists on the right; setlist.fm's Note. No request: =fetchText= hands the engine
+  the live page's own HTML. No button without songs.
+- vzell mid-way: "some SFM search pages have no PT yet" (=search?query=…=): =sfm-query=, the cards with Artist and Venue.
+- Specs: =tests/fixtures/sfm-setlist.spec.js= (6), =sfm-list.spec.js= (+2), =sl-include-regex.spec.js= (+2, two lists
+  corrected). Fixtures from =scripts/build-setlistfm-fixtures.py= (6 setlist pages, 2 query pages).
+- Mutations: =scripts/mutations/sfm-setlist.json= (10: 9 caught; 1 recorded =pass=, a guard no snapshot can reach).
+- Docs: =docs/claude/setlistfm.md= "A setlist's page", HELP, PAGETYPES reference #149/#150, the coverage registry,
+  CLAUDE.md's doc map, WIP.4 / WIP.5.
+
 ** pickup on NB-3641 (written 2026-11-04 on vzell-lap)
 
 Env: 2026-11-04T11:54+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · n/a (state of the repo)
@@ -437,3 +456,11 @@ sfm-lohadt.html
 sfm-solo-plus-jam.html
 #+end_example
 
+* some SFM search pages have no PT yet
+
+some SFM search pages have no PT yet, no action buttons
+
+#+begin_example
+@debug/sfm-search-artist.htm - IP - https://www.setlist.fm/search?query=Bruce+Springsteen -
+@debug/sfm-search-artist-queury.html - IP - https://www.setlist.fm/search?query=artist%3A(Bruce%20Springsteen)%20tour%3A(Land%20of%20Hope%20%26%20Dreams%20American%20Tour)#mbid=70248960-cb53-4ea4-943a-edb18f7d336f -
+#+end_example
