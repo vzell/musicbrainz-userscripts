@@ -261,7 +261,9 @@ Env: 2026-11-04T12:12:46+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.
     timeout racing a chain the rate gate spaces at 1.1 s a step. Fixed in the spec (15 s on its three chain
     waits); then 10/10 and its file 142/143 (the other, the grip test's ↓, passed 3/3 alone).
 - The four read-only checks (coverage, lint, =audit-docs.py=, doc cross-refs): all green at =481178e3=.
-- Not run: the mutation lists. Merge: waits for vzell.
+- Mutation lists at =f0d11cd4= (13:01:54–13:10:22 CET): =non-mb-coverage-gaps.json= 18, =ia-details.json= 13,
+  =bb-every-page.json= 2, =dg-release-tracks.json= 27: all 60 caught, the userscript restored and hash-verified.
+- Merge: waits for vzell.
 
 *** next work (plan step 4, after the merge)
 
