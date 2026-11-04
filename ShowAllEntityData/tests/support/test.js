@@ -22,6 +22,16 @@ const STATIC_MB_CACHE = path.join(__dirname, '..', '.cache', 'static-mb');
 const STATIC_MB_HEADERS = ['content-type', 'access-control-allow-origin', 'timing-allow-origin', 'cache-control'];
 const FIXTURE_PROJECTS = new Set(['chromium-fixtures', 'chromium-mobile']);
 
+// A snapshot fixture's static file names have their content hash replaced
+// (`common-SCRUBBED.css`, tests/support/snapshot.js), so the CDN answers
+// them 404, and a 404 was never cached: every load of such a fixture (30 of
+// them, 2026-11-04) asked the live CDN again, and page.goto() waits for the
+// answer. Under the parallel suite that request stalled twice in one full
+// run (fixture-load-no-archive-org-wait.spec.js, sidebar-sections.mobile.spec.js,
+// "Test timeout … page.goto", DEBUG-NOTES.md 2026-11-04). Answered here with
+// the CDN's own 404, no request.
+const STATIC_MB_SCRUBBED_RE = /-SCRUBBED\.[A-Za-z0-9]+(?:[?#]|$)/;
+
 /**
  * Answers a static.metabrainz.org GET from the disk cache, or fetches it,
  * stores a 200 answer (written to a temporary file and renamed, so a
@@ -33,6 +43,11 @@ const FIXTURE_PROJECTS = new Set(['chromium-fixtures', 'chromium-mobile']);
 async function serveStaticMb(route) {
     const req = route.request();
     if (req.method() !== 'GET') return route.fallback();
+    if (STATIC_MB_SCRUBBED_RE.test(req.url())) {
+        await route.fulfill({ status: 404, contentType: 'text/html', headers: { 'x-sa-fixture-stub': 'scrubbed-static' }, body: '' })
+            .catch(() => {});
+        return;
+    }
     const key = crypto.createHash('sha1').update(req.url()).digest('hex');
     const bodyFile = path.join(STATIC_MB_CACHE, `${key}.body`);
     const metaFile = path.join(STATIC_MB_CACHE, `${key}.json`);

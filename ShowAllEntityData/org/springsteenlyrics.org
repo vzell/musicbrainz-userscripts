@@ -667,6 +667,7 @@ parse a couple and make some suggestions, nice rich HTML based mockups
 
 * TODO Support bootleg SL URL PTs
 
+
 * TODO Add new SL PTs and POHs, see skills
 
 Add new SL PTs and POHs, see skills:
@@ -744,7 +745,6 @@ There is a tracklist but its MISSING from the POH on the overview page at https:
 TRACKLIST
 The page has no tracklist. - https://www.springsteenlyrics.com/brucelegs.php?item=281&f_format=vinyl
 #+end_example
-
 
 ** missing logged in list pages in @debug
 
@@ -867,7 +867,6 @@ public and logged-in reads overwrite each other.
 
 Still needed: a logged-in snapshot of bootleg item 2567 (aud_live1984).
 
-
 ** summary
 
 I've built the mockups and written the analysis, decisions, plan and seven open questions under the TODO in org/springsteenlyrics.org. The userscript is unchanged, so there is no version bump. Everything is on the new branch docs/sl-item-pts-mockups and nothing is committed.
@@ -912,7 +911,6 @@ A logged-in snapshot of bootleg item 2567 (the one named in the TODO) is still m
 sl-bootleg-2567-logged-in.html - https://www.springsteenlyrics.com/bootlegs.php?item=2567
 #+end_example
 
-
 *** Answers (vzell, 2026-11-04)
 
 1. Item page button: one "Tracklist" button, plus "All versions" on CD/vinyl bootlegs. YES
@@ -935,3 +933,86 @@ to the findings:
   bootlegs as well: A/B becomes one "Record 1" table.
 - The Artwork section has captions (="2567_artwork_01.jpg": front= … =runout groove side 2=), as on brucelegs.
 - The info file is =bootlegs/aud_live1984/2567_infofile.txt=, which confirms the pattern.
+
+*** Built (2026-11-04, branch =feat/sl-item-pts=, stacked on =docs/sl-item-pts-mockups=)
+
+Env: 2026-11-04T18:29:24+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (GM
+stubs, no Tampermonkey). Not yet tested in a real browser.
+
+WIP entries (=ShowAllEntityData_CHANGELOG.wip.json=):
+- WIP.1: preview fixes. Brucelegs items have a tracklist (with lengths), the runout etchings and the release info; a box
+  set's "Record N:" headers work; artwork carries the page's captions. =_slParseTracklist()=, =_slTracklistBlock()=,
+  =_DP_PARSER_VERSION= 9.
+- WIP.2: the preview cache keeps logged-in and public reads apart (=data.session=, =_dpRecUsable()=).
+- WIP.3: logged-in list columns.
+  - collection: MusicBrainz, Good scans, Kept in; bootlegs: MusicBrainz.
+  - The MusicBrainz cell and the site's own icon get MusicBrainz's card (=dg-mb=).
+  - Bootlegs: Info file links the =.txt= (card on hover, read on Space).
+  - Brucelegs: PDF and Artwork.
+  - Fix: a logged-in card's Version was always empty.
+- WIP.4: the item pageTypes =sl-collection-item=, =sl-bootlegs-item= and =sl-brucelegs-item=, as in the mockup, with
+  every answer applied.
+
+Where it differs from the mockup:
+- *Columns.* Collection items have one "Version / note" column; the mockup's Take and Note split applies to bootlegs
+  only (answer 3).
+- *List cells are plain text.* The MusicBrainz cell reads "MB" as a pink glyph, so filtering and the 📊 list see "MB" or
+  empty. Artwork, Info file and PDF read "yes", not the mockup's glyphs. No separate 📊 "SL flags" section was added:
+  the generic value list already offers MB/empty and yes/empty, with counts.
+- *PDF links the item page.* The PDF files' names are not on the card.
+- *The site's own item content is hidden* once the view is in place; the navbar and breadcrumb stay.
+
+How it was checked:
+- 10 + 6 new tests, +1 in detail-preview.
+- 19/19 mutations fail as expected.
+- The specs that share the changed code: 250 passed.
+- Lint is within the baseline; the coverage report and the doc audits pass.
+- =test:full=: see below.
+
+Try in your browser (logged in and logged out):
+- https://www.springsteenlyrics.com/collection.php?item=8595&category=album&f_format=12i
+- https://www.springsteenlyrics.com/collection.php?item=5240&category=sampler&f_format=12i
+- https://www.springsteenlyrics.com/bootlegs.php?item=2567&category=aud_live1984 (open "Original info file")
+- https://www.springsteenlyrics.com/brucelegs.php?item=281&f_format=vinyl (both buttons; hover a brucelegs item on the
+  list for the fixed preview)
+- https://www.springsteenlyrics.com/collection.php?cmd=list&category=album (hover the MB cells)
+- https://www.springsteenlyrics.com/bootlegs.php?cmd=list&category=aud_live1978 (Info file: hover, then Space)
+
+Left open:
+- Song links in tracklists (the URLify TODO).
+- The logged-in collection filters (answer 6).
+- Shapes no snapshot shows: a bootleg item with "Side A:" headers; a CD bootleg with "Disc 1: (…)" totals on several
+  discs.
+
+=test:full= (2026-11-04T18:29:44+01:00 → 18:48:04, NB-3641): 2662 passed, 3 failed, none SL.
+- Two of the failures pass 3/3 alone.
+- The third (=popup-mb.spec.js:4108=) is flaky on =main= as well: 8/20 under parallel repeats, against 10/20 on the
+  branch. See DEBUG-NOTES.md.
+
+*** DONE bugs
+
+all works fine except:
+
+1.)
+
+When pressing the "All versions" button (what is is actually good for, what should be shown when it works) on e.g. a
+brucelegs detail page
+
+#+begin_example
+@debug/sl-brucelegs-all-versions.html  - https://www.springsteenlyrics.com/brucelegs.php?item=148&f_format=vinyl - [Image #9]
+#+end_example
+
+2.)
+
+Why is there so much empty space on both side of a detail page on SL detail pages
+
+#+begin_example
+@debug/sl-detail-empty-space.html - https://www.springsteenlyrics.com/bootlegs.php?item=4615&category=vid_live - [Image #10]
+#+end_example
+
+3.)
+
+#+begin_example
+@debug/sl-brucelegs-multiple-versions.html - https://www.springsteenlyrics.com/brucelegs.php?item=41&f_format=vinyl - brucelegs detail page with multiple versions available
+#+end_example
+ 

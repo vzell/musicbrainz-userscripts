@@ -4022,6 +4022,12 @@ test.describe('MusicBrainz link previews: the window\'s tables and its height (A
         await expect(card(page)).toContainText('fetched now');
         await page.keyboard.press('Space');
         await expect(dialog(page).locator('[data-mb-tbl="setlist"] tbody tr').last()).toContainText('Chimes of Freedom');
+        // Every lookup of the window answered ("Recorded here", the place's
+        // areas): each answer repaints the window and replaces its tables, so
+        // a test that starts earlier works on nodes about to go. Under the
+        // parallel suite D's grip was detached mid-drag, read 0 px, or lost
+        // its focus between ↑ and ↓ (8 of 20 runs on main, 2026-11-04).
+        await expect(dialog(page).locator('.mb-dp-spin')).toHaveCount(0);
         await setHeight(page, px);
     }
 
@@ -4113,6 +4119,7 @@ test.describe('MusicBrainz link previews: the window\'s tables and its height (A
         const grip = box.locator('.mb-dp-grip');
         const boxH = () => dialog(page).locator('[data-mb-tbl="recorded-recordings"] .mb-dg-vwrap').evaluate(w => w.offsetHeight - 2 * w.clientTop);
         const saved = () => page.evaluate(() => window.__gmValues.sa_dp_table_heights);
+        await expect(wrap.locator('tbody tr').first()).toBeVisible();
         await expect(grip).toHaveAttribute('data-mb-grip', 'tbl-recorded-recordings');
         await expect(grip).toHaveAttribute('role', 'separator');
         await expect(area.locator('[data-mb-tbl="setlist"] .mb-dp-grip'), 'the filling table has none').toHaveCount(0);

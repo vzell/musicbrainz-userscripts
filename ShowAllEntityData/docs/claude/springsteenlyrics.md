@@ -12,7 +12,9 @@ page `collection.php` ("Latest additions", every item, `pg=` pagination) as
 (`lyrics.php`, one page per first letter) as `sl-lyrics`. It has its own
 switch, `sa_enable_springsteenlyrics`, default **on** since 2026-10-26 (off
 before). Only what each list card shows goes into the table; an item's own
-page is read only by the detail preview (`sa_sl_detail_preview`, docs/claude/detail-pages.md). The bootleg landing page
+page is read by the detail preview (`sa_sl_detail_preview`, docs/claude/detail-pages.md)
+and, since 2026-11-04, has pageTypes of its own (`sl-collection-item`,
+`sl-bootlegs-item`, `sl-brucelegs-item`; see "An item's own page" below). The bootleg landing page
 `bootlegs.php` (`sl-bootlegs-intro`) has no cards; it is supported only for the
 compact bar, and only while `sa_sl_compact_nav` is on as well — see "The
 bootleg landing page" below.
@@ -126,7 +128,7 @@ Columns (`_SL_HEADERS`):
 
 | sl-collection                                                                                | sl-bootlegs                                                                                                                                                                               | sl-brucelegs                                                                                                         |
 |----------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------|
-| Cover, Title, Version, Label, Cat. no., Format, Country, Release date, Original year, Copies | Cover, Title, Label, Date, First date, Show, Location, Format, Duration, Lossy, Artwork, Info file (+ DD, MM, YYYY, Day, Month, Place, Locality, Region, Country from `columnExtractors`) | Cover, Title, Version, Label, Cat. no., Date, First date, Show, Location, Format (+ the same nine extracted columns) |
+| Cover, Title, Version, Label, Cat. no., Format, Country, Release date, Original year, Copies; logged in also MusicBrainz, Good scans, Kept in | Cover, Title, Label, Date, First date, Show, Location, Format, Duration, Lossy, Artwork, Info file; logged in also MusicBrainz (+ DD, MM, YYYY, Day, Month, Place, Locality, Region, Country from `columnExtractors`) | Cover, Title, Version, Label, Cat. no., Date, First date, Show, Location, Format, PDF, Artwork (+ the same nine extracted columns) |
 
 - **sl-brucelegs** (`brucelegs.php?cmd=list`, 402 cards on 2026-10-06, `page=N`):
   - **Cards and fields.** It uses the same `div.blog-post` cards, so the same
@@ -134,8 +136,10 @@ Columns (`_SL_HEADERS`):
     `f_label=` link) and Cat # on separate lines, then Date, Location and
     Format. The sub-title is the pressing, so it goes in Version as on the
     collection.
-  - **No flag columns.** "PDF available" and "artwork available" appear on
-    all 402 cards, so they carry nothing and get no column.
+  - **PDF and Artwork.** "PDF available" and "artwork available" appear on
+    all 402 cards, so until 2026-11-04 they got no column; vzell asked for
+    both anyway (answer 5 of that day). PDF links the item page (the PDFs'
+    own file names are not on the card).
   - **Dates.** The real shapes are `DD Mon YYYY` 169, `YYYY / YYYY` 170,
     `YYYY` 59, `Mon YYYY` 2, and `Mon YYYY / Mon YYYY` 1, all read by
     `_slFirstIsoDate()`.
@@ -205,6 +209,109 @@ Columns (`_SL_HEADERS`):
   for a value that has none, so "–" would render as ":–". That is a latent
   quirk of the shared helper (MusicBrainz never shows it, because its unknown
   length always contains a colon) — see DEBUG-NOTES.md, 2026-10-04.
+
+## Logged in: the cards' icons as columns (2026-11-04)
+
+Only while the tab is logged in (`_slLoggedIn()`: the login box has
+`button[name="hBtnLogout"]`; a visitor gets `hTxtPassword`), a card has a
+flags line: `<a href="https://musicbrainz.org/release/<mbid>"><img
+src="img/collection_musicbrainz.png"></a>`, and on the collection
+`img/collection_goodscans.png` and `img/collection_in<place>.png` ("In
+Switzerland", "In Lebanon"). The same line is on the item page.
+`_SL_LOGGED_IN_HEADERS` adds MusicBrainz, Good scans and Kept in (collection)
+and MusicBrainz (bootlegs) after the kind's own columns; `_slHeaders()` asks
+the LIVE document once per run, so every fetched page's rows have the same
+cells, and a logged-out run is exactly as before. Kept in is one column for
+every `collection_in*.png` (vzell's answer 3). The MusicBrainz cell is
+`a.mb-sl-mb-link` reading "MB" (`_slMbCell()`); its card and window are
+MusicBrainz's own, through the `dg-mb` source, whose selector names SL's card
+links, our tables and the item head on this host only (`_dgMbSource()`,
+`_slMbIconName()`).
+
+A logged-in card also writes the item number and a second ⋮ marker BEFORE the
+title, so `_slCardSubtitle()` takes the bold text after the first marker that
+has one (until 2026-11-04 every logged-in card's Version was empty).
+
+Counts over 100 cards (vzell's logged-in snapshots, 2026-11-04): collection
+album MusicBrainz 19, Good scans 99, Switzerland 99, Lebanon 1; bootlegs
+aud_live1978 MusicBrainz 86, artwork 61, info file 84; brucelegs PDF and
+artwork 100.
+
+**Info file** links `bootlegs/<category>/<item>_infofile.txt`
+(`_slInfoFileUrl()`, from the card's item link; checked on items 9507 and
+2567). The SL preview takes that link too (`_SL_INFO_FILE_PATH_RE`,
+`_dpParseSlInfoFile()`), with `windowOnly`: its card makes no request and says
+Space reads it (vzell's answer 2).
+
+## An item's own page — `sl-collection-item`, `sl-bootlegs-item`, `sl-brucelegs-item`
+
+Since 2026-11-04 (org/springsteenlyrics.org "Add new SL PTs and POHs";
+mockups `org/sl-item-pts-mockups.html`, https://claude.ai/artifact/GBFJp9Ebo8LDoGPSskVMkg).
+`@include` admits `(collection|bootlegs|brucelegs).php?…item=N`;
+`_slItemKind()` matches. One button, "Show the tracklist"; the CD and vinyl
+bootlegs add "Show all versions of this bootleg" (`slItemView: 'versions'`)
+when the page's "All versions of this bootleg" lists more than one card
+(`_slItemVersionCount()`): on most items it lists the item itself alone (148,
+281); item 41 lists six pressings (fixture `detail-sl-brucelegs-41.html`, from
+a snapshot saved with the script running: `strip_script_ui()` in
+`scripts/build-sl-item-fixtures.py` takes the script's toolbar, styles and
+menu out again).
+No request: `features.pageRequest`'s `fetchText` returns the page's own HTML,
+`tableMode: 'multi'` with `groupByH3`.
+
+- **Read the copy, never the live page.** `_slItemPageHtml()` takes the page's
+  HTML once, at the first press (`applySlItemToTable()`), and the head
+  (`_slItemHeadSpec()`) and every view read that copy (`_slItemSourceDoc()`):
+  the grouped render clears the site's own `h3.heading` sections out of
+  `.project-detail`, the container the tables go into, before the head is
+  built.
+- **Page anatomy** (13 snapshots of 2026-11-04): `.project-detail` holds the
+  card, `div.divide30`, the tracklist `span.monospaced` (on the CD and vinyl
+  bootlegs after an `<h3>Trackslist</h3>`, `_slTracklistBlock()`), then the
+  `h3.heading` sections (`_slItemSections()`): collection `Scans/Photos[
+  (copy #N)]`, `Private info`; bootleg `Original info file`, `Artwork`,
+  `Private info`; brucelegs `Details`, `Trackslist`, `Runout groove etchings
+  (vinyl) or inner ring text (CD)`, `Release info`, `Artwork and PDF`, `All
+  versions of this bootleg`. Two of the "collection" snapshots are bootleg
+  pages.
+- **Tracklist** (`_slParseTracklist()`, shared with the preview): headers
+  `Disc N:`, `Disc: (82:40.00)` (a total), `Record 2: "Cover Me" (catalogue #
+  …)`; lines `A1- TITLE`, `01- TITLE #2 [partial]`, and without a separator
+  `A1 Title - V1`, `01 Title (5:45.15)` (only in a block where no line has
+  one). `_slItemGroups()`: a sub-table per header; a list of side positions
+  without headers is paired into records, A/B → Record 1 (vzell's answer 4);
+  anything else "Tracks". `_slSplitTrackTitle()`: "Artist: Title" on a
+  various-artists page (half the lines or more), " - V1 …" → Version and
+  Note, "#2" → Take (answer 3), "[…]" → Note.
+- **Columns**: collection Pos, Title, (Artist), Version / note; bootlegs Pos,
+  Title, Take, Note; brucelegs Pos, Title, Version, Note, (Length, sorted as a
+  duration).
+- **Head** (`_fdHeadInsertSections()`, extended for it with `texts`,
+  `textsAfter`, `pictureGroups`, a text's `note` and `lazyText`): Notes and
+  Release info; Details — Release (or Show and Recording), the runout
+  etchings, "Your collection" (logged in: MusicBrainz link, Good scans, Kept
+  in, item number, edit link) and Files; one pictures section per scans or
+  artwork section, with the page's captions; then "Original info file", read
+  same-origin once when its section is first opened (answer 2), and "Private
+  info" (logged in, closed).
+- **Private info never leaves the item page**: `_SL_ITEM_OWN_SECTION_RE` keeps
+  it out of the preview's record, and the fixtures are scrubbed
+  (`scripts/build-sl-item-fixtures.py`).
+- **The site's own item content is hidden** (`mb-sl-item-native`) once the
+  view is in place: the head and the tables show all of it. The navbar and
+  breadcrumb stay.
+- **Full width.** `applySlItemToTable()` marks the `.container`s around
+  `.project-detail` `mb-sl-wide`, as the list converter does: without it the
+  view sat in the site's 1170 px column ("so much empty space on both
+  sides", bootlegs.php?item=4615), and All versions' one-row table (~2300 px)
+  squeezed the toolbar and the head into a column ~150 px wide
+  (brucelegs.php?item=148; vzell, 2026-11-04, `debug/sl-detail-empty-space.html`,
+  `debug/sl-brucelegs-all-versions.html`). Pinned under Bootstrap's grid rules
+  in `sl-item.spec.js` ("the width of the window").
+
+Not built: song links in the tracklists (the separate "URLify the
+tracklist" TODO); the logged-in collection list's two extra filter forms
+(`filter_collection_info_public` / `…_private`, answer 6).
 
 ## Column names: the `_sortColumnKind()` heuristic trap
 
@@ -697,6 +804,8 @@ locators in the detail-preview specs use `a:not(.mb-fi-glyph)`.
 | `tests/fixtures/sl-brucelegs.spec.js`        | the CD and vinyl bootleg columns across two pages, card fields (no sub-title, a label link, year and month spans), the DD…Month split at each date precision, Location split incl. a description in Place and "USA" as United States, YYYY numeric sort, a Country filter                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `tests/fixtures/sl-lyrics.spec.js`           | pageKeys: from the landing page every letter fetched by its OWN link (one request each), from a letter page that letter reused live and the order kept; a failed letter resumes at that letter with the rows kept; the line split (Lyrics ✓/✗, Type, Artist incl. the last possessive, Date, Show, No.), DD…Month at each precision, a Type filter, YYYY numeric sort; `_slLyricsParseVersion()` over 42 bracket shapes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `tests/fixtures/sl-image-card.spec.js`       | the Cover column's card and viewer: nothing asked at render; one request on hover, cover ★ + scans, `Cover`/`Scan ×N`; a bootleg without the flag "Cover only", never asked; second hover and click from the cache, the "Item page" button; Shift+→ to the next VISIBLE row; Ctrl-click keeps the link; a collection row asks (no flag); brucelegs 148 cut at the cap, Space shows all 32; one record shared with the Title's preview; the setting off (no card, click still opens); moved on before its slot, never asked. Mutations: `scripts/mutations/sl-image-card.json`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `tests/fixtures/sl-item.spec.js`             | the item pageTypes: collection 8595 (one record, Release and Your collection cards, scans, the native content hidden, Private info closed, no request), 5240 (five named records, one scans section per copy with pictures), 9685 (Artist column), bootleg 9507 (two discs, Take/Note, Show card, the info file read once on opening), 2567 (sides paired, MusicBrainz link, captions), CD bootleg 281 (Length, notes, inner ring text, PDF), All versions on a fresh load, vinyl 148 logged out (four records, Version split, no Your collection); the preview cache's login state. Mutations: `scripts/mutations/sl-item-pts.json` |
+| `tests/fixtures/sl-logged-in-columns.spec.js` | logged-in lists: collection MusicBrainz/Good scans/Kept in (incl. Lebanon) and the Version after the second marker, bootlegs MusicBrainz and the Info file link, brucelegs PDF/Artwork, logged out unchanged; the Info file's card (no request) and window (one), the MusicBrainz cell's card |
 | `tests/live/sl-lists.spec.js` (`@extended`)  | real pagination: rows = the page's own "Showing items … of N" (album/12i, book, the entry page, aud_live1967, brucelegs); Sticky Page Headers under the site's real CSS; on every real brucelegs row: a Location show note reaches Show, no description or "USA" reaches Country, every dated row has YYYY; the whole lyrics index (32 letters) against the landing page's own per-letter `chartData`, with bounds on "Other" and undated Live lines                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 
 Fixtures are generated: `python3 scripts/build-sl-fixtures.py` splits three
@@ -711,6 +820,15 @@ it over the toolbar once pinned).
 registered first (thumbnails and stray subresources), page 1 at the list URL,
 and a predicate route for every `page=N`/`pg=N` fetch (a glob cannot work: the
 list URL already contains `?`). Mutation list: `scripts/mutations/sl-support.json`.
+
+The logged-in fixtures (2026-11-04) come from `python3
+scripts/build-sl-item-fixtures.py` (`--check` verifies): the item snapshots
+whole, the user name replaced by "USER" and every "Private info" section's
+content by a placeholder, with a leak check on the output; the logged-in
+LIST snapshots were saved with the script running (its toolbar and styles in
+the page), so their cards and logged-in login box are grafted into the clean
+anonymous page 1 of the same kind. `slFixture.js` serves them as the kinds
+`collection-logged-in`, `bootlegs-logged-in`, `brucelegs-logged-in`.
 
 ## Titles
 

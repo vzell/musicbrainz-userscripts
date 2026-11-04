@@ -89,6 +89,33 @@ const SL_KINDS = {
         pageParam: 'page',
         cmds: ['list'],
     },
+    // Logged-in lists (2026-11-04): the logged-in cards (MusicBrainz link,
+    // Good scans, "In <country>") and login box grafted into the anonymous
+    // page 1 by scripts/build-sl-item-fixtures.py; one page each.
+    'collection-logged-in': {
+        url: 'https://springsteenlyrics.com/collection.php?cmd=list&category=album',
+        pathname: '/collection.php',
+        pages: ['sl-collection-logged-in.html'].map((f) => path.join(FIXTURE_DIR, f)),
+        button: 'Show all items of this collection list',
+        pageParam: 'page',
+        cmds: ['list'],
+    },
+    'bootlegs-logged-in': {
+        url: 'https://springsteenlyrics.com/bootlegs.php?cmd=list&category=aud_live1978',
+        pathname: '/bootlegs.php',
+        pages: ['sl-bootlegs-logged-in.html'].map((f) => path.join(FIXTURE_DIR, f)),
+        button: 'Show all bootlegs of this list',
+        pageParam: 'page',
+        cmds: ['list'],
+    },
+    'brucelegs-logged-in': {
+        url: 'https://springsteenlyrics.com/brucelegs.php?cmd=list',
+        pathname: '/brucelegs.php',
+        pages: ['sl-brucelegs-logged-in.html'].map((f) => path.join(FIXTURE_DIR, f)),
+        button: 'Show all CD and vinyl bootlegs of this list',
+        pageParam: 'page',
+        cmds: ['list'],
+    },
     // The lyrics index (sl-lyrics), started from its landing page or from a
     // letter page. Pages are fetched by KEY (features.pageKeys), so the
     // route serves `keyFiles[letter]` rather than `pages[n]`; the fixture
@@ -130,7 +157,7 @@ const SL_KINDS = {
  * Loads one SL list fixture with the userscript injected.
  *
  * @param {import('@playwright/test').Page} page
- * @param {{ kind: ('collection'|'collection-intro'|'sampler'|'memorabilia'|'bootlegs'|'brucelegs'|'lyrics-intro'|'lyrics-b'|'bootlegs-intro'), enabled?: boolean, titles?: boolean, settingsOverride?: Object<string, *>, startPage?: number, url?: string }} opts
+ * @param {{ kind: ('collection'|'collection-intro'|'sampler'|'memorabilia'|'bootlegs'|'brucelegs'|'collection-logged-in'|'bootlegs-logged-in'|'brucelegs-logged-in'|'lyrics-intro'|'lyrics-b'|'bootlegs-intro'), enabled?: boolean, titles?: boolean, settingsOverride?: Object<string, *>, startPage?: number, url?: string }} opts
  *   `titles` seeds `sa_foreign_mb_titles` and `sa_foreign_typography`
  *   (default `false` here, although both settings default to ON: these
  *   loaders serve the converter specs, which pin the site's text as

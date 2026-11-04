@@ -152,6 +152,51 @@ test.describe('detail-page parsers (one record per saved page)', () => {
         expect(u.fields).toContainEqual(['Duration', '3:44:16']);
     });
 
+    test('springsteenlyrics.com items of 2026-11-04: a CD bootleg\'s tracklist, a box set\'s records, captions, no private info', async ({ page }) => {
+        await loadBsRecordsPage(page);
+        const base = 'https://www.springsteenlyrics.com/';
+        const parse = (name, url) => page.evaluate(([h, u]) => window.__saTest.dpParse('springsteenlyrics.com', h, u),
+            [fixtureHtml(name), base + url]);
+
+        // brucelegs 281: the tracklist sits after an "<h3>Trackslist</h3>",
+        // its lines have no hyphen, and "Disc: (82:40.00)" is its header.
+        // The preview said "The page has no tracklist." (vzell, 2026-11-04).
+        const cd = await parse('detail-sl-brucelegs-281.html', 'brucelegs.php?item=281&f_format=vinyl');
+        expect(cd.tracks).toHaveLength(15);
+        expect(cd.tracks[0]).toEqual({ disc: 'Disc (82:40.00)', pos: '01', title: 'The Ghost Of Tom Joad', from: '', length: '5:45.15' });
+        expect(cd.tracks.at(-1)).toMatchObject({ pos: '15', title: 'Interview', length: '8:25.69' });
+        expect(cd.notes.join('\n')).toMatch(/^Notes:\nTracks 01 - 10 The Tower Theater/);
+        expect(cd.sections.map((s) => s.label)).toEqual(['Runout groove etchings (vinyl) or inner ring text (CD)', 'Release info']);
+        expect(cd.sections[0].text).toBe('GSG020 C70117');
+        // Captions label the artwork (the PDF's own picture has no thumbnail).
+        expect(cd.images.map((i) => i.label).slice(0, 3)).toEqual(['front', 'back', 'booklet p1,4']);
+
+        // vinyl 148 (the older fixture): sides A–H, "- V1" kept in the title.
+        const lp = await parse('detail-sl-brucelegs-148.html', 'brucelegs.php?item=148&f_format=vinyl');
+        expect(lp.tracks).toHaveLength(26);
+        expect(lp.tracks[0]).toEqual({ disc: '', pos: 'A1', title: '4th Of July, Asbury Park (Sandy) - V1', from: '' });
+        expect(lp.tracks.at(-1).pos).toBe('H4');
+
+        // collection 5240: five "Record N: "…" (catalogue # …)" headers. Only
+        // record 1 was read before; records 2–5 landed in the notes.
+        const box = await parse('detail-sl-collection-5240.html', 'collection.php?item=5240&category=sampler&f_format=12i');
+        expect([...new Set(box.tracks.map((t) => t.disc))]).toEqual([
+            'Record 1: "Dancing In The Dark" (catalogue # CBS TA 4436)', 'Record 2: "Cover Me" (catalogue # CBS QTA 4662)',
+            'Record 3: "I\'m On Fire" (catalogue # CBS TA 6342)', 'Record 4: "Glory Days" (catalogue # CBS TA 6375)',
+            'Record 5: "I\'m Goin\' Down" (catalogue # CBS A 6561)']);
+        expect(box.tracks).toHaveLength(17);
+        expect(box.notes).toEqual(['UK-only box set limited to 10,000 copies. Includes four 12-inch EP\'s and a 7-inch single, plus a poster.']);
+
+        // A logged-in page's "Private info" never reaches a record.
+        for (const [name, url] of [['detail-sl-collection-5240.html', 'collection.php?item=5240'], ['detail-sl-bootlegs-2567.html', 'bootlegs.php?item=2567']]) {
+            const r = await parse(name, url);
+            expect(JSON.stringify(r)).not.toMatch(/private note removed|Private info/);
+        }
+        const boot = await parse('detail-sl-bootlegs-2567.html', 'bootlegs.php?item=2567&category=aud_live1984');
+        expect(boot.tracks.map((t) => t.pos)).toEqual(['A1', 'A2', 'A3', 'B1', 'B2', 'B3']);
+        expect(boot.images.map((i) => i.label)).toEqual(['front', 'back', 'disc side 1', 'disc side 2', 'label side 1', 'label side 2', 'runout groove side 1', 'runout groove side 2']);
+    });
+
     test('springsteenlyrics.com tracklist shapes the saved pages lack', async ({ page }) => {
         await loadBsRecordsPage(page);
         const split = (text) => page.evaluate((t) => window.__saTest.dpSlTracklist(t), text);

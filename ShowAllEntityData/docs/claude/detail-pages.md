@@ -472,6 +472,16 @@ and its URL is same-origin and passes the host's `isDetailUrl`.
   month. It is deliberately NOT a store in the art cache: that would bump
   `_ART_IDB_VERSION` on MusicBrainz too. The dialog's ⟳ fetches again,
   bypassing both tiers.
+- **Login state (2026-11-04).** A site with `session` (springsteenlyrics.com:
+  `_slLoggedIn(document)`) has its parser stamp each record with the state the
+  page was read in (`data.session`, 'in'/'out'); `_dpRecUsable()` and
+  `_dpSessionFits()` treat a record of the other state as a miss, in memory,
+  in IndexedDB and in the render sweep's read (`_fiDpPeek()`). A logged-in
+  page carries the MusicBrainz link and flags a public one lacks, and the
+  cache is keyed by URL only.
+- **`windowOnly(u)` (2026-11-04).** Such a link's card makes no request and
+  says that Space reads it; the window reads it (`_dpSiteSource()`).
+  springsteenlyrics.com's original info files (`_SL_INFO_FILE_PATH_RE`).
 
 Every parser returns the same record, `_dpEmpty()`'s shape: `title`,
 `subtitle`, `fields` (label/value pairs, in page order), `tracks`
@@ -495,6 +505,20 @@ markup.
   paragraph of three or more title-like lines is an UNNUMBERED tracklist
   (bootleg 1331); an all-capitals line may end in a dot there ("BORN IN THE
   U.S.A.").
+  Since 2026-11-04 (parser version 9) the reading is `_slParseTracklist()`,
+  shared with the item pageTypes (docs/claude/springsteenlyrics.md, "An item's
+  own page"), and the block is found by `_slTracklistBlock()`: the CD and
+  vinyl bootleg pages put an `<h3>Trackslist</h3>` between the spacer and the
+  block, which made their preview say "The page has no tracklist." Their
+  lines have no separator ("A1 Title", read by `_DP_TRACK_LOOSE_RE` in a block
+  where no line has one) and may end in a length ("(5:45.15)" → the track's
+  `length`, shown dim after the title); `_DP_DISC_RE` also takes "record" and
+  a quoted or parenthesised text after the colon (`Disc: (82:40.00)`, a box
+  set's `Record 2: "Cover Me" (catalogue # …)`, whose records 2–5 used to land
+  in the notes). The CD and vinyl bootlegs' own sections (Runout groove
+  etchings, Release info) become `sections`; artwork captions
+  (`"148_artwork_01.jpg": box front`) the images' labels. A logged-in page's
+  "Private info" is never read (`_SL_ITEM_OWN_SECTION_RE`).
 - **`_dpParseSlSong()`** (reached from `_dpParseSl()` for `lyrics.php`): a
   song page has no card. In `.project-detail`: an `<h3>` title, a `<p><em>`
   version ("Album version"; empty when unknown), then between the first two
