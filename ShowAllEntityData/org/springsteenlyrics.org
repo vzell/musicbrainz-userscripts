@@ -1125,3 +1125,31 @@ Checked:
 8. Covers, logged in: one Item column (view and edit links), with the "add N songs" links left out?
 
 Still to do: the merge on your word, and the =sl-song= build on its own branch after the answers.
+
+*** answers
+
+1. Song page buttons: "Show the song", plus "All versions" (the Available Versions list as one table)? YES
+2. Private Info on the song page view: a closed section, logged in only, as on the item pages? YES
+3. Request: hide the form, and keep its text as a closed section? YES
+4. Live releases: split each sentence into Date / Release / Kind / Released year, with Note as the fallback? YES
+5. A live version's venue and tour: read them from the Info sentence, best-effort? YES
+6. MusicBrainz's old SL links: read them as their current address, with "old address" in the card? YES, plus a ⚠️ finding on MusicBrainz work pages, so they can be edited.
+7. The window's Live page view on SL still shows Private Info when logged in. Hide it there too (=liveHide=)? NO
+8. Covers, logged in: one Item column (view and edit links), with the "add N songs" links left out? YES
+
+What follows from the answers (2026-11-05T00:05:47+01:00):
+- 1–5 and 8: the =sl-song= build follows the mockup as drawn: "Show the song" plus "All versions"; Private Info
+  closed and logged in only; Request's text closed, its form hidden; live releases split, with Note as the
+  fallback; venue and tour best-effort; covers get an Item column (logged in) without the "add N songs" links.
+- 6: two parts.
+  - The springsteen reader reads =/lyrics/<l>/<slug>.php= as =lyrics.php?song=<slug>= and
+    =/collection/moreinfo.php?item=N= as =collection.php?item=N=, and the card says "old address".
+  - A new ⚠️ finding (=add-finding= skill) on MusicBrainz work pages (and wherever such a link shows) marks these
+    links, so they can be edited. It is the TODO vzell added to =org/TODO.org= on 2026-11-04 ("Mark SL old-style
+    song URLs … as findings on MB pages"). It is MusicBrainz-side, so it needs the MusicBrainz fixture suite as
+    proof that nothing else changes.
+- 7: the window's Live page view stays the site's own page as it is. Logged in on SL it shows Private Info: that is
+  the site's own page, in vzell's own session. Every view the script BUILDS (card, window, the page views) leaves
+  it out or shows it closed.
+- Build order: one branch stacked on =feat/sl-songs= (=feat/sl-song-pt=): the =sl-song= PT and the shared song
+  reader first, then the old-address alias, then the finding.

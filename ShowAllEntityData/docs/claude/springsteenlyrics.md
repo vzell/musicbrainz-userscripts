@@ -522,9 +522,11 @@ POHs", branch `feat/sl-songs`):
   and the 30-day cache. It is skipped now (`_SL_SONG_PRIVATE_RE`), the
   record carries `session` (as the item records do), and
   `_DP_PARSER_VERSION` is 10.
-- **Not yet hidden:** the window's Live page view still frames the site's
-  own page, so logged in on SL it shows Private Info. This is question 7 of
-  the mockups, `org/sl-song-mockups.html`.
+- **Left as it is, by decision:** the window's Live page view frames the
+  site's own page, so logged in on SL it shows Private Info. That is the
+  site's page in the user's own session, and it stays unchanged (vzell,
+  2026-11-05, answer 7 to `org/sl-song-mockups.html`). Only the views the
+  script builds (card, window, page views) leave the notes out or closed.
 
 ## The compact category/filter bar — `_slInstallScopeBar()`
 

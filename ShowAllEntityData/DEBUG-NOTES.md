@@ -28145,7 +28145,7 @@ comparison: `debug/detail-sl-lyrics-{babyme,badlands}.html`.
   WIP.1 of feat/sl-item-pts; song pages had none. Fix: `_SL_SONG_PRIVATE_RE` skips the section, the record carries
   `session` (a logged-in and a public read no longer replace each other), `_DP_PARSER_VERSION` 10 drops the stored
   records. Cards opened from MusicBrainz were never affected (anonymous requests).
-  Still open (mockup question 7): the window's Live page view frames the site's own page, Private Info included.
+  Left as it is (vzell, 2026-11-05, answer 7): the window's Live page view frames the site's own page, Private Info included.
 - **Lyrics ✗ on every logged-in row.** A logged-in line starts with the edit link
   (`<a href="lyrics.php?cmd=edit&item=N"><i class="bi bi-pencil-square">`), and `applySlLyricsToTable()` read
   `span.querySelector('i')` as the lyrics glyph. Fix: the glyph by name (`_SL_LYRICS_GLYPH_SEL`). B: 296 ✓, 16 ✗.
