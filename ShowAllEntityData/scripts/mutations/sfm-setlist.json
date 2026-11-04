@@ -128,5 +128,31 @@
         "spec": "tests/fixtures/sfm-list.spec.js",
         "grep": "a free-text search",
         "expect": "fail"
+    },
+    {
+        "name": "sfm previews: a search page's cards out of scope again",
+        "why": "A search page's cards are in .rightColumn (vzell 2026-11-04: no POH on the search pages).",
+        "edits": [
+            {
+                "find": "            extRoot: '#mb-sfm-root, .mainColumn .setlistPreview, .rightColumn .setlistPreview, .mainColumn .info, .setlistInfo .setlistHeadline, .setlistInfo .infoContainer > p, .setlistList'",
+                "replace": "            extRoot: '#mb-sfm-root, .mainColumn .setlistPreview, .mainColumn .info'"
+            }
+        ],
+        "spec": "tests/fixtures/sfm-list.spec.js",
+        "grep": "a search page's cards preview too",
+        "expect": "fail"
+    },
+    {
+        "name": "sfm previews: a setlist page's headline and list out of scope again",
+        "why": "The headline, the Tour line and the song list are not .info.",
+        "edits": [
+            {
+                "find": "            extRoot: '#mb-sfm-root, .mainColumn .setlistPreview, .rightColumn .setlistPreview, .mainColumn .info, .setlistInfo .setlistHeadline, .setlistInfo .infoContainer > p, .setlistList'",
+                "replace": "            extRoot: '#mb-sfm-root, .mainColumn .setlistPreview, .rightColumn .setlistPreview, .mainColumn .info'"
+            }
+        ],
+        "spec": "tests/fixtures/sfm-setlist.spec.js",
+        "grep": "the page's own links preview",
+        "expect": "fail"
     }
 ]

@@ -212,11 +212,17 @@ def build_page(snapshot, out, heading_cls, last_page):
         note += f' and its pager, cut to {last_page} pages'
     note += '; do not edit by hand.'
     body = '\n'.join(parts)
+    # A search page (its filter form, `searchFilter`) has no `.mainColumn`:
+    # the form, the cards and the pager are all in `.rightColumn`, as on
+    # setlist.fm (2026-11-04: the link previews' scope missed them there).
+    if heading_cls == 'searchFilter':
+        columns = f'<div class="rightColumn col-xs-12 col-md-9">\n{body}\n</div>'
+    else:
+        columns = f'<div class="mainColumn col-xs-12 col-md-8">\n{body}\n</div><div class="rightColumn col-xs-12 col-md-4"></div>'
     with open(os.path.join(ROOT, out), 'w', encoding='utf-8', newline='\n') as fh:
         fh.write(f'<!-- {note} -->\n<!DOCTYPE html>\n<html><head><meta charset="utf-8"><title>setlist.fm</title></head><body>\n'
                  '<div class="body">\n<div class="header"><div class="container">setlist.fm</div></div>\n'
-                 '<div class="container"><div class="row main"><div class="mainColumn col-xs-12 col-md-8">\n'
-                 f'{body}\n</div><div class="rightColumn col-xs-12 col-md-4"></div></div></div>\n</div>\n</body></html>\n')
+                 f'<div class="container"><div class="row main">{columns}</div></div>\n</div>\n</body></html>\n')
     return f'{snapshot} -> {out}: {len(previews)} setlists{f", pager to {last_page}" if last_page else ""}'
 
 

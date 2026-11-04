@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.6",
+        "date": "2026-11-04",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "setlist.fm: on a search page (an artist's search, a search by words), the setlists' links had no hover card or window before you pressed the button: setlist.fm lays a search page out differently from a venue's or an artist's list, and the cards were outside the part of the page the previews looked at. On a setlist's own page, the headline's artist and venue, its Tour line and the covers and guests in the song list now preview too."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.5",
         "date": "2026-11-04",
         "sections": [

@@ -129,6 +129,16 @@ on every host, and only with `sa_pop_ext_setlistfm_key` set.
   "Upcoming" list is ticket-shop affiliate links. setlist.fm writes its links
   relative to the page (`../search?artist=…&tour=…`); `_extTarget()` reads
   them against it on setlist.fm (and archive.org), as on discogs.com.
+  **2026-11-04** (vzell: "the SFM IPs doesn't seem to have POH support
+  yet, e.g. the two search pages"): every search page — `search?artist=`
+  too — puts its form, cards and pager in `.rightColumn`; it has no
+  `.mainColumn`, so `.mainColumn .setlistPreview` reached none of its cards.
+  And a setlist's page has its links in `.setlistInfo .setlistHeadline`
+  (artist, venue), `.setlistInfo .infoContainer > p` ("Tour:") and
+  `.setlistList` (covers, guests), none of them `.info`. `extRoot` names
+  those too, on ONE line: `build-coverage-report.py` reads it from the
+  source line. The search fixtures now keep that layout
+  (`build-setlistfm-fixtures.py`: a `searchFilter` page in `.rightColumn`).
 
 ### The window would not scroll sideways (2026-11-03)
 

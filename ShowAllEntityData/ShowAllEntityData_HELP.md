@@ -4163,8 +4163,10 @@ and window need no key, they read setlist.fm's search page itself (the window
 lists its setlists with their set times, 10 at a time).
 Before you press the button, setlist.fm's own list previews the same way: a
 setlist's Tour link, the venue box's links (its website, Wikipedia) and, with
-the key, a setlist's own link. The Upcoming Shows box's ticket links have no
-card.
+the key, a setlist's own link — on a search page too. On a setlist's own page
+the artist and venue at the top, the Tour line and the covers and guests in
+the song list preview the same way. The Upcoming Shows box's ticket links have
+no card.
 
 **A setlist's own page** (setlist.fm/setlist/…) gets one button, **Setlist**,
 which lays the setlist out like a MusicBrainz release page, without asking

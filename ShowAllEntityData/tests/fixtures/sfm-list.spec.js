@@ -216,6 +216,27 @@ test.describe('setlist.fm list pages (sfm-venue, sfm-artist)', () => {
         expect(r.ticket, 'a ticket shop\'s affiliate link').toBe('none');
     });
 
+    test('before any button, a search page\'s cards preview too: they are in .rightColumn, not .mainColumn (vzell 2026-11-04: "the two search pages … no POH")', async ({ page }) => {
+        // Every setlist.fm search page puts its filter form, cards and pager
+        // in `.rightColumn`; `extRoot` named `.mainColumn .setlistPreview`
+        // only, so no card of a search previewed before a render.
+        const resolve = sel => page.evaluate((q) => {
+            const a = document.querySelector(q);
+            return a ? (window.__saTest.popResolve(a) || 'none') : 'missing';
+        }, sel);
+        for (const p of ['/search?query=Bruce+Springsteen', '/search?artist=2bd6dcce&tour=3daa95b',
+            `/search?query=${encodeURIComponent('artist:(Bruce Springsteen) tour:(Land of Hope & Dreams American Tour)')}`]) {
+            await open(page, p, { sa_pop_ext: true, sa_pop_ext_setlistfm_key: 'tok-probe' });
+            expect(await page.locator('#mb-sfm-root table.tbl').count(), `${p}: nothing rendered yet`).toBe(0);
+            expect(await page.locator('.rightColumn .setlistPreview').count(), `${p}: the cards where setlist.fm puts them`).toBe(10);
+            expect((await resolve('.rightColumn .setlistPreview h2 a[href]')).split(':').slice(0, 2).join(':'), `${p}: a setlist link`).toBe('ext|ext:setlistfm');
+        }
+        // A Tour link (setlist.fm's own search) needs no key.
+        await open(page, `/search?query=${encodeURIComponent('artist:(Bruce Springsteen) tour:(Land of Hope & Dreams American Tour)')}`,
+            { sa_pop_ext: true, sa_pop_ext_setlistfm_key: '' });
+        expect(await resolve('.rightColumn .setlistPreview a[href*="search?artist="]')).toContain('ext|ext:setlistfm:https://www.setlist.fm/search?artist=');
+    });
+
     test('on setlist.fm, a Tour cell (setlist.fm\'s own search link) has its card and window, key or not (vzell, 2026-11-03: "does not have the hover POH")', async ({ page }) => {
         await open(page, '/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html', { sa_pop_ext: true, sa_pop_ext_setlistfm_key: '' });
         await show(page, 'Show all setlists of this venue');

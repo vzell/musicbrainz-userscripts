@@ -26041,6 +26041,13 @@
         // by `_extTarget()`) and a venue's info box (`.info`: its website,
         // Wikipedia). Not the whole `.mainColumn`: its "Upcoming" list is
         // ticket-shop affiliate links.
+        // 2026-11-04 (vzell: "the SFM IPs doesn't seem to have POH support
+        // yet, e.g. the two search pages"): a search page puts its cards in
+        // `.rightColumn` (its filter form is the left column), so
+        // `.mainColumn .setlistPreview` never reached them — `search?artist=`
+        // (sfm-search) included; and a setlist's page has its links in its
+        // headline (artist, venue), its "Tour:" line and its song list
+        // (covers, guests), none of them in `.info`.
         'www.setlist.fm': {
             setting: null,
             isDetailUrl: () => false,
@@ -26050,7 +26057,7 @@
             liveHide: [],
             liveCss: '',
             livePrepare: null,
-            extRoot: '#mb-sfm-root, .mainColumn .setlistPreview, .mainColumn .info'
+            extRoot: '#mb-sfm-root, .mainColumn .setlistPreview, .rightColumn .setlistPreview, .mainColumn .info, .setlistInfo .setlistHeadline, .setlistInfo .infoContainer > p, .setlistList'
         }
     };
 

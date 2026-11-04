@@ -186,6 +186,30 @@ test.describe('setlist.fm: a setlist\'s page (sfm-setlist, 2026-11-04)', () => {
         expect((await tables(page))[0].find(r => r.Song === 'Power to the People')).toMatchObject({ With: '', Info: 'with the ensemble' });
     });
 
+    test('before the button, the page\'s own links preview: the headline\'s artist and venue, the Tour line, a guest in the list (vzell 2026-11-04)', async ({ page }) => {
+        // `extRoot` reached only setlist.fm's Note (`.mainColumn .info`)
+        // here; the headline, the "Tour:" line and the song list are not in it.
+        await open(page, '2b4b60da', { sa_pop_ext: true, sa_pop_ext_setlistfm_key: 'tok-probe' });
+        const r = await page.evaluate(() => {
+            const R = (sel) => {
+                const a = document.querySelector(sel);
+                return a ? (window.__saTest.popResolve(a) || 'none') : 'missing';
+            };
+            return {
+                artist: R('.setlistHeadline h1 strong a'),
+                venue: R('.setlistHeadline h1 > span a'),
+                tour: R('.setlistInfo .infoContainer > p a[href*="search?artist="]'),
+                guest: R('.setlistList a[href*="/setlists/tom-morello-"]'),
+                table: document.querySelectorAll('#mb-sfm-root table.tbl').length,
+            };
+        });
+        expect(r.table, 'nothing rendered yet').toBe(0);
+        expect(r.artist).toBe('ext|ext:setlistfm:https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html');
+        expect(r.venue).toContain('ext|ext:setlistfm:https://www.setlist.fm/venue/xfinity-mobile-arena-');
+        expect(r.tour).toContain('ext|ext:setlistfm:https://www.setlist.fm/search?artist=2bd6dcce');
+        expect(r.guest).toBe('ext|ext:setlistfm:https://www.setlist.fm/setlists/tom-morello-13d689dd.html');
+    });
+
     test('a setlist without songs yet: no button', async ({ page }) => {
         const { errors } = await open(page, 'b7005be');
         await expect(page.locator('#mb-sfm-root')).toHaveCount(1);
