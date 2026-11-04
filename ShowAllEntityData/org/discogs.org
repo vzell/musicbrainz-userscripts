@@ -158,7 +158,6 @@ images initally (+ full "Space" handling)
 ** master and releases
 
 
-
 * TODO add support for the Discogs "Apple Music Audio Player"
 
 add support for the Discogs "Apple Music Audio Player" - https://support.discogs.com/hc/en-us/articles/17114733929229-Release-Page-Guide
@@ -212,4 +211,9 @@ The "Releases" sub-table should get another column "Release-subtype" e.g. "Album
 
 On discogs https://www.discogs.com/submissions?mode=list&id=599283#mode=list&id=599283&item=%2Frelease%2F1752289-Born-In-The-USA%2Fhistory
 when hovering a release in the left sidebar, ONLY the newest change should be shown in a POH diff view
+
+
+* TODO the discogs master release PT should be enhanced the same way what we have done for the discogs release PT
+
+the discogs master release PT should be enhanced the same way what we have done for the discogs release PT
 

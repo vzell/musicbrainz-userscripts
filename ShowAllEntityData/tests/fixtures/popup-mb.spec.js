@@ -869,11 +869,18 @@ test.describe('MusicBrainz link previews: recording and work (WIP.2)', () => {
         const recordedAt = credits.locator('dt:text-is("Recorded at") + dd');
         // Midtown Manhattan (City) → Manhattan (District, passed over) →
         // New York (City) → New York (Subdivision) → United States.
-        await expect(recordedAt).toContainText(`914 Sound Studios in New York, United States`);
+        // Each step waits for the one before it AND for its own slot of the
+        // one MusicBrainz rate gate (_REL_WS2_SPACING_MS, 1.1 s), queued
+        // behind the window's credits and releases requests: about 6-7 s
+        // after Space, so the default 5 s expect timeout raced it and the
+        // test failed with a chain still at ◌, on main too (2026-11-04,
+        // NB-3641: 5 of 5 on main, 3 of 3 on feat/dg-release).
+        const chainWait = { timeout: 15000 };
+        await expect(recordedAt).toContainText(`914 Sound Studios in New York, United States`, chainWait);
         // The Record Plant, with or without its "(New York)" disambiguation.
-        await expect(recordedAt).toContainText(/The Record Plant( \(New York\))? in Midtown Manhattan, New York, New York, United States/);
+        await expect(recordedAt).toContainText(/The Record Plant( \(New York\))? in Midtown Manhattan, New York, New York, United States/, chainWait);
         await expect(credits.locator('dt:text-is("Mixed at") + dd'))
-            .toContainText(/The Record Plant( \(New York\))? in Midtown Manhattan, New York, New York, United States/);
+            .toContainText(/The Record Plant( \(New York\))? in Midtown Manhattan, New York, New York, United States/, chainWait);
         await expect(credits).not.toContainText(', Manhattan,');
         await expect(credits.locator('.mb-dp-spin')).toHaveCount(0);
         await expect(recordedAt.locator('a[href="/area/edd27a39-ff8a-4af4-8bbf-f369b0fb1899"]').first()).toHaveText('Midtown Manhattan');

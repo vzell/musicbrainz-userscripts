@@ -194,11 +194,11 @@ Env: 2026-11-04T11:54+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1
 - =main= is at =2967a04a= (=@version 9.99.1533+2026-11-03=), untouched by this work.
 - One stack of three branches, each pushed, each containing the one below it:
 
-  | branch                     | head       | holds                                                                 |
-  |----------------------------+------------+-----------------------------------------------------------------------|
+  | branch                     | head       | holds                                                                                                   |
+  |----------------------------+------------+---------------------------------------------------------------------------------------------------------|
   | =fix/non-mb-coverage-gaps= | =6ad4efaf= | G1–G8 of NON-MB-COVERAGE (WIP.1), setlist.fm Stop fix (WIP.2), Brucebase previews on every page (WIP.4) |
-  | =feat/ia-details=          | =8201b1c4= | + archive.org item page =ia-details= (WIP.3) and its release-tracks head (WIP.5) |
-  | =feat/dg-release=          | =6aaef806= | + Discogs release Tracks view (WIP.6) and vzell's "add new todo"      |
+  | =feat/ia-details=          | =8201b1c4= | + archive.org item page =ia-details= (WIP.3) and its release-tracks head (WIP.5)                        |
+  | =feat/dg-release=          | =6aaef806= | + Discogs release Tracks view (WIP.6) and vzell's "add new todo"                                        |
 
 - =feat/dg-release= therefore holds everything (14 commits ahead of =main=). =ShowAllEntityData_CHANGELOG.wip.json=
   has WIP.1 … WIP.6; no =@version= bump on the branches (main only).
@@ -249,6 +249,19 @@ Env: 2026-11-04T11:54+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1
   =python3 scripts/audit-docs.py=, =bash scripts/verify-doc-crossrefs.sh=: all green on vzell-lap at =89e6574b=.
 - The Discogs splitter on more releases: =python3 scripts/probe-dg-release-shapes.py DIR [N] [--multi]=, then
   =node scripts/check-dg-release-media.js DIR [--roles]= (prints any credit range it cannot place).
+
+*** done on NB-3641 (2026-11-04)
+
+Env: 2026-11-04T12:12:46+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+- Step 1: =feat/dg-release= already at =481178e3=, level with origin; no dependency change, so no =npm install=.
+- Step 2: =test:full= 2619 passed, 6 failed, 21 m 54 s (2625 tests). Details in =tests/MEASUREMENTS.org=, same date.
+  - 5 were load flakes (each 3/3 alone).
+  - =popup-mb.spec.js:861= (the recording window's area chain) failed every time, on =main= too: a 5 s expect
+    timeout racing a chain the rate gate spaces at 1.1 s a step. Fixed in the spec (15 s on its three chain
+    waits); then 10/10 and its file 142/143 (the other, the grip test's ↓, passed 3/3 alone).
+- The four read-only checks (coverage, lint, =audit-docs.py=, doc cross-refs): all green at =481178e3=.
+- Not run: the mutation lists. Merge: waits for vzell.
 
 *** next work (plan step 4, after the merge)
 
@@ -394,5 +407,13 @@ section, see [Image #34] and the hyperlinks are also missing
 * TODO add MB entity glyph handling for all entities whhich have one when the third party userscript from murdos is installed
 
 add MB entity glyph handling for all entities whhich have one when the third party userscript from murdos is installed
+
+
+
+
+* TODO add 2-column display in the "COMMUNITY" card of the Discogs release PT
+
+add 2-column display in the "COMMUNITY" card of the Discogs release PT, currently the ten entries are listed below each
+other but there is enough space to list them inside the card in two columns 5, entries each
 
 
