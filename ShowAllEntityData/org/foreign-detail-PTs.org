@@ -2,7 +2,6 @@
 #+STARTUP: overview
 
 * TODO PTs for the setlist.fm setlist, archive.org item and Discogs release pages
-
 ** request (vzell, 2026-11-03)
 
 Before tackling the open items, I'm connected remotely right now, create a new plan for: is it feasible to add proper
@@ -162,7 +161,6 @@ vzell, 2026-11-03:
 - Mutations: =scripts/mutations/ia-details.json= (8, all caught).
 - Docs: =docs/claude/internet-archive.md= "An item page", HELP, the PAGETYPES reference #147, the coverage registry row.
 
-
 ** Discogs (=dg-release= Tracks view) — built (2026-11-04, branch feat/dg-release, stacked on feat/ia-details)
 
 Env: 2026-11-04T03:46+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright Chromium, no Tampermonkey (GM stubs)
@@ -250,7 +248,7 @@ Emulate the MB PT for 'release-tracks', e.g. https://musicbrainz.org/release/755
   To try it: https://www.discogs.com/release/1874253 (Born To Run on vinyl) and https://www.discogs.com/release/2012001 (five CDs with headings). Press "Tracks". When it looks right, tell me to commit and
   push.
 
-* TODO bugs on discogs release PT
+* DONE bugs on discogs release PT
 ** DONE initial
 
 1.)
@@ -299,10 +297,11 @@ GENRES AND STYLES
 COMMUNITY - always last
 #+end_example
 
-** TODO add the rest of the statistics
+** DONE add the rest of the statistics
 
 currently the "COMMUNITY" card ([Image #33]) has not all the information available on the IP under the "Statistics"
 section, see [Image #34] and the hyperlinks are also missing
+
 
 * TODO add MB entity glyph handling for all entities whhich have one when the third party userscript from murdos is installed
 
