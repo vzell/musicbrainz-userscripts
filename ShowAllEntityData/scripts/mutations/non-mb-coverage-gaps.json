@@ -221,9 +221,9 @@
         "expect": "fail"
     },
     {
-        "name": "G4: a text-less shadow link (a picture, a tile) previewed",
-        "why": "vzell, 2026-11-04: our card came on top of archive.org's own hover card over a result's picture and a tile.",
-        "edits": [{ "find": "        if (!(a.textContent || '').trim()) return false;", "replace": "" }],
+        "name": "G4: a text-less shadow link (a picture, a tile) gets no card",
+        "why": "vzell, 2026-11-04 (\"Always ours too\"): our card shows on every result link next to archive.org's own, a picture's and a tile's included; a rule of the same morning that skipped text-less links (List view: every link) was taken back.",
+        "edits": [{ "find": "        // (\"Always ours too\"), as ours adds the tracks and Space's window.", "replace": "        // (\"Always ours too\"), as ours adds the tracks and Space's window.\n        if (!(a.textContent || '').trim()) return false;" }],
         "spec": "tests/fixtures/ia-search.spec.js",
         "grep": "a result's title link",
         "expect": "fail"

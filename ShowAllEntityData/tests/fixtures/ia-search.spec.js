@@ -315,9 +315,10 @@ test.describe('archive.org: the site\'s own result list, in shadow DOM (G4)', ()
         });
         expect(r.tile).toBe(`ext|ext:iadetails:https://archive.org/details/${SHOW}`);
         expect(r.nav, 'archive.org\'s navigation').toBeNull();
-        // vzell, 2026-11-04: our card came on top of archive.org's own over a
-        // result's picture (and a tile view's whole tile, one text-less link).
-        expect(r.pic, 'a link without text of its own (a picture, a tile)').toBeNull();
+        // A result's picture link, its content in a further shadow root (no
+        // text of its own): the item's card too, next to archive.org's own
+        // (vzell, 2026-11-04: "Always ours too").
+        expect(r.pic, 'a link without text of its own (a picture, a tile)').toBe(`ext|ext:iadetails:https://archive.org/details/${SHOW}`);
 
         const card = page.locator('#mb-dp-peek');
         await page.mouse.move(0, 0);

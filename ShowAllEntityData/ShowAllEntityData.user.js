@@ -19478,14 +19478,12 @@
     function _iaShadowLinkInScope(a) {
         if (!a || !a.getRootNode) return false;
         if (!(a.getRootNode() instanceof ShadowRoot)) return !!a.closest('table.tbl > tbody, #mb-ia-root');
-        // A link without text of its own: a tile (tile view: the whole tile
-        // is one link, its picture and title in further shadow roots) or a
-        // result's picture (list views). archive.org shows its own hover
-        // card there, and ours came on top of it (vzell, 2026-11-04, in the
-        // browser; probe scripts/probe-ia-shadow-links.js: tile view 60
-        // text-less item links, list views 58 text-less picture links plus
-        // 58 title links with text). The list views' title links keep ours.
-        if (!(a.textContent || '').trim()) return false;
+        // archive.org shows its own hover card on every result, in all three
+        // views (probe scripts/probe-ia-shadow-links.js v2, 2026-11-04: the
+        // Tile view's whole tile is one link, the List view's picture and
+        // title links have no text of their own, the Compact list's titles
+        // do). Ours shows next to it, on every result link: vzell's choice
+        // ("Always ours too"), as ours adds the tracks and Space's window.
         for (let n = a; n;) {
             if (n.matches && n.matches(_IA_SHADOW_SKIP)) return false;
             if (n.parentElement) n = n.parentElement;

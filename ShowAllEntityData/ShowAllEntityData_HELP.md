@@ -4031,9 +4031,9 @@ opens them all in the viewer. A link to one track of a show opens the show's
 window with that track marked. A video item shows its picture, thumbnails and
 files. On an archive.org search page a collection's link has a card and a
 window too, and so has archive.org's own result list before you press
-**Items**: in its List and Compact list views, rest on an item's title (its
-menu bar and header excepted). A picture, and a tile of the Tile view, keep
-archive.org's own hover card.
+**Items**: rest on an item's picture or title in any view (its menu bar and
+header excepted). archive.org shows its own hover card there too; ours adds
+the item's tracks, and Space opens its window.
 
 With *Play archive.org tracks and videos in the window* on (the default),
 each song has a **▶**, and a video a "Play here" tile: a click plays it in
