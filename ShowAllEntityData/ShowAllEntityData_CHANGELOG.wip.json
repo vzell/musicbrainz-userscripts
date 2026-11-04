@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.5",
+    "date": "2026-11-04",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "archive.org item page: the part above the tables is laid out like a MusicBrainz release page. Under the title a line \"~ Concert recording by … (date: venue)\", then three sections that fold like the release page's: Description (the uploader's text, closed to start with, like a release's Annotation), Details (the facts as cards in the look of the release page's Sidebar section: Show, Item, External links, Collections, Lineage; a click on a card's heading folds it) and Pictures (the scans as tiles, like the release page's Cover art; a click opens the viewer). Typing in a filter no longer rebuilds them."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.4",
     "date": "2026-11-04",
     "sections": [

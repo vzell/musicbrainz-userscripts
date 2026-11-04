@@ -111,26 +111,52 @@ test.describe('archive.org: an item page (ia-details)', () => {
         expect(errors).toEqual([]);
     });
 
-    test('the pictures (cover first) and the facts above the tables; a picture opens the artwork viewer', async ({ page }) => {
+    test('the head as release-tracks: subheader, Description (closed), Details cards and Pictures tiles (open); a picture opens the viewer', async ({ page }) => {
+        // vzell 2026-11-04: "emulate the MB PT for release-tracks".
         const errors = await open(page, SHOW);
         await press(page, 'Show all tracks');
+        // The subheader under the h1, as a release's "~ Release by …" (this item names no creator).
+        await expect(page.locator('#mb-ia-root > h1 + p.mb-ia-det-sub')).toHaveText('~ Audio (1975-12-27: Tower Theater, Philadelphia)');
         const head = page.locator('#mb-ia-root .mb-ia-det-head');
-        await expect(head.locator('h3.mb-ia-det-h')).toHaveText('Pictures (7)');
-        const tiles = head.locator('.mb-ia-det-pics a');
-        await expect(tiles).toHaveCount(7);
-        await expect(tiles.first().locator('span')).toHaveText('Cover');
-        await expect(head.locator('.mb-ia-det-card', { hasText: 'Show' })).toContainText('1975-12-27');
-        await expect(head.locator('.mb-ia-det-card', { hasText: 'Show' })).toContainText('Tower Theater, Philadelphia');
+        const h2s = head.locator(':scope > h2.mb-ia-det-h2');
+        await expect(h2s).toHaveText([/Description$/, /Details \(\d+\)$/, /Pictures \(7\)$/]);
+        // Collapsible h2 sections (makeH2sCollapsible() ran after they went in): Description starts closed,
+        // like a release's Annotation; Details and Pictures open.
+        await expect(h2s.nth(0)).toHaveClass(/mb-toggle-h2/);
+        await expect(head.locator('.mb-ia-det-desc')).toBeHidden();
+        await expect(head.locator('.mb-ia-det-details')).toBeVisible();
+        await h2s.nth(0).click();
+        await expect(head.locator('.mb-ia-det-desc')).toBeVisible();
+        // Details: the Sidebar section's cards.
+        const show = head.locator('.mb-sb-card', { has: page.locator('.mb-sb-card-head', { hasText: /^Show/ }) });
+        await expect(show).toContainText('1975-12-27');
+        await expect(show).toContainText('Tower Theater, Philadelphia');
         // The tracks' lengths added up (9176.4 s, rounded).
-        await expect(head.locator('.mb-ia-det-card', { hasText: 'Show' })).toContainText('Running time2:32:57');
-        await expect(head.locator('.mb-ia-det-card', { hasText: 'Links' }).locator('a').first())
+        await expect(show).toContainText('Running time2:32:57');
+        await expect(head.locator('.mb-sb-card', { hasText: 'External links' }).locator('a').first())
             .toHaveAttribute('href', /brucebase\.wikidot\.com/);
-        // Above the data heading, as release-tracks' Cover art section.
+        await expect(head.locator('.mb-sb-card', { hasText: 'Collections' }).locator('.mb-sb-pill')).toHaveCount(3);
+        // A card folds on its heading.
+        await show.locator('.mb-sb-card-head').click();
+        await expect(show).toHaveClass(/mb-sb-card-shut/);
+        await show.locator('.mb-sb-card-head').click();
+        await expect(show).not.toHaveClass(/mb-sb-card-shut/);
+        // Pictures: the Cover art section's tiles, the cover first.
+        const tiles = head.locator('.mb-ia-det-art figure.mb-release-art-tile');
+        await expect(tiles).toHaveCount(7);
+        await expect(tiles.first().locator('figcaption')).toHaveText('Cover');
+        // Above the data heading, as release-tracks' sections.
         expect(await page.evaluate(() => {
             const h = document.querySelector('#mb-ia-root .mb-ia-det-head');
             return !!(h && h.nextElementSibling && h.nextElementSibling.matches('h2.mb-ia-list-heading'));
         })).toBe(true);
-        await tiles.first().click();
+        // A filter re-render keeps the head as it is: not rebuilt, the folds kept.
+        await head.evaluate((h) => { h.dataset.mbProbe = '1'; });
+        await page.locator('#mb-global-filter-input').fill('Jungleland');
+        await expect(page.locator('#mb-ia-root h3', { hasText: 'Disc 2' })).toContainText('(1 of 9)');
+        await expect(head).toHaveAttribute('data-mb-probe', '1');
+        await expect(head.locator('.mb-ia-det-desc')).toBeVisible();
+        await tiles.first().locator('a').click();
         await expect(page.locator('#mb-art-viewer')).toBeVisible();
         expect(errors).toEqual([]);
     });

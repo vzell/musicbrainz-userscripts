@@ -2,7 +2,12 @@
     {
         "name": "ia-details: no disc split",
         "why": "A show's files named \"1-01. …\" / \"2-01. …\" are two discs: one sub-table each, as release-tracks has one per medium.",
-        "edits": [{ "find": "            return m ? Number(m[1]) : 0;", "replace": "            return 0;" }],
+        "edits": [
+            {
+                "find": "            return m ? Number(m[1]) : 0;",
+                "replace": "            return 0;"
+            }
+        ],
         "spec": "tests/fixtures/ia-details.spec.js",
         "grep": "Tracks: one request",
         "expect": "fail"
@@ -10,31 +15,51 @@
     {
         "name": "ia-details: no derivative columns",
         "why": "vzell's answer Q3: a file's copies (VBR MP3, …) are columns of its row.",
-        "edits": [{ "find": "            if (!derivFmts.includes(f.format)) derivFmts.push(f.format);", "replace": "" }],
+        "edits": [
+            {
+                "find": "            if (!derivFmts.includes(f.format)) derivFmts.push(f.format);",
+                "replace": ""
+            }
+        ],
         "spec": "tests/fixtures/ia-details.spec.js",
         "grep": "Tracks: one request",
         "expect": "fail"
     },
     {
-        "name": "ia-details: no pictures and facts",
-        "why": "The item's pictures and facts go above the tables after the render, as release-tracks' Cover art section and Sidebar cards.",
-        "edits": [{ "find": "        if (activeDefinition?.type !== 'ia-details') return;", "replace": "        return;" }],
+        "name": "ia-details: no head sections",
+        "why": "The item's subheader and its Description, Details and Pictures sections go above the tables, as release-tracks' (vzell 2026-11-04).",
+        "edits": [
+            {
+                "find": "        if (activeDefinition?.type !== 'ia-details') return;",
+                "replace": "        return;"
+            }
+        ],
         "spec": "tests/fixtures/ia-details.spec.js",
-        "grep": "the pictures",
+        "grep": "the head as release-tracks",
         "expect": "fail"
     },
     {
         "name": "ia-details: a picture does not open the viewer",
-        "why": "A click on a picture opens the artwork viewer on every picture of the item (_dpArtViewerClick on the strip).",
-        "edits": [{ "find": "        if (strip) strip.addEventListener('click', _dpArtViewerClick);", "replace": "" }],
+        "why": "A click on a picture opens the artwork viewer on every picture of the item (_dpArtViewerClick on the Pictures section).",
+        "edits": [
+            {
+                "find": "            sec.addEventListener('click', _dpArtViewerClick);",
+                "replace": ""
+            }
+        ],
         "spec": "tests/fixtures/ia-details.spec.js",
-        "grep": "the pictures",
+        "grep": "the head as release-tracks",
         "expect": "fail"
     },
     {
         "name": "ia-details: All files shows the tracks",
         "why": "The second button lists every file, one row each.",
-        "edits": [{ "find": "        if (view === 'files') return _iaDetailsFilesHtml(id, files);", "replace": "" }],
+        "edits": [
+            {
+                "find": "        if (view === 'files') return _iaDetailsFilesHtml(id, files);",
+                "replace": ""
+            }
+        ],
         "spec": "tests/fixtures/ia-details.spec.js",
         "grep": "All files: every file",
         "expect": "fail"
@@ -42,7 +67,12 @@
     {
         "name": "ia-details: a video item gets its file list",
         "why": "A video item's table is its video files with a Play here tile.",
-        "edits": [{ "find": "        if (video.length) return _iaDetailsVideosHtml(id, video);", "replace": "" }],
+        "edits": [
+            {
+                "find": "        if (video.length) return _iaDetailsVideosHtml(id, video);",
+                "replace": ""
+            }
+        ],
         "spec": "tests/fixtures/ia-details.spec.js",
         "grep": "a video item",
         "expect": "fail"
@@ -50,7 +80,12 @@
     {
         "name": "ia-details: the item's own content has no previews",
         "why": "An item page is plain HTML; its content (main#maincontent) previews before any button.",
-        "edits": [{ "find": "'table.tbl > tbody, #mb-ia-root, #maincontent'", "replace": "'table.tbl > tbody, #mb-ia-root'" }],
+        "edits": [
+            {
+                "find": "'table.tbl > tbody, #mb-ia-root, #maincontent'",
+                "replace": "'table.tbl > tbody, #mb-ia-root'"
+            }
+        ],
         "spec": "tests/fixtures/ia-details.spec.js",
         "grep": "the item's own content previews",
         "expect": "fail"
@@ -58,9 +93,83 @@
     {
         "name": "ia-details: the toolbar named as a search",
         "why": "An item page's section is named after the item.",
-        "edits": [{ "find": "        const what = item ? _iaDetailsName() : _iaSearchName();", "replace": "        const what = _iaSearchName();" }],
+        "edits": [
+            {
+                "find": "        const what = item ? _iaDetailsName() : _iaSearchName();",
+                "replace": "        const what = _iaSearchName();"
+            }
+        ],
         "spec": "tests/fixtures/ia-details.spec.js",
         "grep": "the toolbar is named after the item",
+        "expect": "fail"
+    },
+    {
+        "name": "ia-details: Details and Pictures not opened",
+        "why": "makeH2sCollapsible() starts every h2 but the data one closed; _iaDetailsOpenSections() opens Details and Pictures.",
+        "edits": [
+            {
+                "find": "            if (typeof h._mbToggle === 'function') h._mbToggle(true);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/ia-details.spec.js",
+        "grep": "the head as release-tracks",
+        "expect": "fail"
+    },
+    {
+        "name": "ia-details: Description starts open",
+        "why": "Description starts closed, as a release's Annotation: only Details and Pictures carry data-mb-ia-open.",
+        "edits": [
+            {
+                "find": "            if (open) h.dataset.mbIaOpen = '1';",
+                "replace": "            h.dataset.mbIaOpen = '1';"
+            }
+        ],
+        "spec": "tests/fixtures/ia-details.spec.js",
+        "grep": "the head as release-tracks",
+        "expect": "fail"
+    },
+    {
+        "name": "ia-details: Details cards do not fold",
+        "why": "The Details cards fold on their heading, through the Sidebar section's shared _sbInlineWireFolds().",
+        "edits": [
+            {
+                "find": "            _sbInlineWireFolds(sec);\n            section('Details', total, sec, true);",
+                "replace": "            section('Details', total, sec, true);"
+            }
+        ],
+        "spec": "tests/fixtures/ia-details.spec.js",
+        "grep": "the head as release-tracks",
+        "expect": "fail"
+    },
+    {
+        "name": "ia-details: sections inserted after the collapse pass",
+        "why": "The sections go in BEFORE makeH2sCollapsible(), which makes their h2s collapsible; inserted after it they are plain headings.",
+        "edits": [
+            {
+                "find": "            // and Pictures sections, the same way (two start open).\n            _iaDetailsInsertSections();\n",
+                "replace": "            // and Pictures sections, the same way (two start open).\n"
+            },
+            {
+                "find": "            _sbInlineOpen();\n            _iaDetailsOpenSections();\n\n            // Apply sticky headers",
+                "replace": "            _sbInlineOpen();\n            _iaDetailsInsertSections();\n            _iaDetailsOpenSections();\n\n            // Apply sticky headers"
+            }
+        ],
+        "spec": "tests/fixtures/ia-details.spec.js",
+        "grep": "the head as release-tracks",
+        "expect": "fail"
+    },
+    {
+        "name": "Sidebar search card: scope switch lost in the fold extraction",
+        "why": "_sbInlineBuild() keeps the Search card's scope switch in its own click listener after the fold wiring moved to _sbInlineWireFolds().",
+        "edits": [
+            {
+                "find": "            body.dataset.mbSbScope = scope.dataset.mbSbScope;\n            _sbSearchApply(body);\n        });",
+                "replace": "        });"
+            }
+        ],
+        "spec": "tests/fixtures/sidebar-search-card.spec.js",
+        "grep": "SCOPE \\+ FIND",
         "expect": "fail"
     }
 ]

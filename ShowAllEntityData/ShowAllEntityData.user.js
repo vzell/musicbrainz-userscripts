@@ -19416,21 +19416,23 @@
             body.mb-sa-host-ia img.mb-ia-thumb { display: block; width: 40px; height: 40px; object-fit: cover; border: 1px solid #ddd; background: #f2f2f2; }
             body.mb-sa-host-ia td.mb-ia-when { white-space: nowrap; font-variant-numeric: tabular-nums; }
             body.mb-sa-host-ia input.mb-col-filter-input { box-sizing: border-box; }
-            /* An item page (ia-details): its pictures and facts above the tables. */
-            body.mb-sa-host-ia .mb-ia-det-head { display: grid; gap: 10px; margin: 8px 0 4px; max-width: 1100px; }
-            body.mb-sa-host-ia h3.mb-ia-det-h { font: 700 15px/1.3 "Helvetica Neue", Helvetica, Arial, sans-serif; margin: 0; color: #222; }
-            body.mb-sa-host-ia .mb-ia-det-n { font-weight: 400; color: #666; }
-            body.mb-sa-host-ia .mb-ia-det-pics { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
-            body.mb-sa-host-ia .mb-ia-det-pics a { flex: none; width: 110px; display: grid; gap: 3px; color: #555; text-decoration: none; font-size: 11.5px; cursor: zoom-in; }
-            body.mb-sa-host-ia .mb-ia-det-pics img { width: 110px; height: 110px; object-fit: cover; border: 1px solid #ddd; border-radius: 3px; background: #f2f2f2; }
-            body.mb-sa-host-ia .mb-ia-det-pics span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-            body.mb-sa-host-ia .mb-ia-det-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
-            body.mb-sa-host-ia .mb-ia-det-card { border: 1px solid #ddd; border-radius: 5px; padding: 7px 10px; background: #fcfcfd; display: grid; gap: 4px; align-content: start; }
-            body.mb-sa-host-ia .mb-ia-det-card h4 { margin: 0; font: 700 11.5px/1.2 "Helvetica Neue", Helvetica, Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.04em; color: #666; }
-            body.mb-sa-host-ia .mb-ia-det-card dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; }
-            body.mb-sa-host-ia .mb-ia-det-card dt { color: #666; }
-            body.mb-sa-host-ia .mb-ia-det-card dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
-            body.mb-sa-host-ia .mb-ia-det-card p { margin: 0; overflow-wrap: anywhere; }
+            /* An item page (ia-details), laid out as release-tracks: a
+               subheader under the h1, then Description, Details (the Sidebar
+               section's cards) and Pictures (the Cover art section's tiles)
+               as h2 sections before the data h2. */
+            body.mb-sa-host-ia p.mb-ia-det-sub { margin: -2px 0 4px; color: #555; font-size: 13px; }
+            body.mb-sa-host-ia p.mb-ia-det-sub .mb-ia-det-creator { color: #194880; }
+            body.mb-sa-host-ia p.mb-ia-det-sub .mb-ia-det-when { font-style: italic; color: #194880; }
+            body.mb-sa-host-ia .mb-ia-det-head { margin: 6px 0 0; }
+            /* MusicBrainz's section headings: orange text on the h2 bar; the
+               data h2 (Tracks) after them takes the colour too. */
+            body.mb-sa-host-ia h2.mb-ia-det-h2 { font: 700 17px/1.3 "Helvetica Neue", Helvetica, Arial, sans-serif; margin: 4px 0; color: #eb743b; }
+            body.mb-sa-host-ia .mb-ia-det-head ~ h2.mb-ia-list-heading { color: #eb743b; }
+            body.mb-sa-host-ia .mb-ia-det-n { font-weight: 400; }
+            body.mb-sa-host-ia .mb-ia-det-desc { margin: 4px 0 10px 1.5em; max-width: 90ch; white-space: pre-line; font: 13px/1.5 Georgia, "Times New Roman", serif; color: #2b2622; }
+            body.mb-sa-host-ia .mb-ia-det-art { margin-left: 1.5em; max-width: min(1100px, calc(100vw - 32px - 1.5em)); }
+            body.mb-sa-host-ia .mb-ia-det-art .mb-release-art-tile a { cursor: zoom-in; }
+            body.mb-sa-host-ia p.mb-ia-det-lineage { margin: 0; padding: 6px 9px; overflow-wrap: anywhere; }
             body.mb-sa-host-ia td.mb-ia-md5 { font: 11.5px/1.3 ui-monospace, Consolas, monospace; color: #555; }
         `);
         style.id = 'mb-ia-style';
@@ -19600,7 +19602,7 @@
     /**
      * The item read for the render (`_iaDetailsToHtml()`): `_extIaItem()`'s
      * record, for the pictures and facts painted above the tables after the
-     * render (`_iaDetailsAfterRender()`).
+     * render (`_iaDetailsInsertSections()`).
      * @type {?Object}
      */
     let _iaDetailsRec = null;
@@ -19779,46 +19781,189 @@
         return _dgTableHtml('All files', cols, trs);
     }
 
+    /** What an item's `mediatype` is called in the subheader ("~ Concert recording by …"). */
+    const _IA_DET_MEDIA_NAMES = { etree: 'Concert recording', audio: 'Audio', movies: 'Video', texts: 'Text', image: 'Images', software: 'Software', data: 'Data' };
+
     /**
-     * After an `ia-details` render: the item's pictures and facts above the
-     * tables, in our section (`div.mb-ia-det-head` before the data h2), as
-     * release-tracks has its Cover art section and Sidebar cards there. The
-     * pictures open the artwork viewer (`_dpArtViewerClick()` on the strip:
-     * every picture, in order, the scan as the full image). Idempotent: an
-     * existing head is replaced. Nothing on any other pageType.
+     * The rich hover card (`data-mbtt`) of a card heading in the item page's
+     * Details section: what it holds and how it folds.
+     *
+     * @param {string} name  The heading.
+     * @param {number} count Its entries.
+     * @returns {string} HTML for `#mb-stat-tooltip`.
+     */
+    function _iaDetailsCardTip(name, count) {
+        return `<div class="mb-tt-title">${_mbttEscape(name)}</div>` +
+            `<div class="mb-tt-body">${_mbttCount(count)} ${count === 1 ? 'entry' : 'entries'}, read from the item's ` +
+            'metadata (the one request of this render): nothing more is loaded.</div>' +
+            '<div class="mb-tt-body"><kbd>Click</kbd> (or <kbd>Enter</kbd> / <kbd>Space</kbd>): open or close this card.<br>' +
+            '<kbd>Ctrl</kbd>+<kbd>Click</kbd> (<kbd>Cmd</kbd>+<kbd>Click</kbd>): open or close every card, following this one.</div>';
+    }
+
+    /**
+     * An `ia-details` render's head, laid out as release-tracks' (vzell
+     * 2026-11-04, "emulate the MB PT for release-tracks"): a subheader under
+     * the h1 ("~ Concert recording by Bruce Springsteen (date: venue)"), then
+     * `div.mb-ia-det-head` before the data h2 holding three h2 sections —
+     * "Description" (the item's description; starts closed, as a release's
+     * Annotation), "Details (N)" (the facts as the release page's Sidebar
+     * cards: `_sbInlineCard()`, `_sbInlineLayout()`, the Liner-notes look)
+     * and "Pictures (N)" (the uploader's scans as the Cover art section's
+     * tiles; a click opens the artwork viewer, `_dpArtViewerClick()`).
+     * Called BEFORE `makeH2sCollapsible()`, which makes the three h2s
+     * collapsible like any other; `_iaDetailsOpenSections()` opens Details
+     * and Pictures afterwards. Idempotent: a previous head is replaced.
+     * Nothing on any other pageType, nor before the item was read.
      *
      * @returns {void}
      */
-    function _iaDetailsAfterRender() {
+    function _iaDetailsInsertSections() {
         if (activeDefinition?.type !== 'ia-details') return;
         const it = _iaDetailsRec;
-        const h2 = document.querySelector('#mb-ia-root h2.mb-ia-list-heading');
+        const root = document.getElementById('mb-ia-root');
+        const h2 = root && root.querySelector('h2.mb-ia-list-heading');
         if (!it || !h2) return;
-        const old = document.querySelector('#mb-ia-root .mb-ia-det-head');
-        if (old) old.remove();
-        const head = document.createElement('div');
-        head.className = 'mb-ia-det-head';
+        root.querySelectorAll(':scope > .mb-ia-det-head, :scope > .mb-ia-det-sub').forEach(n => n.remove());
+        _sbInlineEnsureStyle();
+        _ensureReleaseArtStyle();
+        const el = (tag, cls, text) => {
+            const n = document.createElement(tag);
+            if (cls) n.className = cls;
+            if (text !== undefined) n.textContent = text;
+            return n;
+        };
+        const link = (u, text) => {
+            const a = el('a', '', text);
+            a.href = u;
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            return a;
+        };
+
+        // The subheader, as a release's "~ Release by <artist>".
+        const h1 = root.querySelector(':scope > h1');
+        const what = _IA_DET_MEDIA_NAMES[it.mediatype] || it.mediatype || 'Item';
+        const sub = el('p', 'mb-ia-det-sub', `~ ${what}${it.creator ? ' by ' : ''}`);
+        if (it.creator) sub.appendChild(el('span', 'mb-ia-det-creator', it.creator));
+        const when = [it.date, it.venue].filter(Boolean).join(': ');
+        if (when) sub.append(' ', el('span', 'mb-ia-det-when', `(${when})`));
+        if (h1) h1.after(sub);
+
+        const head = el('div', 'mb-ia-det-head');
+        const section = (title, count, body, open) => {
+            const h = el('h2', 'mb-ia-det-h2', title);
+            if (count !== null) h.append(' ', el('span', 'mb-ia-det-n', `(${count})`));
+            if (open) h.dataset.mbIaOpen = '1';
+            head.append(h, body);
+        };
+
+        if (it.desc) section('Description', null, el('div', 'mb-ia-det-desc', it.desc), false);
+
+        // Details: facts on the left, links and collections beside them.
         const runtime = it.tracks.reduce((n, x) => n + (x.len || 0), 0);
-        const kv = (rows) => `<dl>${rows.filter(r => r[1]).map(([k, v]) => `<dt>${_rgEsc(k)}</dt><dd>${v}</dd>`).join('')}</dl>`;
-        const link = (u, text) => `<a href="${_rgEsc(u)}" target="_blank" rel="noopener noreferrer">${_rgEsc(text)}</a>`;
-        const pics = it.pictures.length ? `<h3 class="mb-ia-det-h">Pictures <span class="mb-ia-det-n">(${it.pictures.length})</span></h3>` +
-            `<div class="mb-ia-det-pics">${it.pictures.map((p, i) =>
-                `<a href="${_rgEsc(_iaFileUrl(it.id, p.name))}" target="_blank" rel="noopener noreferrer" data-mb-artv-ext="${i + 1}">` +
-                `<img src="${_rgEsc(_iaFileUrl(it.id, p.thumb || p.name))}" alt="" loading="lazy" referrerpolicy="no-referrer">` +
-                `<span>${_rgEsc(p.name.split('/').pop().replace(/\.[^.]+$/, ''))}</span></a>`).join('')}</div>` : '';
+        const gb = it.size >= 1073741824 ? `${(it.size / 1073741824).toFixed(2)} GB` : _iaSizeText(it.size);
+        const factCard = (key, name, rows) => {
+            rows = rows.filter(r => r[1]);
+            if (!rows.length) return null;
+            const dl = el('dl');
+            rows.forEach(([k, v]) => {
+                dl.appendChild(el('dt', '', k));
+                const dd = el('dd');
+                if (v instanceof Node) dd.appendChild(v);
+                else dd.textContent = v;
+                dl.appendChild(dd);
+            });
+            return [key, name, rows.length, dl, false];
+        };
         const facts = [
-            ['Show', kv([['Date', _rgEsc(it.date)], ['Venue', _rgEsc(it.venue)], ['Source', _rgEsc(it.source)], ['Taper', _rgEsc(it.taper)],
-                ['Transferred by', _rgEsc(it.transferer)], ['Running time', _rgEsc(_iaLenText(runtime))]])],
-            ['Links', kv([['Brucebase', it.brucebase ? link(it.brucebase, it.brucebase.replace(/^https?:\/\/[^/]+\/+/, '')) : ''],
-                ['Databruce', it.databruce ? link(it.databruce, it.databruce.replace(/^https?:\/\/[^/]+\/+/, '')) : ''],
-                ['Collections', it.collections.map(_rgEsc).join(' · ')], ['Uploaded by', _rgEsc(it.uploader)], ['Added', _rgEsc(it.added)]])],
-            ['Lineage', it.lineage ? `<p>${_rgEsc(it.lineage)}</p>` : ''],
-        ].filter(([, body]) => body && body !== '<dl></dl>');
-        head.innerHTML = pics + `<div class="mb-ia-det-facts">${facts.map(([h, body]) =>
-            `<div class="mb-ia-det-card"><h4>${_rgEsc(h)}</h4>${body}</div>`).join('')}</div>`;
-        const strip = head.querySelector('.mb-ia-det-pics');
-        if (strip) strip.addEventListener('click', _dpArtViewerClick);
-        h2.before(head);
+            factCard('show', 'Show', [['Date', it.date], ['Venue', it.venue], ['Source', it.source], ['Taper', it.taper],
+                ['Transferred by', it.transferer], ['Running time', _iaLenText(runtime)]]),
+            factCard('item', 'Item', [['Identifier', it.id], ['Media type', it.mediatype], ['Files', it.files ? String(it.files) : ''],
+                ['Size', gb], ['Uploaded by', it.uploader], ['Added', it.added],
+                ['Reviews', it.reviews ? `${it.reviews}${it.rating ? ` · ★ ${it.rating.toFixed(1)}` : ''}` : '']]),
+        ].filter(Boolean);
+        const others = [];
+        const chipRows = [
+            ['Discography', [it.brucebase && ['Brucebase', it.brucebase], it.databruce && ['Databruce', it.databruce]].filter(Boolean)],
+            ['archive.org', [['Download', `https://archive.org/download/${encodeURIComponent(it.id)}`],
+                ['Metadata', `https://archive.org/metadata/${encodeURIComponent(it.id)}`]]],
+        ].filter(([, list]) => list.length);
+        if (chipRows.length) {
+            const body = el('div', 'mb-sb-chips');
+            let n = 0;
+            chipRows.forEach(([kind, list]) => {
+                const line = el('div', 'mb-sb-chip-row');
+                line.appendChild(el('span', 'mb-sb-chip-kind', kind));
+                list.forEach(([text, u]) => {
+                    const chip = el('span', 'mb-sb-chip');
+                    chip.appendChild(link(u, text));
+                    line.appendChild(chip);
+                    n++;
+                });
+                body.appendChild(line);
+            });
+            others.push(['links', 'External links', n, body, true]);
+        }
+        if (it.collections.length) {
+            const body = el('div', 'mb-sb-chips');
+            const line = el('div', 'mb-sb-chip-row');
+            it.collections.forEach(c => line.appendChild(el('span', 'mb-sb-pill mb-sb-pill-tag', c)));
+            body.appendChild(line);
+            others.push(['collections', 'Collections', it.collections.length, body, true]);
+        }
+        if (it.lineage) others.push(['lineage', 'Lineage', 1, el('p', 'mb-ia-det-lineage', it.lineage), true]);
+        const card = ([key, name, count, body, wide]) => {
+            const c = _sbInlineCard(key, name, count, body, wide, true);
+            c.querySelector(':scope > .mb-sb-card-head').dataset.mbtt = _iaDetailsCardTip(name, count);
+            return c;
+        };
+        const total = facts.concat(others).reduce((n, c) => n + c[2], 0);
+        if (total) {
+            const sec = el('div', 'mb-sb-inline mb-ia-det-details');
+            sec.appendChild(_sbInlineLayout(facts.map(card), others.map(card)));
+            _sbInlineWireFolds(sec);
+            section('Details', total, sec, true);
+        }
+
+        // Pictures: the Cover art section's tiles.
+        if (it.pictures.length) {
+            const sec = el('div', 'mb-release-art-sec mb-ia-det-art');
+            // The viewer's title (`_dpArtViewerClick()` reads it).
+            const t = el('span', 'mb-dp-xtitle', _iaDetailsName());
+            t.hidden = true;
+            const grid = el('div', 'mb-release-art-grid');
+            it.pictures.forEach((p, i) => {
+                const name = p.name.split('/').pop().replace(/\.[^.]+$/, '');
+                const fig = el('figure', 'mb-release-art-tile');
+                const a = link(_iaFileUrl(it.id, p.name));
+                a.dataset.mbArtvExt = String(i + 1);
+                const img = el('img');
+                img.src = _iaFileUrl(it.id, p.thumb || p.name);
+                img.alt = name;
+                img.loading = 'lazy';
+                img.referrerPolicy = 'no-referrer';
+                a.appendChild(img);
+                fig.append(a, el('figcaption', '', name));
+                grid.appendChild(fig);
+            });
+            sec.append(t, grid);
+            sec.addEventListener('click', _dpArtViewerClick);
+            section('Pictures', it.pictures.length, sec, true);
+        }
+        if (head.childElementCount) h2.before(head);
+    }
+
+    /**
+     * Opens the `ia-details` head's sections that start open (Details and
+     * Pictures: `data-mb-ia-open`) after `makeH2sCollapsible()`, which
+     * starts every h2 but the data one closed. Description stays closed.
+     *
+     * @returns {void}
+     */
+    function _iaDetailsOpenSections() {
+        document.querySelectorAll('#mb-ia-root .mb-ia-det-head > h2[data-mb-ia-open]').forEach((h) => {
+            if (typeof h._mbToggle === 'function') h._mbToggle(true);
+        });
     }
 
     // --- setlist.fm: a venue's or an artist's setlists (sfm-venue, sfm-artist) --
@@ -108571,8 +108716,6 @@ a { color: #1565c0; }`;
             _bbMbevAfterRender(false);
             // A foreign table's 🖼 gallery opener, after its row count.
             _fgalAfterRender();
-            // archive.org's item page (ia-details): its pictures and facts above the tables.
-            _iaDetailsAfterRender();
             // Same reason as the line above: the <thead> this writes into may
             // have just been rebuilt from a clone. No-op unless the Release-events
             // lookup is loading or has failed.
@@ -113532,11 +113675,15 @@ a { color: #1565c0; }`;
             // makeH2sCollapsible() so it becomes an ordinary collapsible h2, and
             // is opened right after (it starts uncollapsed, unlike other h2s).
             const _releaseArtH2 = _releaseArtInsertSection();
+            // archive.org's item page (ia-details): its Description, Details
+            // and Pictures sections, the same way (two start open).
+            _iaDetailsInsertSections();
 
             // Make all H2s collapsible after rendering
             makeH2sCollapsible();
             if (_releaseArtH2 && _releaseArtH2._mbToggle) _releaseArtH2._mbToggle(true);
             _sbInlineOpen();
+            _iaDetailsOpenSections();
 
             // Apply sticky headers for better scrolling experience
             if (Lib.settings.sa_enable_sticky_headers) {
@@ -113710,8 +113857,6 @@ a { color: #1565c0; }`;
             _bbMbevAfterRender(true);
             // A foreign table's 🖼 gallery opener, after its row count.
             _fgalAfterRender();
-            // archive.org's item page (ia-details): its pictures and facts above the tables.
-            _iaDetailsAfterRender();
             // jungleland.it / brucespringsteen.it lazy Art / Photo cells and
             // Brucebase / springsteenlyrics Title glyphs read before, painted
             // from the detail-page database (no request).
@@ -121382,29 +121527,14 @@ a { color: #1565c0; }`;
         sec.appendChild(cards);
         wrap.append(h2, sec);
 
-        // Card folding, delegated: the section is never cloned. With `all`
-        // (Ctrl/Cmd) every card follows the clicked one's new state, the rule
-        // of makeH2sCollapsible()'s Ctrl+Click on peer h2s.
-        const setShut = (card, shut) => {
-            card.classList.toggle('mb-sb-card-shut', shut);
-            card.querySelector(':scope > .mb-sb-card-head').setAttribute('aria-expanded', String(!shut));
-        };
-        const fold = (head, all) => {
-            const shut = !head.parentElement.classList.contains('mb-sb-card-shut');
-            if (all) sec.querySelectorAll('.mb-sb-card').forEach(c => setShut(c, shut));
-            else setShut(head.parentElement, shut);
-        };
+        _sbInlineWireFolds(sec);
         sec.addEventListener('click', (e) => {
             // The Search card's switch: one heading, or all.
             const scope = e.target.closest('.mb-sb-scope-btn');
-            if (scope) {
-                const body = scope.closest('.mb-sb-search');
-                body.dataset.mbSbScope = scope.dataset.mbSbScope;
-                _sbSearchApply(body);
-                return;
-            }
-            const head = e.target.closest('.mb-sb-card-head');
-            if (head && !e.target.closest('a')) fold(head, e.ctrlKey || e.metaKey);
+            if (!scope) return;
+            const body = scope.closest('.mb-sb-search');
+            body.dataset.mbSbScope = scope.dataset.mbSbScope;
+            _sbSearchApply(body);
         });
         sec.addEventListener('input', (e) => {
             if (e.target.matches('.mb-sb-find')) _sbSearchApply(e.target.closest('.mb-sb-search'));
@@ -121416,14 +121546,43 @@ a { color: #1565c0; }`;
                 e.stopPropagation();
                 e.target.value = '';
                 _sbSearchApply(e.target.closest('.mb-sb-search'));
-                return;
             }
+        });
+        return wrap;
+    }
+
+    /**
+     * Card folding for a section of `_sbInlineCard()` cards, delegated on
+     * the section (never cloned): a click on a heading (not on a link in
+     * it), or Enter / Space on it, opens or closes its card; with Ctrl/Cmd
+     * every card follows the clicked one's new state, the rule of
+     * makeH2sCollapsible()'s Ctrl+Click on peer h2s. Used by the MusicBrainz
+     * "Sidebar" section (`_sbInlineBuild()`) and archive.org's item page
+     * (`_iaDetailsInsertSections()`).
+     *
+     * @param {HTMLElement} sec
+     * @returns {void}
+     */
+    function _sbInlineWireFolds(sec) {
+        const setShut = (card, shut) => {
+            card.classList.toggle('mb-sb-card-shut', shut);
+            card.querySelector(':scope > .mb-sb-card-head').setAttribute('aria-expanded', String(!shut));
+        };
+        const fold = (head, all) => {
+            const shut = !head.parentElement.classList.contains('mb-sb-card-shut');
+            if (all) sec.querySelectorAll('.mb-sb-card').forEach(c => setShut(c, shut));
+            else setShut(head.parentElement, shut);
+        };
+        sec.addEventListener('click', (e) => {
             const head = e.target.closest('.mb-sb-card-head');
-            if (!head || (e.key !== 'Enter' && e.key !== ' ')) return;
+            if (head && sec.contains(head) && !e.target.closest('a')) fold(head, e.ctrlKey || e.metaKey);
+        });
+        sec.addEventListener('keydown', (e) => {
+            const head = e.target.closest('.mb-sb-card-head');
+            if (!head || !sec.contains(head) || (e.key !== 'Enter' && e.key !== ' ')) return;
             e.preventDefault();
             fold(head, e.ctrlKey || e.metaKey);
         });
-        return wrap;
     }
 
     /**
@@ -143801,9 +143960,11 @@ a { color: #1565c0; }`;
             // finalCleanup() placed the "Sidebar" section before this
             // relocation ran: place it again (no rebuild).
             _sbInlineInsertSection();
+            _iaDetailsInsertSections();
 
             makeH2sCollapsible();
             _sbInlineOpen();
+            _iaDetailsOpenSections();
 
             // ── Artist-Releasegroups: inject discography view buttons ─────────
             // Mirror the equivalent block in startFetchingProcess (lines
@@ -143993,8 +144154,6 @@ a { color: #1565c0; }`;
             _bbMbevAfterRender(true);
             // A foreign table's 🖼 gallery opener, after its row count.
             _fgalAfterRender();
-            // archive.org's item page (ia-details): its pictures and facts above the tables.
-            _iaDetailsAfterRender();
             // jungleland.it / brucespringsteen.it lazy Art / Photo cells and
             // Brucebase / springsteenlyrics Title glyphs read before, painted
             // from the detail-page database (no request).

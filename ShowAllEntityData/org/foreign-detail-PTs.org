@@ -161,3 +161,42 @@ vzell, 2026-11-03:
 - Specs: =tests/fixtures/ia-details.spec.js= (6), =sl-include-regex.spec.js= (+1).
 - Mutations: =scripts/mutations/ia-details.json= (8, all caught).
 - Docs: =docs/claude/internet-archive.md= "An item page", HELP, the PAGETYPES reference #147, the coverage registry row.
+
+
+* TODO summary
+
+● The archive.org item page now works the way the mockup showed. It's on its own branch, feat/ia-details (commit dc1476c3), pushed and stacked on fix/non-mb-coverage-gaps. It has only been seen in tests, not
+  yet in a real browser.
+
+  What the item page gets (archive.org/details/…):
+  - Tracks: one table per disc (from "1-01." / "2-01." in the file names), each headed with its format and running time, for example "Disc 1 · Flac · 1:13:19". Columns: # · Title · Length · File · Size · VBR
+    MP3 (the copy's size, linked) · Play. The title links the track, so it has the item's card; Play uses archive.org's own player.
+  - Above the tables: the item's pictures (a click opens the full-size viewer) and fact cards: date, venue, source, taper, running time, the Brucebase and Databruce links, collections, lineage.
+  - All files: every file of the item, one row each, with format, original or copy, size, length and MD5.
+  - A video item lists its video files with a "Play here" tile.
+  - One anonymous request per press. Before any button, the item page's own links have cards too, for example its Brucebase link.
+
+  How I checked it:
+  - Before building, a probe of 18 real items; the shapes are as expected.
+  - 6 new tests plus 1 for the new @include, all passing; 8 planted defects, all caught.
+  - The coverage checker caught the missing registry row on its own before I added it.
+
+  Where I differed from the plan:
+  - The plan's first step was to make MusicBrainz's cover-art section and sidebar cards reusable. I wrote archive.org-only versions instead, because the project rule is that nothing may change for MusicBrainz.
+    Discogs can reuse the same shape.
+  - Not done yet: the mockup's "Song (Brucebase)" column, which needs live song titles matched to Brucebase songs. Also, pictures and facts don't come back on a disk load.
+
+  To try it, any item works, for example https://archive.org/details/bs1975-12-27.aud.jk.cb.hrubesh.flac16 (press "Tracks", then "All files").
+
+  Next comes the Discogs release upgrade on its own branch. Do you want to try archive.org in your browser first, or should I go straight on?
+
+
+* DONE make it nicer
+
+On the new IA PT for a detail page the parts before the h2 header line with the global filter could be made nicer
+
+#+begin_example
+@debug/ia-detail-final.html - FRP - https://archive.org/details/bs1977-02-28.aud.ntl-2.jems.flac16 - [Image #26]
+#+end_example
+
+Emulate the MB PT for 'release-tracks', e.g. https://musicbrainz.org/release/755eec4f-d7d7-4fec-9b97-3be7a9ad5012 - [Image #27]

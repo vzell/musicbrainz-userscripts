@@ -1,7 +1,7 @@
 #+TITLE: Report: pageType and preview coverage on the non-MusicBrainz sites
 #+STARTUP: overview
 
-* TODO create a comprehensive report about which non-MB websites have currently PT and POH support
+* DONE create a comprehensive report about which non-MB websites have currently PT and POH support
 
 ** request (vzell, 2026-11-03, org/TODO.org)
 
@@ -119,7 +119,7 @@ Report: https://claude.ai/artifact/XHGSNR7PPzCjdtKXkTmNmP (=NON-MB-COVERAGE.html
   - =org/TODO.org=: this item DONE, and one TODO per gap.
 - *Not a userscript change*, so there is no =@version= bump and no changelog/WIP entry.
 
-* TODO Phase C: fix G1–G8 (2026-11-03, branch fix/non-mb-coverage-gaps)
+* DONE Phase C: fix G1–G8 (2026-11-03, branch fix/non-mb-coverage-gaps)
 
 ** vzell's decisions (2026-11-03)
 
@@ -137,33 +137,33 @@ Report: https://claude.ai/artifact/XHGSNR7PPzCjdtKXkTmNmP (=NON-MB-COVERAGE.html
 Written before the code. Each one is checked in vzell's browser after the branch is built. Default
 settings apply unless a step names one.
 
-| Gap | Page                                                                                 | Clicks                                                                                                                                         | Today                    | After the fix                                                    |
-|-----+--------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------+------------------------------------------------------------------|
-| G1  | https://musicbrainz.org/event/3f2ca30a-7de4-4964-ad30-48376535fec8                    | Hover its =brucebase.wikidot.com/2025#200525= link, Space; in the show window's See also, click the =/gig:= link                                 | New tab                  | The gig page opens in the window as Brucebase's card; Back works |
-| G2  | https://brucebase.wikidot.com/1985                                                    | Show all events; Ctrl-hover an Event cell's MusicBrainz glyph, Space; click the MusicBrainz event link in that window                           | New tab                  | MusicBrainz's event window in place; Back works                  |
-| G3  | https://brucebase.wikidot.com/1985                                                    | As G2, then in the MusicBrainz event window click its =brucebase.wikidot.com/1985#ddmmyy= link                                                   | New tab                  | The Brucebase show window (that year page's block)               |
-| G4a | https://www.discogs.com/search?q=springsteen&type=all                                 | Before any button, Ctrl-hover a result's title                                                                                                 | No card                  | The Discogs card                                                 |
-| G4b | https://www.setlist.fm/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html             | Before any button, Ctrl-hover a setlist's Tour link in setlist.fm's own list                                                                   | No card                  | The setlist.fm search card                                       |
-| G4c | https://archive.org/search?query=springsteen+1975                                     | Before any button, Ctrl-hover an item's title in archive.org's own result grid                                                                 | No card                  | The archive.org item card; Space opens its window                |
-| G5  | https://www.discogs.com/submissions (murdos' importer installed)                      | Ctrl-hover a MusicBrainz icon in Discogs' own list, if the importer puts any there                                                             | No card                  | MusicBrainz's card. With no icon there, nothing to see           |
-| G6  | https://www.discogs.com/artist/219986-Bruce-Springsteen                               | Ctrl-hover a Discogs artist link, Space; in the Credits section click "All credits on Discogs ↗"                                               | Same artist, in place    | A new tab with Discogs' credits page                             |
-| G7  | https://brucebase.wikidot.com/venue:paramount-theatre-asbury-park-nj                  | Ctrl-hover its Wikipedia link (=Paramount_Theatre_(Asbury_Park,_New_Jersey)=), Space; if the article has a table, click "A table: show it on Wikipedia ↗" | Same article, in place   | A new tab on Wikipedia                                           |
-| G8  | https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f                   | Space on its Discogs link, and at once (before the record loads) click a link in the window                                                    | New tab                  | Opens in the window. Hard to time by hand; the spec pins it      |
+| Gap | Page                                                                       | Clicks                                                                                                                                                    | Today                  | After the fix                                                    |
+|-----+----------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------+------------------------+------------------------------------------------------------------|
+| G1  | https://musicbrainz.org/event/3f2ca30a-7de4-4964-ad30-48376535fec8         | Hover its =brucebase.wikidot.com/2025#200525= link, Space; in the show window's See also, click the =/gig:= link                                          | New tab                | The gig page opens in the window as Brucebase's card; Back works |
+| G2  | https://brucebase.wikidot.com/1985                                         | Show all events; Ctrl-hover an Event cell's MusicBrainz glyph, Space; click the MusicBrainz event link in that window                                     | New tab                | MusicBrainz's event window in place; Back works                  |
+| G3  | https://brucebase.wikidot.com/1985                                         | As G2, then in the MusicBrainz event window click its =brucebase.wikidot.com/1985#ddmmyy= link                                                            | New tab                | The Brucebase show window (that year page's block)               |
+| G4a | https://www.discogs.com/search?q=springsteen&type=all                      | Before any button, Ctrl-hover a result's title                                                                                                            | No card                | The Discogs card                                                 |
+| G4b | https://www.setlist.fm/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html | Before any button, Ctrl-hover a setlist's Tour link in setlist.fm's own list                                                                              | No card                | The setlist.fm search card                                       |
+| G4c | https://archive.org/search?query=springsteen+1975                          | Before any button, Ctrl-hover an item's title in archive.org's own result grid                                                                            | No card                | The archive.org item card; Space opens its window                |
+| G5  | https://www.discogs.com/submissions (murdos' importer installed)           | Ctrl-hover a MusicBrainz icon in Discogs' own list, if the importer puts any there                                                                        | No card                | MusicBrainz's card. With no icon there, nothing to see           |
+| G6  | https://www.discogs.com/artist/219986-Bruce-Springsteen                    | Ctrl-hover a Discogs artist link, Space; in the Credits section click "All credits on Discogs ↗"                                                          | Same artist, in place  | A new tab with Discogs' credits page                             |
+| G7  | https://brucebase.wikidot.com/venue:paramount-theatre-asbury-park-nj       | Ctrl-hover its Wikipedia link (=Paramount_Theatre_(Asbury_Park,_New_Jersey)=), Space; if the article has a table, click "A table: show it on Wikipedia ↗" | Same article, in place | A new tab on Wikipedia                                           |
+| G8  | https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f        | Space on its Discogs link, and at once (before the record loads) click a link in the window                                                               | New tab                | Opens in the window. Hard to time by hand; the spec pins it      |
 
 ** Implementation (2026-11-03) — code done, specs green; vzell's browser checks pending
 
 Env: 2026-11-03T16:19:59+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1, Chromium build 1234 · no Tampermonkey (GM stubs)
 
-| Gap | Change                                                                                                               | Spec                                                                     |
-|-----+----------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------|
-| G1  | =_extDpTest()=: =ownLinks= on every host, under their own setting                                                    | popup-ext "which reader serves which link: the four sites", "generic again" |
-| G2  | =_MB_FOREIGN_POP_HOST= + the four Springsteen sites and archive.org, each named                                      | popup-ext-foreign "G2" ×2                                                |
-| G3  | =_extTarget()=: on Brucebase, in a window, =/<yyyy>#<ddmmyy>= is the =bbdate= reader's                               | popup-ext-foreign "G3"                                                   |
-| G4  | Discogs =extRoot= + =main=; setlist.fm =extRoot= + =.setlistPreview=, =.info=, relative links; archive.org shadow DOM | discogs-search-page, sfm-list, ia-search "G4" ×2                         |
-| G5  | =_dgMbSource()= + =#page_content=                                                                                    | discogs-links "G5"                                                       |
-| G6  | =data-mb-dp-newtab= on "All credits on Discogs ↗"; =_extTarget()= refuses it in a window                             | popup-ext "G6"                                                           |
-| G7  | the same on "A table: show it on Wikipedia ↗"                                                                        | popup-ext "G7"                                                           |
-| G8  | =_extDiscogsAreaClick()= drills a link before the record                                                             | popup-ext "G8"                                                           |
+| Gap | Change                                                                                                                | Spec                                                                        |
+|-----+-----------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------|
+| G1  | =_extDpTest()=: =ownLinks= on every host, under their own setting                                                     | popup-ext "which reader serves which link: the four sites", "generic again" |
+| G2  | =_MB_FOREIGN_POP_HOST= + the four Springsteen sites and archive.org, each named                                       | popup-ext-foreign "G2" ×2                                                   |
+| G3  | =_extTarget()=: on Brucebase, in a window, =/<yyyy>#<ddmmyy>= is the =bbdate= reader's                                | popup-ext-foreign "G3"                                                      |
+| G4  | Discogs =extRoot= + =main=; setlist.fm =extRoot= + =.setlistPreview=, =.info=, relative links; archive.org shadow DOM | discogs-search-page, sfm-list, ia-search "G4" ×2                            |
+| G5  | =_dgMbSource()= + =#page_content=                                                                                     | discogs-links "G5"                                                          |
+| G6  | =data-mb-dp-newtab= on "All credits on Discogs ↗"; =_extTarget()= refuses it in a window                              | popup-ext "G6"                                                              |
+| G7  | the same on "A table: show it on Wikipedia ↗"                                                                         | popup-ext "G7"                                                              |
+| G8  | =_extDiscogsAreaClick()= drills a link before the record                                                              | popup-ext "G8"                                                              |
 
 - Mutation check: =scripts/mutations/non-mb-coverage-gaps.json=, 17 planted defects, all fail their spec.
 - archive.org: a move inside its shadow tree fires NO =mouseover=/=mouseout= at the document (target and
@@ -174,3 +174,62 @@ Env: 2026-11-03T16:19:59+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.5
   spec builds archive.org's shadow DOM itself and the real link shapes are unconfirmed.
 - The coverage report (=NON-MB-COVERAGE.html=/=.org=) now lists no open gaps; every IP cell is "yes" but
   =sl-bootlegs-intro= and =bb-home= (partial by design).
+
+
+
+* DONE still todo
+** DONE initial
+
+1.)
+
+| G2  | https://brucebase.wikidot.com/1985                                         | Show all events; Ctrl-hover an Event cell's MusicBrainz glyph, Space; click the MusicBrainz event link in that window                                     | New tab                | MusicBrainz's event window in place; Back works                  |
+
+There is NO MusicBrainz event link in that window
+
+2.)
+
+| G4c | https://archive.org/search?query=springsteen+1975                          | Before any button, Ctrl-hover an item's title in archive.org's own result grid                                                                            | No card                | The archive.org item card; Space opens its window                |
+
+a.)
+
+When hovering an image, the original IA card and additionally the archive.org item card show up
+
+b.)
+
+When hovering the text/title under the image additionally the orignal text based tooltip also shows up
+
+3.)
+
+| G5  | https://www.discogs.com/submissions (murdos' importer installed)           | Ctrl-hover a MusicBrainz icon in Discogs' own list, if the importer puts any there                                                                        | No card                | MusicBrainz's card. With no icon there, nothing to see           |
+
+There is no MB icon rendered on that page
+
+4.)
+
+| G7  | https://brucebase.wikidot.com/venue:paramount-theatre-asbury-park-nj       | Ctrl-hover its Wikipedia link (=Paramount_Theatre_(Asbury_Park,_New_Jersey)=), Space; if the article has a table, click "A table: show it on Wikipedia ↗" | Same article, in place | A new tab on Wikipedia                                           |
+
+It seems there is no POH support for BB venue pages
+
+5.)
+
+probe-ia-shadow-links.js:
+
+#+begin_example
+@debug/ia-lx-debug.log - list compact - [Image #23]
+@debug/ia-l-debug.log - list - [Image #22]
+@debug/ia-t-debug.log - tile - [Image #24]
+#+end_example
+
+And YES, previews should run on every Brucebase page
+
+** DONE answers
+
+● Your browser results change a few things. Two of my pre-tests were wrong, and archive.org's search page needs a fix. Taking your points in order:
+
+  - 1, G2: you're right, and my pre-test was wrong. The Brucebase MB-Event window doesn't link MusicBrainz at all, so on the Springsteen sites I don't know of any window that shows a musicbrainz.org link. The
+    fix only matters if one does, and the spec covers that with an injected link.
+  - 3, G5: "no icon on that page" was one of my two predicted outcomes: murdos' importer doesn't put icons on the submissions page. The fix is harmless and only matters if it ever does.
+  - 4, G7: my pre-test was wrong. Brucebase venue pages have no pageType, and previews only run on pages that have one. G7 needs a Wikipedia article with a table opened from a page that has previews (any
+    MusicBrainz page).
+  - 2, the double cards on archive.org's search page: this needs a fix.
+  - 5, the probe: the logs show the object view the console returns, not the JSON line the probe prints, so the useful fields are collapsed. I'll make the probe copy its JSON to the clipboard.

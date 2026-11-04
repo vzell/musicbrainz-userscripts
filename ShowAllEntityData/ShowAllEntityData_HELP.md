@@ -4064,13 +4064,25 @@ page:
   its format and running time: **#**, **Title** (it opens the track on
   archive.org, and has the item's card), **Length**, the **File** and its
   **Size**, a column for each copy archive.org made of it (**VBR MP3**, …,
-  linking that copy), and **▶** to play it in archive.org's player. Above
-  the tables: the item's **Pictures** (a click opens them in the viewer) and
-  its facts (date, venue, source, taper, running time, its Brucebase and
-  Databruce links, collections, lineage). A video item lists its video files
-  with a "Play here" tile.
+  linking that copy), and **▶** to play it in archive.org's player. A video
+  item lists its video files with a "Play here" tile.
 - **All files** lists every file of the item, one row each: format, original
   or copy, what it was made from, size, length, MD5.
+
+Above the tables the page is laid out like a MusicBrainz release: under the
+title a line "~ Concert recording by … (date: venue)", then three sections
+that fold like the release page's:
+
+- **Description**, the uploader's text, closed to start with (as a release's
+  Annotation);
+- **Details**, the item's facts as cards in the look of the release page's
+  Sidebar section: *Show* (date, venue, source, taper, who transferred it,
+  running time), *Item* (identifier, files, size, uploader, date added,
+  reviews), *External links* (Brucebase, Databruce, the download list, the
+  metadata), *Collections* and *Lineage*. A click on a card's heading folds
+  it; Ctrl+click folds every card;
+- **Pictures**, the uploader's scans as tiles, as the release page's Cover
+  art; a click opens them in the viewer.
 
 Both read the item in one request. Before you press a button, the item's own
 page previews too: rest on its Brucebase link for the show's card.

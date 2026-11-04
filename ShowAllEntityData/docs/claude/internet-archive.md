@@ -162,14 +162,27 @@ Modelled on MusicBrainz's release-tracks.
     MD5).
   Sizes are always in MB (`_iaSizeText()`), so a size column sorts by its
   numbers.
-- **Pictures and facts above the tables** (`_iaDetailsAfterRender()`, in
-  the three render tails, a no-op on any other pageType): the item record
-  of `_extIaItem()` from the same answer (`_iaDetailsRec`), as
-  release-tracks has its Cover art section and Sidebar cards there. A
-  picture opens the artwork viewer: `_dpArtViewerClick()` on the strip
-  (`data-mb-artv-ext`), every picture in order. Host-scoped, not a
-  generalisation of the release-tracks code (CLAUDE.md: nothing may change
-  for MusicBrainz).
+- **The head, laid out as release-tracks** (vzell 2026-11-04,
+  `_iaDetailsInsertSections()`; a no-op on any other pageType and before the
+  item was read): from the item record of `_extIaItem()` (`_iaDetailsRec`),
+  a subheader `p.mb-ia-det-sub` after the h1 ("~ Concert recording by …
+  (date: venue)", `_IA_DET_MEDIA_NAMES`), then `div.mb-ia-det-head` before
+  the data h2 holding three h2 sections: Description (starts closed, as a
+  release's Annotation), Details (the MusicBrainz Sidebar section's cards,
+  reused as they are: `_sbInlineCard()`, `_sbInlineLayout()`,
+  `_sbInlineEnsureStyle()`, folds through `_sbInlineWireFolds()`, each
+  heading's card `_iaDetailsCardTip()`) and Pictures (the Cover art
+  section's tile classes, `_ensureReleaseArtStyle()`; a click opens the
+  artwork viewer through `_dpArtViewerClick()`, every picture in order).
+  **It goes in BEFORE `makeH2sCollapsible()`** (the fetch tail and the
+  disk-load tail, as `_releaseArtInsertSection()`), so its h2s fold like
+  any other; `_iaDetailsOpenSections()` opens Details and Pictures
+  afterwards (`data-mb-ia-open`). It used to run in the three after-render
+  tails, `runFilter()`'s included, which rebuilt it on every filter
+  keystroke; now a filter leaves it alone, folds included. The only shared
+  change is `_sbInlineWireFolds()`, the Sidebar section's fold wiring
+  moved out of `_sbInlineBuild()` unchanged (its Search-card scope switch
+  and find box keep their own listeners).
 - **Probe** `scripts/probe-ia-details.py` (2026-11-03, 18 items): every
   show's FLAC originals carry `track`, `title` and `length`; disc prefixes
   up to 3; one tape ("SideA.flac") without; video items 1–3 video
