@@ -464,3 +464,12 @@ some SFM search pages have no PT yet, no action buttons
 @debug/sfm-search-artist.htm - IP - https://www.setlist.fm/search?query=Bruce+Springsteen -
 @debug/sfm-search-artist-queury.html - IP - https://www.setlist.fm/search?query=artist%3A(Bruce%20Springsteen)%20tour%3A(Land%20of%20Hope%20%26%20Dreams%20American%20Tour)#mbid=70248960-cb53-4ea4-943a-edb18f7d336f -
 #+end_example
+
+* add support for SFM festivals
+
+add support for the missing SFM festival pages, PTs and POH support (see our current added skills)
+
+#+begin_example
+@debug/sfm-festivals.html - IP - https://www.setlist.fm/festivals/glastonbury-festival-3d6bd17.html
+@debug/sfm-festival.html - IP - https://www.setlist.fm/festival/2025/glastonbury-festival-2025-3d581bb.html
+#+end_example
