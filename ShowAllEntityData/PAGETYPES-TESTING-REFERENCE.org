@@ -312,6 +312,9 @@ skill for turning a =planned= row into a =captured= one.
 | 150 | sfm-query                     | single       | setlist.fm /search?query=…                     | NOT MusicBrainz, opt-in; as #146 for a query (free text, "artist:(…) tour:(…)"): Artist and Venue both                    |
 | 151 | sfm-festival                  | multi        | setlist.fm /festival/YEAR/SLUG-ID.html         | NOT MusicBrainz, opt-in; a festival edition: a sub-table per day from the page's widget JSON, no request; head          |
 | 152 | sfm-festivals                 | single       | setlist.fm /festivals/SLUG-ID.html             | NOT MusicBrainz, opt-in; a festival's editions, 20 a page, every page fetched; head (facts, Artist charts)              |
+| 153 | sl-collection-item            | multi        | springsteenlyrics.com /collection.php?item=N   | NOT MusicBrainz, opt-in; an item's page: a sub-table per disc/record, no request; head (facts, Your collection, scans per copy) |
+| 154 | sl-bootlegs-item              | multi        | springsteenlyrics.com /bootlegs.php?item=N     | NOT MusicBrainz, opt-in; as #153 for a bootleg: Take/Note, show and recording, info file read on opening |
+| 155 | sl-brucelegs-item             | multi        | springsteenlyrics.com /brucelegs.php?item=N    | NOT MusicBrainz, opt-in; as #153 for a CD/vinyl bootleg: sides paired, Version/Length; second button All versions |
 | 149 | sfm-setlist                   | multi        | setlist.fm /setlist/ARTIST/YEAR/VENUE-ID.html  | NOT MusicBrainz, opt-in; a setlist's own page: a sub-table per set, no request (the live page's list); head as release-tracks |
 
 * Page type details
@@ -932,7 +935,7 @@ lists converted into sortable tables), tableMode =multi=.
 - Button: "Show all CD and vinyl bootlegs of this list" (short label "Bootlegs")
 - tableMode: single
 - Not MusicBrainz, and opt-in (same setting as #87). The "CD and Vinyl Bootlegs" list, with any of its =f_letter= / =f_format= / =f_label= filters.
-- Features exercised: =slCardsToTable: 'brucelegs'= (the bootleg cards' markup, its own field set: Version from the sub-title, Label and Cat # on separate lines, Date, Location, Format); ISO First date; Show from a note in Date or Location ("USA (Early Show)"); =columnExtractors= =dateParts= on First date and =splitLocationText= on Location; integerColumns DD/MM/YYYY; sticky Title. No compact bar (the kind is not in its gate). The cards' "PDF available" / "artwork available" notes are on all 402 cards, so they get no column.
+- Features exercised: =slCardsToTable: 'brucelegs'= (the bootleg cards' markup, its own field set: Version from the sub-title, Label and Cat # on separate lines, Date, Location, Format); ISO First date; Show from a note in Date or Location ("USA (Early Show)"); =columnExtractors= =dateParts= on First date and =splitLocationText= on Location; integerColumns DD/MM/YYYY; sticky Title. No compact bar (the kind is not in its gate). The cards' "PDF available" / "artwork available" notes are on all 402 cards; since 2026-11-04 they are the PDF (a link to the item page) and Artwork columns anyway (vzell).
 - Coverage: =tests/fixtures/sl-brucelegs.spec.js= (fixture pages from =debug/sl-brucelegs.html=, =scripts/build-sl-fixtures.py=), =sl-include-regex.spec.js=; live =tests/live/sl-lists.spec.js= (=@extended=: all 5 pages, and show notes / dates / locations on every real row); mutations in =scripts/mutations/sl-support.json=.
 
 ** 95. sl-lyrics
@@ -1221,6 +1224,24 @@ lists converted into sortable tables), tableMode =multi=.
 - Match: =_SFM_FESTIVALS_PATH_RE= (not =/festivals/browse/=) / =_sfmKind()= = ='festivals'=; its own =@include= line. Button "Show all editions of this festival".
 - tableMode: single; every page of its pager fetched same-origin (=_sfmFestivalsToHtml()=); Year · Edition · Stages · Venues · Start · End (ISO). Head =_sfmFestivalsHeadSpec()=.
 - Coverage: =tests/fixtures/sfm-festival.spec.js=; fixture =sfm-page-festivals-3d6bd17.html=.
+
+** 153. sl-collection-item
+- URL: [[https://www.springsteenlyrics.com/collection.php?item=8595&category=album&f_format=12i][springsteenlyrics.com: Greetings From Asbury Park, N.J. (2015 remastered reissue)]] (2026-11-04, org/springsteenlyrics.org "Add new SL PTs and POHs"; mockups =org/sl-item-pts-mockups.html=).
+- Match: =_slItemKind()= = ='collection'= (=collection.php= with a numeric =item=), host =springsteenlyrics.com=; its own =@include= line (=(collection|bootlegs|brucelegs).php?…item=N=).
+- Button: "Show the tracklist" (short label "Tracklist").
+- tableMode: multi (=groupByH3=): a sub-table per disc or record (=_slParseTracklist()=, =_slItemGroups()=: named headers, else sides paired into records), Pos · Title · (Artist on a various-artists page) · Version / note.
+- Rows: NO request — =features.pageRequest='s =fetchText= hands over the page's own HTML, taken once at the first press (=_slItemPageHtml()=: the grouped render clears the site's h3 sections). The head (=_slItemHeadSpec()=, the shared =_fdHeadInsertSections()= with =texts=/=textsAfter=/=pictureGroups=) reads that copy: Release, Your collection (logged in), Files, one scans section per copy, Notes, Private info (logged in, closed). The site's own content is hidden (=mb-sl-item-native=).
+- Coverage: =tests/fixtures/sl-item.spec.js= (8595, 5240, 9685; the cache's login state), =sl-include-regex.spec.js=; fixtures =detail-sl-collection-{8595,5240,9685}.html= (=scripts/build-sl-item-fixtures.py=: user name and Private info scrubbed); mutations =scripts/mutations/sl-item-pts.json=.
+
+** 154. sl-bootlegs-item
+- URL: [[https://www.springsteenlyrics.com/bootlegs.php?item=9507&category=aud_live1988][springsteenlyrics.com: 25 Feb 1988 (soundcheck), Worcester]] (2026-11-04).
+- As #153; =_slItemKind()= = ='bootlegs'=. Columns Pos · Title · Take ("#2") · Note ("partial"). Head: Show (with the location split), Recording, Files, Artwork with the page's captions, "Original info file" read same-origin once when its section is first opened (=lazyText=), Private info.
+- Coverage: =tests/fixtures/sl-item.spec.js= (9507: two discs and the info file; 2567: a vinyl transfer's sides paired, the MusicBrainz link, captions); fixtures =detail-sl-bootlegs-{9507,2567}.html=.
+
+** 155. sl-brucelegs-item
+- URL: [[https://www.springsteenlyrics.com/brucelegs.php?item=281&f_format=vinyl][springsteenlyrics.com: 1995 Radio Hour The Tom Joad Sessions]] (2026-11-04).
+- As #153; =_slItemKind()= = ='brucelegs'=. Buttons "Show the tracklist" and "Show all versions of this bootleg" (=slItemView: 'versions'=, =showIf= =_slItemVersionCount()= > 1: the page's version cards, this one included, as one table through =_slBuildRow()=). Columns Pos · Title · Version ("V1") · Note · Length (sorted as a duration). Head: Release, Runout groove etchings (one row per side) or inner ring text, Files (PDFs), Artwork, Release info, Notes.
+- Coverage: =tests/fixtures/sl-item.spec.js= (281: Length, notes, PDF, All versions on a fresh load; 148 logged out: four records); fixtures =detail-sl-brucelegs-281.html=, the older =detail-sl-brucelegs-148.html=.
 
 ** Relationship-tables buttons on existing pageTypes (not pageTypes of their own)
 =_relTablesButton()= adds a second button to series-releases, work-recordings, releasegroup-releases, recording-releases (with "Related works" as "Via <work>" tables), label-relationships and artist-relationships ("Relationship lists"), and release-tracks ("Credits", the release's own =#release-relationships= and its group's =#release-group-relationships=, never the per-medium track credits). Each runs as its own pageType for that render (=series-relationship-tables=, =work-relationship-tables=, =releasegroup-relationship-tables=, =recording-relationship-tables=, =label-relationship-tables=, =artist-relationship-tables=, =release-credit-tables=; =buttonConfig.type= switches =pageType= in =startFetchingProcess()=), with only its own features (=replaceFeatures=), and removes the page's main data section (=removeMain=, =_relRemoveMainSections()=). A saved file records that pageType and loads back as the same button (=_activateButtonForSavedPageType()=). Hidden with =sa_enable_relationship_tables= off (=showIf=). Coverage: =tests/fixtures/rel-tables-recording.spec.js= (incl. the main button unchanged and a Save → Load round trip) and =rel-tables-pages.spec.js=, raw captures =tests/fixtures/rel-{series,work,label-rels,artist-rels,release-group,recording,release}-overview.html=.

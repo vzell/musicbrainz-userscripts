@@ -37,7 +37,7 @@ const injected = (url) => includePatterns().some((re) => re.test(url));
 const BB_ANY = /^https?:\/\/brucebase\.wikidot\.com\//;
 
 test.describe('@include coverage', () => {
-    test('springsteenlyrics.com: every list page and both entry pages, and nothing else', () => {
+    test('springsteenlyrics.com: every list page, both entry pages and every item page, and nothing else', () => {
         const lists = [
             'https://springsteenlyrics.com/collection.php?cmd=list&category=album&f_format=12i',
             'https://springsteenlyrics.com/collection.php?cmd=list&category=album&f_format=12i&page=4',
@@ -75,17 +75,26 @@ test.describe('@include coverage', () => {
             'https://springsteenlyrics.com/bootlegs.php',
             'https://www.springsteenlyrics.com/bootlegs.php#top',
             'https://springsteenlyrics.com/bootlegs.php?cmd=intro',
+            // An item's own page (sl-*-item, 2026-11-04), with or without
+            // the list's parameters, `item` first or not.
+            'https://springsteenlyrics.com/collection.php?item=9266&category=album&f_format=12i',
+            'https://www.springsteenlyrics.com/collection.php?item=10265&category=all',
+            'https://springsteenlyrics.com/bootlegs.php?item=4554&category=aud_live1967',
+            'https://www.springsteenlyrics.com/bootlegs.php?item=2567',
+            'https://springsteenlyrics.com/brucelegs.php?item=281&f_format=vinyl',
+            'https://springsteenlyrics.com/brucelegs.php?f_format=vinyl&item=148#top',
         ];
         const others = [
-            'https://springsteenlyrics.com/collection.php?item=9266&category=album&f_format=12i',
-            'https://springsteenlyrics.com/bootlegs.php?item=4554&category=aud_live1967',
-            'https://springsteenlyrics.com/brucelegs.php?item=281&f_format=vinyl',
+            'https://springsteenlyrics.com/collection.php?item=abc',
+            'https://springsteenlyrics.com/bootlegs.php?item=',
+            'https://springsteenlyrics.com/bootlegs.php?xitem=2567',
+            'https://springsteenlyrics.com/lyrics.php?item=12',
+            'https://springsteenlyrics.com/bootlegs/aud_live1984/2567_infofile.txt',
             'https://springsteenlyrics.com/brucelegs.php',
             'https://springsteenlyrics.com/bootlegs.php?cmd=introx',
             'https://springsteenlyrics.com/bootlegs.php?pg=2',
             'https://springsteenlyrics.com/collection.php?cmd=introx',
             'https://springsteenlyrics.com/collection.php?xcmd=intro',
-            'https://springsteenlyrics.com/collection.php?item=10265&category=all',
             'https://springsteenlyrics.com/collection.php?cmd=listing',
             'https://springsteenlyrics.com/collection.php?xcmd=list',
             // A song page, and the by-release listing, are not the index.

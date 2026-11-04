@@ -301,6 +301,11 @@ fixture) still wins. Never move it into `loadUserscriptPage()`: registered
 there, after a spec's block, it would run first and silently undo the block.
 Reason and numbers: DEBUG-NOTES.md 2026-10-29 (a slow line made a full run time
 out in `page.goto()`). `SA_NO_STATIC_CACHE=1` turns it off.
+Only 200 answers are cached, so a snapshot fixture's scrubbed file names
+(`common-SCRUBBED.css`, 30 fixtures), which the CDN answers 404, went to the
+network on every load; since 2026-11-04 they are answered locally with a 404
+marked `x-sa-fixture-stub: scrubbed-static` (pinned in
+`fixture-load-no-archive-org-wait.spec.js`).
 
 **`__saTest.getUniqDropSections()` moves an off-screen 📊 panel into view,
 never the page.** The panel is `position: fixed`, placed from the button's

@@ -667,6 +667,7 @@ parse a couple and make some suggestions, nice rich HTML based mockups
 
 * TODO Support bootleg SL URL PTs
 
+
 * TODO Add new SL PTs and POHs, see skills
 
 Add new SL PTs and POHs, see skills:
@@ -745,3 +746,273 @@ TRACKLIST
 The page has no tracklist. - https://www.springsteenlyrics.com/brucelegs.php?item=281&f_format=vinyl
 #+end_example
 
+** missing logged in list pages in @debug
+
+#+begin_example
+sl-brucelegs-list-logged-in.html - https://www.springsteenlyrics.com/brucelegs.php?cmd=list
+sl-collections-list-logged-in.html - https://www.springsteenlyrics.com/collection.php?cmd=list&category=album
+sl-bootlegs-list-logged-in.html - https://www.springsteenlyrics.com/bootlegs.php?cmd=list&category=aud_live1978
+#+end_example
+
+also on the detail pages the private notes sections and icons are only visible when logged in
+
+** Answer (2026-11-04, branch =docs/sl-item-pts-mockups=, no change to the userscript)
+
+Env: 2026-11-04T17:31:18+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · code and snapshot reading,
+no browser (n/a) · no Tampermonkey.
+
+Mockups (private Artifact): https://claude.ai/artifact/GBFJp9Ebo8LDoGPSskVMkg — local copy
+[[file:sl-item-pts-mockups.html]]. Tabs: Collection item (8595, 5240, 9685), Bootleg item (9507), CD/vinyl bootleg item
+(148, 281), List columns (the three logged-in lists), Previews (before and after), Plan and questions.
+
+Decided (vzell, 2026-11-04):
+- This session: findings, mockups, questions. Code comes later, after the mockups are approved. No version bump, no WIP
+  entry.
+- List columns come from the cards: the logged-in list snapshots show the icons, so no extra request is needed.
+- Location icons: ONE "Kept in" column (Switzerland, Lebanon, …, from any =img/collection_in*.png=).
+- Private info: on the item PT only, as a closed section. Never in a card or window, and never in a fixture (scrub step).
+- Icons and Private info exist only when logged in (vzell). A logged-out run must look exactly as today, with no empty
+  columns.
+
+*** Findings
+
+Item pages:
+- The script does not run on =(collection|bootlegs|brucelegs).php?item=N= at all. No =@include= matches, and
+  =sl-*-intro= excludes =item=.
+- =sl-collection-vid_live-detail.html= and =sl-collection-aud_live_1988-detail.html= are bootleg pages
+  (=bootlegs.php?item=4615= / =9507=).
+- Anatomy: =.project-detail= holds the card (=div.blog-post=, fields by label), then =div.divide30=, then an untitled
+  =span.monospaced= (tracklist plus notes), then =h3.heading= sections:
+  - collection: =Scans/Photos[ (copy #N)]=, =Private info=;
+  - bootleg: =Original info file=, =Artwork=, =Private info=;
+  - brucelegs: =Details=, =Trackslist= (sic), =Runout groove etchings (vinyl) or inner ring text (CD)=, =Release info=,
+    =Artwork and PDF=, =All versions of this bootleg= (a second card list).
+- Tracklist line shapes:
+  - collection/bootleg: =A1- TITLE=, =01- TITLE #2 [partial]=, VA =B6- Bruce Springsteen: BORN TO RUN=;
+  - headers =Disc N:= and =Record 2: "Cover Me" (catalogue # CBS QTA 4662)=;
+  - brucelegs: =A1 Title - V1=, =01 Title (5:45.15)=, header =Disc: (82:40.00)=, then a =Notes:= block.
+- Flags line (logged in; same markup on list cards and item pages):
+  - =<a href="https://musicbrainz.org/release/<mbid>"><img src="img/collection_musicbrainz.png" alt="MusicBrainz
+    link">=;
+  - =collection_goodscans.png=, =collection_inswitzerland.png=, =collection_inlebanon.png=;
+  - "I have N copies" (everyone);
+  - bootlegs: =.bi-image= "artwork available" and =.glyphicon-file= "original info file available" (everyone);
+  - brucelegs: =.bi-file-earmark-pdf= and =.bi-file-earmark-image=.
+- File URLs:
+  - the info file is =bootlegs/<category>/<item>_infofile.txt= (9507; 2567 from the TODO);
+  - the PDF is =brucelegs/<dir>/<item>_pdf_NN.pdf=, where =<dir>= is the cover's folder: the title's first letter, or
+    =0= for a digit (the list's cover paths are =a=, =b=, =c=, =d=, =0=). The number of PDFs is not on the card.
+- Scans have no lightbox; a thumbnail =_tn.jpg= links to the full image. Bootleg and brucelegs pages caption them
+  (="148_artwork_01.jpg": box front=).
+
+Logged-in lists (100 cards each):
+
+| list                                 | MusicBrainz | Good scans | Kept in                        | other                              |
+|--------------------------------------+-------------+------------+--------------------------------+------------------------------------|
+| collection album                     |          19 |         99 | Switzerland 99, Lebanon 1      | copies 2: 9, 3: 3                  |
+| bootlegs aud_live1978                |          86 |          – | –                              | artwork 61, info file 84           |
+| brucelegs                            |           0 |          – | –                              | PDF 100, artwork 100 (constant)    |
+
+The logged-in collection page also has the filter forms =filter_collection_info_public= / =…_private=.
+
+Previews (POH), two bugs in =_dpParseSl()= / =_dpSlTracklist()=:
+1. Brucelegs ("The page has no tracklist.", the reported one). The block is looked up right after =div.divide30=, but
+   brucelegs puts =<h3 class="heading">Trackslist</h3>= in between. Then =_DP_TRACK_RE= needs a =-–.)= separator (=A1
+   Title=, =01 Title (5:45.15)= fail), and =_DP_DISC_RE= rejects =Disc: (82:40.00)=.
+2. The sampler 5240, not reported before. =Record 2: "Cover Me" (catalogue # …)= fails =_DP_DISC_RE= ("record"
+   missing, text after the colon), so records 2–5 land in the notes.
+
+MusicBrainz icon: no hover card today. =_mbEntitySource()= is off on foreign hosts. =_dgMbSource()= admits SL
+(=_MB_FOREIGN_POP_HOST=) and image links, but its selector names Discogs roots only.
+
+Cache: the detail cache is keyed by URL only (see "1a. Credentials" above, item 2). Once cards carry logged-in facts,
+public and logged-in reads overwrite each other.
+
+*** Plan (later session, branch =feat/sl-item-pts=, WIP entries only)
+
+1. One shared tracklist reader for previews and PTs, fixing both bugs; bump =_DP_PARSER_VERSION=.
+2. =_slLoggedIn(doc)= (=button[name="hBtnLogout"]= vs =hTxtPassword=), with the login state in each detail-cache
+   record; a mismatch is a miss. Private info is never parsed into a card.
+3. The MB glyph's hover card: extend =_dgMbSource()='s selector to SL's roots (=table.mb-sl-table=, =.project-detail=,
+   =.mb-fd-head=), host-scoped. The SL card records the MB link and flags.
+4. List columns in =_SL_HEADERS= / =_slBuildRow()= from the icons, decided per run:
+   - collection: MusicBrainz, Good scans, Kept in;
+   - bootlegs: MusicBrainz, Artwork as a glyph, Info file as a link to the =.txt=;
+   - brucelegs: PDF, Artwork.
+
+   Plus a 📊 "SL flags" section (uniq-dropdown-section skill).
+5. Three PTs, =sl-collection-item=, =sl-bootlegs-item= and =sl-brucelegs-item=. Each has an =@include= with
+   =sl-include-regex= cases, rows from the live page (=fetchText= = the document, as for =sfm-setlist=), =_slHeadSpec()=
+   in =_fdHeadSpec()=, and sub-tables per record or disc. The info file is read same-origin only when its section
+   opens. Brucelegs gets a second button, "All versions", which runs the existing card converter.
+6. Tests:
+   - scrubbed fixtures from the 2026-11-04 snapshots (user name and Private info removed);
+   - specs per PT, the two preview cases, the list columns logged in and logged out;
+   - =scripts/mutations/sl-item-pts.json=;
+   - =run-test-full.py=, so MusicBrainz is proved unchanged.
+7. Docs: =docs/claude/springsteenlyrics.md= (including the "No flag columns" paragraph, which this changes),
+   =docs/non-mb-coverage.json= with =build-coverage-report.py --check=, =PAGETYPES-TESTING-REFERENCE.org=, HELP,
+   DEBUG-NOTES, and the CLAUDE.md doc-map row.
+
+*** Questions (recommendations in the mockup's last tab)
+
+1. Item PT button: one "Tracklist" button, plus "All versions" on brucelegs?
+2. Info file: a closed section read on open, and the list's 📄 link read on Space only?
+3. Bootlegs: split "#2" into Take and "[partial]" into Note; releases get one "Version / note" column?
+4. Vinyl: pair sides A/B, C/D, … into Record 1, 2, … (MusicBrainz media), or one table per side?
+5. Brucelegs PDF/Artwork columns: both are constant (402 of 402) today. Keep them as asked, with PDF linking to the
+   item's section?
+6. The logged-in collection filters (public/private info): leave them for the compact-bar work?
+7. Song links: left to the "URLify the tracklist" TODO?
+
+Still needed: a logged-in snapshot of bootleg item 2567 (aud_live1984).
+
+** summary
+
+I've built the mockups and written the analysis, decisions, plan and seven open questions under the TODO in org/springsteenlyrics.org. The userscript is unchanged, so there is no version bump. Everything is on the new branch docs/sl-item-pts-mockups and nothing is committed.
+
+Mockups: ⧉ https://claude.ai/artifact/GBFJp9Ebo8LDoGPSskVMkg (private to your account). A local copy is in org/sl-item-pts-mockups.html. It uses real values from your snapshots; images and your private notes are placeholders.
+
+What I found:
+- Item pages: the script never runs on collection.php?item=, bootlegs.php?item= or brucelegs.php?item=, because no @include line matches them. The mockup shows three new PTs that turn the page itself into a release-style head plus one sub-table per record or disc, with no extra request.
+- Two of your snapshots are bootleg pages: sl-collection-vid_live-detail.html and sl-collection-aud_live_1988-detail.html are really bootlegs.php?item=4615 and ?item=9507.
+- "The page has no tracklist." on brucelegs: the parser looks for the tracklist right after a spacer, but brucelegs pages put a "Trackslist" heading in between. Its lines also have no hyphen (A1 Title, 01 Title (5:45.15)), and Disc: (82:40.00) isn't recognised as a disc header.
+- A second bug of the same kind: the sampler box set (item 5240) loses records 2–5 into its notes, because Record 2: "Cover Me" (catalogue # …) isn't recognised as a header either.
+- List columns: your logged-in list pages carry the icons on the cards, so the new columns cost no extra request. Over 100 cards each:
+  - collection: MusicBrainz link 19, Good scans 99, Switzerland 99, Lebanon 1;
+  - bootlegs: MusicBrainz link 86, artwork 61, info file 84.
+- Brucelegs PDF and Artwork: both appear on every card today, so those two columns would filter nothing yet.
+- Info file and PDF links: the info-file link can be built from the card alone (bootlegs/<category>/<item>_infofile.txt). The PDF folder is the title's first letter (0 for a digit), but how many PDFs an item has isn't on the card.
+- MusicBrainz icon: it has no hover card today. The fix is to extend the hover-card source the Discogs pages already use to the SL pages, without touching anything on MusicBrainz.
+- Login state: the preview cache doesn't record whether a page was read logged in. Once cards contain logged-in-only data, a public read and a logged-in read of the same page would overwrite each other, so the build has to record which one it was.
+
+Open questions (the mockup's last tab has my recommendation for each):
+1. Item page button: one "Tracklist" button, plus "All versions" on CD/vinyl bootlegs?
+2. Info file: a closed section that reads the .txt only when you open it?
+3. Bootlegs: split "#2" into a Take column and "[partial]" into a Note column?
+4. Vinyl: pair sides A/B, C/D… into Record 1, 2…, or one table per side?
+5. Brucelegs PDF and Artwork columns: keep them although they are the same on every card today?
+6. The extra filters on the logged-in collection list: leave them for later?
+7. Song links in tracklists: leave them to the separate "URLify the tracklist" TODO?
+
+A logged-in snapshot of bootleg item 2567 (the one named in the TODO) is still missing. Once you've answered the questions, the build goes on its own branch, feat/sl-item-pts.
+
+** answers
+
+1. Item page button: one "Tracklist" button, plus "All versions" on CD/vinyl bootlegs? YES
+2. Info file: a closed section that reads the .txt only when you open it? YES
+3. Bootlegs: split "#2" into a Take column and "[partial]" into a Note column? YES
+4. Vinyl: pair sides A/B, C/D… into Record 1, 2…, or one table per side? PAIR SIDES
+5. Brucelegs PDF and Artwork columns: keep them although they are the same on every card today? YES
+6. The extra filters on the logged-in collection list: leave them for later? YES
+7. Song links in tracklists: leave them to the separate "URLify the tracklist" TODO? YES
+
+#+begin_example
+sl-bootleg-2567-logged-in.html - https://www.springsteenlyrics.com/bootlegs.php?item=2567
+#+end_example
+
+*** Answers (vzell, 2026-11-04)
+
+1. Item page button: one "Tracklist" button, plus "All versions" on CD/vinyl bootlegs. YES
+2. Info file: a closed section that reads the .txt only when it is opened. YES
+3. Bootlegs: "#2" goes to a Take column and "[partial]" to a Note column. YES
+4. Vinyl: pair the sides A/B, C/D, … into Record 1, 2, …. PAIR SIDES
+5. Brucelegs PDF and Artwork columns: keep them, although they are the same on every card today. YES
+6. The extra filters on the logged-in collection list: left for later. YES
+7. Song links in tracklists: left to the "URLify the tracklist" TODO. YES
+
+The mockups are approved with these answers. The build goes on =feat/sl-item-pts= in a new session, following the
+plan above.
+
+New snapshot: =debug/sl-bootleg-2567-logged-in.html= (bootlegs.php?item=2567, aud_live1984, logged in). What it adds
+to the findings:
+- A bootleg item carries the MusicBrainz link too, on the same flags line as artwork and info file
+  (=/release/9b27f8bb-…=). So the "Your collection" card of =sl-bootlegs-item= shows it when present; 9507 has none
+  ("Add MusicBrainz MBID").
+- A vinyl-transfer bootleg has side positions (=A1-= … =B3-=) and no =Disc N:= header. Answer 4 therefore applies to
+  bootlegs as well: A/B becomes one "Record 1" table.
+- The Artwork section has captions (="2567_artwork_01.jpg": front= … =runout groove side 2=), as on brucelegs.
+- The info file is =bootlegs/aud_live1984/2567_infofile.txt=, which confirms the pattern.
+
+*** Built (2026-11-04, branch =feat/sl-item-pts=, stacked on =docs/sl-item-pts-mockups=)
+
+Env: 2026-11-04T18:29:24+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (GM
+stubs, no Tampermonkey). Not yet tested in a real browser.
+
+WIP entries (=ShowAllEntityData_CHANGELOG.wip.json=):
+- WIP.1: preview fixes. Brucelegs items have a tracklist (with lengths), the runout etchings and the release info; a box
+  set's "Record N:" headers work; artwork carries the page's captions. =_slParseTracklist()=, =_slTracklistBlock()=,
+  =_DP_PARSER_VERSION= 9.
+- WIP.2: the preview cache keeps logged-in and public reads apart (=data.session=, =_dpRecUsable()=).
+- WIP.3: logged-in list columns.
+  - collection: MusicBrainz, Good scans, Kept in; bootlegs: MusicBrainz.
+  - The MusicBrainz cell and the site's own icon get MusicBrainz's card (=dg-mb=).
+  - Bootlegs: Info file links the =.txt= (card on hover, read on Space).
+  - Brucelegs: PDF and Artwork.
+  - Fix: a logged-in card's Version was always empty.
+- WIP.4: the item pageTypes =sl-collection-item=, =sl-bootlegs-item= and =sl-brucelegs-item=, as in the mockup, with
+  every answer applied.
+
+Where it differs from the mockup:
+- *Columns.* Collection items have one "Version / note" column; the mockup's Take and Note split applies to bootlegs
+  only (answer 3).
+- *List cells are plain text.* The MusicBrainz cell reads "MB" as a pink glyph, so filtering and the 📊 list see "MB" or
+  empty. Artwork, Info file and PDF read "yes", not the mockup's glyphs. No separate 📊 "SL flags" section was added:
+  the generic value list already offers MB/empty and yes/empty, with counts.
+- *PDF links the item page.* The PDF files' names are not on the card.
+- *The site's own item content is hidden* once the view is in place; the navbar and breadcrumb stay.
+
+How it was checked:
+- 10 + 6 new tests, +1 in detail-preview.
+- 19/19 mutations fail as expected.
+- The specs that share the changed code: 250 passed.
+- Lint is within the baseline; the coverage report and the doc audits pass.
+- =test:full=: see below.
+
+Try in your browser (logged in and logged out):
+- https://www.springsteenlyrics.com/collection.php?item=8595&category=album&f_format=12i
+- https://www.springsteenlyrics.com/collection.php?item=5240&category=sampler&f_format=12i
+- https://www.springsteenlyrics.com/bootlegs.php?item=2567&category=aud_live1984 (open "Original info file")
+- https://www.springsteenlyrics.com/brucelegs.php?item=281&f_format=vinyl (both buttons; hover a brucelegs item on the
+  list for the fixed preview)
+- https://www.springsteenlyrics.com/collection.php?cmd=list&category=album (hover the MB cells)
+- https://www.springsteenlyrics.com/bootlegs.php?cmd=list&category=aud_live1978 (Info file: hover, then Space)
+
+Left open:
+- Song links in tracklists (the URLify TODO).
+- The logged-in collection filters (answer 6).
+- Shapes no snapshot shows: a bootleg item with "Side A:" headers; a CD bootleg with "Disc 1: (…)" totals on several
+  discs.
+
+=test:full= (2026-11-04T18:29:44+01:00 → 18:48:04, NB-3641): 2662 passed, 3 failed, none SL.
+- Two of the failures pass 3/3 alone.
+- The third (=popup-mb.spec.js:4108=) is flaky on =main= as well: 8/20 under parallel repeats, against 10/20 on the
+  branch. See DEBUG-NOTES.md.
+
+*** DONE bugs
+
+all works fine except:
+
+1.)
+
+When pressing the "All versions" button (what is is actually good for, what should be shown when it works) on e.g. a
+brucelegs detail page
+
+#+begin_example
+@debug/sl-brucelegs-all-versions.html  - https://www.springsteenlyrics.com/brucelegs.php?item=148&f_format=vinyl - [Image #9]
+#+end_example
+
+2.)
+
+Why is there so much empty space on both side of a detail page on SL detail pages
+
+#+begin_example
+@debug/sl-detail-empty-space.html - https://www.springsteenlyrics.com/bootlegs.php?item=4615&category=vid_live - [Image #10]
+#+end_example
+
+3.)
+
+#+begin_example
+@debug/sl-brucelegs-multiple-versions.html - https://www.springsteenlyrics.com/brucelegs.php?item=41&f_format=vinyl - brucelegs detail page with multiple versions available
+#+end_example
+ 

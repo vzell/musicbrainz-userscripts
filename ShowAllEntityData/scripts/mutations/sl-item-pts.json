@@ -1,0 +1,275 @@
+[
+    {
+        "name": "tracklist block: the CD and vinyl bootlegs' Trackslist heading not skipped",
+        "why": "brucelegs pages put an h3 between the spacer and the tracklist; the preview said 'The page has no tracklist.'",
+        "edits": [
+            {
+                "find": "            if (n.matches('div.divide30') || (n.matches('h3.heading') && /^tracks?l?i?s?t/i.test(n.textContent.trim()))) continue;\n",
+                "replace": "            if (n.matches('div.divide30')) continue;\n"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "items of 2026-11-04",
+        "expect": "fail"
+    },
+    {
+        "name": "tracklist: lines without a separator not read",
+        "why": "'A1 Title' and '01 Title (5:45.15)' have no hyphen.",
+        "edits": [
+            {
+                "find": "        const trackRe = strict ? _DP_TRACK_RE : _DP_TRACK_LOOSE_RE;\n",
+                "replace": "        const trackRe = _DP_TRACK_RE;\n"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "items of 2026-11-04",
+        "expect": "fail"
+    },
+    {
+        "name": "tracklist: 'Record N:' is no header",
+        "why": "The box set's records 2-5 became notes.",
+        "edits": [
+            {
+                "find": "(?:disc|disk|cd|dvd|side|lp|record|tape|set)\\b[^:\"(]{0,12}?)",
+                "replace": "(?:disc|disk|cd|dvd|side|lp|tape|set)\\b[^:\"(]{0,12}?)"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "items of 2026-11-04",
+        "expect": "fail"
+    },
+    {
+        "name": "tracklist: no text after a header's colon",
+        "why": "'Disc: (82:40.00)' and 'Record 2: \"Cover Me\" (catalogue # …)' carry text after the colon.",
+        "edits": [
+            {
+                "find": "\\s*(?::\\s*((?:\"|\\().*)?)?$/i;",
+                "replace": "\\s*:?$/i;"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "items of 2026-11-04",
+        "expect": "fail"
+    },
+    {
+        "name": "tracklist: a track's length left in its title",
+        "why": "'(5:45.15)' is the track's Length.",
+        "edits": [
+            {
+                "find": "                        cur.tracks.push({ pos: t[1], title: len ? len[1] : t[2], length: len ? len[2] : '' });\n",
+                "replace": "                        cur.tracks.push({ pos: t[1], title: t[2], length: '' });\n"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "items of 2026-11-04",
+        "expect": "fail"
+    },
+    {
+        "name": "preview: Private info read into a record",
+        "why": "A logged-in page's own notes never reach a card or window (vzell, 2026-11-04).",
+        "edits": [
+            {
+                "find": "original info file|all versions|private info)\\b/i;",
+                "replace": "original info file|all versions)\\b/i;"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "items of 2026-11-04",
+        "expect": "fail"
+    },
+    {
+        "name": "cache: the login state not compared",
+        "why": "A public and a logged-in read of one page would replace each other.",
+        "edits": [
+            {
+                "find": "        return !(site && site.session && data && data.session) || data.session === site.session();\n",
+                "replace": "        return true;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "preview cache",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-mb: SL's MusicBrainz links left out",
+        "why": "The MusicBrainz icon gets MusicBrainz's card on springsteenlyrics.com (vzell, 2026-11-04).",
+        "edits": [
+            {
+                "find": "            (_isSlHost ? ', div.blog-post a[href^=\"https://musicbrainz.org/\"]",
+                "replace": "            (false ? ', div.blog-post a[href^=\"https://musicbrainz.org/\"]"
+            }
+        ],
+        "spec": "tests/fixtures/sl-logged-in-columns.spec.js",
+        "grep": "MusicBrainz cell",
+        "expect": "fail"
+    },
+    {
+        "name": "list: no logged-in columns",
+        "why": "Logged in, the cards carry the MusicBrainz link, Good scans and Kept in.",
+        "edits": [
+            {
+                "find": "        return _slLoggedIn(document) ? _SL_HEADERS[kind].concat(",
+                "replace": "        return false ? _SL_HEADERS[kind].concat("
+            }
+        ],
+        "spec": "tests/fixtures/sl-logged-in-columns.spec.js",
+        "grep": "collection: MusicBrainz",
+        "expect": "fail"
+    },
+    {
+        "name": "list: Kept in only Switzerland",
+        "why": "One column for every img/collection_in<place>.png (vzell's answer).",
+        "edits": [
+            {
+                "find": "                textCell(Array.from(body.querySelectorAll('img[src*=\"img/collection_in\"]'))\n",
+                "replace": "                textCell(Array.from(body.querySelectorAll('img[src*=\"img/collection_inswitzerland\"]'))\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-logged-in-columns.spec.js",
+        "grep": "collection: MusicBrainz",
+        "expect": "fail"
+    },
+    {
+        "name": "list: Info file not linked",
+        "why": "The cell links bootlegs/<category>/<item>_infofile.txt.",
+        "edits": [
+            {
+                "find": "            const infoUrl = body.querySelector('.glyphicon-file') ? _slInfoFileUrl(href) : '';\n",
+                "replace": "            const infoUrl = '';\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-logged-in-columns.spec.js",
+        "grep": "bootlegs: MusicBrainz last",
+        "expect": "fail"
+    },
+    {
+        "name": "list: a logged-in card's Version read after the first marker",
+        "why": "A logged-in card has a marker before the title too.",
+        "edits": [
+            {
+                "find": "        for (const glyph of body.querySelectorAll('.glyphicon-option-vertical')) {\n",
+                "replace": "        for (const glyph of [body.querySelector('.glyphicon-option-vertical')].filter(Boolean)) {\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-logged-in-columns.spec.js",
+        "grep": "collection: MusicBrainz",
+        "expect": "fail"
+    },
+    {
+        "name": "preview: the info file read on hover",
+        "why": "Read on Space only (vzell's answer 2).",
+        "edits": [
+            {
+                "find": "                    if (windowOnly) return head(t) + ",
+                "replace": "                    if (false) return head(t) + "
+            }
+        ],
+        "spec": "tests/fixtures/sl-logged-in-columns.spec.js",
+        "grep": "Info file: the card",
+        "expect": "fail"
+    },
+    {
+        "name": "item: the head read from the live page",
+        "why": "The grouped render clears the site's own h3 sections before the head is built.",
+        "edits": [
+            {
+                "find": "        const card = _slFindCards(src)[0];\n        if (!kind || !h2 || !card) return null;\n",
+                "replace": "        const card = _slFindCards(document)[0];\n        if (!kind || !h2 || !card) return null;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "collection 8595",
+        "expect": "fail"
+    },
+    {
+        "name": "item: sides not paired",
+        "why": "Vinyl sides A/B make Record 1 (vzell's answer 4).",
+        "edits": [
+            {
+                "find": "                const name = `Record ${Math.floor((t.pos.charCodeAt(0) - 65) / 2) + 1}`;\n",
+                "replace": "                const name = `Side ${t.pos[0]}`;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "vinyl bootleg 148",
+        "expect": "fail"
+    },
+    {
+        "name": "item: take not split off",
+        "why": "'#2' is the Take column on bootlegs (vzell's answer 3).",
+        "edits": [
+            {
+                "find": "        if (take) { out.take = take[2]; t = take[1]; }\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "bootleg 9507",
+        "expect": "fail"
+    },
+    {
+        "name": "item: the info file read on every opening",
+        "why": "The file is read once, when its section is first opened.",
+        "edits": [
+            {
+                "find": "                    if (asked) return;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "bootleg 9507",
+        "expect": "fail"
+    },
+    {
+        "name": "item: no Artist column on various-artists pages",
+        "why": "'Ted Nugent: Moter City Madhouse' is an artist and a title.",
+        "edits": [
+            {
+                "find": "        const va = kind === 'collection' && ",
+                "replace": "        const va = false && "
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "various artists",
+        "expect": "fail"
+    },
+    {
+        "name": "item: the site's own content left visible",
+        "why": "Our head and tables show all of it.",
+        "edits": [
+            {
+                "find": "            body.mb-sa-host-sl .mb-sl-item-native {\n                display: none !important;\n",
+                "replace": "            body.mb-sa-host-sl .mb-sl-item-native {\n                outline: none !important;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "collection 8595",
+        "expect": "fail"
+    },
+    {
+        "name": "item: the site's 1170 px containers keep their width",
+        "why": "Empty space on both sides, and All versions squeezed the head (vzell, 2026-11-04).",
+        "edits": [
+            {
+                "find": "        for (let el = main; el; el = el.parentElement) {\n            if (el.classList.contains('container')) el.classList.add('mb-sl-wide');\n",
+                "replace": "        for (let el = null; el; el = el.parentElement) {\n            if (el.classList.contains('container')) el.classList.add('mb-sl-wide');\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "width of the window",
+        "expect": "fail"
+    },
+    {
+        "name": "item: All versions offered for a single version",
+        "why": "The page's section usually lists the item itself alone; the button then shows one row (vzell, 2026-11-04).",
+        "edits": [
+            {
+                "find": "                    showIf: () => _slItemVersionCount(document) > 1,\n",
+                "replace": "                    showIf: () => _slItemVersionCount(document) > 0,\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "gets no All versions button",
+        "expect": "fail"
+    }
+]

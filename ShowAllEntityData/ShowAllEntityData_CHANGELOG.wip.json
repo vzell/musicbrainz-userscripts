@@ -1,0 +1,60 @@
+[
+  {
+    "version": "WIP.4",
+    "date": "2026-11-04",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "springsteenlyrics.com: an item's own page (collection.php?item=…, bootlegs.php?item=…, brucelegs.php?item=…) gets a button, Tracklist: the tracklist from the page itself, one table per disc or record (vinyl sides paired: A/B is Record 1), with Take and Note columns on bootlegs, Version, Note and Length on the CD and vinyl bootlegs, and an Artist column on various-artists albums. Above the tables: the item's facts (release, or show and recording), its runout etchings, its files, its scans or artwork (one section per copy, with the site's captions, opening in the viewer), the notes, and the original info file, which is read only when you open its section. Logged in, a \"Your collection\" card shows the MusicBrainz link (with its preview), Good scans, Kept in, the item number and the edit link, and \"Private info\" is shown closed; it never appears in a preview. A CD or vinyl bootleg whose page lists several versions (pressings) also gets All versions: every one of them as one table with the list's columns. The view uses the window's full width, as the lists do, instead of the site's centred 1170 px column. Mockups: https://claude.ai/artifact/GBFJp9Ebo8LDoGPSskVMkg"
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.3",
+    "date": "2026-11-04",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "springsteenlyrics.com lists, logged in: the collection gets MusicBrainz, Good scans and Kept in columns (one column for every \"In <country>\" icon), the bootlegs a MusicBrainz column, all from the cards themselves, with no extra request. The MusicBrainz cell, and the site's own MusicBrainz icon on its cards, show MusicBrainz's card on hover and open in the window. Logged out, the tables are as before.",
+          "springsteenlyrics.com bootleg lists: the Info file cell links the bootleg's original info file. Its card names the file, and Space reads it into the window.",
+          "springsteenlyrics.com CD and vinyl bootleg lists: PDF and Artwork columns (vzell, although every card has both today); PDF links the item page, where the PDFs are."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "springsteenlyrics.com lists, logged in: the Version column was empty on every card, because a logged-in card puts its item number and a second marker before the title."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.2",
+    "date": "2026-11-04",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "springsteenlyrics.com previews: a page read while logged in and one read logged out are no longer one cache entry. Each record notes the login state it was read in, and a record of the other state is read again."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-11-04",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "springsteenlyrics.com: the preview of a CD or vinyl bootleg (brucelegs.php?item=…) said \"The page has no tracklist.\" It now shows the tracklist, with the lengths the page gives, the runout etchings and the release info.",
+          "springsteenlyrics.com: the preview of a box set with \"Record 2: …\" headers (the Born In The U.S.A. 12\" Single Collection) showed record 1 only; the other records ended up in the notes.",
+          "springsteenlyrics.com: artwork in a preview carries the page's own captions (\"front\", \"booklet p2,3\")."
+        ]
+      }
+    ]
+  }
+]

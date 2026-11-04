@@ -28023,3 +28023,76 @@ Env: 2026-11-04T16:29+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) 
 - Fix: Most attended builds its own `dl.mb-dp-kv` with the linked name; Stages and Artist charts pass plain names.
 - Why the spec missed it: it checked the heading "Most attended" only. It now asserts the first name is a link
   ("Pulp", its setlist) and that the window's text has no `<a href`; a mutation restoring the old line fails it.
+
+## 2026-11-04 — springsteenlyrics.com: "The page has no tracklist." on CD and vinyl bootleg previews; a box set's records 2–5 in the notes; logged-in cards' empty Version; item pages read after the render cleared them (feat/sl-item-pts, WIP.1–WIP.4)
+
+Env: 2026-11-04T18:29:24+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (GM stubs, no Tampermonkey) · snapshots from vzell's browser (Chrome, Tampermonkey; versions not recorded).
+
+Snapshots (vzell, 2026-11-04, logged in unless noted): `debug/sl-collection-{official,sampler,VA,covers,guest,single,nugsnet,audioboot,video-movie,vid_live,aud_live_1988}-detail.html`, `sl-brucelegs-detail.html` (148, anonymous), `sl-brucelegs-2-detail.html` (281), `sl-bootleg-2567-logged-in.html`, and the logged-in lists `sl-{collections,bootlegs,brucelegs}-list-logged-in.html`. `vid_live` and `aud_live_1988` are bootleg pages (bootlegs.php?item=4615 / 9507). The logged-in LIST snapshots were saved with ShowAllEntityData running (its toolbar, menus and styles in the page); the item snapshots were not (no pageType ran there).
+
+- **Brucelegs preview, reported.** `_dpParseSl()` took the block right after the card's `div.divide30`; brucelegs pages put `<h3 class="heading">Trackslist</h3>` in between, so no block, no tracks, and `_dpExtractedCols` printed "The page has no tracklist." Behind it two more: `_DP_TRACK_RE` needs a `-–.)` separator ("A1 Title", "01 Title (5:45.15)" have none) and `_DP_DISC_RE` rejected `Disc: (82:40.00)`. Fix: `_slTracklistBlock()` skips a "Trackslist" heading; `_slParseTracklist()` reads a block where no line has a separator with `_DP_TRACK_LOOSE_RE`, a trailing "(m:ss.cc)" as the track's length, and headers with a quoted or parenthesised text after the colon. `_DP_PARSER_VERSION` 8 → 9.
+- **Sampler 5240, found while reading.** `Record 2: "Cover Me" (catalogue # CBS QTA 4662)` failed `_DP_DISC_RE` ("record" missing, text after the colon), so the tracklist ended after record 1 and records 2–5 became notes. Same fix.
+- **Logged-in cards' Version, found while building.** A logged-in card writes "<b>8595</b> ⋮ <a>Title</a> ⋮ <b>sub-title</b>": `_slCardSubtitle()` looked at the FIRST marker only, whose next element is the title link, so Version was empty on every logged-in list row. It now takes the first marker followed by bold text.
+- **Item pages: the head built from a cleared page.** The first run of `sl-item.spec.js` failed six of seven: the grouped render clears the site's own `h3.heading` sections out of `.project-detail` (the container the tables go into) before `_fdHeadInsertSections()` reads them. The item pages now take the page's HTML once at the first press (`_slItemPageHtml()`), and the head and every view read that copy.
+- **Cache.** The detail cache is keyed by URL only; a logged-in read now carries data a public one lacks. Records are stamped with the login state (`data.session`) and a mismatch is a miss (`_dpRecUsable()`).
+
+Tests: `tests/fixtures/sl-item.spec.js` (10), `sl-logged-in-columns.spec.js` (6), `detail-preview.spec.js` (+1), `sl-include-regex.spec.js`, `sl-brucelegs.spec.js` (PDF/Artwork headers); fixtures from `scripts/build-sl-item-fixtures.py` (user name and Private info scrubbed, leak-checked; the logged-in list cards grafted into the clean anonymous page 1). Mutations `scripts/mutations/sl-item-pts.json`: 19/19 fail as expected. One of them first "failed" through a TypeError in a clumsy assertion (`.find(…).disc` on undefined); the assertion now compares the five record names directly.
+
+`test:full` on this branch (2026-11-04T18:29:44+01:00 → 18:48:04, NB-3641, 18 m 20 s): 2662 passed, 3 failed, none of them SL.
+- `fixture-load-no-archive-org-wait.spec.js` and `sidebar-sections.mobile.spec.js:36` passed 3/3 when rerun alone.
+- `popup-mb.spec.js:4108` ("D: a grip under the left column's table …") fails on `main` too: with `--repeat-each 20` in
+  parallel workers, 8/20 failed on `main` (scratch worktree) against 10/20 on the branch, each time the same
+  `toHaveText`. Run serially it passes 6/6 on both. It is pre-existing load-dependent flakiness, not this branch.
+
+## 2026-11-04 — the three test:full failures of feat/sl-item-pts: scrubbed CDN files went to the network; the event window repainted under test D
+
+Env: 2026-11-04T19:09:35+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (GM stubs, no Tampermonkey)
+
+- **`fixture-load-no-archive-org-wait.spec.js` and `sidebar-sections.mobile.spec.js`: "Test timeout … page.goto".**
+  Both fixtures load MusicBrainz's stylesheets and images under scrubbed names (`static.metabrainz.org/MB/common-SCRUBBED.css`,
+  `header-logo-SCRUBBED.svg`, …; 30 fixtures carry such names). The CDN answers them 404, and `serveStaticMb()`
+  (tests/support/test.js) caches only 200 answers, so EVERY load of such a fixture asked the live CDN, and `page.goto()`
+  waits for the answer before `load`. Under the parallel suite that request stalled. Checked by a request log of each
+  fixture (every static.metabrainz.org URL a cache MISS) and `curl` (404 text/html). Fix: a scrubbed name is answered
+  locally with the CDN's own 404, marked `x-sa-fixture-stub: scrubbed-static`, no request. New test in
+  `fixture-load-no-archive-org-wait.spec.js` pins it; it fails with `SA_NO_STATIC_CACHE=1` and with the guard removed.
+- **`popup-mb.spec.js` "D: a grip under the left column's table …": flaky on `main` too** (8/20 under
+  `--repeat-each 20` in parallel workers; 10/20 on the branch). Not one failure but several: the box read 0 px ("the CSS
+  cap until dragged"), the grip detached ("Element is not attached to the DOM"), a null bounding box, and in the full
+  run 540 after ArrowDown. `openEvent()` waited for the setlist only; the window's other lookups ("Recorded here", the
+  place's areas) answered later, and each answer repaints the window and replaces its tables, taking the grip (and its
+  focus) with it. A probe saw the grip focused and the same node after ↑ in every run that got that far. Fix:
+  `openEvent()` waits until no `.mb-dp-spin` is left in the window, and D waits for its table's first row. 20/20 after;
+  the whole popup-mb file, the load spec and the mobile sidebar spec: 150/150.
+
+## 2026-11-04 — springsteenlyrics.com item pages: empty space on both sides; All versions squeezed the head into ~150 px (feat/sl-item-pts, WIP.4)
+
+Env: 2026-11-04T19:39:02+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (GM stubs, no Tampermonkey); the report from vzell's browser (Chrome, Tampermonkey; versions not recorded).
+
+Snapshots (vzell, rendered pages): `debug/sl-detail-empty-space.html` (bootlegs.php?item=4615&category=vid_live, Tracklist),
+`debug/sl-brucelegs-all-versions.html` (brucelegs.php?item=148, All versions).
+- Cause: on an item page the view sits in `.project-detail < .col-md-12 < .row < .container`, Bootstrap's fixed 1170 px
+  column. The list converter marks those containers `mb-sl-wide`; `applySlItemToTable()` did not. So the view had
+  empty space on both sides, and All versions' one-row table, 2307 px wide in the snapshot, overflowed the column:
+  Sticky Page Headers then sized the toolbar h1 and the head to the column (`--mb-sph-maxw: 120px` on the h3), and the
+  h1 wrapped word by word.
+- Fix: `applySlItemToTable()` marks every `.container` around `.project-detail` `mb-sl-wide`.
+- Test: `sl-item.spec.js` "the width of the window", under Bootstrap's grid rules in a 1600 px window: no fixed-width
+  container around the view, the h2 bar wider than 1400 px; All versions: the h1 wider than 1000 px and on one line,
+  the right column's card wider than 1000 px (before the fix: 3 fixed containers, h1 322 px). Mutation in
+  `scripts/mutations/sl-item-pts.json`, caught.
+
+## 2026-11-04 — springsteenlyrics.com: All versions showed one row on most CD and vinyl bootlegs (feat/sl-item-pts, WIP.4)
+
+Env: 2026-11-04T19:47:51+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (GM stubs, no Tampermonkey)
+
+- vzell asked what All versions is for. The page's "All versions of this bootleg" lists every pressing of the same
+  bootleg, the item itself included; on 148 and 281 that is the item alone, so the table had one row. Item 41
+  ("A Journey Thru The USA Part 1", `debug/sl-brucelegs-multiple-versions.html`) lists six: 8, 38, 39, 40, 41 and 42.
+- Change: the button's `showIf` is `_slItemVersionCount() > 1`.
+- The snapshot was saved with the script running (its toolbar `<h1>`, status line, `mb-*` styles, menu panel). The
+  fixture builder's new `strip_script_ui()` takes those out and fails if any `mb-` class or id is left; the other
+  fixtures came out byte-identical.
+- Tests: `sl-item.spec.js` (41: six rows, all Rock Records, items 8/38–42; 281 and 41: the button absent / present),
+  the width test now on 41. Mutation (`> 0`) caught.
+

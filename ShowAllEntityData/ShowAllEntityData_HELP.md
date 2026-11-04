@@ -3216,7 +3216,7 @@ ListenBrainz, CritiqueBrainz, MetaBrainz) are previewed like any other site.
 </details>
 
 <details>
-<summary>springsteenlyrics.com collection, bootleg and lyrics lists</summary>
+<summary>springsteenlyrics.com collection, bootleg and lyrics lists, and item pages</summary>
 
 Not a MusicBrainz page at all, and **on unless you switch it off**: ⚙️ Settings →
 *🎸 springsteenlyrics.com* → *Enable on springsteenlyrics.com collection and
@@ -3426,6 +3426,33 @@ opens the item's page. Ctrl/⌘-click (or a middle click) opens the item page
 in a new tab, as before. Switch the card off with ⚙️ Settings → 🎸
 springsteenlyrics.com → *Cover column: every image of an item on hover*; the
 click opens the viewer either way.
+
+**Logged in on springsteenlyrics.com**, the lists show what the site shows
+you there: the collection gets **MusicBrainz**, **Good scans** and **Kept in**
+(Switzerland, Lebanon, … — one column for every "In …" icon), the bootleg
+lists a **MusicBrainz** column. They come from the cards themselves, so they
+cost nothing extra; logged out, the tables are as before. The MusicBrainz cell
+(and the site's own MusicBrainz icon) shows MusicBrainz's card on hover and
+opens in the window on Space. On the bootleg lists, **Info file** links the
+bootleg's original info file: its card names the file, and Space reads it into
+the window. The CD and vinyl bootleg list has **PDF** (a link to the item
+page, where the PDFs are) and **Artwork**.
+
+**An item's own page** (`collection.php?item=…`, `bootlegs.php?item=…`,
+`brucelegs.php?item=…`) gets one button, **Tracklist**: the tracklist from the
+page itself, no request, one table per disc or record (a vinyl's sides A and B
+make Record 1). Bootlegs get **Take** ("#2") and **Note** ("partial")
+columns, the CD and vinyl bootlegs **Version** ("V1"), **Note** and
+**Length**, various-artists albums an **Artist** column. Above the tables:
+the item's facts (or, for a bootleg, the show and the recording), the runout
+etchings, its files, the notes, and its scans or artwork — one section per
+copy, with the site's captions, opening in the artwork viewer. **Original info
+file** starts closed and is read only when you open it. Logged in, a **Your
+collection** card shows the MusicBrainz link, Good scans, Kept in, the item
+number and the site's edit link, and **Private info** is shown, closed — it
+never appears in a preview. A CD or vinyl bootleg whose page lists several versions (pressings) also
+gets **All versions**: every one of them, this one included, as one table with
+the list's columns, to compare them side by side.
 
 </details>
 

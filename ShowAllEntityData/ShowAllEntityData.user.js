@@ -23,6 +23,7 @@
 // @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/(?:collection|bootlegs|brucelegs)\.php\?(?:[^#]*&)?cmd=list(?:[&#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/collection\.php(?:\?(?:(?:[^#]*&)?cmd=intro(?:&[^#]*)?|pg=\d+(?:&[^#]*)?))?(?:#.*)?$/
 // @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/bootlegs\.php(?:\?(?:[^#]*&)?cmd=intro(?:&[^#]*)?)?(?:#.*)?$/
+// @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/(?:collection|bootlegs|brucelegs)\.php\?(?:[^#]*&)?item=\d+(?:[&#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/lyrics\.php(?:\?(?:[^#]*&)?cmd=(?:intro|list)(?:&[^#]*)?)?(?:#.*)?$/
 // @include      /^https?:\/\/(?:www\.)?jungleland\.it\/html\/list\.htm(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?brucespringsteen\.it\/(?:DB|db)\/records\.aspx(?:[?#].*)?$/
@@ -11741,8 +11742,35 @@
     const _SL_HEADERS = {
         collection: ['Cover', 'Title', 'Version', 'Label', 'Cat. no.', 'Format', 'Country', 'Release date', 'Original year', 'Copies'],
         bootlegs:   ['Cover', 'Title', 'Label', 'Date', 'First date', 'Show', 'Location', 'Format', 'Duration', 'Lossy', 'Artwork', 'Info file'],
-        brucelegs:  ['Cover', 'Title', 'Version', 'Label', 'Cat. no.', 'Date', 'First date', 'Show', 'Location', 'Format']
+        brucelegs:  ['Cover', 'Title', 'Version', 'Label', 'Cat. no.', 'Date', 'First date', 'Show', 'Location', 'Format', 'PDF', 'Artwork']
     };
+
+    /**
+     * Columns a kind gets only while the tab is logged in on the site
+     * (`_slLoggedIn(document)`), after `_SL_HEADERS[kind]`: the cards then
+     * carry the site's MusicBrainz icon (a link to the release), and on the
+     * collection its "Good scans" and "In <country>" icons (vzell,
+     * 2026-11-04; org/springsteenlyrics.org "Add new SL PTs and POHs"). The
+     * live document decides for every page of a run, so all rows have the
+     * same cells; logged out, the table is exactly as before.
+     * @type {Object<string, string[]>}
+     */
+    const _SL_LOGGED_IN_HEADERS = {
+        collection: ['MusicBrainz', 'Good scans', 'Kept in'],
+        bootlegs:   ['MusicBrainz'],
+        brucelegs:  []
+    };
+
+    /**
+     * The column headers of a kind's table on this tab: `_SL_HEADERS[kind]`,
+     * plus `_SL_LOGGED_IN_HEADERS[kind]` while logged in.
+     *
+     * @param {string} kind  A `features.slCardsToTable` kind.
+     * @returns {string[]}
+     */
+    function _slHeaders(kind) {
+        return _slLoggedIn(document) ? _SL_HEADERS[kind].concat(_SL_LOGGED_IN_HEADERS[kind] || []) : _SL_HEADERS[kind].slice();
+    }
 
     /**
      * Reads the show qualifier out of a springsteenlyrics.com date text: the
@@ -11794,6 +11822,22 @@
     }
 
     /**
+     * Whether a springsteenlyrics.com page was rendered for a logged-in
+     * user: its login box then has a "Log Out" button
+     * (`button[name="hBtnLogout"]`, "You are currently logged in as …");
+     * a visitor gets the log-in form (`hTxtPassword`) instead. Only a
+     * logged-in page has the MusicBrainz link, the Good scans and "In
+     * <country>" icons and the "Private info" sections (2026-11-04
+     * snapshots). Reads the page, never a cookie.
+     *
+     * @param {Document} doc  The live or a fetched page.
+     * @returns {boolean}
+     */
+    function _slLoggedIn(doc) {
+        return !!(doc && doc.querySelector('button[name="hBtnLogout"]'));
+    }
+
+    /**
      * Reads one card's labelled value lines into a map. A card's details are
      * a run of `<span class="text-primary"><em>Label:</em></span> value<br>`
      * lines, so each value is the text between its label span and the next
@@ -11824,17 +11868,21 @@
      * card that is the pressing/version ("Version 2, with hype sticker"); on
      * a bootleg card it is the bootleg label ("E. St. Records"). Some cards
      * have no marker at all (7 of 100 collection cards, 16 of 100 bootleg
-     * cards in the snapshots) — that yields `''`.
+     * cards in the snapshots) — that yields `''`. A logged-in card has a
+     * second marker BEFORE the title, after the item number ("<b>8595</b>
+     * ⋮ <a>Title</a> ⋮ <b>2015 remastered reissue</b>", 2026-11-04): the
+     * sub-title is the bold text after the first marker that has one.
      *
      * @param {Element} body  The card's text column.
      * @returns {string}
      */
     function _slCardSubtitle(body) {
-        const glyph = body.querySelector('.glyphicon-option-vertical');
-        if (!glyph) return '';
-        let n = (glyph.closest('span') || glyph).nextSibling;
-        while (n && n.nodeType === Node.TEXT_NODE && !n.textContent.trim()) n = n.nextSibling;
-        return (n && n.nodeName === 'B') ? n.textContent.replace(/\s+/g, ' ').trim() : '';
+        for (const glyph of body.querySelectorAll('.glyphicon-option-vertical')) {
+            let n = (glyph.closest('span') || glyph).nextSibling;
+            while (n && n.nodeType === Node.TEXT_NODE && !n.textContent.trim()) n = n.nextSibling;
+            if (n && n.nodeName === 'B') return n.textContent.replace(/\s+/g, ' ').trim();
+        }
+        return '';
     }
 
     /**
@@ -11994,11 +12042,12 @@
      * bootleg's with the card's own "artwork available" (`data-mb-sl-art`).
      *
      * @param {Element}  card        The `div.blog-post` element.
-     * @param {string}   kind        `'collection'` or `'bootlegs'`.
+     * @param {string}   kind        `'collection'`, `'bootlegs'` or `'brucelegs'`.
      * @param {Document} docContext  Document that will own the new nodes.
+     * @param {boolean}  [loggedIn]  Add the `_SL_LOGGED_IN_HEADERS[kind]` cells.
      * @returns {HTMLTableRowElement}
      */
-    function _slBuildRow(card, kind, docContext) {
+    function _slBuildRow(card, kind, docContext, loggedIn = false) {
         const tr = docContext.createElement('tr');
         const body = card.querySelector('.col-md-10') || card;
         const fields = _slReadCardFields(body);
@@ -12069,14 +12118,34 @@
             textCell(/^\d+(?::\d{2}){1,2}(?:\.\d+)?$/.test(duration) ? duration : '?:??');
             textCell(notes.some(t => /\bLossy\b/i.test(t)) ? 'yes' : '');
             textCell(body.querySelector('.bi-image') ? 'yes' : '');
-            textCell(body.querySelector('.glyphicon-file') ? 'yes' : '');
+            // The info file's own address follows from the item link
+            // (`bootlegs/<category>/<item>_infofile.txt`: items 9507 and
+            // 2567, 2026-11-04), so the cell links it, no request; the
+            // text stays "yes" for the filter and the 📊 list.
+            const infoUrl = body.querySelector('.glyphicon-file') ? _slInfoFileUrl(href) : '';
+            if (infoUrl) {
+                const a = docContext.createElement('a');
+                a.setAttribute('href', infoUrl);
+                a.setAttribute('target', '_blank');
+                a.setAttribute('rel', 'noopener');
+                a.textContent = 'yes';
+                _setTip(a, `Original info file: ${infoUrl.split('/').pop()}`);
+                const td = docContext.createElement('td');
+                td.appendChild(a);
+                tr.appendChild(td);
+            } else {
+                textCell(body.querySelector('.glyphicon-file') ? 'yes' : '');
+            }
+            if (loggedIn) _slMbCell(tr, body, docContext);
         } else if (kind === 'brucelegs') {
             // CD and vinyl bootlegs: the sub-title is the pressing ("Limited
             // Edition #350 numbered - Marbled Grey Vinyl"), Label and Cat #
             // are separate lines. A show note sits in Location here ("…,
             // USA (Early Show)"), not in Date. The card's "PDF available" /
-            // "artwork available" notes are on every one of the 402 cards
-            // (2026-10-06), so they carry no information and get no column.
+            // "artwork available" notes were on every one of the 402 cards
+            // (2026-10-06) and still are; they get their columns anyway
+            // (vzell, 2026-11-04), PDF linking the item page, where the PDFs
+            // are (their own file names are not on the card).
             textCell(_slCardSubtitle(body));
             textCell(fields['Label'] || '');
             textCell(fields['Cat #'] || '');
@@ -12085,6 +12154,17 @@
             textCell(_slShowQualifier(fields['Date']) || _slShowQualifier(fields['Location']));
             textCell(fields['Location'] || '');
             textCell(fields['Format'] || '');
+            if (body.querySelector('.bi-file-earmark-pdf') && href) {
+                const a = docContext.createElement('a');
+                a.setAttribute('href', href);
+                a.textContent = 'yes';
+                const td = docContext.createElement('td');
+                td.appendChild(a);
+                tr.appendChild(td);
+            } else {
+                textCell('');
+            }
+            textCell(body.querySelector('.bi-file-earmark-image, .bi-image') ? 'yes' : '');
         } else {
             const [label, catNo] = _slSplitTrailingParen(fields['Label (Cat #)']);
             const [released, originalYear] = _slSplitTrailingParen(fields['Release date (Original year)']);
@@ -12104,8 +12184,494 @@
             textCell(released);
             textCell(originalYear);
             textCell(copies ? copies[1] : '1');
+            if (loggedIn) {
+                _slMbCell(tr, body, docContext);
+                textCell(body.querySelector('img[src*="collection_goodscans"]') ? 'yes' : '');
+                // "In Switzerland", "In Lebanon", …: one column for every
+                // `img/collection_in<place>.png` (vzell's answer, 2026-11-04).
+                textCell(Array.from(body.querySelectorAll('img[src*="img/collection_in"]'))
+                    .map(img => (img.getAttribute('alt') || '').replace(/^In\s+/i, '').trim()).filter(Boolean).join(', '));
+            }
         }
         return tr;
+    }
+
+    /**
+     * Appends a card's MusicBrainz cell: the site's own link to the release
+     * (a logged-in card's `img/collection_musicbrainz.png` icon), as a link
+     * reading "MB" (`a.mb-sl-mb-link`, styled as MusicBrainz's glyph), or an
+     * empty cell. Its hover card and window are MusicBrainz's (the `dg-mb`
+     * source, `_dgMbSource()`).
+     *
+     * @param {HTMLTableRowElement} tr
+     * @param {Element}  body        The card's text column.
+     * @param {Document} docContext
+     * @returns {void}
+     */
+    function _slMbCell(tr, body, docContext) {
+        const td = docContext.createElement('td');
+        const src = body.querySelector('a[href^="https://musicbrainz.org/"]');
+        if (src) {
+            const a = docContext.createElement('a');
+            a.setAttribute('href', src.getAttribute('href'));
+            a.setAttribute('target', '_blank');
+            a.setAttribute('rel', 'noopener');
+            a.className = 'mb-sl-mb-link';
+            a.textContent = 'MB';
+            td.appendChild(a);
+        }
+        tr.appendChild(td);
+    }
+
+    /**
+     * The original info file of a bootleg, from its item link:
+     * `bootlegs.php?item=2567&category=aud_live1984` →
+     * `bootlegs/aud_live1984/2567_infofile.txt` (relative, as the site's
+     * own "Download" link is).
+     *
+     * @param {string} href  The card's item link, as written.
+     * @returns {string} '' when the link lacks the item or the category.
+     */
+    function _slInfoFileUrl(href) {
+        const m = String(href || '').match(/[?&]item=(\d+)/);
+        const c = String(href || '').match(/[?&]category=([\w-]+)/);
+        return m && c ? `bootlegs/${c[1]}/${m[1]}_infofile.txt` : '';
+    }
+
+    // -------------------------------------------------------------------------
+    // springsteenlyrics.com: an item's own page (sl-collection-item,
+    // sl-bootlegs-item, sl-brucelegs-item; 2026-11-04)
+    // -------------------------------------------------------------------------
+    // org/springsteenlyrics.org "Add new SL PTs and POHs" (mockup
+    // org/sl-item-pts-mockups.html; vzell's answers of 2026-11-04: one
+    // "Tracklist" button, plus "All versions" on the CD and vinyl bootlegs;
+    // the info file read when its section opens; Take and Note columns on
+    // bootlegs; vinyl sides paired into records; song links left to their own
+    // TODO). The page is server-rendered and holds everything: the item card,
+    // the tracklist block (`_slTracklistBlock()`, read by
+    // `_slParseTracklist()`, the link previews' reader too) and the
+    // `h3.heading` sections (`_slItemSections()`). No request: `fetchText`
+    // hands the engine the live page's own HTML. The head above the tables
+    // is `_slItemHeadSpec()`; "Private info" (logged in only) is shown there,
+    // closed, and nowhere else.
+
+    /**
+     * The item kind of a springsteenlyrics.com item page by its script, or
+     * '' on any other page.
+     *
+     * @param {Location|URL} [loc]
+     * @returns {''|'collection'|'bootlegs'|'brucelegs'}
+     */
+    function _slItemKind(loc = window.location) {
+        const m = /^\/(collection|bootlegs|brucelegs)\.php$/.exec(loc.pathname || '');
+        return m && /^\d+$/.test(new URLSearchParams(loc.search).get('item') || '') ? m[1] : '';
+    }
+
+    /**
+     * The item page's HTML as it was before our view changed it, taken once
+     * per page (`_slItemPageHtml()`), and its parse (`_slItemSourceDoc()`).
+     * The grouped render clears the site's own `h3.heading` sections out of
+     * the container the tables go into, so the head and every view (the
+     * tracklist, All versions, a repeat press) read this copy, never the
+     * live page.
+     * @type {?string}
+     */
+    let _slItemHtml = null;
+
+    /** @type {?Document} */
+    let _slItemDoc = null;
+
+    /**
+     * The item page's original HTML (see `_slItemHtml`).
+     *
+     * @returns {string}
+     */
+    function _slItemPageHtml() {
+        if (_slItemHtml === null) _slItemHtml = document.documentElement.outerHTML;
+        return _slItemHtml;
+    }
+
+    /**
+     * The parsed copy of the item page's original HTML (see `_slItemHtml`).
+     *
+     * @returns {Document}
+     */
+    function _slItemSourceDoc() {
+        if (!_slItemDoc) _slItemDoc = new DOMParser().parseFromString(_slItemPageHtml(), 'text/html');
+        return _slItemDoc;
+    }
+
+    /**
+     * The `features` of an item pageType (`sl-<kind>-item`): the live
+     * page's HTML as its one page, its sub-tables by `<h3>`, Length sorted
+     * as a duration, Title sticky.
+     *
+     * @param {'collection'|'bootlegs'|'brucelegs'} kind
+     * @returns {object}
+     */
+    function _slItemFeatures(kind) {
+        return {
+            slItemToTable: kind,
+            groupByH3: true,
+            pageRequest: () => {
+                const url = window.location.href;
+                return { url, fetchText: async () => _slItemPageHtml(),
+                    toHtml: (text) => _slItemToHtml(text, kind, activeDefinition?.features?.slItemView) };
+            },
+            pageCountAsync: () => 1,
+            integerColumns: [ { sourceColumn: 'Length', align: ':' } ],
+            stickyColumn: 'Title'
+        };
+    }
+
+    /**
+     * The name of an item page: its card's title; a bootleg without one
+     * ("[no title]", common) is named by its show — date and location.
+     *
+     * @param {Document} doc
+     * @returns {string}
+     */
+    function _slItemName(doc) {
+        const card = _slFindCards(doc)[0];
+        if (!card) return '';
+        const body = card.querySelector('.col-md-10') || card;
+        const link = Array.from(body.querySelectorAll('a[href*="item="]')).find(a => _dpText(a.textContent));
+        const title = link ? _dpText(link.textContent) : '';
+        if (title && title !== '[no title]') return title;
+        const f = _slReadCardFields(body);
+        return [f['Date'], (f['Location'] || '').split(',')[0]].filter(v => v && !/^[–-]$/.test(v)).join(' · ') || title;
+    }
+
+    /**
+     * Splits one track title of an item page into the table's fields:
+     *   - a various-artists line "Ted Nugent: Moter City Madhouse" → artist
+     *     (only when `va`: the page's lines mostly have one);
+     *   - "- V1 backing track" (CD and vinyl bootlegs) → version "V1", the
+     *     rest a note;
+     *   - "#2" (a take: bootlegs) → take "#2";
+     *   - "[partial]", "[Extended Remix]" → the note.
+     *
+     * @param {string}  title
+     * @param {boolean} va
+     * @returns {{title: string, artist: string, version: string, take: string, note: string}}
+     */
+    function _slSplitTrackTitle(title, va) {
+        let t = String(title || '').trim();
+        const out = { title: '', artist: '', version: '', take: '', note: '' };
+        const notes = [];
+        if (va) {
+            const m = t.match(/^([^:]{2,60}):\s+(.+)$/);
+            if (m) { out.artist = m[1].trim(); t = m[2]; }
+        }
+        t = t.replace(/\s*\[([^\]]+)\]/g, (all, inner) => { notes.push(inner.trim()); return ''; });
+        const v = t.match(/^(.*?)\s+-\s+(V\d+)\b\s*(.*)$/);
+        if (v) {
+            out.version = v[2];
+            if (v[3]) notes.unshift(v[3].trim());
+            t = v[1];
+        }
+        const take = t.match(/^(.*?)\s+(#\d+)$/);
+        if (take) { out.take = take[2]; t = take[1]; }
+        out.title = t.trim();
+        out.note = notes.join('; ');
+        return out;
+    }
+
+    /**
+     * How many versions a CD and vinyl bootleg page lists under "All
+     * versions of this bootleg" (its cards; the item itself is one of them),
+     * 0 on a page without that section.
+     *
+     * @param {Document} doc
+     * @returns {number}
+     */
+    function _slItemVersionCount(doc) {
+        const card = _slFindCards(doc)[0];
+        const sec = card && _slItemSections(card).find(s => /^all versions/i.test(s.label));
+        return sec ? _slFindCards(sec.box).length : 0;
+    }
+
+    /**
+     * The sub-tables of an item's tracklist: one per medium the page names
+     * ("Disc 1:", `Record 2: "Cover Me" (catalogue # …)`, "Disc:
+     * (82:40.00)"); a list without headers but with side positions (A1, B2,
+     * …) is paired into records, A/B → "Record 1", C/D → "Record 2"
+     * (vzell's answer 4: MusicBrainz's medium); anything else is one
+     * "Tracks" table. A repeated name gets " (2)".
+     *
+     * @param {Array<object>} media  `_slParseTracklist().media`.
+     * @returns {Array<{name: string, tracks: Array<object>}>}
+     */
+    function _slItemGroups(media) {
+        const groups = [];
+        media.forEach((m) => {
+            if (m.name) {
+                const name = m.label.replace(/\(catalogue #\s*/i, '(');
+                groups.push({ name, tracks: m.tracks });
+                return;
+            }
+            const sided = m.tracks.length && m.tracks.every(t => /^[A-Z]\d/.test(t.pos));
+            if (!sided) { groups.push({ name: 'Tracks', tracks: m.tracks }); return; }
+            m.tracks.forEach((t) => {
+                const name = `Record ${Math.floor((t.pos.charCodeAt(0) - 65) / 2) + 1}`;
+                let g = groups.find(x => x.name === name);
+                if (!g) { g = { name, tracks: [] }; groups.push(g); }
+                g.tracks.push(t);
+            });
+        });
+        const seen = new Map();
+        groups.forEach((g) => {
+            const n = (seen.get(g.name) || 0) + 1;
+            seen.set(g.name, n);
+            if (n > 1) g.name += ` (${n})`;
+        });
+        return groups;
+    }
+
+    /**
+     * The `pageRequest` converter of the item pageTypes: the page's HTML
+     * (the live page's own) in, `<h3>` + `table.tbl` pairs out — the
+     * tracklist (`slItemView` unset), or, on a CD and vinyl bootleg, its
+     * "All versions of this bootleg" cards as one table built by the list
+     * converter's row builder (`slItemView: 'versions'`).
+     *
+     * Columns per kind: Pos, Title, then
+     *   - collection: Artist (various-artists pages), Version / note;
+     *   - bootlegs: Take, Note;
+     *   - brucelegs: Version, Note, Length (when the page gives lengths).
+     * Titles are in MusicBrainz style while `sa_foreign_mb_titles` /
+     * `sa_foreign_typography` are on, the site's text as the tooltip.
+     *
+     * @param {string} text  The page's HTML.
+     * @param {string} kind  'collection' | 'bootlegs' | 'brucelegs'.
+     * @param {string} [view] 'versions' for the other versions.
+     * @returns {string}
+     */
+    function _slItemToHtml(text, kind, view) {
+        const doc = new DOMParser().parseFromString(text, 'text/html');
+        const card = _slFindCards(doc)[0];
+        if (!card) throw Object.assign(new Error('springsteenlyrics.com answered, but not with an item page'), { status: 0 });
+        const page = (body) => `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${body}</body></html>`;
+        const table = (cols, rows) => `<table class="tbl" data-mb-col-headers="${_rgEsc(JSON.stringify(cols))}">` +
+            `<thead><tr>${cols.map(c => `<th>${_rgEsc(c)}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>`;
+        if (view === 'versions') {
+            const sec = _slItemSections(card).find(s => /^all versions/i.test(s.label));
+            const cards = sec ? _slFindCards(sec.box) : [];
+            if (!cards.length) throw Object.assign(new Error('The page lists no other versions'), { status: 0 });
+            const loggedIn = _slLoggedIn(document);
+            const cols = _slHeaders(kind);
+            const rows = cards.map(c => _slBuildRow(c, kind, doc, loggedIn).outerHTML);
+            return page(`<h3>All versions</h3>${table(cols, rows)}`);
+        }
+        const block = _slTracklistBlock(card);
+        const tl = _slParseTracklist(block ? _dpBlockText(block) : '');
+        if (!tl.media.length) throw Object.assign(new Error('The page has no tracklist'), { status: 0 });
+        const all = tl.media.flatMap(m => m.tracks);
+        const va = kind === 'collection' && all.filter(t => /^[^:]{2,60}:\s/.test(t.title)).length * 2 >= all.length;
+        const hasLen = all.some(t => t.length);
+        const cols = ['Pos', 'Title'].concat(
+            kind === 'collection' ? (va ? ['Artist', 'Version / note'] : ['Version / note'])
+                : kind === 'bootlegs' ? ['Take', 'Note']
+                    : ['Version', 'Note'].concat(hasLen ? ['Length'] : []));
+        const titleCell = (t) => {
+            const shown = _mbSiteTitleText(t);
+            return shown !== t ? `<td data-mb-tip title="${_rgEsc(`As written on the site:\n${t}`)}">${_rgEsc(shown)}</td>` : `<td>${_rgEsc(t)}</td>`;
+        };
+        const body = _slItemGroups(tl.media).map((g) => {
+            const rows = g.tracks.map((t) => {
+                const p = _slSplitTrackTitle(t.title, va);
+                const cells = [`<td>${_rgEsc(t.pos)}</td>`, titleCell(p.title)];
+                if (kind === 'collection') {
+                    if (va) cells.push(`<td>${_rgEsc(p.artist)}</td>`);
+                    cells.push(`<td>${_rgEsc([p.version, p.take, p.note].filter(Boolean).join('; '))}</td>`);
+                } else if (kind === 'bootlegs') {
+                    cells.push(`<td>${_rgEsc(p.take)}</td>`, `<td>${_rgEsc([p.version, p.note].filter(Boolean).join('; '))}</td>`);
+                } else {
+                    cells.push(`<td>${_rgEsc(p.version)}</td>`, `<td>${_rgEsc([p.take, p.note].filter(Boolean).join('; '))}</td>`);
+                    if (hasLen) cells.push(`<td>${_rgEsc(t.length || '?:??')}</td>`);
+                }
+                return `<tr>${cells.join('')}</tr>`;
+            });
+            return `<h3>${_rgEsc(g.name)}</h3>${table(cols, rows)}`;
+        }).join('');
+        return page(body);
+    }
+
+    /**
+     * The live page's part of the item pageTypes (`features.slItemToTable`),
+     * at the press, on a Load from Disk and on every repeat: under our
+     * toolbar `<h1>` (`_slPrepareLivePage()`), an `<h2
+     * class="mb-sl-list-heading">` — "Tracklist", or "All versions" — and an
+     * EMPTY `table.tbl` for the engine to render into; the rows come from the
+     * page's own HTML (`features.pageRequest`). The site's own item content
+     * after the h1 is hidden (`mb-sl-item-native`): the head and the tables
+     * show all of it. Idempotent.
+     *
+     * @param {object} def - The active merged pageDefinition.
+     * @returns {void}
+     */
+    function applySlItemToTable(def) {
+        const kind = def?.features?.slItemToTable;
+        if (!kind || document.querySelector('table.mb-sl-item-table')) return;
+        _slItemPageHtml();
+        const h1 = document.querySelector('h1.mb-sl-h1') || _slPrepareLivePage();
+        const main = h1 && h1.parentElement;
+        if (!main) return;
+        Array.from(main.children).forEach((n) => {
+            if (n !== h1 && !n.matches('.mb-fd-sub, .mb-fd-head, #mb-saed-bar, .mb-filter-container')) n.classList.add('mb-sl-item-native');
+        });
+        const h2 = document.createElement('h2');
+        h2.className = 'mb-sl-list-heading';
+        h2.textContent = def.features.slItemView === 'versions' ? 'All versions' : 'Tracklist';
+        const table = document.createElement('table');
+        table.className = 'tbl mb-sl-item-table';
+        table.innerHTML = '<thead><tr><th>Pos</th><th>Title</th></tr></thead><tbody></tbody>';
+        h1.after(h2, table);
+        // The site's fixed-width Bootstrap containers (1170 px) left empty
+        // space on both sides of the view, and a table wider than them (All
+        // versions: one row, ~2300 px) squeezed the head into a column
+        // ~150 px wide (vzell, 2026-11-04). The lists' fix, applied here too:
+        // `mb-sl-wide` lifts the width (_ensureSlStyle()).
+        for (let el = main; el; el = el.parentElement) {
+            if (el.classList.contains('container')) el.classList.add('mb-sl-wide');
+        }
+        Lib.debug('init', `applySlItemToTable: empty sl-${kind}-item table in place.`);
+    }
+
+    /**
+     * The head of an item page (`_fdHeadSpec()`), read from the live page:
+     * "~ <format> (label cat. no. · country · date)"; Notes (the tracklist
+     * block's notes), a CD and vinyl bootleg's Release info; Details — on the
+     * left the item's facts (Release, or Show and Recording on a bootleg) and
+     * the runout etchings, on the right "Your collection" (logged in: the
+     * MusicBrainz link with its preview, Good scans, Kept in, copies, the
+     * item number and the site's edit link) and Files (info file, PDFs); the
+     * scans or artwork, one section per copy, with the page's captions;
+     * after them "Original info file" (read when it is first opened) and
+     * "Private info" (logged in; both start closed). Null on another page.
+     *
+     * @returns {?Object}
+     */
+    function _slItemHeadSpec() {
+        const kind = activeDefinition?.features?.slItemToTable;
+        const h2 = document.querySelector('h2.mb-sl-list-heading');
+        const src = _slItemSourceDoc();
+        const card = _slFindCards(src)[0];
+        if (!kind || !h2 || !card) return null;
+        const base = window.location.href;
+        const abs = (href) => _dpAbsUrl(href, base);
+        const body = card.querySelector('.col-md-10') || card;
+        const fields = _slReadCardFields(body);
+        const known = (v) => (v && !/^[–\-\s()]*$/.test(v) ? v : '');
+        const subtitle = _slCardSubtitle(body);
+        const loggedIn = _slLoggedIn(document);
+        const sections = _slItemSections(card);
+        const block = _slTracklistBlock(card);
+        const tl = _slParseTracklist(block ? _dpBlockText(block) : '');
+        const texts = [];
+        if (tl.notes.length) texts.push({ title: 'Notes', body: tl.notes.join('\n\n') });
+        const facts = [];
+        const others = [];
+        let what;
+        let when;
+        if (kind === 'collection') {
+            const [label, catNo] = _slSplitTrailingParen(fields['Label (Cat #)']);
+            const [released, original] = _slSplitTrailingParen(fields['Release date (Original year)']);
+            const copies = Array.from(body.querySelectorAll('.colored-text')).map(e => e.textContent.match(/\bI have (\d+) copies\b/i)).find(Boolean);
+            what = known(fields['Format']) || 'Item';
+            when = [[known(label), known(catNo)].filter(Boolean).join(' '), known(fields['Country']), known(released)].filter(Boolean).join(' · ');
+            facts.push(['release', 'Release', [['Version', subtitle], ['Label', known(label)], ['Cat. no.', known(catNo)],
+                ['Format', known(fields['Format'])], ['Country', known(fields['Country'])],
+                ['Release date', known(released)], ['Original year', known(original)], ['Copies', copies ? copies[1] : '1']]]);
+        } else if (kind === 'bootlegs') {
+            const date = known(fields['Date']);
+            const loc = _parseLocationText(known(fields['Location']).split(' - ')[0] || '');
+            what = 'Bootleg';
+            when = [date, known(fields['Location'])].filter(Boolean).join(': ');
+            facts.push(['show', 'Show', [['Date', date], ['First date', _slFirstIsoDate(date)], ['Show', _slShowQualifier(date)],
+                ['Place', loc.place], ['Locality', loc.locality], ['Region', loc.region], ['Country', loc.country]]]);
+            const notes = Array.from(body.querySelectorAll('.colored-text')).map(e => e.textContent);
+            facts.push(['recording', 'Recording', [['Version', subtitle], ['Format', known(fields['Format'])],
+                ['Duration', known(fields['Duration'])], ['Lossy', notes.some(t => /\bLossy\b/i.test(t)) ? 'yes' : '']]]);
+        } else {
+            what = known(fields['Format']) || 'Bootleg';
+            const labelA = body.querySelector('a[href*="f_label="]');
+            when = [known(fields['Label']), known(fields['Cat #']), known(fields['Date'])].filter(Boolean).join(' · ');
+            facts.push(['release', 'Release', [['Version', subtitle],
+                ['Label', labelA ? _fdLink(abs(labelA.getAttribute('href')), known(fields['Label'])) : known(fields['Label'])],
+                ['Cat. no.', known(fields['Cat #'])], ['Date', known(fields['Date'])],
+                ['Location', known(fields['Location'])], ['Format', known(fields['Format'])]]]);
+        }
+        // Text sections of the page itself (the CD and vinyl bootlegs'
+        // Runout groove etchings, Release info): the etchings as a card, one
+        // row per side; the rest as text.
+        sections.forEach((s) => {
+            if (_SL_ITEM_OWN_SECTION_RE.test(s.label)) return;
+            const t = _dpBlockText(s.box);
+            if (!t) return;
+            if (/^runout/i.test(s.label)) {
+                const rows = t.split('\n').filter(Boolean).map((l) => {
+                    const m = l.match(/^Side\s+(\w+):\s*(.*)$/i);
+                    return m ? [`Side ${m[1].toUpperCase()}`, m[2]] : ['Disc', l];
+                });
+                facts.push(['runout', kind === 'brucelegs' && /vinyl|lp/i.test(fields['Format'] || '') ? 'Runout groove etchings' : 'Runout / inner ring', rows]);
+            } else {
+                texts.push({ title: s.label, body: t });
+            }
+        });
+        // Your collection (logged in only): the card's MusicBrainz link (its
+        // preview is the `dg-mb` source's), Good scans, Kept in, the item
+        // number and the site's edit link.
+        if (loggedIn) {
+            const mb = body.querySelector('a[href^="https://musicbrainz.org/"]');
+            const edit = body.querySelector('a[href*="cmd=edit"]');
+            const kept = Array.from(body.querySelectorAll('img[src*="img/collection_in"]'))
+                .map(img => (img.getAttribute('alt') || '').replace(/^In\s+/i, '').trim()).filter(Boolean).join(', ');
+            const mbA = mb ? _fdLink(mb.getAttribute('href'), 'MusicBrainz release') : null;
+            others.push(['yours', 'Your collection', [
+                ['MusicBrainz', mbA || 'not linked yet'],
+                ['Good scans', kind === 'collection' ? (body.querySelector('img[src*="collection_goodscans"]') ? 'yes' : 'no') : ''],
+                ['Kept in', kept],
+                ['Item', new URLSearchParams(window.location.search).get('item') || ''],
+                ['Edit', edit ? _fdLink(abs(edit.getAttribute('href')), 'edit item') : '']]]);
+        }
+        // Files: the bootleg's info file, the CD and vinyl bootleg's PDFs.
+        const info = sections.find(s => /^original info file/i.test(s.label));
+        const infoA = info && info.box.querySelector('a[href$=".txt"]');
+        const pdfs = sections.filter(s => /^artwork/i.test(s.label)).flatMap(s => Array.from(s.box.querySelectorAll('a[href$=".pdf"]')));
+        const fileRows = [];
+        if (infoA) fileRows.push(['Info file', _fdLink(abs(infoA.getAttribute('href')), abs(infoA.getAttribute('href')).split('/').pop())]);
+        pdfs.forEach((a, i) => fileRows.push([pdfs.length > 1 ? `PDF ${i + 1}` : 'PDF', _fdLink(abs(a.getAttribute('href')), _dpText(a.textContent) || `PDF file ${i + 1}`)]));
+        if (fileRows.length) others.push(['files', 'Files', fileRows]);
+        // Pictures: one section per scans/artwork section of the page (a
+        // collection item with two copies has two), each with the page's
+        // captions; a section without pictures is left out.
+        const captions = _slImageCaptions(sections);
+        const pictureGroups = sections.filter(s => /^(?:scans|artwork)/i.test(s.label)).map((s) => {
+            const pictures = Array.from(s.box.querySelectorAll('img[src*="_tn."]')).map((img) => {
+                const a = img.closest('a[href]');
+                const full = abs(a ? a.getAttribute('href') : img.getAttribute('src'));
+                return { full, thumb: abs(img.getAttribute('src')), caption: captions.get(full.split('/').pop()) || '' };
+            });
+            return { title: s.label.replace(/^Scans\/Photos/i, 'Scans').replace(/^Artwork and PDF$/i, 'Artwork'), pictures };
+        }).filter(g => g.pictures.length);
+        const textsAfter = [];
+        if (infoA) {
+            const url = abs(infoA.getAttribute('href'));
+            textsAfter.push({ title: 'Original info file', body: `Read when this section is opened: ${url.split('/').pop()}`, lazyText: url });
+        }
+        if (loggedIn) {
+            const priv = sections.find(s => /^private info/i.test(s.label));
+            const t = priv ? _dpBlockText(priv.box) : '';
+            if (t) textsAfter.push({ title: 'Private info', body: t, note: 'only shown while you are logged in' });
+        }
+        return {
+            root: h2.parentElement, h2,
+            sub: { what, by: '', when },
+            texts, textsAfter, facts, others,
+            pictureGroups,
+            title: _slItemName(src), source: 'springsteenlyrics.com\'s page',
+        };
     }
 
     /**
@@ -12155,7 +12721,8 @@
         table.className = 'tbl mb-sl-table';
         const thead = docContext.createElement('thead');
         const hr = docContext.createElement('tr');
-        _SL_HEADERS[kind].forEach(h => {
+        const loggedIn = _slLoggedIn(document);
+        _slHeaders(kind).forEach(h => {
             const th = docContext.createElement('th');
             th.textContent = h;
             hr.appendChild(th);
@@ -12164,7 +12731,7 @@
         table.appendChild(thead);
 
         const tbody = docContext.createElement('tbody');
-        cards.forEach(card => tbody.appendChild(_slBuildRow(card, kind, docContext)));
+        cards.forEach(card => tbody.appendChild(_slBuildRow(card, kind, docContext, loggedIn)));
         table.appendChild(tbody);
 
         cards[0].parentNode.insertBefore(table, cards[0]);
@@ -12532,6 +13099,22 @@
                 height: 48px;
                 width: auto;
                 max-width: none;
+            }
+            /* An item page's own content once our view is in place
+               (applySlItemToTable()): the head and the tables show it all. */
+            body.mb-sa-host-sl .mb-sl-item-native {
+                display: none !important;
+            }
+            /* The MusicBrainz column's link (_slMbCell()): MusicBrainz's
+               glyph colours, the text "MB" stays what filters and sorts. */
+            body.mb-sa-host-sl a.mb-sl-mb-link {
+                display: inline-block;
+                padding: 0 4px;
+                border-radius: 3px;
+                background: #ba478f;
+                color: #fff;
+                font: 700 10px/16px sans-serif;
+                text-decoration: none;
             }
             /* A navigation-only page (the bootleg landing page) has no table,
                so the SAED menu shows no Data or View group. */
@@ -12936,11 +13519,13 @@
         }
 
         const section = document.querySelector('.breadcrumb-wrap h4')?.textContent.replace(/\s+/g, ' ').trim() || '';
-        const listHeading = _slFindListHeading(document)?.textContent.replace(/\s+/g, ' ').trim() || '';
+        // An item page is named by its item (`_slItemName()`); its first
+        // h3.heading is the card's "Info", not a list heading.
+        const listHeading = _slItemKind() ? '' : _slFindListHeading(document)?.textContent.replace(/\s+/g, ' ').trim() || '';
         const h1 = document.createElement('h1');
         h1.className = 'mb-sl-h1';
         const bdi = document.createElement('bdi');
-        bdi.textContent = [section, listHeading].filter(Boolean).join(' — ') || 'springsteenlyrics.com';
+        bdi.textContent = (_slItemKind() && _slItemName(document)) || [section, listHeading].filter(Boolean).join(' — ') || 'springsteenlyrics.com';
         h1.appendChild(bdi);
         main.insertBefore(h1, main.firstChild);
         return h1;
@@ -19155,8 +19740,15 @@
         // (submissions, history, images, user, ratings, sell), as
         // `_DP_SITES['www.discogs.com'].extRoot` names it: an icon there had
         // no card before a render (G5 of NON-MB-COVERAGE.org, 2026-11-03).
+        // On springsteenlyrics.com (vzell, 2026-11-04: "the MB icon on logged
+        // in pages should get the POH treatment, in the list overview PT and
+        // the detail page"): the site's own MusicBrainz icon on an item card
+        // (list and item page, logged in only), our list table's MusicBrainz
+        // column and the item pageTypes' head.
         const sel = '#mb-dg-root table.tbl > tbody a[href^="https://musicbrainz.org/"], #app a[href^="https://musicbrainz.org/"], ' +
-            '#page_content a[href^="https://musicbrainz.org/"], #mb-dg-root h1.mb-dg-h1 a[href^="https://musicbrainz.org/"]';
+            '#page_content a[href^="https://musicbrainz.org/"], #mb-dg-root h1.mb-dg-h1 a[href^="https://musicbrainz.org/"]' +
+            (_isSlHost ? ', div.blog-post a[href^="https://musicbrainz.org/"], table.tbl > tbody a[href^="https://musicbrainz.org/"], ' +
+                '.mb-fd-head a[href^="https://musicbrainz.org/"]' : '');
         const resolve = (a) => {
             const m = _DG_MB_LINK_RE.exec(a.getAttribute('href') || '');
             const type = m && m[1].toLowerCase();
@@ -19175,7 +19767,8 @@
             const h1 = a.closest('h1.mb-dg-h1');
             // A setlist.fm window's glyph names its artist itself (`_extSfmMbGlyphHtml()`).
             const name = a.getAttribute('data-mb-pop-name') || _dpText(a.textContent) || (beside ? _dpText(beside.textContent) : '') ||
-                (cell && cell.dataset.mbDgName) || (h1 ? _dpText((h1.querySelector('bdi') || {}).textContent || '') : '') || '';
+                (cell && cell.dataset.mbDgName) || (h1 ? _dpText((h1.querySelector('bdi') || {}).textContent || '') : '') ||
+                (_isSlHost ? _slMbIconName(a) : '') || '';
             return {
                 key: `${type}:${id}`, url: `https://musicbrainz.org/${type}/${id}`, type, id,
                 kind: k.titleOf ? k.titleOf(id) : k.title, wide: !!k.wide, name,
@@ -19203,12 +19796,28 @@
             // The same kind in the same block: our table's column, else
             // Discogs' content.
             steps: (t) => {
-                const box = t.el.closest('#mb-dg-root table.tbl') || document.getElementById('app') || document.body;
+                const box = t.el.closest('#mb-dg-root table.tbl, table.mb-sl-table') || document.getElementById('app') || document.body;
                 return Array.from(box.querySelectorAll('a[href^="https://musicbrainz.org/"]'))
                     .filter(x => x.getClientRects().length && (resolve(x) || {}).type === t.type);
             },
             stepId: (a) => a.getAttribute('href'),
         };
+    }
+
+    /**
+     * The name a springsteenlyrics.com MusicBrainz icon stands for: the
+     * item's title, from its card (`div.blog-post`) or its table row (the
+     * first item link with text), else our item page's toolbar name.
+     *
+     * @param {HTMLAnchorElement} a  The icon's link.
+     * @returns {string}
+     */
+    function _slMbIconName(a) {
+        const box = a.closest('div.blog-post, tr');
+        const link = box && Array.from(box.querySelectorAll('a[href*="item="]')).find(x => _dpText(x.textContent));
+        if (link) return _dpText(link.textContent);
+        const h1 = a.closest('.mb-fd-head') ? document.querySelector('h1 bdi') : null;
+        return h1 ? _dpText(h1.textContent) : '';
     }
 
     /**
@@ -20605,7 +21214,14 @@
      * (beside it), each entry either [key, name, [[label, value(string|Node)], …]]
      * or a built card [key, name, count, body, wide], in order;
      * `pictures` ([{full, thumb, caption}]) under `picturesTitle`; `title`
-     * (the viewer's bar); `source` (the cards' hover text).
+     * (the viewer's bar); `source` (the cards' hover text). Since
+     * 2026-11-04 (springsteenlyrics.com's item pages, `_slItemHeadSpec()`)
+     * also: `texts` (more text sections after `text`, before Details),
+     * `pictureGroups` ([{title, pictures}], a pictures section each, in
+     * place of `pictures`) and `textsAfter` (text sections after the
+     * pictures); a text section may carry `note` (a line under its
+     * heading) and `lazyText` (a same-origin URL read once, when the
+     * section is first opened, its text then shown instead of `body`).
      *
      * @returns {?Object}
      */
@@ -20617,6 +21233,7 @@
         if (t === 'sfm-setlist') return _sfmSetlistHeadSpec();
         if (t === 'sfm-festival') return _sfmFestivalHeadSpec();
         if (t === 'sfm-festivals') return _sfmFestivalsHeadSpec();
+        if (t === 'sl-collection-item' || t === 'sl-bootlegs-item' || t === 'sl-brucelegs-item') return _slItemHeadSpec();
         return null;
     }
 
@@ -20665,13 +21282,41 @@
             head.append(h, body);
         };
 
-        if (spec.text && spec.text.body) {
+        // A text section: starts closed. `note`: a line under the heading;
+        // `lazyText`: read once when the section is first opened (an SL
+        // bootleg's original info file, vzell's answer 2 of 2026-11-04).
+        const textSection = (t) => {
+            if (!t || !t.body) return;
             const box = el('div', 'mb-fd-text');
             // `html`: a converter's output, its text escaped (`_extDiscogsMarkupHtml()`).
-            if (spec.text.html) box.innerHTML = spec.text.html;
-            else box.textContent = spec.text.body;
-            section(spec.text.title, null, box, false);
-        }
+            if (t.html) box.innerHTML = t.html;
+            else box.textContent = t.body;
+            if (t.note) box.prepend(el('div', 'mb-fd-dim mb-fd-note', t.note));
+            section(t.title, null, box, false);
+            if (t.lazyText) {
+                const h = box.previousElementSibling;
+                let asked = false;
+                h.addEventListener('click', () => {
+                    if (asked) return;
+                    asked = true;
+                    box.textContent = 'Reading…';
+                    fetch(t.lazyText, { credentials: 'same-origin' })
+                        .then(r => (r.ok ? r.text() : Promise.reject(new Error(`HTTP ${r.status}`))))
+                        .then((txt) => {
+                            box.textContent = '';
+                            const pre = el('pre', 'mb-fd-pre', txt.replace(/\r\n?/g, '\n').replace(/\s+$/, ''));
+                            box.appendChild(pre);
+                        })
+                        .catch((e) => {
+                            asked = false;
+                            box.textContent = `The file could not be read (${e && e.message}). Click the heading twice to try again, or open it: `;
+                            box.appendChild(_fdLink(t.lazyText, t.lazyText.split('/').pop()));
+                        });
+                });
+            }
+        };
+        textSection(spec.text);
+        (spec.texts || []).forEach(textSection);
 
         // Details: the left column, the right one beside it. Either may hold
         // a facts entry ([key, name, rows]: a name → value list) or a card
@@ -20728,31 +21373,35 @@
             section('Details', total, sec, true);
         }
 
-        // The pictures: the Cover art section's tiles.
-        const pics = spec.pictures || [];
-        if (pics.length) {
-            const sec = el('div', 'mb-release-art-sec mb-fd-art');
-            // The viewer's title (`_dpArtViewerClick()` reads it).
-            const t = el('span', 'mb-dp-xtitle', spec.title || '');
-            t.hidden = true;
-            const grid = el('div', 'mb-release-art-grid');
-            pics.forEach((p, i) => {
-                const fig = el('figure', 'mb-release-art-tile');
-                const a = _fdLink(p.full);
-                a.dataset.mbArtvExt = String(i + 1);
-                const img = el('img');
-                img.src = p.thumb || p.full;
-                img.alt = p.caption || '';
-                img.loading = 'lazy';
-                img.referrerPolicy = 'no-referrer';
-                a.appendChild(img);
-                fig.append(a, el('figcaption', '', p.caption || ''));
-                grid.appendChild(fig);
-            });
-            sec.append(t, grid);
-            sec.addEventListener('click', _dpArtViewerClick);
-            section(spec.picturesTitle || 'Pictures', pics.length, sec, true);
-        }
+        // The pictures: the Cover art section's tiles; one section per group
+        // when the spec has `pictureGroups`.
+        const groups = spec.pictureGroups || [{ title: spec.picturesTitle || 'Pictures', pictures: spec.pictures || [] }];
+        groups.forEach(({ title: groupTitle, pictures: pics }) => {
+            if (pics.length) {
+                const sec = el('div', 'mb-release-art-sec mb-fd-art');
+                // The viewer's title (`_dpArtViewerClick()` reads it).
+                const t = el('span', 'mb-dp-xtitle', spec.title || '');
+                t.hidden = true;
+                const grid = el('div', 'mb-release-art-grid');
+                pics.forEach((p, i) => {
+                    const fig = el('figure', 'mb-release-art-tile');
+                    const a = _fdLink(p.full);
+                    a.dataset.mbArtvExt = String(i + 1);
+                    const img = el('img');
+                    img.src = p.thumb || p.full;
+                    img.alt = p.caption || '';
+                    img.loading = 'lazy';
+                    img.referrerPolicy = 'no-referrer';
+                    a.appendChild(img);
+                    fig.append(a, el('figcaption', '', p.caption || ''));
+                    grid.appendChild(fig);
+                });
+                sec.append(t, grid);
+                sec.addEventListener('click', _dpArtViewerClick);
+                section(groupTitle, pics.length, sec, true);
+            }
+        });
+        (spec.textsAfter || []).forEach(textSection);
         if (head.childElementCount) h2.before(head);
     }
 
@@ -20790,6 +21439,8 @@
             .mb-fd-head ~ h2 { color: #eb743b; }
             .mb-fd-n { font-weight: 400; }
             .mb-fd-text { margin: 4px 0 10px 1.5em; max-width: 90ch; white-space: pre-line; font: 13px/1.5 Georgia, "Times New Roman", serif; color: #2b2622; }
+            .mb-fd-text .mb-fd-note { font: italic 12px/1.4 "Helvetica Neue", Helvetica, Arial, sans-serif; margin-bottom: 4px; }
+            .mb-fd-text pre.mb-fd-pre { margin: 0; white-space: pre-wrap; font: 12px/1.4 ui-monospace, Consolas, monospace; max-height: 32em; overflow: auto; }
             .mb-fd-art { margin-left: 1.5em; max-width: min(1100px, calc(100vw - 32px - 1.5em)); }
             .mb-fd-art .mb-release-art-tile a { cursor: zoom-in; }
             p.mb-fd-lineage { margin: 0; padding: 6px 9px; overflow-wrap: anywhere; }
@@ -24884,9 +25535,14 @@
      *    its YouTube players as links; a Media tab that is only a player
      *    counts as content), and the record is `ytTiles`, so the window puts
      *    a "Play here" tile after each YouTube link (org/youtube.org, Step 4).
+     * 9: springsteenlyrics.com items: the CD and vinyl bootlegs' tracklist
+     *    (after its "Trackslist" heading, "A1 Title", "(5:45.15)" as a
+     *    track's `length`), a box set's `Record 2: "…" (catalogue # …)`
+     *    headers (`_slParseTracklist()`), the CD and vinyl bootlegs' text
+     *    sections, and artwork captions as image labels.
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 8;
+    const _DP_PARSER_VERSION = 9;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -24952,11 +25608,26 @@
     const _DP_TRACK_RE = /^([A-Z]?\d{1,3}[a-z]?)\s*[-–.)]\s*(.+)$/;
 
     /**
-     * Matches a medium header line of a springsteenlyrics.com tracklist:
-     * "Disc 1:", "CD 2", "Side A:". Capture 1 is the header without its colon.
+     * `_DP_TRACK_RE` without the separator: the CD and vinyl bootleg pages
+     * (`brucelegs.php?item=`) write "A1 4th Of July, Asbury Park (Sandy) -
+     * V1" and "01 The Ghost Of Tom Joad (5:45.15)". Only used on a block in
+     * which no line has the separator (`_slParseTracklist()`), so a note line
+     * like "2 bonus tracks" on a collection page stays a note.
      * @type {RegExp}
      */
-    const _DP_DISC_RE = /^((?:disc|disk|cd|dvd|side|lp|tape|set)\b[^:]{0,12}?)\s*:?$/i;
+    const _DP_TRACK_LOOSE_RE = /^([A-Z]?\d{1,3}[a-z]?)\s+(\S.*)$/;
+
+    /**
+     * Matches a medium header line of a springsteenlyrics.com tracklist:
+     * "Disc 1:", "CD 2", "Side A:", and the two shapes with text after the
+     * colon (2026-11-04 snapshots): a CD bootleg's "Disc: (82:40.00)" (its
+     * total length) and a box set's `Record 2: "Cover Me" (catalogue # CBS
+     * QTA 4662)`. Capture 1 is the header without its colon, capture 2 the
+     * text after it — only text that opens with a quote or a parenthesis, so
+     * a lineage note such as "Tape: Sony TC-D5 > …" stays a note.
+     * @type {RegExp}
+     */
+    const _DP_DISC_RE = /^((?:disc|disk|cd|dvd|side|lp|record|tape|set)\b[^:"(]{0,12}?)\s*(?::\s*((?:"|\().*)?)?$/i;
 
     /**
      * Parsed detail pages of this session, by absolute URL (the tier in
@@ -25461,34 +26132,112 @@
      * @returns {void}
      */
     function _dpSlTracklist(text, data) {
+        const tl = _slParseTracklist(text);
+        tl.media.forEach(m => m.tracks.forEach(t => {
+            const track = { disc: m.label, pos: t.pos, title: t.title, from: '' };
+            if (t.length) track.length = t.length;
+            data.tracks.push(track);
+        }));
+        if (tl.unnumbered) data.unnumbered = true;
+        tl.notes.forEach(n => data.notes.push(n));
+    }
+
+    /**
+     * Reads a springsteenlyrics.com tracklist text into media, tracks and
+     * notes: the one reader of the item pages' tracklists, behind both the
+     * link preview (`_dpSlTracklist()`) and the item pageTypes
+     * (`_slItemToHtml()`).
+     *
+     * Medium headers ("Disc 1:", "Side A:", "Disc: (82:40.00)", `Record 2:
+     * "Cover Me" (catalogue # CBS QTA 4662)`, `_DP_DISC_RE`) open a medium;
+     * numbered lines are its tracks. A block where no line has a separator
+     * ("A1- …", "12. …") is read with `_DP_TRACK_LOOSE_RE` ("A1 Title", the
+     * CD and vinyl bootlegs). A track title ending in a length ("(5:45.15)")
+     * gives it a `length`. Tracks run until the first line that is neither a
+     * header nor a track; everything from there on is notes, one per
+     * blank-line-separated paragraph. When no line at all is numbered, a
+     * first paragraph of three or more short title-like lines is the
+     * tracklist, unnumbered (bootleg item 1331, whose "BORN IN THE U.S.A." is
+     * why an all-capitals line may end in a dot).
+     *
+     * @param {string} text  `_dpBlockText()` of the tracklist block.
+     * @returns {{media: Array<{name: string, extra: string, total: string, label: string, tracks: Array<{pos: string, title: string, length: string}>}>, notes: string[], unnumbered: boolean}}
+     *   `name` is the header without its colon ('' before any header),
+     *   `total` a header's length in parentheses, `extra` any other text
+     *   after its colon, and `label` the three joined for display.
+     */
+    function _slParseTracklist(text) {
         const blocks = String(text || '').split(/\n\s*\n/)
             .map(b => b.split('\n').map(l => l.trim()).filter(Boolean))
             .filter(b => b.length);
-        let disc = '';
+        const strict = blocks.some(b => b.some(l => _DP_TRACK_RE.test(l) && !_DP_DISC_RE.test(l)));
+        const trackRe = strict ? _DP_TRACK_RE : _DP_TRACK_LOOSE_RE;
+        const media = [];
+        let cur = null;
+        const open = (name, after) => {
+            const tot = String(after || '').match(/^\((\d{1,3}:\d{2}(?:[.:]\d{1,3})?)\)$/);
+            const total = tot ? tot[1] : '';
+            const extra = tot ? '' : String(after || '').trim();
+            const label = name + (extra ? ': ' + extra : '') + (total ? ` (${total})` : '');
+            cur = { name, extra, total, label, tracks: [] };
+            media.push(cur);
+        };
         let done = false;
+        let count = 0;
         const rest = [];
         blocks.forEach(block => {
             const kept = [];
             block.forEach(line => {
                 if (!done) {
                     const d = line.match(_DP_DISC_RE);
-                    if (d) { disc = d[1]; return; }
-                    const t = line.match(_DP_TRACK_RE);
-                    if (t) { data.tracks.push({ disc, pos: t[1], title: t[2], from: '' }); return; }
-                    if (data.tracks.length) done = true;
+                    if (d) { open(d[1].trim(), d[2]); return; }
+                    const t = line.match(trackRe);
+                    if (t) {
+                        if (!cur) open('', '');
+                        const len = t[2].match(/^(.*?)\s*\((\d{1,3}:\d{2}(?:[.:]\d{1,3})?)\)$/);
+                        cur.tracks.push({ pos: t[1], title: len ? len[1] : t[2], length: len ? len[2] : '' });
+                        count++;
+                        return;
+                    }
+                    if (count) done = true;
                 }
                 kept.push(line);
             });
             if (kept.length) rest.push(kept);
         });
+        let unnumbered = false;
         // Title-like: short, no lineage arrow, and no sentence end unless the
         // line has no lower case at all ("BORN IN THE U.S.A.").
         const titleLike = (l) => l.length <= 80 && !/-->/.test(l) && (!/[.:]$/.test(l) || l === l.toUpperCase());
-        if (!data.tracks.length && rest.length && rest[0].length >= 3 && rest[0].every(titleLike)) {
-            rest.shift().forEach(title => data.tracks.push({ disc: '', pos: '', title, from: '' }));
-            data.unnumbered = true;
+        if (!count && rest.length && rest[0].length >= 3 && rest[0].every(titleLike)) {
+            media.length = 0;
+            cur = null;
+            open('', '');
+            rest.shift().forEach(title => cur.tracks.push({ pos: '', title, length: '' }));
+            unnumbered = true;
         }
-        rest.forEach(b => data.notes.push(b.join('\n')));
+        return { media: media.filter(m => m.tracks.length), notes: rest.map(b => b.join('\n')), unnumbered };
+    }
+
+    /**
+     * The tracklist block of a springsteenlyrics.com item page: the
+     * `span.monospaced` after the item card. On collection and bootleg pages
+     * it follows the card's `div.divide30` spacer directly; the CD and vinyl
+     * bootleg pages put an `<h3 class="heading">Trackslist</h3>` (sic) in
+     * between — which is how their previews came to say "The page has no
+     * tracklist." (2026-11-04). Any other heading first means the page has
+     * no tracklist.
+     *
+     * @param {Element} card  The item's `div.blog-post`.
+     * @returns {?Element}
+     */
+    function _slTracklistBlock(card) {
+        for (let n = card.nextElementSibling; n; n = n.nextElementSibling) {
+            if (n.matches('span.monospaced')) return n;
+            if (n.matches('div.divide30') || (n.matches('h3.heading') && /^tracks?l?i?s?t/i.test(n.textContent.trim()))) continue;
+            return null;
+        }
+        return null;
     }
 
     /**
@@ -25514,9 +26263,11 @@
      */
     function _dpParseSl(doc, url) {
         if (/\/lyrics\.php$/.test(new URL(url).pathname)) return _dpParseSlSong(doc, url);
+        if (_SL_INFO_FILE_PATH_RE.test(new URL(url).pathname)) return _dpParseSlInfoFile(doc, url);
         const card = _slFindCards(doc)[0];
         if (!card) return null;
         const data = _dpEmpty();
+        data.session = _slLoggedIn(doc) ? 'in' : 'out';
         const body = card.querySelector('.col-md-10') || card;
         const titleLink = body.querySelector('a[href*="item="]');
         data.title = _dpText(titleLink ? titleLink.textContent : '');
@@ -25525,19 +26276,114 @@
         data.fields = Object.entries(_slReadCardFields(body)).filter(([, v]) => !/^[–\-\s()]*$/.test(v));
         const cover = card.querySelector('.col-md-2 img');
         data.cover = _dpAbsUrl(cover && cover.getAttribute('src'), url);
-        const spacer = card.nextElementSibling;
-        const block = spacer && spacer.matches('div.divide30') ? spacer.nextElementSibling : null;
-        if (block && block.matches('span.monospaced')) _dpSlTracklist(_dpBlockText(block), data);
+        const block = _slTracklistBlock(card);
+        if (block) _dpSlTracklist(_dpBlockText(block), data);
+        // The CD and vinyl bootleg pages' own text sections (Runout groove
+        // etchings, Release info). Never "Private info": a logged-in page's
+        // own notes stay out of every card and window (vzell, 2026-11-04).
+        const sections = _slItemSections(card);
+        sections.forEach(s => {
+            if (_SL_ITEM_OWN_SECTION_RE.test(s.label)) return;
+            const text = _dpBlockText(s.box);
+            if (text) data.sections.push({ label: s.label, text });
+        });
+        const captions = _slImageCaptions(sections);
         doc.querySelectorAll('img[src*="_tn."]').forEach(img => {
             if (img.closest('.navbar, footer')) return;
             const a = img.closest('a[href]');
+            const full = _dpAbsUrl(a && a.getAttribute('href'), url);
             data.images.push({
                 thumb: _dpAbsUrl(img.getAttribute('src'), url),
-                full: _dpAbsUrl(a && a.getAttribute('href'), url),
-                label: ''
+                full,
+                label: captions.get(full.split('/').pop()) || ''
             });
         });
         return data;
+    }
+
+    /**
+     * The path of a bootleg's original info file:
+     * `/bootlegs/<category>/<item>_infofile.txt`.
+     * @type {RegExp}
+     */
+    const _SL_INFO_FILE_PATH_RE = /^\/bootlegs\/[\w-]+\/\d+_infofile\.txt$/;
+
+    /**
+     * A bootleg's original info file (plain text) as a record: its file
+     * name, and the text as one section, the card showing its first lines.
+     * The engine hands every page over parsed as HTML, so the text is the
+     * body's text: a "<" in the file starting something tag-like would be
+     * lost (none seen).
+     *
+     * @param {Document} doc
+     * @param {string}   url
+     * @returns {?object}
+     */
+    function _dpParseSlInfoFile(doc, url) {
+        const text = String((doc.body || doc.documentElement || {}).textContent || '').replace(/\r\n?/g, '\n').trim();
+        if (!text) return null;
+        const data = _dpEmpty();
+        data.title = new URL(url).pathname.split('/').pop();
+        data.subtitle = 'Original info file';
+        data.sections.push({ label: 'Original info file', text });
+        const lines = text.split('\n').filter(l => l.trim());
+        data.excerpt = { label: 'Info file', lines: lines.slice(0, 4), total: lines.length };
+        return data;
+    }
+
+    /**
+     * Headings of a springsteenlyrics.com item page that the item's reader
+     * handles itself, or never shows: the card ("Info", the CD and vinyl
+     * bootlegs' "Details"), the tracklist ("Trackslist", sic), the scans and
+     * artwork, the info file, the other versions, and "Private info" — a
+     * logged-in page's own notes, kept out of every card and window.
+     * @type {RegExp}
+     */
+    const _SL_ITEM_OWN_SECTION_RE = /^(?:info|details|tracks?l?i?s?t|scans|artwork|original info file|all versions|private info)\b/i;
+
+    /**
+     * The `h3.heading` sections that follow an item card, in page order,
+     * each with copies of the nodes up to the next heading. On every item
+     * page (2026-11-04 snapshots) the card and its sections are siblings in
+     * `.project-detail`; the navbar's mega-menu headings are elsewhere.
+     *
+     * @param {Element} card  The item's `div.blog-post`.
+     * @returns {Array<{label: string, box: HTMLDivElement}>}
+     */
+    function _slItemSections(card) {
+        const doc = card.ownerDocument;
+        const out = [];
+        let cur = null;
+        for (let n = card.nextSibling; n; n = n.nextSibling) {
+            if (n.nodeType === Node.ELEMENT_NODE && n.matches('h3.heading')) {
+                cur = { label: _dpText(n.textContent), box: doc.createElement('div') };
+                out.push(cur);
+            } else if (cur) {
+                cur.box.appendChild(n.cloneNode(true));
+            }
+        }
+        return out;
+    }
+
+    /**
+     * The captions a bootleg or CD and vinyl bootleg page writes above its
+     * artwork, one line per file: `"148_artwork_01.jpg": box front`.
+     *
+     * @param {Array<{label: string, box: Element}>} sections  `_slItemSections()`.
+     * @returns {Map<string, string>} File name → caption.
+     */
+    function _slImageCaptions(sections) {
+        const out = new Map();
+        sections.forEach(s => {
+            if (!/^artwork/i.test(s.label)) return;
+            s.box.querySelectorAll('span.monospaced').forEach(span => {
+                _dpBlockText(span).split('\n').forEach(line => {
+                    const m = line.match(/^"([^"]+)":\s*(.+)$/);
+                    if (m) out.set(m[1], m[2].trim());
+                });
+            });
+        });
+        return out;
     }
 
     /**
@@ -26202,6 +27048,14 @@
      *   name but the one that page names (`pick(record)` → its URL, '' for
      *   none; `what` names it in a failure): Brucebase's Venue cells, which
      *   link the entry page, preview its venue (`_dpSiteSource()`).
+     * - `windowOnly(u)`, optional: such a link's card makes no request and
+     *   says that Space reads it; only the window does (`_dpSiteSource()`).
+     * - `session`, optional: the login state of THIS tab on the site
+     *   ('in'/'out'). Its parser stamps each record with the state the page
+     *   was read in (`data.session`), and a record of the other state is a
+     *   cache miss (`_dpRecUsable()`): a logged-in read carries data a public
+     *   one lacks (springsteenlyrics.com's MusicBrainz link and flags), and
+     *   the cache is keyed by URL only (2026-11-04).
      *
      * @type {Object<string, {setting: ?string, isDetailUrl: function(URL): boolean, charset: ?string, parse: function(Document, string): ?object, liveRoot: ?function(Document): ?Element, liveHide: string[], liveCss: string, livePrepare: ?function(Document): ?function(): void, ttlDays?: number, extRoot: ?string, ownLinks?: {test: function(URL): boolean, setting: string}, via?: {selector: string, pick: function(object): string, what: string}}>}
      */
@@ -26210,9 +27064,15 @@
             setting: 'sa_sl_detail_preview',
             isDetailUrl: (u) => (/^\/(?:collection|bootlegs|brucelegs)\.php$/.test(u.pathname) &&
                 /^\d+$/.test(u.searchParams.get('item') || '')) ||
-                (u.pathname === '/lyrics.php' && !!u.searchParams.get('song')),
+                (u.pathname === '/lyrics.php' && !!u.searchParams.get('song')) ||
+                _SL_INFO_FILE_PATH_RE.test(u.pathname),
+            // A bootleg's original info file (the list's Info file cell, the
+            // item page's Files card): read on Space only (vzell's answer 2,
+            // 2026-11-04); its card just names it.
+            windowOnly: (u) => _SL_INFO_FILE_PATH_RE.test(u.pathname),
             charset: null,
             parse: _dpParseSl,
+            session: () => (_slLoggedIn(document) ? 'in' : 'out'),
             liveRoot: (doc) => {
                 const pd = doc.querySelector('.project-detail');
                 return pd ? (pd.closest('.container') || pd) : null;
@@ -26681,10 +27541,12 @@
             needsCtrl: _dpNeedsCtrl,
             liveUrl: (t) => shownUrl(t) || t.url,
             card(t, start, repaint) {
+                const windowOnly = !!(site.windowOnly && site.windowOnly(new URL(t.url)));
                 if (start) {
                     cardRes.delete(t.key);
                     const mem = memOf(t);
                     if (mem) return _dpCardHtml(mem.data, { cached: true, at: mem.at });
+                    if (windowOnly) return head(t) + `<div class="mb-tt-body mb-tt-dim">${_mbttEscape(t.url.split('/').pop())} · <kbd>Space</kbd> reads it</div>`;
                     get(t, { wanted: () => _dpPeekShowing(t.el) }).then(res => {
                         cardRes.set(t.key, res);
                         repaint();
@@ -26693,6 +27555,7 @@
                 }
                 const res = cardRes.get(t.key);
                 if (res && res.outcome === 'ok') return _dpCardHtml(res.data, res);
+                if (!res && windowOnly) return head(t) + `<div class="mb-tt-body mb-tt-dim">${_mbttEscape(t.url.split('/').pop())} · <kbd>Space</kbd> reads it</div>`;
                 if (res && res.outcome === 'error') {
                     return head(t) + '<div class="mb-tt-body mb-tt-alert">Could not load the detail page.</div>' +
                         `<div class="mb-tt-dim">${_mbttEscape(res.detail || '')}</div>`;
@@ -26841,6 +27704,33 @@
     }
 
     /**
+     * Whether a parsed record was read in this tab's login state on its site
+     * (`_DP_SITES[…].session`). A record without a stamp, or a site without
+     * a login state, always fits.
+     *
+     * @param {?object} data  A parsed record.
+     * @param {?object} site  Its `_DP_SITES` entry.
+     * @returns {boolean}
+     */
+    function _dpSessionFits(data, site) {
+        return !(site && site.session && data && data.session) || data.session === site.session();
+    }
+
+    /**
+     * Whether a saved detail-page record may be used: this parser version,
+     * younger than the site's lifetime, and read in this tab's login state.
+     *
+     * @param {?{v: number, at: number, data: object}} rec
+     * @param {?object} site  Its `_DP_SITES` entry.
+     * @param {number}  now   `Date.now()`.
+     * @param {number}  [ttl] The site's lifetime, when the caller has it.
+     * @returns {boolean}
+     */
+    function _dpRecUsable(rec, site, now, ttl = _dpTtlMs(site)) {
+        return !!rec && rec.v === _DP_PARSER_VERSION && now - rec.at < ttl && _dpSessionFits(rec.data, site);
+    }
+
+    /**
      * Returns a detail page's parsed record: from this session's memory,
      * then IndexedDB (younger than the host's `_dpTtlMs()`, same parser version), then
      * the network through the rate gate.
@@ -26865,9 +27755,9 @@
     async function _dpGet(url, site, { wanted = () => true, force = false } = {}) {
         if (!force) {
             const mem = _dpMem.get(url);
-            if (mem) return { outcome: 'ok', data: mem.data, at: mem.at, cached: true };
+            if (mem && _dpSessionFits(mem.data, site)) return { outcome: 'ok', data: mem.data, at: mem.at, cached: true };
             const rec = await _dpIdbGet(url).catch(() => null);
-            if (rec && rec.v === _DP_PARSER_VERSION && Date.now() - rec.at < _dpTtlMs(site)) {
+            if (_dpRecUsable(rec, site, Date.now())) {
                 _dpMem.set(url, { data: rec.data, at: rec.at });
                 return { outcome: 'ok', data: rec.data, at: rec.at, cached: true };
             }
@@ -26961,14 +27851,16 @@
     }
 
     /**
-     * HTML of one ordered track list.
+     * HTML of one ordered track list. A track with a `length` (the CD and
+     * vinyl bootleg pages write "(5:45.15)") shows it after the title.
      *
      * @param {Array<object>} tracks
      * @returns {string}
      */
     function _dpTrackListHtml(tracks) {
         return '<ol class="mb-dp-tracks">' + tracks.map(t =>
-            `<li><span class="mb-dp-pos">${_mbttEscape(t.pos || '·')}</span>${_mbttEscape(t.title)}</li>`).join('') + '</ol>';
+            `<li><span class="mb-dp-pos">${_mbttEscape(t.pos || '·')}</span>${_mbttEscape(t.title)}` +
+            (t.length ? ` <span class="mb-dp-len">${_mbttEscape(t.length)}</span>` : '') + '</li>').join('') + '</ol>';
     }
 
     /**
@@ -30574,7 +31466,7 @@
         const ttl = _dpTtlMs(site);
         const now = Date.now();
         records.forEach(rec => {
-            if (!rec || rec.v !== _DP_PARSER_VERSION || now - rec.at >= ttl || !urls.has(rec.url) || _dpMem.has(rec.url)) return;
+            if (!_dpRecUsable(rec, site, now, ttl) || !urls.has(rec.url) || _dpMem.has(rec.url)) return;
             _dpMem.set(rec.url, { data: rec.data, at: rec.at });
         });
         return records.length;
@@ -32254,6 +33146,7 @@
             :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-tracks li { break-inside: avoid; }
             :is(#mb-dp-peek, .mb-dp-note-event) .mb-dp-tracks li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
             :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-pos { color: #7a6d5c; font-variant-numeric: tabular-nums; margin-right: 6px; }
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-len { color: #7a6d5c; font-variant-numeric: tabular-nums; }
             :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-stat { margin: 4px 0 2px; }
             :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-stat b { font-size: 1.6em; font-variant-numeric: tabular-nums; }
             :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-spin { display: inline-block; animation: mb-dp-spin 0.9s linear infinite; }
@@ -45501,6 +46394,60 @@
                 stickyColumn: 'Title'
             },
             tableMode: 'single'
+        },
+
+        // An item's own page (2026-11-04; org/springsteenlyrics.org "Add new
+        // SL PTs and POHs"): collection, bootleg, CD and vinyl bootleg. The
+        // tracklist as release-tracks shows a release — a sub-table per disc
+        // or record (vinyl sides paired), takes, versions and notes as
+        // columns — and the item's facts, scans and files above it
+        // (`_slItemHeadSpec()`). No request: the page holds everything, so
+        // `fetchText` hands the engine the live page's own HTML
+        // (`_slItemToHtml()`). The CD and vinyl bootlegs add "All versions",
+        // the page's own list of the other versions as one table.
+        {
+            type: 'sl-collection-item',
+            host: 'springsteenlyrics.com',
+            match: () => _slItemKind() === 'collection',
+            buttons: [ {
+                label: 'Show the tracklist', shortLabel: 'Tracklist',
+                description: 'No request: the tracklist from this page, a sub-table per disc or record; the item\'s facts, scans and (logged in) your collection details above.'
+            } ],
+            features: _slItemFeatures('collection'),
+            tableMode: 'multi'
+        },
+        {
+            type: 'sl-bootlegs-item',
+            host: 'springsteenlyrics.com',
+            match: () => _slItemKind() === 'bootlegs',
+            buttons: [ {
+                label: 'Show the tracklist', shortLabel: 'Tracklist',
+                description: 'No request: the tracklist from this page, a sub-table per disc or record, takes and notes as columns; the show, the recording, the artwork and the original info file above.'
+            } ],
+            features: _slItemFeatures('bootlegs'),
+            tableMode: 'multi'
+        },
+        {
+            type: 'sl-brucelegs-item',
+            host: 'springsteenlyrics.com',
+            match: () => _slItemKind() === 'brucelegs',
+            buttons: [
+                {
+                    label: 'Show the tracklist', shortLabel: 'Tracklist',
+                    description: 'No request: the tracklist from this page, a sub-table per disc or record (sides paired), versions, notes and lengths as columns; the release, its runout etchings, artwork and PDFs above.'
+                },
+                {
+                    label: 'Show all versions of this bootleg', shortLabel: 'All versions',
+                    // Only when the page lists other versions: on most items
+                    // the section holds the item itself alone (148, 281;
+                    // item 41 has six, vzell 2026-11-04).
+                    showIf: () => _slItemVersionCount(document) > 1,
+                    description: 'No request: every version (pressing) of this bootleg the page lists, this one included, as one table with the list\'s columns.',
+                    features: { slItemView: 'versions' }
+                }
+            ],
+            features: _slItemFeatures('brucelegs'),
+            tableMode: 'multi'
         },
 
         // --- jungleland.it ---------------------------------------------------
@@ -112917,6 +113864,11 @@ a { color: #1565c0; }`;
         if (activeDefinition.features?.slLyricsToTable) {
             applySlLyricsToTable(activeDefinition);
         }
+        // An item page ('sl-*-item'): an empty table under our h2; the rows
+        // come from the page's own HTML (`features.pageRequest`).
+        if (activeDefinition.features?.slItemToTable) {
+            applySlItemToTable(activeDefinition);
+        }
 
         // ── jlListToTable pre-processing ─────────────────────────────────────
         // The jungleland.it list ('jl-list'): its plain links become a
@@ -144840,6 +145792,9 @@ a { color: #1565c0; }`;
             if (activeDefinition.features?.slLyricsToTable) {
                 applySlLyricsToTable(activeDefinition);
             }
+            if (activeDefinition.features?.slItemToTable) {
+                applySlItemToTable(activeDefinition);
+            }
             // And for jungleland.it: the reloaded list is plain links again.
             if (activeDefinition.features?.jlListToTable) {
                 applyJlListToTable(activeDefinition);
@@ -165453,6 +166408,20 @@ a { color: #1565c0; }`;
              * @type {number}
              */
             dpParserVersion: _DP_PARSER_VERSION,
+            /**
+             * Whether a saved record of `host` read in login state
+             * `session` ('in'/'out', or undefined: no stamp) may be used in
+             * this tab (`_dpRecUsable()`: version and age fit; the login
+             * state is what is asked).
+             *
+             * @param {string} host
+             * @param {?string} session
+             * @returns {boolean}
+             */
+            dpRecUsable(host, session) {
+                const rec = { url: 'x', v: _DP_PARSER_VERSION, at: Date.now(), data: session === undefined ? {} : { session } };
+                return _dpRecUsable(rec, _DP_SITES[host], Date.now());
+            },
             /**
              * The Live page view's cleaning (`_dpLiveDocHtml()`): a page's HTML
              * in, the frame's `srcdoc` out, so a spec can pin what it removes,

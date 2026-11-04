@@ -13,7 +13,7 @@ const { loadSlListPage, renderedSlRows, renderedSlHeaders } = require('../suppor
 const { waitForRenderComplete } = require('../support/browser');
 const { waitForSortSettled, columnFilterInput } = require('../support/filterSortAssertions');
 
-const HEADERS = ['Cover', 'Title', 'Version', 'Label', 'Cat. no.', 'Date', 'First date', 'Show', 'Location', 'Format',
+const HEADERS = ['Cover', 'Title', 'Version', 'Label', 'Cat. no.', 'Date', 'First date', 'Show', 'Location', 'Format', 'PDF', 'Artwork',
     'DD', 'MM', 'YYYY', 'Day', 'Month', 'Place', 'Locality', 'Region', 'Country'];
 
 /**

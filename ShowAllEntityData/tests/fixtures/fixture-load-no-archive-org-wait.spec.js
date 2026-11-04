@@ -110,6 +110,23 @@ test('a fixture load never waits on a coverartarchive.org thumbnail in its marku
     await expect.poll(() => hangingRouteHit, { message: 'the mock is reached after the load' }).toBeGreaterThan(0);
 });
 
+test('a scrubbed static.metabrainz.org file is answered 404 locally, never asked of the CDN', async ({ page }) => {
+    // Snapshot fixtures name their static files `…-SCRUBBED.css` (the hash
+    // replaced), which the CDN answers 404. A 404 was never cached, so every
+    // load asked the CDN again and page.goto() waited for it; under the full
+    // suite that stalled twice (DEBUG-NOTES.md, 2026-11-04). The context
+    // fixture (tests/support/test.js) now answers them itself, marked.
+    const scrubbed = [];
+    page.on('response', (res) => {
+        if (/^https:\/\/static\.metabrainz\.org\/.*-SCRUBBED\./.test(res.url())) {
+            scrubbed.push({ url: res.url(), status: res.status(), stub: res.headers()['x-sa-fixture-stub'] || '' });
+        }
+    });
+    await loadUserscriptPage(page, { url: RELEASE_URL, fixtureFile: FIXTURE, testMode: true });
+    expect(scrubbed.map((r) => r.url), 'the fixture asks for scrubbed files').toContain('https://static.metabrainz.org/MB/common-SCRUBBED.css');
+    expect(scrubbed.filter((r) => r.status !== 404 || r.stub !== 'scrubbed-static'), 'every one answered by the stub').toEqual([]);
+});
+
 test('ART_ARCHIVE_RE: the two art archives only', () => {
     expect(ART_ARCHIVE_RE.test('https://coverartarchive.org/release-group/x/front-250')).toBe(true);
     expect(ART_ARCHIVE_RE.test('https://eventartarchive.org/event/x/front')).toBe(true);

@@ -1,0 +1,700 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- SKELETON-END: everything above this line is dropped when the page is published as an Artifact. -->
+<title>SpringsteenLyrics Item Pages</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+  Mockups for org/springsteenlyrics.org, "* TODO Add new SL PTs and POHs, see skills" (2026-11-04,
+  branch docs/sl-item-pts-mockups). No userscript change.
+  Data: real, from debug/ snapshots saved by vzell on 2026-11-04:
+    sl-collection-official-detail.html (collection item 8595, logged in)
+    sl-collection-sampler-detail.html  (collection item 5240, logged in, two copies)
+    sl-collection-VA-detail.html       (collection item 9685, logged in)
+    sl-collection-aud_live_1988-detail.html (really bootlegs.php?item=9507, logged in)
+    sl-brucelegs-detail.html (item 148, anonymous), sl-brucelegs-2-detail.html (item 281, logged in)
+    sl-collections-list-logged-in.html, sl-bootlegs-list-logged-in.html, sl-brucelegs-list-logged-in.html
+  Private info text is NOT copied: the mockup shows a placeholder. Images are placeholders: the
+  site sits behind Cloudflare and the publisher blocks outside images.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a design bench, as in foreign-detail-PTs-mockups.html (house cool-slate palette).
+   One tab per view; each tab is a mock browser window with notes beside it. The mocked site page
+   is light in both themes, as springsteenlyrics.com is. */
+:root {
+    --bg: #e9edf1;
+    --surface: #f8fafc;
+    --ink: #18202b;
+    --muted: #556070;
+    --line: #cfd6df;
+    --accent: #24527f;
+    --accent-ink: #ffffff;
+    --accent-soft: #dbe6f1;
+    --ok: #2c7347;
+    --ok-soft: #dcefe2;
+    --warn: #8f5a00;
+    --warn-soft: #f6e8cc;
+    --shadow: 0 1px 0 rgba(20, 30, 45, 0.05), 0 12px 32px -18px rgba(20, 30, 45, 0.35);
+
+    --site-bg: #ffffff;
+    --site-ink: #222222;
+    --site-dim: #6b6b6b;
+    --site-line: #dddddd;
+    --site-head: #eceef1;
+    --site-even: #f6f7f9;
+    --site-link: #1d4f96;
+    --site-chrome: #f1f3f6;
+    --site-chrome-ink: #4d5664;
+    --site-h3: #f0f3f7;
+    --site-flt: #fbfcfd;
+    --site-new: #e0a33a;
+    --site-lock: #7a4fa0;
+    --site-lock-soft: #f1eaf7;
+    --mb: #ba478f;
+    --sl: #b8312f;
+    --tt-bg: #fffdf6;
+    --tt-line: #d9cfae;
+
+    --f-display: "Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+    --f-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, Consolas, "Courier New", monospace;
+    --f-site: "Open Sans", Arial, Helvetica, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg: #11161d;
+        --surface: #19212b;
+        --ink: #e2e7ee;
+        --muted: #9aa5b4;
+        --line: #2c3746;
+        --accent: #86b4e2;
+        --accent-ink: #0e1620;
+        --accent-soft: #1f3248;
+        --ok: #74c494;
+        --ok-soft: #1c3326;
+        --warn: #e3ac4c;
+        --warn-soft: #3a2d14;
+        --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 14px 34px -16px rgba(0, 0, 0, 0.7);
+        color-scheme: dark;
+    }
+}
+:root[data-theme="dark"] {
+    --bg: #11161d;
+    --surface: #19212b;
+    --ink: #e2e7ee;
+    --muted: #9aa5b4;
+    --line: #2c3746;
+    --accent: #86b4e2;
+    --accent-ink: #0e1620;
+    --accent-soft: #1f3248;
+    --ok: #74c494;
+    --ok-soft: #1c3326;
+    --warn: #e3ac4c;
+    --warn-soft: #3a2d14;
+    --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 14px 34px -16px rgba(0, 0, 0, 0.7);
+    color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+    background: var(--bg); color: var(--ink); font: 15px/1.55 var(--f-body); margin: 0;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 0 64px;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 1280px; margin: 0 auto; display: grid; gap: 24px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(28px, 4vw, 40px); font-weight: 800; font-stretch: 85%; }
+p { margin: 0; max-width: 76ch; }
+code { font-family: var(--f-mono); font-size: 0.87em; }
+.eyebrow { font: 600 11px/1 var(--f-body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+header.top { padding-block: 32px 0; display: grid; gap: 12px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); min-width: 0; }
+
+/* Summary strip */
+.verdicts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.verdict { padding: 14px 16px; display: grid; gap: 8px; align-content: start; border-top: 4px solid var(--c); }
+.verdict h3 { font-size: 16px; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.pill { font: 600 11.5px/1 var(--f-body); padding: 4px 8px; border-radius: 999px; white-space: nowrap; }
+.pill.yes { background: var(--ok-soft); color: var(--ok); }
+.pill.up { background: var(--accent-soft); color: var(--accent); }
+.pill.fix { background: var(--warn-soft); color: var(--warn); }
+.verdict p { font-size: 13.5px; }
+
+/* Tabs */
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 10px; border-bottom: 1px solid var(--line); }
+.tabs button, .sw button { font: 600 13px/1 var(--f-body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 9px 14px; cursor: pointer; }
+.tabs button[aria-pressed="true"], .sw button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.sw { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
+.sw button { padding: 6px 10px; font-size: 12.5px; }
+button:focus-visible, .mock [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.bench { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
+.bench > .col { display: grid; gap: 10px; min-width: 0; }
+@media (max-width: 980px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+.notes { padding: 14px 16px; display: grid; gap: 10px; font-size: 13.5px; }
+.notes h3 { font-size: 15px; }
+.notes ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+
+/* The mock browser window */
+.mock { background: var(--site-bg); color: var(--site-ink); border-radius: 8px; border: 1px solid var(--line); overflow: hidden; box-shadow: var(--shadow); font: 13px/1.45 var(--f-site); min-width: 0; position: relative; }
+.mock a { color: var(--site-link); text-decoration: none; }
+.chrome { background: var(--site-chrome); color: var(--site-chrome-ink); padding: 7px 12px; font: 12px/1.3 var(--f-mono); display: flex; gap: 8px; align-items: center; border-bottom: 1px solid var(--site-line); overflow: hidden; }
+.chrome .dot { width: 9px; height: 9px; border-radius: 50%; background: #c8ccd2; flex: none; }
+.chrome .url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chrome .who { margin-left: auto; flex: none; font: 600 11px/1 var(--f-body); padding: 3px 7px; border-radius: 999px; background: var(--site-lock-soft); color: var(--site-lock); }
+.chrome .who.anon { background: #eceef1; color: #5b6879; }
+.page { padding: 14px 16px 20px; display: grid; gap: 12px; }
+.site-native { color: var(--site-dim); font-size: 12px; border: 1px dashed var(--site-line); border-radius: 6px; padding: 7px 10px; }
+.sa-h1 { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font: 700 20px/1.2 var(--f-site); }
+.sa-btns { display: inline-flex; border: 1px solid #9fb0c4; border-radius: 6px; overflow: hidden; font: 600 12.5px/1 var(--f-site); }
+.sa-btns span { padding: 6px 10px; background: #eef3f9; color: #24364d; border-right: 1px solid #9fb0c4; }
+.sa-btns span:last-child { border-right: 0; }
+.sa-btns span.on { background: #24527f; color: #fff; }
+.sub { color: var(--site-dim); font-size: 13px; }
+.sub b { color: var(--site-ink); font-weight: 600; }
+
+/* Collapsible h2 sections (makeH2sCollapsible) */
+.h2 { font: 700 16px/1.2 var(--f-site); border-bottom: 1px solid var(--site-line); padding-bottom: 4px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; cursor: pointer; user-select: none; }
+.h2 .tog { color: var(--site-dim); font-weight: 400; width: 1em; }
+.h2 .cnt { color: var(--site-dim); font-weight: 400; font-size: 13px; }
+.h2 .gf { margin-left: auto; font: 400 12px/1 var(--f-site); color: var(--site-dim); }
+.lock { font: 600 10.5px/1 var(--f-body); padding: 3px 6px; border-radius: 999px; background: var(--site-lock-soft); color: var(--site-lock); align-self: center; }
+.sec { display: grid; gap: 8px; }
+.sec[data-closed="1"] > .body { display: none; }
+.prose { font-size: 13px; max-width: 80ch; white-space: pre-line; }
+.ph-note { color: var(--site-dim); font-style: italic; }
+
+/* Details cards (the Sidebar cards' role in _fdHeadInsertSections) */
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.card { border: 1px solid var(--site-line); border-radius: 6px; padding: 8px 10px; display: grid; gap: 4px; align-content: start; background: #fcfcfd; }
+.card h4 { margin: 0; font: 700 12px/1.2 var(--f-site); text-transform: uppercase; letter-spacing: 0.04em; color: var(--site-dim); display: flex; gap: 6px; align-items: center; }
+.card dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; }
+.card dt { color: var(--site-dim); }
+.card dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.card.private { border-color: #d6c5e6; background: #fbf8fe; }
+.yes { color: #2c7347; font-weight: 700; }
+.na { color: #9aa2ad; }
+
+/* Pictures */
+.tiles { display: flex; gap: 8px; flex-wrap: wrap; }
+.tile { width: 92px; display: grid; gap: 3px; font-size: 11px; color: var(--site-dim); cursor: zoom-in; border: 0; padding: 0; background: none; text-align: left; font-family: var(--f-site); }
+.tile .ph { width: 92px; height: 92px; border-radius: 4px; border: 1px solid var(--site-line); background: linear-gradient(135deg, #e3e8ef 0%, #cdd6e2 100%); display: grid; place-items: center; font: 600 10.5px/1.2 var(--f-site); color: #5b6879; text-align: center; padding: 6px; }
+.tile .ph.pdf { background: linear-gradient(135deg, #f4e1e1 0%, #e6c4c4 100%); color: #7a2d2d; }
+.alert { font-size: 12.5px; background: #fcf8e3; border: 1px solid #f0e0a8; color: #7a5f12; border-radius: 4px; padding: 6px 10px; }
+
+/* Glyphs */
+.mbg { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 3px; background: var(--mb); color: #fff; font: 700 9px/1 var(--f-body); vertical-align: -3px; cursor: help; }
+.ico { display: inline-block; font-size: 12px; }
+.slg { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 3px; background: var(--sl); color: #fff; font: 700 8px/1 var(--f-body); vertical-align: -3px; }
+
+/* Sub-tables */
+.st { display: grid; gap: 6px; }
+.st-h3 { background: var(--site-h3); border: 1px solid var(--site-line); border-radius: 4px; padding: 5px 8px; font: 700 13.5px/1.2 var(--f-site); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; cursor: pointer; user-select: none; }
+.st-h3 .tog { color: var(--site-dim); font-weight: 400; }
+.st-h3 .cnt, .st-h3 .xtra { color: var(--site-dim); font-weight: 400; }
+.st-h3 .stf { margin-left: auto; font-weight: 400; font-size: 12px; color: var(--site-dim); }
+.st[data-closed="1"] > .tw { display: none; }
+.tw { overflow-x: auto; border: 1px solid var(--site-line); border-radius: 4px; }
+table.tbl { border-collapse: collapse; width: 100%; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+table.tbl th, table.tbl td { padding: 4px 8px; border-bottom: 1px solid var(--site-line); text-align: left; vertical-align: top; }
+table.tbl thead tr.hd th { background: var(--site-head); white-space: nowrap; font-weight: 700; }
+table.tbl thead tr.ft th { background: var(--site-flt); padding: 3px 6px; }
+table.tbl thead tr.ft span { display: block; border: 1px solid #ccd3dc; border-radius: 3px; height: 18px; background: #fff; min-width: 2.5em; }
+table.tbl tbody tr:nth-child(even) td { background: var(--site-even); }
+table.tbl td.n, table.tbl th.n { text-align: right; }
+table.tbl td.c, table.tbl th.c { text-align: center; }
+table.tbl th.new, .legend .new { box-shadow: inset 0 -3px 0 var(--site-new); }
+table.tbl td.sticky { font-weight: 600; }
+.uq { font-size: 10px; margin-left: 3px; opacity: 0.7; }
+.legend { font-size: 12px; color: var(--site-dim); display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.legend .new { padding: 0 4px; }
+.tag { background: #e8eef7; border-radius: 3px; padding: 0 4px; font-size: 11.5px; }
+
+/* Hover card (POH) and the 📊 panel */
+.poh { position: absolute; z-index: 4; width: min(320px, calc(100% - 24px)); background: var(--tt-bg); border: 1px solid var(--tt-line); border-radius: 6px; box-shadow: 0 10px 28px -12px rgba(0, 0, 0, 0.45); padding: 8px 10px; font: 12.5px/1.4 var(--f-site); color: #2a2a2a; display: grid; gap: 4px; }
+.poh .t { font-weight: 700; }
+.poh .d { color: #6d6650; font-size: 11.5px; }
+.poh hr { border: 0; border-top: 1px solid var(--tt-line); margin: 2px 0; width: 100%; }
+.uqp { border: 1px solid var(--site-line); border-radius: 6px; background: #fff; box-shadow: 0 8px 22px -14px rgba(0, 0, 0, 0.4); font-size: 12.5px; max-width: 320px; }
+.uqp .hd { padding: 6px 10px; border-bottom: 1px solid var(--site-line); font-weight: 700; display: flex; gap: 6px; }
+.uqp .row { display: flex; gap: 8px; padding: 3px 10px; align-items: center; }
+.uqp .row .c { margin-left: auto; color: var(--site-dim); font-variant-numeric: tabular-nums; }
+.uqp .sec-h { padding: 5px 10px 2px; font: 700 11px/1.2 var(--f-site); text-transform: uppercase; letter-spacing: 0.05em; color: var(--site-dim); }
+
+/* Preview window, before/after */
+.ba { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.win { border: 1px solid var(--site-line); border-radius: 6px; overflow: hidden; background: #fff; }
+.win .wt { background: #2f3a48; color: #fff; padding: 6px 10px; font: 600 12.5px/1.3 var(--f-site); display: flex; gap: 8px; }
+.win .wt .st8 { margin-left: auto; font-weight: 400; opacity: 0.8; }
+.win .wb { padding: 10px; display: grid; gap: 8px; font-size: 12.5px; }
+.win h4 { margin: 0; font: 700 12.5px/1.2 var(--f-site); }
+.win ol { margin: 0; padding-left: 0; list-style: none; display: grid; gap: 1px; font-variant-numeric: tabular-nums; }
+.win ol li { display: grid; grid-template-columns: 2.4em 1fr auto; gap: 6px; }
+.win ol li .p { color: var(--site-dim); }
+.win .disc { font-weight: 700; margin-top: 4px; }
+.bad { background: #fdecec; border: 1px solid #f1c2c2; color: #8a2121; border-radius: 4px; padding: 6px 8px; }
+.verdict-tag { font: 600 11px/1 var(--f-body); padding: 3px 7px; border-radius: 999px; }
+.verdict-tag.before { background: #fdecec; color: #8a2121; }
+.verdict-tag.after { background: #dcefe2; color: #2c7347; }
+
+/* Viewer */
+.viewer { position: absolute; inset: 0; z-index: 6; background: rgba(12, 16, 22, 0.92); display: grid; grid-template-rows: auto 1fr auto; color: #e9eef5; font: 13px/1.4 var(--f-site); }
+.viewer .vb { display: flex; gap: 10px; padding: 8px 12px; align-items: center; }
+.viewer .vb .x { margin-left: auto; cursor: pointer; border: 1px solid #5b6879; border-radius: 4px; padding: 2px 8px; background: none; color: inherit; font: inherit; }
+.viewer .stage { display: grid; place-items: center; }
+.viewer .big { width: min(340px, 70%); aspect-ratio: 1; border-radius: 6px; background: linear-gradient(135deg, #3b4656, #252e3a); display: grid; place-items: center; font: 600 14px/1.3 var(--f-site); text-align: center; padding: 10px; }
+.viewer .strip { display: flex; gap: 6px; padding: 8px 12px; overflow-x: auto; }
+.viewer .strip span { flex: none; width: 44px; height: 44px; border-radius: 3px; background: #3b4656; display: grid; place-items: center; font-size: 10px; }
+.viewer .strip span.on { outline: 2px solid #86b4e2; }
+
+/* Plan */
+.plan { padding: 16px 18px; display: grid; gap: 14px; }
+.plan h2 { font-size: 20px; }
+.plan h3 { font-size: 16px; }
+.plan ol, .plan ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; max-width: 92ch; }
+.qs { display: grid; gap: 8px; }
+.q { border-left: 3px solid var(--accent); padding: 6px 10px; background: var(--accent-soft); border-radius: 0 6px 6px 0; display: grid; gap: 3px; max-width: 92ch; }
+.q b { font-weight: 600; }
+.q .rec { color: var(--ok); font-size: 13.5px; }
+@media (prefers-reduced-motion: no-preference) { .tabs button, .sw button { transition: background 0.12s, color 0.12s; } }
+</style>
+<!--EMBED-->
+<script type="application/json" id="mockup-images">{}</script>
+</head>
+<body>
+<div class="wrap">
+    <header class="top">
+        <span class="eyebrow">ShowAllEntityData · design study · springsteenlyrics.com · 2026-11-04</span>
+        <h1>SpringsteenLyrics item pages, new list columns, fixed previews</h1>
+        <p>Three new pageTypes for one item of the collection, of the bootlegs and of the CD and vinyl bootlegs, laid out like a MusicBrainz release. Below are the list columns that the logged-in flag icons make possible, and the hover preview with its two tracklist bugs fixed. All values come from vzell's 2026-11-04 snapshots; images and private notes are placeholders.</p>
+    </header>
+
+    <section class="verdicts" aria-label="Summary">
+        <article class="panel verdict" style="--c:var(--sl)">
+            <h3>Item pages <span class="pill yes">3 new PTs</span></h3>
+            <p><code>collection.php?item=</code>, <code>bootlegs.php?item=</code>, <code>brucelegs.php?item=</code>. Today the script does not run there at all, because no <code>@include</code> matches. Rows come from the page itself, so no request is made.</p>
+        </article>
+        <article class="panel verdict" style="--c:var(--mb)">
+            <h3>List columns <span class="pill up">logged in</span></h3>
+            <p>MusicBrainz, Good scans and Kept in on collection lists; MusicBrainz and a linked Info file on bootleg lists; PDF and Artwork on brucelegs. They come from the cards, so they cost no request. A logged-out run looks as it does today.</p>
+        </article>
+        <article class="panel verdict" style="--c:var(--warn)">
+            <h3>Previews <span class="pill fix">2 bugs</span></h3>
+            <p>Brucelegs items show "The page has no tracklist.", and the sampler box set loses records 2–5 into its notes. Both come from one tracklist reader. The MusicBrainz icon gets a hover card too.</p>
+        </article>
+    </section>
+
+    <nav class="tabs" aria-label="Mockup views">
+        <button type="button" id="tab-col" data-tab="col" aria-pressed="true">Collection item</button>
+        <button type="button" id="tab-boot" data-tab="boot" aria-pressed="false">Bootleg item</button>
+        <button type="button" id="tab-bl" data-tab="bl" aria-pressed="false">CD/vinyl bootleg item</button>
+        <button type="button" id="tab-list" data-tab="list" aria-pressed="false">List columns</button>
+        <button type="button" id="tab-poh" data-tab="poh" aria-pressed="false">Previews</button>
+        <button type="button" id="tab-plan" data-tab="plan" aria-pressed="false">Plan and questions</button>
+    </nav>
+
+    <div id="view-col" class="bench"></div>
+    <div id="view-boot" class="bench" hidden></div>
+    <div id="view-bl" class="bench" hidden></div>
+    <div id="view-list" class="bench" hidden></div>
+    <div id="view-poh" class="bench" hidden></div>
+    <section id="view-plan" class="panel plan" hidden></section>
+</div>
+
+<script type="application/json" id="mock-data">{
+"col": {
+  "8595": { "url": "collection.php?item=8595&category=album&f_format=12i", "who": "logged in",
+    "title": "Greetings From Asbury Park, N.J.", "version": "2015 remastered reissue", "label": "Columbia", "catno": "88875014221",
+    "format": "LP", "country": "Canada", "released": "2015", "orig": "1973", "copies": "1",
+    "mb": "6069bf25-f108-4670-8e62-d42eb55dfe32", "flags": ["Good scans"], "kept": "Switzerland",
+    "notes": "Features a bilingual (English and French) hype sticker.",
+    "scans": [ { "copy": "", "n": 2 } ],
+    "media": [ { "name": "Record 1", "tracks": [
+      ["A1","BLINDED BY THE LIGHT",""],["A2","GROWIN' UP",""],["A3","MARY QUEEN OF ARKANSAS",""],["A4","DOES THIS BUS STOP AT 82ND STREET?",""],["A5","LOST IN THE FLOOD",""],
+      ["B1","THE ANGEL",""],["B2","FOR YOU",""],["B3","SPIRIT IN THE NIGHT",""],["B4","IT'S HARD TO BE A SAINT IN THE CITY",""] ] } ] },
+  "5240": { "url": "collection.php?item=5240&category=sampler&f_format=12i", "who": "logged in",
+    "title": "The Born In The U.S.A. 12\" Single Collection", "version": "5-single box set", "label": "CBS", "catno": "BRUCE 1",
+    "format": "4x12\" + 7\"", "country": "UK", "released": "1985", "orig": "1985", "copies": "2",
+    "mb": "2dbab154-6668-446a-a216-527b2f95ec74", "flags": [], "kept": "Lebanon",
+    "notes": "UK-only box set limited to 10,000 copies. Includes four 12-inch EP's and a 7-inch single, plus a poster.",
+    "scans": [ { "copy": "copy #1", "n": 23 }, { "copy": "copy #2", "n": 0 } ],
+    "media": [
+      { "name": "Record 1: \"Dancing In The Dark\"", "cat": "CBS TA 4436", "tracks": [["A1","DANCING IN THE DARK","Extended Remix"],["B1","PINK CADILLAC",""]] },
+      { "name": "Record 2: \"Cover Me\"", "cat": "CBS QTA 4662", "tracks": [["A1","COVER ME","Undercover Mix"],["A2","COVER ME","Dub"],["A3","SHUT OUT THE LIGHT",""],["B1","DANCING IN THE DARK","Dub"],["B2","JERSEY GIRL","Live"]] },
+      { "name": "Record 3: \"I'm On Fire\"", "cat": "CBS TA 6342", "tracks": [["A1","I'M ON FIRE",""],["A2","ROSALITA (COME OUT TONIGHT)",""],["B1","BORN IN THE U.S.A.","The Freedom Mix"],["B2","JOHNNY BYE BYE",""]] },
+      { "name": "Record 4: \"Glory Days\"", "cat": "CBS TA 6375", "tracks": [["A1","GLORY DAYS",""],["A2","STAND ON IT",""],["B1","SHERRY DARLING",""],["B2","RACING IN THE STREET",""]] },
+      { "name": "Record 5: \"I'm Goin' Down\"", "cat": "CBS A 6561", "tracks": [["A1","I'M GOIN' DOWN",""],["B1","JANEY, DON'T YOU LOSE HEART",""]] } ] },
+  "9685": { "url": "collection.php?item=9685&category=vaalbum&f_format=12i", "who": "logged in",
+    "title": "Rock Best 100", "version": "Promo", "label": "CBS / Sony", "catno": "YAPC 105",
+    "format": "LP", "country": "Japan", "released": "1978", "orig": "1978", "copies": "1",
+    "mb": "", "flags": ["Good scans"], "kept": "Switzerland", "va": true,
+    "notes": "Promotional sampler. Includes BORN TO RUN.",
+    "scans": [ { "copy": "", "n": 0 } ],
+    "media": [ { "name": "Record 1", "tracks": [
+      ["A1","Devotion","","Earth, Wind & Fire"],["A2","Dear Mr. Fantasy - Hey Jude","","Mike Bloomfield & Al Kooper"],["A3","Walk This Way","","Aerosmith"],["A4","Soul Sacrifice","","Santana"],["A5","Cause We've Ended As Lovers","","Jeff Beck"],["A6","Introduction","","Chicago"],["A7","Move Over","","Janis Joplin"],["A8","Jumping Jack Flash","","Johnny Winter"],["A9","Get It On","","Chase"],
+      ["B1","Moter City Madhouse","","Ted Nugent"],["B2","Have A Cigar","","Pink Floyd"],["B3","Slip Kid","","The Who"],["B4","Black Magic Woman","","Fleetwood Mac"],["B5","Transmaniacon MC","","Blue Öyster Cult"],["B6","BORN TO RUN","","Bruce Springsteen"],["B7","Nantucket Sleighride (For Own Coffin)","","Mountain"],["B8","The Golden Age Of Rock 'N' Roll","","Mott The Hoople"],["B9","Lido Shuffle","","Boz Scaggs"] ] } ] }
+},
+"boot": { "url": "bootlegs.php?item=9507&category=aud_live1988", "title": "[no title]", "version": "hrubesh transfer (Mauro R. tape)",
+  "date": "25 Feb 1988 (soundcheck)", "first": "1988-02-25", "show": "soundcheck", "location": "Centrum In Worcester, Worcester, MA",
+  "place": "Centrum In Worcester", "locality": "Worcester", "region": "MA", "ctry": "United States",
+  "format": "FLAC", "duration": "89:31.66", "art": 5, "info": "bootlegs/aud_live1988/9507_infofile.txt",
+  "discs": [
+    { "name": "Disc 1", "tracks": [["01","TUNNEL OF LOVE","#1",""],["02","TUNNEL OF LOVE","#2","partial"],["03","TUNNEL OF LOVE","#3",""],["04","BE TRUE","#1","partial"],["05","BE TRUE","#2",""],["06","ADAM RAISED A CAIN","#1",""],["07","ADAM RAISED A CAIN","#2","partial"],["08","TWO FACES","",""],["09","ALL THAT HEAVEN WILL ALLOW","","intro"],["10","ALL THAT HEAVEN WILL ALLOW","#1","partial"],["11","ALL THAT HEAVEN WILL ALLOW","#2","partial"],["12","ALL THAT HEAVEN WILL ALLOW","#3","partial"]] },
+    { "name": "Disc 2", "tracks": [["01","ROULETTE / outro","#1",""],["02","ROULETTE / outro","#2",""],["03","ROULETTE / outro","#3",""],["04","PART MAN, PART MONKEY","#1","partial"],["05","WALK LIKE A MAN","#1","partial"],["06","WALK LIKE A MAN","#2","partial"],["07","TUNNEL OF LOVE","#4",""],["08","BE TRUE","#3",""],["09","YOU CAN LOOK (BUT YOU BETTER NOT TOUCH)","",""],["10","I'M A COWARD","",""],["11","PART MAN, PART MONKEY","#2",""],["12","WALK LIKE A MAN","#3","partial"]] } ] },
+"bl": {
+  "148": { "url": "brucelegs.php?item=148&f_format=vinyl", "who": "anonymous", "title": "4th Of July - The Wild Session",
+    "version": "Limited Edition #350 numbered - Marbled Grey Vinyl", "label": "The Godfatherecords", "catno": "–", "date": "1973",
+    "location": "Various Location", "format": "4xLP", "pdf": ["brucelegs/0/148_pdf_01.pdf"], "art": 31,
+    "runout": ["Side A: July A","Side B: July B","Side c: July c","Side D: July D","Side E: July E","Side F: July F","Side G: July G","Side H: July H"],
+    "info": "4th Of July - The Wild Session is a wonderful newly made box set released in 2021 with a collection of many of the outtakes from The Wild, The Innocent & The E Street Shuffle. …",
+    "captions": ["full artworks","box front","box back","sticker numbered","insert numbered front","insert numbered back","booklet outside","booklet inside","disc side 1","disc side 2"],
+    "media": [
+      { "name": "Record 1", "tracks": [["A1","4th Of July, Asbury Park (Sandy)","V1",""],["A2","4th Of July, Asbury Park (Sandy)","V2",""],["A3","Kitty's Back","V1",""],["B1","Kitty's Back","V2",""],["B2","Kitty's Back","V3",""],["B3","Circus Song","",""]] },
+      { "name": "Record 2", "tracks": [["C1","Rosalita (Come Out Tonight) (instrumental)","",""],["C2","New York City Song","",""],["C3","New York City Serenade","",""],["D1","Vibes Man","",""],["D2","Phantoms aka Wild Zero And Blind Terry","V1","backing track"],["D3","Phantoms","V2","backing track"],["D4","Phantoms","V3",""]] },
+      { "name": "Record 3", "tracks": [["E1","Seaside Bar Song","",""],["E2","Santa Ana","",""],["E3","You Mean So Much To Me","",""],["F1","Evacuation Of The West","",""],["F2","Song For Orphans","",""],["F3","Saga Of The Architect Angel","",""]] },
+      { "name": "Record 4", "tracks": [["G1","Ballad Of Self-Loading Pistol","",""],["G2","Tokyo","",""],["G3","Winter Song","",""],["H1","Janey Needs A Shooter","V1",""],["H2","Janey Needs A Shooter","V2",""],["H3","Jeannie Needs A Shooter","V3",""],["H4","Jeannie Needs A Shooter","V4",""]] } ] },
+  "281": { "url": "brucelegs.php?item=281&f_format=vinyl", "who": "logged in", "title": "1995 Radio Hour The Tom Joad Sessions",
+    "version": "", "label": "Good Ship Funke", "catno": "GSG020", "date": "1995", "location": "Various Locations", "format": "CD",
+    "pdf": ["brucelegs/0/281_pdf_01.pdf"], "art": 7, "runout": ["GSG020 C70117"],
+    "info": "Released in 2016, a legal but unauthorised recording of 'radio broadcasts'",
+    "notes": "Tracks 01 - 10 The Tower Theater, Philadelphia, PA, 9th December 1995\nTracks 11 - 15 The Count Basie Theatre, Redbank, New Jersey, 21st November 1995",
+    "captions": ["full artwork","front","back","booklet p1,4","booklet p2,3","back inside","disc front"],
+    "media": [ { "name": "Disc", "total": "82:40.00", "tracks": [["01","The Ghost Of Tom Joad","","","5:45.15"],["02","Straight Time","","","6:24.61"],["03","Darkness On The Edge Of Town","","","3:03.55"],["04","Born In The USA","","","5:24.69"],["05","Youngstown","","","6:57.25"],["06","Sinaloa Cowboys","","","4:27.44"],["07","Balboa Park","","","4:17.53"],["08","Does This Bus Stop At 82nd Street?","","","4:19.38"],["09","This Hard Land","","","5:01.69"],["10","Streets Of Philadelphia","","","3:31.57"],["11","Interview","","","2:28.12"],["12","Interview","","","8:36.42"],["13","Interview","","","6:27.44"],["14","Interview","","","7:27.22"],["15","Interview","","","8:25.69"]] } ] }
+},
+"list": {
+  "col": [
+    ["7057","Greetings From Asbury Park, N.J.","","CBS","CDCBS 65480","CD","Australia","–","1973","","2c378842",true,"Switzerland"],
+    ["7722","Greetings From Asbury Park, N.J.","Enhanced packaging reissue","Columbia","5113002000","CD","Australia","2003","1973","","130ca71a",true,"Switzerland"],
+    ["8981","Greetings From Asbury Park, N.J.","Version 1","CBS","SBP 234758","LP","Australia","–","1973","","",true,"Switzerland"],
+    ["9266","Greetings From Asbury Park, N.J.","Version 2, with hype sticker, promo stamped","CBS","SBP 234758","LP","Australia","–","1973","","",true,"Switzerland"],
+    ["7725","Greetings From Asbury Park, N.J.","","Columbia","746.225/2-032210","CD","Brazil","–","1973","","",true,"Switzerland"],
+    ["7993","Greetings From Asbury Park, N.J.","","Columbia","CT 31903 / WPCT 31903","Cassette Tape","Canada","–","1973","","",true,"Switzerland"]
+  ],
+  "boot": [
+    ["7639","[no title]","JEMS","19 May 1978","Paramount Theatre, Asbury Park, NJ","FLAC","75:40.19",true,true,"c1e8e84d"],
+    ["2885","Darkness Rehearsals","","19 May 1978","Paramount Theatre, Asbury Park, NJ","FLAC","171:12.19",true,true,"7de51fbd"],
+    ["2886","Paramount Theatre Rehearsals 1978","G. The Cock version","19 May 1978","Paramount Theatre, Asbury Park, NJ","FLAC","167:53.29",true,true,"6a8251e5"],
+    ["5074","[no title]","JC version","23 May 1978","Shea's Buffalo Theatre, Buffalo, NY","FLAC","137:51.10",false,true,"e1e267a5"],
+    ["4922","Buffalo '78","Earlmv edit","23 May 1978","Shea's Buffalo Theatre, Buffalo, NY","FLAC","135:17.13",true,true,"2bd6cc9a"],
+    ["2887","Go!","B-Street","23 May 1978","Shea's Buffalo Theatre, Buffalo, NY","FLAC","138:36.11",false,true,"3b2ce1e1"]
+  ],
+  "bl": [
+    ["281","1995 Radio Hour The Tom Joad Sessions","","Good Ship Funke","GSG020","1995","Various Locations","CD"],
+    ["148","4th Of July - The Wild Session","Limited Edition #350 numbered - Marbled Grey Vinyl","The Godfatherecords","–","1973","Various Location","4xLP"],
+    ["41","A Journey Thru The USA Part 1","Limited Edition #200 copies numbered - Picture Disc","Rock Records","","18 Sep 1984","The Spectrum, Philadelphia, Pennsylvania, USA","LP"],
+    ["43","A Journey Thru The USA Part 2","Green Cover - White Marble Vinyl","Rock Records","","1981 / 1984","Various Location","LP"]
+  ]
+}
+}</script>
+<script>
+const D = JSON.parse(document.getElementById('mock-data').textContent);
+const E = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const SL = 'https://www.springsteenlyrics.com/';
+
+/** A mock browser window around a page body; `who` is the login state the snapshot was saved in. */
+const frame = (url, who, inner) => `<div class="mock"><div class="chrome"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">${E(SL + url)}</span><span class="who${who === 'anonymous' ? ' anon' : ''}">${E(who)}</span></div><div class="page">${inner}</div></div>`;
+/** The toolbar h1 with the SAED button. */
+const toolbar = (name, btns) => `<div class="sa-h1"><span>${E(name)}</span><span class="sa-btns">${btns.map((b, i) => `<span class="${i === 0 ? 'on' : ''}">${E(b)}</span>`).join('')}<span>☰ SAED ▾</span></span></div>`;
+/** A collapsible h2 section; `closed` starts it folded, `lock` marks logged-in-only content. */
+const sec = (title, body, o = {}) => `<div class="sec" data-closed="${o.closed ? 1 : 0}"><div class="h2" tabindex="0" role="button" aria-expanded="${o.closed ? 'false' : 'true'}"><span class="tog">${o.closed ? '▶' : '▼'}</span>${E(title)}${o.cnt != null ? ` <span class="cnt">(${o.cnt})</span>` : ''}${o.lock ? '<span class="lock">only you, logged in</span>' : ''}${o.gf ? '<span class="gf">filter all tables…</span>' : ''}</div><div class="body">${body}</div></div>`;
+/** A Details card from [label, html] pairs; empty values are dropped. */
+const card = (h, rows, cls = '') => `<div class="card ${cls}"><h4>${h}</h4><dl>${rows.filter(r => r[1]).map(([k, v]) => `<dt>${E(k)}</dt><dd>${v}</dd>`).join('')}</dl></div>`;
+const notes = (h, items) => `<aside class="panel notes"><h3>${E(h)}</h3><ul>${items.map(x => `<li>${x}</li>`).join('')}</ul></aside>`;
+/** The MusicBrainz glyph link; hovering it shows the POH card. */
+const mbLink = (mbid, text) => mbid ? `<a href="#" class="mb-poh" data-mbid="${E(mbid)}"><span class="mbg">MB</span>${text ? ' ' + E(text) : ''}</a>` : '';
+
+/** A sub-table: h3 bar plus a table with a filter row and 📊 per column. */
+function subTable(title, cols, rows, o = {}) {
+    const head = cols.map(c => `<th class="${c.n ? 'n' : ''}${c.c ? ' c' : ''}${c.isNew ? ' new' : ''}">${E(c.h)}<span class="uq">📊</span></th>`).join('');
+    const flt = cols.map(() => '<th><span></span></th>').join('');
+    const body = rows.map(r => `<tr>${cols.map((c, i) => `<td class="${c.n ? 'n' : ''}${c.c ? ' c' : ''}${c.sticky ? ' sticky' : ''}">${r[i] == null ? '' : r[i]}</td>`).join('')}</tr>`).join('');
+    return `<div class="st" data-closed="0"><div class="st-h3" tabindex="0" role="button"><span class="tog">▼</span>${E(title)} <span class="cnt">(${rows.length})</span>${o.extra ? ` <span class="xtra">${o.extra}</span>` : ''}<span class="stf">filter this table…</span></div>` +
+        `<div class="tw"><table class="tbl"><thead><tr class="hd">${head}</tr><tr class="ft">${flt}</tr></thead><tbody>${body}</tbody></table></div></div>`;
+}
+/** Picture tiles that open the viewer; `pdf` tiles are links, not images. */
+function tiles(n, label, captions = [], o = {}) {
+    if (!n) return '<div class="alert">No scans available yet</div>';
+    const shown = Math.min(n, o.max || 8);
+    let h = '';
+    for (let i = 0; i < shown; i++) h += `<button type="button" class="tile" data-n="${n}" data-i="${i}" data-label="${E(label)}"><span class="ph">${E(label)} ${String(i + 1).padStart(2, '0')}</span>${E(captions[i] || '')}</button>`;
+    if (n > shown) h += `<button type="button" class="tile" data-n="${n}" data-i="${shown}" data-label="${E(label)}"><span class="ph">+${n - shown} more</span></button>`;
+    return `<div class="tiles">${h}</div>`;
+}
+
+// ── Collection item ─────────────────────────────────────────────────────
+let colItem = '8595';
+function renderCol() {
+    const c = D.col[colItem];
+    const sw = `<div class="sw">Snapshot: ${Object.keys(D.col).map(k => `<button type="button" data-col="${k}" aria-pressed="${k === colItem}">${k} · ${E(D.col[k].title.slice(0, 26))}${D.col[k].title.length > 26 ? '…' : ''}</button>`).join('')}</div>`;
+    const sub = `<div class="sub">~ <b>${E(c.format)}</b> by <a href="#">Bruce Springsteen</a> · ${E(c.label)} <b>${E(c.catno)}</b> · ${E(c.country)} · ${E(c.released)} (orig. ${E(c.orig)}) · item ${colItem}</div>`;
+    const yours = card('Your collection <span class="lock">logged in</span>', [
+        ['MusicBrainz', c.mb ? mbLink(c.mb, 'release ' + c.mb.slice(0, 8) + '…') : '<span class="na">not linked yet</span>'],
+        ['Good scans', c.flags.includes('Good scans') ? '<span class="yes">✓</span>' : '<span class="na">–</span>'],
+        ['Kept in', E(c.kept)],
+        ['Copies', E(c.copies)]
+    ]);
+    const facts = `<div class="facts">${card('Release', [['Version', E(c.version)], ['Label', `<a href="#">${E(c.label)}</a>`], ['Cat. no.', E(c.catno)], ['Format', `<a href="#">${E(c.format)}</a>`], ['Country', `<a href="#">${E(c.country)}</a>`], ['Release date', E(c.released)], ['Original year', E(c.orig)]])}${yours}${card('Links', [['On the site', '<a href="#">item page ↗</a>'], ['List', `<a href="#">${E(c.url.split('&')[1].replace('category=', ''))} ↗</a>`], ['Edit', '<a href="#">edit item ↗</a> <span class="lock">logged in</span>']])}</div>`;
+    const scans = c.scans.map(s => sec(`Scans${s.copy ? ' · ' + s.copy : ''}`, tiles(s.n, 'Scan'), { cnt: s.n })).join('');
+    const cols = [{ h: 'Pos', n: true }, { h: 'Title', sticky: true }].concat(c.va ? [{ h: 'Artist', isNew: true }] : []).concat([{ h: 'Version / note', isNew: true }]);
+    const tracks = c.media.map(m => subTable(m.name, cols, m.tracks.map(t => [E(t[0]), `<a href="#">${E(t[1])}</a>`].concat(c.va ? [E(t[3])] : []).concat([t[2] ? `<span class="tag">${E(t[2])}</span>` : '']).map(String)), { extra: m.cat ? 'Cat. no. ' + E(m.cat) : '' })).join('');
+    const n = c.media.reduce((k, m) => k + m.tracks.length, 0);
+    const body = `<div class="site-native">springsteenlyrics.com navbar · breadcrumb (Main › Back to list › edit item) — unchanged, stays sticky</div>` +
+        toolbar(c.title, ['Tracklist']) + sub +
+        sec('Notes', `<p class="prose">${E(c.notes)}</p>`, { closed: true }) +
+        sec('Details', facts) + scans +
+        sec('Private info', '<p class="prose ph-note">Your private note from the page is shown here: where and when you bought this copy. It is left out of this mockup on purpose. It is never shown in a preview and never saved into a test fixture.</p>', { closed: true, lock: true }) +
+        sec('Tracklist', tracks, { cnt: n, gf: true });
+    document.getElementById('view-col').innerHTML = `<div class="col">${sw}${frame(c.url, c.who, body)}</div>` + notes('What it shows', [
+        'A new PT, <code>sl-collection-item</code>. The rows come from the page itself (the live document, as for <code>sfm-setlist</code>), so no request is made.',
+        'Every heading is an h2 or h3 of the engine. A click folds it, and <b>Ctrl-click folds them all</b>.',
+        'The <b>Your collection</b> card exists only when you are logged in. Hover the pink <span class="mbg">MB</span> glyph: it gets the same card as on Discogs and opens in the window on Space.',
+        'Scans: one section per copy (the sampler has two). A click opens the script\'s viewer (←/→, Esc). A copy without scans keeps the site\'s note.',
+        'Tracks: one sub-table per record or disc. The sampler\'s <code>Record 2: "Cover Me" (catalogue # …)</code> lines name the tables. A bracketed note (<code>[Extended Remix]</code>) moves to its own column.',
+        'VA albums (9685) get an <b>Artist</b> column, split off <code>Ted Nugent: Moter City Madhouse</code>.',
+        'Titles are shown as the site writes them. With <code>sa_foreign_mb_titles</code> on, they get MusicBrainz title case, as on the lists.',
+        'Song links (<code>lyrics.php?song=</code>) are the separate "URLify" TODO and are not part of this.'
+    ]);
+}
+
+// ── Bootleg item ────────────────────────────────────────────────────────
+function renderBoot() {
+    const b = D.boot;
+    const sub = `<div class="sub">~ <b>${E(b.version)}</b> · ${E(b.format)} · ${E(b.duration)} · item 9507 · <a href="#">aud_live1988</a></div>`;
+    const facts = `<div class="facts">${card('Show', [['Date', E(b.date)], ['First date', E(b.first)], ['Show', E(b.show)], ['Place', E(b.place)], ['Locality', E(b.locality)], ['Region', E(b.region)], ['Country', E(b.ctry)]])}${card('Recording', [['Version', E(b.version)], ['Format', E(b.format)], ['Duration', E(b.duration)], ['Lossy', '<span class="na">no</span>'], ['Artwork', `<span class="yes">✓</span> ${b.art} images`], ['Info file', '<span class="yes">✓</span> <a href="#">9507_infofile.txt ↗</a>']])}${card('Your collection <span class="lock">logged in</span>', [['MusicBrainz', '<span class="na">not linked yet</span> (the site offers "Add MusicBrainz MBID")'], ['Edit', '<a href="#">edit item ↗</a>']])}</div>`;
+    const info = `<div id="info-box"><button type="button" class="tile" id="info-read" style="width:auto"><span class="ph" style="width:auto;height:auto;padding:8px 12px">Read 9507_infofile.txt</span></button></div>`;
+    const cols = [{ h: 'Pos', n: true }, { h: 'Title', sticky: true }, { h: 'Take', isNew: true }, { h: 'Note', isNew: true }];
+    const tracks = b.discs.map(d => subTable(d.name, cols, d.tracks.map(t => [E(t[0]), `<a href="#">${E(t[1])}</a>`, E(t[2]), t[3] ? `<span class="tag">${E(t[3])}</span>` : '']))).join('');
+    const body = `<div class="site-native">springsteenlyrics.com navbar · breadcrumb — unchanged</div>` +
+        toolbar('25 Feb 1988 (soundcheck) · Centrum In Worcester', ['Tracklist']) + sub +
+        sec('Details', facts) +
+        sec('Original info file', info + '<p class="sub" style="margin-top:6px">↓ <a href="#">Download</a> (the site\'s own link)</p>', { closed: true }) +
+        sec('Artwork', tiles(b.art, 'Artwork'), { cnt: b.art }) +
+        sec('Private info', '<p class="prose ph-note">Your private note (source, upload thread) is shown here. It is left out of this mockup.</p>', { closed: true, lock: true }) +
+        sec('Tracklist', tracks, { cnt: 24, gf: true });
+    document.getElementById('view-boot').innerHTML = `<div class="col">${frame(b.url, 'logged in', body)}</div>` + notes('What it shows', [
+        'A new PT, <code>sl-bootlegs-item</code>, for <code>bootlegs.php?item=N</code> (audio and video categories). Your two "collection" snapshots <code>vid_live</code> and <code>aud_live_1988</code> are really bootleg pages.',
+        'The h1 names the show when the bootleg has no title ("[no title]" is common).',
+        'Location is split as on the list (Place, Locality, Region, Country), and the date gets First date and Show.',
+        '<b>Original info file</b> starts closed. Opening it reads the <code>.txt</code> once (same-origin, with your session) and shows it inline as monospace text. The snapshot does not contain the text, so the button here is a stand-in.',
+        'Artwork tiles open the viewer. Captions come from the page\'s <code>"9507_artwork_01.jpg": …</code> lines when it has them.',
+        'Tracks: one sub-table per <code>Disc N:</code>. <code>#2</code> becomes <b>Take</b> and <code>[partial]</code> becomes <b>Note</b>, so "all partial takes" is one 📊 tick.',
+        'Bootleg item <code>2567</code> (aud_live1984), named in the TODO, has no snapshot yet. Saving it logged in would help.'
+    ]);
+    document.getElementById('info-read').addEventListener('click', () => {
+        document.getElementById('info-box').innerHTML = '<p class="prose ph-note" style="font-family:var(--f-mono);font-style:normal;background:#f6f7f9;border:1px solid var(--site-line);border-radius:4px;padding:8px">(the text of 9507_infofile.txt appears here, read from the site when the section is first opened; it is not in any snapshot)</p>';
+    });
+}
+
+// ── CD and vinyl bootleg item ───────────────────────────────────────────
+let blItem = '148';
+function renderBl() {
+    const b = D.bl[blItem];
+    const sw = `<div class="sw">Snapshot: ${Object.keys(D.bl).map(k => `<button type="button" data-bl="${k}" aria-pressed="${k === blItem}">${k} · ${E(D.bl[k].format)} · ${E(D.bl[k].title.slice(0, 24))}…</button>`).join('')}</div>`;
+    const hasLen = b.media.some(m => m.total);
+    const cols = [{ h: 'Pos', n: true }, { h: 'Title', sticky: true }, { h: 'Version', isNew: true }, { h: 'Note', isNew: true }].concat(hasLen ? [{ h: 'Length', n: true, isNew: true }] : []);
+    const tracks = b.media.map(m => subTable(m.name, cols, m.tracks.map(t => [E(t[0]), `<a href="#">${E(t[1])}</a>`, E(t[2]), t[3] ? `<span class="tag">${E(t[3])}</span>` : ''].concat(hasLen ? [E(t[4])] : [])), { extra: m.total ? 'total ' + m.total : (blItem === '148' ? 'sides ' + m.tracks[0][0][0] + '/' + m.tracks[m.tracks.length - 1][0][0] : '') })).join('');
+    const n = b.media.reduce((k, m) => k + m.tracks.length, 0);
+    const files = `<div class="facts">${card('Release', [['Version', E(b.version)], ['Label', `<a href="#">${E(b.label)}</a>`], ['Cat. no.', E(b.catno)], ['Date', E(b.date)], ['Location', E(b.location)], ['Format', E(b.format)]])}${card(blItem === '148' ? 'Runout groove etchings' : 'Inner ring text', b.runout.map(r => { const m = r.match(/^Side (\w):\s*(.*)$/i); return m ? ['Side ' + m[1].toUpperCase(), E(m[2])] : ['Disc', E(r)]; }))}${card('Files', [['PDF', b.pdf.map((p, i) => `<a href="#">PDF file ${i + 1} ↗</a>`).join(', ')], ['Artwork', `<span class="yes">✓</span> ${b.art} images`]])}</div>`;
+    const body = `<div class="site-native">springsteenlyrics.com navbar · breadcrumb — unchanged</div>` +
+        toolbar(b.title, ['Tracklist', 'All versions']) +
+        `<div class="sub">~ <b>${E(b.format)}</b> · <a href="#">${E(b.label)}</a> ${E(b.catno)} · ${E(b.date)} · ${E(b.location)}</div>` +
+        sec('Release info', `<p class="prose">${E(b.info)}</p>`, { closed: true }) +
+        (b.notes ? sec('Notes', `<p class="prose">${E(b.notes)}</p>`, { closed: true }) : '') +
+        sec('Details', files) +
+        sec('Artwork and PDF', `<div class="tiles"><span class="tile"><span class="ph pdf">PDF file 1<br>opens the PDF ↗</span></span></div>` + tiles(b.art, 'Artwork', b.captions), { cnt: b.art }) +
+        sec('Tracklist', tracks, { cnt: n, gf: true });
+    document.getElementById('view-bl').innerHTML = `<div class="col">${sw}${frame(b.url, b.who, body)}</div>` + notes('What it shows', [
+        'A new PT, <code>sl-brucelegs-item</code>. The page has more sections than the other two kinds: Details, Trackslist (sic), Runout groove etchings, Release info, Artwork and PDF, and All versions of this bootleg.',
+        'Runout etchings go into a Details card (<code>Side A: July A</code> becomes one row per side), as MusicBrainz shows matrix numbers.',
+        '<b>Vinyl (148):</b> the site writes the sides A–H in one list. The mockup pairs them into Record 1–4 (A/B, C/D, …), which is MusicBrainz\'s medium. Whether to pair them is question 4. <code>- V1</code> becomes <b>Version</b>; "backing track" becomes Note.',
+        '<b>CD (281):</b> <code>Disc: (82:40.00)</code> names the table with its total, and <code>(5:45.15)</code> becomes a sortable <b>Length</b>. The "Notes:" lines after the tracks go to a Notes section.',
+        '<b>All versions</b> is a second button. It runs the existing brucelegs card converter on the page\'s own "All versions of this bootleg" cards, so it gives the same columns as the list.',
+        'PDF links open the PDF in a new tab. They are not images, so the viewer skips them.'
+    ]);
+}
+
+// ── List columns ────────────────────────────────────────────────────────
+let listKind = 'col';
+function renderList() {
+    const L = D.list;
+    const sw = `<div class="sw">List: <button type="button" data-list="col" aria-pressed="${listKind === 'col'}">collection · album</button><button type="button" data-list="boot" aria-pressed="${listKind === 'boot'}">bootlegs · aud_live1978</button><button type="button" data-list="bl" aria-pressed="${listKind === 'bl'}">CD and vinyl bootlegs</button></div>`;
+    let table = '', panel = '', url = '', items = [];
+    if (listKind === 'col') {
+        url = 'collection.php?cmd=list&category=album';
+        const cols = [{ h: 'Cover' }, { h: 'Title', sticky: true }, { h: 'Version' }, { h: 'Label' }, { h: 'Cat. no.' }, { h: 'Format' }, { h: 'Country' }, { h: 'Release date' }, { h: 'Original year' }, { h: 'Copies', n: true }, { h: 'MusicBrainz', c: true, isNew: true }, { h: 'Good scans', c: true, isNew: true }, { h: 'Kept in', isNew: true }];
+        table = subTable('Official Albums', cols, L.col.map(r => ['<span class="slg">SL</span>', `<a href="#">${E(r[1])}</a>`, E(r[2]), E(r[3]), E(r[4]), E(r[5]), E(r[6]), E(r[7]), E(r[8]), E(r[9]), r[10] ? mbLink(r[10] + '-…') : '', r[11] ? '<span class="yes">✓</span>' : '', E(r[12])]));
+        panel = `<div class="uqp"><div class="hd">📊 MusicBrainz <span class="sub">(100 rows)</span></div><div class="sec-h">SL flags</div><div class="row">☐ <span class="mbg">MB</span> linked<span class="c">19</span></div><div class="row">☐ not linked<span class="c">81</span></div></div>` +
+            `<div class="uqp"><div class="hd">📊 Kept in</div><div class="row">☐ Switzerland<span class="c">99</span></div><div class="row">☐ Lebanon<span class="c">1</span></div></div>`;
+        items = ['Counts are from the logged-in snapshot (100 cards): MusicBrainz link 19, Good scans 99, In Switzerland 99, In Lebanon 1.',
+            '<b>Kept in</b> is one column for every <code>img/collection_in*.png</code>, so a new place needs no code (decided).',
+            'The MusicBrainz cell is the site\'s own link to <code>/release/&lt;mbid&gt;</code>. Hover it for the release card; Space opens the window.',
+            'Logged out, the cards have no icons, so these three columns are left out, not shown empty.',
+            'The logged-in page also has two filter forms, <code>filter_collection_info_public</code> and <code>…_private</code>. The compact bar could offer them (question 6).'];
+    } else if (listKind === 'boot') {
+        url = 'bootlegs.php?cmd=list&category=aud_live1978';
+        const cols = [{ h: 'Cover' }, { h: 'Title', sticky: true }, { h: 'Label' }, { h: 'Date' }, { h: 'Location' }, { h: 'Format' }, { h: 'Duration', n: true }, { h: 'Artwork', c: true, isNew: true }, { h: 'Info file', c: true, isNew: true }, { h: 'MusicBrainz', c: true, isNew: true }];
+        table = subTable('Live 1978', cols, L.boot.map(r => ['<span class="slg">SL</span>', `<a href="#">${E(r[1])}</a>`, E(r[2]), E(r[3]), E(r[4]), E(r[5]), E(r[6]), r[7] ? '<span class="ico" title="artwork available">🖼</span>' : '', r[8] ? `<a href="#" title="${E('bootlegs/aud_live1978/' + r[0] + '_infofile.txt')}">📄 .txt</a>` : '', mbLink(r[9] + '-…')]));
+        panel = `<div class="uqp"><div class="hd">📊 MusicBrainz <span class="sub">(100 rows)</span></div><div class="sec-h">SL flags</div><div class="row">☐ <span class="mbg">MB</span> linked<span class="c">86</span></div><div class="row">☐ not linked<span class="c">14</span></div></div>`;
+        items = ['Artwork and Info file exist today as "yes" text. They become a glyph and a <b>link</b>: <code>bootlegs/&lt;category&gt;/&lt;item&gt;_infofile.txt</code>, built from the card with no request (the pattern holds for 9507 and 2567).',
+            'Hovering the 📄 link shows a card naming the file. Space reads it and shows the text in the window, like any page that costs a request.',
+            '<b>MusicBrainz</b> is new: 86 of 100 cards on aud_live1978 are linked when you are logged in.',
+            'Counts (100 cards): artwork 61, info file 84, MusicBrainz 86.'];
+    } else {
+        url = 'brucelegs.php?cmd=list';
+        const cols = [{ h: 'Cover' }, { h: 'Title', sticky: true }, { h: 'Version' }, { h: 'Label' }, { h: 'Cat. no.' }, { h: 'Date' }, { h: 'Location' }, { h: 'Format' }, { h: 'PDF', c: true, isNew: true }, { h: 'Artwork', c: true, isNew: true }];
+        table = subTable('CD and Vinyl Bootlegs', cols, L.bl.map(r => ['<span class="slg">SL</span>', `<a href="#">${E(r[1])}</a>`, E(r[2]), E(r[3]), E(r[4]), E(r[5]), E(r[6]), E(r[7]), '<a href="#">📕 PDF</a>', '<span class="ico">🖼</span>']));
+        panel = `<div class="uqp"><div class="hd">📊 PDF <span class="sub">(100 rows)</span></div><div class="row">☐ available<span class="c">100</span></div></div>`;
+        items = ['Both flags are on <b>100 of 100</b> cards in the anonymous and the logged-in snapshot, which is why <code>docs/claude/springsteenlyrics.md</code> says "No flag columns". They are added because you asked, and they filter nothing today.',
+            'To make them useful anyway, PDF is a link to the item\'s "Artwork and PDF" section. The PDF file\'s own path (<code>brucelegs/&lt;letter&gt;/&lt;item&gt;_pdf_01.pdf</code>) is guessable for file 1 only.',
+            'Question 5: keep them, hide them while they are constant, or link straight to PDF file 1?'];
+    }
+    const body = `<div class="site-native">category and filter buttons — the compact bar, as today</div>` + table +
+        `<div class="legend"><span class="new">new column</span><span>📊 = the column's value list</span></div>`;
+    document.getElementById('view-list').innerHTML = `<div class="col">${sw}${frame(url, 'logged in', body)}<div class="facts" style="grid-template-columns:repeat(auto-fit,minmax(220px,320px))">${panel}</div></div>` + notes('New columns', items.concat(['All of them come from the card itself, so the converter adds no request. The converter still runs in its three places: the live page, fetched pages and a disk load.']));
+}
+
+// ── Previews (POH) ──────────────────────────────────────────────────────
+function renderPoh() {
+    const t281 = D.bl['281'].media[0].tracks;
+    const before281 = `<div class="win"><div class="wt">1995 Radio Hour The Tom Joad Sessions<span class="st8">springsteenlyrics.com</span></div><div class="wb"><span class="verdict-tag before">today</span><h4>Tracklist</h4><div class="bad">The page has no tracklist.</div></div></div>`;
+    const after281 = `<div class="win"><div class="wt">1995 Radio Hour The Tom Joad Sessions<span class="st8">springsteenlyrics.com</span></div><div class="wb"><span class="verdict-tag after">fixed</span><h4>Tracklist</h4><div class="disc">Disc · 82:40.00</div><ol>${t281.slice(0, 6).map(t => `<li><span class="p">${t[0]}</span><span>${E(t[1])}</span><span class="p">${t[4]}</span></li>`).join('')}<li><span class="p">…</span><span class="p">9 more</span><span></span></li></ol><h4>Notes</h4><p class="prose">${E(D.bl['281'].notes)}</p></div></div>`;
+    const s = D.col['5240'];
+    const before5240 = `<div class="win"><div class="wt">The Born In The U.S.A. 12" Single Collection<span class="st8">springsteenlyrics.com</span></div><div class="wb"><span class="verdict-tag before">today</span><h4>Tracklist</h4><ol><li><span class="p">A1</span><span>DANCING IN THE DARK [Extended Remix]</span><span></span></li><li><span class="p">B1</span><span>PINK CADILLAC</span><span></span></li></ol><h4>Notes</h4><p class="prose">Record 2: "Cover Me" (catalogue # CBS QTA 4662)
+A1- COVER ME [Undercover Mix]
+A2- COVER ME [Dub] …
+(records 2–5 end up here)</p></div></div>`;
+    const after5240 = `<div class="win"><div class="wt">The Born In The U.S.A. 12" Single Collection<span class="st8">springsteenlyrics.com</span></div><div class="wb"><span class="verdict-tag after">fixed</span><div>${mbLink(s.mb, 'MusicBrainz release')} · Kept in Lebanon · 2 copies <span class="lock">logged in</span></div><h4>Tracklist · 17 tracks on 5 records</h4>${s.media.slice(0, 2).map(m => `<div class="disc">${E(m.name)} <span class="p" style="font-weight:400;color:var(--site-dim)">${E(m.cat)}</span></div><ol>${m.tracks.map(t => `<li><span class="p">${t[0]}</span><span>${E(t[1])}${t[2] ? ' <span class="tag">' + E(t[2]) + '</span>' : ''}</span><span></span></li>`).join('')}</ol>`).join('')}<div class="p" style="color:var(--site-dim)">… Records 3–5</div></div></div>`;
+    const body = `<p class="sub">The preview window (Space on a hovered item link, from any list), Extracted view.</p><h3 style="font:700 14px var(--f-site)">Brucelegs item 281</h3><div class="ba">${before281}${after281}</div><h3 style="font:700 14px var(--f-site)">Collection item 5240 (sampler box set)</h3><div class="ba">${before5240}${after5240}</div>`;
+    document.getElementById('view-poh').innerHTML = `<div class="col">${frame('brucelegs.php?cmd=list', 'logged in', body)}</div>` + notes('Why and how', [
+        '<b>Brucelegs:</b> the reader looks for the tracklist directly after the spacer, but brucelegs pages put an <code>&lt;h3&gt;Trackslist&lt;/h3&gt;</code> in between. Then <code>A1 Title</code> and <code>01 Title (5:45.15)</code> have no hyphen, and <code>Disc: (82:40.00)</code> is not seen as a disc header.',
+        '<b>Sampler:</b> <code>Record 2: "Cover Me" (catalogue # …)</code> is not seen as a disc header ("Record" is missing and text follows the colon), so the tracklist stops after record 1.',
+        'One shared reader serves the preview and the three new PTs, so a fix reaches both. The parser version goes up, so cached cards are read again.',
+        'Logged in, the card gains the MusicBrainz link and the flags. <b>Private info never enters a card</b> (decided). Cards are cached per login state, so a public and a logged-in read of one page no longer overwrite each other.',
+        'The MusicBrainz glyph gets its hover card on the SL page itself, on our tables and in the item PT\'s head, through the same source Discogs uses.'
+    ]);
+}
+
+// ── Plan and questions ──────────────────────────────────────────────────
+function renderPlan() {
+    const q = (n, title, rec, why) => `<div class="q"><b>${n}. ${title}</b><span class="rec">Recommendation: ${rec}</span><span>${why}</span></div>`;
+    document.getElementById('view-plan').innerHTML = `
+<h2>Plan and questions</h2>
+<p>Built on one feature branch, <code>feat/sl-item-pts</code>, after you approve these mockups. Each step is a WIP changelog entry; there is no version bump until the merge.</p>
+<ol>
+<li><b>One tracklist reader</b> for previews and PTs. It finds the block after a heading too, reads <code>A1 Title</code> and <code>(m:ss.cc)</code>, and treats <code>Disc:</code>, <code>Disc N:</code> and <code>Record N: "…" (catalogue # …)</code> as headers. This fixes both preview bugs.</li>
+<li><b>Login state</b> (<code>_slLoggedIn()</code>) is stored in the preview cache, and a mismatch counts as a miss. Private info is never read into a card.</li>
+<li><b>The MusicBrainz glyph gets its hover card</b> on SL pages, through the existing Discogs MusicBrainz source extended to SL's page, tables and head. MusicBrainz itself is untouched.</li>
+<li><b>List columns</b> from the card icons, plus the 📊 "SL flags" section.</li>
+<li><b>Three item PTs</b>, each with an <code>@include</code>, rows from the live page, the release-tracks head (Details cards, text sections, pictures with the viewer) and sub-tables per record or disc.</li>
+<li>Tests: fixtures cut from your snapshots with the user name and Private info scrubbed, specs per PT, mutation list, then the full suite, so MusicBrainz is proved unchanged.</li>
+</ol>
+<h3>Questions</h3>
+<div class="qs">
+${q(1, 'Item PT button', 'one button, "Tracklist", plus "All versions" on CD and vinyl bootlegs', 'The page has no table of its own, so the button turns it into the head and sub-tables shown here. Nothing on the page is lost: the site\'s navbar and breadcrumb stay.')}
+${q(2, 'The original info file', 'a section that starts closed and reads the .txt when first opened; the list\'s 📄 link previews it on Space only', 'One request per item, only on your action. A hover never makes a request.')}
+${q(3, 'Take and Note columns', 'split "#2" into Take and "[partial]" into Note on bootlegs; on releases one "Version / note" column', 'Bootleg tracklists repeat songs as takes, and ticking "partial" in 📊 is useful there. Release notes are mix names.')}
+${q(4, 'Vinyl sides', 'pair sides into records (A/B → Record 1), as MusicBrainz media', 'The site writes all sides of a 4xLP in one list. A table per side is the alternative: 8 tables of 3 tracks each.')}
+${q(5, 'Brucelegs PDF and Artwork columns', 'add them as asked, PDF linking to the item\'s Artwork and PDF section', 'All 402 cards have both today, so the columns filter nothing. They will start to matter once the site has items without them.')}
+${q(6, 'Logged-in filters on the collection list', 'leave out for now, and look at them in the compact-bar work', 'The logged-in page has two more filter forms (public and private collection info). They are outside this TODO.')}
+${q(7, 'Song links in tracklists', 'not here: the separate "URLify the tracklist" TODO', 'It needs its own lookup table of irregular song slugs.')}
+</div>
+<h3>Still needed</h3>
+<ul><li>A logged-in snapshot of bootleg item <code>2567</code> (aud_live1984), the one named in the TODO, to confirm one more bootleg category.</li></ul>`;
+}
+
+// ── Interaction: tabs, switches, folding, POH, viewer ───────────────────
+function showTab(key) {
+    document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tab === key)));
+    ['col', 'boot', 'bl', 'list', 'poh', 'plan'].forEach(k => { document.getElementById('view-' + k).hidden = k !== key; });
+    try { localStorage.setItem('sl-item-mock-tab', key); } catch (e) { /* storage blocked */ }
+}
+document.querySelector('.tabs').addEventListener('click', (e) => { const b = e.target.closest('button[data-tab]'); if (b) showTab(b.dataset.tab); });
+
+/** Fold one section or table header; with Ctrl, fold every peer in the same view. */
+function fold(hdr, all) {
+    const box = hdr.parentElement;
+    const close = box.dataset.closed !== '1';
+    const peers = all ? box.closest('.page').querySelectorAll(box.classList.contains('st') ? '.st' : '.sec') : [box];
+    peers.forEach(p => {
+        p.dataset.closed = close ? '1' : '0';
+        const h = p.firstElementChild;
+        h.querySelector('.tog').textContent = close ? '▶' : '▼';
+        h.setAttribute('aria-expanded', String(!close));
+    });
+}
+document.addEventListener('click', (e) => {
+    const h = e.target.closest('.h2, .st-h3');
+    if (h && !e.target.closest('a, button')) { fold(h, e.ctrlKey || e.metaKey); return; }
+    const sw = e.target.closest('button[data-col], button[data-bl], button[data-list]');
+    if (sw) {
+        if (sw.dataset.col) { colItem = sw.dataset.col; renderCol(); }
+        if (sw.dataset.bl) { blItem = sw.dataset.bl; renderBl(); }
+        if (sw.dataset.list) { listKind = sw.dataset.list; renderList(); }
+        return;
+    }
+    const t = e.target.closest('button.tile[data-n]');
+    if (t) { openViewer(t); return; }
+    if (e.target.closest('a[href="#"]')) e.preventDefault();
+});
+document.addEventListener('keydown', (e) => {
+    const h = e.target.closest && e.target.closest('.h2, .st-h3');
+    if (h && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); fold(h, e.ctrlKey || e.metaKey); }
+});
+
+let poh = null;
+document.addEventListener('mouseover', (e) => {
+    const a = e.target.closest('a.mb-poh');
+    if (!a || poh) return;
+    const mock = a.closest('.mock');
+    if (!mock) return;
+    const r = a.getBoundingClientRect(), m = mock.getBoundingClientRect();
+    poh = document.createElement('div');
+    poh.className = 'poh';
+    poh.innerHTML = `<span class="t"><span class="mbg">MB</span> MusicBrainz release</span><span class="d">${E(a.dataset.mbid)}</span><hr><span>The usual release card: title, artist, date, label and cat. no., format, tracks and cover art. It is read from musicbrainz.org with your MusicBrainz session.</span><span class="d">Space opens the window · Esc closes</span>`;
+    mock.appendChild(poh);
+    const left = Math.max(8, Math.min(r.left - m.left, m.width - poh.offsetWidth - 8));
+    poh.style.left = left + 'px';
+    poh.style.top = (r.bottom - m.top + 6) + 'px';
+});
+document.addEventListener('mouseout', (e) => {
+    const a = e.target.closest('a.mb-poh');
+    if (a && poh && !a.contains(e.relatedTarget)) { poh.remove(); poh = null; }
+});
+
+let viewer = null;
+/** The script's viewer, schematically: one big image, a strip, ←/→ and Esc. */
+function openViewer(tile) {
+    const mock = tile.closest('.mock');
+    const n = Number(tile.dataset.n), label = tile.dataset.label;
+    let i = Number(tile.dataset.i);
+    viewer = document.createElement('div');
+    viewer.className = 'viewer';
+    viewer.setAttribute('role', 'dialog');
+    const paint = () => {
+        viewer.innerHTML = `<div class="vb"><b>${E(label)} ${i + 1} / ${n}</b><span>←/→ step · Esc closes</span><button type="button" class="x">Esc ✕</button></div><div class="stage"><div class="big">${E(label)} ${String(i + 1).padStart(2, '0')}<br><span style="font-weight:400;font-size:12px">full-size scan from the site</span></div></div><div class="strip">${Array.from({ length: n }, (_, k) => `<span class="${k === i ? 'on' : ''}">${k + 1}</span>`).join('')}</div>`;
+        viewer.querySelector('.x').addEventListener('click', closeViewer);
+    };
+    viewer._step = (d) => { i = (i + d + n) % n; paint(); };
+    paint();
+    mock.appendChild(viewer);
+}
+function closeViewer() { if (viewer) { viewer.remove(); viewer = null; } }
+document.addEventListener('keydown', (e) => {
+    if (!viewer) { if (e.key === 'Escape' && poh) { poh.remove(); poh = null; } return; }
+    if (e.key === 'Escape') closeViewer();
+    else if (e.key === 'ArrowRight') viewer._step(1);
+    else if (e.key === 'ArrowLeft') viewer._step(-1);
+});
+
+renderCol(); renderBoot(); renderBl(); renderList(); renderPoh(); renderPlan();
+let start = 'col';
+try { start = localStorage.getItem('sl-item-mock-tab') || 'col'; } catch (e) { /* storage blocked */ }
+showTab(document.getElementById('view-' + start) ? start : 'col');
+</script>
+</body>
+</html>
