@@ -194,11 +194,11 @@ Env: 2026-11-04T11:54+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1
 - =main= is at =2967a04a= (=@version 9.99.1533+2026-11-03=), untouched by this work.
 - One stack of three branches, each pushed, each containing the one below it:
 
-  | branch                     | head       | holds                                                                                                   |
-  |----------------------------+------------+---------------------------------------------------------------------------------------------------------|
-  | =fix/non-mb-coverage-gaps= | =6ad4efaf= | G1–G8 of NON-MB-COVERAGE (WIP.1), setlist.fm Stop fix (WIP.2), Brucebase previews on every page (WIP.4) |
-  | =feat/ia-details=          | =8201b1c4= | + archive.org item page =ia-details= (WIP.3) and its release-tracks head (WIP.5)                        |
-  | =feat/dg-release=          | =6aaef806= | + Discogs release Tracks view (WIP.6) and vzell's "add new todo"                                        |
+  | branch                     | head       | holds (versions as folded at the merge, 2026-11-04)                                                                 |
+  |----------------------------+------------+---------------------------------------------------------------------------------------------------------------------|
+  | =fix/non-mb-coverage-gaps= | =6ad4efaf= | G1–G8 of NON-MB-COVERAGE (9.99.1534), setlist.fm Stop fix (9.99.1535), Brucebase previews on every page (9.99.1537) |
+  | =feat/ia-details=          | =8201b1c4= | + archive.org item page =ia-details= (9.99.1536) and its release-tracks head (9.99.1538)                            |
+  | =feat/dg-release=          | =6aaef806= | + Discogs release Tracks view (9.99.1539) and vzell's "add new todo"                                                |
 
 - =feat/dg-release= therefore holds everything (14 commits ahead of =main=). =ShowAllEntityData_CHANGELOG.wip.json=
   has WIP.1 … WIP.6; no =@version= bump on the branches (main only).
@@ -263,7 +263,9 @@ Env: 2026-11-04T12:12:46+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.
 - The four read-only checks (coverage, lint, =audit-docs.py=, doc cross-refs): all green at =481178e3=.
 - Mutation lists at =f0d11cd4= (13:01:54–13:10:22 CET): =non-mb-coverage-gaps.json= 18, =ia-details.json= 13,
   =bb-every-page.json= 2, =dg-release-tracks.json= 27: all 60 caught, the userscript restored and hash-verified.
-- Merge: waits for vzell.
+- Merged into =main= on vzell's word, 2026-11-04: merge =2260c772=, WIP.1 … WIP.6 folded to 9.99.1534 … 9.99.1539
+  (=@version 9.99.1539+2026-11-04=). The full suite was not run again after the merge, by vzell's call: it ran on
+  this stack above, and the merge's only additions are the fold and these notes.
 
 *** next work (plan step 4, after the merge)
 

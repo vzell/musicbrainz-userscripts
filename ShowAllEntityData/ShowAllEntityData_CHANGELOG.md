@@ -4,9 +4,61 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1704 versions; the month pages hold all of them.
+This page shows the newest 100 of 1710 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1539 — 2026-11-04
+
+**🚀 Feature**
+
+- Discogs release page: a new first button, Tracks, shows the release the way a MusicBrainz release page does, from one request. There is one table per disc or record (a vinyl record's two sides are one table, as on MusicBrainz), named like "Disc 1 · CD · 49:50" and after Discogs' heading when there is one per disc; headings inside a disc fill a Section column. The credits become columns, one line per name: Instruments, Vocals, Producer, Engineer, Mixed by, Arranged by and Other credits. A track's own credits and the release credits that name it ("A1 to A4, B2 to B4") both land on it; the credits naming no track form a Release credits table. Above the tables, as on a MusicBrainz release: "\~ Release by …", Notes (closed to start with), Details (on the left Release, External links, Genres and styles, Contributors and Community: Discogs' Statistics box with its links, and the copies for sale; the Identifiers on the right) and Images. The previous view, without its tracklist, is the second button: Credits, versions. Its labels, formats, country, year, genres and styles and the links in the notes are links, as on Discogs' page, and preview like the tables' links.
+
+
+## 9.99.1538 — 2026-11-04
+
+**✨ Improve**
+
+- archive.org item page: the part above the tables is laid out like a MusicBrainz release page. Under the title a line "\~ Concert recording by … (date: venue)", then three sections that fold like the release page's: Description (the uploader's text, closed to start with, like a release's Annotation), Details (the facts as cards in the look of the release page's Sidebar section: Show, Item, External links, Collections, Lineage; a click on a card's heading folds it) and Pictures (the scans as tiles, like the release page's Cover art; a click opens the viewer). Typing in a filter no longer rebuilds them.
+
+
+## 9.99.1537 — 2026-11-04
+
+**✨ Improve**
+
+- Brucebase: link previews on every page of the wiki, not only on its song list, Relations, Recent changes, the year pages and the start page. On a show, venue, person or song page, rest the pointer on a link for Brucebase's own card (or another site's, Wikipedia for example), and Space opens the window. Nothing else changes on those pages: no buttons, no toolbar.
+
+
+## 9.99.1536 — 2026-11-04
+
+**🚀 Feature**
+
+- archive.org item pages (archive.org/details/…) get two buttons, built like MusicBrainz's release page. "Tracks" lists a show's songs in one table per disc, each named with its format and running time: \#, Title (with the item's card), Length, the file and its size, a column for each copy archive.org made (VBR MP3, …) and ▶ to play the song in archive.org's player. Above the tables: the item's pictures (a click opens the viewer) and its facts (date, venue, source, taper, running time, Brucebase and Databruce links, collections, lineage). A video item lists its video files with a "Play here" tile. "All files" lists every file of the item with its format, size, length and MD5. Both read the item in one request. Before any button, the item page's own links have cards too, its Brucebase link for example.
+
+
+## 9.99.1535 — 2026-11-04
+
+**🐛 Fix**
+
+- setlist.fm windows, "Load all": Stop could still let one more page through. A page waiting its turn (one request a second) when you pressed Stop was read anyway, about half a second later. Now Stop finishes only the page already asked for; the next one is never asked, and "Load all" offers it again.
+
+
+## 9.99.1534 — 2026-11-04
+
+**✨ Improve**
+
+- Link previews on other sites, before you press a button: on a Discogs search page a result's title has its card; on setlist.fm the site's own list does too (a setlist's Tour link, the venue box's website and Wikipedia links; a setlist's own link with the setlist.fm key), but not the Upcoming box's ticket links; on an archive.org search page the site's own result list does (an item's picture or title in any view, next to archive.org's own hover card; not its menu bar), although archive.org builds it in a way the previews could not reach before. On Discogs' older pages (submissions, history, images, user, ratings, sell) the MusicBrainz icons of murdos' importer get MusicBrainz's card there too.
+- Inside a preview window, more links open in the window instead of a new tab: a MusicBrainz link on springsteenlyrics.com, jungleland.it, brucespringsteen.it, Brucebase and archive.org now opens MusicBrainz's own window, as on discogs.com and setlist.fm (its Live page and editing history are read with your musicbrainz.org login, as there). A Brucebase gig, venue or person page now shows Brucebase's own card and window wherever you are, on MusicBrainz too (under "Preview event, venue and people pages on hover"), so a Brucebase show window's own gig page opens in the window. On Brucebase itself, a show link of the form brucebase.wikidot.com/1985\#130185 in a window opens that show in the window.
+- A Discogs window opens a clicked link in the window even before its record has loaded; until now such a click opened a new tab.
+
+**🐛 Fix**
+
+- "All credits on Discogs ↗" in a Discogs artist window opened the same artist again inside the window; it opens Discogs' credits page in a new tab, as its ↗ says. The same for "A table: show it on Wikipedia ↗" in a Wikipedia window, which could reopen the same article in the window when the article had been reached by a redirect or another spelling of its name.
+
+**📝 Docs**
+
+- The non-MusicBrainz coverage report (NON-MB-COVERAGE.html / .org, built from docs/non-mb-coverage.json) lists no open gaps: G1 to G8 of the first report are fixed. scripts/probe-ia-shadow-links.js is a console probe for archive.org's search page, to confirm the shape of its result links in a real browser.
+
 
 ## 9.99.1533 — 2026-11-03
 
@@ -855,61 +907,6 @@ This page shows the newest 100 of 1704 versions; the month pages hold all of the
 **✨ Improve**
 
 - Brucebase year table: the Media column is now the second column, right after Date. Before, it came after Notes at the far right, so you had to scroll sideways to see an entry's icons.
-
-
-## 9.99.1439 — 2026-10-24
-
-**✨ Improve**
-
-- Space on a hovered image now does what a click does: it opens the artwork viewer, instead of scrolling the page under the card. This works on Discogs' Image column, the Springsteen sites' image cells and Brucebase's Media icons, and on MusicBrainz's artwork icons, relationship-list covers, the images of an expanded cell and the sidebar cover. It works even when the card is switched off or still loading. On a card with more images than it shows, Space still shows them all first, as before. Space keeps its usual meaning while you type into a field, or with Shift, Ctrl, Alt or ⌘ held.
-- The image card says so: its bottom line reads "Click or Space: viewer". On a card with more images than it shows, it stays "Click: viewer", because there Space shows the rest of the images.
-
-
-## 9.99.1438 — 2026-10-24
-
-**🐛 Fix**
-
-- Brucebase year table: the Setlist icon in the Media column is now ringed like Photo, Ticket, News and Memorabilia when the entry has a page of its own. Pointing at it shows the handwritten setlists from that page (two on 1985-01-13, Columbia, SC), and a click opens them in the viewer. Before, the icon stayed plain, and the page's setlist images were counted as "Other".
-- A ringed Media icon no longer shows the browser's own name tooltip on top of its image card. With the card switched off, the icon's name still shows on hover.
-
-
-## 9.99.1437 — 2026-10-23
-
-**🚀 Feature**
-
-- Inside the preview window (the one Space opens), resting the pointer on a link now says what a click does. The window's bottom line names it — "Opens here: Label · Columbia" ("read before, no request" when it is), "New tab: …" for a link that leaves the page, "Viewer: Back · image 2 of 8" for an image — and links are marked at rest: a dotted underline for one that opens in the window, ↗ for one that leaves it, a ring for an image.
-- A link that opens in the window shows its card there, as on the page (with Ctrl held unless "Show every preview on a plain hover" is on); Space opens it in the window, as a click does. An image shows large after a short rest on the picture itself (not on the space beside it), Shift larger, a click opens the viewer. ← Back and ‹ › say where they go.
-- New setting "In the window, read a link ahead while the pointer rests on it" (off by default): a short rest on a MusicBrainz link reads it, so the click shows it at once; such links get a small green dot. Links to other sites are never read ahead.
-- On a phone, a tap in the window stays a click; a long press shows the link's card or the image.
-
-
-## 9.99.1436 — 2026-10-23
-
-**🚀 Feature**
-
-- A 🖼 gallery on the other sites' tables (springsteenlyrics.com, jungleland.it, brucespringsteen.it, Brucebase, discogs.com), as on MusicBrainz: the 🖼 after a table's row count opens a window with every image of the rows already read — by a hover, a click, or an earlier visit (read from this browser, no request). For the others it offers one button that says what it costs ("Load the other 32 (about 35 s)"; on Discogs without a token also what it would cost with one); a run over five minutes asks first, Stop or closing the window ends it, and the rows read stay read. A progress bar, counts and a Recent log show how it goes; a row that failed offers Try again. Type chips (Front, Back, Booklet; Photo, Ticket, News; primary, secondary …) narrow the images, "Compare two" puts two rows side by side, and a click on an image opens the artwork viewer, Shift+← → through the gallery's rows.
-
-**🔧 Refactor**
-
-- The foreign-image providers gained `peekSaved()`, `spacingS()`, `tokenSpacingS()`, `kept()` and their gallery words; `_fiDpPeek()` is the render sweep's saved-page read, now shared with the gallery; `_fiColIdx()` reads a table's column names once per header row. MusicBrainz: `updateH2Count()` re-anchors one more id prefix (`mb-fgal-btn-`), and `_fgalAfterRender()` beside `_dgMbAfterRender()` returns at once off the foreign hosts.
-
-
-## 9.99.1435 — 2026-10-23
-
-**🚀 Feature**
-
-- springsteenlyrics.com lyrics index: a small 🖼 after each title stands for the song page's pictures (the covers of the albums a song is on, now and then a hand-written sheet). It is dashed until that page has been read, then shows how many there are, or disappears when there are none. Pointing at it shows them (a single picture large), a click opens the artwork viewer (Ctrl-click: the song's page). It follows the setting "Cover column: every image of an item on hover"; songs read before show their count at once, with no request.
-
-
-## 9.99.1434 — 2026-10-23
-
-**🚀 Feature**
-
-- Brucebase song list: the same 🖼 after each title for the song page's graph and lyric sheets: dashed until read, then the count, gone when the page has none; a card on hover, the viewer on a click. Songs read before show their count at once, with no request.
-
-**✨ Improve**
-
-- The Brucebase song preview (card and window) now shows the song page's images too: the graph and the lyric sheets, which open the artwork viewer from the window. Pages saved before are read again once, because what is kept of a page has changed (the springsteenlyrics.com, jungleland.it and brucespringsteen.it pages too).
 
 
 ---
