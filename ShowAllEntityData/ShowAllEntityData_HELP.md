@@ -2789,10 +2789,11 @@ userscript lists that host, so Tampermonkey does not ask first).
     section, on by default) reads a MusicBrainz link after a moment's rest,
     so the click shows it at once; such links get a small green dot (links
     the window loaded for itself, such as the places of an area, have it
-    too). Every link that opens in the window keeps the dot's place, so
-    nothing moves when it appears, and a dotted link's card says what the
-    dot means in a small note above it. Links to other sites are never read
-    ahead.
+    too, and so does a link to a Springsteen site's page once its card
+    has loaded it, in that site's own windows). Every link that opens in
+    the window keeps the dot's place, so nothing moves when it appears,
+    and a dotted link's card says what the dot means in a small note above
+    it. Links to other sites are never read ahead.
   - On a touch screen a tap stays a click; a **long press** shows the link's
     card or the image.
 

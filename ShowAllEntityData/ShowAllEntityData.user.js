@@ -30148,6 +30148,12 @@
             // A Venue cell and the Event cell of one row link the same page:
             // told apart, so ‹ › from a venue land on the next venue.
             stepId: (el) => (isVia(el) ? 'via:' : '') + el.href,
+            // Whether the target's page is in this session's memory, so its
+            // card and its window answer without a request: the window's
+            // green dot (`_dpWinRead()`). Its records are in `_dpMem`, never
+            // in `_mbPop` (vzell 2026-11-05: no dot in springsteenlyrics.com's
+            // windows).
+            read: (t) => !!memOf(t),
         };
     }
 
@@ -31082,6 +31088,11 @@
         // An image's preview in the window (H4) may be wider than a card.
         el.classList.toggle('mb-dp-imgpeek', !!t.img);
         const repaint = () => {
+            // A window link's card has its answer: the window's marks follow
+            // (the green dot, `_dpWinMark()`), also when the pointer has left
+            // the link meanwhile — only MusicBrainz's read-ahead marked them
+            // before (vzell 2026-11-05: an SL song read by its card got no dot).
+            if (t.el.isConnected && t.el.closest('.mb-dp-dialog')) _dpWinMarkSoon();
             if (!_dpPeekShowing(t.el)) return;
             el.innerHTML = t.src.card(t, false, repaint);
             _dpAddKindHead(el, t);
@@ -33002,7 +33013,9 @@
     /**
      * Whether a target's record is in memory already, so a click or a card
      * asks for nothing: a MusicBrainz entity's answer for any inc set
-     * (`pop:<type>:<id>:…`), another site's record by its key.
+     * (`pop:<type>:<id>:…`), a source's own memory when it says (`read()`:
+     * a detail site's page in `_dpMem`, `_dpSiteSource()`), another site's
+     * record by its key.
      *
      * @param {object} t
      * @returns {boolean}
@@ -33015,6 +33028,7 @@
             for (const [k, st] of _mbPop) if (k.startsWith(pre) && done(st)) return true;
             return false;
         }
+        if (t.src && typeof t.src.read === 'function') return t.src.read(t);
         return done(_mbPop.get(t.key));
     }
 
@@ -100899,6 +100913,16 @@ a { color: #1565c0; }`;
             margin-right: 4px;
             opacity: 0.65;
             user-select: none;
+        }
+        /* "(N)" count badge: its min-width (in ch, the widest count of the
+           panel) measures the TEXT, so every badge is one width and every
+           label starts at one x. A host whose framework sets
+           box-sizing: border-box on every element (springsteenlyrics.com's
+           Bootstrap) would count the 3px side padding inside that width,
+           and only the widest count would overflow it and grow (vzell
+           2026-11-05, "(176) Live" on lyrics.php?cmd=list&letter=b). */
+        .mb-uniq-count-badge {
+            box-sizing: content-box;
         }
         /* Checked state: distinct resting background so multi-selected items
            remain visually identifiable even when not hovered/focused. This

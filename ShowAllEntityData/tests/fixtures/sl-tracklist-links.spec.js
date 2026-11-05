@@ -548,6 +548,49 @@ test.describe('springsteenlyrics.com tracklists: adjustments', () => {
         });
     }
 
+    test('the window\'s green dot: a song read by its card is marked read, also when its answer lands after the pointer left', async ({ page }) => {
+        // vzell, 2026-11-05: in an SL window, a song whose card had loaded
+        // ("saved today") never got the green dot that MusicBrainz links get.
+        // The site source keeps its pages in _dpMem, which _dpWinRead() did
+        // not ask (read()), and nothing marked the window when a card's
+        // answer came in (_dpShowPeek()'s repaint).
+        await openWindowWithGlyph(page, true);
+        // Every song page answers with one fixture, held until released, so
+        // the answer can land after the pointer has moved on.
+        let release;
+        const held = new Promise(r => { release = r; });
+        const asked = [];
+        await page.route((u) => u.pathname === '/lyrics.php' && u.searchParams.has('song'), async (route) => {
+            asked.push(route.request().url());
+            await held;
+            await route.fulfill({ path: FX('detail-sl-lyrics-badlands.html'), contentType: 'text/html; charset=utf-8' });
+        });
+        const songs = page.locator('#mb-dp-dialog .mb-dp-tracks a.mb-sl-song-link');
+        const a = songs.nth(0);
+        const b = songs.nth(1);
+        const aHref = await a.evaluate(el => el.href);
+        expect(aHref, 'two different songs').not.toBe(await b.evaluate(el => el.href));
+        await expect(a).toHaveClass(/\bmb-dp-l-here\b/);
+        await expect(a).not.toHaveClass(/\bmb-dp-l-read\b/);
+        // Ctrl-rest on A: its card asks for its page …
+        await page.mouse.move(0, 0);
+        await page.keyboard.down('Control');
+        await a.hover();
+        await page.keyboard.up('Control');
+        await expect.poll(() => asked.length, { timeout: 5000 }).toBe(1);
+        // … the pointer moves to B (no Ctrl: no card), then the answer lands.
+        await b.hover();
+        await expect(page.locator('#mb-dp-peek')).toBeHidden();
+        release();
+        await expect(a, 'A is read: the dot').toHaveClass(/\bmb-dp-l-read\b/, { timeout: 5000 });
+        await expect(b, 'B was never read').not.toHaveClass(/\bmb-dp-l-read\b/);
+        expect(await a.evaluate(el => getComputedStyle(el, '::before').backgroundColor)).toBe('rgb(63, 122, 58)');
+        // Back on A, the foot line says so; nothing more is asked.
+        await a.hover();
+        await expect(page.locator('#mb-dp-dialog .mb-dp-wfoot')).toContainText('(read before, no request)');
+        expect(asked).toEqual([aHref]);
+    });
+
     test('6: the item window\'s songs get their glyph on the list page (the works read on Space)', async ({ page }) => {
         await openWindowWithGlyph(page, false);
         expect((await mbAsked(page)).filter(u => u.startsWith('/ws/2/work?'))).toHaveLength(1);
