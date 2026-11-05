@@ -1,0 +1,253 @@
+[
+    {
+        "name": "layout: the song page keeps the site's overflow:hidden (the h1)",
+        "why": "vzell's screenshots, 2026-11-05: the sticky h1 drawn over the site's title, the sticky Title column over Version.",
+        "edits": [
+            {
+                "find": "            body.mb-sa-host-sl .project-detail[style*=\"overflow\"] {\n                overflow: visible !important;\n",
+                "replace": "            body.mb-sa-host-sl .project-detail[style*=\"overflow-x-never\"] {\n                overflow: visible !important;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-song.spec.js",
+        "grep": "layout: the toolbar h1",
+        "expect": "fail"
+    },
+    {
+        "name": "layout: the song page keeps the site's overflow:hidden (the sticky Title)",
+        "why": "vzell's screenshots, 2026-11-05: the sticky h1 drawn over the site's title, the sticky Title column over Version.",
+        "edits": [
+            {
+                "find": "            body.mb-sa-host-sl .project-detail[style*=\"overflow\"] {\n                overflow: visible !important;\n",
+                "replace": "            body.mb-sa-host-sl .project-detail[style*=\"overflow-x-never\"] {\n                overflow: visible !important;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-song.spec.js",
+        "grep": "layout: the sticky Title",
+        "expect": "fail"
+    },
+    {
+        "name": "editions: vinyl sides not paired into records",
+        "why": "MusicBrainz's medium is the record (the item pages' answer 4).",
+        "edits": [
+            {
+                "find": "        if (ed.media.some(m => /^side\\b/i.test(m.name)) && ed.media.every(m => sideNo(m) > 0)) {",
+                "replace": "        if (false && ed.media.some(m => /^side\\b/i.test(m.name)) && ed.media.every(m => sideNo(m) > 0)) {"
+            }
+        ],
+        "spec": "tests/fixtures/sl-song.spec.js",
+        "grep": "album version: a sub-table",
+        "expect": "fail"
+    },
+    {
+        "name": "editions: \"Disc 5:\" among the sides is not a side",
+        "why": "Hammersmith Odeon's vinyl edition writes \"Disc 5:\" among \"Side 1:\" to \"Side 8:\".",
+        "edits": [
+            {
+                "find": "            const x = /^(?:side|disc)\\s*(\\d+)$/i.exec(m.name);",
+                "replace": "            const x = /^(?:side)\\s*(\\d+)$/i.exec(m.name);"
+            }
+        ],
+        "spec": "tests/fixtures/sl-song.spec.js",
+        "grep": "live version:",
+        "expect": "fail"
+    },
+    {
+        "name": "covers: the \"add N songs\" links kept",
+        "why": "vzell's answer 8: the Item column only, \"add N songs\" left out.",
+        "edits": [
+            {
+                "find": "'a[href*=\"cmd=displaycoverrelease\"], a[href*=\"cmd=editcoverrelease\"], a[href*=\"cmd=addcoversongs\"], ' +",
+                "replace": "'a[href*=\"cmd=displaycoverrelease\"], a[href*=\"cmd=editcoverrelease\"], ' +"
+            }
+        ],
+        "spec": "tests/fixtures/sl-song.spec.js",
+        "grep": "album version: a sub-table",
+        "expect": "fail"
+    },
+    {
+        "name": "Request: the contact form read as text",
+        "why": "vzell's answer 3: the text, never the form.",
+        "edits": [
+            {
+                "find": "    const _SL_SONG_DROP_SEL = 'script, style, noscript, form, .sky-form-columns, iframe, .embed-responsive, div.divide10, div.divide30';",
+                "replace": "    const _SL_SONG_DROP_SEL = 'script, style, noscript, iframe, .embed-responsive, div.divide10, div.divide30';"
+            }
+        ],
+        "spec": "tests/fixtures/sl-song.spec.js",
+        "grep": "the head",
+        "expect": "fail"
+    },
+    {
+        "name": "the song is never marked",
+        "why": "The ● of this version in its release's tracklist and in the versions.",
+        "edits": [
+            {
+                "find": "        const mark = t => Object.assign({}, t, { self: !!slug && _slSongHrefSlug(t.href) === slug });",
+                "replace": "        const mark = t => Object.assign({}, t, { self: false });"
+            }
+        ],
+        "spec": "tests/fixtures/sl-song.spec.js",
+        "grep": "album version: a sub-table",
+        "expect": "fail"
+    },
+    {
+        "name": "lyrics.php?item=N: the slug from the URL only",
+        "why": "A song page opened by its number names its slug only in the page (form action, edit and share links).",
+        "edits": [
+            {
+                "find": "        if (own) return own;\n        for (const el of doc.querySelectorAll('form[action*=\"song=\"], a[href*=\"cmd=edit&song=\"], a[href*=\"url=\"]')) {",
+                "replace": "        if (own || !own) return own;\n        for (const el of doc.querySelectorAll('form[action*=\"song=\"], a[href*=\"cmd=edit&song=\"], a[href*=\"url=\"]')) {"
+            }
+        ],
+        "spec": "tests/fixtures/sl-song.spec.js",
+        "grep": "by its number",
+        "expect": "fail"
+    },
+    {
+        "name": "live releases: \"first released\" lost",
+        "why": "A sentence \"was first released on\" says so in Note.",
+        "edits": [
+            {
+                "find": "            release, kind: y[1], year: y[2], first: !!r[1],",
+                "replace": "            release, kind: y[1], year: y[2], first: false,"
+            }
+        ],
+        "spec": "tests/fixtures/sl-song.spec.js",
+        "grep": "album version: a sub-table",
+        "expect": "fail"
+    },
+    {
+        "name": "live version: no show from the Info sentence",
+        "why": "vzell's answer 5: venue, place and tour, best effort.",
+        "edits": [
+            {
+                "find": "                if (sm) s.show = { venue: sm[1], place: sm[2], tour: sm[3] || '', sentence: perf };",
+                "replace": "                if (sm && false) s.show = { venue: sm[1], place: sm[2], tour: sm[3] || '', sentence: perf };"
+            }
+        ],
+        "spec": "tests/fixtures/sl-song.spec.js",
+        "grep": "live version:",
+        "expect": "fail"
+    },
+    {
+        "name": "sl-lyrics takes lyrics.php?item=N",
+        "why": "The song by its number is a song page, not the lyrics index.",
+        "edits": [
+            {
+                "find": "            match: (path, params) => path === '/lyrics.php' && !params.has('song') && !params.has('item') &&",
+                "replace": "            match: (path, params) => path === '/lyrics.php' && !params.has('song') &&"
+            }
+        ],
+        "spec": "tests/fixtures/sl-song.spec.js",
+        "grep": "by its number",
+        "expect": "fail"
+    },
+    {
+        "name": "Private Info shown logged out too",
+        "why": "vzell's answer 2: logged in only. No logged-out fixture has the section (the site sends it only to a logged-in user), so nothing can see this guard; a logged-out page carrying the section would.",
+        "edits": [
+            {
+                "find": "        if (s.loggedIn && s.privateText) textsAfter.push(",
+                "replace": "        if (s.privateText) textsAfter.push("
+            }
+        ],
+        "spec": "tests/fixtures/sl-song.spec.js",
+        "grep": "logged out",
+        "expect": "pass"
+    },
+    {
+        "name": "the song tables share the first table's column extractors",
+        "why": "Date is only in Live releases and Available versions: without the per-table re-resolution the split misses the versions.",
+        "edits": [
+            {
+                "find": "pageType === 'dg-history' || pageType === 'dg-user' || pageType === 'dg-user-list' || pageType === 'sl-song') {",
+                "replace": "pageType === 'dg-history' || pageType === 'dg-user' || pageType === 'dg-user-list') {"
+            }
+        ],
+        "spec": "tests/fixtures/sl-song.spec.js",
+        "grep": "album version: a sub-table",
+        "expect": "fail"
+    },
+    {
+        "name": "an old springsteenlyrics.com address stays generic",
+        "why": "vzell's answer 6: read at its current address.",
+        "edits": [
+            {
+                "find": "        if (_slCurrentAddress(u)) return true;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "springsteenlyrics.com links in a MusicBrainz annotation",
+        "expect": "fail"
+    },
+    {
+        "name": "an old address read at itself",
+        "why": "It answers 404; the current one is fetched.",
+        "edits": [
+            {
+                "find": "        const url = now || t.url;\n        const res = await _extGet(url, { wanted, fetchOpts: { charset: site.charset } });",
+                "replace": "        const url = t.url;\n        const res = await _extGet(url, { wanted, fetchOpts: { charset: site.charset } });"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "old springsteenlyrics.com address is read",
+        "expect": "fail"
+    },
+    {
+        "name": "finding sl-old-address: the detector never matches",
+        "why": "An Annotation cell with an old address is a WARNING (vzell's answer 6).",
+        "edits": [
+            {
+                "find": "            test: cell => _findCellSlOldLinks(cell).length > 0,\n",
+                "replace": "            test: cell => _findCellSlOldLinks(cell).length > 99,\n"
+            }
+        ],
+        "spec": "tests/fixtures/findings-sl-old-address.spec.js",
+        "grep": "two old addresses flagged",
+        "expect": "fail"
+    },
+    {
+        "name": "finding sl-old-address: a current address flagged too",
+        "why": "lyrics.php?song= is the current address: never a finding.",
+        "edits": [
+            {
+                "find": "            if (now) out.push({ old: u.href, now });\n",
+                "replace": "            out.push({ old: u.href, now });\n"
+            },
+            {
+                "find": "    const _SL_OLD_ADDRESS_SEL = 'a[href*=\"springsteenlyrics.com/lyrics/\" i], a[href*=\"springsteenlyrics.com/collection/moreinfo\" i]';",
+                "replace": "    const _SL_OLD_ADDRESS_SEL = 'a[href*=\"springsteenlyrics.com/lyrics\" i], a[href*=\"springsteenlyrics.com/collection/moreinfo\" i]';"
+            }
+        ],
+        "spec": "tests/fixtures/findings-sl-old-address.spec.js",
+        "grep": "two old addresses flagged",
+        "expect": "fail"
+    },
+    {
+        "name": "finding sl-old-address: the tint setting ignored",
+        "why": "sa_findings_tint_sl_old_address off: no tint, the menu row stays.",
+        "edits": [
+            {
+                "find": "            tint: _findingTintSetting('sa_findings_tint_sl_old_address'),",
+                "replace": "            tint: () => true,"
+            }
+        ],
+        "spec": "tests/fixtures/findings-sl-old-address.spec.js",
+        "grep": "tint setting off",
+        "expect": "fail"
+    },
+    {
+        "name": "search @include: query= must come first again",
+        "why": "search?type=annotation&query=… got no buttons (vzell, 2026-11-05).",
+        "edits": [
+            {
+                "find": "\\/(?:search\\?(?:[^#]*&)?query=.*|search\\/edits",
+                "replace": "\\/(?:search\\?query=.*|search\\/edits"
+            }
+        ],
+        "spec": "tests/fixtures/sl-include-regex.spec.js",
+        "grep": "MusicBrainz pages are still covered",
+        "expect": "fail"
+    }
+]

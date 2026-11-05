@@ -305,8 +305,8 @@
         "why": "Placeholder lines carry nothing; a section that has only one would show as content.",
         "edits": [
             {
-                "find": "                .filter(l => !/^SECTION NOT YET COMPLETED$/i.test(l)).join('\\n')",
-                "replace": "                .join('\\n')"
+                "find": "            const text = _dpBlockText(box).split('\\n')\n                .filter(l => !/^SECTION NOT YET COMPLETED$/i.test(l)).join('\\n')",
+                "replace": "            const text = _dpBlockText(box).split('\\n')\n                .join('\\n')"
             }
         ],
         "spec": "tests/fixtures/detail-preview.spec.js",

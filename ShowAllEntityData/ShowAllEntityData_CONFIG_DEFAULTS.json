@@ -2,11 +2,11 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1539+2026-11-04",
-    "schema_entries": 491,
+    "script_version": "9.99.1551+2026-11-04",
+    "schema_entries": 492,
     "sections": 54,
-    "settings": 437,
-    "settings_with_default": 432,
+    "settings": 438,
+    "settings_with_default": 433,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 260,
+      "checkbox": 261,
       "color_picker": 62,
       "divider": 54,
       "number": 53,
@@ -483,6 +483,7 @@
     "sa_findings_tint_rec_event": "Highlight events and places that disagree with the comment",
     "sa_findings_tint_rel_multi_discogs": "Highlight Relationships cells with more than one link to the same site as WARNING",
     "sa_findings_tint_rg_title": "Highlight main-event tracks that disagree with the release group title as WARNING",
+    "sa_findings_tint_sl_old_address": "Highlight Annotation cells with an old springsteenlyrics.com address as WARNING",
     "sa_findings_tint_title_mismatch": "Highlight track ≠ recording names as WARNING",
     "sa_findings_tint_title_style": "Highlight title-style findings as WARNING",
     "sa_findings_tint_truncated": "Highlight truncated titles as WARNING",
@@ -921,6 +922,7 @@
     "sa_findings_tint_rec_event": true,
     "sa_findings_tint_rel_multi_discogs": true,
     "sa_findings_tint_rg_title": true,
+    "sa_findings_tint_sl_old_address": true,
     "sa_findings_tint_title_mismatch": true,
     "sa_findings_tint_title_style": true,
     "sa_findings_tint_truncated": true,

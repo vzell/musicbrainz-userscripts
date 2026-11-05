@@ -7,7 +7,8 @@ carries two things that must never reach the repository:
 - the "Private info" section: where and when a copy was bought, upload notes.
 
 This script replaces the user name with "USER" and the content of every
-"Private info" section with a placeholder line, keeping the section itself (the
+"Private info" section with a placeholder line (and blanks a song page's
+lyrics, as build-detail-fixtures.py does), keeping the section itself (the
 item pageType shows it, closed, to a logged-in user). It then fails if the
 user name, an e-mail address or a known private-note phrase is left anywhere
 in the output.
@@ -33,6 +34,11 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _spec = importlib.util.spec_from_file_location('build_sl_fixtures', os.path.join(ROOT, 'scripts', 'build-sl-fixtures.py'))
 _sl = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_sl)
+# The detail fixtures' builder: its blank_lyrics(), so a song page here
+# carries no lyrics either (every word "la", the lines' shape kept).
+_dspec = importlib.util.spec_from_file_location('build_detail_fixtures', os.path.join(ROOT, 'scripts', 'build-detail-fixtures.py'))
+_detail = importlib.util.module_from_spec(_dspec)
+_dspec.loader.exec_module(_detail)
 DEBUG = os.path.join(ROOT, 'debug')
 FIXTURES = os.path.join(ROOT, 'tests', 'fixtures')
 
@@ -57,6 +63,13 @@ TARGETS = {
     # POHs", 2026-11-04.
     'sl-song-official.html': 'detail-sl-song-backstreets-logged-in.html',
     'sl-songs-B.html': 'sl-lyrics-b-logged-in.html',
+    # The other three song shapes, for the sl-song pageType (2026-11-05): a
+    # live version (its release's editions, "Disc 5:" among the sides), an
+    # unofficial studio version, a song without lyrics. None has a Private
+    # Info section; their login box is scrubbed all the same.
+    'sl-song-live.html': 'detail-sl-song-backstreets-1975-11-18-logged-in.html',
+    'sl-song-unofficial.html': 'detail-sl-song-backstreets-unofficial1-logged-in.html',
+    'sl-song-no-lyrics.html': 'detail-sl-song-babyme-logged-in.html',
 }
 
 # A list page keeps its first LIST_KEEP cards, every card that shows a shape
@@ -246,6 +259,13 @@ def main():
         html, users = scrub(strip_script_ui(raw) if dst.startswith('detail-') else raw)
         html = _sl.sanitise(html)
         how = 'user name and Private info scrubbed'
+        if dst.startswith('detail-sl-song-'):
+            html, blanked = _detail.blank_lyrics(html, 'sl-song')
+            if not blanked:
+                print(f'{dst}: the lyrics block was not found')
+                bad += 1
+                continue
+            how += ', lyrics blanked'
         if dst in LIST_BASES:
             base = open(os.path.join(FIXTURES, LIST_BASES[dst]), encoding='utf-8').read()
             base = re.sub(r'^\s*<!DOCTYPE[^>]*>\s*(?:<!--.*?-->\s*)?', '', base, count=1, flags=re.S | re.I)

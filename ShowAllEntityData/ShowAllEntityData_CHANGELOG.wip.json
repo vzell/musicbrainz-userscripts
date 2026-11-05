@@ -1,5 +1,62 @@
 [
     {
+        "version": "WIP.7",
+        "date": "2026-11-05",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "MusicBrainz search pages whose address does not start with the query (e.g. search?type=annotation&query=…, typed by hand or bookmarked) got no buttons: the script only ran when query= came first."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.6",
+        "date": "2026-11-05",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "MusicBrainz → springsteenlyrics.com: the site's two old addresses that MusicBrainz still carries, mostly in work annotations (/lyrics/<letter>/<song>.php and /collection/moreinfo.php?item=N), answer 404 today. Their preview now reads the page at its current address (lyrics.php?song=…, collection.php?item=…), and the card's first line says \"Old address\" with the new one."
+                ]
+            },
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "New ⚠️ WARNING \"Old springsteenlyrics.com address in the annotation\": an Annotation cell (annotation search, annotation reports such as Works with annotations) that links springsteenlyrics.com at an old address is tinted, and the menu filters to those rows so the annotations can be edited. The cell's tooltip names each link's current address. Setting: \"Highlight Annotation cells with an old springsteenlyrics.com address as WARNING\"."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.5",
+        "date": "2026-11-05",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "springsteenlyrics.com: a song's preview card and window now show the version's Type, Date and Show (as the lyrics index reads them), the song number (logged in), the versions by type (\"Album 1, Unofficial studio 3, Live 57\"), and the releases, live releases, covers and movies the page lists, counted. A live version adds its venue, place, tour and release, and the window shows that release's tracklist with the song marked ●.",
+                    "springsteenlyrics.com: a song preview's Request section no longer shows the contact form's field names."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.4",
+        "date": "2026-11-05",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "springsteenlyrics.com song pages (lyrics.php?song=…, and lyrics.php?item=N): new \"Show the song\" button. Each edition of the song's releases becomes a sub-table (vinyl sides paired into records), followed by Other official releases, Live releases (Date, Show, Release, Kind, Released and this song's page of that show), Covers, Appearance in movies and Available versions (the lyrics index's columns). This version is marked ● wherever it appears. Above the tables: the lyrics, the page's texts (Request without its contact form), Details (version, a live version's show and release, the studio recording, what the page lists), the pictures, and Private Info (closed, logged in only). No request: the page itself is the data.",
+                    "springsteenlyrics.com song pages: \"Show all versions of this song\" shows the page's versions alone as one table, with the ID column (logged in) sorting as a number.",
+                    "springsteenlyrics.com song pages, logged in: covers get an Item column (the cover release's page and its edit link). The \"add N songs\" links are left out."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.3",
         "date": "2026-11-04",
         "sections": [

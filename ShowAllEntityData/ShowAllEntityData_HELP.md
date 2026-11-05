@@ -835,6 +835,7 @@ back).
 | ⚠️     | Artwork has no Front image (releases with artwork only)         | CAA                                         |
 | ⚠️     | Physical release artwork has no Medium image                    | CAA (needs a Format column)                 |
 | ⚠️     | Several links to one site in Relationships (once loaded)        | Relationships                               |
+| ⚠️     | Old springsteenlyrics.com address in the annotation             | Annotation                                  |
 | ⚠️     | MB-Event: no Brucebase link (once looked up)                    | Brucebase year: MB-Event                    |
 | ⚠️     | Pending edits                                                   | any column                                  |
 | ⚠️     | Live credit without a date                                      | Release tracklist: credit columns           |
@@ -3168,6 +3169,13 @@ springsteenlyrics.com bootleg, collection item or song, a jungleland.it
 artwork page, a brucespringsteen.it record, a Brucebase song — with its
 tracklist, fields, scans and notes, and its *Live page* trimmed as on the
 site. They load on a hover from the first time, without Tampermonkey asking.
+springsteenlyrics.com's **old addresses**, which many work annotations still
+carry (`/lyrics/b/backstreets.php`, `/collection/moreinfo.php?item=5027`),
+answer "not found" today. The card reads the page at its current address
+instead (`lyrics.php?song=backstreets`, `collection.php?item=5027`), and its
+first line, **Old address**, names that address. To find such links and
+correct them, see the ⚠️ *Old springsteenlyrics.com address in the
+annotation* WARNING on an annotation search or an annotation report.
 A **Brucebase date** link (the "reviews:" link of many events,
 `brucebase.wikidot.com/2025#261025`) shows that one show of the year page:
 venue and date, the setlist, the people, the notes, and a link to the gig
@@ -3216,7 +3224,7 @@ ListenBrainz, CritiqueBrainz, MetaBrainz) are previewed like any other site.
 </details>
 
 <details>
-<summary>springsteenlyrics.com collection, bootleg and lyrics lists, and item pages</summary>
+<summary>springsteenlyrics.com collection, bootleg and lyrics lists, item and song pages</summary>
 
 Not a MusicBrainz page at all, and **on unless you switch it off**: ⚙️ Settings →
 *🎸 springsteenlyrics.com* → *Enable on springsteenlyrics.com collection and
@@ -3453,6 +3461,25 @@ number and the site's edit link, and **Private info** is shown, closed — it
 never appears in a preview. A CD or vinyl bootleg whose page lists several versions (pressings) also
 gets **All versions**: every one of them, this one included, as one table with
 the list's columns, to compare them side by side.
+
+**A song's own page** (`lyrics.php?song=…`, one per version of the song, or
+`lyrics.php?item=N` by its number) gets **Song**: everything the page lists,
+as tables, with no request. Each edition of the song's releases becomes a
+table (*Born To Run · vinyl edition*, *… · CD edition · Disc 1*; a vinyl's
+sides make records). Then **Other official releases** (artist, title,
+format, label, catalogue number, country, year, note, tracks), **Live
+releases** (date, show, the release, its kind, the year it came out, and
+this song's page of that show when the site has one), **Covers** (logged
+in, with an **Item** column linking the cover release and its edit page),
+**Appearance in movies**, and **Available versions** with the lyrics
+index's columns. The page's own version is marked ● wherever it appears.
+Above the tables: the lyrics, the page's texts (each closed; **Request**
+without the site's contact form), **Details** (the version and, logged in,
+its number and edit link; for a live version the venue, place and tour,
+read from the page's text, and the release it came out on; the studio
+recording; what the page lists), the pictures, and logged in **Private
+Info**, closed, never in a preview. **All versions** shows the versions
+alone, as one table.
 
 </details>
 
@@ -4330,7 +4357,7 @@ that site's own switch in ⚙️ Settings:
 
 | Site                     | Setting                                                      | The card shows                                                                                                                                              |
 |--------------------------|--------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 🎸 springsteenlyrics.com | *Preview item and song pages on springsteenlyrics.com lists* | the tracklist by disc, the notes (lineage, edition), the artwork scans; on the lyrics index, the version, the first lines of the lyrics and the song's info |
+| 🎸 springsteenlyrics.com | *Preview item and song pages on springsteenlyrics.com lists* | the tracklist by disc, the notes (lineage, edition), the artwork scans; on the lyrics index, the version and its type and date, the first lines of the lyrics, the song's info, its versions by type and how many releases, live releases and covers the page lists (a live version: its show, its release and that release's tracklist) |
 | 🌴 jungleland.it         | *Preview artwork pages on the jungleland.it list*            | the uploader and the scans (front, back, discs, booklet)                                                                                                    |
 | 💿 brucespringsteen.it   | *Preview record pages in the brucespringsteen.it database*   | the tracklist, the show each track comes from, the notes, the photo                                                                                         |
 | 📚 Brucebase             | *Preview song pages on the Brucebase song list*              | the album it comes from, how often and when last it was played live, releases, the graph and lyric sheets                                                   |

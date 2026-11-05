@@ -310,7 +310,12 @@ test.describe('detail-page parsers (one record per saved page)', () => {
         const labels = s.sections.map((x) => x.label);
         expect(labels).toEqual(expect.arrayContaining(['Info', 'Writing and Recording', 'Credits / References', 'Available Versions']));
         expect(s.sections.every((x) => !/SECTION NOT YET COMPLETED/.test(x.text))).toBe(true);
-        expect(s.fields).toEqual([['Versions on the site', '9']]);
+        // Since parser version 11 (2026-11-05, _slSongRead()): the
+        // version's Type first, the versions by type, and what else the page
+        // lists, counted. An album version gets no tracklist (a live one does).
+        expect(s.fields).toEqual([['Type', 'Album'], ['Versions on the site', '9'], ['By type', 'Album 1, Outtake 2, Other 1, Live 5'],
+            ['Releases', 'Darkness On The Edge Of Town + 16 others'], ['Live releases', '46 (1978–2022)'], ['Covers', '33'], ['Movies', '4']]);
+        expect(s.tracks).toEqual([]);
         expect(s.summary).toMatch(/^BADLANDS is a song written by Bruce Springsteen/);
         expect(s.notes).toEqual([]);
 
@@ -322,6 +327,21 @@ test.describe('detail-page parsers (one record per saved page)', () => {
         expect(n.sections[0].label).toBe('Info');
         expect(n.images.length).toBeGreaterThan(0);
         expect(n.images[0].thumb).toMatch(/^https:\/\/www\.springsteenlyrics\.com\/lyrics\/images\//);
+
+        // A live version (logged in): its show and release from the Info
+        // sentences, and the release's tracklist with this version marked.
+        const l = await parse('detail-sl-song-backstreets-1975-11-18-logged-in.html', 'backstreets_1975-11-18');
+        expect(l.fields.slice(0, 7)).toEqual([['Type', 'Live'], ['Date', '1975-11-18'], ['Song number', '2439'],
+            ['Venue', 'Hammersmith Odeon'], ['Place', 'London, England'], ['Tour', 'Born To Run Tour'],
+            ['Released on', 'Hammersmith Odeon, London \'75 (album and home video, 2005)']]);
+        expect(l.tracks).toHaveLength(16);
+        expect(l.tracks[0].disc).toBe('Hammersmith Odeon, London \'75 · DVD edition');
+        expect(l.tracks.filter(t => t.self).map(t => t.title)).toEqual(['BACKSTREETS']);
+        // Request's contact form is no text of the record.
+        const u = await parse('detail-sl-song-backstreets-unofficial1-logged-in.html', 'backstreets_unofficial1');
+        const req = u.sections.find(x => x.label === 'Request');
+        expect(req.text).toMatch(/may not be 100% correct/);
+        expect(req.text).not.toMatch(/Your message|Enter correct number/);
     });
 
     test('jungleland.it: title, uploader, labelled scans with backslash paths; no unknown date', async ({ page }) => {

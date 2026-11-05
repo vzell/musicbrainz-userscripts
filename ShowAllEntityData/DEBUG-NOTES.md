@@ -28173,3 +28173,32 @@ comparison: `debug/detail-sl-lyrics-{babyme,badlands}.html`.
 test:full 2026-11-04T23:19 → 23:37:15+01:00 (NB-3641): 2677 passed, 0 failed.
 Tests: `sl-lyrics.spec.js` (+6, one reworked), `detail-preview.spec.js` (+1), `popup-ext.spec.js` (+1); fixtures from
 `scripts/build-sl-item-fixtures.py`; `scripts/mutations/sl-songs.json`, 10/10 fail as expected.
+
+## 2026-11-05 — springsteenlyrics.com song page: the toolbar h1 over the site's title; the sticky Title column over Version (feat/sl-song-pt, WIP.4)
+
+Env: 2026-11-05T00:40+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · vzell's browser for the two
+screenshots (versions unknown) · reproduced in Playwright 1.62.1 Chromium (GM stubs, no Tampermonkey) on
+`debug/sl-song-official.html` with the site's own stylesheets let through.
+
+Symptoms (vzell's screenshots, during the build of the new `sl-song` PT, before it shipped):
+1. Before any press, our `h1.mb-sl-h1` "BACKSTREETS [Album version]" was drawn over the site's own `<h3>`
+   "BACKSTREETS" and its version line.
+2. After "All versions", the column after Title read "ersion": the sticky Title column covered its left edge.
+
+Root cause, measured (not guessed): only the song pages give `.project-detail` an inline `style="overflow:hidden"`.
+The lyrics index, item and list pages have no such style (checked across `debug/sl-*.html`). An overflow other than
+`visible` makes the element the scroll container for everything sticky inside it:
+- the h1 is `.mb-vsb-head`, `position: sticky; top: 80px` (the navbar height). Measured against `.project-detail`'s
+  own top, it sat at 388 px at scrollY 0, below the site's title at 354 px, although it comes first in the DOM;
+- the Title cells are `position: sticky` with a computed `left: 34.5px` of that box: the cell ran 50–212 px while
+  Version started at 197 px (15 px covered).
+
+Fix (`_ensureSlStyle()`): `body.mb-sa-host-sl .project-detail[style*="overflow"] { overflow: visible !important;
+display: flow-root; }`. flow-root keeps the float containment the hidden overflow gave. After it: h1 308–342 px,
+the title at 354 px; Title 35–197 px, Version from 197 px. MusicBrainz is untouched (SL host class only).
+
+Test trap: the fixtures carry no stylesheet. Unstyled, the navbar is a 4,512 px block and the Bootstrap gutters
+are 0, so nothing is displaced and a layout test passes WITHOUT the fix (the first mutation run showed it).
+`sl-song.spec.js` "layout:" serves the fixture with `SITE_LAYOUT_CSS`, a stand-in for the three site rules that
+matter (navbar height, `.container`/`.col-sm-12` gutters, `.row` margins). Both layout tests now fail without the
+fix (`scripts/mutations/sl-song.json`, two entries).

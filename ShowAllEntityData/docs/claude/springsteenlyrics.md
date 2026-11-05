@@ -14,7 +14,9 @@ switch, `sa_enable_springsteenlyrics`, default **on** since 2026-10-26 (off
 before). Only what each list card shows goes into the table; an item's own
 page is read by the detail preview (`sa_sl_detail_preview`, docs/claude/detail-pages.md)
 and, since 2026-11-04, has pageTypes of its own (`sl-collection-item`,
-`sl-bootlegs-item`, `sl-brucelegs-item`; see "An item's own page" below). The bootleg landing page
+`sl-bootlegs-item`, `sl-brucelegs-item`; see "An item's own page" below), and
+since 2026-11-05 a song's own page has one too (`sl-song`; see "A song's own
+page" below). The bootleg landing page
 `bootlegs.php` (`sl-bootlegs-intro`) has no cards; it is supported only for the
 compact bar, and only while `sa_sl_compact_nav` is on as well — see "The
 bootleg landing page" below.
@@ -312,6 +314,80 @@ No request: `features.pageRequest`'s `fetchText` returns the page's own HTML,
 Not built: song links in the tracklists (the separate "URLify the
 tracklist" TODO); the logged-in collection list's two extra filter forms
 (`filter_collection_info_public` / `…_private`, answer 6).
+
+## A song's own page — `sl-song`
+
+Since 2026-11-05 (org/springsteenlyrics.org "Overwhole of the SL PTs and
+POHs", vzell's answers 1–8; mockups `org/sl-song-mockups.html`,
+https://claude.ai/artifact/XFubyj74n1CAouHYT2m5ou). `@include` admits
+`lyrics.php?…song=SLUG` and `lyrics.php?…item=N` without any `cmd=` (a
+lookahead: `cmd=edit&item=N` is the site's edit form,
+`cmd=displaycoverrelease&item=N` a cover release); `_slIsSongPage()`
+matches, and `sl-lyrics`' match leaves `item=` alone. Two buttons: "Show
+the song" and "Show all versions of this song" (`slItemView: 'versions'`,
+only when the page links another version). No request, as the item pages:
+the features (`_slSongFeatures()`) use the item pages' live part
+(`applySlItemToTable()`, kind 'song') and their copy of the page
+(`_slItemPageHtml()`/`_slItemSourceDoc()`).
+
+- **One reader, two uses.** `_slSongRead()` reads the page into one record:
+  the version (through `_slLyricsParseVersion()`, so Type/Date/Show match the
+  lyrics index), the lyrics, the text sections, the releases with their
+  editions (`_slSongPanels()`), the `.blog-post` rows (`_slSongRow()`:
+  releases, covers, movies, and live releases from one sentence each,
+  `_slSongLiveSentence()`), the versions, the pictures, a live version's
+  show (Info's "performance of X at VENUE in PLACE, during the TOUR",
+  answer 5) and release, the studio facts, Private Info and Request's text.
+  The page view (`_slSongToHtml()`, `_slSongHeadSpec()`) and the preview
+  (`_dpParseSlSong()` → `_dpSlSongFacts()`, parser version 11) both read it.
+  The preview adds only counts and, for a live version, its release's
+  tracklist (`self` marked ● by `_dpTrackListHtml()`); an album version's
+  tracklist would have pushed its lyrics down in the window.
+- **Page anatomy** (four logged-in snapshots of 2026-11-04: album,
+  unofficial studio, live, no lyrics): `.project-detail` holds the `<h3>`
+  title, `<p><em>` version, the lyrics between two `<hr>`s, then
+  `h3.heading` sections to the next heading or the `<h5>` "Page last
+  updated". A heading that is one `<em>` is a release, its `.panel-group`
+  one panel per edition (`<p><strong>Side 1:</strong></p>` + `<ol>`, or a
+  bare `<ol>`; a release row's panel is text lines "01- <a>…"). The site
+  writes "Disc 5:" among "Side 1:" to "Side 8:" (Hammersmith Odeon's vinyl):
+  read as side 5 (`_slSongEditionGroups()`). Logged in, every version line
+  has its number and edit link, a cover row "view item / edit item / add N
+  songs" (answer 8: the first two as an Item column), and the page ends with
+  Private Info.
+- **Tables**: an edition each ("<release> · <edition>[ · Disc N | Record
+  N]": Pos, Title); Other official releases; Live releases (Cover, Date, Show,
+  Release, Kind, Released, Version — this song's page of that show, found by
+  date and show among the versions —, Note); Covers (+ Item logged in);
+  Appearance in movies; Available versions (the lyrics index's columns, ID
+  logged in). Date is split by `dateParts`; the sub-tables differ, so
+  `sl-song` is in the per-table extractor re-resolution list. This version is
+  `td.mb-sl-self` (a ● by CSS, the cell's text unchanged), unlinked in the
+  versions as on the site.
+- **Head**: Lyrics (stage notes greyed), the text sections, Request without
+  its form (answer 3), Details (Version, Show, Released on, Studio recording,
+  On this page), Pictures, Private Info (logged in, closed: answer 2).
+- **The site's `overflow:hidden`.** Only the song pages give
+  `.project-detail` an inline `style="overflow:hidden"`. That made it the
+  scroll container of everything sticky in it: before any press the toolbar
+  `<h1>` (`.mb-vsb-head`, `top: 80px`) was drawn 80 px down its box, over
+  the site's own title, and after a render the sticky Title column sat at
+  `left: 34.5px` of it, 15 px over the next column (vzell's screenshots,
+  2026-11-05; measured under the site's real CSS from
+  `debug/sl-song-official.html`). `_ensureSlStyle()` overrides it with
+  `overflow: visible !important; display: flow-root` (the float containment
+  kept). Pinned by `sl-song.spec.js` "layout".
+
+**MusicBrainz → SL, old addresses.** MusicBrainz still carries two old forms,
+nearly all in work annotations (sample of 2026-11-04,
+`scripts/probe-mb-sl-urls.py`): `/lyrics/<l>/<slug>.php` and
+`/collection/moreinfo.php?item=N`, both 404 now. `_slCurrentAddress()` maps
+them to `lyrics.php?song=<slug>` and `collection.php?item=N`; the springsteen
+reader takes them (`_extDpTest()`), reads the current address
+(`_extDpLoad()`, whose record's first field is "Old address"), and its
+Live page frames that address (`liveUrlFor`). The ⚠️ finding
+`sl-old-address` (docs/claude/findings.md) marks Annotation cells with such
+a link, on an annotation search or an annotation report.
 
 ## Column names: the `_sortColumnKind()` heuristic trap
 
@@ -853,6 +929,7 @@ locators in the detail-preview specs use `a:not(.mb-fi-glyph)`.
 | `tests/fixtures/sl-brucelegs.spec.js`        | the CD and vinyl bootleg columns across two pages, card fields (no sub-title, a label link, year and month spans), the DD…Month split at each date precision, Location split incl. a description in Place and "USA" as United States, YYYY numeric sort, a Country filter                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `tests/fixtures/sl-lyrics.spec.js`           | pageKeys: from the landing page every letter fetched by its OWN link (one request each), from a letter page "Show all lyrics" reuses that letter live and keeps the order; a letter page's "This letter" first, no request, that letter's rows only; the landing page without it; logged in (`sl-lyrics-b-logged-in.html`): the ID column (number alone, linked, an empty edit link with a CSS pencil, an integer column), Lyrics ✓/✗ from the named glyph (296/16), logged out no ID; a failed letter resumes at that letter with the rows kept; the line split (Lyrics ✓/✗, Type, Artist incl. the last possessive, Date, Show, No.), DD…Month at each precision, a Type filter, YYYY numeric sort; `_slLyricsParseVersion()` over 42 bracket shapes. Mutations: `scripts/mutations/sl-songs.json`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `tests/fixtures/sl-image-card.spec.js`       | the Cover column's card and viewer: nothing asked at render; one request on hover, cover ★ + scans, `Cover`/`Scan ×N`; a bootleg without the flag "Cover only", never asked; second hover and click from the cache, the "Item page" button; Shift+→ to the next VISIBLE row; Ctrl-click keeps the link; a collection row asks (no flag); brucelegs 148 cut at the cap, Space shows all 32; one record shared with the Title's preview; the setting off (no card, click still opens); moved on before its slot, never asked. Mutations: `scripts/mutations/sl-image-card.json`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `tests/fixtures/sl-song.spec.js`             | the song pageType: backstreets (two Born To Run editions, sides paired; Other official releases' fields and a track panel; 28 live releases split, the version link, "first released"; Covers' Item column with its edit link and no "add N songs"; movies; 61 versions with ID; three ● marks, not text; no request), its head (sections in order, Request without the form, Version/Studio/On this page cards, 44 pictures, Private Info closed), the live version (seven edition tables, Disc 5 as side E, Show and Released on cards), unofficial (versions only), babyme (no All versions button, Lyrics not available), All versions (ID numeric sort), `item=2298`, logged out (no ID, no Private Info), the layout (the h1 above the site's title, the sticky Title never over the next column). Mutations: `scripts/mutations/sl-song.json` (with the old-address reader and the `sl-old-address` finding, `findings-sl-old-address.spec.js`) |
 | `tests/fixtures/sl-item.spec.js`             | the item pageTypes: collection 8595 (one record, Release and Your collection cards, scans, the native content hidden, Private info closed, no request), 5240 (five named records, one scans section per copy with pictures), 9685 (Artist column), bootleg 9507 (two discs, Take/Note, Show card, the info file read once on opening), 2567 (sides paired, MusicBrainz link, captions), CD bootleg 281 (Length, notes, inner ring text, PDF), All versions on a fresh load, vinyl 148 logged out (four records, Version split, no Your collection); the preview cache's login state. Mutations: `scripts/mutations/sl-item-pts.json` |
 | `tests/fixtures/sl-logged-in-columns.spec.js` | logged-in lists: collection MusicBrainz/Good scans/Kept in (incl. Lebanon) and the Version after the second marker, bootlegs MusicBrainz and the Info file link, brucelegs PDF/Artwork, logged out unchanged; the Info file's card (no request) and window (one), the MusicBrainz cell's card |
 | `tests/live/sl-lists.spec.js` (`@extended`)  | real pagination: rows = the page's own "Showing items … of N" (album/12i, book, the entry page, aud_live1967, brucelegs); Sticky Page Headers under the site's real CSS; on every real brucelegs row: a Location show note reaches Show, no description or "USA" reaches Country, every dated row has YYYY; the whole lyrics index (32 letters) against the landing page's own per-letter `chartData`, with bounds on "Other" and undated Live lines                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
@@ -886,6 +963,11 @@ Since `feat/sl-songs`, the builder also makes two more fixtures:
   scrub regex is now case-insensitive, and the leak check knows two phrases
   of the song note. `detailFixture.js` serves it for `song=backstreets` and
   `item=2298`.
+Since `feat/sl-song-pt` (2026-11-05) three more song pages (live 1975-11-18,
+unofficial1, babyme), and every song page's lyrics are blanked through
+`build-detail-fixtures.py`'s `blank_lyrics()`, as the logged-out fixtures'
+are: the repository carries no lyrics (the backstreets fixture of
+`feat/sl-songs` had them).
 
 ## Titles
 

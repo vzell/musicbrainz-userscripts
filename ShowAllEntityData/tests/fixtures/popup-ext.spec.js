@@ -3040,11 +3040,13 @@ test.describe('the Springsteen sites across hosts (U4)', () => {
 
     test('springsteenlyrics.com links in a MusicBrainz annotation: every shape MusicBrainz carries, and which reader takes it', async ({ page }) => {
         // The shapes found by scripts/probe-mb-sl-urls.py (2026-11-04, a
-        // sample: 501 relationship URLs, 553 annotation links). Pins today's
-        // state, the baseline for org/springsteenlyrics.org item 5: the two
-        // OLD shapes (/lyrics/<l>/<slug>.php: 431 of the annotation links,
-        // mostly on works; /collection/moreinfo.php?item=N: 22) answer 404 on
-        // the site now and get the generic card.
+        // sample: 501 relationship URLs, 553 annotation links), and which
+        // reader takes each. The two OLD shapes (/lyrics/<l>/<slug>.php: 431
+        // of the annotation links, mostly on works;
+        // /collection/moreinfo.php?item=N: 22) answer 404 on the site now;
+        // since 2026-11-05 (vzell's answer 6) the springsteen reader reads
+        // them at their current address (_slCurrentAddress()), where they
+        // were generic before.
         await openEvent(page, { settings: { sa_pop_ext: true } });
         await addAnnotationLinks(page, [
             'http://www.springsteenlyrics.com/collection.php?item=5128',
@@ -3063,8 +3065,29 @@ test.describe('the Springsteen sites across hosts (U4)', () => {
             .map(a => window.__saTest.popResolve(a).split(':').slice(0, 2).join(':')));
         expect(keys).toEqual([
             'ext|ext:springsteen', 'ext|ext:springsteen', 'ext|ext:springsteen', 'ext|ext:springsteen', 'ext|ext:springsteen',
-            'ext|ext:generic', 'ext|ext:generic', 'ext|ext:generic', 'ext|ext:generic',
+            'ext|ext:springsteen', 'ext|ext:springsteen', 'ext|ext:generic', 'ext|ext:generic',
         ]);
+    });
+
+    test('an old springsteenlyrics.com address is read at its current one, and the card says so', async ({ page }) => {
+        // vzell's answer 6 (2026-11-05): /lyrics/<l>/<slug>.php answers 404;
+        // the song page is lyrics.php?song=<slug> now. ONE request, to the
+        // current address; the card's first field names it.
+        const now = 'https://www.springsteenlyrics.com/lyrics.php?song=backstreets';
+        await openEvent(page, {
+            settings: { sa_pop_ext: true },
+            responses: { [now]: htmlAnswer(page_('detail-sl-song-backstreets-logged-in.html')) },
+        });
+        await addAnnotationLinks(page, ['http://www.springsteenlyrics.com/lyrics/b/backstreets.php']);
+        const c = card(page);
+        await ctrlHover(page, probe(page, 0));
+        await expect(c.locator('.mb-tt-title').first()).toHaveText('BACKSTREETS', { timeout: 10000 });
+        await expect(c).toContainText('Old address');
+        await expect(c).toContainText('the site now serves this page at lyrics.php?song=backstreets');
+        const log = await xhrFull(page);
+        expect(log.map(r => r.url)).toEqual([now]);
+        // The new reading of the song page reaches the card too.
+        await expect(c).toContainText('Album 1, Unofficial studio 3, Live 57');
     });
 
     test('a Brucebase show link on MusicBrainz is generic again with sa_bb_event_preview off', async ({ page }) => {
