@@ -28202,3 +28202,138 @@ are 0, so nothing is displaced and a layout test passes WITHOUT the fix (the fir
 `sl-song.spec.js` "layout:" serves the fixture with `SITE_LAYOUT_CSS`, a stand-in for the three site rules that
 matter (navbar height, `.container`/`.col-sm-12` gutters, `.row` margins). Both layout tests now fail without the
 fix (`scripts/mutations/sl-song.json`, two entries).
+
+## 2026-11-05 — springsteenlyrics.com tracklists: song links, this show's version, MusicBrainz work glyphs (feat/sl-tracklist-links)
+
+Env: 2026-11-05T01:22:17+01:00 → 02:14+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · probes: n/a (Python,
+curl) · specs: Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs).
+
+Not a bug: a feature from org/springsteenlyrics.org "URLify the tracklist to song URLs (SL and MB)", mockups
+`org/sl-tracklist-links-mockups.html` (https://claude.ai/artifact/9etFwvJXtoLWkfZzPxnTJo), vzell's answers 1-8 (all
+as recommended; 7 widened to the song page's editions and medleys). Design: docs/claude/springsteenlyrics.md "Song links
+and MusicBrainz works in tracklists". The probe results the code rests on:
+
+- **The lyrics index** (`scripts/probe-sl-song-index.py`, 01:22:17 → 01:23:01, 33 requests 1.2 s apart, logged out,
+  every answer 200): 32 letters (the landing page's `9` and `x` buttons are commented out: 0 lines), 3,552 lines,
+  1,381 base slugs (no `_`), 1,334 distinct base titles. Version suffixes: a date 1,464, `_original` 229,
+  `_unofficialN` 64, `_homedemoN` 33, `_bandrehearsalN` 33, `DATE-early` 30, `DATE-late` 24, … Duplicate titles are
+  numbered slugs (`babydontgo`/`babydontgo2`, `chainlightning`…`5`). Two version stems have no base page
+  (`Thislandisyourland`, `peoplegetready`).
+- **The slug rule**: lower case, a-z0-9, a trailing "(…)" dropped: 1,305 of 1,334; plain title first, then without
+  trailing/leading/both "(…)": 1,315; 19 exceptions (`scripts/build-sl-song-slugs.py`). Two titles collide when
+  normalised: `SOMEDAY (WE'LL BE TOGETHER)` → `someday` and `SOMEDAY WE'LL BE TOGETHER` → `somedaywellbetogether`;
+  hence the exception key keeps the parentheses (`_slExcKey()`).
+- **An unknown slug** (`curl lyrics.php?song=seemyfriends`): HTTP 200, 39,781 bytes, "does not exist!". So only
+  known slugs are linked.
+- **On saved item pages** (`scripts/probe-sl-tracklist-resolve.py`, offline, 15 pages): 210 of 282 tracklist lines
+  resolve; all 72 misses are not SL songs (VA sides, the Castiles' covers, "Intro", "ROULETTE / outro" before the
+  medley split). 4 have a page of their show (bootleg 2567 Rosalita 1984-06-21; bootleg 6739 three songs
+  2014-02-05).
+- **MusicBrainz** (`scripts/probe-mb-bruce-works-sl.py`, 01:23:54 → 01:24:53, 16 browse requests 1.1 s apart, one 503
+  retried): `/ws/2/work?artist=70248960-…&inc=aliases+annotation` takes both includes on a browse (checked first with
+  `limit=5`): 1,587 works, 752 with an SL song link in the annotation (752 distinct slugs). SL base songs: exact by
+  annotation 732, one title 412, several 29, none 208 (mostly covers by other writers). Item 10163: 6 exact, Wild
+  Billy's Circus Story by title.
+- **The per-release path**: a url lookup of `https://www.springsteenlyrics.com/collection.php?item=10163` → 404 (not
+  linked), and of item 4994 by its CLEAN address → 404 too: MusicBrainz stores SL item URLs as entered,
+  `http://www.springsteenlyrics.com/collection.php?item=4994&category=album&pg=4` (→ release Live/1975–85). That
+  release with `inc=recordings+recording-level-rels+work-rels`: 40 tracks, 40 work relationships, one request (the
+  first try answered 503). So the release comes from the logged-in card's own MusicBrainz link, never a url lookup.
+
+Found in review before any browser check: the SL list fixtures (and so the site) answer without "www." too, and the
+first draft fetched the runtime index from `https://www.springsteenlyrics.com/` — cross-origin from a no-www page, so
+the index could never be read there. Fix: `_slSiteRoot()` (the page's origin on SL). test:full before that fix
+(2026-11-05T02:15:26 → 02:32:31+01:00, NB-3641, 2700 tests): 2700 passed.
+
+Tests: `tests/fixtures/sl-tracklist-links.spec.js` (12), `sl-song.spec.js` (one assertion changed: a song the site
+leaves unlinked in an edition now links its main page). `scripts/mutations/sl-tracklist-links.json`: 14/14 fail as
+expected; the first run of "a lyrics letter page is not kept" failed for the wrong reason (the spec's own IndexedDB
+read threw on a store never created) and the read was made robust. New fixture `detail-sl-collection-10163.html`
+(`scripts/build-sl-item-fixtures.py`). `FIXTURE_SETTINGS_OVERRIDE` forces `sa_sl_song_versions` and `sa_sl_mb_works`
+off.
+
+## 2026-11-05 — springsteenlyrics.com: "Adjustments to 'URLify the tracklist…'" (feat/sl-tracklist-links)
+
+Env: 2026-11-05T13:00+01:00 → 13:40+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · vzell's browser for the
+snapshots and the screenshot (versions unknown) · specs: Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs) ·
+probes: curl.
+
+vzell's live check of the branch (org/springsteenlyrics.org, "Adjustments"): no-www works (1); the rest, and what
+each turned out to be:
+
+- **6, "an empty slot before the title" in the item window** (`debug/sl-POH-lots-of-images-and-MB-glyph-missing.html`,
+  brucelegs 148 from the CD and vinyl bootleg list): NOT the glyph slot, which was empty and hidden. The gap is the
+  window's read-ahead dot, reserved on every `a.mb-dp-l-here` (`.mb-dp-dots a.mb-dp-l-here::before`, 2026-10-29); "B3
+  Circus Song" is no link, so it has none. The glyphs were missing because nothing loads the work catalogue on a
+  LIST page: only the item pageTypes' render tail did. Fix: `_slSongsWindowKick()` from `_dpTrackListHtml()`, and
+  `_slSongsDecorate()` paints `#mb-dp-dialog` too. That made a second trap visible: the first "this show" draft drew
+  its label with `::before`, which the dot rule (higher specificity) would have blanked in the window; it is
+  `::after` now.
+- **3a, "this show" doubling the title's job**: the title links the main page, the mark is its own textless link.
+- **3b, "Circus Song"**: a title without an SL page got no span, so no glyph. Now an empty-slug span, matched by
+  title and alias. Also "Rosalita (Come Out Tonight) (instrumental)" (two trailing "(…)": the rule dropped one) and
+  "Phantoms aka Wild Zero And Blind Terry".
+- **3a/3b labels** (`debug/sl-brucelegs-list-*.html`, `debug/sl-brucelegs-labels-list-initial.html`,
+  `debug/sl-song-*.html` = brucelegs 254): the list converter wrote the label as text; the item head linked it but
+  `isDetailUrl` refused list URLs. Probe (curl, logged out, 1.2 s apart): `collection.php?cmd=list&category=all&f_label=Columbia`
+  and the same without `f_label` both "of 5372"; `bootlegs.php?…&f_label=Crystal Cat` "of 8445" as without;
+  `brucelegs.php?cmd=list&f_label=The Godfatherecords` "of 3". So only the CD and vinyl bootlegs have label pages.
+- **5a, the collection's item number** (`debug/sl-va-list-*.html`): logged-in collection and bootleg cards start with
+  `<b>N</b>` (14/14 and 17/17 in the logged-in fixtures; the CD and vinyl bootleg cards 0/13); the converter skipped it.
+- **5b**: the window read a VA line whole ("Bruce Springsteen: BORN TO RUN" is no title).
+- **4**: the head's pictures had only the click. Card `fd-pic`, Shift through `_ART_CARD_FNS`.
+
+Then three more from vzell's screenshots of the same afternoon:
+- **The window's icons sat BELOW each line** (`[Image #21]`). Root cause, proven by the spec only once it was set
+  up as vzell's browser is (`sa_pop_mb` on, read-ahead on, the works already in memory at the window's paint): the
+  glyph link is a flex item of the `inline-flex` slot, the window marks it `mb-dp-l-here`, and read-ahead's
+  reserved dot (`::before`, inline-block 6 px) took a line of its own inside it. A first fix that only made the link
+  `inline-block` changed nothing — the mutation of it passed — and was not the cause; the dot is now off on glyph
+  links. Without `sa_pop_mb`, or with the glyph added after the paint, the link is never marked and nothing shows.
+- **The label window's items were text** (`[Image #22]`): the section has `html` now, a link per item
+  (`_DP_PARSER_VERSION` 14).
+- **The item page's own tracklist before any press** (`[Image #23]`, brucelegs 254): `_slLinkLiveTracklist()`.
+
+Tests: `sl-tracklist-links.spec.js` 26 (14 new, the version test rewritten for the separate link);
+`scripts/mutations/sl-tracklist-links.json` 33 entries, 32 fail as expected and one is recorded `pass` (the page's
+copy taken before the IP block is linked: the block's text is unchanged, so no spec can see the order). Four
+entries of `sl-songs.json`/`sl-support.json` re-anchored to the changed code, all four fail as expected. New fixture
+`detail-sl-brucelegs-label-greatdane.html`.
+
+test:full 2026-11-05T14:08:08 → 14:25:55+01:00 (NB-3641, Playwright 1.62.1, 2715 tests, 14 workers): 2715 passed.
+
+## 2026-11-05 — springsteenlyrics.com: "Disc 2: [DVD]" no medium; box sets without tracklists read as tracks (feat/sl-tracklist-links)
+
+Env: 2026-11-05T17:05+01:00 → 17:36+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · vzell's browser for the
+snapshots and the screenshot (versions unknown) · specs: Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs) ·
+fixtures: curl, logged out.
+
+vzell's live check (org/springsteenlyrics.org, 1.) and 2.)):
+
+- **1a, collection item 7457 (Broadcast Rarities): the DVD's tracks were not linked, in the window or on the IP.**
+  Snapshots `debug/sl-collection-audio_boot-7457-initial.html` (IP) and `-POH.html` (window). The page writes its
+  media as "Disc 1: [CD]" / "Disc 2: [DVD]". `_DP_DISC_RE` took text after the colon only when it opened with a quote
+  or a parenthesis, so neither line was a header: the window's Notes began with "Disc 1: [CD]", and since the tracks
+  end at the first line that is neither a header nor a track, "Disc 2: [DVD]" ended them and its 15 tracks became a
+  note. A bracket now opens the text too (`[^:"([]` / `(?:"|\(|\[)`). "GLORY DAYS [continued]" needed nothing:
+  `_slSplitTrackTitle()` already makes every "[…]" a note before the slug lookup (a trailing-"[…]" rule in
+  `_slTitleVariants()` was tried and reverted: its mutation passed, i.e. redundant).
+- **1b, the window's titles after "09" sat left of the others.** The site's fonts have proportional old-style
+  figures; `tabular-nums` (already on `.mb-dp-pos`) cannot change a font without that feature. An SL item window's
+  list is now `ol.mb-dp-tracks.mb-sl-tracks` with `--mb-sl-pos-w` (the longest position in `ch`), and its numbers
+  inline-blocks of that min-width. The test font draws equal digits, so the spec pins the guarantee (one box width,
+  at least the widest number, one title x per list), not the old misalignment itself.
+- **2, sampler box sets 5618 / 5619** (`debug/sl-sampler-release-without-tracklist-*.html`): the block is
+  `Record N: "Album"` plus pressing / "Cat# …" / sleeve lines per paragraph, and no track line. The headers opened
+  media that stayed empty and were dropped; with no numbered line the unnumbered reading took the first paragraph's
+  three lines ("Aussie pressing", "Cat# CBS SBP 234758", the sleeve) for three tracks — the FRP's "Tracks (3)". Now
+  a block with headers and no track is `contents` (each header with its paragraph's lines, those lines no notes),
+  shown as one "Contents (no tracklists on the page)" table (Pos, Title, Cat. no., Details, `_slContentsRow()`); the
+  record gets a highlight ("6 records listed, without their tracklists") and a "Contents (6)" section, so the card
+  and window no longer say "The page has no tracklist." `_DP_PARSER_VERSION` 14 → 16 (15: the bracket header).
+
+Fixtures `detail-sl-collection-7457.html`, `-5618.html`, `-5619.html` (scripts/build-sl-item-fixtures.py). Specs: 8 new
+in `sl-tracklist-links.spec.js`; 7 new mutations in `scripts/mutations/sl-tracklist-links.json`, all fail as expected.
+Targeted run 2026-11-05T17:33:02 → 17:35:09+01:00 (NB-3641, Playwright 1.62.1): `tests/fixtures/sl-*` and
+`detail-preview*`, 227 passed. A test:full started 17:16:35 was stopped at 1,782/2,719 (0 failures) on vzell's
+request; no full run of this state yet.

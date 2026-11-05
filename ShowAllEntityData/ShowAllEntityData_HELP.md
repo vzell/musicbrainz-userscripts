@@ -3444,18 +3444,33 @@ cost nothing extra; logged out, the tables are as before. The MusicBrainz cell
 opens in the window on Space. On the bootleg lists, **Info file** links the
 bootleg's original info file: its card names the file, and Space reads it into
 the window. The CD and vinyl bootleg list has **PDF** (a link to the item
-page, where the PDFs are) and **Artwork**.
+page, where the PDFs are) and **Artwork**. Logged in, the collection and
+bootleg lists also get **ID**, the item's number on the site (linked to the
+item, with the site's edit pencil), sorted as a number.
+
+On the CD and vinyl bootleg list, **Label** links the label's own list on
+the site, and resting on it shows a card: how many CD and vinyl bootlegs
+the label has, the first of them and their covers; in its window every item
+links its page, with its own preview. The item page's
+*Release* card links it the same way. (The collection and bootleg lists
+have no label pages on the site.)
 
 **An item's own page** (`collection.php?item=…`, `bootlegs.php?item=…`,
 `brucelegs.php?item=…`) gets one button, **Tracklist**: the tracklist from the
 page itself, no request, one table per disc or record (a vinyl's sides A and B
 make Record 1). Bootlegs get **Take** ("#2") and **Note** ("partial")
 columns, the CD and vinyl bootlegs **Version** ("V1"), **Note** and
-**Length**, various-artists albums an **Artist** column. Above the tables:
+**Length**, various-artists albums an **Artist** column. A box set whose
+page lists its records without their tracklists (Record 1: "Greetings From
+Asbury Park N.J.", then its pressing, catalogue number and sleeve) gets one
+**Contents** table instead, a row per record; its preview counts the records
+and lists them. Above the tables:
 the item's facts (or, for a bootleg, the show and the recording), the runout
 etchings, its files, the notes, and its scans or artwork — one section per
 copy, with the site's captions, opening in the artwork viewer. **Original info
-file** starts closed and is read only when you open it. Logged in, a **Your
+file** starts closed and is read only when you open it. Resting on a picture
+shows it large; hold Shift for larger, and a click or Space opens the
+artwork viewer (on every non-MusicBrainz detail page). Logged in, a **Your
 collection** card shows the MusicBrainz link, Good scans, Kept in, the item
 number and the site's edit link, and **Private info** is shown, closed — it
 never appears in a preview. A CD or vinyl bootleg whose page lists several versions (pressings) also
@@ -3480,6 +3495,42 @@ read from the page's text, and the release it came out on; the studio
 recording; what the page lists), the pictures, and logged in **Private
 Info**, closed, never in a preview. **All versions** shows the versions
 alone, as one table.
+
+**Songs in the tracklists.** In an item's tracklist — already on the item's
+page as the site shows it, before any button —, its preview window and a
+song page's edition tables, each song links its page in the lyrics index. Only songs the site has a page for are linked — the script carries
+the site's list of songs — so another artist's song, an "Intro" or a
+Castiles cover stays plain text. A title written differently from the
+song's page ("4TH OF JULY, ASBURY PARK (SANDY)", "ROSALITA (COME OUT
+TONIGHT)", "(GET YOUR KICKS ON) ROUTE 66") is still found, and a medley
+("THUNDER ROAD / BADLANDS") links each of its songs, and "X aka Y" links
+the song by either name. On a song page, the site's own links stay as they
+are.
+
+On a **bootleg of one show**, the title links the song's main page, and a
+*this show* mark after it links the site's page of that very performance
+when there is one — for example the 5 Feb 2014 Perth bootleg's E Street
+Shuffle mark opens `theestreetshuffle_2014-02-05`. Each has its own
+preview. To know which performances have a page, the
+script reads the lyrics index once (its 32 letter pages, about one a
+second) and keeps it 30 days; opening the lyrics index with *Show all
+lyrics* keeps it current at no cost.
+
+Before each song, a **MusicBrainz work icon** links its work; resting the
+pointer on it shows MusicBrainz's card of the work, as for any MusicBrainz
+link on the site. A solid icon means the work's annotation on MusicBrainz links
+this song's page, or, logged in, that the item's MusicBrainz release (the
+link on your card) has it. A dashed icon was matched by title only.
+Several icons with a count: several works have this title — each icon is
+one of them. A song the site has no page for ("Circus Song") still gets its
+icon when MusicBrainz knows the work by that name or alias. The icons also
+appear in an item's preview window, there read when you open the window. To match, the script reads Bruce Springsteen's works from
+MusicBrainz once (16 requests, about 18 seconds; the icons show faded
+pulsing meanwhile) and keeps them 30 days. The cells' text, the filters and the
+sorting are unchanged by all of this. Each part has its own switch under
+⚙️ Settings → 🎸 springsteenlyrics.com: *Tracklists: link each song to its
+page*, *… link a bootleg's songs to the version of that show* and *…
+MusicBrainz work glyph before each song*.
 
 </details>
 

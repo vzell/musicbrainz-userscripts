@@ -1,0 +1,630 @@
+<title>SL Tracklist Links</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+  Mockups for org/springsteenlyrics.org, "* TODO URLify the tracklist to song URLs (SL and MB)"
+  (2026-11-05, branch feat/sl-tracklist-links). Data: real, from three read-only probes of
+  2026-11-05 (Env: 2026-11-05T01:22+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 · no browser):
+    scripts/probe-sl-song-index.py        -> debug/sl-song-index.json (all 32 letter pages)
+    scripts/probe-mb-bruce-works-sl.py    -> debug/mb-bruce-works-sl.json (1,587 works, inc=aliases+annotation)
+    scripts/probe-sl-tracklist-resolve.py (offline, 15 saved item pages)
+  Item pages: debug/sl-collection-10163-detail.html (vzell's example), tests/fixtures/detail-sl-bootlegs-6739.html.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: the design bench of sl-song-mockups.html (house cool-slate palette). One tab per
+   question; each tab is a mock browser window with notes beside it. The mocked site page is
+   light in both themes, as springsteenlyrics.com is. */
+:root {
+    --bg: #e9edf1;
+    --surface: #f8fafc;
+    --ink: #18202b;
+    --muted: #556070;
+    --line: #cfd6df;
+    --accent: #24527f;
+    --accent-ink: #ffffff;
+    --accent-soft: #dbe6f1;
+    --ok: #2c7347;
+    --ok-soft: #dcefe2;
+    --warn: #8f5a00;
+    --warn-soft: #f6e8cc;
+    --bad: #a3322b;
+    --bad-soft: #f6dfdc;
+    --shadow: 0 1px 0 rgba(20, 30, 45, 0.05), 0 12px 32px -18px rgba(20, 30, 45, 0.35);
+
+    --site-bg: #ffffff;
+    --site-ink: #222222;
+    --site-dim: #6b6b6b;
+    --site-line: #dddddd;
+    --site-head: #eceef1;
+    --site-even: #f6f7f9;
+    --site-link: #1d4f96;
+    --site-chrome: #f1f3f6;
+    --site-chrome-ink: #4d5664;
+    --site-h3: #f0f3f7;
+    --mb: #ba478f;
+    --mb-soft: #f5e3ee;
+    --sl: #b8312f;
+    --tt-bg: #fffdf6;
+    --tt-line: #d9cfae;
+    --tt-ink: #2a2620;
+    --tt-dim: #7a7160;
+
+    --f-display: "Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+    --f-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, Consolas, "Courier New", monospace;
+    --f-site: "Open Sans", Arial, Helvetica, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg: #11161d;
+        --surface: #19212b;
+        --ink: #e2e7ee;
+        --muted: #9aa5b4;
+        --line: #2c3746;
+        --accent: #86b4e2;
+        --accent-ink: #0e1620;
+        --accent-soft: #1f3248;
+        --ok: #74c494;
+        --ok-soft: #1c3326;
+        --warn: #e3ac4c;
+        --warn-soft: #3a2d14;
+        --bad: #ef8a80;
+        --bad-soft: #3d1f1c;
+        --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 14px 34px -16px rgba(0, 0, 0, 0.7);
+        color-scheme: dark;
+    }
+}
+:root[data-theme="dark"] {
+    --bg: #11161d;
+    --surface: #19212b;
+    --ink: #e2e7ee;
+    --muted: #9aa5b4;
+    --line: #2c3746;
+    --accent: #86b4e2;
+    --accent-ink: #0e1620;
+    --accent-soft: #1f3248;
+    --ok: #74c494;
+    --ok-soft: #1c3326;
+    --warn: #e3ac4c;
+    --warn-soft: #3a2d14;
+    --bad: #ef8a80;
+    --bad-soft: #3d1f1c;
+    --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 14px 34px -16px rgba(0, 0, 0, 0.7);
+    color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+    background: var(--bg); color: var(--ink); font: 15px/1.55 var(--f-body); margin: 0;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 0 64px;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 1280px; margin: 0 auto; display: grid; gap: 24px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(28px, 4vw, 40px); font-weight: 800; font-stretch: 85%; }
+h2 { font-size: 22px; font-weight: 750; font-stretch: 90%; }
+p { margin: 0; max-width: 76ch; }
+code { font-family: var(--f-mono); font-size: 0.87em; }
+.eyebrow { font: 600 11px/1 var(--f-body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+header.top { padding-block: 32px 0; display: grid; gap: 12px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); min-width: 0; }
+
+/* Numbers strip */
+.nums { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.num { padding: 14px 16px; display: grid; gap: 6px; align-content: start; }
+.num b { font: 800 30px/1 var(--f-display); font-stretch: 80%; font-variant-numeric: tabular-nums; color: var(--accent); }
+.num b small { font-size: 16px; color: var(--muted); font-weight: 600; }
+.num span { font-size: 13.5px; color: var(--muted); }
+.num .bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--line); }
+.num .bar i { display: block; height: 100%; }
+
+/* Tabs */
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 10px; border-bottom: 1px solid var(--line); }
+.tabs button, .sw button { font: 600 13px/1 var(--f-body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 9px 14px; cursor: pointer; }
+.tabs button[aria-pressed="true"], .sw button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.tabs button:focus-visible, .sw button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sw { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
+.sw button { padding: 6px 10px; font-size: 12.5px; }
+
+/* Bench: browser + notes */
+.bench { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 20px; align-items: start; }
+@media (max-width: 980px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+.notes { padding: 16px 18px; display: grid; gap: 12px; font-size: 14px; }
+.notes h3 { font-size: 15px; }
+.notes ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.q { border-top: 1px solid var(--line); padding-top: 12px; display: grid; gap: 6px; }
+.q b.qn { font: 700 12px/1 var(--f-body); color: var(--accent-ink); background: var(--accent); border-radius: 4px; padding: 3px 6px; justify-self: start; }
+.rec { font-size: 13px; color: var(--ok); background: var(--ok-soft); border-radius: 6px; padding: 6px 9px; }
+
+/* Mock browser window */
+.browser { overflow: hidden; }
+.chrome { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--site-chrome); color: var(--site-chrome-ink); border-bottom: 1px solid var(--site-line); font: 12px/1 var(--f-mono); }
+.chrome .dots { display: flex; gap: 5px; }
+.chrome .dots i { width: 10px; height: 10px; border-radius: 50%; background: #c9ced6; display: block; }
+.chrome .url { background: #fff; border: 1px solid var(--site-line); border-radius: 5px; padding: 5px 9px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #333; }
+.site { background: var(--site-bg); color: var(--site-ink); font: 13px/1.45 var(--f-site); padding: 14px 16px 22px; display: grid; gap: 12px; overflow-x: auto; }
+.site .nav { display: flex; gap: 14px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #fff; background: #2b2b2b; padding: 8px 12px; margin: -14px -16px 0; }
+.site .nav span:first-child { color: var(--sl); }
+.site .tbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; border-bottom: 2px solid var(--site-line); padding-bottom: 8px; }
+.site .tbar h4 { margin: 0; font: 700 19px/1.2 var(--f-site); }
+.seg { display: inline-flex; border: 1px solid #b9c2cd; border-radius: 5px; overflow: hidden; font: 600 11.5px/1 var(--f-body); }
+.seg span { padding: 6px 9px; background: #f4f6f9; color: #2d3946; border-right: 1px solid #b9c2cd; }
+.seg span:last-child { border-right: 0; }
+.seg span.on { background: #e6eef7; }
+.site .sub { color: var(--site-dim); font-size: 12.5px; }
+.site h5 { margin: 0; font: 700 15px/1.2 var(--f-site); border-bottom: 1px solid var(--site-line); padding-bottom: 4px; }
+.site h6 { margin: 0; font: 700 13px/1.2 var(--f-site); background: var(--site-h3); padding: 5px 8px; border-left: 3px solid #9fb0c4; }
+.site .chip { font: 600 11px/1 var(--f-body); border-radius: 999px; padding: 4px 8px; background: var(--accent-soft); color: var(--accent); }
+.site .chip.mb { background: var(--mb-soft); color: var(--mb); }
+.site .chip.wait { background: #eef0f3; color: #59626e; }
+
+/* Our table */
+table.tbl { border-collapse: collapse; width: 100%; min-width: 520px; font-size: 12.5px; }
+table.tbl th { background: var(--site-head); text-align: left; padding: 5px 8px; border: 1px solid var(--site-line); font-weight: 700; white-space: nowrap; }
+table.tbl td { padding: 4px 8px; border: 1px solid var(--site-line); vertical-align: middle; }
+table.tbl tr:nth-child(even) td { background: var(--site-even); }
+table.tbl td.pos { font-family: var(--f-mono); color: var(--site-dim); width: 42px; }
+.tw { display: inline-flex; align-items: center; gap: 6px; position: relative; }
+a.song { color: var(--site-link); text-decoration: none; border-bottom: 1px solid rgba(29, 79, 150, 0.28); }
+a.song:hover { border-bottom-color: var(--site-link); }
+a.song.ver { border-bottom-style: solid; }
+a.song.guess { border-bottom: 1px dashed #c26a63; color: #8b2e28; }
+.vmark { font: 600 10px/1 var(--f-body); color: #2c7347; background: #dcefe2; border-radius: 3px; padding: 2px 4px; }
+.how { font: 500 10.5px/1 var(--f-mono); color: #6f7885; background: #eef1f4; border-radius: 3px; padding: 2px 4px; }
+.how.exc { color: #8f5a00; background: #f6e8cc; }
+.none { color: var(--site-ink); }
+
+/* MusicBrainz work glyph */
+.wg { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 4px; flex: none; position: relative; cursor: pointer; }
+.wg svg { width: 15px; height: 15px; display: block; }
+.wg.annot { }
+.wg.title { outline: 1.5px dashed #c48ab0; outline-offset: -1px; }
+.wg.ambig::after { content: attr(data-n); position: absolute; right: -6px; top: -6px; font: 700 9px/1 var(--f-body); color: #fff; background: #8f5a00; border-radius: 999px; padding: 2px 4px; }
+.wg.wait svg { opacity: 0.25; }
+.wg.slot { width: 18px; }
+td.mbw { white-space: nowrap; }
+td.mbw a { color: var(--mb); text-decoration: none; display: inline-flex; gap: 5px; align-items: center; }
+td.mbw .dim { color: #8a919b; font-style: italic; }
+
+/* Hover cards (Liner notes look) */
+.card { position: absolute; left: 0; top: calc(100% + 6px); z-index: 4; width: 330px; max-width: 80vw; background: var(--tt-bg); color: var(--tt-ink); border: 1px solid var(--tt-line); border-radius: 6px; box-shadow: 0 14px 30px -14px rgba(40, 30, 10, 0.45); padding: 10px 12px; font: 12.5px/1.45 var(--f-body); display: none; gap: 6px; }
+.tw:hover > .card, .tw:focus-within > .card, .wg:hover > .card, .wg:focus-within > .card, .card.pin { display: grid; }
+.card .k { font: 600 10px/1 var(--f-body); letter-spacing: 0.1em; text-transform: uppercase; color: var(--tt-dim); display: flex; gap: 6px; align-items: center; }
+.card .t { font: 700 14px/1.25 var(--f-display); }
+.card dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; }
+.card dt { color: var(--tt-dim); }
+.card dd { margin: 0; }
+.card .foot { color: var(--tt-dim); font-size: 11.5px; border-top: 1px solid var(--tt-line); padding-top: 5px; }
+.card .warn { color: #8f5a00; }
+.card ol { margin: 0; padding-left: 18px; }
+
+/* Legend + misc */
+.legend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 12.5px; color: var(--site-dim); align-items: center; }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+.cmp { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.opt { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; display: grid; gap: 8px; background: var(--surface); font-size: 13.5px; align-content: start; }
+.opt h3 { font-size: 15px; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.pill { font: 600 11px/1 var(--f-body); padding: 4px 8px; border-radius: 999px; white-space: nowrap; }
+.pill.yes { background: var(--ok-soft); color: var(--ok); }
+.pill.alt { background: var(--accent-soft); color: var(--accent); }
+.pill.no { background: var(--bad-soft); color: var(--bad); }
+.opt ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.flow { display: grid; gap: 8px; font-size: 13.5px; }
+.flow .step { display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: start; }
+.flow .step b { font: 800 18px/1 var(--f-display); color: var(--accent); text-align: right; padding-top: 2px; }
+.qs { padding: 18px 20px; display: grid; gap: 14px; }
+.qs ol { margin: 0; padding-left: 22px; display: grid; gap: 12px; }
+.qs li p { font-size: 14px; }
+.qs .rec { display: inline-block; margin-top: 4px; }
+@media (prefers-reduced-motion: no-preference) { .card { animation: pop 120ms ease-out; } @keyframes pop { from { opacity: 0; transform: translateY(-3px); } } }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+        <symbol id="g-work" viewBox="0 0 16 16"><path d="M3 1.5h7l3 3V14.5H3z" fill="#fbeaf4" stroke="#ba478f" stroke-width="1.2"/><path d="M10 1.5v3h3" fill="none" stroke="#ba478f" stroke-width="1.2"/><path d="M9.6 6.3v4.6" stroke="#ba478f" stroke-width="1.2" fill="none"/><path d="M9.6 6.3l2 .8" stroke="#ba478f" stroke-width="1.2" fill="none"/><ellipse cx="8.2" cy="11" rx="1.6" ry="1.2" fill="#ba478f"/></symbol>
+    </defs>
+</svg>
+
+<div class="wrap">
+<header class="top">
+    <span class="eyebrow">springsteenlyrics.com · item pages · Tracklist view</span>
+    <h1>Song links and MusicBrainz works in SL tracklists</h1>
+    <p>Each title in an item's tracklist links to its song page on springsteenlyrics.com. A MusicBrainz work glyph in front of it opens the work's card on hover. All numbers below come from probes of 5 Nov 2026: the whole SL lyrics index, Bruce Springsteen's 1,587 works on MusicBrainz, and 15 saved item pages.</p>
+</header>
+
+<section class="nums" aria-label="Probe results">
+    <div class="panel num">
+        <b>210<small> / 282</small></b>
+        <span>tracklist lines on 15 saved item pages resolve to an SL song. All 72 misses are songs SL has no page for: other artists on VA sides, Castiles covers, "Intro".</span>
+        <div class="bar"><i style="width:74.5%;background:var(--ok)"></i></div>
+    </div>
+    <div class="panel num">
+        <b>1,305<small> / 1,334</small></b>
+        <span>SL base titles whose slug the rule derives (drop a trailing "(…)", keep a–z and 0–9). 4 more with a leading "(…)" dropped; 25 need the exception list.</span>
+        <div class="bar"><i style="width:97.8%;background:var(--ok)"></i></div>
+    </div>
+    <div class="panel num">
+        <b>732<small> + 412</small></b>
+        <span>SL base songs with an MB work: 732 exact (the work's annotation links the SL page), 412 by a unique title. 29 ambiguous, 208 none (mostly covers).</span>
+        <div class="bar"><i style="width:54.9%;background:var(--mb)"></i><i style="width:30.9%;background:#d9a3c6"></i><i style="width:2.2%;background:var(--warn)"></i></div>
+    </div>
+    <div class="panel num">
+        <b>200<small> → "does not exist!"</small></b>
+        <span>An unknown slug gets HTTP 200 and an error page (checked with <code>song=seemyfriends</code>). A link built by the rule alone can lead nowhere, so links need a list of known slugs.</span>
+    </div>
+</section>
+
+<nav class="tabs" aria-label="Mockups">
+    <button type="button" data-tab="links" aria-pressed="true">1 · Song links</button>
+    <button type="button" data-tab="versions" aria-pressed="false">2 · This show's version</button>
+    <button type="button" data-tab="mb" aria-pressed="false">3 · MusicBrainz works</button>
+    <button type="button" data-tab="when" aria-pressed="false">4 · Sources and timing</button>
+    <button type="button" data-tab="questions" aria-pressed="false">Questions</button>
+</nav>
+
+<!-- ============================== 1 · Song links ============================== -->
+<section id="tab-links" class="bench">
+    <div class="panel browser">
+        <div class="chrome"><span class="dots"><i></i><i></i><i></i></span><span class="url">https://www.springsteenlyrics.com/collection.php?item=10163</span></div>
+        <div class="site">
+            <div class="nav"><span>SpringsteenLyrics</span><span>Lyrics</span><span>Collection</span><span>Bootlegs</span><span>CD &amp; Vinyl bootlegs</span></div>
+            <div class="tbar"><h4>The Wild, the Innocent &amp; the E Street Shuffle</h4><span class="seg"><span class="on">Show the tracklist</span><span>☰ SAED</span></span></div>
+            <div class="sub">~ LP (Columbia PC 32432 · USA · –)</div>
+            <div class="sw" role="group" aria-label="Link source">
+                <span>Variant:</span>
+                <button type="button" data-v1="known" aria-pressed="true">A · known slugs only</button>
+                <button type="button" data-v1="rule" aria-pressed="false">B · rule only</button>
+                <button type="button" data-v1="how" aria-pressed="false">C · A with "how" tags</button>
+            </div>
+            <h5>Tracklist</h5>
+            <h6>Record 1</h6>
+            <table class="tbl" id="t10163">
+                <thead><tr><th>Pos</th><th>Title</th><th>Version / note</th></tr></thead>
+                <tbody>
+                    <tr><td class="pos">A1</td><td><span class="tw"><a class="song" href="https://www.springsteenlyrics.com/lyrics.php?song=theestreetshuffle">The E Street Shuffle</a><span class="how">rule</span>
+                        <span class="card"><span class="k">springsteenlyrics.com · Song</span><span class="t">THE E STREET SHUFFLE</span><dl><dt>Version</dt><dd>Album version</dd><dt>Lyrics</dt><dd>yes</dd><dt>Versions</dt><dd>live, outtakes and covers on its page</dd></dl><span class="foot">lyrics.php?song=theestreetshuffle · Space opens the window</span></span></span></td><td></td></tr>
+                    <tr><td class="pos">A2</td><td><span class="tw"><a class="song" href="https://www.springsteenlyrics.com/lyrics.php?song=4thofjulyasburypark">4th of July, Asbury Park (Sandy)</a><span class="how">rule</span>
+                        <span class="card"><span class="k">springsteenlyrics.com · Song</span><span class="t">4TH OF JULY, ASBURY PARK (SANDY)</span><dl><dt>Slug</dt><dd><code>4thofjulyasburypark</code>: the trailing "(SANDY)" is dropped by the rule</dd></dl><span class="foot">vzell's example of an "assoc list" title. The rule covers it.</span></span></span></td><td></td></tr>
+                    <tr><td class="pos">A3</td><td><span class="tw"><a class="song" href="https://www.springsteenlyrics.com/lyrics.php?song=kittysback">Kitty's Back</a><span class="how">rule</span></span></td><td></td></tr>
+                    <tr><td class="pos">A4</td><td><span class="tw"><a class="song" href="https://www.springsteenlyrics.com/lyrics.php?song=wildbillyscircusstory">Wild Billy's Circus Story</a><span class="how">rule</span></span></td><td></td></tr>
+                    <tr><td class="pos">B1</td><td><span class="tw"><a class="song" href="https://www.springsteenlyrics.com/lyrics.php?song=incidenton57thstreet">Incident on 57th Street</a><span class="how">rule</span></span></td><td></td></tr>
+                    <tr><td class="pos">B2</td><td><span class="tw"><a class="song" href="https://www.springsteenlyrics.com/lyrics.php?song=rosalita">Rosalita (Come Out Tonight)</a><span class="how">rule</span></span></td><td></td></tr>
+                    <tr><td class="pos">B3</td><td><span class="tw"><a class="song" href="https://www.springsteenlyrics.com/lyrics.php?song=newyorkcityserenade">New York City Serenade</a><span class="how">rule</span></span></td><td></td></tr>
+                </tbody>
+            </table>
+            <h6>Exceptions and misses from other pages</h6>
+            <table class="tbl" id="texc">
+                <thead><tr><th>Pos</th><th>Title</th><th>Version / note</th></tr></thead>
+                <tbody>
+                    <tr><td class="pos">07</td><td><span class="tw"><a class="song" href="https://www.springsteenlyrics.com/lyrics.php?song=route66">(Get Your Kicks On) Route 66</a><span class="how">rule</span></span></td><td>leading "(…)" dropped</td></tr>
+                    <tr><td class="pos">12</td><td><span class="tw"><a class="song" data-rule="comeon" href="https://www.springsteenlyrics.com/lyrics.php?song=comeonletsgotonight">Come On (Let's Go Tonight)</a><span class="how exc">exception</span></span></td><td>the site keeps the "(…)"</td></tr>
+                    <tr><td class="pos">03</td><td><span class="tw"><a class="song" data-rule="fourtymilesofbadroad" href="https://www.springsteenlyrics.com/lyrics.php?song=fortymilesofbadroad">Fourty Miles of Bad Road</a><span class="how exc">exception</span></span></td><td>the site's title is misspelt, its slug is not</td></tr>
+                    <tr><td class="pos">05</td><td><span class="tw"><a class="song" data-rule="angeleyes" href="https://www.springsteenlyrics.com/lyrics.php?song=angeleyes-sinatra">Angel Eyes (Frank Sinatra)</a><span class="how exc">exception</span></span></td><td>two songs titled ANGEL EYES</td></tr>
+                    <tr><td class="pos">01</td><td><span class="tw"><span class="none" data-rule="intro">Intro</span></span></td><td>no SL page</td></tr>
+                    <tr><td class="pos">04</td><td><span class="tw"><span class="none" data-rule="seemyfriends">See My Friends</span></span></td><td>no SL page (Castiles, 1967)</td></tr>
+                </tbody>
+            </table>
+            <div class="legend"><span><a class="song" href="#links">Title</a> a known song page</span><span><a class="song guess" href="#links">Title</a> rule only, page may not exist</span><span><span class="how">rule</span> / <span class="how exc">exception</span> how the slug was found</span></div>
+        </div>
+    </div>
+    <aside class="panel notes">
+        <h3>What changes</h3>
+        <ul>
+            <li>The Title cell's text is wrapped in a link to <code>lyrics.php?song=SLUG</code>. The text, the filter, the sort and the 📊 dropdown see the same title as now; the "As written on the site" tooltip stays.</li>
+            <li>Hover shows the SL song card that already exists (POH); Space opens its window.</li>
+            <li>The link is built when the table is built, from the page's own text: no request.</li>
+            <li>Both of vzell's "assoc list" examples (A2, B2) are covered by the rule. The real exceptions are 25 titles, such as <code>comeonletsgotonight</code>, <code>fortymilesofbadroad</code>, <code>angeleyes-sinatra</code>.</li>
+        </ul>
+        <div class="q"><b class="qn">Q1</b><p>Where does the list of known slugs come from?</p>
+            <p><b>A</b>: an embedded list of the 1,381 base slugs (about 18 KB), rebuilt by a script from the lyrics index. A title not in it stays plain text. <b>B</b>: the rule alone, with a dashed link for an unverified guess. <b>C</b>: A, with a small tag naming the source of each link.</p>
+            <p class="rec">Recommended: A. A new SL song stays unlinked until the list is rebuilt; Q2's runtime index fills that gap.</p></div>
+    </aside>
+</section>
+
+<!-- ============================== 2 · This show's version ============================== -->
+<section id="tab-versions" class="bench" hidden>
+    <div class="panel browser">
+        <div class="chrome"><span class="dots"><i></i><i></i><i></i></span><span class="url">https://www.springsteenlyrics.com/bootlegs.php?item=6739</span></div>
+        <div class="site">
+            <div class="nav"><span>SpringsteenLyrics</span><span>Lyrics</span><span>Collection</span><span>Bootlegs</span><span>CD &amp; Vinyl bootlegs</span></div>
+            <div class="tbar"><h4>05 Feb 2014 · Perth Arena</h4><span class="seg"><span class="on">Show the tracklist</span><span>☰ SAED</span></span><span class="chip">SL song index: cached 3 days ago</span></div>
+            <div class="sub">~ Bootleg (05 Feb 2014: Perth Arena, Perth, Australia)</div>
+            <div class="sw" role="group" aria-label="Version links">
+                <span>Variant:</span>
+                <button type="button" data-v2="ver" aria-pressed="true">A · link this show's version</button>
+                <button type="button" data-v2="base" aria-pressed="false">B · always the song's main page</button>
+            </div>
+            <h5>Tracklist</h5>
+            <h6>Disc 1</h6>
+            <table class="tbl" id="t6739">
+                <thead><tr><th>Pos</th><th>Title</th><th>Take</th><th>Note</th></tr></thead>
+                <tbody>
+                    <tr><td class="pos">01</td><td><span class="tw"><span class="none">Intro</span></span></td><td></td><td></td></tr>
+                    <tr><td class="pos">02</td><td><span class="tw"><a class="song" href="https://www.springsteenlyrics.com/lyrics.php?song=frankiefellinlove">Frankie Fell in Love</a></span></td><td></td><td></td></tr>
+                    <tr><td class="pos">03</td><td><span class="tw"><a class="song" href="https://www.springsteenlyrics.com/lyrics.php?song=highhopes">High Hopes</a></span></td><td></td><td></td></tr>
+                    <tr><td class="pos">04</td><td><span class="tw"><a class="song" href="https://www.springsteenlyrics.com/lyrics.php?song=justlikefirewould">Just Like Fire Would</a></span></td><td></td><td></td></tr>
+                    <tr><td class="pos">05</td><td><span class="tw"><a class="song" href="https://www.springsteenlyrics.com/lyrics.php?song=badlands">Badlands</a></span></td><td></td><td></td></tr>
+                    <tr><td class="pos">07</td><td><span class="tw"><a class="song ver" data-base="theestreetshuffle" href="https://www.springsteenlyrics.com/lyrics.php?song=theestreetshuffle_2014-02-05">The E Street Shuffle</a><span class="vmark">this show</span>
+                        <span class="card"><span class="k">springsteenlyrics.com · Song</span><span class="t">THE E STREET SHUFFLE</span><dl><dt>Version</dt><dd>Live 05 Feb 2014 version</dd><dt>Show</dt><dd>Perth Arena, Perth, Australia</dd><dt>Main page</dt><dd><code>song=theestreetshuffle</code></dd></dl><span class="foot">The index has <code>theestreetshuffle_2014-02-05</code>, so the link opens this show's page.</span></span></span></td><td></td><td></td></tr>
+                    <tr><td class="pos">08</td><td><span class="tw"><a class="song ver" data-base="kittysback" href="https://www.springsteenlyrics.com/lyrics.php?song=kittysback_2014-02-05">Kitty's Back</a><span class="vmark">this show</span></span></td><td></td><td></td></tr>
+                    <tr><td class="pos">09</td><td><span class="tw"><a class="song" href="https://www.springsteenlyrics.com/lyrics.php?song=wreckingball">Wrecking Ball</a></span></td><td></td><td></td></tr>
+                </tbody>
+            </table>
+            <h6>Disc 2</h6>
+            <table class="tbl">
+                <thead><tr><th>Pos</th><th>Title</th><th>Take</th><th>Note</th></tr></thead>
+                <tbody>
+                    <tr><td class="pos">08</td><td><span class="tw"><a class="song ver" data-base="foryou" href="https://www.springsteenlyrics.com/lyrics.php?song=foryou_2014-02-05">For You</a><span class="vmark">this show</span></span></td><td></td><td>solo piano</td></tr>
+                    <tr><td class="pos">09</td><td><span class="tw"><a class="song" href="https://www.springsteenlyrics.com/lyrics.php?song=theghostoftomjoad">The Ghost of Tom Joad</a></span></td><td></td><td></td></tr>
+                    <tr><td class="pos">02</td><td><span class="tw"><a class="song" href="https://www.springsteenlyrics.com/lyrics.php?song=ramrod">Ramrod</a></span></td><td></td><td></td></tr>
+                </tbody>
+            </table>
+            <div class="legend"><span><span class="vmark">this show</span> the link opens the song's page of this date (<code>&lt;slug&gt;_2014-02-05</code>)</span></div>
+        </div>
+    </div>
+    <aside class="panel notes">
+        <h3>What changes</h3>
+        <ul>
+            <li>SL keeps a page per performance: <code>becausethenight_1978-07-07</code>. The index has 1,464 dated versions (+30 early, +24 late shows), 229 <code>_original</code>, 64 <code>_unofficialN</code>, 33 home demos.</li>
+            <li>A bootleg (and a dated live item) knows its show date. When the index has <code>&lt;slug&gt;_&lt;date&gt;</code>, the title links that page and carries a "this show" mark; its card names the main page too.</li>
+            <li>In the 15 saved pages: 4 such links (bootleg 2567: Rosalita 21 Jun 1984; bootleg 6739: three songs of 5 Feb 2014).</li>
+            <li>Early/late shows (<code>_1975-10-18-early</code>) follow the item's own Show qualifier.</li>
+        </ul>
+        <div class="q"><b class="qn">Q2</b><p>Link this show's version when SL has one?</p>
+            <p>It needs every slug including versions (3,552), not only the 1,381 base ones. That list is too big to embed; the script would keep it as a runtime index in IndexedDB, filled by the lyrics index's "Show all lyrics" run or loaded once on demand (32 same-origin pages, about 40 s), 30 days.</p>
+            <p class="rec">Recommended: A, from the runtime index when it is there; without it, the main page (Q1's list).</p></div>
+    </aside>
+</section>
+
+<!-- ============================== 3 · MusicBrainz works ============================== -->
+<section id="tab-mb" class="bench" hidden>
+    <div class="panel browser">
+        <div class="chrome"><span class="dots"><i></i><i></i><i></i></span><span class="url">https://www.springsteenlyrics.com/collection.php?item=10163</span></div>
+        <div class="site">
+            <div class="nav"><span>SpringsteenLyrics</span><span>Lyrics</span><span>Collection</span><span>Bootlegs</span><span>CD &amp; Vinyl bootlegs</span></div>
+            <div class="tbar"><h4>The Wild, the Innocent &amp; the E Street Shuffle</h4><span class="seg"><span class="on">Show the tracklist</span><span>☰ SAED</span></span><span class="chip mb">MB works: 1,587 · cached</span></div>
+            <div class="sw" role="group" aria-label="MusicBrainz work display">
+                <span>Variant:</span>
+                <button type="button" data-v3="glyph" aria-pressed="true">A · glyph before the title</button>
+                <button type="button" data-v3="col" aria-pressed="false">B · "MB work" column</button>
+                <button type="button" data-v3="both" aria-pressed="false">C · both</button>
+            </div>
+            <h5>Tracklist</h5>
+            <h6>Record 1</h6>
+            <table class="tbl" id="tmb">
+                <thead><tr><th>Pos</th><th>Title</th><th class="c-mbw">MB work</th><th>Version / note</th></tr></thead>
+                <tbody></tbody>
+            </table>
+            <h6>States elsewhere</h6>
+            <table class="tbl" id="tmb2">
+                <thead><tr><th>Pos</th><th>Title</th><th class="c-mbw">MB work</th><th>Version / note</th></tr></thead>
+                <tbody></tbody>
+            </table>
+            <div class="legend">
+                <span><span class="wg annot"><svg><use href="#g-work"/></svg></span> the work's annotation links this SL song</span>
+                <span><span class="wg title"><svg><use href="#g-work"/></svg></span> matched by title only</span>
+                <span><span class="wg ambig" data-n="2"><svg><use href="#g-work"/></svg></span> several works with this title</span>
+                <span><span class="wg wait"><svg><use href="#g-work"/></svg></span> catalogue loading</span>
+            </div>
+        </div>
+    </div>
+    <aside class="panel notes">
+        <h3>What changes</h3>
+        <ul>
+            <li>The glyph is a plain <code>musicbrainz.org/work/MBID</code> link. On SL every such link in our tables already gets MusicBrainz's own card and window, so hovering shows the work's card with no new reader.</li>
+            <li>Matching, in order: a work whose annotation links this SL song (old <code>/lyrics/&lt;l&gt;/&lt;slug&gt;.php</code> or <code>lyrics.php?song=</code>), then exactly one work with this title or alias. On the 15 saved pages: 208 of the 210 SL songs match, 206 by annotation.</li>
+            <li>A title match is less sure: MB's "Wild Billy's Circus Story" has no SL link in its annotation, so it is dashed.</li>
+            <li>The column (B) is filterable and sortable (exact / title / several / none) and has its own 📊 section; the glyph (A) keeps the table as narrow as now.</li>
+        </ul>
+        <div class="q"><b class="qn">Q3</b><p>Glyph (A), column (B) or both (C)?</p>
+            <p class="rec">Recommended: A, as you suggested. B is worth it only if you want to filter "songs without an MB work".</p></div>
+        <div class="q"><b class="qn">Q4</b><p>Show title-only matches (dashed) and several candidates (count badge, the card lists them), or only exact annotation matches?</p>
+            <p class="rec">Recommended: show all three states; the card says how it matched.</p></div>
+    </aside>
+</section>
+
+<!-- ============================== 4 · Sources and timing ============================== -->
+<section id="tab-when" class="bench" hidden>
+    <div class="panel" style="padding:18px 20px;display:grid;gap:18px;min-width:0">
+        <h2>Where the MB work comes from</h2>
+        <div class="cmp">
+            <div class="opt">
+                <h3>Bruce's work catalogue <span class="pill yes">recommended</span></h3>
+                <p><code>/ws/2/work?artist=70248960…&amp;inc=aliases+annotation</code>, 100 per request.</p>
+                <ul>
+                    <li>16 requests, about 18 s at MusicBrainz's 1 request/s. Measured: 01:23:54 → 01:24:53 CET with a 503 retry.</li>
+                    <li>Kept in IndexedDB for 30 days, like the "Recording of" work lists; every later item page is instant.</li>
+                    <li>Gives SL slug → work exactly (752 annotated works) and title → works for the rest.</li>
+                    <li>Its own cache entry: MusicBrainz's "Recording of" list keeps its requests and data unchanged.</li>
+                </ul>
+            </div>
+            <div class="opt">
+                <h3>The item's MB release <span class="pill alt">add-on</span></h3>
+                <p><code>/ws/2/release/MBID?inc=recordings+recording-level-rels+work-rels</code></p>
+                <ul>
+                    <li>One request; the release's own recordings give the work per track. Probed on Live/1975–85: 40 tracks, 40 works.</li>
+                    <li>Needs the release MBID. Logged in, the item card has your MusicBrainz link. A url lookup of the item's address mostly fails: MB stores SL item URLs as entered, e.g. <code>http://www.springsteenlyrics.com/collection.php?item=4994&amp;category=album&amp;pg=4</code>, and 10163 has none.</li>
+                    <li>Covers and live versions match exactly here, where a title match is unsure.</li>
+                </ul>
+            </div>
+            <div class="opt">
+                <h3>A search per title <span class="pill no">not proposed</span></h3>
+                <ul>
+                    <li>One request per track (1 s each), fuzzy, and many hits for a cover title.</li>
+                    <li>Would only help the 208 SL songs that are not in Bruce's works, mostly covers of other writers.</li>
+                </ul>
+            </div>
+        </div>
+        <h2>When it is asked</h2>
+        <div class="flow">
+            <div class="step"><b>1</b><p>Press "Show the tracklist". The SL links are in the table at once.</p></div>
+            <div class="step"><b>2</b><p>Catalogue cached: the glyphs are built with the table, no request. Not cached: the glyph slots show faded, the progress popup reads "MusicBrainz works 3 / 16", and the glyphs fill in when it is done.</p></div>
+            <div class="step"><b>3</b><p>Logged in with an MB release on the card: one more request, and that release's works replace title matches.</p></div>
+        </div>
+        <div class="cmp">
+            <div class="opt"><h3>Q5 · automatic <span class="pill yes">recommended</span></h3><p>Under a new setting <code>sa_sl_mb_works</code> (on by default, as every SL setting): the catalogue loads after the first render and is cached.</p></div>
+            <div class="opt"><h3>Q5 · on request</h3><p>A ▶ MB button in the Title header, as Brucebase's MB-Event column has. Nothing is asked of MusicBrainz until you press it.</p></div>
+        </div>
+    </div>
+    <aside class="panel notes">
+        <h3>Where else</h3>
+        <ul>
+            <li><b>The item's card and window</b> (POH) on any host, MusicBrainz included: its tracklist could link the songs too.</li>
+            <li><b>The song page's edition tables</b> (<code>sl-song</code>, "Releases and versions"): other songs of the same release.</li>
+            <li><b>Medleys</b>: "ROULETTE / outro", "Dear Mr. Fantasy - Hey Jude": a link per part when each part is a known song.</li>
+            <li><b>Various-artists sides</b> (item 9685): only titles found in the slug list get a link, so Ted Nugent's songs stay plain.</li>
+        </ul>
+        <div class="q"><b class="qn">Q6</b><p>Use your MB release link (logged in) as the first source?</p><p class="rec">Recommended: yes, as a second step after the catalogue.</p></div>
+        <div class="q"><b class="qn">Q7</b><p>Which other places in this branch?</p><p class="rec">Recommended: item pages and the item window's tracklist now; the song page's editions and medleys later.</p></div>
+    </aside>
+</section>
+
+<!-- ============================== Questions ============================== -->
+<section id="tab-questions" class="panel qs" hidden>
+    <h2>Questions</h2>
+    <ol>
+        <li><p><b>Known slugs.</b> A: an embedded list of the 1,381 base slugs, rebuilt by a script; B: the rule alone; C: A with "how" tags.</p><span class="rec">Recommended: A</span></li>
+        <li><p><b>This show's version.</b> Link <code>&lt;slug&gt;_&lt;date&gt;</code> when SL has it (from a runtime index of all 3,552 slugs, cached 30 days, filled by "Show all lyrics" or on demand)?</p><span class="rec">Recommended: yes</span></li>
+        <li><p><b>MB work display.</b> A: glyph before the title; B: an "MB work" column; C: both.</p><span class="rec">Recommended: A</span></li>
+        <li><p><b>Unsure matches.</b> Show title-only matches (dashed) and several candidates (badge), or exact annotation matches only?</p><span class="rec">Recommended: show all, the card says how</span></li>
+        <li><p><b>When MB is asked.</b> Automatically after the render (setting <code>sa_sl_mb_works</code>, on), or a ▶ MB button?</p><span class="rec">Recommended: automatically, cached 30 days</span></li>
+        <li><p><b>Your MB release link.</b> When logged in and the card links a release, read its works per track (one request) over the title matches?</p><span class="rec">Recommended: yes, as a second step</span></li>
+        <li><p><b>Scope of this branch.</b> Item pages, the item window's tracklist, the song page's edition tables, medley parts.</p><span class="rec">Recommended: item pages and the item window now</span></li>
+        <li><p><b>Titles without an SL page</b> ("Intro", other artists): plain text, or a dim "no SL page" mark?</p><span class="rec">Recommended: plain text</span></li>
+    </ol>
+</section>
+</div>
+
+<script>
+(function () {
+    'use strict';
+    var tabs = document.querySelectorAll('.tabs button');
+    function show(name) {
+        tabs.forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.tab === name)); });
+        ['links', 'versions', 'mb', 'when', 'questions'].forEach(function (n) {
+            document.getElementById('tab-' + n).hidden = n !== name;
+        });
+    }
+    tabs.forEach(function (b) {
+        b.addEventListener('click', function () {
+            show(b.dataset.tab);
+            try { history.replaceState(null, '', '#' + b.dataset.tab); } catch (e) { /* ignore */ }
+        });
+    });
+    function fromHash() {
+        var h = (location.hash || '').slice(1);
+        show(['links', 'versions', 'mb', 'when', 'questions'].indexOf(h) >= 0 ? h : 'links');
+    }
+    window.addEventListener('hashchange', fromHash);
+    fromHash();
+
+    function group(attr, apply) {
+        var btns = document.querySelectorAll('[data-' + attr + ']');
+        btns.forEach(function (b) {
+            b.addEventListener('click', function () {
+                btns.forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+                apply(b.dataset[attr]);
+            });
+        });
+    }
+
+    /* 1 · link source */
+    var SL = 'https://www.springsteenlyrics.com/lyrics.php?song=';
+    group('v1', function (v) {
+        document.querySelectorAll('#t10163 .how, #texc .how').forEach(function (t) { t.hidden = v !== 'how'; });
+        document.querySelectorAll('#texc .tw').forEach(function (tw) {
+            var a = tw.querySelector('a.song, span.none');
+            if (!a.dataset.rule) return;
+            if (!a.dataset.real) a.dataset.real = a.tagName === 'A' ? a.getAttribute('href') : '';
+            var text = a.textContent;
+            var el;
+            if (v === 'rule') {
+                el = document.createElement('a');
+                el.className = 'song' + (a.dataset.real && a.dataset.real === SL + a.dataset.rule ? '' : ' guess');
+                el.href = SL + a.dataset.rule;
+            } else if (a.dataset.real) {
+                el = document.createElement('a');
+                el.className = 'song';
+                el.href = a.dataset.real;
+            } else {
+                el = document.createElement('span');
+                el.className = 'none';
+            }
+            el.textContent = text;
+            el.dataset.rule = a.dataset.rule;
+            el.dataset.real = a.dataset.real;
+            a.replaceWith(el);
+        });
+    });
+    document.querySelectorAll('#t10163 .how, #texc .how').forEach(function (t) { t.hidden = true; });
+
+    /* 2 · version links */
+    group('v2', function (v) {
+        document.querySelectorAll('#tab-versions a.song[data-base]').forEach(function (a) {
+            if (!a.dataset.ver) a.dataset.ver = a.getAttribute('href');
+            a.href = v === 'ver' ? a.dataset.ver : SL + a.dataset.base;
+            var m = a.parentNode.querySelector('.vmark');
+            if (m) m.hidden = v !== 'ver';
+        });
+    });
+
+    /* 3 · MusicBrainz works */
+    var MB = 'https://musicbrainz.org/work/';
+    var rows = [
+        ['A1', 'The E Street Shuffle', 'theestreetshuffle', 'annot', ['f57fab59-a135-42d5-87a4-d8e3cfdb5e1a']],
+        ['A2', '4th of July, Asbury Park (Sandy)', '4thofjulyasburypark', 'annot', ['1f573511-eb4b-3106-8fb2-f15de52e4868']],
+        ['A3', 'Kitty’s Back', 'kittysback', 'annot', ['d58d3dce-36cd-4962-aaed-d78037b50b91']],
+        ['A4', 'Wild Billy’s Circus Story', 'wildbillyscircusstory', 'title', ['04b8f3d9-6914-4837-bf20-3557e1b5cf0a']],
+        ['B1', 'Incident on 57th Street', 'incidenton57thstreet', 'annot', ['fc9d1551-f16f-4d29-830f-6fe0443935e9']],
+        ['B2', 'Rosalita (Come Out Tonight)', 'rosalita', 'annot', ['66969327-8735-37eb-aaa1-a4b638d446b0']],
+        ['B3', 'New York City Serenade', 'newyorkcityserenade', 'annot', ['38e984ee-4099-4ff7-815e-7e117a887508']]
+    ];
+    var rows2 = [
+        ['06', 'Shout', 'shout', 'title', ['269038cb-2cde-382a-8491-988fab28cf5e'], 'bootleg 6739: title match'],
+        ['11', 'Better Things', 'betterthings', 'ambig', ['81b2c81b-784a-4c46-a7a9-60ab3b10893c', '8d022dd1-e1c1-3c00-9c6d-f57d140e84ab'], 'two works titled "Better Things"'],
+        ['04', 'See My Friends', '', 'none', [], 'no SL page, no work'],
+        ['02', 'Prove It All Night', 'proveitallnight', 'wait', [], 'catalogue still loading']
+    ];
+    var HOW = { annot: 'The work’s annotation links this SL song', title: 'Matched by title: no SL link in the work’s annotation', ambig: 'Several works have this title' };
+    function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
+    function glyph(r) {
+        if (r[3] === 'none') return '<span class="wg slot"></span>';
+        if (r[3] === 'wait') return '<span class="wg wait"><svg><use href="#g-work"/></svg></span>';
+        var card = '<span class="card"><span class="k"><svg width="12" height="12"><use href="#g-work"/></svg> MusicBrainz · Work</span>' +
+            '<span class="t">' + esc(r[1]) + '</span>' +
+            (r[3] === 'ambig'
+                ? '<span class="warn">' + HOW.ambig + ':</span><ol>' + r[4].map(function (id) { return '<li><code>' + id.slice(0, 8) + '…</code> Better Things</li>'; }).join('') + '</ol>'
+                : '<dl><dt>Type</dt><dd>Song</dd><dt>Writer</dt><dd>Bruce Springsteen</dd><dt>Recordings</dt><dd>the work card’s own counts</dd><dt>Work</dt><dd><code>' + esc(r[4][0].slice(0, 8)) + '…</code></dd></dl>' +
+                  '<span class="' + (r[3] === 'title' ? 'warn' : '') + '">' + HOW[r[3]] + '</span>') +
+            '<span class="foot">MusicBrainz’s own work card, as for any musicbrainz.org link on SL · Space opens the window</span></span>';
+        return '<a class="wg ' + r[3] + '"' + (r[3] === 'ambig' ? ' data-n="' + r[4].length + '"' : '') + ' href="' + MB + esc(r[4][0]) + '" aria-label="MusicBrainz work">' +
+            '<svg><use href="#g-work"/></svg>' + card + '</a>';
+    }
+    function mbCell(r) {
+        if (r[3] === 'none') return '<td class="mbw c-mbw"><span class="dim">none</span></td>';
+        if (r[3] === 'wait') return '<td class="mbw c-mbw"><span class="dim">…</span></td>';
+        var label = r[3] === 'annot' ? 'exact' : r[3] === 'title' ? 'by title' : r[4].length + ' works';
+        return '<td class="mbw c-mbw"><a href="' + MB + esc(r[4][0]) + '"><svg width="14" height="14"><use href="#g-work"/></svg>' + label + '</a></td>';
+    }
+    function title(r, withGlyph) {
+        var t = r[2] ? '<a class="song" href="' + SL + r[2] + '">' + esc(r[1]) + '</a>' : '<span class="none">' + esc(r[1]) + '</span>';
+        return '<td><span class="tw">' + (withGlyph ? glyph(r) : '') + t + '</span></td>';
+    }
+    function paint(v) {
+        var g = v !== 'col';
+        var c = v !== 'glyph';
+        document.querySelector('#tmb tbody').innerHTML = rows.map(function (r) {
+            return '<tr><td class="pos">' + r[0] + '</td>' + title(r, g) + (c ? mbCell(r) : '') + '<td></td></tr>';
+        }).join('');
+        document.querySelector('#tmb2 tbody').innerHTML = rows2.map(function (r) {
+            return '<tr><td class="pos">' + r[0] + '</td>' + title(r, g) + (c ? mbCell(r) : '') + '<td>' + esc(r[5]) + '</td></tr>';
+        }).join('');
+        document.querySelectorAll('#tab-mb th.c-mbw').forEach(function (th) { th.hidden = !c; });
+    }
+    group('v3', paint);
+    paint('glyph');
+})();
+</script>

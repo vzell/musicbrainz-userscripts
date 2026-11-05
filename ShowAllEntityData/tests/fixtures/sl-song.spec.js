@@ -240,8 +240,16 @@ test.describe('springsteenlyrics.com song pages (sl-song)', () => {
         expect(t.map(x => x.rows.length)).toEqual([16, 9, 7, 6, 3, 3, 4, 61]);
         expect(t[5].rows.map(x => x.Pos)).toEqual(['E1', 'F1', 'F2']);
         expect(t[5].rows[0].Title).toBe('KITTY\'S BACK');
-        // A song without a page of its own is plain text.
-        await expect(page.locator('.project-detail table.tbl').nth(0).locator('tbody tr').nth(4).locator('a')).toHaveCount(0);
+        // A song the site leaves unlinked here (no page of this version)
+        // links its main page when the site has one (2026-11-05, answer 1
+        // of org/sl-tracklist-links-mockups.html: until then plain text);
+        // the site's own links stay as written (data-mb-sl-fixed).
+        const she = page.locator('.project-detail table.tbl').nth(0).locator('tbody tr').nth(4).locator('span.mb-sl-song');
+        await expect(she).toHaveAttribute('data-mb-sl-song', 'shestheone');
+        await expect(she.locator('a.mb-sl-song-link')).toHaveAttribute('href', 'https://www.springsteenlyrics.com/lyrics.php?song=shestheone');
+        expect(await she.getAttribute('data-mb-sl-fixed')).toBeNull();
+        await expect(page.locator('.project-detail table.tbl').nth(0).locator('tbody span.mb-sl-song[data-mb-sl-fixed] a').first())
+            .toHaveAttribute('href', /lyrics\.php\?song=\w+/);
         // This version, in every edition that has it and in the versions.
         await expect(page.locator('td.mb-sl-self')).toHaveCount(4);
         await expect(page.locator('p.mb-fd-sub')).toHaveText('~ Live 18 Nov 1975 version (1975-11-18 · page updated 21 Oct 2010)');

@@ -86,8 +86,8 @@
         "why": "The cell's text, filter and sort must see the number alone.",
         "edits": [
             {
-                "find": "            e.setAttribute('aria-label', 'Edit on springsteenlyrics.com');\n",
-                "replace": "            e.setAttribute('aria-label', 'Edit on springsteenlyrics.com');\n            e.textContent = '✎';\n"
+                "find": "            e.setAttribute('title', 'Edit on springsteenlyrics.com');\n            e.setAttribute('aria-label', 'Edit on springsteenlyrics.com');\n",
+                "replace": "            e.setAttribute('title', 'Edit on springsteenlyrics.com');\n            e.setAttribute('aria-label', 'Edit on springsteenlyrics.com');\n            e.textContent = '✎';\n"
             }
         ],
         "spec": "tests/fixtures/sl-lyrics.spec.js",

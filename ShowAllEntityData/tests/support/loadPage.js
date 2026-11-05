@@ -117,6 +117,11 @@ const FIXTURE_SETTINGS_OVERRIDE = {
     // archive.org's player in its window (2026-10-31): off like YouTube's.
     sa_ia_play_in_place: false,
     sa_entity_images: false,
+    // springsteenlyrics.com tracklists (2026-11-05): the version index reads
+    // the site's 32 letter pages and the work glyphs 16 MusicBrainz pages
+    // after a render; the song links themselves need nothing and stay on.
+    sa_sl_song_versions: false,
+    sa_sl_mb_works: false,
     sa_dp_path_label: 'kind',
 };
 

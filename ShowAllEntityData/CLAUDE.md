@@ -97,6 +97,7 @@ and context below.
 | IP           | initial page                                   | raw HTML on the initial page                                                   |                                                                            |
 | FRP          | final rendered page                            | raw HTML on the final rendered page                                            |                                                                            |
 | GPE          | generic popup engine                           | displays detail information in an iframe                                       |                                                                            |
+| FICE         | foreign image card engine                      | `data-mbtt-fn="fi-img"`, `_fiCardHtml()`, a provider per host (`_fiProvider()`) | "the FICE card on the SL Cover column" => its image card and viewer click  |
 | MB           | MusicBrainz                                    |                                                                                |                                                                            |
 | SL           | SpringsteenLyrics website                      |                                                                                |                                                                            |
 | BB           | BruceBase website/wiki                         | https://brucebase.wikidot.com/                                                 |                                                                            |
@@ -692,7 +693,9 @@ The harness lives under `tests/`; how to run each suite and what it costs:
   `sa_jl_detail_preview`, `sa_bs_detail_preview`, `sa_bb_detail_preview`,
   `sa_sl_compact_nav`, `sa_dp_window_read_ahead`; default on since 2026-10-26)
   and the two YouTube keys (`sa_yt_play_in_place`, `sa_yt_stills`) and
-  `sa_entity_images` (2026-10-29: a url-rels lookup on entity pages) OFF
+  `sa_entity_images` (2026-10-29: a url-rels lookup on entity pages) and
+  the two SL tracklist lookups (`sa_sl_song_versions`, `sa_sl_mb_works`;
+  2026-11-05: the site's letter pages, MusicBrainz's work browse) OFF
   — a "cannot reproduce" means nothing until they are back on. Seeding a key
   as `undefined` in `settingsOverride` un-seeds it (the schema default).
   That list applies only to a spec that serves an HTML fixture

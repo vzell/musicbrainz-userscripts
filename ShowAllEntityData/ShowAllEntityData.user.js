@@ -4770,6 +4770,46 @@
                          'has been read, then their count, or gone when it has none.'
         },
 
+        sa_sl_song_links: {
+            label: 'Tracklists: link each song to its page on springsteenlyrics.com',
+            type: 'checkbox',
+            default: true,
+            description: 'On by default; needs the setting above that switches the site on. In the ' +
+                         'tracklist of an item (collection, bootleg, CD and vinyl bootleg) and in its ' +
+                         'preview window, each song\'s title links its page in the lyrics index. A title ' +
+                         'is linked only when the site has a page for that song (the list of songs is ' +
+                         'built into the script), so a song of another artist or an "Intro" stays plain ' +
+                         'text. A medley ("A / B") links each of its songs. The cell\'s text, the filter ' +
+                         'and the sort stay as they were.'
+        },
+
+        sa_sl_song_versions: {
+            label: 'Tracklists: link a bootleg\'s songs to the version of that show',
+            type: 'checkbox',
+            default: true,
+            description: 'Needs the setting above. On a bootleg of one show, a song links the site\'s ' +
+                         'page of that very performance when there is one (for example ' +
+                         'theestreetshuffle_2014-02-05), marked "this show"; otherwise the song\'s main ' +
+                         'page. To know which performances have a page, the script reads the lyrics ' +
+                         'index once (its 32 letter pages, about one a second) and keeps it 30 days; ' +
+                         'every letter page you open with "Show all lyrics" keeps it current at no cost.'
+        },
+
+        sa_sl_mb_works: {
+            label: 'Tracklists: MusicBrainz work glyph before each song',
+            type: 'checkbox',
+            default: true,
+            description: 'On by default; needs the setting above that switches the site on. Before each ' +
+                         'song of an item\'s tracklist, its preview window and a song page\'s release ' +
+                         'tracklists, a MusicBrainz work icon links the work; resting the pointer on it ' +
+                         'shows MusicBrainz\'s card of the work. A solid icon: the work\'s annotation ' +
+                         'links this song\'s page (or, logged in, the item\'s MusicBrainz release has ' +
+                         'it). Dashed: matched by title only. Several icons with a count: several works ' +
+                         'have this title. To match, the script reads Bruce Springsteen\'s works from ' +
+                         'MusicBrainz once (16 requests, about 18 s) and keeps them 30 days; the icons ' +
+                         'show faded meanwhile.'
+        },
+
         sa_sl_compact_nav: {
             label: 'Compact category and filter bar on springsteenlyrics.com lists',
             type: 'checkbox',
@@ -11760,16 +11800,66 @@
      * (`_slLoggedIn(document)`), after `_SL_HEADERS[kind]`: the cards then
      * carry the site's MusicBrainz icon (a link to the release), and on the
      * collection its "Good scans" and "In <country>" icons (vzell,
-     * 2026-11-04; org/springsteenlyrics.org "Add new SL PTs and POHs"). The
-     * live document decides for every page of a run, so all rows have the
-     * same cells; logged out, the table is exactly as before.
+     * 2026-11-04; org/springsteenlyrics.org "Add new SL PTs and POHs"), and
+     * on the collection and bootleg cards the item's number before the title
+     * (`<b>5767</b>`: ID, vzell, 2026-11-05, "Adjustments" 5a; the CD and
+     * vinyl bootleg cards have none). The live document decides for every
+     * page of a run, so all rows have the same cells; logged out, the table
+     * is exactly as before.
      * @type {Object<string, string[]>}
      */
     const _SL_LOGGED_IN_HEADERS = {
-        collection: ['MusicBrainz', 'Good scans', 'Kept in'],
-        bootlegs:   ['MusicBrainz'],
+        collection: ['MusicBrainz', 'Good scans', 'Kept in', 'ID'],
+        bootlegs:   ['MusicBrainz', 'ID'],
         brucelegs:  []
     };
+
+    /**
+     * A list's `integerColumns` (`features`, read at the press through a
+     * getter, as the lyrics index's): the given ones, plus ID while logged in
+     * (`_SL_LOGGED_IN_HEADERS`) — declared always, "ID" would make every
+     * logged-out run warn "column not found".
+     *
+     * @param {Array<object>} cols
+     * @returns {Array<object>}
+     */
+    function _slListIntegerColumns(cols) {
+        return _slLoggedIn(document) ? cols.concat([{ sourceColumn: 'ID', align: 'R' }]) : cols;
+    }
+
+    /**
+     * Appends a logged-in card's ID cell: the item's number (the card's
+     * `<b>N</b>` outside its links) linking the item page, then the site's
+     * edit link, empty (`a.mb-sl-edit`, its pencil drawn by CSS), so the
+     * cell's text — filter, sort, 📊 — is the number alone; the lyrics
+     * index's ID cell (`_slLyricsIdCell()`) the same way.
+     *
+     * @param {HTMLTableRowElement} tr
+     * @param {Element}  body        The card's text column.
+     * @param {string}   href        The card's item link, as written.
+     * @param {Document} docContext
+     * @returns {void}
+     */
+    function _slCardIdCell(tr, body, href, docContext) {
+        const td = docContext.createElement('td');
+        const b = Array.from(body.querySelectorAll('b')).find(x => !x.closest('a') && /^\d+$/.test(x.textContent.trim()));
+        if (b) {
+            const a = docContext.createElement('a');
+            if (href) a.setAttribute('href', href);
+            a.textContent = b.textContent.trim();
+            td.appendChild(a);
+            const edit = body.querySelector('a[href*="cmd=edit"]');
+            if (edit) {
+                const e = docContext.createElement('a');
+                e.className = 'mb-sl-edit';
+                e.setAttribute('href', edit.getAttribute('href'));
+                e.setAttribute('title', 'Edit on springsteenlyrics.com');
+                e.setAttribute('aria-label', 'Edit on springsteenlyrics.com');
+                td.appendChild(e);
+            }
+        }
+        tr.appendChild(td);
+    }
 
     /**
      * The column headers of a kind's table on this tab: `_SL_HEADERS[kind]`,
@@ -12146,7 +12236,10 @@
             } else {
                 textCell(body.querySelector('.glyphicon-file') ? 'yes' : '');
             }
-            if (loggedIn) _slMbCell(tr, body, docContext);
+            if (loggedIn) {
+                _slMbCell(tr, body, docContext);
+                _slCardIdCell(tr, body, href, docContext);
+            }
         } else if (kind === 'brucelegs') {
             // CD and vinyl bootlegs: the sub-title is the pressing ("Limited
             // Edition #350 numbered - Marbled Grey Vinyl"), Label and Cat #
@@ -12157,7 +12250,22 @@
             // (vzell, 2026-11-04), PDF linking the item page, where the PDFs
             // are (their own file names are not on the card).
             textCell(_slCardSubtitle(body));
-            textCell(fields['Label'] || '');
+            // The site's own label link (`brucelegs.php?cmd=list&f_label=…`,
+            // the label's CD and vinyl bootlegs): kept, so it previews
+            // (`_dpParseSlLabel()`; vzell, 2026-11-05, "Adjustments" 3a). The
+            // collection and bootleg lists have no label page: their
+            // `f_label=` is ignored (probed 2026-11-05).
+            const labelA = body.querySelector('a[href*="f_label="]');
+            if (labelA && fields['Label']) {
+                const a = docContext.createElement('a');
+                a.setAttribute('href', labelA.getAttribute('href'));
+                a.textContent = fields['Label'];
+                const td = docContext.createElement('td');
+                td.appendChild(a);
+                tr.appendChild(td);
+            } else {
+                textCell(fields['Label'] || '');
+            }
             textCell(fields['Cat #'] || '');
             textCell(fields['Date'] || '');
             textCell(_slFirstIsoDate(fields['Date']));
@@ -12201,6 +12309,7 @@
                 // `img/collection_in<place>.png` (vzell's answer, 2026-11-04).
                 textCell(Array.from(body.querySelectorAll('img[src*="img/collection_in"]'))
                     .map(img => (img.getAttribute('alt') || '').replace(/^In\s+/i, '').trim()).filter(Boolean).join(', '));
+                _slCardIdCell(tr, body, href, docContext);
             }
         }
         return tr;
@@ -12325,7 +12434,10 @@
             groupByH3: true,
             pageRequest: () => {
                 const url = window.location.href;
-                return { url, fetchText: async () => _slItemPageHtml(),
+                // The saved song index and work catalogue first (no request),
+                // so the tracklist's songs are built linked and with their
+                // glyphs (`_slSongTitleHtml()`).
+                return { url, fetchText: async () => { await _slSongsLoadSaved(); return _slItemPageHtml(); },
                     toHtml: (text) => _slItemToHtml(text, kind, activeDefinition?.features?.slItemView) };
             },
             pageCountAsync: () => 1,
@@ -12402,6 +12514,35 @@
     }
 
     /**
+     * One entry of a box set's contents (`_slParseTracklist().contents`) as
+     * the fields of its row: the header ("Record 1"), the title in its quotes
+     * (`Record 1: "Greetings From Asbury Park N.J."`), the catalogue number —
+     * a "Cat# CBS SBP 234758" line, or a header's "(catalogue # …)" — and the
+     * other lines ("Aussie pressing", the sleeve), in page order.
+     *
+     * @param {{name: string, extra: string, lines: string[]}} m
+     * @returns {{pos: string, title: string, catNo: string, details: string[]}}
+     */
+    function _slContentsRow(m) {
+        let title = m.extra;
+        let catNo = '';
+        const q = title.match(/^"([^"]*)"\s*(.*)$/);
+        if (q) {
+            title = q[1].trim();
+            const cat = q[2].match(/^\(catalogue #\s*([^)]+)\)$/i);
+            if (cat) catNo = cat[1].trim();
+            else if (q[2]) title += ' ' + q[2];
+        }
+        const details = [];
+        m.lines.forEach((l) => {
+            const c = l.match(/^cat\.?\s*(?:#|no\.?)\s*:?\s*(.+)$/i);
+            if (c && !catNo) catNo = c[1].trim();
+            else details.push(l);
+        });
+        return { pos: m.name, title, catNo, details };
+    }
+
+    /**
      * The sub-tables of an item's tracklist: one per medium the page names
      * ("Disc 1:", `Record 2: "Cover Me" (catalogue # …)`, "Disc:
      * (82:40.00)"); a list without headers but with side positions (A1, B2,
@@ -12450,7 +12591,9 @@
      *   - bootlegs: Take, Note;
      *   - brucelegs: Version, Note, Length (when the page gives lengths).
      * Titles are in MusicBrainz style while `sa_foreign_mb_titles` /
-     * `sa_foreign_typography` are on, the site's text as the tooltip.
+     * `sa_foreign_typography` are on, the site's text as the tooltip. Each
+     * song of a title links its page, a dated item's this show's version,
+     * with a MusicBrainz work glyph before it (`_slSongTitleHtml()`).
      *
      * @param {string} text  The page's HTML.
      * @param {string} kind  'collection' | 'bootlegs' | 'brucelegs'.
@@ -12475,6 +12618,13 @@
         }
         const block = _slTracklistBlock(card);
         const tl = _slParseTracklist(block ? _dpBlockText(block) : '');
+        // A box set listing its records without their tracklists (sampler
+        // items 5618 and 5619): one "Contents" table, a row per record.
+        if (!tl.media.length && tl.contents.length) {
+            const rows = tl.contents.map(_slContentsRow).map(r => '<tr>' + [r.pos, r.title, r.catNo].map(v => `<td>${_rgEsc(v)}</td>`).join('') +
+                `<td>${r.details.map(_rgEsc).join('<br>')}</td></tr>`);
+            return page(`<h3>Contents (no tracklists on the page)</h3>${table(['Pos', 'Title', 'Cat. no.', 'Details'], rows)}`);
+        }
         if (!tl.media.length) throw Object.assign(new Error('The page has no tracklist'), { status: 0 });
         const all = tl.media.flatMap(m => m.tracks);
         const va = kind === 'collection' && all.filter(t => /^[^:]{2,60}:\s/.test(t.title)).length * 2 >= all.length;
@@ -12483,14 +12633,21 @@
             kind === 'collection' ? (va ? ['Artist', 'Version / note'] : ['Version / note'])
                 : kind === 'bootlegs' ? ['Take', 'Note']
                     : ['Version', 'Note'].concat(hasLen ? ['Length'] : []));
-        const titleCell = (t) => {
+        // A dated item (a bootleg's one show) links each song's version of
+        // that show when the site has one (`_slSongSpanHtml()`).
+        const show = _slShowOf(_slReadCardFields(card.querySelector('.col-md-10') || card)['Date'] || '');
+        // Each song of the title linked to its page, its MusicBrainz work
+        // glyph before it (`_slSongTitleHtml()`); the text stays the title's.
+        // A various-artists line by another artist is someone else's song.
+        const titleCell = (t, artist) => {
             const shown = _mbSiteTitleText(t);
-            return shown !== t ? `<td data-mb-tip title="${_rgEsc(`As written on the site:\n${t}`)}">${_rgEsc(shown)}</td>` : `<td>${_rgEsc(t)}</td>`;
+            const inner = artist && !/springsteen/i.test(artist) ? _rgEsc(shown) : _slSongTitleHtml(t, show);
+            return shown !== t ? `<td data-mb-tip title="${_rgEsc(`As written on the site:\n${t}`)}">${inner}</td>` : `<td>${inner}</td>`;
         };
         const body = _slItemGroups(tl.media).map((g) => {
             const rows = g.tracks.map((t) => {
                 const p = _slSplitTrackTitle(t.title, va);
-                const cells = [`<td>${_rgEsc(t.pos)}</td>`, titleCell(p.title)];
+                const cells = [`<td>${_rgEsc(t.pos)}</td>`, titleCell(p.title, p.artist)];
                 if (kind === 'collection') {
                     if (va) cells.push(`<td>${_rgEsc(p.artist)}</td>`);
                     cells.push(`<td>${_rgEsc([p.version, p.take, p.note].filter(Boolean).join('; '))}</td>`);
@@ -12687,6 +12844,1207 @@
     }
 
     // -------------------------------------------------------------------------
+    // springsteenlyrics.com: song links and MusicBrainz works in tracklists
+    // -------------------------------------------------------------------------
+    // vzell, 2026-11-05 (org/springsteenlyrics.org "URLify the tracklist to
+    // song URLs (SL and MB)"; mockups org/sl-tracklist-links-mockups.html,
+    // https://claude.ai/artifact/9etFwvJXtoLWkfZzPxnTJo, answers 1-8). A
+    // title in an item's tracklist (the item pageTypes, the item's preview
+    // window) or a song page's edition table becomes `span.mb-sl-song`:
+    //   - a link to the song's page, only when its slug is KNOWN (answer 1):
+    //     an unknown `lyrics.php?song=` answers 200 with "does not exist!"
+    //     (probed 2026-11-05). Known = the embedded base slugs below
+    //     (scripts/build-sl-song-slugs.py), or the runtime index;
+    //   - on a dated item (a bootleg), the song's page of THAT show when the
+    //     runtime index has `<slug>_<date>` (answer 2): every slug of the 32
+    //     letter pages, kept 30 days in `vz-saed-sl-songs`, read once on
+    //     demand and refreshed by every lyrics-index letter page converted;
+    //   - a MusicBrainz work glyph before it (answers 3-6): Bruce
+    //     Springsteen's works (`/ws/2/work?artist=…&inc=aliases+annotation`,
+    //     16 requests, kept 30 days) matched by the SL link in the work's
+    //     annotation (exact), else by one title (dashed), else several (a
+    //     count); logged in, the card's MusicBrainz release answers first
+    //     (its recordings' works). The glyph is a plain musicbrainz.org work
+    //     link, so `_dgMbSource()` gives it MusicBrainz's own card.
+    // The span's text is the title's text and nothing else (the glyph is an
+    // image, the "this show" mark CSS): filter, sort and 📊 see the title as
+    // before, so the late writes (`_slSongsDecorate()`) owe only the source
+    // rows. Probe results: DEBUG-NOTES.md, 2026-11-05.
+
+    // BEGIN GENERATED: scripts/build-sl-song-slugs.py from docs/sl-song-base-slugs.json (fetched 2026-11-05T01:23:01+0100).
+    // Do not edit by hand: run the script.
+    /**
+     * Every base song slug of springsteenlyrics.com's lyrics index
+     * (1381; a version's slug adds "_<date>", "_original", ...), space separated:
+     * a title is linked only when its slug is one of these (`_slSongSlugOf()`).
+     * @type {string}
+     */
+    const _SL_SONG_BASE_SLUGS = [
+        '100milesfromjackson 1945 30daysout 4thofjulyasburypark 500miles 57channels 6345789 63457892',
+        '7roomsofgloom acrosstheborder acrosstheborderline actioninthestreets adamraisedacain',
+        'addictedtoromance adelita afterdinner age agoodlife agoodmanishardtofind aintgonnabetheone',
+        'aintgoodenoughforyou aintgotyou alifefullofrain allalongthewatchtower allgodschildren',
+        'allimthinkinabout allimthinkinabout2 allineed alliwanttodoisdance alljusttogettoyou allornothinatall',
+        'allthatheavenwillallow allthewayhome alone alovesofine alwaysafriend americanbabylon americanbeauty',
+        'americandream americanland americanman americanskin americaunderfire americaunderfire2',
+        'amplifierblues angelbaby angeleyes-sinatra angeleyes-vanzandt angelina angelina1993',
+        'angelinthealleyways angelsblues angelssong angelyne anightwiththejerseydevil anothersaturdaynight',
+        'anotherthinline anotheryou answeringmachinemessage anybodysgame anyotherway aprayerbytheriver',
+        'arabiannights arainynightinsoho arnie aslongasi athousandtears atlanticcity auatc auldlangsyne',
+        'awintersrevelation babycomeback babydoll babydontgo babydontgo2 babyi babyiloveyou babyimastar',
+        'babyimsocold babyme babyworkout babyyouremissing backinyourarms backstreets badday badlands',
+        'badmedicine badmoonrising balboapark balboavstheearthslayer balladofaselfloadingpistol',
+        'balladofelmerthepea barefootin becausethenight bedrockrapmeettheflintstones beforetheflood',
+        'bellsofsansalvador bemybaby beneaththefloodline bepopalula betrue betruetoyourschool betterdays',
+        'betterman betterthings bettertohaveandnotneed bettyjean bettyjean-berry betweenheavenandearth',
+        'bigblackheaven bigyellowtaxi billyboy billyswaltz bishopdanced blackboots blackcowboys',
+        'blackmountainballad blacknightinbabylon blacksunrising blessmysoul blindedbythelight blindman',
+        'blindspot bloodbrothers bloodonblood blowindownthisroad blowininthewind blueangel bluebayou',
+        'bluechristmas bluehighway bluemoon bluemoonturnstogold bluesguitarriff bobbyjean bodiddley',
+        'bodiddleysagunslinger bonymoronie boogieimprovisation bookofdreams boomboom borderguard bornintheusa',
+        'bornonthebayou borntobealone borntobewild borntorun borntowin brandnewcadillac breakaway',
+        'breakmyheart breakmyheart2 breakout brilliantdisguise bringemhome bringitonhometome bringonthenight',
+        'bringonthenight2 bringonthenight3 bringonthenight4 bringonthenight5 bringonthenight6 bringthemhome',
+        'brokedownpieceofman brokenradio brokenwheel brothersunderthebridge brothersunderthebridges',
+        'browneyedgirl bruce buffalogals burninglove burnintrain busted byebyejohnny byyourside cadillacranch',
+        'californiasun calvinjonesandthe13thapostle camillahorn candyman candysboy candysroom',
+        'canthelpfallinginlove cantteachanolddognewtricks carlottassong carol carwash casper cautiousman',
+        'ccrider ccrider2 centerfield chainlightning chainlightning2 chainlightning3 chainlightning4',
+        'chainlightning5 chainoffools chains chainsmokin changeit chasinwildhorses cheapmotel cherokeequeen',
+        'chevroletdeluxe chevroletdeluxe2 chevroletdeluxe3 chevroletdeluxe4 chevroletdeluxe5 chevroletdeluxe6',
+        'chickenlipsandlizardhips chickenshackboogie childbride childrenssong chimesoffreedom chinatown',
+        'christmasbabypleasecomehome christmasday cindy circustown cityofmercy cityofnight ciudadjuarez',
+        'clampdown claudette clouds clubsoulcity codeofsilence coldspot comealittlebitcloser comeon',
+        'comeonbillybreakoutthewine comeonletsgotonight cometogether comindownmaria cominghome commonground',
+        'countinonamiracle countinonamiracle2 countyfair coverme cowboysofthesea crash crashandburn crazylove',
+        'crazylovetupelohoney crazyrocker crossmyheart crossroads crushonyou crycrycry crying cryingintherain',
+        'crystal curtismayfieldmedley cuttingknife cynthia dancedancedance dancinginthedark',
+        'dancinginthestreet dangerzone dannyjones darkandbloodyground darknessdarkness',
+        'darknessontheedgeoftown darlingtoncounty dawnpatrol dayofthelocusts daytonamission daytripper',
+        'deadflowers deadmanwalkin dearladytwist dearmrfantasy deathisnottheend deathofagoodman',
+        'deathtomyhometown deckthehalls dedication dejavu dejavu2 deliveryman detailman detroitmedley',
+        'devilsarcade devilsdust devilwithabluedresson diamondsbytheyard didyousaysuchathing dinnerateight',
+        'dirtyrottenshame dirtywater disgusted disorderinthehouse doesthisbusstopat82ndstreet doiloveyou',
+        'doitwithafeeling dollhouse dollhouse2 dollhouse3 dollhouse4 domino dontbackdown',
+        'dontbackdownonourlove dontbecruel dontchange dontcrossthatline donthangup dontletmebemisunderstood',
+        'dontletyourheartgrowcold dontlookback dontplaythatsong dontsayno doubleshotofmybabyslove',
+        'downattheclub downboundtrain downboundtrain10 downboundtrain2 downboundtrain3 downboundtrain4',
+        'downboundtrain8 downboundtrain9 downbytheriver downbytheriver-neilyoung downinthehole',
+        'downinthevalley downonsouthstreet downtheroadapiece downtomexico downtotheriverside doyouloveme',
+        'doyourjob doyouwannadance doyouwantmetosayalright dreambaby dreambabydream dreams dreamsong dreamyou',
+        'driftaway driftersbarrio driveallnight drivefast dropondownandcoverme drylightning dual dustland',
+        'eastcarsonstreet easymoney eleanorrigby eljardinero eloise elvisstyle emptysky endlessnight',
+        'endofthecentury eriecanal evacuationofthewest everybodyneedssomebodytolove',
+        'everybodyslookingforsomebody everybodywantsmybaby everydayandeverynight everylittlebit',
+        'everyonelovesyou everythingido everythingsgoingtoworkoutright expresswaytoyourheart',
+        'extravagantgesture eyesontheprize factory factory2 factory3 factory4 factory5 fadeaway fadetoblack',
+        'faith faithless fallenheroes familysong fartheruptheroad fastbluesbreaking fastbluesshuffle',
+        'fasterandlouder fathersday finditwhereyoucan finditwhereyoucan2 fire fire-hendrix',
+        'fireenginesarereturninghome fistfullofdollars floataway followthatdream followthesun forever',
+        'foreveryoung forneverasking fortunateson fortymilesofbadroad forward foryou foryourlove-edtownsend',
+        'foryourlove-theyardbirds foxeylady frankie frankiefellinlove freakii freddiesdead freedomcadence',
+        'freehold fridayonmymind froggiewentacourtin fromsmallthings fugitivesdream fugitivesdreamballad',
+        'fulloflove funfunfun funkybroadway furtheron galvestonbay gardenstateparkwayblues gaveitaname',
+        'getiton getoffofmycloud getoutofdenver getoutofmylifewoman getupifeellikebeinglikeasexmachine',
+        'getupstandup ghosts ghoststheme gimmeshelter gimmethatwine girlfriend girlfriendblues',
+        'girlsintheirsummerclothes givemylovetorose givethegirlakiss gloria gloriaseyes glorydays gloryoflove',
+        'gloryroad goaway goddontmakelonelygirls godscountingonmegodscountingonyou godsentyou gogogo goinback',
+        'goinbacktogeorgia goincali goindownslow gointocalifornia gonegonegone gonnaflynow goodeye',
+        'goodgollymissmolly goodlovinwoman goodrockintonight goodtimes goodtimesbadtimes gotmymojoworking',
+        'gottagetthatfeeling governorchristietrafficjam gowithwhatyouknow greatballsoffire greenriver',
+        'growinup guitartown gulfcoasthighway gunineveryhome gypsybiker gypsyrider gypsywoman',
+        'hailhailrocknroll hailtothechief hangupmyrockandrollshoes happy harddrive hardenmyheart',
+        'hardtimescomeagainnomore hardtimescomeeasy hardtravelinhootenanny harrysplace hauntedhouse',
+        'havanagila haveagoodtime havealittlefaithinme havelovewilltravel havingaparty heartbreakhotel',
+        'heartbreakhotel3 heartfullofsoul heartsofstone heatwave heaven heavenswall hecantloveyou',
+        'heldupwithoutagun helenblue heliesintheamericanland hellosunshine henryboy herecomesthenight',
+        'herecomesthesun hereinhardtimes hereshecomeswalkin hesgotthewholeworldinhishands hesguilty',
+        'hessuretheboyilove hewasafriendofmine heyblueeyes heybodiddley heygoodlookin heyjoe heyjoe2',
+        'heytonight heywesternunionman hidinontheriver higherandhigher highheeledsneakers highhopes highnoon',
+        'highschoolconfidential highsierra highway29 highway61revisited highwaypatrolman highwaytohell',
+        'hippyhippyshake historybooks hitchhikin hoboslullaby holdon holdonimcoming holdoutholdout',
+        'hollywoodkids homestead honkytonk honkytonkwomen hootchiecootchieman hounddog',
+        'houseofathousandguitars houseonedenstreet houseonfire howcanapoormanstandsuchtimesandlive',
+        'howcanikeepfromsinging humantouch hungryheart hunterofinvisiblegame hurryupsundown hymntohim',
+        'iaintgotnohomeinthisworldanymore iamthedoctor icanttakeitnomore iceman icomeandstandateverydoor',
+        'idarose idiotsdelight idontknow idontwannabe idontwantnomoreofthisarmylife idontwanttogohome',
+        'idreamtmylovewaslost ificouldonlybeyourlover ifihadahammer ifishouldfallbehind ifiwasthepriest',
+        'iforgottobeyourlover ifoughtthelaw ifyouwanttogethigh igotmyeyesonyou igottabefree igottohaveyoubaby',
+        'ihopeimtrue ihungmyhead ijustcantchange illflyaway illseeyouinmydreams illstandbyyou',
+        'illworkforyourlove imabiggirlnow imacoward imaghostinmydream imarocker imasoldierinthearmyofthelord',
+        'imathousandmilesfromhome imetherinatouristtrapintiguara imgoinback imgoindown imgonnabetheretonight',
+        'imgonnarock iminloveagain iminthemiddle imnotsleeping imonfire imshippinguptoboston',
+        'imturningintoelvis incidenton57thstreet incidentonthewside independenceday indiantown indreams',
+        'ineedyou inmichigan insidethecastlewalls inthemidnighthour inthemood intothefire',
+        'invitationtotheparty inyo iplayedthefool iremember isshetheone istillhaventfoundwhatimlookingfor',
+        'istilllookgood itsallright itsashame itsbeenalongtime itseasy itsgonnaworkoutfine',
+        'itshardtobeasaintinthecity itsjustyou itsmylife itsnowornever itsover itstimetogohome',
+        'ittakesalottolaughittakesatraintocry ittakestwo ivegotafeeling ivegottoknow iwalktheline',
+        'iwannabewild iwannabewithyou iwannamarryyou iwannastartanewlife iwantyou iwasborntorock',
+        'iwillbetheone iwishitwouldrain iwishiwereblind jackofalltrades jacksoncage jacobsladder jambalaya',
+        'janey janeydontyouloseheart janeyneedsashooter jannssong jazzmusician jeannieiwanttothankyou',
+        'jeannieneedsashooter jennifer jerseygirl jesse jessejames jesusmaryandjoseph jesuswasanonlyson',
+        'jimdeer jinglebellrock joehill johnhenry johnny99 johnnybgoode johnnybyebye johnnygodown joleblon',
+        'joy jrwalkergroove jumbeliah jungleland juniorsbar justanotherlonelymile justinfears',
+        'justlikefirewould kansascity keepthefaith keytothehighway killersparadise kingdomofdays kingshighway',
+        'kingsrock kittysback knifeintheback kt88 labamba laboroflove ladyandthedoctor ladyofboston',
+        'ladywalkingdownbytheriver landof1000dances landofhopeanddreams lastmanstanding lastnightintexax',
+        'lastnightintulsa lasttodie lateintheevening latinsong leah leah-orbison leapoffaith leavintrain',
+        'letmeride letsbefriends letstalkaboutus lettertoyou letthepoor letthewords lifeitself liftmeup',
+        'lightenup lightofday likeastranger lindaletmebetheone lindapaloma lionsden littlebitosoul',
+        'littlegirllikeyou littlegirlsofine littlequeenie littlewhitelies livingontheedgeoftheworld',
+        'livingproof livingrockandroll livininthefuture livinintheghetto livinonaprayer localhero',
+        'londoncalling lonelynightinthepark lonelystreet lonelyteardrops lonelytown lonesomeday lonesometown',
+        'longblackveil longtimecomin longwalkhome longwayhome lookingforelvis lookintomywindow',
+        'lookintoyourheart looktowardstheland loosechange looseends lorraine losinkind lostintheflood love',
+        'loveanddeceit loveanddefiance loveandkisses lovecycle loveisacrazything loveisadangerousthing',
+        'loveisagun loveisstrange lovemetender loveofthecommonpeople loveonthewrongsideoftown lovesglory',
+        'lovesgonnabetonight lovesontheline lovewillfallapart lovewillgetyoudown lovewontletyoudown',
+        'luckbealady luckygirl luckyman luckytown machoman magic magickindofloving makeupyourmind manatthetop',
+        'mannishboy mansiononthehill mansjob maria mariasbed marie marylou marylouisewatson marymary',
+        'maryqueenofarkansas marysplace maryssong matamorosbanks maybeidontknowyou',
+        'meandmybabygotourownthinggoing meanwomanblues meetingacrosstheriver meetmeinthecity menwithoutwomen',
+        'merrychristmasbaby mickeysmonkey millworker miserylovescompany missie missing mississippi',
+        'mistressannie mistressannie2 mona money moondance moonlightmotel mother moulinrouge mountainoflove',
+        'moveonup mrjones mroutside mrsmcgrath murderincorporated musicjustcomes mybeautifulreward',
+        'mybestwasnevergoodenough mycityofruins myfathershouse mygeneration myheartisanopenbook myhometown',
+        'mylady mylittleredbook myloverman mylovewillnotletyoudown myluckyday mymastershand',
+        'mymastershandtheme myoklahomahome myponyboy myrideshere mysticeyes nativeamerican naturalmagic',
+        'nebraska neverbeenoughtime newdelinquentlovers newoldsong newspanish newyorkcityserenade',
+        'newyorkcomeback newyorkmorninglove newyorkskyline newyorksong night nightclosingin nightfire',
+        'nightshift nighttrain ninetynineandahalf nonebutthebrave noneed nostringsattached nosurrender',
+        'notfadeaway nothingman nothingstoogoodformybaby noway nowheretorun oddsoftheblues ohangelyne ohmama',
+        'ohnonono ohprettywoman ohwhatabeautifulmornin ohwhenthenightgrewfear oklahomahills olddantucker',
+        'oldtimerockroll omarydontyouweep onadayofthecowboys onebeautifulmorning onefalsemove',
+        'onefalsemoveisallittakes oneheadlight onelove oneminuteyourehere onestepup onewaystreet',
+        'onlyloversleftalive onlythelonely onlythestrongsurvive ontopofoldsmokey oobydooby openallnight',
+        'orbison orleans ourladyofmonroe ourladyofthewell ourlovewilllastforever outinthestreet outlawpete',
+        'outofwork outontherun outsidelookingin overtheborder overtherise paradise paradise1953',
+        'paradisebythec partmanpartmonkey partylights partylights-clark paymemymoneydown pegomyheart',
+        'perfectworld phantomlove phantoms pilgriminthetempleoflove pinkcadillac pipeline',
+        'planewreckatlosgatos playaround playitasitlays pleasepleaseme pointblank ponyboy poorsideoftown',
+        'powerhouse preachersdaughter preciousmemories prettyboyfloyd prettyflamingo prettylittlewoman',
+        'prettything prisonerofwars prisongrove prodigalson protection proudmary proveitallnight pumpingiron',
+        'purplerain quartertothree queenofthesupermarket racinginthestreet radionowhere radioradio',
+        'radiosilence rainintheriver rainmaker rainydayman rainydaywomen raiseyourhand ramrod ramrod2 ramrod3',
+        'ramrod4 ramrod5 randolphstreet raunchy raveon realman realworld reasontobelieve rebelmusic',
+        'redheadedwoman redriverrock rememberwhenthemusic rendezvous reno reno2 repoman restlessnights',
+        'resurrection rhinestonecowboy richfieldwhistle rickywantsamanofherown ridinghorse ridinginmycar',
+        'rightplacewrongtime ringoffire robertford rockawaythedays rocker rockinallovertheworld',
+        'rocknrollheart rockyground rollofthedice rosalita rose rosetattoo roulette route66 royals rumble',
+        'rumbledoll runningscared runshakerlife runthroughthejungle sadeyes sagaofthearchitectangel',
+        'saintjimmysdream sandpaper santaana santaclausiscomintotown satansjeweledcrown satisfaction',
+        'savemylove savinup saxsong saygoodbyetohollywood seaofheartbreak searchingformysoul seascape',
+        'seasidebarsong seasonofthewitch secretagentman secretgarden secrettotheblues seeds',
+        'sellitandtheywillcome septemberkisses sevenangels sevennightstorock seventears sexyandiknowit',
+        'shackledanddrawn shakerattleandroll shalala shecomesintomyroom shedontlovemenow shenandoah',
+        'sherlockgoesholme sherrydarling shesgotnothingyouneed shesgotthelord shesleaving shesnotmywoman',
+        'shessurethegirlilove shestheone shilo shinesilently shootoutinchinatown shotgun shout',
+        'shutoutthelight silvermountain silverpalomino sinaloacowboys sistertheresa sittinonthetopoftheworld',
+        'sleepyjoescafe slowfade slumsentiments smalltown somebodyshero someday somedayillbesaturdaynight',
+        'somedaywellbetogether somethinginthenight somethinginthewell somethingsgottabreak somethingyougot',
+        'sometimesatnight somewherenorthofnashville somuchstyle songfororphans sootheme souldays souldeep',
+        'souldriver soulman soulrockin soulsofthedeparted southernsun soyoungandinlove spanishdancer',
+        'spanishdreams spanisheyes spanishrose spareparts spiritinthenight staggerlee standbyme standonit',
+        'statetrooper stay stayinalive stegenevieve stillthere stolencar stones straighttime straybullet',
+        'streetfight streetfightingman streethassle streetqueen streetsoffire streetsofminneapolis',
+        'streetsofphiladelphia stthomascaves sugarland summernight summeronsignalhill summersoldier',
+        'summertimeblues summertimeinmymind suncity sundaylove sundown sunliner suntime supposedtobe',
+        'supposedtobe-arty surecanfeelthepain surprisesurprise surrenderatthecitadel suspiciousminds suzanne',
+        'suziesunday swallowedup sweetbabyjames sweetmelinda sweetsoulmusic takealookatmyheart',
+        'takeemastheycome takeiteasy takemedown takemeouttotheballgame takemetotheriver takeoutsomeinsurance',
+        'talkingaboutmybaby talkingtotheking talkshow talktome talktomeliketherain tarantellanapoletana',
+        'tellmemamawhyisitsohard temporaryoutoforder tencommandments tenthavenuefreezeout tenyearsgone',
+        'terryssong texascarnival texasdrivein thatsokay thatswhatmakesusgreat thatswhatyouget theangel',
+        'theaztecdance theballad theballadofjedclampett theballadofjessejames thebandsjustboppingtheblues',
+        'thebigmuddy thebigpayback thebreaksong thebrokenhearted thecomedians',
+        'thedaringyoungmanontheflyingtrapeze thedesert theedgeofdawn theend theestreetshuffle',
+        'thefarewellparty thefastsong thefever thefuse theghostoftomjoad thegodfatherlovetheme',
+        'thegreatdepression thehitter thehoneymooners theklansman thelastcarnival thelastwordsofcopernicus',
+        'thelateshow theline thelittlethings thelittlethingsmybabydoes thelonggoodbye thelostcharro',
+        'themanwhogotaway themeforanimaginarywaitress themefromshaft themonkeytime themoonwasyellow',
+        'thenewtimer thenighttheydroveolddixiedown thepatriotgame thepowerofprayer thepriceyoupay thepromise',
+        'thepromisedland theregoesmybaby theregoesmymiracle therewillneverbeanyotherformebutyou therising',
+        'theriver thesong thestreet thestreetgoesonforever thesunaintgonnashineanymore thetiesthatbind',
+        'thetimeinbetween thetimethatneverwas thetrainsong thevirginflower thewall thewarisover thewarsong',
+        'theway thewayfarer thewesternsea thewindandtherain thewindow thewish thewrestler thisdepression',
+        'thishardland thisisyoursword thislandisyourland thislife thislittlegirl thislittlelightofmine',
+        'thundercrack thunderhill thunderroad tigerrose toccataandfugueindminor tokyo tomjoad',
+        'tomorrowneverknows tougherthantherest towncalledheartbreak tragedy trainride trapped trappedagain',
+        'travelinband treatherright trianglesong troubleinparadise troubleriver truecompanion tucsontrain',
+        'tumblingdice tunneloflove tupelohoney turnaround turnbackthehandsoftime turnturnturn tvmovie',
+        'tweeterandthemonkeyman twilighthours twistandshout twistinthenightaway twofaces twofortheroad',
+        'twohearts twohearts2 twohearts3 twoheartsintruewaltztime twoofus underabigsky underthegun',
+        'unsatisfiedheart untilthegoodisgone untiltheraincomes uponthisday uptown uptoyou usedcars valentine',
+        'valentinesday valentinesday1973 valerie vengeancevandals vibesman vietnamblues vigilanteman',
+        'virginsummernights visionspirit visitationatforthorn vivalasvegas wagesofsin',
+        'waitingontheendoftheworld waitinonasunnyday walkingintherain walkinginthestreet walkingontheavenue',
+        'walkingthroughmidnight walkingwiththeman walklikeaman wanteddeadoralive wantme war warandroses',
+        'warnurse wasteddays waterstation wearealive wearetheworld wearmyringaroundyourneck weddingbells',
+        'wefelldown wegottagetoutofthisplace welcometotheworld wellallmantheguns weshallovercome westernstars',
+        'wetakecareofourown wevegotthelove wevegottodoitnow whatbecomesofthebrokenhearted',
+        'whatdidyoudointhewar whatlovecando wheelsmaketheworldgoround whenibuildmybeautifulhouse',
+        'whenileaveberlin whenshewasmygirl whenthelightsgoout whenthelightsgoout2 whenthesaintsgomarchingin',
+        'whenwillibeloved whenyoudance whenyouneedme whenyourealone whenyouwalkintheroom wherethebandsare',
+        'wherewasjesusinohio whereyougoinwhereyoufrom whipmyhair whitehouse whitelines whitetown whodoyoulove',
+        'wholelottashakingoinon whollstoptherain whydyoudothat wildbillyscircusstory wildbillyslullaby',
+        'wildfire wildkisses wildones wildroses williamdavis willieandthehandjive wintersong wipeout',
+        'wisconsin witheverywish withoutyou womansgotsoul workingonadream workingonthehighway worldsapart',
+        'wreckingball wreckonthehighway wrongsideofthestreet yankeeswin youbetterbenicetomebaby youcamedown',
+        'youcanlook youcantgoback youcantjudgeabookbythecover youcantsitdown youdontleavemenochoice',
+        'yougiveloveabadname yougottabekind yougottofight youliftedmeup youllbecomindown youmeansomuchtome',
+        'youngstown youregonnacry youregonnamissmewhenimgone youremissing yourlove yourloveisallaroundme',
+        'yourownworstenemy yousayyouloveme yousexything youvegotit youvereallygotaholdonme zeroandblindterry',
+        'zoomtheme',
+    ].join(' ');
+
+    /**
+     * Titles (keyed by `_slExcKey()`) the rule of `_slSongSlugOf()` gets wrong,
+     * and their slug (19).
+     * @type {Object<string, string>}
+     */
+    const _SL_SONG_TITLE_EXCEPTIONS = {
+        'angeleyes(franksinatra)': 'angeleyes-sinatra',
+        'angeleyes(stevenvanzandt)': 'angeleyes-vanzandt',
+        'bebopalula': 'bepopalula',
+        'bettyjean(chuckberry)': 'bettyjean-berry',
+        'downbytheriver(neilyoung)': 'downbytheriver-neilyoung',
+        'fire(jimihendrix)': 'fire-hendrix',
+        'foryourlove(edtownsend)': 'foryourlove-edtownsend',
+        'foryourlove(theyardbirds)': 'foryourlove-theyardbirds',
+        'fourtymilesofbadroad': 'fortymilesofbadroad',
+        'foxylady': 'foxeylady',
+        'getoffmycloud': 'getoffofmycloud',
+        'lastnightintexas': 'lastnightintexax',
+        'leah(royorbison)': 'leah-orbison',
+        'partylights(claudineclark)': 'partylights-clark',
+        'rainydaywomen1235': 'rainydaywomen',
+        'sittinontopoftheworld': 'sittinonthetopoftheworld',
+        'someday(wellbetogether)': 'someday',
+        'supposedtobe(arty)': 'supposedtobe-arty',
+        'themeofanimaginarywaitress(fountainbleuwaltz)': 'themeforanimaginarywaitress',
+    };
+    // END GENERATED: scripts/build-sl-song-slugs.py
+
+    /**
+     * The site's root: on springsteenlyrics.com this page's own origin (the
+     * site answers with and without "www.", and a fetch to the other one is
+     * cross-origin), elsewhere (a preview window on MusicBrainz) www.
+     *
+     * @returns {string} Ending in "/".
+     */
+    function _slSiteRoot() {
+        return `${_isSlHost ? window.location.origin : 'https://www.springsteenlyrics.com'}/`;
+    }
+
+    /** @returns {string} A song page's address without its slug. */
+    function _slSongUrl() {
+        return `${_slSiteRoot()}lyrics.php?song=`;
+    }
+
+    /** Bruce Springsteen's MBID: whose works the glyphs are matched against. @type {string} */
+    const _SL_BRUCE_MBID = '70248960-cb53-4ea4-943a-edb18f7d336f';
+
+    /** How long the runtime song index and the work catalogue are kept (30 days). @type {number} */
+    const _SL_SONGS_TTL_MS = 30 * 86400000;
+
+    /** The gap between two letter pages of the runtime song index. @type {number} */
+    const _SL_VER_GAP_MS = 1000;
+
+    /** The format of the saved work catalogue; a record of another format is read again. @type {number} */
+    const _SL_MBW_FORMAT = 1;
+
+    /** The glyph's image, musicbrainz.org's own work icon. @type {string} */
+    const _SL_MBW_ICON = 'https://musicbrainz.org/static/images/entity/work.svg';
+
+    /** IndexedDB of the runtime song index and the work catalogue (springsteenlyrics.com only). */
+    const _SL_SONGS_IDB_NAME = 'vz-saed-sl-songs';
+    const _SL_SONGS_IDB_VERSION = 1;
+
+    /**
+     * The runtime song index: every slug of the lyrics index's letter pages
+     * (`slugs`, versions included), `byStem` (`<base>_<date>` → the slugs
+     * that start with it and go on), the letters the landing page names and
+     * each letter's age, the run in flight.
+     */
+    const _slVer = { slugs: null, byStem: new Map(), letters: null, letterTs: new Map(), listTs: 0, loading: null };
+
+    /**
+     * The work catalogue: `index` ({bySlug, byNorm, byId}) once installed,
+     * its age, the run in flight and its progress.
+     */
+    const _slMbw = { index: null, ts: 0, format: 0, loading: null, done: 0, total: 0, failed: false };
+
+    /** The card's MusicBrainz release, read for its tracks' works (logged in). */
+    const _slMbRel = { id: '', byKey: null, loading: null };
+
+    let _slSongsIdbPromise = null;
+    let _slSongsSavedPromise = null;
+    let _slBaseSlugSet = null;
+
+    /** @returns {boolean} Whether titles link their song page (`sa_sl_song_links`). */
+    function _slSongLinksOn() {
+        return Lib.settings.sa_sl_song_links !== false;
+    }
+
+    /** @returns {boolean} Whether a dated item links this show's version (`sa_sl_song_versions`). */
+    function _slSongVersionsOn() {
+        return _slSongLinksOn() && Lib.settings.sa_sl_song_versions !== false;
+    }
+
+    /** @returns {boolean} Whether titles get a MusicBrainz work glyph (`sa_sl_mb_works`). */
+    function _slMbWorksOn() {
+        return Lib.settings.sa_sl_mb_works !== false;
+    }
+
+    /**
+     * A title as a slug is compared: decomposed, accents off, lower case,
+     * a-z and 0-9 only. `scripts/build-sl-song-slugs.py`'s `norm()` is the
+     * same.
+     *
+     * @param {string} t
+     * @returns {string}
+     */
+    function _slNorm(t) {
+        return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    }
+
+    /**
+     * The key of `_SL_SONG_TITLE_EXCEPTIONS`: `_slNorm()` keeping "(" and
+     * ")", so "SOMEDAY (WE'LL BE TOGETHER)" (slug `someday`) and "SOMEDAY
+     * WE'LL BE TOGETHER" (`somedaywellbetogether`) stay apart. The build
+     * script's `exc_key()` is the same.
+     *
+     * @param {string} t
+     * @returns {string}
+     */
+    function _slExcKey(t) {
+        return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9()]/g, '');
+    }
+
+    /**
+     * A title, then without a trailing "(…)", without a leading "(…)", and
+     * without both, then without each further trailing "(…)" ("ROSALITA
+     * (COME OUT TONIGHT) (instrumental)" → "ROSALITA") — the forms the slug
+     * rule and the title matches try. The build script's `slug_of()` tries
+     * the same, in the same order.
+     *
+     * @param {string} title
+     * @returns {string[]}
+     */
+    function _slTitleVariants(title) {
+        const t = String(title || '');
+        const dropT = s => s.replace(/\s*\([^()]*\)\s*$/, '');
+        const dropL = s => s.replace(/^\s*\([^()]*\)\s*/, '');
+        const out = [t, dropT(t), dropL(t), dropL(dropT(t))];
+        for (let x = dropT(t); x !== dropT(x);) {
+            x = dropT(x);
+            out.push(x);
+        }
+        return out;
+    }
+
+    /** @returns {Set<string>} The embedded base slugs (`_SL_SONG_BASE_SLUGS`). */
+    function _slBaseSlugs() {
+        if (!_slBaseSlugSet) _slBaseSlugSet = new Set(_SL_SONG_BASE_SLUGS.split(' ').filter(Boolean));
+        return _slBaseSlugSet;
+    }
+
+    /**
+     * The base slug of a song title, or '' when no song page is known for
+     * it: the exception list first, then the first form of
+     * `_slTitleVariants()` whose normalised text is a known base slug — the
+     * embedded list, or a base slug of the runtime index (a song added to
+     * the site since the list was built). On the whole index (2026-11-05)
+     * the rule alone gets 1,315 of 1,334 titles right; the rest are the
+     * exceptions. `scripts/build-sl-song-slugs.py`'s `slug_of()` mirrors it.
+     *
+     * @param {string} title  The site's text of one song.
+     * @returns {string}
+     */
+    function _slSongSlugOf(title) {
+        if (!_slNorm(title)) return '';
+        const k = _slExcKey(title);
+        if (Object.prototype.hasOwnProperty.call(_SL_SONG_TITLE_EXCEPTIONS, k)) return _SL_SONG_TITLE_EXCEPTIONS[k];
+        const set = _slBaseSlugs();
+        for (const c of _slTitleVariants(title)) {
+            const s = _slNorm(c);
+            if (s && (set.has(s) || (_slVer.slugs && _slVer.slugs.has(s)))) return s;
+        }
+        return '';
+    }
+
+    /**
+     * A tracklist title as its songs: the whole title when it is a song
+     * ("BEDROCK RAP / MEET THE FLINTSTONES" is one), else the first name of
+     * "X aka Y" that is one (the whole text linked), else its " / " parts
+     * when any of them is (a medley, "ROULETTE / outro"), else its " - "
+     * parts when every one of them is; separators kept as `{sep}`.
+     *
+     * @param {string} title
+     * @returns {Array<{text?: string, slug?: string, sep?: string}>}
+     */
+    function _slSongParts(title) {
+        const t = String(title || '');
+        const whole = { text: t, slug: _slSongSlugOf(t) };
+        if (whole.slug) return [whole];
+        // "Phantoms aka Wild Zero And Blind Terry": one song, by either name.
+        if (/\s+aka\s+/i.test(t)) {
+            const alt = t.split(/\s+aka\s+/i).map(_slSongSlugOf).find(Boolean);
+            if (alt) return [{ text: t, slug: alt }];
+        }
+        const split = re => t.split(re).map((x, i) => (i % 2 ? { sep: x } : { text: x, slug: _slSongSlugOf(x) }));
+        if (/\s\/\s/.test(t)) {
+            const parts = split(/(\s+\/\s+)/);
+            if (parts.some(p => p.slug)) return parts;
+        }
+        if (/\s[-–]\s/.test(t)) {
+            const parts = split(/(\s+[-–]\s+)/);
+            if (parts.filter(p => p.sep === undefined).every(p => p.slug)) return parts;
+        }
+        return [whole];
+    }
+
+    /**
+     * A show's date and qualifier from an item card's "Date", when it names
+     * ONE full date ("05 Feb 2014", "18 Oct 1975 (early show)"); `{}` for a
+     * month, a range or a list of dates, whose songs keep their main page.
+     *
+     * @param {string} text  The card's "Date" value.
+     * @returns {{date?: string, qual?: string}}
+     */
+    function _slShowOf(text) {
+        const s = String(text || '').replace(/\([^()]*\)/g, ' ');
+        if (/,|\d\s*[-–]\s*\d|\s[-–]\s/.test(s)) return {};
+        const date = _slFirstIsoDate(text);
+        return /^\d{4}-\d{2}-\d{2}$/.test(date) ? { date, qual: _slShowQualifier(text) } : {};
+    }
+
+    /**
+     * The slug of a song's version of one show, from the runtime index:
+     * `<base>_<date>-early|late|morning` for a show so qualified, else
+     * `<base>_<date>`, else the one slug that starts with `<base>_<date>`
+     * and goes on (`_2014-02-05-wgoe`); '' without the index or a match.
+     *
+     * @param {string} base
+     * @param {string} date  YYYY-MM-DD.
+     * @param {string} qual  `_slShowQualifier()` of the card's Date.
+     * @returns {string}
+     */
+    function _slVersionSlug(base, date, qual) {
+        const all = _slVer.slugs;
+        if (!all || !base || !date) return '';
+        const q = String(qual || '').toLowerCase();
+        const word = /\bearly\b/.test(q) ? 'early' : /\blate\b/.test(q) ? 'late' : /\bmorning\b/.test(q) ? 'morning' : '';
+        const stem = `${base}_${date}`;
+        if (word && all.has(`${stem}-${word}`)) return `${stem}-${word}`;
+        if (all.has(stem)) return stem;
+        const more = _slVer.byStem.get(stem);
+        return more && more.length === 1 ? more[0] : '';
+    }
+
+    /**
+     * HTML of one tracklist title: each song of it (`_slSongParts()`) a
+     * `span.mb-sl-song` (`_slSongSpanHtml()`); a part without a page, with
+     * the work glyphs on, a span with an empty slug (no link, its glyph by
+     * title); separators escaped text. With neither setting on, the escaped
+     * title alone.
+     *
+     * @param {string} title  The site's text.
+     * @param {{date?: string, qual?: string, raw?: boolean}} [ctx]  A dated
+     *   item's show; `raw`: show the site's text (the preview window), not
+     *   MusicBrainz's title style.
+     * @returns {string}
+     */
+    function _slSongTitleHtml(title, ctx = {}) {
+        const shown = ctx.raw ? (x => x) : _mbSiteTitleText;
+        if (!_slSongLinksOn() && !_slMbWorksOn()) return _rgEsc(shown(title));
+        return _slSongParts(title).map((p) => {
+            if (p.sep !== undefined) return _rgEsc(p.sep);
+            // No page on the site ("Circus Song"): no link, but MusicBrainz
+            // may know the work by that name, an alias (vzell, 2026-11-05,
+            // "Adjustments" 3b): its glyph by title.
+            if (!p.slug) {
+                return _slMbWorksOn() && p.text.trim() ? _slSongSpanHtml('', p.text, shown(p.text), Object.assign({}, ctx, { self: true })) : _rgEsc(shown(p.text));
+            }
+            return _slSongSpanHtml(p.slug, p.text, shown(p.text), ctx);
+        }).join('');
+    }
+
+    /**
+     * One song of a title: `span.mb-sl-song` with its base slug, the site's
+     * text, the show (dated items), an empty-or-glyph work slot and the link
+     * (`a.mb-sl-song-link`: the song's main page; `ctx.href`, the site's own
+     * link on a song page, is kept as it is: `data-mb-sl-fixed`), then, when
+     * the site has a page of this show's version, `a.mb-sl-show-link` to it:
+     * no text, its "this show" drawn by CSS, its own preview (vzell,
+     * 2026-11-05, "Adjustments" 3a: the title previews the official song,
+     * the mark the show's text). No link for `ctx.self` (a song page's own
+     * version, a title without a page) or with `sa_sl_song_links` off and
+     * no site link.
+     *
+     * @param {string} base       Base slug.
+     * @param {string} title      The site's text.
+     * @param {string} shownText  The text shown.
+     * @param {{date?: string, qual?: string, href?: string, self?: boolean}} ctx
+     * @returns {string}
+     */
+    function _slSongSpanHtml(base, title, shownText, ctx) {
+        const esc = _rgEsc;
+        const date = !ctx.href && ctx.date && /^\d{4}-\d{2}-\d{2}$/.test(ctx.date) ? ctx.date : '';
+        const ver = date && _slSongVersionsOn() ? _slVersionSlug(base, date, ctx.qual || '') : '';
+        const href = ctx.href || (_slSongUrl() + base);
+        const linked = !ctx.self && (!!ctx.href || _slSongLinksOn());
+        const w = _slMbwSlotFor(base, title);
+        const show = ver && linked ? `<a class="mb-sl-show-link" href="${esc(_slSongUrl() + ver)}" aria-label="This show's version on springsteenlyrics.com"></a>` : '';
+        return `<span class="mb-sl-song${ver ? ' mb-sl-this-show' : ''}" data-mb-sl-song="${esc(base)}" data-mb-sl-title="${esc(title)}"` +
+            (date ? ` data-mb-sl-date="${date}"` + (ctx.qual ? ` data-mb-sl-qual="${esc(ctx.qual)}"` : '') : '') +
+            (ctx.href ? ' data-mb-sl-fixed=""' : '') + '>' +
+            `<span class="mb-sl-work-slot"${w.key ? ` data-mb-sl-w="${esc(w.key)}"` : ''}>${w.html}</span>` +
+            (linked ? `<a class="mb-sl-song-link" href="${esc(href)}">${esc(shownText)}</a>` : esc(shownText)) + show + '</span>';
+    }
+
+    /**
+     * HTML of one tracklist line of the preview window (`_dpTrackListHtml()`):
+     * the song part of the site's text (`_slSplitTrackTitle()`, take and
+     * notes left as text) through `_slSongTitleHtml()`, raw text; a
+     * various-artists line's song when the artist is Springsteen, another
+     * artist's line plain.
+     *
+     * @param {string} raw  The line's title as the record holds it.
+     * @param {{date?: string, qual?: string}} ctx  The item's show.
+     * @returns {string}
+     */
+    function _slTrackTitleHtml(raw, ctx) {
+        const t = String(raw || '');
+        let p = _slSplitTrackTitle(t, false);
+        // A various-artists line, "Bruce Springsteen: BORN TO RUN" (vzell,
+        // 2026-11-05, "Adjustments" 5b): Bruce's song by its title alone,
+        // another artist's line plain, as in the item's table.
+        if (!_slSongSlugOf(p.title) && /^[^:]{2,60}:\s/.test(p.title)) {
+            const v = _slSplitTrackTitle(t, true);
+            if (v.artist && !/springsteen/i.test(v.artist)) return _rgEsc(t);
+            if (v.artist) p = v;
+        }
+        const i = p.title ? t.indexOf(p.title) : -1;
+        if (i < 0) return _rgEsc(t);
+        return _rgEsc(t.slice(0, i)) + _slSongTitleHtml(p.title, Object.assign({}, ctx, { raw: true })) + _rgEsc(t.slice(i + p.title.length));
+    }
+
+    /**
+     * The works a song is matched to: the card's MusicBrainz release first
+     * (`_slMbRel`, its recordings' works, by title), then the catalogue — a
+     * work whose annotation links the song's page (`exact`), else the works
+     * one of the title's forms names (title and aliases: `title` for one,
+     * `ambig` for several). Null without a match or a catalogue.
+     *
+     * @param {string} base   Base slug.
+     * @param {string} title  The site's text.
+     * @returns {?{how: ('release'|'exact'|'title'|'ambig'), ids: string[]}}
+     */
+    function _slMbwMatch(base, title) {
+        const keys = Array.from(new Set(_slTitleVariants(title).map(_slNorm).filter(Boolean)));
+        if (_slMbRel.byKey) {
+            const ids = new Set();
+            keys.forEach(k => (_slMbRel.byKey.get(k) || []).forEach(id => ids.add(id)));
+            if (ids.size) return { how: 'release', ids: Array.from(ids) };
+        }
+        const idx = _slMbw.index;
+        if (!idx) return null;
+        const bySlug = idx.bySlug.get(base);
+        if (bySlug && bySlug.size) return { how: bySlug.size === 1 ? 'exact' : 'ambig', ids: Array.from(bySlug) };
+        const ids = new Set();
+        keys.forEach(k => (idx.byNorm.get(k) || []).forEach(id => ids.add(id)));
+        if (!ids.size) return null;
+        return { how: ids.size === 1 ? 'title' : 'ambig', ids: Array.from(ids) };
+    }
+
+    /**
+     * What a song's work slot holds now: the glyphs of its match, a faded
+     * glyph while the catalogue is loading, or nothing; `key` names it, so a
+     * repaint only writes a slot that changes.
+     *
+     * @param {string} base
+     * @param {string} title
+     * @returns {{key: string, html: string}}
+     */
+    function _slMbwSlotFor(base, title) {
+        if (!_slMbWorksOn()) return { key: '', html: '' };
+        const m = _slMbwMatch(base, title);
+        if (m) return { key: `${m.how}:${m.ids.join(',')}`, html: _slMbwGlyphsHtml(m) };
+        if (_slMbw.loading && !_slMbw.index) {
+            return { key: 'wait', html: `<span class="mb-sl-work mb-sl-work-wait" aria-label="MusicBrainz works: loading"><img src="${_SL_MBW_ICON}" alt=""></span>` };
+        }
+        return { key: '', html: '' };
+    }
+
+    /**
+     * The glyphs of a match: one musicbrainz.org work link per work (three
+     * at most), classed by how it matched; several carry their count on the
+     * first (`data-n`, drawn by CSS). `data-mb-pop-name` names the work for
+     * MusicBrainz's card (`_dgMbSource()`).
+     *
+     * @param {{how: string, ids: string[]}} m
+     * @returns {string}
+     */
+    function _slMbwGlyphsHtml(m) {
+        const esc = _rgEsc;
+        const why = {
+            release: 'a recording of it is on your MusicBrainz release',
+            exact: 'the work\'s annotation links this song',
+            title: 'matched by title only',
+            ambig: `one of ${m.ids.length} works with this title`,
+        }[m.how];
+        const byId = (_slMbw.index && _slMbw.index.byId) || new Map();
+        return m.ids.slice(0, 3).map((id, i) => {
+            const w = byId.get(id) || (_slMbRel.names && _slMbRel.names.get(id)) || null;
+            const name = w ? w.title + (w.comment ? ` (${w.comment})` : '') : '';
+            return `<a class="mb-sl-work mb-sl-work-${m.how}" href="https://musicbrainz.org/work/${esc(id)}"` +
+                (name ? ` data-mb-pop-name="${esc(name)}"` : '') + (m.how === 'ambig' && i === 0 ? ` data-n="${m.ids.length}"` : '') +
+                ` aria-label="${esc(`MusicBrainz work${name ? ' ' + name : ''}: ${why}`)}"><img src="${_SL_MBW_ICON}" alt=""></a>`;
+        }).join('');
+    }
+
+    /**
+     * Brings every song of the tables up to date with what is in memory —
+     * live cells AND the source rows the next re-render clones (a multi-table
+     * render clones, `_msSourceRows()`), and the open window's tracklist: a
+     * dated song's "this show" link (`a.mb-sl-show-link`, no text) and its
+     * mark, and the work slot. Attributes, the textless link and the
+     * empty-text slot only, so the text, the filter's caches and its
+     * highlights stay.
+     *
+     * @returns {number} Elements written.
+     */
+    function _slSongsDecorate() {
+        if (!_isSlHost) return 0;
+        const spans = new Set();
+        document.querySelectorAll('body.mb-sa-host-sl table.tbl span.mb-sl-song[data-mb-sl-song], #mb-dp-dialog span.mb-sl-song[data-mb-sl-song], ' +
+            '.project-detail span.monospaced span.mb-sl-song[data-mb-sl-song]').forEach(s => spans.add(s));
+        _msSourceRows().forEach(r => r.querySelectorAll('span.mb-sl-song[data-mb-sl-song]').forEach(s => spans.add(s)));
+        let n = 0;
+        spans.forEach((span) => {
+            const base = span.dataset.mbSlSong;
+            const a = span.querySelector(':scope > a.mb-sl-song-link');
+            if (a && base && span.dataset.mbSlDate && span.dataset.mbSlFixed === undefined) {
+                const ver = _slSongVersionsOn() ? _slVersionSlug(base, span.dataset.mbSlDate, span.dataset.mbSlQual || '') : '';
+                const href = _slSongUrl() + base;
+                if (a.getAttribute('href') !== href) {
+                    a.setAttribute('href', href);
+                    n++;
+                }
+                let show = span.querySelector(':scope > a.mb-sl-show-link');
+                if (ver && !show) {
+                    show = span.ownerDocument.createElement('a');
+                    show.className = 'mb-sl-show-link';
+                    show.setAttribute('aria-label', 'This show\'s version on springsteenlyrics.com');
+                    span.appendChild(show);
+                    n++;
+                } else if (!ver && show) {
+                    show.remove();
+                    show = null;
+                    n++;
+                }
+                if (show && show.getAttribute('href') !== _slSongUrl() + ver) show.setAttribute('href', _slSongUrl() + ver);
+                span.classList.toggle('mb-sl-this-show', !!ver);
+            }
+            const slot = span.querySelector(':scope > .mb-sl-work-slot');
+            if (!slot) return;
+            const w = _slMbwSlotFor(base, span.dataset.mbSlTitle || '');
+            if ((slot.dataset.mbSlW || '') === w.key) return;
+            slot.innerHTML = w.html;
+            if (w.key) slot.dataset.mbSlW = w.key;
+            else delete slot.dataset.mbSlW;
+            n++;
+        });
+        return n;
+    }
+
+    /**
+     * Opens `vz-saed-sl-songs` (one store, `data`, keyed by `key`): the
+     * runtime index's `letters` and `letter:<x>` records and the work
+     * catalogue's `mb-works`.
+     *
+     * @returns {Promise<IDBDatabase>}
+     */
+    function _slSongsOpenIdb() {
+        if (_slSongsIdbPromise) return _slSongsIdbPromise;
+        _slSongsIdbPromise = new Promise((resolve, reject) => {
+            if (typeof indexedDB === 'undefined') {
+                reject(new Error('IndexedDB not available'));
+                return;
+            }
+            const req = indexedDB.open(_SL_SONGS_IDB_NAME, _SL_SONGS_IDB_VERSION);
+            req.onupgradeneeded = (ev) => {
+                const db = ev.target.result;
+                if (!db.objectStoreNames.contains('data')) db.createObjectStore('data', { keyPath: 'key' });
+            };
+            req.onsuccess = (ev) => {
+                const db = ev.target.result;
+                db.onversionchange = () => { db.close(); _slSongsIdbPromise = null; };
+                db.onclose = () => { _slSongsIdbPromise = null; };
+                resolve(db);
+            };
+            req.onerror = (ev) => { _slSongsIdbPromise = null; reject(ev.target.error); };
+            req.onblocked = () => { _slSongsIdbPromise = null; reject(new Error('IndexedDB open blocked by another tab')); };
+        });
+        return _slSongsIdbPromise;
+    }
+
+    /**
+     * Writes one record of `vz-saed-sl-songs`. Never rejects.
+     *
+     * @param {object} rec  With its `key`.
+     * @returns {Promise<void>}
+     */
+    function _slSongsIdbPut(rec) {
+        return _slSongsOpenIdb().then(db => new Promise((resolve) => {
+            const tx = db.transaction('data', 'readwrite');
+            tx.objectStore('data').put(rec);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => resolve();
+        })).catch(() => {});
+    }
+
+    /**
+     * Installs the runtime index from its records: every slug, and the
+     * versions by `<base>_<date>`.
+     *
+     * @param {Array<{key: string, slugs: string[], ts: number}>} letterRecs
+     * @returns {void}
+     */
+    function _slVerInstall(letterRecs) {
+        const all = new Set();
+        const byStem = new Map();
+        letterRecs.forEach((r) => {
+            _slVer.letterTs.set(r.key.slice(7), r.ts || 0);
+            (r.slugs || []).forEach(s => all.add(s));
+        });
+        all.forEach((s) => {
+            const m = /^([^_]+_\d{4}-\d{2}-\d{2})[-_]/.exec(s);
+            if (!m) return;
+            if (!byStem.has(m[1])) byStem.set(m[1], []);
+            byStem.get(m[1]).push(s);
+        });
+        _slVer.slugs = all.size ? all : null;
+        _slVer.byStem = byStem;
+    }
+
+    /**
+     * Installs the work catalogue: work by SL slug (from its annotation),
+     * by every normalised form of its title and aliases, and by id.
+     *
+     * @param {Array<{id: string, title: string, comment: string, aliases: string[], sl: string[]}>} works
+     * @returns {void}
+     */
+    function _slMbwInstall(works) {
+        const bySlug = new Map();
+        const byNorm = new Map();
+        const byId = new Map();
+        const add = (map, k, id) => {
+            if (!k) return;
+            if (!map.has(k)) map.set(k, new Set());
+            map.get(k).add(id);
+        };
+        works.forEach((w) => {
+            byId.set(w.id, { title: w.title, comment: w.comment || '' });
+            (w.sl || []).forEach(s => add(bySlug, s, w.id));
+            [w.title].concat(w.aliases || []).forEach(name => _slTitleVariants(name).forEach(v => add(byNorm, _slNorm(v), w.id)));
+        });
+        _slMbw.index = { bySlug, byNorm, byId };
+    }
+
+    /**
+     * Reads `vz-saed-sl-songs` into memory once a page (no request): the
+     * runtime index and the work catalogue, whatever their age (the
+     * runs decide whether to refresh). Never rejects.
+     *
+     * @returns {Promise<void>}
+     */
+    function _slSongsLoadSaved() {
+        if (_slSongsSavedPromise) return _slSongsSavedPromise;
+        if (!_isSlHost || (!_slSongLinksOn() && !_slMbWorksOn())) return Promise.resolve();
+        _slSongsSavedPromise = _slSongsOpenIdb().then(db => new Promise((resolve) => {
+            const req = db.transaction('data', 'readonly').objectStore('data').getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => resolve([]);
+        })).catch(() => []).then((recs) => {
+            const list = recs.find(r => r.key === 'letters');
+            if (list) {
+                _slVer.letters = list.letters || null;
+                _slVer.listTs = list.ts || 0;
+            }
+            const letterRecs = recs.filter(r => r.key.startsWith('letter:'));
+            if (letterRecs.length && !_slVer.slugs) _slVerInstall(letterRecs);
+            const works = recs.find(r => r.key === 'mb-works');
+            if (works && Array.isArray(works.works) && works.format === _SL_MBW_FORMAT && !_slMbw.index) {
+                _slMbwInstall(works.works);
+                _slMbw.ts = works.ts || 0;
+                _slMbw.format = works.format;
+            }
+            Lib.debug('detail', `sl songs: saved index ${_slVer.slugs ? _slVer.slugs.size : 0} slugs, ` +
+                `${_slMbw.index ? _slMbw.index.byId.size : 0} MusicBrainz works.`);
+        });
+        return _slSongsSavedPromise;
+    }
+
+    /**
+     * Whether the runtime index is whole and young: the landing page's
+     * letter list and every letter of it within `_SL_SONGS_TTL_MS`.
+     *
+     * @returns {boolean}
+     */
+    function _slVerFresh() {
+        const now = Date.now();
+        if (!_slVer.letters || now - _slVer.listTs > _SL_SONGS_TTL_MS) return false;
+        return _slVer.letters.every(l => now - (_slVer.letterTs.get(l.key) || 0) <= _SL_SONGS_TTL_MS);
+    }
+
+    /**
+     * The slugs of a lyrics-index letter page: each song line's
+     * `lyrics.php?song=` link (`applySlLyricsToTable()`'s lines), as written.
+     *
+     * @param {Document} doc
+     * @returns {string[]}
+     */
+    function _slLyricsDocSlugs(doc) {
+        const out = new Set();
+        doc.querySelectorAll('span.monospaced a[href*="lyrics.php?song="]').forEach((a) => {
+            if (a.closest('.navbar, footer, table')) return;
+            const m = (a.getAttribute('href') || '').match(/lyrics\.php\?(?:[^#]*&)?song=([^&#]+)/);
+            if (m) out.add(m[1]);
+        });
+        return Array.from(out);
+    }
+
+    /**
+     * Keeps one letter of the lyrics index in the runtime index: called by
+     * `applySlLyricsToTable()` for every letter page it converts (live,
+     * fetched or loaded from disk), so "Show all lyrics" refreshes the whole
+     * index for free. No request.
+     *
+     * @param {string} letter  The page's letter.
+     * @param {string[]} slugs
+     * @returns {void}
+     */
+    function _slVerStoreLetter(letter, slugs) {
+        if (!_isSlHost || !_slSongVersionsOn() || !letter || !slugs.length) return;
+        const key = `letter:${letter.toLowerCase()}`;
+        const ts = Date.now();
+        _slSongsIdbPut({ key, slugs, ts });
+        if (_slVer.slugs) {
+            slugs.forEach(s => _slVer.slugs.add(s));
+            _slVer.letterTs.set(letter.toLowerCase(), ts);
+        }
+    }
+
+    /**
+     * Reads the runtime index from the site (same-origin): the landing page's
+     * letters (`div.element-buttons`, the `sl-lyrics` pageKeys), then each
+     * letter not read within `_SL_SONGS_TTL_MS`, `_SL_VER_GAP_MS` apart.
+     * Each letter is kept as it arrives, so an interrupted run resumes. One
+     * run at a time. Never rejects.
+     *
+     * @returns {Promise<boolean>} Whether the index is whole.
+     */
+    function _slVerFetch() {
+        if (_slVer.loading) return _slVer.loading;
+        const get = async (url) => {
+            const r = await fetch(url, { credentials: 'same-origin' });
+            if (!r.ok) throw new Error(`HTTP ${r.status} for ${url}`);
+            return new DOMParser().parseFromString(await r.text(), 'text/html');
+        };
+        const pause = () => new Promise(r => setTimeout(r, _SL_VER_GAP_MS));
+        _slVer.loading = (async () => {
+            const base = _slSiteRoot();
+            let asked = 0;
+            if (!_slVer.letters || Date.now() - _slVer.listTs > _SL_SONGS_TTL_MS) {
+                const doc = await get(base + 'lyrics.php');
+                asked++;
+                const seen = new Set();
+                const letters = [];
+                doc.querySelectorAll('div.element-buttons a[href*="letter="]').forEach((a) => {
+                    const href = new URL(a.getAttribute('href'), base).href;
+                    const key = (new URL(href).searchParams.get('letter') || '').toLowerCase();
+                    if (key && !seen.has(key)) {
+                        seen.add(key);
+                        letters.push({ key, href });
+                    }
+                });
+                if (!letters.length) throw new Error('the lyrics index names no letters');
+                _slVer.letters = letters;
+                _slVer.listTs = Date.now();
+                _slSongsIdbPut({ key: 'letters', letters, ts: _slVer.listTs });
+            }
+            const recs = [];
+            for (const l of _slVer.letters) {
+                if (Date.now() - (_slVer.letterTs.get(l.key) || 0) <= _SL_SONGS_TTL_MS) continue;
+                if (asked++) await pause();
+                const slugs = _slLyricsDocSlugs(await get(l.href));
+                const rec = { key: `letter:${l.key}`, slugs, ts: Date.now() };
+                recs.push(rec);
+                _slVer.letterTs.set(l.key, rec.ts);
+                if (_slVer.slugs) slugs.forEach(s => _slVer.slugs.add(s));
+                await _slSongsIdbPut(rec);
+            }
+            // Re-install from every letter (saved ones included) for byStem.
+            const db = await _slSongsOpenIdb();
+            const all = await new Promise((resolve) => {
+                const req = db.transaction('data', 'readonly').objectStore('data').getAll();
+                req.onsuccess = () => resolve(req.result || []);
+                req.onerror = () => resolve([]);
+            });
+            _slVerInstall(all.filter(r => r.key.startsWith('letter:')));
+            Lib.debug('detail', `sl songs: runtime index read, ${recs.length} letter(s) asked, ${_slVer.slugs ? _slVer.slugs.size : 0} slugs.`);
+            return true;
+        })().catch((e) => {
+            Lib.warn('detail', `sl songs: the runtime song index could not be read: ${e && e.message}`);
+            return false;
+        }).finally(() => { _slVer.loading = null; });
+        return _slVer.loading;
+    }
+
+    /**
+     * One work of the catalogue as kept: id, title, disambiguation, alias
+     * names, and the base slugs its annotation links (both forms MusicBrainz
+     * carries: the old `/lyrics/<l>/<slug>.php` and `lyrics.php?song=`; a
+     * version's slug counts for its song).
+     *
+     * @param {object} w  A WS/2 work.
+     * @returns {{id: string, title: string, comment: string, aliases: string[], sl: string[]}}
+     */
+    function _slMbwSlim(w) {
+        const sl = new Set();
+        const re = /springsteenlyrics\.com\/(?:lyrics\/[^/\s]+\/([\w.-]+?)\.php|lyrics\.php\?(?:[^\s\]|"'<>]*&)?song=([\w.-]+))/gi;
+        let m;
+        while ((m = re.exec(String(w.annotation || ''))) !== null) sl.add((m[1] || m[2]).toLowerCase().split('_')[0]);
+        return {
+            id: w.id, title: w.title || '', comment: w.disambiguation || '',
+            aliases: (w.aliases || []).map(a => a.name).filter(Boolean), sl: Array.from(sl),
+        };
+    }
+
+    /**
+     * Reads Bruce Springsteen's works from MusicBrainz, 100 a request,
+     * through the MusicBrainz rate slot (`_rgWsGet()`: on this site a GM
+     * request), a failed page asked again twice; kept whole or not at all.
+     * The faded glyphs show while it runs. One run at a time. Never rejects.
+     *
+     * @returns {Promise<boolean>} Whether the catalogue is installed.
+     */
+    function _slMbwFetch() {
+        if (_slMbw.loading) return _slMbw.loading;
+        _slMbw.failed = false;
+        _slMbw.loading = (async () => {
+            const works = [];
+            let offset = 0;
+            let count = null;
+            do {
+                const url = `/ws/2/work?artist=${_SL_BRUCE_MBID}&inc=aliases+annotation&limit=100&offset=${offset}&fmt=json`;
+                let res = null;
+                for (let t = 0; t < 3; t++) {
+                    if (t) await new Promise(r => setTimeout(r, 2000 * t));
+                    res = await _rgWsGet(url, `sl works offset ${offset}`);
+                    if (res.ok && res.data) break;
+                }
+                if (!res || !res.ok || !res.data) throw new Error(`works offset ${offset}: ${(res && res.detail) || 'failed'}`);
+                if (count === null) count = res.data['work-count'] || 0;
+                const page = res.data.works || [];
+                page.forEach(w => works.push(_slMbwSlim(w)));
+                _slMbw.done = works.length;
+                _slMbw.total = count;
+                offset += 100;
+                if (!page.length) break;
+            } while (offset < count);
+            const ts = Date.now();
+            _slMbwInstall(works);
+            _slMbw.ts = ts;
+            _slMbw.format = _SL_MBW_FORMAT;
+            _slSongsIdbPut({ key: 'mb-works', works, ts, format: _SL_MBW_FORMAT });
+            Lib.debug('detail', `sl songs: ${works.length} MusicBrainz works read.`);
+            return true;
+        })().catch((e) => {
+            _slMbw.failed = true;
+            Lib.warn('detail', `sl songs: Bruce Springsteen's works could not be read from MusicBrainz: ${e && e.message}`);
+            return false;
+        }).finally(() => { _slMbw.loading = null; });
+        return _slMbw.loading;
+    }
+
+    /**
+     * The MusicBrainz release an item page's card links (logged in only:
+     * the site shows your own link), or ''.
+     *
+     * @returns {string} Its MBID.
+     */
+    function _slItemMbReleaseId() {
+        const kind = activeDefinition?.features?.slItemToTable;
+        if (!kind || kind === 'song') return '';
+        const card = _slFindCards(_slItemSourceDoc())[0];
+        const a = card && card.querySelector('a[href^="https://musicbrainz.org/release/"]');
+        const m = a && /\/release\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i.exec(a.getAttribute('href'));
+        return m ? m[1].toLowerCase() : '';
+    }
+
+    /**
+     * Reads the card's release (one request through the MusicBrainz rate
+     * slot, `inc=recordings+recording-level-rels+work-rels`) and keeps, by
+     * every normalised form of each track's, recording's and work's title,
+     * the works of that track's recording (`_slMbRel.byKey`).
+     *
+     * @param {string} id  The release MBID.
+     * @returns {Promise<boolean>}
+     */
+    async function _slMbRelFetch(id) {
+        if (_slMbRel.loading) return _slMbRel.loading;
+        _slMbRel.loading = (async () => {
+            const res = await _rgWsGet(`/ws/2/release/${id}?inc=recordings+recording-level-rels+work-rels&fmt=json`, 'sl release works');
+            if (!res.ok || !res.data) return false;
+            const byKey = new Map();
+            const names = new Map();
+            (res.data.media || []).forEach(m => (m.tracks || []).forEach((t) => {
+                const rec = t.recording || {};
+                const works = (rec.relations || []).filter(r => r['target-type'] === 'work' && r.work && r.work.id).map(r => r.work);
+                if (!works.length) return;
+                works.forEach(w => names.set(w.id, { title: w.title || '', comment: w.disambiguation || '' }));
+                [t.title, rec.title].concat(works.map(w => w.title)).forEach(nm => _slTitleVariants(nm).forEach((v) => {
+                    const k = _slNorm(v);
+                    if (!k) return;
+                    if (!byKey.has(k)) byKey.set(k, new Set());
+                    works.forEach(w => byKey.get(k).add(w.id));
+                }));
+            }));
+            _slMbRel.id = id;
+            _slMbRel.byKey = byKey;
+            _slMbRel.names = names;
+            return true;
+        })().finally(() => { _slMbRel.loading = null; });
+        return _slMbRel.loading;
+    }
+
+    /**
+     * The item page's own tracklist on the initial page, before any press
+     * (vzell, 2026-11-05: "song titles on the IP of a SL song page should
+     * already get hyperlinked + POH handling"): each track line's title text
+     * node becomes the same song span the tables use (`_slSongTitleHtml()`,
+     * the site's text kept: `raw`), so its link previews as anywhere else on
+     * the page (`_dpSiteForLink()`) and its glyph gets MusicBrainz's card
+     * (`_dgMbSource()`). The page's copy is taken FIRST (`_slItemPageHtml()`),
+     * so the converter and the head still read the site's own markup; the
+     * block's text is unchanged anyway. Glyphs and this show's versions come
+     * from what is saved only (`_slSongsLoadSaved()`): a visit alone asks
+     * MusicBrainz and the site nothing; a press or a window reads the rest.
+     * A various-artists line by another artist stays as it is. Once a page.
+     *
+     * @returns {number} Track lines linked.
+     */
+    function _slLinkLiveTracklist() {
+        if (!_isSlHost || (!_slSongLinksOn() && !_slMbWorksOn())) return 0;
+        _slItemPageHtml();
+        const card = _slFindCards(document)[0];
+        const block = card && _slTracklistBlock(card);
+        if (!block || block.dataset.mbSlLinked) return 0;
+        block.dataset.mbSlLinked = '1';
+        const tracks = _slParseTracklist(_dpBlockText(block)).media.flatMap(m => m.tracks);
+        if (!tracks.length) return 0;
+        const show = _slShowOf(_slReadCardFields(card.querySelector('.col-md-10') || card)['Date'] || '');
+        const va = _slItemKind() === 'collection' && tracks.filter(t => /^[^:]{2,60}:\s/.test(t.title)).length * 2 >= tracks.length;
+        const nodes = [];
+        const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+        while (walker.nextNode()) nodes.push(walker.currentNode);
+        let ti = 0;
+        let n = 0;
+        nodes.forEach((node) => {
+            const t = tracks[ti];
+            if (!t) return;
+            const text = node.nodeValue;
+            if (t.pos && !text.trim().startsWith(t.pos)) return;
+            ti++;
+            const p = _slSplitTrackTitle(t.title, va);
+            if (!p.title || (p.artist && !/springsteen/i.test(p.artist))) return;
+            const at = text.indexOf(p.title, t.pos ? text.indexOf(t.pos) + t.pos.length : 0);
+            if (at < 0) return;
+            const tpl = document.createElement('template');
+            tpl.innerHTML = _slSongTitleHtml(p.title, Object.assign({ raw: true }, show));
+            if (!tpl.content.querySelector('span.mb-sl-song')) return;
+            node.replaceWith(document.createTextNode(text.slice(0, at)), tpl.content, document.createTextNode(text.slice(at + p.title.length)));
+            n++;
+        });
+        _ensureSlStyle();
+        _slSongsLoadSaved().then(() => _slSongsDecorate());
+        Lib.debug('init', `_slLinkLiveTracklist: ${n} of ${tracks.length} track line(s) linked on the initial page.`);
+        return n;
+    }
+
+    /**
+     * @returns {boolean} Whether the work catalogue in memory is whole and
+     *   younger than `_SL_SONGS_TTL_MS`.
+     */
+    function _slMbwFresh() {
+        return !!_slMbw.index && _slMbw.format === _SL_MBW_FORMAT && Date.now() - _slMbw.ts <= _SL_SONGS_TTL_MS;
+    }
+
+    /**
+     * The item window's tracklist on springsteenlyrics.com
+     * (`_dpTrackListHtml()` with `sl`, vzell, 2026-11-05, "Adjustments" 6):
+     * once the window is painted, what is saved, then — the window opens on
+     * Space, an explicit ask — the work catalogue and, for a dated item, the
+     * runtime index as needed, the window's songs painted again as each
+     * lands (`_slSongsDecorate()`). One run at a time; nothing off the site.
+     *
+     * @returns {void}
+     */
+    function _slSongsWindowKick() {
+        if (!_isSlHost || _slSongsWindowKick.pending) return;
+        _slSongsWindowKick.pending = true;
+        setTimeout(async () => {
+            _slSongsWindowKick.pending = false;
+            await _slSongsLoadSaved();
+            _slSongsDecorate();
+            const jobs = [];
+            if (_slMbWorksOn() && !_slMbwFresh()) {
+                const run = _slMbwFetch();
+                _slSongsDecorate();
+                jobs.push(run.then(() => _slSongsDecorate()));
+            }
+            if (_slSongVersionsOn() && !_slVerFresh() && document.querySelector('#mb-dp-dialog span.mb-sl-song[data-mb-sl-date]')) {
+                jobs.push(_slVerFetch().then(() => _slSongsDecorate()));
+            }
+            await Promise.all(jobs);
+        }, 0);
+    }
+
+    /**
+     * The render tail of the songs in our tables (after a fresh render and a
+     * disk load): what is in memory or saved is painted at once; then, as
+     * needed, the card's MusicBrainz release, the work catalogue and — when
+     * a dated song is shown — the runtime index are read, and the songs
+     * painted again as each lands. No request while the settings are off,
+     * nor when everything is younger than 30 days.
+     *
+     * @returns {Promise<void>}
+     */
+    async function _slSongsAfterRender() {
+        if (!_isSlHost) return;
+        const sel = 'body.mb-sa-host-sl table.tbl span.mb-sl-song[data-mb-sl-song]';
+        if (!document.querySelector(sel)) return;
+        await _slSongsLoadSaved();
+        _slSongsDecorate();
+        const jobs = [];
+        if (_slMbWorksOn()) {
+            const rel = _slItemMbReleaseId();
+            const works = _slMbwFresh() ? Promise.resolve(true) : _slMbwFetch();
+            _slSongsDecorate();
+            jobs.push((rel && _slMbRel.id !== rel ? _slMbRelFetch(rel).catch(() => false) : Promise.resolve(true))
+                .then(() => works).then(() => _slSongsDecorate()));
+        }
+        if (_slSongVersionsOn() && !_slVerFresh() && document.querySelector(`${sel}[data-mb-sl-date]`)) {
+            jobs.push(_slVerFetch().then(() => _slSongsDecorate()));
+        }
+        await Promise.all(jobs);
+    }
+
+    // -------------------------------------------------------------------------
     // springsteenlyrics.com: a song's own page (lyrics.php?song=, sl-song)
     // -------------------------------------------------------------------------
     // One page per version of a song (2026-11-05; org/springsteenlyrics.org
@@ -12758,7 +14116,7 @@
             groupByH3: true,
             pageRequest: () => {
                 const url = window.location.href;
-                return { url, fetchText: async () => _slItemPageHtml(),
+                return { url, fetchText: async () => { await _slSongsLoadSaved(); return _slItemPageHtml(); },
                     toHtml: (text) => _slSongToHtml(text, url, activeDefinition?.features?.slItemView) };
             },
             pageCountAsync: () => 1,
@@ -12842,8 +14200,18 @@
             if (!parts.length) throw Object.assign(new Error('The page lists no versions'), { status: 0 });
             return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${parts.join('')}</body></html>`;
         }
+        // An edition's songs: the site's own link kept, a song it leaves
+        // unlinked linked when its page is known, and each with its
+        // MusicBrainz work glyph (`_slSongSpanHtml()`).
+        const editionCell = (t) => {
+            const base = (_slSongHrefSlug(t.href).split('_')[0]) || _slSongSlugOf(t.title);
+            if (!base || (!_slSongLinksOn() && !_slMbWorksOn())) return titleCell(t.title, t.href, t.self);
+            const shown = _mbSiteTitleText(t.title);
+            const tip = shown !== t.title ? ` data-mb-tip title="${esc(`As written on the site:\n${t.title}`)}"` : '';
+            return `<td${t.self ? ' class="mb-sl-self"' : ''}${tip}>${_slSongSpanHtml(base, t.title, shown, { href: t.href || '', self: !!t.self })}</td>`;
+        };
         s.releases.forEach(rel => rel.editions.forEach(ed => _slSongEditionGroups(rel.name, ed, s.slug).forEach((g) => {
-            const rows = g.tracks.map(t => `<tr>${td(t.pos)}${titleCell(t.title, t.href, t.self)}</tr>`);
+            const rows = g.tracks.map(t => `<tr>${td(t.pos)}${editionCell(t)}</tr>`);
             parts.push(h3(g.name) + table(['Pos', 'Title'], rows));
         })));
         const releaseTable = (name, list, withItem) => {
@@ -13346,6 +14714,9 @@
             tbody.appendChild(tr);
         });
 
+        // Every letter converted refreshes that letter of the runtime song
+        // index the tracklists' "this show" links read (no request).
+        _slVerStoreLetter(letter, _slLyricsDocSlugs(docContext));
         lines[0].parentNode.insertBefore(table, lines[0]);
         lines.forEach(span => {
             const next = span.nextSibling;
@@ -13477,6 +14848,73 @@
             body.mb-sa-host-sl table.tbl td.mb-sl-self::before {
                 content: "\\25CF\\00A0";
                 color: #b5121b;
+            }
+            /* A tracklist's songs (_slSongTitleHtml()): the MusicBrainz work
+               glyphs before the link (an image each, no text); dashed when
+               matched by title only, a count on the first of several; faded
+               while the works load. This show's version: a mark drawn here,
+               so the cell's text stays the title. */
+            body.mb-sa-host-sl :is(table.tbl, span.monospaced) .mb-sl-work-slot:empty {
+                display: none;
+            }
+            body.mb-sa-host-sl :is(table.tbl, span.monospaced) .mb-sl-work-slot {
+                display: inline-flex;
+                gap: 3px;
+                margin-right: 5px;
+                vertical-align: -3px;
+            }
+            body.mb-sa-host-sl :is(table.tbl, span.monospaced) .mb-sl-work {
+                position: relative;
+                display: inline-block;
+                line-height: 0;
+                border-radius: 3px;
+            }
+            body.mb-sa-host-sl :is(table.tbl, span.monospaced) .mb-sl-work img {
+                width: 15px;
+                height: 15px;
+                display: block;
+            }
+            body.mb-sa-host-sl :is(table.tbl, span.monospaced) .mb-sl-work-title,
+            body.mb-sa-host-sl :is(table.tbl, span.monospaced) .mb-sl-work-ambig {
+                outline: 1px dashed #ba478f;
+                outline-offset: 1px;
+            }
+            body.mb-sa-host-sl :is(table.tbl, span.monospaced) .mb-sl-work-ambig {
+                outline-color: #a46a00;
+            }
+            body.mb-sa-host-sl :is(table.tbl, span.monospaced) .mb-sl-work[data-n]::after {
+                content: attr(data-n);
+                position: absolute;
+                top: -6px;
+                right: -7px;
+                padding: 1px 3px;
+                border-radius: 999px;
+                font: bold 9px/1 sans-serif;
+                color: #fff;
+                background: #a46a00;
+            }
+            body.mb-sa-host-sl :is(table.tbl, span.monospaced) .mb-sl-work-wait img {
+                opacity: 0.25;
+                animation: mb-sl-work-pulse 1.1s ease-in-out infinite;
+            }
+            @keyframes mb-sl-work-pulse {
+                0%, 100% { opacity: 0.2; transform: scale(0.9); }
+                50% { opacity: 0.8; transform: scale(1); }
+            }
+            @media (prefers-reduced-motion: reduce) {
+                body.mb-sa-host-sl :is(table.tbl, span.monospaced, #mb-dp-dialog) .mb-sl-work-wait img { animation: none; }
+            }
+            body.mb-sa-host-sl :is(table.tbl, span.monospaced) a.mb-sl-show-link {
+                text-decoration: none;
+            }
+            body.mb-sa-host-sl :is(table.tbl, span.monospaced) a.mb-sl-show-link::after {
+                content: "this show";
+                margin-left: 6px;
+                padding: 0 4px;
+                border-radius: 3px;
+                font-size: 0.8em;
+                background: #dcefe2;
+                color: #2c7347;
             }
             /* The lyrics' stage notes in the song page's head. */
             body.mb-sa-host-sl .mb-fd-text .mb-sl-stage {
@@ -20170,7 +21608,7 @@
         const sel = '#mb-dg-root table.tbl > tbody a[href^="https://musicbrainz.org/"], #app a[href^="https://musicbrainz.org/"], ' +
             '#page_content a[href^="https://musicbrainz.org/"], #mb-dg-root h1.mb-dg-h1 a[href^="https://musicbrainz.org/"]' +
             (_isSlHost ? ', div.blog-post a[href^="https://musicbrainz.org/"], table.tbl > tbody a[href^="https://musicbrainz.org/"], ' +
-                '.mb-fd-head a[href^="https://musicbrainz.org/"]' : '');
+                '.mb-fd-head a[href^="https://musicbrainz.org/"], .project-detail span.monospaced a.mb-sl-work[href^="https://musicbrainz.org/"]' : '');
         const resolve = (a) => {
             const m = _DG_MB_LINK_RE.exec(a.getAttribute('href') || '');
             const type = m && m[1].toLowerCase();
@@ -21810,6 +23248,9 @@
                     const fig = el('figure', 'mb-release-art-tile');
                     const a = _fdLink(p.full);
                     a.dataset.mbArtvExt = String(i + 1);
+                    // A rest shows the picture large, Shift larger
+                    // (`_fdPicCardHtml()`; vzell, 2026-11-05, SL "Adjustments" 4).
+                    a.dataset.mbttFn = 'fd-pic';
                     const img = el('img');
                     img.src = p.thumb || p.full;
                     img.alt = p.caption || '';
@@ -21826,6 +23267,55 @@
         });
         (spec.textsAfter || []).forEach(textSection);
         if (head.childElementCount) h2.before(head);
+    }
+
+    /**
+     * A picture of a foreign detail page's head (`_fdHeadInsertSections()`'s
+     * tiles, `data-mbtt-fn="fd-pic"`) as a hover card: its caption, the
+     * picture large — 320 px, while Shift is held as large as the window
+     * allows (`_artCardView.big`, the artwork cards' Shift: `_ART_CARD_FNS`)
+     * —, its place among the section's pictures and what a click does. The
+     * thumbnail shows at once, the full picture replaces it when loaded
+     * (`_fdPicSwap()`). No request of the script's own: an image load.
+     *
+     * @param {HTMLAnchorElement} a
+     * @returns {?string}
+     */
+    function _fdPicCardHtml(a) {
+        const fig = a.closest('figure');
+        const grid = a.closest('.mb-release-art-grid');
+        const tiles = grid ? Array.from(grid.querySelectorAll('figure.mb-release-art-tile > a')) : [a];
+        const thumb = (a.querySelector('img') || {}).src || a.href;
+        const cap = fig && fig.querySelector('figcaption') ? fig.querySelector('figcaption').textContent.trim() : '';
+        const big = _artCardView.big;
+        const size = big ? Math.max(320, Math.min(900, window.innerWidth - 60, window.innerHeight - 140)) : 320;
+        const where = `Picture ${tiles.indexOf(a) + 1} of ${tiles.length}`;
+        return `<div style="max-width:${size + 10}px;">` +
+            (cap ? `<div class="mb-tt-title">${_rgEsc(cap)}</div>` : '') +
+            `<img class="mb-fd-pic-prev" src="${_rgEsc(thumb)}" data-mb-fd-full="${_rgEsc(a.href)}" alt="" referrerpolicy="no-referrer" ` +
+            `style="display:block;width:${size}px;height:${size}px;object-fit:contain;margin-top:4px;background:#efe6d4;">` +
+            `<div class="mb-tt-dim">${_rgEsc(where)}</div>` +
+            `<div class="mb-tt-foot">${big ? 'Click or <kbd>Space</kbd>: viewer' : 'Click or <kbd>Space</kbd>: viewer · Shift: larger'}</div>` +
+            `</div>`;
+    }
+
+    /**
+     * Swaps a picture card's thumbnail (`_fdPicCardHtml()`) for the full
+     * picture once that has loaded, while the card still shows it.
+     *
+     * @param {HTMLElement} tip  `#mb-stat-tooltip`.
+     * @returns {void}
+     */
+    function _fdPicSwap(tip) {
+        const img = tip.querySelector('img.mb-fd-pic-prev[data-mb-fd-full]');
+        if (!img) return;
+        const full = img.dataset.mbFdFull;
+        const pre = new Image();
+        pre.referrerPolicy = 'no-referrer';
+        pre.onload = () => {
+            if (img.isConnected && tip.style.display === 'block') img.src = full;
+        };
+        pre.src = full;
     }
 
     /**
@@ -25973,9 +27463,19 @@
      *    releases, covers and movies counted, a live version's show and
      *    release and the tracklist of that release (the song marked:
      *    `self`); the contact form and scripts are out of the sections.
+     * 12: springsteenlyrics.com items: the record says its tracks are SL
+     *    songs (`slTracks`) and, for a dated item, its show (`slShow`), so
+     *    the window links each song (`_slTrackTitleHtml()`).
+     * 13: springsteenlyrics.com's label lists (`brucelegs.php?cmd=list&
+     *    f_label=…`) are records (`_dpParseSlLabel()`).
+     * 14: their items link their pages (the section's `html`).
+     * 15: a medium header with its kind in brackets ("Disc 2: [DVD]",
+     *    `_DP_DISC_RE`) opens a medium instead of ending the tracks.
+     * 16: a box set's records without tracklists are its contents (a
+     *    section and a count), not three "tracks" and notes.
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 11;
+    const _DP_PARSER_VERSION = 16;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -26055,12 +27555,15 @@
      * "Disc 1:", "CD 2", "Side A:", and the two shapes with text after the
      * colon (2026-11-04 snapshots): a CD bootleg's "Disc: (82:40.00)" (its
      * total length) and a box set's `Record 2: "Cover Me" (catalogue # CBS
-     * QTA 4662)`. Capture 1 is the header without its colon, capture 2 the
-     * text after it — only text that opens with a quote or a parenthesis, so
-     * a lineage note such as "Tape: Sony TC-D5 > …" stays a note.
+     * QTA 4662)`, and a medium's kind in brackets, "Disc 2: [DVD]"
+     * (collection item 7457, vzell 2026-11-05: until then neither of its
+     * discs was a header, and the DVD's tracks were notes). Capture 1 is the
+     * header without its colon, capture 2 the text after it — only text that
+     * opens with a quote, a parenthesis or a bracket, so a lineage note such
+     * as "Tape: Sony TC-D5 > …" stays a note.
      * @type {RegExp}
      */
-    const _DP_DISC_RE = /^((?:disc|disk|cd|dvd|side|lp|record|tape|set)\b[^:"(]{0,12}?)\s*(?::\s*((?:"|\().*)?)?$/i;
+    const _DP_DISC_RE = /^((?:disc|disk|cd|dvd|side|lp|record|tape|set)\b[^:"([]{0,12}?)\s*(?::\s*((?:"|\(|\[).*)?)?$/i;
 
     /**
      * Parsed detail pages of this session, by absolute URL (the tier in
@@ -26572,6 +28075,22 @@
             data.tracks.push(track);
         }));
         if (tl.unnumbered) data.unnumbered = true;
+        // A box set's records without tracklists (`_slContentsRow()`): the
+        // count on the card and in the window, the list as the window's
+        // first section.
+        if (tl.contents.length) {
+            const rows = tl.contents.map(_slContentsRow);
+            const n = rows.length;
+            const what = (rows[0].pos.match(/^[a-z]+/i) || ['item'])[0].toLowerCase();
+            data.highlight = { value: String(n), label: `${what}${n === 1 ? '' : 's'} listed, without their tracklists` };
+            data.sections.push({
+                label: `Contents (${n})`,
+                text: rows.map(r => [`${r.pos}: ${r.title}`].concat(r.catNo ? [`Cat. no. ${r.catNo}`] : [], r.details).join('\n')).join('\n\n'),
+                html: '<ol class="mb-dp-contents">' + rows.map(r => `<li><b>${_mbttEscape(r.pos)}</b> ${_mbttEscape(r.title)}` +
+                    (r.catNo ? ` <span class="mb-tt-dim">· ${_mbttEscape(r.catNo)}</span>` : '') +
+                    r.details.map(d => `<div class="mb-tt-dim">${_mbttEscape(d)}</div>`).join('') + '</li>').join('') + '</ol>',
+            });
+        }
         tl.notes.forEach(n => data.notes.push(n));
     }
 
@@ -26593,11 +28112,20 @@
      * tracklist, unnumbered (bootleg item 1331, whose "BORN IN THE U.S.A." is
      * why an all-capitals line may end in a dot).
      *
+     * A block with medium headers but no track line at all is a box set's
+     * list of contents (sampler items 5618 and 5619, vzell 2026-11-05: `Record
+     * 1: "Greetings From Asbury Park N.J."`, then "Aussie pressing", "Cat#
+     * CBS SBP 234758" and the sleeve): each header with the lines of its
+     * paragraph is one entry of `contents`, those lines are no notes, and the
+     * unnumbered-titles reading is not tried (it took the first record's
+     * three lines for songs).
+     *
      * @param {string} text  `_dpBlockText()` of the tracklist block.
-     * @returns {{media: Array<{name: string, extra: string, total: string, label: string, tracks: Array<{pos: string, title: string, length: string}>}>, notes: string[], unnumbered: boolean}}
+     * @returns {{media: Array<{name: string, extra: string, total: string, label: string, tracks: Array<{pos: string, title: string, length: string}>}>, contents: Array<{name: string, extra: string, total: string, label: string, lines: string[]}>, notes: string[], unnumbered: boolean}}
      *   `name` is the header without its colon ('' before any header),
      *   `total` a header's length in parentheses, `extra` any other text
-     *   after its colon, and `label` the three joined for display.
+     *   after its colon, and `label` the three joined for display;
+     *   `contents` is empty unless the block has headers and no track.
      */
     function _slParseTracklist(text) {
         const blocks = String(text || '').split(/\n\s*\n/)
@@ -26612,18 +28140,22 @@
             const total = tot ? tot[1] : '';
             const extra = tot ? '' : String(after || '').trim();
             const label = name + (extra ? ': ' + extra : '') + (total ? ` (${total})` : '');
-            cur = { name, extra, total, label, tracks: [] };
+            cur = { name, extra, total, label, tracks: [], lines: [] };
             media.push(cur);
         };
         let done = false;
         let count = 0;
+        // Each kept line remembers the header of its paragraph it follows,
+        // so that a block of headers without tracks can give the lines to
+        // its contents instead of to the notes.
         const rest = [];
         blocks.forEach(block => {
             const kept = [];
+            let head = null;
             block.forEach(line => {
                 if (!done) {
                     const d = line.match(_DP_DISC_RE);
-                    if (d) { open(d[1].trim(), d[2]); return; }
+                    if (d) { open(d[1].trim(), d[2]); head = cur; return; }
                     const t = line.match(trackRe);
                     if (t) {
                         if (!cur) open('', '');
@@ -26634,10 +28166,17 @@
                     }
                     if (count) done = true;
                 }
-                kept.push(line);
+                if (head && !done) head.lines.push(line);
+                kept.push({ line, head: done ? null : head });
             });
             if (kept.length) rest.push(kept);
         });
+        const contents = !count ? media.filter(m => m.name).map(({ name, extra, total, label, lines }) => ({ name, extra, total, label, lines })) : [];
+        if (contents.length) {
+            const out = rest.map(b => b.filter(k => !k.head).map(k => k.line)).filter(b => b.length);
+            return { media: [], contents, notes: out.map(b => b.join('\n')), unnumbered: false };
+        }
+        rest.forEach((b, i) => { rest[i] = b.map(k => k.line); });
         let unnumbered = false;
         // Title-like: short, no lineage arrow, and no sentence end unless the
         // line has no lower case at all ("BORN IN THE U.S.A.").
@@ -26649,7 +28188,7 @@
             rest.shift().forEach(title => cur.tracks.push({ pos: '', title, length: '' }));
             unnumbered = true;
         }
-        return { media: media.filter(m => m.tracks.length), notes: rest.map(b => b.join('\n')), unnumbered };
+        return { media: media.filter(m => m.tracks.length), contents, notes: rest.map(b => b.join('\n')), unnumbered };
     }
 
     /**
@@ -26696,6 +28235,7 @@
      */
     function _dpParseSl(doc, url) {
         if (/\/lyrics\.php$/.test(new URL(url).pathname)) return _dpParseSlSong(doc, url);
+        if (_slIsLabelListUrl(new URL(url))) return _dpParseSlLabel(doc, url);
         if (_SL_INFO_FILE_PATH_RE.test(new URL(url).pathname)) return _dpParseSlInfoFile(doc, url);
         const card = _slFindCards(doc)[0];
         if (!card) return null;
@@ -26711,6 +28251,11 @@
         data.cover = _dpAbsUrl(cover && cover.getAttribute('src'), url);
         const block = _slTracklistBlock(card);
         if (block) _dpSlTracklist(_dpBlockText(block), data);
+        // The window links each song of the tracklist, a dated item's this
+        // show's version (`_slTrackTitleHtml()`).
+        data.slTracks = true;
+        const show = _slShowOf(_slReadCardFields(body)['Date'] || '');
+        if (show.date) data.slShow = show;
         // The CD and vinyl bootleg pages' own text sections (Runout groove
         // etchings, Release info). Never "Private info": a logged-in page's
         // own notes stay out of every card and window (vzell, 2026-11-04).
@@ -26731,6 +28276,72 @@
                 label: captions.get(full.split('/').pop()) || ''
             });
         });
+        return data;
+    }
+
+    /**
+     * Whether a URL is a label's list of CD and vinyl bootlegs
+     * (`brucelegs.php?cmd=list&f_label=…`): the only label page the site has
+     * (the collection and bootleg lists ignore `f_label=`, probed
+     * 2026-11-05).
+     *
+     * @param {URL} u
+     * @returns {boolean}
+     */
+    function _slIsLabelListUrl(u) {
+        return u.pathname === '/brucelegs.php' && u.searchParams.get('cmd') === 'list' && !!u.searchParams.get('f_label');
+    }
+
+    /**
+     * A label's list of CD and vinyl bootlegs as a record (vzell,
+     * 2026-11-05, "Adjustments" 3a; `debug/sl-brucelegs-labels-list-initial.html`):
+     * the label as its title, how many items the list says it has ("Showing
+     * items 1-15 of 15"), the items of its first page as lines (title · date
+     * · format: the card's first six as text, the window all, each title
+     * linking its item page, so it previews and opens in the window), their
+     * covers as images. Null for a page with neither cards nor a count.
+     *
+     * @param {Document} doc
+     * @param {string}   url
+     * @returns {?object}
+     */
+    function _dpParseSlLabel(doc, url) {
+        const label = new URL(url).searchParams.get('f_label') || '';
+        const cards = _slFindCards(doc);
+        const total = (String((doc.body || doc.documentElement || {}).textContent || '').match(/Showing items\s*[\d-]+\s*of\s*(\d+)/) || [])[1];
+        if (!cards.length && !total) return null;
+        const data = _dpEmpty();
+        data.session = _slLoggedIn(doc) ? 'in' : 'out';
+        data.title = label;
+        data.subtitle = 'Label · CD and vinyl bootlegs on springsteenlyrics.com';
+        const n = Number(total || cards.length);
+        data.highlight = { value: String(n), label: `CD and vinyl bootleg${n === 1 ? '' : 's'}` };
+        const known = v => (v && !/^[–\-\s()]*$/.test(v) ? v : '');
+        // Each item: its title, linked to its page in the window (vzell,
+        // 2026-11-05: "the item lines should also get hyperlinked + POH
+        // support"), then date and format; the card's excerpt is text.
+        const items = cards.map((card) => {
+            const body = card.querySelector('.col-md-10') || card;
+            const f = _slReadCardFields(body);
+            const t = Array.from(body.querySelectorAll('a[href*="item="]')).find(a => _dpText(a.textContent));
+            return { title: t ? _dpText(t.textContent) : '', href: t ? _dpAbsUrl(t.getAttribute('href'), url) : '',
+                rest: [known(f['Date']), known(f['Format'])].filter(Boolean) };
+        }).filter(it => it.title);
+        const lines = items.map(it => [it.title].concat(it.rest).join(' · '));
+        if (lines.length) {
+            data.excerpt = { label: 'Items', lines: lines.slice(0, 6), total: lines.length };
+            data.sections.push({
+                label: `Items (${lines.length}${n > lines.length ? ` of ${n}` : ''})`, text: lines.join('\n'),
+                html: items.map(it => (it.href ? `<a href="${_rgEsc(it.href)}">${_rgEsc(it.title)}</a>` : _rgEsc(it.title)) +
+                    it.rest.map(r => ` · ${_rgEsc(r)}`).join('')).join('<br>'),
+            });
+        }
+        cards.forEach((card) => {
+            const img = card.querySelector('.col-md-2 img');
+            const src = img && img.getAttribute('src');
+            if (src) data.images.push({ thumb: _dpAbsUrl(src, url), full: _dpAbsUrl(src, url), label: _dpText(img.getAttribute('alt') || '') });
+        });
+        data.cover = data.images.length ? data.images[0].thumb : '';
         return data;
     }
 
@@ -28017,6 +29628,9 @@
                 // serves the page of song=babycomeback, "BABY COME BACK [Home
                 // demo version]", so _dpParseSlSong() reads it unchanged.
                 (u.pathname === '/lyrics.php' && /^\d+$/.test(u.searchParams.get('item') || '') && !u.searchParams.get('cmd')) ||
+                // A label's CD and vinyl bootlegs (the list's Label cell, the
+                // item page's Release card; `_dpParseSlLabel()`).
+                _slIsLabelListUrl(u) ||
                 _SL_INFO_FILE_PATH_RE.test(u.pathname),
             // A bootleg's original info file (the list's Info file cell, the
             // item page's Files card): read on Space only (vzell's answer 2,
@@ -28806,14 +30420,22 @@
      * HTML of one ordered track list. A track with a `length` (the CD and
      * vinyl bootleg pages write "(5:45.15)") shows it after the title; a
      * track marked `self` (a springsteenlyrics.com song page's own version)
-     * gets a ● after it.
+     * gets a ● after it. With `sl` (a springsteenlyrics.com item's window),
+     * each song links its page (`_slTrackTitleHtml()`).
      *
      * @param {Array<object>} tracks
+     * @param {?{date?: string, qual?: string}} [sl]  The item's show, or null.
      * @returns {string}
      */
-    function _dpTrackListHtml(tracks) {
-        return '<ol class="mb-dp-tracks">' + tracks.map(t =>
-            `<li><span class="mb-dp-pos">${_mbttEscape(t.pos || '·')}</span>${_mbttEscape(t.title)}` +
+    function _dpTrackListHtml(tracks, sl = null) {
+        if (sl) _slSongsWindowKick();
+        // The site's fonts have proportional old-style figures, which
+        // tabular-nums cannot change: the numbers get a box as wide as the
+        // longest one, in "0"s (`ch`), so the titles line up (item 7457's
+        // "10", "11" and "12" sat left of "01"…"09", vzell 2026-11-05).
+        const w = sl ? Math.max(1, ...tracks.map(t => String(t.pos || '·').length)) : 0;
+        return (sl ? `<ol class="mb-dp-tracks mb-sl-tracks" style="--mb-sl-pos-w: ${w}ch">` : '<ol class="mb-dp-tracks">') + tracks.map(t =>
+            `<li><span class="mb-dp-pos">${_mbttEscape(t.pos || '·')}</span>${sl ? _slTrackTitleHtml(t.title, sl) : _mbttEscape(t.title)}` +
             // A song page's own version in its release's tracklist (`_dpSlSongFacts()`).
             (t.self ? ' <span class="mb-dp-self" title="This version">●</span>' : '') +
             (t.length ? ` <span class="mb-dp-len">${_mbttEscape(t.length)}</span>` : '') + '</li>').join('') + '</ol>';
@@ -29641,12 +31263,15 @@
         if (data.tracks.length) {
             right.push(`<h4>Tracklist · ${data.tracks.length} track${data.tracks.length === 1 ? '' : 's'}</h4>`);
             if (data.unnumbered) right.push('<div class="mb-dp-warn">The page lists these titles without track numbers, so they are shown in page order.</div>');
+            // A springsteenlyrics.com item's songs link their pages (vzell's
+            // answer 7 to org/sl-tracklist-links-mockups.html).
+            const sl = data.slTracks ? (data.slShow || {}) : null;
             if (data.tracks.some(t => t.from)) {
                 _dpGroupTracks(data.tracks, 'from').forEach(([from, ts]) => right.push(
-                    `<div class="mb-dp-group"><div class="mb-dp-gname">${_mbttEscape(from || 'source not given')}</div>${_dpTrackListHtml(ts)}</div>`));
+                    `<div class="mb-dp-group"><div class="mb-dp-gname">${_mbttEscape(from || 'source not given')}</div>${_dpTrackListHtml(ts, sl)}</div>`));
             } else {
                 right.push('<div class="mb-dp-discs">' + _dpGroupTracks(data.tracks, 'disc').map(([disc, ts]) =>
-                    `<div>${disc ? `<div class="mb-dp-gname">${_mbttEscape(disc)}</div>` : ''}${_dpTrackListHtml(ts)}</div>`).join('') + '</div>');
+                    `<div>${disc ? `<div class="mb-dp-gname">${_mbttEscape(disc)}</div>` : ''}${_dpTrackListHtml(ts, sl)}</div>`).join('') + '</div>');
             }
         }
         data.sections.forEach(s => {
@@ -34103,6 +35728,23 @@
             :is(#mb-dp-peek, .mb-dp-note-event) .mb-dp-tracks li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
             :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-pos { color: #7a6d5c; font-variant-numeric: tabular-nums; margin-right: 6px; }
             :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-len { color: #7a6d5c; font-variant-numeric: tabular-nums; }
+            /* A springsteenlyrics.com item's songs (_slTrackTitleHtml()): the
+               work glyphs before the link, this show's version marked. */
+            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-tracks.mb-sl-tracks .mb-dp-pos { display: inline-block; min-width: var(--mb-sl-pos-w, 2ch); }
+            .mb-dp-dialog .mb-dp-tracks .mb-sl-work-slot:empty { display: none; }
+            .mb-dp-dialog .mb-dp-tracks .mb-sl-work-slot { display: inline-flex; gap: 3px; margin-right: 5px; vertical-align: -3px; }
+            /* The glyph link is an icon in the line, before the title (vzell,
+               2026-11-05: the icons sat BELOW each line). Inline it was a
+               block image in an inline link, and the window marks a link
+               that opens here with a reserved dot (::before) that stacked
+               above the icon; an icon needs no dot. */
+            .mb-dp-dialog .mb-dp-tracks a.mb-sl-work { position: relative; display: inline-block; line-height: 0; }
+            .mb-dp-dialog .mb-dp-area.mb-dp-dots .mb-dp-tracks a.mb-sl-work::before { content: none; display: none; }
+            .mb-dp-dialog .mb-dp-tracks .mb-sl-work img { width: 13px; height: 13px; display: block; }
+            .mb-dp-dialog .mb-dp-tracks a.mb-sl-show-link { text-decoration: none; }
+            .mb-dp-dialog .mb-dp-tracks a.mb-sl-show-link::after { content: "this show"; margin-left: 5px; padding: 0 4px; border-radius: 3px; font-size: 0.8em; background: #dcefe2; color: #2c7347; }
+            .mb-dp-dialog .mb-dp-tracks .mb-sl-work-wait img { opacity: 0.25; animation: mb-sl-work-pulse 1.1s ease-in-out infinite; }
+            .mb-dp-dialog .mb-dp-tracks .mb-sl-work-ambig, .mb-dp-dialog .mb-dp-tracks .mb-sl-work-title { outline: 1px dashed #ba478f; border-radius: 2px; }
             :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-stat { margin: 4px 0 2px; }
             :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-stat b { font-size: 1.6em; font-variant-numeric: tabular-nums; }
             :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-spin { display: inline-block; animation: mb-dp-spin 0.9s linear infinite; }
@@ -34650,6 +36292,8 @@
             .mb-dp-dialog .mb-dg-warnbox { border: 1px solid #e7d3a1; background: #fcf6e6; border-radius: 4px; padding: 8px 12px; margin: 6px 0 8px; }
             .mb-dp-dialog .mb-dp-note { white-space: pre-wrap; margin-bottom: 6px; }
             .mb-dp-dialog .mb-dp-section { white-space: pre-wrap; }
+            .mb-dp-dialog ol.mb-dp-contents { list-style: none; margin: 0; padding: 0; white-space: normal; }
+            .mb-dp-dialog ol.mb-dp-contents > li { margin: 0 0 6px; }
             /* Collapsible sections and images by kind (Brucebase, 2026-10-24). */
             .mb-dp-dialog details.mb-dp-sec > summary { cursor: pointer; list-style: none; display: flex; align-items: baseline; gap: 6px; }
             .mb-dp-dialog details.mb-dp-sec > summary::-webkit-details-marker { display: none; }
@@ -47227,7 +48871,7 @@
             buttons: [ { label: 'Show all items of this collection list', shortLabel: 'Items' } ],
             features: {
                 slCardsToTable: 'collection',
-                integerColumns: [ { sourceColumn: 'Original year', align: 'C' }, { sourceColumn: 'Copies', align: 'R' } ],
+                get integerColumns() { return _slListIntegerColumns([ { sourceColumn: 'Original year', align: 'C' }, { sourceColumn: 'Copies', align: 'R' } ]); },
                 stickyColumn: 'Title'
             },
             tableMode: 'single'
@@ -47248,7 +48892,7 @@
             features: {
                 slCardsToTable: 'collection',
                 pageParam: 'pg',
-                integerColumns: [ { sourceColumn: 'Original year', align: 'C' }, { sourceColumn: 'Copies', align: 'R' } ],
+                get integerColumns() { return _slListIntegerColumns([ { sourceColumn: 'Original year', align: 'C' }, { sourceColumn: 'Copies', align: 'R' } ]); },
                 stickyColumn: 'Title'
             },
             tableMode: 'single'
@@ -47271,10 +48915,12 @@
                 // `align: ':'` is what makes _sortColumnKind() sort it as a
                 // duration (_parseDurationToMs() accepts minutes above 59, so
                 // "129:33.23" sorts after "61:58.22").
-                integerColumns: [
-                    { sourceColumn: 'Duration', align: ':' },
-                    { sourceColumn: 'DD', align: 'R' }, { sourceColumn: 'MM', align: 'R' }, { sourceColumn: 'YYYY', align: 'C' }
-                ],
+                get integerColumns() {
+                    return _slListIntegerColumns([
+                        { sourceColumn: 'Duration', align: ':' },
+                        { sourceColumn: 'DD', align: 'R' }, { sourceColumn: 'MM', align: 'R' }, { sourceColumn: 'YYYY', align: 'C' }
+                    ]);
+                },
                 stickyColumn: 'Title'
             },
             tableMode: 'single'
@@ -93513,6 +95159,9 @@ a { color: #1565c0; }`;
     // definitions only, like the user-edits fallback above.
     if (baseDefinition?.host === 'springsteenlyrics.com') {
         headerContainer = _slPrepareLivePage();
+        // An item page's own tracklist, before any press: its songs linked,
+        // with what is saved (vzell, 2026-11-05).
+        if (['collection', 'bootlegs', 'brucelegs'].includes(baseDefinition.features?.slItemToTable)) _slLinkLiveTracklist();
         // The compact category/filter bar (sa_sl_compact_nav), on the
         // collection and bootleg lists and the bootleg landing page. This
         // list's exact count (and, on a bootleg search result, the search) is
@@ -117639,6 +119288,9 @@ a { color: #1565c0; }`;
             // Brucebase / springsteenlyrics Title glyphs read before, painted
             // from the detail-page database (no request).
             _fiAfterRender();
+            // springsteenlyrics.com tracklists: this show's versions and the
+            // MusicBrainz work glyphs (saved, then read as needed).
+            _slSongsAfterRender();
             // Same reason as the line above: the <thead> this writes into may
             // have just been rebuilt from a clone. No-op unless the Release-events
             // lookup is loading or has failed.
@@ -147939,6 +149591,9 @@ a { color: #1565c0; }`;
             // Brucebase / springsteenlyrics Title glyphs read before, painted
             // from the detail-page database (no request).
             _fiAfterRender();
+            // springsteenlyrics.com tracklists: this show's versions and the
+            // MusicBrainz work glyphs (saved, then read as needed).
+            _slSongsAfterRender();
             // Same reason as the line above: the <thead> this writes into may
             // have just been rebuilt from a clone. No-op unless the Release-events
             // lookup is loading or has failed.
@@ -159467,6 +161122,7 @@ a { color: #1565c0; }`;
                 case 'fi-img':
                 case 'dg-img': return _fiCardHtml(el);
                 case 'fgal': return _fgalTipHtml(el);
+                case 'fd-pic': return _fdPicCardHtml(el);
                 case 'sb-pic': return _sbPicCardHtml(el);
                 case 'ei-pic': return _eiCardHtml(el);
                 case 'sb-cover': return _sbCoverCardHtml(el);
@@ -159489,6 +161145,10 @@ a { color: #1565c0; }`;
      * @returns {void}
      */
     function _mbttAfterShow(el, tip) {
+        if (el.dataset.mbttFn === 'fd-pic') {
+            _fdPicSwap(tip);
+            return;
+        }
         if (_ART_CARD_FNS.has(el.dataset.mbttFn)) {
             _artCardFit(tip);
             return;
@@ -159514,7 +161174,7 @@ a { color: #1565c0; }`;
     // hover (`_mbttAfterHide()`), Shift follows the key.
 
     /** The resolver cards built by `_artCardCoreHtml()`. */
-    const _ART_CARD_FNS = new Set(['art-sum', 'art-rel', 'fi-img', 'dg-img', 'sb-cover']);
+    const _ART_CARD_FNS = new Set(['art-sum', 'art-rel', 'fi-img', 'dg-img', 'sb-cover', 'fd-pic']);
 
     /**
      * The artwork card's view: `allEl` is the element whose card shows every
@@ -159632,6 +161292,16 @@ a { color: #1565c0; }`;
      */
     function _artSpaceOpen(el) {
         const fn = el.dataset.mbttFn;
+        if (fn === 'fd-pic') {
+            // A foreign detail page's picture: the section's own click
+            // handler (`_dpArtViewerClick()`), on that section.
+            let opened = false;
+            _dpArtViewerClick({
+                type: 'click', button: 0, ctrlKey: false, shiftKey: false, altKey: false, metaKey: false, target: el,
+                currentTarget: el.closest('.mb-fd-art'), preventDefault() { opened = true; },
+            });
+            return opened;
+        }
         if (fn === 'sb-cover') {
             if (!el.dataset.mbSbCover) return false;
             _sbOpenCover(el.dataset.mbSbCover, el, el.dataset.mbSbCoverTitle || '');
@@ -168417,6 +170087,42 @@ a { color: #1565c0; }`;
              */
             slLyricsParseVersion(text) {
                 return _slLyricsParseVersion(text);
+            },
+
+            /**
+             * The shipping slug rule (`_slSongSlugOf()`) and title split
+             * (`_slSongParts()`) of the tracklists' song links, so a spec
+             * can pin the whole exception list and the medley forms
+             * without a page for each.
+             *
+             * @param {string} title - A song title as the site writes it.
+             * @returns {{slug: string, parts: Array<object>}}
+             */
+            slSongSlug(title) {
+                return { slug: _slSongSlugOf(title), parts: _slSongParts(title) };
+            },
+
+            /**
+             * Paints the tracklists' songs again from memory
+             * (`_slSongsDecorate()`), as each loader does when it lands.
+             *
+             * @returns {number} Elements written.
+             */
+            slSongsDecorate() {
+                return _slSongsDecorate();
+            },
+
+            /**
+             * One tracklist line of an item's preview window as HTML
+             * (`_slTrackTitleHtml()`, the shipping builder): a
+             * various-artists line, a take, a note.
+             *
+             * @param {string} raw - The line's title as the record holds it.
+             * @param {Object} [ctx] - The item's show.
+             * @returns {string}
+             */
+            slTrackTitleHtml(raw, ctx = {}) {
+                return _slTrackTitleHtml(raw, ctx);
             },
 
             /**
