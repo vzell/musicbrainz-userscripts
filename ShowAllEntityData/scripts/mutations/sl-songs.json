@@ -1,0 +1,136 @@
+[
+    {
+        "name": "song card: Private Info read as a section",
+        "why": "A logged-in song page's own notes reached its card, window and cache (2026-11-04).",
+        "edits": [
+            {
+                "find": "            if (_SL_SONG_PRIVATE_RE.test(label)) return;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "Private Info",
+        "expect": "fail"
+    },
+    {
+        "name": "lyrics index: the line's first <i> read as its lyrics glyph",
+        "why": "Logged in, the first <i> is the edit pencil, so every row read ✗.",
+        "edits": [
+            {
+                "find": "            const icon = span.querySelector(_SL_LYRICS_GLYPH_SEL);\n",
+                "replace": "            const icon = span.querySelector('i');\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-lyrics.spec.js",
+        "grep": "lyrics glyph, not the edit pencil",
+        "expect": "fail"
+    },
+    {
+        "name": "This letter: the key list stays on",
+        "why": "On a letter page the button loaded every letter (vzell, 2026-11-04).",
+        "edits": [
+            {
+                "find": "                    features: { pageKeys: null }\n",
+                "replace": "                    features: {}\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-lyrics.spec.js",
+        "grep": "This letter. first",
+        "expect": "fail"
+    },
+    {
+        "name": "This letter: shown on the landing page too",
+        "why": "The landing page has no letter of its own; its only button is Show all lyrics.",
+        "edits": [
+            {
+                "find": "                    showIf: () => !!_slLyricsLetterHeading(document),\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-lyrics.spec.js",
+        "grep": "landing page has",
+        "expect": "fail"
+    },
+    {
+        "name": "ID column: added logged out too",
+        "why": "Logged out, the table must be exactly as before.",
+        "edits": [
+            {
+                "find": "        const headers = loggedIn ? _SL_LYRICS_HEADERS.concat(_SL_LYRICS_LOGGED_IN_HEADERS) : _SL_LYRICS_HEADERS;\n",
+                "replace": "        const headers = _SL_LYRICS_HEADERS.concat(_SL_LYRICS_LOGGED_IN_HEADERS);\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-lyrics.spec.js",
+        "grep": "logged out, the same letter has no ID",
+        "expect": "fail"
+    },
+    {
+        "name": "ID column: never added",
+        "why": "The logged-in song number is the column vzell asked for.",
+        "edits": [
+            {
+                "find": "            if (loggedIn) tr.appendChild(_slLyricsIdCell(docContext, span));\n",
+                "replace": ""
+            },
+            {
+                "find": "        const headers = loggedIn ? _SL_LYRICS_HEADERS.concat(_SL_LYRICS_LOGGED_IN_HEADERS) : _SL_LYRICS_HEADERS;\n",
+                "replace": "        const headers = _SL_LYRICS_HEADERS;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-lyrics.spec.js",
+        "grep": "an ID column after the others",
+        "expect": "fail"
+    },
+    {
+        "name": "ID column: the pencil as text in the cell",
+        "why": "The cell's text, filter and sort must see the number alone.",
+        "edits": [
+            {
+                "find": "            e.setAttribute('aria-label', 'Edit on springsteenlyrics.com');\n",
+                "replace": "            e.setAttribute('aria-label', 'Edit on springsteenlyrics.com');\n            e.textContent = '✎';\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-lyrics.spec.js",
+        "grep": "an ID column after the others",
+        "expect": "fail"
+    },
+    {
+        "name": "ID column: sorted as text",
+        "why": "The ID is declared numeric while logged in (_slLyricsIntegerColumns()).",
+        "edits": [
+            {
+                "find": "        if (_slLoggedIn(document)) cols.push({ sourceColumn: 'ID', align: 'R' });\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-lyrics.spec.js",
+        "grep": "ID sorts numerically",
+        "expect": "fail"
+    },
+    {
+        "name": "song by number: lyrics.php?item=N no detail page",
+        "why": "The logged-in ID cell links lyrics.php?item=N, the song page by its number; it got no card.",
+        "edits": [
+            {
+                "find": "                (u.pathname === '/lyrics.php' && /^\\d+$/.test(u.searchParams.get('item') || '') && !u.searchParams.get('cmd')) ||\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "Private Info. reaches neither",
+        "expect": "fail"
+    },
+    {
+        "name": "song record: no login state",
+        "why": "A logged-in and a public read of one song page replaced each other in the cache.",
+        "edits": [
+            {
+                "find": "        data.session = _slLoggedIn(doc) ? 'in' : 'out';\n        data.title = _dpText(head.textContent);\n",
+                "replace": "        data.title = _dpText(head.textContent);\n"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "Private Info. reaches neither",
+        "expect": "fail"
+    }
+]

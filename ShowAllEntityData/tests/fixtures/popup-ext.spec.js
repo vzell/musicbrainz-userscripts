@@ -3038,6 +3038,35 @@ test.describe('the Springsteen sites across hosts (U4)', () => {
         ]);
     });
 
+    test('springsteenlyrics.com links in a MusicBrainz annotation: every shape MusicBrainz carries, and which reader takes it', async ({ page }) => {
+        // The shapes found by scripts/probe-mb-sl-urls.py (2026-11-04, a
+        // sample: 501 relationship URLs, 553 annotation links). Pins today's
+        // state, the baseline for org/springsteenlyrics.org item 5: the two
+        // OLD shapes (/lyrics/<l>/<slug>.php: 431 of the annotation links,
+        // mostly on works; /collection/moreinfo.php?item=N: 22) answer 404 on
+        // the site now and get the generic card.
+        await openEvent(page, { settings: { sa_pop_ext: true } });
+        await addAnnotationLinks(page, [
+            'http://www.springsteenlyrics.com/collection.php?item=5128',
+            'http://www.springsteenlyrics.com/collection.php?item=4994&category=album&pg=4',
+            'http://www.springsteenlyrics.com/bootlegs.php?item=2013',
+            'http://www.springsteenlyrics.com/lyrics.php?song=alone',
+            // The song page by its number (the lyrics index's logged-in ID
+            // cell): the springsteen reader since 2026-11-04.
+            'https://www.springsteenlyrics.com/lyrics.php?item=1517',
+            'http://www.springsteenlyrics.com/lyrics/a/angelina.php',
+            'http://www.springsteenlyrics.com/collection/moreinfo.php?item=5027',
+            'https://www.springsteenlyrics.com/lyrics.php?cmd=list&letter=b',
+            'https://springsteenlyrics.com/',
+        ]);
+        const keys = await page.evaluate(() => Array.from(document.querySelectorAll('.ext-probe a'))
+            .map(a => window.__saTest.popResolve(a).split(':').slice(0, 2).join(':')));
+        expect(keys).toEqual([
+            'ext|ext:springsteen', 'ext|ext:springsteen', 'ext|ext:springsteen', 'ext|ext:springsteen', 'ext|ext:springsteen',
+            'ext|ext:generic', 'ext|ext:generic', 'ext|ext:generic', 'ext|ext:generic',
+        ]);
+    });
+
     test('a Brucebase show link on MusicBrainz is generic again with sa_bb_event_preview off', async ({ page }) => {
         // Pins the other half of G1: Brucebase's own links follow their own
         // setting on every host, as on Brucebase itself.

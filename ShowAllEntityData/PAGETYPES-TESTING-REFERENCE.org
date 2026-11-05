@@ -941,11 +941,12 @@ lists converted into sortable tables), tableMode =multi=.
 ** 95. sl-lyrics
 - URL: [[https://springsteenlyrics.com/lyrics.php][springsteenlyrics.com/lyrics.php]] (the landing page) and every [[https://springsteenlyrics.com/lyrics.php?cmd=list&letter=b][lyrics.php?cmd=list&letter=X]] (32 letters, each one page; 3552 song lines on 2026-10-06)
 - Match: ~path === '/lyrics.php' && !params.has('song') && (!params.has('cmd') || cmd is 'intro' or 'list')~, host =springsteenlyrics.com= only. =@include=: its own header line (=cmd=intro|list=, or bare).
-- Button: "Show all lyrics" (short label "Lyrics")
+- Buttons: on a letter page "Show the lyrics of this letter" (short label "This letter"; =features.pageKeys: null=, so the live page alone, no request; since 2026-11-04, =feat/sl-songs=), then "Show all lyrics" (short label "Lyrics"); the landing page has only the latter (=showIf=)
 - tableMode: single
 - Not MusicBrainz, and opt-in (same setting as #87).
+- Logged in (=_slLoggedIn(document)=): an ID column (=_SL_LYRICS_LOGGED_IN_HEADERS=, numeric via the =integerColumns= getter =_slLyricsIntegerColumns()=), the song's number linking =lyrics.php?item=N= plus an empty =a.mb-sl-edit= (pencil by CSS).
 - Features exercised: =features.pageKeys= (=_readPageKeys()=) — the first non-numbered page list: each letter link of =.element-buttons= is one page, fetched by its own href; the live page is reused when the loop reaches ITS key; resume carries the key list. =slLyricsToTable= (=applySlLyricsToTable()=, song lines not cards; the landing page gets an empty table under an injected =<h2>=); =_slLyricsParseVersion()= (Type, Artist, Date, Show, No.); =columnExtractors= =dateParts= on Date; integerColumns No./DD/MM/YYYY; sticky Title. No compact bar.
-- Coverage: =tests/fixtures/sl-lyrics.spec.js= (fixtures =sl-lyrics-{intro,paren,b}.html= from =debug/sl-lyrics.html=, =sl-(.html=, =sl-b.html=, letter walls trimmed to =(= and =b=), =sl-include-regex.spec.js=; live =tests/live/sl-lists.spec.js= (=@extended=, all 32 letters against the landing page's per-letter =chartData=); mutations in =scripts/mutations/sl-support.json=.
+- Coverage: =tests/fixtures/sl-lyrics.spec.js= (fixtures =sl-lyrics-{intro,paren,b}.html= from =debug/sl-lyrics.html=, =sl-(.html=, =sl-b.html=, letter walls trimmed to =(= and =b=; logged in: =sl-lyrics-b-logged-in.html= from =debug/sl-songs-B.html= by =scripts/build-sl-item-fixtures.py=), =sl-include-regex.spec.js=; live =tests/live/sl-lists.spec.js= (=@extended=, all 32 letters against the landing page's per-letter =chartData=); mutations in =scripts/mutations/sl-support.json= and =scripts/mutations/sl-songs.json=.
 
 ** 96. bb-songs
 - URL: [[https://brucebase.wikidot.com/stats:songs][brucebase.wikidot.com/stats:songs]] (28 letter tabs, 1689 links, 1679 distinct songs on 2026-10-07)

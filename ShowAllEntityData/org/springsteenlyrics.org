@@ -970,6 +970,12 @@ autocomplete="current-password" to the login form's password field (hTxtPassword
 
 
 
+* TODO the UVD for the "Type" column is not indented right, there is one entry wich has more than 100 entries
+
+the UVD for the "Type" column is not indented right, there is one entry wich has more than 100 entries
+in e.g. https://www.springsteenlyrics.com/lyrics.php?cmd=list&letter=b
+
+
 * TODO URLify the tracklist to song URLs (SL and MB)
 
 1.)
@@ -1034,6 +1040,116 @@ b.)
 
 parse additional pages (if you need same) and make some suggestions, nice rich HTML based mockups
 
+5.)
 
+MB pages which reference SL URLs should support POH
 
+** Answer (2026-11-04, branch =feat/sl-songs=)
 
+Env: 2026-11-04T23:02:01+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (GM
+stubs, no Tampermonkey). Real browser: items 2 and 3 confirmed live by vzell (2026-11-04; browser and Tampermonkey
+versions unknown).
+
+Mockups (private Artifact): https://claude.ai/artifact/XFubyj74n1CAouHYT2m5ou, local copy [[file:sl-song-mockups.html]].
+Tabs: Song page (backstreets), Live version (backstreets_1975-11-18), Lyrics index (built), Song preview, MusicBrainz → SL,
+Plan and questions.
+
+Decided (vzell, 2026-11-04):
+- Scope of this session: code for items 2 and 3, and for a privacy bug found while reading. Item 4: findings, mockups
+  and questions only; it gets built after approval. Item 5: investigate and report.
+- Letter page: two buttons. "This letter" (no request) comes first, then "Show all lyrics" (32 letters). The landing
+  page keeps only "Show all lyrics".
+- Logged-in lines: an ID column linking =lyrics.php?item=N=, with the edit pencil as a small link in the cell. The ⋮
+  glyph is dropped. Logged out, the table stays as before.
+
+*** Built (WIP entries in =ShowAllEntityData_CHANGELOG.wip.json=)
+
+- WIP.1, privacy: a logged-in song page's "Private Info" reached the song's card and window on SL, and stayed in the
+  preview cache for 30 days. =_dpParseSlSong()= took every section. Fixes: it skips the section
+  (=_SL_SONG_PRIVATE_RE=); the record carries its login state; =_DP_PARSER_VERSION= 10.
+- WIP.2, item 3: the "This letter" button (=features: { pageKeys: null }=, =showIf= on the page's own =Starting with
+  "X"= heading).
+- WIP.3, item 2:
+  - the ID column (numeric while logged in, through an =integerColumns= getter);
+  - Lyrics ✓/✗ fixed: logged in, every row read ✗, because the line's first =<i>= is the edit pencil;
+  - the ID link =lyrics.php?item=N= gets the song's preview. Probed: item=2099 serves song=babycomeback.
+- Note on item 2's wording: the lyrics glyph (lyrics or not) is also on logged-out pages, and the Lyrics column
+  already showed it. Only the pencil, the number and ⋮ are new when logged in.
+
+Checked:
+- Specs: =sl-lyrics.spec.js= (+6, one reworked), =detail-preview.spec.js= (+1), =popup-ext.spec.js= (+1). The SL,
+  preview and popup specs: 314 passed.
+- =scripts/mutations/sl-songs.json=: 10/10 fail as expected.
+- Lint within the baseline; =build-coverage-report.py --check= and =build-sl-item-fixtures.py --check= pass.
+- =test:full= (2026-11-04T23:19 → 23:37:15+01:00, NB-3641): 2677 passed, 0 failed (17 m 41 s).
+
+*** Findings for item 4 (song pages)
+
+- No view today: =lyrics.php?song== has no =@include=. The preview reads it (=_dpParseSlSong()=).
+- Anatomy in =.project-detail=:
+  - the head: =h3= title, =p>em= version line, the lyrics between two =<hr>= (=span.text-info= stage notes);
+  - then =h3.heading= sections: Info, Studio Recording (track credits), one per album (=.panel-group= tracklists per
+    edition), Other Official Releases (=.blog-post= rows: =Artist -- Title=, =FORMAT - LABEL (CAT#) - COUNTRY, YEAR=;
+    then one sentence per live release), Live History, Covers, Appearance in Movies, Credits;
+  - then Request (a contact form) and Available Versions (lines like the index; the current version unlinked);
+  - logged in only: Private Info.
+- Backstreets has 41 rows: 5 releases, 28 live releases, 1 movie, 7 covers. It has 61 versions: Album 1, Unofficial
+  studio 3, Live 57.
+- A live version has its date only in the version line and the slug. Its venue and tour are only in prose. Its release
+  section is named after the release, with DVD/CD/vinyl panels. The site writes "Disc 5:" among "Side 1:" to "Side 8:".
+- Logged in only, besides Private Info: the versions' numbers and edit links, and on covers "view item / edit item /
+  add N songs" (=cmd=displaycoverrelease&item=N=).
+
+*** Findings for item 5 (MusicBrainz → SL)
+
+- Every live SL URL form MusicBrainz uses already gets SL's own card, and annotations are in scope
+  (=_EXT_SCOPE_SEL= has =.annotation a[href]=). Links in the Annotation column of our tables and in an MB entity window
+  are covered too.
+- The census (=scripts/probe-mb-sl-urls.py=, a sample: 501 of 3,531 URL entities and about half of 910 annotations):
+  - relationships: =collection.php?item== 434, =bootlegs.php?item== 66;
+  - annotations: =lyrics.php?song== 97 and two OLD forms, =/lyrics/<l>/<slug>.php= 431 and
+    =/collection/moreinfo.php?item=N= 22.
+- Both old forms answer 404 today, and both map onto live pages: =lyrics.php?song=<slug>= and =collection.php?item=N=.
+  This is the one real gap; proposal in the mockup (question 6).
+- =popup-ext.spec.js= now pins which reader takes each form.
+
+*** Questions (recommendations in the mockup's last tab)
+
+1. Song page buttons: "Show the song", plus "All versions" (the Available Versions list as one table)?
+2. Private Info on the song page view: a closed section, logged in only, as on the item pages?
+3. Request: hide the form, and keep its text as a closed section?
+4. Live releases: split each sentence into Date / Release / Kind / Released year, with Note as the fallback?
+5. A live version's venue and tour: read them from the Info sentence, best-effort?
+6. MusicBrainz's old SL links: read them as their current address, with "old address" in the card?
+7. The window's Live page view on SL still shows Private Info when logged in. Hide it there too (=liveHide=)?
+8. Covers, logged in: one Item column (view and edit links), with the "add N songs" links left out?
+
+Still to do: the merge on your word, and the =sl-song= build on its own branch after the answers.
+
+*** answers
+
+1. Song page buttons: "Show the song", plus "All versions" (the Available Versions list as one table)? YES
+2. Private Info on the song page view: a closed section, logged in only, as on the item pages? YES
+3. Request: hide the form, and keep its text as a closed section? YES
+4. Live releases: split each sentence into Date / Release / Kind / Released year, with Note as the fallback? YES
+5. A live version's venue and tour: read them from the Info sentence, best-effort? YES
+6. MusicBrainz's old SL links: read them as their current address, with "old address" in the card? YES, plus a ⚠️ finding on MusicBrainz work pages, so they can be edited.
+7. The window's Live page view on SL still shows Private Info when logged in. Hide it there too (=liveHide=)? NO
+8. Covers, logged in: one Item column (view and edit links), with the "add N songs" links left out? YES
+
+What follows from the answers (2026-11-05T00:05:47+01:00):
+- 1–5 and 8: the =sl-song= build follows the mockup as drawn: "Show the song" plus "All versions"; Private Info
+  closed and logged in only; Request's text closed, its form hidden; live releases split, with Note as the
+  fallback; venue and tour best-effort; covers get an Item column (logged in) without the "add N songs" links.
+- 6: two parts.
+  - The springsteen reader reads =/lyrics/<l>/<slug>.php= as =lyrics.php?song=<slug>= and
+    =/collection/moreinfo.php?item=N= as =collection.php?item=N=, and the card says "old address".
+  - A new ⚠️ finding (=add-finding= skill) on MusicBrainz work pages (and wherever such a link shows) marks these
+    links, so they can be edited. It is the TODO vzell added to =org/TODO.org= on 2026-11-04 ("Mark SL old-style
+    song URLs … as findings on MB pages"). It is MusicBrainz-side, so it needs the MusicBrainz fixture suite as
+    proof that nothing else changes.
+- 7: the window's Live page view stays the site's own page as it is. Logged in on SL it shows Private Info: that is
+  the site's own page, in vzell's own session. Every view the script BUILDS (card, window, the page views) leaves
+  it out or shows it closed.
+- Build order: one branch stacked on =feat/sl-songs= (=feat/sl-song-pt=): the =sl-song= PT and the shared song
+  reader first, then the old-address alias, then the finding.

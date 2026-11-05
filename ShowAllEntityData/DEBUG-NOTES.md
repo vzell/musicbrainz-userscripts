@@ -28128,3 +28128,48 @@ specs outside the merged code; pushed on vzell's word, fixed here. Test-only cha
   kind list: 2.2–4.0 s after the click in 30 quiet runs (median 3.2 s), against `expect.poll`'s default 5 s. Under the
   full suite it went past. Fix: a 20 s poll timeout. The test pins that the page is asked, not how soon.
 
+## 2026-11-04 — springsteenlyrics.com songs: a song's Private Info in its preview; Lyrics ✗ on every logged-in row; a letter page loaded all 32 letters (feat/sl-songs, WIP.1–WIP.3)
+
+Env: 2026-11-04T23:02:01+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (GM stubs, no Tampermonkey); snapshots from vzell's browser (Chrome + Tampermonkey, versions not recorded), logged in
+
+Snapshots (vzell, 2026-11-04, logged in): `debug/sl-songs.html` (lyrics.php, saved with the script running),
+`debug/sl-songs-B.html` (letter B, script running, before any press), `debug/sl-song-no-lyrics.html` (song=babyme),
+`debug/sl-song-official.html` (song=backstreets, with "Private Info"), `debug/sl-song-unofficial.html`
+(backstreets_unofficial1), `debug/sl-song-live.html` (backstreets_1975-11-18). Older logged-out song pages for
+comparison: `debug/detail-sl-lyrics-{babyme,badlands}.html`.
+
+- **Private Info in the song preview (privacy).** `_dpParseSlSong()` took every `.project-detail > h3.heading` section
+  into the record. The logged-in backstreets page ends with `<h3 class="heading">Private Info</h3>` (the account's own
+  notes), so on springsteenlyrics.com itself, where cards are read with the session, a song's card and window showed
+  them, and the record kept them in IndexedDB for 30 days. Item pages had the guard (`_SL_ITEM_OWN_SECTION_RE`) since
+  WIP.1 of feat/sl-item-pts; song pages had none. Fix: `_SL_SONG_PRIVATE_RE` skips the section, the record carries
+  `session` (a logged-in and a public read no longer replace each other), `_DP_PARSER_VERSION` 10 drops the stored
+  records. Cards opened from MusicBrainz were never affected (anonymous requests).
+  Left as it is (vzell, 2026-11-05, answer 7): the window's Live page view frames the site's own page, Private Info included.
+- **Lyrics ✗ on every logged-in row.** A logged-in line starts with the edit link
+  (`<a href="lyrics.php?cmd=edit&item=N"><i class="bi bi-pencil-square">`), and `applySlLyricsToTable()` read
+  `span.querySelector('i')` as the lyrics glyph. Fix: the glyph by name (`_SL_LYRICS_GLYPH_SEL`). B: 296 ✓, 16 ✗.
+- **A letter page's button loaded all 32 letters.** Pinned on purpose since 2026-10-07; vzell asked for the letter
+  alone. Fix: a first button with `features: { pageKeys: null }` (the button's features are spread last), shown only
+  where the page has its `Starting with "X"` heading.
+- **ID column.** `integerColumns` became a getter (`_slLyricsIntegerColumns()`): declared statically, "ID" made every
+  logged-out run log `integerColumns: column "ID" not found`.
+- **Probe:** `curl https://www.springsteenlyrics.com/lyrics.php?item=2099` (2026-11-04, logged out) → 200, the page of
+  song=babycomeback ("BABY COME BACK [Home demo version]"), no Cloudflare check; hence `isDetailUrl` takes
+  `lyrics.php?item=N`.
+- **MusicBrainz → SL (item 5, findings only).** `scripts/probe-mb-sl-urls.py` (WS/2 url and annotation search,
+  2026-11-04T23:14:01+01:00 → 23:14:43, 1.1 s apart; summarised by `scripts/summarise-mb-sl-urls.py`). Results:
+  - Sample: 501 of 3,531 URL entities and 553 SL links from about half of 910 annotations. Paging past offset 500
+    answered HTTP 400, and two queries hit 503.
+  - Relationships: `collection.php?item=` 434, `bootlegs.php?item=` 66.
+  - Annotations (519 work, 24 release, 10 recording):
+    - old `/lyrics/<l>/<slug>.php` 431 and `lyrics.php?song=` 97;
+    - old `/collection/moreinfo.php?item=N` 22.
+  - Both old forms now answer 404 (`/lyrics/a/angelina.php`, `/collection/moreinfo.php?item=5027`). Their current
+    addresses answer 200 (`lyrics.php?song=angelina`, `collection.php?item=5027`).
+  - Annotation links are in `_EXT_SCOPE_SEL` (`.annotation a[href]`), so live forms already get SL's own card.
+    `popup-ext.spec.js` pins which reader takes each form.
+
+test:full 2026-11-04T23:19 → 23:37:15+01:00 (NB-3641): 2677 passed, 0 failed.
+Tests: `sl-lyrics.spec.js` (+6, one reworked), `detail-preview.spec.js` (+1), `popup-ext.spec.js` (+1); fixtures from
+`scripts/build-sl-item-fixtures.py`; `scripts/mutations/sl-songs.json`, 10/10 fail as expected.

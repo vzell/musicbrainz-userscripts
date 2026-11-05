@@ -1,0 +1,45 @@
+[
+    {
+        "version": "WIP.3",
+        "date": "2026-11-04",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "springsteenlyrics.com lyrics index, logged in: a new ID column holds the song's number, which links to its page (lyrics.php?item=N), and a ✎ link to edit it on the site. The column sorts by number. Logged out, the table is unchanged.",
+                    "springsteenlyrics.com: hovering a song's number (lyrics.php?item=N) shows the song's preview, as its title does."
+                ]
+            },
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "springsteenlyrics.com lyrics index, logged in: the Lyrics column showed ✗ on every song, because it read the edit pencil instead of the lyrics icon."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.2",
+        "date": "2026-11-04",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "springsteenlyrics.com lyrics index: a letter page (e.g. lyrics starting with B) now has a \"This letter\" button. It shows that page's songs as a table without loading anything. \"Show all lyrics\" still loads all 32 letters; on the lyrics start page it is the only button."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.1",
+        "date": "2026-11-04",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "springsteenlyrics.com, logged in: a song's preview card and window showed the page's \"Private Info\" notes and kept them in the preview cache. They are now left out, and previews read before the fix are read again. A logged-in read and a public read of a song page are now cached separately."
+                ]
+            }
+        ]
+    }
+]

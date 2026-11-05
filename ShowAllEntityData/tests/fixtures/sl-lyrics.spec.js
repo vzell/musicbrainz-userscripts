@@ -76,7 +76,33 @@ test.describe('sl-lyrics (springsteenlyrics.com lyrics index)', () => {
         expect(await page.locator('table.tbl').count()).toBe(1);
     });
 
-    test('from a letter page: that letter is the live page, the others are fetched, order unchanged', async ({ page }) => {
+    test('a letter page offers "This letter" first; it converts that page alone, with no request', async ({ page }) => {
+        // vzell, 2026-11-04: on a letter page the one button loaded all 32
+        // letters. Now "This letter" comes first and "Show all lyrics" second.
+        const { requests } = await loadSlListPage(page, { kind: 'lyrics-b' });
+        const labels = await page.locator('button[data-label]').evaluateAll((bs) => bs.map((b) => b.dataset.label));
+        const mine = labels.filter((l) => /lyrics/i.test(l));
+        expect(mine).toEqual(['Show the lyrics of this letter', 'Show all lyrics']);
+
+        const before = requests.length;
+        await page.click('button[data-label="Show the lyrics of this letter"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        expect(await renderedSlHeaders(page)).toEqual(HEADERS);
+        const rows = await renderedSlRows(page);
+        expect(rows).toHaveLength(B_ROWS);
+        expect(rows.every((r) => r.Letter === 'B')).toBe(true);
+        // Not one request to the site's pages: the live page is the data.
+        expect(requests.slice(before).filter((u) => /springsteenlyrics\.com\/lyrics\.php/.test(u))).toEqual([]);
+        await expect(page.locator('h2.mb-sl-list-heading')).toContainText('Starting with "B"');
+    });
+
+    test('the landing page has "Show all lyrics" only', async ({ page }) => {
+        await loadSlListPage(page, { kind: 'lyrics-intro' });
+        await expect(page.locator('button[data-label="Show all lyrics"]')).toHaveCount(1);
+        await expect(page.locator('button[data-label="Show the lyrics of this letter"]')).toHaveCount(0);
+    });
+
+    test('from a letter page, "Show all lyrics": that letter is the live page, the others are fetched, order unchanged', async ({ page }) => {
         const requests = await showAllLyrics(page, 'lyrics-b');
         const rows = await renderedSlRows(page);
         expect(rows).toHaveLength(PAREN_ROWS + B_ROWS);
@@ -203,6 +229,76 @@ test.describe('sl-lyrics (springsteenlyrics.com lyrics index)', () => {
         const years = (await renderedSlRows(page)).map((r) => r.YYYY).filter(Boolean).map(Number);
         expect(years.length).toBeGreaterThan(50);
         expect(years).toEqual([...years].sort((a, b) => a - b));
+    });
+});
+
+test.describe('sl-lyrics logged in (the song number and the edit link)', () => {
+    /**
+     * Loads the logged-in B page and presses "This letter".
+     * @param {import('@playwright/test').Page} page
+     * @returns {Promise<Array<Object<string, string>>>} The rendered rows.
+     */
+    async function showLoggedIn(page) {
+        const { spec } = await loadSlListPage(page, { kind: 'lyrics-b-logged-in' });
+        await page.click(`button[data-label="${spec.button}"]`);
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        return renderedSlRows(page);
+    }
+
+    test('an ID column after the others; its cell is the number alone, linking the song, with an edit link', async ({ page }) => {
+        const rows = await showLoggedIn(page);
+        const headers = await renderedSlHeaders(page);
+        expect(headers).toContain('ID');
+        expect(headers.filter((h) => h !== 'ID')).toEqual(HEADERS);
+        expect(rows).toHaveLength(B_ROWS);
+        expect(rows.every((r) => /^\d+$/.test(r.ID))).toBe(true);
+        const s = bySong(rows);
+        expect(s.babycomeback.ID).toBe('2099');
+        expect(s.babyme.ID).toBe('2097');
+
+        const cell = page.locator('table.tbl tbody tr', { has: page.locator('a[href="lyrics.php?song=babycomeback"]') })
+            .locator(`td:nth-child(${headers.indexOf('ID') + 1})`);
+        await expect(cell.locator('a:not(.mb-sl-edit)')).toHaveAttribute('href', 'lyrics.php?item=2099');
+        const edit = cell.locator('a.mb-sl-edit');
+        await expect(edit).toHaveAttribute('href', 'lyrics.php?cmd=edit&item=2099');
+        // The pencil is CSS: the link has no text, so the cell's text (filter,
+        // sort, 📊) is the number alone.
+        expect(await edit.evaluate((a) => a.textContent)).toBe('');
+        expect(await edit.evaluate((a) => getComputedStyle(a, '::before').content)).toBe('"✎"');
+    });
+
+    test('the Lyrics column reads the lyrics glyph, not the edit pencil before it', async ({ page }) => {
+        // The logged-in line's FIRST <i> is the pencil: read as the glyph, it
+        // made every row ✗ (2026-11-04).
+        const s = bySong(await showLoggedIn(page));
+        expect(s.babycomeback.Lyrics).toBe('✓');
+        expect(s.babyme.Lyrics).toBe('✗');
+        const all = Object.values(s);
+        expect(all.filter((r) => r.Lyrics === '✓')).toHaveLength(296);
+        expect(all.filter((r) => r.Lyrics === '✗')).toHaveLength(16);
+    });
+
+    test('ID sorts numerically: it is an integer column, right-aligned', async ({ page }) => {
+        await showLoggedIn(page);
+        // Every ID on B has four digits, so a text sort would order them the
+        // same: what pins "numeric" is the integerColumns declaration
+        // (_slLyricsIntegerColumns()), which _sortColumnKind() reads and
+        // applyIntegerColumnStyling() stamps on each cell.
+        const idx = (await renderedSlHeaders(page)).indexOf('ID');
+        const cells = page.locator(`table.tbl tbody tr td:nth-child(${idx + 1})`);
+        expect(await cells.evaluateAll((tds) => tds.every((td) => td.dataset.mbIntColStyled === '1' &&
+            getComputedStyle(td.querySelector('.mb-ic-val')).textAlign === 'right'))).toBe(true);
+        await clickSort(page, 'ID', '▼');
+        const ids = (await renderedSlRows(page)).map((r) => Number(r.ID));
+        expect(ids).toEqual([...ids].sort((a, b) => b - a));
+    });
+
+    test('logged out, the same letter has no ID column', async ({ page }) => {
+        await loadSlListPage(page, { kind: 'lyrics-b' });
+        await page.click('button[data-label="Show the lyrics of this letter"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        expect(await renderedSlHeaders(page)).toEqual(HEADERS);
+        await expect(page.locator('table.tbl a.mb-sl-edit')).toHaveCount(0);
     });
 });
 
