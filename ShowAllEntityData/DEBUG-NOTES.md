@@ -28337,3 +28337,6 @@ in `sl-tracklist-links.spec.js`; 7 new mutations in `scripts/mutations/sl-trackl
 Targeted run 2026-11-05T17:33:02 → 17:35:09+01:00 (NB-3641, Playwright 1.62.1): `tests/fixtures/sl-*` and
 `detail-preview*`, 227 passed. A test:full started 17:16:35 was stopped at 1,782/2,719 (0 failures) on vzell's
 request; no full run of this state yet.
+
+test:full on merged `main` 2026-11-05T17:38:19 → 17:56:48+01:00 (NB-3641, Playwright 1.62.1, 2723 tests, 14 workers,
+merge a2cd6863 plus the fold to 9.99.1561): 2723 passed. Shipped as 9.99.1559–9.99.1561.

@@ -4,9 +4,47 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1729 versions; the month pages hold all of them.
+This page shows the newest 100 of 1732 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1561 — 2026-11-05
+
+**🐛 Fix**
+
+- springsteenlyrics.com: a medium written with its kind in brackets ("Disc 1: \[CD\]", "Disc 2: \[DVD\]", collection item 7457) is a medium of its own: the item's tables get a sub-table for each, its preview window both lists, and the initial page links the second one's songs too (until now its tracks were read as notes).
+- springsteenlyrics.com: in an item's preview window, the titles of a tracklist line up after the numbers "10" and on (the site's fonts have figures of different widths).
+- springsteenlyrics.com: a box set whose page lists its records without their tracklists (sampler items 5618 and 5619: Record 1: "Greetings From Asbury Park N.J.", its pressing, catalogue number and sleeve) gets one Contents table, a row per record (until now the first record's three lines were shown as three tracks and the others as notes); its preview counts the records and lists them.
+
+
+## 9.99.1560 — 2026-11-05
+
+**✨ Improve**
+
+- springsteenlyrics.com item pages: the site's own tracklist already links each song (with its preview) before any button is pressed; its MusicBrainz icons and "this show" links appear there once they have been read (a press or a window reads them; a visit alone asks nothing).
+- springsteenlyrics.com tracklists: on a bootleg of one show the title now links the song's main page, and the "this show" mark after it is a link of its own to that show's version, each with its own preview (until 9.99.1559 the title linked the show's version).
+- springsteenlyrics.com tracklists: a song the site has no page for ("Circus Song") still gets its MusicBrainz work icon when MusicBrainz knows the work by that name or an alias; "Rosalita (Come Out Tonight) (instrumental)" and "Phantoms aka Wild Zero And Blind Terry" now find their songs.
+- springsteenlyrics.com: the MusicBrainz work icons pulse while Bruce Springsteen's works load.
+- springsteenlyrics.com: an item's preview window opened from a list now shows the MusicBrainz work icons too (the works are read when the window opens), and a various-artists line there ("Bruce Springsteen: BORN TO RUN") links Bruce's song.
+- springsteenlyrics.com, logged in: the collection and bootleg lists get an ID column, the item's number on the site, linked, with the site's edit pencil, sorted as a number.
+- springsteenlyrics.com: the CD and vinyl bootleg list's Label cell links the label's own list, and resting on it, or on the item page's Release card label, shows the label's card: how many CD and vinyl bootlegs, the first of them and their covers.
+- Every non-MusicBrainz detail page (springsteenlyrics.com items and songs, Discogs releases and masters, archive.org items, setlist.fm): resting on a picture above the tables shows it large, larger while Shift is held; Space opens the artwork viewer, as a click does.
+- springsteenlyrics.com: in a label's window, every item links its page, with its own preview.
+- springsteenlyrics.com: in an item's preview window, the MusicBrainz work icons sit in the line before each title (they were shown below it while read-ahead was on).
+
+
+## 9.99.1559 — 2026-11-05
+
+**🚀 Feature**
+
+- springsteenlyrics.com tracklists: in an item's tracklist (collection, bootleg, CD and vinyl bootleg), its preview window and a song page's edition tables, each song links its page in the lyrics index. Only songs the site has a page for are linked (an unknown address shows the site's "does not exist!" page): the script carries the site's list of 1,381 songs, and finds a title written differently from its page ("4TH OF JULY, ASBURY PARK (SANDY)", "(GET YOUR KICKS ON) ROUTE 66", 19 exceptions such as "FOURTY MILES OF BAD ROAD"). A medley links each of its songs; another artist's song on a various-artists album stays plain. Setting: Tracklists: link each song to its page on springsteenlyrics.com (on).
+- springsteenlyrics.com: on a bootleg of one show, a song links the site's page of that very performance when there is one, marked "this show" (the 5 Feb 2014 Perth bootleg's E Street Shuffle opens theestreetshuffle\_2014-02-05). The script reads the lyrics index once (32 letter pages, about one a second) and keeps it 30 days; every lyrics letter page shown keeps it current. Setting: Tracklists: link a bootleg's songs to the version of that show (on).
+- springsteenlyrics.com: a MusicBrainz work icon before each song of those tracklists, with MusicBrainz's card of the work on hover. Solid: the work's annotation links this song's page, or (logged in) the item's MusicBrainz release has it; dashed: matched by title only; several icons with a count: several works of that title. Bruce Springsteen's works are read once (16 requests, about 18 s, the icons faded meanwhile) and kept 30 days. Setting: Tracklists: MusicBrainz work glyph before each song (on).
+
+**✨ Improve**
+
+- springsteenlyrics.com song pages: a song the site leaves unlinked in a release's edition table (no page for that version) now links the song's main page when the site has one; the site's own links stay as written.
+
 
 ## 9.99.1558 — 2026-11-05
 
@@ -895,27 +933,6 @@ This page shows the newest 100 of 1729 versions; the month pages hold all of the
 **✨ Improve**
 
 - 💾 Browser cache: drag the window by its title bar to move it, and drag its lower-right corner to resize it. It opens where you left it, at that size. Its contents now scroll inside the window, between the title bar and the buttons at the bottom.
-
-
-## 9.99.1461 — 2026-10-26
-
-**✨ Improve**
-
-- Relationships column: a release group icon ("single from", e.g. on a tag's release groups) now gets the link preview card on hover, and the window on Space, like the column's links to other sites. The card shows the release group's title from the icon, and the icon's own box sits in its note stack. The icon's link is now a full address (https://musicbrainz.org/release-group/…). Its filter key stays the bare path, so the 📊 "Relationship icons" entries and the "links to one site more than once" warning are unchanged.
-
-
-## 9.99.1460 — 2026-10-26
-
-**🐛 Fix**
-
-- Sidebar cover: hovering the cover of a release, release group or event in the sidebar shows the card of all its images again. MusicBrainz puts an image with an empty title inside the cover link, and the hover card stopped at that empty title before it reached the link. Any element with an empty title is now passed over.
-
-
-## 9.99.1459 — 2026-10-26
-
-**🐛 Fix**
-
-- Link previews: in a preview window, pointing at a link that opens inside the window (e.g. a label in the LABEL-CAT\# column of a release group's versions) no longer makes the value and its column header jump sideways and back. The small ↳ that appeared after such a link on hover is gone: it widened the link and so the whole column. Such links keep their dotted underline, the foot line still says "↳ Opens here", and links that open a new tab keep their ↗.
 
 
 ---
