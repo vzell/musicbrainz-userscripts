@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.7",
+        "date": "2026-11-05",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "MusicBrainz search pages whose address does not start with the query (e.g. search?type=annotation&query=…, typed by hand or bookmarked) got no buttons: the script only ran when query= came first."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.6",
         "date": "2026-11-05",
         "sections": [

@@ -236,5 +236,18 @@
         "spec": "tests/fixtures/findings-sl-old-address.spec.js",
         "grep": "tint setting off",
         "expect": "fail"
+    },
+    {
+        "name": "search @include: query= must come first again",
+        "why": "search?type=annotation&query=… got no buttons (vzell, 2026-11-05).",
+        "edits": [
+            {
+                "find": "\\/(?:search\\?(?:[^#]*&)?query=.*|search\\/edits",
+                "replace": "\\/(?:search\\?query=.*|search\\/edits"
+            }
+        ],
+        "spec": "tests/fixtures/sl-include-regex.spec.js",
+        "grep": "MusicBrainz pages are still covered",
+        "expect": "fail"
     }
 ]

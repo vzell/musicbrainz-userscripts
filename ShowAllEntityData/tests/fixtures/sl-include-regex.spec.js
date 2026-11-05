@@ -629,6 +629,10 @@ test.describe('@include coverage', () => {
             'https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/releases',
             'https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897',
             'https://beta.musicbrainz.org/search?query=springsteen&type=artist',
+            // `query` after another parameter (vzell, 2026-11-05: an annotation
+            // search typed by hand got no buttons; the line wanted it first).
+            'https://musicbrainz.org/search?type=annotation&query=%22springsteenlyrics.com/lyrics/%22',
+            'https://musicbrainz.org/search?type=annotation&query="springsteenlyrics.com/lyrics/"&page=2',
             'https://musicbrainz.org/user/vzell/ratings',
             'https://musicbrainz.org/cdstub/browse',
             // The overview pages of the relationship-tables pageTypes (WIP.6/WIP.8).

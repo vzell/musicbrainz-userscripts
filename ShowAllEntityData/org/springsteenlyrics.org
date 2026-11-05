@@ -1193,8 +1193,8 @@ unknown).
 Checked:
 - =sl-song.spec.js= (9), =findings-sl-old-address.spec.js= (2), =detail-preview.spec.js= (live version, Request),
   =popup-ext.spec.js= (the old forms' reader, the old-address card), =sl-include-regex.spec.js=.
-- =scripts/mutations/sl-song.json=: 19 entries, 18 fail as expected, 1 recorded =pass= (Private Info logged out:
-  no logged-out page has the section). Five =find=s of =detail-preview.json=, =popup-ext.json= and
+- =scripts/mutations/sl-song.json=: 19 entries (the last one WIP.7's), 18 fail as expected, 1 recorded =pass=
+  (Private Info logged out: no logged-out page has the section). Five =find=s of =detail-preview.json=, =popup-ext.json= and
   =sl-songs.json= repointed after the reader changes, each run again: fail as expected. 171 other =find=s across
   the lists were already broken on HEAD, so they are not this branch's.
 - The layout test fails without the fix only with a stand-in for the site's grid and navbar CSS
@@ -1202,3 +1202,11 @@ Checked:
 - Lint within the baseline; =build-coverage-report.py --check=, =audit-docs.py=, =verify-doc-crossrefs.sh=,
   =build-sl-item-fixtures.py --check= pass. =audit-config-defaults.py= reports the new setting as "added" until the
   commit (=dump-default-history.py= reads git).
+- =test:full= (2026-11-05T00:48:01 → 01:05:37+01:00, NB-3641, at =347a4cbe= plus the branch's changes, before
+  WIP.7): 2689 passed, 0 failed (17 m 36 s).
+- vzell's live check (2026-11-05): the h1 overlap and the Version column fixed.
+
+- WIP.7, found by vzell's live test of the finding: =search?type=annotation&query=…= got no buttons. The
+  MusicBrainz =@include= admitted =search?query=…= only with =query= first. It now takes =query= after other
+  parameters too (=sl-include-regex.spec.js= pins two such URLs; its mutation fails as expected). vzell's live
+  check: the search page works now.
