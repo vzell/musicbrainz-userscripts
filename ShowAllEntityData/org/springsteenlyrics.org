@@ -1000,7 +1000,7 @@ B2- ROSALITA (COME OUT TONIGHT) ==> https://www.springsteenlyrics.com/lyrics.php
 2.)
 
 additionally URLify the SL tracklist to MB work URLs if possible, maybe by adding the MB work glyph in front of the SL
-song title
+song title and when hovering it show the MB work POH
 
 3.)
 
