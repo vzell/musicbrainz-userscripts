@@ -6340,3 +6340,8 @@ make the doubling of the IP information on non-MB PTs shine through instead of a
 * TODO BUG: When marking text on a POH and pressing "Ctrl-C", then text is not copied but instead the first table column is focused
 
 BUG: When marking text on a POH and pressing "Ctrl-C", then text is not copied but instead the first table column is focused
+
+
+* DONE Mark SL old-style song URLs (/lyrics/a/angelina.php) as findings on MB pages
+
+Mark SL old-style song URLs (/lyrics/a/angelina.php) as findings on MB pages

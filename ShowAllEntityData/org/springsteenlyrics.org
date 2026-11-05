@@ -409,7 +409,7 @@ https://www.springsteenlyrics.com/bootlegs.php?item=4554&category=aud_live1967
 
 Support bootleg SL URL PTs e.g. https://www.springsteenlyrics.com/bootlegs.php?item=2567&category=aud_live1984
 
-- click toogle section headers (Ctrl-click all sections at once) 
+- click toogle section headers (Ctrl-click all sections at once)
 - Original info file - https://www.springsteenlyrics.com/bootlegs/aud_live1984/2567_infofile.txt
 - internal viewer for image scans
 
@@ -699,7 +699,7 @@ Why is there so much empty space on both side of a detail page on SL detail page
 #+begin_example
 @debug/sl-brucelegs-multiple-versions.html - https://www.springsteenlyrics.com/brucelegs.php?item=41&f_format=vinyl - brucelegs detail page with multiple versions available
 #+end_example
- 
+
 
 * TODO add support for logged in case
 
@@ -1007,7 +1007,7 @@ song title
 make some suggestions, nice rich HTML based mockups
 
 
-* TODO Overwhole of the SL PTs and POHs
+* DONE Overwhole of the SL PTs and POHs
 
 Overwhole and addition of SL song related PTs and POHs (see also the corresponding skills):
 
