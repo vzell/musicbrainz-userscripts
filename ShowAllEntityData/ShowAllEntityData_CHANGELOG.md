@@ -4,9 +4,70 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1722 versions; the month pages hold all of them.
+This page shows the newest 100 of 1729 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1558 — 2026-11-05
+
+**🐛 Fix**
+
+- MusicBrainz search pages whose address does not start with the query (e.g. search?type=annotation&query=…, typed by hand or bookmarked) got no buttons: the script only ran when query= came first.
+
+
+## 9.99.1557 — 2026-11-05
+
+**✨ Improve**
+
+- MusicBrainz → springsteenlyrics.com: the site's two old addresses that MusicBrainz still carries, mostly in work annotations (/lyrics/&lt;letter&gt;/&lt;song&gt;.php and /collection/moreinfo.php?item=N), answer 404 today. Their preview now reads the page at its current address (lyrics.php?song=…, collection.php?item=…), and the card's first line says "Old address" with the new one.
+
+**🚀 Feature**
+
+- New ⚠️ WARNING "Old springsteenlyrics.com address in the annotation": an Annotation cell (annotation search, annotation reports such as Works with annotations) that links springsteenlyrics.com at an old address is tinted, and the menu filters to those rows so the annotations can be edited. The cell's tooltip names each link's current address. Setting: "Highlight Annotation cells with an old springsteenlyrics.com address as WARNING".
+
+
+## 9.99.1556 — 2026-11-05
+
+**✨ Improve**
+
+- springsteenlyrics.com: a song's preview card and window now show the version's Type, Date and Show (as the lyrics index reads them), the song number (logged in), the versions by type ("Album 1, Unofficial studio 3, Live 57"), and the releases, live releases, covers and movies the page lists, counted. A live version adds its venue, place, tour and release, and the window shows that release's tracklist with the song marked ●.
+- springsteenlyrics.com: a song preview's Request section no longer shows the contact form's field names.
+
+
+## 9.99.1555 — 2026-11-05
+
+**🚀 Feature**
+
+- springsteenlyrics.com song pages (lyrics.php?song=…, and lyrics.php?item=N): new "Show the song" button. Each edition of the song's releases becomes a sub-table (vinyl sides paired into records), followed by Other official releases, Live releases (Date, Show, Release, Kind, Released and this song's page of that show), Covers, Appearance in movies and Available versions (the lyrics index's columns). This version is marked ● wherever it appears. Above the tables: the lyrics, the page's texts (Request without its contact form), Details (version, a live version's show and release, the studio recording, what the page lists), the pictures, and Private Info (closed, logged in only). No request: the page itself is the data.
+- springsteenlyrics.com song pages: "Show all versions of this song" shows the page's versions alone as one table, with the ID column (logged in) sorting as a number.
+- springsteenlyrics.com song pages, logged in: covers get an Item column (the cover release's page and its edit link). The "add N songs" links are left out.
+
+
+## 9.99.1554 — 2026-11-05
+
+**✨ Improve**
+
+- springsteenlyrics.com lyrics index, logged in: a new ID column holds the song's number, which links to its page (lyrics.php?item=N), and a ✎ link to edit it on the site. The column sorts by number. Logged out, the table is unchanged.
+- springsteenlyrics.com: hovering a song's number (lyrics.php?item=N) shows the song's preview, as its title does.
+
+**🐛 Fix**
+
+- springsteenlyrics.com lyrics index, logged in: the Lyrics column showed ✗ on every song, because it read the edit pencil instead of the lyrics icon.
+
+
+## 9.99.1553 — 2026-11-05
+
+**✨ Improve**
+
+- springsteenlyrics.com lyrics index: a letter page (e.g. lyrics starting with B) now has a "This letter" button. It shows that page's songs as a table without loading anything. "Show all lyrics" still loads all 32 letters; on the lyrics start page it is the only button.
+
+
+## 9.99.1552 — 2026-11-05
+
+**🐛 Fix**
+
+- springsteenlyrics.com, logged in: a song's preview card and window showed the page's "Private Info" notes and kept them in the preview cache. They are now left out, and previews read before the fix are read again. A logged-in read and a public read of a song page are now cached separately.
+
 
 ## 9.99.1551 — 2026-11-04
 
@@ -855,62 +916,6 @@ This page shows the newest 100 of 1722 versions; the month pages hold all of the
 **🐛 Fix**
 
 - Link previews: in a preview window, pointing at a link that opens inside the window (e.g. a label in the LABEL-CAT\# column of a release group's versions) no longer makes the value and its column header jump sideways and back. The small ↳ that appeared after such a link on hover is gone: it widened the link and so the whole column. Such links keep their dotted underline, the foot line still says "↳ Opens here", and links that open a new tab keep their ↗.
-
-
-## 9.99.1458 — 2026-10-26
-
-**🚀 Feature**
-
-- Genre pages (/genre/&lt;mbid&gt;): a new "Show all Relationships for Genre" button shows the genre's relationships as tables, like on place, area and instrument pages: its parent genres, subgenres and influences in one Genres table (with the relationship as a column), and its external links in a URLs table. The "Associated tags" and the Wikipedia text stay as MusicBrainz shows them.
-- Link previews: pointing at a genre link (the "Genre" of a tag page, a genre collection's rows, a genre in any relationship list) shows a genre card: its primary tag, the genres it is a subgenre of, its subgenres and influences, how many collections hold it and the start of its Wikipedia text, read from the genre's page in one request. Space opens its window, with every related genre linked so it opens its own card, the external links, the collections link and the whole Wikipedia text. A genre's "Found in N user collections", "Editing history" and "Open edits" links get their cards too.
-
-
-## 9.99.1457 — 2026-10-25
-
-**🐛 Fix**
-
-- discogs.com: the headings of Discogs' own page under the script's tables (Tracklist, Credits, Videos, …) now fold and open their part on a click, and a Ctrl+click folds or opens all of Discogs' parts at once without touching the script's own headings. A click used to change only the ▲/▼ and hid Discogs' own show/hide button instead. The "Label:" and "Format:" lines of the release's info table no longer get a ▲.
-
-
-## 9.99.1456 — 2026-10-25
-
-**✨ Improve**
-
-- discogs.com: pointing at a MusicBrainz icon shows that entity's MusicBrainz card, read from musicbrainz.org, and Space opens its window. This works in the MusicBrainz column of the script's tables and for the icons murdos' "Import Discogs releases to MusicBrainz" puts beside the names on Discogs' own page, right away. A click on an icon in the MusicBrainz column now opens the window, like every other link in those tables; Ctrl-click still opens MusicBrainz in a new tab.
-
-
-## 9.99.1455 — 2026-10-25
-
-**🐛 Fix**
-
-- discogs.com: Discogs' own links in the page (artists, labels, releases, masters, users) now show their preview card on hover right away, before any of the script's buttons is pressed. Only the links in the script's own tables did before. The older Discogs pages (submissions, a release's history, a user's ratings) are covered too.
-
-**✨ Improve**
-
-- discogs.com: a link to a Brucebase show, venue or person in Discogs' content (a release's notes, for example) shows Brucebase's own card, as on Brucebase, instead of a plain web page card.
-
-
-## 9.99.1454 — 2026-10-25
-
-**✨ Improve**
-
-- Collection preview windows: the covers of a release or release group collection are now the table's first column, next to their rows, as in a release group's window, instead of a strip above the table.
-- Pointing at a cover in a collection window or a release group window (each release's, and the group's own) shows every image of that release or release group, and a click or Space opens them in the artwork viewer. Ctrl-click still opens its page.
-
-
-## 9.99.1453 — 2026-10-25
-
-**✨ Improve**
-
-- Preview windows: Space on an image opens the full-screen viewer at that image, the same as a click, in Brucebase, Discogs and MusicBrainz windows alike. It used to do nothing. Esc closes the viewer and leaves the window open.
-- Discogs windows: the small pictures in a master's versions, an artist's discography and a label's releases now work like the Image column on Discogs pages. Pointing at one shows every image of that release (one request to Discogs, kept), and a click or Space opens the viewer on them, with Shift+← → to step through the rows. A click on the picture no longer opens that release in the window instead.
-
-
-## 9.99.1452 — 2026-10-24
-
-**🐛 Fix**
-
-- Opening a preview window with Space, or stepping through rows in it, no longer scrolls a wide table sideways. On a Brucebase year table the MB-Event column used to slide halfway under the Event column (with the side bar shown, almost all of it). The window still scrolls the page up or down to show its row.
 
 
 ---

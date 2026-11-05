@@ -28128,7 +28128,7 @@ specs outside the merged code; pushed on vzell's word, fixed here. Test-only cha
   kind list: 2.2–4.0 s after the click in 30 quiet runs (median 3.2 s), against `expect.poll`'s default 5 s. Under the
   full suite it went past. Fix: a 20 s poll timeout. The test pins that the page is asked, not how soon.
 
-## 2026-11-04 — springsteenlyrics.com songs: a song's Private Info in its preview; Lyrics ✗ on every logged-in row; a letter page loaded all 32 letters (feat/sl-songs, WIP.1–WIP.3)
+## 2026-11-04 — springsteenlyrics.com songs: a song's Private Info in its preview; Lyrics ✗ on every logged-in row; a letter page loaded all 32 letters (feat/sl-songs, 9.99.1552–9.99.1554)
 
 Env: 2026-11-04T23:02:01+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (GM stubs, no Tampermonkey); snapshots from vzell's browser (Chrome + Tampermonkey, versions not recorded), logged in
 
@@ -28174,7 +28174,7 @@ test:full 2026-11-04T23:19 → 23:37:15+01:00 (NB-3641): 2677 passed, 0 failed.
 Tests: `sl-lyrics.spec.js` (+6, one reworked), `detail-preview.spec.js` (+1), `popup-ext.spec.js` (+1); fixtures from
 `scripts/build-sl-item-fixtures.py`; `scripts/mutations/sl-songs.json`, 10/10 fail as expected.
 
-## 2026-11-05 — springsteenlyrics.com song page: the toolbar h1 over the site's title; the sticky Title column over Version (feat/sl-song-pt, WIP.4)
+## 2026-11-05 — springsteenlyrics.com song page: the toolbar h1 over the site's title; the sticky Title column over Version (feat/sl-song-pt, 9.99.1555)
 
 Env: 2026-11-05T00:40+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · vzell's browser for the two
 screenshots (versions unknown) · reproduced in Playwright 1.62.1 Chromium (GM stubs, no Tampermonkey) on
