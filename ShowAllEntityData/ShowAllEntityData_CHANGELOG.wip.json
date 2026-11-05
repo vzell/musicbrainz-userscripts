@@ -1,0 +1,26 @@
+[
+  {
+    "version": "WIP.2",
+    "date": "2026-11-05",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "springsteenlyrics.com (and the other Springsteen sites): in a preview window, a link whose page its card has loaded gets the green \"already loaded\" dot, as MusicBrainz links do, also when the answer comes in after the pointer has moved on; resting on it again says \"(read before, no request)\"."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-11-05",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "📊 dropdown: on a site whose stylesheet sizes every element with its padding (springsteenlyrics.com's Bootstrap), the badge of the largest count was wider than the others, so its label started further right (\"(176) Live\" in the Type column of a lyrics letter page). Every badge now has one width on every site."
+        ]
+      }
+    ]
+  }
+]

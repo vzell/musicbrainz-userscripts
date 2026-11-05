@@ -1778,8 +1778,11 @@ https://claude.ai/artifact/APF35bPAyvFZvKjFHGHrZU
   emptied and restyled (`.mb-dp-wfoot`; its inline padding/border need
   `!important`), so the window's layout is unchanged. At rest the keys that
   apply. "read before, no request" from `_dpWinRead()`: a MusicBrainz
-  entity's `pop:<type>:<id>:` entry done in `_mbPop` (any inc set), another
-  site's record by its key.
+  entity's `pop:<type>:<id>:` entry done in `_mbPop` (any inc set), a
+  source's own answer when it has a `read(t)` (`_dpSiteSource()`: its page
+  in `_dpMem`, since 2026-11-05 — before, the `_mbPop` lookup below never
+  found a detail site's page, so an SL song read by its card had no dot),
+  another site's record by its key.
 - **H2 marks** (`_dpWinMark()`): classes `mb-dp-l-here` / `-out` /
   `-noglyph` (its text already says ↗) / `-img` / `-read` (only with H5 on),
   laid by a MutationObserver on the scroll area, one pass a frame: every
@@ -1823,7 +1826,9 @@ https://claude.ai/artifact/APF35bPAyvFZvKjFHGHrZU
   while the link is still `:hover`. MusicBrainz entities only.
   **The green dot** (`mb-dp-l-read`: the link's record is in memory,
   `_dpWinRead()` — read ahead, or loaded by the window itself, an area
-  chain's steps) has a RESERVED place since 2026-10-29 (vzell, mockup 2e,
+  chain's steps, or by the link's own card: `_dpShowPeek()`'s `repaint`
+  calls `_dpWinMarkSoon()` for a window link BEFORE its "still showing"
+  check, so an answer landing after the pointer left marks it too) has a RESERVED place since 2026-10-29 (vzell, mockup 2e,
   https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag): while H5 is on,
   `_dpWinMark()` puts `mb-dp-dots` on the area and every `mb-dp-l-here`
   link keeps an empty 6 px + 4 px `::before`, green once read, so nothing

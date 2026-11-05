@@ -230,6 +230,40 @@ test.describe('sl-lyrics (springsteenlyrics.com lyrics index)', () => {
         expect(years.length).toBeGreaterThan(50);
         expect(years).toEqual([...years].sort((a, b) => a - b));
     });
+
+    test('📊 Type: every "(N)" badge is one width under the site\'s border-box, so every label starts at one x', async ({ page }) => {
+        // vzell, 2026-11-05: "(176) Live" sat further right than "(12)
+        // Album". The site's Bootstrap sets box-sizing: border-box on every
+        // element, so the badge's min-width (the widest count, in ch)
+        // counted its padding and only the widest count overflowed it. The
+        // fixture has the site's stylesheets stripped: the rule is added
+        // back here, as Bootstrap writes it.
+        const { spec } = await loadSlListPage(page, { kind: 'lyrics-b' });
+        await page.addStyleTag({ content: '*, ::before, ::after { box-sizing: border-box; }' });
+        await page.click('button[data-label="Show the lyrics of this letter"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        expect(spec.url).toContain('letter=b');
+        const items = await page.evaluate(() => {
+            window.__saTest.getUniqDropSections('Type', 0);
+            return Array.from(document.querySelectorAll('#mb-col-uniq-dropdown .mb-col-uniq-item'))
+                .filter((it) => it.querySelector('.mb-uniq-count-badge') && it.getClientRects().length)
+                .map((it) => {
+                    const b = it.querySelector('.mb-uniq-count-badge').getBoundingClientRect();
+                    return { text: it.textContent.replace(/\s+/g, ' ').trim(), count: it.querySelector('.mb-uniq-count-badge').textContent, width: b.width, right: b.right };
+                });
+        });
+        // The case only bites with counts of different lengths in one panel.
+        expect(items.find((i) => /Live$/.test(i.text)), 'the Live entry').toBeTruthy();
+        const digits = new Set(items.map((i) => i.count.replace(/\D/g, '').length));
+        expect(digits.size, `counts of several lengths: ${[...items.map((i) => i.count)]}`).toBeGreaterThan(1);
+        // The host rule is in force (the setup works) …
+        expect(await page.evaluate(() => getComputedStyle(document.querySelector('#mb-col-uniq-dropdown .mb-col-uniq-item')).boxSizing)).toBe('border-box');
+        // … and every badge has one width and ends at one x: the label after it starts there.
+        const widths = items.map((i) => Math.round(i.width * 2) / 2);
+        const rights = items.map((i) => Math.round(i.right * 2) / 2);
+        expect(new Set(widths).size, `badge widths: ${JSON.stringify(items.map((i) => [i.count, i.width]))}`).toBe(1);
+        expect(new Set(rights).size, `badge right edges: ${JSON.stringify(items.map((i) => [i.count, i.right]))}`).toBe(1);
+    });
 });
 
 test.describe('sl-lyrics logged in (the song number and the edit link)', () => {

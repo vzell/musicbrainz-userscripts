@@ -28340,3 +28340,29 @@ request; no full run of this state yet.
 
 test:full on merged `main` 2026-11-05T17:38:19 → 17:56:48+01:00 (NB-3641, Playwright 1.62.1, 2723 tests, 14 workers,
 merge a2cd6863 plus the fold to 9.99.1561): 2723 passed. Shipped as 9.99.1559–9.99.1561.
+
+## 2026-11-05 — springsteenlyrics.com: a wider 📊 badge for "(176)"; no green dot in SL windows (fix/sl-uvd-badge-and-window-dot)
+Env: 2026-11-05T23:20:23+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs); vzell's report from the real browser: unknown versions
+
+vzell's report (screenshots): (1) on `lyrics.php?cmd=list&letter=b`, the Type column's 📊 has "(176) Live" indented
+further than every other entry; (2) in an SL preview window, a tracklist song whose card had loaded ("saved today")
+never gets the green "already loaded" dot, while a MusicBrainz window's links do.
+
+1. **Bootstrap's `box-sizing: border-box`.** Every badge (`.mb-uniq-count-badge`, six builders in `openUniqDrop()`)
+   gets `min-width: <panelBadgeChWidth>ch` — the widest count's characters — and `padding: 0 3px`. The site loads
+   `bootstrap/css/bootstrap.min.css` (`debug/sl-b.html`), which puts `box-sizing: border-box` on every element, so
+   the min-width included the 6 px of padding: shorter counts still fit and stayed at the min-width, the widest
+   overflowed it and grew by the padding. Measured with the rule planted back in a fixture: "(176)" 34.9 px, the
+   others ≈ 29 px. Fix: one CSS rule, `.mb-uniq-count-badge { box-sizing: content-box; }` (MusicBrainz's default
+   already, so nothing changes there).
+2. **`_dpWinRead()` asked only `_mbPop`.** The dot is `mb-dp-l-read` from `_dpWinMark()`; for a non-MusicBrainz
+   target it looked up `_mbPop.get(t.key)`, but a detail site's source (`_dpSiteSource()`) keeps its pages in
+   `_dpMem` (by URL, `memOf()`), so it was never true. And nothing re-marked the window when a card's answer came
+   in: only MusicBrainz read-ahead's callback and the window's own MutationObserver did. Fix: the site source answers
+   `read(t)` (`!!memOf(t)`, the same test its card and window use to skip a request), `_dpWinRead()` asks it first;
+   `_dpShowPeek()`'s `repaint` calls `_dpWinMarkSoon()` for a window link before its "card still showing" check, so
+   an answer landing after the pointer has left marks it too (vzell's case: hover another link, come back).
+
+Specs: `sl-lyrics.spec.js` (Bootstrap's rule added with `addStyleTag`; every badge one width, one right edge) and
+`sl-tracklist-links.spec.js` (a held song answer released while the pointer is on another song). Mutations
+`scripts/mutations/sl-uvd-badge-window-dot.json`: 3, all fail as expected.

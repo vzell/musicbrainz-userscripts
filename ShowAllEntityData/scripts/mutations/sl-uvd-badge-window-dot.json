@@ -1,0 +1,41 @@
+[
+    {
+        "name": "📊 count badge: the host's box-sizing applies",
+        "why": "On springsteenlyrics.com (Bootstrap: border-box everywhere) the widest count's badge grew past the shared min-width, so its label sat further right (vzell, 2026-11-05: \"(176) Live\").",
+        "edits": [
+            {
+                "find": "        .mb-uniq-count-badge {\n            box-sizing: content-box;\n        }\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-lyrics.spec.js",
+        "grep": "border-box",
+        "expect": "fail"
+    },
+    {
+        "name": "window dot: the site source does not say what it has read",
+        "why": "_dpWinRead() asked _mbPop only; a detail site keeps its pages in _dpMem, so an SL song read by its card never got the dot (vzell, 2026-11-05).",
+        "edits": [
+            {
+                "find": "            read: (t) => !!memOf(t),\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "green dot",
+        "expect": "fail"
+    },
+    {
+        "name": "window dot: a card's answer does not re-mark the window",
+        "why": "Only MusicBrainz's read-ahead re-marked the window; a card's answer landing after the pointer left marked nothing.",
+        "edits": [
+            {
+                "find": "            if (t.el.isConnected && t.el.closest('.mb-dp-dialog')) _dpWinMarkSoon();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "green dot",
+        "expect": "fail"
+    }
+]
