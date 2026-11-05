@@ -700,6 +700,209 @@ Why is there so much empty space on both side of a detail page on SL detail page
 @debug/sl-brucelegs-multiple-versions.html - https://www.springsteenlyrics.com/brucelegs.php?item=41&f_format=vinyl - brucelegs detail page with multiple versions available
 #+end_example
 
+* DONE Overwhole of the SL PTs and POHs
+
+Overwhole and addition of SL song related PTs and POHs (see also the corresponding skills):
+
+1.)
+
+The following are SL logged in raw IP HTML files (the previous ones where taken without been logged in and are missing
+some additional details, e.g. the song list per letter has additional glyphs per song if the song has lyrics or not and
+also carry a unique songnumber)
+
+#+begin_example
+@debug/sl-songs.html - IP - https://www.springsteenlyrics.com/lyrics.php - overview/introduction page for SL songs
+@debug/sl-songs-B.html - IP - https://www.springsteenlyrics.com/lyrics.php?cmd=list&letter=b - listing of songs for letter B
+@debug/sl-song-no-lyrics.html - IP - https://www.springsteenlyrics.com/lyrics.php?song=babyme - song detail page where no lyrics are available
+@debug/sl-song-official.html - IP -https://www.springsteenlyrics.com/lyrics.php?song=backstreets - officially released version of a song
+@debug/sl-song-unofficial.html - IP -https://www.springsteenlyrics.com/lyrics.php?song=backstreets_unofficial1 - unofficial bootleg version of a song
+@debug/sl-song-live.html - IP - https://www.springsteenlyrics.com/lyrics.php?song=backstreets_1975-11-18 - live version of a song
+#+end_example
+
+2.)
+
+adjust the current PT for songs with these additional details, glyphs and song id
+
+3.)
+
+currently when pressing the action button on a song list for a specific letter e.g. https://www.springsteenlyrics.com/lyrics.php?cmd=list&letter=b
+ALL the songs are rendered anyway, as if we would press the action button on https://www.springsteenlyrics.com/lyrics.php
+
+4.)
+
+a.)
+
+add a new PT and POH for SL song detail pages (skills)
+
+b.)
+
+parse additional pages (if you need same) and make some suggestions, nice rich HTML based mockups
+
+5.)
+
+MB pages which reference SL URLs should support POH
+
+** Answer (2026-11-04, branch =feat/sl-songs=)
+
+Env: 2026-11-04T23:02:01+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (GM
+stubs, no Tampermonkey). Real browser: items 2 and 3 confirmed live by vzell (2026-11-04; browser and Tampermonkey
+versions unknown).
+
+Mockups (private Artifact): https://claude.ai/artifact/XFubyj74n1CAouHYT2m5ou, local copy [[file:sl-song-mockups.html]].
+Tabs: Song page (backstreets), Live version (backstreets_1975-11-18), Lyrics index (built), Song preview, MusicBrainz → SL,
+Plan and questions.
+
+Decided (vzell, 2026-11-04):
+- Scope of this session: code for items 2 and 3, and for a privacy bug found while reading. Item 4: findings, mockups
+  and questions only; it gets built after approval. Item 5: investigate and report.
+- Letter page: two buttons. "This letter" (no request) comes first, then "Show all lyrics" (32 letters). The landing
+  page keeps only "Show all lyrics".
+- Logged-in lines: an ID column linking =lyrics.php?item=N=, with the edit pencil as a small link in the cell. The ⋮
+  glyph is dropped. Logged out, the table stays as before.
+
+*** Built (WIP entries in =ShowAllEntityData_CHANGELOG.wip.json=)
+
+- 9.99.1552, privacy: a logged-in song page's "Private Info" reached the song's card and window on SL, and stayed in the
+  preview cache for 30 days. =_dpParseSlSong()= took every section. Fixes: it skips the section
+  (=_SL_SONG_PRIVATE_RE=); the record carries its login state; =_DP_PARSER_VERSION= 10.
+- 9.99.1553, item 3: the "This letter" button (=features: { pageKeys: null }=, =showIf= on the page's own =Starting with
+  "X"= heading).
+- 9.99.1554, item 2:
+  - the ID column (numeric while logged in, through an =integerColumns= getter);
+  - Lyrics ✓/✗ fixed: logged in, every row read ✗, because the line's first =<i>= is the edit pencil;
+  - the ID link =lyrics.php?item=N= gets the song's preview. Probed: item=2099 serves song=babycomeback.
+- Note on item 2's wording: the lyrics glyph (lyrics or not) is also on logged-out pages, and the Lyrics column
+  already showed it. Only the pencil, the number and ⋮ are new when logged in.
+
+Checked:
+- Specs: =sl-lyrics.spec.js= (+6, one reworked), =detail-preview.spec.js= (+1), =popup-ext.spec.js= (+1). The SL,
+  preview and popup specs: 314 passed.
+- =scripts/mutations/sl-songs.json=: 10/10 fail as expected.
+- Lint within the baseline; =build-coverage-report.py --check= and =build-sl-item-fixtures.py --check= pass.
+- =test:full= (2026-11-04T23:19 → 23:37:15+01:00, NB-3641): 2677 passed, 0 failed (17 m 41 s).
+
+*** Findings for item 4 (song pages)
+
+- No view today: =lyrics.php?song== has no =@include=. The preview reads it (=_dpParseSlSong()=).
+- Anatomy in =.project-detail=:
+  - the head: =h3= title, =p>em= version line, the lyrics between two =<hr>= (=span.text-info= stage notes);
+  - then =h3.heading= sections: Info, Studio Recording (track credits), one per album (=.panel-group= tracklists per
+    edition), Other Official Releases (=.blog-post= rows: =Artist -- Title=, =FORMAT - LABEL (CAT#) - COUNTRY, YEAR=;
+    then one sentence per live release), Live History, Covers, Appearance in Movies, Credits;
+  - then Request (a contact form) and Available Versions (lines like the index; the current version unlinked);
+  - logged in only: Private Info.
+- Backstreets has 41 rows: 5 releases, 28 live releases, 1 movie, 7 covers. It has 61 versions: Album 1, Unofficial
+  studio 3, Live 57.
+- A live version has its date only in the version line and the slug. Its venue and tour are only in prose. Its release
+  section is named after the release, with DVD/CD/vinyl panels. The site writes "Disc 5:" among "Side 1:" to "Side 8:".
+- Logged in only, besides Private Info: the versions' numbers and edit links, and on covers "view item / edit item /
+  add N songs" (=cmd=displaycoverrelease&item=N=).
+
+*** Findings for item 5 (MusicBrainz → SL)
+
+- Every live SL URL form MusicBrainz uses already gets SL's own card, and annotations are in scope
+  (=_EXT_SCOPE_SEL= has =.annotation a[href]=). Links in the Annotation column of our tables and in an MB entity window
+  are covered too.
+- The census (=scripts/probe-mb-sl-urls.py=, a sample: 501 of 3,531 URL entities and about half of 910 annotations):
+  - relationships: =collection.php?item== 434, =bootlegs.php?item== 66;
+  - annotations: =lyrics.php?song== 97 and two OLD forms, =/lyrics/<l>/<slug>.php= 431 and
+    =/collection/moreinfo.php?item=N= 22.
+- Both old forms answer 404 today, and both map onto live pages: =lyrics.php?song=<slug>= and =collection.php?item=N=.
+  This is the one real gap; proposal in the mockup (question 6).
+- =popup-ext.spec.js= now pins which reader takes each form.
+
+*** Questions (recommendations in the mockup's last tab)
+
+1. Song page buttons: "Show the song", plus "All versions" (the Available Versions list as one table)?
+2. Private Info on the song page view: a closed section, logged in only, as on the item pages?
+3. Request: hide the form, and keep its text as a closed section?
+4. Live releases: split each sentence into Date / Release / Kind / Released year, with Note as the fallback?
+5. A live version's venue and tour: read them from the Info sentence, best-effort?
+6. MusicBrainz's old SL links: read them as their current address, with "old address" in the card?
+7. The window's Live page view on SL still shows Private Info when logged in. Hide it there too (=liveHide=)?
+8. Covers, logged in: one Item column (view and edit links), with the "add N songs" links left out?
+
+Still to do: the merge on your word, and the =sl-song= build on its own branch after the answers.
+
+*** answers
+
+1. Song page buttons: "Show the song", plus "All versions" (the Available Versions list as one table)? YES
+2. Private Info on the song page view: a closed section, logged in only, as on the item pages? YES
+3. Request: hide the form, and keep its text as a closed section? YES
+4. Live releases: split each sentence into Date / Release / Kind / Released year, with Note as the fallback? YES
+5. A live version's venue and tour: read them from the Info sentence, best-effort? YES
+6. MusicBrainz's old SL links: read them as their current address, with "old address" in the card? YES, plus a ⚠️ finding on MusicBrainz work pages, so they can be edited.
+7. The window's Live page view on SL still shows Private Info when logged in. Hide it there too (=liveHide=)? NO
+8. Covers, logged in: one Item column (view and edit links), with the "add N songs" links left out? YES
+
+What follows from the answers (2026-11-05T00:05:47+01:00):
+- 1–5 and 8: the =sl-song= build follows the mockup as drawn: "Show the song" plus "All versions"; Private Info
+  closed and logged in only; Request's text closed, its form hidden; live releases split, with Note as the
+  fallback; venue and tour best-effort; covers get an Item column (logged in) without the "add N songs" links.
+- 6: two parts.
+  - The springsteen reader reads =/lyrics/<l>/<slug>.php= as =lyrics.php?song=<slug>= and
+    =/collection/moreinfo.php?item=N= as =collection.php?item=N=, and the card says "old address".
+  - A new ⚠️ finding (=add-finding= skill) on MusicBrainz work pages (and wherever such a link shows) marks these
+    links, so they can be edited. It is the TODO vzell added to =org/TODO.org= on 2026-11-04 ("Mark SL old-style
+    song URLs … as findings on MB pages"). It is MusicBrainz-side, so it needs the MusicBrainz fixture suite as
+    proof that nothing else changes.
+- 7: the window's Live page view stays the site's own page as it is. Logged in on SL it shows Private Info: that is
+  the site's own page, in vzell's own session. Every view the script BUILDS (card, window, the page views) leaves
+  it out or shows it closed.
+- Build order: one branch stacked on =feat/sl-songs= (=feat/sl-song-pt=): the =sl-song= PT and the shared song
+  reader first, then the old-address alias, then the finding.
+
+*** Built (2026-11-05, branch =feat/sl-song-pt=, stacked on =feat/sl-songs=; 9.99.1555–9.99.1557)
+
+Env: 2026-11-05T00:48:09+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (GM
+stubs, no Tampermonkey). Real browser: vzell's two screenshots during the build (browser and Tampermonkey versions
+unknown).
+
+- 9.99.1555, the =sl-song= PT (answers 1–5, 8): =lyrics.php?song== and =?item=N= (=@include= with a =cmd== lookahead;
+  =sl-lyrics= leaves =item== alone). One reader, =_slSongRead()=, for the page view and the preview. Tables: one
+  per release edition (sides paired; "Disc 5:" among the sides is side 5), Other official releases, Live releases
+  (Date/Show/Release/Kind/Released, the version page of that show, "first released" in Note), Covers (+ Item
+  logged in, without "add N songs"), Appearance in movies, Available versions (ID logged in). The song is marked ●
+  (CSS, not text). Head: Lyrics, texts, Request without its form, Details (Version, Show, Released on, Studio
+  recording, On this page), Pictures, Private Info (closed, logged in). "All versions" = the versions alone.
+- Found by vzell's live test during the build, fixed before anything shipped: only the song pages give
+  =.project-detail= an inline =overflow:hidden=. It became the scroll container of our sticky h1 (drawn 80 px down,
+  over the site's title) and of the sticky Title column (15 px over Version). Root cause measured under the site's
+  real CSS from =debug/sl-song-official.html=. Fix: =overflow: visible !important; display: flow-root= on SL.
+- 9.99.1556, the preview (=_DP_PARSER_VERSION= 11): Type/Date/Show, the song number (logged in), versions by type,
+  releases/live releases/covers/movies counted, a live version's show, release and tracklist (● on the song).
+  Deviation from the mockup: the window keeps its text sections; the song page's tables are not copied into it.
+  An album version gets no tracklist in the window (it pushed the lyrics down).
+- 9.99.1557, answer 6: the springsteen reader reads =/lyrics/<l>/<slug>.php= and =/collection/moreinfo.php?item=N= at
+  their current address (=_slCurrentAddress()=); the card's first field is "Old address", and the Live page frames
+  the current address. New ⚠️ finding =sl-old-address= on Annotation cells (annotation search, annotation reports
+  such as report/AnnotationsWorks), setting =sa_findings_tint_sl_old_address=. A work's own page has its
+  annotation outside any table, so the menu cannot show there; the link's card says "Old address" instead.
+  Find them all with an annotation search, e.g. =search?type=annotation&query="springsteenlyrics.com/lyrics/"=.
+- Fixtures: the three other song snapshots added to =scripts/build-sl-item-fixtures.py=, and every song fixture's
+  lyrics are now blanked (=blank_lyrics()= of =build-detail-fixtures.py=). The backstreets fixture from
+  =feat/sl-songs= had its full lyrics.
+
+Checked:
+- =sl-song.spec.js= (9), =findings-sl-old-address.spec.js= (2), =detail-preview.spec.js= (live version, Request),
+  =popup-ext.spec.js= (the old forms' reader, the old-address card), =sl-include-regex.spec.js=.
+- =scripts/mutations/sl-song.json=: 19 entries (the last one 9.99.1558's), 18 fail as expected, 1 recorded =pass=
+  (Private Info logged out: no logged-out page has the section). Five =find=s of =detail-preview.json=, =popup-ext.json= and
+  =sl-songs.json= repointed after the reader changes, each run again: fail as expected. 171 other =find=s across
+  the lists were already broken on HEAD, so they are not this branch's.
+- The layout test fails without the fix only with a stand-in for the site's grid and navbar CSS
+  (=SITE_LAYOUT_CSS=): the fixtures carry no stylesheet.
+- Lint within the baseline; =build-coverage-report.py --check=, =audit-docs.py=, =verify-doc-crossrefs.sh=,
+  =build-sl-item-fixtures.py --check= pass. =audit-config-defaults.py= reports the new setting as "added" until the
+  commit (=dump-default-history.py= reads git).
+- =test:full= (2026-11-05T00:48:01 → 01:05:37+01:00, NB-3641, at =347a4cbe= plus the branch's changes, before
+  9.99.1558): 2689 passed, 0 failed (17 m 36 s).
+- vzell's live check (2026-11-05): the h1 overlap and the Version column fixed.
+
+- 9.99.1558, found by vzell's live test of the finding: =search?type=annotation&query=…= got no buttons. The
+  MusicBrainz =@include= admitted =search?query=…= only with =query= first. It now takes =query= after other
+  parameters too (=sl-include-regex.spec.js= pins two such URLs; its mutation fails as expected). vzell's live
+  check: the search page works now.
 
 * TODO add support for logged in case
 
@@ -976,7 +1179,8 @@ the UVD for the "Type" column is not indented right, there is one entry wich has
 in e.g. https://www.springsteenlyrics.com/lyrics.php?cmd=list&letter=b
 
 
-* TODO URLify the tracklist to song URLs (SL and MB)
+* DONE URLify the tracklist to song URLs (SL and MB)
+** initial
 
 1.)
 
@@ -1006,207 +1210,215 @@ song title and when hovering it show the MB work POH
 
 make some suggestions, nice rich HTML based mockups
 
+** Step 0 is done
 
-* DONE Overwhole of the SL PTs and POHs
+The probes have run and the mockups are up at ⧉ https://claude.ai/artifact/9etFwvJXtoLWkfZzPxnTJo. I've stopped here until you answer the questions. No userscript code has changed yet.
 
-Overwhole and addition of SL song related PTs and POHs (see also the corresponding skills):
+What the probes found (5 Nov 2026, NB-3641, no browser involved):
+- SL song links:
+  - SL has 1,334 song titles with their own main page. Taking the title, dropping a trailing (…) and keeping only letters and digits gives the right address for 1,305 of them. That covers both your "assoc list" examples: …(SANDY) → 4thofjulyasburypark and ROSALITA (COME OUT TONIGHT) → rosalita.
+  - 4 more work if a leading (…) is dropped too, like (GET YOUR KICKS ON) ROUTE 66 → route66. Only about 25 real exceptions are left, such as comeonletsgotonight, fortymilesofbadroad and angeleyes-sinatra.
+- On real tracklists (15 saved item pages), 210 of 282 lines resolve. All 72 misses are songs SL has no page for: other artists on VA sides, Castiles covers, "Intro".
+- Unknown addresses look valid: SL answers an unknown song with HTTP 200 and a "does not exist!" page. So the script needs a list of known song addresses, or some links will lead nowhere.
+- Per-show pages: SL has a page per performance (becausethenight_1978-07-07, 1,464 dated ones). A bootleg could link the song's page for its own show date.
+- MB works:
+  - MB holds 1,587 Bruce works, and 752 of them have a link to the SL song page in their annotation. Loading them all takes 16 requests (about 18 s), then it's cached.
+  - Of the SL main song pages, 732 match a work exactly through that annotation link and 412 match one work by title. 29 match several works and 208 match none, mostly covers.
+  - On your item 10163, 6 of 7 match exactly; Wild Billy's Circus Story matches by title only.
+- Using the item's MB release: one request returns the work for every track (Live/1975–85: 40 of 40). But looking the release up from the SL page's address mostly fails, because MB stores SL item addresses as they were typed (http://…&category=album&pg=4). It's only reliable through the MB link your logged-in card shows.
+
+The questions in the mockup, with my recommendation for each:
+1. Where known song addresses come from: an embedded list of the 1,381 main-page addresses, about 18 KB → yes
+2. Link this show's page when SL has one: needs all 3,552 addresses, cached in the browser for 30 days → yes
+3. How to show the MB work: a work glyph before the title (your idea), a separate column, or both → the glyph
+4. Unsure matches: also show title-only matches (dashed glyph) and several candidates (count badge) → yes
+5. When MB is asked: automatically, under a new setting that is on by default, or only when you press a button → automatically
+6. When logged in: use the MB release link on your card as a more precise second source → yes
+7. Scope of this branch: item pages plus the tracklist in the item's popup now; the song page's edition tables and medleys later
+8. Titles SL has no page for: plain text, or marked as having no page → plain text
+
+Changes so far (on branch feat/sl-tracklist-links, nothing committed):
+- 3 new probe scripts in scripts/:
+  - probe-sl-song-index.py
+  - probe-mb-bruce-works-sl.py
+  - probe-sl-tracklist-resolve.py
+- The mockup page, org/sl-tracklist-links-mockups.html.
+- The probe output is in debug/, which git ignores.
+
+The artifact is private; only you can open it unless you share it from its Share menu.
+
+** answers
+
+1. Where known song addresses come from: an embedded list of the 1,381 main-page addresses, about 18 KB → yes
+2. Link this show's page when SL has one: needs all 3,552 addresses, cached in the browser for 30 days → yes
+3. How to show the MB work: a work glyph before the title (your idea), a separate column, or both → the glyph
+4. Unsure matches: also show title-only matches (dashed glyph) and several candidates (count badge) → yes
+5. When MB is asked: automatically, under a new setting that is on by default, or only when you press a button → automatically
+6. When logged in: use the MB release link on your card as a more precise second source → yes
+7. Scope of this branch: item pages plus the tracklist in the item's popup now + the song page's edition tables and medleys
+8. Titles SL has no page for: plain text, or marked as having no page → plain text
+
+* DONE Adjustments to 'URLify the tracklist to song URLs (SL and MB)'
+** DONE initial
 
 1.)
 
-The following are SL logged in raw IP HTML files (the previous ones where taken without been logged in and are missing
-some additional details, e.g. the song list per letter has additional glyphs per song if the song has lyrics or not and
-also carry a unique songnumber)
-
-#+begin_example
-@debug/sl-songs.html - IP - https://www.springsteenlyrics.com/lyrics.php - overview/introduction page for SL songs
-@debug/sl-songs-B.html - IP - https://www.springsteenlyrics.com/lyrics.php?cmd=list&letter=b - listing of songs for letter B
-@debug/sl-song-no-lyrics.html - IP - https://www.springsteenlyrics.com/lyrics.php?song=babyme - song detail page where no lyrics are available
-@debug/sl-song-official.html - IP -https://www.springsteenlyrics.com/lyrics.php?song=backstreets - officially released version of a song
-@debug/sl-song-unofficial.html - IP -https://www.springsteenlyrics.com/lyrics.php?song=backstreets_unofficial1 - unofficial bootleg version of a song
-@debug/sl-song-live.html - IP - https://www.springsteenlyrics.com/lyrics.php?song=backstreets_1975-11-18 - live version of a song
-#+end_example
-
-2.)
-
-adjust the current PT for songs with these additional details, glyphs and song id
+springsteenlyrics.com page without www. ==> WORKS
 
 3.)
 
-currently when pressing the action button on a song list for a specific letter e.g. https://www.springsteenlyrics.com/lyrics.php?cmd=list&letter=b
-ALL the songs are rendered anyway, as if we would press the action button on https://www.springsteenlyrics.com/lyrics.php
-
-4.)
-
 a.)
 
-add a new PT and POH for SL song detail pages (skills)
+On SL brucelegs pages the label name e.g. "The Godfatherecords" in "Label: The Godfatherecords" should get hyperlink/POH support
+
+#+begin_example
+@debug/sl-brucelegs-list-initial.html - IP - https://www.springsteenlyrics.com/brucelegs.php?cmd=list&f_letter=1 - filtered
+@debug/sl-brucelegs-list-final.html - FRP - https://www.springsteenlyrics.com/brucelegs.php?cmd=list - filtered - "Label" column is missing the hyperlink and POH support
+@debug/sl-brucelegs-labels-list-initial.html  - IP - https://www.springsteenlyrics.com/brucelegs.php?cmd=list&f_label=Great%20Dane%20Records - brucelegs label release page, in this case "Label: The Godfatherecords"
+@debug/sl-song-initial.html - IP - https://www.springsteenlyrics.com/brucelegs.php?item=254&f_format=vinyl - label has hyperlink but NO POH support
+@debug/sl-song-final.html - FRP - https://www.springsteenlyrics.com/brucelegs.php?item=254&f_format=vinyl - label has hyperlink but NO POH support in the "RELEASE" section
+#+end_example
 
 b.)
 
-parse additional pages (if you need same) and make some suggestions, nice rich HTML based mockups
+Is this extensible to SL collection and bootleg pages somehow if a label is involved
+
+3.)
+
+a.)
+
+On SL song FRPs, e.g. https://www.springsteenlyrics.com/brucelegs.php?item=254&f_format=vinyl when a song under the
+"Tracklist" medium table(s) has a "this show" hover detail link (with the exact song text from a specific date), the
+hyperlink on the songtitle should point to the official version of the SL song with hover support (otherwise we double
+functionality), e.g. for "Spirit In The Night"
+
+#+begin_example
+<td data-mb-tip="" style="position: sticky; left: 0px; z-index: 1; background: rgb(255, 255, 255);" data-mb-rest-bg="#ffffff" data-mb-sticky-bg="#ffffff" class="mb-sticky-col" title="As written on the site:
+Spirit In The Night"><span class="mb-sl-song mb-sl-this-show" data-mb-sl-song="spiritinthenight" data-mb-sl-title="Spirit In The Night" data-mb-sl-date="1973-04-24"><span class="mb-sl-work-slot" data-mb-sl-w="exact:dba2f648-cb81-3d19-b252-1bbecc62758b"><a class="mb-sl-work mb-sl-work-exact" href="https://musicbrainz.org/work/dba2f648-cb81-3d19-b252-1bbecc62758b" data-mb-pop-name="Spirit in the Night" aria-label="MusicBrainz work Spirit in the Night: the work's annotation links this song"><img src="https://musicbrainz.org/static/images/entity/work.svg" alt=""></a></span><a class="mb-sl-song-link" href="https://www.springsteenlyrics.com/lyrics.php?song=spiritinthenight_1973-04-24-early">Spirit in the Night</a></span></td>
+#+end_example
+
+b.)
+
+For a song title like e.g. "Circus Song"
+
+#+begin_example
+<td style="position: sticky; left: 0px; z-index: 1; background: rgb(242, 242, 242);" data-mb-rest-bg="rgb(242, 242, 242)" data-mb-sticky-bg="rgb(242, 242, 242)" class="mb-sticky-col">Circus Song</td>
+#+end_example
+
+which doesn't have an explicit SL title in it's songbase, the MB lookup and decoration with an MB glyph with hover
+support should still be done, as typically in MB I have added all the different name variations for a Springstenn work,
+e.g. there is an entry for "Circus Song" on MB at
+
+#+begin_example
+@debug/MB-song-initial.html  - IP - https://musicbrainz.org/work/2614f5f6-7905-41eb-9bf8-46183787e650
+#+end_example
+
+c.)
+
+could we have kind of an animation on the MB glyphs on SL song FRPs during which the work information from MB is loaded
+asynchronously
+
+4.)
+
+Currently when hovering the images in the "Artwork" section on
+e.g. https://www.springsteenlyrics.com/brucelegs.php?item=254&f_format=vinyl (but also on other non-MB PTs) nothing
+happens (except when clicking an image where we get our internal viewer which is fine). I want the same hover behaviour
+as on other PTs where a bigger version of the image popsup and when pressing "Shift" an even bigger version is shown
 
 5.)
 
-MB pages which reference SL URLs should support POH
+Currently on SL Various Artist releases, e.g. https://www.springsteenlyrics.com/collection.php?cmd=list&category=vaalbum&f_format=12i
 
-** Answer (2026-11-04, branch =feat/sl-songs=)
+#+begin_example
+@debug/sl-va-list-initial.html - IP - https://www.springsteenlyrics.com/collection.php?cmd=list&category=vaalbum&f_format=12i
+@debug/sl-va-list-final.html - FRP - https://www.springsteenlyrics.com/collection.php?cmd=list&category=vaalbum&f_format=12i
+@debug/sl-POH-release.html - POH - https://www.springsteenlyrics.com/collection.php?item=5767&category=vaalbum&f_format=12i - hovered from above URL
+@debug/sl-va-release-final.html - FRP - https://www.springsteenlyrics.com/collection.php?item=5767&category=vaalbum&f_format=12i
+#+end_example
 
-Env: 2026-11-04T23:02:01+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (GM
-stubs, no Tampermonkey). Real browser: items 2 and 3 confirmed live by vzell (2026-11-04; browser and Tampermonkey
-versions unknown).
+a.)
 
-Mockups (private Artifact): https://claude.ai/artifact/XFubyj74n1CAouHYT2m5ou, local copy [[file:sl-song-mockups.html]].
-Tabs: Song page (backstreets), Live version (backstreets_1975-11-18), Lyrics index (built), Song preview, MusicBrainz → SL,
-Plan and questions.
+although on the list IP there is unique release ID in the page, it's missing on the list FRP
 
-Decided (vzell, 2026-11-04):
-- Scope of this session: code for items 2 and 3, and for a privacy bug found while reading. Item 4: findings, mockups
-  and questions only; it gets built after approval. Item 5: investigate and report.
-- Letter page: two buttons. "This letter" (no request) comes first, then "Show all lyrics" (32 letters). The landing
-  page keeps only "Show all lyrics".
-- Logged-in lines: an ID column linking =lyrics.php?item=N=, with the edit pencil as a small link in the cell. The ⋮
-  glyph is dropped. Logged out, the table stays as before.
+b.)
 
-*** Built (WIP entries in =ShowAllEntityData_CHANGELOG.wip.json=)
+Although the FRP on e.g. https://www.springsteenlyrics.com/collection.php?item=5767&category=vaalbum&f_format=12i has SL
+song hyperlink and MB glyph support, on the POH of that page, the corresponding "A1 Bruce Springsteen: BORN TO RUN" line
+doesn't have hyperlink support yet.
 
-- 9.99.1552, privacy: a logged-in song page's "Private Info" reached the song's card and window on SL, and stayed in the
-  preview cache for 30 days. =_dpParseSlSong()= took every section. Fixes: it skips the section
-  (=_SL_SONG_PRIVATE_RE=); the record carries its login state; =_DP_PARSER_VERSION= 10.
-- 9.99.1553, item 3: the "This letter" button (=features: { pageKeys: null }=, =showIf= on the page's own =Starting with
-  "X"= heading).
-- 9.99.1554, item 2:
-  - the ID column (numeric while logged in, through an =integerColumns= getter);
-  - Lyrics ✓/✗ fixed: logged in, every row read ✗, because the line's first =<i>= is the edit pencil;
-  - the ID link =lyrics.php?item=N= gets the song's preview. Probed: item=2099 serves song=babycomeback.
-- Note on item 2's wording: the lyrics glyph (lyrics or not) is also on logged-out pages, and the Lyrics column
-  already showed it. Only the pencil, the number and ⋮ are new when logged in.
+6.)
 
-Checked:
-- Specs: =sl-lyrics.spec.js= (+6, one reworked), =detail-preview.spec.js= (+1), =popup-ext.spec.js= (+1). The SL,
-  preview and popup specs: 314 passed.
-- =scripts/mutations/sl-songs.json=: 10/10 fail as expected.
-- Lint within the baseline; =build-coverage-report.py --check= and =build-sl-item-fixtures.py --check= pass.
-- =test:full= (2026-11-04T23:19 → 23:37:15+01:00, NB-3641): 2677 passed, 0 failed (17 m 41 s).
+Currently in the song detail POHs, e.g. on https://www.springsteenlyrics.com/brucelegs.php?item=148&f_format=vinyl
 
-*** Findings for item 4 (song pages)
+#+begin_example
+[Image #20] - @debug/sl-POH-lots-of-images-and-MB-glyph-missing.html
+#+end_example
 
-- No view today: =lyrics.php?song== has no =@include=. The preview reads it (=_dpParseSlSong()=).
-- Anatomy in =.project-detail=:
-  - the head: =h3= title, =p>em= version line, the lyrics between two =<hr>= (=span.text-info= stage notes);
-  - then =h3.heading= sections: Info, Studio Recording (track credits), one per album (=.panel-group= tracklists per
-    edition), Other Official Releases (=.blog-post= rows: =Artist -- Title=, =FORMAT - LABEL (CAT#) - COUNTRY, YEAR=;
-    then one sentence per live release), Live History, Covers, Appearance in Movies, Credits;
-  - then Request (a contact form) and Available Versions (lines like the index; the current version unlinked);
-  - logged in only: Private Info.
-- Backstreets has 41 rows: 5 releases, 28 live releases, 1 movie, 7 covers. It has 61 versions: Album 1, Unofficial
-  studio 3, Live 57.
-- A live version has its date only in the version line and the slug. Its venue and tour are only in prose. Its release
-  section is named after the release, with DVD/CD/vinyl panels. The site writes "Disc 5:" among "Side 1:" to "Side 8:".
-- Logged in only, besides Private Info: the versions' numbers and edit links, and on covers "view item / edit item /
-  add N songs" (=cmd=displaycoverrelease&item=N=).
+the song titles have SL songtitle hover support, but no MB glyph support yes, although there seems to be an empty slot
+before the songtitle name like e.g. force
 
-*** Findings for item 5 (MusicBrainz → SL)
+#+begin_example
+"B2 Kitty's Back - V3" - empty slot between "B2" and "Kittys Back"
+"B3 Circus Song" - MB glyph is missing, see discussion above 
+#+end_example
 
-- Every live SL URL form MusicBrainz uses already gets SL's own card, and annotations are in scope
-  (=_EXT_SCOPE_SEL= has =.annotation a[href]=). Links in the Annotation column of our tables and in an MB entity window
-  are covered too.
-- The census (=scripts/probe-mb-sl-urls.py=, a sample: 501 of 3,531 URL entities and about half of 910 annotations):
-  - relationships: =collection.php?item== 434, =bootlegs.php?item== 66;
-  - annotations: =lyrics.php?song== 97 and two OLD forms, =/lyrics/<l>/<slug>.php= 431 and
-    =/collection/moreinfo.php?item=N= 22.
-- Both old forms answer 404 today, and both map onto live pages: =lyrics.php?song=<slug>= and =collection.php?item=N=.
-  This is the one real gap; proposal in the mockup (question 6).
-- =popup-ext.spec.js= now pins which reader takes each form.
+** DONE bugs
 
-*** Questions (recommendations in the mockup's last tab)
+1.)
 
-1. Song page buttons: "Show the song", plus "All versions" (the Available Versions list as one table)?
-2. Private Info on the song page view: a closed section, logged in only, as on the item pages?
-3. Request: hide the form, and keep its text as a closed section?
-4. Live releases: split each sentence into Date / Release / Kind / Released year, with Note as the fallback?
-5. A live version's venue and tour: read them from the Info sentence, best-effort?
-6. MusicBrainz's old SL links: read them as their current address, with "old address" in the card?
-7. The window's Live page view on SL still shows Private Info when logged in. Hide it there too (=liveHide=)?
-8. Covers, logged in: one Item column (view and edit links), with the "add N songs" links left out?
+a.)
 
-Still to do: the merge on your word, and the =sl-song= build on its own branch after the answers.
+When on e.g. https://www.springsteenlyrics.com/collection.php?cmd=list&category=audioboot&f_country=Europe
+and hovering e.g. the release 
 
-*** answers
+#+begin_example
+@debug/sl-collection-audio_boot-7457-initial.html - IP - https://www.springsteenlyrics.com/collection.php?item=7457&category=audioboot&f_country=Europe
+@debug/sl-collection-audio_boot-7457-POH.html - POH - POH of https://www.springsteenlyrics.com/collection.php?item=7457&category=audioboot&f_country=Europe - [Image #24]
+#+end_example
 
-1. Song page buttons: "Show the song", plus "All versions" (the Available Versions list as one table)? YES
-2. Private Info on the song page view: a closed section, logged in only, as on the item pages? YES
-3. Request: hide the form, and keep its text as a closed section? YES
-4. Live releases: split each sentence into Date / Release / Kind / Released year, with Note as the fallback? YES
-5. A live version's venue and tour: read them from the Info sentence, best-effort? YES
-6. MusicBrainz's old SL links: read them as their current address, with "old address" in the card? YES, plus a ⚠️ finding on MusicBrainz work pages, so they can be edited.
-7. The window's Live page view on SL still shows Private Info when logged in. Hide it there too (=liveHide=)? NO
-8. Covers, logged in: one Item column (view and edit links), with the "add N songs" links left out? YES
+the "Disc 2: [DVD]" medium is somehow not recognized as a separate medium and doesn't get the URLify treatment, also visible on the corresponding POH
 
-What follows from the answers (2026-11-05T00:05:47+01:00):
-- 1–5 and 8: the =sl-song= build follows the mockup as drawn: "Show the song" plus "All versions"; Private Info
-  closed and logged in only; Request's text closed, its form hidden; live releases split, with Note as the
-  fallback; venue and tour best-effort; covers get an Item column (logged in) without the "add N songs" links.
-- 6: two parts.
-  - The springsteen reader reads =/lyrics/<l>/<slug>.php= as =lyrics.php?song=<slug>= and
-    =/collection/moreinfo.php?item=N= as =collection.php?item=N=, and the card says "old address".
-  - A new ⚠️ finding (=add-finding= skill) on MusicBrainz work pages (and wherever such a link shows) marks these
-    links, so they can be edited. It is the TODO vzell added to =org/TODO.org= on 2026-11-04 ("Mark SL old-style
-    song URLs … as findings on MB pages"). It is MusicBrainz-side, so it needs the MusicBrainz fixture suite as
-    proof that nothing else changes.
-- 7: the window's Live page view stays the site's own page as it is. Logged in on SL it shows Private Info: that is
-  the site's own page, in vzell's own session. Every view the script BUILDS (card, window, the page views) leaves
-  it out or shows it closed.
-- Build order: one branch stacked on =feat/sl-songs= (=feat/sl-song-pt=): the =sl-song= PT and the shared song
-  reader first, then the old-address alias, then the finding.
+b.)
 
-*** Built (2026-11-05, branch =feat/sl-song-pt=, stacked on =feat/sl-songs=; 9.99.1555–9.99.1557)
+also the alignment of the songs in the "TRACKLIST" section after the 10th song looks strange on e.g. the POH of
+https://www.springsteenlyrics.com/collection.php?item=7457&category=audioboot&f_country=Europe - [Image #24]
 
-Env: 2026-11-05T00:48:09+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (GM
-stubs, no Tampermonkey). Real browser: vzell's two screenshots during the build (browser and Tampermonkey versions
-unknown).
+Is it because of the font used for the numbering ?
 
-- 9.99.1555, the =sl-song= PT (answers 1–5, 8): =lyrics.php?song== and =?item=N= (=@include= with a =cmd== lookahead;
-  =sl-lyrics= leaves =item== alone). One reader, =_slSongRead()=, for the page view and the preview. Tables: one
-  per release edition (sides paired; "Disc 5:" among the sides is side 5), Other official releases, Live releases
-  (Date/Show/Release/Kind/Released, the version page of that show, "first released" in Note), Covers (+ Item
-  logged in, without "add N songs"), Appearance in movies, Available versions (ID logged in). The song is marked ●
-  (CSS, not text). Head: Lyrics, texts, Request without its form, Details (Version, Show, Released on, Studio
-  recording, On this page), Pictures, Private Info (closed, logged in). "All versions" = the versions alone.
-- Found by vzell's live test during the build, fixed before anything shipped: only the song pages give
-  =.project-detail= an inline =overflow:hidden=. It became the scroll container of our sticky h1 (drawn 80 px down,
-  over the site's title) and of the sticky Title column (15 px over Version). Root cause measured under the site's
-  real CSS from =debug/sl-song-official.html=. Fix: =overflow: visible !important; display: flow-root= on SL.
-- 9.99.1556, the preview (=_DP_PARSER_VERSION= 11): Type/Date/Show, the song number (logged in), versions by type,
-  releases/live releases/covers/movies counted, a live version's show, release and tracklist (● on the song).
-  Deviation from the mockup: the window keeps its text sections; the song page's tables are not copied into it.
-  An album version gets no tracklist in the window (it pushed the lyrics down).
-- 9.99.1557, answer 6: the springsteen reader reads =/lyrics/<l>/<slug>.php= and =/collection/moreinfo.php?item=N= at
-  their current address (=_slCurrentAddress()=); the card's first field is "Old address", and the Live page frames
-  the current address. New ⚠️ finding =sl-old-address= on Annotation cells (annotation search, annotation reports
-  such as report/AnnotationsWorks), setting =sa_findings_tint_sl_old_address=. A work's own page has its
-  annotation outside any table, so the menu cannot show there; the link's card says "Old address" instead.
-  Find them all with an annotation search, e.g. =search?type=annotation&query="springsteenlyrics.com/lyrics/"=.
-- Fixtures: the three other song snapshots added to =scripts/build-sl-item-fixtures.py=, and every song fixture's
-  lyrics are now blanked (=blank_lyrics()= of =build-detail-fixtures.py=). The backstreets fixture from
-  =feat/sl-songs= had its full lyrics.
+2.)
 
-Checked:
-- =sl-song.spec.js= (9), =findings-sl-old-address.spec.js= (2), =detail-preview.spec.js= (live version, Request),
-  =popup-ext.spec.js= (the old forms' reader, the old-address card), =sl-include-regex.spec.js=.
-- =scripts/mutations/sl-song.json=: 19 entries (the last one 9.99.1558's), 18 fail as expected, 1 recorded =pass=
-  (Private Info logged out: no logged-out page has the section). Five =find=s of =detail-preview.json=, =popup-ext.json= and
-  =sl-songs.json= repointed after the reader changes, each run again: fail as expected. 171 other =find=s across
-  the lists were already broken on HEAD, so they are not this branch's.
-- The layout test fails without the fix only with a stand-in for the site's grid and navbar CSS
-  (=SITE_LAYOUT_CSS=): the fixtures carry no stylesheet.
-- Lint within the baseline; =build-coverage-report.py --check=, =audit-docs.py=, =verify-doc-crossrefs.sh=,
-  =build-sl-item-fixtures.py --check= pass. =audit-config-defaults.py= reports the new setting as "added" until the
-  commit (=dump-default-history.py= reads git).
-- =test:full= (2026-11-05T00:48:01 → 01:05:37+01:00, NB-3641, at =347a4cbe= plus the branch's changes, before
-  9.99.1558): 2689 passed, 0 failed (17 m 36 s).
-- vzell's live check (2026-11-05): the h1 overlap and the Version column fixed.
+On SL collection sampler pages e.g.
 
-- 9.99.1558, found by vzell's live test of the finding: =search?type=annotation&query=…= got no buttons. The
-  MusicBrainz =@include= admitted =search?query=…= only with =query= first. It now takes =query= after other
-  parameters too (=sl-include-regex.spec.js= pins two such URLs; its mutation fails as expected). vzell's live
-  check: the search page works now.
+#+begin_example
+@debug/sl-sampler-release-without-tracklist-inital.html - IP - https://www.springsteenlyrics.com/collection.php?item=5618&category=sampler&f_format=12i
+@debug/sl-sampler-release-without-tracklist-final.html - FRP - https://www.springsteenlyrics.com/collection.php?item=5618&category=sampler&f_format=12i
+@debug/sl-sampler-release-without-tracklist-2-inital.html - IP - https://www.springsteenlyrics.com/collection.php?item=5619&category=sampler&f_format=12i
+#+end_example
+
+some releases have no tracklist per included sub-release, so the parser should reflect this. Also check the POH for such releases  
+
+
+* TODO add an image glyph which shows the medium images if they can be mapped/deduced from their names/descriptions
+
+add an image glyph which shows the medium images to the h3 medium header line if they can be mapped/deduced from their
+names/descriptions
+
+* TODO FICE needs support for grouping images (e.g. type, size, etc.) 
+
+FICE needs support for grouping images (e.g. type, size, etc.)
+
+* TODO the SL song detail FRP needs a more nicer rendering
+
+the SL song detail FRP needs a more nicer rendering
+
+#+begin_example
+collapsable (Ctrl-click ALL) sections)
+nice font (maybe different ones for the lyrics section itself))
+bigger fonts for other sections
+etc.
+
+#+end_example
+
+
+
+

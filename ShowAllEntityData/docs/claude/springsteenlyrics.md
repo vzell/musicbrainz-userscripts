@@ -278,11 +278,23 @@ No request: `features.pageRequest`'s `fetchText` returns the page's own HTML,
   pages.
 - **Tracklist** (`_slParseTracklist()`, shared with the preview): headers
   `Disc N:`, `Disc: (82:40.00)` (a total), `Record 2: "Cover Me" (catalogue #
-  …)`; lines `A1- TITLE`, `01- TITLE #2 [partial]`, and without a separator
+  …)`, `Disc 2: [DVD]` (the kind in brackets, collection item 7457; until
+  2026-11-05 it was no header, and the DVD's tracks were read as notes;
+  `_DP_DISC_RE` takes text after the colon only when it opens with a quote,
+  a parenthesis or a bracket, so "Tape: Sony …" stays a note); lines `A1- TITLE`, `01- TITLE #2 [partial]`, and without a separator
   `A1 Title - V1`, `01 Title (5:45.15)` (only in a block where no line has
   one). `_slItemGroups()`: a sub-table per header; a list of side positions
   without headers is paired into records, A/B → Record 1 (vzell's answer 4);
-  anything else "Tracks". `_slSplitTrackTitle()`: "Artist: Title" on a
+  anything else "Tracks". A block with headers and NO track line is a box
+  set's contents (sampler items 5618, 5619; vzell 2026-11-05): each header
+  with its paragraph's lines is a `contents` entry, those lines are no notes,
+  and the unnumbered-titles reading is skipped (it had taken the first
+  record's "Aussie pressing", "Cat# …", sleeve lines for three tracks).
+  `_slContentsRow()` splits an entry into Pos ("Record 1"), Title (inside the
+  quotes), Cat. no. ("Cat# …" line or "(catalogue # …)") and Details; the
+  item page shows one "Contents (no tracklists on the page)" table, the
+  record a `highlight` ("6 records listed, without their tracklists") and a
+  "Contents (6)" section (`ol.mb-dp-contents`). `_slSplitTrackTitle()`: "Artist: Title" on a
   various-artists page (half the lines or more), " - V1 …" → Version and
   Note, "#2" → Take (answer 3), "[…]" → Note.
 - **Columns**: collection Pos, Title, (Artist), Version / note; bootlegs Pos,
@@ -311,9 +323,10 @@ No request: `features.pageRequest`'s `fetchText` returns the page's own HTML,
   `debug/sl-brucelegs-all-versions.html`). Pinned under Bootstrap's grid rules
   in `sl-item.spec.js` ("the width of the window").
 
-Not built: song links in the tracklists (the separate "URLify the
-tracklist" TODO); the logged-in collection list's two extra filter forms
-(`filter_collection_info_public` / `…_private`, answer 6).
+Song links and work glyphs in the tracklists: see "Song links and
+MusicBrainz works in tracklists" below. Not built: the logged-in collection
+list's two extra filter forms (`filter_collection_info_public` /
+`…_private`, answer 6).
 
 ## A song's own page — `sl-song`
 
@@ -388,6 +401,169 @@ reader takes them (`_extDpTest()`), reads the current address
 Live page frames that address (`liveUrlFor`). The ⚠️ finding
 `sl-old-address` (docs/claude/findings.md) marks Annotation cells with such
 a link, on an annotation search or an annotation report.
+
+## Song links and MusicBrainz works in tracklists
+
+Since 2026-11-05 (org/springsteenlyrics.org "URLify the tracklist to song
+URLs (SL and MB)"; mockups `org/sl-tracklist-links-mockups.html`,
+https://claude.ai/artifact/9etFwvJXtoLWkfZzPxnTJo, vzell's answers 1-8; probe
+results in DEBUG-NOTES.md of that day). Three settings, all on:
+`sa_sl_song_links`, `sa_sl_song_versions`, `sa_sl_mb_works`. Where: the item
+pageTypes' tracklists (`_slItemToHtml()`), the item's preview WINDOW
+(`_dpTrackListHtml(tracks, sl)`; the card stays plain), and the song page's
+edition tables (`_slSongToHtml()`'s `editionCell`).
+
+- **One span per song.** `_slSongTitleHtml()` turns a title into
+  `span.mb-sl-song[data-mb-sl-song=<base slug>][data-mb-sl-title]` (plus
+  `data-mb-sl-date`/`-qual` on a dated item, `data-mb-sl-fixed` when the
+  site's own link is kept), holding `span.mb-sl-work-slot` and
+  `a.mb-sl-song-link`. Its TEXT is the title and nothing else: the glyph is an
+  `<img alt="">`, "this show" is a CSS `::after`. So filter, sort and 📊 see
+  what they saw before, and the late writes owe only the source rows (see
+  below), not the four filter-cache duties.
+- **Only known slugs are linked (answer 1).** An unknown `lyrics.php?song=`
+  answers HTTP 200 with "does not exist!" (probed 2026-11-05), so a rule
+  alone would make dead links. `_slSongSlugOf()`: the exception list
+  (`_SL_SONG_TITLE_EXCEPTIONS`, keyed by `_slExcKey()`, which keeps "(" and
+  ")": `SOMEDAY (WE'LL BE TOGETHER)` is `someday`, `SOMEDAY WE'LL BE
+  TOGETHER` is `somedaywellbetogether`), then the title, without a trailing
+  "(…)", without a leading one, without both (`_slTitleVariants()`), each
+  normalised (`_slNorm()`: NFD, accents off, a-z0-9); the first that is a
+  known base slug wins. Known = `_SL_SONG_BASE_SLUGS` (1,381, embedded) or a
+  base slug of the runtime index. On the whole index the rule alone gets
+  1,315 of 1,334 titles right; 19 exceptions.
+- **The embedded list is GENERATED.** `scripts/build-sl-song-slugs.py`
+  writes the block between `// BEGIN GENERATED` / `// END GENERATED` from
+  `docs/sl-song-base-slugs.json` (committed), which `--index
+  debug/sl-song-index.json` (the output of `scripts/probe-sl-song-index.py`)
+  refreshes. `--check` fails on a stale block or a title the rule plus
+  exceptions still gets wrong. Its `slug_of()`/`norm()`/`exc_key()` mirror
+  the JS; `sl-tracklist-links.spec.js` runs the JS over every title of the
+  JSON.
+- **Medleys** (`_slSongParts()`): the whole title first ("BEDROCK RAP / MEET
+  THE FLINTSTONES" is one song), else the first name of "X aka Y" that is a
+  song (the whole text linked), else its " / " parts when any is a song,
+  else its " - " parts only when every one is. `_slTitleVariants()` drops
+  EVERY trailing "(…)" in turn ("Rosalita (Come Out Tonight)
+  (instrumental)" → rosalita), the build script the same.
+- **A title without an SL page still gets its glyph** (vzell's
+  "Adjustments" 3b, 2026-11-05): with `sa_sl_mb_works` on it becomes a span
+  with an EMPTY `data-mb-sl-song`, no link, matched by title and MusicBrainz
+  aliases ("Circus Song" is an alias of Wild Billy's Circus Story). Another
+  artist's line on a various-artists item stays plain text, in the table and
+  in the window (`_slTrackTitleHtml()`: "Bruce Springsteen: BORN TO RUN"
+  links the song, "Chase: Get It On" stays plain).
+- **Various artists**: a line whose artist is not Springsteen stays plain
+  (9685's "Chase: Get It On" — the site has Bruce's GET IT ON).
+- **The window's numbers** (`ol.mb-dp-tracks.mb-sl-tracks`, item 7457,
+  2026-11-05): the site's fonts have proportional old-style figures, which
+  `tabular-nums` cannot change, so "10"…"12" sat left of "01"…"09". Each
+  number is an inline-block with `min-width: var(--mb-sl-pos-w)`, the
+  longest position's length in `ch` set on the list; only SL tracklists
+  carry the class, so no other window changes.
+- **This show's version (answer 2).** The title always links the song's
+  MAIN page; the version is a link of its own after it,
+  `a.mb-sl-show-link`, with NO text ("this show" is its CSS `::after`, not
+  `::before`: the window's read-ahead dot owns `a.mb-dp-l-here::before`),
+  each with its own preview (vzell's "Adjustments" 3a: one link doing both
+  doubled the functionality). A dated item (`_slShowOf()`: ONE full
+  date; a range or list keeps the main page) has it for
+  `<base>_<date>[-early|-late|-morning]`, else the one slug that goes on from
+  `<base>_<date>` (`_2014-02-05-wgoe`), from the runtime index
+  (`_slVersionSlug()`). The index is every slug of the 32 letter pages,
+  one IndexedDB record per letter in `vz-saed-sl-songs` (store `data`, keys
+  `letters`, `letter:<x>`, `mb-works`), 30 days. Read by `_slVerFetch()`
+  (same-origin, `_SL_VER_GAP_MS` apart, only when a dated song is shown and
+  the index is not whole and young), and refreshed for free by every letter
+  page `applySlLyricsToTable()` converts (`_slVerStoreLetter()`).
+- **Work glyphs (answers 3-6).** `_slMbwMatch()`: logged in, the card's
+  MusicBrainz release first (`_slMbRelFetch()`: one
+  `release?inc=recordings+recording-level-rels+work-rels`, by title, class
+  `mb-sl-work-release`); then Bruce's works (`_slMbwFetch()`: `/ws/2/work?
+  artist=…&inc=aliases+annotation`, 100 a request, `_rgWsGet()` so the
+  MusicBrainz rate slot and GM, kept whole or not at all, 30 days): the work
+  whose annotation links the song (`exact`, both address forms MusicBrainz
+  carries), else one work by title or alias (`title`, dashed), else several
+  (`ambig`: a glyph each, at most three, the count on the first). Faded
+  glyphs (`mb-sl-work-wait`) while the works load. A url lookup of the item's
+  address was rejected: MusicBrainz stores SL item URLs as typed
+  (`http://…&category=album&pg=4`). The glyph is a plain musicbrainz.org
+  work link, so `_dgMbSource()` gives it MusicBrainz's card; no reader.
+- **The window** (`_dpTrackListHtml(tracks, sl)` → `_slSongsWindowKick()`,
+  SL host only): once painted, the saved data, then — the window opens on
+  Space, an explicit ask — the works and, for a dated item, the runtime index;
+  `_slSongsDecorate()` repaints `#mb-dp-dialog` spans too. Before this
+  (Adjustments 6) a window opened from a LIST page never had glyphs: nothing
+  had loaded the catalogue there. The gap before a window link is not a slot:
+  it is the read-ahead dot's reserved place (`.mb-dp-dots a.mb-dp-l-here::before`).
+- **The window's glyph is an icon in the line.** The slot is `inline-flex`,
+  which makes the glyph link a flex item; with `sa_pop_mb` on the window
+  marks it as a link that opens here (`mb-dp-l-here`), and with read-ahead on
+  that reserves a dot as `::before` — inside the flex item it took a line of
+  its own and pushed the icon below the title (vzell's screenshot,
+  2026-11-05). The dot is switched off on glyph links
+  (`.mb-dp-dots .mb-dp-tracks a.mb-sl-work::before`). The test needs
+  `sa_pop_mb` on AND a second paint (→ ←): a glyph added by
+  `_slSongsDecorate()` after the paint is never marked.
+- **The item page's own tracklist, before any press** (`_slLinkLiveTracklist()`,
+  from the SL init block next to `_slPrepareLivePage()`): each track line's
+  title text node becomes the same span (the site's text, `raw`); the page's
+  copy (`_slItemPageHtml()`) is taken first. Glyphs and versions there come
+  from what is saved only: a visit asks nothing; a press or a window reads
+  the rest. `_slSongsDecorate()` walks `.project-detail span.monospaced`
+  too, `_dgMbSource()`'s SL selector names its glyphs.
+- **The glyphs pulse while the works load** (`mb-sl-work-pulse`, off under
+  `prefers-reduced-motion`; Adjustments 3c).
+- **Late writes reach the source rows.** `_slSongsAfterRender()` (both render
+  tails, after `_fiAfterRender()`) paints from memory, reads the saved data,
+  then the network as needed, calling `_slSongsDecorate()` as each lands. It
+  walks live spans AND `_msSourceRows()`: the item and song pages render
+  multi-table, which clones, so a live-only write is gone at the next
+  filter keystroke (pinned by a mutation). It writes attributes and the
+  empty-text slot only, so highlights survive.
+- **Before the render**: both pageRequests `await _slSongsLoadSaved()` in
+  `fetchText`, so a page whose data is saved is converted linked and with its
+  glyphs, no flash.
+- **The page's own origin.** The site answers with and without "www.", and
+  a fetch of the other one is cross-origin: on SL every link and the index
+  read go to `location.origin` (`_slSiteRoot()`), "www." only from another
+  host. Pinned by the no-www test and a mutation.
+- **Off-host**: the window on another host (an SL link previewed on
+  MusicBrainz) links songs from the embedded list; glyphs and versions need
+  this origin's IndexedDB and are SL-only (`_slSongsLoadSaved()` returns at
+  once elsewhere). `_DP_PARSER_VERSION` 12: item records carry `slTracks` and
+  `slShow`.
+- **Song page editions**: the site's own link is kept (`data-mb-sl-fixed`,
+  never re-pointed); a song the site leaves unlinked links its main page
+  when known (until 2026-11-05 plain text, `sl-song.spec.js`); this version's
+  row gets its glyph without a link.
+
+### Labels, IDs, head pictures (2026-11-05, "Adjustments" 3a, 4, 5a)
+
+- **A label's page is a CD and vinyl bootleg list** (`brucelegs.php?cmd=list&
+  f_label=…`, `_slIsLabelListUrl()`): the only one. `collection.php` and
+  `bootlegs.php` ignore `f_label=` (probed 2026-11-05: 5,372 and 8,445
+  items with or without it), so a collection or bootleg label has no page to
+  link (Adjustments 3b: not extensible on the site's side). The CD and vinyl
+  bootleg list's Label cell keeps the site's link; `_DP_SITES` takes the URL
+  as a detail page and `_dpParseSlLabel()` reads it into a record (the label,
+  "N CD and vinyl bootlegs", the first page's items as lines, their covers;
+  `_DP_PARSER_VERSION` 13; 14: the window's item lines link their item
+  pages, the section's `html`). The item page's Release card already linked it,
+  so it previews there too. Fixture `detail-sl-brucelegs-label-greatdane.html`.
+- **ID** (logged in, collection and bootleg lists; the CD and vinyl bootleg
+  cards have no number): the card's `<b>N</b>` outside its links
+  (`_slCardIdCell()`), linked to the item page, with the empty `a.mb-sl-edit`
+  pencil, numeric through `_slListIntegerColumns()` — `integerColumns` is a
+  GETTER on the three list definitions, as on the lyrics index, so a
+  logged-out run does not warn about a missing ID column.
+- **The head's pictures have a card** (every foreign detail pageType, it is
+  `_fdHeadInsertSections()`): `data-mbtt-fn="fd-pic"` → `_fdPicCardHtml()`,
+  the picture at 320 px, with Shift as large as the window allows (`fd-pic`
+  is in `_ART_CARD_FNS`, so the artwork cards' Shift repaint and Space →
+  `_artSpaceOpen()` → `_dpArtViewerClick()` apply); the thumbnail first, the
+  full picture swapped in when loaded (`_fdPicSwap()`). Not the FICE
+  (`fi-img`): that one is table-row shaped.
 
 ## Column names: the `_sortColumnKind()` heuristic trap
 
@@ -929,6 +1105,7 @@ locators in the detail-preview specs use `a:not(.mb-fi-glyph)`.
 | `tests/fixtures/sl-brucelegs.spec.js`        | the CD and vinyl bootleg columns across two pages, card fields (no sub-title, a label link, year and month spans), the DD…Month split at each date precision, Location split incl. a description in Place and "USA" as United States, YYYY numeric sort, a Country filter                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `tests/fixtures/sl-lyrics.spec.js`           | pageKeys: from the landing page every letter fetched by its OWN link (one request each), from a letter page "Show all lyrics" reuses that letter live and keeps the order; a letter page's "This letter" first, no request, that letter's rows only; the landing page without it; logged in (`sl-lyrics-b-logged-in.html`): the ID column (number alone, linked, an empty edit link with a CSS pencil, an integer column), Lyrics ✓/✗ from the named glyph (296/16), logged out no ID; a failed letter resumes at that letter with the rows kept; the line split (Lyrics ✓/✗, Type, Artist incl. the last possessive, Date, Show, No.), DD…Month at each precision, a Type filter, YYYY numeric sort; `_slLyricsParseVersion()` over 42 bracket shapes. Mutations: `scripts/mutations/sl-songs.json`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `tests/fixtures/sl-image-card.spec.js`       | the Cover column's card and viewer: nothing asked at render; one request on hover, cover ★ + scans, `Cover`/`Scan ×N`; a bootleg without the flag "Cover only", never asked; second hover and click from the cache, the "Item page" button; Shift+→ to the next VISIBLE row; Ctrl-click keeps the link; a collection row asks (no flag); brucelegs 148 cut at the cap, Space shows all 32; one record shared with the Title's preview; the setting off (no card, click still opens); moved on before its slot, never asked. Mutations: `scripts/mutations/sl-image-card.json`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `tests/fixtures/sl-tracklist-links.spec.js`  | the slug rule over every title of `docs/sl-song-base-slugs.json`, vzell's four examples, exceptions, the paren-keyed pair, medleys; item 10163 linked, text/filter unchanged, no request; settings off; VA 9685 (only Bruce's line); bootleg 6739's this-show links from a stubbed index (landing + 3 letters, then saved: none), kept through a filter re-render; the lyrics index keeping a letter; glyphs exact (both annotation forms)/title/several/none, one request then saved, kept through a filter; the glyph's MusicBrainz card; 8595's release first; sl-song editions; the item window's links (card plain). the same from springsteenlyrics.com without www (index and links on the page's origin). Mutations: `scripts/mutations/sl-tracklist-links.json` (14) |
 | `tests/fixtures/sl-song.spec.js`             | the song pageType: backstreets (two Born To Run editions, sides paired; Other official releases' fields and a track panel; 28 live releases split, the version link, "first released"; Covers' Item column with its edit link and no "add N songs"; movies; 61 versions with ID; three ● marks, not text; no request), its head (sections in order, Request without the form, Version/Studio/On this page cards, 44 pictures, Private Info closed), the live version (seven edition tables, Disc 5 as side E, Show and Released on cards), unofficial (versions only), babyme (no All versions button, Lyrics not available), All versions (ID numeric sort), `item=2298`, logged out (no ID, no Private Info), the layout (the h1 above the site's title, the sticky Title never over the next column). Mutations: `scripts/mutations/sl-song.json` (with the old-address reader and the `sl-old-address` finding, `findings-sl-old-address.spec.js`) |
 | `tests/fixtures/sl-item.spec.js`             | the item pageTypes: collection 8595 (one record, Release and Your collection cards, scans, the native content hidden, Private info closed, no request), 5240 (five named records, one scans section per copy with pictures), 9685 (Artist column), bootleg 9507 (two discs, Take/Note, Show card, the info file read once on opening), 2567 (sides paired, MusicBrainz link, captions), CD bootleg 281 (Length, notes, inner ring text, PDF), All versions on a fresh load, vinyl 148 logged out (four records, Version split, no Your collection); the preview cache's login state. Mutations: `scripts/mutations/sl-item-pts.json` |
 | `tests/fixtures/sl-logged-in-columns.spec.js` | logged-in lists: collection MusicBrainz/Good scans/Kept in (incl. Lebanon) and the Version after the second marker, bootlegs MusicBrainz and the Info file link, brucelegs PDF/Artwork, logged out unchanged; the Info file's card (no request) and window (one), the MusicBrainz cell's card |

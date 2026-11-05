@@ -1,0 +1,513 @@
+[
+    {
+        "name": "slug rule: the trailing (…) is never dropped",
+        "why": "vzell's examples A2 \"4TH OF JULY, ASBURY PARK (SANDY)\" and B2 \"ROSALITA (COME OUT TONIGHT)\" need it.",
+        "edits": [
+            {
+                "find": "        const out = [t, dropT(t), dropL(t), dropL(dropT(t))];\n",
+                "replace": "        const out = [t, dropL(t)];\n"
+            },
+            {
+                "find": "        for (let x = dropT(t); x !== dropT(x);) {\n",
+                "replace": "        for (let x = t; false;) {\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "the slug rule",
+        "expect": "fail"
+    },
+    {
+        "name": "slug rule: the exception list is not read",
+        "why": "19 titles (misspellings, \"(Frank Sinatra)\" covers, SOMEDAY (WE'LL BE TOGETHER)) map to the wrong slug or none.",
+        "edits": [
+            {
+                "find": "        if (Object.prototype.hasOwnProperty.call(_SL_SONG_TITLE_EXCEPTIONS, k)) return _SL_SONG_TITLE_EXCEPTIONS[k];\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "the slug rule",
+        "expect": "fail"
+    },
+    {
+        "name": "slug rule: any rule result is linked, known or not",
+        "why": "An unknown lyrics.php?song= answers 200 with \"does not exist!\" (answer 1: link known songs only).",
+        "edits": [
+            {
+                "find": "            if (s && (set.has(s) || (_slVer.slugs && _slVer.slugs.has(s)))) return s;\n",
+                "replace": "            if (s) return s;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "the slug rule",
+        "expect": "fail"
+    },
+    {
+        "name": "medley: \" / \" parts never split",
+        "why": "\"ROULETTE / outro\" links ROULETTE (answer 7).",
+        "edits": [
+            {
+                "find": "            if (parts.some(p => p.slug)) return parts;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "the slug rule",
+        "expect": "fail"
+    },
+    {
+        "name": "various artists: another artist's song linked",
+        "why": "9685's \"Chase: Get It On\" would link Bruce's GET IT ON page.",
+        "edits": [
+            {
+                "find": "            const inner = artist && !/springsteen/i.test(artist) ? _rgEsc(shown) : _slSongTitleHtml(t, show);\n",
+                "replace": "            const inner = _slSongTitleHtml(t, show);\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "various artists",
+        "expect": "fail"
+    },
+    {
+        "name": "late writes: the source rows are not decorated",
+        "why": "A multi-table render clones the source rows: the next filter re-render would drop this show's version and the glyphs.",
+        "edits": [
+            {
+                "find": "        _msSourceRows().forEach(r => r.querySelectorAll('span.mb-sl-song[data-mb-sl-song]').forEach(s => spans.add(s)));\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "this show's version",
+        "expect": "fail"
+    },
+    {
+        "name": "version: <slug>_<date> itself never taken",
+        "why": "THE E STREET SHUFFLE of 05 Feb 2014 has its page theestreetshuffle_2014-02-05.",
+        "edits": [
+            {
+                "find": "        if (all.has(stem)) return stem;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "this show's version",
+        "expect": "fail"
+    },
+    {
+        "name": "version index: a lyrics letter page is not kept",
+        "why": "\"Show all lyrics\" refreshes the runtime index for free (answer 2).",
+        "edits": [
+            {
+                "find": "        _slVerStoreLetter(letter, _slLyricsDocSlugs(docContext));\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "keep the runtime index current",
+        "expect": "fail"
+    },
+    {
+        "name": "works: the annotation's SL link is not read first",
+        "why": "An annotated work is an exact match, solid; without it THE E STREET SHUFFLE would be dashed.",
+        "edits": [
+            {
+                "find": "        if (bySlug && bySlug.size) return { how: bySlug.size === 1 ? 'exact' : 'ambig', ids: Array.from(bySlug) };\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "exact by annotation",
+        "expect": "fail"
+    },
+    {
+        "name": "works: the old /lyrics/<l>/<slug>.php form in an annotation is not read",
+        "why": "431 of the 528 SL links sampled in work annotations are the old form (DEBUG-NOTES.md 2026-11-04).",
+        "edits": [
+            {
+                "find": "(?:lyrics\\/[^/\\s]+\\/([\\w.-]+?)\\.php|lyrics\\.php",
+                "replace": "(?:NO-SUCH-FORM\\/([\\w.-]+?)\\.php|lyrics\\.php"
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "exact by annotation",
+        "expect": "fail"
+    },
+    {
+        "name": "works: the saved catalogue is not used",
+        "why": "Kept 30 days: a second page must ask MusicBrainz nothing.",
+        "edits": [
+            {
+                "find": "works.format === _SL_MBW_FORMAT && !_slMbw.index) {\n",
+                "replace": "false) {\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "exact by annotation",
+        "expect": "fail"
+    },
+    {
+        "name": "works: the card's MusicBrainz release is not asked first",
+        "why": "Logged in, the item's own release answers by its recordings' works (answer 6).",
+        "edits": [
+            {
+                "find": "            if (ids.size) return { how: 'release', ids: Array.from(ids) };\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "logged in",
+        "expect": "fail"
+    },
+    {
+        "name": "site root: always www., whatever the page's origin",
+        "why": "The site answers with and without www.: from springsteenlyrics.com a fetch of www.… is cross-origin, so the version index could never be read there.",
+        "edits": [
+            {
+                "find": "        return `${_isSlHost ? window.location.origin : 'https://www.springsteenlyrics.com'}/`;\n",
+                "replace": "        return 'https://www.springsteenlyrics.com/';\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "without \"www.\"",
+        "expect": "fail"
+    },
+    {
+        "name": "window: the item's tracklist is not linked",
+        "why": "Answer 7: the tracklist in the item's popup links its songs.",
+        "edits": [
+            {
+                "find": "${sl ? _slTrackTitleHtml(t.title, sl) : _mbttEscape(t.title)}",
+                "replace": "${_mbttEscape(t.title)}"
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "preview window",
+        "expect": "fail"
+    },
+    {
+        "name": "3b: a title without an SL page gets no glyph",
+        "why": "MusicBrainz knows \"Circus Song\" as an alias of Wild Billy's Circus Story (Adjustments 3b).",
+        "edits": [
+            {
+                "find": "                return _slMbWorksOn() && p.text.trim() ? _slSongSpanHtml('', p.text, shown(p.text), Object.assign({}, ctx, { self: true })) : _rgEsc(shown(p.text));\n",
+                "replace": "                return _rgEsc(shown(p.text));\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "3b:",
+        "expect": "fail"
+    },
+    {
+        "name": "variants: only one trailing (…) dropped",
+        "why": "\"Rosalita (Come Out Tonight) (instrumental)\" needs both dropped.",
+        "edits": [
+            {
+                "find": "            out.push(x);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "3b:",
+        "expect": "fail"
+    },
+    {
+        "name": "aka: the other name never tried",
+        "why": "\"Phantoms aka Wild Zero And Blind Terry\" is PHANTOMS.",
+        "edits": [
+            {
+                "find": "            if (alt) return [{ text: t, slug: alt }];\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "3b:",
+        "expect": "fail"
+    },
+    {
+        "name": "3a: the title links this show's version again",
+        "why": "The title previews the official song, the mark the show's version (Adjustments 3a).",
+        "edits": [
+            {
+                "find": "                const href = _slSongUrl() + base;\n",
+                "replace": "                const href = _slSongUrl() + (ver || base);\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "a \"this show\" link of its own",
+        "expect": "fail"
+    },
+    {
+        "name": "3c: no pulse while the works load",
+        "why": "Adjustments 3c: an animation while the work information loads.",
+        "edits": [
+            {
+                "find": "                opacity: 0.25;\n                animation: mb-sl-work-pulse 1.1s ease-in-out infinite;\n",
+                "replace": "                opacity: 0.25;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "3c:",
+        "expect": "fail"
+    },
+    {
+        "name": "6: the window does not ask for the works",
+        "why": "Adjustments 6: the window's songs had no glyph on a list page.",
+        "edits": [
+            {
+                "find": "        if (sl) _slSongsWindowKick();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "6:",
+        "expect": "fail"
+    },
+    {
+        "name": "6: the window's songs are not repainted",
+        "why": "The works land after the window is painted.",
+        "edits": [
+            {
+                "find": ", #mb-dp-dialog span.mb-sl-song[data-mb-sl-song], ' +",
+                "replace": ", ' +"
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "6:",
+        "expect": "fail"
+    },
+    {
+        "name": "5b: another artist's line in the window linked",
+        "why": "\"Chase: Get It On\" would link Bruce's GET IT ON.",
+        "edits": [
+            {
+                "find": "            if (v.artist && !/springsteen/i.test(v.artist)) return _rgEsc(t);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "5b:",
+        "expect": "fail"
+    },
+    {
+        "name": "5a: no ID cell on the collection",
+        "why": "Adjustments 5a: the item's number on the logged-in cards.",
+        "edits": [
+            {
+                "find": "                    .map(img => (img.getAttribute('alt') || '').replace(/^In\\s+/i, '').trim()).filter(Boolean).join(', '));\n                _slCardIdCell(tr, body, href, docContext);\n",
+                "replace": "                    .map(img => (img.getAttribute('alt') || '').replace(/^In\\s+/i, '').trim()).filter(Boolean).join(', '));\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "5a: logged in",
+        "expect": "fail"
+    },
+    {
+        "name": "3a: the Label cell is plain text",
+        "why": "Adjustments 3a: the label link of the CD and vinyl bootleg list.",
+        "edits": [
+            {
+                "find": "            if (labelA && fields['Label']) {\n",
+                "replace": "            if (false) {\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "Label cell links",
+        "expect": "fail"
+    },
+    {
+        "name": "3a: a label's list is not a record",
+        "why": "The label's preview needs its own reader.",
+        "edits": [
+            {
+                "find": "        if (_slIsLabelListUrl(new URL(url))) return _dpParseSlLabel(doc, url);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "is a record",
+        "expect": "fail"
+    },
+    {
+        "name": "3a: a label's list is not a detail URL",
+        "why": "Without it the label link has no preview.",
+        "edits": [
+            {
+                "find": "                _slIsLabelListUrl(u) ||\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "Label cell links",
+        "expect": "fail"
+    },
+    {
+        "name": "4: the head's pictures have no card",
+        "why": "Adjustments 4: a rest shows the picture large.",
+        "edits": [
+            {
+                "find": "                    a.dataset.mbttFn = 'fd-pic';\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "4:",
+        "expect": "fail"
+    },
+    {
+        "name": "4: Shift does not enlarge a head picture",
+        "why": "The artwork cards' Shift (_ART_CARD_FNS).",
+        "edits": [
+            {
+                "find": "'sb-cover', 'fd-pic']);",
+                "replace": "'sb-cover']);"
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "4:",
+        "expect": "fail"
+    },
+    {
+        "name": "window: the read-ahead dot stacks above the glyph",
+        "why": "vzell's screenshot of 2026-11-05: with read-ahead on, every link that opens in the window reserves a dot (::before); in the glyph link (a flex item of the slot) it took a line of its own above the icon.",
+        "edits": [
+            {
+                "find": "            .mb-dp-dialog .mb-dp-area.mb-dp-dots .mb-dp-tracks a.mb-sl-work::before { content: none; display: none; }\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "in the line, read-ahead dots on",
+        "expect": "fail"
+    },
+    {
+        "name": "label window: the items are text",
+        "why": "vzell: \"the item lines should also get hyperlinked + POH support\".",
+        "edits": [
+            {
+                "find": "                html: items.map(it => (it.href ?",
+                "replace": "                htmlOff: items.map(it => (it.href ?"
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "3a:",
+        "expect": "fail"
+    },
+    {
+        "name": "IP: the item page's own tracklist is not linked",
+        "why": "vzell: \"song titles on the IP … should already get hyperlinked + POH handling\".",
+        "edits": [
+            {
+                "find": "        if (['collection', 'bootlegs', 'brucelegs'].includes(baseDefinition.features?.slItemToTable)) _slLinkLiveTracklist();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "IP:",
+        "expect": "fail"
+    },
+    {
+        "name": "IP: the saved glyphs never reach the initial page's songs",
+        "why": "_slSongsDecorate() must walk the IP block too.",
+        "edits": [
+            {
+                "find": ", ' +\n            '.project-detail span.monospaced span.mb-sl-song[data-mb-sl-song]')",
+                "replace": "')"
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "IP: the glyphs",
+        "expect": "fail"
+    },
+    {
+        "name": "IP: the page's copy is taken after the block is linked",
+        "why": "The converter reads the copy; the block's text is unchanged, so no spec can see the order (recorded honestly).",
+        "edits": [
+            {
+                "find": "        if (!_isSlHost || (!_slSongLinksOn() && !_slMbWorksOn())) return 0;\n        _slItemPageHtml();\n",
+                "replace": "        if (!_isSlHost || (!_slSongLinksOn() && !_slMbWorksOn())) return 0;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "IP: before any press",
+        "expect": "pass"
+    },
+    {
+        "name": "item 7457: a header's text in brackets does not open a medium",
+        "why": "\"Disc 1: [CD]\" / \"Disc 2: [DVD]\": the DVD's 15 tracks were read as notes (vzell, 2026-11-05).",
+        "edits": [
+            {
+                "find": "const _DP_DISC_RE = /^((?:disc|disk|cd|dvd|side|lp|record|tape|set)\\b[^:\"([]{0,12}?)\\s*(?::\\s*((?:\"|\\(|\\[).*)?)?$/i;",
+                "replace": "const _DP_DISC_RE = /^((?:disc|disk|cd|dvd|side|lp|record|tape|set)\\b[^:\"(]{0,12}?)\\s*(?::\\s*((?:\"|\\().*)?)?$/i;"
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "item 7457",
+        "expect": "fail"
+    },
+    {
+        "name": "item 7457: the window's numbers get no box of their own width",
+        "why": "With proportional figures (the site's fonts), \"10\"…\"12\" sat left of \"01\"…\"09\".",
+        "edits": [
+            {
+                "find": "            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-tracks.mb-sl-tracks .mb-dp-pos { display: inline-block; min-width: var(--mb-sl-pos-w, 2ch); }\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "item 7457",
+        "expect": "fail"
+    },
+    {
+        "name": "item 7457: the window's list is not marked as an SL tracklist",
+        "why": "Without the class and its width the CSS rule never applies.",
+        "edits": [
+            {
+                "find": "        return (sl ? `<ol class=\"mb-dp-tracks mb-sl-tracks\" style=\"--mb-sl-pos-w: ${w}ch\">` : '<ol class=\"mb-dp-tracks\">') + tracks.map(t =>\n",
+                "replace": "        return '<ol class=\"mb-dp-tracks\">' + tracks.map(t =>\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "item 7457",
+        "expect": "fail"
+    },
+    {
+        "name": "box set: headers without tracks are no contents",
+        "why": "Sampler 5618/5619: the first record's three lines were read as tracks, the rest as notes (vzell, 2026-11-05).",
+        "edits": [
+            {
+                "find": "        const contents = !count ? media.filter(m => m.name)",
+                "replace": "        const contents = false ? media.filter(m => m.name)"
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "box set",
+        "expect": "fail"
+    },
+    {
+        "name": "box set: the item page gets no Contents table",
+        "why": "The press would throw \"The page has no tracklist\".",
+        "edits": [
+            {
+                "find": "        if (!tl.media.length && tl.contents.length) {\n",
+                "replace": "        if (false) {\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "box set",
+        "expect": "fail"
+    },
+    {
+        "name": "box set: the record gets no contents section or count",
+        "why": "The card and window would say nothing of the records (\"The page has no tracklist.\").",
+        "edits": [
+            {
+                "find": "        if (tl.contents.length) {\n            const rows = tl.contents.map(_slContentsRow);\n",
+                "replace": "        if (false) {\n            const rows = tl.contents.map(_slContentsRow);\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "box set",
+        "expect": "fail"
+    }
+]

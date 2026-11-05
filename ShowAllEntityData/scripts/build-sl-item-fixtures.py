@@ -70,6 +70,27 @@ TARGETS = {
     'sl-song-live.html': 'detail-sl-song-backstreets-1975-11-18-logged-in.html',
     'sl-song-unofficial.html': 'detail-sl-song-backstreets-unofficial1-logged-in.html',
     'sl-song-no-lyrics.html': 'detail-sl-song-babyme-logged-in.html',
+    # vzell's example of the tracklist song links (org/springsteenlyrics.org
+    # "URLify the tracklist to song URLs (SL and MB)", 2026-11-05): The Wild,
+    # the Innocent & the E Street Shuffle, A2 "… (SANDY)" and B2 "ROSALITA
+    # (COME OUT TONIGHT)". Fetched logged out with curl on 2026-11-05.
+    'sl-collection-10163-detail.html': 'detail-sl-collection-10163.html',
+    # A label's CD and vinyl bootlegs, the site's only label page
+    # (brucelegs.php?cmd=list&f_label=Great Dane Records, 15 items; vzell,
+    # 2026-11-05, "Adjustments to 'URLify the tracklist…'" 3a): the label's
+    # preview record (_dpParseSlLabel()).
+    'sl-brucelegs-labels-list-initial.html': 'detail-sl-brucelegs-label-greatdane.html',
+    # Two media with their kind in brackets, "Disc 1: [CD]" / "Disc 2:
+    # [DVD]" (Broadcast Rarities; vzell, 2026-11-05: the DVD's tracks were
+    # read as notes), and "GLORY DAYS [continued]". Fetched logged out with
+    # curl on 2026-11-05.
+    'sl-collection-7457-detail.html': 'detail-sl-collection-7457.html',
+    # Box sets listing their records without tracklists, `Record 1:
+    # "Greetings From Asbury Park N.J."` then pressing, "Cat# …" and sleeve
+    # lines (vzell, 2026-11-05: read as three "tracks"). Fetched logged out
+    # with curl on 2026-11-05.
+    'sl-collection-5618-detail.html': 'detail-sl-collection-5618.html',
+    'sl-collection-5619-detail.html': 'detail-sl-collection-5619.html',
 }
 
 # A list page keeps its first LIST_KEEP cards, every card that shows a shape

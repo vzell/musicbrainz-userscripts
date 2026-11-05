@@ -6345,3 +6345,5 @@ BUG: When marking text on a POH and pressing "Ctrl-C", then text is not copied b
 * DONE Mark SL old-style song URLs (/lyrics/a/angelina.php) as findings on MB pages
 
 Mark SL old-style song URLs (/lyrics/a/angelina.php) as findings on MB pages
+
+* DONE add "FICE" abbrev for "foreign image card engine" to CLAUDE.md
