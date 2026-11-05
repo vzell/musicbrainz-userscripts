@@ -4,9 +4,23 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1732 versions; the month pages hold all of them.
+This page shows the newest 100 of 1734 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1563 — 2026-11-05
+
+**🐛 Fix**
+
+- springsteenlyrics.com (and the other Springsteen sites): in a preview window, a link whose page its card has loaded gets the green "already loaded" dot, as MusicBrainz links do, also when the answer comes in after the pointer has moved on; resting on it again says "(read before, no request)".
+
+
+## 9.99.1562 — 2026-11-05
+
+**🐛 Fix**
+
+- 📊 dropdown: on a site whose stylesheet sizes every element with its padding (springsteenlyrics.com's Bootstrap), the badge of the largest count was wider than the others, so its label started further right ("(176) Live" in the Type column of a lyrics letter page). Every badge now has one width on every site.
+
 
 ## 9.99.1561 — 2026-11-05
 
@@ -919,20 +933,6 @@ This page shows the newest 100 of 1732 versions; the month pages hold all of the
 
 - On discogs.com, a MusicBrainz link inside a window (a label's or artist's sites, a release's notes, a link in a MusicBrainz window) shows MusicBrainz's card on a hover and opens in the same window on a click, instead of a new tab. Back returns; Ctrl-click still opens a new tab.
 - On discogs.com, Discogs' own hover box on an artist name no longer appears on top of our link preview while the previews are on.
-
-
-## 9.99.1463 — 2026-10-26
-
-**🚀 Feature**
-
-- New 🗄️ Script storage window (SAED menu → View, right below 💾 Browser cache, and in the Tampermonkey menu). It lists every key the script keeps in Tampermonkey's storage, with its kind (setting, workspace state, "Show single-table" hand-off, orphaned key, other), type, size and value. Chips and a search box narrow the list. A key's value opens as JSON: edit and Save it (invalid JSON is refused), reset a setting to its default, delete it, or copy it. Every change asks first. "Delete leftovers" removes the orphaned keys and old hand-offs, and "Export JSON…" saves every key in one file. The Discogs token is shown as dots and is never copied or exported. The window moves and resizes like the Browser cache window.
-
-
-## 9.99.1462 — 2026-10-26
-
-**✨ Improve**
-
-- 💾 Browser cache: drag the window by its title bar to move it, and drag its lower-right corner to resize it. It opens where you left it, at that size. Its contents now scroll inside the window, between the title bar and the buttons at the bottom.
 
 
 ---
