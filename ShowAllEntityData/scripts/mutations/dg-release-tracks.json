@@ -272,8 +272,8 @@
         "why": "Discogs' [url=…] markup becomes links (_extDiscogsMarkupHtml()).",
         "edits": [
             {
-                "find": "            if (spec.text.html) box.innerHTML = spec.text.html;\n            else box.textContent = spec.text.body;",
-                "replace": "            box.textContent = spec.text.body;"
+                "find": "            if (t.html) box.innerHTML = t.html;\n            else box.textContent = t.body;",
+                "replace": "            box.textContent = t.body;"
             }
         ],
         "spec": "tests/fixtures/discogs-release-tracks.spec.js",

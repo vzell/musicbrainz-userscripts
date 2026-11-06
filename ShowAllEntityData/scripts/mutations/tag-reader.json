@@ -30,8 +30,8 @@
         "why": "A tag link must be a target of the page kind tag; without it in _MB_POP_PAGE_RE no tag link has a card.",
         "edits": [
             {
-                "find": "    const _MB_POP_PAGE_RE = /^\\/(?:(edit)\\/(\\d+)|(user)\\/([^/]+)|(tag)\\/([^/]+))\\/?$/;",
-                "replace": "    const _MB_POP_PAGE_RE = /^\\/(?:(edit)\\/(\\d+)|(user)\\/([^/]+)|(tagx)\\/([^/]+))\\/?$/;"
+                "find": "|(tag)\\/([^/]+)(?:\\/(area|artist|event|instrument|label|place|release-group|release|recording|series|work))?)\\/?$/;",
+                "replace": "|(tagx)\\/([^/]+)(?:\\/(area|artist|event|instrument|label|place|release-group|release|recording|series|work))?)\\/?$/;"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",

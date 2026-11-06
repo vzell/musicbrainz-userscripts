@@ -43,21 +43,8 @@
         "why": "An inline cover or thumbnail has its own hover preview (#mb-art-hover-preview); a card over it would be a second box.",
         "edits": [
             {
-                "find": "        if (a.querySelector('img:not(.avatar)') || a.closest(inWindow ? 'td.mb-rel-cell' : 'td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;",
-                "replace": "        if (a.closest(inWindow ? 'td.mb-rel-cell' : 'td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;"
-            }
-        ],
-        "spec": "tests/fixtures/popup-mb.spec.js",
-        "grep": "what is previewed",
-        "expect": "fail"
-    },
-    {
-        "name": "a link in the Relationships column is previewed",
-        "why": "The Relationships column has its own tooltip (#mb-rel-tooltip) on its cells.",
-        "edits": [
-            {
-                "find": "        if (a.querySelector('img:not(.avatar)') || a.closest(inWindow ? 'td.mb-rel-cell' : 'td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;",
-                "replace": "        if (a.querySelector('img:not(.avatar)') || a.closest(inWindow ? 'p.never' : '#mb-dp-peek, #mb-dp-dialog')) return null;"
+                "find": "        if ((!iconLink && a.querySelector('img:not(.avatar)')) || (!inWindow && a.closest('#mb-dp-peek, #mb-dp-dialog'))) return null;",
+                "replace": "        if ((!inWindow && a.closest('#mb-dp-peek, #mb-dp-dialog'))) return null;"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -173,8 +160,8 @@
         "why": "The engine's tap rule, kept on MusicBrainz (decided 2026-10-07): a touch screen has no hover and no Ctrl, so a tap opens the window and its ↗ opens the page.",
         "edits": [
             {
-                "find": "            if (!_isTouchCompatMouseEvent(e) && !_isTouchPrimaryDevice()) return;",
-                "replace": "            if (!_isTouchCompatMouseEvent(e) && !_isTouchPrimaryDevice()) return;\n            if (t.src.id === 'mb-entity') return;"
+                "find": "                !t.el.classList.contains('mb-h1-kind-doc')) return;\n            e.preventDefault();\n            e.stopPropagation();\n            _dpOpenDialog(t);",
+                "replace": "                !t.el.classList.contains('mb-h1-kind-doc')) return;\n            if (t.src.id === 'mb-entity') return;\n            e.preventDefault();\n            e.stopPropagation();\n            _dpOpenDialog(t);"
             }
         ],
         "spec": "tests/fixtures/popup-mb.mobile.spec.js",
@@ -196,25 +183,12 @@
         "expect": "fail"
     },
     {
-        "name": "the recording window always asks for the count",
-        "why": "A lookup embeds at most 25 releases (Phase 0, R3): only a full list can mean more, so only then is the count worth a request.",
-        "edits": [
-            {
-                "find": "                if ((d.releases || []).length >= _MB_POP_SUBLIST_CAP) {",
-                "replace": "                if (true) {"
-            }
-        ],
-        "spec": "tests/fixtures/popup-mb.spec.js",
-        "grep": "asks for no count",
-        "expect": "fail"
-    },
-    {
         "name": "a failed extra request is asked again by every repaint",
         "why": "pin() runs from repaints too; without the guard a failed credits lookup is asked again whenever anything else in the window answers, for ever.",
         "edits": [
             {
-                "find": "        if (!again && s && s.status === 'failed') return;",
-                "replace": ""
+                "find": "        if (!again && s && s.status === 'failed') return;\n        _mbWsLoad(key, url, { force: again, repaint, wanted: _mbPopWanted(t) });",
+                "replace": "        _mbWsLoad(key, url, { force: again, repaint, wanted: _mbPopWanted(t) });"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -226,8 +200,8 @@
         "why": "⟳ 'asks MusicBrainz again' for the whole window: the extras started from the lookup's own callback must get the ⟳ too.",
         "edits": [
             {
-                "find": "                    if (spec.pin && s && s.status === 'done') spec.pin(t, s.data, start && force, repaint);",
-                "replace": "                    if (spec.pin && s && s.status === 'done') spec.pin(t, s.data, false, repaint);"
+                "find": "                    const s = _mbPop.get(q.key);\n                    if (spec.pin && s && s.status === 'done') spec.pin(t, s.data, start && force, repaint);",
+                "replace": "                    const s = _mbPop.get(q.key);\n                    if (spec.pin && s && s.status === 'done') spec.pin(t, s.data, false, repaint);"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -252,8 +226,8 @@
         "why": "A label owns some labels and is owned by another; 'Label ownership' twice says neither. _MB_POP_REL_LABELS names them as MusicBrainz's pages do.",
         "edits": [
             {
-                "find": "            const name = _MB_POP_REL_LABELS[`${k}|${targetType}`] || _MB_POP_REL_LABELS[k] ||",
-                "replace": "            const name = '' ||"
+                "find": "        return _MB_POP_REL_LABELS[`${k}|${targetType}`] || _MB_POP_REL_LABELS[k] ||\n",
+                "replace": "        return '' ||\n"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -265,8 +239,8 @@
         "why": "Without the direction the label's parent lands among the labels it owns.",
         "edits": [
             {
-                "find": "            const k = `${r.type}|${r.direction || 'forward'}`;",
-                "replace": "            const k = `${r.type}|forward`;"
+                "find": "        (rels || []).filter(r => r['target-type'] === targetType).forEach(r => {\n            const k = `${r.type}|${r.direction || 'forward'}`;",
+                "replace": "        (rels || []).filter(r => r['target-type'] === targetType).forEach(r => {\n            const k = `${r.type}|forward`;"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -356,8 +330,8 @@
         "why": "The event browse answers in no date order; the window promises 'by date'.",
         "edits": [
             {
-                "find": "                    const evs = (b.events || []).slice().sort((x, y) =>\n                        ((x['life-span'] || {}).begin || '9999').localeCompare((y['life-span'] || {}).begin || '9999'));",
-                "replace": "                    const evs = (b.events || []).slice();"
+                "find": "                init: { sort: { col: 'date', dir: 1 } }, initial: 'as MusicBrainz returns them',\n                placeholder: 'Filter loaded events: date, name, type',",
+                "replace": "                initial: 'as MusicBrainz returns them',\n                placeholder: 'Filter loaded events: date, name, type',"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -447,8 +421,8 @@
         "why": "Entries 101–196 live on ?page=2; the window must read it when the pager gets there.",
         "edits": [
             {
-                "find": "        const n = Math.floor(from / perPage) + 1;",
-                "replace": "        const n = 1;"
+                "find": "            spec: _mbPagedHtml(n => `/collection/${id}?page=${n}`, _mbParseCollectionPage),",
+                "replace": "            spec: _mbPagedHtml(n => `/collection/${id}?page=1`, _mbParseCollectionPage),"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -460,8 +434,8 @@
         "why": "Slices 1–4 are page 1: a second request before the pager gets there is a request nobody asked for.",
         "edits": [
             {
-                "find": "        if (n > 1 && !st) _mbCollLoad(t, n, { repaint });",
-                "replace": "        if (n > 1 && !st) _mbCollLoad(t, n, { repaint });\n        if (d.pages > 1 && !_mbPop.get(_mbCollKey(t.id, 2))) _mbCollLoad(t, 2, { repaint });"
+                "find": "        _mbPagedSeed(t, list.key, list.spec, d, repaint);\n",
+                "replace": "        _mbPagedSeed(t, list.key, list.spec, d, repaint);\n        if (d.pages > 1) _mbPagedRun(list.key, 1);\n"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -475,19 +449,6 @@
             {
                 "find": "    const _MB_COLL_SKIP_COLS = new Set(['Rating', 'Begin area', 'End area']);",
                 "replace": "    const _MB_COLL_SKIP_COLS = new Set(['Begin area', 'End area']);"
-            }
-        ],
-        "spec": "tests/fixtures/popup-mb.spec.js",
-        "grep": "the window: the whole description",
-        "expect": "fail"
-    },
-    {
-        "name": "the last slice's ▶ is not disabled",
-        "why": "Past the last entry there is nothing to show.",
-        "edits": [
-            {
-                "find": "            `${btn('next', '▶', sub < slices - 1)}</div>` : '';",
-                "replace": "            `${btn('next', '▶', true)}</div>` : '';"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -538,8 +499,8 @@
         "why": "_dpGetRaw() remembers every page it fetched for the Live page; a login page left there answers the next try too, so the edit is never asked again until the page reloads (found by the spec).",
         "edits": [
             {
-                "find": "            _dpRawMem.delete(url);\n            return { ok: false, detail: 'not the page expected' };",
-                "replace": "            return { ok: false, detail: 'not the page expected' };"
+                "find": "            _dpRawMem.delete(url);\n            return { ok: false, detail: _mbIsBrowserCheck(raw.html) ? _MB_BROWSER_CHECK_NOTE : 'not the page expected' };",
+                "replace": "            return { ok: false, detail: _mbIsBrowserCheck(raw.html) ? _MB_BROWSER_CHECK_NOTE : 'not the page expected' };"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -564,8 +525,8 @@
         "why": "/user/<name>/edits and /edit/<n>/data are other pages; only the edit and the profile themselves have a card.",
         "edits": [
             {
-                "find": "    const _MB_POP_PAGE_RE = /^\\/(?:(edit)\\/(\\d+)|(user)\\/([^/]+))\\/?$/;",
-                "replace": "    const _MB_POP_PAGE_RE = /^\\/(?:(edit)\\/(\\d+)|(user)\\/([^/]+))(?:\\/.*)?$/;"
+                "find": "    const _MB_POP_PAGE_RE = /^\\/(?:(edit)\\/(\\d+)|(user)\\/([^/]+)|",
+                "replace": "    const _MB_POP_PAGE_RE = /^\\/(?:(edit)\\/(\\d+)(?:\\/.*)?|(user)\\/([^/]+)(?:\\/.*)?|"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -577,8 +538,8 @@
         "why": "MusicBrainz puts an <img class=\"avatar\"> inside every editor link; treated as artwork, no editor link on a real page would have a card (found by the live spec on the Subscribers tab).",
         "edits": [
             {
-                "find": "        if (a.querySelector('img:not(.avatar)') || a.closest(inWindow ? 'td.mb-rel-cell' : 'td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;",
-                "replace": "        if (a.querySelector('img') || a.closest(inWindow ? 'td.mb-rel-cell' : 'td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;"
+                "find": "        if ((!iconLink && a.querySelector('img:not(.avatar)')) || (!inWindow && a.closest('#mb-dp-peek, #mb-dp-dialog'))) return null;",
+                "replace": "        if ((!iconLink && a.querySelector('img')) || (!inWindow && a.closest('#mb-dp-peek, #mb-dp-dialog'))) return null;"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -798,8 +759,8 @@
         "why": "Without inWindow the card and the window exclude themselves, so a drill-down finds nothing to show.",
         "edits": [
             {
-                "find": "a.closest(inWindow ? 'td.mb-rel-cell' : 'td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;",
-                "replace": "a.closest('td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;"
+                "find": "        if ((!iconLink && a.querySelector('img:not(.avatar)')) || (!inWindow && a.closest('#mb-dp-peek, #mb-dp-dialog'))) return null;",
+                "replace": "        if ((!iconLink && a.querySelector('img:not(.avatar)')) || a.closest('#mb-dp-peek, #mb-dp-dialog')) return null;"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -850,8 +811,8 @@
         "why": "The half the window's title cannot see: it stays 'Release' either way. Only the new tab's own request (the spec's route) tells a kept link from a dead one.",
         "edits": [
             {
-                "find": "        if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return false;",
-                "replace": "        if (e.ctrlKey) e.preventDefault();\n        if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return false;"
+                "find": "        if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return false;\n        const a = e.target.closest ? e.target.closest('a[href]') : null;\n        const cur = _dpDialog.target;",
+                "replace": "        if (e.ctrlKey) e.preventDefault();\n        if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return false;\n        const a = e.target.closest ? e.target.closest('a[href]') : null;\n        const cur = _dpDialog.target;"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",

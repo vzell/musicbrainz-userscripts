@@ -173,8 +173,8 @@
         "why": "On discogs.com a Discogs link is the Discogs reader's, though it is the page's own host.",
         "edits": [
             {
-                "find": "&& !(_isDgHost && _extDgSiteTest(u))) return null;",
-                "replace": ") return null;"
+                "find": "!(_isDgHost && _extDgSiteTest(u)) && !(_isIaHost && _extIaTest(u))",
+                "replace": "!(_isIaHost && _extIaTest(u))"
             }
         ],
         "spec": "tests/fixtures/discogs-pages.spec.js",
@@ -186,8 +186,8 @@
         "why": "The content area (#app) is previewed besides the table (vzell: main content only).",
         "edits": [
             {
-                "find": "            livePrepare: null,\n            extRoot: '#app'",
-                "replace": "            livePrepare: null,\n            extRoot: null"
+                "find": "            extRoot: '#app, #page_content, main'",
+                "replace": "            extRoot: null"
             }
         ],
         "spec": "tests/fixtures/discogs-pages.spec.js",
@@ -199,8 +199,8 @@
         "why": "Only the content: Discogs' header and footer are left alone.",
         "edits": [
             {
-                "find": "            livePrepare: null,\n            extRoot: '#app'",
-                "replace": "            livePrepare: null,\n            extRoot: 'body'"
+                "find": "            extRoot: '#app, #page_content, main'",
+                "replace": "            extRoot: 'body'"
             }
         ],
         "spec": "tests/fixtures/discogs-pages.spec.js",
@@ -212,8 +212,8 @@
         "why": "On a phone a tap on a Discogs link in the table opens its window (the Discogs reader on its own host).",
         "edits": [
             {
-                "find": "&& !(_isDgHost && _extDgSiteTest(u))) return null;",
-                "replace": ") return null;"
+                "find": "!(_isDgHost && _extDgSiteTest(u)) && !(_isIaHost && _extIaTest(u))",
+                "replace": "!(_isIaHost && _extIaTest(u))"
             }
         ],
         "spec": "tests/fixtures/discogs-pages.mobile.spec.js",
@@ -252,12 +252,12 @@
         "why": "Track credits are one row each, like MusicBrainz's Instruments column (vzell, 2026-10-18).",
         "edits": [
             {
-                "find": "                collapsableColumns: [ 'Credits', 'Cat#' ],",
-                "replace": "                collapsableColumns: [ 'Cat#' ],"
+                "find": "                // AR columns of release-tracks).\n                collapsableColumns: [ 'Instruments', 'Vocals', 'Producer', 'Engineer', 'Mixed by', 'Arranged by', 'Other credits', 'Cat#' ],",
+                "replace": "                // AR columns of release-tracks).\n                collapsableColumns: [ 'Cat#' ],"
             }
         ],
-        "spec": "tests/fixtures/discogs-pages.spec.js",
-        "grep": "a release:",
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "the credits as role columns",
         "expect": "fail"
     },
     {
@@ -278,8 +278,8 @@
         "why": "On discogs.com #mb-dg-root plays MB's #page for the sticky page headers; Discogs' own #page made our section pinned chrome (cut-off columns, the header shrunk).",
         "edits": [
             {
-                "find": "        return _isDgHost ? document.getElementById('mb-dg-root') : document.getElementById('page');",
-                "replace": "        return document.getElementById('page');"
+                "find": "        return _isDgHost ? document.getElementById('mb-dg-root')\n            : _isIaHost ? document.getElementById('mb-ia-root')",
+                "replace": "        return _isIaHost ? document.getElementById('mb-ia-root')"
             }
         ],
         "spec": "tests/fixtures/discogs-pages.spec.js",
@@ -317,8 +317,8 @@
         "why": "The Credits column's roles are .mb-credit-role spans: the \"Credit details - Role\" section counts them (vzell 2026-10-18).",
         "edits": [
             {
-                "find": "            const credits = (list) => (list.length ? '<td><ul>' + list.map(c => `<li>${c.role ? `${_dgRoleHtml(c.role)} – ` : ''}` +",
-                "replace": "            const credits = (list) => (list.length ? '<td><ul>' + list.map(c => `<li>${c.role ? `${_rgEsc(c.role)} – ` : ''}` +"
+                "find": "                        li = `<li>${_dgRoleHtml(roles.join(', '))} – ${link(c)}</li>`;",
+                "replace": "                        li = `<li>${_rgEsc(roles.join(', '))} – ${link(c)}</li>`;"
             }
         ],
         "spec": "tests/fixtures/discogs-pages.spec.js",

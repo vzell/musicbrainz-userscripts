@@ -126,6 +126,12 @@ test.describe('Discogs release: the Tracks view, as release-tracks (2026-11-04)'
         expect(await items(t, 'A1', 'Engineer')).toContain('Jimmy Iovine');
         expect(await items(t, 'A1', 'Engineer')).toContain('Andy Abrams (Assistant)');
         expect(await items(t, 'B1', 'Engineer')).toEqual(['Louis Lahav']);
+        // A role column is a collapsible list, as MusicBrainz's Instruments
+        // (vzell, 2026-10-18): its header's ▶/▼ and the cell's own toggle.
+        const eng = (await heads(t)).indexOf('Engineer');
+        await expect(t.locator('thead tr:first-child th').nth(eng).locator('.mb-col-collapse-hdr-btn')).toHaveCount(1);
+        await expect(t.locator('tbody > tr').filter({ has: page.locator('td:first-child:text-is("A1")') })
+            .locator(':scope > td').nth(eng).locator('.mb-cell-collapse-toggle')).toHaveCount(1);
         expect(await items(t, 'A1', 'Mixed by')).toContain('Jimmy Iovine');
         expect(await items(t, 'B4', 'Arranged by')).toEqual(['Charlie Calello (Strings)']);
         expect(await items(t, 'B4', 'Other credits')).toEqual(['Conductor [Strings] – Charlie Calello']);

@@ -17,7 +17,7 @@
         "why": "Every external request is anonymous: a card describes the page everyone sees and never acts as the user on another site (U0 X9: logged in to Brucebase, the cookie request got the logged-in page).",
         "edits": [
             {
-                "find": "method: 'GET', url, headers, anonymous: true, timeout: _EXT_TIMEOUT_MS,",
+                "find": "method: 'GET', url, headers, anonymous: !session, timeout: _EXT_TIMEOUT_MS,",
                 "replace": "method: 'GET', url, headers, anonymous: false, timeout: _EXT_TIMEOUT_MS,"
             }
         ],
@@ -186,8 +186,8 @@
         "why": "Another site, another budget: a Wikipedia card must not wait behind a Brucebase one.",
         "edits": [
             {
-                "find": "        const at = Math.max(now, _extNextSlotAt.get(host) || 0);\n        _extNextSlotAt.set(host, at + _extSpacingMs(host));",
-                "replace": "        const at = Math.max(now, _extNextSlotAt.get('') || 0);\n        _extNextSlotAt.set('', at + _extSpacingMs(host));"
+                "find": "        const at = Math.max(now, _extNextSlotAt.get(host) || 0, shared ? _extSharedSlotAt(host) : 0);\n        _extPushSlot(host, at + _extSpacingMs(host));",
+                "replace": "        const at = Math.max(now, _extNextSlotAt.get('') || 0, shared ? _extSharedSlotAt(host) : 0);\n        _extPushSlot('', at + _extSpacingMs(host));"
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
@@ -199,8 +199,8 @@
         "why": "One request per host per second, however fast the pointer moves.",
         "edits": [
             {
-                "find": "            if (gate || attempt > 1) await _extAwaitSlot(host);",
-                "replace": ""
+                "find": "            if (gate || attempt > 1) {\n                const wait = _extReserveSlot(host);",
+                "replace": "            if (false) {\n                const wait = _extReserveSlot(host);"
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
@@ -381,8 +381,8 @@
         "why": "An image link is artwork or a thumbnail, with its own preview where it has one.",
         "edits": [
             {
-                "find": "        if (a.querySelector('img:not(.avatar)') || a.closest(_EXT_SKIP_SEL)) return null;",
-                "replace": "        if (a.closest(_EXT_SKIP_SEL)) return null;"
+                "find": "        if ((!relIcon && a.querySelector('img:not(.avatar)')) || (!inWindow && a.closest(_EXT_SKIP_SEL))) return null;",
+                "replace": "        if ((!inWindow && a.closest(_EXT_SKIP_SEL))) return null;"
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
@@ -498,8 +498,8 @@
         "why": "The \"[info]\" link beside every URL relationship (/url/<mbid>) is a MusicBrainz card kind (U2, answer 3).",
         "edits": [
             {
-                "find": "|instrument|collection|url)\\/([0-9a-fA-F]{8}-",
-                "replace": "|instrument|collection)\\/([0-9a-fA-F]{8}-"
+                "find": "|instrument|genre|collection|url)\\/([0-9a-fA-F]{8}-",
+                "replace": "|instrument|genre|collection)\\/([0-9a-fA-F]{8}-"
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
@@ -511,8 +511,8 @@
         "why": "The link's own text says nothing; the external link MusicBrainz writes just before it does (`_mbPopUrlNameOf()`).",
         "edits": [
             {
-                "find": "            name: a.getAttribute('data-mb-pop-name') || (k.nameOf ? k.nameOf(a) : '') || a.textContent.trim(),",
-                "replace": "            name: a.getAttribute('data-mb-pop-name') || a.textContent.trim(),"
+                "find": "            name: a.getAttribute('data-mb-pop-name') || (relIcon ? _relLinkName(a) : '') ||\n                (k.nameOf ? k.nameOf(a) : '') || a.textContent.trim(),",
+                "replace": "            name: a.getAttribute('data-mb-pop-name') || (relIcon ? _relLinkName(a) : '') ||\n                a.textContent.trim(),"
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
@@ -576,8 +576,8 @@
         "why": "One Web Service request per card would load the shared MusicBrainz gate from every pointer movement: the window only, on pin (org/iframe.org, \"The window\").",
         "edits": [
             {
-                "find": "        if (start) _extLoad(t, { repaint });\n        const st = _mbPop.get(t.key);",
-                "replace": "        if (start) _extLoad(t, { repaint });\n        const mq = _extMbQuery(t);\n        if (start && mq) _extMbLoad(t, mq, false, repaint);\n        const st = _mbPop.get(t.key);"
+                "find": "        if (start && !t.reader.windowOnly) _extLoad(t, { repaint });\n        const st = _mbPop.get(t.key);",
+                "replace": "        if (start && !t.reader.windowOnly) _extLoad(t, { repaint });\n        const mq = _extMbQuery(t);\n        if (start && mq) _extMbLoad(t, mq, false, repaint);\n        const st = _mbPop.get(t.key);"
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
@@ -784,8 +784,8 @@
         "why": "Discogs requires an identifying User-Agent (U0 X4).",
         "edits": [
             {
-                "find": "        const headers = { 'User-Agent': _EXT_AGENT, ...(token",
-                "replace": "        const headers = { ...(token"
+                "find": "        return { 'User-Agent': _EXT_AGENT, ...(token ? { Authorization: `Discogs token=${token}` } : {}) };",
+                "replace": "        return { ...(token ? { Authorization: `Discogs token=${token}` } : {}) };"
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
@@ -823,8 +823,8 @@
         "why": "Its page is another host than the API's (Tampermonkey would ask) and the API says more: no Live page.",
         "edits": [
             {
-                "find": "load: _extDiscogsLoad, noLive: true },",
-                "replace": "load: _extDiscogsLoad, noLive: false },"
+                "find": "askHost: () => 'api.discogs.com', load: _extDiscogsLoad, noLive: true,",
+                "replace": "askHost: () => 'api.discogs.com', load: _extDiscogsLoad, noLive: false,"
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
@@ -849,8 +849,8 @@
         "why": "A token pasted with a space around it is still the token.",
         "edits": [
             {
-                "find": "        return typeof v === 'string' ? v.trim() : '';",
-                "replace": "        return typeof v === 'string' ? v : '';"
+                "find": "        const v = Lib.settings.sa_pop_ext_discogs_token;\n        return typeof v === 'string' ? v.trim() : '';",
+                "replace": "        const v = Lib.settings.sa_pop_ext_discogs_token;\n        return typeof v === 'string' ? v : '';"
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
@@ -901,8 +901,8 @@
         "why": "MusicBrainz's sidebar writes its Wikidata link as //www.wikidata.org/wiki/Q…: read as https, it is the Wikidata reader's (found by U3's live spec).",
         "edits": [
             {
-                "find": "        const href = /^\\/\\/[^/]/.test(raw) ? `https:${raw}` : raw;",
-                "replace": "        const href = raw;"
+                "find": "        let href = /^\\/\\/[^/]/.test(raw) ? `https:${raw}` : raw;",
+                "replace": "        let href = raw;"
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
@@ -927,8 +927,8 @@
         "why": "A reader host listed in @connect never makes Tampermonkey ask, so its links load on hover from the first time (answer 5).",
         "edits": [
             {
-                "find": "        'springsteenlyrics.com', 'jungleland.it', 'brucespringsteen.it', 'brucebase.wikidot.com'];",
-                "replace": "    ];"
+                "find": "        'springsteenlyrics.com', 'jungleland.it', 'brucespringsteen.it', 'brucebase.wikidot.com', 'wiki.musicbrainz.org',",
+                "replace": "        'wiki.musicbrainz.org',"
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
@@ -1161,8 +1161,8 @@
         "why": "springsteenlyrics.com's text and Brucebase's wiki text are where those sites link other sites (the U5 census).",
         "edits": [
             {
-                "find": "                    return `table.tbl > tbody a[href]${root ? `, ${root} a[href]` : ''}`;",
-                "replace": "                    return 'table.tbl > tbody a[href]';"
+                "find": "                    return `table.tbl > tbody a[href], .mb-fd-head a[href], .mb-fd-sub a[href]${roots}${_isIaHost ? ', a[href]' : ''}`;",
+                "replace": "                    return `table.tbl > tbody a[href], .mb-fd-head a[href], .mb-fd-sub a[href]${_isIaHost ? ', a[href]' : ''}`;"
             }
         ],
         "spec": "tests/fixtures/popup-ext-foreign.spec.js",
@@ -1230,8 +1230,8 @@
         "why": "Every credit of a track is kept (.filter, never take-first), as for the release-tracks AR finders.",
         "edits": [
             {
-                "find": "            credits: (x.extraartists || []).filter(a => a && a.name).map(_extDiscogsCredit),",
-                "replace": "            credits: (x.extraartists || []).filter(a => a && a.name).slice(0, 1).map(_extDiscogsCredit),"
+                "find": "dur: String(x.duration || '').trim(),\n            credits: (x.extraartists || []).filter(a => a && a.name).map(_extDiscogsCredit),",
+                "replace": "dur: String(x.duration || '').trim(),\n            credits: (x.extraartists || []).filter(a => a && a.name).slice(0, 1).map(_extDiscogsCredit),"
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
@@ -1296,8 +1296,8 @@
         "why": "The Discogs window shows its primary image as the cover and first in the gallery: the viewer counts it once (5 images, not 6).",
         "edits": [
             {
-                "find": "            .filter(l => !seen.has(l.href) && seen.add(l.href));",
-                "replace": "            .filter(l => l.href || seen);"
+                "find": "        // cover AND first in its gallery; the first link to an image counts.\n        const seen = new Set();\n        const links = Array.from(area.querySelectorAll('a[data-mb-artv-ext]'))\n            .sort((x, y) => Number(x.dataset.mbArtvExt) - Number(y.dataset.mbArtvExt))\n            .filter(l => !seen.has(l.href) && seen.add(l.href));",
+                "replace": "        // cover AND first in its gallery; the first link to an image counts.\n        const seen = new Set();\n        const links = Array.from(area.querySelectorAll('a[data-mb-artv-ext]'))\n            .sort((x, y) => Number(x.dataset.mbArtvExt) - Number(y.dataset.mbArtvExt))\n            .filter(l => l.href || seen);"
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
@@ -1391,7 +1391,7 @@
         "why": "A record of reader version 2 has no ids for the names' links: _EXT_DISCOGS_VERSION 3 makes it read again.",
         "edits": [
             {
-                "find": "    const _EXT_DISCOGS_VERSION = 4;",
+                "find": "    const _EXT_DISCOGS_VERSION = 5;",
                 "replace": "    const _EXT_DISCOGS_VERSION = 2;"
             }
         ],
@@ -1607,7 +1607,7 @@
         "why": "A record of reader version 3 has no artist or label window data (rec.discogs): _EXT_DISCOGS_VERSION 4 makes it read again.",
         "edits": [
             {
-                "find": "    const _EXT_DISCOGS_VERSION = 4;",
+                "find": "    const _EXT_DISCOGS_VERSION = 5;",
                 "replace": "    const _EXT_DISCOGS_VERSION = 3;"
             }
         ],

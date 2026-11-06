@@ -30,7 +30,7 @@
         "why": "The people, songs and shows of a section are links (html, _dpBlockHtml()).",
         "edits": [
             {
-                "find": "            const body = `<div class=\"mb-dp-section\">${s.html || _mbttEscape(s.text)}</div>`;",
+                "find": "            const body = `<div class=\"mb-dp-section\">${html || _mbttEscape(s.text)}</div>`;",
                 "replace": "            const body = `<div class=\"mb-dp-section\">${_mbttEscape(s.text)}</div>`;"
             }
         ],

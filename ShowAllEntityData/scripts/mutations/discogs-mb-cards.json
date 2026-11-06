@@ -43,8 +43,8 @@
         "why": "5b: the importer's icons sit in Discogs' content (#app), on the initial page.",
         "edits": [
             {
-                "find": "        const sel = '#mb-dg-root table.tbl > tbody a[href^=\"https://musicbrainz.org/\"], #app a[href^=\"https://musicbrainz.org/\"]';",
-                "replace": "        const sel = '#mb-dg-root table.tbl > tbody a[href^=\"https://musicbrainz.org/\"]';"
+                "find": "        const sel = '#mb-dg-root table.tbl > tbody a[href^=\"https://musicbrainz.org/\"], #app a[href^=\"https://musicbrainz.org/\"], ' +",
+                "replace": "        const sel = '#mb-dg-root table.tbl > tbody a[href^=\"https://musicbrainz.org/\"], ' +"
             }
         ],
         "spec": "tests/fixtures/discogs-mb-column.spec.js",

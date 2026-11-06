@@ -30,8 +30,8 @@
         "why": "org/MB-POH-sync-withDiscogs.org Phase 3d: each relation row names its relationship (Parts, Part of, …).",
         "edits": [
             {
-                "find": "return { rel: _mbPopRelGroupName(k, types, targetType), name: e.name || e.title || '',",
-                "replace": "return { rel: '', name: e.name || e.title || '',"
+                "find": "                rel: _mbPopRelGroupName(k, types, targetType), name: e.name || e.title || '', comment: e.disambiguation || '',",
+                "replace": "                rel: '', name: e.name || e.title || '', comment: e.disambiguation || '',"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -69,7 +69,7 @@
         "why": "org/MB-POH-sync-withDiscogs.org Phase 3d: \"Recorded here\" is two Compact tables, its releases and its recordings.",
         "edits": [
             {
-                "find": "                            (rec.length ? `<div class=\"mb-dp-gname\">Recordings · ${rec.length}</div>` + _mbPopRelTableHtml(t, 'recorded-recordings', rec, 'Recording', 'recordings') : '');",
+                "find": "                            (rec.length ? _mbPopRelGroupHtml(t, 'recorded-recordings', 'Recordings', rec, 'Recording', 'recordings') : '');",
                 "replace": "                            '';"
             }
         ],

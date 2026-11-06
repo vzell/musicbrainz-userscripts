@@ -138,8 +138,8 @@
     "why": "With the decoy first in the catalogue, 'Racing in the Streets' is matched to 'Racing in the Street ’78'.",
     "edits": [
       {
-        "find": "                    if (score < bestScore) { bestScore = score; best = w; }\n",
-        "replace": "                    if (bestScore === Infinity) { bestScore = score; best = w; }\n"
+        "find": "            if (score < bestScore) { bestScore = score; best = w; }\n",
+        "replace": "            if (bestScore === Infinity) { bestScore = score; best = w; }\n"
       }
     ],
     "spec": "tests/fixtures/recording-of-suggest.spec.js",
@@ -164,8 +164,8 @@
     "why": "The thr > 0 gate is gone and the threshold read falls back to 25 on 0.",
     "edits": [
       {
-        "find": "            const thr = (typeof p === 'number' && p >= 0 ? p : 25) / 100;",
-        "replace": "            const thr = (p || 25) / 100;"
+        "find": "        const thr = (typeof p === 'number' && p >= 0 ? p : 25) / 100;",
+        "replace": "        const thr = (p || 25) / 100;"
       }
     ],
     "spec": "tests/fixtures/recording-of-suggest.spec.js",

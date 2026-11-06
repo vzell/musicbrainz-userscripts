@@ -43,8 +43,8 @@
         "why": "A record older than the site's lifetime must not paint a cell.",
         "edits": [
             {
-                "find": "if (!rec || rec.v !== _DP_PARSER_VERSION || now - rec.at >= ttl || !urls.has(rec.url) || _dpMem.has(rec.url)) return;",
-                "replace": "if (!rec || rec.v !== _DP_PARSER_VERSION || !urls.has(rec.url) || _dpMem.has(rec.url)) return;"
+                "find": "            if (!_dpRecUsable(rec, site, now, ttl) || !urls.has(rec.url) || _dpMem.has(rec.url)) return;",
+                "replace": "            if (!_dpRecUsable(rec, site, now, Infinity) || !urls.has(rec.url) || _dpMem.has(rec.url)) return;"
             }
         ],
         "spec": "tests/fixtures/jl-image-card.spec.js",

@@ -56,8 +56,8 @@
         "why": "The SAED menu's Editing history group exists on a page about one entity.",
         "edits": [
             {
-                "find": "    // Editing history: the entity this page is about (`_saedHistoryGroup()`).\n    _saedHistoryGroup();\n",
-                "replace": ""
+                "find": "    _saedHistoryGroup();\n    _saedDgHistoryEntry();\n",
+                "replace": "    _saedDgHistoryEntry();\n"
             }
         ],
         "spec": "tests/fixtures/popup-mb-hist-presets.spec.js",

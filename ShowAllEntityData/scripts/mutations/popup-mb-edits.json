@@ -17,8 +17,8 @@
         "why": "The button must follow _mbEditsSubject(): an ISRC, an edit or the history itself has no editing history.",
         "edits": [
             {
-                "find": "_dpDialog.controls.hist.style.display = _mbEditsSubject(t) ? '' : 'none';",
-                "replace": "_dpDialog.controls.hist.style.display = '';"
+                "find": "            (c.histSplit || c.hist).style.display = subj || dg ? '' : 'none';",
+                "replace": "            (c.histSplit || c.hist).style.display = '';"
             }
         ],
         "spec": "tests/fixtures/popup-mb-edits.spec.js",
@@ -30,7 +30,7 @@
         "why": "The editor window's history is /user/<name>/edits; without the user branch the Editor card has no button.",
         "edits": [
             {
-                "find": "        if (t.src.id === 'mb-entity' && t.type === 'user') return `user/${t.id}`;",
+                "find": "        if (t.src.id === src.id && t.type === 'user') return `user/${t.id}`;\n",
                 "replace": ""
             }
         ],
@@ -43,7 +43,7 @@
         "why": "H opens the history from the keyboard (the user's answer 2).",
         "edits": [
             {
-                "find": "        if ((e.key === 'h' || e.key === 'H') && !e.altKey && !e.ctrlKey && !e.metaKey && _mbEditsSubject(_dpDialog.target)) {",
+                "find": "        if ((e.key === 'h' || e.key === 'H') && !e.altKey && !e.ctrlKey && !e.metaKey && _dpHasHistory(_dpDialog.target)) {",
                 "replace": "        if (false) {"
             }
         ],
@@ -134,7 +134,7 @@
         "why": "An open edit's votes change: a page holding one stays in memory only, as an open edit's card.",
         "edits": [
             {
-                "find": "            wanted: _mbPopWanted(t), keep: d => !d.entries.some(e => e.status === 'open'),",
+                "find": "            wanted: _mbPopWanted(t), keep: d => !search && !d.entries.some(e => e.status === 'open'),",
                 "replace": "            wanted: _mbPopWanted(t), keep: null,"
             }
         ],
@@ -147,8 +147,8 @@
         "why": "MusicBrainz's 'Verifying your browser' page must be named, so the user knows to open the page once.",
         "edits": [
             {
-                "find": "            return { ok: false, detail: _mbIsBrowserCheck(raw.html) ? _MB_BROWSER_CHECK_NOTE : 'not the page expected' };",
-                "replace": "            return { ok: false, detail: 'not the page expected' };"
+                "find": "            _dpRawMem.delete(url);\n            return { ok: false, detail: _mbIsBrowserCheck(raw.html) ? _MB_BROWSER_CHECK_NOTE : 'not the page expected' };",
+                "replace": "            _dpRawMem.delete(url);\n            return { ok: false, detail: 'not the page expected' };"
             }
         ],
         "spec": "tests/fixtures/popup-mb-edits.spec.js",

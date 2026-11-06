@@ -147,8 +147,8 @@
         "why": "vzell 2026-10-27: an artist's aliases one per line.",
         "edits": [
             {
-                "find": "                        ['Aliases', _mbPopAliasesHtml(d.aliases)],",
-                "replace": "                        ['Aliases', _rgEsc(_mbPopAliases(d.aliases, 99))],"
+                "find": "                        ['Aliases', _mbPopAliasesHtml(d.aliases)],\n                    ]) +\n",
+                "replace": "                        ['Aliases', _rgEsc(_mbPopAliases(d.aliases, 99))],\n                    ]) +\n"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",

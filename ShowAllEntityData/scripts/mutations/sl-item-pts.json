@@ -30,8 +30,8 @@
         "why": "The box set's records 2-5 became notes.",
         "edits": [
             {
-                "find": "(?:disc|disk|cd|dvd|side|lp|record|tape|set)\\b[^:\"(]{0,12}?)",
-                "replace": "(?:disc|disk|cd|dvd|side|lp|tape|set)\\b[^:\"(]{0,12}?)"
+                "find": "(?:disc|disk|cd|dvd|side|lp|record|tape|set)\\b[^:\"([]{0,12}?)",
+                "replace": "(?:disc|disk|cd|dvd|side|lp|tape|set)\\b[^:\"([]{0,12}?)"
             }
         ],
         "spec": "tests/fixtures/detail-preview.spec.js",
@@ -43,7 +43,7 @@
         "why": "'Disc: (82:40.00)' and 'Record 2: \"Cover Me\" (catalogue # …)' carry text after the colon.",
         "edits": [
             {
-                "find": "\\s*(?::\\s*((?:\"|\\().*)?)?$/i;",
+                "find": "\\s*(?::\\s*((?:\"|\\(|\\[).*)?)?$/i;",
                 "replace": "\\s*:?$/i;"
             }
         ],

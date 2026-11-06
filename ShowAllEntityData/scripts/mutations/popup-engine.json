@@ -69,8 +69,8 @@
         "why": "Only cover-art-archive.front says the archive has a front; asking for the rest costs the archive a request each and shows nothing.",
         "edits": [
             {
-                "find": "            const front = r['cover-art-archive'] && r['cover-art-archive'].front;",
-                "replace": "            const front = true;"
+                "find": "            thumb: r => (r['cover-art-archive'] && r['cover-art-archive'].front ? _mbPopCoverThumbHtml('release', r.id, r.title, 'mb-dg-vthumb') : ''),",
+                "replace": "            thumb: r => (true ? _mbPopCoverThumbHtml('release', r.id, r.title, 'mb-dg-vthumb') : ''),"
             }
         ],
         "spec": "tests/fixtures/release-rg-popup.spec.js",
@@ -82,7 +82,7 @@
         "why": "The direction is half of a sort.",
         "edits": [
             {
-                "find": "                return (col.num ? x - y : String(x).localeCompare(String(y), undefined, { numeric: true })) * _rgSort.dir;",
+                "find": "                return (col.num ? x - y : String(x).localeCompare(String(y), undefined, { numeric: true })) * dir;",
                 "replace": "                return (col.num ? x - y : String(x).localeCompare(String(y), undefined, { numeric: true }));"
             }
         ],
@@ -95,8 +95,8 @@
         "why": "An undated release says nothing about order; it goes last either way.",
         "edits": [
             {
-                "find": "                if (x === '' || y === '') return (x === '') - (y === '');",
-                "replace": "                if (x === '' || y === '') return (y === '') - (x === '');"
+                "find": "                if ((x === '' || x == null) !== (y === '' || y == null)) return x === '' || x == null ? 1 : -1;",
+                "replace": "                if ((x === '' || x == null) !== (y === '' || y == null)) return x === '' || x == null ? -1 : 1;"
             }
         ],
         "spec": "tests/fixtures/release-rg-popup.spec.js",

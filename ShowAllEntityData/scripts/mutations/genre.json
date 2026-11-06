@@ -43,8 +43,8 @@
         "why": "Without links a related genre cannot drill into its own card; the spec asserts the /genre/ anchors in the window.",
         "edits": [
             {
-                "find": "                const right = `<h4>Related genres</h4>${_mbPopKvHtml(_mbPopGenreRelRows(d, { links: true }))",
-                "replace": "                const right = `<h4>Related genres</h4>${_mbPopKvHtml(_mbPopGenreRelRows(d, { links: false }))"
+                "find": "                            html: (x, q) => `<a href=\"${_rgEsc(x.href)}\" target=\"_blank\" rel=\"noopener\">${_hlEsc(x.name, q)}</a>`,\n                        },\n                    ], r.items, { initial: 'as MusicBrainz lists them', what: 'genres' })",
+                "replace": "                            html: (x, q) => _hlEsc(x.name, q),\n                        },\n                    ], r.items, { initial: 'as MusicBrainz lists them', what: 'genres' })"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",

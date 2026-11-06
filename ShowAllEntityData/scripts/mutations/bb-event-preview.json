@@ -69,8 +69,8 @@
         "why": "\"Sorry, no Media available.\" is no content; the card's \"On the page\" must not list it.",
         "edits": [
             {
-                "find": "            return !!t && !/^Sorry,? no\\b.*\\bavailable\\.?$/i.test(t);",
-                "replace": "            return !!t;"
+                "find": "            return (!!t && !/^Sorry,? no\\b.*\\bavailable\\.?$/i.test(t)) || !!(panel && panel.querySelector('iframe[src*=\"youtube\"]'));",
+                "replace": "            return !!t || !!(panel && panel.querySelector('iframe[src*=\"youtube\"]'));"
             }
         ],
         "spec": "tests/fixtures/bb-event-preview.spec.js",

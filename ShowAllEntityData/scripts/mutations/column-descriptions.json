@@ -17,8 +17,8 @@
     "why": "Native headers would stay without a tooltip.",
     "edits": [
       {
-        "find": "                if (desc) _setTip(th, desc);",
-        "replace": "                if (false) _setTip(th, desc);"
+        "find": "                if (desc) {\n                    _setTip(th, desc);",
+        "replace": "                if (false) {\n                    _setTip(th, desc);"
       }
     ],
     "spec": "tests/fixtures/column-descriptions.spec.js",
@@ -69,8 +69,8 @@
     "why": "\"Type\" on an artist's events would read the generic text, not the kinds of event.",
     "edits": [
       {
-        "find": "        return entry[rowKind] || entry.default || '';",
-        "replace": "        return entry.default || '';"
+        "find": "        const text = (typeof entry === 'object') ? (entry[rowKind] || entry.default) : entry;",
+        "replace": "        const text = (typeof entry === 'object') ? (entry.default) : entry;"
       }
     ],
     "spec": "tests/fixtures/column-descriptions.spec.js",

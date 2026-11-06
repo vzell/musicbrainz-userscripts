@@ -56,7 +56,7 @@
         "why": "Without this gate the whole per-row scan block for the four constituent Maps and the validity counters never runs, so the 📊 dropdown offers no ISRC sections at all on any pageType — a silent, page-wide feature loss rather than a narrow bug.",
         "edits": [
             {
-                "find": "        const isIsrcCol = _colHeaderName === 'ISRCs';",
+                "find": "        const isIsrcCol = _isIsrcColumnName(_colHeaderName);",
                 "replace": "        const isIsrcCol = false;"
             }
         ],

@@ -4,7 +4,7 @@
         "why": "The card shows its glyph at most, and the kind is only known once the window opens.",
         "edits": [
             {
-                "find": "        _dpPrependKindHead(el, _dpKindLabel(t), _mbKindIconUrl(t));",
+                "find": "        _dpPrependKindHead(el, _dpKindLabel(k), _dpKindGlyph(k));",
                 "replace": "        void el;"
             }
         ],
@@ -56,7 +56,7 @@
         "why": "Only the card names its kind; the boxes above it (a note, the track/recording note, a link's title or card) would not say where they come from.",
         "edits": [
             {
-                "find": "            else if (n.label) _dpPrependKindHead(box.children[i], n.label, '');\n",
+                "find": "            else if (n.label) _dpPrependKindHead(box.children[i], n.label, null);\n",
                 "replace": ""
             }
         ],

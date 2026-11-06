@@ -56,8 +56,8 @@
         "why": "A sticky column after Date makes Date and Type 'columns before the sticky one'; the spec pins Date as the one sticky column.",
         "edits": [
             {
-                "find": "            stickyColumn: 'Date'\n        };",
-                "replace": "            stickyColumn: 'Venue'\n        };"
+                "find": "the first column; Date before.\n            stickyColumn: 'Event'",
+                "replace": "the first column; Date before.\n            stickyColumn: 'Venue'"
             }
         ],
         "spec": "tests/fixtures/bb-home.spec.js",

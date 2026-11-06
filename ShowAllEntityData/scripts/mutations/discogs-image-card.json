@@ -4,8 +4,8 @@
         "why": "The tooltip engine finds a resolver card by data-mbtt-fn only.",
         "edits": [
             {
-                "find": "<a class=\"mb-dg-thumblink\" data-mbtt-fn=\"fi-img\" data-mb-fi=\"dg\" href=",
-                "replace": "<a class=\"mb-dg-thumblink\" href="
+                "find": "<td class=\"mb-dg-imgcell\">${thumb ? `<a class=\"mb-dg-thumblink\" data-mbtt-fn=\"fi-img\" data-mb-fi=\"dg\" href=",
+                "replace": "<td class=\"mb-dg-imgcell\">${thumb ? `<a class=\"mb-dg-thumblink\" href="
             }
         ],
         "spec": "tests/fixtures/discogs-image-card.spec.js",

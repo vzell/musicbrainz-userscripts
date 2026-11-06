@@ -4,12 +4,12 @@
         "why": "org/TODO.org 'some more BB and MB fixes/enhancements' 3a (2026-10-24): the covers are the table's first column, as in the release group's window.",
         "edits": [
             {
-                "find": "            body = rows.length ? _mbPopTableHtml(rec.cols, rows.map(r => r.cells), [], covers) : '<div class=\"mb-dp-xsub\">This collection is empty.</div>';",
-                "replace": "            body = (covers ? '<div class=\"mb-dp-gallery mb-pop-coll-art\">' + covers.join('') + '</div>' : '') + (rows.length ? _mbPopTableHtml(rec.cols, rows.map(r => r.cells)) : '<div class=\"mb-dp-xsub\">This collection is empty.</div>');"
+                "find": "                thumb: covers ? (r => (r.art ? _mbPopCoverThumbHtml(d.kind, r.id, r.name, 'mb-dg-vthumb') : '')) : null,\n                none: 'This collection is empty.',",
+                "replace": "                thumb: null,\n                none: 'This collection is empty.',"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
-        "grep": "the window: the whole description, 25 entries",
+        "grep": "the window: the whole description; its entries as a List table",
         "expect": "fail"
     },
     {

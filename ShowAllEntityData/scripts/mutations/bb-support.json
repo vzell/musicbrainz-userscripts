@@ -17,7 +17,7 @@
         "why": "The generic header lookup falls back to document.querySelector('h1'), the wiki's site name in #header. The spec pins the toolbar on h1.mb-bb-h1 and none in #header.",
         "edits": [
             {
-                "find": "        headerContainer = _bbPrepareLivePage();",
+                "find": "        headerContainer = baseDefinition.features?.bbPreviewOnly ? _bbPreviewOnlyHeader() : _bbPrepareLivePage();",
                 "replace": "        headerContainer = document.querySelector('h1');"
             }
         ],
@@ -95,8 +95,8 @@
         "why": "_ensureForeignTableStyle() is keyed on the hosts' body classes; without .mb-sa-host-bb the table renders unstyled. The spec pins the border and padding.",
         "edits": [
             {
-                "find": "            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb) table.tbl) th,\n            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb) table.tbl) td {",
-                "replace": "            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs) table.tbl) th,\n            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs) table.tbl) td {"
+                "find": "            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg, .mb-sa-host-ia, .mb-sa-host-sfm) table.tbl) th,\n            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg, .mb-sa-host-ia, .mb-sa-host-sfm) table.tbl) td {",
+                "replace": "            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-dg, .mb-sa-host-ia, .mb-sa-host-sfm) table.tbl) th,\n            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-dg, .mb-sa-host-ia, .mb-sa-host-sfm) table.tbl) td {"
             }
         ],
         "spec": "tests/fixtures/bb-songs.spec.js",

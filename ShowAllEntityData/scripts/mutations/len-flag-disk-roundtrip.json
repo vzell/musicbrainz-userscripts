@@ -17,7 +17,7 @@
     "why": "Keeps the flag but not its explanation. The tint and buttons come back, and the tooltip saying what the gap is does not. The round-trip test compares each cell's kind AND title, so it must fail.",
     "edits": [
       {
-        "find": "            if (cell.dataset.mbColTip === '1' && cell.title) data.lenTip = cell.title;\n",
+        "find": "                data.lenTip = cell.title;\n",
         "replace": ""
       }
     ],
@@ -30,8 +30,8 @@
     "why": "Drops the data-mb-col-tip ownership check. _applyLengthMismatchFlag() always sets the tooltip and the marker together, so on every flagged cell a fixture can produce the check is already true. It guards a cell whose title something else rewrote after flagging, which no fixture does. KNOWN UNCOVERED.",
     "edits": [
       {
-        "find": "            if (cell.dataset.mbColTip === '1' && cell.title) data.lenTip = cell.title;",
-        "replace": "            if (cell.title) data.lenTip = cell.title;"
+        "find": "            if (cell.dataset.mbColTip === '1' && cell.title) {\n                data.lenTip = cell.title;",
+        "replace": "            if (cell.title) {\n                data.lenTip = cell.title;"
       }
     ],
     "spec": "tests/fixtures/len-flag-disk-roundtrip.spec.js",
@@ -82,8 +82,8 @@
     "why": "Restores the title without data-mb-col-tip. The first load looks right; a SECOND save then refuses the title (the writer's ownership check) and the second reopen loses it. Must fail on the save-again test, and only there.",
     "edits": [
       {
-        "find": "            _setTip(td, cellData.lenTip);\n            td.dataset.mbColTip = '1';",
-        "replace": "            _setTip(td, cellData.lenTip);"
+        "find": "            _setTipCmp(td, cellData.lenTip, Array.isArray(cellData.lenCmp) ? cellData.lenCmp : null);\n            td.dataset.mbColTip = '1';",
+        "replace": "            _setTipCmp(td, cellData.lenTip, Array.isArray(cellData.lenCmp) ? cellData.lenCmp : null);"
       }
     ],
     "spec": "tests/fixtures/len-flag-disk-roundtrip.spec.js",

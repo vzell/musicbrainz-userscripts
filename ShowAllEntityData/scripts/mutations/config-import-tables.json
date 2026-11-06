@@ -4,8 +4,8 @@
     "why": "The shipped bug, reverted exactly: dropping the `table` arm from _applyConfigSettings() lets a row array fall through to the String() arm, so [['series-releases','\"Artist\"']] becomes the string 'series-releases,\"Artist\"'. Lib.getTableRows() then rejects the non-array, the lazy seeders refill from the built-in defaults, and every hand-entered row is gone. The round-trip test must notice.",
     "edits": [
       {
-        "find": "                } else if (schemaCfg.type === 'table') {\n                    // Row arrays are stored as-is. NEVER String() — see above.\n                    if (!Array.isArray(value)) { invalid++; continue; }\n                    coerced = value;\n                } else {\n                    // string / text / color_picker / popup_dialog / keyboard_shortcut\n                    coerced = String(value);",
-        "replace": "                } else {\n                    // string / text / color_picker / popup_dialog / keyboard_shortcut\n                    coerced = String(value);"
+        "find": "                } else if (schemaCfg.type === 'table') {\n                    // Row arrays are stored as-is. NEVER String() — see above.\n                    if (!Array.isArray(value)) { invalid++; continue; }\n                    coerced = value;\n                } else if (schemaCfg.type === 'select') {",
+        "replace": "                } else if (schemaCfg.type === 'select') {"
       }
     ],
     "spec": "tests/fixtures/config-import-export.spec.js",
@@ -17,8 +17,8 @@
     "why": "Identical edit to the entry above, scored against the user-visible test instead. Kept separate on purpose: the mechanism test reads GM storage, and a reader could reasonably ask whether `Array.isArray` is merely an internal detail. This shows the consequence — a column configured to start hidden comes back visible after an import, which is what a person would actually report.",
     "edits": [
       {
-        "find": "                } else if (schemaCfg.type === 'table') {\n                    // Row arrays are stored as-is. NEVER String() — see above.\n                    if (!Array.isArray(value)) { invalid++; continue; }\n                    coerced = value;\n                } else {\n                    // string / text / color_picker / popup_dialog / keyboard_shortcut\n                    coerced = String(value);",
-        "replace": "                } else {\n                    // string / text / color_picker / popup_dialog / keyboard_shortcut\n                    coerced = String(value);"
+        "find": "                } else if (schemaCfg.type === 'table') {\n                    // Row arrays are stored as-is. NEVER String() — see above.\n                    if (!Array.isArray(value)) { invalid++; continue; }\n                    coerced = value;\n                } else if (schemaCfg.type === 'select') {",
+        "replace": "                } else if (schemaCfg.type === 'select') {"
       }
     ],
     "spec": "tests/fixtures/config-import-export.spec.js",

@@ -74,7 +74,7 @@
   {
     "name": "SAED View: no 💾 Browser cache row",
     "why": "vzell 2026-10-24: the overview from the SAED menu's View group too.",
-    "edits": [{ "find": "        _ensureViewMenu().adopt(btn);\n        ensureSettingsButtonIsLast();\n", "replace": "        ensureSettingsButtonIsLast();\n" }],
+    "edits": [{ "find": "        btn.onclick = () => _idbOverviewOpen(null);\n        _ensureViewMenu().adopt(btn);\n        ensureSettingsButtonIsLast();\n", "replace": "        btn.onclick = () => _idbOverviewOpen(null);\n        ensureSettingsButtonIsLast();\n" }],
     "spec": "tests/fixtures/idb-overview.spec.js", "grep": "SAED menu's View group", "expect": "fail"
   },
   {

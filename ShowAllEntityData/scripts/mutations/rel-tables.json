@@ -73,8 +73,8 @@
         "why": "Begin/End sit at a different index in every group; resolved once, the B-/E- columns come out empty or from the wrong column.",
         "edits": [
             {
-                "find": "pageType === 'event-overview' || _isRelTablesRun()) {",
-                "replace": "pageType === 'event-overview') {"
+                "find": "pageType === 'event-overview' || _isRelTablesRun() ||",
+                "replace": "pageType === 'event-overview' ||"
             }
         ],
         "spec": "tests/fixtures/rel-tables-recording.spec.js",
@@ -125,8 +125,8 @@
         "why": "The old guard: discogs.com/release/… and rateyourmusic.com/release/… gave URL tables a Picard column.",
         "edits": [
             {
-                "find": ")).some(a => /^(?:(?:https?:)?\\/\\/[^/]*musicbrainz\\.(?:org|eu))?\\/release\\/[0-9a-f]{8}-/i.test(a.getAttribute('href') || ''));",
-                "replace": ")).length > 0;"
+                "find": ")).some(a => /^(?:(?:https?:)?\\/\\/[^/]*musicbrainz\\.(?:org|eu))?\\/release\\/[0-9a-f]{8}-/i.test(a.getAttribute('href') || ''))",
+                "replace": ")).length > 0"
             }
         ],
         "spec": "tests/fixtures/rel-tables-pages.spec.js",

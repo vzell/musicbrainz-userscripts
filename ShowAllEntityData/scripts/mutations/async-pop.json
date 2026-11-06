@@ -60,8 +60,8 @@
     "why": "_ajOnKey() no longer gives way to an open #mb-art-viewer.",
     "edits": [
       {
-        "find": "        if (viewer && !viewer.hidden) return;\n",
-        "replace": ""
+        "find": "        if (e.key !== 'Escape' || !_ajPop.openId) return;\n        const viewer = document.getElementById('mb-art-viewer');\n        if (viewer && !viewer.hidden) return;\n",
+        "replace": "        if (e.key !== 'Escape' || !_ajPop.openId) return;\n        const viewer = document.getElementById('mb-art-viewer');\n"
       }
     ],
     "spec": "tests/fixtures/async-pop.spec.js",

@@ -56,8 +56,8 @@
     "why": "The card shows at once whatever sa_rich_tooltip_delay_ms says.",
     "edits": [
       {
-        "find": "            _showTimer = setTimeout(() => _showOwn(text), (typeof _d === 'number' && _d >= 0) ? _d : 400);\n",
-        "replace": "            _showTimer = setTimeout(() => _showOwn(text), 0);\n"
+        "find": "            _stashOwn(el);\n            const _d = Lib.settings.sa_rich_tooltip_delay_ms;\n            _showTimer = setTimeout(() => _showOwn(text), (typeof _d === 'number' && _d >= 0) ? _d : 400);\n",
+        "replace": "            _stashOwn(el);\n            const _d = Lib.settings.sa_rich_tooltip_delay_ms;\n            _showTimer = setTimeout(() => _showOwn(text), 0);\n"
       }
     ],
     "spec": "tests/fixtures/rich-tooltips-liner.spec.js",
@@ -161,8 +161,8 @@
     "why": "Removes the shared z-index from .mb-tt-liner: #mb-stat-tooltip falls back to auto and the dropdown (999999) covers the card of its own entries (reported 2026-10-04).",
     "edits": [
       {
-        "find": "            z-index: 2147483500;\n",
-        "replace": ""
+        "find": "               z-index of their own. */\n            z-index: 2147483500;\n",
+        "replace": "               z-index of their own. */\n"
       }
     ],
     "spec": "tests/fixtures/rich-tooltips-liner.spec.js",
@@ -193,19 +193,6 @@
     ],
     "spec": "tests/fixtures/bigbox-tooltip.spec.js",
     "grep": "inline CAA thumbnail",
-    "expect": "fail"
-  },
-  {
-    "name": "the Relationships plain panel is clamped onto the rich one again",
-    "why": "Restores the x=5 clamp when the plain panel fits on neither side: in a narrow window it lies on top of the rich panel.",
-    "edits": [
-      {
-        "find": "                    if (_plainL < 5) {\n                        // Fits on neither side: below the rich panel rather\n                        // than clamped to x=5, where it lay ON the rich one.\n                        _plainL = _richRect.left;\n                        _plainT = _richRect.bottom + _gap;\n                    }\n",
-        "replace": "                    if (_plainL < 5) _plainL = 5;\n"
-      }
-    ],
-    "spec": "tests/fixtures/rich-tooltips.spec.js",
-    "grep": "narrow window",
     "expect": "fail"
   }
 ]

@@ -82,8 +82,8 @@
         "why": "org/TODO.org Some enhancements f: hovering the found glyph shows the MusicBrainz event's card.",
         "edits": [
             {
-                "find": ".concat([_bbMbevSource(), _rgLinkSource(),",
-                "replace": ".concat([_rgLinkSource(),"
+                "find": ".concat([_bbMbevSource(), _dgMbSource(), _rgLinkSource(),",
+                "replace": ".concat([_dgMbSource(), _rgLinkSource(),"
             }
         ],
         "spec": "tests/fixtures/bb-mb-event.spec.js",

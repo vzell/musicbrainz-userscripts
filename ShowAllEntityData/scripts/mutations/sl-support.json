@@ -493,8 +493,8 @@
         "why": "Tampermonkey would never inject the script on the CD and vinyl bootleg list; only the regex spec can see it.",
         "edits": [
             {
-                "find": "springsteenlyrics\\.com\\/(?:collection|bootlegs|brucelegs)\\.php",
-                "replace": "springsteenlyrics\\.com\\/(?:collection|bootlegs)\\.php"
+                "find": "springsteenlyrics\\.com\\/(?:collection|bootlegs|brucelegs)\\.php\\?(?:[^#]*&)?cmd=list",
+                "replace": "springsteenlyrics\\.com\\/(?:collection|bootlegs)\\.php\\?(?:[^#]*&)?cmd=list"
             }
         ],
         "spec": "tests/fixtures/sl-include-regex.spec.js",
@@ -636,8 +636,8 @@
         "why": "\"↻ Load remaining pages\" re-runs makeTableSortableUnified() over headers whose 📊 count badges already hold digits; read from the text, \"Title\" became \"Title 4\" and every name-keyed lookup missed. The stored data-col-name must win.",
         "edits": [
             {
-                "find": "            const colName = th.dataset.colName || th.textContent.replace(",
-                "replace": "            const colName = th.textContent.replace("
+                "find": "            const colName = th.dataset.colName || _colKeyOfLabelledHeader(th)\n",
+                "replace": "            const colName = _colKeyOfLabelledHeader(th)\n"
             }
         ],
         "spec": "tests/fixtures/sl-lyrics.spec.js",
