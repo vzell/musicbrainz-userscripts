@@ -1,4 +1,4 @@
-* TODO Post: new issue "Interoperability between String Theory and ShowAllEntityData (SAED)"
+* DONE Post: new issue "Interoperability between String Theory and ShowAllEntityData (SAED)"
 
 - *Where*: a *new issue* at https://github.com/majkinetor/musicbrainz-userscripts/issues/new
 - *Title*: =Interoperability between String Theory and ShowAllEntityData (SAED)=
@@ -7,14 +7,14 @@
   1. Post this issue first.
   2. Put its number into [[file:reply-to-839-issue.org][reply-to-839-issue.org]] (=#NEW=).
   3. Then post that reply on #839.
-- *Status*: draft, not posted. After posting, change the keyword to =DONE= and add the issue URL here.
+- *Status*: posted 2026-11-06T15:58+01:00 as https://github.com/majkinetor/musicbrainz-userscripts/issues/938 (label =area | string theory=). The block below is what was posted; this file is history now (follow-ups: new comments on #938).
 - *Body*: the block below is GitHub Markdown. Copy everything between =#+begin_src= and =#+end_src=. The
   =<details>= appendices render collapsed on GitHub.
 - *Kept current by* the refresh-majkinetor skill: versions, measured numbers, adopted requests. The source notes
   are in [[file:majkinetor.org][org/majkinetor.org]] ("Working with majkinetor", the TODOs, "Coexistence").
 
 #+begin_src markdown
-Hi majkinetor,
+Hi Miodrag - @majkinetor,
 
 this is one place for everything between String Theory and my userscript
 [ShowAllEntityData](https://github.com/vzell/mb-userscripts) (SAED), so we have a single issue to discuss

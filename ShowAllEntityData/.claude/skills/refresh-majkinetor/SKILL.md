@@ -66,8 +66,14 @@ Also look at what happened to vzell's requests (read-only):
 
 ```
 gh issue list -R majkinetor/musicbrainz-userscripts --author vzell --state all --limit 20
-gh search commits --repo majkinetor/musicbrainz-userscripts 'SAED OR ShowAllEntityData OR data-mbu-foreign' --limit 20
+gh issue view 938 -R majkinetor/musicbrainz-userscripts --comments   # the interoperability issue (posted 2026-11-06)
+gh issue view 839 -R majkinetor/musicbrainz-userscripts --comments   # the ISRC Scout race (our reply 2026-11-06)
+gh search commits --repo majkinetor/musicbrainz-userscripts 'SAED OR ShowAllEntityData OR data-mbu-foreign OR 938 OR 839' --limit 20
 ```
+
+#938 is where majkinetor answers. Every answer there, such as an agreed attribute name, a "no", or a counter-proposal,
+goes into "Proposed shared conventions" and the matching TODOs. A request he declined gets *ours* as its new
+"Who fixes it".
 
 The CHANGELOG diff is the cheapest way to see what is new. For each entry that touches something the
 analysis covers (the viewer, keys, the dock, the gate, ISRC Scout's columns, tables or filters), note

@@ -505,13 +505,23 @@ between =#+begin_src= and =#+end_src=; GitHub renders the =<details>= blocks and
    cause, a two-line diff for ISRC Scout, and our interim fix, and links the new issue (=#NEW=, fill in after
    posting 1).
 
-Post 1 first, then 2. Each file's top heading says whether it was posted (=TODO Post:= / =DONE= plus the URL).
+*Posted 2026-11-06*: 1 as [[https://github.com/majkinetor/musicbrainz-userscripts/issues/938][#938]] (15:58 CET), 2 as
+[[https://github.com/majkinetor/musicbrainz-userscripts/issues/839#issuecomment-6687878926][a comment on #839]] (16:00 CET),
+both with the greeting "Hi Miodrag - @majkinetor,". Both files are now the record of what was posted. Follow-ups go into
+new comments on #938, drafted in a new file here. One sentence of the #839 comment overstates SAED's current state: it
+says SAED "re-reads them on your =is:counts-changed= event", which is only planned, as its next paragraph says.
+Edit the comment if you like. Each file's top heading says whether it was posted (=TODO Post:= / =DONE= plus the URL).
 The refresh skill keeps both current. When majkinetor answers, write the agreed attribute names into "Proposed
 shared conventions" and the TODOs, so both sides use the same spelling.
 
 *** Refresh log
 
 Newest first; one entry per refresh (refresh-majkinetor skill).
+
+- 2026-11-06 15:58–16:00 CET: vzell posted
+  [[https://github.com/majkinetor/musicbrainz-userscripts/issues/938][#938]] (the interoperability issue) and the
+  reply on #839. Both org files are now the record of what was posted (verified identical to GitHub, apart from the
+  greeting, which the files now carry too).
 
 - 2026-11-06 15:04–15:13 CET: =326c6a4= → =1df6193=. ST 2026.11.06.111207 → 130902, EH 2026.11.05.231601 →
   2026.11.06.170000, ISRC Scout unchanged at 170000; all three copies now from =1df6193=. No CHANGELOG entries
@@ -589,7 +599,8 @@ Newest first; one entry per refresh (refresh-majkinetor skill).
 
 - *Upstream issue*: vzell's [[https://github.com/majkinetor/musicbrainz-userscripts/issues/839][#839]] (open,
   2026-10-26). majkinetor answered that he will look at it once his current upgrades are done. The cause and
-  convention C1 below answer its own question, "do we need some kind of API to talk to each other?".
+  convention C1 below answer its own question, "do we need some kind of API to talk to each other?". Our cause and
+  two-line diff were posted there on 2026-11-06 (see "Posts to majkinetor"); everything else is in #938.
 
 - *Who fixes it*: *upstream* preferred: convention C1, =fillTrackData()= / =showTrackData()= skip tables inside =[data-mbu-foreign]=. That is one condition there, versus reworking our row markers. *Ours*: fix option (a) as the defensive part.
 
