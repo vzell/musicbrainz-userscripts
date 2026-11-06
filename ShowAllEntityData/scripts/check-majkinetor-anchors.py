@@ -8,7 +8,8 @@ Reads scripts/majkinetor-anchors.json. Each anchor is a per-line regex in either
     MULTI   found a different number of times than its "count" (default 1): the regex is too loose
             now, or a copy was added or removed
     GONE    an expected anchor is missing: the claim it backs must be re-checked by hand
-    BACK    an anchor expected ABSENT is present again (e.g. ISRC Scout restored its title attribute)
+    BACK    an anchor expected ABSENT is present (e.g. ISRC Scout restored its title attribute, or a
+            proposed shared convention, the conv-* anchors, was adopted upstream)
 
 A SAED-side "DEFECT" anchor going GONE usually means its TODO was fixed: mark the TODO done and
 switch the anchor to the fixed shape (or drop it).

@@ -11,6 +11,12 @@ out of it. It cites line numbers in a clone pinned at one commit, and the probe 
 specific script versions. Upstream moves several times a day, so the analysis goes stale quickly.
 This skill brings it up to date without rewriting it.
 
+**vzell knows majkinetor personally, and majkinetor fixes interop issues on his side.** So the analysis is
+also a list of requests: every TODO says who fixes it (ours / upstream / a shared convention), and
+"Working with majkinetor" in the org file holds the proposed conventions (C1…) and a draft message.
+*Never post* issues, comments or pull requests on majkinetor's repo, and never contact him yourself: you
+draft, vzell sends. Reading his repo with `gh` (issues, PRs, commits) is fine.
+
 Nothing here changes `ShowAllEntityData.user.js`: no `// @version` bump and no changelog entry
 (`tests/`, `scripts/`, `org/` and `.claude/` are exempt). Work on a docs branch, or on the open feature
 branch if there is one (follow-ups go on the same branch). Never merge without asking.
@@ -46,6 +52,13 @@ git -C debug/majkinetor log -1 --format='%h %cI %s' origin/main
 git -C debug/majkinetor diff --stat HEAD origin/main -- userscripts dev
 git -C debug/majkinetor diff HEAD origin/main -- 'userscripts/*/CHANGELOG.md' 'userscripts/string_theory/members.txt'
 git -C debug/majkinetor reset -q --hard origin/main  # only after the remote check above
+```
+
+Also look at what happened to vzell's requests (read-only):
+
+```
+gh issue list -R majkinetor/musicbrainz-userscripts --author vzell --state all --limit 20
+gh search commits --repo majkinetor/musicbrainz-userscripts 'SAED OR ShowAllEntityData OR data-mbu-foreign' --limit 20
 ```
 
 The CHANGELOG diff is the cheapest way to see what is new. For each entry that touches something the
@@ -159,6 +172,9 @@ usually one TODO (`todo`):
 - `GONE` (saed, a "DEFECT" anchor): its TODO was probably fixed. Confirm, mark the TODO `DONE` with
   the fixing commit, and remove or flip the anchor (`expect: absent` for the old shape).
 - `BACK`: something expected absent returned (e.g. ISRC Scout's `title`); the related TODO may be moot.
+  For a `conv-*` anchor it means **a proposed convention was adopted upstream**. Read how it was done, write
+  the actual attribute name and behaviour into "Proposed shared conventions" (mark it *adopted, <version>*),
+  rewrite the TODO's fix around it, and flip the anchor to `present`.
 - `MULTI`: tighten the regex, or set `count`.
 
 When an anchor changes, add or rewrite it in the JSON; every new claim you write into the analysis
@@ -182,8 +198,17 @@ dated copies:
 TODO hygiene:
 
 - A fix upstream made unnecessary → `DONE` with a one-line reason.
-- A new defect → a new `** TODO` in the same shape as the others: Symptom, Pre-test (real URL, exact
-  clicks, prediction), Cause, Fix, Tests.
+- A new defect → a new `** TODO` in the same shape as the others: Who fixes it, Symptom, Pre-test (real
+  URL, exact clicks, prediction), Cause, Fix, Tests.
+- **Who fixes it**, for every new or changed TODO:
+  - *ours*: the cause is in SAED;
+  - *upstream*: the cause is in his code and a small change there beats a workaround here;
+  - *convention*: both sides need one shared mark; add a C-row and a `conv-*` anchor for it.
+
+  Upstream or convention items also get a numbered point in the draft message. Keep it short and
+  concrete: what we see, the one change asked, the attribute name. Even then keep a defensive fix on our
+  side when users can run an older String Theory.
+- An item majkinetor fixed → its TODO keeps only our remaining part, or is `DONE` with his version.
 - A new feature worth taking → a new `** TODO`.
 - org/TODO.org's majkinetor umbrella item links into this file by heading. If you rename a heading, fix
   those links (`grep -n 'majkinetor.org::' org/TODO.org`).
@@ -205,6 +230,7 @@ Tell the user, in a few lines:
 - the SHA move and the three versions;
 - what the probe showed differently, or "no change";
 - which anchors changed and which claims were rewritten;
-- the new, closed and unchanged TODOs.
+- the new, closed and unchanged TODOs;
+- which requests majkinetor took up, and whether the draft message changed (point to it; don't paste it).
 
 Name anything you could not re-run.

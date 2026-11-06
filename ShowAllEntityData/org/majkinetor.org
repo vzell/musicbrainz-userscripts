@@ -449,6 +449,63 @@ Items 1–4 are the fixes and 5–9 the feature ideas; all of them are TODO item
    =mbuTheme= detection, imgmax rules for non-CAA images, Wayback links, entity-picture providers and area flag
    badges.
 
+*** Working with majkinetor
+
+You know majkinetor personally, and he is willing to fix interoperability issues on his side. So every TODO
+below says *who fixes it*:
+- *ours*: the cause is in SAED;
+- *upstream*: a small change in his scripts is cleaner than a workaround here;
+- *convention*: both sides follow one shared mark.
+
+Even when upstream fixes something, keep a defensive fix on our side when users can run an older String Theory:
+it updates on Tampermonkey's schedule, and some people install single members.
+
+**** Proposed shared conventions
+
+These are a few =<html>= and element attributes. Each is cheap for both sides and in the =data-mbu-*= style his
+scripts already use.
+
+| #  | Convention                                                                                            | Who sets it               | Who honours it                                                                           | Fixes (TODO below)                                  |
+|----+-------------------------------------------------------------------------------------------------------+---------------------------+------------------------------------------------------------------------------------------+-----------------------------------------------------|
+| C1 | =data-mbu-foreign="saed"= on a region another script renders (our FRP section / every =table.tbl= we build) | SAED                      | his scripts skip it: ISRC Scout's =fillTrackData()= / =showTrackData()=, the =#mbu-tip= hover, other decorators | columns re-added on the FRP; =#mbu-tip= over our table |
+| C2 | Stable data attributes on ISRC Scout's link icons: =data-ii-platform="Spotify"=, =data-ii-ended=, the URL(s) | ISRC Scout                | SAED reads them instead of parsing tip text                                              | Links platform from =data-tip=                       |
+| C3 | =<html data-mbu-keys-off>= while another app owns the keyboard (our FRP shown)                        | SAED                      | EH's single-key commands (and anything else that binds bare keys) yield                   | EH's bare-letter keys leave our FRP                  |
+| C4 | =<html data-mbu-quiet>= while another app wants the corner                                            | SAED                      | =mbRestackCorner= / =mbuDock= hide every launcher and the dock (what MC does for itself)  | corner launchers over our FRP                        |
+| C5 | =<html data-saed="<version>">= plus =data-saed-page="<pageType>"= when SAED has a pageType for the page | SAED                      | EH can show an "Open in SAED" action in its view (switch off + reload, as V does)         | a way back to SAED from EH                           |
+| C6 | The =mbu:mb-gate= localStorage format (=dev/net/mb-gate.mjs=) as a stable, documented protocol, with a version field | majkinetor (documents it) | SAED books its ws/2 there                                                                | join the request gate                                |
+
+**** Draft message to majkinetor (for you to send; not posted anywhere)
+
+#+begin_example
+Hi majkinetor,
+
+I'm making ShowAllEntityData (SAED) play nicely next to String Theory. I probed both together
+in a browser harness (I can send you the notes). A few things are easiest on your side; all are
+small and opt-in through attributes SAED sets:
+
+1. Regions rendered by other scripts. SAED would put data-mbu-foreign="saed" on its rendered
+   section/tables. Could ISRC Scout's fillTrackData()/showTrackData() skip tables inside such an
+   element (today they wipe and re-add .ii-col cells in SAED's copy of the tracklist, because it
+   keeps tr.subh and the track-MBID row ids), and could mbuTip skip [data-tip] inside it?
+2. ISRC Scout link icons. Since 2026.11.06 the platform name is only in data-tip text. Could each
+   a.ii-trk-ln also carry data-ii-platform (and data-ii-ended)? SAED reads the platform for
+   filtering/sorting and would no longer depend on the tip format.
+3. Keys. EH's bare-letter commands also fire on SAED's page (h → /edits leaves it). SAED can call
+   preventDefault (EH already honours defaultPrevented), but an <html data-mbu-keys-off> mark that
+   EH honours would be clearer for any app.
+4. Corner. While SAED's table is shown it would set <html data-mbu-quiet>; could mbuDock/
+   mbRestackCorner hide the launchers and the dock then, like Mission Control does for itself?
+5. Way back. SAED would set <html data-saed=VERSION data-saed-page=TYPE> where it supports a page.
+   Would an "Open in SAED" action in EH's header be welcome (it would do what V does)?
+6. Request gate. SAED would like to book its ws/2 in mbu:mb-gate. Can we treat the format in
+   dev/net/mb-gate.mjs as a stable protocol (a version field, a heads-up before changes)?
+
+Thanks! Volker
+#+end_example
+
+Before sending, drop any item already fixed upstream (the refresh skill re-checks). When he answers, note the
+agreed attribute names here and in the TODOs, so both sides use the same spelling.
+
 *** Refresh log
 
 Newest first; one entry per refresh (refresh-majkinetor skill).
@@ -479,6 +536,8 @@ Newest first; one entry per refresh (refresh-majkinetor skill).
 
 ** TODO ISRC Scout "Links": read the platform from =data-tip= (bug, measured)
 
+- *Who fixes it*: *ours* now (read =title= or =data-tip=, so old and new ISRC Scout both work); *upstream* for the long run: convention C2 (=data-ii-platform=), then we read that first.
+
 - *Symptom*: with ISRC Scout ≥ 2026.11.06, SAED's "Links" column loses its platform names, so the 📊 "Links info -
   Platform" section is empty, =linkplatform:= entries are gone, and typed filters and sorting by platform find
   nothing.
@@ -500,6 +559,8 @@ Newest first; one entry per refresh (refresh-majkinetor skill).
 
 ** TODO ISRC Scout "Links": no =#mbu-tip= over our table (moved from org/TODO.org)
 
+- *Who fixes it*: *upstream* preferred: convention C1, =mbuTip= skips =[data-tip]= inside =[data-mbu-foreign]=. *Ours* as fallback: move =data-tip= on our copies.
+
 - *Symptom*: hovering an icon in SAED's "Links" column shows ISRC Scout's own tip, =#mbu-tip=, beside or over our
   hover card. The old TODO called it the native tooltip; there is no native tooltip any more. =#mbu-tip= is a
   delegated hover handler for any =[data-tip]= element in the document (=mbuTip=, IS:2597-2612, 2665-2682).
@@ -511,6 +572,8 @@ Newest first; one entry per refresh (refresh-majkinetor skill).
   - Prediction: a dark ISRC Scout tip with "Deezer\nhttps://…", possibly overlapping our card.
 
 ** TODO ISRC Scout columns re-added bare on our FRP (moved from org/TODO.org, cause found)
+
+- *Who fixes it*: *upstream* preferred: convention C1, =fillTrackData()= / =showTrackData()= skip tables inside =[data-mbu-foreign]=. That is one condition there, versus reworking our row markers. *Ours*: fix option (a) as the defensive part.
 
 - *Cause*:
   - =showTrackData()= (IS:10021) removes *every* =.ii-col= in the document and refills.
@@ -529,6 +592,8 @@ Newest first; one entry per refresh (refresh-majkinetor skill).
 - *Tests*: the simulator already models the observer (see its JSDoc); add a "wipe and refill after render" step.
 
 ** TODO SAED's floating elements survive Event Horizon's body swap (bug, measured)
+
+- *Who fixes it*: *ours*: the bug is in how SAED attaches its elements; EH behaves as documented (#853).
 
 - *Symptom*: SAED started while EH showed (EH's default), then V (EH off) → no SAED hover cards at all.
 - *Pre-test* (your browser, String Theory or EH installed, EH on):
@@ -556,6 +621,8 @@ Newest first; one entry per refresh (refresh-majkinetor skill).
 
 ** TODO EH's bare-letter keys leave our FRP (bug, measured)
 
+- *Who fixes it*: *ours* is enough: EH already honours =defaultPrevented=. *Convention* C3 (=<html data-mbu-keys-off>=) is the clearer long-term form; ask for it in the same message.
+
 - *Symptom*: with EH or String Theory installed, even with EH off, pressing =h= on an FRP (focus not in a field) goes
   to the entity's =/edits= page. The FRP is lost. The same goes for =o e r c t d a s p . ,= and =v=: =v= is harmless
   on the loaded page, but after EH navigation it reloads.
@@ -574,6 +641,8 @@ Newest first; one entry per refresh (refresh-majkinetor skill).
 - *Alternative*: ask majkinetor for a page mark, e.g. =<html data-mbu-keys-off>=, which EH would honour.
 
 ** TODO Shortcut clashes with String Theory / EH: Ctrl+K, Ctrl+L, the typing guard
+
+- *Who fixes it*: *ours*: Ctrl+L =preventDefault= in capture, and the typing guard. Ctrl+K: String Theory's palette hotkey can be changed, or the palette switched off, in String Theory's settings → "Command palette" → Hotkey (=stPalRead()=, GM =ST_PAL_KEY=), so a user can rebind either side; mention it in our shortcuts help. No upstream change needed.
 
 - *Ctrl+K* (=sa_shortcut_show_shortcuts_help=): String Theory's palette listens on =window= in the *capture* phase
   with =stopPropagation= (=string_theory/palette.js= =stPalListen()=). It is registered at document-start, so ours
@@ -595,6 +664,8 @@ Newest first; one entry per refresh (refresh-majkinetor skill).
 
 ** TODO Corner launchers over our FRP; our toasts under them (moved from org/TODO.org)
 
+- *Who fixes it*: *convention* C4 preferred (=<html data-mbu-quiet>=, honoured by =mbuDock= / =mbRestackCorner= for every launcher), instead of our CSS having to track their ids. *Ours*: tag our toasts =data-mb-corner=.
+
 - *Measured*: with String Theory on a release page there are eight =[data-mb-corner]= launchers (Falcon, Fusion,
   MC, the dock, EH, ISRC Scout, Fuzzy Logic, PC) in the bottom right corner, over the FRP. Our toasts (Relationships,
   CAA) sit at =bottom:20px; right:20px=, the same spot.
@@ -608,6 +679,8 @@ Newest first; one entry per refresh (refresh-majkinetor skill).
 - *Pre-test*: ST installed, EH off, release page, FRP → look at the bottom right corner.
 
 ** TODO A way back to SAED from Event Horizon's view
+
+- *Who fixes it*: *both*: convention C5. We set =data-saed= / =data-saed-page=; EH may add "Open in SAED". Until then, our own =[data-mb-corner]= launcher (below).
 
 - *Measured*: while EH shows (its default after install), SAED's buttons exist but sit in MusicBrainz's hidden
   body; nothing in EH's view tells the user SAED is there. After navigating inside EH, only V (or EH's launcher)
@@ -623,6 +696,8 @@ Newest first; one entry per refresh (refresh-majkinetor skill).
 
 ** TODO Join majkinetor's cross-tab request gate (=mbu:mb-gate=)
 
+- *Who fixes it*: *ours* to implement; *upstream* to keep the protocol stable (C6). Ask for that before we depend on it.
+
 - *Why*: on a release page with String Theory, ISRC Scout, PC, MC, Fusion, Fuzzy Logic and EH share one ~1 req/s
   ws/2 schedule across tabs and hold together on a 429/503. SAED (Relationships column, previews, Discogs MB column,
   =_ws2GetJson=) paces per tab and doesn't see their holds. Measured hint: one 503 in a run with EH, none without
@@ -637,6 +712,8 @@ Newest first; one entry per refresh (refresh-majkinetor skill).
   with and without String Theory (=run-perf-comparison=).
 
 ** TODO Findings from the release checks of Mission Control / Platform Check / ISRC Scout
+
+- *Who fixes it*: *ours* (SAED-only analysis; ideas, not code).
 
 Each is one =FINDINGS= entry (=add-finding= skill) that reads source-row data the page already has. No requests.
 
@@ -660,6 +737,8 @@ Each is one =FINDINGS= entry (=add-finding= skill) that reads source-row data th
   barcode) and "Discogs master missing on the RG" (from the RG's url-rels). Only behind a button or setting.
 
 ** TODO Findings from Apollo / Group Therapy / First Contact / Credit Hoarder
+
+- *Who fixes it*: *ours*. If a list or table is worth copying verbatim (=CONFUSABLE=, the format-role lists), ask majkinetor; the repo is GPL-3.
 
 Also =FINDINGS= entries, zero requests, re-implemented from the description (GPL-3 source; see the licence note in
 "Method"):
@@ -688,6 +767,8 @@ Before coding each one, write a real example page into this item, with the click
 
 ** TODO Possible duplicate recordings (Fusion's algorithm, zero requests)
 
+- *Who fixes it*: *ours* (re-implemented from the description). Ask majkinetor if a verbatim port of Fusion's gates is wanted.
+
 - *Where*: artist recordings, release-group recordings, release-tracks — any table with recording rows.
 - *Signals*, all from columns we already load: folded title, artist credit, length, ISRC, AcoustID, live/place
   from the Relationships column.
@@ -703,6 +784,8 @@ Before coding each one, write a real example page into this item, with the click
   artist recordings page against =main= (performance gate) before merging.
 
 ** TODO Discogs pages: credits as MusicBrainz relationships (Credit Hoarder's role map)
+
+- *Who fixes it*: *ours*, but *ask first*: Credit Hoarder's role and instrument maps are data worth taking as they are. Ask majkinetor for permission (MIT in the dist header, GPL-3 at the repo root), and whether he would publish them as a JSON file both scripts read, so fixes to the map reach both.
 
 - *What*: on dg-release / dg-master, give each credit the MB relationship type, target entity kind, attributes and
   level (release/recording/work) it would map to.
@@ -722,6 +805,8 @@ Before coding each one, write a real example page into this item, with the click
 
 ** TODO Query mode for the global filter (Event Horizon's filter language)
 
+- *Who fixes it*: *ours*. Agree on the syntax with majkinetor, so =col:value=, =-x=, =OR= and ranges mean the same in EH and SAED.
+
 - *Grammar* (=tqParse= EH:6659-6698):
   - =column:value=, =-term=, =-(…)=, =OR= / =AND= (capitals only), brackets, quoted phrases;
   - year/date ranges =2022-2024=, =2022-=, =-2024=;
@@ -736,6 +821,8 @@ Before coding each one, write a real example page into this item, with the click
 
 ** TODO Columns: reorder, named column sets, Event Horizon's resize rule
 
+- *Who fixes it*: *ours*.
+
 - Reorder in the visible-columns menu (=openVisibleColumnsMenu()=): drag or arrow keys, Esc reverts, cells move in
   place (=insertBefore=), no re-render (EH =colApply= 3983).
 - Named column sets per pageType: order + hidden + widths, "Default" resets (EH =nmPart/nmKeep= 3973-3976,
@@ -747,6 +834,8 @@ Before coding each one, write a real example page into this item, with the click
 
 ** TODO Stale-while-revalidate for =_mbWsLoad= and =rel-ws2= (Event Horizon's kept answers)
 
+- *Who fixes it*: *ours*. The cross-tab drop epoch could be *shared*: one key that any script sets after a write (EH uses =eh.kept.drop=). Ask whether a common =mbu.kept.drop= would suit him.
+
 - Show a cached answer at once. After the page is in, re-ask each answer older than a TTL, one at a time in the
   background, and repaint only when it changed (EH =kept=/=kpCheck= 3336-3386).
 - Compare canonically: sort the JSON keys first, because MB's key order varies (=kpCanon=). Without it every answer
@@ -757,6 +846,8 @@ Before coding each one, write a real example page into this item, with the click
   and the four post-render cell-write duties (=filter-and-cache-invariants.md=).
 
 ** TODO In-page log window behind =Lib.*= (=mbuLog=) (moved from org/TODO.org)
+
+- *Who fixes it*: *ours* (Lib.*). Optionally ask whether =mbuLog= may be reused as is.
 
 - From "adapt the logging framework and orig page shine through from majkinetor". =mbuLog= is UI:1184-1810 in the
   clone.
@@ -772,6 +863,8 @@ Before coding each one, write a real example page into this item, with the click
 
 ** TODO Hide the native page until our render is ready ("shine through", =#eh-hide=) (moved from org/TODO.org)
 
+- *Who fixes it*: *ours*.
+
 - From the same item. EH injects =body{visibility:hidden!important}= at document-start, prefetches the page's data
   and draws a skeleton (EH:11151, =prefetch= 10858, =skeleton= 10842).
 - *Ours*: SAED is =@run-at document-idle= and renders after a button press, so this applies only where native
@@ -782,6 +875,8 @@ Before coding each one, write a real example page into this item, with the click
   as possible.
 
 ** TODO Entity pictures: more providers, area map with flag badge (moved from org/TODO.org)
+
+- *Who fixes it*: *ours*. Alternative: ask whether EH could expose its =ArtistImage= lookup (e.g. =window.MBU.artistImage=), which needs no second implementation and gives one cache (=mbu:artimg=) for both.
 
 - From "add more feature from majkinetor latest changes": "country image" and "image from discogs".
 - *Artist / label*, when no image/logo url-rel exists: EH's =ArtistImage= (=dev/artimg/artist-image.js= 26-76).
@@ -797,6 +892,8 @@ Before coding each one, write a real example page into this item, with the click
 
 ** TODO Title style: guess-case word lists, title-difference classes
 
+- *Who fixes it*: *ours* (lists only). Ask before copying Apollo's word lists verbatim.
+
 - Extend our lists with Apollo's: =UPPER_CASE_WORDS= 480 (dj, mc, tv, ep, lp, r&b, bpm …), =POSTPROCESS_FIXLIST=
   496 (iTunes, YouTube, TikTok, a cappella, Rock 'n' Roll …), =VERSION_PHRASES= 1452 ("slowed + reverb", "sped
   up", "nightcore" → =_MBTC_ETI=), =camelCase= 1468 (KoRn, OutKast).
@@ -808,6 +905,8 @@ Before coding each one, write a real example page into this item, with the click
 
 ** TODO Links: canonical page keys for =rel-multi-site=; Discogs MusicBrainz column barcode fallback
 
+- *Who fixes it*: *ours*.
+
 - =_findCellRelSiteDupes()= today counts =music.apple.com/us/album/1= and =/gb/album/1= as two pages, and amazon.de
   vs amazon.com product links likewise.
   - Canonical keys: FC =linkKey= 4062 (Apple storefronts, Amazon TLDs, Tidal =/browse=), Falcon =platformPageKey=
@@ -818,6 +917,8 @@ Before coding each one, write a real example page into this item, with the click
   behind a button or setting.
 
 ** TODO Smaller adoptions
+
+- *Who fixes it*: *ours*; for =data-mbu-theme=, *upstream* already provides it.
 
 - =html{scrollbar-gutter:stable}= on our FRPs (EH:2563): a filter that changes the page height then no longer
   shifts the page sideways when the scrollbar comes and goes.
