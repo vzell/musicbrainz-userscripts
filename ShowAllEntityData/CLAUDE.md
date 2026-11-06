@@ -66,6 +66,17 @@ rules for each new one:
   has a host, pageType or reader the registry lacks, or the other way round,
   or when either output is stale.
 
+**majkinetor's scripts (String Theory, Event Horizon, ISRC Scout, …): fix
+interop on the right side.** vzell knows majkinetor, and he fixes
+interoperability issues upstream. For every such fix or feature, decide who
+fixes it: *ours*, *upstream*, or a *shared convention* (a `data-mbu-*` mark
+both sides follow). Write the request into that TODO in `org/majkinetor.org`,
+whose "Working with majkinetor" section holds the conventions and a draft
+message. Keep a defensive fix here when users may run an older String
+Theory. Never post issues or comments on his repo, and never contact him:
+draft it; vzell sends it. vzell installs String Theory from `main`'s raw
+link. Refreshing the analysis: the `refresh-majkinetor` skill.
+
 ## Abbreviations used in prompts
 
 When a prompt uses one of these abbreviations, read it with the full meaning
