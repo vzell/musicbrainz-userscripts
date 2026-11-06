@@ -24,8 +24,9 @@
  *      navigation, Tampermonkey would run it again by itself).
  *   D  EH on at load on an artist page, V at once, SA fetch while EH's
  *      own requests may still run: requests per second and 503s.
- *   I  ISRC Scout alone (--scripts=majkinetor-isrc-scout) on a release with
- *      track links: how its "Links" icons are labelled (title or data-tip)
+ *   I  ISRC Scout alone (--scripts=majkinetor-isrc-scout) or inside the
+ *      bundle (--scripts=majkinetor-string-theory; EH seeded off) on a
+ *      release with track links: how its "Links" icons are labelled (title or data-tip)
  *      on the native page, and whether SA's render gives each icon its
  *      platform name (data-mb-link-platform, _normalizeIsrcScoutLinksTd()).
  *      --url=<release> overrides the release (default ISRC_RELEASE).
@@ -333,7 +334,8 @@ async function runCase(browser, name, entries, urlOverride) {
     if (name === 'I') cfg = { ...RELEASE, url: urlOverride || ISRC_RELEASE };
     const settings = cfg.seedGmValues || {};
     const ehEntries = name === '0' ? [] : entries;
-    const ehOn = name === '0' || name === 'I' ? null : name !== 'B';
+    // Case I starts with EH off (seeded; harmless without EH), so the bundle shows MusicBrainz's page too.
+    const ehOn = name === '0' ? null : (name === 'I' ? false : name !== 'B');
     const { context, page, errors, responses } = await openPage(browser, { url: cfg.url, entries: ehEntries, ehOn, settings });
     const out = { case: name, url: cfg.url, scripts: ehEntries.map((e) => e.id), steps };
     try {

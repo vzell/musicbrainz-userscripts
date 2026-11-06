@@ -53,17 +53,34 @@ analysis covers (the viewer, keys, the dock, the gate, ISRC Scout's columns, tab
 it for step 5. A new member in `members.txt`, or a new script in the README list, needs a new
 Inventory row.
 
-The user may install the **stable** branch rather than `main` (each README links both). If they say
-so, take the scripts from `origin/stable` instead: `git -C debug/majkinetor fetch -q --depth 1 origin stable`,
-then `git -C debug/majkinetor show origin/stable:<path>`, and say which one in "Method".
+**Source = `main`.** vzell installs the String Theory bundle from main's "latest" link:
+https://raw.githubusercontent.com/majkinetor/musicbrainz-userscripts/refs/heads/main/userscripts/string_theory/string_theory.user.js
+— not the `stable` branch, and not the members one by one. So the clone follows `origin/main`. Check that the
+raw link serves what the clone has (raw.githubusercontent.com can lag main by a few minutes):
+
+```
+curl -sS -o <scratchpad>/st-raw.user.js https://raw.githubusercontent.com/majkinetor/musicbrainz-userscripts/refs/heads/main/userscripts/string_theory/string_theory.user.js
+grep -m1 '@version' <scratchpad>/st-raw.user.js debug/majkinetor/userscripts/string_theory/string_theory.user.js
+```
+
+If they differ, wait and re-fetch rather than mixing the two. Tampermonkey updates on its own schedule, so the
+copy in vzell's browser can still be older than `main`. When a probe result is surprising, ask for the
+installed String Theory version (Tampermonkey dashboard), and say which version every result belongs to.
 
 ## 2. Re-copy the three harness scripts
 
-| Clone path                                         | Harness file (`tests/fixtures/live-userscripts/`) | Manifest id                 |
-|----------------------------------------------------|---------------------------------------------------|-----------------------------|
-| `userscripts/event_horizon/event_horizon.user.js`  | `event_horizon.user.js`                           | `majkinetor-event-horizon`  |
-| `userscripts/string_theory/string_theory.user.js`  | `string_theory.user.js`                           | `majkinetor-string-theory`  |
-| `userscripts/isrc_scout/isrc_scout.user.js`        | `ISRC-scout.user.js` (the user's installed name)  | `majkinetor-isrc-scout`     |
+The bundle, `string_theory.user.js`, is what vzell actually runs. The standalone Event Horizon and ISRC Scout
+copies are there to isolate one member in a probe. Take **all three from the same clone commit**: String Theory's
+build rebuilds the bundle on every commit, so at one commit the standalone files are the bundle's members. Check
+it with the member versions in the bundle's `@description` (`… event_horizon <version>, … isrc_scout <version> …`):
+they must equal the standalone copies' `@version`. A mismatch means the bundle wasn't rebuilt at that commit —
+note it in "Method", and treat the bundle as the truth.
+
+| Clone path                                         | Harness file (`tests/fixtures/live-userscripts/`)                   | Manifest id                 |
+|----------------------------------------------------|---------------------------------------------------------------------|-----------------------------|
+| `userscripts/string_theory/string_theory.user.js`  | `string_theory.user.js` (what vzell installs)                       | `majkinetor-string-theory`  |
+| `userscripts/event_horizon/event_horizon.user.js`  | `event_horizon.user.js`                                             | `majkinetor-event-horizon`  |
+| `userscripts/isrc_scout/isrc_scout.user.js`        | `ISRC-scout.user.js` (name from when it was installed on its own) | `majkinetor-isrc-scout`     |
 
 ```
 python3 scripts/check-majkinetor-anchors.py --versions    # harness @version vs clone, before
@@ -71,8 +88,9 @@ cp debug/majkinetor/<clone path> tests/fixtures/live-userscripts/<harness file>
 git check-ignore -v tests/fixtures/live-userscripts/<harness file>   # MUST print the *.user.js rule
 ```
 
-Keep the harness file names: the user re-copies updates from Tampermonkey under them. Copy only the
-ones whose version differs, but re-scan any the user says changed even if the version didn't move.
+Keep the harness file names: other entries and the probe's docs name them. Copy all three whenever the
+commit moved, even if one version did not. A mixed set (an ISRC Scout from a newer commit than the bundle) is
+how the harness drifted on 2026-11-06. Re-scan any the user says changed even if the version didn't move.
 
 ## 3. Re-scan the manifest entries
 
@@ -91,13 +109,17 @@ version inside the bundle. Validate the manifest (throwaway Node script in the s
 
 ## 4. Re-run the coexistence probe (live musicbrainz.org)
 
-Say in one line that it hits musicbrainz.org and roughly how long it takes, then run:
+Say in one line that it hits musicbrainz.org and roughly how long it takes. Then run the bundle first, because
+it is the setup vzell has; the single-member runs only tell which member causes a difference:
 
 ```
-node tests/support/probe-majkinetor-interop.js --cases=0,A,B,C,D --scripts=majkinetor-event-horizon --out=<scratchpad>/probe-eh.json   # ~3 min
 node tests/support/probe-majkinetor-interop.js --cases=A,B,C --scripts=majkinetor-string-theory --out=<scratchpad>/probe-st.json     # ~2.5 min
+node tests/support/probe-majkinetor-interop.js --cases=0,A,B,C,D --scripts=majkinetor-event-horizon --out=<scratchpad>/probe-eh.json   # ~3 min
 node tests/support/probe-majkinetor-interop.js --cases=I --scripts=majkinetor-isrc-scout --out=<scratchpad>/probe-is.json             # ~30 s
 ```
+
+Case I with the bundle (`--cases=I --scripts=majkinetor-string-theory`) is the real-setup check of ISRC Scout's
+Links labels. Run it too when case I changed.
 
 Stamp the run: `TZ=Europe/Berlin date +%FT%T%:z` before and after, `hostname`, `/etc/os-release`,
 `npx playwright --version`, Chromium from the JSON's `chromium` field; "no Tampermonkey (GM stubs)".

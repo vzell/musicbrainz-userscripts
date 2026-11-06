@@ -95,6 +95,10 @@ git -C debug/majkinetor pull            # follow upstream later; re-pin the SHA 
 #+end_src
 
 - Pinned: =326c6a4= (2026-11-06T11:12:03+01:00, "RG lookup only for an enabled Discogs, once per session (#931)").
+- Install source: you install String Theory from =main='s "latest" raw link
+  (https://raw.githubusercontent.com/majkinetor/musicbrainz-userscripts/refs/heads/main/userscripts/string_theory/string_theory.user.js),
+  not =stable=. So the clone follows =main=, and the bundle is the reference setup. The standalone EH and ISRC
+  Scout copies in the harness only isolate one member, and must come from the same commit.
 - =debug/= is gitignored; the clone is 140 MB without images.
 - The code is untrusted: it is only read and grepped, never run with node/npm from inside the clone.
 - For the live probe, =event_horizon.user.js= and =string_theory.user.js= were copied into
@@ -449,6 +453,10 @@ Items 1–4 are the fixes and 5–9 the feature ideas; all of them are TODO item
 
 Newest first; one entry per refresh (refresh-majkinetor skill).
 
+- 2026-11-06 14:46 CET: probe case I with the bundle (ST 2026.11.06.111207, EH seeded off): the same 36/36
+  =data-tip=, 0 platform stamps, so the defect is there in the real setup too. Note: =main='s raw ST is
+  already 2026.11.06.130902, and the harness ISRC Scout (from =1df6193=) is newer than the harness bundle's. Both
+  get fixed by the next refresh, which takes all three from one commit.
 - 2026-11-06 14:11 CET: ISRC Scout only. The harness copy went 2026.10.16.181657 → 2026.11.06.170000 (upstream
   =1df6193=; the clone stays at =326c6a4=). Probe case I added. The =data-tip= defect is now *measured*. Created
   =scripts/majkinetor-anchors.json= (28 anchors, all hold).
