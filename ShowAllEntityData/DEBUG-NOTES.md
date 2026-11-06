@@ -28394,3 +28394,27 @@ Probe: `tests/support/probe-majkinetor-interop.js` with `event_horizon.user.js` 
   `title`, 0 with `data-mb-link-platform` (probe case I). Its release load is now `GM_xmlhttpRequest` behind the
   shared gate, so under plain GM stubs (`run-live-interop.js`) its columns never appear.
 - Requests: one 503 in the artist run with EH (max 4 MB responses/s) vs none alone (max 2/s). One run, suggestive.
+
+## 2026-11-06 — majkinetor refresh: 326c6a4 → 1df6193; the 503s next to SAED are Event Horizon's (docs/majkinetor-analysis)
+
+Env: 2026-11-06T15:04–15:13+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1,
+Chromium 151.0.7922.34 · no Tampermonkey (GM stubs, realNetworkGmXhr) · live musicbrainz.org (IPv4 worked).
+
+First run of the refresh-majkinetor skill. The harness copies are all from upstream `1df6193`: String Theory
+2026.11.06.130902 (its `@description` names EH and ISRC Scout 2026.11.06.170000), plus the standalone EH and ISRC
+Scout 2026.11.06.170000. The raw "latest" link served the same version as the clone.
+
+- `tests/support/probe-majkinetor-interop.js`, every case, with the bundle and alone: every Coexistence row of
+  `org/majkinetor.org` came out as before (hidden bar under EH, dead hover cards after V, `h` leaves the FRP, the
+  C-case reload, ISRC Scout 36/36 `data-tip` with 0 platform stamps).
+- New in the code: EH's and ISRC Scout's ws/2 go through `GM_xmlhttpRequest` (`mbnWsFetch`, User-Agent; EH has a
+  new `@connect musicbrainz.org`). Under realNetworkGmXhr these are answered from Node and were invisible to the
+  probe's page-response counter. The probe now also counts them (`gm-ws2`, via `context.request.get`) and names the
+  throttled requests.
+- Case D, re-run 15:11: three 503s, all on EH's own `release-group?query=arid:…&offset=400` search, retried by
+  its gate; none on SAED's 31 page fetches; at most 4 MB responses/s. The baseline without EH had 0 and at most 2.
+  SAED takes the budget and EH backs off: evidence for the "join the request gate" TODO.
+- `scripts/check-majkinetor-anchors.py`: 34/34 hold; EH lines +101…+153 (updated in the JSON and in the
+  analysis prose).
+- Upstream: vzell's open #839 is the same as our "ISRC Scout columns re-added" TODO. #926's report plan (commit
+  `5549bd8f`) will assess the wiki list, which includes SAED.

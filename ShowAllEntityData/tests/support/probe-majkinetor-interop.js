@@ -158,6 +158,17 @@ async function openPage(browser, { url, entries, ehOn, settings }) {
             responses.push({ t: Date.now(), status: r.status(), url: r.url().replace('https://musicbrainz.org', '').slice(0, 140), type: r.request().resourceType() });
         }
     });
+    // GM_xmlhttpRequest under realNetworkGmXhr is answered from Node (context.request.get), so it never shows up
+    // as a page response. Since 2026-11-06 (1df6193) EH, ISRC Scout and the bundle send their ws/2 that way
+    // (mbnWsFetch); count those as type 'gm', or the request figures miss majkinetor's traffic.
+    const realGet = context.request.get.bind(context.request);
+    context.request.get = async (u, o) => {
+        const r = await realGet(u, o);
+        if (/musicbrainz\.org/.test(u)) {
+            responses.push({ t: Date.now(), status: r.status(), url: String(u).replace(/^https:\/\/[a-z.]*musicbrainz\.org/, '').slice(0, 140), type: 'gm' });
+        }
+        return r;
+    };
     await page.addInitScript({ content: PROBE_GM_EXTRA });
     await injectLiveUserscripts(page, entries);
     if (ehOn !== null) await seedGmValues(page, { view: { on: ehOn } });
@@ -297,9 +308,11 @@ function isrcScoutLinks(page) {
  * Highest number of responses inside any 1-second window, and the 503s.
  *
  * @param {Object[]} responses - from openPage()
- * @returns {{ total: number, maxPerSecond: number, s503: number, byKind: Object }}
+ * @returns {{ total: number, maxPerSecond: number, s503: number, byKind: Object, throttled: string[] }}
  */
-function rateFigures(responses) {
+function rateFigures(list) {
+    // page responses and Node-side GM answers are pushed from two places: order them by time first
+    const responses = [...list].sort((a, b) => a.t - b.t);
     let max = 0;
     for (let i = 0, j = 0; i < responses.length; i++) {
         while (responses[i].t - responses[j].t >= 1000) j++;
@@ -307,10 +320,16 @@ function rateFigures(responses) {
     }
     const byKind = {};
     responses.forEach((r) => {
-        const k = r.url.startsWith('/ws/2') ? 'ws2' : r.url.startsWith('/ws/js') ? 'wsjs' : r.type;
+        const base = r.url.startsWith('/ws/2') ? 'ws2' : r.url.startsWith('/ws/js') ? 'wsjs' : r.type;
+        const k = r.type === 'gm' && base !== 'gm' ? `gm-${base}` : base;
         byKind[k] = (byKind[k] || 0) + 1;
     });
-    return { total: responses.length, maxPerSecond: max, s503: responses.filter((r) => r.status === 503).length, byKind };
+    // which request was throttled tells whose: a page 'fetch' of ?page=N is SA's, a 'gm' ws/2 is majkinetor's gate
+    const throttled = responses.filter((r) => r.status === 503 || r.status === 429);
+    return {
+        total: responses.length, maxPerSecond: max, s503: throttled.filter((r) => r.status === 503).length, byKind,
+        throttled: throttled.map((r) => `${r.status} ${r.type} ${r.url}`),
+    };
 }
 
 /**
