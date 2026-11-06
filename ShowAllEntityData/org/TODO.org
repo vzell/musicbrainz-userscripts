@@ -1839,7 +1839,11 @@ I get
 
 * TODO fix my release-tracks special script
 
-* TODO adapt the logging framework and orig page shine through from majkinetor
+* DONE adapt the logging framework and orig page shine through from majkinetor (moved to org/majkinetor.org)
+
+Moved on 2026-11-06, as two items:
+- [[file:majkinetor.org::*In-page log window behind =Lib.*= (=mbuLog=) (moved from org/TODO.org)][In-page log window behind Lib.* (mbuLog)]]
+- [[file:majkinetor.org::*Hide the native page until our render is ready ("shine through", =#eh-hide=) (moved from org/TODO.org)][Hide the native page until our render is ready ("shine through")]]
 
 
 * TODO add sanojjanos event stuff in a nice popup (cachable)
@@ -5945,9 +5949,19 @@ highlightning, column UVD handling, multi-row cell handling + maybe synthetic co
 function name)
 
 
-* TODO majkinetor: async issues with "ISRC" and "Link" columns on PT 'release-tracks'
-* TODO majkinetor: "Links" column - switch of the native tooltip on the FRP
-* TODO majkinetor: no icons in the lower right corner
+* TODO majkinetor's Musicbrainz Toolset: fixes and features (tracked in org/majkinetor.org)
+
+The analysis of majkinetor's scripts (Event Horizon, String Theory, ISRC Scout, …) and every fix and feature that
+came out of it live in [[file:majkinetor.org][org/majkinetor.org]], one =** TODO= each. These three items, which
+were here, moved there on 2026-11-06:
+- "async issues with "ISRC" and "Link" columns on PT 'release-tracks'" →
+  [[file:majkinetor.org::*ISRC Scout columns re-added bare on our FRP (moved from org/TODO.org, cause found)][ISRC Scout columns re-added bare on our FRP]]
+- ""Links" column - switch of the native tooltip on the FRP" →
+  [[file:majkinetor.org::*ISRC Scout "Links": no =#mbu-tip= over our table (moved from org/TODO.org)][ISRC Scout "Links": no #mbu-tip over our table]]
+- "no icons in the lower right corner" →
+  [[file:majkinetor.org::*Corner launchers over our FRP; our toasts under them (moved from org/TODO.org)][Corner launchers over our FRP; our toasts under them]]
+
+The original notes for the last one stay below: the launchers' markup and the IP/FRP snapshots.
 
 When the third-party userscripts https://github.com/majkinetor/musicbrainz-userscripts (a Musicbrainz Toolset or a
 bundle called "String Theory" which I have installed - see [Image #]) from @majkinetor are active, they render on the MB PTs (IP) by default in the lower right
@@ -5992,9 +6006,13 @@ On every tab, until you switch back.
 Right-click: settings" style="bottom: 14px; right: 14.3999px; left: auto;" aria-label="Apollo Editor is on"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4IiB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCI+Cjx0aXRsZT5BcG9sbG8gRWRpdG9yPC90aXRsZT4KPG1hc2sgaWQ9ImFwLW0iIG1hc2tVbml0cz0idXNlclNwYWNlT25Vc2UiIHg9IjAiIHk9IjAiIHdpZHRoPSIxMjgiIGhlaWdodD0iMTI4Ij48Zz48ZyBmaWxsPSIjZmZmIj48cGF0aCBkPSJNNDIgNjQgQzI4IDcyIDIyIDkwIDI0IDExMCBMNDIgOTggWiIvPjxwYXRoIGQ9Ik04NiA2NCBDMTAwIDcyIDEwNiA5MCAxMDQgMTEwIEw4NiA5OCBaIi8+PC9nPjxnIGZpbGw9IiNmZmYiPjxwYXRoIGQ9Ik02NCA4IEM4NCAyNCA5MCA1MiA4OCA5MCBMNDAgOTAgQzM4IDUyIDQ0IDI0IDY0IDggWiIvPjxwYXRoIGQ9Ik00OCA5MCBMODAgOTAgTDc2IDEwMCBMNTIgMTAwIFoiLz48L2c+PGcgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjMuNSI+PHBhdGggZD0iTTM2IDkwLjUgTDkyIDkwLjUiLz48L2c+PGNpcmNsZSBjeD0iNjQiIGN5PSI1MCIgcj0iOCIgZmlsbD0iIzAwMCIvPjwvZz48L21hc2s+PGc+PHBhdGggZD0iTTUyIDEwMCBDNTQgMTEyIDYwIDExOCA2NCAxMjYgQzY4IDExOCA3NCAxMTIgNzYgMTAwIFoiIGZpbGw9IiNlYjc0M2IiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDAgMykiLz48L2c+PHJlY3Qgd2lkdGg9IjEyOCIgaGVpZ2h0PSIxMjgiIGZpbGw9IiNiYTQ3OGYiIG1hc2s9InVybCgjYXAtbSkiLz4KPC9zdmc+Cg==" alt=""></button>
 #+end_example
 
-* TODO add more feature from majkinetor latest changes
+* DONE add more feature from majkinetor latest changes (moved to org/majkinetor.org)
 ** countrý image
 ** image from discogs
+
+Moved on 2026-11-06 (both sub-items) to
+[[file:majkinetor.org::*Entity pictures: more providers, area map with flag badge (moved from org/TODO.org)][Entity pictures: more providers, area map with flag badge]].
+Every other feature taken from majkinetor's scripts is a =** TODO= in [[file:majkinetor.org][org/majkinetor.org]].
 
 
 * TODO fix MB collection pages when "mb. COLLECTION HIGHLIGHTER" from @jesus2099 is active

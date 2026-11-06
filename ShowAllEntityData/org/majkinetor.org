@@ -107,6 +107,11 @@ the design rules; EH's DEVELOP.md is excellent) → grep the =.user.js=. The sha
 (=dev/net/mb-gate.mjs=, =dev/ui/ui-components.mjs=, =dev/artimg=, =dev/imgmax=, =dev/guesscase=,
 =dev/match=, =dev/mbpage=) and are inlined into every script between =ST-*= marker comments.
 
+To refresh all of this, use the *refresh-majkinetor* skill (=.claude/skills/refresh-majkinetor/SKILL.md=). It
+covers the clone, the three harness copies, the manifest re-scan, the probe, and updating this section and the
+TODOs. The code anchors this analysis rests on are listed in =scripts/majkinetor-anchors.json=;
+=python3 scripts/check-majkinetor-anchors.py --versions= reports which still hold (28/28 at =326c6a4=).
+
 *** Inventory
 
 | Script                       | Size / lines     | @run-at        | @match (short)                                            | What it does                                                                                                 |
@@ -170,7 +175,8 @@ the design rules; EH's DEVELOP.md is excellent) → grep the =.user.js=. The sha
 
 **** Logging — =mbuLog= (UI:1184-1810)
 
-This is most likely what TODO.org:1842 "adapt the logging framework" means.
+This is most likely what the org/TODO.org item "adapt the logging framework and orig page shine through from
+majkinetor" means.
 
 - *Use*: one logger per script, =LOG = mbuLog({name, version, key, history})=.
 - *Levels*: error/warn/info/ok/debug; =LOG.cat()= categories; =LOG.pre= blocks kept as written.
@@ -183,7 +189,7 @@ This is most likely what TODO.org:1842 "adapt the logging framework" means.
 - *Verdict*: *adopt* a ring buffer + viewer behind =Lib.*=, with SAED's debug channels as categories. That lets a
   user send us a log without opening DevTools.
 
-**** "Orig page shine through" (TODO.org:1842)
+**** "Orig page shine through" (the same org/TODO.org item)
 
 Most likely EH's technique for a native page that must not flash:
 
@@ -193,7 +199,9 @@ Most likely EH's technique for a native page that must not flash:
 - It removes the hide in =setOn=, and disables MB's stylesheets while EH shows (=mbSheets=).
 
 SAED runs at document-idle and renders after a button press, so the equivalent would be: hide the native table
-until our render replaces it, for the pageTypes that auto-render. That needs checking against TODO.org:3795/:6336.
+until our render replaces it, for the pageTypes that auto-render. That needs checking against the org/TODO.org notes on the "shine through" effect (under "on 'release-tracks'
+PTs render the front image from the sidebar …" and "make the doubling of the IP information on non-MB PTs shine
+through …").
 
 **** Theme detection — =mbuTheme= (UI:1991)
 
@@ -248,7 +256,7 @@ until our render replaces it, for the pageTypes that auto-render. That needs che
 | Data completeness                                 | =loadArtist= 6209, =loadRg= 4310, =loadLabel= 6241; =lmFoot= 8429, =lmWatch= 8431, =lmMore= 8440                                     | ws/2 browses, =limit=100=. "Load more", batches of 500/1000/2000, or *Auto* via an IntersectionObserver (=rootMargin 800px=). Release counts come from a =release-group?query=arid:= search (max 5 pages)                                                                                                                                                                                                                                                                                                           | =startFetchingProcess=: every native page, threshold dialogs, resume                                                                                                                        | SAED ahead on completeness (confirms 2.)                                                                                                                                                                                       |
 | =kept= answer cache                               | EH:3336-3386; =kpCanon=, =kpCheck=, =kpWrote=                                                                                        | IndexedDB =eh-kept= (800 entries; a 200-entry memory tier; covers stored as Blobs, the 60 newest). A hit draws at once; after the page is in, *each used answer older than 60 s is re-asked one at a time in the background*, and the page is redrawn only if one changed. =kpCanon= sorts JSON keys first, because MB's key order varies between answers. A write sets =localStorage eh.kept.drop=, which voids older entries *in every tab*                                                                       | IDB =vz-mb-saed-art-cache= (=rel-ws2=, =metadata=, …), =vz-saed-detail-pages=, the =_mbWsLoad= cache                                                                                        | *Adopt the pattern* for =_mbWsLoad= and =rel-ws2=: stale-while-revalidate + canonical compare + a cross-tab drop epoch                                                                                                         |
 | Pending edits                                     | =pdRead= 8103, =pdAsk= 8114, =pdPaint= 8143                                                                                          | 2 s delay → tab visible → idle → a background gate slot; =/ws/js/release/<id>?inc=rels+recordings= or =/ws/js/entity/<gid>?inc=rels=; cached 5 min                                                                                                                                                                                                                                                                                                                                                                  | SAED reads native =.mp= and has Pending-edits findings                                                                                                                                      | SAED ahead for list rows. Possible: relationship-level pending via =/ws/js/entity= for release-tracks ARs                                                                                                                      |
-| Entity pictures                                   | =ArtistImage= (=dev/artimg/artist-image.js=, providers 26-76) as =ARTIMG= EH:6168; =areaImages= 6473; =areaClimb= 6293; =flagI= 6314 | Artist/label: Discogs API, Deezer, Spotify/Tidal/SoundCloud =og:image=, Apple (=500x500bb=), Wikipedia/Commons/Wikidata P18, all asked in parallel and shown in the user's order (GM =mbu:artimg=, 30 d for a hit, 7 d for a miss). Area: Wikidata P242 map *with the P41 flag as a badge*, P94/P158/P18. Area chain climbed to an ISO code for =flagcdn.com= flags                                                                                                                                                 | =_eiImagesFrom= (image/logo/poster url-rels, Commons), =_eiWikidataImage= (P18/P154), P41 for subdivisions, the viewer                                                                      | *Enhance SAED*: streaming/Discogs providers as a fallback; the area map with its flag badge ("country image" and "image from discogs" in TODO.org:5995)                                                                        |
+| Entity pictures                                   | =ArtistImage= (=dev/artimg/artist-image.js=, providers 26-76) as =ARTIMG= EH:6168; =areaImages= 6473; =areaClimb= 6293; =flagI= 6314 | Artist/label: Discogs API, Deezer, Spotify/Tidal/SoundCloud =og:image=, Apple (=500x500bb=), Wikipedia/Commons/Wikidata P18, all asked in parallel and shown in the user's order (GM =mbu:artimg=, 30 d for a hit, 7 d for a miss). Area: Wikidata P242 map *with the P41 flag as a badge*, P94/P158/P18. Area chain climbed to an ISO code for =flagcdn.com= flags                                                                                                                                                 | =_eiImagesFrom= (image/logo/poster url-rels, Commons), =_eiWikidataImage= (P18/P154), P41 for subdivisions, the viewer                                                                      | *Enhance SAED*: streaming/Discogs providers as a fallback; the area map with its flag badge ("country image" and "image from discogs" in org/TODO.org)                                                                        |
 | Keyboard                                          | =KEY_CMDS= 11029-11047; listener 11104-11114                                                                                         | Bare keys O E R C H T D A V S P . , plus Ctrl+H, Ctrl+L, Ctrl+/. A *document* keydown in the *bubble* phase, installed *also when EH is off*. Guards: input/textarea/select/contentEditable, =defaultPrevented=, repeat. Rebindable in the Ctrl+/ palette                                                                                                                                                                                                                                                           | =initKeyboardShortcuts= (Ctrl+letter); its typing guard checks only INPUT/TEXTAREA                                                                                                          | See pitfalls; *enhance SAED*: add select/contentEditable to the guard and honour =defaultPrevented=                                                                                                                            |
 | Global CSS                                        | =html{scrollbar-gutter:stable}= EH:2563 inside =#eh-css=                                                                             | Disabled while EH is off (*measured*: =auto= after V)                                                                                                                                                                                                                                                                                                                                                                                                                                                               | none                                                                                                                                                                                        | *Adopt* =scrollbar-gutter:stable= on FRPs (filtering changes the page height, so the page jumps sideways)                                                                                                                      |
 | Idle-mutation guards                              | =mbuCls=/=mbuAttr=/=mbuProp= (UI:1949-1973, #569)                                                                                    | Skip DOM writes that change nothing, so observers don't fire                                                                                                                                                                                                                                                                                                                                                                                                                                                        | —                                                                                                                                                                                           | *Adopt* in SAED's observer-heavy paths (perf: fewer MutationObserver wake-ups, our own and other scripts')                                                                                                                     |
@@ -411,7 +419,7 @@ Answers to your three questions:
 
 *** Recommendations
 
-Items 1–4 are the fixes and are TODO items below (=** TODO …=). The feature ideas 5–9 are not TODO items yet.
+Items 1–4 are the fixes and 5–9 the feature ideas; all of them are TODO items below (=** TODO …=).
 
 1. *Fix (bug)*: =_isrcScoutLinkPlatform()= reads =title || data-tip=; refresh the harness copy of IS; add a fixture
    from the new markup (=add-finding= / fixture spec).
@@ -436,6 +444,15 @@ Items 1–4 are the fixes and are TODO items below (=** TODO …=). The feature 
 9. *Smaller*: named column sets with reordering, =scrollbar-gutter:stable= on FRPs, a =mbuLog=-style log window,
    =mbuTheme= detection, imgmax rules for non-CAA images, Wayback links, entity-picture providers and area flag
    badges.
+
+*** Refresh log
+
+Newest first; one entry per refresh (refresh-majkinetor skill).
+
+- 2026-11-06 14:11 CET: ISRC Scout only. The harness copy went 2026.10.16.181657 → 2026.11.06.170000 (upstream
+  =1df6193=; the clone stays at =326c6a4=). Probe case I added. The =data-tip= defect is now *measured*. Created
+  =scripts/majkinetor-anchors.json= (28 anchors, all hold).
+- 2026-11-06 11:14–11:30 CET: initial analysis at =326c6a4=, probe cases 0/A/B/C/D (EH) and A/B/C (ST).
 
 ** DONE refresh the harness copy of ISRC Scout
 
@@ -473,7 +490,7 @@ Items 1–4 are the fixes and are TODO items below (=** TODO …=). The feature 
 - *Docs*: =docs/claude/release-tracks-and-length.md:861= ("from its =title=") and the ISRC Scout paragraph in
   =docs/claude/uniq-dropdown.md=.
 
-** TODO ISRC Scout "Links": no =#mbu-tip= over our table (old TODO.org:5949, rephrased)
+** TODO ISRC Scout "Links": no =#mbu-tip= over our table (moved from org/TODO.org)
 
 - *Symptom*: hovering an icon in SAED's "Links" column shows ISRC Scout's own tip, =#mbu-tip=, beside or over our
   hover card. The old TODO called it the native tooltip; there is no native tooltip any more. =#mbu-tip= is a
@@ -485,7 +502,7 @@ Items 1–4 are the fixes and are TODO items below (=** TODO …=). The feature 
 - *Pre-test*: same page as above, FRP rendered; hover a Links icon.
   - Prediction: a dark ISRC Scout tip with "Deezer\nhttps://…", possibly overlapping our card.
 
-** TODO ISRC Scout columns re-added bare on our FRP (old TODO.org:5948, cause found)
+** TODO ISRC Scout columns re-added bare on our FRP (moved from org/TODO.org, cause found)
 
 - *Cause*:
   - =showTrackData()= (IS:10021) removes *every* =.ii-col= in the document and refills.
@@ -568,7 +585,7 @@ Items 1–4 are the fixes and are TODO items below (=** TODO …=). The feature 
   - EH installed; visit another page and come back (so there is a "forward"); FRP; press Ctrl+L. Prediction: our
     load dialog *and* a forward navigation.
 
-** TODO Corner launchers over our FRP; our toasts under them (old TODO.org:5950)
+** TODO Corner launchers over our FRP; our toasts under them (moved from org/TODO.org)
 
 - *Measured*: with String Theory on a release page there are eight =[data-mb-corner]= launchers (Falcon, Fusion,
   MC, the dock, EH, ISRC Scout, Fuzzy Logic, PC) in the bottom right corner, over the FRP. Our toasts (Relationships,
@@ -610,5 +627,202 @@ Items 1–4 are the fixes and are TODO items below (=** TODO …=). The feature 
   the 503/Retry-After shape, and check the licence (GPL-3) before copying code — re-implementing the documented
   protocol is the clean path. This touches the fetch path, not filter/sort/render, but measure fetch wall clock
   with and without String Theory (=run-perf-comparison=).
+
+** TODO Findings from the release checks of Mission Control / Platform Check / ISRC Scout
+
+Each is one =FINDINGS= entry (=add-finding= skill) that reads source-row data the page already has. No requests.
+
+| Finding                                                          | Level   | Source (idea only)               | Reads                         | Where it shows                                         |
+|------------------------------------------------------------------+---------+----------------------------------+-------------------------------+--------------------------------------------------------|
+| Release has no barcode (an empty cell, distinct from =[none]=)   | warning | PC =pcMcBarcodeFindings= 10449   | Barcode column                | release lists (artist/label/RG releases, series, tags) |
+| All-zero barcode (=000000000000=; its check digit adds up, #919) | error   | PC =pcBarcodeOf= 9933            | =_parseBarcodeCode()=         | same                                                   |
+| Label without a catalog number                                   | warning | PC =pcFoundCatnos= 9796          | Label + Cat# columns          | release lists, release-tracks head                     |
+| Release without a release event (no date and no country)         | warning | MC =cmpFinish= 5068-5090         | Date/Country columns          | release lists                                          |
+| Track without a length                                           | warning | MC 5094-5100                     | Length column                 | release-tracks                                         |
+| Recording without an ISRC                                        | info?   | IS =updateBtnStatus= 9904        | ISRC column (needs it loaded) | release-tracks, artist recordings                      |
+| One ISRC on two different recordings of the release              | error   | IS =highlightDuplicates= 8155    | ISRC + recording MBID         | release-tracks                                         |
+
+- *Pre-test* (pick real examples first; write them in here before coding, per finding):
+  - all-zero: search MB for =barcode:000000000000=;
+  - shared ISRC: a release where two tracks show the same ISRC;
+  - no length: any release with a "?:??" track.
+- *Perf*: cell findings run in =stampFindings()= over source rows. They are O(rows), and the shared-ISRC one needs a
+  per-render map ISRC → recording MBIDs.
+- *Optional, costs requests*: "barcode already on another MB release" (PC =pcBarcodeOnMb= 9692, one search per
+  barcode) and "Discogs master missing on the RG" (from the RG's url-rels). Only behind a button or setting.
+
+** TODO Findings from Apollo / Group Therapy / First Contact / Credit Hoarder
+
+Also =FINDINGS= entries, zero requests, re-implemented from the description (GPL-3 source; see the licence note in
+"Method"):
+
+- *Invisible or look-alike characters*, double/leading/trailing spaces in names and titles:
+  - Apollo =CONFUSABLE= 1687-1705 (NBSP, narrow NBSP, thin/en/em/ideographic space, ZWSP/ZWNJ/ZWJ, BOM, soft
+    hyphen, dash look-alikes, primes, quotes; with Unicode names for the tooltip) and =entNameHl= 15354;
+  - SAED today: =title-typography= (ASCII → typographic only).
+- *Join-phrase spacing* in artist credits: Apollo =joinNeed= 11799; CJK credits exempt.
+- *Relationship role that doesn't fit the format*: GT =FORMAT_EXCLUDE_DEFAULT= 3756. Examples: a Digital Media
+  release with "lacquer cut by" or "glass mastered at"; lacquer cut → vinyl only. Reads the Format column + the
+  Relationships column.
+- *Primary type looks wrong* for N tracks / M minutes (FC =guessReleaseType= 270), and *credited to one artist but
+  looks like a VA compilation* (FC =variousArtistsWhy= 374: track artists on fewer than half the tracks and ≥5 of
+  them).
+- *Title names a remixer, no remixer relationship* (CH =src/derive/remix.js=: =TRAILING_RE=, =BY_RE=, the
+  =STRONG=/=WEAK= descriptor sets). Needs the Relationships column.
+- *℗/© notice in the annotation that no relationship has* (GT =txpParseCopyrightLine= 6800, compound split 6919;
+  kellnerd's year rule). The same parser serves Discogs release notes and companies.
+- *Medley title with fewer linked works than " / " parts* (GT "Medleys"; AC/DC stays whole): extends SAED's
+  =no-work= finding.
+- Constant: the special-purpose artist MBIDs (Apollo =MBM_SPECIAL_PURPOSE= 293), so none of these flags Various
+  Artists / [unknown].
+
+Before coding each one, write a real example page into this item, with the clicks and the predicted result.
+
+** TODO Possible duplicate recordings (Fusion's algorithm, zero requests)
+
+- *Where*: artist recordings, release-group recordings, release-tracks — any table with recording rows.
+- *Signals*, all from columns we already load: folded title, artist credit, length, ISRC, AcoustID, live/place
+  from the Relationships column.
+- *Logic to re-implement*:
+  - =normName= 351; =titleAlike= 390 (token overlap ≥ 0.6 or fuzzy ≥ 0.85);
+  - =titleDistinctWords= 404: "Dwell I" ≠ "Dwell IV"; qualifiers such as mix/edit/version/remaster are ignored;
+  - =isrcConflict= 419: same registrant and year, none shared → different;
+  - =recordingSetting= / =placeConflict= 430/444: live vs studio, different place or date;
+  - =shouldUnion= 462: gates first, then ISRC/AcoustID, then strict/normal/loose;
+  - =gatedUnionFind= 1015: the gates hold for the whole merged group.
+- *Output*: a finding "possible duplicate of row N" plus 📊 entries "duplicate group N".
+- *Perf*: all pairs is O(N²). Bucket by folded-title prefix (or the first token) first; measure on the Springsteen
+  artist recordings page against =main= (performance gate) before merging.
+
+** TODO Discogs pages: credits as MusicBrainz relationships (Credit Hoarder's role map)
+
+- *What*: on dg-release / dg-master, give each credit the MB relationship type, target entity kind, attributes and
+  level (release/recording/work) it would map to.
+- *How*:
+  - adds a 📊 section "MB relationship type" and an "unmapped Discogs role" finding;
+  - =_dgRoleColumn()='s buckets can then derive from the link type.
+- *Source*:
+  - CH =src/data/entity-map.js= (374 roles), =src/data/instruments.js= (677);
+  - =getArtistRoles= =src/mappers.js:186= (bracket modifiers → attributes, =BRACKET_REFINES=, Drum Programming,
+    "A1 to A4" ranges, DJ-mix and artwork hoisting);
+  - =src/data/work-only-rels.js= (what belongs on the work).
+  - Take CH's map, not Discogs Credits' older one.
+- *Licence*: the CH dist header says MIT, the repo root GPL-3. Check which applies before taking the data tables;
+  ask majkinetor if unclear.
+- *Also*: =splitCreditName= (=src/split-credit.js:21=, "George & Ira Gershwin" → two Gershwins) for per-person
+  counts; CH =fuzzyMax= / =stripInitials= for a near-duplicate-name finding.
+
+** TODO Query mode for the global filter (Event Horizon's filter language)
+
+- *Grammar* (=tqParse= EH:6659-6698):
+  - =column:value=, =-term=, =-(…)=, =OR= / =AND= (capitals only), brackets, quoted phrases;
+  - year/date ranges =2022-2024=, =2022-=, =-2024=;
+  - column keys match by prefix of the folded header;
+  - tolerant of half-typed input.
+- *Ours*: an opt-in mode of the GF (a toggle beside Cc/Rx/Ex). Keys map to =_cleanColHeaderText()= headers, and
+  leaves reuse our clean cell text and the Cc/Rx flags. Compile *once per filter pass* into a closure tree. EH
+  re-parses per row; don't copy that.
+- *Perf gate*: filter wall clock on artist-releasegroups and artist-events against =main= (=run-perf-comparison=);
+  the narrowing cache (=_filterResultCache=) must keep working.
+- *Docs*: =docs/claude/filter-and-cache-invariants.md= (which boxes govern which query) and HELP.
+
+** TODO Columns: reorder, named column sets, Event Horizon's resize rule
+
+- Reorder in the visible-columns menu (=openVisibleColumnsMenu()=): drag or arrow keys, Esc reverts, cells move in
+  place (=insertBefore=), no re-render (EH =colApply= 3983).
+- Named column sets per pageType: order + hidden + widths, "Default" resets (EH =nmPart/nmKeep= 3973-3976,
+  =S.named['cols-*']=).
+- Resize rule: the room comes from the neighbours, never below a column's measured content width (EH =colWire=
+  8156-8286, =least()=); double-click a grip to fit (compare with our 📐).
+- *Mind*: the multi-table clones (=cloneNode= re-wiring list in CLAUDE.md "Common pitfalls"), =stickyColumn=,
+  =moveColumnFirst=, and saved-to-disk layouts.
+
+** TODO Stale-while-revalidate for =_mbWsLoad= and =rel-ws2= (Event Horizon's kept answers)
+
+- Show a cached answer at once. After the page is in, re-ask each answer older than a TTL, one at a time in the
+  background, and repaint only when it changed (EH =kept=/=kpCheck= 3336-3386).
+- Compare canonically: sort the JSON keys first, because MB's key order varies (=kpCanon=). Without it every answer
+  looks changed.
+- A cross-tab drop epoch: any SAED write (none today, but voting or tag actions later) or a manual "refresh" sets
+  =localStorage= =sa.kept.drop=, and entries older than it are misses.
+- *Mind*: only a SUCCESSFUL ws/2 answer is cached (=fetch-and-render-pipeline.md=), the Relationships load states
+  and the four post-render cell-write duties (=filter-and-cache-invariants.md=).
+
+** TODO In-page log window behind =Lib.*= (=mbuLog=) (moved from org/TODO.org)
+
+- From "adapt the logging framework and orig page shine through from majkinetor". =mbuLog= is UI:1184-1810 in the
+  clone.
+- *What it has*: a ring buffer (20,000 lines) and a floating window with text, level and category filters, Clear,
+  full screen and *Copy as Markdown*. Sessions are kept in localStorage (the last 10), automatically at the first
+  warning or error.
+- *Ours*: =Lib.debug(channel, …)= channels become categories, and a toolbar entry (☰ SAED → help/log group) opens
+  the window. A user can send us a log without DevTools.
+- *Where*: VZ_MBLibrary (=lib/VZ_MBLibrary.user.js:217-271=) is shared with the other projects, so decide whether
+  this lives in the library (a library version bump) or in SAED.
+- *Mind*: 846 =Lib.debug(= call sites. The buffer must cost nothing while debug logging is off (no string building
+  on the hot path).
+
+** TODO Hide the native page until our render is ready ("shine through", =#eh-hide=) (moved from org/TODO.org)
+
+- From the same item. EH injects =body{visibility:hidden!important}= at document-start, prefetches the page's data
+  and draws a skeleton (EH:11151, =prefetch= 10858, =skeleton= 10842).
+- *Ours*: SAED is =@run-at document-idle= and renders after a button press, so this applies only where native
+  content shows and then is replaced. Collect those pageTypes first from the org/TODO.org "shine through" notes
+  (under "on 'release-tracks' PTs render the front image …" and "make the doubling of the IP information on non-MB
+  PTs shine through …").
+- An =@run-at= change is a big step (TDZ, library load order). Prefer a narrowly scoped CSS hide injected as early
+  as possible.
+
+** TODO Entity pictures: more providers, area map with flag badge (moved from org/TODO.org)
+
+- From "add more feature from majkinetor latest changes": "country image" and "image from discogs".
+- *Artist / label*, when no image/logo url-rel exists: EH's =ArtistImage= (=dev/artimg/artist-image.js= 26-76).
+  - Providers: Discogs API =images= (primary first); Deezer =picture_big= (placeholder rejected); Spotify, Tidal and
+    SoundCloud =og:image=; Apple =og:image= → =500x500bb=; Wikipedia → Commons/Wikidata P18.
+  - Caching: hits 30 days, misses 7 days, failures not cached.
+  - Ours today: =_eiImagesFrom()=, =_eiWikidataImage()=.
+- *Area*: Wikidata P242 locator map with the P41 flag as a badge, then P94, P158 and P18, by preferred rank and
+  skipping deprecated (EH =areaImages= 6473). The area chain is climbed to an ISO 3166-1 code for inline flags
+  (=areaClimb= 6293, =flagI= 6314 with =flagcdn.com=).
+- *Mind*: external requests are =anonymous= and first contact is on Space, never on hover (detail-pages.md); a new
+  host needs =@connect=.
+
+** TODO Title style: guess-case word lists, title-difference classes
+
+- Extend our lists with Apollo's: =UPPER_CASE_WORDS= 480 (dj, mc, tv, ep, lp, r&b, bpm …), =POSTPROCESS_FIXLIST=
+  496 (iTunes, YouTube, TikTok, a cappella, Rock 'n' Roll …), =VERSION_PHRASES= 1452 ("slowed + reverb", "sped
+  up", "nightcore" → =_MBTC_ETI=), =camelCase= 1468 (KoRn, OutKast).
+- Skip mostly Cyrillic/Greek/Armenian titles explicitly (=isCasedOther= 1506).
+- Keep our length-preserving =_mbTitleCase()= (=foreign-title-case.md=): judge a list change with
+  =node scripts/check-mb-title-case.js --sample=.
+- =title-mismatch=: classify the difference — case only / punctuation only / ≤N edits / real — with =recFold= +
+  =recLev= (Apollo 11481-11605), and show an LCS =charDiff= (11668) in the finding's compare box.
+
+** TODO Links: canonical page keys for =rel-multi-site=; Discogs MusicBrainz column barcode fallback
+
+- =_findCellRelSiteDupes()= today counts =music.apple.com/us/album/1= and =/gb/album/1= as two pages, and amazon.de
+  vs amazon.com product links likewise.
+  - Canonical keys: FC =linkKey= 4062 (Apple storefronts, Amazon TLDs, Tidal =/browse=), Falcon =platformPageKey=
+    5460 (Qobuz locales, Apple/Deezer artist and label pages), IS =normalizeProviderUrl= 6507.
+  - Report "same page linked twice in other forms" separately from "two pages on one site".
+- Discogs MB column: when =/ws/2/url= finds nothing, fall back to a barcode query plus FC's =sameAlbum= check
+  (barcode, format kind and track count agree where both are known). Costs one search request per such release:
+  behind a button or setting.
+
+** TODO Smaller adoptions
+
+- =html{scrollbar-gutter:stable}= on our FRPs (EH:2563): a filter that changes the page height then no longer
+  shifts the page sideways when the scrollbar comes and goes.
+- Theme detection like =mbuTheme= (UI:1991), or read =<html data-mbu-theme>= when String Theory is present.
+- Image maximiser rules for non-CAA images in the viewer, previews and foreign pages (AS =ImageMaximizer=
+  2420-2881: mzstatic, dzcdn, scdn, bcbits, Tidal, Qobuz, Amazon …; =PLACEHOLDERS= for empty covers).
+- Read-only Wayback "latest / calendar" links in preview cards and the Relationships column (Apollo
+  =archiveMenuItems= 14060).
+- Idle-mutation guards (=mbuCls=/=mbuAttr=/=mbuProp=, UI:1949-1973): skip DOM writes that change nothing, so our
+  own and other scripts' MutationObservers wake less.
+- Optional: settings sync (String Theory's WebDAV with ETag/412 merge and an allowlist of what syncs).
+- Optional: relationship-level pending edits from =/ws/js/entity/<gid>?inc=rels= (EH =pdAsk=) for the release-tracks
+  AR columns.
+- Optional: a read-only RG credit matrix, role × release with format badges (GT =openConsolidate=).
 
 
