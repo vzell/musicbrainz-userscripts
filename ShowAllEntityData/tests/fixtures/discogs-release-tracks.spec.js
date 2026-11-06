@@ -222,7 +222,7 @@ test.describe('Discogs release: the Tracks view, as release-tracks (2026-11-04)'
         await expect(sec).toHaveAttribute('data-mb-art-state', 'ok');
         // Chips from Discogs' own types; no Spreads for another site's pictures.
         await expect(sec.locator('.mb-release-art-chip')).toHaveText(['All 5', 'Primary 1', 'Secondary 4']);
-        await expect(sec.locator('[data-mb-art-layout]')).toHaveText(['Grid', 'By type']);
+        await expect(sec.locator('[data-mb-art-layout]')).toHaveText(['Grid', 'By type', 'Table']);
         // The primary starred; the site's URLs kept as they are, no referrer, the picture card.
         const first = sec.locator('figure.mb-release-art-tile').first();
         await expect(first.locator('.mb-release-art-star')).toHaveText('★ primary');

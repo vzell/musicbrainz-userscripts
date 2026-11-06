@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.5",
+    "date": "2026-11-06",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Picture sections (a release's Cover art, an event's Event art, and the pictures on other sites' detail pages): a Table layout lists the pictures one per row (#, picture, type, comment, ★ / ⏳, file name, and the copy on a springsteenlyrics item), sortable by any column; the viewer then steps through the rows in that order.",
+          "Picture sections: a filter box narrows the pictures as you type (by type, comment or file name) in every layout, says how many are shown and highlights what it found; a Tiles slider makes the thumbnails bigger or smaller (remembered; ↺ takes them back to the original size); Show missing turns a springsteenlyrics copy's \"no scans yet\" box on and off."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.4",
     "date": "2026-11-06",
     "sections": [

@@ -121,8 +121,8 @@
         "why": "A foreign page's layout must not change the release page's Cover art layout, and the other way round.",
         "edits": [
             {
-                "find": "            title: () => spec.title || '', layouts: ['grid', 'grouped'], layoutKey: MB_FD_ART_LAYOUT_KEY,",
-                "replace": "            title: () => spec.title || '', layouts: ['grid', 'grouped'], layoutKey: MB_RELEASE_ART_LAYOUT_KEY,"
+                "find": "            title: () => spec.title || '', layouts: ['grid', 'grouped', 'table'], layoutKey: MB_FD_ART_LAYOUT_KEY,",
+                "replace": "            title: () => spec.title || '', layouts: ['grid', 'grouped', 'table'], layoutKey: MB_RELEASE_ART_LAYOUT_KEY,"
             }
         ],
         "spec": "tests/fixtures/discogs-release-tracks.spec.js",
@@ -251,8 +251,8 @@
         "why": "A placeholder shows with no chip pressed or with its own group's; copy #2's chip must hide copy #1's placeholder.",
         "edits": [
             {
-                "find": "        const missing = _artPlaceholders(desc).filter(p => !active.length || active.includes(p.group));",
-                "replace": "        const missing = _artPlaceholders(desc);"
+                "find": "            : _artPlaceholders(desc).filter(p => !active.length || active.includes(p.group));",
+                "replace": "            : _artPlaceholders(desc);"
             }
         ],
         "spec": "tests/fixtures/sl-item.spec.js",
@@ -388,5 +388,187 @@
         "spec": "tests/fixtures/event-overview-art.spec.js",
         "grep": "the event's own chips",
         "expect": "pass"
+    },
+    {
+        "name": "P4a: the Table layout is a table.tbl",
+        "why": "vzell's decision: a plain table inside the section; as table.tbl it would join the global filter, the findings and every render pass.",
+        "edits": [
+            {
+                "find": "        table.className = 'mb-release-art-table';",
+                "replace": "        table.className = 'mb-release-art-table tbl';"
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+        "grep": "Table: one row per picture",
+        "expect": "fail"
+    },
+    {
+        "name": "P4a: a second click on a heading does not reverse the order",
+        "why": "The sort direction comes from data-mb-art-sort; fixed at 1, descending never happens.",
+        "edits": [
+            {
+                "find": "        const dir = sortDir === '-1' ? -1 : 1;",
+                "replace": "        const dir = 1;"
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+        "grep": "Table: one row per picture",
+        "expect": "fail"
+    },
+    {
+        "name": "P4a: the viewer ignores the table's rows",
+        "why": "In Table the viewer steps through the rows in their sorted order; without tr[data-mb-art-i] it has nothing to step through.",
+        "edits": [
+            {
+                "find": "        return Array.from(sec.querySelectorAll('figure.mb-release-art-tile, tr[data-mb-art-i]')).map(f => Number(f.dataset.mbArtI));",
+                "replace": "        return Array.from(sec.querySelectorAll('figure.mb-release-art-tile')).map(f => Number(f.dataset.mbArtI));"
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+        "grep": "Table: one row per picture",
+        "expect": "fail"
+    },
+    {
+        "name": "P4a: a table row's picture has no hover card",
+        "why": "A row's picture carries the tile's own card.",
+        "edits": [
+            {
+                "find": "                    if (!images[i].external) a.dataset.mbtt = _releaseArtTipHtml(images, i);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+        "grep": "Table: one row per picture",
+        "expect": "fail"
+    },
+    {
+        "name": "P4a: the filter box filters nothing",
+        "why": "The text filter narrows the shown indices in every layout.",
+        "edits": [
+            {
+                "find": "        const keep = i => !query || _artSearchText(desc, images[i]).includes(query);",
+                "replace": "        const keep = () => true;"
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+        "grep": "the filter box narrows",
+        "expect": "fail"
+    },
+    {
+        "name": "P4a: typing in the filter box loses focus after the first letter",
+        "why": "The box is rebuilt with the toolbar on every letter; without focusing the new one the next letters go nowhere.",
+        "edits": [
+            {
+                "find": "                again.focus();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+        "grep": "the filter box narrows",
+        "expect": "fail"
+    },
+    {
+        "name": "P4a: the Tiles slider does not resize",
+        "why": "The slider writes --mb-art-sec-tile, which the grid's minmax() reads.",
+        "edits": [
+            {
+                "find": "            sec.style.setProperty('--mb-art-sec-tile', `${t.value}px`);\n            if (e.type === 'change') {",
+                "replace": "            if (e.type === 'change') {"
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+        "grep": "the Tiles slider",
+        "expect": "fail"
+    },
+    {
+        "name": "P4a: the tile size is not remembered",
+        "why": "Let go, the slider stores its value under MB_ART_SEC_TILE_KEY.",
+        "edits": [
+            {
+                "find": "                try { GM_setValue(MB_ART_SEC_TILE_KEY, Number(t.value)); } catch (_) { /* storage blocked: this page only */ }",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+        "grep": "the Tiles slider",
+        "expect": "fail"
+    },
+    {
+        "name": "P4a: Show missing off still shows the placeholders",
+        "why": "data-mb-art-missing-off hides them in every layout.",
+        "edits": [
+            {
+                "find": "        const missing = q || sec.dataset.mbArtMissingOff === '1' ? []",
+                "replace": "        const missing = q ? []"
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "image section P4a",
+        "expect": "fail"
+    },
+    {
+        "name": "P4a: the filter's matches are not highlighted",
+        "why": "vzell 2026-11-06: the filter's text is marked wherever it shows; every render goes through _artHighlight().",
+        "edits": [
+            {
+                "find": "        _artHighlight(sec, _releaseArtQuery(sec));\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "the filter's text is highlighted",
+        "expect": "fail"
+    },
+    {
+        "name": "P4a: the table's cells are not highlighted",
+        "why": "In Table the match shows in the cells, the File column too.",
+        "edits": [
+            {
+                "find": "            'table.mb-release-art-table td, .mb-release-art-missing').forEach((el) => {",
+                "replace": "            '.mb-release-art-missing').forEach((el) => {"
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "the filter's text is highlighted",
+        "expect": "fail"
+    },
+    {
+        "name": "P4a: the ↺ does not forget the stored size",
+        "why": "Back to the original size means the key is gone, so the next page opens at 120 px too.",
+        "edits": [
+            {
+                "find": "            try { GM_deleteValue(MB_ART_SEC_TILE_KEY); } catch (_) { /* storage blocked: this page only */ }\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+        "grep": "↺ appears once a size is set",
+        "expect": "fail"
+    },
+    {
+        "name": "P4a: the ↺ leaves this section's size as it was",
+        "why": "The custom property on the section must go too, or the tiles stay big until a reload.",
+        "edits": [
+            {
+                "find": "            sec.style.removeProperty('--mb-art-sec-tile');\n            _releaseArtRenderSheet(sec);\n            return;",
+                "replace": "            _releaseArtRenderSheet(sec);\n            return;"
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+        "grep": "↺ appears once a size is set",
+        "expect": "fail"
+    },
+    {
+        "name": "P4a: the ↺ only appears after a reload",
+        "why": "Let go, the slider shows its ↺ at once.",
+        "edits": [
+            {
+                "find": "                if (reset) reset.hidden = false;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+        "grep": "↺ appears once a size is set",
+        "expect": "fail"
     }
 ]

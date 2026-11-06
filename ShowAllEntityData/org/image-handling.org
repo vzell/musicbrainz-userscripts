@@ -409,5 +409,122 @@ Medium thumbs off MusicBrainz: a disc's or record's own pictures in its sub-tabl
   spec passed 21 of 21 (=--repeat-each 3=). Trace kept in the session's scratchpad.
   vzell's live check passed.
 
-Next, P4: the table view (a plain table inside the section), tile size, Show missing; the
-viewer's Adjust, Compare, Loupe, Copy URL and key help.
+Committed =f09e63ef=, pushed.
+
+P4 split in two stacked branches: P4a the section's views, P4b the viewer's tools.
+
+** P4a (2026-11-06, branch =feature/image-section-p4a=, stacked on P3, WIP.5)
+
+The section's views, on every adapter (MusicBrainz Cover art and Event art, the foreign heads):
+
+- Table (=_releaseArtRenderTable()=): =table.mb-release-art-table=, never =table.tbl=
+  (vzell's decision). #, Picture (the tile's own link: =_releaseArtBuildTile()=), Type, Copy (with
+  =groupOf=), Comment, Flags (★ main / primary, ⏳ pending), File (=_artFileName()=); a heading
+  sorts, again reverses; the viewer follows the rows' order; placeholders are rows of their own.
+- Filter box (=data-mb-art-q=, =_artSearchText()=): every layout, "k of N shown", the caret kept
+  across the toolbar's rebuild; "No picture matches." when nothing does.
+- Tiles slider (=MB_ART_SEC_TILE_KEY=, =--mb-art-sec-tile=, 80–240, one for every section);
+  Show missing (=data-mb-art-missing-off=), only with placeholders.
+- Specs: three "image section P4a" tests in =release-tracks-cover-art-viewer.spec.js= (MusicBrainz:
+  Table and sort, the filter, the slider), one in =sl-item.spec.js= (5472: Copy column, the
+  placeholder row, Show missing); three layout-list assertions gained "Table".
+  =image-section.json= 39 entries, the 9 new ones as expected; six entries repointed (one each in
+  =ctrl-hover-art-multiselect=, =release-tracks-cover-art-p3=, two in =event-overview=, two of
+  =image-section='s own), all six as expected.
+
+Next, P4b: the viewer's Adjust, Compare, Loupe, Copy URL and key help.
+
+
+* enhancements
+
+1.)
+
+when filtering and the filter string is a visible string highlight it
+
+2.)
+
+the "Tiles" slider should have a way to reset to the original size
+
+** Answer (2026-11-06, on =feature/image-section-p4a=, part of WIP.5)
+
+Everything else in P4a passed vzell's live check; its first =test:full= (before these two):
+2736 passed (NB-3641, 2026-11-06T09:02:59 → 09:21:03+01:00).
+
+1. =_artHighlight(sec, q)=: =_releaseArtRenderSheet()= is now a wrapper — the body moved to
+   =_releaseArtBuildSheet()= — that marks the filter's matches after every render, in the tiles'
+   types and comments, the group headings, the table's cells (the File column too) and a
+   placeholder's text, case-insensitively, as =mark.mb-release-art-hl=. Text nodes are split, so
+   a caption's =textContent= stays the same. Spec =sl-item.spec.js= "the filter's text is
+   highlighted" (5472, "sc" as in vzell's screenshot, "co" in "Copy #2 × 3", "5472_02" in Table).
+2. ↺ beside the slider (=.mb-release-art-size-reset=): shown while a size is stored and as soon
+   as the slider is let go; it deletes =MB_ART_SEC_TILE_KEY= and the section's
+   =--mb-art-sec-tile=. Spec =release-tracks-cover-art-viewer.spec.js= "↺ appears".
+
+Mutation list =image-section.json=: 5 more (44), all as expected; every find of every art list
+still resolves exactly once.
+
+=test:full= on NB-3641 (2026-11-06T09:23:54 → 09:41:45+01:00): 2738 passed. vzell's live check
+of both passed; P4a committed and pushed.
+
+* MB question regarding reload glyph
+** q
+
+1.)
+
+everything tested live, OK
+
+2.)
+
+MB question regarding reload glyphs on image icons when the image backend (in this case the EAA) is not reachable, seems
+to be tempoarily down lately sometimes. I though our code than offers kind of a reload glyph, is that right because the
+screenshot only shows the standard browser broken glyph when an image is not available
+
+** a
+
+The ⟳ you remember exists, but only in one of the two places that show these images:
+
+- The CAA/EAA column in tables: yes. When a row's icon image fails to load, it gets a ⚠⟳ above its count badge, and a click retries it (_artLoadIcon()'s _onIconError).
+- The Cover art / Event art section on a release or event page: only partly. It shows "⟳ Retry" when the archive's record (the JSON listing the images) can't be fetched, but nothing when the record arrives and then the image files themselves fail.
+
+Your screenshot is the second case:
+- The record came through, which is why the chips read "Poster 2, Banner 1" and the tiles exist.
+- The thumbnail downloads from archive.org/download/…_thumb250.jpg / _thumb500.jpg then timed out (net::ERR_CONNECTION_TIMED_OUT, 12 of them).
+- The tile code doesn't watch for a failed image load, so you get the browser's broken-image glyph plus the alt text ("Poster", "Banner"). The tile keeps its square shape, but there's no retry.
+
+The other places these images appear have no retry either:
+- Medium thumbs in the h3s: a failed image shows the same broken glyph.
+- Inline thumbnails: a failed image leaves an empty spacer.
+- Link-preview cards: a failed image is removed.
+
+I can't tell from the screenshot which code draws the broken picture next to the h1, so I won't guess about that one.
+
+Proposed fix: a failed tile shows a dashed "didn't load — ⟳" box instead of the broken glyph, and clicking ⟳ reloads that image. The tool row gets one "⟳ Reload N failed" button. It would apply to every picture section (MusicBrainz and the other sites) and to the medium thumbs. It also comes with a regression test that serves a timing-out image, and planted defects.
+
+Should it be its own small branch on top of P4a (fix-first), or folded into P4b (the viewer tools)? I'd do it on its own, before P4b: it's a fix for a problem you're seeing now, and it's easier to check live on its own.
+
+✻ Cogitated for 36s · done 9:37 AM · 1 shell still running
+
+❯ and what about non-MB sites regarding backends not available temporarily
+
+Checking the non-MB paths in code too: FICE (the table cells), its records' failure handling, the viewer, and the link-preview window:
+
+  Searched for 2 patterns, ran 3 shell commands
+
+The same split applies off MusicBrainz: there's a retry when a site's record can't be read, but not when the image files themselves fail.
+
+- Detail-page picture sections (SL items, Discogs Tracks views, IA items): these are the shared section since P1. Their image lists come from the page or record already loaded, so there's no record that can fail later. Only the image files can fail (springsteenlyrics.com, i.discogs.com, archive.org), and then you get the same broken glyph as on MusicBrainz, with no retry.
+  - IA is a special case: if archive.org is down, the item's own record fails first, so the Show all tracks button's fetch fails before any picture is shown.
+- FICE (picture cells in tables: SL Cover, JL Art, BS Photo, BB Media, DG Image, IA Art):
+  - A record that can't be read shows a note, "Could not read … (reason)", with Try again in the card and the viewer.
+  - The table-wide 🖼 gallery offers "Retry N failed".
+  - A failed thumbnail inside the card, though, just shows broken.
+- The viewer, everywhere: it tries the large image's sizes one after another. If all fail it keeps the thumbnail and notes "the large image could not be loaded", but there's no button to try again. If the thumbnail itself failed, the stage is broken too.
+- Link previews: the hover card silently drops an image that fails. In the Space window I haven't checked image failures beyond the record-level "Try again".
+
+So the fix I proposed covers the non-MB sites too: those sections share the section code, so a ⟳ there helps SL, Discogs and IA as well. I'd extend it to the gaps this check found:
+1. Section tiles and medium thumbs (MusicBrainz and the three sites): a failed picture becomes a dashed "didn't load — ⟳" box, and the tool row gets "⟳ Reload N failed".
+2. Viewer: the "could not be loaded" note gets a ⟳ that tries the large image again, and the stage stops showing a broken glyph when the thumbnail fails.
+3. FICE card thumbnails: a ⟳ instead of a broken glyph. Lower priority: the card is short-lived, and its record-level Try again already exists.
+
+On its own branch on top of P4a, before P4b. Shall I go ahead with all three, or only 1 and 2?
+

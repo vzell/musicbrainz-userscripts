@@ -472,8 +472,8 @@
     "why": "Spreads is release packaging; the event layouts are Grid and By type.",
     "edits": [
       {
-        "find": "                layouts: ['grid', 'grouped'], layoutKey: MB_EVENT_ART_LAYOUT_KEY",
-        "replace": "                layouts: ['grid', 'grouped', 'spreads'], layoutKey: MB_EVENT_ART_LAYOUT_KEY"
+        "find": "                layouts: ['grid', 'grouped', 'table'], layoutKey: MB_EVENT_ART_LAYOUT_KEY",
+        "replace": "                layouts: ['grid', 'grouped', 'spreads', 'table'], layoutKey: MB_EVENT_ART_LAYOUT_KEY"
       }
     ],
     "spec": "tests/fixtures/event-overview-art.spec.js",
@@ -485,8 +485,8 @@
     "why": "An event's types have nothing in common with a release's; its layout is remembered on its own.",
     "edits": [
       {
-        "find": "                layouts: ['grid', 'grouped'], layoutKey: MB_EVENT_ART_LAYOUT_KEY",
-        "replace": "                layouts: ['grid', 'grouped'], layoutKey: MB_RELEASE_ART_LAYOUT_KEY"
+        "find": "                layouts: ['grid', 'grouped', 'table'], layoutKey: MB_EVENT_ART_LAYOUT_KEY",
+        "replace": "                layouts: ['grid', 'grouped', 'table'], layoutKey: MB_RELEASE_ART_LAYOUT_KEY"
       }
     ],
     "spec": "tests/fixtures/event-overview-art.spec.js",

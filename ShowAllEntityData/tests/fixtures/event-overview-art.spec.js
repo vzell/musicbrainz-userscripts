@@ -175,7 +175,7 @@ test.describe('pageType event-overview: the Event art section (WIP.3)', () => {
         await settled(page, 'ok');
         let f = await sectionFacts(page);
         expect(f.chips).toEqual(['All 15', 'Poster 7', 'Merchandise 1', 'Schedule 9', 'Banner 3', 'Setlist 1', 'Ticket 2', 'Map 1']);
-        expect(f.layouts).toEqual(['grid', 'grouped']);
+        expect(f.layouts).toEqual(['grid', 'grouped', 'table']); // Table since image section P4a
         await page.click('.mb-release-art-sec [data-mb-art-filter="Schedule"]');
         expect((await sectionFacts(page)).tiles).toHaveLength(9);
         await page.click('.mb-release-art-sec [data-mb-art-layout="grouped"]');
@@ -185,7 +185,7 @@ test.describe('pageType event-overview: the Event art section (WIP.3)', () => {
         }));
         expect(keys).toEqual({ event: 'grouped', release: null });
         f = await sectionFacts(page);
-        expect(f.layouts).toEqual(['grid', 'grouped']);
+        expect(f.layouts).toEqual(['grid', 'grouped', 'table']);
     });
 
     test('"no images" and "could not be reached" name the Event Art Archive; retry asks again', async ({ page }) => {

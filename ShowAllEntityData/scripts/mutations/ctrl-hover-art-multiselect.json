@@ -134,8 +134,8 @@
         "why": "_releaseArtViewerOrder() must read the same selection as the render; reading none, the Spreads viewer would step through every image.",
         "edits": [
             {
-                "find": "                _releaseArtShownIndices(images, _releaseArtActiveTypes(sec), desc));",
-                "replace": "                _releaseArtShownIndices(images, [], desc));"
+                "find": "                _releaseArtShownIndices(images, _releaseArtActiveTypes(sec), desc, _releaseArtQuery(sec)));",
+                "replace": "                _releaseArtShownIndices(images, [], desc, _releaseArtQuery(sec)));"
             }
         ],
         "spec": "tests/fixtures/release-tracks-cover-art-spreads.spec.js",

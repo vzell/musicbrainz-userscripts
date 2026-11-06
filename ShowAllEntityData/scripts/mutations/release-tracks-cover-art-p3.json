@@ -4,7 +4,7 @@
     "why": "The tile's plain left click is the main way in; without the handler the link opens the 1200 px image in a new tab instead.",
     "edits": [
       {
-        "find": "        const tileLink = e.target.closest('figure.mb-release-art-tile > a');",
+        "find": "        const tileLink = e.target.closest('figure.mb-release-art-tile > a, a.mb-release-art-row-link');",
         "replace": "        const tileLink = null;"
       }
     ],

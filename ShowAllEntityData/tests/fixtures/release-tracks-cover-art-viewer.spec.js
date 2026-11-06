@@ -292,3 +292,107 @@ test.describe('release-tracks Cover art viewer (P3)', () => {
         expect(hits(), 'only the section\'s own record request').toBe(1);
     });
 });
+
+// org/image-handling.org P4a: the section's Table layout (a plain table inside
+// the section, vzell's decision: never table.tbl), its filter box and the
+// Tiles slider — on MusicBrainz's Cover art, the same code as every site's.
+test.describe('art section views (image section P4a)', () => {
+    const SEC = '.mb-release-art-sec';
+
+    test('Table: one row per picture, not a table.tbl; a heading sorts both ways; the viewer steps the rows in that order', async ({ page }) => {
+        await openRelease(page);
+        await page.click(`${SEC} [data-mb-art-layout="table"]`);
+        const table = page.locator(`${SEC} table.mb-release-art-table`);
+        await expect(table).toBeVisible();
+        expect(await table.evaluate(t => t.classList.contains('tbl')), 'never one of the page\'s data tables').toBe(false);
+        await expect(table.locator('thead th')).toHaveText(['#', 'Picture', 'Type', 'Comment', 'Flags', 'File']);
+        await expect(table.locator('tbody tr[data-mb-art-i]')).toHaveCount(16);
+        await expect(table.locator('tbody tr').first().locator('td').nth(4)).toHaveText('★ main');
+        expect(await page.evaluate(() => window.GM_getValue('mb_sa_release_art_layout', null))).toBe('table');
+
+        const typeCol = () => table.locator('tbody tr').evaluateAll(rs => rs.map(r => r.cells[2].textContent));
+        const sorted = (xs, dir) => xs.slice().sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }) * dir);
+        await table.locator('th', { hasText: 'Type' }).click();
+        await expect(table.locator('th', { hasText: 'Type' })).toHaveAttribute('aria-sort', 'ascending');
+        let types = await typeCol();
+        expect(types).toEqual(sorted(types, 1));
+        await table.locator('th', { hasText: 'Type' }).click();
+        await expect(table.locator('th', { hasText: 'Type' })).toHaveAttribute('aria-sort', 'descending');
+        types = await typeCol();
+        expect(types).toEqual(sorted(types, -1));
+
+        // The third row's picture opens the viewer at position 3 of the sorted rows.
+        const rowIdx = Number(await table.locator('tbody tr').nth(2).getAttribute('data-mb-art-i'));
+        expect(rowIdx, 'sorted, row 3 is not archive picture 3, so "3 / 16" can only mean the rows\' order').not.toBe(2);
+        await table.locator('tbody tr').nth(2).locator('a.mb-release-art-row-link').click();
+        let v = await viewer(page);
+        expect(v.pos).toBe('3 / 16');
+        await page.keyboard.press('Escape');
+        // The row link carries the tile's own card.
+        expect(await table.locator('tbody tr').nth(2).locator('a.mb-release-art-row-link').getAttribute('data-mbtt')).toContain(`${rowIdx + 1} of 16`);
+    });
+
+    test('the filter box narrows every layout as you type, keeps the caret, says "k of N", and the viewer steps only what it leaves', async ({ page }) => {
+        await openRelease(page);
+        const q = page.locator(`${SEC} input.mb-release-art-q`);
+        await q.click();
+        await q.pressSequentially('lin');
+        await expect(page.locator(`${SEC} input.mb-release-art-q`)).toBeFocused();
+        await expect(page.locator(`${SEC} input.mb-release-art-q`)).toHaveValue('lin');
+        await page.keyboard.type('er');
+        await expect(page.locator(`${SEC} input.mb-release-art-q`)).toHaveValue('liner');
+        const tiles = page.locator(`${SEC} figure.mb-release-art-tile`);
+        const n = await tiles.count();
+        expect(n).toBeGreaterThan(0);
+        expect(n).toBeLessThan(16);
+        for (const t of await tiles.locator('.mb-release-art-types').allTextContents()) expect(t).toMatch(/Liner/);
+        await expect(page.locator(`${SEC} .mb-release-art-shown`)).toHaveText(`${n} of 16 shown`);
+        await tiles.first().locator('a').click();
+        expect((await viewer(page)).pos).toBe(`1 / ${n}`);
+        await page.keyboard.press('Escape');
+        // Nothing matches: a note instead of an empty sheet.
+        await page.locator(`${SEC} input.mb-release-art-q`).fill('no-such-picture');
+        await expect(page.locator(`${SEC} .mb-release-art-empty`)).toHaveText('No picture matches.');
+        await page.locator(`${SEC} input.mb-release-art-q`).fill('');
+        await expect(tiles).toHaveCount(16);
+        await expect(page.locator(`${SEC} .mb-release-art-shown`)).toHaveCount(0);
+    });
+
+    test('the Tiles slider resizes the grid live and is remembered when let go', async ({ page }) => {
+        await openRelease(page);
+        const w0 = await page.locator(`${SEC} figure.mb-release-art-tile`).first().evaluate(f => f.getBoundingClientRect().width);
+        await page.locator(`${SEC} .mb-release-art-size input`).evaluate((r) => {
+            r.value = '220';
+            r.dispatchEvent(new Event('input', { bubbles: true }));
+            r.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+        expect(await page.locator(SEC).evaluate(s => s.style.getPropertyValue('--mb-art-sec-tile'))).toBe('220px');
+        const w1 = await page.locator(`${SEC} figure.mb-release-art-tile`).first().evaluate(f => f.getBoundingClientRect().width);
+        expect(w1).toBeGreaterThan(w0);
+        expect(await page.evaluate(() => window.GM_getValue('mb_sa_art_sec_tile', null))).toBe(220);
+        // Table has no tiles, so no slider.
+        await page.click(`${SEC} [data-mb-art-layout="table"]`);
+        await expect(page.locator(`${SEC} .mb-release-art-size`)).toHaveCount(0);
+    });
+
+    // vzell, 2026-11-06: "the Tiles slider should have a way to reset to the original size".
+    test('the Tiles slider\'s ↺ appears once a size is set and takes the tiles back to the original size, forgetting it', async ({ page }) => {
+        await openRelease(page);
+        const reset = page.locator(`${SEC} .mb-release-art-size-reset`);
+        await expect(reset, 'nothing to reset at the original size').toBeHidden();
+        const w0 = await page.locator(`${SEC} figure.mb-release-art-tile`).first().evaluate(f => f.getBoundingClientRect().width);
+        await page.locator(`${SEC} .mb-release-art-size input`).evaluate((r) => {
+            r.value = '220';
+            r.dispatchEvent(new Event('input', { bubbles: true }));
+            r.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+        await expect(reset).toBeVisible();
+        await reset.click();
+        expect(await page.evaluate(() => window.GM_getValue('mb_sa_art_sec_tile', null)), 'the stored size is forgotten').toBeNull();
+        expect(await page.locator(SEC).evaluate(s => s.style.getPropertyValue('--mb-art-sec-tile'))).toBe('');
+        const w1 = await page.locator(`${SEC} figure.mb-release-art-tile`).first().evaluate(f => f.getBoundingClientRect().width);
+        expect(Math.abs(w1 - w0)).toBeLessThan(1);
+        await expect(page.locator(`${SEC} .mb-release-art-size input`)).toHaveValue('120');
+        await expect(reset).toBeHidden();
+    });
+});

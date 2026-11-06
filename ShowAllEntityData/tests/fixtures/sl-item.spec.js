@@ -168,7 +168,7 @@ test.describe('springsteenlyrics.com item pages (sl-*-item)', () => {
         await expect(sec).toHaveCount(1);
         await expect(sec.locator('figure.mb-release-art-tile')).toHaveCount(4);
         await expect(sec.locator('.mb-release-art-chip')).toHaveText(['All 4', 'Copy #1 2', 'Copy #2 2']);
-        await expect(sec.locator('[data-mb-art-layout]')).toHaveText(['Grid', 'By copy']);
+        await expect(sec.locator('[data-mb-art-layout]')).toHaveText(['Grid', 'By copy', 'Table']);
         await expect(sec.locator('.mb-release-art-missing')).toHaveCount(0);
         // One viewer steps across the copies (two sections had two viewers).
         await sec.locator('figure.mb-release-art-tile > a').nth(2).click();
@@ -207,6 +207,62 @@ test.describe('springsteenlyrics.com item pages (sl-*-item)', () => {
         await sec.locator('figure.mb-release-art-tile > a').first().click();
         await expect(page.locator('#mb-art-viewer .mb-artv-pos')).toHaveText('1 / 3');
         expect(errors).toEqual([]);
+    });
+
+    test('collection 5472: Table has a Copy column and a row for the copy without scans; Show missing hides it everywhere (image section P4a)', async ({ page }) => {
+        const { errors } = await open(page, 'collection-5472');
+        await show(page);
+        const sec = page.locator('.mb-fd-head .mb-release-art-sec');
+        await sec.locator('[data-mb-art-layout="table"]').click();
+        const table = sec.locator('table.mb-release-art-table');
+        await expect(table.locator('thead th')).toHaveText(['#', 'Picture', 'Type', 'Copy', 'Comment', 'Flags', 'File']);
+        await expect(table.locator('tbody tr[data-mb-art-i]')).toHaveCount(3);
+        const missingRow = table.locator('tbody tr.mb-release-art-missing-row');
+        await expect(missingRow).toHaveCount(1);
+        await expect(missingRow.locator('td').nth(3)).toHaveText('Copy #1');
+        await expect(missingRow.locator('td').nth(4)).toHaveText('No scans available yet');
+        await expect(table.locator('tbody tr[data-mb-art-i]').first().locator('td').nth(6)).toHaveText('5472_01.jpg');
+        // Show missing off: no placeholder row, nor tile back in Grid.
+        await sec.locator('.mb-release-art-miss input').uncheck();
+        await expect(missingRow).toHaveCount(0);
+        await sec.locator('[data-mb-art-layout="grid"]').click();
+        await expect(sec.locator('.mb-release-art-missing')).toHaveCount(0);
+        await expect(sec.locator('.mb-release-art-miss input')).not.toBeChecked();
+        await sec.locator('.mb-release-art-miss input').check();
+        await expect(sec.locator('.mb-release-art-missing')).toHaveCount(1);
+        // A row's picture opens the viewer with the fd-pic card's picture.
+        await sec.locator('[data-mb-art-layout="table"]').click();
+        await expect(table.locator('a.mb-release-art-row-link').first()).toHaveAttribute('data-mbtt-fn', 'fd-pic');
+        await table.locator('a.mb-release-art-row-link').nth(1).click();
+        await expect(page.locator('#mb-art-viewer .mb-artv-pos')).toHaveText('2 / 3');
+        expect(errors).toEqual([]);
+    });
+
+    // vzell, 2026-11-06 (his screenshot: "sc" typed on this page): what the
+    // filter matches is marked wherever it shows, and nowhere else.
+    test('collection 5472: the filter\'s text is highlighted where it shows — types, group headings, table cells (image section P4a)', async ({ page }) => {
+        await open(page, 'collection-5472');
+        await show(page);
+        const sec = page.locator('.mb-fd-head .mb-release-art-sec');
+        await sec.locator('[data-mb-art-layout="grouped"]').click();
+        await sec.locator('input.mb-release-art-q').fill('sc');
+        const marks = sec.locator('mark.mb-release-art-hl');
+        // "Sc" in each of the three "Scan" captions, nothing else.
+        await expect(sec.locator('.mb-release-art-types mark.mb-release-art-hl')).toHaveText(['Sc', 'Sc', 'Sc']);
+        await expect(marks).toHaveCount(3);
+        // The mark splits the text node only: the caption reads as before.
+        await expect(sec.locator('.mb-release-art-types').first()).toHaveText('Scan');
+        // "co" in the group heading "Copy #2 × 3".
+        await sec.locator('input.mb-release-art-q').fill('co');
+        await expect(sec.locator('.mb-release-art-group-hdr mark.mb-release-art-hl')).toHaveText(['Co']);
+        // Table: the File column's match is marked too.
+        await sec.locator('[data-mb-art-layout="table"]').click();
+        await sec.locator('input.mb-release-art-q').fill('5472_02');
+        await expect(sec.locator('table.mb-release-art-table tbody tr[data-mb-art-i]')).toHaveCount(1);
+        await expect(sec.locator('table.mb-release-art-table td mark.mb-release-art-hl')).toHaveText(['5472_02']);
+        // No filter, no marks.
+        await sec.locator('input.mb-release-art-q').fill('');
+        await expect(marks).toHaveCount(0);
     });
 
     test('collection 9685 (various artists): an Artist column', async ({ page }) => {

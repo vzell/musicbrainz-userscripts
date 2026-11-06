@@ -379,6 +379,39 @@ never from a hard-coded `CAA_CTX`. Rules that come with that:
   thumb's card (`_releaseArtTipHtml()`) shows the picture itself, no
   referrer, no Ctrl link. Specs: `ia-details.spec.js` and `sl-item.spec.js`
   "image section P3"; mutation list `image-section.json`.
+- **The section's views (P4a, 2026-11-06)**, on every adapter:
+  - **Table** (`_releaseArtRenderTable()`): **`table.mb-release-art-table`,
+    never `table.tbl`** (vzell's decision: the global filter, the sub-table
+    filters, the findings and every render pass must not see it). One
+    `tr[data-mb-art-i]` per picture shown; its picture is the tile's own
+    link (`a.mb-release-art-row-link`, built by `_releaseArtBuildTile()`:
+    same URLs, referrer, card); a Copy/Group column when the adapter has
+    `groupOf`; a placeholder is `tr.mb-release-art-missing-row`, never
+    `[data-mb-art-i]`. A heading sorts (`data-mb-art-sort` "key:±1" on the
+    section). `_releaseArtViewerOrder()` reads `figure.mb-release-art-tile,
+    tr[data-mb-art-i]` in DOM order, so the viewer follows the sort, and
+    `_fdPicCardHtml()` counts row links too.
+  - **The filter box** (`data-mb-art-q`): `_releaseArtShownIndices()`'s
+    fourth argument, so it narrows every layout and the Spreads plan;
+    `_artSearchText()` = types, comment, group, `_artFileName()`. The box is
+    rebuilt with the toolbar on each letter: `_releaseArtOnInput()` refocuses
+    the new one and puts the caret back — drop that and typing stops after
+    one letter. Placeholders hide while a filter is typed. Its matches are
+    marked (`mark.mb-release-art-hl`, vzell 2026-11-06) by `_artHighlight()`,
+    which `_releaseArtRenderSheet()` runs after `_releaseArtBuildSheet()` (the
+    body), so every re-render marks again; it splits text nodes only, so a
+    caption's `textContent` (and the specs reading it) stays the same.
+  - **Tiles** (`MB_ART_SEC_TILE_KEY`, workspace group `artsectile`, 80–240,
+    unset = the stylesheet's 120 px): the grid's `minmax()` reads
+    `--mb-art-sec-tile`, set live on `input`, stored on `change`. **Not
+    `--mb-art-tile`**: that one is the CAA cell grid's, on `<html>`. Its ↺
+    (`.mb-release-art-size-reset`, shown while a size is stored or once the
+    slider is let go) deletes the key and the section's custom property.
+  - **Show missing** (`data-mb-art-missing-off`), only with placeholders.
+  - The section's `input`/`change` listeners are on the section
+    (`_artSectionCreate()`), like its click: never cloned.
+  Specs: `release-tracks-cover-art-viewer.spec.js` and `sl-item.spec.js`
+  "image section P4a"; mutation list `image-section.json` (39 entries).
 - **One record, one cache.** `_artFetchEntityImages(ctx, entityPath)` is the
   table-free copy of `_artEnrichIcon()`'s three tiers with the same 404 vs
   429/5xx bookkeeping, so the section and the CAA column share

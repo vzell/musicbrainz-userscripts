@@ -23329,7 +23329,7 @@
         const desc = {
             key, ctx: _FD_ART_CTX, pageType: (activeDefinition && activeDefinition.type) || '',
             setting: null, tabSetting: null, label: title, archiveName: spec.source || 'this page', what: 'page',
-            title: () => spec.title || '', layouts: ['grid', 'grouped'], layoutKey: MB_FD_ART_LAYOUT_KEY,
+            title: () => spec.title || '', layouts: ['grid', 'grouped', 'table'], layoutKey: MB_FD_ART_LAYOUT_KEY,
             secClass: 'mb-fd-art', tab: false, retry: null,
             images: sec => _FD_ART_CTX.imagesCache.get(sec.dataset.mbArtEntity) || [],
             // P3: the page's Medium pictures go into its disc/record headings,
@@ -23375,7 +23375,7 @@
         // By type spreads them over several grids), and its caption as the
         // tile's image names it: "Front · Cover", type and comment.
         const sec = a.closest('.mb-release-art-sec');
-        const tiles = sec ? Array.from(sec.querySelectorAll('figure.mb-release-art-tile > a')) : [a];
+        const tiles = sec ? Array.from(sec.querySelectorAll('figure.mb-release-art-tile > a, a.mb-release-art-row-link')) : [a];
         const img0 = a.querySelector('img');
         const thumb = (img0 || {}).src || a.href;
         const cap = ((img0 && img0.alt) || '').trim();
@@ -109065,6 +109065,15 @@ a { color: #1565c0; }`;
     const MB_FD_ART_LAYOUT_KEY = 'mb_sa_fd_art_layout';
 
     /**
+     * GM storage key for the art sections' tile size in px (the Tiles
+     * slider, org/image-handling.org P4a): one for every section, MusicBrainz
+     * and the other sites alike, because it is a viewing preference, not a
+     * kind of data. Unset (and anything outside 80–240) is the stylesheet's
+     * 120 px. Same TDZ placement as the keys above.
+     */
+    const MB_ART_SEC_TILE_KEY = 'mb_sa_art_sec_tile';
+
+    /**
      * GM storage key for the artwork viewer's remembered zoom level (a number
      * from 1 to `_ART_VIEWER_ZOOM_MAX`), written only while
      * `sa_art_viewer_remember_zoom` is on. Runtime UI state like the layout
@@ -140496,6 +140505,11 @@ a { color: #1565c0; }`;
             keys: [MB_FD_ART_LAYOUT_KEY],
         },
         {
+            group: 'artsectile',
+            label: 'Picture sections: tile size',
+            keys: [MB_ART_SEC_TILE_KEY],
+        },
+        {
             group: 'artviewer',
             label: 'Artwork viewer zoom level and background, CAA/EAA cell layout and gallery window',
             keys: [MB_ART_VIEWER_ZOOM_KEY, MB_ART_VIEWER_BG_KEY, MB_ART_CELL_LAYOUT_KEY, MB_ART_GALLERY_GEO_KEY],
@@ -157918,7 +157932,7 @@ a { color: #1565c0; }`;
                 anchor: () => document.querySelector('h2.tracklist'),
                 label: 'Cover art', archiveName: 'Cover Art Archive', what: 'release',
                 titleSel: '.releaseheader h1, #content h1',
-                layouts: ['grid', 'grouped', 'spreads'], layoutKey: MB_RELEASE_ART_LAYOUT_KEY,
+                layouts: ['grid', 'grouped', 'spreads', 'table'], layoutKey: MB_RELEASE_ART_LAYOUT_KEY,
                 // Medium art (R7): MusicBrainz's "1 - CD" headings, behind its two settings.
                 mediaOf: () => _releaseArtMedia(),
                 mediumOn: () => !!(Lib.settings.sa_enable_release_tracks_cover_art &&
@@ -157936,7 +157950,7 @@ a { color: #1565c0; }`;
                               document.querySelector('#content h2.setlist'),
                 label: 'Event art', archiveName: 'Event Art Archive', what: 'event',
                 titleSel: '.eventheader h1, #content h1',
-                layouts: ['grid', 'grouped'], layoutKey: MB_EVENT_ART_LAYOUT_KEY
+                layouts: ['grid', 'grouped', 'table'], layoutKey: MB_EVENT_ART_LAYOUT_KEY
             });
         }
         return _artSectionAdapters().get(key) || null;
@@ -158035,7 +158049,7 @@ a { color: #1565c0; }`;
             .mb-release-art-retry { margin-left: 6px; cursor: pointer; }
             .mb-release-art-grid {
                 display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+                grid-template-columns: repeat(auto-fill, minmax(var(--mb-art-sec-tile, 120px), 1fr));
                 gap: 10px;
             }
             .mb-release-art-tile {
@@ -158203,6 +158217,56 @@ a { color: #1565c0; }`;
             }
             .mb-release-art-missing figcaption { font-size: 11px; line-height: 1.3; font-weight: bold; }
             .mb-release-art-chip.mb-release-art-chip-empty { border-style: dashed; color: #777; }
+            /* P4a: the second tool row, the Table layout. */
+            .mb-release-art-tools-more { margin-top: -4px; font-size: 11px; color: #555; }
+            .mb-release-art-q {
+                font-size: 11px;
+                padding: 1px 6px;
+                width: 15em;
+                max-width: 100%;
+                border: 1px solid #ccc;
+                border-radius: 3px;
+            }
+            .mb-release-art-size, .mb-release-art-miss { display: inline-flex; gap: 4px; align-items: center; cursor: pointer; }
+            .mb-release-art-size input { width: 90px; }
+            .mb-release-art-size-reset {
+                border: 1px solid #ccc;
+                border-radius: 3px;
+                background: #fff;
+                color: #444;
+                font-size: 11px;
+                line-height: 1.2;
+                padding: 0 5px;
+                cursor: pointer;
+            }
+            mark.mb-release-art-hl { background: #ffe066; color: inherit; padding: 0; }
+            .mb-release-art-shown { color: #666; font-variant-numeric: tabular-nums; }
+            .mb-release-art-empty { color: #666; font-style: italic; margin: 4px 0; }
+            .mb-release-art-tablewrap { overflow-x: auto; max-width: calc(100vw - 32px); }
+            table.mb-release-art-table { border-collapse: collapse; font-size: 12px; }
+            table.mb-release-art-table th {
+                text-align: left;
+                background: #eee;
+                padding: 3px 8px;
+                border-bottom: 1px solid #ccc;
+                white-space: nowrap;
+            }
+            table.mb-release-art-table th[data-mb-art-sort] { cursor: pointer; user-select: none; }
+            table.mb-release-art-table th[aria-sort="ascending"]::after { content: " \\25B2"; font-size: 9px; }
+            table.mb-release-art-table th[aria-sort="descending"]::after { content: " \\25BC"; font-size: 9px; }
+            table.mb-release-art-table td { padding: 2px 8px; border-bottom: 1px solid #eee; vertical-align: middle; }
+            table.mb-release-art-table td.mb-release-art-num { text-align: right; font-variant-numeric: tabular-nums; }
+            a.mb-release-art-row-link {
+                display: block;
+                width: 48px;
+                height: 48px;
+                border: 1px solid #ddd;
+                background: #f4f4f4;
+                box-sizing: border-box;
+                cursor: zoom-in;
+            }
+            a.mb-release-art-row-link img { display: block; width: 100%; height: 100%; object-fit: contain; }
+            tr.mb-release-art-missing-row td { color: #8a4a4a; font-style: italic; }
         `);
         style.id = 'mb-release-art-style';
     }
@@ -158525,24 +158589,79 @@ a { color: #1565c0; }`;
     /**
      * The indices the chip filter leaves, in archive order: every image when
      * no type is selected, else each image carrying ANY selected type (an
-     * untyped image counts as "(no type)"), once.
+     * untyped image counts as "(no type)"), once. With a text filter (P4a,
+     * the section's filter box), only the images whose types, comment, group
+     * or file name contain it, case-insensitively.
      *
      * @param   {Object[]} images The release's archive images.
      * @param   {string[]} types  The selected chips, empty for all.
      * @param   {Object}   [desc] The section's adapter (`chipsOf`); without it, the types.
+     * @param   {string}   [q]    The text filter; empty for none.
      * @returns {number[]}
      */
-    function _releaseArtShownIndices(images, types, desc) {
+    function _releaseArtShownIndices(images, types, desc, q) {
         const want = new Set(types);
-        return images.map((im, i) => i)
+        const query = String(q || '').trim().toLowerCase();
+        const keep = i => !query || _artSearchText(desc, images[i]).includes(query);
+        return images.map((im, i) => i).filter(keep)
             .filter(i => !want.size || _artChipsOf(desc, images[i]).some(t => want.has(t)));
     }
 
     /**
+     * What the section's filter box searches in an image: its types, its
+     * comment, its group (a copy) and its file name, lower-cased.
+     *
+     * @param   {?Object} desc The section's adapter.
+     * @param   {Object}  im   An image record.
+     * @returns {string}
+     */
+    function _artSearchText(desc, im) {
+        return [(im.types || []).join(' '), im.comment || '', _artGroupOf(desc, im), _artFileName(im)]
+            .join(' ').toLowerCase();
+    }
+
+    /**
+     * An image's file name: the last part of its full URL's path, decoded
+     * ("6752725588.jpg", "Disc 1.jpg", "2567_artwork_03.jpg").
+     *
+     * @param   {Object} im An image record.
+     * @returns {string}
+     */
+    function _artFileName(im) {
+        const path = String(im.image || '').split(/[?#]/)[0];
+        const last = path.slice(path.lastIndexOf('/') + 1);
+        try { return decodeURIComponent(last); } catch (_) { return last; }
+    }
+
+    /**
+     * The section's text filter (`data-mb-art-q`, the filter box), '' for none.
+     *
+     * @param   {HTMLElement} sec
+     * @returns {string}
+     */
+    function _releaseArtQuery(sec) {
+        return sec.dataset.mbArtQ || '';
+    }
+
+    /**
+     * The art sections' tile size in px from `MB_ART_SEC_TILE_KEY`, or null
+     * for the stylesheet's own (120 px): unset, not a number, or outside
+     * 80–240.
+     *
+     * @returns {?number}
+     */
+    function _releaseArtTileSize() {
+        let v;
+        try { v = GM_getValue(MB_ART_SEC_TILE_KEY, null); } catch (_) { v = null; }
+        return typeof v === 'number' && v >= 80 && v <= 240 ? v : null;
+    }
+
+    /**
      * The order the viewer steps through when a tile is clicked: the tiles
-     * as they stand on screen for Grid and By type, and the Spreads plan for
-     * Spreads — which includes the Liner pages the pager currently hides, so
-     * paging is never needed to reach one in the viewer.
+     * as they stand on screen for Grid and By type, the rows in their sorted
+     * order for Table, and the Spreads plan for Spreads — which includes the
+     * Liner pages the pager currently hides, so paging is never needed to
+     * reach one in the viewer.
      *
      * @param   {HTMLElement} sec A loaded `div.mb-release-art-sec`.
      * @returns {number[]}
@@ -158552,10 +158671,10 @@ a { color: #1565c0; }`;
         if (_releaseArtLayout(desc) === 'spreads') {
             const images = desc.images(sec);
             const { pairs, book, rest } = _releaseArtSpreadsPlan(images,
-                _releaseArtShownIndices(images, _releaseArtActiveTypes(sec), desc));
+                _releaseArtShownIndices(images, _releaseArtActiveTypes(sec), desc, _releaseArtQuery(sec)));
             return [...pairs.flatMap(p => [p.l, p.r]), ...book, ...rest];
         }
-        return Array.from(sec.querySelectorAll('figure.mb-release-art-tile')).map(f => Number(f.dataset.mbArtI));
+        return Array.from(sec.querySelectorAll('figure.mb-release-art-tile, tr[data-mb-art-i]')).map(f => Number(f.dataset.mbArtI));
     }
 
     /**
@@ -158646,18 +158765,81 @@ a { color: #1565c0; }`;
      * (`data-mb-art-active-types`, a JSON array read by
      * `_releaseArtActiveTypes()`; deliberately NOT the chips'
      * `data-mb-art-filter`, which `closest()` would then match on the
-     * section itself), the layout in GM storage.
+     * section itself), the layout in GM storage. Since P4a also a Table
+     * layout (`_releaseArtRenderTable()`), a second tool row
+     * (`_releaseArtToolsMore()`: filter box, Tiles slider, Show missing) and
+     * the text filter (`data-mb-art-q`) in every layout, its matches marked
+     * in what the sheet shows (`_artHighlight()`, vzell 2026-11-06).
      *
      * @param   {HTMLElement} sec A section whose `data-mb-art-state` is `'ok'`.
      * @returns {void}
      */
     function _releaseArtRenderSheet(sec) {
+        _releaseArtBuildSheet(sec);
+        _artHighlight(sec, _releaseArtQuery(sec));
+    }
+
+    /**
+     * Marks every visible occurrence of the section's text filter (vzell,
+     * 2026-11-06: "when filtering and the filter string is a visible string
+     * highlight it"): in the tiles' types and comments, the group headings,
+     * the table's cells and a placeholder's text, case-insensitively, as
+     * `mark.mb-release-art-hl`. A match only in a file name has nothing to
+     * mark outside the Table's File column. Only text nodes are split, so an
+     * element's `textContent` stays the same.
+     *
+     * @param   {HTMLElement} sec The rendered section.
+     * @param   {string}      q   The text filter; nothing to do when empty.
+     * @returns {void}
+     */
+    function _artHighlight(sec, q) {
+        const query = String(q || '').trim().toLowerCase();
+        if (!query) return;
+        sec.querySelectorAll('.mb-release-art-types, .mb-release-art-comment, .mb-release-art-group-hdr, ' +
+            'table.mb-release-art-table td, .mb-release-art-missing').forEach((el) => {
+            const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+            const nodes = [];
+            while (walker.nextNode()) nodes.push(walker.currentNode);
+            nodes.forEach((node) => {
+                const text = node.nodeValue;
+                const lower = text.toLowerCase();
+                // A lower-cased text of another length cannot be mapped back.
+                if (lower.length !== text.length) return;
+                let at = lower.indexOf(query);
+                if (at < 0) return;
+                const frag = document.createDocumentFragment();
+                let from = 0;
+                while (at >= 0) {
+                    frag.append(text.slice(from, at));
+                    const m = document.createElement('mark');
+                    m.className = 'mb-release-art-hl';
+                    m.textContent = text.slice(at, at + query.length);
+                    frag.append(m);
+                    from = at + query.length;
+                    at = lower.indexOf(query, from);
+                }
+                frag.append(text.slice(from));
+                node.replaceWith(frag);
+            });
+        });
+    }
+
+    /**
+     * `_releaseArtRenderSheet()`'s body: the toolbar and the sheet, without
+     * the filter's marks.
+     *
+     * @param   {HTMLElement} sec
+     * @returns {void}
+     */
+    function _releaseArtBuildSheet(sec) {
         const desc = _artSectionOf(sec);
         const images = desc.images(sec);
         const active = _releaseArtActiveTypes(sec);
         const layout = _releaseArtLayout(desc);
-        sec.querySelectorAll('.mb-release-art-tools, .mb-release-art-grid, .mb-release-art-group, .mb-release-art-spread')
-            .forEach(n => n.remove());
+        sec.querySelectorAll('.mb-release-art-tools, .mb-release-art-grid, .mb-release-art-group, .mb-release-art-spread, ' +
+            '.mb-release-art-tablewrap, .mb-release-art-empty').forEach(n => n.remove());
+        const tile = _releaseArtTileSize();
+        if (tile) sec.style.setProperty('--mb-art-sec-tile', `${tile}px`);
 
         const tools = document.createElement('div');
         tools.className = 'mb-release-art-tools';
@@ -158682,7 +158864,7 @@ a { color: #1565c0; }`;
         seg.className = 'mb-release-art-seg';
         seg.setAttribute('role', 'group');
         seg.setAttribute('aria-label', 'Layout');
-        [['grid', 'Grid'], ['grouped', desc.groupedLabel || 'By type'], ['spreads', 'Spreads']]
+        [['grid', 'Grid'], ['grouped', desc.groupedLabel || 'By type'], ['spreads', 'Spreads'], ['table', 'Table']]
             .filter(([key]) => desc.layouts.includes(key)).forEach(([key, label]) => {
             const b = document.createElement('button');
             b.type = 'button';
@@ -158694,13 +158876,28 @@ a { color: #1565c0; }`;
         tools.appendChild(seg);
         sec.appendChild(tools);
 
-        const shown = _releaseArtShownIndices(images, active, desc);
+        const q = _releaseArtQuery(sec);
+        const shown = _releaseArtShownIndices(images, active, desc, q);
+        sec.appendChild(_releaseArtToolsMore(sec, desc, images.length, shown.length, q, layout));
         if (layout === 'spreads') {
             _releaseArtRenderSpreads(sec, images, shown);
             return;
         }
-        // Placeholders show with no chip pressed or with their own group's.
-        const missing = _artPlaceholders(desc).filter(p => !active.length || active.includes(p.group));
+        // Placeholders show with no chip pressed or with their own group's,
+        // never while a text filter is typed, and not when Show missing is off.
+        const missing = q || sec.dataset.mbArtMissingOff === '1' ? []
+            : _artPlaceholders(desc).filter(p => !active.length || active.includes(p.group));
+        if (!shown.length && !missing.length) {
+            const none = document.createElement('div');
+            none.className = 'mb-release-art-empty';
+            none.textContent = 'No picture matches.';
+            sec.appendChild(none);
+            return;
+        }
+        if (layout === 'table') {
+            _releaseArtRenderTable(sec, desc, images, shown, missing);
+            return;
+        }
         const grid = () => {
             const g = document.createElement('div');
             g.className = 'mb-release-art-grid';
@@ -158736,12 +158933,221 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * The section's second tool row (org/image-handling.org P4a): the filter
+     * box (`input.mb-release-art-q`, its text on the section as
+     * `data-mb-art-q`), the Tiles slider (`MB_ART_SEC_TILE_KEY`; not in
+     * Table, which has no tiles) and, when the adapter has placeholders,
+     * Show missing (`data-mb-art-missing-off`), then "k of N" while a
+     * filter narrows. Its inputs are handled by `_releaseArtOnInput()`.
+     *
+     * @param   {HTMLElement} sec    The section.
+     * @param   {Object}      desc   Its adapter.
+     * @param   {number}      total  All its images.
+     * @param   {number}      shownN The images the chips and the filter leave.
+     * @param   {string}      q      The text filter.
+     * @param   {string}      layout The layout shown.
+     * @returns {HTMLElement} `div.mb-release-art-tools.mb-release-art-tools-more`.
+     */
+    function _releaseArtToolsMore(sec, desc, total, shownN, q, layout) {
+        const row = document.createElement('div');
+        row.className = 'mb-release-art-tools mb-release-art-tools-more';
+        const input = document.createElement('input');
+        input.type = 'search';
+        input.className = 'mb-release-art-q';
+        input.placeholder = 'Filter pictures…';
+        input.value = q;
+        input.setAttribute('aria-label', 'Filter the pictures by type, comment or file name');
+        row.appendChild(input);
+        if (layout !== 'table') {
+            const size = document.createElement('label');
+            size.className = 'mb-release-art-size';
+            const r = document.createElement('input');
+            r.type = 'range';
+            r.min = '80';
+            r.max = '240';
+            r.step = '10';
+            r.value = String(_releaseArtTileSize() || 120);
+            r.setAttribute('aria-label', 'Tile size');
+            // Back to the stylesheet's size (vzell, 2026-11-06); shown while
+            // a size is stored, and as soon as the slider is let go.
+            const reset = document.createElement('button');
+            reset.type = 'button';
+            reset.className = 'mb-release-art-size-reset';
+            reset.textContent = '↺';
+            reset.hidden = _releaseArtTileSize() === null;
+            _setTip(reset, 'Back to the original tile size');
+            size.append('Tiles ', r, reset);
+            row.appendChild(size);
+        }
+        if (_artPlaceholders(desc).length) {
+            const miss = document.createElement('label');
+            miss.className = 'mb-release-art-miss';
+            const c = document.createElement('input');
+            c.type = 'checkbox';
+            c.checked = sec.dataset.mbArtMissingOff !== '1';
+            miss.append(c, ' Show missing');
+            row.appendChild(miss);
+        }
+        if (shownN !== total) {
+            const n = document.createElement('span');
+            n.className = 'mb-release-art-shown';
+            n.textContent = `${shownN} of ${total} shown`;
+            row.appendChild(n);
+        }
+        return row;
+    }
+
+    /**
+     * The Table layout (org/image-handling.org P4a; vzell's decision: a plain
+     * table inside the section, never `table.tbl`, so the global filter, the
+     * sub-table filters, the findings and every render pass never see it):
+     * one row per picture shown — #, the picture, its types, its group (when
+     * the adapter groups by something else than the type), comment, flags
+     * (★ main or primary, ⏳ pending) and file name; a click on a heading
+     * sorts by it (`data-mb-art-sort` on the section: "key:1" or "key:-1"),
+     * and the viewer steps through the rows in that order
+     * (`_releaseArtViewerOrder()`). Each row's picture is a link with the
+     * tile's own hover card; placeholders are rows of their own, never
+     * `tr[data-mb-art-i]`.
+     *
+     * @param   {HTMLElement} sec     The section.
+     * @param   {Object}      desc    Its adapter.
+     * @param   {Object[]}    images  Its records.
+     * @param   {number[]}    shown   The indices to list.
+     * @param   {Array<{group: string, note: string}>} missing The placeholders to list.
+     * @returns {void}
+     */
+    function _releaseArtRenderTable(sec, desc, images, shown, missing) {
+        const byGroup = typeof desc.groupOf === 'function';
+        const flagsOf = im => [im.front ? (im.external ? '★ primary' : '★ main') : '', im.approved === false ? '⏳ pending' : '']
+            .filter(Boolean).join(' ');
+        const cols = [
+            ['n', '#', i => i + 1],
+            ['pic', 'Picture', null],
+            ['types', 'Type', i => (images[i].types && images[i].types.length ? images[i].types : ['(no type)']).join(' / ')],
+            ...(byGroup ? [['group', desc.groupedLabel ? desc.groupedLabel.replace(/^By /, '').replace(/^./, c => c.toUpperCase()) : 'Group',
+                i => _artGroupOf(desc, images[i])]] : []),
+            ['comment', 'Comment', i => images[i].comment || ''],
+            ['flags', 'Flags', i => flagsOf(images[i])],
+            ['file', 'File', i => _artFileName(images[i])],
+        ];
+        const [sortKey, sortDir] = (sec.dataset.mbArtSort || 'n:1').split(':');
+        const dir = sortDir === '-1' ? -1 : 1;
+        const col = cols.find(c => c[0] === sortKey && c[2]) || cols[0];
+        const rows = shown.slice().sort((a, b) => {
+            const x = col[2](a);
+            const y = col[2](b);
+            const d = typeof x === 'number' ? x - y : String(x).localeCompare(String(y), undefined, { numeric: true, sensitivity: 'base' });
+            return (d || a - b) * dir;
+        });
+
+        const wrap = document.createElement('div');
+        wrap.className = 'mb-release-art-tablewrap';
+        const table = document.createElement('table');
+        table.className = 'mb-release-art-table';
+        const thr = document.createElement('tr');
+        cols.forEach(([key, label, val]) => {
+            const th = document.createElement('th');
+            th.scope = 'col';
+            th.textContent = label;
+            if (val) {
+                th.dataset.mbArtSort = key;
+                if (key === col[0]) th.setAttribute('aria-sort', dir > 0 ? 'ascending' : 'descending');
+            }
+            thr.appendChild(th);
+        });
+        const thead = document.createElement('thead');
+        thead.appendChild(thr);
+        const tbody = document.createElement('tbody');
+        rows.forEach((i) => {
+            const tr = document.createElement('tr');
+            tr.dataset.mbArtI = String(i);
+            cols.forEach(([key, , val]) => {
+                const td = document.createElement('td');
+                if (key === 'pic') {
+                    // The tile's own link (URLs, referrer, hover card): one builder.
+                    const a = _releaseArtBuildTile(images, i, desc.archiveName).querySelector(':scope > a');
+                    a.classList.add('mb-release-art-row-link');
+                    if (!images[i].external) a.dataset.mbtt = _releaseArtTipHtml(images, i);
+                    td.appendChild(a);
+                } else {
+                    td.textContent = String(val(i));
+                    if (key === 'n') td.className = 'mb-release-art-num';
+                }
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+        missing.forEach((p) => {
+            const tr = document.createElement('tr');
+            tr.className = 'mb-release-art-missing-row';
+            tr.dataset.mbArtMissing = p.group;
+            cols.forEach(([key]) => {
+                const td = document.createElement('td');
+                if (key === 'group' || (key === 'types' && !byGroup)) td.textContent = p.group;
+                else if (key === 'comment') td.textContent = p.note || 'No pictures';
+                else if (key === 'n') td.textContent = '–';
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+        table.append(thead, tbody);
+        wrap.appendChild(table);
+        sec.appendChild(wrap);
+    }
+
+    /**
+     * The section's input handler (P4a), delegated on the section for both
+     * `input` and `change`: the filter box re-renders the sheet as you type
+     * and keeps the caret where it was (the box is rebuilt with the
+     * toolbar); the Tiles slider resizes live through the
+     * `--mb-art-sec-tile` custom property and is stored when let go; Show
+     * missing turns the placeholders on and off.
+     *
+     * @param   {Event} e
+     * @returns {void}
+     */
+    function _releaseArtOnInput(e) {
+        const sec = e.currentTarget;
+        const t = e.target;
+        if (!(t instanceof HTMLInputElement) || !sec.contains(t)) return;
+        if (t.classList.contains('mb-release-art-q')) {
+            if (e.type !== 'input' || t.value === _releaseArtQuery(sec)) return;
+            const caret = t.selectionStart;
+            sec.dataset.mbArtQ = t.value;
+            sec.dataset.mbArtBookPage = '0';
+            _releaseArtRenderSheet(sec);
+            const again = sec.querySelector('input.mb-release-art-q');
+            if (again) {
+                again.focus();
+                again.setSelectionRange(caret, caret);
+            }
+            return;
+        }
+        if (t.type === 'range' && t.closest('.mb-release-art-size')) {
+            sec.style.setProperty('--mb-art-sec-tile', `${t.value}px`);
+            if (e.type === 'change') {
+                try { GM_setValue(MB_ART_SEC_TILE_KEY, Number(t.value)); } catch (_) { /* storage blocked: this page only */ }
+                const reset = t.parentElement.querySelector('.mb-release-art-size-reset');
+                if (reset) reset.hidden = false;
+            }
+            return;
+        }
+        if (t.type === 'checkbox' && t.closest('.mb-release-art-miss') && e.type === 'change') {
+            if (t.checked) delete sec.dataset.mbArtMissingOff;
+            else sec.dataset.mbArtMissingOff = '1';
+            _releaseArtRenderSheet(sec);
+        }
+    }
+
+    /**
      * The section's one click handler, delegated on the section (which is
      * never cloned, so a listener on it survives every re-render): a tile opens
      * the viewer, a type chip toggles its type in the selection ("All"
      * clears it, and so does un-pressing the last type), a layout button sets
-     * and remembers the layout, and the Spreads pager's ◀ ▶ step its page. A
-     * chip or a layout switch puts the pager back on its first page.
+     * and remembers the layout, the Spreads pager's ◀ ▶ step its page, and a
+     * Table heading sorts by its column (P4a). A chip or a layout switch puts
+     * the pager back on its first page.
      *
      * @param   {MouseEvent} e
      * @returns {void}
@@ -158752,13 +159158,30 @@ a { color: #1565c0; }`;
         // the tiles currently shown, in their on-screen order (the chip filter
         // and the By type grouping both apply). Ctrl/Cmd/Shift/middle click
         // keep the link's own behaviour: the 1200 px image in a new tab.
-        const tileLink = e.target.closest('figure.mb-release-art-tile > a');
+        // A Table row's picture (P4a) is the same link, one row up.
+        const tileLink = e.target.closest('figure.mb-release-art-tile > a, a.mb-release-art-row-link');
         if (tileLink && sec.contains(tileLink)) {
             if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
             e.preventDefault();
             const desc = _artSectionOf(sec);
             _artViewerOpen(desc.ctx, sec.dataset.mbArtEntity, _releaseArtViewerOrder(sec),
-                Number(tileLink.parentElement.dataset.mbArtI), { opener: tileLink, title: _releaseArtTitle(desc) });
+                Number(tileLink.closest('[data-mb-art-i]').dataset.mbArtI), { opener: tileLink, title: _releaseArtTitle(desc) });
+            return;
+        }
+        // The Tiles slider's ↺: forget the stored size, back to 120 px.
+        const reset = e.target.closest('.mb-release-art-size-reset');
+        if (reset && sec.contains(reset)) {
+            try { GM_deleteValue(MB_ART_SEC_TILE_KEY); } catch (_) { /* storage blocked: this page only */ }
+            sec.style.removeProperty('--mb-art-sec-tile');
+            _releaseArtRenderSheet(sec);
+            return;
+        }
+        // A Table heading sorts by it; a second click turns the order round.
+        const th = e.target.closest('th[data-mb-art-sort]');
+        if (th && sec.contains(th)) {
+            const [key, d] = (sec.dataset.mbArtSort || 'n:1').split(':');
+            sec.dataset.mbArtSort = `${th.dataset.mbArtSort}:${key === th.dataset.mbArtSort && d !== '-1' ? -1 : 1}`;
+            _releaseArtRenderSheet(sec);
             return;
         }
         const book = e.target.closest('[data-mb-art-book-step]');
@@ -159192,6 +159615,9 @@ a { color: #1565c0; }`;
         sec.dataset.mbArtCtx = desc.key;
         sec.dataset.mbArtEntity = entityKey;
         sec.addEventListener('click', _releaseArtOnClick);
+        // P4a: the filter box, the Tiles slider, Show missing.
+        sec.addEventListener('input', _releaseArtOnInput);
+        sec.addEventListener('change', _releaseArtOnInput);
         return sec;
     }
 

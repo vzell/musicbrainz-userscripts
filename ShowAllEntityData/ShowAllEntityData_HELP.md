@@ -1898,12 +1898,25 @@ type whose comments differ only in a final "left" / "right" ("opened gatefold
 cover, inside left" + "… inside right") are shown side by side as one opened
 spread, the Liner and Booklet pages are turned two at a time with **◀ ▶**, and
 everything else follows as single pages. The pairing goes by the comments, so
-it only pairs when that is unambiguous — no image is ever hidden. The layout is
+it only pairs when that is unambiguous — no image is ever hidden. **Table**
+lists the images one per row (#, the picture, type, comment, ★ / ⏳, file
+name); click a heading to sort by it, again to reverse. The layout is
 remembered, and travels with a config export.
 
+Under the chips, **Filter pictures…** narrows the sheet as you type, by type,
+comment or file name ("liner", "sealed", "6752"), in every layout, says
+"4 of 16 shown", and marks what it found wherever it shows (in **Table** also
+in the file names). The **Tiles** slider makes the thumbnails bigger or
+smaller; the size is remembered for every picture section, and **↺** beside
+it takes it back to the original size. Where a page lists something
+without pictures (a springsteenlyrics copy without scans), **Show missing**
+turns its dashed box on and off. The same section, with the same tools, shows
+the pictures on other sites' detail pages.
+
 **The viewer.** Click a thumbnail to open it full screen; it steps through the
-thumbnails currently shown, in their order, so a chip or **By type** applies
-(in **Spreads**, every Liner page is included, also those the pager hides).
+thumbnails currently shown, in their order, so a chip, the filter or **By type**
+applies — in **Table**, the rows in their sorted order (in **Spreads**, every
+Liner page is included, also those the pager hides).
 Clicking the **Cover art (N)** tab itself opens the viewer on a grid of every
 image instead of leaving the page — Ctrl-click (or middle-click) the tab, or a
 thumbnail, to open the archive page or the image in a new tab as before. The
