@@ -167,6 +167,10 @@ test.describe('release-tracks Cover art viewer (P3)', () => {
         for (const k of ['ArrowRight', '?', '/', 'Control+m', 'Control+g', 'Tab']) await page.keyboard.press(k);
         expect(await page.evaluate(() => window.__pageKeys)).toEqual([]);
         expect((await viewer(page)).open, 'still open: ? / Ctrl+M did not act on it').toBe(true);
+        // Since image section P4b `?` is the viewer's own key help, never the page's.
+        await expect(page.locator(`${VIEWER} .mb-artv-help`)).toBeVisible();
+        await page.keyboard.press('?');
+        await expect(page.locator(`${VIEWER} .mb-artv-help`)).toHaveCount(0);
 
         // Shift+Esc closes the viewer like Esc — and the page, whose Shift+Esc
         // clears every column filter, must not see it either.

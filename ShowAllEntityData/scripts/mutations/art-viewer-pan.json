@@ -34,7 +34,7 @@
   {
     "name": "the pan follows the mouse only over the stage",
     "why": "The original handler's guard. A fast move off the stage lands outside it in ONE event, so the pan stopped short of the edge (org/viewer.org #1, cause B).",
-    "edits": [{"find": "        st.ptr = { x: e.clientX, y: e.clientY };\n        if (!st.zoom || st.panMode !== 'follow') return;", "replace": "        if (!e.target.closest('.mb-artv-stage')) return;\n        st.ptr = { x: e.clientX, y: e.clientY };\n        if (!st.zoom || st.panMode !== 'follow') return;"}],
+    "edits": [{"find": "        st.ptr = { x: e.clientX, y: e.clientY };\n        const img = document.querySelector('#mb-art-viewer .mb-artv-stage .mb-artv-img');", "replace": "        if (!e.target.closest('.mb-artv-stage')) return;\n        st.ptr = { x: e.clientX, y: e.clientY };\n        const img = document.querySelector('#mb-art-viewer .mb-artv-stage .mb-artv-img');"}],
     "spec": "tests/fixtures/art-viewer-pan.spec.js",
     "grep": "one fast move from the centre",
     "expect": "fail"

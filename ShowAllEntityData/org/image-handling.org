@@ -562,3 +562,47 @@ today's code, each run: 12 fail as expected, the one recorded overlap passes as 
 run =discogs-mb-column.spec.js= "our MusicBrainz column: an icon shows", which asserts both
 the card's and the window's glyph. A sweep of all 258 lists found 160 stale finds in about 80
 lists (popup-mb 17, popup-ext 17, discogs-pages 7, …): older drift, left for a decision.
+
+
+* TODO findings - stale mutation entries
+
+Both are committed and pushed to feature/image-section-retry:
+- d7a9231b, the ⟳ for pictures that don't load: the full suite passed (2,743 tests, none failed), and so did your live check.
+- 803db6c1, the 13 stale mutation entries: each now points at the current code, and I ran all 13. Twelve catch their planted defect as before, and the one recorded as a known overlap still passes as recorded. Two now run a different test: the entity-glyph entries use the Discogs test that asserts both the card's and the window's glyph, because the test they used to run doesn't check glyphs any more. One list (sidebar-overhaul.json) keeps one entry per line, so I edited it in that layout rather than reformatting the file.
+
+The 13 were only what my image-section checks happened to cover. A sweep of all 258 mutation lists finds 160 entries that no longer match the code, in about 80 lists:
+- Biggest: popup-mb 17, popup-ext 17, discogs-pages 7, wiki-setlistfm 6, discogs-links 6.
+- They all predate this work; I've noted the sweep in org/image-handling.org.
+- Each one needs the same kind of fix: find where its guarded code went, repoint, and run it. Some may guard code that no longer exists at all, and those should be deleted rather than repointed.
+
+Do you want me to work through the 160 as their own branch, or go on with P4b (the viewer's Adjust, Compare, Loupe, Copy URL and key help)?
+
+** P4b (2026-11-06, branch =feature/image-section-p4b=, stacked on the retry fix, WIP.7)
+
+The viewer's tools: Adjust (A), Compare (C), Loupe (L), Copy URL (Y / Shift+Y), key help (?).
+
+- Adjust: =st.adj=, =_artViewerFilter()= written by the one transform writer (so a re-render
+  keeps it), live from the sliders (=_artViewerOnInput()=), reset on every step; a focused
+  slider keeps its arrow keys.
+- Compare: its own stage (=_artViewerCompareStage()=), no zoom/pan/turn/flip — zoom keys are
+  refused there, or the picture behind came back zoomed (found by a surviving mutation: R was
+  harmless, ↑ was not); ← → and the filmstrip change the right picture; a Spreads pair opens
+  INTO Compare (=compareWith=, =st.cmpStart=: Esc then closes the viewer, as =gridStart=).
+- Loupe: undoes the flips, then the turn; the lens turned and flipped like the picture.
+- Copy URL: =navigator.clipboard=, no new =@grant=.
+- Esc: fullscreen, the help, Compare (unless opened into it), the grid, the viewer.
+- Specs: =art-viewer-tools.spec.js= (6); two older assertions follow the new behaviour (=?= is
+  now the viewer's key; a Spreads pair opens Compare). =image-section.json= 67, the 13 new ones
+  as expected; three entries of =art-viewer-extras= / =art-viewer-pan= repointed (lines P4b
+  reshaped), each run, each file in its own layout.
+- First =test:full= (2026-11-06T10:55:55 → 11:18:28+01:00): 2749 passed. vzell's live check:
+  everything works, but =?= showed the key help with its last column under the info panel and
+  over the bar's second row (screenshot). Cause: the info panel is a grid item with the tooltip
+  look's =z-index: 2147483500=, and a grid item honours =z-index= unpositioned; the help had
+  =z-index: 5= and a fixed top. Fix: the help centred, at most three columns, =z-index=
+  above the panel, its top from the bar's measured height. Spec "every key" checks every key
+  line and the box's right edge with =elementFromPoint()=, and that it starts under the bar;
+  two more planted defects (=image-section.json= 69), both caught — the z-index one only by the
+  right-edge check.
+- The second =test:full= (with the help fix) was stopped at vzell's request after his live check
+  passed; the fix itself: the tool spec (6) and its two planted defects.

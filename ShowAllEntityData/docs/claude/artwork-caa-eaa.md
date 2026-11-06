@@ -428,6 +428,32 @@ never from a hard-coded `CAA_CTX`. Rules that come with that:
   `_ART_IMG_RETRY_HOSTS` and call `_artImgFailInstall()` before the `<img>` gets
   its `src`. Specs `art-image-retry.spec.js`, `sidebar-picture.spec.js` "image
   retry" (why it fires the error itself: DEBUG-NOTES).
+- **The viewer's tools (P4b, 2026-11-06)**, keys A C L Y ? (all were free;
+  `_ART_VIEWER_KEYS` is the one list, shown by `?`):
+  - **Adjust** (`st.adj`, `_artViewerFilter()`): the filter is written by
+    the ONE transform writer, `_artViewerApplyTransform()`, so every load,
+    fit and re-render keeps it; the sliders write it live without a
+    re-render (`_artViewerOnInput()` → `_artViewerApplyFilter()`, keeps
+    focus). Reset on every step in `_artViewerResetZoomOnStep()`, like the
+    turn. A focused input keeps its own arrow keys (the key handler returns
+    for it, after `stopImmediatePropagation()`).
+  - **Compare** (`st.cmp`, `_artViewerCompareStage()`): its own stage, two
+    plain `img.mb-artv-cmp-img`, NOT `.mb-artv-img` — no fit, zoom, pan,
+    turn or flip. **Zoom keys are refused in Compare**: `_artViewerSetZoom()`
+    needs only the stage and would raise the zoom of the picture behind,
+    which then came back zoomed. ← → and the filmstrip change the right
+    picture (`_artViewerCompareStep()`, skipping the left). Opened INTO
+    Compare (`compareWith`, a Spreads pair in `_releaseArtOnClick()`):
+    `st.cmpStart`, Esc closes the viewer, as `gridStart` does.
+  - **Loupe** (`_artViewerLoupeMove()`, from the mousemove AFTER the
+    follow-pan): screen fractions → undo the flips → undo the turn →
+    the picture's own; the lens is turned and flipped as the picture is.
+  - **Copy URL** (`_artViewerCopyUrl()`): `navigator.clipboard`, no new
+    `@grant` (a grant re-prompts every user).
+  - **Esc order**: fullscreen, the key help, Compare (unless `cmpStart`),
+    the grid, the viewer.
+  Spec `art-viewer-tools.spec.js`; mutation list `image-section.json`
+  (67 entries).
 - **One record, one cache.** `_artFetchEntityImages(ctx, entityPath)` is the
   table-free copy of `_artEnrichIcon()`'s three tiers with the same 404 vs
   429/5xx bookkeeping, so the section and the CAA column share

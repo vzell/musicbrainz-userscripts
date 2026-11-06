@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.7",
+    "date": "2026-11-06",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Artwork viewer: Adjust (A) brightness, contrast, grayscale and invert to read a dark scan or a faded insert (view only; Download keeps the file); Compare (C) two pictures side by side (a page of a Spreads pair opens both); a loupe (L) under the pointer; Copy URL (Y; Shift+Y as an edit-note line); and ? for every key. On MusicBrainz and the other sites alike."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.6",
     "date": "2026-11-06",
     "sections": [

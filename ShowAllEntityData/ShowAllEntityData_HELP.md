@@ -1938,7 +1938,17 @@ next row, and **Shift+← →** change rows), **Home / End**, **↑ ↓** or the
 wheel zoom in and out (toward the pointer), **0** fits, **Z** or a click
 toggles 2× (the image follows the mouse: move toward a side to bring that edge into view; with the *drag* setting, drag it with the mouse button held instead), **1** actual pixels (the bar shows the zoom as screen pixels per image pixel), **R** / **Shift+R** turn a quarter turn (view only; the next image starts upright), **H** / **V** mirror left-right / upside-down, as seen — for a matrix area scanned through the disc, whose numbers read backwards (also the Flip button; view only; the next image starts unflipped), **B** background (dark, light, checkerboard), **F** the browser's fullscreen, **D** download the original (named like Art Station's: position, types, comment), **P** starts or stops a slideshow,
 **G** grid, **I** info panel, **O** original in a new tab, **Esc** closes (from
-a grid opened with G: back to the image; in fullscreen, the first Esc leaves fullscreen). The zoom level is kept from image to
+a grid opened with G: back to the image; in fullscreen, the first Esc leaves fullscreen).
+**A** opens **Adjust**: brightness, contrast, grayscale and invert, to read a
+dark scan or a faded insert (view only: Download keeps the file; the next
+picture starts neutral; a focused slider takes the arrow keys). **C**
+**Compares** two pictures side by side, the next one on the right: **← →** or
+a click in the filmstrip change the right one, and C or Esc go back (a page of
+a pair in **Spreads** opens both pages this way, and Esc then closes the
+viewer). **L** turns on the **loupe**, a round lens 2.5× larger under the
+pointer, also on a zoomed or turned picture. **Y** copies the picture's
+address, **Shift+Y** a line for an edit note (its types, comment and
+address). **?** shows every key; Esc closes that list first. The zoom level is kept from image to
 image and remembered for next time; the large image is the 1200 px one, or the
 original file (both settings). On a touch
 screen, tap to open and swipe sideways to step; pinch with two fingers to zoom, and drag a zoomed image with one. While the viewer is open the

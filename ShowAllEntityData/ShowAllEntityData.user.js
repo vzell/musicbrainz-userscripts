@@ -159405,8 +159405,13 @@ a { color: #1565c0; }`;
             if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
             e.preventDefault();
             const desc = _artSectionOf(sec);
+            // A page of a paired spread (Spreads) opens in Compare (P4b): the
+            // left page on the left, the right one beside it.
+            const pair = tileLink.closest('[data-mb-art-spread]');
+            const [l, r] = pair ? pair.dataset.mbArtSpread.split(',').map(Number) : [null, null];
             _artViewerOpen(desc.ctx, sec.dataset.mbArtEntity, _releaseArtViewerOrder(sec),
-                Number(tileLink.closest('[data-mb-art-i]').dataset.mbArtI), { opener: tileLink, title: _releaseArtTitle(desc) });
+                pair ? l : Number(tileLink.closest('[data-mb-art-i]').dataset.mbArtI),
+                { opener: tileLink, title: _releaseArtTitle(desc), compareWith: pair ? r : null });
             return;
         }
         // The Tiles slider's ↺: forget the stored size, back to 120 px.
@@ -160154,6 +160159,93 @@ a { color: #1565c0; }`;
             /* A picture that did not load: no broken glyph, the note's
                Try again asks again. */
             #mb-art-viewer .mb-artv-img.mb-artv-img-failed { visibility: hidden; }
+            /* P4b: the Adjust panel, Compare's two pictures, the loupe, the key help. */
+            #mb-art-viewer .mb-artv-adjust {
+                position: absolute;
+                top: 10px;
+                left: 12px;
+                z-index: 3;
+                display: grid;
+                gap: 6px;
+                width: 230px;
+                max-width: calc(100% - 24px);
+                padding: 10px 12px;
+                background: rgba(23, 25, 30, 0.94);
+                border: 1px solid #2b2e35;
+                border-radius: 4px;
+                font-size: 12px;
+            }
+            #mb-art-viewer .mb-artv-adjust-hd { font-weight: 600; color: #9c978c; text-transform: uppercase; letter-spacing: 0.06em; font-size: 11px; }
+            #mb-art-viewer .mb-artv-adjust-row { display: grid; grid-template-columns: 1fr; gap: 2px; }
+            #mb-art-viewer .mb-artv-adjust-row:has(> input[type="checkbox"]) { grid-template-columns: auto 1fr; align-items: center; gap: 6px; }
+            #mb-art-viewer .mb-artv-adjust-row input[type="range"] { width: 100%; accent-color: #f0a35e; }
+            #mb-art-viewer .mb-artv-adjust-v { color: #9c978c; font-variant-numeric: tabular-nums; }
+            #mb-art-viewer .mb-artv-adjust .mb-artv-btn { justify-self: start; }
+            #mb-art-viewer .mb-artv-stage.mb-artv-compare {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 12px;
+                padding: 12px 48px 34px;
+                align-items: center;
+            }
+            #mb-art-viewer .mb-artv-cmp { margin: 0; min-width: 0; height: 100%; display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 4px; }
+            #mb-art-viewer .mb-artv-cmp-img { width: 100%; height: 100%; min-height: 0; object-fit: contain; }
+            #mb-art-viewer .mb-artv-cmp figcaption { font-size: 11px; color: #9c978c; text-align: center; overflow-wrap: anywhere; }
+            #mb-art-viewer .mb-artv-film img.mb-artv-cmp-cur { outline: 2px dashed #f0a35e; outline-offset: 1px; }
+            #mb-art-viewer .mb-artv-loupe {
+                position: absolute;
+                z-index: 4;
+                width: 150px;
+                height: 150px;
+                border-radius: 50%;
+                border: 2px solid #f0a35e;
+                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+                background-color: #000;
+                background-repeat: no-repeat;
+                pointer-events: none;
+            }
+            /* The key help: a box under the bar (its top set from the bar's
+               height, which wraps on a narrow window), centred, at most three
+               columns wide. Its z-index must beat the info panel's: that panel
+               is a grid item with the tooltip look's z-index, and a grid item
+               honours z-index unpositioned (vzell 2026-11-06: the panel hid
+               the help's last column). */
+            #mb-art-viewer .mb-artv-help {
+                position: absolute;
+                left: 50%;
+                transform: translateX(-50%);
+                width: min(900px, calc(100% - 32px));
+                box-sizing: border-box;
+                z-index: 2147483600;
+                overflow: auto;
+                padding: 16px 18px;
+                background: rgba(13, 14, 17, 0.97);
+                border: 1px solid #2b2e35;
+                border-radius: 6px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+                cursor: default;
+            }
+            #mb-art-viewer .mb-artv-help-hd { font-weight: 600; font-size: 14px; margin-bottom: 10px; }
+            #mb-art-viewer .mb-artv-help dl {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+                gap: 4px 20px;
+                margin: 0;
+            }
+            #mb-art-viewer .mb-artv-help dl > div { display: flex; gap: 10px; align-items: baseline; }
+            #mb-art-viewer .mb-artv-help dt { min-width: 76px; color: #f0a35e; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+            #mb-art-viewer .mb-artv-help dd { margin: 0; }
+            #mb-art-viewer .mb-artv-help-new {
+                margin-left: 6px;
+                padding: 1px 4px;
+                border-radius: 2px;
+                background: #f0a35e;
+                color: #1a1208;
+                font-size: 9px;
+                font-weight: 700;
+                text-transform: uppercase;
+            }
+            #mb-art-viewer .mb-artv-help-foot { margin-top: 12px; color: #9c978c; font-size: 12px; }
             #mb-art-viewer .mb-artv-nav {
                 position: absolute;
                 top: 50%;
@@ -160269,7 +160361,8 @@ a { color: #1565c0; }`;
      * @returns {void}
      */
     function _artViewerOpen(ctx, entityPath, indices, start,
-                            { grid = false, opener = null, title = '', onGroupStep = null, rowPos = null, liFor = null } = {}) {
+                            { grid = false, opener = null, title = '', onGroupStep = null, rowPos = null, liFor = null,
+                              compareWith = null } = {}) {
         const images = ctx.imagesCache.get(entityPath) || [];
         const list = (indices && indices.length ? indices : images.map((_, i) => i)).filter(i => images[i]);
         if (!list.length) return;
@@ -160288,6 +160381,9 @@ a { color: #1565c0; }`;
             root.addEventListener('pointerup', _artViewerOnPointerUp);
             root.addEventListener('pointercancel', _artViewerOnPointerUp);
             root.addEventListener('wheel', _artViewerOnWheel, { passive: false });
+            // P4b: the Adjust panel's sliders and Invert.
+            root.addEventListener('input', _artViewerOnInput);
+            root.addEventListener('change', _artViewerOnInput);
             document.body.appendChild(root);
         }
         root.setAttribute('aria-label', `${ctx.column} artwork viewer`);
@@ -160304,7 +160400,20 @@ a { color: #1565c0; }`;
             opener, title, prevOverflow,
             onGroupStep, rowPos, liFor, slideshow: 0,
             swipeX: null, swipeAt: 0, gen: 0,
+            // P4b (org/image-handling.org): the Adjust panel and its values
+            // (reset on every step, like the rotation), Compare's second
+            // picture (an index of `images`, null when off), the loupe, the
+            // key help.
+            adjust: false, adj: _artViewerAdjDefault(), loupe: false, help: false,
+            cmp: null, cmpStart: false,
         };
+        const st0 = _artViewerState;
+        // Opened INTO Compare (a Spreads pair): Esc then closes the viewer, as
+        // a viewer opened in its grid (`gridStart`) does; C still leaves it.
+        if (compareWith !== null && compareWith !== st0.i && list.includes(compareWith)) {
+            st0.cmp = compareWith;
+            st0.cmpStart = true;
+        }
         root.dataset.mbArtvPan = _artViewerState.panMode;
         root.dataset.mbArtvBg = _artViewerBg();
         document.documentElement.style.overflow = 'hidden';
@@ -160406,6 +160515,8 @@ a { color: #1565c0; }`;
         st.rot = 0;
         st.flipX = false;
         st.flipY = false;
+        // The Adjust values belong to the picture they were set for (P4b).
+        st.adj = _artViewerAdjDefault();
         if (Lib.settings.sa_art_viewer_remember_zoom !== false) return;
         _artViewerSetLevel(st, 1);
         st.oneToOne = false;
@@ -160624,6 +160735,9 @@ a { color: #1565c0; }`;
         if (st.rot) parts.push(`rotate(${st.rot}deg)`);
         if (st.zoom) parts.push(`scale(${+st.zoomLevel.toFixed(4)})`);
         img.style.transform = parts.join(' ');
+        // The Adjust panel's filter (P4b), written here beside the transform
+        // so every load, fit and step keeps it. View only: Download keeps the file.
+        img.style.filter = _artViewerFilter(st);
         const readout = document.querySelector('#mb-art-viewer .mb-artv-zoom');
         if (readout) readout.textContent = st.geom ? `${Math.round(st.zoomLevel * st.geom.k * 100)} %` : '';
     }
@@ -161147,7 +161261,7 @@ a { color: #1565c0; }`;
         panel.appendChild(_artvEl('div', 'mb-tt-foot',
             '← → step' + (st.onGroupStep ? ' · Shift+← → row' : '') +
             ' · ↑ ↓ wheel zoom · 0 fit · 1 actual pixels · Z 2× · R rotate · H V flip · B background · F fullscreen' +
-            ' · D download · P slideshow · G grid · I info · O original · Esc close'));
+            ' · D download · P slideshow · G grid · I info · O original · A adjust · C compare · L loupe · Y copy URL · ? keys · Esc close'));
         return panel;
     }
 
@@ -161202,8 +161316,296 @@ a { color: #1565c0; }`;
         panel.appendChild(sizes);
         panel.appendChild(_artvEl('div', 'mb-tt-foot',
             '← → step · ↑ ↓ wheel zoom · 0 fit · 1 actual pixels · Z 2× · R rotate · H V flip · B background · F fullscreen' +
-            ' · D download · P slideshow · G grid · I info · O original · Esc close'));
+            ' · D download · P slideshow · G grid · I info · O original · A adjust · C compare · L loupe · Y copy URL · ? keys · Esc close'));
         return panel;
+    }
+
+    // ── P4b: Adjust, Compare, Loupe, Copy URL, key help ─────────────────────
+    //
+    // org/image-handling.org 1b (vzell's go: "all your recommendations").
+    // Keys A, C, L, Y and ? were free (the handler used F G R H V B D P I O Z
+    // 0 1, arrows, Home/End, Esc, Tab). Esc closes the help first, then
+    // Compare, then what it closed before.
+
+    /** Every key of the viewer, for the help overlay (`?`); `nw`: added in P4b. */
+    const _ART_VIEWER_KEYS = [
+        ['← →', 'previous / next picture (Compare: the right one)'], ['Shift+← →', 'previous / next row'],
+        ['Home End', 'first / last'], ['↑ ↓ wheel', 'zoom'], ['0', 'fit'], ['1', 'actual pixels'], ['Z', '2× zoom'],
+        ['R Shift+R', 'rotate'], ['H V', 'flip'], ['G', 'grid'], ['I', 'info'], ['P', 'slideshow'], ['F', 'fullscreen'],
+        ['B', 'background'], ['D', 'download'], ['O', 'original in a new tab'],
+        ['A', 'adjust: brightness, contrast, grayscale, invert', 'nw'], ['C', 'compare two pictures', 'nw'],
+        ['L', 'loupe', 'nw'], ['Y Shift+Y', 'copy the address / as an edit-note line', 'nw'], ['?', 'these keys', 'nw'],
+        ['Esc', 'close (the keys, Compare, the grid, the viewer)'],
+    ];
+
+    /**
+     * The Adjust panel's neutral values.
+     *
+     * @returns {{b: number, c: number, g: number, inv: boolean}}
+     */
+    function _artViewerAdjDefault() {
+        return { b: 100, c: 100, g: 0, inv: false };
+    }
+
+    /**
+     * The CSS filter of the Adjust values, '' when neutral (so a picture
+     * nobody adjusted carries no filter at all).
+     *
+     * @param   {Object} st The viewer state.
+     * @returns {string}
+     */
+    function _artViewerFilter(st) {
+        const a = st.adj || _artViewerAdjDefault();
+        const parts = [];
+        if (a.b !== 100) parts.push(`brightness(${a.b}%)`);
+        if (a.c !== 100) parts.push(`contrast(${a.c}%)`);
+        if (a.g) parts.push(`grayscale(${a.g}%)`);
+        if (a.inv) parts.push('invert(1)');
+        return parts.join(' ');
+    }
+
+    /**
+     * Writes the filter onto every picture the stage shows (the one image,
+     * or Compare's two) and onto the loupe, without a re-render, so a slider
+     * keeps its focus while it is dragged.
+     *
+     * @param   {Object} st The viewer state.
+     * @returns {void}
+     */
+    function _artViewerApplyFilter(st) {
+        const f = _artViewerFilter(st);
+        document.querySelectorAll('#mb-art-viewer .mb-artv-stage :is(.mb-artv-img, .mb-artv-cmp-img), #mb-art-viewer .mb-artv-loupe')
+            .forEach((el) => { el.style.filter = f; });
+    }
+
+    /**
+     * The Adjust panel (`A`): three sliders and Invert, with Reset; the
+     * values are `st.adj`, written live by `_artViewerOnInput()`. View only —
+     * Download and Original keep the file as it is.
+     *
+     * @param   {Object} st The viewer state.
+     * @returns {HTMLElement}
+     */
+    function _artViewerAdjustPanel(st) {
+        const panel = _artvEl('div', 'mb-artv-adjust');
+        panel.appendChild(_artvEl('div', 'mb-artv-adjust-hd', 'Adjust'));
+        const slider = (key, label, min, max) => {
+            const row = _artvEl('label', 'mb-artv-adjust-row');
+            const r = document.createElement('input');
+            r.type = 'range';
+            r.min = String(min);
+            r.max = String(max);
+            r.value = String(st.adj[key]);
+            r.dataset.artvAdj = key;
+            r.setAttribute('aria-label', label);
+            row.append(_artvEl('span', null, label), r, _artvEl('span', 'mb-artv-adjust-v', `${st.adj[key]} %`));
+            return row;
+        };
+        panel.append(slider('b', 'Brightness', 40, 200), slider('c', 'Contrast', 40, 250), slider('g', 'Grayscale', 0, 100));
+        const inv = _artvEl('label', 'mb-artv-adjust-row');
+        const c = document.createElement('input');
+        c.type = 'checkbox';
+        c.checked = st.adj.inv;
+        c.dataset.artvAdj = 'inv';
+        inv.append(c, _artvEl('span', null, 'Invert (negatives, dark scans)'));
+        panel.append(inv, _artvBtn('adjreset', 'Reset'));
+        return panel;
+    }
+
+    /**
+     * The Adjust panel's inputs (delegated on the overlay): a slider or
+     * Invert changes `st.adj` and the pictures' filter at once.
+     *
+     * @param   {Event} e
+     * @returns {void}
+     */
+    function _artViewerOnInput(e) {
+        const st = _artViewerState;
+        const t = e.target;
+        if (!st || !(t instanceof HTMLInputElement) || !t.dataset.artvAdj) return;
+        const key = t.dataset.artvAdj;
+        if (key === 'inv') st.adj.inv = t.checked;
+        else {
+            st.adj[key] = Number(t.value);
+            const v = t.parentElement && t.parentElement.querySelector('.mb-artv-adjust-v');
+            if (v) v.textContent = `${st.adj[key]} %`;
+        }
+        _artViewerApplyFilter(st);
+    }
+
+    /**
+     * Compare's stage (`C`): the picture and `st.cmp` side by side, each
+     * fitted whole, their positions under them, the large images replacing
+     * the thumbnails as they load. No zoom, pan, turn or flip here (those
+     * belong to the one picture); the Adjust filter applies to both.
+     *
+     * @param   {Object}      st    The viewer state.
+     * @param   {HTMLElement} stage The emptied stage.
+     * @returns {void}
+     */
+    function _artViewerCompareStage(st, stage) {
+        stage.classList.add('mb-artv-compare');
+        // Its own generation: a load from an earlier render must not land here.
+        const gen = ++st.gen;
+        [st.i, st.cmp].forEach((idx, side) => {
+            const x = st.images[idx];
+            const fig = _artvEl('figure', 'mb-artv-cmp');
+            const img = _artvEl('img', 'mb-artv-cmp-img');
+            img.alt = (x.types || []).join(' / ') + (x.comment ? ' · ' + x.comment : '');
+            img.draggable = false;
+            if (x.external) img.referrerPolicy = 'no-referrer';
+            img.src = _artViewerThumbUrl(x);
+            img.style.filter = _artViewerFilter(st);
+            img.dataset.artvI = String(idx);
+            fig.append(img, _artvEl('figcaption', null,
+                `${side ? 'Right' : 'Left'}: ${st.list.indexOf(idx) + 1} / ${st.list.length}` +
+                (x.types && x.types.length ? ` · ${x.types.join(' / ')}` : '') + (x.comment ? ` · ${x.comment}` : '')));
+            stage.appendChild(fig);
+            const big = _artViewerBigUrls(x).filter(u => u !== img.getAttribute('src'));
+            if (big.length) {
+                _artViewerLoadFirst(big, !!x.external).then(({ src }) => {
+                    if (_artViewerState === st && st.gen === gen && img.isConnected) img.src = src;
+                }).catch(() => {});
+            }
+        });
+        stage.appendChild(_artvEl('div', 'mb-artv-note', '← → change the right picture · a filmstrip picture becomes it · C or Esc: back'));
+    }
+
+    /**
+     * Compare's ← →: the right picture steps through the list, skipping
+     * the left one.
+     *
+     * @param   {number} d 1 or -1.
+     * @returns {void}
+     */
+    function _artViewerCompareStep(d) {
+        const st = _artViewerState;
+        if (!st || st.cmp === null || st.list.length < 2) return;
+        const n = st.list.length;
+        let k = st.list.indexOf(st.cmp);
+        do { k = (k + d + n) % n; } while (st.list[k] === st.i);
+        st.cmp = st.list[k];
+        _artViewerRender();
+    }
+
+    /**
+     * Turns Compare on with the next picture on the right (off when on), or
+     * says why not with one picture only.
+     *
+     * @returns {void}
+     */
+    function _artViewerToggleCompare() {
+        const st = _artViewerState;
+        if (!st) return;
+        // Turned on or off by hand: from now on Esc leaves Compare first.
+        st.cmpStart = false;
+        if (st.cmp !== null) st.cmp = null;
+        else if (st.list.length > 1) st.cmp = st.list[(st.list.indexOf(st.i) + 1) % st.list.length];
+        else {
+            _artViewerNote('Compare needs two pictures.');
+            return;
+        }
+        _artViewerRender();
+    }
+
+    /**
+     * The loupe (`L`): a round lens 2.5× larger than the picture shows,
+     * centred on the pointer, for the picture's own pixels under it — also
+     * on a zoomed, turned or flipped picture: the pointer's place is taken
+     * back through the flips and the turn to the picture's own coordinates,
+     * and the lens is turned and flipped as the picture is. Hidden off the
+     * picture. Reads the picture already loaded: no request.
+     *
+     * @param   {MouseEvent} e
+     * @returns {void}
+     */
+    function _artViewerLoupeMove(e) {
+        const st = _artViewerState;
+        const lens = document.querySelector('#mb-art-viewer .mb-artv-loupe');
+        if (!st || !st.loupe || !lens) return;
+        const img = document.querySelector('#mb-art-viewer .mb-artv-stage .mb-artv-img');
+        const r = img && img.getBoundingClientRect();
+        if (!r || !r.width || !img.naturalWidth || e.clientX < r.left || e.clientX > r.right ||
+                e.clientY < r.top || e.clientY > r.bottom) {
+            lens.hidden = true;
+            return;
+        }
+        let u = (e.clientX - r.left) / r.width;
+        let v = (e.clientY - r.top) / r.height;
+        // Undo the flips, then the turn: the screen place → the picture's own.
+        if (st.flipX) u = 1 - u;
+        if (st.flipY) v = 1 - v;
+        const rot = ((st.rot % 360) + 360) % 360;
+        const [pu, pv] = rot === 90 ? [v, 1 - u] : rot === 180 ? [1 - u, 1 - v] : rot === 270 ? [1 - v, u] : [u, v];
+        const z = 2.5;
+        const scale = st.zoom ? st.zoomLevel : 1;
+        const w = img.offsetWidth * scale * z;
+        const h = img.offsetHeight * scale * z;
+        const size = lens.offsetWidth || 150;
+        const stage = lens.parentElement.getBoundingClientRect();
+        lens.hidden = false;
+        lens.style.left = `${e.clientX - stage.left - size / 2}px`;
+        lens.style.top = `${e.clientY - stage.top - size / 2}px`;
+        lens.style.backgroundImage = `url("${img.currentSrc || img.src}")`;
+        lens.style.backgroundSize = `${w}px ${h}px`;
+        lens.style.backgroundPosition = `${size / 2 - pu * w}px ${size / 2 - pv * h}px`;
+        const tf = [];
+        if (st.flipX) tf.push('scaleX(-1)');
+        if (st.flipY) tf.push('scaleY(-1)');
+        if (rot) tf.push(`rotate(${rot}deg)`);
+        lens.style.transform = tf.join(' ');
+        lens.style.filter = _artViewerFilter(st);
+    }
+
+    /**
+     * Copies the picture's address (`Y`), or with Shift a line for a
+     * MusicBrainz edit note: its types, its comment, the address. The
+     * browser's clipboard, no grant; the note line says what happened.
+     *
+     * @param   {boolean} asNote
+     * @returns {void}
+     */
+    function _artViewerCopyUrl(asNote) {
+        const st = _artViewerState;
+        if (!st) return;
+        const im = st.images[st.i];
+        let url = _artViewerUrl(im, im.image || _artViewerBigUrl(im));
+        if (url.startsWith('//')) url = `https:${url}`;
+        const text = asNote
+            ? `${(im.types || []).join(' / ') || 'Picture'}${im.comment ? ` (${im.comment})` : ''}: ${url}` : url;
+        const say = (m) => { if (_artViewerState === st) _artViewerNote(m); };
+        Promise.resolve(navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(text) : Promise.reject())
+            .then(() => say(`Copied: ${text}`), () => say(`The browser did not allow copying. ${text}`));
+    }
+
+    /**
+     * The key help (`?`): every key of the viewer, the ones P4b added
+     * marked; a click on it or Esc closes it.
+     *
+     * @returns {HTMLElement}
+     */
+    function _artViewerHelpEl() {
+        const box = _artvEl('div', 'mb-artv-help');
+        box.dataset.artv = 'help';
+        box.setAttribute('role', 'dialog');
+        box.setAttribute('aria-label', 'Viewer keys');
+        box.appendChild(_artvEl('div', 'mb-artv-help-hd', 'Viewer keys'));
+        const dl = document.createElement('dl');
+        _ART_VIEWER_KEYS.forEach(([k, d, nw]) => {
+            const row = document.createElement('div');
+            row.append(_artvEl('dt', null, k), _artvEl('dd', null, d));
+            if (nw) row.querySelector('dd').appendChild(_artvEl('span', 'mb-artv-help-new', 'new'));
+            dl.appendChild(row);
+        });
+        box.appendChild(dl);
+        box.appendChild(_artvEl('div', 'mb-artv-help-foot', 'Click or Esc: close'));
+        // Under the bar, however many rows it wrapped to (it is in place
+        // before the render appends this box), and never past the bottom.
+        const bar = document.querySelector('#mb-art-viewer > .mb-artv-bar');
+        const top = (bar ? bar.offsetHeight : 48) + 12;
+        box.style.top = `${top}px`;
+        box.style.maxHeight = `calc(100% - ${top + 16}px)`;
+        return box;
     }
 
     /**
@@ -161237,6 +161639,12 @@ a { color: #1565c0; }`;
         if (!st.grid) bar.appendChild(_artvBtn('flip', 'Flip (H)', st.flipX));
         bar.appendChild(_artvBtn('fullscreen', 'Fullscreen (F)', _artViewerIsFullscreen()));
         if (!st.grid) bar.appendChild(_artvBtn('download', 'Download (D)'));
+        // P4b's tools.
+        if (!st.grid) bar.appendChild(_artvBtn('adjust', 'Adjust (A)', st.adjust));
+        if (!st.grid) bar.appendChild(_artvBtn('compare', 'Compare (C)', st.cmp !== null));
+        if (!st.grid && st.cmp === null) bar.appendChild(_artvBtn('loupe', 'Loupe (L)', st.loupe));
+        if (!st.grid) bar.appendChild(_artvBtn('copy', 'Copy URL (Y)'));
+        bar.appendChild(_artvBtn('help', 'Keys (?)', st.help));
         const orig = _artvEl('a', 'mb-artv-btn', 'Original (O)');
         orig.href = _artViewerUrl(im, im.image || _artViewerBigUrl(im));
         orig.target = '_blank';
@@ -161286,12 +161694,43 @@ a { color: #1565c0; }`;
             root.appendChild(grid);
             root.appendChild(_artvEl('div', 'mb-artv-bar mb-artv-keys',
                 st.gridStart ? 'Click an image to view it · Esc close' : 'Click an image to view it · G or Esc back'));
+            if (st.help) root.appendChild(_artViewerHelpEl());
             close.focus({ preventScroll: true });
             return;
         }
 
         const mid = _artvEl('div', 'mb-artv-mid' + (st.info ? '' : ' mb-artv-noinfo'));
-        const stage = _artvEl('div', 'mb-artv-stage' + (st.zoom ? ' mb-artv-zoomed' : ''));
+        const stage = _artvEl('div', 'mb-artv-stage' + (st.zoom && st.cmp === null ? ' mb-artv-zoomed' : ''));
+        // P4b: Compare has a stage of its own — two pictures, no zoom.
+        if (st.cmp !== null) {
+            _artViewerCompareStage(st, stage);
+            if (st.adjust) stage.appendChild(_artViewerAdjustPanel(st));
+            const cPrev = _artvBtn('prev', '‹');
+            cPrev.className = 'mb-artv-nav mb-artv-prev';
+            cPrev.setAttribute('aria-label', 'Previous picture on the right');
+            const cNext = _artvBtn('next', '›');
+            cNext.className = 'mb-artv-nav mb-artv-next';
+            cNext.setAttribute('aria-label', 'Next picture on the right');
+            stage.append(cPrev, cNext);
+            mid.append(stage, _artViewerInfo(st));
+            root.appendChild(mid);
+            const cFilm = _artvEl('div', 'mb-artv-film');
+            st.list.forEach((i) => {
+                const th = document.createElement('img');
+                if (st.images[i].external) th.referrerPolicy = 'no-referrer';
+                th.src = _artViewerThumbUrl(st.images[i]);
+                th.alt = (st.images[i].types || []).join(' / ');
+                th.loading = 'lazy';
+                th.dataset.artvGo = String(i);
+                if (i === st.i) th.className = 'mb-artv-cur';
+                else if (i === st.cmp) th.className = 'mb-artv-cur mb-artv-cmp-cur';
+                cFilm.appendChild(th);
+            });
+            root.appendChild(cFilm);
+            if (st.help) root.appendChild(_artViewerHelpEl());
+            close.focus({ preventScroll: true });
+            return;
+        }
         stage.dataset.artv = 'stage';
         const img = _artvEl('img', 'mb-artv-img');
         img.alt = (im.types || []).join(' / ') + (im.comment ? ' · ' + im.comment : '');
@@ -161342,6 +161781,13 @@ a { color: #1565c0; }`;
         next.className = 'mb-artv-nav mb-artv-next';
         next.setAttribute('aria-label', 'Next image');
         stage.append(prev, next);
+        // P4b: the Adjust panel and the loupe's lens (shown on a move).
+        if (st.adjust) stage.appendChild(_artViewerAdjustPanel(st));
+        if (st.loupe) {
+            const lens = _artvEl('div', 'mb-artv-loupe');
+            lens.hidden = true;
+            stage.appendChild(lens);
+        }
         mid.append(stage, _artViewerInfo(st));
         root.appendChild(mid);
 
@@ -161393,6 +161839,7 @@ a { color: #1565c0; }`;
                 const x = st.images[j];
                 _artViewerLoadFirst(_artViewerBigUrls(x).filter(u => u !== _artViewerThumbUrl(x)), !!x.external).catch(() => {});
             });
+        if (st.help) root.appendChild(_artViewerHelpEl());
         close.focus({ preventScroll: true });
     }
 
@@ -161452,6 +161899,10 @@ a { color: #1565c0; }`;
         }
         if (e.ctrlKey || e.metaKey || e.altKey) return;
         const k = e.key;
+        // An Adjust slider or Invert has the focus (P4b): its own keys move
+        // it, as on any page; the page still never sees them.
+        if (e.target instanceof HTMLInputElement && root && root.contains(e.target) &&
+                /^(Arrow(Left|Right|Up|Down)|Home|End|PageUp|PageDown| )$/.test(k)) return;
         // Any key but P itself stops a running slideshow (and still acts).
         if (st.slideshow && k !== 'p' && k !== 'P' && k !== 'Shift') {
             _artViewerStopSlideshow(st);
@@ -161460,10 +161911,16 @@ a { color: #1565c0; }`;
         let handled = true;
         if (k === 'Escape') {
             // Fullscreen first (where the browser lets Esc through at all:
-            // most take it to leave fullscreen themselves), then the grid,
-            // then the viewer.
+            // most take it to leave fullscreen themselves), then the key help
+            // and Compare (P4b), then the grid, then the viewer.
             if (_artViewerIsFullscreen()) {
                 document.exitFullscreen().catch(() => {});
+            } else if (st.help) {
+                st.help = false;
+                _artViewerRender();
+            } else if (st.cmp !== null && !st.cmpStart) {
+                st.cmp = null;
+                _artViewerRender();
             } else if (st.grid && !st.gridStart) {
                 st.grid = false;
                 _artViewerRender();
@@ -161472,6 +161929,9 @@ a { color: #1565c0; }`;
             }
         } else if (k === 'f' || k === 'F') {
             _artViewerToggleFullscreen();
+        } else if (k === '?') {
+            st.help = !st.help;
+            _artViewerRender();
         } else if (st.grid) {
             if (k === 'g' || k === 'G') {
                 st.grid = false;
@@ -161479,6 +161939,21 @@ a { color: #1565c0; }`;
             } else {
                 handled = false;
             }
+        } else if (st.cmp !== null && (k === 'ArrowRight' || k === 'ArrowLeft') && !e.shiftKey) {
+            // Compare: ← → change the right picture; the left one stays.
+            _artViewerCompareStep(k === 'ArrowRight' ? 1 : -1);
+        } else if (st.cmp !== null && /^(ArrowUp|ArrowDown|[01zZrRhHvV])$/.test(k)) {
+            // Zoom, turn and flip belong to the one picture: not in Compare.
+        } else if (k === 'a' || k === 'A') {
+            st.adjust = !st.adjust;
+            _artViewerRender();
+        } else if (k === 'c' || k === 'C') {
+            _artViewerToggleCompare();
+        } else if ((k === 'l' || k === 'L') && st.cmp === null) {
+            st.loupe = !st.loupe;
+            _artViewerRender();
+        } else if (k === 'y' || k === 'Y') {
+            _artViewerCopyUrl(e.shiftKey);
         } else if ((k === 'ArrowRight' || k === 'ArrowLeft') && e.shiftKey) {
             // Shift+← →: the previous/next row of the CAA/EAA column, when
             // there is one (a no-op in the release/event sections).
@@ -161555,6 +162030,15 @@ a { color: #1565c0; }`;
             if (!go && !b) _artViewerRender();
         }
         if (go) {
+            // Compare (P4b): a filmstrip picture becomes the right one.
+            if (st.cmp !== null && !st.grid) {
+                const idx = Number(go.dataset.artvGo);
+                if (idx !== st.i) {
+                    st.cmp = idx;
+                    _artViewerRender();
+                }
+                return;
+            }
             st.i = Number(go.dataset.artvGo);
             st.grid = false;
             _artViewerResetZoomOnStep(st);
@@ -161562,6 +162046,17 @@ a { color: #1565c0; }`;
             return;
         }
         if (!b) return;
+        // P4b's tools, and Compare's ‹ › stepping the right picture.
+        if (st.cmp !== null && (action === 'prev' || action === 'next')) {
+            _artViewerCompareStep(action === 'next' ? 1 : -1);
+            return;
+        }
+        if (action === 'adjust') { st.adjust = !st.adjust; _artViewerRender(); return; }
+        if (action === 'adjreset') { st.adj = _artViewerAdjDefault(); _artViewerRender(); return; }
+        if (action === 'compare') { _artViewerToggleCompare(); return; }
+        if (action === 'loupe') { st.loupe = !st.loupe; _artViewerRender(); return; }
+        if (action === 'copy') { _artViewerCopyUrl(false); return; }
+        if (action === 'help') { st.help = !st.help; _artViewerRender(); return; }
         if (action === 'slideshow') _artViewerToggleSlideshow();
         else if (action === 'close') _artViewerClose();
         else if (action === 'grid') { st.grid = !st.grid; _artViewerRender(); }
@@ -161624,11 +162119,13 @@ a { color: #1565c0; }`;
         const st = _artViewerState;
         if (!st || st.grid) return;
         st.ptr = { x: e.clientX, y: e.clientY };
-        if (!st.zoom || st.panMode !== 'follow') return;
         const img = document.querySelector('#mb-art-viewer .mb-artv-stage .mb-artv-img');
-        if (!img) return;
-        _artViewerPanFromPointer(st, e.clientX, e.clientY);
-        _artViewerApplyTransform(st, img);
+        if (img && st.zoom && st.panMode === 'follow') {
+            _artViewerPanFromPointer(st, e.clientX, e.clientY);
+            _artViewerApplyTransform(st, img);
+        }
+        // The loupe (P4b), after the pan: it reads where the picture is now.
+        _artViewerLoupeMove(e);
     }
 
     /**

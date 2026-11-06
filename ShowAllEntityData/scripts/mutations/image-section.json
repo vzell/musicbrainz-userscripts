@@ -700,5 +700,200 @@
         "spec": "tests/fixtures/sidebar-picture.spec.js",
         "grep": "image retry",
         "expect": "fail"
+    },
+    {
+        "name": "P4b: the transform writer drops the Adjust filter",
+        "why": "The filter is written beside the transform, so a re-render (Info, a load, a fit) keeps it.",
+        "edits": [
+            {
+                "find": "        img.style.transform = parts.join(' ');\n        // The Adjust panel's filter (P4b), written here beside the transform\n        // so every load, fit and step keeps it. View only: Download keeps the file.\n        img.style.filter = _artViewerFilter(st);\n",
+                "replace": "        img.style.transform = parts.join(' ');\n"
+            }
+        ],
+        "spec": "tests/fixtures/art-viewer-tools.spec.js",
+        "grep": "sliders and Invert",
+        "expect": "fail"
+    },
+    {
+        "name": "P4b: a step keeps the last picture's Adjust values",
+        "why": "The values belong to the picture they were set for; a step starts neutral, like the rotation.",
+        "edits": [
+            {
+                "find": "        // The Adjust values belong to the picture they were set for (P4b).\n        st.adj = _artViewerAdjDefault();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/art-viewer-tools.spec.js",
+        "grep": "sliders and Invert",
+        "expect": "fail"
+    },
+    {
+        "name": "P4b: a focused slider's arrow keys step the picture",
+        "why": "The viewer owns every key, but a focused Adjust input keeps its own arrows.",
+        "edits": [
+            {
+                "find": "                /^(Arrow(Left|Right|Up|Down)|Home|End|PageUp|PageDown| )$/.test(k)) return;",
+                "replace": "                /^(?!)$/.test(k)) return;"
+            }
+        ],
+        "spec": "tests/fixtures/art-viewer-tools.spec.js",
+        "grep": "sliders and Invert",
+        "expect": "fail"
+    },
+    {
+        "name": "P4b: Compare's right picture can be the left one",
+        "why": "Stepping the right picture skips the left one.",
+        "edits": [
+            {
+                "find": "        do { k = (k + d + n) % n; } while (st.list[k] === st.i);",
+                "replace": "        k = (k + d + n) % n;"
+            }
+        ],
+        "spec": "tests/fixtures/art-viewer-tools.spec.js",
+        "grep": "the filmstrip change the right one",
+        "expect": "fail"
+    },
+    {
+        "name": "P4b: a filmstrip click in Compare changes the left picture",
+        "why": "In Compare a filmstrip picture becomes the right one.",
+        "edits": [
+            {
+                "find": "            if (st.cmp !== null && !st.grid) {\n                const idx = Number(go.dataset.artvGo);",
+                "replace": "            if (false) {\n                const idx = Number(go.dataset.artvGo);"
+            }
+        ],
+        "spec": "tests/fixtures/art-viewer-tools.spec.js",
+        "grep": "the filmstrip change the right one",
+        "expect": "fail"
+    },
+    {
+        "name": "P4b: zoom keys act in Compare",
+        "why": "↑ ↓ 0 1 Z in Compare would change the zoom level of the picture behind it unseen, which then comes back zoomed when Compare ends (turn and flip need the stage picture and do nothing there anyway).",
+        "edits": [
+            {
+                "find": "        } else if (st.cmp !== null && /^(ArrowUp|ArrowDown|[01zZrRhHvV])$/.test(k)) {\n            // Zoom, turn and flip belong to the one picture: not in Compare.\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/art-viewer-tools.spec.js",
+        "grep": "the filmstrip change the right one",
+        "expect": "fail"
+    },
+    {
+        "name": "P4b: a viewer opened into Compare leaves Compare on Esc",
+        "why": "Opened from a Spreads pair, Esc closes the viewer (as gridStart does).",
+        "edits": [
+            {
+                "find": "            } else if (st.cmp !== null && !st.cmpStart) {",
+                "replace": "            } else if (st.cmp !== null) {"
+            }
+        ],
+        "spec": "tests/fixtures/art-viewer-tools.spec.js",
+        "grep": "Compare from Spreads",
+        "expect": "fail"
+    },
+    {
+        "name": "P4b: a Spreads pair opens one picture",
+        "why": "A page of a paired spread opens both pages in Compare.",
+        "edits": [
+            {
+                "find": "                { opener: tileLink, title: _releaseArtTitle(desc), compareWith: pair ? r : null });",
+                "replace": "                { opener: tileLink, title: _releaseArtTitle(desc), compareWith: null });"
+            }
+        ],
+        "spec": "tests/fixtures/art-viewer-tools.spec.js",
+        "grep": "Compare from Spreads",
+        "expect": "fail"
+    },
+    {
+        "name": "P4b: the loupe ignores the turn",
+        "why": "On a turned picture the pointer's place must be taken back through the turn to the picture's own coordinates.",
+        "edits": [
+            {
+                "find": "        const [pu, pv] = rot === 90 ? [v, 1 - u] : rot === 180 ? [1 - u, 1 - v] : rot === 270 ? [1 - v, u] : [u, v];",
+                "replace": "        const [pu, pv] = [u, v];"
+            }
+        ],
+        "spec": "tests/fixtures/art-viewer-tools.spec.js",
+        "grep": "a lens over the picture",
+        "expect": "fail"
+    },
+    {
+        "name": "P4b: the loupe shows off the picture",
+        "why": "Off the picture the lens hides.",
+        "edits": [
+            {
+                "find": "        if (!r || !r.width || !img.naturalWidth || e.clientX < r.left || e.clientX > r.right ||\n                e.clientY < r.top || e.clientY > r.bottom) {",
+                "replace": "        if (!r || !r.width || !img.naturalWidth) {"
+            }
+        ],
+        "spec": "tests/fixtures/art-viewer-tools.spec.js",
+        "grep": "a lens over the picture",
+        "expect": "fail"
+    },
+    {
+        "name": "P4b: Shift+Y copies the plain address",
+        "why": "Shift+Y copies a line for an edit note: types, comment, address.",
+        "edits": [
+            {
+                "find": "        const text = asNote\n",
+                "replace": "        const text = false\n"
+            }
+        ],
+        "spec": "tests/fixtures/art-viewer-tools.spec.js",
+        "grep": "the picture.s address; Shift",
+        "expect": "fail"
+    },
+    {
+        "name": "P4b: Esc closes the viewer over the key help",
+        "why": "Esc closes the help first.",
+        "edits": [
+            {
+                "find": "            } else if (st.help) {\n                st.help = false;\n                _artViewerRender();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/art-viewer-tools.spec.js",
+        "grep": "every key, the new ones marked",
+        "expect": "fail"
+    },
+    {
+        "name": "P4b: ? opens no key help",
+        "why": "? is the viewer's key help.",
+        "edits": [
+            {
+                "find": "        } else if (k === '?') {\n            st.help = !st.help;\n            _artViewerRender();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/art-viewer-tools.spec.js",
+        "grep": "every key, the new ones marked",
+        "expect": "fail"
+    },
+    {
+        "name": "P4b: the key help under the info panel",
+        "why": "vzell 2026-11-06: the info panel (a grid item with the tooltip look's z-index) hid the help's last column; the help's z-index beats it.",
+        "edits": [
+            {
+                "find": "                z-index: 2147483600;\n                overflow: auto;\n                padding: 16px 18px;",
+                "replace": "                z-index: 5;\n                overflow: auto;\n                padding: 16px 18px;"
+            }
+        ],
+        "spec": "tests/fixtures/art-viewer-tools.spec.js",
+        "grep": "every key, the new ones marked",
+        "expect": "fail"
+    },
+    {
+        "name": "P4b: the key help over the bar",
+        "why": "vzell 2026-11-06: the help covered the bar's second row; its top comes from the bar's height.",
+        "edits": [
+            {
+                "find": "        box.style.top = `${top}px`;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/art-viewer-tools.spec.js",
+        "grep": "every key, the new ones marked",
+        "expect": "fail"
     }
 ]
