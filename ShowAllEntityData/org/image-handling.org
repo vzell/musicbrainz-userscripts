@@ -1,0 +1,295 @@
+* TODO Image handling in our userscript
+** initial
+
+1.)
+
+a.)
+
+Make a comprehensive summary about the different implementations we currently have for displaying release/detail images
+(Cover art/Scans/Images/Pictures) for the different PTs
+
+#+begin_example
+MB - Cover art - @debug/MB-release-final.html - https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f
+SL - Scans - @debug/SL-release-initial.html - IP - https://www.springsteenlyrics.com/collection.php?item=5493&category=single&f_format=cd3 - scans from a single copy
+SL - Scans - @debug/SL-release-final.html - FRP - https://www.springsteenlyrics.com/collection.php?item=5493&category=single&f_format=cd3
+SL - Scans - @debug/SL-release-2copys-initial.html - IP - https://www.springsteenlyrics.com/collection.php?item=6463&category=single&f_format=cd3 - scans from two copies
+SL - Scans - @debug/SL-release-2copys-final.html - FRP - https://www.springsteenlyrics.com/collection.php?item=6463&category=single&f_format=cd3
+SL - Scans - @debug/SL-release-2copys-1missing-initial.html - IP - https://www.springsteenlyrics.com/collection.php?item=5472&category=single&f_format=cd3 - scans from two copies, one not yet done
+SL - Scans - @debug/SL-release-2copys-1missing-final.html - FRP - https://www.springsteenlyrics.com/collection.php?item=5472&category=single&f_format=cd3
+Discogs - Images - @debug/D-release-final.html - FRP - https://www.discogs.com/master/27194-Bruce-Springsteen-The-River?sort=country&opt=HIkF
+IA - Pictures - @debug/IA-release-final.html - https://archive.org/details/bs1977-02-17.aud.ntl-12.jems.flac16
+#+end_example
+
+How do the GPE and FICE fit in this discussion. Are they even the same thing.
+
+b.)
+
+Also take into account our internal viewer with features like "Grid/Info/Slideshow/Rotate/Flip/Fullscreen/Download/Original"
+which seems to be the only implementation which is shared across all PTs (MB and non-MB) right now. make some suggestions what
+else our internal viewer could easily support.
+
+2.)
+
+Currently only on the MB 'release-tracks' PT e.g. https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f
+we have the option to display/group the images in a "Grid/By type/Spreads", see [Image #5] and have the medium scans also in
+the h3 medium specific header line [Image #6]
+
+a.)
+
+can't we have just one refactored implementation for all the current supported PTs and maybe future ones (possibly with
+a skill to implement it on a PT)
+
+b.)
+
+maybe we can even add more features now or later, like displaying images in a grid/table/etc. with filtering sorting
+capabilities
+
+3.)
+
+make some nice rich HTML based mockups
+
+** Answer (2026-11-06, branch =docs/image-handling=, no change to the userscript)
+
+Env: 2026-11-06T00:38:33+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · browser n/a
+(code reading, snapshots) · Tampermonkey n/a
+
+Mockups: =org/image-handling-mockups.html= (opened from disk, images hotlinked), published copy
+built with =python3 -I scripts/build-mockup-artifact.py org/image-handling-mockups.html <out.html>=
+(48 images inlined, 0.9 MB): https://claude.ai/artifact/PnoG9pbnsqjGKYVgUQCzqh
+The image list comes from the snapshots: =python3 -I scripts/extract-mockup-image-urls.py --mockup
+mb=debug/MB-release-final.html sla=debug/SL-release-final.html slb=debug/SL-release-2copys-final.html
+slc=debug/SL-release-2copys-1missing-final.html dg=debug/D-release-final.html ia=debug/IA-release-final.html=
+(thumbnails only, plus three SL covers and two full scans for the viewer mockup).
+
+Every function name below was grep-checked against 9.99.1563 (each defined exactly once).
+
+*** 1a. What exists today
+
+Four displays, one viewer. Letters as in the mockups.
+
+| # | Display                     | Where                                                                               | Code                                                                                                                                                                 | Has / lacks                                                                                                                                                                          |
+|---+-----------------------------+-------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| A | Art section                 | MB release-tracks "Cover art (N)", event-overview "Event art (N)"                   | =_releaseArt*= (~1,100 lines), descriptor =_artSectionDesc('caa'\vert'eaa')=                                                                                         | type chips (multi-select union), Grid / By type / Spreads (+ Liner pager), ★ main front, ⏳ pending, medium thumbs in the h3s, loading/none/retry, remembered layout, tab click      |
+| B | Foreign detail head         | SL item "Scans" (per copy), Discogs release/master "Images", archive.org "Pictures" | picture loop of =_fdHeadInsertSections()=, =spec.pictures= / =spec.pictureGroups=, card =fd-pic= (=_fdPicCardHtml()=), click =_dpArtViewerClick()=                   | flat grid only (borrows A's CSS, none of its logic); one h2 per SL copy, so one viewer per copy; *a copy without scans disappears*; no types, chips, layouts, medium thumbs, setting |
+| C | FICE (table rows)           | SL Cover, JL Art, BS Photo, BB Media, DG Image, IA Art columns; title glyphs        | =_fiProvider()= → FiProvider, =_fiDpProvider()= factory, card =fi-img= (=_fiCardHtml()= on =_artCardCoreHtml()=), =_fiClick()=, =_fiLoad()=, 🖼 gallery =_fgalOpen()= | B1 card (Space = all, Shift = bigger), Shift+← → over the visible rows, lazy cells, types per host (JL and IA from file names)                                                       |
+| D | GPE window strips           | the Space window =#mb-dp-dialog=                                                    | =_mbPopGalleryHtml()=, =_dpExtractedCols()=, =_extIaImagesHtml()=, =_extDgImagesHtml()= → =_dpArtViewerClick()=                                                      | flat strips; the GPE hover card's thumbnails are not clickable                                                                                                                       |
+| – | MB table side               | CAA/EAA column tiles + chips, D2 gallery, relationship icons, sidebar picture       | =_artColumnViewerOnClick()=, =_artGallery*=, =_artIconClick()=, =_sbOpenCover()=                                                                                     | out of scope here; listed for completeness                                                                                                                                           |
+| V | The viewer =#mb-art-viewer= | every display above (13 call sites of =_artViewerOpen()=)                           | =_artViewerOpen(ctx, path, indices, start, opts)=; external records ={image, thumbnails:{250}, types, comment, external:true}=                                       | see 1b                                                                                                                                                                               |
+
+Per page from this file:
+
+| Page                            | Word      | IP (before a button)                                                            | FRP (after the render)                                     | Groups          | Chips / layouts               | Medium thumbs                              | Viewer steps through        |
+|---------------------------------+-----------+---------------------------------------------------------------------------------+------------------------------------------------------------+-----------------+-------------------------------+--------------------------------------------+-----------------------------|
+| MB release 3ec14d03             | Cover art | MusicBrainz's own Cover art tab; relationship icons / sidebar cover get B1 card | A "Cover art (12)" above the tracklist                     | by type         | yes, Grid / By type / Spreads | yes ("1 - 8cm CD": Medium, Booklet/Medium) | the chip union (12)         |
+| SL 5493 (one copy)              | Scans     | the site's "Scans/Photos" thumbnails                                            | B "Scans (5)"                                              | none            | no, flat                      | no                                         | 5                           |
+| SL 6463 (two copies)            | Scans     | "Scans/Photos (copy #1)", "(copy #2)"                                           | B two h2s "Scans (copy #1) (2)", "Scans (copy #2) (2)"     | one h2 per copy | no, flat                      | no                                         | one copy only (2, then 2)   |
+| SL 5472 (copy #1 without scans) | Scans     | copy #1 says "No scans available yet"                                           | B only "Scans (copy #2) (3)"                               | one h2 per copy | no, flat                      | no                                         | 3; copy #1 is gone, no note |
+| Discogs master 27194            | Images    | Discogs' React page                                                             | B "Images (16)": captions Primary, Secondary 1–15          | none            | no, flat                      | no ("Record 1", "Record 2")                | 16                          |
+| IA bs1977-02-17                 | Pictures  | archive.org's own page                                                          | B "Pictures (3)": captions Cover, Front, Back (file names) | none            | no, flat                      | no ("Disc 1", "Disc 2")                    | 3                           |
+
+The SL 5472 row is a real gap, independent of any refactor: =_slItemHeadSpec()= drops a
+=Scans/Photos (copy #N)= section without thumbnails, while the Release card still says
+"Copies: 2". (Mockup M0-B1.)
+
+**** GPE and FICE: not the same thing
+
+- *GPE* (generic popup engine) previews *any link*: the hover card =#mb-dp-peek= and the Space
+  window =#mb-dp-dialog= (=_popSources()=, =_DP_SITES=, the =_ext*= readers). Pictures are one
+  thing its window can show (D).
+- *FICE* (foreign image card engine) is the picture card and viewer click for *table rows* on
+  the foreign hosts (C): its card is drawn in the stat tooltip =#mb-stat-tooltip= through
+  =_mbttResolve()= (=fi-img=), its click is its own window-capture listener (=_fiClick()=).
+- What they share is *below and after* the UI: the detail-page reader (=_dpGet()=, =_dpMem=,
+  its own IndexedDB, the per-site rate gates) — a row the link preview already read costs FICE
+  nothing — and the viewer. Where they meet: a FICE trigger inside a GPE window (Discogs window
+  tables, =_DGW_FI=) gets the window's ring, but its card, click and Space are FICE's.
+- B is a third path again: the head's =fd-pic= card is deliberately not FICE, because FICE is
+  shaped around rows (=rowFor()=, row stepping). Diagram in the mockup ("GPE vs FICE").
+
+*** 1b. The viewer: suggestions
+
+The viewer is the only piece shared by every page, so anything added lands on MusicBrainz and on
+every foreign site at once. Ranked by cost (mockup M5 has the first five working):
+
+| Idea                                            | Cost   | What                                                                    | Builds on                                                               |
+|-------------------------------------------------+--------+-------------------------------------------------------------------------+-------------------------------------------------------------------------|
+| Adjust: brightness, contrast, grayscale, invert | small  | key A; view only, Download keeps the file; reset on step like rotation  | =_artViewerApplyTransform()= writes =style.filter= beside the transform |
+| Key help overlay                                | small  | key ?; every key, new ones marked                                       | =_artViewerOnKey()=, the =.mb-tt-liner= look                            |
+| Copy image URL                                  | small  | key Y; Shift+Y as an edit-note line                                     | =_artViewerUrl()=; clipboard inside the key handler                     |
+| Loupe                                           | small  | key L; 2.5× lens under the pointer, from the large image already loaded | =_artViewerOnMouseMove()=; no request                                   |
+| Filmstrip on/off                                | small  | more stage for tall scans; remembered                                   | the =MB_ART_VIEWER_BG_KEY= pattern, =artviewer= workspace group         |
+| Grid grouped by the section's group             | small  | copies (SL) or kinds (BB) in the grid, not only the first type          | the grid already groups by first type                                   |
+| Open in the archive editor (MB)                 | small  | key E; the image's edit on MusicBrainz                                  | the CAA record's =edit= id is in the cache                              |
+| Compare two images                              | medium | key C; two stages side by side; Spreads pairs open straight into it     | =_releaseArtFindSpreads()=, =_artViewerFit()= per stage                 |
+| Download all                                    | medium | Shift+D; every image of the list, one at a time, named like D           | =_artViewerDownload()=, =_artGmFetchBlob()=                             |
+| Reverse image search links                      | medium | opt-in setting, off by default (outward-facing)                         | a link with the image URL                                               |
+| Crop to selection                               | larger | drag a box, download that part                                          | canvas; an external image needs the GM blob first                       |
+
+Keys A, C, E, L, Y and ? are free today (the key handler uses F G R H V B D P I O Z 0 1, arrows,
+Home/End, Esc, Tab). "Art Station" (majkinetor, org/viewer.org 2b) was the inspiration for the
+last round; nothing on this list conflicts with what came from it.
+
+*** 2a. One image section for every detail pageType
+
+Yes, and most of it already exists: about 60 % of A is source-neutral (the sheet, chips, layout
+switch, click routing, viewer order, the Spreads plan, =_releaseArtMediumAssign()= — which is
+already pure). What ties A to MusicBrainz is narrow:
+
+- the data source: =_releaseArtLoad()= always calls =_artFetchEntityImages()=;
+- identity from =location.pathname= (=entityRe=);
+- grouping hard-wired to =types[0]= (=_releaseArtRenderSheet()=, =_releaseArtTypeCounts()=,
+  =_releaseArtShownIndices()=);
+- CAA fields on the tile and its card (★ =front=, ⏳ =approved=, =thumbnails['250'|'1200']=),
+  the Spreads "book" test on Liner/Booklet;
+- one section per page (=document.querySelector('.mb-release-art-sec')= in the tab and medium
+  handlers), =_releaseArtInsertSection()= mapping over =['caa','eaa']= only;
+- medium art wired to =release-tracks= and =CAA_CTX= (=_releaseArtApplyMediumArt()=,
+  =_releaseArtOnMediumClick()=), and =_releaseArtMedia()= parsing MusicBrainz's "1 - CD" h3.
+
+*Proposal: the Image section component (ISC).* =_artSectionDesc()= grows into an adapter:
+
+#+begin_src js
+{
+    key: 'sl-item',                  // one adapter per pageType family
+    label: 'Scans',                  // h2 text; N is counted
+    load: (page) => records,         // archive fetch (caa/eaa) or records already read
+    entityKey: () => 'sl:5472',      // viewer path and cache key
+    groupOf: (im) => im.copy,        // 'Copy #1' …, default: first type
+    groupLabel: 'copy',              // chip row label, "By copy"
+    badges: (im) => im.front ? ['★'] : [],
+    bookTypes: ['Liner', 'Booklet'], // Spreads; caa only today
+    placeholders: (page) => [{ group: 'Copy #1', note: 'No scans available yet' }],
+    mediaOf: null,                   // () => [{pos, format, h3}] for medium thumbs
+    mediumOf: null,                  // (im) => pos | null, never a guess
+    views: ['grid', 'group', 'table'],
+    setting: 'sa_sl_item_pictures',  // inside the site's own opt-in
+}
+#+end_src
+
+caa and eaa become two adapters; B's three sites become three more (=spec.pictures= and
+=spec.pictureGroups= feed =load()= / =groupOf=). SL copies become one section with a Copy facet
+and a placeholder for a copy without scans (M2). Discogs gets ★ primary and Primary/Secondary
+chips (M3); archive.org gets the types =_iaPictureTypes()= already guesses for FICE, marked as
+guessed (M3-IA). Medium thumbs off MusicBrainz need =mediaOf()= ("Record N" from
+=_dgReleaseMedia()=, "Disc N" on archive.org) and an image that really names a medium
+(=cd1.jpg=, an SL caption "CD 2"); Discogs images name none, so its h3s stay empty — R7's rule
+stands.
+
+Kept, whatever the phase: the section is never =table.tbl= and never cloned; the
+=.mb-release-art-*= class names stay (specs and mutation lists key on them); zero requests added
+on the MusicBrainz hot path; the CAA/EAA column, D2 and FICE are untouched (they are row-shaped
+and already share the card and viewer).
+
+**** Phases (each its own branch, specs that fail before)
+
+- *P0* — extract the component, behaviour identical. caa/eaa become adapters; every query
+  scoped to its own section. Gate: MusicBrainz fixture suite, the five Cover art specs
+  (=release-tracks-cover-art*=, =release-tracks-medium-art=) and the two Event art specs;
+  repoint =scripts/mutations/release-tracks-cover-art*.json= to the new names.
+- *P1* — the foreign head onto it: =_fdHeadInsertSections()=' picture loop and the =fd-pic=
+  card become one adapter. SL, Discogs, archive.org get chips and Grid / By type. Specs
+  =sl-item=, =ia-details=, =discogs-release-tracks=, =discogs-master-tracks=, =sl-image-card=.
+- *P2* — groups and placeholders: SL copies in one section, the missing copy shown; Discogs ★;
+  archive.org types.
+- *P3* — medium thumbs off MusicBrainz (=mediaOf()= / =mediumOf()=).
+- *P4* — new views (2b). The viewer ideas of 1b do not depend on P0–P3 and can go first.
+
+**** Skill: =add-image-section=
+
+Written with P1, next to =foreign-detail-pagetype= (whose section 4 treats pictures as a flat
+=spec.pictures= list and does not mention =pictureGroups= — that skill gets a pointer to the new
+one). Checklist it carries: the adapter above; records from the page already read (no new
+request at render); a fixture from =debug/<site>-*-final.html=; a spec per view plus one for the
+viewer's order; a mutation list; the coverage registry row (=docs/non-mb-coverage.json=); a line
+in =docs/claude/<site>.md=.
+
+*** 2b. More features
+
+- *Table view* (M4): one row per image — thumbnail, position, group, types, comment, flags
+  (★, guessed), file, host; click a header to sort, type to filter (matches marked); the viewer
+  steps through the rows as shown. Pixel size and bytes fill in only for images already seen by
+  the viewer (its facts) — the column makes no request.
+- *Tile size* slider and *Show missing* (placeholders on/off), in every layout.
+- *Group-by switch*: type / copy / kind, from the adapter.
+- Later: select + download selected (with "Download all" from 1b).
+
+*Open decision (vzell):* the table view as a plain table inside the section (recommended: GF,
+STF and the findings counts stay exactly as they are) or as a real =table.tbl= (the 📊 dropdown
+for free, but it joins the page's table count, the global filter and every render pass).
+
+*** 3. Mockups
+
+https://claude.ai/artifact/PnoG9pbnsqjGKYVgUQCzqh — source =org/image-handling-mockups.html=.
+
+| Id    | What                                                                          | Verdict     |
+|-------+-------------------------------------------------------------------------------+-------------|
+| M0    | today, side by side: MB section, SL 5472 (copy dropped), Discogs, archive.org | as is       |
+| –     | diagrams: today's four displays + shared layer; the proposed ISC              | reference   |
+| M5    | viewer with Adjust, Compare, Loupe, Copy URL, key help (all working)          | recommended |
+| M2    | ISC on SL 5472: Copy facet, By copy, placeholder                              | recommended |
+| M3    | ISC on the Discogs master: ★ primary, chips, By type; "Record 1" stays empty  | recommended |
+| M3-IA | ISC on archive.org: types from file names, marked guessed                     | recommended |
+| M3-MB | MusicBrainz unchanged, now an adapter (P0)                                    | P0          |
+| M4    | table view on the MB release: sort, filter, tile size                         | recommended |
+| S1    | skill sketch =add-image-section=                                              | with P1     |
+
+The panels M0-A, M2, M3, M3-IA, M3-MB and M4 are drawn by one renderer in the mockup, fed by four
+adapters: the page itself is a small model of the proposal.
+
+
+* summary
+
+I've answered org/image-handling.org with a dated Answer section, built the mockups and published them: ⧉ https://claude.ai/artifact/PnoG9pbnsqjGKYVgUQCzqh (private to your account until you share it from the page's Share menu).
+
+1a. What exists today. There are four separate ways of showing a release's pictures, and all of them open the same viewer:
+- A. MB release-tracks Cover art section (and Event art on event pages). It is the only one with type chips, Grid / By type / Spreads, the ★ main-front badge and the medium thumbs in the h3.
+- B. The head on SL, Discogs and IA detail pages (Scans, Images, Pictures). It shows a flat grid only. Two SL copies become two separate sections with two separate viewers.
+- C. FICE, which covers picture cells in table rows on the non-MB sites.
+- D. The GPE popup window's image strips.
+
+There is a real bug on SL 5472. The site shows copy #1 with "No scans available yet". Our page drops that copy without a word, while its Release card still says "Copies: 2". This needs fixing whether or not the refactor happens.
+
+GPE and FICE are not the same thing.
+- GPE: previews any link, as a hover card or a Space window.
+- FICE: the picture card and viewer click for table rows on the non-MB sites.
+- What they share: the cached page reads underneath them and the viewer, not their UI.
+- The SL/DG/IA head (B): a third path again.
+
+1b. Viewer suggestions, ranked by cost. The cheap ones are image adjust (brightness, contrast, grayscale, invert), a ? key-help overlay, copy image URL, a loupe and compare-two-images. They would use keys A, C, E, L, Y and ?, which I checked are free in the viewer's key handler today.
+
+2a. One shared component: yes. About 60% of the MB Cover art section doesn't depend on where the images come from. The rest is MB- or CAA-specific in a few narrow places. The proposal is to grow its existing per-page settings object into a per-site plug-in, so MB Cover art, Event art, SL, Discogs and IA each become one plug-in. I've split the work into five steps:
+
+┌──────┬───────────────────────────────────────────────────────────┬────────────────────────────────────────────────────────────┐
+│ Step │                           What                            │                      What it touches                       │
+├──────┼───────────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────┤
+│ P0   │ Pull the shared component out of the MB Cover art section │ Nothing visible changes                                    │
+├──────┼───────────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────┤
+│ P1   │ Move the SL, Discogs and IA heads onto it                 │ They get chips and layouts                                 │
+├──────┼───────────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────┤
+│ P2   │ Copies and placeholders                                   │ Fixes the SL missing-copy bug; adds Discogs ★ and IA types │
+├──────┼───────────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────┤
+│ P3   │ Medium thumbs on non-MB pages                             │ Only where an image actually names a medium                │
+├──────┼───────────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────┤
+│ P4   │ New views                                                 │ Table view, tile size, show missing                        │
+└──────┴───────────────────────────────────────────────────────────┴────────────────────────────────────────────────────────────┘
+
+The Answer also sketches an add-image-section skill for wiring it onto a new pageType.
+
+2b. More features. A table view (sort, filter), a tile-size slider, "Show missing", and a group-by switch (type / copy / kind).
+
+One decision is yours: should the table view be a plain table inside the section, or a real table.tbl?
+- Plain table (my recommendation): the global filter, the sub-table filters and the findings counts stay exactly as they are.
+- table.tbl: you get the 📊 dropdown for free, but it joins every filter and render pass on the page.
+
+3. Mockups. They use real images from your debug snapshots. Most of the panels are drawn by one shared renderer fed by four site plug-ins, so the page is a small working model of the proposal. The viewer additions in the mockup are clickable.
+
+Nothing in ShowAllEntityData.user.js changed, so there's no version bump or changelog entry. Everything is on a new branch docs/image-handling and nothing is committed yet:
+- org/image-handling.org (the Answer section)
+- org/image-handling-mockups.html (the mockup source)
+- scripts/extract-mockup-image-urls.py (new: pulls the image URLs out of the debug snapshots)
+
+* answers
+
+Commit everything, also my own .org file, push.
+I go with all your recommendations and the table view as a plain table inside the section
+Start with the implementation
