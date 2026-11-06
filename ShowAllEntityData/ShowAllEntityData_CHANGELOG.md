@@ -4,9 +4,64 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1734 versions; the month pages hold all of them.
+This page shows the newest 100 of 1741 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1570 — 2026-11-06
+
+**🚀 Feature**
+
+- Artwork viewer: Adjust (A) brightness, contrast, grayscale and invert to read a dark scan or a faded insert (view only; Download keeps the file); Compare (C) two pictures side by side (a page of a Spreads pair opens both); a loupe (L) under the pointer; Copy URL (Y; Shift+Y as an edit-note line); and ? for every key. On MusicBrainz and the other sites alike.
+
+
+## 9.99.1569 — 2026-11-06
+
+**🐛 Fix**
+
+- Pictures that do not load (the Cover Art or Event Art Archive slow or down, or another site's pictures) no longer show the browser's broken image: a dashed box with ⟳ asks for the picture again. In a picture section a tile has its own ⟳ and the tool row "⟳ Reload N failed"; a medium's thumb in its heading and the cover beside the page heading ask again when clicked; the viewer offers "⟳ Try again" for a large image that did not come; a hover card says to rest on the link again. Until now only the archive's record ("⟳ Retry") and the CAA/EAA column's icon (⚠⟳) could be asked for again.
+
+
+## 9.99.1568 — 2026-11-06
+
+**🚀 Feature**
+
+- Picture sections (a release's Cover art, an event's Event art, and the pictures on other sites' detail pages): a Table layout lists the pictures one per row (\#, picture, type, comment, ★ / ⏳, file name, and the copy on a springsteenlyrics item), sortable by any column; the viewer then steps through the rows in that order.
+- Picture sections: a filter box narrows the pictures as you type (by type, comment or file name) in every layout, says how many are shown and highlights what it found; a Tiles slider makes the thumbnails bigger or smaller (remembered; ↺ takes them back to the original size); Show missing turns a springsteenlyrics copy's "no scans yet" box on and off.
+
+
+## 9.99.1567 — 2026-11-06
+
+**✨ Improve**
+
+- Other sites' detail pages: as on a MusicBrainz release, a disc's or record's own pictures show as small thumbs in its heading above the tracks, and a click opens them in the viewer. On archive.org a picture named after a disc ("Disc 2.jpg") goes into that disc's heading; on a springsteenlyrics bootleg the artwork whose caption names the disc, its label, a picture side or the runout goes into the record's. A picture is placed only when its name says where; anything else stays in the pictures section only.
+- springsteenlyrics bootleg pages: the artwork chips follow the site's captions — Front, Back, Booklet, Medium (disc, label, picture side, runout, matrix), else Artwork.
+
+
+## 9.99.1566 — 2026-11-06
+
+**🐛 Fix**
+
+- springsteenlyrics.com item pages: a copy the site has no scans of yet ("No scans available yet") was left out of the scans, so the page read as if the item had one copy. It now shows as a dashed box with the site's own words, in its place among the copies.
+
+**✨ Improve**
+
+- springsteenlyrics.com item pages: an item's scans and artwork are one section. With several copies it has a chip per copy and By copy instead of By type, and the viewer steps through every copy's scans (before, each copy was its own section with its own viewer).
+
+
+## 9.99.1565 — 2026-11-06
+
+**✨ Improve**
+
+- Other sites' detail pages (a Discogs release's or master's Tracks view, an archive.org item, a springsteenlyrics item or song page): their pictures now work like a release's Cover art on MusicBrainz. Type chips (Discogs' Primary and Secondary, archive.org's Front, Back, Booklet or Medium guessed from the file names, springsteenlyrics' Scan or Artwork), ★ on Discogs' primary image, Grid or By type (remembered for these pages, separately from MusicBrainz), and a click or Space opens the viewer over the pictures shown, with the page's title in its bar.
+
+
+## 9.99.1564 — 2026-11-06
+
+**🔧 Refactor**
+
+- Cover art and Event art sections (release and event pages): the section now gets its pictures, loading and retry from one adapter, the first step toward one picture section for every detail page (springsteenlyrics scans, Discogs images, archive.org pictures). Nothing changes on screen. One fix comes with it: the Cover art tab finds its own section even when another picture section stands before it on the page.
+
 
 ## 9.99.1563 — 2026-11-05
 
@@ -864,75 +919,6 @@ This page shows the newest 100 of 1734 versions; the month pages hold all of the
 **🔧 Refactor**
 
 - The windows' tables are two shared components with one click handler for every window (org/MB-POH-sync-withDiscogs.org, Phase 2): a Compact table (a Discogs label's sublabels) and a List table (a label's releases, a work's recordings), plus a paged loader for MusicBrainz lists that the other MusicBrainz windows will use next.
-
-
-## 9.99.1470 — 2026-10-27
-
-**✨ Improve**
-
-- Every sortable table in a Discogs window (an artist's discography, a label's releases and sublabels, a master's versions) and the release-group window's releases table now has three sort states: ascending, descending, and a third click back to the order the site gives. A heading in that initial order shows a faint ⇅ (the release-group window's ↕ became ⇅ too), and its hover text says what the next click does.
-- A Discogs artist's Have heading now also sorts the other way on the second click (fewest first) before returning to Discogs' order; until now its second click went straight back.
-- Performance: link-preview windows only; no change to the page tables' filter, sort or render path.
-
-
-## 9.99.1469 — 2026-10-26
-
-**🚀 Feature**
-
-- Ready-made views of an entity's edits: All edits, Own edits, Edits by others, Open edits, Open edits by others, jesus2099's searches from SUPER MIND CONTROL Ⅱ X TURBO (only this entity's edits, pure edits, on a release without art and art only, relationship edits with Post-NGS and Pre-NGS, effective edits, edits I have not voted on) and the Annotation history. Each opens in the preview window, titled after itself; Ctrl-click or middle-click opens MusicBrainz's own page.
-- The ☰ SAED menu has a new 'Editing history' group on a page about one entity: '✎ Entity history ▸' lists those views, and '📝 Annotation history' opens the annotation's versions.
-- The window's '✎ Editing history' button is now a button with a menu: the button opens all edits as before (or H), its ▾ lists the same views. An editor's window keeps the plain button.
-
-
-## 9.99.1468 — 2026-10-26
-
-**🐛 Fix**
-
-- An editor's collections page with a 'Collaborative collections' section: those collections were drawn under 'My collections' with one cell too many, so from the Privacy column on every value stood under the wrong header. The page now shows one 'Collections' section: each collaborative collection joins the sub-table of its kind, and every sub-table has a Privacy column ('Private' for the editor's own collections, MusicBrainz's own value such as 'Public' for the collaborative ones).
-- The same page: every sub-table showed the first one's column names, so the count column read 'Artists' everywhere. Each sub-table now has its own (Recordings, Releases, Release groups, Series).
-
-
-## 9.99.1467 — 2026-10-26
-
-**✨ Improve**
-
-- Brucebase year pages: the 📊 list of the Media column now shows each name's icon after it (Photo, Setlist, Ticket, …), the same icon the table shows. An entry for a cell with several icons stays text only.
-
-
-## 9.99.1466 — 2026-10-26
-
-**✨ Improve**
-
-- The non-MusicBrainz site settings are now on by default: springsteenlyrics.com, jungleland.it, brucespringsteen.it, Brucebase (song list and year pages) and discogs.com are switched on, and so are the detail previews of the four Springsteen sites, the compact category and filter bar on springsteenlyrics.com, and 'In the window, read a link ahead while the pointer rests on it'. 'Show the Brucebase side bar on the right' and the '… on touch devices' settings stay off. A profile that still holds the old off value from the old default is moved to the new one once, as with earlier default changes; switch a site off again in ⚙️ Settings if you do not want it.
-
-
-## 9.99.1465 — 2026-10-26
-
-**✨ Improve**
-
-- The Discogs search and user windows swap their sides like the other Discogs windows: the search's Results and a user's Recent activity are on the right; Link, "Discogs says" and the user's pages on Discogs are on the left.
-- Typing in a Discogs window's filter (a master's versions, a discography, a label's releases or sublabels) marks the matched text in every row it keeps, in the colours of the tables' filter highlight.
-- On a Discogs artist, master or label page, the thumbnails of Discogs' own list get our image card: a rest shows every image of that release or master (one request for that row), a click or Space opens the viewer, and Shift+← → steps through the list. "Image column: all images of a row on hover" turns the card off.
-
-**🐛 Fix**
-
-- On a Discogs submissions list (flat view), Discogs' own table gets a "Matched artist" heading on its last column, and that artist's name (linked by name, not id) now shows the card of a Discogs search for that artist.
-- On Discogs label pages, Discogs' own artist hover card no longer opens on top of our preview. It also came through the importer's icons beside the name and when the pointer moved in from a neighbouring cell.
-
-
-## 9.99.1464 — 2026-10-26
-
-**✨ Improve**
-
-- Discogs windows (release, master, artist, label) swap their sides. The left column now holds the information: title and pictures, the link, "Discogs says" and, for a release, the companies, credits, identifiers and videos. The wider right column (0.7 : 1.3) holds the content: tracklist and notes, a master's versions, an artist's discography, a label's releases. The lists are no longer a full-width block below the columns. On a narrow screen it stays one column, information first.
-- A master's version chips (Format, Country, Released): Ctrl-click (⌘-click) adds a value or takes it out again. A plain click still shows only that value. Values of one kind combine with "or", different kinds with "and", and a line above the table says what is chosen.
-- A Discogs label's sublabels are a table now (Name, Status) with 25 a page, ‹ › to turn the pages, a filter and sorting, instead of a list with "+N more".
-- The MusicBrainz label card and window show Founded and Defunct, the label code, rating and ISNI. The window also has the sort name and a "People, places and series" section (founders, recording contracts, owned places, series), up to 12 of each kind and then "+N more". These come from one more lookup, in the window only.
-
-**🐛 Fix**
-
-- On discogs.com, a MusicBrainz link inside a window (a label's or artist's sites, a release's notes, a link in a MusicBrainz window) shows MusicBrainz's card on a hover and opens in the same window on a click, instead of a new tab. Back returns; Ctrl-click still opens a new tab.
-- On discogs.com, Discogs' own hover box on an artist name no longer appears on top of our link preview while the previews are on.
 
 
 ---

@@ -1,5 +1,97 @@
 [
   {
+    "version": "9.99.1570",
+    "date": "2026-11-06",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Artwork viewer: Adjust (A) brightness, contrast, grayscale and invert to read a dark scan or a faded insert (view only; Download keeps the file); Compare (C) two pictures side by side (a page of a Spreads pair opens both); a loupe (L) under the pointer; Copy URL (Y; Shift+Y as an edit-note line); and ? for every key. On MusicBrainz and the other sites alike."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1569",
+    "date": "2026-11-06",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Pictures that do not load (the Cover Art or Event Art Archive slow or down, or another site's pictures) no longer show the browser's broken image: a dashed box with ⟳ asks for the picture again. In a picture section a tile has its own ⟳ and the tool row \"⟳ Reload N failed\"; a medium's thumb in its heading and the cover beside the page heading ask again when clicked; the viewer offers \"⟳ Try again\" for a large image that did not come; a hover card says to rest on the link again. Until now only the archive's record (\"⟳ Retry\") and the CAA/EAA column's icon (⚠⟳) could be asked for again."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1568",
+    "date": "2026-11-06",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Picture sections (a release's Cover art, an event's Event art, and the pictures on other sites' detail pages): a Table layout lists the pictures one per row (#, picture, type, comment, ★ / ⏳, file name, and the copy on a springsteenlyrics item), sortable by any column; the viewer then steps through the rows in that order.",
+          "Picture sections: a filter box narrows the pictures as you type (by type, comment or file name) in every layout, says how many are shown and highlights what it found; a Tiles slider makes the thumbnails bigger or smaller (remembered; ↺ takes them back to the original size); Show missing turns a springsteenlyrics copy's \"no scans yet\" box on and off."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1567",
+    "date": "2026-11-06",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Other sites' detail pages: as on a MusicBrainz release, a disc's or record's own pictures show as small thumbs in its heading above the tracks, and a click opens them in the viewer. On archive.org a picture named after a disc (\"Disc 2.jpg\") goes into that disc's heading; on a springsteenlyrics bootleg the artwork whose caption names the disc, its label, a picture side or the runout goes into the record's. A picture is placed only when its name says where; anything else stays in the pictures section only.",
+          "springsteenlyrics bootleg pages: the artwork chips follow the site's captions — Front, Back, Booklet, Medium (disc, label, picture side, runout, matrix), else Artwork."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1566",
+    "date": "2026-11-06",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "springsteenlyrics.com item pages: a copy the site has no scans of yet (\"No scans available yet\") was left out of the scans, so the page read as if the item had one copy. It now shows as a dashed box with the site's own words, in its place among the copies."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "springsteenlyrics.com item pages: an item's scans and artwork are one section. With several copies it has a chip per copy and By copy instead of By type, and the viewer steps through every copy's scans (before, each copy was its own section with its own viewer)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1565",
+    "date": "2026-11-06",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Other sites' detail pages (a Discogs release's or master's Tracks view, an archive.org item, a springsteenlyrics item or song page): their pictures now work like a release's Cover art on MusicBrainz. Type chips (Discogs' Primary and Secondary, archive.org's Front, Back, Booklet or Medium guessed from the file names, springsteenlyrics' Scan or Artwork), ★ on Discogs' primary image, Grid or By type (remembered for these pages, separately from MusicBrainz), and a click or Space opens the viewer over the pictures shown, with the page's title in its bar."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1564",
+    "date": "2026-11-06",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Cover art and Event art sections (release and event pages): the section now gets its pictures, loading and retry from one adapter, the first step toward one picture section for every detail page (springsteenlyrics scans, Discogs images, archive.org pictures). Nothing changes on screen. One fix comes with it: the Cover art tab finds its own section even when another picture section stands before it on the page."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1563",
     "date": "2026-11-05",
     "sections": [
