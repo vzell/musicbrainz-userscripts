@@ -486,21 +486,28 @@ scripts already use.
 | C5 | =<html data-saed="<version>">= plus =data-saed-page="<pageType>"= when SAED has a pageType for the page              | SAED                      | EH can show an "Open in SAED" action in its view (switch off + reload, as V does)                               | a way back to SAED from EH                             |
 | C6 | The =mbu:mb-gate= localStorage format (=dev/net/mb-gate.mjs=) as a stable, documented protocol, with a version field | majkinetor (documents it) | SAED books its ws/2 there                                                                                       | join the request gate                                  |
 
-**** Draft message to majkinetor (for you to post; not posted anywhere)
+**** Posts to majkinetor (for you to post; not posted anywhere)
 
-The message is a ready-to-post GitHub reply to [[https://github.com/majkinetor/musicbrainz-userscripts/issues/839][#839]]:
-[[file:majkinetor-839-reply.md][org/majkinetor-839-reply.md]] (GitHub Markdown). Its parts:
-- the race in #839, explained;
-- the requests (C1–C6, plus #926);
-- what you fix on your side anyway;
-- two collapsible appendices: "Event Horizon's data views and SAED, compared" and "How I keep SAED in step with
-  your scripts" (the harness, the anchors, the refresh skill).
+Two posts, each in its own org file, with the GitHub Markdown in a =#+begin_src markdown= block (copy what is
+between =#+begin_src= and =#+end_src=; GitHub renders the =<details>= blocks and the tables):
 
-Copy it from the file as it is: GitHub renders the =<details>= blocks and the tables.
+1. [[file:majkinetor-vzell-interoperability-issue.org][org/majkinetor-vzell-interoperability-issue.org]]: a *new
+   issue*, "Interoperability between String Theory and ShowAllEntityData (SAED)". It is the one place for
+   everything. It covers:
+   - where SAED's development and published versions live, and the coming release;
+   - what happens when both run;
+   - the requests (C1–C6, plus #926);
+   - what you fix on your side anyway;
+   - the appendices "Event Horizon's data views and SAED, compared" and "How I keep SAED in step with your
+     scripts".
+2. [[file:reply-to-839-issue.org][org/reply-to-839-issue.org]]: a *reply on*
+   [[https://github.com/majkinetor/musicbrainz-userscripts/issues/839][#839]] about that race only. It has the
+   cause, a two-line diff for ISRC Scout, and our interim fix, and links the new issue (=#NEW=, fill in after
+   posting 1).
 
-That file is the only copy of the message. The refresh skill keeps it current: drop a request majkinetor
-adopted, update versions and measured numbers. After posting, note the date here, and when he answers, write the
-agreed attribute names into "Proposed shared conventions" and the TODOs, so both sides use the same spelling.
+Post 1 first, then 2. Each file's top heading says whether it was posted (=TODO Post:= / =DONE= plus the URL).
+The refresh skill keeps both current. When majkinetor answers, write the agreed attribute names into "Proposed
+shared conventions" and the TODOs, so both sides use the same spelling.
 
 *** Refresh log
 

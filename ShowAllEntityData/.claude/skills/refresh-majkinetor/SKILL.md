@@ -13,9 +13,15 @@ This skill brings it up to date without rewriting it.
 
 **vzell knows majkinetor personally, and majkinetor fixes interop issues on his side.** So the analysis is
 also a list of requests: every TODO says who fixes it (ours / upstream / a shared convention), and
-"Working with majkinetor" in the org file holds the proposed conventions (C1…). The message to him is
-`org/majkinetor-839-reply.md`: a GitHub-Markdown reply for issue #839, with two appendices (EH's data views
-compared with SAED's, and how we keep up). It is the only copy of the message.
+"Working with majkinetor" in the org file holds the proposed conventions (C1…). The posts to him are two org
+files, each holding its GitHub-Markdown body in a `#+begin_src markdown` block:
+- `org/majkinetor-vzell-interoperability-issue.org`: ONE new issue for all interop points. It has the
+  findings, the requests, what we fix ourselves, and two appendices: EH's data views compared with SAED's,
+  and how we keep up.
+- `org/reply-to-839-issue.org`: a reply on #839 about that race only, with a diff, linking the new issue
+  (`#NEW` until it exists).
+
+They are the only copies; keep them consistent with each other.
 *Never post* issues, comments or pull requests on majkinetor's repo, and never contact him yourself: you
 draft, vzell sends. Reading his repo with `gh` (issues, PRs, commits) is fine.
 
@@ -207,13 +213,20 @@ TODO hygiene:
   - *upstream*: the cause is in his code and a small change there beats a workaround here;
   - *convention*: both sides need one shared mark; add a C-row and a `conv-*` anchor for it.
 
-  Upstream or convention items also get a numbered point under "Requests" in `org/majkinetor-839-reply.md`.
-  Keep it short and concrete: what we see, the one change asked, the attribute name. Even then keep a defensive
-  fix on our side when users can run an older String Theory.
-- Keep the reply's facts current: the versions and commit in its opening line, measured numbers (the 503s,
-  the launcher count), the appendix rows when either script gained or lost a capability, and the anchor
-  count. A request majkinetor adopted leaves "Requests". Once vzell has posted it, follow-ups go into a new
-  reply (the "Draft message" section in the org file says when it was posted).
+  Upstream or convention items also get a numbered point under "Requests" in
+  `org/majkinetor-vzell-interoperability-issue.org`. Keep it short and concrete: what we see, the one change
+  asked, the attribute name. Even then keep a defensive fix on our side when users can run an older String
+  Theory.
+- Keep both posts' facts current:
+  - the versions and commit in their opening lines;
+  - measured numbers (the 503s, the launcher count);
+  - the appendix rows when either script gained or lost a capability;
+  - the anchor count;
+  - the diff in the #839 reply, against ISRC Scout's current `showTrackData()` / `fillTrackData()`.
+
+  A request majkinetor adopted leaves "Requests". The file's top heading says whether it was posted
+  (`TODO Post:` / `DONE`, with the URL); once posted, the file is history and follow-ups go into a new
+  comment on the main issue (draft it in a new file next to these).
 - An item majkinetor fixed → its TODO keeps only our remaining part, or is `DONE` with his version.
 - A new feature worth taking → a new `** TODO`.
 - org/TODO.org's majkinetor umbrella item links into this file by heading. If you rename a heading, fix
@@ -237,6 +250,6 @@ Tell the user, in a few lines:
 - what the probe showed differently, or "no change";
 - which anchors changed and which claims were rewritten;
 - the new, closed and unchanged TODOs;
-- which requests majkinetor took up, and whether the draft message changed (point to it; don't paste it).
+- which requests majkinetor took up, and whether the two posts changed (point to the files; don't paste them).
 
 Name anything you could not re-run.

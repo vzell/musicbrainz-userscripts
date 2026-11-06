@@ -1,62 +1,81 @@
+* TODO Post: new issue "Interoperability between String Theory and ShowAllEntityData (SAED)"
+
+- *Where*: a *new issue* at https://github.com/majkinetor/musicbrainz-userscripts/issues/new
+- *Title*: =Interoperability between String Theory and ShowAllEntityData (SAED)=
+- *Labels*: up to majkinetor (his repo uses =area | string theory=, =area | isrc scout=, =area | event horizon=).
+- *Order*:
+  1. Post this issue first.
+  2. Put its number into [[file:reply-to-839-issue.org][reply-to-839-issue.org]] (=#NEW=).
+  3. Then post that reply on #839.
+- *Status*: draft, not posted. After posting, change the keyword to =DONE= and add the issue URL here.
+- *Body*: the block below is GitHub Markdown. Copy everything between =#+begin_src= and =#+end_src=. The
+  =<details>= appendices render collapsed on GitHub.
+- *Kept current by* the refresh-majkinetor skill: versions, measured numbers, adopted requests. The source notes
+  are in [[file:majkinetor.org][org/majkinetor.org]] ("Working with majkinetor", the TODOs, "Coexistence").
+
+#+begin_src markdown
 Hi majkinetor,
 
-I dug into this together with the rest of String Theory's interplay with my script,
-[ShowAllEntityData](https://github.com/vzell/mb-userscripts) (SAED). I think the race in this issue
-now has a clear cause and a small fix, and there are a few related points. All of them are small, and
-all are opt-in through attributes SAED would set, so nothing changes for anyone who doesn't run SAED.
+this is one place for everything between String Theory and my userscript
+[ShowAllEntityData](https://github.com/vzell/mb-userscripts) (SAED), so we have a single issue to discuss
+it. I run both, and I'd like them to work well together for anyone else who does too.
 
-Measured with String Theory **2026.11.06.130902** (from the `main` "latest" link, commit `1df6193`;
-Event Horizon and ISRC Scout 2026.11.06.170000) in a browser harness on real musicbrainz.org pages.
+A note on **SAED's versions**: the development version of SAED lives in a separate repository; the published
+one is [vzell/mb-userscripts](https://github.com/vzell/mb-userscripts). I'm about to publish the latest
+development version there, with lots of new features and, I hope, already the first steps of the
+integration below. Until then, the published version is behind what this issue describes.
 
-## The race in this issue
+Everything below was measured with String Theory **2026.11.06.130902** (from the `main` "latest" link,
+commit `1df6193`; Event Horizon and ISRC Scout 2026.11.06.170000) in a browser harness on real
+musicbrainz.org pages.
 
-- `showTrackData()` removes **every** `.ii-col` in the document and refills.
-- The `MutationObserver` that runs `fillTrackData()` adds bare cells to any table that has a row whose
-  `id` is a track MBID. That includes SAED's re-rendered copy of the tracklist: it keeps `tr.subh` and the
-  row ids.
-- It also bumps `thead th[colspan]` there.
+## What happens when both run
 
-So whichever finishes last wins. When SAED renders first, ISRC Scout later wipes SAED's cells and adds
-plain ones without SAED's sort and filter controls. To answer the question at the end of the issue: no
-real API is needed, one marker is enough (point 1).
+- **SAED's buttons are invisible while Event Horizon shows** (EH's default after install). SAED finds
+  MusicBrainz's own `h1`, which now sits in the hidden body. After V they show and work, and SAED's table
+  survives any number of V/V on the page the tab loaded.
+- **After navigating inside EH, V reloads** into MusicBrainz's page of the new path (`eh-off`), and SAED
+  starts there normally. That works well.
+- **EH's bare-letter keys also fire on SAED's table**: `h` jumps to `/edits` and the table is gone.
+- **ISRC Scout re-adds its columns inside SAED's tables.** That is #839; the cause and a fix are there.
+- **The ISRC Scout "Links" platform name** has been only in the `data-tip` text since 2026.11.06 (no
+  `title` any more), so SAED's platform filter came up empty.
+- **The corner**: on a release page eight launchers sit over SAED's table.
+- **Requests**: with SAED fetching an artist's 31 pages next to EH, the only 503s were on **EH's** gated
+  `release-group?query=arid:…` search (three, retried by your gate); SAED never got one. SAED is not in
+  your gate yet, so it takes the budget and your scripts back off.
 
 ## Requests
 
-1. **Regions rendered by other scripts** (fixes this issue). SAED would put `data-mbu-foreign="saed"` on
-   its rendered section and tables. Could ISRC Scout's `fillTrackData()` / `showTrackData()` skip tables
-   inside such an element, and could `mbuTip` skip `[data-tip]` inside it? SAED already copies your ISRC
-   and Links cells from the native rows.
-2. **ISRC Scout link icons.** Since 2026.11.06 the platform name exists only in the `data-tip` text (no
-   `title` any more). Could each `a.ii-trk-ln` also carry `data-ii-platform` (and `data-ii-ended`)? SAED
-   filters and sorts by platform, and would then no longer depend on the tip format. Until then I parse
-   both `title` and `data-tip`.
-3. **Keys.** Event Horizon's bare-letter commands also fire on SAED's page: `h` jumps to `/edits` and the
-   rendered table is gone. SAED can call `preventDefault()`, which EH already honours, and I'll do that
-   either way. An `<html data-mbu-keys-off>` mark that EH honours would be clearer for any other app too.
-4. **Corner.** While SAED's table is shown, SAED would set `<html data-mbu-quiet>`. Could `mbuDock` /
-   `mbRestackCorner` hide the launchers and the dock then, as Mission Control does for itself? On a
-   release page there are eight launchers over the table.
-5. **A way back.** While EH shows (the default after install), SAED's buttons exist but sit in
-   MusicBrainz's hidden body. SAED would set `<html data-saed="VERSION" data-saed-page="TYPE">` where it
-   supports a page. Would an "Open in SAED" action in EH's header be welcome? It would do what V does.
-   Until then SAED adds its own `[data-mb-corner]` launcher.
-6. **Request gate.** SAED isn't in `mbu:mb-gate` yet, and it shows. With SAED fetching an artist's 31
-   pages next to EH, the only 503s were on **EH's** gated `release-group?query=arid:…` search (three,
-   retried); SAED's requests never got one. SAED takes the budget and your scripts back off. I'd like
-   SAED to book its ws/2 there. Can we treat the format in `dev/net/mb-gate.mjs` as a stable protocol
-   (a version field, a heads-up before changes)?
-7. **For #926.** SAED is on the wiki list. It is a viewer and analysis tool (see the appendix), so
-   "Complementary" on your report's scale would fit.
+All of them are small and opt-in through attributes SAED would set, so nothing changes for anyone who
+doesn't run SAED. The names are only suggestions; whatever you prefer is fine, and I'll follow it.
 
-The attribute names are only suggestions; whatever you prefer is fine, and I'll follow it.
+1. **Regions rendered by other scripts.** SAED would put `data-mbu-foreign="saed"` on its rendered
+   section and tables. Your scripts skip what is inside: ISRC Scout's column fill (details and a
+   two-line change in #839), and `mbuTip` for `[data-tip]` there.
+2. **ISRC Scout link icons.** Could each `a.ii-trk-ln` also carry `data-ii-platform` (and
+   `data-ii-ended`)? SAED filters and sorts by platform and would no longer depend on the tip format.
+   Until then I parse both `title` and `data-tip`.
+3. **Keys.** SAED will call `preventDefault()` for EH's bare keys while its table is shown (EH already
+   honours `defaultPrevented`). An `<html data-mbu-keys-off>` mark that EH honours would be clearer, for
+   any other app too.
+4. **Corner.** While SAED's table is shown, SAED would set `<html data-mbu-quiet>`. Could `mbuDock` /
+   `mbRestackCorner` hide the launchers and the dock then, as Mission Control does for itself?
+5. **A way back.** SAED would set `<html data-saed="VERSION" data-saed-page="TYPE">` where it supports a
+   page. Would an "Open in SAED" action in EH's header be welcome? It would do what V does. Until then
+   SAED will add its own `[data-mb-corner]` launcher, which your dock picks up.
+6. **Request gate.** I'd like SAED to book its ws/2 in `mbu:mb-gate`. Can we treat the format in
+   `dev/net/mb-gate.mjs` as a stable protocol (a version field, a heads-up before changes)?
+7. **For #926.** SAED is on the wiki list. It is a viewer and analysis tool (Appendix A), so
+   "Complementary" on your report's scale would fit.
 
 ## What I fix on my side anyway
 
 - SAED's tooltips and panels die when SAED starts while EH shows and EH is then switched off. That one is
   mine: they were appended to `document.body`, which is EH's body at that moment.
-- `preventDefault()` for EH's bare keys while SAED's table is shown. Ctrl+L, which is SAED's "load from
-  disk", is also your "forward".
-- Reading the ISRC Scout platform from `data-tip`, and the `is:counts-changed` event as a hook.
+- `preventDefault()` for EH's bare keys while SAED's table is shown. Ctrl+L, SAED's "load from disk", is
+  also your "forward".
+- Reading the ISRC Scout platform from `data-tip`, and `is:counts-changed` as a hook.
 - Pacing SAED's ws/2 through your gate once the format is settled.
 
 <details>
@@ -125,3 +144,4 @@ two scripts breaks, from either side.
 
 Thanks!
 Volker
+#+end_src
