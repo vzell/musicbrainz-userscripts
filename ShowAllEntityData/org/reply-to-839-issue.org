@@ -1,0 +1,72 @@
+* DONE Post: reply on #839 "Async userscript execution issue when both userscripts are executing"
+
+- *Where*: a *comment* on https://github.com/majkinetor/musicbrainz-userscripts/issues/839
+- *Before posting*: post [[file:majkinetor-vzell-interoperability-issue.org][the new interoperability issue]]
+  first, then replace both =#NEW= below with its number.
+- *Status*: posted 2026-11-06T16:00+01:00 — https://github.com/majkinetor/musicbrainz-userscripts/issues/839#issuecomment-6687878926. The block below is what was posted; this file is history now (follow-ups go to #938).
+- *Body*: GitHub Markdown, everything between =#+begin_src= and =#+end_src=.
+- *Code quoted* from ISRC Scout 2026.11.06.170000 (=1df6193=): =showTrackData()= and =fillTrackData()=. The
+  refresh-majkinetor skill re-checks them (anchors =is-wipe=, =conv-c1-is=); if they moved, update the diff.
+
+#+begin_src markdown
+Hi Miodrag - @majkinetor,
+
+I found the cause of this one, and I think the fix on your side is two lines. The wider list of things
+between String Theory and SAED is now in one place, https://github.com/majkinetor/musicbrainz-userscripts/issues/938. This reply is only about this race.
+
+Measured with ISRC Scout **2026.11.06.170000** (String Theory 2026.11.06.130902, commit `1df6193`) on
+release `22a6802f-d22e-4f47-9f22-6aac257a4194`.
+
+## Cause
+
+SAED's rendered tracklist is a copy of MusicBrainz's: it keeps the `tr.subh` header rows and each row's
+track-MBID `id`. To ISRC Scout it therefore looks like a tracklist of its own:
+
+- `showTrackData()` removes **every** `.ii-col` in the document, restores the colspans, and refills;
+- the `MutationObserver` on `documentElement` then runs `fillTrackData()`, which adds bare cells to every
+  table holding a row whose `id` is a track MBID, and bumps its `thead th[colspan]`.
+
+So it depends on who finishes last. If ISRC Scout's columns are in before SAED renders, SAED copies them
+and turns them into normal SAED columns (sortable, 📊, filterable), and all is fine. If SAED renders
+first, or ISRC Scout refreshes later (a settled load, closing your window, a settings change), your code
+wipes SAED's cells and adds plain ones. Those have no sort glyphs, no 📊, and the colspans are one too
+wide. That is exactly what the screenshots above show.
+
+## Proposal
+
+No API needed, one marker is enough. SAED would put `data-mbu-foreign="saed"` on its rendered section and
+tables (the name is up to you), and ISRC Scout leaves everything inside it alone:
+
+```diff
+ function fillTrackData() {
+   …
+   tables.forEach(tb => {
++    if (tb.closest('[data-mbu-foreign]')) return;   // another script's rendered copy
+     tb.querySelectorAll('tr.subh').forEach(tr => { … });
+     …
+   });
+ }
+ function showTrackData() {
+   paintColToggles();
+-  document.querySelectorAll('.ii-col').forEach(el => el.remove());
+-  document.querySelectorAll('th[data-ii-colspan]').forEach(th => { th.colSpan = +th.dataset.iiColspan; delete th.dataset.iiColspan; });
++  const own = el => !el.closest('[data-mbu-foreign]');
++  document.querySelectorAll('.ii-col').forEach(el => { if (own(el)) el.remove(); });
++  document.querySelectorAll('th[data-ii-colspan]').forEach(th => { if (own(th)) { th.colSpan = +th.dataset.iiColspan; delete th.dataset.iiColspan; } });
+   …
+ }
+```
+
+Your native-page columns then behave exactly as now. SAED keeps reading them from the native rows, and
+re-reads them on your `is:counts-changed` event, so later updates still reach SAED's table.
+
+On my side, until then: I'll make SAED re-normalise its copies of your cells after each
+`is:counts-changed`, so the plain cells become SAED columns again. That also keeps users on an older
+ISRC Scout working.
+
+The other points (EH's keys and body swap, the corner launchers, the request gate, the Links platform
+attribute) are in https://github.com/majkinetor/musicbrainz-userscripts/issues/938.
+
+Thanks!
+Volker
+#+end_src

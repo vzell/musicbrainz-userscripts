@@ -28423,3 +28423,55 @@ probe specs (MutationObserver log, request log); the test fires the `<img>`'s `e
 event itself. Specs `art-image-retry.spec.js` (real timeouts: tiles, medium thumbs, the
 viewer) and `sidebar-picture.spec.js` "image retry"; mutation list `image-section.json`
 (10 more, one recorded as an overlap).
+
+## 2026-11-06 — majkinetor's Event Horizon / String Theory next to ShowAllEntityData: body swap, dead hover cards, keys (docs/majkinetor-analysis)
+
+Env: 2026-11-06T11:20–11:30+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1,
+Chromium 151.0.7922.34 · no Tampermonkey (GM stubs, realNetworkGmXhr) · live musicbrainz.org (IPv4 worked today).
+
+Probe: `tests/support/probe-majkinetor-interop.js` with `event_horizon.user.js` 2026.11.05.231601 and
+`string_theory.user.js` 2026.11.06.111207 (upstream `326c6a4`, cloned under `debug/majkinetor/`, copied into
+`tests/fixtures/live-userscripts/`). Full analysis and per-case table: `org/majkinetor.org`.
+
+- Event Horizon is ON by default (GM `view.on`). Its `setOn()` inserts its own `<body>` before MusicBrainz's and
+  hides MusicBrainz's, so `document.body` is EH's. Our h1 bar still lands in the NATIVE h1 (hidden body):
+  present, invisible, until V.
+- Everything we append once to `document.body` at start-up is in EH's body when EH was on at load, and leaves
+  the document on V (`ehBody.remove()`). Measured: `#mb-stat-tooltip` gone, so no hover cards after V. The
+  toolbar menus survive because `_toolbarMenu` re-appends its panel to `document.body` on open. There are 59
+  `document.body.appendChild` sites; a fix belongs in a follow-up with a two-body fixture spec.
+- The FRP survives V/V on the loaded page. After pushState navigation inside EH, V reloads (`eh-off`) into the
+  native page of the new path.
+- EH's bare-letter keys work on our FRP: `h` navigated to `/release/<mbid>/edits`. String Theory takes Ctrl+K
+  (capture phase + stopPropagation), our shortcuts-help default; EH binds Ctrl+L (forward), our Load-from-disk
+  default.
+- ISRC Scout 2026.11.06's Links icons carry `data-tip`, no `title`, so `_isrcScoutLinkPlatform()` finds no
+  platform. Measured 2026-11-06T14:11+01:00 (same host and browser) after refreshing the harness copy to
+  2026.11.06.170000 (upstream `1df6193`): release `22a6802f-…`, 36 icons on the FRP, 36 with `data-tip`, 0 with
+  `title`, 0 with `data-mb-link-platform` (probe case I). Its release load is now `GM_xmlhttpRequest` behind the
+  shared gate, so under plain GM stubs (`run-live-interop.js`) its columns never appear.
+- Requests: one 503 in the artist run with EH (max 4 MB responses/s) vs none alone (max 2/s). One run, suggestive.
+
+## 2026-11-06 — majkinetor refresh: 326c6a4 → 1df6193; the 503s next to SAED are Event Horizon's (docs/majkinetor-analysis)
+
+Env: 2026-11-06T15:04–15:13+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1,
+Chromium 151.0.7922.34 · no Tampermonkey (GM stubs, realNetworkGmXhr) · live musicbrainz.org (IPv4 worked).
+
+First run of the refresh-majkinetor skill. The harness copies are all from upstream `1df6193`: String Theory
+2026.11.06.130902 (its `@description` names EH and ISRC Scout 2026.11.06.170000), plus the standalone EH and ISRC
+Scout 2026.11.06.170000. The raw "latest" link served the same version as the clone.
+
+- `tests/support/probe-majkinetor-interop.js`, every case, with the bundle and alone: every Coexistence row of
+  `org/majkinetor.org` came out as before (hidden bar under EH, dead hover cards after V, `h` leaves the FRP, the
+  C-case reload, ISRC Scout 36/36 `data-tip` with 0 platform stamps).
+- New in the code: EH's and ISRC Scout's ws/2 go through `GM_xmlhttpRequest` (`mbnWsFetch`, User-Agent; EH has a
+  new `@connect musicbrainz.org`). Under realNetworkGmXhr these are answered from Node and were invisible to the
+  probe's page-response counter. The probe now also counts them (`gm-ws2`, via `context.request.get`) and names the
+  throttled requests.
+- Case D, re-run 15:11: three 503s, all on EH's own `release-group?query=arid:…&offset=400` search, retried by
+  its gate; none on SAED's 31 page fetches; at most 4 MB responses/s. The baseline without EH had 0 and at most 2.
+  SAED takes the budget and EH backs off: evidence for the "join the request gate" TODO.
+- `scripts/check-majkinetor-anchors.py`: 34/34 hold; EH lines +101…+153 (updated in the JSON and in the
+  analysis prose).
+- Upstream: vzell's open #839 is the same as our "ISRC Scout columns re-added" TODO. #926's report plan (commit
+  `5549bd8f`) will assess the wiki list, which includes SAED.
