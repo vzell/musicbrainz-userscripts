@@ -161509,14 +161509,29 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Whether one finger on the stage moves the loupe's lens rather than
+     * swiping: the Loupe is on, the picture is not zoomed (a zoomed one is
+     * dragged), and neither Compare nor the grid is shown. The loupe used to
+     * follow the mouse only, so on a touch screen its button did nothing
+     * (org/image-handling.org, Housekeeping).
+     *
+     * @param   {?Object} st  The viewer state.
+     * @returns {boolean}
+     */
+    function _artViewerLoupeTouch(st) {
+        return !!(st && st.loupe && !st.zoom && st.cmp === null && !st.grid);
+    }
+
+    /**
      * The loupe (`L`): a round lens 2.5× larger than the picture shows,
-     * centred on the pointer, for the picture's own pixels under it — also
+     * centred on the pointer — the mouse, or one finger on a touch screen
+     * (`_artViewerLoupeTouch()`) — for the picture's own pixels under it, also
      * on a zoomed, turned or flipped picture: the pointer's place is taken
      * back through the flips and the turn to the picture's own coordinates,
      * and the lens is turned and flipped as the picture is. Hidden off the
      * picture. Reads the picture already loaded: no request.
      *
-     * @param   {MouseEvent} e
+     * @param   {MouseEvent|PointerEvent} e
      * @returns {void}
      */
     function _artViewerLoupeMove(e) {
@@ -162145,9 +162160,11 @@ a { color: #1565c0; }`;
 
     /**
      * Pointer down on the stage. Touch: one finger remembers where a swipe
-     * began — or, on a zoomed image, starts a drag; a second finger turns it
+     * began — or, on a zoomed image, starts a drag, or with the Loupe on
+     * moves the lens (`_artViewerLoupeTouch()`); a second finger turns it
      * into a pinch. Mouse: in "drag" mode, the left button on a zoomed image
-     * starts a drag (the ‹ › buttons excepted).
+     * starts a drag (the ‹ › buttons excepted). A press inside the Adjust
+     * panel, which lies on the stage, is the panel's own: no swipe, no drag.
      *
      * @param   {PointerEvent} e
      * @returns {void}
@@ -162159,8 +162176,16 @@ a { color: #1565c0; }`;
         st.swallowClick = false;
         const stage = e.target.closest('.mb-artv-stage');
         if (st.grid || !stage) return;
+        // A finger dragging a slider read as a swipe stepped the picture
+        // (and so reset the adjustment): org/image-handling.org, Housekeeping.
+        if (e.target.closest('.mb-artv-adjust')) return;
         if (e.pointerType === 'touch') {
             st.touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            if (st.touches.size === 1 && _artViewerLoupeTouch(st)) {
+                st.swipeX = null;
+                _artViewerLoupeMove(e);
+                return;
+            }
             if (st.touches.size === 1) {
                 st.swipeX = st.zoom ? null : e.clientX;
                 if (st.zoom) _artViewerDragStart(st, stage, e);
@@ -162196,6 +162221,10 @@ a { color: #1565c0; }`;
         if (!st) return;
         if (e.pointerType === 'touch' && st.touches.has(e.pointerId)) {
             st.touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            if (st.touches.size === 1 && !st.pinch && _artViewerLoupeTouch(st)) {
+                _artViewerLoupeMove(e);
+                return;
+            }
         }
         const img = document.querySelector('#mb-art-viewer .mb-artv-stage .mb-artv-img');
         if (!img) return;
@@ -162222,8 +162251,8 @@ a { color: #1565c0; }`;
      * Pointer up or cancelled: ends a pinch (once fewer than two fingers are
      * down; its zoom is remembered) or a drag, and swallows the click that
      * follows a pinch or a drag that moved. Otherwise a touch swipe: a
-     * horizontal move of more than 50 px steps (left = next), and its click
-     * is swallowed too.
+     * horizontal move of more than 50 px steps (left = next) — in Compare the
+     * right picture, as ← → do — and its click is swallowed too.
      *
      * @param   {PointerEvent} e
      * @returns {void}
@@ -162255,7 +162284,8 @@ a { color: #1565c0; }`;
         st.swipeX = null;
         if (e.type !== 'pointercancel' && Math.abs(dx) > 50 && !st.grid) {
             st.swipeAt = performance.now();
-            _artViewerStep(dx < 0 ? 1 : -1);
+            if (st.cmp !== null) _artViewerCompareStep(dx < 0 ? 1 : -1);
+            else _artViewerStep(dx < 0 ? 1 : -1);
         }
     }
 

@@ -1951,7 +1951,7 @@ address, **Shift+Y** a line for an edit note (its types, comment and
 address). **?** shows every key; Esc closes that list first. The zoom level is kept from image to
 image and remembered for next time; the large image is the 1200 px one, or the
 original file (both settings). On a touch
-screen, tap to open and swipe sideways to step; pinch with two fingers to zoom, and drag a zoomed image with one. While the viewer is open the
+screen, tap to open and swipe sideways to step (in Compare, the right picture); pinch with two fingers to zoom, and drag a zoomed image with one; with the loupe on, one finger moves the lens; the buttons on the bar do what the keys do. While the viewer is open the
 page's own shortcuts are paused. It costs one request per render
 — none when the record is already cached from a CAA column, none when the tab
 says "Cover art (0)" — and the global filter never hides it. "No images" and
