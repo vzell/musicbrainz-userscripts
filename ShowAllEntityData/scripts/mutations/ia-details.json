@@ -43,7 +43,7 @@
         "why": "A click on a picture opens the artwork viewer on every picture of the item (_dpArtViewerClick on the Pictures section).",
         "edits": [
             {
-                "find": "            sec.addEventListener('click', _dpArtViewerClick);",
+                "find": "        sec.addEventListener('click', _releaseArtOnClick);",
                 "replace": ""
             }
         ],

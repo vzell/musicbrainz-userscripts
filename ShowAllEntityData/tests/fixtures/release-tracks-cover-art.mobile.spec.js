@@ -191,7 +191,8 @@ test.describe('release-tracks Cover art section on a touch device', () => {
         });
         const box = await thumb.boundingBox();
         await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
-        expect(await page.evaluate(() => window.__tapTarget), 'the touch landed on the thumb').toBe('mb-medium-art-btn');
+        // The class, not the whole class string: a thumb the fixture serves as 404 is also .mb-img-failed.
+        expect(String(await page.evaluate(() => window.__tapTarget)).split(' '), 'the touch landed on the thumb').toContain('mb-medium-art-btn');
         await expect(page.locator('#mb-art-viewer .mb-artv-pos')).toHaveText('2 / 4');
         expect(await tableShown(), 'the tap did not toggle the medium').toBe(before);
     });

@@ -329,10 +329,16 @@ const CAA_RECORD = JSON.parse(require('fs').readFileSync(path.join(__dirname, 'c
  * @param {import('@playwright/test').TestInfo} testInfo
  * @param {string} url
  * @param {string} fixture
- * @param {{settings?: Object, edit?: function(string): string}} [opts]
+ * @param {{settings?: Object, edit?: function(string): string, thumbFail?: function(string): boolean}} [opts]
+ *        thumbFail(url): while it returns true for a picture's address, that request times
+ *        out (the archive down), after 1.5 s as a real timeout does. Do not fail the
+ *        sidebar cover's own address with it: the harness injects the userscript only
+ *        after `load`, and a cover that failed by then has been replaced by MusicBrainz's
+ *        "Image failed to load correctly", so there is no cover left to copy (2026-11-06,
+ *        the "image retry" test).
  * @returns {Promise<{asked: string[]}>}
  */
-async function openCover(page, testInfo, url, fixture, { settings = {}, edit = (h) => h } = {}) {
+async function openCover(page, testInfo, url, fixture, { settings = {}, edit = (h) => h, thumbFail = null } = {}) {
     const fs = require('fs');
     const copy = testInfo.outputPath(path.basename(fixture));
     // The cover's <img> as MusicBrainz's own script puts it into the span
@@ -349,13 +355,16 @@ async function openCover(page, testInfo, url, fixture, { settings = {}, edit = (
     const [front] = images.splice(fi, 1);
     images.splice(1, 0, front);
     const body = JSON.stringify({ ...CAA_RECORD, images });
-    await page.route(`https://${THUMB_HOST}/**`, (r) => r.fulfill({ body: PNG, contentType: 'image/png' }));
+    const timeOut = (r) => new Promise((res) => setTimeout(() => res(r.abort('timedout').catch(() => {})), 1500));
+    await page.route(`https://${THUMB_HOST}/**`, (r) => (thumbFail && thumbFail(r.request().url()) ? timeOut(r)
+        : r.fulfill({ body: PNG, contentType: 'image/png' })));
     await page.route(/^https:\/\/(cover|event)artarchive\.org\//, (r) => {
         const u = r.request().url();
         if (/^https:\/\/(coverartarchive\.org\/(release|release-group)|eventartarchive\.org\/event)\/[0-9a-f-]{36}\/?$/.test(u)) {
             asked.push(u);
             return r.fulfill({ status: 200, headers: CAA_CORS, contentType: 'application/json', body });
         }
+        if (thumbFail && thumbFail(u)) return timeOut(r);
         return r.fulfill({ status: 200, headers: CAA_CORS, body: PNG, contentType: 'image/png' });
     });
     await loadUserscriptPage(page, { url, fixtureFile: copy, testMode: true,
@@ -391,6 +400,39 @@ test.describe('a release\'s or release group\'s cover beside the name', () => {
         await page.keyboard.press('Enter');
         await expect(viewer(page)).toBeVisible();
         expect(asked.length, 'the record is asked once').toBe(1);
+    });
+
+    // vzell, 2026-11-06: the archive's files timed out and the copy showed the
+    // browser's broken glyph. Now a ⟳ box; its click asks again AND opens the
+    // viewer as before; the card marks the tiles that did not load.
+    //
+    // The copy's own failure cannot be produced over the network here:
+    // MusicBrainz's script requests the same data-small-thumbnail itself, and
+    // when that fails during the load (which the harness waits for before it
+    // injects the userscript) MusicBrainz replaces the cover with "Image failed
+    // to load correctly": no cover, no copy. Let through, the copy is served
+    // from the browser's cache and cannot fail. So the copy gets the image's
+    // `error` event itself, the one the browser sends; the card's tiles (Cover
+    // Art Archive files, asked for only on the hover) really time out.
+    test('a cover copy that does not load is a ⟳ box: a click asks again and still opens the viewer; the card says how to retry (image retry)', async ({ page }, testInfo) => {
+        let fail = true;
+        await openCover(page, testInfo, REL_URL, REL_FIXTURE, { thumbFail: (u) => fail && /artarchive\.org\//.test(u) });
+        await expect(avatar(page)).toHaveCount(1);
+        await avatar(page).locator('img').evaluate(i => i.dispatchEvent(new Event('error')));
+        await expect(avatar(page)).toHaveClass(/\bmb-img-failed\b/);
+        await hoverCard(page, avatar(page));
+        await expect(tip(page).locator('.mb-art-card-tile.mb-img-failed').first()).toBeAttached({ timeout: 10000 });
+        await expect(tip(page).locator('.mb-img-failed-note')).toHaveText('Pictures marked ⟳ did not load: rest on the link again to try again.');
+        fail = false;
+        await page.mouse.move(0, 0);
+        await avatar(page).click();
+        await expect(viewer(page)).toBeVisible();
+        await expect(avatar(page), 'asked again, and this time it loaded').not.toHaveClass(/\bmb-img-failed\b/);
+        await page.keyboard.press('Escape');
+        // The card, built anew on the next rest, loads its tiles.
+        await hoverCard(page, avatar(page));
+        await expect(tip(page).locator('.mb-art-card-tile').first()).toBeVisible();
+        await expect(tip(page).locator('.mb-img-failed-note')).toHaveCount(0);
     });
 
     test('the copy still leads the heading after "Show all Tracks" rendered', async ({ page }, testInfo) => {

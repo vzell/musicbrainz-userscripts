@@ -904,6 +904,236 @@ Checked:
   parameters too (=sl-include-regex.spec.js= pins two such URLs; its mutation fails as expected). vzell's live
   check: the search page works now.
 
+* DONE the UVD for the "Type" column is not indented right, there is one entry wich has more than 100 entries
+
+On SL PTs e.g. https://www.springsteenlyrics.com/lyrics.php?cmd=list&letter=b the UVD for the "Type" column is not
+indented correctly, there is one entry wich has more than 100 entries, "(176) Live" - [Image #1]
+
+* DONE green dot missing on SL POHs
+
+ON SL POHs, after hovering another link inside the POH window, and then going back to to the original one, the green dot
+in front of the hovered entity does not appear - [Image #3]. It looks like it doesn't get chached. On MB POHs after
+loading the hovered entity it works - [Image #2]
+
+* DONE URLify the tracklist to song URLs (SL and MB)
+** initial
+
+1.)
+
+URLify the SL tracklist to SL song URLs (by hyperlinking the songtitle), by constructing the song URL from parsing the song name. Create an assoc list where
+the automatic conversion does not work, by reading the song titles from the full song list at https://www.springsteenlyrics.com/lyrics.php
+
+E.g. on https://www.springsteenlyrics.com/collection.php?item=10163
+
+Automatic:
+#+begin_example
+A1- THE E STREET SHUFFLE ==> https://www.springsteenlyrics.com/lyrics.php?song=theestreetshuffle
+A3- KITTY'S BACK ==> https://www.springsteenlyrics.com/lyrics.php?song=kittysback
+#+end_example
+
+Assoc list:
+#+begin_example
+A2- 4TH OF JULY, ASBURY PARK (SANDY) ==> https://www.springsteenlyrics.com/lyrics.php?song=4thofjulyasburypark
+B2- ROSALITA (COME OUT TONIGHT) ==> https://www.springsteenlyrics.com/lyrics.php?song=rosalita
+#+end_example
+
+2.)
+
+additionally URLify the SL tracklist to MB work URLs if possible, maybe by adding the MB work glyph in front of the SL
+song title and when hovering it show the MB work POH
+
+3.)
+
+make some suggestions, nice rich HTML based mockups
+
+** Step 0 is done
+
+The probes have run and the mockups are up at ⧉ https://claude.ai/artifact/9etFwvJXtoLWkfZzPxnTJo. I've stopped here until you answer the questions. No userscript code has changed yet.
+
+What the probes found (5 Nov 2026, NB-3641, no browser involved):
+- SL song links:
+  - SL has 1,334 song titles with their own main page. Taking the title, dropping a trailing (…) and keeping only letters and digits gives the right address for 1,305 of them. That covers both your "assoc list" examples: …(SANDY) → 4thofjulyasburypark and ROSALITA (COME OUT TONIGHT) → rosalita.
+  - 4 more work if a leading (…) is dropped too, like (GET YOUR KICKS ON) ROUTE 66 → route66. Only about 25 real exceptions are left, such as comeonletsgotonight, fortymilesofbadroad and angeleyes-sinatra.
+- On real tracklists (15 saved item pages), 210 of 282 lines resolve. All 72 misses are songs SL has no page for: other artists on VA sides, Castiles covers, "Intro".
+- Unknown addresses look valid: SL answers an unknown song with HTTP 200 and a "does not exist!" page. So the script needs a list of known song addresses, or some links will lead nowhere.
+- Per-show pages: SL has a page per performance (becausethenight_1978-07-07, 1,464 dated ones). A bootleg could link the song's page for its own show date.
+- MB works:
+  - MB holds 1,587 Bruce works, and 752 of them have a link to the SL song page in their annotation. Loading them all takes 16 requests (about 18 s), then it's cached.
+  - Of the SL main song pages, 732 match a work exactly through that annotation link and 412 match one work by title. 29 match several works and 208 match none, mostly covers.
+  - On your item 10163, 6 of 7 match exactly; Wild Billy's Circus Story matches by title only.
+- Using the item's MB release: one request returns the work for every track (Live/1975–85: 40 of 40). But looking the release up from the SL page's address mostly fails, because MB stores SL item addresses as they were typed (http://…&category=album&pg=4). It's only reliable through the MB link your logged-in card shows.
+
+The questions in the mockup, with my recommendation for each:
+1. Where known song addresses come from: an embedded list of the 1,381 main-page addresses, about 18 KB → yes
+2. Link this show's page when SL has one: needs all 3,552 addresses, cached in the browser for 30 days → yes
+3. How to show the MB work: a work glyph before the title (your idea), a separate column, or both → the glyph
+4. Unsure matches: also show title-only matches (dashed glyph) and several candidates (count badge) → yes
+5. When MB is asked: automatically, under a new setting that is on by default, or only when you press a button → automatically
+6. When logged in: use the MB release link on your card as a more precise second source → yes
+7. Scope of this branch: item pages plus the tracklist in the item's popup now; the song page's edition tables and medleys later
+8. Titles SL has no page for: plain text, or marked as having no page → plain text
+
+Changes so far (on branch feat/sl-tracklist-links, nothing committed):
+- 3 new probe scripts in scripts/:
+  - probe-sl-song-index.py
+  - probe-mb-bruce-works-sl.py
+  - probe-sl-tracklist-resolve.py
+- The mockup page, org/sl-tracklist-links-mockups.html.
+- The probe output is in debug/, which git ignores.
+
+The artifact is private; only you can open it unless you share it from its Share menu.
+
+** answers
+
+1. Where known song addresses come from: an embedded list of the 1,381 main-page addresses, about 18 KB → yes
+2. Link this show's page when SL has one: needs all 3,552 addresses, cached in the browser for 30 days → yes
+3. How to show the MB work: a work glyph before the title (your idea), a separate column, or both → the glyph
+4. Unsure matches: also show title-only matches (dashed glyph) and several candidates (count badge) → yes
+5. When MB is asked: automatically, under a new setting that is on by default, or only when you press a button → automatically
+6. When logged in: use the MB release link on your card as a more precise second source → yes
+7. Scope of this branch: item pages plus the tracklist in the item's popup now + the song page's edition tables and medleys
+8. Titles SL has no page for: plain text, or marked as having no page → plain text
+
+* DONE Adjustments to 'URLify the tracklist to song URLs (SL and MB)'
+** DONE initial
+
+1.)
+
+springsteenlyrics.com page without www. ==> WORKS
+
+3.)
+
+a.)
+
+On SL brucelegs pages the label name e.g. "The Godfatherecords" in "Label: The Godfatherecords" should get hyperlink/POH support
+
+#+begin_example
+@debug/sl-brucelegs-list-initial.html - IP - https://www.springsteenlyrics.com/brucelegs.php?cmd=list&f_letter=1 - filtered
+@debug/sl-brucelegs-list-final.html - FRP - https://www.springsteenlyrics.com/brucelegs.php?cmd=list - filtered - "Label" column is missing the hyperlink and POH support
+@debug/sl-brucelegs-labels-list-initial.html  - IP - https://www.springsteenlyrics.com/brucelegs.php?cmd=list&f_label=Great%20Dane%20Records - brucelegs label release page, in this case "Label: The Godfatherecords"
+@debug/sl-song-initial.html - IP - https://www.springsteenlyrics.com/brucelegs.php?item=254&f_format=vinyl - label has hyperlink but NO POH support
+@debug/sl-song-final.html - FRP - https://www.springsteenlyrics.com/brucelegs.php?item=254&f_format=vinyl - label has hyperlink but NO POH support in the "RELEASE" section
+#+end_example
+
+b.)
+
+Is this extensible to SL collection and bootleg pages somehow if a label is involved
+
+3.)
+
+a.)
+
+On SL song FRPs, e.g. https://www.springsteenlyrics.com/brucelegs.php?item=254&f_format=vinyl when a song under the
+"Tracklist" medium table(s) has a "this show" hover detail link (with the exact song text from a specific date), the
+hyperlink on the songtitle should point to the official version of the SL song with hover support (otherwise we double
+functionality), e.g. for "Spirit In The Night"
+
+#+begin_example
+<td data-mb-tip="" style="position: sticky; left: 0px; z-index: 1; background: rgb(255, 255, 255);" data-mb-rest-bg="#ffffff" data-mb-sticky-bg="#ffffff" class="mb-sticky-col" title="As written on the site:
+Spirit In The Night"><span class="mb-sl-song mb-sl-this-show" data-mb-sl-song="spiritinthenight" data-mb-sl-title="Spirit In The Night" data-mb-sl-date="1973-04-24"><span class="mb-sl-work-slot" data-mb-sl-w="exact:dba2f648-cb81-3d19-b252-1bbecc62758b"><a class="mb-sl-work mb-sl-work-exact" href="https://musicbrainz.org/work/dba2f648-cb81-3d19-b252-1bbecc62758b" data-mb-pop-name="Spirit in the Night" aria-label="MusicBrainz work Spirit in the Night: the work's annotation links this song"><img src="https://musicbrainz.org/static/images/entity/work.svg" alt=""></a></span><a class="mb-sl-song-link" href="https://www.springsteenlyrics.com/lyrics.php?song=spiritinthenight_1973-04-24-early">Spirit in the Night</a></span></td>
+#+end_example
+
+b.)
+
+For a song title like e.g. "Circus Song"
+
+#+begin_example
+<td style="position: sticky; left: 0px; z-index: 1; background: rgb(242, 242, 242);" data-mb-rest-bg="rgb(242, 242, 242)" data-mb-sticky-bg="rgb(242, 242, 242)" class="mb-sticky-col">Circus Song</td>
+#+end_example
+
+which doesn't have an explicit SL title in it's songbase, the MB lookup and decoration with an MB glyph with hover
+support should still be done, as typically in MB I have added all the different name variations for a Springstenn work,
+e.g. there is an entry for "Circus Song" on MB at
+
+#+begin_example
+@debug/MB-song-initial.html  - IP - https://musicbrainz.org/work/2614f5f6-7905-41eb-9bf8-46183787e650
+#+end_example
+
+c.)
+
+could we have kind of an animation on the MB glyphs on SL song FRPs during which the work information from MB is loaded
+asynchronously
+
+4.)
+
+Currently when hovering the images in the "Artwork" section on
+e.g. https://www.springsteenlyrics.com/brucelegs.php?item=254&f_format=vinyl (but also on other non-MB PTs) nothing
+happens (except when clicking an image where we get our internal viewer which is fine). I want the same hover behaviour
+as on other PTs where a bigger version of the image popsup and when pressing "Shift" an even bigger version is shown
+
+5.)
+
+Currently on SL Various Artist releases, e.g. https://www.springsteenlyrics.com/collection.php?cmd=list&category=vaalbum&f_format=12i
+
+#+begin_example
+@debug/sl-va-list-initial.html - IP - https://www.springsteenlyrics.com/collection.php?cmd=list&category=vaalbum&f_format=12i
+@debug/sl-va-list-final.html - FRP - https://www.springsteenlyrics.com/collection.php?cmd=list&category=vaalbum&f_format=12i
+@debug/sl-POH-release.html - POH - https://www.springsteenlyrics.com/collection.php?item=5767&category=vaalbum&f_format=12i - hovered from above URL
+@debug/sl-va-release-final.html - FRP - https://www.springsteenlyrics.com/collection.php?item=5767&category=vaalbum&f_format=12i
+#+end_example
+
+a.)
+
+although on the list IP there is unique release ID in the page, it's missing on the list FRP
+
+b.)
+
+Although the FRP on e.g. https://www.springsteenlyrics.com/collection.php?item=5767&category=vaalbum&f_format=12i has SL
+song hyperlink and MB glyph support, on the POH of that page, the corresponding "A1 Bruce Springsteen: BORN TO RUN" line
+doesn't have hyperlink support yet.
+
+6.)
+
+Currently in the song detail POHs, e.g. on https://www.springsteenlyrics.com/brucelegs.php?item=148&f_format=vinyl
+
+#+begin_example
+[Image #20] - @debug/sl-POH-lots-of-images-and-MB-glyph-missing.html
+#+end_example
+
+the song titles have SL songtitle hover support, but no MB glyph support yes, although there seems to be an empty slot
+before the songtitle name like e.g. force
+
+#+begin_example
+"B2 Kitty's Back - V3" - empty slot between "B2" and "Kittys Back"
+"B3 Circus Song" - MB glyph is missing, see discussion above 
+#+end_example
+
+** DONE bugs
+
+1.)
+
+a.)
+
+When on e.g. https://www.springsteenlyrics.com/collection.php?cmd=list&category=audioboot&f_country=Europe
+and hovering e.g. the release 
+
+#+begin_example
+@debug/sl-collection-audio_boot-7457-initial.html - IP - https://www.springsteenlyrics.com/collection.php?item=7457&category=audioboot&f_country=Europe
+@debug/sl-collection-audio_boot-7457-POH.html - POH - POH of https://www.springsteenlyrics.com/collection.php?item=7457&category=audioboot&f_country=Europe - [Image #24]
+#+end_example
+
+the "Disc 2: [DVD]" medium is somehow not recognized as a separate medium and doesn't get the URLify treatment, also visible on the corresponding POH
+
+b.)
+
+also the alignment of the songs in the "TRACKLIST" section after the 10th song looks strange on e.g. the POH of
+https://www.springsteenlyrics.com/collection.php?item=7457&category=audioboot&f_country=Europe - [Image #24]
+
+Is it because of the font used for the numbering ?
+
+2.)
+
+On SL collection sampler pages e.g.
+
+#+begin_example
+@debug/sl-sampler-release-without-tracklist-inital.html - IP - https://www.springsteenlyrics.com/collection.php?item=5618&category=sampler&f_format=12i
+@debug/sl-sampler-release-without-tracklist-final.html - FRP - https://www.springsteenlyrics.com/collection.php?item=5618&category=sampler&f_format=12i
+@debug/sl-sampler-release-without-tracklist-2-inital.html - IP - https://www.springsteenlyrics.com/collection.php?item=5619&category=sampler&f_format=12i
+#+end_example
+
+some releases have no tracklist per included sub-release, so the parser should reflect this. Also check the POH for such releases  
+
+
 * TODO add support for logged in case
 
 For the SL and BB case I want to add logged in support with my site specific user and password:
@@ -1173,243 +1403,15 @@ autocomplete="current-password" to the login form's password field (hTxtPassword
 
 
 
-* TODO the UVD for the "Type" column is not indented right, there is one entry wich has more than 100 entries
-
-the UVD for the "Type" column is not indented right, there is one entry wich has more than 100 entries
-in e.g. https://www.springsteenlyrics.com/lyrics.php?cmd=list&letter=b
-
-
-* DONE URLify the tracklist to song URLs (SL and MB)
-** initial
-
-1.)
-
-URLify the SL tracklist to SL song URLs (by hyperlinking the songtitle), by constructing the song URL from parsing the song name. Create an assoc list where
-the automatic conversion does not work, by reading the song titles from the full song list at https://www.springsteenlyrics.com/lyrics.php
-
-E.g. on https://www.springsteenlyrics.com/collection.php?item=10163
-
-Automatic:
-#+begin_example
-A1- THE E STREET SHUFFLE ==> https://www.springsteenlyrics.com/lyrics.php?song=theestreetshuffle
-A3- KITTY'S BACK ==> https://www.springsteenlyrics.com/lyrics.php?song=kittysback
-#+end_example
-
-Assoc list:
-#+begin_example
-A2- 4TH OF JULY, ASBURY PARK (SANDY) ==> https://www.springsteenlyrics.com/lyrics.php?song=4thofjulyasburypark
-B2- ROSALITA (COME OUT TONIGHT) ==> https://www.springsteenlyrics.com/lyrics.php?song=rosalita
-#+end_example
-
-2.)
-
-additionally URLify the SL tracklist to MB work URLs if possible, maybe by adding the MB work glyph in front of the SL
-song title and when hovering it show the MB work POH
-
-3.)
-
-make some suggestions, nice rich HTML based mockups
-
-** Step 0 is done
-
-The probes have run and the mockups are up at ⧉ https://claude.ai/artifact/9etFwvJXtoLWkfZzPxnTJo. I've stopped here until you answer the questions. No userscript code has changed yet.
-
-What the probes found (5 Nov 2026, NB-3641, no browser involved):
-- SL song links:
-  - SL has 1,334 song titles with their own main page. Taking the title, dropping a trailing (…) and keeping only letters and digits gives the right address for 1,305 of them. That covers both your "assoc list" examples: …(SANDY) → 4thofjulyasburypark and ROSALITA (COME OUT TONIGHT) → rosalita.
-  - 4 more work if a leading (…) is dropped too, like (GET YOUR KICKS ON) ROUTE 66 → route66. Only about 25 real exceptions are left, such as comeonletsgotonight, fortymilesofbadroad and angeleyes-sinatra.
-- On real tracklists (15 saved item pages), 210 of 282 lines resolve. All 72 misses are songs SL has no page for: other artists on VA sides, Castiles covers, "Intro".
-- Unknown addresses look valid: SL answers an unknown song with HTTP 200 and a "does not exist!" page. So the script needs a list of known song addresses, or some links will lead nowhere.
-- Per-show pages: SL has a page per performance (becausethenight_1978-07-07, 1,464 dated ones). A bootleg could link the song's page for its own show date.
-- MB works:
-  - MB holds 1,587 Bruce works, and 752 of them have a link to the SL song page in their annotation. Loading them all takes 16 requests (about 18 s), then it's cached.
-  - Of the SL main song pages, 732 match a work exactly through that annotation link and 412 match one work by title. 29 match several works and 208 match none, mostly covers.
-  - On your item 10163, 6 of 7 match exactly; Wild Billy's Circus Story matches by title only.
-- Using the item's MB release: one request returns the work for every track (Live/1975–85: 40 of 40). But looking the release up from the SL page's address mostly fails, because MB stores SL item addresses as they were typed (http://…&category=album&pg=4). It's only reliable through the MB link your logged-in card shows.
-
-The questions in the mockup, with my recommendation for each:
-1. Where known song addresses come from: an embedded list of the 1,381 main-page addresses, about 18 KB → yes
-2. Link this show's page when SL has one: needs all 3,552 addresses, cached in the browser for 30 days → yes
-3. How to show the MB work: a work glyph before the title (your idea), a separate column, or both → the glyph
-4. Unsure matches: also show title-only matches (dashed glyph) and several candidates (count badge) → yes
-5. When MB is asked: automatically, under a new setting that is on by default, or only when you press a button → automatically
-6. When logged in: use the MB release link on your card as a more precise second source → yes
-7. Scope of this branch: item pages plus the tracklist in the item's popup now; the song page's edition tables and medleys later
-8. Titles SL has no page for: plain text, or marked as having no page → plain text
-
-Changes so far (on branch feat/sl-tracklist-links, nothing committed):
-- 3 new probe scripts in scripts/:
-  - probe-sl-song-index.py
-  - probe-mb-bruce-works-sl.py
-  - probe-sl-tracklist-resolve.py
-- The mockup page, org/sl-tracklist-links-mockups.html.
-- The probe output is in debug/, which git ignores.
-
-The artifact is private; only you can open it unless you share it from its Share menu.
-
-** answers
-
-1. Where known song addresses come from: an embedded list of the 1,381 main-page addresses, about 18 KB → yes
-2. Link this show's page when SL has one: needs all 3,552 addresses, cached in the browser for 30 days → yes
-3. How to show the MB work: a work glyph before the title (your idea), a separate column, or both → the glyph
-4. Unsure matches: also show title-only matches (dashed glyph) and several candidates (count badge) → yes
-5. When MB is asked: automatically, under a new setting that is on by default, or only when you press a button → automatically
-6. When logged in: use the MB release link on your card as a more precise second source → yes
-7. Scope of this branch: item pages plus the tracklist in the item's popup now + the song page's edition tables and medleys
-8. Titles SL has no page for: plain text, or marked as having no page → plain text
-
-* DONE Adjustments to 'URLify the tracklist to song URLs (SL and MB)'
-** DONE initial
-
-1.)
-
-springsteenlyrics.com page without www. ==> WORKS
-
-3.)
-
-a.)
-
-On SL brucelegs pages the label name e.g. "The Godfatherecords" in "Label: The Godfatherecords" should get hyperlink/POH support
-
-#+begin_example
-@debug/sl-brucelegs-list-initial.html - IP - https://www.springsteenlyrics.com/brucelegs.php?cmd=list&f_letter=1 - filtered
-@debug/sl-brucelegs-list-final.html - FRP - https://www.springsteenlyrics.com/brucelegs.php?cmd=list - filtered - "Label" column is missing the hyperlink and POH support
-@debug/sl-brucelegs-labels-list-initial.html  - IP - https://www.springsteenlyrics.com/brucelegs.php?cmd=list&f_label=Great%20Dane%20Records - brucelegs label release page, in this case "Label: The Godfatherecords"
-@debug/sl-song-initial.html - IP - https://www.springsteenlyrics.com/brucelegs.php?item=254&f_format=vinyl - label has hyperlink but NO POH support
-@debug/sl-song-final.html - FRP - https://www.springsteenlyrics.com/brucelegs.php?item=254&f_format=vinyl - label has hyperlink but NO POH support in the "RELEASE" section
-#+end_example
-
-b.)
-
-Is this extensible to SL collection and bootleg pages somehow if a label is involved
-
-3.)
-
-a.)
-
-On SL song FRPs, e.g. https://www.springsteenlyrics.com/brucelegs.php?item=254&f_format=vinyl when a song under the
-"Tracklist" medium table(s) has a "this show" hover detail link (with the exact song text from a specific date), the
-hyperlink on the songtitle should point to the official version of the SL song with hover support (otherwise we double
-functionality), e.g. for "Spirit In The Night"
-
-#+begin_example
-<td data-mb-tip="" style="position: sticky; left: 0px; z-index: 1; background: rgb(255, 255, 255);" data-mb-rest-bg="#ffffff" data-mb-sticky-bg="#ffffff" class="mb-sticky-col" title="As written on the site:
-Spirit In The Night"><span class="mb-sl-song mb-sl-this-show" data-mb-sl-song="spiritinthenight" data-mb-sl-title="Spirit In The Night" data-mb-sl-date="1973-04-24"><span class="mb-sl-work-slot" data-mb-sl-w="exact:dba2f648-cb81-3d19-b252-1bbecc62758b"><a class="mb-sl-work mb-sl-work-exact" href="https://musicbrainz.org/work/dba2f648-cb81-3d19-b252-1bbecc62758b" data-mb-pop-name="Spirit in the Night" aria-label="MusicBrainz work Spirit in the Night: the work's annotation links this song"><img src="https://musicbrainz.org/static/images/entity/work.svg" alt=""></a></span><a class="mb-sl-song-link" href="https://www.springsteenlyrics.com/lyrics.php?song=spiritinthenight_1973-04-24-early">Spirit in the Night</a></span></td>
-#+end_example
-
-b.)
-
-For a song title like e.g. "Circus Song"
-
-#+begin_example
-<td style="position: sticky; left: 0px; z-index: 1; background: rgb(242, 242, 242);" data-mb-rest-bg="rgb(242, 242, 242)" data-mb-sticky-bg="rgb(242, 242, 242)" class="mb-sticky-col">Circus Song</td>
-#+end_example
-
-which doesn't have an explicit SL title in it's songbase, the MB lookup and decoration with an MB glyph with hover
-support should still be done, as typically in MB I have added all the different name variations for a Springstenn work,
-e.g. there is an entry for "Circus Song" on MB at
-
-#+begin_example
-@debug/MB-song-initial.html  - IP - https://musicbrainz.org/work/2614f5f6-7905-41eb-9bf8-46183787e650
-#+end_example
-
-c.)
-
-could we have kind of an animation on the MB glyphs on SL song FRPs during which the work information from MB is loaded
-asynchronously
-
-4.)
-
-Currently when hovering the images in the "Artwork" section on
-e.g. https://www.springsteenlyrics.com/brucelegs.php?item=254&f_format=vinyl (but also on other non-MB PTs) nothing
-happens (except when clicking an image where we get our internal viewer which is fine). I want the same hover behaviour
-as on other PTs where a bigger version of the image popsup and when pressing "Shift" an even bigger version is shown
-
-5.)
-
-Currently on SL Various Artist releases, e.g. https://www.springsteenlyrics.com/collection.php?cmd=list&category=vaalbum&f_format=12i
-
-#+begin_example
-@debug/sl-va-list-initial.html - IP - https://www.springsteenlyrics.com/collection.php?cmd=list&category=vaalbum&f_format=12i
-@debug/sl-va-list-final.html - FRP - https://www.springsteenlyrics.com/collection.php?cmd=list&category=vaalbum&f_format=12i
-@debug/sl-POH-release.html - POH - https://www.springsteenlyrics.com/collection.php?item=5767&category=vaalbum&f_format=12i - hovered from above URL
-@debug/sl-va-release-final.html - FRP - https://www.springsteenlyrics.com/collection.php?item=5767&category=vaalbum&f_format=12i
-#+end_example
-
-a.)
-
-although on the list IP there is unique release ID in the page, it's missing on the list FRP
-
-b.)
-
-Although the FRP on e.g. https://www.springsteenlyrics.com/collection.php?item=5767&category=vaalbum&f_format=12i has SL
-song hyperlink and MB glyph support, on the POH of that page, the corresponding "A1 Bruce Springsteen: BORN TO RUN" line
-doesn't have hyperlink support yet.
-
-6.)
-
-Currently in the song detail POHs, e.g. on https://www.springsteenlyrics.com/brucelegs.php?item=148&f_format=vinyl
-
-#+begin_example
-[Image #20] - @debug/sl-POH-lots-of-images-and-MB-glyph-missing.html
-#+end_example
-
-the song titles have SL songtitle hover support, but no MB glyph support yes, although there seems to be an empty slot
-before the songtitle name like e.g. force
-
-#+begin_example
-"B2 Kitty's Back - V3" - empty slot between "B2" and "Kittys Back"
-"B3 Circus Song" - MB glyph is missing, see discussion above 
-#+end_example
-
-** DONE bugs
-
-1.)
-
-a.)
-
-When on e.g. https://www.springsteenlyrics.com/collection.php?cmd=list&category=audioboot&f_country=Europe
-and hovering e.g. the release 
-
-#+begin_example
-@debug/sl-collection-audio_boot-7457-initial.html - IP - https://www.springsteenlyrics.com/collection.php?item=7457&category=audioboot&f_country=Europe
-@debug/sl-collection-audio_boot-7457-POH.html - POH - POH of https://www.springsteenlyrics.com/collection.php?item=7457&category=audioboot&f_country=Europe - [Image #24]
-#+end_example
-
-the "Disc 2: [DVD]" medium is somehow not recognized as a separate medium and doesn't get the URLify treatment, also visible on the corresponding POH
-
-b.)
-
-also the alignment of the songs in the "TRACKLIST" section after the 10th song looks strange on e.g. the POH of
-https://www.springsteenlyrics.com/collection.php?item=7457&category=audioboot&f_country=Europe - [Image #24]
-
-Is it because of the font used for the numbering ?
-
-2.)
-
-On SL collection sampler pages e.g.
-
-#+begin_example
-@debug/sl-sampler-release-without-tracklist-inital.html - IP - https://www.springsteenlyrics.com/collection.php?item=5618&category=sampler&f_format=12i
-@debug/sl-sampler-release-without-tracklist-final.html - FRP - https://www.springsteenlyrics.com/collection.php?item=5618&category=sampler&f_format=12i
-@debug/sl-sampler-release-without-tracklist-2-inital.html - IP - https://www.springsteenlyrics.com/collection.php?item=5619&category=sampler&f_format=12i
-#+end_example
-
-some releases have no tracklist per included sub-release, so the parser should reflect this. Also check the POH for such releases  
-
-
 * TODO add an image glyph which shows the medium images if they can be mapped/deduced from their names/descriptions
 
 add an image glyph which shows the medium images to the h3 medium header line if they can be mapped/deduced from their
 names/descriptions
 
-* TODO FICE needs support for grouping images (e.g. type, size, etc.) 
-
-FICE needs support for grouping images (e.g. type, size, etc.)
 
 * TODO the SL song detail FRP needs a more nicer rendering
 
-the SL song detail FRP needs a more nicer rendering
+the SL song detail FRP needs a more nicer/professional look and feel
 
 #+begin_example
 collapsable (Ctrl-click ALL) sections)
@@ -1418,7 +1420,6 @@ bigger fonts for other sections
 etc.
 
 #+end_example
-
 
 
 

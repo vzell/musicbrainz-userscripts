@@ -75,6 +75,15 @@ TARGETS = {
     # the Innocent & the E Street Shuffle, A2 "… (SANDY)" and B2 "ROSALITA
     # (COME OUT TONIGHT)". Fetched logged out with curl on 2026-11-05.
     'sl-collection-10163-detail.html': 'detail-sl-collection-10163.html',
+    # org/image-handling.org P2, one picture section over an item's copies:
+    # two copies with scans each (collection.php?item=6463, "Tunnel Of Love
+    # Express I", 2 + 2), and two copies of which the FIRST has none yet
+    # (item=5472, "CBS - The Sound Of Summer '88", 0 + 3). Fetched logged out
+    # with curl on 2026-11-06 (vzell's logged-in snapshots of the same pages,
+    # debug/SL-release-2copys*-initial.html, carry the script's tracklist
+    # links, which strip_script_ui() predates).
+    'sl-collection-6463-detail.html': 'detail-sl-collection-6463.html',
+    'sl-collection-5472-detail.html': 'detail-sl-collection-5472.html',
     # A label's CD and vinyl bootlegs, the site's only label page
     # (brucelegs.php?cmd=list&f_label=Great Dane Records, 15 items; vzell,
     # 2026-11-05, "Adjustments to 'URLify the tracklist…'" 3a): the label's

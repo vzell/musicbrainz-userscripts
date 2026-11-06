@@ -1898,12 +1898,35 @@ type whose comments differ only in a final "left" / "right" ("opened gatefold
 cover, inside left" + "… inside right") are shown side by side as one opened
 spread, the Liner and Booklet pages are turned two at a time with **◀ ▶**, and
 everything else follows as single pages. The pairing goes by the comments, so
-it only pairs when that is unambiguous — no image is ever hidden. The layout is
+it only pairs when that is unambiguous — no image is ever hidden. **Table**
+lists the images one per row (#, the picture, type, comment, ★ / ⏳, file
+name); click a heading to sort by it, again to reverse. The layout is
 remembered, and travels with a config export.
 
+Under the chips, **Filter pictures…** narrows the sheet as you type, by type,
+comment or file name ("liner", "sealed", "6752"), in every layout, says
+"4 of 16 shown", and marks what it found wherever it shows (in **Table** also
+in the file names). The **Tiles** slider makes the thumbnails bigger or
+smaller; the size is remembered for every picture section, and **↺** beside
+it takes it back to the original size. Where a page lists something
+without pictures (a springsteenlyrics copy without scans), **Show missing**
+turns its dashed box on and off. The same section, with the same tools, shows
+the pictures on other sites' detail pages.
+
+**When the archive is slow or down.** A picture that does not load shows as a
+dashed box with **⟳** instead of the browser's broken image: click a tile's
+**⟳** to ask for it again (the tile itself still opens the viewer), or
+**⟳ Reload N failed** under the chips for all of them. A failed thumbnail in a
+medium's heading, or the cover copy beside the page heading, asks again when
+you click it, and opens the viewer as before. In the viewer, **⟳ Try again**
+asks again for a large image that did not come. A hover card that shows ⟳
+boxes says so: rest on the link once more to try again. This works the same
+on the other sites' pages.
+
 **The viewer.** Click a thumbnail to open it full screen; it steps through the
-thumbnails currently shown, in their order, so a chip or **By type** applies
-(in **Spreads**, every Liner page is included, also those the pager hides).
+thumbnails currently shown, in their order, so a chip, the filter or **By type**
+applies — in **Table**, the rows in their sorted order (in **Spreads**, every
+Liner page is included, also those the pager hides).
 Clicking the **Cover art (N)** tab itself opens the viewer on a grid of every
 image instead of leaving the page — Ctrl-click (or middle-click) the tab, or a
 thumbnail, to open the archive page or the image in a new tab as before. The
@@ -1915,7 +1938,17 @@ next row, and **Shift+← →** change rows), **Home / End**, **↑ ↓** or the
 wheel zoom in and out (toward the pointer), **0** fits, **Z** or a click
 toggles 2× (the image follows the mouse: move toward a side to bring that edge into view; with the *drag* setting, drag it with the mouse button held instead), **1** actual pixels (the bar shows the zoom as screen pixels per image pixel), **R** / **Shift+R** turn a quarter turn (view only; the next image starts upright), **H** / **V** mirror left-right / upside-down, as seen — for a matrix area scanned through the disc, whose numbers read backwards (also the Flip button; view only; the next image starts unflipped), **B** background (dark, light, checkerboard), **F** the browser's fullscreen, **D** download the original (named like Art Station's: position, types, comment), **P** starts or stops a slideshow,
 **G** grid, **I** info panel, **O** original in a new tab, **Esc** closes (from
-a grid opened with G: back to the image; in fullscreen, the first Esc leaves fullscreen). The zoom level is kept from image to
+a grid opened with G: back to the image; in fullscreen, the first Esc leaves fullscreen).
+**A** opens **Adjust**: brightness, contrast, grayscale and invert, to read a
+dark scan or a faded insert (view only: Download keeps the file; the next
+picture starts neutral; a focused slider takes the arrow keys). **C**
+**Compares** two pictures side by side, the next one on the right: **← →** or
+a click in the filmstrip change the right one, and C or Esc go back (a page of
+a pair in **Spreads** opens both pages this way, and Esc then closes the
+viewer). **L** turns on the **loupe**, a round lens 2.5× larger under the
+pointer, also on a zoomed or turned picture. **Y** copies the picture's
+address, **Shift+Y** a line for an edit note (its types, comment and
+address). **?** shows every key; Esc closes that list first. The zoom level is kept from image to
 image and remembered for next time; the large image is the 1200 px one, or the
 original file (both settings). On a touch
 screen, tap to open and swipe sideways to step; pinch with two fingers to zoom, and drag a zoomed image with one. While the viewer is open the
@@ -3467,8 +3500,16 @@ Asbury Park N.J.", then its pressing, catalogue number and sleeve) gets one
 **Contents** table instead, a row per record; its preview counts the records
 and lists them. Above the tables:
 the item's facts (or, for a bootleg, the show and the recording), the runout
-etchings, its files, the notes, and its scans or artwork — one section per
-copy, with the site's captions, opening in the artwork viewer. **Original info
+etchings, its files, the notes, and its scans or artwork in one section, with
+the site's captions, opening in the artwork viewer. It works like a release's
+Cover art: chips by kind (Scan; a bootleg's artwork by what its caption names:
+Front, Back, Booklet, Medium for the disc, its label or runout, else Artwork)
+and Grid / By type. As on a release page, the Medium pictures also show as
+small thumbs in the record's or disc's heading (a click opens them in the
+viewer). An item with
+several copies gets a chip per copy and **By copy** instead, and the viewer
+steps through every copy's scans; a copy the site has no scans of yet shows
+as a dashed box with the site's own words. **Original info
 file** starts closed and is read only when you open it. Resting on a picture
 shows it large; hold Shift for larger, and a click or Space opens the
 artwork viewer (on every non-MusicBrainz detail page). Logged in, a **Your
@@ -3942,7 +3983,10 @@ section of its own above Discogs' page, with the toolbar and these buttons:
     want, ratings and the data quality, then last sold, low, median, high and
     the copies for sale (one column when the card is narrow); the Identifiers
     on the right) and
-    **Images** (a click opens the viewer). Labels, formats, the country, the
+    **Images**, as a release's Cover art on MusicBrainz: chips for Discogs'
+    Primary and Secondary images, ★ on the primary, Grid or By type (the
+    choice is kept for every other site's detail page), and a click opens the
+    images shown in the viewer. Labels, formats, the country, the
     year, genres and styles and the links in the notes are links, as on
     Discogs' page, with the same previews as the tables' links.
 - **Release — Credits, versions:** five sub-tables: **Credits**, **Companies,
@@ -4225,7 +4269,10 @@ that fold like the release page's:
   metadata), *Collections* and *Lineage*. A click on a card's heading folds
   it; Ctrl+click folds every card;
 - **Pictures**, the uploader's scans as tiles, as the release page's Cover
-  art; a click opens them in the viewer.
+  art: type chips (Front, Back, Booklet, Medium, guessed from the file
+  names) and Grid / By type; a click opens the pictures shown in the viewer.
+  A picture named after a disc ("Disc 2.jpg") also shows as a small thumb in
+  that disc's heading.
 
 Both read the item in one request. Before you press a button, the item's own
 page previews too: rest on its Brucebase link for the show's card.

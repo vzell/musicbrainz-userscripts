@@ -304,8 +304,13 @@ No request: `features.pageRequest`'s `fetchText` returns the page's own HTML,
   `textsAfter`, `pictureGroups`, a text's `note` and `lazyText`): Notes and
   Release info; Details — Release (or Show and Recording), the runout
   etchings, "Your collection" (logged in: MusicBrainz link, Good scans, Kept
-  in, item number, edit link) and Files; one pictures section per scans or
-  artwork section, with the page's captions; then "Original info file", read
+  in, item number, edit link) and Files; ONE pictures section over every
+  scans or artwork section (since 2026-11-06, org/image-handling.org P2;
+  before, one per section, so a second copy had its own viewer and an empty
+  copy vanished), the section's kind as the type, the page's captions as
+  comments; with copies it is chipped and grouped by copy in page order, a
+  copy without scans a placeholder with the site's words
+  (`pictureGroupLabel`, `picturePlaceholders`, `pictureGroupOrder`); then "Original info file", read
   same-origin once when its section is first opened (answer 2), and "Private
   info" (logged in, closed).
 - **Private info never leaves the item page**: `_SL_ITEM_OWN_SECTION_RE` keeps
@@ -561,9 +566,13 @@ edition tables (`_slSongToHtml()`'s `editionCell`).
   `_fdHeadInsertSections()`): `data-mbtt-fn="fd-pic"` → `_fdPicCardHtml()`,
   the picture at 320 px, with Shift as large as the window allows (`fd-pic`
   is in `_ART_CARD_FNS`, so the artwork cards' Shift repaint and Space →
-  `_artSpaceOpen()` → `_dpArtViewerClick()` apply); the thumbnail first, the
-  full picture swapped in when loaded (`_fdPicSwap()`). Not the FICE
-  (`fi-img`): that one is table-row shaped.
+  `_artSpaceOpen()` → the art section's `_releaseArtOnClick()` apply); the
+  thumbnail first, the full picture swapped in when loaded (`_fdPicSwap()`).
+  Not the FICE (`fi-img`): that one is table-row shaped. Since 2026-11-06
+  each pictures section is an art section (`_fdArtSection()`,
+  docs/claude/artwork-caa-eaa.md): the section's kind as the type (Scan,
+  Artwork), the page's caption as the comment, chips and Grid / By type;
+  the card's "Picture k of n" counts the section's tiles shown.
 
 ## Column names: the `_sortColumnKind()` heuristic trap
 

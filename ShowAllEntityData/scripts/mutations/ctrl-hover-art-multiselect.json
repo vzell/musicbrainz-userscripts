@@ -108,8 +108,8 @@
         "why": "Image 2 is Back + Front; a union built per type (concat) would show it twice when both chips are pressed.",
         "edits": [
             {
-                "find": "                (images[i].types && images[i].types.length ? images[i].types : ['(no type)']).some(t => want.has(t)));",
-                "replace": "                (images[i].types && images[i].types.length ? images[i].types : ['(no type)']).some(t => want.has(t)))\n            .flatMap(i => (images[i].types || []).filter(t => want.has(t)).map(() => i).slice(0, want.size ? undefined : 1));"
+                "find": "            .filter(i => !want.size || _artChipsOf(desc, images[i]).some(t => want.has(t)));",
+                "replace": "            .filter(i => !want.size || _artChipsOf(desc, images[i]).some(t => want.has(t)))\n            .flatMap(i => (images[i].types || []).filter(t => want.has(t)).map(() => i).slice(0, want.size ? undefined : 1));"
             }
         ],
         "spec": "tests/fixtures/release-tracks-cover-art.spec.js",
@@ -134,8 +134,8 @@
         "why": "_releaseArtViewerOrder() must read the same selection as the render; reading none, the Spreads viewer would step through every image.",
         "edits": [
             {
-                "find": "                _releaseArtShownIndices(images, _releaseArtActiveTypes(sec)));",
-                "replace": "                _releaseArtShownIndices(images, []));"
+                "find": "                _releaseArtShownIndices(images, _releaseArtActiveTypes(sec), desc, _releaseArtQuery(sec)));",
+                "replace": "                _releaseArtShownIndices(images, [], desc, _releaseArtQuery(sec)));"
             }
         ],
         "spec": "tests/fixtures/release-tracks-cover-art-spreads.spec.js",

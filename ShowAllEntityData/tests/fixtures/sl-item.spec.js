@@ -23,6 +23,8 @@ const ITEMS = {
     'collection-8595': 'collection.php?item=8595&category=album&f_format=12i',
     'collection-5240': 'collection.php?item=5240&category=sampler&f_format=12i',
     'collection-9685': 'collection.php?item=9685&category=vaalbum&f_format=12i',
+    'collection-6463': 'collection.php?item=6463&category=single&f_format=cd3',
+    'collection-5472': 'collection.php?item=5472&category=single&f_format=cd3',
     'bootlegs-9507': 'bootlegs.php?item=9507&category=aud_live1988',
     'bootlegs-2567': 'bootlegs.php?item=2567',
     'brucelegs-281': 'brucelegs.php?item=281&f_format=vinyl',
@@ -136,7 +138,9 @@ test.describe('springsteenlyrics.com item pages (sl-*-item)', () => {
         expect(errors).toEqual([]);
     });
 
-    test('collection 5240: five named records; two scan sections, the empty copy left out', async ({ page }) => {
+    // org/image-handling.org P2: one Scans section over both copies; the copy
+    // the site lists without scans is a placeholder (until P2 it was left out).
+    test('collection 5240: five named records; one Scans section, the empty copy as a placeholder (image section P2)', async ({ page }) => {
         await open(page, 'collection-5240');
         await show(page);
         expect(await h3s(page)).toEqual(['Record 1: "Dancing In The Dark" (CBS TA 4436)', 'Record 2: "Cover Me" (CBS QTA 4662)',
@@ -144,9 +148,121 @@ test.describe('springsteenlyrics.com item pages (sl-*-item)', () => {
         const t = await tables(page);
         expect(t.map(r => r.length)).toEqual([2, 5, 4, 4, 2]);
         expect(t[1][0]).toEqual({ 'Pos': 'A1', 'Title': 'COVER ME', 'Version / note': 'Undercover Mix' });
-        expect(await heads(page)).toEqual(['Notes', 'Details', 'Scans (copy #1)', 'Private info']);
+        expect(await heads(page)).toEqual(['Notes', 'Details', 'Scans', 'Private info']);
+        const sec = page.locator('.mb-fd-head .mb-release-art-sec');
+        await expect(sec.locator('.mb-release-art-chip')).toHaveText(['All 23', 'Copy #1 23', 'Copy #2 0']);
+        await expect(sec.locator('.mb-release-art-chip-empty')).toHaveText('Copy #2 0');
+        const missing = sec.locator('.mb-release-art-missing');
+        await expect(missing).toHaveCount(1);
+        await expect(missing.locator('div')).toHaveText('No scans available yet');
+        await expect(missing.locator('figcaption')).toHaveText('Copy #2');
         expect(await cardRows(page, 'Release')).toContainEqual(['Copies', '2']);
         expect(await cardRows(page, 'Your collection')).toContainEqual(['Kept in', 'Lebanon']);
+    });
+
+    test('collection 6463: two copies with scans in ONE section — chips and By copy per copy, one viewer over both (image section P2)', async ({ page }) => {
+        const { errors } = await open(page, 'collection-6463');
+        await show(page);
+        expect(await heads(page)).toContain('Scans');
+        const sec = page.locator('.mb-fd-head .mb-release-art-sec');
+        await expect(sec).toHaveCount(1);
+        await expect(sec.locator('figure.mb-release-art-tile')).toHaveCount(4);
+        await expect(sec.locator('.mb-release-art-chip')).toHaveText(['All 4', 'Copy #1 2', 'Copy #2 2']);
+        await expect(sec.locator('[data-mb-art-layout]')).toHaveText(['Grid', 'By copy', 'Table']);
+        await expect(sec.locator('.mb-release-art-missing')).toHaveCount(0);
+        // One viewer steps across the copies (two sections had two viewers).
+        await sec.locator('figure.mb-release-art-tile > a').nth(2).click();
+        await expect(page.locator('#mb-art-viewer .mb-artv-pos')).toHaveText('3 / 4');
+        await page.keyboard.press('Escape');
+        // By copy: a group per copy, in the page's order.
+        await sec.locator('[data-mb-art-layout="grouped"]').click();
+        await expect(sec.locator('.mb-release-art-group-hdr')).toHaveText(['Copy #1 × 2', 'Copy #2 × 2']);
+        // A copy's chip narrows to that copy.
+        await sec.locator('.mb-release-art-chip', { hasText: 'Copy #2' }).click();
+        await expect(sec.locator('figure.mb-release-art-tile')).toHaveCount(2);
+        expect(errors).toEqual([]);
+    });
+
+    test('collection 5472: copy #1 without scans comes FIRST, as on the page; the placeholder is never in the viewer (image section P2)', async ({ page }) => {
+        const { errors } = await open(page, 'collection-5472');
+        await show(page);
+        const sec = page.locator('.mb-fd-head .mb-release-art-sec');
+        await expect(sec.locator('.mb-release-art-chip')).toHaveText(['All 3', 'Copy #1 0', 'Copy #2 3']);
+        // Grid: the three scans and the placeholder.
+        await expect(sec.locator('figure.mb-release-art-tile')).toHaveCount(3);
+        await expect(sec.locator('.mb-release-art-missing figcaption')).toHaveText('Copy #1');
+        // By copy: copy #1 first, with only its placeholder.
+        await sec.locator('[data-mb-art-layout="grouped"]').click();
+        await expect(sec.locator('.mb-release-art-group-hdr')).toHaveText(['Copy #1 × 0', 'Copy #2 × 3']);
+        await expect(sec.locator('.mb-release-art-group').first().locator('.mb-release-art-missing')).toHaveCount(1);
+        // Copy #2's chip hides the placeholder; copy #1's alone shows only it.
+        await sec.locator('.mb-release-art-chip', { hasText: 'Copy #2' }).click();
+        await expect(sec.locator('.mb-release-art-missing')).toHaveCount(0);
+        await sec.locator('.mb-release-art-chip', { hasText: 'All' }).click();
+        await sec.locator('.mb-release-art-chip', { hasText: 'Copy #1' }).click();
+        await expect(sec.locator('.mb-release-art-missing')).toHaveCount(1);
+        await expect(sec.locator('figure.mb-release-art-tile')).toHaveCount(0);
+        // The viewer holds the three scans only.
+        await sec.locator('.mb-release-art-chip', { hasText: 'All' }).click();
+        await sec.locator('figure.mb-release-art-tile > a').first().click();
+        await expect(page.locator('#mb-art-viewer .mb-artv-pos')).toHaveText('1 / 3');
+        expect(errors).toEqual([]);
+    });
+
+    test('collection 5472: Table has a Copy column and a row for the copy without scans; Show missing hides it everywhere (image section P4a)', async ({ page }) => {
+        const { errors } = await open(page, 'collection-5472');
+        await show(page);
+        const sec = page.locator('.mb-fd-head .mb-release-art-sec');
+        await sec.locator('[data-mb-art-layout="table"]').click();
+        const table = sec.locator('table.mb-release-art-table');
+        await expect(table.locator('thead th')).toHaveText(['#', 'Picture', 'Type', 'Copy', 'Comment', 'Flags', 'File']);
+        await expect(table.locator('tbody tr[data-mb-art-i]')).toHaveCount(3);
+        const missingRow = table.locator('tbody tr.mb-release-art-missing-row');
+        await expect(missingRow).toHaveCount(1);
+        await expect(missingRow.locator('td').nth(3)).toHaveText('Copy #1');
+        await expect(missingRow.locator('td').nth(4)).toHaveText('No scans available yet');
+        await expect(table.locator('tbody tr[data-mb-art-i]').first().locator('td').nth(6)).toHaveText('5472_01.jpg');
+        // Show missing off: no placeholder row, nor tile back in Grid.
+        await sec.locator('.mb-release-art-miss input').uncheck();
+        await expect(missingRow).toHaveCount(0);
+        await sec.locator('[data-mb-art-layout="grid"]').click();
+        await expect(sec.locator('.mb-release-art-missing')).toHaveCount(0);
+        await expect(sec.locator('.mb-release-art-miss input')).not.toBeChecked();
+        await sec.locator('.mb-release-art-miss input').check();
+        await expect(sec.locator('.mb-release-art-missing')).toHaveCount(1);
+        // A row's picture opens the viewer with the fd-pic card's picture.
+        await sec.locator('[data-mb-art-layout="table"]').click();
+        await expect(table.locator('a.mb-release-art-row-link').first()).toHaveAttribute('data-mbtt-fn', 'fd-pic');
+        await table.locator('a.mb-release-art-row-link').nth(1).click();
+        await expect(page.locator('#mb-art-viewer .mb-artv-pos')).toHaveText('2 / 3');
+        expect(errors).toEqual([]);
+    });
+
+    // vzell, 2026-11-06 (his screenshot: "sc" typed on this page): what the
+    // filter matches is marked wherever it shows, and nowhere else.
+    test('collection 5472: the filter\'s text is highlighted where it shows — types, group headings, table cells (image section P4a)', async ({ page }) => {
+        await open(page, 'collection-5472');
+        await show(page);
+        const sec = page.locator('.mb-fd-head .mb-release-art-sec');
+        await sec.locator('[data-mb-art-layout="grouped"]').click();
+        await sec.locator('input.mb-release-art-q').fill('sc');
+        const marks = sec.locator('mark.mb-release-art-hl');
+        // "Sc" in each of the three "Scan" captions, nothing else.
+        await expect(sec.locator('.mb-release-art-types mark.mb-release-art-hl')).toHaveText(['Sc', 'Sc', 'Sc']);
+        await expect(marks).toHaveCount(3);
+        // The mark splits the text node only: the caption reads as before.
+        await expect(sec.locator('.mb-release-art-types').first()).toHaveText('Scan');
+        // "co" in the group heading "Copy #2 × 3".
+        await sec.locator('input.mb-release-art-q').fill('co');
+        await expect(sec.locator('.mb-release-art-group-hdr mark.mb-release-art-hl')).toHaveText(['Co']);
+        // Table: the File column's match is marked too.
+        await sec.locator('[data-mb-art-layout="table"]').click();
+        await sec.locator('input.mb-release-art-q').fill('5472_02');
+        await expect(sec.locator('table.mb-release-art-table tbody tr[data-mb-art-i]')).toHaveCount(1);
+        await expect(sec.locator('table.mb-release-art-table td mark.mb-release-art-hl')).toHaveText(['5472_02']);
+        // No filter, no marks.
+        await sec.locator('input.mb-release-art-q').fill('');
+        await expect(marks).toHaveCount(0);
     });
 
     test('collection 9685 (various artists): an Artist column', async ({ page }) => {
@@ -185,7 +301,42 @@ test.describe('springsteenlyrics.com item pages (sl-*-item)', () => {
         expect(await h3s(page)).toEqual(['Record 1']);
         expect((await tables(page))[0].map(r => r.Pos)).toEqual(['A1', 'A2', 'A3', 'B1', 'B2', 'B3']);
         expect(await cardRows(page, 'Your collection')).toContainEqual(['MusicBrainz', 'MusicBrainz release']);
-        await expect(page.locator('.mb-fd-head figcaption').first()).toHaveText('front');
+        // Since image section P3: the caption names the type ("front" → Front,
+        // "disc side 1" / "label side 2" / "runout groove side 1" → Medium); a
+        // caption that only repeats its type is not printed again.
+        const sec = page.locator('.mb-fd-head .mb-release-art-sec');
+        await expect(sec.locator('.mb-release-art-chip')).toHaveText(['All 8', 'Front 1', 'Back 1', 'Medium 6']);
+        await expect(sec.locator('.mb-release-art-types').first()).toHaveText('Front');
+        await expect(sec.locator('figure.mb-release-art-tile').first().locator('.mb-release-art-comment')).toHaveCount(0);
+        await expect(sec.locator('figure.mb-release-art-tile').nth(2).locator('.mb-release-art-comment')).toHaveText('disc side 1');
+    });
+
+    test('CD bootleg 281: one unnumbered "Disc" heading is medium 1 — "disc front" and "disc back" go into it (image section P3)', async ({ page }) => {
+        await open(page, 'brucelegs-281');
+        await show(page);
+        const h3 = page.locator('.project-detail h3.mb-toggle-h3').first();
+        await expect(h3.locator('.mb-medium-art > .mb-medium-art-btn')).toHaveCount(2);
+        await expect(page.locator('.mb-fd-head .mb-release-art-chip')).toHaveText(['All 7', 'Front 1', 'Back 2', 'Booklet 2', 'Medium 2']);
+    });
+
+    // org/image-handling.org P3: the record's Medium pictures in its heading,
+    // as on a MusicBrainz release; one record takes them all (R7's rule 1).
+    test('bootleg 2567: the six Medium pictures go into "Record 1"\'s heading; a thumb opens the viewer on them (image section P3)', async ({ page }) => {
+        const { errors } = await open(page, 'bootlegs-2567');
+        await show(page);
+        const h3 = page.locator('.project-detail h3.mb-toggle-h3').first();
+        await expect(h3.locator('.mb-medium-art > .mb-medium-art-btn')).toHaveCount(4);
+        await expect(h3.locator('.mb-medium-art > .mb-medium-art-more')).toHaveText('+2');
+        await expect(h3.locator('.mb-medium-art-note')).toHaveCount(0);
+        // External pictures: their own URLs, no referrer on the card.
+        expect(await h3.locator('.mb-medium-art-btn img').first().getAttribute('src')).toMatch(/^https:\/\/www\.springsteenlyrics\.com\/.*2567_artwork_03_tn\.jpg$/);
+        expect(await h3.locator('.mb-medium-art-btn').first().getAttribute('data-mbtt')).toContain('referrerpolicy="no-referrer"');
+        await h3.locator('.mb-medium-art-btn').nth(1).click();
+        const viewer = page.locator('#mb-art-viewer');
+        await expect(viewer).toBeVisible();
+        await expect(viewer.locator('.mb-artv-pos')).toHaveText('2 / 6');
+        await expect(h3, 'the click did not collapse the record').not.toHaveClass(/mb-collapsed|collapsed/);
+        expect(errors).toEqual([]);
     });
 
     test('CD bootleg 281: Length, notes, the inner ring text, the PDF', async ({ page }) => {

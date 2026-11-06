@@ -1,0 +1,1257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- SKELETON-END: everything above this line is dropped when the page is published as an Artifact. -->
+<title>Image Handling</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+  ShowAllEntityData design study, 2026-11-06. Companion to org/image-handling.org.
+  How the script shows a release's / item's own pictures today (MusicBrainz Cover art section,
+  the foreign detail head's Scans / Images / Pictures, FICE, the link-preview window), and one
+  shared "image section" component (ISC) that every detail pageType could use.
+  Data is real: tiles from debug/{MB,SL,D,IA}-release*-final.html, read by
+  scripts/extract-mockup-image-urls.py --mockup. Opened from disk, images are hotlinked from the
+  sites. The published Artifact copy carries them inline (window.__EMBED,
+  scripts/build-mockup-artifact.py), because its sandbox blocks outside images. Every image falls
+  back to a labelled tile if it cannot load.
+-->
+<!--EMBED-->
+<script type="application/json" id="mockup-images">
+{"mb1":{"u":"https://coverartarchive.org/release/3ec14d03-2c03-4764-a69d-8155817a040f/6752725588-250.jpg"},
+ "mb2":{"u":"https://coverartarchive.org/release/3ec14d03-2c03-4764-a69d-8155817a040f/6752733648-250.jpg"},
+ "mb3":{"u":"https://coverartarchive.org/release/3ec14d03-2c03-4764-a69d-8155817a040f/6752737647-250.jpg"},
+ "mb4":{"u":"https://coverartarchive.org/release/3ec14d03-2c03-4764-a69d-8155817a040f/11775423625-250.jpg"},
+ "mb5":{"u":"https://coverartarchive.org/release/3ec14d03-2c03-4764-a69d-8155817a040f/34041533842-250.jpg"},
+ "mb6":{"u":"https://coverartarchive.org/release/3ec14d03-2c03-4764-a69d-8155817a040f/34041534342-250.jpg"},
+ "mb7":{"u":"https://coverartarchive.org/release/3ec14d03-2c03-4764-a69d-8155817a040f/34041534774-250.jpg"},
+ "mb8":{"u":"https://coverartarchive.org/release/3ec14d03-2c03-4764-a69d-8155817a040f/34041547372-250.jpg"},
+ "mb9":{"u":"https://coverartarchive.org/release/3ec14d03-2c03-4764-a69d-8155817a040f/34041547752-250.jpg"},
+ "mb10":{"u":"https://coverartarchive.org/release/3ec14d03-2c03-4764-a69d-8155817a040f/34041597104-250.jpg"},
+ "mb11":{"u":"https://coverartarchive.org/release/3ec14d03-2c03-4764-a69d-8155817a040f/34041597693-250.jpg"},
+ "mb12":{"u":"https://coverartarchive.org/release/3ec14d03-2c03-4764-a69d-8155817a040f/34041598220-250.jpg"},
+ "sla1":{"u":"https://www.springsteenlyrics.com/collection/sin_cd3_at/5493_01_tn.jpg"},
+ "sla1f":{"u":"https://www.springsteenlyrics.com/collection/sin_cd3_at/5493_01.jpg","max":900},
+ "sla2":{"u":"https://www.springsteenlyrics.com/collection/sin_cd3_at/5493_02_tn.jpg"},
+ "sla2f":{"u":"https://www.springsteenlyrics.com/collection/sin_cd3_at/5493_02.jpg","max":900},
+ "sla3":{"u":"https://www.springsteenlyrics.com/collection/sin_cd3_at/5493_03_tn.jpg"},
+ "sla4":{"u":"https://www.springsteenlyrics.com/collection/sin_cd3_at/5493_04_tn.jpg"},
+ "sla5":{"u":"https://www.springsteenlyrics.com/collection/sin_cd3_at/5493_05_tn.jpg"},
+ "slb1":{"u":"https://www.springsteenlyrics.com/collection/sin_cd3_jp/6463_01_tn.jpg"},
+ "slb2":{"u":"https://www.springsteenlyrics.com/collection/sin_cd3_jp/6463_02_tn.jpg"},
+ "slb3":{"u":"https://www.springsteenlyrics.com/collection/sin_cd3_jp/6463_03_tn.jpg"},
+ "slb4":{"u":"https://www.springsteenlyrics.com/collection/sin_cd3_jp/6463_04_tn.jpg"},
+ "slc1":{"u":"https://www.springsteenlyrics.com/collection/sin_cd3_at/5472_01_tn.jpg"},
+ "slc2":{"u":"https://www.springsteenlyrics.com/collection/sin_cd3_at/5472_02_tn.jpg"},
+ "slc3":{"u":"https://www.springsteenlyrics.com/collection/sin_cd3_at/5472_03_tn.jpg"},
+ "dg1":{"u":"https://i.discogs.com/pNOyeN2s_tBRxI8bOYD3qgUO8s91wF5ZwN4VtrbM0lg/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTg5Mjk3/MS0xNTE3MzUwMTEx/LTQxOTQuanBlZw.jpeg"},
+ "dg2":{"u":"https://i.discogs.com/oBGXUQIZlV0-iZ6l9FINVgDVHCu8sEtoc2znYZww4hs/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTg5Mjk3/MS0xNTE3MzUwMTEw/LTY4MTQuanBlZw.jpeg"},
+ "dg3":{"u":"https://i.discogs.com/0emXHH0EF-4OYmStgjm2XTtw7DeDxCf3CsyxfDrfQCE/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTg5Mjk3/MS0xMTcwMDAwOTMx/LmpwZWc.jpeg"},
+ "dg4":{"u":"https://i.discogs.com/tbBrPvP7796kuO1eGnF3RCuv3ottO_gODpE73GGuaPY/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTg5Mjk3/MS0xMTcwMDAwOTQ2/LmpwZWc.jpeg"},
+ "dg5":{"u":"https://i.discogs.com/M7v2gtGl2hJcmVnqmWz2JobN1BYDyoAiskach__mido/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTg5Mjk3/MS0xMTcwMDAwOTU5/LmpwZWc.jpeg"},
+ "dg6":{"u":"https://i.discogs.com/n-tBk-2Qp6gNOB9mN8wG82fEgrnS7b665Er-pZ7Prxk/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTg5Mjk3/MS0xMTcwMDAwOTcy/LmpwZWc.jpeg"},
+ "dg7":{"u":"https://i.discogs.com/Xlg6bwdXo6tvncGidiRKiTSV51icaJ5agy9mwhj97KE/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTg5Mjk3/MS0xNTE3MzUwMTE0/LTEyNjEuanBlZw.jpeg"},
+ "dg8":{"u":"https://i.discogs.com/qb44ytg0V_sVCYlltv0OwKs3-m3xJQfkLiidp3Lt2_4/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTg5Mjk3/MS0xNTE3MzUwMTI0/LTg1MDYuanBlZw.jpeg"},
+ "dg9":{"u":"https://i.discogs.com/MF07j6OHV-oL2SP7pRokOepsxgeliZOxnxX-lHqd0L4/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTg5Mjk3/MS0xNTE3MzUwMTEy/LTYyMDQuanBlZw.jpeg"},
+ "dg10":{"u":"https://i.discogs.com/Mks1P1_JXuOIAZMAViei9pdkTtWSFX4L4bidBiRoEBA/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTg5Mjk3/MS0xNTE3MzUwMTE3/LTMwMjAuanBlZw.jpeg"},
+ "dg11":{"u":"https://i.discogs.com/JkrwWYb2z8QDmZ-Sa690bVOM4o2EQSujudcSVA6SFRI/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTg5Mjk3/MS0xMjgwMjU2MDQ5/LmpwZWc.jpeg"},
+ "dg12":{"u":"https://i.discogs.com/1DAF3kUZX5KHTGol6ZXGqi_UmHhq4ynwlnmKpt-BT7Q/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTg5Mjk3/MS0xMjgwMjU2NDcw/LmpwZWc.jpeg"},
+ "dg13":{"u":"https://i.discogs.com/lw2XjSEXOg13P8ucZF4WdE9_YXdjhS-m8DkNn5u4alM/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTg5Mjk3/MS0xMjgwMjU2NDc3/LmpwZWc.jpeg"},
+ "dg14":{"u":"https://i.discogs.com/-C0GDw-sBgKutzPLIJC9aVJpgyoVHdjGuomLg-issYc/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTg5Mjk3/MS0xMjgwMjU2MDkx/LmpwZWc.jpeg"},
+ "dg15":{"u":"https://i.discogs.com/z2g09PFGUtsCEuLLMnpzyVYNdTPxahvU2MB0GfSNAIM/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTg5Mjk3/MS0xNDgzODU4NTgx/LTcyMDkuanBlZw.jpeg"},
+ "dg16":{"u":"https://i.discogs.com/X4aY73WTmMWy4XNM7m7BIVaGBO96ZG_wdE3u28MeK-A/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTg5Mjk3/MS0xMzg0NzgxOTg5/LTg4MTguanBlZw.jpeg"},
+ "ia1":{"u":"https://archive.org/download/bs1977-02-17.aud.ntl-12.jems.flac16/Cover_thumb.jpg"},
+ "ia2":{"u":"https://archive.org/download/bs1977-02-17.aud.ntl-12.jems.flac16/Front_thumb.jpg"},
+ "ia3":{"u":"https://archive.org/download/bs1977-02-17.aud.ntl-12.jems.flac16/Back_thumb.jpg"},
+ "slac":{"u":"https://www.springsteenlyrics.com/collection/sin_cd3_at/5493.jpg","max":300},
+ "slbc":{"u":"https://www.springsteenlyrics.com/collection/sin_cd3_jp/6463.jpg","max":300},
+ "slcc":{"u":"https://www.springsteenlyrics.com/collection/sin_cd3_at/5472.jpg","max":300}}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: a design-review sheet in the family of org/foreign-images-mockups.html. Sticky index,
+   then numbered parts that follow the questions of org/image-handling.org (1a, 1b, 2a, 2b). Each
+   mockup is a specimen card holding a light "page stage" drawn the way the script draws it. */
+:root {
+    --bg: #f2f3f5;
+    --surface: #ffffff;
+    --ink: #1c2230;
+    --muted: #586174;
+    --rule: #d8dce3;
+    --accent: #ba478f;          /* MusicBrainz purple */
+    --accent-ink: #ffffff;
+    --ok: #2f7d4f;
+    --warn: #a45a07;
+    --bad: #b42318;
+    --new-bg: #fdf1f8;
+
+    --f-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+    --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, Consolas, "Courier New", monospace;
+
+    /* Stage = the page as the script draws it. Always light, as MusicBrainz is. */
+    --st-bg: #ffffff;
+    --st-ink: #222222;
+    --st-even: #f4f4f4;
+    --st-rule: #c9c9c9;
+    --st-link: #0b3fae;
+    --st-muted: #777777;
+    --st-font: Arial, Helvetica, sans-serif;
+    --st-h2: #fdd28a;           /* the script's h2 band */
+    --st-h2-ink: #eb743b;
+    --st-h3: #f5d9d9;
+    --st-chip: #f4f4f4;
+    --st-chip-on: #e3e3e3;
+
+    /* Liner notes = the script's tooltip look (.mb-tt-liner). */
+    --ln-bg: #fbf8f1;
+    --ln-ink: #2b2622;
+    --ln-rule: #d9cfbd;
+    --ln-dim: #7a6d5c;
+    --ln-pill: #efe6d4;
+
+    /* Viewer = a darkroom. Deliberately the same in both themes. */
+    --vw-bg: #0d0e11;
+    --vw-panel: #17191e;
+    --vw-ink: #ebe7df;
+    --vw-dim: #9c978c;
+    --vw-rule: #2b2e35;
+    --vw-accent: #f0a35e;
+
+    /* Engines, used in the inventory and the diagrams. */
+    --e-a: #2f6fb2;
+    --e-b: #b0574f;
+    --e-c: #2c806a;
+    --e-d: #7a4fb0;
+    --e-v: #a26a12;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg: #121418;
+        --surface: #1a1d23;
+        --ink: #e7e9ee;
+        --muted: #9aa2b1;
+        --rule: #2d313a;
+        --accent: #e58cc4;
+        --accent-ink: #1d0c17;
+        --ok: #6cc28f;
+        --warn: #f0a35e;
+        --bad: #f08a80;
+        --new-bg: #2a1a25;
+        --e-a: #6ea6e3;
+        --e-b: #e08a82;
+        --e-c: #5cbfa2;
+        --e-d: #b291e0;
+        --e-v: #e0a64a;
+        color-scheme: dark;
+    }
+}
+:root[data-theme="dark"] {
+    --bg: #121418;
+    --surface: #1a1d23;
+    --ink: #e7e9ee;
+    --muted: #9aa2b1;
+    --rule: #2d313a;
+    --accent: #e58cc4;
+    --accent-ink: #1d0c17;
+    --ok: #6cc28f;
+    --warn: #f0a35e;
+    --bad: #f08a80;
+    --new-bg: #2a1a25;
+    --e-a: #6ea6e3;
+    --e-b: #e08a82;
+    --e-c: #5cbfa2;
+    --e-d: #b291e0;
+    --e-v: #e0a64a;
+    color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.55 var(--f-body);
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 0 56px;
+}
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0 0 auto;
+    height: env(safe-area-inset-top, 0px);
+    z-index: 30;
+    background: var(--bg);
+}
+img { max-width: 100%; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wrap { max-width: 1180px; margin: 0 auto; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; line-height: 1.15; margin: 0; }
+code, kbd, .mono { font-family: var(--f-mono); font-size: 0.88em; }
+kbd { border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 3px; padding: 0 4px; background: var(--surface); }
+p { margin: 0; max-width: 72ch; }
+ul.plain { margin: 0; padding-left: 18px; display: grid; gap: 4px; max-width: 80ch; }
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.hero { padding-block: 36px 20px; display: grid; gap: 14px; }
+.eyebrow { font: 600 12px/1 var(--f-display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.hero h1 { font-size: clamp(30px, 5vw, 46px); font-weight: 700; letter-spacing: -0.01em; }
+.hero .lede { font-size: 17px; color: var(--muted); }
+.facts-row { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 4px 0 0; padding: 12px 0 0; border-top: 1px solid var(--rule); font-size: 13px; }
+.facts-row div { display: flex; gap: 6px; min-width: 0; }
+.facts-row dt { color: var(--muted); }
+.facts-row dd { margin: 0; font-weight: 500; overflow-wrap: anywhere; }
+
+/* ── Index ──────────────────────────────────────────────────────────────── */
+.toc {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 20;
+    background: var(--bg);
+    border-bottom: 1px solid var(--rule);
+    margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+    padding: 8px max(16px, env(safe-area-inset-left, 0px));
+}
+.toc ul { list-style: none; margin: 0 auto; padding: 0; max-width: 1180px; display: flex; gap: 4px 18px; flex-wrap: wrap; font: 500 14px/1.6 var(--f-display); }
+.toc a { text-decoration: none; color: var(--muted); }
+.toc a:hover { color: var(--ink); }
+.toc b { color: var(--accent); margin-right: 4px; }
+
+/* ── Sections and specimen cards ────────────────────────────────────────── */
+section { padding-block: 40px 0; display: grid; gap: 18px; scroll-margin-top: 48px; }
+.sec-head { display: grid; gap: 8px; }
+.sec-head h2 { font-size: 28px; display: flex; align-items: baseline; gap: 12px; }
+.sec-num {
+    display: inline-grid; place-items: center; min-width: 40px; height: 34px; padding: 0 6px; border-radius: 4px;
+    background: var(--accent); color: var(--accent-ink); font-size: 17px; flex-shrink: 0; transform: translateY(4px);
+}
+.sec-head p { color: var(--muted); }
+.grid-2 { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); }
+.spec { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; display: grid; grid-template-rows: auto 1fr auto; min-width: 0; }
+.spec-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--rule); flex-wrap: wrap; }
+.spec-id { font: 600 13px/1 var(--f-mono); padding: 4px 6px; border-radius: 3px; border: 1px solid var(--rule); color: var(--muted); }
+.spec-head h3 { font-size: 18px; font-weight: 600; flex: 1 1 auto; min-width: 0; }
+.verdict { font: 600 11px/1 var(--f-display); letter-spacing: 0.06em; text-transform: uppercase; padding: 5px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.v-rec { color: var(--ok); }
+.v-opt { color: var(--muted); }
+.v-asis { color: var(--muted); border-style: dashed; }
+.v-q { color: var(--warn); }
+.spec-body { padding: 16px; min-width: 0; display: grid; gap: 12px; align-content: start; }
+.spec-cap { padding: 12px 16px 14px; border-top: 1px solid var(--rule); display: grid; gap: 8px; font-size: 13.5px; }
+.cost { display: grid; grid-template-columns: max-content 1fr; gap: 3px 12px; margin: 0; }
+.cost dt { color: var(--muted); font-weight: 500; }
+.cost dd { margin: 0; min-width: 0; }
+.tag-good { color: var(--ok); font-weight: 600; }
+.tag-warn { color: var(--warn); font-weight: 600; }
+.tag-bad { color: var(--bad); font-weight: 600; }
+
+/* ── Tables of the study itself ─────────────────────────────────────────── */
+.matrix-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; }
+.matrix { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 860px; }
+.matrix th, .matrix td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.matrix th { font: 600 12px/1.2 var(--f-display); letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.matrix tr:last-child td { border-bottom: 0; }
+.matrix td.m { font-family: var(--f-mono); font-size: 12.5px; white-space: nowrap; }
+.eng { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 3px; color: #ffffff; font: 700 12px/1 var(--f-display); flex-shrink: 0; }
+.eng-a { background: var(--e-a); } .eng-b { background: var(--e-b); } .eng-c { background: var(--e-c); }
+.eng-d { background: var(--e-d); } .eng-v { background: var(--e-v); }
+.yes { color: var(--ok); font-weight: 600; } .no { color: var(--muted); } .bad { color: var(--bad); font-weight: 600; }
+.engines { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
+.engine { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 14px 16px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.engine h3 { font-size: 17px; display: flex; gap: 8px; align-items: center; }
+.engine p, .engine li { font-size: 13.5px; }
+.engine code { overflow-wrap: anywhere; }
+
+/* ── The page stage ─────────────────────────────────────────────────────── */
+.stage { background: var(--st-bg); color: var(--st-ink); font: 12px/1.45 var(--st-font); border: 1px solid var(--rule); border-radius: 4px; padding: 10px; min-width: 0; display: grid; gap: 6px; align-content: start; }
+.stage a { color: var(--st-link); text-decoration: none; }
+.stage .dim { color: var(--st-muted); }
+.stage-label { display: flex; align-items: center; gap: 6px; font: 500 11px/1.2 var(--f-mono); color: var(--st-muted); flex-wrap: wrap; }
+.site { font: 700 10px/1 var(--st-font); color: #ffffff; padding: 3px 5px; border-radius: 2px; letter-spacing: 0.03em; }
+.s-mb { background: #ba478f; } .s-sl { background: #1f5b8f; } .s-dg { background: #333333; } .s-ia { background: #4b5f74; }
+.h2bar { background: var(--st-h2); color: var(--st-h2-ink); font: 700 15px/1.2 var(--st-font); padding: 4px 8px; display: flex; gap: 6px; align-items: baseline; }
+.h2bar .n { font-weight: 400; }
+.h3bar { background: var(--st-h3); color: #333333; font: 700 13px/1.2 var(--st-font); padding: 5px 8px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.h3bar .marr { display: flex; gap: 4px; align-items: center; }
+.h3bar .marr img, .h3bar .marr .fb { width: 26px; height: 26px; object-fit: cover; border: 1px solid #b9b9b9; border-radius: 2px; display: block; }
+.h3bar .note { font: italic 400 11px/1.2 var(--st-font); color: #8a5a5a; }
+.lost { border: 2px dashed var(--bad); color: var(--bad); padding: 6px 8px; font: 12px/1.35 var(--st-font); background: #fff6f5; }
+.lost b { font-weight: 700; }
+.sitebox { border: 1px solid #ddd; padding: 6px 8px; display: grid; gap: 4px; background: #fbfbfb; }
+.sitebox h5 { margin: 0; font: 700 12px/1.2 var(--st-font); }
+
+/* Flat tiles as the foreign head draws them today */
+.flat { display: flex; flex-wrap: wrap; gap: 8px; }
+.flat figure { margin: 0; width: 84px; display: grid; gap: 2px; }
+.flat .box { width: 84px; height: 84px; border: 1px solid #ddd; background: #fafafa; display: grid; place-items: center; overflow: hidden; }
+.flat .box img, .flat .box .fb { width: 100%; height: 100%; object-fit: contain; display: grid; place-items: center; }
+.flat figcaption { font: 700 11px/1.2 var(--st-font); overflow-wrap: anywhere; }
+
+/* ── ISC: the one image section (mockup of the proposed component) ─────── */
+.isc { display: grid; gap: 8px; }
+.isc-bar { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; justify-content: space-between; }
+.isc-chips { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.isc-chips .lbl { font: 700 10px/1 var(--st-font); text-transform: uppercase; letter-spacing: 0.06em; color: var(--st-muted); margin-right: 2px; }
+.chip { font: 12px/1 var(--st-font); border: 1px solid #c9c9c9; background: var(--st-bg); color: var(--st-ink); border-radius: 999px; padding: 5px 9px; cursor: pointer; display: inline-flex; gap: 5px; align-items: baseline; }
+.chip b { font-weight: 700; }
+.chip[aria-pressed="true"] { background: var(--st-chip-on); border-color: #8a8a8a; font-weight: 700; }
+.chip.ghost { border-style: dashed; color: var(--st-muted); }
+.seg { display: inline-flex; border: 1px solid #c9c9c9; border-radius: 3px; overflow: hidden; }
+.seg button { font: 12px/1 var(--st-font); padding: 5px 10px; border: 0; border-left: 1px solid #c9c9c9; background: var(--st-chip); color: var(--st-ink); cursor: pointer; }
+.seg button:first-child { border-left: 0; }
+.seg button[aria-pressed="true"] { background: #e3e3e3; font-weight: 700; }
+.isc-tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.isc-tools label { font: 11px/1 var(--st-font); color: var(--st-muted); display: inline-flex; gap: 4px; align-items: center; }
+.isc-tools input[type="search"] { font: 12px/1 var(--st-font); padding: 4px 6px; border: 1px solid #c9c9c9; border-radius: 3px; width: 140px; background: #ffffff; color: #222222; }
+.isc-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(var(--tile, 104px), 1fr)); }
+.isc-tile { margin: 0; display: grid; gap: 3px; min-width: 0; cursor: zoom-in; }
+.isc-tile .box { position: relative; aspect-ratio: 1 / 1; max-width: 100%; border: 1px solid #ddd; background: #f6f6f6; overflow: hidden; display: grid; place-items: center; }
+.isc-tile .box img, .isc-tile .box .fb { width: 100%; height: 100%; object-fit: contain; display: grid; place-items: center; }
+.isc-tile:hover .box { outline: 2px solid var(--st-link); outline-offset: 1px; }
+.isc-tile figcaption { font: 700 12px/1.25 var(--st-font); overflow-wrap: anywhere; }
+.isc-tile figcaption .c { display: block; font-weight: 400; color: var(--st-muted); }
+.badge { position: absolute; top: 4px; left: 4px; font: 700 10px/1 var(--st-font); padding: 3px 5px; border-radius: 2px; background: rgba(20, 20, 20, 0.82); color: #ffd36b; }
+.badge.guess { color: #c8e6ff; }
+.isc-tile.missing { cursor: default; }
+.isc-tile.missing .box { border: 2px dashed #c27b7b; background: repeating-linear-gradient(135deg, #fff7f6 0 8px, #fbeeee 8px 16px); color: #8a4a4a; font: 11px/1.3 var(--st-font); text-align: center; padding: 8px; }
+.isc-group { display: grid; gap: 6px; }
+.isc-ghdr { font: 700 12px/1.2 var(--st-font); color: #555555; border-bottom: 1px solid #ddd; padding-bottom: 3px; display: flex; gap: 6px; align-items: baseline; }
+.isc-ghdr .n { font-weight: 400; color: var(--st-muted); }
+.isc-empty { font: italic 12px/1.4 var(--st-font); color: var(--st-muted); }
+.isc-tbl-wrap { overflow-x: auto; }
+table.isc-tbl { border-collapse: collapse; width: 100%; font-size: 12px; min-width: 560px; }
+table.isc-tbl th { background: #eeeeee; text-align: left; padding: 4px 6px; border-bottom: 1px solid #c9c9c9; white-space: nowrap; font-weight: 700; cursor: pointer; user-select: none; }
+table.isc-tbl th[aria-sort="ascending"]::after { content: " ▲"; font-size: 9px; }
+table.isc-tbl th[aria-sort="descending"]::after { content: " ▼"; font-size: 9px; }
+table.isc-tbl td { padding: 3px 6px; vertical-align: middle; border-bottom: 1px solid #f0f0f0; }
+table.isc-tbl tbody tr:nth-child(even) td { background: #f7f7f7; }
+table.isc-tbl td.t img, table.isc-tbl td.t .fb { width: 40px; height: 40px; object-fit: contain; display: grid; place-items: center; border: 1px solid #ddd; background: #fafafa; }
+table.isc-tbl td.num { font-variant-numeric: tabular-nums; text-align: right; }
+table.isc-tbl mark { background: #ffe680; color: inherit; }
+.pill { display: inline-block; font: 11px/1 var(--st-font); padding: 2px 5px; border-radius: 2px; background: #efe6d4; color: #4a3f33; margin-right: 3px; }
+.fb { background: #d8dbe0; color: #4a5160; font: 700 10px/1.2 var(--st-font); text-align: center; padding: 4px; }
+
+/* ── The liner-notes card (hover card) ─────────────────────────────────── */
+.liner { background: var(--ln-bg); color: var(--ln-ink); border: 1px solid var(--ln-rule); border-radius: 3px; box-shadow: 0 6px 18px rgba(60, 40, 20, 0.25); font: 13px/1.4 Georgia, "Times New Roman", serif; padding: 10px 12px; display: grid; gap: 6px; max-width: 320px; }
+.liner .t { font-weight: 700; }
+.liner .d { color: var(--ln-dim); font-size: 12px; }
+.liner .pills { display: flex; gap: 4px; flex-wrap: wrap; }
+.liner .pills span { background: var(--ln-pill); padding: 2px 6px; border-radius: 2px; font-size: 11px; }
+
+/* ── Diagrams ───────────────────────────────────────────────────────────── */
+.dia-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 12px; }
+.dia-wrap svg { display: block; min-width: 760px; width: 100%; height: auto; }
+.dia-wrap text { font-family: var(--f-body); fill: var(--ink); }
+.dia-wrap .small { font-size: 11px; fill: var(--muted); }
+.dia-wrap .mono { font-family: var(--f-mono); font-size: 10.5px; fill: var(--muted); }
+.dia-wrap .box { fill: var(--surface); stroke: var(--rule); stroke-width: 1.2; }
+.dia-wrap .hd { font-family: var(--f-display); font-weight: 600; font-size: 12px; letter-spacing: 0.06em; fill: var(--muted); }
+.dia-wrap .edge { stroke: var(--muted); stroke-width: 1.2; fill: none; }
+.dia-wrap .edge-dash { stroke: var(--muted); stroke-width: 1.2; fill: none; stroke-dasharray: 4 3; }
+.dia-wrap .arrow { fill: var(--muted); }
+
+/* ── The viewer (darkroom) ─────────────────────────────────────────────── */
+.viewer { background: var(--vw-bg); color: var(--vw-ink); border-radius: 6px; overflow: hidden; display: grid; grid-template-rows: auto 1fr auto; min-height: 460px; position: relative; font: 13px/1.4 var(--f-body); }
+.vw-bar { display: flex; gap: 6px 10px; align-items: center; padding: 8px 12px; background: var(--vw-panel); border-bottom: 1px solid var(--vw-rule); flex-wrap: wrap; }
+.vw-bar .ttl { font-weight: 600; flex: 1 1 200px; min-width: 0; }
+.vw-bar .pos { color: var(--vw-dim); font: 12px/1 var(--f-mono); }
+.vw-btns { display: flex; gap: 4px; flex-wrap: wrap; }
+.vw-btns button { font: 12px/1 var(--f-body); background: transparent; color: var(--vw-ink); border: 1px solid var(--vw-rule); border-radius: 3px; padding: 5px 8px; cursor: pointer; }
+.vw-btns button.new { border-color: var(--vw-accent); color: var(--vw-accent); }
+.vw-btns button[aria-pressed="true"] { background: var(--vw-accent); color: #1a1208; border-color: var(--vw-accent); }
+.vw-mid { display: grid; grid-template-columns: 1fr auto; min-height: 0; }
+.vw-stage { position: relative; display: grid; place-items: center; padding: 16px; min-height: 340px; overflow: hidden; gap: 12px; }
+.vw-stage.two { grid-template-columns: 1fr 1fr; }
+.vw-stage img, .vw-stage .fb { max-height: 360px; max-width: 100%; object-fit: contain; display: block; }
+.vw-stage .fb { width: 260px; height: 260px; display: grid; place-items: center; }
+.vw-stage .cap { font: 11px/1.2 var(--f-mono); color: var(--vw-dim); text-align: center; margin-top: 4px; }
+.loupe { position: absolute; width: 150px; height: 150px; border-radius: 50%; border: 2px solid var(--vw-accent); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6); pointer-events: none; background-repeat: no-repeat; background-color: #000000; }
+.vw-side { width: 230px; background: var(--vw-panel); border-left: 1px solid var(--vw-rule); padding: 12px; display: grid; gap: 10px; align-content: start; }
+.vw-side h4 { margin: 0; font: 600 12px/1 var(--f-display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--vw-dim); }
+.vw-side label { display: grid; gap: 3px; font-size: 12px; }
+.vw-side input[type="range"] { width: 100%; accent-color: var(--vw-accent); }
+.vw-side .row { display: flex; gap: 6px; align-items: center; font-size: 12px; }
+.vw-side button { font: 12px/1 var(--f-body); background: transparent; color: var(--vw-ink); border: 1px solid var(--vw-rule); border-radius: 3px; padding: 5px 8px; cursor: pointer; justify-self: start; }
+.vw-film { display: flex; gap: 6px; padding: 8px 12px; background: var(--vw-panel); border-top: 1px solid var(--vw-rule); overflow-x: auto; }
+.vw-film img, .vw-film .fb { width: 46px; height: 46px; object-fit: cover; opacity: 0.6; border: 2px solid transparent; flex-shrink: 0; cursor: pointer; display: grid; place-items: center; }
+.vw-film .on { opacity: 1; border-color: var(--vw-accent); }
+.vw-help { position: absolute; inset: 48px 16px 70px; background: rgba(13, 14, 17, 0.94); border: 1px solid var(--vw-rule); border-radius: 6px; padding: 16px; overflow: auto; display: grid; gap: 10px; align-content: start; }
+.vw-help h4 { margin: 0; font: 600 14px/1.2 var(--f-display); }
+.vw-help dl { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 4px 18px; margin: 0; font-size: 12.5px; }
+.vw-help dl div { display: flex; gap: 8px; align-items: baseline; }
+.vw-help dt { min-width: 64px; font: 12px/1 var(--f-mono); color: var(--vw-accent); }
+.vw-help dd { margin: 0; }
+.vw-help .nw { font: 700 9px/1 var(--f-display); letter-spacing: 0.06em; color: #1a1208; background: var(--vw-accent); padding: 2px 4px; border-radius: 2px; margin-left: 4px; }
+.toast { position: absolute; bottom: 82px; left: 50%; transform: translateX(-50%); background: var(--vw-accent); color: #1a1208; font: 600 12px/1 var(--f-body); padding: 8px 12px; border-radius: 3px; }
+
+/* ── Phases ─────────────────────────────────────────────────────────────── */
+.phases { display: grid; gap: 10px; }
+.phase { display: grid; grid-template-columns: 54px 1fr; gap: 12px; background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 12px 14px; }
+.phase .p { font: 700 20px/1 var(--f-display); color: var(--accent); }
+.phase h3 { font-size: 16px; margin-bottom: 4px; }
+.phase p, .phase li { font-size: 13.5px; }
+.phase > div { min-width: 0; }
+.ideas { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); }
+.idea { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 12px 14px; display: grid; gap: 6px; align-content: start; }
+.idea h3 { font-size: 15.5px; display: flex; gap: 8px; align-items: baseline; justify-content: space-between; }
+.idea p { font-size: 13.5px; }
+.idea .hook { font: 12px/1.4 var(--f-mono); color: var(--muted); overflow-wrap: anywhere; }
+.cost-s { color: var(--ok); } .cost-m { color: var(--warn); } .cost-l { color: var(--bad); }
+.idea .lvl { font: 600 11px/1 var(--f-display); letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+pre.code { margin: 0; background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 12px 14px; overflow-x: auto; font: 12.5px/1.5 var(--f-mono); color: var(--ink); }
+
+@media (max-width: 640px) {
+    .vw-mid { grid-template-columns: 1fr; }
+    .vw-side { width: auto; border-left: 0; border-top: 1px solid var(--vw-rule); }
+    .vw-stage.two { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+    * { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+    <div class="eyebrow">ShowAllEntityData · design study · 2026-11-06</div>
+    <h1>Image Handling</h1>
+    <p class="lede">Four ways the script shows a release's own pictures today, one viewer they all share, and a proposal for one image section that every detail page uses, with a table view, filters and new viewer tools.</p>
+    <dl class="facts-row">
+        <div><dt>Companion</dt><dd><code>org/image-handling.org</code></dd></div>
+        <div><dt>Data</dt><dd>real tiles from <code>debug/{MB,SL,D,IA}-release*-final.html</code></dd></div>
+        <div><dt>Userscript</dt><dd>9.99.1563, unchanged</dd></div>
+        <div><dt>Engines</dt><dd><span class="eng eng-a">A</span> <span class="eng eng-b">B</span> <span class="eng eng-c">C</span> <span class="eng eng-d">D</span> <span class="eng eng-v">V</span></dd></div>
+    </dl>
+</header>
+
+<nav class="toc" aria-label="Contents">
+    <ul>
+        <li><a href="#today"><b>1a</b>Today</a></li>
+        <li><a href="#m0"><b>M0</b>Side by side</a></li>
+        <li><a href="#gpe"><b>1a</b>GPE vs FICE</a></li>
+        <li><a href="#viewer"><b>1b</b>Viewer</a></li>
+        <li><a href="#isc"><b>2a</b>One section</a></li>
+        <li><a href="#table"><b>2b</b>Table view</a></li>
+        <li><a href="#plan"><b>2a</b>Phases and skill</a></li>
+    </ul>
+</nav>
+
+<!-- ═════════════════════════════════════════════════════════════════════ -->
+<section id="today">
+    <div class="sec-head">
+        <h2><span class="sec-num">1a</span>What exists today</h2>
+        <p>Every picture the script shows ends in the same viewer (<span class="eng eng-v">V</span>). How it gets there differs: four separate displays, each with its own markup, card and click path.</p>
+    </div>
+    <div class="engines">
+        <div class="engine">
+            <h3><span class="eng eng-a">A</span>Art section</h3>
+            <p>MusicBrainz release-tracks “Cover art (N)” and event-overview “Event art (N)”. About 1,100 lines of <code>_releaseArt*</code>, one descriptor <code>_artSectionDesc('caa'|'eaa')</code>.</p>
+            <p class="yes">Type chips (multi-select), Grid / By type / Spreads, ★ main front, ⏳ pending, medium thumbs in the h3s, loading/none/retry, remembered layout, tab click opens the viewer.</p>
+        </div>
+        <div class="engine">
+            <h3><span class="eng eng-b">B</span>Foreign detail head</h3>
+            <p>The pictures of <code>_fdHeadInsertSections()</code>: SL item “Scans”, Discogs “Images”, archive.org “Pictures”. Card <code>fd-pic</code>, click <code>_dpArtViewerClick()</code>.</p>
+            <p class="bad">Flat grid only (it borrows A's CSS and nothing else). One h2 per SL copy, so two viewers. A copy without scans disappears.</p>
+        </div>
+        <div class="engine">
+            <h3><span class="eng eng-c">C</span>FICE</h3>
+            <p>The foreign image card engine: picture triggers in TABLE ROWS (SL Cover, JL Art, BS Photo, BB Media, DG Image, IA Art). <code>_fiProvider()</code> per host, B1 card <code>_artCardCoreHtml()</code>, <code>_fiClick()</code>, the 🖼 gallery <code>_fgal*</code>.</p>
+            <p>Shift+← → steps rows. Types per host (JL and IA from file names).</p>
+        </div>
+        <div class="engine">
+            <h3><span class="eng eng-d">D</span>GPE window strips</h3>
+            <p>The link preview's Space window <code>#mb-dp-dialog</code>: a release's cover art, a Springsteen item's cover and scans, Discogs and archive.org pictures. Flat strips; <code>_dpArtViewerClick()</code>.</p>
+            <p>The hover card's thumbnails are not clickable.</p>
+        </div>
+        <div class="engine">
+            <h3><span class="eng eng-v">V</span>The viewer</h3>
+            <p><code>#mb-art-viewer</code>, <code>_artViewerOpen(ctx, path, indices, start, opts)</code>, 13 call sites. Takes archive records or external ones <code>{image, thumbnails:{250}, types, comment, external:true}</code>.</p>
+            <p>Grid, Info, Slideshow, Rotate, Flip, Fullscreen, Download, Original, zoom/pan/pinch, background.</p>
+        </div>
+    </div>
+
+    <div class="matrix-wrap">
+        <table class="matrix">
+            <thead><tr><th>Page in org file</th><th>Word</th><th>IP (before a button)</th><th>FRP (after the render)</th><th>Groups</th><th>Chips · layouts</th><th>Medium thumbs</th><th>Viewer steps through</th></tr></thead>
+            <tbody>
+                <tr><td class="m">MB release 3ec14d03</td><td>Cover art</td><td>MusicBrainz's own Cover art tab; relationship icons and the sidebar cover get the B1 card</td><td><span class="eng eng-a">A</span> “Cover art (12)” above the tracklist</td><td>by type</td><td class="yes">yes · Grid / By type / Spreads</td><td class="yes">yes (“1 - 8cm CD”: 2)</td><td>the chip union, 12</td></tr>
+                <tr><td class="m">SL 5493 (one copy)</td><td>Scans</td><td>the site's “Scans/Photos” thumbnails</td><td><span class="eng eng-b">B</span> “Scans (5)”</td><td>none</td><td class="no">no · flat</td><td class="no">no</td><td>5</td></tr>
+                <tr><td class="m">SL 6463 (two copies)</td><td>Scans</td><td>“Scans/Photos (copy #1)”, “(copy #2)”</td><td><span class="eng eng-b">B</span> two h2s: “Scans (copy #1) (2)”, “Scans (copy #2) (2)”</td><td>one h2 per copy</td><td class="no">no · flat</td><td class="no">no</td><td class="bad">one copy only (2 + 2)</td></tr>
+                <tr><td class="m">SL 5472 (copy #1 missing)</td><td>Scans</td><td>copy #1 says “No scans available yet”</td><td><span class="eng eng-b">B</span> only “Scans (copy #2) (3)”</td><td>one h2 per copy</td><td class="no">no · flat</td><td class="no">no</td><td class="bad">copy #1 is gone without a word</td></tr>
+                <tr><td class="m">Discogs master 27194</td><td>Images</td><td>Discogs' React page (our section is inserted outside <code>#app</code>)</td><td><span class="eng eng-b">B</span> “Images (16)”: Primary, Secondary 1–15</td><td>none</td><td class="no">no · flat</td><td class="no">no (“Record 1”, “Record 2”)</td><td>16</td></tr>
+                <tr><td class="m">IA bs1977-02-17</td><td>Pictures</td><td>archive.org's own player page</td><td><span class="eng eng-b">B</span> “Pictures (3)”: Cover, Front, Back</td><td>none</td><td class="no">no · flat (types are guessed only in <span class="eng eng-c">C</span>)</td><td class="no">no (“Disc 1”, “Disc 2”)</td><td>3</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- ═════════════════════════════════════════════════════════════════════ -->
+<section id="m0">
+    <div class="sec-head">
+        <h2><span class="sec-num">M0</span>The same job, four looks</h2>
+        <p>Today's final rendered pages, redrawn from the snapshots. A is the only one with chips, layouts and medium thumbs.</p>
+    </div>
+    <div class="grid-2">
+        <article class="spec">
+            <div class="spec-head"><span class="spec-id">M0-A</span><h3>MusicBrainz release: Cover art (12)</h3><span class="verdict v-asis">as is</span></div>
+            <div class="spec-body"><div class="stage" id="m0-mb"></div></div>
+            <div class="spec-cap"><p>Engine <span class="eng eng-a">A</span>. Chips are a union, layouts are remembered, the medium's h3 carries its two Medium images.</p></div>
+        </article>
+        <article class="spec">
+            <div class="spec-head"><span class="spec-id">M0-B1</span><h3>springsteenlyrics 5472: two copies, one without scans</h3><span class="verdict v-q">gap</span></div>
+            <div class="spec-body"><div class="stage" id="m0-sl"></div></div>
+            <div class="spec-cap"><p>Engine <span class="eng eng-b">B</span>. The site prints copy #1 with “No scans available yet”; our head drops it, so the page reads as if there were one copy. With two copies (6463) each copy is its own h2 and its own viewer.</p></div>
+        </article>
+        <article class="spec">
+            <div class="spec-head"><span class="spec-id">M0-B2</span><h3>Discogs master: Images (16)</h3><span class="verdict v-asis">as is</span></div>
+            <div class="spec-body"><div class="stage" id="m0-dg"></div></div>
+            <div class="spec-cap"><p>Engine <span class="eng eng-b">B</span>. 16 flat tiles; “Primary” is a caption, not a badge or a filter.</p></div>
+        </article>
+        <article class="spec">
+            <div class="spec-head"><span class="spec-id">M0-B3</span><h3>archive.org item: Pictures (3)</h3><span class="verdict v-asis">as is</span></div>
+            <div class="spec-body"><div class="stage" id="m0-ia"></div></div>
+            <div class="spec-cap"><p>Engine <span class="eng eng-b">B</span>. Captions are file names. The types FICE already guesses from them (<code>_iaPictureTypes()</code>) never reach the head.</p></div>
+        </article>
+    </div>
+</section>
+
+<!-- ═════════════════════════════════════════════════════════════════════ -->
+<section id="gpe">
+    <div class="sec-head">
+        <h2><span class="sec-num">1a</span>GPE and FICE are not the same thing</h2>
+        <p>They are neighbours. The GPE previews any link (hover card <code>#mb-dp-peek</code>, Space window <code>#mb-dp-dialog</code>). FICE is the picture card and click for table rows, drawn in the stat tooltip <code>#mb-stat-tooltip</code>. They share the data layer below them and the viewer, never their UI.</p>
+    </div>
+    <div class="dia-wrap">
+        <svg viewBox="0 0 960 360" role="img" aria-labelledby="dia1-t">
+            <title id="dia1-t">Today: four image displays, the data they read and the shared viewer</title>
+            <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+            <text class="hd" x="20" y="24">DATA</text>
+            <text class="hd" x="330" y="24">DISPLAY</text>
+            <text class="hd" x="700" y="24">SHARED</text>
+
+            <rect class="box" x="20" y="40" width="250" height="56" rx="4"/>
+            <text x="32" y="62" font-size="13" font-weight="600">Archive records</text>
+            <text class="mono" x="32" y="82">_artFetchEntityImages(), CAA_CTX</text>
+
+            <rect class="box" x="20" y="120" width="250" height="56" rx="4"/>
+            <text x="32" y="142" font-size="13" font-weight="600">Detail-page reader</text>
+            <text class="mono" x="32" y="162">_dpGet(), _dpMem, own IndexedDB</text>
+
+            <rect class="box" x="20" y="200" width="250" height="56" rx="4"/>
+            <text x="32" y="222" font-size="13" font-weight="600">Link readers</text>
+            <text class="mono" x="32" y="242">_extLoad(), _mbPop (Discogs, IA)</text>
+
+            <rect class="box" x="20" y="280" width="250" height="56" rx="4"/>
+            <text x="32" y="302" font-size="13" font-weight="600">The rendered page itself</text>
+            <text class="mono" x="32" y="322">_fdHeadSpec() → spec.pictures</text>
+
+            <rect x="330" y="40" width="300" height="56" rx="4" fill="var(--e-a)" opacity="0.14" stroke="var(--e-a)"/>
+            <text x="344" y="62" font-size="13" font-weight="600">A · Art section (MB)</text>
+            <text class="mono" x="344" y="82">_releaseArt*, chips, layouts, media</text>
+
+            <rect x="330" y="120" width="300" height="56" rx="4" fill="var(--e-c)" opacity="0.14" stroke="var(--e-c)"/>
+            <text x="344" y="142" font-size="13" font-weight="600">C · FICE (table rows)</text>
+            <text class="mono" x="344" y="162">_fiProvider(), card fi-img, _fiClick()</text>
+
+            <rect x="330" y="200" width="300" height="56" rx="4" fill="var(--e-d)" opacity="0.14" stroke="var(--e-d)"/>
+            <text x="344" y="222" font-size="13" font-weight="600">D · GPE window strips</text>
+            <text class="mono" x="344" y="242">#mb-dp-dialog, _mbPopGalleryHtml()</text>
+
+            <rect x="330" y="280" width="300" height="56" rx="4" fill="var(--e-b)" opacity="0.14" stroke="var(--e-b)"/>
+            <text x="344" y="302" font-size="13" font-weight="600">B · Foreign detail head</text>
+            <text class="mono" x="344" y="322">_fdHeadInsertSections(), card fd-pic</text>
+
+            <rect x="700" y="80" width="240" height="72" rx="4" fill="var(--e-v)" opacity="0.14" stroke="var(--e-v)"/>
+            <text x="714" y="104" font-size="13" font-weight="600">V · #mb-art-viewer</text>
+            <text class="mono" x="714" y="124">_artViewerOpen(ctx, path, …)</text>
+            <text class="small" x="714" y="142">every display ends here</text>
+
+            <rect class="box" x="700" y="220" width="240" height="72" rx="4"/>
+            <text x="714" y="244" font-size="13" font-weight="600">Tooltip engine</text>
+            <text class="mono" x="714" y="264">_mbttResolve(), _artCardCoreHtml()</text>
+            <text class="small" x="714" y="282">A's tiles, C's card, B's fd-pic card</text>
+
+            <path class="edge" d="M270,68 H330" marker-end="url(#ar)"/>
+            <path class="edge" d="M270,148 H330" marker-end="url(#ar)"/>
+            <path class="edge" d="M270,148 C300,148 300,228 330,228" marker-end="url(#ar)"/>
+            <path class="edge" d="M270,228 C300,228 300,148 330,148" marker-end="url(#ar)"/>
+            <path class="edge" d="M270,228 H330" marker-end="url(#ar)"/>
+            <path class="edge" d="M270,308 H330" marker-end="url(#ar)"/>
+            <path class="edge" d="M630,68 C665,68 665,110 700,110" marker-end="url(#ar)"/>
+            <path class="edge" d="M630,148 C665,148 665,116 700,116" marker-end="url(#ar)"/>
+            <path class="edge" d="M630,228 C665,228 665,124 700,124" marker-end="url(#ar)"/>
+            <path class="edge" d="M630,308 C670,308 670,130 700,130" marker-end="url(#ar)"/>
+            <path class="edge-dash" d="M630,80 C680,80 670,250 700,250"/>
+            <path class="edge-dash" d="M630,160 C670,160 670,256 700,256"/>
+            <path class="edge-dash" d="M630,320 C670,320 670,262 700,262"/>
+        </svg>
+    </div>
+    <p class="mono" style="color: var(--muted)">Solid: data and the click to the viewer. Dashed: hover cards through the stat tooltip engine. The GPE's own hover card (#mb-dp-peek) is a separate engine and shows non-clickable thumbs.</p>
+</section>
+
+<!-- ═════════════════════════════════════════════════════════════════════ -->
+<section id="viewer">
+    <div class="sec-head">
+        <h2><span class="sec-num">1b</span>The viewer: what it could add cheaply</h2>
+        <p>The viewer is the one piece every page already shares, so anything added here lands on MusicBrainz and on every foreign site at once. New buttons are outlined in amber. Try them: the sliders, Compare, the loupe, Copy URL and the <kbd>?</kbd> overlay all work in this mockup.</p>
+    </div>
+    <article class="spec">
+        <div class="spec-head"><span class="spec-id">M5</span><h3>Viewer with Adjust, Compare, Loupe, Copy URL and key help</h3><span class="verdict v-rec">recommended</span></div>
+        <div class="spec-body"><div class="viewer" id="m5" tabindex="0" aria-label="Viewer mockup"></div></div>
+        <div class="spec-cap">
+            <dl class="cost">
+                <dt>Adjust</dt><dd>CSS <code>filter</code> on <code>.mb-artv-img</code>, written beside the transform by <code>_artViewerApplyTransform()</code>; reset on step like rotation. Makes a dark scan or a faded insert readable. Download stays the original file.</dd>
+                <dt>Compare</dt><dd>Two images side by side (key <kbd>C</kbd>, then pick the second in the filmstrip). The release section's Spreads pairs open straight into it.</dd>
+                <dt>Loupe</dt><dd>Key <kbd>L</kbd>: a round 2.5× lens under the pointer, read from the large image already loaded. Matrix numbers and small print without zooming the whole stage.</dd>
+                <dt>Copy URL</dt><dd>Key <kbd>Y</kbd>: the image's own URL (archive or site) to the clipboard. With Shift: as a MusicBrainz edit-note line.</dd>
+                <dt>Key help</dt><dd><kbd>?</kbd>: the overlay with every key. Today the keys live only in HELP.</dd>
+            </dl>
+        </div>
+    </article>
+    <div class="ideas" id="viewer-ideas"></div>
+</section>
+
+<!-- ═════════════════════════════════════════════════════════════════════ -->
+<section id="isc">
+    <div class="sec-head">
+        <h2><span class="sec-num">2a</span>One image section for every detail page</h2>
+        <p>A takes the generic part of the Cover art section (about 60 % of it: the sheet, chips, layouts, click routing, viewer order, Spreads, medium assignment) and lets an adapter say where the images come from and how to group them. MusicBrainz's Cover art and Event art become two adapters; B's three sites become three more. The panels below are drawn by one renderer in this page, fed by four adapters, which is exactly the proposal.</p>
+    </div>
+    <div class="dia-wrap">
+        <svg viewBox="0 0 960 300" role="img" aria-labelledby="dia2-t">
+            <title id="dia2-t">Proposed: adapters feed one image section, which feeds the card, the viewer and the medium thumbs</title>
+            <defs><marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+            <text class="hd" x="20" y="24">ADAPTERS</text>
+            <text class="hd" x="370" y="24">ONE COMPONENT</text>
+            <text class="hd" x="700" y="24">OUTPUTS</text>
+            <g font-size="12.5">
+                <rect class="box" x="20" y="38" width="290" height="34" rx="4"/><text x="32" y="60">caa · eaa  <tspan class="mono">archive fetch, ★ ⏳, Spreads</tspan></text>
+                <rect class="box" x="20" y="80" width="290" height="34" rx="4"/><text x="32" y="102">sl-item  <tspan class="mono">groupOf = copy, missing copies</tspan></text>
+                <rect class="box" x="20" y="122" width="290" height="34" rx="4"/><text x="32" y="144">dg-release · dg-master  <tspan class="mono">★ primary</tspan></text>
+                <rect class="box" x="20" y="164" width="290" height="34" rx="4"/><text x="32" y="186">ia-details  <tspan class="mono">types from file names</tspan></text>
+                <rect class="box" x="20" y="206" width="290" height="34" rx="4" stroke-dasharray="4 3"/><text x="32" y="228">jl · bb · sfm · next site  <tspan class="mono">via the skill</tspan></text>
+            </g>
+            <rect x="370" y="60" width="270" height="160" rx="6" fill="var(--accent)" opacity="0.12" stroke="var(--accent)"/>
+            <text x="386" y="86" font-size="15" font-weight="700">Image section (ISC)</text>
+            <text class="mono" x="386" y="108">load() · entityKey · groupOf(im)</text>
+            <text class="mono" x="386" y="126">badges(im) · bookTypes</text>
+            <text class="mono" x="386" y="144">mediaOf() · mediumOf(im)</text>
+            <text class="mono" x="386" y="162">placeholders() · views[]</text>
+            <text class="small" x="386" y="188">sheet, chips, Grid / By group /</text>
+            <text class="small" x="386" y="204">Spreads / Table, one per instance</text>
+            <g font-size="12.5">
+                <rect class="box" x="700" y="50" width="240" height="40" rx="4"/><text x="714" y="75">Hover card (B1 shape)</text>
+                <rect x="700" y="110" width="240" height="40" rx="4" fill="var(--e-v)" opacity="0.14" stroke="var(--e-v)"/><text x="714" y="135">V · the viewer, whole section</text>
+                <rect class="box" x="700" y="170" width="240" height="40" rx="4"/><text x="714" y="195">Medium thumbs in sub-table h3s</text>
+            </g>
+            <path class="edge" d="M310,55 C340,55 340,120 370,120" marker-end="url(#ar2)"/>
+            <path class="edge" d="M310,97 C340,97 340,130 370,130" marker-end="url(#ar2)"/>
+            <path class="edge" d="M310,139 H370" marker-end="url(#ar2)"/>
+            <path class="edge" d="M310,181 C340,181 340,150 370,150" marker-end="url(#ar2)"/>
+            <path class="edge-dash" d="M310,223 C340,223 340,160 370,160" marker-end="url(#ar2)"/>
+            <path class="edge" d="M640,110 C670,110 670,70 700,70" marker-end="url(#ar2)"/>
+            <path class="edge" d="M640,130 H700" marker-end="url(#ar2)"/>
+            <path class="edge" d="M640,150 C670,150 670,190 700,190" marker-end="url(#ar2)"/>
+            <text class="small" x="370" y="262">Kept: never table.tbl, never cloned; .mb-release-art-* class names stay (specs and mutation lists key on them);</text>
+            <text class="small" x="370" y="278">zero requests added on the MusicBrainz hot path; the CAA column, D2 and FICE are untouched.</text>
+        </svg>
+    </div>
+    <div class="grid-2">
+        <article class="spec">
+            <div class="spec-head"><span class="spec-id">M2</span><h3>springsteenlyrics 5472: one section, copies as a facet</h3><span class="verdict v-rec">recommended</span></div>
+            <div class="spec-body"><div class="stage" id="m2"></div></div>
+            <div class="spec-cap">
+                <dl class="cost">
+                    <dt>Groups</dt><dd><code>groupOf(im)</code> = the copy. One section, one viewer over every copy, “By copy” shows the split.</dd>
+                    <dt>Missing</dt><dd>The site's “No scans available yet” becomes a placeholder tile (never opened in the viewer, never counted in N).</dd>
+                    <dt>Cover</dt><dd>The item's cover (the list's Cover column image) joins as type Cover, ★.</dd>
+                </dl>
+            </div>
+        </article>
+        <article class="spec">
+            <div class="spec-head"><span class="spec-id">M3</span><h3>Discogs master: ★ Primary, chips, By type</h3><span class="verdict v-rec">recommended</span></div>
+            <div class="spec-body"><div class="stage" id="m3"></div></div>
+            <div class="spec-cap">
+                <dl class="cost">
+                    <dt>Types</dt><dd>Primary / Secondary from the API as chips; ★ on the primary, the same badge MusicBrainz uses for the main front.</dd>
+                    <dt>Medium</dt><dd>Discogs images carry no medium role, so “Record 1” gets none. R7's rule stands: no guessing.</dd>
+                </dl>
+            </div>
+        </article>
+        <article class="spec">
+            <div class="spec-head"><span class="spec-id">M3-IA</span><h3>archive.org item: types from file names</h3><span class="verdict v-rec">recommended</span></div>
+            <div class="spec-body"><div class="stage" id="m3ia"></div></div>
+            <div class="spec-cap">
+                <dl class="cost">
+                    <dt>Types</dt><dd><code>_iaPictureTypes()</code> moves from FICE into the adapter, so the head and the Art column agree. A guessed type has a light-blue badge and says “from the file name” in the card.</dd>
+                    <dt>Medium</dt><dd>A file named <code>cd1.jpg</code> / <code>disc2.jpg</code> would land in “Disc 1” / “Disc 2” via <code>mediumOf(im)</code>; this item has none.</dd>
+                </dl>
+            </div>
+        </article>
+        <article class="spec">
+            <div class="spec-head"><span class="spec-id">M3-MB</span><h3>MusicBrainz: unchanged, now an adapter</h3><span class="verdict v-rec">P0</span></div>
+            <div class="spec-body"><div class="stage" id="m3mb"></div></div>
+            <div class="spec-cap"><p>Phase P0 moves A onto the component with no visible change: the same chips, layouts and medium thumbs. Every <code>release-tracks-cover-art*</code> spec must stay green, and the mutation lists are repointed to the new names.</p></div>
+        </article>
+    </div>
+</section>
+
+<!-- ═════════════════════════════════════════════════════════════════════ -->
+<section id="table">
+    <div class="sec-head">
+        <h2><span class="sec-num">2b</span>A table view, filtering and sorting</h2>
+        <p>The fourth layout. Every row is an image: thumbnail, position, group, types, comment, flags, file. Click a header to sort, type to filter; the viewer then steps through the rows as shown. Tile size and “Show missing” work in every layout.</p>
+    </div>
+    <article class="spec">
+        <div class="spec-head"><span class="spec-id">M4</span><h3>Table view on the MusicBrainz release (12 images)</h3><span class="verdict v-rec">recommended</span></div>
+        <div class="spec-body"><div class="stage" id="m4"></div></div>
+        <div class="spec-cap">
+            <dl class="cost">
+                <dt>Where</dt><dd>A plain table inside the section (recommended): the GF, the sub-table filters and the findings counts stay exactly as they are. The alternative, a real <code>table.tbl</code>, would bring the 📊 dropdown for free but would join the page's table count, the global filter and every render pass.</dd>
+                <dt>Sizes</dt><dd>Pixel size and bytes are known only after an image loads (the viewer's facts); the column fills in as images are seen and makes no request of its own.</dd>
+                <dt>Open</dt><dd>This is the one decision left for vzell: plain table or <code>table.tbl</code>.</dd>
+            </dl>
+        </div>
+    </article>
+</section>
+
+<!-- ═════════════════════════════════════════════════════════════════════ -->
+<section id="plan">
+    <div class="sec-head">
+        <h2><span class="sec-num">2a</span>How to get there</h2>
+        <p>Five phases, each its own branch with specs that fail before and pass after. P0 changes nothing visible, so it can be judged by the existing suite alone.</p>
+    </div>
+    <div class="phases">
+        <div class="phase"><div class="p">P0</div><div><h3>Extract the component, behaviour identical</h3><p>Move the generic <code>_releaseArt*</code> code behind an adapter; caa and eaa become adapters. Scope every query to its own section (today <code>document.querySelector('.mb-release-art-sec')</code> assumes one per page). Gate: the MusicBrainz fixture suite plus the five Cover art specs and two Event art specs; repoint <code>scripts/mutations/release-tracks-cover-art*.json</code>.</p></div></div>
+        <div class="phase"><div class="p">P1</div><div><h3>The foreign head onto it</h3><p><code>_fdHeadInsertSections()</code>' picture loop and <code>fd-pic</code> card become one adapter fed by <code>spec.pictures</code>. SL, Discogs and archive.org get chips and Grid / By type at once. Specs <code>sl-item</code>, <code>ia-details</code>, <code>discogs-*-tracks</code>, <code>sl-image-card</code>.</p></div></div>
+        <div class="phase"><div class="p">P2</div><div><h3>Groups and placeholders</h3><p><code>spec.pictureGroups</code> becomes <code>groupOf</code>: SL copies in one section, “By copy”, and the missing copy as a placeholder. Discogs ★ primary, archive.org types from file names.</p></div></div>
+        <div class="phase"><div class="p">P3</div><div><h3>Medium thumbs off MusicBrainz</h3><p><code>_releaseArtApplyMediumArt()</code> loses its <code>release-tracks</code> / <code>CAA_CTX</code> wiring; an adapter supplies <code>mediaOf()</code> (Discogs “Record N” from <code>_dgReleaseMedia()</code>, archive.org “Disc N”) and <code>mediumOf(im)</code>. <code>_releaseArtMediumAssign()</code> is already pure and is reused as is.</p></div></div>
+        <div class="phase"><div class="p">P4</div><div><h3>New views</h3><p>Table view, tile size, Show missing; then the viewer's Adjust, Compare, Loupe, Copy URL and key help (they do not depend on P0–P3 and can go first).</p></div></div>
+    </div>
+    <article class="spec">
+        <div class="spec-head"><span class="spec-id">S1</span><h3>Skill sketch: add-image-section</h3><span class="verdict v-rec">with P1</span></div>
+        <div class="spec-body">
+            <p>A skill like <code>foreign-detail-pagetype</code> that wires the component onto a pageType. What it asks for, in the order a new site needs it:</p>
+<pre class="code">{
+    key: 'sl-item',                  // one adapter per pageType family
+    label: 'Scans',                  // h2 text; N is counted, never typed
+    load: (page) =&gt; records,         // or a Promise; external records, no fetch at render
+    entityKey: () =&gt; 'sl:5472',      // viewer path and cache key
+    groupOf: (im) =&gt; im.copy,        // 'Copy #1' … or the first type
+    groupLabel: 'copy',              // chip row label, "By copy"
+    badges: (im) =&gt; im.front ? ['★'] : [],
+    placeholders: (page) =&gt; [{ group: 'Copy #1', note: 'No scans available yet' }],
+    mediaOf: null,                   // () =&gt; [{pos, format, h3}] for medium thumbs
+    mediumOf: null,                  // (im) =&gt; pos | null, never a guess
+    views: ['grid', 'group', 'table'],
+    setting: 'sa_sl_item_pictures',  // inside the site's own opt-in
+}</pre>
+            <p>The skill's checklist: adapter, records from the page already read (no new request), a fixture from <code>debug/&lt;site&gt;-*-final.html</code>, a spec per view plus one for the viewer's order, a mutation list, the coverage registry row, and a line in the site's <code>docs/claude/&lt;site&gt;.md</code>.</p>
+        </div>
+    </article>
+</section>
+
+</div>
+
+<script>
+(function () {
+    'use strict';
+    const IMGS = JSON.parse(document.getElementById('mockup-images').textContent);
+    const EMBED = window.__EMBED || {};
+
+    /**
+     * Creates an element with attributes and children.
+     * @param {string} tag
+     * @param {Object} [attrs]
+     * @param {...(Node|string|null)} kids
+     * @returns {HTMLElement}
+     */
+    function el(tag, attrs, ...kids) {
+        const n = document.createElement(tag);
+        for (const [k, v] of Object.entries(attrs || {})) {
+            if (v === null || v === undefined || v === false) continue;
+            if (k === 'class') n.className = v;
+            else if (k === 'style') n.style.cssText = v;
+            else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+            else n.setAttribute(k, v === true ? '' : v);
+        }
+        for (const c of kids.flat()) if (c !== null && c !== undefined && c !== false) n.append(c);
+        return n;
+    }
+
+    /**
+     * The URL of an image id: inlined in the published copy, hotlinked from disk.
+     * @param {string} id
+     * @returns {string}
+     */
+    function src(id) {
+        return EMBED[id] || (IMGS[id] && IMGS[id].u) || '';
+    }
+
+    /**
+     * An <img> for an image id that turns into a labelled tile when it cannot load.
+     * @param {string} id
+     * @param {string} [label]
+     * @returns {HTMLElement}
+     */
+    function img(id, label) {
+        const u = src(id);
+        const fallback = () => el('span', { class: 'fb' }, label || id);
+        if (!u) return fallback();
+        const i = el('img', { src: u, alt: label || '', loading: 'lazy', referrerpolicy: 'no-referrer', draggable: 'false' });
+        i.addEventListener('error', () => i.replaceWith(fallback()), { once: true });
+        return i;
+    }
+
+    // ── Data: the tiles of the snapshots ──────────────────────────────────
+    const MB_TYPES = [['Front'], ['Back'], ['Medium'], ['Front', 'Sticker'], ['Back'], ['Front', 'Sticker'], ['Back'],
+        ['Front'], ['Back'], ['Front', 'Sticker'], ['Back'], ['Booklet', 'Medium']];
+    const MB_COMMENT = { 8: 'sealed', 9: 'sealed' };
+    const MB = MB_TYPES.map((t, k) => ({
+        id: 'mb' + (k + 1), types: t, comment: MB_COMMENT[k + 1] || '', front: k === 0,
+        file: (IMGS['mb' + (k + 1)] || { u: '' }).u.split('/').pop(), host: 'coverartarchive.org'
+    }));
+
+    const SL_5472 = [
+        { id: 'slcc', types: ['Cover'], comment: '', front: true, group: 'Item', file: '5472.jpg', host: 'springsteenlyrics.com' },
+        { id: 'slc1', types: ['Scan'], comment: '', group: 'Copy #2', file: '5472_01.jpg', host: 'springsteenlyrics.com' },
+        { id: 'slc2', types: ['Scan'], comment: '', group: 'Copy #2', file: '5472_02.jpg', host: 'springsteenlyrics.com' },
+        { id: 'slc3', types: ['Scan'], comment: '', group: 'Copy #2', file: '5472_03.jpg', host: 'springsteenlyrics.com' }
+    ];
+    const DG = Array.from({ length: 16 }, (_, k) => ({
+        id: 'dg' + (k + 1), types: [k === 0 ? 'Primary' : 'Secondary'], comment: k === 0 ? '' : 'Secondary ' + k,
+        front: k === 0, file: 'R-892971 #' + (k + 1), host: 'i.discogs.com'
+    }));
+    const IA = [
+        { id: 'ia1', types: ['Front'], guessed: true, comment: 'Cover', front: true, file: 'Cover.jpg', host: 'archive.org' },
+        { id: 'ia2', types: ['Front'], guessed: true, comment: 'Front', file: 'Front.jpg', host: 'archive.org' },
+        { id: 'ia3', types: ['Back'], guessed: true, comment: 'Back', file: 'Back.jpg', host: 'archive.org' }
+    ];
+
+    // ── M0: today's displays ──────────────────────────────────────────────
+    /**
+     * A stage label with the site badge and the page path.
+     * @param {string} site
+     * @param {string} cls
+     * @param {string} path
+     * @returns {HTMLElement}
+     */
+    function stageLabel(site, cls, path) {
+        return el('div', { class: 'stage-label' }, el('span', { class: 'site ' + cls }, site), path);
+    }
+
+    /**
+     * A flat tile list as the foreign head draws it today.
+     * @param {Array<{id:string, cap:string}>} list
+     * @returns {HTMLElement}
+     */
+    function flat(list) {
+        return el('div', { class: 'flat' }, list.map(t => el('figure', null, el('div', { class: 'box' }, img(t.id, t.cap)), el('figcaption', null, t.cap))));
+    }
+
+    (function m0() {
+        const mb = document.getElementById('m0-mb');
+        mb.append(stageLabel('MB', 's-mb', '/release/3ec14d03… · release-tracks'));
+        const iscA = isc({ key: 'mb0', label: 'Cover art', images: MB, groupLabel: 'type', views: ['grid', 'group', 'spreads'], view: 'grid', tile: 84 });
+        mb.append(iscA);
+        mb.append(el('div', { class: 'h2bar' }, '▼ Tracklist ', el('span', { class: 'n' }, '(4)')));
+        mb.append(el('div', { class: 'h3bar' }, '▼ 1 - 8cm CD', el('span', { class: 'marr' }, img('mb3', 'M'), img('mb12', 'Bk/M')), el('span', { class: 'n' }, '(4)')));
+
+        const sl = document.getElementById('m0-sl');
+        sl.append(stageLabel('SL', 's-sl', 'collection.php?item=5472 · sl-collection-item'));
+        sl.append(el('div', { class: 'sitebox' }, el('h5', null, 'IP: the site'),
+            el('div', null, el('b', null, 'Scans/Photos (copy #1)'), el('div', { class: 'dim' }, 'No scans available yet')),
+            el('div', null, el('b', null, 'Scans/Photos (copy #2)'), el('div', { class: 'dim' }, '3 thumbnails'))));
+        sl.append(el('div', { class: 'h2bar' }, '▼ Scans (copy #2) ', el('span', { class: 'n' }, '(3)')));
+        sl.append(flat(SL_5472.slice(1).map(t => ({ id: t.id, cap: '' }))));
+        sl.append(el('div', { class: 'lost' }, el('b', null, 'FRP: copy #1 is not mentioned. '), 'No “Scans (copy #1)” heading, no note. The Release card still says Copies: 2.'));
+
+        const dg = document.getElementById('m0-dg');
+        dg.append(stageLabel('DG', 's-dg', '/master/27194 · dg-master'));
+        dg.append(el('div', { class: 'h2bar' }, '▼ Images ', el('span', { class: 'n' }, '(16)')));
+        dg.append(flat(DG.map((t, k) => ({ id: t.id, cap: k === 0 ? 'Primary' : 'Secondary ' + k }))));
+
+        const ia = document.getElementById('m0-ia');
+        ia.append(stageLabel('IA', 's-ia', '/details/bs1977-02-17… · ia-details'));
+        ia.append(el('div', { class: 'h2bar' }, '▼ Pictures ', el('span', { class: 'n' }, '(3)')));
+        ia.append(flat(IA.map(t => ({ id: t.id, cap: t.comment }))));
+        ia.append(el('div', { class: 'h3bar' }, '▼ Disc 1 · Flac · 1:10:29', el('span', { class: 'n' }, '(9)')));
+        ia.append(el('div', { class: 'h3bar' }, '▼ Disc 2 · Flac · 46:13', el('span', { class: 'n' }, '(8)')));
+    })();
+
+    // ── ISC: the one component, as a mockup ───────────────────────────────
+    /**
+     * The group an image belongs to: the adapter's group, else its first type.
+     * @param {Object} a adapter
+     * @param {Object} im image record
+     * @returns {string}
+     */
+    function groupOf(a, im) {
+        return a.groupLabel === 'copy' ? (im.group || '') : (im.types[0] || '(no type)');
+    }
+
+    /**
+     * Renders one image section from an adapter. Everything below is shared;
+     * only the adapter differs between MusicBrainz, springsteenlyrics, Discogs and archive.org.
+     * @param {Object} a adapter {key, label, images, groupLabel, views, view, placeholders, tile, filter}
+     * @returns {HTMLElement}
+     */
+    function isc(a) {
+        const st = { view: a.view || 'grid', active: [], showMissing: true, tile: a.tile || 104, q: '', sort: { col: 'n', dir: 1 } };
+        const root = el('div', { class: 'isc' });
+        const groups = [...new Set(a.images.map(im => groupOf(a, im)).concat((a.placeholders || []).map(p => p.group)))];
+
+        /** @returns {Array<Object>} the images the chips and the filter leave, archive order */
+        function shown() {
+            let list = a.images.map((im, k) => Object.assign({ n: k + 1 }, im));
+            if (st.active.length) list = list.filter(im => st.active.includes(groupOf(a, im)) || im.types.some(t => st.active.includes(t)));
+            if (st.q) {
+                const q = st.q.toLowerCase();
+                list = list.filter(im => [im.types.join(' '), im.comment, im.file, im.group || ''].join(' ').toLowerCase().includes(q));
+            }
+            return list;
+        }
+
+        /** @returns {Array<string>} the chip vocabulary: copies for a copy adapter, else types */
+        function chipKeys() {
+            if (a.groupLabel === 'copy') return groups;
+            const seen = [];
+            for (const im of a.images) for (const t of im.types) if (!seen.includes(t)) seen.push(t);
+            return seen;
+        }
+
+        /**
+         * One tile.
+         * @param {Object} im
+         * @returns {HTMLElement}
+         */
+        function tile(im) {
+            const box = el('div', { class: 'box' }, img(im.id, im.types.join(' / ')));
+            if (im.front) box.append(el('span', { class: 'badge' }, a.groupLabel === 'copy' ? '★ cover' : (im.types[0] === 'Primary' ? '★ primary' : '★ main')));
+            else if (im.guessed) box.append(el('span', { class: 'badge guess' }, 'from file name'));
+            return el('figure', { class: 'isc-tile', title: 'Click: viewer (' + (a.label) + ')' }, box,
+                el('figcaption', null, im.types.join(' / '), im.comment && im.comment !== im.types[0] ? el('span', { class: 'c' }, im.comment) : null));
+        }
+
+        /**
+         * A placeholder tile for a group the site lists without images.
+         * @param {Object} p
+         * @returns {HTMLElement}
+         */
+        function missing(p) {
+            return el('figure', { class: 'isc-tile missing' }, el('div', { class: 'box' }, p.note), el('figcaption', null, p.group, el('span', { class: 'c' }, 'nothing to open')));
+        }
+
+        /** @returns {Array<Object>} the placeholders the chips leave */
+        function shownMissing() {
+            if (!st.showMissing || st.q) return [];
+            return (a.placeholders || []).filter(p => !st.active.length || st.active.includes(p.group));
+        }
+
+        /** @returns {HTMLElement} the table view */
+        function table() {
+            const cols = [['n', '#'], ['t', ''], ['grp', a.groupLabel === 'copy' ? 'Copy' : 'Group'], ['types', 'Types'], ['comment', 'Comment'], ['flags', 'Flags'], ['file', 'File'], ['host', 'Host']];
+            const val = (im, c) => c === 'grp' ? groupOf(a, im) : c === 'types' ? im.types.join(' / ') : c === 'flags' ? (im.front ? '★' : '') + (im.guessed ? ' guessed' : '') : (im[c] ?? '');
+            const rows = shown().sort((x, y) => {
+                const vx = val(x, st.sort.col), vy = val(y, st.sort.col);
+                return (typeof vx === 'number' ? vx - vy : String(vx).localeCompare(String(vy))) * st.sort.dir;
+            });
+            const mark = (s) => {
+                if (!st.q) return String(s);
+                const k = String(s).toLowerCase().indexOf(st.q.toLowerCase());
+                if (k < 0) return String(s);
+                const t = String(s);
+                return [t.slice(0, k), el('mark', null, t.slice(k, k + st.q.length)), t.slice(k + st.q.length)];
+            };
+            const thead = el('thead', null, el('tr', null, cols.map(([c, l]) => {
+                const th = el('th', { scope: 'col', 'aria-sort': st.sort.col === c ? (st.sort.dir > 0 ? 'ascending' : 'descending') : null }, l);
+                if (c !== 't') th.addEventListener('click', () => { st.sort = { col: c, dir: st.sort.col === c ? -st.sort.dir : 1 }; draw(); });
+                return th;
+            })));
+            const tbody = el('tbody', null, rows.map(im => el('tr', null,
+                el('td', { class: 'num' }, String(im.n)),
+                el('td', { class: 't' }, img(im.id, im.types[0])),
+                el('td', null, mark(groupOf(a, im))),
+                el('td', null, im.types.map(t => el('span', { class: 'pill' }, mark(t)))),
+                el('td', null, mark(im.comment || '')),
+                el('td', null, val(im, 'flags')),
+                el('td', { class: 'mono' }, mark(im.file)),
+                el('td', { class: 'dim' }, im.host))));
+            const missingRows = shownMissing().map(p => el('tr', null, el('td', { class: 'num' }, '—'), el('td', null, ''), el('td', null, p.group), el('td', { colspan: '5', class: 'dim' }, p.note)));
+            missingRows.forEach(r => tbody.append(r));
+            return el('div', { class: 'isc-tbl-wrap' }, el('table', { class: 'isc-tbl' }, thead, tbody));
+        }
+
+        /** Redraws the section from its state. */
+        function draw() {
+            root.textContent = '';
+            const list = shown();
+            const total = a.images.length;
+            root.append(el('div', { class: 'h2bar' }, '▼ ' + a.label + ' ', el('span', { class: 'n' }, '(' + total + ')')));
+            const chips = el('div', { class: 'isc-chips' }, el('span', { class: 'lbl' }, a.groupLabel === 'copy' ? 'Copy' : 'Type'));
+            const all = el('button', { class: 'chip', type: 'button', 'aria-pressed': String(!st.active.length) }, 'All ', el('b', null, String(total)));
+            all.addEventListener('click', () => { st.active = []; draw(); });
+            chips.append(all);
+            for (const k of chipKeys()) {
+                const n = a.images.filter(im => groupOf(a, im) === k || im.types.includes(k)).length;
+                const isMissing = !n && (a.placeholders || []).some(p => p.group === k);
+                const c = el('button', { class: 'chip' + (isMissing ? ' ghost' : ''), type: 'button', 'aria-pressed': String(st.active.includes(k)) }, k + ' ', el('b', null, String(n)));
+                c.addEventListener('click', () => { st.active = st.active.includes(k) ? st.active.filter(x => x !== k) : st.active.concat(k); draw(); });
+                chips.append(c);
+            }
+            const seg = el('div', { class: 'seg', role: 'group', 'aria-label': 'Layout' });
+            const names = { grid: 'Grid', group: a.groupLabel === 'copy' ? 'By copy' : 'By type', spreads: 'Spreads', table: 'Table' };
+            for (const v of a.views) {
+                const b = el('button', { type: 'button', 'aria-pressed': String(st.view === v) }, names[v]);
+                b.addEventListener('click', () => { st.view = v; draw(); });
+                seg.append(b);
+            }
+            root.append(el('div', { class: 'isc-bar' }, chips, seg));
+
+            if (a.tools) {
+                const q = el('input', { type: 'search', placeholder: 'Filter images…', value: st.q, id: 'isc-q-' + a.key, 'aria-label': 'Filter images' });
+                q.addEventListener('input', () => { st.q = q.value; draw(); const n = document.getElementById('isc-q-' + a.key); n.focus(); n.setSelectionRange(n.value.length, n.value.length); });
+                const size = el('input', { type: 'range', min: '64', max: '160', step: '8', value: String(st.tile), id: 'isc-size-' + a.key, 'aria-label': 'Tile size' });
+                size.addEventListener('input', () => { st.tile = +size.value; root.style.setProperty('--tile', st.tile + 'px'); });
+                const miss = el('input', { type: 'checkbox', id: 'isc-miss-' + a.key, checked: st.showMissing });
+                miss.addEventListener('change', () => { st.showMissing = miss.checked; draw(); });
+                root.append(el('div', { class: 'isc-tools' }, q, el('label', null, 'Tiles', size),
+                    a.placeholders ? el('label', null, miss, 'Show missing') : null,
+                    el('span', { class: 'dim' }, list.length + ' of ' + total + ' shown · viewer steps these')));
+            }
+            root.style.setProperty('--tile', st.tile + 'px');
+
+            if (st.view === 'table') { root.append(table()); return; }
+            if (!list.length && !shownMissing().length) { root.append(el('div', { class: 'isc-empty' }, 'No image matches.')); return; }
+            if (st.view === 'grid' || st.view === 'spreads') {
+                root.append(el('div', { class: 'isc-grid' }, list.map(tile), shownMissing().map(missing)));
+                if (st.view === 'spreads') root.append(el('div', { class: 'isc-empty' }, 'No “… left” / “… right” comments on this release, so Spreads shows the grid (the R6 rule: pair only when unambiguous).'));
+                return;
+            }
+            for (const g of groups) {
+                const inG = list.filter(im => groupOf(a, im) === g);
+                const ph = shownMissing().filter(p => p.group === g);
+                if (!inG.length && !ph.length) continue;
+                root.append(el('div', { class: 'isc-group' }, el('div', { class: 'isc-ghdr' }, g, el('span', { class: 'n' }, '(' + inG.length + ')')),
+                    el('div', { class: 'isc-grid' }, inG.map(tile), ph.map(missing))));
+            }
+        }
+        draw();
+        return root;
+    }
+
+    // ── M2, M3, M4: the component with four adapters ──────────────────────
+    (function adapters() {
+        const m2 = document.getElementById('m2');
+        m2.append(stageLabel('SL', 's-sl', 'collection.php?item=5472 · sl-collection-item'));
+        m2.append(isc({ key: 'sl', label: 'Scans', images: SL_5472, groupLabel: 'copy', views: ['grid', 'group', 'table'], view: 'group',
+            placeholders: [{ group: 'Copy #1', note: 'No scans available yet (the site)' }], tools: true, tile: 96 }));
+
+        const m3 = document.getElementById('m3');
+        m3.append(stageLabel('DG', 's-dg', '/master/27194 · dg-master'));
+        m3.append(isc({ key: 'dg', label: 'Images', images: DG, groupLabel: 'type', views: ['grid', 'group', 'table'], view: 'group', tile: 80 }));
+        m3.append(el('div', { class: 'h3bar' }, '▼ Record 1 · 39:54', el('span', { class: 'note' }, 'no medium images: Discogs gives none a medium role'), el('span', { class: 'n' }, '(11)')));
+
+        const m3ia = document.getElementById('m3ia');
+        m3ia.append(stageLabel('IA', 's-ia', '/details/bs1977-02-17… · ia-details'));
+        m3ia.append(isc({ key: 'ia', label: 'Pictures', images: IA, groupLabel: 'type', views: ['grid', 'group', 'table'], view: 'group', tile: 96 }));
+        m3ia.append(el('div', { class: 'liner' }, el('div', { class: 't' }, 'Front'), el('div', { class: 'pills' }, el('span', null, 'Front'), el('span', null, 'from the file name')),
+            el('div', { class: 'd' }, 'Cover.jpg · 1 of 3 · Front 1 of 2'), el('div', { class: 'd' }, 'Click or Space: viewer')));
+
+        const m3mb = document.getElementById('m3mb');
+        m3mb.append(stageLabel('MB', 's-mb', '/release/3ec14d03… · release-tracks'));
+        m3mb.append(isc({ key: 'mb3', label: 'Cover art', images: MB, groupLabel: 'type', views: ['grid', 'group', 'spreads', 'table'], view: 'group', tile: 72 }));
+        m3mb.append(el('div', { class: 'h3bar' }, '▼ 1 - 8cm CD', el('span', { class: 'marr' }, img('mb3', 'M'), img('mb12', 'Bk/M')), el('span', { class: 'n' }, '(4)')));
+
+        const m4 = document.getElementById('m4');
+        m4.append(stageLabel('MB', 's-mb', '/release/3ec14d03… · release-tracks'));
+        m4.append(isc({ key: 'mb4', label: 'Cover art', images: MB, groupLabel: 'type', views: ['grid', 'group', 'spreads', 'table'], view: 'table', tools: true, tile: 96 }));
+    })();
+
+    // ── M5: the viewer ────────────────────────────────────────────────────
+    (function m5() {
+        const host = document.getElementById('m5');
+        const film = ['sla1f', 'sla2f', 'sla3', 'sla4', 'sla5'];
+        const filmLabel = ['scan 01', 'scan 02', 'scan 03', 'scan 04', 'scan 05'];
+        const st = { i: 0, b: 100, c: 100, g: 0, inv: false, adjust: true, compare: false, second: 1, loupe: false, help: false, toast: '' };
+
+        /** @returns {string} the CSS filter of the adjust panel */
+        const filter = () => 'brightness(' + st.b + '%) contrast(' + st.c + '%) grayscale(' + st.g + '%)' + (st.inv ? ' invert(1)' : '');
+
+        /**
+         * One stage image with the loupe wired.
+         * @param {number} k filmstrip index
+         * @returns {HTMLElement}
+         */
+        function stageImg(k) {
+            const im = img(film[k], filmLabel[k]);
+            im.style.filter = filter();
+            const wrap = el('div', null, im, el('div', { class: 'cap' }, '5493 · ' + filmLabel[k]));
+            if (st.loupe && im.tagName === 'IMG') {
+                const lens = el('div', { class: 'loupe', hidden: true });
+                wrap.style.position = 'relative';
+                wrap.append(lens);
+                im.addEventListener('mousemove', (e) => {
+                    const r = im.getBoundingClientRect(), z = 2.5;
+                    const x = e.clientX - r.left, y = e.clientY - r.top;
+                    lens.hidden = false;
+                    lens.style.left = (x - 75 + im.offsetLeft) + 'px';
+                    lens.style.top = (y - 75 + im.offsetTop) + 'px';
+                    lens.style.backgroundImage = 'url("' + im.currentSrc + '")';
+                    lens.style.backgroundSize = (r.width * z) + 'px ' + (r.height * z) + 'px';
+                    lens.style.backgroundPosition = (75 - x * z) + 'px ' + (75 - y * z) + 'px';
+                    lens.style.filter = filter();
+                });
+                im.addEventListener('mouseleave', () => { lens.hidden = true; });
+            }
+            return wrap;
+        }
+
+        /**
+         * A toolbar button.
+         * @param {string} label
+         * @param {boolean} isNew
+         * @param {?boolean} pressed
+         * @param {Function} [fn]
+         * @returns {HTMLElement}
+         */
+        function btn(label, isNew, pressed, fn) {
+            const b = el('button', { type: 'button', class: isNew ? 'new' : null, 'aria-pressed': pressed === null ? null : String(pressed) }, label);
+            if (fn) b.addEventListener('click', fn);
+            return b;
+        }
+
+        /** Copies the current image's URL, with a visible result. */
+        function copyUrl() {
+            const u = (IMGS[film[st.i]] || {}).u || '';
+            const done = (msg) => { st.toast = msg; draw(); setTimeout(() => { st.toast = ''; draw(); }, 1600); };
+            try {
+                navigator.clipboard.writeText(u).then(() => done('Copied: ' + u.split('/').pop()), () => done('Select and copy: ' + u));
+            } catch (e) {
+                done('Select and copy: ' + u);
+            }
+        }
+
+        /** Redraws the viewer from its state. */
+        function draw() {
+            host.textContent = '';
+            const bar = el('div', { class: 'vw-bar' },
+                el('span', { class: 'ttl' }, 'Chimes Of Freedom · Scans'),
+                el('span', { class: 'pos' }, (st.i + 1) + ' / ' + film.length),
+                el('div', { class: 'vw-btns' },
+                    btn('Grid', false, null), btn('Info', false, null), btn('Slideshow', false, null), btn('Rotate', false, null), btn('Flip', false, null),
+                    btn('Fullscreen', false, null), btn('Download', false, null), btn('Original', false, null),
+                    btn('Adjust (A)', true, st.adjust, () => { st.adjust = !st.adjust; draw(); }),
+                    btn('Compare (C)', true, st.compare, () => { st.compare = !st.compare; if (st.second === st.i) st.second = (st.i + 1) % film.length; draw(); }),
+                    btn('Loupe (L)', true, st.loupe, () => { st.loupe = !st.loupe; draw(); }),
+                    btn('Copy URL (Y)', true, null, copyUrl),
+                    btn('? Keys', true, st.help, () => { st.help = !st.help; draw(); })));
+            const stage = el('div', { class: 'vw-stage' + (st.compare ? ' two' : '') }, stageImg(st.i), st.compare ? stageImg(st.second) : null);
+            const side = st.adjust ? el('div', { class: 'vw-side' },
+                el('h4', null, 'Adjust'),
+                slider('Brightness', 'b', 40, 200),
+                slider('Contrast', 'c', 40, 250),
+                slider('Grayscale', 'g', 0, 100),
+                el('label', { class: 'row' }, invert(), 'Invert (negatives, dark scans)'),
+                el('button', { type: 'button', onclick: () => { Object.assign(st, { b: 100, c: 100, g: 0, inv: false }); draw(); } }, 'Reset'),
+                el('p', { style: 'font-size:11.5px;color:var(--vw-dim)' }, 'View only: Download keeps the original file. Reset on every step, like rotation.')) : null;
+            const mid = el('div', { class: 'vw-mid' }, stage, side);
+            const strip = el('div', { class: 'vw-film' }, film.map((id, k) => {
+                const t = img(id, filmLabel[k]);
+                if (k === st.i || (st.compare && k === st.second)) t.classList.add('on');
+                t.addEventListener('click', () => { if (st.compare && k !== st.i) st.second = k; else st.i = k; draw(); });
+                return t;
+            }));
+            host.append(bar, mid, strip);
+            if (st.help) host.append(help());
+            if (st.toast) host.append(el('div', { class: 'toast', role: 'status' }, st.toast));
+        }
+
+        /**
+         * A slider bound to one state key.
+         * @param {string} label
+         * @param {string} key
+         * @param {number} min
+         * @param {number} max
+         * @returns {HTMLElement}
+         */
+        function slider(label, key, min, max) {
+            const out = el('span', { style: 'color:var(--vw-dim)' }, st[key] + '%');
+            const r = el('input', { type: 'range', min: String(min), max: String(max), value: String(st[key]), id: 'vw-' + key, 'aria-label': label });
+            r.addEventListener('input', () => {
+                st[key] = +r.value;
+                out.textContent = st[key] + '%';
+                host.querySelectorAll('.vw-stage img').forEach(i => { i.style.filter = filter(); });
+            });
+            return el('label', null, el('span', { class: 'row' }, label, out), r);
+        }
+
+        /** @returns {HTMLElement} the invert checkbox */
+        function invert() {
+            const c = el('input', { type: 'checkbox', id: 'vw-inv', checked: st.inv });
+            c.addEventListener('change', () => { st.inv = c.checked; host.querySelectorAll('.vw-stage img').forEach(i => { i.style.filter = filter(); }); });
+            return c;
+        }
+
+        /** @returns {HTMLElement} the key help overlay */
+        function help() {
+            const keys = [['← →', 'previous / next'], ['Shift+← →', 'previous / next row'], ['Home End', 'first / last'], ['↑ ↓ wheel', 'zoom'],
+                ['0', 'fit'], ['1', 'actual pixels'], ['Z', '2× zoom'], ['R Shift+R', 'rotate'], ['H V', 'flip'], ['G', 'grid'], ['I', 'info'],
+                ['P', 'slideshow'], ['F', 'fullscreen'], ['B', 'background'], ['D', 'download'], ['O', 'original in a new tab'], ['Esc', 'close'],
+                ['A', 'adjust', true], ['C', 'compare', true], ['L', 'loupe', true], ['Y', 'copy URL', true], ['?', 'this list', true]];
+            const box = el('div', { class: 'vw-help', role: 'dialog', 'aria-label': 'Viewer keys' }, el('h4', null, 'Viewer keys'),
+                el('dl', null, keys.map(([k, d, n]) => el('div', null, el('dt', null, k), el('dd', null, d, n ? el('span', { class: 'nw' }, 'NEW') : null)))));
+            box.addEventListener('click', () => { st.help = false; draw(); });
+            return box;
+        }
+
+        host.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey || e.altKey || e.target.tagName === 'INPUT') return;
+            const k = e.key;
+            if (k === '?') st.help = !st.help;
+            else if (k === 'Escape' && st.help) st.help = false;
+            else if (k === 'a' || k === 'A') st.adjust = !st.adjust;
+            else if (k === 'c' || k === 'C') { st.compare = !st.compare; if (st.second === st.i) st.second = (st.i + 1) % film.length; }
+            else if (k === 'l' || k === 'L') st.loupe = !st.loupe;
+            else if (k === 'y' || k === 'Y') { copyUrl(); e.preventDefault(); return; }
+            else if (k === 'ArrowRight') st.i = (st.i + 1) % film.length;
+            else if (k === 'ArrowLeft') st.i = (st.i + film.length - 1) % film.length;
+            else return;
+            e.preventDefault();
+            draw();
+        });
+        draw();
+    })();
+
+    // ── 1b: the ranked list of viewer ideas ───────────────────────────────
+    (function ideas() {
+        const L = { s: ['cost-s', 'small'], m: ['cost-m', 'medium'], l: ['cost-l', 'larger'] };
+        const list = [
+            ['Adjust: brightness, contrast, grayscale, invert', 's', 'A dark or faded scan becomes readable. View only.', '_artViewerApplyTransform() writes style.filter beside the transform'],
+            ['Key help overlay', 's', '? lists every key, new ones marked. Discoverable without HELP.', '_artViewerOnKey(), the .mb-tt-liner look'],
+            ['Copy image URL', 's', 'Y copies the archive or site URL; Shift+Y as an edit-note line.', '_artViewerUrl(); clipboard inside the key handler'],
+            ['Loupe', 's', 'L: a 2.5× lens under the pointer over the large image already loaded.', '_artViewerOnMouseMove(); no request'],
+            ['Compare two images', 'm', 'C: two stages side by side; Spreads pairs open straight into it.', '_releaseArtFindSpreads(), _artViewerFit() per stage'],
+            ['Filmstrip on / off', 's', 'More stage for tall scans; remembered like the background.', 'MB_ART_VIEWER_BG_KEY pattern, artviewer workspace group'],
+            ['Grid grouped by the section’s group', 's', 'Copies (SL) or kinds (BB) in the grid, not just types.', 'the grid already groups by first type'],
+            ['Open in the archive editor (MB)', 's', 'E: the image’s edit page on MusicBrainz, for a fix seen in the viewer.', 'the record’s edit id is in the cache'],
+            ['Download all', 'm', 'Shift+D: every image of the list, one after the other, named like D.', '_artViewerDownload(), _artGmFetchBlob(), one at a time'],
+            ['Crop to selection', 'l', 'Drag a box, download that part (a matrix, a label).', 'canvas; external images need the GM blob first'],
+            ['Reverse image search links', 'm', 'Opt-in, opens the search site in a new tab with the image URL.', 'outward-facing: a setting, off by default']
+        ];
+        const host = document.getElementById('viewer-ideas');
+        for (const [t, c, p, h] of list) {
+            host.append(el('div', { class: 'idea' }, el('h3', null, t, el('span', { class: 'lvl ' + L[c][0] }, L[c][1])), el('p', null, p), el('div', { class: 'hook' }, h)));
+        }
+    })();
+})();
+</script>
+</body>
+</html>

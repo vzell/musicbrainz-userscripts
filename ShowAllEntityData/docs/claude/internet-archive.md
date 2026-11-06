@@ -172,9 +172,11 @@ Modelled on MusicBrainz's release-tracks.
   release's Annotation), Details (the MusicBrainz Sidebar section's cards,
   reused as they are: `_sbInlineCard()`, `_sbInlineLayout()`,
   `_sbInlineEnsureStyle()`, folds through `_sbInlineWireFolds()`, each
-  heading's card `_fdCardTip()`) and Pictures (the Cover art
-  section's tile classes, `_ensureReleaseArtStyle()`; a click opens the
-  artwork viewer through `_dpArtViewerClick()`, every picture in order).
+  heading's card `_fdCardTip()`) and Pictures (since 2026-11-06 an art
+  section, `_fdArtSection()`: the Cover art section's chips and Grid / By
+  type, the types guessed from the file names by `_iaPictureTypes()`, the
+  file name as the comment; a click opens the viewer over the tiles shown,
+  docs/claude/artwork-caa-eaa.md).
   **It goes in BEFORE `makeH2sCollapsible()`** (the fetch tail and the
   disk-load tail, as `_releaseArtInsertSection()`), so its h2s fold like
   any other; `_fdHeadOpenSections()` opens Details and Pictures

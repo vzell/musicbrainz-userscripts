@@ -12812,18 +12812,50 @@
         if (infoA) fileRows.push(['Info file', _fdLink(abs(infoA.getAttribute('href')), abs(infoA.getAttribute('href')).split('/').pop())]);
         pdfs.forEach((a, i) => fileRows.push([pdfs.length > 1 ? `PDF ${i + 1}` : 'PDF', _fdLink(abs(a.getAttribute('href')), _dpText(a.textContent) || `PDF file ${i + 1}`)]));
         if (fileRows.length) others.push(['files', 'Files', fileRows]);
-        // Pictures: one section per scans/artwork section of the page (a
-        // collection item with two copies has two), each with the page's
-        // captions; a section without pictures is left out.
+        // Pictures: ONE art section over every scans/artwork section of the
+        // page (org/image-handling.org P2), the section's kind as each
+        // picture's type, the page's captions as comments. An item with
+        // copies ("Scans/Photos (copy #2)") is grouped and chipped by copy,
+        // in page order, and a copy the page lists without scans becomes a
+        // placeholder with the site's own words ("No scans available yet")
+        // — until P2 it was left out, as if the item had one copy.
         const captions = _slImageCaptions(sections);
-        const pictureGroups = sections.filter(s => /^(?:scans|artwork)/i.test(s.label)).map((s) => {
-            const pictures = Array.from(s.box.querySelectorAll('img[src*="_tn."]')).map((img) => {
+        const picSections = sections.filter(s => /^(?:scans|artwork)/i.test(s.label));
+        const copyOf = (s) => {
+            const m = /\(copy\s*#\s*(\d+)\)/i.exec(s.label);
+            return m ? `Copy #${m[1]}` : '';
+        };
+        const byCopy = picSections.some(copyOf);
+        const pictures = [];
+        const picturePlaceholders = [];
+        const pictureGroupOrder = [];
+        const kinds = new Set();
+        picSections.forEach((s) => {
+            const kind = /^scans/i.test(s.label) ? 'Scan' : 'Artwork';
+            const group = byCopy ? (copyOf(s) || kind) : '';
+            if (group && !pictureGroupOrder.includes(group)) pictureGroupOrder.push(group);
+            const imgs = Array.from(s.box.querySelectorAll('img[src*="_tn."]'));
+            if (!imgs.length) {
+                if (group) {
+                    const alert = (s.box.querySelector('.alert') || s.box).cloneNode(true);
+                    alert.querySelectorAll('button').forEach(b => b.remove());
+                    picturePlaceholders.push({ group, note: _dpText(alert.textContent) || 'No scans' });
+                }
+                return;
+            }
+            kinds.add(kind);
+            imgs.forEach((img) => {
                 const a = img.closest('a[href]');
                 const full = abs(a ? a.getAttribute('href') : img.getAttribute('src'));
-                return { full, thumb: abs(img.getAttribute('src')), caption: captions.get(full.split('/').pop()) || '' };
+                const caption = captions.get(full.split('/').pop()) || '';
+                // P3: an artwork caption that names the part ("disc side 1",
+                // "booklet p1,4") gives MusicBrainz's type, so a Medium picture
+                // can go into its record's heading.
+                pictures.push({ full, thumb: abs(img.getAttribute('src')), caption,
+                    types: kind === 'Artwork' ? _slArtworkTypes(caption) : [kind], ...(group ? { group } : {}) });
             });
-            return { title: s.label.replace(/^Scans\/Photos/i, 'Scans').replace(/^Artwork and PDF$/i, 'Artwork'), pictures };
-        }).filter(g => g.pictures.length);
+        });
+        const picturesTitle = kinds.size > 1 ? 'Pictures' : kinds.has('Artwork') ? 'Artwork' : 'Scans';
         const textsAfter = [];
         if (infoA) {
             const url = abs(infoA.getAttribute('href'));
@@ -12838,7 +12870,8 @@
             root: h2.parentElement, h2,
             sub: { what, by: '', when },
             texts, textsAfter, facts, others,
-            pictureGroups,
+            pictures, picturesTitle,
+            ...(byCopy ? { pictureGroupLabel: 'copy', picturePlaceholders, pictureGroupOrder } : {}),
             title: _slItemName(src), source: 'springsteenlyrics.com\'s page',
         };
     }
@@ -14330,7 +14363,7 @@
             root: h2.parentElement, h2,
             sub: { what: s.version || 'Song', by: '', when: [v.date, s.updated ? `page updated ${s.updated}` : ''].filter(Boolean).join(' · ') },
             texts, textsAfter, facts, others,
-            pictures: s.pictures, picturesTitle: 'Pictures',
+            pictures: s.pictures.map(p => ({ ...p, types: ['Picture'] })), picturesTitle: 'Pictures',
             title: _slSongName(src), source: 'springsteenlyrics.com\'s page',
         };
     }
@@ -19454,6 +19487,23 @@
     }
 
     /**
+     * A Discogs release's or master's images as the head's pictures
+     * (`_fdArtSection()`, org/image-handling.org P1): Discogs' own type as
+     * the picture's type, so the section's chips read "Primary 1 ·
+     * Secondary 15", and the primary image starred. No caption: its place is
+     * on the card ("Picture 4 of 16"), the old "Secondary 3" said no more.
+     *
+     * @param   {Array<{type: string, full: string, thumb: string}>} images `_extDiscogsImages()`.
+     * @returns {Array<{full: string, thumb: string, caption: string, types: string[], front: boolean}>}
+     */
+    function _dgHeadPictures(images) {
+        return images.map(im => ({
+            full: im.full, thumb: im.thumb, caption: '',
+            types: [im.type === 'primary' ? 'Primary' : 'Secondary'], front: im.type === 'primary',
+        }));
+    }
+
+    /**
      * The head spec of a release's Tracks view (`_fdHeadSpec()`), from
      * `_dgRelRec`: "~ Release by <artists> (released: country)"; Notes;
      * Details — on the left the release's facts (label and catalogue
@@ -19523,7 +19573,6 @@
         const genres = [...(d.genres || []).map(g => [String(g), `${DG}/music/genre/${encodeURIComponent(String(g).toLowerCase())}`]),
             ...(d.styles || []).map(g => [String(g), `${DG}/music/style/${encodeURIComponent(String(g).toLowerCase())}`])].filter(g => g[0]);
         const images = _extDiscogsImages(d.images);
-        let sec = 0;
         return {
             root, h2: root.querySelector('h2.mb-dg-list-heading'),
             sub: { what: 'Release', by, byHref: artists[0] && artists[0].id ? `${DG}/artist/${artists[0].id}` : '',
@@ -19558,10 +19607,7 @@
             others: [
                 ['identifiers', 'Identifiers', ids],
             ],
-            pictures: images.map((im) => {
-                sec += im.type === 'secondary' ? 1 : 0;
-                return { full: im.full, thumb: im.thumb, caption: im.type === 'primary' ? 'Primary' : `Secondary ${sec}` };
-            }),
+            pictures: _dgHeadPictures(images),
             picturesTitle: 'Images', title: `${by}${by ? ' – ' : ''}${String(d.title || '')}`, source: 'the release\'s Discogs answer',
         };
     }
@@ -19722,7 +19768,6 @@
             ...(d.styles || []).map(g => [String(g), `${DG}/music/style/${encodeURIComponent(String(g).toLowerCase())}`])].filter(g => g[0]);
         const credits = _dgCreditsByPerson(d);
         const images = _extDiscogsImages(d.images);
-        let sec = 0;
         return {
             root, h2: root.querySelector('h2.mb-dg-list-heading'),
             sub: { what: 'Master release', by, byHref: artists[0] && artists[0].id ? `${DG}/artist/${artists[0].id}` : '', when: year ? String(year) : '' },
@@ -19746,10 +19791,7 @@
             others: [
                 credits && ['credits', 'Credits', credits.count, credits.body, false],
             ],
-            pictures: images.map((im) => {
-                sec += im.type === 'secondary' ? 1 : 0;
-                return { full: im.full, thumb: im.thumb, caption: im.type === 'primary' ? 'Primary' : `Secondary ${sec}` };
-            }),
+            pictures: _dgHeadPictures(images),
             picturesTitle: 'Images', title: `${by}${by ? ' – ' : ''}${String(d.title || '')}`, source: 'the master\'s Discogs answer',
         };
     }
@@ -23073,7 +23115,12 @@
      * output with its text escaped); `facts` (the left column) and `others`
      * (beside it), each entry either [key, name, [[label, value(string|Node)], …]]
      * or a built card [key, name, count, body, wide], in order;
-     * `pictures` ([{full, thumb, caption}]) under `picturesTitle`; `title`
+     * `pictures` ([{full, thumb, caption, types, front, group}]: `types` are
+     * the art section's chips, `front` its ★ — `_fdArtSection()`) under
+     * `picturesTitle`; with `pictureGroupLabel` ('copy': springsteenlyrics'
+     * copies, P2) the pictures are chipped and grouped by their `group`, in
+     * `pictureGroupOrder`, with `picturePlaceholders` ([{group, note}]) for
+     * the groups the page lists without pictures; `title`
      * (the viewer's bar); `source` (the cards' hover text). Since
      * 2026-11-04 (springsteenlyrics.com's item pages, `_slItemHeadSpec()`)
      * also: `texts` (more text sections after `text`, before Details),
@@ -23103,8 +23150,8 @@
      * subheader `p.mb-fd-sub` after our h1, then `div.mb-fd-head` before the
      * data h2 holding the h2 sections — the text (starts closed), Details
      * (the Sidebar section's cards, folding through `_sbInlineWireFolds()`)
-     * and the pictures (the Cover art section's tiles; a click opens the
-     * artwork viewer through `_dpArtViewerClick()`, every picture in order).
+     * and the pictures (an art section per group, `_fdArtSection()`: the
+     * Cover art section's chips, layouts and viewer).
      * Called BEFORE `makeH2sCollapsible()` (the fetch tail and the disk-load
      * tail, as `_releaseArtInsertSection()`), so the h2s fold like any other;
      * `_fdHeadOpenSections()` opens Details and the pictures afterwards.
@@ -23234,39 +23281,81 @@
             section('Details', total, sec, true);
         }
 
-        // The pictures: the Cover art section's tiles; one section per group
-        // when the spec has `pictureGroups`.
+        // The pictures: an art section each (`_fdArtSection()`), so they get
+        // MusicBrainz's Cover art chips, layouts, viewer order and the picture
+        // card; one section per group when the spec has `pictureGroups`.
         const groups = spec.pictureGroups || [{ title: spec.picturesTitle || 'Pictures', pictures: spec.pictures || [] }];
-        groups.forEach(({ title: groupTitle, pictures: pics }) => {
-            if (pics.length) {
-                const sec = el('div', 'mb-release-art-sec mb-fd-art');
-                // The viewer's title (`_dpArtViewerClick()` reads it).
-                const t = el('span', 'mb-dp-xtitle', spec.title || '');
-                t.hidden = true;
-                const grid = el('div', 'mb-release-art-grid');
-                pics.forEach((p, i) => {
-                    const fig = el('figure', 'mb-release-art-tile');
-                    const a = _fdLink(p.full);
-                    a.dataset.mbArtvExt = String(i + 1);
-                    // A rest shows the picture large, Shift larger
-                    // (`_fdPicCardHtml()`; vzell, 2026-11-05, SL "Adjustments" 4).
-                    a.dataset.mbttFn = 'fd-pic';
-                    const img = el('img');
-                    img.src = p.thumb || p.full;
-                    img.alt = p.caption || '';
-                    img.loading = 'lazy';
-                    img.referrerPolicy = 'no-referrer';
-                    a.appendChild(img);
-                    fig.append(a, el('figcaption', '', p.caption || ''));
-                    grid.appendChild(fig);
-                });
-                sec.append(t, grid);
-                sec.addEventListener('click', _dpArtViewerClick);
-                section(groupTitle, pics.length, sec, true);
-            }
+        groups.forEach(({ title: groupTitle, pictures: pics }, gi) => {
+            if (pics.length) section(groupTitle, pics.length, _fdArtSection(spec, gi, groupTitle, pics), true);
         });
         (spec.textsAfter || []).forEach(textSection);
         if (head.childElementCount) h2.before(head);
+    }
+
+    /**
+     * The artwork viewer's context for a foreign detail page's own pictures
+     * (`_fdArtSection()`): `external`, as the link previews' `_DP_ART_CTX`,
+     * but its own — that one is cleared by every preview window that opens
+     * the viewer. One records list per picture section, keyed by its entity.
+     * @type {{key: string, column: string, external: boolean, imagesCache: Map<string, Object[]>}}
+     */
+    const _FD_ART_CTX = { key: 'fd', column: 'Detail page', external: true, imagesCache: new Map() };
+
+    /**
+     * One picture section of a foreign detail page's head as an art section
+     * (org/image-handling.org P1): an adapter built from the spec's pictures,
+     * filled at once — the records are on the page already, so there is no
+     * load, no "Loading…" and nothing to retry. The section is MusicBrainz's
+     * Cover art section in every other respect: type chips (a picture's
+     * `types`, e.g. Discogs' Primary/Secondary, archive.org's from the file
+     * name, springsteenlyrics' Scan/Artwork), Grid / By type remembered under
+     * `MB_FD_ART_LAYOUT_KEY`, the viewer stepping through the tiles shown, the
+     * `fd-pic` card on each tile (`_releaseArtBuildTile()`'s external branch).
+     *
+     * @param   {Object} spec  `_fdHeadSpec()`'s result (its `title`, `source`).
+     * @param   {number} gi    The group's index: one adapter and one entity each.
+     * @param   {string} title The group's heading.
+     * @param   {Array<{full: string, thumb: ?string, caption: ?string, types: ?string[], front: ?boolean}>} pics
+     * @returns {HTMLElement} The filled `div.mb-release-art-sec.mb-fd-art`.
+     */
+    function _fdArtSection(spec, gi, title, pics) {
+        const key = `fd-${gi}`;
+        const entity = `fd:${location.pathname}${location.search}#${gi}`;
+        _FD_ART_CTX.imagesCache.set(entity, pics.map(p => ({
+            image: p.full, thumbnails: { 250: p.thumb || p.full }, types: Array.isArray(p.types) ? p.types : [],
+            comment: p.caption || '', external: true, ...(p.front ? { front: true } : {}),
+            ...(p.group ? { group: p.group } : {}), source: spec.source || '',
+        })));
+        const desc = {
+            key, ctx: _FD_ART_CTX, pageType: (activeDefinition && activeDefinition.type) || '',
+            setting: null, tabSetting: null, label: title, archiveName: spec.source || 'this page', what: 'page',
+            title: () => spec.title || '', layouts: ['grid', 'grouped', 'table'], layoutKey: MB_FD_ART_LAYOUT_KEY,
+            secClass: 'mb-fd-art', tab: false, retry: null,
+            images: sec => _FD_ART_CTX.imagesCache.get(sec.dataset.mbArtEntity) || [],
+            // P3: the page's Medium pictures go into its disc/record headings,
+            // by `_releaseArtMediumAssign()`'s rules (never a guess). No
+            // setting: the head's pictures have none either.
+            mediaOf: () => _artForeignMedia(),
+            mediumOn: () => true,
+        };
+        // P2: a spec that groups its pictures (a springsteenlyrics item's
+        // copies: `pictureGroupLabel` 'copy') chips and groups by each
+        // picture's `group`, in the page's order, with placeholders for the
+        // groups the page lists without pictures. Only for `pictures`: a
+        // `pictureGroups` spec already makes one section per group.
+        if (spec.pictureGroupLabel && !spec.pictureGroups) {
+            desc.groupOf = im => im.group || _artGroupOf(null, im);
+            desc.chipsOf = im => [desc.groupOf(im)];
+            desc.groupedLabel = `By ${spec.pictureGroupLabel}`;
+            desc.groupOrder = spec.pictureGroupOrder || null;
+            desc.placeholders = () => spec.picturePlaceholders || [];
+        }
+        desc.load = sec => Promise.resolve({ state: 'ok', images: desc.images(sec) });
+        _artSectionAdapters().set(key, desc);
+        const sec = _artSectionCreate(desc, entity);
+        sec.dataset.mbArtState = 'ok';
+        _releaseArtRenderSheet(sec);
+        return sec;
     }
 
     /**
@@ -23282,11 +23371,14 @@
      * @returns {?string}
      */
     function _fdPicCardHtml(a) {
-        const fig = a.closest('figure');
-        const grid = a.closest('.mb-release-art-grid');
-        const tiles = grid ? Array.from(grid.querySelectorAll('figure.mb-release-art-tile > a')) : [a];
-        const thumb = (a.querySelector('img') || {}).src || a.href;
-        const cap = fig && fig.querySelector('figcaption') ? fig.querySelector('figcaption').textContent.trim() : '';
+        // Its place among the section's tiles shown (the chips may hide some;
+        // By type spreads them over several grids), and its caption as the
+        // tile's image names it: "Front · Cover", type and comment.
+        const sec = a.closest('.mb-release-art-sec');
+        const tiles = sec ? Array.from(sec.querySelectorAll('figure.mb-release-art-tile > a, a.mb-release-art-row-link')) : [a];
+        const img0 = a.querySelector('img');
+        const thumb = (img0 || {}).src || a.href;
+        const cap = ((img0 && img0.alt) || '').trim();
         const big = _artCardView.big;
         const size = big ? Math.max(320, Math.min(900, window.innerWidth - 60, window.innerHeight - 140)) : 320;
         const where = `Picture ${tiles.indexOf(a) + 1} of ${tiles.length}`;
@@ -23416,8 +23508,10 @@
                 it.collections.length && ['collections', 'Collections', it.collections.length, _fdPills(it.collections), true],
                 lineage && ['lineage', 'Lineage', 1, lineage, true],
             ],
+            // The type guessed from the file name, as the Art column's card does
+            // (`_iaPictureTypes()`); the file name stays the caption.
             pictures: it.pictures.map(p => ({ full: _iaFileUrl(it.id, p.name), thumb: _iaFileUrl(it.id, p.thumb || p.name),
-                caption: p.name.split('/').pop().replace(/\.[^.]+$/, '') })),
+                caption: p.name.split('/').pop().replace(/\.[^.]+$/, ''), types: _iaPictureTypes(p.name) })),
             picturesTitle: 'Pictures', title: _iaDetailsName(), source: 'the item\'s metadata',
         };
     }
@@ -28407,6 +28501,26 @@
             }
         }
         return out;
+    }
+
+    /**
+     * MusicBrainz's cover art type for a bootleg's artwork caption (P3 of
+     * org/image-handling.org, as jungleland's file names, `_jlFiType()`): the
+     * disc, its label, a picture side, the runout or matrix → Medium (checked
+     * first: "disc front" is the disc); a booklet, insert or inlay → Booklet;
+     * "front …" → Front; "back …" → Back; anything else stays Artwork. Only the
+     * page's own words decide; a caption that says nothing stays Artwork.
+     *
+     * @param   {string} caption `_slImageCaptions()`'s text ("disc side 1").
+     * @returns {string[]}
+     */
+    function _slArtworkTypes(caption) {
+        const c = String(caption || '').toLowerCase();
+        if (/\b(?:disc|disk|cd|label|picture side|runout|matrix|vinyl|record)\b/.test(c)) return ['Medium'];
+        if (/\b(?:booklet|insert|inlay)\b/.test(c)) return ['Booklet'];
+        if (/^front\b/.test(c)) return ['Front'];
+        if (/^back\b/.test(c)) return ['Back'];
+        return ['Artwork'];
     }
 
     /**
@@ -108942,6 +109056,24 @@ a { color: #1565c0; }`;
     const MB_EVENT_ART_LAYOUT_KEY = 'mb_sa_event_art_layout';
 
     /**
+     * GM storage key for the layout of a foreign detail page's picture
+     * sections (`'grid'` or `'grouped'`: springsteenlyrics scans, Discogs
+     * images, archive.org pictures; `_fdArtSection()`). One for every foreign
+     * site, its own because those types have nothing in common with the
+     * archives'. Same TDZ placement as the keys above.
+     */
+    const MB_FD_ART_LAYOUT_KEY = 'mb_sa_fd_art_layout';
+
+    /**
+     * GM storage key for the art sections' tile size in px (the Tiles
+     * slider, org/image-handling.org P4a): one for every section, MusicBrainz
+     * and the other sites alike, because it is a viewing preference, not a
+     * kind of data. Unset (and anything outside 80–240) is the stylesheet's
+     * 120 px. Same TDZ placement as the keys above.
+     */
+    const MB_ART_SEC_TILE_KEY = 'mb_sa_art_sec_tile';
+
+    /**
      * GM storage key for the artwork viewer's remembered zoom level (a number
      * from 1 to `_ART_VIEWER_ZOOM_MAX`), written only while
      * `sa_art_viewer_remember_zoom` is on. Runtime UI state like the layout
@@ -127335,6 +127467,9 @@ a { color: #1565c0; }`;
         const box = document.createElement('span');
         box.className = 'mb-sb-avatar';
         if (contain) box.classList.add('mb-sb-avatar-contain');
+        // A cover that does not load (the archive down) gets a ⟳ that asks
+        // again on a click, not the browser's broken glyph (vzell, 2026-11-06).
+        _artImgFailInstall();
         const copy = document.createElement('img');
         copy.src = src;
         copy.alt = '';
@@ -140366,6 +140501,16 @@ a { color: #1565c0; }`;
             group: 'eventart',
             label: 'Event page Event art layout',
             keys: [MB_EVENT_ART_LAYOUT_KEY],
+        },
+        {
+            group: 'fdart',
+            label: 'Other sites\' detail pages: picture layout',
+            keys: [MB_FD_ART_LAYOUT_KEY],
+        },
+        {
+            group: 'artsectile',
+            label: 'Picture sections: tile size',
+            keys: [MB_ART_SEC_TILE_KEY],
         },
         {
             group: 'artviewer',
@@ -157757,30 +157902,48 @@ a { color: #1565c0; }`;
     // docs key on them); read them as "the art section".
 
     /**
-     * What differs between the two art sections. A function, not a `const`
-     * table: it is reached from code that may run before this line has been
-     * evaluated (`updateFilterButtonsVisibility()` → medium art), and the
-     * contexts it names are declared further down.
+     * What differs between the art sections — the section's ADAPTER
+     * (org/image-handling.org, 2a: one image section for every detail
+     * pageType). A function, not a `const` table: it is reached from code that
+     * may run before this line has been evaluated
+     * (`updateFilterButtonsVisibility()` → medium art), and the contexts it
+     * names are declared further down.
      *
-     * @param   {'caa'|'eaa'} key
+     * The members every section handler goes through, so that no handler
+     * reads an archive cache or `location` itself:
+     *   - `images(sec)`: the section's records, in display order (`[]` before
+     *     they are loaded);
+     *   - `load(sec)`: `Promise<{state: 'ok'|'none'|'failed', images}>`;
+     *   - `retry(sec)`: forgets what `load()` remembered, or null when a
+     *     failure cannot be retried;
+     *   - `tab`: a native tab of this page opens the viewer (the archive
+     *     sections' "Cover art (N)" / "Event art (N)").
+     *
+     * @param   {string} key `'caa'`, `'eaa'`.
      * @returns {?{key: string, ctx: Object, pageType: string, setting: string, tabSetting: ?string,
      *            entityRe: RegExp, entityPrefix: string, anchor: function(): ?Element, label: string,
-     *            archiveName: string, what: string, titleSel: string, layouts: string[], layoutKey: string}}
+     *            archiveName: string, what: string, titleSel: string, layouts: string[], layoutKey: string,
+     *            images: function(HTMLElement): Object[], load: function(HTMLElement): Promise<Object>,
+     *            retry: ?function(HTMLElement): void, tab: boolean}}
      */
     function _artSectionDesc(key) {
         if (key === 'caa') {
-            return {
+            return _artSectionArchiveSource({
                 key, ctx: CAA_CTX, pageType: 'release-tracks',
                 setting: 'sa_enable_release_tracks_cover_art', tabSetting: null,
                 entityRe: /^\/release\/([a-f0-9-]{36})/, entityPrefix: '/release/',
                 anchor: () => document.querySelector('h2.tracklist'),
                 label: 'Cover art', archiveName: 'Cover Art Archive', what: 'release',
                 titleSel: '.releaseheader h1, #content h1',
-                layouts: ['grid', 'grouped', 'spreads'], layoutKey: MB_RELEASE_ART_LAYOUT_KEY
-            };
+                layouts: ['grid', 'grouped', 'spreads', 'table'], layoutKey: MB_RELEASE_ART_LAYOUT_KEY,
+                // Medium art (R7): MusicBrainz's "1 - CD" headings, behind its two settings.
+                mediaOf: () => _releaseArtMedia(),
+                mediumOn: () => !!(Lib.settings.sa_enable_release_tracks_cover_art &&
+                                   Lib.settings.sa_enable_release_tracks_medium_art),
+            });
         }
         if (key === 'eaa') {
-            return {
+            return _artSectionArchiveSource({
                 key, ctx: EAA_CTX, pageType: 'event-overview',
                 setting: 'sa_event_overview_event_art', tabSetting: 'sa_event_overview_art_tab',
                 entityRe: /^\/event\/([a-f0-9-]{36})/, entityPrefix: '/event/',
@@ -157790,10 +157953,65 @@ a { color: #1565c0; }`;
                               document.querySelector('#content h2.setlist'),
                 label: 'Event art', archiveName: 'Event Art Archive', what: 'event',
                 titleSel: '.eventheader h1, #content h1',
-                layouts: ['grid', 'grouped'], layoutKey: MB_EVENT_ART_LAYOUT_KEY
-            };
+                layouts: ['grid', 'grouped', 'table'], layoutKey: MB_EVENT_ART_LAYOUT_KEY
+            });
         }
-        return null;
+        return _artSectionAdapters().get(key) || null;
+    }
+
+    /**
+     * The adapters built at run time (a foreign detail page's picture
+     * sections, `_fdArtSection()`), by key. A property of the function, not
+     * a module `const`: `_artSectionDesc()` may be reached before a `const`
+     * further down has been evaluated.
+     *
+     * @returns {Map<string, Object>}
+     */
+    function _artSectionAdapters() {
+        if (!_artSectionAdapters.map) _artSectionAdapters.map = new Map();
+        return _artSectionAdapters.map;
+    }
+
+    /**
+     * Adds the archive data source to a CAA/EAA descriptor: the records live
+     * in `desc.ctx.imagesCache` under the section's entity path, are loaded by
+     * `_artFetchEntityImages()` (the same record and cache as the CAA/EAA
+     * column), and a retry drops all three session caches first.
+     *
+     * @param   {Object} desc The descriptor without its source members.
+     * @returns {Object} The same object, completed.
+     */
+    function _artSectionArchiveSource(desc) {
+        const ctx = desc.ctx;
+        desc.images = sec => ctx.imagesCache.get(sec.dataset.mbArtEntity) || [];
+        desc.load = sec => _artFetchEntityImages(ctx, sec.dataset.mbArtEntity);
+        desc.retry = (sec) => {
+            const entityPath = sec.dataset.mbArtEntity;
+            // Drop the session zero first, or Tier 1 serves it straight back
+            // (docs/claude/artwork-caa-eaa.md, CAA/EAA retry).
+            ctx.countCache.delete(entityPath);
+            ctx.imagesCache.delete(entityPath);
+            ctx.failedCache.delete(entityPath);
+        };
+        desc.tab = true;
+        return desc;
+    }
+
+    /**
+     * The built section of one adapter (`data-mb-art-ctx`), or the first one
+     * with a native tab when no key is given. Never a foreign detail head's
+     * picture section (`.mb-fd-art`), which shares the class but carries no
+     * `data-mb-art-ctx`: a bare `.mb-release-art-sec` query would find it.
+     *
+     * @param   {string} [key] The adapter's key; omitted: any tabbed section.
+     * @param   {boolean} [loaded=false] Only a section whose records are in.
+     * @returns {?HTMLElement}
+     */
+    function _artSectionFind(key, loaded = false) {
+        const state = loaded ? '[data-mb-art-state="ok"]' : '';
+        if (key) return document.querySelector(`.mb-release-art-sec[data-mb-art-ctx="${key}"]${state}`);
+        return Array.from(document.querySelectorAll(`.mb-release-art-sec[data-mb-art-ctx]${state}`))
+            .find(sec => { const d = _artSectionOf(sec); return !!(d && d.tab); }) || null;
     }
 
     /**
@@ -157834,7 +158052,7 @@ a { color: #1565c0; }`;
             .mb-release-art-retry { margin-left: 6px; cursor: pointer; }
             .mb-release-art-grid {
                 display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+                grid-template-columns: repeat(auto-fill, minmax(var(--mb-art-sec-tile, 120px), 1fr));
                 gap: 10px;
             }
             .mb-release-art-tile {
@@ -157982,6 +158200,76 @@ a { color: #1565c0; }`;
                 text-transform: uppercase;
                 letter-spacing: 0.05em;
             }
+            /* A placeholder: a group the page lists without pictures (a
+               springsteenlyrics copy with "No scans available yet"). Never a
+               tile, so the viewer and the counts never see it. */
+            .mb-release-art-missing { margin: 0; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+            .mb-release-art-missing > div {
+                aspect-ratio: 1;
+                box-sizing: border-box;
+                border: 2px dashed #c9a0a0;
+                background: #fbf3f3;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                padding: 8px;
+                font-size: 11px;
+                line-height: 1.3;
+                color: #8a4a4a;
+            }
+            .mb-release-art-missing figcaption { font-size: 11px; line-height: 1.3; font-weight: bold; }
+            .mb-release-art-chip.mb-release-art-chip-empty { border-style: dashed; color: #777; }
+            /* P4a: the second tool row, the Table layout. */
+            .mb-release-art-tools-more { margin-top: -4px; font-size: 11px; color: #555; }
+            .mb-release-art-q {
+                font-size: 11px;
+                padding: 1px 6px;
+                width: 15em;
+                max-width: 100%;
+                border: 1px solid #ccc;
+                border-radius: 3px;
+            }
+            .mb-release-art-size, .mb-release-art-miss { display: inline-flex; gap: 4px; align-items: center; cursor: pointer; }
+            .mb-release-art-size input { width: 90px; }
+            .mb-release-art-size-reset {
+                border: 1px solid #ccc;
+                border-radius: 3px;
+                background: #fff;
+                color: #444;
+                font-size: 11px;
+                line-height: 1.2;
+                padding: 0 5px;
+                cursor: pointer;
+            }
+            mark.mb-release-art-hl { background: #ffe066; color: inherit; padding: 0; }
+            .mb-release-art-shown { color: #666; font-variant-numeric: tabular-nums; }
+            .mb-release-art-empty { color: #666; font-style: italic; margin: 4px 0; }
+            .mb-release-art-tablewrap { overflow-x: auto; max-width: calc(100vw - 32px); }
+            table.mb-release-art-table { border-collapse: collapse; font-size: 12px; }
+            table.mb-release-art-table th {
+                text-align: left;
+                background: #eee;
+                padding: 3px 8px;
+                border-bottom: 1px solid #ccc;
+                white-space: nowrap;
+            }
+            table.mb-release-art-table th[data-mb-art-sort] { cursor: pointer; user-select: none; }
+            table.mb-release-art-table th[aria-sort="ascending"]::after { content: " \\25B2"; font-size: 9px; }
+            table.mb-release-art-table th[aria-sort="descending"]::after { content: " \\25BC"; font-size: 9px; }
+            table.mb-release-art-table td { padding: 2px 8px; border-bottom: 1px solid #eee; vertical-align: middle; }
+            table.mb-release-art-table td.mb-release-art-num { text-align: right; font-variant-numeric: tabular-nums; }
+            a.mb-release-art-row-link {
+                display: block;
+                width: 48px;
+                height: 48px;
+                border: 1px solid #ddd;
+                background: #f4f4f4;
+                box-sizing: border-box;
+                cursor: zoom-in;
+            }
+            a.mb-release-art-row-link img { display: block; width: 100%; height: 100%; object-fit: contain; }
+            tr.mb-release-art-missing-row td { color: #8a4a4a; font-style: italic; }
         `);
         style.id = 'mb-release-art-style';
     }
@@ -157994,8 +158282,10 @@ a { color: #1565c0; }`;
      * `white-space: pre-wrap`, so the string carries NO whitespace between
      * tags. Same layout idiom as the release group card (`_rgCardHtml()`).
      *
-     * Everything comes from the archive record already in `CAA_CTX.imagesCache`;
-     * the preview is the 500 px thumbnail (`large` on older records).
+     * Everything comes from the record already in its section's adapter; the
+     * preview is the 500 px thumbnail (`large` on older records), or for
+     * another site's picture (a foreign page's medium thumb, P3) the picture
+     * itself, without a referrer.
      *
      * @param   {Object[]} images The release's archive images, in archive order.
      * @param   {number}   index  The tile's image.
@@ -158004,8 +158294,12 @@ a { color: #1565c0; }`;
     function _releaseArtTipHtml(images, index) {
         const im = images[index];
         const thumbs = im.thumbnails || {};
-        const preview = (thumbs['500'] || thumbs.large || thumbs['250'] || thumbs.small || im.image || '')
-            .replace(/^http:/, '');
+        // Another site's picture (a foreign page's medium thumb, P3): its own
+        // URL as given, the full picture (there is no 500 px size), no
+        // referrer, and no archive link to open with Ctrl.
+        const ext = !!im.external;
+        const preview = ext ? (im.image || thumbs['250'] || '')
+            : (thumbs['500'] || thumbs.large || thumbs['250'] || thumbs.small || im.image || '').replace(/^http:/, '');
         const types = Array.isArray(im.types) && im.types.length ? im.types : ['(no type)'];
         const first = types[0];
         const sameType = images.filter(x => (x.types || []).includes(first));
@@ -158020,11 +158314,11 @@ a { color: #1565c0; }`;
             `<div class="mb-tt-body" style="display:flex;gap:6px;flex-wrap:wrap;">${types.map(pill).join('')}</div>` +
             (im.comment ? `<div class="mb-tt-comment">“${_rgEsc(im.comment)}”</div>` : '') +
             `<div style="margin-top:6px;width:280px;height:280px;max-width:100%;background:#efe6d4;border:1px solid #d9cfbd;border-radius:2px;">` +
-            `<img src="${_rgEsc(preview)}" alt="" style="width:100%;height:100%;object-fit:contain;display:block;"></div>` +
+            `<img src="${_rgEsc(preview)}" alt=""${ext ? ' referrerpolicy="no-referrer"' : ''} style="width:100%;height:100%;object-fit:contain;display:block;"></div>` +
             `<div class="mb-tt-rule"></div>` +
             `<div class="mb-tt-dim">${_rgEsc(where)}</div>` +
             (ids ? `<div class="mb-tt-dim">${_rgEsc(ids)}</div>` : '') +
-            `<div class="mb-tt-foot">Click: viewer · Ctrl-click: 1200 px in a new tab</div>` +
+            `<div class="mb-tt-foot">${ext ? 'Click: viewer' : 'Click: viewer · Ctrl-click: 1200 px in a new tab'}</div>` +
             `</div>`;
     }
 
@@ -158037,6 +158331,14 @@ a { color: #1565c0; }`;
      * the thumbnail links to the 1200 px image in a new tab. The hover card is
      * `data-mbtt` (see `_releaseArtTipHtml()`).
      *
+     * Another site's record (`external`, a foreign detail page's picture,
+     * `_fdArtSection()`) differs in four ways: its URLs stay as they are (an
+     * archive URL becomes protocol-relative, but another site may not answer
+     * on https), it is loaded without a referrer, its hover card is the
+     * picture card `fd-pic` (`_fdPicCardHtml()`: the archive card speaks of
+     * edits and 1200 px), and its ★ is the site's primary image. A comment
+     * that only repeats the type ("Front" for Front.jpg) is not printed twice.
+     *
      * @param   {Object[]} images The release's archive images, in archive order.
      * @param   {number}   index  The tile's image, its position in archive order.
      * @param   {string}   [archiveName='Cover Art Archive'] For the ⏳ tip.
@@ -158044,34 +158346,39 @@ a { color: #1565c0; }`;
      */
     function _releaseArtBuildTile(images, index, archiveName = 'Cover Art Archive') {
         const imgData = images[index];
+        const ext = !!imgData.external;
+        const url = u => (ext ? u : u.replace(/^http:/, ''));
         const thumbs = imgData.thumbnails || {};
-        const thumb = (thumbs['250'] || thumbs.small || thumbs['500'] || thumbs.large || imgData.image || '')
-            .replace(/^http:/, '');
-        const big = (thumbs['1200'] || thumbs.large || imgData.image || thumb).replace(/^http:/, '');
+        const thumb = url(thumbs['250'] || thumbs.small || thumbs['500'] || thumbs.large || imgData.image || '');
+        const big = url(thumbs['1200'] || thumbs.large || imgData.image || thumb);
         const types = Array.isArray(imgData.types) && imgData.types.length ? imgData.types : ['(no type)'];
+        const comment = ext && (imgData.comment || '').toLowerCase() === types.join(' / ').toLowerCase()
+            ? '' : (imgData.comment || '');
 
         const fig = document.createElement('figure');
         fig.className = 'mb-release-art-tile';
         fig.dataset.mbArtI = String(index);
-        fig.dataset.mbtt = _releaseArtTipHtml(images, index);
+        if (!ext) fig.dataset.mbtt = _releaseArtTipHtml(images, index);
 
         const a = document.createElement('a');
         a.href = big;
         a.target = '_blank';
-        a.rel = 'noopener';
+        a.rel = ext ? 'noopener noreferrer' : 'noopener';
+        if (ext) a.dataset.mbttFn = 'fd-pic';
         const img = document.createElement('img');
         img.src = thumb;
         img.loading = 'lazy';
         img.decoding = 'async';
-        img.alt = types.join(' / ') + (imgData.comment ? ' · ' + imgData.comment : '');
+        if (ext) img.referrerPolicy = 'no-referrer';
+        img.alt = types.join(' / ') + (comment ? ' · ' + comment : '');
         a.appendChild(img);
         fig.appendChild(a);
 
         if (imgData.front) {
             const star = document.createElement('span');
             star.className = 'mb-release-art-star';
-            star.textContent = '★ main';
-            _setTip(star, 'The archive\'s main front image');
+            star.textContent = ext ? '★ primary' : '★ main';
+            _setTip(star, ext ? 'The site\'s primary image' : 'The archive\'s main front image');
             fig.appendChild(star);
         }
 
@@ -158087,10 +158394,10 @@ a { color: #1565c0; }`;
             _setTip(pend, `Pending approval in the ${archiveName}`);
             cap.appendChild(pend);
         }
-        if (imgData.comment) {
+        if (comment) {
             const c = document.createElement('span');
             c.className = 'mb-release-art-comment';
-            c.textContent = imgData.comment;
+            c.textContent = comment;
             cap.appendChild(c);
         }
         fig.appendChild(cap);
@@ -158103,15 +158410,329 @@ a { color: #1565c0; }`;
      * both. Derived from the record rather than a fixed vocabulary, so it
      * stays right for any type the archive adds (and for event art later).
      *
+     * An adapter may chip something else than the types (`chipsOf`: a
+     * springsteenlyrics item's copies), name its placeholders' groups (a
+     * chip with 0 each) and fix their order (`groupOrder`: the page's).
+     *
      * @param   {Object[]} images
+     * @param   {Object}   [desc] The section's adapter; without it, the types.
      * @returns {Array<{type: string, n: number}>}
      */
-    function _releaseArtTypeCounts(images) {
+    function _releaseArtTypeCounts(images, desc) {
         const counts = new Map();
-        images.forEach(im => (im.types && im.types.length ? im.types : ['(no type)']).forEach(t => {
+        images.forEach(im => _artChipsOf(desc, im).forEach(t => {
             counts.set(t, (counts.get(t) || 0) + 1);
         }));
-        return Array.from(counts, ([type, n]) => ({ type, n }));
+        _artPlaceholders(desc).forEach((p) => { if (!counts.has(p.group)) counts.set(p.group, 0); });
+        return _artInGroupOrder(desc, Array.from(counts, ([type, n]) => ({ type, n })), c => c.type);
+    }
+
+    /**
+     * The chips an image counts for: the adapter's `chipsOf(im)`, else its
+     * types (an untyped image: "(no type)").
+     *
+     * @param   {?Object} desc The section's adapter.
+     * @param   {Object}  im   An image record.
+     * @returns {string[]}
+     */
+    function _artChipsOf(desc, im) {
+        if (desc && typeof desc.chipsOf === 'function') return desc.chipsOf(im);
+        return im.types && im.types.length ? im.types : ['(no type)'];
+    }
+
+    /**
+     * The group an image goes under in the grouped layout: the adapter's
+     * `groupOf(im)`, else its FIRST type.
+     *
+     * @param   {?Object} desc The section's adapter.
+     * @param   {Object}  im   An image record.
+     * @returns {string}
+     */
+    function _artGroupOf(desc, im) {
+        if (desc && typeof desc.groupOf === 'function') return desc.groupOf(im);
+        return (im.types && im.types[0]) || '(no type)';
+    }
+
+    /**
+     * The adapter's placeholders — groups the page lists without pictures,
+     * `[{group, note}]` — or none.
+     *
+     * @param   {?Object} desc The section's adapter.
+     * @returns {Array<{group: string, note: string}>}
+     */
+    function _artPlaceholders(desc) {
+        return (desc && typeof desc.placeholders === 'function' && desc.placeholders()) || [];
+    }
+
+    /**
+     * Sorts items by the adapter's `groupOrder` (the page's order of its
+     * groups); items whose key it does not name keep their order after those
+     * it does. Without a `groupOrder`, the items as they are.
+     *
+     * @template T
+     * @param   {?Object} desc The section's adapter.
+     * @param   {T[]}     items
+     * @param   {function(T): string} keyOf
+     * @returns {T[]}
+     */
+    function _artInGroupOrder(desc, items, keyOf) {
+        const order = desc && Array.isArray(desc.groupOrder) ? desc.groupOrder : null;
+        if (!order) return items;
+        const rank = k => { const i = order.indexOf(k); return i < 0 ? order.length : i; };
+        return items.map((it, i) => ({ it, i })).sort((a, b) => rank(keyOf(a.it)) - rank(keyOf(b.it)) || a.i - b.i)
+            .map(x => x.it);
+    }
+
+    /**
+     * A placeholder in the sheet: a box with the page's own words and the
+     * group's name, `figure.mb-release-art-missing` — never a
+     * `.mb-release-art-tile`, so the viewer's order, the tile counts and the
+     * picture card never see it.
+     *
+     * @param   {{group: string, note: string}} p
+     * @returns {HTMLElement}
+     */
+    function _artPlaceholderEl(p) {
+        const fig = document.createElement('figure');
+        fig.className = 'mb-release-art-missing';
+        fig.dataset.mbArtMissing = p.group;
+        const box = document.createElement('div');
+        box.textContent = p.note || 'No pictures';
+        const cap = document.createElement('figcaption');
+        cap.textContent = p.group;
+        fig.append(box, cap);
+        return fig;
+    }
+
+    // ── Pictures that did not load: a ⟳ instead of the broken glyph ────────
+    //
+    // vzell, 2026-11-06: the Event Art Archive's files timed out
+    // (archive.org, net::ERR_CONNECTION_TIMED_OUT), the record had come
+    // through, and every tile showed the browser's broken-image glyph. The
+    // archive's record has its ⟳ Retry; a picture file had none, on
+    // MusicBrainz or on the other sites. One capture-phase listener marks
+    // the box of a picture that failed (`.mb-img-failed`, which the CSS
+    // turns into a dashed ⟳ box). The box keeps its own click — the viewer
+    // can still show the large image when only the thumbnail failed, and
+    // every spec that serves the archive's thumbnails as 404s relies on it:
+    // a tile or a table row gets a separate "⟳" button
+    // (`button.mb-img-retry`), and a medium thumb or the heading's cover
+    // (too small for a second button) asks again on the click that opens
+    // the viewer. A failed load is not cached by the browser, so setting the
+    // address again asks again.
+
+    /** The boxes whose own `<img>` gets the ⟳ (the picture is their direct child). */
+    const _ART_IMG_RETRY_HOSTS = 'figure.mb-release-art-tile > a, a.mb-release-art-row-link, button.mb-medium-art-btn, ' +
+        'span.mb-sb-avatar, #mb-stat-tooltip .mb-art-card-tile';
+
+    /**
+     * Installs, once, the listeners that turn a failed picture into a ⟳ box
+     * and retry it on a click. Called by every producer of such boxes (the
+     * art sections, the medium thumbs, the heading's cover copy, the artwork
+     * cards), so a page without any installs nothing.
+     *
+     * @returns {void}
+     */
+    function _artImgFailInstall() {
+        if (_artImgFailInstall.done) return;
+        _artImgFailInstall.done = true;
+        _ensureArtImgFailStyle();
+        document.addEventListener('error', _artImgOnError, true);
+        document.addEventListener('load', _artImgOnLoad, true);
+        window.addEventListener('click', _artImgOnRetryClick, true);
+    }
+
+    /**
+     * A picture failed (`error` does not bubble: caught in the capture
+     * phase): its box becomes a ⟳ box, and its section's "⟳ Reload N
+     * failed" is counted again. The artwork card cannot be clicked
+     * (`pointer-events: none`), so it gets a line saying how to retry.
+     *
+     * @param   {Event} e
+     * @returns {void}
+     */
+    function _artImgOnError(e) {
+        const img = e.target;
+        if (!(img instanceof HTMLImageElement)) return;
+        const host = img.parentElement;
+        if (!host || !host.matches(_ART_IMG_RETRY_HOSTS)) return;
+        host.classList.add('mb-img-failed');
+        if (host.matches('#mb-stat-tooltip .mb-art-card-tile')) {
+            const card = host.closest('[data-mb-art-card]');
+            if (card && !card.querySelector('.mb-img-failed-note')) {
+                const note = document.createElement('div');
+                note.className = 'mb-tt-dim mb-img-failed-note';
+                note.textContent = 'Pictures marked ⟳ did not load: rest on the link again to try again.';
+                card.appendChild(note);
+            }
+            return;
+        }
+        // A tile or a table row: its own ⟳ button beside the link, so the
+        // link's click (the viewer) stays as it is.
+        if (host.matches('figure.mb-release-art-tile > a, a.mb-release-art-row-link')) {
+            const holder = host.parentElement;
+            if (holder && !holder.querySelector(':scope > .mb-img-retry')) {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'mb-img-retry';
+                b.textContent = '⟳';
+                b.setAttribute('aria-label', 'This picture did not load: try again');
+                _setTip(b, 'This picture did not load: try again');
+                holder.appendChild(b);
+            }
+        }
+        _artImgFailCount(host.closest('.mb-release-art-sec'));
+    }
+
+    /**
+     * A picture loaded after a retry: its box is an ordinary one again.
+     *
+     * @param   {Event} e
+     * @returns {void}
+     */
+    function _artImgOnLoad(e) {
+        const img = e.target;
+        if (!(img instanceof HTMLImageElement)) return;
+        const host = img.parentElement;
+        if (!host || !host.classList.contains('mb-img-failed')) return;
+        host.classList.remove('mb-img-failed');
+        const b = host.parentElement && host.parentElement.querySelector(':scope > .mb-img-retry');
+        if (b) b.remove();
+        _artImgFailCount(host.closest('.mb-release-art-sec'));
+    }
+
+    /**
+     * Asks for a failed picture again: the same address, set anew. Its ⟳
+     * button goes; a second failure puts it back.
+     *
+     * @param   {HTMLElement} host A `.mb-img-failed` box.
+     * @returns {void}
+     */
+    function _artImgRetry(host) {
+        const img = host.querySelector(':scope > img');
+        if (!img) return;
+        host.classList.remove('mb-img-failed');
+        const b = host.parentElement && host.parentElement.querySelector(':scope > .mb-img-retry');
+        if (b) b.remove();
+        const src = img.getAttribute('src');
+        img.removeAttribute('src');
+        img.setAttribute('src', src);
+    }
+
+    /**
+     * A tile's or a row's ⟳ retries its picture, and "⟳ Reload N failed"
+     * every one of its section: on `window` in the capture phase, so the
+     * section's own click (the viewer) and the navigation guard never see
+     * those. A click on a failed medium thumb or heading cover asks again
+     * and goes on to its own handler (the viewer), untouched.
+     *
+     * @param   {MouseEvent} e
+     * @returns {void}
+     */
+    function _artImgOnRetryClick(e) {
+        if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+        const t = e.target instanceof Element ? e.target : null;
+        if (!t) return;
+        const all = t.closest('.mb-release-art-reload');
+        const one = all ? null : t.closest('.mb-img-retry');
+        if (!all && !one) {
+            const small = t.closest('button.mb-medium-art-btn.mb-img-failed, span.mb-sb-avatar.mb-img-failed');
+            if (small) _artImgRetry(small);
+            return;
+        }
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        if (one) {
+            const host = one.parentElement && one.parentElement.querySelector(':scope > a.mb-img-failed');
+            if (host) {
+                _artImgRetry(host);
+                _artImgFailCount(host.closest('.mb-release-art-sec'));
+            }
+            return;
+        }
+        const sec = all.closest('.mb-release-art-sec');
+        if (!sec) return;
+        sec.querySelectorAll('.mb-img-failed').forEach(_artImgRetry);
+        _artImgFailCount(sec);
+    }
+
+    /**
+     * Shows a section's "⟳ Reload N failed" with its count, or hides it.
+     *
+     * @param   {?HTMLElement} sec
+     * @returns {void}
+     */
+    function _artImgFailCount(sec) {
+        if (!sec) return;
+        const btn = sec.querySelector('.mb-release-art-reload');
+        if (!btn) return;
+        const n = sec.querySelectorAll('.mb-img-failed').length;
+        btn.hidden = !n;
+        btn.textContent = `⟳ Reload ${n} failed`;
+    }
+
+    /**
+     * The stylesheet of the ⟳ boxes, added once. The picture keeps its
+     * place (`visibility: hidden`), so nothing moves; the ⟳ is the box's
+     * own `::after`, so a click on it is a click on the box.
+     *
+     * @returns {void}
+     */
+    function _ensureArtImgFailStyle() {
+        if (document.getElementById('mb-img-failed-style')) return;
+        const st = GM_addStyle(`
+            .mb-img-failed { position: relative; }
+            .mb-img-failed > img { visibility: hidden; }
+            .mb-img-failed::after {
+                content: "\\27F3";
+                position: absolute;
+                inset: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #8a4a4a;
+                font: 22px/1 system-ui, sans-serif;
+                pointer-events: none;
+            }
+            :is(figure.mb-release-art-tile > a, a.mb-release-art-row-link).mb-img-failed {
+                border: 2px dashed #c9a0a0;
+                background: #fbf3f3;
+            }
+            .mb-img-retry {
+                border: 1px solid #c9a0a0;
+                border-radius: 3px;
+                background: #fff;
+                color: #8a4a4a;
+                font: 13px/1.2 system-ui, sans-serif;
+                padding: 0 5px;
+                cursor: pointer;
+            }
+            figure.mb-release-art-tile > .mb-img-retry { position: absolute; top: 4px; right: 4px; z-index: 2; }
+            a.mb-release-art-row-link + .mb-img-retry { margin-top: 2px; }
+            figure.mb-release-art-tile > a.mb-img-failed::before {
+                content: "did not load";
+                position: absolute;
+                left: 0;
+                right: 0;
+                bottom: 6px;
+                text-align: center;
+                font: 10px/1.2 system-ui, sans-serif;
+                color: #8a4a4a;
+                pointer-events: none;
+            }
+            :is(button.mb-medium-art-btn, span.mb-sb-avatar).mb-img-failed { background: #fbf3f3; cursor: pointer; }
+            :is(button.mb-medium-art-btn, span.mb-sb-avatar, #mb-stat-tooltip .mb-art-card-tile).mb-img-failed::after { font-size: 14px; }
+            .mb-release-art-reload {
+                border: 1px solid #c9a0a0;
+                border-radius: 3px;
+                background: #fbf3f3;
+                color: #8a4a4a;
+                font-size: 11px;
+                padding: 0 6px;
+                cursor: pointer;
+            }
+        `);
+        st.id = 'mb-img-failed-style';
     }
 
     /**
@@ -158202,24 +158823,79 @@ a { color: #1565c0; }`;
     /**
      * The indices the chip filter leaves, in archive order: every image when
      * no type is selected, else each image carrying ANY selected type (an
-     * untyped image counts as "(no type)"), once.
+     * untyped image counts as "(no type)"), once. With a text filter (P4a,
+     * the section's filter box), only the images whose types, comment, group
+     * or file name contain it, case-insensitively.
      *
      * @param   {Object[]} images The release's archive images.
-     * @param   {string[]} types  The selected types, empty for all.
+     * @param   {string[]} types  The selected chips, empty for all.
+     * @param   {Object}   [desc] The section's adapter (`chipsOf`); without it, the types.
+     * @param   {string}   [q]    The text filter; empty for none.
      * @returns {number[]}
      */
-    function _releaseArtShownIndices(images, types) {
+    function _releaseArtShownIndices(images, types, desc, q) {
         const want = new Set(types);
-        return images.map((im, i) => i)
-            .filter(i => !want.size ||
-                (images[i].types && images[i].types.length ? images[i].types : ['(no type)']).some(t => want.has(t)));
+        const query = String(q || '').trim().toLowerCase();
+        const keep = i => !query || _artSearchText(desc, images[i]).includes(query);
+        return images.map((im, i) => i).filter(keep)
+            .filter(i => !want.size || _artChipsOf(desc, images[i]).some(t => want.has(t)));
+    }
+
+    /**
+     * What the section's filter box searches in an image: its types, its
+     * comment, its group (a copy) and its file name, lower-cased.
+     *
+     * @param   {?Object} desc The section's adapter.
+     * @param   {Object}  im   An image record.
+     * @returns {string}
+     */
+    function _artSearchText(desc, im) {
+        return [(im.types || []).join(' '), im.comment || '', _artGroupOf(desc, im), _artFileName(im)]
+            .join(' ').toLowerCase();
+    }
+
+    /**
+     * An image's file name: the last part of its full URL's path, decoded
+     * ("6752725588.jpg", "Disc 1.jpg", "2567_artwork_03.jpg").
+     *
+     * @param   {Object} im An image record.
+     * @returns {string}
+     */
+    function _artFileName(im) {
+        const path = String(im.image || '').split(/[?#]/)[0];
+        const last = path.slice(path.lastIndexOf('/') + 1);
+        try { return decodeURIComponent(last); } catch (_) { return last; }
+    }
+
+    /**
+     * The section's text filter (`data-mb-art-q`, the filter box), '' for none.
+     *
+     * @param   {HTMLElement} sec
+     * @returns {string}
+     */
+    function _releaseArtQuery(sec) {
+        return sec.dataset.mbArtQ || '';
+    }
+
+    /**
+     * The art sections' tile size in px from `MB_ART_SEC_TILE_KEY`, or null
+     * for the stylesheet's own (120 px): unset, not a number, or outside
+     * 80–240.
+     *
+     * @returns {?number}
+     */
+    function _releaseArtTileSize() {
+        let v;
+        try { v = GM_getValue(MB_ART_SEC_TILE_KEY, null); } catch (_) { v = null; }
+        return typeof v === 'number' && v >= 80 && v <= 240 ? v : null;
     }
 
     /**
      * The order the viewer steps through when a tile is clicked: the tiles
-     * as they stand on screen for Grid and By type, and the Spreads plan for
-     * Spreads — which includes the Liner pages the pager currently hides, so
-     * paging is never needed to reach one in the viewer.
+     * as they stand on screen for Grid and By type, the rows in their sorted
+     * order for Table, and the Spreads plan for Spreads — which includes the
+     * Liner pages the pager currently hides, so paging is never needed to
+     * reach one in the viewer.
      *
      * @param   {HTMLElement} sec A loaded `div.mb-release-art-sec`.
      * @returns {number[]}
@@ -158227,12 +158903,12 @@ a { color: #1565c0; }`;
     function _releaseArtViewerOrder(sec) {
         const desc = _artSectionOf(sec);
         if (_releaseArtLayout(desc) === 'spreads') {
-            const images = desc.ctx.imagesCache.get(sec.dataset.mbArtEntity) || [];
+            const images = desc.images(sec);
             const { pairs, book, rest } = _releaseArtSpreadsPlan(images,
-                _releaseArtShownIndices(images, _releaseArtActiveTypes(sec)));
+                _releaseArtShownIndices(images, _releaseArtActiveTypes(sec), desc, _releaseArtQuery(sec)));
             return [...pairs.flatMap(p => [p.l, p.r]), ...book, ...rest];
         }
-        return Array.from(sec.querySelectorAll('figure.mb-release-art-tile')).map(f => Number(f.dataset.mbArtI));
+        return Array.from(sec.querySelectorAll('figure.mb-release-art-tile, tr[data-mb-art-i]')).map(f => Number(f.dataset.mbArtI));
     }
 
     /**
@@ -158314,7 +158990,7 @@ a { color: #1565c0; }`;
 
     /**
      * (Re)builds the toolbar and the contact sheet of a loaded section from
-     * `CAA_CTX.imagesCache`: type chips (`data-mb-art-filter`, "" = all) and the
+     * its adapter's records (`desc.images(sec)`): type chips (`data-mb-art-filter`, "" = all) and the
      * Grid / By type / Spreads switch (`data-mb-art-layout`), then the tiles —
      * all of them, or only those carrying ANY of the selected types (the
      * chips are multi-select), either as one grid in archive order, grouped
@@ -158323,25 +158999,89 @@ a { color: #1565c0; }`;
      * (`data-mb-art-active-types`, a JSON array read by
      * `_releaseArtActiveTypes()`; deliberately NOT the chips'
      * `data-mb-art-filter`, which `closest()` would then match on the
-     * section itself), the layout in GM storage.
+     * section itself), the layout in GM storage. Since P4a also a Table
+     * layout (`_releaseArtRenderTable()`), a second tool row
+     * (`_releaseArtToolsMore()`: filter box, Tiles slider, Show missing) and
+     * the text filter (`data-mb-art-q`) in every layout, its matches marked
+     * in what the sheet shows (`_artHighlight()`, vzell 2026-11-06).
      *
      * @param   {HTMLElement} sec A section whose `data-mb-art-state` is `'ok'`.
      * @returns {void}
      */
     function _releaseArtRenderSheet(sec) {
+        _releaseArtBuildSheet(sec);
+        _artHighlight(sec, _releaseArtQuery(sec));
+    }
+
+    /**
+     * Marks every visible occurrence of the section's text filter (vzell,
+     * 2026-11-06: "when filtering and the filter string is a visible string
+     * highlight it"): in the tiles' types and comments, the group headings,
+     * the table's cells and a placeholder's text, case-insensitively, as
+     * `mark.mb-release-art-hl`. A match only in a file name has nothing to
+     * mark outside the Table's File column. Only text nodes are split, so an
+     * element's `textContent` stays the same.
+     *
+     * @param   {HTMLElement} sec The rendered section.
+     * @param   {string}      q   The text filter; nothing to do when empty.
+     * @returns {void}
+     */
+    function _artHighlight(sec, q) {
+        const query = String(q || '').trim().toLowerCase();
+        if (!query) return;
+        sec.querySelectorAll('.mb-release-art-types, .mb-release-art-comment, .mb-release-art-group-hdr, ' +
+            'table.mb-release-art-table td, .mb-release-art-missing').forEach((el) => {
+            const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+            const nodes = [];
+            while (walker.nextNode()) nodes.push(walker.currentNode);
+            nodes.forEach((node) => {
+                const text = node.nodeValue;
+                const lower = text.toLowerCase();
+                // A lower-cased text of another length cannot be mapped back.
+                if (lower.length !== text.length) return;
+                let at = lower.indexOf(query);
+                if (at < 0) return;
+                const frag = document.createDocumentFragment();
+                let from = 0;
+                while (at >= 0) {
+                    frag.append(text.slice(from, at));
+                    const m = document.createElement('mark');
+                    m.className = 'mb-release-art-hl';
+                    m.textContent = text.slice(at, at + query.length);
+                    frag.append(m);
+                    from = at + query.length;
+                    at = lower.indexOf(query, from);
+                }
+                frag.append(text.slice(from));
+                node.replaceWith(frag);
+            });
+        });
+    }
+
+    /**
+     * `_releaseArtRenderSheet()`'s body: the toolbar and the sheet, without
+     * the filter's marks.
+     *
+     * @param   {HTMLElement} sec
+     * @returns {void}
+     */
+    function _releaseArtBuildSheet(sec) {
         const desc = _artSectionOf(sec);
-        const images = desc.ctx.imagesCache.get(sec.dataset.mbArtEntity) || [];
+        const images = desc.images(sec);
         const active = _releaseArtActiveTypes(sec);
         const layout = _releaseArtLayout(desc);
-        sec.querySelectorAll('.mb-release-art-tools, .mb-release-art-grid, .mb-release-art-group, .mb-release-art-spread')
-            .forEach(n => n.remove());
+        sec.querySelectorAll('.mb-release-art-tools, .mb-release-art-grid, .mb-release-art-group, .mb-release-art-spread, ' +
+            '.mb-release-art-tablewrap, .mb-release-art-empty').forEach(n => n.remove());
+        const tile = _releaseArtTileSize();
+        if (tile) sec.style.setProperty('--mb-art-sec-tile', `${tile}px`);
 
         const tools = document.createElement('div');
         tools.className = 'mb-release-art-tools';
         const chip = (type, n, label) => {
             const b = document.createElement('button');
             b.type = 'button';
-            b.className = 'mb-release-art-chip';
+            // A chip with 0: a placeholder's group (a copy without scans).
+            b.className = 'mb-release-art-chip' + (type && !n ? ' mb-release-art-chip-empty' : '');
             b.dataset.mbArtFilter = type;
             b.setAttribute('aria-pressed', String(type ? active.includes(type) : !active.length));
             const num = document.createElement('b');
@@ -158350,7 +159090,7 @@ a { color: #1565c0; }`;
             return b;
         };
         tools.appendChild(chip('', images.length, 'All'));
-        _releaseArtTypeCounts(images).forEach(({ type, n }) => tools.appendChild(chip(type, n, type)));
+        _releaseArtTypeCounts(images, desc).forEach(({ type, n }) => tools.appendChild(chip(type, n, type)));
         const gap = document.createElement('span');
         gap.className = 'mb-release-art-tools-gap';
         tools.appendChild(gap);
@@ -158358,7 +159098,7 @@ a { color: #1565c0; }`;
         seg.className = 'mb-release-art-seg';
         seg.setAttribute('role', 'group');
         seg.setAttribute('aria-label', 'Layout');
-        [['grid', 'Grid'], ['grouped', 'By type'], ['spreads', 'Spreads']]
+        [['grid', 'Grid'], ['grouped', desc.groupedLabel || 'By type'], ['spreads', 'Spreads'], ['table', 'Table']]
             .filter(([key]) => desc.layouts.includes(key)).forEach(([key, label]) => {
             const b = document.createElement('button');
             b.type = 'button';
@@ -158370,9 +159110,26 @@ a { color: #1565c0; }`;
         tools.appendChild(seg);
         sec.appendChild(tools);
 
-        const shown = _releaseArtShownIndices(images, active);
+        const q = _releaseArtQuery(sec);
+        const shown = _releaseArtShownIndices(images, active, desc, q);
+        sec.appendChild(_releaseArtToolsMore(sec, desc, images.length, shown.length, q, layout));
         if (layout === 'spreads') {
             _releaseArtRenderSpreads(sec, images, shown);
+            return;
+        }
+        // Placeholders show with no chip pressed or with their own group's,
+        // never while a text filter is typed, and not when Show missing is off.
+        const missing = q || sec.dataset.mbArtMissingOff === '1' ? []
+            : _artPlaceholders(desc).filter(p => !active.length || active.includes(p.group));
+        if (!shown.length && !missing.length) {
+            const none = document.createElement('div');
+            none.className = 'mb-release-art-empty';
+            none.textContent = 'No picture matches.';
+            sec.appendChild(none);
+            return;
+        }
+        if (layout === 'table') {
+            _releaseArtRenderTable(sec, desc, images, shown, missing);
             return;
         }
         const grid = () => {
@@ -158383,16 +159140,18 @@ a { color: #1565c0; }`;
         if (layout === 'grid') {
             const g = grid();
             shown.forEach(i => g.appendChild(_releaseArtBuildTile(images, i, desc.archiveName)));
+            missing.forEach(p => g.appendChild(_artPlaceholderEl(p)));
             sec.appendChild(g);
             return;
         }
         const groups = new Map();
         shown.forEach(i => {
-            const first = (images[i].types && images[i].types[0]) || '(no type)';
-            if (!groups.has(first)) groups.set(first, []);
-            groups.get(first).push(i);
+            const key = _artGroupOf(desc, images[i]);
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push(i);
         });
-        groups.forEach((idx, type) => {
+        missing.forEach((p) => { if (!groups.has(p.group)) groups.set(p.group, []); });
+        _artInGroupOrder(desc, Array.from(groups), ([key]) => key).forEach(([type, idx]) => {
             const box = document.createElement('div');
             box.className = 'mb-release-art-group';
             box.dataset.mbArtGroup = type;
@@ -158401,9 +159160,225 @@ a { color: #1565c0; }`;
             hdr.textContent = `${type} × ${idx.length}`;
             const g = grid();
             idx.forEach(i => g.appendChild(_releaseArtBuildTile(images, i, desc.archiveName)));
+            missing.filter(p => p.group === type).forEach(p => g.appendChild(_artPlaceholderEl(p)));
             box.append(hdr, g);
             sec.appendChild(box);
         });
+    }
+
+    /**
+     * The section's second tool row (org/image-handling.org P4a): the filter
+     * box (`input.mb-release-art-q`, its text on the section as
+     * `data-mb-art-q`), the Tiles slider (`MB_ART_SEC_TILE_KEY`; not in
+     * Table, which has no tiles) and, when the adapter has placeholders,
+     * Show missing (`data-mb-art-missing-off`), then "k of N" while a
+     * filter narrows. Its inputs are handled by `_releaseArtOnInput()`.
+     *
+     * @param   {HTMLElement} sec    The section.
+     * @param   {Object}      desc   Its adapter.
+     * @param   {number}      total  All its images.
+     * @param   {number}      shownN The images the chips and the filter leave.
+     * @param   {string}      q      The text filter.
+     * @param   {string}      layout The layout shown.
+     * @returns {HTMLElement} `div.mb-release-art-tools.mb-release-art-tools-more`.
+     */
+    function _releaseArtToolsMore(sec, desc, total, shownN, q, layout) {
+        const row = document.createElement('div');
+        row.className = 'mb-release-art-tools mb-release-art-tools-more';
+        const input = document.createElement('input');
+        input.type = 'search';
+        input.className = 'mb-release-art-q';
+        input.placeholder = 'Filter pictures…';
+        input.value = q;
+        input.setAttribute('aria-label', 'Filter the pictures by type, comment or file name');
+        row.appendChild(input);
+        if (layout !== 'table') {
+            const size = document.createElement('label');
+            size.className = 'mb-release-art-size';
+            const r = document.createElement('input');
+            r.type = 'range';
+            r.min = '80';
+            r.max = '240';
+            r.step = '10';
+            r.value = String(_releaseArtTileSize() || 120);
+            r.setAttribute('aria-label', 'Tile size');
+            // Back to the stylesheet's size (vzell, 2026-11-06); shown while
+            // a size is stored, and as soon as the slider is let go.
+            const reset = document.createElement('button');
+            reset.type = 'button';
+            reset.className = 'mb-release-art-size-reset';
+            reset.textContent = '↺';
+            reset.hidden = _releaseArtTileSize() === null;
+            _setTip(reset, 'Back to the original tile size');
+            size.append('Tiles ', r, reset);
+            row.appendChild(size);
+        }
+        if (_artPlaceholders(desc).length) {
+            const miss = document.createElement('label');
+            miss.className = 'mb-release-art-miss';
+            const c = document.createElement('input');
+            c.type = 'checkbox';
+            c.checked = sec.dataset.mbArtMissingOff !== '1';
+            miss.append(c, ' Show missing');
+            row.appendChild(miss);
+        }
+        if (shownN !== total) {
+            const n = document.createElement('span');
+            n.className = 'mb-release-art-shown';
+            n.textContent = `${shownN} of ${total} shown`;
+            row.appendChild(n);
+        }
+        // Counted and shown by `_artImgFailCount()` when pictures fail to load.
+        const reload = document.createElement('button');
+        reload.type = 'button';
+        reload.className = 'mb-release-art-reload';
+        reload.hidden = true;
+        _setTip(reload, 'Ask again for every picture of this section that did not load');
+        row.appendChild(reload);
+        return row;
+    }
+
+    /**
+     * The Table layout (org/image-handling.org P4a; vzell's decision: a plain
+     * table inside the section, never `table.tbl`, so the global filter, the
+     * sub-table filters, the findings and every render pass never see it):
+     * one row per picture shown — #, the picture, its types, its group (when
+     * the adapter groups by something else than the type), comment, flags
+     * (★ main or primary, ⏳ pending) and file name; a click on a heading
+     * sorts by it (`data-mb-art-sort` on the section: "key:1" or "key:-1"),
+     * and the viewer steps through the rows in that order
+     * (`_releaseArtViewerOrder()`). Each row's picture is a link with the
+     * tile's own hover card; placeholders are rows of their own, never
+     * `tr[data-mb-art-i]`.
+     *
+     * @param   {HTMLElement} sec     The section.
+     * @param   {Object}      desc    Its adapter.
+     * @param   {Object[]}    images  Its records.
+     * @param   {number[]}    shown   The indices to list.
+     * @param   {Array<{group: string, note: string}>} missing The placeholders to list.
+     * @returns {void}
+     */
+    function _releaseArtRenderTable(sec, desc, images, shown, missing) {
+        const byGroup = typeof desc.groupOf === 'function';
+        const flagsOf = im => [im.front ? (im.external ? '★ primary' : '★ main') : '', im.approved === false ? '⏳ pending' : '']
+            .filter(Boolean).join(' ');
+        const cols = [
+            ['n', '#', i => i + 1],
+            ['pic', 'Picture', null],
+            ['types', 'Type', i => (images[i].types && images[i].types.length ? images[i].types : ['(no type)']).join(' / ')],
+            ...(byGroup ? [['group', desc.groupedLabel ? desc.groupedLabel.replace(/^By /, '').replace(/^./, c => c.toUpperCase()) : 'Group',
+                i => _artGroupOf(desc, images[i])]] : []),
+            ['comment', 'Comment', i => images[i].comment || ''],
+            ['flags', 'Flags', i => flagsOf(images[i])],
+            ['file', 'File', i => _artFileName(images[i])],
+        ];
+        const [sortKey, sortDir] = (sec.dataset.mbArtSort || 'n:1').split(':');
+        const dir = sortDir === '-1' ? -1 : 1;
+        const col = cols.find(c => c[0] === sortKey && c[2]) || cols[0];
+        const rows = shown.slice().sort((a, b) => {
+            const x = col[2](a);
+            const y = col[2](b);
+            const d = typeof x === 'number' ? x - y : String(x).localeCompare(String(y), undefined, { numeric: true, sensitivity: 'base' });
+            return (d || a - b) * dir;
+        });
+
+        const wrap = document.createElement('div');
+        wrap.className = 'mb-release-art-tablewrap';
+        const table = document.createElement('table');
+        table.className = 'mb-release-art-table';
+        const thr = document.createElement('tr');
+        cols.forEach(([key, label, val]) => {
+            const th = document.createElement('th');
+            th.scope = 'col';
+            th.textContent = label;
+            if (val) {
+                th.dataset.mbArtSort = key;
+                if (key === col[0]) th.setAttribute('aria-sort', dir > 0 ? 'ascending' : 'descending');
+            }
+            thr.appendChild(th);
+        });
+        const thead = document.createElement('thead');
+        thead.appendChild(thr);
+        const tbody = document.createElement('tbody');
+        rows.forEach((i) => {
+            const tr = document.createElement('tr');
+            tr.dataset.mbArtI = String(i);
+            cols.forEach(([key, , val]) => {
+                const td = document.createElement('td');
+                if (key === 'pic') {
+                    // The tile's own link (URLs, referrer, hover card): one builder.
+                    const a = _releaseArtBuildTile(images, i, desc.archiveName).querySelector(':scope > a');
+                    a.classList.add('mb-release-art-row-link');
+                    if (!images[i].external) a.dataset.mbtt = _releaseArtTipHtml(images, i);
+                    td.appendChild(a);
+                } else {
+                    td.textContent = String(val(i));
+                    if (key === 'n') td.className = 'mb-release-art-num';
+                }
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+        missing.forEach((p) => {
+            const tr = document.createElement('tr');
+            tr.className = 'mb-release-art-missing-row';
+            tr.dataset.mbArtMissing = p.group;
+            cols.forEach(([key]) => {
+                const td = document.createElement('td');
+                if (key === 'group' || (key === 'types' && !byGroup)) td.textContent = p.group;
+                else if (key === 'comment') td.textContent = p.note || 'No pictures';
+                else if (key === 'n') td.textContent = '–';
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+        table.append(thead, tbody);
+        wrap.appendChild(table);
+        sec.appendChild(wrap);
+    }
+
+    /**
+     * The section's input handler (P4a), delegated on the section for both
+     * `input` and `change`: the filter box re-renders the sheet as you type
+     * and keeps the caret where it was (the box is rebuilt with the
+     * toolbar); the Tiles slider resizes live through the
+     * `--mb-art-sec-tile` custom property and is stored when let go; Show
+     * missing turns the placeholders on and off.
+     *
+     * @param   {Event} e
+     * @returns {void}
+     */
+    function _releaseArtOnInput(e) {
+        const sec = e.currentTarget;
+        const t = e.target;
+        if (!(t instanceof HTMLInputElement) || !sec.contains(t)) return;
+        if (t.classList.contains('mb-release-art-q')) {
+            if (e.type !== 'input' || t.value === _releaseArtQuery(sec)) return;
+            const caret = t.selectionStart;
+            sec.dataset.mbArtQ = t.value;
+            sec.dataset.mbArtBookPage = '0';
+            _releaseArtRenderSheet(sec);
+            const again = sec.querySelector('input.mb-release-art-q');
+            if (again) {
+                again.focus();
+                again.setSelectionRange(caret, caret);
+            }
+            return;
+        }
+        if (t.type === 'range' && t.closest('.mb-release-art-size')) {
+            sec.style.setProperty('--mb-art-sec-tile', `${t.value}px`);
+            if (e.type === 'change') {
+                try { GM_setValue(MB_ART_SEC_TILE_KEY, Number(t.value)); } catch (_) { /* storage blocked: this page only */ }
+                const reset = t.parentElement.querySelector('.mb-release-art-size-reset');
+                if (reset) reset.hidden = false;
+            }
+            return;
+        }
+        if (t.type === 'checkbox' && t.closest('.mb-release-art-miss') && e.type === 'change') {
+            if (t.checked) delete sec.dataset.mbArtMissingOff;
+            else sec.dataset.mbArtMissingOff = '1';
+            _releaseArtRenderSheet(sec);
+        }
     }
 
     /**
@@ -158411,8 +159386,9 @@ a { color: #1565c0; }`;
      * never cloned, so a listener on it survives every re-render): a tile opens
      * the viewer, a type chip toggles its type in the selection ("All"
      * clears it, and so does un-pressing the last type), a layout button sets
-     * and remembers the layout, and the Spreads pager's ◀ ▶ step its page. A
-     * chip or a layout switch puts the pager back on its first page.
+     * and remembers the layout, the Spreads pager's ◀ ▶ step its page, and a
+     * Table heading sorts by its column (P4a). A chip or a layout switch puts
+     * the pager back on its first page.
      *
      * @param   {MouseEvent} e
      * @returns {void}
@@ -158423,13 +159399,35 @@ a { color: #1565c0; }`;
         // the tiles currently shown, in their on-screen order (the chip filter
         // and the By type grouping both apply). Ctrl/Cmd/Shift/middle click
         // keep the link's own behaviour: the 1200 px image in a new tab.
-        const tileLink = e.target.closest('figure.mb-release-art-tile > a');
+        // A Table row's picture (P4a) is the same link, one row up.
+        const tileLink = e.target.closest('figure.mb-release-art-tile > a, a.mb-release-art-row-link');
         if (tileLink && sec.contains(tileLink)) {
             if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
             e.preventDefault();
             const desc = _artSectionOf(sec);
+            // A page of a paired spread (Spreads) opens in Compare (P4b): the
+            // left page on the left, the right one beside it.
+            const pair = tileLink.closest('[data-mb-art-spread]');
+            const [l, r] = pair ? pair.dataset.mbArtSpread.split(',').map(Number) : [null, null];
             _artViewerOpen(desc.ctx, sec.dataset.mbArtEntity, _releaseArtViewerOrder(sec),
-                Number(tileLink.parentElement.dataset.mbArtI), { opener: tileLink, title: _releaseArtTitle(desc) });
+                pair ? l : Number(tileLink.closest('[data-mb-art-i]').dataset.mbArtI),
+                { opener: tileLink, title: _releaseArtTitle(desc), compareWith: pair ? r : null });
+            return;
+        }
+        // The Tiles slider's ↺: forget the stored size, back to 120 px.
+        const reset = e.target.closest('.mb-release-art-size-reset');
+        if (reset && sec.contains(reset)) {
+            try { GM_deleteValue(MB_ART_SEC_TILE_KEY); } catch (_) { /* storage blocked: this page only */ }
+            sec.style.removeProperty('--mb-art-sec-tile');
+            _releaseArtRenderSheet(sec);
+            return;
+        }
+        // A Table heading sorts by it; a second click turns the order round.
+        const th = e.target.closest('th[data-mb-art-sort]');
+        if (th && sec.contains(th)) {
+            const [key, d] = (sec.dataset.mbArtSort || 'n:1').split(':');
+            sec.dataset.mbArtSort = `${th.dataset.mbArtSort}:${key === th.dataset.mbArtSort && d !== '-1' ? -1 : 1}`;
+            _releaseArtRenderSheet(sec);
             return;
         }
         const book = e.target.closest('[data-mb-art-book-step]');
@@ -158553,8 +159551,10 @@ a { color: #1565c0; }`;
      * Puts each medium's assigned Medium images, as small thumbs, into its
      * h3 (`span.mb-medium-art`, before the row count), and one "not assigned"
      * note on the first medium's h3 for every Medium image that could not be
-     * assigned (`_releaseArtMediumAssign()`). Reads only the record already in
-     * `CAA_CTX.imagesCache` — never a request. Idempotent and cheap (a memo hit
+     * assigned (`_releaseArtMediumAssign()`). Reads only the records its
+     * adapter already holds (`_artMediumAdapter()`: the Cover art section on
+     * release-tracks, a foreign detail page's pictures since P3) — never a
+     * request. Idempotent and cheap (a memo hit
      * and one query per medium), because it rides
      * `updateFilterButtonsVisibility()`: a full render rebuilds the h3s with
      * `innerHTML`, a filter or sort render reuses them.
@@ -158566,12 +159566,12 @@ a { color: #1565c0; }`;
      * @returns {void}
      */
     function _releaseArtApplyMediumArt() {
-        if (!activeDefinition || activeDefinition.type !== 'release-tracks') return;
-        const sec = document.querySelector('.mb-release-art-sec[data-mb-art-state="ok"]');
-        const images = sec && CAA_CTX.imagesCache.get(sec.dataset.mbArtEntity);
-        const on = Lib.settings.sa_enable_release_tracks_cover_art &&
-                   Lib.settings.sa_enable_release_tracks_medium_art && Array.isArray(images);
-        const media = on ? _releaseArtMedia() : [];
+        const desc = _artMediumAdapter();
+        if (!desc) return;
+        const sec = _artSectionFind(desc.key, true);
+        const images = sec && desc.images(sec);
+        const on = desc.mediumOn() && Array.isArray(images);
+        const media = on ? desc.mediaOf() : [];
         if (!on || !media.length) {
             document.querySelectorAll('.mb-medium-art').forEach(n => n.remove());
             return;
@@ -158583,6 +159583,7 @@ a { color: #1565c0; }`;
             _releaseArtMediumMemo.set(images, memo);
         }
         const { byPos, unassigned, medium, commented } = memo.result;
+        _artImgFailInstall();
         if (!_releaseArtMediumClickInstalled) {
             _releaseArtMediumClickInstalled = true;
             document.addEventListener('click', _releaseArtOnMediumClick);
@@ -158659,8 +159660,9 @@ a { color: #1565c0; }`;
     function _releaseArtOnMediumClick(e) {
         const btn = e.target instanceof Element && e.target.closest('.mb-medium-art > button');
         if (!btn || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
-        const sec = document.querySelector('.mb-release-art-sec[data-mb-art-state="ok"]');
-        const images = sec && CAA_CTX.imagesCache.get(sec.dataset.mbArtEntity);
+        const desc = _artMediumAdapter();
+        const sec = desc && _artSectionFind(desc.key, true);
+        const images = sec && desc.images(sec);
         if (!images) return;
         const memo = _releaseArtMediumMemo.get(images);
         if (!memo) return;
@@ -158677,22 +159679,72 @@ a { color: #1565c0; }`;
         if (!list.length) return;
         e.preventDefault();
         e.stopPropagation();
-        _artViewerOpen(CAA_CTX, sec.dataset.mbArtEntity, list, start, { opener: btn, title: _releaseArtTitle() });
+        _artViewerOpen(desc.ctx, sec.dataset.mbArtEntity, list, start, { opener: btn, title: _releaseArtTitle(desc) });
     }
 
     /**
-     * Fills the section from the archive record: a contact sheet, a "no
-     * artwork" note, or a failure note with a retry button. The retry button
-     * is wired directly: the section is never cloned, so a direct listener
-     * survives every re-render.
+     * The adapter whose pictures go into this page's medium headings
+     * (org/image-handling.org P3), or null: on release-tracks the Cover art
+     * adapter (its own two settings decide, through `mediumOn()`); on any
+     * other page the first loaded art section whose adapter knows the page's
+     * media (`mediaOf`: a foreign detail page's head, `_fdArtSection()`).
+     * Only MusicBrainz's release page answers before its section is loaded,
+     * so its thumbs are cleared when the setting goes off.
      *
-     * @param   {ArtCtx}      ctx
-     * @param   {HTMLElement} h2  The section's `h2.mb-release-art-h2`.
+     * @returns {?Object}
+     */
+    function _artMediumAdapter() {
+        if (!activeDefinition) return null;
+        if (activeDefinition.type === 'release-tracks') return _artSectionDesc('caa');
+        // Every other MusicBrainz page returns at once, as before P3: this
+        // runs on every filter pass (`updateFilterButtonsVisibility()`).
+        if (_foreignHost === null) return null;
+        const sec = Array.from(document.querySelectorAll('.mb-release-art-sec[data-mb-art-ctx][data-mb-art-state="ok"]'))
+            .find((s) => { const d = _artSectionOf(s); return !!(d && typeof d.mediaOf === 'function'); });
+        return sec ? _artSectionOf(sec) : null;
+    }
+
+    /**
+     * A foreign detail page's media as its rendered sub-table headings name
+     * them, for the medium thumbs (P3): "Disc 1 · Flac · 1:10:29"
+     * (archive.org), "Record 1", "Record 2: …" (springsteenlyrics, Discogs),
+     * "Disc (82:40.00)" (one disc, no number: medium 1). A heading that names
+     * no disc, record or tape ("Videos", "Tracklist") is not a medium. The
+     * format is what `_releaseArtMediumAssign()` needs for sides: a record
+     * and a tape have two.
+     *
+     * @returns {Array<{pos: number, format: string, h3: HTMLElement}>}
+     */
+    function _artForeignMedia() {
+        const found = [];
+        _tableSourceRows().forEach(({ table }) => {
+            const h3 = findH3ForTable(table);
+            if (!h3) return;
+            const text = Array.from(h3.childNodes).filter(n => n.nodeType === Node.TEXT_NODE)
+                .map(n => n.textContent).join('').trim();
+            const m = /^(disc|disk|cd|record|lp|vinyl|tape|cassette)\b\s*(\d+)?/i.exec(text);
+            if (!m) return;
+            const word = m[1].toLowerCase();
+            const format = /record|lp|vinyl/.test(word) ? 'Vinyl' : /tape|cassette/.test(word) ? 'Cassette' : 'CD';
+            found.push({ pos: m[2] ? Number(m[2]) : 0, format, h3 });
+        });
+        // A single unnumbered heading is medium 1; unnumbered ones beside
+        // numbered ones cannot be placed and are left out.
+        if (found.length === 1 && !found[0].pos) found[0].pos = 1;
+        return found.filter(x => x.pos);
+    }
+
+    /**
+     * Fills the section from its adapter's `load()`: a contact sheet, a "no
+     * artwork" note, or a failure note with a retry button (only when the
+     * adapter can retry). The retry button is wired directly: the section is
+     * never cloned, so a direct listener survives every re-render.
+     *
+     * @param   {HTMLElement} h2  The section's h2 (its `.mb-release-art-count` gets N).
      * @param   {HTMLElement} sec The section's `div.mb-release-art-sec`.
      * @returns {Promise<void>}
      */
-    async function _releaseArtLoad(ctx, h2, sec) {
-        const entityPath = sec.dataset.mbArtEntity;
+    async function _releaseArtLoad(h2, sec) {
         const desc = _artSectionOf(sec);
         sec.dataset.mbArtState = 'loading';
         sec.textContent = '';
@@ -158701,7 +159753,7 @@ a { color: #1565c0; }`;
         status.textContent = `Loading ${desc.label.toLowerCase()}…`;
         sec.appendChild(status);
 
-        const { state, images } = await _artFetchEntityImages(ctx, entityPath);
+        const { state, images } = await desc.load(sec);
         if (!sec.isConnected) return;
         sec.dataset.mbArtState = state;
         const countEl = h2.querySelector('.mb-release-art-count');
@@ -158718,18 +159770,15 @@ a { color: #1565c0; }`;
             return;
         }
         status.textContent = `The ${desc.archiveName} could not be reached.`;
+        if (!desc.retry) return;
         const retry = document.createElement('button');
         retry.type = 'button';
         retry.className = 'mb-release-art-retry';
         retry.textContent = '⟳ Retry';
         retry.addEventListener('click', (e) => {
             e.stopPropagation();
-            // Drop the session zero first, or Tier 1 serves it straight back
-            // (docs/claude/artwork-caa-eaa.md, CAA/EAA retry).
-            ctx.countCache.delete(entityPath);
-            ctx.imagesCache.delete(entityPath);
-            ctx.failedCache.delete(entityPath);
-            _releaseArtLoad(ctx, h2, sec);
+            desc.retry(sec);
+            _releaseArtLoad(h2, sec);
         });
         status.appendChild(retry);
     }
@@ -158756,42 +159805,85 @@ a { color: #1565c0; }`;
         const anchorH2 = desc.anchor();
         if (!m || !anchorH2) return null;
 
-        document.querySelectorAll('.mb-release-art-h2, .mb-release-art-sec').forEach(n => n.remove());
+        document.querySelectorAll(`.mb-release-art-h2, .mb-release-art-sec[data-mb-art-ctx="${desc.key}"]`)
+            .forEach(n => n.remove());
         const ctx = desc.ctx;
         const tabCount = _releaseArtTabCount(ctx);
         if (tabCount === 0) return null;
-        _ensureReleaseArtStyle();
 
+        const h2 = _artSectionBuild(desc, anchorH2, desc.entityPrefix + m[1], tabCount);
+        if (!desc.tabSetting || Lib.settings[desc.tabSetting]) _releaseArtInstallTabIntercept();
+        return h2;
+    }
+
+    /**
+     * Builds one art section — `h2.mb-release-art-h2` "<label> (N)" and its
+     * `div.mb-release-art-sec` — before `anchor`, and starts loading it
+     * through the adapter. The source-neutral half of
+     * `_releaseArtInsertSection()`: it knows nothing of archives, tabs or
+     * `location`, only the adapter, where to go and which entity it shows.
+     *
+     * @param   {Object}   desc      The adapter (`_artSectionDesc()`).
+     * @param   {Element}  anchor    The section goes right before it.
+     * @param   {string}   entityKey `data-mb-art-entity`: the viewer path and the records' key.
+     * @param   {?number}  count     N for the h2 until the records are in; null: none yet.
+     * @returns {HTMLElement} The new h2.
+     */
+    function _artSectionBuild(desc, anchor, entityKey, count) {
         const h2 = document.createElement('h2');
         h2.className = 'mb-release-art-h2';
         h2.append(desc.label);
-        const count = document.createElement('span');
-        count.className = 'mb-release-art-count';
-        count.textContent = tabCount === null ? '' : ` (${tabCount})`;
-        h2.appendChild(count);
+        const countEl = document.createElement('span');
+        countEl.className = 'mb-release-art-count';
+        countEl.textContent = count === null ? '' : ` (${count})`;
+        h2.appendChild(countEl);
 
-        const sec = document.createElement('div');
-        sec.className = 'mb-release-art-sec';
-        sec.dataset.mbArtCtx = desc.key;
-        sec.dataset.mbArtEntity = desc.entityPrefix + m[1];
-        sec.addEventListener('click', _releaseArtOnClick);
-
-        anchorH2.before(h2, sec);
-        _releaseArtLoad(ctx, h2, sec);
-        if (!desc.tabSetting || Lib.settings[desc.tabSetting]) _releaseArtInstallTabIntercept();
+        const sec = _artSectionCreate(desc, entityKey);
+        anchor.before(h2, sec);
+        _releaseArtLoad(h2, sec);
         return h2;
+    }
+
+    /**
+     * An empty art section for an adapter: `div.mb-release-art-sec` marked
+     * with the adapter's key (`data-mb-art-ctx`, plus its `secClass`) and the
+     * entity it shows, with the section's one delegated click handler. The
+     * caller puts it in place and fills it: `_artSectionBuild()` through a
+     * load, `_fdArtSection()` at once from records it already holds.
+     *
+     * @param   {Object} desc      The adapter.
+     * @param   {string} entityKey `data-mb-art-entity`.
+     * @returns {HTMLElement}
+     */
+    function _artSectionCreate(desc, entityKey) {
+        _ensureReleaseArtStyle();
+        const sec = document.createElement('div');
+        sec.className = 'mb-release-art-sec' + (desc.secClass ? ` ${desc.secClass}` : '');
+        sec.dataset.mbArtCtx = desc.key;
+        sec.dataset.mbArtEntity = entityKey;
+        sec.addEventListener('click', _releaseArtOnClick);
+        // P4a: the filter box, the Tiles slider, Show missing.
+        sec.addEventListener('input', _releaseArtOnInput);
+        sec.addEventListener('change', _releaseArtOnInput);
+        // A picture that does not load gets a ⟳ (`_artImgFailInstall()`).
+        _artImgFailInstall();
+        return sec;
     }
 
     /**
      * The page's title (the release's, the event's) for the viewer's bar: the
      * text of the entity link inside the page's h1. Not the h1's whole text —
      * after a render the h1 also holds this script's own toolbar (and, on an
-     * event page, the date in parentheses).
+     * event page, the date in parentheses). An adapter with a `title()` gives
+     * its own.
      *
      * @param   {Object} [desc] `_artSectionDesc()`; the release page's by default.
      * @returns {string}
      */
     function _releaseArtTitle(desc = _artSectionDesc('caa')) {
+        // An adapter that knows its title says it (a foreign detail page's
+        // spec.title: its h1 holds no entity link).
+        if (typeof desc.title === 'function') return desc.title() || desc.label;
         const h1 = document.querySelector(desc.titleSel);
         const link = h1 && h1.querySelector('a[href]');
         return ((link || h1) && (link || h1).textContent.trim()) || desc.label;
@@ -158827,7 +159919,7 @@ a { color: #1565c0; }`;
      */
     function _releaseArtOnTabClick(e) {
         if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.defaultPrevented) return;
-        const sec = document.querySelector('.mb-release-art-sec');
+        const sec = _artSectionFind();
         const desc = _artSectionOf(sec);
         if (desc.tabSetting && !Lib.settings[desc.tabSetting]) return;
         const a = e.target instanceof Element && e.target.closest(`ul.tabs a[href$="${desc.ctx.artSuffix}"]`);
@@ -159064,6 +160156,96 @@ a { color: #1565c0; }`;
                 color: #9c978c;
                 font-size: 12px;
             }
+            /* A picture that did not load: no broken glyph, the note's
+               Try again asks again. */
+            #mb-art-viewer .mb-artv-img.mb-artv-img-failed { visibility: hidden; }
+            /* P4b: the Adjust panel, Compare's two pictures, the loupe, the key help. */
+            #mb-art-viewer .mb-artv-adjust {
+                position: absolute;
+                top: 10px;
+                left: 12px;
+                z-index: 3;
+                display: grid;
+                gap: 6px;
+                width: 230px;
+                max-width: calc(100% - 24px);
+                padding: 10px 12px;
+                background: rgba(23, 25, 30, 0.94);
+                border: 1px solid #2b2e35;
+                border-radius: 4px;
+                font-size: 12px;
+            }
+            #mb-art-viewer .mb-artv-adjust-hd { font-weight: 600; color: #9c978c; text-transform: uppercase; letter-spacing: 0.06em; font-size: 11px; }
+            #mb-art-viewer .mb-artv-adjust-row { display: grid; grid-template-columns: 1fr; gap: 2px; }
+            #mb-art-viewer .mb-artv-adjust-row:has(> input[type="checkbox"]) { grid-template-columns: auto 1fr; align-items: center; gap: 6px; }
+            #mb-art-viewer .mb-artv-adjust-row input[type="range"] { width: 100%; accent-color: #f0a35e; }
+            #mb-art-viewer .mb-artv-adjust-v { color: #9c978c; font-variant-numeric: tabular-nums; }
+            #mb-art-viewer .mb-artv-adjust .mb-artv-btn { justify-self: start; }
+            #mb-art-viewer .mb-artv-stage.mb-artv-compare {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 12px;
+                padding: 12px 48px 34px;
+                align-items: center;
+            }
+            #mb-art-viewer .mb-artv-cmp { margin: 0; min-width: 0; height: 100%; display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 4px; }
+            #mb-art-viewer .mb-artv-cmp-img { width: 100%; height: 100%; min-height: 0; object-fit: contain; }
+            #mb-art-viewer .mb-artv-cmp figcaption { font-size: 11px; color: #9c978c; text-align: center; overflow-wrap: anywhere; }
+            #mb-art-viewer .mb-artv-film img.mb-artv-cmp-cur { outline: 2px dashed #f0a35e; outline-offset: 1px; }
+            #mb-art-viewer .mb-artv-loupe {
+                position: absolute;
+                z-index: 4;
+                width: 150px;
+                height: 150px;
+                border-radius: 50%;
+                border: 2px solid #f0a35e;
+                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+                background-color: #000;
+                background-repeat: no-repeat;
+                pointer-events: none;
+            }
+            /* The key help: a box under the bar (its top set from the bar's
+               height, which wraps on a narrow window), centred, at most three
+               columns wide. Its z-index must beat the info panel's: that panel
+               is a grid item with the tooltip look's z-index, and a grid item
+               honours z-index unpositioned (vzell 2026-11-06: the panel hid
+               the help's last column). */
+            #mb-art-viewer .mb-artv-help {
+                position: absolute;
+                left: 50%;
+                transform: translateX(-50%);
+                width: min(900px, calc(100% - 32px));
+                box-sizing: border-box;
+                z-index: 2147483600;
+                overflow: auto;
+                padding: 16px 18px;
+                background: rgba(13, 14, 17, 0.97);
+                border: 1px solid #2b2e35;
+                border-radius: 6px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+                cursor: default;
+            }
+            #mb-art-viewer .mb-artv-help-hd { font-weight: 600; font-size: 14px; margin-bottom: 10px; }
+            #mb-art-viewer .mb-artv-help dl {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+                gap: 4px 20px;
+                margin: 0;
+            }
+            #mb-art-viewer .mb-artv-help dl > div { display: flex; gap: 10px; align-items: baseline; }
+            #mb-art-viewer .mb-artv-help dt { min-width: 76px; color: #f0a35e; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+            #mb-art-viewer .mb-artv-help dd { margin: 0; }
+            #mb-art-viewer .mb-artv-help-new {
+                margin-left: 6px;
+                padding: 1px 4px;
+                border-radius: 2px;
+                background: #f0a35e;
+                color: #1a1208;
+                font-size: 9px;
+                font-weight: 700;
+                text-transform: uppercase;
+            }
+            #mb-art-viewer .mb-artv-help-foot { margin-top: 12px; color: #9c978c; font-size: 12px; }
             #mb-art-viewer .mb-artv-nav {
                 position: absolute;
                 top: 50%;
@@ -159179,7 +160361,8 @@ a { color: #1565c0; }`;
      * @returns {void}
      */
     function _artViewerOpen(ctx, entityPath, indices, start,
-                            { grid = false, opener = null, title = '', onGroupStep = null, rowPos = null, liFor = null } = {}) {
+                            { grid = false, opener = null, title = '', onGroupStep = null, rowPos = null, liFor = null,
+                              compareWith = null } = {}) {
         const images = ctx.imagesCache.get(entityPath) || [];
         const list = (indices && indices.length ? indices : images.map((_, i) => i)).filter(i => images[i]);
         if (!list.length) return;
@@ -159198,6 +160381,9 @@ a { color: #1565c0; }`;
             root.addEventListener('pointerup', _artViewerOnPointerUp);
             root.addEventListener('pointercancel', _artViewerOnPointerUp);
             root.addEventListener('wheel', _artViewerOnWheel, { passive: false });
+            // P4b: the Adjust panel's sliders and Invert.
+            root.addEventListener('input', _artViewerOnInput);
+            root.addEventListener('change', _artViewerOnInput);
             document.body.appendChild(root);
         }
         root.setAttribute('aria-label', `${ctx.column} artwork viewer`);
@@ -159214,7 +160400,20 @@ a { color: #1565c0; }`;
             opener, title, prevOverflow,
             onGroupStep, rowPos, liFor, slideshow: 0,
             swipeX: null, swipeAt: 0, gen: 0,
+            // P4b (org/image-handling.org): the Adjust panel and its values
+            // (reset on every step, like the rotation), Compare's second
+            // picture (an index of `images`, null when off), the loupe, the
+            // key help.
+            adjust: false, adj: _artViewerAdjDefault(), loupe: false, help: false,
+            cmp: null, cmpStart: false,
         };
+        const st0 = _artViewerState;
+        // Opened INTO Compare (a Spreads pair): Esc then closes the viewer, as
+        // a viewer opened in its grid (`gridStart`) does; C still leaves it.
+        if (compareWith !== null && compareWith !== st0.i && list.includes(compareWith)) {
+            st0.cmp = compareWith;
+            st0.cmpStart = true;
+        }
         root.dataset.mbArtvPan = _artViewerState.panMode;
         root.dataset.mbArtvBg = _artViewerBg();
         document.documentElement.style.overflow = 'hidden';
@@ -159316,6 +160515,8 @@ a { color: #1565c0; }`;
         st.rot = 0;
         st.flipX = false;
         st.flipY = false;
+        // The Adjust values belong to the picture they were set for (P4b).
+        st.adj = _artViewerAdjDefault();
         if (Lib.settings.sa_art_viewer_remember_zoom !== false) return;
         _artViewerSetLevel(st, 1);
         st.oneToOne = false;
@@ -159534,6 +160735,9 @@ a { color: #1565c0; }`;
         if (st.rot) parts.push(`rotate(${st.rot}deg)`);
         if (st.zoom) parts.push(`scale(${+st.zoomLevel.toFixed(4)})`);
         img.style.transform = parts.join(' ');
+        // The Adjust panel's filter (P4b), written here beside the transform
+        // so every load, fit and step keeps it. View only: Download keeps the file.
+        img.style.filter = _artViewerFilter(st);
         const readout = document.querySelector('#mb-art-viewer .mb-artv-zoom');
         if (readout) readout.textContent = st.geom ? `${Math.round(st.zoomLevel * st.geom.k * 100)} %` : '';
     }
@@ -160057,7 +161261,7 @@ a { color: #1565c0; }`;
         panel.appendChild(_artvEl('div', 'mb-tt-foot',
             '← → step' + (st.onGroupStep ? ' · Shift+← → row' : '') +
             ' · ↑ ↓ wheel zoom · 0 fit · 1 actual pixels · Z 2× · R rotate · H V flip · B background · F fullscreen' +
-            ' · D download · P slideshow · G grid · I info · O original · Esc close'));
+            ' · D download · P slideshow · G grid · I info · O original · A adjust · C compare · L loupe · Y copy URL · ? keys · Esc close'));
         return panel;
     }
 
@@ -160112,8 +161316,296 @@ a { color: #1565c0; }`;
         panel.appendChild(sizes);
         panel.appendChild(_artvEl('div', 'mb-tt-foot',
             '← → step · ↑ ↓ wheel zoom · 0 fit · 1 actual pixels · Z 2× · R rotate · H V flip · B background · F fullscreen' +
-            ' · D download · P slideshow · G grid · I info · O original · Esc close'));
+            ' · D download · P slideshow · G grid · I info · O original · A adjust · C compare · L loupe · Y copy URL · ? keys · Esc close'));
         return panel;
+    }
+
+    // ── P4b: Adjust, Compare, Loupe, Copy URL, key help ─────────────────────
+    //
+    // org/image-handling.org 1b (vzell's go: "all your recommendations").
+    // Keys A, C, L, Y and ? were free (the handler used F G R H V B D P I O Z
+    // 0 1, arrows, Home/End, Esc, Tab). Esc closes the help first, then
+    // Compare, then what it closed before.
+
+    /** Every key of the viewer, for the help overlay (`?`); `nw`: added in P4b. */
+    const _ART_VIEWER_KEYS = [
+        ['← →', 'previous / next picture (Compare: the right one)'], ['Shift+← →', 'previous / next row'],
+        ['Home End', 'first / last'], ['↑ ↓ wheel', 'zoom'], ['0', 'fit'], ['1', 'actual pixels'], ['Z', '2× zoom'],
+        ['R Shift+R', 'rotate'], ['H V', 'flip'], ['G', 'grid'], ['I', 'info'], ['P', 'slideshow'], ['F', 'fullscreen'],
+        ['B', 'background'], ['D', 'download'], ['O', 'original in a new tab'],
+        ['A', 'adjust: brightness, contrast, grayscale, invert', 'nw'], ['C', 'compare two pictures', 'nw'],
+        ['L', 'loupe', 'nw'], ['Y Shift+Y', 'copy the address / as an edit-note line', 'nw'], ['?', 'these keys', 'nw'],
+        ['Esc', 'close (the keys, Compare, the grid, the viewer)'],
+    ];
+
+    /**
+     * The Adjust panel's neutral values.
+     *
+     * @returns {{b: number, c: number, g: number, inv: boolean}}
+     */
+    function _artViewerAdjDefault() {
+        return { b: 100, c: 100, g: 0, inv: false };
+    }
+
+    /**
+     * The CSS filter of the Adjust values, '' when neutral (so a picture
+     * nobody adjusted carries no filter at all).
+     *
+     * @param   {Object} st The viewer state.
+     * @returns {string}
+     */
+    function _artViewerFilter(st) {
+        const a = st.adj || _artViewerAdjDefault();
+        const parts = [];
+        if (a.b !== 100) parts.push(`brightness(${a.b}%)`);
+        if (a.c !== 100) parts.push(`contrast(${a.c}%)`);
+        if (a.g) parts.push(`grayscale(${a.g}%)`);
+        if (a.inv) parts.push('invert(1)');
+        return parts.join(' ');
+    }
+
+    /**
+     * Writes the filter onto every picture the stage shows (the one image,
+     * or Compare's two) and onto the loupe, without a re-render, so a slider
+     * keeps its focus while it is dragged.
+     *
+     * @param   {Object} st The viewer state.
+     * @returns {void}
+     */
+    function _artViewerApplyFilter(st) {
+        const f = _artViewerFilter(st);
+        document.querySelectorAll('#mb-art-viewer .mb-artv-stage :is(.mb-artv-img, .mb-artv-cmp-img), #mb-art-viewer .mb-artv-loupe')
+            .forEach((el) => { el.style.filter = f; });
+    }
+
+    /**
+     * The Adjust panel (`A`): three sliders and Invert, with Reset; the
+     * values are `st.adj`, written live by `_artViewerOnInput()`. View only —
+     * Download and Original keep the file as it is.
+     *
+     * @param   {Object} st The viewer state.
+     * @returns {HTMLElement}
+     */
+    function _artViewerAdjustPanel(st) {
+        const panel = _artvEl('div', 'mb-artv-adjust');
+        panel.appendChild(_artvEl('div', 'mb-artv-adjust-hd', 'Adjust'));
+        const slider = (key, label, min, max) => {
+            const row = _artvEl('label', 'mb-artv-adjust-row');
+            const r = document.createElement('input');
+            r.type = 'range';
+            r.min = String(min);
+            r.max = String(max);
+            r.value = String(st.adj[key]);
+            r.dataset.artvAdj = key;
+            r.setAttribute('aria-label', label);
+            row.append(_artvEl('span', null, label), r, _artvEl('span', 'mb-artv-adjust-v', `${st.adj[key]} %`));
+            return row;
+        };
+        panel.append(slider('b', 'Brightness', 40, 200), slider('c', 'Contrast', 40, 250), slider('g', 'Grayscale', 0, 100));
+        const inv = _artvEl('label', 'mb-artv-adjust-row');
+        const c = document.createElement('input');
+        c.type = 'checkbox';
+        c.checked = st.adj.inv;
+        c.dataset.artvAdj = 'inv';
+        inv.append(c, _artvEl('span', null, 'Invert (negatives, dark scans)'));
+        panel.append(inv, _artvBtn('adjreset', 'Reset'));
+        return panel;
+    }
+
+    /**
+     * The Adjust panel's inputs (delegated on the overlay): a slider or
+     * Invert changes `st.adj` and the pictures' filter at once.
+     *
+     * @param   {Event} e
+     * @returns {void}
+     */
+    function _artViewerOnInput(e) {
+        const st = _artViewerState;
+        const t = e.target;
+        if (!st || !(t instanceof HTMLInputElement) || !t.dataset.artvAdj) return;
+        const key = t.dataset.artvAdj;
+        if (key === 'inv') st.adj.inv = t.checked;
+        else {
+            st.adj[key] = Number(t.value);
+            const v = t.parentElement && t.parentElement.querySelector('.mb-artv-adjust-v');
+            if (v) v.textContent = `${st.adj[key]} %`;
+        }
+        _artViewerApplyFilter(st);
+    }
+
+    /**
+     * Compare's stage (`C`): the picture and `st.cmp` side by side, each
+     * fitted whole, their positions under them, the large images replacing
+     * the thumbnails as they load. No zoom, pan, turn or flip here (those
+     * belong to the one picture); the Adjust filter applies to both.
+     *
+     * @param   {Object}      st    The viewer state.
+     * @param   {HTMLElement} stage The emptied stage.
+     * @returns {void}
+     */
+    function _artViewerCompareStage(st, stage) {
+        stage.classList.add('mb-artv-compare');
+        // Its own generation: a load from an earlier render must not land here.
+        const gen = ++st.gen;
+        [st.i, st.cmp].forEach((idx, side) => {
+            const x = st.images[idx];
+            const fig = _artvEl('figure', 'mb-artv-cmp');
+            const img = _artvEl('img', 'mb-artv-cmp-img');
+            img.alt = (x.types || []).join(' / ') + (x.comment ? ' · ' + x.comment : '');
+            img.draggable = false;
+            if (x.external) img.referrerPolicy = 'no-referrer';
+            img.src = _artViewerThumbUrl(x);
+            img.style.filter = _artViewerFilter(st);
+            img.dataset.artvI = String(idx);
+            fig.append(img, _artvEl('figcaption', null,
+                `${side ? 'Right' : 'Left'}: ${st.list.indexOf(idx) + 1} / ${st.list.length}` +
+                (x.types && x.types.length ? ` · ${x.types.join(' / ')}` : '') + (x.comment ? ` · ${x.comment}` : '')));
+            stage.appendChild(fig);
+            const big = _artViewerBigUrls(x).filter(u => u !== img.getAttribute('src'));
+            if (big.length) {
+                _artViewerLoadFirst(big, !!x.external).then(({ src }) => {
+                    if (_artViewerState === st && st.gen === gen && img.isConnected) img.src = src;
+                }).catch(() => {});
+            }
+        });
+        stage.appendChild(_artvEl('div', 'mb-artv-note', '← → change the right picture · a filmstrip picture becomes it · C or Esc: back'));
+    }
+
+    /**
+     * Compare's ← →: the right picture steps through the list, skipping
+     * the left one.
+     *
+     * @param   {number} d 1 or -1.
+     * @returns {void}
+     */
+    function _artViewerCompareStep(d) {
+        const st = _artViewerState;
+        if (!st || st.cmp === null || st.list.length < 2) return;
+        const n = st.list.length;
+        let k = st.list.indexOf(st.cmp);
+        do { k = (k + d + n) % n; } while (st.list[k] === st.i);
+        st.cmp = st.list[k];
+        _artViewerRender();
+    }
+
+    /**
+     * Turns Compare on with the next picture on the right (off when on), or
+     * says why not with one picture only.
+     *
+     * @returns {void}
+     */
+    function _artViewerToggleCompare() {
+        const st = _artViewerState;
+        if (!st) return;
+        // Turned on or off by hand: from now on Esc leaves Compare first.
+        st.cmpStart = false;
+        if (st.cmp !== null) st.cmp = null;
+        else if (st.list.length > 1) st.cmp = st.list[(st.list.indexOf(st.i) + 1) % st.list.length];
+        else {
+            _artViewerNote('Compare needs two pictures.');
+            return;
+        }
+        _artViewerRender();
+    }
+
+    /**
+     * The loupe (`L`): a round lens 2.5× larger than the picture shows,
+     * centred on the pointer, for the picture's own pixels under it — also
+     * on a zoomed, turned or flipped picture: the pointer's place is taken
+     * back through the flips and the turn to the picture's own coordinates,
+     * and the lens is turned and flipped as the picture is. Hidden off the
+     * picture. Reads the picture already loaded: no request.
+     *
+     * @param   {MouseEvent} e
+     * @returns {void}
+     */
+    function _artViewerLoupeMove(e) {
+        const st = _artViewerState;
+        const lens = document.querySelector('#mb-art-viewer .mb-artv-loupe');
+        if (!st || !st.loupe || !lens) return;
+        const img = document.querySelector('#mb-art-viewer .mb-artv-stage .mb-artv-img');
+        const r = img && img.getBoundingClientRect();
+        if (!r || !r.width || !img.naturalWidth || e.clientX < r.left || e.clientX > r.right ||
+                e.clientY < r.top || e.clientY > r.bottom) {
+            lens.hidden = true;
+            return;
+        }
+        let u = (e.clientX - r.left) / r.width;
+        let v = (e.clientY - r.top) / r.height;
+        // Undo the flips, then the turn: the screen place → the picture's own.
+        if (st.flipX) u = 1 - u;
+        if (st.flipY) v = 1 - v;
+        const rot = ((st.rot % 360) + 360) % 360;
+        const [pu, pv] = rot === 90 ? [v, 1 - u] : rot === 180 ? [1 - u, 1 - v] : rot === 270 ? [1 - v, u] : [u, v];
+        const z = 2.5;
+        const scale = st.zoom ? st.zoomLevel : 1;
+        const w = img.offsetWidth * scale * z;
+        const h = img.offsetHeight * scale * z;
+        const size = lens.offsetWidth || 150;
+        const stage = lens.parentElement.getBoundingClientRect();
+        lens.hidden = false;
+        lens.style.left = `${e.clientX - stage.left - size / 2}px`;
+        lens.style.top = `${e.clientY - stage.top - size / 2}px`;
+        lens.style.backgroundImage = `url("${img.currentSrc || img.src}")`;
+        lens.style.backgroundSize = `${w}px ${h}px`;
+        lens.style.backgroundPosition = `${size / 2 - pu * w}px ${size / 2 - pv * h}px`;
+        const tf = [];
+        if (st.flipX) tf.push('scaleX(-1)');
+        if (st.flipY) tf.push('scaleY(-1)');
+        if (rot) tf.push(`rotate(${rot}deg)`);
+        lens.style.transform = tf.join(' ');
+        lens.style.filter = _artViewerFilter(st);
+    }
+
+    /**
+     * Copies the picture's address (`Y`), or with Shift a line for a
+     * MusicBrainz edit note: its types, its comment, the address. The
+     * browser's clipboard, no grant; the note line says what happened.
+     *
+     * @param   {boolean} asNote
+     * @returns {void}
+     */
+    function _artViewerCopyUrl(asNote) {
+        const st = _artViewerState;
+        if (!st) return;
+        const im = st.images[st.i];
+        let url = _artViewerUrl(im, im.image || _artViewerBigUrl(im));
+        if (url.startsWith('//')) url = `https:${url}`;
+        const text = asNote
+            ? `${(im.types || []).join(' / ') || 'Picture'}${im.comment ? ` (${im.comment})` : ''}: ${url}` : url;
+        const say = (m) => { if (_artViewerState === st) _artViewerNote(m); };
+        Promise.resolve(navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(text) : Promise.reject())
+            .then(() => say(`Copied: ${text}`), () => say(`The browser did not allow copying. ${text}`));
+    }
+
+    /**
+     * The key help (`?`): every key of the viewer, the ones P4b added
+     * marked; a click on it or Esc closes it.
+     *
+     * @returns {HTMLElement}
+     */
+    function _artViewerHelpEl() {
+        const box = _artvEl('div', 'mb-artv-help');
+        box.dataset.artv = 'help';
+        box.setAttribute('role', 'dialog');
+        box.setAttribute('aria-label', 'Viewer keys');
+        box.appendChild(_artvEl('div', 'mb-artv-help-hd', 'Viewer keys'));
+        const dl = document.createElement('dl');
+        _ART_VIEWER_KEYS.forEach(([k, d, nw]) => {
+            const row = document.createElement('div');
+            row.append(_artvEl('dt', null, k), _artvEl('dd', null, d));
+            if (nw) row.querySelector('dd').appendChild(_artvEl('span', 'mb-artv-help-new', 'new'));
+            dl.appendChild(row);
+        });
+        box.appendChild(dl);
+        box.appendChild(_artvEl('div', 'mb-artv-help-foot', 'Click or Esc: close'));
+        // Under the bar, however many rows it wrapped to (it is in place
+        // before the render appends this box), and never past the bottom.
+        const bar = document.querySelector('#mb-art-viewer > .mb-artv-bar');
+        const top = (bar ? bar.offsetHeight : 48) + 12;
+        box.style.top = `${top}px`;
+        box.style.maxHeight = `calc(100% - ${top + 16}px)`;
+        return box;
     }
 
     /**
@@ -160147,6 +161639,12 @@ a { color: #1565c0; }`;
         if (!st.grid) bar.appendChild(_artvBtn('flip', 'Flip (H)', st.flipX));
         bar.appendChild(_artvBtn('fullscreen', 'Fullscreen (F)', _artViewerIsFullscreen()));
         if (!st.grid) bar.appendChild(_artvBtn('download', 'Download (D)'));
+        // P4b's tools.
+        if (!st.grid) bar.appendChild(_artvBtn('adjust', 'Adjust (A)', st.adjust));
+        if (!st.grid) bar.appendChild(_artvBtn('compare', 'Compare (C)', st.cmp !== null));
+        if (!st.grid && st.cmp === null) bar.appendChild(_artvBtn('loupe', 'Loupe (L)', st.loupe));
+        if (!st.grid) bar.appendChild(_artvBtn('copy', 'Copy URL (Y)'));
+        bar.appendChild(_artvBtn('help', 'Keys (?)', st.help));
         const orig = _artvEl('a', 'mb-artv-btn', 'Original (O)');
         orig.href = _artViewerUrl(im, im.image || _artViewerBigUrl(im));
         orig.target = '_blank';
@@ -160196,12 +161694,43 @@ a { color: #1565c0; }`;
             root.appendChild(grid);
             root.appendChild(_artvEl('div', 'mb-artv-bar mb-artv-keys',
                 st.gridStart ? 'Click an image to view it · Esc close' : 'Click an image to view it · G or Esc back'));
+            if (st.help) root.appendChild(_artViewerHelpEl());
             close.focus({ preventScroll: true });
             return;
         }
 
         const mid = _artvEl('div', 'mb-artv-mid' + (st.info ? '' : ' mb-artv-noinfo'));
-        const stage = _artvEl('div', 'mb-artv-stage' + (st.zoom ? ' mb-artv-zoomed' : ''));
+        const stage = _artvEl('div', 'mb-artv-stage' + (st.zoom && st.cmp === null ? ' mb-artv-zoomed' : ''));
+        // P4b: Compare has a stage of its own — two pictures, no zoom.
+        if (st.cmp !== null) {
+            _artViewerCompareStage(st, stage);
+            if (st.adjust) stage.appendChild(_artViewerAdjustPanel(st));
+            const cPrev = _artvBtn('prev', '‹');
+            cPrev.className = 'mb-artv-nav mb-artv-prev';
+            cPrev.setAttribute('aria-label', 'Previous picture on the right');
+            const cNext = _artvBtn('next', '›');
+            cNext.className = 'mb-artv-nav mb-artv-next';
+            cNext.setAttribute('aria-label', 'Next picture on the right');
+            stage.append(cPrev, cNext);
+            mid.append(stage, _artViewerInfo(st));
+            root.appendChild(mid);
+            const cFilm = _artvEl('div', 'mb-artv-film');
+            st.list.forEach((i) => {
+                const th = document.createElement('img');
+                if (st.images[i].external) th.referrerPolicy = 'no-referrer';
+                th.src = _artViewerThumbUrl(st.images[i]);
+                th.alt = (st.images[i].types || []).join(' / ');
+                th.loading = 'lazy';
+                th.dataset.artvGo = String(i);
+                if (i === st.i) th.className = 'mb-artv-cur';
+                else if (i === st.cmp) th.className = 'mb-artv-cur mb-artv-cmp-cur';
+                cFilm.appendChild(th);
+            });
+            root.appendChild(cFilm);
+            if (st.help) root.appendChild(_artViewerHelpEl());
+            close.focus({ preventScroll: true });
+            return;
+        }
         stage.dataset.artv = 'stage';
         const img = _artvEl('img', 'mb-artv-img');
         img.alt = (im.types || []).join(' / ') + (im.comment ? ' · ' + im.comment : '');
@@ -160210,8 +161739,23 @@ a { color: #1565c0; }`;
         // natural size is only known once one has loaded.
         img.addEventListener('load', () => {
             if (_artViewerState !== st || !img.isConnected) return;
+            img.classList.remove('mb-artv-img-failed');
             _artViewerFit(st, img);
             _artViewerShowFacts(st, img);
+        });
+        // The thumbnail did not load either: hide the broken glyph; the note
+        // gets its ⟳ once the large image has failed too (the catch below).
+        img.addEventListener('error', () => {
+            if (_artViewerState !== st || !img.isConnected) return;
+            if (img.dataset.artvSize !== 'thumb') return;
+            img.classList.add('mb-artv-img-failed');
+            // No large image on its way (a scan whose link is its thumbnail):
+            // nothing else will say it, so the ⟳ goes in now.
+            const n = stage.querySelector('.mb-artv-note');
+            if (n && !n.textContent) {
+                n.textContent = 'This picture did not load. ';
+                n.appendChild(_artvBtn('reload', '⟳ Try again'));
+            }
         });
         if (im.external) img.referrerPolicy = 'no-referrer';
         img.src = _artViewerThumbUrl(im);
@@ -160237,6 +161781,13 @@ a { color: #1565c0; }`;
         next.className = 'mb-artv-nav mb-artv-next';
         next.setAttribute('aria-label', 'Next image');
         stage.append(prev, next);
+        // P4b: the Adjust panel and the loupe's lens (shown on a move).
+        if (st.adjust) stage.appendChild(_artViewerAdjustPanel(st));
+        if (st.loupe) {
+            const lens = _artvEl('div', 'mb-artv-loupe');
+            lens.hidden = true;
+            stage.appendChild(lens);
+        }
         mid.append(stage, _artViewerInfo(st));
         root.appendChild(mid);
 
@@ -160275,7 +161826,10 @@ a { color: #1565c0; }`;
             if (note.textContent.startsWith('Showing the thumbnail')) note.textContent = '';
         }).catch(() => {
             if (_artViewerState !== st || st.gen !== gen || !note.isConnected) return;
-            note.textContent = 'Showing the thumbnail; the large image could not be loaded.';
+            // A ⟳ that asks again (vzell, 2026-11-06: the archive down for a while).
+            note.textContent = img.classList.contains('mb-artv-img-failed')
+                ? 'This picture did not load. ' : 'Showing the thumbnail; the large image could not be loaded. ';
+            note.appendChild(_artvBtn('reload', '⟳ Try again'));
         });
         // Preload the two neighbours so stepping is instant.
         const k = st.list.indexOf(st.i);
@@ -160285,6 +161839,7 @@ a { color: #1565c0; }`;
                 const x = st.images[j];
                 _artViewerLoadFirst(_artViewerBigUrls(x).filter(u => u !== _artViewerThumbUrl(x)), !!x.external).catch(() => {});
             });
+        if (st.help) root.appendChild(_artViewerHelpEl());
         close.focus({ preventScroll: true });
     }
 
@@ -160344,6 +161899,10 @@ a { color: #1565c0; }`;
         }
         if (e.ctrlKey || e.metaKey || e.altKey) return;
         const k = e.key;
+        // An Adjust slider or Invert has the focus (P4b): its own keys move
+        // it, as on any page; the page still never sees them.
+        if (e.target instanceof HTMLInputElement && root && root.contains(e.target) &&
+                /^(Arrow(Left|Right|Up|Down)|Home|End|PageUp|PageDown| )$/.test(k)) return;
         // Any key but P itself stops a running slideshow (and still acts).
         if (st.slideshow && k !== 'p' && k !== 'P' && k !== 'Shift') {
             _artViewerStopSlideshow(st);
@@ -160352,10 +161911,16 @@ a { color: #1565c0; }`;
         let handled = true;
         if (k === 'Escape') {
             // Fullscreen first (where the browser lets Esc through at all:
-            // most take it to leave fullscreen themselves), then the grid,
-            // then the viewer.
+            // most take it to leave fullscreen themselves), then the key help
+            // and Compare (P4b), then the grid, then the viewer.
             if (_artViewerIsFullscreen()) {
                 document.exitFullscreen().catch(() => {});
+            } else if (st.help) {
+                st.help = false;
+                _artViewerRender();
+            } else if (st.cmp !== null && !st.cmpStart) {
+                st.cmp = null;
+                _artViewerRender();
             } else if (st.grid && !st.gridStart) {
                 st.grid = false;
                 _artViewerRender();
@@ -160364,6 +161929,9 @@ a { color: #1565c0; }`;
             }
         } else if (k === 'f' || k === 'F') {
             _artViewerToggleFullscreen();
+        } else if (k === '?') {
+            st.help = !st.help;
+            _artViewerRender();
         } else if (st.grid) {
             if (k === 'g' || k === 'G') {
                 st.grid = false;
@@ -160371,6 +161939,21 @@ a { color: #1565c0; }`;
             } else {
                 handled = false;
             }
+        } else if (st.cmp !== null && (k === 'ArrowRight' || k === 'ArrowLeft') && !e.shiftKey) {
+            // Compare: ← → change the right picture; the left one stays.
+            _artViewerCompareStep(k === 'ArrowRight' ? 1 : -1);
+        } else if (st.cmp !== null && /^(ArrowUp|ArrowDown|[01zZrRhHvV])$/.test(k)) {
+            // Zoom, turn and flip belong to the one picture: not in Compare.
+        } else if (k === 'a' || k === 'A') {
+            st.adjust = !st.adjust;
+            _artViewerRender();
+        } else if (k === 'c' || k === 'C') {
+            _artViewerToggleCompare();
+        } else if ((k === 'l' || k === 'L') && st.cmp === null) {
+            st.loupe = !st.loupe;
+            _artViewerRender();
+        } else if (k === 'y' || k === 'Y') {
+            _artViewerCopyUrl(e.shiftKey);
         } else if ((k === 'ArrowRight' || k === 'ArrowLeft') && e.shiftKey) {
             // Shift+← →: the previous/next row of the CAA/EAA column, when
             // there is one (a no-op in the release/event sections).
@@ -160447,6 +162030,15 @@ a { color: #1565c0; }`;
             if (!go && !b) _artViewerRender();
         }
         if (go) {
+            // Compare (P4b): a filmstrip picture becomes the right one.
+            if (st.cmp !== null && !st.grid) {
+                const idx = Number(go.dataset.artvGo);
+                if (idx !== st.i) {
+                    st.cmp = idx;
+                    _artViewerRender();
+                }
+                return;
+            }
             st.i = Number(go.dataset.artvGo);
             st.grid = false;
             _artViewerResetZoomOnStep(st);
@@ -160454,6 +162046,17 @@ a { color: #1565c0; }`;
             return;
         }
         if (!b) return;
+        // P4b's tools, and Compare's ‹ › stepping the right picture.
+        if (st.cmp !== null && (action === 'prev' || action === 'next')) {
+            _artViewerCompareStep(action === 'next' ? 1 : -1);
+            return;
+        }
+        if (action === 'adjust') { st.adjust = !st.adjust; _artViewerRender(); return; }
+        if (action === 'adjreset') { st.adj = _artViewerAdjDefault(); _artViewerRender(); return; }
+        if (action === 'compare') { _artViewerToggleCompare(); return; }
+        if (action === 'loupe') { st.loupe = !st.loupe; _artViewerRender(); return; }
+        if (action === 'copy') { _artViewerCopyUrl(false); return; }
+        if (action === 'help') { st.help = !st.help; _artViewerRender(); return; }
         if (action === 'slideshow') _artViewerToggleSlideshow();
         else if (action === 'close') _artViewerClose();
         else if (action === 'grid') { st.grid = !st.grid; _artViewerRender(); }
@@ -160469,6 +162072,9 @@ a { color: #1565c0; }`;
             const im = st.images[st.i];
             if (im && im.retry) im.retry();
         }
+        // The picture's files again (the thumbnail and the large one), after
+        // they did not load: the stage is built anew, which asks again.
+        else if (action === 'reload') _artViewerRender();
     }
 
     /**
@@ -160513,11 +162119,13 @@ a { color: #1565c0; }`;
         const st = _artViewerState;
         if (!st || st.grid) return;
         st.ptr = { x: e.clientX, y: e.clientY };
-        if (!st.zoom || st.panMode !== 'follow') return;
         const img = document.querySelector('#mb-art-viewer .mb-artv-stage .mb-artv-img');
-        if (!img) return;
-        _artViewerPanFromPointer(st, e.clientX, e.clientY);
-        _artViewerApplyTransform(st, img);
+        if (img && st.zoom && st.panMode === 'follow') {
+            _artViewerPanFromPointer(st, e.clientX, e.clientY);
+            _artViewerApplyTransform(st, img);
+        }
+        // The loupe (P4b), after the pan: it reads where the picture is now.
+        _artViewerLoupeMove(e);
     }
 
     /**
@@ -161317,12 +162925,14 @@ a { color: #1565c0; }`;
     function _artSpaceOpen(el) {
         const fn = el.dataset.mbttFn;
         if (fn === 'fd-pic') {
-            // A foreign detail page's picture: the section's own click
-            // handler (`_dpArtViewerClick()`), on that section.
+            // A foreign detail page's picture: its art section's own click
+            // handler (`_releaseArtOnClick()`), on that section.
+            const sec = el.closest('.mb-release-art-sec');
+            if (!sec) return false;
             let opened = false;
-            _dpArtViewerClick({
+            _releaseArtOnClick({
                 type: 'click', button: 0, ctrlKey: false, shiftKey: false, altKey: false, metaKey: false, target: el,
-                currentTarget: el.closest('.mb-fd-art'), preventDefault() { opened = true; },
+                currentTarget: sec, preventDefault() { opened = true; },
             });
             return opened;
         }
@@ -161498,6 +163108,9 @@ a { color: #1565c0; }`;
      * @returns {string}
      */
     function _artCardCoreHtml(o) {
+        // A tile that does not load becomes a ⟳ box with a line on how to
+        // retry (the card cannot be clicked): `_artImgOnError()`.
+        _artImgFailInstall();
         const { ctx, images, order } = o;
         const cap = Math.round(_artNumSetting('sa_caa_tip_summary_tiles', 12, 1));
         const all = !!o.el && _artCardView.allEl === o.el;

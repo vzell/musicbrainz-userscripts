@@ -309,6 +309,151 @@ never from a hard-coded `CAA_CTX`. Rules that come with that:
   `FIXTURE_SETTINGS_OVERRIDE` too; `sa_event_overview_art_tab` gates the tab
   click (the release page's tab click has no setting).
 
+- **The descriptor is the section's adapter** (org/image-handling.org P0,
+  2026-11-06), the first step toward one image section for every detail
+  pageType. No handler reads an archive cache, `location` or a bare
+  `.mb-release-art-sec` any more:
+  - records come from `desc.images(sec)`, loading from `desc.load(sec)`
+    (`{state, images}`), a retry from `desc.retry(sec)` (no ⟳ button when
+    it is null). `_artSectionArchiveSource()` supplies all three for
+    caa/eaa: `ctx.imagesCache`, `_artFetchEntityImages()`, the three cache
+    deletes;
+  - `_artSectionBuild(desc, anchor, entityKey, count)` builds h2 + section
+    and starts the load. It knows no archive, tab or URL; the MusicBrainz
+    half (setting, entity from the path, tab count, tab intercept) stays in
+    `_releaseArtInsertSection()`;
+  - **find a section with `_artSectionFind(key, loaded)`**, never
+    `document.querySelector('.mb-release-art-sec')`: the foreign detail
+    head's picture sections share that class without `data-mb-art-ctx`
+    (`.mb-fd-art`), and one placed first took the tab click
+    (`release-tracks-cover-art-viewer.spec.js` "finds its own section",
+    mutation list `image-section.json`). Without a key it returns the first
+    section whose adapter has `tab`.
+- **The foreign detail head's pictures are art sections** (org/image-handling.org
+  P1, 2026-11-06): `_fdHeadInsertSections()` builds one per picture group
+  with `_fdArtSection()` — an adapter made at run time and kept in
+  `_artSectionAdapters()` (`_artSectionDesc()` falls back to it; a property
+  of the function, not a `const`, for the TDZ), records in `_FD_ART_CTX`
+  (its own external context: `_DP_ART_CTX` is cleared by every preview
+  window that opens the viewer), filled at once with no load
+  (`_artSectionCreate()` + `_releaseArtRenderSheet()`), Grid / By type only,
+  remembered under `MB_FD_ART_LAYOUT_KEY` (workspace group `fdart`), the
+  viewer's title from the adapter's `title()`. **An `external` record's tile
+  differs in four ways** (`_releaseArtBuildTile()`): URLs kept as given
+  (another site may not answer on https), no referrer, the `fd-pic` card
+  instead of the archive card, "★ primary"; a comment that only repeats
+  the type is not printed. Space on such a tile goes through
+  `_releaseArtOnClick()` (`_artSpaceOpen()`). Each site gives its pictures
+  `types` (Discogs `_dgHeadPictures()`, archive.org `_iaPictureTypes()`,
+  springsteenlyrics the section's kind). Spec: `discogs-release-tracks.spec.js`
+  "image section P1"; mutation list `image-section.json`.
+- **Groups, chips and placeholders come from the adapter when it says so**
+  (P2, 2026-11-06), with today's type-based behaviour as the default, so
+  MusicBrainz is unchanged: `_artChipsOf(desc, im)` (a chip per type, else
+  `desc.chipsOf`), `_artGroupOf(desc, im)` (the first type, else
+  `desc.groupOf`), `desc.groupedLabel` ("By type"), `_artInGroupOrder()`
+  (`desc.groupOrder`: the page's order of the groups, for chips and groups)
+  and `_artPlaceholders(desc)` (`desc.placeholders()`: `[{group, note}]`,
+  groups the page lists without pictures). A placeholder is
+  `figure.mb-release-art-missing`, **never `.mb-release-art-tile`**: the
+  viewer's order, the tile counts and the picture card must not see it; it
+  shows with no chip pressed or with its own group's, and its group gets a
+  chip with 0 (`.mb-release-art-chip-empty`). springsteenlyrics' items use
+  it for their copies (one section, chips and "By copy", the site's "No
+  scans available yet"). Specs `sl-item.spec.js` "image section P2"
+  (fixtures 5240, 6463, 5472); mutation list `image-section.json`.
+- **Medium thumbs off MusicBrainz** (P3, 2026-11-06): `_releaseArtApplyMediumArt()`
+  and its click take their adapter from `_artMediumAdapter()` — the Cover
+  art adapter on release-tracks (its `mediaOf` = `_releaseArtMedia()`, its
+  `mediumOn()` = the two settings), else the first loaded section whose
+  adapter has `mediaOf` (`_fdArtSection()`: `_artForeignMedia()` reads
+  "Disc 1 · …", "Record 2: …", a lone "Disc (…)" = medium 1, a record or
+  tape two-sided). **On any other MusicBrainz page it returns before
+  querying** (`_foreignHost === null`): it rides every filter pass.
+  `_releaseArtMediumAssign()` is unchanged, so the rules stay R7's — a
+  foreign Medium picture needs a comment that names its medium ("Disc 2")
+  or a single medium. Types come from the site's own words:
+  archive.org's file names (`_iaPictureTypes()`), springsteenlyrics'
+  artwork captions (`_slArtworkTypes()`: disc/label/picture side/runout/
+  matrix → Medium first, then booklet, front, back). An external medium
+  thumb's card (`_releaseArtTipHtml()`) shows the picture itself, no
+  referrer, no Ctrl link. Specs: `ia-details.spec.js` and `sl-item.spec.js`
+  "image section P3"; mutation list `image-section.json`.
+- **The section's views (P4a, 2026-11-06)**, on every adapter:
+  - **Table** (`_releaseArtRenderTable()`): **`table.mb-release-art-table`,
+    never `table.tbl`** (vzell's decision: the global filter, the sub-table
+    filters, the findings and every render pass must not see it). One
+    `tr[data-mb-art-i]` per picture shown; its picture is the tile's own
+    link (`a.mb-release-art-row-link`, built by `_releaseArtBuildTile()`:
+    same URLs, referrer, card); a Copy/Group column when the adapter has
+    `groupOf`; a placeholder is `tr.mb-release-art-missing-row`, never
+    `[data-mb-art-i]`. A heading sorts (`data-mb-art-sort` "key:±1" on the
+    section). `_releaseArtViewerOrder()` reads `figure.mb-release-art-tile,
+    tr[data-mb-art-i]` in DOM order, so the viewer follows the sort, and
+    `_fdPicCardHtml()` counts row links too.
+  - **The filter box** (`data-mb-art-q`): `_releaseArtShownIndices()`'s
+    fourth argument, so it narrows every layout and the Spreads plan;
+    `_artSearchText()` = types, comment, group, `_artFileName()`. The box is
+    rebuilt with the toolbar on each letter: `_releaseArtOnInput()` refocuses
+    the new one and puts the caret back — drop that and typing stops after
+    one letter. Placeholders hide while a filter is typed. Its matches are
+    marked (`mark.mb-release-art-hl`, vzell 2026-11-06) by `_artHighlight()`,
+    which `_releaseArtRenderSheet()` runs after `_releaseArtBuildSheet()` (the
+    body), so every re-render marks again; it splits text nodes only, so a
+    caption's `textContent` (and the specs reading it) stays the same.
+  - **Tiles** (`MB_ART_SEC_TILE_KEY`, workspace group `artsectile`, 80–240,
+    unset = the stylesheet's 120 px): the grid's `minmax()` reads
+    `--mb-art-sec-tile`, set live on `input`, stored on `change`. **Not
+    `--mb-art-tile`**: that one is the CAA cell grid's, on `<html>`. Its ↺
+    (`.mb-release-art-size-reset`, shown while a size is stored or once the
+    slider is let go) deletes the key and the section's custom property.
+  - **Show missing** (`data-mb-art-missing-off`), only with placeholders.
+  - The section's `input`/`change` listeners are on the section
+    (`_artSectionCreate()`), like its click: never cloned.
+  Specs: `release-tracks-cover-art-viewer.spec.js` and `sl-item.spec.js`
+  "image section P4a"; mutation list `image-section.json` (39 entries).
+- **A picture that did not load gets a ⟳, never the broken glyph** (vzell,
+  2026-11-06, DEBUG-NOTES): `_artImgFailInstall()` (called by every producer:
+  `_artSectionCreate()`, the medium thumbs, `_sbHeaderCopy()`, `_artCardCoreHtml()`)
+  puts ONE capture-phase `error` listener on the document; `_artImgOnError()`
+  marks the picture's DIRECT parent when it matches `_ART_IMG_RETRY_HOSTS` with
+  `.mb-img-failed`. **The box keeps its own click**: a tile or a Table row gets
+  a separate `button.mb-img-retry` (beside the link, never inside it), a medium
+  thumb or the heading copy asks again AND opens the viewer, the section's tool
+  row has "⟳ Reload N failed" (`_artImgFailCount()`), the card (it cannot be
+  clicked) gets a line. A retry (`_artImgRetry()`) sets the same `src` anew. The
+  viewer: "⟳ Try again" (`data-artv="reload"` → `_artViewerRender()`), its stage
+  picture `mb-artv-img-failed` when the thumbnail failed. A NEW picture display
+  that wants this: make the `<img>` the direct child of a box listed in
+  `_ART_IMG_RETRY_HOSTS` and call `_artImgFailInstall()` before the `<img>` gets
+  its `src`. Specs `art-image-retry.spec.js`, `sidebar-picture.spec.js` "image
+  retry" (why it fires the error itself: DEBUG-NOTES).
+- **The viewer's tools (P4b, 2026-11-06)**, keys A C L Y ? (all were free;
+  `_ART_VIEWER_KEYS` is the one list, shown by `?`):
+  - **Adjust** (`st.adj`, `_artViewerFilter()`): the filter is written by
+    the ONE transform writer, `_artViewerApplyTransform()`, so every load,
+    fit and re-render keeps it; the sliders write it live without a
+    re-render (`_artViewerOnInput()` → `_artViewerApplyFilter()`, keeps
+    focus). Reset on every step in `_artViewerResetZoomOnStep()`, like the
+    turn. A focused input keeps its own arrow keys (the key handler returns
+    for it, after `stopImmediatePropagation()`).
+  - **Compare** (`st.cmp`, `_artViewerCompareStage()`): its own stage, two
+    plain `img.mb-artv-cmp-img`, NOT `.mb-artv-img` — no fit, zoom, pan,
+    turn or flip. **Zoom keys are refused in Compare**: `_artViewerSetZoom()`
+    needs only the stage and would raise the zoom of the picture behind,
+    which then came back zoomed. ← → and the filmstrip change the right
+    picture (`_artViewerCompareStep()`, skipping the left). Opened INTO
+    Compare (`compareWith`, a Spreads pair in `_releaseArtOnClick()`):
+    `st.cmpStart`, Esc closes the viewer, as `gridStart` does.
+  - **Loupe** (`_artViewerLoupeMove()`, from the mousemove AFTER the
+    follow-pan): screen fractions → undo the flips → undo the turn →
+    the picture's own; the lens is turned and flipped as the picture is.
+  - **Copy URL** (`_artViewerCopyUrl()`): `navigator.clipboard`, no new
+    `@grant` (a grant re-prompts every user).
+  - **Esc order**: fullscreen, the key help, Compare (unless `cmpStart`),
+    the grid, the viewer.
+  Spec `art-viewer-tools.spec.js`; mutation list `image-section.json`
+  (67 entries).
 - **One record, one cache.** `_artFetchEntityImages(ctx, entityPath)` is the
   table-free copy of `_artEnrichIcon()`'s three tiers with the same 404 vs
   429/5xx bookkeeping, so the section and the CAA column share

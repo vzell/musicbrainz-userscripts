@@ -28366,3 +28366,60 @@ never gets the green "already loaded" dot, while a MusicBrainz window's links do
 Specs: `sl-lyrics.spec.js` (Bootstrap's rule added with `addStyleTag`; every badge one width, one right edge) and
 `sl-tracklist-links.spec.js` (a held song answer released while the pointer is on another song). Mutations
 `scripts/mutations/sl-uvd-badge-window-dot.json`: 3, all fail as expected.
+
+## 2026-11-06 — The discogs-mb-column "no card" flake again; its trace lost to a re-run
+
+Env: 2026-11-06T01:47:30 → 02:05:33+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright Chromium, no Tampermonkey (GM stubs)
+
+`test:full` on `feature/image-section-p1` (working tree over `a114a52a`, org/image-handling.org P1):
+2726 passed, 1 failed — `discogs-mb-column.spec.js` "in a MusicBrainz window, a genre's tag link
+opens here and has its card", `#mb-dp-peek > .mb-pop-kind-head` read "Artist" for 30 s instead of
+"Tag". The same "no card" form as the open case of 2026-10-29 above, whose cause is still unknown.
+Not this branch's: it touches no popup-engine code (the art section, the foreign head's pictures),
+the same test passed in P0's full run (2026-11-06T01:33, 2726 passed), and alone it passed 5 of 5
+(`--repeat-each 5`, 02:06).
+
+**The trace is gone.** The 2026-10-29 entry asked the next gate to keep `test-results/`; the
+`--repeat-each` re-run was started before that entry was read, and Playwright empties
+`test-results/` at the start of every run. So, once more, nothing to read. For next time: copy
+`test-results/` aside BEFORE any re-run after a failed gate (or let `scripts/run-test-full.py`
+do it on a non-zero exit).
+
+## 2026-11-06 — Pictures that did not load showed the browser's broken glyph, no retry (archive down)
+
+Env: 2026-11-06T09:43+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · vzell's screenshot: Chrome (version not recorded) with Tampermonkey (version not recorded); fix checked in Playwright Chromium, no Tampermonkey (GM stubs)
+
+**Symptom (vzell, screenshot of /event/fa1c7e33-…, Event art (3)):** every tile of the
+section and the 34 px copy beside the h1 showed the browser's broken-image glyph with
+its alt text; the console listed 12 `net::ERR_CONNECTION_TIMED_OUT` for
+`archive.org/download/mbid-…_thumb250.jpg` / `_thumb500.jpg`. vzell remembered a ⟳.
+
+**Cause:** the ⟳ exists, but only for the CAA/EAA COLUMN's icon (`_artLoadIcon()`'s
+`_onIconError`, ⚠⟳) and for the art section's RECORD (`_releaseArtLoad()`'s "⟳ Retry").
+Here the record had come through (chips "Poster 2, Banner 1"); only the picture FILES
+timed out, and no picture display watched its `<img>` for `error`: the section's tiles,
+its Table rows, the medium thumbs, the heading copy (`_sbHeaderCopy()`, from
+`_sbWireCover()`), the artwork card's tiles, the viewer's stage. On the other sites the
+same: their detail heads are the same section since image section P1; FICE's record
+failures have "Try again", its picture files did not.
+
+**Fix (branch `feature/image-section-retry`, org/image-handling.org):** one
+capture-phase `error` listener (`_artImgOnError()`, installed by each producer through
+`_artImgFailInstall()`) marks the picture's box `.mb-img-failed` (dashed, ⟳, the picture
+kept in place but hidden). The box keeps its own click (the viewer may still show the
+large image, and every spec that serves the archive's thumbnails as 404s relies on it):
+a tile or row gets its own `button.mb-img-retry`, a medium thumb or the heading copy asks
+again on the click that opens the viewer, the section's tool row "⟳ Reload N failed",
+the card (pointer-events: none) a line "rest on the link again". The viewer: "⟳ Try
+again" on a large image that did not load, the stage picture hidden when the thumbnail
+failed too. A retry sets the same `src` again: the browser does not cache a failed load.
+
+**Testing trap:** the heading copy's failure cannot be produced over the network in
+the harness. MusicBrainz's own script asks for the same `data-small-thumbnail`; failed
+during the load (which `loadUserscriptPage()` waits for before injecting), MusicBrainz
+replaces the cover with "Image failed to load correctly" — no cover, no copy; let
+through, the copy comes from the image cache and cannot fail. Found with two throwaway
+probe specs (MutationObserver log, request log); the test fires the `<img>`'s `error`
+event itself. Specs `art-image-retry.spec.js` (real timeouts: tiles, medium thumbs, the
+viewer) and `sidebar-picture.spec.js` "image retry"; mutation list `image-section.json`
+(10 more, one recorded as an overlap).

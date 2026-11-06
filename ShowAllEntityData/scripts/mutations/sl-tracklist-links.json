@@ -346,7 +346,7 @@
         "why": "Adjustments 4: a rest shows the picture large.",
         "edits": [
             {
-                "find": "                    a.dataset.mbttFn = 'fd-pic';\n",
+                "find": "        if (ext) a.dataset.mbttFn = 'fd-pic';\n",
                 "replace": ""
             }
         ],

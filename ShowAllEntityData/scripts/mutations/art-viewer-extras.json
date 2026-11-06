@@ -2,7 +2,7 @@
   {
     "name": "drag mode still pans on hover",
     "why": "In drag mode only a drag moves the zoomed image; without the mode check the hover pans it as in follow mode.",
-    "edits": [{"find": "if (!st.zoom || st.panMode !== 'follow') return;", "replace": "if (!st.zoom) return;"}],
+    "edits": [{"find": "        if (img && st.zoom && st.panMode === 'follow') {", "replace": "        if (img && st.zoom) {"}],
     "spec": "tests/fixtures/art-viewer-extras.spec.js",
     "grep": "a hover leaves the zoomed image alone",
     "expect": "fail"
@@ -74,7 +74,7 @@
   {
     "name": "Esc closes the viewer while it is fullscreen",
     "why": "The first Esc leaves fullscreen and keeps the viewer open, where the browser lets the key through at all.",
-    "edits": [{"find": "            if (_artViewerIsFullscreen()) {\n                document.exitFullscreen().catch(() => {});\n            } else if (st.grid && !st.gridStart) {", "replace": "            if (st.grid && !st.gridStart) {"}],
+    "edits": [{"find": "            if (_artViewerIsFullscreen()) {\n                document.exitFullscreen().catch(() => {});\n            } else if (st.help) {", "replace": "            if (st.help) {"}],
     "spec": "tests/fixtures/art-viewer-extras.spec.js",
     "grep": "F enters the browser",
     "expect": "fail"

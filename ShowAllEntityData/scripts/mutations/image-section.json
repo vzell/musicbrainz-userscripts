@@ -1,0 +1,899 @@
+[
+    {
+        "name": "P0: the tab click takes the first .mb-release-art-sec in the page",
+        "why": "org/image-handling.org P0. A foreign detail head's picture section shares the class without data-mb-art-ctx. A bare query finds it before the archive section, sees no loaded state and lets the tab navigate instead of opening the viewer.",
+        "edits": [
+            {
+                "find": "        const sec = _artSectionFind();\n        const desc = _artSectionOf(sec);",
+                "replace": "        const sec = document.querySelector('.mb-release-art-sec');\n        const desc = _artSectionOf(sec);"
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+        "grep": "finds its own section",
+        "expect": "fail"
+    },
+    {
+        "name": "P0: _artSectionFind() without a key ignores the tab flag",
+        "why": "Without the adapter's `tab` test any marked section would do; with only archive sections on a MusicBrainz page that is the same section, so the spec cannot tell. Recorded as an overlap: it matters once a non-archive adapter (P1) builds a marked section on the same page.",
+        "edits": [
+            {
+                "find": "            .find(sec => { const d = _artSectionOf(sec); return !!(d && d.tab); }) || null;",
+                "replace": "            .find(sec => !!sec) || null;"
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+        "grep": "finds its own section",
+        "expect": "pass"
+    },
+    {
+        "name": "P0: the load no longer goes through the adapter",
+        "why": "The section must load through desc.load(); a section that never loads keeps its Loading note, and openRelease() waits for data-mb-art-state=\"ok\" in vain.",
+        "edits": [
+            {
+                "find": "        const { state, images } = await desc.load(sec);",
+                "replace": "        const { state, images } = await new Promise(() => {});"
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+        "grep": "a tile opens the viewer at that image",
+        "expect": "fail"
+    },
+    {
+        "name": "P0: the sheet reads no records from the adapter",
+        "why": "_releaseArtRenderSheet() reads desc.images(sec); an empty list renders the chips with All 0 and no tiles.",
+        "edits": [
+            {
+                "find": "        const desc = _artSectionOf(sec);\n        const images = desc.images(sec);\n        const active = _releaseArtActiveTypes(sec);",
+                "replace": "        const desc = _artSectionOf(sec);\n        const images = [];\n        const active = _releaseArtActiveTypes(sec);"
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+        "grep": "a tile opens the viewer at that image",
+        "expect": "fail"
+    },
+    {
+        "name": "P1: an external tile's URLs are made protocol-relative like an archive's",
+        "why": "Another site may not answer on https; its URLs must stay as the page gave them.",
+        "edits": [
+            {
+                "find": "        const url = u => (ext ? u : u.replace(/^http:/, ''));",
+                "replace": "        const url = u => u.replace(/^https?:/, '');"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "image section P1",
+        "expect": "fail"
+    },
+    {
+        "name": "P1: an external tile gets the archive's hover card",
+        "why": "The archive card speaks of edits and 1200 px; another site's picture keeps the fd-pic card.",
+        "edits": [
+            {
+                "find": "        if (!ext) fig.dataset.mbtt = _releaseArtTipHtml(images, index);",
+                "replace": "        fig.dataset.mbtt = _releaseArtTipHtml(images, index);"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "image section P1",
+        "expect": "fail"
+    },
+    {
+        "name": "P1: an external tile is loaded with a referrer",
+        "why": "Another site's image is loaded without a referrer, as everywhere else the script shows one.",
+        "edits": [
+            {
+                "find": "        if (ext) img.referrerPolicy = 'no-referrer';",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "image section P1",
+        "expect": "fail"
+    },
+    {
+        "name": "P1: an external front is labelled as the archive's main front",
+        "why": "Discogs' primary image is not an archive's main front; its star says so.",
+        "edits": [
+            {
+                "find": "            star.textContent = ext ? '★ primary' : '★ main';",
+                "replace": "            star.textContent = '★ main';"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "image section P1",
+        "expect": "fail"
+    },
+    {
+        "name": "P1: Discogs' images carry no type",
+        "why": "Without types the chips read only \"(no type) 5\", and nothing is starred.",
+        "edits": [
+            {
+                "find": "            types: [im.type === 'primary' ? 'Primary' : 'Secondary'], front: im.type === 'primary',",
+                "replace": "            types: [], front: false,"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "image section P1",
+        "expect": "fail"
+    },
+    {
+        "name": "P1: the foreign sections share MusicBrainz's layout key",
+        "why": "A foreign page's layout must not change the release page's Cover art layout, and the other way round.",
+        "edits": [
+            {
+                "find": "            title: () => spec.title || '', layouts: ['grid', 'grouped', 'table'], layoutKey: MB_FD_ART_LAYOUT_KEY,",
+                "replace": "            title: () => spec.title || '', layouts: ['grid', 'grouped', 'table'], layoutKey: MB_RELEASE_ART_LAYOUT_KEY,"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "image section P1",
+        "expect": "fail"
+    },
+    {
+        "name": "P1: the viewer's bar shows the section's label instead of the page's title",
+        "why": "The adapter's title() names the release; without it the bar says \"Images\".",
+        "edits": [
+            {
+                "find": "        if (typeof desc.title === 'function') return desc.title() || desc.label;",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "image section P1",
+        "expect": "fail"
+    },
+    {
+        "name": "P1: archive.org's pictures carry no type",
+        "why": "The head's pictures get the type the Art column's card already guesses from the file name.",
+        "edits": [
+            {
+                "find": "                caption: p.name.split('/').pop().replace(/\\.[^.]+$/, ''), types: _iaPictureTypes(p.name) })),",
+                "replace": "                caption: p.name.split('/').pop().replace(/\\.[^.]+$/, '') })),"
+            }
+        ],
+        "spec": "tests/fixtures/ia-details.spec.js",
+        "grep": "the head as release-tracks",
+        "expect": "fail"
+    },
+    {
+        "name": "P1: Space on a head picture finds no section",
+        "why": "Space opens the viewer through the art section's own click handler; without the section it does nothing.",
+        "edits": [
+            {
+                "find": "            const sec = el.closest('.mb-release-art-sec');\n            if (!sec) return false;\n            let opened = false;",
+                "replace": "            const sec = null;\n            if (!sec) return false;\n            let opened = false;"
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "a head picture shows large on a rest",
+        "expect": "fail"
+    },
+    {
+        "name": "P2: a copy the page lists without scans is left out again",
+        "why": "The site's \"No scans available yet\" copy must stay visible as a placeholder; left out, the page reads as if the item had one copy.",
+        "edits": [
+            {
+                "find": "                    picturePlaceholders.push({ group, note: _dpText(alert.textContent) || 'No scans' });",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "collection 5240",
+        "expect": "fail"
+    },
+    {
+        "name": "P2: the placeholder's note keeps the alert's close button",
+        "why": "The note is the alert's text without its \"×\" button.",
+        "edits": [
+            {
+                "find": "                    alert.querySelectorAll('button').forEach(b => b.remove());",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "collection 5240",
+        "expect": "fail"
+    },
+    {
+        "name": "P2: the page's order of the copies is ignored",
+        "why": "Copy #1 without scans comes first on the page; without groupOrder its chip and group follow copy #2's.",
+        "edits": [
+            {
+                "find": "        const order = desc && Array.isArray(desc.groupOrder) ? desc.groupOrder : null;",
+                "replace": "        const order = null;"
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "collection 5472",
+        "expect": "fail"
+    },
+    {
+        "name": "P2: a placeholder counts as a tile",
+        "why": "A placeholder is never a .mb-release-art-tile: the tile count and the viewer's order would hold it.",
+        "edits": [
+            {
+                "find": "        fig.className = 'mb-release-art-missing';",
+                "replace": "        fig.className = 'mb-release-art-missing mb-release-art-tile';"
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "collection 5472",
+        "expect": "fail"
+    },
+    {
+        "name": "P2: an item's copies are chipped by type",
+        "why": "With copies, the chips are the copies; by type they would read only \"Scan 4\".",
+        "edits": [
+            {
+                "find": "            desc.chipsOf = im => [desc.groupOf(im)];",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "collection 6463",
+        "expect": "fail"
+    },
+    {
+        "name": "P2: the grouped layout is still called By type",
+        "why": "Grouped by copy, the button says By copy.",
+        "edits": [
+            {
+                "find": "            desc.groupedLabel = `By ${spec.pictureGroupLabel}`;",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "collection 6463",
+        "expect": "fail"
+    },
+    {
+        "name": "P2: placeholders ignore the pressed chips",
+        "why": "A placeholder shows with no chip pressed or with its own group's; copy #2's chip must hide copy #1's placeholder.",
+        "edits": [
+            {
+                "find": "            : _artPlaceholders(desc).filter(p => !active.length || active.includes(p.group));",
+                "replace": "            : _artPlaceholders(desc);"
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "collection 5472",
+        "expect": "fail"
+    },
+    {
+        "name": "P2: a placeholder's group gets no chip",
+        "why": "The empty copy has a chip with 0, so it can be picked and is seen in the chip row.",
+        "edits": [
+            {
+                "find": "        _artPlaceholders(desc).forEach((p) => { if (!counts.has(p.group)) counts.set(p.group, 0); });",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "collection 5240",
+        "expect": "fail"
+    },
+    {
+        "name": "P3: a foreign page's disc headings are not read",
+        "why": "Without _artForeignMedia()'s heading parse there are no media, so no Medium picture lands anywhere.",
+        "edits": [
+            {
+                "find": "            const m = /^(disc|disk|cd|record|lp|vinyl|tape|cassette)\\b\\s*(\\d+)?/i.exec(text);",
+                "replace": "            const m = null;"
+            }
+        ],
+        "spec": "tests/fixtures/ia-details.spec.js",
+        "grep": "image section P3",
+        "expect": "fail"
+    },
+    {
+        "name": "P3: a single unnumbered heading is not medium 1",
+        "why": "\"Disc (82:40.00)\" names no number; alone it is the one medium, or its two disc pictures have nowhere to go.",
+        "edits": [
+            {
+                "find": "        if (found.length === 1 && !found[0].pos) found[0].pos = 1;",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "one unnumbered",
+        "expect": "fail"
+    },
+    {
+        "name": "P3: the foreign adapter knows no media",
+        "why": "Without mediaOf on _fdArtSection()'s adapter, _artMediumAdapter() finds no section to put into the headings.",
+        "edits": [
+            {
+                "find": "            mediaOf: () => _artForeignMedia(),\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "six Medium pictures",
+        "expect": "fail"
+    },
+    {
+        "name": "P3: springsteenlyrics' artwork keeps one type",
+        "why": "The captions name the part; without _slArtworkTypes() every picture is Artwork and none is Medium.",
+        "edits": [
+            {
+                "find": "                    types: kind === 'Artwork' ? _slArtworkTypes(caption) : [kind], ...(group ? { group } : {}) });",
+                "replace": "                    types: [kind], ...(group ? { group } : {}) });"
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "six Medium pictures",
+        "expect": "fail"
+    },
+    {
+        "name": "P3: a disc caption is read after front/back",
+        "why": "\"disc front\" is the disc: the Medium test comes first, or it is typed Front.",
+        "edits": [
+            {
+                "find": "        if (/\\b(?:disc|disk|cd|label|picture side|runout|matrix|vinyl|record)\\b/.test(c)) return ['Medium'];\n        if (/\\b(?:booklet|insert|inlay)\\b/.test(c)) return ['Booklet'];\n        if (/^front\\b/.test(c)) return ['Front'];",
+                "replace": "        if (/\\bfront\\b/.test(c)) return ['Front'];\n        if (/\\b(?:disc|disk|cd|label|picture side|runout|matrix|vinyl|record)\\b/.test(c)) return ['Medium'];\n        if (/\\b(?:booklet|insert|inlay)\\b/.test(c)) return ['Booklet'];"
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "one unnumbered",
+        "expect": "fail"
+    },
+    {
+        "name": "P3: a medium thumb opens the archive's context",
+        "why": "The thumb's click opens its adapter's context; with CAA_CTX a foreign page's records are not there.",
+        "edits": [
+            {
+                "find": "        _artViewerOpen(desc.ctx, sec.dataset.mbArtEntity, list, start, { opener: btn, title: _releaseArtTitle(desc) });",
+                "replace": "        _artViewerOpen(CAA_CTX, sec.dataset.mbArtEntity, list, start, { opener: btn, title: _releaseArtTitle(desc) });"
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "six Medium pictures",
+        "expect": "fail"
+    },
+    {
+        "name": "P3: a foreign medium thumb's card loads its picture with a referrer",
+        "why": "Another site's picture is loaded without a referrer, in the card too.",
+        "edits": [
+            {
+                "find": "${ext ? ' referrerpolicy=\"no-referrer\"' : ''}",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "six Medium pictures",
+        "expect": "fail"
+    },
+    {
+        "name": "P3: the release page's medium art ignores its settings",
+        "why": "The Cover art adapter's mediumOn() carries MusicBrainz's two settings; always on, turning the setting off keeps the thumbs.",
+        "edits": [
+            {
+                "find": "                mediumOn: () => !!(Lib.settings.sa_enable_release_tracks_cover_art &&",
+                "replace": "                mediumOn: () => true || !!(Lib.settings.sa_enable_release_tracks_cover_art &&"
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-medium-art.spec.js",
+        "grep": "the setting turns them off",
+        "expect": "fail"
+    },
+    {
+        "name": "P3: MusicBrainz pages other than release-tracks look for foreign media",
+        "why": "A performance guard, not a visible one: _artMediumAdapter() runs on every filter pass; on MusicBrainz it must return before querying the document. Nothing on screen differs, so no spec can see it: recorded as an overlap.",
+        "edits": [
+            {
+                "find": "        if (_foreignHost === null) return null;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/event-overview-art.spec.js",
+        "grep": "the event's own chips",
+        "expect": "pass"
+    },
+    {
+        "name": "P4a: the Table layout is a table.tbl",
+        "why": "vzell's decision: a plain table inside the section; as table.tbl it would join the global filter, the findings and every render pass.",
+        "edits": [
+            {
+                "find": "        table.className = 'mb-release-art-table';",
+                "replace": "        table.className = 'mb-release-art-table tbl';"
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+        "grep": "Table: one row per picture",
+        "expect": "fail"
+    },
+    {
+        "name": "P4a: a second click on a heading does not reverse the order",
+        "why": "The sort direction comes from data-mb-art-sort; fixed at 1, descending never happens.",
+        "edits": [
+            {
+                "find": "        const dir = sortDir === '-1' ? -1 : 1;",
+                "replace": "        const dir = 1;"
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+        "grep": "Table: one row per picture",
+        "expect": "fail"
+    },
+    {
+        "name": "P4a: the viewer ignores the table's rows",
+        "why": "In Table the viewer steps through the rows in their sorted order; without tr[data-mb-art-i] it has nothing to step through.",
+        "edits": [
+            {
+                "find": "        return Array.from(sec.querySelectorAll('figure.mb-release-art-tile, tr[data-mb-art-i]')).map(f => Number(f.dataset.mbArtI));",
+                "replace": "        return Array.from(sec.querySelectorAll('figure.mb-release-art-tile')).map(f => Number(f.dataset.mbArtI));"
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+        "grep": "Table: one row per picture",
+        "expect": "fail"
+    },
+    {
+        "name": "P4a: a table row's picture has no hover card",
+        "why": "A row's picture carries the tile's own card.",
+        "edits": [
+            {
+                "find": "                    if (!images[i].external) a.dataset.mbtt = _releaseArtTipHtml(images, i);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+        "grep": "Table: one row per picture",
+        "expect": "fail"
+    },
+    {
+        "name": "P4a: the filter box filters nothing",
+        "why": "The text filter narrows the shown indices in every layout.",
+        "edits": [
+            {
+                "find": "        const keep = i => !query || _artSearchText(desc, images[i]).includes(query);",
+                "replace": "        const keep = () => true;"
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+        "grep": "the filter box narrows",
+        "expect": "fail"
+    },
+    {
+        "name": "P4a: typing in the filter box loses focus after the first letter",
+        "why": "The box is rebuilt with the toolbar on every letter; without focusing the new one the next letters go nowhere.",
+        "edits": [
+            {
+                "find": "                again.focus();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+        "grep": "the filter box narrows",
+        "expect": "fail"
+    },
+    {
+        "name": "P4a: the Tiles slider does not resize",
+        "why": "The slider writes --mb-art-sec-tile, which the grid's minmax() reads.",
+        "edits": [
+            {
+                "find": "            sec.style.setProperty('--mb-art-sec-tile', `${t.value}px`);\n            if (e.type === 'change') {",
+                "replace": "            if (e.type === 'change') {"
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+        "grep": "the Tiles slider",
+        "expect": "fail"
+    },
+    {
+        "name": "P4a: the tile size is not remembered",
+        "why": "Let go, the slider stores its value under MB_ART_SEC_TILE_KEY.",
+        "edits": [
+            {
+                "find": "                try { GM_setValue(MB_ART_SEC_TILE_KEY, Number(t.value)); } catch (_) { /* storage blocked: this page only */ }",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+        "grep": "the Tiles slider",
+        "expect": "fail"
+    },
+    {
+        "name": "P4a: Show missing off still shows the placeholders",
+        "why": "data-mb-art-missing-off hides them in every layout.",
+        "edits": [
+            {
+                "find": "        const missing = q || sec.dataset.mbArtMissingOff === '1' ? []",
+                "replace": "        const missing = q ? []"
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "image section P4a",
+        "expect": "fail"
+    },
+    {
+        "name": "P4a: the filter's matches are not highlighted",
+        "why": "vzell 2026-11-06: the filter's text is marked wherever it shows; every render goes through _artHighlight().",
+        "edits": [
+            {
+                "find": "        _artHighlight(sec, _releaseArtQuery(sec));\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "the filter's text is highlighted",
+        "expect": "fail"
+    },
+    {
+        "name": "P4a: the table's cells are not highlighted",
+        "why": "In Table the match shows in the cells, the File column too.",
+        "edits": [
+            {
+                "find": "            'table.mb-release-art-table td, .mb-release-art-missing').forEach((el) => {",
+                "replace": "            '.mb-release-art-missing').forEach((el) => {"
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "the filter's text is highlighted",
+        "expect": "fail"
+    },
+    {
+        "name": "P4a: the ↺ does not forget the stored size",
+        "why": "Back to the original size means the key is gone, so the next page opens at 120 px too.",
+        "edits": [
+            {
+                "find": "            try { GM_deleteValue(MB_ART_SEC_TILE_KEY); } catch (_) { /* storage blocked: this page only */ }\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+        "grep": "↺ appears once a size is set",
+        "expect": "fail"
+    },
+    {
+        "name": "P4a: the ↺ leaves this section's size as it was",
+        "why": "The custom property on the section must go too, or the tiles stay big until a reload.",
+        "edits": [
+            {
+                "find": "            sec.style.removeProperty('--mb-art-sec-tile');\n            _releaseArtRenderSheet(sec);\n            return;",
+                "replace": "            _releaseArtRenderSheet(sec);\n            return;"
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+        "grep": "↺ appears once a size is set",
+        "expect": "fail"
+    },
+    {
+        "name": "P4a: the ↺ only appears after a reload",
+        "why": "Let go, the slider shows its ↺ at once.",
+        "edits": [
+            {
+                "find": "                if (reset) reset.hidden = false;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+        "grep": "↺ appears once a size is set",
+        "expect": "fail"
+    },
+    {
+        "name": "retry: a failed picture is never noticed",
+        "why": "The capture-phase error listener marks the box; without it the browser's broken glyph stays and nothing offers a retry.",
+        "edits": [
+            {
+                "find": "        document.addEventListener('error', _artImgOnError, true);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/art-image-retry.spec.js",
+        "grep": "a failed tile is a ⟳ box",
+        "expect": "fail"
+    },
+    {
+        "name": "retry: a failed tile gets no ⟳ button",
+        "why": "The tile's link keeps its click (the viewer); the retry is its own button.",
+        "edits": [
+            {
+                "find": "                holder.appendChild(b);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/art-image-retry.spec.js",
+        "grep": "a failed tile is a ⟳ box",
+        "expect": "fail"
+    },
+    {
+        "name": "retry: a tile's ⟳ also opens the viewer",
+        "why": "An overlap, recorded: the ⟳ button sits beside the tile's link, not inside it, so the section's click (which looks for the link) never opens the viewer for it, stopped or not. The stop is kept for anything that might listen above.",
+        "edits": [
+            {
+                "find": "        e.preventDefault();\n        e.stopImmediatePropagation();\n        if (one) {",
+                "replace": "        e.preventDefault();\n        if (one) {"
+            }
+        ],
+        "spec": "tests/fixtures/art-image-retry.spec.js",
+        "grep": "a failed tile is a ⟳ box",
+        "expect": "pass"
+    },
+    {
+        "name": "retry: the ⟳ does not ask again",
+        "why": "Setting the address anew is the request; without it the class goes but the picture never comes.",
+        "edits": [
+            {
+                "find": "        img.removeAttribute('src');\n        img.setAttribute('src', src);",
+                "replace": "        void src;"
+            }
+        ],
+        "spec": "tests/fixtures/art-image-retry.spec.js",
+        "grep": "a failed tile is a ⟳ box",
+        "expect": "fail"
+    },
+    {
+        "name": "retry: \"⟳ Reload N failed\" reloads nothing",
+        "why": "The section's button asks again for every failed picture of the section.",
+        "edits": [
+            {
+                "find": "        sec.querySelectorAll('.mb-img-failed').forEach(_artImgRetry);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/art-image-retry.spec.js",
+        "grep": "a failed tile is a ⟳ box",
+        "expect": "fail"
+    },
+    {
+        "name": "retry: a failed medium thumb's click does not ask again",
+        "why": "Too small for a second button, a medium thumb asks again on the click that opens the viewer.",
+        "edits": [
+            {
+                "find": "            if (small) _artImgRetry(small);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/art-image-retry.spec.js",
+        "grep": "a failed medium thumb",
+        "expect": "fail"
+    },
+    {
+        "name": "retry: the viewer's ⟳ Try again does nothing",
+        "why": "The action re-renders the stage, which asks for the picture's files again.",
+        "edits": [
+            {
+                "find": "        else if (action === 'reload') _artViewerRender();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/art-image-retry.spec.js",
+        "grep": "a large image that did not load",
+        "expect": "fail"
+    },
+    {
+        "name": "retry: the viewer shows the broken glyph when the thumbnail fails",
+        "why": "A failed stage picture is hidden (mb-artv-img-failed) and the note says so.",
+        "edits": [
+            {
+                "find": "            img.classList.add('mb-artv-img-failed');\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/art-image-retry.spec.js",
+        "grep": "the thumbnail fails too",
+        "expect": "fail"
+    },
+    {
+        "name": "retry: the heading's cover copy is not a ⟳ host",
+        "why": "vzell's screenshot: the copy beside the h1 showed the broken glyph.",
+        "edits": [
+            {
+                "find": "        'span.mb-sb-avatar, #mb-stat-tooltip .mb-art-card-tile';",
+                "replace": "        '#mb-stat-tooltip .mb-art-card-tile';"
+            }
+        ],
+        "spec": "tests/fixtures/sidebar-picture.spec.js",
+        "grep": "image retry",
+        "expect": "fail"
+    },
+    {
+        "name": "retry: the card does not say how to retry",
+        "why": "The card cannot be clicked: a line tells to rest on the link again.",
+        "edits": [
+            {
+                "find": "                card.appendChild(note);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sidebar-picture.spec.js",
+        "grep": "image retry",
+        "expect": "fail"
+    },
+    {
+        "name": "P4b: the transform writer drops the Adjust filter",
+        "why": "The filter is written beside the transform, so a re-render (Info, a load, a fit) keeps it.",
+        "edits": [
+            {
+                "find": "        img.style.transform = parts.join(' ');\n        // The Adjust panel's filter (P4b), written here beside the transform\n        // so every load, fit and step keeps it. View only: Download keeps the file.\n        img.style.filter = _artViewerFilter(st);\n",
+                "replace": "        img.style.transform = parts.join(' ');\n"
+            }
+        ],
+        "spec": "tests/fixtures/art-viewer-tools.spec.js",
+        "grep": "sliders and Invert",
+        "expect": "fail"
+    },
+    {
+        "name": "P4b: a step keeps the last picture's Adjust values",
+        "why": "The values belong to the picture they were set for; a step starts neutral, like the rotation.",
+        "edits": [
+            {
+                "find": "        // The Adjust values belong to the picture they were set for (P4b).\n        st.adj = _artViewerAdjDefault();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/art-viewer-tools.spec.js",
+        "grep": "sliders and Invert",
+        "expect": "fail"
+    },
+    {
+        "name": "P4b: a focused slider's arrow keys step the picture",
+        "why": "The viewer owns every key, but a focused Adjust input keeps its own arrows.",
+        "edits": [
+            {
+                "find": "                /^(Arrow(Left|Right|Up|Down)|Home|End|PageUp|PageDown| )$/.test(k)) return;",
+                "replace": "                /^(?!)$/.test(k)) return;"
+            }
+        ],
+        "spec": "tests/fixtures/art-viewer-tools.spec.js",
+        "grep": "sliders and Invert",
+        "expect": "fail"
+    },
+    {
+        "name": "P4b: Compare's right picture can be the left one",
+        "why": "Stepping the right picture skips the left one.",
+        "edits": [
+            {
+                "find": "        do { k = (k + d + n) % n; } while (st.list[k] === st.i);",
+                "replace": "        k = (k + d + n) % n;"
+            }
+        ],
+        "spec": "tests/fixtures/art-viewer-tools.spec.js",
+        "grep": "the filmstrip change the right one",
+        "expect": "fail"
+    },
+    {
+        "name": "P4b: a filmstrip click in Compare changes the left picture",
+        "why": "In Compare a filmstrip picture becomes the right one.",
+        "edits": [
+            {
+                "find": "            if (st.cmp !== null && !st.grid) {\n                const idx = Number(go.dataset.artvGo);",
+                "replace": "            if (false) {\n                const idx = Number(go.dataset.artvGo);"
+            }
+        ],
+        "spec": "tests/fixtures/art-viewer-tools.spec.js",
+        "grep": "the filmstrip change the right one",
+        "expect": "fail"
+    },
+    {
+        "name": "P4b: zoom keys act in Compare",
+        "why": "↑ ↓ 0 1 Z in Compare would change the zoom level of the picture behind it unseen, which then comes back zoomed when Compare ends (turn and flip need the stage picture and do nothing there anyway).",
+        "edits": [
+            {
+                "find": "        } else if (st.cmp !== null && /^(ArrowUp|ArrowDown|[01zZrRhHvV])$/.test(k)) {\n            // Zoom, turn and flip belong to the one picture: not in Compare.\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/art-viewer-tools.spec.js",
+        "grep": "the filmstrip change the right one",
+        "expect": "fail"
+    },
+    {
+        "name": "P4b: a viewer opened into Compare leaves Compare on Esc",
+        "why": "Opened from a Spreads pair, Esc closes the viewer (as gridStart does).",
+        "edits": [
+            {
+                "find": "            } else if (st.cmp !== null && !st.cmpStart) {",
+                "replace": "            } else if (st.cmp !== null) {"
+            }
+        ],
+        "spec": "tests/fixtures/art-viewer-tools.spec.js",
+        "grep": "Compare from Spreads",
+        "expect": "fail"
+    },
+    {
+        "name": "P4b: a Spreads pair opens one picture",
+        "why": "A page of a paired spread opens both pages in Compare.",
+        "edits": [
+            {
+                "find": "                { opener: tileLink, title: _releaseArtTitle(desc), compareWith: pair ? r : null });",
+                "replace": "                { opener: tileLink, title: _releaseArtTitle(desc), compareWith: null });"
+            }
+        ],
+        "spec": "tests/fixtures/art-viewer-tools.spec.js",
+        "grep": "Compare from Spreads",
+        "expect": "fail"
+    },
+    {
+        "name": "P4b: the loupe ignores the turn",
+        "why": "On a turned picture the pointer's place must be taken back through the turn to the picture's own coordinates.",
+        "edits": [
+            {
+                "find": "        const [pu, pv] = rot === 90 ? [v, 1 - u] : rot === 180 ? [1 - u, 1 - v] : rot === 270 ? [1 - v, u] : [u, v];",
+                "replace": "        const [pu, pv] = [u, v];"
+            }
+        ],
+        "spec": "tests/fixtures/art-viewer-tools.spec.js",
+        "grep": "a lens over the picture",
+        "expect": "fail"
+    },
+    {
+        "name": "P4b: the loupe shows off the picture",
+        "why": "Off the picture the lens hides.",
+        "edits": [
+            {
+                "find": "        if (!r || !r.width || !img.naturalWidth || e.clientX < r.left || e.clientX > r.right ||\n                e.clientY < r.top || e.clientY > r.bottom) {",
+                "replace": "        if (!r || !r.width || !img.naturalWidth) {"
+            }
+        ],
+        "spec": "tests/fixtures/art-viewer-tools.spec.js",
+        "grep": "a lens over the picture",
+        "expect": "fail"
+    },
+    {
+        "name": "P4b: Shift+Y copies the plain address",
+        "why": "Shift+Y copies a line for an edit note: types, comment, address.",
+        "edits": [
+            {
+                "find": "        const text = asNote\n",
+                "replace": "        const text = false\n"
+            }
+        ],
+        "spec": "tests/fixtures/art-viewer-tools.spec.js",
+        "grep": "the picture.s address; Shift",
+        "expect": "fail"
+    },
+    {
+        "name": "P4b: Esc closes the viewer over the key help",
+        "why": "Esc closes the help first.",
+        "edits": [
+            {
+                "find": "            } else if (st.help) {\n                st.help = false;\n                _artViewerRender();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/art-viewer-tools.spec.js",
+        "grep": "every key, the new ones marked",
+        "expect": "fail"
+    },
+    {
+        "name": "P4b: ? opens no key help",
+        "why": "? is the viewer's key help.",
+        "edits": [
+            {
+                "find": "        } else if (k === '?') {\n            st.help = !st.help;\n            _artViewerRender();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/art-viewer-tools.spec.js",
+        "grep": "every key, the new ones marked",
+        "expect": "fail"
+    },
+    {
+        "name": "P4b: the key help under the info panel",
+        "why": "vzell 2026-11-06: the info panel (a grid item with the tooltip look's z-index) hid the help's last column; the help's z-index beats it.",
+        "edits": [
+            {
+                "find": "                z-index: 2147483600;\n                overflow: auto;\n                padding: 16px 18px;",
+                "replace": "                z-index: 5;\n                overflow: auto;\n                padding: 16px 18px;"
+            }
+        ],
+        "spec": "tests/fixtures/art-viewer-tools.spec.js",
+        "grep": "every key, the new ones marked",
+        "expect": "fail"
+    },
+    {
+        "name": "P4b: the key help over the bar",
+        "why": "vzell 2026-11-06: the help covered the bar's second row; its top comes from the bar's height.",
+        "edits": [
+            {
+                "find": "        box.style.top = `${top}px`;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/art-viewer-tools.spec.js",
+        "grep": "every key, the new ones marked",
+        "expect": "fail"
+    }
+]
