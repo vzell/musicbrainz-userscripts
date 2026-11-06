@@ -121,8 +121,8 @@
     "why": "Ctrl/Cmd-click must keep opening the cover-art page in a new tab.",
     "edits": [
       {
-        "find": "        if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.defaultPrevented) return;\n        const sec = document.querySelector('.mb-release-art-sec');",
-        "replace": "        if (e.button !== 0 || e.defaultPrevented) return;\n        const sec = document.querySelector('.mb-release-art-sec');"
+        "find": "        if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.defaultPrevented) return;\n        const sec = _artSectionFind();",
+        "replace": "        if (e.button !== 0 || e.defaultPrevented) return;\n        const sec = _artSectionFind();"
       }
     ],
     "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",

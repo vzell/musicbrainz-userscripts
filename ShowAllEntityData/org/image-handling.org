@@ -293,3 +293,33 @@ Nothing in ShowAllEntityData.user.js changed, so there's no version bump or chan
 Commit everything, also my own .org file, push.
 I go with all your recommendations and the table view as a plain table inside the section
 Start with the implementation
+
+** Decisions (vzell, 2026-11-06)
+
+- Every recommendation of the Answer, phases P0–P4 in that order.
+- Table view (2b): a plain table inside the section, never =table.tbl=.
+
+** P0 (2026-11-06, branch =feature/image-section-p0=, WIP.1)
+
+The descriptor became the section's adapter; nothing changes on screen.
+
+- =_artSectionDesc()= results carry =images(sec)=, =load(sec)=, =retry(sec)= and =tab=;
+  =_artSectionArchiveSource()= supplies them for caa/eaa (=ctx.imagesCache=,
+  =_artFetchEntityImages()=, the three cache deletes). =_releaseArtLoad(h2, sec)= and
+  =_releaseArtRenderSheet()= / =_releaseArtViewerOrder()= / the medium art read only those.
+- =_artSectionBuild(desc, anchor, entityKey, count)=: h2 + section + load, no archive, tab or
+  URL; =_releaseArtInsertSection()= keeps the MusicBrainz half.
+- =_artSectionFind(key, loaded)= replaces the bare =.mb-release-art-sec= queries (tab click,
+  medium art). The one fix in P0: a foreign head picture section placed before the archive
+  section took the tab click. Spec: =release-tracks-cover-art-viewer.spec.js= "finds its own
+  section"; mutation list =scripts/mutations/image-section.json= (4: three fail as expected,
+  one overlap recorded as pass). Repointed: one entry each in =release-tracks-cover-art.json=
+  and =-p3.json=; both lists and =image-section.json= run green.
+- Names kept on purpose: =_releaseArt*= and =.mb-release-art-*= (specs and mutation lists key
+  on them), so P0 renames nothing.
+
+Next, P1: the foreign head's picture loop (=_fdHeadInsertSections()=) onto the section, with
+an external context of its own (not =_DP_ART_CTX=, which every link-preview window clears),
+types per site (Discogs Primary/Secondary, archive.org =_iaPictureTypes()=, SL Scan/Artwork),
+URLs kept as they are and no referrer for external records, and the =fd-pic= card kept on
+their tiles (the archive tile's card speaks of edits and 1200 px).

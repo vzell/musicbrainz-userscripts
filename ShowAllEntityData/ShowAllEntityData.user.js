@@ -157757,19 +157757,33 @@ a { color: #1565c0; }`;
     // docs key on them); read them as "the art section".
 
     /**
-     * What differs between the two art sections. A function, not a `const`
-     * table: it is reached from code that may run before this line has been
-     * evaluated (`updateFilterButtonsVisibility()` → medium art), and the
-     * contexts it names are declared further down.
+     * What differs between the art sections — the section's ADAPTER
+     * (org/image-handling.org, 2a: one image section for every detail
+     * pageType). A function, not a `const` table: it is reached from code that
+     * may run before this line has been evaluated
+     * (`updateFilterButtonsVisibility()` → medium art), and the contexts it
+     * names are declared further down.
      *
-     * @param   {'caa'|'eaa'} key
+     * The members every section handler goes through, so that no handler
+     * reads an archive cache or `location` itself:
+     *   - `images(sec)`: the section's records, in display order (`[]` before
+     *     they are loaded);
+     *   - `load(sec)`: `Promise<{state: 'ok'|'none'|'failed', images}>`;
+     *   - `retry(sec)`: forgets what `load()` remembered, or null when a
+     *     failure cannot be retried;
+     *   - `tab`: a native tab of this page opens the viewer (the archive
+     *     sections' "Cover art (N)" / "Event art (N)").
+     *
+     * @param   {string} key `'caa'`, `'eaa'`.
      * @returns {?{key: string, ctx: Object, pageType: string, setting: string, tabSetting: ?string,
      *            entityRe: RegExp, entityPrefix: string, anchor: function(): ?Element, label: string,
-     *            archiveName: string, what: string, titleSel: string, layouts: string[], layoutKey: string}}
+     *            archiveName: string, what: string, titleSel: string, layouts: string[], layoutKey: string,
+     *            images: function(HTMLElement): Object[], load: function(HTMLElement): Promise<Object>,
+     *            retry: ?function(HTMLElement): void, tab: boolean}}
      */
     function _artSectionDesc(key) {
         if (key === 'caa') {
-            return {
+            return _artSectionArchiveSource({
                 key, ctx: CAA_CTX, pageType: 'release-tracks',
                 setting: 'sa_enable_release_tracks_cover_art', tabSetting: null,
                 entityRe: /^\/release\/([a-f0-9-]{36})/, entityPrefix: '/release/',
@@ -157777,10 +157791,10 @@ a { color: #1565c0; }`;
                 label: 'Cover art', archiveName: 'Cover Art Archive', what: 'release',
                 titleSel: '.releaseheader h1, #content h1',
                 layouts: ['grid', 'grouped', 'spreads'], layoutKey: MB_RELEASE_ART_LAYOUT_KEY
-            };
+            });
         }
         if (key === 'eaa') {
-            return {
+            return _artSectionArchiveSource({
                 key, ctx: EAA_CTX, pageType: 'event-overview',
                 setting: 'sa_event_overview_event_art', tabSetting: 'sa_event_overview_art_tab',
                 entityRe: /^\/event\/([a-f0-9-]{36})/, entityPrefix: '/event/',
@@ -157791,9 +157805,51 @@ a { color: #1565c0; }`;
                 label: 'Event art', archiveName: 'Event Art Archive', what: 'event',
                 titleSel: '.eventheader h1, #content h1',
                 layouts: ['grid', 'grouped'], layoutKey: MB_EVENT_ART_LAYOUT_KEY
-            };
+            });
         }
         return null;
+    }
+
+    /**
+     * Adds the archive data source to a CAA/EAA descriptor: the records live
+     * in `desc.ctx.imagesCache` under the section's entity path, are loaded by
+     * `_artFetchEntityImages()` (the same record and cache as the CAA/EAA
+     * column), and a retry drops all three session caches first.
+     *
+     * @param   {Object} desc The descriptor without its source members.
+     * @returns {Object} The same object, completed.
+     */
+    function _artSectionArchiveSource(desc) {
+        const ctx = desc.ctx;
+        desc.images = sec => ctx.imagesCache.get(sec.dataset.mbArtEntity) || [];
+        desc.load = sec => _artFetchEntityImages(ctx, sec.dataset.mbArtEntity);
+        desc.retry = (sec) => {
+            const entityPath = sec.dataset.mbArtEntity;
+            // Drop the session zero first, or Tier 1 serves it straight back
+            // (docs/claude/artwork-caa-eaa.md, CAA/EAA retry).
+            ctx.countCache.delete(entityPath);
+            ctx.imagesCache.delete(entityPath);
+            ctx.failedCache.delete(entityPath);
+        };
+        desc.tab = true;
+        return desc;
+    }
+
+    /**
+     * The built section of one adapter (`data-mb-art-ctx`), or the first one
+     * with a native tab when no key is given. Never a foreign detail head's
+     * picture section (`.mb-fd-art`), which shares the class but carries no
+     * `data-mb-art-ctx`: a bare `.mb-release-art-sec` query would find it.
+     *
+     * @param   {string} [key] The adapter's key; omitted: any tabbed section.
+     * @param   {boolean} [loaded=false] Only a section whose records are in.
+     * @returns {?HTMLElement}
+     */
+    function _artSectionFind(key, loaded = false) {
+        const state = loaded ? '[data-mb-art-state="ok"]' : '';
+        if (key) return document.querySelector(`.mb-release-art-sec[data-mb-art-ctx="${key}"]${state}`);
+        return Array.from(document.querySelectorAll(`.mb-release-art-sec[data-mb-art-ctx]${state}`))
+            .find(sec => { const d = _artSectionOf(sec); return !!(d && d.tab); }) || null;
     }
 
     /**
@@ -158227,7 +158283,7 @@ a { color: #1565c0; }`;
     function _releaseArtViewerOrder(sec) {
         const desc = _artSectionOf(sec);
         if (_releaseArtLayout(desc) === 'spreads') {
-            const images = desc.ctx.imagesCache.get(sec.dataset.mbArtEntity) || [];
+            const images = desc.images(sec);
             const { pairs, book, rest } = _releaseArtSpreadsPlan(images,
                 _releaseArtShownIndices(images, _releaseArtActiveTypes(sec)));
             return [...pairs.flatMap(p => [p.l, p.r]), ...book, ...rest];
@@ -158314,7 +158370,7 @@ a { color: #1565c0; }`;
 
     /**
      * (Re)builds the toolbar and the contact sheet of a loaded section from
-     * `CAA_CTX.imagesCache`: type chips (`data-mb-art-filter`, "" = all) and the
+     * its adapter's records (`desc.images(sec)`): type chips (`data-mb-art-filter`, "" = all) and the
      * Grid / By type / Spreads switch (`data-mb-art-layout`), then the tiles —
      * all of them, or only those carrying ANY of the selected types (the
      * chips are multi-select), either as one grid in archive order, grouped
@@ -158330,7 +158386,7 @@ a { color: #1565c0; }`;
      */
     function _releaseArtRenderSheet(sec) {
         const desc = _artSectionOf(sec);
-        const images = desc.ctx.imagesCache.get(sec.dataset.mbArtEntity) || [];
+        const images = desc.images(sec);
         const active = _releaseArtActiveTypes(sec);
         const layout = _releaseArtLayout(desc);
         sec.querySelectorAll('.mb-release-art-tools, .mb-release-art-grid, .mb-release-art-group, .mb-release-art-spread')
@@ -158567,8 +158623,8 @@ a { color: #1565c0; }`;
      */
     function _releaseArtApplyMediumArt() {
         if (!activeDefinition || activeDefinition.type !== 'release-tracks') return;
-        const sec = document.querySelector('.mb-release-art-sec[data-mb-art-state="ok"]');
-        const images = sec && CAA_CTX.imagesCache.get(sec.dataset.mbArtEntity);
+        const sec = _artSectionFind('caa', true);
+        const images = sec && _artSectionOf(sec).images(sec);
         const on = Lib.settings.sa_enable_release_tracks_cover_art &&
                    Lib.settings.sa_enable_release_tracks_medium_art && Array.isArray(images);
         const media = on ? _releaseArtMedia() : [];
@@ -158659,8 +158715,8 @@ a { color: #1565c0; }`;
     function _releaseArtOnMediumClick(e) {
         const btn = e.target instanceof Element && e.target.closest('.mb-medium-art > button');
         if (!btn || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
-        const sec = document.querySelector('.mb-release-art-sec[data-mb-art-state="ok"]');
-        const images = sec && CAA_CTX.imagesCache.get(sec.dataset.mbArtEntity);
+        const sec = _artSectionFind('caa', true);
+        const images = sec && _artSectionOf(sec).images(sec);
         if (!images) return;
         const memo = _releaseArtMediumMemo.get(images);
         if (!memo) return;
@@ -158681,18 +158737,16 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Fills the section from the archive record: a contact sheet, a "no
-     * artwork" note, or a failure note with a retry button. The retry button
-     * is wired directly: the section is never cloned, so a direct listener
-     * survives every re-render.
+     * Fills the section from its adapter's `load()`: a contact sheet, a "no
+     * artwork" note, or a failure note with a retry button (only when the
+     * adapter can retry). The retry button is wired directly: the section is
+     * never cloned, so a direct listener survives every re-render.
      *
-     * @param   {ArtCtx}      ctx
-     * @param   {HTMLElement} h2  The section's `h2.mb-release-art-h2`.
+     * @param   {HTMLElement} h2  The section's h2 (its `.mb-release-art-count` gets N).
      * @param   {HTMLElement} sec The section's `div.mb-release-art-sec`.
      * @returns {Promise<void>}
      */
-    async function _releaseArtLoad(ctx, h2, sec) {
-        const entityPath = sec.dataset.mbArtEntity;
+    async function _releaseArtLoad(h2, sec) {
         const desc = _artSectionOf(sec);
         sec.dataset.mbArtState = 'loading';
         sec.textContent = '';
@@ -158701,7 +158755,7 @@ a { color: #1565c0; }`;
         status.textContent = `Loading ${desc.label.toLowerCase()}…`;
         sec.appendChild(status);
 
-        const { state, images } = await _artFetchEntityImages(ctx, entityPath);
+        const { state, images } = await desc.load(sec);
         if (!sec.isConnected) return;
         sec.dataset.mbArtState = state;
         const countEl = h2.querySelector('.mb-release-art-count');
@@ -158718,18 +158772,15 @@ a { color: #1565c0; }`;
             return;
         }
         status.textContent = `The ${desc.archiveName} could not be reached.`;
+        if (!desc.retry) return;
         const retry = document.createElement('button');
         retry.type = 'button';
         retry.className = 'mb-release-art-retry';
         retry.textContent = '⟳ Retry';
         retry.addEventListener('click', (e) => {
             e.stopPropagation();
-            // Drop the session zero first, or Tier 1 serves it straight back
-            // (docs/claude/artwork-caa-eaa.md, CAA/EAA retry).
-            ctx.countCache.delete(entityPath);
-            ctx.imagesCache.delete(entityPath);
-            ctx.failedCache.delete(entityPath);
-            _releaseArtLoad(ctx, h2, sec);
+            desc.retry(sec);
+            _releaseArtLoad(h2, sec);
         });
         status.appendChild(retry);
     }
@@ -158756,29 +158807,48 @@ a { color: #1565c0; }`;
         const anchorH2 = desc.anchor();
         if (!m || !anchorH2) return null;
 
-        document.querySelectorAll('.mb-release-art-h2, .mb-release-art-sec').forEach(n => n.remove());
+        document.querySelectorAll(`.mb-release-art-h2, .mb-release-art-sec[data-mb-art-ctx="${desc.key}"]`)
+            .forEach(n => n.remove());
         const ctx = desc.ctx;
         const tabCount = _releaseArtTabCount(ctx);
         if (tabCount === 0) return null;
-        _ensureReleaseArtStyle();
 
+        const h2 = _artSectionBuild(desc, anchorH2, desc.entityPrefix + m[1], tabCount);
+        if (!desc.tabSetting || Lib.settings[desc.tabSetting]) _releaseArtInstallTabIntercept();
+        return h2;
+    }
+
+    /**
+     * Builds one art section — `h2.mb-release-art-h2` "<label> (N)" and its
+     * `div.mb-release-art-sec` — before `anchor`, and starts loading it
+     * through the adapter. The source-neutral half of
+     * `_releaseArtInsertSection()`: it knows nothing of archives, tabs or
+     * `location`, only the adapter, where to go and which entity it shows.
+     *
+     * @param   {Object}   desc      The adapter (`_artSectionDesc()`).
+     * @param   {Element}  anchor    The section goes right before it.
+     * @param   {string}   entityKey `data-mb-art-entity`: the viewer path and the records' key.
+     * @param   {?number}  count     N for the h2 until the records are in; null: none yet.
+     * @returns {HTMLElement} The new h2.
+     */
+    function _artSectionBuild(desc, anchor, entityKey, count) {
+        _ensureReleaseArtStyle();
         const h2 = document.createElement('h2');
         h2.className = 'mb-release-art-h2';
         h2.append(desc.label);
-        const count = document.createElement('span');
-        count.className = 'mb-release-art-count';
-        count.textContent = tabCount === null ? '' : ` (${tabCount})`;
-        h2.appendChild(count);
+        const countEl = document.createElement('span');
+        countEl.className = 'mb-release-art-count';
+        countEl.textContent = count === null ? '' : ` (${count})`;
+        h2.appendChild(countEl);
 
         const sec = document.createElement('div');
         sec.className = 'mb-release-art-sec';
         sec.dataset.mbArtCtx = desc.key;
-        sec.dataset.mbArtEntity = desc.entityPrefix + m[1];
+        sec.dataset.mbArtEntity = entityKey;
         sec.addEventListener('click', _releaseArtOnClick);
 
-        anchorH2.before(h2, sec);
-        _releaseArtLoad(ctx, h2, sec);
-        if (!desc.tabSetting || Lib.settings[desc.tabSetting]) _releaseArtInstallTabIntercept();
+        anchor.before(h2, sec);
+        _releaseArtLoad(h2, sec);
         return h2;
     }
 
@@ -158827,7 +158897,7 @@ a { color: #1565c0; }`;
      */
     function _releaseArtOnTabClick(e) {
         if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.defaultPrevented) return;
-        const sec = document.querySelector('.mb-release-art-sec');
+        const sec = _artSectionFind();
         const desc = _artSectionOf(sec);
         if (desc.tabSetting && !Lib.settings[desc.tabSetting]) return;
         const a = e.target instanceof Element && e.target.closest(`ul.tabs a[href$="${desc.ctx.artSuffix}"]`);

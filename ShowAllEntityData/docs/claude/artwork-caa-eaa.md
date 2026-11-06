@@ -309,6 +309,26 @@ never from a hard-coded `CAA_CTX`. Rules that come with that:
   `FIXTURE_SETTINGS_OVERRIDE` too; `sa_event_overview_art_tab` gates the tab
   click (the release page's tab click has no setting).
 
+- **The descriptor is the section's adapter** (org/image-handling.org P0,
+  2026-11-06), the first step toward one image section for every detail
+  pageType. No handler reads an archive cache, `location` or a bare
+  `.mb-release-art-sec` any more:
+  - records come from `desc.images(sec)`, loading from `desc.load(sec)`
+    (`{state, images}`), a retry from `desc.retry(sec)` (no ⟳ button when
+    it is null). `_artSectionArchiveSource()` supplies all three for
+    caa/eaa: `ctx.imagesCache`, `_artFetchEntityImages()`, the three cache
+    deletes;
+  - `_artSectionBuild(desc, anchor, entityKey, count)` builds h2 + section
+    and starts the load. It knows no archive, tab or URL; the MusicBrainz
+    half (setting, entity from the path, tab count, tab intercept) stays in
+    `_releaseArtInsertSection()`;
+  - **find a section with `_artSectionFind(key, loaded)`**, never
+    `document.querySelector('.mb-release-art-sec')`: the foreign detail
+    head's picture sections share that class without `data-mb-art-ctx`
+    (`.mb-fd-art`), and one placed first took the tab click
+    (`release-tracks-cover-art-viewer.spec.js` "finds its own section",
+    mutation list `image-section.json`). Without a key it returns the first
+    section whose adapter has `tab`.
 - **One record, one cache.** `_artFetchEntityImages(ctx, entityPath)` is the
   table-free copy of `_artEnrichIcon()`'s three tiers with the same 404 vs
   429/5xx bookkeeping, so the section and the CAA column share

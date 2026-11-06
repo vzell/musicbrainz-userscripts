@@ -1,0 +1,54 @@
+[
+    {
+        "name": "P0: the tab click takes the first .mb-release-art-sec in the page",
+        "why": "org/image-handling.org P0. A foreign detail head's picture section shares the class without data-mb-art-ctx. A bare query finds it before the archive section, sees no loaded state and lets the tab navigate instead of opening the viewer.",
+        "edits": [
+            {
+                "find": "        const sec = _artSectionFind();\n        const desc = _artSectionOf(sec);",
+                "replace": "        const sec = document.querySelector('.mb-release-art-sec');\n        const desc = _artSectionOf(sec);"
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+        "grep": "finds its own section",
+        "expect": "fail"
+    },
+    {
+        "name": "P0: _artSectionFind() without a key ignores the tab flag",
+        "why": "Without the adapter's `tab` test any marked section would do; with only archive sections on a MusicBrainz page that is the same section, so the spec cannot tell. Recorded as an overlap: it matters once a non-archive adapter (P1) builds a marked section on the same page.",
+        "edits": [
+            {
+                "find": "            .find(sec => { const d = _artSectionOf(sec); return !!(d && d.tab); }) || null;",
+                "replace": "            .find(sec => !!sec) || null;"
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+        "grep": "finds its own section",
+        "expect": "pass"
+    },
+    {
+        "name": "P0: the load no longer goes through the adapter",
+        "why": "The section must load through desc.load(); a section that never loads keeps its Loading note, and openRelease() waits for data-mb-art-state=\"ok\" in vain.",
+        "edits": [
+            {
+                "find": "        const { state, images } = await desc.load(sec);",
+                "replace": "        const { state, images } = await new Promise(() => {});"
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+        "grep": "a tile opens the viewer at that image",
+        "expect": "fail"
+    },
+    {
+        "name": "P0: the sheet reads no records from the adapter",
+        "why": "_releaseArtRenderSheet() reads desc.images(sec); an empty list renders the chips with All 0 and no tiles.",
+        "edits": [
+            {
+                "find": "        const desc = _artSectionOf(sec);\n        const images = desc.images(sec);\n        const active = _releaseArtActiveTypes(sec);",
+                "replace": "        const desc = _artSectionOf(sec);\n        const images = [];\n        const active = _releaseArtActiveTypes(sec);"
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+        "grep": "a tile opens the viewer at that image",
+        "expect": "fail"
+    }
+]

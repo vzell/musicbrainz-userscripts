@@ -30,8 +30,8 @@
     "why": "Placement is a decision (above \"Tracklist\"); the spec asserts sec.nextElementSibling === h2.tracklist.",
     "edits": [
       {
-        "find": "        anchorH2.before(h2, sec);",
-        "replace": "        anchorH2.parentNode.append(h2, sec);"
+        "find": "        anchor.before(h2, sec);",
+        "replace": "        anchor.parentNode.append(h2, sec);"
       }
     ],
     "spec": "tests/fixtures/release-tracks-cover-art.spec.js",

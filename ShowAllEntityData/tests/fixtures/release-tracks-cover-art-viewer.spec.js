@@ -229,6 +229,25 @@ test.describe('release-tracks Cover art viewer (P3)', () => {
         await expect(page.locator(TAB)).toBeFocused();
     });
 
+    // org/image-handling.org, P0: the tab click finds the ARCHIVE section by
+    // its data-mb-art-ctx, not the first `.mb-release-art-sec` in the page.
+    // A foreign detail head's picture section shares that class without the
+    // attribute; placed first, a bare query took it, found no loaded state
+    // and let the tab navigate.
+    test('the tab click finds its own section, not an unmarked picture section placed before it', async ({ page }) => {
+        await openRelease(page);
+        await page.evaluate(() => {
+            const decoy = document.createElement('div');
+            decoy.className = 'mb-release-art-sec mb-fd-art';
+            document.querySelector('#content').prepend(decoy);
+        });
+        await page.click(TAB);
+        const v = await viewer(page);
+        expect(v.open, 'the tab opened the viewer over the release').toBe(true);
+        expect(v.pos).toBe('16 images');
+        expect(page.url()).toBe(URL);
+    });
+
     test('a Ctrl-click on the tab is not intercepted', async ({ page }) => {
         await openRelease(page);
         const dialogs = [];

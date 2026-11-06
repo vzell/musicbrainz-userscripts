@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-11-06",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Cover art and Event art sections (release and event pages): the section now gets its pictures, loading and retry from one adapter, the first step toward one picture section for every detail page (springsteenlyrics scans, Discogs images, archive.org pictures). Nothing changes on screen. One fix comes with it: the Cover art tab finds its own section even when another picture section stands before it on the page."
+        ]
+      }
+    ]
+  }
+]
