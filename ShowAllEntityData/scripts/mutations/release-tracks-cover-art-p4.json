@@ -279,8 +279,8 @@
     "why": "Turning off 'Show Medium images in each medium heading' must leave the h3s alone.",
     "edits": [
       {
-        "find": "                   Lib.settings.sa_enable_release_tracks_medium_art && Array.isArray(images);",
-        "replace": "                   Array.isArray(images);"
+        "find": "                                   Lib.settings.sa_enable_release_tracks_medium_art),",
+        "replace": "                                   true),"
       }
     ],
     "spec": "tests/fixtures/release-tracks-medium-art.spec.js",

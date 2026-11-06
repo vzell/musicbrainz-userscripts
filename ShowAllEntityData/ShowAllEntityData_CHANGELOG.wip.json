@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-11-06",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Other sites' detail pages: as on a MusicBrainz release, a disc's or record's own pictures show as small thumbs in its heading above the tracks, and a click opens them in the viewer. On archive.org a picture named after a disc (\"Disc 2.jpg\") goes into that disc's heading; on a springsteenlyrics bootleg the artwork whose caption names the disc, its label, a picture side or the runout goes into the record's. A picture is placed only when its name says where; anything else stays in the pictures section only.",
+          "springsteenlyrics bootleg pages: the artwork chips follow the site's captions — Front, Back, Booklet, Medium (disc, label, picture side, runout, matrix), else Artwork."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-11-06",
     "sections": [

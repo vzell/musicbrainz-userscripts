@@ -76,9 +76,16 @@ image the site calls its main; never derive it from a "Front" type.
 `caption` is the comment under the type; one that repeats the type is
 dropped.
 
-Medium thumbs (`_releaseArtApplyMediumArt()`) are still release-tracks and
-caa only — P3 in the org file. Never assign a picture to a medium from a
-guess: `_releaseArtMediumAssign()`'s rules.
+Medium thumbs (`_releaseArtApplyMediumArt()`, since P3 on any page): the
+adapter gives `mediaOf()` (`[{pos, format, h3}]` from the page's sub-table
+headings; `_artForeignMedia()` reads "Disc N", "Record N", a lone "Disc")
+and `mediumOn()`; `_artMediumAdapter()` finds it. A picture goes into a
+heading only by `_releaseArtMediumAssign()`'s rules: type Medium, and a
+comment naming exactly one medium ("Disc 2") or a single medium on the page.
+So type from the site's own words — file names (`_iaPictureTypes()`),
+captions (`_slArtworkTypes()`) — and never guess a disc. A new adapter on a
+MusicBrainz page other than release-tracks must also get past the
+`_foreignHost === null` early return there, which keeps the filter pass free.
 
 ## 4. Tests and mutations
 

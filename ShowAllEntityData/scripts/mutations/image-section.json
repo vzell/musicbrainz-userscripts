@@ -271,5 +271,122 @@
         "spec": "tests/fixtures/sl-item.spec.js",
         "grep": "collection 5240",
         "expect": "fail"
+    },
+    {
+        "name": "P3: a foreign page's disc headings are not read",
+        "why": "Without _artForeignMedia()'s heading parse there are no media, so no Medium picture lands anywhere.",
+        "edits": [
+            {
+                "find": "            const m = /^(disc|disk|cd|record|lp|vinyl|tape|cassette)\\b\\s*(\\d+)?/i.exec(text);",
+                "replace": "            const m = null;"
+            }
+        ],
+        "spec": "tests/fixtures/ia-details.spec.js",
+        "grep": "image section P3",
+        "expect": "fail"
+    },
+    {
+        "name": "P3: a single unnumbered heading is not medium 1",
+        "why": "\"Disc (82:40.00)\" names no number; alone it is the one medium, or its two disc pictures have nowhere to go.",
+        "edits": [
+            {
+                "find": "        if (found.length === 1 && !found[0].pos) found[0].pos = 1;",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "one unnumbered",
+        "expect": "fail"
+    },
+    {
+        "name": "P3: the foreign adapter knows no media",
+        "why": "Without mediaOf on _fdArtSection()'s adapter, _artMediumAdapter() finds no section to put into the headings.",
+        "edits": [
+            {
+                "find": "            mediaOf: () => _artForeignMedia(),\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "six Medium pictures",
+        "expect": "fail"
+    },
+    {
+        "name": "P3: springsteenlyrics' artwork keeps one type",
+        "why": "The captions name the part; without _slArtworkTypes() every picture is Artwork and none is Medium.",
+        "edits": [
+            {
+                "find": "                    types: kind === 'Artwork' ? _slArtworkTypes(caption) : [kind], ...(group ? { group } : {}) });",
+                "replace": "                    types: [kind], ...(group ? { group } : {}) });"
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "six Medium pictures",
+        "expect": "fail"
+    },
+    {
+        "name": "P3: a disc caption is read after front/back",
+        "why": "\"disc front\" is the disc: the Medium test comes first, or it is typed Front.",
+        "edits": [
+            {
+                "find": "        if (/\\b(?:disc|disk|cd|label|picture side|runout|matrix|vinyl|record)\\b/.test(c)) return ['Medium'];\n        if (/\\b(?:booklet|insert|inlay)\\b/.test(c)) return ['Booklet'];\n        if (/^front\\b/.test(c)) return ['Front'];",
+                "replace": "        if (/\\bfront\\b/.test(c)) return ['Front'];\n        if (/\\b(?:disc|disk|cd|label|picture side|runout|matrix|vinyl|record)\\b/.test(c)) return ['Medium'];\n        if (/\\b(?:booklet|insert|inlay)\\b/.test(c)) return ['Booklet'];"
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "one unnumbered",
+        "expect": "fail"
+    },
+    {
+        "name": "P3: a medium thumb opens the archive's context",
+        "why": "The thumb's click opens its adapter's context; with CAA_CTX a foreign page's records are not there.",
+        "edits": [
+            {
+                "find": "        _artViewerOpen(desc.ctx, sec.dataset.mbArtEntity, list, start, { opener: btn, title: _releaseArtTitle(desc) });",
+                "replace": "        _artViewerOpen(CAA_CTX, sec.dataset.mbArtEntity, list, start, { opener: btn, title: _releaseArtTitle(desc) });"
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "six Medium pictures",
+        "expect": "fail"
+    },
+    {
+        "name": "P3: a foreign medium thumb's card loads its picture with a referrer",
+        "why": "Another site's picture is loaded without a referrer, in the card too.",
+        "edits": [
+            {
+                "find": "${ext ? ' referrerpolicy=\"no-referrer\"' : ''}",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "six Medium pictures",
+        "expect": "fail"
+    },
+    {
+        "name": "P3: the release page's medium art ignores its settings",
+        "why": "The Cover art adapter's mediumOn() carries MusicBrainz's two settings; always on, turning the setting off keeps the thumbs.",
+        "edits": [
+            {
+                "find": "                mediumOn: () => !!(Lib.settings.sa_enable_release_tracks_cover_art &&",
+                "replace": "                mediumOn: () => true || !!(Lib.settings.sa_enable_release_tracks_cover_art &&"
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-medium-art.spec.js",
+        "grep": "the setting turns them off",
+        "expect": "fail"
+    },
+    {
+        "name": "P3: MusicBrainz pages other than release-tracks look for foreign media",
+        "why": "A performance guard, not a visible one: _artMediumAdapter() runs on every filter pass; on MusicBrainz it must return before querying the document. Nothing on screen differs, so no spec can see it: recorded as an overlap.",
+        "edits": [
+            {
+                "find": "        if (_foreignHost === null) return null;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/event-overview-art.spec.js",
+        "grep": "the event's own chips",
+        "expect": "pass"
     }
 ]

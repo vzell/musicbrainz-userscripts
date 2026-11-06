@@ -245,9 +245,42 @@ test.describe('springsteenlyrics.com item pages (sl-*-item)', () => {
         expect(await h3s(page)).toEqual(['Record 1']);
         expect((await tables(page))[0].map(r => r.Pos)).toEqual(['A1', 'A2', 'A3', 'B1', 'B2', 'B3']);
         expect(await cardRows(page, 'Your collection')).toContainEqual(['MusicBrainz', 'MusicBrainz release']);
-        // Since image section P1: the section's kind as the type, the page's caption as the comment.
-        await expect(page.locator('.mb-fd-head .mb-release-art-types').first()).toHaveText('Artwork');
-        await expect(page.locator('.mb-fd-head .mb-release-art-comment').first()).toHaveText('front');
+        // Since image section P3: the caption names the type ("front" → Front,
+        // "disc side 1" / "label side 2" / "runout groove side 1" → Medium); a
+        // caption that only repeats its type is not printed again.
+        const sec = page.locator('.mb-fd-head .mb-release-art-sec');
+        await expect(sec.locator('.mb-release-art-chip')).toHaveText(['All 8', 'Front 1', 'Back 1', 'Medium 6']);
+        await expect(sec.locator('.mb-release-art-types').first()).toHaveText('Front');
+        await expect(sec.locator('figure.mb-release-art-tile').first().locator('.mb-release-art-comment')).toHaveCount(0);
+        await expect(sec.locator('figure.mb-release-art-tile').nth(2).locator('.mb-release-art-comment')).toHaveText('disc side 1');
+    });
+
+    test('CD bootleg 281: one unnumbered "Disc" heading is medium 1 — "disc front" and "disc back" go into it (image section P3)', async ({ page }) => {
+        await open(page, 'brucelegs-281');
+        await show(page);
+        const h3 = page.locator('.project-detail h3.mb-toggle-h3').first();
+        await expect(h3.locator('.mb-medium-art > .mb-medium-art-btn')).toHaveCount(2);
+        await expect(page.locator('.mb-fd-head .mb-release-art-chip')).toHaveText(['All 7', 'Front 1', 'Back 2', 'Booklet 2', 'Medium 2']);
+    });
+
+    // org/image-handling.org P3: the record's Medium pictures in its heading,
+    // as on a MusicBrainz release; one record takes them all (R7's rule 1).
+    test('bootleg 2567: the six Medium pictures go into "Record 1"\'s heading; a thumb opens the viewer on them (image section P3)', async ({ page }) => {
+        const { errors } = await open(page, 'bootlegs-2567');
+        await show(page);
+        const h3 = page.locator('.project-detail h3.mb-toggle-h3').first();
+        await expect(h3.locator('.mb-medium-art > .mb-medium-art-btn')).toHaveCount(4);
+        await expect(h3.locator('.mb-medium-art > .mb-medium-art-more')).toHaveText('+2');
+        await expect(h3.locator('.mb-medium-art-note')).toHaveCount(0);
+        // External pictures: their own URLs, no referrer on the card.
+        expect(await h3.locator('.mb-medium-art-btn img').first().getAttribute('src')).toMatch(/^https:\/\/www\.springsteenlyrics\.com\/.*2567_artwork_03_tn\.jpg$/);
+        expect(await h3.locator('.mb-medium-art-btn').first().getAttribute('data-mbtt')).toContain('referrerpolicy="no-referrer"');
+        await h3.locator('.mb-medium-art-btn').nth(1).click();
+        const viewer = page.locator('#mb-art-viewer');
+        await expect(viewer).toBeVisible();
+        await expect(viewer.locator('.mb-artv-pos')).toHaveText('2 / 6');
+        await expect(h3, 'the click did not collapse the record').not.toHaveClass(/mb-collapsed|collapsed/);
+        expect(errors).toEqual([]);
     });
 
     test('CD bootleg 281: Length, notes, the inner ring text, the PDF', async ({ page }) => {

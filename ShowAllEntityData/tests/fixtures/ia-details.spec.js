@@ -91,6 +91,24 @@ const subTables = (page) => page.evaluate(() => Array.from(document.querySelecto
 }).filter(x => x.rows.length));
 
 test.describe('archive.org: an item page (ia-details)', () => {
+    // org/image-handling.org P3: "Disc 1.jpg" and "Disc 2.jpg" (type Medium
+    // from the file name, comment "Disc N") each go into their own disc's
+    // heading — R7's rule 2, a comment naming exactly one existing medium.
+    test('the pictures "Disc 1" and "Disc 2" go into their own disc\'s heading; a thumb opens the viewer (image section P3)', async ({ page }) => {
+        const errors = await open(page, SHOW);
+        await press(page, 'Show all tracks');
+        const h3 = (n) => page.locator('#mb-ia-root h3.mb-toggle-h3', { hasText: `Disc ${n}` });
+        for (const n of [1, 2]) {
+            const btns = h3(n).locator('.mb-medium-art > .mb-medium-art-btn');
+            await expect(btns).toHaveCount(1);
+            expect(await btns.locator('img').getAttribute('src')).toContain(`Disc%20${n}`);
+        }
+        await expect(page.locator('.mb-medium-art-note')).toHaveCount(0);
+        await h3(2).locator('.mb-medium-art-btn').click();
+        await expect(page.locator('#mb-art-viewer .mb-artv-pos')).toHaveText('1 / 1');
+        expect(errors).toEqual([]);
+    });
+
     test('Tracks: one request; a sub-table per disc with its format and running time; the MP3 copy as a column', async ({ page }) => {
         const errors = await open(page, SHOW);
         await press(page, 'Show all tracks');

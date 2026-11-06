@@ -3469,7 +3469,11 @@ and lists them. Above the tables:
 the item's facts (or, for a bootleg, the show and the recording), the runout
 etchings, its files, the notes, and its scans or artwork in one section, with
 the site's captions, opening in the artwork viewer. It works like a release's
-Cover art: chips by kind (Scan, Artwork) and Grid / By type. An item with
+Cover art: chips by kind (Scan; a bootleg's artwork by what its caption names:
+Front, Back, Booklet, Medium for the disc, its label or runout, else Artwork)
+and Grid / By type. As on a release page, the Medium pictures also show as
+small thumbs in the record's or disc's heading (a click opens them in the
+viewer). An item with
 several copies gets a chip per copy and **By copy** instead, and the viewer
 steps through every copy's scans; a copy the site has no scans of yet shows
 as a dashed box with the site's own words. **Original info
@@ -4234,6 +4238,8 @@ that fold like the release page's:
 - **Pictures**, the uploader's scans as tiles, as the release page's Cover
   art: type chips (Front, Back, Booklet, Medium, guessed from the file
   names) and Grid / By type; a click opens the pictures shown in the viewer.
+  A picture named after a disc ("Disc 2.jpg") also shows as a small thumb in
+  that disc's heading.
 
 Both read the item in one request. Before you press a button, the item's own
 page previews too: rest on its Brucebase link for the show's card.

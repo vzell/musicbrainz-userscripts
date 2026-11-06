@@ -362,6 +362,23 @@ never from a hard-coded `CAA_CTX`. Rules that come with that:
   it for their copies (one section, chips and "By copy", the site's "No
   scans available yet"). Specs `sl-item.spec.js` "image section P2"
   (fixtures 5240, 6463, 5472); mutation list `image-section.json`.
+- **Medium thumbs off MusicBrainz** (P3, 2026-11-06): `_releaseArtApplyMediumArt()`
+  and its click take their adapter from `_artMediumAdapter()` — the Cover
+  art adapter on release-tracks (its `mediaOf` = `_releaseArtMedia()`, its
+  `mediumOn()` = the two settings), else the first loaded section whose
+  adapter has `mediaOf` (`_fdArtSection()`: `_artForeignMedia()` reads
+  "Disc 1 · …", "Record 2: …", a lone "Disc (…)" = medium 1, a record or
+  tape two-sided). **On any other MusicBrainz page it returns before
+  querying** (`_foreignHost === null`): it rides every filter pass.
+  `_releaseArtMediumAssign()` is unchanged, so the rules stay R7's — a
+  foreign Medium picture needs a comment that names its medium ("Disc 2")
+  or a single medium. Types come from the site's own words:
+  archive.org's file names (`_iaPictureTypes()`), springsteenlyrics'
+  artwork captions (`_slArtworkTypes()`: disc/label/picture side/runout/
+  matrix → Medium first, then booklet, front, back). An external medium
+  thumb's card (`_releaseArtTipHtml()`) shows the picture itself, no
+  referrer, no Ctrl link. Specs: `ia-details.spec.js` and `sl-item.spec.js`
+  "image section P3"; mutation list `image-section.json`.
 - **One record, one cache.** `_artFetchEntityImages(ctx, entityPath)` is the
   table-free copy of `_artEnrichIcon()`'s three tiers with the same 404 vs
   429/5xx bookkeeping, so the section and the CAA column share

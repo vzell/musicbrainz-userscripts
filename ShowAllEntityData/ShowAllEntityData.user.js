@@ -12829,6 +12829,7 @@
         const pictures = [];
         const picturePlaceholders = [];
         const pictureGroupOrder = [];
+        const kinds = new Set();
         picSections.forEach((s) => {
             const kind = /^scans/i.test(s.label) ? 'Scan' : 'Artwork';
             const group = byCopy ? (copyOf(s) || kind) : '';
@@ -12842,14 +12843,18 @@
                 }
                 return;
             }
+            kinds.add(kind);
             imgs.forEach((img) => {
                 const a = img.closest('a[href]');
                 const full = abs(a ? a.getAttribute('href') : img.getAttribute('src'));
-                pictures.push({ full, thumb: abs(img.getAttribute('src')), caption: captions.get(full.split('/').pop()) || '',
-                    types: [kind], ...(group ? { group } : {}) });
+                const caption = captions.get(full.split('/').pop()) || '';
+                // P3: an artwork caption that names the part ("disc side 1",
+                // "booklet p1,4") gives MusicBrainz's type, so a Medium picture
+                // can go into its record's heading.
+                pictures.push({ full, thumb: abs(img.getAttribute('src')), caption,
+                    types: kind === 'Artwork' ? _slArtworkTypes(caption) : [kind], ...(group ? { group } : {}) });
             });
         });
-        const kinds = new Set(pictures.map(p => p.types[0]));
         const picturesTitle = kinds.size > 1 ? 'Pictures' : kinds.has('Artwork') ? 'Artwork' : 'Scans';
         const textsAfter = [];
         if (infoA) {
@@ -23327,6 +23332,11 @@
             title: () => spec.title || '', layouts: ['grid', 'grouped'], layoutKey: MB_FD_ART_LAYOUT_KEY,
             secClass: 'mb-fd-art', tab: false, retry: null,
             images: sec => _FD_ART_CTX.imagesCache.get(sec.dataset.mbArtEntity) || [],
+            // P3: the page's Medium pictures go into its disc/record headings,
+            // by `_releaseArtMediumAssign()`'s rules (never a guess). No
+            // setting: the head's pictures have none either.
+            mediaOf: () => _artForeignMedia(),
+            mediumOn: () => true,
         };
         // P2: a spec that groups its pictures (a springsteenlyrics item's
         // copies: `pictureGroupLabel` 'copy') chips and groups by each
@@ -28491,6 +28501,26 @@
             }
         }
         return out;
+    }
+
+    /**
+     * MusicBrainz's cover art type for a bootleg's artwork caption (P3 of
+     * org/image-handling.org, as jungleland's file names, `_jlFiType()`): the
+     * disc, its label, a picture side, the runout or matrix → Medium (checked
+     * first: "disc front" is the disc); a booklet, insert or inlay → Booklet;
+     * "front …" → Front; "back …" → Back; anything else stays Artwork. Only the
+     * page's own words decide; a caption that says nothing stays Artwork.
+     *
+     * @param   {string} caption `_slImageCaptions()`'s text ("disc side 1").
+     * @returns {string[]}
+     */
+    function _slArtworkTypes(caption) {
+        const c = String(caption || '').toLowerCase();
+        if (/\b(?:disc|disk|cd|label|picture side|runout|matrix|vinyl|record)\b/.test(c)) return ['Medium'];
+        if (/\b(?:booklet|insert|inlay)\b/.test(c)) return ['Booklet'];
+        if (/^front\b/.test(c)) return ['Front'];
+        if (/^back\b/.test(c)) return ['Back'];
+        return ['Artwork'];
     }
 
     /**
@@ -157888,7 +157918,11 @@ a { color: #1565c0; }`;
                 anchor: () => document.querySelector('h2.tracklist'),
                 label: 'Cover art', archiveName: 'Cover Art Archive', what: 'release',
                 titleSel: '.releaseheader h1, #content h1',
-                layouts: ['grid', 'grouped', 'spreads'], layoutKey: MB_RELEASE_ART_LAYOUT_KEY
+                layouts: ['grid', 'grouped', 'spreads'], layoutKey: MB_RELEASE_ART_LAYOUT_KEY,
+                // Medium art (R7): MusicBrainz's "1 - CD" headings, behind its two settings.
+                mediaOf: () => _releaseArtMedia(),
+                mediumOn: () => !!(Lib.settings.sa_enable_release_tracks_cover_art &&
+                                   Lib.settings.sa_enable_release_tracks_medium_art),
             });
         }
         if (key === 'eaa') {
@@ -158181,8 +158215,10 @@ a { color: #1565c0; }`;
      * `white-space: pre-wrap`, so the string carries NO whitespace between
      * tags. Same layout idiom as the release group card (`_rgCardHtml()`).
      *
-     * Everything comes from the archive record already in `CAA_CTX.imagesCache`;
-     * the preview is the 500 px thumbnail (`large` on older records).
+     * Everything comes from the record already in its section's adapter; the
+     * preview is the 500 px thumbnail (`large` on older records), or for
+     * another site's picture (a foreign page's medium thumb, P3) the picture
+     * itself, without a referrer.
      *
      * @param   {Object[]} images The release's archive images, in archive order.
      * @param   {number}   index  The tile's image.
@@ -158191,8 +158227,12 @@ a { color: #1565c0; }`;
     function _releaseArtTipHtml(images, index) {
         const im = images[index];
         const thumbs = im.thumbnails || {};
-        const preview = (thumbs['500'] || thumbs.large || thumbs['250'] || thumbs.small || im.image || '')
-            .replace(/^http:/, '');
+        // Another site's picture (a foreign page's medium thumb, P3): its own
+        // URL as given, the full picture (there is no 500 px size), no
+        // referrer, and no archive link to open with Ctrl.
+        const ext = !!im.external;
+        const preview = ext ? (im.image || thumbs['250'] || '')
+            : (thumbs['500'] || thumbs.large || thumbs['250'] || thumbs.small || im.image || '').replace(/^http:/, '');
         const types = Array.isArray(im.types) && im.types.length ? im.types : ['(no type)'];
         const first = types[0];
         const sameType = images.filter(x => (x.types || []).includes(first));
@@ -158207,11 +158247,11 @@ a { color: #1565c0; }`;
             `<div class="mb-tt-body" style="display:flex;gap:6px;flex-wrap:wrap;">${types.map(pill).join('')}</div>` +
             (im.comment ? `<div class="mb-tt-comment">“${_rgEsc(im.comment)}”</div>` : '') +
             `<div style="margin-top:6px;width:280px;height:280px;max-width:100%;background:#efe6d4;border:1px solid #d9cfbd;border-radius:2px;">` +
-            `<img src="${_rgEsc(preview)}" alt="" style="width:100%;height:100%;object-fit:contain;display:block;"></div>` +
+            `<img src="${_rgEsc(preview)}" alt=""${ext ? ' referrerpolicy="no-referrer"' : ''} style="width:100%;height:100%;object-fit:contain;display:block;"></div>` +
             `<div class="mb-tt-rule"></div>` +
             `<div class="mb-tt-dim">${_rgEsc(where)}</div>` +
             (ids ? `<div class="mb-tt-dim">${_rgEsc(ids)}</div>` : '') +
-            `<div class="mb-tt-foot">Click: viewer · Ctrl-click: 1200 px in a new tab</div>` +
+            `<div class="mb-tt-foot">${ext ? 'Click: viewer' : 'Click: viewer · Ctrl-click: 1200 px in a new tab'}</div>` +
             `</div>`;
     }
 
@@ -158842,8 +158882,10 @@ a { color: #1565c0; }`;
      * Puts each medium's assigned Medium images, as small thumbs, into its
      * h3 (`span.mb-medium-art`, before the row count), and one "not assigned"
      * note on the first medium's h3 for every Medium image that could not be
-     * assigned (`_releaseArtMediumAssign()`). Reads only the record already in
-     * `CAA_CTX.imagesCache` — never a request. Idempotent and cheap (a memo hit
+     * assigned (`_releaseArtMediumAssign()`). Reads only the records its
+     * adapter already holds (`_artMediumAdapter()`: the Cover art section on
+     * release-tracks, a foreign detail page's pictures since P3) — never a
+     * request. Idempotent and cheap (a memo hit
      * and one query per medium), because it rides
      * `updateFilterButtonsVisibility()`: a full render rebuilds the h3s with
      * `innerHTML`, a filter or sort render reuses them.
@@ -158855,12 +158897,12 @@ a { color: #1565c0; }`;
      * @returns {void}
      */
     function _releaseArtApplyMediumArt() {
-        if (!activeDefinition || activeDefinition.type !== 'release-tracks') return;
-        const sec = _artSectionFind('caa', true);
-        const images = sec && _artSectionOf(sec).images(sec);
-        const on = Lib.settings.sa_enable_release_tracks_cover_art &&
-                   Lib.settings.sa_enable_release_tracks_medium_art && Array.isArray(images);
-        const media = on ? _releaseArtMedia() : [];
+        const desc = _artMediumAdapter();
+        if (!desc) return;
+        const sec = _artSectionFind(desc.key, true);
+        const images = sec && desc.images(sec);
+        const on = desc.mediumOn() && Array.isArray(images);
+        const media = on ? desc.mediaOf() : [];
         if (!on || !media.length) {
             document.querySelectorAll('.mb-medium-art').forEach(n => n.remove());
             return;
@@ -158948,8 +158990,9 @@ a { color: #1565c0; }`;
     function _releaseArtOnMediumClick(e) {
         const btn = e.target instanceof Element && e.target.closest('.mb-medium-art > button');
         if (!btn || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
-        const sec = _artSectionFind('caa', true);
-        const images = sec && _artSectionOf(sec).images(sec);
+        const desc = _artMediumAdapter();
+        const sec = desc && _artSectionFind(desc.key, true);
+        const images = sec && desc.images(sec);
         if (!images) return;
         const memo = _releaseArtMediumMemo.get(images);
         if (!memo) return;
@@ -158966,7 +159009,59 @@ a { color: #1565c0; }`;
         if (!list.length) return;
         e.preventDefault();
         e.stopPropagation();
-        _artViewerOpen(CAA_CTX, sec.dataset.mbArtEntity, list, start, { opener: btn, title: _releaseArtTitle() });
+        _artViewerOpen(desc.ctx, sec.dataset.mbArtEntity, list, start, { opener: btn, title: _releaseArtTitle(desc) });
+    }
+
+    /**
+     * The adapter whose pictures go into this page's medium headings
+     * (org/image-handling.org P3), or null: on release-tracks the Cover art
+     * adapter (its own two settings decide, through `mediumOn()`); on any
+     * other page the first loaded art section whose adapter knows the page's
+     * media (`mediaOf`: a foreign detail page's head, `_fdArtSection()`).
+     * Only MusicBrainz's release page answers before its section is loaded,
+     * so its thumbs are cleared when the setting goes off.
+     *
+     * @returns {?Object}
+     */
+    function _artMediumAdapter() {
+        if (!activeDefinition) return null;
+        if (activeDefinition.type === 'release-tracks') return _artSectionDesc('caa');
+        // Every other MusicBrainz page returns at once, as before P3: this
+        // runs on every filter pass (`updateFilterButtonsVisibility()`).
+        if (_foreignHost === null) return null;
+        const sec = Array.from(document.querySelectorAll('.mb-release-art-sec[data-mb-art-ctx][data-mb-art-state="ok"]'))
+            .find((s) => { const d = _artSectionOf(s); return !!(d && typeof d.mediaOf === 'function'); });
+        return sec ? _artSectionOf(sec) : null;
+    }
+
+    /**
+     * A foreign detail page's media as its rendered sub-table headings name
+     * them, for the medium thumbs (P3): "Disc 1 · Flac · 1:10:29"
+     * (archive.org), "Record 1", "Record 2: …" (springsteenlyrics, Discogs),
+     * "Disc (82:40.00)" (one disc, no number: medium 1). A heading that names
+     * no disc, record or tape ("Videos", "Tracklist") is not a medium. The
+     * format is what `_releaseArtMediumAssign()` needs for sides: a record
+     * and a tape have two.
+     *
+     * @returns {Array<{pos: number, format: string, h3: HTMLElement}>}
+     */
+    function _artForeignMedia() {
+        const found = [];
+        _tableSourceRows().forEach(({ table }) => {
+            const h3 = findH3ForTable(table);
+            if (!h3) return;
+            const text = Array.from(h3.childNodes).filter(n => n.nodeType === Node.TEXT_NODE)
+                .map(n => n.textContent).join('').trim();
+            const m = /^(disc|disk|cd|record|lp|vinyl|tape|cassette)\b\s*(\d+)?/i.exec(text);
+            if (!m) return;
+            const word = m[1].toLowerCase();
+            const format = /record|lp|vinyl/.test(word) ? 'Vinyl' : /tape|cassette/.test(word) ? 'Cassette' : 'CD';
+            found.push({ pos: m[2] ? Number(m[2]) : 0, format, h3 });
+        });
+        // A single unnumbered heading is medium 1; unnumbered ones beside
+        // numbered ones cannot be placed and are left out.
+        if (found.length === 1 && !found[0].pos) found[0].pos = 1;
+        return found.filter(x => x.pos);
     }
 
     /**

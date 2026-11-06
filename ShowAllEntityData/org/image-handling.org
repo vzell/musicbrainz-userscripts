@@ -376,4 +376,38 @@ An SL item's scans and artwork are one section; its copies are chips and groups.
   moved chip logic, all four as expected.
 - =test:full= on NB-3641 (2026-11-06T02:15:21 → 02:32:54+01:00): 2729 passed.
 
-Next, P3: medium thumbs off MusicBrainz.
+Committed =1dfc5daa=, pushed after vzell's live check. The flaky =discogs-mb-column= test
+was investigated next and stopped at vzell's request (alone: 42 of 42 passed at 21 workers;
+a run under load was stopped before its result) — still open.
+
+** P3 (2026-11-06, branch =feature/image-section-p3=, stacked on P2, WIP.4)
+
+Medium thumbs off MusicBrainz: a disc's or record's own pictures in its sub-table heading.
+
+- Where the data allows it, checked first: archive.org's item fixture has "Disc 1.jpg" /
+  "Disc 2.jpg" beside its "Disc 1" / "Disc 2" tables; springsteenlyrics' bootleg captions name
+  the part ("disc side 1", "label side 2", "runout groove side 1", "picture side 1", "matrix
+  no. side 2", "disc front"); Discogs' images name none, so its headings stay empty.
+- =_artMediumAdapter()=: the Cover art adapter on release-tracks (=mediaOf= =
+  =_releaseArtMedia()=, =mediumOn()= = its two settings), else the first loaded section whose
+  adapter has =mediaOf= (=_fdArtSection()=: =_artForeignMedia()=). Returns at once on any other
+  MusicBrainz page (=_foreignHost === null=): it rides every filter pass, and a document query
+  there would be new cost on MusicBrainz for nothing.
+- =_releaseArtMediumAssign()= unchanged: R7's rules decide, never a guess.
+- =_slArtworkTypes()=: a caption's words → Medium (checked first: "disc front" is the disc),
+  Booklet, Front, Back, else Artwork. The external medium thumb's card shows the picture
+  itself, no referrer, no Ctrl link.
+- Specs: =ia-details.spec.js= (Disc 1 / Disc 2), =sl-item.spec.js= (2567: six Medium pictures,
+  4 thumbs + "+2", the viewer "2 / 6"; 281: a lone "Disc" heading is medium 1; the 2567
+  captions test now pins the typing). =image-section.json= 30 entries, the 9 new ones as
+  expected (the =_foreignHost= guard recorded as a pass: a performance guard nothing on screen
+  shows); =release-tracks-cover-art-p4.json= "R7: the setting is ignored" repointed into
+  =mediumOn()=.
+- =test:full= on NB-3641 (2026-11-06T08:34:49 → 08:52:47+01:00): 2731 passed, 1 failed —
+  =column-descriptions= "Type on an artist's events", =page.goto: net::ERR_TIMED_OUT= while the
+  disk fixture loaded, before the userscript did anything; no art code on that page. Alone the
+  spec passed 21 of 21 (=--repeat-each 3=). Trace kept in the session's scratchpad.
+  vzell's live check passed.
+
+Next, P4: the table view (a plain table inside the section), tile size, Show missing; the
+viewer's Adjust, Compare, Loupe, Copy URL and key help.
