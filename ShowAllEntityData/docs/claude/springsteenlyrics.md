@@ -304,8 +304,13 @@ No request: `features.pageRequest`'s `fetchText` returns the page's own HTML,
   `textsAfter`, `pictureGroups`, a text's `note` and `lazyText`): Notes and
   Release info; Details — Release (or Show and Recording), the runout
   etchings, "Your collection" (logged in: MusicBrainz link, Good scans, Kept
-  in, item number, edit link) and Files; one pictures section per scans or
-  artwork section, with the page's captions; then "Original info file", read
+  in, item number, edit link) and Files; ONE pictures section over every
+  scans or artwork section (since 2026-11-06, org/image-handling.org P2;
+  before, one per section, so a second copy had its own viewer and an empty
+  copy vanished), the section's kind as the type, the page's captions as
+  comments; with copies it is chipped and grouped by copy in page order, a
+  copy without scans a placeholder with the site's words
+  (`pictureGroupLabel`, `picturePlaceholders`, `pictureGroupOrder`); then "Original info file", read
   same-origin once when its section is first opened (answer 2), and "Private
   info" (logged in, closed).
 - **Private info never leaves the item page**: `_SL_ITEM_OWN_SECTION_RE` keeps

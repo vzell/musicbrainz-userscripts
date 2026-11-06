@@ -1,5 +1,23 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-11-06",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "springsteenlyrics.com item pages: a copy the site has no scans of yet (\"No scans available yet\") was left out of the scans, so the page read as if the item had one copy. It now shows as a dashed box with the site's own words, in its place among the copies."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "springsteenlyrics.com item pages: an item's scans and artwork are one section. With several copies it has a chip per copy and By copy instead of By type, and the viewer steps through every copy's scans (before, each copy was its own section with its own viewer)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-11-06",
     "sections": [

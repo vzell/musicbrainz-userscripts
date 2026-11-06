@@ -3467,10 +3467,12 @@ Asbury Park N.J.", then its pressing, catalogue number and sleeve) gets one
 **Contents** table instead, a row per record; its preview counts the records
 and lists them. Above the tables:
 the item's facts (or, for a bootleg, the show and the recording), the runout
-etchings, its files, the notes, and its scans or artwork — one section per
-copy, with the site's captions, opening in the artwork viewer. Each section
-works like a release's Cover art: chips by kind (Scan, Artwork) and Grid / By
-type. **Original info
+etchings, its files, the notes, and its scans or artwork in one section, with
+the site's captions, opening in the artwork viewer. It works like a release's
+Cover art: chips by kind (Scan, Artwork) and Grid / By type. An item with
+several copies gets a chip per copy and **By copy** instead, and the viewer
+steps through every copy's scans; a copy the site has no scans of yet shows
+as a dashed box with the site's own words. **Original info
 file** starts closed and is read only when you open it. Resting on a picture
 shows it large; hold Shift for larger, and a click or Space opens the
 artwork viewer (on every non-MusicBrainz detail page). Logged in, a **Your

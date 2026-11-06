@@ -349,6 +349,31 @@ The foreign detail head's pictures are art sections.
   (archive.org, Discogs, springsteenlyrics), the =foreign-detail-pagetype= skill, and the new
   =add-image-section= skill (2a's sketch, as built).
 
-Next, P2: an item's copies (and its Scans and Artwork) in one section, =groupOf= = the copy, a
-placeholder for a copy the site lists without scans — =sl-item.spec.js= "collection 5240"
-pins today's "the empty copy left out" and changes with it.
+Committed =a80523af=. =test:full= on NB-3641 (2026-11-06T02:05:33+01:00): 2726 passed, 1
+failed — =discogs-mb-column= "a genre's tag link opens here", the known open "no card" flake of
+2026-10-29 (no popup code touched; 5 of 5 alone; its trace lost to that re-run, DEBUG-NOTES
+2026-11-06). vzell's live check passed.
+
+** P2 (2026-11-06, branch =feature/image-section-p2=, stacked on P1, WIP.3)
+
+An SL item's scans and artwork are one section; its copies are chips and groups.
+
+- The section core asks the adapter, with today's type-based behaviour as the default
+  (MusicBrainz unchanged): =_artChipsOf()=, =_artGroupOf()=, =groupedLabel=,
+  =_artInGroupOrder()= (=groupOrder=), =_artPlaceholders()= / =_artPlaceholderEl()=
+  (=figure.mb-release-art-missing=, never a tile; its group a chip with 0).
+- =_slItemHeadSpec()= builds =pictures= (each with its copy as =group=), =picturesTitle=
+  (Scans / Artwork / Pictures), and with copies =pictureGroupLabel: 'copy'=,
+  =pictureGroupOrder= (page order) and =picturePlaceholders= (the site's alert text without its
+  close button); =_fdArtSection()= turns those into the adapter's members.
+- The fix that came with it: 5240's and 5472's copy without scans was left out (1a's gap).
+- Fixtures =detail-sl-collection-6463.html= (2 + 2) and =-5472.html= (0 + 3), fetched logged
+  out with curl and built by =scripts/build-sl-item-fixtures.py= (vzell's logged-in snapshots
+  carry the script's tracklist links, which its =strip_script_ui()= predates). Specs: three
+  "image section P2" tests in =sl-item.spec.js= (5240 rewritten: it pinned the old
+  behaviour). =image-section.json=: 21 entries, the 8 new ones fail as expected; four entries
+  of =ctrl-hover-art-multiselect.json= and =release-tracks-cover-art-p2.json= repointed to the
+  moved chip logic, all four as expected.
+- =test:full= on NB-3641 (2026-11-06T02:15:21 → 02:32:54+01:00): 2729 passed.
+
+Next, P3: medium thumbs off MusicBrainz.

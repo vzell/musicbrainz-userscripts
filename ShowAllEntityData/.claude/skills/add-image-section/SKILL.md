@@ -40,8 +40,20 @@ the model). Every handler reads ONLY these members:
     layoutKey: MB_X_LAYOUT_KEY,         // its own GM key, declared beside the others (TDZ) and
                                         // listed in _CFG_WORKSPACE_GROUPS
     secClass: 'mb-x-art',               // optional extra class for the section
+    // Optional, P2 (all default to the types; MusicBrainz sets none):
+    groupOf: im => im.group,            // the grouped layout's group
+    chipsOf: im => [im.group],          // the chips an image counts for
+    groupedLabel: 'By copy',            // the grouped layout's button
+    groupOrder: ['Copy #1', 'Copy #2'], // the page's order of groups (chips and groups)
+    placeholders: () => [{ group: 'Copy #1', note: 'No scans available yet' }],
 }
 ```
+
+A placeholder is `figure.mb-release-art-missing`, never a tile: the viewer,
+the counts and the card must not see it. Its group gets a chip with 0. On a
+foreign head, a spec asks for all of it with `pictureGroupLabel`,
+`pictureGroupOrder`, `picturePlaceholders` and each picture's `group`
+(`_slItemHeadSpec()` is the model).
 
 Records: archive JSON, or the external shape
 `{ image, thumbnails: { 250 }, types: [], comment, front, external: true, source }`.

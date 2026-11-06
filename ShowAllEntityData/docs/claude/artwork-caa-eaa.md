@@ -347,6 +347,21 @@ never from a hard-coded `CAA_CTX`. Rules that come with that:
   `types` (Discogs `_dgHeadPictures()`, archive.org `_iaPictureTypes()`,
   springsteenlyrics the section's kind). Spec: `discogs-release-tracks.spec.js`
   "image section P1"; mutation list `image-section.json`.
+- **Groups, chips and placeholders come from the adapter when it says so**
+  (P2, 2026-11-06), with today's type-based behaviour as the default, so
+  MusicBrainz is unchanged: `_artChipsOf(desc, im)` (a chip per type, else
+  `desc.chipsOf`), `_artGroupOf(desc, im)` (the first type, else
+  `desc.groupOf`), `desc.groupedLabel` ("By type"), `_artInGroupOrder()`
+  (`desc.groupOrder`: the page's order of the groups, for chips and groups)
+  and `_artPlaceholders(desc)` (`desc.placeholders()`: `[{group, note}]`,
+  groups the page lists without pictures). A placeholder is
+  `figure.mb-release-art-missing`, **never `.mb-release-art-tile`**: the
+  viewer's order, the tile counts and the picture card must not see it; it
+  shows with no chip pressed or with its own group's, and its group gets a
+  chip with 0 (`.mb-release-art-chip-empty`). springsteenlyrics' items use
+  it for their copies (one section, chips and "By copy", the site's "No
+  scans available yet"). Specs `sl-item.spec.js` "image section P2"
+  (fixtures 5240, 6463, 5472); mutation list `image-section.json`.
 - **One record, one cache.** `_artFetchEntityImages(ctx, entityPath)` is the
   table-free copy of `_artEnrichIcon()`'s three tiers with the same 404 vs
   429/5xx bookkeeping, so the section and the CAA column share

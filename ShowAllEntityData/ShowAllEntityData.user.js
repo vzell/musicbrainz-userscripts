@@ -12812,20 +12812,45 @@
         if (infoA) fileRows.push(['Info file', _fdLink(abs(infoA.getAttribute('href')), abs(infoA.getAttribute('href')).split('/').pop())]);
         pdfs.forEach((a, i) => fileRows.push([pdfs.length > 1 ? `PDF ${i + 1}` : 'PDF', _fdLink(abs(a.getAttribute('href')), _dpText(a.textContent) || `PDF file ${i + 1}`)]));
         if (fileRows.length) others.push(['files', 'Files', fileRows]);
-        // Pictures: one section per scans/artwork section of the page (a
-        // collection item with two copies has two), each with the page's
-        // captions; a section without pictures is left out.
+        // Pictures: ONE art section over every scans/artwork section of the
+        // page (org/image-handling.org P2), the section's kind as each
+        // picture's type, the page's captions as comments. An item with
+        // copies ("Scans/Photos (copy #2)") is grouped and chipped by copy,
+        // in page order, and a copy the page lists without scans becomes a
+        // placeholder with the site's own words ("No scans available yet")
+        // — until P2 it was left out, as if the item had one copy.
         const captions = _slImageCaptions(sections);
-        const pictureGroups = sections.filter(s => /^(?:scans|artwork)/i.test(s.label)).map((s) => {
-            // The section's kind is the pictures' type (the art section's chip).
-            const types = [/^scans/i.test(s.label) ? 'Scan' : 'Artwork'];
-            const pictures = Array.from(s.box.querySelectorAll('img[src*="_tn."]')).map((img) => {
+        const picSections = sections.filter(s => /^(?:scans|artwork)/i.test(s.label));
+        const copyOf = (s) => {
+            const m = /\(copy\s*#\s*(\d+)\)/i.exec(s.label);
+            return m ? `Copy #${m[1]}` : '';
+        };
+        const byCopy = picSections.some(copyOf);
+        const pictures = [];
+        const picturePlaceholders = [];
+        const pictureGroupOrder = [];
+        picSections.forEach((s) => {
+            const kind = /^scans/i.test(s.label) ? 'Scan' : 'Artwork';
+            const group = byCopy ? (copyOf(s) || kind) : '';
+            if (group && !pictureGroupOrder.includes(group)) pictureGroupOrder.push(group);
+            const imgs = Array.from(s.box.querySelectorAll('img[src*="_tn."]'));
+            if (!imgs.length) {
+                if (group) {
+                    const alert = (s.box.querySelector('.alert') || s.box).cloneNode(true);
+                    alert.querySelectorAll('button').forEach(b => b.remove());
+                    picturePlaceholders.push({ group, note: _dpText(alert.textContent) || 'No scans' });
+                }
+                return;
+            }
+            imgs.forEach((img) => {
                 const a = img.closest('a[href]');
                 const full = abs(a ? a.getAttribute('href') : img.getAttribute('src'));
-                return { full, thumb: abs(img.getAttribute('src')), caption: captions.get(full.split('/').pop()) || '', types };
+                pictures.push({ full, thumb: abs(img.getAttribute('src')), caption: captions.get(full.split('/').pop()) || '',
+                    types: [kind], ...(group ? { group } : {}) });
             });
-            return { title: s.label.replace(/^Scans\/Photos/i, 'Scans').replace(/^Artwork and PDF$/i, 'Artwork'), pictures };
-        }).filter(g => g.pictures.length);
+        });
+        const kinds = new Set(pictures.map(p => p.types[0]));
+        const picturesTitle = kinds.size > 1 ? 'Pictures' : kinds.has('Artwork') ? 'Artwork' : 'Scans';
         const textsAfter = [];
         if (infoA) {
             const url = abs(infoA.getAttribute('href'));
@@ -12840,7 +12865,8 @@
             root: h2.parentElement, h2,
             sub: { what, by: '', when },
             texts, textsAfter, facts, others,
-            pictureGroups,
+            pictures, picturesTitle,
+            ...(byCopy ? { pictureGroupLabel: 'copy', picturePlaceholders, pictureGroupOrder } : {}),
             title: _slItemName(src), source: 'springsteenlyrics.com\'s page',
         };
     }
@@ -23084,9 +23110,12 @@
      * output with its text escaped); `facts` (the left column) and `others`
      * (beside it), each entry either [key, name, [[label, value(string|Node)], …]]
      * or a built card [key, name, count, body, wide], in order;
-     * `pictures` ([{full, thumb, caption, types, front}]: `types` are the
-     * art section's chips, `front` its ★ — `_fdArtSection()`) under
-     * `picturesTitle`; `title`
+     * `pictures` ([{full, thumb, caption, types, front, group}]: `types` are
+     * the art section's chips, `front` its ★ — `_fdArtSection()`) under
+     * `picturesTitle`; with `pictureGroupLabel` ('copy': springsteenlyrics'
+     * copies, P2) the pictures are chipped and grouped by their `group`, in
+     * `pictureGroupOrder`, with `picturePlaceholders` ([{group, note}]) for
+     * the groups the page lists without pictures; `title`
      * (the viewer's bar); `source` (the cards' hover text). Since
      * 2026-11-04 (springsteenlyrics.com's item pages, `_slItemHeadSpec()`)
      * also: `texts` (more text sections after `text`, before Details),
@@ -23289,7 +23318,8 @@
         const entity = `fd:${location.pathname}${location.search}#${gi}`;
         _FD_ART_CTX.imagesCache.set(entity, pics.map(p => ({
             image: p.full, thumbnails: { 250: p.thumb || p.full }, types: Array.isArray(p.types) ? p.types : [],
-            comment: p.caption || '', external: true, ...(p.front ? { front: true } : {}), source: spec.source || '',
+            comment: p.caption || '', external: true, ...(p.front ? { front: true } : {}),
+            ...(p.group ? { group: p.group } : {}), source: spec.source || '',
         })));
         const desc = {
             key, ctx: _FD_ART_CTX, pageType: (activeDefinition && activeDefinition.type) || '',
@@ -23298,6 +23328,18 @@
             secClass: 'mb-fd-art', tab: false, retry: null,
             images: sec => _FD_ART_CTX.imagesCache.get(sec.dataset.mbArtEntity) || [],
         };
+        // P2: a spec that groups its pictures (a springsteenlyrics item's
+        // copies: `pictureGroupLabel` 'copy') chips and groups by each
+        // picture's `group`, in the page's order, with placeholders for the
+        // groups the page lists without pictures. Only for `pictures`: a
+        // `pictureGroups` spec already makes one section per group.
+        if (spec.pictureGroupLabel && !spec.pictureGroups) {
+            desc.groupOf = im => im.group || _artGroupOf(null, im);
+            desc.chipsOf = im => [desc.groupOf(im)];
+            desc.groupedLabel = `By ${spec.pictureGroupLabel}`;
+            desc.groupOrder = spec.pictureGroupOrder || null;
+            desc.placeholders = () => spec.picturePlaceholders || [];
+        }
         desc.load = sec => Promise.resolve({ state: 'ok', images: desc.images(sec) });
         _artSectionAdapters().set(key, desc);
         const sec = _artSectionCreate(desc, entity);
@@ -158107,6 +158149,26 @@ a { color: #1565c0; }`;
                 text-transform: uppercase;
                 letter-spacing: 0.05em;
             }
+            /* A placeholder: a group the page lists without pictures (a
+               springsteenlyrics copy with "No scans available yet"). Never a
+               tile, so the viewer and the counts never see it. */
+            .mb-release-art-missing { margin: 0; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+            .mb-release-art-missing > div {
+                aspect-ratio: 1;
+                box-sizing: border-box;
+                border: 2px dashed #c9a0a0;
+                background: #fbf3f3;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                padding: 8px;
+                font-size: 11px;
+                line-height: 1.3;
+                color: #8a4a4a;
+            }
+            .mb-release-art-missing figcaption { font-size: 11px; line-height: 1.3; font-weight: bold; }
+            .mb-release-art-chip.mb-release-art-chip-empty { border-style: dashed; color: #777; }
         `);
         style.id = 'mb-release-art-style';
     }
@@ -158241,15 +158303,98 @@ a { color: #1565c0; }`;
      * both. Derived from the record rather than a fixed vocabulary, so it
      * stays right for any type the archive adds (and for event art later).
      *
+     * An adapter may chip something else than the types (`chipsOf`: a
+     * springsteenlyrics item's copies), name its placeholders' groups (a
+     * chip with 0 each) and fix their order (`groupOrder`: the page's).
+     *
      * @param   {Object[]} images
+     * @param   {Object}   [desc] The section's adapter; without it, the types.
      * @returns {Array<{type: string, n: number}>}
      */
-    function _releaseArtTypeCounts(images) {
+    function _releaseArtTypeCounts(images, desc) {
         const counts = new Map();
-        images.forEach(im => (im.types && im.types.length ? im.types : ['(no type)']).forEach(t => {
+        images.forEach(im => _artChipsOf(desc, im).forEach(t => {
             counts.set(t, (counts.get(t) || 0) + 1);
         }));
-        return Array.from(counts, ([type, n]) => ({ type, n }));
+        _artPlaceholders(desc).forEach((p) => { if (!counts.has(p.group)) counts.set(p.group, 0); });
+        return _artInGroupOrder(desc, Array.from(counts, ([type, n]) => ({ type, n })), c => c.type);
+    }
+
+    /**
+     * The chips an image counts for: the adapter's `chipsOf(im)`, else its
+     * types (an untyped image: "(no type)").
+     *
+     * @param   {?Object} desc The section's adapter.
+     * @param   {Object}  im   An image record.
+     * @returns {string[]}
+     */
+    function _artChipsOf(desc, im) {
+        if (desc && typeof desc.chipsOf === 'function') return desc.chipsOf(im);
+        return im.types && im.types.length ? im.types : ['(no type)'];
+    }
+
+    /**
+     * The group an image goes under in the grouped layout: the adapter's
+     * `groupOf(im)`, else its FIRST type.
+     *
+     * @param   {?Object} desc The section's adapter.
+     * @param   {Object}  im   An image record.
+     * @returns {string}
+     */
+    function _artGroupOf(desc, im) {
+        if (desc && typeof desc.groupOf === 'function') return desc.groupOf(im);
+        return (im.types && im.types[0]) || '(no type)';
+    }
+
+    /**
+     * The adapter's placeholders — groups the page lists without pictures,
+     * `[{group, note}]` — or none.
+     *
+     * @param   {?Object} desc The section's adapter.
+     * @returns {Array<{group: string, note: string}>}
+     */
+    function _artPlaceholders(desc) {
+        return (desc && typeof desc.placeholders === 'function' && desc.placeholders()) || [];
+    }
+
+    /**
+     * Sorts items by the adapter's `groupOrder` (the page's order of its
+     * groups); items whose key it does not name keep their order after those
+     * it does. Without a `groupOrder`, the items as they are.
+     *
+     * @template T
+     * @param   {?Object} desc The section's adapter.
+     * @param   {T[]}     items
+     * @param   {function(T): string} keyOf
+     * @returns {T[]}
+     */
+    function _artInGroupOrder(desc, items, keyOf) {
+        const order = desc && Array.isArray(desc.groupOrder) ? desc.groupOrder : null;
+        if (!order) return items;
+        const rank = k => { const i = order.indexOf(k); return i < 0 ? order.length : i; };
+        return items.map((it, i) => ({ it, i })).sort((a, b) => rank(keyOf(a.it)) - rank(keyOf(b.it)) || a.i - b.i)
+            .map(x => x.it);
+    }
+
+    /**
+     * A placeholder in the sheet: a box with the page's own words and the
+     * group's name, `figure.mb-release-art-missing` — never a
+     * `.mb-release-art-tile`, so the viewer's order, the tile counts and the
+     * picture card never see it.
+     *
+     * @param   {{group: string, note: string}} p
+     * @returns {HTMLElement}
+     */
+    function _artPlaceholderEl(p) {
+        const fig = document.createElement('figure');
+        fig.className = 'mb-release-art-missing';
+        fig.dataset.mbArtMissing = p.group;
+        const box = document.createElement('div');
+        box.textContent = p.note || 'No pictures';
+        const cap = document.createElement('figcaption');
+        cap.textContent = p.group;
+        fig.append(box, cap);
+        return fig;
     }
 
     /**
@@ -158343,14 +158488,14 @@ a { color: #1565c0; }`;
      * untyped image counts as "(no type)"), once.
      *
      * @param   {Object[]} images The release's archive images.
-     * @param   {string[]} types  The selected types, empty for all.
+     * @param   {string[]} types  The selected chips, empty for all.
+     * @param   {Object}   [desc] The section's adapter (`chipsOf`); without it, the types.
      * @returns {number[]}
      */
-    function _releaseArtShownIndices(images, types) {
+    function _releaseArtShownIndices(images, types, desc) {
         const want = new Set(types);
         return images.map((im, i) => i)
-            .filter(i => !want.size ||
-                (images[i].types && images[i].types.length ? images[i].types : ['(no type)']).some(t => want.has(t)));
+            .filter(i => !want.size || _artChipsOf(desc, images[i]).some(t => want.has(t)));
     }
 
     /**
@@ -158367,7 +158512,7 @@ a { color: #1565c0; }`;
         if (_releaseArtLayout(desc) === 'spreads') {
             const images = desc.images(sec);
             const { pairs, book, rest } = _releaseArtSpreadsPlan(images,
-                _releaseArtShownIndices(images, _releaseArtActiveTypes(sec)));
+                _releaseArtShownIndices(images, _releaseArtActiveTypes(sec), desc));
             return [...pairs.flatMap(p => [p.l, p.r]), ...book, ...rest];
         }
         return Array.from(sec.querySelectorAll('figure.mb-release-art-tile')).map(f => Number(f.dataset.mbArtI));
@@ -158479,7 +158624,8 @@ a { color: #1565c0; }`;
         const chip = (type, n, label) => {
             const b = document.createElement('button');
             b.type = 'button';
-            b.className = 'mb-release-art-chip';
+            // A chip with 0: a placeholder's group (a copy without scans).
+            b.className = 'mb-release-art-chip' + (type && !n ? ' mb-release-art-chip-empty' : '');
             b.dataset.mbArtFilter = type;
             b.setAttribute('aria-pressed', String(type ? active.includes(type) : !active.length));
             const num = document.createElement('b');
@@ -158488,7 +158634,7 @@ a { color: #1565c0; }`;
             return b;
         };
         tools.appendChild(chip('', images.length, 'All'));
-        _releaseArtTypeCounts(images).forEach(({ type, n }) => tools.appendChild(chip(type, n, type)));
+        _releaseArtTypeCounts(images, desc).forEach(({ type, n }) => tools.appendChild(chip(type, n, type)));
         const gap = document.createElement('span');
         gap.className = 'mb-release-art-tools-gap';
         tools.appendChild(gap);
@@ -158496,7 +158642,7 @@ a { color: #1565c0; }`;
         seg.className = 'mb-release-art-seg';
         seg.setAttribute('role', 'group');
         seg.setAttribute('aria-label', 'Layout');
-        [['grid', 'Grid'], ['grouped', 'By type'], ['spreads', 'Spreads']]
+        [['grid', 'Grid'], ['grouped', desc.groupedLabel || 'By type'], ['spreads', 'Spreads']]
             .filter(([key]) => desc.layouts.includes(key)).forEach(([key, label]) => {
             const b = document.createElement('button');
             b.type = 'button';
@@ -158508,11 +158654,13 @@ a { color: #1565c0; }`;
         tools.appendChild(seg);
         sec.appendChild(tools);
 
-        const shown = _releaseArtShownIndices(images, active);
+        const shown = _releaseArtShownIndices(images, active, desc);
         if (layout === 'spreads') {
             _releaseArtRenderSpreads(sec, images, shown);
             return;
         }
+        // Placeholders show with no chip pressed or with their own group's.
+        const missing = _artPlaceholders(desc).filter(p => !active.length || active.includes(p.group));
         const grid = () => {
             const g = document.createElement('div');
             g.className = 'mb-release-art-grid';
@@ -158521,16 +158669,18 @@ a { color: #1565c0; }`;
         if (layout === 'grid') {
             const g = grid();
             shown.forEach(i => g.appendChild(_releaseArtBuildTile(images, i, desc.archiveName)));
+            missing.forEach(p => g.appendChild(_artPlaceholderEl(p)));
             sec.appendChild(g);
             return;
         }
         const groups = new Map();
         shown.forEach(i => {
-            const first = (images[i].types && images[i].types[0]) || '(no type)';
-            if (!groups.has(first)) groups.set(first, []);
-            groups.get(first).push(i);
+            const key = _artGroupOf(desc, images[i]);
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push(i);
         });
-        groups.forEach((idx, type) => {
+        missing.forEach((p) => { if (!groups.has(p.group)) groups.set(p.group, []); });
+        _artInGroupOrder(desc, Array.from(groups), ([key]) => key).forEach(([type, idx]) => {
             const box = document.createElement('div');
             box.className = 'mb-release-art-group';
             box.dataset.mbArtGroup = type;
@@ -158539,6 +158689,7 @@ a { color: #1565c0; }`;
             hdr.textContent = `${type} × ${idx.length}`;
             const g = grid();
             idx.forEach(i => g.appendChild(_releaseArtBuildTile(images, i, desc.archiveName)));
+            missing.filter(p => p.group === type).forEach(p => g.appendChild(_artPlaceholderEl(p)));
             box.append(hdr, g);
             sec.appendChild(box);
         });

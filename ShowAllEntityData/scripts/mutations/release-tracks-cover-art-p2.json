@@ -4,8 +4,8 @@
     "why": "Image 2 is Back + Front; the Front chip counts 2, so it must show both. Comparing types[0] shows 1 while the chip says 2.",
     "edits": [
       {
-        "find": "                (images[i].types && images[i].types.length ? images[i].types : ['(no type)']).some(t => want.has(t)));",
-        "replace": "                want.has((images[i].types || [])[0] || '(no type)'));"
+        "find": "            .filter(i => !want.size || _artChipsOf(desc, images[i]).some(t => want.has(t)));",
+        "replace": "            .filter(i => !want.size || want.has(_artChipsOf(desc, images[i])[0]));"
       }
     ],
     "spec": "tests/fixtures/release-tracks-cover-art.spec.js",
@@ -17,8 +17,8 @@
     "why": "The count must match what the chip shows; an image with two types counts for both.",
     "edits": [
       {
-        "find": "        images.forEach(im => (im.types && im.types.length ? im.types : ['(no type)']).forEach(t => {",
-        "replace": "        images.forEach(im => [(im.types && im.types[0]) || '(no type)'].forEach(t => {"
+        "find": "        images.forEach(im => _artChipsOf(desc, im).forEach(t => {",
+        "replace": "        images.forEach(im => _artChipsOf(desc, im).slice(0, 1).forEach(t => {"
       }
     ],
     "spec": "tests/fixtures/release-tracks-cover-art.spec.js",

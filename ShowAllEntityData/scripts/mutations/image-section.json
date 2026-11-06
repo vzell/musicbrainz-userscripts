@@ -167,5 +167,109 @@
         "spec": "tests/fixtures/sl-tracklist-links.spec.js",
         "grep": "a head picture shows large on a rest",
         "expect": "fail"
+    },
+    {
+        "name": "P2: a copy the page lists without scans is left out again",
+        "why": "The site's \"No scans available yet\" copy must stay visible as a placeholder; left out, the page reads as if the item had one copy.",
+        "edits": [
+            {
+                "find": "                    picturePlaceholders.push({ group, note: _dpText(alert.textContent) || 'No scans' });",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "collection 5240",
+        "expect": "fail"
+    },
+    {
+        "name": "P2: the placeholder's note keeps the alert's close button",
+        "why": "The note is the alert's text without its \"×\" button.",
+        "edits": [
+            {
+                "find": "                    alert.querySelectorAll('button').forEach(b => b.remove());",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "collection 5240",
+        "expect": "fail"
+    },
+    {
+        "name": "P2: the page's order of the copies is ignored",
+        "why": "Copy #1 without scans comes first on the page; without groupOrder its chip and group follow copy #2's.",
+        "edits": [
+            {
+                "find": "        const order = desc && Array.isArray(desc.groupOrder) ? desc.groupOrder : null;",
+                "replace": "        const order = null;"
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "collection 5472",
+        "expect": "fail"
+    },
+    {
+        "name": "P2: a placeholder counts as a tile",
+        "why": "A placeholder is never a .mb-release-art-tile: the tile count and the viewer's order would hold it.",
+        "edits": [
+            {
+                "find": "        fig.className = 'mb-release-art-missing';",
+                "replace": "        fig.className = 'mb-release-art-missing mb-release-art-tile';"
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "collection 5472",
+        "expect": "fail"
+    },
+    {
+        "name": "P2: an item's copies are chipped by type",
+        "why": "With copies, the chips are the copies; by type they would read only \"Scan 4\".",
+        "edits": [
+            {
+                "find": "            desc.chipsOf = im => [desc.groupOf(im)];",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "collection 6463",
+        "expect": "fail"
+    },
+    {
+        "name": "P2: the grouped layout is still called By type",
+        "why": "Grouped by copy, the button says By copy.",
+        "edits": [
+            {
+                "find": "            desc.groupedLabel = `By ${spec.pictureGroupLabel}`;",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "collection 6463",
+        "expect": "fail"
+    },
+    {
+        "name": "P2: placeholders ignore the pressed chips",
+        "why": "A placeholder shows with no chip pressed or with its own group's; copy #2's chip must hide copy #1's placeholder.",
+        "edits": [
+            {
+                "find": "        const missing = _artPlaceholders(desc).filter(p => !active.length || active.includes(p.group));",
+                "replace": "        const missing = _artPlaceholders(desc);"
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "collection 5472",
+        "expect": "fail"
+    },
+    {
+        "name": "P2: a placeholder's group gets no chip",
+        "why": "The empty copy has a chip with 0, so it can be picked and is seen in the chip row.",
+        "edits": [
+            {
+                "find": "        _artPlaceholders(desc).forEach((p) => { if (!counts.has(p.group)) counts.set(p.group, 0); });",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-item.spec.js",
+        "grep": "collection 5240",
+        "expect": "fail"
     }
 ]

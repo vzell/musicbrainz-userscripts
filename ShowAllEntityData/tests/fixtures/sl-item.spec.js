@@ -23,6 +23,8 @@ const ITEMS = {
     'collection-8595': 'collection.php?item=8595&category=album&f_format=12i',
     'collection-5240': 'collection.php?item=5240&category=sampler&f_format=12i',
     'collection-9685': 'collection.php?item=9685&category=vaalbum&f_format=12i',
+    'collection-6463': 'collection.php?item=6463&category=single&f_format=cd3',
+    'collection-5472': 'collection.php?item=5472&category=single&f_format=cd3',
     'bootlegs-9507': 'bootlegs.php?item=9507&category=aud_live1988',
     'bootlegs-2567': 'bootlegs.php?item=2567',
     'brucelegs-281': 'brucelegs.php?item=281&f_format=vinyl',
@@ -136,7 +138,9 @@ test.describe('springsteenlyrics.com item pages (sl-*-item)', () => {
         expect(errors).toEqual([]);
     });
 
-    test('collection 5240: five named records; two scan sections, the empty copy left out', async ({ page }) => {
+    // org/image-handling.org P2: one Scans section over both copies; the copy
+    // the site lists without scans is a placeholder (until P2 it was left out).
+    test('collection 5240: five named records; one Scans section, the empty copy as a placeholder (image section P2)', async ({ page }) => {
         await open(page, 'collection-5240');
         await show(page);
         expect(await h3s(page)).toEqual(['Record 1: "Dancing In The Dark" (CBS TA 4436)', 'Record 2: "Cover Me" (CBS QTA 4662)',
@@ -144,9 +148,65 @@ test.describe('springsteenlyrics.com item pages (sl-*-item)', () => {
         const t = await tables(page);
         expect(t.map(r => r.length)).toEqual([2, 5, 4, 4, 2]);
         expect(t[1][0]).toEqual({ 'Pos': 'A1', 'Title': 'COVER ME', 'Version / note': 'Undercover Mix' });
-        expect(await heads(page)).toEqual(['Notes', 'Details', 'Scans (copy #1)', 'Private info']);
+        expect(await heads(page)).toEqual(['Notes', 'Details', 'Scans', 'Private info']);
+        const sec = page.locator('.mb-fd-head .mb-release-art-sec');
+        await expect(sec.locator('.mb-release-art-chip')).toHaveText(['All 23', 'Copy #1 23', 'Copy #2 0']);
+        await expect(sec.locator('.mb-release-art-chip-empty')).toHaveText('Copy #2 0');
+        const missing = sec.locator('.mb-release-art-missing');
+        await expect(missing).toHaveCount(1);
+        await expect(missing.locator('div')).toHaveText('No scans available yet');
+        await expect(missing.locator('figcaption')).toHaveText('Copy #2');
         expect(await cardRows(page, 'Release')).toContainEqual(['Copies', '2']);
         expect(await cardRows(page, 'Your collection')).toContainEqual(['Kept in', 'Lebanon']);
+    });
+
+    test('collection 6463: two copies with scans in ONE section — chips and By copy per copy, one viewer over both (image section P2)', async ({ page }) => {
+        const { errors } = await open(page, 'collection-6463');
+        await show(page);
+        expect(await heads(page)).toContain('Scans');
+        const sec = page.locator('.mb-fd-head .mb-release-art-sec');
+        await expect(sec).toHaveCount(1);
+        await expect(sec.locator('figure.mb-release-art-tile')).toHaveCount(4);
+        await expect(sec.locator('.mb-release-art-chip')).toHaveText(['All 4', 'Copy #1 2', 'Copy #2 2']);
+        await expect(sec.locator('[data-mb-art-layout]')).toHaveText(['Grid', 'By copy']);
+        await expect(sec.locator('.mb-release-art-missing')).toHaveCount(0);
+        // One viewer steps across the copies (two sections had two viewers).
+        await sec.locator('figure.mb-release-art-tile > a').nth(2).click();
+        await expect(page.locator('#mb-art-viewer .mb-artv-pos')).toHaveText('3 / 4');
+        await page.keyboard.press('Escape');
+        // By copy: a group per copy, in the page's order.
+        await sec.locator('[data-mb-art-layout="grouped"]').click();
+        await expect(sec.locator('.mb-release-art-group-hdr')).toHaveText(['Copy #1 × 2', 'Copy #2 × 2']);
+        // A copy's chip narrows to that copy.
+        await sec.locator('.mb-release-art-chip', { hasText: 'Copy #2' }).click();
+        await expect(sec.locator('figure.mb-release-art-tile')).toHaveCount(2);
+        expect(errors).toEqual([]);
+    });
+
+    test('collection 5472: copy #1 without scans comes FIRST, as on the page; the placeholder is never in the viewer (image section P2)', async ({ page }) => {
+        const { errors } = await open(page, 'collection-5472');
+        await show(page);
+        const sec = page.locator('.mb-fd-head .mb-release-art-sec');
+        await expect(sec.locator('.mb-release-art-chip')).toHaveText(['All 3', 'Copy #1 0', 'Copy #2 3']);
+        // Grid: the three scans and the placeholder.
+        await expect(sec.locator('figure.mb-release-art-tile')).toHaveCount(3);
+        await expect(sec.locator('.mb-release-art-missing figcaption')).toHaveText('Copy #1');
+        // By copy: copy #1 first, with only its placeholder.
+        await sec.locator('[data-mb-art-layout="grouped"]').click();
+        await expect(sec.locator('.mb-release-art-group-hdr')).toHaveText(['Copy #1 × 0', 'Copy #2 × 3']);
+        await expect(sec.locator('.mb-release-art-group').first().locator('.mb-release-art-missing')).toHaveCount(1);
+        // Copy #2's chip hides the placeholder; copy #1's alone shows only it.
+        await sec.locator('.mb-release-art-chip', { hasText: 'Copy #2' }).click();
+        await expect(sec.locator('.mb-release-art-missing')).toHaveCount(0);
+        await sec.locator('.mb-release-art-chip', { hasText: 'All' }).click();
+        await sec.locator('.mb-release-art-chip', { hasText: 'Copy #1' }).click();
+        await expect(sec.locator('.mb-release-art-missing')).toHaveCount(1);
+        await expect(sec.locator('figure.mb-release-art-tile')).toHaveCount(0);
+        // The viewer holds the three scans only.
+        await sec.locator('.mb-release-art-chip', { hasText: 'All' }).click();
+        await sec.locator('figure.mb-release-art-tile > a').first().click();
+        await expect(page.locator('#mb-art-viewer .mb-artv-pos')).toHaveText('1 / 3');
+        expect(errors).toEqual([]);
     });
 
     test('collection 9685 (various artists): an Artist column', async ({ page }) => {
