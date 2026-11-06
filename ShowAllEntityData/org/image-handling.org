@@ -528,3 +528,27 @@ So the fix I proposed covers the non-MB sites too: those sections share the sect
 
 On its own branch on top of P4a, before P4b. Shall I go ahead with all three, or only 1 and 2?
 
+
+** Decision and implementation (2026-11-06, branch =feature/image-section-retry=, stacked on P4a, WIP.6)
+
+vzell: all three; and the broken picture beside the h1 — no input needed: it is ours,
+=_sbWireCover()= copies the sidebar's cover (here the event art) into the heading
+(=_sbHeaderCopy()=), from the same archive.org thumbnail, with no error handling.
+
+- One mechanism (=_artImgFailInstall()=, =_artImgOnError()=, =_ART_IMG_RETRY_HOSTS=): a
+  failed picture's box becomes =.mb-img-failed= (dashed, ⟳, the picture hidden in place).
+  The box keeps its own click — the viewer can still show the large image, and the specs that
+  serve the archive's thumbnails as 404s rely on it — so a tile or Table row gets its own
+  =button.mb-img-retry=, a medium thumb or the heading copy asks again on the click that
+  opens the viewer, the section's tool row has "⟳ Reload N failed", the artwork card (FICE's
+  too: one builder, =_artCardCoreHtml()=; it cannot be clicked) a line "rest on the link again".
+- Viewer: "⟳ Try again" for a large image that did not load; the stage picture hidden, with
+  the note and its ⟳, when the thumbnail failed too.
+- Specs: =art-image-retry.spec.js= (new: real timeouts for tiles, medium thumbs, the
+  viewer's two cases), =sidebar-picture.spec.js= "image retry" (the heading copy fires its
+  =error= itself: the harness cannot fail it over the network, DEBUG-NOTES 2026-11-06), one
+  mobile assertion that read the tapped thumb's whole class string now reads the class.
+  =image-section.json= 54 entries, the 10 new ones as expected (one recorded as an overlap: the
+  ⟳'s =stopImmediatePropagation()= — it sits beside the link, so nothing else would act on it).
+- =test:full= on NB-3641 (2026-11-06T09:59:23 → 10:17:22+01:00): 2743 passed.
+  vzell's live check passed.

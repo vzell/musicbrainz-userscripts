@@ -127467,6 +127467,9 @@ a { color: #1565c0; }`;
         const box = document.createElement('span');
         box.className = 'mb-sb-avatar';
         if (contain) box.classList.add('mb-sb-avatar-contain');
+        // A cover that does not load (the archive down) gets a ⟳ that asks
+        // again on a click, not the browser's broken glyph (vzell, 2026-11-06).
+        _artImgFailInstall();
         const copy = document.createElement('img');
         copy.src = src;
         copy.alt = '';
@@ -158501,6 +158504,237 @@ a { color: #1565c0; }`;
         return fig;
     }
 
+    // ── Pictures that did not load: a ⟳ instead of the broken glyph ────────
+    //
+    // vzell, 2026-11-06: the Event Art Archive's files timed out
+    // (archive.org, net::ERR_CONNECTION_TIMED_OUT), the record had come
+    // through, and every tile showed the browser's broken-image glyph. The
+    // archive's record has its ⟳ Retry; a picture file had none, on
+    // MusicBrainz or on the other sites. One capture-phase listener marks
+    // the box of a picture that failed (`.mb-img-failed`, which the CSS
+    // turns into a dashed ⟳ box). The box keeps its own click — the viewer
+    // can still show the large image when only the thumbnail failed, and
+    // every spec that serves the archive's thumbnails as 404s relies on it:
+    // a tile or a table row gets a separate "⟳" button
+    // (`button.mb-img-retry`), and a medium thumb or the heading's cover
+    // (too small for a second button) asks again on the click that opens
+    // the viewer. A failed load is not cached by the browser, so setting the
+    // address again asks again.
+
+    /** The boxes whose own `<img>` gets the ⟳ (the picture is their direct child). */
+    const _ART_IMG_RETRY_HOSTS = 'figure.mb-release-art-tile > a, a.mb-release-art-row-link, button.mb-medium-art-btn, ' +
+        'span.mb-sb-avatar, #mb-stat-tooltip .mb-art-card-tile';
+
+    /**
+     * Installs, once, the listeners that turn a failed picture into a ⟳ box
+     * and retry it on a click. Called by every producer of such boxes (the
+     * art sections, the medium thumbs, the heading's cover copy, the artwork
+     * cards), so a page without any installs nothing.
+     *
+     * @returns {void}
+     */
+    function _artImgFailInstall() {
+        if (_artImgFailInstall.done) return;
+        _artImgFailInstall.done = true;
+        _ensureArtImgFailStyle();
+        document.addEventListener('error', _artImgOnError, true);
+        document.addEventListener('load', _artImgOnLoad, true);
+        window.addEventListener('click', _artImgOnRetryClick, true);
+    }
+
+    /**
+     * A picture failed (`error` does not bubble: caught in the capture
+     * phase): its box becomes a ⟳ box, and its section's "⟳ Reload N
+     * failed" is counted again. The artwork card cannot be clicked
+     * (`pointer-events: none`), so it gets a line saying how to retry.
+     *
+     * @param   {Event} e
+     * @returns {void}
+     */
+    function _artImgOnError(e) {
+        const img = e.target;
+        if (!(img instanceof HTMLImageElement)) return;
+        const host = img.parentElement;
+        if (!host || !host.matches(_ART_IMG_RETRY_HOSTS)) return;
+        host.classList.add('mb-img-failed');
+        if (host.matches('#mb-stat-tooltip .mb-art-card-tile')) {
+            const card = host.closest('[data-mb-art-card]');
+            if (card && !card.querySelector('.mb-img-failed-note')) {
+                const note = document.createElement('div');
+                note.className = 'mb-tt-dim mb-img-failed-note';
+                note.textContent = 'Pictures marked ⟳ did not load: rest on the link again to try again.';
+                card.appendChild(note);
+            }
+            return;
+        }
+        // A tile or a table row: its own ⟳ button beside the link, so the
+        // link's click (the viewer) stays as it is.
+        if (host.matches('figure.mb-release-art-tile > a, a.mb-release-art-row-link')) {
+            const holder = host.parentElement;
+            if (holder && !holder.querySelector(':scope > .mb-img-retry')) {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'mb-img-retry';
+                b.textContent = '⟳';
+                b.setAttribute('aria-label', 'This picture did not load: try again');
+                _setTip(b, 'This picture did not load: try again');
+                holder.appendChild(b);
+            }
+        }
+        _artImgFailCount(host.closest('.mb-release-art-sec'));
+    }
+
+    /**
+     * A picture loaded after a retry: its box is an ordinary one again.
+     *
+     * @param   {Event} e
+     * @returns {void}
+     */
+    function _artImgOnLoad(e) {
+        const img = e.target;
+        if (!(img instanceof HTMLImageElement)) return;
+        const host = img.parentElement;
+        if (!host || !host.classList.contains('mb-img-failed')) return;
+        host.classList.remove('mb-img-failed');
+        const b = host.parentElement && host.parentElement.querySelector(':scope > .mb-img-retry');
+        if (b) b.remove();
+        _artImgFailCount(host.closest('.mb-release-art-sec'));
+    }
+
+    /**
+     * Asks for a failed picture again: the same address, set anew. Its ⟳
+     * button goes; a second failure puts it back.
+     *
+     * @param   {HTMLElement} host A `.mb-img-failed` box.
+     * @returns {void}
+     */
+    function _artImgRetry(host) {
+        const img = host.querySelector(':scope > img');
+        if (!img) return;
+        host.classList.remove('mb-img-failed');
+        const b = host.parentElement && host.parentElement.querySelector(':scope > .mb-img-retry');
+        if (b) b.remove();
+        const src = img.getAttribute('src');
+        img.removeAttribute('src');
+        img.setAttribute('src', src);
+    }
+
+    /**
+     * A tile's or a row's ⟳ retries its picture, and "⟳ Reload N failed"
+     * every one of its section: on `window` in the capture phase, so the
+     * section's own click (the viewer) and the navigation guard never see
+     * those. A click on a failed medium thumb or heading cover asks again
+     * and goes on to its own handler (the viewer), untouched.
+     *
+     * @param   {MouseEvent} e
+     * @returns {void}
+     */
+    function _artImgOnRetryClick(e) {
+        if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+        const t = e.target instanceof Element ? e.target : null;
+        if (!t) return;
+        const all = t.closest('.mb-release-art-reload');
+        const one = all ? null : t.closest('.mb-img-retry');
+        if (!all && !one) {
+            const small = t.closest('button.mb-medium-art-btn.mb-img-failed, span.mb-sb-avatar.mb-img-failed');
+            if (small) _artImgRetry(small);
+            return;
+        }
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        if (one) {
+            const host = one.parentElement && one.parentElement.querySelector(':scope > a.mb-img-failed');
+            if (host) {
+                _artImgRetry(host);
+                _artImgFailCount(host.closest('.mb-release-art-sec'));
+            }
+            return;
+        }
+        const sec = all.closest('.mb-release-art-sec');
+        if (!sec) return;
+        sec.querySelectorAll('.mb-img-failed').forEach(_artImgRetry);
+        _artImgFailCount(sec);
+    }
+
+    /**
+     * Shows a section's "⟳ Reload N failed" with its count, or hides it.
+     *
+     * @param   {?HTMLElement} sec
+     * @returns {void}
+     */
+    function _artImgFailCount(sec) {
+        if (!sec) return;
+        const btn = sec.querySelector('.mb-release-art-reload');
+        if (!btn) return;
+        const n = sec.querySelectorAll('.mb-img-failed').length;
+        btn.hidden = !n;
+        btn.textContent = `⟳ Reload ${n} failed`;
+    }
+
+    /**
+     * The stylesheet of the ⟳ boxes, added once. The picture keeps its
+     * place (`visibility: hidden`), so nothing moves; the ⟳ is the box's
+     * own `::after`, so a click on it is a click on the box.
+     *
+     * @returns {void}
+     */
+    function _ensureArtImgFailStyle() {
+        if (document.getElementById('mb-img-failed-style')) return;
+        const st = GM_addStyle(`
+            .mb-img-failed { position: relative; }
+            .mb-img-failed > img { visibility: hidden; }
+            .mb-img-failed::after {
+                content: "\\27F3";
+                position: absolute;
+                inset: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #8a4a4a;
+                font: 22px/1 system-ui, sans-serif;
+                pointer-events: none;
+            }
+            :is(figure.mb-release-art-tile > a, a.mb-release-art-row-link).mb-img-failed {
+                border: 2px dashed #c9a0a0;
+                background: #fbf3f3;
+            }
+            .mb-img-retry {
+                border: 1px solid #c9a0a0;
+                border-radius: 3px;
+                background: #fff;
+                color: #8a4a4a;
+                font: 13px/1.2 system-ui, sans-serif;
+                padding: 0 5px;
+                cursor: pointer;
+            }
+            figure.mb-release-art-tile > .mb-img-retry { position: absolute; top: 4px; right: 4px; z-index: 2; }
+            a.mb-release-art-row-link + .mb-img-retry { margin-top: 2px; }
+            figure.mb-release-art-tile > a.mb-img-failed::before {
+                content: "did not load";
+                position: absolute;
+                left: 0;
+                right: 0;
+                bottom: 6px;
+                text-align: center;
+                font: 10px/1.2 system-ui, sans-serif;
+                color: #8a4a4a;
+                pointer-events: none;
+            }
+            :is(button.mb-medium-art-btn, span.mb-sb-avatar).mb-img-failed { background: #fbf3f3; cursor: pointer; }
+            :is(button.mb-medium-art-btn, span.mb-sb-avatar, #mb-stat-tooltip .mb-art-card-tile).mb-img-failed::after { font-size: 14px; }
+            .mb-release-art-reload {
+                border: 1px solid #c9a0a0;
+                border-radius: 3px;
+                background: #fbf3f3;
+                color: #8a4a4a;
+                font-size: 11px;
+                padding: 0 6px;
+                cursor: pointer;
+            }
+        `);
+        st.id = 'mb-img-failed-style';
+    }
+
     /**
      * The remembered layout of a section: one of its descriptor's `layouts`
      * (`'grid'`, `'grouped'`, and `'spreads'` on the release page), stored
@@ -158994,6 +159228,13 @@ a { color: #1565c0; }`;
             n.textContent = `${shownN} of ${total} shown`;
             row.appendChild(n);
         }
+        // Counted and shown by `_artImgFailCount()` when pictures fail to load.
+        const reload = document.createElement('button');
+        reload.type = 'button';
+        reload.className = 'mb-release-art-reload';
+        reload.hidden = true;
+        _setTip(reload, 'Ask again for every picture of this section that did not load');
+        row.appendChild(reload);
         return row;
     }
 
@@ -159337,6 +159578,7 @@ a { color: #1565c0; }`;
             _releaseArtMediumMemo.set(images, memo);
         }
         const { byPos, unassigned, medium, commented } = memo.result;
+        _artImgFailInstall();
         if (!_releaseArtMediumClickInstalled) {
             _releaseArtMediumClickInstalled = true;
             document.addEventListener('click', _releaseArtOnMediumClick);
@@ -159618,6 +159860,8 @@ a { color: #1565c0; }`;
         // P4a: the filter box, the Tiles slider, Show missing.
         sec.addEventListener('input', _releaseArtOnInput);
         sec.addEventListener('change', _releaseArtOnInput);
+        // A picture that does not load gets a ⟳ (`_artImgFailInstall()`).
+        _artImgFailInstall();
         return sec;
     }
 
@@ -159907,6 +160151,9 @@ a { color: #1565c0; }`;
                 color: #9c978c;
                 font-size: 12px;
             }
+            /* A picture that did not load: no broken glyph, the note's
+               Try again asks again. */
+            #mb-art-viewer .mb-artv-img.mb-artv-img-failed { visibility: hidden; }
             #mb-art-viewer .mb-artv-nav {
                 position: absolute;
                 top: 50%;
@@ -161053,8 +161300,23 @@ a { color: #1565c0; }`;
         // natural size is only known once one has loaded.
         img.addEventListener('load', () => {
             if (_artViewerState !== st || !img.isConnected) return;
+            img.classList.remove('mb-artv-img-failed');
             _artViewerFit(st, img);
             _artViewerShowFacts(st, img);
+        });
+        // The thumbnail did not load either: hide the broken glyph; the note
+        // gets its ⟳ once the large image has failed too (the catch below).
+        img.addEventListener('error', () => {
+            if (_artViewerState !== st || !img.isConnected) return;
+            if (img.dataset.artvSize !== 'thumb') return;
+            img.classList.add('mb-artv-img-failed');
+            // No large image on its way (a scan whose link is its thumbnail):
+            // nothing else will say it, so the ⟳ goes in now.
+            const n = stage.querySelector('.mb-artv-note');
+            if (n && !n.textContent) {
+                n.textContent = 'This picture did not load. ';
+                n.appendChild(_artvBtn('reload', '⟳ Try again'));
+            }
         });
         if (im.external) img.referrerPolicy = 'no-referrer';
         img.src = _artViewerThumbUrl(im);
@@ -161118,7 +161380,10 @@ a { color: #1565c0; }`;
             if (note.textContent.startsWith('Showing the thumbnail')) note.textContent = '';
         }).catch(() => {
             if (_artViewerState !== st || st.gen !== gen || !note.isConnected) return;
-            note.textContent = 'Showing the thumbnail; the large image could not be loaded.';
+            // A ⟳ that asks again (vzell, 2026-11-06: the archive down for a while).
+            note.textContent = img.classList.contains('mb-artv-img-failed')
+                ? 'This picture did not load. ' : 'Showing the thumbnail; the large image could not be loaded. ';
+            note.appendChild(_artvBtn('reload', '⟳ Try again'));
         });
         // Preload the two neighbours so stepping is instant.
         const k = st.list.indexOf(st.i);
@@ -161312,6 +161577,9 @@ a { color: #1565c0; }`;
             const im = st.images[st.i];
             if (im && im.retry) im.retry();
         }
+        // The picture's files again (the thumbnail and the large one), after
+        // they did not load: the stage is built anew, which asks again.
+        else if (action === 'reload') _artViewerRender();
     }
 
     /**
@@ -162343,6 +162611,9 @@ a { color: #1565c0; }`;
      * @returns {string}
      */
     function _artCardCoreHtml(o) {
+        // A tile that does not load becomes a ⟳ box with a line on how to
+        // retry (the card cannot be clicked): `_artImgOnError()`.
+        _artImgFailInstall();
         const { ctx, images, order } = o;
         const cap = Math.round(_artNumSetting('sa_caa_tip_summary_tiles', 12, 1));
         const all = !!o.el && _artCardView.allEl === o.el;

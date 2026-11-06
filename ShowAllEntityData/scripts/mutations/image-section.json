@@ -570,5 +570,135 @@
         "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
         "grep": "↺ appears once a size is set",
         "expect": "fail"
+    },
+    {
+        "name": "retry: a failed picture is never noticed",
+        "why": "The capture-phase error listener marks the box; without it the browser's broken glyph stays and nothing offers a retry.",
+        "edits": [
+            {
+                "find": "        document.addEventListener('error', _artImgOnError, true);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/art-image-retry.spec.js",
+        "grep": "a failed tile is a ⟳ box",
+        "expect": "fail"
+    },
+    {
+        "name": "retry: a failed tile gets no ⟳ button",
+        "why": "The tile's link keeps its click (the viewer); the retry is its own button.",
+        "edits": [
+            {
+                "find": "                holder.appendChild(b);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/art-image-retry.spec.js",
+        "grep": "a failed tile is a ⟳ box",
+        "expect": "fail"
+    },
+    {
+        "name": "retry: a tile's ⟳ also opens the viewer",
+        "why": "An overlap, recorded: the ⟳ button sits beside the tile's link, not inside it, so the section's click (which looks for the link) never opens the viewer for it, stopped or not. The stop is kept for anything that might listen above.",
+        "edits": [
+            {
+                "find": "        e.preventDefault();\n        e.stopImmediatePropagation();\n        if (one) {",
+                "replace": "        e.preventDefault();\n        if (one) {"
+            }
+        ],
+        "spec": "tests/fixtures/art-image-retry.spec.js",
+        "grep": "a failed tile is a ⟳ box",
+        "expect": "pass"
+    },
+    {
+        "name": "retry: the ⟳ does not ask again",
+        "why": "Setting the address anew is the request; without it the class goes but the picture never comes.",
+        "edits": [
+            {
+                "find": "        img.removeAttribute('src');\n        img.setAttribute('src', src);",
+                "replace": "        void src;"
+            }
+        ],
+        "spec": "tests/fixtures/art-image-retry.spec.js",
+        "grep": "a failed tile is a ⟳ box",
+        "expect": "fail"
+    },
+    {
+        "name": "retry: \"⟳ Reload N failed\" reloads nothing",
+        "why": "The section's button asks again for every failed picture of the section.",
+        "edits": [
+            {
+                "find": "        sec.querySelectorAll('.mb-img-failed').forEach(_artImgRetry);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/art-image-retry.spec.js",
+        "grep": "a failed tile is a ⟳ box",
+        "expect": "fail"
+    },
+    {
+        "name": "retry: a failed medium thumb's click does not ask again",
+        "why": "Too small for a second button, a medium thumb asks again on the click that opens the viewer.",
+        "edits": [
+            {
+                "find": "            if (small) _artImgRetry(small);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/art-image-retry.spec.js",
+        "grep": "a failed medium thumb",
+        "expect": "fail"
+    },
+    {
+        "name": "retry: the viewer's ⟳ Try again does nothing",
+        "why": "The action re-renders the stage, which asks for the picture's files again.",
+        "edits": [
+            {
+                "find": "        else if (action === 'reload') _artViewerRender();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/art-image-retry.spec.js",
+        "grep": "a large image that did not load",
+        "expect": "fail"
+    },
+    {
+        "name": "retry: the viewer shows the broken glyph when the thumbnail fails",
+        "why": "A failed stage picture is hidden (mb-artv-img-failed) and the note says so.",
+        "edits": [
+            {
+                "find": "            img.classList.add('mb-artv-img-failed');\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/art-image-retry.spec.js",
+        "grep": "the thumbnail fails too",
+        "expect": "fail"
+    },
+    {
+        "name": "retry: the heading's cover copy is not a ⟳ host",
+        "why": "vzell's screenshot: the copy beside the h1 showed the broken glyph.",
+        "edits": [
+            {
+                "find": "        'span.mb-sb-avatar, #mb-stat-tooltip .mb-art-card-tile';",
+                "replace": "        '#mb-stat-tooltip .mb-art-card-tile';"
+            }
+        ],
+        "spec": "tests/fixtures/sidebar-picture.spec.js",
+        "grep": "image retry",
+        "expect": "fail"
+    },
+    {
+        "name": "retry: the card does not say how to retry",
+        "why": "The card cannot be clicked: a line tells to rest on the link again.",
+        "edits": [
+            {
+                "find": "                card.appendChild(note);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sidebar-picture.spec.js",
+        "grep": "image retry",
+        "expect": "fail"
     }
 ]

@@ -1913,6 +1913,16 @@ without pictures (a springsteenlyrics copy without scans), **Show missing**
 turns its dashed box on and off. The same section, with the same tools, shows
 the pictures on other sites' detail pages.
 
+**When the archive is slow or down.** A picture that does not load shows as a
+dashed box with **⟳** instead of the browser's broken image: click a tile's
+**⟳** to ask for it again (the tile itself still opens the viewer), or
+**⟳ Reload N failed** under the chips for all of them. A failed thumbnail in a
+medium's heading, or the cover copy beside the page heading, asks again when
+you click it, and opens the viewer as before. In the viewer, **⟳ Try again**
+asks again for a large image that did not come. A hover card that shows ⟳
+boxes says so: rest on the link once more to try again. This works the same
+on the other sites' pages.
+
 **The viewer.** Click a thumbnail to open it full screen; it steps through the
 thumbnails currently shown, in their order, so a chip, the filter or **By type**
 applies — in **Table**, the rows in their sorted order (in **Spreads**, every

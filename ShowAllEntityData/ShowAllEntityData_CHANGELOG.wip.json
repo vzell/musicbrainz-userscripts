@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.6",
+    "date": "2026-11-06",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Pictures that do not load (the Cover Art or Event Art Archive slow or down, or another site's pictures) no longer show the browser's broken image: a dashed box with ⟳ asks for the picture again. In a picture section a tile has its own ⟳ and the tool row \"⟳ Reload N failed\"; a medium's thumb in its heading and the cover beside the page heading ask again when clicked; the viewer offers \"⟳ Try again\" for a large image that did not come; a hover card says to rest on the link again. Until now only the archive's record (\"⟳ Retry\") and the CAA/EAA column's icon (⚠⟳) could be asked for again."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.5",
     "date": "2026-11-06",
     "sections": [

@@ -412,6 +412,22 @@ never from a hard-coded `CAA_CTX`. Rules that come with that:
     (`_artSectionCreate()`), like its click: never cloned.
   Specs: `release-tracks-cover-art-viewer.spec.js` and `sl-item.spec.js`
   "image section P4a"; mutation list `image-section.json` (39 entries).
+- **A picture that did not load gets a ⟳, never the broken glyph** (vzell,
+  2026-11-06, DEBUG-NOTES): `_artImgFailInstall()` (called by every producer:
+  `_artSectionCreate()`, the medium thumbs, `_sbHeaderCopy()`, `_artCardCoreHtml()`)
+  puts ONE capture-phase `error` listener on the document; `_artImgOnError()`
+  marks the picture's DIRECT parent when it matches `_ART_IMG_RETRY_HOSTS` with
+  `.mb-img-failed`. **The box keeps its own click**: a tile or a Table row gets
+  a separate `button.mb-img-retry` (beside the link, never inside it), a medium
+  thumb or the heading copy asks again AND opens the viewer, the section's tool
+  row has "⟳ Reload N failed" (`_artImgFailCount()`), the card (it cannot be
+  clicked) gets a line. A retry (`_artImgRetry()`) sets the same `src` anew. The
+  viewer: "⟳ Try again" (`data-artv="reload"` → `_artViewerRender()`), its stage
+  picture `mb-artv-img-failed` when the thumbnail failed. A NEW picture display
+  that wants this: make the `<img>` the direct child of a box listed in
+  `_ART_IMG_RETRY_HOSTS` and call `_artImgFailInstall()` before the `<img>` gets
+  its `src`. Specs `art-image-retry.spec.js`, `sidebar-picture.spec.js` "image
+  retry" (why it fires the error itself: DEBUG-NOTES).
 - **One record, one cache.** `_artFetchEntityImages(ctx, entityPath)` is the
   table-free copy of `_artEnrichIcon()`'s three tiers with the same 404 vs
   429/5xx bookkeeping, so the section and the CAA column share
