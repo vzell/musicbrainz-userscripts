@@ -4,9 +4,16 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1741 versions; the month pages hold all of them.
+This page shows the newest 100 of 1742 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1571 — 2026-11-06
+
+**🐛 Fix**
+
+- Artwork viewer on a touch screen: dragging an Adjust slider with a finger no longer steps to the next picture (which also undid the adjustment); in Compare a swipe changes the right picture, as ← → do, and the left one stays; with the loupe on, one finger moves the lens (it followed only a mouse, so on a phone the Loupe button did nothing).
+
 
 ## 9.99.1570 — 2026-11-06
 
@@ -906,19 +913,6 @@ This page shows the newest 100 of 1741 versions; the month pages hold all of the
 - The release-group window's releases have a filter and format chips too, and a release without a cover keeps an empty square, so every row is as high.
 - In the release-group window, each credited artist opens in the window, and the genres are listed one per line, each opening its tag.
 - Performance: link-preview windows only; no change to the page tables' filter, sort or render path. A recording's window makes the same number of requests as before (its releases instead of a count); an artist's one more (its first 100 release groups) and asks the Cover Art Archive for the covers of the rows you scroll to.
-
-
-## 9.99.1471 — 2026-10-27
-
-**✨ Improve**
-
-- A MusicBrainz work's window lists its recordings as the Discogs label window lists its releases: 100 when it opens, then "Load 5 more pages" (500 recordings, about 6 s), with Stop, a progress bar and "Try again" for a page that failed; a filter over title and artist, a chip per artist credit (Ctrl-click adds one, "+N more" past ten) and the three-way sort. What is loaded is kept in the browser like the card, so a later window shows it without asking again. Until now the window showed the first 100 and sent you to the work's page for the rest.
-- A Discogs label's releases: Ctrl-click on a format chip adds a second format, "+N more" shows formats past the first ten, and a release without a picture keeps an empty square so every row is as high.
-- Performance: link-preview windows only; no change to the page tables' filter, sort or render path.
-
-**🔧 Refactor**
-
-- The windows' tables are two shared components with one click handler for every window (org/MB-POH-sync-withDiscogs.org, Phase 2): a Compact table (a Discogs label's sublabels) and a List table (a label's releases, a work's recordings), plus a paged loader for MusicBrainz lists that the other MusicBrainz windows will use next.
 
 
 ---
