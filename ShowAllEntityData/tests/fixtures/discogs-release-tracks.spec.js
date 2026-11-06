@@ -212,6 +212,49 @@ test.describe('Discogs release: the Tracks view, as release-tracks (2026-11-04)'
         expect(errors).toEqual([]);
     });
 
+    // org/image-handling.org P1: the head's Images are an art section, the
+    // same component as MusicBrainz's Cover art, fed by the Discogs answer.
+    test('Born To Run: Images as an art section — Primary/Secondary chips, ★ primary, By type remembered; the viewer steps the shown tiles (image section P1)', async ({ page }) => {
+        const errors = await openRelease(page);
+        await press(page, 'Show all tracks');
+        const sec = page.locator('#mb-dg-root .mb-fd-head .mb-release-art-sec.mb-fd-art');
+        await expect(sec).toHaveCount(1);
+        await expect(sec).toHaveAttribute('data-mb-art-state', 'ok');
+        // Chips from Discogs' own types; no Spreads for another site's pictures.
+        await expect(sec.locator('.mb-release-art-chip')).toHaveText(['All 5', 'Primary 1', 'Secondary 4']);
+        await expect(sec.locator('[data-mb-art-layout]')).toHaveText(['Grid', 'By type']);
+        // The primary starred; the site's URLs kept as they are, no referrer, the picture card.
+        const first = sec.locator('figure.mb-release-art-tile').first();
+        await expect(first.locator('.mb-release-art-star')).toHaveText('★ primary');
+        await expect(sec.locator('.mb-release-art-star')).toHaveCount(1);
+        const a = first.locator('a');
+        expect(await a.getAttribute('href')).toMatch(/^https:\/\/i\.discogs\.com\//);
+        await expect(a).toHaveAttribute('data-mbtt-fn', 'fd-pic');
+        await expect(a).toHaveAttribute('rel', 'noopener noreferrer');
+        await expect(a.locator('img')).toHaveAttribute('referrerpolicy', 'no-referrer');
+        expect(await first.getAttribute('data-mbtt'), 'not the archive card').toBeNull();
+
+        // A chip narrows the sheet, and the viewer steps through what it shows.
+        await sec.locator('.mb-release-art-chip', { hasText: 'Secondary' }).click();
+        await expect(sec.locator('figure.mb-release-art-tile')).toHaveCount(4);
+        await sec.locator('figure.mb-release-art-tile > a').nth(1).click();
+        const viewer = page.locator('#mb-art-viewer');
+        await expect(viewer).toBeVisible();
+        await expect(viewer.locator('.mb-artv-pos')).toHaveText('2 / 4');
+        await expect(viewer.locator('.mb-artv-title')).toContainText('Born To Run');
+        expect(await viewer.locator('.mb-artv-img').getAttribute('src')).toMatch(/^https:\/\/i\.discogs\.com\//);
+        await page.keyboard.press('Escape');
+        await expect(viewer).toBeHidden();
+
+        // By type: one group per type, remembered under the foreign sites' own key.
+        await sec.locator('.mb-release-art-chip', { hasText: 'All' }).click();
+        await sec.locator('[data-mb-art-layout="grouped"]').click();
+        await expect(sec.locator('.mb-release-art-group-hdr')).toHaveText(['Primary × 1', 'Secondary × 4']);
+        expect(await page.evaluate(() => window.GM_getValue('mb_sa_fd_art_layout', null))).toBe('grouped');
+        expect(await page.evaluate(() => window.GM_getValue('mb_sa_release_art_layout', null)), 'MusicBrainz\'s key untouched').toBeNull();
+        expect(errors).toEqual([]);
+    });
+
     test('the head\'s values: identifiers beside their labels, values linked as on Discogs\' page, the notes\' markup as links; previews on them (vzell 2026-11-04)', async ({ page }) => {
         const errors = await openRelease(page, BTR, { sa_pop_ext: true, sa_rich_tooltip_delay_ms: 0 });
         await press(page, 'Show all tracks');

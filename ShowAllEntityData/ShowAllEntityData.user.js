@@ -12817,10 +12817,12 @@
         // captions; a section without pictures is left out.
         const captions = _slImageCaptions(sections);
         const pictureGroups = sections.filter(s => /^(?:scans|artwork)/i.test(s.label)).map((s) => {
+            // The section's kind is the pictures' type (the art section's chip).
+            const types = [/^scans/i.test(s.label) ? 'Scan' : 'Artwork'];
             const pictures = Array.from(s.box.querySelectorAll('img[src*="_tn."]')).map((img) => {
                 const a = img.closest('a[href]');
                 const full = abs(a ? a.getAttribute('href') : img.getAttribute('src'));
-                return { full, thumb: abs(img.getAttribute('src')), caption: captions.get(full.split('/').pop()) || '' };
+                return { full, thumb: abs(img.getAttribute('src')), caption: captions.get(full.split('/').pop()) || '', types };
             });
             return { title: s.label.replace(/^Scans\/Photos/i, 'Scans').replace(/^Artwork and PDF$/i, 'Artwork'), pictures };
         }).filter(g => g.pictures.length);
@@ -14330,7 +14332,7 @@
             root: h2.parentElement, h2,
             sub: { what: s.version || 'Song', by: '', when: [v.date, s.updated ? `page updated ${s.updated}` : ''].filter(Boolean).join(' · ') },
             texts, textsAfter, facts, others,
-            pictures: s.pictures, picturesTitle: 'Pictures',
+            pictures: s.pictures.map(p => ({ ...p, types: ['Picture'] })), picturesTitle: 'Pictures',
             title: _slSongName(src), source: 'springsteenlyrics.com\'s page',
         };
     }
@@ -19454,6 +19456,23 @@
     }
 
     /**
+     * A Discogs release's or master's images as the head's pictures
+     * (`_fdArtSection()`, org/image-handling.org P1): Discogs' own type as
+     * the picture's type, so the section's chips read "Primary 1 ·
+     * Secondary 15", and the primary image starred. No caption: its place is
+     * on the card ("Picture 4 of 16"), the old "Secondary 3" said no more.
+     *
+     * @param   {Array<{type: string, full: string, thumb: string}>} images `_extDiscogsImages()`.
+     * @returns {Array<{full: string, thumb: string, caption: string, types: string[], front: boolean}>}
+     */
+    function _dgHeadPictures(images) {
+        return images.map(im => ({
+            full: im.full, thumb: im.thumb, caption: '',
+            types: [im.type === 'primary' ? 'Primary' : 'Secondary'], front: im.type === 'primary',
+        }));
+    }
+
+    /**
      * The head spec of a release's Tracks view (`_fdHeadSpec()`), from
      * `_dgRelRec`: "~ Release by <artists> (released: country)"; Notes;
      * Details — on the left the release's facts (label and catalogue
@@ -19523,7 +19542,6 @@
         const genres = [...(d.genres || []).map(g => [String(g), `${DG}/music/genre/${encodeURIComponent(String(g).toLowerCase())}`]),
             ...(d.styles || []).map(g => [String(g), `${DG}/music/style/${encodeURIComponent(String(g).toLowerCase())}`])].filter(g => g[0]);
         const images = _extDiscogsImages(d.images);
-        let sec = 0;
         return {
             root, h2: root.querySelector('h2.mb-dg-list-heading'),
             sub: { what: 'Release', by, byHref: artists[0] && artists[0].id ? `${DG}/artist/${artists[0].id}` : '',
@@ -19558,10 +19576,7 @@
             others: [
                 ['identifiers', 'Identifiers', ids],
             ],
-            pictures: images.map((im) => {
-                sec += im.type === 'secondary' ? 1 : 0;
-                return { full: im.full, thumb: im.thumb, caption: im.type === 'primary' ? 'Primary' : `Secondary ${sec}` };
-            }),
+            pictures: _dgHeadPictures(images),
             picturesTitle: 'Images', title: `${by}${by ? ' – ' : ''}${String(d.title || '')}`, source: 'the release\'s Discogs answer',
         };
     }
@@ -19722,7 +19737,6 @@
             ...(d.styles || []).map(g => [String(g), `${DG}/music/style/${encodeURIComponent(String(g).toLowerCase())}`])].filter(g => g[0]);
         const credits = _dgCreditsByPerson(d);
         const images = _extDiscogsImages(d.images);
-        let sec = 0;
         return {
             root, h2: root.querySelector('h2.mb-dg-list-heading'),
             sub: { what: 'Master release', by, byHref: artists[0] && artists[0].id ? `${DG}/artist/${artists[0].id}` : '', when: year ? String(year) : '' },
@@ -19746,10 +19760,7 @@
             others: [
                 credits && ['credits', 'Credits', credits.count, credits.body, false],
             ],
-            pictures: images.map((im) => {
-                sec += im.type === 'secondary' ? 1 : 0;
-                return { full: im.full, thumb: im.thumb, caption: im.type === 'primary' ? 'Primary' : `Secondary ${sec}` };
-            }),
+            pictures: _dgHeadPictures(images),
             picturesTitle: 'Images', title: `${by}${by ? ' – ' : ''}${String(d.title || '')}`, source: 'the master\'s Discogs answer',
         };
     }
@@ -23073,7 +23084,9 @@
      * output with its text escaped); `facts` (the left column) and `others`
      * (beside it), each entry either [key, name, [[label, value(string|Node)], …]]
      * or a built card [key, name, count, body, wide], in order;
-     * `pictures` ([{full, thumb, caption}]) under `picturesTitle`; `title`
+     * `pictures` ([{full, thumb, caption, types, front}]: `types` are the
+     * art section's chips, `front` its ★ — `_fdArtSection()`) under
+     * `picturesTitle`; `title`
      * (the viewer's bar); `source` (the cards' hover text). Since
      * 2026-11-04 (springsteenlyrics.com's item pages, `_slItemHeadSpec()`)
      * also: `texts` (more text sections after `text`, before Details),
@@ -23103,8 +23116,8 @@
      * subheader `p.mb-fd-sub` after our h1, then `div.mb-fd-head` before the
      * data h2 holding the h2 sections — the text (starts closed), Details
      * (the Sidebar section's cards, folding through `_sbInlineWireFolds()`)
-     * and the pictures (the Cover art section's tiles; a click opens the
-     * artwork viewer through `_dpArtViewerClick()`, every picture in order).
+     * and the pictures (an art section per group, `_fdArtSection()`: the
+     * Cover art section's chips, layouts and viewer).
      * Called BEFORE `makeH2sCollapsible()` (the fetch tail and the disk-load
      * tail, as `_releaseArtInsertSection()`), so the h2s fold like any other;
      * `_fdHeadOpenSections()` opens Details and the pictures afterwards.
@@ -23234,39 +23247,63 @@
             section('Details', total, sec, true);
         }
 
-        // The pictures: the Cover art section's tiles; one section per group
-        // when the spec has `pictureGroups`.
+        // The pictures: an art section each (`_fdArtSection()`), so they get
+        // MusicBrainz's Cover art chips, layouts, viewer order and the picture
+        // card; one section per group when the spec has `pictureGroups`.
         const groups = spec.pictureGroups || [{ title: spec.picturesTitle || 'Pictures', pictures: spec.pictures || [] }];
-        groups.forEach(({ title: groupTitle, pictures: pics }) => {
-            if (pics.length) {
-                const sec = el('div', 'mb-release-art-sec mb-fd-art');
-                // The viewer's title (`_dpArtViewerClick()` reads it).
-                const t = el('span', 'mb-dp-xtitle', spec.title || '');
-                t.hidden = true;
-                const grid = el('div', 'mb-release-art-grid');
-                pics.forEach((p, i) => {
-                    const fig = el('figure', 'mb-release-art-tile');
-                    const a = _fdLink(p.full);
-                    a.dataset.mbArtvExt = String(i + 1);
-                    // A rest shows the picture large, Shift larger
-                    // (`_fdPicCardHtml()`; vzell, 2026-11-05, SL "Adjustments" 4).
-                    a.dataset.mbttFn = 'fd-pic';
-                    const img = el('img');
-                    img.src = p.thumb || p.full;
-                    img.alt = p.caption || '';
-                    img.loading = 'lazy';
-                    img.referrerPolicy = 'no-referrer';
-                    a.appendChild(img);
-                    fig.append(a, el('figcaption', '', p.caption || ''));
-                    grid.appendChild(fig);
-                });
-                sec.append(t, grid);
-                sec.addEventListener('click', _dpArtViewerClick);
-                section(groupTitle, pics.length, sec, true);
-            }
+        groups.forEach(({ title: groupTitle, pictures: pics }, gi) => {
+            if (pics.length) section(groupTitle, pics.length, _fdArtSection(spec, gi, groupTitle, pics), true);
         });
         (spec.textsAfter || []).forEach(textSection);
         if (head.childElementCount) h2.before(head);
+    }
+
+    /**
+     * The artwork viewer's context for a foreign detail page's own pictures
+     * (`_fdArtSection()`): `external`, as the link previews' `_DP_ART_CTX`,
+     * but its own — that one is cleared by every preview window that opens
+     * the viewer. One records list per picture section, keyed by its entity.
+     * @type {{key: string, column: string, external: boolean, imagesCache: Map<string, Object[]>}}
+     */
+    const _FD_ART_CTX = { key: 'fd', column: 'Detail page', external: true, imagesCache: new Map() };
+
+    /**
+     * One picture section of a foreign detail page's head as an art section
+     * (org/image-handling.org P1): an adapter built from the spec's pictures,
+     * filled at once — the records are on the page already, so there is no
+     * load, no "Loading…" and nothing to retry. The section is MusicBrainz's
+     * Cover art section in every other respect: type chips (a picture's
+     * `types`, e.g. Discogs' Primary/Secondary, archive.org's from the file
+     * name, springsteenlyrics' Scan/Artwork), Grid / By type remembered under
+     * `MB_FD_ART_LAYOUT_KEY`, the viewer stepping through the tiles shown, the
+     * `fd-pic` card on each tile (`_releaseArtBuildTile()`'s external branch).
+     *
+     * @param   {Object} spec  `_fdHeadSpec()`'s result (its `title`, `source`).
+     * @param   {number} gi    The group's index: one adapter and one entity each.
+     * @param   {string} title The group's heading.
+     * @param   {Array<{full: string, thumb: ?string, caption: ?string, types: ?string[], front: ?boolean}>} pics
+     * @returns {HTMLElement} The filled `div.mb-release-art-sec.mb-fd-art`.
+     */
+    function _fdArtSection(spec, gi, title, pics) {
+        const key = `fd-${gi}`;
+        const entity = `fd:${location.pathname}${location.search}#${gi}`;
+        _FD_ART_CTX.imagesCache.set(entity, pics.map(p => ({
+            image: p.full, thumbnails: { 250: p.thumb || p.full }, types: Array.isArray(p.types) ? p.types : [],
+            comment: p.caption || '', external: true, ...(p.front ? { front: true } : {}), source: spec.source || '',
+        })));
+        const desc = {
+            key, ctx: _FD_ART_CTX, pageType: (activeDefinition && activeDefinition.type) || '',
+            setting: null, tabSetting: null, label: title, archiveName: spec.source || 'this page', what: 'page',
+            title: () => spec.title || '', layouts: ['grid', 'grouped'], layoutKey: MB_FD_ART_LAYOUT_KEY,
+            secClass: 'mb-fd-art', tab: false, retry: null,
+            images: sec => _FD_ART_CTX.imagesCache.get(sec.dataset.mbArtEntity) || [],
+        };
+        desc.load = sec => Promise.resolve({ state: 'ok', images: desc.images(sec) });
+        _artSectionAdapters().set(key, desc);
+        const sec = _artSectionCreate(desc, entity);
+        sec.dataset.mbArtState = 'ok';
+        _releaseArtRenderSheet(sec);
+        return sec;
     }
 
     /**
@@ -23282,11 +23319,14 @@
      * @returns {?string}
      */
     function _fdPicCardHtml(a) {
-        const fig = a.closest('figure');
-        const grid = a.closest('.mb-release-art-grid');
-        const tiles = grid ? Array.from(grid.querySelectorAll('figure.mb-release-art-tile > a')) : [a];
-        const thumb = (a.querySelector('img') || {}).src || a.href;
-        const cap = fig && fig.querySelector('figcaption') ? fig.querySelector('figcaption').textContent.trim() : '';
+        // Its place among the section's tiles shown (the chips may hide some;
+        // By type spreads them over several grids), and its caption as the
+        // tile's image names it: "Front · Cover", type and comment.
+        const sec = a.closest('.mb-release-art-sec');
+        const tiles = sec ? Array.from(sec.querySelectorAll('figure.mb-release-art-tile > a')) : [a];
+        const img0 = a.querySelector('img');
+        const thumb = (img0 || {}).src || a.href;
+        const cap = ((img0 && img0.alt) || '').trim();
         const big = _artCardView.big;
         const size = big ? Math.max(320, Math.min(900, window.innerWidth - 60, window.innerHeight - 140)) : 320;
         const where = `Picture ${tiles.indexOf(a) + 1} of ${tiles.length}`;
@@ -23416,8 +23456,10 @@
                 it.collections.length && ['collections', 'Collections', it.collections.length, _fdPills(it.collections), true],
                 lineage && ['lineage', 'Lineage', 1, lineage, true],
             ],
+            // The type guessed from the file name, as the Art column's card does
+            // (`_iaPictureTypes()`); the file name stays the caption.
             pictures: it.pictures.map(p => ({ full: _iaFileUrl(it.id, p.name), thumb: _iaFileUrl(it.id, p.thumb || p.name),
-                caption: p.name.split('/').pop().replace(/\.[^.]+$/, '') })),
+                caption: p.name.split('/').pop().replace(/\.[^.]+$/, ''), types: _iaPictureTypes(p.name) })),
             picturesTitle: 'Pictures', title: _iaDetailsName(), source: 'the item\'s metadata',
         };
     }
@@ -108942,6 +108984,15 @@ a { color: #1565c0; }`;
     const MB_EVENT_ART_LAYOUT_KEY = 'mb_sa_event_art_layout';
 
     /**
+     * GM storage key for the layout of a foreign detail page's picture
+     * sections (`'grid'` or `'grouped'`: springsteenlyrics scans, Discogs
+     * images, archive.org pictures; `_fdArtSection()`). One for every foreign
+     * site, its own because those types have nothing in common with the
+     * archives'. Same TDZ placement as the keys above.
+     */
+    const MB_FD_ART_LAYOUT_KEY = 'mb_sa_fd_art_layout';
+
+    /**
      * GM storage key for the artwork viewer's remembered zoom level (a number
      * from 1 to `_ART_VIEWER_ZOOM_MAX`), written only while
      * `sa_art_viewer_remember_zoom` is on. Runtime UI state like the layout
@@ -140368,6 +140419,11 @@ a { color: #1565c0; }`;
             keys: [MB_EVENT_ART_LAYOUT_KEY],
         },
         {
+            group: 'fdart',
+            label: 'Other sites\' detail pages: picture layout',
+            keys: [MB_FD_ART_LAYOUT_KEY],
+        },
+        {
             group: 'artviewer',
             label: 'Artwork viewer zoom level and background, CAA/EAA cell layout and gallery window',
             keys: [MB_ART_VIEWER_ZOOM_KEY, MB_ART_VIEWER_BG_KEY, MB_ART_CELL_LAYOUT_KEY, MB_ART_GALLERY_GEO_KEY],
@@ -157807,7 +157863,20 @@ a { color: #1565c0; }`;
                 layouts: ['grid', 'grouped'], layoutKey: MB_EVENT_ART_LAYOUT_KEY
             });
         }
-        return null;
+        return _artSectionAdapters().get(key) || null;
+    }
+
+    /**
+     * The adapters built at run time (a foreign detail page's picture
+     * sections, `_fdArtSection()`), by key. A property of the function, not
+     * a module `const`: `_artSectionDesc()` may be reached before a `const`
+     * further down has been evaluated.
+     *
+     * @returns {Map<string, Object>}
+     */
+    function _artSectionAdapters() {
+        if (!_artSectionAdapters.map) _artSectionAdapters.map = new Map();
+        return _artSectionAdapters.map;
     }
 
     /**
@@ -158093,6 +158162,14 @@ a { color: #1565c0; }`;
      * the thumbnail links to the 1200 px image in a new tab. The hover card is
      * `data-mbtt` (see `_releaseArtTipHtml()`).
      *
+     * Another site's record (`external`, a foreign detail page's picture,
+     * `_fdArtSection()`) differs in four ways: its URLs stay as they are (an
+     * archive URL becomes protocol-relative, but another site may not answer
+     * on https), it is loaded without a referrer, its hover card is the
+     * picture card `fd-pic` (`_fdPicCardHtml()`: the archive card speaks of
+     * edits and 1200 px), and its ★ is the site's primary image. A comment
+     * that only repeats the type ("Front" for Front.jpg) is not printed twice.
+     *
      * @param   {Object[]} images The release's archive images, in archive order.
      * @param   {number}   index  The tile's image, its position in archive order.
      * @param   {string}   [archiveName='Cover Art Archive'] For the ⏳ tip.
@@ -158100,34 +158177,39 @@ a { color: #1565c0; }`;
      */
     function _releaseArtBuildTile(images, index, archiveName = 'Cover Art Archive') {
         const imgData = images[index];
+        const ext = !!imgData.external;
+        const url = u => (ext ? u : u.replace(/^http:/, ''));
         const thumbs = imgData.thumbnails || {};
-        const thumb = (thumbs['250'] || thumbs.small || thumbs['500'] || thumbs.large || imgData.image || '')
-            .replace(/^http:/, '');
-        const big = (thumbs['1200'] || thumbs.large || imgData.image || thumb).replace(/^http:/, '');
+        const thumb = url(thumbs['250'] || thumbs.small || thumbs['500'] || thumbs.large || imgData.image || '');
+        const big = url(thumbs['1200'] || thumbs.large || imgData.image || thumb);
         const types = Array.isArray(imgData.types) && imgData.types.length ? imgData.types : ['(no type)'];
+        const comment = ext && (imgData.comment || '').toLowerCase() === types.join(' / ').toLowerCase()
+            ? '' : (imgData.comment || '');
 
         const fig = document.createElement('figure');
         fig.className = 'mb-release-art-tile';
         fig.dataset.mbArtI = String(index);
-        fig.dataset.mbtt = _releaseArtTipHtml(images, index);
+        if (!ext) fig.dataset.mbtt = _releaseArtTipHtml(images, index);
 
         const a = document.createElement('a');
         a.href = big;
         a.target = '_blank';
-        a.rel = 'noopener';
+        a.rel = ext ? 'noopener noreferrer' : 'noopener';
+        if (ext) a.dataset.mbttFn = 'fd-pic';
         const img = document.createElement('img');
         img.src = thumb;
         img.loading = 'lazy';
         img.decoding = 'async';
-        img.alt = types.join(' / ') + (imgData.comment ? ' · ' + imgData.comment : '');
+        if (ext) img.referrerPolicy = 'no-referrer';
+        img.alt = types.join(' / ') + (comment ? ' · ' + comment : '');
         a.appendChild(img);
         fig.appendChild(a);
 
         if (imgData.front) {
             const star = document.createElement('span');
             star.className = 'mb-release-art-star';
-            star.textContent = '★ main';
-            _setTip(star, 'The archive\'s main front image');
+            star.textContent = ext ? '★ primary' : '★ main';
+            _setTip(star, ext ? 'The site\'s primary image' : 'The archive\'s main front image');
             fig.appendChild(star);
         }
 
@@ -158143,10 +158225,10 @@ a { color: #1565c0; }`;
             _setTip(pend, `Pending approval in the ${archiveName}`);
             cap.appendChild(pend);
         }
-        if (imgData.comment) {
+        if (comment) {
             const c = document.createElement('span');
             c.className = 'mb-release-art-comment';
-            c.textContent = imgData.comment;
+            c.textContent = comment;
             cap.appendChild(c);
         }
         fig.appendChild(cap);
@@ -158832,7 +158914,6 @@ a { color: #1565c0; }`;
      * @returns {HTMLElement} The new h2.
      */
     function _artSectionBuild(desc, anchor, entityKey, count) {
-        _ensureReleaseArtStyle();
         const h2 = document.createElement('h2');
         h2.className = 'mb-release-art-h2';
         h2.append(desc.label);
@@ -158841,27 +158922,47 @@ a { color: #1565c0; }`;
         countEl.textContent = count === null ? '' : ` (${count})`;
         h2.appendChild(countEl);
 
-        const sec = document.createElement('div');
-        sec.className = 'mb-release-art-sec';
-        sec.dataset.mbArtCtx = desc.key;
-        sec.dataset.mbArtEntity = entityKey;
-        sec.addEventListener('click', _releaseArtOnClick);
-
+        const sec = _artSectionCreate(desc, entityKey);
         anchor.before(h2, sec);
         _releaseArtLoad(h2, sec);
         return h2;
     }
 
     /**
+     * An empty art section for an adapter: `div.mb-release-art-sec` marked
+     * with the adapter's key (`data-mb-art-ctx`, plus its `secClass`) and the
+     * entity it shows, with the section's one delegated click handler. The
+     * caller puts it in place and fills it: `_artSectionBuild()` through a
+     * load, `_fdArtSection()` at once from records it already holds.
+     *
+     * @param   {Object} desc      The adapter.
+     * @param   {string} entityKey `data-mb-art-entity`.
+     * @returns {HTMLElement}
+     */
+    function _artSectionCreate(desc, entityKey) {
+        _ensureReleaseArtStyle();
+        const sec = document.createElement('div');
+        sec.className = 'mb-release-art-sec' + (desc.secClass ? ` ${desc.secClass}` : '');
+        sec.dataset.mbArtCtx = desc.key;
+        sec.dataset.mbArtEntity = entityKey;
+        sec.addEventListener('click', _releaseArtOnClick);
+        return sec;
+    }
+
+    /**
      * The page's title (the release's, the event's) for the viewer's bar: the
      * text of the entity link inside the page's h1. Not the h1's whole text —
      * after a render the h1 also holds this script's own toolbar (and, on an
-     * event page, the date in parentheses).
+     * event page, the date in parentheses). An adapter with a `title()` gives
+     * its own.
      *
      * @param   {Object} [desc] `_artSectionDesc()`; the release page's by default.
      * @returns {string}
      */
     function _releaseArtTitle(desc = _artSectionDesc('caa')) {
+        // An adapter that knows its title says it (a foreign detail page's
+        // spec.title: its h1 holds no entity link).
+        if (typeof desc.title === 'function') return desc.title() || desc.label;
         const h1 = document.querySelector(desc.titleSel);
         const link = h1 && h1.querySelector('a[href]');
         return ((link || h1) && (link || h1).textContent.trim()) || desc.label;
@@ -161387,12 +161488,14 @@ a { color: #1565c0; }`;
     function _artSpaceOpen(el) {
         const fn = el.dataset.mbttFn;
         if (fn === 'fd-pic') {
-            // A foreign detail page's picture: the section's own click
-            // handler (`_dpArtViewerClick()`), on that section.
+            // A foreign detail page's picture: its art section's own click
+            // handler (`_releaseArtOnClick()`), on that section.
+            const sec = el.closest('.mb-release-art-sec');
+            if (!sec) return false;
             let opened = false;
-            _dpArtViewerClick({
+            _releaseArtOnClick({
                 type: 'click', button: 0, ctrlKey: false, shiftKey: false, altKey: false, metaKey: false, target: el,
-                currentTarget: el.closest('.mb-fd-art'), preventDefault() { opened = true; },
+                currentTarget: sec, preventDefault() { opened = true; },
             });
             return opened;
         }

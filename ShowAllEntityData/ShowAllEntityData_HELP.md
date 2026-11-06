@@ -3468,7 +3468,9 @@ Asbury Park N.J.", then its pressing, catalogue number and sleeve) gets one
 and lists them. Above the tables:
 the item's facts (or, for a bootleg, the show and the recording), the runout
 etchings, its files, the notes, and its scans or artwork — one section per
-copy, with the site's captions, opening in the artwork viewer. **Original info
+copy, with the site's captions, opening in the artwork viewer. Each section
+works like a release's Cover art: chips by kind (Scan, Artwork) and Grid / By
+type. **Original info
 file** starts closed and is read only when you open it. Resting on a picture
 shows it large; hold Shift for larger, and a click or Space opens the
 artwork viewer (on every non-MusicBrainz detail page). Logged in, a **Your
@@ -3942,7 +3944,10 @@ section of its own above Discogs' page, with the toolbar and these buttons:
     want, ratings and the data quality, then last sold, low, median, high and
     the copies for sale (one column when the card is narrow); the Identifiers
     on the right) and
-    **Images** (a click opens the viewer). Labels, formats, the country, the
+    **Images**, as a release's Cover art on MusicBrainz: chips for Discogs'
+    Primary and Secondary images, ★ on the primary, Grid or By type (the
+    choice is kept for every other site's detail page), and a click opens the
+    images shown in the viewer. Labels, formats, the country, the
     year, genres and styles and the links in the notes are links, as on
     Discogs' page, with the same previews as the tables' links.
 - **Release — Credits, versions:** five sub-tables: **Credits**, **Companies,
@@ -4225,7 +4230,8 @@ that fold like the release page's:
   metadata), *Collections* and *Lineage*. A click on a card's heading folds
   it; Ctrl+click folds every card;
 - **Pictures**, the uploader's scans as tiles, as the release page's Cover
-  art; a click opens them in the viewer.
+  art: type chips (Front, Back, Booklet, Medium, guessed from the file
+  names) and Grid / By type; a click opens the pictures shown in the viewer.
 
 Both read the item in one request. Before you press a button, the item's own
 page previews too: rest on its Brucebase link for the show's card.

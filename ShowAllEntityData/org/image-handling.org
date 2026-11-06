@@ -318,8 +318,37 @@ The descriptor became the section's adapter; nothing changes on screen.
 - Names kept on purpose: =_releaseArt*= and =.mb-release-art-*= (specs and mutation lists key
   on them), so P0 renames nothing.
 
-Next, P1: the foreign head's picture loop (=_fdHeadInsertSections()=) onto the section, with
-an external context of its own (not =_DP_ART_CTX=, which every link-preview window clears),
-types per site (Discogs Primary/Secondary, archive.org =_iaPictureTypes()=, SL Scan/Artwork),
-URLs kept as they are and no referrer for external records, and the =fd-pic= card kept on
-their tiles (the archive tile's card speaks of edits and 1200 px).
+Committed =a114a52a=, =test:full= 2726 passed on NB-3641 (2026-11-06T01:33:15+01:00); vzell's
+live check passed (an archive.org outage around 01:20 CET had first looked like a regression:
+coverartarchive.org answered with a 307 to archive.org, which refused connections).
+
+** P1 (2026-11-06, branch =feature/image-section-p1=, stacked on P0, WIP.2)
+
+The foreign detail head's pictures are art sections.
+
+- =_fdHeadInsertSections()= builds one per picture group with =_fdArtSection()=: an adapter
+  made at run time, kept in =_artSectionAdapters()= (=_artSectionDesc()= falls back to it), its
+  records in =_FD_ART_CTX= (its own external context; =_DP_ART_CTX= is cleared by every
+  link-preview window), filled at once (=_artSectionCreate()= + =_releaseArtRenderSheet()=),
+  Grid / By type, remembered under =MB_FD_ART_LAYOUT_KEY= (=mb_sa_fd_art_layout=, workspace
+  group =fdart=), the viewer's title from the adapter's =title()=.
+- An =external= record's tile: URLs kept, no referrer, the =fd-pic= card, "★ primary", a
+  comment that repeats the type dropped. Space goes through =_releaseArtOnClick()=.
+- Types: Discogs =_dgHeadPictures()= (Primary/Secondary, ★ primary; the "Secondary N"
+  captions dropped, the card says "Picture k of n"), archive.org =_iaPictureTypes()= (the file
+  name stays the comment), springsteenlyrics the section's kind (Scan, Artwork; song pages
+  Picture).
+- Taken back out before commit: redrawing every section that shares a layout key on a
+  switch. No fixture has two non-empty picture sections, and P2 merges an item's copies into
+  one section, so it would have been untested code for a case about to disappear.
+- Spec =discogs-release-tracks.spec.js= "image section P1"; two assertions moved to the new
+  type + comment shape (=ia-details=, =sl-item=); =image-section.json= now 13 entries, all as
+  expected; four entries of other lists repointed (=ia-details=,
+  =release-tracks-cover-art=, =-p2=, =sl-tracklist-links=), all four run as expected.
+- Docs: =docs/claude/artwork-caa-eaa.md=, =internet-archive.md=, =springsteenlyrics.md=, HELP
+  (archive.org, Discogs, springsteenlyrics), the =foreign-detail-pagetype= skill, and the new
+  =add-image-section= skill (2a's sketch, as built).
+
+Next, P2: an item's copies (and its Scans and Artwork) in one section, =groupOf= = the copy, a
+placeholder for a copy the site lists without scans — =sl-item.spec.js= "collection 5240"
+pins today's "the empty copy left out" and changes with it.

@@ -561,9 +561,13 @@ edition tables (`_slSongToHtml()`'s `editionCell`).
   `_fdHeadInsertSections()`): `data-mbtt-fn="fd-pic"` → `_fdPicCardHtml()`,
   the picture at 320 px, with Shift as large as the window allows (`fd-pic`
   is in `_ART_CARD_FNS`, so the artwork cards' Shift repaint and Space →
-  `_artSpaceOpen()` → `_dpArtViewerClick()` apply); the thumbnail first, the
-  full picture swapped in when loaded (`_fdPicSwap()`). Not the FICE
-  (`fi-img`): that one is table-row shaped.
+  `_artSpaceOpen()` → the art section's `_releaseArtOnClick()` apply); the
+  thumbnail first, the full picture swapped in when loaded (`_fdPicSwap()`).
+  Not the FICE (`fi-img`): that one is table-row shaped. Since 2026-11-06
+  each pictures section is an art section (`_fdArtSection()`,
+  docs/claude/artwork-caa-eaa.md): the section's kind as the type (Scan,
+  Artwork), the page's caption as the comment, chips and Grid / By type;
+  the card's "Picture k of n" counts the section's tiles shown.
 
 ## Column names: the `_sortColumnKind()` heuristic trap
 

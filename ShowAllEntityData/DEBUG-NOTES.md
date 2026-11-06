@@ -28366,3 +28366,21 @@ never gets the green "already loaded" dot, while a MusicBrainz window's links do
 Specs: `sl-lyrics.spec.js` (Bootstrap's rule added with `addStyleTag`; every badge one width, one right edge) and
 `sl-tracklist-links.spec.js` (a held song answer released while the pointer is on another song). Mutations
 `scripts/mutations/sl-uvd-badge-window-dot.json`: 3, all fail as expected.
+
+## 2026-11-06 — The discogs-mb-column "no card" flake again; its trace lost to a re-run
+
+Env: 2026-11-06T01:47:30 → 02:05:33+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright Chromium, no Tampermonkey (GM stubs)
+
+`test:full` on `feature/image-section-p1` (working tree over `a114a52a`, org/image-handling.org P1):
+2726 passed, 1 failed — `discogs-mb-column.spec.js` "in a MusicBrainz window, a genre's tag link
+opens here and has its card", `#mb-dp-peek > .mb-pop-kind-head` read "Artist" for 30 s instead of
+"Tag". The same "no card" form as the open case of 2026-10-29 above, whose cause is still unknown.
+Not this branch's: it touches no popup-engine code (the art section, the foreign head's pictures),
+the same test passed in P0's full run (2026-11-06T01:33, 2726 passed), and alone it passed 5 of 5
+(`--repeat-each 5`, 02:06).
+
+**The trace is gone.** The 2026-10-29 entry asked the next gate to keep `test-results/`; the
+`--repeat-each` re-run was started before that entry was read, and Playwright empties
+`test-results/` at the start of every run. So, once more, nothing to read. For next time: copy
+`test-results/` aside BEFORE any re-run after a failed gate (or let `scripts/run-test-full.py`
+do it on a non-zero exit).

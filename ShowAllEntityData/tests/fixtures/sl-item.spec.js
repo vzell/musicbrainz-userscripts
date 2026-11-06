@@ -185,7 +185,9 @@ test.describe('springsteenlyrics.com item pages (sl-*-item)', () => {
         expect(await h3s(page)).toEqual(['Record 1']);
         expect((await tables(page))[0].map(r => r.Pos)).toEqual(['A1', 'A2', 'A3', 'B1', 'B2', 'B3']);
         expect(await cardRows(page, 'Your collection')).toContainEqual(['MusicBrainz', 'MusicBrainz release']);
-        await expect(page.locator('.mb-fd-head figcaption').first()).toHaveText('front');
+        // Since image section P1: the section's kind as the type, the page's caption as the comment.
+        await expect(page.locator('.mb-fd-head .mb-release-art-types').first()).toHaveText('Artwork');
+        await expect(page.locator('.mb-fd-head .mb-release-art-comment').first()).toHaveText('front');
     });
 
     test('CD bootleg 281: Length, notes, the inner ring text, the PDF', async ({ page }) => {

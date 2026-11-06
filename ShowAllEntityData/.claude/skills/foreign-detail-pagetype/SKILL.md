@@ -100,7 +100,7 @@ both tails (fetch, disk load); nothing else to wire. The spec:
   text: { title, body, html },              // starts closed; html = escaped converter output
   facts: [ … ],                             // left column ('rail')
   others: [ … ],                            // right column ('main')
-  pictures: [{ full, thumb, caption }], picturesTitle,
+  pictures: [{ full, thumb, caption, types, front }], picturesTitle,  // or pictureGroups: [{ title, pictures }]
   title, source }                           // viewer bar; the cards' hover text
 ```
 
@@ -117,6 +117,15 @@ both tails (fetch, disk load); nothing else to wire. The spec:
   links, genres, community left, community last.
 - Return null on another view or before the record: the head belongs to the
   new view only.
+- Pictures become an ART SECTION on their own (`_fdArtSection()`, since
+  2026-11-06, org/image-handling.org P1): the Cover art section's chips,
+  Grid / By type and viewer. Give every picture `types` — the site's own
+  kind (Discogs' Primary/Secondary) or one guessed from what the page names
+  it (`_iaPictureTypes()`), else the chip says "(no type)" — and `front:
+  true` on the one the site calls its main image (★). `caption` is the
+  comment under the type; one that only repeats the type is not printed.
+  `pictureGroups` makes one section per group. Nothing else to wire: card,
+  click, Space and the viewer come with the section.
 
 ## 5. Tests and mutations
 

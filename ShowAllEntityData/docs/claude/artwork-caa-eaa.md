@@ -329,6 +329,24 @@ never from a hard-coded `CAA_CTX`. Rules that come with that:
     (`release-tracks-cover-art-viewer.spec.js` "finds its own section",
     mutation list `image-section.json`). Without a key it returns the first
     section whose adapter has `tab`.
+- **The foreign detail head's pictures are art sections** (org/image-handling.org
+  P1, 2026-11-06): `_fdHeadInsertSections()` builds one per picture group
+  with `_fdArtSection()` — an adapter made at run time and kept in
+  `_artSectionAdapters()` (`_artSectionDesc()` falls back to it; a property
+  of the function, not a `const`, for the TDZ), records in `_FD_ART_CTX`
+  (its own external context: `_DP_ART_CTX` is cleared by every preview
+  window that opens the viewer), filled at once with no load
+  (`_artSectionCreate()` + `_releaseArtRenderSheet()`), Grid / By type only,
+  remembered under `MB_FD_ART_LAYOUT_KEY` (workspace group `fdart`), the
+  viewer's title from the adapter's `title()`. **An `external` record's tile
+  differs in four ways** (`_releaseArtBuildTile()`): URLs kept as given
+  (another site may not answer on https), no referrer, the `fd-pic` card
+  instead of the archive card, "★ primary"; a comment that only repeats
+  the type is not printed. Space on such a tile goes through
+  `_releaseArtOnClick()` (`_artSpaceOpen()`). Each site gives its pictures
+  `types` (Discogs `_dgHeadPictures()`, archive.org `_iaPictureTypes()`,
+  springsteenlyrics the section's kind). Spec: `discogs-release-tracks.spec.js`
+  "image section P1"; mutation list `image-section.json`.
 - **One record, one cache.** `_artFetchEntityImages(ctx, entityPath)` is the
   table-free copy of `_artEnrichIcon()`'s three tiers with the same 404 vs
   429/5xx bookkeeping, so the section and the CAA column share

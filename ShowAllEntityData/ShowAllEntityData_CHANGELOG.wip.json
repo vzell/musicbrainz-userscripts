@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-11-06",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Other sites' detail pages (a Discogs release's or master's Tracks view, an archive.org item, a springsteenlyrics item or song page): their pictures now work like a release's Cover art on MusicBrainz. Type chips (Discogs' Primary and Secondary, archive.org's Front, Back, Booklet or Medium guessed from the file names, springsteenlyrics' Scan or Artwork), ★ on Discogs' primary image, Grid or By type (remembered for these pages, separately from MusicBrainz), and a click or Space opens the viewer over the pictures shown, with the page's title in its bar."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-11-06",
     "sections": [

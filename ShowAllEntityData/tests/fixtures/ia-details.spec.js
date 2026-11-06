@@ -144,7 +144,10 @@ test.describe('archive.org: an item page (ia-details)', () => {
         // Pictures: the Cover art section's tiles, the cover first.
         const tiles = head.locator('.mb-fd-art figure.mb-release-art-tile');
         await expect(tiles).toHaveCount(7);
-        await expect(tiles.first().locator('figcaption')).toHaveText('Cover');
+        // Since image section P1 (org/image-handling.org): the type guessed
+        // from the file name, the file name as the comment.
+        await expect(tiles.first().locator('.mb-release-art-types')).toHaveText('Front');
+        await expect(tiles.first().locator('.mb-release-art-comment')).toHaveText('Cover');
         // Above the data heading, as release-tracks' sections.
         expect(await page.evaluate(() => {
             const h = document.querySelector('#mb-ia-root .mb-fd-head');

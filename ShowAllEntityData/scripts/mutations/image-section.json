@@ -50,5 +50,122 @@
         "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
         "grep": "a tile opens the viewer at that image",
         "expect": "fail"
+    },
+    {
+        "name": "P1: an external tile's URLs are made protocol-relative like an archive's",
+        "why": "Another site may not answer on https; its URLs must stay as the page gave them.",
+        "edits": [
+            {
+                "find": "        const url = u => (ext ? u : u.replace(/^http:/, ''));",
+                "replace": "        const url = u => u.replace(/^https?:/, '');"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "image section P1",
+        "expect": "fail"
+    },
+    {
+        "name": "P1: an external tile gets the archive's hover card",
+        "why": "The archive card speaks of edits and 1200 px; another site's picture keeps the fd-pic card.",
+        "edits": [
+            {
+                "find": "        if (!ext) fig.dataset.mbtt = _releaseArtTipHtml(images, index);",
+                "replace": "        fig.dataset.mbtt = _releaseArtTipHtml(images, index);"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "image section P1",
+        "expect": "fail"
+    },
+    {
+        "name": "P1: an external tile is loaded with a referrer",
+        "why": "Another site's image is loaded without a referrer, as everywhere else the script shows one.",
+        "edits": [
+            {
+                "find": "        if (ext) img.referrerPolicy = 'no-referrer';",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "image section P1",
+        "expect": "fail"
+    },
+    {
+        "name": "P1: an external front is labelled as the archive's main front",
+        "why": "Discogs' primary image is not an archive's main front; its star says so.",
+        "edits": [
+            {
+                "find": "            star.textContent = ext ? '★ primary' : '★ main';",
+                "replace": "            star.textContent = '★ main';"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "image section P1",
+        "expect": "fail"
+    },
+    {
+        "name": "P1: Discogs' images carry no type",
+        "why": "Without types the chips read only \"(no type) 5\", and nothing is starred.",
+        "edits": [
+            {
+                "find": "            types: [im.type === 'primary' ? 'Primary' : 'Secondary'], front: im.type === 'primary',",
+                "replace": "            types: [], front: false,"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "image section P1",
+        "expect": "fail"
+    },
+    {
+        "name": "P1: the foreign sections share MusicBrainz's layout key",
+        "why": "A foreign page's layout must not change the release page's Cover art layout, and the other way round.",
+        "edits": [
+            {
+                "find": "            title: () => spec.title || '', layouts: ['grid', 'grouped'], layoutKey: MB_FD_ART_LAYOUT_KEY,",
+                "replace": "            title: () => spec.title || '', layouts: ['grid', 'grouped'], layoutKey: MB_RELEASE_ART_LAYOUT_KEY,"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "image section P1",
+        "expect": "fail"
+    },
+    {
+        "name": "P1: the viewer's bar shows the section's label instead of the page's title",
+        "why": "The adapter's title() names the release; without it the bar says \"Images\".",
+        "edits": [
+            {
+                "find": "        if (typeof desc.title === 'function') return desc.title() || desc.label;",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+        "grep": "image section P1",
+        "expect": "fail"
+    },
+    {
+        "name": "P1: archive.org's pictures carry no type",
+        "why": "The head's pictures get the type the Art column's card already guesses from the file name.",
+        "edits": [
+            {
+                "find": "                caption: p.name.split('/').pop().replace(/\\.[^.]+$/, ''), types: _iaPictureTypes(p.name) })),",
+                "replace": "                caption: p.name.split('/').pop().replace(/\\.[^.]+$/, '') })),"
+            }
+        ],
+        "spec": "tests/fixtures/ia-details.spec.js",
+        "grep": "the head as release-tracks",
+        "expect": "fail"
+    },
+    {
+        "name": "P1: Space on a head picture finds no section",
+        "why": "Space opens the viewer through the art section's own click handler; without the section it does nothing.",
+        "edits": [
+            {
+                "find": "            const sec = el.closest('.mb-release-art-sec');\n            if (!sec) return false;\n            let opened = false;",
+                "replace": "            const sec = null;\n            if (!sec) return false;\n            let opened = false;"
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "a head picture shows large on a rest",
+        "expect": "fail"
     }
 ]

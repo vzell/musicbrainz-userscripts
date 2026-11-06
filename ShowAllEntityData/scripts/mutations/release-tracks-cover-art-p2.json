@@ -56,7 +56,7 @@
     "why": "The card is data-mbtt on the tile; without it the shared engine has nothing to show.",
     "edits": [
       {
-        "find": "        fig.dataset.mbtt = _releaseArtTipHtml(images, index);",
+        "find": "        if (!ext) fig.dataset.mbtt = _releaseArtTipHtml(images, index);",
         "replace": "        void _releaseArtTipHtml;"
       }
     ],
