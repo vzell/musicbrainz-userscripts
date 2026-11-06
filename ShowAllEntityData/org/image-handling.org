@@ -1,5 +1,5 @@
 * TODO Image handling in our userscript
-** initial
+** DONE initial
 
 1.)
 
@@ -48,7 +48,7 @@ capabilities
 
 make some nice rich HTML based mockups
 
-** Answer (2026-11-06, branch =docs/image-handling=, no change to the userscript)
+** DONE Answer (2026-11-06, branch =docs/image-handling=, no change to the userscript)
 
 Env: 2026-11-06T00:38:33+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · browser n/a
 (code reading, snapshots) · Tampermonkey n/a
@@ -236,8 +236,7 @@ https://claude.ai/artifact/PnoG9pbnsqjGKYVgUQCzqh — source =org/image-handling
 The panels M0-A, M2, M3, M3-IA, M3-MB and M4 are drawn by one renderer in the mockup, fed by four
 adapters: the page itself is a small model of the proposal.
 
-
-* summary
+** DONE summary
 
 I've answered org/image-handling.org with a dated Answer section, built the mockups and published them: ⧉ https://claude.ai/artifact/PnoG9pbnsqjGKYVgUQCzqh (private to your account until you share it from the page's Share menu).
 
@@ -288,18 +287,18 @@ Nothing in ShowAllEntityData.user.js changed, so there's no version bump or chan
 - org/image-handling-mockups.html (the mockup source)
 - scripts/extract-mockup-image-urls.py (new: pulls the image URLs out of the debug snapshots)
 
-* answers
+** DONE answers
 
 Commit everything, also my own .org file, push.
 I go with all your recommendations and the table view as a plain table inside the section
 Start with the implementation
 
-** Decisions (vzell, 2026-11-06)
+*** Decisions (vzell, 2026-11-06)
 
 - Every recommendation of the Answer, phases P0–P4 in that order.
 - Table view (2b): a plain table inside the section, never =table.tbl=.
 
-** P0 (2026-11-06, branch =feature/image-section-p0=, WIP.1)
+*** P0 (2026-11-06, branch =feature/image-section-p0=, WIP.1)
 
 The descriptor became the section's adapter; nothing changes on screen.
 
@@ -322,7 +321,7 @@ Committed =a114a52a=, =test:full= 2726 passed on NB-3641 (2026-11-06T01:33:15+01
 live check passed (an archive.org outage around 01:20 CET had first looked like a regression:
 coverartarchive.org answered with a 307 to archive.org, which refused connections).
 
-** P1 (2026-11-06, branch =feature/image-section-p1=, stacked on P0, WIP.2)
+*** P1 (2026-11-06, branch =feature/image-section-p1=, stacked on P0, WIP.2)
 
 The foreign detail head's pictures are art sections.
 
@@ -354,7 +353,7 @@ failed — =discogs-mb-column= "a genre's tag link opens here", the known open "
 2026-10-29 (no popup code touched; 5 of 5 alone; its trace lost to that re-run, DEBUG-NOTES
 2026-11-06). vzell's live check passed.
 
-** P2 (2026-11-06, branch =feature/image-section-p2=, stacked on P1, WIP.3)
+*** P2 (2026-11-06, branch =feature/image-section-p2=, stacked on P1, WIP.3)
 
 An SL item's scans and artwork are one section; its copies are chips and groups.
 
@@ -380,7 +379,7 @@ Committed =1dfc5daa=, pushed after vzell's live check. The flaky =discogs-mb-col
 was investigated next and stopped at vzell's request (alone: 42 of 42 passed at 21 workers;
 a run under load was stopped before its result) — still open.
 
-** P3 (2026-11-06, branch =feature/image-section-p3=, stacked on P2, WIP.4)
+*** P3 (2026-11-06, branch =feature/image-section-p3=, stacked on P2, WIP.4)
 
 Medium thumbs off MusicBrainz: a disc's or record's own pictures in its sub-table heading.
 
@@ -413,7 +412,7 @@ Committed =f09e63ef=, pushed.
 
 P4 split in two stacked branches: P4a the section's views, P4b the viewer's tools.
 
-** P4a (2026-11-06, branch =feature/image-section-p4a=, stacked on P3, WIP.5)
+*** P4a (2026-11-06, branch =feature/image-section-p4a=, stacked on P3, WIP.5)
 
 The section's views, on every adapter (MusicBrainz Cover art and Event art, the foreign heads):
 
@@ -434,8 +433,7 @@ The section's views, on every adapter (MusicBrainz Cover art and Event art, the 
 
 Next, P4b: the viewer's Adjust, Compare, Loupe, Copy URL and key help.
 
-
-* enhancements
+** DONE enhancements
 
 1.)
 
@@ -445,7 +443,7 @@ when filtering and the filter string is a visible string highlight it
 
 the "Tiles" slider should have a way to reset to the original size
 
-** Answer (2026-11-06, on =feature/image-section-p4a=, part of WIP.5)
+*** Answer (2026-11-06, on =feature/image-section-p4a=, part of WIP.5)
 
 Everything else in P4a passed vzell's live check; its first =test:full= (before these two):
 2736 passed (NB-3641, 2026-11-06T09:02:59 → 09:21:03+01:00).
@@ -466,8 +464,8 @@ still resolves exactly once.
 =test:full= on NB-3641 (2026-11-06T09:23:54 → 09:41:45+01:00): 2738 passed. vzell's live check
 of both passed; P4a committed and pushed.
 
-* MB question regarding reload glyph
-** q
+** DONE MB question regarding reload glyph
+*** q
 
 1.)
 
@@ -479,7 +477,7 @@ MB question regarding reload glyphs on image icons when the image backend (in th
 to be tempoarily down lately sometimes. I though our code than offers kind of a reload glyph, is that right because the
 screenshot only shows the standard browser broken glyph when an image is not available
 
-** a
+*** a
 
 The ⟳ you remember exists, but only in one of the two places that show these images:
 
@@ -528,8 +526,7 @@ So the fix I proposed covers the non-MB sites too: those sections share the sect
 
 On its own branch on top of P4a, before P4b. Shall I go ahead with all three, or only 1 and 2?
 
-
-** Decision and implementation (2026-11-06, branch =feature/image-section-retry=, stacked on P4a, WIP.6)
+*** Decision and implementation (2026-11-06, branch =feature/image-section-retry=, stacked on P4a, WIP.6)
 
 vzell: all three; and the broken picture beside the h1 — no input needed: it is ours,
 =_sbWireCover()= copies the sidebar's cover (here the event art) into the heading
@@ -553,7 +550,7 @@ vzell: all three; and the broken picture beside the h1 — no input needed: it i
 - =test:full= on NB-3641 (2026-11-06T09:59:23 → 10:17:22+01:00): 2743 passed.
   vzell's live check passed.
 
-** Stale mutation entries (2026-11-06, vzell: "fix the 13")
+*** Stale mutation entries (2026-11-06, vzell: "fix the 13")
 
 The 13 entries the art work turned up (all already stale at P4a, none from it) repointed to
 today's code, each run: 12 fail as expected, the one recorded overlap passes as recorded
@@ -563,8 +560,7 @@ run =discogs-mb-column.spec.js= "our MusicBrainz column: an icon shows", which a
 the card's and the window's glyph. A sweep of all 258 lists found 160 stale finds in about 80
 lists (popup-mb 17, popup-ext 17, discogs-pages 7, …): older drift, left for a decision.
 
-
-* TODO findings - stale mutation entries
+** DONE findings - stale mutation entries
 
 Both are committed and pushed to feature/image-section-retry:
 - d7a9231b, the ⟳ for pictures that don't load: the full suite passed (2,743 tests, none failed), and so did your live check.
@@ -577,7 +573,7 @@ The 13 were only what my image-section checks happened to cover. A sweep of all 
 
 Do you want me to work through the 160 as their own branch, or go on with P4b (the viewer's Adjust, Compare, Loupe, Copy URL and key help)?
 
-** P4b (2026-11-06, branch =feature/image-section-p4b=, stacked on the retry fix, WIP.7)
+*** P4b (2026-11-06, branch =feature/image-section-p4b=, stacked on the retry fix, WIP.7)
 
 The viewer's tools: Adjust (A), Compare (C), Loupe (L), Copy URL (Y / Shift+Y), key help (?).
 
@@ -607,7 +603,7 @@ The viewer's tools: Adjust (A), Compare (C), Loupe (L), Copy URL (Y / Shift+Y), 
 - The second =test:full= (with the help fix) was stopped at vzell's request after his live check
   passed; the fix itself: the tool spec (6) and its two planted defects.
 
-* summary
+** DONE summary
 
 P4b is committed (9726f88a) and pushed to feature/image-section-p4b. The last full suite run passed (2,749 tests), but it ran before the help-box fix. The second run, which included that fix, was stopped as you asked, so the fix itself is covered by its spec and two planted defects plus your live check.
 
@@ -629,10 +625,11 @@ Small gaps in what was built
 - No setting turns off the pictures section on other sites' pages.
 - "Select and download selected" in the Table view was planned for later.
 
-Housekeeping outside this feature
+** TODO Housekeeping
+
+do the housekeeping
+
 - 160 mutation entries in other lists no longer match the code (popup, Discogs, setlist.fm).
 - The discogs-mb-column flaky test is still unexplained. To keep the next failure's trace, I'd change run-test-full.py to copy test-results/ aside whenever a run fails.
-
-My suggestion: merge to main first, so all of this ships, then the mobile tests, then the 160 entries.
-
-merge to main, then add the mobile tests
+- add the mobile tests
+ 
