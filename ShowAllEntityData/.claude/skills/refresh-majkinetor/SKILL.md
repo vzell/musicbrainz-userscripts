@@ -13,7 +13,9 @@ This skill brings it up to date without rewriting it.
 
 **vzell knows majkinetor personally, and majkinetor fixes interop issues on his side.** So the analysis is
 also a list of requests: every TODO says who fixes it (ours / upstream / a shared convention), and
-"Working with majkinetor" in the org file holds the proposed conventions (C1…) and a draft message.
+"Working with majkinetor" in the org file holds the proposed conventions (C1…). The message to him is
+`org/majkinetor-839-reply.md`: a GitHub-Markdown reply for issue #839, with two appendices (EH's data views
+compared with SAED's, and how we keep up). It is the only copy of the message.
 *Never post* issues, comments or pull requests on majkinetor's repo, and never contact him yourself: you
 draft, vzell sends. Reading his repo with `gh` (issues, PRs, commits) is fine.
 
@@ -205,9 +207,13 @@ TODO hygiene:
   - *upstream*: the cause is in his code and a small change there beats a workaround here;
   - *convention*: both sides need one shared mark; add a C-row and a `conv-*` anchor for it.
 
-  Upstream or convention items also get a numbered point in the draft message. Keep it short and
-  concrete: what we see, the one change asked, the attribute name. Even then keep a defensive fix on our
-  side when users can run an older String Theory.
+  Upstream or convention items also get a numbered point under "Requests" in `org/majkinetor-839-reply.md`.
+  Keep it short and concrete: what we see, the one change asked, the attribute name. Even then keep a defensive
+  fix on our side when users can run an older String Theory.
+- Keep the reply's facts current: the versions and commit in its opening line, measured numbers (the 503s,
+  the launcher count), the appendix rows when either script gained or lost a capability, and the anchor
+  count. A request majkinetor adopted leaves "Requests". Once vzell has posted it, follow-ups go into a new
+  reply (the "Draft message" section in the org file says when it was posted).
 - An item majkinetor fixed → its TODO keeps only our remaining part, or is `DONE` with his version.
 - A new feature worth taking → a new `** TODO`.
 - org/TODO.org's majkinetor umbrella item links into this file by heading. If you rename a heading, fix

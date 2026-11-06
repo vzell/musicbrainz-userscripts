@@ -71,8 +71,8 @@ interop on the right side.** vzell knows majkinetor, and he fixes
 interoperability issues upstream. For every such fix or feature, decide who
 fixes it: *ours*, *upstream*, or a *shared convention* (a `data-mbu-*` mark
 both sides follow). Write the request into that TODO in `org/majkinetor.org`,
-whose "Working with majkinetor" section holds the conventions and a draft
-message. Keep a defensive fix here when users may run an older String
+whose "Working with majkinetor" section holds the conventions; the message
+to him is `org/majkinetor-839-reply.md` (GitHub Markdown, for #839). Keep a defensive fix here when users may run an older String
 Theory. Never post issues or comments on his repo, and never contact him:
 draft it; vzell sends it. vzell installs String Theory from `main`'s raw
 link. Refreshing the analysis: the `refresh-majkinetor` skill.

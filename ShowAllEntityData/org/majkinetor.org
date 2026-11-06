@@ -486,40 +486,21 @@ scripts already use.
 | C5 | =<html data-saed="<version>">= plus =data-saed-page="<pageType>"= when SAED has a pageType for the page              | SAED                      | EH can show an "Open in SAED" action in its view (switch off + reload, as V does)                               | a way back to SAED from EH                             |
 | C6 | The =mbu:mb-gate= localStorage format (=dev/net/mb-gate.mjs=) as a stable, documented protocol, with a version field | majkinetor (documents it) | SAED books its ws/2 there                                                                                       | join the request gate                                  |
 
-**** Draft message to majkinetor (for you to send; not posted anywhere)
+**** Draft message to majkinetor (for you to post; not posted anywhere)
 
-#+begin_example
-Hi majkinetor,
+The message is a ready-to-post GitHub reply to [[https://github.com/majkinetor/musicbrainz-userscripts/issues/839][#839]]:
+[[file:majkinetor-839-reply.md][org/majkinetor-839-reply.md]] (GitHub Markdown). Its parts:
+- the race in #839, explained;
+- the requests (C1–C6, plus #926);
+- what you fix on your side anyway;
+- two collapsible appendices: "Event Horizon's data views and SAED, compared" and "How I keep SAED in step with
+  your scripts" (the harness, the anchors, the refresh skill).
 
-I'm making ShowAllEntityData (SAED) play nicely next to String Theory. I probed both together
-in a browser harness (I can send you the notes). A few things are easiest on your side; all are
-small and opt-in through attributes SAED sets:
+Copy it from the file as it is: GitHub renders the =<details>= blocks and the tables.
 
-1. Regions rendered by other scripts (this answers #839). SAED would put data-mbu-foreign="saed" on its rendered
-   section/tables. Could ISRC Scout's fillTrackData()/showTrackData() skip tables inside such an
-   element (today they wipe and re-add .ii-col cells in SAED's copy of the tracklist, because it
-   keeps tr.subh and the track-MBID row ids), and could mbuTip skip [data-tip] inside it?
-2. ISRC Scout link icons. Since 2026.11.06 the platform name is only in data-tip text. Could each
-   a.ii-trk-ln also carry data-ii-platform (and data-ii-ended)? SAED reads the platform for
-   filtering/sorting and would no longer depend on the tip format.
-3. Keys. EH's bare-letter commands also fire on SAED's page (h → /edits leaves it). SAED can call
-   preventDefault (EH already honours defaultPrevented), but an <html data-mbu-keys-off> mark that
-   EH honours would be clearer for any app.
-4. Corner. While SAED's table is shown it would set <html data-mbu-quiet>; could mbuDock/
-   mbRestackCorner hide the launchers and the dock then, like Mission Control does for itself?
-5. Way back. SAED would set <html data-saed=VERSION data-saed-page=TYPE> where it supports a page.
-   Would an "Open in SAED" action in EH's header be welcome (it would do what V does)?
-6. Request gate. SAED would like to book its ws/2 in mbu:mb-gate. Can we treat the format in
-   dev/net/mb-gate.mjs as a stable protocol (a version field, a heads-up before changes)?
-
-7. For #926: SAED is on the wiki list. It's a viewer and analysis tool (all pages of a list in
-   one filterable table, findings), so "Complementary" in your report's scale would fit.
-
-Thanks! Volker
-#+end_example
-
-Before sending, drop any item already fixed upstream (the refresh skill re-checks). When he answers, note the
-agreed attribute names here and in the TODOs, so both sides use the same spelling.
+That file is the only copy of the message. The refresh skill keeps it current: drop a request majkinetor
+adopted, update versions and measured numbers. After posting, note the date here, and when he answers, write the
+agreed attribute names into "Proposed shared conventions" and the TODOs, so both sides use the same spelling.
 
 *** Refresh log
 
