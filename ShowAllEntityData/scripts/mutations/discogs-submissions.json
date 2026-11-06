@@ -138,7 +138,7 @@
         "why": "vzell 2026-10-18: \"History, then the release\" for a title on this page.",
         "edits": [
             {
-                "find": "        if (dg.kind === 'release' && _dgOnSubmissions()) out.top = _extDgHistReleaseParts(t, dg.id, { start, force, repaint });",
+                "find": "        if (dg.kind === 'release' && _dgOnSubmissions()) out.top = _extDgHistReleaseParts(t, `release/${dg.id}`, { start, force, repaint });",
                 "replace": ""
             }
         ],
@@ -151,8 +151,8 @@
         "why": "A window's top part goes ABOVE the two columns.",
         "edits": [
             {
-                "find": "        return top + `<div class=\"mb-dp-x\"><div class=\"mb-dp-col\">${left.join('')}</div><div class=\"mb-dp-col\">${right.join('')}</div></div>` + full +",
-                "replace": "        return `<div class=\"mb-dp-x\"><div class=\"mb-dp-col\">${left.join('')}</div><div class=\"mb-dp-col\">${right.join('')}</div></div>` + full + top +"
+                "find": "        return top + `<div class=\"mb-dp-x${swap ? ' mb-dg-swap' : ''}\"><div class=\"mb-dp-col\">${left.join('')}</div>` +\n            `<div class=\"mb-dp-col\">${right.join('')}</div></div>` + full +",
+                "replace": "        return `<div class=\"mb-dp-x${swap ? ' mb-dg-swap' : ''}\"><div class=\"mb-dp-col\">${left.join('')}</div>` +\n            `<div class=\"mb-dp-col\">${right.join('')}</div></div>` + full + top +"
             }
         ],
         "spec": "tests/fixtures/discogs-submissions.spec.js",
@@ -164,7 +164,7 @@
         "why": "A row's full images come from its record, asked for when the viewer shows the row.",
         "edits": [
             {
-                "find": "            setTimeout(() => _fiLoad(p, rows[i]), 0);",
+                "find": "            setTimeout(() => _fiLoad(p, row), 0);",
                 "replace": ""
             }
         ],

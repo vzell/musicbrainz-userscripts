@@ -17,8 +17,8 @@
         "why": "Without keepOpenWithin the viewer lies outside the window, so any click in it (the info panel, a button) closes the window underneath.",
         "edits": [
             {
-                "find": "            titleBarExtras: [back, prev, pos, next, seg, reload, open],\n            // The artwork viewer an image opens (_dpArtViewerClick()) lies\n            // over the window; a click in it is not a click outside.\n            keepOpenWithin: ['#mb-art-viewer'],",
-                "replace": "            titleBarExtras: [back, prev, pos, next, seg, reload, open],"
+                "find": "            titleBarExtras: [back, histSplit, prev, pos, next, seg, reload, open],\n            // The artwork viewer an image opens (_dpArtViewerClick()) lies\n            // over the window; a click in it is not a click outside.\n            keepOpenWithin: ['#mb-art-viewer'],",
+                "replace": "            titleBarExtras: [back, histSplit, prev, pos, next, seg, reload, open],"
             }
         ],
         "spec": "tests/fixtures/detail-preview.spec.js",
@@ -303,12 +303,12 @@
         "why": "org/TODO.org \"stacking multiple rich tooltips\" 4a.",
         "edits": [
             {
-                "find": "        if (!title || title.querySelector(':scope > img.mb-pop-kind-icon')) return;",
-                "replace": "        return;"
+                "find": "        if (glyph) head.append(_dpGlyphEl(glyph, 'mb-pop-kind-icon'));",
+                "replace": "        void glyph;"
             }
         ],
-        "spec": "tests/fixtures/popup-mb.spec.js",
-        "grep": "the entity glyph",
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "our MusicBrainz column: an icon shows",
         "expect": "fail"
     },
     {
@@ -316,12 +316,12 @@
         "why": "org/TODO.org \"stacking multiple rich tooltips\" 4b.",
         "edits": [
             {
-                "find": "                parts.unshift(img);",
-                "replace": ""
+                "find": "            const g = _dpKindGlyph(s);\n            if (g) {\n                const el = _dpGlyphEl(g, 'mb-dp-kind-icon');",
+                "replace": "            const g = null;\n            if (g) {\n                const el = _dpGlyphEl(g, 'mb-dp-kind-icon');"
             }
         ],
-        "spec": "tests/fixtures/popup-mb.spec.js",
-        "grep": "the entity glyph",
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "our MusicBrainz column: an icon shows",
         "expect": "fail"
     }
 ]

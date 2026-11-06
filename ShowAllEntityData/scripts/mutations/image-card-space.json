@@ -125,7 +125,7 @@
         "why": "The sidebar's cover and its copy beside the name: Space opens our viewer, as their click does.",
         "edits": [
             {
-                "find": "            _sbOpenCover(el.dataset.mbSbCover, el);\n            return true;",
+                "find": "            _sbOpenCover(el.dataset.mbSbCover, el, el.dataset.mbSbCoverTitle || '');\n            return true;",
                 "replace": "            return false;"
             }
         ],

@@ -552,3 +552,13 @@ vzell: all three; and the broken picture beside the h1 — no input needed: it i
   ⟳'s =stopImmediatePropagation()= — it sits beside the link, so nothing else would act on it).
 - =test:full= on NB-3641 (2026-11-06T09:59:23 → 10:17:22+01:00): 2743 passed.
   vzell's live check passed.
+
+** Stale mutation entries (2026-11-06, vzell: "fix the 13")
+
+The 13 entries the art work turned up (all already stale at P4a, none from it) repointed to
+today's code, each run: 12 fail as expected, the one recorded overlap passes as recorded
+(=discogs-submissions= 3, =gpe-art-viewer= 3, =foreign-gallery= 1, =image-card-space= 1,
+=sidebar-overhaul= 5). Two now target a moved spec: the glyph entries of =gpe-art-viewer=
+run =discogs-mb-column.spec.js= "our MusicBrainz column: an icon shows", which asserts both
+the card's and the window's glyph. A sweep of all 258 lists found 160 stale finds in about 80
+lists (popup-mb 17, popup-ext 17, discogs-pages 7, …): older drift, left for a decision.
