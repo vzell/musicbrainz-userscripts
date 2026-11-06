@@ -169,6 +169,39 @@
             ]
         },
         {
+            "id": "majkinetor-event-horizon",
+            "file": "event_horizon.user.js",
+            "author": "majkinetor",
+            "version": "2026.11.05.231601",
+            "when": "init",
+            "touches": [
+                "@run-at document-start; @match the home page and release/*, release-group/*, artist/*, label/*, recording/*, work/*, area/*, instrument/*, series/*, collection/*, event/*, place/*, user/*, tag/*, search*, edit/*, cdtoc/*, account/{edit,preferences,donation}. 'init' defers it to DOMContentLoaded (not true document-start), which still runs it before ShowAllEntityData (added after load), the order Tampermonkey gives. Its #eh-hide (body{visibility:hidden}) and prefetch() therefore start later than in a real browser.",
+                "ON BY DEFAULT: GM key 'view' (one object, EH's S settings), field on: true unless the user switched it off. A run seeds --gm-value=view={\"on\":false} for MusicBrainz's own page at load. The choice sticks per browser (switchOn() saves it).",
+                "Body swap (setOn(), EH:10502): when on, inserts its own <body> (main#app) BEFORE MusicBrainz's and sets mbBody.hidden = true, so document.body is EH's; when off, ehBody.remove(). Only ':scope > [data-mb-corner]' children move between the bodies. Measured (tests/support/probe-majkinetor-interop.js, 2026-11-06): ShowAllEntityData's h1 bar lands in MusicBrainz's hidden body (invisible until V); everything ShowAllEntityData appended to document.body at start-up (#mb-stat-tooltip, #mb-vsb-mask, #mb-saed-hist-sub-panel) leaves the document when EH is switched off, so hover cards stop showing. The FRP itself survives any number of V/V toggles on the loaded page.",
+                "Navigation inside EH is history.pushState (ehPush, EH:10855); MusicBrainz's hidden body stays the page the tab loaded. Turning EH off after such a move sets sessionStorage 'eh-off' and reloads (EH:10505); popstate into something EH can't show reloads too (EH:10498). A harness run must re-inject ShowAllEntityData after such a reload (the probe's reinjectSa()).",
+                "Marks on <html>: data-mbu-page (path+query), data-mbu-release (MBID on a release), data-mbu-dock (while EH shows); removed when off.",
+                "Keyboard (KEY_CMDS, EH:11029; listener EH:11104): a document keydown, bubble phase, installed also while EH is OFF. Bare keys o e r c h t d a v s p . , and ctrl+h, ctrl+l, ctrl+/. Skips input/textarea/select/contentEditable. Measured: 'h' on ShowAllEntityData's FRP navigates to the entity's /edits page. ctrl+l (history.forward) collides with ShowAllEntityData's default Load-from-disk shortcut.",
+                "Global CSS only while on: #eh-css (html{scrollbar-gutter:stable}, theme) is disabled when off (measured: scrollbar-gutter back to auto, #page/#content unchanged). Always present: #eh-launch-css, #eh-mbu (scoped to its own roots), data-mbu-theme/-seed on <html>. Corner launcher button#eh-launch (data-mb-corner=br, order 50) over every matched page, ShowAllEntityData's FRP included. #eh-rail/#eh-pin were seen appended to MusicBrainz's body while EH was off (visibility not checked).",
+                "Non-visual: ws/2 through its shared cross-tab gate (localStorage 'mbu:mb-gate' under Web Lock 'mbu-mb-gate', ~1 req/s, a shared hold on 429/503); ShowAllEntityData is not part of that gate. IndexedDB 'eh-kept' (800 entries); GM keys view, visits, searches, collections, areaUp, areaImg, avatars, profile, gravatar, mbu:artimg; localStorage eh.kept.drop, eh.relhd. External GM_xmlhttpRequest to api.discogs.com, api.deezer.com, tidal.com, music.apple.com, wikidata, wikipedia, soundcloud, open.spotify.com (realNetworkGmXhr passes GETs through).",
+                "Harness: classic GM_getValue/GM_setValue/GM_xmlhttpRequest and GM_info only, all stubbed; no GM.* syntax, no page globals. Use tests/support/probe-majkinetor-interop.js (run-live-interop.js presses the SA button at once, which a hidden bar under EH-on cannot satisfy). Analysis: org/majkinetor.org."
+            ]
+        },
+        {
+            "id": "majkinetor-string-theory",
+            "file": "string_theory.user.js",
+            "author": "majkinetor",
+            "version": "2026.11.06.111207",
+            "when": "init",
+            "touches": [
+                "Bundle of 13 members (apollo_editor, art_station, credit_hoarder, event_horizon, falcon, first_contact, fusion, group_therapy, isrc_scout, mammoth, mission_control, fuzzy_logic, platform_check; see its @description for their versions); @run-at document-start; @match is the union of theirs. Each member runs behind its own URL and run-at gate and its own try/catch. Members whose @match misses the loaded page start later, when <html data-mbu-page> names a page they match (EH navigation). Sets <html data-mbu-st=VERSION>. Do not combine with majkinetor-event-horizon or majkinetor-isrc-scout: the bundle already contains both.",
+                "Everything majkinetor-event-horizon records (body swap, keys, marks, gate), measured the same with the bundle on 2026-11-06 (tests/support/probe-majkinetor-interop.js --scripts=majkinetor-string-theory).",
+                "Corner: on a release page eight launchers (falcon-launcher, fs-launch, mc-launch, mbu-dock, eh-launch, ii-dock, mb-fl-dock, mb-pc-dock), all over ShowAllEntityData's FRP. With data-mbu-st set they fold behind #mbu-dock (appended to <html>, outside both bodies).",
+                "Keyboard: the command palette takes Ctrl+K on window in the CAPTURE phase with stopPropagation (string_theory/palette.js stPalListen()), before ShowAllEntityData's default Ctrl+K (shortcuts help) can see it.",
+                "ISRC Scout inside the bundle is NEWER than majkinetor-isrc-scout's copy: its Links icons carry data-tip=\"Name\\nurl\" and no title, which ShowAllEntityData's _isrcScoutLinkPlatform() (reads title) does not parse (org/majkinetor.org). The shared #mbu-tip hover tip shows for any [data-tip] element, ShowAllEntityData's table included.",
+                "Harness: calls GM functions gmStubs.js lacks (GM_addValueChangeListener, GM_removeValueChangeListener, GM_openInTab, GM_setClipboard, GM_cookie, GM.xmlHttpRequest, GM.script); tests/support/probe-majkinetor-interop.js adds no-op versions (PROBE_GM_EXTRA). Platform lookups through GM_xmlhttpRequest go out for real under realNetworkGmXhr (GET only). Not added to kitchen-sink (it would duplicate ISRC Scout)."
+            ]
+        },
+        {
             "id": "murdos-discogs-importer",
             "file": "discogs_importer.user.js",
             "author": "murdos (no @author line; @namespace http://userscripts.org/users/22504, @updateURL murdos/musicbrainz-userscripts)",
@@ -209,6 +242,8 @@
         "wiencek-batch-performance-only": ["wiencek-batch-performance"],
         "lotheric-instrument-icons-only": ["lotheric-instrument-icons"],
         "majkinetor-isrc-scout-only": ["majkinetor-isrc-scout"],
+        "majkinetor-event-horizon-only": ["majkinetor-event-horizon"],
+        "majkinetor-string-theory-only": ["majkinetor-string-theory"],
         "murdos-discogs-importer-only": ["murdos-discogs-importer"],
         "zabe-entity-image-only": ["zabe-entity-image"],
         "kitchen-sink": ["jesus2099-supermind", "jesus2099-inline-stuff", "jesus2099-funkey", "right-side-flags-everywhere", "sanojjonas-visualise", "aerozol-nuclear-tags", "wiencek-batch-performance", "lotheric-instrument-icons", "majkinetor-isrc-scout", "zabe-entity-image"]

@@ -28366,3 +28366,28 @@ never gets the green "already loaded" dot, while a MusicBrainz window's links do
 Specs: `sl-lyrics.spec.js` (Bootstrap's rule added with `addStyleTag`; every badge one width, one right edge) and
 `sl-tracklist-links.spec.js` (a held song answer released while the pointer is on another song). Mutations
 `scripts/mutations/sl-uvd-badge-window-dot.json`: 3, all fail as expected.
+
+## 2026-11-06 — majkinetor's Event Horizon / String Theory next to ShowAllEntityData: body swap, dead hover cards, keys (docs/majkinetor-analysis)
+
+Env: 2026-11-06T11:20–11:30+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1,
+Chromium 151.0.7922.34 · no Tampermonkey (GM stubs, realNetworkGmXhr) · live musicbrainz.org (IPv4 worked today).
+
+Probe: `tests/support/probe-majkinetor-interop.js` with `event_horizon.user.js` 2026.11.05.231601 and
+`string_theory.user.js` 2026.11.06.111207 (upstream `326c6a4`, cloned under `debug/majkinetor/`, copied into
+`tests/fixtures/live-userscripts/`). Full analysis and per-case table: `org/majkinetor.org`.
+
+- Event Horizon is ON by default (GM `view.on`). Its `setOn()` inserts its own `<body>` before MusicBrainz's and
+  hides MusicBrainz's, so `document.body` is EH's. Our h1 bar still lands in the NATIVE h1 (hidden body):
+  present, invisible, until V.
+- Everything we append once to `document.body` at start-up is in EH's body when EH was on at load, and leaves
+  the document on V (`ehBody.remove()`). Measured: `#mb-stat-tooltip` gone, so no hover cards after V. The
+  toolbar menus survive because `_toolbarMenu` re-appends its panel to `document.body` on open. There are 59
+  `document.body.appendChild` sites; a fix belongs in a follow-up with a two-body fixture spec.
+- The FRP survives V/V on the loaded page. After pushState navigation inside EH, V reloads (`eh-off`) into the
+  native page of the new path.
+- EH's bare-letter keys work on our FRP: `h` navigated to `/release/<mbid>/edits`. String Theory takes Ctrl+K
+  (capture phase + stopPropagation), our shortcuts-help default; EH binds Ctrl+L (forward), our Load-from-disk
+  default.
+- From code (not live, our harness copy of ISRC Scout is 2026.10.16): ISRC Scout 2026.11.06's Links icons carry
+  `data-tip`, no `title`, so `_isrcScoutLinkPlatform()` finds no platform.
+- Requests: one 503 in the artist run with EH (max 4 MB responses/s) vs none alone (max 2/s). One run, suggestive.
