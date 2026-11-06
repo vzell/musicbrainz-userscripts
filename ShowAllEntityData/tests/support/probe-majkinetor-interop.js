@@ -24,6 +24,11 @@
  *      navigation, Tampermonkey would run it again by itself).
  *   D  EH on at load on an artist page, V at once, SA fetch while EH's
  *      own requests may still run: requests per second and 503s.
+ *   I  ISRC Scout alone (--scripts=majkinetor-isrc-scout) on a release with
+ *      track links: how its "Links" icons are labelled (title or data-tip)
+ *      on the native page, and whether SA's render gives each icon its
+ *      platform name (data-mb-link-platform, _normalizeIsrcScoutLinksTd()).
+ *      --url=<release> overrides the release (default ISRC_RELEASE).
  *
  * Harness notes (also in the manifest entries):
  * - EH is `@run-at document-start`; injectOne()'s 'init' defers it to
@@ -53,6 +58,9 @@ const PAGETYPES = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'pagetyp
 const RELEASE = PAGETYPES.find((c) => c.pageType === 'release-tracks');
 const ARTIST = PAGETYPES.find((c) => c.pageType === 'artist-releasegroups');
 
+/** A release whose recordings carry ISRCs and streaming links (manifest: majkinetor-isrc-scout). */
+const ISRC_RELEASE = 'https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194';
+
 /** No-op stand-ins for the GM functions String Theory calls and gmStubs.js does not provide. */
 const PROBE_GM_EXTRA = `
     window.GM_addValueChangeListener = window.GM_addValueChangeListener || function () { return 0; };
@@ -67,7 +75,7 @@ const PROBE_GM_EXTRA = `
  * Parses `--key=value` arguments.
  *
  * @param {string[]} argv - process.argv.slice(2)
- * @returns {{ cases: string[], scripts: string[], out: string|null, headed: boolean }}
+ * @returns {{ cases: string[], scripts: string[], out: string|null, url: string|null, headed: boolean }}
  */
 function parseArgs(argv) {
     const arg = (flag, dflt) => {
@@ -78,6 +86,7 @@ function parseArgs(argv) {
         cases: arg('--cases', '0,A,B,C,D').split(',').map((s) => s.trim()).filter(Boolean),
         scripts: arg('--scripts', 'majkinetor-event-horizon').split(',').map((s) => s.trim()).filter(Boolean),
         out: arg('--out', null),
+        url: arg('--url', null),
         headed: argv.includes('--headed'),
     };
 }
@@ -256,6 +265,34 @@ async function probeUi(page) {
 }
 
 /**
+ * Counts ISRC Scout's "Links" icons inside or outside SA's rendered tables,
+ * by how they are labelled and whether SA gave them a platform name.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<Object>}
+ */
+function isrcScoutLinks(page) {
+    return page.evaluate(() => {
+        const all = [...document.querySelectorAll('a.ii-trk-ln')];
+        const inFrp = (a) => !!a.closest('table.tbl') && !!document.querySelector('#mb-filter-container');
+        const sum = (list) => ({
+            icons: list.length,
+            withTitle: list.filter((a) => a.hasAttribute('title')).length,
+            withDataTip: list.filter((a) => a.hasAttribute('data-tip')).length,
+            withPlatformStamp: list.filter((a) => a.hasAttribute('data-mb-link-platform')).length,
+            withHiddenName: list.filter((a) => a.querySelector(':scope > .mb-ii-link-name')).length,
+            sampleLabel: list[0] ? (list[0].getAttribute('title') || list[0].getAttribute('data-tip') || '').split('\n')[0] : null,
+        });
+        return {
+            linksCells: document.querySelectorAll('td.ii-col-links').length,
+            isrcCells: document.querySelectorAll('td.ii-col-isrc').length,
+            native: sum(all.filter((a) => !inFrp(a))),
+            frp: sum(all.filter(inFrp)),
+        };
+    });
+}
+
+/**
  * Highest number of responses inside any 1-second window, and the 503s.
  *
  * @param {Object[]} responses - from openPage()
@@ -281,9 +318,10 @@ function rateFigures(responses) {
  * @param {import('@playwright/test').Browser} browser
  * @param {string} name - '0', 'A', 'B', 'C' or 'D'
  * @param {Object[]} entries - resolved manifest entries
+ * @param {string|null} urlOverride - --url, used by case I only
  * @returns {Promise<Object>}
  */
-async function runCase(browser, name, entries) {
+async function runCase(browser, name, entries, urlOverride) {
     const steps = [];
     const note = async (page, label, extra = {}) => {
         const s = { step: label, ...extra, state: await snapshotState(page) };
@@ -291,10 +329,11 @@ async function runCase(browser, name, entries) {
         const b = s.state.saBar;
         console.log(`[${name}] ${label}: path=${s.state.path} bodies=${s.state.bodies} docBodyIsMb=${s.state.documentBodyIsMb} saBar=${b ? `body${b.inBody} visible=${b.visible} inApp=${b.inApp}` : 'none'} frpRows=${s.state.frp.rows} ${Object.keys(extra).length ? JSON.stringify(extra) : ''}`);
     };
-    const cfg = name === 'D' || name === '0' ? ARTIST : RELEASE;
+    let cfg = name === 'D' || name === '0' ? ARTIST : RELEASE;
+    if (name === 'I') cfg = { ...RELEASE, url: urlOverride || ISRC_RELEASE };
     const settings = cfg.seedGmValues || {};
     const ehEntries = name === '0' ? [] : entries;
-    const ehOn = name === '0' ? null : name !== 'B';
+    const ehOn = name === '0' || name === 'I' ? null : name !== 'B';
     const { context, page, errors, responses } = await openPage(browser, { url: cfg.url, entries: ehEntries, ehOn, settings });
     const out = { case: name, url: cfg.url, scripts: ehEntries.map((e) => e.id), steps };
     try {
@@ -341,6 +380,12 @@ async function runCase(browser, name, entries) {
         } else if (name === 'D') {
             await note(page, 'V at once (EH off)', { reloaded: await pressV(page) });
             await note(page, 'SA fetch', await runSaFetch(page, cfg.showAllButtonSelector));
+        } else if (name === 'I') {
+            await page.waitForSelector('a.ii-trk-ln', { timeout: 30000 }).catch(() => {});
+            await note(page, 'native page, ISRC Scout columns in', await isrcScoutLinks(page));
+            await note(page, 'SA fetch', await runSaFetch(page, cfg.showAllButtonSelector));
+            await page.waitForTimeout(3000);
+            await note(page, 'FRP + 3 s', await isrcScoutLinks(page));
         }
     } catch (e) {
         out.error = e.message.split('\n')[0];
@@ -359,7 +404,7 @@ async function runCase(browser, name, entries) {
     const browser = await chromium.launch({ headless: !args.headed });
     const results = { scripts: args.scripts, chromium: browser.version(), started: new Date().toISOString(), cases: [] };
     for (const c of args.cases) {
-        results.cases.push(await runCase(browser, c, entries));
+        results.cases.push(await runCase(browser, c, entries, args.url));
     }
     results.finished = new Date().toISOString();
     await browser.close();

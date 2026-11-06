@@ -1,4 +1,5 @@
 * TODO Musicbrainz Toolset by @majkinetor at GitHub
+** DONE initial
 
 There is a GitHub project "Musicbrainz Toolset" by @majkinetor at https://github.com/majkinetor/musicbrainz-userscripts
 
@@ -73,8 +74,9 @@ Check, IS = ISRC Scout, AS = Art Station, CH = Credit Hoarder, GT = Group Therap
   1. *measured*: when SAED starts while EH shows, its hover cards are dead after V, because `#mb-stat-tooltip`
      lives in EH's body, which V removes.
   2. *measured*: EH's single-letter keys (H, E, R, …) also work on our FRP and navigate away from it.
-  3. *from code*: ISRC Scout 2026.11.06 moved its link labels from `title` to `data-tip`, so SAED's
-     `_isrcScoutLinkPlatform()` returns `''`. The "Links" column loses platform filter/📊/sort data.
+  3. *measured* (14:11 CET, harness copy refreshed to 2026.11.06.170000): ISRC Scout moved its link labels
+     from `title` to `data-tip`, so SAED's `_isrcScoutLinkPlatform()` returns `''`. The "Links" column loses
+     platform filter/📊/sort data.
 - Plus key clashes (ST takes Ctrl+K in the capture phase, before SAED's shortcuts help; EH binds Ctrl+L, which is
   SAED's "Load from disk"), a request gate SAED is not part of, and the corner launchers over our FRP (the
   existing TODO).
@@ -292,12 +294,16 @@ Other algorithms worth knowing:
 
 **** ISRC Scout ↔ SAED — current defect and your open TODOs
 
-- *Defect (from code, verified)*: IS 2026.11.06 (IS:9976-9981) writes =data-tip="Name\nurl"= (or
+- *Defect (measured)*: IS 2026.11.06 (IS:9976-9981) writes =data-tip="Name\nurl"= (or
   ="Name — N links\n- url…"=, plus " (ended)") and *no =title=*. SAED's =_isrcScoutLinkPlatform()= reads =title=
   and splits on =' · '=. Against the new IS it returns =''=, so =_normalizeIsrcScoutLinksTd()= stamps nothing. Lost
   as a result: the 📊 "Links info - Platform" section, the =linkplatform:= entries, and typed filters and sorting on
-  platform. Our harness copy is still 2026.10.16 (=title=), so no spec catches it. Fix: read =title || data-tip=,
-  first line, strip =' — N links'= and =' (ended)'=; a fixture from the new markup is needed.
+  platform. No spec catches it: the fixture simulator =tests/fixtures/thirdPartyScripts/isrc-scout-columns.js=
+  still writes the old =title= markup.
+  - *Live check*: 2026-11-06T14:11+01:00, vzell-lap, Chromium 151.0.7922.34, GM stubs + realNetworkGmXhr, IS
+    2026.11.06.170000 (upstream =1df6193=, now the harness copy). Release =22a6802f-…=: 51 track rows, 36 link
+    icons. On the FRP all 36 have =data-tip=, 0 have =title=, 0 have =data-mb-link-platform= (probe case I).
+  - *Fix*: read =title || data-tip=, take the first line, strip =' — N links'= and =' (ended)'= (TODO below).
 - *TODO "Links column – switch off the native tooltip on the FRP"*: there is no native tooltip any more. The tip is
   ST's shared =#mbu-tip=, shown on hover for any element with =data-tip= (=mbuTip= IS:2597-2612, 2665-2682). In
   =_normalizeIsrcScoutLinksTd()=, move =data-tip= to e.g. =data-mb-ii-tip=, so only our hover card shows.
@@ -403,7 +409,9 @@ Answers to your three questions:
   7. *State that sticks*: EH remembers on/off per browser; Apollo's toggle is global "on every tab until you switch
      back". A user who switched EH on once has no SAED buttons on any EH page until V.
 
-*** Recommendations (each becomes its own =org/TODO.org= item once you've read this)
+*** Recommendations
+
+Items 1–4 are the fixes and are TODO items below (=** TODO …=). The feature ideas 5–9 are not TODO items yet.
 
 1. *Fix (bug)*: =_isrcScoutLinkPlatform()= reads =title || data-tip=; refresh the harness copy of IS; add a fixture
    from the new markup (=add-finding= / fixture spec).
@@ -428,5 +436,179 @@ Answers to your three questions:
 9. *Smaller*: named column sets with reordering, =scrollbar-gutter:stable= on FRPs, a =mbuLog=-style log window,
    =mbuTheme= detection, imgmax rules for non-CAA images, Wayback links, entity-picture providers and area flag
    badges.
+
+** DONE refresh the harness copy of ISRC Scout
+
+- =tests/fixtures/live-userscripts/ISRC-scout.user.js= went from 2026.10.16.181657 to 2026.11.06.170000, taken from
+  upstream =1df6193= (=git -C debug/majkinetor show origin/main:userscripts/isrc_scout/isrc_scout.user.js=; the
+  clone itself stays at =326c6a4=, which the analysis above cites).
+- The =majkinetor-isrc-scout= manifest entry was re-scanned and rewritten in place (register-live-userscript).
+- What changed for us:
+  - the Links icons' =data-tip= (no =title=);
+  - the shared =#mbu-tip= hover tip;
+  - its ws/2 now goes through the shared gate *and* =GM_xmlhttpRequest=. Under the plain GM stubs that means a 404
+    on the release load, so =run-live-interop.js= never shows its columns any more; the probe's real-network
+    loader does.
+- Re-copy the file from upstream (or from your Tampermonkey) whenever you update ISRC Scout, then say "re-scan" —
+  the =touches= are version-specific.
+
+** TODO ISRC Scout "Links": read the platform from =data-tip= (bug, measured)
+
+- *Symptom*: with ISRC Scout ≥ 2026.11.06, SAED's "Links" column loses its platform names, so the 📊 "Links info -
+  Platform" section is empty, =linkplatform:= entries are gone, and typed filters and sorting by platform find
+  nothing.
+- *Pre-test* (your browser, ISRC Scout installed, EH off):
+  1. Open https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194 and wait for ISRC Scout's columns.
+  2. Press "Show all Tracks for Release".
+  3. Open the "Links" column's 📊.
+  - Prediction: no "Links info - Platform" section, and typing =deezer= into the Links CF matches 0 rows.
+- *Cause*: =_isrcScoutLinkPlatform()= reads only =title= and splits on =' · '=. ISRC Scout now writes
+  =data-tip="<Platform>[ (ended)]\n<url>"= or ="<Platform> — N links\n- <url>…"=, and no =title=.
+- *Fix*: read =getAttribute('title') || getAttribute('data-tip')=, take the first line, strip =' — N links'= and
+  =' (ended)'=. Keep the old =title= format working (older ISRC Scout installs).
+- *Tests*:
+  - Teach =tests/fixtures/thirdPartyScripts/isrc-scout-columns.js= a =markup: 'title'|'data-tip'= option.
+  - In =tests/fixtures/release-tracks-isrc-scout.spec.js=, run the platform assertions for both markups, for a
+    single link and for "N links". It must fail before the fix (mutation-check: revert the =|| data-tip=).
+- *Docs*: =docs/claude/release-tracks-and-length.md:861= ("from its =title=") and the ISRC Scout paragraph in
+  =docs/claude/uniq-dropdown.md=.
+
+** TODO ISRC Scout "Links": no =#mbu-tip= over our table (old TODO.org:5949, rephrased)
+
+- *Symptom*: hovering an icon in SAED's "Links" column shows ISRC Scout's own tip, =#mbu-tip=, beside or over our
+  hover card. The old TODO called it the native tooltip; there is no native tooltip any more. =#mbu-tip= is a
+  delegated hover handler for any =[data-tip]= element in the document (=mbuTip=, IS:2597-2612, 2665-2682).
+- *Fix*: in =_normalizeIsrcScoutLinksTd()=, after the previous TODO has read the platform, move =data-tip= to
+  e.g. =data-mb-ii-tip=, and give the anchor our own card via =_setTip()= (platform + URL list).
+  - This is on our FRP rows only, never on the native rows: ISRC Scout re-reads its own markup there.
+  - Check that =showTrackData()='s wipe-and-refill (next TODO) doesn't simply bring =data-tip= back.
+- *Pre-test*: same page as above, FRP rendered; hover a Links icon.
+  - Prediction: a dark ISRC Scout tip with "Deezer\nhttps://…", possibly overlapping our card.
+
+** TODO ISRC Scout columns re-added bare on our FRP (old TODO.org:5948, cause found)
+
+- *Cause*:
+  - =showTrackData()= (IS:10021) removes *every* =.ii-col= in the document and refills.
+  - =fillTrackData()= (IS:10006), from a permanent =MutationObserver(documentElement, {childList, subtree})=, adds
+    bare cells to any table holding a row whose =id= is a track MBID — our FRP rows keep =tr.subh= and those ids.
+  - It also bumps =thead th[colspan]= (=data-ii-colspan=).
+- *Fix options*:
+  - (a) Cheap: listen for =is:counts-changed= (dispatched after each settled release load) and re-run the
+    idempotent =_normalizeIsrcScoutTd()= / =_normalizeIsrcScoutLinksTd()=.
+  - (b) Proper: our rendered rows drop the markers ISRC Scout keys on (row =id=, =subh= — check first what of SAED
+    still reads them), and the cells come from the native rows' =.ii-col= cells, which we already copy. Then
+    ISRC Scout neither wipes nor re-adds cells in our tables.
+- *Pre-test*: on the page above, press "Show all Tracks for Release" *before* ISRC Scout's columns appear (right
+  after load).
+  - Prediction: ISRC/Links columns without our sort/📊 glyphs, and colspans one too wide.
+- *Tests*: the simulator already models the observer (see its JSDoc); add a "wipe and refill after render" step.
+
+** TODO SAED's floating elements survive Event Horizon's body swap (bug, measured)
+
+- *Symptom*: SAED started while EH showed (EH's default), then V (EH off) → no SAED hover cards at all.
+- *Pre-test* (your browser, String Theory or EH installed, EH on):
+  1. Open https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897.
+  2. Press V.
+  3. Hover the "Show all Tracks for Release" segment.
+  - Prediction: no card. In the console, =document.getElementById('mb-stat-tooltip')= is =null=.
+- *Cause*: EH's =setOn()= (EH:10502) inserts its own =<body>= before MusicBrainz's, so =document.body= is EH's while
+  SAED starts. =ehBody.remove()= on V takes along everything SAED appended once and keeps by reference:
+  - =#mb-stat-tooltip= (=_tip=, near =_OTHER_RICH_TIPS=)
+  - =#mb-vsb-mask=
+  - =#mb-saed-hist-sub-panel=
+  - possibly more of the 59 =document.body.appendChild= sites.
+
+  The toolbar menus survive only because =_toolbarMenu='s open handler re-appends its panel to =document.body=.
+- *Fix options*:
+  - (a) One helper, e.g. =_floatHost()=, that returns MusicBrainz's body: the =<body>= that holds =#page=/=#content=,
+    else =document.body=. Use it at every create-once site.
+  - (b) Re-attach on show, the =_toolbarMenu= pattern.
+
+  (a) also stops our elements being drawn into EH's view while it shows. Grep the CSS for =body > #mb-…= selectors
+  before moving anything to =<html>=.
+- *Tests*: a fixture spec builds a second =<body>= in front of the page before SAED starts, then removes it, then
+  hovers. It must fail before the fix.
+
+** TODO EH's bare-letter keys leave our FRP (bug, measured)
+
+- *Symptom*: with EH or String Theory installed, even with EH off, pressing =h= on an FRP (focus not in a field) goes
+  to the entity's =/edits= page. The FRP is lost. The same goes for =o e r c t d a s p . ,= and =v=: =v= is harmless
+  on the loaded page, but after EH navigation it reloads.
+- *Pre-test*:
+  1. EH off; same release; press "Show all Tracks for Release".
+  2. Click on empty page space, then press =h=.
+  - Prediction: navigates to =/release/1d404e1d-…/edits=.
+- *Cause*: =KEY_CMDS= (EH:11029). Its listener (EH:11104) is a =document= keydown in the bubble phase, installed
+  also while EH is off, and it skips an event when =ev.defaultPrevented=.
+- *Fix*:
+  - While an FRP is shown and EH is present (=#eh-launch= or =<html data-mbu-st>=), a capture-phase keydown on
+    =document= calls =preventDefault()= for a bare key EH would act on. That needs no =stopPropagation=, because EH
+    itself honours =defaultPrevented=.
+  - Never when the target is a field, never with a modifier.
+  - Behind a setting (default on) — a new =configSchema= key owes the usual (=docs/claude/settings-and-config.md=).
+- *Alternative*: ask majkinetor for a page mark, e.g. =<html data-mbu-keys-off>=, which EH would honour.
+
+** TODO Shortcut clashes with String Theory / EH: Ctrl+K, Ctrl+L, the typing guard
+
+- *Ctrl+K* (=sa_shortcut_show_shortcuts_help=): String Theory's palette listens on =window= in the *capture* phase
+  with =stopPropagation= (=string_theory/palette.js= =stPalListen()=). It is registered at document-start, so ours
+  can never run first. Options:
+  - when =<html data-mbu-st>= is present, show a one-time hint in our shortcuts help ("Ctrl+K is taken by String
+    Theory");
+  - or move our default. A =default:= change owes the schema, the inline fallbacks and a =_SETTINGS_MIGRATIONS=
+    entry; run =scripts/audit-config-defaults.py=.
+- *Ctrl+L* (=sa_shortcut_load_from_disk=): EH binds it to =history.forward()=, and both fire. Fix: when
+  =initKeyboardShortcuts()= handles a shortcut, it calls =preventDefault()= in a capture-phase listener, so EH (which
+  skips =defaultPrevented=) leaves it. Check that the change to capture phase doesn't reorder our own column-filter
+  shortcuts.
+- *Typing guard*: =initKeyboardShortcuts()= treats only =INPUT=/=TEXTAREA= as typing. Add =SELECT= and
+  =isContentEditable=, as EH does.
+- *Pre-test*:
+  - ST installed; FRP; press Ctrl+K. Prediction: String Theory's palette opens, not our help.
+  - EH installed; visit another page and come back (so there is a "forward"); FRP; press Ctrl+L. Prediction: our
+    load dialog *and* a forward navigation.
+
+** TODO Corner launchers over our FRP; our toasts under them (old TODO.org:5950)
+
+- *Measured*: with String Theory on a release page there are eight =[data-mb-corner]= launchers (Falcon, Fusion,
+  MC, the dock, EH, ISRC Scout, Fuzzy Logic, PC) in the bottom right corner, over the FRP. Our toasts (Relationships,
+  CAA) sit at =bottom:20px; right:20px=, the same spot.
+- *Fix*:
+  - while an FRP is shown, set a class on =<html>= and hide them the way Mission Control does (MC:988):
+    =html.<cls> :is([data-mb-corner], #mbu-dock, #mbu-dock-shelf, .mbu-dock-win){display:none!important}=. The
+    =!important= is needed because =mbRestackCorner= writes inline styles. Make it a setting: some users want
+    the launchers.
+  - and/or tag our toasts =data-mb-corner="br" data-mb-corner-dock="no"= with a high order, so the restack places
+    them above the launchers.
+- *Pre-test*: ST installed, EH off, release page, FRP → look at the bottom right corner.
+
+** TODO A way back to SAED from Event Horizon's view
+
+- *Measured*: while EH shows (its default after install), SAED's buttons exist but sit in MusicBrainz's hidden
+  body; nothing in EH's view tells the user SAED is there. After navigating inside EH, only V (or EH's launcher)
+  brings back MusicBrainz's page, through a reload.
+- *Fix*: when =<html data-mbu-dock>= is set and the current path (=data-mbu-page=) is one SAED has a pageType for,
+  add our own =[data-mb-corner="br"]= launcher, "Show all … (SAED)". The dock picks up any =[data-mb-corner]=
+  element, so it docks with the others. A click does what EH's own off-switch does:
+  - =document.getElementById('eh-launch').click()= (its =onclick= is =switchOn(!ehOn)=). On the loaded page that is
+    instant; after EH navigation EH reloads itself into MusicBrainz's page of that path (=sessionStorage eh-off=).
+  - Optionally carry the pressed button's label through =sessionStorage=, so SAED presses it after the reload.
+- *Mind*: EH's on/off choice is saved, so turning it off here turns it off for the next page too. Say so in the
+  launcher's tip.
+
+** TODO Join majkinetor's cross-tab request gate (=mbu:mb-gate=)
+
+- *Why*: on a release page with String Theory, ISRC Scout, PC, MC, Fusion, Fuzzy Logic and EH share one ~1 req/s
+  ws/2 schedule across tabs and hold together on a 429/503. SAED (Relationships column, previews, Discogs MB column,
+  =_ws2GetJson=) paces per tab and doesn't see their holds. Measured hint: one 503 in a run with EH, none without
+  (one run).
+- *What*: book our ws/2 requests in localStorage =mbu:mb-gate= under the Web Lock =mbu-mb-gate=. Details:
+  - GCRA with =MBN_GAP 1000= ms; on a throttle, write the shared =cool= hold, with =hot= escalating per episode
+    (=dev/net/mb-gate.mjs=, EH:58-244);
+  - later: the "lead" for a visible page's own requests, and the hidden-iframe browser-check recovery.
+- *Before coding*: read https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting, write a =scripts/probe-*.py= for
+  the 503/Retry-After shape, and check the licence (GPL-3) before copying code — re-implementing the documented
+  protocol is the clean path. This touches the fetch path, not filter/sort/render, but measure fetch wall clock
+  with and without String Theory (=run-perf-comparison=).
 
 

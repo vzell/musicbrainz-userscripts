@@ -28388,6 +28388,9 @@ Probe: `tests/support/probe-majkinetor-interop.js` with `event_horizon.user.js` 
 - EH's bare-letter keys work on our FRP: `h` navigated to `/release/<mbid>/edits`. String Theory takes Ctrl+K
   (capture phase + stopPropagation), our shortcuts-help default; EH binds Ctrl+L (forward), our Load-from-disk
   default.
-- From code (not live, our harness copy of ISRC Scout is 2026.10.16): ISRC Scout 2026.11.06's Links icons carry
-  `data-tip`, no `title`, so `_isrcScoutLinkPlatform()` finds no platform.
+- ISRC Scout 2026.11.06's Links icons carry `data-tip`, no `title`, so `_isrcScoutLinkPlatform()` finds no
+  platform. Measured 2026-11-06T14:11+01:00 (same host and browser) after refreshing the harness copy to
+  2026.11.06.170000 (upstream `1df6193`): release `22a6802f-…`, 36 icons on the FRP, 36 with `data-tip`, 0 with
+  `title`, 0 with `data-mb-link-platform` (probe case I). Its release load is now `GM_xmlhttpRequest` behind the
+  shared gate, so under plain GM stubs (`run-live-interop.js`) its columns never appear.
 - Requests: one 503 in the artist run with EH (max 4 MB responses/s) vs none alone (max 2/s). One run, suggestive.
