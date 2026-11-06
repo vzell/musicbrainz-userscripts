@@ -633,3 +633,38 @@ do the housekeeping
 - The discogs-mb-column flaky test is still unexplained. To keep the next failure's trace, I'd change run-test-full.py to copy test-results/ aside whenever a run fails.
 - add the mobile tests
  
+
+*** Answer (2026-11-06, branch =test/housekeeping=)
+
+Env: 2026-11-06T16:20+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright Chromium (chromium-fixtures, chromium-mobile Pixel 7), no Tampermonkey (GM stubs)
+
+1. *The 160 stale mutation finds:* 156 entries repointed onto today's code, 4 removed (the
+   feature they guarded is gone: three popup-mb entries, one rich-tooltips-liner; commits in
+   DEBUG-NOTES.md). All 161 changed or new entries ran through =mutation-check.py=: 157 as
+   expected at once; 4 needed work. One grep had to be updated because its test was renamed;
+   two entries had become invisible because MusicBrainz and setlist.fm windows open every
+   link now (new test G4 in =popup-ext-foreign.spec.js=, the setlist.fm entry widened);
+   and the Discogs role columns' collapse controls had no assertion (added). Then all
+   four failed as they should. New: =scripts/check-mutation-finds.py= (read-only, ~1 s) so
+   stale finds show up after a refactor instead of piling up.
+2. *Keeping a failed run's trace:* =scripts/run-test-full.py= copies a failed run's
+   =test-results/= (or =--output=) and its log to =~/.cache/sa-test-full/kept/<start>-<script>/=,
+   prints the path, stores it as =kept= in the status file, keeps the newest five
+   (=--no-keep= to skip). Checked on a forced failure: the trace was in the copy. The
+   discogs-mb-column flake itself stays unexplained until it fires again.
+3. *Mobile tests:* =tests/fixtures/image-section.mobile.spec.js= (6 tests): the Table view
+   (scrolls in its own box; a tap on a row's picture opens the viewer there, no hover card),
+   tiles at the largest size, the ⟳ on a failed tile, and the viewer's Adjust, Compare and
+   Loupe by touch. Three of those found real bugs, now fixed (WIP.1):
+   - dragging an Adjust slider with a finger counted as a swipe: the picture stepped and the
+     adjustment was lost;
+   - in Compare a swipe moved the left picture (← → move the right one);
+   - the loupe followed only a mouse, so on a phone its button did nothing; now one finger
+     moves the lens.
+   Mutation list =image-section-touch.json= (5, all fail as expected).
+
+Observed, not changed: MusicBrainz pages have no viewport meta, so on a phone this page is
+laid out 1648 px wide and the full-screen viewer is too; in the emulation its bar runs past
+the 412 px screen (Download onwards). Whether a real Android Chrome shows it zoomed out
+(all of it, small) I cannot tell from here. It is older than P4b. Worth one look on your
+phone, if you have MusicBrainz open there.

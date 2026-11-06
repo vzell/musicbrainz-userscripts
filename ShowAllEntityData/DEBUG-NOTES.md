@@ -28385,6 +28385,13 @@ the same test passed in P0's full run (2026-11-06T01:33, 2726 passed), and alone
 `test-results/` aside BEFORE any re-run after a failed gate (or let `scripts/run-test-full.py`
 do it on a non-zero exit).
 
+**Done the same day (branch `test/housekeeping`):** `scripts/run-test-full.py` now copies a
+failed run's output directory (`test-results/`, or an extra `--output`) and its `--log` to
+`~/.cache/sa-test-full/kept/<Berlin start>-<script>/` after the run, prints the path and stores
+it as `kept` in the status file; the newest five copies stay (`--no-keep` to skip). Checked on a
+forced failure (`art-image-retry.spec.js --timeout=4000`, 2026-11-06T13:58+01:00, NB-3641): the
+failed test's `trace.zip` was in the copy. The next time this flake fires, read the trace there.
+
 ## 2026-11-06 — Pictures that did not load showed the browser's broken glyph, no retry (archive down)
 
 Env: 2026-11-06T09:43+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · vzell's screenshot: Chrome (version not recorded) with Tampermonkey (version not recorded); fix checked in Playwright Chromium, no Tampermonkey (GM stubs)
@@ -28423,3 +28430,76 @@ probe specs (MutationObserver log, request log); the test fires the `<img>`'s `e
 event itself. Specs `art-image-retry.spec.js` (real timeouts: tiles, medium thumbs, the
 viewer) and `sidebar-picture.spec.js` "image retry"; mutation list `image-section.json`
 (10 more, one recorded as an overlap).
+
+## 2026-11-06 — The viewer's P4b tools on a touch screen: a slider drag stepped the picture, Compare swiped the wrong side, the loupe never showed
+
+Env: 2026-11-06T14:03 → 16:10+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright Chromium, chromium-mobile (Pixel 7 emulation), no Tampermonkey (GM stubs)
+
+Found while writing the image section's mobile tests (`image-section.mobile.spec.js`, branch
+`test/housekeeping`), first by reading `_artViewerOnPointerDown()`/`_artViewerOnPointerUp()`,
+then shown failing by the spec before the fix:
+
+- **Adjust:** the panel is appended INSIDE `.mb-artv-stage`, whose pointer handlers take a
+  one-finger horizontal move of more than 50 px as a swipe. A finger dragging Brightness 120 px
+  to the right stepped back to 16 / 16 — and a step starts neutral, so the adjustment was gone
+  too. Fix: a press inside `.mb-artv-adjust` returns before any swipe or drag starts.
+- **Compare:** the swipe called `_artViewerStep()`, which moves `st.i` — the LEFT picture —
+  while ← → and the filmstrip change the right one (`_artViewerCompareStep()`). Fix: in
+  Compare the swipe goes through `_artViewerCompareStep()`.
+- **Loupe:** `_artViewerLoupeMove()` ran from `mousemove` only; a sliding finger fires none,
+  so on a phone the Loupe button did nothing. Fix: `_artViewerLoupeTouch()` (Loupe on, not
+  zoomed, no Compare, no grid): one finger places and moves the lens, and is then no swipe.
+
+Mutation list `image-section-touch.json` (5, all fail as expected).
+
+**Not fixed, observed:** MusicBrainz pages carry no viewport meta. On the medley fixture
+the phone's layout viewport is 1648 px (the tracklist is 8458 px wide) against a 412 px
+visual viewport in this emulation, and the full-screen viewer, `position: fixed`, is 1648 px
+wide: Download, Adjust, Compare, Loupe, Copy, Keys and Original sit beyond x = 965. Whether
+a real Chrome on Android loads such a page zoomed out (showing all of it, small) cannot be
+told from the emulation. Older than P4b; the spec presses bar buttons with a DOM click and
+says why.
+
+**Probe trap:** `locator.boundingBox()` adds the visual viewport's scroll on this zoomed-out
+layout, so a dispatched PointerEvent's `clientX` built from it misses what
+`getBoundingClientRect()` reports. Take coordinates for dispatched events from the page.
+
+## 2026-11-06 — 160 stale mutation finds repointed onto today's code
+
+Env: 2026-11-06T13:44 → 16:12+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright Chromium, no Tampermonkey (GM stubs)
+
+160 `find`s in 74 lists of `scripts/mutations/` occurred 0 or 2+ times (code moved since the
+lists were written; mostly the popup engine, Discogs, setlist.fm, Brucebase). 156 entries
+were repointed to plant the same defect on today's code (four parallel agents, each on its
+own lists, none running tests while the userscript was shared), 4 were removed because the
+feature they guarded is gone:
+
+- popup-mb "a link in the Relationships column is previewed" — reversed on purpose by
+  `a3a7c610` (Relationships icons are previewed; the reverse guard is
+  `rel-icons-mb-preview.json`);
+- popup-mb "the recording window always asks for the count" — `57e2e790` (Phase 3a+3b: every
+  release through the paged loader, no count browse);
+- popup-mb "the last slice's ▶ is not disabled" — `86839808` (Phase 3c: no slice pager);
+- rich-tooltips-liner "the Relationships plain panel is clamped onto the rich one again" —
+  `61f7c413` (`#mb-rel-plain-tooltip` removed; both boxes in one flex column).
+
+One batch of all 161 (the 156 plus the 5 new touch entries) through `mutation-check.py`:
+157 as expected, 4 not, each fixed and re-run green:
+
+- `dp-window-covers.json`: the test had been renamed (Phase 3c); grep updated.
+- `win-ext-bb.json` "every reader opens in the window" SURVIVED: since `fb53eb3b`
+  (2026-10-29) MusicBrainz windows open every link (`_DP_WIN_ALL_LINKS_SOURCES`), so no spec
+  could see `_DP_WIN_EXT_READERS` any more. New test: popup-ext-foreign.spec.js "G4: a link
+  whose reader is not an in-window one (Wikipedia) keeps its new tab here" (a generic page's
+  window, which is not all-links).
+- `wiki-setlistfm.json` "setlist.fm links in its own window leave for a new tab" SURVIVED:
+  setlist.fm windows are all-links too (`_DP_WIN_ALL_LINKS_READERS`); the entry now takes
+  'setlistfm' out of both sets.
+- `discogs-pages.json` "a track's credits not a collapsible list" SURVIVED: after the role
+  columns (`89e6574b`) no spec looked at their collapse controls; discogs-release-tracks.spec.js
+  "the credits as role columns" now asserts the Engineer header's button and A1's cell toggle.
+
+Judgement calls the agents flagged (a broader plant than the original, or a find widened to
+one of two copies) are in their batch notes; each of those entries failed its spec as
+expected. So that this does not pile up again unseen: `scripts/check-mutation-finds.py`
+(read-only, ~1 s, exit 1 on a stale find), named in CLAUDE.md under "Testing expectations".

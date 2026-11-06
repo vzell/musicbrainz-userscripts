@@ -76,6 +76,8 @@ from =chromium-fixtures= (which ignores the pattern) to =chromium-mobile=. This
 is Chromium's emulation, not Firefox Android, which Playwright cannot drive: see
 =org/mobile.org= for what it does and does not cover. A mutation entry for such
 a spec needs ="project": "chromium-mobile"= (=scripts/mutation-check.py=).
+=scripts/check-mutation-finds.py= (read-only, about a second) lists every
+mutation entry whose =find= no longer occurs exactly once, in every list.
 
 *Fixtures* serve a saved local HTML file at a real musicbrainz.org-shaped URL
 via Playwright's =page.route()=, so the userscript believes it is on the real
@@ -408,7 +410,12 @@ becomes 5000 again, despite the setting's description promising "0 to disable".
 - =npm run report= opens the last HTML report. It embeds per-test durations,
   traces for failures, and screenshots.
 - =playwright-report/= and =test-results/= are both gitignored — treat them as
-  this-run-only.
+  this-run-only: Playwright empties =test-results/= when the next run starts.
+  A run through =scripts/run-test-full.py= that fails copies it (or an extra
+  =--output= directory) and its =--log= to
+  =~/.cache/sa-test-full/kept/<start>-<script>/= first; the newest five stay,
+  and the path is printed and stored as =kept= in the status file
+  (=--no-keep= skips the copy). Read a flake's trace there, not after a re-run.
 - Failures retain a trace (=trace: 'retain-on-failure'=) and a screenshot. Open
   the trace from the HTML report; it is usually faster than re-running.
 - The two =test:live:report:*= scripts additionally generate a timestamped
