@@ -225,8 +225,8 @@
     "why": "While the finding is ticked, a row stamped later must be filtered in; only _LATE_FINDING_IDS decides. Not visible here: every cell is written before the tick, so nothing is stamped while it filters.",
     "edits": [
       {
-        "find": "    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-site'];",
-        "replace": "    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS];"
+        "find": "    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-site', 'bb-mbev-link-mismatch', 'bb-mbev-link-missing'];",
+        "replace": "    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'bb-mbev-link-mismatch', 'bb-mbev-link-missing'];"
       }
     ],
     "spec": "tests/fixtures/rel-column-site-kind-discogs.spec.js",

@@ -112,8 +112,8 @@
     "why": "_stampLiveTitleRow() must judge a recording comment column by its comment; without it the Name and Disambiguation cells stay untinted.",
     "edits": [
       {
-        "find": "            const flag = (rec && _recCommentFlag(_findCellRecordingComment(td, rec === 'plain'))) ||",
-        "replace": "            const flag = (rec && null) ||"
+        "find": "            const recFlag = rec ? _recCommentFlag(_findCellRecordingComment(td, rec === 'plain')) : null;",
+        "replace": "            const recFlag = rec ? null : null;"
       }
     ],
     "spec": "tests/fixtures/uvd-recording-comments.spec.js",

@@ -69,7 +69,7 @@
         "why": "A sorted column's header tint is 60 % alpha; on the Springsteen sites nothing was behind it, and rows scrolling under the pinned header showed through (2026-10-14: brucespringsteen.it, then springsteenlyrics.com, whose Bootstrap table { background-color: transparent } also beat a zero-specificity backing).",
         "edits": [
             {
-                "find": "            body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb) table.tbl > thead {\n                background-color: #fff;\n            }\n",
+                "find": "            body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg, .mb-sa-host-ia, .mb-sa-host-sfm) table.tbl > thead {\n                background-color: #fff;\n            }\n",
                 "replace": ""
             }
         ],
@@ -82,8 +82,8 @@
         "why": "springsteenlyrics.com's Bootstrap table { background-color: transparent } then wins, and the rows show through the sorted headers there; brucespringsteen.it has no such rule.",
         "edits": [
             {
-                "find": "            body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb) table.tbl > thead {\n                background-color: #fff;\n            }\n",
-                "replace": "            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb) table.tbl) > thead {\n                background-color: inherit;\n            }\n"
+                "find": "            body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg, .mb-sa-host-ia, .mb-sa-host-sfm) table.tbl > thead {\n                background-color: #fff;\n            }\n",
+                "replace": "            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg, .mb-sa-host-ia, .mb-sa-host-sfm) table.tbl) > thead {\n                background-color: inherit;\n            }\n"
             }
         ],
         "spec": "tests/fixtures/sorted-thead-opaque.spec.js",

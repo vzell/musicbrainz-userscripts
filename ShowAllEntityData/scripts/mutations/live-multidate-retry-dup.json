@@ -56,8 +56,8 @@
     "why": "The card would keep the old count until the pointer moves.",
     "edits": [
       {
-        "find": "        if (card && card.style.display === 'block') card.innerHTML = _tipTextToHtml(text);",
-        "replace": "        if (false) card.innerHTML = _tipTextToHtml(text);"
+        "find": "        if (card && card.style.display === 'block') card.innerHTML = _tipTextToHtml(text, el);",
+        "replace": "        if (false) card.innerHTML = _tipTextToHtml(text, el);"
       }
     ],
     "spec": "tests/fixtures/rich-tooltips-liner.spec.js",

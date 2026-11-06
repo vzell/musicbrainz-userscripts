@@ -1,0 +1,72 @@
+[
+    {
+        "name": "touch: a press inside the Adjust panel starts a swipe",
+        "why": "org/image-handling.org Housekeeping. The panel lies on the stage; without the guard a finger dragging a slider 120 px is read as a swipe, the picture steps (here back to 16 / 16) and the adjustment is reset.",
+        "edits": [
+            {
+                "find": "        if (e.target.closest('.mb-artv-adjust')) return;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/image-section.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "Adjust: a finger dragging a slider",
+        "expect": "fail"
+    },
+    {
+        "name": "touch: a swipe in Compare steps the left picture",
+        "why": "A plain step moves st.i, the LEFT picture; ← → and the filmstrip change the right one. The swipe must go through _artViewerCompareStep().",
+        "edits": [
+            {
+                "find": "            if (st.cmp !== null) _artViewerCompareStep(dx < 0 ? 1 : -1);\n            else _artViewerStep(dx < 0 ? 1 : -1);",
+                "replace": "            _artViewerStep(dx < 0 ? 1 : -1);"
+            }
+        ],
+        "spec": "tests/fixtures/image-section.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "Compare: a swipe changes the right picture",
+        "expect": "fail"
+    },
+    {
+        "name": "touch: a finger going down does not place the lens",
+        "why": "Touch fires no mousemove while a finger slides, so without the pointerdown branch the lens never shows on a phone and the finger swipes instead.",
+        "edits": [
+            {
+                "find": "            if (st.touches.size === 1 && _artViewerLoupeTouch(st)) {\n                st.swipeX = null;\n                _artViewerLoupeMove(e);\n                return;\n            }",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/image-section.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "Loupe: one finger moves the lens",
+        "expect": "fail"
+    },
+    {
+        "name": "touch: the lens does not follow a sliding finger",
+        "why": "The pointermove branch moves the lens with the finger; without it the lens stays where the finger went down.",
+        "edits": [
+            {
+                "find": "            if (st.touches.size === 1 && !st.pinch && _artViewerLoupeTouch(st)) {\n                _artViewerLoupeMove(e);\n                return;\n            }",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/image-section.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "Loupe: one finger moves the lens",
+        "expect": "fail"
+    },
+    {
+        "name": "touch: the loupe takes the finger also when it is off",
+        "why": "_artViewerLoupeTouch() must ask st.loupe: with the loupe off a one-finger move is a swipe again (the test's control).",
+        "edits": [
+            {
+                "find": "        return !!(st && st.loupe && !st.zoom && st.cmp === null && !st.grid);",
+                "replace": "        return !!(st && !st.zoom && st.cmp === null && !st.grid);"
+            }
+        ],
+        "spec": "tests/fixtures/image-section.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "Loupe: one finger moves the lens",
+        "expect": "fail"
+    }
+]

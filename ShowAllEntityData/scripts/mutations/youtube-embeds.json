@@ -17,8 +17,8 @@
         "why": "Decision 4, one player at a time: the spec asserts a single frame after a second tile is clicked.",
         "edits": [
             {
-                "find": "        if (cur) _ytStop('another video');\n        if (_yt.blocked && !v.dead) {",
-                "replace": "        if (_yt.blocked && !v.dead) {"
+                "find": "        if (cur) _ytStop('another video');\n        if (_ytBlockedFor(v) && !v.dead) {",
+                "replace": "        if (_ytBlockedFor(v) && !v.dead) {"
             }
         ],
         "spec": "tests/fixtures/youtube-embeds.spec.js",
@@ -30,8 +30,8 @@
         "why": "Stills off means no request to i.ytimg.com before a click; the spec counts them.",
         "edits": [
             {
-                "find": "        const still = Lib.settings.sa_yt_stills === true && !playlist && !!v.id;",
-                "replace": "        const still = !playlist && !!v.id;"
+                "find": "(Lib.settings.sa_yt_stills === true && !playlist && v.id",
+                "replace": "(!playlist && v.id"
             }
         ],
         "spec": "tests/fixtures/youtube-embeds.spec.js",
@@ -82,8 +82,8 @@
         "why": "Decision 6: after the refusal every tile says it opens YouTube and does so; the spec clicks a second tile and expects a new tab, no player.",
         "edits": [
             {
-                "find": "        const was = _yt.blocked;\n        _yt.blocked = true;",
-                "replace": "        const was = _yt.blocked;\n        _yt.blocked = false;"
+                "find": "        else _yt.blocked = true;",
+                "replace": "        else _yt.blocked = false;"
             }
         ],
         "spec": "tests/fixtures/youtube-embeds.spec.js",

@@ -23,7 +23,7 @@
     "name": "the Relationships rich panel renders empty",
     "why": "_initRelTooltipListeners() shows #mb-rel-tooltip without its content.",
     "edits": [
-      { "find": "                _relTooltipEl.innerHTML = _relBuildTooltipHTML(_cell);\n", "replace": "                _relTooltipEl.innerHTML = '';\n" }
+      { "find": "                _relTooltipEl.innerHTML = _relStackParts(_cell, _a).map(p =>\n                    `<div class=\"mb-tt-liner mb-rel-note mb-rel-note-${p.kind}\" style=\"background:${_mbttEscape(_bg)};color:${_mbttEscape(_color)}\">${p.html}</div>`\n                ).join('');\n", "replace": "                _relTooltipEl.innerHTML = '';\n" }
     ],
     "spec": "tests/fixtures/rich-tooltips.spec.js",
     "grep": "with a filter matching its URL",

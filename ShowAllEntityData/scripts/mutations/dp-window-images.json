@@ -43,8 +43,8 @@
         "why": "Without the fi kind _dpWinWhat() calls the thumbnail 'out': the foot line says 'New tab' while a click opens the viewer.",
         "edits": [
             {
-                "find": "        if (a.matches('a[data-mb-fi]')) return pointer && !node.closest('img') ? null : { kind: 'fi', a };\n",
-                "replace": ""
+                "find": "        if (a.matches('a[data-mb-fi], a[data-mbtt-fn=\"sb-cover\"]')) return pointer && !node.closest('img') ? null : { kind: 'fi', a };\n",
+                "replace": "        if (a.matches('a[data-mbtt-fn=\"sb-cover\"]')) return pointer && !node.closest('img') ? null : { kind: 'fi', a };\n"
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",

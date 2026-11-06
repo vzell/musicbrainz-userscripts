@@ -39,6 +39,16 @@ The announcement line CLAUDE.md asks for ("The suite started at … on …, on �
 at …, probably around …") is printed as soon as Playwright reports its test
 count, prefixed with "[run-test-full]".
 
+A failed run's Playwright output (`test-results/`, or the directory an
+extra `--output` names: traces, screenshots, error contexts) is copied to
+~/.cache/sa-test-full/kept/<start>-<script>/ before anything can wipe it,
+with the log beside it, and the path is printed and stored in the status
+file (`kept`). The newest KEEP_RUNS such copies stay; older ones are removed.
+`--no-keep` turns it off. Reason (2026-11-06): discogs-mb-column.spec.js
+failed once in a full run, a re-run of that one spec started Playwright again,
+which empties its output directory first, and the only trace of a flake that
+has not been reproduced since was gone (DEBUG-NOTES.md).
+
 Exit status is npm's.
 """
 
@@ -47,6 +57,7 @@ import datetime
 import json
 import os
 import re
+import shutil
 import socket
 import subprocess
 import sys
@@ -56,6 +67,8 @@ import zoneinfo
 BERLIN = zoneinfo.ZoneInfo('Europe/Berlin')
 STATE_DIR = os.path.expanduser('~/.cache/sa-test-full')
 STATUS_PATH = os.path.join(STATE_DIR, 'status.json')
+KEEP_DIR = os.path.join(STATE_DIR, 'kept')
+KEEP_RUNS = 5
 
 RUNNING_RE = re.compile(r'Running (\d+) tests? using (\d+) workers?')
 RESULT_RE = re.compile(r'^\s+([✓✘-])\s+\d+\s+\[')
@@ -117,6 +130,39 @@ def save_history(host, script, wall_s, tests, finished):
         json.dump({'wall_s': wall_s, 'tests': tests, 'finished': finished}, fh, indent=2)
 
 
+def output_dir(extra):
+    """Return Playwright's output directory for this run: an extra `--output` or `test-results`."""
+    for i, arg in enumerate(extra):
+        if arg.startswith('--output='):
+            return arg.split('=', 1)[1]
+        if arg == '--output' and i + 1 < len(extra):
+            return extra[i + 1]
+    return 'test-results'
+
+
+def keep_results(src, start, script, log_path):
+    """Copy a failed run's output directory (and log) aside; return the copy's path or None.
+
+    The copy is named after the run's Berlin start time and script, so it sorts
+    by age; only the newest KEEP_RUNS copies are left.
+    """
+    if not os.path.isdir(src):
+        return None
+    stamp = start.astimezone(BERLIN).strftime('%Y%m%dT%H%M%S')
+    dest = os.path.join(KEEP_DIR, f"{stamp}-{script.replace(':', '-')}")
+    try:
+        shutil.copytree(src, os.path.join(dest, os.path.basename(os.path.normpath(src))),
+                        dirs_exist_ok=True)
+        if log_path and os.path.isfile(log_path):
+            shutil.copy2(log_path, dest)
+    except OSError as exc:
+        print(f"[run-test-full] could not keep {src}: {exc}", file=sys.stderr)
+        return None
+    for old in sorted(os.listdir(KEEP_DIR))[:-KEEP_RUNS]:
+        shutil.rmtree(os.path.join(KEEP_DIR, old), ignore_errors=True)
+    return dest
+
+
 def npm_test_scripts():
     """Return the names of package.json's `test…` scripts (empty when it cannot be read)."""
     try:
@@ -133,6 +179,8 @@ def main():
     ap.add_argument('--script', default='test:full',
                     help='the npm test script to run (default: test:full, the merge gate)')
     ap.add_argument('--log', help='also copy the output to this file')
+    ap.add_argument('--no-keep', action='store_true',
+                    help="do not copy a failed run's test-results/ aside")
     ap.add_argument('extra', nargs='*', help='extra args after --, passed to playwright')
     opts = ap.parse_args()
     known = npm_test_scripts()
@@ -236,6 +284,13 @@ def main():
             print(tail, file=out, flush=True)
     if log:
         log.close()
+    # Last, so the copied log is complete; a re-run would empty the directory.
+    if rc != 0 and not opts.no_keep:
+        kept = keep_results(output_dir(opts.extra), start, opts.script, opts.log)
+        if kept:
+            status['kept'] = kept
+            write_status(status)
+            print(f"[run-test-full] kept the failed run's output in {kept}", flush=True)
     return rc
 
 

@@ -147,8 +147,8 @@
     "why": "`_TABLE_SEED_REGISTRY()` reads constants declared tens of thousands of lines BELOW the startup block, and module-level `const`s sit in the temporal dead zone until evaluated. `node --check` cannot see it, because the TDZ is a runtime rule and not a syntax one.\n\nThe mutation has to MOVE the call, not add one: an earlier version merely added it, and the test passed because the foot call still ran and did the work. Worse, it passed silently — the try/catch around `rows()` swallowed five ReferenceErrors and the pass simply covered nothing. That is what the `unreadable` counter in the result now exists to make visible, and it is the assertion this mutation now trips.",
     "edits": [
       {
-        "find": "    _migrateFrozenSettings();\n    _coerceNumericSettings();",
-        "replace": "    _seedNewTableRows();\n    _migrateFrozenSettings();\n    _coerceNumericSettings();"
+        "find": "    _migrateFrozenSettings();\n    setTimeout(_sweepOrphanedGmValues, 0);",
+        "replace": "    _seedNewTableRows();\n    _migrateFrozenSettings();\n    setTimeout(_sweepOrphanedGmValues, 0);"
       },
       {
         "find": "    _seedNewTableRows();\n    if (document.readyState !== 'loading') _showTableSeedNotice();",

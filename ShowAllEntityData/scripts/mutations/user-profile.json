@@ -3,7 +3,7 @@
     "name": "the profile converter never runs",
     "why": "THE feature: without it the page has no table.tbl, so the button renders nothing.",
     "edits": [
-      { "find": "        if (activeDefinition.features?.userProfileToTables) {\n            applyUserProfileToTables(activeDefinition);\n        }\n\n        // ── editsToTable pre-processing", "replace": "\n        // ── editsToTable pre-processing" }
+      { "find": "        if (activeDefinition.features?.userProfileToTables) {\n            applyUserProfileToTables(activeDefinition);\n        }\n        // An annotation version ('annotation-version'): this version beside", "replace": "        // An annotation version ('annotation-version'): this version beside" }
     ],
     "spec": "tests/fixtures/user-profile.spec.js",
     "grep": "five groups with their columns",

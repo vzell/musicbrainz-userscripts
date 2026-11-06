@@ -442,18 +442,28 @@ never from a hard-coded `CAA_CTX`. Rules that come with that:
     turn or flip. **Zoom keys are refused in Compare**: `_artViewerSetZoom()`
     needs only the stage and would raise the zoom of the picture behind,
     which then came back zoomed. ← → and the filmstrip change the right
-    picture (`_artViewerCompareStep()`, skipping the left). Opened INTO
+    picture (`_artViewerCompareStep()`, skipping the left), and so does a
+    touch swipe (`_artViewerOnPointerUp()`; a plain step moved the LEFT one,
+    as `st.i` is the left). Opened INTO
     Compare (`compareWith`, a Spreads pair in `_releaseArtOnClick()`):
     `st.cmpStart`, Esc closes the viewer, as `gridStart` does.
   - **Loupe** (`_artViewerLoupeMove()`, from the mousemove AFTER the
     follow-pan): screen fractions → undo the flips → undo the turn →
     the picture's own; the lens is turned and flipped as the picture is.
+    On a touch screen ONE finger moves it (`_artViewerLoupeTouch()`: Loupe
+    on, not zoomed, no Compare, no grid) and is then no swipe: touch fires
+    no mousemove while a finger slides, so the button did nothing on a phone.
+  - **Adjust on a touch screen**: the panel lies ON the stage, so
+    `_artViewerOnPointerDown()` returns for a press inside `.mb-artv-adjust`
+    — a finger dragging a slider 50 px was a swipe, stepped the picture and
+    so reset the adjustment.
   - **Copy URL** (`_artViewerCopyUrl()`): `navigator.clipboard`, no new
     `@grant` (a grant re-prompts every user).
   - **Esc order**: fullscreen, the key help, Compare (unless `cmpStart`),
     the grid, the viewer.
   Spec `art-viewer-tools.spec.js`; mutation list `image-section.json`
-  (67 entries).
+  (67 entries). On a phone: `image-section.mobile.spec.js` (also the Table
+  view, the tile size and the ⟳), mutation list `image-section-touch.json`.
 - **One record, one cache.** `_artFetchEntityImages(ctx, entityPath)` is the
   table-free copy of `_artEnrichIcon()`'s three tiers with the same 404 vs
   429/5xx bookkeeping, so the section and the CAA column share

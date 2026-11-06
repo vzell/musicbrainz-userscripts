@@ -225,8 +225,8 @@
         "why": "Most event names begin with their day (\"2025‐05‐20: Co‐op Live, …\"): appending \"(2025-05-20)\" only repeats it.",
         "edits": [
             {
-                "find": "        const days = type === 'event' && !String(e.name || '').replace(/\\u2010/g, '-').includes((e['life-span'] || {}).begin || '\\u0000')",
-                "replace": "        const days = type === 'event'"
+                "find": "        const days = seg === 'event' && !String(e.name || '').replace(/\\u2010/g, '-').includes((e['life-span'] || {}).begin || '\\u0000')",
+                "replace": "        const days = seg === 'event'"
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",

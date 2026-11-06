@@ -50,7 +50,7 @@
   {
     "name": "an archive.org link on archive.org is 'not another site'",
     "why": "Our table's titles link the item on the same host; without the exception they get no card.",
-    "edits": [{ "find": "            !(_isDgHost && _extDgSiteTest(u)) && !(_isIaHost && _extIaTest(u))) return null;", "replace": "            !(_isDgHost && _extDgSiteTest(u))) return null;" }],
+    "edits": [{ "find": "!(_isIaHost && _extIaTest(u)) && !(_isSfmHost && _extSfmTest(u)) &&", "replace": "!(_isSfmHost && _extSfmTest(u)) &&" }],
     "spec": "tests/fixtures/ia-search.spec.js",
     "grep": "a title in our table",
     "expect": "fail"

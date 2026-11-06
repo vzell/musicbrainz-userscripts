@@ -47,7 +47,7 @@
     "file": "../lib/VZ_MBLibrary.user.js",
     "edits": [
       {
-        "find": "                    const defaultText = hasComparableDefault ? String(cfg.default ?? '') : '';",
+        "find": "                    const defaultText = !hasComparableDefault ? ''\n                                      : _selDefault ? _selDefault.label\n                                      : String(cfg.default ?? '');",
         "replace": "                    const defaultText = String(cfg.default);"
       },
       {

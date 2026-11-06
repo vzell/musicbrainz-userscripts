@@ -358,6 +358,9 @@ list of planted defects (`scripts/mutations/*.json`) unattended: each `find`
 must match exactly once, the userscript is restored and hash-verified
 afterwards, and a guard the spec genuinely cannot see because another covers
 for it is recorded as `"expect": "pass"` rather than left unmentioned.
+Finds go stale as the code moves (160 had, 2026-11-06):
+`python3 scripts/check-mutation-finds.py` (read-only, ~1 s) lists every one
+that no longer matches exactly once; run it after a refactor and at a merge.
 
 **Name the guarantee precisely, or the test proves something adjacent.** The
 CAA/EAA presence-sorting bug (docs/claude/artwork-caa-eaa.md) went unnoticed for the whole visible history

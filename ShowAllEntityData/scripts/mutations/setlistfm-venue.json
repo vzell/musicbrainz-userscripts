@@ -134,8 +134,8 @@
     "why": "The session probe of 2026-11-02 read them anonymously; no consent was given for cookies (detail-pages.md's exceptions).",
     "edits": [
       {
-        "find": "            const res = await _extGet(url, { wanted });\n            if (res.skipped) return { skipped: true };\n            const checked = _extBotCheck(res);",
-        "replace": "            const res = await _extGet(url, { wanted, fetchOpts: { session: true } });\n            if (res.skipped) return { skipped: true };\n            const checked = _extBotCheck(res);"
+        "find": "            return _extGet(url, { wanted, fetchOpts: session ? { session: true } : {} });",
+        "replace": "            return _extGet(url, { wanted, fetchOpts: { session: true } });"
       }
     ],
     "spec": "tests/fixtures/popup-ext.spec.js",

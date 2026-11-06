@@ -17,8 +17,8 @@
     "why": "Older pages without #app, like Cloudflare's check: without their path in the gate the script stops there.",
     "edits": [
       {
-        "find": "_DG_IMG_PATH_RE.test(window.location.pathname) || _DG_ENT_IMG_PATH_RE.test(window.location.pathname)) &&",
-        "replace": "_DG_IMG_PATH_RE.test(window.location.pathname)) &&"
+        "find": "           _DG_IMG_PATH_RE.test(window.location.pathname) || _DG_ENT_IMG_PATH_RE.test(window.location.pathname) ||",
+        "replace": "           _DG_IMG_PATH_RE.test(window.location.pathname) ||"
       }
     ],
     "spec": "tests/fixtures/discogs-images.spec.js",

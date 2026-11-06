@@ -596,8 +596,8 @@
     "why": "The class is added with the sidebar's transition on: the collapsed sidebar keeps its box for the 0.3 s discrete display transition, then the page reflows under a resting pointer.",
     "edits": [
       {
-        "find": "            sidebar.style.transition = 'none';\n            sidebar.classList.add('sidebar-collapsed');\n",
-        "replace": "            sidebar.classList.add('sidebar-collapsed');\n"
+        "find": "            sidebar.style.transition = 'none';\n            sidebar.classList.toggle('sidebar-collapsed', collapsed);\n",
+        "replace": "            sidebar.classList.toggle('sidebar-collapsed', collapsed);\n"
       }
     ],
     "spec": "tests/fixtures/sticky-page-headers.spec.js",

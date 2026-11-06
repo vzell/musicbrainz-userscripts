@@ -4,7 +4,7 @@
         "why": "The tags page's links would show nothing on hover, as before 2026-10-21.",
         "edits": [
             {
-                "find": "        if (u) return /(?:^|[?&])show_downvoted=1(?:&|$)/.test(search) ? null : { seg: '', type: 'usertag', id: `${u[1]}/${u[2]}` };",
+                "find": "        if (u) return /(?:^|[?&])show_downvoted=1(?:&|$)/.test(search) ? null : { seg: '', type: 'usertag', id: `${u[1]}/${u[2]}`, list: u[3] || '' };",
                 "replace": "        if (u) return null;"
             }
         ],
@@ -17,8 +17,8 @@
         "why": "?show_downvoted=1 lists other entities than the page the card reads.",
         "edits": [
             {
-                "find": "        if (u) return /(?:^|[?&])show_downvoted=1(?:&|$)/.test(search) ? null : { seg: '', type: 'usertag', id: `${u[1]}/${u[2]}` };",
-                "replace": "        if (u) return { seg: '', type: 'usertag', id: `${u[1]}/${u[2]}` };"
+                "find": "        if (u) return /(?:^|[?&])show_downvoted=1(?:&|$)/.test(search) ? null : { seg: '', type: 'usertag', id: `${u[1]}/${u[2]}`, list: u[3] || '' };",
+                "replace": "        if (u) return { seg: '', type: 'usertag', id: `${u[1]}/${u[2]}`, list: u[3] || '' };"
             }
         ],
         "spec": "tests/fixtures/popup-mb-user-lists.spec.js",

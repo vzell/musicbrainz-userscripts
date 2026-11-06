@@ -82,8 +82,8 @@
         "why": "org/MB-POH-sync-withDiscogs.org Phase 4: dg-release's path pattern takes /images too; it must leave them to dg-images and dg-image-history.",
         "edits": [
             {
-                "find": "match: (path) => _dgPage(path)?.kind === 'release' && !_DG_HIST_PATH_RE.test(path) && !_DG_IMG_PATH_RE.test(path),",
-                "replace": "match: (path) => _dgPage(path)?.kind === 'release' && !_DG_HIST_PATH_RE.test(path),"
+                "find": "            match: (path) => _dgEntityPageIs(path, 'release'),",
+                "replace": "            match: (path) => _dgPage(path)?.kind === 'release' && !_DG_HIST_PATH_RE.test(path) && !_DG_ENT_IMG_PATH_RE.test(path),"
             }
         ],
         "spec": "tests/fixtures/discogs-images.spec.js",
@@ -95,8 +95,8 @@
         "why": "org/MB-POH-sync-withDiscogs.org Phase 4: the image pages are older pages without #app; the gate admits them by path and #page_content.",
         "edits": [
             {
-                "find": "           _DG_HIST_PATH_RE.test(window.location.pathname) || _DG_RATINGS_PATH_RE.test(window.location.pathname) ||\n           _DG_IMG_PATH_RE.test(window.location.pathname)) &&",
-                "replace": "           _DG_HIST_PATH_RE.test(window.location.pathname) || _DG_RATINGS_PATH_RE.test(window.location.pathname)) &&"
+                "find": "           _DG_IMG_PATH_RE.test(window.location.pathname) || _DG_ENT_IMG_PATH_RE.test(window.location.pathname) ||",
+                "replace": "           _DG_ENT_IMG_PATH_RE.test(window.location.pathname) ||"
             }
         ],
         "spec": "tests/fixtures/discogs-images.spec.js",

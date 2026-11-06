@@ -53,7 +53,7 @@
     "name": "the offer is not cleared at the top of a run",
     "why": "_resumeState must be cleared by EVERY run, including a resumed one, or a successful resume leaves a stale offer pointing at a page that has since loaded.",
     "edits": [
-      { "find": "        _resumeState = null;\n\n        // ── BEGIN: Artist-Releasegroups pre-fetch pass", "replace": "\n        // ── BEGIN: Artist-Releasegroups pre-fetch pass" }
+      { "find": "        _resumeState = null;\n        _createResumeFetchButton();", "replace": "        _createResumeFetchButton();" }
     ],
     "spec": "tests/fixtures/resume-from-failed-page.spec.js",
     "grep": "keeps the rows already loaded",

@@ -99,8 +99,8 @@
         "why": "The pre-2026-10-17 rule: a link around an image never gets the external card.",
         "edits": [
             {
-                "find": "        if ((!relIcon && a.querySelector('img:not(.avatar)')) || a.closest(_EXT_SKIP_SEL)) return null;",
-                "replace": "        if (a.querySelector('img:not(.avatar)') || a.closest(_EXT_SKIP_SEL)) return null;"
+                "find": "        if ((!relIcon && a.querySelector('img:not(.avatar)')) || (!inWindow && a.closest(_EXT_SKIP_SEL))) return null;",
+                "replace": "        if (a.querySelector('img:not(.avatar)') || (!inWindow && a.closest(_EXT_SKIP_SEL))) return null;"
             }
         ],
         "spec": "tests/fixtures/rel-icons.spec.js",
@@ -112,7 +112,7 @@
         "why": "It would show the bare URL and the cell's 'click outside the icons' hint instead of the filter and icon boxes.",
         "edits": [
             {
-                "find": "        if (relCell) return _relStackParts(relCell, own).map(p => ({ kind: p.kind === 'filter' ? 'rel' : 'title', html: p.html }));\n",
+                "find": "            return _relStackParts(relCell, own).map(p => ({ kind: kinds[p.kind] || 'title', html: p.html, label: labels[p.kind] || 'Link' }));\n",
                 "replace": ""
             }
         ],
@@ -155,7 +155,7 @@
         "why": "Without a filter the icon's card showed only its URL, with no site name.",
         "edits": [
             {
-                "find": "        if (el && el.tagName === 'A' && el.closest && el.closest('td.mb-rel-cell')) return _relLinkNoteHtml(el);\n",
+                "find": "        if (relCell) {\n            const finding = _relFindingNoteHtml(relCell, el);\n            return (finding ? `${finding}<div class=\"mb-tt-rule\"></div>` : '') + _relLinkNoteHtml(el);\n        }\n",
                 "replace": ""
             }
         ],

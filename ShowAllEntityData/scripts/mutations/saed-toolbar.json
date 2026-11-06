@@ -199,7 +199,7 @@
     "why": "The SAED card would cover the menu it describes.",
     "edits": [
       {
-        "find": "            if (el.getAttribute('aria-expanded') === 'true') return;",
+        "find": "            if (el.classList.contains('mb-toolbar-menu-btn') && el.getAttribute('aria-expanded') === 'true') return;",
         "replace": "            void 0;"
       },
       {

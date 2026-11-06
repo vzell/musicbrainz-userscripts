@@ -56,8 +56,8 @@
         "why": "Two cards one above the other: without \"Event\" over the upper one, it is not clear which box is which.",
         "edits": [
             {
-                "find": "        notes.forEach((n, i) => { if (n.target) _dpAddKindHead(box.children[i], n.target); });\n",
-                "replace": ""
+                "find": "            if (n.target) _dpAddKindHead(box.children[i], n.target);\n            else if (n.label)",
+                "replace": "            if (n.target) void 0;\n            else if (n.label)"
             }
         ],
         "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",

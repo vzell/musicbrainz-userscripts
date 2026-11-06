@@ -26,7 +26,7 @@
     {
         "name": "the form's format boxes are not ticked at init",
         "why": "The org file asks for every checkbox to be ticked before a button is pressed; the frameset's default list ticks Vinyl LP alone.",
-        "edits": [{ "find": "        _ensureBsStyle();\n        _bsCheckAllFormats();\n", "replace": "        _ensureBsStyle();\n" }],
+        "edits": [{ "find": "        _fiInstall();\n        _bsCheckAllFormats();\n        if (document.readyState !== 'complete') {\n            window.addEventListener('load', () => _bsCheckAllFormats(), { once: true });\n        }\n", "replace": "        _fiInstall();\n" }],
         "spec": "tests/fixtures/bs-records.spec.js",
         "grep": "with the setting on",
         "expect": "fail"

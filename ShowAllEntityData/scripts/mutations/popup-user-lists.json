@@ -4,7 +4,7 @@
         "why": "Without _MB_POP_EDITLIST_RE in _mbPopParsePath() the profile's 'view' links to /user/<name>/edits/<status> and /user/<name>/votes have no card.",
         "edits": [
             {
-                "find": "        if (_MB_POP_EDITLIST_RE.test(pathname)) return { seg: '', type: 'edits', id: pathname };",
+                "find": "        if (_MB_POP_EDITLIST_RE.test(pathname)) {\n            const o = /^\\/([a-z-]+\\/[0-9a-fA-F-]{36})\\/open_edits\\/?$/.exec(pathname);\n            return { seg: '', type: 'edits', id: o ? `/${o[1].toLowerCase()}/open_edits` : pathname };\n        }\n",
                 "replace": ""
             }
         ],
@@ -17,8 +17,8 @@
         "why": "An edit search is told by its query (conditions.); without a.search no /search/edits link is a target.",
         "edits": [
             {
-                "find": "const pp = _mbPopParsePath(a.pathname, a.search);",
-                "replace": "const pp = _mbPopParsePath(a.pathname);"
+                "find": "        } else {\n            const pp = _mbPopParsePath(a.pathname, a.search);\n            if (pp) ({ seg, type, id, list = '' } = pp);",
+                "replace": "        } else {\n            const pp = _mbPopParsePath(a.pathname);\n            if (pp) ({ seg, type, id, list = '' } = pp);"
             }
         ],
         "spec": "tests/fixtures/popup-mb-user-lists.spec.js",
@@ -95,8 +95,8 @@
         "why": "titleOf() names the window per id: 'Rejected edits', 'Votes', 'Edit search'.",
         "edits": [
             {
-                "find": "kind: k.titleOf ? k.titleOf(id) : k.title,",
-                "replace": "kind: k.title,"
+                "find": "            type, id, kind: k.titleOf ? k.titleOf(id) : k.title, wide: !!k.wide,",
+                "replace": "            type, id, kind: k.title, wide: !!k.wide,"
             }
         ],
         "spec": "tests/fixtures/popup-mb-user-lists.spec.js",

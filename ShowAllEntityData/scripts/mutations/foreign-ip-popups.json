@@ -44,8 +44,8 @@
     "why": "From a native link ← → would walk a table that is not there and step nowhere. Must fail on the step test.",
     "edits": [
       {
-        "find": "            steps: (t) => (t.el.closest('table.tbl > tbody') ? _dpRowLinks(t.table) : _dpPageLinks()),",
-        "replace": "            steps: (t) => _dpRowLinks(t.table),"
+        "find": "            steps: (t) => (t.el.closest('table.tbl > tbody') ? _dpRowLinks(t.table, t.el) : _dpPageLinks()),",
+        "replace": "            steps: (t) => _dpRowLinks(t.table, t.el),"
       }
     ],
     "spec": "tests/fixtures/detail-preview.spec.js",

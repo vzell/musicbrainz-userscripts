@@ -17,8 +17,8 @@
         "why": "Only a foreign host has a _DP_SITES entry, so on MusicBrainz no foreign source is enabled and _initDetailPreview() installs nothing (since the popup engine's sources, its call site no longer checks _foreignHost: the engine's own gate is the guard). Enabled on MusicBrainz (here: as if it were brucespringsteen.it), the stylesheet and listeners would land on every MusicBrainz page.",
         "edits": [
             {
-                "find": "        const site = _foreignHost ? _DP_SITES[_foreignHost] : null;",
-                "replace": "        const site = _DP_SITES[_foreignHost || 'brucespringsteen.it'];"
+                "find": "    function _dpActiveSite() {\n        const site = _foreignHost ? _DP_SITES[_foreignHost] : null;",
+                "replace": "    function _dpActiveSite() {\n        const site = _DP_SITES[_foreignHost || 'brucespringsteen.it'];"
             }
         ],
         "spec": "tests/fixtures/detail-preview.spec.js",
@@ -160,7 +160,7 @@
         "why": "The rate gate asks the waiting callers whether they still want the page before the request. Without it a sweep down the table fetches every row it passed.",
         "edits": [
             {
-                "find": "            if (!entry.wants.some(w => w())) return { outcome: 'skipped' };\n",
+                "find": "            if (!entry.wants.some(w => w())) {\n                Lib.debug('detail', `no longer wanted, not asked: ${url}`);\n                return { outcome: 'skipped' };\n            }\n",
                 "replace": ""
             }
         ],
@@ -199,8 +199,8 @@
         "why": "The hidden parts are hidden through html.mb-dp-isolate; without setting it on load, nothing is hidden.",
         "edits": [
             {
-                "find": "        doc.documentElement.classList.toggle('mb-dp-isolate', _dpDialog.hideNav);\n    }",
-                "replace": "    }"
+                "find": "        doc.documentElement.classList.toggle('mb-dp-isolate', _dpDialog.hideNav);\n        return typeof afterLoad",
+                "replace": "        return typeof afterLoad"
             }
         ],
         "spec": "tests/fixtures/detail-preview.spec.js",
@@ -238,7 +238,7 @@
         "why": "A touch screen has no hover; the tap opens the dialog instead of the page.",
         "edits": [
             {
-                "find": "            if (!_isTouchCompatMouseEvent(e) && !_isTouchPrimaryDevice()) return;",
+                "find": "            if (!_isTouchCompatMouseEvent(e) && !_isTouchPrimaryDevice() && !_dgTableClickOpens(t.el) &&\n                !t.el.classList.contains('mb-h1-kind-doc')) return;",
                 "replace": "            return;"
             }
         ],
@@ -279,8 +279,8 @@
         "why": "The lyrics index's rows link to song pages; without the lyrics.php clause no card opens there (the report that started 9.99.1264).",
         "edits": [
             {
-                "find": "                (u.pathname === '/lyrics.php' && !!u.searchParams.get('song')),",
-                "replace": "                false,"
+                "find": "                (u.pathname === '/lyrics.php' && !!u.searchParams.get('song')) ||",
+                "replace": "                false ||"
             }
         ],
         "spec": "tests/fixtures/detail-preview.spec.js",

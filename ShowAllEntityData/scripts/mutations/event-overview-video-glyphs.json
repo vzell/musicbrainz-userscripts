@@ -134,8 +134,8 @@
     "why": "_MB_POP_PATH_RE without A-F: a setlist link whose MBID was typed with uppercase letters is no popup target, on the initial page as everywhere. Must fail on the popup test.",
     "edits": [
       {
-        "find": "([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})",
-        "replace": "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"
+        "find": "|collection|url)\\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})",
+        "replace": "|collection|url)\\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"
       }
     ],
     "spec": "tests/fixtures/event-overview-video-glyphs.spec.js",

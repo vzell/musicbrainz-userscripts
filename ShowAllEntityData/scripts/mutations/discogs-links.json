@@ -4,7 +4,7 @@
         "why": "vzell 2026-10-18: a plain click on a link in our tables opens the preview window, never leaves the page.",
         "edits": [
             {
-                "find": "        return _isDgHost && !!(el && el.closest && el.closest('#mb-dg-root table.tbl'));",
+                "find": "        return _isDgHost && !!(el && el.closest && el.closest('#mb-dg-root table.tbl, #mb-dg-root .mb-fd-head, #mb-dg-root .mb-fd-sub'));",
                 "replace": "        return false;"
             }
         ],
@@ -164,8 +164,8 @@
         "why": "A user's page has no #app: the gate lets /user/<name> through with #page_content.",
         "edits": [
             {
-                "find": "        !((_DG_SUBS_PATH_RE.test(window.location.pathname) || _DG_USER_PATH_RE.test(window.location.pathname)) &&",
-                "replace": "        !((_DG_SUBS_PATH_RE.test(window.location.pathname)) &&"
+                "find": "        !((_DG_SUBS_PATH_RE.test(window.location.pathname) || _DG_USER_PATH_RE.test(window.location.pathname) ||",
+                "replace": "        !((_DG_SUBS_PATH_RE.test(window.location.pathname) ||"
             }
         ],
         "spec": "tests/fixtures/discogs-links.spec.js",
@@ -203,7 +203,7 @@
         "why": "Date and time as separate columns, as on MusicBrainz's pageTypes (dateTimeParts).",
         "edits": [
             {
-                "find": "                    { sourceColumn: 'Added', extractor: 'dateTimeParts', syntheticColumns: ['Added date', 'Added time'] },",
+                "find": "                { sourceColumn: 'Added', extractor: 'dateTimeParts', syntheticColumns: ['Added date', 'Added time'] },\n",
                 "replace": ""
             }
         ],
@@ -216,8 +216,8 @@
         "why": "No #app: the gate admits /release/<id>/history with #page_content.",
         "edits": [
             {
-                "find": "        !((_DG_SUBS_PATH_RE.test(window.location.pathname) || _DG_USER_PATH_RE.test(window.location.pathname) ||\n           _DG_HIST_PATH_RE.test(window.location.pathname)) &&",
-                "replace": "        !((_DG_SUBS_PATH_RE.test(window.location.pathname) || _DG_USER_PATH_RE.test(window.location.pathname)) &&"
+                "find": "           _DG_HIST_PATH_RE.test(window.location.pathname) || _DG_RATINGS_PATH_RE.test(window.location.pathname) ||",
+                "replace": "           _DG_RATINGS_PATH_RE.test(window.location.pathname) ||"
             }
         ],
         "spec": "tests/fixtures/discogs-links.spec.js",
@@ -229,8 +229,8 @@
         "why": "_EXT_DISCOGS_PATH_RE takes /release/<id>/history: dg-release must exclude it.",
         "edits": [
             {
-                "find": "            match: (path) => _dgPage(path)?.kind === 'release' && !_DG_HIST_PATH_RE.test(path),",
-                "replace": "            match: (path) => _dgPage(path)?.kind === 'release',"
+                "find": "            match: (path) => _dgEntityPageIs(path, 'release'),",
+                "replace": "            match: (path) => _dgPage(path)?.kind === 'release' && !_DG_IMG_PATH_RE.test(path) && !_DG_ENT_IMG_PATH_RE.test(path),"
             }
         ],
         "spec": "tests/fixtures/discogs-links.spec.js",
@@ -268,8 +268,8 @@
         "why": "Sub-tables with different columns: the Changes table's date/time split ran on the Diff table's first column (vzell, debug/2columns-missing.html).",
         "edits": [
             {
-                "find": "                        if (pageType === 'tag-value' || pageType === 'user-tag-value' || pageType === 'user-ratings' || pageType === 'instrument-list' || pageType === 'artist-credit' || pageType === 'event-overview' || _isRelTablesRun() ||\n                            pageType === 'dg-history' || pageType === 'dg-user') {",
-                "replace": "                        if (pageType === 'tag-value' || pageType === 'user-tag-value' || pageType === 'user-ratings' || pageType === 'instrument-list' || pageType === 'artist-credit' || pageType === 'event-overview' || _isRelTablesRun()) {"
+                "find": "                            pageType === 'dg-history' || pageType === 'dg-user' || pageType === 'dg-user-list' || pageType === 'sl-song') {",
+                "replace": "                            pageType === 'dg-user-list' || pageType === 'sl-song') {"
             }
         ],
         "spec": "tests/fixtures/discogs-links.spec.js",

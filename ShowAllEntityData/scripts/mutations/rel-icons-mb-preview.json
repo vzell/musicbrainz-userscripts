@@ -2,13 +2,13 @@
   {
     "name": "a Relationships icon is turned away again",
     "why": "The pre-2026-10-26 exclusion: no MusicBrainz link in td.mb-rel-cell is a preview target.",
-    "edits": [{ "find": "        const relIcon = !!a.closest('td.mb-rel-cell');\n        if ((!relIcon && a.querySelector('img:not(.avatar)')) || (!inWindow && a.closest('#mb-dp-peek, #mb-dp-dialog'))) return null;\n", "replace": "        const relIcon = !!a.closest('td.mb-rel-cell');\n        if (relIcon || a.querySelector('img:not(.avatar)') || (!inWindow && a.closest('#mb-dp-peek, #mb-dp-dialog'))) return null;\n" }],
+    "edits": [{ "find": "        const iconLink = relIcon || a.classList.contains('mb-sfm-mb');\n        if ((!iconLink && a.querySelector('img:not(.avatar)')) || (!inWindow && a.closest('#mb-dp-peek, #mb-dp-dialog'))) return null;\n", "replace": "        const iconLink = relIcon || a.classList.contains('mb-sfm-mb');\n        if (relIcon || (!iconLink && a.querySelector('img:not(.avatar)')) || (!inWindow && a.closest('#mb-dp-peek, #mb-dp-dialog'))) return null;\n" }],
     "spec": "tests/fixtures/rel-icons.spec.js", "grep": "single from", "expect": "fail"
   },
   {
     "name": "the icon's image still rules it out",
     "why": "A Relationships icon is an image link; without the relIcon exemption it reads as artwork.",
-    "edits": [{ "find": "        if ((!relIcon && a.querySelector('img:not(.avatar)')) || (!inWindow && a.closest('#mb-dp-peek, #mb-dp-dialog'))) return null;\n", "replace": "        if (a.querySelector('img:not(.avatar)') || (!inWindow && a.closest('#mb-dp-peek, #mb-dp-dialog'))) return null;\n" }],
+    "edits": [{ "find": "        const iconLink = relIcon || a.classList.contains('mb-sfm-mb');\n", "replace": "        const iconLink = a.classList.contains('mb-sfm-mb');\n" }],
     "spec": "tests/fixtures/popup-mb.spec.js", "grep": "what is previewed", "expect": "fail"
   },
   {

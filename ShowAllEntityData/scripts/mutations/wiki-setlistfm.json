@@ -17,8 +17,8 @@
     "why": "A profile without a key loses the plain web-page card it had for setlist.fm links.",
     "edits": [
       {
-        "find": "        return !!_extSfmPage(u) && !!_extSfmKey();",
-        "replace": "        return !!_extSfmPage(u);"
+        "find": "        return !!pg && (_EXT_SFM_SITE_KINDS.has(pg.kind) || !!_extSfmKey());",
+        "replace": "        return !!pg;"
       }
     ],
     "spec": "tests/fixtures/popup-ext.spec.js",
@@ -82,7 +82,7 @@
     "why": "setlist.fm's API terms: each setlist's page linked wherever its data is shown.",
     "edits": [
       {
-        "find": "        return `<div class=\"mb-dg-counts\">Data from ${_extSfmLinkHtml(url, 'setlist.fm')}, read through its API with your key.</div>`;",
+        "find": "        return `<div class=\"mb-dg-counts\">Data from ${_extSfmLinkHtml(url, 'setlist.fm')}, read through its API with your key` +\n            `${pages ? '; set times from its pages' : ''}.</div>`;",
         "replace": "        return '';"
       }
     ],
@@ -95,12 +95,16 @@
     "why": "The venue, an artist's setlists and a setlist open in the window, with Back.",
     "edits": [
       {
-        "find": "    const _DP_WIN_EXT_READERS = new Set(['bbdate', 'springsteen', 'setlistfm']);",
-        "replace": "    const _DP_WIN_EXT_READERS = new Set(['bbdate', 'springsteen']);"
+        "find": "    const _DP_WIN_EXT_READERS = new Set(['bbdate', 'springsteen', 'setlistfm', 'iadetails']);",
+        "replace": "    const _DP_WIN_EXT_READERS = new Set(['bbdate', 'springsteen', 'iadetails']);"
       },
       {
         "find": "            window: _extSfmWindow, onAreaClick: _extSfmAreaClick, factsHtml: _extSfmFactsHtml,",
         "replace": "            window: _extSfmWindow, factsHtml: _extSfmFactsHtml,"
+      },
+      {
+        "find": "    const _DP_WIN_ALL_LINKS_READERS = new Set(['wikipedia', 'wikidata', 'setlistfm']);",
+        "replace": "    const _DP_WIN_ALL_LINKS_READERS = new Set(['wikipedia', 'wikidata']);"
       }
     ],
     "spec": "tests/fixtures/popup-ext.spec.js",
@@ -125,8 +129,8 @@
     "why": "An artist has 3,003 setlists; the window would show the first 20 for ever.",
     "edits": [
       {
-        "find": "            ui.pages++;\n            _extSfmPageLoad(t, rec.sfm, ui.pages, { repaint });",
-        "replace": "            _extSfmPageLoad(t, rec.sfm, ui.pages, { repaint });"
+        "find": "            ui.pages++;\n            // Its set times too, as before \"Load all\".",
+        "replace": "            // Its set times too, as before \"Load all\"."
       }
     ],
     "spec": "tests/fixtures/popup-ext.spec.js",
@@ -294,7 +298,7 @@
     "why": "vzell 2026-10-29: the path's other-site steps start with their site's icon (first Wikidata, Wikipedia, setlist.fm; then every site).",
     "edits": [
       {
-        "find": "            return url ? _dpSiteIconGlyph(_extHostOf(url)) : null;",
+        "find": "            return url ? _dpSiteIconGlyph(_extHostOf(url), _dpSiteIconTip(t, t.host || _extHostOf(url)), t.host || _extHostOf(url)) : null;",
         "replace": "            return null;"
       }
     ],
@@ -333,7 +337,7 @@
     "why": "The \"[info]\" window names a site; its step shows that site's icon.",
     "edits": [
       {
-        "find": "            return r && Lib.settings.sa_pop_ext_favicons === true ? _dpSiteIconGlyph(_extHostOf(r)) : null;",
+        "find": "            return r && Lib.settings.sa_pop_ext_favicons === true ? _dpSiteIconGlyph(_extHostOf(r), _dpSiteIconTip(t, _extHostOf(r)), _extHostOf(r)) : null;",
         "replace": "            return null;"
       }
     ],

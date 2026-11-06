@@ -299,4 +299,18 @@ test.describe('links inside a window on Brucebase (G2, G3)', () => {
         }, `${YEAR}#130185`);
         expect(onPage).toBeNull();
     });
+
+    // A generic page's window is no all-links window (`_DP_WIN_ALL_LINKS_*`):
+    // only `_DP_WIN_EXT_READERS`' readers open in it. Since 2026-10-29 every
+    // MusicBrainz and setlist.fm window opens everything, so the guard had no
+    // spec left that could see it (mutation list win-ext-bb.json, 2026-11-06).
+    test('G4: a link whose reader is not an in-window one (Wikipedia) keeps its new tab here', async ({ page }) => {
+        const WIKI = 'https://en.wikipedia.org/wiki/Bruce_Springsteen';
+        const title = await openShuffleWindow(page);
+        await page.context().route(WIKI, (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<p>wiki</p>' }));
+        const popup = page.waitForEvent('popup');
+        await (await linkInWindow(page, WIKI, 'Bruce Springsteen')).click();
+        expect((await popup).url()).toBe(WIKI);
+        await expect(title, 'the window did not step').toHaveText('Web page');
+    });
 });

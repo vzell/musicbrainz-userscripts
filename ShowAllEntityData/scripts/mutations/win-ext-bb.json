@@ -17,12 +17,12 @@
     "why": "Without 'bbdate' a year-page anchor (the reported /2002#100802) stays a new-tab link.",
     "edits": [
       {
-        "find": "    const _DP_WIN_EXT_READERS = new Set(['bbdate', 'springsteen']);",
-        "replace": "    const _DP_WIN_EXT_READERS = new Set(['springsteen']);"
+        "find": "    const _DP_WIN_EXT_READERS = new Set(['bbdate', 'springsteen', 'setlistfm', 'iadetails']);",
+        "replace": "    const _DP_WIN_EXT_READERS = new Set(['springsteen', 'setlistfm', 'iadetails']);"
       }
     ],
-    "spec": "tests/fixtures/popup-mb.spec.js",
-    "grep": "Brucebase review link opens in the window",
+    "spec": "tests/fixtures/popup-ext-foreign.spec.js",
+    "grep": "G3: a show on its Brucebase year page",
     "expect": "fail"
   },
   {
@@ -30,12 +30,12 @@
     "why": "Only the Springsteen readers may: another site's link in a MusicBrainz window (the spec's setlist.fm link) keeps its new tab.",
     "edits": [
       {
-        "find": "        if (!r || !_DP_WIN_EXT_READERS.has(r.reader.id) || r.key === cur.key) return null;",
-        "replace": "        if (!r || r.key === cur.key) return null;"
+        "find": "        if (!all && !_DP_WIN_EXT_READERS.has(r.reader.id)) return null;\n",
+        "replace": ""
       }
     ],
-    "spec": "tests/fixtures/popup-mb.spec.js",
-    "grep": "Brucebase review link opens in the window",
+    "spec": "tests/fixtures/popup-ext-foreign.spec.js",
+    "grep": "G4: a link whose reader is not an in-window one",
     "expect": "fail"
   }
 ]
