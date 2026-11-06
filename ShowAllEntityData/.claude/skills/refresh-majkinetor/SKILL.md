@@ -89,11 +89,11 @@ it with the member versions in the bundle's `@description` (`… event_horizon <
 they must equal the standalone copies' `@version`. A mismatch means the bundle wasn't rebuilt at that commit —
 note it in "Method", and treat the bundle as the truth.
 
-| Clone path                                         | Harness file (`tests/fixtures/live-userscripts/`)                   | Manifest id                 |
-|----------------------------------------------------|---------------------------------------------------------------------|-----------------------------|
-| `userscripts/string_theory/string_theory.user.js`  | `string_theory.user.js` (what vzell installs)                       | `majkinetor-string-theory`  |
-| `userscripts/event_horizon/event_horizon.user.js`  | `event_horizon.user.js`                                             | `majkinetor-event-horizon`  |
-| `userscripts/isrc_scout/isrc_scout.user.js`        | `ISRC-scout.user.js` (name from when it was installed on its own) | `majkinetor-isrc-scout`     |
+| Clone path                                        | Harness file (`tests/fixtures/live-userscripts/`)                 | Manifest id                |
+|---------------------------------------------------|-------------------------------------------------------------------|----------------------------|
+| `userscripts/string_theory/string_theory.user.js` | `string_theory.user.js` (what vzell installs)                     | `majkinetor-string-theory` |
+| `userscripts/event_horizon/event_horizon.user.js` | `event_horizon.user.js`                                           | `majkinetor-event-horizon` |
+| `userscripts/isrc_scout/isrc_scout.user.js`       | `ISRC-scout.user.js` (name from when it was installed on its own) | `majkinetor-isrc-scout`    |
 
 ```
 python3 scripts/check-majkinetor-anchors.py --versions    # harness @version vs clone, before
