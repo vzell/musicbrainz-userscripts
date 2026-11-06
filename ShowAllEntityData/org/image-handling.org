@@ -606,3 +606,33 @@ The viewer's tools: Adjust (A), Compare (C), Loupe (L), Copy URL (Y / Shift+Y), 
   right-edge check.
 - The second =test:full= (with the help fix) was stopped at vzell's request after his live check
   passed; the fix itself: the tool spec (6) and its two planted defects.
+
+* summary
+
+P4b is committed (9726f88a) and pushed to feature/image-section-p4b. The last full suite run passed (2,749 tests), but it ran before the help-box fix. The second run, which included that fix, was stopped as you asked, so the fix itself is covered by its spec and two planted defects plus your live check.
+
+Everything P0–P4 planned is built and pushed. Left over, in rough order of importance:
+
+Not finished yet
+- Nothing is on main. The 8 commits sit on stacked branches ending at feature/image-section-p4b. Shipping means merging into main, giving WIP.1–WIP.7 real version numbers, bumping // @version, and a final full suite on main (the step where the second run was stopped). I'd do that only on your go.
+- No phone-layout tests for P4a/P4b. The Table, filter, slider and viewer tools are tested in the desktop project only. The project's mobile tests (Pixel 7 emulation) would catch layout problems, such as the bar wrapping, which is exactly what broke the help box.
+
+Viewer ideas from the original list that weren't in P4b
+- Hide the filmstrip, and a grid grouped by copy or kind rather than first type.
+- E to open the image's edit page on MusicBrainz.
+- Shift+D to download all.
+- Crop to selection, and reverse image search links (that one sends the image URL to an outside site, so it would be opt-in).
+
+Small gaps in what was built
+- The grouped layout has no switch between type and copy: an SL item with copies groups by copy only.
+- SL collection scans have no per-type chips (Front, Back…) the way bootleg artwork does, because the site gives scans no captions to type them from.
+- No setting turns off the pictures section on other sites' pages.
+- "Select and download selected" in the Table view was planned for later.
+
+Housekeeping outside this feature
+- 160 mutation entries in other lists no longer match the code (popup, Discogs, setlist.fm).
+- The discogs-mb-column flaky test is still unexplained. To keep the next failure's trace, I'd change run-test-full.py to copy test-results/ aside whenever a run fails.
+
+My suggestion: merge to main first, so all of this ships, then the mobile tests, then the 160 entries.
+
+merge to main, then add the mobile tests
