@@ -165,7 +165,7 @@ Env: 2026-11-06T17:35:51+01:00 · NB-3641 · WSL2 Ubuntu (Linux 6.18.54.1) · cu
 - This also covers items 1–2 of "TRACKLIST should get more info in table form" (LPAITS4,
   CBSXSSC5739 are record pages).
 
-** Built (2026-11-06, branch =feature/kf-detail=, not merged)
+** Built (2026-11-06, branch =feature/kf-detail=; merged 2026-11-07 as 9.99.1572–9.99.1574)
 
 Env: 2026-11-06T18:33:55+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
 
@@ -187,7 +187,7 @@ Env: 2026-11-06T18:33:55+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
   =scripts/mutations/bs-record.json= (25). See DEBUG-NOTES.md, 2026-11-06.
 - Docs: docs/claude/brucespringsteen.md ("The record page — =bs-record=",
   "Song and show previews"), docs/claude/detail-pages.md, HELP, the coverage
-  registry, PAGETYPES-TESTING-REFERENCE.org (#157), WIP.1–WIP.3.
+  registry, PAGETYPES-TESTING-REFERENCE.org (#157), changelog 9.99.1572–9.99.1574.
 
 * TODO add support for Lyrics page -  https://www.brucespringsteen.it/Brucex.htm
 

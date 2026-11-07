@@ -28608,3 +28608,5 @@ repeated group name or `helps('000000000')`); three stale finds in
 `bs-support.json`/`detail-preview.json` repointed and re-run (all fail).
 
 `test:full` (2026-11-06T18:35:21+01:00 → 18:53:01+01:00, NB-3641, `feature/kf-detail` on `df3dd975` with the work uncommitted): 2780 passed, 0 failed, wall 17 m 40 s.
+
+`test:full` on merged `main` (2026-11-07T02:39:35+01:00 → 02:57:19+01:00, NB-3641, `2018bd7d` + the fold): 2779 passed, 1 failed — `discogs-submissions.spec.js:537` (the Discogs history reader on MusicBrainz) logged an extra anonymous `https://www.discogs.com/favicon.ico` request. Unrelated to this change; rerun alone `--repeat-each 3`: 3 passed. A timing-dependent favicon load the request-log assertion does not exclude: a flaky spec to look at.

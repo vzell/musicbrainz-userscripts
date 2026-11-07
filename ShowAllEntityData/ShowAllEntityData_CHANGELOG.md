@@ -4,9 +4,30 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1742 versions; the month pages hold all of them.
+This page shows the newest 100 of 1745 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1574 — 2026-11-07
+
+**🐛 Fix**
+
+- brucespringsteen.it record previews: a line the site writes between a record's facts and its Notes ("The original version is numbered." on All Those Years' LP) is no longer dropped, and "\*PROMO\*" leaves the title to become "promo" beside the kind (Official release or Bootleg).
+
+
+## 9.99.1573 — 2026-11-07
+
+**🚀 Feature**
+
+- brucespringsteen.it song and show previews: on a record page, its song and show links (until now dead "\#" links) show a card on hover and open in the window on Space, as they do in the rendered table and on the other sites. A song shows its lyric versions, each with its note; a show its date, venue, setlist, notes and the records it is on, and a record there opens in the same window, with Back. On the record page a plain click still opens the site's own small window.
+
+
+## 9.99.1572 — 2026-11-07
+
+**🚀 Feature**
+
+- brucespringsteen.it record pages (DB/detrec.aspx): a new "Tracklist" button shows the record the way MusicBrainz shows a release: a sub-table per record or disc (vinyl sides paired into records when the count adds up), Date, Show and Country split out of the source show, Notes, Ver and a Play tile; above it the record's notes, its facts as the page names them, the shows its tracks come from, and its photo. No request: everything comes from the page itself. It also works in the site's frameset, in the right-hand frame where the site shows the record you click in its list. Mockup: https://claude.ai/artifact/XULiW1dUFME9F4nbsrQokD
+
 
 ## 9.99.1571 — 2026-11-06
 
@@ -876,43 +897,6 @@ This page shows the newest 100 of 1742 versions; the month pages hold all of the
 - An event's window shows its setlist as a table: \#, the song, and the rest of its line (guests, a remark) in a column of its own, with a filter and sorting.
 - A series' window shows each item's kind with MusicBrainz's own icon before its name.
 - Performance: link-preview windows only; no change to the page tables' filter, sort or render path, and no new request.
-
-
-## 9.99.1474 — 2026-10-28
-
-**✨ Improve**
-
-- The smaller lists in the MusicBrainz windows are tables now, with a filter (when there are more than 25 rows; it marks what it matched), sorting by any column (ascending, descending, back to MusicBrainz's order) and 25 rows a page: an entity's links (site, relationship, address) in the artist, release group, place and label windows (a label's from eleven links on), a work's codes, an event's "Recorded here" (its releases and its recordings, two tables), an instrument's aliases (with locale, type and whether primary) and related instruments, an area's related areas, a genre's related genres (one table per relationship; its links moved to the left), an editor's edits, tags and genres, ratings (one table per kind), an ISRC's recordings, an ISWC's works, a disc ID's releases and an annotation's versions.
-- A label's window lists its aliases one per line, as an artist's does.
-- Performance: link-preview windows only; no change to the page tables' filter, sort or render path, and no new request.
-
-
-## 9.99.1473 — 2026-10-28
-
-**✨ Improve**
-
-- A tag's window and an editor's tag window list the tagged entities themselves: a click on a kind under "By kind" lists that kind (the biggest one at first), read from MusicBrainz's page of that kind 100 at a time with "Load N more pages", most votes first, with a filter and the three-way sort. Until now each kind showed its first ten and a "See all" link to the site.
-- A link to one kind's page of a tag or of an editor's tag (/tag/rock/artist, /user/…/tag/live/release) now has the tag's card, and its window opens on that kind.
-- Ctrl-click on a tag or genre link in a window (a genre in the facts, a tag's own genre) opens YOUR own tag of that name in the window, when you are logged in; Shift- or middle-click still opens a new tab. The line at the window's foot says so on such a link, and names the key at rest whenever the window holds one.
-- A collection's window lists its entries in a table with a filter (which marks what it matched, inside links too), the three-way sort and, for a release group collection, type chips; its first 100 come with the card, "Load N more pages" reads the rest. It replaces the 25-row slices behind ◀ ▶.
-- A label's and an artist's window list their genres one per line, most votes first, each opening its tag, as a release group's does; an artist's aliases are one per line too, each with its type and locale.
-- Performance: link-preview windows only; no change to the page tables' filter, sort or render path. A tag's and an editor's tag's window read one more page when they open (the first kind's list); a collection's none.
-
-
-## 9.99.1472 — 2026-10-28
-
-**🐛 Fix**
-
-- A series of release groups: a click on one of its items in the window opened a broken page in a new tab (/release\_group/…); it now opens the release group in the window.
-- Hovering a catalog number whose label MusicBrainz could not load no longer asks for that label again and again while the card shows; as everywhere else, ⟳ or a new hover tries again.
-
-**✨ Improve**
-
-- The MusicBrainz windows of a recording, a place and an artist list everything, as a work's window does since the last version: 100 when the window opens, then "Load N more pages" with Stop and "Try again", a filter, chips and the three-way sort. A recording's window shows all of its releases (with covers and status chips) instead of the first 25; a place's all of its events (type chips) instead of the first 100; an artist's its release groups themselves instead of a count per type: a segment per type (Album, Single, EP, Broadcast, Other) with its total, each its own list, chips for Live, Compilation and the like, and the covers, loaded as you scroll.
-- These lists start sorted by date: MusicBrainz returns them in an order that is neither by date nor by title.
-- The release-group window's releases have a filter and format chips too, and a release without a cover keeps an empty square, so every row is as high.
-- In the release-group window, each credited artist opens in the window, and the genres are listed one per line, each opening its tag.
-- Performance: link-preview windows only; no change to the page tables' filter, sort or render path. A recording's window makes the same number of requests as before (its releases instead of a count); an artist's one more (its first 100 release groups) and asks the Cover Art Archive for the covers of the rows you scroll to.
 
 
 ---

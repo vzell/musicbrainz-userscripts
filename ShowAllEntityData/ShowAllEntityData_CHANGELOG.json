@@ -1,5 +1,41 @@
 [
   {
+    "version": "9.99.1574",
+    "date": "2026-11-07",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "brucespringsteen.it record previews: a line the site writes between a record's facts and its Notes (\"The original version is numbered.\" on All Those Years' LP) is no longer dropped, and \"*PROMO*\" leaves the title to become \"promo\" beside the kind (Official release or Bootleg)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1573",
+    "date": "2026-11-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "brucespringsteen.it song and show previews: on a record page, its song and show links (until now dead \"#\" links) show a card on hover and open in the window on Space, as they do in the rendered table and on the other sites. A song shows its lyric versions, each with its note; a show its date, venue, setlist, notes and the records it is on, and a record there opens in the same window, with Back. On the record page a plain click still opens the site's own small window."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1572",
+    "date": "2026-11-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "brucespringsteen.it record pages (DB/detrec.aspx): a new \"Tracklist\" button shows the record the way MusicBrainz shows a release: a sub-table per record or disc (vinyl sides paired into records when the count adds up), Date, Show and Country split out of the source show, Notes, Ver and a Play tile; above it the record's notes, its facts as the page names them, the shows its tracks come from, and its photo. No request: everything comes from the page itself. It also works in the site's frameset, in the right-hand frame where the site shows the record you click in its list. Mockup: https://claude.ai/artifact/XULiW1dUFME9F4nbsrQokD"
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1571",
     "date": "2026-11-06",
     "sections": [
