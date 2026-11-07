@@ -63,10 +63,22 @@ const DETAIL_HOSTS = {
         },
         contentType: 'text/html',
     },
+    // A record; and (2026-11-06, bs-record) a song (`sd3.aspx?sid=`) and a
+    // show (`mn.aspx?ex=`), and the five record pages of the record-page
+    // spec, which a show's "Found on" opens in the window.
     bs: {
-        isDetail: (u) => /brucespringsteen\.it$/.test(u.hostname) && u.pathname.toLowerCase() === '/db/detrec.aspx',
+        isDetail: (u) => /brucespringsteen\.it$/.test(u.hostname) && /^\/db\/(?:detrec|sd3|mn)\.aspx$/.test(u.pathname.toLowerCase()),
         fileFor: (u) => {
+            const p = u.pathname.toLowerCase();
+            if (p === '/db/sd3.aspx') {
+                return u.searchParams.get('sid') === '586' ? path.join(FIXTURE_DIR, 'detail-bs-song-586.html') : null;
+            }
+            if (p === '/db/mn.aspx') {
+                const ex = u.searchParams.get('ex');
+                return ['199905021', 'S198010101', '197301312'].includes(ex) ? path.join(FIXTURE_DIR, `detail-bs-show-${ex}.html`) : null;
+            }
             const code = u.searchParams.get('code');
+            if (['LPATY1', 'CDATY1', 'CBS39404', 'COLPC2368543', 'CR3TIM1'].includes(code)) return path.join(FIXTURE_DIR, `bs-record-${code}.html`);
             return ['CR1AD1', 'COL4942001', 'LP1B1'].includes(code) ? path.join(FIXTURE_DIR, `detail-bs-${code}.html`) : null;
         },
         contentType: 'text/html; charset=utf-8',

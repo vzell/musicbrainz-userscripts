@@ -134,6 +134,119 @@ async function loadBsFramesetPage(page) {
     return frame;
 }
 
+/** A 1 px PNG: the record photo when a spec serves one. */
+const PNG_1PX = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
+
+/**
+ * A stand-in for the site's `DB/libmnx.js` (its three window openers): each
+ * call is recorded in `window.__bsSiteCalls` and returns false, as the real
+ * ones do after `window.open()`. So a spec can tell that a plain click still
+ * runs the page's own `onclick`.
+ */
+const LIBMNX_STUB = 'window.__bsSiteCalls = [];'
+    + ['hs', 'helps', 'showdisc'].map(f => `function ${f}(x) { window.__bsSiteCalls.push(['${f}', x]); return false; }`).join('');
+
+/**
+ * The URL of a record page.
+ *
+ * @param {string} code
+ * @returns {string}
+ */
+const bsRecordUrl = code => `${BS_ORIGIN}/DB/detrec.aspx?code=${code}`;
+
+/**
+ * Routes a record page (`bs-record`, 2026-11-06): the catch-all (aborts),
+ * the site's `libmnx.js` (a stub, `LIBMNX_STUB`), the record photos
+ * (`photo`: 'ok' a 1 px PNG, '404' not found), and the record, song and
+ * show pages through `routeDetailPages(page, 'bs')`, all with
+ * `charset=utf-8` as the real server sends.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {{photo?: ('ok'|'404')}} [opts]
+ * @returns {Promise<{served: string[], photos: string[]}>} Detail pages and
+ *   photos requested, in order.
+ */
+async function routeBsRecordPage(page, { photo = 'ok' } = {}) {
+    const { routeDetailPages } = require('./detailFixture');
+    await page.route(BS_HOST_RE, (route) => route.abort('blockedbyclient'));
+    await page.route((url) => /brucespringsteen\.it$/.test(url.hostname) && /\/libmnx\.js$/i.test(url.pathname),
+        (route) => route.fulfill({ contentType: 'text/javascript; charset=utf-8', body: LIBMNX_STUB }));
+    const photos = [];
+    await page.route((url) => /brucespringsteen\.it$/.test(url.hostname) && /\/blegs\/images\//i.test(url.pathname), (route) => {
+        photos.push(route.request().url());
+        return photo === 'ok'
+            ? route.fulfill({ status: 200, contentType: 'image/png', body: PNG_1PX })
+            : route.fulfill({ status: 404, contentType: 'text/html', body: 'not found' });
+    });
+    const { served } = await routeDetailPages(page, 'bs');
+    return { served, photos };
+}
+
+/**
+ * Loads a record page (`detrec.aspx?code=<code>`, a `bs-record-<code>.html`
+ * fixture) with the userscript injected.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} code
+ * @param {{ enabled?: boolean, titles?: boolean, photo?: ('ok'|'404'), settingsOverride?: Object<string, *> }} [opts]
+ *   As `loadBsRecordsPage()`; `photo` as `routeBsRecordPage()`.
+ * @returns {Promise<{ requests: string[], served: string[], photos: string[], errors: string[] }>}
+ */
+async function loadBsRecordPage(page, code, { enabled = true, titles = false, photo = 'ok', settingsOverride = {} } = {}) {
+    const requests = [];
+    const errors = [];
+    page.on('request', (req) => requests.push(req.url()));
+    page.on('pageerror', (e) => errors.push(String(e.stack || e.message || e)));
+    const { served, photos } = await routeBsRecordPage(page, { photo });
+    await loadUserscriptPage(page, {
+        url: bsRecordUrl(code),
+        testMode: true,
+        settingsOverride: {
+            ...FIXTURE_SETTINGS_OVERRIDE, sa_enable_brucespringsteen: enabled, sa_foreign_mb_titles: titles, sa_foreign_typography: titles,
+            sa_render_threshold: 100000, ...settingsOverride,
+        },
+    });
+    return { requests, served, photos, errors };
+}
+
+/**
+ * Opens the site's frameset with a record page in its right frame
+ * (`principale`, or another name with `frameName`) and injects the
+ * userscript into that frame.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} code
+ * @param {{frameName?: string}} [opts]
+ * @returns {Promise<import('@playwright/test').Frame>} The record's frame.
+ */
+async function loadBsRecordInFrameset(page, code, { frameName = 'principale' } = {}) {
+    await page.context().addInitScript({ content: 'window.__SA_TEST_MODE__ = true;' });
+    await page.context().addInitScript({
+        content: buildGmStubsScript({
+            ...SETTINGS_MIGRATION_PRE_APPLIED,
+            ...FIXTURE_SETTINGS_OVERRIDE,
+            sa_enable_brucespringsteen: true,
+        }),
+    });
+    await routeBsRecords(page);
+    await routeBsRecordPage(page);
+    await page.route(BS_FRAMESET_URL, (route) => route.fulfill({
+        contentType: 'text/html; charset=utf-8',
+        body: '<html><head><title>Bootleg Bruce Springsteen discography</title></head>'
+            + '<frameset cols="222,*">'
+            + '<frame name="sommario" target="principale" src="DB/records.aspx?tipe=-1,4&amp;sort=0" scrolling="auto">'
+            + `<frame name="${frameName}" src="DB/detrec.aspx?code=${code}" target="_self">`
+            + '</frameset></html>',
+    }));
+    await page.goto(BS_FRAMESET_URL);
+    const frame = page.frame({ name: frameName });
+    await frame.waitForLoadState('load');
+    await addRequiredLibs(frame);
+    await frame.addScriptTag({ path: MB_LIBRARY_PATH });
+    await frame.addScriptTag({ path: USERSCRIPT_PATH });
+    return frame;
+}
+
 /**
  * Reads the rendered table's visible rows as `{ colName: cellText }` objects,
  * plus the Title link's resolved href and target.
@@ -172,4 +285,5 @@ function renderedBsHeaders(page) {
 
 module.exports = {
     BS_FIXTURES, BS_LIST_URL, ALL_FORMATS, loadBsRecordsPage, loadBsFramesetPage, renderedBsRows, renderedBsHeaders,
+    bsRecordUrl, routeBsRecordPage, loadBsRecordPage, loadBsRecordInFrameset,
 };

@@ -28555,3 +28555,56 @@ Judgement calls the agents flagged (a broader plant than the original, or a find
 one of two copies) are in their batch notes; each of those entries failed its spec as
 expected. So that this does not pile up again unseen: `scripts/check-mutation-finds.py`
 (read-only, ~1 s, exit 1 on a stale find), named in CLAUDE.md under "Testing expectations".
+
+## 2026-11-06 — brucespringsteen.it record page (bs-record) and its song/show previews (feature/kf-detail)
+
+Env: 2026-11-06T18:33:55+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (build 1234), no Tampermonkey (GM stubs); probes: curl, browser n/a
+
+Snapshots: vzell's `debug/KF-official-no-image-initial.html` (COLPC2368543),
+`KF-official-image-initial.html` (CBS39404), `KF-bootleg-no-image-initial.html`
+(CR3TIM1), `KF-aty-CD-initial.html` (CDATY1), `KF-aty-LP-initial.html` (LPATY1):
+the initial page of `DB/detrec.aspx?code=…`, saved from the browser (UTF-8 with
+BOM, the DOM serialised: `<tbody>`, `<p></p>` for the raw page's stray `</p>`).
+The fixtures come from curl captures of the same five pages
+(`debug/bs-detail-<CODE>-raw.html`) and of the pages their links open
+(`debug/bs-song-586-raw.html`, `debug/bs-show-{199905021,S198010101,197301312}-raw.html`).
+
+Findings that shaped the code:
+
+- The site's `DB/libmnx.js` names the targets of its script links: `hs(id)` →
+  `sd3.aspx?sid=<id>&hecan=1` (song), `helps(ex)` → `mn.aspx?ex=<ex>` (show;
+  `000000000` = none), `showdisc(code)` → `detrec.aspx?code=<code>&hecan=1`. Every
+  such link is `href="#"`, which resolves to the record page itself — so before
+  `_bsFixScriptLinks()` a preview on those links would have shown the record
+  for every song. The real page is set, the onclick kept (vzell's answer).
+- The first number of a position is a SIDE on some vinyl records (LPATY1: 1–20
+  for 10 LP; CBS39404: 1, 2 for one 7″) and a RECORD on others (COLPC2368543:
+  1–2 for 2 LP). `_bsMediaGroups()` pairs sides only when 2×N groups match N
+  records (vzell: "Pair sides when it adds up").
+- All Those Years' LP writes "The original version is numbered." as bare text
+  between the facts and the Notes `<p>`; the hover reader dropped it until now.
+- The harness injects the userscript as an inline `<script>`, so a copy of the
+  live page (`outerHTML`) holds its source — and somewhere in it a `</script`
+  spills the rest out as markup, among it a `<p><i><b>Notes:</b> …` from a
+  JSDoc comment. The record parser took THAT as the record's Notes ("…").
+  Tampermonkey never puts the script in the DOM, but another userscript's
+  markup could do the same: Notes, the tracklist and the photo are now taken
+  only after the facts (`after()` in `_dpParseBs()`).
+- The song and show pages separate source lines with bare CRs; parsing goes
+  through the DOM (`_bsTextLinesAfter()`), never lines of the source.
+- The fixture builder's lyric blanking (`bs-song`) first left each version's
+  LAST lyric line before its Notes intact (the slice cut off the `<` that
+  closes the text run); the preview spec's "no word but la" assertion caught it.
+- Several sub-tables start closed, as on every multi-table page but
+  release-tracks (`shouldStayOpen`); the mockup showed them open. Kept the
+  engine's rule (no shared-code change); reported.
+
+Tests: `tests/fixtures/bs-record.spec.js` (15), `bs-record-preview.spec.js` (8),
+`bs-record.mobile.spec.js` (2), `sl-include-regex.spec.js` (detrec flipped in),
+`detail-preview.spec.js` (the parser's new fields) — together with the existing
+KF specs 74 + 25 + 2 passed. Mutations `scripts/mutations/bs-record.json`: 25,
+23 fail as they must, 2 recorded as `"expect": "pass"` (no snapshot can show a
+repeated group name or `helps('000000000')`); three stale finds in
+`bs-support.json`/`detail-preview.json` repointed and re-run (all fail).
+
+`test:full` (2026-11-06T18:35:21+01:00 → 18:53:01+01:00, NB-3641, `feature/kf-detail` on `df3dd975` with the work uncommitted): 2780 passed, 0 failed, wall 17 m 40 s.

@@ -9,7 +9,12 @@ The request lives in `org/springsteen.it.org`: two buttons, Unofficial and
 Official, every format checkbox ticked, the records as a table. It follows
 the jungleland.it design (docs/claude/jungleland.md) and differs in one
 essential way: **the rows always come from a fetched page**, never from the
-live one.
+live one. (The switch defaults to on since 2026-10-26, as every non-MB
+site's.)
+
+Since 2026-11-06 a record's own page, `DB/detrec.aspx?code=`, is the
+pageType `bs-record`, and the song and show pages its links open preview;
+see "The record page — `bs-record`" and "Song and show previews" below.
 
 ## The site
 
@@ -201,12 +206,116 @@ with `Photo`; `_bsBuildRow()` adds the cell, linking the record's
   a reload no page is asked; card off). Mutations:
   `scripts/mutations/foreign-lazy-cells.json`.
 
+## The record page — `bs-record` (2026-11-06)
+
+A record's own page, `DB/detrec.aspx?code=<CODE>`, laid out as MusicBrainz
+lays out a release (org/brucespringsteen.it.org; mockup
+https://claude.ai/artifact/XULiW1dUFME9F4nbsrQokD, source
+`org/kf-detail-mockups.html`; built with the foreign-detail-pagetype
+skill). One button, "Show the tracklist" ("Tracklist"); `tableMode:
+'multi'`, `groupByH3`.
+
+- **No request.** `features.pageRequest`'s `fetchText` hands the engine the
+  live page's HTML, copied at the first press (`_bsRecordPageHtml()`), and
+  `toHtml` is `_bsRecordToHtml()`. Both it and the head read the page with
+  the link previews' `_dpParseBs()`, so the hover card on the list and the
+  page agree. `showIf` (`_bsRecordHasTracks()`) hides the button on a
+  record without a tracklist (none seen yet).
+- **Where it runs.** An `@include` line for `detrec.aspx?code=` (the
+  site's `&hecan=1` included), and the frame gate lets a record page run in
+  the frameset's wide right-hand frame `principale` (vzell: "Own tab + right
+  frame"), where the site shows the record clicked in its list. The 222 px
+  `sommario` list frame and any other frame stay out.
+- **The page at init** (`_bsPrepareRecordPage()`, from
+  `_bsPrepareLivePage()`): the record block after the site's notice and its
+  `<hr>` is wrapped in `div.mb-bs-record-native` (a block, so nothing
+  moves), our `h1.mb-bs-h1` with the record's title goes before it, and the
+  page's script links get their pages (below). At the press the block hides
+  (`mb-bs-record-done`), and `<h2 class="mb-bs-list-heading">Tracklist</h2>`
+  with an empty `table.mb-bs-record-table` goes before it
+  (`applyBsRecordToTable()`, from the click-time pre-processing and the
+  disk-load tail).
+- **Script links** (the site's `DB/libmnx.js`, read 2026-11-06): `hs(id)`
+  opens the song page `sd3.aspx?sid=<id>`, `helps(ex)` the show page
+  `mn.aspx?ex=<ex>` (`000000000` is "no show"), `showdisc(code)` a record
+  `detrec.aspx?code=<code>`, each `&hecan=1` and in a small window. Every
+  link is `href="#"`, which resolves to the record page itself.
+  `_bsScriptLinkUrl()` / `_bsFixScriptLinks()` set the real page (without
+  `hecan`, so one page is one cache key) and KEEP the `onclick`: a plain
+  click still opens the site's small window (vzell's answer), and a hover
+  or Space previews it.
+- **Sub-tables** (`_bsMediaGroups()`, vzell: "Pair sides when it adds
+  up"). The first number of a position is a side on some vinyl records and a
+  record on others: All Those Years' 10 LP has groups 1–20, The River's 2 LP
+  1–2, a 7″ single 1 and 2. N vinyl records (LP, 7″, 10″, 12″) with 2×N
+  groups: the sides are paired, "Record 1 (sides 1 + 2)", a single record
+  "(sides A + B)". N groups: each is a record ("Disc", "Tape" for the other
+  formats). Otherwise each group under its own number ("Side 3", "Disc 3");
+  a name met twice gets " (2)". Pos keeps the site's "3/2". Like every
+  multi-table page except release-tracks, several sub-tables start closed
+  (the mockup showed them open; the engine's rule was kept).
+- **Columns** (`_BS_RECORD_HEADERS`): Pos · Title (the song's page, in
+  MusicBrainz title style, the site's text as the tooltip) · Date (ISO) ·
+  Show (the show's page; "Manchester, Evening News Arena") · Country · Notes
+  ("-" empty) · Ver (the site's version; 99 is the released version, said in
+  the header tooltip, vzell: "Keep the number"; " - " empty) · Play (a
+  YouTube search "Bruce Springsteen <title> <date>", only with
+  `sa_yt_play_in_place`). Date, Show and Country come from the From text by
+  `_bsSplitFrom()` ("Manchester,Evening News Arena(GB) 02-May-1999/1"); a
+  ditto (`"`) is the row above's show. Medleys keep two rows at one position
+  (CDATY1: 1/2, 4/1, 5/16).
+- **The head** (`_bsRecordHeadSpec()`, wired in `_fdHeadSpec()`): "~
+  Official release | Bootleg by Bruce Springsteen (release period)"; Notes
+  (the page's Notes and a line before them); Details: Record (the facts as
+  the page names them: Catalogue number, Pressed in, Release period for an
+  official release; Matrix, Producer, Vinyl for a bootleg; Promo, Code, the
+  page) and Sources (every show the tracks come from, once, in tracklist
+  order: date, show, country, tracks; vzell: build it); the photo as the
+  art section (type "Photo", ★), only when the site's `<img>` loaded
+  (`_bsRecordPhotoState()`, at the press: the site hides a missing one with
+  `onerror`). After a Load from Disk the head is read again from the record
+  page the file is loaded on.
+- **Shapes** (vzell's snapshots `debug/KF-*-initial.html`, curl captures
+  `debug/bs-detail-<CODE>-raw.html`, 2026-11-06): LPATY1 (10 LP, 20 side
+  groups, photo, a line before Notes), CDATY1 (5 CD, medleys), CBS39404 (7″
+  PROMO, official, photo), COLPC2368543 (2 LP, two groups), CR3TIM1 (3 CD-R,
+  two shows). Not seen: a record without a tracklist, a tape or VHS record,
+  `helps('000000000')` in a row.
+
+## Song and show previews (2026-11-06)
+
+`_DP_SITES['brucespringsteen.it'].isDetailUrl` takes `sd3.aspx?sid=` and
+`mn.aspx?ex=` beside `detrec.aspx?code=`, under the same setting
+`sa_bs_detail_preview`; `_dpParseBs()` hands them to `_dpParseBsSong()` and
+`_dpParseBsShow()` by path (parser version 17). Through `_extDpTest()` the
+same links preview on every other host too.
+
+- **Song** (`sd3.aspx?sid=586`, probed 2026-11-06): "Song title:", then per
+  version `<a name=VRSn>`, its name in `<p><b>`, lyrics as text and `<br>`,
+  `<p><i><b>Notes:</b>…`. The record: title, "Song · N versions", the first
+  version's opening lines as the card's excerpt, a collapsible section per
+  version (lyrics, then its note).
+- **Show** (`mn.aspx?ex=199905021`, `S198010101`, `197301312`): `<u>date
+  venue,country</u>`, numbered lines ("14 Working on the highway
+  [Including …]"; an album release "Version 99 - Song [Released version]",
+  numbered here, the remark dropped), remarks, "Notes:", and "Songs from
+  this show can be found on:" (a table of `showdisc()` links with a
+  `supp<N>.gif` format icon, N = the list's format code). The record: the
+  venue, "date · country · Live | Release / studio", the setlist as tracks,
+  remarks and notes, and a collapsible "Found on (N)" section whose records
+  open in the same window (`_dpWinWhat()`'s own-host rule), with Back.
+- These pages use bare CRs between source lines: parsers work on the DOM
+  (`_bsTextLinesAfter()`), never on lines of the source.
+
 ## Tests
 
 | Spec                                          | Pins                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 |-----------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `tests/fixtures/bs-records.spec.js`           | fixture preconditions (the LP page's onload ticks C4 only; 1878/1186); gates off and in the frameset (form state untouched); setting on: exactly Unofficial and Official, all 12 boxes ticked; each button: exactly one fetch with all formats of its kind, rows = the list's own "N RESULTS", exact headers, the live records gone, the UN radio matching, the shared table CSS; parsed fields (spaced Mx, notes, nested-parenthesis label, `(copy/repress)`, no Mx line, "…" decoded, PROMO, `Catalogue:`); Label and Country filters; the navigation guard on a predefined-filter link; no MusicBrainz/CAA/EAA request; Save → Load from Disk on a fresh page; `_bsParseHead` shapes |
-| `tests/fixtures/sl-include-regex.spec.js`     | the `@include` line: `DB`/`db` records.aspx in; `Blegsdx.htm`, `detrec.aspx`, the other frameset, look-alike hosts out                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `tests/fixtures/sl-include-regex.spec.js`     | the `@include` lines: `DB`/`db` records.aspx and `detrec.aspx?code=` (with `&hecan=1`) in; `Blegsdx.htm`, a detrec without a code, `sd3.aspx`, `mn.aspx`, the other frameset, look-alike hosts out                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `tests/fixtures/bs-record.spec.js`            | bs-record: the IP's h1 after the notice, script links given their pages, the site's onclick kept (stubbed libmnx.js); no request on the press; the sub-tables of all five shapes (sides paired, records, discs, medleys); every column kind, the ditto, the `/1`; the head (kind, notes and the line before them, facts by kind, Promo, Sources by show, the photo, none on a 404); setting off; `principale` frame yes, another frame no; Save → Load from Disk (tables and head)                                                                                                                                                                                                       |
+| `tests/fixtures/bs-record-preview.spec.js`    | the song and show parsers (versions, excerpt, notes; setlist, remark, "[Released version]" dropped, Found on with formats, links); the IP's song and show cards and window, one request each; the table's show window, a Found-on record drilled in and Back; preview off                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `tests/fixtures/bs-record.mobile.spec.js`     | touch: a table song link opens the window; an IP song link runs the site's onclick, no window                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `tests/live/bs-records.spec.js` (`@extended`) | each button on the real site: rows = the count the all-formats page announces                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 
 Fixtures: `python3 scripts/build-bs-fixtures.py` turns the three raw
@@ -214,6 +323,17 @@ captures into `tests/fixtures/bs-records-{unofficial,official,lp}.html`,
 kept WHOLE with their inline script, minus the body background.
 `tests/support/bsFixture.js` serves every records.aspx request by its
 `tipe=`. Mutation list: `scripts/mutations/bs-support.json`.
+
+Since 2026-11-06 the same script also builds the five record pages
+(`tests/fixtures/bs-record-<CODE>.html` from `debug/bs-detail-<CODE>-raw.html`,
+kept whole with their `<script src="libmnx.js">`), and
+`scripts/build-detail-fixtures.py` the song and show pages
+(`detail-bs-song-586.html`, lyrics blanked to "la"; `detail-bs-show-*.html`).
+`bsFixture.js`' `loadBsRecordPage()` serves a record page with a stub of the
+site's `libmnx.js` (its calls in `window.__bsSiteCalls`) and the photo (a
+1 px PNG, or a 404), and `loadBsRecordInFrameset()` puts it in a named frame;
+`detailFixture.js` serves the song, show and record pages. Mutation list:
+`scripts/mutations/bs-record.json`.
 
 ## Titles
 

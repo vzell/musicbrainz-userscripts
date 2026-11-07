@@ -10,7 +10,7 @@
     {
         "name": "the frame gate never stops the script",
         "why": "records.aspx is normally the 222 px left frame of Blegsdx.htm, and the header has no @noframes. Without the frame gate the script injects its toolbar there and ticks the frame's form.",
-        "edits": [{ "find": "if (_isBsHost && window.top !== window) {", "replace": "if (false) {" }],
+        "edits": [{ "find": "if (_isBsHost && window.top !== window && !(_bsIsRecordPage() && window.name === 'principale')) {", "replace": "if (false) {" }],
         "spec": "tests/fixtures/bs-records.spec.js",
         "grep": "inside the Blegsdx.htm frameset",
         "expect": "fail"
@@ -26,7 +26,7 @@
     {
         "name": "the form's format boxes are not ticked at init",
         "why": "The org file asks for every checkbox to be ticked before a button is pressed; the frameset's default list ticks Vinyl LP alone.",
-        "edits": [{ "find": "        _fiInstall();\n        _bsCheckAllFormats();\n        if (document.readyState !== 'complete') {\n            window.addEventListener('load', () => _bsCheckAllFormats(), { once: true });\n        }\n", "replace": "        _fiInstall();\n" }],
+        "edits": [{ "find": "        if (_bsIsRecordPage()) return _bsPrepareRecordPage();\n        _bsCheckAllFormats();\n        if (document.readyState !== 'complete') {\n            window.addEventListener('load', () => _bsCheckAllFormats(), { once: true });\n        }\n", "replace": "        if (_bsIsRecordPage()) return _bsPrepareRecordPage();\n" }],
         "spec": "tests/fixtures/bs-records.spec.js",
         "grep": "with the setting on",
         "expect": "fail"

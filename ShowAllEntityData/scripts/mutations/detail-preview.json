@@ -56,8 +56,8 @@
         "why": "The From column writes a double quote for 'same as above'. Without carrying the previous show down, 13 of CR1AD1's 14 tracks have the source '\"'.",
         "edits": [
             {
-                "find": "                const own = /^[\"”]?$/.test(cells[2]) ? from : cells[2].replace(/\\/\\d+$/, '');",
-                "replace": "                const own = cells[2].replace(/\\/\\d+$/, '');"
+                "find": "                const ditto = /^[\"”]?$/.test(cells[2]);",
+                "replace": "                const ditto = false;"
             }
         ],
         "spec": "tests/fixtures/detail-preview.spec.js",

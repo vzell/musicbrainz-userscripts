@@ -28,6 +28,7 @@
 // @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/lyrics\.php\?(?![^#]*\bcmd=)(?:[^#]*&)?(?:song=[^&#]+|item=\d+)(?:[&#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?jungleland\.it\/html\/list\.htm(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?brucespringsteen\.it\/(?:DB|db)\/records\.aspx(?:[?#].*)?$/
+// @include      /^https?:\/\/(?:www\.)?brucespringsteen\.it\/(?:DB|db)\/detrec\.aspx\?(?:[^#]*&)?code=[^&#]+.*$/
 // @include      /^https?:\/\/brucebase\.wikidot\.com\/stats:songs\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/brucebase\.wikidot\.com\/(?:stats:relations|system:recent-changes)\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/brucebase\.wikidot\.com\/(?:\d{4}|1949-64)\/?(?:[?#].*)?$/
@@ -6906,8 +6907,12 @@
         Lib.info('init', 'brucespringsteen.it support is off (sa_enable_brucespringsteen) — nothing to do.');
         return;
     }
-    if (_isBsHost && window.top !== window) {
-        Lib.info('init', 'brucespringsteen.it: this list is inside the Blegsdx.htm frameset — open records.aspx in its own tab to get the table. Nothing to do here.');
+    // A record's own page (`bs-record`, 2026-11-06) also runs in the
+    // frameset's wide right-hand frame, `principale`, where the site shows
+    // the record clicked in the list (vzell: "Own tab + right frame"); the
+    // 222 px list frame `sommario` stays out.
+    if (_isBsHost && window.top !== window && !(_bsIsRecordPage() && window.name === 'principale')) {
+        Lib.info('init', 'brucespringsteen.it: this page is inside the Blegsdx.htm frameset — open it in its own tab to get the table. Nothing to do here.');
         return;
     }
 
@@ -18342,6 +18347,17 @@
             body.mb-sa-host-bs table.mb-bs-table {
                 font-family: Arial, sans-serif;
             }
+            /* A record page (bs-record): the site's record block, wrapped at
+               init (_bsPrepareRecordPage()), hides once the view is built;
+               the head and the tables show all of it. */
+            body.mb-sa-host-bs .mb-bs-record-native.mb-bs-record-done {
+                display: none;
+            }
+            body.mb-sa-host-bs table.mb-bs-record-table,
+            body.mb-sa-host-bs .mb-fd-head,
+            body.mb-sa-host-bs p.mb-fd-sub {
+                font-family: Arial, sans-serif;
+            }
         `);
         style.id = 'mb-bs-style';
     }
@@ -18371,6 +18387,7 @@
         document.body.classList.add('mb-sa-host-bs');
         _ensureBsStyle();
         _fiInstall();
+        if (_bsIsRecordPage()) return _bsPrepareRecordPage();
         _bsCheckAllFormats();
         if (document.readyState !== 'complete') {
             window.addEventListener('load', () => _bsCheckAllFormats(), { once: true });
@@ -18382,6 +18399,392 @@
         h1.appendChild(bdi);
         document.body.insertBefore(h1, document.body.firstChild);
         return h1;
+    }
+
+    // --- brucespringsteen.it: a record's own page (bs-record) ---------------
+    // `DB/detrec.aspx?code=` (2026-11-06; org/brucespringsteen.it.org, mockup
+    // https://claude.ai/artifact/XULiW1dUFME9F4nbsrQokD): the record laid out
+    // as MusicBrainz lays out a release — a sub-table per record or disc
+    // (`_bsMediaGroups()`), the show each track comes from split into Date,
+    // Show and Country, and the record's facts, notes, sources and photo above
+    // (`_bsRecordHeadSpec()`). No request: `fetchText` hands the engine the
+    // live page's own HTML, read with the link previews' `_dpParseBs()`, so
+    // the hover card and the page agree. Its song and show links are
+    // `href="#"` script links (the site's `libmnx.js`); `_bsFixScriptLinks()`
+    // gives them their real pages, so they preview here as in our tables.
+
+    /**
+     * Whether this page is a brucespringsteen.it record page
+     * (`DB/detrec.aspx?code=`). Self-contained, because the frame gate at
+     * the top of the script asks it before any constant of this section
+     * exists.
+     *
+     * @param {Location|URL} [loc]
+     * @returns {boolean}
+     */
+    function _bsIsRecordPage(loc = window.location) {
+        return /^\/db\/detrec\.aspx$/i.test(loc.pathname || '') && !!new URLSearchParams(loc.search || '').get('code');
+    }
+
+    /**
+     * The page a brucespringsteen.it script link opens, from its `onclick`
+     * (the site's `DB/libmnx.js`, read 2026-11-06): `hs('586')` a song
+     * (`sd3.aspx?sid=586`), `helps('199905021')` a show (`mn.aspx?ex=…`;
+     * '000000000' is the site's "no show", which opens nothing),
+     * `showdisc('CR3TIM1')` a record (`detrec.aspx?code=…`). The site adds
+     * `&hecan=1`, which changes nothing a reader reads; it is left out, so
+     * every link to one page is one cache key.
+     *
+     * @param {?string} onclick The attribute as written.
+     * @param {string}  base    The page's URL.
+     * @returns {string} The absolute URL, or '' for anything else.
+     */
+    function _bsScriptLinkUrl(onclick, base) {
+        const m = /\b(hs|helps|showdisc)\s*\(\s*['"]([^'"]+)['"]\s*\)/.exec(onclick || '');
+        if (!m || (m[1] === 'helps' && /^0+$/.test(m[2]))) return '';
+        const page = { hs: 'sd3.aspx?sid=', helps: 'mn.aspx?ex=', showdisc: 'detrec.aspx?code=' }[m[1]];
+        return _dpAbsUrl(page + encodeURIComponent(m[2]), base);
+    }
+
+    /**
+     * Gives every `href="#"` script link of a brucespringsteen.it page its
+     * real page (`_bsScriptLinkUrl()`), so the link previews and the readers
+     * see it. The `onclick` stays: on the live page a plain click still opens
+     * the site's own small window (vzell's answer, 2026-11-06). Idempotent.
+     *
+     * @param {Document} doc
+     * @param {string}   base The page's URL.
+     * @returns {number} How many links were given a page.
+     */
+    function _bsFixScriptLinks(doc, base) {
+        let n = 0;
+        doc.querySelectorAll('a[href="#"][onclick]').forEach((a) => {
+            const href = _bsScriptLinkUrl(a.getAttribute('onclick'), base);
+            if (!href) return;
+            a.setAttribute('href', href);
+            n++;
+        });
+        return n;
+    }
+
+    /**
+     * The record page at init (`_bsPrepareLivePage()`): the script links get
+     * their pages (`_bsFixScriptLinks()`), the record block after the site's
+     * notice — everything after the `<hr>` that follows it — is wrapped in
+     * `div.mb-bs-record-native` (a block, so nothing moves), and our
+     * `<h1 class="mb-bs-h1">` with the record's title goes before it.
+     *
+     * @returns {HTMLHeadingElement}
+     */
+    function _bsPrepareRecordPage() {
+        _bsFixScriptLinks(document, window.location.href);
+        const notice = document.body.querySelector(':scope > p[style*="double"]');
+        let first = notice ? notice.nextSibling : document.body.firstChild;
+        while (first && !(first.nodeType === Node.ELEMENT_NODE && first.nodeName === 'HR')) first = first.nextSibling;
+        first = first ? first.nextSibling : document.body.firstChild;
+        const wrap = document.createElement('div');
+        wrap.className = 'mb-bs-record-native';
+        document.body.insertBefore(wrap, first);
+        while (wrap.nextSibling) wrap.appendChild(wrap.nextSibling);
+        const h1 = document.createElement('h1');
+        h1.className = 'mb-bs-h1';
+        const bdi = document.createElement('bdi');
+        const rec = _dpParseBs(document, window.location.href);
+        bdi.textContent = (rec && rec.title) || 'brucespringsteen.it — Record';
+        h1.appendChild(bdi);
+        wrap.before(h1);
+        return h1;
+    }
+
+    /**
+     * The record page's HTML as it was before our view hid it, taken once
+     * at the first press (`_bsRecordPageHtml()`), its parse
+     * (`_bsRecordSource()`) and whether the site's photo loaded
+     * (`_bsRecordPhoto`, 'ok' | 'none'). The head reads these, never the
+     * live page.
+     * @type {?string}
+     */
+    let _bsRecordHtml = null;
+
+    /** @type {?object} */
+    let _bsRecordRec = null;
+
+    /** @type {?('ok'|'none')} */
+    let _bsRecordPhoto = null;
+
+    /**
+     * The record page's original HTML (see `_bsRecordHtml`).
+     *
+     * @returns {string}
+     */
+    function _bsRecordPageHtml() {
+        if (_bsRecordHtml === null) _bsRecordHtml = document.documentElement.outerHTML;
+        return _bsRecordHtml;
+    }
+
+    /**
+     * The parsed copy of the record page (`_dpParseBs()` on `_bsRecordHtml`).
+     *
+     * @returns {?object}
+     */
+    function _bsRecordSource() {
+        if (!_bsRecordRec) {
+            const doc = new DOMParser().parseFromString(_bsRecordPageHtml(), 'text/html');
+            _bsRecordRec = _dpParseBs(doc, window.location.href);
+        }
+        return _bsRecordRec;
+    }
+
+    /**
+     * Whether the site's photo of this record loaded, from the live
+     * `<img>`: the site hides a missing one with `onerror`, so a photo
+     * exists only if it loads (as `_bsFiCheckPhoto()` decides it for the
+     * list's Photo column). Waits for an image still loading, at most 8 s.
+     * Remembered in `_bsRecordPhoto`.
+     *
+     * @returns {Promise<'ok'|'none'>}
+     */
+    async function _bsRecordPhotoState() {
+        if (_bsRecordPhoto) return _bsRecordPhoto;
+        const img = document.querySelector('.mb-bs-record-native img[src*="blegs"], body > p img[src*="blegs"]');
+        if (img && !img.complete) {
+            await new Promise((resolve) => {
+                const done = () => resolve();
+                img.addEventListener('load', done, { once: true });
+                img.addEventListener('error', done, { once: true });
+                setTimeout(done, 8000);
+            });
+        }
+        _bsRecordPhoto = img && img.complete && img.naturalWidth > 0 ? 'ok' : 'none';
+        return _bsRecordPhoto;
+    }
+
+    /**
+     * Splits a record page's "From" text into its parts:
+     * "Manchester,Evening News Arena(GB) 02-May-1999/1" → show
+     * "Manchester, Evening News Arena", country "GB", date "1999-05-02". A
+     * studio session or an album release reads the same way ("Album
+     * release,The river(USA) 10-Oct-1980/1"). Text of another shape is the
+     * show as written.
+     *
+     * @param {string} text
+     * @returns {{show: string, country: string, date: string}}
+     */
+    function _bsSplitFrom(text) {
+        const t = _dpText(text || '');
+        const m = /^(.*)\(([^()]*)\)\s+(\d{1,2})-([A-Za-z]{3})-(\d{4})(?:\/\d+)?$/.exec(t);
+        const month = m ? _BS_MONTHS.indexOf(m[4].slice(0, 1).toUpperCase() + m[4].slice(1).toLowerCase()) + 1 : 0;
+        if (!m || !month) return { show: t.replace(/\/\d+$/, ''), country: '', date: '' };
+        return {
+            show: m[1].trim().replace(/\s*,\s*/g, ', '),
+            country: m[2].trim(),
+            date: `${m[5]}-${String(month).padStart(2, '0')}-${m[3].padStart(2, '0')}`
+        };
+    }
+
+    /** @type {string[]} */
+    const _BS_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    /**
+     * Cuts a record's tracks into sub-tables, as MusicBrainz cuts a release
+     * into media (vzell's answer, 2026-11-06: "Pair sides when it adds
+     * up"). The first number of a position ("3/2") is a side on some vinyl
+     * records and a record on others: All Those Years' 10 LP has groups
+     * 1–20, The River's 2 LP has 1–2, a 7″ single 1 and 2. So with N vinyl
+     * records (LP, 7″, 10″, 12″) and 2×N groups the sides are paired —
+     * "Record 1 (sides 1 + 2)", a single record "(sides A + B)"; with N
+     * groups each is a record ("Disc", "Tape" for the other formats);
+     * otherwise each group is a sub-table under its own number ("Side 3",
+     * "Disc 3"). A name met twice gets " (2)".
+     *
+     * @param {string} support The record's Support ("10 LP", "3 CD-R", "1 7 in.").
+     * @param {Array<{pos: string}>} tracks In page order.
+     * @returns {Array<{name: string, tracks: Array<object>}>}
+     */
+    function _bsMediaGroups(support, tracks) {
+        const m = /^\s*(\d+)\s+(.*)$/.exec(support || '');
+        const n = m ? parseInt(m[1], 10) : 0;
+        const fmt = m ? m[2] : (support || '');
+        const vinyl = /\bLP\b|\b(?:7|10|12)\s*in\b/i.test(fmt);
+        const word = vinyl ? 'Record' : /\b(?:tape|vhs)\b/i.test(fmt) ? 'Tape' : 'Disc';
+        const groups = [];
+        tracks.forEach((t) => {
+            const g = String(t.pos || '').split('/')[0];
+            let last = groups[groups.length - 1];
+            if (!last || last.g !== g) groups.push(last = { g, tracks: [] });
+            last.tracks.push(t);
+        });
+        let out;
+        if (vinyl && n > 0 && groups.length === 2 * n) {
+            out = [];
+            for (let k = 0; k < n; k++) {
+                const a = groups[2 * k];
+                const b = groups[2 * k + 1];
+                const sides = n === 1 ? 'A + B' : `${a.g} + ${b.g}`;
+                out.push({ name: `${word} ${k + 1} (sides ${sides})`, tracks: a.tracks.concat(b.tracks) });
+            }
+        } else if (n > 0 && groups.length === n) {
+            out = groups.map((g, k) => ({ name: `${word} ${k + 1}`, tracks: g.tracks }));
+        } else {
+            out = groups.map(g => ({ name: `${vinyl ? 'Side' : word} ${g.g}`, tracks: g.tracks }));
+        }
+        const seen = new Map();
+        out.forEach((o) => {
+            const k = (seen.get(o.name) || 0) + 1;
+            seen.set(o.name, k);
+            if (k > 1) o.name = `${o.name} (${k})`;
+        });
+        return out;
+    }
+
+    /**
+     * Column headers of the record page's sub-tables (`_bsRecordToHtml()`);
+     * Play only while `_ytOn()`.
+     * @type {string[]}
+     */
+    const _BS_RECORD_HEADERS = ['Pos', 'Title', 'Date', 'Show', 'Country', 'Notes', 'Ver', 'Play'];
+
+    /**
+     * `toHtml` of bs-record: the record's tracklist (`_dpParseBs()`) as a
+     * sub-table per record or disc (`_bsMediaGroups()`): Pos (the site's
+     * "3/2") · Title (the song's page, in MusicBrainz title style while
+     * `sa_foreign_mb_titles` is on, the site's text as the tooltip) · Date
+     * (ISO) · Show (the show's page) · Country · Notes · Ver (the site's
+     * version number; 99 is the released version) · Play (a YouTube search,
+     * only with `sa_yt_play_in_place`). A ditto (") in the site's From cell
+     * is the row above's show, which the parser fills in. Links are absolute
+     * and open in a new tab. A page without a tracklist throws, so the run
+     * records a failed page, never "no rows".
+     *
+     * @param {string} text The page's HTML.
+     * @param {string} base Its URL.
+     * @returns {string} An HTML document.
+     * @throws {Error} When the page has no tracklist (`status` 0).
+     */
+    function _bsRecordToHtml(text, base) {
+        const doc = new DOMParser().parseFromString(text, 'text/html');
+        const rec = _dpParseBs(doc, base);
+        if (!rec || !rec.tracks.length) throw Object.assign(new Error('brucespringsteen.it answered, but the page has no tracklist'), { status: 0 });
+        const play = _ytOn();
+        const cols = _BS_RECORD_HEADERS.filter(c => play || c !== 'Play');
+        const support = (rec.fields.find(f => f[0] === 'Support') || [])[1] || '';
+        const link = (href, inner) => (href ? `<a href="${_rgEsc(href)}" target="_blank" rel="noopener">${inner}</a>` : inner);
+        const body = _bsMediaGroups(support, rec.tracks).map((g) => {
+            const rows = g.tracks.map((t) => {
+                const shown = _mbSiteTitleText(t.title);
+                const titleTd = shown !== t.title
+                    ? `<td data-mb-tip title="${_rgEsc(`As written on the site:\n${t.title}`)}">${link(t.songUrl, _rgEsc(shown))}</td>`
+                    : `<td>${link(t.songUrl, _rgEsc(shown))}</td>`;
+                const q = `Bruce Springsteen ${shown} ${t.date}`.trim();
+                const tile = play ? _ytTileHtml({ src: 'yts', kind: 'video', id: '', list: '', q }, { bare: true, title: shown }) : '';
+                return `<tr><td>${_rgEsc(t.pos)}</td>${titleTd}<td>${_rgEsc(t.date)}</td>` +
+                    `<td>${link(t.showUrl, _rgEsc(t.show))}</td><td>${_rgEsc(t.country)}</td>` +
+                    `<td>${_rgEsc(t.notes)}</td><td>${_rgEsc(t.ver)}</td>` +
+                    `${play ? `<td class="mb-dg-playcell">${tile}</td>` : ''}</tr>`;
+            });
+            return `<h3>${_rgEsc(g.name)}</h3><table class="tbl" data-mb-col-headers="${_rgEsc(JSON.stringify(cols))}">` +
+                `<thead><tr>${cols.map(c => `<th>${_rgEsc(c)}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>`;
+        });
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${body.join('')}</body></html>`;
+    }
+
+    /**
+     * The live page's part of bs-record (`features.bsRecordToTable`), at the
+     * press, on a Load from Disk and on every repeat: the copy of the page is
+     * taken (`_bsRecordPageHtml()`), the site's record block
+     * (`div.mb-bs-record-native`) hides, and an `<h2
+     * class="mb-bs-list-heading">Tracklist</h2>` with an EMPTY `table.tbl`
+     * goes under our `<h1>` for the engine to render into; the rows come from
+     * the page's own HTML (`features.pageRequest`). Idempotent.
+     *
+     * @param {object} def The active merged pageDefinition.
+     * @returns {void}
+     */
+    function applyBsRecordToTable(def) {
+        if (!def?.features?.bsRecordToTable || document.querySelector('table.mb-bs-record-table')) return;
+        _bsRecordPageHtml();
+        const h1 = document.querySelector('h1.mb-bs-h1') || _bsPrepareLivePage();
+        if (!h1) return;
+        const native = document.querySelector('.mb-bs-record-native');
+        if (native) native.classList.add('mb-bs-record-done');
+        const h2 = document.createElement('h2');
+        h2.className = 'mb-bs-list-heading';
+        h2.textContent = 'Tracklist';
+        const table = document.createElement('table');
+        table.className = 'tbl mb-bs-record-table';
+        table.innerHTML = '<thead><tr><th>Pos</th><th>Title</th></tr></thead><tbody></tbody>';
+        if (native) native.before(h2, table);
+        else h1.after(h2, table);
+        Lib.debug('init', 'applyBsRecordToTable: empty bs-record table in place.');
+    }
+
+    /**
+     * Whether the live record page has a tracklist (the table headed Pos /
+     * … / From), for the button's `showIf`: a record without one gets no
+     * button.
+     *
+     * @param {Document} [doc]
+     * @returns {boolean}
+     */
+    function _bsRecordHasTracks(doc = document) {
+        return Array.from(doc.querySelectorAll('table')).some((t) => {
+            const head = t.rows[0] ? Array.from(t.rows[0].cells).map(c => _dpText(c.textContent)) : [];
+            return head.includes('Pos') && head.includes('From');
+        });
+    }
+
+    /**
+     * The head of a record page (`_fdHeadSpec()`), read from the copy taken
+     * at the press (`_bsRecordSource()`): "~ Official release | Bootleg by
+     * Bruce Springsteen (release period)"; Notes (the page's Notes and any
+     * line between its facts and them, "The original version is
+     * numbered."); Details — on the left the record's facts as the page
+     * names them (an official release: Catalogue number, Pressed in,
+     * Release period; a bootleg: Matrix, Producer, Vinyl), Promo, Code and
+     * the page; on the right Sources: every show the tracks come from, in
+     * tracklist order, with its date, country and number of tracks (vzell's
+     * answer, 2026-11-06); and the site's photo, when it loaded, as the art
+     * section with the type "Photo" and the ★. Null on another page.
+     *
+     * @returns {?Object}
+     */
+    function _bsRecordHeadSpec() {
+        const h2 = document.querySelector('h2.mb-bs-list-heading');
+        const rec = _bsRecordSource();
+        if (activeDefinition?.type !== 'bs-record' || !h2 || !rec) return null;
+        const field = (name) => (rec.fields.find(f => f[0] === name) || [])[1] || '';
+        const kind = rec.kind === 'official' ? 'Official release' : 'Bootleg';
+        const shows = [];
+        rec.tracks.forEach((t) => {
+            const key = t.showUrl || t.from;
+            let s = shows.find(x => x.key === key);
+            if (!s) shows.push(s = { key, t, n: 0 });
+            s.n++;
+        });
+        const sourceRows = shows.map((s) => {
+            const span = document.createElement('span');
+            span.appendChild(s.t.showUrl ? _fdLink(s.t.showUrl, s.t.show || s.t.from) : document.createTextNode(s.t.show || s.t.from || 'not given'));
+            span.append(`${s.t.country ? ` (${s.t.country})` : ''} · ${s.n} track${s.n === 1 ? '' : 's'}`);
+            return [s.t.date || '–', span];
+        });
+        const photo = _bsRecordPhoto === 'ok' ? rec.images[0] : null;
+        return {
+            root: h2.parentElement, h2,
+            sub: { what: kind, by: 'Bruce Springsteen', when: field('Release period') },
+            text: { title: 'Notes', body: rec.notes.join('\n\n') },
+            facts: [
+                ['record', 'Record', [['Title', rec.title]].concat(
+                    rec.fields.filter(f => f[0] !== 'Title'),
+                    [['Promo', rec.promo ? 'yes' : ''], ['Code', rec.code],
+                        ['This page', _fdLink(window.location.href, `detrec.aspx?code=${rec.code}`)]])]
+            ],
+            others: [
+                shows.length && ['sources', 'Sources', [[`${rec.tracks.length} tracks`, `from ${shows.length} show${shows.length === 1 ? '' : 's'}`]].concat(sourceRows)]
+            ],
+            pictures: photo ? [{ full: photo.full, thumb: photo.thumb, caption: '', types: ['Photo'], front: true }] : [],
+            picturesTitle: 'Photo',
+            title: rec.title, source: 'brucespringsteen.it\'s page'
+        };
     }
 
     // --- discogs.com (www.discogs.com) ---------------------------------------
@@ -23142,6 +23545,7 @@
         if (t === 'sfm-festivals') return _sfmFestivalsHeadSpec();
         if (t === 'sl-collection-item' || t === 'sl-bootlegs-item' || t === 'sl-brucelegs-item') return _slItemHeadSpec();
         if (t === 'sl-song') return _slSongHeadSpec();
+        if (t === 'bs-record') return _bsRecordHeadSpec();
         return null;
     }
 
@@ -27567,9 +27971,14 @@
      *    `_DP_DISC_RE`) opens a medium instead of ending the tracks.
      * 16: a box set's records without tracklists are its contents (a
      *    section and a count), not three "tracks" and notes.
+     * 17: brucespringsteen.it records: each track's song and show pages,
+     *    the show split (`_bsSplitFrom()`), notes and version, the kind,
+     *    the promo flag (out of the title), the code, and a line between
+     *    the facts and the Notes as a note; its song and show pages are
+     *    records too (`_dpParseBsSong()`, `_dpParseBsShow()`).
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 16;
+    const _DP_PARSER_VERSION = 17;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -29185,21 +29594,47 @@
      * table headed Pos / Title / From / Notes / Ver; its From column writes
      * `"` for "same as above", which is filled in from the row before, and
      * the trailing "/1" show index is dropped. Song and show links are
-     * `href="#"` script calls, so only their text is kept. A record may have
-     * one photo, `..\blegs\images\<code>.jpg`, which is often missing.
+     * `href="#"` script calls; `_bsFixScriptLinks()` gives them their pages
+     * first, so each track also carries its song's page (`songUrl`) and its
+     * show's (`showUrl`, the row above's for a ditto), the show split into
+     * `show`, `country` and an ISO `date` (`_bsSplitFrom()`), and its
+     * `notes` and `ver` ("-" and " - " are empty). A line between the facts
+     * and the Notes ("The original version is numbered.", All Those Years'
+     * LP) is a note too. `kind` is 'official' or 'bootleg' (the page's
+     * title: "Discography" or "Bootlegs"); a "*PROMO*" in the title becomes
+     * `promo`, and the title is kept without it (`siteTitle` with it).
+     * A record may have one photo, `..\blegs\images\<code>.jpg`, which is
+     * often missing.
+     *
+     * The same host's song (`sd3.aspx?sid=`) and show (`mn.aspx?ex=`)
+     * pages are read by `_dpParseBsSong()` and `_dpParseBsShow()`
+     * (2026-11-06): this function hands them over by the URL's path.
      *
      * @param {Document} doc The fetched page.
      * @param {string}   url The page's URL.
      * @returns {?object} The record, or null when the page has no title line.
      */
     function _dpParseBs(doc, url) {
+        _bsFixScriptLinks(doc, url);
+        let path = '';
+        try { path = new URL(url).pathname.toLowerCase(); } catch (_) { /* not a URL: a record page */ }
+        if (/\/sd3\.aspx$/.test(path)) return _dpParseBsSong(doc, url);
+        if (/\/mn\.aspx$/.test(path)) return _dpParseBsShow(doc, url);
         const start = Array.from(doc.querySelectorAll('b'))
             .find(b => /(?:^|\n)\s*Title\s*:\s*$/.test(b.previousSibling ? b.previousSibling.textContent : ''));
         if (!start) return null;
         const data = _dpEmpty();
-        data.title = _dpText(start.textContent);
+        data.siteTitle = _dpText(start.textContent);
+        data.promo = /\*PROMO\*/i.test(data.siteTitle);
+        data.title = _dpText(data.siteTitle.replace(/\*PROMO\*/ig, ''));
+        data.kind = /\bDiscography\b/i.test(doc.title || '') ? 'official' : 'bootleg';
+        let code = '';
+        try { code = new URL(url).searchParams.get('code') || ''; } catch (_) { /* no code in the URL */ }
+        data.code = code || ((/-\s*(\S+)\s*$/.exec(doc.title || '') || [])[1] || '');
+        data.subtitle = (data.kind === 'official' ? 'Official release' : 'Bootleg') + (data.promo ? ' · promo' : '');
         let label = '';
-        for (let n = start.nextSibling; n; n = n.nextSibling) {
+        let n = start.nextSibling;
+        for (; n; n = n.nextSibling) {
             if (n.nodeType === Node.TEXT_NODE) { label += n.textContent; continue; }
             if (n.nodeName === 'BR') continue;
             if (n.nodeName !== 'B') break;
@@ -29208,30 +29643,227 @@
             if (name && value) data.fields.push([name, value]);
             label = '';
         }
-        const notes = Array.from(doc.querySelectorAll('p')).find(p => /^\s*Notes\s*:/.test(p.textContent));
+        // A line between the facts and the Notes `<p>` (All Those Years' LP:
+        // "The original version is numbered."): text and inline elements up
+        // to the next block.
+        let stray = '';
+        for (n = n ? n.nextSibling : null; n; n = n.nextSibling) {
+            if (n.nodeType === Node.ELEMENT_NODE && /^(?:P|TABLE|HR|DIV|IMG|H\d)$/.test(n.nodeName)) break;
+            stray += n.nodeName === 'BR' ? '\n' : n.textContent;
+        }
+        stray = stray.split('\n').map(l => _dpText(l)).filter(Boolean).join('\n');
+        if (stray) data.notes.push(stray);
+        // The first "Notes:" paragraph AFTER the facts: a copy of the live
+        // page may hold other markup before them (another script's, or the
+        // test harness's inline userscript).
+        const after = (el) => !!(start.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING);
+        const notes = Array.from(doc.querySelectorAll('p')).find(p => after(p) && /^\s*Notes\s*:/.test(p.textContent));
         const noteText = notes ? _dpBlockText(notes).replace(/^Notes\s*:\s*/, '').trim() : '';
         if (noteText) data.notes.push(noteText);
         // Header cell by cell: the row's textContent runs them together
         // ("PosTitleFromNotesVer").
         const table = Array.from(doc.querySelectorAll('table')).find(t => {
             const head = t.rows[0] ? Array.from(t.rows[0].cells).map(c => _dpText(c.textContent)) : [];
-            return head.includes('Pos') && head.includes('From');
+            return after(t) && head.includes('Pos') && head.includes('From');
         });
         let from = '';
+        let show = { show: '', country: '', date: '' };
+        let showUrl = '';
         if (table) {
             Array.from(table.rows).slice(1).forEach(tr => {
                 const cells = Array.from(tr.cells).map(td => _dpText(td.textContent));
                 if (cells.length < 3 || !/^\d+\/\d+$/.test(cells[0])) return;
-                const own = /^["”]?$/.test(cells[2]) ? from : cells[2].replace(/\/\d+$/, '');
+                const ditto = /^["”]?$/.test(cells[2]);
+                const own = ditto ? from : cells[2].replace(/\/\d+$/, '');
+                if (!ditto) {
+                    show = _bsSplitFrom(cells[2]);
+                    const showA = tr.cells[2].querySelector('a[href]');
+                    showUrl = showA && showA.getAttribute('href') !== '#' ? _dpAbsUrl(showA.getAttribute('href'), url) : '';
+                }
                 from = own;
-                data.tracks.push({ disc: cells[0].split('/')[0], pos: cells[0], title: cells[1], from: own });
+                const songA = tr.cells[1].querySelector('a[href]');
+                const songUrl = songA && songA.getAttribute('href') !== '#' ? _dpAbsUrl(songA.getAttribute('href'), url) : '';
+                const blank = (v) => (/^-?$/.test((v || '').trim()) ? '' : v.trim());
+                data.tracks.push({
+                    disc: cells[0].split('/')[0], pos: cells[0], title: cells[1], from: own,
+                    songUrl, showUrl, show: show.show, country: show.country, date: show.date,
+                    notes: blank(cells[3]), ver: blank(cells[4])
+                });
             });
         }
-        const img = doc.querySelector('img[src*="blegs"]');
+        const img = Array.from(doc.querySelectorAll('img[src*="blegs"]')).find(after);
         if (img) {
             const src = _dpAbsUrl(img.getAttribute('src'), url);
             data.cover = src;
             data.images.push({ thumb: src, full: src, label: '' });
+        }
+        return data;
+    }
+
+    /**
+     * The text of the nodes after `from` up to (not including) the first
+     * node `stop()` accepts, `<br>` as a line break, each line's whitespace
+     * collapsed, leading and trailing blank lines dropped, runs of blank
+     * lines kept as one. The brucespringsteen.it song and show pages write
+     * their text as bare text and `<br>` between blocks (and separate their
+     * source lines with bare CRs, which a text pass never sees).
+     *
+     * @param {?Node}                 from
+     * @param {function(Node): boolean} stop
+     * @returns {string[]}
+     */
+    function _bsTextLinesAfter(from, stop) {
+        let text = '';
+        for (let n = from ? from.nextSibling : null; n && !stop(n); n = n.nextSibling) {
+            if (n.nodeName === 'BR') text += '\n';
+            else if (n.nodeType === Node.ELEMENT_NODE && /^(?:P|DIV)$/.test(n.nodeName)) text += `\n${_dpBlockText(n)}\n`;
+            else text += n.textContent.replace(/[\r\n]+/g, ' ');
+        }
+        const lines = text.split('\n').map(l => l.replace(/[ \t ]+/g, ' ').trim());
+        const out = [];
+        lines.forEach((l) => {
+            if (l || (out.length && out[out.length - 1])) out.push(l);
+        });
+        while (out.length && !out[out.length - 1]) out.pop();
+        return out;
+    }
+
+    /**
+     * Parses a brucespringsteen.it song page (`DB/sd3.aspx?sid=`, the
+     * site's `hs()` links; probed 2026-11-06 with sid=586): "Song title:
+     * <b>…</b>", then per version an anchor `<a name=VRSn>`, its name
+     * (`<p><b>The ties that bind - Early 1978 take</b></p>`), its lyrics as
+     * text and `<br>`, and a `<p><i><b>Notes:</b> …</i></p>` before the
+     * `<hr>`. The record: the song as `title`, "Song · N versions" as
+     * `subtitle`, the first version's opening lines as the card's
+     * `excerpt`, and a section per version (lyrics, then its note), open
+     * and collapsible.
+     *
+     * @param {Document} doc
+     * @param {string}   url
+     * @returns {?object} The record, or null when the page names no song.
+     */
+    function _dpParseBsSong(doc, url) {
+        const head = Array.from(doc.querySelectorAll('p')).find(p => /^\s*Song title\s*:/i.test(p.textContent));
+        const anchors = Array.from(doc.querySelectorAll('a[name^="VRS"]'));
+        if (!head && !anchors.length) return null;
+        const data = _dpEmpty();
+        data.title = _dpText((head && head.querySelector('b') || head || {}).textContent || '');
+        data.collapsible = true;
+        const isEnd = n => n.nodeType === Node.ELEMENT_NODE && (n.matches('a[name^="VRS"], hr, h4') || !!n.querySelector('a[name^="VRS"]'));
+        anchors.forEach((a, i) => {
+            let name = '';
+            let note = '';
+            // The version's name and its note are `<p>`s among its lines.
+            const parts = [];
+            for (let n = a.nextSibling; n && !isEnd(n); n = n.nextSibling) {
+                if (n.nodeName === 'P') {
+                    const t = _dpText(n.textContent);
+                    if (/^Notes\s*:/i.test(t)) { note = t.replace(/^Notes\s*:\s*/i, ''); continue; }
+                    if (!name && n.querySelector('b')) { name = t; continue; }
+                }
+                parts.push(n);
+            }
+            const box = doc.createElement('div');
+            parts.forEach(n => box.appendChild(n.cloneNode(true)));
+            const lines = _bsTextLinesAfter(box.insertBefore(doc.createTextNode(''), box.firstChild), () => false);
+            const label = name || `${data.title || 'Version'} (${i + 1})`;
+            if (i === 0 && lines.length) {
+                data.excerpt = { label: 'Lyrics', lines: lines.filter(Boolean).slice(0, 4), total: lines.filter(Boolean).length };
+            }
+            data.sections.push({ label, text: lines.join('\n') + (note ? `\n\nNotes: ${note}` : '') });
+        });
+        data.subtitle = `Song · ${anchors.length} version${anchors.length === 1 ? '' : 's'}`;
+        data.fields.push(['Versions', String(anchors.length)]);
+        try {
+            data.fields.push(['Song number', new URL(url).searchParams.get('sid') || '']);
+        } catch (_) { /* no number */ }
+        data.fields = data.fields.filter(f => f[1]);
+        return data;
+    }
+
+    /** brucespringsteen.it's format icons (`supp<N>.gif`), by N: the format codes C0–C11 of its record list. @type {string[]} */
+    const _BS_SUPP_FORMATS = ['Album', '7″', 'CD', 'miniCD 3″', 'LP', 'Tape', '12″', 'VHS', 'CD-R', 'DVD', 'miniCD 5″', 'VA album'];
+
+    /**
+     * Parses a brucespringsteen.it show page (`DB/mn.aspx?ex=`, the site's
+     * `helps()` links; probed 2026-11-06 with 199905021, S198010101,
+     * 197301312): `<a name=EX></a><u>02-May-1999 Manchester Evening News
+     * Arena,GB</u>`, then lines — the setlist ("01 Badlands", "14 Working
+     * on the highway [Including …]"; an album release writes "Version 99 -
+     * The ties that bind [Released version]"), remarks (" - This date is a
+     * DUMMY DATE …"), "Notes:" and its text — and "Songs from this show can
+     * be found on:" with a table of records, a `supp<N>.gif` format icon and
+     * a `showdisc()` link each. The record: the venue as `title`, "date ·
+     * country · Live | Release / studio" as `subtitle`, the setlist as
+     * `tracks` (a "[…]" remark kept after the title, "[Released version]"
+     * dropped), remarks and notes as `notes`, and "Found on (N)": each record
+     * with its format, linked to its page (it opens in the window).
+     *
+     * @param {Document} doc
+     * @param {string}   url
+     * @returns {?object} The record, or null when the page has no show.
+     */
+    function _dpParseBsShow(doc, url) {
+        const u = doc.querySelector('a[name] + u') || doc.querySelector('u');
+        if (!u) return null;
+        const data = _dpEmpty();
+        const head = _dpText(u.textContent);
+        const m = /^(\d{1,2})-([A-Za-z]{3})-(\d{4})\s+(.*?),\s*([^,]+)$/.exec(head);
+        const month = m ? _BS_MONTHS.indexOf(m[2].slice(0, 1).toUpperCase() + m[2].slice(1).toLowerCase()) + 1 : 0;
+        const date = m && month ? `${m[3]}-${String(month).padStart(2, '0')}-${m[1].padStart(2, '0')}` : '';
+        const venue = m ? m[4].trim() : head;
+        const country = m ? m[5].trim() : '';
+        let ex = '';
+        try { ex = new URL(url).searchParams.get('ex') || ''; } catch (_) { /* no code */ }
+        const studio = /^S/i.test(ex);
+        data.collapsible = true;
+        data.title = venue;
+        data.subtitle = [date, country, studio ? 'Release / studio' : 'Live'].filter(Boolean).join(' · ');
+        const isFoundOn = n => n.nodeType === Node.TEXT_NODE && /Songs from this show can be found on/i.test(n.textContent);
+        const table = Array.from(doc.querySelectorAll('table')).find(t => t.querySelector('a[onclick*="showdisc"], a[href*="detrec.aspx"]'));
+        const lines = _bsTextLinesAfter(u, n => n === table || isFoundOn(n) || (n.nodeType === Node.ELEMENT_NODE && !!table && n.contains(table)));
+        let inNotes = false;
+        const notes = [];
+        const remarks = [];
+        lines.forEach((l) => {
+            if (/^Songs from this show/i.test(l)) { inNotes = false; return; }
+            if (/^Notes\s*:/i.test(l)) {
+                inNotes = true;
+                const rest = l.replace(/^Notes\s*:\s*/i, '');
+                if (rest) notes.push(rest);
+                return;
+            }
+            if (inNotes) { notes.push(l); return; }
+            const s = /^(?:(\d{1,3})|Version\s+\d+\s*-)\s+(.*?)\s*(?:\[([^\]]*)\])?\s*$/.exec(l);
+            if (s && s[2]) {
+                const remark = s[3] && !/^released version$/i.test(s[3].trim()) ? ` [${s[3].trim()}]` : '';
+                const pos = s[1] || String(data.tracks.length + 1).padStart(2, '0');
+                data.tracks.push({ disc: '', pos, title: `${s[2].trim()}${remark}`, from: '' });
+            } else if (l) {
+                remarks.push(l.replace(/^-\s*/, ''));
+            }
+        });
+        const notesText = notes.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+        if (remarks.length) data.notes.push(remarks.join('\n'));
+        if (notesText) data.notes.push(notesText);
+        data.fields.push(['Date', date], ['Venue', venue], ['Country', country],
+            ['Kind', studio ? 'Release / studio session' : 'Live'], ['Songs', data.tracks.length ? String(data.tracks.length) : '']);
+        data.fields = data.fields.filter(f => f[1]);
+        const found = table ? Array.from(table.querySelectorAll('tr')).map((tr) => {
+            const a = tr.querySelector('a[href]');
+            const icon = tr.querySelector('img[src*="supp"]');
+            const k = icon ? parseInt((/supp(\d+)\./i.exec(icon.getAttribute('src') || '') || [])[1], 10) : NaN;
+            if (!a || a.getAttribute('href') === '#') return null;
+            return { href: _dpAbsUrl(a.getAttribute('href'), url), text: _dpText(a.textContent), fmt: _BS_SUPP_FORMATS[k] || '' };
+        }).filter(Boolean) : [];
+        if (found.length) {
+            data.highlight = { value: String(found.length), label: `record${found.length === 1 ? '' : 's'} with songs from this show` };
+            data.sections.push({
+                label: `Found on (${found.length})`,
+                text: found.map(f => `${f.fmt ? `${f.fmt} · ` : ''}${f.text}`).join('\n'),
+                html: found.map(f => `${f.fmt ? `${_mbttEscape(f.fmt)} · ` : ''}<a href="${_mbttEscape(f.href)}" target="_blank" rel="noopener">${_mbttEscape(f.text)}</a>`).join('\n')
+            });
         }
         return data;
     }
@@ -29778,7 +30410,11 @@
         },
         'brucespringsteen.it': {
             setting: 'sa_bs_detail_preview',
-            isDetailUrl: (u) => /^\/db\/detrec\.aspx$/i.test(u.pathname) && !!u.searchParams.get('code'),
+            // A record, and (2026-11-06) a song and a show: the site's
+            // `showdisc()`, `hs()` and `helps()` targets (`_bsScriptLinkUrl()`).
+            isDetailUrl: (u) => (/^\/db\/detrec\.aspx$/i.test(u.pathname) && !!u.searchParams.get('code')) ||
+                (/^\/db\/sd3\.aspx$/i.test(u.pathname) && /^\d+$/.test(u.searchParams.get('sid') || '')) ||
+                (/^\/db\/mn\.aspx$/i.test(u.pathname) && /^S?\d+$/i.test(u.searchParams.get('ex') || '')),
             charset: null,
             parse: _dpParseBs,
             ttlDays: 182,
@@ -49288,6 +49924,44 @@
                 stickyColumn: 'Title'
             },
             tableMode: 'single'
+        },
+        // A record's own page (2026-11-06; org/brucespringsteen.it.org, mockup
+        // https://claude.ai/artifact/XULiW1dUFME9F4nbsrQokD): the tracklist as
+        // release-tracks shows a release — a sub-table per record or disc
+        // (`_bsMediaGroups()`), the show split into Date, Show and Country —
+        // and the record's facts, notes, sources and photo above
+        // (`_bsRecordHeadSpec()`). No request: `fetchText` hands the engine
+        // the live page's own HTML (`_bsRecordToHtml()`). Also in the
+        // frameset's right frame (the frame gate, `principale`).
+        {
+            type: 'bs-record',
+            host: 'brucespringsteen.it',
+            match: () => _bsIsRecordPage(),
+            buttons: [ {
+                label: 'Show the tracklist', shortLabel: 'Tracklist',
+                showIf: () => _bsRecordHasTracks(),
+                description: 'No request: the tracklist from this page, a sub-table per record or disc, the source show split into date, show and country; the record\'s facts, notes, sources and photo above.'
+            } ],
+            features: {
+                bsRecordToTable: true,
+                groupByH3: true,
+                pageRequest: () => {
+                    const url = window.location.href;
+                    return {
+                        url,
+                        fetchText: async () => { await _bsRecordPhotoState(); return _bsRecordPageHtml(); },
+                        toHtml: (text) => _bsRecordToHtml(text, url)
+                    };
+                },
+                pageCountAsync: () => 1,
+                columnDescriptions: {
+                    Ver: 'The site\'s version of the song: 99 is the released version (an album release\'s "[Released version]"), "-" none given.',
+                    Show: 'The show, studio session or release the track comes from, as the site names it; its page previews on hover.',
+                    Pos: 'The site\'s position: side or record / track.'
+                },
+                stickyColumn: 'Title'
+            },
+            tableMode: 'multi'
         },
 
         // --- brucebase.wikidot.com -------------------------------------------
@@ -116807,6 +117481,11 @@ a { color: #1565c0; }`;
             _bsCheckAllFormats(activeDefinition.features.bsRecordsToTable);
             applyBsRecordsToTable(activeDefinition);
         }
+        // A record's own page ('bs-record'): an empty table under our h2; the
+        // rows come from the page's own HTML (`features.pageRequest`).
+        if (activeDefinition.features?.bsRecordToTable) {
+            applyBsRecordToTable(activeDefinition);
+        }
 
         // ── moveColumnFirst pre-processing ───────────────────────────────────
         // 'annotations': "Editor" ahead of the Old/New radios, before any
@@ -148732,6 +149411,11 @@ a { color: #1565c0; }`;
             // record paragraphs again; an empty table takes their place.
             if (activeDefinition.features?.bsRecordsToTable) {
                 applyBsRecordsToTable(activeDefinition);
+            }
+            // And a record page: the site's record block hides again and an
+            // empty table goes under our h2.
+            if (activeDefinition.features?.bsRecordToTable) {
+                applyBsRecordToTable(activeDefinition);
             }
             // And for the event overview: the reloaded page holds the native
             // relationship lists again, which would otherwise stay on the page

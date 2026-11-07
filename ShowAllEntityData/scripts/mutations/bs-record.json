@@ -1,0 +1,327 @@
+[
+    {
+        "name": "the frame gate no longer lets a record page run in the right frame",
+        "why": "bs-record runs in the frameset's wide right-hand frame `principale` (vzell: 'Own tab + right frame'). Without the exemption the frame gate stops it there like the list frame.",
+        "edits": [
+            {
+                "find": "if (_isBsHost && window.top !== window && !(_bsIsRecordPage() && window.name === 'principale')) {",
+                "replace": "if (_isBsHost && window.top !== window) {"
+            }
+        ],
+        "spec": "tests/fixtures/bs-record.spec.js",
+        "grep": "right frame",
+        "expect": "fail"
+    },
+    {
+        "name": "the frame gate lets a record page run in a frame of any name",
+        "why": "Only `principale` is the site's record frame; another frame (another site's iframe) stays out.",
+        "edits": [
+            {
+                "find": "!(_bsIsRecordPage() && window.name === 'principale')",
+                "replace": "!(_bsIsRecordPage() && true)"
+            }
+        ],
+        "spec": "tests/fixtures/bs-record.spec.js",
+        "grep": "any other name",
+        "expect": "fail"
+    },
+    {
+        "name": "vinyl sides are not paired into records",
+        "why": "All Those Years' 10 LP writes sides 1-20 as groups; vzell's answer: 'Pair sides when it adds up'. Without the pairing it shows 20 'Side' sub-tables.",
+        "edits": [
+            {
+                "find": "if (vinyl && n > 0 && groups.length === 2 * n) {",
+                "replace": "if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/bs-record.spec.js",
+        "grep": "sides paired",
+        "expect": "fail"
+    },
+    {
+        "name": "N groups are not N records",
+        "why": "The River's 2 LP writes one group per record (1/1-1/11, 2/1-2/9). Without this branch its sub-tables are named by side.",
+        "edits": [
+            {
+                "find": "} else if (n > 0 && groups.length === n) {",
+                "replace": "} else if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/bs-record.spec.js",
+        "grep": "the other shapes",
+        "expect": "fail"
+    },
+    {
+        "name": "a repeated medium name gets no \" (2)\"",
+        "why": "Only a site numbering that repeats a group after another one (1, 2, 1) gives two equal names; no snapshot shows one, so no spec can see this guard. Kept so two sub-tables never share one name (the grouped render keys groups by name).",
+        "edits": [
+            {
+                "find": "            if (k > 1) o.name = `${o.name} (${k})`;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bs-record.spec.js",
+        "grep": "sides paired",
+        "expect": "pass"
+    },
+    {
+        "name": "a ditto row starts a show of its own",
+        "why": "The From cell writes a double quote for 'same as above'. Without carrying the row above's show, a ditto row has no date, show, country or show page.",
+        "edits": [
+            {
+                "find": "                if (!ditto) {\n                    show = _bsSplitFrom(cells[2]);",
+                "replace": "                if (true) {\n                    show = _bsSplitFrom(cells[2]);"
+            }
+        ],
+        "spec": "tests/fixtures/bs-record.spec.js",
+        "grep": "sides paired",
+        "expect": "fail"
+    },
+    {
+        "name": "the show index '/1' is not stripped before the split",
+        "why": "The From text ends in the show's index of the day ('02-May-1999/1'). Without it in the pattern, nothing splits: Date and Country stay empty and Show is the whole text.",
+        "edits": [
+            {
+                "find": "const m = /^(.*)\\(([^()]*)\\)\\s+(\\d{1,2})-([A-Za-z]{3})-(\\d{4})(?:\\/\\d+)?$/.exec(t);",
+                "replace": "const m = /^(.*)\\(([^()]*)\\)\\s+(\\d{1,2})-([A-Za-z]{3})-(\\d{4})$/.exec(t);"
+            }
+        ],
+        "spec": "tests/fixtures/bs-record.spec.js",
+        "grep": "sides paired",
+        "expect": "fail"
+    },
+    {
+        "name": "script links keep their \"#\"",
+        "why": "The page's song and show links are href='#' script links. Without a real page they preview nothing, and '#' is the record page itself.",
+        "edits": [
+            {
+                "find": "            if (!href) return;\n            a.setAttribute('href', href);",
+                "replace": "            return;"
+            }
+        ],
+        "spec": "tests/fixtures/bs-record.spec.js",
+        "grep": "the script links given their pages",
+        "expect": "fail"
+    },
+    {
+        "name": "a script link carries the site's &hecan=1",
+        "why": "Every link to one page is one cache key: the hecan flag changes nothing a reader reads and is left out.",
+        "edits": [
+            {
+                "find": "return _dpAbsUrl(page + encodeURIComponent(m[2]), base);",
+                "replace": "return _dpAbsUrl(page + encodeURIComponent(m[2]) + '&hecan=1', base);"
+            }
+        ],
+        "spec": "tests/fixtures/bs-record.spec.js",
+        "grep": "the script links given their pages",
+        "expect": "fail"
+    },
+    {
+        "name": "helps('000000000') becomes a link",
+        "why": "'000000000' is the site's 'no show' (its own helps() opens nothing). No snapshot has one in a row, so no spec can see this guard; the reader would ask a page that does not exist.",
+        "edits": [
+            {
+                "find": "if (!m || (m[1] === 'helps' && /^0+$/.test(m[2]))) return '';",
+                "replace": "if (!m) return '';"
+            }
+        ],
+        "spec": "tests/fixtures/bs-record.spec.js",
+        "grep": "the script links given their pages",
+        "expect": "pass"
+    },
+    {
+        "name": "showdisc() links are not given their record page",
+        "why": "A show page's 'Found on' records are showdisc() links. Without them the section has no records and the window cannot open one.",
+        "edits": [
+            {
+                "find": "const m = /\\b(hs|helps|showdisc)\\s*\\(\\s*['\"]([^'\"]+)['\"]\\s*\\)/.exec(onclick || '');",
+                "replace": "const m = /\\b(hs|helps)\\s*\\(\\s*['\"]([^'\"]+)['\"]\\s*\\)/.exec(onclick || '');"
+            }
+        ],
+        "spec": "tests/fixtures/bs-record-preview.spec.js",
+        "grep": "a live show",
+        "expect": "fail"
+    },
+    {
+        "name": "a missing photo counts as one",
+        "why": "The site hides a missing photo with onerror: a photo exists only if it loads. Without the load check a 404 shows a broken tile.",
+        "edits": [
+            {
+                "find": "_bsRecordPhoto = img && img.complete && img.naturalWidth > 0 ? 'ok' : 'none';",
+                "replace": "_bsRecordPhoto = img ? 'ok' : 'none';"
+            }
+        ],
+        "spec": "tests/fixtures/bs-record.spec.js",
+        "grep": "cannot load",
+        "expect": "fail"
+    },
+    {
+        "name": "the site's record block stays visible under the view",
+        "why": "The head and the tables show all of the record; the site's own block hides once the view is built.",
+        "edits": [
+            {
+                "find": "        if (native) native.classList.add('mb-bs-record-done');\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bs-record.spec.js",
+        "grep": "sides paired",
+        "expect": "fail"
+    },
+    {
+        "name": "the Notes paragraph is taken from anywhere in the page",
+        "why": "A copy of the live page may hold other markup before the record (the harness's inline userscript holds a '<p><i><b>Notes:</b>' in a comment). Only the Notes after the facts are the record's.",
+        "edits": [
+            {
+                "find": "const notes = Array.from(doc.querySelectorAll('p')).find(p => after(p) && /^\\s*Notes\\s*:/.test(p.textContent));",
+                "replace": "const notes = Array.from(doc.querySelectorAll('p')).find(p => /^\\s*Notes\\s*:/.test(p.textContent));"
+            }
+        ],
+        "spec": "tests/fixtures/bs-record.spec.js",
+        "grep": "the line before Notes",
+        "expect": "fail"
+    },
+    {
+        "name": "the line between the facts and the Notes is lost",
+        "why": "All Those Years' LP writes 'The original version is numbered.' outside the Notes paragraph; the reader dropped it before parser version 17.",
+        "edits": [
+            {
+                "find": "        if (stray) data.notes.push(stray);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bs-record.spec.js",
+        "grep": "the line before Notes",
+        "expect": "fail"
+    },
+    {
+        "name": "*PROMO* stays in the title",
+        "why": "The site writes the promo flag into the title; it becomes the Promo fact and the title is kept without it.",
+        "edits": [
+            {
+                "find": "data.title = _dpText(data.siteTitle.replace(/\\*PROMO\\*/ig, ''));",
+                "replace": "data.title = data.siteTitle;"
+            }
+        ],
+        "spec": "tests/fixtures/bs-record.spec.js",
+        "grep": "an official promo",
+        "expect": "fail"
+    },
+    {
+        "name": "every record is a bootleg",
+        "why": "The page's title says Discography (official) or Bootlegs: the subheader's kind.",
+        "edits": [
+            {
+                "find": "data.kind = /\\bDiscography\\b/i.test(doc.title || '') ? 'official' : 'bootleg';",
+                "replace": "data.kind = 'bootleg';"
+            }
+        ],
+        "spec": "tests/fixtures/bs-record.spec.js",
+        "grep": "an official promo",
+        "expect": "fail"
+    },
+    {
+        "name": "Sources counts a show once per track",
+        "why": "Sources lists every show once, its tracks counted together (29 shows on All Those Years' LP, one of them met twice).",
+        "edits": [
+            {
+                "find": "const key = t.showUrl || t.from;",
+                "replace": "const key = t.pos;"
+            }
+        ],
+        "spec": "tests/fixtures/bs-record.spec.js",
+        "grep": "the line before Notes",
+        "expect": "fail"
+    },
+    {
+        "name": "a song page is read as a record",
+        "why": "_dpParseBs() hands a song page (sd3.aspx) to _dpParseBsSong(); a record parse finds no 'Title :' line there.",
+        "edits": [
+            {
+                "find": "        if (/\\/sd3\\.aspx$/.test(path)) return _dpParseBsSong(doc, url);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bs-record-preview.spec.js",
+        "grep": "a song:",
+        "expect": "fail"
+    },
+    {
+        "name": "a show page is read as a record",
+        "why": "_dpParseBs() hands a show page (mn.aspx) to _dpParseBsShow().",
+        "edits": [
+            {
+                "find": "        if (/\\/mn\\.aspx$/.test(path)) return _dpParseBsShow(doc, url);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bs-record-preview.spec.js",
+        "grep": "a live show",
+        "expect": "fail"
+    },
+    {
+        "name": "song links are no detail links",
+        "why": "The preview takes a link only when isDetailUrl admits it: without sd3.aspx no song card.",
+        "edits": [
+            {
+                "find": "                (/^\\/db\\/sd3\\.aspx$/i.test(u.pathname) && /^\\d+$/.test(u.searchParams.get('sid') || '')) ||\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bs-record-preview.spec.js",
+        "grep": "a song link's card",
+        "expect": "fail"
+    },
+    {
+        "name": "show links are no detail links",
+        "why": "Without mn.aspx in isDetailUrl no show card.",
+        "edits": [
+            {
+                "find": "                (/^\\/db\\/mn\\.aspx$/i.test(u.pathname) && /^S?\\d+$/i.test(u.searchParams.get('ex') || '')),",
+                "replace": "                false,"
+            }
+        ],
+        "spec": "tests/fixtures/bs-record-preview.spec.js",
+        "grep": "a show link's card",
+        "expect": "fail"
+    },
+    {
+        "name": "\"[Released version]\" stays in the titles",
+        "why": "An album release writes every line as 'Version 99 - Song [Released version]'; the remark says nothing there.",
+        "edits": [
+            {
+                "find": "const remark = s[3] && !/^released version$/i.test(s[3].trim()) ? ` [${s[3].trim()}]` : '';",
+                "replace": "const remark = s[3] ? ` [${s[3].trim()}]` : '';"
+            }
+        ],
+        "spec": "tests/fixtures/bs-record-preview.spec.js",
+        "grep": "an album release",
+        "expect": "fail"
+    },
+    {
+        "name": "the show window's sections do not fold",
+        "why": "The show record is collapsible, so 'Found on' is a section of its own (details.mb-dp-sec) like the song's versions.",
+        "edits": [
+            {
+                "find": "        data.collapsible = true;\n        data.title = venue;",
+                "replace": "        data.title = venue;"
+            }
+        ],
+        "spec": "tests/fixtures/bs-record-preview.spec.js",
+        "grep": "Back returns",
+        "expect": "fail"
+    },
+    {
+        "name": "Load from Disk gives the record page no table",
+        "why": "A disk load runs the converter on the live page too: the site's block hides and an empty table goes under our h2.",
+        "edits": [
+            {
+                "find": "            // And a record page: the site's record block hides again and an\n            // empty table goes under our h2.\n            if (activeDefinition.features?.bsRecordToTable) {\n                applyBsRecordToTable(activeDefinition);\n            }\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bs-record.spec.js",
+        "grep": "Load from Disk",
+        "expect": "fail"
+    }
+]
