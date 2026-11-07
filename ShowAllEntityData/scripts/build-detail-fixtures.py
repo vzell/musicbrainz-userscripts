@@ -16,7 +16,12 @@ pages a row of each foreign table links to:
                            "Magic In The Koln Night (2007-12-13).htm"
                            (an o-umlaut, an unknown 0000-00-00 date)
     brucespringsteen.it    DB/detrec.aspx?code=CR1AD1 (ditto marks),
-                           COL4942001 (official), LP1B1 (has a photo)
+                           COL4942001 (official), LP1B1 (has a photo);
+                           2026-11-06 (the song and show readers): a song,
+                           DB/sd3.aspx?sid=586 (five versions), and three
+                           shows, DB/mn.aspx?ex=199905021 (live, 7 records),
+                           S198010101 (an album release, "Version 99 -"
+                           lines, a remark) and 197301312 (a long Notes)
     brucebase.wikidot.com  song:4th-of-july-asbury-park-sandy, and the 2025
                            year page (org/iframe.org U4: the date anchor
                            reader; captured by probe-bb-date-anchor.py),
@@ -94,6 +99,12 @@ TARGETS = [
      'detail-bb-venue-market-square-arena.html', b'<em>Cancelled</em>', None),
     ('foreign-images/brucebase.wikidot.com_venue_paramount-theatre-asbury-park-nj.html',
      'detail-bb-venue-paramount-theatre.html', b'<em>Appearances</em>', None),
+    # 2026-11-06 (bs-record, org/brucespringsteen.it.org): the pages the
+    # record page's song and show links open (curl, debug/bs-*-raw.html).
+    ('bs-song-586-raw.html', 'detail-bs-song-586.html', b'<a name=VRS4>', 'bs-song'),
+    ('bs-show-199905021-raw.html', 'detail-bs-show-199905021.html', b"showdisc('CR3TIM1')", None),
+    ('bs-show-S198010101-raw.html', 'detail-bs-show-S198010101.html', b'DUMMY DATE', None),
+    ('bs-show-197301312-raw.html', 'detail-bs-show-197301312.html', b'Notes: <br>', None),
 ]
 
 STRIP_RES = [
@@ -127,6 +138,9 @@ def blank_lyrics(text, kind):
     "Lyrics not available" alert).
     'bb-song': Brucebase, the panel of the tabview's "Lyrics" tab, paired by
     position as the parser pairs them.
+    'bs-song': brucespringsteen.it (`sd3.aspx`), each version's lines: from
+    the end of its name (`</b></p>`) to its Notes (`<p><i>`) or `<hr>`,
+    whichever comes first; the name and the note stay.
     """
     if kind == 'sl-song':
         start = text.find('class="project-detail"')
@@ -152,6 +166,20 @@ def blank_lyrics(text, kind):
             return text, False
         end = nxt if nxt > 0 else text.find('</div>', start)
         return text[:start] + blank_words(text[start:end]) + text[end:], True
+    if kind == 'bs-song':
+        parts = re.split(r'(<a name=VRS\d+></a>)', text)
+        if len(parts) < 3:
+            return text, False
+        for i in range(2, len(parts), 2):
+            seg = parts[i]
+            a = seg.find('</b></p>')
+            ends = [x for x in (seg.find('<p><i>', a), seg.find('<hr>', a)) if x >= 0]
+            if a < 0 or not ends:
+                return text, False
+            b = min(ends)
+            # The `<` after the slice closes its last text run for TEXT_RUN_RE.
+            parts[i] = seg[:a + 7] + blank_words(seg[a + 7:b] + "<")[:-1] + seg[b:]
+        return ''.join(parts), True
     return text, True
 
 

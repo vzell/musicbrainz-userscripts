@@ -17,7 +17,7 @@ Design study, probes and the mockups the user chose from:
 |-----------------------|------------------------|---------------------------------------------------------------------------------------------------------------------|
 | springsteenlyrics.com | `sa_sl_detail_preview` | `collection.php`/`bootlegs.php`/`brucelegs.php` with `item=N`; `lyrics.php?song=SLUG` (the lyrics index, 9.99.1264) |
 | jungleland.it         | `sa_jl_detail_preview` | `/html/*.htm` except list, images, artwork                                                                          |
-| brucespringsteen.it   | `sa_bs_detail_preview` | `/DB/detrec.aspx?code=`                                                                                             |
+| brucespringsteen.it   | `sa_bs_detail_preview` | `/DB/detrec.aspx?code=`; `/DB/sd3.aspx?sid=` (songs) and `/DB/mn.aspx?ex=` (shows), 2026-11-06                      |
 | brucebase.wikidot.com | `sa_bb_detail_preview` | `/song:<slug>`                                                                                                      |
 
 All four default **on** (since 2026-10-26; they were off before) and sit
@@ -543,8 +543,21 @@ markup.
   tracklist table is found by its header CELLS: the row's `textContent` is
   "PosTitleFromNotesVer", where `\bPos\b` never matches. Its From column writes
   `"` for "same as above" (carried down) and a "/1" show index (dropped).
-  Links are `href="#"` script calls; only their text is kept. A photo, when
-  there is one, is `..\blegs\images\<code>.jpg`, often missing.
+  Links are `href="#"` script calls (the site's `libmnx.js`): since parser
+  version 17 (2026-11-06, bs-record) `_bsFixScriptLinks()` gives them their
+  pages first, so a track carries `songUrl`/`showUrl`, the show split
+  (`_bsSplitFrom()`: `show`, `country`, ISO `date`), `notes` and `ver`; the
+  record carries `kind` (official/bootleg, from the page title), `promo`
+  (out of the title), `code`, and a line between the facts and the Notes as
+  a note. Notes, the tracklist and the photo are taken only AFTER the facts
+  (a copy of a live page may hold other markup before them). A photo, when
+  there is one, is `..\blegs\images\<code>.jpg`, often missing. By path it
+  hands a song page (`sd3.aspx`) to `_dpParseBsSong()` (versions as
+  collapsible sections, the first one's opening as the excerpt) and a show
+  page (`mn.aspx`) to `_dpParseBsShow()` (the setlist as tracks, remarks
+  and Notes, "Found on (N)" with each record's format from its
+  `supp<N>.gif` and its page, which opens in the window). See
+  docs/claude/brucespringsteen.md, "Song and show previews".
 - **`_dpParseBb()`**: `#page-title`; the origin is the text of
   `#page-content` before the tabview; the tabview pairs label i with panel i,
   as on the song list, and panels are read by label (Performances, Released

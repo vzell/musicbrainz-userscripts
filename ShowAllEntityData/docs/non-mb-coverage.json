@@ -66,7 +66,10 @@
       "pts": [
         { "type": "bs-records", "url": "https://www.brucespringsteen.it/DB/records.aspx?tipe=…&sort=… (as its own tab)", "mode": "single",
           "ip": { "state": "yes", "ev": "code", "why": "detrec.aspx?code= text links; no outside links, extRoot is null." },
-          "frp": { "state": "yes", "ev": "spec", "spec": ["tests/fixtures/detail-preview.spec.js", "a hover loads the page once, shows what it adds"] } }
+          "frp": { "state": "yes", "ev": "spec", "spec": ["tests/fixtures/detail-preview.spec.js", "a hover loads the page once, shows what it adds"] } },
+        { "type": "bs-record", "url": "https://www.brucespringsteen.it/DB/detrec.aspx?code=CODE (own tab, or the frameset's right frame)", "mode": "multi",
+          "ip": { "state": "yes", "ev": "spec", "why": "The song and show links are href=\"#\" script links; _bsFixScriptLinks() gives them sd3.aspx / mn.aspx and keeps their onclick (a plain click opens the site's own window).", "spec": ["tests/fixtures/bs-record-preview.spec.js", "initial page: a song link's card and window"] },
+          "frp": { "state": "yes", "ev": "spec", "why": "Title and Show link the song and show pages (new tab); the head's Sources links the shows. A show's Found-on records open in the window.", "spec": ["tests/fixtures/bs-record-preview.spec.js", "rendered table: a show's window"] } }
       ]
     },
     {
@@ -196,7 +199,7 @@
     { "id": "dgsearch", "links": "discogs.com/search/?q=…&type=…", "asks": "api.discogs.com", "window": "25 results, Load 25 more" },
     { "id": "dgsupport", "links": "support.discogs.com/hc/<lang>/articles/<id>", "asks": "support.discogs.com", "window": "The article" },
     { "id": "bbdate", "links": "brucebase.wikidot.com/<yyyy>#<ddmmyy>", "asks": "brucebase.wikidot.com (the year page)", "window": "The show from its year page" },
-    { "id": "springsteen", "links": "SL item and song pages, jungleland.it/html/<x>.htm, brucespringsteen.it detrec.aspx, Brucebase /song: (and /gig:, /venue:, … on discogs.com)", "asks": "the link's own host", "window": "The site's page, parsed" },
+    { "id": "springsteen", "links": "SL item and song pages, jungleland.it/html/<x>.htm, brucespringsteen.it detrec.aspx (records), sd3.aspx (songs) and mn.aspx (shows), Brucebase /song: (and /gig:, /venue:, … on discogs.com)", "asks": "the link's own host", "window": "The site's page, parsed" },
     { "id": "setlistfm", "links": "setlist.fm /setlist/…, /setlists/…, /venue/… (with the key); /search?artist=…, /festival/<year>/…, /festivals/… (always)", "asks": "api.setlist.fm (key), www.setlist.fm", "window": "The setlist, the artist's or venue's list; a festival edition's setlists by day, a festival's editions" },
     { "id": "iadetails", "links": "archive.org/details/<id>[/<file>]", "asks": "archive.org (/metadata)", "window": "The item, its files, Play here" },
     { "id": "generic", "links": "any other http(s) link to another host", "asks": "the link's host (its head tags)", "window": "Title, description, picture" }

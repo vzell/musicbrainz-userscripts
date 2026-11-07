@@ -1,0 +1,694 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- SKELETON-END: everything above this line is dropped when the page is published as an Artifact. -->
+<title>KillingFloor Record Pages</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+  Mockups for org/brucespringsteen.it.org, "Add support for new Killingfloor site … release detail PTs +
+  POH support" (2026-11-06, branch feature/kf-detail). No userscript change yet.
+  Data: real, extracted from vzell's debug/ snapshots of 2026-11-06 (detrec.aspx?code=LPATY1, CDATY1,
+  CBS39404, CR3TIM1, COLPC2368543) and from a curl probe of the same day (NB-3641, 17:35 CET) of
+  DB/libmnx.js, sd3.aspx?sid=586 and mn.aspx?ex=199905021 / S198010101. The two record photos are the
+  site's own, inlined in the published copy by scripts/build-mockup-artifact.py.
+  Answers already given (AskUserQuestion, 2026-11-06): own tab + right frame; From split into
+  Date + Show + Country; vinyl sides paired when the count adds up.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a design bench, as in foreign-detail-PTs-mockups.html (house cool-slate palette).
+   One tab per view; each tab is a mock browser window with notes beside it. The mocked site page
+   is light in both themes, as springsteenlyrics.com is. */
+:root {
+    --bg: #e9edf1;
+    --surface: #f8fafc;
+    --ink: #18202b;
+    --muted: #556070;
+    --line: #cfd6df;
+    --accent: #24527f;
+    --accent-ink: #ffffff;
+    --accent-soft: #dbe6f1;
+    --ok: #2c7347;
+    --ok-soft: #dcefe2;
+    --warn: #8f5a00;
+    --warn-soft: #f6e8cc;
+    --shadow: 0 1px 0 rgba(20, 30, 45, 0.05), 0 12px 32px -18px rgba(20, 30, 45, 0.35);
+
+    --site-bg: #ffffff;
+    --site-ink: #222222;
+    --site-dim: #6b6b6b;
+    --site-line: #dddddd;
+    --site-head: #eceef1;
+    --site-even: #f6f7f9;
+    --site-link: #1d4f96;
+    --site-chrome: #f1f3f6;
+    --site-chrome-ink: #4d5664;
+    --site-h3: #f0f3f7;
+    --site-flt: #fbfcfd;
+    --site-new: #e0a33a;
+    --site-lock: #7a4fa0;
+    --site-lock-soft: #f1eaf7;
+    --mb: #ba478f;
+    --sl: #b8312f;
+    --tt-bg: #fffdf6;
+    --tt-line: #d9cfae;
+
+    --f-display: "Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+    --f-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, Consolas, "Courier New", monospace;
+    --f-site: "Open Sans", Arial, Helvetica, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg: #11161d;
+        --surface: #19212b;
+        --ink: #e2e7ee;
+        --muted: #9aa5b4;
+        --line: #2c3746;
+        --accent: #86b4e2;
+        --accent-ink: #0e1620;
+        --accent-soft: #1f3248;
+        --ok: #74c494;
+        --ok-soft: #1c3326;
+        --warn: #e3ac4c;
+        --warn-soft: #3a2d14;
+        --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 14px 34px -16px rgba(0, 0, 0, 0.7);
+        color-scheme: dark;
+    }
+}
+:root[data-theme="dark"] {
+    --bg: #11161d;
+    --surface: #19212b;
+    --ink: #e2e7ee;
+    --muted: #9aa5b4;
+    --line: #2c3746;
+    --accent: #86b4e2;
+    --accent-ink: #0e1620;
+    --accent-soft: #1f3248;
+    --ok: #74c494;
+    --ok-soft: #1c3326;
+    --warn: #e3ac4c;
+    --warn-soft: #3a2d14;
+    --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 14px 34px -16px rgba(0, 0, 0, 0.7);
+    color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+    background: var(--bg); color: var(--ink); font: 15px/1.55 var(--f-body); margin: 0;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 0 64px;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 1280px; margin: 0 auto; display: grid; gap: 24px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(28px, 4vw, 40px); font-weight: 800; font-stretch: 85%; }
+p { margin: 0; max-width: 76ch; }
+code { font-family: var(--f-mono); font-size: 0.87em; }
+.eyebrow { font: 600 11px/1 var(--f-body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+header.top { padding-block: 32px 0; display: grid; gap: 12px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); min-width: 0; }
+
+/* Summary strip */
+.verdicts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.verdict { padding: 14px 16px; display: grid; gap: 8px; align-content: start; border-top: 4px solid var(--c); }
+.verdict h3 { font-size: 16px; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.pill { font: 600 11.5px/1 var(--f-body); padding: 4px 8px; border-radius: 999px; white-space: nowrap; }
+.pill.yes { background: var(--ok-soft); color: var(--ok); }
+.pill.up { background: var(--accent-soft); color: var(--accent); }
+.pill.fix { background: var(--warn-soft); color: var(--warn); }
+.verdict p { font-size: 13.5px; }
+
+/* Tabs */
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 10px; border-bottom: 1px solid var(--line); }
+.tabs button, .sw button { font: 600 13px/1 var(--f-body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 9px 14px; cursor: pointer; }
+.tabs button[aria-pressed="true"], .sw button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.sw { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
+.sw button { padding: 6px 10px; font-size: 12.5px; }
+button:focus-visible, .mock [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.bench { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
+.bench > .col { display: grid; gap: 10px; min-width: 0; }
+@media (max-width: 980px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+.notes { padding: 14px 16px; display: grid; gap: 10px; font-size: 13.5px; }
+.notes h3 { font-size: 15px; }
+.notes ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+
+/* The mock browser window */
+.mock { background: var(--site-bg); color: var(--site-ink); border-radius: 8px; border: 1px solid var(--line); overflow: hidden; box-shadow: var(--shadow); font: 13px/1.45 var(--f-site); min-width: 0; position: relative; }
+.mock a { color: var(--site-link); text-decoration: none; }
+.chrome { background: var(--site-chrome); color: var(--site-chrome-ink); padding: 7px 12px; font: 12px/1.3 var(--f-mono); display: flex; gap: 8px; align-items: center; border-bottom: 1px solid var(--site-line); overflow: hidden; }
+.chrome .dot { width: 9px; height: 9px; border-radius: 50%; background: #c8ccd2; flex: none; }
+.chrome .url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chrome .who { margin-left: auto; flex: none; font: 600 11px/1 var(--f-body); padding: 3px 7px; border-radius: 999px; background: var(--site-lock-soft); color: var(--site-lock); }
+.chrome .who.anon { background: #eceef1; color: #5b6879; }
+.page { padding: 14px 16px 20px; display: grid; gap: 12px; }
+.site-native { color: var(--site-dim); font-size: 12px; border: 1px dashed var(--site-line); border-radius: 6px; padding: 7px 10px; }
+.sa-h1 { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font: 700 20px/1.2 var(--f-site); }
+.sa-btns { display: inline-flex; border: 1px solid #9fb0c4; border-radius: 6px; overflow: hidden; font: 600 12.5px/1 var(--f-site); }
+.sa-btns span { padding: 6px 10px; background: #eef3f9; color: #24364d; border-right: 1px solid #9fb0c4; }
+.sa-btns span:last-child { border-right: 0; }
+.sa-btns span.on { background: #24527f; color: #fff; }
+.sub { color: var(--site-dim); font-size: 13px; }
+.sub b { color: var(--site-ink); font-weight: 600; }
+
+/* Collapsible h2 sections (makeH2sCollapsible) */
+.h2 { font: 700 16px/1.2 var(--f-site); border-bottom: 1px solid var(--site-line); padding-bottom: 4px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; cursor: pointer; user-select: none; }
+.h2 .tog { color: var(--site-dim); font-weight: 400; width: 1em; }
+.h2 .cnt { color: var(--site-dim); font-weight: 400; font-size: 13px; }
+.h2 .gf { margin-left: auto; font: 400 12px/1 var(--f-site); color: var(--site-dim); }
+.lock { font: 600 10.5px/1 var(--f-body); padding: 3px 6px; border-radius: 999px; background: var(--site-lock-soft); color: var(--site-lock); align-self: center; }
+.sec { display: grid; gap: 8px; }
+.sec[data-closed="1"] > .body { display: none; }
+.prose { font-size: 13px; max-width: 80ch; white-space: pre-line; }
+.ph-note { color: var(--site-dim); font-style: italic; }
+
+/* Details cards (the Sidebar cards' role in _fdHeadInsertSections) */
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.card { border: 1px solid var(--site-line); border-radius: 6px; padding: 8px 10px; display: grid; gap: 4px; align-content: start; background: #fcfcfd; }
+.card h4 { margin: 0; font: 700 12px/1.2 var(--f-site); text-transform: uppercase; letter-spacing: 0.04em; color: var(--site-dim); display: flex; gap: 6px; align-items: center; }
+.card dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; }
+.card dt { color: var(--site-dim); }
+.card dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.card.private { border-color: #d6c5e6; background: #fbf8fe; }
+.yes { color: #2c7347; font-weight: 700; }
+.na { color: #9aa2ad; }
+
+/* Pictures */
+.tiles { display: flex; gap: 8px; flex-wrap: wrap; }
+.tile { width: 92px; display: grid; gap: 3px; font-size: 11px; color: var(--site-dim); cursor: zoom-in; border: 0; padding: 0; background: none; text-align: left; font-family: var(--f-site); }
+.tile .ph { width: 92px; height: 92px; border-radius: 4px; border: 1px solid var(--site-line); background: linear-gradient(135deg, #e3e8ef 0%, #cdd6e2 100%); display: grid; place-items: center; font: 600 10.5px/1.2 var(--f-site); color: #5b6879; text-align: center; padding: 6px; }
+.tile .ph.pdf { background: linear-gradient(135deg, #f4e1e1 0%, #e6c4c4 100%); color: #7a2d2d; }
+.alert { font-size: 12.5px; background: #fcf8e3; border: 1px solid #f0e0a8; color: #7a5f12; border-radius: 4px; padding: 6px 10px; }
+
+/* Glyphs */
+.mbg { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 3px; background: var(--mb); color: #fff; font: 700 9px/1 var(--f-body); vertical-align: -3px; cursor: help; }
+.ico { display: inline-block; font-size: 12px; }
+.slg { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 3px; background: var(--sl); color: #fff; font: 700 8px/1 var(--f-body); vertical-align: -3px; }
+
+/* Sub-tables */
+.st { display: grid; gap: 6px; }
+.st-h3 { background: var(--site-h3); border: 1px solid var(--site-line); border-radius: 4px; padding: 5px 8px; font: 700 13.5px/1.2 var(--f-site); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; cursor: pointer; user-select: none; }
+.st-h3 .tog { color: var(--site-dim); font-weight: 400; }
+.st-h3 .cnt, .st-h3 .xtra { color: var(--site-dim); font-weight: 400; }
+.st-h3 .stf { margin-left: auto; font-weight: 400; font-size: 12px; color: var(--site-dim); }
+.st[data-closed="1"] > .tw { display: none; }
+.tw { overflow-x: auto; border: 1px solid var(--site-line); border-radius: 4px; }
+table.tbl { border-collapse: collapse; width: 100%; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+table.tbl th, table.tbl td { padding: 4px 8px; border-bottom: 1px solid var(--site-line); text-align: left; vertical-align: top; }
+table.tbl thead tr.hd th { background: var(--site-head); white-space: nowrap; font-weight: 700; }
+table.tbl thead tr.ft th { background: var(--site-flt); padding: 3px 6px; }
+table.tbl thead tr.ft span { display: block; border: 1px solid #ccd3dc; border-radius: 3px; height: 18px; background: #fff; min-width: 2.5em; }
+table.tbl tbody tr:nth-child(even) td { background: var(--site-even); }
+table.tbl td.n, table.tbl th.n { text-align: right; }
+table.tbl td.c, table.tbl th.c { text-align: center; }
+table.tbl th.new, .legend .new { box-shadow: inset 0 -3px 0 var(--site-new); }
+table.tbl td.sticky { font-weight: 600; }
+.uq { font-size: 10px; margin-left: 3px; opacity: 0.7; }
+.legend { font-size: 12px; color: var(--site-dim); display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.legend .new { padding: 0 4px; }
+.tag { background: #e8eef7; border-radius: 3px; padding: 0 4px; font-size: 11.5px; }
+
+/* Hover card (POH) and the 📊 panel */
+.poh { position: absolute; z-index: 4; width: min(320px, calc(100% - 24px)); background: var(--tt-bg); border: 1px solid var(--tt-line); border-radius: 6px; box-shadow: 0 10px 28px -12px rgba(0, 0, 0, 0.45); padding: 8px 10px; font: 12.5px/1.4 var(--f-site); color: #2a2a2a; display: grid; gap: 4px; }
+.poh .t { font-weight: 700; }
+.poh .d { color: #6d6650; font-size: 11.5px; }
+.poh hr { border: 0; border-top: 1px solid var(--tt-line); margin: 2px 0; width: 100%; }
+.uqp { border: 1px solid var(--site-line); border-radius: 6px; background: #fff; box-shadow: 0 8px 22px -14px rgba(0, 0, 0, 0.4); font-size: 12.5px; max-width: 320px; }
+.uqp .hd { padding: 6px 10px; border-bottom: 1px solid var(--site-line); font-weight: 700; display: flex; gap: 6px; }
+.uqp .row { display: flex; gap: 8px; padding: 3px 10px; align-items: center; }
+.uqp .row .c { margin-left: auto; color: var(--site-dim); font-variant-numeric: tabular-nums; }
+.uqp .sec-h { padding: 5px 10px 2px; font: 700 11px/1.2 var(--f-site); text-transform: uppercase; letter-spacing: 0.05em; color: var(--site-dim); }
+
+/* Preview window, before/after */
+.ba { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.win { border: 1px solid var(--site-line); border-radius: 6px; overflow: hidden; background: #fff; }
+.win .wt { background: #2f3a48; color: #fff; padding: 6px 10px; font: 600 12.5px/1.3 var(--f-site); display: flex; gap: 8px; }
+.win .wt .st8 { margin-left: auto; font-weight: 400; opacity: 0.8; }
+.win .wb { padding: 10px; display: grid; gap: 8px; font-size: 12.5px; }
+.win h4 { margin: 0; font: 700 12.5px/1.2 var(--f-site); }
+.win ol { margin: 0; padding-left: 0; list-style: none; display: grid; gap: 1px; font-variant-numeric: tabular-nums; }
+.win ol li { display: grid; grid-template-columns: 2.4em 1fr auto; gap: 6px; }
+.win ol li .p { color: var(--site-dim); }
+.win .disc { font-weight: 700; margin-top: 4px; }
+.bad { background: #fdecec; border: 1px solid #f1c2c2; color: #8a2121; border-radius: 4px; padding: 6px 8px; }
+.verdict-tag { font: 600 11px/1 var(--f-body); padding: 3px 7px; border-radius: 999px; }
+.verdict-tag.before { background: #fdecec; color: #8a2121; }
+.verdict-tag.after { background: #dcefe2; color: #2c7347; }
+
+/* Viewer */
+.viewer { position: absolute; inset: 0; z-index: 6; background: rgba(12, 16, 22, 0.92); display: grid; grid-template-rows: auto 1fr auto; color: #e9eef5; font: 13px/1.4 var(--f-site); }
+.viewer .vb { display: flex; gap: 10px; padding: 8px 12px; align-items: center; }
+.viewer .vb .x { margin-left: auto; cursor: pointer; border: 1px solid #5b6879; border-radius: 4px; padding: 2px 8px; background: none; color: inherit; font: inherit; }
+.viewer .stage { display: grid; place-items: center; }
+.viewer .big { width: min(340px, 70%); aspect-ratio: 1; border-radius: 6px; background: linear-gradient(135deg, #3b4656, #252e3a); display: grid; place-items: center; font: 600 14px/1.3 var(--f-site); text-align: center; padding: 10px; }
+.viewer .strip { display: flex; gap: 6px; padding: 8px 12px; overflow-x: auto; }
+.viewer .strip span { flex: none; width: 44px; height: 44px; border-radius: 3px; background: #3b4656; display: grid; place-items: center; font-size: 10px; }
+.viewer .strip span.on { outline: 2px solid #86b4e2; }
+
+/* Plan */
+.plan { padding: 16px 18px; display: grid; gap: 14px; }
+.plan h2 { font-size: 20px; }
+.plan h3 { font-size: 16px; }
+.plan ol, .plan ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; max-width: 92ch; }
+.qs { display: grid; gap: 8px; }
+.q { border-left: 3px solid var(--accent); padding: 6px 10px; background: var(--accent-soft); border-radius: 0 6px 6px 0; display: grid; gap: 3px; max-width: 92ch; }
+.q b { font-weight: 600; }
+.q .rec { color: var(--ok); font-size: 13.5px; }
+@media (prefers-reduced-motion: no-preference) { .tabs button, .sw button { transition: background 0.12s, color 0.12s; } }
+/* KillingFloor additions: the site's own page is a light grey-blue paper with Times text. */
+:root { --kf: #6a3d1f; --kf-paper: #eef0f3; }
+.mock.kf-site { background: var(--kf-paper); font-family: "Times New Roman", Times, serif; }
+.mock.kf-site .page { font-size: 14px; }
+.kf-banner { text-align: center; font-weight: 700; font-size: 16px; }
+.kf-nav { text-align: center; font-weight: 700; font-size: 13px; }
+.kf-box { border: 3px double #777; padding: 6px 8px; font-size: 12px; }
+.kf-hr { border: 0; border-top: 1px solid #999; margin: 0; width: 100%; }
+.kf-table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.kf-table th, .kf-table td { border: 1px solid #888; padding: 1px 4px; text-align: left; }
+.kf-table a { text-decoration: underline; }
+.kf-hover { background: #fff3c4; outline: 1px solid #d9b84a; }
+.statusbar { position: absolute; left: 0; bottom: 0; background: #f1f3f6; border: 1px solid #c8ccd2; border-left: 0; border-bottom: 0; border-radius: 0 4px 0 0; font: 11.5px/1.3 var(--f-mono); color: #3b4656; padding: 3px 8px; max-width: 90%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kfg { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 3px; background: var(--kf); color: #fff; font: 700 8px/1 var(--f-body); vertical-align: -3px; }
+.play { display: inline-grid; place-items: center; width: 22px; height: 16px; border-radius: 3px; background: #c4302b; color: #fff; font-size: 9px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 12px; }
+.chip { border: 1px solid var(--site-line); border-radius: 999px; padding: 2px 9px; background: #fff; }
+.chip.on { background: #24527f; color: #fff; border-color: #24527f; }
+.art-tile { width: 160px; display: grid; gap: 3px; font-size: 11px; color: var(--site-dim); }
+.art-tile img, .art-tile .ph { width: 160px; height: 120px; object-fit: cover; border-radius: 4px; border: 1px solid var(--site-line); background: linear-gradient(135deg, #e3e8ef 0%, #cdd6e2 100%); display: grid; place-items: center; font: 600 11px/1.2 var(--f-site); color: #5b6879; }
+.star { color: #c58a00; }
+.lyr { white-space: pre-line; font-size: 12.5px; max-height: 9.5em; overflow: hidden; position: relative; }
+.lyr.open { max-height: none; }
+.more { font-size: 12px; color: var(--site-link); cursor: pointer; background: none; border: 0; padding: 0; font-family: var(--f-site); text-align: left; }
+.vsec { border-top: 1px solid var(--site-line); padding-top: 6px; display: grid; gap: 4px; }
+.vsec h5 { margin: 0; font: 700 12.5px/1.3 var(--f-site); }
+.vnote { font-style: italic; color: var(--site-dim); font-size: 12px; }
+.found { display: grid; gap: 2px; font-size: 12.5px; }
+.found div { display: grid; grid-template-columns: 6.5em 1fr; gap: 6px; }
+.found .fmt { color: var(--site-dim); }
+.back { font-size: 12px; color: var(--site-link); }
+.winrow { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 10px; }
+@media (max-width: 640px) { .winrow { grid-template-columns: minmax(0, 1fr); } }
+.dim { color: var(--site-dim); }
+</style>
+<!--EMBED-->
+<script type="application/json" id="mockup-images">{"lpaty1":{"u":"https://www.brucespringsteen.it/blegs/images/LPATY1.jpg","max":640},"cbs39404":{"u":"https://www.brucespringsteen.it/blegs/images/officials/CBS39404.jpg","max":640}}</script>
+<script type="application/json" id="kf-data">{"records":{"LPATY1":{"code":"LPATY1","kind":"bootleg","facts":[["Title","ALL THOSE YEARS"],["Support","10 LP"],["Matrix","SR 111-1102"],["Producer","Heart and Soul"],["Vinyl","Black"]],"stray":"The original version is numbered.","notes":"Historical bootleg coming in a heavy box with 10 LPs and an exhaustive 20 page booklet with photos and lyrics. Titled labels. Original copies booklets are numbered (1000). \n A numbered picture disc edition exists with a bonus one sided 7\" (\"Wild kisses\").\n\n500 un-numbered copies were further pressed from the same plates.","title":"ALL THOSE YEARS","promo":false,"photo":"https://www.brucespringsteen.it/blegs/images/LPATY1.jpg","tracks":[{"show":"Sayreville, NJ, D' Scene","country":"USA","date":"1971-01-18","ex":"197101181","pos":"1/1","songId":"411","title":"Oh mama why?","notes":"","ver":""},{"show":"Sayreville, NJ, D' Scene","country":"USA","date":"1971-01-18","ex":"197101181","pos":"1/2","songId":"101","title":"Change it (Revolution)","notes":"","ver":""},{"show":"Sayreville, NJ, D' Scene","country":"USA","date":"1971-01-18","ex":"197101181","pos":"2/1","songId":"125","title":"Dancing in the street","notes":"","ver":""},{"show":"Sayreville, NJ, D' Scene","country":"USA","date":"1971-01-18","ex":"197101181","pos":"2/2","songId":"224","title":"Honky tonk woman","notes":"","ver":""},{"show":"Sayreville, NJ, D' Scene","country":"USA","date":"1971-01-18","ex":"197101181","pos":"2/3","songId":"232","title":"I can't take it no more","notes":"","ver":""},{"show":"New York, NY, Max's Kansas City","country":"USA","date":"1973-01-31","ex":"197301312","pos":"3/1","songId":"528","title":"Song to the orphans","notes":"Listed as 30-Aug-1972","ver":""},{"show":"New York, NY, Max's Kansas City","country":"USA","date":"1973-07-18","ex":"197307181","pos":"3/2","songId":"687","title":"Zero and the blind Terry","notes":"18/23-Jul-73","ver":""},{"show":"Roslyn, NY, My Fathers Place","country":"USA","date":"1973-07-31","ex":"197307312","pos":"3/3","songId":"677","title":"You mean so much to me","notes":"","ver":""},{"show":"New York, NY, Max's Kansas City","country":"USA","date":"1973-07-18","ex":"197307181","pos":"4/1","songId":"400","title":"New York City serenade","notes":"18/23-Jul-73","ver":""},{"show":"New York, NY, Max's Kansas City","country":"USA","date":"1973-07-18","ex":"197307181","pos":"4/2","songId":"3","title":"4th of July, Asbury Park (Sandy)","notes":"18/23-Jul-73","ver":""},{"show":"New York, NY, Max's Kansas City","country":"USA","date":"1973-07-18","ex":"197307181","pos":"4/3","songId":"526","title":"Something you got","notes":"18/23-Jul-73","ver":""},{"show":"Houston, TX, Liberty Hall","country":"USA","date":"1974-03-10","ex":"197403102","pos":"5/1","songId":"369","title":"Mary queen of Arkansas","notes":"","ver":""},{"show":"Houston, TX, Liberty Hall","country":"USA","date":"1974-03-10","ex":"197403102","pos":"5/2","songId":"572","title":"The fever","notes":"","ver":""},{"show":"Houston, TX, Liberty Hall","country":"USA","date":"1974-03-10","ex":"197403102","pos":"5/3","songId":"571","title":"The 'E' street shuffle","notes":"","ver":""},{"show":"Houston, TX, Liberty Hall","country":"USA","date":"1974-03-10","ex":"197403102","pos":"6/1","songId":"514","title":"She's so fine","notes":"","ver":""},{"show":"Houston, TX, Liberty Hall","country":"USA","date":"1974-03-10","ex":"197403102","pos":"6/2","songId":"603","title":"Thundercrack","notes":"","ver":""},{"show":"New York, NY, Bottom Line","country":"USA","date":"1974-07-13","ex":"197407132","pos":"7/1","songId":"300","title":"Jungleland","notes":"","ver":""},{"show":"Houston, TX, Liberty Hall","country":"USA","date":"1974-03-10","ex":"197403102","pos":"7/2","songId":"159","title":"Give me that wine","notes":"","ver":""},{"show":"Schenectady, NY, Union College","country":"USA","date":"1974-10-19","ex":"197410191","pos":"7/3","songId":"534","title":"Spanish harlem","notes":"","ver":""},{"show":"Cambridge, MA, Harvard Square Theatre","country":"USA","date":"1974-05-09","ex":"197405091","pos":"8/1","songId":"251","title":"I sold my heart to the junkman","notes":"","ver":""},{"show":"Cleveland, OH, The Agora","country":"USA","date":"1974-06-03","ex":"197406031","pos":"8/2","songId":"606","title":"Tokyo","notes":"","ver":""},{"show":"Schenectady, NY, Union College","country":"USA","date":"1974-10-19","ex":"197410191","pos":"8/3","songId":"354","title":"Lost in the flood","notes":"","ver":""},{"show":"Milwaukee, WI, Uptown Theatre","country":"USA","date":"1975-10-02","ex":"197510021","pos":"9/1","songId":"313","title":"Kitty's back","notes":"","ver":""},{"show":"Milwaukee, WI, Uptown Theatre","country":"USA","date":"1975-10-02","ex":"197510021","pos":"9/2","songId":"508","title":"Sha la la","notes":"","ver":""},{"show":"Milwaukee, WI, Uptown Theatre","country":"USA","date":"1975-10-02","ex":"197510021","pos":"10/1","songId":"338","title":"Little queenie","notes":"","ver":""},{"show":"Upper Darby, PA, Tower Theater","country":"USA","date":"1975-12-30","ex":"197512301","pos":"10/2","songId":"381","title":"Mountain of love","notes":"","ver":""},{"show":"Upper Darby, PA, Tower Theater","country":"USA","date":"1975-12-30","ex":"197512301","pos":"10/3","songId":"644","title":"Wear my ring (around your neck)","notes":"","ver":""},{"show":"Upper Darby, PA, Tower Theater","country":"USA","date":"1975-12-30","ex":"197512301","pos":"10/4","songId":"602","title":"Thunder road","notes":"","ver":""},{"show":"Cleveland, OH, Allen Theatre","country":"USA","date":"1976-04-07","ex":"197604071","pos":"11/1","songId":"174","title":"Frankie","notes":"","ver":""},{"show":"Cleveland, OH, Allen Theatre","country":"USA","date":"1976-04-07","ex":"197604071","pos":"11/2","songId":"196","title":"Growin' up","notes":"","ver":""},{"show":"Cleveland, OH, Allen Theatre","country":"USA","date":"1976-04-07","ex":"197604071","pos":"11/3","songId":"287","title":"It's hard to be a saint in the city","notes":"","ver":""},{"show":"Cleveland, OH, Allen Theatre","country":"USA","date":"1976-04-07","ex":"197604071","pos":"11/4","songId":"68","title":"Blinded by the light","notes":"","ver":""},{"show":"Mobile, AL, Municipal Auditorium","country":"USA","date":"1976-05-10","ex":"197605101","pos":"12/1","songId":"300","title":"Jungleland","notes":"","ver":""},{"show":"Cleveland, OH, Allen Theatre","country":"USA","date":"1976-04-07","ex":"197604071","pos":"12/2","songId":"2","title":"10th avenue freeze-out","notes":"","ver":""},{"show":"Cleveland, OH, Allen Theatre","country":"USA","date":"1976-04-07","ex":"197604071","pos":"12/3","songId":"536","title":"Spirit in the night","notes":"","ver":""},{"show":"Orlando, FL, Jai Alai Fronton","country":"USA","date":"1977-03-05","ex":"197703051","pos":"13/1","songId":"45","title":"Backstreets","notes":"","ver":""},{"show":"Orlando, FL, Jai Alai Fronton","country":"USA","date":"1977-03-05","ex":"197703051","pos":"13/1","songId":"489","title":"Sad eyes - interlude","notes":"","ver":""},{"show":"Orlando, FL, Jai Alai Fronton","country":"USA","date":"1977-03-05","ex":"197703051","pos":"13/2","songId":"15","title":"Action in the street","notes":"","ver":""},{"show":"Orlando, FL, Jai Alai Fronton","country":"USA","date":"1977-03-05","ex":"197703051","pos":"14/1","songId":"403","title":"Night","notes":"","ver":""},{"show":"Orlando, FL, Jai Alai Fronton","country":"USA","date":"1977-03-05","ex":"197703051","pos":"14/2","songId":"462","title":"Rendezvous","notes":"","ver":""},{"show":"Boston, MA, Music Hall","country":"USA","date":"1977-03-25","ex":"197703251","pos":"14/3","songId":"277","title":"Incident on 57th street","notes":"","ver":""},{"show":"Berkeley, CA, Community Auditorium","country":"USA","date":"1978-07-01","ex":"197807011","pos":"15/1","songId":"583","title":"The promise","notes":"","ver":""},{"show":"Cleveland, OH, Richfield Coliseum","country":"USA","date":"1979-01-01","ex":"197901011","pos":"15/2","songId":"171","title":"For You","notes":"","ver":""},{"show":"New York, NY, Record Plant / Atlantic studios","country":"USA","date":"1977-06-01","ex":"S197706001","pos":"15/3","songId":"146","title":"Don't look back","notes":"","ver":"3"},{"show":"Asbury Park, NJ, Paramount Theatre","country":"USA","date":"1978-05-19","ex":"197805191","pos":"15/4","songId":"494","title":"Satisfaction","notes":"Rehearsal","ver":""},{"show":"Asbury Park, NJ, Paramount Theatre","country":"USA","date":"1978-05-19","ex":"197805191","pos":"15/5","songId":"207","title":"Heart full of soul","notes":"Rehearsal","ver":""},{"show":"Portland, OR, Paramount Theatre","country":"USA","date":"1978-12-19","ex":"197812191","pos":"16/1","songId":"192","title":"Good rockin' tonight","notes":"","ver":""},{"show":"Berkeley, CA, Community Auditorium","country":"USA","date":"1978-07-01","ex":"197807011","pos":"16/2","songId":"58","title":"Because the night","notes":"","ver":""},{"show":"Cleveland, OH, The Agora","country":"USA","date":"1978-08-09","ex":"197808091","pos":"16/3","songId":"427","title":"Paradise by the C","notes":"","ver":""},{"show":"Berkeley, CA, Community Auditorium","country":"USA","date":"1978-06-30","ex":"197806301","pos":"16/4","songId":"16","title":"Adam raised a Cain","notes":"","ver":""},{"show":"Lilitz, PA, Clare Brothers Audio","country":"USA","date":"1980-09-09","ex":"198009091","pos":"17/1","songId":"669","title":"Wreck on the Highway","notes":"Rehearsal Sep 1980","ver":""},{"show":"Lilitz, PA, Clare Brothers Audio","country":"USA","date":"1980-09-09","ex":"198009091","pos":"17/2","songId":"91","title":"Cadillac ranch","notes":"Rehearsal Sep 1980","ver":""},{"show":"Lilitz, PA, Clare Brothers Audio","country":"USA","date":"1980-09-09","ex":"198009091","pos":"17/3","songId":"168","title":"Fire","notes":"Rehearsal Sep 1980","ver":""},{"show":"Lilitz, PA, Clare Brothers Audio","country":"USA","date":"1980-09-09","ex":"198009091","pos":"17/4","songId":"584","title":"The promised land","notes":"Rehearsal Sep 1980","ver":""},{"show":"Lilitz, PA, Clare Brothers Audio","country":"USA","date":"1980-09-09","ex":"198009091","pos":"17/5","songId":"128","title":"Darkness on the edge of town","notes":"Rehearsal Sep 1980","ver":""},{"show":"Lilitz, PA, Clare Brothers Audio","country":"USA","date":"1980-09-09","ex":"198009091","pos":"18/1","songId":"585","title":"The river","notes":"Rehearsal Sep 1980","ver":""},{"show":"Lilitz, PA, Clare Brothers Audio","country":"USA","date":"1980-09-09","ex":"198009091","pos":"18/2","songId":"424","title":"Out in the street","notes":"Rehearsal Sep 1980","ver":""},{"show":"London, Wembley Arena","country":"GB","date":"1981-05-29","ex":"198105291","pos":"18/3","songId":"261","title":"I'm a rocker","notes":"","ver":""},{"show":"Rotterdam, Sportpaleis Ahoy","country":"Netherlands","date":"1981-04-29","ex":"198104291","pos":"18/4","songId":"487","title":"Run through the jungle","notes":"","ver":""},{"show":"Paris, Palais des Sports","country":"France","date":"1981-04-19","ex":"198104191","pos":"18/5","songId":"94","title":"Can't help falling in love","notes":"","ver":""},{"show":"E.Rutherford, NJ, Meadowlands Arena","country":"USA","date":"1981-07-02","ex":"198107021","pos":"19/1","songId":"169","title":"Follow that dream","notes":"","ver":""},{"show":"E.Rutherford, NJ, Meadowlands Arena","country":"USA","date":"1981-07-02","ex":"198107021","pos":"19/2","songId":"307","title":"Johnny bye bye","notes":"","ver":""},{"show":"E.Rutherford, NJ, Meadowlands Arena","country":"USA","date":"1981-07-02","ex":"198107021","pos":"19/3","songId":"303","title":"Jersey girl","notes":"","ver":""},{"show":"E.Rutherford, NJ, Meadowlands Arena","country":"USA","date":"1981-07-02","ex":"198107021","pos":"19/4","songId":"233","title":"I don't want to go home","notes":"w/ Little Steven","ver":""},{"show":"Asbury Park, NJ, Stone Pony","country":"USA","date":"1982-08-08","ex":"198208081","pos":"20/1","songId":"110","title":"Come on over to my place","notes":"","ver":""},{"show":"Asbury Park, NJ, Stone Pony","country":"USA","date":"1982-08-08","ex":"198208081","pos":"20/2","songId":"38","title":"Around and around","notes":"","ver":""},{"show":"Asbury Park, NJ, Stone Pony","country":"USA","date":"1982-08-08","ex":"198208081","pos":"20/3","songId":"360","title":"Lucille","notes":"","ver":""},{"show":"Asbury Park, NJ, Stone Pony","country":"USA","date":"1982-08-08","ex":"198208081","pos":"20/4","songId":"417","title":"On the prowl","notes":"","ver":""},{"show":"Asbury Park, NJ, Stone Pony","country":"USA","date":"1982-08-08","ex":"198208081","pos":"20/5","songId":"621","title":"Twist and shout","notes":"","ver":""},{"show":"Red Bank, NJ, Big Man's West","country":"USA","date":"1982-09-18","ex":"198209181","pos":"20/6","songId":"175","title":"From small things big things come","notes":"With Dave Edmunds","ver":""}]},"CDATY1":{"code":"CDATY1","kind":"bootleg","facts":[["Title","ALL THOSE YEARS"],["Support","5 CD"],["Matrix","TCD1-5"],["Producer","Templar Records"],["Vinyl","CD"]],"stray":"","notes":"Repressing of the famous 'All those years' with the exclusion of three songs: Wreck on the highway, Sha la la, Oh mama why?. Very nice and complete booklet inside. As the famous 'father' vinyl, a must for any collector. \n\nCarton box-shelf with the CD inside. The CDs profiles make a US flag.","title":"ALL THOSE YEARS","promo":false,"photo":"","tracks":[{"show":"Sayreville, NJ, D' Scene","country":"USA","date":"1971-01-18","ex":"197101181","pos":"1/1","songId":"101","title":"Change it (Revolution)","notes":"","ver":""},{"show":"Sayreville, NJ, D' Scene","country":"USA","date":"1971-01-18","ex":"197101181","pos":"1/2","songId":"125","title":"Dancing in the street","notes":"","ver":""},{"show":"Sayreville, NJ, D' Scene","country":"USA","date":"1971-01-18","ex":"197101181","pos":"1/2","songId":"224","title":"Honky tonk woman","notes":"","ver":""},{"show":"Sayreville, NJ, D' Scene","country":"USA","date":"1971-01-18","ex":"197101181","pos":"1/3","songId":"232","title":"I can't take it no more","notes":"","ver":""},{"show":"New York, NY, Max's Kansas City","country":"USA","date":"1973-01-31","ex":"197301312","pos":"1/4","songId":"528","title":"Song to the orphans","notes":"Listed as 30/08/72","ver":""},{"show":"New York, NY, Max's Kansas City","country":"USA","date":"1973-07-18","ex":"197307181","pos":"1/5","songId":"687","title":"Zero and the blind Terry","notes":"18/23-Jul-73","ver":""},{"show":"Roslyn, NY, My Fathers Place","country":"USA","date":"1973-07-31","ex":"197307312","pos":"1/6","songId":"677","title":"You mean so much to me","notes":"","ver":""},{"show":"New York, NY, Max's Kansas City","country":"USA","date":"1973-07-18","ex":"197307181","pos":"1/7","songId":"400","title":"New York City serenade","notes":"18/23-Jul-73","ver":""},{"show":"New York, NY, Max's Kansas City","country":"USA","date":"1973-07-18","ex":"197307181","pos":"1/8","songId":"3","title":"4th of July, Asbury Park (Sandy)","notes":"18/23-Jul-73","ver":""},{"show":"New York, NY, Max's Kansas City","country":"USA","date":"1973-07-18","ex":"197307181","pos":"1/9","songId":"526","title":"Something you got","notes":"18/23-Jul-73","ver":""},{"show":"Houston, TX, Liberty Hall","country":"USA","date":"1974-03-10","ex":"197403102","pos":"2/1","songId":"369","title":"Mary queen of Arkansas","notes":"","ver":""},{"show":"Houston, TX, Liberty Hall","country":"USA","date":"1974-03-10","ex":"197403102","pos":"2/2","songId":"572","title":"The fever","notes":"","ver":""},{"show":"Houston, TX, Liberty Hall","country":"USA","date":"1974-03-10","ex":"197403102","pos":"2/3","songId":"571","title":"The 'E' street shuffle","notes":"","ver":""},{"show":"Houston, TX, Liberty Hall","country":"USA","date":"1974-03-10","ex":"197403102","pos":"2/4","songId":"514","title":"She's so fine","notes":"","ver":""},{"show":"Houston, TX, Liberty Hall","country":"USA","date":"1974-03-10","ex":"197403102","pos":"2/5","songId":"603","title":"Thundercrack","notes":"","ver":""},{"show":"New York, NY, Bottom Line","country":"USA","date":"1974-07-13","ex":"197407132","pos":"2/6","songId":"300","title":"Jungleland","notes":"","ver":""},{"show":"Houston, TX, Liberty Hall","country":"USA","date":"1974-03-10","ex":"197403102","pos":"2/7","songId":"159","title":"Give me that wine","notes":"","ver":""},{"show":"Schenectady, NY, Union College","country":"USA","date":"1974-10-19","ex":"197410191","pos":"2/8","songId":"534","title":"Spanish harlem","notes":"","ver":""},{"show":"Cambridge, MA, Harvard Square Theatre","country":"USA","date":"1974-05-09","ex":"197405091","pos":"2/9","songId":"251","title":"I sold my heart to the junkman","notes":"","ver":""},{"show":"Schenectady, NY, Union College","country":"USA","date":"1974-10-19","ex":"197410191","pos":"2/10","songId":"354","title":"Lost in the flood","notes":"","ver":""},{"show":"Cleveland, OH, The Agora","country":"USA","date":"1974-06-03","ex":"197406031","pos":"2/11","songId":"606","title":"Tokyo","notes":"","ver":""},{"show":"Milwaukee, WI, Uptown Theatre","country":"USA","date":"1975-10-02","ex":"197510021","pos":"3/1","songId":"313","title":"Kitty's back","notes":"","ver":""},{"show":"Milwaukee, WI, Uptown Theatre","country":"USA","date":"1975-10-02","ex":"197510021","pos":"3/2","songId":"338","title":"Little queenie","notes":"","ver":""},{"show":"Upper Darby, PA, Tower Theater","country":"USA","date":"1975-12-30","ex":"197512301","pos":"3/3","songId":"381","title":"Mountain of love","notes":"","ver":""},{"show":"Upper Darby, PA, Tower Theater","country":"USA","date":"1975-12-30","ex":"197512301","pos":"3/4","songId":"644","title":"Wear my ring (around your neck)","notes":"","ver":""},{"show":"Upper Darby, PA, Tower Theater","country":"USA","date":"1975-12-30","ex":"197512301","pos":"3/5","songId":"602","title":"Thunder road","notes":"","ver":""},{"show":"Cleveland, OH, Allen Theatre","country":"USA","date":"1976-04-07","ex":"197604071","pos":"3/6","songId":"174","title":"Frankie","notes":"","ver":""},{"show":"Cleveland, OH, Allen Theatre","country":"USA","date":"1976-04-07","ex":"197604071","pos":"3/7","songId":"196","title":"Growin' up","notes":"","ver":""},{"show":"Cleveland, OH, Allen Theatre","country":"USA","date":"1976-04-07","ex":"197604071","pos":"3/8","songId":"287","title":"It's hard to be a saint in the city","notes":"","ver":""},{"show":"Cleveland, OH, Allen Theatre","country":"USA","date":"1976-04-07","ex":"197604071","pos":"3/9","songId":"68","title":"Blinded by the light","notes":"","ver":""},{"show":"Cleveland, OH, Allen Theatre","country":"USA","date":"1976-04-07","ex":"197604071","pos":"3/10","songId":"300","title":"Jungleland","notes":"Listed as 10-May-76","ver":""},{"show":"Cleveland, OH, Allen Theatre","country":"USA","date":"1976-04-07","ex":"197604071","pos":"3/11","songId":"2","title":"10th avenue freeze-out","notes":"","ver":""},{"show":"Cleveland, OH, Allen Theatre","country":"USA","date":"1976-04-07","ex":"197604071","pos":"3/12","songId":"536","title":"Spirit in the night","notes":"","ver":""},{"show":"Jacksonville, FL, Auditorium","country":"USA","date":"1977-03-04","ex":"197703041","pos":"4/1","songId":"45","title":"Backstreets","notes":"Listed as 05-Mar-77","ver":""},{"show":"Jacksonville, FL, Auditorium","country":"USA","date":"1977-03-04","ex":"197703041","pos":"4/1","songId":"489","title":"Sad eyes - interlude","notes":"Listed as 05-Mar-77","ver":""},{"show":"Jacksonville, FL, Auditorium","country":"USA","date":"1977-03-04","ex":"197703041","pos":"4/2","songId":"15","title":"Action in the street","notes":"Listed as 05-Mar-77","ver":""},{"show":"Jacksonville, FL, Auditorium","country":"USA","date":"1977-03-04","ex":"197703041","pos":"4/3","songId":"403","title":"Night","notes":"Listed as 05-Mar-77","ver":""},{"show":"Jacksonville, FL, Auditorium","country":"USA","date":"1977-03-04","ex":"197703041","pos":"4/4","songId":"462","title":"Rendezvous","notes":"Listed as 05-Mar-77","ver":""},{"show":"Boston, MA, Music Hall","country":"USA","date":"1977-03-25","ex":"197703251","pos":"4/5","songId":"277","title":"Incident on 57th street","notes":"","ver":""},{"show":"Berkeley, CA, Community Auditorium","country":"USA","date":"1978-07-01","ex":"197807011","pos":"4/6","songId":"583","title":"The promise","notes":"","ver":""},{"show":"Cleveland, OH, Richfield Coliseum","country":"USA","date":"1979-01-01","ex":"197901011","pos":"4/7","songId":"171","title":"For You","notes":"","ver":""},{"show":"New York, NY, Record Plant / Atlantic studios","country":"USA","date":"1977-06-01","ex":"S197706001","pos":"4/8","songId":"146","title":"Don't look back","notes":"","ver":"3"},{"show":"Asbury Park, NJ, Paramount Theatre","country":"USA","date":"1978-05-19","ex":"197805191","pos":"4/9","songId":"494","title":"Satisfaction","notes":"Rehearsal","ver":""},{"show":"Asbury Park, NJ, Paramount Theatre","country":"USA","date":"1978-05-19","ex":"197805191","pos":"4/10","songId":"207","title":"Heart full of soul","notes":"Rehearsal","ver":""},{"show":"Portland, OR, Paramount Theatre","country":"USA","date":"1978-12-19","ex":"197812191","pos":"4/11","songId":"192","title":"Good rockin' tonight","notes":"","ver":""},{"show":"Berkeley, CA, Community Auditorium","country":"USA","date":"1978-07-01","ex":"197807011","pos":"4/12","songId":"58","title":"Because the night","notes":"","ver":""},{"show":"Cleveland, OH, The Agora","country":"USA","date":"1978-08-09","ex":"197808091","pos":"4/13","songId":"427","title":"Paradise by the C","notes":"","ver":""},{"show":"Berkeley, CA, Community Auditorium","country":"USA","date":"1978-06-30","ex":"197806301","pos":"4/14","songId":"16","title":"Adam raised a Cain","notes":"","ver":""},{"show":"Lilitz, PA, Clare Brothers Audio","country":"USA","date":"1980-09-09","ex":"198009091","pos":"5/1","songId":"91","title":"Cadillac ranch","notes":"Rehearsal Sep 1980","ver":""},{"show":"Lilitz, PA, Clare Brothers Audio","country":"USA","date":"1980-09-09","ex":"198009091","pos":"5/2","songId":"168","title":"Fire","notes":"Rehearsal Sep 1980","ver":""},{"show":"Lilitz, PA, Clare Brothers Audio","country":"USA","date":"1980-09-09","ex":"198009091","pos":"5/3","songId":"584","title":"The promised land","notes":"Rehearsal Sep 1980","ver":""},{"show":"Lilitz, PA, Clare Brothers Audio","country":"USA","date":"1980-09-09","ex":"198009091","pos":"5/4","songId":"128","title":"Darkness on the edge of town","notes":"Rehearsal Sep 1980","ver":""},{"show":"Lilitz, PA, Clare Brothers Audio","country":"USA","date":"1980-09-09","ex":"198009091","pos":"5/5","songId":"585","title":"The river","notes":"Rehearsal Sep 1980","ver":""},{"show":"Lilitz, PA, Clare Brothers Audio","country":"USA","date":"1980-09-09","ex":"198009091","pos":"5/6","songId":"424","title":"Out in the street","notes":"Rehearsal Sep 1980","ver":""},{"show":"London, Wembley Arena","country":"GB","date":"1981-05-29","ex":"198105291","pos":"5/7","songId":"261","title":"I'm a rocker","notes":"","ver":""},{"show":"Rotterdam, Sportpaleis Ahoy","country":"Netherlands","date":"1981-04-29","ex":"198104291","pos":"5/8","songId":"487","title":"Run through the jungle","notes":"","ver":""},{"show":"Paris, Palais des Sports","country":"France","date":"1981-04-19","ex":"198104191","pos":"5/9","songId":"94","title":"Can't help falling in love","notes":"","ver":""},{"show":"E.Rutherford, NJ, Meadowlands Arena","country":"USA","date":"1981-07-02","ex":"198107021","pos":"5/10","songId":"169","title":"Follow that dream","notes":"","ver":""},{"show":"E.Rutherford, NJ, Meadowlands Arena","country":"USA","date":"1981-07-02","ex":"198107021","pos":"5/11","songId":"307","title":"Johnny bye bye","notes":"","ver":""},{"show":"E.Rutherford, NJ, Meadowlands Arena","country":"USA","date":"1981-07-02","ex":"198107021","pos":"5/12","songId":"303","title":"Jersey girl","notes":"","ver":""},{"show":"E.Rutherford, NJ, Meadowlands Arena","country":"USA","date":"1981-07-02","ex":"198107021","pos":"5/13","songId":"233","title":"I don't want to go home","notes":"w/ Little Steven","ver":""},{"show":"Asbury Park, NJ, Stone Pony","country":"USA","date":"1982-08-08","ex":"198208081","pos":"5/14","songId":"110","title":"Come on over to my place","notes":"","ver":""},{"show":"Asbury Park, NJ, Stone Pony","country":"USA","date":"1982-08-08","ex":"198208081","pos":"5/15","songId":"38","title":"Around and around","notes":"","ver":""},{"show":"Asbury Park, NJ, Stone Pony","country":"USA","date":"1982-08-08","ex":"198208081","pos":"5/16","songId":"360","title":"Lucille","notes":"","ver":""},{"show":"Asbury Park, NJ, Stone Pony","country":"USA","date":"1982-08-08","ex":"198208081","pos":"5/16","songId":"417","title":"On the prowl","notes":"","ver":""},{"show":"Asbury Park, NJ, Stone Pony","country":"USA","date":"1982-08-08","ex":"198208081","pos":"5/17","songId":"621","title":"Twist and shout","notes":"","ver":""},{"show":"Red Bank, NJ, Big Man's West","country":"USA","date":"1982-09-18","ex":"198209181","pos":"5/18","songId":"175","title":"From small things big things come","notes":"With Dave Edmunds","ver":""}]},"CBS39404":{"code":"CBS39404","kind":"official","facts":[["Title","10TH AVENUE FREEZE OUT / SHE'S THE ONE *PROMO*"],["Support","1 7 in."],["Catalogue number","CBS 3940"],["Pressed in","Germany"],["Release period","1976 (Oct)"]],"stray":"","notes":"Promo copy released in the unique \"CBS Blitz information\" packaging already described for the past German releases.","title":"10TH AVENUE FREEZE OUT / SHE'S THE ONE","promo":true,"photo":"https://www.brucespringsteen.it/blegs/images/officials/CBS39404.jpg","tracks":[{"show":"Album release, Born to run","country":"USA","date":"1975-08-25","ex":"S197508251","pos":"1/1","songId":"2","title":"10th avenue freeze-out","notes":"","ver":"99"},{"show":"Album release, Born to run","country":"USA","date":"1975-08-25","ex":"S197508251","pos":"2/1","songId":"516","title":"She's the one","notes":"","ver":"99"}]},"CR3TIM1":{"code":"CR3TIM1","kind":"bootleg","facts":[["Title","30 TRACKS IN MANCHESTER"],["Support","3 CD-R"],["Matrix","MNA020599"],["Producer","Unknown"],["Vinyl","CD"]],"stray":"","notes":"Copy of \"IT'S TWO FOR THE SHOW\"","title":"30 TRACKS IN MANCHESTER","promo":false,"photo":"","tracks":[{"show":"Manchester, Evening News Arena","country":"GB","date":"1999-05-02","ex":"199905021","pos":"1/1","songId":"47","title":"Badlands","notes":"","ver":""},{"show":"Manchester, Evening News Arena","country":"GB","date":"1999-05-02","ex":"199905021","pos":"1/2","songId":"623","title":"Two hearts","notes":"","ver":""},{"show":"Manchester, Evening News Arena","country":"GB","date":"1999-05-02","ex":"199905021","pos":"1/3","songId":"129","title":"Darlington county","notes":"","ver":""},{"show":"Manchester, Evening News Arena","country":"GB","date":"1999-05-02","ex":"199905021","pos":"1/4","songId":"39","title":"Atlantic City","notes":"","ver":""},{"show":"Manchester, Evening News Arena","country":"GB","date":"1999-05-02","ex":"199905021","pos":"1/5","songId":"462","title":"Rendezvous","notes":"","ver":""},{"show":"Manchester, Evening News Arena","country":"GB","date":"1999-05-02","ex":"199905021","pos":"1/6","songId":"367","title":"Mansion on the hill","notes":"","ver":""},{"show":"Manchester, Evening News Arena","country":"GB","date":"1999-05-02","ex":"199905021","pos":"1/7","songId":"585","title":"The river","notes":"","ver":""},{"show":"Manchester, Evening News Arena","country":"GB","date":"1999-05-02","ex":"199905021","pos":"1/8","songId":"683","title":"Youngstown","notes":"","ver":""},{"show":"Manchester, Evening News Arena","country":"GB","date":"1999-05-02","ex":"199905021","pos":"1/9","songId":"383","title":"Murder inc.","notes":"","ver":""},{"show":"Manchester, Evening News Arena","country":"GB","date":"1999-05-02","ex":"199905021","pos":"1/10","songId":"444","title":"Prove it all night","notes":"","ver":""},{"show":"Manchester, Evening News Arena","country":"GB","date":"1999-05-02","ex":"199905021","pos":"1/11","songId":"424","title":"Out in the street","notes":"","ver":""},{"show":"Manchester, Evening News Arena","country":"GB","date":"1999-05-02","ex":"199905021","pos":"2/1","songId":"2","title":"10th avenue freeze-out","notes":"","ver":""},{"show":"Manchester, Evening News Arena","country":"GB","date":"1999-05-02","ex":"199905021","pos":"2/2","songId":"654","title":"Where the bands are","notes":"","ver":""},{"show":"Manchester, Evening News Arena","country":"GB","date":"1999-05-02","ex":"199905021","pos":"2/3","songId":"667","title":"Working on the highway","notes":"Including \"Promised land\" by C.Berry","ver":""},{"show":"Manchester, Evening News Arena","country":"GB","date":"1999-05-02","ex":"199905021","pos":"2/4","songId":"573","title":"The ghost of Tom Joad","notes":"","ver":""},{"show":"Manchester, Evening News Arena","country":"GB","date":"1999-05-02","ex":"199905021","pos":"2/5","songId":"584","title":"The promised land","notes":"","ver":""},{"show":"Manchester, Evening News Arena","country":"GB","date":"1999-05-02","ex":"199905021","pos":"2/6","songId":"300","title":"Jungleland","notes":"","ver":""},{"show":"Manchester, Evening News Arena","country":"GB","date":"1999-05-02","ex":"199905021","pos":"2/7","songId":"332","title":"Light of day","notes":"","ver":""},{"show":"Manchester, Evening News Arena","country":"GB","date":"1999-05-02","ex":"199905021","pos":"3/1","songId":"228","title":"Hungry heart","notes":"","ver":""},{"show":"Manchester, Evening News Arena","country":"GB","date":"1999-05-02","ex":"199905021","pos":"3/2","songId":"74","title":"Bobby Jean","notes":"","ver":""},{"show":"Manchester, Evening News Arena","country":"GB","date":"1999-05-02","ex":"199905021","pos":"3/3","songId":"81","title":"Born to run","notes":"","ver":""},{"show":"Manchester, Evening News Arena","country":"GB","date":"1999-05-02","ex":"199905021","pos":"3/4","songId":"602","title":"Thunder road","notes":"","ver":""},{"show":"Manchester, Evening News Arena","country":"GB","date":"1999-05-02","ex":"199905021","pos":"3/5","songId":"258","title":"If I should fall behind","notes":"","ver":""},{"show":"Manchester, Evening News Arena","country":"GB","date":"1999-05-02","ex":"199905021","pos":"3/6","songId":"322","title":"Land of hope and dreams","notes":"","ver":""},{"show":"Manchester, Evening News Arena","country":"GB","date":"1999-05-01","ex":"199905011","pos":"3/7","songId":"393","title":"My love will not let you down","notes":"","ver":""},{"show":"Manchester, Evening News Arena","country":"GB","date":"1999-05-01","ex":"199905011","pos":"3/8","songId":"128","title":"Darkness on the edge of town","notes":"","ver":""},{"show":"Manchester, Evening News Arena","country":"GB","date":"1999-05-01","ex":"199905011","pos":"3/9","songId":"165","title":"Factory","notes":"","ver":""},{"show":"Manchester, Evening News Arena","country":"GB","date":"1999-05-01","ex":"199905011","pos":"3/10","songId":"78","title":"Born in the USA","notes":"","ver":""},{"show":"Manchester, Evening News Arena","country":"GB","date":"1999-05-01","ex":"199905011","pos":"3/11","songId":"45","title":"Backstreets","notes":"","ver":""},{"show":"Manchester, Evening News Arena","country":"GB","date":"1999-05-01","ex":"199905011","pos":"3/12","songId":"546","title":"Streets of Philadelphia","notes":"","ver":""}]},"COLPC2368543":{"code":"COLPC2368543","kind":"official","facts":[["Title","THE RIVER -- 'blank red label' misprint"],["Support","2 LP"],["Catalogue number","COL PC2 36854"],["Pressed in","USA"],["Release period","1980 (Oct)"]],"stray":"","notes":"An unknown number of copies were mispressed with a blank red label on the second disc, side 4.","title":"THE RIVER -- 'blank red label' misprint","promo":false,"photo":"","tracks":[{"show":"Album release, The river","country":"USA","date":"1980-10-10","ex":"S198010101","pos":"1/1","songId":"586","title":"The ties that bind","notes":"","ver":"99"},{"show":"Album release, The river","country":"USA","date":"1980-10-10","ex":"S198010101","pos":"1/2","songId":"512","title":"Sherry darling","notes":"","ver":"99"},{"show":"Album release, The river","country":"USA","date":"1980-10-10","ex":"S198010101","pos":"1/3","songId":"291","title":"Jackson cage","notes":"","ver":"99"},{"show":"Album release, The river","country":"USA","date":"1980-10-10","ex":"S198010101","pos":"1/4","songId":"623","title":"Two hearts","notes":"","ver":"99"},{"show":"Album release, The river","country":"USA","date":"1980-10-10","ex":"S198010101","pos":"1/5","songId":"278","title":"Independence day","notes":"","ver":"99"},{"show":"Album release, The river","country":"USA","date":"1980-10-10","ex":"S198010101","pos":"1/6","songId":"228","title":"Hungry heart","notes":"","ver":"99"},{"show":"Album release, The river","country":"USA","date":"1980-10-10","ex":"S198010101","pos":"1/7","songId":"424","title":"Out in the street","notes":"","ver":"99"},{"show":"Album release, The river","country":"USA","date":"1980-10-10","ex":"S198010101","pos":"1/8","songId":"117","title":"Crush on you","notes":"","ver":"99"},{"show":"Album release, The river","country":"USA","date":"1980-10-10","ex":"S198010101","pos":"1/9","songId":"672","title":"You can look (but you better not touch)","notes":"","ver":"99"},{"show":"Album release, The river","country":"USA","date":"1980-10-10","ex":"S198010101","pos":"1/10","songId":"254","title":"I wanna marry you","notes":"","ver":"99"},{"show":"Album release, The river","country":"USA","date":"1980-10-10","ex":"S198010101","pos":"1/11","songId":"585","title":"The river","notes":"","ver":"99"},{"show":"Album release, The river","country":"USA","date":"1980-10-10","ex":"S198010101","pos":"2/1","songId":"437","title":"Point blank","notes":"","ver":"99"},{"show":"Album release, The river","country":"USA","date":"1980-10-10","ex":"S198010101","pos":"2/2","songId":"91","title":"Cadillac ranch","notes":"","ver":"99"},{"show":"Album release, The river","country":"USA","date":"1980-10-10","ex":"S198010101","pos":"2/3","songId":"261","title":"I'm a rocker","notes":"","ver":"99"},{"show":"Album release, The river","country":"USA","date":"1980-10-10","ex":"S198010101","pos":"2/4","songId":"166","title":"Fade away","notes":"","ver":"99"},{"show":"Album release, The river","country":"USA","date":"1980-10-10","ex":"S198010101","pos":"2/5","songId":"542","title":"Stolen car","notes":"","ver":"99"},{"show":"Album release, The river","country":"USA","date":"1980-10-10","ex":"S198010101","pos":"2/6","songId":"452","title":"Ramrod","notes":"","ver":"99"},{"show":"Album release, The river","country":"USA","date":"1980-10-10","ex":"S198010101","pos":"2/7","songId":"582","title":"The price you pay","notes":"","ver":"99"},{"show":"Album release, The river","country":"USA","date":"1980-10-10","ex":"S198010101","pos":"2/8","songId":"160","title":"Drive all night","notes":"","ver":"99"},{"show":"Album release, The river","country":"USA","date":"1980-10-10","ex":"S198010101","pos":"2/9","songId":"669","title":"Wreck on the Highway","notes":"","ver":"99"}]}},"song586":{"title":"The ties that bind","versions":[{"title":"The ties that bind - \"The river\" take","lines":["You been hurt and you’re all cried out you say","","You walk down the street pushin’ people outta your way","","You packed your bags and all alone you wanna ride,","","You don’t want nothin’, don’t need no one by your side","","You’re walkin’ tough baby, but you’re walkin’ blind","","","","Chorus:","","The ties that bind","","Now you can’t break the ties that bind","","","","Cheap romance, it’s all just a crutch","","You don’t want nothin’ that anybody can touch","","You’re so afraid of being somebody’s fool","","Not walkin’ tough baby, not walkin’ cool","","You walk cool, but darlin’, ","","can you walk the line","","And face the ties that bind","","The ties that bind","","Now you can’t break the ties that bind","","","","I would rather feel the hurt inside,","","yes I would darlin’,","","Than know the emptiness your heart must hide,","","Yes I would darlin’, yes I would darlin’,","","Yes I would baby","","","","You sit and wonder just who’s gonna stop the rain","","Who’ll ease the sadness, who’s gonna quiet the pain","","It’s a long dark highway and a thin white line","","Connecting baby, your heart to mine","","We’re runnin’ now but darlin’ we will stand in time","","To face the ties that bind","","The ties that bind","","Now you can’t break the ties that bind","","You can’t forsake the ties that bind"],"notes":"Played since 1978."},{"title":"The ties that bind - Early 1978 take","lines":["Tonight I’ll pack my bags","","Late tonight I’ll ride","","There will be nothing","","No-one at my side","","There’s just a cold dark highway","","And a thin white line","","Will lead my to the ties that bind","","","","The ties that bind","","The ties that bind","","No man can break the ties that bind","","","","But in that lonely hour","","Right before the sun","","Baby, gotta believe","","You’re the only one","","Because this strength in my heart","","Is all I got to remind me","","No man can forsake the ties that bind","","","","The ties that bind","","The ties that bind","","No man can break the ties that bind","","","","Tonight I’ll pack my bags","","Late tonight I’ll ride","","There will be no-one","","No-one at my side","","There’s just a cold dark highway","","And a thin white line","","Will lead somewhere to the ties that bind"],"notes":"Very early take (1978 live?) Pretty different from the released one."},{"title":"The ties that bind - 15-Dec-1978","lines":["You been hurt and you're all cried out you say","","You walk down the street pushin' people outta your way","","You packed your bags alone tonight to ride","","You don't need nothin', don't need no one by your side","","You're walkin' tough, baby but you're walkin' blind","","To the ties that bind","","The ties that bind","","No man can break your ties that bind","","","","A cheap romance, you say its just just just a crush","","You don't want nothin' that anybody can touch","","You're so afraid of being somebody's fool","","Not walkin' tough, baby not walkin' cool","","You walk cool, but baby can you walk the line","","And face the ties that bind","","The ties that bind","","No man can break the ties that bind","","","","Wow wow waaah","","I'd rather feel the hurt inside, yes I would darlin' to know","","Know the empty heart that you hide,","","Yes I would darlin', yes I would darlin',","","Yes I would honey","","","","Yes the ties that bind","","No man can break the ties that bind","","You can't forsake the ties that bind","","You just can't shake the ties that bind","","Allright"],"notes":""},{"title":"The ties that bind - Early studio outtake 1","lines":["Just another lonely ???","","???","","??? alone you ride","","You don't want nothin', don't need no one by your side","","You're walkin' tough baby, but you're walkin' blind","","","","To the ties that bind","","The ties that bind","","No man can break the ties that bind","","","","Outside, inside, anyway your heart goes","","There's one thing little girl that I wanna know","","Everybody gonna know who stopped the rain","","Who will end the sadness, who will end the pain","","Just why, why you walk the line","","And face the ties that bind","","","","The ties that bind","","Now you can't break the ties that bind","","Whao whoa the ties that bind","","","","Whoa I would rather ???, yes I would baby","","Oh ???","","Oh ???","","Oh I know it baby","","","","Oh the ties that bind","","The ties that bind","","No man can break the ties that bind","","You can't forsake the ties that bind","","No man can shake the ties that bind"],"notes":"October 1978 studio take"},{"title":"The ties that bind - Early studio outtake 2","lines":["You been hurt, your all cried out you say","","Your just pushing everybody out of your way","","You pack your bags and all alone you ride","","You don't want nothin', don't need no one by your side","","You're walkin' tough baby, but you're walkin' blind","","","","To the ties that bind","","No man can break the ties that bind","","No man can forsake the ties that bind","","","","Outside, inside, anyway you wanna go","","There's one thing little darling that I know","","People wondering just who's gonna stop the rain","","Who ends the sadness, who's gonna quiet the pain","","You walk the walk, but will you stand and walk the line","","And face the ties that bind","","","","The ties that bind","","No man can break the ties that bind","","","","???","","???","","???","","I wanna ??? you baby","","","","Oh the ties that bind","","The ties that bind","","No man can break the ties that bind","","No man can forsake the ties that bind","","You just can't shake the ties that bind"],"notes":"October 1978 studio take"}]},"show199905021":{"head":"02-May-1999 Manchester Evening News Arena,GB","lines":["01 Badlands","02 Two hearts","03 Darlington county","04 Atlantic City","05 Rendezvous","06 Mansion on the hill","07 The river","08 Youngstown","09 Murder inc.","10 Prove it all night","11 Out in the street","12 10th avenue freeze-out","13 Where the bands are","14 Working on the highway [Including \"Promised land\" by C.Berry]","15 The ghost of Tom Joad","16 The promised land","17 Jungleland","18 Light of day","19 Hungry heart","20 Bobby Jean","21 Born to run","22 Thunder road","23 If I should fall behind","24 Land of hope and dreams"],"notes":[],"found":[{"supp":8,"code":"CR3TIM1","title":"30 TRACKS IN MANCHESTER"},{"supp":8,"code":"CREGMJ1","title":"EUROPEAN GEMS: MAY-JUNE 1999 (Fakida Records)"},{"supp":8,"code":"CREH21","title":"EUROPEAN HIGHLIGHTS 1999 PART TWO"},{"supp":8,"code":"CRIOFTM1","title":"IT'S ONE FOR THE MONEY… (Doberman)"},{"supp":8,"code":"CRITFTS1","title":"IT'S TWO FOR THE SHOW (Doberman)"},{"supp":8,"code":"CRRNRIBIT1","title":"ROCK'N'ROLL IS BACK IN TOWN"},{"supp":9,"code":"DVM19990522","title":"MANCHESTER 1999-05-02"}]},"showS198010101":{"head":"10-Oct-1980 Album release The river,USA","lines":["- This date is a DUMMY DATE indicating the generic period","Version 99 - The ties that bind [Released version]","Version 99 - Sherry darling [Released version]","Version 99 - Jackson cage [Released version]","Version 99 - Two hearts [Released version]","Version 99 - Independence day [Released version]","Version 99 - Hungry heart [Released version]","Version 99 - Out in the street [Released version]","Version 99 - Crush on you [Released version]","Version 99 - You can look (but you better not touch) [Released version]","Version 99 - I wanna marry you [Released version]","Version 99 - The river [Released version]","Version 99 - Point blank [Released version]","Version 99 - Cadillac ranch [Released version]","Version 99 - I'm a rocker [Released version]","Version 99 - Fade away [Released version]","Version 99 - Stolen car [Released version]","Version 99 - Ramrod [Released version]","Version 99 - The price you pay [Released version]","Version 99 - Drive all night [Released version]","Version 99 - Wreck on the Highway [Released version]"],"notes":["This dummy session represents the album release."],"found":[{"supp":0,"code":"LLCDGH2","title":"GREATEST HITS (Official release)"},{"supp":0,"code":"LCTEBS1","title":"THE ESSENTIAL BRUCE SPRINGSTEEN (Official release)"},{"supp":0,"code":"LCTR1","title":"THE RIVER (Official release)"},{"supp":1,"code":"CBSA1052","title":"CADILLAC RANCH / BE TRUE (Official release)"},{"supp":1,"code":"CBSA1557","title":"CADILLAC RANCH / WRECK ON THE HIGHWAY (Official release)"},{"supp":1,"code":"COL11114313","title":"FADE AWAY (STEREO / STEREO) (Official release)"},{"supp":1,"code":"COL11114311","title":"FADE AWAY / BE TRUE (Official release)"},{"supp":1,"code":"CBSBA2228012","title":"FADE AWAY / THE TIES THAT BIND (Official release)"},{"supp":1,"code":"CENAR1167","title":"HUNGRY HEART (FLEXI DISC) (Official release)"},{"supp":1,"code":"COL1111392","title":"HUNGRY HEART (STEREO / STEREO) (Official release)"},{"supp":1,"code":"CBSJC15054","title":"HUNGRY HEART / BAYOU (Official release)"},{"supp":1,"code":"COL1303243","title":"HUNGRY HEART / FADE AWAY (HF) (Official release)"},{"supp":1,"code":"COL1111391","title":"HUNGRY HEART / HELD UP WITHOUT A GUN (Official release)"},{"supp":1,"code":"CBS43043","title":"HUNGRY HEART / STOLEN CAR (Official release)"},{"supp":1,"code":"COL6623157","title":"HUNGRY HEART / STREETS OF PHILADELPHIA (Official release)"},{"supp":1,"code":"COL6626257","title":"HUNGRY HEART / STREETS OF PHILADELPHIA (PICTURE) (Official release)"},{"supp":1,"code":"CBSPROMO1","title":"HUNGRY HEART / THE RIVER (Official release)"},{"supp":1,"code":"CBSSSC5146","title":"HUNGRY HEART / WRECK ON THE HIGHWAY (Official release)"},{"supp":1,"code":"07SP525","title":"I WANNA MARRY YOU / BE TRUE (Official release)"},{"supp":1,"code":"45IP1","title":"IRISH 'SPRINGSTEEN PACK' (Official release)"},{"supp":1,"code":"CBSA1489","title":"POINT BLANK / RAMROD (Official release)"},{"supp":1,"code":"CBS95682","title":"SHERRY DARLING / BE TRUE (Official release)"},{"supp":1,"code":"CBSSSC5178","title":"SHERRY DARLING / CADILLAC RANCH (Official release)"},{"supp":1,"code":"CBS9568","title":"SHERRY DARLING / HUNGRY HEART (Official release)"},{"supp":1,"code":"CBS95681","title":"SHERRY DARLING / INDEPENDENCE DAY (Official release)"},{"supp":1,"code":"SHOL3136A","title":"SHERRY DARLING 'RENNBAHN EXPRESS' (Official release)"},{"supp":1,"code":"CBSBA222789","title":"THE RIVER / I'M A ROCKER (Official release)"},{"supp":1,"code":"CBSA11791","title":"THE RIVER / INDEPENDENCE DAY (Official release)"},{"supp":1,"code":"CBSBA222843","title":"THE RIVER / POINT BLANK (Official release)"},{"supp":1,"code":"CBSA13561","title":"THE RIVER / RAMROD (Official release)"},{"supp":1,"code":"CBSSSC5207","title":"THE TIES THAT BIND / I'M A ROCKER (Official release)"},{"supp":1,"code":"CBSA1845","title":"TWO HEARTS / RAMROD (Official release)"},{"supp":2,"code":"CDARATW1","title":"AS REQUESTED AROUND THE WORLD (Trade secrets)"},{"supp":4,"code":"CBS330029","title":"ARDIENTES DEL ROCK VOL. 1 (Official release)"},{"supp":4,"code":"COLAS978","title":"AS REQUESTED AROUND THE WORLD (Official release)"},{"supp":4,"code":"COLCDN57","title":"BRUCE SPRINGSTEEN SAMPLER (Official release)"},{"supp":4,"code":"CBSPROMO8","title":"DANKE SCHON - DIE BOSSE - ROCKPALASTNACHT (Official release)"},{"supp":4,"code":"COLA2S890","title":"HITLINE '80 (Official release)"},{"supp":4,"code":"CBSSAMPLER33","title":"ROCKTAGON (Official release)"},{"supp":6,"code":"CBSBRUCE1","title":"BORN IN THE USA 12 SINGLES COLLECTION (Official release)"},{"supp":6,"code":"CBSDJ428","title":"DEAD END STREET SOUNDTRACK (Official release)"},{"supp":6,"code":"CBS12PRM019","title":"DJ SPECIAL SERVICE 019 (Official release)"},{"supp":6,"code":"COLAS928","title":"FADE AWAY / BE TRUE - HELD UP WITHOUT A GUN (Official release)"},{"supp":6,"code":"CBS126375","title":"GLORY DAYS / STAND ON IT - THE RIVER (Official release)"},{"supp":6,"code":"CBSTA6375","title":"GLORY DAYS-STAND ON IT/SHERRY DARLING-RACING… (Official release)"},{"supp":6,"code":"XDAP93030","title":"KILLER TRACKS FROM THE RIVER (Official release)"},{"supp":6,"code":"CBSA131179","title":"THE RIVER - BORN TO RUN / ROSALITA (Official release)"},{"supp":8,"code":"CDCOES1","title":"CHRISTMAS ON E-STREET"}]}}</script>
+</head>
+<body>
+<div class="wrap">
+    <header class="top">
+        <span class="eyebrow">ShowAllEntityData · design study · brucespringsteen.it (KillingFloor) · 2026-11-06</span>
+        <h1>KillingFloor record pages and their previews</h1>
+        <p>A record's own page (<code>DB/detrec.aspx?code=…</code>) laid out like a MusicBrainz release: a sub-table per record or disc, the show each track comes from split into Date, Show and Country, and the record's facts, notes, sources and photo above. The song and show links on the page, today dead <code>href="#"</code> script links, get hover cards and a window. Every value below comes from the five snapshots and the probed song and show pages.</p>
+    </header>
+
+    <section class="verdicts" aria-label="Summary">
+        <article class="panel verdict" style="--c:var(--kf)">
+            <h3>Record page <span class="pill yes">new PT bs-record</span></h3>
+            <p>Runs in its own tab and in the frameset's right frame. One button, "Tracklist". No request: the rows come from the page itself.</p>
+        </article>
+        <article class="panel verdict" style="--c:var(--accent)">
+            <h3>Song and show previews <span class="pill up">2 new kinds</span></h3>
+            <p><code>sd3.aspx?sid=</code> (the song's lyric versions) and <code>mn.aspx?ex=</code> (the show's setlist and the records it is on). One request each, on hover or Space, under the existing KF preview setting.</p>
+        </article>
+        <article class="panel verdict" style="--c:var(--warn)">
+            <h3>Reader fix <span class="pill fix">1 lost line</span></h3>
+            <p>"The original version is numbered." on All Those Years (LP) sits between the facts and the Notes, and the current reader drops it. It becomes a note.</p>
+        </article>
+    </section>
+
+    <nav class="tabs" aria-label="Mockup views">
+        <button type="button" id="tab-rec" data-tab="rec" aria-pressed="true">Record page</button>
+        <button type="button" id="tab-ip" data-tab="ip" aria-pressed="false">Initial page</button>
+        <button type="button" id="tab-song" data-tab="song" aria-pressed="false">Song preview</button>
+        <button type="button" id="tab-show" data-tab="show" aria-pressed="false">Show preview</button>
+        <button type="button" id="tab-plan" data-tab="plan" aria-pressed="false">Plan and questions</button>
+    </nav>
+
+    <!-- Record page -->
+    <section class="bench" data-view="rec">
+        <div class="col">
+            <div class="sw" role="group" aria-label="Record">
+                <span>Record:</span>
+                <button type="button" id="rec-LPATY1" data-rec="LPATY1" aria-pressed="true">All Those Years · 10 LP</button>
+                <button type="button" id="rec-CDATY1" data-rec="CDATY1" aria-pressed="false">All Those Years · 5 CD</button>
+                <button type="button" id="rec-CBS39404" data-rec="CBS39404" aria-pressed="false">10th Avenue · 7″ promo</button>
+                <button type="button" id="rec-COLPC2368543" data-rec="COLPC2368543" aria-pressed="false">The River · 2 LP</button>
+                <button type="button" id="rec-CR3TIM1" data-rec="CR3TIM1" aria-pressed="false">30 Tracks · 3 CD-R</button>
+            </div>
+            <div class="mock kf-site" id="rec-mock"></div>
+        </div>
+        <aside class="panel notes">
+            <h3>Notes on this view</h3>
+            <ul>
+                <li>The site's banner, nav links and notice stay as they are. Our section starts after them, so the button sits under the site's own header.</li>
+                <li><b>Sub-tables</b> follow decision 3. 10 LP with 20 groups gives Records 1–10 with the sides paired. 2 LP with 2 groups gives Records 1–2. 1 7″ with 2 groups gives Record 1 (sides A + B). CDs give one disc per group. Pos keeps the site's "3/2".</li>
+                <li><b>Date / Show / Country</b> come from the From cell, and a ditto (<code>"</code>) repeats the row above. Show links to <code>mn.aspx?ex=…</code> (the code keeps its "/1" show index) and previews.</li>
+                <li><b>Title</b> is in MusicBrainz title style (<code>sa_foreign_mb_titles</code>, on by default), with the site's spelling in the tooltip. It links to the song page and previews.</li>
+                <li>Duplicate positions (CD 1/2, 4/1, 5/16) are medleys and stay as two rows.</li>
+                <li><b>Sources</b>, on the right, lists every show the tracks come from with its track count, in tracklist order.</li>
+                <li><b>Photo</b> is shown only when the site's image loaded. The site hides a missing one, as on The River, 30 Tracks and the CD box.</li>
+            </ul>
+        </aside>
+    </section>
+
+    <!-- Initial page -->
+    <section class="bench" data-view="ip" hidden>
+        <div class="col">
+            <div class="mock kf-site" id="ip-mock"></div>
+        </div>
+        <aside class="panel notes">
+            <h3>Notes on this view</h3>
+            <ul>
+                <li>Before any button: the site's page untouched, plus our <code>h1</code> with the Tracklist button.</li>
+                <li>Each song and show link is <code>href="#"</code> with an <code>onclick</code>. Its <code>href</code> becomes the real page (<code>sd3.aspx?sid=586</code>, <code>mn.aspx?ex=S198010101</code>), so the hover card and Space work on it. The <code>onclick</code> stays, so a plain click still opens the site's own small window, as today.</li>
+                <li>Without that rewrite, <code>#</code> points at the record page itself, which the record reader would preview: every song would show this record.</li>
+                <li>The status line shows what the browser now reports for the hovered link.</li>
+            </ul>
+        </aside>
+    </section>
+
+    <!-- Song preview -->
+    <section class="bench" data-view="song" hidden>
+        <div class="col">
+            <div class="mock" id="song-mock"></div>
+        </div>
+        <aside class="panel notes">
+            <h3>Notes on this view</h3>
+            <ul>
+                <li>The card: the song, its number of versions, and the opening lines of the first version (as springsteenlyrics.com's song card does).</li>
+                <li>The window (Space): one section per version, with the take's name, its lyrics (folded after eight lines) and its note. Facts on the right.</li>
+                <li>The site's "Statistics from the KILLING FLOOR database" footer links nowhere useful and is left out.</li>
+                <li>One request: <code>sd3.aspx?sid=586</code>, cached under the key without <code>hecan=1</code>, half a year like the record reader.</li>
+            </ul>
+        </aside>
+    </section>
+
+    <!-- Show preview -->
+    <section class="bench" data-view="show" hidden>
+        <div class="col">
+            <div class="sw" role="group" aria-label="Show">
+                <span>Show:</span>
+                <button type="button" id="show-199905021" data-show="show199905021" aria-pressed="true">Manchester 1999 (live)</button>
+                <button type="button" id="show-S198010101" data-show="showS198010101" aria-pressed="false">The River album release (studio)</button>
+            </div>
+            <div class="mock" id="show-mock"></div>
+        </div>
+        <aside class="panel notes">
+            <h3>Notes on this view</h3>
+            <ul>
+                <li>The card: date, venue, country, the number of songs and the first few.</li>
+                <li>The window: the setlist, with a "[…]" remark as a dim note, the show's Notes, and "Found on": the records the site lists for the show, each with its format from the site's icon (<code>supp8.gif</code> = CD-R, <code>supp9.gif</code> = DVD, …).</li>
+                <li>A record in "Found on" opens in the same window, with Back. That is the existing record reader, so it shows a tracklist and the record's facts.</li>
+                <li>An album-release "show" (code starting with S) writes every line as "Version 99 - Song [Released version]". That becomes the song alone, numbered, with the kind "Release / studio".</li>
+            </ul>
+        </aside>
+    </section>
+
+    <!-- Plan and questions -->
+    <section data-view="plan" hidden>
+        <div class="panel plan">
+            <h2>Plan</h2>
+            <ol>
+                <li>A new pageType <code>bs-record</code> on <code>DB/detrec.aspx?code=</code>: an <code>@include</code> line, and the frame gate opened for the right frame (<code>principale</code>) only.</li>
+                <li>No request: the page's own HTML is the one page, read with the existing record reader so the hover card and the page agree.</li>
+                <li>The head: Notes, Details (facts left, Sources right), and the Photo as the shared art section (chip "Photo", ★ main image, viewer).</li>
+                <li>Song and show pages become two more kinds of the KF reader, which also works on the other sites wherever such a link appears.</li>
+                <li>Specs on the five snapshots and three probed pages, a mutation list, docs, the coverage registry and WIP changelog entries. No version bump on the branch.</li>
+            </ol>
+            <h2>Already decided</h2>
+            <div class="qs">
+                <div class="q"><b>Frames</b><span>Own tab + right frame (vzell, 2026-11-06).</span></div>
+                <div class="q"><b>From column</b><span>Date + Show + Country (vzell, 2026-11-06).</span></div>
+                <div class="q"><b>Vinyl sides</b><span>Pair them when the count adds up (vzell, 2026-11-06).</span></div>
+            </div>
+            <h2>Questions</h2>
+            <div class="qs">
+                <div class="q"><b>1. Ver column.</b><span>On official records every track says 99, which the show page explains as "Released version". Show the number as the site writes it, or write "Released" for 99?</span><span class="rec">Recommendation: keep the number, and explain 99 in the header's tooltip.</span></div>
+                <div class="q"><b>2. Sources card.</b><span>Keep the derived list of shows on the right?</span><span class="rec">Recommendation: yes. On a compilation like All Those Years (30 shows) it is the quickest overview.</span></div>
+                <div class="q"><b>3. Photo type.</b><span>The site's one picture is a composed photo of the item. Label its chip "Photo", or leave it untyped?</span><span class="rec">Recommendation: "Photo", the word the list page's column already uses.</span></div>
+                <div class="q"><b>4. Click on the initial page.</b><span>A plain click on a song or show link keeps opening the site's own small window. Or should it open our window?</span><span class="rec">Recommendation: keep the site's behaviour; Space opens ours.</span></div>
+                <div class="q"><b>5. Play column.</b><span>The YouTube-search tile per track, as on the other detail pages (only with <code>sa_yt_play_in_place</code> on)?</span><span class="rec">Recommendation: yes, query "Bruce Springsteen &lt;song&gt; &lt;date&gt;".</span></div>
+            </div>
+            <h2>Not seen in any snapshot</h2>
+            <ul>
+                <li>A record without a tracklist table (the button is then hidden), a tape or VHS record, a show page holding several shows, and <code>helps('000000000')</code> in a real row. These are handled as described but not designed from markup.</li>
+            </ul>
+        </div>
+    </section>
+</div>
+
+<script>
+(function () {
+    'use strict';
+    const D = JSON.parse(document.getElementById('kf-data').textContent);
+    const IMGS = JSON.parse(document.getElementById('mockup-images').textContent);
+    const EMBED = window.__EMBED || {};
+    const SUPP = ['Album', '7″', 'CD', 'miniCD 3″', 'LP', 'Tape', '12″', 'VHS', 'CD-R', 'DVD', 'miniCD 5″', 'VA album'];
+    const SMALL = new Set('a an and as at but by for from in into nor of on or so the to with'.split(' '));
+
+    /**
+     * Escapes text for HTML.
+     * @param {string} s
+     * @returns {string}
+     */
+    function esc(s) {
+        return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    }
+
+    /**
+     * A rough MusicBrainz title style for the mockup: every word capitalised but the small ones.
+     * @param {string} t
+     * @returns {string}
+     */
+    function mbTitle(t) {
+        return t.split(/(\s+)/).map((w, i) => {
+            if (/^\s+$/.test(w)) return w;
+            const lw = w.toLowerCase();
+            if (i > 0 && SMALL.has(lw)) return lw;
+            if (/^\(/.test(w)) return '(' + w.charAt(1).toUpperCase() + w.slice(2);
+            return w.charAt(0).toUpperCase() + w.slice(1);
+        }).join('').replace(/\bUsa\b/g, 'USA');
+    }
+
+    /**
+     * The URL of a mockup image: inlined in the published copy, the site's own from disk.
+     * @param {string} id
+     * @returns {string}
+     */
+    function img(id) {
+        return EMBED[id] || (IMGS[id] && IMGS[id].u) || '';
+    }
+
+    /**
+     * Cuts a record's tracks into sub-tables (decision 3).
+     * @param {object} r The record.
+     * @returns {Array<{name: string, xtra: string, tracks: object[]}>}
+     */
+    function media(r) {
+        const support = (r.facts.find(f => f[0] === 'Support') || ['', ''])[1];
+        const m = support.match(/^(\d+)\s+(.*)$/) || [null, '1', support];
+        const n = +m[1];
+        const fmt = m[2];
+        const vinyl = /LP|7 in|12 in/i.test(fmt);
+        const word = vinyl ? 'Record' : /tape|vhs/i.test(fmt) ? 'Tape' : 'Disc';
+        const groups = [];
+        r.tracks.forEach(t => {
+            const g = t.pos.split('/')[0];
+            let last = groups[groups.length - 1];
+            if (!last || last.g !== g) groups.push(last = { g, tracks: [] });
+            last.tracks.push(t);
+        });
+        if (vinyl && groups.length === 2 * n) {
+            const out = [];
+            for (let k = 0; k < n; k++) {
+                const a = groups[2 * k], b = groups[2 * k + 1];
+                const sides = n === 1 ? 'sides A + B' : `sides ${a.g} + ${b.g}`;
+                out.push({ name: `${word} ${k + 1}`, xtra: sides, tracks: a.tracks.concat(b.tracks) });
+            }
+            return out;
+        }
+        if (groups.length === n) return groups.map((g, k) => ({ name: `${word} ${k + 1}`, xtra: '', tracks: g.tracks }));
+        return groups.map(g => ({ name: `Group ${g.g}`, xtra: '', tracks: g.tracks }));
+    }
+
+    /**
+     * The h1 with the action button, as the injected KF toolbar.
+     * @param {string} title
+     * @param {boolean} on Whether the button was pressed.
+     * @returns {string}
+     */
+    function h1(title, on) {
+        return `<div class="sa-h1"><span class="kfg">KF</span><bdi>${esc(title)}</bdi><span class="sa-btns"><span class="${on ? 'on' : ''}">${on ? '■ ' : ''}Tracklist</span><span>☰ SAED</span></span></div>`;
+    }
+
+    /**
+     * The site's header block (banner, nav, notice), as on every detrec page.
+     * @param {string} banner
+     * @returns {string}
+     */
+    function siteHeader(banner) {
+        return `<hr class="kf-hr"><div class="kf-banner">- www.brucespringsteen.it -<br>${esc(banner)}</div><hr class="kf-hr">
+            <div class="kf-nav"><a>Bruce Springsteen lyrics</a> -- <a>Bruce Springsteen shows</a> -- <a>Bruce Springsteen records</a></div>
+            <div class="kf-box">Please note: the information published on this page are gathered from the internet, books, or from collectors writing me. …</div><hr class="kf-hr">`;
+    }
+
+    /**
+     * The rendered record page (FRP).
+     * @param {string} code
+     */
+    function renderRecord(code) {
+        const r = D.records[code];
+        const url = `https://www.brucespringsteen.it/DB/detrec.aspx?code=${code}`;
+        const meds = media(r);
+        const songs = r.tracks.length;
+        const shows = [];
+        r.tracks.forEach(t => {
+            let s = shows.find(x => x.ex === t.ex);
+            if (!s) shows.push(s = { ex: t.ex, show: t.show, date: t.date, country: t.country, n: 0 });
+            s.n++;
+        });
+        const facts = r.facts.slice(1).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')
+            + (r.promo ? '<dt>Promo</dt><dd class="yes">yes</dd>' : '')
+            + `<dt>Code</dt><dd>${esc(code)}</dd><dt>This page</dt><dd><a>detrec.aspx?code=${esc(code)}</a></dd>`;
+        const src = shows.map(s => `<dt>${esc(s.date)}</dt><dd><a>${esc(s.show)}</a> <span class="dim">(${esc(s.country)}) · ${s.n}</span></dd>`).join('');
+        const noteText = [r.stray, r.notes].filter(Boolean).join('\n\n');
+        const kind = r.kind === 'official' ? 'Official release' : 'Bootleg';
+        const when = (r.facts.find(f => f[0] === 'Release period') || [])[1];
+        const photo = r.photo ? (code === 'LPATY1' ? 'lpaty1' : 'cbs39404') : '';
+        const tables = meds.map(m => {
+            const rows = m.tracks.map(t => `<tr><td>${esc(t.pos)}</td><td class="sticky"><a title="${esc(t.title)}">${esc(mbTitle(t.title))}</a></td><td>${esc(t.date)}</td><td><a title="mn.aspx?ex=${esc(t.ex)}">${esc(t.show)}</a></td><td>${esc(t.country)}</td><td>${esc(t.notes)}</td><td class="n">${esc(t.ver)}</td><td class="c"><span class="play">▶</span></td></tr>`).join('');
+            return `<div class="st"><div class="st-h3"><span class="tog">▼</span>${esc(m.name)}${m.xtra ? ` <span class="xtra">· ${esc(m.xtra)}</span>` : ''} <span class="cnt">(${m.tracks.length})</span><span class="stf">sub-table filter</span></div>
+                <div class="tw"><table class="tbl"><thead><tr class="hd"><th>Pos</th><th>Title</th><th>Date</th><th>Show</th><th>Country</th><th>Notes</th><th class="n">Ver</th><th class="c">Play</th></tr>
+                <tr class="ft">${'<th><span></span></th>'.repeat(8)}</tr></thead><tbody>${rows}</tbody></table></div></div>`;
+        }).join('');
+        document.getElementById('rec-mock').innerHTML = `<div class="chrome"><span class="dot"></span><span class="url">${esc(url)}</span><span class="who anon">own tab or right frame</span></div>
+            <div class="page">
+                <div class="site-native">${siteHeader('').replace(/<br>/, '')}</div>
+                ${h1(r.title, true)}
+                <div class="sub">~ ${kind} by <b>Bruce Springsteen</b>${when ? ` (${esc(when)})` : ''}</div>
+                ${noteText ? `<div class="sec" data-closed="1"><div class="h2"><span class="tog">▶</span>Notes</div><div class="body prose">${esc(noteText)}</div></div>` : ''}
+                <div class="sec"><div class="h2"><span class="tog">▼</span>Details</div>
+                    <div class="body facts"><div class="card"><h4>Record</h4><dl><dt>Title</dt><dd>${esc(r.facts[0][1])}</dd>${facts}</dl></div>
+                    <div class="card"><h4>Sources <span class="dim" style="text-transform:none;font-weight:400">· ${songs} songs from ${shows.length} show${shows.length === 1 ? '' : 's'}</span></h4><dl>${src}</dl></div></div></div>
+                ${photo ? `<div class="sec"><div class="h2"><span class="tog">▼</span>Photo <span class="cnt">(1)</span></div><div class="body" style="display:grid;gap:8px">
+                    <div class="chips"><span class="chip on">All (1)</span><span class="chip">Photo (1)</span><span class="dim">Grid · By type</span></div>
+                    <div class="art-tile"><img src="${esc(img(photo))}" alt="Photo of ${esc(r.title)}"><span><span class="star">★</span> Photo</span></div></div></div>` : ''}
+                <div class="h2"><span class="tog">▼</span>Tracklist <span class="cnt">${songs} of ${songs} rows · ${meds.length} sub-tables</span><span class="gf">global filter</span></div>
+                ${tables}
+            </div>`;
+    }
+
+    /**
+     * The initial page (IP) of The River 2 LP, with a hover card on its first song link.
+     */
+    function renderIp() {
+        const r = D.records.COLPC2368543;
+        const v = D.song586.versions[0];
+        const rows = r.tracks.slice(0, 6).map((t, i) => `<tr><td>${esc(t.pos)}</td><td><a class="${i === 0 ? 'kf-hover' : ''}">${esc(t.title)}</a></td><td>${i === 0 ? `<a>Album release,The river(USA) 10-Oct-1980/1</a>` : '&nbsp;&nbsp;"'}</td><td>-</td><td>99</td></tr>`).join('');
+        document.getElementById('ip-mock').innerHTML = `<div class="chrome"><span class="dot"></span><span class="url">https://www.brucespringsteen.it/DB/detrec.aspx?code=COLPC2368543</span><span class="who anon">before any button</span></div>
+            <div class="page">
+                ${siteHeader("THE RIVER -- 'blank red label' misprint (USA)")}
+                ${h1(r.title, false)}
+                <div>Title : <b>THE RIVER -- 'blank red label' misprint</b><br>Support: <b>2 LP</b><br>Catalogue number: <b>COL PC2 36854</b><br>Pressed in: <b>USA</b><br>Release period: <b>1980 (Oct)</b></div>
+                <div>Notes:<br>${esc(r.notes)}</div>
+                <table class="kf-table"><thead><tr><th>Pos</th><th>Title</th><th>From</th><th>Notes</th><th>Ver</th></tr></thead><tbody>${rows}<tr><td colspan="5" class="dim">… 14 more rows</td></tr></tbody></table>
+                <div class="poh" style="left:120px;top:330px"><div class="t">${esc(D.song586.title)} <span class="d">· brucespringsteen.it song</span></div>
+                    <div class="d">${D.song586.versions.length} versions · first: ${esc(v.title.replace(/^.*? - /, ''))}</div><hr>
+                    <div style="white-space:pre-line">${esc(v.lines.slice(0, 5).join('\n'))}</div>
+                    <div class="d">… ${v.lines.filter(Boolean).length} lines · Space opens all versions</div></div>
+                <div style="height:40px"></div>
+            </div>
+            <div class="statusbar">https://www.brucespringsteen.it/DB/sd3.aspx?sid=586</div>`;
+    }
+
+    /**
+     * The song card and window.
+     */
+    function renderSong() {
+        const s = D.song586;
+        const secs = s.versions.map((v, i) => `<div class="vsec"><h5>${esc(v.title)}</h5><div class="lyr" id="lyr-${i}">${esc(v.lines.join('\n'))}</div>
+            ${v.lines.length > 8 ? `<button type="button" class="more" id="more-${i}" data-lyr="${i}">Show all ${v.lines.filter(Boolean).length} lines</button>` : ''}
+            ${v.notes ? `<div class="vnote">Notes: ${esc(v.notes)}</div>` : ''}</div>`).join('');
+        document.getElementById('song-mock').innerHTML = `<div class="chrome"><span class="dot"></span><span class="url">Window: https://www.brucespringsteen.it/DB/sd3.aspx?sid=586</span></div>
+            <div class="page"><div class="win"><div class="wt">${esc(s.title)}<span class="st8">brucespringsteen.it · song · Extracted | Live page</span></div>
+                <div class="wb winrow"><div style="display:grid;gap:8px;min-width:0"><h4>Versions (${s.versions.length})</h4>${secs}</div>
+                <div style="display:grid;gap:8px;align-content:start;min-width:0"><div class="card"><h4>Song</h4><dl><dt>Title</dt><dd>${esc(mbTitle(s.title))}</dd><dt>Site title</dt><dd>${esc(s.title)}</dd><dt>Versions</dt><dd>${s.versions.length}</dd><dt>Page</dt><dd><a>sd3.aspx?sid=586</a></dd></dl></div></div></div></div></div>`;
+    }
+
+    /**
+     * The show card and window.
+     * @param {string} key
+     */
+    function renderShow(key) {
+        const s = D[key];
+        const studio = key === 'showS198010101';
+        const m = s.head.match(/^(\d\d)-(\w{3})-(\d{4})\s+(.*),([^,]*)$/);
+        const mon = { Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Jun: 6, Jul: 7, Aug: 8, Sep: 9, Oct: 10, Nov: 11, Dec: 12 };
+        const date = m ? `${m[3]}-${String(mon[m[2]]).padStart(2, '0')}-${m[1]}` : '';
+        const venue = m ? m[4] : s.head;
+        const songs = s.lines.filter(l => /^(\d\d|Version \d+ -)/.test(l)).map((l, i) => {
+            const mm = l.match(/^(?:(\d\d)|Version \d+ -)\s*(.*?)\s*(?:\[(.*)\])?$/);
+            return { n: mm[1] || String(i + 1).padStart(2, '0'), t: mm[2], note: mm[3] || '' };
+        });
+        const other = s.lines.filter(l => !/^(\d\d|Version \d+ -)/.test(l)).map(l => l.replace(/^-\s*/, ''));
+        const list = songs.map(x => `<li><span class="p">${x.n}</span><span>${esc(mbTitle(x.t))}${x.note && !/^Released version$/i.test(x.note) ? ` <span class="dim">[${esc(x.note)}]</span>` : ''}</span><span></span></li>`).join('');
+        const found = s.found.map(f => `<div><span class="fmt">${esc(SUPP[f.supp] || '?')}</span><a>${esc(f.title)}</a></div>`).join('');
+        document.getElementById('show-mock').innerHTML = `<div class="chrome"><span class="dot"></span><span class="url">Card, then window: https://www.brucespringsteen.it/DB/mn.aspx?ex=${esc(key.replace('show', ''))}</span></div>
+            <div class="page" style="position:relative">
+                <div class="poh" style="position:relative;left:0;top:0;width:min(320px,100%)"><div class="t">${esc(venue)} <span class="d">· ${esc(date)}</span></div>
+                    <div class="d">${esc(m ? m[5] : '')} · ${studio ? 'release / studio' : 'live'} · ${songs.length} songs · on ${s.found.length} records</div><hr>
+                    <div>${songs.slice(0, 5).map(x => esc(mbTitle(x.t))).join(' · ')} …</div><div class="d">Space opens the setlist</div></div>
+                <div class="win"><div class="wt">${esc(date)} · ${esc(venue)}<span class="st8">brucespringsteen.it · show · Extracted | Live page</span></div>
+                    <div class="wb winrow"><div style="display:grid;gap:8px;min-width:0"><h4>Setlist (${songs.length})</h4><ol>${list}</ol>
+                        ${other.length || s.notes.length ? `<h4>Notes</h4><div class="prose">${esc(other.concat(s.notes).join('\n'))}</div>` : ''}</div>
+                    <div style="display:grid;gap:8px;align-content:start;min-width:0"><div class="card"><h4>Show</h4><dl><dt>Date</dt><dd>${esc(date)}</dd><dt>Venue</dt><dd>${esc(venue)}</dd><dt>Country</dt><dd>${esc(m ? m[5] : '')}</dd><dt>Kind</dt><dd>${studio ? 'Release / studio session' : 'Live'}</dd></dl></div>
+                    <div class="card"><h4>Found on (${s.found.length})</h4><div class="found">${found}</div><span class="dim" style="font-size:11.5px">A record opens here, with ← Back.</span></div></div></div></div>
+            </div>`;
+    }
+
+    /**
+     * Shows one tab.
+     * @param {string} name
+     */
+    function showTab(name) {
+        document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tab === name)));
+        document.querySelectorAll('[data-view]').forEach(v => { v.hidden = v.dataset.view !== name; });
+        try { localStorage.setItem('kf-mock-tab', name); } catch (_) { /* storage blocked */ }
+    }
+
+    document.querySelector('.tabs').addEventListener('click', (e) => { const b = e.target.closest('button[data-tab]'); if (b) showTab(b.dataset.tab); });
+    document.querySelector('[data-view="rec"] .sw').addEventListener('click', (e) => {
+        const b = e.target.closest('button[data-rec]');
+        if (!b) return;
+        e.currentTarget.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+        renderRecord(b.dataset.rec);
+    });
+    document.querySelector('[data-view="show"] .sw').addEventListener('click', (e) => {
+        const b = e.target.closest('button[data-show]');
+        if (!b) return;
+        e.currentTarget.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+        renderShow(b.dataset.show);
+    });
+    document.getElementById('song-mock').addEventListener('click', (e) => {
+        const b = e.target.closest('button[data-lyr]');
+        if (!b) return;
+        const l = document.getElementById('lyr-' + b.dataset.lyr);
+        l.classList.toggle('open');
+        b.textContent = l.classList.contains('open') ? 'Fold' : b.textContent.replace('Fold', 'Show all');
+    });
+    renderRecord('LPATY1');
+    renderIp();
+    renderSong();
+    renderShow('show199905021');
+    let start = 'rec';
+    try { start = localStorage.getItem('kf-mock-tab') || 'rec'; } catch (_) { /* storage blocked */ }
+    if (document.querySelector(`[data-view="${start}"]`)) showTab(start);
+})();
+</script>
+</body>
+</html>

@@ -369,12 +369,27 @@ test.describe('detail-page parsers (one record per saved page)', () => {
         expect(u.tracks).toHaveLength(14);
         // Rows 2-14 write `"` in From: every track carries the first row's show.
         expect(new Set(u.tracks.map((t) => t.from))).toEqual(new Set(['Tampa,FL,Jai Alai(USA) 10-Nov-1975']));
-        expect(u.tracks[0]).toEqual({ disc: '1', pos: '1/1', title: 'Thunder road', from: 'Tampa,FL,Jai Alai(USA) 10-Nov-1975' });
+        // Since 2026-11-06 (bs-record, parser version 17) a track also carries
+        // its song's and show's pages (the site's hs()/helps() script links),
+        // the show split, its notes and version ("-" and " - " empty).
+        expect(u.tracks[0]).toEqual({
+            disc: '1', pos: '1/1', title: 'Thunder road', from: 'Tampa,FL,Jai Alai(USA) 10-Nov-1975',
+            songUrl: 'https://www.brucespringsteen.it/DB/sd3.aspx?sid=602',
+            showUrl: 'https://www.brucespringsteen.it/DB/mn.aspx?ex=197511101',
+            show: 'Tampa, FL, Jai Alai', country: 'USA', date: '1975-11-10', notes: '', ver: '',
+        });
+        // A ditto row: the first row's show, its own song.
+        expect(u.tracks[1]).toMatchObject({ title: '10th avenue freeze-out', songUrl: 'https://www.brucespringsteen.it/DB/sd3.aspx?sid=2',
+            showUrl: 'https://www.brucespringsteen.it/DB/mn.aspx?ex=197511101', date: '1975-11-10' });
+        expect(u.kind).toBe('bootleg');
+        expect(u.code).toBe('CR1AD1');
+        expect(u.subtitle).toBe('Bootleg');
         expect(new Set(u.tracks.map((t) => t.disc))).toEqual(new Set(['1', '2']));
         expect(u.cover).toBe('');
 
         const o = await parse('COL4942001');
         expect(o.fields.map(([k]) => k)).toEqual(['Support', 'Catalogue number', 'Pressed in', 'Release period']);
+        expect(o.kind).toBe('official');
         expect(o.tracks).toHaveLength(18);
         expect(new Set(o.tracks.map((t) => t.from)).size).toBeGreaterThan(10);
 

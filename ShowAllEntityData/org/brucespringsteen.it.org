@@ -107,7 +107,9 @@ Details: =docs/claude/brucespringsteen.md=, and the dated entry in
 
 Analysis, probes and mockups: [[file:detail-pages.org]] (2026-10-07). The
 detail page has no images; its value is the tracklist with a source show per
-track.
+track. (Corrected 2026-11-06: some records have one photo,
+=blegs/images/<code>.jpg=, e.g. CBS39404 and LPATY1; the site hides a missing
+one.)
 
 
 * TODO "TRACKLIST" should get more info in table form
@@ -130,6 +132,62 @@ both complex URLs with tipe queyr string should get a button on the main framed 
 
 
 * TODO add support for Setlist page - https://www.brucespringsteen.it/Showdx.htm
+
+Add support for new Killingfloor site https://www.brucespringsteen.it release detail PTs + POH support (see skills)
+
+#+begin_example
+@debug/KF-official-no-image-initial.html - IP - https://www.brucespringsteen.it/DB/detrec.aspx?code=COLPC2368543 - official release with no images
+@debug/KF-official-image-initial.html - IP - https://www.brucespringsteen.it/DB/detrec.aspx?code=CBS39404 - official release with images
+@debug/KF-bootleg-no-image-initial.html - IP - https://www.brucespringsteen.it/DB/detrec.aspx?code=CR3TIM1 - bootleg release with no image
+@debug/KF-aty-CD-initial.html - IP - https://www.brucespringsteen.it/DB/detrec.aspx?code=CDATY1
+@debug/KF-aty-LP-initial.html - IP - https://www.brucespringsteen.it/DB/detrec.aspx?code=LPATY1
+#+end_example
+
+** Plan (2026-11-06, branch =feature/kf-detail=)
+
+Env: 2026-11-06T17:35:51+01:00 · NB-3641 · WSL2 Ubuntu (Linux 6.18.54.1) · curl probe, browser n/a
+
+- The new pageType =bs-record= on =DB/detrec.aspx?code==: a release-tracks-style view of a
+  record, with no request (the page's own HTML).
+- POH: the page's song links (=hs()= → =sd3.aspx?sid==) and show links (=helps()= →
+  =mn.aspx?ex==) become two more kinds of the KF reader. The site's =libmnx.js= is what names
+  the targets.
+- Mockup (v1): https://claude.ai/artifact/XULiW1dUFME9F4nbsrQokD
+  (source =org/kf-detail-mockups.html=, published copy built by =scripts/build-mockup-artifact.py=).
+- Answers (vzell, 2026-11-06, before the mockup):
+  1. Frames: "Own tab + right frame". The =principale= frame runs too; =sommario= stays excluded.
+  2. From column: "Date + Show + Country".
+  3. Vinyl sides: "Pair sides when it adds up". N LP/7"/12" with 2×N groups gives
+     Records 1–N.
+- Answers on the mockup (vzell, 2026-11-06): Ver "Keep the number" (99 explained in the header
+  tooltip); build the "Sources card", the "Play column" and the "Photo chip 'Photo'"; a plain click
+  on an IP song/show link opens the "Site's own popup"; layout "Build it as shown".
+- This also covers items 1–2 of "TRACKLIST should get more info in table form" (LPAITS4,
+  CBSXSSC5739 are record pages).
+
+** Built (2026-11-06, branch =feature/kf-detail=, not merged)
+
+Env: 2026-11-06T18:33:55+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+- The pageType =bs-record=: one button "Show the tracklist", no request,
+  a sub-table per record or disc (sides paired), the columns Pos, Title,
+  Date, Show, Country, Notes, Ver (and Play with =sa_yt_play_in_place=); the
+  head with Notes, Record facts, Sources and the photo. It also runs in the
+  frameset's right frame.
+- POH: the record page's song and show links preview on the IP and the FRP,
+  with a plain click still opening the site's window. A show's "Found on"
+  record opens in the same window, with Back.
+- Differs from the mockup: with several records or discs, the sub-tables
+  start closed (the engine's rule for every multi-table page but
+  release-tracks); the mockup showed them open. Sources counts 29 shows on
+  All Those Years' LP (one show is met twice), where the mockup's question
+  guessed 30.
+- Checked: specs =bs-record.spec.js= (15), =bs-record-preview.spec.js= (8),
+  =bs-record.mobile.spec.js= (2), plus the existing KF and preview specs;
+  =scripts/mutations/bs-record.json= (25). See DEBUG-NOTES.md, 2026-11-06.
+- Docs: docs/claude/brucespringsteen.md ("The record page — =bs-record=",
+  "Song and show previews"), docs/claude/detail-pages.md, HELP, the coverage
+  registry, PAGETYPES-TESTING-REFERENCE.org (#157), WIP.1–WIP.3.
 
 * TODO add support for Lyrics page -  https://www.brucespringsteen.it/Brucex.htm
 

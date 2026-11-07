@@ -3649,8 +3649,9 @@ off, the script leaves that site's pages untouched.
 
 It works on the record list **opened in its own tab**. On the site's usual
 two-frame view (`Blegsdx.htm`), the list is the narrow left frame, and the
-script leaves it as it is. To use the script, open one of these addresses on
-its own. They are the two lists with every format ticked:
+script leaves it as it is (a record's own page in the right frame is
+different, see below). To use the script on the list, open one of these
+addresses on its own. They are the two lists with every format ticked:
 
 - Unofficial:
   `https://www.brucespringsteen.it/DB/records.aspx?tipe=-1,0,1,2,3,4,5,6,7,8,9,10,11&sort=0&addon=0`
@@ -3689,6 +3690,39 @@ record's tracklist and the shows its tracks come from (see
 To switch from one kind to the other, press the other button. The page
 reloads first, as it does whenever a second list is loaded, and then runs
 that button by itself.
+
+**A record's own page** (`DB/detrec.aspx?code=…`) has one button, **Show
+the tracklist**. It works in the page's own tab and in the site's two-frame
+view, in the wide right-hand frame where the site shows the record you click
+in its list. It makes no request: everything comes from the page itself.
+The tracklist becomes one table per record or disc, as MusicBrainz shows a
+release. A vinyl box whose positions count sides (All Those Years, 10 LP:
+sides 1–20) gets "Record 1 (sides 1 + 2)" … "Record 10"; a 7″ single is
+"Record 1 (sides A + B)"; CDs are "Disc 1", "Disc 2", …. The columns:
+
+- **Pos**, the site's own position ("3/2").
+- **Title**, the song, linked to its page on the site.
+- **Date**, **Show** and **Country**, split out of the site's "From"
+  ("Manchester,Evening News Arena(GB) 02-May-1999/1" gives 1999-05-02,
+  Manchester, Evening News Arena, GB). Show links the show's page. A row
+  the site marks with " (same as above) gets the show of the row above.
+- **Notes**, and **Ver**, the site's version number (99 is the released
+  version).
+- **Play**, a YouTube search for the song, when *Play YouTube videos in
+  place* is on.
+
+Above the tables: the record's notes, its facts as the page names them
+(Catalogue number, Pressed in and Release period for an official release;
+Matrix, Producer and Vinyl for a bootleg; Promo, Code), **Sources** — every
+show the tracks come from, once, with its date and how many tracks — and
+the record's photo, when the site has one. With several records or discs,
+the tables start closed, as on other multi-table pages; click a heading to
+open one.
+
+On a record page the song and show links preview like the table's links:
+rest the pointer on one (with Ctrl, unless you changed that) for its card,
+press Space for the window. A plain click still opens the site's own small
+window, as before.
 
 </details>
 
@@ -4458,7 +4492,7 @@ that site's own switch in ⚙️ Settings:
 |--------------------------|--------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 🎸 springsteenlyrics.com | *Preview item and song pages on springsteenlyrics.com lists* | the tracklist by disc, the notes (lineage, edition), the artwork scans; on the lyrics index, the version and its type and date, the first lines of the lyrics, the song's info, its versions by type and how many releases, live releases and covers the page lists (a live version: its show, its release and that release's tracklist) |
 | 🌴 jungleland.it         | *Preview artwork pages on the jungleland.it list*            | the uploader and the scans (front, back, discs, booklet)                                                                                                    |
-| 💿 brucespringsteen.it   | *Preview record pages in the brucespringsteen.it database*   | the tracklist, the show each track comes from, the notes, the photo                                                                                         |
+| 💿 brucespringsteen.it   | *Preview record pages in the brucespringsteen.it database*   | the tracklist, the show each track comes from, the notes, the photo; on a record page also its songs (lyric versions) and shows (setlist, the records it is on) |
 | 📚 Brucebase             | *Preview song pages on the Brucebase song list*              | the album it comes from, how often and when last it was played live, releases, the graph and lyric sheets                                                   |
 | 📚 Brucebase             | *Preview event, venue and people pages on hover*             | when it was scheduled, who was on stage, the setlist, the images; Space: the whole setlist, the other shows there, the recording                            |
 

@@ -6,8 +6,9 @@
 // broken pattern. This reads the header the way Tampermonkey does (a value
 // wrapped in slashes is a regular expression) and checks the
 // springsteenlyrics.com lines admit exactly the list pages, the jungleland.it
-// line exactly its list.htm, the brucespringsteen.it line exactly its
-// DB/records.aspx, the Brucebase lines exactly its stats:songs and its year
+// line exactly its list.htm, the brucespringsteen.it lines exactly its
+// DB/records.aspx and a record's DB/detrec.aspx?code=, the Brucebase lines
+// exactly its stats:songs and its year
 // pages, the discogs.com line exactly its master, release, artist and label
 // pages, while every MusicBrainz sample still matches.
 
@@ -144,7 +145,7 @@ test.describe('@include coverage', () => {
         expect(others.filter((u) => injected(u))).toEqual([]);
     });
 
-    test('brucespringsteen.it: DB/records.aspx, and nothing else', () => {
+    test('brucespringsteen.it: DB/records.aspx and a record\'s DB/detrec.aspx?code=, and nothing else', () => {
         const lists = [
             'https://www.brucespringsteen.it/DB/records.aspx?tipe=-1,0,1,2,3,4,5,6,7,8,9,10,11&sort=0&addon=0',
             'https://www.brucespringsteen.it/DB/records.aspx?tipe=-2,0,1,2,3,4,5,6,7,8,9,10,11&sort=0&addon=0',
@@ -152,12 +153,21 @@ test.describe('@include coverage', () => {
             'https://www.brucespringsteen.it/DB/records.aspx',
             'http://www.brucespringsteen.it/db/records.aspx?tipe=-1,9&sort=0',
             'https://brucespringsteen.it/DB/records.aspx?tipe=-1,4&sort=0',
+            // A record's own page (bs-record, 2026-11-06), as the list links
+            // it and as the site's showdisc() opens it (`&hecan=1`).
+            'https://www.brucespringsteen.it/DB/detrec.aspx?code=CR1AD1',
+            'https://www.brucespringsteen.it/DB/detrec.aspx?code=LPATY1&hecan=1',
+            'http://brucespringsteen.it/db/detrec.aspx?code=CBS39404',
         ];
         const others = [
-            // The frameset that holds records.aspx, a record's detail page,
+            // The frameset that holds records.aspx, a record page without a
+            // code, the song and show pages (previews only, no pageType),
             // the database's other frameset, the home page.
             'https://www.brucespringsteen.it/Blegsdx.htm',
-            'https://www.brucespringsteen.it/DB/detrec.aspx?code=CR1AD1',
+            'https://www.brucespringsteen.it/DB/detrec.aspx',
+            'https://www.brucespringsteen.it/DB/detrec.aspx?code=',
+            'https://www.brucespringsteen.it/DB/sd3.aspx?sid=586&hecan=1',
+            'https://www.brucespringsteen.it/DB/mn.aspx?ex=199905021',
             'https://www.brucespringsteen.it/DB/Databasex.htm',
             'https://www.brucespringsteen.it/',
             'https://www.brucespringsteen.it/records.aspx',
