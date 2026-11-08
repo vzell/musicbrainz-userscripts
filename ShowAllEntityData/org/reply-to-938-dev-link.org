@@ -1,7 +1,9 @@
 #+TITLE: Follow-up on #938: SAED's development version to try
 #+DATE: 2026-11-08
 
-* TODO Post: link to SAED's development version on https://github.com/majkinetor/musicbrainz-userscripts/issues/938
+* DONE Post: link to SAED's development version on https://github.com/majkinetor/musicbrainz-userscripts/issues/938
+
+*Posted* by vzell 2026-11-08 20:15 CET: https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-6725896816 (identical to the block below).
 
 Drafted 2026-11-08 at vzell's request, for vzell to post after the short acknowledgement
 (=org/reply-to-938-ack.org=); not posted anywhere.

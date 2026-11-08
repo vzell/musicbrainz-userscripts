@@ -555,10 +555,21 @@ The refresh skill keeps both current. When majkinetor answers, write the agreed 
 conventions" and the TODOs, so both sides use the same spelling.
 
 *After majkinetor's answer (2026-11-08)*, three follow-ups on #938, drafted for vzell (none posted by Claude):
-1. [[file:reply-to-938-ack.org][org/reply-to-938-ack.org]]: a short acknowledgement — implementing against his branch, full reply later.
-2. [[file:reply-to-938-dev-link.org][org/reply-to-938-dev-link.org]]: the install link to SAED's development version (post after the merge to
-   =main=: the link names =main=, and the library =@require= is on GitHub since 2026-11-08).
-3. [[file:reply-to-938-answer.org][org/reply-to-938-answer.org]]: the full reply.
+1. [[file:reply-to-938-ack.org][org/reply-to-938-ack.org]]: a short acknowledgement — implementing against his branch, full reply
+   later. Posted 16:44 CET: [[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-6723536638][comment]].
+2. [[file:reply-to-938-dev-link.org][org/reply-to-938-dev-link.org]]: the install link to SAED's development version (=main=,
+   9.99.1581, library =@require= on GitHub). Posted 20:15 CET: [[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-6725896816][comment]].
+3. [[file:reply-to-938-answer.org][org/reply-to-938-answer.org]]: the full reply, incl. the request to keep V under
+   =data-mbu-keys-off=. Posted 20:21 CET: [[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-6725962477][comment]].
+
+All three verified identical to their drafts. The rest of the thread that day (not drafted here):
+- majkinetor, 17:02 CET: "OK, let me know when to merge" ([[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-6723729439][comment]]); vzell, 17:08 CET: will do
+  shortly ([[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-6723801811][comment]]).
+- vzell, 20:22 CET: a screenshot of SAED's items in EH's ⋯ menu ([[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-6725973882][comment]]).
+- vzell, 22:31 CET: "... and yes you can merge" ([[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-6727395015][comment]]). Once =codex/interop-938= is on =main=,
+  the next refresh (refresh-majkinetor) takes the harness copies from it: the =conv-c1-*=, =conv-c2=, =conv-c3= and
+  =conv-c4= anchors will then report BACK (adopted upstream) and need flipping, and =conv-c5= retiring (C5 dropped).
+  Open upstream: majkinetor's answer to "keep V under =data-mbu-keys-off=".
 
 *** Refresh log
 
@@ -1259,8 +1270,7 @@ I already run the codex/interop-938 branch from majkinetor to test our new imple
 majkinetors issue already that we are about to implement everything against his branch and answer with a complete reply
 later on
 
-** one more followup
+** DONE one more followup
 
 Create one more followup reply with a link to my development userscript version in case majkinetors want to try it
-
 

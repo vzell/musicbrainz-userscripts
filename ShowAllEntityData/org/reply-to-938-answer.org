@@ -1,7 +1,9 @@
 #+TITLE: Full reply on #938: majkinetor's answers and 9e4cdd59
 #+DATE: 2026-11-08
 
-* TODO Post: full reply on https://github.com/majkinetor/musicbrainz-userscripts/issues/938
+* DONE Post: full reply on https://github.com/majkinetor/musicbrainz-userscripts/issues/938
+
+*Posted* by vzell 2026-11-08 20:21 CET: https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-6725962477 (identical to the block below).
 
 Drafted 2026-11-08, for vzell to post (not posted anywhere). It answers majkinetor's point-by-point comment and
 milic-bot's "Implemented on codex/interop-938, commit 9e4cdd59" comment.
