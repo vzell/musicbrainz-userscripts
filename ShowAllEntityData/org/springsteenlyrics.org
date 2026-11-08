@@ -1409,8 +1409,8 @@ add an image glyph which shows the medium images to the h3 medium header line if
 names/descriptions
 
 
-* TODO the SL song detail FRP needs a more nicer rendering
-** initial
+* DONE the SL song detail FRP needs a more nicer rendering
+** DONE initial
 
 the SL song detail POHs needs a more nicer/professional look and feel
 
@@ -1433,7 +1433,7 @@ show me some nice rich HTML mockups before implementation
 
 maybe also move some sections from the right side to the left
 
-** enhancements
+** DONE enhancements
 
 1.)
 
