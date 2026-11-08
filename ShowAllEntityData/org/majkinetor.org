@@ -371,8 +371,34 @@ Other algorithms worth knowing:
 | 1a: native ↔ enhanced is easy to toggle                                     | *Confirmed*                | EH: V or =#eh-launch=; Apollo: =#tc-launch= (global, every tab). *But the choice sticks*: EH is *on by default* (=S.on: true=) and remembers your last choice per browser, not per page                                                                                                                                                                                                                                  |
 | 1b: new view UIs for (almost) all entity pages                              | *Confirmed*                | =@match= covers home + 12 entity types + user/tag/search/edit/cdtoc; own views for every entity root page and many subpages; =/releases=, =/details= and edit-relationships are re-styled native pages                                                                                                                                                                                                                   |
 | 1b: aimed at end users, less analytical than SAED                           | *Mostly confirmed*         | EH has *no* findings, 📊 value analysis, multi-row cell model, per-sub-table filters, export or disk save, and pages lazily (100 rows, then "Load more"/Auto). *However*, its filter has a boolean query language with column keys and ranges, plus named filters and column sets, that SAED lacks (see "Features compared")                                                                                             |
-| 2: SAED is not obsoleted; it keeps MB's layout and handles paginated pages  | *Confirmed*                | EH never assembles a whole paginated list on one page for analysis; SAED does (31 pages / 2,146 RGs for the Springsteen artist page in 37 s, *measured*). majkinetor's own #926 report agrees: SAED is *"Partial overlap"* with EH (his verdict in discussion #941; the AI source triage of the mirror at =2bf2cf8=: "Event Horizon covers selected entity views; a quick pass cannot justify whole-bundle replacement") |
+| 2: SAED is not obsoleted; it keeps MB's layout and handles paginated pages  | *Confirmed*                | EH never assembles a whole paginated list on one page for analysis; SAED does (31 pages / 2,146 RGs for the Springsteen artist page in 37 s, *measured*). majkinetor's own #926 report agrees: SAED is *"Partial overlap"* with EH (his verdict in discussion #941; the AI source triage of the mirror at =2bf2cf8=: "Event Horizon covers selected entity views; a quick pass cannot justify whole-bundle replacement"). *But that review read the released 9.99.1167*, not the development version (9.99.1575): see the note below the table |
 | 2: third-party additions stay consumable in SAED, not in majkinetor's views | *Confirmed*                | EH draws from ws/2 into =#app=. Other scripts' additions to MB's DOM (jesus2099, Lotheric icons, …) never reach an EH view. EH has its own ISRC/Links columns. In SAED they keep working on the native page, *except* the IS "Links" platform parsing, broken by IS 2026.11.06 (see above)                                                                                                                               |
+
+*What majkinetor's #926 review actually read* (checked 2026-11-08, code reading, env n/a). Its source triage
+pins =vzell/mb-userscripts= at =2bf2cf8= (2026-10-24), whose =ShowAllEntityData.user.js= is the *published
+9.99.1167+2026-09-27* (5.0 MB; the "5 MB bundle" of its summary). The development version here is
+*9.99.1575+2026-11-08* (9.5 MB): 408 versions later, with 273 🚀 Feature and 267 ✨ Improve changelog items in
+between, and 158 pageTypes against 87. None of the following exists in 9.99.1167 (each symbol: 0 hits there,
+present here):
+
+- the link previews: hover cards and the Space window for MusicBrainz entities, edit histories, tags, Wikipedia,
+  Wikidata, Discogs, setlist.fm and archive.org (=_popSources()=, =_EXT_READERS=, =_mbWsLoad()=);
+- the other sites as table sources: discogs.com, archive.org, setlist.fm, brucebase, jungleland.it,
+  brucespringsteen.it and springsteenlyrics.com (=_isDgHost=, =_isIaHost=, =_isSfmHost=, =_isBbHost=, =_isJlHost=,
+  =_isBsHost=, =_isSlHost=), with release-page-like detail views (Tracks/Setlist buttons);
+- the ⚠️ WARNING / ❌ ERROR findings registry (=FINDINGS=, =stampFindings()=) and the SAED button (=_saedMenu()=);
+- the cover-art section and the artwork viewer (Adjust, Compare), and YouTube / archive.org playing in place;
+- the relationship tables (=_relTablesButton()=), "Sidebar as tables" (=_sbCollectGroups()=), work suggestions
+  (=_wsug*=), entity pictures (=_eiStart()=), MusicBrainz title style for other sites (=_mbTitleCase()=), the
+  browser cache overview (=_idbOverviewOpen()=).
+
+Several of these have no counterpart in Event Horizon at all. EH matches musicbrainz.org only (its =@match=
+list), so it has nothing for the other sites. It has no findings, no 📊 value analysis per column, and no
+consolidation of all pages into one table (see the rows above). So "Partial overlap" understates the
+difference, even for the published version, and much more so for the coming release. vzell can correct SAED's
+row through the report's own route: open the [[https://milic.info/musicbrainz-userscripts/third-party-comparison/][3rd party comparison]], change the verdict and add notes, then
+"Send to GitHub" opens a discussion in the "3rd party" category. Better after the next publish, so the reviewed
+source is the new version.
 
 *** Coexistence (4.) — live probe
 
@@ -542,7 +568,9 @@ Newest first; one entry per refresh (refresh-majkinetor skill).
   - Anchors: 34/34 hold; EH drift +47…+1237 (prose =EH:NNNN= moved); =--update-lines= done.
   - Upstream: #938 not answered yet (labelled =priority: low=, =area | string theory= on 2026-11-07); #839 no reply
     since ours. #926 closed: majkinetor's report at https://milic.info/musicbrainz-userscripts/third-party-comparison/
-    rates SAED "Partial overlap" with EH (Verdict on 2.) updated). No TODO moved.
+    rates SAED "Partial overlap" with EH (Verdict on 2.) updated). That review read the *released* 9.99.1167
+    (mirror =2bf2cf8=), not 9.99.1575, which has the link previews, the other sites, the findings and more that
+    1167 lacks (note under "Verdict on 2.)", added at vzell's request). No TODO moved.
 
 - 2026-11-06 15:58–16:00 CET: vzell posted
   [[https://github.com/majkinetor/musicbrainz-userscripts/issues/938][#938]] (the interoperability issue) and the
@@ -1022,6 +1050,16 @@ Before coding each one, write a real example page into this item, with the click
 - Optional: a read-only RG credit matrix, role × release with format badges (GT =openConsolidate=).
 
 * comments and findings by vzell
+** regarding
+
+regarding "2: SAED is not obsoleted; it keeps MB's layout and handles paginated pages" under the "Verdict on 2.) — is your analysis right?" section:
+
+majkinetors analysis with the help of AI is actually based on the released version of our userscript which misses
+important new features only present in the current development version and which has clearly features which are
+completly missing from majkinetors userscript
+
+also mention this in our notes
+
 ** sidebar toggle
 
 When trying to confirm '** TODO SAED's floating elements survive Event Horizon's body swap (bug, measured)' in
