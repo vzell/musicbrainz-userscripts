@@ -737,6 +737,40 @@ measurement. It shortens the `.mb-tt-annotation` block and shows its "… (more
 in the cell)" foot. Spec: `tests/fixtures/search-annotation-tooltip.spec.js`;
 mutations: `scripts/mutations/annotation-tooltip.json`.
 
+## Floating hosts live in MusicBrainz's body (`_saBody()`)
+
+Every PERSISTENT element the script adds outside the page flow is appended
+with `_saBody().appendChild(…)`, never `document.body.appendChild(…)`: card
+and tooltip hosts (`#mb-stat-tooltip`, `#mb-dp-peek`, …), popups, toolbar menu
+panels, dialogs, masks (`#mb-vsb-mask`), toasts, progress overlays, notices,
+the sidebar handle. A body class that belongs to MusicBrainz's page
+(`sidebar-is-collapsed`, `mb-sorting-active`) goes on `_saBody()` too.
+
+`_saBody()` is the `<body>` that holds `#page`. On a normal page that is
+`document.body`. Under majkinetor's Event Horizon (on by default once
+installed) it is not: Event Horizon inserts its own `<body>` before
+MusicBrainz's and hides MusicBrainz's, and V removes its body again
+(`setOn()`, EH:11507-11508). A host appended to `document.body` at start-up
+was drawn over Event Horizon's view and then left the document on V, while
+the script kept its reference: dead hover cards, a lost sidebar handle
+(org/majkinetor.org, measured 2026-11-08). In MusicBrainz's body a host hides
+with MusicBrainz's page while Event Horizon shows, and survives V.
+
+Left on `document.body` on purpose:
+
+- transient append-measure-remove and append-click-remove pairs on adjacent
+  lines (column-width measuring, download anchors): consistent pairs, and
+  measuring while Event Horizon shows is moot;
+- the foreign-host-only sites (`_*PrepareLivePage()`, Brucebase's header and
+  side-bar handle, …): Event Horizon never runs there, and `_saBody()` would
+  return the same body.
+
+A host that is later removed is removed with `el.remove()` (or via its
+`parentNode`), never `document.body.removeChild(el)`, so append and remove
+cannot disagree. Spec: `tests/fixtures/eh-body-swap-floating.spec.js` (with
+the simulator `tests/fixtures/thirdPartyScripts/eh-body-swap.js`, Event
+Horizon's `setOn()` verbatim); mutations: `scripts/mutations/eh-body-swap.json`.
+
 ## Hover tooltips must ignore a tap (`_isTouchCompatMouseEvent()`)
 
 On a touch device a tap fires *compatibility* mouse events: `mouseover`,

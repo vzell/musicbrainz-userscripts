@@ -6145,7 +6145,7 @@
         actions.appendChild(undo);
         actions.appendChild(ok);
         box.appendChild(actions);
-        document.body.appendChild(box);
+        _saBody().appendChild(box);
     }
 
     /**
@@ -6529,7 +6529,7 @@
         actions.appendChild(undo);
         actions.appendChild(ok);
         box.appendChild(actions);
-        document.body.appendChild(box);
+        _saBody().appendChild(box);
     }
 
     /**
@@ -31765,7 +31765,7 @@
         el.addEventListener('error', (e) => {
             if (e.target && e.target.tagName === 'IMG') e.target.remove();
         }, true);
-        document.body.appendChild(el);
+        _saBody().appendChild(el);
         _dpPeek.el = el;
         return el;
     }
@@ -31781,7 +31781,7 @@
         const el = document.createElement('div');
         el.id = 'mb-dp-notes';
         el.style.display = 'none';
-        document.body.appendChild(el);
+        _saBody().appendChild(el);
         _dpPeek.notes = el;
         return el;
     }
@@ -36605,7 +36605,7 @@
             },
         };
         _fgalState = st;
-        document.body.appendChild(box);
+        _saBody().appendChild(box);
         box.addEventListener('click', (e) => _fgalOnClick(st, e));
         box.addEventListener('change', (e) => _fgalOnChange(st, e));
         box.addEventListener('keydown', (e) => {
@@ -52192,7 +52192,7 @@
         }
 
         ctrlMTooltipElement.innerHTML = tooltipHTML;
-        document.body.appendChild(ctrlMTooltipElement);
+        _saBody().appendChild(ctrlMTooltipElement);
 
         // Position in upper right of content div, not overlapping sidebar.
         // Falls back to viewport-relative positioning on page types with no
@@ -56071,7 +56071,7 @@
             const mask = document.createElement('div');
             mask.id = 'mb-vsb-mask';
             mask.setAttribute('aria-hidden', 'true');
-            document.body.appendChild(mask);
+            _saBody().appendChild(mask);
             _vsb.mask = mask;
             window.addEventListener('scroll', () => {
                 if (_vsb.maskPending) return;
@@ -57346,7 +57346,7 @@
             mask = document.createElement('div');
             mask.id = 'mb-sph-rmask';
             mask.setAttribute('aria-hidden', 'true');
-            document.body.appendChild(mask);
+            _saBody().appendChild(mask);
         }
         const width = `${w}px`;
         if (mask.style.width !== width) mask.style.width = width;
@@ -86765,7 +86765,7 @@
         Lib.debug('ui', 'Column visibility toggle added to controls');
 
         // Append menu to body
-        document.body.appendChild(menu);
+        _saBody().appendChild(menu);
     }
 
     /**
@@ -87077,7 +87077,7 @@
             }
         });
 
-        document.body.appendChild(menu);
+        _saBody().appendChild(menu);
 
         // ── Register in global registry for override propagation ──────────────
         /**
@@ -88467,7 +88467,7 @@ ${sections.join('\n')}
             <div id="sa-ed-status"></div>
         `;
 
-        document.body.appendChild(dialog);
+        _saBody().appendChild(dialog);
         dialog.querySelector('#sa-ed-filename-input').value = defaultFilename;
 
         // ── Position ─────────────────────────────────────────────────────────
@@ -88966,7 +88966,7 @@ ${sections.join('\n')}
         panel.className = 'mb-toolbar-menu-panel';
         panel.setAttribute('role', 'menu');
         panel.style.display = 'none';
-        document.body.appendChild(panel);
+        _saBody().appendChild(panel);
 
         let focusIdx = -1;
         // Set while this menu is open as a SUBMENU: the menu it was opened
@@ -89065,7 +89065,7 @@ ${sections.join('\n')}
                 panel.style.top = '';
                 panel.style.left = '';
             } else if (parent && parentRow) {
-                if (panel.parentNode !== document.body) document.body.appendChild(panel);
+                if (panel.parentNode !== _saBody()) _saBody().appendChild(panel);
                 const vb = _toolbarViewBox();
                 const pr = parent.panel.getBoundingClientRect();
                 const rr = parentRow.getBoundingClientRect();
@@ -89081,7 +89081,7 @@ ${sections.join('\n')}
                     panel.style.overflowY = 'auto';
                 }
             } else {
-                if (panel.parentNode !== document.body) document.body.appendChild(panel);
+                if (panel.parentNode !== _saBody()) _saBody().appendChild(panel);
                 // Measured against what SHOWS, not the layout viewport (they
                 // differ on a phone whose page is wider than the screen).
                 const vb = _toolbarViewBox();
@@ -89129,7 +89129,7 @@ ${sections.join('\n')}
                 .forEach(el => el.classList.remove('mb-toolbar-menu-item-focus'));
             focusIdx = -1;
             if (inlinePlaced) {
-                document.body.appendChild(panel);
+                _saBody().appendChild(panel);
                 panel.classList.remove('mb-toolbar-menu-inline');
                 inlinePlaced = false;
             }
@@ -91214,7 +91214,7 @@ ${sections.join('\n')}
         closeFooter.appendChild(closeHint);
         dialog.appendChild(closeFooter);
 
-        document.body.appendChild(dialog);
+        _saBody().appendChild(dialog);
 
         // ── Resize + geometry persistence (opt-in via opts.geoKey) ──────────────
         // Same _saveGeo/_clampGeo/ResizeObserver idiom as showLoadFilterDialog()'s
@@ -93725,7 +93725,7 @@ ${sections.join('\n')}
 
         panel.appendChild(headerBar);
         panel.appendChild(body);
-        document.body.appendChild(panel);
+        _saBody().appendChild(panel);
 
         // ── 5. Geometry persistence ──────────────────────────────────────────
         // Stored object: { top, left, width, height, fontSize }
@@ -94640,7 +94640,7 @@ a { color: #1565c0; }`;
         ensureSettingsButtonIsLast();
 
         // Append menu to body
-        document.body.appendChild(menu);
+        _saBody().appendChild(menu);
     }
 
     // Track auto-resize state
@@ -96370,7 +96370,7 @@ a { color: #1565c0; }`;
             <div id="mb-resize-heading">📐 Measuring column widths…</div>
             <div id="mb-resize-progress">Preparing…</div>
         `;
-        document.body.appendChild(_resizeOverlay);
+        _saBody().appendChild(_resizeOverlay);
         const _resizeProgress = _resizeOverlay.querySelector('#mb-resize-progress');
 
         // Offscreen measurement container — shared across all source tables.
@@ -97031,9 +97031,9 @@ a { color: #1565c0; }`;
 
             // Add/remove body class to track sidebar state
             if (isCollapsed) {
-                document.body.classList.add('sidebar-is-collapsed');
+                _saBody().classList.add('sidebar-is-collapsed');
             } else {
-                document.body.classList.remove('sidebar-is-collapsed');
+                _saBody().classList.remove('sidebar-is-collapsed');
             }
 
             containers.forEach(el => {
@@ -97060,7 +97060,7 @@ a { color: #1565c0; }`;
             Lib.debug('meta', `Sidebar ${isCollapsing ? 'collapsed' : 'expanded'}. Full width applied.`);
         });
 
-        document.body.appendChild(handle);
+        _saBody().appendChild(handle);
 
         // Set initial position now that the handle is in the DOM.
         requestAnimationFrame(() => updateHandlePosition(handle));
@@ -99801,7 +99801,7 @@ a { color: #1565c0; }`;
             _tsPop.pinned = true;
             _updateFindingMenus();
         });
-        document.body.appendChild(el);
+        _saBody().appendChild(el);
         _tsPop.el = el;
         return el;
     }
@@ -100049,7 +100049,7 @@ a { color: #1565c0; }`;
             + `<div class="mb-ts-hint-timer"><i style="animation-duration:${_TS_HINT_LIFE_MS}ms"></i></div>`;
         el.addEventListener('click', _titleStyleHintClick);
         el.querySelector('.mb-ts-hint-timer i').addEventListener('animationend', () => _titleStyleHintHide());
-        document.body.appendChild(el);
+        _saBody().appendChild(el);
         _tsHint.el = el;
         _tsHint.anchor = anchor;
         _titleStyleHintPlace();
@@ -104690,7 +104690,7 @@ a { color: #1565c0; }`;
             <div id="sa-sd-status"></div>
         `;
 
-        document.body.appendChild(dialog);
+        _saBody().appendChild(dialog);
 
         // Set filename after insertion to avoid HTML-escaping issues with special chars
         dialog.querySelector('#sa-sd-filename-input').value = defaultFilename;
@@ -104994,7 +104994,7 @@ a { color: #1565c0; }`;
             </div>
         `;
 
-        document.body.appendChild(dlg);
+        _saBody().appendChild(dlg);
 
         // Position
         setTimeout(() => {
@@ -105662,14 +105662,14 @@ a { color: #1565c0; }`;
             </div>
         `;
 
-        document.body.appendChild(dialog);
+        _saBody().appendChild(dialog);
 
         // Private file input (invisible, owned by this dialog instance)
         const dialogFileInput = document.createElement('input');
         dialogFileInput.type = 'file';
         dialogFileInput.accept = '.gz,application/gzip,.json';
         dialogFileInput.style.display = 'none';
-        document.body.appendChild(dialogFileInput);
+        _saBody().appendChild(dialogFileInput);
 
         // ── Geometry persistence ─────────────────────────────────────────────
         const GEO_KEY = 'sa_load_dialog_geometry';
@@ -107049,6 +107049,41 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * MusicBrainz's own `<body>`: the one holding `#page`. Every PERSISTENT
+     * floating host this script adds (tooltip and card hosts, popups, menus,
+     * dialogs, masks, toasts, progress overlays, the sidebar handle, notices)
+     * is appended here, never to `document.body`.
+     *
+     * Why: majkinetor's Event Horizon (on by default once installed) puts its
+     * own `<body>` in front of MusicBrainz's and hides MusicBrainz's, so while
+     * it shows, `document.body` is ITS body; V removes that body again
+     * (`setOn()`, event_horizon.user.js EH:11507-11508). A host appended to
+     * `document.body` at start-up was drawn over Event Horizon's view and then
+     * left the document on V, while the script kept using its reference: dead
+     * hover cards, a lost sidebar handle (org/majkinetor.org, "SAED's floating
+     * elements survive Event Horizon's body swap"; measured 2026-11-08). In
+     * MusicBrainz's body a host hides with MusicBrainz's page and survives V.
+     * Event Horizon's body holds only `main#app` and `#toast`, never `#page`.
+     *
+     * Elsewhere (one body; the non-MusicBrainz hosts) this is `document.body`.
+     * Left on `document.body` on purpose: transient append-measure-remove and
+     * append-click-remove pairs, and the foreign-host-only sites.
+     *
+     * Cached on the function itself, not in a `let`, so a call from code that
+     * runs before this point of the IIFE is safe (no TDZ). MusicBrainz's body
+     * is never removed, only hidden.
+     *
+     * @returns {HTMLElement} the body to append floating hosts to
+     */
+    function _saBody() {
+        const cached = _saBody._el;
+        if (cached && cached.isConnected) return cached;
+        const page = document.getElementById('page');
+        _saBody._el = (page && page.closest('body')) || null;
+        return _saBody._el || document.body;
+    }
+
+    /**
      * Sets a tooltip that belongs to this script: assigns `el.title` and
      * stamps `data-mb-tip`, the marker the rich-tooltip engine
      * (`_initStatTooltip()`) looks for. Every tooltip the script sets goes
@@ -107730,7 +107765,7 @@ a { color: #1565c0; }`;
         _tip.id = 'mb-stat-tooltip';
         _tip.className = 'mb-tt-liner';
         _tip.style.display = 'none';
-        document.body.appendChild(_tip);
+        _saBody().appendChild(_tip);
 
         /** Rich tooltips that, while shown, rule out a card (see _showOwn). */
         const _OTHER_RICH_TIPS = ['mb-art-bigbox-tooltip', 'mb-art-hover-preview', 'mb-rel-tooltip', 'mb-dp-peek', 'mb-async-pop'];
@@ -108437,7 +108472,7 @@ a { color: #1565c0; }`;
             if (p && p.act) p.act(scope, b.dataset.mbAjAct);
             _ajRepaint();
         });
-        document.body.appendChild(el);
+        _saBody().appendChild(el);
         _ajPop.el = el;
         return el;
     }
@@ -112480,7 +112515,7 @@ a { color: #1565c0; }`;
                 _rerunIfColFilterActive(inputs);
                 _syncColModePop();
             });
-            document.body.appendChild(_colModePop);
+            _saBody().appendChild(_colModePop);
         }
         const hdr = inp.closest('table')?.querySelector('thead tr:first-child')
             ?.cells[parseInt(inp.dataset.colIdx, 10)];
@@ -117761,28 +117796,28 @@ a { color: #1565c0; }`;
             `;
 
             overlay.appendChild(dialog);
-            document.body.appendChild(overlay);
+            _saBody().appendChild(overlay);
 
             // Add button event listeners
             document.getElementById('mb-dialog-save').onclick = () => {
-                document.body.removeChild(overlay);
+                overlay.remove();
                 resolve('save');
             };
 
             document.getElementById('mb-dialog-render').onclick = () => {
-                document.body.removeChild(overlay);
+                overlay.remove();
                 resolve('render');
             };
 
             document.getElementById('mb-dialog-cancel').onclick = () => {
-                document.body.removeChild(overlay);
+                overlay.remove();
                 resolve('cancel');
             };
 
             // Allow ESC key to cancel
             const escHandler = (e) => {
                 if (e.key === 'Escape') {
-                    document.body.removeChild(overlay);
+                    overlay.remove();
                     document.removeEventListener('keydown', escHandler);
                     resolve('cancel');
                 }
@@ -123223,7 +123258,7 @@ a { color: #1565c0; }`;
             <div id="mb-render-heading">🎨 Rendering rows...</div>
             <div id="mb-render-progress">0 / ${totalRows.toLocaleString()}</div>
         `;
-        document.body.appendChild(progressMsg);
+        _saBody().appendChild(progressMsg);
         const progressText = document.getElementById('mb-render-progress');
 
         let rowsRendered = 0;
@@ -123259,7 +123294,7 @@ a { color: #1565c0; }`;
         }
 
         // Remove progress indicator
-        document.body.removeChild(progressMsg);
+        progressMsg.remove();
 
         Lib.debug('render', `Chunked render complete: ${totalRows} rows rendered in ${chunks} chunks.`);
     }
@@ -130230,7 +130265,7 @@ a { color: #1565c0; }`;
         el.setAttribute('role', 'listbox');
         // Start hidden
         el.style.display = 'none';
-        document.body.appendChild(el);
+        _saBody().appendChild(el);
 
         // Close when anything outside the panel (and not the owning 📊 button) is clicked
         document.addEventListener('mousedown', (ev) => {
@@ -139196,7 +139231,7 @@ a { color: #1565c0; }`;
                         sortStatusDisplay.style.color = 'orange';
                     }
 
-                    if (showWaitCursor) document.body.classList.add('mb-sorting-active');
+                    if (showWaitCursor) _saBody().classList.add('mb-sorting-active');
 
                     (async () => {
                         try {
@@ -139361,7 +139396,7 @@ a { color: #1565c0; }`;
                             // view switch, a disk load — must see null and get the
                             // unconditional full re-render it has always had.
                             _renderDirtyGroupIdxs = null;
-                            if (showWaitCursor) document.body.classList.remove('mb-sorting-active');
+                            if (showWaitCursor) _saBody().classList.remove('mb-sorting-active');
                         }
                     })();
                 };
@@ -147248,7 +147283,7 @@ a { color: #1565c0; }`;
         tip = document.createElement('div');
         tip.id = 'mb-rel-tooltip';
         tip.setAttribute('role', 'tooltip');
-        document.body.appendChild(tip);
+        _saBody().appendChild(tip);
         return tip;
     }
 
@@ -149445,7 +149480,7 @@ a { color: #1565c0; }`;
             setTimeout(() => toast.parentNode?.removeChild(toast), 380);
         };
         toast.addEventListener('click', dismiss);
-        document.body.appendChild(toast);
+        _saBody().appendChild(toast);
         setTimeout(dismiss, duration);
     }
 
@@ -152292,7 +152327,7 @@ a { color: #1565c0; }`;
             menu.appendChild(row);
         });
 
-        document.body.appendChild(menu);
+        _saBody().appendChild(menu);
 
         // ── Single delegated event listener for all row clicks ───────────────
         menu.addEventListener('mousedown', (e) => {
@@ -154542,7 +154577,7 @@ a { color: #1565c0; }`;
                     _idboPaint();
                 }
             });
-            document.body.appendChild(el);
+            _saBody().appendChild(el);
             _idbo.el = el;
             window.addEventListener('keydown', _idboOnKey, true);
             // Moved or resized once: where it was left (`sa_idbo_geometry`);
@@ -155947,7 +155982,7 @@ a { color: #1565c0; }`;
                     _gmsPick(tr.dataset.key);
                 }
             });
-            document.body.appendChild(el);
+            _saBody().appendChild(el);
             _gms.el = el;
             window.addEventListener('keydown', _gmsOnKey, true);
             // Moved or resized once: where it was left (`sa_gms_geometry`).
@@ -156925,7 +156960,7 @@ a { color: #1565c0; }`;
         img.style.cssText = 'max-width:320px; max-height:320px; display:block; object-fit:contain;';
 
         div.appendChild(img);
-        document.body.appendChild(div);
+        _saBody().appendChild(div);
         return div;
     }
 
@@ -157044,7 +157079,7 @@ a { color: #1565c0; }`;
         tip.style.cssText =
             'position:fixed; pointer-events:none; display:none;' +
             ' max-width:380px;';
-        document.body.appendChild(tip);
+        _saBody().appendChild(tip);
         return tip;
     }
 
@@ -162383,7 +162418,7 @@ a { color: #1565c0; }`;
             // P4b: the Adjust panel's sliders and Invert.
             root.addEventListener('input', _artViewerOnInput);
             root.addEventListener('change', _artViewerOnInput);
-            document.body.appendChild(root);
+            _saBody().appendChild(root);
         }
         root.setAttribute('aria-label', `${ctx.column} artwork viewer`);
         const prevOverflow = _artViewerState ? _artViewerState.prevOverflow : document.documentElement.style.overflow;
@@ -167822,7 +167857,7 @@ a { color: #1565c0; }`;
         const el = document.createElement('div');
         el.id = 'mb-art-summary-panel';
         el.style.display = 'none';
-        document.body.appendChild(el);
+        _saBody().appendChild(el);
         document.addEventListener('mousedown', ev => {
             if (!_artSummaryOwner) return;
             if (_artSummaryOwner.contains(ev.target)) return;
@@ -170624,7 +170659,7 @@ a { color: #1565c0; }`;
                 setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 380);
             };
             toast.addEventListener('click', dismiss);
-            document.body.appendChild(toast);
+            _saBody().appendChild(toast);
             const timer = setTimeout(dismiss, duration);
         }
 

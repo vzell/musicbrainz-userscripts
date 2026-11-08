@@ -76,7 +76,8 @@ Check, IS = ISRC Scout, AS = Art Station, CH = Credit Hoarder, GT = Group Therap
   navigating inside EH and then pressing V reloads into the native page, where SAED starts afresh.
 - Three real defects for us came out of it:
   1. *measured*: when SAED starts while EH shows, its hover cards are dead after V, because `#mb-stat-tooltip`
-     lives in EH's body, which V removes.
+     lives in EH's body, which V removes. Same for the sidebar handle (found by vzell 2026-11-08). *Fixed* on
+     =docs/majkinetor-refresh-2026-11-08= (WIP.1, =_saBody()=; measured again after the fix).
   2. *measured*: EH's single-letter keys (H, E, R, …) also work on our FRP and navigate away from it.
   3. *measured* (14:11 CET, harness copy refreshed to 2026.11.06.170000): ISRC Scout moved its link labels
      from `title` to `data-tip`, so SAED's `_isrcScoutLinkPlatform()` returns `''`. The "Links" column loses
@@ -442,7 +443,7 @@ Answers to your three questions:
   - The way back is lossy in one direction only: an FRP is lost when EH navigates elsewhere and you turn EH off
     there, which reloads. Re-pressing the button (or a disk save) restores it.
 - *Other pitfalls*:
-  1. *Dead hover cards after V* when SAED started under EH (=#mb-stat-tooltip=, and likewise every element SAED
+  1. *Fixed (WIP.1, 2026-11-08: =_saBody()=, see the DONE item below).* *Dead hover cards after V* when SAED started under EH (=#mb-stat-tooltip=, and likewise every element SAED
      keeps a reference to and appends once to =document.body=: =#mb-vsb-mask=, the history submenu panel; 59
      =document.body.appendChild= sites in SAED). Fix: append our floating hosts to =document.documentElement=
      (outside both bodies, as the dock does), or re-attach on show (the toolbar-menu pattern), or re-parent them
@@ -474,7 +475,7 @@ Items 1–4 are the fixes and 5–9 the feature ideas; all of them are TODO item
 1. *Fix (bug)*: =_isrcScoutLinkPlatform()= reads =title || data-tip=; refresh the harness copy of IS; add a fixture
    from the new markup (=add-finding= / fixture spec).
 2. *Fix (bug)*: SAED's floating hosts survive a body swap (=#mb-stat-tooltip= first). Add a regression spec with a
-   two-body fixture that removes the first body.
+   two-body fixture that removes the first body. *Done* (WIP.1, 2026-11-08).
 3. *EH awareness*:
    - when =<html data-mbu-page>= is set (EH shows), put a small dock item or toolbar note "SAED: show MusicBrainz's
      page" that does what EH's own off-switch does (=sessionStorage eh-off= + reload, or
@@ -674,7 +675,27 @@ Newest first; one entry per refresh (refresh-majkinetor skill).
   - Prediction: ISRC/Links columns without our sort/📊 glyphs, and colspans one too wide.
 - *Tests*: the simulator already models the observer (see its JSDoc); add a "wipe and refill after render" step.
 
-** TODO SAED's floating elements survive Event Horizon's body swap (bug, measured)
+** DONE SAED's floating elements survive Event Horizon's body swap (bug, measured)
+CLOSED: [2026-11-08 Sun]
+
+- *Done* (branch =docs/majkinetor-refresh-2026-11-08=, WIP.1; to ship with the next merge): option (a). A
+  helper =_saBody()= returns MusicBrainz's own =<body>= (the one holding =#page=; EH's body only has =main#app=
+  and =#toast=). 42 persistent append sites go through it (card hosts, popups, menus, dialogs, masks, toasts,
+  overlays, notices, the sidebar handle), as do the toolbar menus' re-attach checks and the =sidebar-is-collapsed= /
+  =mb-sorting-active= body classes. Left on =document.body=: transient append-measure-remove pairs and the
+  foreign-host-only sites. Rule recorded in =docs/claude/toolbar-and-header-ui.md= ("Floating hosts live in
+  MusicBrainz's body") and as a pitfall in =CLAUDE.md=.
+  - Spec =tests/fixtures/eh-body-swap-floating.spec.js= with the simulator
+    =tests/fixtures/thirdPartyScripts/eh-body-swap.js= (EH's =setOn()= verbatim): 3 of 4 failed before (the
+    EH-off control passed), 4/4 after. Mutations =scripts/mutations/eh-body-swap.json=: 4 planted defects fail,
+    1 recorded overlap (the toolbar panel's creation site, healed on open).
+  - Live probe after the fix (2026-11-08T14:35:27–14:37:46+01:00, EH 2026.11.08.131500 alone and in ST
+    2026.11.08.133602): case A — handle in MusicBrainz's body and hidden at load, visible after V and after the
+    render; hover card =inDocument: true=. Case B unchanged.
+  - Anchors: =saed-stat-tip-body= flipped to =expect: absent=, =saed-sidebar-handle-body= to the fixed shape,
+    new =saed-body-helper=.
+  - Browser check by vzell, 2026-11-08: OK (EH on at load → V → the ▸ handle and the hover cards; browser and
+    Tampermonkey versions not recorded).
 
 - *Who fixes it*: *ours*: the bug is in how SAED attaches its elements; EH behaves as documented (#853).
 

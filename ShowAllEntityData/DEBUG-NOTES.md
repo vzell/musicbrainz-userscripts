@@ -28679,3 +28679,30 @@ standalone EH and ISRC Scout of those versions. main's raw link still served 202
   `initSidebarCollapse('initial')` appends it once to `document.body` (EH's body under EH), and the render's
   `initSidebarCollapse('final')` returns early because `initSidebarCollapse.setCollapsed` exists. Added to that
   TODO in `org/majkinetor.org`; anchor `saed-sidebar-handle-body`.
+
+## 2026-11-08 — SAED's floating hosts now live in MusicBrainz's body (`_saBody()`): Event Horizon's body swap no longer kills hover cards or the sidebar handle (docs/majkinetor-refresh-2026-11-08, WIP.1)
+
+Env: 2026-11-08T14:30–14:38+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1,
+Chromium 151.0.7922.34 · no Tampermonkey (GM stubs; fixtures, and realNetworkGmXhr for the live probe) · EH
+2026.11.08.131500, ST 2026.11.08.133602.
+
+- Cause (org/majkinetor.org TODO "SAED's floating elements survive Event Horizon's body swap"): Event Horizon's
+  `setOn()` (EH:11507-11508) inserts its own `<body>` before MusicBrainz's and hides MusicBrainz's; V removes it.
+  SAED, started while EH shows (its default), appended its create-once hosts to `document.body`, i.e. EH's body:
+  `#sidebar-toggle-handle` showed over EH's view, and on V it, `#mb-stat-tooltip` and `#mb-vsb-mask` left the
+  document while SAED kept their references. `initSidebarCollapse('final')` never rebuilds the handle.
+- Hosts that already self-heal (`isConnected` / `getElementById` ensures such as `_dpEnsurePeekEl()`), and the
+  toolbar menu panels (re-attached on open), were never lost, but were drawn into EH's body while it showed.
+- Fix: `_saBody()` — the `<body>` holding `#page` (EH's body has only `main#app` and `#toast`), cached on the
+  function (no TDZ). 42 persistent append sites, the toolbar's two re-attach comparisons, and the
+  `sidebar-is-collapsed` / `mb-sorting-active` body classes go through it; the two hosts removed with
+  `document.body.removeChild()` now use `.remove()`. Left on `document.body`: transient append-measure-remove /
+  append-click-remove pairs and the foreign-host-only sites.
+- Test: `tests/fixtures/eh-body-swap-floating.spec.js` with the simulator
+  `tests/fixtures/thirdPartyScripts/eh-body-swap.js` (EH's `setOn()` verbatim). Before the fix 3 of 4 failed
+  (handle in EH's body / no card host / no mask), the EH-off control passed; after: 4/4.
+  `scripts/mutations/eh-body-swap.json`: 4 planted defects fail as expected, and one recorded `expect: pass`
+  (the toolbar panel's creation site, healed by its open handler).
+- Live probe after the fix (14:35:27–14:37:46+01:00): case A, EH alone and with the bundle — the handle in
+  MusicBrainz's body and hidden at load, visible after V and after the render; hover card `inDocument: true`.
+  Case B unchanged.

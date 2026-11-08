@@ -795,6 +795,14 @@ Full text: `docs/claude/testing-playwright.md`.
   rebuild of a cell's inner markup) runs after it: a tail pass that replaces
   spans wipes the marks placed inside them. Make the tail pass idempotent
   (`_formatIsrcAnchor()`), or do the transform on the clone before matching.
+- **A persistent floating host goes into `_saBody()`, never `document.body`.**
+  Under majkinetor's Event Horizon the document has two bodies and
+  `document.body` is Event Horizon's, which V removes: a card host, menu,
+  mask or handle appended there at start-up is drawn over its view and then
+  lost (dead hover cards, no sidebar handle; 2026-11-08). Transient
+  append-measure-remove pairs and foreign-host-only sites stay on
+  `document.body`. See "Floating hosts live in MusicBrainz's body" in
+  docs/claude/toolbar-and-header-ui.md.
 - `activeDefinition` is a module-level variable updated by `startFetchingProcess` —
   helper functions called during fetch see the merged definition, not `baseDefinition`
 - `sortLargeArray` is async — callers must `await` it before touching the sorted array

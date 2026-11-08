@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-11-08",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "With majkinetor's Event Horizon (String Theory) showing when a page loads, which is its default: after switching it off with V, the script's hover cards no longer showed, and the sidebar handle was missing on MusicBrainz's page and on the rendered page. Before V, the handle showed over Event Horizon's own view. The script's floating elements (cards, menus, dialogs, the sidebar handle, notices and the rest) now always belong to MusicBrainz's page: hidden while Event Horizon shows, there and working after V."
+        ]
+      }
+    ]
+  }
+]
