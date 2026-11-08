@@ -28791,3 +28791,31 @@ GitHub API at `codex/interop-938` 9e4cdd59 (EH and ISRC Scout 2026.11.08.152918)
 - Also 2026-11-08 (vzell): the dev copy's library `@require` is now this repo's GitHub `main`
   (`raw.githubusercontent.com/vzell/musicbrainz-userscripts/main/lib/VZ_MBLibrary.user.js`), so the dev copy works
   for anyone (majkinetor); `check-publish-ready.py` names that case; CLAUDE.md "Publishing" updated.
+
+## 2026-11-09 — majkinetor refresh: 65032ef → 2d092e0 (his main after merging #938 as 7eb7c563); C1/C2 measured live; String Theory's idle mode found (feature/mb-shared-gate)
+
+Env: 2026-11-09T00:07:44–00:16:33+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1, Chromium 151.0.7922.34, no Tampermonkey (GM stubs) for the probe · code reading: n/a. MusicBrainz reachable over IPv4 from WSL this time (`curl -4` 200; IPv6 refused).
+
+- Upstream: milic-bot merged `codex/interop-938` into majkinetor's `main` as `7eb7c563` (2026-11-09 00:00 CET,
+  #938 comment 6728358851) and deleted the branch; HEAD `2d092e0` only rebuilds String Theory (2026.11.08.235934;
+  EH and ISRC Scout 2026.11.08.235840). The raw "latest" link served a byte-identical bundle. vzell switched his
+  browsers to it. `dev/net/mb-gate.mjs` and DEVELOP.md are byte-identical at 9e4cdd59, 7eb7c563 and 2d092e02, so
+  the gate port planned on this branch is unaffected.
+- Harness copies re-copied (all three from 2d092e0), manifest entries re-scanned in place (line numbers +135…+141
+  in EH; the #938 conventions now described as upstream behaviour; ISRC Scout's race recorded as resolved for ≥
+  7eb7c563). Manifest validated: 13 scripts, 14 combinations.
+- Anchors: 47/52 held as they were, 7 needed a look (`is-wipe` GONE = the wipe now spares `[data-mbu-foreign]`;
+  `conv-c1-is`, `conv-c1-tip`, `conv-c2`, `conv-c3`, `conv-c4` BACK = adopted; `eh-fx-try` GONE = a fourth
+  attribute, `data-st-eh-fx-idle`). Rewritten/flipped, `conv-c5` retired, five added; 52/52 hold, lines updated.
+- Probe (cases 0/A–D EH, A–C ST, I alone and in the bundle): after V the hover card is in the document and the
+  sidebar handle visible (9.99.1576's `_saBody()` confirmed live); `h` navigates nowhere on IP and FRP (9.99.1577).
+  Case D had no 503 this run (SAED 37.5 s vs 37.2 s alone); case B with the bundle had one 503 on a gated member
+  request (`/ws/2/release/…?inc=user-tags+user-genres`, GM), none on SAED — bursts, not a trend. Case I: 36/36
+  native Links icons carry `data-ii-platform`, our table carries `data-mbu-foreign`, Links/ISRC cells stay 51/51 after
+  the render (no bare re-add), 36/36 FRP icons get our platform stamp (0/36 on 2026-11-08). The probe gained
+  `withIiPlatform` and `foreignTables` for this.
+- New finding, from code, unmeasured: String Theory's idle mode (#953) is ON by default — after 5 idle minutes a
+  random theme (view-transition cross-fade) and, via `<html data-st-eh-fx-idle>`, a random EH effect preset drawn by
+  EH even while EH is off, as canvas layers in MusicBrainz's body (`hexApply()`, `z-index:1`). That reaches our FRP
+  (a user waiting out a long fetch). New TODO in org/majkinetor.org with a pre-test; anchors `st-idle-default`,
+  `eh-idle-fx`.

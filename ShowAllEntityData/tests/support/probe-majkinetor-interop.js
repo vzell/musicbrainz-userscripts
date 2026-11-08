@@ -288,6 +288,9 @@ async function probeUi(page) {
 /**
  * Counts ISRC Scout's "Links" icons inside or outside SA's rendered tables,
  * by how they are labelled and whether SA gave them a platform name.
+ * `withIiPlatform` counts ISRC Scout's own `data-ii-platform` (convention C2,
+ * on its main since 7eb7c563); `foreignTables` counts SA's rendered tables
+ * carrying `data-mbu-foreign` (C1), which ISRC Scout ≥ 7eb7c563 leaves alone.
  *
  * @param {import('@playwright/test').Page} page
  * @returns {Promise<Object>}
@@ -301,12 +304,14 @@ function isrcScoutLinks(page) {
             withTitle: list.filter((a) => a.hasAttribute('title')).length,
             withDataTip: list.filter((a) => a.hasAttribute('data-tip')).length,
             withPlatformStamp: list.filter((a) => a.hasAttribute('data-mb-link-platform')).length,
+            withIiPlatform: list.filter((a) => a.hasAttribute('data-ii-platform')).length,
             withHiddenName: list.filter((a) => a.querySelector(':scope > .mb-ii-link-name')).length,
             sampleLabel: list[0] ? (list[0].getAttribute('title') || list[0].getAttribute('data-tip') || '').split('\n')[0] : null,
         });
         return {
             linksCells: document.querySelectorAll('td.ii-col-links').length,
             isrcCells: document.querySelectorAll('td.ii-col-isrc').length,
+            foreignTables: document.querySelectorAll('table.tbl[data-mbu-foreign]').length,
             native: sum(all.filter((a) => !inFrp(a))),
             frp: sum(all.filter(inFrp)),
         };
