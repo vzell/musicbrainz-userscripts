@@ -840,6 +840,7 @@ back).
 | ⚠️     | Pending edits                                                   | any column                                  |
 | ⚠️     | Live credit without a date                                      | Release tracklist: credit columns           |
 | ❌    | MB-Event: the Brucebase link differs (once looked up)           | Brucebase year: MB-Event                    |
+| ❌    | Double-encoded text (springsteenlyrics.com)                     | springsteenlyrics.com: any column (the lyrics index: once the song's page was read) |
 | ❌    | Track and recording length far apart                            | Release tracklist: Length, Recording length |
 | ❌    | Video on a medium that cannot carry video                       | Release tracklist: Video                    |
 | ❌    | Live title with an impossible date                              | Release and release group titles            |
@@ -4529,9 +4530,57 @@ type into the filter box stays in the filter box. In the window:
   download; **Esc** returns to the window). Ctrl-click opens the image in a
   new tab instead. On Brucebase it also has the credits, the studio
   versions and the lyrics, and lists the releases one per line, the live
-  releases apart; on the springsteenlyrics.com lyrics index, the
-  whole lyrics and every section of the song's page (info, recording,
-  releases, live history, covers, credits, the other versions).
+  releases apart. A **springsteenlyrics.com song** has a window of its own,
+  described next.
+
+<details>
+<summary>The springsteenlyrics.com song window</summary>
+
+A song from the springsteenlyrics.com lyrics index (or any link to a song's
+page) opens in a window laid out for reading:
+
+- **On the left, what the version is.** The title, a coloured pill with the
+  version's type (Album, Unofficial studio, Live, …) and **‹ N of M ›** to
+  step through the song's other versions in the window. Below that are
+  cards: the version (type, release, when and where it was recorded), or for
+  a live version the show (date and weekday, venue, place, tour) and the
+  release it came out on. More cards show how many versions the site has
+  (with a bar by type) and how many releases, live releases, covers and
+  movies. Then Info, the studio facts (the band with their instruments), the
+  pictures, Credits and Request.
+- **On the right, what you read.** A row of chips jumps to a section and
+  opens it. Below the chips come the lyrics (a live version shows its show's
+  tracklist above them), then each release with its tracklist, the other
+  releases, singles, live releases, Live History, covers, movies and
+  Available Versions.
+- **Every section folds.** Click its heading to open or close it; Ctrl+click
+  opens or closes all of them. Your choice is kept while the page is open.
+- **The lyrics** are set as a lyric sheet, with a gap between verses and stage
+  notes such as *[Spoken:]* in grey small capitals. A run of identical lines
+  folds to one line with "× 9" (click it, or untick *fold repeats*, to see
+  them all). **Copy** copies the lyrics as plain text.
+- **Compared with the album version.** On any other version the window also
+  reads the album version's page (once, when the window opens) and marks
+  the lyrics: changed lines yellow (the changed words picked out, the album
+  line in the tooltip), added lines green, and, if you tick the box, the
+  album's missing lines crossed out. A chip says how many lines differ.
+  **Side by side** shows both sheets; **Lyrics** shows them plain.
+- **Tables** for Available Versions, the tracklists, the release, single and
+  cover rows, and the live releases: type into the filter (what you typed
+  is marked), click a header to sort (a third click restores the site's
+  order), click a chip to keep one type or edition (Ctrl-click adds another).
+  This version is marked with a ●. A song title opens its page in the same
+  window, and **Backspace** comes back.
+- **Live History** is one row per tour, its dates as small chips; a blue date
+  opens that show's version in the window.
+- **Double-encoded text.** springsteenlyrics.com serves some names
+  double-encoded, such as "CalexÃ³ns" for "Calexóns". The window shows them
+  repaired with a dotted red underline, and the tooltip gives the site's
+  text. A red banner counts them, and **Copy report for the site maintainer**
+  copies a list of every spot. The rows are also flagged as an ❌ ERROR (see
+  [Warnings and errors](#warnings-and-errors)).
+
+</details>
 - **Live page** shows the site's own page inside the window. *Hide the site's
   navigation* removes the site's menus, header and footer so only the content
   is left. The page's own scripts do not run there: on Brucebase every tab is

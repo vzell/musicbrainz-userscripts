@@ -1,0 +1,1049 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- SKELETON-END: everything above this line is dropped when the page is published as an Artifact. -->
+<title>SL Song Window Redesign</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+  Mockups for org/springsteenlyrics.org, "* TODO the SL song detail FRP needs a more nicer rendering"
+  (2026-11-07, plan approved 2026-11-07T14:25+01:00 on NB-3641). Data: real, from vzell's POH snapshots
+  debug/sl-song-POH.html (song=backstreets), sl-song-unofficial-POH.html (backstreets_unofficial1),
+  sl-song-live-POH.html (backstreets_1975-11-18), and a structure survey of borntorun, thepromise,
+  trapped, thunderroad and ifiwasthepriest. The LYRICS ARE PLACEHOLDERS written for this mockup: no lyric
+  text from the site is reproduced. Pictures are drawn tiles (the Artifact CSP blocks other hosts).
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Literata:ital,opsz,wght@0,7..72,400;1,7..72,400&display=swap">
+<style>
+/* Layout: a design bench (house cool-slate palette, as sl-song-mockups.html). One tab per view; each
+   view is a mock of the preview window with notes beside it. The mocked window is light in both
+   themes, as the userscript's window is. */
+:root {
+    --bg: #e9edf1;
+    --surface: #f8fafc;
+    --ink: #18202b;
+    --muted: #556070;
+    --line: #cfd6df;
+    --accent: #24527f;
+    --accent-ink: #ffffff;
+    --accent-soft: #dbe6f1;
+    --ok: #2c7347;
+    --ok-soft: #dcefe2;
+    --warn: #8f5a00;
+    --warn-soft: #f6e8cc;
+    --bad: #a23a2a;
+    --bad-soft: #f6dcd6;
+    --shadow: 0 1px 0 rgba(20, 30, 45, 0.05), 0 12px 32px -18px rgba(20, 30, 45, 0.35);
+
+    /* The window (fixed light, as in the userscript). */
+    --w-area: #fbf8f1;
+    --w-ink: #2b2622;
+    --w-dim: #7a6d5c;
+    --w-faint: #9a8c78;
+    --w-line: #d9cfbd;
+    --w-line2: #f0eadf;
+    --w-head: #f4eee2;
+    --w-band: #efe6d4;
+    --w-foot: #f6f1e6;
+    --w-link: #6b3f12;
+    --w-blue: #2f5f9e;
+    --w-sel: #fbf5e7;
+    --w-chrome: #f8f8f8;
+    --w-add: #e3f0dc;
+    --w-add-ink: #2c6a2e;
+    --w-chg: #fdf0c8;
+    --w-chg-ink: #8a5a00;
+    --w-miss: #f3e2df;
+    --w-miss-ink: #9b3b2c;
+    --w-pill-album: #2b4d7a;
+    --w-pill-unoff: #7a4fa0;
+    --w-pill-live: #2c7347;
+    --w-pill-cover: #8f5a00;
+    --mb: #ba478f;
+
+    --f-display: "Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+    --f-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, Consolas, "Courier New", monospace;
+    --f-win: Georgia, "Times New Roman", Times, serif;
+    --f-ui: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+    --f-lyric: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg: #11161d; --surface: #19212b; --ink: #e2e7ee; --muted: #9aa5b4; --line: #2c3746;
+        --accent: #86b4e2; --accent-ink: #0e1620; --accent-soft: #1f3248;
+        --ok: #74c494; --ok-soft: #1c3326; --warn: #e3ac4c; --warn-soft: #3a2d14; --bad: #ef8d7c; --bad-soft: #3d1e19;
+        --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 12px 32px -18px rgba(0, 0, 0, 0.8);
+        color-scheme: dark;
+    }
+}
+:root[data-theme="dark"] {
+    --bg: #11161d; --surface: #19212b; --ink: #e2e7ee; --muted: #9aa5b4; --line: #2c3746;
+    --accent: #86b4e2; --accent-ink: #0e1620; --accent-soft: #1f3248;
+    --ok: #74c494; --ok-soft: #1c3326; --warn: #e3ac4c; --warn-soft: #3a2d14; --bad: #ef8d7c; --bad-soft: #3d1e19;
+    --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 12px 32px -18px rgba(0, 0, 0, 0.8);
+    color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+    margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.55 var(--f-body);
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 18px 40px;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 1500px; margin: 0 auto; display: grid; gap: 14px; }
+header.page h1 { font: 800 clamp(24px, 3.2vw, 34px)/1.1 var(--f-display); font-stretch: 88%; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+header.page p { margin: 6px 0 0; color: var(--muted); max-width: 78ch; }
+header.page .meta { font: 12px var(--f-mono); color: var(--muted); margin-top: 8px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 10px; border-bottom: 1px solid var(--line); }
+.tabs button, .sw button { font: 600 13px/1 var(--f-body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 9px 14px; cursor: pointer; }
+.tabs button[aria-pressed="true"], .sw button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.tabs button .n { font: 500 11px var(--f-mono); opacity: 0.7; margin-right: 6px; }
+button:focus-visible, a:focus-visible, summary:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.view[hidden] { display: none !important; }
+.bench { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 18px; align-items: start; }
+.bench > .col { display: grid; gap: 10px; min-width: 0; }
+@media (max-width: 1100px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+.sw { display: inline-flex; gap: 0; }
+.sw button { border-radius: 0; padding: 7px 12px; font-size: 12px; }
+.sw button:first-child { border-radius: 6px 0 0 6px; }
+.sw button:last-child { border-radius: 0 6px 6px 0; }
+.sw button + button { border-left: 0; }
+.ctl { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 13px; color: var(--muted); }
+.notes { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; box-shadow: var(--shadow); }
+.notes h3 { font: 700 15px/1.25 var(--f-display); margin: 0 0 6px; }
+.notes h3 .pn { font: 500 11px var(--f-mono); color: var(--accent); margin-right: 6px; }
+.notes p, .notes li { margin: 0 0 6px; font-size: 13px; }
+.notes ul { margin: 0; padding-left: 18px; }
+.notes code, .picks code { font: 12px var(--f-mono); background: var(--accent-soft); padding: 0 4px; border-radius: 3px; }
+.tag { display: inline-block; font: 600 10.5px var(--f-mono); letter-spacing: 0.04em; text-transform: uppercase; padding: 1px 6px; border-radius: 3px; background: var(--accent-soft); color: var(--accent); }
+.tag.new { background: var(--ok-soft); color: var(--ok); }
+.tag.dec { background: var(--warn-soft); color: var(--warn); }
+.scroller { overflow-x: auto; border-radius: 9px; }
+
+/* ===== The mocked window ===== */
+.mw { min-width: 980px; border: 1px solid #ccc; border-radius: 8px; background: #fff; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2); overflow: hidden; color: var(--w-ink); }
+.mw-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 18px 10px; border-bottom: 2px solid #ddd; background: var(--w-chrome); }
+.mw-bar .crumb { font: 700 15px var(--f-ui); color: #222; }
+.mw-bar .tools { display: flex; align-items: center; gap: 10px; }
+.tb { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; border: 1px solid #ccc; border-radius: 3px; background: #fff; color: #222; font: 13px/1 sans-serif; cursor: pointer; }
+.tb.on { background: var(--w-ink); color: #fbf8f1; border-color: var(--w-ink); }
+.seg2 { display: inline-flex; }
+.seg2 .tb { border-radius: 0; }
+.seg2 .tb + .tb { border-left: 0; }
+.pos { font: 12px ui-monospace, Consolas, monospace; color: #666; }
+.mw-area { background: var(--w-area); max-height: 760px; overflow: auto; }
+.mw-x { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 18px; padding: 14px 18px; font: 13.5px/1.5 var(--f-win); }
+.mw-x.today { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); }
+.mw-x.varB { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.mw-col { min-width: 0; }
+.mw-foot { display: flex; gap: 10px; align-items: center; padding: 5px 12px; border-top: 1px solid var(--w-line); background: var(--w-foot); color: var(--w-dim); font: 12px/1.4 var(--f-ui); }
+.mw-foot .k { margin-left: auto; }
+.mw h4 { margin: 14px 0 4px; font: 600 11px/1.3 ui-monospace, Consolas, monospace; letter-spacing: 0.08em; text-transform: uppercase; color: var(--w-dim); }
+.mw .mw-col > h4:first-child, .mw .mw-col > :first-child h4 { margin-top: 0; }
+.xtitle { font-weight: 700; font-size: 1.2em; line-height: 1.3; }
+.xsub { font-style: italic; color: var(--w-dim); }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 1px 12px; margin: 0; }
+.kv dt { font-style: italic; color: var(--w-dim); }
+.kv dd { margin: 0; }
+.sec-plain { white-space: pre-wrap; }
+.gal { display: flex; flex-wrap: wrap; gap: 6px; }
+.tile { width: 120px; height: 88px; border: 1px solid var(--w-line); display: flex; align-items: flex-end; padding: 4px; font: 10.5px var(--f-ui); color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.6); background: linear-gradient(135deg, #6d5a44, #c8a878); }
+.tile.b { background: linear-gradient(135deg, #2e3d52, #8aa1bf); }
+.tile.c { background: linear-gradient(135deg, #4d2c2c, #c98c6c); }
+.tile.d { background: linear-gradient(135deg, #384a2f, #a7b98a); }
+.thumb { width: 40px; height: 40px; border: 1px solid var(--w-line); display: block; background: linear-gradient(135deg, #6d5a44, #c8a878); }
+.thumb.b { background: linear-gradient(135deg, #2e3d52, #8aa1bf); }
+.thumb.c { background: linear-gradient(135deg, #4d2c2c, #c98c6c); }
+.thumb.none { background: var(--w-foot); border-style: dashed; }
+.wa { color: var(--w-link); text-decoration: underline; text-decoration-color: rgba(107, 63, 18, 0.35); text-underline-offset: 2px; cursor: pointer; }
+.wa.here { position: relative; }
+.wa.here::before { content: ""; position: absolute; left: -9px; top: 0.55em; width: 5px; height: 5px; border-radius: 50%; background: #3f7a3a; }
+.self { color: var(--w-blue); font-size: 0.85em; margin-left: 4px; }
+.mbg { display: inline-block; width: 12px; height: 12px; border-radius: 2px; background: var(--mb); vertical-align: -1px; margin-right: 5px; opacity: 0.9; }
+
+/* Proposed: title block */
+.tblock { display: grid; gap: 6px; padding-bottom: 10px; border-bottom: 1px solid var(--w-line); margin-bottom: 4px; }
+.tblock .xtitle { font-size: 1.55em; letter-spacing: 0.01em; line-height: 1.15; }
+.prow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pill { font: 600 10.5px/1 var(--f-ui); letter-spacing: 0.08em; text-transform: uppercase; color: #fff; padding: 4px 7px; border-radius: 3px; background: var(--w-pill-album); }
+.pill.unoff { background: var(--w-pill-unoff); }
+.pill.live { background: var(--w-pill-live); }
+.vnav { display: inline-flex; align-items: center; gap: 0; font: 12px var(--f-ui); border: 1px solid var(--w-line); border-radius: 999px; background: #fff; overflow: hidden; }
+.vnav button { all: unset; cursor: pointer; padding: 2px 9px; color: var(--w-link); }
+.vnav button:hover { background: var(--w-sel); }
+.vnav span { padding: 2px 8px; color: var(--w-dim); border-inline: 1px solid var(--w-line); font-variant-numeric: tabular-nums; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; margin-top: 8px; }
+.card { border: 1px solid var(--w-line); border-radius: 4px; background: #fff; padding: 7px 10px 8px; min-width: 0; }
+.card .ch { font: 600 10px/1.3 var(--f-ui); letter-spacing: 0.1em; text-transform: uppercase; color: var(--w-dim); margin-bottom: 3px; }
+.card .kv { font-size: 13px; }
+.bar { display: flex; height: 7px; border-radius: 4px; overflow: hidden; margin: 5px 0 3px; background: var(--w-line2); }
+.bar i { display: block; }
+.legend { font: 11.5px var(--f-ui); color: var(--w-dim); display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.legend b { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; vertical-align: 0; }
+
+/* Proposed: collapsible sections */
+details.sec { border-top: 1px solid var(--w-line2); }
+details.sec:first-of-type { border-top: 0; }
+details.sec > summary { cursor: pointer; list-style: none; display: flex; align-items: baseline; gap: 7px; padding: 9px 0 3px; user-select: none; }
+details.sec > summary::-webkit-details-marker { display: none; }
+details.sec > summary::before { content: "\25B6"; font-size: 8.5px; color: var(--w-dim); width: 9px; flex: none; transform: translateY(-1px); }
+details.sec[open] > summary::before { content: "\25BC"; }
+details.sec > summary h4 { margin: 0; }
+details.sec > summary .hint { font: italic 12px var(--f-win); color: var(--w-faint); }
+details.sec > summary .stamp { margin-left: auto; font: 11px var(--f-ui); color: var(--w-faint); }
+details.sec > .body { padding: 2px 0 10px 16px; }
+details.sec.flash > summary h4 { color: var(--w-blue); }
+.prose p { margin: 0 0 7px; max-width: 70ch; }
+.prose .em { font-style: italic; }
+.toc { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 0 8px; border-bottom: 1px solid var(--w-line); margin-bottom: 2px; position: sticky; top: 0; background: var(--w-area); z-index: 2; padding-top: 2px; }
+.chip { font: 12px var(--f-ui); border: 1px solid var(--w-line); background: #fff; color: var(--w-ink); border-radius: 999px; padding: 1px 8px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.chip .n { color: var(--w-dim); margin-left: 4px; }
+.chip[aria-pressed="true"] { background: var(--w-ink); color: #fbf8f1; border-color: var(--w-ink); }
+.chip[aria-pressed="true"] .n { color: var(--w-line); }
+.facts { display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; margin: 0 0 8px; }
+.facts dt { font-style: italic; color: var(--w-dim); }
+.facts dd { margin: 0; }
+.crew { display: grid; grid-template-columns: max-content 1fr; gap: 1px 12px; font-size: 13px; border-left: 2px solid var(--w-line); padding-left: 10px; margin: 4px 0 8px; }
+.crew span:nth-child(odd) { font-weight: 600; }
+.pull { margin: 8px 0; padding: 6px 12px; border-left: 3px solid var(--w-line); font-style: italic; color: #4c4238; background: #fff; max-width: 66ch; }
+.pull cite { display: block; margin-top: 3px; font: normal 11.5px var(--f-ui); color: var(--w-dim); }
+
+/* Proposed: lyric sheet */
+.lyr-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 2px 0 8px; font: 12px var(--f-ui); color: var(--w-dim); }
+.lyr-tools .seg2 .tb { height: 22px; font-size: 11.5px; padding: 0 8px; }
+.dchip { font: 600 11.5px var(--f-ui); padding: 2px 8px; border-radius: 999px; background: var(--w-chg); color: var(--w-chg-ink); }
+.dchip.wait { background: var(--w-foot); color: var(--w-dim); font-weight: 400; }
+.sheet { background: #fffdf8; border: 1px solid var(--w-line); border-radius: 3px; padding: 14px 18px 16px 30px; font: 15px/1.7 var(--f-lyric); color: #2a2420; position: relative; max-width: 62ch; }
+.sheet.f-garamond { font-family: "EB Garamond", Garamond, Georgia, serif; font-size: 16.5px; }
+.sheet.f-literata { font-family: "Literata", Georgia, serif; font-size: 15px; }
+.sheet.f-georgia { font-family: Georgia, serif; font-size: 13.5px; line-height: 1.5; }
+.sheet .stz { margin: 0 0 1em; }
+.sheet .stz:last-child { margin-bottom: 0; }
+.sheet .ln { display: block; position: relative; padding: 0 4px; margin: 0 -4px; border-radius: 2px; }
+.sheet .stage { font-style: italic; font-variant: small-caps; color: var(--w-faint); letter-spacing: 0.02em; }
+.sheet .rep { font: 600 10.5px var(--f-ui); color: var(--w-dim); background: var(--w-foot); border: 1px solid var(--w-line); border-radius: 999px; padding: 0 6px; margin-left: 6px; vertical-align: 2px; cursor: pointer; }
+.sheet .ln.chg { background: var(--w-chg); }
+.sheet .ln.add { background: var(--w-add); }
+.sheet .ln.add::before, .sheet .ln.chg::before, .sheet .ln.miss::before { position: absolute; left: -20px; width: 14px; text-align: center; font: 600 11px var(--f-ui); }
+.sheet .ln.add::before { content: "+"; color: var(--w-add-ink); }
+.sheet .ln.chg::before { content: "~"; color: var(--w-chg-ink); }
+.sheet .ln.miss { color: var(--w-miss-ink); opacity: 0.75; text-decoration: line-through; text-decoration-color: rgba(155, 59, 44, 0.45); font-size: 0.92em; }
+.sheet .ln.miss::before { content: "−"; color: var(--w-miss-ink); }
+.sheet .ln ins { text-decoration: none; background: rgba(214, 160, 30, 0.35); border-radius: 2px; }
+.sheet .ln[data-was] { cursor: help; }
+.sbs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sbs .sheet { max-width: none; font-size: 13.5px; padding-left: 26px; }
+.sbs .cap { font: 600 10.5px var(--f-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--w-dim); margin-bottom: 3px; }
+.copyok { color: var(--w-add-ink); }
+
+/* Proposed: tracklists and tables */
+.eds { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px 16px; margin: 4px 0 8px; }
+.ed h5 { margin: 0 0 3px; font: 600 10.5px var(--f-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--w-dim); }
+.ed ol { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+.ed li { display: flex; gap: 6px; padding: 1px 0; border-bottom: 1px solid var(--w-line2); }
+.ed li .p { color: var(--w-faint); font-variant-numeric: tabular-nums; min-width: 2.2ch; }
+.ed li.me { background: #eef3fa; }
+.tt { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.tt th { position: sticky; top: 0; z-index: 1; background: var(--w-head); text-align: left; white-space: nowrap; cursor: pointer; user-select: none; font: 600 10.5px var(--f-ui); letter-spacing: 0.06em; text-transform: uppercase; color: var(--w-dim); padding: 6px 8px; border-bottom: 1px solid var(--w-line); }
+.tt th.ns { cursor: default; }
+.tt th[aria-sort="ascending"]::after { content: " \25B2"; }
+.tt th[aria-sort="descending"]::after { content: " \25BC"; }
+.tt th[aria-sort="none"]::after { content: " \21C5"; opacity: 0.35; }
+.tt td { padding: 4px 8px; border-bottom: 1px solid var(--w-line2); vertical-align: middle; }
+.tt tbody tr:not(.part):hover td { background: var(--w-sel); }
+.tt tr.part td { background: var(--w-band); padding: 5px 8px; border-bottom: 1px solid var(--w-line); }
+.tt tr.part .pn2 { font: 600 10.5px var(--f-ui); letter-spacing: 0.1em; text-transform: uppercase; }
+.tt tr.part .pc { margin-left: 8px; font-style: italic; color: var(--w-dim); }
+.tt tr.me td { background: #eef3fa; }
+.tt .dim { color: var(--w-dim); }
+.tbox { border: 1px solid var(--w-line); border-radius: 3px; background: #fff; max-height: 330px; overflow: auto; }
+.ttools { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; margin: 2px 0 6px; }
+.q { font: 13.5px var(--f-win); padding: 3px 8px; border: 1px solid var(--w-line); border-radius: 3px; width: min(300px, 100%); background: #fff; color: var(--w-ink); }
+.fl { font: 11.5px var(--f-ui); color: var(--w-dim); margin-right: 2px; }
+.rowcard { display: grid; grid-template-columns: 40px 1fr; gap: 3px 10px; padding: 6px 0; border-bottom: 1px solid var(--w-line2); font-size: 13px; }
+.rowcard .t { font-weight: 600; }
+.rowcard .m { color: var(--w-dim); font-size: 12px; }
+.moj { text-decoration: underline dotted var(--bad); text-underline-offset: 3px; cursor: help; }
+
+/* Encoding banner */
+.encban { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; padding: 6px 10px; border: 1px solid #e3b5ab; background: #fbeeea; border-radius: 4px; font: 12.5px var(--f-ui); color: #7d2e21; }
+.encban b { font-weight: 600; }
+.encban .tb { height: 22px; font-size: 12px; margin-left: auto; }
+.report { font: 12px/1.5 var(--f-mono); white-space: pre-wrap; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; color: var(--ink); overflow-x: auto; }
+
+/* Today (the snapshot, condensed) */
+.today h4 { margin: 14px 0 4px; }
+.today .sec-plain { max-height: 220px; overflow: hidden; -webkit-mask-image: linear-gradient(#000 75%, transparent); mask-image: linear-gradient(#000 75%, transparent); }
+
+/* Live History */
+.tour { display: grid; grid-template-columns: 190px 1fr; gap: 6px 12px; padding: 6px 0; border-bottom: 1px solid var(--w-line2); align-items: start; }
+.tour .tn { font-weight: 600; font-size: 13px; }
+.tour .tn small { display: block; font: 11.5px var(--f-ui); color: var(--w-dim); font-weight: 400; }
+.dates { display: flex; flex-wrap: wrap; gap: 3px; }
+.dt { font: 11.5px var(--f-ui); padding: 1px 6px; border-radius: 3px; background: #fff; border: 1px solid var(--w-line2); color: var(--w-dim); font-variant-numeric: tabular-nums; }
+.dt.v { border-color: #b9c9de; color: var(--w-blue); background: #eef3fa; cursor: pointer; }
+.dt.rel { box-shadow: inset 0 -2px 0 var(--w-pill-live); }
+
+/* Index / FRP finding mocks */
+.mbtbl { width: 100%; border-collapse: collapse; font: 13px Arial, sans-serif; background: #fff; color: #222; }
+.mbtbl th { background: #eceef1; text-align: left; padding: 5px 8px; border-bottom: 1px solid #ccc; font-weight: 600; }
+.mbtbl td { padding: 5px 8px; border-bottom: 1px solid #eee; }
+.mbtbl td.fnd-err { background: #fde2dd; box-shadow: inset 3px 0 0 #c0392b; }
+.fglyph { display: inline-block; font-size: 11px; margin-left: 6px; padding: 0 4px; border-radius: 3px; background: #c0392b; color: #fff; font-weight: 700; }
+.h1mock { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font: 600 13px var(--f-ui); color: #222; background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 8px 10px; }
+.h1mock .seg { border: 1px solid #ccc; border-radius: 4px; padding: 3px 8px; background: #f7f7f7; font-weight: 500; }
+.h1mock .err { border-color: #e3b5ab; background: #fbeeea; color: #7d2e21; }
+.menu { margin-top: 6px; width: min(460px, 100%); background: #fffdf6; border: 1px solid #d9cfae; border-radius: 4px; box-shadow: 0 6px 18px rgba(0,0,0,.18); font: 13px var(--f-ui); color: #2b2622; }
+.menu div { padding: 6px 10px; border-bottom: 1px solid #efe6cf; display: flex; gap: 8px; align-items: baseline; }
+.menu div:last-child { border-bottom: 0; }
+.menu .c { margin-left: auto; font-variant-numeric: tabular-nums; color: #7a6d5c; }
+
+/* Picks */
+.picks { display: grid; gap: 8px; }
+.pick { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 4px 14px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; }
+.pick .no { font: 700 18px var(--f-display); color: var(--accent); }
+.pick h3 { margin: 0; font: 700 15px/1.3 var(--f-display); }
+.pick p { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+.pick .opts { display: flex; gap: 0; flex-wrap: wrap; }
+.pick .opts label { font: 600 12px var(--f-body); border: 1px solid var(--line); padding: 5px 10px; cursor: pointer; background: var(--bg); color: var(--ink); }
+.pick .opts label:first-child { border-radius: 6px 0 0 6px; }
+.pick .opts label:last-child { border-radius: 0 6px 6px 0; }
+.pick .opts label + label { border-left: 0; }
+.pick .opts input { position: absolute; opacity: 0; pointer-events: none; }
+.pick .opts input:checked + span { color: var(--accent); }
+.pick .opts label:has(input:checked) { background: var(--accent-soft); }
+.pick .opts label:has(input:focus-visible) { outline: 2px solid var(--accent); }
+.pick textarea { grid-column: 2 / -1; width: 100%; min-height: 34px; font: 13px var(--f-body); padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); resize: vertical; }
+.pickbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.btn { font: 600 13px var(--f-body); background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 6px; padding: 9px 16px; cursor: pointer; }
+.btn.sec { background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
+#pick-out { width: 100%; min-height: 160px; font: 12px var(--f-mono); }
+@media (max-width: 640px) { .pick { grid-template-columns: 30px minmax(0, 1fr); } .pick .opts { grid-column: 2; } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="page">
+    <h1>The springsteenlyrics.com song window</h1>
+    <p>Proposals for the preview window you get with Space on a <code>lyrics.php?song=…</code> link. Every tab is a working mock of the window: sections open and close (Ctrl+click toggles all), tables filter and sort, the lyrics compare with the album version. The last tab collects your picks as text to paste back.</p>
+    <div class="meta">Data from debug/sl-song-*-POH.html (Backstreets: album, unofficial studio 1, live 18 Nov 1975) and five more pages surveyed 2026-11-07. Lyrics are placeholders written for this page.</div>
+</header>
+
+<nav class="tabs" id="tabs" aria-label="Views">
+    <button type="button" data-v="album" aria-pressed="true"><span class="n">A</span>Album version</button>
+    <button type="button" data-v="unoff" aria-pressed="false"><span class="n">B</span>Unofficial + compare</button>
+    <button type="button" data-v="live" aria-pressed="false"><span class="n">C</span>Live version</button>
+    <button type="button" data-v="tables" aria-pressed="false"><span class="n">D</span>Versions table</button>
+    <button type="button" data-v="enc" aria-pressed="false"><span class="n">E</span>Encoding finding</button>
+    <button type="button" data-v="hist" aria-pressed="false"><span class="n">F</span>Live History</button>
+    <button type="button" data-v="varb" aria-pressed="false"><span class="n">G</span>Layout B</button>
+    <button type="button" data-v="picks" aria-pressed="false"><span class="n">✓</span>Your picks</button>
+</nav>
+
+<!-- ============ A: album ============ -->
+<section class="view" id="v-album">
+<div class="bench">
+    <div class="col">
+        <div class="ctl"><span>Show</span><div class="sw" data-sw="album-mode"><button type="button" data-m="new" aria-pressed="true">Proposed</button><button type="button" data-m="old" aria-pressed="false">Today</button></div>
+        <span>Lyrics face</span><div class="sw" data-sw="font"><button type="button" data-f="system" aria-pressed="true">Book serif (system)</button><button type="button" data-f="garamond" aria-pressed="false">EB Garamond</button><button type="button" data-f="literata" aria-pressed="false">Literata</button><button type="button" data-f="georgia" aria-pressed="false">Georgia (today)</button></div></div>
+        <div class="scroller"><div class="mw" id="mw-album"></div></div>
+    </div>
+    <div class="col">
+        <div class="notes"><h3><span class="pn">1</span>Sections fold</h3><p>Every heading is a fold. Lyrics, Info and the release tracklists start open. The long prose (release story, Other Official Releases, Sad Eyes, Backstreets Magazine) starts closed. Each heading carries a size hint, e.g. "28 releases" or "61". Ctrl+click on a heading opens or closes all of them, as on Brucebase. A fold you change stays that way for the page's life.</p></div>
+        <div class="notes"><h3><span class="pn">2</span>A lyric sheet</h3><p>The lyrics get their own block: a book face at 15 px with generous leading, a paper tone, and real stanza gaps. Stage notes such as <i>[Spoken:]</i> are set in grey italic small caps. A run of identical lines folds to one line with a "× 9" badge, and a click unfolds it. <b>Copy</b> copies the plain text.</p><p>Faces: the system book serif needs no download. EB Garamond and Literata are Google web fonts, so the userscript would have to load them from fonts.googleapis.com.</p></div>
+        <div class="notes"><h3><span class="pn">4</span>Two columns, balanced</h3><p>Left: what the version <i>is</i>. The title block holds a type pill and the version navigator. Small cards show Version, On the site and Releases, with a bar of the 61 versions by type. Then Info, the studio facts (dates, studio, takes, the band as name → instruments), images, Credits and Request.</p><p>Right: what you <i>read</i>. A row of section chips (7), the lyrics, then the releases and lists.</p></div>
+        <div class="notes"><h3><span class="pn">3</span><span class="pn">5</span>Real tracklists, real rows</h3><p>A release's track lists are drawn from the editions the reader already has, side by side, with this song ● and every other song a link that opens in the window. Other releases, covers and movies become rows with a thumbnail instead of a text dump. ALL CAPS song names in prose (BORN TO RUN) are linked when the site's song list knows them.</p></div>
+        <div class="notes"><h3><span class="pn">6</span>Version navigator</h3><p><code>‹ 1 of 61 ›</code> steps through this song's versions in the site's order and stays in the window. The ‹ › in the window bar keep stepping through the table rows, as today.</p></div>
+        <div class="notes"><h3><span class="pn">11</span>Prose polish</h3><p>Quotes from interviews and liner notes become pull quotes. "PAGE UNDER CONSTRUCTION" and "SECTION NOT YET COMPLETED" are dropped. "Page last updated" moves to the foot.</p></div>
+    </div>
+</div>
+</section>
+
+<!-- ============ B: unofficial ============ -->
+<section class="view" id="v-unoff" hidden>
+<div class="bench">
+    <div class="col">
+        <div class="scroller"><div class="mw" id="mw-unoff"></div></div>
+    </div>
+    <div class="col">
+        <div class="notes"><h3><span class="pn">9</span>Differs from the album version <span class="tag new">in scope</span></h3>
+            <p>On any version other than the album version, the window reads the album version's page as well. The reference is the version marked Album; failing that, the first official studio version; failing that, there is no comparison. The read uses the same cache and rate gate and starts when the window opens, never on a hover.</p>
+            <ul>
+                <li><b>Marks</b>: <span style="background:var(--w-chg);padding:0 3px">~ changed</span> lines with the changed words picked out (hover one for the album line), <span style="background:var(--w-add);padding:0 3px">+ added</span> lines, and optionally <span style="color:var(--w-miss-ink);text-decoration:line-through">− missing</span> album lines.</li>
+                <li><b>Side by side</b>: both sheets, aligned by stanza.</li>
+                <li>The chip counts the lines: "17 of 46 lines differ".</li>
+                <li>Case, punctuation and spacing are ignored, as are stage notes and blank lines.</li>
+            </ul>
+            <p>The marks in this mock are computed live by the same line-by-line algorithm the script would use.</p></div>
+        <div class="notes"><h3>Left column on a thin page</h3><p>An unofficial version has little beyond its lyrics. The left column then carries the facts (Recorded, Circulates on: War And Roses), the Info text and Credits, and the right column is all lyrics.</p></div>
+    </div>
+</div>
+</section>
+
+<!-- ============ C: live ============ -->
+<section class="view" id="v-live" hidden>
+<div class="bench">
+    <div class="col">
+        <div class="scroller"><div class="mw" id="mw-live"></div></div>
+    </div>
+    <div class="col">
+        <div class="notes"><h3>A live version</h3><ul>
+            <li>The Show card replaces the bare fields: date with weekday, venue, place, tour, and Released on.</li>
+            <li>The show's tracklist becomes a table (proposal 12). This song is ●, every other song links its page, and the MB work glyphs show as today.</li>
+            <li>The lyrics open in <b>Marks</b> mode, so the ad-libs and changed lines stand out against the album version.</li>
+            <li>The long release story and the liner notes fold closed. The liner notes become a pull quote.</li>
+        </ul></div>
+    </div>
+</div>
+</section>
+
+<!-- ============ D: tables ============ -->
+<section class="view" id="v-tables" hidden>
+<div class="bench">
+    <div class="col">
+        <div class="scroller"><div class="mw" id="mw-tables"></div></div>
+    </div>
+    <div class="col">
+        <div class="notes"><h3><span class="pn">12</span>Filterable, sortable tables <span class="tag new">your ask</span></h3>
+            <p>These tables use the window's own List table, the one the MusicBrainz and Discogs windows already have: a filter, three-state sort on every column (the third click restores the site's order), and chips by Type. While the table is unsorted, a heading row opens each type.</p>
+            <ul><li><b>Available versions</b>: Title · Version · Type · Date · Year. This version is ●. A title opens its page in this window, and Back returns here.</li>
+            <li><b>Release tracklists</b>: one table per edition, with the disc or record as a part.</li>
+            <li><b>Live tracklist</b>, <b>Live History</b> dates (Tour chips), <b>releases, covers, singles</b> (40 px thumbnails).</li></ul>
+            <p>Try the filter ("1978", "unofficial"), a chip, or a header.</p></div>
+        <div class="notes"><h3><span class="pn">7</span>Section chips</h3><p>The chips above the right column jump to a section and open it. The row stays at the top while you scroll.</p></div>
+    </div>
+</div>
+</section>
+
+<!-- ============ E: encoding ============ -->
+<section class="view" id="v-enc" hidden>
+<div class="bench">
+    <div class="col">
+        <div class="notes" style="padding:0;overflow:hidden">
+            <div style="padding:12px 16px 4px"><h3 style="margin:0 0 6px;font:700 15px var(--f-display)">1 · In the window: banner + repaired text</h3></div>
+            <div class="scroller" style="padding:0 16px 14px"><div class="mw" id="mw-enc" style="min-width:760px"></div></div>
+        </div>
+        <div class="notes"><h3>2 · "Copy report for the site maintainer"</h3><p>The button copies this text, ready to mail to Eddy:</p><pre class="report" id="enc-report"></pre></div>
+        <div class="notes"><h3>3 · The lyrics index (sl-lyrics): rows whose page was already read</h3>
+            <div class="h1mock"><span>Lyrics · B</span><span class="seg">Show all lyrics</span><span class="seg err">❌ ERROR 3</span><span class="seg">⚠️ WARNING 0</span></div>
+            <div class="menu"><div><span>❌</span><span>Double-encoded text on the song's page</span><span class="c">3</span></div><div><span style="opacity:.5">❌</span><span style="color:#7a6d5c">Another error kind …</span><span class="c">0</span></div></div>
+            <div class="scroller" style="margin-top:10px"><table class="mbtbl" style="min-width:560px"><thead><tr><th>Title</th><th>Version</th><th>Type</th><th>Date</th></tr></thead><tbody>
+                <tr><td class="fnd-err">BACKSTREETS<span class="fglyph" title="Double-encoded text on the song's page: CalexÃ³ns → Calexóns (Covers). Known because the page was read on 2026-11-07.">ÃA</span></td><td>Album version</td><td>Album</td><td></td></tr>
+                <tr><td>BACKSTREETS</td><td>Unofficial studio version 1</td><td>Unofficial studio</td><td></td></tr>
+                <tr><td class="fnd-err">BORN TO RUN<span class="fglyph" title="3 spots on the song's page.">ÃA</span></td><td>Album version</td><td>Album</td><td></td></tr>
+                <tr><td>BORN IN THE U.S.A.</td><td>Album version</td><td>Album</td><td></td></tr>
+                <tr><td class="fnd-err">BOBBY JEAN<span class="fglyph">ÃA</span></td><td>Live 01 Jul 1985 version</td><td>Live</td><td>1985-07-01</td></tr>
+                <tr><td style="color:#999">BACK IN YOUR ARMS</td><td style="color:#999">Album version</td><td style="color:#999">Album</td><td></td></tr>
+            </tbody></table></div>
+            <p style="margin-top:8px">The last row is grey to show it: its page was never read, so nothing is known about it yet. That row gets no mark and no request. The count grows as you open previews or song pages.</p>
+        </div>
+    </div>
+    <div class="col">
+        <div class="notes"><h3><span class="pn">8</span>Double-encoded UTF-8 <span class="tag dec">decided</span></h3>
+            <p>The site itself serves "CalexÃ³ns", "Saint-Ã‰tienne", "BernabÃ©u" and "DéjÃ  Vu". The bytes are in its UTF-8 source, so the script's charset is not the cause.</p>
+            <ul>
+                <li><b>Shown repaired</b> with a dotted red underline. The tooltip gives the site's text. Only runs that turn back into valid UTF-8 are repaired.</li>
+                <li><b>Banner</b> in the window and on the song page: the count and the report button.</li>
+                <li><b>Finding</b> <code>sl-double-utf8</code>, level error: the ❌ ERROR menu, the red tint, the 📊 "Findings" section, filterable page-wide.</li>
+                <li><b>Index rows</b> only from pages already read (a saved preview or song page). No extra requests.</li>
+            </ul></div>
+    </div>
+</div>
+</section>
+
+<!-- ============ F: live history ============ -->
+<section class="view" id="v-hist" hidden>
+<div class="bench">
+    <div class="col">
+        <div class="scroller"><div class="mw" id="mw-hist"></div></div>
+    </div>
+    <div class="col">
+        <div class="notes"><h3><span class="pn">10</span>Live History as a timeline</h3>
+            <p>THUNDER ROAD's "Live History: on-tour" lists 268 dates under 20-odd tour headings. Today the window prints them one per line. Proposed: one row per tour, its dates as small chips, and the count in the tour cell.</p>
+            <ul><li><span class="dt v">1978-07-07</span> a date that has a version page: it opens in the window.</li>
+            <li><span class="dt rel">1975-11-18</span> a date released officially (underlined green).</li>
+            <li>Tours with more than 40 dates fold to the first 40 and "+N".</li></ul>
+            <p>Example data: Backstreets' live versions grouped by year, since its page has no Live History section.</p></div>
+    </div>
+</div>
+</section>
+
+<!-- ============ G: variant B ============ -->
+<section class="view" id="v-varb" hidden>
+<div class="bench">
+    <div class="col">
+        <div class="scroller"><div class="mw" id="mw-varb"></div></div>
+    </div>
+    <div class="col">
+        <div class="notes"><h3><span class="pn">4</span>Variant B: the lyrics on the left</h3><p>The left column holds the title block and the lyric sheet alone, a song-sheet reading. The right column holds everything else: the fact cards, Info, the releases, the lists. The columns are 1 : 1.</p><p>This suits a reader who comes for the words. Variant A (tab A) suits a reader who comes for the facts.</p></div>
+    </div>
+</div>
+</section>
+
+<!-- ============ picks ============ -->
+<section class="view" id="v-picks" hidden>
+<div class="picks" id="picks"></div>
+<div class="notes" style="margin-top:12px">
+    <div class="pickbar"><button type="button" class="btn" id="pick-copy">Copy my picks</button><button type="button" class="btn sec" id="pick-reset">Clear</button><span id="pick-msg" class="ctl"></span></div>
+    <p style="margin:8px 0 4px;font-size:13px;color:var(--muted)">Paste the text into the chat or under the TODO in org/springsteenlyrics.org. Your picks are kept in this browser only.</p>
+    <textarea id="pick-out" readonly aria-label="Your picks as text"></textarea>
+</div>
+</section>
+</div>
+
+<!-- No pictures to inline (drawn tiles): the empty list keeps scripts/build-mockup-artifact.py working. -->
+<script type="application/json" id="mockup-images">{}</script>
+<!--EMBED-->
+<script>
+(function () {
+'use strict';
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const store = {
+    get(k, d) { try { const v = localStorage.getItem('slpoh:' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem('slpoh:' + k, JSON.stringify(v)); } catch (e) { /* private window */ } },
+};
+
+/* ---------- Data (real, from the snapshots) ---------- */
+const LIVE_DATES = ['18 Nov 1975', '22 Aug 1976', '29 Sep 1976', '30 Sep 1976', '09 Oct 1976', '25 Oct 1976', '28 Oct 1976', '29 Oct 1976', '30 Oct 1976', '02 Nov 1976', '03 Nov 1976', '04 Nov 1976', '13 Feb 1977', '22 Feb 1977', '06 Mar 1977', '13 Mar 1977', '19 Mar 1977', '22 Mar 1977', '23 Mar 1977', '24 Mar 1977', '25 Mar 1977', '31 Dec 1977', '23 May 1978', '31 May 1978', '09 Jun 1978', '16 Jun 1978', '01 Jul 1978', '07 Jul 1978', '04 Aug 1978', '09 Aug 1978', '01 Sep 1978', '19 Sep 1978', '30 Sep 1978', '15 Dec 1978', '19 Dec 1978', '20 Dec 1978', '28 Dec 1978', '31 Dec 1978', '01 Jan 1979', '28 Aug 1981', '20 Aug 1984', '25 Aug 1984', '13 Jun 1985', '21 Jun 1985', '17 Mar 1988', '20 Mar 1988', '23 Apr 1988', '03 May 1988', '21 Feb 1995', '31 Jan 1998', '15 Mar 1999', '01 Jul 2000', '16 Sep 2003', '22 Nov 2005', '17 Oct 2007', '22 Apr 2008', '21 Jul 2009'];
+const MON = { Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' };
+const iso = d => { const [dd, mm, yy] = d.split(' '); return `${yy}-${MON[mm]}-${dd}`; };
+const RELEASED_LIVE = new Set(['18 Nov 1975', '01 Jul 1978', '07 Jul 1978', '09 Aug 1978', '19 Sep 1978', '30 Sep 1978', '15 Dec 1978', '20 Aug 1984', '23 Apr 1988', '15 Mar 1999', '01 Jul 2000', '22 Nov 2005', '22 Apr 2008']);
+const VERSIONS = [
+    { v: 'Album version', type: 'Album', date: '' },
+    { v: 'Unofficial studio version 1', type: 'Unofficial studio', date: '' },
+    { v: 'Unofficial studio version 2', type: 'Unofficial studio', date: '' },
+    { v: 'Unofficial studio version 3', type: 'Unofficial studio', date: '' },
+].concat(LIVE_DATES.map(d => ({ v: `Live ${d} version`, type: 'Live', date: iso(d) })));
+VERSIONS.forEach((r, i) => { r.i = i; r.year = r.date ? r.date.slice(0, 4) : ''; });
+
+const BTR_VINYL = [['A1', 'THUNDER ROAD'], ['A2', 'TENTH AVENUE FREEZE-OUT'], ['A3', 'NIGHT'], ['A4', 'BACKSTREETS'], ['B1', 'BORN TO RUN'], ['B2', "SHE'S THE ONE"], ['B3', 'MEETING ACROSS THE RIVER'], ['B4', 'JUNGLELAND']];
+const BTR_CD = BTR_VINYL.map(([, t], i) => [String(i + 1), t]);
+const ROCKS = ['BORN TO RUN', 'HUNGRY HEART', 'BLINDED BY THE LIGHT', 'ROSALITA (COME OUT TONIGHT)', 'THUNDER ROAD', 'BACKSTREETS', 'JUNGLELAND', 'BADLANDS', 'THE PROMISED LAND', 'DARKNESS ON THE EDGE OF TOWN', 'SHERRY DARLING', 'CADILLAC RANCH', 'OUT IN THE STREET', 'ATLANTIC CITY'];
+const HAMMER = ['THUNDER ROAD', 'TENTH AVENUE FREEZE-OUT', 'SPIRIT IN THE NIGHT', 'LOST IN THE FLOOD', "SHE'S THE ONE", 'BORN TO RUN', 'THE E STREET SHUFFLE', "IT'S HARD TO BE A SAINT IN THE CITY", 'BACKSTREETS', "KITTY'S BACK", 'JUNGLELAND', 'ROSALITA (COME OUT TONIGHT)', '4TH OF JULY, ASBURY PARK (SANDY)', 'DETROIT MEDLEY', 'FOR YOU', 'QUARTER TO THREE'];
+const OTHERS = [
+    { artist: 'Bruce Springsteen', title: 'Born To Run', fmt: '7" single', label: 'CBS/Sony', cat: 'SOPB 334', country: 'Japan', year: '1975', note: 'B-side; picture insert', th: 'a' },
+    { artist: 'Bruce Springsteen', title: 'Rocks Vol. 1 (1973 - 1982)', fmt: 'CD-R', label: 'Sony', cat: '—', country: 'Japan', year: '2005', note: 'Promo-only "Digest" sampler', th: 'b' },
+    { artist: 'Various artists', title: 'The Pitman Family Of Music - Our First 20 Years', fmt: 'LP', label: 'CBS', cat: 'P 15663', country: 'USA', year: '1980', note: 'In-house promo, 30 s excerpt', th: 'c' },
+    { artist: 'Various artists', title: '30 Years In Pitman', fmt: 'CD', label: 'CBS', cat: '—', country: 'USA', year: '1990', note: 'In-house promo CD', th: 'none' },
+];
+const LIVE_RELEASES = [
+    ['1975-10-18', 'The Roxy 1975', 'download', '2018'], ['1975-11-18', "Hammersmith Odeon, London '75", 'album + video', '2005'], ['1975-11-24', 'London 11/24/1975', 'download', '2020'],
+    ['1975-12-31', 'Tower Theater, Philadelphia 1975', 'download', '2015'], ['1977-02-07', 'Palace Theatre, Albany 1977', 'download', '2017'], ['1978-07-07', 'Live/1975-85', 'box set', '1986'],
+    ['1978-12-08', 'The Promise: The Darkness On The Edge Of Town Story', 'box set', '2010'], ['1999-03-15', 'Rock And Roll Hall Of Fame + Museum Live', 'video', '2009'], ['2000-07-01', 'Live In New York City', 'video', '2001'], ['2012-07-28', 'Gothenburg July 28, 2012', 'download', '2020'],
+];
+const COVERS = [
+    { artist: '7 Lvvas', title: 'Pirata', fmt: 'CD', label: 'Boomerang Records', year: '1995', note: 'A Galician adaptation titled "CalexÃ³ns".', th: 'c' },
+    { artist: 'Cory Arcangel', title: 'The Bruce Springsteen Born To Run Glockenspiel Addendum', fmt: '12" EP', label: 'no label', year: '2006', note: 'Glockenspiel arrangements.', th: 'b' },
+    { artist: 'Maria McKee', title: 'Maria McKee Live: Acoustic Tour 2006', fmt: 'CD', label: 'Cooking Vinyl', year: '2006', note: 'A live album.', th: 'a' },
+    { artist: 'David Zess', title: 'David Zess', fmt: 'CD', label: 'David Zeserson', year: '2009', note: '', th: 'none' },
+    { artist: 'Alyssa Hankey', title: 'Springsteen Covers', fmt: 'CD EP', label: 'no label', year: '2016', note: 'A tribute EP.', th: 'none' },
+    { artist: 'Jonathan Rado', title: 'Born To Run', fmt: 'LP', label: 'Sounds Delicious', year: '2017', note: 'A tribute album.', th: 'a' },
+    { artist: 'Giusey And The Springtones', title: 'One Night Only', fmt: 'Digital album', label: 'no label', year: '2020', note: 'Recorded at The Stone Pony.', th: 'b' },
+];
+
+/* ---------- Placeholder lyrics (written for this mockup) ---------- */
+const L_ALBUM = `Late in the summer the river ran low
+We counted the freight cars and let the hours go
+Chalk on the platform, our names on the wall
+Waiting on a signal that never would call
+So we drove out to the overpass, out to the overpass
+With a radio playing what we couldn't say
+Out on the overpass till the break of day
+
+Cheap neon motels and a jukebox in the rain
+You said the whole town was a song with no refrain
+Headlights on the water and the long freight trains
+We swore we'd never end up like the ones who stayed
+Out on the overpass, out on the overpass
+Mary, you said we'd never fall
+Out on the overpass above it all
+
+Now the lights of the city are a coat I can't wear
+Every sign on the highway says nobody's there
+I can blame it on the weather, blame it on the road
+Blame it on me, Mary, I'm the one who let go
+
+Out on the overpass, out on the overpass
+Out on the overpass, out on the overpass
+Out on the overpass, out on the overpass
+Out on the overpass, out on the overpass
+Out on the overpass, out on the overpass
+Out on the overpass, out on the overpass
+It's alright
+We'll be out on the overpass tonight
+Out on the overpass, out on the overpass`;
+const L_UNOFF = `[Spoken:] One, two, three, four
+
+Late in the summer the river ran low
+We counted the freight cars and let the hours go
+Chalk on the platform, our names on the wall
+Waiting on a signal that never would call
+So we drove out to the overpass, out to the overpass
+We said we'd be friends forever
+Out on the overpass whatever the weather
+
+Cold coffee in the morning and the windows full of rain
+You said the whole town was a song with no refrain
+Whoa
+In the…
+Out on the overpass, rolling on the overpass
+Mary was young and brave
+Out on the overpass, saved
+
+Now the lights of the city are a coat I can't wear
+Every sign on the highway says nobody's there
+Blame it on me, baby, blame it on that town
+
+Out on the overpass, out on the overpass
+Out on the overpass, out on the overpass
+Out on the overpass, out on the overpass
+It's alright, we'll be out on the overpass tonight
+Hey!`;
+const L_LIVE = `Late in the summer the river ran low
+We counted the freight cars and let the hours go
+Chalk on the platform, our names on the wall
+Waiting on a signal that never would call
+So we drove out to the overpass, out to the overpass
+With a radio playing what we couldn't say
+Out on the overpass till the break of day
+
+Hey!
+
+Cheap neon motels and a jukebox in the rain
+You said the whole town was a song with no refrain
+Headlights on the water and the long freight trains
+We swore we'd never end up like the ones who stayed
+Out on the overpass, out on the overpass
+We swore we'd never fall
+Bam!
+Out on the overpass above it all
+
+Now the lights of the city are a coat I can't wear
+Every sign on the highway says nobody's there
+I can blame it on the weather, blame it on the road
+Blame it on me, Mary, I'm the one who let go
+
+Me and you baby
+Run along baby
+Out on the overpass, out on the overpass
+Out on the overpass, out on the overpass
+Out on the overpass, out on the overpass
+Out on the overpass, out on the overpass
+It's alright
+We'll be out on the overpass tonight
+Sing it out loud!`;
+
+/* ---------- The diff (the algorithm the script would use) ---------- */
+const norm = s => s.toLowerCase().replace(/\[[^\]]*\]/g, '').replace(/[^a-z0-9' ]+/g, ' ').replace(/'/g, '').replace(/\s+/g, ' ').trim();
+const content = s => !!norm(s);
+function lcs(a, b, eq) {
+    const n = a.length, m = b.length;
+    const t = Array.from({ length: n + 1 }, () => new Int32Array(m + 1));
+    for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) t[i][j] = eq(a[i], b[j]) ? t[i + 1][j + 1] + 1 : Math.max(t[i + 1][j], t[i][j + 1]);
+    const out = [];
+    let i = 0, j = 0;
+    while (i < n && j < m) {
+        if (eq(a[i], b[j])) { out.push([i, j]); i++; j++; } else if (t[i + 1][j] >= t[i][j + 1]) i++; else j++;
+    }
+    return out;
+}
+function wordMarks(line, ref) {
+    const a = line.split(/(\s+)/), w = a.filter((x, i) => i % 2 === 0), r = ref.split(/\s+/);
+    const keep = new Set(lcs(w, r, (x, y) => norm(x) === norm(y)).map(p => p[0]));
+    let k = 0;
+    return a.map((x, i) => (i % 2 ? x : (keep.has(k++) ? esc(x) : `<ins>${esc(x)}</ins>`))).join('');
+}
+/** Line diff of a version (v) against the album (a): one entry per version line, plus missing album lines. */
+function slLyricsDiff(vText, aText) {
+    const V = vText.split('\n'), A = aText.split('\n');
+    const vi = V.map((l, i) => i).filter(i => content(V[i])), ai = A.map((l, i) => i).filter(i => content(A[i]));
+    const pairs = lcs(vi, ai, (x, y) => norm(V[x]) === norm(A[y]));
+    const res = V.map(l => ({ text: l, kind: content(l) ? 'add' : 'blank', was: '' }));
+    const missing = []; // [afterVersionLine, albumText]
+    let pv = -1, pa = -1;
+    const gap = (v0, v1, a0, a1) => {
+        const vs = vi.filter(x => x > v0 && x < v1), as = ai.filter(y => y > a0 && y < a1);
+        vs.forEach((x, k) => { if (k < as.length) { res[x].kind = 'chg'; res[x].was = A[as[k]]; } });
+        as.slice(vs.length).forEach(y => missing.push([vs.length ? vs[vs.length - 1] : v0, A[y]]));
+    };
+    pairs.forEach(([x, y]) => { gap(pv, x, pa, y); res[x].kind = 'same'; pv = x; pa = y; });
+    gap(pv, V.length, pa, A.length);
+    const total = vi.filter(x => !/^\[[^\]]*\]$/.test(V[x].trim()) || norm(V[x])).length;
+    const differ = vi.filter(x => res[x].kind === 'chg' || res[x].kind === 'add').length;
+    return { lines: res, missing, total, differ };
+}
+
+/* ---------- Lyric sheet rendering ---------- */
+const stageHtml = l => esc(l).replace(/\[[^\]]*\]/g, m => `<span class="stage">${m}</span>`);
+function sheetHtml(text, opts = {}) {
+    const d = opts.diff;
+    const lines = text.split('\n');
+    const miss = new Map();
+    if (d && opts.ghosts) d.missing.forEach(([after, t]) => { if (!miss.has(after)) miss.set(after, []); miss.get(after).push(t); });
+    let html = '<div class="stz">', i = 0;
+    if (miss.has(-1)) miss.get(-1).forEach(t => { html += `<span class="ln miss">${esc(t)}</span>`; });
+    while (i < lines.length) {
+        const l = lines[i];
+        if (!l.trim()) { html += '</div><div class="stz">'; i++; continue; }
+        let run = 1;
+        if (opts.fold && !d) while (i + run < lines.length && lines[i + run] === l) run++;
+        const info = d ? d.lines[i] : null;
+        const cls = info && (info.kind === 'chg' || info.kind === 'add') ? ` ${info.kind}` : '';
+        const body = info && info.kind === 'chg' ? wordMarks(l, info.was) : stageHtml(l);
+        const was = info && info.kind === 'chg' ? ` data-was="${esc(info.was)}" title="Album version: ${esc(info.was)}"` : (info && info.kind === 'add' ? ' title="Not in the album version"' : '');
+        html += `<span class="ln${cls}"${was}>${body}${run > 1 ? `<button type="button" class="rep" data-unfold title="Unfold the ${run} identical lines">× ${run}</button>` : ''}</span>`;
+        if (miss.has(i)) miss.get(i).forEach(t => { html += `<span class="ln miss" title="In the album version, not here">${esc(t)}</span>`; });
+        i += run;
+    }
+    return html + '</div>';
+}
+let lyricFont = store.get('font', 'system');
+function lyricsBlock(id, text, opts = {}) {
+    // opts.compare: compare against the album; opts.mode: 'plain'|'marks'|'sbs'
+    const mode = opts.mode || 'plain';
+    const d = opts.compare ? slLyricsDiff(text, L_ALBUM) : null;
+    const tools = `<div class="lyr-tools">` +
+        (d ? `<span class="seg2" data-lyr-mode="${id}">` + ['plain', 'marks', 'sbs'].map(m => `<button type="button" class="tb${m === mode ? ' on' : ''}" data-m="${m}">${{ plain: 'Lyrics', marks: 'Marks', sbs: 'Side by side' }[m]}</button>`).join('') + '</span>' +
+            `<span class="dchip">${d.differ} of ${d.total} lines differ from the album version</span>` +
+            (mode === 'marks' ? `<label><input type="checkbox" data-ghost="${id}"${opts.ghosts ? ' checked' : ''}> missing album lines</label>` : '') : '') +
+        (!d ? `<label><input type="checkbox" data-fold="${id}"${opts.fold !== false ? ' checked' : ''}> fold repeats</label>` : '') +
+        `<button type="button" class="tb" data-copy="${id}" style="height:22px;font-size:11.5px">Copy</button><span class="copymsg"></span></div>`;
+    const f = `f-${lyricFont}`;
+    let body;
+    if (d && mode === 'sbs') {
+        body = `<div class="sbs"><div><div class="cap">This version</div><div class="sheet ${f}">${sheetHtml(text, { diff: d })}</div></div>` +
+            `<div><div class="cap">Album version</div><div class="sheet ${f}">${sheetHtml(L_ALBUM, {})}</div></div></div>`;
+    } else {
+        body = `<div class="sheet ${f}">${sheetHtml(text, { diff: d && mode === 'marks' ? d : null, ghosts: opts.ghosts, fold: !d && opts.fold !== false })}</div>`;
+    }
+    return `<div class="lyr" data-lyr="${id}">${tools}${body}</div>`;
+}
+const LYR = {
+    album: { text: L_ALBUM, compare: false, fold: true },
+    unoff: { text: L_UNOFF, compare: true, mode: 'marks', ghosts: false },
+    live: { text: L_LIVE, compare: true, mode: 'marks', ghosts: false },
+    varb: { text: L_ALBUM, compare: false, fold: true },
+};
+function paintLyr(id) {
+    $$(`[data-lyr="${id}"]`).forEach(el => { el.outerHTML = lyricsBlock(id, LYR[id].text, LYR[id]); });
+}
+
+/* ---------- Window pieces ---------- */
+const bar = (pos, next, prev) => `<div class="mw-bar"><span class="crumb">Detail page</span><div class="tools">` +
+    `<button type="button" class="tb" title="Previous row: ${esc(prev)}">‹</button><span class="pos">${pos}</span><button type="button" class="tb" title="Next row: ${esc(next)}">›</button>` +
+    `<span class="seg2"><button type="button" class="tb on">Extracted</button><button type="button" class="tb">Live page</button></span>` +
+    `<button type="button" class="tb">⟳</button><button type="button" class="tb">↗</button><button type="button" class="tb" style="border:0;background:none;color:#666">✕</button></div></div>`;
+const foot = (left) => `<div class="mw-foot"><span>⌨</span><span>${left}</span><span class="k">← → rows · Esc close</span></div>`;
+const songLink = t => (t === 'BACKSTREETS' ? `${esc(t)}<span class="self" title="This song">●</span>` : `<span class="mbg" title="MusicBrainz work"></span><a class="wa here">${esc(t)}</a>`);
+const sec = (name, hint, body, open, extra = '') => `<details class="sec" data-sec="${esc(name)}"${open ? ' open' : ''}><summary title="Click: open or close · Ctrl+click: every section"><h4>${esc(name)}</h4>${hint ? `<span class="hint">${esc(hint)}</span>` : ''}${extra}</summary><div class="body">${body}</div></details>`;
+const edition = (name, rows) => `<div class="ed"><h5>${esc(name)}</h5><ol>${rows.map(([p, t]) => `<li${t === 'BACKSTREETS' ? ' class="me"' : ''}><span class="p">${esc(p)}</span><span>${songLink(t)}</span></li>`).join('')}</ol></div>`;
+const moj = s => esc(s).replace(/CalexÃ³ns/g, '<span class="moj" title="The site has: CalexÃ³ns">Calexóns</span>');
+const rowCards = list => list.map(r => `<div class="rowcard"><span class="thumb ${r.th}"></span><div><div class="t">${esc(r.artist)} — <i>${esc(r.title)}</i></div><div class="m">${esc([r.fmt, r.label, r.cat, r.country, r.year].filter(x => x && x !== '—').join(' · '))}</div>${r.note ? `<div>${moj(r.note)}</div>` : ''}</div></div>`).join('');
+const pill = t => `<span class="pill${t === 'Live' ? ' live' : (/Unofficial/.test(t) ? ' unoff' : '')}">${esc(t)}</span>`;
+const vnav = (i) => `<span class="vnav"><button type="button" title="${esc(i > 0 ? VERSIONS[i - 1].v : '')}">‹ ${esc(i > 0 ? VERSIONS[i - 1].v.replace(/ version$/, '') : '')}</button><span>${i + 1} of ${VERSIONS.length}</span><button type="button" title="${esc(VERSIONS[i + 1].v)}">${esc(VERSIONS[i + 1].v.replace(/ version$/, ''))} ›</button></span>`;
+const typeBar = () => {
+    const c = { Album: 1, 'Unofficial studio': 3, Live: LIVE_DATES.length }, col = { Album: 'var(--w-pill-album)', 'Unofficial studio': 'var(--w-pill-unoff)', Live: 'var(--w-pill-live)' };
+    const tot = Object.values(c).reduce((a, b) => a + b, 0);
+    return `<div class="bar">${Object.keys(c).map(k => `<i style="width:${(c[k] / tot) * 100}%;background:${col[k]}"></i>`).join('')}</div>` +
+        `<div class="legend">${Object.keys(c).map(k => `<span><b style="background:${col[k]}"></b>${esc(k)} ${c[k]}</span>`).join('')}</div>`;
+};
+const encBanner = n => `<div class="encban"><b>${n} encoding error${n === 1 ? '' : 's'} on this page</b><span>the site serves double-encoded text; shown repaired, underlined</span><button type="button" class="tb" data-report>Copy report for the site maintainer</button></div>`;
+
+/* ---------- Tables ---------- */
+const TBL = {};
+function versionsTable(id, selfIdx) {
+    const st = TBL[id] || (TBL[id] = { q: '', chips: [], sort: null, dir: 0 });
+    const cols = [['title', 'Title'], ['v', 'Version'], ['type', 'Type'], ['date', 'Date'], ['year', 'Year']];
+    let rows = VERSIONS.map(r => Object.assign({ title: 'BACKSTREETS' }, r));
+    const q = st.q.trim().toLowerCase();
+    if (q) rows = rows.filter(r => [r.title, r.v, r.type, r.date].join(' ').toLowerCase().includes(q));
+    if (st.chips.length) rows = rows.filter(r => st.chips.includes(r.type));
+    if (st.sort && st.dir) rows.sort((a, b) => String(a[st.sort]).localeCompare(String(b[st.sort])) * st.dir || a.i - b.i);
+    const counts = {};
+    VERSIONS.forEach(r => { counts[r.type] = (counts[r.type] || 0) + 1; });
+    const chips = Object.keys(counts).map(k => `<button type="button" class="chip" data-chip="${esc(k)}" aria-pressed="${st.chips.includes(k)}">${esc(k)}<span class="n">${counts[k]}</span></button>`).join('');
+    let prev = null, body = '';
+    rows.forEach(r => {
+        if (!st.dir && r.type !== prev) {
+            prev = r.type;
+            const shown = rows.filter(x => x.type === r.type).length;
+            body += `<tr class="part"><td colspan="5"><span class="pn2">${esc(r.type)}</span><span class="pc">${shown === counts[r.type] ? shown : `${shown} of ${counts[r.type]}`}</span></td></tr>`;
+        }
+        const me = r.i === selfIdx;
+        body += `<tr${me ? ' class="me"' : ''}><td>${me ? 'BACKSTREETS<span class="self" title="This version">●</span>' : '<a class="wa here" data-open>BACKSTREETS</a>'}</td><td>${esc(r.v)}</td><td class="dim">${esc(r.type)}</td><td>${esc(r.date)}</td><td>${esc(r.year)}</td></tr>`;
+    });
+    const th = cols.map(([k, l]) => `<th data-sort="${k}" aria-sort="${st.sort === k && st.dir ? (st.dir > 0 ? 'ascending' : 'descending') : 'none'}">${l}</th>`).join('');
+    return `<div data-tbl="${id}" data-self="${selfIdx}"><div class="ttools"><input class="q" type="search" id="q-${id}" placeholder="Filter versions" aria-label="Filter versions" value="${esc(st.q)}">${st.q || st.chips.length ? '<button type="button" class="tb" data-clear style="height:24px;font-size:12px">Clear filters</button>' : ''}</div>` +
+        `<div class="ttools"><span class="fl">Type</span>${chips}</div>` +
+        `<div class="tbox"><table class="tt"><thead><tr>${th}</tr></thead><tbody>${body || '<tr><td colspan="5" class="dim" style="font-style:italic;padding:12px">No version matches.</td></tr>'}</tbody></table></div></div>`;
+}
+function trackTable(rows) {
+    return `<div class="tbox" style="max-height:none"><table class="tt"><thead><tr><th aria-sort="none">Pos</th><th aria-sort="none">Title</th></tr></thead><tbody>` +
+        `<tr class="part"><td colspan="2"><span class="pn2">Hammersmith Odeon, London '75 · DVD edition</span><span class="pc">16</span></td></tr>` +
+        rows.map((t, i) => `<tr${t === 'BACKSTREETS' ? ' class="me"' : ''}><td class="dim">${i + 1}</td><td>${songLink(t)}</td></tr>`).join('') + '</tbody></table></div>';
+}
+function liveRelTable() {
+    return `<div class="tbox"><table class="tt"><thead><tr><th aria-sort="none">Date</th><th aria-sort="none">Release</th><th aria-sort="none">Kind</th><th aria-sort="none">Released</th><th class="ns">Version</th></tr></thead><tbody>` +
+        LIVE_RELEASES.map(([d, r, k, y]) => { const v = VERSIONS.find(x => x.date === d); return `<tr><td>${d}</td><td><i>${esc(r)}</i></td><td class="dim">${esc(k)}</td><td>${y}</td><td>${v ? '<a class="wa here">Live ' + esc(d) + '</a>' : ''}</td></tr>`; }).join('') +
+        `<tr><td colspan="5" class="dim" style="font-style:italic">… 18 more in the full table</td></tr></tbody></table></div>`;
+}
+
+/* ---------- Windows ---------- */
+function albumWindow(mode) {
+    if (mode === 'old') return bar('17 / 312', 'BACKSTREETS', 'BACK IN YOUR ARMS') + `<div class="mw-area"><div class="mw-x today"><div class="mw-col">` +
+        `<div class="xtitle">BACKSTREETS</div><div class="xsub">Album version</div><h4>Fields</h4><dl class="kv"><dt>Type</dt><dd>Album</dd><dt>Versions on the site</dt><dd>61</dd><dt>By type</dt><dd>Album 1, Unofficial studio 3, Live 57</dd><dt>Releases</dt><dd>Born To Run + 5 others</dd><dt>Live releases</dt><dd>28 (1975–2012)</dd><dt>Covers</dt><dd>7</dd><dt>Movies</dt><dd>1</dd></dl>` +
+        `<h4>Images (3)</h4><div class="gal"><span class="tile">song list</span><span class="tile b">box set</span><span class="tile c">DVD</span></div></div><div class="mw-col">` +
+        `<h4>Lyrics</h4><div class="sec-plain" style="font-size:13.5px">${esc(L_ALBUM)}</div>` +
+        `<h4>Info</h4><div class="sec-plain">BACKSTREETS is a song written by Bruce Springsteen and released on his 1975 album Born To Run. The above lyrics are for Bruce Springsteen's album version of BACKSTREETS as released in 1975.</div>` +
+        `<h4>Studio Recording</h4><div class="sec-plain">According to Sony's logs of Bruce Springsteen's studio sessions, BACKSTREETS was recorded on 25 Apr 1975, 19 May 1975, 23 May 1975, 06 Jul 1975, and 18 Jul 1975 at The Record Plant in New York City, NY.\nFour studio takes of BACKSTREETS are in circulation. …\nTrack credits:\n\nBruce Springsteen: guitar, vocals\nGarry Tallent: bass guitar\nMax Weinberg: drums\nRoy Bittan: piano, organ\n…</div>` +
+        `<h4>Born To Run</h4><div class="sec-plain">The Born To Run recording sessions can be divided into two phases … \n\nBorn To Run track list (vinyl edition)\n\nSide 1:\nTHUNDER ROAD\nTENTH AVENUE FREEZE-OUT\nNIGHT\nBACKSTREETS\n\nSide 2:\nBORN TO RUN\n…</div>` +
+        `<h4>Other Official Releases</h4><div class="sec-plain">In addition to its release on Born To Run, the official studio version of BACKSTREETS was also released in September 1975 on the b-side …\n\nThe live 18 Oct 1975 (early show) version of BACKSTREETS was released on The Roxy 1975 official live download in 2018.\n\nThe live 18 Nov 1975 version …</div>` +
+        `<h4>Covers</h4><div class="sec-plain">At least 7 artists have recorded and released Bruce Springsteen's BACKSTREETS.\n\n7 Lvvas -- Pirata\n\nCD - Boomerang Records (BG-008) - Spain, 1995\n\nBACKSTREETS is a Galician … adaption titled "CalexÃ³ns".</div>` +
+        `<h4>Available Versions</h4><div class="sec-plain">List of available versions of BACKSTREETS on this website:\n${VERSIONS.slice(0, 12).map(v => `BACKSTREETS [${v.v}]`).join('\n')}\n…</div>` +
+        `</div></div></div>` + foot('saved today');
+    const left = `<div class="tblock"><div class="xtitle">BACKSTREETS</div><div class="prow">${pill('Album')}<span class="xsub">Album version</span>${vnav(0)}</div></div>` +
+        encBanner(1) +
+        `<div class="cards"><div class="card"><div class="ch">Version</div><dl class="kv"><dt>Type</dt><dd>Album</dd><dt>Released on</dt><dd><i>Born To Run</i>, 1975</dd><dt>Written by</dt><dd>Bruce Springsteen</dd></dl></div>` +
+        `<div class="card"><div class="ch">On the site · 61 versions</div>${typeBar()}</div>` +
+        `<div class="card"><div class="ch">Releases</div><dl class="kv"><dt>Studio</dt><dd><i>Born To Run</i> + 5</dd><dt>Live</dt><dd>28 (1975–2012)</dd><dt>Covers</dt><dd>7</dd><dt>Movies</dt><dd>1</dd></dl></div></div>` +
+        sec('Info', '', `<div class="prose"><p>BACKSTREETS is a song written by Bruce Springsteen and released on his 1975 album <i>Born To Run</i>. The lyrics are for the album version as released in 1975.</p></div>`, true) +
+        sec('Studio recording', '4 takes in circulation', `<dl class="facts"><dt>Recorded</dt><dd>25 Apr, 19 May, 23 May, 06 Jul, 18 Jul 1975</dd><dt>Studio</dt><dd>The Record Plant, New York City, NY</dd><dt>Takes</dt><dd>4 in circulation: unofficial 1 (unfinished), 2 (alternate lyrics), 3 (close to the album), the album take</dd><dt>Produced by</dt><dd>Bruce Springsteen, Jon Landau, Mike Appel</dd></dl>` +
+            `<div class="crew"><span>Bruce Springsteen</span><span>guitar, vocals</span><span>Garry Tallent</span><span>bass guitar</span><span>Max Weinberg</span><span>drums</span><span>Roy Bittan</span><span>piano, organ</span></div>` +
+            `<div class="prose"><p>A candidate title track for <i>Born To Run</i>: Springsteen's handwritten list "Album #3" names "Backstreets" second, at 6:00.</p></div>`, true) +
+        sec('Images', '3', `<div class="gal"><span class="tile">Proposed song list</span><span class="tile b">The Promise box set</span><span class="tile c">Live In NYC DVD</span></div>`, true) +
+        sec('Credits / references', '', `<div class="prose"><p>Thanks Jake (ol'catfishinthelake at BTX and Greasy Lake) for the lyrics help. Studio and live facts partly from Brucebase; scans from Lost In The Flood.</p></div>`, false) +
+        sec('Request', '', `<div class="prose"><p>An aborted outtake (3:12) circulates; the site asks for it, and for the live 26 Sep 1976 performance, perhaps the first with the Sad Eyes interlude.</p></div>`, false);
+    const right = `<div class="toc">${[['Lyrics', ''], ['Born To Run', '2 editions'], ['Other releases', '4'], ['Live releases', '28'], ['Sad Eyes interlude', ''], ['Movies', '1'], ['Covers', '7'], ['Backstreets Magazine', ''], ['Available versions', '61']].map(([n, c]) => `<button type="button" class="chip" data-jump="${esc(n)}">${esc(n)}${c ? `<span class="n">${esc(c)}</span>` : ''}</button>`).join('')}</div>` +
+        sec('Lyrics', 'album version · 37 lines', lyricsBlock('album', L_ALBUM, LYR.album), true) +
+        sec('Born To Run', 'Columbia, 01 Sep 1975 · track 4', `<div class="eds">${edition('Vinyl edition', BTR_VINYL)}${edition('CD edition', BTR_CD)}</div>` +
+            `<details class="sec" style="border:0"><summary><h4 style="font-size:10px">The story</h4><span class="hint">2 paragraphs</span></summary><div class="body"><div class="prose"><p>The sessions fall into two phases: scattered 1974 sessions at 914 Sound Studios in Blauvelt, NY, and the March–July 1975 sessions at The Record Plant, where every track but the title track was recorded. The album peaked at #3 on the Billboard 200 …</p></div></div></details>`, true) +
+        sec('Other official releases', '4 releases', rowCards(OTHERS) + `<div class="ed" style="margin-top:8px"><h5>Rocks Vol. 1 (1973 - 1982) · track list</h5></div><div class="eds">${edition('CD-R', ROCKS.map((t, i) => [String(i + 1).padStart(2, '0'), t]).slice(0, 7))}${edition('', ROCKS.map((t, i) => [String(i + 1).padStart(2, '0'), t]).slice(7))}</div>`, false) +
+        sec('Live releases', '28 · 1975–2012', liveRelTable(), false) +
+        sec('Sad Eyes interlude', '', `<div class="prose"><p>From September 1976 to the end of the Darkness tour, live performances carried a soft piano monologue, later the basis of part of <a class="wa here">DRIVE ALL NIGHT</a>. Not to be confused with the 1990 outtake <a class="wa here">SAD EYES</a>.</p></div>`, false) +
+        sec('Appearance in movies', '1', `<div class="rowcard"><span class="thumb b"></span><div><div class="t"><i>Blinded By The Light</i> (2019)</div><div class="m">Gurinder Chadha · Viveik Kalra</div><div>Not on the soundtrack album. See <a class="wa here">I'LL STAND BY YOU</a>.</div></div></div>`, false) +
+        sec('Covers', '7 artists', rowCards(COVERS), false) +
+        sec('Backstreets Magazine', '', `<div class="prose"><p>The quarterly fanzine began in 1980, when Charles R. Cross handed out 10,000 copies of a 4-page tabloid at the 24 Oct 1980 Seattle show.</p></div>`, false) +
+        sec('Available versions', '61', versionsTable('vt-album', 0), false);
+    return bar('17 / 312', 'BACKSTREETS', 'BACK IN YOUR ARMS') + `<div class="mw-area"><div class="mw-x"><div class="mw-col">${left}</div><div class="mw-col">${right}</div></div></div>` + foot('saved today · page updated —');
+}
+function unoffWindow() {
+    const left = `<div class="tblock"><div class="xtitle">BACKSTREETS</div><div class="prow">${pill('Unofficial studio')}<span class="xsub">Unofficial studio version 1</span>${vnav(1)}</div></div>` +
+        `<div class="cards"><div class="card"><div class="ch">Version</div><dl class="kv"><dt>Type</dt><dd>Unofficial studio</dd><dt>Recorded</dt><dd>May–Jul 1975, The Record Plant</dd><dt>Circulates on</dt><dd><i>War And Roses</i> (E. St. Records)</dd><dt>State</dt><dd>unfinished (third verse)</dd></dl></div>` +
+        `<div class="card"><div class="ch">On the site · 61 versions</div>${typeBar()}</div></div>` +
+        sec('Info', '', `<div class="prose"><p>A studio take recorded between May and July 1975. An unfinished version (see the third verse) whose lyrics vary considerably from the album version.</p><p>In late 2005 Sirius XM's E Street Radio played a different mix of this take, with different guitar.</p></div>`, true) +
+        sec('Images', '1', `<div class="gal"><span class="tile d">War And Roses</span></div>`, true) +
+        sec('Credits', '', `<div class="prose"><p>Thanks Jake (ol'catfishinthelake at BTX and Greasy Lake) for the lyrics help.</p></div>`, false) +
+        sec('Request', '', `<div class="prose"><p>The lyrics may not be 100% correct; corrections are welcome.</p></div>`, false);
+    const right = sec('Lyrics', 'unofficial studio version 1', lyricsBlock('unoff', L_UNOFF, LYR.unoff), true) +
+        sec('Available versions', '61', versionsTable('vt-unoff', 1), false);
+    return bar('18 / 312', 'BACKSTREETS', 'BACKSTREETS') + `<div class="mw-area"><div class="mw-x"><div class="mw-col">${left}</div><div class="mw-col">${right}</div></div></div>` + foot('saved today');
+}
+function liveWindow() {
+    const left = `<div class="tblock"><div class="xtitle">BACKSTREETS</div><div class="prow">${pill('Live')}<span class="xsub">Live 18 Nov 1975 version</span>${vnav(4)}</div></div>` +
+        `<div class="cards"><div class="card"><div class="ch">Show</div><dl class="kv"><dt>Date</dt><dd>Tue 18 Nov 1975</dd><dt>Venue</dt><dd>Hammersmith Odeon</dd><dt>Place</dt><dd>London, England</dd><dt>Tour</dt><dd>Born To Run Tour</dd></dl></div>` +
+        `<div class="card"><div class="ch">Released on</div><dl class="kv"><dt>Release</dt><dd><i>Hammersmith Odeon, London '75</i></dd><dt>Kind</dt><dd>album and home video</dd><dt>Year</dt><dd>2005</dd></dl></div></div>` +
+        sec('Info', '', `<div class="prose"><p>The live 18 Nov 1975 performance at Hammersmith Odeon in London, during the Born To Run Tour. The complete show came out on <i>Hammersmith Odeon, London '75</i> in 2005.</p></div>`, true) +
+        sec("Hammersmith Odeon, London '75", 'the story · liner notes', `<div class="prose"><p>The band's first European tour: four concerts in England, Sweden and The Netherlands. The show was filmed on 16 mm and recorded on 24-track, then left untouched for nearly 30 years until Thom Zimny restored it and Bob Clearmountain remixed it.</p></div>` +
+            `<blockquote class="pull">For me, the set went by like a freight train. Later, all I remembered is an awkward record company party, that "what just happened?" feeling, and thinking we hadn't played that well. I was wrong.<cite>Bruce Springsteen, liner notes, 9/22/05</cite></blockquote>`, false) +
+        sec('Credits', '', `<div class="prose"><p>Thanks Jake (ol'catfishinthelake at BTX and Greasy Lake) for the lyrics help.</p></div>`, false);
+    const right = sec('Tracklist', '16 tracks · this song is 9', trackTable(HAMMER), true) +
+        sec('Lyrics', 'live 18 Nov 1975', lyricsBlock('live', L_LIVE, LYR.live), true) +
+        sec('Available versions', '61', versionsTable('vt-live', 4), false);
+    return bar('21 / 312', 'BACKSTREETS', 'BACKSTREETS') + `<div class="mw-area"><div class="mw-x"><div class="mw-col">${left}</div><div class="mw-col">${right}</div></div></div>` + foot('saved today');
+}
+function tablesWindow() {
+    const left = `<div class="tblock"><div class="xtitle">BACKSTREETS</div><div class="prow">${pill('Album')}<span class="xsub">Album version</span>${vnav(0)}</div></div>` +
+        `<div class="cards"><div class="card"><div class="ch">On the site · 61 versions</div>${typeBar()}</div></div>` +
+        sec('Born To Run · vinyl edition', 'record 1', `<div class="tbox" style="max-height:none"><table class="tt"><thead><tr><th aria-sort="none">Pos</th><th aria-sort="none">Title</th></tr></thead><tbody><tr class="part"><td colspan="2"><span class="pn2">Side A</span><span class="pc">4</span></td></tr>` +
+            BTR_VINYL.slice(0, 4).map(([p, t]) => `<tr${t === 'BACKSTREETS' ? ' class="me"' : ''}><td class="dim">${p}</td><td>${songLink(t)}</td></tr>`).join('') + `<tr class="part"><td colspan="2"><span class="pn2">Side B</span><span class="pc">4</span></td></tr>` +
+            BTR_VINYL.slice(4).map(([p, t]) => `<tr><td class="dim">${p}</td><td>${songLink(t)}</td></tr>`).join('') + '</tbody></table></div>', true);
+    const right = `<div class="toc"><button type="button" class="chip" data-jump="Available versions">Available versions<span class="n">61</span></button><button type="button" class="chip" data-jump="Covers">Covers<span class="n">7</span></button></div>` +
+        sec('Available versions', '61', versionsTable('vt-tables', 0), true) +
+        sec('Covers', '7 artists', `<div class="tbox"><table class="tt"><thead><tr><th class="ns"></th><th aria-sort="none">Artist</th><th aria-sort="none">Title</th><th aria-sort="none">Format</th><th aria-sort="ascending">Year</th></tr></thead><tbody>` +
+            COVERS.map(r => `<tr><td><span class="thumb ${r.th}"></span></td><td>${esc(r.artist)}</td><td><i>${esc(r.title)}</i>${r.note ? `<div class="dim" style="font-size:12px">${moj(r.note)}</div>` : ''}</td><td class="dim">${esc(r.fmt)}</td><td>${r.year}</td></tr>`).join('') + '</tbody></table></div>', true);
+    return bar('17 / 312', 'BACKSTREETS', 'BACK IN YOUR ARMS') + `<div class="mw-area"><div class="mw-x"><div class="mw-col">${left}</div><div class="mw-col">${right}</div></div></div>` + foot('saved today');
+}
+function encWindow() {
+    return bar('17 / 312', 'BACKSTREETS', 'BACK IN YOUR ARMS') + `<div class="mw-area" style="max-height:none"><div class="mw-x"><div class="mw-col">` +
+        `<div class="tblock"><div class="xtitle">BACKSTREETS</div><div class="prow">${pill('Album')}<span class="xsub">Album version</span></div></div>${encBanner(1)}</div>` +
+        `<div class="mw-col">${sec('Covers', '7 artists', rowCards(COVERS.slice(0, 2)), true)}</div></div></div>` + foot('Rest on the underlined word: the tooltip gives the site\'s text.');
+}
+function histWindow() {
+    const byYear = {};
+    LIVE_DATES.forEach(d => { const y = d.slice(-4); (byYear[y] = byYear[y] || []).push(d); });
+    const tours = { 1975: 'Born To Run Tour', 1976: '1976 tour', 1977: '1977 tour', 1978: 'Darkness Tour', 1979: 'Darkness Tour', 1981: 'The River Tour', 1984: 'Born In The U.S.A. Tour', 1985: 'Born In The U.S.A. Tour', 1988: 'Tunnel Of Love Express', 1995: 'off-tour', 1998: 'off-tour', 1999: 'Reunion Tour', 2000: 'Reunion Tour', 2003: 'The Rising Tour', 2005: 'Devils & Dust Tour', 2007: 'Magic Tour', 2008: 'Magic Tour', 2009: 'Working On A Dream Tour' };
+    const rows = Object.keys(byYear).map(y => `<div class="tour"><div class="tn">${esc(tours[y] || y)}<small>${y} · ${byYear[y].length} date${byYear[y].length === 1 ? '' : 's'}</small></div><div class="dates">${byYear[y].map(d => `<span class="dt v${RELEASED_LIVE.has(d) ? ' rel' : ''}" title="${esc(`Live ${d} version${RELEASED_LIVE.has(d) ? ' · officially released' : ''}`)}">${iso(d)}</span>`).join('')}</div></div>`).join('');
+    return bar('17 / 312', 'BACKSTREETS', 'BACK IN YOUR ARMS') + `<div class="mw-area"><div class="mw-x" style="grid-template-columns:minmax(0,1fr)"><div class="mw-col">` +
+        sec('Live history', `${LIVE_DATES.length} dates with a page · ${Object.keys(byYear).length} years`, rows, true) + '</div></div></div>' + foot('A blue date opens its version in this window.');
+}
+function varbWindow() {
+    const left = `<div class="tblock"><div class="xtitle">BACKSTREETS</div><div class="prow">${pill('Album')}<span class="xsub">Album version</span>${vnav(0)}</div></div>` +
+        `<div style="margin-top:10px">${lyricsBlock('varb', L_ALBUM, LYR.varb)}</div>`;
+    const right = `<div class="cards" style="margin-top:0"><div class="card"><div class="ch">Version</div><dl class="kv"><dt>Type</dt><dd>Album</dd><dt>Released on</dt><dd><i>Born To Run</i>, 1975</dd></dl></div><div class="card"><div class="ch">On the site · 61 versions</div>${typeBar()}</div></div>` +
+        sec('Info', '', `<div class="prose"><p>BACKSTREETS is a song written by Bruce Springsteen and released on his 1975 album <i>Born To Run</i>.</p></div>`, true) +
+        sec('Born To Run', 'track 4', `<div class="eds">${edition('Vinyl edition', BTR_VINYL)}${edition('CD edition', BTR_CD)}</div>`, true) +
+        sec('Studio recording', '4 takes', '<p>…</p>', false) + sec('Live releases', '28', '<p>…</p>', false) + sec('Covers', '7', '<p>…</p>', false) + sec('Available versions', '61', '<p>…</p>', false);
+    return bar('17 / 312', 'BACKSTREETS', 'BACK IN YOUR ARMS') + `<div class="mw-area"><div class="mw-x varB"><div class="mw-col">${left}</div><div class="mw-col">${right}</div></div></div>` + foot('saved today');
+}
+
+let albumMode = 'new';
+function paintAll() {
+    $('#mw-album').innerHTML = albumWindow(albumMode);
+    $('#mw-unoff').innerHTML = unoffWindow();
+    $('#mw-live').innerHTML = liveWindow();
+    $('#mw-tables').innerHTML = tablesWindow();
+    $('#mw-enc').innerHTML = encWindow();
+    $('#mw-hist').innerHTML = histWindow();
+    $('#mw-varb').innerHTML = varbWindow();
+}
+const REPORT = `springsteenlyrics.com: double-encoded text (UTF-8 read as Latin-1 and saved again)
+
+Page: https://www.springsteenlyrics.com/lyrics.php?song=backstreets
+  Covers · 7 Lvvas -- Pirata
+    "CalexÃ³ns"  →  "Calexóns"
+
+Page: https://www.springsteenlyrics.com/lyrics.php?song=trapped
+  Live History: on-tour
+    "Saint-Ã‰tienne"  →  "Saint-Étienne"
+    "BernabÃ©u"  →  "Bernabéu"
+
+Page: https://www.springsteenlyrics.com/lyrics.php?song=thunderroad
+  References in Popular Culture
+    "DéjÃ  Vu"  →  "Déjà Vu"
+
+Found by ShowAllEntityData on 2026-11-07 (pages read in this browser).`;
+$('#enc-report').textContent = REPORT;
+
+/* ---------- Picks ---------- */
+const PICKS = [
+    ['1', 'Collapsible sections, Ctrl+click all', 'Lyrics, Info and tracklists open; long prose closed; size hints.'],
+    ['2', 'Lyric sheet typography', 'Book face, stanza gaps, small-caps stage notes, fold repeats, Copy.'],
+    ['2f', 'Lyrics face', 'System book serif · EB Garamond · Literata · Georgia (as today).'],
+    ['3', 'Links and previews in song lists', 'Versions, release tracklists, ALL CAPS titles in prose.'],
+    ['4', 'Column layout', 'A: facts left, lyrics right · B: lyrics left, the rest right.'],
+    ['5', 'Structured release rows', 'Other releases, covers, singles, movies as rows with thumbnails.'],
+    ['6', 'Version navigator', '‹ previous version · N of 61 · next version ›'],
+    ['7', 'Section chips', 'A sticky row of chips that jump to a section.'],
+    ['8', 'Encoding finding', 'Decided: repaired + marked, banner + report, sl-double-utf8, index from pages read.'],
+    ['9', 'Differs from the album version', 'In scope: Marks / Side by side, counts, ghost lines.'],
+    ['10', 'Live History timeline', 'Tours as rows, dates as chips, version dates linked.'],
+    ['11', 'Prose polish', 'Pull quotes, placeholders dropped, updated date in the foot.'],
+    ['12', 'Filterable/sortable tables', 'Versions, tracklists, live history, release rows.'],
+];
+const OPTS = { '2f': ['System', 'Garamond', 'Literata', 'Georgia'], '4': ['A', 'B', 'Neither'] };
+const picks = store.get('picks', {});
+function paintPicks() {
+    $('#picks').innerHTML = PICKS.map(([n, t, d]) => {
+        const o = OPTS[n] || ['Yes', 'Later', 'No'];
+        const cur = (picks[n] || {}).v || '';
+        return `<div class="pick"><span class="no">${esc(n)}</span><div><h3>${esc(t)}</h3><p>${esc(d)}</p></div>` +
+            `<div class="opts" role="radiogroup" aria-label="${esc(t)}">${o.map(x => `<label><input type="radio" name="p-${esc(n)}" id="p-${esc(n)}-${esc(x)}" value="${esc(x)}"${cur === x ? ' checked' : ''}><span>${esc(x)}</span></label>`).join('')}</div>` +
+            `<textarea id="pn-${esc(n)}" data-note="${esc(n)}" placeholder="Note (optional)" aria-label="Note for ${esc(t)}">${esc((picks[n] || {}).note || '')}</textarea></div>`;
+    }).join('');
+    outPicks();
+}
+function outPicks() {
+    const lines = PICKS.map(([n, t]) => { const p = picks[n] || {}; return `${n}. ${t}: ${p.v || '—'}${p.note ? ` (${p.note})` : ''}`; });
+    $('#pick-out').value = 'SL song window mockups (org/sl-song-POH-mockups.html), my picks:\n' + lines.join('\n');
+}
+async function copyText(text, msgEl) {
+    try { await navigator.clipboard.writeText(text); if (msgEl) msgEl.textContent = 'Copied'; } catch (e) { if (msgEl) msgEl.textContent = 'Copy blocked: select the text and copy it'; }
+    if (msgEl) setTimeout(() => { msgEl.textContent = ''; }, 2200);
+}
+
+/* ---------- Events ---------- */
+document.addEventListener('click', (e) => {
+    const t = e.target;
+    const tab = t.closest('#tabs button');
+    if (tab) {
+        $$('#tabs button').forEach(b => b.setAttribute('aria-pressed', String(b === tab)));
+        $$('.view').forEach(v => { v.hidden = v.id !== `v-${tab.dataset.v}`; });
+        store.set('tab', tab.dataset.v);
+        return;
+    }
+    const sw = t.closest('.sw button');
+    if (sw) {
+        const g = sw.parentElement;
+        $$('button', g).forEach(b => b.setAttribute('aria-pressed', String(b === sw)));
+        if (g.dataset.sw === 'album-mode') { albumMode = sw.dataset.m; $('#mw-album').innerHTML = albumWindow(albumMode); }
+        if (g.dataset.sw === 'font') { lyricFont = sw.dataset.f; store.set('font', lyricFont); Object.keys(LYR).forEach(paintLyr); }
+        return;
+    }
+    // Ctrl+click on a section heading: every section of this window.
+    const sum = t.closest('details.sec > summary');
+    if (sum && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        const d = sum.parentElement, open = !d.open;
+        $$('details.sec', sum.closest('.mw')).forEach(x => { x.open = open; });
+        return;
+    }
+    const jump = t.closest('[data-jump]');
+    if (jump) {
+        const d = $$('details.sec', jump.closest('.mw')).find(x => x.dataset.sec === jump.dataset.jump);
+        if (d) { d.open = true; d.scrollIntoView({ block: 'start', behavior: 'smooth' }); d.classList.add('flash'); setTimeout(() => d.classList.remove('flash'), 1200); }
+        return;
+    }
+    const lm = t.closest('[data-lyr-mode] .tb');
+    if (lm) { const id = lm.parentElement.dataset.lyrMode; LYR[id].mode = lm.dataset.m; paintLyr(id); return; }
+    const unf = t.closest('[data-unfold]');
+    if (unf) { const id = unf.closest('[data-lyr]').dataset.lyr; LYR[id].fold = false; paintLyr(id); return; }
+    const cp = t.closest('[data-copy]');
+    if (cp) { copyText(LYR[cp.dataset.copy].text, cp.nextElementSibling); return; }
+    const rep = t.closest('[data-report]');
+    if (rep) { copyText(REPORT, null); rep.textContent = 'Report copied'; setTimeout(() => { rep.textContent = 'Copy report for the site maintainer'; }, 2000); return; }
+    const box = t.closest('[data-tbl]');
+    if (box) {
+        const id = box.dataset.tbl, st = TBL[id];
+        const chip = t.closest('[data-chip]');
+        const th = t.closest('th[data-sort]');
+        if (chip) {
+            const v = chip.dataset.chip;
+            if (e.ctrlKey || e.metaKey) st.chips = st.chips.includes(v) ? st.chips.filter(x => x !== v) : st.chips.concat(v);
+            else st.chips = st.chips.length === 1 && st.chips[0] === v ? [] : [v];
+        } else if (th) {
+            if (st.sort !== th.dataset.sort) { st.sort = th.dataset.sort; st.dir = 1; } else st.dir = st.dir === 1 ? -1 : (st.dir === -1 ? 0 : 1);
+        } else if (t.closest('[data-clear]')) { st.q = ''; st.chips = []; } else if (t.closest('[data-open]')) {
+            const msg = box.closest('.mw').querySelector('.mw-foot span:nth-child(2)');
+            if (msg) msg.innerHTML = '<b>Opens that version in this window</b> · Backspace returns here';
+            return;
+        } else return;
+        box.outerHTML = versionsTable(id, Number(box.dataset.self));
+        return;
+    }
+    if (t.id === 'pick-copy') { copyText($('#pick-out').value, $('#pick-msg')); return; }
+    if (t.id === 'pick-reset') { Object.keys(picks).forEach(k => delete picks[k]); store.set('picks', picks); paintPicks(); }
+});
+document.addEventListener('input', (e) => {
+    const t = e.target;
+    if (t.matches('.q')) {
+        const box = t.closest('[data-tbl]'), id = box.dataset.tbl;
+        TBL[id].q = t.value;
+        box.outerHTML = versionsTable(id, Number(box.dataset.self));
+        const q = $(`#q-${id}`); q.focus(); q.setSelectionRange(q.value.length, q.value.length);
+    }
+    if (t.matches('[data-note]')) { const n = t.dataset.note; picks[n] = Object.assign({}, picks[n], { note: t.value }); store.set('picks', picks); outPicks(); }
+});
+document.addEventListener('change', (e) => {
+    const t = e.target;
+    if (t.matches('[data-ghost]')) { LYR[t.dataset.ghost].ghosts = t.checked; paintLyr(t.dataset.ghost); }
+    if (t.matches('[data-fold]')) { LYR[t.dataset.fold].fold = t.checked; paintLyr(t.dataset.fold); }
+    if (t.matches('.pick input[type=radio]')) { const n = t.name.slice(2); picks[n] = Object.assign({}, picks[n], { v: t.value }); store.set('picks', picks); outPicks(); }
+});
+
+paintAll();
+paintPicks();
+$$('.sw[data-sw="font"] button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.f === lyricFont)));
+const tab0 = store.get('tab', 'album');
+const tb0 = $(`#tabs button[data-v="${tab0}"]`);
+if (tb0 && tab0 !== 'album') tb0.click();
+})();
+</script>
+</body>
+</html>

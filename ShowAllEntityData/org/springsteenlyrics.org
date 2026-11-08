@@ -1403,23 +1403,216 @@ autocomplete="current-password" to the login form's password field (hTxtPassword
 
 
 
-* TODO add an image glyph which shows the medium images if they can be mapped/deduced from their names/descriptions
+* DONE add an image glyph which shows the medium images if they can be mapped/deduced from their names/descriptions
 
 add an image glyph which shows the medium images to the h3 medium header line if they can be mapped/deduced from their
 names/descriptions
 
 
 * TODO the SL song detail FRP needs a more nicer rendering
+** initial
 
-the SL song detail FRP needs a more nicer/professional look and feel
+the SL song detail POHs needs a more nicer/professional look and feel
 
 #+begin_example
-collapsable (Ctrl-click ALL) sections)
-nice font (maybe different ones for the lyrics section itself))
-bigger fonts for other sections
-etc.
-
+@debug/sl-song-POH.html - POH - https://www.springsteenlyrics.com/lyrics.php?song=backstreets - official studio version
+@debug/sl-song-unofficial-POH.html  - POH - https://www.springsteenlyrics.com/lyrics.php?song=backstreets_unofficial1 - unofficial studio version
+@debug/sl-song-live-POH.html - POH - https://www.springsteenlyrics.com/lyrics.php?song=backstreets_1975-11-18 - live version
 #+end_example
 
+parse a couple more to get an idea of the structure
 
+#+begin_example
+collapsable sub-headers(Ctrl-click ALL sections)
+nice font(s) for the lyrics section itself
+hyperlinks+POH for song lists and "AVAILABLE VERSIONS"
+... make some more suggestions
+#+end_example
 
+show me some nice rich HTML mockups before implementation
+
+maybe also move some sections from the right side to the left
+
+** enhancements
+
+1.)
+
+Double-encoded UTF-8 should be flagged as a finding in the list PT which points to the detail page and the detail page
+itself, so that I can report it to Eddy Wehbe, the site maintainer, which I personally know
+
+2.)
+
+maybe include filterable/sortable tables for TRACKLISTs, "AVAILABLE VERSIONS" and release tracklists
+
+3.)
+
+also implement "differs from the album version" right away
+
+** Plan (Claude, approved 2026-11-07T14:25+01:00, NB-3641)
+
+Status: plan approved; *Phase A mockups published, waiting for vzell's picks*
+(=org/sl-song-POH-mockups.html=, https://claude.ai/artifact/2fzZykcmmtBTGKhes9bGpc, built with
+=python3 scripts/build-mockup-artifact.py org/sl-song-POH-mockups.html <out.html>=; its "Your picks" tab
+copies the picks as text). *Phase B implemented on =feat/sl-song-poh= (uncommitted at
+2026-11-07T15:15+01:00), waiting for vzell's browser check.* Done: every pick (1–12, 9 included), the
+=sl-double-utf8= finding, specs (=tests/fixtures/sl-song-window.spec.js=, 6 tests; =SL_SHOTS=<dir>=
+saves pictures), mutations (=scripts/mutations/sl-song-window.json=, 15 entries, all as expected), docs
+(=docs/claude/springsteenlyrics.md= "The song window", =findings.md=, =detail-pages.md=, HELP),
+WIP changelog. Not done: the encoding banner on the =sl-song= page itself (FRP): its tables' cells
+are flagged by the finding, but its head has no banner or report button yet. Off-host (an SL song
+previewed on MusicBrainz) the window has no compare.
+
+vzell's picks (2026-11-07): every proposal Yes (1–12, with 9 in scope); 2f lyrics face: System (book serif
+stack, no web font); 4 column layout: A (facts left, lyrics right); 12: the filter string is highlighted in
+the tables (=_hlEsc()= / =_hlHtml()=, =mark.mb-dg-hl=).
+
+Design note for Phase B (2026-11-07): the window has too many SL-only parts (title block, cards, lyric
+sheet with the diff, chips) for generic =side=/=table= keys, so the record carries =data.slSong=
+(plain data, cached) and =_dpExtractedCols(data, t)= hands such a record to =_slSongCols(data, t)=. That
+is the only SL line in the shared renderer, and it covers both callers (=_dpExtractedHtml()= and the
+off-host =_extExtracted()=).
+To continue on another machine: read this subtree, then build/finish the mockup
+=org/sl-song-POH-mockups.html= (publish as a private Artifact), get vzell's picks, then Phase B.
+
+*** Context
+
+The POH window (Space on a =lyrics.php?song=…= link) shows one long right column of plain =<h4>= headings
+and =pre-wrap= text dumps. The release track lists are prose lines, the "Available Versions" are unlinked
+text, nothing collapses, and the lyrics share the same small type as everything else. The left column holds
+only Fields and Images. Snapshots: =debug/sl-song-POH.html= (album), =debug/sl-song-unofficial-POH.html=,
+=debug/sl-song-live-POH.html=.
+
+*** What exists (reuse, don't rebuild)
+
+- =_dpParseSlSong()= / =_dpSlSongFacts()= (the record), built on =_slSongRead()= (shared with the =sl-song= PT),
+  which already has:
+  - =versions[]= (href, self);
+  - =releases[].editions= (=_slSongEditionGroups()=);
+  - the rows =others=, =live=, =covers= and =movies= (with images);
+  - =studio=, =show=, =released= and =pictures=.
+- =_dpExtractedCols()= renders the window:
+  - =data.collapsible= gives =details.mb-dp-sec=, remembered in =_dpSecState=, with Ctrl+click toggling all
+    (=_dpInitSecToggles()=; used by BB and KF);
+  - a section may carry =html= instead of =text=.
+- =_dpTrackListHtml(tracks, sl)= → =_slTrackTitleHtml()= / =_slSongSpanHtml()= link SL songs, with the MB
+  work glyphs (=_slSongsWindowKick()=); a window link opens in place, with Back.
+- =_slSongLyricsHtml()= greys stage notes (=span.mb-sl-stage=), FRP head only so far.
+- Window tables: =_dpListTableHtml(t, id, cols, rows, opts)= (filter, three-state sort, facet chips, group
+  rows =tr.mb-dp-tsec=) and =_dpCompactTableHtml()= (paged). Both need the window target =t=.
+  =_dpExtractedHtml(data, res)= is called from =extracted(t, start, force, repaint)= in the =_DP_SITES= source
+  and does not get =t= yet.
+- Window CSS: =.mb-dp-dialog .mb-dp-x= is a grid (0.9fr / 1.1fr, Georgia 13.5px, ink =#2b2622=, dim
+  =#7a6d5c=, line =#d9cfbd=, area =#fbf8f1=); =h4= is uppercase monospace; tables use =.mb-dg-vt=, chips
+  =.mb-dg-fc=.
+- Finding precedent: =sl-old-address= in =FINDINGS=.
+
+*** Structure survey (5 more pages: borntorun, thepromise, trapped, thunderroad, ifiwasthepriest)
+
+- All have lyrics and an italic version line. None uses bracketed stage notes (only the unofficial and live
+  Backstreets pages do).
+- Italic release sections: 0–6 per page, each with vinyl and CD edition track lists.
+- "Live History: on-tour / off-tour": dated lists per tour, up to 268 dates (thunderroad); some dates link
+  version pages.
+- Blockquotes and interview quotes (thepromise, thunderroad); a chart block of stacked lines
+  (ifiwasthepriest).
+- Placeholders: "PAGE UNDER CONSTRUCTION", "SECTION NOT YET COMPLETED".
+- "Single Release" rows follow the same cover + "Artist -- Title" row pattern.
+- Available Versions: 4–75 entries; types Album, Official studio, Unofficial, Early draft, Alternate, Demo,
+  Live, Cover.
+- Double-encoded UTF-8 is common: "Saint-Ã‰tienne", "BernabÃ©u", "DéjÃ  Vu", "CalexÃ³ns". It is in the
+  site's own UTF-8 source (fixture =detail-sl-song-backstreets-logged-in.html=).
+- ALL CAPS song titles in prose are mostly unlinked; track lists are always linked.
+
+*** Phase A: mockups (=org/sl-song-POH-mockups.html=, a private Artifact)
+
+House style as in =org/sl-song-mockups.html= (a design bench, the mocked window light in both themes).
+Placeholder lyrics: no lyric text is reproduced. Each proposal shows today vs proposed, for the album, the
+unofficial and the live window. The proposals:
+
+1. Collapsible sections, Ctrl+click for all. Lyrics, Info and Tracklist start open; the long prose (release
+   story, Other Official Releases, liner notes, Backstreets Magazine) starts closed. Headers carry a size
+   hint ("Available versions · 61").
+2. Lyrics typography: a lyric-sheet block (system book serif: Iowan Old Style / Palatino / Georgia, 15px,
+   generous leading), stanza gaps, stage notes in grey italic small caps, optional folding of repeated runs
+   ("… × 9"), a copy button.
+3. Links and POH in song lists: Available Versions grouped by type, each linked (opens in the window), this
+   version ●; release track lists as real tracklists from =releases[].editions=; ALL CAPS titles in prose
+   linked when the catalogue knows them.
+4. Rebalanced columns. Left: the title block with a version-type pill, Fields as small cards, Info, Studio
+   recording (dates, studio, takes, credits as musician → instruments), Images, Credits, Request. Right:
+   Lyrics, the live tracklist, release sections, covers, movies, versions. Variant B: lyrics alone on the
+   left.
+5. Structured release rows: Other Official Releases, Covers, Single Release and Movies as compact rows with
+   a thumbnail; live releases as date · release · year → version link.
+6. A version navigator in the title block ("‹ Unofficial 3 · Version 5 of 61 · Live 22 Aug 1976 ›").
+7. A mini table of contents: chips that jump to a section and open it.
+8. Double-encoded UTF-8 as a finding (vzell: to report to Eddy Wehbe, the site's maintainer). Decided:
+   - *Display: repaired and marked.* "Calexóns" with a dotted underline, the site's "CalexÃ³ns" in its
+     tooltip. Only reversible runs are repaired (=Ã.=/=Â.= re-decoded as latin-1 into valid UTF-8).
+   - *POH and =sl-song= FRP:* a banner "N encoding errors on this page" with *Copy report for the site
+     maintainer* (URL, then section: bad → fix).
+   - *A new =FINDINGS= entry*, =sl-double-utf8= (level error, add-finding skill, modelled on =sl-old-address=).
+   - *The list PT (=sl-lyrics=)* flags a row only when its song page is ALREADY READ (a saved preview record
+     or the sl-song copy): no extra requests, so the count grows while browsing. The record carries
+     =mojibake=. The =sl-song= sub-tables flag their own cells.
+9. "Differs from the album version", *in scope now*:
+   - The reference is the Album version from the versions list, else the first official studio version,
+     else no comparison.
+   - It is read with =_dpGet()= (cached, rate-gated), started only by the window's paint with =start=,
+     never by a hover or a repaint.
+   - An LCS diff over normalised lines (case, punctuation and whitespace ignored; stage notes and blank
+     lines skipped).
+   - A changed line is tinted, its tooltip shows the album line with the changed words marked. A line not
+     on the album gets a "+". The album's missing lines are ghost lines, behind a toggle.
+   - A chip says "17 of 52 lines differ"; a segmented control offers Lyrics · Marks · Side by side.
+   - The diff is a pure, unit-tested =_slLyricsDiff(a, b)=.
+10. Live History as a timeline: per tour, a collapsible row of date chips; a date with a version page is a
+    link.
+11. Prose polish: blockquotes and interview quotes as pull quotes, placeholders dropped, the chart block as
+    a small table, "Page last updated" in the foot.
+12. Filterable, sortable window tables (vzell), with =_dpListTableHtml()= / =_dpCompactTableHtml()=:
+    - Available Versions: Title · Version · Type · Date · Show/Tour; Type chips; parts per type while
+      unsorted; self ●; the title link opens in the window.
+    - Release tracklists: Pos · Title, disc/record as a part, self ●, songs linked.
+    - Also the live tracklist, the Live History dates (Tour chips), and the release, cover and single rows
+      (List table with 40 px thumbnails).
+
+*** Phase B: implementation (after vzell's picks)
+
+- Branch =feat/sl-song-poh=; =ShowAllEntityData_CHANGELOG.wip.json=; no version bump on the branch.
+- =_dpParseSlSong()= / =_dpSlSongFacts()=:
+  - =data.collapsible=;
+  - sections with =html=, an =open= default and a =side= ('left'/'right');
+  - section tables as plain data (=table: {id, cols, rows, opts}=, cacheable JSON), the column =html=
+    functions built at render time;
+  - versions, =slTracks= and =slShow= for the links.
+- =_dpExtractedCols()=: honour =side: 'left'= (generic; other sites never set it) and an optional table of
+  contents. Pass =t= into =_dpExtractedHtml()= / =_dpExtractedCols()= for the tables, and check that
+  =_dpTblClick()= repaints a record-based window.
+- =_slMojibake(text)= → ={bad, fix}[]= and =_slMojibakeFix(text)=, shared by the display, the banner and
+  report, the finding and the index lookup.
+- CSS scoped to =.mb-dp-dialog .mb-sl-song …= (a class on =.mb-dp-x=, like =mb-dg-swap=).
+- =_DP_PARSER_VERSION= 17 → 18, with a doc line. Off-host: links from the page's own hrefs only; glyphs stay
+  SL-only.
+- Unchanged: the card (hover), unless a pick says otherwise; the =sl-song= FRP head (it could share the
+  lyrics typography later).
+- Docs: =docs/claude/springsteenlyrics.md= ("A song's own page"), =docs/claude/detail-pages.md= (=side=,
+  tables in records), HELP (previews), this file, a =DEBUG-NOTES.md= entry for the snapshots.
+
+*** Verification
+
+- Fixture specs (=detail-preview.spec.js=, =sl-song.spec.js=; fixtures
+  =detail-sl-song-backstreets*-logged-in.html=):
+  - collapsing, and Ctrl+click for all;
+  - versions linked, opening in the window with Back; self marked;
+  - the lyrics block's class and stanza gaps; left/right placement;
+  - the diff: unofficial1 and 1975-11-18 against the album fixture; the right lines marked, the album page
+    requested exactly once, nothing requested from a hover; =_slLyricsDiff()= case table;
+  - the versions table filters, sorts and filters by chip;
+  - the encoding finding: shown repaired with the original in the tooltip, the report text, the index row
+    flagged only once the record is saved;
+  - a Brucebase window unchanged.
+- Mutation-check each guard (=scripts/mutation-check.py=).
+- =python3 scripts/run-test-full.py --log <scratchpad>/test-full.log= (announced);
+  =python3 scripts/lint-summary.py --check=.
+- vzell checks the three Backstreets URLs in the real browser before any merge.

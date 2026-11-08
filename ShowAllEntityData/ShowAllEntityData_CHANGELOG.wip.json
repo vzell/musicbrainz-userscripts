@@ -1,0 +1,32 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-11-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "springsteenlyrics.com song previews have a new window. On the left: the song's title, a coloured pill with the version's type, ‹ › to step through this song's other versions, cards for the version (or a live version's show and the release it came out on) and for how many versions and releases the site has, then Info, the studio facts (the band as name and instruments) and the pictures. On the right: a row of chips that jump to a section, the lyrics, then the releases, rows, Live History and Available Versions.",
+          "The lyrics are set as a lyric sheet in a book face, with a gap between verses and stage notes such as [Spoken:] set apart in grey small capitals. A run of identical lines folds to one line with \"× 9\", which unfolds on a click. Copy copies the lyrics as plain text.",
+          "Every section folds: click its heading to open or close it, or Ctrl+click to open or close all of them. Lyrics, Info and the tracklists start open, the long texts start closed, and your choice is kept while the page is open.",
+          "Differs from the album version: on any other version (unofficial, live, …) the window also reads the album version's page and marks the lyrics. Changed lines are yellow, with the changed words picked out and the album line in the tooltip. Added lines are green, and the album's missing lines can be shown crossed out. A chip counts the lines that differ, and Side by side shows both sheets. The album page is read once, when the window opens, never from a hover.",
+          "Tables you can filter and sort, with the filter text marked: Available Versions (with a chip and a heading per type, and this version marked), each release's tracklist (a chip per edition, this song marked; a live version shows its show's tracklist above the lyrics), the release, single, cover and movie rows with their pictures, and the live releases. Song titles open their page in the same window, with Back.",
+          "Live History shows one row per tour, with each date as a small chip; a date with a version page on the site opens it in the window. Quotes are set as pull quotes, and the site's placeholders (\"SECTION NOT YET COMPLETED\", \"PAGE UNDER CONSTRUCTION\") are left out. Song titles the site writes in capitals without a link are linked when the site has a page for them.",
+          "Double-encoded text on springsteenlyrics.com (\"CalexÃ³ns\" for \"Calexóns\", \"Saint-Ã‰tienne\" for \"Saint-Étienne\"): the site serves it in its own pages. The window shows it repaired and underlined, with the site's text in the tooltip, and a red banner counts the spots, with a button that copies a report for the site's maintainer. A new ❌ ERROR finding, \"Double-encoded text (springsteenlyrics.com)\", flags the rows: on a song's page by their own text, and on the lyrics index once a song's page has been read, so the count grows as you browse. Setting: \"Highlight springsteenlyrics.com rows with double-encoded text as ERROR\"."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "springsteenlyrics.com song page (Show the song): a song's \"Single Release\" rows are now a \"Single releases\" table, like Other official releases."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Preview windows on brucebase, jungleland.it, brucespringsteen.it and springsteenlyrics.com: a window whose page was already read could go back to \"Loading the detail page…\" when it was redrawn (a table's filter or sort, a chip)."
+        ]
+      }
+    ]
+  }
+]

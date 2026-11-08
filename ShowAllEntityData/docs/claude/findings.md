@@ -253,6 +253,33 @@ annotation outside any table, so there the link's card ("Old address") is
 what tells. Spec: `findings-sl-old-address.spec.js` (links planted in
 `search-annotation-tooltip.html`); mutations in `scripts/mutations/sl-song.json`.
 
+### springsteenlyrics.com's double-encoded text: `sl-double-utf8`
+
+The fourth kind of late data (2026-11-07, org/springsteenlyrics.org "the SL
+song detail …", vzell: to report to the site's maintainer). An ❌ error, row
+scope (the text can be in any column), springsteenlyrics.com only
+(`enabled()` checks `_isSlHost`), generic tint
+`sa_findings_tint_sl_double_utf8`.
+
+- `test()` asks `_findCellSlMojibake(cell)`. First it scans the cell's own
+  text (`_slMojibakeScan()`): that is the song page's tables, whose cells
+  carry the site's text. On the lyrics index (`sl-lyrics`, `_slMojIsIndex()`)
+  it then looks up the linked song page's record in `_dpMem`
+  (`data.slSong.mojibake`). It reads the cell's own text and href, so a
+  master row answers as a live one. `rowGate` is cheap: a lead byte's
+  character in the row's text, or an index row whose page is in memory.
+- The index's data arrives late in two ways. After a render,
+  `_fiAfterRender()` puts the saved song pages in memory, and
+  `_slMojAfterRender()` then queues the rows whose page has runs. When a
+  record lands (read now, or from IndexedDB), `_DP_SITES[…].onRecord` →
+  `_slMojRecordLanded()` queues the rows linking it. The id is in
+  `_LATE_FINDING_IDS`. No row ever makes a request: the count grows as pages
+  are read.
+- The song window shows the repaired text, the banner and the copyable
+  report (docs/claude/springsteenlyrics.md, "The song window").
+- Spec `tests/fixtures/sl-song-window.spec.js` ("the lyrics index");
+  mutations `scripts/mutations/sl-song-window.json`.
+
 ### The Brucebase MB-Event column: `bb-mbev-link-mismatch`, `bb-mbev-link-missing`
 
 The third kind of late data (2026-10-24, org/TODO.org "Some enhancements"

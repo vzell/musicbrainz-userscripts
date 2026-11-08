@@ -396,6 +396,91 @@ the features (`_slSongFeatures()`) use the item pages' live part
   `overflow: visible !important; display: flow-root` (the float containment
   kept). Pinned by `sl-song.spec.js` "layout".
 
+### The song window — `data.slSong`, `_slSongCols()` (2026-11-07)
+
+org/springsteenlyrics.org "the SL song detail …"; mockups
+`org/sl-song-POH-mockups.html`, https://claude.ai/artifact/2fzZykcmmtBTGKhes9bGpc;
+vzell's picks: every proposal, the system book face, layout A, the tables'
+filter text marked. Branch `feat/sl-song-poh`.
+
+- **The record carries the window's own reading** (`_DP_PARSER_VERSION`
+  18): `_dpParseSlSong()` keeps its fields, sections and excerpt for the
+  card, and adds `data.slSong` (`_slSongWindowData()`), plain data cached
+  with the record. `_dpExtractedCols(data, t)` hands any record with
+  `slSong` to `_slSongCols(data, t)`. That one line is all the SL code in the
+  shared renderer, and it covers the off-host path too (`_extExtracted()`
+  passes `t`).
+- **What `_slSongRead()` adds for it:** `prose`, every section as blocks
+  (`_slProseBlocks()`: `p`, `q` (a `<blockquote>`, a pull quote), `credits`
+  (the "Track credits:" quote, read by `_slStudioCredits()` into the band
+  and credit lines), `li`, `h`, each `_dpBlockHtml()` so the links stay;
+  panels, rows, pictures, forms and the site's placeholders
+  (`_SL_SONG_PLACEHOLDER_RE`) left out); `liveHistory`
+  (`_slLiveHistoryRead()`: one `.panel` per tour, "List of [known] <tour>
+  performances", its `ol.monospaced` "29 May 1981 at Venue, Place" lines,
+  linked when the site has that version); `singles` ("Single Release" rows,
+  now in `_SL_SONG_ROW_SECTIONS`; the FRP got a "Single releases" table).
+  The FRP's `texts` are unchanged: the window's blocks are a separate field.
+- **Layout A.** Left: the title block (`.mb-sls-tblock`: type pill,
+  version, ‹ N of M › through the versions, plain links the window
+  drills into), the encoding banner, the cards (Version, or Show + Released
+  on for a live version; "On the site · N versions" with a bar by type;
+  Releases), then the left sections (`_SL_SONG_LEFT_RE`: Info, Studio
+  Recording, Writing…, Background, Credits, Request), with Images before
+  Credits. Right: the chips (`.mb-sls-toc`, jump + open), Lyrics (a live
+  version: its Tracklist first, mockup C), the release sections, the rows,
+  Live releases, Live History, the other prose, Available Versions.
+- **Folds** are `details.mb-dp-sec` with keys by role (`sl:Lyrics`,
+  `sl:release`, `sl:story`, `sl:<label>`), so `_dpInitSecToggles()` gives
+  Ctrl+click for all and `_dpSecState` keeps a choice from song to song.
+  Default open: Info, Lyrics, tracklists, prose of 600 characters or less.
+  Closed: Credits, Request, rows, Live History, Available Versions.
+- **Tables** are the window's List tables (`_dpListTableHtml()` with the
+  target `t`): Available Versions (Type chips in page order, a part per type,
+  `tr.mb-sls-me`), a release's tracks (`tracksTable()`: a part per medium,
+  chips per edition, the edition holding this song chosen at first through
+  `init.chip`), rows with 40 px thumbnails (whose links have
+  `data-mb-artv-ext`, so the viewer steps through them after the images), and
+  live releases. Columns with no value in any row are left out. The filter
+  text is marked by `_hlEsc()`/`_hlHtml()`.
+- **The compare** (pick 9): `slSong.ref` is the Album version, else the
+  first Official studio version, else none (and never for the album version
+  itself). The source calls `site.windowKick(data)` when the window shows a
+  record, from its Space or from the answer it was waiting for, never from a
+  repaint. `_slSongRefKick()` then reads the reference once per URL through
+  `_dpGet()` (`_slsRef`: loading / ok / failed) and repaints. SL host only:
+  off-host the window has no compare. `_slLyricsDiff()` is pure: an LCS of
+  the lines that carry words (`_slLyricsNorm()`), gaps paired in order
+  (`chg`, the album line in `was`), leftovers `add` or missing.
+  `_slsUi` per URL holds mode (Lyrics / Marks / Side by side), fold and ghosts.
+  The controls are one delegated capture listener (`_slsInit()`), and Copy
+  uses `navigator.clipboard` (no `GM_setClipboard`: a new grant re-prompts
+  every user).
+- **ALL CAPS titles in prose** (`_slsCapsLinks()`): text between tags only,
+  never inside a link, never the page's own song; a comma run whole, then by
+  part; a sentence's full stop stays out of the link. `_slSongSlugOf()` uses
+  the embedded list, so it works off-host too.
+- **Double-encoded text** (pick 8). The site serves it in its own UTF-8
+  source. `_slMojibakeScan()` reads a lead byte's character (Â–ô) and as
+  many continuation characters as it announces, Windows-1252's 0x80–0x9F
+  characters mapped back by `_SL_CP1252_BYTE`, and keeps a run only when it
+  decodes as UTF-8. One extra rule covers "à": its A0 byte is a no-break
+  space, which `_dpText()` collapses to a plain one ("DéjÃ Vu"), so "Ã " right
+  after a lower-case letter is "à ". The window shows repairs
+  (`_slMojibakeHtml()`, `span.mb-sl-moj`, the site's text as tooltip).
+  `slSong.mojibake` lists them by section for the banner and the report
+  (`_slsReportText()`). The ❌ finding `sl-double-utf8`
+  (docs/claude/findings.md) flags rows.
+- **The source's memory hit.** `extracted()` kept no answer for a record
+  found in memory, so the first repaint (a filter keystroke) drew "Loading
+  the detail page…". It now stores the hit in `exRes`. This fixes the other
+  three foreign hosts too.
+- Spec `tests/fixtures/sl-song-window.spec.js` (album, unofficial, live,
+  badlands, the index finding, the pure functions; `SL_SHOTS=<dir>` saves
+  pictures of the windows); mutations `scripts/mutations/sl-song-window.json`.
+  The detail fixture route serves `backstreets_unofficial1` and
+  `backstreets_1975-11-18` too.
+
 **MusicBrainz → SL, old addresses.** MusicBrainz still carries two old forms,
 nearly all in work annotations (sample of 2026-11-04,
 `scripts/probe-mb-sl-urls.py`): `/lyrics/<l>/<slug>.php` and

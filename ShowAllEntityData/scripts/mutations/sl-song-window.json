@@ -1,0 +1,201 @@
+[
+    {
+        "name": "layout: a song record falls back to the generic two columns",
+        "why": "org/springsteenlyrics.org 'the SL song detail ...', vzell's picks 2026-11-07: layout A, the record's own window.",
+        "edits": [
+            {
+                "find": "        if (data.slSong) return _slSongCols(data, t);\n",
+                "replace": "        if (data.slSong && false) return _slSongCols(data, t);\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-song-window.spec.js",
+        "grep": "album version: layout A",
+        "expect": "fail"
+    },
+    {
+        "name": "repaint: a window served from memory shows Loading after a table filter",
+        "why": "The source kept no answer for a memory hit, so the first repaint (a filter keystroke, a chip) replaced the window with 'Loading the detail page...'.",
+        "edits": [
+            {
+                "find": "                        exRes.set(t.key, { outcome: 'ok', data: mem.data, at: mem.at, cached: true });\n",
+                "replace": "                        void 0;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-song-window.spec.js",
+        "grep": "album version: layout A",
+        "expect": "fail"
+    },
+    {
+        "name": "folds: Ctrl+click does not reach every section",
+        "why": "Pick 1: Ctrl+click opens or closes every section of the window (_dpInitSecToggles()).",
+        "edits": [
+            {
+                "find": "    function _slSongCols(data, t) {\n        _dpInitSecToggles();\n",
+                "replace": "    function _slSongCols(data, t) {\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-song-window.spec.js",
+        "grep": "album version: layout A",
+        "expect": "fail"
+    },
+    {
+        "name": "compare: the window never reads the album version",
+        "why": "Pick 9: a non-album version's lyrics are compared with the album version's, read by the window (_slSongRefKick()).",
+        "edits": [
+            {
+                "find": "        if (!sl || !sl.ref || !_isSlHost || _slsRef.has(sl.ref.href)) return;\n",
+                "replace": "        if (sl || !sl) return;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-song-window.spec.js",
+        "grep": "unofficial version",
+        "expect": "fail"
+    },
+    {
+        "name": "compare: the window's own answer (not a memory hit) never starts the compare",
+        "why": "windowKick also runs when the answer the window waited for lands (Space before the card had read the page). Not visible to a fixture: every spec opens the window from a card, which has read the page already, so Space takes the memory-hit path (also kicked, pinned by the entry above). A spec that pressed Space before the card's read landed would cover it; the rate gate makes that timing unreliable.",
+        "edits": [
+            {
+                "find": "                        if (res.outcome === 'ok' && site.windowKick && _dpDialogShowing(t)) site.windowKick(res.data);\n",
+                "replace": "                        if (false) site.windowKick(res.data);\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-song-window.spec.js",
+        "grep": "unofficial version",
+        "expect": "pass"
+    },
+    {
+        "name": "compare: the album version compares with itself (a needless request)",
+        "why": "The album version has nothing to compare with. Its own version is unlinked on the site (no href), which with !pick.self keeps it out; both guards are dropped here.",
+        "edits": [
+            {
+                "find": "            if (pick && !pick.self && pick.href) ref = { href: pick.href, version: pick.version };\n",
+                "replace": "            if (pick) ref = { href: pick.href, version: pick.version };\n"
+            },
+            {
+                "find": "        if (song.lyrics && v.type !== 'Album') {\n",
+                "replace": "        if (song.lyrics) {\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-song-window.spec.js",
+        "grep": "pure: the compare",
+        "expect": "fail"
+    },
+    {
+        "name": "compare: every line counts as the same",
+        "why": "_slLyricsDiff(): the matched lines are 'same', the rest changed or added.",
+        "edits": [
+            {
+                "find": "        const pairs = _slLcs(vi, ai, (x, y) => _slLyricsNorm(V[x]) === _slLyricsNorm(A[y]));\n",
+                "replace": "        const pairs = _slLcs(vi, ai, () => true);\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-song-window.spec.js",
+        "grep": "pure: the compare",
+        "expect": "fail"
+    },
+    {
+        "name": "encoding: no double-encoded run is ever found",
+        "why": "Pick 8: the site's 'CalexÃ³ns' is shown repaired and counted.",
+        "edits": [
+            {
+                "find": "        if (!/[Â-ô]/.test(s)) return out;\n",
+                "replace": "        if (s) return out;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-song-window.spec.js",
+        "grep": "album version: layout A",
+        "expect": "fail"
+    },
+    {
+        "name": "encoding: the no-break space a reader collapsed is not recognised",
+        "why": "badlands' 'DéjÃ Vu': A0 became a plain space in _dpText().",
+        "edits": [
+            {
+                "find": "        const nb = /(?<=\\p{Ll})Ã (?=\\S)/gu;\n",
+                "replace": "        const nb = /(?!)/gu;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-song-window.spec.js",
+        "grep": "badlands",
+        "expect": "fail"
+    },
+    {
+        "name": "finding: a song read in the window never re-stamps the index rows",
+        "why": "The lyrics index flags a row once its song page was read (late data, _slMojRecordLanded()).",
+        "edits": [
+            {
+                "find": "        if (!_slMojIsIndex() || !data || !data.slSong || !(data.slSong.mojibake || []).length) return;\n",
+                "replace": "        if (data || !data) return;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-song-window.spec.js",
+        "grep": "the lyrics index",
+        "expect": "fail"
+    },
+    {
+        "name": "live: the show's tracklist shows all three editions at once",
+        "why": "The edition holding this song is chosen at first (init chip), so one list shows.",
+        "edits": [
+            {
+                "find": "                    init: many ? { chip: [first] } : null, group: r => r.part, groupCol: 'title', groupHead,\n",
+                "replace": "                    init: null, group: r => r.part, groupCol: 'title', groupHead,\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-song-window.spec.js",
+        "grep": "live version",
+        "expect": "fail"
+    },
+    {
+        "name": "live: the tracklist goes below the lyrics",
+        "why": "Mockup C: a live version's show above its lyrics.",
+        "edits": [
+            {
+                "find": "        if (sl.type !== 'Live') pushLyrics();\n",
+                "replace": "        pushLyrics();\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-song-window.spec.js",
+        "grep": "live version",
+        "expect": "fail"
+    },
+    {
+        "name": "prose: the page's own song is linked to itself",
+        "why": "_slsCapsLinks() never links the page's own song.",
+        "edits": [
+            {
+                "find": "            if (!slug || slug === ownBase) return null;\n",
+                "replace": "            if (!slug) return null;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-song-window.spec.js",
+        "grep": "pure: the compare",
+        "expect": "fail"
+    },
+    {
+        "name": "prose: the site's placeholders stay",
+        "why": "Pick 11: 'SECTION NOT YET COMPLETED' says nothing about the song.",
+        "edits": [
+            {
+                "find": "            if (!text || _SL_SONG_PLACEHOLDER_RE.test(text)) return;\n",
+                "replace": "            if (!text) return;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-song-window.spec.js",
+        "grep": "badlands",
+        "expect": "fail"
+    },
+    {
+        "name": "versions: the table's filter text is not marked",
+        "why": "Pick 12: the filter string is highlighted in the tables.",
+        "edits": [
+            {
+                "find": "            key, label, val: r => _slMojibakeFix(val(r) || ''), html: (r, q) => _hlHtml(_slMojibakeHtml(val(r) || ''), q),\n",
+                "replace": "            key, label, val: r => _slMojibakeFix(val(r) || ''), html: r => _slMojibakeHtml(val(r) || ''),\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-song-window.spec.js",
+        "grep": "album version: layout A",
+        "expect": "fail"
+    }
+]

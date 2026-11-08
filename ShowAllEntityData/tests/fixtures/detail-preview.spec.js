@@ -765,8 +765,17 @@ test.describe('the other hosts', () => {
         const dialog = page.locator('#mb-dp-dialog');
         await expect(dialog.locator('.mb-dp-xtitle')).toHaveText('BADLANDS');
         await expect(dialog.locator('.mb-dp-col').last().locator('h4').first()).toHaveText('Lyrics');
-        expect(await dialog.locator('.mb-dp-section').first().evaluate((el) => el.textContent))
-            .toBe(want.sections[0].text);
+        // Since parser version 18 (2026-11-07) the lyrics are a sheet of
+        // stanzas, runs of identical lines folded to one with "× N": unfolded
+        // again, its lines are the record's, stanza by stanza.
+        const sheet = await dialog.locator('.mb-sls-sheet').first().evaluate((el) => Array.from(el.querySelectorAll('.mb-sls-stz')).map(stz =>
+            [].concat(...Array.from(stz.querySelectorAll('.mb-sls-ln')).map((ln) => {
+                const rep = ln.querySelector('.mb-sls-rep');
+                const n = rep ? Number(rep.textContent.replace(/\D/g, '')) : 1;
+                const text = Array.from(ln.childNodes).filter(c => c !== rep).map(c => c.textContent).join('');
+                return Array(n).fill(text);
+            })).join('\n')));
+        expect(sheet).toEqual(want.sections[0].text.split(/\n\n+/));
         await page.keyboard.press('Escape');
         await expect(dialog).toHaveCount(0);
 
