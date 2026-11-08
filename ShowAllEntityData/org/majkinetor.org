@@ -1274,3 +1274,64 @@ later on
 
 Create one more followup reply with a link to my development userscript version in case majkinetors want to try it
 
+** DONE summary
+
+● By "the two comment URLs" I meant each comment's own permanent link (…/issues/938#issuecomment-<id>), which the
+  earlier posts are recorded with. You don't need to send them: I looked them up on GitHub.
+
+  You also posted the short acknowledgement. I had marked it cancelled; it's now recorded as posted. All three match their drafts word for word:
+
+  ┌───────────────────────────────┬──────────────┬──────────────────────────┐
+  │             Draft             │ Posted (CET) │         Comment          │
+  ├───────────────────────────────┼──────────────┼──────────────────────────┤
+  │ org/reply-to-938-ack.org      │ 16:44        │ #issuecomment-6723536638 │
+  ├───────────────────────────────┼──────────────┼──────────────────────────┤
+  │ org/reply-to-938-dev-link.org │ 20:15        │ #issuecomment-6725896816 │
+  ├───────────────────────────────┼──────────────┼──────────────────────────┤
+  │ org/reply-to-938-answer.org   │ 20:21        │ #issuecomment-6725962477 │
+  └───────────────────────────────┴──────────────┴──────────────────────────┘
+
+  Each draft's heading is now DONE and carries its link. org/majkinetor.org also records the rest of the thread:
+  - majkinetor's "let me know when to merge" and your reply that you'd do it shortly;
+  - your screenshot of the ⋯ menu;
+  - your "yes you can merge".
+
+  The open point upstream is his answer about keeping V working under data-mbu-keys-off.
+
+  One thing to expect after he merges codex/interop-938 into his main: the next majkinetor refresh will report several
+  anchors as adopted upstream (C1–C4). Those need flipping, and the C5 anchor retiring, since he dropped C5. That's
+  noted in org/majkinetor.org too.
+
+  The update is committed to main as cb64dff3 and pushed.
+** licence switch
+
+I tend do go with 1., but can I easily change our license from MIT to GPL-3 (if yes, please do), as I initally never
+thought about licensing issues and just copied it from a typical userscript header template. Would this change your plan
+regarding "Joining mbu:mb-gate" and the implementation. Additionally mention majkinetor userscripts in our section
+"* This script uses functionality originally included in the following user scripts, thx to the original authors..."
+
+** questions
+
+Joining mbu:mb-gate: how should SAED's own ws/2 pacing relate to the shared schedule?
+
+❯ 1. Both: local 1100 ms + shared (Recommended)
+     Each request waits for SAED's own per-tab slot AND books a shared slot (whichever is later). SAED is never faster than today, existing timing specs stay valid, and it also yields to EH/ST and holds on
+     their 503s.
+  2. Shared protocol only
+     Replace _relAwaitRateSlot's 1100 ms with the v1 GCRA (1000 ms gap, burst 3). Same pace as majkinetor's scripts; SAED alone would get slightly faster (burst after idle). Timing specs need rework.
+  3. I tend do go with 1., but can I easily change our license from MIT to GPL-3 (if yes, please do), as I initally never     ✔
+     thought about licensing issues and just copied it from a typical userscript header template. Would this change your plan
+     regarding "Joining mbu:mb-gate" and the implementation. Additionally mention majkinetor userscripts in our section
+     "* This script uses functionality originally included in the following user scripts, thx to the original authors..."
+     
+What goes into this first round?
+
+❯ 1. Book + report + honour lead (Recommended)
+     Book every musicbrainz.org ws/2 request in mbu:mb-gate, report every answer (429/503 → shared cool/hot, clean → hot decay), and wait out another script's lead for background requests, as v1 requires. SAED
+     takes no lead itself; the browser-check iframe stays out.
+  2. Also take the lead
+     In addition, SAED takes the lead (≤10 s leases) while a visible page's own ws/2 work is running, e.g. a popup window's load. More coupling, more to test.
+  3. Also the browser-check iframe
+     In addition, re-pass 'Verifying your browser' in a hidden frame (only matters for page fetches, not ws/2).
+
+
