@@ -1690,6 +1690,3 @@ Now we are back on "vzell-lap" and continue there:
 
 - fix the commit message so that it follows your standard as what we have done so far
 - record the info about the implementation in the file @org/springsteenlyrics.org in the section "** Plan (Claude, approved 2026-11-07T14:25+01:00, NB-3641)"
-
-
-

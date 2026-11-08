@@ -4,9 +4,30 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1745 versions; the month pages hold all of them.
+This page shows the newest 100 of 1746 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1575 — 2026-11-08
+
+**🚀 Feature**
+
+- springsteenlyrics.com song previews have a new window. On the left: the song's title, a coloured pill with the version's type, ‹ › to step through this song's other versions, cards for the version (or a live version's show and the release it came out on) and for how many versions and releases the site has, then Info, the studio facts (the band as name and instruments) and the pictures. On the right: a row of chips that jump to a section, the lyrics, then the releases, rows, Live History and Available Versions.
+- The lyrics are set as a lyric sheet in a book face, with a gap between verses and stage notes such as \[Spoken:\] set apart in grey small capitals. A run of identical lines folds to one line with "× 9", which unfolds on a click. Copy copies the lyrics as plain text.
+- Every section folds: click its heading to open or close it, or Ctrl+click to open or close all of them. Lyrics, Info and the tracklists start open, the long texts start closed, and your choice is kept while the page is open.
+- Differs from the album version: on any other version (unofficial, live, …) the window also reads the album version's page and marks the lyrics. Changed lines are yellow, with the changed words picked out and the album line in the tooltip. Added lines are green, and the album's missing lines can be shown crossed out. A chip counts the lines that differ, and Side by side shows both sheets. The album page is read once, when the window opens, never from a hover.
+- Tables you can filter and sort, with the filter text marked: Available Versions (with a chip and a heading per type, and this version marked), each release's tracklist (a chip per edition, this song marked; a live version shows its show's tracklist above the lyrics), the release, single, cover and movie rows with their pictures, and the live releases. Song titles open their page in the same window, with Back.
+- Live History shows one row per tour, with each date as a small chip; a date with a version page on the site opens it in the window. Quotes are set as pull quotes, and the site's placeholders ("SECTION NOT YET COMPLETED", "PAGE UNDER CONSTRUCTION") are left out. Song titles the site writes in capitals without a link are linked when the site has a page for them.
+- Double-encoded text on springsteenlyrics.com ("CalexÃ³ns" for "Calexóns", "Saint-Ã‰tienne" for "Saint-Étienne"): the site serves it in its own pages. The window shows it repaired and underlined, with the site's text in the tooltip, and a red banner counts the spots, with a button that copies a report for the site's maintainer. A new ❌ ERROR finding, "Double-encoded text (springsteenlyrics.com)", flags the rows: on a song's page by their own text, and on the lyrics index once a song's page has been read, so the count grows as you browse. Setting: "Highlight springsteenlyrics.com rows with double-encoded text as ERROR".
+
+**✨ Improve**
+
+- springsteenlyrics.com song page (Show the song): a song's "Single Release" rows are now a "Single releases" table, like Other official releases.
+
+**🐛 Fix**
+
+- Preview windows on brucebase, jungleland.it, brucespringsteen.it and springsteenlyrics.com: a window whose page was already read could go back to "Loading the detail page…" when it was redrawn (a table's filter or sort, a chip).
+
 
 ## 9.99.1574 — 2026-11-07
 
@@ -887,16 +908,6 @@ This page shows the newest 100 of 1745 versions; the month pages hold all of the
 - A documentation search link (/search?…&type=doc) gets a card and a window too. MusicBrainz's own search page is Google's and has no results in it, so they come from the MusicBrainz wiki's search: the card says how many pages match and names the first ones, the window lists up to 50 of them as a table (page, snippet, last updated) with a filter, chips and sorting, and a page opens in the window.
 - The userscript header lists wiki.musicbrainz.org under @connect, so Tampermonkey does not ask before the first documentation search.
 - Performance: link-preview windows only; no change to the page tables' filter, sort or render path. A documentation search asks the wiki once (one request per search, at most one a second), then answers from memory and the browser's cache.
-
-
-## 9.99.1475 — 2026-10-28
-
-**✨ Improve**
-
-- A release's window shows its tracklist as one table per medium, under a header that folds it ("CD 2 · 8 tracks · 52:09"): \#, title (opening its recording in the window), the artist where a track's credit is not the release's, length; one filter above all the mediums, which marks what it matched and says per medium how many tracks match.
-- An event's window shows its setlist as a table: \#, the song, and the rest of its line (guests, a remark) in a column of its own, with a filter and sorting.
-- A series' window shows each item's kind with MusicBrainz's own icon before its name.
-- Performance: link-preview windows only; no change to the page tables' filter, sort or render path, and no new request.
 
 
 ---
