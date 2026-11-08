@@ -194,7 +194,7 @@ the part that stays true and is what makes it useful for orientation.
 
 | Grep for                                        | What it is                                                                                                                      |
 |-------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------|
-| `// ==UserScript==`                             | Header, then a third-party attribution block (do not edit)                                                                      |
+| `// ==UserScript==`                             | Header, then a third-party attribution block (never change an existing entry; a new credit is appended at its end)              |
 | `const SCRIPT_BASE_NAME`                        | Script constants: `SCRIPT_ID`, remote URLs                                                                                      |
 | `const configSchema`                            | Settings-menu definitions (checkboxes, colour pickers, …); by far the largest single block                                      |
 | `const Lib = (typeof VZ_MBLibrary`              | Library init, with a fallback stub if the `@require`'d library failed to load                                                   |

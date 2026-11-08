@@ -1,0 +1,14 @@
+[
+    {
+        "version": "WIP.1",
+        "date": "2026-11-09",
+        "sections": [
+            {
+                "label": "📝 Docs",
+                "items": [
+                    "ShowAllEntityData is now licensed GPL-3.0-or-later (it was MIT up to 9.99.1581); the full text ships as LICENSE next to the script. Several of the scripts it builds on are GPL themselves, and majkinetor's Musicbrainz Toolset is now credited in the header, because the shared MusicBrainz request gate (WIP.2) is ported from it."
+                ]
+            }
+        ]
+    }
+]

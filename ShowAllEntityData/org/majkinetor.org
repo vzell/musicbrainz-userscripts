@@ -570,6 +570,11 @@ All three verified identical to their drafts. The rest of the thread that day (n
   the next refresh (refresh-majkinetor) takes the harness copies from it: the =conv-c1-*=, =conv-c2=, =conv-c3= and
   =conv-c4= anchors will then report BACK (adopted upstream) and need flipping, and =conv-c5= retiring (C5 dropped).
   Open upstream: majkinetor's answer to "keep V under =data-mbu-keys-off=".
+- milic-bot, 2026-11-09 00:00 CET: *merged to =main= as =7eb7c563=*, rebased on current main, versions bumped, String
+  Theory and Credit Hoarder rebuilt; =codex/interop-938= deleted ([[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-6728358851][comment]]). Upstream HEAD
+  =2d092e02= (String Theory 2026.11.08.235934). vzell's live browsers run his =main= from then on.
+  =dev/net/mb-gate.mjs= and DEVELOP.md are byte-identical at 9e4cdd59, 7eb7c563 and 2d092e02 (checked
+  2026-11-09), so C6's v1 contract is now on his =main=.
 
 *** Refresh log
 

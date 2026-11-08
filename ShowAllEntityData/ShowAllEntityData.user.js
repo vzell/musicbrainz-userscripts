@@ -78,7 +78,7 @@
 // @grant        GM_listValues
 // @grant        GM_registerMenuCommand
 // @grant        GM_unregisterMenuCommand
-// @license      MIT
+// @license      GPL-3.0-or-later
 // ==/UserScript==
 
 /*
@@ -90,6 +90,15 @@
  * and evolved, I switched to Claude and only now and then asked the other two for help.
  *
  * NOTICE: This script has only been tested with Tampermonkey (>=v5.4.1) on Vivaldi, Chrome, Firefox, Opera and Brave.
+ *
+ * Copyright (C) 2026 Volker Zell
+ *
+ * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
+ * License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
+ * version. It is distributed WITHOUT ANY WARRANTY; see the GNU General Public License for details. The full text is in
+ * the LICENSE file next to this script (https://www.gnu.org/licenses/gpl-3.0.txt). Versions up to 9.99.1581 were
+ * published under the MIT licence; from the version after it on, GPL-3.0-or-later applies (see the credits below:
+ * several of the scripts it builds on are GPL themselves).
  *
  * ── PUBLISHING: the VZ_MBLibrary @require above MUST be rewritten ────────────
  *
@@ -243,6 +252,24 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+// ============================================================================================================================================
+// @name         Musicbrainz Toolset (String Theory, Event Horizon, ISRC Scout, Mission Control, …)
+// @author       majkinetor
+// @license      GPL-3.0
+// @homepageURL  https://github.com/majkinetor/musicbrainz-userscripts
+//
+//   uses just: dev/net/mb-gate.mjs  ==> the shared cross-tab MusicBrainz request gate
+//              (localStorage "mbu:mb-gate", Web Lock "mbu-mb-gate", protocol version 1 as
+//              documented in his DEVELOP.md "Shared request-gate protocol", on his main
+//              since 7eb7c563, 2026-11-08)
+//
+//   _mbGateState(), _mbGateSlot() and _mbGateAnswer() are PORTED from his mbnState(),
+//   mbnSlot() and mbnAnswer() (rewritten to this script's conventions; same schedule, same
+//   formulas), so this script books its /ws/2 requests in the same schedule as his scripts
+//   and holds when any of them is throttled. His transport (mbnFetch, mbnWsFetch) and the
+//   browser-check frame (mbnReverify) are not taken.
+//   The data-mbu-* marks (#938) and Event Horizon's ⋯ menu launchers are shared
+//   conventions agreed with him, not his code.
 // ============================================================================================================================================
 
 (function() {
