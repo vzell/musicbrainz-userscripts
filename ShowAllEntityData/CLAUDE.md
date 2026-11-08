@@ -407,12 +407,19 @@ fetches — including the in-script ❓ Help and 📜 ChangeLog dialogs, which r
 those files at runtime. Publishing is copying files there by hand.
 
 **The library `@require` differs between the two on purpose.** This repo points
-at the working copy (`file:///V:/…/lib/VZ_MBLibrary.user.js`) so a live browser
-check exercises the library in this tree; the published copy must carry the
-network URL. That changed on 2026-09-23 — VZ_MBLibrary 4.1.0 and 4.2.0 both
-rewrote parts of the settings dialog, and against the mirror's 4.0.0 none of
-that code runs, so a live test was testing the published library while looking
-like a real one.
+at its own library on GitHub, `main`
+(`raw.githubusercontent.com/vzell/musicbrainz-userscripts/main/lib/VZ_MBLibrary.user.js`,
+since 2026-11-08: the development copy then installs and works for anyone, e.g.
+majkinetor, #938); the published copy must carry the mirror's network URL.
+From 2026-09-23 to 2026-11-08 it was the working copy
+(`file:///V:/…/lib/VZ_MBLibrary.user.js`), because VZ_MBLibrary 4.1.0 and 4.2.0
+rewrote parts of the settings dialog and a live test against the mirror's 4.0.0
+ran none of that code. The same trap now has a smaller form: a live browser
+check runs the library as pushed to `main`, and Tampermonkey keeps a cached
+`@require` until the script is updated or reinstalled — a library change is
+exercised only once it is on `main` and the script was re-fetched. The
+Playwright harness is unaffected: it injects `lib/VZ_MBLibrary.user.js` from
+disk (`tests/support/loadPage.js`).
 
 **Shipping a `file://` `@require` fails silently for every user**: `Lib` falls
 back to a stub whose `settings` is `{}`, every setting resolves to its inline

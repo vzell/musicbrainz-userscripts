@@ -12,7 +12,7 @@
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=musicbrainz.org
 // @require      https://cdn.jsdelivr.net/npm/@jaames/iro@5
 // @require      https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js
-// @require      file:///V:/home/vzell/git/musicbrainz-userscripts/lib/VZ_MBLibrary.user.js
+// @require      https://raw.githubusercontent.com/vzell/musicbrainz-userscripts/main/lib/VZ_MBLibrary.user.js
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|genre|event|collection|url)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings|edits|open_edits|annotations|annotation(?:\/\d+)?)\/?(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|label|series|collection)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/subscribers\/?(?:\?.*)?$/
@@ -94,9 +94,17 @@
  * ── PUBLISHING: the VZ_MBLibrary @require above MUST be rewritten ────────────
  *
  * This is the DEVELOPMENT repository (vzell/musicbrainz-userscripts), and its
- * library @require points at the WORKING COPY:
+ * library @require points at THIS repository's library on GitHub, branch main
+ * (since 2026-11-08, vzell: so the development copy installs and works for
+ * anyone, e.g. majkinetor trying it beside his scripts — #938):
  *
- *     // @require      file:///V:/home/vzell/git/musicbrainz-userscripts/lib/VZ_MBLibrary.user.js
+ *     // @require      https://raw.githubusercontent.com/vzell/musicbrainz-userscripts/main/lib/VZ_MBLibrary.user.js
+ *
+ * Until then it pointed at the working copy (file:///V:/…/lib/VZ_MBLibrary.user.js),
+ * which only works on vzell's machine. The price: a live browser check runs
+ * the library as pushed to main, and Tampermonkey caches a @require until the
+ * script is updated or reinstalled — a library change is exercised only after
+ * it is on main AND the script was re-fetched.
  *
  * The published copy (vzell/mb-userscripts, the announced one) must carry the
  * network URL instead:
