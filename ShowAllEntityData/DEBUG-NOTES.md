@@ -28642,3 +28642,31 @@ everything, system book face, layout A, filter text highlighted.
 - Results: `sl-song-window.spec.js` 6/6; the SL specs (detail-preview, sl-song, sl-lyrics) 61/61, two of
   them updated for the new layout (the lyrics are a sheet now, no `.mb-dp-section`; "Available
   Versions" keeps the site's case).
+
+## 2026-11-08 — majkinetor refresh: 1df6193 → 65032ef; a 503 next to Event Horizon now hits SAED's entity-pictures lookup (docs/majkinetor-refresh-2026-11-08)
+
+Env: 2026-11-08T13:39:32–13:46:53+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1,
+Chromium 151.0.7922.34 · no Tampermonkey (GM stubs, realNetworkGmXhr) · live musicbrainz.org (IPv4 worked).
+
+Second run of the refresh-majkinetor skill. Harness copies all from upstream `65032ef` (2026-11-08 13:36): String
+Theory 2026.11.08.133602 (its `@description` names EH 2026.11.08.131500 and ISRC Scout 2026.11.08.122500), plus the
+standalone EH and ISRC Scout of those versions. main's raw link still served 2026.11.08.133538, one rebuild behind;
+`diff` showed only version stamps (the bundle's and Credit Hoarder's), so the copies were taken from the clone.
+
+- Upstream: no CHANGELOG entries, no new member. EH: "Background effects" (Tron/Stars/Aurora/Rain, image
+  backgrounds; `div.eh-amb` hosts appended to `document.body` only while EH shows, i.e. its own body) and new
+  `<html data-st-eh-fx-try>`/`-edit` marks from ST's theme chooser. Shared runtime: `mbuAutomated()` (#936, a Falcon
+  worker iframe or `mbu-auto=0`), dock entries no longer transformed. Mission Control `@exclude`s release subpages.
+  ISRC Scout: nothing ShowAllEntityData sees.
+- Probe, all cases with the bundle and alone: every Coexistence row as before (bar hidden in MB's body under EH,
+  hover cards dead after V when SAED started under EH, `h` leaves the FRP, the C-case reload, case I 36/36
+  `data-tip`, 0 `title`, 0 platform stamps).
+- Case D (EH on at load, V, SAED's 31-page artist fetch, 39.6 s): five 503s, four on EH's `release-group?query=arid:`
+  search (offsets 100–400) and one on ShowAllEntityData's own `/ws/2/artist/<mbid>?inc=url-rels`. That is the
+  entity-pictures lookup (`sa_entity_images`, `_eiStart()` → `_mbWsLoad()`; the page's `fetch()`, the single `ws2`
+  request in the SAED-only case 0). On 2026-11-06 all of D's 503s were EH's. Neither side is shielded while SAED is
+  outside `mbu:mb-gate`; noted in the gate TODO of `org/majkinetor.org`.
+- Anchors: 34/34 held (EH +47…+1237); four added (`mc-exclude-subpages`, `eh-fx-try`, `ui-automated`,
+  `saed-ei-ws2`), 38/38, `--update-lines` done, pinned `65032ef`.
+- #938: no answer yet (labelled 2026-11-07). #926 closed; majkinetor's comparison report rates SAED "Partial
+  overlap" with Event Horizon (his verdict in discussion #941).
