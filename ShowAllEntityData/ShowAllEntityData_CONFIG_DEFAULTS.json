@@ -2,11 +2,11 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1574+2026-11-07",
-    "schema_entries": 496,
+    "script_version": "9.99.1575+2026-11-08",
+    "schema_entries": 497,
     "sections": 54,
-    "settings": 442,
-    "settings_with_default": 437,
+    "settings": 443,
+    "settings_with_default": 438,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 265,
+      "checkbox": 266,
       "color_picker": 62,
       "divider": 54,
       "number": 53,
@@ -275,6 +275,7 @@
     "sa_bb_sidebar_right": "Show the Brucebase side bar on the right",
     "sa_bb_tip_images": "Media icons and song glyphs: the page's images on hover",
     "sa_bb_year_pages": "Enable on the Brucebase year pages (event lists)",
+    "sa_block_eh_single_keys": "Ignore Event Horizon's single-letter keys on MusicBrainz's page",
     "sa_bs_detail_preview": "Preview record pages in the brucespringsteen.it database",
     "sa_bs_tip_images": "Photo column: the record's photo on hover",
     "sa_caa_big_img_size": "Big CAA/EAA image fetch size",
@@ -719,6 +720,7 @@
     "sa_bb_sidebar_right": false,
     "sa_bb_tip_images": true,
     "sa_bb_year_pages": true,
+    "sa_block_eh_single_keys": true,
     "sa_bs_detail_preview": true,
     "sa_bs_tip_images": true,
     "sa_caa_big_img_size": 250,

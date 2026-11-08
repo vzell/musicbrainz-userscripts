@@ -78,7 +78,8 @@ Check, IS = ISRC Scout, AS = Art Station, CH = Credit Hoarder, GT = Group Therap
   1. *measured*: when SAED starts while EH shows, its hover cards are dead after V, because `#mb-stat-tooltip`
      lives in EH's body, which V removes. Same for the sidebar handle (found by vzell 2026-11-08). *Fixed* on
      =docs/majkinetor-refresh-2026-11-08= (WIP.1, =_saBody()=; measured again after the fix).
-  2. *measured*: EH's single-letter keys (H, E, R, …) also work on our FRP and navigate away from it.
+  2. *measured*: EH's single-letter keys (H, E, R, …) also work on our FRP and navigate away from it, and on the
+     IP too (vzell, 2026-11-08). *Fixed* on =docs/majkinetor-refresh-2026-11-08= (WIP.2, =_ehKeyGuardInstall()=).
   3. *measured* (14:11 CET, harness copy refreshed to 2026.11.06.170000): ISRC Scout moved its link labels
      from `title` to `data-tip`, so SAED's `_isrcScoutLinkPlatform()` returns `''`. The "Links" column loses
      platform filter/📊/sort data.
@@ -423,7 +424,7 @@ with EH alone.
 | A    | → V (EH off, same page)                                   | No reload. The buttons are visible and the fetch works (release-tracks in 3.4 s). The ☰ SAED menu works (its panel re-attaches to =document.body= on open). *Hover cards are dead*: =#mb-stat-tooltip= was created in EH's body at start-up and left the document with it (0 copies in the document). *Same for the sidebar handle* (2026-11-08): shown over EH's view at load, not in the document after V or after the render                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | A/B  | FRP → V (EH on) → V (EH off), same page                   | FRP intact both times (rows, filter bar); no reload; buttons visible again after the second V                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | B    | EH off at load → SAED fetch → hover                       | Everything normal; the hover card shows                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| B    | FRP, press =h= (focus on the page, not in a filter)       | *Navigated to =/release/…/edits=*: EH's "Editing history" key works on our FRP too. FRP lost                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| B    | FRP, press =h= (focus on the page, not in a filter)       | *Navigated to =/release/…/edits=*: EH's "Editing history" key works on our FRP too. FRP lost. *Since WIP.2 (2026-11-08T15:18–15:20+01:00, EH alone and in ST)*: =h= on the IP and on the FRP navigates nowhere (=_ehKeyGuardInstall()=); V still switches EH                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | C    | EH on → follow a link to the RG *inside EH* (pushState)   | URL is now =/release-group/…=, but MB's hidden body (and SAED in it) is still the *release* page                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | C    | → V                                                       | *Reload* (=eh-off=) into MB's RG page; SAED starts there normally (the harness re-injects SAED, as Tampermonkey would by itself); buttons visible                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | C    | → V (EH on again) → browser Back                          | EH shows the RG, then the release, both without a reload. SAED's hidden body stays the RG page; turning EH off now reloads again                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -448,7 +449,7 @@ Answers to your three questions:
      =document.body.appendChild= sites in SAED). Fix: append our floating hosts to =document.documentElement=
      (outside both bodies, as the dock does), or re-attach on show (the toolbar-menu pattern), or re-parent them
      when =<html data-mbu-page>= changes.
-  2. *EH's bare-letter keys on our FRP* (o/e/r/c/h/t/d/a/s/p/./,) navigate away. Users can turn them off in EH's
+  2. *Fixed (WIP.2, 2026-11-08: =_ehKeyGuardInstall()=, see the DONE item below).* *EH's bare-letter keys on our FRP* (o/e/r/c/h/t/d/a/s/p/./,) navigate away. Users can turn them off in EH's
      Ctrl+/ palette (=S.keysOn=). On our side: when the FRP is shown, stop those keys in a capture-phase listener
      unless a modifier is held. Or ask majkinetor to skip when =<html>= carries an "app owns the keys" mark.
   3. *Key clashes*:
@@ -482,7 +483,7 @@ Items 1–4 are the fixes and 5–9 the feature ideas; all of them are TODO item
      =document.dispatchEvent= of V's effect);
    - honour =data-mbu-dock= for our toasts;
    - hide =[data-mb-corner]= on FRPs (the existing TODO, with MC's CSS);
-   - capture EH's bare keys on FRPs.
+   - capture EH's bare keys on FRPs. *Done* (WIP.2, on the IP too).
 4. *Request gate*: join =mbu:mb-gate= (GCRA + Web Lock + shared hold); then the lead and the browser-check iframe.
 5. *Findings to add* (zero extra requests): no barcode / all-zero barcode, label without catno, no release event,
    track without length, recording without ISRC, ISRC shared by two recordings, confusable/invisible characters,
@@ -754,7 +755,24 @@ CLOSED: [2026-11-08 Sun]
 - *Tests*: a fixture spec builds a second =<body>= in front of the page before SAED starts, then removes it, then
   hovers. It must fail before the fix.
 
-** TODO EH's bare-letter keys leave our FRP (bug, measured)
+** DONE EH's bare-letter keys leave our FRP (bug, measured)
+CLOSED: [2026-11-08 Sun]
+
+- *Done* (branch =docs/majkinetor-refresh-2026-11-08=, WIP.2; to ship with the next merge). vzell found the keys
+  act on the IP as well and chose to block them there too (2026-11-08). =_ehKeyGuardInstall()=, installed once at
+  page init on MusicBrainz, is a capture-phase keydown that only calls =preventDefault()= for EH's default single
+  keys (=_EH_SINGLE_KEYS=: o e r c h t d a s p . ,), read as EH reads them (lowercased, Shift ignored). It never takes
+  =v=, never a key typed into a field, never while EH's view shows (=<html data-mbu-dock>=), and only when EH is
+  there (=#eh-launch= or =<html data-mbu-st>=). Setting =sa_block_eh_single_keys= (default on). Rule recorded in
+  =docs/claude/toolbar-and-header-ui.md=; HELP "Keyboard shortcuts" has a paragraph.
+  - Spec =tests/fixtures/eh-single-keys.spec.js=, 6 tests (the simulator =eh-body-swap.js= now carries EH's key
+    listener, its launcher and =data-mbu-dock=). Mutations =scripts/mutations/eh-single-keys.json=: 7 planted
+    defects all fail, the first being "the guard is never installed", the state before the fix.
+  - Live probe case B, which now presses =h= on the IP as well (2026-11-08T15:18:37–15:20:23+01:00, EH
+    2026.11.08.131500 alone and in ST 2026.11.08.133602): =navigated: false= on the IP and on the FRP; V still
+    switches EH on and off.
+  - Not covered: keys the user rebound in EH's Ctrl+/ palette (its GM storage). Convention C3
+    (=<html data-mbu-keys-off>=) would cover them; it stays in the posted request.
 
 - *Who fixes it*: *ours* is enough: EH already honours =defaultPrevented=. *Convention* C3 (=<html data-mbu-keys-off>=)
   is the clearer long-term form; ask for it in the same message.

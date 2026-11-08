@@ -794,6 +794,13 @@
             description: 'Enable keyboard shortcut tooltip for the prefix shortcut map'
         },
 
+        sa_block_eh_single_keys: {
+            label: "Ignore Event Horizon's single-letter keys on MusicBrainz's page",
+            type: 'checkbox',
+            default: true,
+            description: "With majkinetor's Event Horizon (or String Theory) installed, its single-letter keys (H editing history, E edit, R relationships, O, C, T, D, A, S, P, the full stop and the comma) also work on MusicBrainz's own page, where one stray key press leaves the page, and a rendered table with it. On, they are ignored on the pages this script runs on, before and after a button is pressed. V (switch Event Horizon on or off) and every key inside Event Horizon's own view keep working. Keys you rebound in Event Horizon are not known here."
+        },
+
         sa_keyboard_shortcut_prefix: {
             label: "Keyboard Shortcut Prefix",
             type: "keyboard_shortcut",
@@ -91589,6 +91596,63 @@ ${sections.join('\n')}
     }
 
     /**
+     * Event Horizon's default single-key commands that leave or replace the
+     * page (event_horizon.user.js `KEY_CMDS`, EH:12419, 2026.11.08.131500):
+     * o overview, e edit, r edit relationships, c cover art, h editing
+     * history, t tags, d details, a aliases, s search, p your profile,
+     * "." home, "," settings. Not `v`, its on/off switch, which the user
+     * needs on these pages. Keys rebound in Event Horizon's Ctrl+/ palette
+     * live in its own GM storage and cannot be known here.
+     */
+    const _EH_SINGLE_KEYS = new Set(['o', 'e', 'r', 'c', 'h', 't', 'd', 'a', 's', 'p', '.', ',']);
+
+    /**
+     * Keeps majkinetor's Event Horizon (alone, or inside String Theory) from
+     * acting on its single-letter keys on MusicBrainz's own page, where this
+     * script runs: a stray `h` went to the entity's editing history and the
+     * page, a rendered table included, was gone (org/majkinetor.org, "EH's
+     * bare-letter keys leave our FRP"; vzell: on the initial page too).
+     *
+     * Event Horizon's listener is a `document` keydown in the bubble phase,
+     * installed whether it shows or not, and it skips an event whose
+     * `defaultPrevented` is set (EH:12495). So a capture-phase listener that
+     * only calls `preventDefault()` is enough, with no `stopPropagation()`:
+     * every other handler, this script's own included, still sees the key.
+     * A single printable character has no default action outside a field,
+     * so nothing else changes.
+     *
+     * Matches Event Horizon's own reading of a key (`keyCombo()`): no Ctrl,
+     * ⌘ or Alt; one character, lowercased, Shift ignored (Shift+H is `h`).
+     * Skipped: a key typed into a field (input, textarea, select,
+     * contentEditable, as EH skips them too); while Event Horizon's own view
+     * shows (`<html data-mbu-dock>`), whose keys are its business; and on a
+     * page with neither Event Horizon's launcher (`#eh-launch`) nor String
+     * Theory's mark (`<html data-mbu-st>`), so no other script's single keys
+     * are touched. `sa_block_eh_single_keys` (default on) turns it off.
+     *
+     * Installed once, at page init, MusicBrainz only: it covers the initial
+     * page and every render after it.
+     *
+     * @returns {void}
+     */
+    function _ehKeyGuardInstall() {
+        if (document._mbEhKeyGuardInstalled) return;
+        document._mbEhKeyGuardInstalled = true;
+        document.addEventListener('keydown', (e) => {
+            if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+            if (!e.key || e.key.length !== 1 || !_EH_SINGLE_KEYS.has(e.key.toLowerCase())) return;
+            if (Lib.settings.sa_block_eh_single_keys === false) return;
+            const root = document.documentElement;
+            if (root.hasAttribute('data-mbu-dock')) return;
+            if (!document.getElementById('eh-launch') && !root.hasAttribute('data-mbu-st')) return;
+            const t = e.target;
+            if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+            e.preventDefault();
+            Lib.debug('shortcuts', `Event Horizon's single key "${e.key}" ignored on MusicBrainz's page (sa_block_eh_single_keys).`);
+        }, true);
+    }
+
+    /**
      * Registers every direct (non-prefix-mode) keyboard shortcut. Idempotent —
      * guarded by `document._mbKeyboardShortcutsInitialized` so a re-call
      * (e.g. after Load-from-Disk) is a no-op.
@@ -97387,6 +97451,11 @@ a { color: #1565c0; }`;
     if (!_foreignHost && Lib.settings.sa_collabsable_sidebar && Lib.settings.sa_sidebar_handle_initial_page !== false) {
         initSidebarCollapse('initial');
     }
+
+    // Event Horizon's single-letter keys must not leave MusicBrainz's page,
+    // initial or rendered (_ehKeyGuardInstall(); sa_block_eh_single_keys).
+    // MusicBrainz only: Event Horizon runs nowhere else.
+    if (!_foreignHost) _ehKeyGuardInstall();
 
     // Special case: recording page where "Appears on releases" section explicitly
     // states there are no releases.  Nothing to fetch or display, so do not

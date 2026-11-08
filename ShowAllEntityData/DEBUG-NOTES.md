@@ -28706,3 +28706,26 @@ Chromium 151.0.7922.34 · no Tampermonkey (GM stubs; fixtures, and realNetworkGm
 - Live probe after the fix (14:35:27–14:37:46+01:00): case A, EH alone and with the bundle — the handle in
   MusicBrainz's body and hidden at load, visible after V and after the render; hover card `inDocument: true`.
   Case B unchanged.
+
+## 2026-11-08 — Event Horizon's single-letter keys no longer leave MusicBrainz's page, IP and FRP (`_ehKeyGuardInstall()`, docs/majkinetor-refresh-2026-11-08, WIP.2)
+
+Env: 2026-11-08T15:12–15:20+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1,
+Chromium 151.0.7922.34 · no Tampermonkey (GM stubs; fixtures, and realNetworkGmXhr for the live probe) · EH
+2026.11.08.131500, ST 2026.11.08.133602.
+
+- Symptom (org/majkinetor.org TODO "EH's bare-letter keys leave our FRP"): with EH or String Theory installed and
+  EH OFF, `h` on MusicBrainz's page went to `/edits`. The TODO named the FRP; vzell found the IP does the same and
+  chose to block it on both.
+- Cause: EH's `KEY_CMDS` listener (EH:12495) is a `document` keydown in the bubble phase, installed whether EH shows
+  or not; it skips an event whose `defaultPrevented` is set and a key in a field, and reads one character
+  lowercased with Shift ignored (`keyCombo()`), so Shift+H is `h` too.
+- Fix: `_ehKeyGuardInstall()` at page init (MusicBrainz only), a capture-phase keydown calling only
+  `preventDefault()` for `_EH_SINGLE_KEYS` (o e r c h t d a s p . ,). Not `v` (EH's switch), not in a field, not
+  while `<html data-mbu-dock>` (EH's view), only with `#eh-launch` or `<html data-mbu-st>`; setting
+  `sa_block_eh_single_keys` (default on). SAED's own single keys were already safe: the prefix mode's second key
+  and the preview window's H call `preventDefault()` in the capture phase.
+- Tests: `tests/fixtures/eh-single-keys.spec.js` 6/6 (the simulator `eh-body-swap.js` gained EH's key listener,
+  launcher and `data-mbu-dock`; `eh-body-swap-floating.spec.js` still 4/4). `scripts/mutations/eh-single-keys.json`:
+  7/7 fail as expected, including "the guard is never installed".
+- Live probe case B (now also `h` on the IP), 15:18:37–15:20:23: `navigated: false` on the IP and the FRP, EH alone
+  and in the bundle; V still toggles. Not covered: keys rebound in EH (convention C3 would cover them).

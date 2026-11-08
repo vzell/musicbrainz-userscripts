@@ -771,6 +771,37 @@ cannot disagree. Spec: `tests/fixtures/eh-body-swap-floating.spec.js` (with
 the simulator `tests/fixtures/thirdPartyScripts/eh-body-swap.js`, Event
 Horizon's `setOn()` verbatim); mutations: `scripts/mutations/eh-body-swap.json`.
 
+## Event Horizon's single keys are ignored on MusicBrainz's page (`_ehKeyGuardInstall()`)
+
+majkinetor's Event Horizon binds single keys (`KEY_CMDS`, EH:12419: o e r c h
+t d a v s p . ,) on a `document` keydown in the BUBBLE phase, installed even
+while it is off, and skips an event whose `defaultPrevented` is set
+(EH:12495). On MusicBrainz's page a stray `h` left the page for `/edits`, the
+initial page and a rendered table alike (measured with the live probe,
+2026-11-06/08). `_ehKeyGuardInstall()`, installed once at page init on
+MusicBrainz (`!_foreignHost`), is a capture-phase keydown that only calls
+`preventDefault()` for `_EH_SINGLE_KEYS`: no `stopPropagation()`, so every
+other handler, ours included, still sees the key, and a single printable
+character has no default action outside a field.
+
+Rules it keeps (each pinned by a test and a mutation):
+
+- EH's own reading of a key: no Ctrl/⌘/Alt, one character, lowercased, Shift
+  ignored (Shift+H is `h`).
+- Never `v`: it is how the user switches between EH and MusicBrainz's page.
+- Never in a field (input, textarea, select, contentEditable).
+- Never while EH's view shows (`<html data-mbu-dock>`).
+- Only when Event Horizon is there (`#eh-launch` or `<html data-mbu-st>`).
+- `sa_block_eh_single_keys` (default on) turns it off.
+
+Keys rebound in EH's Ctrl+/ palette live in its GM storage and are not known.
+SAED's own single keys need nothing from it: the prefix mode's second key and
+the preview window's H already call `preventDefault()` in the capture phase,
+before EH's bubble listener. Spec: `tests/fixtures/eh-single-keys.spec.js`
+(the simulator `eh-body-swap.js` carries EH's key listener); mutations:
+`scripts/mutations/eh-single-keys.json`. The long-term form is convention C3
+in org/majkinetor.org (`<html data-mbu-keys-off>`, honoured by EH).
+
 ## Hover tooltips must ignore a tap (`_isTouchCompatMouseEvent()`)
 
 On a touch device a tap fires *compatibility* mouse events: `mouseover`,

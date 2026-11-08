@@ -1,5 +1,23 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-11-08",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "With majkinetor's Event Horizon (or String Theory) installed, its single-letter keys also worked on MusicBrainz's own page, even with Event Horizon switched off: a stray H went to the editing history (E to the edit page, R to the relationship editor, and so on), and the page was gone, a rendered table with it. On the pages this script runs on, before and after a button is pressed, those keys are now ignored. V (switching Event Horizon on or off), every key inside Event Horizon's own view and typing into a field keep working."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "New setting: ⚙️ Settings → 🎹 KEYBOARD SHORTCUTS → \"Ignore Event Horizon's single-letter keys on MusicBrainz's page\" (on). Turn it off to give those keys back to Event Horizon. Keys you rebound in Event Horizon are not known to this script."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-11-08",
     "sections": [

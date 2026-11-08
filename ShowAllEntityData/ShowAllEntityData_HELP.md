@@ -1683,6 +1683,18 @@ the direct-shortcuts setting; prefix-mode `o`, `q` and `a` are the alternatives.
 **Every shortcut on this page is configurable**, including the prefix key itself
 — it can be any combination such as `Ctrl+.`, `Alt+X` or `Ctrl+Shift+,`.
 
+**Event Horizon's single-letter keys.** With majkinetor's *Event Horizon*
+installed (on its own or in *String Theory*), its single keys `H` (editing
+history), `E`, `R`, `O`, `C`, `T`, `D`, `A`, `S`, `P`, `.` and `,` would also
+work on MusicBrainz's own page, even with Event Horizon switched off, and one
+stray key would leave the page and a rendered table with it. On the pages
+this script runs on they are ignored, before and after you press a button.
+`V`, which switches Event Horizon on or off, keeps working, and so does every
+key inside Event Horizon's own view and anything you type into a field. To
+give the keys back to Event Horizon, turn off *Ignore Event Horizon's
+single-letter keys on MusicBrainz's page* in ⚙️ Settings → 🎹 KEYBOARD
+SHORTCUTS. Keys you rebound in Event Horizon are not known here.
+
 </details>
 
 ---
