@@ -1453,8 +1453,10 @@ also implement "differs from the album version" right away
 Status: plan approved; *Phase A mockups published, waiting for vzell's picks*
 (=org/sl-song-POH-mockups.html=, https://claude.ai/artifact/2fzZykcmmtBTGKhes9bGpc, built with
 =python3 scripts/build-mockup-artifact.py org/sl-song-POH-mockups.html <out.html>=; its "Your picks" tab
-copies the picks as text). *Phase B implemented on =feat/sl-song-poh= (uncommitted at
-2026-11-07T15:15+01:00), waiting for vzell's browser check.* Done: every pick (1–12, 9 included), the
+copies the picks as text). *Phase B implemented on =feat/sl-song-poh= on NB-3641, committed by vzell
+by hand on 2026-11-08 (=b17d8db0=, originally =02832fce=; message reworded on vzell-lap), merged into
+=main= and folded as 9.99.1575 on 2026-11-08 (see "Implementation" below).*
+Done: every pick (1–12, 9 included), the
 =sl-double-utf8= finding, specs (=tests/fixtures/sl-song-window.spec.js=, 6 tests; =SL_SHOTS=<dir>=
 saves pictures), mutations (=scripts/mutations/sl-song-window.json=, 15 entries, all as expected), docs
 (=docs/claude/springsteenlyrics.md= "The song window", =findings.md=, =detail-pages.md=, HELP),
@@ -1616,3 +1618,78 @@ unofficial and the live window. The proposals:
 - =python3 scripts/run-test-full.py --log <scratchpad>/test-full.log= (announced);
   =python3 scripts/lint-summary.py --check=.
 - vzell checks the three Backstreets URLs in the real browser before any merge.
+
+*** Implementation (2026-11-07, NB-3641; recorded 2026-11-08, vzell-lap)
+
+Env (implementation and suite): 2026-11-07T15:14:23+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux
+6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with
+Pixel 7 emulation, no Tampermonkey (GM stubs).
+Env (this record): 2026-11-08T12:38:16+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux
+6.18.54.1-microsoft-standard-WSL2) · n/a.
+
+Commits on =feat/sl-song-poh=: =b17d8db0= the implementation (vzell committed it by hand on NB-3641
+when the session's tokens ran out, with the session's summary as message; reworded on vzell-lap to the
+usual =feat:= form, same tree, author and date), =7f347df4= the DONE keywords above. Merged on vzell's
+request (=/merge-push-remove=, 2026-11-08). Changelog: WIP.1
+(🚀 Feature, ✨ Improve, 🐛 Fix), folded as 9.99.1575.
+
+What changed in the window (=_dpParseSlSong()= → =data.slSong= → =_slSongCols(data, t)=):
+- *Layout A.* Left: title, a coloured type pill, ‹ N of 61 › through the song's versions, a red encoding
+  banner when needed, fact cards (a live version: a Show card and a "Released on" card instead of the
+  Version card), then Info, the studio recording with the band's instruments, pictures, Credits, Request.
+  Right: section chips, the lyrics, the releases, the other lists, Available Versions.
+- *Folding.* Every section folds; Ctrl+click on a heading opens or closes all. Choices are kept while the
+  page is open.
+- *Lyrics.* A lyric sheet in the system book face, stanza gaps, stage notes in grey small caps, "× N" for
+  repeated lines, Copy.
+- *Album-version compare (pick 9).* Unofficial and live versions read the album page once, when the window
+  opens, never from a hover. Changed lines yellow, added lines green, optionally the album's missing lines;
+  "N of M lines differ"; a Side by side view.
+- *Tables (pick 12).* Available Versions, release tracklists, the live show's tracklist (above its
+  lyrics), release, single and cover rows, live releases: filterable, sortable, the filter text
+  highlighted. Song links open in the same window, with Back.
+- *Live History.* One row per tour with date chips; a linked date opens that version.
+- *Double-encoded text (pick 8).* Shown repaired with a dotted underline, the site's original in the
+  tooltip. A banner counts the spots; *Copy report for the site maintainer* builds the text for Eddy. New
+  ❌ finding =sl-double-utf8=, "Double-encoded text (springsteenlyrics.com)"; on the lyrics index a row is
+  flagged only once its song page has been read, so the count grows while browsing.
+
+Fixes found along the way:
+- "Loading…" on redraw: a preview window opened from a page already read went back to "Loading the detail
+  page…" when redrawn (e.g. typing in a table filter). Fixed for all four Springsteen sites.
+- "Single Release" rows are a "Single releases" table, in the window and on the =sl-song= page.
+
+Not done (open):
+- Song-page banner: the =sl-song= page (FRP) has no encoding banner or report button; its table cells are
+  flagged by the finding.
+- Compare off the site: a song previewed from MusicBrainz shows no album-version compare; it only runs on
+  springsteenlyrics.com.
+
+Testing:
+- New spec =tests/fixtures/sl-song-window.spec.js=, 6 tests (=SL_SHOTS=<dir>= saves pictures of the
+  windows); two existing tests (=detail-preview.spec.js=) updated for the new layout.
+- Mutations =scripts/mutations/sl-song-window.json=: 15 planted defects, 14 caught; the 15th (Space
+  pressed before the card has read the page) cannot be reached from a fixture and is recorded as such.
+- =npm run test:full= on NB-3641 (2026-11-07 15:14:23–15:32:26 CET, 18 m 3 s): 2785/2786; the failure,
+  =popup-ext.spec.js:2850= (a Discogs window's Stop), passed 3/3 alone — a timing flake outside this
+  change (=tests/MEASUREMENTS.org=).
+- No =test:full= after the merge, by vzell's choice (2026-11-08); =node --check=, =audit-docs.py= and
+  =audit-changelog.py= ran on =main=.
+- Docs: =docs/claude/springsteenlyrics.md= ("The song window"), =findings.md=, =detail-pages.md=, HELP,
+  =DEBUG-NOTES.md= (2026-11-07 entry), =tests/MEASUREMENTS.org=.
+
+
+* DONE merge
+
+but do not run the full test suite afterwards;
+
+In commit "02832fce" I commited manually the implementation from "** Plan (Claude, approved 2026-11-07T14:25+01:00, NB-3641)"
+with the summary text from you after the implementation done on my machine NB-3641. My tokens had been consumed.
+
+Now we are back on "vzell-lap" and continue there:
+
+- fix the commit message so that it follows your standard as what we have done so far
+- record the info about the implementation in the file @org/springsteenlyrics.org in the section "** Plan (Claude, approved 2026-11-07T14:25+01:00, NB-3641)"
+
+
+
