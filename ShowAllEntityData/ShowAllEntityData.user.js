@@ -139646,6 +139646,16 @@ a { color: #1565c0; }`;
      *   - Buttons with `formtarget="_blank"` — submission opens in a new tab
      *
      * The listener set is registered only once (guarded by `_mbNavGuardInstalled`).
+     *
+     * ── Only MusicBrainz's page is guarded (2026-11-08) ──────────────────────
+     * With majkinetor's Event Horizon the document can hold a second <body>
+     * (its view, in front of MusicBrainz's hidden one; see `_saBody()`). Its
+     * links navigate in place with pushState, and its single keys (H for the
+     * editing history, …) click those links. Guards 1 and 3 ignore a click
+     * outside `_saBody()`, and Guard 2 stands back while another body shows:
+     * the rendered table stays in MusicBrainz's body meanwhile, and the
+     * confirm used to come up for every link of Event Horizon's view, after
+     * which OK showed the page in Event Horizon as if nothing had been asked.
      */
     function initNavigationGuard() {
         if (document._mbNavGuardInstalled) return;
@@ -139669,6 +139679,13 @@ a { color: #1565c0; }`;
         // ── Guard 1: Anchor click guard ─────────────────────────────────────────
         document.addEventListener('click', (e) => {
             if (!isLoaded) return;
+            // Only MusicBrainz's page is guarded. A click in another script's
+            // body — Event Horizon's view, whose links (and its single keys,
+            // which click them) navigate in place with pushState — is that
+            // script's business: the rendered table stays in MusicBrainz's
+            // hidden body, and asking here asked on every link of EH's view
+            // (vzell, 2026-11-08).
+            if (!_saBody().contains(e.target)) return;
             // A click another handler already took (the artwork viewer on a
             // cover icon or a strip image) navigates nowhere; nor does one
             // that opens a new tab or window (Ctrl, ⌘, Shift): no session
@@ -139756,6 +139773,9 @@ a { color: #1565c0; }`;
         document.addEventListener('keydown', (e) => {
             if (!isLoaded) return;
             if (e.key !== 'Tab') return;
+            // Not while another script's body shows (Event Horizon's view):
+            // its Tab order is its own.
+            if (document.body !== _saBody()) return;
 
             const focusable = getFocusable();
             if (focusable.length === 0) return;
@@ -139786,6 +139806,7 @@ a { color: #1565c0; }`;
         // ── Guard 3: Merge-form submit-button guard ─────────────────────────────
         document.addEventListener('click', (e) => {
             if (!isLoaded) return;
+            if (!_saBody().contains(e.target)) return; // MusicBrainz's page only (Guard 1)
 
             // Only care about button clicks
             const btn = e.target.closest('button');

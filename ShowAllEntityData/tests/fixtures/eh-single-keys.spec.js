@@ -124,3 +124,57 @@ test.describe('Event Horizon\'s single-letter keys on MusicBrainz\'s page', () =
         expect(prevented).toBe(false);
     });
 });
+
+// ── SAED's "You are about to leave this page" guard and Event Horizon's view ──
+//
+// vzell, 2026-11-08: on a rendered page, V to Event Horizon's view, then H —
+// SAED's confirm came up, and OK then showed the history in EH's view. EH's
+// keyGo() clicks its own #app link and EH opens it in place (pushState), so
+// nothing was being left; initNavigationGuard()'s Guard 1 saw the anchor click
+// in the capture phase. The guard now ignores clicks outside MusicBrainz's
+// body (_saBody()). On MusicBrainz's own rendered page it still asks.
+
+test.describe('the navigation guard and Event Horizon\'s view', () => {
+    /**
+     * Renders the release, collecting every dialog's message (each dismissed).
+     *
+     * @param {import('@playwright/test').Page} page
+     * @returns {Promise<string[]>} the live list of dialog messages
+     */
+    async function renderWithDialogLog(page) {
+        const dialogs = [];
+        page.on('dialog', (d) => { dialogs.push(d.message()); d.dismiss().catch(() => {}); });
+        await openRelease(page);
+        await page.click(TRACKS_BTN);
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        return dialogs;
+    }
+
+    test('rendered page → V → H in EH\'s view: no "leave this page" confirm, EH opens the history in place', async ({ page }) => {
+        const dialogs = await renderWithDialogLog(page);
+        expect(await pressOnPage(page, ['v'])).toEqual(['v']);
+        expect(await pressOnPage(page, ['h'])).toEqual(['h']);
+        // Guarantee: EH's own navigation went through, and SAED asked nothing.
+        expect(dialogs).toEqual([]);
+        expect(await page.evaluate(() => window.__ehSim.navs.splice(0))).toEqual([expect.stringMatching(/\/edits$/)]);
+        expect(new URL(page.url()).pathname).toMatch(/\/edits$/);
+    });
+
+    test('rendered page → V → a mouse click on a link in EH\'s view: no confirm', async ({ page }) => {
+        const dialogs = await renderWithDialogLog(page);
+        await pressOnPage(page, ['v']);
+        await page.click('#eh-sim-edits');
+        expect(dialogs).toEqual([]);
+        expect(await page.evaluate(() => window.__ehSim.navs.length)).toBe(1);
+    });
+
+    test('control: a link click on MusicBrainz\'s own rendered page still asks', async ({ page }) => {
+        const dialogs = await renderWithDialogLog(page);
+        const url = page.url();
+        await page.locator('table.tbl tbody a[href*="/recording/"]').first().click();
+        // Guarantee: the guard still protects the rendered table (dismissed → stays).
+        await expect.poll(() => dialogs.length).toBe(1);
+        expect(dialogs[0]).toContain('You are about to leave this page');
+        expect(page.url()).toBe(url);
+    });
+});

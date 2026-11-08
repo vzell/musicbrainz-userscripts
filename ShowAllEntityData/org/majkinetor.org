@@ -773,6 +773,15 @@ CLOSED: [2026-11-08 Sun]
     switches EH on and off.
   - Not covered: keys the user rebound in EH's Ctrl+/ palette (its GM storage). Convention C3
     (=<html data-mbu-keys-off>=) would cover them; it stays in the posted request.
+  - Found by vzell testing it (2026-11-08): after a render, V to EH's view, then =h= → SAED's own "You are about to
+    leave this page" confirm; OK then showed EH's history view. EH's =keyGo()= (EH:12403) clicks its own =#app=
+    link while its view shows, EH opens it in place (pushState), and =initNavigationGuard()='s Guard 1 (capture,
+    every anchor click while =isLoaded=) asked. Every mouse click on a link in EH's view did the same; it predates
+    the key guard. Fixed in the same WIP.2: Guards 1 and 3 ignore clicks outside =_saBody()=, Guard 2 (Tab trap)
+    stands back while another body shows. Tests: 3 more in =eh-single-keys.spec.js= (H and a mouse click in EH's
+    view ask nothing; a link click on MusicBrainz's rendered page still asks); mutation 8 in =eh-single-keys.json=.
+  - Still not asked: a real page leave out of EH's view after a render (EH links a page it cannot show, or V after
+    EH navigation reloads, case C). The table is lost then, as before; a =beforeunload= net could catch it, if wanted.
 
 - *Who fixes it*: *ours* is enough: EH already honours =defaultPrevented=. *Convention* C3 (=<html data-mbu-keys-off>=)
   is the clearer long-term form; ask for it in the same message.
@@ -1137,3 +1146,13 @@ please confirm this findings and add it to our list in @org/majkinetor.org
 
 switch to plan mode and then tackle the '** TODO SAED's floating elements survive Event Horizon's body swap (bug, measured)'
 section in @org/majkinetor.org
+** V bug
+
+a.)
+
+when starting from a MB page with our userscript active, the "h" key does nothing ==> OK
+
+b.)
+
+when switching with "v" to the EH view and pressing "h" the native browser window about leaving this page popsup - [Image #7]
+

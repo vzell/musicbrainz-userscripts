@@ -802,6 +802,13 @@ before EH's bubble listener. Spec: `tests/fixtures/eh-single-keys.spec.js`
 `scripts/mutations/eh-single-keys.json`. The long-term form is convention C3
 in org/majkinetor.org (`<html data-mbu-keys-off>`, honoured by EH).
 
+**The "You are about to leave this page" guard (`initNavigationGuard()`) guards MusicBrainz's page only**
+(2026-11-08): Guards 1 and 3 ignore a click outside `_saBody()`, and Guard 2 (the Tab trap) stands back
+while another body shows. Event Horizon's links navigate in place (pushState) and its single keys click
+them (`keyGo()`), so inside its view the confirm asked for nothing; OK then showed the page in EH anyway
+(vzell). Tests in `eh-single-keys.spec.js` ("the navigation guard and Event Horizon's view", with a
+control that MusicBrainz's own rendered page still asks); mutation in `eh-single-keys.json`.
+
 ## Hover tooltips must ignore a tap (`_isTouchCompatMouseEvent()`)
 
 On a touch device a tap fires *compatibility* mouse events: `mouseover`,

@@ -30,7 +30,11 @@
  * key with EH's `keyCombo()` (one character lowercased, Shift ignored) and
  * matches EH's default `KEY_CMDS` (EH:12419). Instead of navigating it
  * records the command in `window.__ehSim.fired`; `v` toggles on/off as EH's
- * does. `window.__EH_SIM_NO_LAUNCHER__ = true` leaves the launcher out (a page
+ * does. While its view shows, h/e/r/o/t/d/a click its own `#app` link to the
+ * entity's subpage, as EH's `keyGo()` does (the view links the editing
+ * history), and a click on an `#app` link opens in place (pushState, recorded
+ * in `window.__ehSim.navs`), as EH's own click handler does.
+ * `window.__EH_SIM_NO_LAUNCHER__ = true` leaves the launcher out (a page
  * where Event Horizon is not installed, for the "touches nothing" checks).
  */
 (function () {
@@ -56,6 +60,8 @@
         mbBody: null,
         launcher: null,
         fired: [],
+        navs: [],
+        assigned: [],
         /** @returns {boolean} whether EH's body is in the document */
         isOn() { return !!(sim.ehBody && sim.ehBody.isConnected); },
         /** EH on: its body before MusicBrainz's, MusicBrainz's hidden (setOn(true)). */
@@ -67,6 +73,12 @@
                 sim.ehBody.innerHTML = '<main class="wrap" id="app"><h1>Event Horizon (simulated)</h1></main><div class="toast" id="toast" hidden role="status"></div>';
             }
             if (sim.isOn()) return;
+            // EH's view of an entity links its subpages: here the editing history
+            const m = location.pathname.match(/^\/([a-z-]+)\/([0-9a-f-]{36})/i);
+            const app = sim.ehBody.querySelector('#app');
+            if (m && !app.querySelector('#eh-sim-edits')) {
+                app.insertAdjacentHTML('beforeend', `<p><a id="eh-sim-edits" href="${location.origin}/${m[1]}/${m[2]}/edits">Editing history</a></p>`);
+            }
             document.documentElement.insertBefore(sim.ehBody, sim.mbBody);
             sim.mbBody.hidden = true;
             document.documentElement.setAttribute('data-mbu-dock', '');
@@ -83,6 +95,24 @@
     };
     window.__ehSim = sim;
 
+    /**
+     * Event Horizon's keyGo(sub) (EH:12403): while its view shows, it clicks
+     * its own `#app` link to the entity's subpage ("the viewer's own button
+     * takes it, so it opens where the viewer would"); otherwise it would
+     * location.assign() (here only recorded, never done).
+     *
+     * @param {string} sub - '' for the overview, 'edits', …
+     * @returns {void}
+     */
+    const keyGo = (sub) => {
+        const m = location.pathname.match(/^\/([a-z-]+)\/([0-9a-f-]{36})/i);
+        if (!m) return;
+        const url = `${location.origin}/${m[1]}/${m[2]}${sub ? '/' + sub : ''}`;
+        const a = sim.isOn() && [...document.querySelectorAll('#app a[href]')].find((x) => x.href === url);
+        if (a) a.click(); else sim.assigned.push(url);
+    };
+    const KEY_SUB = { o: '', e: 'edit', r: 'edit-relationships', h: 'edits', t: 'tags', d: 'details', a: 'aliases' };
+
     // Not installed at all when the page is meant to have no Event Horizon.
     if (window.__EH_SIM_NO_LAUNCHER__ !== true) document.addEventListener('keydown', (ev) => {
         if (ev.defaultPrevented || ev.repeat) return;
@@ -92,7 +122,20 @@
         if (!k || !KEYS.includes(k)) return;
         sim.fired.push(k);
         if (k === 'v') { if (sim.isOn()) sim.off(); else sim.on(); }
+        else if (k in KEY_SUB) keyGo(KEY_SUB[k]);
         ev.preventDefault();
+    });
+
+    // Event Horizon's own link handling in its view (its document 'click'
+    // listener, onClick): a link it can show opens in place, pushState, no
+    // page load. Recorded in `window.__ehSim.navs`.
+    if (window.__EH_SIM_NO_LAUNCHER__ !== true) document.addEventListener('click', (ev) => {
+        if (!sim.isOn() || ev.defaultPrevented || !sim.ehBody.contains(ev.target)) return;
+        const a = ev.target.closest('a[href]');
+        if (!a) return;
+        ev.preventDefault();
+        history.pushState(null, '', a.href);
+        sim.navs.push(a.href);
     });
 
     document.addEventListener('DOMContentLoaded', () => {

@@ -28729,3 +28729,13 @@ Chromium 151.0.7922.34 · no Tampermonkey (GM stubs; fixtures, and realNetworkGm
   7/7 fail as expected, including "the guard is never installed".
 - Live probe case B (now also `h` on the IP), 15:18:37–15:20:23: `navigated: false` on the IP and the FRP, EH alone
   and in the bundle; V still toggles. Not covered: keys rebound in EH (convention C3 would cover them).
+- Follow-up, 2026-11-08T15:30–15:42+01:00 (same host and env): vzell, testing WIP.2 in his browser — `h` on
+  MusicBrainz's page does nothing (OK), but after V to EH's view, `h` brought up SAED's own "You are about to leave
+  this page" confirm, and OK then showed EH's history view. Cause: EH's `keyGo()` (EH:12403) clicks its own `#app`
+  link while its view shows, and EH opens it in place (pushState). `initNavigationGuard()`'s Guard 1 (capture,
+  every anchor click while `isLoaded`) asked first. Any mouse click on a link in EH's view after a render did the
+  same, so this predates the key guard. Fix: Guards 1 and 3 ignore clicks outside `_saBody()`, and Guard 2 (Tab
+  trap) stands back while another body shows. The simulator gained EH's in-place link handling and `keyGo()`.
+  Three more tests in `eh-single-keys.spec.js` (13/13 with the floating spec), mutation 8/8, the existing guard
+  tests (merge form, springsteenlyrics.com, brucespringsteen.it) pass. Still unasked: a real page leave out of
+  EH's view after a render (case C's reload); a `beforeunload` net could catch it.
