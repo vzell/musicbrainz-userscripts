@@ -30,7 +30,7 @@ A few notes:
   1. Open a release, e.g. https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897, and press **V** for MusicBrainz's page.
   2. Press **Show all Tracks for Release** (SAED's button in the header). ISRC Scout's ISRC and Links columns become sortable and filterable, with 📊 per column.
   3. **V** switches between EH's view and SAED's table, and the table survives any number of switches. EH's single-letter keys are ignored on MusicBrainz's page; inside EH's view they work as always.
-- The marker-based parts (`data-mbu-foreign`, `data-ii-platform`, `data-mbu-quiet`, the ⋯ menu items) are what I'm building right now against your branch. I'll say here when they're in.
+- It already speaks your `codex/interop-938` conventions (`data-mbu-foreign`, `data-ii-platform`, `data-mbu-quiet` and the ⋯ menu items); with String Theory from that branch, EH's ⋯ menu on a release offers "SAED: Show all Tracks for Release". Details in my next comment.
 
 Feedback is very welcome, here or in my repo.
 

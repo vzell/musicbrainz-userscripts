@@ -1,7 +1,10 @@
 #+TITLE: Short acknowledgement on #938 (before the full reply)
 #+DATE: 2026-11-08
 
-* TODO Post: short acknowledgement on https://github.com/majkinetor/musicbrainz-userscripts/issues/938
+* CANCELLED Post: short acknowledgement on https://github.com/majkinetor/musicbrainz-userscripts/issues/938
+
+Superseded (2026-11-08): the implementation was finished and merged (9.99.1581) before this was posted, so
+"I'm now implementing" would be stale. Post =org/reply-to-938-dev-link.org=, then =org/reply-to-938-answer.org=.
 
 Drafted 2026-11-08 at vzell's request, for vzell to post (not posted anywhere). The full answer to majkinetor's
 point-by-point reply and to milic-bot's =9e4cdd59= comment follows later in =org/reply-to-938-answer.org=.
