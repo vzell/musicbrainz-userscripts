@@ -195,7 +195,7 @@
       }
     ],
     "spec": "tests/fixtures/release-tracks-isrc-scout.spec.js",
-    "grep": "markup \"data-tip\" › platforms reach",
+    "grep": "markup \"data-tip\" platforms reach",
     "expect": "fail"
   },
   {
@@ -208,7 +208,7 @@
       }
     ],
     "spec": "tests/fixtures/release-tracks-isrc-scout.spec.js",
-    "grep": "markup \"data-tip\" › each icon has our own card",
+    "grep": "markup \"data-tip\" each icon has our own card",
     "expect": "fail"
   },
   {
@@ -221,7 +221,7 @@
       }
     ],
     "spec": "tests/fixtures/release-tracks-isrc-scout.spec.js",
-    "grep": "markup \"meta\" › each icon has our own card",
+    "grep": "markup \"meta\" each icon has our own card",
     "expect": "fail"
   },
   {

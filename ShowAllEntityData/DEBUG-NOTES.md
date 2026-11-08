@@ -28781,9 +28781,13 @@ GitHub API at `codex/interop-938` 9e4cdd59 (EH and ISRC Scout 2026.11.08.152918)
   the same task — no sleep.
 - Specs: `release-tracks-isrc-scout.spec.js` 23/23 (markup × 3, foreign mark + honouring wipe + control),
   `eh-interop-markers.spec.js` 17/17, `eh-single-keys.spec.js` and `eh-body-swap-floating.spec.js` unchanged and green,
-  `gm-store.spec.js`/`idb-overview.spec.js` green after the View row order gained `mb-mbu-quiet-btn`. Mutation
-  lists written (`eh-interop-markers.json` 15, `isrc-scout-column.json` +6) and finds checked (0 stale); NOT yet run
-  (it edits the live script vzell may be testing).
+  `gm-store.spec.js`/`idb-overview.spec.js` green after the View row order gained `mb-mbu-quiet-btn`.
+- Mutations, run 2026-11-08T17:33–17:50+01:00 (vzell-lap, same env): `eh-interop-markers.json` 15/15,
+  `isrc-scout-column.json` 19/19 (6 new), `eh-single-keys.json` 11/11 (3 finds repaired after the refactor into
+  `_ehPresentOffView()`; 10 fail + the recorded `expect: pass` overlap); userscript restored and hash-verified after
+  each list. Trap: four entries first came back ERROR, "grep selected NO tests": Playwright's `-g` is a regex over
+  the title path joined with SPACES, so a `›` in the grep never matches and `Ctrl+L` reads as "Ctrl, one or more,
+  L". Fixed greps checked with `--list` before the rerun.
 - Also 2026-11-08 (vzell): the dev copy's library `@require` is now this repo's GitHub `main`
   (`raw.githubusercontent.com/vzell/musicbrainz-userscripts/main/lib/VZ_MBLibrary.user.js`), so the dev copy works
   for anyone (majkinetor); `check-publish-ready.py` names that case; CLAUDE.md "Publishing" updated.

@@ -165,7 +165,7 @@
       }
     ],
     "spec": "tests/fixtures/eh-interop-markers.spec.js",
-    "grep": "Ctrl+L is ours",
+    "grep": "is ours, EH does not go forward",
     "expect": "fail"
   },
   {
