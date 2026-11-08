@@ -4212,3 +4212,19 @@ Each failure was rerun alone (=--repeat-each 3=, 12:35–12:36 CET):
   the whole file 142/143. The one failure there, =popup-mb.spec.js:4108= (the
   table grip's ↓ step, a one-shot =boxH()= read with no poll), passed 3/3 alone.
   It passed in the full run, so it is a flake, not a regression.
+
+* 2026-11-07 — =npm run test:full= on =NB-3641=, the SL song window (feat/sl-song-poh, uncommitted on 6efe3b33, 9.99.1574)
+
+Env: 2026-11-07T15:14:23+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                         | Tests | Workers | Wall clock | Basis                                     |
+|-----------------------------------+-------+---------+------------+-------------------------------------------|
+| =npm run test:full=, merge check  |  2786 |      14 | *18 m 3 s* | =run-test-full.py=, 15:14:23–15:32:26 CET |
+
+2785 passed, 1 failed: =popup-ext.spec.js:2850= (a Discogs artist's discography,
+"Stop ends a run with the page under way") saw "528 of 528 loaded" where it
+expects "300 of 528": the run had finished before Stop landed. Rerun alone
+(=--repeat-each 3=, 15:32 CET): 3/3 passed. A timing flake in a window this
+branch does not touch (Discogs windows go through =_extExtracted()=, whose
+only change is passing the target to =_dpExtractedCols()= for Springsteen-site
+records).

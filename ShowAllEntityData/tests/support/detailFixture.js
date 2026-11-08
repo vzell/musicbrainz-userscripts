@@ -42,6 +42,13 @@ const DETAIL_HOSTS = {
             if (u.searchParams.get('song') === 'backstreets' || (u.pathname === '/lyrics.php' && u.searchParams.get('item') === '2298')) {
                 return path.join(FIXTURE_DIR, 'detail-sl-song-backstreets-logged-in.html');
             }
+            // Two more versions of it (2026-11-07, the song window's
+            // compare with the album version: sl-song-window.spec.js).
+            const versions = {
+                backstreets_unofficial1: 'detail-sl-song-backstreets-unofficial1-logged-in.html',
+                'backstreets_1975-11-18': 'detail-sl-song-backstreets-1975-11-18-logged-in.html',
+            };
+            if (versions[u.searchParams.get('song')]) return path.join(FIXTURE_DIR, versions[u.searchParams.get('song')]);
             const name = u.searchParams.has('song')
                 ? `detail-sl-lyrics-${u.searchParams.get('song')}.html`
                 : `detail-sl-${u.pathname.slice(1, -4)}-${u.searchParams.get('item')}.html`;

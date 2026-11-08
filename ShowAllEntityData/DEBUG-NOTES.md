@@ -28610,3 +28610,35 @@ repeated group name or `helps('000000000')`); three stale finds in
 `test:full` (2026-11-06T18:35:21+01:00 → 18:53:01+01:00, NB-3641, `feature/kf-detail` on `df3dd975` with the work uncommitted): 2780 passed, 0 failed, wall 17 m 40 s.
 
 `test:full` on merged `main` (2026-11-07T02:39:35+01:00 → 02:57:19+01:00, NB-3641, `2018bd7d` + the fold): 2779 passed, 1 failed — `discogs-submissions.spec.js:537` (the Discogs history reader on MusicBrainz) logged an extra anonymous `https://www.discogs.com/favicon.ico` request. Unrelated to this change; rerun alone `--repeat-each 3`: 3 passed. A timing-dependent favicon load the request-log assertion does not exclude: a flaky spec to look at.
+
+## 2026-11-07 — springsteenlyrics.com song window: layout A, compare, tables, double-encoded text (feat/sl-song-poh, WIP.1)
+Env: 2026-11-07T15:11+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (no Tampermonkey, GM stubs) · vzell's snapshots from his browser: unknown versions
+
+Snapshots read: `debug/sl-song-POH.html` (song=backstreets), `debug/sl-song-unofficial-POH.html`
+(backstreets_unofficial1), `debug/sl-song-live-POH.html` (backstreets_1975-11-18): the window as it
+was, one right column of `pre-wrap` dumps. Fetched for the structure survey (curl, logged out,
+2026-11-07T14:39+01:00): `debug/sl-song-{thepromise,trapped,ifiwasthepriest,thunderroad}.html`.
+Mockups `org/sl-song-POH-mockups.html` (https://claude.ai/artifact/2fzZykcmmtBTGKhes9bGpc); vzell's picks:
+everything, system book face, layout A, filter text highlighted.
+
+- **Live History's shape** (trapped, thunderroad, badlands): one `.panel` per tour titled "List of
+  [known] <tour> performances", an `ol.monospaced` of "29 May 1981 at Wembley Arena, London, England",
+  a line linked when the site has that show's version. A section of only "SECTION NOT YET COMPLETED"
+  (backstreets' Live History, badlands' on-tour and Circulating Studio Versions) has nothing left after
+  the placeholder is dropped, so the window leaves it out.
+- **The studio credits are a `<blockquote>`** opening "Track credits:" (backstreets), not prose, so
+  `_slProseBlocks()` tells it from a quote (thepromise's rewritten verse) by that first line.
+- **The double-encoded text is the site's own**: "CalexÃ³ns" is in the fixture's UTF-8 bytes, and
+  thunderroad/trapped have "DéjÃ  Vu", "BernabÃ©u", "Saint-Ã‰tienne". "Ã‰" needs Windows-1252
+  (‰ is byte 89), not Latin-1. And "à" (C3 A0) arrives as "Ã" plus a NO-BREAK SPACE that `_dpText()`
+  then collapses to a plain one: badlands' "DéjÃ Vu" was invisible to the byte rule until the
+  "Ã + space after a lower-case letter" rule went in (the badlands test failed first, rightly).
+- **A memory hit left the window without an answer**: `_dpSiteSource().extracted()` returned the
+  HTML for a record in `_dpMem` but stored nothing in `exRes`, so the first repaint (typing in a window
+  table's filter) drew "Loading the detail page…" for good. No foreign window had a table before, so
+  nothing repainted it. Fixed for all four hosts; pinned by a mutation.
+- **Findings stamp cells, not rows**: `data-mb-findings` is on the `td`, even for a row-scope finding.
+  My first index assertion looked at `tr` and failed although the row was visibly tinted.
+- Results: `sl-song-window.spec.js` 6/6; the SL specs (detail-preview, sl-song, sl-lyrics) 61/61, two of
+  them updated for the new layout (the lyrics are a sheet now, no `.mb-dp-section`; "Available
+  Versions" keeps the site's case).

@@ -2850,6 +2850,16 @@
                          'so the annotation can be edited to the current one.'
         },
 
+        sa_findings_tint_sl_double_utf8: {
+            label: 'Highlight springsteenlyrics.com rows with double-encoded text as ERROR',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint a row red with a ❌ when springsteenlyrics.com serves double-encoded text in it ' +
+                         '("CalexÃ³ns" for "Calexóns"): on the lyrics index once the song\'s page was read, on a ' +
+                         'song\'s page in its own tables. The song window shows the text repaired and can copy a ' +
+                         'report for the site\'s maintainer.'
+        },
+
         sa_findings_nonphysical_formats: {
             label: 'Formats that have no medium to photograph',
             type: 'text',
@@ -14264,6 +14274,7 @@
             parts.push(h3(name) + table(cols, rows));
         };
         releaseTable('Other official releases', s.others, false);
+        releaseTable('Single releases', s.singles, false);
         if (s.live.length) {
             const byDate = new Map(s.versions.filter(v => v.v.type === 'Live' && v.v.date).map(v => [v.v.date + '|' + v.v.show, v]));
             const cols = ['Cover', 'Date', 'Show', 'Release', 'Kind', 'Released', 'Version', 'Note'];
@@ -27976,9 +27987,13 @@
      *    the promo flag (out of the title), the code, and a line between
      *    the facts and the Notes as a note; its song and show pages are
      *    records too (`_dpParseBsSong()`, `_dpParseBsShow()`).
+     * 18: springsteenlyrics.com song pages carry the window's own reading
+     *    (`data.slSong`, `_slSongWindowData()`: sections as blocks, the
+     *    versions, editions, rows, Live History, the double-encoded runs),
+     *    laid out by `_slSongCols()`; "Single Release" rows are rows.
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 17;
+    const _DP_PARSER_VERSION = 18;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -28969,9 +28984,337 @@
      */
     const _SL_SONG_ROW_SECTIONS = [
         [/^other official releases$/i, 'others'],
+        [/^single releases?$/i, 'singles'],
         [/^covers$/i, 'covers'],
         [/^appearances? in movies$/i, 'movies'],
     ];
+
+    /**
+     * The site's placeholder lines on a song page, which say nothing about
+     * the song ("SECTION NOT YET COMPLETED" under a heading; "PAGE UNDER
+     * CONSTRUCTION", a heading of its own on borntorun, survey 2026-11-07).
+     * @type {RegExp}
+     */
+    const _SL_SONG_PLACEHOLDER_RE = /^(?:section not yet completed|page under construction)$/i;
+
+    /**
+     * Windows-1252's characters at bytes 0x80–0x9F, by character: what a
+     * UTF-8 byte in that range became when the site's text was read as
+     * Windows-1252 and saved again ("Saint-Ã‰tienne": É is C3 89, and 89 is
+     * ‰). Bytes 0xA0–0xFF are the Latin-1 characters of the same number.
+     * @type {Map<string, number>}
+     */
+    const _SL_CP1252_BYTE = new Map([
+        ['€', 0x80], ['‚', 0x82], ['ƒ', 0x83], ['„', 0x84], ['…', 0x85], ['†', 0x86], ['‡', 0x87], ['ˆ', 0x88],
+        ['‰', 0x89], ['Š', 0x8A], ['‹', 0x8B], ['Œ', 0x8C], ['Ž', 0x8E], ['‘', 0x91], ['’', 0x92], ['“', 0x93],
+        ['”', 0x94], ['•', 0x95], ['–', 0x96], ['—', 0x97], ['˜', 0x98], ['™', 0x99], ['š', 0x9A], ['›', 0x9B],
+        ['œ', 0x9C], ['ž', 0x9E], ['Ÿ', 0x9F],
+    ]);
+
+    /**
+     * A candidate run of double-encoded UTF-8: a lead byte's character
+     * (Â–ô, 0xC2–0xF4) and one to three continuation bytes' characters
+     * (0x80–0xBF, read as Windows-1252 or Latin-1). `_slMojibakeScan()`
+     * keeps a run only when its bytes decode as UTF-8.
+     * @type {RegExp}
+     */
+    const _SL_MOJIBAKE_RE = /[Â-ô][ -¿\u0081\u008D\u008F\u0090\u009D€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ]{1,3}/g;
+
+    /**
+     * The byte a character stands for in double-encoded text: Latin-1's
+     * own number up to 0xFF, Windows-1252's 0x80–0x9F characters by
+     * `_SL_CP1252_BYTE`; -1 for anything else.
+     *
+     * @param {string} ch One character.
+     * @returns {number}
+     */
+    function _slMojibakeByte(ch) {
+        if (_SL_CP1252_BYTE.has(ch)) return _SL_CP1252_BYTE.get(ch);
+        const c = ch.charCodeAt(0);
+        return c <= 0xFF ? c : -1;
+    }
+
+    /**
+     * The double-encoded runs of a text (vzell, 2026-11-07: the site serves
+     * "CalexÃ³ns", "BernabÃ©u", "Saint-Ã‰tienne", "DéjÃ  Vu" in its own
+     * UTF-8 source, so they are its text, not our decoding). A run is a lead
+     * byte's character and as many continuation characters as that lead
+     * byte announces (0xC2–0xDF: one, 0xE0–0xEF: two, 0xF0–0xF4: three), all
+     * of them continuation bytes, and the bytes must decode as UTF-8: so
+     * "Ã©" is "é", while a real "Â°" or "Ã " elsewhere in correct text is
+     * left alone unless its bytes form a character. Pure.
+     *
+     * @param {string} text
+     * @returns {Array<{at: number, bad: string, fix: string}>} In text order.
+     */
+    function _slMojibakeScan(text) {
+        const s = String(text || '');
+        const out = [];
+        if (!/[Â-ô]/.test(s)) return out;
+        let dec;
+        try {
+            dec = new TextDecoder('utf-8', { fatal: true });
+        } catch (_) {
+            return out;
+        }
+        _SL_MOJIBAKE_RE.lastIndex = 0;
+        let m;
+        while ((m = _SL_MOJIBAKE_RE.exec(s))) {
+            const lead = m[0].charCodeAt(0);
+            const need = lead >= 0xF0 ? 4 : lead >= 0xE0 ? 3 : 2;
+            if (m[0].length < need) continue;
+            const run = m[0].slice(0, need);
+            const bytes = Array.from(run).map(_slMojibakeByte);
+            if (bytes.some(b => b < 0) || bytes.slice(1).some(b => b < 0x80 || b > 0xBF)) continue;
+            let fix;
+            try {
+                fix = dec.decode(new Uint8Array(bytes));
+            } catch (_) {
+                continue;
+            }
+            if (!fix || fix.length > 2) continue;
+            out.push({ at: m.index, bad: run, fix });
+            _SL_MOJIBAKE_RE.lastIndex = m.index + need;
+        }
+        // "à" is C3 A0, and A0 is a no-break space, which a reader that
+        // collapses white space (`_dpText()`) has made a plain one ("DéjÃ Vu"
+        // on badlands' Covers): "Ã" and a space right after a lower-case
+        // letter. The space stays: it was the word's own.
+        const nb = /(?<=\p{Ll})Ã (?=\S)/gu;
+        while ((m = nb.exec(s))) {
+            if (!out.some(r => r.at === m.index)) out.push({ at: m.index, bad: 'Ã ', fix: 'à ' });
+        }
+        return out.sort((a, b) => a.at - b.at);
+    }
+
+    /**
+     * A text with its double-encoded runs repaired (`_slMojibakeScan()`).
+     *
+     * @param {string} text
+     * @returns {string}
+     */
+    function _slMojibakeFix(text) {
+        const s = String(text || '');
+        const runs = _slMojibakeScan(s);
+        if (!runs.length) return s;
+        let out = '';
+        let i = 0;
+        runs.forEach((r) => {
+            out += s.slice(i, r.at) + r.fix;
+            i = r.at + r.bad.length;
+        });
+        return out + s.slice(i);
+    }
+
+    /**
+     * Escaped HTML of a text with each double-encoded run shown repaired
+     * and marked (`span.mb-sl-moj`, its tooltip the site's own text). On a
+     * string of the window's own safe HTML (`html: true`) only the text
+     * between tags is touched, so a link's address never changes.
+     *
+     * @param {string} s
+     * @param {boolean} [html] `s` is already safe HTML.
+     * @returns {string}
+     */
+    function _slMojibakeHtml(s, html = false) {
+        const mark = (t) => {
+            const runs = _slMojibakeScan(t);
+            if (!runs.length) return html ? t : _rgEsc(t);
+            let out = '';
+            let i = 0;
+            runs.forEach((r) => {
+                const seg = t.slice(i, r.at);
+                out += (html ? seg : _rgEsc(seg)) +
+                    `<span class="mb-sl-moj" data-mb-tip title="${_rgEsc(`The site has: ${r.bad}`)}">${_rgEsc(r.fix)}</span>`;
+                i = r.at + r.bad.length;
+            });
+            const rest = t.slice(i);
+            return out + (html ? rest : _rgEsc(rest));
+        };
+        if (!html) return mark(String(s || ''));
+        return String(s || '').replace(/(^|>)([^<]+)/g, (all, gt, text) => gt + mark(text));
+    }
+
+    /**
+     * Whether the page is springsteenlyrics.com's lyrics index (the
+     * `sl-lyrics` pageType), whose rows link songs and count a song's
+     * double-encoded text from its saved page.
+     *
+     * @returns {boolean}
+     */
+    function _slMojIsIndex() {
+        return !!_isSlHost && !!activeDefinition && activeDefinition.type === 'sl-lyrics';
+    }
+
+    /**
+     * The song page a lyrics index row links (its Title link), absolute, or ''.
+     *
+     * @param {Element} el  A cell or a row.
+     * @returns {string}
+     */
+    function _slMojSongUrl(el) {
+        const a = el.querySelector('a[href*="lyrics.php?song="]:not(.mb-fi-glyph)');
+        return a ? _dpAbsUrl(a.getAttribute('href'), location.href) : '';
+    }
+
+    /**
+     * A cell's double-encoded text (the `sl-double-utf8` finding): its own
+     * text's runs (`_slMojibakeScan()`); on the lyrics index, the runs of
+     * the linked song page when its record is in memory (saved or read in
+     * this session: `data.slSong.mojibake`). Reads the cell's own text and
+     * href, so a master row answers as a live one.
+     *
+     * @param {Element} cell
+     * @returns {Array<{bad: string, fix: string, section: string}>}
+     */
+    function _findCellSlMojibake(cell) {
+        const own = _slMojibakeScan(cell.textContent).map(r => ({ bad: r.bad, fix: r.fix, section: '' }));
+        if (own.length || !_slMojIsIndex()) return own;
+        const url = _slMojSongUrl(cell);
+        const mem = url ? _dpMem.get(url) : null;
+        const sl = mem && mem.data && mem.data.slSong;
+        return sl && sl.mojibake ? sl.mojibake : own;
+    }
+
+    /**
+     * A song page's record landed in memory (read now, or from the saved
+     * pages: `_DP_SITES[…].onRecord`): on the lyrics index, the rows that
+     * link it are stamped again when it has double-encoded text.
+     *
+     * @param {string} url
+     * @param {object} data
+     * @returns {void}
+     */
+    function _slMojRecordLanded(url, data) {
+        if (!_slMojIsIndex() || !data || !data.slSong || !(data.slSong.mojibake || []).length) return;
+        document.querySelectorAll('table.tbl > tbody > tr').forEach((tr) => {
+            if (_slMojSongUrl(tr) === url) _queueFindingsRestamp(tr, ['sl-double-utf8']);
+        });
+    }
+
+    /**
+     * The render tail on the lyrics index, after the saved song pages are
+     * in memory (`_fiAfterRender()`): every row whose song page has
+     * double-encoded text is stamped again (no request).
+     *
+     * @returns {number} Rows queued (for the specs).
+     */
+    function _slMojAfterRender() {
+        if (!_slMojIsIndex()) return 0;
+        let n = 0;
+        document.querySelectorAll('table.tbl > tbody > tr').forEach((tr) => {
+            const url = _slMojSongUrl(tr);
+            const mem = url ? _dpMem.get(url) : null;
+            if (mem && mem.data && mem.data.slSong && (mem.data.slSong.mojibake || []).length) {
+                _queueFindingsRestamp(tr, ['sl-double-utf8']);
+                n++;
+            }
+        });
+        return n;
+    }
+
+    /**
+     * A song page's section as blocks for the window (org/springsteenlyrics.org,
+     * "the SL song detail …", proposals 3 and 11): a paragraph (`p`), a quote
+     * (`q`: a `<blockquote>`, a pull quote in the window), the band's "Track
+     * credits:" quote (`credits`, read by `_slStudioCredits()`), a list item
+     * (`li`) or a sub-heading (`h`), each as escaped HTML with the page's
+     * links kept (`_dpBlockHtml()`). Left out: what the window shows in
+     * other ways (track list panels, `.blog-post` rows, pictures), the
+     * contact form and scripts, and the site's placeholders.
+     *
+     * @param {Element} box  A copy of the section.
+     * @param {string}  base The page's URL.
+     * @returns {Array<{k: string, html: string, text: string}>}
+     */
+    function _slProseBlocks(box, base) {
+        const doc = box.ownerDocument || document;
+        const out = [];
+        const add = (k, el) => {
+            const text = _dpBlockText(el);
+            if (!text || _SL_SONG_PLACEHOLDER_RE.test(text)) return;
+            out.push({ k, html: _dpBlockHtml(el, base), text });
+        };
+        let run = null;
+        const flush = () => {
+            if (run) add('p', run);
+            run = null;
+        };
+        Array.from(box.childNodes).forEach((n) => {
+            if (n.nodeType === Node.TEXT_NODE || (n.nodeType === Node.ELEMENT_NODE && n.matches('a, em, i, b, strong, u, span, br, sup, sub'))) {
+                if (!run) run = doc.createElement('p');
+                run.appendChild(n.cloneNode(true));
+                return;
+            }
+            if (n.nodeType !== Node.ELEMENT_NODE) return;
+            flush();
+            if (n.matches(`${_SL_SONG_DROP_SEL}, .panel-group, .blog-post, img, hr, h5`) || n.querySelector('.blog-post, .panel-group')) return;
+            if (n.matches('.row') && !_dpText(n.textContent)) return;
+            if (n.matches('blockquote')) {
+                const t = _dpText(n.textContent);
+                add(/^track credits\s*:/i.test(t) ? 'credits' : 'q', n);
+                return;
+            }
+            if (n.matches('ul, ol')) {
+                Array.from(n.children).filter(li => li.matches('li')).forEach(li => add('li', li));
+                return;
+            }
+            if (n.matches('h1, h2, h3, h4, h6')) {
+                add('h', n);
+                return;
+            }
+            const c = n.cloneNode(true);
+            c.querySelectorAll('img, .item-img-wrap, .item-img-overlay').forEach(x => x.remove());
+            add('p', c);
+        });
+        flush();
+        return out;
+    }
+
+    /**
+     * A "Live History" section's performance lists (survey 2026-11-07:
+     * trapped, thepromise, thunderroad, badlands): one `.panel` per tour,
+     * titled "List of [known] <tour> performances", each an
+     * `ol.monospaced` of "29 May 1981 at Wembley Arena, London, England"
+     * lines, linked when the site has that show's version.
+     *
+     * @param {Element} box  A copy of the section.
+     * @param {string}  base The page's URL.
+     * @returns {Array<{tour: string, dates: Array<{date: string, text: string, where: string, href: string}>}>}
+     */
+    function _slLiveHistoryRead(box, base) {
+        return Array.from(box.querySelectorAll('.panel')).map((p) => {
+            const title = _dpText((p.querySelector('.panel-title') || {}).textContent || '');
+            const tour = title.replace(/^list of (?:known )?/i, '').replace(/\s+performances?$/i, '').trim() || title;
+            const dates = Array.from(p.querySelectorAll('ol li, ul li')).map((li) => {
+                const text = _dpText(li.textContent);
+                const a = li.querySelector('a[href*="song="]');
+                const at = text.match(/^(.+?)\s+at\s+(.+)$/);
+                return { date: _slFirstIsoDate(text), text, where: at ? at[2] : '', href: a ? _dpAbsUrl(a.getAttribute('href'), base) : '' };
+            }).filter(d => d.text);
+            return { tour, dates };
+        }).filter(t => t.dates.length);
+    }
+
+    /**
+     * The band and the credit lines of a "Track credits:" quote: "Name:
+     * instruments" lines as the band, the other lines ("Produced by …",
+     * "Recorded and mixed at …") as credits.
+     *
+     * @param {string} text  The quote's text.
+     * @returns {{crew: Array<[string, string]>, credits: string[]}}
+     */
+    function _slStudioCredits(text) {
+        const crew = [];
+        const credits = [];
+        String(text || '').split('\n').map(l => l.trim()).filter(Boolean).forEach((l) => {
+            if (/^track credits\s*:?$/i.test(l)) return;
+            const m = l.match(/^([^:]{2,60}):\s*(.+)$/);
+            if (m) crew.push([m[1], m[2]]);
+            else credits.push(l);
+        });
+        return { crew, credits };
+    }
 
     /**
      * What a copy of a song page's section leaves out: scripts (the Request
@@ -29233,8 +29576,12 @@
             title: _dpText(head.textContent), version, v: _slLyricsParseVersion(version), slug,
             loggedIn: _slLoggedIn(doc), updated: '',
             lyrics: '', noLyrics: false,
-            texts: [], releases: [], others: [], live: [], covers: [], movies: [], versions: [],
+            texts: [], releases: [], others: [], singles: [], live: [], covers: [], movies: [], versions: [],
             pictures: [], self: null, show: null, released: null, studio: null, privateText: '', requestText: '',
+            // The window's reading (org/springsteenlyrics.org, "the SL song
+            // detail …", 2026-11-07): every section in page order as blocks
+            // (`_slProseBlocks()`), and the Live History tours.
+            prose: [], liveHistory: [],
         };
         const upd = pd.querySelector(':scope > h5');
         if (upd) s.updated = _dpText(upd.textContent).replace(/^Page last updated:\s*/i, '');
@@ -29255,6 +29602,16 @@
             if (_SL_SONG_PRIVATE_RE.test(label)) {
                 s.privateText = _dpBlockText(box);
                 return;
+            }
+            if (label !== 'Available Versions' && !_SL_SONG_PLACEHOLDER_RE.test(label)) {
+                const kind = (_SL_SONG_ROW_SECTIONS.find(([re]) => re.test(label)) || [])[1] || '';
+                const isRelease = !!em && _dpText(em.textContent) === label;
+                const blocks = _slProseBlocks(box, url);
+                s.prose.push({ label, kind, release: isRelease, blocks });
+                if (/^live history\b/i.test(label)) {
+                    const tours = _slLiveHistoryRead(box, url);
+                    if (tours.length) s.liveHistory.push({ label, tours });
+                }
             }
             if (label === 'Available Versions') {
                 box.querySelectorAll('span.monospaced').forEach((span) => {
@@ -29289,7 +29646,7 @@
                 rows.forEach(r => (r.closest('.row') || r).remove());
                 // The prose between the rows ("BACKSTREETS can also be found
                 // on a Japanese … sampler.") is kept for the releases only.
-                if (rowKind === 'others') {
+                if (rowKind === 'others' || rowKind === 'singles') {
                     const t = _dpBlockText(box);
                     if (t) s.texts.push({ label, text: t });
                 }
@@ -29453,6 +29810,108 @@
     }
 
     /**
+     * The headings a song window puts in its LEFT column (vzell's pick 4A,
+     * 2026-11-07: what the version is on the left, what you read on the
+     * right): Info, the studio and writing facts, Credits, Request.
+     * @type {RegExp}
+     */
+    const _SL_SONG_LEFT_RE = /^(?:info|studio recording|writing(?: and (?:recording|origin))?|recording|background|circulating studio versions|credits(?: \/ references)?|references|request)$/i;
+
+    /**
+     * The window's own reading of a song page (`data.slSong`, parser
+     * version 18): plain data, cached with the record, which
+     * `_slSongCols()` lays out (org/springsteenlyrics.org, "the SL song
+     * detail …", vzell's picks 2026-11-07). Built from `_slSongRead()`:
+     *   - the version and its type, the versions (each `href` absolute),
+     *     the version the lyrics are compared with (`ref`: the Album
+     *     version, else the first official studio version; none for the
+     *     album version itself or a page without lyrics);
+     *   - the releases as editions of tracks (`_slSongEditionGroups()`),
+     *     the release, single, cover and movie rows, the live releases
+     *     (each with this song's version of that show, when the site has
+     *     one), the Live History tours;
+     *   - every section as blocks (`_slProseBlocks()`), its column
+     *     (`_SL_SONG_LEFT_RE`), the studio credits;
+     *   - the double-encoded runs of the page's text (`_slMojibakeScan()`),
+     *     by section, for the banner, the report and the index's finding.
+     * Private Info is never in it (`_slSongRead()` keeps it apart).
+     *
+     * @param {object} song  `_slSongRead()`.
+     * @param {string} url   The page's URL.
+     * @returns {object}
+     */
+    function _slSongWindowData(song, url) {
+        const abs = h => (h ? _dpAbsUrl(h, url) : '');
+        const v = song.v;
+        const versions = song.versions.map(r => ({
+            title: r.title, version: r.version, type: r.v.type || '', date: r.v.date || '', show: r.v.show || '',
+            href: abs(r.href), self: !!r.self,
+        }));
+        let ref = null;
+        if (song.lyrics && v.type !== 'Album') {
+            const pick = versions.find(r => r.type === 'Album') || versions.find(r => r.type === 'Official studio');
+            if (pick && !pick.self && pick.href) ref = { href: pick.href, version: pick.version };
+        }
+        const track = t => ({ pos: t.pos || '', title: t.title, href: abs(t.href), self: !!t.self });
+        const rows = list => list.map(r => ({
+            thumb: r.image ? r.image.thumb : '', full: r.image ? r.image.full : '',
+            artist: r.artist, title: r.title, format: r.format, label: r.label, catNo: r.catNo, country: r.country,
+            year: r.year, note: r.note, tracks: r.tracks.map(track),
+        }));
+        const byShow = new Map(versions.filter(x => x.type === 'Live' && x.date).map(x => [`${x.date}|${x.show}`, x]));
+        const live = song.live.map((r) => {
+            const l = r.live;
+            const ver = byShow.get(`${l.date}|${l.show}`);
+            return {
+                thumb: r.image ? r.image.thumb : '', full: r.image ? r.image.full : '',
+                date: l.date, dateText: l.dateText, show: l.show, release: l.release, kind: l.kind, year: l.year, first: !!l.first,
+                version: ver ? { href: ver.href, self: ver.self } : null,
+            };
+        });
+        const releases = song.releases.map(rel => ({
+            name: rel.name,
+            groups: [].concat(...rel.editions.map(ed => _slSongEditionGroups(rel.name, ed, song.slug)
+                .map(g => ({ name: g.name, edition: ed.edition || ed.name || '', tracks: g.tracks.map(track) })))),
+        }));
+        const sections = song.prose.map((p) => {
+            const credits = p.blocks.filter(b => b.k === 'credits').map(b => _slStudioCredits(b.text));
+            return {
+                label: p.label, kind: p.kind, release: p.release,
+                side: _SL_SONG_LEFT_RE.test(p.label) ? 'left' : 'right',
+                blocks: p.blocks.filter(b => b.k !== 'credits'),
+                crew: [].concat(...credits.map(c => c.crew)), credits: [].concat(...credits.map(c => c.credits)),
+            };
+        });
+        // The double-encoded runs, by where they are, each once.
+        const moj = [];
+        const seen = new Set();
+        const scan = (where, text) => _slMojibakeScan(text).forEach((r) => {
+            const k = `${where}|${r.bad}`;
+            if (seen.has(k)) return;
+            seen.add(k);
+            moj.push({ section: where, bad: r.bad, fix: r.fix });
+        });
+        scan('Title', `${song.title} ${song.version}`);
+        scan('Lyrics', song.lyrics);
+        sections.forEach(sec => sec.blocks.forEach(b => scan(sec.label, b.text)));
+        const rowText = r => [r.artist, r.title, r.format, r.label, r.country, r.note].concat(r.tracks.map(t => t.title)).join(' ');
+        [['Other Official Releases', song.others], ['Single Release', song.singles], ['Covers', song.covers], ['Appearance in Movies', song.movies]]
+            .forEach(([where, list]) => list.forEach(r => scan(where, rowText(r))));
+        song.live.forEach(r => scan('Other Official Releases', `${r.live.release} ${r.live.kind}`));
+        song.liveHistory.forEach(h => h.tours.forEach(tr => scan(h.label, [tr.tour].concat(tr.dates.map(d => d.text)).join('\n'))));
+        versions.forEach(x => scan('Available Versions', `${x.title} ${x.version}`));
+        return {
+            url, slug: song.slug, title: song.title, version: song.version, type: v.type || '', date: v.date || '',
+            show: v.show || '', artist: v.artist || '', updated: song.updated, loggedIn: !!song.loggedIn,
+            selfId: song.loggedIn && song.self ? song.self.id : '',
+            lyrics: song.lyrics, noLyrics: song.noLyrics, ref, versions,
+            venue: song.show, released: song.released, studio: song.studio,
+            releases, others: rows(song.others), singles: rows(song.singles), covers: rows(song.covers), movies: rows(song.movies),
+            live, liveHistory: song.liveHistory, sections, mojibake: moj,
+        };
+    }
+
+    /**
      * Parses a springsteenlyrics.com song page (`lyrics.php?song=SLUG`, one
      * per version: the lyrics index's rows link to these).
      *
@@ -29532,7 +29991,11 @@
             }
         });
         const song = _slSongRead(doc, url);
-        if (song) _dpSlSongFacts(song, data);
+        if (song) {
+            _dpSlSongFacts(song, data);
+            // The window's own layout (`_slSongCols()`, parser version 18).
+            data.slSong = _slSongWindowData(song, url);
+        }
         pd.querySelectorAll('img[src*="lyrics/images/"]').forEach(img => {
             const a = img.closest('.item-img-wrap') && img.closest('.item-img-wrap').querySelector('a[href]');
             data.images.push({
@@ -30393,7 +30856,12 @@
             liveCss: '',
             livePrepare: null,
             // The intro text of a list page links Brucebase (U5 census).
-            extRoot: '.project-detail'
+            extRoot: '.project-detail',
+            // A song window compares its lyrics with the album version's
+            // (`_slSongRefKick()`); a song read anywhere re-checks the index
+            // rows that link it for double-encoded text (`_slMojRecordLanded()`).
+            windowKick: (data) => _slSongRefKick(data),
+            onRecord: (url, data) => _slMojRecordLanded(url, data),
         },
         'jungleland.it': {
             setting: 'sa_jl_detail_preview',
@@ -30882,15 +31350,26 @@
                 if (start) {
                     exRes.delete(t.key);
                     const mem = force ? null : memOf(t);
-                    if (mem) return _dpExtractedHtml(mem.data, { cached: true, at: mem.at });
+                    // `windowKick`: what the window itself reads once it
+                    // shows the record (a song's album version, for the
+                    // compare), on this Space or this answer only.
+                    if (mem) {
+                        // Kept as this window's answer, so a repaint (a
+                        // table's filter, a chip, a fold) shows it again
+                        // instead of "Loading…".
+                        exRes.set(t.key, { outcome: 'ok', data: mem.data, at: mem.at, cached: true });
+                        if (site.windowKick) site.windowKick(mem.data);
+                        return _dpExtractedHtml(mem.data, { cached: true, at: mem.at }, t);
+                    }
                     get(t, { wanted: () => _dpDialogShowing(t), force }).then(res => {
                         exRes.set(t.key, res);
+                        if (res.outcome === 'ok' && site.windowKick && _dpDialogShowing(t)) site.windowKick(res.data);
                         repaint();
                     });
                     return exLoading;
                 }
                 const res = exRes.get(t.key);
-                if (res && res.outcome === 'ok') return _dpExtractedHtml(res.data, res);
+                if (res && res.outcome === 'ok') return _dpExtractedHtml(res.data, res, t);
                 if (res && res.outcome === 'error') return _dpFailHtml(res.detail);
                 return exLoading;
             },
@@ -31081,6 +31560,7 @@
             const rec = await _dpIdbGet(url).catch(() => null);
             if (_dpRecUsable(rec, site, Date.now())) {
                 _dpMem.set(url, { data: rec.data, at: rec.at });
+                if (site.onRecord) site.onRecord(url, rec.data);
                 return { outcome: 'ok', data: rec.data, at: rec.at, cached: true };
             }
         }
@@ -31109,6 +31589,7 @@
                 const at = Date.now();
                 _dpMem.set(url, { data, at });
                 _dpIdbPut({ url, v: _DP_PARSER_VERSION, at, data }).catch(() => { /* memory still has it */ });
+                if (site.onRecord) site.onRecord(url, data);
                 Lib.debug('detail', `${url}: parsed — ${data.fields.length} field(s), ${data.tracks.length} track(s), ${data.images.length} image(s).`);
                 return { outcome: 'ok', data, at, cached: false };
             } catch (err) {
@@ -31932,10 +32413,11 @@
      *
      * @param {object} data A parsed record.
      * @param {object} res  Its `_dpGet()` outcome.
+     * @param {?object} [t] The window's target (its tables' state).
      * @returns {string}
      */
-    function _dpExtractedHtml(data, res) {
-        const { left, right } = _dpExtractedCols(data);
+    function _dpExtractedHtml(data, res, t = null) {
+        const { left, right } = _dpExtractedCols(data, t);
         return `<div class="mb-dp-x"><div class="mb-dp-col">${left.join('')}</div><div class="mb-dp-col">${right.join('')}</div></div>` +
             `<div class="mb-dp-xfoot">${_mbttEscape(_dpAgeText(res))}</div>`;
     }
@@ -31979,15 +32461,739 @@
         }, true);
     }
 
+    // --- The springsteenlyrics.com song window (org/springsteenlyrics.org,
+    // "the SL song detail …"; mockups org/sl-song-POH-mockups.html,
+    // https://claude.ai/artifact/2fzZykcmmtBTGKhes9bGpc; vzell's picks
+    // 2026-11-07: every proposal, the system book face, layout A, the
+    // tables' filter text highlighted). The record's `slSong`
+    // (`_slSongWindowData()`) laid out: facts left, what you read right. ---
+
+    /**
+     * Each song window's lyrics view, by the page's URL: `mode` ('plain',
+     * 'marks' or 'sbs' — side by side), `fold` (runs of identical lines as
+     * one), `ghosts` (the album's lines missing here). For the page's life.
+     * @type {Map<string, {mode: string, fold: boolean, ghosts: boolean}>}
+     */
+    const _slsUi = new Map();
+
+    /**
+     * The versions a song window compares with (`slSong.ref`), by URL:
+     * `loading`, `ok` with its `lyrics`, or `failed` with its `detail`.
+     * @type {Map<string, {state: string, lyrics?: string, detail?: string}>}
+     */
+    const _slsRef = new Map();
+
+    /**
+     * A song window's lyrics view state (`_slsUi`), made on first use.
+     *
+     * @param {string} url
+     * @returns {{mode: string, fold: boolean, ghosts: boolean}}
+     */
+    function _slsUiFor(url) {
+        let ui = _slsUi.get(url);
+        if (!ui) {
+            ui = { mode: 'marks', fold: true, ghosts: false };
+            _slsUi.set(url, ui);
+        }
+        return ui;
+    }
+
+    /**
+     * Starts reading the version a song window compares with (the album
+     * version), once per URL, through the detail pages' cache and rate gate
+     * (`_dpGet()`), and repaints the window when it lands. Called by the
+     * detail-page source when the window shows the record (`windowKick`:
+     * the Space that opened it, or the answer it was waiting for), never
+     * from a hover or a repaint. springsteenlyrics.com only: elsewhere the
+     * window has no compare.
+     *
+     * @param {object} data  A parsed record.
+     * @returns {void}
+     */
+    function _slSongRefKick(data) {
+        const sl = data && data.slSong;
+        if (!sl || !sl.ref || !_isSlHost || _slsRef.has(sl.ref.href)) return;
+        const site = _DP_SITES['springsteenlyrics.com'];
+        const href = sl.ref.href;
+        _slsRef.set(href, { state: 'loading' });
+        _dpGet(href, site, { wanted: () => !!document.getElementById('mb-dp-dialog') }).then((res) => {
+            const d = res && res.outcome === 'ok' ? res.data : null;
+            const lyrics = d ? ((d.slSong && d.slSong.lyrics) || ((d.sections || []).find(x => x.label === 'Lyrics') || {}).text || '') : '';
+            if (lyrics) _slsRef.set(href, { state: 'ok', lyrics });
+            else if (res && res.outcome === 'skipped') _slsRef.delete(href);
+            else _slsRef.set(href, { state: 'failed', detail: d ? 'its page has no lyrics' : ((res && res.detail) || 'no answer') });
+            if (_dpDialog.repaint) _dpDialog.repaint();
+        });
+    }
+
+    /**
+     * A lyric line as the diff compares it: lower case, stage notes,
+     * punctuation and apostrophes out, spaces collapsed.
+     *
+     * @param {string} s
+     * @returns {string}
+     */
+    function _slLyricsNorm(s) {
+        return String(s || '').toLowerCase().replace(/\[[^\]]*\]/g, ' ').replace(/['’`]/g, '')
+            .replace(/[^\p{L}\p{N} ]+/gu, ' ').replace(/\s+/g, ' ').trim();
+    }
+
+    /**
+     * The longest common subsequence of two lists, as index pairs.
+     *
+     * @param {Array} a
+     * @param {Array} b
+     * @param {function(*, *): boolean} eq
+     * @returns {Array<[number, number]>}
+     */
+    function _slLcs(a, b, eq) {
+        const n = a.length;
+        const m = b.length;
+        const t = Array.from({ length: n + 1 }, () => new Int32Array(m + 1));
+        for (let i = n - 1; i >= 0; i--) {
+            for (let j = m - 1; j >= 0; j--) t[i][j] = eq(a[i], b[j]) ? t[i + 1][j + 1] + 1 : Math.max(t[i + 1][j], t[i][j + 1]);
+        }
+        const out = [];
+        let i = 0;
+        let j = 0;
+        while (i < n && j < m) {
+            if (eq(a[i], b[j])) {
+                out.push([i, j]);
+                i++;
+                j++;
+            } else if (t[i + 1][j] >= t[i][j + 1]) i++;
+            else j++;
+        }
+        return out;
+    }
+
+    /**
+     * How a version's lyrics differ from the album version's ("Differs from
+     * the album version", proposal 9, in scope since 2026-11-07): the lines
+     * that carry words are matched by their longest common subsequence
+     * (`_slLyricsNorm()`: case, punctuation and stage notes ignored); in
+     * each gap between two matches, the version's lines are paired in order
+     * with the album's (`chg`, the album's line in `was`), a version line
+     * left over is `add`, an album line left over is missing — placed after
+     * the version line it would have followed (-1: before the first).
+     * `total` counts the version's lines with words, `differ` those changed
+     * or added. Pure.
+     *
+     * @param {string} vText  The version's lyrics.
+     * @param {string} aText  The album version's lyrics.
+     * @returns {{lines: Array<{kind: string, was: string}>, missing: Array<[number, string]>, total: number, differ: number}}
+     *   `lines` one per line of `vText`: `same`, `chg`, `add`, or `blank`.
+     */
+    function _slLyricsDiff(vText, aText) {
+        const V = String(vText || '').split('\n');
+        const A = String(aText || '').split('\n');
+        const words = l => !!_slLyricsNorm(l);
+        const vi = V.map((l, i) => i).filter(i => words(V[i]));
+        const ai = A.map((l, i) => i).filter(i => words(A[i]));
+        const pairs = _slLcs(vi, ai, (x, y) => _slLyricsNorm(V[x]) === _slLyricsNorm(A[y]));
+        const lines = V.map(l => ({ kind: words(l) ? 'add' : 'blank', was: '' }));
+        const missing = [];
+        const gap = (v0, v1, a0, a1) => {
+            const vs = vi.filter(x => x > v0 && x < v1);
+            const as = ai.filter(y => y > a0 && y < a1);
+            vs.forEach((x, k) => {
+                if (k < as.length) lines[x] = { kind: 'chg', was: A[as[k]] };
+            });
+            as.slice(vs.length).forEach(y => missing.push([vs.length ? vs[vs.length - 1] : v0, A[y]]));
+        };
+        let pv = -1;
+        let pa = -1;
+        pairs.forEach(([px, py]) => {
+            const x = vi[px];
+            const y = ai[py];
+            gap(pv, x, pa, y);
+            lines[x] = { kind: 'same', was: '' };
+            pv = x;
+            pa = y;
+        });
+        gap(pv, V.length, pa, A.length);
+        const differ = vi.filter(x => lines[x].kind === 'chg' || lines[x].kind === 'add').length;
+        return { lines, missing, total: vi.length, differ };
+    }
+
+    /**
+     * A changed lyric line with the words the album line lacks marked
+     * (`ins`), by a word LCS.
+     *
+     * @param {string} line
+     * @param {string} was   The album's line.
+     * @returns {string} HTML.
+     */
+    function _slLyricsWordMarks(line, was) {
+        const parts = String(line).split(/(\s+)/);
+        const w = parts.filter((x, i) => i % 2 === 0);
+        const keep = new Set(_slLcs(w, String(was).split(/\s+/), (x, y) => _slLyricsNorm(x) === _slLyricsNorm(y)).map(p => p[0]));
+        let k = 0;
+        return parts.map((x, i) => {
+            if (i % 2) return x;
+            const h = _slMojibakeHtml(x);
+            return keep.has(k++) || !_slLyricsNorm(x) ? h : `<ins>${h}</ins>`;
+        }).join('');
+    }
+
+    /**
+     * One lyric sheet: stanzas (`div.mb-sls-stz`) of lines, stage notes
+     * ("[Spoken:]") as `span.mb-sls-stage`; with `diff`, each changed or
+     * added line marked and (with `ghosts`) the album's missing lines in
+     * place; with `fold` (and no diff), a run of identical lines as one
+     * with a "× N" button that unfolds them.
+     *
+     * @param {string} text
+     * @param {{diff?: ?object, ghosts?: boolean, fold?: boolean}} [opts]
+     * @returns {string}
+     */
+    function _slsSheetHtml(text, opts = {}) {
+        const lines = String(text || '').split('\n');
+        const d = opts.diff || null;
+        const miss = new Map();
+        if (d && opts.ghosts) {
+            d.missing.forEach(([after, t]) => {
+                if (!miss.has(after)) miss.set(after, []);
+                miss.get(after).push(t);
+            });
+        }
+        const ghost = t => `<span class="mb-sls-ln mb-sls-miss" data-mb-tip title="In the album version, not here">${_slMojibakeHtml(t)}</span>`;
+        const stage = t => _slMojibakeHtml(t).replace(/\[[^\]\n]*\]/g, m => `<span class="mb-sls-stage">${m}</span>`);
+        let html = '<div class="mb-sls-stz">' + (miss.get(-1) || []).map(ghost).join('');
+        let i = 0;
+        while (i < lines.length) {
+            const l = lines[i];
+            if (!l.trim()) {
+                html += '</div><div class="mb-sls-stz">';
+                i++;
+                continue;
+            }
+            let run = 1;
+            if (opts.fold && !d) while (i + run < lines.length && lines[i + run] === l) run++;
+            const info = d ? d.lines[i] : null;
+            let cls = '';
+            let tip = '';
+            let body = stage(l);
+            if (info && info.kind === 'chg') {
+                cls = ' mb-sls-chg';
+                tip = ` data-mb-tip title="${_rgEsc(`Album version: ${_slMojibakeFix(info.was)}`)}"`;
+                body = _slLyricsWordMarks(l, info.was);
+            } else if (info && info.kind === 'add') {
+                cls = ' mb-sls-add';
+                tip = ' data-mb-tip title="Not in the album version"';
+            }
+            html += `<span class="mb-sls-ln${cls}"${tip}>${body}` +
+                (run > 1 ? `<button type="button" class="mb-sls-rep" data-mb-sls-act="unfold" data-mb-tip title="${run} identical lines: click to show them all">× ${run}</button>` : '') + '</span>';
+            (miss.get(i) || []).forEach((t) => { html += ghost(t); });
+            i += run;
+        }
+        return html + '</div>';
+    }
+
+    /**
+     * The Lyrics section's body: the tools (with a compare: Lyrics · Marks ·
+     * Side by side, the count of lines that differ, missing album lines;
+     * without: fold repeats), Copy, then the sheet (or both sheets side by
+     * side). While the album version loads, a note says so; a failed read
+     * says why and leaves the plain sheet.
+     *
+     * @param {object} sl  `data.slSong`.
+     * @returns {string}
+     */
+    function _slsLyricsHtml(sl) {
+        const ui = _slsUiFor(sl.url);
+        const ref = sl.ref ? _slsRef.get(sl.ref.href) : null;
+        const d = ref && ref.state === 'ok' ? _slLyricsDiff(sl.lyrics, ref.lyrics) : null;
+        const btn = (act, label, on, extra = '') => `<button type="button" class="mb-dp-tbtn${on ? ' mb-sls-on' : ''}" data-mb-sls-act="${act}"${extra}>${label}</button>`;
+        let tools = '';
+        if (d) {
+            tools += '<span class="mb-dp-seg mb-sls-modes">' + [['plain', 'Lyrics'], ['marks', 'Marks'], ['sbs', 'Side by side']]
+                .map(([m, l]) => btn('mode', l, ui.mode === m, ` data-mb-sls-v="${m}" aria-pressed="${ui.mode === m}"`)).join('') + '</span>' +
+                `<span class="mb-sls-dchip">${d.differ} of ${d.total} lines differ from the ${_rgEsc(sl.ref.version || 'album version')}</span>` +
+                (ui.mode === 'marks' && d.missing.length ? `<label class="mb-sls-chk"><input type="checkbox" data-mb-sls-act="ghosts"${ui.ghosts ? ' checked' : ''}> ${d.missing.length} missing album line${d.missing.length === 1 ? '' : 's'}</label>` : '');
+        } else if (ref && ref.state === 'loading') {
+            tools += `<span class="mb-sls-dchip mb-sls-wait"><span class="mb-dp-spin">◌</span> comparing with the ${_rgEsc(sl.ref.version)}…</span>`;
+        } else if (ref && ref.state === 'failed') {
+            tools += `<span class="mb-sls-dchip mb-sls-wait">No compare: ${_rgEsc(ref.detail)}</span>`;
+        }
+        if (!d) {
+            const reps = sl.lyrics.split('\n').some((l, i, a) => l.trim() && a[i + 1] === l);
+            if (reps) tools += `<label class="mb-sls-chk"><input type="checkbox" data-mb-sls-act="fold"${ui.fold ? ' checked' : ''}> fold repeats</label>`;
+        }
+        tools += btn('copy', 'Copy', false, ' data-mb-tip title="Copy the lyrics as plain text"') + '<span class="mb-sls-copied" aria-live="polite"></span>';
+        let body;
+        if (d && ui.mode === 'sbs') {
+            body = '<div class="mb-sls-sbs">' +
+                `<div><div class="mb-sls-cap">This version</div><div class="mb-sls-sheet">${_slsSheetHtml(sl.lyrics, { diff: d })}</div></div>` +
+                `<div><div class="mb-sls-cap">${_rgEsc(sl.ref.version)}</div><div class="mb-sls-sheet">${_slsSheetHtml(ref.lyrics, {})}</div></div></div>`;
+        } else {
+            body = `<div class="mb-sls-sheet">${_slsSheetHtml(sl.lyrics, { diff: d && ui.mode === 'marks' ? d : null, ghosts: ui.ghosts, fold: ui.fold })}</div>`;
+        }
+        return `<div class="mb-sls-tools">${tools}</div>${body}`;
+    }
+
+    /**
+     * Prose blocks (`_slProseBlocks()`) as HTML: paragraphs, pull quotes,
+     * list items and sub-headings, each line break kept, the double-encoded
+     * runs repaired and marked, and ALL CAPS song titles the site left
+     * unlinked linked when its song list knows them (`_slsCapsLinks()`).
+     *
+     * @param {Array<{k: string, html: string}>} blocks
+     * @param {string} ownBase  This song's base slug (never linked).
+     * @returns {string}
+     */
+    function _slsProseHtml(blocks, ownBase) {
+        const out = [];
+        let list = [];
+        const flushList = () => {
+            if (list.length) out.push(`<ul class="mb-sls-list">${list.join('')}</ul>`);
+            list = [];
+        };
+        blocks.forEach((b) => {
+            const h = _slsCapsLinks(_slMojibakeHtml(b.html, true), ownBase).replace(/\n/g, '<br>');
+            if (b.k === 'li') {
+                list.push(`<li>${h}</li>`);
+                return;
+            }
+            flushList();
+            if (b.k === 'q') out.push(`<blockquote class="mb-sls-pull">${h}</blockquote>`);
+            else if (b.k === 'h') out.push(`<div class="mb-sls-subh">${h}</div>`);
+            else out.push(`<p>${h}</p>`);
+        });
+        flushList();
+        return out.join('');
+    }
+
+    /**
+     * Links the ALL CAPS song titles in a prose block's HTML that the site
+     * left as text ("BORN IN THE U.S.A." in Covers' prose; survey
+     * 2026-11-07: mostly unlinked) when the site's song list knows the title
+     * (`_slSongSlugOf()`); a comma-joined run is tried whole, then by part.
+     * The page's own song stays text, and the text inside an existing link
+     * is never touched.
+     *
+     * @param {string} html     Safe HTML (escaped text and `<a>`s).
+     * @param {string} ownBase  This song's base slug.
+     * @returns {string}
+     */
+    function _slsCapsLinks(html, ownBase) {
+        const one = (t) => {
+            const slug = _slSongSlugOf(t);
+            if (!slug || slug === ownBase) return null;
+            return `<a href="${_rgEsc(_slSongUrl() + slug)}">${t}</a>`;
+        };
+        // A sentence's own full stop or comma stays out of the link.
+        const link = (t) => {
+            const bare = t.replace(/[.,!]+$/, '');
+            const a = bare.length > 1 && bare !== t ? one(bare) : null;
+            return a ? a + t.slice(bare.length) : one(t);
+        };
+        return String(html).split(/(<a\b[^>]*>[\s\S]*?<\/a>|<[^>]+>)/).map((seg, i) => {
+            if (i % 2) return seg;
+            return seg.replace(/\b[A-Z0-9][A-Z0-9'’&.,()\-! ]*[A-Z0-9).!]/g, (m) => {
+                if (!/[A-Z]{2}/.test(m) || /&(?:amp|lt|gt|quot);?$/.test(m)) return m;
+                const whole = m.length > 2 ? link(m) : null;
+                if (whole) return whole;
+                if (!/,\s/.test(m)) return m;
+                return m.split(/(,\s+)/).map((p, k) => (k % 2 ? p : (link(p) || p))).join('');
+            });
+        }).join('');
+    }
+
+    /**
+     * A song of a track list or a version row as window HTML: the site's
+     * link kept (its song's MusicBrainz glyph slot with it,
+     * `_slSongSpanHtml()`), a title the site leaves unlinked linked when its
+     * page is known (`_slTrackTitleHtml()`), this page's own version as
+     * text with a ●; the filter text marked (`_hlHtml()`).
+     *
+     * @param {{title: string, href: string, self: boolean}} t
+     * @param {string} q  The table's filter.
+     * @returns {string}
+     */
+    function _slsSongCell(t, q) {
+        const shown = _mbSiteTitleText(_slMojibakeFix(t.title));
+        if (t.self) return `${_hlEsc(shown, q)} <span class="mb-dp-self" data-mb-tip title="This version">●</span>`;
+        const base = (_slSongHrefSlug(t.href).split('_')[0]) || _slSongSlugOf(t.title);
+        const html = base || t.href ? _slSongSpanHtml(base, t.title, shown, { href: t.href || '' }) : _slTrackTitleHtml(t.title, {});
+        return _hlHtml(html, q);
+    }
+
+    /**
+     * A collapsible section of the song window (`details.mb-dp-sec`, so
+     * Ctrl+click opens or closes every section and the reader's choice is
+     * kept for the page's life: `_dpInitSecToggles()`, `_dpSecState`). Its
+     * key is the section's role ("sl:Lyrics", "sl:release"), so a choice
+     * carries over to the next song.
+     *
+     * @param {string} key    `_dpSecState` key.
+     * @param {string} label  The heading.
+     * @param {string} hint   A size hint after it ("61", "4 releases"), or ''.
+     * @param {string} body   HTML.
+     * @param {boolean} open  Open unless the reader chose otherwise.
+     * @returns {string}
+     */
+    function _slsSec(key, label, hint, body, open) {
+        const isOpen = _dpSecState.has(key) ? _dpSecState.get(key) : open;
+        return `<details class="mb-dp-sec mb-sls-sec" data-mb-dp-sec="${_rgEsc(key)}"${isOpen ? ' open' : ''}>` +
+            '<summary data-mb-tip title="Click: open or close · Ctrl+click: every section">' +
+            `<h4>${_slMojibakeHtml(label)}</h4>${hint ? `<span class="mb-sls-hint">${_rgEsc(hint)}</span>` : ''}</summary>` +
+            `<div class="mb-sls-body">${body}</div></details>`;
+    }
+
+    /**
+     * The song window's two columns (`_dpExtractedCols()` hands every record
+     * with `slSong` here): on the left the title block (a type pill, the
+     * version, ‹ › through this song's versions), the encoding banner, the
+     * fact cards, Info, the studio facts, the images, Credits and Request;
+     * on the right the section chips, the lyrics, a live version's show,
+     * the releases, the rows, Live History and the versions. Tables are the
+     * window's List tables (`_dpListTableHtml()`: filter, sort, chips; the
+     * filter text marked).
+     *
+     * @param {object} data  The record.
+     * @param {?object} t    The window's target (the tables' state); null
+     *   draws the tables without state.
+     * @returns {{left: string[], right: string[]}}
+     */
+    function _slSongCols(data, t) {
+        _dpInitSecToggles();
+        _slsInit();
+        const sl = data.slSong;
+        _slsInit.shown = sl;
+        const tt = t || { key: sl.url };
+        const esc = _rgEsc;
+        const own = (sl.slug || '').split('_')[0];
+        const left = [];
+        const right = [];
+        const toc = [];
+        // --- the title block ---
+        const pillKind = sl.type === 'Live' ? 'live' : sl.type === 'Album' ? 'album' : /cover|other artist/i.test(sl.type) ? 'cover' : 'other';
+        const vi = sl.versions.findIndex(x => x.self);
+        const step = (x, dir) => (x ? `<a class="mb-sls-vstep" href="${esc(x.href)}" data-mb-tip title="${esc(`${x.title} [${x.version}]`)}">` +
+            `${dir < 0 ? '‹ ' : ''}${esc(x.version.replace(/\s+version$/i, ''))}${dir > 0 ? ' ›' : ''}</a>` : '');
+        const nav = vi >= 0 && sl.versions.length > 1 ? `<span class="mb-sls-vnav">${step(sl.versions[vi - 1], -1)}` +
+            `<span class="mb-sls-vpos">${vi + 1} of ${sl.versions.length}</span>${step(sl.versions[vi + 1], 1)}</span>` : '';
+        left.push(`<div class="mb-sls-tblock"><div class="mb-dp-xtitle">${_slMojibakeHtml(sl.title || data.title)}</div>` +
+            `<div class="mb-sls-prow">${sl.type ? `<span class="mb-sls-pill mb-sls-pill-${pillKind}">${esc(sl.type)}</span>` : ''}` +
+            `${sl.version ? `<span class="mb-dp-xsub">${_slMojibakeHtml(sl.version)}</span>` : ''}${nav}</div></div>`);
+        if (sl.mojibake.length) {
+            const n = sl.mojibake.length;
+            left.push(`<div class="mb-sls-enc"><b>${n} encoding error${n === 1 ? '' : 's'} on this page</b>` +
+                '<span>the site serves double-encoded text; shown repaired and underlined</span>' +
+                '<button type="button" class="mb-dp-tbtn" data-mb-sls-act="report" data-mb-tip title="Copy a report of every spot, for the site\'s maintainer">Copy report for the site maintainer</button></div>');
+        }
+        // --- the cards ---
+        const kv = rows => `<dl class="mb-dp-kv">${rows.filter(([, v]) => v).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join('')}</dl>`;
+        const card = (head, body) => `<div class="mb-sls-card"><div class="mb-sls-ch">${esc(head)}</div>${body}</div>`;
+        const cards = [];
+        const rel = sl.released;
+        if (sl.type === 'Live' || sl.venue) {
+            let day = '';
+            if (/^\d{4}-\d{2}-\d{2}$/.test(sl.date)) {
+                const dt = new Date(`${sl.date}T12:00:00Z`);
+                if (!isNaN(dt)) day = `${dt.toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'UTC' })} `;
+            }
+            cards.push(card('Show', kv([['Date', esc(day + sl.date)], ['Show', esc(sl.show)], ['Venue', esc(sl.venue ? sl.venue.venue : '')],
+                ['Place', esc(sl.venue ? sl.venue.place : '')], ['Tour', esc(sl.venue ? sl.venue.tour : '')], ['Song number', esc(sl.selfId)]])));
+            if (rel) cards.push(card('Released on', kv([['Release', `<i>${_slMojibakeHtml(rel.release)}</i>`], ['Kind', esc(rel.kind)], ['Year', esc(rel.year)]])));
+        } else {
+            const st = sl.studio || {};
+            cards.push(card('Version', kv([['Type', esc(sl.type)], ['Artist', esc(sl.artist)], ['Date', esc(sl.date)],
+                ['Release', sl.type === 'Album' && sl.releases.length ? `<i>${_slMojibakeHtml(sl.releases[0].name)}</i>` : ''],
+                ['Recorded', esc(st.recorded || '')], ['Studio', esc(st.studio || '')], ['Takes', esc(st.takes ? `${st.takes} in circulation` : '')],
+                ['Lyrics', sl.noLyrics ? 'not available' : ''], ['Song number', esc(sl.selfId)]])));
+        }
+        if (sl.versions.length > 1) {
+            const by = new Map();
+            sl.versions.forEach(x => by.set(x.type || 'Other', (by.get(x.type || 'Other') || 0) + 1));
+            const palette = ['#2b4d7a', '#7a4fa0', '#2c7347', '#8f5a00', '#9b3b2c', '#3f6f7a', '#6b5a3a', '#4a4a8a'];
+            const kinds = Array.from(by);
+            const bar = `<div class="mb-sls-bar">${kinds.map(([, n], i) => `<i style="width:${(n / sl.versions.length) * 100}%;background:${palette[i % palette.length]}"></i>`).join('')}</div>` +
+                `<div class="mb-sls-legend">${kinds.map(([k, n], i) => `<span><b style="background:${palette[i % palette.length]}"></b>${esc(k)} ${n}</span>`).join('')}</div>`;
+            cards.push(card(`On the site · ${sl.versions.length} versions`, bar));
+        }
+        const relRows = [];
+        if (sl.releases.length) relRows.push(['Studio', `<i>${_slMojibakeHtml(sl.releases[0].name)}</i>${sl.releases.length + sl.others.length > 1 ? ` + ${sl.releases.length + sl.others.length - 1}` : ''}`]);
+        else if (sl.others.length) relRows.push(['Releases', String(sl.others.length)]);
+        if (sl.singles.length) relRows.push(['Singles', String(sl.singles.length)]);
+        if (sl.live.length) {
+            const ys = sl.live.map(x => (x.date || '').slice(0, 4)).filter(Boolean).sort();
+            relRows.push(['Live', `${sl.live.length}${ys.length ? ` (${ys[0]}–${ys[ys.length - 1]})` : ''}`]);
+        }
+        if (sl.covers.length) relRows.push(['Covers', String(sl.covers.length)]);
+        if (sl.movies.length) relRows.push(['Movies', String(sl.movies.length)]);
+        if (relRows.length) cards.push(card('Releases', kv(relRows)));
+        if (cards.length) left.push(`<div class="mb-sls-cards">${cards.join('')}</div>`);
+        // --- the sections, in page order, by column ---
+        const proseOf = sec => _slsProseHtml(sec.blocks, own);
+        let artvN = 0;
+        const pic = (thumb, full, label) => (thumb ? `<a href="${esc(full || thumb)}" target="_blank" rel="noopener" class="mb-dg-vthumblink" data-mb-artv-ext="${artvN++}">` +
+            `<img class="mb-dg-vthumb" src="${esc(thumb)}" alt="${esc(label || '')}" loading="lazy" referrerpolicy="no-referrer"></a>` : '');
+        const textCol = (key, label, val, extra = {}) => Object.assign({
+            key, label, val: r => _slMojibakeFix(val(r) || ''), html: (r, q) => _hlHtml(_slMojibakeHtml(val(r) || ''), q),
+        }, extra);
+        const rowsTable = (id, list, what) => {
+            const all = [textCol('artist', 'Artist', r => r.artist), textCol('title', 'Title', r => r.title, { html: (r, q) => `<i>${_hlHtml(_slMojibakeHtml(r.title), q)}</i>` }),
+                textCol('format', 'Format', r => r.format), textCol('label', 'Label', r => r.label), textCol('cat', 'Cat. no.', r => r.catNo),
+                textCol('country', 'Country', r => r.country), textCol('year', 'Year', r => r.year), textCol('note', 'Note', r => r.note),
+                textCol('tracks', 'Tracks', r => r.tracks.map(x => `${x.pos ? `${x.pos} ` : ''}${x.title}`).join('\n'),
+                    { sort: false, html: (r, q) => r.tracks.map(x => `<div>${esc(x.pos || '')} ${_slsSongCell(x, q)}</div>`).join('') })];
+            const cols = all.filter(c => list.some(r => c.val(r)));
+            return _dpListTableHtml(tt, id, cols, list, {
+                placeholder: `Filter ${what}`, thumb: r => pic(r.thumb, r.full, r.title), initial: 'as the site lists them', none: 'None.',
+            });
+        };
+        const leftSecs = [];
+        const rightSecs = [];
+        const keyOf = sec => (sec.release ? 'sl:release' : `sl:${sec.label.replace(/\s*\(\d+\)$/, '')}`);
+        const longText = sec => sec.blocks.reduce((n, b) => n + b.text.length, 0) > 600;
+        // The lyrics: first, except after a live version's show (its
+        // tracklist goes above them, mockup C).
+        const pushLyrics = () => {
+            if (!sl.lyrics) return;
+            toc.push(['sl:Lyrics', 'Lyrics', '']);
+            const n = sl.lyrics.split('\n').filter(l => _slLyricsNorm(l)).length;
+            rightSecs.push(_slsSec('sl:Lyrics', 'Lyrics', `${sl.version ? `${sl.version.replace(/\s+version$/i, '')} · ` : ''}${n} lines`, _slsLyricsHtml(sl), true));
+        };
+        if (sl.type !== 'Live') pushLyrics();
+        const groupHead = (g, shown, total) => `<span class="mb-dp-tsec-n">${_slMojibakeHtml(g)}</span>` +
+            `<span class="mb-dp-tsec-c">${shown === total ? total : `${shown} of ${total}`}</span>`;
+        /**
+         * A release's track lists as one List table: a part per medium,
+         * chips by edition (the edition that holds this song chosen at
+         * first, so one list shows), this song's rows marked.
+         * @param {string} id
+         * @param {Array<object>} groups  `slSong.releases[].groups`.
+         * @param {string} relName  The release's name, cut from the parts.
+         * @returns {{n: number, editions: number, self: ?object, html: string}}
+         */
+        const tracksTable = (id, groups, relName) => {
+            const rows = [];
+            groups.forEach(g => g.tracks.forEach(x => rows.push(Object.assign({
+                part: g.name.startsWith(`${relName} · `) ? g.name.slice(relName.length + 3) : g.name, edition: g.edition,
+            }, x))));
+            const eds = Array.from(new Set(groups.map(g => g.edition)));
+            const first = (groups.find(g => g.tracks.some(x => x.self)) || groups[0] || {}).edition;
+            const many = eds.length > 1;
+            return {
+                n: rows.filter(r => !many || r.edition === first).length, editions: eds.length, self: rows.find(r => r.self) || null,
+                html: rows.length ? _dpListTableHtml(tt, id, [
+                    { key: 'pos', label: 'Pos', val: r => r.pos, html: (r, q) => _hlEsc(r.pos, q) },
+                    { key: 'title', label: 'Title', val: r => _slMojibakeFix(r.title), html: (r, q) => _slsSongCell(r, q) },
+                ], rows, {
+                    placeholder: 'Filter tracks', facet: many ? r => r.edition : undefined, chipLabel: 'Edition', facetSort: () => 0,
+                    init: many ? { chip: [first] } : null, group: r => r.part, groupCol: 'title', groupHead,
+                    rowAttrs: r => (r.self ? ' class="mb-sls-me"' : ''), initial: 'as the site lists them',
+                }) : '',
+            };
+        };
+        // A live version: its show's track list, this version marked.
+        if (sl.type === 'Live') {
+            const rel = sl.releases.find(r => r.groups.some(g => g.tracks.some(x => x.self)));
+            const tl = rel ? tracksTable('sl-tracklist', rel.groups, rel.name) : null;
+            if (tl && tl.html) {
+                toc.push(['sl:Tracklist', 'Tracklist', String(tl.n)]);
+                rightSecs.push(_slsSec('sl:Tracklist', 'Tracklist', `${tl.n} tracks${tl.self ? ` · this song ${tl.self.pos}` : ''}`, tl.html, true));
+            }
+            pushLyrics();
+        }
+        let relIdx = 0;
+        sl.sections.forEach((sec) => {
+            const label = sec.label;
+            const key = keyOf(sec);
+            let body = '';
+            let hint = '';
+            let open = !longText(sec);
+            if (sec.release) {
+                const r = sl.releases.find(x => x.name === label) || { groups: [] };
+                const tl = tracksTable(`sl-rel-${relIdx++}`, r.groups, label);
+                hint = [tl.editions > 1 ? `${tl.editions} editions` : '', tl.self ? `this song ${tl.self.pos}` : ''].filter(Boolean).join(' · ');
+                body += tl.html;
+                if (sec.blocks.length) body += _slsSec('sl:story', 'The story', `${sec.blocks.length} paragraph${sec.blocks.length === 1 ? '' : 's'}`, proseOf(sec), false);
+                open = true;
+            } else if (sec.kind) {
+                const list = sl[sec.kind] || [];
+                const what = { others: 'releases', singles: 'singles', covers: 'covers', movies: 'movies' }[sec.kind];
+                hint = list.length ? `${list.length} ${what}` : '';
+                body = proseOf(sec) + (list.length ? rowsTable(`sl-${sec.kind}`, list, what) : '');
+                open = false;
+                // Other Official Releases' live sentences: their own section after it.
+                if (sec.kind === 'others' && sl.live.length) {
+                    (sec.side === 'left' ? leftSecs : rightSecs).push(_slsSec(key, label, hint, body, open));
+                    if (list.length) toc.push([key, label, String(list.length)]);
+                    const ys = sl.live.map(x => (x.date || '').slice(0, 4)).filter(Boolean).sort();
+                    toc.push(['sl:Live releases', 'Live releases', String(sl.live.length)]);
+                    rightSecs.push(_slsSec('sl:Live releases', 'Live releases', `${sl.live.length}${ys.length ? ` · ${ys[0]}–${ys[ys.length - 1]}` : ''}`,
+                        _dpListTableHtml(tt, 'sl-live', [
+                            textCol('date', 'Date', r => r.date || r.dateText),
+                            textCol('show', 'Show', r => r.show),
+                            textCol('release', 'Release', r => r.release, { html: (r, q) => `<i>${_hlHtml(_slMojibakeHtml(r.release), q)}</i>` }),
+                            textCol('kind', 'Kind', r => r.kind), textCol('year', 'Released', r => r.year),
+                            { key: 'ver', label: 'Version', sort: false, val: () => '', html: r => (r.version ? (r.version.self ? 'this page' : `<a href="${esc(r.version.href)}">${esc(`Live ${r.date}`)}</a>`) : '') },
+                            textCol('note', 'Note', r => (r.first ? 'first released here' : '')),
+                        ].filter(c => c.key === 'ver' ? sl.live.some(r => r.version) : (c.key === 'show' || c.key === 'note' ? sl.live.some(r => c.val(r)) : true)),
+                        sl.live, { placeholder: 'Filter live releases', facet: r => r.kind, chipLabel: 'Kind', thumb: sl.live.some(r => r.thumb) ? r => pic(r.thumb, r.full, r.release) : undefined }), false));
+                    return;
+                }
+            } else if (/^live history\b/i.test(label)) {
+                const h = sl.liveHistory.find(x => x.label === label);
+                const tours = h ? h.tours : [];
+                const n = tours.reduce((a, x) => a + x.dates.length, 0);
+                hint = n ? `${n} date${n === 1 ? '' : 's'} · ${tours.length} tour${tours.length === 1 ? '' : 's'}` : '';
+                body = proseOf(sec) + tours.map((tr, ti) => {
+                    const more = `sl-lh-${label}-${ti}`;
+                    const all = _slsUiFor(sl.url)[more];
+                    const shown = all ? tr.dates : tr.dates.slice(0, 40);
+                    return `<div class="mb-sls-tour"><div class="mb-sls-tn">${_slMojibakeHtml(tr.tour)}<small>${tr.dates.length} date${tr.dates.length === 1 ? '' : 's'}</small></div><div class="mb-sls-dates">` +
+                        shown.map(d => (d.href ? `<a class="mb-sls-dt mb-sls-dt-v" href="${esc(d.href)}" data-mb-tip title="${esc(_slMojibakeFix(d.text))}">${esc(d.date || d.text)}</a>`
+                            : `<span class="mb-sls-dt" data-mb-tip title="${esc(_slMojibakeFix(d.text))}">${esc(d.date || d.text)}</span>`)).join('') +
+                        (tr.dates.length > shown.length ? `<button type="button" class="mb-sls-dt mb-sls-more" data-mb-sls-act="dates" data-mb-sls-v="${esc(more)}">+${tr.dates.length - shown.length}</button>` : '') +
+                        '</div></div>';
+                }).join('');
+                open = false;
+            } else {
+                if (/^studio recording$/i.test(label) && (sec.crew.length || sec.credits.length)) {
+                    body += (sec.crew.length ? `<div class="mb-sls-crew">${sec.crew.map(([who, what]) => `<span>${_slMojibakeHtml(who)}</span><span>${_slMojibakeHtml(what)}</span>`).join('')}</div>` : '') +
+                        (sec.credits.length ? `<div class="mb-sls-credits">${sec.credits.map(c => `<div>${_slMojibakeHtml(c)}</div>`).join('')}</div>` : '');
+                }
+                body = proseOf(sec) + body;
+                if (/^info$/i.test(label)) open = true;
+                if (/^(?:credits|references|request)/i.test(label)) open = false;
+                if (!body) return;
+            }
+            if (!body) return;
+            if (sec.side === 'right') toc.push([key, label, (hint.match(/^\d+/) || [''])[0]]);
+            (sec.side === 'left' ? leftSecs : rightSecs).push(_slsSec(key, label, hint, body, open));
+        });
+        // The pictures, after the left column's facts.
+        const imgs = (data.images || []).filter(i => i.thumb);
+        if (imgs.length) {
+            const g = `<div class="mb-dp-gallery">${imgs.map(i => `<a href="${esc(i.full || i.thumb)}" target="_blank" rel="noopener" data-mb-artv-ext="${artvN++}">` +
+                `<img src="${esc(i.thumb)}" alt="${esc(i.label || '')}"></a>`).join('')}</div>`;
+            const at = leftSecs.findIndex(s => /data-mb-dp-sec="sl:(?:Credits|References|Request)/.test(s));
+            leftSecs.splice(at < 0 ? leftSecs.length : at, 0, _slsSec('sl:Images', 'Images', String(imgs.length), g, true));
+        }
+        if (sl.versions.length) {
+            toc.push(['sl:Available Versions', 'Available Versions', String(sl.versions.length)]);
+            const vcols = [
+                { key: 'title', label: 'Title', val: r => r.title, html: (r, q) => _slsSongCell(r, q) },
+                textCol('version', 'Version', r => r.version),
+                textCol('type', 'Type', r => r.type),
+                textCol('date', 'Date', r => r.date),
+                textCol('show', 'Show', r => r.show),
+            ].filter(c => c.key !== 'show' || sl.versions.some(r => r.show));
+            rightSecs.push(_slsSec('sl:Available Versions', 'Available Versions', String(sl.versions.length), _dpListTableHtml(tt, 'sl-versions', vcols, sl.versions, {
+                placeholder: 'Filter versions', facet: r => r.type || 'Other', chipLabel: 'Type', group: r => r.type || 'Other', groupCol: 'type',
+                facetSort: () => 0, rowAttrs: r => (r.self ? ' class="mb-sls-me"' : ''), initial: 'as the site lists them',
+                groupHead: (g, shown, total) => `<span class="mb-dp-tsec-n">${esc(g)}</span><span class="mb-dp-tsec-c">${shown === total ? total : `${shown} of ${total}`}</span>`,
+            }), false));
+        }
+        left.push(...leftSecs);
+        if (toc.length > 2) {
+            right.push('<div class="mb-sls-toc">' + toc.map(([k, l, n]) => `<button type="button" class="mb-dg-fc" data-mb-sls-act="jump" data-mb-sls-v="${esc(k)}">` +
+                `${_slMojibakeHtml(l)}${n ? `<span class="mb-dg-n">${esc(n)}</span>` : ''}</button>`).join('') + '</div>');
+        }
+        right.push(...rightSecs);
+        if (!rightSecs.length) right.push('<h4>Lyrics</h4><div class="mb-dp-xsub">The page has no lyrics and no lists.</div>');
+        return { left, right };
+    }
+
+    /**
+     * A plain-text report of a song page's double-encoded text for the
+     * site's maintainer (vzell, 2026-11-07: "so that I can report it to Eddy
+     * Wehbe"): the page, then each section's runs with their repair.
+     *
+     * @param {object} sl  `data.slSong`.
+     * @returns {string}
+     */
+    function _slsReportText(sl) {
+        const by = new Map();
+        sl.mojibake.forEach((m) => {
+            if (!by.has(m.section)) by.set(m.section, []);
+            by.get(m.section).push(m);
+        });
+        return 'springsteenlyrics.com: double-encoded text (UTF-8 read as Windows-1252 and saved again)\n\n' +
+            `Page: ${sl.url}\n` + Array.from(by, ([sec, list]) => `  ${sec}\n` + list.map(m => `    "${m.bad}"  →  "${m.fix}"`).join('\n')).join('\n') +
+            `\n\nFound by ShowAllEntityData on ${new Date().toISOString().slice(0, 10)}.`;
+    }
+
+    /**
+     * The song window's own controls, one delegated click and change
+     * listener for every window (installed once; the window repaints its
+     * HTML on every answer, so nothing is wired per element): the lyrics
+     * view (mode, fold, missing lines, a "× N" run unfolded), Copy, the
+     * encoding report, a section chip (opens its section and scrolls to
+     * it) and a tour's "+N" dates. Each changes `_slsUi` for the window's
+     * page and repaints.
+     *
+     * @returns {void}
+     */
+    function _slsInit() {
+        if (_slsInit.done) return;
+        _slsInit.done = true;
+        // The song the window shows: its last paint (`_slSongCols()`), so the
+        // controls work in a window opened from another host too.
+        const slOf = () => _slsInit.shown || null;
+        const act = (e) => {
+            const el = e.target instanceof Element ? e.target.closest('#mb-dp-dialog [data-mb-sls-act]') : null;
+            if (!el) return;
+            const kind = el.dataset.mbSlsAct;
+            if (e.type === 'click' && (kind === 'fold' || kind === 'ghosts')) return;
+            if (e.type === 'change' && kind !== 'fold' && kind !== 'ghosts') return;
+            const sl = slOf();
+            if (kind === 'jump') {
+                e.preventDefault();
+                const d = el.closest('#mb-dp-dialog').querySelector(`details.mb-dp-sec[data-mb-dp-sec="${CSS.escape(el.dataset.mbSlsV)}"]`);
+                if (d) {
+                    d.open = true;
+                    d.scrollIntoView({ block: 'start', behavior: 'smooth' });
+                }
+                return;
+            }
+            if (kind === 'copy' || kind === 'report') {
+                e.preventDefault();
+                if (!sl) return;
+                const text = kind === 'copy' ? _slMojibakeFix(sl.lyrics) : _slsReportText(sl);
+                const done = (ok) => {
+                    const msg = kind === 'copy' ? el.parentElement.querySelector('.mb-sls-copied') : null;
+                    if (msg) msg.textContent = ok ? 'Copied' : 'Copy was refused';
+                    else el.textContent = ok ? 'Report copied' : 'Copy was refused';
+                };
+                // No GM_setClipboard: a new grant re-prompts every user.
+                Promise.resolve(navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(text) : Promise.reject())
+                    .then(() => done(true), () => done(false));
+                return;
+            }
+            if (!sl) return;
+            const ui = _slsUiFor(sl.url);
+            if (kind === 'mode') ui.mode = el.dataset.mbSlsV;
+            else if (kind === 'fold') ui.fold = el.checked;
+            else if (kind === 'ghosts') ui.ghosts = el.checked;
+            else if (kind === 'unfold') ui.fold = false;
+            else if (kind === 'dates') ui[el.dataset.mbSlsV] = true;
+            else return;
+            e.preventDefault();
+            if (_dpDialog.repaint) _dpDialog.repaint();
+        };
+        document.addEventListener('click', act, true);
+        document.addEventListener('change', act, true);
+    }
+
     /**
      * `_dpExtractedHtml()`'s two columns as lists of HTML parts, so a link
      * to one of the four sites from another site can add its own parts to
      * them (`_extExtracted()`, U4).
      *
+     * A springsteenlyrics.com song record (`data.slSong`, parser version 18)
+     * has a layout of its own (`_slSongCols()`).
+     *
      * @param {object} data A parsed record.
+     * @param {?object} [t] The window's target: the state of its tables.
      * @returns {{left: string[], right: string[]}}
      */
-    function _dpExtractedCols(data) {
+    function _dpExtractedCols(data, t = null) {
+        if (data.slSong) return _slSongCols(data, t);
         if (data.collapsible) _dpInitSecToggles();
         const left = [];
         const right = [];
@@ -37065,6 +38271,88 @@
             .mb-dp-dialog details.mb-dp-sec[open] > summary::before { content: '▼'; }
             .mb-dp-dialog details.mb-dp-sec > summary h4 { margin: 14px 0 4px; }
             .mb-dp-dialog .mb-dp-col > details.mb-dp-sec:first-child > summary h4 { margin-top: 0; }
+            /* The springsteenlyrics.com song window (_slSongCols(), org/sl-song-POH-mockups.html,
+               vzell's picks 2026-11-07): title block, cards, folds, the lyric sheet, the compare. */
+            .mb-dp-dialog .mb-sls-tblock { display: grid; gap: 5px; padding-bottom: 9px; border-bottom: 1px solid #d9cfbd; }
+            .mb-dp-dialog .mb-sls-tblock .mb-dp-xtitle { font-size: 1.5em; line-height: 1.15; }
+            .mb-dp-dialog .mb-sls-prow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+            .mb-dp-dialog .mb-sls-pill { font: 600 10.5px/1 system-ui, -apple-system, "Segoe UI", Arial, sans-serif; letter-spacing: 0.08em; text-transform: uppercase;
+                color: #fff; padding: 4px 7px; border-radius: 3px; background: #6b5a3a; }
+            .mb-dp-dialog .mb-sls-pill-album { background: #2b4d7a; }
+            .mb-dp-dialog .mb-sls-pill-live { background: #2c7347; }
+            .mb-dp-dialog .mb-sls-pill-cover { background: #8f5a00; }
+            .mb-dp-dialog .mb-sls-pill-other { background: #7a4fa0; }
+            .mb-dp-dialog .mb-sls-vnav { display: inline-flex; align-items: stretch; font: 12px system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+                border: 1px solid #d9cfbd; border-radius: 999px; background: #fff; overflow: hidden; }
+            .mb-dp-dialog .mb-sls-vnav a { padding: 2px 9px; color: #6b3f12; text-decoration: none; white-space: nowrap; }
+            .mb-dp-dialog .mb-sls-vnav a:hover { background: #fbf5e7; }
+            .mb-dp-dialog .mb-sls-vpos { padding: 2px 8px; color: #7a6d5c; border-inline: 1px solid #d9cfbd; font-variant-numeric: tabular-nums; white-space: nowrap; }
+            .mb-dp-dialog .mb-sls-enc { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 8px; padding: 6px 10px;
+                border: 1px solid #e3b5ab; background: #fbeeea; border-radius: 4px; font: 12.5px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: #7d2e21; }
+            .mb-dp-dialog .mb-sls-enc b { font-weight: 600; }
+            .mb-dp-dialog .mb-sls-enc .mb-dp-tbtn { margin-left: auto; height: 22px; font-size: 12px; }
+            .mb-dp-dialog .mb-sl-moj { text-decoration: underline dotted #c0392b; text-underline-offset: 3px; cursor: help; }
+            .mb-dp-dialog .mb-sls-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; margin: 9px 0 4px; }
+            .mb-dp-dialog .mb-sls-card { border: 1px solid #d9cfbd; border-radius: 4px; background: #fff; padding: 6px 10px 8px; min-width: 0; font-size: 13px; }
+            .mb-dp-dialog .mb-sls-ch { font: 600 10px/1.3 system-ui, -apple-system, "Segoe UI", Arial, sans-serif; letter-spacing: 0.1em; text-transform: uppercase; color: #7a6d5c; margin-bottom: 3px; }
+            .mb-dp-dialog .mb-sls-bar { display: flex; height: 7px; border-radius: 4px; overflow: hidden; margin: 5px 0 4px; background: #f0eadf; }
+            .mb-dp-dialog .mb-sls-bar i { display: block; }
+            .mb-dp-dialog .mb-sls-legend { display: flex; flex-wrap: wrap; gap: 3px 10px; font: 11.5px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: #7a6d5c; }
+            .mb-dp-dialog .mb-sls-legend b { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; }
+            .mb-dp-dialog details.mb-sls-sec { border-top: 1px solid #f0eadf; }
+            .mb-dp-dialog details.mb-sls-sec > summary { padding: 8px 0 2px; }
+            .mb-dp-dialog details.mb-sls-sec > summary h4 { margin: 0; }
+            .mb-dp-dialog .mb-sls-hint { font: italic 12px Georgia, "Times New Roman", serif; color: #9a8c78; }
+            .mb-dp-dialog .mb-sls-body { padding: 3px 0 10px 15px; }
+            .mb-dp-dialog .mb-sls-body > details.mb-sls-sec { border-top: 0; }
+            .mb-dp-dialog .mb-sls-body p { margin: 0 0 7px; max-width: 72ch; }
+            .mb-dp-dialog .mb-sls-pull { margin: 8px 0; padding: 6px 12px; border-left: 3px solid #d9cfbd; background: #fff; font-style: italic; color: #4c4238; max-width: 66ch; }
+            .mb-dp-dialog .mb-sls-subh { margin: 8px 0 3px; font: 600 11px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; letter-spacing: 0.06em; text-transform: uppercase; color: #7a6d5c; }
+            .mb-dp-dialog .mb-sls-list { margin: 0 0 8px; padding-left: 18px; }
+            .mb-dp-dialog .mb-sls-crew { display: grid; grid-template-columns: max-content 1fr; gap: 1px 12px; font-size: 13px; border-left: 2px solid #d9cfbd; padding-left: 10px; margin: 4px 0 6px; }
+            .mb-dp-dialog .mb-sls-crew span:nth-child(odd) { font-weight: 600; }
+            .mb-dp-dialog .mb-sls-credits { font-size: 12.5px; color: #4c4238; margin: 0 0 8px 12px; }
+            .mb-dp-dialog .mb-sls-toc { display: flex; flex-wrap: wrap; padding: 0 0 6px; margin-bottom: 2px; border-bottom: 1px solid #d9cfbd; }
+            .mb-dp-dialog .mb-sls-tools { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin: 2px 0 8px;
+                font: 12px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: #7a6d5c; }
+            .mb-dp-dialog .mb-sls-tools .mb-dp-tbtn { height: 22px; font-size: 11.5px; }
+            .mb-dp-dialog .mb-sls-tools .mb-dp-tbtn.mb-sls-on { background: #2b2622; color: #fbf8f1; border-color: #2b2622; }
+            .mb-dp-dialog .mb-sls-chk { display: inline-flex; gap: 4px; align-items: center; cursor: pointer; }
+            .mb-dp-dialog .mb-sls-dchip { font-weight: 600; padding: 2px 8px; border-radius: 999px; background: #fdf0c8; color: #8a5a00; }
+            .mb-dp-dialog .mb-sls-dchip.mb-sls-wait { background: #f6f1e6; color: #7a6d5c; font-weight: 400; }
+            .mb-dp-dialog .mb-sls-copied { color: #2c6a2e; }
+            .mb-dp-dialog .mb-sls-sheet { background: #fffdf8; border: 1px solid #d9cfbd; border-radius: 3px; padding: 12px 16px 14px 28px; max-width: 62ch;
+                font: 15px/1.7 "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif; color: #2a2420; }
+            .mb-dp-dialog .mb-sls-stz { margin: 0 0 1em; }
+            .mb-dp-dialog .mb-sls-stz:last-child { margin-bottom: 0; }
+            .mb-dp-dialog .mb-sls-ln { display: block; position: relative; padding: 0 4px; margin: 0 -4px; border-radius: 2px; }
+            .mb-dp-dialog .mb-sls-stage { font-style: italic; font-variant: small-caps; color: #9a8c78; letter-spacing: 0.02em; }
+            .mb-dp-dialog .mb-sls-rep { font: 600 10.5px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: #7a6d5c; background: #f6f1e6;
+                border: 1px solid #d9cfbd; border-radius: 999px; padding: 0 6px; margin-left: 6px; vertical-align: 2px; cursor: pointer; }
+            .mb-dp-dialog .mb-sls-chg { background: #fdf0c8; cursor: help; }
+            .mb-dp-dialog .mb-sls-add { background: #e3f0dc; cursor: help; }
+            .mb-dp-dialog .mb-sls-chg ins { text-decoration: none; background: rgba(214, 160, 30, 0.35); border-radius: 2px; }
+            .mb-dp-dialog :is(.mb-sls-chg, .mb-sls-add, .mb-sls-miss)::before { position: absolute; left: -18px; width: 14px; text-align: center;
+                font: 600 11px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; }
+            .mb-dp-dialog .mb-sls-chg::before { content: "~"; color: #8a5a00; }
+            .mb-dp-dialog .mb-sls-add::before { content: "+"; color: #2c6a2e; }
+            .mb-dp-dialog .mb-sls-miss { color: #9b3b2c; opacity: 0.75; font-size: 0.92em; text-decoration: line-through; text-decoration-color: rgba(155, 59, 44, 0.45); }
+            .mb-dp-dialog .mb-sls-miss::before { content: "\\2212"; color: #9b3b2c; }
+            .mb-dp-dialog .mb-sls-sbs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+            .mb-dp-dialog .mb-sls-sbs .mb-sls-sheet { max-width: none; font-size: 13.5px; }
+            .mb-dp-dialog .mb-sls-cap { font: 600 10.5px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; color: #7a6d5c; margin-bottom: 3px; }
+            .mb-dp-dialog .mb-dg-vt tbody tr.mb-sls-me > td { background: #eef3fa; }
+            .mb-dp-dialog .mb-sls-tour { display: grid; grid-template-columns: minmax(120px, 190px) minmax(0, 1fr); gap: 4px 12px; padding: 6px 0; border-bottom: 1px solid #f0eadf; }
+            .mb-dp-dialog .mb-sls-tn { font-weight: 600; font-size: 13px; }
+            .mb-dp-dialog .mb-sls-tn small { display: block; font: 11.5px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; font-weight: 400; color: #7a6d5c; }
+            .mb-dp-dialog .mb-sls-dates { display: flex; flex-wrap: wrap; gap: 3px; }
+            .mb-dp-dialog .mb-sls-dt { font: 11.5px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; padding: 1px 6px; border-radius: 3px; background: #fff;
+                border: 1px solid #f0eadf; color: #7a6d5c; font-variant-numeric: tabular-nums; text-decoration: none; }
+            .mb-dp-dialog a.mb-sls-dt-v { border-color: #b9c9de; color: #2f5f9e; background: #eef3fa; }
+            .mb-dp-dialog button.mb-sls-more { cursor: pointer; border-style: dashed; }
+            @media (max-width: 640px) {
+                .mb-dp-dialog .mb-sls-sbs, .mb-dp-dialog .mb-sls-tour { grid-template-columns: minmax(0, 1fr); }
+            }
             .mb-dp-dialog h5.mb-dp-kind { margin: 8px 0 4px; font: 600 10px/1.3 system-ui, Arial, sans-serif; letter-spacing: .07em;
                 text-transform: uppercase; color: #7a6d5c; }
             .mb-dp-dialog h5.mb-dp-kind span { font-weight: 400; margin-left: 3px; }
@@ -61273,6 +62561,31 @@
             detail: cell => _findCellSlOldLinks(cell).map(l => `${l.old} → ${l.now}`).join('; '),
             tint: _findingTintSetting('sa_findings_tint_sl_old_address'),
         },
+        // springsteenlyrics.com's own double-encoded text ("CalexÃ³ns",
+        // org/springsteenlyrics.org "the SL song detail …", vzell 2026-11-07:
+        // to report to the site's maintainer). A row of the lyrics index
+        // counts once its song page was read (its saved record, late data:
+        // `_slMojRecordLanded()`, `_slMojAfterRender()`); any other row by
+        // its own cells' text (the song page's tables). Row scope: the text
+        // can be in any column.
+        {
+            id: 'sl-double-utf8', level: 'error', glyph: '🔤', scope: 'row',
+            label: 'Double-encoded text (springsteenlyrics.com)',
+            tip: 'The site serves text whose UTF-8 bytes were read as Windows-1252 and saved again: "CalexÃ³ns" for "Calexóns", "Saint-Ã‰tienne" for "Saint-Étienne". It is in the site\'s own pages, not a decoding error here. On the lyrics index a row counts once its song\'s page was read (a preview or the page itself), so the count grows as you browse; the song window\'s "Copy report for the site maintainer" lists every spot of a page.',
+            enabled: () => !!_isSlHost,
+            cols: () => '*',
+            // Cheap: a lead byte's character in the row, or an index row whose
+            // linked page is in memory.
+            rowGate: (row) => {
+                if (/[Â-ô]/.test(row.textContent)) return true;
+                if (!_slMojIsIndex()) return false;
+                const url = _slMojSongUrl(row);
+                return !!url && _dpMem.has(url);
+            },
+            test: cell => _findCellSlMojibake(cell).length > 0,
+            detail: cell => _findCellSlMojibake(cell).slice(0, 4).map(m => `${m.bad} → ${m.fix}${m.section ? ` (${m.section})` : ''}`).join('; '),
+            tint: _findingTintSetting('sa_findings_tint_sl_double_utf8'),
+        },
         // The Brucebase year table's MB-Event column (org/TODO.org "Some
         // enhancements" g, 2026-10-24): late data, as rel-multi-site — the
         // cell's answer is written after the render (`_bbMbevRenderCell()`,
@@ -81102,7 +82415,7 @@
         _extIconEnsure(t, rec, repaint);
         // U4: a Springsteen site's detail page, or a Brucebase show — the
         // site's own two columns, the link's facts added to the right one.
-        const dpCols = rec.state === 'ok' && rec.dp ? _dpExtractedCols(rec.dp) : null;
+        const dpCols = rec.state === 'ok' && rec.dp ? _dpExtractedCols(rec.dp, t) : null;
         const left = dpCols ? dpCols.left : _extLeftCol(t, rec);
         // A YouTube link's window plays it in the window (org/youtube.org).
         if (!dpCols && t.reader.id === 'youtube') _ytWindowTile(t, rec, left);
@@ -120121,8 +121434,9 @@ a { color: #1565c0; }`;
             _fgalAfterRender();
             // jungleland.it / brucespringsteen.it lazy Art / Photo cells and
             // Brucebase / springsteenlyrics Title glyphs read before, painted
-            // from the detail-page database (no request).
-            _fiAfterRender();
+            // from the detail-page database (no request); then the lyrics
+            // index rows whose saved song page has double-encoded text.
+            _fiAfterRender().then(() => _slMojAfterRender()).catch(() => { /* a stale render */ });
             // springsteenlyrics.com tracklists: this show's versions and the
             // MusicBrainz work glyphs (saved, then read as needed).
             _slSongsAfterRender();
@@ -150442,8 +151756,9 @@ a { color: #1565c0; }`;
             _fgalAfterRender();
             // jungleland.it / brucespringsteen.it lazy Art / Photo cells and
             // Brucebase / springsteenlyrics Title glyphs read before, painted
-            // from the detail-page database (no request).
-            _fiAfterRender();
+            // from the detail-page database (no request); then the lyrics
+            // index rows whose saved song page has double-encoded text.
+            _fiAfterRender().then(() => _slMojAfterRender()).catch(() => { /* a stale render */ });
             // springsteenlyrics.com tracklists: this show's versions and the
             // MusicBrainz work glyphs (saved, then read as needed).
             _slSongsAfterRender();
@@ -164923,7 +166238,7 @@ a { color: #1565c0; }`;
      * Relationships column (`rel-multi-site`). Each is re-stamped per row
      * through `_queueFindingsRestamp()`.
      */
-    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-site', 'bb-mbev-link-mismatch', 'bb-mbev-link-missing'];
+    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-site', 'bb-mbev-link-mismatch', 'bb-mbev-link-missing', 'sl-double-utf8'];
 
     /**
      * Queues a re-stamp of a row whose late data (`_LATE_FINDING_IDS`) has
@@ -171505,6 +172820,39 @@ a { color: #1565c0; }`;
                 const site = _DP_SITES[host];
                 return site ? site.parse(new DOMParser().parseFromString(html, 'text/html'), url) : null;
             },
+            /**
+             * The song window's lyrics compare (`_slLyricsDiff()`), pure, so
+             * a spec can pin its cases without two pages.
+             *
+             * @param {string} vText
+             * @param {string} aText
+             * @returns {object}
+             */
+            slLyricsDiff: (vText, aText) => _slLyricsDiff(vText, aText),
+            /**
+             * springsteenlyrics.com's double-encoded runs of a text
+             * (`_slMojibakeScan()`) and the text repaired (`_slMojibakeFix()`).
+             *
+             * @param {string} text
+             * @returns {{runs: Array<object>, fixed: string}}
+             */
+            slMojibake: text => ({ runs: _slMojibakeScan(text), fixed: _slMojibakeFix(text) }),
+            /**
+             * The lyrics index rows queued for the double-encoding finding
+             * after a render (`_slMojAfterRender()`), run again.
+             *
+             * @returns {number}
+             */
+            slMojAfterRender: () => _slMojAfterRender(),
+            /**
+             * The song window's linking of ALL CAPS song titles in prose
+             * (`_slsCapsLinks()`), on a string of safe HTML.
+             *
+             * @param {string} html
+             * @param {string} ownBase  The page's own song (never linked).
+             * @returns {string}
+             */
+            slCapsLinks: (html, ownBase) => _slsCapsLinks(html, ownBase),
             /**
              * The detail-page record version (`_DP_PARSER_VERSION`), so a
              * spec can seed the database with a record the sweep accepts

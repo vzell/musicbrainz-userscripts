@@ -482,6 +482,25 @@ and its URL is same-origin and passes the host's `isDetailUrl`.
 - **`windowOnly(u)` (2026-11-04).** Such a link's card makes no request and
   says that Space reads it; the window reads it (`_dpSiteSource()`).
   springsteenlyrics.com's original info files (`_SL_INFO_FILE_PATH_RE`).
+- **`windowKick(data)` and `onRecord(url, data)` (2026-11-07, optional).**
+  `windowKick` runs when the window shows a record: on its Space (a memory
+  hit), or when the answer the window was waiting for lands while it still
+  shows that target. It never runs from a repaint or a hover, so it is the one
+  place a window may start a second read (a springsteenlyrics.com song's
+  album version: `_slSongRefKick()`). `onRecord` runs whenever `_dpGet()`
+  puts a record in memory, from the network or from IndexedDB
+  (springsteenlyrics.com: `_slMojRecordLanded()`, the lyrics index's
+  double-encoding finding).
+- **A memory hit is the window's answer.** `extracted()` stores it in
+  `exRes`, as it does a fetched one. Before 2026-11-07 the first repaint
+  after a memory hit (a window table's filter or chip) drew "Loading the
+  detail page…".
+
+A record with `slSong` (springsteenlyrics.com songs, parser version 18) has
+its own layout: `_dpExtractedCols(data, t)` hands it to `_slSongCols(data,
+t)` (docs/claude/springsteenlyrics.md, "The song window"). `t` is the
+window's target, which the window tables' state needs. Both callers pass it
+(`_dpExtractedHtml()`, `_extExtracted()`).
 
 Every parser returns the same record, `_dpEmpty()`'s shape: `title`,
 `subtitle`, `fields` (label/value pairs, in page order), `tracks`
