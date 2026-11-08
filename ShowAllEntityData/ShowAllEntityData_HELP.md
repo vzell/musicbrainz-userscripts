@@ -1695,6 +1695,12 @@ give the keys back to Event Horizon, turn off *Ignore Event Horizon's
 single-letter keys on MusicBrainz's page* in ⚙️ Settings → 🎹 KEYBOARD
 SHORTCUTS. Keys you rebound in Event Horizon are not known here.
 
+After a table is rendered, the script asks nothing when you click in Event
+Horizon's view, because Event Horizon opens many pages in place and the
+table stays. When the page is really left from there, a page Event Horizon
+loads or `V` after you moved around in it (which reloads), the browser
+asks with its own *Leave site?* prompt.
+
 </details>
 
 ---

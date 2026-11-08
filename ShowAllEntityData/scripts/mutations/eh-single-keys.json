@@ -102,5 +102,44 @@
     "spec": "tests/fixtures/eh-single-keys.spec.js",
     "grep": "in EH's view",
     "expect": "fail"
+  },
+  {
+    "name": "Guard 4 never warns (no beforeunload prompt from EH's view)",
+    "why": "H in EH's view loads a new page (probe case E) and V after EH navigated reloads (EH:11490): the rendered table is lost without a word.",
+    "edits": [
+      {
+        "find": "            if (document.body === _saBody()) return;\n            e.preventDefault();\n            e.returnValue = '';",
+        "replace": "            return;\n            e.preventDefault();\n            e.returnValue = '';"
+      }
+    ],
+    "spec": "tests/fixtures/eh-single-keys.spec.js",
+    "grep": "the browser\\'s leave prompt",
+    "expect": "fail"
+  },
+  {
+    "name": "Guard 4 also prompts on MusicBrainz's own page",
+    "why": "After OK on SAED's own question the browser would ask a second time.",
+    "edits": [
+      {
+        "find": "            if (document.body === _saBody()) return;\n            e.preventDefault();\n            e.returnValue = '';",
+        "replace": "            void 0;\n            e.preventDefault();\n            e.returnValue = '';"
+      }
+    ],
+    "spec": "tests/fixtures/eh-single-keys.spec.js",
+    "grep": "no browser prompt on top",
+    "expect": "fail"
+  },
+  {
+    "name": "Guard 4's isLoaded check removed (covered by construction)",
+    "why": "Recorded as a known overlap, not a gap: initNavigationGuard() is installed only by the two render tails (fetch, disk load), so before a render no beforeunload listener exists at all and the isLoaded check cannot be seen. The 'no table rendered' test (with a mouse click first, so Chromium could show a prompt) pins the behaviour either way.",
+    "edits": [
+      {
+        "find": "        window.addEventListener('beforeunload', (e) => {\n            if (!isLoaded) return;",
+        "replace": "        window.addEventListener('beforeunload', (e) => {\n            void isLoaded;"
+      }
+    ],
+    "spec": "tests/fixtures/eh-single-keys.spec.js",
+    "grep": "no table rendered",
+    "expect": "pass"
   }
 ]

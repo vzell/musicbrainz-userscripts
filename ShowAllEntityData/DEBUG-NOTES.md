@@ -28739,3 +28739,15 @@ Chromium 151.0.7922.34 · no Tampermonkey (GM stubs; fixtures, and realNetworkGm
   Three more tests in `eh-single-keys.spec.js` (13/13 with the floating spec), mutation 8/8, the existing guard
   tests (merge form, springsteenlyrics.com, brucespringsteen.it) pass. Still unasked: a real page leave out of
   EH's view after a render (case C's reload); a `beforeunload` net could catch it.
+- Correction, 2026-11-08T15:51–16:13+01:00 (same host and env): the "EH opens it in place" premise of the previous
+  bullet was only half true. vzell, testing `2584a4a9`: no question in EH's view any more, but none either when the
+  table was really lost. New probe case E (FRP → V → `h` in EH's view → V → a link click, dialogs recorded):
+  15:51, `h` did a full page load (`reloaded: true`); 16:11, alone and in String Theory, `h` opened in place, and
+  the V after it reloaded (EH:11490). EH's `keyGo()` clicks its view's own link when drawn, else
+  `location.assign()`. vzell chose "warn on a real leave only": Guard 4, a `beforeunload` handler in
+  `initNavigationGuard()`, prompts while another body shows and a table is loaded; silent on MusicBrainz's page.
+  Measured at 16:11: `h` in place → no prompt, V → `beforeunload` (dismissed, table kept). The simulator now loads
+  a page for `/edits` and reloads on V after an in-place move. Test trap: Chromium shows `beforeunload` only after
+  a user activation, so a test without a click cannot see a wrong prompt (one test had to gain a click). Guard 4's
+  `isLoaded` check is unobservable by construction (the guard is installed only after a render): recorded as an
+  `expect: pass` mutation. Specs 16/16, mutations 10 fail + 1 recorded overlap.

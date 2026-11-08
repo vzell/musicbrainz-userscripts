@@ -89,7 +89,9 @@ test.describe('Event Horizon\'s single-letter keys on MusicBrainz\'s page', () =
         expect(await pressOnPage(page, ['v'])).toEqual(['v']);
         expect(await page.evaluate(() => window.__ehSim.isOn())).toBe(true);
         // Guarantee: while EH's view shows (<html data-mbu-dock>), its keys are its own.
-        expect(await pressOnPage(page, ['h'])).toEqual(['h']);
+        // (',' = its settings: no navigation, so the V below need not reload;
+        // H in its view loads a new page, see the navigation-guard tests.)
+        expect(await pressOnPage(page, [','])).toEqual([',']);
         expect(await pressOnPage(page, ['v'])).toEqual(['v']);
         expect(await page.evaluate(() => window.__ehSim.isOn())).toBe(false);
     });
@@ -125,56 +127,124 @@ test.describe('Event Horizon\'s single-letter keys on MusicBrainz\'s page', () =
     });
 });
 
-// ── SAED's "You are about to leave this page" guard and Event Horizon's view ──
+// ── SAED's leave-page protection and Event Horizon's view ──────────────────
 //
 // vzell, 2026-11-08: on a rendered page, V to Event Horizon's view, then H —
-// SAED's confirm came up, and OK then showed the history in EH's view. EH's
-// keyGo() clicks its own #app link and EH opens it in place (pushState), so
-// nothing was being left; initNavigationGuard()'s Guard 1 saw the anchor click
-// in the capture phase. The guard now ignores clicks outside MusicBrainz's
-// body (_saBody()). On MusicBrainz's own rendered page it still asks.
+// SAED's "You are about to leave this page" came up, and OK showed EH's
+// history. The live probe (case E) shows that H in EH's view LOADS a new page
+// (/edits): the table really is lost, so a warning is right there. But a link
+// in EH's view may also open in place (pushState, the table stays: case C),
+// and SAED cannot tell which at click time. vzell's choice: no question at
+// click time in EH's view (Guards 1 and 3 ignore clicks outside _saBody()),
+// and the browser's own "Leave site?" prompt (Guard 4, beforeunload) when the
+// page really unloads while EH's view shows — H, or V after EH navigated
+// (EH:11490 reloads). On MusicBrainz's own rendered page SAED still asks.
+//
+// The simulator follows the measured EH: #eh-sim-edits (and H) load a page,
+// #eh-sim-inplace opens in place, V after an in-place move reloads.
 
-test.describe('the navigation guard and Event Horizon\'s view', () => {
+test.describe('leaving from Event Horizon\'s view after a render', () => {
     /**
-     * Renders the release, collecting every dialog's message (each dismissed).
+     * Renders the release with every dialog recorded as { type, message }
+     * and dismissed (a dismissed beforeunload cancels the leave). A page EH
+     * would load (…/edits, …/aliases on reload) is answered locally.
      *
      * @param {import('@playwright/test').Page} page
-     * @returns {Promise<string[]>} the live list of dialog messages
+     * @returns {Promise<Array<{type: string, message: string}>>} the live list
      */
     async function renderWithDialogLog(page) {
         const dialogs = [];
-        page.on('dialog', (d) => { dialogs.push(d.message()); d.dismiss().catch(() => {}); });
+        page.on('dialog', (d) => { dialogs.push({ type: d.type(), message: d.message() }); d.dismiss().catch(() => {}); });
+        await page.route(/musicbrainz\.org\/release\/[0-9a-f-]{36}\/(edits|aliases)/, (route) => route.fulfill({
+            status: 200, contentType: 'text/html', body: '<!doctype html><title>left</title><h1 id="left">left the page</h1>',
+        }));
         await openRelease(page);
         await page.click(TRACKS_BTN);
         await waitForRenderComplete(page, { waitForAutoResize: false });
         return dialogs;
     }
 
-    test('rendered page → V → H in EH\'s view: no "leave this page" confirm, EH opens the history in place', async ({ page }) => {
+    /**
+     * Whether the rendered table is still on this page.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @returns {Promise<boolean>}
+     */
+    const tableStays = (page) => page.evaluate(() => !!document.querySelector('#mb-filter-container') && !document.getElementById('left'));
+
+    test('rendered page → V → H in EH\'s view (EH loads a page): the browser\'s leave prompt, not SAED\'s question', async ({ page }) => {
         const dialogs = await renderWithDialogLog(page);
         expect(await pressOnPage(page, ['v'])).toEqual(['v']);
-        expect(await pressOnPage(page, ['h'])).toEqual(['h']);
-        // Guarantee: EH's own navigation went through, and SAED asked nothing.
-        expect(dialogs).toEqual([]);
-        expect(await page.evaluate(() => window.__ehSim.navs.splice(0))).toEqual([expect.stringMatching(/\/edits$/)]);
-        expect(new URL(page.url()).pathname).toMatch(/\/edits$/);
+        await page.evaluate(() => { window.__ehSim.fired = []; });
+        await page.keyboard.press('h');
+        // Guarantee: a real leave from EH's view is warned about, once, by
+        // the browser (beforeunload), and dismissing it keeps the table.
+        await expect.poll(() => dialogs.length).toBe(1);
+        expect(dialogs[0].type).toBe('beforeunload');
+        expect(await tableStays(page)).toBe(true);
     });
 
-    test('rendered page → V → a mouse click on a link in EH\'s view: no confirm', async ({ page }) => {
+    test('rendered page → V → a link EH opens in place: no question at all', async ({ page }) => {
         const dialogs = await renderWithDialogLog(page);
         await pressOnPage(page, ['v']);
-        await page.click('#eh-sim-edits');
+        await page.click('#eh-sim-inplace');
+        await expect.poll(() => page.evaluate(() => window.__ehSim.navs.length)).toBe(1);
+        // Guarantee: an in-place move asks nothing (the old false alarm).
         expect(dialogs).toEqual([]);
-        expect(await page.evaluate(() => window.__ehSim.navs.length)).toBe(1);
+        expect(await tableStays(page)).toBe(true);
     });
 
-    test('control: a link click on MusicBrainz\'s own rendered page still asks', async ({ page }) => {
+    test('rendered page → V → in-place link → V (EH reloads): the browser\'s leave prompt', async ({ page }) => {
+        const dialogs = await renderWithDialogLog(page);
+        await pressOnPage(page, ['v']);
+        await page.click('#eh-sim-inplace');
+        await page.evaluate(() => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); });
+        await page.keyboard.press('v');
+        // Guarantee: EH's reload (EH:11490) is a real leave and is warned about.
+        await expect.poll(() => dialogs.length).toBe(1);
+        expect(dialogs[0].type).toBe('beforeunload');
+        expect(await tableStays(page)).toBe(true);
+    });
+
+    test('control: a link click on MusicBrainz\'s own rendered page gets SAED\'s question, once', async ({ page }) => {
         const dialogs = await renderWithDialogLog(page);
         const url = page.url();
         await page.locator('table.tbl tbody a[href*="/recording/"]').first().click();
-        // Guarantee: the guard still protects the rendered table (dismissed → stays).
         await expect.poll(() => dialogs.length).toBe(1);
-        expect(dialogs[0]).toContain('You are about to leave this page');
+        // Guarantee: SAED's own wording, no second (browser) prompt on top.
+        expect(dialogs[0].type).toBe('confirm');
+        expect(dialogs[0].message).toContain('You are about to leave this page');
         expect(page.url()).toBe(url);
+    });
+
+    test('control: OK on SAED\'s question leaves, with no browser prompt on top', async ({ page }) => {
+        const dialogs = [];
+        page.on('dialog', (d) => { dialogs.push(d.type()); (d.type() === 'confirm' ? d.accept() : d.dismiss()).catch(() => {}); });
+        await page.route(/musicbrainz\.org\/recording\//, (route) => route.fulfill({
+            status: 200, contentType: 'text/html', body: '<!doctype html><title>left</title><h1 id="left">left the page</h1>',
+        }));
+        await openRelease(page);
+        await page.click(TRACKS_BTN);
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        await Promise.all([page.waitForURL(/\/recording\//), page.locator('table.tbl tbody a[href*="/recording/"]').first().click()]);
+        // Guarantee: on MusicBrainz's page Guard 4 stays silent (Guard 1 asked already).
+        expect(dialogs).toEqual(['confirm']);
+    });
+
+    test('no table rendered: H in EH\'s view leaves without any prompt', async ({ page }) => {
+        const dialogs = [];
+        page.on('dialog', (d) => { dialogs.push(d.type()); d.dismiss().catch(() => {}); });
+        await page.route(/musicbrainz\.org\/release\/[0-9a-f-]{36}\/edits/, (route) => route.fulfill({
+            status: 200, contentType: 'text/html', body: '<!doctype html><title>left</title><h1 id="left">left the page</h1>',
+        }));
+        await openRelease(page);
+        await pressOnPage(page, ['v']);
+        // A mouse click first: Chromium shows a beforeunload prompt only after
+        // a user activation (the rendered-page tests get one from the Tracks
+        // click), so without it this test could not see a wrong prompt at all.
+        await page.click('#app h1');
+        await Promise.all([page.waitForURL(/\/edits$/), page.keyboard.press('h')]);
+        // Guarantee: nothing to lose, nothing asked.
+        expect(dialogs).toEqual([]);
     });
 });

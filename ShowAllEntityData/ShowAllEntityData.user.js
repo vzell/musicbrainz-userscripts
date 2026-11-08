@@ -139647,15 +139647,17 @@ a { color: #1565c0; }`;
      *
      * The listener set is registered only once (guarded by `_mbNavGuardInstalled`).
      *
-     * ── Only MusicBrainz's page is guarded (2026-11-08) ──────────────────────
+     * ── Event Horizon's view: warn on a real leave only (2026-11-08) ─────────
      * With majkinetor's Event Horizon the document can hold a second <body>
-     * (its view, in front of MusicBrainz's hidden one; see `_saBody()`). Its
-     * links navigate in place with pushState, and its single keys (H for the
-     * editing history, …) click those links. Guards 1 and 3 ignore a click
-     * outside `_saBody()`, and Guard 2 stands back while another body shows:
-     * the rendered table stays in MusicBrainz's body meanwhile, and the
-     * confirm used to come up for every link of Event Horizon's view, after
-     * which OK showed the page in Event Horizon as if nothing had been asked.
+     * (its view, in front of MusicBrainz's hidden one; see `_saBody()`). Some
+     * of its links open in place (pushState; the table stays in MusicBrainz's
+     * body) and some load a new page (the table is lost); its single keys
+     * (H for the editing history, …) click those links. Asking at click time
+     * asked for every link of its view, the in-place ones too. So Guards 1
+     * and 3 ignore a click outside `_saBody()`, Guard 2 stands back while
+     * another body shows, and Guard 4 (`beforeunload`) gives the browser's
+     * own "Leave site?" prompt when the page really unloads from there
+     * (vzell chose this, 2026-11-08).
      */
     function initNavigationGuard() {
         if (document._mbNavGuardInstalled) return;
@@ -139679,11 +139681,11 @@ a { color: #1565c0; }`;
         // ── Guard 1: Anchor click guard ─────────────────────────────────────────
         document.addEventListener('click', (e) => {
             if (!isLoaded) return;
-            // Only MusicBrainz's page is guarded. A click in another script's
-            // body — Event Horizon's view, whose links (and its single keys,
-            // which click them) navigate in place with pushState — is that
-            // script's business: the rendered table stays in MusicBrainz's
-            // hidden body, and asking here asked on every link of EH's view
+            // Only clicks on MusicBrainz's page are asked about here. In another
+            // script's body (Event Horizon's view) a link may open in place
+            // (the table stays) or load a new page, which cannot be told at
+            // click time; asking asked for every link of EH's view. A real
+            // leave from there gets Guard 4's beforeunload prompt instead
             // (vzell, 2026-11-08).
             if (!_saBody().contains(e.target)) return;
             // A click another handler already took (the artwork viewer on a
@@ -139846,7 +139848,28 @@ a { color: #1565c0; }`;
             }
         }, /* useCapture */ true);
 
-        Lib.debug('navigation', 'Navigation guard installed (anchor + Tab-trap + merge-form; download anchors exempt).');
+        // ── Guard 4: a real page leave out of another script's view ─────────
+        // While Event Horizon's view shows (another <body> than _saBody()),
+        // Guards 1-3 stand back: its links open in place (pushState, the table
+        // stays: a release group, probe case C) or load a new page (the table
+        // is lost), and which one cannot be told at click time. Its H shows
+        // both (probe case E, 2026-11-08): keyGo() clicks the view's own link
+        // when it is there (in place) and calls location.assign() when the
+        // view has not drawn it yet (a page load).
+        // So the warning comes when the page really unloads: the browser's
+        // own "Leave site?" prompt (its text, not ours). That also covers EH's
+        // reload when V switches it off after it navigated (EH:11490), which
+        // no click guard sees. On MusicBrainz's own page Guard 1 has asked
+        // already, so this stays silent there.
+        window.addEventListener('beforeunload', (e) => {
+            if (!isLoaded) return;
+            if (document.body === _saBody()) return;
+            e.preventDefault();
+            e.returnValue = '';
+            Lib.debug('navigation', 'Leaving the page from another script\'s view with a rendered table: beforeunload prompt.');
+        });
+
+        Lib.debug('navigation', 'Navigation guard installed (anchor + Tab-trap + merge-form + leave from another view; download anchors exempt).');
     }
 
     // ── CDtoc tracklist toggle feature ───────────────────────────────────────

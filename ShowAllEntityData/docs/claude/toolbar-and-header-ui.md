@@ -802,12 +802,18 @@ before EH's bubble listener. Spec: `tests/fixtures/eh-single-keys.spec.js`
 `scripts/mutations/eh-single-keys.json`. The long-term form is convention C3
 in org/majkinetor.org (`<html data-mbu-keys-off>`, honoured by EH).
 
-**The "You are about to leave this page" guard (`initNavigationGuard()`) guards MusicBrainz's page only**
-(2026-11-08): Guards 1 and 3 ignore a click outside `_saBody()`, and Guard 2 (the Tab trap) stands back
-while another body shows. Event Horizon's links navigate in place (pushState) and its single keys click
-them (`keyGo()`), so inside its view the confirm asked for nothing; OK then showed the page in EH anyway
-(vzell). Tests in `eh-single-keys.spec.js` ("the navigation guard and Event Horizon's view", with a
-control that MusicBrainz's own rendered page still asks); mutation in `eh-single-keys.json`.
+**Leaving from Event Horizon's view: warn on a real leave only** (`initNavigationGuard()`, 2026-11-08,
+vzell's choice). Event Horizon's links open in place (pushState, the table stays) or load a new page (the
+table is lost), and its single keys click them (`keyGo()`: its own link when the view has drawn it, else
+`location.assign()`), so the kind of leave cannot be told at click time. Guards 1 and 3 ignore a click
+outside `_saBody()`, Guard 2 (the Tab trap) stands back while another body shows, and Guard 4 is a
+`beforeunload` handler that gives the browser's own "Leave site?" prompt when the page really unloads
+while another body shows and a table is loaded — also for EH's reload when V switches it off after it
+navigated (EH:11490). On MusicBrainz's page Guard 4 stays silent: Guard 1 asked already. Chromium shows
+a `beforeunload` prompt only after a user activation, which a test must give (a click) or it sees
+nothing. The guard is installed only by the render tails, so before a render nothing asks by
+construction. Tests: `eh-single-keys.spec.js`, "leaving from Event Horizon's view after a render";
+mutations in `eh-single-keys.json`; live: probe case E.
 
 ## Hover tooltips must ignore a tap (`_isTouchCompatMouseEvent()`)
 

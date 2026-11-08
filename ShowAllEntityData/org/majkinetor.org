@@ -774,14 +774,21 @@ CLOSED: [2026-11-08 Sun]
   - Not covered: keys the user rebound in EH's Ctrl+/ palette (its GM storage). Convention C3
     (=<html data-mbu-keys-off>=) would cover them; it stays in the posted request.
   - Found by vzell testing it (2026-11-08): after a render, V to EH's view, then =h= → SAED's own "You are about to
-    leave this page" confirm; OK then showed EH's history view. EH's =keyGo()= (EH:12403) clicks its own =#app=
-    link while its view shows, EH opens it in place (pushState), and =initNavigationGuard()='s Guard 1 (capture,
-    every anchor click while =isLoaded=) asked. Every mouse click on a link in EH's view did the same; it predates
-    the key guard. Fixed in the same WIP.2: Guards 1 and 3 ignore clicks outside =_saBody()=, Guard 2 (Tab trap)
-    stands back while another body shows. Tests: 3 more in =eh-single-keys.spec.js= (H and a mouse click in EH's
-    view ask nothing; a link click on MusicBrainz's rendered page still asks); mutation 8 in =eh-single-keys.json=.
-  - Still not asked: a real page leave out of EH's view after a render (EH links a page it cannot show, or V after
-    EH navigation reloads, case C). The table is lost then, as before; a =beforeunload= net could catch it, if wanted.
+    leave this page" confirm; OK then showed EH's history view. =initNavigationGuard()='s Guard 1 (capture, every
+    anchor click while =isLoaded=) saw EH's =keyGo()= (EH:12403) click its own =#app= link. Every mouse click on a
+    link in EH's view did the same; it predates the key guard.
+  - First fix (=2584a4a9=): Guards 1 and 3 ignore clicks outside =_saBody()=, Guard 2 stands back while another body
+    shows. vzell then saw no warning at all when the table was really lost. New probe case E, *measured*
+    (2026-11-08T15:51 and 16:11–16:13+01:00, EH 2026.11.08.131500 alone and in ST 2026.11.08.133602): EH's =h= opens
+    the history *in place* when its view has drawn the link (16:11 runs), and *loads the page* via =keyGo()='s
+    =location.assign()= fallback when it has not (15:51 run). V after an in-place move reloads (EH:11490): the table
+    is lost.
+  - vzell's choice: warn only on a real leave. Guard 4 (=beforeunload=) gives the browser's "Leave site?" prompt when
+    the page unloads while another body shows and a table is loaded; silent on MusicBrainz's page (Guard 1 asked).
+    Measured in case E at 16:11: =h= in place → no prompt; V → =beforeunload=, dismissed, table kept. Tests: 6 in
+    "leaving from Event Horizon's view after a render" (=eh-single-keys.spec.js=); mutations 8–11 in
+    =eh-single-keys.json= (11, the =isLoaded= check, is an =expect: pass= overlap: the guard is installed only after a
+    render).
 
 - *Who fixes it*: *ours* is enough: EH already honours =defaultPrevented=. *Convention* C3 (=<html data-mbu-keys-off>=)
   is the clearer long-term form; ask for it in the same message.
@@ -1155,4 +1162,31 @@ when starting from a MB page with our userscript active, the "h" key does nothin
 b.)
 
 when switching with "v" to the EH view and pressing "h" the native browser window about leaving this page popsup - [Image #7]
+
+** act on https://github.com/majkinetor/musicbrainz-userscripts/issues/938
+
+Majkinetor reacted to issue https://github.com/majkinetor/musicbrainz-userscripts/issues/938
+
+1.)
+
+a.)
+
+act on the section "Implemented on codex/interop-938, commit 9e4cdd59." at that issue
+
+b.)
+
+check specifically if our "h" key handling in the latest implementation is still valid/neccessary after the latest EH
+additions by majkinetor
+
+2.)
+
+Prepare a nicely formatted reply to the section before "Implemented on codex/interop-938, commit 9e4cdd59." at that issue
+where majkinetor answered and also asks questions
+
+Also mention in that reply what we already did meanwhile and that pressing "v" on our userscript actually works
+perfectly and correctly switches between ours and EHs view
+
+
+
+
 

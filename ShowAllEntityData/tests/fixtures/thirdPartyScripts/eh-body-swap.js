@@ -31,9 +31,14 @@
  * matches EH's default `KEY_CMDS` (EH:12419). Instead of navigating it
  * records the command in `window.__ehSim.fired`; `v` toggles on/off as EH's
  * does. While its view shows, h/e/r/o/t/d/a click its own `#app` link to the
- * entity's subpage, as EH's `keyGo()` does (the view links the editing
- * history), and a click on an `#app` link opens in place (pushState, recorded
- * in `window.__ehSim.navs`), as EH's own click handler does.
+ * entity's subpage, as EH's `keyGo()` does. The view links two subpages, the
+ * two ways the real EH follows a link (probe, 2026-11-08): the editing
+ * history (`#eh-sim-edits`) LOADS a new page — the real H does when EH's
+ * view has not drawn that link yet (keyGo()'s location.assign() fallback;
+ * case E, one run of two) — and the aliases (`#eh-sim-inplace`) open IN
+ * PLACE (pushState, recorded in `window.__ehSim.navs`), as a release-group
+ * link did in case C and the real H did in the other run. V while the
+ * address is no longer the loaded page's reloads, as EH:11490 does.
  * `window.__EH_SIM_NO_LAUNCHER__ = true` leaves the launcher out (a page
  * where Event Horizon is not installed, for the "touches nothing" checks).
  */
@@ -61,7 +66,9 @@
         launcher: null,
         fired: [],
         navs: [],
+        loads: [],
         assigned: [],
+        loadPath: location.pathname,
         /** @returns {boolean} whether EH's body is in the document */
         isOn() { return !!(sim.ehBody && sim.ehBody.isConnected); },
         /** EH on: its body before MusicBrainz's, MusicBrainz's hidden (setOn(true)). */
@@ -77,7 +84,8 @@
             const m = location.pathname.match(/^\/([a-z-]+)\/([0-9a-f-]{36})/i);
             const app = sim.ehBody.querySelector('#app');
             if (m && !app.querySelector('#eh-sim-edits')) {
-                app.insertAdjacentHTML('beforeend', `<p><a id="eh-sim-edits" href="${location.origin}/${m[1]}/${m[2]}/edits">Editing history</a></p>`);
+                app.insertAdjacentHTML('beforeend', `<p><a id="eh-sim-edits" href="${location.origin}/${m[1]}/${m[2]}/edits">Editing history</a></p>`
+                    + `<p><a id="eh-sim-inplace" href="${location.origin}/${m[1]}/${m[2]}/aliases">Aliases</a></p>`);
             }
             document.documentElement.insertBefore(sim.ehBody, sim.mbBody);
             sim.mbBody.hidden = true;
@@ -121,7 +129,11 @@
         const k = keyCombo(ev);
         if (!k || !KEYS.includes(k)) return;
         sim.fired.push(k);
-        if (k === 'v') { if (sim.isOn()) sim.off(); else sim.on(); }
+        if (k === 'v') {
+            // navigated inside EH: reload for MusicBrainz's page of this one (EH:11490)
+            if (sim.isOn() && location.pathname !== sim.loadPath) { location.reload(); return; }
+            if (sim.isOn()) sim.off(); else sim.on();
+        }
         else if (k in KEY_SUB) keyGo(KEY_SUB[k]);
         ev.preventDefault();
     });
@@ -133,6 +145,7 @@
         if (!sim.isOn() || ev.defaultPrevented || !sim.ehBody.contains(ev.target)) return;
         const a = ev.target.closest('a[href]');
         if (!a) return;
+        if (/\/edits$/.test(a.href)) { sim.loads.push(a.href); return; }   // EH loads this page: no preventDefault
         ev.preventDefault();
         history.pushState(null, '', a.href);
         sim.navs.push(a.href);

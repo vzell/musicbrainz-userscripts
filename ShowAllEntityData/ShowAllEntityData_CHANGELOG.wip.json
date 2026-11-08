@@ -7,7 +7,7 @@
         "label": "🐛 Fix",
         "items": [
           "With majkinetor's Event Horizon (or String Theory) installed, its single-letter keys also worked on MusicBrainz's own page, even with Event Horizon switched off: a stray H went to the editing history (E to the edit page, R to the relationship editor, and so on), and the page was gone, a rendered table with it. On the pages this script runs on, before and after a button is pressed, those keys are now ignored. V (switching Event Horizon on or off), every key inside Event Horizon's own view and typing into a field keep working.",
-          "After a table was rendered, switching to majkinetor's Event Horizon (V) and clicking a link in its view, or pressing one of its keys such as H, brought up the script's \"You are about to leave this page\" question, although Event Horizon opens those pages in place and the table stays. The question now comes only for MusicBrainz's own page."
+          "After a table was rendered, in majkinetor's Event Horizon (after V): clicking a link in its view, or pressing one of its keys such as H, brought up the script's \"You are about to leave this page\" question, even when Event Horizon opened the page in place and the table stayed; and when Event Horizon really left the page (a page it loads, or V after moving around in it, which reloads), the table could be lost without a word. Now inside Event Horizon's view nothing is asked on a click, and the browser's own \"Leave site?\" prompt comes when the page really unloads. On MusicBrainz's own page the script's question stays as it was."
         ]
       },
       {
