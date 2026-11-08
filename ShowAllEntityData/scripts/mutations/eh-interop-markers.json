@@ -1,0 +1,197 @@
+[
+  {
+    "name": "the quiet mark is never set",
+    "why": "No <html data-mbu-quiet>: String Theory's launchers and dock stay over our table (the state before #938).",
+    "edits": [
+      {
+        "find": "        if (want && !root.hasAttribute('data-mbu-quiet')) root.setAttribute('data-mbu-quiet', 'saed');\n",
+        "replace": "        if (false) root.setAttribute('data-mbu-quiet', 'saed');\n"
+      }
+    ],
+    "spec": "tests/fixtures/eh-interop-markers.spec.js",
+    "grep": "up after the render",
+    "expect": "fail"
+  },
+  {
+    "name": "the render tail does not report the table",
+    "why": "_mbuTableShown() is what tells the quiet mark a table of ours is there.",
+    "edits": [
+      {
+        "find": "        _mbuInterop.tableShown = true;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/eh-interop-markers.spec.js",
+    "grep": "up after the render",
+    "expect": "fail"
+  },
+  {
+    "name": "the quiet mark stays up in Event Horizon's view",
+    "why": "In EH's view the launchers are its business; the mark has to go while it shows.",
+    "edits": [
+      {
+        "find": "            !_mbuInterop.quietUserShown && !root.hasAttribute('data-mbu-dock');",
+        "replace": "            !_mbuInterop.quietUserShown;"
+      }
+    ],
+    "spec": "tests/fixtures/eh-interop-markers.spec.js",
+    "grep": "down while Event Horizon",
+    "expect": "fail"
+  },
+  {
+    "name": "another script's quiet mark is overwritten",
+    "why": "The protocol: each flag has one owner; never take over a value that is not ours.",
+    "edits": [
+      {
+        "find": "        if (want && !root.hasAttribute('data-mbu-quiet')) root.setAttribute",
+        "replace": "        if (want) root.setAttribute"
+      }
+    ],
+    "spec": "tests/fixtures/eh-interop-markers.spec.js",
+    "grep": "neither overwritten nor removed",
+    "expect": "fail"
+  },
+  {
+    "name": "another script's quiet mark is removed",
+    "why": "The protocol: remove a flag only if its value is still ours.",
+    "edits": [
+      {
+        "find": "        else if (!want && root.getAttribute('data-mbu-quiet') === 'saed') root.removeAttribute('data-mbu-quiet');",
+        "replace": "        else if (!want) root.removeAttribute('data-mbu-quiet');"
+      }
+    ],
+    "spec": "tests/fixtures/eh-interop-markers.spec.js",
+    "grep": "neither overwritten nor removed",
+    "expect": "fail"
+  },
+  {
+    "name": "the ☰ row does nothing",
+    "why": "The script that sets the quiet mark must offer its own way back (#938).",
+    "edits": [
+      {
+        "find": "                _mbuInterop.quietUserShown = !_mbuInterop.quietUserShown;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/eh-interop-markers.spec.js",
+    "grep": "View row shows the launchers",
+    "expect": "fail"
+  },
+  {
+    "name": "the menu launchers follow the loaded page, not the one EH shows",
+    "why": "After an in-view move MusicBrainz's hidden body is still the page the tab loaded; the launchers must follow <html data-mbu-page>.",
+    "edits": [
+      {
+        "find": "                def = _pageDefForPath(url.pathname, url.searchParams);",
+        "replace": "                def = baseDefinition;"
+      }
+    ],
+    "spec": "tests/fixtures/eh-interop-markers.spec.js",
+    "grep": "follow the page Event Horizon shows",
+    "expect": "fail"
+  },
+  {
+    "name": "a button item on the loaded page presses nothing",
+    "why": "Without the immediate resume the item only switches EH off; the record waits for a reload that never comes.",
+    "edits": [
+      {
+        "find": "        if (!root.hasAttribute('data-mbu-dock')) _ehHandoffResume();\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/eh-interop-markers.spec.js",
+    "grep": "a button item on the loaded page",
+    "expect": "fail"
+  },
+  {
+    "name": "the reloaded page ignores the handoff record",
+    "why": "After EH's reload into MusicBrainz's page the record is what says which button to press.",
+    "edits": [
+      {
+        "find": "        _ehMenuSync();\n        _ehHandoffResume();\n",
+        "replace": "        _ehMenuSync();\n"
+      }
+    ],
+    "spec": "tests/fixtures/eh-interop-markers.spec.js",
+    "grep": "after Event Horizon's reload",
+    "expect": "fail"
+  },
+  {
+    "name": "the buttons carry no definition index",
+    "why": "The record names the button by its index in the definition; without data-mb-def-idx nothing matches.",
+    "edits": [
+      {
+        "find": "        if (_defIdx >= 0) eb.dataset.mbDefIdx = String(_defIdx);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/eh-interop-markers.spec.js",
+    "grep": "after Event Horizon's reload",
+    "expect": "fail"
+  },
+  {
+    "name": "a stale handoff record still presses",
+    "why": "A record older than the TTL is from another visit; pressing it would start a fetch out of nowhere.",
+    "edits": [
+      {
+        "find": "        if (!(Date.now() - rec.at <= _EH_HANDOFF_TTL_MS) || rec.page !== location.pathname + location.search) {",
+        "replace": "        if (rec.page !== location.pathname + location.search) {"
+      }
+    ],
+    "spec": "tests/fixtures/eh-interop-markers.spec.js",
+    "grep": "a stale record",
+    "expect": "fail"
+  },
+  {
+    "name": "a handoff record for another page still presses",
+    "why": "The record belongs to the page EH reloaded into, not to whatever page loads next.",
+    "edits": [
+      {
+        "find": "        if (!(Date.now() - rec.at <= _EH_HANDOFF_TTL_MS) || rec.page !== location.pathname + location.search) {",
+        "replace": "        if (!(Date.now() - rec.at <= _EH_HANDOFF_TTL_MS)) {"
+      }
+    ],
+    "spec": "tests/fixtures/eh-interop-markers.spec.js",
+    "grep": "a record for another page",
+    "expect": "fail"
+  },
+  {
+    "name": "Ctrl+L is not kept from Event Horizon",
+    "why": "Our direct Ctrl+L (Load from disk) and EH's history.forward() both fired; EH's listener runs first.",
+    "edits": [
+      {
+        "find": "                e.preventDefault();\n                Lib.debug('shortcuts', 'Ctrl+L kept from Event Horizon (its forward) for Load from disk.');",
+        "replace": "                Lib.debug('shortcuts', 'Ctrl+L kept from Event Horizon (its forward) for Load from disk.');"
+      }
+    ],
+    "spec": "tests/fixtures/eh-interop-markers.spec.js",
+    "grep": "is ours, EH does not go forward",
+    "expect": "fail"
+  },
+  {
+    "name": "Ctrl+L is taken from Event Horizon even when ours does not act",
+    "why": "With direct Ctrl+letter shortcuts off (the default) our Ctrl+L does nothing; taking it from EH would only break EH's forward.",
+    "edits": [
+      {
+        "find": "            if ((e.ctrlKey || e.metaKey) && Lib.settings.sa_enable_direct_ctrl_char_shortcuts &&",
+        "replace": "            if ((e.ctrlKey || e.metaKey) &&"
+      }
+    ],
+    "spec": "tests/fixtures/eh-interop-markers.spec.js",
+    "grep": "stays Event Horizon",
+    "expect": "fail"
+  },
+  {
+    "name": "a single-table render is not marked data-mbu-foreign",
+    "why": "renderFinalTable()'s table is ours after the rows move in; ISRC Scout and mbuTip must leave it alone too.",
+    "edits": [
+      {
+        "find": "        const table = tbody.closest('table');\n        _markForeignTable(table);\n",
+        "replace": "        const table = tbody.closest('table');\n"
+      }
+    ],
+    "spec": "tests/fixtures/eh-interop-markers.spec.js",
+    "grep": "single-table render is marked",
+    "expect": "fail"
+  }
+]

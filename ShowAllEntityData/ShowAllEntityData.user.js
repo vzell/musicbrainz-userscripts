@@ -12,7 +12,7 @@
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=musicbrainz.org
 // @require      https://cdn.jsdelivr.net/npm/@jaames/iro@5
 // @require      https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js
-// @require      file:///V:/home/vzell/git/musicbrainz-userscripts/lib/VZ_MBLibrary.user.js
+// @require      https://raw.githubusercontent.com/vzell/musicbrainz-userscripts/main/lib/VZ_MBLibrary.user.js
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|genre|event|collection|url)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings|edits|open_edits|annotations|annotation(?:\/\d+)?)\/?(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|label|series|collection)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/subscribers\/?(?:\?.*)?$/
@@ -94,9 +94,17 @@
  * ── PUBLISHING: the VZ_MBLibrary @require above MUST be rewritten ────────────
  *
  * This is the DEVELOPMENT repository (vzell/musicbrainz-userscripts), and its
- * library @require points at the WORKING COPY:
+ * library @require points at THIS repository's library on GitHub, branch main
+ * (since 2026-11-08, vzell: so the development copy installs and works for
+ * anyone, e.g. majkinetor trying it beside his scripts — #938):
  *
- *     // @require      file:///V:/home/vzell/git/musicbrainz-userscripts/lib/VZ_MBLibrary.user.js
+ *     // @require      https://raw.githubusercontent.com/vzell/musicbrainz-userscripts/main/lib/VZ_MBLibrary.user.js
+ *
+ * Until then it pointed at the working copy (file:///V:/…/lib/VZ_MBLibrary.user.js),
+ * which only works on vzell's machine. The price: a live browser check runs
+ * the library as pushed to main, and Tampermonkey caches a @require until the
+ * script is updated or reinstalled — a library change is exercised only after
+ * it is on main AND the script was re-fetched.
  *
  * The published copy (vzell/mb-userscripts, the announced one) must carry the
  * network URL instead:
@@ -794,6 +802,13 @@
             description: 'Enable keyboard shortcut tooltip for the prefix shortcut map'
         },
 
+        sa_block_eh_single_keys: {
+            label: "Ignore Event Horizon's single-letter keys on MusicBrainz's page",
+            type: 'checkbox',
+            default: true,
+            description: "With majkinetor's Event Horizon (or String Theory) installed, its single-letter keys (H editing history, E edit, R relationships, O, C, T, D, A, S, P, the full stop and the comma) also work on MusicBrainz's own page, where one stray key press leaves the page, and a rendered table with it. On, they are ignored on the pages this script runs on, before and after a button is pressed. V (switch Event Horizon on or off) and every key inside Event Horizon's own view keep working. Keys you rebound in Event Horizon are not known here."
+        },
+
         sa_keyboard_shortcut_prefix: {
             label: "Keyboard Shortcut Prefix",
             type: "keyboard_shortcut",
@@ -1475,6 +1490,13 @@
             type: 'checkbox',
             default: true,
             description: 'Show/hide the "📏 Density" button for adjusting table spacing'
+        },
+
+        sa_mbu_quiet_corner: {
+            label: "Hide String Theory's corner launchers while a table is shown",
+            type: 'checkbox',
+            default: true,
+            description: "With majkinetor's String Theory (or one of its scripts) installed, up to eight launchers and its dock sit in the bottom right corner, over the rendered table. On, they are hidden on MusicBrainz's page while a table this script rendered is shown; Event Horizon's own view keeps them, and \"Show corner launchers\" in the ☰ menu's View group brings them back for the page. Uses the shared <html data-mbu-quiet> mark (majkinetor's #938); a String Theory without it ignores the mark."
         },
 
         // ============================================================
@@ -6145,7 +6167,7 @@
         actions.appendChild(undo);
         actions.appendChild(ok);
         box.appendChild(actions);
-        document.body.appendChild(box);
+        _saBody().appendChild(box);
     }
 
     /**
@@ -6529,7 +6551,7 @@
         actions.appendChild(undo);
         actions.appendChild(ok);
         box.appendChild(actions);
-        document.body.appendChild(box);
+        _saBody().appendChild(box);
     }
 
     /**
@@ -31765,7 +31787,7 @@
         el.addEventListener('error', (e) => {
             if (e.target && e.target.tagName === 'IMG') e.target.remove();
         }, true);
-        document.body.appendChild(el);
+        _saBody().appendChild(el);
         _dpPeek.el = el;
         return el;
     }
@@ -31781,7 +31803,7 @@
         const el = document.createElement('div');
         el.id = 'mb-dp-notes';
         el.style.display = 'none';
-        document.body.appendChild(el);
+        _saBody().appendChild(el);
         _dpPeek.notes = el;
         return el;
     }
@@ -36605,7 +36627,7 @@
             },
         };
         _fgalState = st;
-        document.body.appendChild(box);
+        _saBody().appendChild(box);
         box.addEventListener('click', (e) => _fgalOnClick(st, e));
         box.addEventListener('change', (e) => _fgalOnChange(st, e));
         box.addEventListener('keydown', (e) => {
@@ -45532,18 +45554,65 @@
     }
 
     /**
-     * The platform name of one ISRC Scout "Links" icon link
-     * (`a.ii-trk-ln`), read from its `title`, which ISRC Scout writes as
-     * `"<Platform> · <url>"`, `"<Platform> (ended) · <url>"`, or
-     * `"<Platform> · N links\n<url>…"` for a platform with several links.
+     * The platform name of one ISRC Scout "Links" icon link (`a.ii-trk-ln`).
+     * Three generations of ISRC Scout's markup, newest first:
+     *
+     *   - `data-ii-platform="<Platform>"` (with `data-ii-ended="true|false"`),
+     *     the metadata majkinetor added for #938 (upstream 9e4cdd59): "tooltip
+     *     wording is presentation, not a data format", so it wins;
+     *   - `data-tip="<Platform>[ (ended)]\n<url>"` or
+     *     `"<Platform> — N links\n- <url>…"` (2026.11.06 to 9e4cdd59, no
+     *     `title`);
+     *   - `title="<Platform>[ (ended)] · <url>"` or
+     *     `"<Platform> · N links\n<url>…"` (before 2026.11.06).
      *
      * @param {Element} a - An `a.ii-trk-ln`.
      * @returns {string} E.g. `'Spotify'`, `'YouTube Music'`,
-     *   `'whosampled.com'`; `''` when the title has no name.
+     *   `'whosampled.com'`; `''` when none of the three names one.
      */
     function _isrcScoutLinkPlatform(a) {
+        const meta = (a.getAttribute('data-ii-platform') || '').trim();
+        if (meta) return meta;
+        const tip = a.getAttribute('data-tip') || a.getAttribute('data-mb-ii-tip') || '';
+        if (tip) {
+            return tip.split('\n')[0].replace(/\s+—\s+\d+\s+links?\s*$/, '')
+                .replace(/\s*\(ended\)\s*$/, '').trim();
+        }
         const title = a.getAttribute('title') || '';
         return title.split(' · ')[0].replace(/\s*\(ended\)\s*$/, '').trim();
+    }
+
+    /**
+     * The hover text of one ISRC Scout "Links" icon link, as this script's
+     * own card: the platform, " (ended)" and the link count on the first line,
+     * then the URL(s), one per line. The first line comes from the metadata
+     * when the anchor has it (`data-ii-ended`, the `sup.ii-trk-n` count); the
+     * URLs come from ISRC Scout's tip (`data-tip`, or the old `title` with its
+     * `' · '` separator), else from the anchor's `href`.
+     *
+     * @param {Element} a - An `a.ii-trk-ln`.
+     * @param {string} name - Its platform (`_isrcScoutLinkPlatform()`).
+     * @returns {string} Plain text; `\n` starts a new line.
+     */
+    function _isrcScoutLinkTip(a, name) {
+        let tip = a.getAttribute('data-tip') || a.getAttribute('data-mb-ii-tip') || '';
+        if (!tip && a.getAttribute('title')) {
+            // "<Platform> · <url>" or "<Platform> · N links\n<url>…"
+            const [first, ...more] = a.getAttribute('title').split('\n');
+            const [p, rest = ''] = first.split(' · ');
+            tip = /^\d+ links?$/.test(rest) ? [`${p} — ${rest}`, ...more].join('\n')
+                : [p, rest, ...more].join('\n');
+        }
+        const lines = tip ? tip.split('\n') : [];
+        let head = lines[0] || name;
+        if (a.hasAttribute('data-ii-platform')) {
+            const n = parseInt(a.querySelector(':scope > .ii-trk-n')?.textContent || '', 10);
+            head = name + (a.getAttribute('data-ii-ended') === 'true' ? ' (ended)' : '') +
+                (n > 1 ? ` — ${n} links` : '');
+        }
+        const urls = lines.slice(1).filter(l => l.trim());
+        if (!urls.length && a.getAttribute('href')) urls.push(a.getAttribute('href'));
+        return [head, ...urls].join('\n');
     }
 
     /**
@@ -45556,6 +45625,14 @@
      * count, the "Links info - Platform" section, typed filters and sorting
      * all read platforms. A match in the hidden name is shown by outlining
      * its icon (CSS, `a.ii-trk-ln:has(…)`). The icons look the same as before.
+     *
+     * The hover text becomes this script's own card (`_setTip()`,
+     * `_isrcScoutLinkTip()`), and ISRC Scout's `data-tip` moves to
+     * `data-mb-ii-tip`: its shared `#mbu-tip` handler shows a tip for ANY
+     * `[data-tip]` in the document, so on our table it stacked beside our
+     * card. ISRC Scout ≥ 9e4cdd59 also skips our tables
+     * (`data-mbu-foreign`, `_markForeignTable()`); the move covers older ones.
+     *
      * Keeps the cell's `ii-col` classes for the reason given in
      * `_normalizeIsrcScoutTd()`. Idempotent.
      *
@@ -45567,6 +45644,11 @@
             const name = _isrcScoutLinkPlatform(a);
             if (!name) return;
             a.dataset.mbLinkPlatform = name;
+            _setTip(a, _isrcScoutLinkTip(a, name));
+            if (a.hasAttribute('data-tip')) {
+                a.setAttribute('data-mb-ii-tip', a.getAttribute('data-tip'));
+                a.removeAttribute('data-tip');
+            }
             const span = document.createElement('span');
             span.className = 'mb-ii-link-name';
             span.textContent = name;
@@ -52192,7 +52274,7 @@
         }
 
         ctrlMTooltipElement.innerHTML = tooltipHTML;
-        document.body.appendChild(ctrlMTooltipElement);
+        _saBody().appendChild(ctrlMTooltipElement);
 
         // Position in upper right of content div, not overlapping sidebar.
         // Falls back to viewport-relative positioning on page types with no
@@ -56071,7 +56153,7 @@
             const mask = document.createElement('div');
             mask.id = 'mb-vsb-mask';
             mask.setAttribute('aria-hidden', 'true');
-            document.body.appendChild(mask);
+            _saBody().appendChild(mask);
             _vsb.mask = mask;
             window.addEventListener('scroll', () => {
                 if (_vsb.maskPending) return;
@@ -57346,7 +57428,7 @@
             mask = document.createElement('div');
             mask.id = 'mb-sph-rmask';
             mask.setAttribute('aria-hidden', 'true');
-            document.body.appendChild(mask);
+            _saBody().appendChild(mask);
         }
         const width = `${w}px`;
         if (mask.style.width !== width) mask.style.width = width;
@@ -85759,7 +85841,7 @@
      */
     const _TOOLBAR_MENU_ROW_ORDER = {
         data: ['mb-save-to-disk-btn', 'mb-load-from-disk-btn', 'mb-export-btn'],
-        view: ['mb-density-btn', 'mb-stats-btn', 'mb-idbo-menu-btn', 'mb-gms-menu-btn', 'mb-shortcuts-help-btn'],
+        view: ['mb-density-btn', 'mb-stats-btn', 'mb-idbo-menu-btn', 'mb-gms-menu-btn', 'mb-mbu-quiet-btn', 'mb-shortcuts-help-btn'],
         help: ['mb-settings-btn', 'mb-app-help-btn', 'mb-shortcuts-help-btn'],
         disc: ['mb-disc-complete-btn', 'mb-disc-official-btn', 'mb-disc-nonofficial-btn', 'mb-disc-merged-btn'],
     };
@@ -86765,7 +86847,7 @@
         Lib.debug('ui', 'Column visibility toggle added to controls');
 
         // Append menu to body
-        document.body.appendChild(menu);
+        _saBody().appendChild(menu);
     }
 
     /**
@@ -87077,7 +87159,7 @@
             }
         });
 
-        document.body.appendChild(menu);
+        _saBody().appendChild(menu);
 
         // ── Register in global registry for override propagation ──────────────
         /**
@@ -88467,7 +88549,7 @@ ${sections.join('\n')}
             <div id="sa-ed-status"></div>
         `;
 
-        document.body.appendChild(dialog);
+        _saBody().appendChild(dialog);
         dialog.querySelector('#sa-ed-filename-input').value = defaultFilename;
 
         // ── Position ─────────────────────────────────────────────────────────
@@ -88966,7 +89048,7 @@ ${sections.join('\n')}
         panel.className = 'mb-toolbar-menu-panel';
         panel.setAttribute('role', 'menu');
         panel.style.display = 'none';
-        document.body.appendChild(panel);
+        _saBody().appendChild(panel);
 
         let focusIdx = -1;
         // Set while this menu is open as a SUBMENU: the menu it was opened
@@ -89065,7 +89147,7 @@ ${sections.join('\n')}
                 panel.style.top = '';
                 panel.style.left = '';
             } else if (parent && parentRow) {
-                if (panel.parentNode !== document.body) document.body.appendChild(panel);
+                if (panel.parentNode !== _saBody()) _saBody().appendChild(panel);
                 const vb = _toolbarViewBox();
                 const pr = parent.panel.getBoundingClientRect();
                 const rr = parentRow.getBoundingClientRect();
@@ -89081,7 +89163,7 @@ ${sections.join('\n')}
                     panel.style.overflowY = 'auto';
                 }
             } else {
-                if (panel.parentNode !== document.body) document.body.appendChild(panel);
+                if (panel.parentNode !== _saBody()) _saBody().appendChild(panel);
                 // Measured against what SHOWS, not the layout viewport (they
                 // differ on a phone whose page is wider than the screen).
                 const vb = _toolbarViewBox();
@@ -89129,7 +89211,7 @@ ${sections.join('\n')}
                 .forEach(el => el.classList.remove('mb-toolbar-menu-item-focus'));
             focusIdx = -1;
             if (inlinePlaced) {
-                document.body.appendChild(panel);
+                _saBody().appendChild(panel);
                 panel.classList.remove('mb-toolbar-menu-inline');
                 inlinePlaced = false;
             }
@@ -91214,7 +91296,7 @@ ${sections.join('\n')}
         closeFooter.appendChild(closeHint);
         dialog.appendChild(closeFooter);
 
-        document.body.appendChild(dialog);
+        _saBody().appendChild(dialog);
 
         // ── Resize + geometry persistence (opt-in via opts.geoKey) ──────────────
         // Same _saveGeo/_clampGeo/ResizeObserver idiom as showLoadFilterDialog()'s
@@ -91586,6 +91668,356 @@ ${sections.join('\n')}
     function openAppHelp() {
         Lib.info('ui', `Application help: opening ${HELP_GITHUB_URL}`);
         window.open(HELP_GITHUB_URL, '_blank', 'noopener,noreferrer');
+    }
+
+    /**
+     * Event Horizon's default single-key commands that leave or replace the
+     * page (event_horizon.user.js `KEY_CMDS`, EH:12419, 2026.11.08.131500):
+     * o overview, e edit, r edit relationships, c cover art, h editing
+     * history, t tags, d details, a aliases, s search, p your profile,
+     * "." home, "," settings. Not `v`, its on/off switch, which the user
+     * needs on these pages. Keys rebound in Event Horizon's Ctrl+/ palette
+     * live in its own GM storage and cannot be known here.
+     */
+    const _EH_SINGLE_KEYS = new Set(['o', 'e', 'r', 'c', 'h', 't', 'd', 'a', 's', 'p', '.', ',']);
+
+    /**
+     * Keeps majkinetor's Event Horizon (alone, or inside String Theory) from
+     * acting on its single-letter keys on MusicBrainz's own page, where this
+     * script runs: a stray `h` went to the entity's editing history and the
+     * page, a rendered table included, was gone (org/majkinetor.org, "EH's
+     * bare-letter keys leave our FRP"; vzell: on the initial page too).
+     *
+     * Event Horizon's listener is a `document` keydown in the bubble phase,
+     * installed whether it shows or not, and it skips an event whose
+     * `defaultPrevented` is set (EH:12495). So a capture-phase listener that
+     * only calls `preventDefault()` is enough, with no `stopPropagation()`:
+     * every other handler, this script's own included, still sees the key.
+     * A single printable character has no default action outside a field,
+     * so nothing else changes.
+     *
+     * Matches Event Horizon's own reading of a key (`keyCombo()`): no Ctrl,
+     * ⌘ or Alt; one character, lowercased, Shift ignored (Shift+H is `h`).
+     * Skipped: a key typed into a field (input, textarea, select,
+     * contentEditable, as EH skips them too); while Event Horizon's own view
+     * shows (`<html data-mbu-dock>`), whose keys are its business; and on a
+     * page with neither Event Horizon's launcher (`#eh-launch`) nor String
+     * Theory's mark (`<html data-mbu-st>`), so no other script's single keys
+     * are touched. `sa_block_eh_single_keys` (default on) turns it off.
+     *
+     * Installed once, at page init, MusicBrainz only: it covers the initial
+     * page and every render after it.
+     *
+     * @returns {void}
+     */
+    function _ehKeyGuardInstall() {
+        if (document._mbEhKeyGuardInstalled) return;
+        document._mbEhKeyGuardInstalled = true;
+        document.addEventListener('keydown', (e) => {
+            if (e.defaultPrevented) return;
+            // Ctrl+L: this script's "Load from disk" when direct Ctrl+letter
+            // shortcuts are on, and Event Horizon's history.forward() — both
+            // fired, and EH's listener (registered at document-start) runs
+            // before ours, so our own preventDefault() came too late. Taken
+            // from EH only when ours will act on it.
+            if ((e.ctrlKey || e.metaKey) && Lib.settings.sa_enable_direct_ctrl_char_shortcuts &&
+                    isShortcutEvent(e, 'sa_shortcut_load_from_disk', 'Ctrl+L') && _ehPresentOffView()) {
+                e.preventDefault();
+                Lib.debug('shortcuts', 'Ctrl+L kept from Event Horizon (its forward) for Load from disk.');
+                return;
+            }
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+            if (!e.key || e.key.length !== 1 || !_EH_SINGLE_KEYS.has(e.key.toLowerCase())) return;
+            if (Lib.settings.sa_block_eh_single_keys === false) return;
+            if (!_ehPresentOffView()) return;
+            const t = e.target;
+            if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+            e.preventDefault();
+            Lib.debug('shortcuts', `Event Horizon's single key "${e.key}" ignored on MusicBrainz's page (sa_block_eh_single_keys).`);
+        }, true);
+    }
+
+    /**
+     * Whether majkinetor's Event Horizon is on this page (its launcher
+     * `#eh-launch`, or String Theory's mark `<html data-mbu-st>`) while
+     * MusicBrainz's own page shows — its view not up (`<html data-mbu-dock>`
+     * absent). The condition under which `_ehKeyGuardInstall()` takes keys
+     * from it.
+     *
+     * @returns {boolean}
+     */
+    function _ehPresentOffView() {
+        const root = document.documentElement;
+        if (root.hasAttribute('data-mbu-dock')) return false;
+        return !!document.getElementById('eh-launch') || root.hasAttribute('data-mbu-st');
+    }
+
+    /**
+     * This script's side of the conventions agreed with majkinetor in #938
+     * (upstream 9e4cdd59, DEVELOP.md "Interoperability" and Event Horizon's
+     * "External menu items"), MusicBrainz only:
+     *   - `tableShown`: a table was rendered or loaded from disk on this page
+     *     (`_mbuTableShown()`);
+     *   - `quietUserShown`: the ☰ row asked for the corner launchers back for
+     *     this page view (`_mbuQuietSync()`);
+     *   - `menu`: the launchers registered for Event Horizon's More (⋯) menu,
+     *     by id (`_ehMenuSync()`);
+     *   - `observing`: the `<html>` attribute observer is installed.
+     * Declared before the init code that first uses it (no TDZ).
+     */
+    const _mbuInterop = { tableShown: false, quietUserShown: false, menu: new Map(), observing: false };
+
+    /** sessionStorage key of a pending "press this button" handoff from Event Horizon's menu. */
+    const _EH_HANDOFF_KEY = 'sa_eh_handoff';
+
+    /** How long a handoff record stays good: the reload Event Horizon does in between takes a second or two. */
+    const _EH_HANDOFF_TTL_MS = 60000;
+
+    /**
+     * Installs, once, the `<html>` attribute observer behind the #938
+     * conventions: Event Horizon toggles `data-mbu-dock` (its view shows) and
+     * writes `data-mbu-page` (the path it shows) on `<html>`, which survives
+     * its body swaps. Every change re-derives the menu launchers and the quiet
+     * mark. Only those two attributes are observed, so our own
+     * `data-mbu-quiet` write cannot loop back here.
+     *
+     * @returns {void}
+     */
+    function _ehInteropObserve() {
+        if (_mbuInterop.observing || _foreignHost) return;
+        _mbuInterop.observing = true;
+        new MutationObserver(() => { _ehMenuSync(); _mbuQuietSync(); })
+            .observe(document.documentElement, { attributes: true, attributeFilter: ['data-mbu-dock', 'data-mbu-page'] });
+    }
+
+    /**
+     * Page init on MusicBrainz: the observer, the menu launchers for what
+     * Event Horizon shows now, and a pending handoff from before a reload.
+     *
+     * @returns {void}
+     */
+    function _ehMenuInstall() {
+        if (_foreignHost) return;
+        _ehInteropObserve();
+        _ehMenuSync();
+        _ehHandoffResume();
+    }
+
+    /**
+     * Called from the render tail (a fetched render and a load from disk):
+     * from now on a table of ours is on MusicBrainz's page, so the quiet mark
+     * may go up (`_mbuQuietSync()`).
+     *
+     * @returns {void}
+     */
+    function _mbuTableShown() {
+        if (_foreignHost) return;
+        _mbuInterop.tableShown = true;
+        _ehInteropObserve();
+        _mbuQuietSync();
+    }
+
+    /**
+     * The quiet mark, `<html data-mbu-quiet="saed">` (#938, convention C4):
+     * majkinetor's shared corner code then hides every `[data-mb-corner]`
+     * launcher, the dock and its shelf (`visibility: hidden`), which sat over
+     * our table's bottom right corner. Up while a table of ours shows on
+     * MusicBrainz's page and `sa_mbu_quiet_corner` is on; down while Event
+     * Horizon's view shows (its launchers are its business there) and after
+     * the ☰ row "Show corner launchers". The protocol: the value names the
+     * owner, and a mark is removed only while its value is still ours —
+     * another script's quiet mark is left alone, and never overwritten.
+     * Repaints the ☰ row too.
+     *
+     * @returns {void}
+     */
+    function _mbuQuietSync() {
+        if (_foreignHost) return;
+        const root = document.documentElement;
+        const want = _mbuInterop.tableShown && Lib.settings.sa_mbu_quiet_corner !== false &&
+            !_mbuInterop.quietUserShown && !root.hasAttribute('data-mbu-dock');
+        if (want && !root.hasAttribute('data-mbu-quiet')) root.setAttribute('data-mbu-quiet', 'saed');
+        else if (!want && root.getAttribute('data-mbu-quiet') === 'saed') root.removeAttribute('data-mbu-quiet');
+        _mbuQuietRowPaint();
+    }
+
+    /**
+     * The ☰ SAED View row that shows or hides the corner launchers for this
+     * page view (#938: a script that sets the quiet mark offers its own way
+     * back). Created once a table is shown and `sa_mbu_quiet_corner` is on,
+     * and only when one of majkinetor's scripts is there (a
+     * `[data-mb-corner]` launcher or `<html data-mbu-st>`); its label follows
+     * the state.
+     *
+     * @returns {void}
+     */
+    function _mbuQuietRowPaint() {
+        let btn = document.getElementById('mb-mbu-quiet-btn');
+        if (!btn) {
+            if (!_mbuInterop.tableShown || Lib.settings.sa_mbu_quiet_corner === false) return;
+            if (!document.getElementById('mb-show-all-controls-container')) return;
+            if (!document.querySelector('[data-mb-corner]') && !document.documentElement.hasAttribute('data-mbu-st')) return;
+            btn = document.createElement('button');
+            btn.id = 'mb-mbu-quiet-btn';
+            btn.type = 'button';
+            btn.style.cssText = uiActionBtnBaseCSS();
+            btn.onclick = () => {
+                _mbuInterop.quietUserShown = !_mbuInterop.quietUserShown;
+                _mbuQuietSync();
+            };
+            _ensureViewMenu().adopt(btn);
+        }
+        const shown = _mbuInterop.quietUserShown;
+        const html = shown ? '<span>🙈 Hide corner launchers</span>' : '<span>👁️ Show corner launchers</span>';
+        if (btn.innerHTML !== html) btn.innerHTML = html;
+        _setTip(btn, shown
+            ? "Hide String Theory's corner launchers and dock again while this table is shown"
+            : "Show String Theory's corner launchers and dock over this table again (for this page; the setting is \"Hide String Theory's corner launchers while a table is shown\")");
+    }
+
+    /**
+     * The `pageDefinitions` entry for a path, as the page-type detection picks
+     * it: the first whose `match()` accepts it, among this host's entries only
+     * (`host`, `_foreignHost`).
+     *
+     * @param {string} path - A pathname.
+     * @param {URLSearchParams} params - Its query.
+     * @returns {?object} The definition, or null.
+     */
+    function _pageDefForPath(path, params) {
+        for (const def of pageDefinitions) {
+            if ((def.host || null) !== _foreignHost) continue;
+            if (def.match(path, params)) return def;
+        }
+        return null;
+    }
+
+    /**
+     * This script's launchers in Event Horizon's More (⋯) menu (#938,
+     * upstream 9e4cdd59, Event Horizon's DEVELOP.md "External menu items"):
+     * hidden `button[data-mbu-menu-item][data-mbu-menu-title]` elements
+     * directly under `<html>` (so they survive its body swaps), which Event
+     * Horizon projects into its header menus and `.click()`s on a selection.
+     *
+     * Registered only while Event Horizon's view shows, and only for a page
+     * this script supports — decided from the path Event Horizon SHOWS
+     * (`<html data-mbu-page>`), never from MusicBrainz's hidden body, which
+     * after an in-view navigation is still the page the tab loaded:
+     *   - `saed:open` "Open in ShowAllEntityData": what V does;
+     *   - `saed:btn:<i>` "SAED: <label>", one per button of that page's
+     *     definition: V, then that button (`_ehHandoff()`). A button whose
+     *     `showIf` turns out false on the page leaves just the page.
+     * Kept in place across changes (Event Horizon observes the attributes);
+     * removed when its view goes or the page is not one of ours.
+     *
+     * @returns {void}
+     */
+    function _ehMenuSync() {
+        if (_foreignHost) return;
+        const root = document.documentElement;
+        const want = new Map();
+        const page = root.getAttribute('data-mbu-page');
+        if (root.hasAttribute('data-mbu-dock') && page) {
+            let def;
+            try {
+                const url = new URL(page, location.origin);
+                def = _pageDefForPath(url.pathname, url.searchParams);
+            } catch (err) {
+                def = null;   // not a path we can read: no launchers
+            }
+            if (def) {
+                want.set('saed:open', { title: `Open in ${SCRIPT_BASE_NAME}`, idx: -1 });
+                (def.buttons || []).forEach((b, i) => {
+                    if (b && b.label) want.set(`saed:btn:${i}`, { title: `SAED: ${b.label}`, idx: i });
+                });
+            }
+        }
+        for (const [id, el] of _mbuInterop.menu) {
+            if (!want.has(id)) { el.remove(); _mbuInterop.menu.delete(id); }
+        }
+        for (const [id, w] of want) {
+            let el = _mbuInterop.menu.get(id);
+            if (!el) {
+                el = document.createElement('button');
+                el.type = 'button';
+                el.hidden = true;
+                el.setAttribute('data-mbu-menu-item', id);
+                el.addEventListener('click', () => _ehHandoff(el));
+                root.appendChild(el);
+                _mbuInterop.menu.set(id, el);
+            }
+            if (el.getAttribute('data-mbu-menu-title') !== w.title) el.setAttribute('data-mbu-menu-title', w.title);
+            el.dataset.mbDefIdx = String(w.idx);
+        }
+    }
+
+    /**
+     * A launcher chosen in Event Horizon's menu: switch to MusicBrainz's page
+     * as V does — a click on Event Horizon's own launcher, `#eh-launch`
+     * (`switchOn(!ehOn)`; instant on the page the tab loaded, a reload into
+     * MusicBrainz's page of the shown path after an in-view navigation, and
+     * Event Horizon remembers "off" for later pages, as with V). For a button
+     * launcher, a sessionStorage record (`_EH_HANDOFF_KEY`: the page, the
+     * button's index in its definition, the time) first, which
+     * `_ehHandoffResume()` honours right away when no reload happened, or on
+     * the reloaded page.
+     *
+     * @param {HTMLButtonElement} el - One of `_ehMenuSync()`'s launchers.
+     * @returns {void}
+     */
+    function _ehHandoff(el) {
+        const root = document.documentElement;
+        const idx = Number(el.dataset.mbDefIdx);
+        const page = root.getAttribute('data-mbu-page') || (location.pathname + location.search);
+        if (idx >= 0) {
+            try {
+                sessionStorage.setItem(_EH_HANDOFF_KEY, JSON.stringify({ page, idx, at: Date.now() }));
+            } catch (err) { /* no sessionStorage: the page shows, the button stays unpressed */ }
+        }
+        const launch = document.getElementById('eh-launch');
+        if (!launch) {
+            Lib.warn('init', "Event Horizon's launcher (#eh-launch) not found — cannot switch to MusicBrainz's page.");
+            return;
+        }
+        Lib.debug('init', `Event Horizon menu: ${el.getAttribute('data-mbu-menu-title')} (${page}).`);
+        launch.click();
+        if (!root.hasAttribute('data-mbu-dock')) _ehHandoffResume();
+    }
+
+    /**
+     * Honours a pending handoff (`_ehHandoff()`): when the record is for THIS
+     * page (path and query) and younger than `_EH_HANDOFF_TTL_MS`, presses
+     * that button (`data-mb-def-idx`) once MusicBrainz's page shows and the
+     * button exists — retried for a few seconds, since at page init the
+     * buttons are built after this runs. The record is removed either way,
+     * so it never fires twice or on another page.
+     *
+     * @param {number} [tries] - Retries so far.
+     * @returns {void}
+     */
+    function _ehHandoffResume(tries = 0) {
+        let rec;
+        try {
+            rec = JSON.parse(sessionStorage.getItem(_EH_HANDOFF_KEY) || 'null');
+        } catch (err) {
+            rec = null;   // no sessionStorage, or not our JSON: nothing pending
+        }
+        if (!rec) return;
+        const drop = () => { try { sessionStorage.removeItem(_EH_HANDOFF_KEY); } catch (err) { /* nothing to drop */ } };
+        if (!(Date.now() - rec.at <= _EH_HANDOFF_TTL_MS) || rec.page !== location.pathname + location.search) {
+            drop();
+            return;
+        }
+        const btn = document.documentElement.hasAttribute('data-mbu-dock') ? null
+            : _saBody().querySelector(`button[data-mb-def-idx="${Number(rec.idx)}"]`);
+        if (!btn) {
+            if (tries < 25) setTimeout(() => _ehHandoffResume(tries + 1), 200);
+            else drop();
+            return;
+        }
+        drop();
+        Lib.debug('init', `Event Horizon menu handoff: pressing "${btn.dataset.label || ''}".`);
+        btn.click();
     }
 
     /**
@@ -93725,7 +94157,7 @@ ${sections.join('\n')}
 
         panel.appendChild(headerBar);
         panel.appendChild(body);
-        document.body.appendChild(panel);
+        _saBody().appendChild(panel);
 
         // ── 5. Geometry persistence ──────────────────────────────────────────
         // Stored object: { top, left, width, height, fontSize }
@@ -94640,7 +95072,7 @@ a { color: #1565c0; }`;
         ensureSettingsButtonIsLast();
 
         // Append menu to body
-        document.body.appendChild(menu);
+        _saBody().appendChild(menu);
     }
 
     // Track auto-resize state
@@ -96370,7 +96802,7 @@ a { color: #1565c0; }`;
             <div id="mb-resize-heading">📐 Measuring column widths…</div>
             <div id="mb-resize-progress">Preparing…</div>
         `;
-        document.body.appendChild(_resizeOverlay);
+        _saBody().appendChild(_resizeOverlay);
         const _resizeProgress = _resizeOverlay.querySelector('#mb-resize-progress');
 
         // Offscreen measurement container — shared across all source tables.
@@ -97031,9 +97463,9 @@ a { color: #1565c0; }`;
 
             // Add/remove body class to track sidebar state
             if (isCollapsed) {
-                document.body.classList.add('sidebar-is-collapsed');
+                _saBody().classList.add('sidebar-is-collapsed');
             } else {
-                document.body.classList.remove('sidebar-is-collapsed');
+                _saBody().classList.remove('sidebar-is-collapsed');
             }
 
             containers.forEach(el => {
@@ -97060,7 +97492,7 @@ a { color: #1565c0; }`;
             Lib.debug('meta', `Sidebar ${isCollapsing ? 'collapsed' : 'expanded'}. Full width applied.`);
         });
 
-        document.body.appendChild(handle);
+        _saBody().appendChild(handle);
 
         // Set initial position now that the handle is in the DOM.
         requestAnimationFrame(() => updateHandlePosition(handle));
@@ -97207,22 +97639,23 @@ a { color: #1565c0; }`;
     let lastClickedButtonLabel = null; // Label of the last button clicked — used for filename slug in saveTableDataToDisk
     let _cachedEntityName = '';       // Entity name extracted from h1 at init time (before any DOM mutation)
 
-    for (const def of pageDefinitions) {
-        // A definition with a `host` belongs to that site alone, and on a
-        // non-MusicBrainz host only such definitions are considered — so the
-        // broad MusicBrainz matchers (`includes('/label')`, `'/search'`, …)
-        // can never claim a springsteenlyrics.com, jungleland.it or
-        // brucespringsteen.it path, and those sites' definitions can never
-        // match on MusicBrainz (or on each other's host).
-        if ((def.host || null) !== _foreignHost) continue;
-        if (def.match(path, params)) {
+    // A definition with a `host` belongs to that site alone, and on a
+    // non-MusicBrainz host only such definitions are considered — so the
+    // broad MusicBrainz matchers (`includes('/label')`, `'/search'`, …) can
+    // never claim a springsteenlyrics.com, jungleland.it or
+    // brucespringsteen.it path, and those sites' definitions can never match
+    // on MusicBrainz (or on each other's host). First match wins (priority
+    // by array order). _pageDefForPath() is shared with Event Horizon's menu
+    // launchers (_ehMenuSync()).
+    {
+        const def = _pageDefForPath(path, params);
+        if (def) {
             pageType = def.type;
             baseDefinition = def;   // Save the base reference
             activeDefinition = def; // Set default active definition
             // Add debug logs for tablemode and pagetype at the beginning of execution
             Lib.debug('init', `Detected pageType: ${pageType}`);
             Lib.debug('init', `Detected tableMode: ${activeDefinition ? activeDefinition.tableMode : 'unknown'}`);
-            break; // Stop at first match (priority based on array order)
         }
     }
 
@@ -97386,6 +97819,16 @@ a { color: #1565c0; }`;
     // MusicBrainz only: the foreign sites' sidebars have their own.
     if (!_foreignHost && Lib.settings.sa_collabsable_sidebar && Lib.settings.sa_sidebar_handle_initial_page !== false) {
         initSidebarCollapse('initial');
+    }
+
+    // Event Horizon's single-letter keys must not leave MusicBrainz's page,
+    // initial or rendered (_ehKeyGuardInstall(); sa_block_eh_single_keys).
+    // MusicBrainz only: Event Horizon runs nowhere else.
+    if (!_foreignHost) {
+        _ehKeyGuardInstall();
+        // Event Horizon's More (⋯) menu launchers and the #938 marks
+        // (_ehMenuInstall(), _mbuQuietSync()).
+        _ehMenuInstall();
     }
 
     // Special case: recording page where "Appears on releases" section explicitly
@@ -97603,6 +98046,9 @@ a { color: #1565c0; }`;
     }
 
     buttonsToRender.forEach((conf, btnIndex) => {
+        // Its index in the definition, before labelFromH2 replaces `conf`:
+        // what Event Horizon's menu launchers name (_ehHandoffResume()).
+        const _defIdx = (activeDefinition.buttons || []).indexOf(conf);
         // A button that opens a group of its own: the same label segment as
         // buttonGroupLabel above, before it, after a heavier rule (discogs.com's
         // label page: "Newest" 500 1,000 5,000 "Oldest" 500 1,000 "Then" All).
@@ -97826,6 +98272,7 @@ a { color: #1565c0; }`;
 
         // Pass the entire config object
         eb.dataset.label = conf.label;  // stable original label — survives superscript/textContent mutations
+        if (_defIdx >= 0) eb.dataset.mbDefIdx = String(_defIdx);
         // While its fetch runs the segment is the Stop button (`_saedRunStart()`).
         eb.onclick = (e) => {
             if (_saedRun && _saedRun.btn === eb) {
@@ -99801,7 +100248,7 @@ a { color: #1565c0; }`;
             _tsPop.pinned = true;
             _updateFindingMenus();
         });
-        document.body.appendChild(el);
+        _saBody().appendChild(el);
         _tsPop.el = el;
         return el;
     }
@@ -100049,7 +100496,7 @@ a { color: #1565c0; }`;
             + `<div class="mb-ts-hint-timer"><i style="animation-duration:${_TS_HINT_LIFE_MS}ms"></i></div>`;
         el.addEventListener('click', _titleStyleHintClick);
         el.querySelector('.mb-ts-hint-timer i').addEventListener('animationend', () => _titleStyleHintHide());
-        document.body.appendChild(el);
+        _saBody().appendChild(el);
         _tsHint.el = el;
         _tsHint.anchor = anchor;
         _titleStyleHintPlace();
@@ -104690,7 +105137,7 @@ a { color: #1565c0; }`;
             <div id="sa-sd-status"></div>
         `;
 
-        document.body.appendChild(dialog);
+        _saBody().appendChild(dialog);
 
         // Set filename after insertion to avoid HTML-escaping issues with special chars
         dialog.querySelector('#sa-sd-filename-input').value = defaultFilename;
@@ -104994,7 +105441,7 @@ a { color: #1565c0; }`;
             </div>
         `;
 
-        document.body.appendChild(dlg);
+        _saBody().appendChild(dlg);
 
         // Position
         setTimeout(() => {
@@ -105662,14 +106109,14 @@ a { color: #1565c0; }`;
             </div>
         `;
 
-        document.body.appendChild(dialog);
+        _saBody().appendChild(dialog);
 
         // Private file input (invisible, owned by this dialog instance)
         const dialogFileInput = document.createElement('input');
         dialogFileInput.type = 'file';
         dialogFileInput.accept = '.gz,application/gzip,.json';
         dialogFileInput.style.display = 'none';
-        document.body.appendChild(dialogFileInput);
+        _saBody().appendChild(dialogFileInput);
 
         // ── Geometry persistence ─────────────────────────────────────────────
         const GEO_KEY = 'sa_load_dialog_geometry';
@@ -107049,6 +107496,60 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * MusicBrainz's own `<body>`: the one holding `#page`. Every PERSISTENT
+     * floating host this script adds (tooltip and card hosts, popups, menus,
+     * dialogs, masks, toasts, progress overlays, the sidebar handle, notices)
+     * is appended here, never to `document.body`.
+     *
+     * Why: majkinetor's Event Horizon (on by default once installed) puts its
+     * own `<body>` in front of MusicBrainz's and hides MusicBrainz's, so while
+     * it shows, `document.body` is ITS body; V removes that body again
+     * (`setOn()`, event_horizon.user.js EH:11507-11508). A host appended to
+     * `document.body` at start-up was drawn over Event Horizon's view and then
+     * left the document on V, while the script kept using its reference: dead
+     * hover cards, a lost sidebar handle (org/majkinetor.org, "SAED's floating
+     * elements survive Event Horizon's body swap"; measured 2026-11-08). In
+     * MusicBrainz's body a host hides with MusicBrainz's page and survives V.
+     * Event Horizon's body holds only `main#app` and `#toast`, never `#page`.
+     *
+     * Elsewhere (one body; the non-MusicBrainz hosts) this is `document.body`.
+     * Left on `document.body` on purpose: transient append-measure-remove and
+     * append-click-remove pairs, and the foreign-host-only sites.
+     *
+     * Cached on the function itself, not in a `let`, so a call from code that
+     * runs before this point of the IIFE is safe (no TDZ). MusicBrainz's body
+     * is never removed, only hidden.
+     *
+     * @returns {HTMLElement} the body to append floating hosts to
+     */
+    function _saBody() {
+        const cached = _saBody._el;
+        if (cached && cached.isConnected) return cached;
+        const page = document.getElementById('page');
+        _saBody._el = (page && page.closest('body')) || null;
+        return _saBody._el || document.body;
+    }
+
+    /**
+     * Marks a table this script rendered as ours to majkinetor's scripts:
+     * `data-mbu-foreign="saed"`, the shared convention agreed in #938
+     * (upstream 9e4cdd59, DEVELOP.md "Interoperability"). ISRC Scout then
+     * leaves its columns and colspans alone there (`fillTrackData()` /
+     * `showTrackData()` no longer re-add bare cells into our tables or wipe
+     * our rebuilt ones), and the shared `#mbu-tip` handler ignores the
+     * region. Per table, never on a container that still holds native rows
+     * ("the marker protects a rendered copy, not its native source").
+     * MusicBrainz only; an attribute, so a cloned or reused table keeps it.
+     *
+     * @param {?HTMLTableElement} table - A table the render fills.
+     * @returns {void}
+     */
+    function _markForeignTable(table) {
+        if (!table || _foreignHost) return;
+        if (table.getAttribute('data-mbu-foreign') !== 'saed') table.setAttribute('data-mbu-foreign', 'saed');
+    }
+
+    /**
      * Sets a tooltip that belongs to this script: assigns `el.title` and
      * stamps `data-mb-tip`, the marker the rich-tooltip engine
      * (`_initStatTooltip()`) looks for. Every tooltip the script sets goes
@@ -107730,7 +108231,7 @@ a { color: #1565c0; }`;
         _tip.id = 'mb-stat-tooltip';
         _tip.className = 'mb-tt-liner';
         _tip.style.display = 'none';
-        document.body.appendChild(_tip);
+        _saBody().appendChild(_tip);
 
         /** Rich tooltips that, while shown, rule out a card (see _showOwn). */
         const _OTHER_RICH_TIPS = ['mb-art-bigbox-tooltip', 'mb-art-hover-preview', 'mb-rel-tooltip', 'mb-dp-peek', 'mb-async-pop'];
@@ -108437,7 +108938,7 @@ a { color: #1565c0; }`;
             if (p && p.act) p.act(scope, b.dataset.mbAjAct);
             _ajRepaint();
         });
-        document.body.appendChild(el);
+        _saBody().appendChild(el);
         _ajPop.el = el;
         return el;
     }
@@ -112480,7 +112981,7 @@ a { color: #1565c0; }`;
                 _rerunIfColFilterActive(inputs);
                 _syncColModePop();
             });
-            document.body.appendChild(_colModePop);
+            _saBody().appendChild(_colModePop);
         }
         const hdr = inp.closest('table')?.querySelector('thead tr:first-child')
             ?.cells[parseInt(inp.dataset.colIdx, 10)];
@@ -117761,28 +118262,28 @@ a { color: #1565c0; }`;
             `;
 
             overlay.appendChild(dialog);
-            document.body.appendChild(overlay);
+            _saBody().appendChild(overlay);
 
             // Add button event listeners
             document.getElementById('mb-dialog-save').onclick = () => {
-                document.body.removeChild(overlay);
+                overlay.remove();
                 resolve('save');
             };
 
             document.getElementById('mb-dialog-render').onclick = () => {
-                document.body.removeChild(overlay);
+                overlay.remove();
                 resolve('render');
             };
 
             document.getElementById('mb-dialog-cancel').onclick = () => {
-                document.body.removeChild(overlay);
+                overlay.remove();
                 resolve('cancel');
             };
 
             // Allow ESC key to cancel
             const escHandler = (e) => {
                 if (e.key === 'Escape') {
-                    document.body.removeChild(overlay);
+                    overlay.remove();
                     document.removeEventListener('keydown', escHandler);
                     resolve('cancel');
                 }
@@ -121343,6 +121844,8 @@ a { color: #1565c0; }`;
             addCacheOverviewButton();
             // 🗄️ Script storage, right below it
             addGmStoreButton();
+            // The #938 quiet corner mark (data-mbu-quiet) may go up now.
+            _mbuTableShown();
 
             // Initialize keyboard shortcuts
             if (Lib.settings.sa_enable_keyboard_shortcuts) {
@@ -123083,6 +123586,7 @@ a { color: #1565c0; }`;
         tbody.innerHTML = '';
 
         const table = tbody.closest('table');
+        _markForeignTable(table);
         const thCount = table?.querySelectorAll('thead th')?.length || 0;
         const tdCount = rows[0]?.cells?.length || 0;
 
@@ -123223,7 +123727,7 @@ a { color: #1565c0; }`;
             <div id="mb-render-heading">🎨 Rendering rows...</div>
             <div id="mb-render-progress">0 / ${totalRows.toLocaleString()}</div>
         `;
-        document.body.appendChild(progressMsg);
+        _saBody().appendChild(progressMsg);
         const progressText = document.getElementById('mb-render-progress');
 
         let rowsRendered = 0;
@@ -123259,7 +123763,7 @@ a { color: #1565c0; }`;
         }
 
         // Remove progress indicator
-        document.body.removeChild(progressMsg);
+        progressMsg.remove();
 
         Lib.debug('render', `Chunked render complete: ${totalRows} rows rendered in ${chunks} chunks.`);
     }
@@ -124800,6 +125304,7 @@ a { color: #1565c0; }`;
 
                 table = document.createElement('table');
                 table.className = 'tbl';
+                _markForeignTable(table);
                 // Apply indentation to the table to match the sub-header
                 table.style.marginLeft = '1.5em';
                 table.style.width = 'calc(100% - 1.5em)';
@@ -130230,7 +130735,7 @@ a { color: #1565c0; }`;
         el.setAttribute('role', 'listbox');
         // Start hidden
         el.style.display = 'none';
-        document.body.appendChild(el);
+        _saBody().appendChild(el);
 
         // Close when anything outside the panel (and not the owning 📊 button) is clicked
         document.addEventListener('mousedown', (ev) => {
@@ -139196,7 +139701,7 @@ a { color: #1565c0; }`;
                         sortStatusDisplay.style.color = 'orange';
                     }
 
-                    if (showWaitCursor) document.body.classList.add('mb-sorting-active');
+                    if (showWaitCursor) _saBody().classList.add('mb-sorting-active');
 
                     (async () => {
                         try {
@@ -139361,7 +139866,7 @@ a { color: #1565c0; }`;
                             // view switch, a disk load — must see null and get the
                             // unconditional full re-render it has always had.
                             _renderDirtyGroupIdxs = null;
-                            if (showWaitCursor) document.body.classList.remove('mb-sorting-active');
+                            if (showWaitCursor) _saBody().classList.remove('mb-sorting-active');
                         }
                     })();
                 };
@@ -139542,6 +140047,18 @@ a { color: #1565c0; }`;
      *   - Buttons with `formtarget="_blank"` — submission opens in a new tab
      *
      * The listener set is registered only once (guarded by `_mbNavGuardInstalled`).
+     *
+     * ── Event Horizon's view: warn on a real leave only (2026-11-08) ─────────
+     * With majkinetor's Event Horizon the document can hold a second <body>
+     * (its view, in front of MusicBrainz's hidden one; see `_saBody()`). Some
+     * of its links open in place (pushState; the table stays in MusicBrainz's
+     * body) and some load a new page (the table is lost); its single keys
+     * (H for the editing history, …) click those links. Asking at click time
+     * asked for every link of its view, the in-place ones too. So Guards 1
+     * and 3 ignore a click outside `_saBody()`, Guard 2 stands back while
+     * another body shows, and Guard 4 (`beforeunload`) gives the browser's
+     * own "Leave site?" prompt when the page really unloads from there
+     * (vzell chose this, 2026-11-08).
      */
     function initNavigationGuard() {
         if (document._mbNavGuardInstalled) return;
@@ -139565,6 +140082,13 @@ a { color: #1565c0; }`;
         // ── Guard 1: Anchor click guard ─────────────────────────────────────────
         document.addEventListener('click', (e) => {
             if (!isLoaded) return;
+            // Only clicks on MusicBrainz's page are asked about here. In another
+            // script's body (Event Horizon's view) a link may open in place
+            // (the table stays) or load a new page, which cannot be told at
+            // click time; asking asked for every link of EH's view. A real
+            // leave from there gets Guard 4's beforeunload prompt instead
+            // (vzell, 2026-11-08).
+            if (!_saBody().contains(e.target)) return;
             // A click another handler already took (the artwork viewer on a
             // cover icon or a strip image) navigates nowhere; nor does one
             // that opens a new tab or window (Ctrl, ⌘, Shift): no session
@@ -139652,6 +140176,9 @@ a { color: #1565c0; }`;
         document.addEventListener('keydown', (e) => {
             if (!isLoaded) return;
             if (e.key !== 'Tab') return;
+            // Not while another script's body shows (Event Horizon's view):
+            // its Tab order is its own.
+            if (document.body !== _saBody()) return;
 
             const focusable = getFocusable();
             if (focusable.length === 0) return;
@@ -139682,6 +140209,7 @@ a { color: #1565c0; }`;
         // ── Guard 3: Merge-form submit-button guard ─────────────────────────────
         document.addEventListener('click', (e) => {
             if (!isLoaded) return;
+            if (!_saBody().contains(e.target)) return; // MusicBrainz's page only (Guard 1)
 
             // Only care about button clicks
             const btn = e.target.closest('button');
@@ -139721,7 +140249,28 @@ a { color: #1565c0; }`;
             }
         }, /* useCapture */ true);
 
-        Lib.debug('navigation', 'Navigation guard installed (anchor + Tab-trap + merge-form; download anchors exempt).');
+        // ── Guard 4: a real page leave out of another script's view ─────────
+        // While Event Horizon's view shows (another <body> than _saBody()),
+        // Guards 1-3 stand back: its links open in place (pushState, the table
+        // stays: a release group, probe case C) or load a new page (the table
+        // is lost), and which one cannot be told at click time. Its H shows
+        // both (probe case E, 2026-11-08): keyGo() clicks the view's own link
+        // when it is there (in place) and calls location.assign() when the
+        // view has not drawn it yet (a page load).
+        // So the warning comes when the page really unloads: the browser's
+        // own "Leave site?" prompt (its text, not ours). That also covers EH's
+        // reload when V switches it off after it navigated (EH:11490), which
+        // no click guard sees. On MusicBrainz's own page Guard 1 has asked
+        // already, so this stays silent there.
+        window.addEventListener('beforeunload', (e) => {
+            if (!isLoaded) return;
+            if (document.body === _saBody()) return;
+            e.preventDefault();
+            e.returnValue = '';
+            Lib.debug('navigation', 'Leaving the page from another script\'s view with a rendered table: beforeunload prompt.');
+        });
+
+        Lib.debug('navigation', 'Navigation guard installed (anchor + Tab-trap + merge-form + leave from another view; download anchors exempt).');
     }
 
     // ── CDtoc tracklist toggle feature ───────────────────────────────────────
@@ -147248,7 +147797,7 @@ a { color: #1565c0; }`;
         tip = document.createElement('div');
         tip.id = 'mb-rel-tooltip';
         tip.setAttribute('role', 'tooltip');
-        document.body.appendChild(tip);
+        _saBody().appendChild(tip);
         return tip;
     }
 
@@ -149445,7 +149994,7 @@ a { color: #1565c0; }`;
             setTimeout(() => toast.parentNode?.removeChild(toast), 380);
         };
         toast.addEventListener('click', dismiss);
-        document.body.appendChild(toast);
+        _saBody().appendChild(toast);
         setTimeout(dismiss, duration);
     }
 
@@ -151692,6 +152241,8 @@ a { color: #1565c0; }`;
             addCacheOverviewButton();
             // 🗄️ Script storage, right below it
             addGmStoreButton();
+            // The #938 quiet corner mark (data-mbu-quiet) may go up now.
+            _mbuTableShown();
 
             // Initialize keyboard shortcuts (if not already initialized)
             if (Lib.settings.sa_enable_keyboard_shortcuts) {
@@ -152292,7 +152843,7 @@ a { color: #1565c0; }`;
             menu.appendChild(row);
         });
 
-        document.body.appendChild(menu);
+        _saBody().appendChild(menu);
 
         // ── Single delegated event listener for all row clicks ───────────────
         menu.addEventListener('mousedown', (e) => {
@@ -154542,7 +155093,7 @@ a { color: #1565c0; }`;
                     _idboPaint();
                 }
             });
-            document.body.appendChild(el);
+            _saBody().appendChild(el);
             _idbo.el = el;
             window.addEventListener('keydown', _idboOnKey, true);
             // Moved or resized once: where it was left (`sa_idbo_geometry`);
@@ -155947,7 +156498,7 @@ a { color: #1565c0; }`;
                     _gmsPick(tr.dataset.key);
                 }
             });
-            document.body.appendChild(el);
+            _saBody().appendChild(el);
             _gms.el = el;
             window.addEventListener('keydown', _gmsOnKey, true);
             // Moved or resized once: where it was left (`sa_gms_geometry`).
@@ -156925,7 +157476,7 @@ a { color: #1565c0; }`;
         img.style.cssText = 'max-width:320px; max-height:320px; display:block; object-fit:contain;';
 
         div.appendChild(img);
-        document.body.appendChild(div);
+        _saBody().appendChild(div);
         return div;
     }
 
@@ -157044,7 +157595,7 @@ a { color: #1565c0; }`;
         tip.style.cssText =
             'position:fixed; pointer-events:none; display:none;' +
             ' max-width:380px;';
-        document.body.appendChild(tip);
+        _saBody().appendChild(tip);
         return tip;
     }
 
@@ -162383,7 +162934,7 @@ a { color: #1565c0; }`;
             // P4b: the Adjust panel's sliders and Invert.
             root.addEventListener('input', _artViewerOnInput);
             root.addEventListener('change', _artViewerOnInput);
-            document.body.appendChild(root);
+            _saBody().appendChild(root);
         }
         root.setAttribute('aria-label', `${ctx.column} artwork viewer`);
         const prevOverflow = _artViewerState ? _artViewerState.prevOverflow : document.documentElement.style.overflow;
@@ -167822,7 +168373,7 @@ a { color: #1565c0; }`;
         const el = document.createElement('div');
         el.id = 'mb-art-summary-panel';
         el.style.display = 'none';
-        document.body.appendChild(el);
+        _saBody().appendChild(el);
         document.addEventListener('mousedown', ev => {
             if (!_artSummaryOwner) return;
             if (_artSummaryOwner.contains(ev.target)) return;
@@ -170624,7 +171175,7 @@ a { color: #1565c0; }`;
                 setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 380);
             };
             toast.addEventListener('click', dismiss);
-            document.body.appendChild(toast);
+            _saBody().appendChild(toast);
             const timer = setTimeout(dismiss, duration);
         }
 

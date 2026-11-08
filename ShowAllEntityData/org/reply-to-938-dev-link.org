@@ -1,0 +1,39 @@
+#+TITLE: Follow-up on #938: SAED's development version to try
+#+DATE: 2026-11-08
+
+* TODO Post: link to SAED's development version on https://github.com/majkinetor/musicbrainz-userscripts/issues/938
+
+Drafted 2026-11-08 at vzell's request, for vzell to post after the short acknowledgement
+(=org/reply-to-938-ack.org=); not posted anywhere.
+
+*Post only after this branch is merged and pushed to =main=*: the link names =main=, and the library
+=@require= switch (=file:///V:/…= → =https://raw.githubusercontent.com/vzell/musicbrainz-userscripts/main/lib/VZ_MBLibrary.user.js=,
+2026-11-08, vzell) has to be there, or the install falls back to the library stub on his machine without an error.
+
+=@updateURL= / =@downloadURL= still name the published =vzell/mb-userscripts= master. That is harmless:
+Tampermonkey only updates to a HIGHER version, and the mirror's 9.99.1167 is lower, so his install stays on the
+development version until the next release is published, which is then a real update.
+
+#+begin_src markdown
+Hi Miodrag - @majkinetor,
+
+in case you'd like to try SAED next to your `codex/interop-938` branch, here is the development version:
+
+**[Install ShowAllEntityData (development version)](https://github.com/vzell/musicbrainz-userscripts/raw/main/ShowAllEntityData/ShowAllEntityData.user.js)**
+
+A few notes:
+
+- This is much newer than the published release (9.99.1167, the one your #926 review looked at): link previews, the other sites (Discogs, setlist.fm, archive.org, the Springsteen sites), the findings menus and a lot more. It also carries the Event Horizon fixes from this issue.
+- Please disable the published SAED while you try it. Two copies on one page get in each other's way.
+- It stays on this version until I publish the next release, which then arrives as a normal update.
+- A quick tour with String Theory from your branch:
+  1. Open a release, e.g. https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897, and press **V** for MusicBrainz's page.
+  2. Press **Show all Tracks for Release** (SAED's button in the header). ISRC Scout's ISRC and Links columns become sortable and filterable, with 📊 per column.
+  3. **V** switches between EH's view and SAED's table, and the table survives any number of switches. EH's single-letter keys are ignored on MusicBrainz's page; inside EH's view they work as always.
+- The marker-based parts (`data-mbu-foreign`, `data-ii-platform`, `data-mbu-quiet`, the ⋯ menu items) are what I'm building right now against your branch. I'll say here when they're in.
+
+Feedback is very welcome, here or in my repo.
+
+Thanks!
+Volker
+#+end_src

@@ -24,6 +24,11 @@
  *      navigation, Tampermonkey would run it again by itself).
  *   D  EH on at load on an artist page, V at once, SA fetch while EH's
  *      own requests may still run: requests per second and 503s.
+ *   E  EH off at load: SA fetch, V (EH on), h in EH's view (its keyGo()
+ *      clicks its own #app link, in place), V (EH off: reloads when EH
+ *      navigated), then a click on a recording link of MusicBrainz's page:
+ *      whether SA's "You are about to leave this page" confirm came, at
+ *      each step (vzell, 2026-11-08; dialogs are recorded and dismissed).
  *   I  ISRC Scout alone (--scripts=majkinetor-isrc-scout) or inside the
  *      bundle (--scripts=majkinetor-string-theory; EH seeded off) on a
  *      release with track links: how its "Links" icons are labelled (title or data-tip)
@@ -124,7 +129,11 @@ function snapshotState(page) {
             saBar: bar ? { inBody: bodyIdx(bar), visible: seen(bar), h1: (bar.closest('h1') || {}).textContent ? bar.closest('h1').textContent.trim().slice(0, 60) : null, inApp: !!bar.closest('#app') } : null,
             saButtons: buttons.map((b) => ({ label: b.getAttribute('data-label'), inBody: bodyIdx(b), visible: seen(b) })),
             saFloatingPerBody: floating,
-            frp: { filterBar: !!document.querySelector('#mb-filter-container'), rows: frpRows },
+            // #sidebar-toggle-handle (initSidebarCollapse()): made once at
+            // start-up and appended to document.body, so under EH it lands in
+            // EH's body; the mb-* filter of `floating` cannot see its id
+            sidebarHandle: (() => { const h = document.getElementById('sidebar-toggle-handle'); return h ? { inBody: bodyIdx(h), visible: seen(h), copies: document.querySelectorAll('#sidebar-toggle-handle').length } : null; })(),
+            frp:{ filterBar: !!document.querySelector('#mb-filter-container'), rows: frpRows },
             css: {
                 scrollbarGutter: getComputedStyle(document.documentElement).scrollbarGutter,
                 contentWidth: content ? Math.round(content.getBoundingClientRect().width) : null,
@@ -347,14 +356,14 @@ async function runCase(browser, name, entries, urlOverride) {
         const s = { step: label, ...extra, state: await snapshotState(page) };
         steps.push(s);
         const b = s.state.saBar;
-        console.log(`[${name}] ${label}: path=${s.state.path} bodies=${s.state.bodies} docBodyIsMb=${s.state.documentBodyIsMb} saBar=${b ? `body${b.inBody} visible=${b.visible} inApp=${b.inApp}` : 'none'} frpRows=${s.state.frp.rows} ${Object.keys(extra).length ? JSON.stringify(extra) : ''}`);
+        console.log(`[${name}] ${label}: path=${s.state.path} bodies=${s.state.bodies} docBodyIsMb=${s.state.documentBodyIsMb} saBar=${b ? `body${b.inBody} visible=${b.visible} inApp=${b.inApp}` : 'none'} frpRows=${s.state.frp.rows} sbHandle=${s.state.sidebarHandle ? `body${s.state.sidebarHandle.inBody} visible=${s.state.sidebarHandle.visible}` : 'none'} ${Object.keys(extra).length ? JSON.stringify(extra) : ''}`);
     };
     let cfg = name === 'D' || name === '0' ? ARTIST : RELEASE;
     if (name === 'I') cfg = { ...RELEASE, url: urlOverride || ISRC_RELEASE };
     const settings = cfg.seedGmValues || {};
     const ehEntries = name === '0' ? [] : entries;
     // Case I starts with EH off (seeded; harmless without EH), so the bundle shows MusicBrainz's page too.
-    const ehOn = name === '0' ? null : (name === 'I' ? false : name !== 'B');
+    const ehOn = name === '0' ? null : (name === 'I' ? false : !['B', 'E'].includes(name));
     const { context, page, errors, responses } = await openPage(browser, { url: cfg.url, entries: ehEntries, ehOn, settings });
     const out = { case: name, url: cfg.url, scripts: ehEntries.map((e) => e.id), steps };
     try {
@@ -369,6 +378,15 @@ async function runCase(browser, name, entries, urlOverride) {
             await note(page, 'V (EH on)', { reloaded: await pressV(page) });
             await note(page, 'V (EH off again)', { reloaded: await pressV(page) });
         } else if (name === 'B') {
+            // EH's single keys on the INITIAL page too (vzell, 2026-11-08):
+            // 'h' = Editing history; SAED's _ehKeyGuardInstall() takes it
+            // (sa_block_eh_single_keys) since WIP.2. Leaving would end the case,
+            // so it is pressed only where the guard is expected to hold.
+            await page.evaluate(() => document.activeElement && document.activeElement.blur && document.activeElement.blur());
+            const navIp = page.waitForEvent('load', { timeout: 6000 }).then(() => true).catch(() => false);
+            await page.keyboard.press('h');
+            await note(page, "key 'h' on the IP", { navigated: await navIp });
+            if (page.url().includes('/edits')) { await page.goBack(); await page.waitForLoadState('load'); await reinjectSa(page); }
             await note(page, 'SA fetch', await runSaFetch(page, cfg.showAllButtonSelector));
             await note(page, 'menu + tooltip', await probeUi(page));
             // a SA floating element made on demand: the cell hover tooltip host
@@ -382,6 +400,22 @@ async function runCase(browser, name, entries, urlOverride) {
             const nav = page.waitForEvent('load', { timeout: 6000 }).then(() => true).catch(() => false);
             await page.keyboard.press('h');
             await note(page, "key 'h' on the FRP", { navigated: await nav });
+        } else if (name === 'E') {
+            const dialogs = [];
+            page.on('dialog', (d) => { dialogs.push(`${d.type()}: ${d.message().split('\n')[0]}`); d.dismiss().catch(() => {}); });
+            await note(page, 'SA fetch', await runSaFetch(page, cfg.showAllButtonSelector));
+            await note(page, 'V (EH on)', { reloaded: await pressV(page) });
+            await page.evaluate(() => document.activeElement && document.activeElement.blur && document.activeElement.blur());
+            const navH = page.waitForEvent('load', { timeout: 6000 }).then(() => true).catch(() => false);
+            await page.keyboard.press('h');
+            await note(page, "key 'h' in EH's view", { reloaded: await navH, dialogs: dialogs.splice(0) });
+            const reloaded = await pressV(page);
+            if (reloaded) await reinjectSa(page);
+            await note(page, 'V (EH off)', { reloaded, dialogs: dialogs.splice(0) });
+            const link = page.locator('table.tbl tbody a[href*="/recording/"], #content a[href*="/recording/"]').first();
+            const has = await link.count();
+            if (has) { await link.click({ timeout: 5000 }).catch(() => {}); await page.waitForTimeout(1500); }
+            await note(page, 'click a recording link', { hadLink: !!has, dialogs: dialogs.splice(0) });
         } else if (name === 'C') {
             const link = await page.evaluate(() => {
                 const a = [...document.querySelectorAll('#app a[href*="/release-group/"]')].find((x) => x.getBoundingClientRect().width > 0);

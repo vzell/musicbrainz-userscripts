@@ -326,7 +326,9 @@ Scout's ISRC and Links columns").
   slot (`_linkPlatformTrailingIconSlot()`). Gated by the header CLASS
   `ii-col-links` (`isIiLinksCol`), not the generic name "Links". Values come
   from `_findCellLinkPlatforms()`, which reads `data-mb-link-platform`, never
-  text, so earlier highlights cannot change them. A tick marks the anchor's
+  text, so earlier highlights cannot change them. That stamp comes from
+  ISRC Scout's `data-ii-platform`, else its `data-tip`, else its old `title`
+  (`_isrcScoutLinkPlatform()`, docs/claude/release-tracks-and-length.md). A tick marks the anchor's
   hidden `span.mb-ii-link-name` (`_highlightLinkPlatformMatch()`) and CSS
   outlines the icon.
 - The header count is the ordinary one, distinct per-row platform sets: the

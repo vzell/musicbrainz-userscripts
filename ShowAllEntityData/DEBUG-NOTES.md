@@ -28642,3 +28642,152 @@ everything, system book face, layout A, filter text highlighted.
 - Results: `sl-song-window.spec.js` 6/6; the SL specs (detail-preview, sl-song, sl-lyrics) 61/61, two of
   them updated for the new layout (the lyrics are a sheet now, no `.mb-dp-section`; "Available
   Versions" keeps the site's case).
+
+## 2026-11-08 — majkinetor refresh: 1df6193 → 65032ef; a 503 next to Event Horizon now hits SAED's entity-pictures lookup (docs/majkinetor-refresh-2026-11-08)
+
+Env: 2026-11-08T13:39:32–13:46:53+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1,
+Chromium 151.0.7922.34 · no Tampermonkey (GM stubs, realNetworkGmXhr) · live musicbrainz.org (IPv4 worked).
+
+Second run of the refresh-majkinetor skill. Harness copies all from upstream `65032ef` (2026-11-08 13:36): String
+Theory 2026.11.08.133602 (its `@description` names EH 2026.11.08.131500 and ISRC Scout 2026.11.08.122500), plus the
+standalone EH and ISRC Scout of those versions. main's raw link still served 2026.11.08.133538, one rebuild behind;
+`diff` showed only version stamps (the bundle's and Credit Hoarder's), so the copies were taken from the clone.
+
+- Upstream: no CHANGELOG entries, no new member. EH: "Background effects" (Tron/Stars/Aurora/Rain, image
+  backgrounds; `div.eh-amb` hosts appended to `document.body` only while EH shows, i.e. its own body) and new
+  `<html data-st-eh-fx-try>`/`-edit` marks from ST's theme chooser. Shared runtime: `mbuAutomated()` (#936, a Falcon
+  worker iframe or `mbu-auto=0`), dock entries no longer transformed. Mission Control `@exclude`s release subpages.
+  ISRC Scout: nothing ShowAllEntityData sees.
+- Probe, all cases with the bundle and alone: every Coexistence row as before (bar hidden in MB's body under EH,
+  hover cards dead after V when SAED started under EH, `h` leaves the FRP, the C-case reload, case I 36/36
+  `data-tip`, 0 `title`, 0 platform stamps).
+- Case D (EH on at load, V, SAED's 31-page artist fetch, 39.6 s): five 503s, four on EH's `release-group?query=arid:`
+  search (offsets 100–400) and one on ShowAllEntityData's own `/ws/2/artist/<mbid>?inc=url-rels`. That is the
+  entity-pictures lookup (`sa_entity_images`, `_eiStart()` → `_mbWsLoad()`; the page's `fetch()`, the single `ws2`
+  request in the SAED-only case 0). On 2026-11-06 all of D's 503s were EH's. Neither side is shielded while SAED is
+  outside `mbu:mb-gate`; noted in the gate TODO of `org/majkinetor.org`.
+- Anchors: 34/34 held (EH +47…+1237); four added (`mc-exclude-subpages`, `eh-fx-try`, `ui-automated`,
+  `saed-ei-ws2`), 38/38, `--update-lines` done, pinned `65032ef`.
+- #938: no answer yet (labelled 2026-11-07). #926 closed; majkinetor's comparison report rates SAED "Partial
+  overlap" with Event Horizon (his verdict in discussion #941).
+- Follow-up, 2026-11-08T14:13:38–14:14:57+01:00 (same host and env, EH 2026.11.08.131500 alone, cases A and B):
+  vzell found, pre-testing the floating-elements TODO, that with EH on at load the MusicBrainz sidebar handle
+  `#sidebar-toggle-handle` shows over EH's view and is missing after V, on the IP and the FRP alike, while with EH
+  off at load it behaves. The probe gained a `sidebarHandle` field (its `mb-*` floating filter could not see that
+  id) and measured it: A — EH's body and visible at load, not in the document after V and after the render, back
+  in EH's body on the next V; B — MusicBrainz's body throughout, hidden only while EH shows (correct). Cause:
+  `initSidebarCollapse('initial')` appends it once to `document.body` (EH's body under EH), and the render's
+  `initSidebarCollapse('final')` returns early because `initSidebarCollapse.setCollapsed` exists. Added to that
+  TODO in `org/majkinetor.org`; anchor `saed-sidebar-handle-body`.
+
+## 2026-11-08 — SAED's floating hosts now live in MusicBrainz's body (`_saBody()`): Event Horizon's body swap no longer kills hover cards or the sidebar handle (docs/majkinetor-refresh-2026-11-08, WIP.1)
+
+Env: 2026-11-08T14:30–14:38+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1,
+Chromium 151.0.7922.34 · no Tampermonkey (GM stubs; fixtures, and realNetworkGmXhr for the live probe) · EH
+2026.11.08.131500, ST 2026.11.08.133602.
+
+- Cause (org/majkinetor.org TODO "SAED's floating elements survive Event Horizon's body swap"): Event Horizon's
+  `setOn()` (EH:11507-11508) inserts its own `<body>` before MusicBrainz's and hides MusicBrainz's; V removes it.
+  SAED, started while EH shows (its default), appended its create-once hosts to `document.body`, i.e. EH's body:
+  `#sidebar-toggle-handle` showed over EH's view, and on V it, `#mb-stat-tooltip` and `#mb-vsb-mask` left the
+  document while SAED kept their references. `initSidebarCollapse('final')` never rebuilds the handle.
+- Hosts that already self-heal (`isConnected` / `getElementById` ensures such as `_dpEnsurePeekEl()`), and the
+  toolbar menu panels (re-attached on open), were never lost, but were drawn into EH's body while it showed.
+- Fix: `_saBody()` — the `<body>` holding `#page` (EH's body has only `main#app` and `#toast`), cached on the
+  function (no TDZ). 42 persistent append sites, the toolbar's two re-attach comparisons, and the
+  `sidebar-is-collapsed` / `mb-sorting-active` body classes go through it; the two hosts removed with
+  `document.body.removeChild()` now use `.remove()`. Left on `document.body`: transient append-measure-remove /
+  append-click-remove pairs and the foreign-host-only sites.
+- Test: `tests/fixtures/eh-body-swap-floating.spec.js` with the simulator
+  `tests/fixtures/thirdPartyScripts/eh-body-swap.js` (EH's `setOn()` verbatim). Before the fix 3 of 4 failed
+  (handle in EH's body / no card host / no mask), the EH-off control passed; after: 4/4.
+  `scripts/mutations/eh-body-swap.json`: 4 planted defects fail as expected, and one recorded `expect: pass`
+  (the toolbar panel's creation site, healed by its open handler).
+- Live probe after the fix (14:35:27–14:37:46+01:00): case A, EH alone and with the bundle — the handle in
+  MusicBrainz's body and hidden at load, visible after V and after the render; hover card `inDocument: true`.
+  Case B unchanged.
+
+## 2026-11-08 — Event Horizon's single-letter keys no longer leave MusicBrainz's page, IP and FRP (`_ehKeyGuardInstall()`, docs/majkinetor-refresh-2026-11-08, WIP.2)
+
+Env: 2026-11-08T15:12–15:20+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1,
+Chromium 151.0.7922.34 · no Tampermonkey (GM stubs; fixtures, and realNetworkGmXhr for the live probe) · EH
+2026.11.08.131500, ST 2026.11.08.133602.
+
+- Symptom (org/majkinetor.org TODO "EH's bare-letter keys leave our FRP"): with EH or String Theory installed and
+  EH OFF, `h` on MusicBrainz's page went to `/edits`. The TODO named the FRP; vzell found the IP does the same and
+  chose to block it on both.
+- Cause: EH's `KEY_CMDS` listener (EH:12495) is a `document` keydown in the bubble phase, installed whether EH shows
+  or not; it skips an event whose `defaultPrevented` is set and a key in a field, and reads one character
+  lowercased with Shift ignored (`keyCombo()`), so Shift+H is `h` too.
+- Fix: `_ehKeyGuardInstall()` at page init (MusicBrainz only), a capture-phase keydown calling only
+  `preventDefault()` for `_EH_SINGLE_KEYS` (o e r c h t d a s p . ,). Not `v` (EH's switch), not in a field, not
+  while `<html data-mbu-dock>` (EH's view), only with `#eh-launch` or `<html data-mbu-st>`; setting
+  `sa_block_eh_single_keys` (default on). SAED's own single keys were already safe: the prefix mode's second key
+  and the preview window's H call `preventDefault()` in the capture phase.
+- Tests: `tests/fixtures/eh-single-keys.spec.js` 6/6 (the simulator `eh-body-swap.js` gained EH's key listener,
+  launcher and `data-mbu-dock`; `eh-body-swap-floating.spec.js` still 4/4). `scripts/mutations/eh-single-keys.json`:
+  7/7 fail as expected, including "the guard is never installed".
+- Live probe case B (now also `h` on the IP), 15:18:37–15:20:23: `navigated: false` on the IP and the FRP, EH alone
+  and in the bundle; V still toggles. Not covered: keys rebound in EH (convention C3 would cover them).
+- Follow-up, 2026-11-08T15:30–15:42+01:00 (same host and env): vzell, testing WIP.2 in his browser — `h` on
+  MusicBrainz's page does nothing (OK), but after V to EH's view, `h` brought up SAED's own "You are about to leave
+  this page" confirm, and OK then showed EH's history view. Cause: EH's `keyGo()` (EH:12403) clicks its own `#app`
+  link while its view shows, and EH opens it in place (pushState). `initNavigationGuard()`'s Guard 1 (capture,
+  every anchor click while `isLoaded`) asked first. Any mouse click on a link in EH's view after a render did the
+  same, so this predates the key guard. Fix: Guards 1 and 3 ignore clicks outside `_saBody()`, and Guard 2 (Tab
+  trap) stands back while another body shows. The simulator gained EH's in-place link handling and `keyGo()`.
+  Three more tests in `eh-single-keys.spec.js` (13/13 with the floating spec), mutation 8/8, the existing guard
+  tests (merge form, springsteenlyrics.com, brucespringsteen.it) pass. Still unasked: a real page leave out of
+  EH's view after a render (case C's reload); a `beforeunload` net could catch it.
+- Correction, 2026-11-08T15:51–16:13+01:00 (same host and env): the "EH opens it in place" premise of the previous
+  bullet was only half true. vzell, testing `2584a4a9`: no question in EH's view any more, but none either when the
+  table was really lost. New probe case E (FRP → V → `h` in EH's view → V → a link click, dialogs recorded):
+  15:51, `h` did a full page load (`reloaded: true`); 16:11, alone and in String Theory, `h` opened in place, and
+  the V after it reloaded (EH:11490). EH's `keyGo()` clicks its view's own link when drawn, else
+  `location.assign()`. vzell chose "warn on a real leave only": Guard 4, a `beforeunload` handler in
+  `initNavigationGuard()`, prompts while another body shows and a table is loaded; silent on MusicBrainz's page.
+  Measured at 16:11: `h` in place → no prompt, V → `beforeunload` (dismissed, table kept). The simulator now loads
+  a page for `/edits` and reloads on V after an in-place move. Test trap: Chromium shows `beforeunload` only after
+  a user activation, so a test without a click cannot see a wrong prompt (one test had to gain a click). Guard 4's
+  `isLoaded` check is unobservable by construction (the guard is installed only after a render): recorded as an
+  `expect: pass` mutation. Specs 16/16, mutations 10 fail + 1 recorded overlap.
+
+## 2026-11-08 — #938 conventions adopted against majkinetor's 9e4cdd59: data-mbu-foreign, data-ii-platform, data-mbu-quiet, EH's ⋯ menu launchers; key guard kept (docs/majkinetor-refresh-2026-11-08, WIP.3–WIP.6)
+
+Env: 2026-11-08T16:40–17:21+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1,
+Chromium 151.0.7922.34 · no Tampermonkey (GM stubs; fixture specs only, no live probe) · upstream read via the
+GitHub API at `codex/interop-938` 9e4cdd59 (EH and ISRC Scout 2026.11.08.152918); not in the harness copies.
+
+- Input: majkinetor's point-by-point answer on #938 and milic-bot's 9e4cdd59 (DEVELOP.md "Interoperability",
+  EH's "External menu items", ISRC Scout's "Track-link metadata", gate protocol v1). Conventions and their status:
+  org/majkinetor.org "Shared conventions (agreed in #938)".
+- Key handling re-checked (task 1b): `_ehKeyGuardInstall()` stays. EH now honours `<html data-mbu-keys-off>`
+  (its keydown returns before `defaultPrevented`), but that suspends EVERY command, V included — setting it on
+  MusicBrainz's page would take V, the handoff vzell confirmed works. Gap found in reading: Ctrl+L. With direct
+  Ctrl+letter shortcuts on, our load-from-disk and EH's `history.forward()` both fired, because EH's document-start
+  bubble listener runs before ours; now `preventDefault()` in the guard's capture listener, only when ours acts
+  (direct shortcuts on; our `initKeyboardShortcuts()` listener does not check `defaultPrevented`).
+- WIP.3 `_isrcScoutLinkPlatform()`: `data-ii-platform` → first line of `data-tip` → old `title`; the icon gets our
+  card (`_isrcScoutLinkTip()`), `data-tip` moves to `data-mb-ii-tip` (old ISRC Scout's `#mbu-tip` reacts to any
+  `[data-tip]`). WIP.4 `_markForeignTable()`: `data-mbu-foreign="saed"` on `renderFinalTable()`'s table and each
+  `renderGroupedTable()` table; the `is:counts-changed` "columns arrived late" toast was dropped (after our render
+  the native rows are gone, so "late" cannot be told from "switched off"). WIP.5 `_mbuQuietSync()`
+  (`sa_mbu_quiet_corner`, ☰ View row `#mb-mbu-quiet-btn`). WIP.6 `_ehMenuSync()` / `_ehHandoff()` /
+  `_ehHandoffResume()` (sessionStorage `sa_eh_handoff`, 60 s; buttons carry `data-mb-def-idx` from the definition
+  index, taken BEFORE `labelFromH2` replaces `conf`); the detection loop now goes through `_pageDefForPath()`.
+- Test traps: an init script's attribute on `<html>` does not survive the parser (the "other owner" quiet test sets
+  it after load); artist-recordings' buttons are "⊚ All recordings", not "Show all …". Negative handoff tests
+  record definition-button clicks from an init script, since `_ehHandoffResume()` drops the record and clicks in
+  the same task — no sleep.
+- Specs: `release-tracks-isrc-scout.spec.js` 23/23 (markup × 3, foreign mark + honouring wipe + control),
+  `eh-interop-markers.spec.js` 17/17, `eh-single-keys.spec.js` and `eh-body-swap-floating.spec.js` unchanged and green,
+  `gm-store.spec.js`/`idb-overview.spec.js` green after the View row order gained `mb-mbu-quiet-btn`.
+- Mutations, run 2026-11-08T17:33–17:50+01:00 (vzell-lap, same env): `eh-interop-markers.json` 15/15,
+  `isrc-scout-column.json` 19/19 (6 new), `eh-single-keys.json` 11/11 (3 finds repaired after the refactor into
+  `_ehPresentOffView()`; 10 fail + the recorded `expect: pass` overlap); userscript restored and hash-verified after
+  each list. Trap: four entries first came back ERROR, "grep selected NO tests": Playwright's `-g` is a regex over
+  the title path joined with SPACES, so a `›` in the grep never matches and `Ctrl+L` reads as "Ctrl, one or more,
+  L". Fixed greps checked with `--list` before the rerun.
+- Also 2026-11-08 (vzell): the dev copy's library `@require` is now this repo's GitHub `main`
+  (`raw.githubusercontent.com/vzell/musicbrainz-userscripts/main/lib/VZ_MBLibrary.user.js`), so the dev copy works
+  for anyone (majkinetor); `check-publish-ready.py` names that case; CLAUDE.md "Publishing" updated.

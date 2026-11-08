@@ -34,6 +34,14 @@ MusicBrainz's own layout (a late stylesheet, a window resize), so the IP's
 handle snaps instead of sliding. `setCollapsed()` (exposed as
 `initSidebarCollapse.setCollapsed`) is the one no-animation state change.
 
+**The handle goes into `_saBody()`, never `document.body`** (since WIP.1 on
+`docs/majkinetor-refresh-2026-11-08`, 2026-11-08), and so does its
+`sidebar-is-collapsed` body class. With majkinetor's Event Horizon on at load,
+`document.body` is Event Horizon's body: the handle showed over its view and
+was gone after V, and the `'final'` phase does not rebuild it (it returns
+early once `initSidebarCollapse.setCollapsed` exists). See "Floating hosts
+live in MusicBrainz's body" in docs/claude/toolbar-and-header-ui.md.
+
 ## Sections
 
 `_sbEnhance()` runs at the end of every `makeH2sCollapsible()` pass, on

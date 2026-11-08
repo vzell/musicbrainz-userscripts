@@ -1683,6 +1683,48 @@ the direct-shortcuts setting; prefix-mode `o`, `q` and `a` are the alternatives.
 **Every shortcut on this page is configurable**, including the prefix key itself
 — it can be any combination such as `Ctrl+.`, `Alt+X` or `Ctrl+Shift+,`.
 
+**Event Horizon's single-letter keys.** With majkinetor's *Event Horizon*
+installed (on its own or in *String Theory*), its single keys `H` (editing
+history), `E`, `R`, `O`, `C`, `T`, `D`, `A`, `S`, `P`, `.` and `,` would also
+work on MusicBrainz's own page, even with Event Horizon switched off, and one
+stray key would leave the page and a rendered table with it. On the pages
+this script runs on they are ignored, before and after you press a button.
+`V`, which switches Event Horizon on or off, keeps working, and so does every
+key inside Event Horizon's own view and anything you type into a field. To
+give the keys back to Event Horizon, turn off *Ignore Event Horizon's
+single-letter keys on MusicBrainz's page* in ⚙️ Settings → 🎹 KEYBOARD
+SHORTCUTS. Keys you rebound in Event Horizon are not known here.
+
+After a table is rendered, the script asks nothing when you click in Event
+Horizon's view, because Event Horizon opens many pages in place and the
+table stays. When the page is really left from there, a page Event Horizon
+loads or `V` after you moved around in it (which reloads), the browser
+asks with its own *Leave site?* prompt.
+
+`Ctrl+L` (*Load from disk*, when direct Ctrl+letter shortcuts are on) is this
+script's alone on MusicBrainz's page; Event Horizon used to go forward in
+the browser history on the same key. With direct shortcuts off (the
+default), and inside Event Horizon's view, `Ctrl+L` stays Event Horizon's.
+
+**From Event Horizon's view.** On a page this script supports, Event
+Horizon's **More (⋯)** menu in the page header has *Open in
+ShowAllEntityData* (what `V` does) and one *SAED: …* item per button of that
+page, for example *SAED: Show all Tracks for Release*. Such an item switches
+to MusicBrainz's page and presses that button. It works after you moved to
+another page inside Event Horizon's view too: Event Horizon first reloads
+into MusicBrainz's page of the page it shows. As with `V`, Event Horizon then
+stays off for the next pages until you switch it on again. Needs a String
+Theory with this menu (majkinetor's #938).
+
+**Corner launchers.** With *String Theory* installed, its launchers and its
+dock sit in the bottom right corner of the page. While a table of this script
+is shown on MusicBrainz's page they are hidden, so they do not cover the
+table; in Event Horizon's view they stay. ☰ SAED → **View** → *Show corner
+launchers* brings them back for the page, *Hide corner launchers* hides them
+again. Setting: *Hide String Theory's corner launchers while a table is
+shown* in ⚙️ Settings → 🎨 UI FEATURES. Needs a String Theory that knows the
+shared mark (majkinetor's #938); an older one keeps its launchers.
+
 </details>
 
 ---
@@ -1870,16 +1912,18 @@ has no picture for, or one it has not loaded yet.
 **ISRC Scout.** With the userscript *ISRC Scout* (by majkinetor) installed,
 its **ISRC** and **Links** columns are part of the consolidated table. They
 appear a moment after the page loads, because the script loads the release
-first, so press **Tracks** once they are there; pressed earlier, the
-script adds them afterwards as plain columns that cannot be sorted or
-filtered. **ISRC** lists one code per line, collapses like the other
+first, so press **Tracks** once they are there. Pressed earlier, the
+table has no ISRC Scout columns with an ISRC Scout from majkinetor's #938 on
+(it leaves this script's tables alone); an older one adds them afterwards
+as plain columns that cannot be sorted or filtered. **ISRC** lists one code per line, collapses like the other
 multi-row columns, and works like the **ISRCs** column (format, ⚠️ on an
 invalid code, the 📊 ISRC sections). **Links** keeps its icons, and you
 filter it by platform name: type `Spotify`, or tick a platform in the 📊
-section *Links info - Platform*; the matching icons are outlined. The
-script's own buttons, or a change to its settings, can replace both columns
-with its plain ones again; reload the page and press **Tracks** once the
-columns are back.
+section *Links info - Platform*; the matching icons are outlined. Hovering an
+icon shows its platform, "(ended)" and the number of links, then the link
+addresses. With an ISRC Scout older than majkinetor's #938, its own buttons,
+or a change to its settings, can replace both columns with its plain ones
+again; reload the page and press **Tracks** once the columns are back.
 
 **Cover art without leaving the page.** After **Tracks for Release**, a
 **Cover art (N)** section opens above the tracklist with every Cover Art

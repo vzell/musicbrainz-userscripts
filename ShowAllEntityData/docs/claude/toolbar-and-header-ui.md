@@ -737,6 +737,150 @@ measurement. It shortens the `.mb-tt-annotation` block and shows its "… (more
 in the cell)" foot. Spec: `tests/fixtures/search-annotation-tooltip.spec.js`;
 mutations: `scripts/mutations/annotation-tooltip.json`.
 
+## Floating hosts live in MusicBrainz's body (`_saBody()`)
+
+Every PERSISTENT element the script adds outside the page flow is appended
+with `_saBody().appendChild(…)`, never `document.body.appendChild(…)`: card
+and tooltip hosts (`#mb-stat-tooltip`, `#mb-dp-peek`, …), popups, toolbar menu
+panels, dialogs, masks (`#mb-vsb-mask`), toasts, progress overlays, notices,
+the sidebar handle. A body class that belongs to MusicBrainz's page
+(`sidebar-is-collapsed`, `mb-sorting-active`) goes on `_saBody()` too.
+
+`_saBody()` is the `<body>` that holds `#page`. On a normal page that is
+`document.body`. Under majkinetor's Event Horizon (on by default once
+installed) it is not: Event Horizon inserts its own `<body>` before
+MusicBrainz's and hides MusicBrainz's, and V removes its body again
+(`setOn()`, EH:11507-11508). A host appended to `document.body` at start-up
+was drawn over Event Horizon's view and then left the document on V, while
+the script kept its reference: dead hover cards, a lost sidebar handle
+(org/majkinetor.org, measured 2026-11-08). In MusicBrainz's body a host hides
+with MusicBrainz's page while Event Horizon shows, and survives V.
+
+Left on `document.body` on purpose:
+
+- transient append-measure-remove and append-click-remove pairs on adjacent
+  lines (column-width measuring, download anchors): consistent pairs, and
+  measuring while Event Horizon shows is moot;
+- the foreign-host-only sites (`_*PrepareLivePage()`, Brucebase's header and
+  side-bar handle, …): Event Horizon never runs there, and `_saBody()` would
+  return the same body.
+
+A host that is later removed is removed with `el.remove()` (or via its
+`parentNode`), never `document.body.removeChild(el)`, so append and remove
+cannot disagree. Spec: `tests/fixtures/eh-body-swap-floating.spec.js` (with
+the simulator `tests/fixtures/thirdPartyScripts/eh-body-swap.js`, Event
+Horizon's `setOn()` verbatim); mutations: `scripts/mutations/eh-body-swap.json`.
+
+## Event Horizon's single keys are ignored on MusicBrainz's page (`_ehKeyGuardInstall()`)
+
+majkinetor's Event Horizon binds single keys (`KEY_CMDS`, EH:12419: o e r c h
+t d a v s p . ,) on a `document` keydown in the BUBBLE phase, installed even
+while it is off, and skips an event whose `defaultPrevented` is set
+(EH:12495). On MusicBrainz's page a stray `h` left the page for `/edits`, the
+initial page and a rendered table alike (measured with the live probe,
+2026-11-06/08). `_ehKeyGuardInstall()`, installed once at page init on
+MusicBrainz (`!_foreignHost`), is a capture-phase keydown that only calls
+`preventDefault()` for `_EH_SINGLE_KEYS`: no `stopPropagation()`, so every
+other handler, ours included, still sees the key, and a single printable
+character has no default action outside a field.
+
+Rules it keeps (each pinned by a test and a mutation):
+
+- EH's own reading of a key: no Ctrl/⌘/Alt, one character, lowercased, Shift
+  ignored (Shift+H is `h`).
+- Never `v`: it is how the user switches between EH and MusicBrainz's page.
+- Never in a field (input, textarea, select, contentEditable).
+- Never while EH's view shows (`<html data-mbu-dock>`).
+- Only when Event Horizon is there (`#eh-launch` or `<html data-mbu-st>`).
+- `sa_block_eh_single_keys` (default on) turns it off.
+
+Keys rebound in EH's Ctrl+/ palette live in its GM storage and are not known.
+SAED's own single keys need nothing from it: the prefix mode's second key and
+the preview window's H already call `preventDefault()` in the capture phase,
+before EH's bubble listener. Spec: `tests/fixtures/eh-single-keys.spec.js`
+(the simulator `eh-body-swap.js` carries EH's key listener); mutations:
+`scripts/mutations/eh-single-keys.json`. The long-term form is convention C3
+in org/majkinetor.org (`<html data-mbu-keys-off>`). EH honours it since
+majkinetor's #938 (upstream 9e4cdd59), but it suspends EVERY EH command, `v`
+included, so it is NOT set on MusicBrainz's page: that would take V, the
+handoff the user relies on (vzell, 2026-11-08). The guard stays, also for EH
+without the mark; the #938 reply asks to keep V working under keys-off.
+
+**Ctrl+L** goes through the same capture listener: with
+`sa_enable_direct_ctrl_char_shortcuts` on, our `sa_shortcut_load_from_disk`
+(default Ctrl+L) and EH's `ctrl+l` (`history.forward()`) both fired, and EH's
+document-start bubble listener ran before ours, so our own
+`preventDefault()` came too late. The guard calls `preventDefault()` for it
+when EH is there and its view not shown (`_ehPresentOffView()`); with direct
+shortcuts off (the default) our Ctrl+L does nothing and the key stays EH's.
+`initKeyboardShortcuts()`'s listener does not check `defaultPrevented`, so
+ours still runs. Tests: `eh-interop-markers.spec.js`, "Ctrl+L with Event
+Horizon".
+
+**Leaving from Event Horizon's view: warn on a real leave only** (`initNavigationGuard()`, 2026-11-08,
+vzell's choice). Event Horizon's links open in place (pushState, the table stays) or load a new page (the
+table is lost), and its single keys click them (`keyGo()`: its own link when the view has drawn it, else
+`location.assign()`), so the kind of leave cannot be told at click time. Guards 1 and 3 ignore a click
+outside `_saBody()`, Guard 2 (the Tab trap) stands back while another body shows, and Guard 4 is a
+`beforeunload` handler that gives the browser's own "Leave site?" prompt when the page really unloads
+while another body shows and a table is loaded — also for EH's reload when V switches it off after it
+navigated (EH:11490). On MusicBrainz's page Guard 4 stays silent: Guard 1 asked already. Chromium shows
+a `beforeunload` prompt only after a user activation, which a test must give (a click) or it sees
+nothing. The guard is installed only by the render tails, so before a render nothing asks by
+construction. Tests: `eh-single-keys.spec.js`, "leaving from Event Horizon's view after a render";
+mutations in `eh-single-keys.json`; live: probe case E.
+
+## Event Horizon interop marks and menu launchers (#938: `_mbuQuietSync()`, `_ehMenuSync()`)
+
+The conventions agreed with majkinetor in #938 (upstream branch
+`codex/interop-938`, commit 9e4cdd59: DEVELOP.md "Interoperability", EH's
+DEVELOP.md "External menu items"). All MusicBrainz only, all on `<html>`,
+which survives EH's body swaps; the state is `_mbuInterop`, declared above the
+init code (no TDZ). One `MutationObserver` on `<html>` attributes
+(`_ehInteropObserve()`, `attributeFilter: ['data-mbu-dock',
+'data-mbu-page']`) re-derives both on every EH change; our own
+`data-mbu-quiet` write is not in the filter, so it cannot loop.
+
+- **Quiet corner** (`_mbuQuietSync()`, `sa_mbu_quiet_corner`, default on):
+  `<html data-mbu-quiet="saed">` while a table of ours shows on MusicBrainz's
+  page (`_mbuTableShown()` from the two render tails, beside
+  `addGmStoreButton()`), and never while EH's view shows. majkinetor's shared
+  `mbRestackCorner()` then hides every `[data-mb-corner]` launcher and the
+  dock shelf (`visibility: hidden`). The protocol's ownership rules hold: set
+  only when no mark is there, removed only while its value is `saed`. The
+  setter must offer its own way back: the ☰ View row `#mb-mbu-quiet-btn`
+  (`_mbuQuietRowPaint()`, in `_TOOLBAR_MENU_ROW_ORDER.view` before Keyboard
+  Shortcuts), created only when one of majkinetor's scripts is there
+  (`[data-mb-corner]` or `<html data-mbu-st>`), toggles
+  `_mbuInterop.quietUserShown` for the page view. No SAED element carries
+  `data-mb-corner`; giving one that attribute would hide it under the mark.
+- **Menu launchers** (`_ehMenuSync()`): hidden `button[data-mbu-menu-item]`
+  directly under `<html>`, which EH projects into its More (⋯) menus and
+  `.click()`s. Registered only while EH's view shows and only for a page we
+  support, decided from the path EH SHOWS (`<html data-mbu-page>`) through
+  `_pageDefForPath()` (shared with the page-type detection), never from
+  MusicBrainz's hidden body, which after an in-view move is still the page
+  the tab loaded. `saed:open` does what V does; `saed:btn:<i>` presses button
+  `i` of that page's definition. `showIf` is not evaluated (it may read the
+  hidden body): an item whose button turns out absent just shows the page.
+- **Handoff** (`_ehHandoff()`, `_ehHandoffResume()`): a button item writes
+  sessionStorage `sa_eh_handoff` `{page, idx, at}`, then clicks `#eh-launch`
+  (EH's `switchOn(!ehOn)`). On the loaded page EH switches synchronously and
+  the button is pressed at once; after an in-view move EH reloads into
+  MusicBrainz's page of that path, and the init's resume presses it
+  (`button[data-mb-def-idx]`, set in the button loop from the definition
+  index BEFORE `labelFromH2` replaces `conf`). The record must match path and
+  query and be under `_EH_HANDOFF_TTL_MS` (60 s); it is dropped either way. A
+  reload with a table loaded gets the browser's "Leave site?" prompt from
+  Guard 4, as V does.
+
+Simulator: `eh-body-swap.js` (`data-mbu-page`, the launcher's click,
+`menuItems()`/`select()` as EH's `foreignMenuSync()`, `navigate()`). Spec:
+`tests/fixtures/eh-interop-markers.spec.js`; mutations:
+`scripts/mutations/eh-interop-markers.json`. The `data-mbu-foreign` table
+mark is `_markForeignTable()` (docs/claude/release-tracks-and-length.md, "ISRC
+Scout's ISRC and Links columns").
+
 ## Hover tooltips must ignore a tap (`_isTouchCompatMouseEvent()`)
 
 On a touch device a tap fires *compatibility* mouse events: `mouseover`,

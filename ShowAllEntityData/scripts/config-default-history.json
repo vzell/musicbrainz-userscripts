@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "c27cd74b0ccd442d18df77b6a7d243a2f2969504",
-    "revisions_walked": 1168
+    "head": "7f4358538df5b731c29420961699e147e5a55f66",
+    "revisions_walked": 1192
   },
   "changes": [
     {
@@ -762,6 +762,7 @@
     "sa_remove_checkbox_cell": true,
     "sa_enable_keyboard_shortcuts": true,
     "sa_enable_keyboard_shortcut_tooltip": true,
+    "sa_block_eh_single_keys": true,
     "sa_keyboard_shortcut_prefix": "Ctrl+M",
     "sa_enable_direct_ctrl_char_shortcuts": false,
     "sa_shortcut_save_to_disk": "Ctrl+S",
@@ -832,6 +833,7 @@
     "sa_short_column_labels": true,
     "sa_column_descriptions": true,
     "sa_enable_density_control": true,
+    "sa_mbu_quiet_corner": true,
     "sa_enable_sticky_headers": true,
     "sa_enable_sticky_filter_bars": true,
     "sa_enable_sticky_columns": true,
@@ -963,6 +965,7 @@
     "sa_findings_bb_mbev_link_missing": true,
     "sa_findings_tint_bb_mbev_link": true,
     "sa_findings_tint_sl_old_address": true,
+    "sa_findings_tint_sl_double_utf8": true,
     "sa_findings_nonphysical_formats": "Digital Media",
     "sa_enable_release_tracks": true,
     "sa_enable_release_tracks_acoustid_column": false,
@@ -1101,6 +1104,9 @@
     "sa_enable_springsteenlyrics": true,
     "sa_sl_detail_preview": true,
     "sa_sl_tip_images": true,
+    "sa_sl_song_links": true,
+    "sa_sl_song_versions": true,
+    "sa_sl_mb_works": true,
     "sa_sl_compact_nav": true,
     "sa_foreign_mb_titles": true,
     "sa_foreign_typography": true,

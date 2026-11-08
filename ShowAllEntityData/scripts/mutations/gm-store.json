@@ -95,8 +95,8 @@
     "why": "_TOOLBAR_MENU_ROW_ORDER.view loses the Script storage row.",
     "edits": [
       {
-        "find": "'mb-idbo-menu-btn', 'mb-gms-menu-btn', 'mb-shortcuts-help-btn'",
-        "replace": "'mb-idbo-menu-btn', 'mb-shortcuts-help-btn'"
+        "find": "'mb-idbo-menu-btn', 'mb-gms-menu-btn', 'mb-mbu-quiet-btn', 'mb-shortcuts-help-btn'",
+        "replace": "'mb-idbo-menu-btn', 'mb-mbu-quiet-btn', 'mb-shortcuts-help-btn'"
       }
     ],
     "spec": "tests/fixtures/gm-store.spec.js",

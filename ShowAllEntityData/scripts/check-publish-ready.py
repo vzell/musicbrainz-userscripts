@@ -373,6 +373,12 @@ def check_dev_changelog_pages(fails, notes):
         notes.append('changelog pages: current with ShowAllEntityData_CHANGELOG.json and FORUM.org')
 
 
+# The dev repo's own library on GitHub, branch main: what the dev copy of
+# ShowAllEntityData requires since 2026-11-08 (so the dev copy works for
+# anyone who installs it; #938).
+DEV_LIB_URL = 'https://raw.githubusercontent.com/vzell/musicbrainz-userscripts/main/lib/VZ_MBLibrary.user.js'
+
+
 def check_dev_library_require(fails, notes):
     """The dev repo's own invariant: ShowAllEntityData tests the WORKING library.
 
@@ -392,6 +398,10 @@ def check_dev_library_require(fails, notes):
     if any(u.startswith('file://') for u in urls):
         notes.append('dev ShowAllEntityData.user.js requires the working-copy '
                      'library — live tests exercise this repo\'s VZ_MBLibrary')
+    elif any(u == DEV_LIB_URL for u in urls):
+        notes.append('dev ShowAllEntityData.user.js requires this repo\'s library '
+                     'from GitHub main — live tests exercise it as pushed to main '
+                     '(and as cached by Tampermonkey)')
     else:
         notes.append('NOTE: dev ShowAllEntityData.user.js requires the MIRROR '
                      'library — a live check of any library change tests the '

@@ -1,0 +1,145 @@
+[
+  {
+    "name": "the guard is never installed (the state before the fix)",
+    "why": "Without _ehKeyGuardInstall() Event Horizon's bubble-phase listener runs h, e, r, … on MusicBrainz's page: the initial page and a rendered table are left (org/majkinetor.org, measured 2026-11-06/08).",
+    "edits": [
+      {
+        "find": "        _ehKeyGuardInstall();\n        // Event Horizon's More (⋯) menu launchers",
+        "replace": "        // Event Horizon's More (⋯) menu launchers"
+      }
+    ],
+    "spec": "tests/fixtures/eh-single-keys.spec.js",
+    "grep": "are ignored",
+    "expect": "fail"
+  },
+  {
+    "name": "Shift is not ignored (the key is compared unlowercased)",
+    "why": "Event Horizon reads Shift+H as h (keyCombo() lowercases one character and adds no shift+), so a guard comparing e.key itself lets Shift+H through to the editing history.",
+    "edits": [
+      {
+        "find": "!_EH_SINGLE_KEYS.has(e.key.toLowerCase())",
+        "replace": "!_EH_SINGLE_KEYS.has(e.key)"
+      }
+    ],
+    "spec": "tests/fixtures/eh-single-keys.spec.js",
+    "grep": "initial page",
+    "expect": "fail"
+  },
+  {
+    "name": "V is blocked too",
+    "why": "V is Event Horizon's on/off switch, the user's way from MusicBrainz's page to EH's view and back; taking it would lock the user out of Event Horizon on every page this script runs on.",
+    "edits": [
+      {
+        "find": "new Set(['o', 'e', 'r', 'c', 'h', 't', 'd', 'a', 's', 'p', '.', ','])",
+        "replace": "new Set(['o', 'e', 'r', 'c', 'h', 't', 'd', 'a', 's', 'p', '.', ',', 'v'])"
+      }
+    ],
+    "spec": "tests/fixtures/eh-single-keys.spec.js",
+    "grep": "V still switches EH on",
+    "expect": "fail"
+  },
+  {
+    "name": "keys are blocked inside Event Horizon's own view",
+    "why": "While EH shows (<html data-mbu-dock>) its keys are its own business; the guard must yield there.",
+    "edits": [
+      {
+        "find": "        if (root.hasAttribute('data-mbu-dock')) return false;\n        return !!document.getElementById('eh-launch')",
+        "replace": "        return !!document.getElementById('eh-launch')"
+      }
+    ],
+    "spec": "tests/fixtures/eh-single-keys.spec.js",
+    "grep": "V still switches EH on",
+    "expect": "fail"
+  },
+  {
+    "name": "keys typed into a field are blocked",
+    "why": "preventDefault() on a keydown inside an input cancels the character: the filter fields could no longer take h, e, r, o, s.",
+    "edits": [
+      {
+        "find": "            if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;\n            e.preventDefault();",
+        "replace": "            void t;\n            e.preventDefault();"
+      }
+    ],
+    "spec": "tests/fixtures/eh-single-keys.spec.js",
+    "grep": "typing the same letters",
+    "expect": "fail"
+  },
+  {
+    "name": "keys are blocked on pages without Event Horizon",
+    "why": "With neither #eh-launch nor <html data-mbu-st> nobody binds these keys for Event Horizon; another script's single keys that honour defaultPrevented would be silenced for nothing.",
+    "edits": [
+      {
+        "find": "        return !!document.getElementById('eh-launch') || root.hasAttribute('data-mbu-st');",
+        "replace": "        return true;"
+      }
+    ],
+    "spec": "tests/fixtures/eh-single-keys.spec.js",
+    "grep": "no Event Horizon on the page",
+    "expect": "fail"
+  },
+  {
+    "name": "the setting is ignored",
+    "why": "sa_block_eh_single_keys off must give Event Horizon's keys back to a user who wants them on MusicBrainz's pages.",
+    "edits": [
+      {
+        "find": "            if (Lib.settings.sa_block_eh_single_keys === false) return;",
+        "replace": "            void 0;"
+      }
+    ],
+    "spec": "tests/fixtures/eh-single-keys.spec.js",
+    "grep": "sa_block_eh_single_keys off",
+    "expect": "fail"
+  },
+  {
+    "name": "the navigation guard asks for clicks in Event Horizon's view again",
+    "why": "Without the _saBody() check Guard 1 sees EH's in-place link clicks (its H key clicks one too) and asks 'You are about to leave this page' for a navigation that leaves nothing (vzell, 2026-11-08).",
+    "edits": [
+      {
+        "find": "            if (!_saBody().contains(e.target)) return;\n            // A click another handler already took",
+        "replace": "            // A click another handler already took"
+      }
+    ],
+    "spec": "tests/fixtures/eh-single-keys.spec.js",
+    "grep": "in EH's view",
+    "expect": "fail"
+  },
+  {
+    "name": "Guard 4 never warns (no beforeunload prompt from EH's view)",
+    "why": "H in EH's view loads a new page (probe case E) and V after EH navigated reloads (EH:11490): the rendered table is lost without a word.",
+    "edits": [
+      {
+        "find": "            if (document.body === _saBody()) return;\n            e.preventDefault();\n            e.returnValue = '';",
+        "replace": "            return;\n            e.preventDefault();\n            e.returnValue = '';"
+      }
+    ],
+    "spec": "tests/fixtures/eh-single-keys.spec.js",
+    "grep": "the browser\\'s leave prompt",
+    "expect": "fail"
+  },
+  {
+    "name": "Guard 4 also prompts on MusicBrainz's own page",
+    "why": "After OK on SAED's own question the browser would ask a second time.",
+    "edits": [
+      {
+        "find": "            if (document.body === _saBody()) return;\n            e.preventDefault();\n            e.returnValue = '';",
+        "replace": "            void 0;\n            e.preventDefault();\n            e.returnValue = '';"
+      }
+    ],
+    "spec": "tests/fixtures/eh-single-keys.spec.js",
+    "grep": "no browser prompt on top",
+    "expect": "fail"
+  },
+  {
+    "name": "Guard 4's isLoaded check removed (covered by construction)",
+    "why": "Recorded as a known overlap, not a gap: initNavigationGuard() is installed only by the two render tails (fetch, disk load), so before a render no beforeunload listener exists at all and the isLoaded check cannot be seen. The 'no table rendered' test (with a mouse click first, so Chromium could show a prompt) pins the behaviour either way.",
+    "edits": [
+      {
+        "find": "        window.addEventListener('beforeunload', (e) => {\n            if (!isLoaded) return;",
+        "replace": "        window.addEventListener('beforeunload', (e) => {\n            void isLoaded;"
+      }
+    ],
+    "spec": "tests/fixtures/eh-single-keys.spec.js",
+    "grep": "no table rendered",
+    "expect": "pass"
+  }
+]

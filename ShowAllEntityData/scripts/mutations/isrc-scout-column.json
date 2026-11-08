@@ -171,5 +171,83 @@
     "spec": "tests/fixtures/release-tracks-isrc-scout.spec.js",
     "grep": "new-tab padding",
     "expect": "fail"
+  },
+  {
+    "name": "the Links platform ignores data-ii-platform",
+    "why": "ISRC Scout >= 9e4cdd59 (#938) names the platform in data-ii-platform; its tip wording is presentation. Read only the tip and a reworded tip loses every platform.",
+    "edits": [
+      {
+        "find": "        const meta = (a.getAttribute('data-ii-platform') || '').trim();\n        if (meta) return meta;",
+        "replace": "        const meta = '';"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-isrc-scout.spec.js",
+    "grep": "wins over the tip wording",
+    "expect": "fail"
+  },
+  {
+    "name": "the Links platform ignores data-tip",
+    "why": "ISRC Scout 2026.11.06 to 9e4cdd59 has the platform only in data-tip, no title: the platform section comes up empty (the measured bug).",
+    "edits": [
+      {
+        "find": "        if (tip) {\n            return tip.split('\\n')[0]",
+        "replace": "        if (false) {\n            return tip.split('\\n')[0]"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-isrc-scout.spec.js",
+    "grep": "markup \"data-tip\" platforms reach",
+    "expect": "fail"
+  },
+  {
+    "name": "ISRC Scout's data-tip stays on our icons",
+    "why": "ISRC Scout's shared #mbu-tip handler reacts to any [data-tip] in the document and stacks its tip beside our card.",
+    "edits": [
+      {
+        "find": "                a.setAttribute('data-mb-ii-tip', a.getAttribute('data-tip'));\n                a.removeAttribute('data-tip');",
+        "replace": "                a.setAttribute('data-mb-ii-tip', a.getAttribute('data-tip'));"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-isrc-scout.spec.js",
+    "grep": "markup \"data-tip\" each icon has our own card",
+    "expect": "fail"
+  },
+  {
+    "name": "the Links icons get no card of ours",
+    "why": "Without _setTip() the icons carry no data-mb-tip and no hover text naming the platform and its URLs.",
+    "edits": [
+      {
+        "find": "            _setTip(a, _isrcScoutLinkTip(a, name));\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-isrc-scout.spec.js",
+    "grep": "markup \"meta\" each icon has our own card",
+    "expect": "fail"
+  },
+  {
+    "name": "multi-table renders are not marked data-mbu-foreign",
+    "why": "Without the mark an ISRC Scout >= 9e4cdd59 treats our tables as its own again: its wipe-and-refill replaces our decorated ISRC/Links cells with bare ones.",
+    "edits": [
+      {
+        "find": "                table.className = 'tbl';\n                _markForeignTable(table);\n",
+        "replace": "                table.className = 'tbl';\n"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-isrc-scout.spec.js",
+    "grep": "leaves our decorated columns alone",
+    "expect": "fail"
+  },
+  {
+    "name": "multi-table renders are not marked data-mbu-foreign (the mark itself)",
+    "why": "Same planted defect, seen by the assertion on the attribute.",
+    "edits": [
+      {
+        "find": "                table.className = 'tbl';\n                _markForeignTable(table);\n",
+        "replace": "                table.className = 'tbl';\n"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-isrc-scout.spec.js",
+    "grep": "every rendered table is marked",
+    "expect": "fail"
   }
 ]

@@ -1,0 +1,67 @@
+[
+  {
+    "name": "the sidebar handle goes back to document.body",
+    "why": "Under Event Horizon document.body is EH's body: the handle shows over EH's view and leaves the document on V, and initSidebarCollapse('final') never rebuilds it (org/majkinetor.org, measured 2026-11-08).",
+    "edits": [
+      {
+        "find": "        _saBody().appendChild(handle);",
+        "replace": "        document.body.appendChild(handle);"
+      }
+    ],
+    "spec": "tests/fixtures/eh-body-swap-floating.spec.js",
+    "grep": "the sidebar handle lives in MusicBrainz",
+    "expect": "fail"
+  },
+  {
+    "name": "the hover-card host #mb-stat-tooltip goes back to document.body",
+    "why": "_initStatTooltip() makes the one card host at start-up and keeps it by reference; in EH's body it leaves the document on V and no hover card ever shows again.",
+    "edits": [
+      {
+        "find": "        _saBody().appendChild(_tip);",
+        "replace": "        document.body.appendChild(_tip);"
+      }
+    ],
+    "spec": "tests/fixtures/eh-body-swap-floating.spec.js",
+    "grep": "hover cards work after V",
+    "expect": "fail"
+  },
+  {
+    "name": "the sticky-bar mask #mb-vsb-mask goes back to document.body",
+    "why": "initStickyFilterBars() makes the mask once at start-up and keeps it in _vsb.mask; in EH's body it is gone after V.",
+    "edits": [
+      {
+        "find": "            _saBody().appendChild(mask);\n            _vsb.mask = mask;",
+        "replace": "            document.body.appendChild(mask);\n            _vsb.mask = mask;"
+      }
+    ],
+    "spec": "tests/fixtures/eh-body-swap-floating.spec.js",
+    "grep": "the sticky-bar mask",
+    "expect": "fail"
+  },
+  {
+    "name": "_saBody() returns document.body",
+    "why": "The helper itself neutralised: every host follows document.body again, so the handle, the card host and the mask all land in EH's body.",
+    "edits": [
+      {
+        "find": "        return _saBody._el || document.body;",
+        "replace": "        return document.body;"
+      }
+    ],
+    "spec": "tests/fixtures/eh-body-swap-floating.spec.js",
+    "grep": "EH on at load",
+    "expect": "fail"
+  },
+  {
+    "name": "the toolbar menu panel is created in document.body (healed on open)",
+    "why": "Recorded as a known overlap, not a gap: createToolbarMenu()'s open handler re-attaches its panel to _saBody() whenever it is elsewhere, so a panel born in EH's body and lost on V is rebuilt on the first open. The spec cannot see the creation site, by design.",
+    "edits": [
+      {
+        "find": "        panel.style.display = 'none';\n        _saBody().appendChild(panel);",
+        "replace": "        panel.style.display = 'none';\n        document.body.appendChild(panel);"
+      }
+    ],
+    "spec": "tests/fixtures/eh-body-swap-floating.spec.js",
+    "grep": "the sticky-bar mask",
+    "expect": "pass"
+  }
+]
