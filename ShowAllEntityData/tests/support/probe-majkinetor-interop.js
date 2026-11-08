@@ -124,7 +124,11 @@ function snapshotState(page) {
             saBar: bar ? { inBody: bodyIdx(bar), visible: seen(bar), h1: (bar.closest('h1') || {}).textContent ? bar.closest('h1').textContent.trim().slice(0, 60) : null, inApp: !!bar.closest('#app') } : null,
             saButtons: buttons.map((b) => ({ label: b.getAttribute('data-label'), inBody: bodyIdx(b), visible: seen(b) })),
             saFloatingPerBody: floating,
-            frp: { filterBar: !!document.querySelector('#mb-filter-container'), rows: frpRows },
+            // #sidebar-toggle-handle (initSidebarCollapse()): made once at
+            // start-up and appended to document.body, so under EH it lands in
+            // EH's body; the mb-* filter of `floating` cannot see its id
+            sidebarHandle: (() => { const h = document.getElementById('sidebar-toggle-handle'); return h ? { inBody: bodyIdx(h), visible: seen(h), copies: document.querySelectorAll('#sidebar-toggle-handle').length } : null; })(),
+            frp:{ filterBar: !!document.querySelector('#mb-filter-container'), rows: frpRows },
             css: {
                 scrollbarGutter: getComputedStyle(document.documentElement).scrollbarGutter,
                 contentWidth: content ? Math.round(content.getBoundingClientRect().width) : null,
@@ -347,7 +351,7 @@ async function runCase(browser, name, entries, urlOverride) {
         const s = { step: label, ...extra, state: await snapshotState(page) };
         steps.push(s);
         const b = s.state.saBar;
-        console.log(`[${name}] ${label}: path=${s.state.path} bodies=${s.state.bodies} docBodyIsMb=${s.state.documentBodyIsMb} saBar=${b ? `body${b.inBody} visible=${b.visible} inApp=${b.inApp}` : 'none'} frpRows=${s.state.frp.rows} ${Object.keys(extra).length ? JSON.stringify(extra) : ''}`);
+        console.log(`[${name}] ${label}: path=${s.state.path} bodies=${s.state.bodies} docBodyIsMb=${s.state.documentBodyIsMb} saBar=${b ? `body${b.inBody} visible=${b.visible} inApp=${b.inApp}` : 'none'} frpRows=${s.state.frp.rows} sbHandle=${s.state.sidebarHandle ? `body${s.state.sidebarHandle.inBody} visible=${s.state.sidebarHandle.visible}` : 'none'} ${Object.keys(extra).length ? JSON.stringify(extra) : ''}`);
     };
     let cfg = name === 'D' || name === '0' ? ARTIST : RELEASE;
     if (name === 'I') cfg = { ...RELEASE, url: urlOverride || ISRC_RELEASE };

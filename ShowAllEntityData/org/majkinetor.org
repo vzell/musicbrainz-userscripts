@@ -124,7 +124,7 @@ To refresh all of this, use the *refresh-majkinetor* skill (=.claude/skills/refr
 covers the clone, the three harness copies, the manifest re-scan, the probe, and updating this section and the
 TODOs. The code anchors this analysis rests on are listed in =scripts/majkinetor-anchors.json=;
 =python3 scripts/check-majkinetor-anchors.py --versions= reports which still hold (28/28 at =326c6a4=, 34/34 at =1df6193=,
-38/38 at =65032ef=).
+38/38 at =65032ef=; 39 with the sidebar-handle defect anchor).
 
 *** Inventory
 
@@ -393,7 +393,7 @@ with EH alone.
 | Case | Steps                                                     | Result (*measured*)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 |------+-----------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | A    | EH on at load (its default)                               | Two =<body>=s; =document.body= is EH's. SAED found the *native* h1 (=.artistheader h1= etc. are only in MB's body), so its bar and buttons are in MB's hidden body: present but *invisible*. Not clickable for a user                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| A    | → V (EH off, same page)                                   | No reload. The buttons are visible and the fetch works (release-tracks in 3.4 s). The ☰ SAED menu works (its panel re-attaches to =document.body= on open). *Hover cards are dead*: =#mb-stat-tooltip= was created in EH's body at start-up and left the document with it (0 copies in the document)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| A    | → V (EH off, same page)                                   | No reload. The buttons are visible and the fetch works (release-tracks in 3.4 s). The ☰ SAED menu works (its panel re-attaches to =document.body= on open). *Hover cards are dead*: =#mb-stat-tooltip= was created in EH's body at start-up and left the document with it (0 copies in the document). *Same for the sidebar handle* (2026-11-08): shown over EH's view at load, not in the document after V or after the render                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | A/B  | FRP → V (EH on) → V (EH off), same page                   | FRP intact both times (rows, filter bar); no reload; buttons visible again after the second V                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | B    | EH off at load → SAED fetch → hover                       | Everything normal; the hover card shows                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | B    | FRP, press =h= (focus on the page, not in a filter)       | *Navigated to =/release/…/edits=*: EH's "Editing history" key works on our FRP too. FRP lost                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
@@ -651,16 +651,44 @@ Newest first; one entry per refresh (refresh-majkinetor skill).
 - *Who fixes it*: *ours*: the bug is in how SAED attaches its elements; EH behaves as documented (#853).
 
 - *Symptom*: SAED started while EH showed (EH's default), then V (EH off) → no SAED hover cards at all.
+- *Symptom 2, the sidebar handle* (found by vzell 2026-11-08 while pre-testing this TODO; *measured* the same day,
+  see below):
+  1. EH on at load, release-tracks page: our sidebar toggle handle (=#sidebar-toggle-handle=, ▸, with its "Toggle
+     Full Width Sidebar" card) shows *over EH's view*, at the right edge, where it does nothing useful (it toggles
+     MusicBrainz's hidden sidebar). After V, on MusicBrainz's page and on our FRP, it is *missing*, and the render
+     does not bring it back. V again (EH on) shows it over EH again.
+  2. EH off at load: the handle is there and works on the IP and the FRP. After V (EH on) it is gone from view.
+     That is correct: it sits in MusicBrainz's body, which EH hides, and comes back with the next V.
+- *Measured* (2026-11-08T14:13:38–14:14:57+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright
+  1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs); EH 2026.11.08.131500 alone; probe field
+  =sidebarHandle=, cases A and B on =1d404e1d-…=):
+
+  | Case A (EH on at load)  | handle                       | Case B (EH off at load) | handle                       |
+  |-------------------------+------------------------------+-------------------------+------------------------------|
+  | loaded                  | EH's body (0), visible       | loaded                  | MusicBrainz's body, visible  |
+  | V (EH off)              | not in the document          | SAED fetch (FRP)        | MusicBrainz's body, visible  |
+  | SAED fetch (FRP)        | still not in the document    | V (EH on)               | MusicBrainz's body, hidden   |
+  | V (EH on)               | EH's body again, visible     | V (EH off)              | MusicBrainz's body, visible  |
+  | V (EH off)              | not in the document          |                         |                              |
+
+  The handle survives because it is kept by reference: V re-inserts EH's body, and the handle with it.
 - *Pre-test* (your browser, String Theory or EH installed, EH on):
   1. Open https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897.
   2. Press V.
   3. Hover the "Show all Tracks for Release" segment.
   - Prediction: no card. In the console, =document.getElementById('mb-stat-tooltip')= is =null=.
+  4. Before step 2, look at the right edge: the ▸ sidebar handle shows over EH's view. After step 2 it is gone, and
+     pressing "Show all Tracks for Release" does not bring it back (confirmed by vzell 2026-11-08, screenshot).
 - *Cause*: EH's =setOn()= (EH:11487) inserts its own =<body>= before MusicBrainz's, so =document.body= is EH's while
   SAED starts. =ehBody.remove()= on V takes along everything SAED appended once and keeps by reference:
   - =#mb-stat-tooltip= (=_tip=, near =_OTHER_RICH_TIPS=)
   - =#mb-vsb-mask=
   - =#mb-saed-hist-sub-panel=
+  - =#sidebar-toggle-handle= (=initSidebarCollapse('initial')=, =document.body.appendChild(handle)=). The render's
+    =initSidebarCollapse('final')= does not rebuild it: it returns early because =initSidebarCollapse.setCollapsed=
+    exists. Its =applyStretching()= also tags =document.body= with =sidebar-is-collapsed=, i.e. EH's body when a
+    start state collapses the sidebar under EH (=sa_sidebar_collapsed_initial_page=), where the
+    =body.sidebar-is-collapsed #page= rule cannot match;
   - possibly more of the 59 =document.body.appendChild= sites.
 
   The toolbar menus survive only because =_toolbarMenu='s open handler re-appends its panel to =document.body=.
@@ -993,3 +1021,28 @@ Before coding each one, write a real example page into this item, with the click
   AR columns.
 - Optional: a read-only RG credit matrix, role × release with format badges (GT =openConsolidate=).
 
+* comments and findings by vzell
+** sidebar toggle
+
+When trying to confirm '** TODO SAED's floating elements survive Event Horizon's body swap (bug, measured)' in
+@org/majkinetor.org, which I actually can confirm I found two probably releated problems:
+
+1.)
+
+I encountered when EH is on first when rendering a 'release-tracks' page like
+e.g. https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897, there is the MB sidebar toggle (decorated with
+our rich HTML tooltip) still visible whereas when pressing V and showing our rendered page it's completely missing.
+
+2.)
+
+When starting with EH off first, the sidebar handle behaves as it should, it's present and working when our page is
+rendered and when pressing V and showing the EH page it's gone
+
+3.)
+
+please confirm this findings and add it to our list in @org/majkinetor.org
+
+4.)
+
+switch to plan mode and then tackle the '** TODO SAED's floating elements survive Event Horizon's body swap (bug, measured)'
+section in @org/majkinetor.org

@@ -28670,3 +28670,12 @@ standalone EH and ISRC Scout of those versions. main's raw link still served 202
   `saed-ei-ws2`), 38/38, `--update-lines` done, pinned `65032ef`.
 - #938: no answer yet (labelled 2026-11-07). #926 closed; majkinetor's comparison report rates SAED "Partial
   overlap" with Event Horizon (his verdict in discussion #941).
+- Follow-up, 2026-11-08T14:13:38–14:14:57+01:00 (same host and env, EH 2026.11.08.131500 alone, cases A and B):
+  vzell found, pre-testing the floating-elements TODO, that with EH on at load the MusicBrainz sidebar handle
+  `#sidebar-toggle-handle` shows over EH's view and is missing after V, on the IP and the FRP alike, while with EH
+  off at load it behaves. The probe gained a `sidebarHandle` field (its `mb-*` floating filter could not see that
+  id) and measured it: A — EH's body and visible at load, not in the document after V and after the render, back
+  in EH's body on the next V; B — MusicBrainz's body throughout, hidden only while EH shows (correct). Cause:
+  `initSidebarCollapse('initial')` appends it once to `document.body` (EH's body under EH), and the render's
+  `initSidebarCollapse('final')` returns early because `initSidebarCollapse.setCollapsed` exists. Added to that
+  TODO in `org/majkinetor.org`; anchor `saed-sidebar-handle-body`.
