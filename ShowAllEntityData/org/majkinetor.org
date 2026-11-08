@@ -789,6 +789,8 @@ CLOSED: [2026-11-08 Sun]
     "leaving from Event Horizon's view after a render" (=eh-single-keys.spec.js=); mutations 8–11 in
     =eh-single-keys.json= (11, the =isLoaded= check, is an =expect: pass= overlap: the guard is installed only after a
     render).
+  - Browser check by vzell, 2026-11-08: OK (=h= does nothing on MusicBrainz's page; after a render, V → =h= → V gives
+    the browser's "Leave site?" prompt; browser and Tampermonkey versions not recorded).
 
 - *Who fixes it*: *ours* is enough: EH already honours =defaultPrevented=. *Convention* C3 (=<html data-mbu-keys-off>=)
   is the clearer long-term form; ask for it in the same message.
