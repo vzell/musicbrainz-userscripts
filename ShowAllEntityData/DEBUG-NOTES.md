@@ -28680,7 +28680,7 @@ standalone EH and ISRC Scout of those versions. main's raw link still served 202
   `initSidebarCollapse('final')` returns early because `initSidebarCollapse.setCollapsed` exists. Added to that
   TODO in `org/majkinetor.org`; anchor `saed-sidebar-handle-body`.
 
-## 2026-11-08 — SAED's floating hosts now live in MusicBrainz's body (`_saBody()`): Event Horizon's body swap no longer kills hover cards or the sidebar handle (docs/majkinetor-refresh-2026-11-08, WIP.1)
+## 2026-11-08 — SAED's floating hosts now live in MusicBrainz's body (`_saBody()`): Event Horizon's body swap no longer kills hover cards or the sidebar handle (docs/majkinetor-refresh-2026-11-08, 9.99.1576)
 
 Env: 2026-11-08T14:30–14:38+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1,
 Chromium 151.0.7922.34 · no Tampermonkey (GM stubs; fixtures, and realNetworkGmXhr for the live probe) · EH
@@ -28707,7 +28707,7 @@ Chromium 151.0.7922.34 · no Tampermonkey (GM stubs; fixtures, and realNetworkGm
   MusicBrainz's body and hidden at load, visible after V and after the render; hover card `inDocument: true`.
   Case B unchanged.
 
-## 2026-11-08 — Event Horizon's single-letter keys no longer leave MusicBrainz's page, IP and FRP (`_ehKeyGuardInstall()`, docs/majkinetor-refresh-2026-11-08, WIP.2)
+## 2026-11-08 — Event Horizon's single-letter keys no longer leave MusicBrainz's page, IP and FRP (`_ehKeyGuardInstall()`, docs/majkinetor-refresh-2026-11-08, 9.99.1577)
 
 Env: 2026-11-08T15:12–15:20+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1,
 Chromium 151.0.7922.34 · no Tampermonkey (GM stubs; fixtures, and realNetworkGmXhr for the live probe) · EH
@@ -28729,7 +28729,7 @@ Chromium 151.0.7922.34 · no Tampermonkey (GM stubs; fixtures, and realNetworkGm
   7/7 fail as expected, including "the guard is never installed".
 - Live probe case B (now also `h` on the IP), 15:18:37–15:20:23: `navigated: false` on the IP and the FRP, EH alone
   and in the bundle; V still toggles. Not covered: keys rebound in EH (convention C3 would cover them).
-- Follow-up, 2026-11-08T15:30–15:42+01:00 (same host and env): vzell, testing WIP.2 in his browser — `h` on
+- Follow-up, 2026-11-08T15:30–15:42+01:00 (same host and env): vzell, testing 9.99.1577 in his browser — `h` on
   MusicBrainz's page does nothing (OK), but after V to EH's view, `h` brought up SAED's own "You are about to leave
   this page" confirm, and OK then showed EH's history view. Cause: EH's `keyGo()` (EH:12403) clicks its own `#app`
   link while its view shows, and EH opens it in place (pushState). `initNavigationGuard()`'s Guard 1 (capture,
@@ -28752,7 +28752,7 @@ Chromium 151.0.7922.34 · no Tampermonkey (GM stubs; fixtures, and realNetworkGm
   `isLoaded` check is unobservable by construction (the guard is installed only after a render): recorded as an
   `expect: pass` mutation. Specs 16/16, mutations 10 fail + 1 recorded overlap.
 
-## 2026-11-08 — #938 conventions adopted against majkinetor's 9e4cdd59: data-mbu-foreign, data-ii-platform, data-mbu-quiet, EH's ⋯ menu launchers; key guard kept (docs/majkinetor-refresh-2026-11-08, WIP.3–WIP.6)
+## 2026-11-08 — #938 conventions adopted against majkinetor's 9e4cdd59: data-mbu-foreign, data-ii-platform, data-mbu-quiet, EH's ⋯ menu launchers; key guard kept (docs/majkinetor-refresh-2026-11-08, 9.99.1578–9.99.1581)
 
 Env: 2026-11-08T16:40–17:21+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1,
 Chromium 151.0.7922.34 · no Tampermonkey (GM stubs; fixture specs only, no live probe) · upstream read via the
@@ -28767,12 +28767,12 @@ GitHub API at `codex/interop-938` 9e4cdd59 (EH and ISRC Scout 2026.11.08.152918)
   Ctrl+letter shortcuts on, our load-from-disk and EH's `history.forward()` both fired, because EH's document-start
   bubble listener runs before ours; now `preventDefault()` in the guard's capture listener, only when ours acts
   (direct shortcuts on; our `initKeyboardShortcuts()` listener does not check `defaultPrevented`).
-- WIP.3 `_isrcScoutLinkPlatform()`: `data-ii-platform` → first line of `data-tip` → old `title`; the icon gets our
+- 9.99.1578 `_isrcScoutLinkPlatform()`: `data-ii-platform` → first line of `data-tip` → old `title`; the icon gets our
   card (`_isrcScoutLinkTip()`), `data-tip` moves to `data-mb-ii-tip` (old ISRC Scout's `#mbu-tip` reacts to any
-  `[data-tip]`). WIP.4 `_markForeignTable()`: `data-mbu-foreign="saed"` on `renderFinalTable()`'s table and each
+  `[data-tip]`). 9.99.1579 `_markForeignTable()`: `data-mbu-foreign="saed"` on `renderFinalTable()`'s table and each
   `renderGroupedTable()` table; the `is:counts-changed` "columns arrived late" toast was dropped (after our render
-  the native rows are gone, so "late" cannot be told from "switched off"). WIP.5 `_mbuQuietSync()`
-  (`sa_mbu_quiet_corner`, ☰ View row `#mb-mbu-quiet-btn`). WIP.6 `_ehMenuSync()` / `_ehHandoff()` /
+  the native rows are gone, so "late" cannot be told from "switched off"). 9.99.1580 `_mbuQuietSync()`
+  (`sa_mbu_quiet_corner`, ☰ View row `#mb-mbu-quiet-btn`). 9.99.1581 `_ehMenuSync()` / `_ehHandoff()` /
   `_ehHandoffResume()` (sessionStorage `sa_eh_handoff`, 60 s; buttons carry `data-mb-def-idx` from the definition
   index, taken BEFORE `labelFromH2` replaces `conf`); the detection loop now goes through `_pageDefForPath()`.
 - Test traps: an init script's attribute on `<html>` does not survive the parser (the "other owner" quiet test sets

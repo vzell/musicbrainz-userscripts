@@ -77,9 +77,9 @@ Check, IS = ISRC Scout, AS = Art Station, CH = Credit Hoarder, GT = Group Therap
 - Three real defects for us came out of it:
   1. *measured*: when SAED starts while EH shows, its hover cards are dead after V, because `#mb-stat-tooltip`
      lives in EH's body, which V removes. Same for the sidebar handle (found by vzell 2026-11-08). *Fixed* on
-     =docs/majkinetor-refresh-2026-11-08= (WIP.1, =_saBody()=; measured again after the fix).
+     =docs/majkinetor-refresh-2026-11-08= (9.99.1576, =_saBody()=; measured again after the fix).
   2. *measured*: EH's single-letter keys (H, E, R, …) also work on our FRP and navigate away from it, and on the
-     IP too (vzell, 2026-11-08). *Fixed* on =docs/majkinetor-refresh-2026-11-08= (WIP.2, =_ehKeyGuardInstall()=).
+     IP too (vzell, 2026-11-08). *Fixed* on =docs/majkinetor-refresh-2026-11-08= (9.99.1577, =_ehKeyGuardInstall()=).
   3. *measured* (14:11 CET, harness copy refreshed to 2026.11.06.170000): ISRC Scout moved its link labels
      from `title` to `data-tip`, so SAED's `_isrcScoutLinkPlatform()` returns `''`. The "Links" column loses
      platform filter/📊/sort data.
@@ -424,7 +424,7 @@ with EH alone.
 | A    | → V (EH off, same page)                                   | No reload. The buttons are visible and the fetch works (release-tracks in 3.4 s). The ☰ SAED menu works (its panel re-attaches to =document.body= on open). *Hover cards are dead*: =#mb-stat-tooltip= was created in EH's body at start-up and left the document with it (0 copies in the document). *Same for the sidebar handle* (2026-11-08): shown over EH's view at load, not in the document after V or after the render                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | A/B  | FRP → V (EH on) → V (EH off), same page                   | FRP intact both times (rows, filter bar); no reload; buttons visible again after the second V                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | B    | EH off at load → SAED fetch → hover                       | Everything normal; the hover card shows                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| B    | FRP, press =h= (focus on the page, not in a filter)       | *Navigated to =/release/…/edits=*: EH's "Editing history" key works on our FRP too. FRP lost. *Since WIP.2 (2026-11-08T15:18–15:20+01:00, EH alone and in ST)*: =h= on the IP and on the FRP navigates nowhere (=_ehKeyGuardInstall()=); V still switches EH                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| B    | FRP, press =h= (focus on the page, not in a filter)       | *Navigated to =/release/…/edits=*: EH's "Editing history" key works on our FRP too. FRP lost. *Since 9.99.1577 (2026-11-08T15:18–15:20+01:00, EH alone and in ST)*: =h= on the IP and on the FRP navigates nowhere (=_ehKeyGuardInstall()=); V still switches EH                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | C    | EH on → follow a link to the RG *inside EH* (pushState)   | URL is now =/release-group/…=, but MB's hidden body (and SAED in it) is still the *release* page                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | C    | → V                                                       | *Reload* (=eh-off=) into MB's RG page; SAED starts there normally (the harness re-injects SAED, as Tampermonkey would by itself); buttons visible                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | C    | → V (EH on again) → browser Back                          | EH shows the RG, then the release, both without a reload. SAED's hidden body stays the RG page; turning EH off now reloads again                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -444,12 +444,12 @@ Answers to your three questions:
   - The way back is lossy in one direction only: an FRP is lost when EH navigates elsewhere and you turn EH off
     there, which reloads. Re-pressing the button (or a disk save) restores it.
 - *Other pitfalls*:
-  1. *Fixed (WIP.1, 2026-11-08: =_saBody()=, see the DONE item below).* *Dead hover cards after V* when SAED started under EH (=#mb-stat-tooltip=, and likewise every element SAED
+  1. *Fixed (9.99.1576, 2026-11-08: =_saBody()=, see the DONE item below).* *Dead hover cards after V* when SAED started under EH (=#mb-stat-tooltip=, and likewise every element SAED
      keeps a reference to and appends once to =document.body=: =#mb-vsb-mask=, the history submenu panel; 59
      =document.body.appendChild= sites in SAED). Fix: append our floating hosts to =document.documentElement=
      (outside both bodies, as the dock does), or re-attach on show (the toolbar-menu pattern), or re-parent them
      when =<html data-mbu-page>= changes.
-  2. *Fixed (WIP.2, 2026-11-08: =_ehKeyGuardInstall()=, see the DONE item below).* *EH's bare-letter keys on our FRP* (o/e/r/c/h/t/d/a/s/p/./,) navigate away. Users can turn them off in EH's
+  2. *Fixed (9.99.1577, 2026-11-08: =_ehKeyGuardInstall()=, see the DONE item below).* *EH's bare-letter keys on our FRP* (o/e/r/c/h/t/d/a/s/p/./,) navigate away. Users can turn them off in EH's
      Ctrl+/ palette (=S.keysOn=). On our side: when the FRP is shown, stop those keys in a capture-phase listener
      unless a modifier is held. Or ask majkinetor to skip when =<html>= carries an "app owns the keys" mark.
   3. *Key clashes*:
@@ -476,14 +476,14 @@ Items 1–4 are the fixes and 5–9 the feature ideas; all of them are TODO item
 1. *Fix (bug)*: =_isrcScoutLinkPlatform()= reads =title || data-tip=; refresh the harness copy of IS; add a fixture
    from the new markup (=add-finding= / fixture spec).
 2. *Fix (bug)*: SAED's floating hosts survive a body swap (=#mb-stat-tooltip= first). Add a regression spec with a
-   two-body fixture that removes the first body. *Done* (WIP.1, 2026-11-08).
+   two-body fixture that removes the first body. *Done* (9.99.1576, 2026-11-08).
 3. *EH awareness*:
    - when =<html data-mbu-page>= is set (EH shows), put a small dock item or toolbar note "SAED: show MusicBrainz's
      page" that does what EH's own off-switch does (=sessionStorage eh-off= + reload, or
      =document.dispatchEvent= of V's effect);
    - honour =data-mbu-dock= for our toasts;
    - hide =[data-mb-corner]= on FRPs (the existing TODO, with MC's CSS);
-   - capture EH's bare keys on FRPs. *Done* (WIP.2, on the IP too).
+   - capture EH's bare keys on FRPs. *Done* (9.99.1577, on the IP too).
 4. *Request gate*: join =mbu:mb-gate= (GCRA + Web Lock + shared hold); then the lead and the browser-check iframe.
 5. *Findings to add* (zero extra requests): no barcode / all-zero barcode, label without catno, no release event,
    track without length, recording without ISRC, ISRC shared by two recordings, confusable/invisible characters,
@@ -519,11 +519,11 @@ is removed only while its value is still ours, and the setter offers its own way
 
 | #  | Convention (as implemented)                                                                           | Who sets it | Who honours it (9e4cdd59)                                                                                  | Status on our side (2026-11-08)                                                                                                   |
 |----+-------------------------------------------------------------------------------------------------------+-------------+------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------|
-| C1 | =data-mbu-foreign="saed"= on a rendered table                                                         | SAED        | ISRC Scout's =fillTrackData()= / =showTrackData()= (insert, wipe, colspans); the shared =mbuTipFind()=      | *adopted* (WIP.4, =_markForeignTable()=): every =table.tbl= a render builds                                                       |
-| C2 | =a.ii-trk-ln[data-ii-platform][data-ii-ended="true\|false"]=                                          | ISRC Scout  | SAED reads it instead of tip text                                                                          | *adopted* (WIP.3, =_isrcScoutLinkPlatform()=): metadata, then =data-tip=, then =title=                                           |
+| C1 | =data-mbu-foreign="saed"= on a rendered table                                                         | SAED        | ISRC Scout's =fillTrackData()= / =showTrackData()= (insert, wipe, colspans); the shared =mbuTipFind()=      | *adopted* (9.99.1579, =_markForeignTable()=): every =table.tbl= a render builds                                                       |
+| C2 | =a.ii-trk-ln[data-ii-platform][data-ii-ended="true\|false"]=                                          | ISRC Scout  | SAED reads it instead of tip text                                                                          | *adopted* (9.99.1578, =_isrcScoutLinkPlatform()=): metadata, then =data-tip=, then =title=                                           |
 | C3 | =<html data-mbu-keys-off="saed">=                                                                     | SAED        | EH's keydown returns early: *every* command, V and Ctrl+L included                                        | *not adopted*: it would take V. =_ehKeyGuardInstall()= stays; asked to keep V working under it (reply)                          |
-| C4 | =<html data-mbu-quiet="saed">=                                                                        | SAED        | =mbRestackCorner()=: =[data-mb-corner]= and =#mbu-dock-shelf= =visibility:hidden=                         | *adopted* (WIP.5, =_mbuQuietSync()=, =sa_mbu_quiet_corner=, ☰ row)                                                              |
-| C5 | /dropped/ ("no SAED-specific detection"); replaced by EH's More (⋯) menu protocol: hidden =button[data-mbu-menu-item][data-mbu-menu-title]= under =<html>= | SAED | EH projects it into its header menus and =.click()=s it; =disabled= hides it                              | *adopted* (WIP.6, =_ehMenuSync()=, =_ehHandoff()=): "Open in ShowAllEntityData" + one item per button                           |
+| C4 | =<html data-mbu-quiet="saed">=                                                                        | SAED        | =mbRestackCorner()=: =[data-mb-corner]= and =#mbu-dock-shelf= =visibility:hidden=                         | *adopted* (9.99.1580, =_mbuQuietSync()=, =sa_mbu_quiet_corner=, ☰ row)                                                              |
+| C5 | /dropped/ ("no SAED-specific detection"); replaced by EH's More (⋯) menu protocol: hidden =button[data-mbu-menu-item][data-mbu-menu-title]= under =<html>= | SAED | EH projects it into its header menus and =.click()=s it; =disabled= hides it                              | *adopted* (9.99.1581, =_ehMenuSync()=, =_ehHandoff()=): "Open in ShowAllEntityData" + one item per button                           |
 | C6 | =mbu:mb-gate= *version 1* (=version=, =tat=, =cool=, =hot=, =lead=, =leadUntil=; Web Lock =mbu-mb-gate=) | majkinetor (documents it) | SAED books its ws/2 there                                                                                  | open: a later round (TODO "Join majkinetor's cross-tab request gate")                                                           |
 
 **** Posts to majkinetor (for you to post; not posted anywhere)
@@ -566,7 +566,7 @@ Newest first; one entry per refresh (refresh-majkinetor skill).
 
 - 2026-11-08 16:30–17:30 CET: majkinetor's answer on #938 and milic-bot's =9e4cdd59= on =codex/interop-938= (read via
   the GitHub API; the clone, the harness copies and the anchors were not refreshed, so "Analysis" still describes
-  =65032ef=). vzell runs String Theory from that branch. Adopted C1, C2, C4 and the EH menu protocol (WIP.3–WIP.6);
+  =65032ef=). vzell runs String Theory from that branch. Adopted C1, C2, C4 and the EH menu protocol (9.99.1578–9.99.1581);
   C3 deliberately not (it takes V); C6 later. Conventions table and TODOs updated; three replies drafted (see
   "Posts to majkinetor").
 
@@ -633,7 +633,7 @@ Newest first; one entry per refresh (refresh-majkinetor skill).
 ** DONE ISRC Scout "Links": read the platform from =data-tip= (bug, measured)
 CLOSED: [2026-11-08 Sun]
 
-- *Done* (branch =docs/majkinetor-refresh-2026-11-08=, WIP.3): =_isrcScoutLinkPlatform()= reads =data-ii-platform=
+- *Done* (branch =docs/majkinetor-refresh-2026-11-08=, 9.99.1578): =_isrcScoutLinkPlatform()= reads =data-ii-platform=
   (C2, upstream 9e4cdd59) first, then the first line of =data-tip=, then the old =title=. Simulator option =markup=
   (='title'= / ='data-tip'= / ='meta'=); =release-tracks-isrc-scout.spec.js= runs the platform, filter and card
   assertions for all three, plus "the metadata wins over the tip wording"; mutations in =isrc-scout-column.json=.
@@ -663,7 +663,7 @@ CLOSED: [2026-11-08 Sun]
 ** DONE ISRC Scout "Links": no =#mbu-tip= over our table (moved from org/TODO.org)
 CLOSED: [2026-11-08 Sun]
 
-- *Done* both ways (WIP.3/WIP.4): upstream 9e4cdd59's =mbuTipFind()= ignores =[data-mbu-foreign]=, which our tables
+- *Done* both ways (9.99.1578/9.99.1579): upstream 9e4cdd59's =mbuTipFind()= ignores =[data-mbu-foreign]=, which our tables
   carry; for an older ISRC Scout =_normalizeIsrcScoutLinksTd()= moves =data-tip= to =data-mb-ii-tip= and gives the
   icon our own card (=_setTip()=, =_isrcScoutLinkTip()=).
 
@@ -682,7 +682,7 @@ CLOSED: [2026-11-08 Sun]
 ** TODO ISRC Scout columns re-added bare on our FRP (moved from org/TODO.org, cause found)
 
 - *Status 2026-11-08*: closed *upstream* for ISRC Scout ≥ 9e4cdd59 (C1: our tables carry =data-mbu-foreign="saed"=,
-  WIP.4; spec "ISRC Scout and data-mbu-foreign", simulator =honoursForeign=). Open only as the *defence* for older
+  9.99.1579; spec "ISRC Scout and data-mbu-foreign", simulator =honoursForeign=). Open only as the *defence* for older
   ISRC Scout: option (a) below. With the new one, pressing Tracks too early gives a table without its columns (it
   no longer adds them); a hint on =is:counts-changed= was dropped, as nothing tells "late" from "switched off".
 
@@ -714,7 +714,7 @@ CLOSED: [2026-11-08 Sun]
 ** DONE SAED's floating elements survive Event Horizon's body swap (bug, measured)
 CLOSED: [2026-11-08 Sun]
 
-- *Done* (branch =docs/majkinetor-refresh-2026-11-08=, WIP.1; to ship with the next merge): option (a). A
+- *Done* (branch =docs/majkinetor-refresh-2026-11-08=, 9.99.1576): option (a). A
   helper =_saBody()= returns MusicBrainz's own =<body>= (the one holding =#page=; EH's body only has =main#app=
   and =#toast=). 42 persistent append sites go through it (card hosts, popups, menus, dialogs, masks, toasts,
   overlays, notices, the sidebar handle), as do the toolbar menus' re-attach checks and the =sidebar-is-collapsed= /
@@ -790,7 +790,7 @@ CLOSED: [2026-11-08 Sun]
 ** DONE EH's bare-letter keys leave our FRP (bug, measured)
 CLOSED: [2026-11-08 Sun]
 
-- *Done* (branch =docs/majkinetor-refresh-2026-11-08=, WIP.2; to ship with the next merge). vzell found the keys
+- *Done* (branch =docs/majkinetor-refresh-2026-11-08=, 9.99.1577). vzell found the keys
   act on the IP as well and chose to block them there too (2026-11-08). =_ehKeyGuardInstall()=, installed once at
   page init on MusicBrainz, is a capture-phase keydown that only calls =preventDefault()= for EH's default single
   keys (=_EH_SINGLE_KEYS=: o e r c h t d a s p . ,), read as EH reads them (lowercased, Shift ignored). It never takes
@@ -827,7 +827,7 @@ CLOSED: [2026-11-08 Sun]
 - *Re-checked 2026-11-08 against 9e4cdd59* (task 1b): still necessary, unchanged. EH now honours
   =<html data-mbu-keys-off>=, but it suspends every EH command, V and Ctrl+L included, so setting it on MusicBrainz's
   page would take V, the handoff vzell confirmed works perfectly. The guard also covers EH without the mark (main,
-  older installs). Gap found: Ctrl+L, fixed in the same capture listener (WIP.6; see "Shortcut clashes"). The reply
+  older installs). Gap found: Ctrl+L, fixed in the same capture listener (9.99.1581; see "Shortcut clashes"). The reply
   asks to keep V working under keys-off; then we can set it and cover keys rebound in EH's palette too.
 
 - *Who fixes it*: *ours* is enough: EH already honours =defaultPrevented=. *Convention* C3 (=<html data-mbu-keys-off>=)
@@ -852,7 +852,7 @@ CLOSED: [2026-11-08 Sun]
 
 ** TODO Shortcut clashes with String Theory / EH: Ctrl+K, Ctrl+L, the typing guard
 
-- *Ctrl+L done* (2026-11-08, WIP.6): =_ehKeyGuardInstall()='s capture listener calls =preventDefault()= for our
+- *Ctrl+L done* (2026-11-08, 9.99.1581): =_ehKeyGuardInstall()='s capture listener calls =preventDefault()= for our
   =sa_shortcut_load_from_disk= when =sa_enable_direct_ctrl_char_shortcuts= is on, EH is there and its view not shown;
   =initKeyboardShortcuts()= does not check =defaultPrevented=, so ours still runs. With direct shortcuts off (the
   default) our Ctrl+L does nothing and the key stays EH's. Tests: =eh-interop-markers.spec.js= "Ctrl+L with Event
@@ -884,7 +884,7 @@ CLOSED: [2026-11-08 Sun]
 ** DONE Corner launchers over our FRP; our toasts under them (moved from org/TODO.org)
 CLOSED: [2026-11-08 Sun]
 
-- *Done* (WIP.5): C4 as implemented, =<html data-mbu-quiet="saed">= while a table of ours shows on MusicBrainz's page,
+- *Done* (9.99.1580): C4 as implemented, =<html data-mbu-quiet="saed">= while a table of ours shows on MusicBrainz's page,
   never while EH's view shows (=_mbuQuietSync()=); setting =sa_mbu_quiet_corner= (on, 🎨 UI FEATURES); ☰ View row
   "Show/Hide corner launchers" (=#mb-mbu-quiet-btn=, only with a majkinetor script on the page). Our toasts are not
   tagged =data-mb-corner= (the mark would hide them too). Spec =eh-interop-markers.spec.js=, mutations
@@ -908,7 +908,7 @@ CLOSED: [2026-11-08 Sun]
 ** DONE A way back to SAED from Event Horizon's view
 CLOSED: [2026-11-08 Sun]
 
-- *Done* (WIP.6) with EH's More (⋯) menu protocol instead of C5 or a corner launcher: =_ehMenuSync()= registers
+- *Done* (9.99.1581) with EH's More (⋯) menu protocol instead of C5 or a corner launcher: =_ehMenuSync()= registers
   "Open in ShowAllEntityData" and "SAED: <label>" per button while EH's view shows a page we support (decided from
   =<html data-mbu-page>= via =_pageDefForPath()=); =_ehHandoff()= clicks =#eh-launch= and presses the button at once
   or after EH's reload (sessionStorage =sa_eh_handoff=, 60 s, =_ehHandoffResume()=). The "Mind" note below holds: EH

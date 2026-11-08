@@ -380,7 +380,7 @@ async function runCase(browser, name, entries, urlOverride) {
         } else if (name === 'B') {
             // EH's single keys on the INITIAL page too (vzell, 2026-11-08):
             // 'h' = Editing history; SAED's _ehKeyGuardInstall() takes it
-            // (sa_block_eh_single_keys) since WIP.2. Leaving would end the case,
+            // (sa_block_eh_single_keys) since 9.99.1577. Leaving would end the case,
             // so it is pressed only where the guard is expected to hold.
             await page.evaluate(() => document.activeElement && document.activeElement.blur && document.activeElement.blur());
             const navIp = page.waitForEvent('load', { timeout: 6000 }).then(() => true).catch(() => false);

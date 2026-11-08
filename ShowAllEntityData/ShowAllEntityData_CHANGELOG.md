@@ -4,9 +4,68 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1746 versions; the month pages hold all of them.
+This page shows the newest 100 of 1752 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1581 — 2026-11-08
+
+**🚀 Feature**
+
+- With majkinetor's Event Horizon (String Theory) showing: on a page this script supports, Event Horizon's More (⋯) menu in the page header now has "Open in ShowAllEntityData" (what V does) and one "SAED: &lt;button&gt;" item per button of that page, e.g. "SAED: Show all Tracks for Release". Such an item switches to MusicBrainz's page and presses that button, also after Event Horizon navigated to another page inside its view (it reloads into MusicBrainz's page of that one first). The items follow the page Event Horizon shows. Needs the String Theory with the menu protocol (majkinetor's \#938); as with V, Event Horizon then stays off for the next pages until you switch it on again.
+
+**🐛 Fix**
+
+- With direct Ctrl+letter shortcuts on, Ctrl+L (Load from disk) also made Event Horizon go forward in the browser history. It is now this script's alone there; with direct shortcuts off (the default) Ctrl+L stays Event Horizon's, and inside Event Horizon's view it is always its own.
+
+
+## 9.99.1580 — 2026-11-08
+
+**🚀 Feature**
+
+- With majkinetor's String Theory installed, up to eight corner launchers and its dock sat in the bottom right corner over the rendered table. While a table of this script is shown on MusicBrainz's page they are now hidden (in Event Horizon's own view they stay). ☰ SAED → View → "Show corner launchers" brings them back for the page, "Hide corner launchers" hides them again. Needs the String Theory with the shared quiet mark (majkinetor's \#938).
+
+**✨ Improve**
+
+- New setting: ⚙️ Settings → 🎨 UI FEATURES → "Hide String Theory's corner launchers while a table is shown" (on).
+
+
+## 9.99.1579 — 2026-11-08
+
+**🐛 Fix**
+
+- ISRC Scout (majkinetor) no longer replaces the ISRC and Links columns of a rendered tracklist with bare copies that have no sort buttons and no 📊, and no longer widens its headings: every table this script renders now says it is this script's (the shared data-mbu-foreign mark), which ISRC Scout leaves alone, and its own hover tip no longer shows over the table. Needs the ISRC Scout with that mark (majkinetor's \#938); with an older one, press the Tracks button after its columns have appeared, as before.
+
+
+## 9.99.1578 — 2026-11-08
+
+**🐛 Fix**
+
+- Release tracklist with ISRC Scout (majkinetor) since its 2026.11.06 versions: the Links column lost its platform names (no "Links info - Platform" section in 📊, typing "Deezer" matched nothing), because the name moved out of the icons' title. The platform is read again, from ISRC Scout's new platform data first, then from its tip, then from the old title, so every ISRC Scout version works.
+
+**✨ Improve**
+
+- The Links icons of ISRC Scout get this script's own card: the platform, "(ended)" and the number of links, then the link addresses; ISRC Scout's own tip no longer shows next to it.
+
+
+## 9.99.1577 — 2026-11-08
+
+**🐛 Fix**
+
+- With majkinetor's Event Horizon (or String Theory) installed, its single-letter keys also worked on MusicBrainz's own page, even with Event Horizon switched off: a stray H went to the editing history (E to the edit page, R to the relationship editor, and so on), and the page was gone, a rendered table with it. On the pages this script runs on, before and after a button is pressed, those keys are now ignored. V (switching Event Horizon on or off), every key inside Event Horizon's own view and typing into a field keep working.
+- After a table was rendered, in majkinetor's Event Horizon (after V): clicking a link in its view, or pressing one of its keys such as H, brought up the script's "You are about to leave this page" question, even when Event Horizon opened the page in place and the table stayed; and when Event Horizon really left the page (a page it loads, or V after moving around in it, which reloads), the table could be lost without a word. Now inside Event Horizon's view nothing is asked on a click, and the browser's own "Leave site?" prompt comes when the page really unloads. On MusicBrainz's own page the script's question stays as it was.
+
+**✨ Improve**
+
+- New setting: ⚙️ Settings → 🎹 KEYBOARD SHORTCUTS → "Ignore Event Horizon's single-letter keys on MusicBrainz's page" (on). Turn it off to give those keys back to Event Horizon. Keys you rebound in Event Horizon are not known to this script.
+
+
+## 9.99.1576 — 2026-11-08
+
+**🐛 Fix**
+
+- With majkinetor's Event Horizon (String Theory) showing when a page loads, which is its default: after switching it off with V, the script's hover cards no longer showed, and the sidebar handle was missing on MusicBrainz's page and on the rendered page. Before V, the handle showed over Event Horizon's own view. The script's floating elements (cards, menus, dialogs, the sidebar handle, notices and the rest) now always belong to MusicBrainz's page: hidden while Event Horizon shows, there and working after V.
+
 
 ## 9.99.1575 — 2026-11-08
 
@@ -851,63 +910,6 @@ This page shows the newest 100 of 1746 versions; the month pages hold all of the
 **📝 Docs**
 
 - Help: "Playing a YouTube video where it is listed" under the link previews — where the tiles are (URLs table, sidebar, annotations, a YouTube link's window, Discogs' Videos, a Brucebase show's window), Esc and ■ Stop, one video at a time, the two settings, and what happens where a site refuses the player; the Discogs release page's Videos sub-table and the master window's videos (9.99.1478–9.99.1481).
-
-
-## 9.99.1481 — 2026-10-28
-
-**🚀 Feature**
-
-- YouTube in place on Brucebase (9.99.1478's tile): a show's window (an Event link's preview, Space) gets a Media section from the page's Media tab — its embedded YouTube player as a link to the video or playlist, with a "Play here" tile that plays it in the section — and a tile after every YouTube link in the other sections (the Recording tab's audience video, for one). A Media tab that is only a player now counts in the card's "On the page". Cached show pages are read again once.
-
-**🐛 Fix**
-
-- A detail window's Live page turned an embedded YouTube PLAYLIST (Brucebase's Media tab, its 4th of July song page) into a broken "watch?v=videoseries" link; it now links the playlist.
-
-
-## 9.99.1480 — 2026-10-28
-
-**🚀 Feature**
-
-- YouTube in place on Discogs (9.99.1478's tile): the Discogs release window's Videos section puts a small "Play here" tile in front of each YouTube video, and the player opens in a slot above the list, which stays as it was. A Discogs master's window now has its Videos section too (its cached answers are read again once). discogs.com's release page gets a "Videos" sub-table (Play, Title, Length, URL) from the release's own answer, no extra request; a tile plays in a row under its row. Without 'Play YouTube videos in place' the windows' Videos are as before and the sub-table has no Play column. Where discogs.com's frame policy refuses YouTube's player, the video opens on YouTube in a new tab instead, and the tiles say so (9.99.1478).
-
-
-## 9.99.1479 — 2026-10-28
-
-**🚀 Feature**
-
-- YouTube in place on MusicBrainz (9.99.1478's tile): a "Play here" tile under a YouTube link in the URLs table of a Relationships render (it plays in a row under the row), a small one under the sidebar's "Play on YouTube" (it plays under it, as wide as the sidebar), and one after every YouTube link of the page's annotation and of an Annotation column (reports, annotation search results). A link inside an annotation heading gets its tile after the heading, so the heading reads as before. The YouTube link's window (Space) shows the tile under its title, in place of the thumbnail, and plays in the window; a video YouTube no longer has is shown as unavailable there at once, and asks nothing when clicked. Filtering for the link, sorting and the 📊 values are as before: the tile's words are none of them. With 'Play YouTube videos in place' off nothing changes on any page.
-
-
-## 9.99.1478 — 2026-10-28
-
-**🚀 Feature**
-
-- YouTube in place (org/youtube.org), the shared part: a "Play here" tile for a YouTube link — a still frame (or a plain frame) with ▶, the title and "Play here · 4:30" — that plays the video where it is listed, in YouTube's privacy-enhanced player (youtube-nocookie.com). Nothing is asked from the player before a click. In a table the player opens in a full-width row under the row, in a list's box in a slot above the list, elsewhere right under the tile; it is as wide as its column, at most 640 px, 16:9. One video plays at a time. Esc stops it before anything else sees the key (the next Esc closes the card or window as before); "■ Stop" does the same. A video YouTube no longer has shows "This video is not available on YouTube any more." with a red Unavailable pill. Where a page's frame policy refuses the player, the video opens on YouTube in a new tab, and every tile of that page says "Opens on YouTube (new tab)" from then on. A player that plays in a link's window keeps playing while the window repaints. The tile's text never reaches filtering, sorting or the 📊 dropdown.
-
-**✨ Improve**
-
-- Two new settings in 🔎 EXTERNAL LINK PREVIEWS, both on by default: 'Play YouTube videos in place (a click asks youtube-nocookie.com)' (off: no tiles at all) and 'Show the videos' still frames (asks i.ytimg.com as they come into view)' (off: plain frames, so no request to YouTube before a click). A playlist always has a plain frame with "≡ list".
-
-
-## 9.99.1477 — 2026-10-28
-
-**🚀 Feature**
-
-- Links to a Discogs release's Images page and its image editor ("Image history") get their own window instead of the plain release window: Image history lists every image in a table (\#, the image, Primary or Secondary, who uploaded it, when, its own width × height and file size, every column sortable); Images shows a gallery with each image's size and uploader, the uploaders on the left, and a click opens the artwork viewer.
-- The image editor's data is the only place with the uploader, the date and the image's own size, and it comes only with the Discogs login, so it is read with your Discogs session — also from MusicBrainz (the one link preview that sends cookies, to discogs.com only). Signed out, the window keeps the images and their types from Discogs' API, says why the rest is missing and marks the size as the one Discogs serves.
-- On discogs.com itself, a release's Images page and its image editor get a "Show every image" button: one table of every image (\#, image with its hover card and the viewer, type, uploaded by with the user's picture, date and time in your time zone, W × H, size in KB), the same on both pages.
-- Performance: link-preview windows and two new discogs.com pageTypes only; no change to MusicBrainz's tables. An images window costs two requests (the API and the editor), on Space only.
-
-
-## 9.99.1476 — 2026-10-28
-
-**🚀 Feature**
-
-- CD stub links get a card and a window, read from the stub's page: title, artist, track count, length and how often it was looked up; the window lists its facts (barcode, disc ID, added, last modified) and its tracklist as a table with a filter and sorting.
-- Documentation links (/doc/…) get a card and a window: the card shows the page's title, its status ("official style guideline") and first paragraph; the window shows its contents on the left and the whole text on the right, its headings kept, and a link to another documentation page opens that page in the window.
-- A documentation search link (/search?…&type=doc) gets a card and a window too. MusicBrainz's own search page is Google's and has no results in it, so they come from the MusicBrainz wiki's search: the card says how many pages match and names the first ones, the window lists up to 50 of them as a table (page, snippet, last updated) with a filter, chips and sorting, and a page opens in the window.
-- The userscript header lists wiki.musicbrainz.org under @connect, so Tampermonkey does not ask before the first documentation search.
-- Performance: link-preview windows only; no change to the page tables' filter, sort or render path. A documentation search asks the wiki once (one request per search, at most one a second), then answers from memory and the browser's cache.
 
 
 ---
