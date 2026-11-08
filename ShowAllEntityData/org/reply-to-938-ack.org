@@ -1,0 +1,26 @@
+#+TITLE: Short acknowledgement on #938 (before the full reply)
+#+DATE: 2026-11-08
+
+* TODO Post: short acknowledgement on https://github.com/majkinetor/musicbrainz-userscripts/issues/938
+
+Drafted 2026-11-08 at vzell's request, for vzell to post (not posted anywhere). The full answer to majkinetor's
+point-by-point reply and to milic-bot's =9e4cdd59= comment follows later in =org/reply-to-938-answer.org=.
+vzell already runs String Theory from the =codex/interop-938= branch.
+
+#+begin_src markdown
+Hi Miodrag - @majkinetor,
+
+thanks a lot for the quick answers, and for the implementation on `codex/interop-938` (9e4cdd59). That was fast!
+
+I'm already running String Theory from that branch, and I'm now implementing SAED's side against it:
+
+- `data-mbu-foreign="saed"` on SAED's rendered tables
+- reading `data-ii-platform` / `data-ii-ended` from ISRC Scout's Links
+- `data-mbu-quiet` while SAED's table is shown
+- SAED's items in EH's **More (⋯)** menu
+
+I'll follow the names exactly as you implemented them. Once that's done and tested, I'll come back here with a full reply: answers to your questions, what changed on my side in the meantime, and one small follow-up question about `data-mbu-keys-off`.
+
+Thanks!
+Volker
+#+end_src

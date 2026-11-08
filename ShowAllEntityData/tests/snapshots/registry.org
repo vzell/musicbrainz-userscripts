@@ -94,6 +94,15 @@ Not affected, and worth knowing so the diff is not over-read:
     `npm test` reads a snapshot baseline at all. The review window expiring can
     never turn the suite red.
 
+** #938 interop marks (branch docs/majkinetor-refresh-2026-11-08) — NOT yet re-captured
+
+Every =table.tbl= a render builds on MusicBrainz carries =data-mbu-foreign="saed"= (=_markForeignTable()=),
+and =<html>= carries =data-mbu-quiet="saed"= after a render (=_mbuQuietSync()=, =sa_mbu_quiet_corner= on).
+So every MusicBrainz rendered baseline gains the table attribute, and the =<html>= mark where the capture
+serializes =<html>='s attributes. *Expected — commit it.* No ☰ row appears in a capture without
+majkinetor's scripts (=#mb-mbu-quiet-btn= needs a =[data-mb-corner]= launcher or =<html data-mbu-st>=),
+and the EH menu launchers (=button[data-mbu-menu-item]=) exist only while Event Horizon's view shows.
+
 ** user-open-edits — RE-CAPTURED 2026-10-23 (the account has an open edit again)
 
 Env: 2026-10-23T16:11:20+02:00 to 16:11:25+02:00 (=--only=user-open-edits=) ·

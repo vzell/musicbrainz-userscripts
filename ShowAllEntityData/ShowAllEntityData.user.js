@@ -1492,6 +1492,13 @@
             description: 'Show/hide the "📏 Density" button for adjusting table spacing'
         },
 
+        sa_mbu_quiet_corner: {
+            label: "Hide String Theory's corner launchers while a table is shown",
+            type: 'checkbox',
+            default: true,
+            description: "With majkinetor's String Theory (or one of its scripts) installed, up to eight launchers and its dock sit in the bottom right corner, over the rendered table. On, they are hidden on MusicBrainz's page while a table this script rendered is shown; Event Horizon's own view keeps them, and \"Show corner launchers\" in the ☰ menu's View group brings them back for the page. Uses the shared <html data-mbu-quiet> mark (majkinetor's #938); a String Theory without it ignores the mark."
+        },
+
         // ============================================================
         // TABLE STICKINESS CONFIGURATION SECTION
         // ============================================================
@@ -45547,18 +45554,65 @@
     }
 
     /**
-     * The platform name of one ISRC Scout "Links" icon link
-     * (`a.ii-trk-ln`), read from its `title`, which ISRC Scout writes as
-     * `"<Platform> · <url>"`, `"<Platform> (ended) · <url>"`, or
-     * `"<Platform> · N links\n<url>…"` for a platform with several links.
+     * The platform name of one ISRC Scout "Links" icon link (`a.ii-trk-ln`).
+     * Three generations of ISRC Scout's markup, newest first:
+     *
+     *   - `data-ii-platform="<Platform>"` (with `data-ii-ended="true|false"`),
+     *     the metadata majkinetor added for #938 (upstream 9e4cdd59): "tooltip
+     *     wording is presentation, not a data format", so it wins;
+     *   - `data-tip="<Platform>[ (ended)]\n<url>"` or
+     *     `"<Platform> — N links\n- <url>…"` (2026.11.06 to 9e4cdd59, no
+     *     `title`);
+     *   - `title="<Platform>[ (ended)] · <url>"` or
+     *     `"<Platform> · N links\n<url>…"` (before 2026.11.06).
      *
      * @param {Element} a - An `a.ii-trk-ln`.
      * @returns {string} E.g. `'Spotify'`, `'YouTube Music'`,
-     *   `'whosampled.com'`; `''` when the title has no name.
+     *   `'whosampled.com'`; `''` when none of the three names one.
      */
     function _isrcScoutLinkPlatform(a) {
+        const meta = (a.getAttribute('data-ii-platform') || '').trim();
+        if (meta) return meta;
+        const tip = a.getAttribute('data-tip') || a.getAttribute('data-mb-ii-tip') || '';
+        if (tip) {
+            return tip.split('\n')[0].replace(/\s+—\s+\d+\s+links?\s*$/, '')
+                .replace(/\s*\(ended\)\s*$/, '').trim();
+        }
         const title = a.getAttribute('title') || '';
         return title.split(' · ')[0].replace(/\s*\(ended\)\s*$/, '').trim();
+    }
+
+    /**
+     * The hover text of one ISRC Scout "Links" icon link, as this script's
+     * own card: the platform, " (ended)" and the link count on the first line,
+     * then the URL(s), one per line. The first line comes from the metadata
+     * when the anchor has it (`data-ii-ended`, the `sup.ii-trk-n` count); the
+     * URLs come from ISRC Scout's tip (`data-tip`, or the old `title` with its
+     * `' · '` separator), else from the anchor's `href`.
+     *
+     * @param {Element} a - An `a.ii-trk-ln`.
+     * @param {string} name - Its platform (`_isrcScoutLinkPlatform()`).
+     * @returns {string} Plain text; `\n` starts a new line.
+     */
+    function _isrcScoutLinkTip(a, name) {
+        let tip = a.getAttribute('data-tip') || a.getAttribute('data-mb-ii-tip') || '';
+        if (!tip && a.getAttribute('title')) {
+            // "<Platform> · <url>" or "<Platform> · N links\n<url>…"
+            const [first, ...more] = a.getAttribute('title').split('\n');
+            const [p, rest = ''] = first.split(' · ');
+            tip = /^\d+ links?$/.test(rest) ? [`${p} — ${rest}`, ...more].join('\n')
+                : [p, rest, ...more].join('\n');
+        }
+        const lines = tip ? tip.split('\n') : [];
+        let head = lines[0] || name;
+        if (a.hasAttribute('data-ii-platform')) {
+            const n = parseInt(a.querySelector(':scope > .ii-trk-n')?.textContent || '', 10);
+            head = name + (a.getAttribute('data-ii-ended') === 'true' ? ' (ended)' : '') +
+                (n > 1 ? ` — ${n} links` : '');
+        }
+        const urls = lines.slice(1).filter(l => l.trim());
+        if (!urls.length && a.getAttribute('href')) urls.push(a.getAttribute('href'));
+        return [head, ...urls].join('\n');
     }
 
     /**
@@ -45571,6 +45625,14 @@
      * count, the "Links info - Platform" section, typed filters and sorting
      * all read platforms. A match in the hidden name is shown by outlining
      * its icon (CSS, `a.ii-trk-ln:has(…)`). The icons look the same as before.
+     *
+     * The hover text becomes this script's own card (`_setTip()`,
+     * `_isrcScoutLinkTip()`), and ISRC Scout's `data-tip` moves to
+     * `data-mb-ii-tip`: its shared `#mbu-tip` handler shows a tip for ANY
+     * `[data-tip]` in the document, so on our table it stacked beside our
+     * card. ISRC Scout ≥ 9e4cdd59 also skips our tables
+     * (`data-mbu-foreign`, `_markForeignTable()`); the move covers older ones.
+     *
      * Keeps the cell's `ii-col` classes for the reason given in
      * `_normalizeIsrcScoutTd()`. Idempotent.
      *
@@ -45582,6 +45644,11 @@
             const name = _isrcScoutLinkPlatform(a);
             if (!name) return;
             a.dataset.mbLinkPlatform = name;
+            _setTip(a, _isrcScoutLinkTip(a, name));
+            if (a.hasAttribute('data-tip')) {
+                a.setAttribute('data-mb-ii-tip', a.getAttribute('data-tip'));
+                a.removeAttribute('data-tip');
+            }
             const span = document.createElement('span');
             span.className = 'mb-ii-link-name';
             span.textContent = name;
@@ -85774,7 +85841,7 @@
      */
     const _TOOLBAR_MENU_ROW_ORDER = {
         data: ['mb-save-to-disk-btn', 'mb-load-from-disk-btn', 'mb-export-btn'],
-        view: ['mb-density-btn', 'mb-stats-btn', 'mb-idbo-menu-btn', 'mb-gms-menu-btn', 'mb-shortcuts-help-btn'],
+        view: ['mb-density-btn', 'mb-stats-btn', 'mb-idbo-menu-btn', 'mb-gms-menu-btn', 'mb-mbu-quiet-btn', 'mb-shortcuts-help-btn'],
         help: ['mb-settings-btn', 'mb-app-help-btn', 'mb-shortcuts-help-btn'],
         disc: ['mb-disc-complete-btn', 'mb-disc-official-btn', 'mb-disc-nonofficial-btn', 'mb-disc-merged-btn'],
     };
@@ -91647,17 +91714,310 @@ ${sections.join('\n')}
         if (document._mbEhKeyGuardInstalled) return;
         document._mbEhKeyGuardInstalled = true;
         document.addEventListener('keydown', (e) => {
-            if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+            if (e.defaultPrevented) return;
+            // Ctrl+L: this script's "Load from disk" when direct Ctrl+letter
+            // shortcuts are on, and Event Horizon's history.forward() — both
+            // fired, and EH's listener (registered at document-start) runs
+            // before ours, so our own preventDefault() came too late. Taken
+            // from EH only when ours will act on it.
+            if ((e.ctrlKey || e.metaKey) && Lib.settings.sa_enable_direct_ctrl_char_shortcuts &&
+                    isShortcutEvent(e, 'sa_shortcut_load_from_disk', 'Ctrl+L') && _ehPresentOffView()) {
+                e.preventDefault();
+                Lib.debug('shortcuts', 'Ctrl+L kept from Event Horizon (its forward) for Load from disk.');
+                return;
+            }
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
             if (!e.key || e.key.length !== 1 || !_EH_SINGLE_KEYS.has(e.key.toLowerCase())) return;
             if (Lib.settings.sa_block_eh_single_keys === false) return;
-            const root = document.documentElement;
-            if (root.hasAttribute('data-mbu-dock')) return;
-            if (!document.getElementById('eh-launch') && !root.hasAttribute('data-mbu-st')) return;
+            if (!_ehPresentOffView()) return;
             const t = e.target;
             if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
             e.preventDefault();
             Lib.debug('shortcuts', `Event Horizon's single key "${e.key}" ignored on MusicBrainz's page (sa_block_eh_single_keys).`);
         }, true);
+    }
+
+    /**
+     * Whether majkinetor's Event Horizon is on this page (its launcher
+     * `#eh-launch`, or String Theory's mark `<html data-mbu-st>`) while
+     * MusicBrainz's own page shows — its view not up (`<html data-mbu-dock>`
+     * absent). The condition under which `_ehKeyGuardInstall()` takes keys
+     * from it.
+     *
+     * @returns {boolean}
+     */
+    function _ehPresentOffView() {
+        const root = document.documentElement;
+        if (root.hasAttribute('data-mbu-dock')) return false;
+        return !!document.getElementById('eh-launch') || root.hasAttribute('data-mbu-st');
+    }
+
+    /**
+     * This script's side of the conventions agreed with majkinetor in #938
+     * (upstream 9e4cdd59, DEVELOP.md "Interoperability" and Event Horizon's
+     * "External menu items"), MusicBrainz only:
+     *   - `tableShown`: a table was rendered or loaded from disk on this page
+     *     (`_mbuTableShown()`);
+     *   - `quietUserShown`: the ☰ row asked for the corner launchers back for
+     *     this page view (`_mbuQuietSync()`);
+     *   - `menu`: the launchers registered for Event Horizon's More (⋯) menu,
+     *     by id (`_ehMenuSync()`);
+     *   - `observing`: the `<html>` attribute observer is installed.
+     * Declared before the init code that first uses it (no TDZ).
+     */
+    const _mbuInterop = { tableShown: false, quietUserShown: false, menu: new Map(), observing: false };
+
+    /** sessionStorage key of a pending "press this button" handoff from Event Horizon's menu. */
+    const _EH_HANDOFF_KEY = 'sa_eh_handoff';
+
+    /** How long a handoff record stays good: the reload Event Horizon does in between takes a second or two. */
+    const _EH_HANDOFF_TTL_MS = 60000;
+
+    /**
+     * Installs, once, the `<html>` attribute observer behind the #938
+     * conventions: Event Horizon toggles `data-mbu-dock` (its view shows) and
+     * writes `data-mbu-page` (the path it shows) on `<html>`, which survives
+     * its body swaps. Every change re-derives the menu launchers and the quiet
+     * mark. Only those two attributes are observed, so our own
+     * `data-mbu-quiet` write cannot loop back here.
+     *
+     * @returns {void}
+     */
+    function _ehInteropObserve() {
+        if (_mbuInterop.observing || _foreignHost) return;
+        _mbuInterop.observing = true;
+        new MutationObserver(() => { _ehMenuSync(); _mbuQuietSync(); })
+            .observe(document.documentElement, { attributes: true, attributeFilter: ['data-mbu-dock', 'data-mbu-page'] });
+    }
+
+    /**
+     * Page init on MusicBrainz: the observer, the menu launchers for what
+     * Event Horizon shows now, and a pending handoff from before a reload.
+     *
+     * @returns {void}
+     */
+    function _ehMenuInstall() {
+        if (_foreignHost) return;
+        _ehInteropObserve();
+        _ehMenuSync();
+        _ehHandoffResume();
+    }
+
+    /**
+     * Called from the render tail (a fetched render and a load from disk):
+     * from now on a table of ours is on MusicBrainz's page, so the quiet mark
+     * may go up (`_mbuQuietSync()`).
+     *
+     * @returns {void}
+     */
+    function _mbuTableShown() {
+        if (_foreignHost) return;
+        _mbuInterop.tableShown = true;
+        _ehInteropObserve();
+        _mbuQuietSync();
+    }
+
+    /**
+     * The quiet mark, `<html data-mbu-quiet="saed">` (#938, convention C4):
+     * majkinetor's shared corner code then hides every `[data-mb-corner]`
+     * launcher, the dock and its shelf (`visibility: hidden`), which sat over
+     * our table's bottom right corner. Up while a table of ours shows on
+     * MusicBrainz's page and `sa_mbu_quiet_corner` is on; down while Event
+     * Horizon's view shows (its launchers are its business there) and after
+     * the ☰ row "Show corner launchers". The protocol: the value names the
+     * owner, and a mark is removed only while its value is still ours —
+     * another script's quiet mark is left alone, and never overwritten.
+     * Repaints the ☰ row too.
+     *
+     * @returns {void}
+     */
+    function _mbuQuietSync() {
+        if (_foreignHost) return;
+        const root = document.documentElement;
+        const want = _mbuInterop.tableShown && Lib.settings.sa_mbu_quiet_corner !== false &&
+            !_mbuInterop.quietUserShown && !root.hasAttribute('data-mbu-dock');
+        if (want && !root.hasAttribute('data-mbu-quiet')) root.setAttribute('data-mbu-quiet', 'saed');
+        else if (!want && root.getAttribute('data-mbu-quiet') === 'saed') root.removeAttribute('data-mbu-quiet');
+        _mbuQuietRowPaint();
+    }
+
+    /**
+     * The ☰ SAED View row that shows or hides the corner launchers for this
+     * page view (#938: a script that sets the quiet mark offers its own way
+     * back). Created once a table is shown and `sa_mbu_quiet_corner` is on,
+     * and only when one of majkinetor's scripts is there (a
+     * `[data-mb-corner]` launcher or `<html data-mbu-st>`); its label follows
+     * the state.
+     *
+     * @returns {void}
+     */
+    function _mbuQuietRowPaint() {
+        let btn = document.getElementById('mb-mbu-quiet-btn');
+        if (!btn) {
+            if (!_mbuInterop.tableShown || Lib.settings.sa_mbu_quiet_corner === false) return;
+            if (!document.getElementById('mb-show-all-controls-container')) return;
+            if (!document.querySelector('[data-mb-corner]') && !document.documentElement.hasAttribute('data-mbu-st')) return;
+            btn = document.createElement('button');
+            btn.id = 'mb-mbu-quiet-btn';
+            btn.type = 'button';
+            btn.style.cssText = uiActionBtnBaseCSS();
+            btn.onclick = () => {
+                _mbuInterop.quietUserShown = !_mbuInterop.quietUserShown;
+                _mbuQuietSync();
+            };
+            _ensureViewMenu().adopt(btn);
+        }
+        const shown = _mbuInterop.quietUserShown;
+        const html = shown ? '<span>🙈 Hide corner launchers</span>' : '<span>👁️ Show corner launchers</span>';
+        if (btn.innerHTML !== html) btn.innerHTML = html;
+        _setTip(btn, shown
+            ? "Hide String Theory's corner launchers and dock again while this table is shown"
+            : "Show String Theory's corner launchers and dock over this table again (for this page; the setting is \"Hide String Theory's corner launchers while a table is shown\")");
+    }
+
+    /**
+     * The `pageDefinitions` entry for a path, as the page-type detection picks
+     * it: the first whose `match()` accepts it, among this host's entries only
+     * (`host`, `_foreignHost`).
+     *
+     * @param {string} path - A pathname.
+     * @param {URLSearchParams} params - Its query.
+     * @returns {?object} The definition, or null.
+     */
+    function _pageDefForPath(path, params) {
+        for (const def of pageDefinitions) {
+            if ((def.host || null) !== _foreignHost) continue;
+            if (def.match(path, params)) return def;
+        }
+        return null;
+    }
+
+    /**
+     * This script's launchers in Event Horizon's More (⋯) menu (#938,
+     * upstream 9e4cdd59, Event Horizon's DEVELOP.md "External menu items"):
+     * hidden `button[data-mbu-menu-item][data-mbu-menu-title]` elements
+     * directly under `<html>` (so they survive its body swaps), which Event
+     * Horizon projects into its header menus and `.click()`s on a selection.
+     *
+     * Registered only while Event Horizon's view shows, and only for a page
+     * this script supports — decided from the path Event Horizon SHOWS
+     * (`<html data-mbu-page>`), never from MusicBrainz's hidden body, which
+     * after an in-view navigation is still the page the tab loaded:
+     *   - `saed:open` "Open in ShowAllEntityData": what V does;
+     *   - `saed:btn:<i>` "SAED: <label>", one per button of that page's
+     *     definition: V, then that button (`_ehHandoff()`). A button whose
+     *     `showIf` turns out false on the page leaves just the page.
+     * Kept in place across changes (Event Horizon observes the attributes);
+     * removed when its view goes or the page is not one of ours.
+     *
+     * @returns {void}
+     */
+    function _ehMenuSync() {
+        if (_foreignHost) return;
+        const root = document.documentElement;
+        const want = new Map();
+        const page = root.getAttribute('data-mbu-page');
+        if (root.hasAttribute('data-mbu-dock') && page) {
+            let def;
+            try {
+                const url = new URL(page, location.origin);
+                def = _pageDefForPath(url.pathname, url.searchParams);
+            } catch (err) {
+                def = null;   // not a path we can read: no launchers
+            }
+            if (def) {
+                want.set('saed:open', { title: `Open in ${SCRIPT_BASE_NAME}`, idx: -1 });
+                (def.buttons || []).forEach((b, i) => {
+                    if (b && b.label) want.set(`saed:btn:${i}`, { title: `SAED: ${b.label}`, idx: i });
+                });
+            }
+        }
+        for (const [id, el] of _mbuInterop.menu) {
+            if (!want.has(id)) { el.remove(); _mbuInterop.menu.delete(id); }
+        }
+        for (const [id, w] of want) {
+            let el = _mbuInterop.menu.get(id);
+            if (!el) {
+                el = document.createElement('button');
+                el.type = 'button';
+                el.hidden = true;
+                el.setAttribute('data-mbu-menu-item', id);
+                el.addEventListener('click', () => _ehHandoff(el));
+                root.appendChild(el);
+                _mbuInterop.menu.set(id, el);
+            }
+            if (el.getAttribute('data-mbu-menu-title') !== w.title) el.setAttribute('data-mbu-menu-title', w.title);
+            el.dataset.mbDefIdx = String(w.idx);
+        }
+    }
+
+    /**
+     * A launcher chosen in Event Horizon's menu: switch to MusicBrainz's page
+     * as V does — a click on Event Horizon's own launcher, `#eh-launch`
+     * (`switchOn(!ehOn)`; instant on the page the tab loaded, a reload into
+     * MusicBrainz's page of the shown path after an in-view navigation, and
+     * Event Horizon remembers "off" for later pages, as with V). For a button
+     * launcher, a sessionStorage record (`_EH_HANDOFF_KEY`: the page, the
+     * button's index in its definition, the time) first, which
+     * `_ehHandoffResume()` honours right away when no reload happened, or on
+     * the reloaded page.
+     *
+     * @param {HTMLButtonElement} el - One of `_ehMenuSync()`'s launchers.
+     * @returns {void}
+     */
+    function _ehHandoff(el) {
+        const root = document.documentElement;
+        const idx = Number(el.dataset.mbDefIdx);
+        const page = root.getAttribute('data-mbu-page') || (location.pathname + location.search);
+        if (idx >= 0) {
+            try {
+                sessionStorage.setItem(_EH_HANDOFF_KEY, JSON.stringify({ page, idx, at: Date.now() }));
+            } catch (err) { /* no sessionStorage: the page shows, the button stays unpressed */ }
+        }
+        const launch = document.getElementById('eh-launch');
+        if (!launch) {
+            Lib.warn('init', "Event Horizon's launcher (#eh-launch) not found — cannot switch to MusicBrainz's page.");
+            return;
+        }
+        Lib.debug('init', `Event Horizon menu: ${el.getAttribute('data-mbu-menu-title')} (${page}).`);
+        launch.click();
+        if (!root.hasAttribute('data-mbu-dock')) _ehHandoffResume();
+    }
+
+    /**
+     * Honours a pending handoff (`_ehHandoff()`): when the record is for THIS
+     * page (path and query) and younger than `_EH_HANDOFF_TTL_MS`, presses
+     * that button (`data-mb-def-idx`) once MusicBrainz's page shows and the
+     * button exists — retried for a few seconds, since at page init the
+     * buttons are built after this runs. The record is removed either way,
+     * so it never fires twice or on another page.
+     *
+     * @param {number} [tries] - Retries so far.
+     * @returns {void}
+     */
+    function _ehHandoffResume(tries = 0) {
+        let rec;
+        try {
+            rec = JSON.parse(sessionStorage.getItem(_EH_HANDOFF_KEY) || 'null');
+        } catch (err) {
+            rec = null;   // no sessionStorage, or not our JSON: nothing pending
+        }
+        if (!rec) return;
+        const drop = () => { try { sessionStorage.removeItem(_EH_HANDOFF_KEY); } catch (err) { /* nothing to drop */ } };
+        if (!(Date.now() - rec.at <= _EH_HANDOFF_TTL_MS) || rec.page !== location.pathname + location.search) {
+            drop();
+            return;
+        }
+        const btn = document.documentElement.hasAttribute('data-mbu-dock') ? null
+            : _saBody().querySelector(`button[data-mb-def-idx="${Number(rec.idx)}"]`);
+        if (!btn) {
+            if (tries < 25) setTimeout(() => _ehHandoffResume(tries + 1), 200);
+            else drop();
+            return;
+        }
+        drop();
+        Lib.debug('init', `Event Horizon menu handoff: pressing "${btn.dataset.label || ''}".`);
+        btn.click();
     }
 
     /**
@@ -97279,22 +97639,23 @@ a { color: #1565c0; }`;
     let lastClickedButtonLabel = null; // Label of the last button clicked — used for filename slug in saveTableDataToDisk
     let _cachedEntityName = '';       // Entity name extracted from h1 at init time (before any DOM mutation)
 
-    for (const def of pageDefinitions) {
-        // A definition with a `host` belongs to that site alone, and on a
-        // non-MusicBrainz host only such definitions are considered — so the
-        // broad MusicBrainz matchers (`includes('/label')`, `'/search'`, …)
-        // can never claim a springsteenlyrics.com, jungleland.it or
-        // brucespringsteen.it path, and those sites' definitions can never
-        // match on MusicBrainz (or on each other's host).
-        if ((def.host || null) !== _foreignHost) continue;
-        if (def.match(path, params)) {
+    // A definition with a `host` belongs to that site alone, and on a
+    // non-MusicBrainz host only such definitions are considered — so the
+    // broad MusicBrainz matchers (`includes('/label')`, `'/search'`, …) can
+    // never claim a springsteenlyrics.com, jungleland.it or
+    // brucespringsteen.it path, and those sites' definitions can never match
+    // on MusicBrainz (or on each other's host). First match wins (priority
+    // by array order). _pageDefForPath() is shared with Event Horizon's menu
+    // launchers (_ehMenuSync()).
+    {
+        const def = _pageDefForPath(path, params);
+        if (def) {
             pageType = def.type;
             baseDefinition = def;   // Save the base reference
             activeDefinition = def; // Set default active definition
             // Add debug logs for tablemode and pagetype at the beginning of execution
             Lib.debug('init', `Detected pageType: ${pageType}`);
             Lib.debug('init', `Detected tableMode: ${activeDefinition ? activeDefinition.tableMode : 'unknown'}`);
-            break; // Stop at first match (priority based on array order)
         }
     }
 
@@ -97463,7 +97824,12 @@ a { color: #1565c0; }`;
     // Event Horizon's single-letter keys must not leave MusicBrainz's page,
     // initial or rendered (_ehKeyGuardInstall(); sa_block_eh_single_keys).
     // MusicBrainz only: Event Horizon runs nowhere else.
-    if (!_foreignHost) _ehKeyGuardInstall();
+    if (!_foreignHost) {
+        _ehKeyGuardInstall();
+        // Event Horizon's More (⋯) menu launchers and the #938 marks
+        // (_ehMenuInstall(), _mbuQuietSync()).
+        _ehMenuInstall();
+    }
 
     // Special case: recording page where "Appears on releases" section explicitly
     // states there are no releases.  Nothing to fetch or display, so do not
@@ -97680,6 +98046,9 @@ a { color: #1565c0; }`;
     }
 
     buttonsToRender.forEach((conf, btnIndex) => {
+        // Its index in the definition, before labelFromH2 replaces `conf`:
+        // what Event Horizon's menu launchers name (_ehHandoffResume()).
+        const _defIdx = (activeDefinition.buttons || []).indexOf(conf);
         // A button that opens a group of its own: the same label segment as
         // buttonGroupLabel above, before it, after a heavier rule (discogs.com's
         // label page: "Newest" 500 1,000 5,000 "Oldest" 500 1,000 "Then" All).
@@ -97903,6 +98272,7 @@ a { color: #1565c0; }`;
 
         // Pass the entire config object
         eb.dataset.label = conf.label;  // stable original label — survives superscript/textContent mutations
+        if (_defIdx >= 0) eb.dataset.mbDefIdx = String(_defIdx);
         // While its fetch runs the segment is the Stop button (`_saedRunStart()`).
         eb.onclick = (e) => {
             if (_saedRun && _saedRun.btn === eb) {
@@ -107158,6 +107528,25 @@ a { color: #1565c0; }`;
         const page = document.getElementById('page');
         _saBody._el = (page && page.closest('body')) || null;
         return _saBody._el || document.body;
+    }
+
+    /**
+     * Marks a table this script rendered as ours to majkinetor's scripts:
+     * `data-mbu-foreign="saed"`, the shared convention agreed in #938
+     * (upstream 9e4cdd59, DEVELOP.md "Interoperability"). ISRC Scout then
+     * leaves its columns and colspans alone there (`fillTrackData()` /
+     * `showTrackData()` no longer re-add bare cells into our tables or wipe
+     * our rebuilt ones), and the shared `#mbu-tip` handler ignores the
+     * region. Per table, never on a container that still holds native rows
+     * ("the marker protects a rendered copy, not its native source").
+     * MusicBrainz only; an attribute, so a cloned or reused table keeps it.
+     *
+     * @param {?HTMLTableElement} table - A table the render fills.
+     * @returns {void}
+     */
+    function _markForeignTable(table) {
+        if (!table || _foreignHost) return;
+        if (table.getAttribute('data-mbu-foreign') !== 'saed') table.setAttribute('data-mbu-foreign', 'saed');
     }
 
     /**
@@ -121455,6 +121844,8 @@ a { color: #1565c0; }`;
             addCacheOverviewButton();
             // 🗄️ Script storage, right below it
             addGmStoreButton();
+            // The #938 quiet corner mark (data-mbu-quiet) may go up now.
+            _mbuTableShown();
 
             // Initialize keyboard shortcuts
             if (Lib.settings.sa_enable_keyboard_shortcuts) {
@@ -123195,6 +123586,7 @@ a { color: #1565c0; }`;
         tbody.innerHTML = '';
 
         const table = tbody.closest('table');
+        _markForeignTable(table);
         const thCount = table?.querySelectorAll('thead th')?.length || 0;
         const tdCount = rows[0]?.cells?.length || 0;
 
@@ -124912,6 +125304,7 @@ a { color: #1565c0; }`;
 
                 table = document.createElement('table');
                 table.className = 'tbl';
+                _markForeignTable(table);
                 // Apply indentation to the table to match the sub-header
                 table.style.marginLeft = '1.5em';
                 table.style.width = 'calc(100% - 1.5em)';
@@ -151848,6 +152241,8 @@ a { color: #1565c0; }`;
             addCacheOverviewButton();
             // 🗄️ Script storage, right below it
             addGmStoreButton();
+            // The #938 quiet corner mark (data-mbu-quiet) may go up now.
+            _mbuTableShown();
 
             // Initialize keyboard shortcuts (if not already initialized)
             if (Lib.settings.sa_enable_keyboard_shortcuts) {

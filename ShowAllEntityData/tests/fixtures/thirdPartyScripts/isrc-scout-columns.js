@@ -13,26 +13,41 @@
  *     holding isrcHtml(): <span class="ii-isrcf"> with four <span>s for a
  *     valid code, the plain code otherwise.
  *   - The Links cell: <div class="ii-trk-lns"> of
- *     <a class="ii-trk-ln[ ended]" title="<Platform>[ (ended)] · <url>"> with
- *     an inline <svg>, and <sup class="ii-trk-n">N</sup> for a platform with
- *     N > 1 links (title "<Platform> · N links\n<url>…").
+ *     <a class="ii-trk-ln[ ended]"> with an inline <svg>, and
+ *     <sup class="ii-trk-n">N</sup> for a platform with N > 1 links. Its
+ *     hover text in one of three generations (config `markup`):
+ *       'title'    (2026.10.16, default): title="<Platform>[ (ended)] · <url>",
+ *                  "<Platform> · N links\n<url>…";
+ *       'data-tip' (2026.11.06): data-tip="<Platform>[ (ended)]\n<url>",
+ *                  "<Platform> — N links\n- <url>…", no title;
+ *       'meta'     (9e4cdd59, #938): 'data-tip' plus data-ii-platform and
+ *                  data-ii-ended="true|false".
  *   - fillTrackData()'s MutationObserver (documentElement, subtree, one rAF
  *     per burst): any such table's 'tr.subh' or 'tbody > tr:not(.subh)'
  *     WITHOUT a ':scope > .ii-col' child gets fresh cells. This is why
  *     ShowAllEntityData keeps the 'ii-col' classes on the cells it rebuilds.
  *
- * Not simulated: showTrackData()'s wipe-and-re-add (the race documented in
- * docs/claude/release-tracks-and-length.md), the h1 button, the modal and
- * every network call.
+ *   - showTrackData()'s wipe-and-re-add (the race documented in
+ *     docs/claude/release-tracks-and-length.md): window.__isrcScoutShowTrackData()
+ *     removes every .ii-col, restores every th[data-ii-colspan], then fills.
+ *   - With `honoursForeign` (9e4cdd59, #938): fillTrackData() skips a table
+ *     inside [data-mbu-foreign], and the wipe leaves .ii-col cells and
+ *     colspans there alone.
+ *
+ * Not simulated: the h1 button, the modal, the #mbu-tip hover and every
+ * network call.
  *
  * Config (window.__thirdPartySim):
  *   { tracks: { <trackMbid>: { isrcs: ['USSM10501304', …],
- *                              links: [{ name, url, n?, ended? }, …] } } }
+ *                              links: [{ name, url, n?, ended? }, …] } },
+ *     markup?: 'title' | 'data-tip' | 'meta', honoursForeign?: boolean }
  */
 (function () {
     'use strict';
     const cfg = window.__thirdPartySim || {};
     const tracks = cfg.tracks || {};
+    const markup = cfg.markup || 'title';
+    const foreign = (el) => !!(cfg.honoursForeign && el.closest('[data-mbu-foreign]'));
     const ISRC_RE = /^[A-Z]{2}[A-Z0-9]{3}\d{2}\d{5}$/;
 
     const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -49,11 +64,22 @@
             '<a class="ii-trk-isrc" href="/isrc/' + esc(c) + '">' + isrcHtml(c) + '</a>').join('') : '';
         const links = t ? (t.links || []).map((l) => {
             const n = l.n || 1;
-            const tip = n === 1
-                ? l.name + (l.ended ? ' (ended)' : '') + ' · ' + l.url
-                : l.name + ' · ' + n + ' links\n' + Array.from({ length: n }, (_, i) => l.url + '#' + i).join('\n');
+            const urls = Array.from({ length: n }, (_, i) => l.url + '#' + i);
+            let attrs;
+            if (markup === 'title') {
+                const tip = n === 1
+                    ? l.name + (l.ended ? ' (ended)' : '') + ' · ' + l.url
+                    : l.name + ' · ' + n + ' links\n' + urls.join('\n');
+                attrs = ' title="' + esc(tip) + '"';
+            } else {
+                const tip = n === 1
+                    ? l.name + (l.ended ? ' (ended)' : '') + '\n' + l.url
+                    : l.name + ' — ' + n + ' links\n' + urls.map((u) => '- ' + u + (l.ended ? ' (ended)' : '')).join('\n');
+                attrs = ' data-tip="' + esc(tip) + '"';
+                if (markup === 'meta') attrs += ' data-ii-platform="' + esc(l.name) + '" data-ii-ended="' + !!l.ended + '"';
+            }
             return '<a class="ii-trk-ln' + (l.ended ? ' ended' : '') + '" href="' + esc(l.url) +
-                '" target="_blank" rel="noopener" style="color:#1DB954" title="' + esc(tip) + '">' +
+                '" target="_blank" rel="noopener" style="color:#1DB954"' + attrs + '>' +
                 '<svg viewBox="0 0 24 24" fill="#1DB954" xmlns="http://www.w3.org/2000/svg" width="16" height="16">' +
                 '<circle cx="12" cy="12" r="10"></circle></svg>' +
                 (n > 1 ? '<sup class="ii-trk-n">' + n + '</sup>' : '') + '</a>';
@@ -89,6 +115,7 @@
             if (tb) tables.add(tb);
         });
         tables.forEach((tb) => {
+            if (foreign(tb)) return;
             tb.querySelectorAll('tr.subh').forEach((tr) => {
                 if (!tr.querySelector(':scope > .ii-col')) addCols(tr, 'th', ['ISRC', 'Links'], ['ii-col-isrc', 'ii-col-links']);
             });
@@ -101,6 +128,17 @@
             });
         });
     }
+
+    function showTrackData() {
+        document.querySelectorAll('.ii-col').forEach((el) => { if (!foreign(el)) el.remove(); });
+        document.querySelectorAll('th[data-ii-colspan]').forEach((th) => {
+            if (foreign(th)) return;
+            th.colSpan = +th.dataset.iiColspan;
+            delete th.dataset.iiColspan;
+        });
+        fillTrackData();
+    }
+    window.__isrcScoutShowTrackData = showTrackData;
 
     function start() {
         fillTrackData();

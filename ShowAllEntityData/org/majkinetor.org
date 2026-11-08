@@ -508,19 +508,23 @@ below says *who fixes it*:
 Even when upstream fixes something, keep a defensive fix on our side when users can run an older String Theory:
 it updates on Tampermonkey's schedule, and some people install single members.
 
-**** Proposed shared conventions
+**** Shared conventions (agreed in #938)
 
-These are a few =<html>= and element attributes. Each is cheap for both sides and in the =data-mbu-*= style his
-scripts already use.
+Proposed in #938 (2026-11-06); majkinetor answered point by point and his bot implemented them on branch
+=codex/interop-938=, commit [[https://github.com/majkinetor/musicbrainz-userscripts/commit/9e4cdd5961909cd8e33131ac8688a5e9e083b342][9e4cdd59]]
+(2026-11-08; *not on =main= yet*, 1 ahead of / 10 behind it when read). Contracts: its DEVELOP.md
+"Interoperability" and "Shared request-gate protocol", EH's DEVELOP.md "External menu items", ISRC Scout's
+DEVELOP.md "Track-link metadata". Names as implemented; the value of a page-wide flag is the owner's name, a flag
+is removed only while its value is still ours, and the setter offers its own way back.
 
-| #  | Convention                                                                                                           | Who sets it               | Who honours it                                                                                                  | Fixes (TODO below)                                     |
-|----+----------------------------------------------------------------------------------------------------------------------+---------------------------+-----------------------------------------------------------------------------------------------------------------+--------------------------------------------------------|
-| C1 | =data-mbu-foreign="saed"= on a region another script renders (our FRP section / every =table.tbl= we build)          | SAED                      | his scripts skip it: ISRC Scout's =fillTrackData()= / =showTrackData()=, the =#mbu-tip= hover, other decorators | columns re-added on the FRP; =#mbu-tip= over our table |
-| C2 | Stable data attributes on ISRC Scout's link icons: =data-ii-platform="Spotify"=, =data-ii-ended=, the URL(s)         | ISRC Scout                | SAED reads them instead of parsing tip text                                                                     | Links platform from =data-tip=                         |
-| C3 | =<html data-mbu-keys-off>= while another app owns the keyboard (our FRP shown)                                       | SAED                      | EH's single-key commands (and anything else that binds bare keys) yield                                         | EH's bare-letter keys leave our FRP                    |
-| C4 | =<html data-mbu-quiet>= while another app wants the corner                                                           | SAED                      | =mbRestackCorner= / =mbuDock= hide every launcher and the dock (what MC does for itself)                        | corner launchers over our FRP                          |
-| C5 | =<html data-saed="<version>">= plus =data-saed-page="<pageType>"= when SAED has a pageType for the page              | SAED                      | EH can show an "Open in SAED" action in its view (switch off + reload, as V does)                               | a way back to SAED from EH                             |
-| C6 | The =mbu:mb-gate= localStorage format (=dev/net/mb-gate.mjs=) as a stable, documented protocol, with a version field | majkinetor (documents it) | SAED books its ws/2 there                                                                                       | join the request gate                                  |
+| #  | Convention (as implemented)                                                                           | Who sets it | Who honours it (9e4cdd59)                                                                                  | Status on our side (2026-11-08)                                                                                                   |
+|----+-------------------------------------------------------------------------------------------------------+-------------+------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------|
+| C1 | =data-mbu-foreign="saed"= on a rendered table                                                         | SAED        | ISRC Scout's =fillTrackData()= / =showTrackData()= (insert, wipe, colspans); the shared =mbuTipFind()=      | *adopted* (WIP.4, =_markForeignTable()=): every =table.tbl= a render builds                                                       |
+| C2 | =a.ii-trk-ln[data-ii-platform][data-ii-ended="true\|false"]=                                          | ISRC Scout  | SAED reads it instead of tip text                                                                          | *adopted* (WIP.3, =_isrcScoutLinkPlatform()=): metadata, then =data-tip=, then =title=                                           |
+| C3 | =<html data-mbu-keys-off="saed">=                                                                     | SAED        | EH's keydown returns early: *every* command, V and Ctrl+L included                                        | *not adopted*: it would take V. =_ehKeyGuardInstall()= stays; asked to keep V working under it (reply)                          |
+| C4 | =<html data-mbu-quiet="saed">=                                                                        | SAED        | =mbRestackCorner()=: =[data-mb-corner]= and =#mbu-dock-shelf= =visibility:hidden=                         | *adopted* (WIP.5, =_mbuQuietSync()=, =sa_mbu_quiet_corner=, ☰ row)                                                              |
+| C5 | /dropped/ ("no SAED-specific detection"); replaced by EH's More (⋯) menu protocol: hidden =button[data-mbu-menu-item][data-mbu-menu-title]= under =<html>= | SAED | EH projects it into its header menus and =.click()=s it; =disabled= hides it                              | *adopted* (WIP.6, =_ehMenuSync()=, =_ehHandoff()=): "Open in ShowAllEntityData" + one item per button                           |
+| C6 | =mbu:mb-gate= *version 1* (=version=, =tat=, =cool=, =hot=, =lead=, =leadUntil=; Web Lock =mbu-mb-gate=) | majkinetor (documents it) | SAED books its ws/2 there                                                                                  | open: a later round (TODO "Join majkinetor's cross-tab request gate")                                                           |
 
 **** Posts to majkinetor (for you to post; not posted anywhere)
 
@@ -547,12 +551,24 @@ both with the greeting "Hi Miodrag - @majkinetor,". Both files are now the recor
 new comments on #938, drafted in a new file here. One sentence of the #839 comment overstates SAED's current state: it
 says SAED "re-reads them on your =is:counts-changed= event", which is only planned, as its next paragraph says.
 Edit the comment if you like. Each file's top heading says whether it was posted (=TODO Post:= / =DONE= plus the URL).
-The refresh skill keeps both current. When majkinetor answers, write the agreed attribute names into "Proposed
-shared conventions" and the TODOs, so both sides use the same spelling.
+The refresh skill keeps both current. When majkinetor answers, write the agreed attribute names into "Shared
+conventions" and the TODOs, so both sides use the same spelling.
+
+*After majkinetor's answer (2026-11-08)*, three follow-ups on #938, drafted for vzell (none posted by Claude):
+1. [[file:reply-to-938-ack.org][org/reply-to-938-ack.org]]: a short acknowledgement — implementing against his branch, full reply later.
+2. [[file:reply-to-938-dev-link.org][org/reply-to-938-dev-link.org]]: the install link to SAED's development version (post after the merge to
+   =main=: the link names =main=, and the library =@require= is on GitHub since 2026-11-08).
+3. [[file:reply-to-938-answer.org][org/reply-to-938-answer.org]]: the full reply.
 
 *** Refresh log
 
 Newest first; one entry per refresh (refresh-majkinetor skill).
+
+- 2026-11-08 16:30–17:30 CET: majkinetor's answer on #938 and milic-bot's =9e4cdd59= on =codex/interop-938= (read via
+  the GitHub API; the clone, the harness copies and the anchors were not refreshed, so "Analysis" still describes
+  =65032ef=). vzell runs String Theory from that branch. Adopted C1, C2, C4 and the EH menu protocol (WIP.3–WIP.6);
+  C3 deliberately not (it takes V); C6 later. Conventions table and TODOs updated; three replies drafted (see
+  "Posts to majkinetor").
 
 - 2026-11-08 13:39–13:47 CET: =1df6193= → =65032ef= (2026-11-08T13:36:03+01:00). ST 2026.11.06.130902 →
   2026.11.08.133602, EH 2026.11.06.170000 → 2026.11.08.131500, ISRC Scout 2026.11.06.170000 → 2026.11.08.122500;
@@ -614,7 +630,13 @@ Newest first; one entry per refresh (refresh-majkinetor skill).
 - Re-copy the file from upstream (or from your Tampermonkey) whenever you update ISRC Scout, then say "re-scan" —
   the =touches= are version-specific.
 
-** TODO ISRC Scout "Links": read the platform from =data-tip= (bug, measured)
+** DONE ISRC Scout "Links": read the platform from =data-tip= (bug, measured)
+CLOSED: [2026-11-08 Sun]
+
+- *Done* (branch =docs/majkinetor-refresh-2026-11-08=, WIP.3): =_isrcScoutLinkPlatform()= reads =data-ii-platform=
+  (C2, upstream 9e4cdd59) first, then the first line of =data-tip=, then the old =title=. Simulator option =markup=
+  (='title'= / ='data-tip'= / ='meta'=); =release-tracks-isrc-scout.spec.js= runs the platform, filter and card
+  assertions for all three, plus "the metadata wins over the tip wording"; mutations in =isrc-scout-column.json=.
 
 - *Who fixes it*: *ours* now (read =title= or =data-tip=, so old and new ISRC Scout both work); *upstream* for the long
   run: convention C2 (=data-ii-platform=), then we read that first.
@@ -638,7 +660,12 @@ Newest first; one entry per refresh (refresh-majkinetor skill).
 - *Docs*: =docs/claude/release-tracks-and-length.md:861= ("from its =title=") and the ISRC Scout paragraph in
   =docs/claude/uniq-dropdown.md=.
 
-** TODO ISRC Scout "Links": no =#mbu-tip= over our table (moved from org/TODO.org)
+** DONE ISRC Scout "Links": no =#mbu-tip= over our table (moved from org/TODO.org)
+CLOSED: [2026-11-08 Sun]
+
+- *Done* both ways (WIP.3/WIP.4): upstream 9e4cdd59's =mbuTipFind()= ignores =[data-mbu-foreign]=, which our tables
+  carry; for an older ISRC Scout =_normalizeIsrcScoutLinksTd()= moves =data-tip= to =data-mb-ii-tip= and gives the
+  icon our own card (=_setTip()=, =_isrcScoutLinkTip()=).
 
 - *Who fixes it*: *upstream* preferred: convention C1, =mbuTip= skips =[data-tip]= inside =[data-mbu-foreign]=. *Ours* as fallback: move =data-tip= on our copies.
 
@@ -653,6 +680,11 @@ Newest first; one entry per refresh (refresh-majkinetor skill).
   - Prediction: a dark ISRC Scout tip with "Deezer\nhttps://…", possibly overlapping our card.
 
 ** TODO ISRC Scout columns re-added bare on our FRP (moved from org/TODO.org, cause found)
+
+- *Status 2026-11-08*: closed *upstream* for ISRC Scout ≥ 9e4cdd59 (C1: our tables carry =data-mbu-foreign="saed"=,
+  WIP.4; spec "ISRC Scout and data-mbu-foreign", simulator =honoursForeign=). Open only as the *defence* for older
+  ISRC Scout: option (a) below. With the new one, pressing Tracks too early gives a table without its columns (it
+  no longer adds them); a hint on =is:counts-changed= was dropped, as nothing tells "late" from "switched off".
 
 - *Upstream issue*: vzell's [[https://github.com/majkinetor/musicbrainz-userscripts/issues/839][#839]] (open,
   2026-10-26). majkinetor answered that he will look at it once his current upgrades are done. The cause and
@@ -792,6 +824,12 @@ CLOSED: [2026-11-08 Sun]
   - Browser check by vzell, 2026-11-08: OK (=h= does nothing on MusicBrainz's page; after a render, V → =h= → V gives
     the browser's "Leave site?" prompt; browser and Tampermonkey versions not recorded).
 
+- *Re-checked 2026-11-08 against 9e4cdd59* (task 1b): still necessary, unchanged. EH now honours
+  =<html data-mbu-keys-off>=, but it suspends every EH command, V and Ctrl+L included, so setting it on MusicBrainz's
+  page would take V, the handoff vzell confirmed works perfectly. The guard also covers EH without the mark (main,
+  older installs). Gap found: Ctrl+L, fixed in the same capture listener (WIP.6; see "Shortcut clashes"). The reply
+  asks to keep V working under keys-off; then we can set it and cover keys rebound in EH's palette too.
+
 - *Who fixes it*: *ours* is enough: EH already honours =defaultPrevented=. *Convention* C3 (=<html data-mbu-keys-off>=)
   is the clearer long-term form; ask for it in the same message.
 
@@ -813,6 +851,12 @@ CLOSED: [2026-11-08 Sun]
 - *Alternative*: ask majkinetor for a page mark, e.g. =<html data-mbu-keys-off>=, which EH would honour.
 
 ** TODO Shortcut clashes with String Theory / EH: Ctrl+K, Ctrl+L, the typing guard
+
+- *Ctrl+L done* (2026-11-08, WIP.6): =_ehKeyGuardInstall()='s capture listener calls =preventDefault()= for our
+  =sa_shortcut_load_from_disk= when =sa_enable_direct_ctrl_char_shortcuts= is on, EH is there and its view not shown;
+  =initKeyboardShortcuts()= does not check =defaultPrevented=, so ours still runs. With direct shortcuts off (the
+  default) our Ctrl+L does nothing and the key stays EH's. Tests: =eh-interop-markers.spec.js= "Ctrl+L with Event
+  Horizon". Ctrl+K and the typing guard stay open.
 
 - *Who fixes it*: *ours*: Ctrl+L =preventDefault= in capture, and the typing guard. Ctrl+K: String Theory's palette
   hotkey can be changed, or the palette switched off, in String Theory's settings → "Command palette" → Hotkey
@@ -837,7 +881,14 @@ CLOSED: [2026-11-08 Sun]
   - EH installed; visit another page and come back (so there is a "forward"); FRP; press Ctrl+L. Prediction: our
     load dialog *and* a forward navigation.
 
-** TODO Corner launchers over our FRP; our toasts under them (moved from org/TODO.org)
+** DONE Corner launchers over our FRP; our toasts under them (moved from org/TODO.org)
+CLOSED: [2026-11-08 Sun]
+
+- *Done* (WIP.5): C4 as implemented, =<html data-mbu-quiet="saed">= while a table of ours shows on MusicBrainz's page,
+  never while EH's view shows (=_mbuQuietSync()=); setting =sa_mbu_quiet_corner= (on, 🎨 UI FEATURES); ☰ View row
+  "Show/Hide corner launchers" (=#mb-mbu-quiet-btn=, only with a majkinetor script on the page). Our toasts are not
+  tagged =data-mb-corner= (the mark would hide them too). Spec =eh-interop-markers.spec.js=, mutations
+  =eh-interop-markers.json=.
 
 - *Who fixes it*: *convention* C4 preferred (=<html data-mbu-quiet>=, honoured by =mbuDock= / =mbRestackCorner= for
   every launcher), instead of our CSS having to track their ids. *Ours*: tag our toasts =data-mb-corner=.
@@ -854,7 +905,14 @@ CLOSED: [2026-11-08 Sun]
     them above the launchers.
 - *Pre-test*: ST installed, EH off, release page, FRP → look at the bottom right corner.
 
-** TODO A way back to SAED from Event Horizon's view
+** DONE A way back to SAED from Event Horizon's view
+CLOSED: [2026-11-08 Sun]
+
+- *Done* (WIP.6) with EH's More (⋯) menu protocol instead of C5 or a corner launcher: =_ehMenuSync()= registers
+  "Open in ShowAllEntityData" and "SAED: <label>" per button while EH's view shows a page we support (decided from
+  =<html data-mbu-page>= via =_pageDefForPath()=); =_ehHandoff()= clicks =#eh-launch= and presses the button at once
+  or after EH's reload (sessionStorage =sa_eh_handoff=, 60 s, =_ehHandoffResume()=). The "Mind" note below holds: EH
+  remembers "off".
 
 - *Who fixes it*: *both*: convention C5. We set =data-saed= / =data-saed-page=; EH may add "Open in SAED". Until then,
   our own =[data-mb-corner]= launcher (below).
@@ -874,6 +932,13 @@ CLOSED: [2026-11-08 Sun]
 ** TODO Join majkinetor's cross-tab request gate (=mbu:mb-gate=)
 
 - *Who fixes it*: *ours* to implement; *upstream* to keep the protocol stable (C6). Ask for that before we depend on it.
+- *Upstream answer (2026-11-08)*: protocol *version 1*, documented in 9e4cdd59's DEVELOP.md "Shared request-gate
+  protocol": origin-local =localStorage['mbu:mb-gate']= changed under the Web Lock =mbu-mb-gate= (the lock covers only
+  the synchronous read-modify-write); fields =version= (absent = legacy 1), =tat=, =cool=, =hot= (0–6), =lead=,
+  =leadUntil= (≤ 10 s per renewal); gap 1,000 ms, burst 3; background booking =at = max(now, tat − 2000, cool)=,
+  =tat = max(tat, at) + 1000=; writers stamp =version: 1= and preserve unknown fields; an unknown explicit version is
+  rejected without writing. He recommends bundling =mbnFetch= / inlining =MBN_INLINE= (GPL-3: check before copying).
+  Decided with vzell: a separate round.
 
 - *Why*: on a release page with String Theory, ISRC Scout, PC, MC, Fusion, Fuzzy Logic and EH share one ~1 req/s
   ws/2 schedule across tabs and hold together on a 429/503. SAED (Relationships column, previews, Discogs MB column,
@@ -1155,7 +1220,7 @@ please confirm this findings and add it to our list in @org/majkinetor.org
 
 switch to plan mode and then tackle the '** TODO SAED's floating elements survive Event Horizon's body swap (bug, measured)'
 section in @org/majkinetor.org
-** V bug
+** DONE V bug
 
 a.)
 
@@ -1165,7 +1230,7 @@ b.)
 
 when switching with "v" to the EH view and pressing "h" the native browser window about leaving this page popsup - [Image #7]
 
-** act on https://github.com/majkinetor/musicbrainz-userscripts/issues/938
+** DONE act on https://github.com/majkinetor/musicbrainz-userscripts/issues/938
 
 Majkinetor reacted to issue https://github.com/majkinetor/musicbrainz-userscripts/issues/938
 
@@ -1177,8 +1242,8 @@ act on the section "Implemented on codex/interop-938, commit 9e4cdd59." at that 
 
 b.)
 
-check specifically if our "h" key handling in the latest implementation is still valid/neccessary after the latest EH
-additions by majkinetor
+check specifically if our key handling stuff in the latest implementations/commits is still valid/neccessary after the
+latest EH additions by majkinetor, or if we should adjust the implementations
 
 2.)
 
@@ -1188,7 +1253,14 @@ where majkinetor answered and also asks questions
 Also mention in that reply what we already did meanwhile and that pressing "v" on our userscript actually works
 perfectly and correctly switches between ours and EHs view
 
+** DONE I already run the codex/interop-938 branch
 
+I already run the codex/interop-938 branch from majkinetor to test our new implementations.  Create a short reply to
+majkinetors issue already that we are about to implement everything against his branch and answer with a complete reply
+later on
 
+** one more followup
+
+Create one more followup reply with a link to my development userscript version in case majkinetors want to try it
 
 

@@ -858,8 +858,16 @@ load, so the "Tracks" button has to be pressed after they appear
 - **Links** (`_normalizeIsrcScoutLinksTd()`): the icons are inline SVG with no
   text; the only text was the `sup.ii-trk-n` "N links" badge, so the 📊 count
   was the number of distinct badge digits. Each `a.ii-trk-ln` now carries
-  `data-mb-link-platform` (from its `title`, "<Platform> · <url>", without
-  " (ended)") and a hidden `span.mb-ii-link-name`; `.ii-trk-n` is in
+  `data-mb-link-platform` and a hidden `span.mb-ii-link-name`. The platform
+  (`_isrcScoutLinkPlatform()`) comes from three generations of ISRC Scout's
+  markup, newest first: `data-ii-platform` (#938, upstream 9e4cdd59, with
+  `data-ii-ended="true|false"`; "tooltip wording is presentation, not a data
+  format", so it wins), the first line of `data-tip` without " — N links" /
+  " (ended)" (2026.11.06, no `title`), the old `title` ("<Platform> · <url>").
+  The icon gets our own card (`_setTip()`, `_isrcScoutLinkTip()`: platform,
+  "(ended)", "— N links", then the URLs), and `data-tip` moves to
+  `data-mb-ii-tip`, because ISRC Scout's shared `#mbu-tip` handler reacts to
+  ANY `[data-tip]` in the document; `.ii-trk-n` is in
   `_CLEAN_STRIP_SEL`. A filter highlight inside the hidden name is shown by
   outlining its icon (`a.ii-trk-ln:has(<any highlight class>)`), and the 📊
   "Links info - Platform" section (docs/claude/uniq-dropdown.md) lists the
@@ -872,7 +880,21 @@ holding a row whose `id` is a track MBID, and every header row `tr.subh`. The
 rendered tables keep both, so a rebuilt cell without the class would get a
 second, bare cell beside it on the next DOM change.
 
-**The race, not guarded (2026-10-16).** Because ISRC Scout treats the rendered
+**`data-mbu-foreign="saed"` (#938, `_markForeignTable()`).** Every table the
+render builds on MusicBrainz carries the mark (`renderFinalTable()`'s table
+once the rows move in, each table `renderGroupedTable()` creates; a reused
+or cloned table keeps the attribute). An ISRC Scout from upstream 9e4cdd59
+on skips such a table in `fillTrackData()` and leaves its `.ii-col` cells and
+colspans alone in `showTrackData()`'s wipe, and `mbuTip` ignores the region:
+the race below is closed for it. The mark goes on tables, never on a
+container holding native rows ("the marker protects a rendered copy, not its
+native source"). Consequence: pressed before ISRC Scout's columns arrive, the
+table simply has none, and ISRC Scout no longer adds them later. A hint on
+`is:counts-changed` was considered and dropped: once our tables replace the
+native ones nothing tells "its columns arrived late" from "the user switched
+its columns off".
+
+**The race, not guarded for ISRC Scout before 9e4cdd59 (2026-10-16).** Because ISRC Scout treats the rendered
 tables as its own, its `showTrackData()` (remove EVERY `.ii-col` in the
 document, then `fillTrackData()`) replaces the decorated header and cells with
 bare ones: no sort buttons, no 📊, unknown to the column model, colspans bumped
@@ -891,7 +913,9 @@ the padding). `td.ii-col-links a.ii-trk-ln[target='_blank']` resets padding
 and background; every icon there is an outside link, so the marker said
 nothing. Scoped to those icons: a new-tab link anywhere else keeps it.
 
-Simulator: `tests/fixtures/thirdPartyScripts/isrc-scout-columns.js` (markup and
-the re-filling observer, not the wipe). Spec:
+Simulator: `tests/fixtures/thirdPartyScripts/isrc-scout-columns.js` (markup in
+its three generations, `markup: 'title' | 'data-tip' | 'meta'`; the
+re-filling observer; the wipe as `window.__isrcScoutShowTrackData()`;
+`honoursForeign` for 9e4cdd59's `[data-mbu-foreign]` checks). Spec:
 `release-tracks-isrc-scout.spec.js`; mutations:
 `scripts/mutations/isrc-scout-column.json`.

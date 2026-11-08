@@ -1,0 +1,63 @@
+#+TITLE: Full reply on #938: majkinetor's answers and 9e4cdd59
+#+DATE: 2026-11-08
+
+* TODO Post: full reply on https://github.com/majkinetor/musicbrainz-userscripts/issues/938
+
+Drafted 2026-11-08, for vzell to post (not posted anywhere). It answers majkinetor's point-by-point comment and
+milic-bot's "Implemented on codex/interop-938, commit 9e4cdd59" comment.
+
+*Before posting*:
+- vzell's browser check with String Theory from =codex/interop-938= of what the reply says works: EH's ⋯ menu
+  items, the corner hidden over the table, the ISRC Scout Links platforms, V. The fixture specs pass; the browser
+  check is still to do.
+- If it goes after =org/reply-to-938-dev-link.org=, the line "here is the development version" can link that
+  comment instead of repeating the install link.
+
+#+begin_src markdown
+Hi Miodrag - @majkinetor,
+
+thanks again, both for the answers and for the implementation on `codex/interop-938` ([9e4cdd59](https://github.com/majkinetor/musicbrainz-userscripts/commit/9e4cdd5961909cd8e33131ac8688a5e9e083b342)). I'm running String Theory from that branch and have adopted the conventions on SAED's side, using the names exactly as implemented. Below are your two questions first, then the rest point by point.
+
+## Your two questions
+
+**`data-mbu-foreign`: what is it for?** It has nothing to do with EH's TOC. On a release page SAED copies MusicBrainz's tracklist rows into its own tables, one per medium, with sort buttons, a 📊 value panel per column, filters and so on. Those rows keep MusicBrainz's row ids (the track MBIDs), and ISRC Scout's observer adds its columns to any table holding such rows. So:
+
+- `fillTrackData()` added a second set of bare ISRC/Links cells to SAED's tables,
+- `showTrackData()` (after a release load, the modal, a settings change, …) removed SAED's rebuilt cells everywhere in the document and refilled them bare, without SAED's header buttons and with the colspans bumped again,
+- and `mbuTip` showed its tip over SAED's own hover card.
+
+That's #839. The marker says "this table is a rendered copy owned by another script", and your commit does exactly what I hoped for: ISRC Scout and `mbuTip` leave it alone. SAED now puts `data-mbu-foreign="saed"` on every table it renders.
+
+**`data-ii-platform`: why?** SAED turns ISRC Scout's Links icons into a filterable, sortable column: a 📊 section "Links info - Platform" with a count per platform, `Spotify` typed into the column filter, and so on. The icons are SVG without text, so the platform name came from the tooltip. When `title` became `data-tip` on 2026-11-06, that silently stopped working. A data attribute is a contract; tooltip wording isn't. SAED now reads `data-ii-platform` first and falls back to `data-tip`, then to the old `title`, so every ISRC Scout version works.
+
+## Point by point
+
+| Your answer | What SAED does now |
+|---|---|
+| **Use the API, not the HTML, during EH navigation** | Agreed. SAED is a native-page tool by design: it reads MusicBrainz's own page, which is how other scripts' columns (yours, jesus2099's, …) become filterable columns. It never reads the hidden native body after EH navigation. Its EH menu items are decided from `<html data-mbu-page>` only. |
+| **ISRC Scout platform: "will bring it back"** | Read from `data-ii-platform`, with `data-tip` and `title` as fallbacks. |
+| **Keys: "you can change keys"** | SAED ignores EH's single-letter keys on MusicBrainz's page (initial page and rendered table), behind a setting. **V is left alone**, and pressing V works perfectly: it switches between EH's view and SAED's table, and the table survives any number of switches. Ctrl+L is SAED's only when its own direct Ctrl+L shortcut is on; otherwise it stays yours. |
+| **Corner: "you can minimize the dock"** | SAED sets `<html data-mbu-quiet="saed">` while its table is shown on MusicBrainz's page, never in EH's view. It is a setting (on by default), and a menu row in SAED brings the launchers back for the page, as your protocol asks. |
+| **"Open in SAED": the ⋯ menu protocol** | SAED registers "Open in ShowAllEntityData" (what V does) plus one "SAED: <button>" item per button of the page EH shows, e.g. "SAED: Show all Tracks for Release". A click switches EH off through `#eh-launch` and then presses that button. That also works after EH navigation: the button is pressed on the page EH reloads into. Only pages SAED supports get items, and they follow `data-mbu-page`. |
+| **Request gate, version 1** | Thanks, the contract is exactly what I needed. SAED will book its ws/2 there in a later release, following the v1 rules. (SAED is MIT and the toolset GPL-3, so I'll check the licences before reusing any of the reference code.) |
+| **#926: "Partially overlap", submit changes via the report** | Fair. Your review read the *published* SAED 9.99.1167; the development version is far ahead (link previews, the other sites, the findings menus, …). I'll submit an update through the report once the next version is published. |
+| **ISRC Scout re-adding columns: "will look it up"** | Solved by `data-mbu-foreign` on your side. With an older ISRC Scout, SAED behaves as before (its Links platforms are read from the old markup too). |
+
+## One request: V under `data-mbu-keys-off`
+
+`data-mbu-keys-off` suspends every EH command, **V included**. For a modal window that's right. But SAED's table isn't a modal: it's the page, and V is how users move between EH and SAED. So SAED does **not** set `keys-off` and keeps its own narrow key guard instead.
+
+Could the on/off toggle (V, or whatever key it is rebound to) stay active under `keys-off`, e.g. through an opt-in value like `data-mbu-keys-off="saed keep-toggle"` or a separate `data-mbu-keys-keep="toggle"`? Then SAED would set `keys-off` while its table is shown, which would also cover keys a user rebound in EH's palette (SAED can't know those today).
+
+## Done on SAED's side in the meantime
+
+- SAED's tooltips, menus, dialogs and the sidebar handle no longer die when SAED starts under EH and EH is switched off. They were appended to `document.body`, which is EH's body at that moment; they now always live in MusicBrainz's body.
+- EH's single-letter keys are ignored on MusicBrainz's page, as above.
+- Leaving from EH's view: after a render, a click in EH's view no longer gets SAED's "you are about to leave" question. EH opens most pages in place, and the table stays. Only a real unload (a page EH loads, or V after EH navigation) gets the browser's own "Leave site?" prompt.
+- The four adoptions above: `data-mbu-foreign`, `data-ii-platform`, `data-mbu-quiet` and the ⋯ menu items.
+
+All of this is in SAED's development version and goes out with its next release. If you'd like to try it next to your branch, the install link is in my previous comment.
+
+Thanks!
+Volker
+#+end_src

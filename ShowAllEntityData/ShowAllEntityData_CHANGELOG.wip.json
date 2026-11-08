@@ -1,5 +1,71 @@
 [
   {
+    "version": "WIP.6",
+    "date": "2026-11-08",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "With majkinetor's Event Horizon (String Theory) showing: on a page this script supports, Event Horizon's More (⋯) menu in the page header now has \"Open in ShowAllEntityData\" (what V does) and one \"SAED: <button>\" item per button of that page, e.g. \"SAED: Show all Tracks for Release\". Such an item switches to MusicBrainz's page and presses that button, also after Event Horizon navigated to another page inside its view (it reloads into MusicBrainz's page of that one first). The items follow the page Event Horizon shows. Needs the String Theory with the menu protocol (majkinetor's #938); as with V, Event Horizon then stays off for the next pages until you switch it on again."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "With direct Ctrl+letter shortcuts on, Ctrl+L (Load from disk) also made Event Horizon go forward in the browser history. It is now this script's alone there; with direct shortcuts off (the default) Ctrl+L stays Event Horizon's, and inside Event Horizon's view it is always its own."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.5",
+    "date": "2026-11-08",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "With majkinetor's String Theory installed, up to eight corner launchers and its dock sat in the bottom right corner over the rendered table. While a table of this script is shown on MusicBrainz's page they are now hidden (in Event Horizon's own view they stay). ☰ SAED → View → \"Show corner launchers\" brings them back for the page, \"Hide corner launchers\" hides them again. Needs the String Theory with the shared quiet mark (majkinetor's #938)."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "New setting: ⚙️ Settings → 🎨 UI FEATURES → \"Hide String Theory's corner launchers while a table is shown\" (on)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.4",
+    "date": "2026-11-08",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "ISRC Scout (majkinetor) no longer replaces the ISRC and Links columns of a rendered tracklist with bare copies that have no sort buttons and no 📊, and no longer widens its headings: every table this script renders now says it is this script's (the shared data-mbu-foreign mark), which ISRC Scout leaves alone, and its own hover tip no longer shows over the table. Needs the ISRC Scout with that mark (majkinetor's #938); with an older one, press the Tracks button after its columns have appeared, as before."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.3",
+    "date": "2026-11-08",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Release tracklist with ISRC Scout (majkinetor) since its 2026.11.06 versions: the Links column lost its platform names (no \"Links info - Platform\" section in 📊, typing \"Deezer\" matched nothing), because the name moved out of the icons' title. The platform is read again, from ISRC Scout's new platform data first, then from its tip, then from the old title, so every ISRC Scout version works."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The Links icons of ISRC Scout get this script's own card: the platform, \"(ended)\" and the number of links, then the link addresses; ISRC Scout's own tip no longer shows next to it."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-11-08",
     "sections": [

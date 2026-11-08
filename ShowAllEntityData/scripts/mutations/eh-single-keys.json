@@ -4,8 +4,8 @@
     "why": "Without _ehKeyGuardInstall() Event Horizon's bubble-phase listener runs h, e, r, … on MusicBrainz's page: the initial page and a rendered table are left (org/majkinetor.org, measured 2026-11-06/08).",
     "edits": [
       {
-        "find": "    if (!_foreignHost) _ehKeyGuardInstall();",
-        "replace": "    if (false) _ehKeyGuardInstall();"
+        "find": "        _ehKeyGuardInstall();\n        // Event Horizon's More (⋯) menu launchers",
+        "replace": "        // Event Horizon's More (⋯) menu launchers"
       }
     ],
     "spec": "tests/fixtures/eh-single-keys.spec.js",
@@ -43,8 +43,8 @@
     "why": "While EH shows (<html data-mbu-dock>) its keys are its own business; the guard must yield there.",
     "edits": [
       {
-        "find": "            if (root.hasAttribute('data-mbu-dock')) return;\n            if (!document.getElementById('eh-launch')",
-        "replace": "            void root;\n            if (!document.getElementById('eh-launch')"
+        "find": "        if (root.hasAttribute('data-mbu-dock')) return false;\n        return !!document.getElementById('eh-launch')",
+        "replace": "        return !!document.getElementById('eh-launch')"
       }
     ],
     "spec": "tests/fixtures/eh-single-keys.spec.js",
@@ -69,8 +69,8 @@
     "why": "With neither #eh-launch nor <html data-mbu-st> nobody binds these keys for Event Horizon; another script's single keys that honour defaultPrevented would be silenced for nothing.",
     "edits": [
       {
-        "find": "            if (!document.getElementById('eh-launch') && !root.hasAttribute('data-mbu-st')) return;",
-        "replace": "            void 0;"
+        "find": "        return !!document.getElementById('eh-launch') || root.hasAttribute('data-mbu-st');",
+        "replace": "        return true;"
       }
     ],
     "spec": "tests/fixtures/eh-single-keys.spec.js",

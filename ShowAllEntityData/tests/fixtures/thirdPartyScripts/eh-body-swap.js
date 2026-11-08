@@ -41,6 +41,15 @@
  * address is no longer the loaded page's reloads, as EH:11490 does.
  * `window.__EH_SIM_NO_LAUNCHER__ = true` leaves the launcher out (a page
  * where Event Horizon is not installed, for the "touches nothing" checks).
+ *
+ * #938 (upstream 9e4cdd59): while its view shows, `<html data-mbu-page>`
+ * holds the path and query it shows (EH `ehPageMark()`), also after an
+ * in-place move. The launcher's click is EH's `switchOn(!ehOn)`, the same as
+ * V (a reload after an in-place move). `sim.menuItems()` is what EH's
+ * `foreignMenuSync()` would project into its More (⋯) menu — every
+ * `button[data-mbu-menu-item]` with a title, not disabled, first of an id in
+ * document order — and `sim.select(id)` is choosing one (EH clicks the
+ * source button). `sim.navigate(path)` is an in-place move (pushState).
  */
 (function () {
     'use strict';
@@ -69,6 +78,7 @@
         loads: [],
         assigned: [],
         loadPath: location.pathname,
+        loadSearch: location.search,
         /** @returns {boolean} whether EH's body is in the document */
         isOn() { return !!(sim.ehBody && sim.ehBody.isConnected); },
         /** EH on: its body before MusicBrainz's, MusicBrainz's hidden (setOn(true)). */
@@ -90,6 +100,7 @@
             document.documentElement.insertBefore(sim.ehBody, sim.mbBody);
             sim.mbBody.hidden = true;
             document.documentElement.setAttribute('data-mbu-dock', '');
+            document.documentElement.setAttribute('data-mbu-page', location.pathname + location.search);
             if (sim.launcher) sim.ehBody.appendChild(sim.launcher);
         },
         /** EH off: its body removed, MusicBrainz's shown again (setOn(false)). */
@@ -98,7 +109,35 @@
             sim.ehBody.remove();
             sim.mbBody.hidden = false;
             document.documentElement.removeAttribute('data-mbu-dock');
+            document.documentElement.removeAttribute('data-mbu-page');
             if (sim.launcher) sim.mbBody.appendChild(sim.launcher);
+        },
+        /** EH's switchOn(!ehOn): V and the launcher's click. After an in-place move, a reload (EH:11490). */
+        toggle() {
+            if (sim.isOn() && location.pathname + location.search !== sim.loadPath + sim.loadSearch) { location.reload(); return; }
+            if (sim.isOn()) sim.off(); else sim.on();
+        },
+        /** An in-place move inside EH's view (pushState), with its page mark. */
+        navigate(pathAndQuery) {
+            history.pushState(null, '', pathAndQuery);
+            sim.navs.push(location.href);
+            if (sim.isOn()) document.documentElement.setAttribute('data-mbu-page', location.pathname + location.search);
+        },
+        /** @returns {{id: string, title: string}[]} EH's foreignMenuSync() projection. */
+        menuItems() {
+            const seen = new Set();
+            return [...document.querySelectorAll('button[data-mbu-menu-item]')].filter((b) => {
+                const id = b.getAttribute('data-mbu-menu-item');
+                if (!id || seen.has(id) || !(b.getAttribute('data-mbu-menu-title') || '').trim() || b.disabled) return false;
+                seen.add(id);
+                return true;
+            }).map((b) => ({ id: b.getAttribute('data-mbu-menu-item'), title: b.getAttribute('data-mbu-menu-title') }));
+        },
+        /** Choosing a projected item: EH clicks the source button (when connected and enabled). */
+        select(id) {
+            const b = [...document.querySelectorAll('button[data-mbu-menu-item]')].find((x) => x.getAttribute('data-mbu-menu-item') === id);
+            if (b && b.isConnected && !b.disabled) b.click();
+            return !!b;
         },
     };
     window.__ehSim = sim;
@@ -131,8 +170,9 @@
         sim.fired.push(k);
         if (k === 'v') {
             // navigated inside EH: reload for MusicBrainz's page of this one (EH:11490)
-            if (sim.isOn() && location.pathname !== sim.loadPath) { location.reload(); return; }
-            if (sim.isOn()) sim.off(); else sim.on();
+            sim.toggle();
+            if (!sim.isOn() || location.pathname + location.search === sim.loadPath + sim.loadSearch) ev.preventDefault();
+            return;
         }
         else if (k in KEY_SUB) keyGo(KEY_SUB[k]);
         ev.preventDefault();
@@ -147,8 +187,7 @@
         if (!a) return;
         if (/\/edits$/.test(a.href)) { sim.loads.push(a.href); return; }   // EH loads this page: no preventDefault
         ev.preventDefault();
-        history.pushState(null, '', a.href);
-        sim.navs.push(a.href);
+        sim.navigate(a.href);
     });
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -159,6 +198,7 @@
             sim.launcher.type = 'button';
             sim.launcher.setAttribute('data-mb-corner', 'br');
             sim.launcher.textContent = 'EH';
+            sim.launcher.onclick = () => sim.toggle();
             sim.mbBody.appendChild(sim.launcher);
         }
         if (window.__EH_SIM_START_ON__ !== false) sim.on();

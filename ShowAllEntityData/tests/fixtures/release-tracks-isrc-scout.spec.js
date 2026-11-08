@@ -54,13 +54,17 @@ const TRACKS = {
  * Loads the fixture with the ISRC Scout simulator and renders the tracks.
  *
  * @param {import('@playwright/test').Page} page
+ * @param {object} [sim] - Extra simulator config: `markup` ('title' |
+ *   'data-tip' | 'meta'), `honoursForeign`.
+ * @param {Function} [beforePress] - Runs in the page after ISRC Scout's
+ *   columns are there and before the button is pressed.
  */
-async function renderTracks(page) {
+async function renderTracks(page, sim = {}, beforePress = null) {
     // A freshly fetched release fixture names CURRENT static.metabrainz.org
     // bundles, which would re-render the tracklist from JSON
     // (docs/claude/release-tracks-and-length.md, "Fixture trap").
     await page.context().route('https://static.metabrainz.org/**', (route) => route.abort('blockedbyclient'));
-    await injectThirdPartyScript(page, 'isrc-scout-columns', { when: 'init', config: { tracks: TRACKS } });
+    await injectThirdPartyScript(page, 'isrc-scout-columns', { when: 'init', config: { tracks: TRACKS, ...sim } });
     await loadUserscriptPage(page, {
         url: RELEASE_URL,
         fixtureFile: FIXTURE,
@@ -69,6 +73,7 @@ async function renderTracks(page) {
     });
     await expect(page.locator('html[data-isrc-scout-sim="ready"]')).toBeAttached();
     await expect(page.locator(`tr[id="${T[0]}"] > td.ii-col-isrc`)).toHaveCount(1);
+    if (beforePress) await page.evaluate(beforePress);
     await page.click('button[data-label="Show all Tracks for Release"]');
     await waitForRenderComplete(page, { waitForAutoResize: false });
 }
@@ -365,5 +370,126 @@ test.describe('ISRC Scout columns on release-tracks', () => {
         expect(out.icons.every((c) => c.pad === '0px' && c.bg === 'none')).toBe(true);
         expect(out.other.pad).toBe('16px');
         expect(out.other.bg).not.toBe('none');
+    });
+});
+
+// ISRC Scout's Links markup changed twice (simulator `markup`): the platform
+// was in `title` ("<Platform> · <url>"), then only in `data-tip` (2026.11.06,
+// "<Platform>\n<url>", "<Platform> — N links\n- <url>…"), and since #938
+// (upstream 9e4cdd59) also in `data-ii-platform`/`data-ii-ended`.
+// _isrcScoutLinkPlatform() reads the metadata first, then data-tip, then title.
+const PLATFORMS = {
+    '» platform: Apple Music': 1, '» platform: Deezer': 2, '» platform: Spotify': 4,
+    '» platform: Tidal': 1, '» platform: whosampled.com': 1, '» platform: YouTube': 1,
+};
+
+for (const markup of ['title', 'data-tip', 'meta']) {
+    test.describe(`ISRC Scout Links markup "${markup}"`, () => {
+        test('platforms reach the 📊 section, the stamps and a typed filter', async ({ page }) => {
+            await renderTracks(page, { markup });
+            const s = await sectionsOf(page, 'Links');
+            // Pins: the platform NAME, without " — N links" / " (ended)".
+            expect(s['Links info - Platform']).toEqual(PLATFORMS);
+            await page.keyboard.press('Escape');
+            const idx = await columnIndex(page, 'Links');
+            const input = columnFilterInput(page, idx);
+            await input.click();
+            await waitForFilterSettled(page, () => input.pressSequentially('Deezer'));
+            const rows = await visibleRows(page);
+            expect(rows.map((r) => r.id)).toEqual([T[1], T[5]]);
+            rows.forEach((r) => expect(r.outlined).toEqual(['Deezer']));
+        });
+
+        test('each icon has our own card and no ISRC Scout data-tip left', async ({ page }) => {
+            await renderTracks(page, { markup });
+            const out = await page.evaluate(() => Array.from(
+                document.querySelectorAll('table.tbl td.ii-col-links a.ii-trk-ln'), (a) => ({
+                    platform: a.dataset.mbLinkPlatform,
+                    ours: a.hasAttribute('data-mb-tip'),
+                    title: a.getAttribute('title'),
+                    dataTip: a.hasAttribute('data-tip'),
+                })));
+            expect(out).toHaveLength(10);
+            // Pins: ISRC Scout's shared #mbu-tip handler reacts to ANY
+            // [data-tip]; none may remain on our table.
+            expect(out.every((o) => o.ours && !o.dataTip)).toBe(true);
+            const by = (p) => out.find((o) => o.platform === p).title;
+            expect(by('YouTube')).toBe('YouTube\nhttps://example.org/YouTube');
+            expect(by('whosampled.com')).toBe('whosampled.com (ended)\nhttps://example.org/whosampled.com');
+            const apple = by('Apple Music').split('\n');
+            expect(apple[0]).toBe('Apple Music — 3 links');
+            expect(apple).toHaveLength(4);
+            expect(apple.slice(1).every((l) => l.includes('https://example.org/Apple%20Music#'))).toBe(true);
+        });
+    });
+}
+
+test('ISRC Scout Links "meta": data-ii-platform wins over the tip wording', async ({ page }) => {
+    // Upstream (#938): "tooltip wording is presentation, not a data format".
+    // Pins: the platform comes from the METADATA when both are there, not
+    // from data-tip — rewritten here to a wording that names nothing.
+    await renderTracks(page, { markup: 'meta' }, () => {
+        document.querySelectorAll('a.ii-trk-ln').forEach((a) => {
+            a.setAttribute('data-tip', 'Listen here\n' + a.getAttribute('href'));
+        });
+    });
+    const s = await sectionsOf(page, 'Links');
+    expect(s['Links info - Platform']).toEqual(PLATFORMS);
+    const yt = await page.evaluate(() => document.querySelector('table.tbl a.ii-trk-ln[data-mb-link-platform="YouTube"]').getAttribute('title'));
+    expect(yt).toBe('YouTube\nhttps://example.org/YouTube');
+});
+
+// data-mbu-foreign (#938, upstream 9e4cdd59): every table the render builds
+// says it is ours, and an ISRC Scout that honours the mark (simulator
+// `honoursForeign`) leaves it alone when its showTrackData() wipes and
+// refills the document (the race in docs/claude/release-tracks-and-length.md).
+/**
+ * The rendered tables' marks and, per ISRC Scout column header, whether it
+ * still carries our sort and 📊 buttons; plus cells per row and colspans.
+ *
+ * @param {import('@playwright/test').Page} page
+ */
+const tableState = (page) => page.evaluate(() => {
+    const tables = Array.from(document.querySelectorAll('table.tbl'));
+    return {
+        marks: tables.map((t) => t.getAttribute('data-mbu-foreign')),
+        headers: ['ISRC', 'Links'].map((n) => {
+            const th = document.querySelector(`table.tbl thead th[data-col-name="${n}"]`);
+            return !!(th && th.querySelector('.sort-icon-btn') && th.querySelector('.mb-col-uniq-btn'));
+        }),
+        cellsPerRow: Array.from(document.querySelectorAll('table.tbl tbody tr[id]'),
+            (tr) => tr.querySelectorAll(':scope > .ii-col').length),
+        bumped: document.querySelectorAll('table.tbl th[data-ii-colspan]').length,
+    };
+});
+
+test.describe('ISRC Scout and data-mbu-foreign', () => {
+    test('every rendered table is marked data-mbu-foreign="saed"', async ({ page }) => {
+        await renderTracks(page);
+        const st = await tableState(page);
+        expect(st.marks.length).toBeGreaterThan(0);
+        expect(st.marks.every((m) => m === 'saed')).toBe(true);
+    });
+
+    test('an ISRC Scout that honours the mark leaves our decorated columns alone on its wipe-and-refill', async ({ page }) => {
+        await renderTracks(page, { honoursForeign: true });
+        await page.evaluate(() => window.__isrcScoutShowTrackData());
+        await settleSimulator(page);
+        const st = await tableState(page);
+        // Pins: our rebuilt headers (sort + 📊) survive, one ISRC + one Links
+        // cell per row, and no colspan was bumped inside our tables.
+        expect(st.headers).toEqual([true, true]);
+        expect(st.cellsPerRow.every((n) => n === 2)).toBe(true);
+        expect(st.bumped).toBe(0);
+    });
+
+    test('control: an older ISRC Scout (mark not honoured) still replaces them with bare cells', async ({ page }) => {
+        // Documents the race the mark closes upstream; shows the test above
+        // can see the difference.
+        await renderTracks(page, { honoursForeign: false });
+        await page.evaluate(() => window.__isrcScoutShowTrackData());
+        await settleSimulator(page);
+        const st = await tableState(page);
+        expect(st.headers).toEqual([false, false]);
     });
 });

@@ -28751,3 +28751,39 @@ Chromium 151.0.7922.34 · no Tampermonkey (GM stubs; fixtures, and realNetworkGm
   a user activation, so a test without a click cannot see a wrong prompt (one test had to gain a click). Guard 4's
   `isLoaded` check is unobservable by construction (the guard is installed only after a render): recorded as an
   `expect: pass` mutation. Specs 16/16, mutations 10 fail + 1 recorded overlap.
+
+## 2026-11-08 — #938 conventions adopted against majkinetor's 9e4cdd59: data-mbu-foreign, data-ii-platform, data-mbu-quiet, EH's ⋯ menu launchers; key guard kept (docs/majkinetor-refresh-2026-11-08, WIP.3–WIP.6)
+
+Env: 2026-11-08T16:40–17:21+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1,
+Chromium 151.0.7922.34 · no Tampermonkey (GM stubs; fixture specs only, no live probe) · upstream read via the
+GitHub API at `codex/interop-938` 9e4cdd59 (EH and ISRC Scout 2026.11.08.152918); not in the harness copies.
+
+- Input: majkinetor's point-by-point answer on #938 and milic-bot's 9e4cdd59 (DEVELOP.md "Interoperability",
+  EH's "External menu items", ISRC Scout's "Track-link metadata", gate protocol v1). Conventions and their status:
+  org/majkinetor.org "Shared conventions (agreed in #938)".
+- Key handling re-checked (task 1b): `_ehKeyGuardInstall()` stays. EH now honours `<html data-mbu-keys-off>`
+  (its keydown returns before `defaultPrevented`), but that suspends EVERY command, V included — setting it on
+  MusicBrainz's page would take V, the handoff vzell confirmed works. Gap found in reading: Ctrl+L. With direct
+  Ctrl+letter shortcuts on, our load-from-disk and EH's `history.forward()` both fired, because EH's document-start
+  bubble listener runs before ours; now `preventDefault()` in the guard's capture listener, only when ours acts
+  (direct shortcuts on; our `initKeyboardShortcuts()` listener does not check `defaultPrevented`).
+- WIP.3 `_isrcScoutLinkPlatform()`: `data-ii-platform` → first line of `data-tip` → old `title`; the icon gets our
+  card (`_isrcScoutLinkTip()`), `data-tip` moves to `data-mb-ii-tip` (old ISRC Scout's `#mbu-tip` reacts to any
+  `[data-tip]`). WIP.4 `_markForeignTable()`: `data-mbu-foreign="saed"` on `renderFinalTable()`'s table and each
+  `renderGroupedTable()` table; the `is:counts-changed` "columns arrived late" toast was dropped (after our render
+  the native rows are gone, so "late" cannot be told from "switched off"). WIP.5 `_mbuQuietSync()`
+  (`sa_mbu_quiet_corner`, ☰ View row `#mb-mbu-quiet-btn`). WIP.6 `_ehMenuSync()` / `_ehHandoff()` /
+  `_ehHandoffResume()` (sessionStorage `sa_eh_handoff`, 60 s; buttons carry `data-mb-def-idx` from the definition
+  index, taken BEFORE `labelFromH2` replaces `conf`); the detection loop now goes through `_pageDefForPath()`.
+- Test traps: an init script's attribute on `<html>` does not survive the parser (the "other owner" quiet test sets
+  it after load); artist-recordings' buttons are "⊚ All recordings", not "Show all …". Negative handoff tests
+  record definition-button clicks from an init script, since `_ehHandoffResume()` drops the record and clicks in
+  the same task — no sleep.
+- Specs: `release-tracks-isrc-scout.spec.js` 23/23 (markup × 3, foreign mark + honouring wipe + control),
+  `eh-interop-markers.spec.js` 17/17, `eh-single-keys.spec.js` and `eh-body-swap-floating.spec.js` unchanged and green,
+  `gm-store.spec.js`/`idb-overview.spec.js` green after the View row order gained `mb-mbu-quiet-btn`. Mutation
+  lists written (`eh-interop-markers.json` 15, `isrc-scout-column.json` +6) and finds checked (0 stale); NOT yet run
+  (it edits the live script vzell may be testing).
+- Also 2026-11-08 (vzell): the dev copy's library `@require` is now this repo's GitHub `main`
+  (`raw.githubusercontent.com/vzell/musicbrainz-userscripts/main/lib/VZ_MBLibrary.user.js`), so the dev copy works
+  for anyone (majkinetor); `check-publish-ready.py` names that case; CLAUDE.md "Publishing" updated.
