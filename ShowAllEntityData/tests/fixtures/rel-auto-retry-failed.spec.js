@@ -66,6 +66,13 @@ const OK_BODY = JSON.stringify({
  * persistence, and a cache that outlives a page load has no business in a test
  * about what gets REQUESTED.
  *
+ * `sa_mb_shared_gate: false`: these tests pin SAED's own breaker and ceilings
+ * (request COUNTS), not pacing. With the shared cross-tab gate on, every 503
+ * episode steps `hot` (protocol v1), so a run of ten refusals holds 1 s, 2 s …
+ * 6 s each and the 120 s settle ran out at 7 of 12 cells (test:full,
+ * 2026-11-09T04:23+01:00, vzell-lap). That hold is the gate's intended
+ * behaviour and is pinned in mb-shared-gate.spec.js.
+ *
  * @param {import('@playwright/test').Page} page
  * @param {{failFirstN?: number, settings?: Object}} [opts]
  * @returns {Promise<{ws2: string[], failing: Set<string>, heal: function(): void}>}
@@ -85,6 +92,7 @@ async function loadExpandedRelPage(page, opts) {
             sa_rel_browse_batch_enable: false,
             sa_rel_collapse_threshold: 0,
             sa_rels_idb_enable: false,
+            sa_mb_shared_gate: false,
             ...(settings || {}),
         },
     });

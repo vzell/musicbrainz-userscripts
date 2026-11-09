@@ -278,6 +278,12 @@ version 1 (on his `main` since `7eb7c563`). Anchors `gate-version`,
 - **Lock:** held only for the synchronous read-modify-write; aborted after 3 s
   (a stuck holder) and done unlocked, like no Web Locks at all. Waits poll the
   stored `cool`/`lead` in 250 ms slices without the lock.
+- **Specs that answer many 503s.** The harness runs with the gate ON (its
+  default), so a spec that refuses request after request pays the shared hold:
+  `hot` steps per episode, 1 s … 6 s each. A spec that pins SAED's OWN retry
+  logic by request counts (not pacing) seeds `sa_mb_shared_gate: false`, as
+  `rel-auto-retry-failed.spec.js` does since 2026-11-09 (it timed out at 7 of 12
+  cells otherwise). The hold itself is pinned in `mb-shared-gate.spec.js`.
 
 Switch: `sa_mb_shared_gate` (default on). Debug channel: `mbgate` (literal call
 sites). A shared wait over a second is also a line in the Relationships

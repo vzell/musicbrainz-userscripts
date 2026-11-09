@@ -28872,3 +28872,13 @@ Env: 2026-11-09T00:20–01:00+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Lin
   written into `localStorage['mbu:mb-gate']` from the console, then ⟳ on a Relationships cell — the request
   waited the 20 s. The cross-script hold works in a real browser. Test 2 (two tabs pacing per row) not run: the
   column's bulk fetch and browser cache leave too few requests to see it without changing settings.
+- test:full on the branch (2026-11-09T01:50:43–04:23:30+01:00 · vzell-lap · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) ·
+  Playwright Chromium · no Tampermonkey (GM stubs); 39a81b07): 2832 passed, 8 failed. Three were the gate working as
+  designed: `rel-auto-retry-failed` (@slow) answers 503 to 10–12 entities × 3 tries, every 503 episode steps `hot`, the
+  holds grow 1 s … 6 s and the 120 s settle stopped at 7 of 12 cells. The spec pins SAED's breaker and ceilings (request
+  counts), not pacing, so it now seeds `sa_mb_shared_gate: false` (7/7 then, 5.2 min). The other five
+  (`fetch-in-segment` :277, `instrument-icons-uvd` :169 [icon after], `popup-mb` :1051/:1452/:1644) passed 6/6 when
+  re-run alone (04:24:27–04:25:16) — load flakes. The gate only ever delays a request, so it cannot explain :1051's
+  "3 pages asked before Stop" (the Stop click landed late; "nothing after Stop" held).
+  User-visible consequence, intended: during a sustained 503 storm a ws/2 column now waits up to 6 s per request
+  (more with a `Retry-After`), as every majkinetor script does.
