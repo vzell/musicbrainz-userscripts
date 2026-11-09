@@ -1,0 +1,57 @@
+#+TITLE: Follow-up on #938: String Theory's idle mode over a SAED table (honour data-mbu-quiet)
+#+DATE: 2026-11-09
+
+* TODO Post: idle-mode request on https://github.com/majkinetor/musicbrainz-userscripts/issues/938
+
+Drafted 2026-11-09 at vzell's request (option 1 of the TODO "String Theory's idle mode over our FRP" in
+[[file:majkinetor.org][org/majkinetor.org]]), for vzell to post. Not posted anywhere.
+
+- Attach vzell's screenshot of the rendered release page (hex grid over the table) where it says
+  "[screenshot]", or delete that line.
+- What it asks: String Theory's =beginIdle()= (=themes/runtime.js=, main =68512f9=) waits while
+  =<html data-mbu-quiet>= is set. That is the existing convention C4, so no new mark: SAED already sets it while
+  one of its tables shows (=_mbuQuietSync()=, 9.99.1580).
+- What it deliberately does not ask: anything for the fetch phase. SAED sets the mark only once a table is shown;
+  covering a running fetch is ours (set the mark while loading too), and the render-slowdown half of the
+  pre-test is not measured yet.
+- Said openly in the post: SAED's mark follows its "Hide String Theory's corner launchers" setting and the ☰ "Show
+  corner launchers" row, so a user who shows the launchers again gets idle back as well.
+
+#+begin_src markdown
+Hi @majkinetor,
+
+one more interop point, small: String Theory's idle mode over a SAED table.
+
+With String Theory's defaults (idle on, 5 minutes, theme and effect "Random"), reading a long SAED table without
+touching the mouse for 5 minutes is enough: the page cross-fades to a random theme, and Event Horizon's effect (the
+hex grid here) is drawn over the whole page, table included. SAED's own colours are fixed, so they no longer fit the
+theme around them, and every 5 minutes it changes again ("continuous").
+
+[screenshot]
+
+A request, using the convention we already have: could `beginIdle()` (`themes/runtime.js`) wait while
+`<html data-mbu-quiet>` is set? SAED already sets that mark while one of its tables is shown on MusicBrainz's page
+(C4, the corner launchers). Something like:
+
+```js
+function beginIdle() {
+  if (document.documentElement.hasAttribute('data-mbu-quiet')) {
+    idleTimer = setTimeout(beginIdle, read().idle.minutes * 60000);
+    return;
+  }
+  // ... as now
+}
+```
+
+That keeps idle mode exactly as it is everywhere else, and it starts again by itself once the mark is gone
+(Event Horizon's view shown, or the table left). Since `data-st-eh-fx-idle` comes from String Theory, Event
+Horizon's idle effects would wait too, without a change there.
+
+One thing to know: SAED ties the mark to its setting "Hide String Theory's corner launchers" and to its menu row
+"Show corner launchers". A user who brings the launchers back gets idle mode back too. If you'd rather keep "quiet"
+meaning only the corner, a separate mark is fine with me, e.g. `data-mbu-idle-off="saed"` (value = owner, as with
+the others), and I'll set that one instead.
+
+Thanks!
+Volker
+#+end_src

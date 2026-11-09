@@ -1,0 +1,20 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-11-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "? and / no longer open the keyboard shortcuts reference while you type into a drop-down or editable text. Before, only text boxes and text areas counted as typing: with the focus on a drop-down (such as the type next to MusicBrainz's search box, reached with Tab) the reference opened over it, and in editable text the key was also lost. Typing now means what Event Horizon's key guard already uses: a text box, a text area, a drop-down or editable text."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Help, Keyboard shortcuts: with direct Ctrl+letter shortcuts on and String Theory installed, Ctrl+K opens String Theory's command palette, not the shortcuts reference; use the prefix key and k, or ?, or give one side another key (String Theory: its settings, Command palette, Hotkey). The ? and / row says they do not work while typing in a field."
+        ]
+      }
+    ]
+  }
+]

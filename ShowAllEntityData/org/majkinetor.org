@@ -611,6 +611,8 @@ All three verified identical to their drafts. The rest of the thread that day (n
   the draft at the 15:35 refresh, [[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-6733546768][comment]]);
   07:16 CET: away for the day. No answer from majkinetor on either by 2026-11-09 15:40 CET, and none yet on "keep V
   under =data-mbu-keys-off=" or the HTML-page-fetch question (EH:12658 still returns early for every key).
+- Drafted 2026-11-09, not posted: [[file:reply-to-938-idle.org][org/reply-to-938-idle.org]], String Theory's idle
+  mode waits while =data-mbu-quiet= is set (TODO "String Theory's idle mode over our FRP").
 
 *** Refresh log
 
@@ -764,7 +766,20 @@ CLOSED: [2026-11-08 Sun]
 - *Pre-test*: same page as above, FRP rendered; hover a Links icon.
   - Prediction: a dark ISRC Scout tip with "Deezer\nhttps://…", possibly overlapping our card.
 
-** TODO ISRC Scout columns re-added bare on our FRP (moved from org/TODO.org, cause found)
+** DONE ISRC Scout columns re-added bare on our FRP (moved from org/TODO.org, cause found)
+CLOSED: [2026-11-09 Mon]
+
+- *Closed 2026-11-09* (branch =fix/shortcut-typing-guard=): fixed *upstream*, nothing left that waits on majkinetor.
+  vzell checked in the browser (2026-11-09, ISRC Scout ≥ 2026.11.08.235840): Tracks pressed before ISRC Scout's
+  columns appear gives a table *without* them, and they do not show up later, as HELP ("ISRC Scout.") says.
+  - Defence (a) for older ISRC Scout copies *not built*: they update themselves, HELP already says what an old one
+    does and what to do, and (a) is more than a listener (post-render cell writes owe the four cache duties of
+    docs/claude/filter-and-cache-invariants.md plus the master rows).
+  - Test gap closed: the simulator =isrc-scout-columns.js= has a =late= start (=window.__isrcScoutStart()=, as after
+    =fetchRelease()=), and =release-tracks-isrc-scout.spec.js= pins the early press: with the mark honoured no
+    =.ii-col= reaches our tables; the control (not honoured) gets two bare cells per row. Mutation
+    =scripts/mutations/typing-guard-isrc-early.json= (the grouped render's =_markForeignTable()= dropped) fails.
+    No colspan check: our tables have no =thead th[colspan]= (disc headings are h3s).
 
 - *Status 2026-11-09*: the upstream half is on his =main= since =7eb7c563= (ISRC Scout 2026.11.08.235840:
   =fillTrackData()= skips such tables, =showTrackData()= wipes only outside them; anchors =conv-c1-is=, =is-wipe=).
@@ -938,7 +953,24 @@ CLOSED: [2026-11-08 Sun]
   - Behind a setting (default on) — a new =configSchema= key owes the usual (=docs/claude/settings-and-config.md=).
 - *Alternative*: ask majkinetor for a page mark, e.g. =<html data-mbu-keys-off>=, which EH would honour.
 
-** TODO Shortcut clashes with String Theory / EH: Ctrl+K, Ctrl+L, the typing guard
+** DONE Shortcut clashes with String Theory / EH: Ctrl+K, Ctrl+L, the typing guard
+CLOSED: [2026-11-09 Mon]
+
+- *Closed 2026-11-09* (branch =fix/shortcut-typing-guard=), all *ours*, no upstream change:
+  - Ctrl+K and Ctrl+L clash only with =sa_enable_direct_ctrl_char_shortcuts= on: with it off (the default)
+    =initKeyboardShortcuts()= returns on every Ctrl+a–z, so the keys stay String Theory's / EH's and ours are the
+    prefix key + k / l.
+  - Ctrl+K: docs only, as decided below. HELP "Keyboard shortcuts" says ST's palette takes it, and how to rebind
+    either side (verified against =string_theory/palette.js= =stPalListen()=: =window= capture, =stopPropagation=,
+    default ={ctrl, key: 'k'}=).
+  - Typing guard: =initKeyboardShortcuts()='s =isTyping= now uses =_ehKeyGuardInstall()='s test (INPUT, TEXTAREA,
+    SELECT, =isContentEditable=). Shown to and confirmed by vzell on the demo page
+    https://claude.ai/artifact/Qf6CgYftyqi9D3rJ4hbr5j (places 2 and 3, "Today"). Note: the listener is installed
+    only in the render tail, so =?= does nothing before a button press anywhere.
+  - Spec =tests/fixtures/shortcuts-typing-guard.spec.js= (4 tests: control =?= off a field opens it; search box types
+    =/=; header type drop-down via Tab and editable text open nothing, the text gets its =/=): 2 failed before,
+    4/4 after. Mutations =scripts/mutations/typing-guard-isrc-early.json= 1–3 fail.
+  - Browser check by vzell, 2026-11-09 (reported 17:23 CET): OK (browser and Tampermonkey versions not recorded).
 
 - *Ctrl+L done* (2026-11-08, 9.99.1581): =_ehKeyGuardInstall()='s capture listener calls =preventDefault()= for our
   =sa_shortcut_load_from_disk= when =sa_enable_direct_ctrl_char_shortcuts= is on, EH is there and its view not shown;
@@ -1077,8 +1109,27 @@ CLOSED: [2026-11-08 Sun]
 
 ** TODO String Theory's idle mode over our FRP (random theme, EH effect layers)
 
-- *Who fixes it*: not decided. Measure first; then *ours* (if only SAED's colours read wrong under a theme) or a
-  *convention* (if the idle switch should wait while another script's page is busy or shown).
+- *Who fixes it*: *convention* (vzell's choice, 2026-11-09): String Theory's =beginIdle()= waits while
+  =<html data-mbu-quiet>= is set (C4, which SAED already sets while a table shows). Request drafted, not posted:
+  [[file:reply-to-938-idle.org][org/reply-to-938-idle.org]]. Offers a separate =data-mbu-idle-off= if he would rather
+  keep "quiet" for the corner. *Ours* later, if wanted: set the mark during a fetch too (it is set only once a
+  table shows), and measure the render-slowdown half first.
+  (Before: "not decided. Measure first; then *ours* (if only SAED's colours read wrong under a theme) or a
+  *convention* (if the idle switch should wait while another script's page is busy or shown).")
+- *Confirmed by vzell 2026-11-09* (reported 16:52 CET; screenshot of a rendered release-tracks FRP, "Verano Éxitos
+  de los 80", 51 rows; browser, Tampermonkey and String Theory versions not recorded): after the idle time the page
+  cross-faded to another theme (pink/purple header links and rules) and an effect appeared: EH's hexagon grid
+  (=#eh-hex=) over the whole page, header, h2 bars and table included. Our hard-coded colours stayed (orange h2
+  bars, the yellow/red finding tints, the pink sub-table heading, the SAED/ISRC buttons). Text stayed readable; the
+  hex lines show through every row stripe, so the layer either sits above the cells or the cells let it through.
+  Second half of the pre-test, *observed by vzell 2026-11-09* (reported 17:23 CET, versions not recorded): idle mode
+  kicking in during a 746-page fetch
+  (https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings) gave no visible slowdown of the
+  page fetching. Visual only, no timing captured; the render after the fetch was not looked at separately. So the
+  fetch phase needs no mark of ours for speed; it stays a matter of looks only.
+  Upstream code (=68512f9=, =themes/runtime.js= =beginIdle()=/=activity()=): the idle timer looks at no
+  =data-mbu-*= mark, so =<html data-mbu-quiet="saed">=, which we already set while a table is shown, does not
+  postpone it.
 - *Found* (2026-11-09 refresh, from code, upstream =2d092e0=; String Theory 2026.11.08.235934, #953): String
   Theory's idle mode is *on by default* (=themes/runtime.js= =read()=: =idle.on= true, 5 minutes, theme and effect
   both "Random", "continuous" on; anchor =st-idle-default=). After 5 minutes without pointer, key, wheel, touch or
@@ -1556,3 +1607,7 @@ no answer yet.
 Formulate one more followup reply to the majkinetor issue with the questions in the TODO section which are actually on
 our side but need approval from him to additionally implement in our userscript.
 
+** idle-mode
+
+'** TODO String Theory's idle mode over our FRP (random theme, EH effect layers)' is confirmed, see screenshot, the page
+cross-fades to another theme, an effect appears

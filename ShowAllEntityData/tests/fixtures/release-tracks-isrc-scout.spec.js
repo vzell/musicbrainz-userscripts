@@ -492,4 +492,52 @@ test.describe('ISRC Scout and data-mbu-foreign', () => {
         const st = await tableState(page);
         expect(st.headers).toEqual([false, false]);
     });
+
+    // Tracks pressed BEFORE ISRC Scout's release load (org/majkinetor.org,
+    // "ISRC Scout columns re-added bare on our FRP"): the render comes
+    // first, ISRC Scout's columns after it. With the mark honoured the table
+    // stays without them (HELP, "ISRC Scout."; vzell saw exactly that in
+    // the browser, 2026-11-09); an older ISRC Scout adds bare cells.
+    test('early press: an ISRC Scout that honours the mark adds no columns to our tables afterwards', async ({ page }) => {
+        await renderEarly(page, { honoursForeign: true });
+        const st = await tableState(page);
+        // Pins: no ISRC/Links cell in any rendered row. (No colspan check:
+        // our tables have no thead th[colspan] to bump, disc headings are h3s.)
+        expect(st.cellsPerRow.length).toBeGreaterThan(0);
+        expect(st.cellsPerRow.every((n) => n === 0)).toBe(true);
+    });
+
+    test('control: early press with an older ISRC Scout gets bare cells in our tables', async ({ page }) => {
+        // Shows the test above would see a late fill: the rows it finds by
+        // track MBID are ours, not a hidden native copy.
+        await renderEarly(page, { honoursForeign: false });
+        const st = await tableState(page);
+        expect(st.cellsPerRow.length).toBeGreaterThan(0);
+        expect(st.cellsPerRow.every((n) => n === 2)).toBe(true);
+    });
 });
+
+/**
+ * Renders the tracks with the ISRC Scout simulator still waiting for its
+ * release (`late`), then lets it start and settle: the "Tracks pressed too
+ * early" order.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {object} [sim] - Extra simulator config, e.g. `honoursForeign`.
+ */
+async function renderEarly(page, sim = {}) {
+    await page.context().route('https://static.metabrainz.org/**', (route) => route.abort('blockedbyclient'));
+    await injectThirdPartyScript(page, 'isrc-scout-columns', { when: 'init', config: { tracks: TRACKS, late: true, ...sim } });
+    await loadUserscriptPage(page, {
+        url: RELEASE_URL,
+        fixtureFile: FIXTURE,
+        testMode: true,
+        settingsOverride: { sa_enable_release_tracks: true, sa_uvd_autocollapse_threshold: 0 },
+    });
+    await page.waitForFunction(() => typeof window.__isrcScoutStart === 'function');
+    await expect(page.locator('td.ii-col')).toHaveCount(0);
+    await page.click('button[data-label="Show all Tracks for Release"]');
+    await waitForRenderComplete(page, { waitForAutoResize: false });
+    await page.evaluate(() => window.__isrcScoutStart());
+    await settleSimulator(page);
+}

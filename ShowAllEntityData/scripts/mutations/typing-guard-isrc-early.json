@@ -1,0 +1,54 @@
+[
+  {
+    "name": "typing guard: only INPUT and TEXTAREA count as typing (the state before the fix)",
+    "why": "With the focus on a drop-down (MusicBrainz's header search type) or in editable text, ? and / opened the shortcuts reference, and in editable text the key was swallowed (org/majkinetor.org, 'Shortcut clashes'; confirmed by vzell 2026-11-09).",
+    "edits": [
+      {
+        "find": "            const isTyping = !!(e.target.isContentEditable ||\n                /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName));",
+        "replace": "            const isTyping = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA';"
+      }
+    ],
+    "spec": "tests/fixtures/shortcuts-typing-guard.spec.js",
+    "grep": "drop-down|editable text",
+    "expect": "fail"
+  },
+  {
+    "name": "typing guard: SELECT left out",
+    "why": "The drop-down half of the fix on its own: / on the header type drop-down opens the reference again.",
+    "edits": [
+      {
+        "find": "/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName));",
+        "replace": "/^(INPUT|TEXTAREA)$/.test(e.target.tagName));"
+      }
+    ],
+    "spec": "tests/fixtures/shortcuts-typing-guard.spec.js",
+    "grep": "drop-down",
+    "expect": "fail"
+  },
+  {
+    "name": "typing guard: contenteditable left out",
+    "why": "The editable-text half of the fix on its own: / opens the reference and never reaches the text.",
+    "edits": [
+      {
+        "find": "            const isTyping = !!(e.target.isContentEditable ||\n",
+        "replace": "            const isTyping = !!(false ||\n"
+      }
+    ],
+    "spec": "tests/fixtures/shortcuts-typing-guard.spec.js",
+    "grep": "editable text",
+    "expect": "fail"
+  },
+  {
+    "name": "early press: the grouped render's tables are not marked data-mbu-foreign",
+    "why": "release-tracks renders through renderGroupedTable(); without the mark an ISRC Scout that honours it (#938) fills bare ISRC/Links cells into our tables after an early press.",
+    "edits": [
+      {
+        "find": "                table.className = 'tbl';\n                _markForeignTable(table);\n",
+        "replace": "                table.className = 'tbl';\n"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-isrc-scout.spec.js",
+    "grep": "early press: an ISRC Scout that honours",
+    "expect": "fail"
+  }
+]
