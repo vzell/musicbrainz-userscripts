@@ -29028,6 +29028,9 @@ Env: 2026-11-09T23:12:48–23:17:27+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LT
   window only), so the item page's render must read them first. Both mutation entries (img rule, no-dot rule) in
   `scripts/mutations/sl-tracklist-links.json` fail as expected. Targeted run: sl-tracklist-links, sl-song-window,
   sl-song specs, 52/52.
-- Seen while writing the spec, not investigated: in an SL item window opened from a bootleg list, a plain click on a
-  song link (`mb-dp-l-here`, the foot says "Click: here") requests the song page but the window keeps showing the
-  item; no console error.
+- NOT a bug (harness only): in the spec, an SL item window opened from the bootleg list fixture
+  (`bootlegs.php?cmd=list&category=aud_live1967`, item 4554), a click on THAT'S WHAT YOU GET requested the song
+  page but the window kept showing the item; no console error. Every song page was answered there by the Backstreets
+  fixture, not the song's own page. vzell checked the same steps live (2026-11-09): the song opens in the window and
+  Backspace returns to the Castiles item. So a drill-in spec needs the clicked song's own page as its answer; do not
+  file this again from a fixture run.
