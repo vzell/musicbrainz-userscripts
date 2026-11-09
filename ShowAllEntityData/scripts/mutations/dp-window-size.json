@@ -1,0 +1,152 @@
+[
+  {
+    "name": "fill by the layout viewport",
+    "why": "On a zoomed-out phone page the layout viewport is far larger than what shows; a fill by it puts most of the window off screen.",
+    "edits": [
+      {
+        "find": "            const vb = _toolbarViewBox();\n            dialog.style.left   = Math.round(vb.left + _MAX_MARGIN) + 'px';",
+        "replace": "            const vb = { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };\n            dialog.style.left   = Math.round(vb.left + _MAX_MARGIN) + 'px';"
+      }
+    ],
+    "spec": "tests/fixtures/dp-window-size.mobile.spec.js",
+    "grep": "fills what the screen shows",
+    "project": "chromium-mobile",
+    "expect": "fail"
+  },
+  {
+    "name": "a filled window does not follow a pan",
+    "why": "Panning a zoomed-in phone page moves what shows; the filled window would stay behind, partly off screen.",
+    "edits": [
+      {
+        "find": "                window.visualViewport[m]('scroll', _fitMax);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/dp-window-size.mobile.spec.js",
+    "grep": "fills what the screen shows",
+    "project": "chromium-mobile",
+    "expect": "fail"
+  },
+  {
+    "name": "the filled size is what is stored",
+    "why": "The next window would open filled with no size to go back to.",
+    "edits": [
+      {
+        "find": "            if (_maxRestore) {\n                GM_setValue(opts.geoKey, Object.assign({}, _maxRestore.geo, { max: true }));\n                return;\n            }\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/dp-window-size.mobile.spec.js",
+    "grep": "fills what the screen shows",
+    "project": "chromium-mobile",
+    "expect": "fail"
+  },
+  {
+    "name": "the next window forgets it was filled",
+    "why": "On a phone ⤢ would have to be tapped on every window.",
+    "edits": [
+      {
+        "find": "            if (stored && stored.max) toggleMaximize(true);",
+        "replace": "            void stored;"
+      }
+    ],
+    "spec": "tests/fixtures/dp-window-size.mobile.spec.js",
+    "grep": "fills what the screen shows",
+    "project": "chromium-mobile",
+    "expect": "fail"
+  },
+  {
+    "name": "⤡ does not give the height back",
+    "why": "The window keeps the filled height after a restore.",
+    "edits": [
+      {
+        "find": "                dialog.style.height = r0.geo.height + 'px';",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/dp-window-size.mobile.spec.js",
+    "grep": "fills what the screen shows",
+    "project": "chromium-mobile",
+    "expect": "fail"
+  },
+  {
+    "name": "the grip does not follow the finger",
+    "why": "The grip is shown and does nothing: the window still cannot be resized by touch.",
+    "edits": [
+      {
+        "find": "                if (!_gripDrag || e.pointerId !== _gripDrag.id) return;\n                const vb = _toolbarViewBox();",
+        "replace": "                if (_gripDrag || !_gripDrag) return;\n                const vb = _toolbarViewBox();"
+      }
+    ],
+    "spec": "tests/fixtures/dp-window-size.mobile.spec.js",
+    "grep": "a touch drag on the corner grip",
+    "project": "chromium-mobile",
+    "expect": "fail"
+  },
+  {
+    "name": "the grip's release does not save",
+    "why": "Honest pass: the dialog's ResizeObserver saves 300 ms after any size change, the grip's included, so the spec's poll still sees the new size.",
+    "edits": [
+      {
+        "find": "                _gripDrag = null;\n                _saveGeo();",
+        "replace": "                _gripDrag = null;"
+      }
+    ],
+    "spec": "tests/fixtures/dp-window-size.mobile.spec.js",
+    "grep": "a touch drag on the corner grip",
+    "project": "chromium-mobile",
+    "expect": "pass"
+  },
+  {
+    "name": "a desktop gets the grip too",
+    "why": "A second handle over the browser's own corner would take its mouse presses.",
+    "edits": [
+      {
+        "find": "        if (opts.touchResize && opts.geoKey && _isTouchPrimaryDevice()) {",
+        "replace": "        if (opts.touchResize && opts.geoKey) {"
+      }
+    ],
+    "spec": "tests/fixtures/dp-window-size.spec.js",
+    "grep": "no touch grip on a desktop",
+    "expect": "fail"
+  },
+  {
+    "name": "a filled window can be dragged",
+    "why": "Dragging its title bar would move a window that is meant to fill the screen.",
+    "edits": [
+      {
+        "find": "            if (_maxRestore) return; // a filled dialog stays put\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/dp-window-size.spec.js",
+    "grep": "no touch grip on a desktop",
+    "expect": "fail"
+  },
+  {
+    "name": "a double-click on the title bar does nothing",
+    "why": "The desktop shortcut for ⤢ is gone.",
+    "edits": [
+      {
+        "find": "            titleBar.addEventListener('dblclick', (e) => {",
+        "replace": "            titleBar.addEventListener('mb-never', (e) => {"
+      }
+    ],
+    "spec": "tests/fixtures/dp-window-size.spec.js",
+    "grep": "no touch grip on a desktop",
+    "expect": "fail"
+  },
+  {
+    "name": "every geoKey dialog gets ⤢",
+    "why": "The opt-in leaks: Keyboard Shortcuts, the load-filter and the other dialogs of the shell change too.",
+    "edits": [
+      {
+        "find": "        if (opts.maximize && opts.geoKey) {",
+        "replace": "        if (opts.geoKey) {"
+      }
+    ],
+    "spec": "tests/fixtures/dp-window-size.spec.js",
+    "grep": "Keyboard Shortcuts, a dialog of the same shell",
+    "expect": "fail"
+  }
+]

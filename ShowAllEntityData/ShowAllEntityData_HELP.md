@@ -163,7 +163,9 @@ the window; one longer than the room available scrolls.
 **On a narrow window** (520 px or less — on a phone that is every MusicBrainz
 page) the fetch buttons leave the bar and head the menu as a "Load" group, so
 the button stays on one line, and Export's formats open in place under their
-row.
+row. While a fetch runs, the button you pressed comes back beside ☰ SAED as
+**■ Stop · 3 / 40**, so you can stop it with one tap; its row in the menu says
+the same, and the other Load rows wait.
 
 **The Tampermonkey menu's 📜 ChangeLog** opens the SAED menu on its Changelog
 group: *What's new* lists what changed for you in each published version, in
@@ -4667,7 +4669,11 @@ page) opens in a window laid out for reading:
 - **↗** opens the page in a new tab.
 
 Drag the window by its title bar and resize it from its lower right corner;
-it reopens where you left it. **Esc**, **✕** or a click outside closes it.
+it reopens where you left it. **⤢** beside ✕ (or a double-click on an empty
+part of the title bar) makes it fill the screen, **⤡** gives it its size
+back, and the next window opens the same way. On a touch screen, where the
+browser's corner cannot be dragged, a grip in that corner resizes it with a
+finger. **Esc**, **✕** or a click outside closes it.
 
 On a **touch screen**, there is no pointer to rest, so tapping a title opens
 the window directly. Use **↗** to go to the page itself.
@@ -4697,6 +4703,11 @@ behave differently from a desktop, on purpose:
 - **Sticky Page Headers is off.** Pinch-zoom moves what you see independently
   of what the browser pins, so the bars cannot reliably stay in view. To try it
   anyway, tick *Sticky Page Headers on touch devices* in 📌 Table stickiness.
+- **The detail window can be made bigger.** Tap **⤢** beside its ✕ to fill
+  what the screen shows (it follows when you zoom or pan; **⤡** gives it its
+  size back, and the next window opens filled too), or drag the grip in its
+  lower-right corner with a finger: the browser's own resize corner does not
+  answer a finger.
 - **The sidebar's ▶/◀ handle stays where you can tap it**, at the right edge
   of what you see, also when the page is wider than the screen and you have
   scrolled or zoomed.

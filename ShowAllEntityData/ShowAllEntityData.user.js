@@ -37428,7 +37428,9 @@
      *
      * The dialog is `createInfoDialog()`'s shell: it is dragged by its title
      * bar, resized from its corner (position and size are remembered under
-     * `sa_dp_dialog_geometry`), and closed by ✕, Esc or a click outside. Its
+     * `sa_dp_dialog_geometry`), filled to the screen by ⤢ and, on a touch
+     * screen, resized by its grip (`createInfoDialog()`'s `maximize` and
+     * `touchResize`), and closed by ✕, Esc or a click outside. Its
      * title bar adds ‹ ›, the row position, the Extracted / Live page
      * switch, ⟳ (fetch again, bypassing the cache) and ↗ (open the page in a
      * new tab). Its title is the target's source's `kind`.
@@ -37511,6 +37513,10 @@
             centerV: false,
             zIndex: 10050,
             geoKey: 'sa_dp_dialog_geometry',
+            // ⤢ and, on a touch screen, a grip a finger can resize it by
+            // (the browser's corner answers a mouse only).
+            maximize: true,
+            touchResize: true,
             titleBarExtras: [back, histSplit, prev, pos, next, seg, reload, open],
             // The artwork viewer an image opens (_dpArtViewerClick()) lies
             // over the window; a click in it is not a click outside.
@@ -90160,6 +90166,7 @@ ${sections.join('\n')}
             if (!others.length && (kb.parentNode !== help || kb.nextElementSibling)) help.appendChild(kb);
         }
         const narrow = _saedBarEl ? _saedBarEl.classList.contains('mb-saed-narrow') : false;
+        _saedSyncLoadRows();
         let first = true;
         saed.panel.querySelectorAll(':scope > .mb-saed-group').forEach(g => {
             const k = g.dataset.mbGroup;
@@ -90370,6 +90377,37 @@ ${sections.join('\n')}
     let _saedRun = null;
 
     /**
+     * Makes the SAED menu's "Load" rows (narrow screens) say what their
+     * action segments say: a row is disabled while its segment is, and the
+     * running fetch's row shows the segment's label ("■ Stop · n / N",
+     * "Stopping…", "Rendering N rows…"). A tap on that row clicks the
+     * segment, which is Stop. Called from every `_saedRun*` step and from
+     * `_saedRefreshGroups()` (every menu open), which covers the other
+     * places that disable the action segments. Cheap: one row per action.
+     *
+     * @returns {void}
+     */
+    function _saedSyncLoadRows() {
+        const saed = _toolbarMenus.get('saed');
+        if (!saed) return;
+        saed.panel.querySelectorAll('.mb-saed-load-row').forEach(row => {
+            const seg = row._mbSeg;
+            if (!seg) return;
+            const running = !!(_saedRun && _saedRun.btn === seg);
+            row.disabled = !!seg.disabled;
+            row.classList.toggle('mb-saed-load-row-running', running);
+            if (running) {
+                row.replaceChildren(...Array.from(seg.childNodes, n => n.cloneNode(true)));
+                if (seg.getAttribute('aria-disabled') === 'true') row.setAttribute('aria-disabled', 'true');
+                else row.removeAttribute('aria-disabled');
+            } else if (row.textContent !== row.dataset.mbIdle) {
+                row.textContent = row.dataset.mbIdle;
+                row.removeAttribute('aria-disabled');
+            }
+        });
+    }
+
+    /**
      * Writes the running segment's label: a small square (the Stop glyph)
      * and `text`.
      *
@@ -90382,6 +90420,7 @@ ${sections.join('\n')}
         sq.className = 'mb-seg-stop-glyph';
         sq.setAttribute('aria-hidden', 'true');
         _saedRun.btn.replaceChildren(sq, document.createTextNode(text));
+        _saedSyncLoadRows();
     }
 
     /**
@@ -90409,6 +90448,12 @@ ${sections.join('\n')}
         btn.dataset.mbtt = '<strong>Stop loading</strong><br>Stops after the page that is loading now. '
             + 'The rows loaded so far stay and are shown.';
         _setTip(btn, 'Stop loading after this page; the rows loaded so far stay');
+        // On a narrow screen the actions area is hidden; this brings the
+        // running segment alone back beside ☰ SAED, so a phone has Stop.
+        if (_saedBarEl) {
+            _saedBarEl.classList.add('mb-saed-running');
+            _saedMarkFirst();
+        }
         _saedRunLabel('Stop');
     }
 
@@ -90456,6 +90501,7 @@ ${sections.join('\n')}
         btn.disabled = true;
         btn.style.removeProperty('--p');
         btn.replaceChildren(document.createTextNode(`Rendering ${Number(rows).toLocaleString('en-US')} rows…`));
+        _saedSyncLoadRows();
         fetchProgressLabel.textContent = `Rendering ${Number(rows).toLocaleString('en-US')} rows…`;
     }
 
@@ -90481,6 +90527,11 @@ ${sections.join('\n')}
         if (title === null) btn.removeAttribute('title'); else btn.setAttribute('title', title);
         if (mbtt === undefined) delete btn.dataset.mbtt; else btn.dataset.mbtt = mbtt;
         allActionButtons.forEach(b => { b.disabled = false; });
+        if (_saedBarEl) {
+            _saedBarEl.classList.remove('mb-saed-running');
+            _saedMarkFirst();
+        }
+        _saedSyncLoadRows();
         const ae = document.activeElement;
         if (!ae || ae === document.body) btn.focus({ preventScroll: true });
     }
@@ -91559,6 +91610,19 @@ ${sections.join('\n')}
      *   (the previous behaviour, unchanged for any caller that doesn't pass it).
      * @param {string}         [opts.minHeight='200px'] CSS min-height, used both
      *   as the layout floor and as the resize/clamp floor when opts.geoKey is set.
+     * @param {boolean}        [opts.maximize] With opts.geoKey: a ⤢ button left of
+     *   ✕ (and a double-click on the title bar) makes the dialog fill what the
+     *   window SHOWS (`_toolbarViewBox()`, the visual viewport) and back. The
+     *   state is stored as `max: true` in the geoKey object next to the size
+     *   it goes back to, so the next dialog opens filled too; while filled the
+     *   title bar does not drag. Built for the detail window on a phone, whose
+     *   native resize corner cannot be dragged by touch (vzell, 2026-11-10).
+     * @param {boolean}        [opts.touchResize] With opts.geoKey, on a
+     *   touch-primary device (`_isTouchPrimaryDevice()`) only: a grip in the
+     *   lower-right corner (`.mb-info-grip`, pointer events,
+     *   `touch-action: none`) resizes the dialog by touch, as the browser's own
+     *   corner does with a mouse; the size is saved on release. Hidden while
+     *   the dialog fills the screen.
      * @param {string[]}       [opts.keepOpenWithin] Selectors of elements OUTSIDE
      *   the dialog whose clicks must not close it — an overlay the dialog opens
      *   on top of itself (the artwork gallery's `#mb-art-viewer`). Matched on
@@ -91566,7 +91630,8 @@ ${sections.join('\n')}
      *   overlay's ✕ removes the ✕ before the click reaches the document, and
      *   `closest()` on a detached node finds nothing.
      * @returns {{ dialog: HTMLElement, scrollArea: HTMLElement, close: Function,
-     *             titleBarRight: HTMLElement } | null}
+     *             titleBarRight: HTMLElement, toggleMaximize: Function,
+     *             isMaximized: Function } | null}
      *   Returns null when the dialog was toggled closed (existing instance removed).
      */
     function createInfoDialog(opts) {
@@ -91656,6 +91721,18 @@ ${sections.join('\n')}
             color: #666; padding: 0 4px; line-height: 1;
             user-select: none; -webkit-user-select: none;
         `;
+        // ⤢ (opts.maximize): fill the screen and back; wired further down.
+        let maxBtn = null;
+        if (opts.maximize && opts.geoKey) {
+            maxBtn = document.createElement('button');
+            maxBtn.type = 'button';
+            maxBtn.className = 'mb-info-max-btn';
+            maxBtn.textContent = '⤢';
+            maxBtn.setAttribute('aria-pressed', 'false');
+            _setTip(maxBtn, 'Fill the screen (double-click the title bar)');
+            maxBtn.style.cssText = closeX.style.cssText;
+            titleBarRight.appendChild(maxBtn);
+        }
         titleBarRight.appendChild(closeX);
         titleBar.appendChild(titleBarRight);
         dialog.appendChild(titleBar);
@@ -91729,8 +91806,15 @@ ${sections.join('\n')}
         // and saved together — unlike the library's settings dialog, which only
         // ever persists size and always reopens centred.
         let _resizeObserver = null;
+        // While the dialog fills the screen (opts.maximize) the geometry it
+        // goes back to, which is also what is stored, with `max: true`.
+        let _maxRestore = null;
         const _saveGeo = () => {
             if (!opts.geoKey) return;
+            if (_maxRestore) {
+                GM_setValue(opts.geoKey, Object.assign({}, _maxRestore.geo, { max: true }));
+                return;
+            }
             const rect = dialog.getBoundingClientRect();
             if (rect.width < 10 || rect.height < 10) return; // not yet laid out
             GM_setValue(opts.geoKey, {
@@ -91764,9 +91848,130 @@ ${sections.join('\n')}
             }
         }
 
+        // ── Fill the screen (opts.maximize) ────────────────────────────────────
+        // Fits the dialog to what the window SHOWS, which on a pinch-zoomed
+        // phone is smaller than the layout viewport `position: fixed` uses,
+        // and follows it while the user zooms or scrolls.
+        const _MAX_MARGIN = 6;
+        const _fitMax = () => {
+            if (!_maxRestore) return;
+            const vb = _toolbarViewBox();
+            dialog.style.left   = Math.round(vb.left + _MAX_MARGIN) + 'px';
+            dialog.style.top    = Math.round(vb.top + _MAX_MARGIN) + 'px';
+            dialog.style.width  = Math.max(0, Math.round(vb.width - 2 * _MAX_MARGIN)) + 'px';
+            dialog.style.height = Math.max(0, Math.round(vb.height - 2 * _MAX_MARGIN)) + 'px';
+        };
+        const _maxListen = (on) => {
+            const m = on ? 'addEventListener' : 'removeEventListener';
+            window[m]('resize', _fitMax);
+            if (window.visualViewport) {
+                window.visualViewport[m]('resize', _fitMax);
+                window.visualViewport[m]('scroll', _fitMax);
+            }
+        };
+        let grip = null;
+        /**
+         * Fills the screen, or gives the dialog back the size and place it
+         * had. Saved at once (the next dialog opens the same way).
+         *
+         * @param {boolean} [want] - true fills, false restores; omitted toggles.
+         * @returns {void}
+         */
+        const toggleMaximize = (want) => {
+            if (!maxBtn) return;
+            const on = typeof want === 'boolean' ? want : !_maxRestore;
+            if (on === !!_maxRestore) return;
+            if (on) {
+                const rect = dialog.getBoundingClientRect();
+                _maxRestore = {
+                    geo: { top: Math.round(rect.top), left: Math.round(rect.left),
+                        width: Math.round(rect.width), height: Math.round(rect.height) },
+                    maxWidth: dialog.style.maxWidth, maxHeight: dialog.style.maxHeight,
+                };
+                dialog.style.transform = 'none';
+                dialog.style.maxWidth = 'none';
+                dialog.style.maxHeight = 'none';
+                _fitMax();
+                _maxListen(true);
+            } else {
+                const r0 = _maxRestore;
+                _maxRestore = null;
+                _maxListen(false);
+                dialog.style.maxWidth = r0.maxWidth;
+                dialog.style.maxHeight = r0.maxHeight;
+                dialog.style.transform = 'none';
+                dialog.style.top    = r0.geo.top    + 'px';
+                dialog.style.left   = r0.geo.left   + 'px';
+                dialog.style.width  = r0.geo.width  + 'px';
+                dialog.style.height = r0.geo.height + 'px';
+            }
+            dialog.classList.toggle('mb-info-maximized', on);
+            maxBtn.textContent = on ? '⤡' : '⤢';
+            maxBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+            _setTip(maxBtn, on ? 'Back to its own size (double-click the title bar)' : 'Fill the screen (double-click the title bar)');
+            if (grip) grip.hidden = on;
+            _saveGeo();
+        };
+        if (maxBtn) {
+            maxBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleMaximize(); });
+            titleBar.addEventListener('dblclick', (e) => {
+                if (e.target.closest('button, a, input, select')) return;
+                toggleMaximize();
+            });
+            const stored = GM_getValue(opts.geoKey, null);
+            if (stored && stored.max) toggleMaximize(true);
+        }
+
+        // ── Touch resize grip (opts.touchResize, touch-primary devices) ────────
+        // The browser's resize corner answers a mouse only; this grip does
+        // the same for a finger (pointer events, any pointer type).
+        let _gripDrag = null;
+        if (opts.touchResize && opts.geoKey && _isTouchPrimaryDevice()) {
+            grip = document.createElement('div');
+            grip.className = 'mb-info-grip';
+            grip.setAttribute('aria-hidden', 'true');
+            grip.style.cssText = `
+                position: absolute; right: 0; bottom: 0; width: 30px; height: 30px;
+                touch-action: none; cursor: nwse-resize; z-index: 2;
+                border-radius: 0 0 ${r} 0;
+                background: linear-gradient(135deg, transparent 0 52%, #9a8c78 52% 58%, transparent 58% 68%, #9a8c78 68% 74%, transparent 74% 84%, #9a8c78 84% 90%, transparent 90%);
+            `;
+            grip.hidden = !!_maxRestore;
+            dialog.appendChild(grip);
+            const minW = parseFloat(opts.minWidth)  || 320;
+            const minH = parseFloat(opts.minHeight) || 200;
+            grip.addEventListener('pointerdown', (e) => {
+                if (_maxRestore || (e.pointerType === 'mouse' && e.button !== 0)) return;
+                e.preventDefault();
+                e.stopPropagation();
+                const rect = dialog.getBoundingClientRect();
+                dialog.style.transform = 'none';
+                dialog.style.left = rect.left + 'px';
+                dialog.style.top  = rect.top  + 'px';
+                _gripDrag = { id: e.pointerId, x: e.clientX, y: e.clientY, w: rect.width, h: rect.height, left: rect.left, top: rect.top };
+                try { grip.setPointerCapture(e.pointerId); } catch (_) { /* a synthetic event has no capture */ }
+            });
+            grip.addEventListener('pointermove', (e) => {
+                if (!_gripDrag || e.pointerId !== _gripDrag.id) return;
+                const vb = _toolbarViewBox();
+                const maxW = Math.max(minW, vb.right - _gripDrag.left - 4);
+                const maxH = Math.max(minH, vb.bottom - _gripDrag.top - 4);
+                dialog.style.width  = Math.round(Math.min(maxW, Math.max(minW, _gripDrag.w + e.clientX - _gripDrag.x))) + 'px';
+                dialog.style.height = Math.round(Math.min(maxH, Math.max(minH, _gripDrag.h + e.clientY - _gripDrag.y))) + 'px';
+            });
+            const end = (e) => {
+                if (!_gripDrag || e.pointerId !== _gripDrag.id) return;
+                _gripDrag = null;
+                _saveGeo();
+            };
+            grip.addEventListener('pointerup', end);
+            grip.addEventListener('pointercancel', end);
+        }
+
         // ── Close / listener cleanup ───────────────────────────────────────────
         const closeDialog = () => {
             _saveGeo(); // persist position + size before removing the element (no-op without opts.geoKey)
+            _maxListen(false);
             if (_resizeObserver) _resizeObserver.disconnect();
             dialog.remove();
             document.removeEventListener('keydown',   onKeyDown);
@@ -91834,6 +92039,7 @@ ${sections.join('\n')}
             // Do not start dragging when the click target is a button or link
             // (covers the ✕ close button and any extra controls like Force-refresh)
             if (e.target.closest('button, a')) return;
+            if (_maxRestore) return; // a filled dialog stays put
             isDragging = true;
             const rect = dialog.getBoundingClientRect();
             dragOffsetX = e.clientX - rect.left;
@@ -91875,6 +92081,8 @@ ${sections.join('\n')}
             scrollArea,
             close:         closeDialog,
             titleBarRight,
+            toggleMaximize,
+            isMaximized:   () => !!_maxRestore,
             filterInput:   _qfResult ? _qfResult.input   : null,
             applyQF:       _qfResult ? _qfResult.applyQF : null,
         };
@@ -98733,6 +98941,10 @@ a { color: #1565c0; }`;
         row.type = 'button';
         row.className = 'mb-saed-load-row';
         row.textContent = eb.dataset.label ? `🧮 ${eb.dataset.label.replace(/^Show(?: all)?\s+/, '').replace(/^🧮\s*/, '')}` : eb.textContent;
+        // Its segment and idle text, for `_saedSyncLoadRows()` (a run's
+        // Stop label and the other rows' disabled state).
+        row._mbSeg = eb;
+        row.dataset.mbIdle = row.textContent;
         row.addEventListener('click', () => eb.click());
         _saedGroup('load').adopt(row);
     });
@@ -101725,6 +101937,11 @@ a { color: #1565c0; }`;
         .mb-saed-area:empty { display: none; }
         .mb-saed-area.mb-saed-first { border-left: 0; }
         .mb-saed-narrow > [data-mb-area="actions"] { display: none; }
+        /* During a run a narrow bar shows the running segment alone again,
+           beside the menu segment: on a phone it is the only Stop. */
+        .mb-saed-narrow.mb-saed-running > [data-mb-area="actions"] { display: inline-flex; }
+        .mb-saed-narrow.mb-saed-running > [data-mb-area="actions"] > :not(.mb-seg-running):not(.mb-seg-rendering) { display: none; }
+        .mb-saed-narrow.mb-saed-running > [data-mb-area="actions"] > .mb-seg { border-left: 0; }
         .mb-saed-bar .mb-seg {
             font: inherit;
             color: inherit;
@@ -101792,13 +102009,16 @@ a { color: #1565c0; }`;
             background-image: linear-gradient(to right, #bccfe9 var(--p, 0%), #dbe5f3 var(--p, 0%));
         }
         .mb-saed-bar .mb-seg.mb-seg-running[aria-disabled="true"] { cursor: progress; }
-        .mb-saed-bar .mb-seg-stop-glyph {
+        .mb-saed-bar .mb-seg-stop-glyph,
+        .mb-saed-load-row .mb-seg-stop-glyph {
             display: inline-block;
             width: 8px;
             height: 8px;
             background: currentColor;
             border-radius: 1px;
         }
+        .mb-saed-load-row .mb-seg-stop-glyph { margin-right: 6px; }
+        .mb-saed-load-row.mb-saed-load-row-running { font-weight: 600; font-variant-numeric: tabular-nums; }
         .mb-saed-bar .mb-seg.mb-seg-rendering,
         .mb-saed-bar .mb-seg.mb-seg-rendering:disabled {
             background-image: repeating-linear-gradient(-45deg, #e6edf7 0 6px, #d6e2f2 6px 12px);

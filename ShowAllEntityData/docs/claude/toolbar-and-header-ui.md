@@ -236,7 +236,7 @@ there too, and ⚠️ still shows at 0 on title-check pages:
 
 | Area      | Holds                                                                 | Present                                  |
 |-----------|-----------------------------------------------------------------------|------------------------------------------|
-| `actions` | the `🧮N …` fetch buttons as `.mb-seg-action`; group labels as `.mb-seg-label` | always (on a narrow screen: hidden) |
+| `actions` | the `🧮N …` fetch buttons as `.mb-seg-action`; group labels as `.mb-seg-label` | always (on a narrow screen: hidden, except the running segment during a run) |
 | `disc`    | `#mb-disc-menu-btn` "📀 Discography: <view> ▾"                         | `artist-releasegroups`, post-render      |
 | `menu`    | `#mb-saed-menu-btn` "☰ SAED ▾" (name: `sa_toolbar_menu_name`)          | always                                   |
 | `attn`    | one segment per attention indicator with rows (🔄 2 ▾, ❌ 1 ▾, ⚠️ 43 ▾) | post-render, only while it has something |
@@ -270,6 +270,17 @@ approved mockup; `_saedRunStart()` … `_saedRunEnd()`, state in `_saedRun`):
   the page under way, and the status line then says "Stopped by you after
   page n of N … — the rest was not loaded". There is no `#mb-stop-btn` and
   no `sa_ui_stop_btn_style` any more.
+- **On a narrow screen the running segment comes back into the bar** (vzell
+  2026-11-09, org/mobile.org: a phone had no Stop at all, since the narrow
+  rule hides the whole `actions` area). `_saedRunStart()` puts
+  `mb-saed-running` on `#mb-saed-bar` and `_saedRunEnd()` takes it off; under
+  `.mb-saed-narrow.mb-saed-running` the actions area shows again with only its
+  `.mb-seg-running`/`.mb-seg-rendering` child, beside ☰ SAED — Stop,
+  "Stopping…", the stripes. A class on the bar, not `:has()`. The Load rows
+  mirror their segments (`_saedSyncLoadRows()`, from every `_saedRun*` and
+  from `_saedRefreshGroups()`, i.e. every menu open): `disabled` as the
+  segment, and the running one shows its label; a tap on it is still
+  `eb.click()`, i.e. Stop. Spec: `fetch-in-segment.mobile.spec.js`.
 - `_saedRunRendering(rows)` before the render tail: `.mb-seg-rendering`,
   striped (moving only under `prefers-reduced-motion: no-preference`),
   disabled, "Rendering N rows…". `_saedRunEnd()` at every exit of the run
@@ -359,7 +370,9 @@ when broken:
   `pressAction()` (`tests/support/toolbarMenu.js`), which takes the Load row
   when the segment is hidden; a fixture without the viewport tag (the 5 KB
   `uniq-drop-viewport-clip.html`) is laid out 980 px wide and keeps its
-  segments. Without a laid-out segment (hidden, scrolled away, or
+  segments. During a run the running segment alone is back in the bar (Stop;
+  "On a narrow screen the running segment comes back", above). Without a
+  laid-out segment (hidden, scrolled away, or
   `opts.topRight`) it opens at the window's top right — the Tampermonkey route
   on a page scrolled down.
 - **A row in a CLOSED panel has a ZERO bounding rect.** Every programmatic
