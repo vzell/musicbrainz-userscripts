@@ -28946,3 +28946,61 @@ Env: 2026-11-09T16:43:13–16:50:10+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (L
   rerun except `pop-area-flags.spec.js:226`, which then passed 3/3 with the fix (`--repeat-each 3`) and 1/1 with it
   reverted: load-sensitive, not this change.
 - Browser check by vzell, 2026-11-09 (reported 17:23 CET): the shortcut behaviour OK.
+- Correction (later the same day): the 16 failures were NOT load. See the next entry: petri's clock spikes.
+
+## 2026-11-09 — petri's clock spikes 16.8 s every ~5 s: the "flaky under load" link-preview specs; schedulers moved to `_steadyNow()` (fix/steady-rate-slots)
+
+Env: 2026-11-09T17:30–20:14+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1) · Playwright 1.62.1, Chromium 151.0.7922.34, no Tampermonkey (GM stubs); clock probe: Node, n/a browser.
+
+- Symptom: `npm test` 2816/2832, the 16 failures all link-preview/popup windows still "◌ Loading…" (artist window
+  segments at "Album …", area chains at "Long Branch ◌", Discogs/setlist.fm/Wikidata cards). They passed when rerun
+  alone. Loaded A/B on the 9 affected files × 3 (981 tests, 12 workers): A gate on 23 failed, B gate forced off 23
+  failed (3 of them the gate's own test, `popup-mb.spec.js:519`, a B artifact). The shared gate is not the cause.
+  Load average during A only ~5 on 24 cores: not CPU starvation.
+- Traced with temporary `[DIAG]` logging (removed): an artist window reserves nine `/ws/2` slots in one tick at
+  1.1 s; the album page was due at +8.5 s and came at +25.3 s in two runs. A timer wrapper showed every late timer
+  late by 16,812–16,823 ms whatever its wait, in three browsers at the same wall-clock moment, page visible, native
+  `setTimeout`. No `wanted() === false` skip and no paged-list restart in any of 48 loaded runs.
+- Cause, measured (`clock-jumps.js`, Date.now() against `process.hrtime` every 100 ms): the wall clock jumps
+  +16.8 s and back within ~100 ms, about every 5 s, loaded or idle (7 in 30 s). Outside the spikes it agrees with
+  musicbrainz.org's `Date` header and with Windows (`[DateTime]::UtcNow`) within ~0.2 s. Kernel: clocksource tsc,
+  `hv_utils.timesync_implicit=1` (Hyper-V TimeSync samples every 5 s); `systemd-timesyncd` active; Windows
+  `w32tm /query /status`: "Local CMOS Clock", not synchronized. vzell stopped timesyncd
+  (`sudo systemctl stop systemd-timesyncd`, until the next WSL restart): 0 jumps in 30 s, and run C (same 981
+  tests, 19:58–20:11 CET) passed 981/981.
+- Mechanism: `_relAwaitRateSlot()`, `_dpAwaitSlot()` and `_extReserveSlot()` booked on `Date.now()`. A booking
+  inside a spike set the next free slot 16.8 s too far ahead; everything queued behind it waited that long.
+- Fix: `_steadyNow()` = `performance.timeOrigin + performance.now()` (epoch ms, monotonic within the page) in the
+  three schedulers, the shared Discogs slot's read-ahead check and the `__saTest` read-outs; new hook
+  `reserveExtRateSlots()`. `mbu:mb-gate` stays on `Date.now()` (majkinetor's scripts write it too): the residual.
+  Rule in docs/claude/fetch-and-render-pipeline.md.
+- Tests: `tests/fixtures/rate-slot-clock-step.spec.js` (Date.now() stepped +16.8 s around one reservation, per
+  scheduler): before, MusicBrainz 17,900 ms and detail pages 17,800 ms after the step (ext: no hook yet); after,
+  4/4. Mutations `scripts/mutations/steady-rate-slots.json`: 4/4 fail.
+- Not explained by this: vzell's video `debug/POH-MB-artist-pumping.mp4` (2026-11-08, his Windows browser): the
+  artist window's release-group pill flips Idle → Running every 2–5 s (frames at 5 fps) and "0 of 0 loaded" never
+  changes. Code path: a page skipped by `wanted()` ends the run without an error, and the next
+  `_mbPagedStart()` call starts it again. Not reproduced in fixtures; needs a console log with the `rg` channel
+  from his browser while it pumps.
+- To keep in mind on petri: a WSL restart starts `systemd-timesyncd` again (`sudo systemctl disable
+  systemd-timesyncd` would keep it off; WSL takes its time from Windows). Timings and test runs on petri before
+  2026-11-09 20:00 CET may carry these spikes.
+- After the fix: `npm run test:full` 2026-11-09T20:16:59–20:34:40+01:00 on petri (clock steady): 2850/2850 in
+  17 m 41 s, 12 workers.
+
+## 2026-11-09 — String Theory's idle mode during a render: +0.4 s on 2,146 rows, fetch unchanged (probe cases F/G)
+
+Env: 2026-11-09T20:35:12–20:45:36+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1), clock steady · Playwright 1.62.1, Chromium 151.0.7922.34, no Tampermonkey (GM stubs) · String Theory 2026.11.09.152756 (harness copy), EH seeded off.
+
+- New probe cases in `tests/support/probe-majkinetor-interop.js`: F seeds String Theory's idle to 1 minute (theme
+  and effect Random, continuous; GM `string_theory.theme`), waits without input until `<html data-st-idle>`, then
+  clicks SAED's action button from script (`button.click()` sends no pointer/key event, which String Theory would
+  count as activity) and reads SAED's own "Fetching/Rendering" from `#mb-global-status-display`; G is the control
+  (idle off, the same 66 s wait). `seedGmValues()` replaces the whole seed per call, so EH's `view` and String
+  Theory's key now go in one call (`openPage()`'s `gmExtra`).
+- Bruce Springsteen's release groups (31 pages, 2,146 rows), F,G × 3: fetch medians 20.68 s / 20.66 s; render
+  medians 2.98 s (2.98, 3.13, 2.60) / 2.57 s (2.57, 2.58, 2.42). Idle on throughout every F run, no theme switch
+  inside a run, two EH effect layers drawn (Bokeh and aurora, Tron, Aurora narrow). 36 requests per case, no 503.
+- Reading: the effect layers cost the render ~0.4 s (+16%); the fetch is untouched (vzell's visual check of a
+  746-page fetch agrees). The quiet mark goes up only after the render, so the requested convention
+  (org/reply-to-938-idle.org) keeps idle off a shown table but cannot spare the render; a mark at fetch start would.

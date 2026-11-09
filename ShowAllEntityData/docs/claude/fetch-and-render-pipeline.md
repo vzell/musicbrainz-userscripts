@@ -292,6 +292,35 @@ column's async job log (`onWait`). Tests: `tests/fixtures/mb-shared-gate.spec.js
 refusal, the lead, two tabs in one context, off, foreign host, the formulas via
 `__saTest.mbGate`); mutations `scripts/mutations/mb-shared-gate.json`.
 
+## The in-tab request schedulers book on `_steadyNow()`, never the wall clock (2026-11-09)
+
+`_relAwaitRateSlot()` (MusicBrainz's Web Service), `_dpAwaitSlot()` (the
+foreign sites' detail pages) and `_extReserveSlot()` (per external host,
+Discogs' API shared across tabs in GM storage) reserve slots synchronously
+and keep the next free time in a variable. They book on `_steadyNow()` =
+`performance.timeOrigin + performance.now()`: epoch ms, so the GM-shared
+Discogs slot keeps its unit, but monotonic within the page. Their `__saTest`
+read-outs (`mbRateSlotWaitMs()`, `dpRateSlotWaitMs()`, `extRateSlotWaitMs()`)
+use the same clock.
+
+**Why:** on petri (WSL2) the wall clock spiked 16.8 s ahead for ~100 ms every
+~5 s: Hyper-V's time sync against `systemd-timesyncd` (gone with timesyncd
+stopped, measured). A slot booked on `Date.now()` inside a spike lay 16.8 s too
+far ahead, and every request queued behind it waited that long: 16-23
+link-preview specs failed per loaded run, 0 with the clock steady
+(DEBUG-NOTES.md 2026-11-09). An NTP step, a VM resync or waking from sleep
+does the same on a user's machine.
+
+**Rules:** a new scheduler that reserves a future slot books on `_steadyNow()`.
+`Date.now()` stays right for what is compared with other tabs' or other
+scripts' epoch values. The shared gate `mbu:mb-gate` is still on `Date.now()`
+(its `tat`/`cool` are written by majkinetor's scripts too), so a booking made
+inside a spike there still holds everyone for the spike's size: the one
+residual. Test a scheduler by stepping `Date.now()` around one reservation
+(`tests/fixtures/rate-slot-clock-step.spec.js`, hooks `reserveMbRateSlots()`,
+`reserveDpRateSlots()`, `reserveExtRateSlots()`); mutations
+`scripts/mutations/steady-rate-slots.json`.
+
 ## Release events: one request for the whole page, so losing it costs the column
 
 `org/503-handling.org` F4. `initReleaseEventsColumn()` now goes through
