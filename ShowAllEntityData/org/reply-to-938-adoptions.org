@@ -7,19 +7,19 @@ Drafted 2026-11-09 at vzell's request ("** questions for majkinetor's" in =org/m
 post (not posted anywhere). It collects the open TODOs in =org/majkinetor.org= that are *ours* to build but say
 "ask majkinetor" first:
 
-| # | TODO in org/majkinetor.org                                                     | Asks                                         |
-|---+--------------------------------------------------------------------------------+----------------------------------------------|
+| # | TODO in org/majkinetor.org                                                      | Asks                                         |
+|---+---------------------------------------------------------------------------------+----------------------------------------------|
 | 1 | Discogs pages: credits as MusicBrainz relationships (Credit Hoarder's role map) | copy the maps; which licence; a shared JSON? |
-| 2 | Findings from Apollo / Group Therapy / First Contact / Credit Hoarder          | copy =CONFUSABLE=, =FORMAT_EXCLUDE_DEFAULT=  |
-| 3 | Title style: guess-case word lists, title-difference classes                   | copy Apollo's word lists                     |
-| 4 | Possible duplicate recordings (Fusion's algorithm, zero requests)              | verbatim port or re-implement?               |
-| 5 | In-page log window behind =Lib.*= (=mbuLog=)                                   | reuse it in the library?                     |
-| 6 | Query mode for the global filter (Event Horizon's filter language)             | same syntax; is the grammar stable?          |
+| 2 | Findings from Apollo / Group Therapy / First Contact / Credit Hoarder           | copy =CONFUSABLE=, =FORMAT_EXCLUDE_DEFAULT=  |
+| 3 | Title style: guess-case word lists, title-difference classes                    | copy Apollo's word lists                     |
+| 4 | Possible duplicate recordings (Fusion's algorithm, zero requests)               | verbatim port or re-implement?               |
+| 5 | In-page log window behind =Lib.*= (=mbuLog=)                                    | reuse it in the library?                     |
+| 6 | Query mode for the global filter (Event Horizon's filter language)              | same syntax; is the grammar stable?          |
 | 7 | Stale-while-revalidate for =_mbWsLoad= and =rel-ws2= (EH's kept answers)        | *would he build* a shared =mbu.kept.drop=?   |
+| 8 | Entity pictures: more providers, area map with flag badge                      | *would he expose* =MBU.artistImage=?          |
 
-Item 7 is the one request for him to *build* something (vzell, 2026-11-09: ask for the first of the left-out
-ones). Still left out:
-- exposing EH's =ArtistImage= lookup as =window.MBU.artistImage= ("Entity pictures …");
+Items 7 and 8 ask him to *build* something (vzell, 2026-11-09: first the kept-drop key, then also the
+=ArtistImage= exposure). Still left out:
 - an idle-mode convention ("String Theory's idle mode over our FRP"), which says "do not ask before measuring".
 
 Facts checked in the clone at =2d092e0= (2026-11-08T23:59:35+01:00): Credit Hoarder's =src/meta.txt= and
@@ -28,6 +28,10 @@ since 9.99.1582; VZ_MBLibrary becomes GPL-3.0-or-later with 4.5.1 (branch =lib-g
 only once that is on =main=, since item 5 says so. EH's drop key, checked at the same commit: =kpDrop()= /
 =kpWrote()= (EH:4168-4169) read and write =localStorage['eh.kept.drop']=; =kpWrote()= runs before a rating,
 a tag vote and any POST of the aliases editor (EH:4729, 5279, 7018) and on =mbu-tags-voted= (EH:5290).
+=ArtistImage=: =class ArtistImage= (EH:5385, cache key =mbu:artimg= in EH's GM storage), EH's instance =ARTIMG=
+(EH:7084, =gmFetch=, the provider order from EH's settings); =dev/artimg/README.md= offers it to any userscript
+by =@require= of =stable/dev/artimg/artist-image.js= (=find=, =findAll=, =cached=). EH already publishes shared
+helpers on =unsafeWindow.MBU= (EH:2110-2119: =theme=, =toast=, … guarded per key, first writer wins, #563).
 
 #+begin_src markdown
 Hi @majkinetor,
@@ -54,12 +58,18 @@ credit in the header, like the gate.
 6. **Event Horizon's filter language**: SAED's global filter could get an optional query mode. I'd like to use your
    syntax (`col:value`, `-term`, `OR`/`AND`, brackets, quotes, ranges like `2022-2024`), so a query means the same in
    both. Is the grammar stable enough to follow, or are changes planned?
-7. **One thing I'd ask you to build: a shared "drop" key for kept answers.** Event Horizon drops its kept answers
+And two things I'd ask you to build:
+
+7. **A shared "drop" key for kept answers.** Event Horizon drops its kept answers
    when it writes to MusicBrainz (`kpWrote()` sets `localStorage['eh.kept.drop']`). I'd like SAED to keep its cached
    answers the same way, and both caches would stay right if every script read and wrote one common key, e.g.
    `mbu.kept.drop` (a timestamp; anything kept before it is a miss). Then an edit made with any of our scripts
-   drops every script's kept answers, and the other way round. Would you add that (EH reading both keys
-   for a while), and is the name OK?
+   drops every script's kept answers. Would you add that (EH reading both keys for a while), and is the name OK?
+8. **Event Horizon's `ArtistImage` on `window.MBU`.** SAED shows artist pictures and label logos in its previews,
+   from url-rels it reads itself. I could `@require` your `dev/artimg/artist-image.js`, but then each script keeps
+   its own cache in its own GM storage and asks the providers again. Would you publish EH's instance as
+   `MBU.artistImage` (`find`, `findAll`, `cached`), like `MBU.theme` and `MBU.toast`? Then one cache and one set of
+   requests serve both, and SAED uses it whenever it's there (and its own lookup otherwise).
 
 No hurry on any of these.
 
