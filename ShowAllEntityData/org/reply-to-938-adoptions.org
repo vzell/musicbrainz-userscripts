@@ -13,24 +13,29 @@ post (not posted anywhere). It collects the open TODOs in =org/majkinetor.org= t
 | 2 | Findings from Apollo / Group Therapy / First Contact / Credit Hoarder          | copy =CONFUSABLE=, =FORMAT_EXCLUDE_DEFAULT=  |
 | 3 | Title style: guess-case word lists, title-difference classes                   | copy Apollo's word lists                     |
 | 4 | Possible duplicate recordings (Fusion's algorithm, zero requests)              | verbatim port or re-implement?               |
-| 5 | In-page log window behind =Lib.*= (=mbuLog=)                                   | reuse in the MIT library?                    |
+| 5 | In-page log window behind =Lib.*= (=mbuLog=)                                   | reuse it in the library?                     |
 | 6 | Query mode for the global filter (Event Horizon's filter language)             | same syntax; is the grammar stable?          |
+| 7 | Stale-while-revalidate for =_mbWsLoad= and =rel-ws2= (EH's kept answers)        | *would he build* a shared =mbu.kept.drop=?   |
 
-Left out on purpose, because each would need him to *build* something, not just agree:
-- the shared =mbu.kept.drop= epoch ("Stale-while-revalidate …");
+Item 7 is the one request for him to *build* something (vzell, 2026-11-09: ask for the first of the left-out
+ones). Still left out:
 - exposing EH's =ArtistImage= lookup as =window.MBU.artistImage= ("Entity pictures …");
 - an idle-mode convention ("String Theory's idle mode over our FRP"), which says "do not ask before measuring".
 
 Facts checked in the clone at =2d092e0= (2026-11-08T23:59:35+01:00): Credit Hoarder's =src/meta.txt= and
 =dist/credit_hoarder.user.js= say =@license MIT=, the repo root =LICENSE= is GPL-3. SAED is GPL-3.0-or-later
-since 9.99.1582; VZ_MBLibrary stays MIT.
+since 9.99.1582; VZ_MBLibrary becomes GPL-3.0-or-later with 4.5.1 (branch =lib-gpl=, 5e5ddc8a) — post this
+only once that is on =main=, since item 5 says so. EH's drop key, checked at the same commit: =kpDrop()= /
+=kpWrote()= (EH:4168-4169) read and write =localStorage['eh.kept.drop']=; =kpWrote()= runs before a rating,
+a tag vote and any POST of the aliases editor (EH:4729, 5279, 7018) and on =mbu-tags-voted= (EH:5290).
 
 #+begin_src markdown
 Hi @majkinetor,
 
-a few more things I'd like to take into SAED from your scripts. I'd build all of them on my side, but I'd like your OK
+a few more things I'd like to take into SAED from your scripts. I'd build items 1–6 on my side, but I'd like your OK
 first, and to know if you'd prefer a particular form. SAED is GPL-3.0-or-later now, so the licence is fine for most of
-it. Anything I take gets a credit in the header, like the gate.
+it, and I've just moved my shared library, VZ_MBLibrary, to GPL-3.0-or-later as well. Anything I take gets a
+credit in the header, like the gate.
 
 1. **Credit Hoarder's role and instrument maps** (`src/data/entity-map.js`, `src/data/instruments.js`,
    `src/data/work-only-rels.js`). On Discogs release and master pages, SAED would show which MusicBrainz relationship
@@ -45,11 +50,16 @@ it. Anything I take gets a credit in the header, like the gate.
    `gatedUnionFind`), for a "possible duplicate" finding on recording tables, with no extra requests. Would you rather
    I port them as they are, so SAED and Fusion agree, or re-implement the idea?
 5. **`mbuLog`**: I'd like an in-page log window like yours (filters, Copy as Markdown), so users can send me a log
-   without DevTools. It would live in my shared library, VZ_MBLibrary, which is MIT. Would you allow that part under
-   MIT, or should I keep it inside SAED (GPL)?
+   without DevTools. It would live in VZ_MBLibrary (now GPL too). OK to base it on your code?
 6. **Event Horizon's filter language**: SAED's global filter could get an optional query mode. I'd like to use your
    syntax (`col:value`, `-term`, `OR`/`AND`, brackets, quotes, ranges like `2022-2024`), so a query means the same in
    both. Is the grammar stable enough to follow, or are changes planned?
+7. **One thing I'd ask you to build: a shared "drop" key for kept answers.** Event Horizon drops its kept answers
+   when it writes to MusicBrainz (`kpWrote()` sets `localStorage['eh.kept.drop']`). I'd like SAED to keep its cached
+   answers the same way, and both caches would stay right if every script read and wrote one common key, e.g.
+   `mbu.kept.drop` (a timestamp; anything kept before it is a miss). Then an edit made with any of our scripts
+   drops every script's kept answers, and the other way round. Would you add that (EH reading both keys
+   for a while), and is the name OK?
 
 No hurry on any of these.
 
