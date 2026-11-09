@@ -1138,10 +1138,10 @@ CLOSED: [2026-11-08 Sun]
   effect Random, continuous) and G (idle off, the same 66 s wait), alternately 3 × each, on Bruce Springsteen's
   release groups (=artist-releasegroups=, 31 pages, 2,146 rows). F waits without input until =<html data-st-idle>=
   is up, then starts SAED's fetch with a scripted click (no pointer/key event, so idle stays).
-  | Case          | Fetch, median | Render, median | Renders (s)        | Idle during the run              |
-  |---------------+---------------+----------------+--------------------+----------------------------------|
-  | F (idle on)   | 20.68 s       | 2.98 s         | 2.98 · 3.13 · 2.60 | on throughout, 0 switches, 2 EH layers |
-  | G (idle off)  | 20.66 s       | 2.57 s         | 2.57 · 2.58 · 2.42 | off                              |
+  | Case         | Fetch, median | Render, median | Renders (s)        | Idle during the run                    |
+  |--------------+---------------+----------------+--------------------+----------------------------------------|
+  | F (idle on)  | 20.68 s       | 2.98 s         | 2.98 · 3.13 · 2.60 | on throughout, 0 switches, 2 EH layers |
+  | G (idle off) | 20.66 s       | 2.57 s         | 2.57 · 2.58 · 2.42 | off                                    |
   Fetch unchanged (vzell's observation confirmed). Render about 0.4 s (+16%) slower with an effect animating, every
   F run slower than every G run (n = 3; effects Bokeh and aurora, Tron, Aurora narrow). No theme cross-fade fell
   inside a run (the seeded 1-minute re-pick came after the ~30 s run), so the cost is the effect layers drawing during
@@ -1525,7 +1525,7 @@ thought about licensing issues and just copied it from a typical userscript head
 regarding "Joining mbu:mb-gate" and the implementation. Additionally mention majkinetor userscripts in our section
 "* This script uses functionality originally included in the following user scripts, thx to the original authors..."
 
-** questions
+** TODO questions
 
 Joining mbu:mb-gate: how should SAED's own ws/2 pacing relate to the shared schedule?
 
@@ -1569,7 +1569,7 @@ What goes into this first round?
 
   Decision for you: should I merge now on this evidence (the re-runs above plus the earlier full run), or run the full suite again first (about 2.5 h on vzell-lap)?
 
-** tests
+** TODO tests
 
 ● The two tabs give SAED two copies of itself, plus String Theory, all spending one Web Service budget. The check is that they now take turns instead of each going at its own pace.
 
@@ -1641,7 +1641,7 @@ I also confirmed no slowdown of page fetching after idle mode kicks in on a very
 Additionally measure the render-slowdown half of the pre-test for the idle-mode stuff and adjust the .org files
 accordingly after measurement
 
-** fix the 16 failures (link-preview and popup tests)
+** DONE fix the 16 failures (link-preview and popup tests)
 
 Fix the 16 failures (link-preview and popup tests), as the last sessions and implementations have been done on the slow
 "vzell-lap" machine mostly without the full test suite, as it takes very long there. Now that we are back on a fast
@@ -1649,7 +1649,7 @@ machine try to fix them even only under load if it makes sense
 
 Maybe the test failers have to do with what I sometimes experience in the detail popup, see screenshot video @debug/POH-MB-artist-pumping.mp4
 
-** time sync
+** DONE time sync
 
 ● I can't fully prove the mechanism from inside WSL, but the evidence narrows it down a lot.
 
