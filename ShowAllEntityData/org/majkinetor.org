@@ -1011,8 +1011,9 @@ CLOSED: [2026-11-08 Sun]
   gate cannot pace the traffic that ran beside EH's 503s on 2026-11-06/08. If MusicBrainz counts page fetches
   against the same per-IP budget, a page-fetch booking (e.g. as background, or a convention for it) would be
   the next step; not measured, so not asked.
-- *Still to do*: vzell's live check (two tabs on a release with String Theory, =localStorage['mbu:mb-gate']= in
-  DevTools, the Relationships column's progress card), then the merge.
+- *Live check by vzell* (2026-11-09T01:42:32+01:00, his browser, SAED from the branch, String Theory 2026.11.08.235934): a 20 s
+  =cool= written into =mbu:mb-gate= from the console held a forced Relationships request for the 20 s. The
+  two-tab pacing test was not run (bulk fetch and cache leave too few requests). *Still to do*: the merge.
 
 - *Why*: on a release page with String Theory, ISRC Scout, PC, MC, Fusion, Fuzzy Logic and EH share one ~1 req/s
   ws/2 schedule across tabs and hold together on a 429/503. SAED (Relationships column, previews, Discogs MB column,

@@ -28867,3 +28867,8 @@ Env: 2026-11-09T00:20–01:00+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Lin
   gates /ws/2 only, so the gate cannot pace the traffic that coincided with EH's 503s in the 2026-11-06/08 runs.
   Whether MusicBrainz counts HTML page fetches against the same per-IP budget is not known here (the API's
   rate-limiting page is about /ws/2); recorded in org/majkinetor.org for vzell to decide whether to ask.
+- vzell's live check (reported 2026-11-09T01:42:32+01:00; vzell's browser, browser and Tampermonkey versions not recorded — unknown;
+  SAED from the branch raw link, String Theory 2026.11.08.235934 from majkinetor's main): Test 1 — a 20 s `cool`
+  written into `localStorage['mbu:mb-gate']` from the console, then ⟳ on a Relationships cell — the request
+  waited the 20 s. The cross-script hold works in a real browser. Test 2 (two tabs pacing per row) not run: the
+  column's bulk fetch and browser cache leave too few requests to see it without changing settings.
