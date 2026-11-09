@@ -1,5 +1,35 @@
 [
   {
+    "version": "9.99.1585",
+    "date": "2026-11-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "A jump of the computer's clock no longer holds back link previews, the Relationships column and the other lookups. The script spaces its requests to MusicBrainz, to the foreign sites' pages and to each external site (setlist.fm, Wikidata, Discogs, …) by booking a time for each; it booked on the wall clock, so one booking made while the clock was off (an NTP correction, a virtual machine resyncing, waking from sleep) put every request after it that much later. Found on a WSL2 machine whose clock jumped 16.8 s ahead for a tenth of a second every 5 seconds, where an artist window's albums came after 25 s instead of 8.5 s. The bookings now follow the page's own steady clock. MusicBrainz's request budget shared with majkinetor's scripts keeps the wall clock, as all of them use it."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1584",
+    "date": "2026-11-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "? and / no longer open the keyboard shortcuts reference while you type into a drop-down or editable text. Before, only text boxes and text areas counted as typing: with the focus on a drop-down (such as the type next to MusicBrainz's search box, reached with Tab) the reference opened over it, and in editable text the key was also lost. Typing now means what Event Horizon's key guard already uses: a text box, a text area, a drop-down or editable text."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Help, Keyboard shortcuts: with direct Ctrl+letter shortcuts on and String Theory installed, Ctrl+K opens String Theory's command palette, not the shortcuts reference; use the prefix key and k, or ?, or give one side another key (String Theory: its settings, Command palette, Hotkey). The ? and / row says they do not work while typing in a field."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1583",
     "date": "2026-11-09",
     "sections": [

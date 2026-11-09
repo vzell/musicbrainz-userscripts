@@ -4,9 +4,27 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1754 versions; the month pages hold all of them.
+This page shows the newest 100 of 1756 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1585 — 2026-11-09
+
+**🐛 Fix**
+
+- A jump of the computer's clock no longer holds back link previews, the Relationships column and the other lookups. The script spaces its requests to MusicBrainz, to the foreign sites' pages and to each external site (setlist.fm, Wikidata, Discogs, …) by booking a time for each; it booked on the wall clock, so one booking made while the clock was off (an NTP correction, a virtual machine resyncing, waking from sleep) put every request after it that much later. Found on a WSL2 machine whose clock jumped 16.8 s ahead for a tenth of a second every 5 seconds, where an artist window's albums came after 25 s instead of 8.5 s. The bookings now follow the page's own steady clock. MusicBrainz's request budget shared with majkinetor's scripts keeps the wall clock, as all of them use it.
+
+
+## 9.99.1584 — 2026-11-09
+
+**🐛 Fix**
+
+- ? and / no longer open the keyboard shortcuts reference while you type into a drop-down or editable text. Before, only text boxes and text areas counted as typing: with the focus on a drop-down (such as the type next to MusicBrainz's search box, reached with Tab) the reference opened over it, and in editable text the key was also lost. Typing now means what Event Horizon's key guard already uses: a text box, a text area, a drop-down or editable text.
+
+**📝 Docs**
+
+- Help, Keyboard shortcuts: with direct Ctrl+letter shortcuts on and String Theory installed, Ctrl+K opens String Theory's command palette, not the shortcuts reference; use the prefix key and k, or ?, or give one side another key (String Theory: its settings, Command palette, Hotkey). The ? and / row says they do not work while typing in a field.
+
 
 ## 9.99.1583 — 2026-11-09
 
@@ -887,29 +905,6 @@ This page shows the newest 100 of 1754 versions; the month pages hold all of the
 **🐛 Fix**
 
 - A release or event window's cover strip that said "The archive did not answer." stayed so for the session: ⟳ read the failure back instead of asking the archive again. ⟳ asks again now (a release with no images is not asked again).
-
-
-## 9.99.1485 — 2026-10-28
-
-**🐛 Fix**
-
-- A window filter's matches (a Discogs window's versions, a collection's entries) lost their colour when "Column Filter Highlight Color" was saved empty: the tables fall back to red there, the window fell back to the text's own colour. Both fall back to red now (found by the settings audit, scripts/audit-config-defaults.py).
-
-
-## 9.99.1484 — 2026-10-28
-
-**🚀 Feature**
-
-- The preview window's path (org/POH-headerline.org, vzell): following links inside the window builds a path in its title bar, and now every step of it has its glyph — MusicBrainz's own entity glyph, or for Discogs 💿 master, 📄 release, 🏷️ label, 👤 artist, 💬 user (the Discogs mark for a search, a help article, images or a history) — and is a way back: click a step and the window shows it again, from memory, the steps after it dropped. The earlier steps behind "…" are a menu of the whole path. Resting on a step shows that step's own card (no Ctrl, nothing asked; Space goes back to it); resting on its glyph shows its kind's documentation — MusicBrainz's /doc/&lt;Kind&gt; page, its style guide named in the card's foot, or Discogs' Database Guidelines article — and a click reads it in the window. A narrow window keeps two steps instead of three.
-- New setting "In the window's title, each step of the path reads": its name (the default, e.g. "The Angel") or its kind ("Recording", the path as it was). A view — an editing history, a documentation page, a Discogs search — always reads its kind.
-
-**🐛 Fix**
-
-- On discogs.com a MusicBrainz card and window (the MusicBrainz column, murdos' importer's icons) had no entity glyph: it was only drawn for MusicBrainz's own pages, and its address named discogs.com. It is musicbrainz.org's now (org/POH-headerline.org item 3).
-
-**✨ Improve**
-
-- A Discogs card's kind line carries its kind's emoji too, as the window's path does.
 
 
 ---
