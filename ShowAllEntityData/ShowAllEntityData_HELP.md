@@ -1742,7 +1742,8 @@ Relationships column's [progress card](#the-progress-card) says so in its
 last requests. Only on musicbrainz.org. To pace this script on its own
 again, turn off *Share MusicBrainz's request budget with other userscripts*
 in ⚙️ Settings → 🎨 UI FEATURES. Without any of majkinetor's scripts
-installed, the setting changes nothing you would notice.
+installed, it matters only when several MusicBrainz tabs fetch at once:
+they now share the one budget instead of each pacing on its own.
 
 </details>
 

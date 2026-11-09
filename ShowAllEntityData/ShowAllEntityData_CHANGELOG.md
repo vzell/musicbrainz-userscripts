@@ -4,9 +4,23 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1752 versions; the month pages hold all of them.
+This page shows the newest 100 of 1754 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1583 — 2026-11-09
+
+**🚀 Feature**
+
+- Shared MusicBrainz request budget: on musicbrainz.org, this script's Web Service requests (the Relationships column, link previews, entity pictures, millisecond lengths, release events, the release-group ▶ expand, the Recording of columns) now also book their place in mbu:mb-gate, the cross-tab schedule majkinetor's String Theory, Event Horizon, ISRC Scout and his other scripts share. A refusal (HTTP 503/429) seen by any of them makes all of them pause, in every tab, and this script no longer crowds their requests out. Its own pacing (one request per 1.1 s) stays, so it is never faster than before. Follows his protocol version 1, ported from his dev/net/mb-gate.mjs (9.99.1582). Setting: "Share MusicBrainz's request budget with other userscripts" (sa\_mb\_shared\_gate, on). Other sites are not affected.
+
+
+## 9.99.1582 — 2026-11-09
+
+**📝 Docs**
+
+- ShowAllEntityData is now licensed GPL-3.0-or-later (it was MIT up to 9.99.1581); the full text ships as LICENSE next to the script. Several of the scripts it builds on are GPL themselves, and majkinetor's Musicbrainz Toolset is now credited in the header, because the shared MusicBrainz request gate (9.99.1583) is ported from it.
+
 
 ## 9.99.1581 — 2026-11-08
 
@@ -896,20 +910,6 @@ This page shows the newest 100 of 1752 versions; the month pages hold all of the
 **✨ Improve**
 
 - A Discogs card's kind line carries its kind's emoji too, as the window's path does.
-
-
-## 9.99.1483 — 2026-10-28
-
-**✨ Improve**
-
-- YouTube in place (9.99.1479, 9.99.1480), after vzell's live test: a YouTube link in a MusicBrainz page's own Relationships list ("stream video for free" on a recording) gets its "Play here" tile on the page as it loads, before any button; it plays in a row under that relationship, and the Relationships render still builds its own tile, just one. The Discogs window's Videos line up in three columns — tile, title, length — instead of running together.
-
-
-## 9.99.1482 — 2026-10-28
-
-**📝 Docs**
-
-- Help: "Playing a YouTube video where it is listed" under the link previews — where the tiles are (URLs table, sidebar, annotations, a YouTube link's window, Discogs' Videos, a Brucebase show's window), Esc and ■ Stop, one video at a time, the two settings, and what happens where a site refuses the player; the Discogs release page's Videos sub-table and the master window's videos (9.99.1478–9.99.1481).
 
 
 ---
