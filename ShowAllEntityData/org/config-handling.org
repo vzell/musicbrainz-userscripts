@@ -548,6 +548,9 @@ Republish checklist, then:
 3. copy =ShowAllEntityData_CHANGELOG.json= and =ShowAllEntityData_HELP.txt= —
    the ❓ Help and 📜 ChangeLog dialogs fetch these from the mirror at runtime,
    so they are what makes the in-script docs current;
+3a. copy =ShowAllEntityData/LICENSE= to the mirror next to the script (/added
+   2026-11-08/: SAED is GPL-3.0-or-later from the version after 9.99.1581 on — it
+   was MIT before — and GPL wants the licence text shipped with the program);
 4. =MB_PageEnhancer= is on the network =@require= by its own deliberate choice
    (1.0.11) and stays there. Its 1.0.12 =GM_deleteValue= grant is INERT until
    step 1 lands — 4.0.0 has no =persist()= to feature-detect — which is

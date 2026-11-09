@@ -11,6 +11,9 @@ will never need is folded into collapsible sections.
 
 > **Where this page opens.** *❓ Help ↗* in the ☰ SAED menu, and the prefix
 > key then **H**, open this file on GitHub in a new tab.
+>
+> **Licence.** GPL-3.0-or-later (the `LICENSE` file next to the script);
+> versions up to 9.99.1581 were MIT.
 
 ---
 
@@ -1724,6 +1727,22 @@ launchers* brings them back for the page, *Hide corner launchers* hides them
 again. Setting: *Hide String Theory's corner launchers while a table is
 shown* in ⚙️ Settings → 🎨 UI FEATURES. Needs a String Theory that knows the
 shared mark (majkinetor's #938); an older one keeps its launchers.
+
+**One request budget.** MusicBrainz allows about one Web Service request a
+second per computer, for all scripts together. majkinetor's scripts share
+one schedule for it across all your MusicBrainz tabs, and when MusicBrainz
+refuses one of them (HTTP 503 or 429) they all pause. This script's own Web
+Service requests (the Relationships column, link previews, entity pictures,
+millisecond lengths, release events, the Recording of columns, the
+release-group ▶ expand) take their place in the same schedule and pause with
+them, so they no longer crowd those scripts out. That never makes this
+script faster, since its own pace of one request per 1.1 s still applies.
+While the others are busy or MusicBrainz asked everyone to wait, the
+Relationships column's [progress card](#the-progress-card) says so in its
+last requests. Only on musicbrainz.org. To pace this script on its own
+again, turn off *Share MusicBrainz's request budget with other userscripts*
+in ⚙️ Settings → 🎨 UI FEATURES. Without any of majkinetor's scripts
+installed, the setting changes nothing you would notice.
 
 </details>
 

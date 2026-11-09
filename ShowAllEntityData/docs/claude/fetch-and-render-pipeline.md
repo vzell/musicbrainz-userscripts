@@ -215,6 +215,83 @@ is needed** — every caller stops at its first failed page, so exactly one page
 can ever pay the retries. That stops being true the moment anything makes the
 loop continue past a failure.
 
+## The shared MusicBrainz request gate (mbu:mb-gate v1)
+
+*Added 2026-11-09 (branch `feature/mb-shared-gate`, WIP.2).* majkinetor's
+scripts (String Theory, Event Horizon, ISRC Scout, …) pace every `/ws/2`
+request of every tab through one schedule in `localStorage['mbu:mb-gate']`,
+changed under the Web Lock `mbu-mb-gate`, and a 429/503 any of them sees holds
+them all. `_mbGate*` (next to `_ws2GetJson()`) books this script's `/ws/2`
+requests in the same schedule. It is a PORT of his `dev/net/mb-gate.mjs`
+(`mbnState()`/`mbnSlot()`/`mbnAnswer()`, GPL-3.0 — possible since SAED is
+GPL-3.0-or-later, WIP.1) held to his DEVELOP.md "Shared request-gate protocol",
+version 1 (on his `main` since `7eb7c563`). Anchors `gate-version`,
+`gate-keep-fields` in `scripts/majkinetor-anchors.json` watch that contract.
+
+**Rules that fail silently when broken:**
+
+- **Added, never a replacement.** Every caller still takes `_relAwaitRateSlot()`
+  (1100 ms, per tab) FIRST; the shared slot is booked inside `_ws2GetJson()`
+  per attempt, after it. So this script is never faster than before, and only
+  waits longer while other scripts or tabs spend the budget (vzell's decision,
+  2026-11-08). The shared schedule's own burst of 3 therefore never makes SAED
+  burst: its per-tab slot still spaces it.
+- **Only /ws/2, only on musicbrainz.org.** `_mbGateGated()` is the URL rule;
+  `_mbGateActive()` the host rule. localStorage is per origin, so on discogs.com,
+  setlist.fm or the Springsteen sites there is no schedule to join — their
+  `/ws/2` requests (`_mbWsGetForeign()`, `_extGet()`) keep the per-tab gate.
+  HTML page fetches (`fetchHtml()`, `_dpFetchText()`) are not gated, as in the
+  protocol.
+- **One wrapper.** Every same-origin `/ws/2` request goes through
+  `_mbGateFetch()` (slot → `fetch()` → `_mbGateAnswer()`): `_ws2GetJson()`
+  (everything that retries), the two ⏱ millisecond-length lookups. The only
+  exception is the release-group ▶ expand, a native XHR
+  (`ergCreateButton()`), which calls `_mbGateSlot()` before `send` and
+  `_mbGateAnswer()` in `onreadystatechange`. A new `/ws/2` call site that uses
+  a bare `fetch()` is invisible to the other scripts and is a bug.
+- **The answer is awaited before the response is handed back**, so a retry's
+  `beforeRetry` → next slot already sees the hold this 503 wrote.
+- **Only 429/503 write a hold**; any other answer below 500 takes one step of
+  `hot` back; 502/504 change nothing in the schedule (the protocol's rule) but
+  are still retried locally (`_isTransientHttp()`). `hot` steps once per
+  throttle EPISODE (`now >= cool`), resets after 30 s of quiet, caps at 6; the
+  hold is `min(max(1 s, Retry-After) × max(1, hot), 60 s)`. That `Retry-After`
+  parse is the protocol's own (raw header, no 30 s cap); `_parseRetryAfterMs()`
+  stays the local backoff's.
+- **Version handling.** Absent = 1. Writes stamp `version: 1` and spread the
+  stored object, so a field a newer writer added survives. An explicit unknown
+  version is refused WITHOUT writing: `_mbgRefused` is set, logged once on the
+  `mbgate` channel (`Lib.warn`), and `_mbGateActive()` is false for the rest of
+  the session — the per-tab slot alone paces then.
+- **Foreground vs background.** Background (the default) waits out another
+  script's `lead` and books with the burst rule; foreground books
+  `max(now, cool)`. Foreground is used for explicit clicks only: a
+  Relationships cell click (`_relLoadRow()` → `_relFetchWs2(…, {foreground})`),
+  the window's ⟳ (`_mbWsLoad()`'s forced load), a ⏱ press, the ▶ expand. A
+  hover card, a pinned window's first load and every bulk pass are background.
+  This script never TAKES the lead (round 1); the browser-check iframe is not
+  taken either.
+- **`wanted()` is asked again while waiting.** `_rgWsGet()` passes it as
+  `cancelled`, so a hover that moved on during a shared hold makes no request;
+  `_ws2GetJson()` then resolves `{skipped: true}`, which `_mbLoad()` and the
+  other `_rgWsGet()` callers already treat as "not asked".
+- **Lock:** held only for the synchronous read-modify-write; aborted after 3 s
+  (a stuck holder) and done unlocked, like no Web Locks at all. Waits poll the
+  stored `cool`/`lead` in 250 ms slices without the lock.
+- **Specs that answer many 503s.** The harness runs with the gate ON (its
+  default), so a spec that refuses request after request pays the shared hold:
+  `hot` steps per episode, 1 s … 6 s each. A spec that pins SAED's OWN retry
+  logic by request counts (not pacing) seeds `sa_mb_shared_gate: false`, as
+  `rel-auto-retry-failed.spec.js` does since 2026-11-09 (it timed out at 7 of 12
+  cells otherwise). The hold itself is pinned in `mb-shared-gate.spec.js`.
+
+Switch: `sa_mb_shared_gate` (default on). Debug channel: `mbgate` (literal call
+sites). A shared wait over a second is also a line in the Relationships
+column's async job log (`onWait`). Tests: `tests/fixtures/mb-shared-gate.spec.js`
+(the hold honoured through the real click path, the write rules, the version
+refusal, the lead, two tabs in one context, off, foreign host, the formulas via
+`__saTest.mbGate`); mutations `scripts/mutations/mb-shared-gate.json`.
+
 ## Release events: one request for the whole page, so losing it costs the column
 
 `org/503-handling.org` F4. `initReleaseEventsColumn()` now goes through

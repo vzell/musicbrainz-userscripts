@@ -1,0 +1,26 @@
+[
+    {
+        "version": "WIP.2",
+        "date": "2026-11-09",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "Shared MusicBrainz request budget: on musicbrainz.org, this script's Web Service requests (the Relationships column, link previews, entity pictures, millisecond lengths, release events, the release-group ▶ expand, the Recording of columns) now also book their place in mbu:mb-gate, the cross-tab schedule majkinetor's String Theory, Event Horizon, ISRC Scout and his other scripts share. A refusal (HTTP 503/429) seen by any of them makes all of them pause, in every tab, and this script no longer crowds their requests out. Its own pacing (one request per 1.1 s) stays, so it is never faster than before. Follows his protocol version 1, ported from his dev/net/mb-gate.mjs (WIP.1). Setting: \"Share MusicBrainz's request budget with other userscripts\" (sa_mb_shared_gate, on). Other sites are not affected."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.1",
+        "date": "2026-11-09",
+        "sections": [
+            {
+                "label": "📝 Docs",
+                "items": [
+                    "ShowAllEntityData is now licensed GPL-3.0-or-later (it was MIT up to 9.99.1581); the full text ships as LICENSE next to the script. Several of the scripts it builds on are GPL themselves, and majkinetor's Musicbrainz Toolset is now credited in the header, because the shared MusicBrainz request gate (WIP.2) is ported from it."
+                ]
+            }
+        ]
+    }
+]

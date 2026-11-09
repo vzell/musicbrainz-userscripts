@@ -28791,3 +28791,94 @@ GitHub API at `codex/interop-938` 9e4cdd59 (EH and ISRC Scout 2026.11.08.152918)
 - Also 2026-11-08 (vzell): the dev copy's library `@require` is now this repo's GitHub `main`
   (`raw.githubusercontent.com/vzell/musicbrainz-userscripts/main/lib/VZ_MBLibrary.user.js`), so the dev copy works
   for anyone (majkinetor); `check-publish-ready.py` names that case; CLAUDE.md "Publishing" updated.
+
+## 2026-11-09 — majkinetor refresh: 65032ef → 2d092e0 (his main after merging #938 as 7eb7c563); C1/C2 measured live; String Theory's idle mode found (feature/mb-shared-gate)
+
+Env: 2026-11-09T00:07:44–00:16:33+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1, Chromium 151.0.7922.34, no Tampermonkey (GM stubs) for the probe · code reading: n/a. MusicBrainz reachable over IPv4 from WSL this time (`curl -4` 200; IPv6 refused).
+
+- Upstream: milic-bot merged `codex/interop-938` into majkinetor's `main` as `7eb7c563` (2026-11-09 00:00 CET,
+  #938 comment 6728358851) and deleted the branch; HEAD `2d092e0` only rebuilds String Theory (2026.11.08.235934;
+  EH and ISRC Scout 2026.11.08.235840). The raw "latest" link served a byte-identical bundle. vzell switched his
+  browsers to it. `dev/net/mb-gate.mjs` and DEVELOP.md are byte-identical at 9e4cdd59, 7eb7c563 and 2d092e02, so
+  the gate port planned on this branch is unaffected.
+- Harness copies re-copied (all three from 2d092e0), manifest entries re-scanned in place (line numbers +135…+141
+  in EH; the #938 conventions now described as upstream behaviour; ISRC Scout's race recorded as resolved for ≥
+  7eb7c563). Manifest validated: 13 scripts, 14 combinations.
+- Anchors: 47/52 held as they were, 7 needed a look (`is-wipe` GONE = the wipe now spares `[data-mbu-foreign]`;
+  `conv-c1-is`, `conv-c1-tip`, `conv-c2`, `conv-c3`, `conv-c4` BACK = adopted; `eh-fx-try` GONE = a fourth
+  attribute, `data-st-eh-fx-idle`). Rewritten/flipped, `conv-c5` retired, five added; 52/52 hold, lines updated.
+- Probe (cases 0/A–D EH, A–C ST, I alone and in the bundle): after V the hover card is in the document and the
+  sidebar handle visible (9.99.1576's `_saBody()` confirmed live); `h` navigates nowhere on IP and FRP (9.99.1577).
+  Case D had no 503 this run (SAED 37.5 s vs 37.2 s alone); case B with the bundle had one 503 on a gated member
+  request (`/ws/2/release/…?inc=user-tags+user-genres`, GM), none on SAED — bursts, not a trend. Case I: 36/36
+  native Links icons carry `data-ii-platform`, our table carries `data-mbu-foreign`, Links/ISRC cells stay 51/51 after
+  the render (no bare re-add), 36/36 FRP icons get our platform stamp (0/36 on 2026-11-08). The probe gained
+  `withIiPlatform` and `foreignTables` for this.
+- New finding, from code, unmeasured: String Theory's idle mode (#953) is ON by default — after 5 idle minutes a
+  random theme (view-transition cross-fade) and, via `<html data-st-eh-fx-idle>`, a random EH effect preset drawn by
+  EH even while EH is off, as canvas layers in MusicBrainz's body (`hexApply()`, `z-index:1`). That reaches our FRP
+  (a user waiting out a long fetch). New TODO in org/majkinetor.org with a pre-test; anchors `st-idle-default`,
+  `eh-idle-fx`.
+
+## 2026-11-09 — SAED joins majkinetor's cross-tab request gate (`mbu:mb-gate` v1, `_mbGate*`, feature/mb-shared-gate WIP.2)
+
+Env: 2026-11-09T00:20–01:00+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1, Chromium 151.0.7922.34, no Tampermonkey (GM stubs) for the specs; the throttle-shape probe: n/a browser.
+
+- What: every same-origin `/ws/2` request on musicbrainz.org books a slot in `localStorage['mbu:mb-gate']` under the
+  Web Lock `mbu-mb-gate` and reports its answer, PORTED from majkinetor's `dev/net/mb-gate.mjs` v1 (byte-identical at
+  9e4cdd59 / 7eb7c563 / 2d092e02; licence settled by WIP.1, GPL-3.0-or-later). Added AFTER the per-tab
+  `_relAwaitRateSlot()` (vzell's choice: never faster than before). Routing: `_ws2GetJson()` per attempt →
+  `_mbGateFetch()`; the two ⏱ lookups → `_mbGateFetch()`; the RG ▶ XHR → `_mbGateSlot()` + `_mbGateAnswer()`.
+  Foreground: a Relationships cell click, the window's ⟳ (`_mbLoad`'s `force`), ⏱, ▶. `_rgWsGet()` hands `wanted()`
+  on as `cancelled`, so a card nobody looks at any more is dropped while it waits for a shared hold. Foreign hosts
+  never join (another origin's storage). Switch `sa_mb_shared_gate` (on).
+- Deviation from the plan, on purpose: a pinned window's FIRST load books background, not foreground — the Space
+  press does not reach `_rgWsGet()` as such (only ⟳'s `force` does), and a background booking costs at most the
+  shared burst rule there. Recorded in docs/claude/fetch-and-render-pipeline.md.
+- One fix found while reviewing: the lead-wait loop read `lead` from a stored schedule of an UNKNOWN version; it now
+  leaves such a schedule unread and lets `_mbGateState()` refuse it.
+- Probe `scripts/probe-ws2-throttle-shape.py` (00:37:52–00:38:03): 10 lookups at 1.1 s, all 200, no `Retry-After`,
+  `X-RateLimit-Limit: 1900`, `X-RateLimit-Remaining` jumping 56…1874 between consecutive seconds — server-wide, so
+  not read (recorded in `_mbGateAnswer()`'s JSDoc).
+- Specs: `tests/fixtures/mb-shared-gate.spec.js` (10: hold honoured through the real click path with a control arm,
+  write rules incl. an unknown field kept, version-2 refusal byte-identical, lead background vs foreground, a hold
+  appearing while queued, foreground vs a busy schedule, two pages of one context sharing the schedule with the burst
+  of 3, off, discogs.com inactive, the formulas) and one in `popup-mb.spec.js` (a hover that moved on during a shared
+  hold asks nothing). Mutations `scripts/mutations/mb-shared-gate.json` (18; one recorded `expect: pass`: the
+  booking's own `cool` term is masked by the wait loop's re-read). A stale find in `popup-engine.json`
+  (`_rgWsGet`'s new `opts`) repaired.
+- The existing ws/2 / retry / rate specs with the gate ON (it is not in `FIXTURE_SETTINGS_OVERRIDE`): 304/304 passed
+  (00:32:41–00:55:58, 2 workers; 21 files incl. ws2-transient-classifier, rel-*, release-events-transient,
+  *-failed-retry, release-rg-popup, popup-mb, ms-length, work-suggest, recording-of, discogs-mb-column), so the
+  override stays as it is. `popup-mb.spec.js` reported 16.8 min as a file; A/B of its 12 slowest tests, 1 worker,
+  same session: `main` b53efd7b 2 m 21 s (00:57:07–00:59:29) vs branch 2 m 9 s (–01:01:38), ratio 0.91 — no cost
+  from the gate; that file is simply long.
+- Mutations (2026-11-09T01:03:36–01:06:46, then 01:09–01:10 for three entries): 17/17 caught plus the one recorded
+  `expect: pass` overlap. The first run had three surprises, all fixed: the masked-`cool` entry FAILED once because
+  the hold test started its clock after seeding the hold (a slow round trip under load made the request look early;
+  the clock now starts before the seed and the bound is 2.9 s — by hand the mutant passes, as recorded); the
+  discogs.com entry's grep had parentheses (Playwright's `-g` is a regex); and "502 writes a hold" survived because
+  the formula test checked `hot` only — it now checks that a 502 leaves `cool` unchanged.
+- Live case D A/B (EH 2026.11.08.235840 alone, Springsteen's artist page, SAED's 31-page fetch; 01:10:10–01:11:58):
+  gate on 35.7 s, off 36.7 s, 0 × 503 in both, at most 4 vs 5 responses a second. With the gate on, SAED's one ws/2
+  request of the case (the entity-pictures lookup) booked a shared slot and waited 1.5 s behind EH's own requests;
+  `mbu:mb-gate` ended `{version: 1, hot: 0, cool: 0}`. The probe gained `--sa-gate=on|off` and logs `out.gate`.
+  OPEN QUESTION, not a finding: SAED's load in case D is 32 HTML page fetches against 1 ws/2 lookup, and the protocol
+  gates /ws/2 only, so the gate cannot pace the traffic that coincided with EH's 503s in the 2026-11-06/08 runs.
+  Whether MusicBrainz counts HTML page fetches against the same per-IP budget is not known here (the API's
+  rate-limiting page is about /ws/2); recorded in org/majkinetor.org for vzell to decide whether to ask.
+- vzell's live check (reported 2026-11-09T01:42:32+01:00; vzell's browser: Vivaldi 8.2.4133.96 (Official Build, 64-bit) · Tampermonkey 5.5.1;
+  SAED from the branch raw link, String Theory 2026.11.08.235934 from majkinetor's main): Test 1 — a 20 s `cool`
+  written into `localStorage['mbu:mb-gate']` from the console, then ⟳ on a Relationships cell — the request
+  waited the 20 s. The cross-script hold works in a real browser. Test 2 (two tabs pacing per row) not run: the
+  column's bulk fetch and browser cache leave too few requests to see it without changing settings.
+- test:full on the branch (2026-11-09T01:50:43–04:23:30+01:00 · vzell-lap · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) ·
+  Playwright Chromium · no Tampermonkey (GM stubs); 39a81b07): 2832 passed, 8 failed. Three were the gate working as
+  designed: `rel-auto-retry-failed` (@slow) answers 503 to 10–12 entities × 3 tries, every 503 episode steps `hot`, the
+  holds grow 1 s … 6 s and the 120 s settle stopped at 7 of 12 cells. The spec pins SAED's breaker and ceilings (request
+  counts), not pacing, so it now seeds `sa_mb_shared_gate: false` (7/7 then, 5.2 min). The other five
+  (`fetch-in-segment` :277, `instrument-icons-uvd` :169 [icon after], `popup-mb` :1051/:1452/:1644) passed 6/6 when
+  re-run alone (04:24:27–04:25:16) — load flakes. The gate only ever delays a request, so it cannot explain :1051's
+  "3 pages asked before Stop" (the Stop click landed late; "nothing after Stop" held).
+  User-visible consequence, intended: during a sustained 503 storm a ws/2 column now waits up to 6 s per request
+  (more with a `Retry-After`), as every majkinetor script does.
