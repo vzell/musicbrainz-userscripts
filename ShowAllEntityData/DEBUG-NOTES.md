@@ -29034,3 +29034,30 @@ Env: 2026-11-09T23:12:48–23:17:27+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LT
   fixture, not the song's own page. vzell checked the same steps live (2026-11-09): the song opens in the window and
   Backspace returns to the Castiles item. So a drill-in spec needs the clicked song's own page as its answer; do not
   file this again from a fixture run.
+
+## 2026-11-09 — A phone had no Stop: the narrow SAED rule hid the running segment (fix/mobile-stop-in-bar)
+
+Env: 2026-11-09T23:52:41+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, Pixel 7 emulation · no Tampermonkey (GM stubs)
+
+Reported by vzell (org/mobile.org): "There are no action buttons on a mobile device, except the SAED menu itself
+where they show up as menu entries … we can't stop for example a long running paginated fetch without a button."
+
+Root cause, from the code: a phone lays MusicBrainz out ≤ 520 px wide (`width=device-width`), so
+`_saedApplyNarrow()` sets `mb-saed-narrow` and `.mb-saed-narrow > [data-mb-area="actions"] { display: none; }`
+hides every action segment. Since 2026-10-23 a fetch's ONLY Stop is the running segment (`_saedRunStart()`), i.e.
+inside that hidden area. Its "Load" row in ☰ SAED did stop the run on a tap (it does `eb.click()`, and the
+segment's `onclick` checks `_saedRun.btn === eb`), but it still read "🧮 …", and the other Load rows stayed enabled
+while their segments were `disabled`, so nothing on screen offered Stop.
+
+Fix (vzell chose "the running segment returns"): `_saedRunStart()`/`_saedRunEnd()` put `mb-saed-running` on the
+bar, and under `.mb-saed-narrow.mb-saed-running` the actions area shows its running/rendering child alone beside
+☰ SAED. It is a class, not `:has()`, for older Firefox Android. `_saedSyncLoadRows()` makes each Load row follow
+its segment: `disabled`, and the running row shows the segment's label. It is called from every `_saedRun*` step
+and from `_saedRefreshGroups()`, i.e. every menu open, which also covers the other places that disable the
+actions. Spec `tests/fixtures/fetch-in-segment.mobile.spec.js` (3) asserts the segment is VISIBLE, not merely
+classed, because the bug was a correct segment inside a hidden area. Mutations:
+`scripts/mutations/fetch-in-segment-mobile.json` (5).
+
+Trap seen while writing the spec: after an artist-releasegroups render, the sticky view-switch bar
+(`.mb-vsb-chrome`) covers ☰ SAED for a tap at the page's top. Read the Load rows directly instead of opening the
+menu.

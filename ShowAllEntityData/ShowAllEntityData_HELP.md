@@ -163,7 +163,9 @@ the window; one longer than the room available scrolls.
 **On a narrow window** (520 px or less — on a phone that is every MusicBrainz
 page) the fetch buttons leave the bar and head the menu as a "Load" group, so
 the button stays on one line, and Export's formats open in place under their
-row.
+row. While a fetch runs, the button you pressed comes back beside ☰ SAED as
+**■ Stop · 3 / 40**, so you can stop it with one tap; its row in the menu says
+the same, and the other Load rows wait.
 
 **The Tampermonkey menu's 📜 ChangeLog** opens the SAED menu on its Changelog
 group: *What's new* lists what changed for you in each published version, in

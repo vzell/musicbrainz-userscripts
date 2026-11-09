@@ -72,10 +72,15 @@ There is another annoyance where the mobile keyboard automatically appears:
 When pressing the UVD the quick filter field automatically has focus too, so the keyboards appears. I ONLY want it to
 appear when I explicitely focus the quick filter field myself
 
-** TODO there are no action button on a mobile device, except the SAED menu itself where they show up as menu entries
+** DONE there are no action button on a mobile device, except the SAED menu itself where they show up as menu entries
 
-there are no action button on a mobile device, except the SAED menu itself where they show up as menu entries.
-This is a problem as we can't stop for example a long running paginated fetch.
+There are no action button on a mobile device, except the SAED menu itself where they show up as menu entries.
+This is a problem as we can't stop for example a long running paginated fetch without a button.
+
+Fixed on fix/mobile-stop-in-bar (2026-11-09): during a run the running segment
+comes back into the bar beside ☰ SAED (=mb-saed-running= on the bar), and the
+Load rows mirror their segments (=_saedSyncLoadRows()=). See
+docs/claude/toolbar-and-header-ui.md, "The SAED button".
 
 
 * DONE report

@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-11-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "On a phone you can stop a fetch again. A narrow screen moves the fetch buttons into the ☰ SAED menu as its \"Load\" rows, and that also hid the button that turns into \"■ Stop · n / N\" while pages load, so a long paginated fetch could not be stopped. Now, while a fetch runs, that button comes back beside ☰ SAED with its progress, \"Stopping…\" and \"Rendering…\", and the bar is one line again when it is done. In the menu, the running row says Stop as well, and the other Load rows wait the way their buttons do."
+        ]
+      }
+    ]
+  }
+]

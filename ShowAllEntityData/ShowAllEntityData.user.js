@@ -90160,6 +90160,7 @@ ${sections.join('\n')}
             if (!others.length && (kb.parentNode !== help || kb.nextElementSibling)) help.appendChild(kb);
         }
         const narrow = _saedBarEl ? _saedBarEl.classList.contains('mb-saed-narrow') : false;
+        _saedSyncLoadRows();
         let first = true;
         saed.panel.querySelectorAll(':scope > .mb-saed-group').forEach(g => {
             const k = g.dataset.mbGroup;
@@ -90370,6 +90371,37 @@ ${sections.join('\n')}
     let _saedRun = null;
 
     /**
+     * Makes the SAED menu's "Load" rows (narrow screens) say what their
+     * action segments say: a row is disabled while its segment is, and the
+     * running fetch's row shows the segment's label ("■ Stop · n / N",
+     * "Stopping…", "Rendering N rows…"). A tap on that row clicks the
+     * segment, which is Stop. Called from every `_saedRun*` step and from
+     * `_saedRefreshGroups()` (every menu open), which covers the other
+     * places that disable the action segments. Cheap: one row per action.
+     *
+     * @returns {void}
+     */
+    function _saedSyncLoadRows() {
+        const saed = _toolbarMenus.get('saed');
+        if (!saed) return;
+        saed.panel.querySelectorAll('.mb-saed-load-row').forEach(row => {
+            const seg = row._mbSeg;
+            if (!seg) return;
+            const running = !!(_saedRun && _saedRun.btn === seg);
+            row.disabled = !!seg.disabled;
+            row.classList.toggle('mb-saed-load-row-running', running);
+            if (running) {
+                row.replaceChildren(...Array.from(seg.childNodes, n => n.cloneNode(true)));
+                if (seg.getAttribute('aria-disabled') === 'true') row.setAttribute('aria-disabled', 'true');
+                else row.removeAttribute('aria-disabled');
+            } else if (row.textContent !== row.dataset.mbIdle) {
+                row.textContent = row.dataset.mbIdle;
+                row.removeAttribute('aria-disabled');
+            }
+        });
+    }
+
+    /**
      * Writes the running segment's label: a small square (the Stop glyph)
      * and `text`.
      *
@@ -90382,6 +90414,7 @@ ${sections.join('\n')}
         sq.className = 'mb-seg-stop-glyph';
         sq.setAttribute('aria-hidden', 'true');
         _saedRun.btn.replaceChildren(sq, document.createTextNode(text));
+        _saedSyncLoadRows();
     }
 
     /**
@@ -90409,6 +90442,12 @@ ${sections.join('\n')}
         btn.dataset.mbtt = '<strong>Stop loading</strong><br>Stops after the page that is loading now. '
             + 'The rows loaded so far stay and are shown.';
         _setTip(btn, 'Stop loading after this page; the rows loaded so far stay');
+        // On a narrow screen the actions area is hidden; this brings the
+        // running segment alone back beside ☰ SAED, so a phone has Stop.
+        if (_saedBarEl) {
+            _saedBarEl.classList.add('mb-saed-running');
+            _saedMarkFirst();
+        }
         _saedRunLabel('Stop');
     }
 
@@ -90456,6 +90495,7 @@ ${sections.join('\n')}
         btn.disabled = true;
         btn.style.removeProperty('--p');
         btn.replaceChildren(document.createTextNode(`Rendering ${Number(rows).toLocaleString('en-US')} rows…`));
+        _saedSyncLoadRows();
         fetchProgressLabel.textContent = `Rendering ${Number(rows).toLocaleString('en-US')} rows…`;
     }
 
@@ -90481,6 +90521,11 @@ ${sections.join('\n')}
         if (title === null) btn.removeAttribute('title'); else btn.setAttribute('title', title);
         if (mbtt === undefined) delete btn.dataset.mbtt; else btn.dataset.mbtt = mbtt;
         allActionButtons.forEach(b => { b.disabled = false; });
+        if (_saedBarEl) {
+            _saedBarEl.classList.remove('mb-saed-running');
+            _saedMarkFirst();
+        }
+        _saedSyncLoadRows();
         const ae = document.activeElement;
         if (!ae || ae === document.body) btn.focus({ preventScroll: true });
     }
@@ -98733,6 +98778,10 @@ a { color: #1565c0; }`;
         row.type = 'button';
         row.className = 'mb-saed-load-row';
         row.textContent = eb.dataset.label ? `🧮 ${eb.dataset.label.replace(/^Show(?: all)?\s+/, '').replace(/^🧮\s*/, '')}` : eb.textContent;
+        // Its segment and idle text, for `_saedSyncLoadRows()` (a run's
+        // Stop label and the other rows' disabled state).
+        row._mbSeg = eb;
+        row.dataset.mbIdle = row.textContent;
         row.addEventListener('click', () => eb.click());
         _saedGroup('load').adopt(row);
     });
@@ -101725,6 +101774,11 @@ a { color: #1565c0; }`;
         .mb-saed-area:empty { display: none; }
         .mb-saed-area.mb-saed-first { border-left: 0; }
         .mb-saed-narrow > [data-mb-area="actions"] { display: none; }
+        /* During a run a narrow bar shows the running segment alone again,
+           beside the menu segment: on a phone it is the only Stop. */
+        .mb-saed-narrow.mb-saed-running > [data-mb-area="actions"] { display: inline-flex; }
+        .mb-saed-narrow.mb-saed-running > [data-mb-area="actions"] > :not(.mb-seg-running):not(.mb-seg-rendering) { display: none; }
+        .mb-saed-narrow.mb-saed-running > [data-mb-area="actions"] > .mb-seg { border-left: 0; }
         .mb-saed-bar .mb-seg {
             font: inherit;
             color: inherit;
@@ -101792,13 +101846,16 @@ a { color: #1565c0; }`;
             background-image: linear-gradient(to right, #bccfe9 var(--p, 0%), #dbe5f3 var(--p, 0%));
         }
         .mb-saed-bar .mb-seg.mb-seg-running[aria-disabled="true"] { cursor: progress; }
-        .mb-saed-bar .mb-seg-stop-glyph {
+        .mb-saed-bar .mb-seg-stop-glyph,
+        .mb-saed-load-row .mb-seg-stop-glyph {
             display: inline-block;
             width: 8px;
             height: 8px;
             background: currentColor;
             border-radius: 1px;
         }
+        .mb-saed-load-row .mb-seg-stop-glyph { margin-right: 6px; }
+        .mb-saed-load-row.mb-saed-load-row-running { font-weight: 600; font-variant-numeric: tabular-nums; }
         .mb-saed-bar .mb-seg.mb-seg-rendering,
         .mb-saed-bar .mb-seg.mb-seg-rendering:disabled {
             background-image: repeating-linear-gradient(-45deg, #e6edf7 0 6px, #d6e2f2 6px 12px);

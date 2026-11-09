@@ -1,0 +1,72 @@
+[
+  {
+    "name": "the bar never learns a run is on",
+    "why": "Without mb-saed-running on the bar the narrow rule keeps the actions area hidden, so a phone has no Stop (org/mobile.org, 2026-11-09).",
+    "edits": [
+      {
+        "find": "            _saedBarEl.classList.add('mb-saed-running');",
+        "replace": "            void 0;"
+      }
+    ],
+    "spec": "tests/fixtures/fetch-in-segment.mobile.spec.js",
+    "grep": "a fetch started from Load shows its Stop",
+    "project": "chromium-mobile",
+    "expect": "fail"
+  },
+  {
+    "name": "the narrow bar does not show the running segment",
+    "why": "The class is set but no rule shows the actions area under it: the segment is correct and invisible, the very bug.",
+    "edits": [
+      {
+        "find": "        .mb-saed-narrow.mb-saed-running > [data-mb-area=\"actions\"] { display: inline-flex; }",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/fetch-in-segment.mobile.spec.js",
+    "grep": "a fetch started from Load shows its Stop",
+    "project": "chromium-mobile",
+    "expect": "fail"
+  },
+  {
+    "name": "every action comes back during a run",
+    "why": "Without the second rule the whole actions area returns, and the bar no longer fits a phone on one line.",
+    "edits": [
+      {
+        "find": "        .mb-saed-narrow.mb-saed-running > [data-mb-area=\"actions\"] > :not(.mb-seg-running):not(.mb-seg-rendering) { display: none; }",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/fetch-in-segment.mobile.spec.js",
+    "grep": "a fetch started from Load shows its Stop",
+    "project": "chromium-mobile",
+    "expect": "fail"
+  },
+  {
+    "name": "the striped state is hidden",
+    "why": "Only the running segment is let through; while the rows are rendered the bar is back to the menu segment alone.",
+    "edits": [
+      {
+        "find": "> :not(.mb-seg-running):not(.mb-seg-rendering) { display: none; }",
+        "replace": "> :not(.mb-seg-running) { display: none; }"
+      }
+    ],
+    "spec": "tests/fixtures/fetch-in-segment.mobile.spec.js",
+    "grep": "the rendering state shows in the bar too",
+    "project": "chromium-mobile",
+    "expect": "fail"
+  },
+  {
+    "name": "the Load rows do not follow their segments",
+    "why": "The running row keeps its 🧮 text and the others stay enabled while their segments wait.",
+    "edits": [
+      {
+        "find": "        saed.panel.querySelectorAll('.mb-saed-load-row').forEach(row => {",
+        "replace": "        [].forEach(row => {"
+      }
+    ],
+    "spec": "tests/fixtures/fetch-in-segment.mobile.spec.js",
+    "grep": "during a run the Load rows say Stop",
+    "project": "chromium-mobile",
+    "expect": "fail"
+  }
+]
