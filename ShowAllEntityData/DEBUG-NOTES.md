@@ -28882,3 +28882,34 @@ Env: 2026-11-09T00:20–01:00+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Lin
   "3 pages asked before Stop" (the Stop click landed late; "nothing after Stop" held).
   User-visible consequence, intended: during a sustained 503 storm a ws/2 column now waits up to 6 s per request
   (more with a `Retry-After`), as every majkinetor script does.
+
+## 2026-11-09 — majkinetor refresh: 2d092e0 → 68512f9; nothing new reaches SAED; first case D with SAED in the shared gate (docs/majkinetor-refresh-2026-11-09)
+
+Env: 2026-11-09T15:40:47–15:46:37+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1) · Playwright 1.62.1, Chromium 151.0.7922.34, no Tampermonkey (GM stubs) for the probe · code reading: n/a. MusicBrainz reachable over IPv4 (`curl -4` 200).
+
+- Clone: `debug/majkinetor/` did not exist on petri (earlier refreshes ran on vzell-lap), so it was created fresh at
+  `68512f9` (2026-11-09T15:27:57+01:00). The diff from the old pin came from the GitHub compare API (36 commits) and,
+  for the bundle (too big for the API's patch), from the raw String Theory pinned at `2d092e02`.
+- Versions: ST 2026.11.09.152756 (members: EH 2026.11.09.111000, ISRC Scout 2026.11.08.235840, Apollo
+  2026.11.09.121500, Art Station/Falcon 2026.11.09.152654, Credit Hoarder 2026.11.09.152754). main's raw link served
+  a byte-identical bundle. All three harness copies taken from `68512f9`; manifest entries updated in place
+  (EH line numbers +22 past line 4,816), validated (13 scripts, 14 combinations).
+- Upstream code that is new but does not reach SAED: EH's edition list asks coverartarchive.org for a cover's full
+  image when its thumbnail is missing (page `fetch()`, its own `img[data-edimg]`/`.ed-*` images only); Apollo's
+  right-click clone of a release (capture-phase `contextmenu` on the Edit link inside `ul.tabs`, #959) and its
+  date-box helpers (`input.partial-date-*` only, Alt+C there; #960); Art Station cover sources. SAED binds no Alt+C
+  and its one `contextmenu` listener is the link preview's.
+- Probe: every Coexistence row unchanged (ST A–C, EH 0/A–D, ISRC Scout I alone and in the bundle: 36/36 native
+  icons with `data-ii-platform`, FRP table `data-mbu-foreign`, 51/51 Links/ISRC cells, 36/36 FRP platform stamps).
+  Case D: two 503s, both on EH's gated GM requests (`release-group?query=arid:…&offset=0`,
+  `/ws/2/area/…?inc=area-rels`), none on SAED; SAED's 31-page fetch 32.6 s vs 30.4 s alone; SAED's one ws/2
+  request booked a shared slot and waited 2826 ms (1 ms alone, case 0). It is the first live run with SAED
+  9.99.1583 booking in `mbu:mb-gate`; the probe cannot tell whether the wait was the 503's `cool` or EH's queue.
+  Case B with the bundle again had one 503 on a member's gated `inc=user-tags+user-genres` request.
+- Anchors: 52/52 held; `saed-ei-ws2` claimed the entity-pictures lookup was "outside the gate", false since
+  9.99.1583 (`_mbWsLoad()` → `_rgWsGet()` → `_ws2GetJson()` → `_mbGateFetch()`): claim rewritten, new
+  `saed-ws-gated`; new `eh-ed-full`, `ap-clone-tab`. 55/55, re-pinned, lines updated.
+- Upstream issues: #839 was closed by majkinetor on 2026-11-08 15:17 CET, "Closing this for #938" (noticed by
+  vzell; the ISRC Scout TODO still said "open"). #938 was closed by majkinetor at the merge (2026-11-09 00:00 CET).
+  vzell's adoption questions (07:11 CET) are identical to `org/reply-to-938-adoptions.org`, now DONE. No answer
+  from majkinetor since his comment of 2026-11-08 23:47 CET.

@@ -1,10 +1,15 @@
 #+TITLE: Follow-up on #938: things SAED would like to take from his scripts (asking first)
 #+DATE: 2026-11-09
 
-* TODO Post: adoption questions on https://github.com/majkinetor/musicbrainz-userscripts/issues/938
+* DONE Post: adoption questions on https://github.com/majkinetor/musicbrainz-userscripts/issues/938
+
+- *Status*: posted by vzell 2026-11-09T07:11:05+01:00 —
+  https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-6733546768. Verified identical to
+  the block below (refresh 2026-11-09 15:35 CET). This file is history now; follow-ups go into a new draft.
+  No answer yet at that refresh.
 
 Drafted 2026-11-09 at vzell's request ("** questions for majkinetor's" in =org/majkinetor.org=), for vzell to
-post (not posted anywhere). It collects the open TODOs in =org/majkinetor.org= that are *ours* to build but say
+post. It collects the open TODOs in =org/majkinetor.org= that are *ours* to build but say
 "ask majkinetor" first:
 
 | # | TODO in org/majkinetor.org                                                      | Asks                                         |
