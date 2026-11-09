@@ -1419,6 +1419,15 @@ Now we are back on "vzell-lap" and continue there:
 - fix the commit message so that it follows your standard as what we have done so far
 - record the info about the implementation in the file @org/springsteenlyrics.org in the section "** Plan (Claude, approved 2026-11-07T14:25+01:00, NB-3641)"
 
+* DONE bug with large MB icons on SL detail pages
+
+When hovering a song like "For You" on a SL collection page e.g. https://www.springsteenlyrics.com/collection.php?item=4905&category=album
+the POH shows very large MB icons in front of track listings of releases
+
+#+begin_example
+@debug/sl-detail-bug-large-mb-icons.html - "FOR YOU" POH with MB icon bug - [Image #1]
+#+end_example
+
 
 * TODO add support for logged in case
 
@@ -1686,6 +1695,3 @@ userscript loaded. The live test exempts that one exact message.
 Your pages load their font stylesheet over HTTP (http://fonts.googleapis.com/css?family=Open+Sans:300,400,700) from an
 HTTPS page, so browsers block it and Open Sans never loads. Changing it to https:// fixes that. Separately, adding
 autocomplete="current-password" to the login form's password field (hTxtPassword) silences Chrome's hint about it.
-
-
-
