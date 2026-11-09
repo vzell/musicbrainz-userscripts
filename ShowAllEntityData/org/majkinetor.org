@@ -1404,14 +1404,14 @@ Create one more followup reply with a link to my development userscript version 
   noted in org/majkinetor.org too.
 
   The update is committed to main as cb64dff3 and pushed.
-** licence switch
+** DONE licence switch
 
 I tend do go with 1., but can I easily change our license from MIT to GPL-3 (if yes, please do), as I initally never
 thought about licensing issues and just copied it from a typical userscript header template. Would this change your plan
 regarding "Joining mbu:mb-gate" and the implementation. Additionally mention majkinetor userscripts in our section
 "* This script uses functionality originally included in the following user scripts, thx to the original authors..."
 
-** questions
+** TODO questions
 
 Joining mbu:mb-gate: how should SAED's own ws/2 pacing relate to the shared schedule?
 
@@ -1435,4 +1435,75 @@ What goes into this first round?
   3. Also the browser-check iframe
      In addition, re-pass 'Verifying your browser' in a hidden frame (only matters for page fetches, not ws/2).
 
+** DONE summary
+
+● I haven't merged: the full suite wasn't green, and you made the merge depend on that. On 39a81b07 it finished with 2,832 passed and 8 failed (01:50–04:23 CET, vzell-lap).
+
+  What failed:
+  - 3 failures came from the gate itself, all in rel-auto-retry-failed (a slow spec). It answers "busy" (503) to 10–12 entities, 3 tries each. Under majkinetor's rules each new run of refusals makes everyone
+    hold a bit longer: 1 s, 2 s, up to 6 s. So the 120 s wait ran out at 7 of 12 cells. That spec checks SAED's own retry limits by counting requests, not by timing, so it now switches the shared gate off
+    (sa_mb_shared_gate: false). With that, it passes 7/7 in 5.2 min.
+  - The other 5 look like flakes from the 2-worker load. They are fetch-in-segment :277, instrument-icons-uvd :169 and popup-mb :1051/:1452/:1644, and all of them pass when run on their own (6/6, 49 s).
+    - The one that looked gate-related was the work window's "3 pages asked before Stop". The gate can only delay a request, never start one sooner, so the Stop click just landed late. The "nothing asked after
+      Stop" check passed.
+    - I haven't checked whether these five also flake on main under the same load.
+
+  This changes one thing you'd notice in real use, and it's intended. When MusicBrainz keeps refusing requests, the Relationships column and other API-driven columns now wait up to 6 s per request (longer if
+  the server says how long to wait), just as majkinetor's scripts do.
+
+  The fix is committed and pushed as 413825d0. I also added a note to DEBUG-NOTES.md, and a rule in docs/claude/fetch-and-render-pipeline.md for future specs that send many 503s.
+
+  Decision for you: should I merge now on this evidence (the re-runs above plus the earlier full run), or run the full suite again first (about 2.5 h on vzell-lap)?
+
+** TODO tests
+
+● The two tabs give SAED two copies of itself, plus String Theory, all spending one Web Service budget. The check is that they now take turns instead of each going at its own pace.
+
+  Setup (both tabs)
+  1. Open https://musicbrainz.org/release-group/39b22944-7503-3937-8bba-09b17281cc6a (Born to Run, a release group with many releases) in tab A and tab B.
+  2. If Event Horizon's view shows, press V to get MusicBrainz's page.
+  3. In each tab, press SAED's Show all Releases… button. If the Relationships column header shows ▶🔗, click it to load the column. Start both tabs within a few seconds of each other.
+
+  What to watch
+  - DevTools → Network, filter ws/2 (in either tab). Each tab's column loads more slowly than usual, because the two tabs and String Theory share about one request a second instead of each sending one every
+    1.1 s.
+  - DevTools → Console, enter JSON.parse(localStorage['mbu:mb-gate']) a few times. You should see version: 1, and tat keeps moving ahead while requests are booked. With no 503, hot and cool stay 0.
+  - The progress card (hover the Relationships column's toggle). When a request waits longer than a second, its recent requests list shows a line like … waits 2.3 s (shared pacing, one request a second).
+
+  Seeing a pause shared across tabs (optional, the convincing part)
+  While tab A's column is still loading, enter this in tab B's console:
+  localStorage['mbu:mb-gate'] = JSON.stringify({...JSON.parse(localStorage['mbu:mb-gate']), cool: Date.now() + 10000})
+  This pretends MusicBrainz just refused a request. Tab A's column should stop for about 10 s, and its progress card should say MusicBrainz asked every script to wait. String Theory's scripts pause too, which
+  does no harm.
+
+  Comparison (optional)
+  Turn off ⚙️ Settings → 🎨 UI FEATURES → Share MusicBrainz's request budget with other userscripts. Then reload both tabs and repeat. Each tab goes back to its own 1.1 s pace, so roughly twice as many ws/2
+  requests a second in total, and the hold from the console has no effect on SAED.
+
+  To see every booking, wait and hold in the console, turn on Enable debug logging and look for the mbgate lines.
+
+
+● The pages load fast because the Relationships column hardly needs the network. Answers you have loaded before come from the browser cache, and new ones arrive 100 releases per request through the column's
+  bulk fetching. There's almost nothing left to pace. Two ways to test that don't depend on that:
+
+  Test 1: a shared pause (quickest, one tab is enough)
+  1. Open the release group page, press Show all Releases… and let the Relationships column finish.
+  2. In the DevTools console, enter:
+  localStorage['mbu:mb-gate'] = JSON.stringify({...JSON.parse(localStorage['mbu:mb-gate'] || '{}'), version: 1, cool: Date.now() + 20000})
+     This plays "another script just got a 503; everyone wait 20 s".
+  3. Right away, hover any Relationships cell and press its ⟳, or click the cell. That forces a fresh request past the cache.
+  4. Expected: in Network (filter ws/2), the request appears only about 20 s later. The cell's progress card shows waits … s (MusicBrainz asked every script to wait).
+  5. Control: turn off Share MusicBrainz's request budget with other userscripts and repeat steps 2–3. The request now goes out at once.
+
+  The two-tab version of this test is the same, with step 2 typed in tab B and step 3 done in tab A.
+
+  Test 2: two tabs taking turns (needs per-row requests)
+  1. ⚙️ Settings: turn off Relationships: fetch whole pages at once where MusicBrainz allows it.
+  2. ☰ SAED → 💾 Browser cache: clear the Relationships part.
+  3. Open the release group page in two tabs, press Show all Releases… in both, and load the Relationships column (▶🔗 if needed).
+  4. Expected: each row is now its own request. Alone, a tab sends one about every 1.1 s. With both tabs loading, the Network panel of each tab shows roughly one every 2 s, because together they stay near one
+     a second. With the share setting off, each tab goes back to one every 1.1 s.
+  5. Afterwards, turn fetch whole pages at once back on.
+
+  Test 1 is the one that proves the cross-script part. A 503 from String Theory or Event Horizon writes exactly that cool value, and SAED now waits for it.
 
