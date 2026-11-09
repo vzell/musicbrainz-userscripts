@@ -16,7 +16,7 @@ post (not posted anywhere). It collects the open TODOs in =org/majkinetor.org= t
 | 5 | In-page log window behind =Lib.*= (=mbuLog=)                                    | reuse it in the library?                     |
 | 6 | Query mode for the global filter (Event Horizon's filter language)              | same syntax; is the grammar stable?          |
 | 7 | Stale-while-revalidate for =_mbWsLoad= and =rel-ws2= (EH's kept answers)        | *would he build* a shared =mbu.kept.drop=?   |
-| 8 | Entity pictures: more providers, area map with flag badge                      | *would he expose* =MBU.artistImage=?          |
+| 8 | Entity pictures: more providers, area map with flag badge                       | *would he expose* =MBU.artistImage=?         |
 
 Items 7 and 8 ask him to *build* something (vzell, 2026-11-09: first the kept-drop key, then also the
 =ArtistImage= exposure). Still left out:
@@ -34,7 +34,7 @@ by =@require= of =stable/dev/artimg/artist-image.js= (=find=, =findAll=, =cached
 helpers on =unsafeWindow.MBU= (EH:2110-2119: =theme=, =toast=, … guarded per key, first writer wins, #563).
 
 #+begin_src markdown
-Hi @majkinetor,
+Hi Miodrag - @majkinetor,
 
 a few more things I'd like to take into SAED from your scripts. I'd build items 1–6 on my side, but I'd like your OK
 first, and to know if you'd prefer a particular form. SAED is GPL-3.0-or-later now, so the licence is fine for most of
