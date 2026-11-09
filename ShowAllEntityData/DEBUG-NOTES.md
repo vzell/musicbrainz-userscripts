@@ -29056,7 +29056,7 @@ its segment: `disabled`, and the running row shows the segment's label. It is ca
 and from `_saedRefreshGroups()`, i.e. every menu open, which also covers the other places that disable the
 actions. Spec `tests/fixtures/fetch-in-segment.mobile.spec.js` (3) asserts the segment is VISIBLE, not merely
 classed, because the bug was a correct segment inside a hidden area. Mutations:
-`scripts/mutations/fetch-in-segment-mobile.json` (5).
+`scripts/mutations/fetch-in-segment-mobile.json` (5, all caught; "every action comes back" only on the several-action RG page).
 
 Trap seen while writing the spec: after an artist-releasegroups render, the sticky view-switch bar
 (`.mb-vsb-chrome`) covers ☰ SAED for a tap at the page's top. Read the Load rows directly instead of opening the

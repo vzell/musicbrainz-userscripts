@@ -29,7 +29,7 @@
   },
   {
     "name": "every action comes back during a run",
-    "why": "Without the second rule the whole actions area returns, and the bar no longer fits a phone on one line.",
+    "why": "Without the second rule the whole actions area returns, and the bar no longer fits a phone on one line. Seen on artist-releasegroups (several actions); the events page has one, so it cannot tell.",
     "edits": [
       {
         "find": "        .mb-saed-narrow.mb-saed-running > [data-mb-area=\"actions\"] > :not(.mb-seg-running):not(.mb-seg-rendering) { display: none; }",
@@ -37,7 +37,7 @@
       }
     ],
     "spec": "tests/fixtures/fetch-in-segment.mobile.spec.js",
-    "grep": "a fetch started from Load shows its Stop",
+    "grep": "during a run the Load rows say Stop",
     "project": "chromium-mobile",
     "expect": "fail"
   },

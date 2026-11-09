@@ -157,6 +157,11 @@ test.describe('a phone has Stop: the running segment comes back into the bar', (
         expect(i, 'premise: the Artist RGs row').toBeGreaterThanOrEqual(0);
         await rows.nth(i).tap();
         await expect(page.locator(RUNNING_SEGMENT)).toBeVisible({ timeout: 30000 });
+        // Here, with several actions, "the running segment alone" can fail
+        // (the events page has one action, so its count is 1 either way).
+        const vis = await visibleActions(page);
+        expect(vis.length, `only the running segment is back in the bar: ${JSON.stringify(vis)}`).toBe(1);
+        expect(vis[0]).toMatch(/\bmb-seg-running\b/);
 
         await page.locator('#mb-saed-menu-btn').tap();
         await expect(rows.nth(i)).toBeVisible();
