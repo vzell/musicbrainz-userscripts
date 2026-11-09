@@ -32,6 +32,7 @@ full meaning/context
 
 * TODO add jsdom or bs4 to the test suite libraries
 
+* TODO sudo systemctl stop systemd-timesyncd
 
 * DONE data quality is missing
 ** i

@@ -405,6 +405,26 @@ zero*: =sa_render_threshold= reads =… || 5000=, so =0= is falsy and silently
 becomes 5000 again, despite the setting's description promising "0 to disable".
 =sa_render_warning_threshold= does honour =0=.
 
+* If timing specs fail under the suite but pass alone: check the clock first
+
+=node scripts/check-clock-jumps.js= (30 s; =… 10= for 10 s) compares the wall
+clock with the monotonic clock every 100 ms and exits 1 when the wall clock
+jumps. On 2026-11-09 petri, freshly booted after 10 days off, jumped 16.8 s
+ahead for ~100 ms every ~5 s: WSL2's =systemd-timesyncd= against Hyper-V's time
+samples, with the Windows time service not syncing. Every link-preview spec
+waiting behind a paced request then looked "flaky under load" (16-23 failures
+per loaded run, 0 on a steady clock; DEBUG-NOTES.md 2026-11-09). SAED's own
+request pacing no longer follows such jumps (=_steadyNow()=), but the shared
+gate =mbu:mb-gate= and Playwright's own timeouts still read the wall clock.
+
+The fix, on a WSL2 host:
+- in WSL, leave the clock to Windows: =sudo systemctl disable --now systemd-timesyncd=;
+- in Windows (admin PowerShell), make the time service sync:
+  =w32tm /config /manualpeerlist:"pool.ntp.org,0x8" /syncfromflags:manual /update=,
+  =Restart-Service w32time=, =w32tm /resync /force=; =w32tm /query /status=
+  must then name the NTP source and a recent sync;
+- run the check again: 0 jumps.
+
 * Reading the results
 
 - =npm run report= opens the last HTML report. It embeds per-test durations,
