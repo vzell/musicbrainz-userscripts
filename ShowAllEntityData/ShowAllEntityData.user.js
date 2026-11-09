@@ -28183,7 +28183,7 @@
     }
 
     /**
-     * Earliest `Date.now()` at which the next detail-page request may start.
+     * Earliest `_steadyNow()` at which the next detail-page request may start.
      * @type {number}
      */
     let _dpNextSlotAt = 0;
@@ -31443,14 +31443,43 @@
     }
 
     /**
+     * The time the in-tab request schedulers book on (`_relAwaitRateSlot()`,
+     * `_dpAwaitSlot()`, `_extAwaitSlot()`): epoch ms like `Date.now()`, so a
+     * value shared with other tabs (Discogs' slot in GM storage) keeps its
+     * unit, but advancing with the page's monotonic clock
+     * (`performance.timeOrigin + performance.now()`), so a jump of the wall
+     * clock after the page started does not move it.
+     *
+     * Why: on petri (WSL2) the wall clock spiked 16.8 s ahead for ~100 ms
+     * every ~5 s (Hyper-V's time sync against systemd-timesyncd). A slot
+     * booked on `Date.now()` inside a spike lay 16.8 s too far ahead, and
+     * every request queued behind it waited that long (DEBUG-NOTES.md
+     * 2026-11-09); an NTP step, a VM resync or waking from sleep does the
+     * same on a user's machine. `Date.now()` where `performance` lacks it.
+     *
+     * Limit: `timeOrigin` is the wall clock once, at page start. A page
+     * that starts inside a spike keeps that offset; its own pacing is
+     * unaffected (every booking shares it), only a slot it shares with
+     * other tabs reads that much ahead to them (bounded by
+     * `_EXT_SHARED_SLOT_MAX_AHEAD_MS`).
+     *
+     * @returns {number} Epoch ms.
+     */
+    function _steadyNow() {
+        const p = typeof performance !== 'undefined' ? performance : null;
+        return p && typeof p.timeOrigin === 'number' && typeof p.now === 'function' ? p.timeOrigin + p.now() : Date.now();
+    }
+
+    /**
      * Waits for, and reserves, the next detail-page request slot
      * (`_DP_SPACING_MS` apart). Reserved synchronously, so two callers in
      * the same tick get consecutive slots, as in `_relAwaitRateSlot()`.
+     * Booked on `_steadyNow()`, never the wall clock.
      *
      * @returns {Promise<void>}
      */
     function _dpAwaitSlot() {
-        const now = Date.now();
+        const now = _steadyNow();
         const at = Math.max(now, _dpNextSlotAt);
         _dpNextSlotAt = at + _DP_SPACING_MS;
         return at > now ? new Promise(r => setTimeout(r, at - now)) : Promise.resolve();
@@ -73090,7 +73119,7 @@
         } catch (_) {
             return 0;
         }
-        return v > Date.now() + _EXT_SHARED_SLOT_MAX_AHEAD_MS ? 0 : v;
+        return v > _steadyNow() + _EXT_SHARED_SLOT_MAX_AHEAD_MS ? 0 : v;
     }
 
     /**
@@ -73114,11 +73143,13 @@
      * after every tab's reservations for a shared host), synchronously, so
      * two callers in one tick get consecutive slots.
      *
+     * Booked on `_steadyNow()`, epoch ms like the shared GM value.
+     *
      * @param {string} host
      * @returns {number} How long until that slot, ms (0: now).
      */
     function _extReserveSlot(host) {
-        const now = Date.now();
+        const now = _steadyNow();
         const shared = _EXT_SHARED_SLOT_HOSTS.has(host);
         const at = Math.max(now, _extNextSlotAt.get(host) || 0, shared ? _extSharedSlotAt(host) : 0);
         _extPushSlot(host, at + _extSpacingMs(host));
@@ -73140,7 +73171,7 @@
         const left = Number.parseInt(res.headers['x-discogs-ratelimit-remaining'], 10);
         if (res.status !== 429 && !(Number.isFinite(left) && left <= 0)) return 0;
         const ms = Math.max(_extRateLimitPauseMs, _parseRetryAfterMs(res.headers['retry-after']));
-        _extPushSlot(host, Date.now() + ms);
+        _extPushSlot(host, _steadyNow() + ms);
         Lib.info('ext', `${host}: ${res.status === 429 ? 'HTTP 429' : 'no requests left this minute'} — ` +
             `every tab pauses its requests for ${Math.round(ms / 1000)} s.`);
         return ms;
@@ -146583,7 +146614,7 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Earliest `Date.now()` at which the next Relationships-column network
+     * Earliest `_steadyNow()` at which the next Relationships-column network
      * request may start — the state behind `_relAwaitRateSlot()`.
      */
     let _relNextSlotAt = 0;
@@ -146604,10 +146635,14 @@ a { color: #1565c0; }`;
      * A reserved slot that its caller then decides not to use is simply spent;
      * that costs at most one spacing interval and never a request.
      *
+     * Booked on `_steadyNow()`, never the wall clock: a slot booked inside a
+     * clock spike used to hold every request queued after it back by the
+     * spike's size (16.8 s on petri, DEBUG-NOTES.md 2026-11-09).
+     *
      * @returns {Promise<void>}
      */
     function _relAwaitRateSlot() {
-        const _now = Date.now();
+        const _now = _steadyNow();
         const _at = Math.max(_now, _relNextSlotAt);
         _relNextSlotAt = _at + _REL_WS2_SPACING_MS;
         const _wait = _at - _now;
@@ -173698,7 +173733,7 @@ a { color: #1565c0; }`;
              * @returns {number}
              */
             mbRateSlotWaitMs() {
-                return Math.max(0, _relNextSlotAt - Date.now());
+                return Math.max(0, _relNextSlotAt - _steadyNow());
             },
             /**
              * The shared cross-tab request gate (`mbu:mb-gate`, `_mbGate*`),
@@ -173746,7 +173781,7 @@ a { color: #1565c0; }`;
              * @returns {number}
              */
             dpRateSlotWaitMs() {
-                return Math.max(0, _dpNextSlotAt - Date.now());
+                return Math.max(0, _dpNextSlotAt - _steadyNow());
             },
             /**
              * How long a request to `host` asking the external links' rate
@@ -173758,7 +173793,20 @@ a { color: #1565c0; }`;
              * @returns {number}
              */
             extRateSlotWaitMs(host) {
-                return Math.max(0, (_extNextSlotAt.get(host) || 0) - Date.now());
+                return Math.max(0, (_extNextSlotAt.get(host) || 0) - _steadyNow());
+            },
+            /**
+             * Reserves `n` slots of one host's external rate gate
+             * (`_extReserveSlot()`, the shipping function; a shared host's in
+             * GM storage too), as `reserveDpRateSlots()` does for the detail
+             * pages' gate (tests/fixtures/rate-slot-clock-step.spec.js).
+             *
+             * @param {string} host
+             * @param {number} n
+             * @returns {void}
+             */
+            reserveExtRateSlots(host, n) {
+                for (let i = 0; i < n; i++) _extReserveSlot(host);
             },
             /**
              * Shortens the pause a shared host's spent budget starts

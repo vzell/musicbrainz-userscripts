@@ -1,0 +1,54 @@
+[
+  {
+    "name": "_relAwaitRateSlot books on Date.now() again (the state before the fix)",
+    "why": "A MusicBrainz slot booked inside a wall-clock spike holds every queued request back by the spike (16.8 s on petri; 16-23 link-preview specs failed per loaded run, DEBUG-NOTES.md 2026-11-09).",
+    "edits": [
+      {
+        "find": "    function _relAwaitRateSlot() {\n        const _now = _steadyNow();",
+        "replace": "    function _relAwaitRateSlot() {\n        const _now = Date.now();"
+      }
+    ],
+    "spec": "tests/fixtures/rate-slot-clock-step.spec.js",
+    "grep": "Web Service slot",
+    "expect": "fail"
+  },
+  {
+    "name": "_dpAwaitSlot books on Date.now() again",
+    "why": "The foreign sites' detail-page slot: the same stall after a clock spike.",
+    "edits": [
+      {
+        "find": "    function _dpAwaitSlot() {\n        const now = _steadyNow();",
+        "replace": "    function _dpAwaitSlot() {\n        const now = Date.now();"
+      }
+    ],
+    "spec": "tests/fixtures/rate-slot-clock-step.spec.js",
+    "grep": "detail pages",
+    "expect": "fail"
+  },
+  {
+    "name": "_extReserveSlot books on Date.now() again",
+    "why": "Every external host's slot (setlist.fm, Wikidata, Discogs' API, ...): the same stall after a clock spike.",
+    "edits": [
+      {
+        "find": "    function _extReserveSlot(host) {\n        const now = _steadyNow();",
+        "replace": "    function _extReserveSlot(host) {\n        const now = Date.now();"
+      }
+    ],
+    "spec": "tests/fixtures/rate-slot-clock-step.spec.js",
+    "grep": "external host|Discogs",
+    "expect": "fail"
+  },
+  {
+    "name": "_steadyNow() is the wall clock",
+    "why": "The helper itself: with Date.now() inside it, every scheduler follows the spike again.",
+    "edits": [
+      {
+        "find": "        return p && typeof p.timeOrigin === 'number' && typeof p.now === 'function' ? p.timeOrigin + p.now() : Date.now();",
+        "replace": "        return Date.now();"
+      }
+    ],
+    "spec": "tests/fixtures/rate-slot-clock-step.spec.js",
+    "grep": "clock step",
+    "expect": "fail"
+  }
+]

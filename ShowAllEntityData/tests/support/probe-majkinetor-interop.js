@@ -30,6 +30,14 @@
  *      navigated), then a click on a recording link of MusicBrainz's page:
  *      whether SA's "You are about to leave this page" confirm came, at
  *      each step (vzell, 2026-11-08; dialogs are recorded and dismissed).
+ *   F  String Theory's idle mode during a fetch and render (--scripts=
+ *      majkinetor-string-theory; EH seeded off; idle seeded to 1 minute,
+ *      theme and effect Random, continuous): waits WITHOUT input until
+ *      <html data-st-idle> is up, then starts SA's fetch with a scripted
+ *      click (no pointer/key event, so idle stays), and records SA's own
+ *      "Fetching / Rendering" seconds and every idle switch during the run.
+ *   G  The control for F: the same, idle seeded off, the same wait.
+ *      Run F and G alternately, several times (--cases=F,G,F,G,F,G).
  *   I  ISRC Scout alone (--scripts=majkinetor-isrc-scout) or inside the
  *      bundle (--scripts=majkinetor-string-theory; EH seeded off) on a
  *      release with track links: how its "Links" icons are labelled (title or data-tip)
@@ -157,10 +165,12 @@ function snapshotState(page) {
  * response (time, status, url) for the request-rate figures.
  *
  * @param {import('@playwright/test').Browser} browser
- * @param {{ url: string, entries: Object[], ehOn: boolean|null, settings: Object }} opts
+ * @param {{ url: string, entries: Object[], ehOn: boolean|null, settings: Object,
+ *           gmExtra?: ?Object }} opts - `gmExtra`: more GM keys seeded with EH's
+ *           `view` (String Theory's `string_theory.theme` for cases F/G)
  * @returns {Promise<{ context: Object, page: Object, errors: string[], responses: Object[] }>}
  */
-async function openPage(browser, { url, entries, ehOn, settings }) {
+async function openPage(browser, { url, entries, ehOn, settings, gmExtra = null }) {
     const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
     const page = await context.newPage();
     const errors = [];
@@ -184,7 +194,10 @@ async function openPage(browser, { url, entries, ehOn, settings }) {
     };
     await page.addInitScript({ content: PROBE_GM_EXTRA });
     await injectLiveUserscripts(page, entries);
-    if (ehOn !== null) await seedGmValues(page, { view: { on: ehOn } });
+    // One call: seedGmValues() replaces the whole seed, so EH's `view` and any
+    // other script's keys (String Theory's idle settings, cases F/G) go together.
+    const gmSeed = { ...(ehOn !== null ? { view: { on: ehOn } } : {}), ...(gmExtra || {}) };
+    if (Object.keys(gmSeed).length) await seedGmValues(page, gmSeed);
     await loadUserscriptPageWithRealNetwork(page, { url, testMode: true, settingsOverride: settings });
     await page.waitForTimeout(3000);
     return { context, page, errors, responses };
@@ -242,6 +255,89 @@ async function runSaFetch(page, selector) {
         return { clicked: true, viaVisibleClick: visible, rendered: true, ms: Date.now() - t0 };
     } catch (e) {
         return { clicked: true, rendered: false, ms: Date.now() - t0, error: e.message.split('\n')[0] };
+    }
+}
+
+/**
+ * String Theory's idle settings seeded for cases F (idle on, after 1 minute,
+ * the setting's minimum) and G (idle off, the control). Theme and effect
+ * stay "Random" and "continuous" on, String Theory's defaults
+ * (`themes/runtime.js` `read()`), so F is the default behaviour sped up.
+ *
+ * @param {boolean} on
+ * @returns {Object} GM keys for `openPage()`'s `gmExtra`
+ */
+function stIdleSeed(on) {
+    return { 'string_theory.theme': { idle: { on, minutes: 1, theme: '*', effect: '*', info: true, cont: true } } };
+}
+
+/**
+ * Starts recording, in the page, every change of String Theory's idle
+ * marks on `<html>` (`data-st-idle`, `data-st-eh-fx-idle`) with its time,
+ * so a case can tell whether idle lasted through a fetch and render.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<void>}
+ */
+function watchIdle(page) {
+    return page.evaluate(() => {
+        const de = document.documentElement;
+        window.__idleLog = [];
+        const rec = () => window.__idleLog.push({
+            t: Date.now(), idle: de.hasAttribute('data-st-idle'), fx: de.getAttribute('data-st-eh-fx-idle') || '',
+        });
+        rec();
+        new MutationObserver(rec).observe(de, { attributes: true, attributeFilter: ['data-st-idle', 'data-st-eh-fx-idle'] });
+    });
+}
+
+/**
+ * What String Theory's idle shows right now: its marks, its pill, and
+ * Event Horizon's effect layers (`#eh-hex`, `div.eh-amb`, `#eh-idle-css`).
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<Object>}
+ */
+function idleState(page) {
+    return page.evaluate(() => {
+        const de = document.documentElement;
+        return {
+            idle: de.hasAttribute('data-st-idle'),
+            fx: de.getAttribute('data-st-eh-fx-idle') || '',
+            pill: (document.getElementById('st-idle-info') || {}).textContent || '',
+            ehLayers: document.querySelectorAll('#eh-hex, div.eh-amb, #eh-idle-css').length,
+        };
+    });
+}
+
+/**
+ * Starts SA's fetch WITHOUT pointer or key input (`button.click()` in the
+ * page dispatches only `click`, which String Theory's idle does not count
+ * as activity), waits for the render, and reads SA's own figures from
+ * `#mb-global-status-display` ("Fetching: Xs; Rendering: Ys").
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} selector - the action button
+ * @returns {Promise<Object>} `{ rendered, ms, fetchS, renderS, status, error? }`
+ */
+async function runSaFetchQuiet(page, selector) {
+    const t0 = Date.now();
+    try {
+        const ok = await page.evaluate((sel) => {
+            const b = document.querySelector(sel);
+            if (!b) return false;
+            b.click();
+            return true;
+        }, selector);
+        if (!ok) return { rendered: false, ms: 0, error: 'no button' };
+        await page.waitForFunction(() => /Rendering: [\d.]+s/.test((document.getElementById('mb-global-status-display') || {}).textContent || ''),
+            null, { timeout: 180000 });
+        const ms = Date.now() - t0;
+        const status = await page.evaluate(() => document.getElementById('mb-global-status-display').textContent);
+        const num = (re) => { const m = re.exec(status); return m ? Number(m[1]) : null; };
+        return { rendered: true, ms, fetchS: num(/Fetching: ([\d.]+)s/), renderS: num(/Rendering: ([\d.]+)s/), status: status.slice(0, 160) };
+    } catch (e) {
+        return { rendered: false, ms: Date.now() - t0, error: e.message.split('\n')[0] };
     }
 }
 
@@ -369,13 +465,15 @@ async function runCase(browser, name, entries, urlOverride, saGate = 'on') {
         const b = s.state.saBar;
         console.log(`[${name}] ${label}: path=${s.state.path} bodies=${s.state.bodies} docBodyIsMb=${s.state.documentBodyIsMb} saBar=${b ? `body${b.inBody} visible=${b.visible} inApp=${b.inApp}` : 'none'} frpRows=${s.state.frp.rows} sbHandle=${s.state.sidebarHandle ? `body${s.state.sidebarHandle.inBody} visible=${s.state.sidebarHandle.visible}` : 'none'} ${Object.keys(extra).length ? JSON.stringify(extra) : ''}`);
     };
-    let cfg = name === 'D' || name === '0' ? ARTIST : RELEASE;
+    let cfg = ['D', '0', 'F', 'G'].includes(name) ? ARTIST : RELEASE;
     if (name === 'I') cfg = { ...RELEASE, url: urlOverride || ISRC_RELEASE };
     const settings = { ...(cfg.seedGmValues || {}), ...(saGate === 'off' ? { sa_mb_shared_gate: false } : {}) };
     const ehEntries = name === '0' ? [] : entries;
     // Case I starts with EH off (seeded; harmless without EH), so the bundle shows MusicBrainz's page too.
-    const ehOn = name === '0' ? null : (name === 'I' ? false : !['B', 'E'].includes(name));
-    const { context, page, errors, responses } = await openPage(browser, { url: cfg.url, entries: ehEntries, ehOn, settings });
+    const ehOn = name === '0' ? null : (name === 'I' ? false : !['B', 'E', 'F', 'G'].includes(name));
+    // F/G: String Theory's idle after 1 minute (F) or off (G, the control).
+    const gmExtra = name === 'F' || name === 'G' ? stIdleSeed(name === 'F') : null;
+    const { context, page, errors, responses } = await openPage(browser, { url: cfg.url, entries: ehEntries, ehOn, settings, gmExtra });
     const out = { case: name, url: cfg.url, scripts: ehEntries.map((e) => e.id), steps };
     try {
         await note(page, 'loaded');
@@ -446,6 +544,23 @@ async function runCase(browser, name, entries, urlOverride, saGate = 'on') {
         } else if (name === 'D') {
             await note(page, 'V at once (EH off)', { reloaded: await pressV(page) });
             await note(page, 'SA fetch', await runSaFetch(page, cfg.showAllButtonSelector));
+        } else if (name === 'F' || name === 'G') {
+            // No input at all from here on: idle is String Theory's pointer/key/wheel/
+            // touch/scroll silence. F waits until idle is up (1 minute seeded); G
+            // waits as long, with idle off, so both start their fetch on an equally
+            // old page.
+            const tWait = Date.now();
+            if (name === 'F') {
+                await page.waitForFunction(() => document.documentElement.hasAttribute('data-st-idle'), null, { timeout: 120000 }).catch(() => {});
+                await page.waitForTimeout(3000); // the 1.5 s cross-fade and the effect's first frames
+            } else {
+                await page.waitForTimeout(66000);
+            }
+            await note(page, 'before the fetch', { waitedMs: Date.now() - tWait, ...(await idleState(page)) });
+            await watchIdle(page);
+            const fetched = await runSaFetchQuiet(page, cfg.showAllButtonSelector);
+            const idleLog = await page.evaluate(() => window.__idleLog || []);
+            await note(page, 'fetch + render, no input', { ...fetched, after: await idleState(page), idleLog });
         } else if (name === 'I') {
             await page.waitForSelector('a.ii-trk-ln', { timeout: 30000 }).catch(() => {});
             await note(page, 'native page, ISRC Scout columns in', await isrcScoutLinks(page));

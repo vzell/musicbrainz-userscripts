@@ -82,7 +82,7 @@
         "why": "A tab's wrong clock or an old pause must not block every tab.",
         "edits": [
             {
-                "find": "        return v > Date.now() + _EXT_SHARED_SLOT_MAX_AHEAD_MS ? 0 : v;",
+                "find": "        return v > _steadyNow() + _EXT_SHARED_SLOT_MAX_AHEAD_MS ? 0 : v;",
                 "replace": "        return v;"
             }
         ],
