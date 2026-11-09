@@ -1,0 +1,48 @@
+#+TITLE: Follow-up on #938: SAED now books in the shared request gate (mbu:mb-gate v1)
+#+DATE: 2026-11-09
+
+* TODO Post: shared-gate report on https://github.com/majkinetor/musicbrainz-userscripts/issues/938
+
+Drafted 2026-11-09 at vzell's request, for vzell to post (not posted anywhere). It reports back on the
+"implementing now, will report back" comment. SAED 9.99.1583 is on =main= of vzell/musicbrainz-userscripts
+(merge =fc5b9648=, fold =0839928f=); the link below names =main=. The "keep V under =data-mbu-keys-off="
+question is already posted and still open, so it only gets a one-line reminder.
+
+The optional paragraph (HTML page fetches) is the open question from =org/majkinetor.org= ("Join majkinetor's
+cross-tab request gate"): delete it before posting if you don't want to ask it yet.
+
+#+begin_src markdown
+Hi @majkinetor,
+
+as promised, a short report: SAED now books its requests in your shared request gate (`mbu:mb-gate`, protocol v1).
+It's on my `main` as 9.99.1583:
+https://github.com/vzell/musicbrainz-userscripts/raw/main/ShowAllEntityData/ShowAllEntityData.user.js
+
+What SAED does now, on musicbrainz.org only:
+
+- Every same-origin `/ws/2` request books a slot (`tat`/`cool`, the burst of 3, 1 s gap), *in addition to* SAED's own
+  per-tab pacing (1.1 s). Whichever comes later wins, so SAED is never faster than before.
+- It reports its answers: 429/503 step `hot` once per episode and set `cool` as in `mbnAnswer`; other answers below 500 decay
+  `hot`; 502/504 stay a local retry.
+- Background requests wait out another script's `lead`. Explicit clicks book foreground. SAED doesn't take the lead
+  itself yet, and there's no browser-check iframe.
+- `version: 1` is stamped and unknown fields are kept. An explicit unknown version is left untouched, and SAED falls
+  back to its own pacing.
+- There's a setting to turn it off ("Share MusicBrainz's request budget with other userscripts", on by default).
+
+The code is ported from your `dev/net/mb-gate.mjs` (main 7eb7c563), with credit in the header. To make that clean,
+I relicensed SAED from MIT to **GPL-3.0-or-later**.
+
+Tested: fixture tests for each protocol rule (holds, version handling, lead, two tabs sharing one schedule), plus a
+live check in Vivaldi + Tampermonkey with String Theory 2026.11.08.235934: a 20 s `cool` written into
+`localStorage['mbu:mb-gate']` held SAED's request for the full 20 s.
+
+One question, no hurry: SAED's big loads are mostly *HTML page* fetches (31 pages of an artist's releases),
+not `/ws/2`, and the protocol gates `/ws/2` only. Do you know whether MusicBrainz counts page fetches against the
+same per-IP budget? If so, booking them as background might be worth a convention.
+
+And a small reminder of the open point above: keeping V working under `data-mbu-keys-off`.
+
+Thanks!
+Volker
+#+end_src

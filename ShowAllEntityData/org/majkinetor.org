@@ -537,7 +537,7 @@ is removed only while its value is still ours, and the setter offers its own way
 | C3 | =<html data-mbu-keys-off="saed">=                                                                     | SAED        | EH's keydown returns early: *every* command, V and Ctrl+L included                                        | *not adopted*: it would take V. =_ehKeyGuardInstall()= stays; asked to keep V working under it (reply)                          |
 | C4 | =<html data-mbu-quiet="saed">=                                                                        | SAED        | =mbRestackCorner()=: =[data-mb-corner]= and =#mbu-dock-shelf= =visibility:hidden=                         | *adopted* (9.99.1580, =_mbuQuietSync()=, =sa_mbu_quiet_corner=, ☰ row)                                                              |
 | C5 | /dropped/ ("no SAED-specific detection"); replaced by EH's More (⋯) menu protocol: hidden =button[data-mbu-menu-item][data-mbu-menu-title]= under =<html>= | SAED | EH projects it into its header menus and =.click()=s it; =disabled= hides it                              | *adopted* (9.99.1581, =_ehMenuSync()=, =_ehHandoff()=): "Open in ShowAllEntityData" + one item per button                           |
-| C6 | =mbu:mb-gate= *version 1* (=version=, =tat=, =cool=, =hot=, =lead=, =leadUntil=; Web Lock =mbu-mb-gate=) | majkinetor (documents it) | SAED books its ws/2 there                                                                                  | in progress on =feature/mb-shared-gate= (TODO "Join majkinetor's cross-tab request gate")                                       |
+| C6 | =mbu:mb-gate= *version 1* (=version=, =tat=, =cool=, =hot=, =lead=, =leadUntil=; Web Lock =mbu-mb-gate=) | majkinetor (documents it) | SAED books its ws/2 there                                                                                  | adopted: SAED 9.99.1583 (TODO "Join majkinetor's cross-tab request gate")                                                       |
 
 **** Posts to majkinetor (for you to post; not posted anywhere)
 
@@ -980,7 +980,7 @@ CLOSED: [2026-11-08 Sun]
 - *Mind*: EH's on/off choice is saved, so turning it off here turns it off for the next page too. Say so in the
   launcher's tip.
 
-** TODO Join majkinetor's cross-tab request gate (=mbu:mb-gate=)
+** DONE Join majkinetor's cross-tab request gate (=mbu:mb-gate=)
 
 - *Who fixes it*: *ours* to implement; *upstream* to keep the protocol stable (C6). Ask for that before we depend on it.
 - *Upstream answer (2026-11-08)*: protocol *version 1*, documented in 9e4cdd59's DEVELOP.md "Shared request-gate
@@ -995,7 +995,12 @@ CLOSED: [2026-11-08 Sun]
   from the version after 9.99.1581 on, so =mbnState= / =mbnSlot= / =mbnAnswer= are *ported* with credit, not
   re-implemented. In progress on =feature/mb-shared-gate= (plan: SAED's own 1100 ms slot AND a shared slot,
   whichever is later; book + report + honour another script's lead; switch =sa_mb_shared_gate=, on).
-- *Implemented (2026-11-09, =feature/mb-shared-gate=, WIP.2; not merged)*: =_mbGate*= next to =_ws2GetJson()=;
+- *Shipped (2026-11-09)*: 9.99.1583 on =main= (merge =fc5b9648=, fold =0839928f=); test:full on the branch 2832/8,
+  the 8 explained in DEBUG-NOTES (3 = the gate's hold in =rel-auto-retry-failed=, now seeded off; 5 load flakes).
+  Report to majkinetor drafted in [[file:reply-to-938-gate.org][org/reply-to-938-gate.org]] (not posted; vzell sends),
+  with the HTML-page-fetch question below as an optional paragraph. Round 2 (taking the lead, the browser-check
+  iframe) is not started.
+- *Implemented (2026-11-09, =feature/mb-shared-gate=, WIP.2 = 9.99.1583)*: =_mbGate*= next to =_ws2GetJson()=;
   every same-origin ws/2 request books through =_mbGateFetch()= (=_ws2GetJson()= per attempt, the two ⏱ lookups),
   the RG ▶ expand XHR through =_mbGateSlot()= / =_mbGateAnswer()=. Foreground only for explicit clicks (a
   Relationships cell, the window's ⟳, ⏱, ▶); SAED takes no lead; foreign hosts never join. Spec
