@@ -551,6 +551,8 @@ Republish checklist, then:
 3a. copy =ShowAllEntityData/LICENSE= to the mirror next to the script (/added
    2026-11-08/: SAED is GPL-3.0-or-later from the version after 9.99.1581 on — it
    was MIT before — and GPL wants the licence text shipped with the program);
+   likewise =lib/LICENSE= to the mirror's =lib/= (/added 2026-11-09/: VZ_MBLibrary
+   is GPL-3.0-or-later from 4.5.1 on, MIT up to 4.5.0);
 4. =MB_PageEnhancer= is on the network =@require= by its own deliberate choice
    (1.0.11) and stays there. Its 1.0.12 =GM_deleteValue= grant is INERT until
    step 1 lands — 4.0.0 has no =persist()= to feature-detect — which is
