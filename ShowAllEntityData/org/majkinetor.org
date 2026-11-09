@@ -997,7 +997,7 @@ CLOSED: [2026-11-08 Sun]
   whichever is later; book + report + honour another script's lead; switch =sa_mb_shared_gate=, on).
 - *Shipped (2026-11-09)*: 9.99.1583 on =main= (merge =fc5b9648=, fold =0839928f=); test:full on the branch 2832/8,
   the 8 explained in DEBUG-NOTES (3 = the gate's hold in =rel-auto-retry-failed=, now seeded off; 5 load flakes).
-  Report to majkinetor drafted in [[file:reply-to-938-gate.org][org/reply-to-938-gate.org]] (not posted; vzell sends),
+  Report to majkinetor drafted in [[file:reply-to-938-gate.org][org/reply-to-938-gate.org]], posted 06:30 CET ([[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-6733016364][comment]]),
   with the HTML-page-fetch question below as an optional paragraph. Round 2 (taking the lead, the browser-check
   iframe) is not started.
 - *Implemented (2026-11-09, =feature/mb-shared-gate=, WIP.2 = 9.99.1583)*: =_mbGate*= next to =_ws2GetJson()=;
@@ -1411,7 +1411,7 @@ thought about licensing issues and just copied it from a typical userscript head
 regarding "Joining mbu:mb-gate" and the implementation. Additionally mention majkinetor userscripts in our section
 "* This script uses functionality originally included in the following user scripts, thx to the original authors..."
 
-** TODO questions
+** questions
 
 Joining mbu:mb-gate: how should SAED's own ws/2 pacing relate to the shared schedule?
 
@@ -1455,7 +1455,7 @@ What goes into this first round?
 
   Decision for you: should I merge now on this evidence (the re-runs above plus the earlier full run), or run the full suite again first (about 2.5 h on vzell-lap)?
 
-** TODO tests
+** tests
 
 ● The two tabs give SAED two copies of itself, plus String Theory, all spending one Web Service budget. The check is that they now take turns instead of each going at its own pace.
 
@@ -1506,4 +1506,12 @@ What goes into this first round?
   5. Afterwards, turn fetch whole pages at once back on.
 
   Test 1 is the one that proves the cross-script part. A 503 from String Theory or Event Horizon writes exactly that cool value, and SAED now waits for it.
+
+** DONE questions for majkinetor's
+
+Drafted 2026-11-09: [[file:reply-to-938-adoptions.org][org/reply-to-938-adoptions.org]] (six items that are ours to
+build but want his OK or agreement first). Not posted; vzell sends.
+
+Formulate one more followup reply to the majkinetor issue with the questions in the TODO section which are actually on
+our side but need approval from him to additionally implement in our userscript.
 

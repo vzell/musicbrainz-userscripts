@@ -1,0 +1,58 @@
+#+TITLE: Follow-up on #938: things SAED would like to take from his scripts (asking first)
+#+DATE: 2026-11-09
+
+* TODO Post: adoption questions on https://github.com/majkinetor/musicbrainz-userscripts/issues/938
+
+Drafted 2026-11-09 at vzell's request ("** questions for majkinetor's" in =org/majkinetor.org=), for vzell to
+post (not posted anywhere). It collects the open TODOs in =org/majkinetor.org= that are *ours* to build but say
+"ask majkinetor" first:
+
+| # | TODO in org/majkinetor.org                                                     | Asks                                         |
+|---+--------------------------------------------------------------------------------+----------------------------------------------|
+| 1 | Discogs pages: credits as MusicBrainz relationships (Credit Hoarder's role map) | copy the maps; which licence; a shared JSON? |
+| 2 | Findings from Apollo / Group Therapy / First Contact / Credit Hoarder          | copy =CONFUSABLE=, =FORMAT_EXCLUDE_DEFAULT=  |
+| 3 | Title style: guess-case word lists, title-difference classes                   | copy Apollo's word lists                     |
+| 4 | Possible duplicate recordings (Fusion's algorithm, zero requests)              | verbatim port or re-implement?               |
+| 5 | In-page log window behind =Lib.*= (=mbuLog=)                                   | reuse in the MIT library?                    |
+| 6 | Query mode for the global filter (Event Horizon's filter language)             | same syntax; is the grammar stable?          |
+
+Left out on purpose, because each would need him to *build* something, not just agree:
+- the shared =mbu.kept.drop= epoch ("Stale-while-revalidate …");
+- exposing EH's =ArtistImage= lookup as =window.MBU.artistImage= ("Entity pictures …");
+- an idle-mode convention ("String Theory's idle mode over our FRP"), which says "do not ask before measuring".
+
+Facts checked in the clone at =2d092e0= (2026-11-08T23:59:35+01:00): Credit Hoarder's =src/meta.txt= and
+=dist/credit_hoarder.user.js= say =@license MIT=, the repo root =LICENSE= is GPL-3. SAED is GPL-3.0-or-later
+since 9.99.1582; VZ_MBLibrary stays MIT.
+
+#+begin_src markdown
+Hi @majkinetor,
+
+a few more things I'd like to take into SAED from your scripts. I'd build all of them on my side, but I'd like your OK
+first, and to know if you'd prefer a particular form. SAED is GPL-3.0-or-later now, so the licence is fine for most of
+it. Anything I take gets a credit in the header, like the gate.
+
+1. **Credit Hoarder's role and instrument maps** (`src/data/entity-map.js`, `src/data/instruments.js`,
+   `src/data/work-only-rels.js`). On Discogs release and master pages, SAED would show which MusicBrainz relationship
+   each credit maps to. May I copy them? Credit Hoarder's header says MIT, the repo root says GPL-3: which applies?
+   And would you consider publishing them as a JSON file both scripts read, so a fix reaches both?
+2. **Apollo's `CONFUSABLE` table and Group Therapy's `FORMAT_EXCLUDE_DEFAULT`**, for two SAED findings: invisible or
+   look-alike characters in names and titles, and a relationship that doesn't fit the format (e.g. "lacquer cut by" on
+   a Digital Media release). OK to copy them as they are?
+3. **Apollo's guess-case lists** (`UPPER_CASE_WORDS`, `POSTPROCESS_FIXLIST`, `VERSION_PHRASES`, the camelCase names),
+   for SAED's MusicBrainz title style on other sites. OK to copy?
+4. **Fusion's duplicate-recording gates** (`titleDistinctWords`, `isrcConflict`, `placeConflict`, `shouldUnion`,
+   `gatedUnionFind`), for a "possible duplicate" finding on recording tables, with no extra requests. Would you rather
+   I port them as they are, so SAED and Fusion agree, or re-implement the idea?
+5. **`mbuLog`**: I'd like an in-page log window like yours (filters, Copy as Markdown), so users can send me a log
+   without DevTools. It would live in my shared library, VZ_MBLibrary, which is MIT. Would you allow that part under
+   MIT, or should I keep it inside SAED (GPL)?
+6. **Event Horizon's filter language**: SAED's global filter could get an optional query mode. I'd like to use your
+   syntax (`col:value`, `-term`, `OR`/`AND`, brackets, quotes, ranges like `2022-2024`), so a query means the same in
+   both. Is the grammar stable enough to follow, or are changes planned?
+
+No hurry on any of these.
+
+Thanks!
+Volker
+#+end_src

@@ -1,9 +1,11 @@
 #+TITLE: Follow-up on #938: SAED now books in the shared request gate (mbu:mb-gate v1)
 #+DATE: 2026-11-09
 
-* TODO Post: shared-gate report on https://github.com/majkinetor/musicbrainz-userscripts/issues/938
+* DONE Post: shared-gate report on https://github.com/majkinetor/musicbrainz-userscripts/issues/938
 
-Drafted 2026-11-09 at vzell's request, for vzell to post (not posted anywhere). It reports back on the
+*Posted* by vzell 2026-11-09 06:30 CET: https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-6733016364 (identical to the block below).
+
+Drafted 2026-11-09 at vzell's request, for vzell to post. It reports back on the
 "implementing now, will report back" comment. SAED 9.99.1583 is on =main= of vzell/musicbrainz-userscripts
 (merge =fc5b9648=, fold =0839928f=); the link below names =main=. The "keep V under =data-mbu-keys-off="
 question is already posted and still open, so it only gets a one-line reminder.
