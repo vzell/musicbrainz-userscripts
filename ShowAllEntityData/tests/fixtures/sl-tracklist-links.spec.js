@@ -548,6 +548,62 @@ test.describe('springsteenlyrics.com tracklists: adjustments', () => {
         });
     }
 
+    for (const readAhead of [false, true]) {
+        test(`a song window's release tables: the glyph is the window's 13 px icon, in the line${readAhead ? ', read-ahead dots on' : ''}`, async ({ page }) => {
+            // vzell, 2026-11-09 (debug/sl-detail-bug-large-mb-icons.html):
+            // in a song's window (For You on item 4905) every track of its
+            // release's table had a ~300 px work icon. The window's glyph
+            // rules matched the item window's list (.mb-dp-tracks) only; a
+            // song window's tracklists are tables (.mb-dp-tbl). vzell's
+            // steps: an item page, its tracklist rendered (the works read),
+            // a song of it previewed, Space. Every song page is answered by
+            // Backstreets: its Born to Run table holds Thunder Road, a work
+            // of the stub.
+            const { errors } = await open(page, 'collection-10163', { mb: true,
+                settings: { sa_sl_detail_preview: true, sa_pop_mb: true, sa_dp_window_read_ahead: readAhead } });
+            await show(page);
+            await expect(page.locator('.project-detail table.tbl tbody a.mb-sl-work-exact').first()).toBeAttached({ timeout: 15000 });
+            await page.route((u) => u.pathname === '/lyrics.php' && u.searchParams.has('song'),
+                (route) => route.fulfill({ path: FX('detail-sl-song-backstreets-logged-in.html'), contentType: 'text/html; charset=utf-8' }));
+            // MusicBrainz's work icon, which the harness would block (and
+            // the window drops an image that fails): a stand-in with a
+            // viewBox and no size, as the real one, so an unsized img
+            // draws large.
+            await page.route('https://musicbrainz.org/static/images/entity/work.svg', (route) => route.fulfill({ contentType: 'image/svg+xml',
+                body: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22"><path fill="#ba478f" d="M11 1 20 6v10l-9 5-9-5V6z"/></svg>' }));
+            const songLink = page.locator('.project-detail table.tbl tbody a.mb-sl-song-link', { hasText: 'ROSALITA' }).first();
+            await page.mouse.move(0, 0);
+            await songLink.scrollIntoViewIfNeeded();
+            await page.keyboard.down('Control');
+            await songLink.hover();
+            await page.keyboard.up('Control');
+            await expect(page.locator('#mb-dp-peek .mb-tt-title')).toHaveText('BACKSTREETS', { timeout: 15000 });
+            await page.keyboard.press('Space');
+            await expect(page.locator('#mb-dp-dialog .mb-sls-tblock')).toBeVisible({ timeout: 15000 });
+            const song = page.locator('#mb-dp-dialog .mb-dp-tbl span.mb-sl-song[data-mb-sl-song="thunderroad"]').first();
+            await expect(song.locator('a.mb-sl-work-exact')).toHaveAttribute('href', `https://musicbrainz.org/work/${W.thunder}`, { timeout: 15000 });
+            await song.scrollIntoViewIfNeeded();
+            const geo = await song.evaluate((s) => {
+                const r = el => el.getBoundingClientRect();
+                const img = r(s.querySelector('a.mb-sl-work img'));
+                const title = r(s.querySelector('a.mb-sl-song-link'));
+                const row = r(s.closest('tr'));
+                return { imgW: img.width, imgH: img.height, before: img.right <= title.left + 0.5,
+                    dy: Math.abs((img.top + img.bottom) / 2 - (title.top + title.bottom) / 2), rowH: row.height,
+                    dot: getComputedStyle(s.querySelector('a.mb-sl-work'), '::before').content };
+            });
+            expect(geo.imgW).toBe(13);
+            expect(geo.imgH).toBe(13);
+            expect(geo.before).toBe(true);
+            expect(geo.dy).toBeLessThan(6);
+            expect(geo.rowH).toBeLessThan(40);
+            // The window's reserved dot (content "", read-ahead on) is never
+            // drawn on an icon.
+            expect(['none', 'normal']).toContain(geo.dot);
+            expect(errors).toEqual([]);
+        });
+    }
+
     test('the window\'s green dot: a song read by its card is marked read, also when its answer lands after the pointer left', async ({ page }) => {
         // vzell, 2026-11-05: in an SL window, a song whose card had loaded
         // ("saved today") never got the green dot that MusicBrainz links get.

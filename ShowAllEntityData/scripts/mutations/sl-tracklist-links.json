@@ -509,5 +509,31 @@
         "spec": "tests/fixtures/sl-tracklist-links.spec.js",
         "grep": "box set",
         "expect": "fail"
+    },
+    {
+        "name": "sl song window: the work glyph's size rule matches the item window's list only",
+        "why": "A song window's release tracklists are .mb-dp-tbl tables; scoped to .mb-dp-tracks, the work icon draws at the SVG's own size (vzell, 2026-11-09, For You on item 4905).",
+        "edits": [
+            {
+                "find": "            .mb-dp-dialog :is(.mb-dp-tracks, .mb-dp-tbl) .mb-sl-work img { width: 13px; height: 13px; display: block; }\n",
+                "replace": "            .mb-dp-dialog .mb-dp-tracks .mb-sl-work img { width: 13px; height: 13px; display: block; }\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "song window's release tables",
+        "expect": "fail"
+    },
+    {
+        "name": "sl song window: the glyph link's no-dot rule matches the item window's list only",
+        "why": "With read-ahead on, a song window's table would draw the reserved dot on every work icon (the read-ahead arm of the song-window glyph test).",
+        "edits": [
+            {
+                "find": "            .mb-dp-dialog .mb-dp-area.mb-dp-dots :is(.mb-dp-tracks, .mb-dp-tbl) a.mb-sl-work::before { content: none; display: none; }\n",
+                "replace": "            .mb-dp-dialog .mb-dp-area.mb-dp-dots .mb-dp-tracks a.mb-sl-work::before { content: none; display: none; }\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-tracklist-links.spec.js",
+        "grep": "song window's release tables",
+        "expect": "fail"
     }
 ]

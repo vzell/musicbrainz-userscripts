@@ -29004,3 +29004,30 @@ Env: 2026-11-09T20:35:12–20:45:36+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (L
 - Reading: the effect layers cost the render ~0.4 s (+16%); the fetch is untouched (vzell's visual check of a
   746-page fetch agrees). The quiet mark goes up only after the render, so the requested convention
   (org/reply-to-938-idle.org) keeps idle off a shown table but cannot spare the render; a mark at fetch start would.
+
+## 2026-11-09 — SL song window: MusicBrainz work icons ~300 px in its release tables (fix/sl-song-window-work-icons)
+
+Env: 2026-11-09T23:12:48–23:17:27+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1, Chromium 151.0.7922.34, no Tampermonkey (GM stubs). The bug itself: vzell's browser (version not recorded).
+
+- Snapshot `debug/sl-detail-bug-large-mb-icons.html` (vzell): the "Greetings from Asbury Park, N.J." body of the
+  "For You" song window, opened from item 4905's tracklist (`collection.php?item=4905&category=album`). Every row of
+  the `sl-rel-0` table carries `span.mb-sl-work-slot > a.mb-sl-work > img[src=…/entity/work.svg]`; the screenshot
+  shows each icon ~300 px tall.
+- Root cause: `_slSongsDecorate()` fills the slot of every `#mb-dp-dialog span.mb-sl-song`, and a song window's
+  release tracklists are `div.mb-dp-tbl` tables (`tracksTable()` → `_dpListTableHtml()`, `_slsSongCell()`). The
+  window's glyph rules were all `.mb-dp-dialog .mb-dp-tracks …` (the item window's `<ol>`), and the host block's
+  `:is(table.tbl, span.monospaced)` never reaches a window table (never `table.tbl`). So the `<img>` had no size and
+  drew at the SVG's own (viewBox, no width/height).
+- Fix: every window glyph rule now names `.mb-dp-dialog :is(.mb-dp-tracks, .mb-dp-tbl)` (slot, link, no-dot,
+  13 px img, show link, pulse, dashed outline). CSS only; nothing under MusicBrainz or `table.tbl` changes.
+- Spec `sl-tracklist-links.spec.js` "a song window's release tables …" (read-ahead off/on): item 10163 with the works
+  stub, tracklist rendered, ROSALITA previewed (every song page answered by Backstreets), Space; Thunder Road's icon
+  in the Born to Run table is 13×13, before the title, centred on its line, no dot. Two traps on the way: the harness
+  blocks musicbrainz.org and the window's `error` listener removes a failed image, so the spec serves a stand-in
+  `work.svg`; and a song window paints only the works already in memory (`_slSongsWindowKick()` runs from an item
+  window only), so the item page's render must read them first. Both mutation entries (img rule, no-dot rule) in
+  `scripts/mutations/sl-tracklist-links.json` fail as expected. Targeted run: sl-tracklist-links, sl-song-window,
+  sl-song specs, 52/52.
+- Seen while writing the spec, not investigated: in an SL item window opened from a bootleg list, a plain click on a
+  song link (`mb-dp-l-here`, the foot says "Click: here") requests the song page but the window keeps showing the
+  item; no console error.
