@@ -516,6 +516,27 @@ test.describe('MusicBrainz link previews (sa_pop_mb)', () => {
         expect(log.lookups[0].at - t0, 'waited behind two slots of the shared gate').toBeGreaterThanOrEqual(2000);
     });
 
+    test('a hover that moved on during a hold of the cross-tab gate (mbu:mb-gate) asks nothing', async ({ page }) => {
+        // `_rgWsGet()` passes `wanted()` on as the shared gate's `cancelled`:
+        // its own per-tab slot is free here, so only the SHARED wait can see
+        // the hover leave (tests/fixtures/mb-shared-gate.spec.js has the rest).
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        await page.evaluate(() => localStorage.setItem('mbu:mb-gate', JSON.stringify(
+            { version: 1, tat: 0, cool: Date.now() + 3000, hot: 1, lead: '', leadUntil: 0 })));
+        await ctrlHover(page, relLink(page));
+        await expect(card(page)).toBeVisible();
+        await page.mouse.move(0, 0);
+        await expect(card(page)).toBeHidden();
+        // The hold passes; the queued request finds nobody and is dropped, unsent.
+        await expect.poll(() => page.evaluate(() => window.__saTest.mbGate.stats().cancelled), { timeout: 8000 }).toBe(1);
+        expect(log.lookups, 'nobody wanted it when the shared hold ended').toEqual([]);
+
+        // Control: the same hover, held to the end, does ask.
+        await ctrlHover(page, relLink(page));
+        await expect(card(page)).toContainText('fetched now', { timeout: 10000 });
+        expect(log.lookups).toHaveLength(1);
+    });
+
     test('the release window: tracklist, links, cover strip; ⟳ asks again', async ({ page }) => {
         const log = await open(page, { settings: { sa_pop_mb: true } });
         await ctrlHover(page, relLink(page));

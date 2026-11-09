@@ -1,0 +1,236 @@
+[
+  {
+    "name": "_ws2GetJson bypasses the shared gate",
+    "why": "The wrapper is the whole feature: every retrying /ws/2 request goes through _mbGateFetch(). Back to a bare fetch(), a hold another script wrote no longer delays our click.",
+    "edits": [
+      {
+        "find": "                const resp = await _mbGateFetch(url, { headers: { Accept: 'application/json' } },\n                    { background, cancelled, label, onWait });",
+        "replace": "                const resp = await fetch(url, { headers: { Accept: 'application/json' } });"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "a hold another script wrote delays our request",
+    "expect": "fail"
+  },
+  {
+    "name": "the answer is not reported",
+    "why": "Without _mbGateAnswer() our 503 holds nobody: no version/hot/cool is written.",
+    "edits": [
+      {
+        "find": "        const resp = await fetch(url, init);\n        await _mbGateAnswer(resp.status, resp.headers.get('Retry-After'));\n        return resp;",
+        "replace": "        const resp = await fetch(url, init);\n        return resp;"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "our 503 is reported",
+    "expect": "fail"
+  },
+  {
+    "name": "the write drops fields it does not know",
+    "why": "Protocol v1: writers keep unknown fields. Writing only the known ones loses a newer writer's field.",
+    "edits": [
+      {
+        "find": "                    ...s, tat: s.tat || 0, cool: s.cool || 0, hot: s.hot || 0,",
+        "replace": "                    version: s.version, tat: s.tat || 0, cool: s.cool || 0, hot: s.hot || 0,"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "our 503 is reported",
+    "expect": "fail"
+  },
+  {
+    "name": "an unknown version is overwritten",
+    "why": "Protocol v1: an explicit unknown version is refused without writing. Dropping the refusal rewrites a version-2 schedule as version 1.",
+    "edits": [
+      {
+        "find": "            if (s.version != null && s.version !== _MBG_VERSION) {",
+        "replace": "            if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "an unknown protocol version is left byte-identical",
+    "expect": "fail"
+  },
+  {
+    "name": "another script's lead is ignored",
+    "why": "Background requests must wait out a lead (a page being drawn).",
+    "edits": [
+      {
+        "find": "        for (let told = false; background;) {",
+        "replace": "        for (let told = false; false;) {"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "lead holds a background request",
+    "expect": "fail"
+  },
+  {
+    "name": "a hold that appears while queued is not re-read",
+    "why": "The wait loop re-reads cool each slice; without it, a 503 another script sees while we queue does not hold us.",
+    "edits": [
+      {
+        "find": "            const cool = _mbGateRead().cool || 0;\n            const until = Math.max(booked.value, cool);",
+        "replace": "            const cool = 0;\n            const until = Math.max(booked.value, cool);"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "a hold that appears while a request queues",
+    "expect": "fail"
+  },
+  {
+    "name": "the booking ignores cool (masked by the wait loop)",
+    "why": "KNOWN OVERLAP, recorded as pass: the wait loop's re-read of cool holds the request anyway, so no start time changes; only tat lands earlier (the next booking bunches after the hold). The hold test still passes; the two guards cover each other, and the previous entry pins the wait loop's half.",
+    "edits": [
+      {
+        "find": "            at = Math.max(at, cool);\n            s.tat = Math.max(tat, at) + _MBG_GAP;",
+        "replace": "            s.tat = Math.max(tat, at) + _MBG_GAP;"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "a hold another script wrote delays our request",
+    "expect": "pass"
+  },
+  {
+    "name": "foreground books like background",
+    "why": "An explicit click books max(now, cool), not behind the schedule's background work.",
+    "edits": [
+      {
+        "find": "            let at = background ? Math.max(now, tat - (_MBG_BURST - 1) * _MBG_GAP) : now;",
+        "replace": "            let at = Math.max(now, tat - (_MBG_BURST - 1) * _MBG_GAP);"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "foreground books at once in a busy schedule",
+    "expect": "fail"
+  },
+  {
+    "name": "no burst",
+    "why": "Protocol v1 allows a burst of 3 after a quiet spell; without it the first three starts are a second apart.",
+    "edits": [
+      {
+        "find": "            let at = background ? Math.max(now, tat - (_MBG_BURST - 1) * _MBG_GAP) : now;",
+        "replace": "            let at = background ? Math.max(now, tat) : now;"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "two tabs share one schedule",
+    "expect": "fail"
+  },
+  {
+    "name": "a per-page schedule (not shared across tabs)",
+    "why": "The guarantee itself: with the page's own copy instead of localStorage, two tabs book overlapping slots.",
+    "edits": [
+      {
+        "find": "            try { s = JSON.parse(localStorage.getItem(_MBG_KEY) || 'null'); } catch (_) { stored = false; }",
+        "replace": "            stored = false;"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "two tabs share one schedule",
+    "expect": "fail"
+  },
+  {
+    "name": "the switch is ignored",
+    "why": "sa_mb_shared_gate off must leave the schedule alone.",
+    "edits": [
+      {
+        "find": "        if (Lib.settings.sa_mb_shared_gate === false) return false;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "switched off",
+    "expect": "fail"
+  },
+  {
+    "name": "active on every host",
+    "why": "On another origin there is no shared schedule to join; the gate must not run there.",
+    "edits": [
+      {
+        "find": "        return /(^|\\.)musicbrainz\\.(org|eu)$/i.test(location.hostname);",
+        "replace": "        return true;"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "on another site (discogs.com)",
+    "expect": "fail"
+  },
+  {
+    "name": "hot steps per answer, not per episode",
+    "why": "The in-flight requests of one throttle all answer 503; each must not stretch the hold again.",
+    "edits": [
+      {
+        "find": "                if (now >= (s.cool || 0)) s.hot = Math.min((s.hot || 0) + 1, 6);",
+        "replace": "                s.hot = Math.min((s.hot || 0) + 1, 6);"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "formulas",
+    "expect": "fail"
+  },
+  {
+    "name": "hot never resets after quiet",
+    "why": "A throttle long gone must not slow every later page (hot persists in the shared store).",
+    "edits": [
+      {
+        "find": "                if (now > (s.cool || 0) + _MBG_QUIET_MS) s.hot = 0;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "formulas",
+    "expect": "fail"
+  },
+  {
+    "name": "the 60 s cap is gone",
+    "why": "Retry-After × hot is capped at _MBG_MAX_HOLD.",
+    "edits": [
+      {
+        "find": "                const ms = Math.min(Math.max(1000, ra) * Math.max(1, s.hot), _MBG_MAX_HOLD);",
+        "replace": "                const ms = Math.max(1000, ra) * Math.max(1, s.hot);"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "formulas",
+    "expect": "fail"
+  },
+  {
+    "name": "no 1 s floor under Retry-After: 0",
+    "why": "MusicBrainz sends Retry-After: 0; the hold is at least a second.",
+    "edits": [
+      {
+        "find": "                const ms = Math.min(Math.max(1000, ra) * Math.max(1, s.hot), _MBG_MAX_HOLD);",
+        "replace": "                const ms = Math.min(ra * Math.max(1, s.hot), _MBG_MAX_HOLD);"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "formulas",
+    "expect": "fail"
+  },
+  {
+    "name": "502 writes a hold",
+    "why": "Only 429/503 hold everyone (the protocol); a 502 is a local retry only.",
+    "edits": [
+      {
+        "find": "        if (status === 429 || status === 503) {\n            const raw = retryAfterRaw == null ? null : String(retryAfterRaw);",
+        "replace": "        if (status === 429 || status === 503 || status === 502) {\n            const raw = retryAfterRaw == null ? null : String(retryAfterRaw);"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "formulas",
+    "expect": "fail"
+  },
+  {
+    "name": "a hover that moved on is not cancelled during a shared hold",
+    "why": "_rgWsGet() passes wanted() as cancelled; without it a card nobody looks at any more still asks once the hold ends.",
+    "edits": [
+      {
+        "find": "            cancelled: wanted ? () => !wanted() : null,",
+        "replace": "            cancelled: null,"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "during a hold of the cross-tab gate",
+    "expect": "fail"
+  }
+]

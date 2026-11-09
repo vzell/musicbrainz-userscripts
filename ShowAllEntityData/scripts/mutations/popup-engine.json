@@ -147,8 +147,8 @@
         "why": "One gate for every MusicBrainz request the script makes on its own (org/iframe.org, answer 7); a gate of their own let the popups and the Relationships column together go over one a second.",
         "edits": [
             {
-                "find": "    async function _rgWsGet(url, label, wanted = null) {\n        await _relAwaitRateSlot();",
-                "replace": "    async function _rgWsGet(url, label, wanted = null) {"
+                "find": "    async function _rgWsGet(url, label, wanted = null, opts = {}) {\n        await _relAwaitRateSlot();",
+                "replace": "    async function _rgWsGet(url, label, wanted = null, opts = {}) {"
             }
         ],
         "spec": "tests/fixtures/release-rg-popup.spec.js",

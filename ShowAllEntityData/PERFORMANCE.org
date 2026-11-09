@@ -3423,7 +3423,15 @@ retryAfterMs)~ *before* calling ~_relAwaitRateSlot()~. The order is the point.
 Reserving the slot first and topping the wait up afterwards would spend a
 reservation and then fire late, so the request would no longer sit immediately
 behind the slot it holds. Anything that adds a wait to these callbacks belongs
-on the same side of the gate. Since the popup engine (org/iframe.org Phase 1,
+on the same side of the gate. *Since =feature/mb-shared-gate= (2026-11-09,
+WIP.2)* a SECOND gate sits behind this one: each attempt inside ~_ws2GetJson()~
+also books a slot in the cross-tab schedule majkinetor's scripts share
+(~_mbGateFetch()~, ~mbu:mb-gate~). It only ever adds waiting (when other scripts
+or tabs use the budget, or one of them was refused), never removes any, so the
+"one request per ~_REL_WS2_SPACING_MS~ per tab" invariant still holds; what is no
+longer true is that a request fires the moment its per-tab slot comes up — a
+shared hold can delay it further (docs/claude/fetch-and-render-pipeline.md,
+"The shared MusicBrainz request gate (mbu:mb-gate v1)"). Since the popup engine (org/iframe.org Phase 1,
 2026-10-07) the release page's release-group popups go through this gate too
 (~_rgWsGet()~, which had a queue of its own), with the same order in their
 ~beforeRetry~; ~release-rg-popup.spec.js~ pins that they wait behind slots

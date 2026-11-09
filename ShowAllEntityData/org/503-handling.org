@@ -21,6 +21,11 @@ still marked "read in the code" remain hypotheses; pin them with a spec (see
 | zone 2   | =feat/caa-artwork-summary=     | =tests/fixtures/caa-artwork-summary.spec.js=        |
 | item 7   | =feat/rel-auto-retry-failed=   | =tests/fixtures/rel-auto-retry-failed.spec.js=      |
 | item 5   | =feat/resume-from-failed-page= | =tests/fixtures/resume-from-failed-page.spec.js=    |
+| gate     | =feature/mb-shared-gate=       | =tests/fixtures/mb-shared-gate.spec.js=             |
+
+*gate* (2026-11-09): a 429/503 is now also reported to, and held by, the cross-tab schedule
+majkinetor's scripts share (=mbu:mb-gate=, =_mbGate*=); see docs/claude/fetch-and-render-pipeline.md,
+"The shared MusicBrainz request gate (mbu:mb-gate v1)". Local retries are unchanged.
 
 *Work shape* (decided 2026-09-19): no umbrella =503= branch. =main= is the
 trunk and each item below gets its own short-lived branch off it, live-tested

@@ -28819,3 +28819,37 @@ Env: 2026-11-09T00:07:44–00:16:33+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LT
   EH even while EH is off, as canvas layers in MusicBrainz's body (`hexApply()`, `z-index:1`). That reaches our FRP
   (a user waiting out a long fetch). New TODO in org/majkinetor.org with a pre-test; anchors `st-idle-default`,
   `eh-idle-fx`.
+
+## 2026-11-09 — SAED joins majkinetor's cross-tab request gate (`mbu:mb-gate` v1, `_mbGate*`, feature/mb-shared-gate WIP.2)
+
+Env: 2026-11-09T00:20–01:00+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1, Chromium 151.0.7922.34, no Tampermonkey (GM stubs) for the specs; the throttle-shape probe: n/a browser.
+
+- What: every same-origin `/ws/2` request on musicbrainz.org books a slot in `localStorage['mbu:mb-gate']` under the
+  Web Lock `mbu-mb-gate` and reports its answer, PORTED from majkinetor's `dev/net/mb-gate.mjs` v1 (byte-identical at
+  9e4cdd59 / 7eb7c563 / 2d092e02; licence settled by WIP.1, GPL-3.0-or-later). Added AFTER the per-tab
+  `_relAwaitRateSlot()` (vzell's choice: never faster than before). Routing: `_ws2GetJson()` per attempt →
+  `_mbGateFetch()`; the two ⏱ lookups → `_mbGateFetch()`; the RG ▶ XHR → `_mbGateSlot()` + `_mbGateAnswer()`.
+  Foreground: a Relationships cell click, the window's ⟳ (`_mbLoad`'s `force`), ⏱, ▶. `_rgWsGet()` hands `wanted()`
+  on as `cancelled`, so a card nobody looks at any more is dropped while it waits for a shared hold. Foreign hosts
+  never join (another origin's storage). Switch `sa_mb_shared_gate` (on).
+- Deviation from the plan, on purpose: a pinned window's FIRST load books background, not foreground — the Space
+  press does not reach `_rgWsGet()` as such (only ⟳'s `force` does), and a background booking costs at most the
+  shared burst rule there. Recorded in docs/claude/fetch-and-render-pipeline.md.
+- One fix found while reviewing: the lead-wait loop read `lead` from a stored schedule of an UNKNOWN version; it now
+  leaves such a schedule unread and lets `_mbGateState()` refuse it.
+- Probe `scripts/probe-ws2-throttle-shape.py` (00:37:52–00:38:03): 10 lookups at 1.1 s, all 200, no `Retry-After`,
+  `X-RateLimit-Limit: 1900`, `X-RateLimit-Remaining` jumping 56…1874 between consecutive seconds — server-wide, so
+  not read (recorded in `_mbGateAnswer()`'s JSDoc).
+- Specs: `tests/fixtures/mb-shared-gate.spec.js` (10: hold honoured through the real click path with a control arm,
+  write rules incl. an unknown field kept, version-2 refusal byte-identical, lead background vs foreground, a hold
+  appearing while queued, foreground vs a busy schedule, two pages of one context sharing the schedule with the burst
+  of 3, off, discogs.com inactive, the formulas) and one in `popup-mb.spec.js` (a hover that moved on during a shared
+  hold asks nothing). Mutations `scripts/mutations/mb-shared-gate.json` (18; one recorded `expect: pass`: the
+  booking's own `cool` term is masked by the wait loop's re-read). A stale find in `popup-engine.json`
+  (`_rgWsGet`'s new `opts`) repaired.
+- The existing ws/2 / retry / rate specs with the gate ON (it is not in `FIXTURE_SETTINGS_OVERRIDE`): 304/304 passed
+  (00:32:41–00:55:58, 2 workers; 21 files incl. ws2-transient-classifier, rel-*, release-events-transient,
+  *-failed-retry, release-rg-popup, popup-mb, ms-length, work-suggest, recording-of, discogs-mb-column), so the
+  override stays as it is. `popup-mb.spec.js` reported 16.8 min as a file; A/B of its 12 slowest tests, 1 worker,
+  same session: `main` b53efd7b 2 m 21 s (00:57:07–00:59:29) vs branch 2 m 9 s (–01:01:38), ratio 0.91 — no cost
+  from the gate; that file is simply long.

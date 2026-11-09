@@ -1526,6 +1526,13 @@
             description: "With majkinetor's String Theory (or one of its scripts) installed, up to eight launchers and its dock sit in the bottom right corner, over the rendered table. On, they are hidden on MusicBrainz's page while a table this script rendered is shown; Event Horizon's own view keeps them, and \"Show corner launchers\" in the ☰ menu's View group brings them back for the page. Uses the shared <html data-mbu-quiet> mark (majkinetor's #938); a String Theory without it ignores the mark."
         },
 
+        sa_mb_shared_gate: {
+            label: "Share MusicBrainz's request budget with other userscripts (mbu:mb-gate)",
+            type: 'checkbox',
+            default: true,
+            description: "MusicBrainz allows about one Web Service request a second per computer, for all scripts together. majkinetor's scripts (String Theory, Event Horizon, ISRC Scout, …) share one schedule for it across all tabs, and when MusicBrainz refuses one of them (HTTP 503 or 429) they all pause. On, this script's own Web Service requests (the Relationships column, link previews, entity pictures, millisecond lengths, release events, the release-group ▶ expand) book their place in that same schedule and pause with the others, so they no longer crowd them out. It never makes this script faster: its own pacing of one request per 1.1 s stays. Only on musicbrainz.org; other sites are not affected. Off: this script paces its requests on its own, as before."
+        },
+
         // ============================================================
         // TABLE STICKINESS CONFIGURATION SECTION
         // ============================================================
@@ -54165,6 +54172,8 @@
      * "retryable" is the safe direction: the cost of being wrong is one extra
      * request that the user explicitly asked for by clicking again.
      *
+     * The request is booked in the shared request gate (`_mbGateFetch()`).
+     *
      * @returns {Promise<{outcome: ('ok'|'empty'|'error'), map: ?Map<string, number>, detail: string}>}
      *   `'ok'` with a map; `'empty'` when MusicBrainz genuinely has no lengths
      *   here (cached); `'error'` for a transient failure (not cached), with
@@ -54184,7 +54193,10 @@
         _msDbg(`_msFetchWs2RecordingLengths: fetching ${url}`);
         let relations;
         try {
-            const resp = await fetch(url, { headers: { Accept: 'application/json' } });
+            // One attempt, as before; booked in the shared request gate as a
+            // foreground request (a ⏱ press), so a hold another script saw applies.
+            const resp = await _mbGateFetch(url, { headers: { Accept: 'application/json' } },
+                { background: false, label: '_msFetchWs2RecordingLengths' });
             if (!resp.ok) {
                 // NOT cached: a transport failure says nothing about the data.
                 _msDbg(`_msFetchWs2RecordingLengths: HTTP ${resp.status} — transient, not cached, retryable`);
@@ -54286,7 +54298,10 @@
         _msDbg(`_msFetchFullReleaseTrackLengths: fetching ${url}`);
         let media;
         try {
-            const resp = await fetch(url, { headers: { Accept: 'application/json' } });
+            // One attempt, as before; booked in the shared request gate as a
+            // foreground request (a ⏱ press), so a hold another script saw applies.
+            const resp = await _mbGateFetch(url, { headers: { Accept: 'application/json' } },
+                { background: false, label: '_msFetchFullReleaseTrackLengths' });
             if (!resp.ok) {
                 _msDbg(`_msFetchFullReleaseTrackLengths: HTTP ${resp.status} — transient, not cached, retryable`);
                 return { outcome: 'error', maps: null, detail: `HTTP ${resp.status}` };
@@ -54701,6 +54716,326 @@
         });
     }
 
+    // ── The shared MusicBrainz request gate (`mbu:mb-gate`, protocol version 1) ──
+    //
+    // majkinetor's scripts (String Theory, Event Horizon, ISRC Scout, Platform
+    // Check, …) pace every /ws/2 request of every tab on the origin through
+    // ONE schedule in localStorage, read and written under a Web Lock, and a
+    // 429/503 seen by any of them holds all of them. This script books its
+    // own /ws/2 requests in that same schedule, so it no longer takes the
+    // budget his scripts back off from, and it holds when they are throttled
+    // (measured: probe case D, org/majkinetor.org "Coexistence").
+    //
+    // PORTED from his dev/net/mb-gate.mjs (`mbnState()`, `mbnSlot()`,
+    // `mbnAnswer()`; GPL-3.0, credited in this script's header) and kept to
+    // the contract his DEVELOP.md documents as "Shared request-gate protocol",
+    // version 1 (on his main since 7eb7c563, checked 2026-11-09):
+    //   - fields `version`, `tat` (the next request's theoretical arrival
+    //     time), `cool` (nobody starts before it), `hot` (0–6, the throttle
+    //     level), `lead` / `leadUntil` (a page being drawn; ≤ 10 s a renewal);
+    //   - a gap of 1000 ms with a burst of 3; a background request books
+    //     `at = max(now, tat − 2000, cool)`, a foreground one `max(now, cool)`,
+    //     and both move `tat = max(tat, at) + 1000`;
+    //   - an absent version is version 1; writers stamp `version: 1` and keep
+    //     every field they do not know; an explicit unknown version is
+    //     REFUSED without writing (here: the gate is left for the session and
+    //     the per-tab slot alone paces, `_mbgRefused`);
+    //   - the lock covers the synchronous read-modify-write only, never the
+    //     wait or the request.
+    //
+    // It is ADDED to this script's own pacing, never a replacement: callers
+    // still wait for `_relAwaitRateSlot()` (1100 ms, per tab) first, so this
+    // script is never faster than before, and only waits longer when other
+    // scripts or tabs use the budget (vzell's decision, 2026-11-08). Only
+    // /ws/2 is gated, as in the protocol: HTML pages (`fetchHtml()`,
+    // `_dpFetchText()`) are not. On every other host the schedule cannot be
+    // reached (localStorage is per origin), so nothing here runs there.
+    // Switch: `sa_mb_shared_gate`. Design: docs/claude/fetch-and-render-pipeline.md,
+    // "The shared MusicBrainz request gate (mbu:mb-gate v1)".
+
+    /** localStorage key of the shared schedule (majkinetor's `MBN_KEY`). */
+    const _MBG_KEY = 'mbu:mb-gate';
+    /** Web Lock that serialises reading and writing it (`MBN_LOCK`). */
+    const _MBG_LOCK = 'mbu-mb-gate';
+    /** The protocol version this script speaks (`MBN_VERSION`). */
+    const _MBG_VERSION = 1;
+    /** Between request starts, sustained, ms (`MBN_GAP`). */
+    const _MBG_GAP = 1000;
+    /** Requests that may start back to back after a quiet spell (`MBN_BURST`). */
+    const _MBG_BURST = 3;
+    /** The longest one throttle holds everyone, ms (`MBN_MAX_HOLD`). */
+    const _MBG_MAX_HOLD = 60000;
+    /** The longest another script's lead is honoured per check, ms (`MBN_MAX_LEAD`). */
+    const _MBG_MAX_LEAD = 10000;
+    /** A lock held longer than this is stuck: go unlocked, as upstream does, ms. */
+    const _MBG_LOCK_ABORT_MS = 3000;
+    /** Waits are cut into slices this long, so a cancel and a new hold land promptly, ms. */
+    const _MBG_SLICE_MS = 250;
+    /** After this long without a throttle, `hot` counts as 0 again, ms. */
+    const _MBG_QUIET_MS = 30000;
+
+    /**
+     * The explicit unknown `version` found in the schedule, or `null`. Set
+     * once; from then on the gate is left alone for the rest of the session.
+     * @type {*}
+     */
+    let _mbgRefused = null;
+
+    /**
+     * This page's own copy of the schedule, used when localStorage cannot be
+     * read (upstream's `globalThis.__mbnGate`).
+     * @type {{tat: number, cool: number, hot: number}}
+     */
+    const _mbgLocal = { tat: 0, cool: 0, hot: 0 };
+
+    /**
+     * What the gate did, for `__saTest.mbGate` and the `mbgate` debug channel.
+     * @type {{booked: number, waitedMs: number, holds: number, answers: number, cancelled: number}}
+     */
+    const _mbgStats = { booked: 0, waitedMs: 0, holds: 0, answers: 0, cancelled: 0 };
+
+    /**
+     * Whether this page books its /ws/2 requests in the shared schedule:
+     * the setting is on, the page is a musicbrainz.org (or .eu) page — the
+     * schedule is the origin's own localStorage, so another host cannot reach
+     * it — and the schedule's version has not been refused.
+     *
+     * @returns {boolean}
+     */
+    function _mbGateActive() {
+        if (Lib.settings.sa_mb_shared_gate === false) return false;
+        if (_mbgRefused !== null) return false;
+        return /(^|\.)musicbrainz\.(org|eu)$/i.test(location.hostname);
+    }
+
+    /**
+     * Whether a URL is one the gate paces: MusicBrainz's /ws/2, relative or
+     * absolute (upstream's `mbnGated()`).
+     *
+     * @param {string} url
+     * @returns {boolean}
+     */
+    function _mbGateGated(url) {
+        const s = String(url || '');
+        return /^\/ws\/2\//.test(s) || /^https?:\/\/([a-z0-9-]+\.)*musicbrainz\.(org|eu)\/ws\/2\//i.test(s);
+    }
+
+    /**
+     * Reads the schedule without the lock, for the waits' re-checks.
+     *
+     * @returns {Object} The stored object, `{}` when there is none, or the page's own copy.
+     */
+    function _mbGateRead() {
+        try {
+            const s = JSON.parse(localStorage.getItem(_MBG_KEY) || 'null');
+            return s && typeof s === 'object' && !Array.isArray(s) ? s : {};
+        } catch (_) {
+            return _mbgLocal;
+        }
+    }
+
+    /**
+     * Read-modify-writes the shared schedule under the Web Lock (upstream's
+     * `mbnState()`). `fn(state)` may change `state`; its result is returned.
+     *
+     * - An absent `version` is version 1; one this script does not know is
+     *   refused WITHOUT writing, the refusal is logged once, and the gate is
+     *   left for the session (`_mbgRefused`).
+     * - The write keeps every field it does not know and stamps `version: 1`.
+     * - The lock is held only for that synchronous moment; one that does not
+     *   come within `_MBG_LOCK_ABORT_MS` is stuck, and the write goes ahead
+     *   unlocked, as with no Web Locks at all (an insecure context).
+     *
+     * @param {function(Object): *} fn
+     * @returns {Promise<{ok: boolean, value: *}>} `ok` false when the version was refused.
+     */
+    async function _mbGateState(fn) {
+        const rw = () => {
+            let s = null;
+            let stored = true;
+            try { s = JSON.parse(localStorage.getItem(_MBG_KEY) || 'null'); } catch (_) { stored = false; }
+            if (!stored) s = _mbgLocal;
+            else if (!s || typeof s !== 'object' || Array.isArray(s)) s = { tat: 0, cool: 0, hot: 0 };
+            if (s.version != null && s.version !== _MBG_VERSION) {
+                if (_mbgRefused === null) {
+                    _mbgRefused = s.version;
+                    Lib.warn('mbgate', `shared request gate: unknown protocol version ${JSON.stringify(s.version)} `
+                        + `in localStorage['${_MBG_KEY}'] — left alone; this page paces its requests on its own`);
+                }
+                return { ok: false, value: undefined };
+            }
+            s.version = _MBG_VERSION;
+            const value = fn(s);
+            _mbgLocal.tat = s.tat || 0;
+            _mbgLocal.cool = s.cool || 0;
+            _mbgLocal.hot = s.hot || 0;
+            try {
+                localStorage.setItem(_MBG_KEY, JSON.stringify({
+                    ...s, tat: s.tat || 0, cool: s.cool || 0, hot: s.hot || 0,
+                    lead: s.lead || '', leadUntil: s.leadUntil || 0,
+                }));
+            } catch (_) { /* no storage: this page's copy only */ }
+            return { ok: true, value };
+        };
+        let timer = 0;
+        try {
+            if (typeof navigator !== 'undefined' && navigator.locks && navigator.locks.request) {
+                const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+                if (ctrl) timer = setTimeout(() => ctrl.abort(), _MBG_LOCK_ABORT_MS);
+                return await navigator.locks.request(_MBG_LOCK, ctrl ? { signal: ctrl.signal } : {}, rw);
+            }
+        } catch (_) {
+            /* no Web Locks here, or the lock is stuck: unlocked, like a lone script */
+        } finally {
+            clearTimeout(timer);
+        }
+        return rw();
+    }
+
+    /**
+     * Waits for, and books, this request's start slot in the shared schedule
+     * (upstream's `mbnSlot()`). Resolves at once, booking nothing, when the
+     * gate is not active.
+     *
+     * 1. A BACKGROUND request first waits out another script's lead (a page
+     *    being drawn; this script never takes one).
+     * 2. Then it books: `at = max(now, tat − (BURST − 1) × GAP, cool)` (a
+     *    foreground request: `max(now, cool)`), `tat = max(tat, at) + GAP`.
+     * 3. Then it waits until `max(at, cool)`, re-reading `cool` each slice,
+     *    so a hold that appeared while it queued still applies.
+     *
+     * `cancelled()` is asked between slices; true resolves `{ok: false}` and
+     * the request is not made (the booked slot is spent, as upstream).
+     *
+     * @param {{background?: boolean, cancelled?: ?function(): boolean, label?: string,
+     *          onWait?: ?function(string): void}} [o]
+     * @returns {Promise<{ok: boolean, waited: number, shared: boolean}>}
+     */
+    async function _mbGateSlot(o = {}) {
+        if (!_mbGateActive()) return { ok: true, waited: 0, shared: false };
+        const t0 = Date.now();
+        const background = o.background !== false;
+        const label = o.label || 'request';
+        const tell = (msg) => {
+            Lib.debug('mbgate', msg);
+            if (o.onWait) o.onWait(msg);
+        };
+        for (let told = false; background;) {
+            const s = _mbGateRead();
+            // A schedule of an unknown version is not read at all: the booking
+            // below refuses it (`_mbGateState()`).
+            if (s.version != null && s.version !== _MBG_VERSION) break;
+            const left = s.lead ? Math.min((s.leadUntil || 0) - Date.now(), _MBG_MAX_LEAD) : 0;
+            if (left <= 0) break;
+            if (o.cancelled && o.cancelled()) { _mbgStats.cancelled++; return { ok: false, waited: Date.now() - t0, shared: true }; }
+            if (!told) { told = true; tell(`${label}: waits for a page another script is drawing`); }
+            await new Promise(r => setTimeout(r, Math.min(left, _MBG_SLICE_MS)));
+        }
+        const booked = await _mbGateState(s => {
+            const now = Date.now();
+            const cool = s.cool || 0;
+            const tat = s.tat || 0;
+            let at = background ? Math.max(now, tat - (_MBG_BURST - 1) * _MBG_GAP) : now;
+            at = Math.max(at, cool);
+            s.tat = Math.max(tat, at) + _MBG_GAP;
+            return at;
+        });
+        if (!booked.ok) return { ok: true, waited: Date.now() - t0, shared: false };
+        _mbgStats.booked++;
+        for (let told = false; ;) {
+            if (o.cancelled && o.cancelled()) { _mbgStats.cancelled++; return { ok: false, waited: Date.now() - t0, shared: true }; }
+            const cool = _mbGateRead().cool || 0;
+            const until = Math.max(booked.value, cool);
+            const left = until - Date.now();
+            if (left <= 0) break;
+            if (!told && until - t0 > 1000) {
+                told = true;
+                tell(`${label}: waits ${Math.round((until - t0) / 100) / 10} s (`
+                    + (cool > booked.value ? 'MusicBrainz asked every script to wait' : 'shared pacing, one request a second') + ')');
+            }
+            await new Promise(r => setTimeout(r, Math.min(left, _MBG_SLICE_MS)));
+        }
+        const waited = Date.now() - t0;
+        _mbgStats.waitedMs += waited;
+        return { ok: true, waited, shared: true };
+    }
+
+    /**
+     * Tells the shared schedule how MusicBrainz answered (upstream's
+     * `mbnAnswer()`). A 429/503 holds every script in every tab:
+     * `hot` steps up once per throttle EPISODE (not per answer: the requests
+     * already in flight answer 503 too) and is reset after `_MBG_QUIET_MS`
+     * of quiet; the hold is `min(max(1 s, Retry-After) × max(1, hot), 60 s)`
+     * — `Retry-After` a floor, since MusicBrainz sends `Retry-After: 0`. Any
+     * other answer below 500 earns a step of `hot` back. 502/504 change
+     * nothing here (the protocol's rule); `_ws2GetJson()` still retries them.
+     *
+     * `X-RateLimit-*` is NOT read, on purpose. Probe
+     * (`scripts/probe-ws2-throttle-shape.py`, 2026-11-09T00:37:52+01:00,
+     * vzell-lap, n/a browser): 10 lookups at 1.1 s, all 200, no
+     * `Retry-After`; `X-RateLimit-Limit: 1900` on each, and
+     * `X-RateLimit-Remaining` jumping between 56 and 1874 from one second to
+     * the next — a server-wide budget shared with every client, as
+     * majkinetor's notes say, not this client's own. No 503 was seen, so the
+     * `Retry-After` forms rest on the protocol text and on the
+     * 2026-09-15 Relationships probe (org/503-handling.org).
+     *
+     * @param {number} status
+     * @param {?string} retryAfterRaw - The raw `Retry-After` header, or null.
+     * @returns {Promise<number>} How long everyone now holds, ms (0 when not throttled).
+     */
+    async function _mbGateAnswer(status, retryAfterRaw) {
+        if (!_mbGateActive()) return 0;
+        _mbgStats.answers++;
+        if (status === 429 || status === 503) {
+            const raw = retryAfterRaw == null ? null : String(retryAfterRaw);
+            const secs = Number(raw);
+            const date = raw ? Date.parse(raw) : NaN;
+            const ra = Number.isFinite(secs) ? secs * 1000 : Number.isFinite(date) ? Math.max(0, date - Date.now()) : 0;
+            const res = await _mbGateState(s => {
+                const now = Date.now();
+                if (now > (s.cool || 0) + _MBG_QUIET_MS) s.hot = 0;
+                if (now >= (s.cool || 0)) s.hot = Math.min((s.hot || 0) + 1, 6);
+                const ms = Math.min(Math.max(1000, ra) * Math.max(1, s.hot), _MBG_MAX_HOLD);
+                s.cool = Math.max(s.cool || 0, Date.now() + ms);
+                return s.cool - Date.now();
+            });
+            if (!res.ok) return 0;
+            _mbgStats.holds++;
+            Lib.debug('mbgate', `HTTP ${status}${raw != null ? ` (Retry-After: ${raw})` : ''} — every script holds `
+                + `${Math.round(res.value / 100) / 10} s`);
+            return res.value;
+        }
+        if (status >= 200 && status < 500) {
+            await _mbGateState(s => {
+                if (s.hot) s.hot = Date.now() > (s.cool || 0) + _MBG_QUIET_MS ? 0 : s.hot - 1;
+            });
+        }
+        return 0;
+    }
+
+    /**
+     * `fetch()` of one same-origin /ws/2 URL through the shared gate: books a
+     * slot, sends the request, reports the answer. One attempt; retries stay
+     * the caller's (`_ws2GetJson()`). A URL the gate does not pace, or a page
+     * where it is not active, is fetched as it is.
+     *
+     * @param {string} url
+     * @param {RequestInit} init
+     * @param {{background?: boolean, cancelled?: ?function(): boolean, label?: string,
+     *          onWait?: ?function(string): void}} [o]
+     * @returns {Promise<?Response>} `null` when `cancelled()` stopped it before it was sent.
+     *          Rejects as `fetch()` does.
+     */
+    async function _mbGateFetch(url, init, o = {}) {
+        if (!_mbGateGated(url)) return fetch(url, init);
+        const slot = await _mbGateSlot(o);
+        if (!slot.ok) return null;
+        const resp = await fetch(url, init);
+        await _mbGateAnswer(resp.status, resp.headers.get('Retry-After'));
+        return resp;
+    }
+
     /**
      * GETs one same-origin WS/2 URL as JSON, retrying transient failures.
      *
@@ -54727,22 +55062,37 @@
      * in as `Math.max(ownDelay, retryAfterMs)`, so the server's ask is a floor
      * and never a licence to retry faster than MusicBrainz's 1 req/s rule.
      *
+     * Every attempt also goes through the shared request gate
+     * (`_mbGateFetch()`): it books a slot in `mbu:mb-gate` AFTER the caller's
+     * own slot, and reports the answer, so a 503 here holds majkinetor's
+     * scripts too and theirs hold this. `background: false` books as a
+     * foreground request (an explicit click); `cancelled()` drops an attempt
+     * that is no longer wanted while it waits for the shared slot, which
+     * resolves `{skipped: true}` as `_rgWsGet()`'s own "not wanted" does;
+     * `onWait(msg)` hears a shared wait over a second.
+     *
      * Never rejects.
      *
      * @param   {string} url  Same-origin `/ws/2/...` URL.
      * @param   {{tries: number, beforeRetry: function(number, number): Promise<void>,
-     *            dbg: function(...*): void, label: string}} opts
-     * @returns {Promise<{ok: boolean, status: number, data: ?Object, detail: string}>}
+     *            dbg: function(...*): void, label: string, background?: boolean,
+     *            cancelled?: ?function(): boolean, onWait?: ?function(string): void}} opts
+     * @returns {Promise<{ok: boolean, status: number, data: ?Object, detail: string, skipped?: boolean}>}
      *          `status` is the last HTTP status seen, or 0 when no response arrived.
      */
-    async function _ws2GetJson(url, { tries, beforeRetry, dbg, label }) {
+    async function _ws2GetJson(url, { tries, beforeRetry, dbg, label, background = true, cancelled = null, onWait = null }) {
         let detail = '';
         let status = 0;
         for (let attempt = 1; attempt <= tries; attempt++) {
             // Per attempt: a thrown request carries no response and so no header.
             let retryAfterMs = 0;
             try {
-                const resp = await fetch(url, { headers: { Accept: 'application/json' } });
+                const resp = await _mbGateFetch(url, { headers: { Accept: 'application/json' } },
+                    { background, cancelled, label, onWait });
+                if (!resp) {
+                    dbg(`${label}: no longer wanted while waiting for the shared request gate — not asked`);
+                    return { ok: false, status: 0, data: null, detail: 'skipped', skipped: true };
+                }
                 status = resp.status;
                 if (resp.ok) {
                     const data = await resp.json();
@@ -63372,12 +63722,20 @@
      * On another site (discogs.com: `_dgMbSource()`) the Web Service is
      * another origin: `_mbWsGetForeign()`, after the same slot.
      *
+     * On musicbrainz.org every attempt then books a slot in the shared
+     * request gate (`_ws2GetJson()` → `_mbGateFetch()`), and `wanted()` is
+     * asked again while it waits there, so a hover that moved on during a
+     * shared hold still makes no request. `opts.foreground` books it as an
+     * explicit user action (the window's ⟳), which does not queue behind
+     * the shared schedule's background work.
+     *
      * @param {string} url - Same-origin `/ws/2/...`.
      * @param {string} label - For the `rg` debug channel.
      * @param {?function(): boolean} [wanted] - Whether anyone still wants it.
+     * @param {{foreground?: boolean}} [opts]
      * @returns {Promise<{ok: boolean, status: number, data: ?Object, detail: string, skipped?: boolean}>}
      */
-    async function _rgWsGet(url, label, wanted = null) {
+    async function _rgWsGet(url, label, wanted = null, opts = {}) {
         await _relAwaitRateSlot();
         if (wanted && !wanted()) {
             Lib.debug('rg', `${label}: no longer wanted, not asked: ${url}`);
@@ -63392,6 +63750,8 @@
             },
             dbg: (...args) => Lib.debug('rg', ...args),
             label,
+            background: !opts.foreground,
+            cancelled: wanted ? () => !wanted() : null,
         });
     }
 
@@ -64638,7 +64998,8 @@
      * @returns {void}
      */
     function _mbWsLoad(cacheKey, url, opts = {}) {
-        _mbLoad(cacheKey, (wanted) => _rgWsGet(url, '_mbWsLoad', wanted), opts);
+        // A forced load is the window's ⟳, an explicit click: foreground in the shared gate.
+        _mbLoad(cacheKey, (wanted, force) => _rgWsGet(url, '_mbWsLoad', wanted, { foreground: !!force }), opts);
     }
 
     /**
@@ -97941,6 +98302,11 @@ a { color: #1565c0; }`;
      * request for the whole page, so joining it would buy nothing and would
      * couple two unrelated features' pacing. The pre-existing bare `fetch()` did
      * not join it either, so nothing regresses.
+     *
+     * It DOES book a slot in the shared cross-tab request gate (`mbu:mb-gate`,
+     * through `_ws2GetJson()`): that one is not about this script's streams but
+     * about the per-IP budget every script on the origin shares, which one
+     * request spends like any other.
      */
     const _RE_WS2_BACKOFF_MS = 1100;
 
@@ -146270,6 +146636,10 @@ a { color: #1565c0; }`;
      * A network request waits on `_relAwaitRateSlot()` unless `opts.slotHeld`
      * says the caller already reserved one. The Phase-2 queue does that, so it
      * can re-ask `_relQueueStillWants()` AFTER the wait and before the request.
+     * On musicbrainz.org each attempt then books a slot in the shared request
+     * gate (`_ws2GetJson()`); `opts.foreground` (a click on one row,
+     * `_relLoadRow()`) books it as an explicit user action. A shared wait over
+     * a second is a line in the column's async job log.
      *
      * Never rejects.
      *
@@ -146277,7 +146647,7 @@ a { color: #1565c0; }`;
      * @param {string}   entityType  'release-group' | 'release' | 'work' | 'label'
      * @param {string[]} incOptions  WS2 inc= values, e.g. ['url-rels']
      * @param {boolean}  [forceNetwork=false]
-     * @param {{slotHeld?: boolean}} [opts]
+     * @param {{slotHeld?: boolean, foreground?: boolean}} [opts]
      * @returns {Promise<{outcome: ('ok'|'error'), data: ?Object, detail: string}>}
      */
     function _relFetchWs2(mbid, entityType, incOptions, forceNetwork, opts) {
@@ -146314,6 +146684,8 @@ a { color: #1565c0; }`;
                 },
                 dbg: _dbg,
                 label: `_relFetchWs2 ${ckey}`,
+                background: !(opts && opts.foreground),
+                onWait: (msg) => _ajLog('rel', null, msg),
             });
             _relAj.requests++;
             _ajLog('rel', null, res.ok ? `${ckey}: ok` : `${ckey}: ${res.detail || 'failed'}`, res.ok || res.status === 404 ? 'good' : 'bad');
@@ -146634,7 +147006,8 @@ a { color: #1565c0; }`;
         _initRelTooltipListeners();
         _initRelMappings();
 
-        const res = await _relFetchWs2(mbid, entityType, _relIncOptionsForEntityType(entityType), force);
+        const res = await _relFetchWs2(mbid, entityType, _relIncOptionsForEntityType(entityType), force,
+            { foreground: true });
 
         const liveNow = Array.from(document.querySelectorAll(_sel))
             .filter(c => c.dataset.relLoading === token);
@@ -153188,6 +153561,8 @@ a { color: #1565c0; }`;
      *
      * The first mousedown fires an XHR to `url`; subsequent clicks only toggle
      * the dom_callback.  On XHR error the user can retry by clicking again.
+     * The XHR books a foreground slot in the shared request gate first
+     * (`_mbGateSlot()`) and reports its answer (`_mbGateAnswer()`).
      * Named inner functions are used for event listener removal because
      * `arguments.callee` is forbidden in strict mode.
      *
@@ -153229,6 +153604,8 @@ a { color: #1565c0; }`;
             const req = new XMLHttpRequest();
             req.onreadystatechange = () => {
                 if (req.readyState !== 4) return;
+                // Reported to the shared request gate: a 503 here holds every script.
+                if (_mbGateGated(url)) _mbGateAnswer(req.status, req.getResponseHeader('Retry-After'));
                 if (req.status === 200 && req.responseText) {
                     successCallback(JSON.parse(req.responseText));
                 } else {
@@ -153246,7 +153623,10 @@ a { color: #1565c0; }`;
                 }
             };
             req.open('GET', url, true);
-            req.send(null);
+            // A click: booked as a foreground request in the shared request gate
+            // (no-op when it is not active); it waits only for a hold, never
+            // behind the schedule's background work.
+            _mbGateSlot({ background: false, label: 'ergCreateButton' }).then(() => req.send(null));
         }
 
         button.addEventListener('mousedown', loadOnce, false);
@@ -173314,6 +173694,33 @@ a { color: #1565c0; }`;
              */
             mbRateSlotWaitMs() {
                 return Math.max(0, _relNextSlotAt - Date.now());
+            },
+            /**
+             * The shared cross-tab request gate (`mbu:mb-gate`, `_mbGate*`),
+             * for the formula checks a behavioural spec cannot reach in
+             * reasonable time (the 30 s quiet reset, the 60 s cap). The
+             * functions are the shipping ones.
+             */
+            mbGate: {
+                /** @returns {boolean} `_mbGateActive()`. */
+                active: () => _mbGateActive(),
+                /** @returns {Object} The schedule as stored (no lock), or this page's copy. */
+                read: () => _mbGateRead(),
+                /** @returns {{booked: number, waitedMs: number, holds: number, answers: number, cancelled: number}} A copy of the counters. */
+                stats: () => ({ ..._mbgStats }),
+                /** @returns {*} The refused version, or null. */
+                refused: () => _mbgRefused,
+                /**
+                 * @param {Object} [o] - `_mbGateSlot()`'s options.
+                 * @returns {Promise<{ok: boolean, waited: number, shared: boolean}>}
+                 */
+                slot: (o) => _mbGateSlot(o || {}),
+                /**
+                 * @param {number} status
+                 * @param {?string} retryAfter
+                 * @returns {Promise<number>} The hold, ms.
+                 */
+                answer: (status, retryAfter) => _mbGateAnswer(status, retryAfter == null ? null : retryAfter),
             },
             /**
              * Reserves `n` slots of the foreign hosts' detail-page rate gate
