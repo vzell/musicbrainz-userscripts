@@ -10,6 +10,7 @@
  *   node tests/support/probe-majkinetor-interop.js --out=<file.json>
  *   node tests/support/probe-majkinetor-interop.js --cases=A,C --scripts=majkinetor-string-theory
  *   node tests/support/probe-majkinetor-interop.js --cases=0      # SA alone, the baseline
+ *   node tests/support/probe-majkinetor-interop.js --cases=D --sa-gate=off  # SA outside mbu:mb-gate
  *
  * Cases (each in a fresh browser context, so GM storage starts clean):
  *   0  SA alone (baseline for layout/CSS and request counts).
@@ -81,7 +82,8 @@ const PROBE_GM_EXTRA = `
  * Parses `--key=value` arguments.
  *
  * @param {string[]} argv - process.argv.slice(2)
- * @returns {{ cases: string[], scripts: string[], out: string|null, url: string|null, headed: boolean }}
+ * @returns {{ cases: string[], scripts: string[], out: string|null, url: string|null, headed: boolean,
+ *            saGate: string }}
  */
 function parseArgs(argv) {
     const arg = (flag, dflt) => {
@@ -93,6 +95,8 @@ function parseArgs(argv) {
         scripts: arg('--scripts', 'majkinetor-event-horizon').split(',').map((s) => s.trim()).filter(Boolean),
         out: arg('--out', null),
         url: arg('--url', null),
+        // SA's sa_mb_shared_gate: 'off' paces SA per tab only, for an A/B of case D (2026-11-09).
+        saGate: arg('--sa-gate', 'on'),
         headed: argv.includes('--headed'),
     };
 }
@@ -353,9 +357,11 @@ function rateFigures(list) {
  * @param {string} name - '0', 'A', 'B', 'C' or 'D'
  * @param {Object[]} entries - resolved manifest entries
  * @param {string|null} urlOverride - --url, used by case I only
- * @returns {Promise<Object>}
+ * @param {string} [saGate] - --sa-gate: 'off' seeds SA's sa_mb_shared_gate false
+ * @returns {Promise<Object>} `out.gate` is the shared schedule (localStorage 'mbu:mb-gate') and SA's
+ *          gate counters (__saTest.mbGate.stats()) at the end of the case.
  */
-async function runCase(browser, name, entries, urlOverride) {
+async function runCase(browser, name, entries, urlOverride, saGate = 'on') {
     const steps = [];
     const note = async (page, label, extra = {}) => {
         const s = { step: label, ...extra, state: await snapshotState(page) };
@@ -365,7 +371,7 @@ async function runCase(browser, name, entries, urlOverride) {
     };
     let cfg = name === 'D' || name === '0' ? ARTIST : RELEASE;
     if (name === 'I') cfg = { ...RELEASE, url: urlOverride || ISRC_RELEASE };
-    const settings = cfg.seedGmValues || {};
+    const settings = { ...(cfg.seedGmValues || {}), ...(saGate === 'off' ? { sa_mb_shared_gate: false } : {}) };
     const ehEntries = name === '0' ? [] : entries;
     // Case I starts with EH off (seeded; harmless without EH), so the bundle shows MusicBrainz's page too.
     const ehOn = name === '0' ? null : (name === 'I' ? false : !['B', 'E'].includes(name));
@@ -453,6 +459,13 @@ async function runCase(browser, name, entries, urlOverride) {
     }
     out.errors = errors;
     out.rate = rateFigures(responses);
+    out.gate = await page.evaluate(() => {
+        let stored = null;
+        try { stored = JSON.parse(localStorage.getItem('mbu:mb-gate') || 'null'); } catch (_) { /* unreadable */ }
+        const g = window.__saTest && window.__saTest.mbGate;
+        return { stored, sa: g ? { active: g.active(), ...g.stats() } : null };
+    }).catch(() => null);
+    console.log(`[${name}] gate: ${JSON.stringify(out.gate)}`);
     console.log(`[${name}] requests: ${JSON.stringify(out.rate)} pageErrors=${errors.length}`);
     await context.close();
     return out;
@@ -462,9 +475,9 @@ async function runCase(browser, name, entries, urlOverride) {
     const args = parseArgs(process.argv.slice(2));
     const entries = resolveScripts(loadManifest(), { ids: args.scripts });
     const browser = await chromium.launch({ headless: !args.headed });
-    const results = { scripts: args.scripts, chromium: browser.version(), started: new Date().toISOString(), cases: [] };
+    const results = { scripts: args.scripts, saGate: args.saGate, chromium: browser.version(), started: new Date().toISOString(), cases: [] };
     for (const c of args.cases) {
-        results.cases.push(await runCase(browser, c, entries, args.url));
+        results.cases.push(await runCase(browser, c, entries, args.url, args.saGate));
     }
     results.finished = new Date().toISOString();
     await browser.close();

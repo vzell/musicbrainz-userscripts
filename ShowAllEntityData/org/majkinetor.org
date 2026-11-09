@@ -1001,9 +1001,18 @@ CLOSED: [2026-11-08 Sun]
   Relationships cell, the window's ⟳, ⏱, ▶); SAED takes no lead; foreign hosts never join. Spec
   =tests/fixtures/mb-shared-gate.spec.js= (10) + one in =popup-mb.spec.js=; mutations
   =scripts/mutations/mb-shared-gate.json=. Design: docs/claude/fetch-and-render-pipeline.md "The shared
-  MusicBrainz request gate (mbu:mb-gate v1)". Still to do here: the live case-D re-run with the gate, and a
-  check in vzell's browser (two tabs, =localStorage['mbu:mb-gate']=). Follow-ups (not this round): take the lead
-  for a visible page's own loads; the browser-check iframe.
+  MusicBrainz request gate (mbu:mb-gate v1)". Follow-ups (not this round): take the lead for a visible page's own
+  loads; the browser-check iframe.
+- *Measured* (2026-11-09T01:10–01:12+01:00, vzell-lap, probe case D, EH 2026.11.08.235840 alone, =--sa-gate=on|off=):
+  SAED's 31-page fetch 35.7 s on vs 36.7 s off, no 503 in either run (a quiet moment: it proves no harm, not the
+  benefit). SAED's one ws/2 request of the case booked a shared slot and waited 1.5 s behind EH's own requests.
+- *Open question for vzell* (whether to ask majkinetor): in case D SAED sends 32 *HTML page* fetches and only 1
+  ws/2 request; the protocol gates /ws/2 only ("the website's forms are not rate-limited the same way"), so the
+  gate cannot pace the traffic that ran beside EH's 503s on 2026-11-06/08. If MusicBrainz counts page fetches
+  against the same per-IP budget, a page-fetch booking (e.g. as background, or a convention for it) would be
+  the next step; not measured, so not asked.
+- *Still to do*: vzell's live check (two tabs on a release with String Theory, =localStorage['mbu:mb-gate']= in
+  DevTools, the Relationships column's progress card), then the merge.
 
 - *Why*: on a release page with String Theory, ISRC Scout, PC, MC, Fusion, Fuzzy Logic and EH share one ~1 req/s
   ws/2 schedule across tabs and hold together on a 429/503. SAED (Relationships column, previews, Discogs MB column,

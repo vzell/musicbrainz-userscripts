@@ -166,12 +166,14 @@ test.describe('shared MusicBrainz request gate (mbu:mb-gate v1)', () => {
         // Another script saw a 503: everyone holds 3 s.
         // Past our own per-tab slot (1100 ms), so only the shared hold can delay the next one.
         await expect.poll(() => page.evaluate(() => window.__saTest.mbRateSlotWaitMs())).toBe(0);
-        await seedGate(page, { version: 1, tat: 0, coolIn: 3000, hot: 1, lead: '', leadUntil: 0 });
+        // The clock starts BEFORE the seed: the hold ends 3 s after the seed at the earliest,
+        // so no load on the test machine can make the request look early.
         t0 = performance.now();
+        await seedGate(page, { version: 1, tat: 0, coolIn: 3000, hot: 1, lead: '', leadUntil: 0 });
         await clickCell(page, second);
         await expect.poll(() => cellDone(page, second), { timeout: 10000 }).toBe(true);
         const held = ws2.find((h) => h.url.includes(second)).at - t0;
-        expect(held, 'the request waits out the shared hold').toBeGreaterThan(2700);
+        expect(held, 'the request waits out the shared hold').toBeGreaterThan(2900);
         expect(held, 'and no longer than it').toBeLessThan(4500);
     });
 
@@ -387,7 +389,9 @@ test.describe('shared MusicBrainz request gate (mbu:mb-gate v1)', () => {
         await seedGate(page, { version: 1, tat: 0, coolIn: 500, hot: 3 });
         await hold(200, null);
         expect((await read()).hot).toBe(2);
+        const coolBefore = (await read()).cool;
         await hold(502, null);
         expect((await read()).hot, '502/504 are a local retry only').toBe(2);
+        expect((await read()).cool, 'and write no hold').toBe(coolBefore);
     });
 });

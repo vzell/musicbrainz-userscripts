@@ -152,7 +152,7 @@
       }
     ],
     "spec": "tests/fixtures/mb-shared-gate.spec.js",
-    "grep": "on another site (discogs.com)",
+    "grep": "on another site",
     "expect": "fail"
   },
   {

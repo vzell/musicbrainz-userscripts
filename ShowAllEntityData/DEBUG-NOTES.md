@@ -28853,3 +28853,17 @@ Env: 2026-11-09T00:20–01:00+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Lin
   override stays as it is. `popup-mb.spec.js` reported 16.8 min as a file; A/B of its 12 slowest tests, 1 worker,
   same session: `main` b53efd7b 2 m 21 s (00:57:07–00:59:29) vs branch 2 m 9 s (–01:01:38), ratio 0.91 — no cost
   from the gate; that file is simply long.
+- Mutations (2026-11-09T01:03:36–01:06:46, then 01:09–01:10 for three entries): 17/17 caught plus the one recorded
+  `expect: pass` overlap. The first run had three surprises, all fixed: the masked-`cool` entry FAILED once because
+  the hold test started its clock after seeding the hold (a slow round trip under load made the request look early;
+  the clock now starts before the seed and the bound is 2.9 s — by hand the mutant passes, as recorded); the
+  discogs.com entry's grep had parentheses (Playwright's `-g` is a regex); and "502 writes a hold" survived because
+  the formula test checked `hot` only — it now checks that a 502 leaves `cool` unchanged.
+- Live case D A/B (EH 2026.11.08.235840 alone, Springsteen's artist page, SAED's 31-page fetch; 01:10:10–01:11:58):
+  gate on 35.7 s, off 36.7 s, 0 × 503 in both, at most 4 vs 5 responses a second. With the gate on, SAED's one ws/2
+  request of the case (the entity-pictures lookup) booked a shared slot and waited 1.5 s behind EH's own requests;
+  `mbu:mb-gate` ended `{version: 1, hot: 0, cool: 0}`. The probe gained `--sa-gate=on|off` and logs `out.gate`.
+  OPEN QUESTION, not a finding: SAED's load in case D is 32 HTML page fetches against 1 ws/2 lookup, and the protocol
+  gates /ws/2 only, so the gate cannot pace the traffic that coincided with EH's 503s in the 2026-11-06/08 runs.
+  Whether MusicBrainz counts HTML page fetches against the same per-IP budget is not known here (the API's
+  rate-limiting page is about /ws/2); recorded in org/majkinetor.org for vzell to decide whether to ask.
