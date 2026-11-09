@@ -372,7 +372,7 @@
         "why": "vzell's screenshot of 2026-11-05: with read-ahead on, every link that opens in the window reserves a dot (::before); in the glyph link (a flex item of the slot) it took a line of its own above the icon.",
         "edits": [
             {
-                "find": "            .mb-dp-dialog .mb-dp-area.mb-dp-dots .mb-dp-tracks a.mb-sl-work::before { content: none; display: none; }\n",
+                "find": "            .mb-dp-dialog .mb-dp-area.mb-dp-dots :is(.mb-dp-tracks, .mb-dp-tbl) a.mb-sl-work::before { content: none; display: none; }\n",
                 "replace": ""
             }
         ],
