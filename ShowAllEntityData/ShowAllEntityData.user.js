@@ -37784,22 +37784,26 @@
             :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-pos { color: #7a6d5c; font-variant-numeric: tabular-nums; margin-right: 6px; }
             :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-len { color: #7a6d5c; font-variant-numeric: tabular-nums; }
             /* A springsteenlyrics.com item's songs (_slTrackTitleHtml()): the
-               work glyphs before the link, this show's version marked. */
+               work glyphs before the link, this show's version marked. The
+               same rules size them in a song window's tables (.mb-dp-tbl:
+               its releases' tracklists, _slsSongCell()); scoped to the
+               item window's list only, an icon there drew at the SVG's
+               own size (vzell, 2026-11-09: For You on item 4905). */
             :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-tracks.mb-sl-tracks .mb-dp-pos { display: inline-block; min-width: var(--mb-sl-pos-w, 2ch); }
-            .mb-dp-dialog .mb-dp-tracks .mb-sl-work-slot:empty { display: none; }
-            .mb-dp-dialog .mb-dp-tracks .mb-sl-work-slot { display: inline-flex; gap: 3px; margin-right: 5px; vertical-align: -3px; }
+            .mb-dp-dialog :is(.mb-dp-tracks, .mb-dp-tbl) .mb-sl-work-slot:empty { display: none; }
+            .mb-dp-dialog :is(.mb-dp-tracks, .mb-dp-tbl) .mb-sl-work-slot { display: inline-flex; gap: 3px; margin-right: 5px; vertical-align: -3px; }
             /* The glyph link is an icon in the line, before the title (vzell,
                2026-11-05: the icons sat BELOW each line). Inline it was a
                block image in an inline link, and the window marks a link
                that opens here with a reserved dot (::before) that stacked
                above the icon; an icon needs no dot. */
-            .mb-dp-dialog .mb-dp-tracks a.mb-sl-work { position: relative; display: inline-block; line-height: 0; }
-            .mb-dp-dialog .mb-dp-area.mb-dp-dots .mb-dp-tracks a.mb-sl-work::before { content: none; display: none; }
-            .mb-dp-dialog .mb-dp-tracks .mb-sl-work img { width: 13px; height: 13px; display: block; }
-            .mb-dp-dialog .mb-dp-tracks a.mb-sl-show-link { text-decoration: none; }
-            .mb-dp-dialog .mb-dp-tracks a.mb-sl-show-link::after { content: "this show"; margin-left: 5px; padding: 0 4px; border-radius: 3px; font-size: 0.8em; background: #dcefe2; color: #2c7347; }
-            .mb-dp-dialog .mb-dp-tracks .mb-sl-work-wait img { opacity: 0.25; animation: mb-sl-work-pulse 1.1s ease-in-out infinite; }
-            .mb-dp-dialog .mb-dp-tracks .mb-sl-work-ambig, .mb-dp-dialog .mb-dp-tracks .mb-sl-work-title { outline: 1px dashed #ba478f; border-radius: 2px; }
+            .mb-dp-dialog :is(.mb-dp-tracks, .mb-dp-tbl) a.mb-sl-work { position: relative; display: inline-block; line-height: 0; }
+            .mb-dp-dialog .mb-dp-area.mb-dp-dots :is(.mb-dp-tracks, .mb-dp-tbl) a.mb-sl-work::before { content: none; display: none; }
+            .mb-dp-dialog :is(.mb-dp-tracks, .mb-dp-tbl) .mb-sl-work img { width: 13px; height: 13px; display: block; }
+            .mb-dp-dialog :is(.mb-dp-tracks, .mb-dp-tbl) a.mb-sl-show-link { text-decoration: none; }
+            .mb-dp-dialog :is(.mb-dp-tracks, .mb-dp-tbl) a.mb-sl-show-link::after { content: "this show"; margin-left: 5px; padding: 0 4px; border-radius: 3px; font-size: 0.8em; background: #dcefe2; color: #2c7347; }
+            .mb-dp-dialog :is(.mb-dp-tracks, .mb-dp-tbl) .mb-sl-work-wait img { opacity: 0.25; animation: mb-sl-work-pulse 1.1s ease-in-out infinite; }
+            .mb-dp-dialog :is(.mb-dp-tracks, .mb-dp-tbl) .mb-sl-work-ambig, .mb-dp-dialog :is(.mb-dp-tracks, .mb-dp-tbl) .mb-sl-work-title { outline: 1px dashed #ba478f; border-radius: 2px; }
             :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-stat { margin: 4px 0 2px; }
             :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-stat b { font-size: 1.6em; font-variant-numeric: tabular-nums; }
             :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-spin { display: inline-block; animation: mb-dp-spin 0.9s linear infinite; }

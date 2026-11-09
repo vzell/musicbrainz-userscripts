@@ -1,0 +1,14 @@
+[
+    {
+        "version": "WIP.1",
+        "date": "2026-11-09",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "springsteenlyrics.com: in a song's preview window (e.g. \"For You\" opened from an item page's tracklist), the release tables showed every MusicBrainz work icon at full size, several hundred pixels tall. They are now the same small icon, in the line before the title, as in an item's window."
+                ]
+            }
+        ]
+    }
+]

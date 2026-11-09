@@ -595,6 +595,20 @@ edition tables (`_slSongToHtml()`'s `editionCell`).
   (`.mb-dp-dots .mb-dp-tracks a.mb-sl-work::before`). The test needs
   `sa_pop_mb` on AND a second paint (→ ←): a glyph added by
   `_slSongsDecorate()` after the paint is never marked.
+- **Every window glyph rule names BOTH containers:
+  `.mb-dp-dialog :is(.mb-dp-tracks, .mb-dp-tbl)`.** An item window lists its
+  songs in `ol.mb-dp-tracks`; a song window's release tracklists, album
+  compare and live tracklist are `div.mb-dp-tbl` tables (`tracksTable()` →
+  `_dpListTableHtml()`, titles from `_slsSongCell()`), and a window table is
+  never `table.tbl`, so the host block's `:is(table.tbl, span.monospaced)`
+  rules do not reach it either. Scoped to the list only, the slot's `<img>`
+  had no size and drew at the SVG's own (~300 px; vzell, 2026-11-09, For You
+  on item 4905, `debug/sl-detail-bug-large-mb-icons.html`). A song window
+  starts no works browse of its own (`_slSongsWindowKick()` runs from the
+  item window's `_dpTrackListHtml()` only): its glyphs are those in memory,
+  read by the item page's render or an item window. Its spec serves a
+  stand-in `work.svg`: the harness blocks musicbrainz.org, and the window's
+  `error` listener removes an image that fails.
 - **The item page's own tracklist, before any press** (`_slLinkLiveTracklist()`,
   from the SL init block next to `_slPrepareLivePage()`): each track line's
   title text node becomes the same span (the site's text, `raw`); the page's
