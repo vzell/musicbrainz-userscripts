@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-11-10",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The detail window (the one a link preview opens) can be made bigger on a phone. Its resize corner is the browser's own, and that answers a mouse only, so on a phone the window kept its size. A new ⤢ beside ✕ makes it fill what the screen shows, following when you zoom or pan; ⤡ gives it its size back, and the next window opens the way you left it. On a desktop a double-click on an empty part of its title bar does the same. On a touch screen a grip in the lower-right corner resizes it with a finger."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-11-09",
     "sections": [

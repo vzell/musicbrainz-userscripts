@@ -806,7 +806,28 @@ floating hover tooltip.
 ## The dialog (`#mb-dp-dialog`)
 
 `createInfoDialog()`'s shell (drag, ✕, Esc, click outside), with
-`geoKey: 'sa_dp_dialog_geometry'` (position and size). The title bar adds ‹
+`geoKey: 'sa_dp_dialog_geometry'` (position and size), and its two opt-ins,
+which no other dialog of the shell passes (vzell 2026-11-10: on a phone the
+window could not be made bigger, since `resize: both` answers a mouse only):
+
+- `maximize`: ⤢ (`.mb-info-max-btn`, left of ✕; also a double-click on the
+  title bar's empty part) fills what SHOWS, `_toolbarViewBox()` less 6 px,
+  never `window.innerWidth/innerHeight` (a zoomed-in phone's layout
+  viewport is larger), and follows the visual viewport's `resize`/`scroll`.
+  The geometry stored meanwhile is the one ⤡ goes back to, with `max: true`,
+  so the next window opens filled; the panel-geometry export carries it
+  verbatim. A filled window does not drag.
+- `touchResize`: on a touch-primary device only (`_isTouchPrimaryDevice()`;
+  a desktop keeps the browser's corner, which a second handle would cover),
+  `.mb-info-grip` in the lower-right corner, pointer events with
+  `touch-action: none` and pointer capture, clamped to what shows, saved on
+  release (the ResizeObserver saves too). Hidden while filled.
+
+Specs `dp-window-size.spec.js` / `dp-window-size.mobile.spec.js` (the
+zoomed-in visual viewport is a stand-in there: headless Chromium ignores a
+synthesized pinch); mutations `scripts/mutations/dp-window-size.json`.
+
+The title bar adds ‹
 row position ›, the Extracted / Live page switch, ⟳ and ↗. Opening it moves
 the focus INTO it, out of the global filter, so ← → step through the visible
 rows (`_dpRowLinks()`, one detail link per row, in display order). The
