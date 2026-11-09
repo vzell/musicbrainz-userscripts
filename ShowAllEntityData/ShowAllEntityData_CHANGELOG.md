@@ -4,9 +4,23 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1757 versions; the month pages hold all of them.
+This page shows the newest 100 of 1759 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1588 — 2026-11-10
+
+**✨ Improve**
+
+- The detail window (the one a link preview opens) can be made bigger on a phone. Its resize corner is the browser's own, and that answers a mouse only, so on a phone the window kept its size. A new ⤢ beside ✕ makes it fill what the screen shows, following when you zoom or pan; ⤡ gives it its size back, and the next window opens the way you left it. On a desktop a double-click on an empty part of its title bar does the same. On a touch screen a grip in the lower-right corner resizes it with a finger.
+
+
+## 9.99.1587 — 2026-11-10
+
+**🐛 Fix**
+
+- On a phone you can stop a fetch again. A narrow screen moves the fetch buttons into the ☰ SAED menu as its "Load" rows, and that also hid the button that turns into "■ Stop · n / N" while pages load, so a long paginated fetch could not be stopped. Now, while a fetch runs, that button comes back beside ☰ SAED with its progress, "Stopping…" and "Rendering…", and the bar is one line again when it is done. In the menu, the running row says Stop as well, and the other Load rows wait the way their buttons do.
+
 
 ## 9.99.1586 — 2026-11-09
 
@@ -878,28 +892,6 @@ This page shows the newest 100 of 1757 versions; the month pages hold all of the
 **🐛 Fix**
 
 - With jesus2099's "mb. FUNKEY ILLUSTRATED RECORDS" active, its big picture strip could still show after a render, between the script's own big image strip and the table (a release group's Relationships, debug/mb-rg-funky-final.html). That script decorates the page once, 600 ms after it has loaded; when the render started earlier — a second press reloads the page and presses the button again at once, a quick press, a load from disk — it found the script's own tables. Its strip is now removed whenever it arrives after a press or a disk load.
-
-
-## 9.99.1488 — 2026-10-28
-
-**✨ Improve**
-
-- On the initial page, the images of jesus2099's "mb. FUNKEY ILLUSTRATED RECORDS" big picture strip — above a release group's releases, in its Relationships, on a tag's release groups and releases, on an editor's ratings, in a release's Credits — behave like the script's own artwork: a hover shows the artwork card of that release or release group (every image, Space for all of them), a click opens the artwork viewer on the page, Ctrl-click still opens the release (group) page. Until now they only had their plain title.
-
-
-## 9.99.1487 — 2026-10-28
-
-**🚀 Feature**
-
-- A Discogs window — a release, a master, an artist or a label — has "✎ Editing history" (or H), without the ▾ MusicBrainz's has (org/POH-headerline.org item 4, vzell). It shows that entity's edit history page from discogs.com in the window: every change with its user, kind and note, "View changes" for a revision's diff, the latest change's diff. Until now only a release's history could be read, and only from a link to it.
-- A long history spans pages of about 50 changes on Discogs. The window shows the newest page and says which pages it shows; "Load the N earlier pages" reads the others one request at a time (Stop ends it, a failed page can be tried again), and they join the same list, so the filter and the order work on all of it.
-- On a discogs.com release, master, artist or label page the ☰ SAED menu has "✎ Edit history" (Editing history group), before and after a render: that entity's Discogs edit history in the window. Ctrl-click opens Discogs' own page.
-
-**🐛 Fix**
-
-- A Discogs history page read with murdos' "Import Discogs releases to MusicBrainz" active in the browser carries that script's MusicBrainz link and icon first in its heading; the window no longer takes them for the entity's name and picture.
-- In a Discogs history window a long kind ("Edit Master Release") ran into the note beside it; the kind column is wider, and a longer kind is cut with its whole name on a hover.
-- On discogs.com the MusicBrainz icon murdos' importer puts in front of the page's name in the script's own heading shows its MusicBrainz card on a hover, as the importer's icons in Discogs' content do.
 
 
 ---
