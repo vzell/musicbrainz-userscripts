@@ -1113,7 +1113,9 @@ CLOSED: [2026-11-08 Sun]
   =<html data-mbu-quiet>= is set (C4, which SAED already sets while a table shows). Request drafted, not posted:
   [[file:reply-to-938-idle.org][org/reply-to-938-idle.org]]. Offers a separate =data-mbu-idle-off= if he would rather
   keep "quiet" for the corner. *Ours* later, if wanted: set the mark during a fetch too (it is set only once a
-  table shows), and measure the render-slowdown half first.
+  table shows). Measured since (below): the render costs ~0.4 s (+16%) more under an idle effect, and the render
+  comes BEFORE the mark goes up, so only a mark set at the start of the fetch would spare it; the convention alone
+  keeps idle off a table already shown.
   (Before: "not decided. Measure first; then *ours* (if only SAED's colours read wrong under a theme) or a
   *convention* (if the idle switch should wait while another script's page is busy or shown).")
 - *Confirmed by vzell 2026-11-09* (reported 16:52 CET; screenshot of a rendered release-tracks FRP, "Verano Éxitos
@@ -1127,6 +1129,21 @@ CLOSED: [2026-11-08 Sun]
   (https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings) gave no visible slowdown of the
   page fetching. Visual only, no timing captured; the render after the fetch was not looked at separately. So the
   fetch phase needs no mark of ours for speed; it stays a matter of looks only.
+- *Measured 2026-11-09* (render half; 2026-11-09T20:35:12–20:45:36+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux
+  6.18.54.1), clock steady (timesyncd stopped, 0 jumps) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey
+  (GM stubs) · String Theory 2026.11.09.152756, EH seeded off): probe cases F (idle seeded to 1 minute, theme and
+  effect Random, continuous) and G (idle off, the same 66 s wait), alternately 3 × each, on Bruce Springsteen's
+  release groups (=artist-releasegroups=, 31 pages, 2,146 rows). F waits without input until =<html data-st-idle>=
+  is up, then starts SAED's fetch with a scripted click (no pointer/key event, so idle stays).
+  | Case          | Fetch, median | Render, median | Renders (s)        | Idle during the run              |
+  |---------------+---------------+----------------+--------------------+----------------------------------|
+  | F (idle on)   | 20.68 s       | 2.98 s         | 2.98 · 3.13 · 2.60 | on throughout, 0 switches, 2 EH layers |
+  | G (idle off)  | 20.66 s       | 2.57 s         | 2.57 · 2.58 · 2.42 | off                              |
+  Fetch unchanged (vzell's observation confirmed). Render about 0.4 s (+16%) slower with an effect animating, every
+  F run slower than every G run (n = 3; effects Bokeh and aurora, Tron, Aurora narrow). No theme cross-fade fell
+  inside a run (the seeded 1-minute re-pick came after the ~30 s run), so the cost is the effect layers drawing during
+  the render, not the view transition. Small, but it adds to the request's case. Probe:
+  =node tests/support/probe-majkinetor-interop.js --cases=F,G,F,G,F,G --scripts=majkinetor-string-theory=.
   Upstream code (=68512f9=, =themes/runtime.js= =beginIdle()=/=activity()=): the idle timer looks at no
   =data-mbu-*= mark, so =<html data-mbu-quiet="saed">=, which we already set while a table is shown, does not
   postpone it.
@@ -1157,8 +1174,11 @@ CLOSED: [2026-11-08 Sun]
   theme, an effect appears, and the pill names both; our sticky filter bars and header buttons keep their colours
   (they are hard-coded), so they may clash with a dark theme. Then repeat while a long fetch is still running
   (an artist's release groups with many pages): does the render slow down while the effect animates?
+  *Done 2026-11-09*: first half confirmed by vzell (screenshot), second half by vzell (fetch, visually) and by probe
+  cases F/G (render +0.4 s, fetch unchanged); both above.
 - *Fix*: after the pre-test. Candidate convention: String Theory postpones idle while =<html data-mbu-quiet>= is set,
   or a new =data-mbu-busy="saed"= while SAED fetches/renders. Do not ask before measuring.
+  *Measured, and asked (drafted)*: the =data-mbu-quiet= variant, [[file:reply-to-938-idle.org][org/reply-to-938-idle.org]].
 
 ** TODO Findings from the release checks of Mission Control / Platform Check / ISRC Scout
 
@@ -1607,7 +1627,21 @@ no answer yet.
 Formulate one more followup reply to the majkinetor issue with the questions in the TODO section which are actually on
 our side but need approval from him to additionally implement in our userscript.
 
-** idle-mode
+** DONE idle-mode
 
 '** TODO String Theory's idle mode over our FRP (random theme, EH effect layers)' is confirmed, see screenshot, the page
 cross-fades to another theme, an effect appears
+
+I also confirmed no slowdown of page fetching after idle mode kicks in on a very large pagined page, at least visually
+(746 pages - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings)
+
+Additionally measure the render-slowdown half of the pre-test for the idle-mode stuff and adjust the .org files
+accordingly after measurement
+
+** fix the 16 failures (link-preview and popup tests)
+
+Fix the 16 failures (link-preview and popup tests), as the last sessions and implementations have been done on the slow
+"vzell-lap" machine mostly without the full test suite, as it takes very long there. Now that we are back on a fast
+machine try to fix them even only under load if it makes sense
+
+Maybe the test failers have to do with what I sometimes experience in the detail popup, see screenshot video @debug/POH-MB-artist-pumping.mp4
