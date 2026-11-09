@@ -1644,7 +1644,7 @@ focused filter keeps its text. Prefix mode also ends by itself after 5 seconds.
 
 | Keys                       | Action                                                          |
 |----------------------------|-----------------------------------------------------------------|
-| `?` or `/`                 | Keyboard shortcuts reference (outside text inputs)              |
+| `?` or `/`                 | Keyboard shortcuts reference (not while typing in a field)      |
 | `Ctrl+U`                   | Unicode character picker (when a text input is focused)         |
 | `Ctrl+Shift+G`             | Clear all filters                                               |
 | `Shift+Esc`                | Clear all column filters only                                   |
@@ -1708,6 +1708,17 @@ asks with its own *Leave site?* prompt.
 script's alone on MusicBrainz's page; Event Horizon used to go forward in
 the browser history on the same key. With direct shortcuts off (the
 default), and inside Event Horizon's view, `Ctrl+L` stays Event Horizon's.
+
+`Ctrl+K` (*Keyboard shortcuts reference*, when direct Ctrl+letter shortcuts
+are on) belongs to *String Theory* when it is installed: its command palette
+takes the key before this script sees it. Use the prefix key and `k`, or `?`,
+or give one side another key: this script's in ⚙️ Settings → 🎹 KEYBOARD
+SHORTCUTS, String Theory's in its own settings under *Command palette* →
+*Hotkey*.
+
+`?` and `/` open the reference only while you are not typing: not in a text
+box, a text area, a drop-down (such as the type next to MusicBrainz's search
+box) or editable text.
 
 **From Event Horizon's view.** On a page this script supports, Event
 Horizon's **More (⋯)** menu in the page header has *Open in

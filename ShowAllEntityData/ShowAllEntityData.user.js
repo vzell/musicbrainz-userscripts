@@ -92452,8 +92452,13 @@ ${sections.join('\n')}
         }
 
         document.addEventListener('keydown', (e) => {
-            // Check if user is typing in an input or textarea
-            const isTyping = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA';
+            // Typing: a text box, a text area, a drop-down or editable text
+            // (contenteditable) — the test _ehKeyGuardInstall() uses, as
+            // Event Horizon does. Before 2026-11-09 only INPUT/TEXTAREA
+            // counted: `/` on a focused drop-down opened the shortcuts
+            // reference, and in editable text it was swallowed as well.
+            const isTyping = !!(e.target.isContentEditable ||
+                /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName));
 
             // Only ? and / shortcuts don't work when typing (for obvious reasons)
             if ((e.key === '?' || e.key === '/') && isTyping) {

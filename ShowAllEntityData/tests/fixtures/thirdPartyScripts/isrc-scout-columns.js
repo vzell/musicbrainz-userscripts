@@ -33,6 +33,10 @@
  *   - With `honoursForeign` (9e4cdd59, #938): fillTrackData() skips a table
  *     inside [data-mbu-foreign], and the wipe leaves .ii-col cells and
  *     colspans there alone.
+ *   - With `late`: nothing is filled and no observer runs until the test
+ *     calls window.__isrcScoutStart(), as the real script waits for its
+ *     release load (fetchRelease()). That is the "Tracks pressed too early"
+ *     case: the render comes first, the columns after it.
  *
  * Not simulated: the h1 button, the modal, the #mbu-tip hover and every
  * network call.
@@ -40,7 +44,8 @@
  * Config (window.__thirdPartySim):
  *   { tracks: { <trackMbid>: { isrcs: ['USSM10501304', …],
  *                              links: [{ name, url, n?, ended? }, …] } },
- *     markup?: 'title' | 'data-tip' | 'meta', honoursForeign?: boolean }
+ *     markup?: 'title' | 'data-tip' | 'meta', honoursForeign?: boolean,
+ *     late?: boolean }
  */
 (function () {
     'use strict';
@@ -148,6 +153,8 @@
         document.documentElement.dataset.isrcScoutSim = 'ready';
     }
 
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+    if (cfg.late) {
+        window.__isrcScoutStart = start;
+    } else if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
     else start();
 })();

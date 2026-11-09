@@ -28913,3 +28913,36 @@ Env: 2026-11-09T15:40:47–15:46:37+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (L
   vzell; the ISRC Scout TODO still said "open"). #938 was closed by majkinetor at the merge (2026-11-09 00:00 CET).
   vzell's adoption questions (07:11 CET) are identical to `org/reply-to-938-adoptions.org`, now DONE. No answer
   from majkinetor since his comment of 2026-11-08 23:47 CET.
+
+## 2026-11-09 — `?`/`/` typing guard misses drop-downs and editable text; the two majkinetor TODOs closed (fix/shortcut-typing-guard)
+
+Env: 2026-11-09T16:43:13–16:50:10+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1) · Playwright 1.62.1, Chromium 151.0.7922.34, no Tampermonkey (GM stubs) · vzell's browser checks: browser and Tampermonkey versions not recorded.
+
+- Question (vzell): what is left on "ISRC Scout columns re-added bare" and "Shortcut clashes", and does it wait on
+  majkinetor? Answer: nothing waits on him.
+- ISRC Scout: his half shipped (ISRC Scout 2026.11.08.235840, `fillTrackData()`/`showTrackData()` skip
+  `[data-mbu-foreign]`). vzell confirmed in the browser that an early press now gives no ISRC/Links columns and
+  none appear later. Defence (a) for old copies not built. The early-press order had no test: the simulator
+  `tests/fixtures/thirdPartyScripts/isrc-scout-columns.js` filled at DOMContentLoaded only; it now has a `late`
+  start (`window.__isrcScoutStart()`). An init-script mark on `<html>` does not survive: the fixture's own root
+  replaces it, so the spec waits for the function instead. Our rendered tables have no `thead th[colspan]`, so a
+  colspan check there would be vacuous and was left out.
+- Ctrl+K/Ctrl+L clash only with `sa_enable_direct_ctrl_char_shortcuts` on (off by default: every Ctrl+a–z returns
+  early in `initKeyboardShortcuts()`). Ctrl+K stays String Theory's (window capture + `stopPropagation`,
+  `string_theory/palette.js` `stPalListen()`); HELP now says so and how to rebind.
+- Typing guard, cause: `initKeyboardShortcuts()`'s `isTyping` was `INPUT || TEXTAREA`. On a focused `<select>`
+  (`#headerid-type`, Tab from `#headerid-query`) `/` opened `#mb-shortcuts-help`; in a contenteditable the
+  `preventDefault()` also swallowed the character. Demonstrated to vzell on
+  https://claude.ai/artifact/Qf6CgYftyqi9D3rJ4hbr5j (a copy of the check, "Today" vs "With the fix"); confirmed.
+  Fix: `_ehKeyGuardInstall()`'s test (INPUT, TEXTAREA, SELECT, `isContentEditable`).
+- Trap found while writing the spec: `initKeyboardShortcuts()` runs only in the render tail (both call sites), so
+  before a button press `?` does nothing on any page. The first draft's control test failed for exactly that
+  reason, which is what a control is for; the spec now renders first. (An earlier answer to vzell had said the
+  listener is there at page load; it is not.)
+- Tests: `tests/fixtures/shortcuts-typing-guard.spec.js` 2/4 failed before (drop-down, editable), 4/4 after;
+  `release-tracks-isrc-scout.spec.js` 25/25 with the two early-press tests. Mutations
+  `scripts/mutations/typing-guard-isrc-early.json`: 4/4 planted defects fail. `npm test` 2026-11-09T16:51:16–17:09:35+01:00
+  on petri: 2816/2832; the 16 failures (link previews/popups, timeouts under 12 workers) passed on a `--last-failed`
+  rerun except `pop-area-flags.spec.js:226`, which then passed 3/3 with the fix (`--repeat-each 3`) and 1/1 with it
+  reverted: load-sensitive, not this change.
+- Browser check by vzell, 2026-11-09 (reported 17:23 CET): the shortcut behaviour OK.
