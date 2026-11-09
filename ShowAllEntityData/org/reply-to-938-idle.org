@@ -1,10 +1,13 @@
 #+TITLE: Follow-up on #938: String Theory's idle mode over a SAED table (honour data-mbu-quiet)
 #+DATE: 2026-11-09
 
-* TODO Post: idle-mode request on https://github.com/majkinetor/musicbrainz-userscripts/issues/938
+* DONE Post: idle-mode request on https://github.com/majkinetor/musicbrainz-userscripts/issues/938
+
+*Posted* by vzell 2026-11-09 21:01 CET: https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-6750045233
+(identical to the block below, with the screenshot in place of "[screenshot]"; checked against the comment's body).
 
 Drafted 2026-11-09 at vzell's request (option 1 of the TODO "String Theory's idle mode over our FRP" in
-[[file:majkinetor.org][org/majkinetor.org]]), for vzell to post. Not posted anywhere.
+[[file:majkinetor.org][org/majkinetor.org]]), for vzell to post.
 
 - Attach vzell's screenshot of the rendered release page (hex grid over the table) where it says
   "[screenshot]", or delete that line.
@@ -19,7 +22,7 @@ Drafted 2026-11-09 at vzell's request (option 1 of the TODO "String Theory's idl
   corner launchers" row, so a user who shows the launchers again gets idle back as well.
 
 #+begin_src markdown
-Hi @majkinetor,
+Hi Miodrag - @majkinetor,
 
 one more interop point, small: String Theory's idle mode over a SAED table.
 

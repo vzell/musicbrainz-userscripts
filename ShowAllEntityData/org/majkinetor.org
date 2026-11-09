@@ -611,8 +611,10 @@ All three verified identical to their drafts. The rest of the thread that day (n
   the draft at the 15:35 refresh, [[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-6733546768][comment]]);
   07:16 CET: away for the day. No answer from majkinetor on either by 2026-11-09 15:40 CET, and none yet on "keep V
   under =data-mbu-keys-off=" or the HTML-page-fetch question (EH:12658 still returns early for every key).
-- Drafted 2026-11-09, not posted: [[file:reply-to-938-idle.org][org/reply-to-938-idle.org]], String Theory's idle
-  mode waits while =data-mbu-quiet= is set (TODO "String Theory's idle mode over our FRP").
+- vzell, 2026-11-09 21:01 CET: the idle-mode request ([[file:reply-to-938-idle.org][org/reply-to-938-idle.org]],
+  verified identical to the draft plus the screenshot,
+  [[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-6750045233][comment]]): String
+  Theory's idle mode waits while =data-mbu-quiet= is set (TODO "String Theory's idle mode over our FRP").
 
 *** Refresh log
 
@@ -1110,7 +1112,8 @@ CLOSED: [2026-11-08 Sun]
 ** TODO String Theory's idle mode over our FRP (random theme, EH effect layers)
 
 - *Who fixes it*: *convention* (vzell's choice, 2026-11-09): String Theory's =beginIdle()= waits while
-  =<html data-mbu-quiet>= is set (C4, which SAED already sets while a table shows). Request drafted, not posted:
+  =<html data-mbu-quiet>= is set (C4, which SAED already sets while a table shows). Request posted by vzell
+  2026-11-09 21:01 CET ([[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-6750045233][comment]]), no answer yet:
   [[file:reply-to-938-idle.org][org/reply-to-938-idle.org]]. Offers a separate =data-mbu-idle-off= if he would rather
   keep "quiet" for the corner. *Ours* later, if wanted: set the mark during a fetch too (it is set only once a
   table shows). Measured since (below): the render costs ~0.4 s (+16%) more under an idle effect, and the render
@@ -1178,7 +1181,7 @@ CLOSED: [2026-11-08 Sun]
   cases F/G (render +0.4 s, fetch unchanged); both above.
 - *Fix*: after the pre-test. Candidate convention: String Theory postpones idle while =<html data-mbu-quiet>= is set,
   or a new =data-mbu-busy="saed"= while SAED fetches/renders. Do not ask before measuring.
-  *Measured, and asked (drafted)*: the =data-mbu-quiet= variant, [[file:reply-to-938-idle.org][org/reply-to-938-idle.org]].
+  *Measured, and asked* (posted 2026-11-09 21:01 CET): the =data-mbu-quiet= variant, [[file:reply-to-938-idle.org][org/reply-to-938-idle.org]].
 
 ** TODO Findings from the release checks of Mission Control / Platform Check / ISRC Scout
 
@@ -1645,3 +1648,40 @@ Fix the 16 failures (link-preview and popup tests), as the last sessions and imp
 machine try to fix them even only under load if it makes sense
 
 Maybe the test failers have to do with what I sometimes experience in the detail popup, see screenshot video @debug/POH-MB-artist-pumping.mp4
+
+** time sync
+
+● I can't fully prove the mechanism from inside WSL, but the evidence narrows it down a lot.
+
+  What's established on petri:
+  - The spikes need WSL's own NTP client. With systemd-timesyncd running: 7 jumps in 30 s. Stopped: 0. The system journal recorded the same thing, "Time jumped backwards" every 5 s.
+  - WSL's kernel also takes its time from Windows: hv_utils.timesync_implicit=1, Hyper-V's time service, which sends a sample every 5 seconds. That's the spikes' rhythm.
+  - Windows itself has never synchronised its clock: w32tm reports "Local CMOS Clock", "not synchronized", "Last Successful Sync Time: unspecified".
+
+  The most likely story:
+  1. WSL's clock had two owners fighting over it: Hyper-V's samples from the Windows side every 5 s, and timesyncd steering it to internet time. They disagreed by 16.8 s, so each sample pushed the clock one way and it was pulled straight back.
+  2. The 10 days powered off explain the 16.8 s. While a PC is off, only the battery-backed hardware clock keeps time, and those drift by typically 1–2 s a day; 16.8 s over 10 days is 1.7 s a day. With Windows not syncing, nothing corrected that drift after the restart. So one
+     side carried the drifted hardware time and the other the correct internet time.
+  3. One thing I can't resolve: Windows' displayed time agreed with internet time to within about a second when I compared them. So the drifted value most likely sits in what Hyper-V hands WSL, or in the emulated hardware clock, rather than in Windows' clock display. The exact
+     kernel-level interaction would need Windows-side logs.
+
+  Why NB-3641 never showed it: I can't look at that machine, but the candidates are concrete:
+  - It runs most days, so its clock never drifts far.
+  - Its Windows time service may actually be syncing.
+  - Its WSL may not run systemd, and with it timesyncd, at all.
+
+  You can check all three there with systemctl is-active systemd-timesyncd in WSL and w32tm /query /status in Windows.
+
+  General solution: one owner for the clock, and a Windows that syncs.
+  1. In WSL, leave the clock to Windows permanently:
+     sudo systemctl disable --now systemd-timesyncd
+     Today's stop lasts only until the next WSL restart.
+  2. In Windows, make the time service actually sync, in an admin PowerShell:
+  w32tm /config /manualpeerlist:"pool.ntp.org,0x8" /syncfromflags:manual /update
+  Restart-Service w32time
+  w32tm /resync /force
+     Also check Settings → Time & language → "Set time automatically", then "Sync now". Once Windows syncs, it also corrects the hardware clock, so the next long shutdown starts from a correct clock.
+  3. Verify: w32tm /query /status should name an NTP server and a recent sync time. In WSL the clock check should report 0 jumps.
+  4. In the code, SAED's own request pacing is already immune since c8e71ba8. The shared gate with majkinetor's scripts still reads the wall clock. He could make the same performance.timeOrigin + performance.now() change on his side; I can draft that for #938 if you want.
+
+  If you like, I'll keep the clock check as a reusable script (scripts/check-clock-jumps.js, with a line in tests/README.org), so a "flaky" run on a freshly booted machine can be checked in 30 seconds.
