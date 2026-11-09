@@ -153,6 +153,35 @@ images initally (+ full "Space" handling)
 
 
 
+* TODO release history image references
+
+1.)
+
+Currently on a Discogs release history POH, image revision history links like
+e.g. https://www.discogs.com/release/1313481-Born-To-Run/images/history?rev=<id> when hovered show again the underlying
+Discogs release itself from where the image history originates. I want such a link to have it's own PH. It should render
+ALL revisions (see below for some IP raw HTML examples), but the one where the hyperlink points to highlighted.
+
+#+begin_example
+@debug/d-release-history.html - POH - https://www.discogs.com/release/1313481-Born-To-Run/history?diff=2&page=1 - Discogs release history POH
+@debug/d-image-revision-6.html - IP - https://www.discogs.com/release/1313481-Born-To-Run/images/history?rev=6 - Image revision history page for revision 6 
+@debug/d-image-revision-5.html - IP - https://www.discogs.com/release/1313481-Born-To-Run/images/history?rev=5 - Image revision history page for revision 5
+#+end_example
+
+The same is true for other Discogs pages like the release history FRP - https://www.discogs.com/release/1313481-Born-To-Run/history#latest
+with the above image revision history links
+
+2.)
+
+On a FRP page like e.g. https://www.discogs.com/release/1313481-Born-To-Run/images/update
+
+#+begin_example
+@debug/d-images-update.html - FRP
+#+end_example
+
+the images in the "Image" column should get our standard hovered image handling + internal view support (see skill)
+
+
 * TODO add support for discogs pages
 ** my BS edits
 ** master and releases
