@@ -152,8 +152,7 @@ On a D master IP the release image before a release name should get our standard
 images initally (+ full "Space" handling)
 
 
-
-* TODO release history image references
+* DONE release history image references
 
 1.)
 
@@ -179,7 +178,29 @@ On a FRP page like e.g. https://www.discogs.com/release/1313481-Born-To-Run/imag
 @debug/d-images-update.html - FRP
 #+end_example
 
-the images in the "Image" column should get our standard hovered image handling + internal view support (see skill)
+the images in the "Image"
+
+column should get our standard hovered image handling + internal view support (see skill)
+
+3.)
+
+real data for the fixture in @debug:
+#+begin_example
+d-image-rev-5.json -  https://www.discogs.com/release/1313481/images/data?history_revision=5
+d-image-rev-6.json -  https://www.discogs.com/release/1313481/images/data?history_revision=6
+d-image-rev-4.json -  https://www.discogs.com/release/1313481/images/data?history_revision=4
+#+end_example
+
+4.)
+
+All tested live, OK; but I found one more problem:
+
+When hovering from https://www.discogs.com/release/1313481-Born-To-Run/history#latest the link
+https://www.discogs.com/release/1313481-Born-To-Run/images/update it's POH is missing the image hovering + internal image viewer support too
+
+#+begin_example
+@debug/d-images-update-POH.html - POH - https://www.discogs.com/release/1313481-Born-To-Run/images/update
+#+end_example
 
 
 * TODO add support for discogs pages

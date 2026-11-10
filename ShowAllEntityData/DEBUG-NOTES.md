@@ -29061,3 +29061,40 @@ classed, because the bug was a correct segment inside a hidden area. Mutations:
 Trap seen while writing the spec: after an artist-releasegroups render, the sticky view-switch bar
 (`.mb-vsb-chrome`) covers ☰ SAED for a tap at the page's top. Read the Load rows directly instead of opening the
 menu.
+
+## 2026-11-10 — Discogs image revision links showed the release; the Image column of dg-images had no card (feature/dg-image-revisions)
+
+Env: 2026-11-10T01:10:06+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · code reading and vzell's saved files, browser n/a
+
+Reported by vzell, with snapshots debug/d-release-history.html (the history POH of release 1313481),
+debug/d-image-revision-{5,6}.html (two image revision pages, IP) and debug/d-images-update.html (the
+dg-image-history FRP).
+
+1. **An image revision link previewed the release.** `…/images/history?rev=N` matches no reader of its own:
+   `_EXT_DGI_PATH_RE` takes `/images` and `/images/update` only, `_EXT_DGH_PATH_RE` wants `/history` right after
+   the id, so `discogs` (`_EXT_DISCOGS_PATH_RE`: `release/<id>` then `/`) took it. The revision page ("Previous
+   State of Images") holds the image list only because the browser drew it: it mounts the same
+   `imageUploaderApp` as the editor (no `data-react-checksum`, the 2026-10-28 lesson again). The saved uploader
+   script (debug/poh-sync/image-uploader-app.js) asks `/release/<id>/images/data` with
+   `{history_revision: objData.historyRevision}`, `historyRevision` from the page config (`"historyRevision":"6"`).
+   vzell saved the answers for revisions 4, 5 and 6 (debug/d-image-rev-{4,5,6}.json): the editor's data shape,
+   with its BOM, the state AT that revision — 1, 2, 3 images, ids 1887195, +1887198, +1887199, stable across
+   revisions, so changes are found by id. The revisions themselves (who, when, note) are the release history's
+   entries with an `images` link. New reader `dgimgrev` (docs/claude/detail-pages.md).
+2. **No hover card on the Image column of dg-images / dg-image-history.** The cells carried `_DG_FI`'s stamp
+   (`data-mb-fi="dg"`); `_DG_FI`'s row is the release of the row's Title link (`_dgArtRowFor()`), these tables
+   have no Title column, so `hasRecord()` was false and `_fiCardHtml()` returned null. HELP has said "hover for
+   the card" since Phase 4: no spec ever hovered. New provider `_DGI_FI` (docs/claude/discogs.md).
+
+Addendum, same day (vzell's browser check: both items OK live; two more):
+
+3. **The Image history WINDOW had no card and no viewer either** (debug/d-images-update-POH.html, opened from the
+   release-history FRP's link to `/images/update`). Its thumbnails were `_DGW_FI`'s (`_extDgThumbHtml()`), whose
+   row is the first release or master link in the row (`_dgWinArtRowFor()`); these rows link only their uploader,
+   so `hasRecord()` was false. And on MusicBrainz nothing installed the viewer click there: `_fiInstall()` was
+   called by `_extDiscogsWindow()` only. Now `_DGWI_FI` (the row is the image) and `_extDgImgWindow()` installs it.
+4. **The revision page itself had no script.** My first look named `dg-release` as a likely claimant of
+   `…/images/history` (`_dgEntityPageIs()` did not exclude it), but no `@include` line admits the path, so
+   Tampermonkey never injected the script there; sl-include-regex.spec.js even listed `…/images/history?rev=7`
+   among the pages NOT injected. vzell chose "every revision": pageType `dg-image-revisions` (its own `@include`
+   line, the gate, `dg-release` excluding it now).

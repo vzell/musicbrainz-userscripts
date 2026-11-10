@@ -359,6 +359,41 @@ popup engine's one non-anonymous request; docs/claude/detail-pages.md).
 - Signed out the data is Discogs' login page: the API's images, types and
   order remain, the editor's columns empty (logged with the reason).
 
+**A release's image revision page (`dg-image-revisions`, 2026-11-10).**
+`/release/<id>[-slug]/images/history?rev=N` ("Previous State of Images",
+debug/d-image-revision-{5,6}.html) had NO script: no `@include` line took it
+(the history test even listed it as not injected). It has its own line now,
+`_DG_IMGREV_PATH_RE` (the gate with `#page_content`; `dg-release` excludes
+it), and one button, "Show every image revision" (vzell: every revision):
+`pageCountAsync` is `_dgImgRevPageCount()` — the release history, every page
+(the window's `_extDgHistPagesRun()` and page cache), its image changes —
+and page p is the p-th revision newest first (`_dgImgRevPageRequest()`): its
+images and the revision before it (`_extDgImgRevRows()`, the `dgimgrev`
+window's cache, so the next page asks nothing for it: one request a
+revision), one `<h3>` + table each (`_dgImgRevToHtml()`, the page's own
+heading "this page"), a Change column by image id, a removed image as its own
+greyed row (`tr.mb-dgir-gone`). The page's own list is never read: Discogs'
+script draws it. Previews on the page's links: `#page_content` is in
+`_DP_SITES['www.discogs.com'].extRoot` already.
+
+**The Image column's card (2026-11-10).** Until then a hover on these two
+tables showed nothing: their thumbnails were `_DG_FI`'s (`data-mb-fi="dg"`),
+whose row is the release or master of the row's Title link
+(`_dgArtRowFor()`), and these tables have no Title column, so `hasRecord()`
+was false. A row here IS one image, so it has its own provider, `_DGI_FI`
+(`data-mb-fi="dgi"`, `single`): the record is the row itself (no request),
+the card the picture big with its caption (type, uploader, date, W × H,
+KB, from the cell's `data-mb-dgi-*`), a click the viewer, Shift+← → the
+rows shown, in their order. A table saved to disk before carries `dg`:
+`_fiProviderOf()` takes a `dg` link in a table with an Uploaded column and
+no Title as `dgi`. Off with `sa_dg_tip_images` (the card only). The
+Image history WINDOW's table (`_extDgImgCols()`, the images reader on
+`/images/update`) had the same gap — its thumbnails were `_DGW_FI`'s, which
+looks for the row's release — and on MusicBrainz no click handler at all
+(`_fiInstall()` came only with `_extDiscogsWindow()`): its thumbnails are
+`_DGWI_FI`'s now (`data-mb-fi="dgwi"`, `_extDgImgThumbHtml()`: the 600 px
+image, the caption), and `_extDgImgWindow()` installs the click.
+
 ## A user's ratings (`dg-ratings`, 2026-10-19)
 
 `/users/ratings/<name>` (language prefix allowed; snapshot

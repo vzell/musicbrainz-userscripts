@@ -49,10 +49,10 @@ const DATA = 'https://www.discogs.com/release/1313481/images/data';
  * editor's data served by `editor` (the fixture by default).
  *
  * @param {import('@playwright/test').Page} page
- * @param {{url?: string, file?: string, editor?: ?function(import('@playwright/test').Route): Promise<void>}} [opts]
+ * @param {{url?: string, file?: string, editor?: ?function(import('@playwright/test').Route): Promise<void>, settings?: Object}} [opts]
  * @returns {Promise<{errors: string[], asked: string[]}>}
  */
-async function openImages(page, { url = PAGES.editor, file = EDITOR_FILE, editor = null } = {}) {
+async function openImages(page, { url = PAGES.editor, file = EDITOR_FILE, editor = null, settings = {} } = {}) {
     const errors = [];
     const asked = [];
     page.on('pageerror', (e) => errors.push(String(e.stack || e.message || e)));
@@ -66,7 +66,7 @@ async function openImages(page, { url = PAGES.editor, file = EDITOR_FILE, editor
         { [API_FX.url]: { status: API_FX.status, responseHeaders: `Content-Type: ${API_FX.contentType}`, responseText: API_FX.body } });
     await loadUserscriptPage(page, {
         url, fixtureFile: file, testMode: true,
-        settingsOverride: { sa_enable_discogs: true, sa_render_threshold: 100000 },
+        settingsOverride: { sa_enable_discogs: true, sa_render_threshold: 100000, ...settings },
     });
     return { errors, asked };
 }
@@ -155,6 +155,182 @@ test.describe('discogs.com: a release\'s Images and Image history (Phase 4)', ()
         await expect(table.locator('tbody > tr')).toHaveCount(17);
         expect(await rowOf(table, 0)).toMatchObject({ '#': '1', Type: 'Primary', 'Uploaded by': '', 'W × H': '', 'Size (KB)': '' });
         expect(errors).toEqual([]);
+    });
+});
+
+// vzell, 2026-11-10: "the images in the Image column should get our standard
+// hovered image handling + internal view support". The thumbnails were
+// `_DG_FI`'s, whose row is the release of a Title link these tables do not
+// have: no card at all. A row here IS one image: provider `_DGI_FI`
+// (docs/claude/discogs.md, "The Image column's card"). Pins: the card is
+// THIS row's image with its caption, and asks nothing; the click opens the
+// viewer on this row's 600 px image and Shift+→ steps to the next row SHOWN
+// (after a sort: the order, not just that something comes next); the setting
+// turns the card off; a table saved before (links stamped `dg`) still gets it.
+test.describe('discogs.com: the images table\'s Image column, card and viewer (_DGI_FI, 2026-11-10)', () => {
+    test.use({ timezoneId: 'Europe/Berlin' });
+    const tip = (page) => page.locator('#mb-stat-tooltip');
+    const viewerImg = (page) => page.locator('#mb-art-viewer .mb-artv-stage .mb-artv-img');
+    const thumb = (table, row) => table.locator('tbody > tr').nth(row).locator('a.mb-dg-thumblink');
+
+    /**
+     * Hovers a thumbnail from outside, so the card is built for this hover.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {import('@playwright/test').Locator} link
+     * @returns {Promise<void>}
+     */
+    async function hover(page, link) {
+        await page.mouse.move(0, 0);
+        await link.scrollIntoViewIfNeeded();
+        await link.hover();
+    }
+
+    test('a hover: this row\'s image, big, with its type, uploader, date, size; no request', async ({ page }) => {
+        const { errors, asked } = await openImages(page);
+        const table = await showImages(page);
+        const before = (await apiLog(page)).length;
+        const link = thumb(table, 4);
+        await hover(page, link);
+        await expect(tip(page)).toBeVisible();
+        await expect(tip(page).locator('.mb-tt-title')).toHaveText('Secondary · Cl0ver, 2023-06-12 09:01 · 2002 × 2000 · 1.2MB');
+        const src = await link.locator('img').getAttribute('src');
+        await expect(tip(page).locator('img.mb-fi-card-big')).toHaveAttribute('src', src);
+        expect(asked, 'the data once, for the table').toEqual([DATA]);
+        expect((await apiLog(page)).length, 'the card asks nothing').toBe(before);
+        expect(errors).toEqual([]);
+    });
+
+    test('a click: the viewer on this row\'s 600 px image; Shift+→ the next row shown, after a sort', async ({ page }) => {
+        const { errors } = await openImages(page);
+        const table = await showImages(page);
+        await table.locator('thead tr:first-child th[data-col-name="Size (KB)"]').click();
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const hrefs = await table.locator('tbody > tr a.mb-dg-thumblink').evaluateAll(as => as.map(a => a.href));
+        await thumb(table, 0).click();
+        await expect(page.locator('#mb-art-viewer')).toBeVisible();
+        const path = (u) => new URL(u, 'https://www.discogs.com/').pathname;
+        await expect.poll(async () => path(await viewerImg(page).getAttribute('src'))).toBe(path(hrefs[0]));
+        await page.keyboard.press('Shift+ArrowRight');
+        await expect.poll(async () => path(await viewerImg(page).getAttribute('src'))).toBe(path(hrefs[1]));
+        expect(errors).toEqual([]);
+    });
+
+    test('"Image column: all images of a row on hover" off: no card', async ({ page }) => {
+        await openImages(page, { settings: { sa_dg_tip_images: false } });
+        const table = await showImages(page);
+        await hover(page, thumb(table, 0));
+        await page.evaluate(() => new Promise(r => setTimeout(r, 800)));
+        await expect(tip(page)).toBeHidden();
+    });
+
+    test('a table saved before (its links stamped "dg", no caption): still the image\'s card, its type from the row', async ({ page }) => {
+        await openImages(page);
+        const table = await showImages(page);
+        await table.locator('a.mb-dg-thumblink').evaluateAll(as => as.forEach((a) => { a.dataset.mbFi = 'dg'; delete a.dataset.mbDgiCap; }));
+        await hover(page, thumb(table, 0));
+        await expect(tip(page)).toBeVisible();
+        await expect(tip(page).locator('.mb-tt-title')).toHaveText('Primary');
+        await expect(tip(page).locator('img.mb-fi-card-big')).toHaveCount(1);
+    });
+});
+
+// dg-image-revisions (2026-11-10; vzell: "look at the revision page itself"):
+// `/release/<id>/images/history?rev=N` had no script at all. Its own list is
+// drawn by Discogs' script (the fixture has it empty, as the server sends
+// it); the rows are `/images/data?history_revision=N`, same-origin with the
+// session, the revisions the release history's image changes (here the
+// history fixture's two, renumbered to 1313481's revisions 5 and 6, vzell's
+// real answers: tests/fixtures/dg-image-rev-{5,6}.json). Pins: one sub-table
+// per revision, newest first, the page's own marked; the Change column by
+// image id against the revision before; one request a revision (the one
+// before is reused by the next page); nothing before the press; the Image
+// column's card (`_DGI_FI`).
+test.describe('discogs.com: a release\'s image revision page (dg-image-revisions, 2026-11-10)', () => {
+    test.use({ timezoneId: 'Europe/Berlin' });
+    const PAGE = 'https://www.discogs.com/release/1313481-Born-To-Run/images/history?rev=6';
+    const HIST = 'https://www.discogs.com/release/1313481/history';
+    const DATA_REV = /\/release\/1313481\/images\/data\?history_revision=(\d+)$/;
+    const rev = (n) => JSON.parse(fs.readFileSync(path.join(__dirname, `dg-image-rev-${n}.json`), 'utf8'));
+    const history = fs.readFileSync(path.join(__dirname, 'dg-release-history.html'), 'utf8')
+        .replace('images/history?rev=7', 'images/history?rev=5').replace('images/history?rev=12', 'images/history?rev=6');
+
+    /**
+     * The revision page with the history and the revisions' images served.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {Object<number, Object[]>} revs - Each revision's data.
+     * @returns {Promise<{errors: string[], asked: string[]}>}
+     */
+    async function openRevPage(page, revs) {
+        const errors = [];
+        const asked = [];
+        page.on('pageerror', (e) => errors.push(String(e.stack || e.message || e)));
+        await page.route(/^https?:\/\//, (route) => route.abort('blockedbyclient'));
+        await page.route('https://i.discogs.com/**', (route) => route.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+        await page.route(HIST, (route) => { asked.push(route.request().url()); return route.fulfill({ status: 200, contentType: 'text/html', body: history }); });
+        await page.route(DATA_REV, (route) => {
+            asked.push(route.request().url());
+            const n = Number(DATA_REV.exec(route.request().url())[1]);
+            return revs[n] ? route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(revs[n]) }) : route.fulfill({ status: 404, body: '' });
+        });
+        await loadUserscriptPage(page, {
+            url: PAGE, fixtureFile: path.join(__dirname, 'dg-release-image-revision.html'), testMode: true,
+            settingsOverride: { sa_enable_discogs: true, sa_render_threshold: 100000 },
+        });
+        return { errors, asked };
+    }
+
+    /**
+     * Presses the button and waits for the render; the sub-tables with rows.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @returns {Promise<import('@playwright/test').Locator>}
+     */
+    async function showRevs(page) {
+        await page.locator('#mb-dg-root button[data-label="Show every image revision"]').click();
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        return page.locator('#mb-dg-root table.tbl:has(tbody > tr)');
+    }
+
+    const changes = (table) => table.evaluate((t) => {
+        const i = Array.from(t.querySelectorAll('thead tr:first-child th')).findIndex(th => (th.dataset.colName || th.textContent).trim() === 'Change');
+        return Array.from(t.querySelectorAll('tbody > tr')).map(tr => tr.cells[i].textContent.trim());
+    });
+
+    test('the revision page: one sub-table per image revision, newest first, this page marked; Change by image id; one request a revision', async ({ page }) => {
+        const { errors, asked } = await openRevPage(page, { 5: rev(5), 6: rev(6) });
+        await expect(page.locator('#mb-dg-root button[data-label]')).toHaveCount(1);
+        expect(asked, 'nothing before the press').toEqual([]);
+        const tables = await showRevs(page);
+        await expect(tables).toHaveCount(2);
+        const heads = await page.locator('#mb-dg-root h3').allTextContents();
+        // The heading as drawn: the toggle glyph first, "Rev" capitalised.
+        const revOf = (h) => { const m = /\brev (\d+)( · this page)? · \d{4}-\d\d-\d\d/i.exec(h); return m ? m[1] + (m[2] || '') : ''; };
+        expect(heads.map(revOf).filter(Boolean)).toEqual(['6 · this page', '5']);
+        expect(await changes(tables.nth(0)), 'rev 6 adds 1887199').toEqual(['', '', '+ added']);
+        expect(await changes(tables.nth(1)), 'rev 5: the history\'s first image change').toEqual(['+ added', '+ added']);
+        expect(asked).toEqual([HIST, 'https://www.discogs.com/release/1313481/images/data?history_revision=6', 'https://www.discogs.com/release/1313481/images/data?history_revision=5']);
+        await expect(page.locator('#image_uploader_app'), 'the page\'s own list is never read').toBeEmpty();
+        // The Image column is the images tables' (`_DGI_FI`): this image's card
+        // (the sub-tables render collapsed: open rev 6's first).
+        const thumb = tables.nth(0).locator('tbody > tr').nth(2).locator('a.mb-dg-thumblink');
+        if (!await thumb.isVisible()) await page.locator('#mb-dg-root h3').filter({ hasText: /\bRev 6 · this page/i }).click({ position: { x: 4, y: 4 } });
+        await expect(thumb).toBeVisible();
+        await page.mouse.move(0, 0);
+        await thumb.hover();
+        await expect(page.locator('#mb-stat-tooltip .mb-tt-title')).toHaveText(/^Secondary · dsmith, 2008-05-20 01:48/);
+        expect(errors).toEqual([]);
+    });
+
+    test('an image the revision removed: its own row, greyed, "− removed"; a retyped one says so', async ({ page }) => {
+        const r6 = rev(6);
+        const r6b = [Object.assign({}, r6[0], { primary: 'false' }), Object.assign({}, r6[2], { primary: 'true', sortOrder: 1 })];
+        await openRevPage(page, { 5: rev(5), 6: r6b });
+        const tables = await showRevs(page);
+        await expect(tables).toHaveCount(2);
+        expect(await changes(tables.nth(0))).toEqual(['→ secondary', '+ added', '− removed']);
+        await expect(tables.nth(0).locator('tbody > tr').nth(2)).toHaveClass(/\bmb-dgir-gone\b/);
     });
 });
 

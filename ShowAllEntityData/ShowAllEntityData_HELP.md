@@ -3254,6 +3254,14 @@ once and without Tampermonkey asking first:
   images and their types from the API, says why the rest is missing, and
   marks the size as the one Discogs serves (at most 600 px), not the image's
   own.
+- A Discogs release's **image revisions** (`…/images/history?rev=N`, the
+  "Images" links in its edit history): the window lists every revision that
+  changed the images, newest first, with who, when and the note. The one the
+  link points to is highlighted, with its images and what changed since the
+  revision before (**+ added**, **moved**, **→ primary**, removed images
+  greyed). Any other revision shows its images when you open it; **Load the
+  N other revisions** reads them all, one request each. Read with your
+  Discogs session, only when you press Space.
 - A Discogs **user** (`discogs.com/user/…`): the card shows their public
   profile — name, location, member since, contributor rank, releases
   contributed, pending submissions, collection and wantlist sizes; the window
@@ -4141,6 +4149,15 @@ section of its own above Discogs' page, with the toolbar and these buttons:
   revision 8 → 10**: each part of the release (master, artist, label) in
   the revision the page shows, old and new, *Marked* "changed" where
   Discogs marked it. Read from the page itself.
+- **Release image revisions — Show every image revision:** a revision
+  page of a release's images (`/release/<id>/images/history?rev=N`, "Previous
+  State of Images"): one sub-table per revision of the images, newest first,
+  its heading the revision, when, who and the note (the page's own says
+  "this page"); the images with a **Change** column against the revision
+  before (**+ added**, **moved**, **→ primary**, **→ secondary**; an image
+  it removed has its own greyed row, **− removed**). The edit history first
+  (one request a page), then one request a revision, with your Discogs
+  session.
 - **Release images — Show every image:** a release's Images page
   (`/release/<id>/images`) and its image editor (`…/images/update`, Image
   history) get the same table: **#**, the image (hover for the card, click

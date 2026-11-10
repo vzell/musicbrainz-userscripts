@@ -4,8 +4,8 @@
     "why": "An older page without #app, like Cloudflare's check: without its path in the gate the script stops there.",
     "edits": [
       {
-        "find": "           _DG_SELL_PATH_RE.test(window.location.pathname)) &&",
-        "replace": "           false) &&"
+        "find": "           _DG_IMGREV_PATH_RE.test(window.location.pathname) || _DG_SELL_PATH_RE.test(window.location.pathname)) &&",
+        "replace": "           _DG_IMGREV_PATH_RE.test(window.location.pathname) || false) &&"
       }
     ],
     "spec": "tests/fixtures/discogs-sell.spec.js",

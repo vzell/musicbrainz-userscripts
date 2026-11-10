@@ -41,6 +41,7 @@
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?users\/ratings\/[^\/?#]+\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(?:release|master|artist|label)\/\d+(?:-[^\/?#]*)?\/history\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/\d+(?:-[^\/?#]*)?\/images(?:\/update)?\/?(?:[?#].*)?$/
+// @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/\d+(?:-[^\/?#]*)?\/images\/history\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(?:master|artist|label)\/\d+(?:-[^\/?#]*)?\/images\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?sell\/release\/\d+\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?search\/?\?(?:[^#]*&)?q=[^&#]+.*$/
@@ -6877,6 +6878,16 @@
     const _DG_IMG_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/(\d+)(?:-[^/?#]*)?\/images(\/update)?\/?$/;
 
     /**
+     * A discogs.com release's image revision page,
+     * `/release/<id>[-slug]/images/history?rev=N` ("Previous State of
+     * Images"): pageType `dg-image-revisions` (2026-11-10), plain HTML
+     * without `#app`. Group 1 the id. Read by the `#app` gate below, the
+     * definition's `match` and `_dgEntityPageIs()`.
+     * @type {RegExp}
+     */
+    const _DG_IMGREV_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/(\d+)(?:-[^/?#]*)?\/images\/history\/?$/;
+
+    /**
      * A discogs.com master's, artist's or label's Images page,
      * `/<kind>/<id>[-slug]/images` (pageType `dg-entity-images`, 2026-10-29):
      * plain HTML without `#app`, like a release's. Group 1 the kind, 2 the
@@ -7018,7 +7029,7 @@
            _DG_USER_LIST_PATH_RE.test(window.location.pathname) ||
            _DG_HIST_PATH_RE.test(window.location.pathname) || _DG_RATINGS_PATH_RE.test(window.location.pathname) ||
            _DG_IMG_PATH_RE.test(window.location.pathname) || _DG_ENT_IMG_PATH_RE.test(window.location.pathname) ||
-           _DG_SELL_PATH_RE.test(window.location.pathname)) &&
+           _DG_IMGREV_PATH_RE.test(window.location.pathname) || _DG_SELL_PATH_RE.test(window.location.pathname)) &&
           document.getElementById('page_content')) &&
         // The search (2026-10-29): a Next.js page, its content in <main>.
         !(_DG_SEARCH_PATH_RE.test(window.location.pathname) && document.querySelector('body main'))) {
@@ -18894,6 +18905,9 @@
             Diff: ['Section', 'Old', 'New', 'Marked'],
         },
         images: ['#', 'Image', 'Type', 'Uploaded by', 'Uploaded', 'W × H', 'Size (KB)'],
+        // A release's image revisions (dg-image-revisions, 2026-11-10): one
+        // sub-table per revision, what changed since the one before.
+        imageRevisions: ['#', 'Image', 'Type', 'Change', 'Uploaded by', 'Uploaded', 'W × H', 'Size (KB)'],
         // A master's, artist's or label's images (dg-entity-images, 2026-10-29):
         // what the API gives; no image editor's data for these kinds.
         entityImages: ['#', 'Image', 'Type', 'W × H'],
@@ -18963,7 +18977,8 @@
      * @returns {boolean}
      */
     function _dgEntityPageIs(path, kind) {
-        return _dgPage(path)?.kind === kind && !_DG_HIST_PATH_RE.test(path) && !_DG_IMG_PATH_RE.test(path) && !_DG_ENT_IMG_PATH_RE.test(path);
+        return _dgPage(path)?.kind === kind && !_DG_HIST_PATH_RE.test(path) && !_DG_IMG_PATH_RE.test(path) && !_DG_ENT_IMG_PATH_RE.test(path) &&
+            !_DG_IMGREV_PATH_RE.test(path);
     }
 
     /**
@@ -20440,6 +20455,9 @@
             body.mb-sa-host-dg .mb-dg-mb-search[data-state="error"] { cursor: pointer; }
             body.mb-sa-host-dg .mb-dg-mb-search[data-state="error"]::before { content: '\\26A0'; color: #c62828; font-size: 13px; }
             body.mb-sa-host-dg .mb-dg-mb-n { font: 11px Arial, Helvetica, sans-serif; color: #777; margin-left: 1px; }
+            /* dg-image-revisions: an image the revision removed (_dgImgRowHtml()). */
+            body.mb-sa-host-dg tr.mb-dgir-gone > td { opacity: 0.5; }
+            body.mb-sa-host-dg tr.mb-dgir-gone img { filter: grayscale(1); }
             body.mb-sa-host-dg .mb-dg-mb-ids { display: none; }
             /* A ticked "MusicBrainz - Links" entry rings what it matched
                (_highlightDgMbCountMatch(), the Relationships column's class). */
@@ -20537,6 +20555,8 @@
         ctx: _DG_ART_CTX,
         name: 'Discogs',
         tableSel: '#mb-dg-root table.tbl',
+        // A release's images table is `_DGI_FI`'s (one image a row).
+        tableIs: table => !_dgIsImagesTable(table),
         linkSel: 'a.mb-dg-thumblink',
         cardOn: () => Lib.settings.sa_dg_tip_images !== false,
         rowFor: (a, table, path) => _dgArtRowFor(a, _fiTitleColIdx(table), path),
@@ -20649,6 +20669,97 @@
         title: () => {
             const h1 = document.querySelector('#app h1');
             return h1 ? h1.textContent.replace(/\s+/g, ' ').trim() : '';
+        },
+    };
+
+    /**
+     * Whether a table is a release's images table (`dg-images`,
+     * `dg-image-history`: `_dgImgToHtml()`): one image a row, with an
+     * Uploaded and a Size (KB) column and no Title. Read from its headers,
+     * so a table saved to disk before `_DGI_FI` (its links stamped `dg`) is
+     * one too.
+     *
+     * @param {?Element} table
+     * @returns {boolean}
+     */
+    function _dgIsImagesTable(table) {
+        if (!table) return false;
+        const names = Array.from(table.querySelectorAll(':scope > thead > tr:first-child > th'))
+            .map(th => (th.dataset.colName || (th.firstChild && th.firstChild.textContent) || th.textContent || '').trim());
+        return names.includes('Uploaded') && names.includes('Size (KB)') && !names.some(n => n.startsWith('Title'));
+    }
+
+    /**
+     * One row of a release's images table as the card and the viewer take
+     * it: the image itself (the link is the 600 px one, its `<img>` the
+     * 300 px), its type, and its caption (`data-mb-dgi-cap`; a table saved
+     * before has none: its Type cell then).
+     *
+     * @param {HTMLAnchorElement} a - The row's `a.mb-dg-thumblink`.
+     * @param {HTMLTableElement} table
+     * @param {string} path - The viewer's key for the row.
+     * @returns {{thumb: string, small: string, title: string, type: string, asked: boolean, path: string}}
+     */
+    function _dgImgArtRowFor(a, table, path) {
+        const img = a.querySelector('img');
+        let cap = a.dataset.mbDgiCap || '';
+        if (!cap) {
+            const k = Array.from(table.querySelectorAll(':scope > thead > tr:first-child > th'))
+                .findIndex(th => (th.dataset.colName || (th.firstChild && th.firstChild.textContent) || '').trim() === 'Type');
+            const cell = k >= 0 ? a.closest('tr').cells[k] : null;
+            cap = cell ? cell.textContent.trim() : '';
+        }
+        const type = (/^(Primary|Secondary)\b/.exec(cap) || [])[1] || '';
+        return { thumb: a.href, small: (img && img.getAttribute('src')) || a.href, title: cap || 'Discogs image', type, asked: false, path };
+    }
+
+    /**
+     * A release's images table (dg-images, dg-image-history) as a provider
+     * of the foreign-image card and viewer (vzell, 2026-11-10): a row IS one
+     * image, so its record is the row itself — nothing is asked. The card is
+     * that image, big (`single`), with its caption; a click opens the viewer,
+     * Shift+← → steps through the rows shown, in their order. `_DG_FI` needs
+     * a Title link to a release, which these tables do not have, so they
+     * had no card at all. Off with `sa_dg_tip_images` (the card only).
+     * @type {FiProvider}
+     */
+    const _DGI_FI = {
+        ..._DG_FI,
+        tableIs: _dgIsImagesTable,
+        rowFor: (a, table, path) => _dgImgArtRowFor(a, table, path),
+        hasRecord: () => true,
+        state: () => 'done',
+        request: () => {},
+        images: row => [{
+            image: row.thumb, thumbnails: { 250: row.small }, types: row.type ? [row.type] : [], front: row.type === 'Primary',
+            imageType: row.type.toLowerCase(), external: true, comment: row.title, source: '',
+        }],
+        cardImages: null,
+        single: true,
+        loadingText: () => '',
+        foot: 'Click: viewer',
+        peekSaved: async () => 0,
+        spacingS: () => 0,
+        tokenSpacingS: () => 0,
+        gal: { heading: 'Images', where: 'Image column', point: 'its image', rows: 'images', page: 'image', pages: 'images' },
+    };
+
+    /**
+     * The Image history window's table (`_extDgImgWindow()`, the images
+     * reader on `/images/update`) as the same provider as the page's images
+     * table (`_DGI_FI`; vzell, 2026-11-10: its POH had no card and no
+     * viewer): a row is one image, its record the row itself. On any host
+     * the window opens on; the click is installed by the window.
+     * @type {FiProvider}
+     */
+    const _DGWI_FI = {
+        ..._DGI_FI,
+        tableSel: '#mb-dp-dialog table.mb-dg-vt',
+        tableIs: null,
+        linkSel: 'a.mb-dg-vthumblink[data-mb-fi="dgwi"]',
+        title: () => {
+            const t = document.querySelector('#mb-dp-dialog .mb-dp-xtitle');
+            return t ? t.textContent.trim() : '';
         },
     };
 
@@ -20891,7 +21002,8 @@
         h2.textContent = kind === 'user' ? (_DG_USER_LISTS[def.features.dgUserList] || {}).heading || 'Lists'
             : { artist: 'Discography', label: 'Releases', master: def.features.dgView === 'tracks' ? 'Tracklist' : 'Versions',
                 release: def.features.dgView === 'tracks' ? 'Tracklist' : 'Release', submissions: 'Submissions', history: 'History',
-                ratings: 'Ratings', images: 'Images', entityImages: 'Images', sell: 'For sale', search: 'Search results' }[kind] || 'Discogs';
+                ratings: 'Ratings', images: 'Images', entityImages: 'Images', imageRevisions: 'Image revisions', sell: 'For sale',
+                search: 'Search results' }[kind] || 'Discogs';
         const cols = kind === 'release' ? _DG_HEADERS.release.Tracklist : kind === 'user' ? _DG_HEADERS.user.releases
             : kind === 'history' ? _DG_HEADERS.history.Changes : _DG_HEADERS[kind];
         const table = document.createElement('table');
@@ -22376,7 +22488,8 @@
     /**
      * The images as one `table.tbl` (`_DG_HEADERS.images`): position, the
      * image (its thumbnail linking the 600 px one, for the image card and
-     * the viewer, `_DG_FI`), type, uploader (`_dgUserCell()`: the picture
+     * the viewer, `_DGI_FI`: the row is the image, `data-mb-dgi-cap` its
+     * caption), type, uploader (`_dgUserCell()`: the picture
      * asked as the row shows), the date and time in the browser's time zone
      * ("2008-05-20 01:46", split by the definition's `dateTimeParts`; the UTC
      * time on hover), W x H and the size in KB (1,167,852 bytes: 1168, a
@@ -22387,15 +22500,153 @@
      */
     function _dgImgToHtml(text) {
         const g = JSON.parse(text);
-        const rows = g.rows.map((r) => {
-            const thumb = r.thumb ? `<a class="mb-dg-thumblink" data-mbtt-fn="fi-img" data-mb-fi="dg" href="${_rgEsc(r.full || r.thumb)}" target="_blank" rel="noopener noreferrer">` +
-                `<img class="mb-dg-thumb" src="${_rgEsc(r.thumb)}" alt="" width="40" height="40" loading="lazy" referrerpolicy="no-referrer"></a>` : '';
-            return `<tr>${_dgCell(String(r.pos))}<td class="mb-dg-imgcell">${thumb}</td>${_dgCell(r.type)}` +
-                `${r.user ? _dgUserCell(r.user, new URL(r.userHref || `/user/${r.user}`, 'https://www.discogs.com').href, '') : '<td></td>'}` +
-                `<td class="mb-dg-when"${r.iso ? ` data-mb-tip title="${_rgEsc(`${r.iso} (UTC)`)}"` : ''}>${_rgEsc(r.at)}</td>` +
-                `${_dgCell(r.w ? `${r.w} × ${r.h}` : '')}${_dgCell(r.bytes ? String(Math.round(r.bytes / 1e3)) : '')}</tr>`;
-        });
+        const rows = g.rows.map(r => _dgImgRowHtml(r));
         return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${_dgTableHtml(null, _DG_HEADERS.images, rows)}</body></html>`;
+    }
+
+    /**
+     * One image's row of the images tables (`_DG_HEADERS.images`; with a
+     * `change`, `_DG_HEADERS.imageRevisions`' Change after Type): position,
+     * the image (`_DGI_FI`'s trigger, its caption in `data-mb-dgi-cap`),
+     * type, uploader, date and time, W x H, the size in KB.
+     *
+     * @param {Object} r - A `_dgImgParseData()` row.
+     * @param {string} [change] - The Change cell's text; undefined: no Change column.
+     * @param {boolean} [gone] - A removed image (its row greyed, no position).
+     * @returns {string} HTML.
+     */
+    function _dgImgRowHtml(r, change = undefined, gone = false) {
+        // One image a row: its own provider (`_DGI_FI`), the card's caption with it.
+        const cap = [r.type, r.user ? `${r.user}${r.at ? `, ${r.at}` : ''}` : r.at, r.w ? `${r.w} × ${r.h}` : '', _dgImgSizeText(r.bytes)].filter(Boolean).join(' · ');
+        const thumb = r.thumb ? `<a class="mb-dg-thumblink" data-mbtt-fn="fi-img" data-mb-fi="dgi" data-mb-dgi-cap="${_rgEsc(cap)}" href="${_rgEsc(r.full || r.thumb)}" target="_blank" rel="noopener noreferrer">` +
+            `<img class="mb-dg-thumb" src="${_rgEsc(r.thumb)}" alt="" width="40" height="40" loading="lazy" referrerpolicy="no-referrer"></a>` : '';
+        return `<tr${gone ? ' class="mb-dgir-gone"' : ''}>${_dgCell(gone ? '' : String(r.pos))}<td class="mb-dg-imgcell">${thumb}</td>${_dgCell(r.type)}` +
+            `${change === undefined ? '' : _dgCell(change)}` +
+            `${r.user ? _dgUserCell(r.user, new URL(r.userHref || `/user/${r.user}`, 'https://www.discogs.com').href, '') : '<td></td>'}` +
+            `<td class="mb-dg-when"${r.iso ? ` data-mb-tip title="${_rgEsc(`${r.iso} (UTC)`)}"` : ''}>${_rgEsc(r.at)}</td>` +
+            `${_dgCell(r.w ? `${r.w} × ${r.h}` : '')}${_dgCell(r.bytes ? String(Math.round(r.bytes / 1e3)) : '')}</tr>`;
+    }
+
+    // --- discogs.com: a release's image revisions (pageType dg-image-revisions)
+    // `/release/<id>/images/history?rev=N` (2026-11-10; vzell: the revision
+    // page itself, "every revision"). The page's own list is drawn in the
+    // browser (`imageUploaderApp`), so never read: the rows are the image
+    // revisions reader's (`_extDgImgRevRows()`: `/images/data?
+    // history_revision=N`, same-origin with the session), the revisions the
+    // release history's image changes, every page of it read when the count
+    // is asked (`_dgImgRevPageCount()`). One page per revision, newest first,
+    // each a sub-table; a page asks its revision and the one before it (the
+    // Change column), which the next page then has: one request a revision.
+
+    /**
+     * The revisions this page's press lists (`_dgImgRevPageCount()`), newest
+     * first: the release id, `{rev, e}` per revision (`e` its history
+     * entry, null for one the history does not list), whether every
+     * history page was read, and the page's own revision.
+     * @type {?{id: string, revs: {rev: number, e: ?Object}[], complete: boolean, here: number}}
+     */
+    let _dgImgRevPlan = null;
+
+    /**
+     * `features.pageCountAsync` of `dg-image-revisions`: the release's edit
+     * history — its newest page (the history reader's record when it has
+     * one, else ONE request), then every earlier page
+     * (`_extDgHistPagesRun()`, kept like the window's) — and its image
+     * changes, one page each. The page's own revision is listed even when
+     * the history does not name it.
+     *
+     * @returns {Promise<number>}
+     * @throws {Error} When the history cannot be read (`status`).
+     */
+    async function _dgImgRevPageCount() {
+        const id = _DG_IMGREV_PATH_RE.exec(window.location.pathname)[1];
+        const hid = `release/${id}`;
+        const here = Number(new URL(window.location.href).searchParams.get('rev')) || 0;
+        const have = _mbPop.get(`ext:dghistory:${_extDgHistUrl(hid)}`);
+        let h = have && have.status === 'done' && have.data && have.data.dgHist ? have.data.dgHist : null;
+        if (!h) {
+            const url = _extDgHistUrl(hid);
+            const res = await _extDgHistGet(url, () => !stopRequested);
+            if (res.skipped) throw Object.assign(new Error('Stopped before the edit history was asked'), { status: 0 });
+            if (res.error || res.status !== 200) throw Object.assign(new Error(res.error ? _extFailText(res) : `HTTP ${res.status} from Discogs for ${url}`), { status: res.status || 0 });
+            h = _extDgHistParse(new DOMParser().parseFromString(String(res.body || '') + String(res.tail || ''), 'text/html'), res.finalUrl || url);
+            if (!h) throw Object.assign(new Error('Discogs answered, but not with the edit history'), { status: 0 });
+        }
+        if (h.pages > 1) {
+            globalStatusDisplay.textContent = `Getting number of pages to fetch... reading the edit history's ${h.pages} pages`;
+            await _extDgHistPagesRun(hid, h);
+        }
+        const merged = _extDgHistPagesMerged(hid, h);
+        const revs = _extDgImgRevList(merged.h.entries);
+        if (here && !revs.some(x => x.rev === here)) {
+            revs.push({ rev: here, e: null });
+            revs.sort((a, b) => a.rev - b.rev);
+        }
+        _dgImgRevPlan = { id, revs: revs.reverse(), complete: !merged.next, here };
+        return Math.max(1, revs.length);
+    }
+
+    /**
+     * `features.pageRequest` of `dg-image-revisions`: page `p` is the
+     * `p`-th revision, newest first (`_dgImgRevPlan`).
+     *
+     * @param {number} p - From 1.
+     * @returns {{url: string, fetchText: function(): Promise<string>, toHtml: function(string): string}}
+     */
+    function _dgImgRevPageRequest(p) {
+        const plan = _dgImgRevPlan;
+        const r = plan && plan.revs[p - 1];
+        const url = r ? `https://www.discogs.com/release/${plan.id}/images/history?rev=${r.rev}` : window.location.href;
+        return { url, fetchText: () => _dgImgRevFetchText(p), toHtml: _dgImgRevToHtml };
+    }
+
+    /**
+     * Page `p`'s revision and the one before it, as the fetch loop's text
+     * (JSON): its rows, the previous revision's (null when it could not be
+     * read, or the history before it was not), and whether it is the
+     * history's first image change. Its own revision failing is the page's
+     * failure.
+     *
+     * @param {number} p
+     * @returns {Promise<string>}
+     * @throws {Error} With `status` 0.
+     */
+    async function _dgImgRevFetchText(p) {
+        const plan = _dgImgRevPlan;
+        const r = plan && plan.revs[p - 1];
+        if (!r) throw Object.assign(new Error('No image revision for this page (the edit history could not be read)'), { status: 0 });
+        const wanted = () => !stopRequested;
+        const cur = await _extDgImgRevRows(plan.id, r.rev, wanted);
+        if (!cur.rows) throw Object.assign(new Error(cur.detail), { status: 0 });
+        const prev = plan.revs[p];
+        const before = prev ? await _extDgImgRevRows(plan.id, prev.rev, wanted) : null;
+        return JSON.stringify({
+            rev: r.rev, e: r.e, here: r.rev === plan.here, rows: cur.rows,
+            prevRev: prev ? prev.rev : 0, prevRows: before ? before.rows : (plan.complete ? [] : null),
+        });
+    }
+
+    /**
+     * One revision as an `<h3>` and its `table.tbl` (`_DG_HEADERS.imageRevisions`):
+     * the heading "rev N · date · user · note" ("this page" for the page's
+     * own); a row per image with its Change against the revision before
+     * (`_extDgImgRevMarks()`: by image id), then the images it removed,
+     * greyed. Without the revision before, Change stays empty.
+     *
+     * @param {string} text - `_dgImgRevFetchText()`'s JSON.
+     * @returns {string} An HTML document.
+     */
+    function _dgImgRevToHtml(text) {
+        const g = JSON.parse(text);
+        const e = g.e;
+        const note = e && e.notes ? _dpText(e.notes.replace(/<br>/g, ' ').replace(/<[^>]+>/g, '')) : '';
+        const heading = [`rev ${g.rev}`, g.here ? 'this page' : '', e ? e.at : '', e ? e.user : '', note.length > 90 ? `${note.slice(0, 89)}…` : note]
+            .filter(Boolean).join(' · ');
+        const text1 = { added: '+ added', moved: 'moved', primary: '→ primary', secondary: '→ secondary' };
+        const diff = g.prevRows ? _extDgImgRevMarks(g.rows, g.prevRows) : null;
+        const rows = g.rows.map((r, k) => _dgImgRowHtml(r, diff ? diff.marks[k].map(m => text1[m]).join(' · ') : ''))
+            .concat(diff ? diff.removed.map(r => _dgImgRowHtml(r, '− removed', true)) : []);
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${_dgTableHtml(heading, _DG_HEADERS.imageRevisions, rows)}</body></html>`;
     }
 
     // --- discogs.com: a master's, artist's or label's images (dg-entity-images)
@@ -35415,6 +35666,8 @@
      *   - `ctx`: the viewer's context (`external: true`, its own cache);
      *   - `name`: the card's title for a row without one;
      *   - `tableSel` / `linkSel`: the tables it serves and its trigger links;
+     *   - `tableIs(table)`, optional: whether a table `tableSel` takes is
+     *     its (the 🖼 gallery's choice between two providers of one host);
      *   - `cardOn()`: its hover-card setting;
      *   - `rowFor(a, table, path)`: a trigger's row (`thumb`, `title`,
      *     `asked`, `path`, and whatever the provider needs);
@@ -35447,7 +35700,7 @@
      *     "entries"), `page` / `pages` ("item page"), `eligible` (the rows it
      *     covers when that is not every row: 'with "artwork available"'),
      *     `left` (why the others are not in it; `{n}` and `{rows}` filled in).
-     * @typedef {{ctx: Object, name: string, tableSel: string, linkSel: string, cardOn: function(): boolean,
+     * @typedef {{ctx: Object, name: string, tableSel: string, tableIs?: function(HTMLTableElement): boolean, linkSel: string, cardOn: function(): boolean,
      *   rowFor: function(HTMLAnchorElement, HTMLTableElement, string): Object, hasRecord: function(Object): boolean,
      *   state: function(Object): string, request: function(Object, Object): void, images: function(Object): Object[],
      *   cardImages: ?function(Object[], Object): Object[], cardTitle?: function(Object): string,
@@ -35469,6 +35722,8 @@
     function _fiProvider(key) {
         switch (key) {
             case 'dg': return _DG_FI;
+            case 'dgi': return _DGI_FI;
+            case 'dgwi': return _DGWI_FI;
             case 'dgw': return _DGW_FI;
             case 'dgp': return _DGP_FI;
             case 'sl': return _SL_FI;
@@ -35484,13 +35739,16 @@
 
     /**
      * A trigger link's provider; a link stamped `data-mbtt-fn="dg-img"` (a
-     * Discogs table saved before the shared card) is Discogs'.
+     * Discogs table saved before the shared card) is Discogs'. A `dg` link
+     * in a release's images table (saved before 2026-11-10) is `_DGI_FI`'s.
      *
      * @param {HTMLElement} a
      * @returns {?FiProvider}
      */
     function _fiProviderOf(a) {
-        return _fiProvider(a.dataset.mbFi || (a.dataset.mbttFn === 'dg-img' ? 'dg' : ''));
+        const key = a.dataset.mbFi || (a.dataset.mbttFn === 'dg-img' ? 'dg' : '');
+        if (key === 'dg' && _dgIsImagesTable(a.closest('table'))) return _DGI_FI;
+        return _fiProvider(key);
     }
 
     /**
@@ -36493,9 +36751,9 @@
      * @returns {?FiProvider}
      */
     function _fgalProviderFor(table) {
-        const cands = _isDgHost ? [_DG_FI] : _isSlHost ? [_SL_FI, _SLL_FI] : _isJlHost ? [_JL_FI]
+        const cands = _isDgHost ? [_DGI_FI, _DG_FI] : _isSlHost ? [_SL_FI, _SLL_FI] : _isJlHost ? [_JL_FI]
             : _isBsHost ? [_BS_FI] : _isBbHost ? [_BB_FI, _BBS_FI] : _isIaHost ? [_IA_FI] : [];
-        return cands.find(p => table.matches(p.tableSel) && table.querySelector(`tbody > tr ${p.linkSel}`)) || null;
+        return cands.find(p => table.matches(p.tableSel) && (!p.tableIs || p.tableIs(table)) && table.querySelector(`tbody > tr ${p.linkSel}`)) || null;
     }
 
     /**
@@ -37972,6 +38230,21 @@
             .mb-dp-dialog .mb-dgh-pill-run { color: #2f5f9e; }
             .mb-dp-dialog .mb-dgh-pill-warn { color: #9a6a00; }
             .mb-dp-dialog .mb-dgh-pill-idle { color: #7a6d5c; }
+            /* A release's image revisions (_extDgImgRevWindow): one block per
+               revision, the linked one marked; its images with their marks
+               against the revision before, removed ones greyed. */
+            .mb-dp-dialog .mb-dgir-r { padding: 6px 6px 8px; border-bottom: 1px dotted #d9cfbd; }
+            .mb-dp-dialog .mb-dgir-cur { background: #eef2f8; box-shadow: inset 3px 0 0 #2f5f9e; }
+            .mb-dp-dialog .mb-dgir-h { display: flex; flex-wrap: wrap; gap: 3px 10px; align-items: baseline; margin-bottom: 4px; }
+            .mb-dp-dialog .mb-dgir-rv { font: 600 12px ui-monospace, Consolas, monospace; color: #2f5f9e; }
+            .mb-dp-dialog .mb-dgir-sum { color: #7a6d5c; font-size: 11px; }
+            .mb-dp-dialog .mb-dgir-gone { opacity: 0.45; }
+            .mb-dp-dialog .mb-dgir-gone img { filter: grayscale(1); }
+            .mb-dp-dialog .mb-dgir-m { font: 600 10px/1.5 system-ui, -apple-system, "Segoe UI", Arial, sans-serif; padding: 0 6px; border-radius: 999px; border: 1px solid currentColor; }
+            .mb-dp-dialog .mb-dgir-m-added { color: #3f7a3a; }
+            .mb-dp-dialog .mb-dgir-m-removed { color: #b3261e; }
+            .mb-dp-dialog .mb-dgir-m-moved { color: #9a6a00; }
+            .mb-dp-dialog .mb-dgir-m-primary, .mb-dp-dialog .mb-dgir-m-secondary { color: #2f5f9e; }
             .mb-dp-dialog .mb-dgh-diff { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid #d9cfbd; border-radius: 3px; overflow: hidden; }
             .mb-dp-dialog .mb-dgh-diff > div { padding: 6px 10px; min-width: 0; overflow-wrap: anywhere; }
             .mb-dp-dialog .mb-dgh-diff > div:nth-child(even) { border-left: 1px solid #d9cfbd; }
@@ -51766,6 +52039,28 @@
                 ]
             },
             tableMode: 'single'
+        },
+        {
+            // A release's image revision page (2026-11-10): one sub-table per
+            // image revision, newest first, what changed since the one before.
+            // See the "discogs.com: a release's image revisions" block above
+            // _dgImgRevPageCount().
+            type: 'dg-image-revisions',
+            host: 'www.discogs.com',
+            match: (path) => _DG_IMGREV_PATH_RE.test(path),
+            buttons: [ { label: 'Show every image revision', shortLabel: 'Revisions',
+                description: 'Every revision of this release\'s images, newest first, with what changed since the one before: the edit history (one request a page), then one request a revision, with your Discogs session.' } ],
+            features: {
+                dgToTable: 'imageRevisions',
+                groupByH3: true,
+                pageRequest: (p) => _dgImgRevPageRequest(p),
+                pageCountAsync: () => _dgImgRevPageCount(),
+                integerColumns: [ { sourceColumn: '#', align: 'R' }, { sourceColumn: 'Size (KB)', align: 'R' } ],
+                columnExtractors: [
+                    { sourceColumn: 'Uploaded', extractor: 'dateTimeParts', syntheticColumns: ['Uploaded date', 'Uploaded time'] }
+                ]
+            },
+            tableMode: 'multi'
         },
         {
             // A user's page (2026-10-18): their submissions, contributions,
@@ -81471,7 +81766,7 @@
             ? `<a href="${_rgEsc(new URL(href, 'https://www.discogs.com').href)}" target="_blank" rel="noopener noreferrer">${_hlEsc(text, q)}</a>` : _hlEsc(text, q));
         return [
             { key: 'pos', label: '#', cls: 'mb-rg-num', val: r => r.pos, html: r => _rgEsc(String(r.pos)) },
-            { key: 'img', label: '', sort: false, val: () => '', html: r => _extDgThumbHtml(r.thumb) },
+            { key: 'img', label: '', sort: false, val: () => '', html: r => _extDgImgThumbHtml(r) },
             {
                 key: 'type', label: 'Type', val: r => r.type,
                 html: (r, q) => `<span class="mb-dgh-pill mb-dgh-pill-${r.type === 'Primary' ? 'ok' : 'idle'}">${_hlEsc(r.type, q)}</span>` +
@@ -81492,6 +81787,24 @@
     }
 
     /**
+     * One image's thumbnail in the Image history window's table: a trigger
+     * of the image card and viewer of a row that IS one image (`_DGWI_FI`,
+     * 2026-11-10; `_extDgThumbHtml()`'s `_DGW_FI` looks for the row's
+     * release, which these rows do not link), linking the 600 px image, its
+     * caption for the card in `data-mb-dgi-cap`.
+     *
+     * @param {Object} r - A `_dgImgParseData()` row (or the API's stand-in).
+     * @returns {string} HTML; empty for a row without a thumbnail.
+     */
+    function _extDgImgThumbHtml(r) {
+        if (!r.thumb) return '';
+        const cap = [r.type, r.user ? `${r.user}${r.at ? `, ${r.at}` : ''}` : r.at,
+            r.w ? `${r.w} × ${r.h}` : r.servedW ? `${r.servedW} × ${r.servedH} served` : '', _dgImgSizeText(r.bytes)].filter(Boolean).join(' · ');
+        return `<a class="mb-dg-vthumblink" href="${_rgEsc(r.full || r.thumb)}" data-mb-fi="dgwi" data-mbtt-fn="fi-img" data-mb-dgi-cap="${_rgEsc(cap)}" ` +
+            `target="_blank" rel="noopener noreferrer"><img class="mb-dg-vthumb" src="${_rgEsc(r.thumb)}" alt="" referrerpolicy="no-referrer" loading="lazy"></a>`;
+    }
+
+    /**
      * The images reader's window. Images: the uploaders as a Compact table
      * (user · images · years) on the left, every image on the right, each
      * captioned with its type, size and uploader; a click opens the artwork
@@ -81508,6 +81821,8 @@
         if (!g) return out;
         const warn = g.note ? `<div class="mb-dp-warn">${_rgEsc(g.note)}</div>` : '';
         if (g.editor) {
+            // Its thumbnails' card and viewer click (`_DGWI_FI`), on MusicBrainz too.
+            _fiInstall();
             out.full.push(_extDgSection('dgi-hist', 'Image history', g.rows.length, warn + _dpCompactTableHtml(t, 'dg-imghist', _extDgImgCols(), g.rows, {
                 perPage: 50, initial: 'in Discogs\' order', what: 'images',
             })));
@@ -81542,6 +81857,472 @@
      */
     function _extDgImgAreaClick(e) {
         _extDgHistAreaClick(e);
+    }
+
+    // --- Discogs: a release's image revisions (reader dgimgrev, 2026-11-10) ---
+    //
+    // vzell: an image change's link in a release's edit history
+    // (`/release/<id>[-slug]/images/history?rev=N`) showed the release
+    // itself (the `discogs` reader took the path). Its window lists EVERY
+    // image revision of the release, the linked one highlighted, each with
+    // its images and what changed since the one before. The revision page
+    // ("Previous State of Images", debug/d-image-revision-{5,6}.html) draws
+    // its list in the browser, as the editor does: Discogs' uploader script
+    // asks `/release/<id>/images/data?history_revision=N`
+    // (debug/poh-sync/image-uploader-app.js), the editor's data shape, the
+    // state AT that revision (vzell's answers for 1313481,
+    // debug/d-image-rev-{4,5,6}.json: 1, 2, 3 images, ids stable). The
+    // revisions themselves are the release history's image changes (who,
+    // when, the note): its pages, read and kept as "Load the N earlier
+    // pages" reads them (`_extDgHistPagesRun()`).
+
+    /** A release's image revision page, a language prefix and a slug allowed: [1] the id (the revision is `?rev=`). */
+    const _EXT_DGIR_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/(\d+)(?:-[^/?#]*)?\/images\/history\/?$/i;
+
+    /**
+     * The image revisions reader's record version (`_EXT_IDB_VERSION * 100 +
+     * this`), also of each revision's images: bump it when
+     * `_extDgImgRevLoad()`'s record or `_extDgImgRevDataLoad()`'s changes.
+     * @type {number}
+     */
+    const _EXT_DGIR_VERSION = 1;
+
+    /**
+     * Each image revisions window's state, by release id: the revision the
+     * link pointed to (`rev`), the window target that was set for (`revFor`:
+     * once per opening), the target the window scrolled to it for
+     * (`scrollFor`) and asked the revision before it for (`prevFor`), the
+     * revisions newest first as last drawn (`revs`, for "Load the N other
+     * revisions"), and that run (`run`, `stop`).
+     * @type {Map<string, {rev: number, revFor: ?object, scrollFor: ?object, prevFor: ?object, revs: number[], run: boolean, stop: boolean}>}
+     */
+    const _extDgImgRevUi = new Map();
+
+    /**
+     * A release's image revisions window state (`_extDgImgRevUi`), made on
+     * first use.
+     *
+     * @param {string} id - The release id.
+     * @returns {{rev: number, revFor: ?object, scrollFor: ?object, prevFor: ?object, revs: number[], run: boolean, stop: boolean}}
+     */
+    function _extDgImgRevUiOf(id) {
+        const k = String(id);
+        if (!_extDgImgRevUi.has(k)) _extDgImgRevUi.set(k, { rev: 0, revFor: null, scrollFor: null, prevFor: null, revs: [], run: false, stop: false });
+        return _extDgImgRevUi.get(k);
+    }
+
+    /**
+     * A link to one of a release's image revisions on discogs.com.
+     *
+     * @param {URL} u
+     * @returns {boolean}
+     */
+    function _extDgImgRevTest(u) {
+        return /^(?:www\.)?discogs\.com$/.test(u.hostname.toLowerCase()) && _EXT_DGIR_PATH_RE.test(u.pathname);
+    }
+
+    /**
+     * The reader's cache URL of a link (`keyUrl`): the release's image
+     * history, with no slug, language or revision, so every revision link
+     * of one release is one record (the revision picks the highlight).
+     *
+     * @param {URL} u
+     * @returns {string}
+     */
+    function _extDgImgRevKeyUrl(u) {
+        return `https://www.discogs.com/release/${_EXT_DGIR_PATH_RE.exec(u.pathname)[1]}/images/history`;
+    }
+
+    /**
+     * The window's title for a link (`kindFor`).
+     *
+     * @returns {string}
+     */
+    function _extDgImgRevKind() {
+        return 'Discogs image revisions';
+    }
+
+    /**
+     * The revision a link points to (`?rev=N`), 0 for none.
+     *
+     * @param {URL} u
+     * @returns {number}
+     */
+    function _extDgImgRevOf(u) {
+        return Number(u.searchParams.get('rev')) || 0;
+    }
+
+    /**
+     * The cache key of one revision's images.
+     *
+     * @param {string} id - The release id.
+     * @param {number} rev
+     * @returns {string}
+     */
+    function _extDgImgRevKey(id, rev) {
+        return `ext:dgimgrev:${id}:${rev}`;
+    }
+
+    /**
+     * The image changes of a history (`_extDgHistParse()`'s entries): those
+     * with an Images link carrying `rev=N`, oldest first, one per revision.
+     *
+     * @param {Object[]} entries
+     * @returns {{rev: number, e: ?Object}[]}
+     */
+    function _extDgImgRevList(entries) {
+        const seen = new Map();
+        entries.forEach((e) => {
+            const rev = Number((/[?&]rev=(\d+)/.exec(e.images || '') || [])[1]) || 0;
+            if (rev && !seen.has(rev)) seen.set(rev, { rev, e });
+        });
+        return Array.from(seen.values()).sort((a, b) => a.rev - b.rev);
+    }
+
+    /**
+     * The image revisions reader's load: the release's edit history, its
+     * newest page — the history reader's record when it has one, else ONE
+     * request (`_extDgHistGet()`, parsed by `_extDgHistParse()`). The window
+     * reads the earlier pages and each revision's images
+     * (`_extDgImgRevDataLoad()`); `rec.dgImgRev` is its.
+     *
+     * @param {object} t
+     * @param {function(): boolean} wanted
+     * @returns {Promise<{ok?: boolean, data?: Object, detail?: string, skipped?: boolean}>}
+     */
+    async function _extDgImgRevLoad(t, wanted) {
+        const id = _EXT_DGIR_PATH_RE.exec(new URL(t.url).pathname)[1];
+        const hid = `release/${id}`;
+        const have = _mbPop.get(_extDgHistTarget(hid, t).key);
+        let h = have && have.status === 'done' && have.data && have.data.dgHist ? have.data.dgHist : null;
+        if (!h) {
+            const url = _extDgHistUrl(hid);
+            const res = await _extDgHistGet(url, wanted);
+            if (res.skipped) return { skipped: true };
+            if (res.status > 0) _extRememberHost('www.discogs.com');
+            const out = _extApiOutcome(t, res, 'Discogs', `Discogs has no release ${id} (its history page answered 404).`);
+            if (out) return out;
+            h = _extDgHistParse(new DOMParser().parseFromString(String(res.body || '') + String(res.tail || ''), 'text/html'), res.finalUrl || url);
+            if (!h) return { ok: false, detail: 'Discogs answered, but not with the edit history (signed out, or a browser check?)' };
+        }
+        const revs = _extDgImgRevList(h.entries);
+        const last = revs[revs.length - 1];
+        const rec = _extApiRecord(t, 200, 'Discogs');
+        Object.assign(rec, {
+            title: h.name || `Release ${id}`, subtitle: 'Discogs · release · image revisions', type: 'image revisions', image: h.thumb,
+            description: '',
+            facts: [
+                ['Image revisions', h.pages > 1 ? `${revs.length} on the newest of ${h.pages} history pages` : String(revs.length)],
+                ['Latest', last ? `rev ${last.rev}, ${_extDgHistLine(last.e)}` : ''],
+            ].filter(f => f[1]),
+            dgImgRev: { id: Number(id), hist: h },
+        });
+        rec.links.push(['The release', `https://www.discogs.com/release/${id}`]);
+        rec.links.push(['Edit history', _extDgHistUrl(hid)]);
+        rec.links.push(['Images', _extDgImgUrl(id, false)]);
+        return { ok: true, data: rec };
+    }
+
+    /**
+     * One revision's images: ONE request for the image editor's data at
+     * that revision (`/images/data?history_revision=N`, as Discogs' own
+     * uploader asks it; `_extDgImgDataGet()`: the session), parsed by
+     * `_dgImgParseData()`, kept like a history page (a past revision never
+     * changes). Signed out the answer is Discogs' login page: a failure
+     * saying so, retried by "Show images" only.
+     *
+     * @param {string} id - The release id.
+     * @param {number} rev
+     * @param {{force?: boolean, onSettle?: function(): void, wanted?: ?function(): boolean}} [opts] - `onSettle`:
+     *   called when the load ends, a skipped one too; `wanted`: the
+     *   caller's (default: while a window shows).
+     * @returns {void}
+     */
+    function _extDgImgRevDataLoad(id, rev, { force = false, onSettle = null, wanted = null } = {}) {
+        const settle = () => { if (onSettle) onSettle(); };
+        _mbLoad(_extDgImgRevKey(id, rev), async (wanted) => {
+            const res = await _extDgImgDataGet(`${_extDgImgDataUrl(id)}?history_revision=${rev}`, wanted);
+            if (res.skipped) {
+                // `_mbLoad()` calls no listener for a skipped load.
+                setTimeout(settle, 0);
+                return { skipped: true };
+            }
+            if (res.status > 0) _extRememberHost('www.discogs.com');
+            if (_extBotCheck(res)) return { ok: false, detail: 'Discogs answered with its browser check' };
+            if (res.error || res.status !== 200) return { ok: false, detail: res.error ? _extFailText(res) : `Discogs answered HTTP ${res.status}` };
+            const rows = _dgImgParseData(String(res.body || '') + String(res.tail || ''));
+            return rows ? { ok: true, data: { rows } }
+                : { ok: false, detail: 'Discogs did not give the images (signed out of discogs.com?): a revision\'s images come with your Discogs login only' };
+        }, {
+            force,
+            repaint: () => { if (_dpDialog.repaint) _dpDialog.repaint(); settle(); },
+            wanted: wanted || (() => !!_dpDialog.target && _dpDialogShowing(_dpDialog.target)),
+            version: _EXT_IDB_VERSION * 100 + _EXT_DGIR_VERSION, ttlMs: _extTtlMs(),
+        });
+    }
+
+    /**
+     * One revision's images as a promise (`_extDgImgRevDataLoad()`, the
+     * window's cache shared): the rows, or why there are none. The
+     * `dg-image-revisions` pages' read.
+     *
+     * @param {string} id - The release id.
+     * @param {number} rev
+     * @param {function(): boolean} wanted
+     * @returns {Promise<{rows?: Object[], detail?: string}>}
+     */
+    function _extDgImgRevRows(id, rev, wanted) {
+        const key = _extDgImgRevKey(id, rev);
+        const out = () => {
+            const st = _mbPop.get(key);
+            if (st && st.status === 'done') return { rows: st.data.rows };
+            return { detail: st && st.status === 'failed' ? st.detail : 'Stopped before this revision was asked' };
+        };
+        return new Promise((resolve) => {
+            const settled = () => { const st = _mbPop.get(key); return !st || st.status !== 'loading'; };
+            const cur = _mbPop.get(key);
+            _extDgImgRevDataLoad(id, rev, { force: !!(cur && cur.status === 'failed'), wanted, onSettle: () => { if (settled()) resolve(out()); } });
+            if (settled()) resolve(out());
+        });
+    }
+
+    /**
+     * "Load the N other revisions": every revision's images not yet in,
+     * newest first, ONE request each through Discogs' slot, the window
+     * repainted after each. Stop ends the run after the request under way; a
+     * failed revision ends it too (signed out, every one would fail).
+     *
+     * @param {string} id - The release id.
+     * @param {number[]} revs - Newest first.
+     * @returns {Promise<void>}
+     */
+    async function _extDgImgRevRun(id, revs) {
+        const ui = _extDgImgRevUiOf(id);
+        if (ui.run) return;
+        ui.run = true;
+        ui.stop = false;
+        const repaint = () => { if (_dpDialog.repaint) _dpDialog.repaint(); };
+        repaint();
+        try {
+            for (const rev of revs) {
+                if (ui.stop) break;
+                const key = _extDgImgRevKey(id, rev);
+                const cur = _mbPop.get(key);
+                if (cur && cur.status === 'done') continue;
+                await new Promise((resolve) => {
+                    const settled = () => { const st = _mbPop.get(key); return !st || st.status !== 'loading'; };
+                    _extDgImgRevDataLoad(id, rev, { force: !!(cur && cur.status === 'failed'), onSettle: () => { if (settled()) resolve(); } });
+                    if (settled()) resolve();
+                });
+                const st = _mbPop.get(key);
+                if (!st || st.status !== 'done') break;
+            }
+        } finally {
+            ui.run = false;
+            repaint();
+        }
+    }
+
+    /**
+     * What changed between two revisions' images, by image id (never by
+     * position: a removed image moves every one after it): per image of
+     * `cur` its marks ('added', 'moved' — its place among the images both
+     * have —, 'primary' / 'secondary' when its type changed), and the images
+     * of `prev` that are gone.
+     *
+     * @param {Object[]} cur - `_dgImgParseData()` rows.
+     * @param {Object[]} prev - The revision before (`[]`: no image before).
+     * @returns {{marks: string[][], removed: Object[]}}
+     */
+    function _extDgImgRevMarks(cur, prev) {
+        const before = new Map(prev.map(r => [r.id, r]));
+        const now = new Set(cur.map(r => r.id));
+        const keptCur = cur.filter(r => before.has(r.id)).map(r => r.id);
+        const keptPrev = prev.filter(r => now.has(r.id)).map(r => r.id);
+        const marks = cur.map((r) => {
+            const p = before.get(r.id);
+            if (!p) return ['added'];
+            const m = [];
+            if (keptCur.indexOf(r.id) !== keptPrev.indexOf(r.id)) m.push('moved');
+            if (p.type !== r.type) m.push(r.type === 'Primary' ? 'primary' : 'secondary');
+            return m;
+        });
+        return { marks, removed: prev.filter(r => !now.has(r.id)) };
+    }
+
+    /**
+     * Scrolls the window to the highlighted revision.
+     *
+     * @returns {void}
+     */
+    function _extDgImgRevScroll() {
+        const dlg = document.getElementById('mb-dp-dialog');
+        const el = dlg && dlg.querySelector('.mb-dgir-cur');
+        if (!el) return;
+        let box = el.parentElement;
+        while (box && box !== dlg && !(box.scrollHeight > box.clientHeight && /auto|scroll/.test(getComputedStyle(box).overflowY))) box = box.parentElement;
+        if (box && box !== dlg) box.scrollTop += el.getBoundingClientRect().top - box.getBoundingClientRect().top - 12;
+    }
+
+    /**
+     * The image revisions window: one section, every image revision newest
+     * first (rev, date, user, the note), the linked one highlighted and
+     * scrolled to; each with its images (a click: the viewer) and their
+     * marks against the revision before, removed ones greyed. On each
+     * opening (`revFor`) it asks the linked revision's images, the history's
+     * earlier pages (vzell, 2026-11-10: every image revision is listed) and,
+     * once the revision before the linked one is known, its images (the
+     * marks). Any other revision on request: "▸ Show images", or "Load the N
+     * other revisions".
+     *
+     * @param {object} t
+     * @param {Object} rec
+     * @returns {{left: string[], right: string[], full: string[]}}
+     */
+    function _extDgImgRevWindow(t, rec) {
+        const out = { left: [], right: [], full: [] };
+        const g = rec.dgImgRev;
+        if (!g) return out;
+        const id = String(g.id);
+        const hid = `release/${id}`;
+        const ui = _extDgImgRevUiOf(id);
+        const hui = _extDgHistUiOf(hid);
+        // The history controls' "pages" (Try again) reads from the newest page.
+        hui.newest = g.hist;
+        if (ui.revFor !== _dpDialog.target) {
+            ui.revFor = _dpDialog.target;
+            ui.rev = _extDgImgRevOf(new URL(t.url));
+            ui.prevFor = null;
+            if (ui.rev) _extDgImgRevDataLoad(id, ui.rev);
+            if (g.hist.pages > 1) _extDgHistPagesRun(hid, g.hist);
+        }
+        const merged = _extDgHistPagesMerged(hid, g.hist);
+        const complete = !merged.next;
+        const revs = _extDgImgRevList(merged.h.entries);
+        // A link to a revision the history read so far does not list.
+        if (ui.rev && !revs.some(x => x.rev === ui.rev)) {
+            revs.push({ rev: ui.rev, e: null });
+            revs.sort((a, b) => a.rev - b.rev);
+        }
+        const at = (rev) => revs.findIndex(x => x.rev === rev);
+        const stOf = (rev) => _mbPop.get(_extDgImgRevKey(id, rev));
+        const rowsOf = (rev) => { const st = stOf(rev); return st && st.status === 'done' && st.data ? st.data.rows : null; };
+        // The revision before the linked one, for its marks: asked once per
+        // opening, as soon as the history read so far names it.
+        const li = at(ui.rev);
+        if (ui.rev && li > 0 && ui.prevFor !== _dpDialog.target) {
+            ui.prevFor = _dpDialog.target;
+            if (!stOf(revs[li - 1].rev)) _extDgImgRevDataLoad(id, revs[li - 1].rev);
+        }
+        const btn = (act, v, label, primary = false) =>
+            `<button type="button" class="mb-dg-btn${primary ? ' mb-dg-primary' : ''}" data-mb-dgir-act="${act}" data-mb-dgir-v="${v}" data-mb-dgir-id="${_rgEsc(id)}">${label}</button>`;
+        const link = (u, text) => (u ? `<a href="${_rgEsc(u)}" target="_blank" rel="noopener noreferrer">${text}</a>` : '');
+        const markText = { added: '+ added', moved: 'moved', primary: '→ primary', secondary: '→ secondary' };
+        let n = 0;
+        const tile = (r, marks, gone) => `<a href="${_rgEsc(r.full || r.thumb)}" target="_blank" rel="noopener noreferrer" class="mb-dgir-t${gone ? ' mb-dgir-gone' : ''}" data-mb-artv-ext="${n++}">` +
+            `<img src="${_rgEsc(r.thumb || r.full)}" alt="" referrerpolicy="no-referrer" loading="lazy">` +
+            `<span>${r.type === 'Primary' ? '★ primary' : 'secondary'}</span>` +
+            `${gone ? '<span class="mb-dgir-m mb-dgir-m-removed">− removed</span>' : marks.map(m => `<span class="mb-dgir-m mb-dgir-m-${m}">${markText[m]}</span>`).join('')}` +
+            `<span class="mb-dg-imgcap">${_rgEsc([r.w ? `${r.w} × ${r.h}` : '', _dgImgSizeText(r.bytes), r.user].filter(Boolean).join(' · '))}</span></a>`;
+        const html = revs.slice().reverse().map(({ rev, e }) => {
+            const i = at(rev);
+            const st = stOf(rev);
+            const rows = rowsOf(rev);
+            const prev = i > 0 ? revs[i - 1].rev : 0;
+            // The first image change of a complete history: nothing before it.
+            const prevRows = prev ? rowsOf(prev) : (complete ? [] : null);
+            let body;
+            let sum = '';
+            if (rows) {
+                const diff = prevRows ? _extDgImgRevMarks(rows, prevRows) : null;
+                const tiles = rows.map((r, k) => tile(r, diff ? diff.marks[k] : [], false))
+                    .concat(diff ? diff.removed.map(r => tile(r, [], true)) : []);
+                body = tiles.length ? `<div class="mb-dp-gallery">${tiles.join('')}</div>` : '<div class="mb-dg-dim">No images at this revision.</div>';
+                if (diff) {
+                    const added = diff.marks.filter(m => m.includes('added')).length;
+                    const moved = diff.marks.filter(m => m.includes('moved')).length;
+                    const typed = diff.marks.filter(m => m.includes('primary') || m.includes('secondary')).length;
+                    const parts = [added ? `+${added}` : '', diff.removed.length ? `−${diff.removed.length}` : '', moved ? `${moved} moved` : '', typed ? `${typed} retyped` : ''].filter(Boolean);
+                    sum = `${rows.length} image${rows.length === 1 ? '' : 's'} · ${parts.length ? parts.join(' · ') : 'no change to the images'}`;
+                } else {
+                    sum = `${rows.length} image${rows.length === 1 ? '' : 's'}`;
+                    const pst = prev ? stOf(prev) : null;
+                    body += prev
+                        ? `<div class="mb-dg-dim">Compared with rev ${prev} once its images are in. ${pst && pst.status === 'loading' ? '<span class="mb-dp-spin">◌</span>' : btn('show', prev, `Show rev ${prev}`)}</div>`
+                        : '<div class="mb-dg-dim">The revision before this one is on a history page not read yet.</div>';
+                }
+            } else if (st && st.status === 'loading') {
+                body = `<div class="mb-dg-dim"><span class="mb-dp-spin">◌</span> Reading revision ${rev}'s images from discogs.com… (one request)</div>`;
+            } else if (st && st.status === 'failed') {
+                body = `<div class="mb-dp-warn">Could not read revision ${rev}'s images: ${_rgEsc(st.detail)}.</div> ${btn('show', rev, 'Try again')}`;
+            } else {
+                body = btn('show', rev, '▸ Show images');
+            }
+            const cur = rev === ui.rev;
+            const who = e ? `<span class="mb-dgh-d"${e.ago ? ` data-mb-tip title="${_rgEsc(e.ago)}"` : ''}>${_rgEsc(e.at)}</span>` +
+                `<span class="mb-dgh-u">${e.user ? `${_dgAvatarImg(e.avatar)}${link(e.userUrl, _rgEsc(e.user)) || _rgEsc(e.user)}` : '<i>Discogs</i>'}</span>` +
+                `<span class="mb-dgh-n">${e.notes}</span>`
+                : `<span class="mb-dg-dim">${complete ? 'Not one of the image changes in the edit history.' : 'Its change is on a history page not read yet.'}</span>`;
+            return `<div class="mb-dgir-r${cur ? ' mb-dgir-cur' : ''}" data-mb-dgir-rev="${rev}">` +
+                `<div class="mb-dgir-h"><span class="mb-dgir-rv">rev ${rev}</span>${who}` +
+                `${sum ? `<span class="mb-dgir-sum">${_rgEsc(sum)}</span>` : ''}` +
+                `<span class="mb-dgh-lk">${link(e && e.images, 'On Discogs')}</span></div>${body}</div>`;
+        }).join('');
+        ui.revs = revs.slice().reverse().map(x => x.rev);
+        const left = ui.revs.filter(r => !rowsOf(r));
+        let act = '';
+        if (ui.run) act = `<span class="mb-dp-spin">◌</span> Reading the images… ${btn('stop', 0, 'Stop')}`;
+        else if (left.length) {
+            const secs = Math.max(1, Math.round(left.length * _extSpacingMs('www.discogs.com') / 1000));
+            act = btn('all', 0, `Load the ${left.length === ui.revs.length ? '' : 'other '}${left.length} revision${left.length === 1 ? '' : 's'} (${left.length} request${left.length === 1 ? '' : 's'}, about ${secs} s)`, true);
+        }
+        // The history's earlier pages, read on opening: where that stands.
+        let pages = '';
+        if (g.hist.pages > 1) {
+            const hb = (a, label) => `<button type="button" class="mb-dg-btn" data-mb-dgh-act="${a}" data-mb-dgh-v="1" data-mb-dgh-id="${_rgEsc(hid)}">${label}</button>`;
+            if (hui.pagesRun) pages = `<span class="mb-dp-spin">◌</span> Reading the edit history's page ${merged.next || 1} of ${g.hist.pages} from discogs.com… ${hb('pagesstop', 'Stop')}`;
+            else if (merged.failed) pages = `<span class="mb-dp-warn">History page ${merged.next} failed: ${_rgEsc(merged.failed)}.</span> ${hb('pages', 'Try again')}`;
+            else if (merged.next) pages = `<span class="mb-dg-dim">The edit history's pages 1–${merged.next} are not read: older image changes may be missing.</span> ${hb('pages', `Read them (${merged.next} request${merged.next === 1 ? '' : 's'})`)}`;
+            if (pages) pages = `<div class="mb-dgh-pages">${pages}</div>`;
+        }
+        out.full.push(_extDgSection('dgir-revs', 'Image revisions', revs.length,
+            `${pages}<div class="mb-dgir-list">${html || '<div class="mb-dg-dim">The edit history lists no image change.</div>'}</div>`, act));
+        if (ui.rev && ui.scrollFor !== _dpDialog.target) {
+            ui.scrollFor = _dpDialog.target;
+            setTimeout(_extDgImgRevScroll, 0);
+        }
+        return out;
+    }
+
+    /**
+     * The image revisions window's clicks: "Show images" / "Try again" (one
+     * revision), "Load the N other revisions" and its Stop; the rest are the
+     * history reader's (a section heading, the history pages' Stop and Try
+     * again, and links opening in the window).
+     *
+     * @param {MouseEvent} e
+     * @returns {void}
+     */
+    function _extDgImgRevAreaClick(e) {
+        const b = e.target instanceof Element && e.target.closest('[data-mb-dgir-act]');
+        if (!b) {
+            _extDgHistAreaClick(e);
+            return;
+        }
+        const id = b.dataset.mbDgirId;
+        const ui = _extDgImgRevUiOf(id);
+        const v = Number(b.dataset.mbDgirV) || 0;
+        switch (b.dataset.mbDgirAct) {
+        case 'show': {
+            const st = _mbPop.get(_extDgImgRevKey(id, v));
+            _extDgImgRevDataLoad(id, v, { force: !!(st && st.status === 'failed') });
+            break;
+        }
+        case 'all': _extDgImgRevRun(id, ui.revs.slice()); return;
+        case 'stop': ui.stop = true; break;
+        default: return;
+        }
+        if (_dpDialog.repaint) _dpDialog.repaint();
     }
 
     // --- Discogs: users, support articles, searches (2026-10-18) ---
@@ -82434,6 +83215,13 @@
             noLive: true, version: _EXT_IDB_VERSION * 100 + _EXT_DGI_VERSION, windowOnly: true, keyUrl: _extDgImgKeyUrl,
             kindFor: _extDgImgKind, window: _extDgImgWindow, onAreaClick: _extDgImgAreaClick,
             loadingNote: 'Reading the images from Discogs\' API and its image editor (two requests).',
+        },
+        {
+            // Before `discogs`, whose path pattern takes `/images/history` too (2026-11-10).
+            id: 'dgimgrev', kind: 'Discogs image revisions', test: _extDgImgRevTest, askHost: () => 'www.discogs.com', load: _extDgImgRevLoad,
+            noLive: true, version: _EXT_IDB_VERSION * 100 + _EXT_DGIR_VERSION, windowOnly: true, keyUrl: _extDgImgRevKeyUrl,
+            kindFor: _extDgImgRevKind, window: _extDgImgRevWindow, onAreaClick: _extDgImgRevAreaClick,
+            loadingNote: 'Reading the release\'s edit history from discogs.com (one request), then the images of each revision you open.',
         },
         {
             // Before `discogs`, whose path pattern takes `/history` too.

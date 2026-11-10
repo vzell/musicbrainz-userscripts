@@ -52,6 +52,13 @@ the script DOES read:
   id is in one). The data itself is dg-release-images-data.json, vzell's
   copy of that answer (debug/discogs-release-images-data.json), its leading
   BOM (the browser's save added it) dropped;
+- dg-release-image-revision.html (debug/d-image-revision-6.html, 2026-11-10,
+  logged in): a release's image revision page ("Previous State of Images",
+  `?rev=6`) AS THE SERVER SENDS IT — the <h1> (another script's
+  musicbrainz.org link dropped), "Changed by", an EMPTY
+  `#image_uploader_app` (SYNTHETIC: Discogs' uploader script fills it from
+  `/images/data?history_revision=6`) and the release link; every script
+  dropped;
 - dg-user-wantlist.html, dg-mywantlist.html (+ the SYNTHETIC
   dg-mywantlist-3.html) and dg-collection-page.html (debug/dg-user-wantlist.html,
   dg-wantlist.html, dg-collection.html, saved by vzell 2026-10-29): a user's
@@ -199,6 +206,23 @@ def build_release_images(editor=False):
     else:
         body = between(src, '<div id="view_images">', '<p>All images are copyrighted', include_end=False) + '</div>'
     content = re.sub(r' data-reactid="[^"]*"', '', head + body)
+    content = re.sub(r'<script\b.*?</script>', '', content, flags=re.S)
+    return SHELL.format(title=html.escape(title), content=squeeze(content)), title
+
+
+def build_image_revision():
+    """dg-release-image-revision.html: a release's image revision page as the server sends it — the <h1>
+    (without another script's musicbrainz.org link), "Changed by", an EMPTY `#image_uploader_app` (the
+    saved page's list was drawn by Discogs' script) and the release link."""
+    src = read_debug('d-image-revision-6.html')
+    title = text(re.search(r'<title[^>]*>(.*?)</title>', src, re.S).group(1))
+    h1 = between(src, '<h1', '</h1>')
+    h1 = re.sub(r'<a href="https://musicbrainz\.org[^"]*"[^>]*>.*?</a>', '', h1, flags=re.S)
+    h1 = re.sub(r' mlink(?:_processed)?="[^"]*"', '', h1)
+    desc = between(src, '<p class="page_description">', '</p>')
+    visit = between(src, '<p>Visit the ', '</p>')
+    content = h1 + desc + '<div id="image_uploader_app"></div>' + visit
+    content = re.sub(r' data-reactid="[^"]*"', '', content)
     content = re.sub(r'<script\b.*?</script>', '', content, flags=re.S)
     return SHELL.format(title=html.escape(title), content=squeeze(content)), title
 
@@ -370,6 +394,7 @@ def main():
                      ('dg-release-images.html', build_release_images),
                      ('dg-release-images-update.html', lambda: build_release_images(editor=True)),
                      ('dg-release-images-data.json', copy_images_data),
+                     ('dg-release-image-revision.html', build_image_revision),
                      ('dg-user-wantlist.html', build_user_wantlist),
                      ('dg-mywantlist.html', build_mywantlist),
                      ('dg-mywantlist-3.html', lambda: build_mywantlist(wants=3)),
