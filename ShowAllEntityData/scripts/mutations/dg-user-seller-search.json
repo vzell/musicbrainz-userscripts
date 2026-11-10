@@ -53,15 +53,15 @@
   },
   {
     "name": "the note is not placed under the heading",
-    "why": "applyDgToTable() appends it after the h2; a regression would put it after the table.",
+    "why": "applyDgToTable() appends it after the h2; a regression would put it after the table. A single table shows it: a multi render re-places the note under the heading itself (the user-lists spec cannot see it).",
     "edits": [
       {
         "find": "        if (note) {\n            const p = document.createElement('p');\n            p.className = 'mb-dg-note';\n            p.textContent = note;\n            root.append(p);\n        }\n        root.append(table);",
         "replace": "        root.append(table);\n        if (note) {\n            const p = document.createElement('p');\n            p.className = 'mb-dg-note';\n            p.textContent = note;\n            root.append(p);\n        }"
       }
     ],
-    "spec": "tests/fixtures/discogs-user-lists.spec.js",
-    "grep": "submissions with the page",
+    "spec": "tests/fixtures/discogs-search-page.spec.js",
+    "grep": "a sort the API cannot",
     "expect": "fail"
   },
   {
