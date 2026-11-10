@@ -4,9 +4,37 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1759 versions; the month pages hold all of them.
+This page shows the newest 100 of 1763 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1592 — 2026-11-10
+
+**🚀 Feature**
+
+- A Discogs release's image revision page (…/images/history?rev=N, "Previous State of Images") gets a button: "Show every image revision". Until now the script did not run on that page at all, so it had no button and no link previews. The button shows one sub-table per revision of the release's images, newest first. Each heading names the revision, when it was made, by whom and its note; the page's own revision says "this page". Each image has a Change column comparing it with the revision before (+ added, moved, → primary, → secondary), and an image the revision removed gets its own greyed row, "− removed". The Image column has the image card and the viewer, as on the Images page. The button reads the release's edit history (one request a page), then one request a revision, with your Discogs session. The page's own links now have link previews too, as on the other older Discogs pages.
+
+
+## 9.99.1591 — 2026-11-10
+
+**🐛 Fix**
+
+- The preview window of a Discogs release's image history (…/images/update, opened for example from a link on the release's edit history page): a hover on a thumbnail in its table now shows that image big with its type, uploader, date, size and file size, and a click opens the image viewer on the full image, where Shift+→ / Shift+← step through the rows. Before, the thumbnails had no card, and on MusicBrainz a click opened the image in a new tab instead of the viewer.
+
+
+## 9.99.1590 — 2026-11-10
+
+**🐛 Fix**
+
+- A release's Images page and its image editor on discogs.com ("Show every image"): a hover on an image in the Image column now shows that image big with its type, uploader, date, size and file size, and a click opens the image viewer, where Shift+→ / Shift+← step through the rows in the order shown. Until now these tables had no hover card at all: the card looked for the row's release in a Title column, and these tables have none. The card asks Discogs for nothing (the row is the image); it is switched off with the setting for the Discogs Image column's hover card. A table saved to disk earlier gets the card too.
+
+
+## 9.99.1589 — 2026-11-10
+
+**🚀 Feature**
+
+- Links to an image revision of a Discogs release (…/images/history?rev=N, the "Images" links of image changes in a release's edit history, in the history's preview window and in the table of the edit history page) have their own preview window. Before, they showed the release itself. The window lists every revision that changed the release's images, newest first, with who changed them, when and the note, and highlights the revision the link points to. That revision shows its images and what changed since the revision before: + added, moved, → primary / → secondary, and removed images greyed out. A click on an image opens the image viewer. Every other revision shows its images when you press its "▸ Show images"; "Load the N other revisions" reads all of them, one request each (Stop ends it). To list every revision, the window reads every page of the release's edit history. A revision's images come from Discogs' image editor, so they are read with your Discogs session, as the Image history window already does; signed out, the revisions are still listed, each saying why its images are missing. Like the other Discogs history windows, it reads only when you press Space, never on a hover.
+
 
 ## 9.99.1588 — 2026-11-10
 
@@ -864,34 +892,6 @@ This page shows the newest 100 of 1759 versions; the month pages hold all of the
 **🚀 Feature**
 
 - Link previews: the entity icon before a MusicBrainz page's title (the release, release group, artist… icon left of the h1) now shows that kind's documentation, as the icon before each step of the window's path does. Rest on it for the Documentation card; a click or Space reads the page in the window, Ctrl-click opens it in a new tab. Only while the MusicBrainz link previews are on.
-
-
-## 9.99.1492 — 2026-10-28
-
-**🐛 Fix**
-
-- Link previews: links to BookBrainz, ListenBrainz, CritiqueBrainz, MetaBrainz and AcousticBrainz now get a card and Space like any other site (e.g. the BookBrainz search among the sidebar's Search links). Only musicbrainz.org and the artwork archives are still left out: MusicBrainz links have their own cards, and artwork has its own preview.
-
-
-## 9.99.1491 — 2026-10-28
-
-**🐛 Fix**
-
-- With jesus2099's "mb. FUNKEY ILLUSTRATED RECORDS" active, its small cover before each release group name in a list — /tag/&lt;name&gt;'s "Release groups", an editor's ratings — kept its plain title ("N images found in this release"). It now shows the artwork card of that release on a hover and opens the viewer on a click, as the same icon already did in a release group's Relationships section.
-
-
-## 9.99.1490 — 2026-10-28
-
-**📝 Docs**
-
-- The setting "Watch for late jesus2099 cover-art icon re-injection" named the wrong userscript: that cover-art icon (and the big picture strip above tables) comes from jesus2099's "mb. FUNKEY ILLUSTRATED RECORDS", not from "mb. SUPER MIND CONTROL". The same credit is corrected in the script's comments.
-
-
-## 9.99.1489 — 2026-10-28
-
-**🐛 Fix**
-
-- With jesus2099's "mb. FUNKEY ILLUSTRATED RECORDS" active, its big picture strip could still show after a render, between the script's own big image strip and the table (a release group's Relationships, debug/mb-rg-funky-final.html). That script decorates the page once, 600 ms after it has loaded; when the render started earlier — a second press reloads the page and presses the button again at once, a quick press, a load from disk — it found the script's own tables. Its strip is now removed whenever it arrives after a press or a disk load.
 
 
 ---
