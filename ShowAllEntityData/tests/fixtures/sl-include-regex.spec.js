@@ -375,7 +375,7 @@ test.describe('@include coverage', () => {
         expect(others.filter((u) => injected(u))).toEqual([]);
     });
 
-    test('discogs.com: a release\'s Marketplace page (dg-sell, 2026-10-29); not /sell/list or an item', () => {
+    test('discogs.com: a release\'s Marketplace page (dg-sell, 2026-10-29); not /sell/list (an item: dg-listing, below)', () => {
         const pages = [
             'https://www.discogs.com/sell/release/8164856',
             'https://www.discogs.com/sell/release/8164856?sort=price%2Casc&limit=250&page=2',
@@ -383,7 +383,6 @@ test.describe('@include coverage', () => {
         ];
         const others = [
             'https://www.discogs.com/sell/list?master_id=26725',
-            'https://www.discogs.com/sell/item/4033083994',
             'https://www.discogs.com/sell/release/8164856x',
             'https://www.discogs.com/sell/release/',
         ];
@@ -391,18 +390,78 @@ test.describe('@include coverage', () => {
         expect(others.filter((u) => injected(u))).toEqual([]);
     });
 
-    test('discogs.com: a search with a query (dg-search, 2026-10-29); not one without', () => {
+    test('discogs.com: one Marketplace listing (dg-listing, 2026-11-10), /shop/item and /sell/item; not the cart or the history', () => {
+        const pages = [
+            'https://www.discogs.com/shop/item/4466508653',
+            'https://www.discogs.com/sell/item/4466508653',
+            'https://www.discogs.com/sell/item/4474302203?ev=bp_img',
+            'https://www.discogs.com/de/shop/item/4466508653',
+        ];
+        const others = [
+            'https://www.discogs.com/shop/item/',
+            'https://www.discogs.com/shop/item/4466508653x',
+            'https://www.discogs.com/sell/cart/?add=4466508653',
+            'https://www.discogs.com/sell/history/11011057',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
+    test('discogs.com: a search with a query (dg-search, 2026-10-29) or a filter (2026-11-10); not one with neither', () => {
         const pages = [
             'https://www.discogs.com/search/?q=Springsteen&type=all',
             'https://www.discogs.com/search?q=bruce+springsteen&type=all',
             'https://www.discogs.com/search?type=master&q=born+to+run',
             'https://www.discogs.com/de/search?q=springsteen',
+            'https://www.discogs.com/search?style_exact=Rock+%26+Roll&sort=title%2Casc&page=1&limit=250&layout=med',
+            'https://www.discogs.com/search?format_exact=Vinyl',
+            'https://www.discogs.com/search?decade=1970&year=1975&layout=med&sort=relevance%2Cdesc&page=1',
+            'https://www.discogs.com/search?layout=med&genre_exact=Rock',
+            'https://www.discogs.com/search?country_exact=Germany',
         ];
         const others = [
             'https://www.discogs.com/search',
             'https://www.discogs.com/search?type=all',
             'https://www.discogs.com/search?q=&type=all',
             'https://www.discogs.com/searchx?q=springsteen',
+            'https://www.discogs.com/search?style_exact=&layout=med',
+            'https://www.discogs.com/search?label_exact=Columbia',
+            'https://www.discogs.com/search?sort=title%2Casc',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
+    test('discogs.com: a user\'s submissions and contributions pages (dg-user-list, 2026-11-10); no near miss', () => {
+        const pages = [
+            'https://www.discogs.com/user/vzell/submissions',
+            'https://www.discogs.com/user/vzell/submissions?page=2',
+            'https://www.discogs.com/de/user/vzell/submissions?q=Nebraska',
+            'https://www.discogs.com/contributions?user=vzell',
+            'https://www.discogs.com/contributions?user=vzell&sort=label&sort_order=asc',
+            'https://www.discogs.com/pt_BR/contributions?user=vzell',
+        ];
+        const others = [
+            'https://www.discogs.com/user/vzell/submissionsx',
+            'https://www.discogs.com/user/vzell/submissions/12',
+            'https://www.discogs.com/contributionsx?user=vzell',
+            'https://www.discogs.com/contributions/export',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
+    test('discogs.com: a seller\'s shop (dg-seller, 2026-11-10); not the seller\'s other pages', () => {
+        const pages = [
+            'https://www.discogs.com/seller/disc-kid/profile',
+            'https://www.discogs.com/seller/disc-kid/profile?format=Vinyl&sort=price%2Casc',
+            'https://www.discogs.com/de/seller/disc-kid/profile',
+        ];
+        const others = [
+            'https://www.discogs.com/seller/disc-kid',
+            'https://www.discogs.com/seller/disc-kid/mywants',
+            'https://www.discogs.com/sell/seller_feedback/disc-kid',
+            'https://www.discogs.com/seller/disc-kid/profilex',
         ];
         expect(pages.filter((u) => !injected(u))).toEqual([]);
         expect(others.filter((u) => injected(u))).toEqual([]);
@@ -618,7 +677,7 @@ test.describe('@include coverage', () => {
         expect(others.filter((u) => injected(u))).toEqual([]);
     });
 
-    test('discogs.com: a user\'s page (dg-user), a language prefix; not its sub-pages (but collection and wantlist: dg-user-list)', () => {
+    test('discogs.com: a user\'s page (dg-user), a language prefix; not its sub-pages (but collection, wantlist and, since 2026-11-10, submissions: dg-user-list)', () => {
         const pages = [
             'https://www.discogs.com/user/vzell',
             'https://www.discogs.com/user/vzell/',
@@ -627,7 +686,7 @@ test.describe('@include coverage', () => {
             'https://www.discogs.com/pt_BR/user/vzell',
         ];
         const others = [
-            'https://www.discogs.com/user/vzell/submissions',
+            'https://www.discogs.com/user/vzell/reviews',
             'https://www.discogs.com/user/',
         ];
         expect(pages.filter((u) => !injected(u))).toEqual([]);

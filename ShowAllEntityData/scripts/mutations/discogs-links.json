@@ -56,8 +56,8 @@
         "why": "On discogs.com a same-host link is previewed only when _extDgSiteTest() admits its path (a user, a search).",
         "edits": [
             {
-                "find": "        return _extDiscogsTest(u) || _extDgUserTest(u) || _extDgSearchTest(u);",
-                "replace": "        return _extDiscogsTest(u);"
+                "find": "        return _extDiscogsTest(u) || _extDgUserTest(u) || _extDgUListTest(u) || _extDgListingTest(u) || _extDgSearchTest(u);",
+                "replace": "        return _extDiscogsTest(u) || _extDgUListTest(u) || _extDgListingTest(u) || _extDgSearchTest(u);"
             }
         ],
         "spec": "tests/fixtures/discogs-links.spec.js",

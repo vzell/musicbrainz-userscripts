@@ -98,6 +98,20 @@ FIXTURES = {
     # A submissions row's Artist search: results WITH thumbnails (a result
     # around its picture was not drilled into: vzell 2026-10-18).
     'discogs-search-springsteen-artist-p1': DG + 'database/search?q=Bruce%20Springsteen&type=artist&per_page=25&page=1',
+    # 2026-11-10 (feature/dg-user-seller-search): a contributions page's own
+    # sort (Label ascending, debug/d-contributions-user.html), a search by the
+    # page's filters (debug/d-search.html: style Rock & Roll, by title) at 100
+    # a page and as the search reader asks it (25), and the list reader
+    # (dgulist): disc-kid's shop pages 1-2 and vzell's contributions, 25 a page.
+    'discogs-user-vzell-contributions-label-asc-p1': DG + 'users/vzell/contributions?sort=label&sort_order=asc&per_page=100&page=1',
+    'discogs-search-rocknroll-title-p1': DG + 'database/search?q=&style=Rock%20%26%20Roll&sort=title&sort_order=asc&per_page=100&page=1',
+    'discogs-search-rocknroll-title-25-p1': DG + 'database/search?q=&style=Rock%20%26%20Roll&sort=title&sort_order=asc&per_page=25&page=1',
+    **{f'discogs-user-disckid-inventory-25-p{p}': DG + f'users/disc-kid/inventory?sort=listed&sort_order=desc&per_page=25&page={p}' for p in (1, 2)},
+    'discogs-user-vzell-contributions-25-p1': DG + 'users/vzell/contributions?sort=added&sort_order=desc&per_page=25&page=1',
+    # A Marketplace listing (dg-listing and the listing reader, 2026-11-10:
+    # debug/d-sell-release.html) and its release.
+    'discogs-listing-4466508653': DG + 'marketplace/listings/4466508653',
+    'discogs-release-11011057': DG + 'releases/11011057',
     # A history note's "RSG §6.12.2" link: support.discogs.com's Help Center API.
     'discogs-support-360005006654': 'https://support.discogs.com/api/v2/help_center/articles/360005006654.json',
 }

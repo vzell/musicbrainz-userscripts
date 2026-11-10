@@ -56,12 +56,14 @@ the sentence said "seven" and "three" from 2026-10-18 until then, though
 | `dg-label`   | `/label/<id>`            | Newest: 500 · 1,000 · 5,000 — Oldest: 500 · 1,000 — Then: All     | single: Image, Artist, Title, Format, Cat#, Year                                                                            |
 | `dg-submissions` | `/submissions?…`     | Show all submissions                                              | single: Artist, Title, Changed by, Changed, Matched artist, History (rows from the FLAT view's pages, not the API)            |
 | `dg-user`    | `/user/<name>`           | Submissions · Contributions · Collection · Wantlist (shown when the page counts them) | multi: Releases / Artists / Labels (submissions), or one table; + Status, or Added (collection, wantlist) |
-| `dg-user-list` | `/user/<name>/collection`, `/user/<name>/wantlist`, `/wantlist?user=<name>`, `/mywantlist` | Collection or Wantlist: the page's own list, hidden when the page says it is empty | as `dg-user`'s button for it (2026-10-29: `_dgUserFeatures()`; the user from the path, the query, or on `/mywantlist` the page's config, `_dgLoggedInUser()` — elsewhere that config names the READER) |
+| `dg-user-list` | `/user/<name>/collection`, `/user/<name>/wantlist`, `/wantlist?user=<name>`, `/mywantlist`; since 2026-11-10 `/user/<name>/submissions`, `/contributions?user=<name>` | Collection or Wantlist: the page's own list, hidden when the page says it is empty | as `dg-user`'s button for it (2026-10-29: `_dgUserFeatures()`; the user from the path, the query, or on `/mywantlist` the page's config, `_dgLoggedInUser()` — elsewhere that config names the READER) |
 | `dg-history` | `/<kind>/<id>/history`   | Show the changes and the diff                                     | multi: Changes, and on page 1 the Diff (below)                                                                              |
 | `dg-ratings` | `/users/ratings/<name>`  | Show all ratings                                                  | single: the user's ratings, 250 a page (below)                                                                              |
 | `dg-images` / `dg-image-history` | `/release/<id>/images`, `…/images/update` | Show every image                  | single: #, Image, Type, Uploaded by, Uploaded (date, time), W × H, Size (KB) — the same on both (below)                     |
 | `dg-entity-images` | `/master|artist|label/<id>/images` | Show every image | single: #, Image, Type, W × H (2026-10-29): the API's `<kind>s/<id>` images, one request; the page lists only the images, and these kinds have no image editor's data |
-| `dg-search` | `/search?q=…` | Show all results (count from the page; the first 10,000) | single: Image, Type, Title, Format, Label, Year (2026-10-29): the API's `database/search` (the search reader's query, `_extDgSearchSub()`), 100 a page; the API serves 100 pages at most (`_DG_SEARCH_MAX`). The page is NEXT.JS: no `#app`, no `#page_content`; the gate lets `/search` in by path and `<main>`; our section goes first in `<body>` — the one placement not checked against a live hydration |
+| `dg-search` | `/search?q=…`, since 2026-11-10 also a search by the page's filters (`?style_exact=…`, below) | Show all results (count from the page; the first 10,000) | single: Image, Type, Title, Format, Label, Year (2026-10-29): the API's `database/search` (the search reader's query, `_extDgSearchSub()`), 100 a page; the API serves 100 pages at most (`_DG_SEARCH_MAX`). The page is NEXT.JS: no `#app`, no `#page_content`; the gate lets `/search` in by path and `<main>`; our section goes first in `<body>` — the one placement not checked against a live hydration |
+| `dg-seller` | `/seller/<name>/profile` | Show everything for sale (hidden on an empty shop) | single (2026-11-10): Image, Artist, Title, Format, Label, Cat#, Media, Sleeve, Comments, Rated, Have, Want, Ships from, Price, Shipping, About, Item — `table.mpitems` of the shop's own pages, same-origin, 250 a page, its filters and sort kept (below) |
+| `dg-listing` | `/shop/item/<id>` (a `/sell/item/<id>` link lands there) | Show all tracks | multi (2026-11-10): the listed release's Tracks view (dg-release's), a "For sale" card first in the head; the listing, then its release from the API (below) |
 | `dg-sell` | `/sell/release/<id>` | Show every listing (its count from the pager) | single: Item, Media, Sleeve, Comments, Seller, Rating, Ratings, Ships from, Price, Shipping, About (2026-10-29): `table.mpitems` of the page's own pages, same-origin, 250 a page, its sort kept; the API has no listings list. About is Discogs' conversion into the reader's currency, the comparable column |
 
 A language prefix (`/de/release/…`) and a slug are allowed; a page's
@@ -796,6 +798,88 @@ artist (`/artist/Bruce+Springsteen`), which `_EXT_DISCOGS_PATH_RE` (an id)
 never took: on discogs.com `_extTarget()` reads such a link as that artist's
 search (`_extDgNamePathUrl()`), the search reader's, as our table's own cell
 (`_dgSearchCell()`) already wrote it.
+
+## Contributions, user submissions, a shop, filter searches, a listing (2026-11-10)
+
+feature/dg-user-seller-search. **Mockup (vzell's answers 2026-11-10):**
+https://claude.ai/artifact/2gnX1gagFEHTCC2LsFEn6n — tab A the two user
+list pages, B the shop, C the filter searches, D the list reader's card and
+window. His answers: a shop's rows from its own pages (250 a page, its
+filters, sort and converted price kept); a search parameter the API cannot
+express is dropped AND said; a reader of its own for list links, collection
+and wantlist too; Discogs' item text split AND kept whole. After his live
+test: a listing page and its links (below), and the filter searches worked
+once the `@include` was the new one.
+
+**Probe** (`scripts/probe-dg-user-seller-search.py`, no token;
+Env: 2026-11-10T22:48:57+01:00 · vzell-lap · WSL2 · n/a · n/a; the
+`--search-more` round 23:04, `--listing 4466508653` 23:26):
+
+- `database/search`: `style=Rock & Roll` 381,029 (the page: 381,026);
+  `decade=1970` is IGNORED (the same count), `year=1970-1979` works
+  (40,364), `year=1975` 4,082; `sort=title|year|have` with `sort_order`
+  each answer in their own order (`have` was believed unsupported in the
+  mockup, tab C); a second `style` is ignored (the count of the first
+  alone); an empty `q=` is harmless.
+- `users/vzell/contributions` takes the page's `sort`/`sort_order`;
+  `users/vzell/submissions` counted 638, as the page (642 on 2026-10-18).
+- `users/<name>/inventory` and `marketplace/listings/<id>` answer without a
+  token. A listing's `price` is converted for an anonymous request (USD),
+  `original_price` is the seller's; `original_shipping_price` is empty.
+
+**dg-user-list** gains `submissions` and `contributions`
+(`_DG_USER_LIST_PATH_RE`, `_dgUserListKind()`). The submissions page is the
+browser view (`table#browser`: the scroll unlock applies); its count is the
+short pager (`#browser_tdl_items_pager_short`). A contributions page sorts
+by a column Discogs remembers without the URL saying so: `_dgContribSort()`
+reads the URL's sort, else `a.sortable_link_selected` (its `title` says the
+direction; its href is the OTHER direction). The submissions page's `q` has
+no API counterpart: `_dgUserListDropped()` names it in the hover text and as
+`features.dgNote` — a `p.mb-dg-note` under the list heading
+(`applyDgToTable()`), kept there in multi mode by `keepH2Intro`.
+
+**dg-seller**: `_dgSellerToHtml()`; the listing row's columns are
+`_dgMpRowParts()`, shared with dg-sell (whose output is unchanged:
+discogs-sell.spec.js). `_dgMpSplitItem()`: artist before the first " - ",
+the format in the LAST parentheses at the end. The page URLs and the count
+are dg-sell's (`_dgSellPageUrl()`, `_dgSellSize()`). `_dgSellerEmpty()`:
+`p.no_marketplace_results`.
+
+**dg-search** by filters: `_extDgSearchMap()` (also the reader's key) maps
+`genre|style|format|country[_exact]`, `year`, `decade` (alone: a range) and
+the sort; anything else is `dropped` (`_extDgSearchDroppedText()`: hover
+text, `dgNote`, the card's "Not applied"). A `q` search's key is unchanged.
+The `@include` takes `q` OR one of these filters.
+
+**dg-listing**: a Next.js page (`<main>`, the gate lets it in by path, as
+the search). `_dgListingPageCount()` asks the listing (`_dgListing`), then
+its release (kept in `_dgTexts`); the page is `_dgReleaseTracksHtml()`, the
+head `_dgListingHeadSpec()` = the release's plus a "For sale" card, whose
+shipping and total are the page's own (`_dgListingLivePrices()`: empty on a
+disk load).
+
+**Readers.** `dgulist` (`_EXT_DGL_KINDS`, list `ulist` in `_EXT_DG_LISTS`
+with a `rowsOf` hook in `_extDgListLoad()`: a shop is `listings`, the
+submissions an object of three lists) and `dglisting` (window: the release
+target `_extDgListingRelTarget()`, loaded by the window, its parts from
+`_extDiscogsWindow()`; clicks in them are `_extDiscogsAreaClick()` with the
+release's target). The user window's "On Discogs" gains For sale.
+
+**Known differences from the mockup:** a sort by Have is kept (the probe
+showed the API takes it); the list window's left column is the user's lists
+only (the profile facts are in the user's own window); the shop's window
+lists the API's inventory (price as listed, no converted price — the
+pageType has it).
+
+**Tests:** `discogs-user-lists.spec.js`, `discogs-seller.spec.js`,
+`discogs-seller.mobile.spec.js`, `discogs-search-page.spec.js` (the filter
+describe), `discogs-user-list-reader.spec.js`, `discogs-listing.spec.js`,
+`sl-include-regex.spec.js`; fixtures `dg-contributions.html`,
+`dg-user-submissions.html`, `dg-seller-profile[-empty].html`,
+`dg-search-facets.html`, `dg-listing.html` (scripts/build-discogs-fixtures.py
+from debug/d-*.html) and the `ext-discogs-*` captures named in
+`scripts/capture-ext-fixtures.py` (2026-11-10). Mutations:
+`scripts/mutations/dg-user-seller-search.json`.
 
 ## Known differences from the mockup (raised with vzell)
 
