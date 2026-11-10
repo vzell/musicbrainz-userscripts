@@ -4,9 +4,45 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1763 versions; the month pages hold all of them.
+This page shows the newest 100 of 1768 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1597 — 2026-11-10
+
+**🚀 Feature**
+
+- A Discogs Marketplace listing (/shop/item/…, where a /sell/item/… link takes you) gets a button: "Show all tracks". It shows the listed release the way a release page's Tracks button does: a sub-table per disc or record with the credits as columns, and the release's notes, facts and images above. A "For sale" card comes first in the facts: the media and sleeve condition, the price as listed, the page's own shipping and total, the seller (their shop) with their rating, where it ships from, the seller's comments and when it was listed. Two requests: the listing and its release.
+- Links to a listing (the Item column of a seller's shop and of a release's Marketplace table, and Discogs' own pages) now have link previews. The card shows the release, the price as listed, the conditions and the seller with their rating, from one request. The window adds where it ships from, the comments and when it was listed, and the release's tracklist, credits and images (one more request). The release and the seller's shop open in the same window.
+
+
+## 9.99.1596 — 2026-11-10
+
+**🚀 Feature**
+
+- Links to a Discogs user's submissions, contributions, collection or wantlist, and to a seller's shop, now have link previews, on Discogs, MusicBrainz and the other supported sites. The card shows how many entries there are and the newest three (for a shop also the seller's rating and where it ships from), from one request. The window shows 25 rows in a table you can filter and sort, with "Load 25 more", and links to the user's other lists. The links in a Discogs user's window (Contributions, Submissions, Collection, Wantlist, and the new For sale) now open in the same window. Mockup: https://claude.ai/artifact/2gnX1gagFEHTCC2LsFEn6n
+
+
+## 9.99.1595 — 2026-11-10
+
+**🚀 Feature**
+
+- Discogs searches by the page's filters, without a search text (for example /search?style\_exact=Rock+%26+Roll, ?format\_exact=Vinyl or ?decade=1970&year=1975), now get the "Show all results" button too. The style, genre, format, country, year and decade are sent to Discogs' API; a decade without a year is asked as its ten years. The sort by title, year or Have is kept. Anything the API cannot ask (another sort, a second style) is left out, and the button's hover text and a note above the table say what was left out. Links to such searches get the search card and window too.
+
+
+## 9.99.1594 — 2026-11-10
+
+**🚀 Feature**
+
+- A Discogs seller's shop (/seller/&lt;name&gt;/profile) gets a button: "Show everything for sale". It reads every listing from the shop's own pages, 250 a page, with the page's filters (format, price range, the shop search) and its sort. Discogs' item text is split into Artist, Title and Format, and also kept whole in the Item column, which links the listing. The other columns: the release's image (with the image card and viewer), each label, Cat\#, the community's rating and Have and Want, the media and sleeve condition, the seller's comments, where it ships from, the price as listed, the shipping, and the price in your currency. An empty shop has no button.
+
+
+## 9.99.1593 — 2026-11-10
+
+**🚀 Feature**
+
+- A Discogs user's contributions page (/contributions?user=&lt;name&gt;) and submissions page (/user/&lt;name&gt;/submissions) each get a button. It shows the same list as the matching button on the user's page, read from Discogs' API. Contributions come in the order the page shows them (by label, for example), whether or not the URL names it. On the submissions page, the page's own search box has no counterpart in the API: with a search in the URL, every submission is still read, and the button's hover text and a note above the tables say so. The submissions page's locked scrolling is unlocked, as on a list's submissions page.
+
 
 ## 9.99.1592 — 2026-11-10
 
@@ -852,46 +888,6 @@ This page shows the newest 100 of 1763 versions; the month pages hold all of the
 
 - discogs.com history pages: "Show the changes and the diff" read only the first page of a longer history, which holds the oldest changes. It now reads every page.
 - An artist's or label's edit history: the diff of a change came out empty, on the history page and in the preview window. It now shows each field (Real Name, Profile, Sites, …), old and new.
-
-
-## 9.99.1497 — 2026-10-29
-
-**🐛 Fix**
-
-- Discogs windows, Videos: the "Playing" label under the player no longer runs into "Video &lt;id&gt;", and each video's title has its proper gap after its ▶ Play tile.
-
-
-## 9.99.1496 — 2026-10-29
-
-**🐛 Fix**
-
-- A long text cell (an editor profile's Bio, an Annotation, edit notes) in a sub-table that starts collapsed now gets its ▶ more toggle when the sub-table is opened. Before, its text was cut off after a few lines with no way to read the rest (reported on https://musicbrainz.org/user/atj).
-
-
-## 9.99.1495 — 2026-10-28
-
-**🚀 Feature**
-
-- Link previews: a link to the genre list (/genres) has a card (how many genres, the first and the last) and, on Space, a window with every genre in a table: a filter, a chip per letter (0–9, A … Z, \#) and each genre opening its own card.
-- Once the genre list has been read, a tag card names its genre's disambiguation, and an editor's Tags window links each of their genres to its genre page (a new "Genre page" column). Only a window asks for the list, never a hover.
-
-
-## 9.99.1494 — 2026-10-28
-
-**✨ Improve**
-
-- Link previews: an artist's sort name is now the first line of the artist card ("Sort name  Iglesias, Julio"), when it differs from the name, instead of a separate "Link title" box above the card.
-
-**🐛 Fix**
-
-- Link previews: a label link's box above the card said "Sort name" for what is really the label's disambiguation (e.g. Legacy: "reissue division of Sony Music Entertainment"). The box is gone; the card already shows the disambiguation under the name.
-
-
-## 9.99.1493 — 2026-10-28
-
-**🚀 Feature**
-
-- Link previews: the entity icon before a MusicBrainz page's title (the release, release group, artist… icon left of the h1) now shows that kind's documentation, as the icon before each step of the window's path does. Rest on it for the Documentation card; a click or Space reads the page in the window, Ctrl-click opens it in a new tab. Only while the MusicBrainz link previews are on.
 
 
 ---
