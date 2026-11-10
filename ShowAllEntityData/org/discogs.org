@@ -151,7 +151,6 @@ when filtering on Discogs detail popups, the filter string should get highlighte
 On a D master IP the release image before a release name should get our standard image handling for releases, by displaying
 images initally (+ full "Space" handling)
 
-
 * DONE release history image references
 
 1.)
@@ -202,68 +201,7 @@ https://www.discogs.com/release/1313481-Born-To-Run/images/update it's POH is mi
 @debug/d-images-update-POH.html - POH - https://www.discogs.com/release/1313481-Born-To-Run/images/update
 #+end_example
 
-
-* TODO add support for discogs pages
-** my BS edits
-** master and releases
-
-
-* TODO add support for the Discogs "Apple Music Audio Player"
-
-add support for the Discogs "Apple Music Audio Player" - https://support.discogs.com/hc/en-us/articles/17114733929229-Release-Page-Guide
-
-
-* TODO on D release PTs do not show sub-tables which have zero rows initially
-
-on D release PTs do not show sub-tables which have zero rows initially
-
-
-* TODO overwhole of the Discogs release track rendering in the popup viewer
-
-overwhole of the Discogs release track rendering in the popup viewer
-
-#+begin_example
-https://www.discogs.com/release/31003849-Bruce-Springsteen-The-E-Street-Band-Travel-In-Fear - release with subsection header in a tracklist
-https://www.discogs.com/release/15993782-Bruce-Springsteen-Tunnel-Of-Love - no track credits
-https://www.discogs.com/release/30198722-MGV-Drabenderh%C3%B6he-120-Jahre-M%C3%A4nnergesangverein-Drabenderh%C3%B6he - some track credits
-#+end_example
-
-
-* TODO on D PTs, the main image + the information from the right beside the image should get it's own handling on the FRP
-
-on Discogs supported PTs, the main image + the information from the right beside the image should get it's own handling
-on the FRP
-
-1.)
-
-The image should be rendered in front of the entity name on the FRP
-
-2.)
-
-the information right beside the image should get it's own sub-section "Relationships" (should be the first one before
-the e.g. "Tracklist" on release pages)
-
-
-* TODO check discogs artist pages if really ALL masters are present + implement master->release(s) drilldown
-
-
-* TODO The Discogs artist FRP needs an overwhole
-
-1.)
-
-It's not yet clear how the data is derived, explain
-
-2.)
-
-The "Releases" sub-table should get another column "Release-subtype" e.g. "Album", "Single & EP", "Compilation", "Video" and "Misc"
-
-* TODO On discogs submission page when hovering a release in the left sidebar, ONLY the newest change should be shown in a POH diff view
-
-On discogs https://www.discogs.com/submissions?mode=list&id=599283#mode=list&id=599283&item=%2Frelease%2F1752289-Born-In-The-USA%2Fhistory
-when hovering a release in the left sidebar, ONLY the newest change should be shown in a POH diff view
-
-
-* TODO the discogs master release PT should be enhanced the same way what we have done for the discogs release PT
+* DONE the discogs master release PT should be enhanced the same way what we have done for the discogs release PT
 
 the discogs master release PT should be enhanced the same way what we have done for the discogs release PT
 
@@ -374,4 +312,94 @@ To try it:
 - https://www.discogs.com/master/27194 (The River)
 
 Press Tracks. When it looks right, tell me to commit and push.
+
+
+* TODO add support for discogs pages
+** my BS edits
+** master and releases
+
+* TODO add support for the Discogs "Apple Music Audio Player"
+
+add support for the Discogs "Apple Music Audio Player" - https://support.discogs.com/hc/en-us/articles/17114733929229-Release-Page-Guide
+
+* TODO on D release PTs do not show sub-tables which have zero rows initially
+
+on D release PTs do not show sub-tables which have zero rows initially
+
+* TODO overwhole of the Discogs release track rendering in the popup viewer
+
+overwhole of the Discogs release track rendering in the popup viewer
+
+#+begin_example
+https://www.discogs.com/release/31003849-Bruce-Springsteen-The-E-Street-Band-Travel-In-Fear - release with subsection header in a tracklist
+https://www.discogs.com/release/15993782-Bruce-Springsteen-Tunnel-Of-Love - no track credits
+https://www.discogs.com/release/30198722-MGV-Drabenderh%C3%B6he-120-Jahre-M%C3%A4nnergesangverein-Drabenderh%C3%B6he - some track credits
+#+end_example
+
+* TODO on D PTs, the main image + the information from the right beside the image should get it's own handling on the FRP
+
+on Discogs supported PTs, the main image + the information from the right beside the image should get it's own handling
+on the FRP
+
+1.)
+
+The image should be rendered in front of the entity name on the FRP
+
+2.)
+
+the information right beside the image should get it's own sub-section "Relationships" (should be the first one before
+the e.g. "Tracklist" on release pages)
+
+* TODO check discogs artist pages if really ALL masters are present + implement master->release(s) drilldown
+* TODO The Discogs artist FRP needs an overwhole
+
+1.)
+
+It's not yet clear how the data is derived, explain
+
+2.)
+
+The "Releases" sub-table should get another column "Release-subtype" e.g. "Album", "Single & EP", "Compilation", "Video" and "Misc"
+
+* TODO On discogs submission page when hovering a release in the left sidebar, ONLY the newest change should be shown in a POH diff view
+
+On discogs https://www.discogs.com/submissions?mode=list&id=599283#mode=list&id=599283&item=%2Frelease%2F1752289-Born-In-The-USA%2Fhistory
+when hovering a release in the left sidebar, ONLY the newest change should be shown in a POH diff view
+
+
+* TODO make a nice mockup for a release with subheaders
+
+#+begin_example
+@debug/d-release-with-subheaders.html - IP - https://www.discogs.com/release/2012001-Manfred-Manns-Earth-Band-Bootleg-Archives-Volumes-1-5
+#+end_example
+
+
+ 
+* TODO add more Discogs native PTs + POHs (see skills)
+
+Add more Discogs native PTs + POHs (see skills) for the following site pages:
+
+All in @debug/
+
+#+begin_example
+@debug/d-contributions-user.html - IP - https://www.discogs.com/contributions?user=vzell - User: vzell - contributions
+@debug/d-seller-profile.html - IP - https://www.discogs.com/seller/disc-kid/profile - User: disc-kid
+@debug/d-seller-profile-empty.html - IP - https://www.discogs.com/seller/vzell/profile - User: vzell
+@debug/d-search - IP - https://www.discogs.com/search?style_exact=Rock+%26+Roll&sort=title%2Casc&page=1&limit=250&layout=med - generic search page
+#+end_example
+
+other search examples URLs are:
+
+#+begin_example
+https://www.discogs.com/search?format_exact=Vinyl
+https://www.discogs.com/search?decade=1970&year=1975&layout=med&sort=relevance%2Cdesc&page=1
+#+end_example
+
+Additionally currently the following discogs submissions page has a PT already, e.g. https://www.discogs.com/submissions?mode=list&id=599283
+The following discogs user specific submissions page is not yet supported
+
+#+begin_example
+@debug/d-user-submissions.html - IP  - https://www.discogs.com/user/vzell/submissions - Discogs user specific submission page
+#+end_example
+
 
