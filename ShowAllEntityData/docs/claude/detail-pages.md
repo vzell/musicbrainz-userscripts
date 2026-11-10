@@ -3399,6 +3399,40 @@ Tests: `tests/fixtures/discogs-links.spec.js`. Fixtures
 `dg-user-vzell.html`, `dg-release-history-diff.html`. Mutations:
 `scripts/mutations/discogs-links.json`.
 
+### Discogs user lists, shops, listings and filter searches (2026-11-10)
+
+feature/dg-user-seller-search; mockup
+https://claude.ai/artifact/2gnX1gagFEHTCC2LsFEn6n, tab D; the full account
+is docs/claude/discogs.md, "Contributions, user submissions, a shop, filter
+searches, a listing". Two readers, placed before `dguser` (none of their
+paths is `/user/<name>` exactly), each with its own version constant:
+
+- **`dgulist`** (`/user/<name>/submissions|collection|wantlist`,
+  `/contributions?user=<name>`, `/wantlist?user=<name>`,
+  `/seller/<name>/profile`; `_EXT_DGL_KINDS`, `_EXT_DGL_VERSION`): page 1 of
+  the API's list, 25 rows, in the record (the card: the count and the newest
+  three, `cardFacts` = all, at most `_EXT_CARD_FACTS` 4: the user is in the
+  title); the window's rows in the shared Compact table (`dg-ulist`), "Load
+  25 more" through `_EXT_DG_LISTS.ulist` and `_extDgListLoad()`, whose
+  `rowsOf` hook (new, optional) reads an answer whose rows are not one field.
+- **`dglisting`** (`/sell/item/<id>`, `/shop/item/<id>`, one key:
+  `/sell/item/<id>`; `_EXT_DGLI_VERSION`): `marketplace/listings/<id>`, the
+  price as the seller listed it (`original_price`; `price` is converted for
+  an anonymous request). The window loads the release as the `discogs`
+  reader's own target (`_extDgListingRelTarget()`, by `start` OR while it has
+  no state, the rule above) and shows `_extDiscogsWindow()`'s parts; clicks
+  in them go to `_extDiscogsAreaClick()` with the RELEASE's target, so a
+  track's credits and "Show all track credits" keep their state.
+- **`dgsearch`** also takes a search by the page's filters
+  (`_extDgSearchMap()`): its key is `q=` + the mapped filters; a `q` search's
+  key is what it was. The card names what was not applied.
+
+The user window's "On Discogs" links (Contributions, Submissions,
+Collection, Wantlist, and For sale, new) now drill: `dgulist` takes them.
+Tests: `discogs-user-list-reader.spec.js`, `discogs-listing.spec.js`,
+`discogs-search-page.spec.js`; mutations
+`scripts/mutations/dg-user-seller-search.json`.
+
 ## The Springsteen sites across hosts (org/iframe.org "* generalize to URLs", U4)
 
 Two readers in `_EXT_READERS`, before the generic one; the four hosts are in

@@ -1896,7 +1896,7 @@ an import brings your deletions back.
   and lyrics index, the **jungleland.it**
   bootleg artwork list, the **brucespringsteen.it** record database and
   the **Brucebase** song list, year pages, Relations and Recent changes, and
-  **discogs.com**'s master, release, artist, label, submissions, user, ratings, collection, wantlist, history (release, master, artist, label), images (release, master, artist, label), release Marketplace and search pages, and
+  **discogs.com**'s master, release, artist, label, submissions, user, ratings, collection, wantlist, contributions, user submissions, history (release, master, artist, label), images (release, master, artist, label), release Marketplace, seller shop, listing and search pages, and
   the **Internet Archive**'s (archive.org) search pages, and **setlist.fm**'s
   lists of a venue's or an artist's setlists and its searches for an artist's
   setlists — each site with its
@@ -3269,9 +3269,23 @@ once and without Tampermonkey asking first:
   Space; from MusicBrainz it may meet Discogs' browser check) on the right,
   and their pages on Discogs on the left.
 - A Discogs **search** (`discogs.com/search/?q=…`, e.g. a label cell's link
-  on the Discogs pages): how many results; the window lists them on the
-  right, 25 at a time (*Load 25 more*, one request each), each a link. No
-  token needed.
+  on the Discogs pages, or a search by style, genre, format, country, year
+  or decade): how many results; the window lists them on the right, 25 at a
+  time (*Load 25 more*, one request each), each a link. What the API cannot
+  ask is named in the card. No token needed.
+- A Discogs user's **submissions**, **contributions**, **collection** or
+  **wantlist**, or a **seller's shop** (`/seller/<name>/profile`): the card
+  shows how many entries and the newest three (a shop also the seller's
+  rating and where it ships from); the window lists them 25 at a time in a
+  table you can filter and sort (*Load 25 more*), with the user's other
+  lists on the left. One request each, no token needed. A user's window
+  opens these lists in place too.
+- A Discogs **listing** (`/sell/item/<id>`, `/shop/item/<id>`, e.g. a shop's
+  Item column): the card shows the release, the price as listed, the
+  conditions and the seller with their rating; the window adds where it
+  ships from, the comments and when it was listed, and the release's
+  tracklist, credits and images (one request more). The release and the
+  seller's shop open in the same window.
 - A **support.discogs.com** guideline (e.g. "RSG §6.12.2" in a history note):
   the article from Discogs' help centre, scrolled to the section the link
   names and marked; a link to another section of it scrolls there.
@@ -4059,7 +4073,7 @@ twice.
 </details>
 
 <details>
-<summary>discogs.com: masters, releases, artists, labels, submissions, users and ratings</summary>
+<summary>discogs.com: masters, releases, artists, labels, submissions, users, ratings, shops, listings and searches</summary>
 
 With ⚙️ Settings → *💿 Discogs* → *Enable on discogs.com* on (on by
 default), a master, release, artist or label page on discogs.com gets a
@@ -4181,12 +4195,18 @@ section of its own above Discogs' page, with the toolbar and these buttons:
   Secondary) and **W × H** as Discogs serves it, from Discogs' API in one
   request. Who uploaded an image and when is known for a release's images
   only.
-- **Search — Show all results:** a search page (`/search?q=…`): its results
-  in one table (**Type**, **Title**, **Format**, **Label**, **Year**; the
-  thumbnails with a Discogs token only), from Discogs' API, 100 a request.
-  Discogs' API gives at most the first 10,000 results of a search; the
-  button says so when there are more. Before you press it, the results
-  Discogs shows already have their cards: rest on a title.
+- **Search — Show all results:** a search page (`/search?q=…`), or a search
+  by the page's filters without a search text (`/search?style_exact=…`,
+  `?format_exact=Vinyl`, `?decade=1970&year=1975`): its results in one table
+  (**Type**, **Title**, **Format**, **Label**, **Year**; the thumbnails with
+  a Discogs token only), from Discogs' API, 100 a request. The style, genre,
+  format, country, year and decade are sent to the API (a decade without a
+  year as its ten years), and the sort by title, year or Have is kept.
+  Anything else the page asks (another sort, a second style) the API cannot
+  ask: it is left out, and the button's hover text and a note above the
+  table say what. Discogs' API gives at most the first 10,000 results of a
+  search; the button says so when there are more. Before you press it, the
+  results Discogs shows already have their cards: rest on a title.
 - **For sale — Show every listing:** a release's Marketplace page
   (`/sell/release/<id>`): every listing in one table, read from the page's
   own pages, 250 at a time, in the order you chose there: the **Item**,
@@ -4194,12 +4214,34 @@ section of its own above Discogs' page, with the toolbar and these buttons:
   **Seller** with their **Rating** and number of **Ratings**, **Ships from**,
   the **Price** as listed, its **Shipping**, and **About**: the price in your
   currency as Discogs converts it, the column to compare.
+- **Seller — Show everything for sale:** a seller's shop
+  (`/seller/<name>/profile`): every listing in one table, read from the
+  shop's own pages, 250 at a time, with the page's filters (format, price
+  range, the shop search) and its sort. Discogs' item text ("Bob Dylan - Bob
+  Dylan (LP, Album, Mono, RE, 180)") is split into **Artist**, **Title** (the
+  release) and **Format**, and kept whole as **Item** (the listing). Also: the
+  release's image (card and viewer), **Label**, **Cat#**, the community's
+  **Rated**, **Have** and **Want**, **Media**, **Sleeve**, **Comments**,
+  **Ships from**, **Price**, **Shipping** and **About**. An empty shop has no
+  button.
+- **Listing — Show all tracks:** one listing (`/shop/item/<id>`, where a
+  `/sell/item/<id>` link takes you): the listed release as a release page's
+  Tracks button shows it (a sub-table per disc or record, the credits as
+  columns, its notes, facts and images above), with a **For sale** card
+  first: the conditions, the price as listed, the page's shipping and total,
+  the seller and their rating, where it ships from, the comments and when it
+  was listed. Two requests: the listing and its release.
 - **Collection / Wantlist — Show the collection / Show the wantlist:** a
   user's collection or wantlist as a page of its own
   (`/user/<name>/collection`, `/user/<name>/wantlist`, `/wantlist?user=<name>`,
-  and your own `/mywantlist`): the same table as the user page's button for
-  it, read from Discogs' API. The button names how many entries the page
-  counts, and does not show when the page says the list is empty.
+  and your own `/mywantlist`), and their contributions and submissions pages
+  (`/contributions?user=<name>`, `/user/<name>/submissions`): the same table
+  as the user page's button for it, read from Discogs' API. The button names
+  how many entries the page counts, and does not show when the page says the
+  list is empty. Contributions come in the order the page shows them. The
+  submissions page's own search box has no counterpart in the API: with a
+  search in the URL, every submission is read, and the button and a note
+  above the tables say so.
 - **Ratings — Show all ratings:** a user's ratings page
   (`/users/ratings/<name>`): every release they rated in one table: a
   thumbnail, **Artist**, **Title**, **Format**, **Label**, **Cat#**, **Year**,

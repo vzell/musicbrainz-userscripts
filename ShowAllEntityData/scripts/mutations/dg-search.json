@@ -4,8 +4,8 @@
     "why": "No #app and no #page_content: without the search arm the gate takes it for Cloudflare's check.",
     "edits": [
       {
-        "find": "        !(_DG_SEARCH_PATH_RE.test(window.location.pathname) && document.querySelector('body main'))) {",
-        "replace": "        !(false && document.querySelector('body main'))) {"
+        "find": "        !((_DG_SEARCH_PATH_RE.test(window.location.pathname) || _DG_LISTING_PATH_RE.test(window.location.pathname)) &&",
+        "replace": "        !((false || _DG_LISTING_PATH_RE.test(window.location.pathname)) &&"
       }
     ],
     "spec": "tests/fixtures/discogs-search-page.spec.js",

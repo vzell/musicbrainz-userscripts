@@ -29098,3 +29098,32 @@ Addendum, same day (vzell's browser check: both items OK live; two more):
    Tampermonkey never injected the script there; sl-include-regex.spec.js even listed `…/images/history?rev=7`
    among the pages NOT injected. vzell chose "every revision": pageType `dg-image-revisions` (its own `@include`
    line, the gate, `dg-release` excluding it now).
+
+## 2026-11-10 — Discogs contributions, user submissions, shops, filter searches, listings (feature/dg-user-seller-search)
+
+Env: 2026-11-10T22:48:57+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.58.1) · Playwright Chromium, no Tampermonkey (GM stubs); vzell's live check: his browser, versions not given · probes: n/a
+
+Snapshots (vzell, logged in): debug/d-contributions-user.html (`/contributions?user=vzell`), debug/d-user-submissions.html
+(`/user/vzell/submissions`, the browser view), debug/d-seller-profile.html and -empty.html (`/seller/<name>/profile`),
+debug/d-search.html (`/search?style_exact=Rock+%26+Roll&sort=title%2Casc…`), and after his first live test
+debug/d-sell-release.html and -expanded.html (`/shop/item/4466508653`). The full account: docs/claude/discogs.md,
+"Contributions, user submissions, a shop, filter searches, a listing".
+
+1. **Probe before mapping a search** (scripts/probe-dg-user-seller-search.py): the API IGNORES `decade` (same count
+   with and without), but takes `year=1970-1979`; it sorts by title, year AND have (the mockup assumed have was not
+   possible); a second `style` is ignored. So a decade alone is asked as its range and only what the probe showed
+   working is sent; the rest is named as not applied (vzell).
+2. **"The search pages have no button" in vzell's first live test** was the old `@include` (it needed `q=`): widened
+   in the same session; his second test confirmed it. Nothing in the code was wrong.
+3. **A contributions page sorts by a column the URL does not name** (Discogs remembers it): read from
+   `a.sortable_link_selected`, whose `title` says the direction while its href is the OTHER direction.
+4. **`/sell/item/<id>` lands on `/shop/item/<id>`**, a Next.js page (`<main>`, no `#app`) — new pageType
+   `dg-listing` and reader `dglisting`; the listing API's `price` is converted (USD) for an anonymous request, so
+   the card shows `original_price`; the shipping is not in the API for an anonymous request, the head reads it
+   from the page.
+5. Five mutation finds of other lists moved with the code (dg-search, dg-sell ×3, discogs-links) and were
+   repointed; `check-mutation-finds.py`: 0 stale.
+
+Tests: every Discogs fixture spec and sl-include-regex.spec.js, 179/180 on the first batch (13 m 56 s, vzell-lap; the
+one failure the old "/sell/item is not injected" case, now dg-listing's, rewritten), then each new spec green. Not
+run yet: the new mutation list (it edits the live userscript while vzell tests) and `test:full` (the merge gate).

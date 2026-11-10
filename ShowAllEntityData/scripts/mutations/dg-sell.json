@@ -4,8 +4,8 @@
     "why": "An older page without #app, like Cloudflare's check: without its path in the gate the script stops there.",
     "edits": [
       {
-        "find": "           _DG_IMGREV_PATH_RE.test(window.location.pathname) || _DG_SELL_PATH_RE.test(window.location.pathname)) &&",
-        "replace": "           _DG_IMGREV_PATH_RE.test(window.location.pathname) || false) &&"
+        "find": "           _DG_IMGREV_PATH_RE.test(window.location.pathname) || _DG_SELL_PATH_RE.test(window.location.pathname) ||",
+        "replace": "           _DG_IMGREV_PATH_RE.test(window.location.pathname) || false ||"
       }
     ],
     "spec": "tests/fixtures/discogs-sell.spec.js",
@@ -30,8 +30,8 @@
     "why": "Each grade carries a hidden explanation (\"A nearly perfect disc…\"): the cell is the grade only.",
     "edits": [
       {
-        "find": "                c.querySelectorAll('.has-tooltip').forEach(n => n.remove());\n                media = t(c);",
-        "replace": "                media = t(c);"
+        "find": "            c.querySelectorAll('.has-tooltip').forEach(n => n.remove());\n            media = t(c);",
+        "replace": "            media = t(c);"
       }
     ],
     "spec": "tests/fixtures/discogs-sell.spec.js",
@@ -43,8 +43,8 @@
     "why": "The column is the amount in the reader's currency, comparable across sellers.",
     "edits": [
       {
-        "find": "            const about = conv ? _dpText(Array.from(conv.childNodes).filter(n => n.nodeType === 3).map(n => n.nodeValue).join(' ')).replace(/^about\\s+/i, '') : '';",
-        "replace": "            const about = conv ? t(conv) : '';"
+        "find": "        const about = conv ? _dpText(Array.from(conv.childNodes).filter(n => n.nodeType === 3).map(n => n.nodeValue).join(' ')).replace(/^about\\s+/i, '') : '';",
+        "replace": "        const about = conv ? t(conv) : '';"
       }
     ],
     "spec": "tests/fixtures/discogs-sell.spec.js",

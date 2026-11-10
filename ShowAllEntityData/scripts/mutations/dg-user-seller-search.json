@@ -1,0 +1,288 @@
+[
+  {
+    "name": "a contributions page is asked in the default order",
+    "why": "The page shows Label ▲; the API sorts the same way, so the rows must too.",
+    "edits": [
+      {
+        "find": "        const sort = kind === 'contributions' && _dgUserListKind() === 'contributions' ? _dgContribSort() : '';",
+        "replace": "        const sort = '';"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-user-lists.spec.js",
+    "grep": "contributions: one button",
+    "expect": "fail"
+  },
+  {
+    "name": "the column the page marks as sorted is not read",
+    "why": "Discogs remembers the sort without putting it in the URL.",
+    "edits": [
+      {
+        "find": "        if (!sort) {\n            const a = document.querySelector('table.release_list_table thead a.sortable_link_selected[href]');",
+        "replace": "        if (false) {\n            const a = document.querySelector('table.release_list_table thead a.sortable_link_selected[href]');"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-user-lists.spec.js",
+    "grep": "contributions: one button",
+    "expect": "fail"
+  },
+  {
+    "name": "the submissions page's short pager is not counted",
+    "why": "Without its \"1-100 of 638\" the button cannot name the cost.",
+    "edits": [
+      {
+        "find": "nav.pagination strong.pagination_total, #browser_tdl_items_pager_short",
+        "replace": "nav.pagination strong.pagination_total"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-user-lists.spec.js",
+    "grep": "submissions: one button",
+    "expect": "fail"
+  },
+  {
+    "name": "the page's q is not named under the heading",
+    "why": "vzell: a filter the API cannot express is dropped AND said.",
+    "edits": [
+      {
+        "find": "                dgNote: () => _dgUserListDropped(),",
+        "replace": "                dgNote: () => '',"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-user-lists.spec.js",
+    "grep": "submissions with the page",
+    "expect": "fail"
+  },
+  {
+    "name": "the note is not placed under the heading",
+    "why": "applyDgToTable() appends it after the h2; a regression would put it after the table. A single table shows it: a multi render re-places the note under the heading itself (the user-lists spec cannot see it).",
+    "edits": [
+      {
+        "find": "        if (note) {\n            const p = document.createElement('p');\n            p.className = 'mb-dg-note';\n            p.textContent = note;\n            root.append(p);\n        }\n        root.append(table);",
+        "replace": "        root.append(table);\n        if (note) {\n            const p = document.createElement('p');\n            p.className = 'mb-dg-note';\n            p.textContent = note;\n            root.append(p);\n        }"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-search-page.spec.js",
+    "grep": "a sort the API cannot",
+    "expect": "fail"
+  },
+  {
+    "name": "the shop page is not let past the #app gate",
+    "why": "An older page without #app: without its path the script stops there.",
+    "edits": [
+      {
+        "find": "           _DG_SELLER_PATH_RE.test(window.location.pathname)) &&",
+        "replace": "           false) &&"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-seller.spec.js",
+    "grep": "19 pages at 250",
+    "expect": "fail"
+  },
+  {
+    "name": "the format is the item's FIRST parentheses",
+    "why": "A title may have its own: \"Love Forever (Demo Recordings 1966-68) (LP, …)\".",
+    "edits": [
+      {
+        "find": "        const f = /^(.*\\S)\\s+\\(([^()]*)\\)$/.exec(rest);",
+        "replace": "        const f = /^(.*?\\S)\\s+\\((.*)\\)$/.exec(rest);"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-seller.spec.js",
+    "grep": "19 pages at 250",
+    "expect": "fail"
+  },
+  {
+    "name": "an empty shop keeps its button",
+    "why": "vzell: no button when the shop is empty (\"No items for sale found\").",
+    "edits": [
+      {
+        "find": "                showIf: () => !_dgSellerEmpty() && (",
+        "replace": "                showIf: () => true || ("
+      }
+    ],
+    "spec": "tests/fixtures/discogs-seller.spec.js",
+    "grep": "an empty shop",
+    "expect": "fail"
+  },
+  {
+    "name": "the shop's pages drop the page's filter",
+    "why": "vzell: its filters and sort are kept.",
+    "edits": [
+      {
+        "find": "                pageRequest: (p) => ({ url: _dgSellPageUrl(p), toHtml: (text) => _dgSellerToHtml(text) }),",
+        "replace": "                pageRequest: (p) => ({ url: `https://www.discogs.com${window.location.pathname}?limit=250&page=${p}`, toHtml: (text) => _dgSellerToHtml(text) }),"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-seller.spec.js",
+    "grep": "a filtered shop",
+    "expect": "fail"
+  },
+  {
+    "name": "a decade is sent as decade (the API ignores it)",
+    "why": "Probe 2026-11-10: decade=1970 answered as if absent; year=1970-1979 works.",
+    "edits": [
+      {
+        "find": "            sub += `&year=${decade}-${Number(decade) + 9}`;",
+        "replace": "            sub += `&decade=${decade}`;"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-search-page.spec.js",
+    "grep": "a decade alone",
+    "expect": "fail"
+  },
+  {
+    "name": "a sort the API cannot ask is not named",
+    "why": "vzell: \"drop it, say so\".",
+    "edits": [
+      {
+        "find": "        } else if (sort && sort[1].toLowerCase() !== 'relevance') dropped.push(`sort \"${sp.get('sort')}\"`);",
+        "replace": "        } else if (false) dropped.push('');"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-search-page.spec.js",
+    "grep": "a sort the API cannot",
+    "expect": "fail"
+  },
+  {
+    "name": "a filter search has no button",
+    "why": "Only a q search had one before 2026-11-10.",
+    "edits": [
+      {
+        "find": "                    _extDgSearchMap(new URL(window.location.href)).facets,",
+        "replace": "                    false,"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-search-page.spec.js",
+    "grep": "style and title sort",
+    "expect": "fail"
+  },
+  {
+    "name": "a filter search link is not the search reader's",
+    "why": "The reader took q only.",
+    "edits": [
+      {
+        "find": "            (!!(u.searchParams.get('q') || '').trim() || _extDgSearchMap(u).facets);",
+        "replace": "            !!(u.searchParams.get('q') || '').trim();"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-search-page.spec.js",
+    "grep": "a decade alone",
+    "expect": "fail"
+  },
+  {
+    "name": "the list reader takes no link",
+    "why": "Its test is what lets a list or a shop link preview.",
+    "edits": [
+      {
+        "find": "            id: 'dgulist', kind: 'Discogs list', test: _extDgUListTest,",
+        "replace": "            id: 'dgulist', kind: 'Discogs list', test: () => false,"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-user-list-reader.spec.js",
+    "grep": "which links it takes",
+    "expect": "fail"
+  },
+  {
+    "name": "\"Load 25 more\" asks nothing",
+    "why": "The window must ask the next page.",
+    "edits": [
+      {
+        "find": "            _extDgListLoad(t, _extDgList('ulist', s.sub), ui.pages, { repaint: _dpDialog.repaint });",
+        "replace": "            void s;"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-user-list-reader.spec.js",
+    "grep": "a shop: the card",
+    "expect": "fail"
+  },
+  {
+    "name": "a list page whose rows are not one field is read as that field",
+    "why": "A shop is `listings`, submissions an object: rowsOf reads them.",
+    "edits": [
+      {
+        "find": "            const rows = spec.rowsOf ? (d ? spec.rowsOf(d, list.sub) : null) : d && d[spec.field];",
+        "replace": "            const rows = d && d[spec.field];"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-user-list-reader.spec.js",
+    "grep": "a shop: the card",
+    "expect": "fail"
+  },
+  {
+    "name": "the user window has no For sale link",
+    "why": "The shop is a list the user window links (2026-11-10).",
+    "edits": [
+      {
+        "find": "            `${link(`https://www.discogs.com/seller/${name}/profile`, 'For sale')}</div>`));",
+        "replace": "            '</div>'));"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-user-list-reader.spec.js",
+    "grep": "from the user window",
+    "expect": "fail"
+  },
+  {
+    "name": "the listing page is not let past the gate",
+    "why": "A Next.js page: its path must be named with the search's.",
+    "edits": [
+      {
+        "find": "        !((_DG_SEARCH_PATH_RE.test(window.location.pathname) || _DG_LISTING_PATH_RE.test(window.location.pathname)) &&",
+        "replace": "        !((_DG_SEARCH_PATH_RE.test(window.location.pathname)) &&"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-listing.spec.js",
+    "grep": "the page: one button",
+    "expect": "fail"
+  },
+  {
+    "name": "the head has no For sale card",
+    "why": "vzell: the listing in the release's head.",
+    "edits": [
+      {
+        "find": "        if (t === 'dg-listing') return _dgListingHeadSpec();",
+        "replace": "        if (t === 'dg-listing') return _dgReleaseHeadSpec();"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-listing.spec.js",
+    "grep": "the page: one button",
+    "expect": "fail"
+  },
+  {
+    "name": "the page's shipping and total are not read",
+    "why": "The API sends none to an anonymous request.",
+    "edits": [
+      {
+        "find": "            ['Price', price], ['Shipping', live.shipping], ['Total', live.total], ['Seller', sellerVal],",
+        "replace": "            ['Price', price], ['Seller', sellerVal],"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-listing.spec.js",
+    "grep": "the page: one button",
+    "expect": "fail"
+  },
+  {
+    "name": "a /shop/item link has its own key",
+    "why": "One listing, one request: both forms share /sell/item/<id>.",
+    "edits": [
+      {
+        "find": "        return `https://www.discogs.com/sell/item/${_EXT_DGLI_PATH_RE.exec(u.pathname)[1]}`;",
+        "replace": "        return u.href;"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-listing.spec.js",
+    "grep": "the reader: both",
+    "expect": "fail"
+  },
+  {
+    "name": "the listing window has no release tracklist",
+    "why": "vzell: the window shows the listing AND the release.",
+    "edits": [
+      {
+        "find": "        out.right.push(...rw.right);",
+        "replace": "        void rw.right;"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-listing.spec.js",
+    "grep": "the reader: both",
+    "expect": "fail"
+  }
+]

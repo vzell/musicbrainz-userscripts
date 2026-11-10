@@ -313,6 +313,58 @@ To try it:
 
 Press Tracks. When it looks right, tell me to commit and push.
 
+* DONE add more Discogs native PTs + POHs (see skills)
+** DONE initial
+
+Add more Discogs native PTs + POHs (see skills) for the following site pages:
+
+All in @debug/
+
+#+begin_example
+@debug/d-contributions-user.html - IP - https://www.discogs.com/contributions?user=vzell - User: vzell - contributions
+@debug/d-seller-profile.html - IP - https://www.discogs.com/seller/disc-kid/profile - User: disc-kid
+@debug/d-seller-profile-empty.html - IP - https://www.discogs.com/seller/vzell/profile - User: vzell
+@debug/d-search - IP - https://www.discogs.com/search?style_exact=Rock+%26+Roll&sort=title%2Casc&page=1&limit=250&layout=med - generic search page
+#+end_example
+
+other search examples URLs are:
+
+#+begin_example
+https://www.discogs.com/search?format_exact=Vinyl
+https://www.discogs.com/search?decade=1970&year=1975&layout=med&sort=relevance%2Cdesc&page=1
+#+end_example
+
+Additionally currently the following discogs submissions page has a PT already, e.g. https://www.discogs.com/submissions?mode=list&id=599283
+The following discogs user specific submissions page is not yet supported
+
+#+begin_example
+@debug/d-user-submissions.html - IP  - https://www.discogs.com/user/vzell/submissions - Discogs user specific submission page
+#+end_example
+
+** Decisions (also noted in the mockup):
+
+Decisions:
+1. Seller columns: Artist, Title and Format are split out of Discogs' one item text. Should I also keep the whole text as its own column? YES
+2. Collection and wantlist links: should they get the new card and window now? It's the same API lists at almost no extra cost. YES
+
+** DONE missing
+
+tested live OK so far, except:
+
+1.)
+
+Hyperlinks like e.g. https://www.discogs.com/sell/item/4466508653 on the IP/FRP of
+e.g. https://www.discogs.com/seller/disc-kid/profile which actually show up as e.g
+https://www.discogs.com/shop/item/4466508653 when clicked are not yet supported and also do not have POH support yet
+
+#+begin_example
+@debug/d-sell-release.html - IP - https://www.discogs.com/shop/item/4466508653
+@debug/d-sell-release-expanded.html - IP - https://www.discogs.com/shop/item/4466508653 - tracklist and credits expanded
+#+end_example
+
+2.)
+
+the https://www.discogs.com/search?.... pges do not yet have the action button
 
 * TODO add support for discogs pages
 ** my BS edits
@@ -369,37 +421,11 @@ when hovering a release in the left sidebar, ONLY the newest change should be sh
 
 * TODO make a nice mockup for a release with subheaders
 
+make a nice mockup for a release with subheaders
+
 #+begin_example
 @debug/d-release-with-subheaders.html - IP - https://www.discogs.com/release/2012001-Manfred-Manns-Earth-Band-Bootleg-Archives-Volumes-1-5
 #+end_example
 
 
  
-* TODO add more Discogs native PTs + POHs (see skills)
-
-Add more Discogs native PTs + POHs (see skills) for the following site pages:
-
-All in @debug/
-
-#+begin_example
-@debug/d-contributions-user.html - IP - https://www.discogs.com/contributions?user=vzell - User: vzell - contributions
-@debug/d-seller-profile.html - IP - https://www.discogs.com/seller/disc-kid/profile - User: disc-kid
-@debug/d-seller-profile-empty.html - IP - https://www.discogs.com/seller/vzell/profile - User: vzell
-@debug/d-search - IP - https://www.discogs.com/search?style_exact=Rock+%26+Roll&sort=title%2Casc&page=1&limit=250&layout=med - generic search page
-#+end_example
-
-other search examples URLs are:
-
-#+begin_example
-https://www.discogs.com/search?format_exact=Vinyl
-https://www.discogs.com/search?decade=1970&year=1975&layout=med&sort=relevance%2Cdesc&page=1
-#+end_example
-
-Additionally currently the following discogs submissions page has a PT already, e.g. https://www.discogs.com/submissions?mode=list&id=599283
-The following discogs user specific submissions page is not yet supported
-
-#+begin_example
-@debug/d-user-submissions.html - IP  - https://www.discogs.com/user/vzell/submissions - Discogs user specific submission page
-#+end_example
-
-

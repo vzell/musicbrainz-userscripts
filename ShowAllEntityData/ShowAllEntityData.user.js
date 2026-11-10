@@ -37,14 +37,16 @@
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?(?:master|release|artist|label)\/\d+(?:-[^\/?#]*)?\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?submissions\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?user\/[^\/?#]+\/?(?:[?#].*)?$/
-// @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(?:user\/[^\/?#]+\/(?:collection|wantlist)|mywantlist|wantlist)\/?(?:[?#].*)?$/
+// @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(?:user\/[^\/?#]+\/(?:collection|wantlist|submissions)|mywantlist|wantlist|contributions)\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?users\/ratings\/[^\/?#]+\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(?:release|master|artist|label)\/\d+(?:-[^\/?#]*)?\/history\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/\d+(?:-[^\/?#]*)?\/images(?:\/update)?\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/\d+(?:-[^\/?#]*)?\/images\/history\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(?:master|artist|label)\/\d+(?:-[^\/?#]*)?\/images\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?sell\/release\/\d+\/?(?:[?#].*)?$/
-// @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?search\/?\?(?:[^#]*&)?q=[^&#]+.*$/
+// @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?seller\/[^\/?#]+\/profile\/?(?:[?#].*)?$/
+// @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(?:shop|sell)\/item\/\d+\/?(?:[?#].*)?$/
+// @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?search\/?\?(?:[^#]*&)?(?:q|(?:genre|style|format|country)(?:_exact)?|year|decade)=[^&#]+.*$/
 // @include      /^https?:\/\/(?:www\.)?archive\.org\/search\/?\?(?:[^#]*&)?query=[^&#]+.*$/
 // @include      /^https?:\/\/(?:www\.)?archive\.org\/details\/(?!@)[^\/?#]+(?:\/[^?#]*)?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?setlist\.fm\/(?:venue|setlists)\/[^\/?#]+-[0-9a-f]+\.html(?:[?#].*)?$/
@@ -6839,13 +6841,17 @@
      * A discogs.com user's collection or wantlist as its own page
      * (pageType `dg-user-list`, 2026-10-29): `/user/<name>/collection` (React,
      * with `#app`), `/user/<name>/wantlist`, `/wantlist?user=<name>` and the
-     * logged-in user's `/mywantlist` (older pages, `#page_content`). Group 1
-     * the user of the path, 2 its list, 3 a wantlist page without a user in
-     * the path. Read by the `#app` gate below, the definition's `match`,
-     * `_dgUserListKind()` and `_dgUserName()`.
+     * logged-in user's `/mywantlist` (older pages, `#page_content`); since
+     * 2026-11-10 also a user's submissions, `/user/<name>/submissions`
+     * (debug/d-user-submissions.html: the submissions browser view), and
+     * contributions, `/contributions?user=<name>`
+     * (debug/d-contributions-user.html). Group 1 the user of the path, 2 its
+     * list, 3 a list page without a user in the path (`mywantlist`,
+     * `wantlist`, `contributions`). Read by the `#app` gate below, the
+     * definition's `match`, `_dgUserListKind()` and `_dgUserName()`.
      * @type {RegExp}
      */
-    const _DG_USER_LIST_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(?:user\/([^/?#]+)\/(collection|wantlist)|(mywantlist|wantlist))\/?$/;
+    const _DG_USER_LIST_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(?:user\/([^/?#]+)\/(collection|wantlist|submissions)|(mywantlist|wantlist|contributions))\/?$/;
 
     /**
      * A discogs.com user's ratings, `/users/ratings/<name>` (language prefix
@@ -6905,6 +6911,26 @@
      * @type {RegExp}
      */
     const _DG_SELL_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?sell\/release\/(\d+)\/?$/;
+
+    /**
+     * A seller's shop, `/seller/<name>/profile` (pageType `dg-seller`,
+     * 2026-11-10; debug/d-seller-profile.html, -empty.html): plain HTML
+     * without `#app`, the listings in `table.mpitems` as on a release's
+     * Marketplace page, but of one seller and many releases. Group 1 the
+     * seller. Read by the `#app` gate below and the definition's `match`.
+     * @type {RegExp}
+     */
+    const _DG_SELLER_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?seller\/([^/?#]+)\/profile\/?$/;
+
+    /**
+     * One Marketplace listing, `/shop/item/<id>` — where Discogs sends a
+     * `/sell/item/<id>` link (vzell, 2026-11-10; debug/d-sell-release.html,
+     * -expanded.html): pageType `dg-listing`, a Next.js page like the search,
+     * its content in `<main>`, no `#app`, no `#page_content`. Group 1 the
+     * listing's id. Read by the gate below and the definition's `match`.
+     * @type {RegExp}
+     */
+    const _DG_LISTING_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(?:shop|sell)\/item\/(\d+)\/?$/;
 
     /**
      * discogs.com's search, `/search?q=…` (pageType `dg-search`, 2026-10-29):
@@ -7029,10 +7055,13 @@
            _DG_USER_LIST_PATH_RE.test(window.location.pathname) ||
            _DG_HIST_PATH_RE.test(window.location.pathname) || _DG_RATINGS_PATH_RE.test(window.location.pathname) ||
            _DG_IMG_PATH_RE.test(window.location.pathname) || _DG_ENT_IMG_PATH_RE.test(window.location.pathname) ||
-           _DG_IMGREV_PATH_RE.test(window.location.pathname) || _DG_SELL_PATH_RE.test(window.location.pathname)) &&
+           _DG_IMGREV_PATH_RE.test(window.location.pathname) || _DG_SELL_PATH_RE.test(window.location.pathname) ||
+           _DG_SELLER_PATH_RE.test(window.location.pathname)) &&
           document.getElementById('page_content')) &&
-        // The search (2026-10-29): a Next.js page, its content in <main>.
-        !(_DG_SEARCH_PATH_RE.test(window.location.pathname) && document.querySelector('body main'))) {
+        // The search (2026-10-29) and a listing (2026-11-10): Next.js pages,
+        // their content in <main>.
+        !((_DG_SEARCH_PATH_RE.test(window.location.pathname) || _DG_LISTING_PATH_RE.test(window.location.pathname)) &&
+          document.querySelector('body main'))) {
         Lib.info('init', 'discogs.com: no #app on this page (a security check?) — nothing to do.');
         return;
     }
@@ -18913,6 +18942,11 @@
         entityImages: ['#', 'Image', 'Type', 'W × H'],
         // A release's Marketplace listings (dg-sell, 2026-10-29).
         sell: ['Item', 'Media', 'Sleeve', 'Comments', 'Seller', 'Rating', 'Ratings', 'Ships from', 'Price', 'Shipping', 'About'],
+        // A seller's shop (dg-seller, 2026-11-10): one seller, many releases —
+        // the release split out of Discogs' item text, which stays as Item
+        // (vzell), the seller's own columns left out (the same on every row).
+        seller: ['Image', 'Artist', 'Title', 'Format', 'Label', 'Cat#', 'Media', 'Sleeve', 'Comments', 'Rated', 'Have', 'Want',
+            'Ships from', 'Price', 'Shipping', 'About', 'Item'],
         // A search's results (dg-search, 2026-10-29), as the API gives them.
         search: ['Image', 'Type', 'Title', 'Format', 'Label', 'Year'],
         user: {
@@ -20401,6 +20435,12 @@
                 color: #222;
             }
             body.mb-sa-host-dg #mb-dg-root h3 { font: 700 15px/1.3 Arial, Helvetica, sans-serif; color: #222; }
+            /* What the page asked that the API cannot (features.dgNote, 2026-11-10). */
+            body.mb-sa-host-dg p.mb-dg-note {
+                margin: 2px 0 8px; padding: 5px 9px; max-width: 72em;
+                font: 12.5px/1.4 Arial, Helvetica, sans-serif; color: #222;
+                background: #fff8dc; border: 1px solid #e6d9a8; border-left: 3px solid #b8860b; border-radius: 2px;
+            }
             body.mb-sa-host-dg #mb-dg-root table.tbl a { color: #1f4f99; }
             body.mb-sa-host-dg td.mb-dg-imgcell { width: 44px; padding: 2px !important; }
             /* The Videos sub-table's Play column: a bare "Play here" tile (org/youtube.org). */
@@ -21002,7 +21042,7 @@
         h2.textContent = kind === 'user' ? (_DG_USER_LISTS[def.features.dgUserList] || {}).heading || 'Lists'
             : { artist: 'Discography', label: 'Releases', master: def.features.dgView === 'tracks' ? 'Tracklist' : 'Versions',
                 release: def.features.dgView === 'tracks' ? 'Tracklist' : 'Release', submissions: 'Submissions', history: 'History',
-                ratings: 'Ratings', images: 'Images', entityImages: 'Images', imageRevisions: 'Image revisions', sell: 'For sale',
+                ratings: 'Ratings', images: 'Images', entityImages: 'Images', imageRevisions: 'Image revisions', sell: 'For sale', seller: 'For sale',
                 search: 'Search results' }[kind] || 'Discogs';
         const cols = kind === 'release' ? _DG_HEADERS.release.Tracklist : kind === 'user' ? _DG_HEADERS.user.releases
             : kind === 'history' ? _DG_HEADERS.history.Changes : _DG_HEADERS[kind];
@@ -21017,7 +21057,19 @@
         // over rows without it put every later heading one column off
         // (vzell, 2026-10-29, the search page's screenshot).
         if (def.tableMode === 'single' && _dgMbOn() && typeof def.features.decorateDoc === 'function') _dgMbDecorateTable(table, '');
-        root.append(h2, table);
+        root.append(h2);
+        // What the page asked that the rows cannot honour (2026-11-10: a
+        // search's sort the API lacks, a submissions page's `q`), right under
+        // the heading — a multi-table definition keeps it there with
+        // `keepH2Intro`.
+        const note = typeof def.features.dgNote === 'function' ? String(def.features.dgNote(def) || '') : '';
+        if (note) {
+            const p = document.createElement('p');
+            p.className = 'mb-dg-note';
+            p.textContent = note;
+            root.append(p);
+        }
+        root.append(table);
         Lib.debug('init', `applyDgToTable: empty ${kind} table in place for the fetched pages.`);
     }
 
@@ -22750,43 +22802,264 @@
         const doc = new DOMParser().parseFromString(text, 'text/html');
         const table = doc.querySelector('table.mpitems');
         if (!table) throw Object.assign(new Error('Discogs answered, but not with the listings'), { status: 0 });
-        const abs = (a) => (a ? new URL(a.getAttribute('href') || '', 'https://www.discogs.com').href : '');
-        const t = (el) => (el ? _dpText(el.textContent) : '');
-        const link = (a) => (a ? `<td><a href="${_rgEsc(abs(a))}"${_DG_NEW_TAB}>${_rgEsc(t(a))}</a></td>` : '<td></td>');
+        const link = (a, t) => (a ? `<td><a href="${_rgEsc(_dgMpAbs(a))}"${_DG_NEW_TAB}>${_rgEsc(t || _dpText(a.textContent))}</a></td>` : '<td></td>');
         const rows = Array.from(table.querySelectorAll(':scope > tbody > tr.shortcut_navigable')).map((tr) => {
-            const cond = tr.querySelector('p.item_condition');
-            const mediaSpan = cond && Array.from(cond.children).find(x => x.tagName === 'SPAN' &&
-                !x.classList.contains('mplabel') && !x.classList.contains('item_sleeve_condition'));
-            let media = '';
-            if (mediaSpan) {
-                const c = mediaSpan.cloneNode(true);
-                c.querySelectorAll('.has-tooltip').forEach(n => n.remove());
-                media = t(c);
-            }
-            const comments = Array.from(tr.querySelectorAll('td.item_description > p.hide_mobile')).filter(p => !p.classList.contains('label_and_cat'))
-                .map(t).filter(Boolean).join(' ');
+            const r = _dgMpRowParts(tr);
             const seller = tr.querySelector('td.seller_info .seller_block a');
             const stars = tr.querySelector('td.seller_info .star_rating');
-            const rating = stars ? t(stars.parentElement.querySelector('strong')) : '';
-            const count = t(tr.querySelector('td.seller_info a.section_link')).replace(/\D+/g, '');
-            const ships = Array.from(tr.querySelectorAll('td.seller_info li')).find(li => /Ships From:/i.test(li.textContent));
-            const price = tr.querySelector('td.item_price span.price');
-            const shipping = tr.querySelector('td.item_price .item_shipping');
-            let ship = '';
-            if (shipping) {
-                const c = shipping.cloneNode(true);
-                c.querySelectorAll('button').forEach(n => n.remove());
-                ship = t(c);
-            }
-            const conv = tr.querySelector('td.item_price .converted_price');
-            const about = conv ? _dpText(Array.from(conv.childNodes).filter(n => n.nodeType === 3).map(n => n.nodeValue).join(' ')).replace(/^about\s+/i, '') : '';
-            return `<tr>${link(tr.querySelector('a.item_description_title'))}${_dgCell(media)}${_dgCell(t(tr.querySelector('.item_sleeve_condition')))}` +
-                `${_dgCell(comments)}${link(seller)}${_dgCell(rating)}${_dgCell(count)}` +
-                `${_dgCell(ships ? t(ships).replace(/^Ships From:\s*/i, '') : '')}` +
-                `<td${price ? ` data-mb-currency="${_rgEsc(price.dataset.currency || '')}" data-mb-value="${_rgEsc(price.dataset.pricevalue || '')}"` : ''}>${_rgEsc(t(price))}</td>` +
-                `${_dgCell(ship)}${_dgCell(about)}</tr>`;
+            const rating = stars ? _dpText(stars.parentElement.querySelector('strong')?.textContent || '') : '';
+            const count = _dpText(tr.querySelector('td.seller_info a.section_link')?.textContent || '').replace(/\D+/g, '');
+            return `<tr>${link(r.itemA)}${_dgCell(r.media)}${_dgCell(r.sleeve)}${_dgCell(r.comments)}${link(seller)}${_dgCell(rating)}${_dgCell(count)}` +
+                `${_dgCell(r.ships)}${r.priceTd}${_dgCell(r.shipping)}${_dgCell(r.about)}</tr>`;
         });
         return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${_dgTableHtml(null, _DG_HEADERS.sell, rows)}</body></html>`;
+    }
+
+    /**
+     * A Marketplace link's absolute URL (the pages write them relative).
+     * @param {?Element} a
+     * @returns {string} '' for none.
+     */
+    function _dgMpAbs(a) {
+        return a ? new URL(a.getAttribute('href') || '', 'https://www.discogs.com').href : '';
+    }
+
+    /**
+     * What a Marketplace listing row (`table.mpitems tr.shortcut_navigable`)
+     * says, as both of its tables write it: a release's listings (`dg-sell`)
+     * and a seller's shop (`dg-seller`, 2026-11-10; the same markup,
+     * debug/dg-sell-release.html and debug/d-seller-profile.html). Media
+     * condition without its tooltip, the sleeve's, the seller's comments,
+     * where it ships from, the price as listed (a ready `<td>` with Discogs'
+     * currency and value), its shipping without the button, and Discogs'
+     * conversion into the reader's currency ("about").
+     *
+     * @param {Element} tr
+     * @returns {{itemA: ?Element, media: string, sleeve: string, comments: string, ships: string, priceTd: string,
+     *   shipping: string, about: string}}
+     */
+    function _dgMpRowParts(tr) {
+        const t = (el) => (el ? _dpText(el.textContent) : '');
+        const cond = tr.querySelector('p.item_condition');
+        const mediaSpan = cond && Array.from(cond.children).find(x => x.tagName === 'SPAN' &&
+            !x.classList.contains('mplabel') && !x.classList.contains('item_sleeve_condition'));
+        let media = '';
+        if (mediaSpan) {
+            const c = mediaSpan.cloneNode(true);
+            c.querySelectorAll('.has-tooltip').forEach(n => n.remove());
+            media = t(c);
+        }
+        const comments = Array.from(tr.querySelectorAll('td.item_description > p.hide_mobile')).filter(p => !p.classList.contains('label_and_cat'))
+            .map(t).filter(Boolean).join(' ');
+        const ships = Array.from(tr.querySelectorAll('td.seller_info li')).find(li => /Ships From:/i.test(li.textContent));
+        const price = tr.querySelector('td.item_price span.price');
+        const shipping = tr.querySelector('td.item_price .item_shipping');
+        let ship = '';
+        if (shipping) {
+            const c = shipping.cloneNode(true);
+            c.querySelectorAll('button').forEach(n => n.remove());
+            ship = t(c);
+        }
+        const conv = tr.querySelector('td.item_price .converted_price');
+        const about = conv ? _dpText(Array.from(conv.childNodes).filter(n => n.nodeType === 3).map(n => n.nodeValue).join(' ')).replace(/^about\s+/i, '') : '';
+        return {
+            itemA: tr.querySelector('a.item_description_title'), media, sleeve: t(tr.querySelector('.item_sleeve_condition')), comments,
+            ships: ships ? t(ships).replace(/^Ships From:\s*/i, '') : '',
+            priceTd: `<td${price ? ` data-mb-currency="${_rgEsc(price.dataset.currency || '')}" data-mb-value="${_rgEsc(price.dataset.pricevalue || '')}"` : ''}>${_rgEsc(t(price))}</td>`,
+            shipping: ship, about,
+        };
+    }
+
+    // --- discogs.com: a seller's shop (pageType dg-seller) --------------------
+    // `/seller/<name>/profile` (2026-11-10; mockup
+    // https://claude.ai/artifact/2gnX1gagFEHTCC2LsFEn6n, tab B; vzell's
+    // answers: the rows from the shop's own pages, 250 a page, so its filters
+    // — format, price range, the shop search —, its sort and the converted
+    // price are kept; Discogs' item text split into Artist, Title and Format
+    // AND kept whole as Item). The pages and their count are dg-sell's
+    // (`_dgSellPageUrl()`, `_dgSellSize()`: the live URL, `limit` and `page`).
+
+    /**
+     * Discogs' item text, "Bob Dylan - Bob Dylan (LP, Album, Mono, RE, 180)",
+     * split: the artist before the first " - ", the format in the LAST
+     * parentheses at the end (a title may have its own: "Love Forever (Demo
+     * Recordings 1966-68) (LP, RSD, …)"), the title between. Without a
+     * " - " the whole text is the title.
+     *
+     * @param {string} text
+     * @returns {{artist: string, title: string, format: string}}
+     */
+    function _dgMpSplitItem(text) {
+        let rest = _dpText(text);
+        let format = '';
+        const f = /^(.*\S)\s+\(([^()]*)\)$/.exec(rest);
+        if (f) {
+            rest = f[1];
+            format = f[2].trim();
+        }
+        const i = rest.indexOf(' - ');
+        return i > 0 ? { artist: rest.slice(0, i).trim(), title: rest.slice(i + 3).trim(), format } : { artist: '', title: rest, format };
+    }
+
+    /**
+     * Whether the live page is an empty shop ("No items for sale found",
+     * debug/d-seller-profile-empty.html) — no button then.
+     * @returns {boolean}
+     */
+    function _dgSellerEmpty() {
+        return !!document.querySelector('#page_content p.no_marketplace_results') && !document.querySelector('table.mpitems tr.shortcut_navigable');
+    }
+
+    /**
+     * One page of a seller's shop as a `table.tbl` (`_DG_HEADERS.seller`):
+     * the release's thumbnail (the Image card and viewer, `_DG_FI`: its row
+     * is the Title's release), Artist (a search link: the item names it, no
+     * id), Title (the release's page, `a.item_release_link`), Format, each
+     * Label linked, Cat#, the community's rating and have/want counts, the
+     * listing's own columns as on dg-sell (`_dgMpRowParts()`), and Item:
+     * Discogs' whole item text linking the listing.
+     *
+     * @param {string} text - The page's HTML.
+     * @returns {string} An HTML document.
+     * @throws {Error} When the page holds no listing table (`status` 0).
+     */
+    function _dgSellerToHtml(text) {
+        const doc = new DOMParser().parseFromString(text, 'text/html');
+        const table = doc.querySelector('table.mpitems');
+        if (!table) throw Object.assign(new Error('Discogs answered, but not with the shop\'s listings'), { status: 0 });
+        const t = (el) => (el ? _dpText(el.textContent) : '');
+        const rows = Array.from(table.querySelectorAll(':scope > tbody > tr.shortcut_navigable')).map((tr) => {
+            const r = _dgMpRowParts(tr);
+            const whole = t(r.itemA);
+            const it = _dgMpSplitItem(whole);
+            const img = tr.querySelector('td.item_picture img');
+            const thumb = img ? (img.getAttribute('data-src') || img.getAttribute('src') || '') : '';
+            const rel = tr.querySelector('a.item_release_link');
+            const lc = tr.querySelector('p.label_and_cat');
+            const labels = lc ? Array.from(lc.querySelectorAll('a[href*="/label/"]')) : [];
+            const label = labels.length ? `<td>${labels.map(a => `<a href="${_rgEsc(_dgMpAbs(a))}"${_DG_NEW_TAB}>${_rgEsc(t(a))}</a>`).join(', ')}</td>` : '<td></td>';
+            const num = (re) => {
+                const m = re.exec(t(tr.querySelector('.community_summary')));
+                return m ? m[1].replace(/[,.]/g, '') : '';
+            };
+            const rated = t(tr.querySelector('.community_rating strong'));
+            return `<tr>${_dgThumbCell(/^https?:\/\//i.test(thumb) ? thumb : '')}${_dgSearchCell(it.artist, 'artist')}` +
+                `${_dgCell(it.title, rel ? _dgMpAbs(rel) : '')}${_dgCell(it.format)}${label}${_dgCatnoCell(t(tr.querySelector('.item_catno')))}` +
+                `${_dgCell(r.media)}${_dgCell(r.sleeve)}${_dgCell(r.comments)}${_dgCell(rated)}${_dgCell(num(/([\d,.]+)\s+have/i))}` +
+                `${_dgCell(num(/([\d,.]+)\s+want/i))}${_dgCell(r.ships)}${r.priceTd}${_dgCell(r.shipping)}${_dgCell(r.about)}` +
+                `${_dgCell(whole, r.itemA ? _dgMpAbs(r.itemA) : '')}</tr>`;
+        });
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${_dgTableHtml(null, _DG_HEADERS.seller, rows)}</body></html>`;
+    }
+
+    // --- discogs.com: one Marketplace listing (pageType dg-listing) ---------
+    // `/shop/item/<id>` (2026-11-10; vzell's answers: the listed release's
+    // Tracks view — dg-release's, the shared head above — with a "For sale"
+    // card first in it). Two requests: the listing
+    // (`marketplace/listings/<id>`, no token needed: probe
+    // scripts/probe-dg-user-seller-search.py --listing 4466508653), then its
+    // release (`releases/<id>`). The shipping and the total are the page's
+    // own (the API sends none to an anonymous request).
+
+    /**
+     * The listing answer of the run under way (`_dgListingPageCount()`),
+     * for the head's card; null before it.
+     * @type {?Object}
+     */
+    let _dgListing = null;
+
+    /**
+     * This listing page's id (`_DG_LISTING_PATH_RE`); 0 elsewhere.
+     * @returns {number}
+     */
+    function _dgListingId() {
+        const m = _DG_LISTING_PATH_RE.exec(window.location.pathname);
+        return m ? Number(m[1]) : 0;
+    }
+
+    /**
+     * `features.pageCountAsync` of `dg-listing`: the listing, then its
+     * release (kept in `_dgTexts` for the loop); one page.
+     * @returns {Promise<number>}
+     * @throws {Error} When the listing names no release (`status` 0).
+     */
+    async function _dgListingPageCount() {
+        _dgTexts.clear();
+        _dgListing = null;
+        const l = _dgJson(await _dgFetchText(`https://api.discogs.com/marketplace/listings/${_dgListingId()}`, false));
+        const rid = Number(l && l.release && l.release.id) || 0;
+        if (!rid) throw Object.assign(new Error('Discogs answered, but not with a listing'), { status: 0 });
+        _dgListing = l;
+        const url = `https://api.discogs.com/releases/${rid}`;
+        _dgTexts.set(url, await _dgFetchText(url, false));
+        return 1;
+    }
+
+    /**
+     * `features.pageRequest` of `dg-listing`: the listed release as
+     * dg-release's Tracks view builds it (`_dgReleaseTracksHtml()`), its
+     * record kept for the head (`_dgRelRec`).
+     * @returns {{url: string, fetchText: function(): Promise<string>, toHtml: function(string): string}}
+     */
+    function _dgListingPageRequest() {
+        const url = `https://api.discogs.com/releases/${Number(_dgListing && _dgListing.release && _dgListing.release.id) || 0}`;
+        return {
+            url, fetchText: () => _dgFetchText(url),
+            toHtml: (text) => {
+                const d = _dgJson(text);
+                if (!d || !d.title) throw Object.assign(new Error('Discogs answered, but not with a release'), { status: 0 });
+                _dgRelRec = d;
+                return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${_dgReleaseTracksHtml(d)}</body></html>`;
+            },
+        };
+    }
+
+    /**
+     * The listing page's own shipping and total, in the reader's currency
+     * ("€16.99" then "+ €11.00 shipping • €27.99", debug/d-sell-release.html):
+     * the line after the price heading in `<main>`. Empty when the page does
+     * not say (a disk load, another layout).
+     * @returns {{shipping: string, total: string}}
+     */
+    function _dgListingLivePrices() {
+        const h = Array.from(document.querySelectorAll('main h2')).find(x => /^\s*\D{0,4}\s?[\d.,]+\s*\D{0,4}\s*$/.test(x.textContent));
+        const row = h && h.parentElement && h.parentElement.nextElementSibling;
+        // Its parts are <p>s with no space between them: joined with one.
+        const text = row ? _dpText(Array.from(row.children).map(c => c.textContent).join(' ')) : '';
+        const m = /\+\s*(\S+)\s*shipping(?:\s*•\s*(\S+))?/i.exec(text);
+        return { shipping: m ? m[1] : '', total: m && m[2] ? m[2] : '' };
+    }
+
+    /**
+     * The head spec of a listing's Tracks view: the release's
+     * (`_dgReleaseHeadSpec()`), with a "For sale" card first — the media and
+     * sleeve condition, the price as listed, the page's shipping and total,
+     * the seller (their shop) with their rating, where it ships from, the
+     * seller's comments, when it was listed, and the listing itself.
+     * @returns {?Object}
+     */
+    function _dgListingHeadSpec() {
+        const spec = _dgReleaseHeadSpec();
+        const l = _dgListing;
+        if (!spec || !l) return spec;
+        const DG = 'https://www.discogs.com';
+        const seller = l.seller || {};
+        const st = seller.stats || {};
+        const live = _dgListingLivePrices();
+        const name = String(seller.username || '');
+        const sellerVal = name ? (() => {
+            const f = document.createDocumentFragment();
+            f.append(_fdLink(`${DG}/seller/${encodeURIComponent(name)}/profile`, name));
+            if (st.rating) f.append(` · ${st.rating} % of ${(Number(st.total) || 0).toLocaleString('en-US')}`);
+            return f;
+        })() : '';
+        const price = (l.original_price && l.original_price.formatted) || '';
+        spec.facts.unshift(['listing', 'For sale', [['Media', String(l.condition || '')], ['Sleeve', String(l.sleeve_condition || '')],
+            ['Price', price], ['Shipping', live.shipping], ['Total', live.total], ['Seller', sellerVal],
+            ['Ships from', String(l.ships_from || '')], ['Comments', String(l.comments || '').trim()],
+            ['Listed', String(l.posted || '').slice(0, 10)], ['Status', l.status && l.status !== 'For Sale' ? String(l.status) : ''],
+            ['Listing', _fdLink(`${DG}/sell/item/${Number(l.id)}`, String(l.id))]]]);
+        return spec;
     }
 
     // --- discogs.com: a search (pageType dg-search) ---------------------------
@@ -23857,6 +24130,7 @@
         const t = activeDefinition?.type;
         if (t === 'ia-details') return _iaDetailsHeadSpec();
         if (t === 'dg-release') return _dgReleaseHeadSpec();
+        if (t === 'dg-listing') return _dgListingHeadSpec();
         if (t === 'dg-master') return _dgMasterHeadSpec();
         if (t === 'sfm-setlist') return _sfmSetlistHeadSpec();
         if (t === 'sfm-festival') return _sfmFestivalHeadSpec();
@@ -25208,27 +25482,80 @@
     }
 
     /**
-     * The list a `dg-user-list` page shows: 'collection' or 'wantlist'; ''
-     * on any other page.
+     * The list a `dg-user-list` page shows: 'collection', 'wantlist',
+     * 'submissions' or 'contributions' (2026-11-10); '' on any other page.
      * @param {string} [path]
      * @returns {string}
      */
     function _dgUserListKind(path = window.location.pathname) {
         const l = _DG_USER_LIST_PATH_RE.exec(path);
-        return l ? (l[2] || 'wantlist') : '';
+        return l ? (l[2] || (l[3] === 'contributions' ? 'contributions' : 'wantlist')) : '';
+    }
+
+    /**
+     * The sort keys a user's contributions take in the API, which are the
+     * page's own (`/contributions?user=…&sort=label&sort_order=asc`; probe
+     * scripts/probe-dg-user-seller-search.py, 2026-11-10: `label` asc and
+     * desc answered in opposite orders).
+     * @type {Set<string>}
+     */
+    const _DG_CONTRIB_SORTS = new Set(['label', 'artist', 'title', 'catno', 'format', 'rating', 'year', 'added']);
+
+    /**
+     * The sort a contributions page shows, as the API takes it: the URL's
+     * `sort`/`sort_order` when given, else the column the page marks as
+     * sorted (`a.sortable_link_selected`, whose `title` says "sorted
+     * ascending" — its href is the OTHER direction, the click's target;
+     * debug/d-contributions-user.html sorts by Label without saying so in
+     * the URL: Discogs remembers the user's choice). '' when neither says.
+     * @returns {string} e.g. "sort=label&sort_order=asc&".
+     */
+    function _dgContribSort() {
+        const q = new URLSearchParams(window.location.search);
+        let sort = (q.get('sort') || '').toLowerCase();
+        let order = (q.get('sort_order') || '').toLowerCase();
+        if (!sort) {
+            const a = document.querySelector('table.release_list_table thead a.sortable_link_selected[href]');
+            if (a) {
+                try {
+                    sort = (new URL(a.getAttribute('href'), window.location.href).searchParams.get('sort') || '').toLowerCase();
+                } catch (_) {
+                    sort = '';
+                }
+                order = /descending/i.test(a.getAttribute('title') || '') ? 'desc' : 'asc';
+            }
+        }
+        if (!_DG_CONTRIB_SORTS.has(sort)) return '';
+        return `sort=${sort}&sort_order=${order === 'desc' ? 'desc' : 'asc'}&`;
+    }
+
+    /**
+     * What a user list's own page asks that the API cannot: a submissions
+     * page's search box (`?q=`, debug/d-user-submissions.html) — the API's
+     * `users/<name>/submissions` has no query. The button's hover text and a
+     * note above the table say so (vzell, 2026-11-10: "drop it, say so").
+     * @returns {string} '' when nothing is left out.
+     */
+    function _dgUserListDropped() {
+        if (_dgUserListKind() !== 'submissions') return '';
+        const q = (new URLSearchParams(window.location.search).get('q') || '').trim();
+        return q ? `The page's search "${q}" is not applied: Discogs' API lists every submission.` : '';
     }
 
     /**
      * How many entries a `dg-user-list` page says its list has, read from
      * the live page (no request): an older page's pager total ("1 – 138 of
-     * 138", debug/dg-user-wantlist.html); 0 for `/mywantlist`'s "You haven't
+     * 138", debug/dg-user-wantlist.html; a contributions page's "1 – 3 of
+     * 3"), a submissions page's short pager ("1-100 of 638"); 0 for `/mywantlist`'s "You haven't
      * added anything" block or its config's `userNumWantlist: 0`
      * (debug/dg-wantlist.html); -1 when the page does not say (the React
      * collection page draws its rows later).
      * @returns {number}
      */
     function _dgUserListCount() {
-        const total = document.querySelector('nav.pagination strong.pagination_total');
+        // A submissions page's browser view says "1-100 of 638" in its
+        // list's short pager (debug/d-user-submissions.html, 2026-11-10).
+        const total = document.querySelector('nav.pagination strong.pagination_total, #browser_tdl_items_pager_short');
         const m = total && /of\s+([\d,.]+)/.exec(total.textContent);
         if (m) return Number(m[1].replace(/[,.]/g, '')) || 0;
         if (document.getElementById('wantlist-empty')) return 0;
@@ -25243,8 +25570,9 @@
      * API as `dg-user`'s button for it reads it (`dgUserList`, the same
      * pages and converter). Shown only on that list's page and unless the
      * page says it is empty; its hover text what it costs when the page
-     * counts it.
-     * @param {string} kind - 'collection' or 'wantlist'.
+     * counts it, and what the page asks that the API cannot
+     * (`_dgUserListDropped()`).
+     * @param {string} kind - 'collection', 'wantlist', 'submissions' or 'contributions'.
      * @returns {Object} A button config.
      */
     function _dgUserListButton(kind) {
@@ -25254,8 +25582,10 @@
             showIf: () => _dgUserListKind() === kind && _dgUserListCount() !== 0,
             get description() {
                 const n = _dgUserListCount();
-                return n > 0 ? _dgCost(`${_extDgNum(n)} ${L.what}`, Math.max(1, Math.ceil(n / _EXT_DISCOGS_PER_PAGE)))
-                    : `Every one of ${_dgUserName() || 'this user'}'s ${L.what}, from Discogs' API (one request per ${_EXT_DISCOGS_PER_PAGE}).`;
+                const dropped = _dgUserListDropped();
+                return (n > 0 ? _dgCost(`${_extDgNum(n)} ${L.what}`, Math.max(1, Math.ceil(n / _EXT_DISCOGS_PER_PAGE)))
+                    : `Every one of ${_dgUserName() || 'this user'}'s ${L.what}, from Discogs' API (one request per ${_EXT_DISCOGS_PER_PAGE}).`) +
+                    (dropped ? ` ${dropped}` : '');
             },
         };
     }
@@ -25329,8 +25659,12 @@
      * @returns {string}
      */
     function _dgUserPageUrl(p, def) {
-        const L = _DG_USER_LISTS[def.features.dgUserList] || _DG_USER_LISTS.submissions;
-        return `https://api.discogs.com/users/${encodeURIComponent(_dgUserName())}/${L.path}per_page=${_EXT_DISCOGS_PER_PAGE}&page=${p}`;
+        const kind = def.features.dgUserList;
+        const L = _DG_USER_LISTS[kind] || _DG_USER_LISTS.submissions;
+        // A contributions page's own sort (2026-11-10): the API sorts the same.
+        const sort = kind === 'contributions' && _dgUserListKind() === 'contributions' ? _dgContribSort() : '';
+        const path = sort ? L.path.replace(/sort=[^&]*&sort_order=[^&]*&/, sort) : L.path;
+        return `https://api.discogs.com/users/${encodeURIComponent(_dgUserName())}/${path}per_page=${_EXT_DISCOGS_PER_PAGE}&page=${p}`;
     }
 
     /**
@@ -32309,7 +32643,7 @@
         } catch (_) { /* no URL: the mark */ }
         if (reader === 'dghistory') return { mark: true, doc: _DG_HISTORY_DOCS.doc, see: _DG_HISTORY_DOCS.see };
         const m = reader === 'discogs' && u ? _EXT_DISCOGS_PATH_RE.exec(u.pathname) : null;
-        const g = m ? _DG_KIND_GLYPHS[m[1].toLowerCase()] : (reader === 'dguser' ? _DG_KIND_GLYPHS.user : null);
+        const g = m ? _DG_KIND_GLYPHS[m[1].toLowerCase()] : (reader === 'dguser' || reader === 'dgulist' ? _DG_KIND_GLYPHS.user : null);
         return g ? { emo: g.emo, doc: g.doc, see: g.see || '' } : { mark: true, doc: _DG_GUIDELINES_URL, see: '' };
     }
 
@@ -38344,6 +38678,8 @@
             }
             .mb-dp-dialog .mb-dgu-links { display: flex; flex-wrap: wrap; gap: 6px; }
             .mb-dp-dialog .mb-dgu-links .mb-dg-btn { text-decoration: none; }
+            /* The list the list reader's window shows (2026-11-10). */
+            .mb-dp-dialog .mb-dgu-links .mb-dg-btn.mb-dg-btn-here { font-weight: 700; box-shadow: inset 0 -2px 0 currentColor; }
             .mb-dp-dialog .mb-dgq-list { display: grid; }
             .mb-dp-dialog .mb-dgq-row {
                 position: relative; display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 10px; align-items: center;
@@ -52075,13 +52411,20 @@
             tableMode: 'multi'
         },
         {
-            // A user's collection or wantlist page of its own (2026-10-29):
+            // A user's collection or wantlist page of its own (2026-10-29),
+            // and since 2026-11-10 their submissions and contributions pages:
             // the same list as dg-user's button, read the same way.
             type: 'dg-user-list',
             host: 'www.discogs.com',
             match: (path) => _DG_USER_LIST_PATH_RE.test(path),
-            buttons: ['collection', 'wantlist'].map(_dgUserListButton),
-            features: _dgUserFeatures(),
+            buttons: ['collection', 'wantlist', 'submissions', 'contributions'].map(_dgUserListButton),
+            features: {
+                ..._dgUserFeatures(),
+                // What the page asked that the API cannot, above the tables
+                // (applyDgToTable()); the note stays under the h2 (keepH2Intro).
+                dgNote: () => _dgUserListDropped(),
+                keepH2Intro: true
+            },
             tableMode: 'multi'
         },
         {
@@ -52131,6 +52474,54 @@
             tableMode: 'single'
         },
         {
+            // A seller's shop (2026-11-10): every listing, from the shop's own
+            // pages, its filters and sort kept. See the "discogs.com: a
+            // seller's shop" block above _dgMpSplitItem().
+            type: 'dg-seller',
+            host: 'www.discogs.com',
+            match: (path) => _DG_SELLER_PATH_RE.test(path),
+            buttons: [ {
+                label: 'Show everything for sale', shortLabel: 'For sale',
+                showIf: () => !_dgSellerEmpty() && (!!document.querySelector('table.mpitems tr.shortcut_navigable') || _dgSellSize().total > 0),
+                get description() {
+                    const { total, pages } = _dgSellSize();
+                    const filtered = /[?&](?:format|price|q|genre|style|year|decade|condition|currency|ships_from)=/.test(window.location.search);
+                    return `${total ? `All ${total.toLocaleString('en-US')} listings` : 'Every listing'} of this shop${filtered ? ' (as the page filters them)' : ''}, ` +
+                        `from discogs.com's own pages (${_DG_SELL_PER_PAGE} a page): ${pages} request${pages === 1 ? '' : 's'}.`;
+                }
+            } ],
+            features: {
+                dgToTable: 'seller',
+                pageRequest: (p) => ({ url: _dgSellPageUrl(p), toHtml: (text) => _dgSellerToHtml(text) }),
+                pageCountAsync: async () => _dgSellSize().pages,
+                collapsableColumns: [ 'Cat#' ],
+                integerColumns: [ { sourceColumn: 'Have', align: 'R' }, { sourceColumn: 'Want', align: 'R' } ]
+            },
+            tableMode: 'single'
+        },
+        {
+            // One Marketplace listing (2026-11-10): the listed release's
+            // Tracks view, the listing in its head. See the "discogs.com: one
+            // Marketplace listing" block above _dgListingId().
+            type: 'dg-listing',
+            host: 'www.discogs.com',
+            match: (path) => _DG_LISTING_PATH_RE.test(path),
+            buttons: [ {
+                label: 'Show all tracks', shortLabel: 'Tracks', features: { dgView: 'tracks' },
+                description: 'Two requests: the listing and its release. A sub-table per disc or record, the credits as columns; the listing, ' +
+                    'the release\'s notes, facts and images above.'
+            } ],
+            features: {
+                dgToTable: 'release',
+                decorateDoc: (doc) => _dgMbDecorateDoc(doc),
+                groupByH3: true,
+                collapsableColumns: [ 'Instruments', 'Vocals', 'Producer', 'Engineer', 'Mixed by', 'Arranged by', 'Other credits', 'Cat#' ],
+                pageRequest: () => _dgListingPageRequest(),
+                pageCountAsync: () => _dgListingPageCount()
+            },
+            tableMode: 'multi'
+        },
+        {
             // discogs.com's search (2026-10-29): the results from the API.
             // See the "discogs.com: a search" block above _dgSearchPageUrl().
             type: 'dg-search',
@@ -52138,17 +52529,23 @@
             match: (path) => _DG_SEARCH_PATH_RE.test(path),
             buttons: [ {
                 label: 'Show all results', shortLabel: 'Results',
-                showIf: () => !!new URLSearchParams(window.location.search).get('q'),
+                // A query, or (2026-11-10) one of the page's filters the API takes.
+                showIf: () => !!(new URLSearchParams(window.location.search).get('q') || '').trim() ||
+                    _extDgSearchMap(new URL(window.location.href)).facets,
                 get description() {
                     const n = _dgSearchTotal();
                     const shown = Math.min(n, _DG_SEARCH_MAX);
-                    return n ? _dgCost(`${n > _DG_SEARCH_MAX ? `The first ${_extDgNum(shown)} of ${_extDgNum(n)}` : _extDgNum(n)} results`,
+                    const dropped = _extDgSearchDroppedText(new URL(window.location.href));
+                    return (n ? _dgCost(`${n > _DG_SEARCH_MAX ? `The first ${_extDgNum(shown)} of ${_extDgNum(n)}` : _extDgNum(n)} results`,
                         Math.max(1, Math.ceil(shown / _EXT_DISCOGS_PER_PAGE)))
-                        : `Every result of this search, from Discogs' API (one request per ${_EXT_DISCOGS_PER_PAGE}).`;
+                        : `Every result of this search, from Discogs' API (one request per ${_EXT_DISCOGS_PER_PAGE}).`) +
+                        (dropped ? ` ${dropped}` : '');
                 }
             } ],
             features: {
                 dgToTable: 'search',
+                // What the page asks that the API cannot, above the table.
+                dgNote: () => _extDgSearchDroppedText(new URL(window.location.href)),
                 pageRequest: (p) => {
                     const url = _dgSearchPageUrl(p);
                     return { url, fetchText: () => _dgFetchText(url), toHtml: (text) => _dgSearchToHtml(text) };
@@ -78492,7 +78889,8 @@
      *   - `search`: a Discogs search's results 2 and on, 25 a request.
      *
      * @type {Object<string, {key: function(string, number): string, url: function(string, number): string, field: string,
-     *   what: string, row: function(Object): Object, facets?: function(Object): Object, batch?: number}>}
+     *   what: string, row: function(Object): Object, facets?: function(Object): Object, batch?: number,
+     *   rowsOf?: function(Object, string): ?Array<Object>}>}
      */
     const _EXT_DG_LISTS = {
         versions: {
@@ -78537,6 +78935,17 @@
             field: 'results',
             what: 'search results',
             row: r => _extDgSearchRow(r),
+        },
+        // A user's list or a seller's shop (`sub` "<kind>:<name>", kinds of
+        // `_EXT_DGL_KINDS`; 2026-11-10), `_EXT_DGQ_PER_PAGE` a request: the
+        // list reader (`dgulist`) asks page 1 itself, "Load 25 more" the rest.
+        ulist: {
+            key: (sub, page) => `ext:discogs-ulist:${sub}:${page}`,
+            url: (sub, page) => _extDgUListApiUrl(sub, page),
+            field: '',
+            rowsOf: (d, sub) => _extDgUListRows(sub, d),
+            what: 'a list',
+            row: r => r,
         },
         label: {
             key: (sub, page) => `ext:discogs-label-releases:${sub}:${page}`,
@@ -78647,7 +79056,9 @@
                 return { skipped: true };
             }
             const d = res.status === 200 && !_extBotCheck(res) ? _extJson(res) : null;
-            const rows = d && d[spec.field];
+            // A list whose rows are not one field of the answer (a user's
+            // submissions: releases, artists and labels) reads them itself.
+            const rows = spec.rowsOf ? (d ? spec.rowsOf(d, list.sub) : null) : d && d[spec.field];
             if (!Array.isArray(rows)) {
                 const out = _extApiOutcome(t, res, 'Discogs', '');
                 return {
@@ -82416,13 +82827,16 @@
     }
 
     /**
-     * A link to a Discogs search with a query.
+     * A link to a Discogs search with a query, or (2026-11-10) with one of
+     * the page's filters the API takes (`_extDgSearchMap()`: genre, style,
+     * format, country, year, decade).
      *
      * @param {URL} u
      * @returns {boolean}
      */
     function _extDgSearchTest(u) {
-        return _extDgOnSite(u) && _EXT_DGQ_PATH_RE.test(u.pathname) && !!(u.searchParams.get('q') || '').trim();
+        return _extDgOnSite(u) && _EXT_DGQ_PATH_RE.test(u.pathname) &&
+            (!!(u.searchParams.get('q') || '').trim() || _extDgSearchMap(u).facets);
     }
 
     /**
@@ -82438,14 +82852,15 @@
     /**
      * Whether a link on discogs.com is a Discogs page one of the readers
      * takes (a release, master, artist or label — its history and images
-     * too —, a user, a search): on discogs.com itself such a link is previewed,
+     * too —, a user, a user's list or a seller's shop, a search): on
+     * discogs.com itself such a link is previewed,
      * though it is the page's own host (`_extTarget()`).
      *
      * @param {URL} u
      * @returns {boolean}
      */
     function _extDgSiteTest(u) {
-        return _extDiscogsTest(u) || _extDgUserTest(u) || _extDgSearchTest(u);
+        return _extDiscogsTest(u) || _extDgUserTest(u) || _extDgUListTest(u) || _extDgListingTest(u) || _extDgSearchTest(u);
     }
 
     /**
@@ -82475,16 +82890,120 @@
     }
 
     /**
-     * The search reader's query as the API takes it, and its cache URL
-     * part: `q` and, when given, `type` (artist, label, release, master).
+     * The filters of discogs.com's search page as the API's
+     * `database/search` takes them, in the order they are written into the
+     * query (2026-11-10; probe scripts/probe-dg-user-seller-search.py, no
+     * token: each answered with its own count — `style` 381,029 against the
+     * page's 381,026 for "Rock & Roll"). The site's `<name>_exact` and the
+     * bare name are both read.
+     * @type {Array<{param: string, site: string[], label: string}>}
+     */
+    const _EXT_DGQ_FILTERS = [
+        { param: 'genre', site: ['genre_exact', 'genre'], label: 'Genre' },
+        { param: 'style', site: ['style_exact', 'style'], label: 'Style' },
+        { param: 'format', site: ['format_exact', 'format'], label: 'Format' },
+        { param: 'country', site: ['country_exact', 'country'], label: 'Country' },
+    ];
+
+    /**
+     * The site's sort keys (`sort=title,asc`) the API sorts by too
+     * (`sort=title&sort_order=asc`; probe 2026-11-10: title, year and have,
+     * each direction answered in its own order). "relevance" is the API's
+     * own order, nothing to send.
+     * @type {Set<string>}
+     */
+    const _EXT_DGQ_SORTS = new Set(['title', 'year', 'have']);
+
+    /**
+     * Parameters of the search page that say nothing about WHICH results:
+     * the page, its size and layout, Discogs' own tracking.
+     * @type {RegExp}
+     */
+    const _EXT_DGQ_QUIET_RE = /^(?:q|type|page|limit|layout|per_page|ev|sort|decade|year|utm_\w+)$/;
+
+    /**
+     * A search link as the API asks it (2026-11-10: also a search by the
+     * page's filters, no `q`; vzell: a filter the API cannot express is left
+     * out and named). `sub` is the query and the cache URL part — `q` first,
+     * as before, so a `q` search keeps its key; then `type`, the filters of
+     * `_EXT_DGQ_FILTERS`, `year`, and the sort. A decade without a year is
+     * the range `year=1970-1979` (the API ignores `decade`; the range
+     * answered 40,364 of "Rock & Roll", the year 1975 alone 4,082); with a
+     * year the year wins, as on the page. A filter given twice keeps its
+     * first value (the API took only the first style). Any other parameter
+     * is `dropped`.
      *
      * @param {URL} u
-     * @returns {string} e.g. "q=Columbia&type=label".
+     * @returns {{sub: string, filters: Array<string[]>, dropped: string[], facets: boolean}}
+     *   `filters`: [label, value] pairs shown; `facets`: whether any filter
+     *   besides `q` and `type` was taken.
+     */
+    function _extDgSearchMap(u) {
+        const sp = u.searchParams;
+        const q = (sp.get('q') || '').trim();
+        const type = (sp.get('type') || '').trim().toLowerCase();
+        let sub = `q=${encodeURIComponent(q)}${/^(?:artist|label|release|master)$/.test(type) ? `&type=${type}` : ''}`;
+        const filters = [];
+        const dropped = [];
+        const used = new Set();
+        let facets = false;
+        for (const f of _EXT_DGQ_FILTERS) {
+            const vals = f.site.flatMap(k => { used.add(k); return sp.getAll(k); }).map(v => v.trim()).filter(Boolean);
+            if (!vals.length) continue;
+            sub += `&${f.param}=${encodeURIComponent(vals[0])}`;
+            filters.push([f.label, vals[0]]);
+            facets = true;
+            vals.slice(1).forEach(v => dropped.push(`${f.label.toLowerCase()} "${v}" (one ${f.label.toLowerCase()} at a time)`));
+        }
+        const year = (sp.get('year') || '').trim();
+        const decade = (sp.get('decade') || '').trim();
+        if (/^\d{4}$/.test(year)) {
+            sub += `&year=${year}`;
+            filters.push(['Year', year]);
+            facets = true;
+        } else if (year) dropped.push(`year "${year}"`);
+        else if (/^\d{3}0$/.test(decade)) {
+            sub += `&year=${decade}-${Number(decade) + 9}`;
+            filters.push(['Decade', `${decade}s`]);
+            facets = true;
+        }
+        if (decade && !/^\d{3}0$/.test(decade)) dropped.push(`decade "${decade}"`);
+        const sort = /^([a-z_]+)(?:,(asc|desc))?$/i.exec((sp.get('sort') || '').trim());
+        if (sort && _EXT_DGQ_SORTS.has(sort[1].toLowerCase())) {
+            const dir = (sort[2] || 'asc').toLowerCase();
+            sub += `&sort=${sort[1].toLowerCase()}&sort_order=${dir}`;
+            filters.push(['Sort', `${sort[1].toLowerCase()} ${dir === 'desc' ? '▼' : '▲'}`]);
+        } else if (sort && sort[1].toLowerCase() !== 'relevance') dropped.push(`sort "${sp.get('sort')}"`);
+        else if (!sort && sp.get('sort')) dropped.push(`sort "${sp.get('sort')}"`);
+        for (const [k, v] of sp) {
+            if (used.has(k) || _EXT_DGQ_QUIET_RE.test(k) || !v.trim()) continue;
+            dropped.push(`${k} "${v}"`);
+        }
+        return { sub, filters, dropped, facets };
+    }
+
+    /**
+     * The search reader's query as the API takes it, and its cache URL
+     * part (`_extDgSearchMap()`): `q`, `type` (artist, label, release,
+     * master) and since 2026-11-10 the page's filters and sort.
+     *
+     * @param {URL} u
+     * @returns {string} e.g. "q=Columbia&type=label", "q=&style=Rock%20%26%20Roll&sort=title&sort_order=asc".
      */
     function _extDgSearchSub(u) {
-        const q = (u.searchParams.get('q') || '').trim();
-        const type = (u.searchParams.get('type') || '').trim().toLowerCase();
-        return `q=${encodeURIComponent(q)}${/^(?:artist|label|release|master)$/.test(type) ? `&type=${type}` : ''}`;
+        return _extDgSearchMap(u).sub;
+    }
+
+    /**
+     * What a search link asks that the API leaves out
+     * (`_extDgSearchMap()`), as one sentence; '' when nothing is.
+     *
+     * @param {URL} u
+     * @returns {string}
+     */
+    function _extDgSearchDroppedText(u) {
+        const d = _extDgSearchMap(u).dropped;
+        return d.length ? `Not applied (Discogs' API cannot ask it): ${d.join('; ')}.` : '';
     }
 
     /**
@@ -82656,10 +83175,448 @@
         const name = encodeURIComponent(rec.dgUser.name);
         const link = (u, text) => `<a class="mb-dg-btn" href="${_rgEsc(u)}" target="_blank" rel="noopener noreferrer">${_rgEsc(text)} ↗</a>`;
         out.right.push(_extDgUserActivity(t, opts));
+        // Since 2026-11-10 the lists open in this window (the list reader,
+        // `dgulist`: a plain click is `_extDgDrill()`'s), and the shop too.
         out.left.push(_extDgSection('dgu-links', 'On Discogs', null, `<div class="mb-dgu-links">${link(base, 'Profile')}` +
             `${link(`https://www.discogs.com/contributions?user=${name}`, 'Contributions')}${link(`${base}/submissions`, 'Submissions')}` +
-            `${link(`${base}/collection`, 'Collection')}${link(`${base}/wantlist`, 'Wantlist')}</div>`));
+            `${link(`${base}/collection`, 'Collection')}${link(`${base}/wantlist`, 'Wantlist')}` +
+            `${link(`https://www.discogs.com/seller/${name}/profile`, 'For sale')}</div>`));
         return out;
+    }
+
+    // --- The list reader (`dgulist`, 2026-11-10) ------------------------------
+    // Mockup https://claude.ai/artifact/2gnX1gagFEHTCC2LsFEn6n, tab D (vzell:
+    // a reader of its own; collection and wantlist too). A link to a user's
+    // submissions, contributions, collection or wantlist, or to a seller's
+    // shop: the card ONE request to Discogs' API (page 1, 25 rows, anonymous;
+    // no token needed — scripts/probe-dg-user-seller-search.py, 2026-11-10:
+    // `users/disc-kid/inventory` answered 4,677 listings), the window the
+    // rows in the shared Compact table and "Load 25 more".
+
+    /** Version of the list reader's records in IndexedDB; bump when its output changes. */
+    const _EXT_DGL_VERSION = 1;
+
+    /**
+     * The list reader's kinds: the API path after `users/<name>/` (25 a
+     * page), the canonical page (`keyUrl`), and how the card and the window
+     * name it.
+     * @type {Object<string, {api: string, page: function(string): string, heading: string, what: string}>}
+     */
+    const _EXT_DGL_KINDS = {
+        submissions: { api: 'submissions?', page: n => `https://www.discogs.com/user/${n}/submissions`, heading: 'Submissions', what: 'submissions' },
+        contributions: {
+            api: 'contributions?sort=added&sort_order=desc&', page: n => `https://www.discogs.com/contributions?user=${n}`,
+            heading: 'Contributions', what: 'contributions',
+        },
+        collection: {
+            api: 'collection/folders/0/releases?sort=added&sort_order=desc&', page: n => `https://www.discogs.com/user/${n}/collection`,
+            heading: 'Collection', what: 'releases in the collection',
+        },
+        wantlist: { api: 'wants?', page: n => `https://www.discogs.com/user/${n}/wantlist`, heading: 'Wantlist', what: 'releases in the wantlist' },
+        inventory: {
+            api: 'inventory?sort=listed&sort_order=desc&', page: n => `https://www.discogs.com/seller/${n}/profile`,
+            heading: 'For sale', what: 'listings',
+        },
+    };
+
+    /**
+     * A list link's path: `/user/<name>/submissions|collection|wantlist`
+     * (group 1 the user, 2 the list), `/seller/<name>/profile` (3), or a
+     * page naming its user in the query, `/contributions?user=`,
+     * `/wantlist?user=` (4); a language prefix allowed. `/mywantlist` names
+     * no one and is left alone.
+     * @type {RegExp}
+     */
+    const _EXT_DGL_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(?:user\/([^/?#]+)\/(submissions|collection|wantlist)|seller\/([^/?#]+)\/profile|(contributions|wantlist))\/?$/;
+
+    /**
+     * Which list a link is, and whose (decoded); null for any other link.
+     *
+     * @param {URL} u
+     * @returns {?{kind: string, name: string}}
+     */
+    function _extDgUListOf(u) {
+        if (!_extDgOnSite(u)) return null;
+        const m = _EXT_DGL_PATH_RE.exec(u.pathname);
+        if (!m) return null;
+        const raw = m[1] || m[3] || u.searchParams.get('user') || u.searchParams.get('username') || '';
+        let name = raw;
+        try {
+            name = decodeURIComponent(raw);
+        } catch (_) { /* as written */ }
+        name = name.trim();
+        if (!name) return null;
+        return { kind: m[2] || (m[3] ? 'inventory' : m[4]), name };
+    }
+
+    /**
+     * A link to a user's list or a seller's shop.
+     *
+     * @param {URL} u
+     * @returns {boolean}
+     */
+    function _extDgUListTest(u) {
+        return !!_extDgUListOf(u);
+    }
+
+    /**
+     * The list reader's cache URL (`keyUrl`): the list's own page without
+     * language, slug or the page's own query (sort, filters, page).
+     *
+     * @param {URL} u
+     * @returns {string}
+     */
+    function _extDgUListKeyUrl(u) {
+        const l = _extDgUListOf(u);
+        return _EXT_DGL_KINDS[l.kind].page(encodeURIComponent(l.name));
+    }
+
+    /**
+     * The API URL of page `page` of a list (`sub` "<kind>:<name>").
+     *
+     * @param {string} sub
+     * @param {number} page
+     * @returns {string}
+     */
+    function _extDgUListApiUrl(sub, page) {
+        const i = sub.indexOf(':');
+        const k = _EXT_DGL_KINDS[sub.slice(0, i)];
+        return `https://api.discogs.com/users/${encodeURIComponent(sub.slice(i + 1))}/${k.api}per_page=${_EXT_DGQ_PER_PAGE}&page=${page}`;
+    }
+
+    /**
+     * One answer's rows, alike for every kind: `{id, type, title, url,
+     * artist, format, label, year, thumb, media, price}` — a release of a
+     * submissions, contributions, collection (its `basic_information`) or
+     * wantlist list, an artist or label among the submissions, a listing of
+     * a shop (its release; `id` the LISTING's, so two copies of one release
+     * are two rows). Null when the answer is not the list.
+     *
+     * @param {string} sub
+     * @param {Object} d - The API's answer.
+     * @returns {?Array<Object>}
+     */
+    function _extDgUListRows(sub, d) {
+        const kind = sub.slice(0, sub.indexOf(':'));
+        const rel = (b) => {
+            const arts = (b.artists || []).filter(a => a && a.name).map(a => `${_extDiscogsName(a.anv || a.name)}${a.join ? ` ${a.join}` : ''}`);
+            const lab = (b.labels || [])[0] || {};
+            return {
+                id: Number(b.id) || 0, type: 'release', title: String(b.title || '').trim(), url: b.id ? `https://www.discogs.com/release/${Number(b.id)}` : '',
+                artist: arts.join(' ').replace(/\s+,/g, ',').trim() || String(b.artists_sort || ''),
+                format: (b.formats || []).map(f => `${Number(f.qty) > 1 ? `${f.qty}×` : ''}${f.name}`).join(', '),
+                label: lab.name ? _extDiscogsName(lab.name) : '', year: _extDgYear(b.year), thumb: _extDgThumb(b.thumb), media: '', price: '',
+            };
+        };
+        if (!d || typeof d !== 'object') return null;
+        if (kind === 'submissions') {
+            const x = d.submissions;
+            if (!x || typeof x !== 'object') return null;
+            const named = (n, type) => ({
+                id: Number(n.id) || 0, type, title: _extDiscogsName(n.name), url: n.id ? `https://www.discogs.com/${type}/${Number(n.id)}` : '',
+                artist: '', format: '', label: '', year: '', thumb: '', media: '', price: '',
+            });
+            return (x.releases || []).map(rel).concat((x.artists || []).map(n => named(n, 'artist')), (x.labels || []).map(n => named(n, 'label')));
+        }
+        if (kind === 'inventory') {
+            if (!Array.isArray(d.listings)) return null;
+            return d.listings.map((l) => {
+                const r = l.release || {};
+                const split = _dgMpSplitItem(String(r.description || ''));
+                const pr = l.price || {};
+                return {
+                    id: Number(l.id) || 0, type: 'release', title: String(r.title || split.title || '').trim(),
+                    url: r.id ? `https://www.discogs.com/release/${Number(r.id)}` : '', artist: _extDiscogsName(r.artist || split.artist || ''),
+                    format: String(r.format || split.format || '').trim(), label: '', year: _extDgYear(r.year), thumb: _extDgThumb(r.thumbnail),
+                    media: String(l.condition || '').trim(),
+                    price: typeof pr.value === 'number' ? `${pr.value.toFixed(2)} ${String(pr.currency || '')}`.trim() : '',
+                };
+            });
+        }
+        const field = kind === 'contributions' ? 'contributions' : kind === 'wantlist' ? 'wants' : 'releases';
+        if (!Array.isArray(d[field])) return null;
+        return d[field].map(r => rel(kind === 'collection' || kind === 'wantlist' ? (r.basic_information || {}) : r));
+    }
+
+    /**
+     * The list reader: page 1 of the list from Discogs' API (one request,
+     * `_EXT_DGQ_PER_PAGE` rows). The card: whose list, how many, the newest
+     * three (and a shop's rating and where it ships from, from its first
+     * listing); the window: the rows (`_extDgUListWindow()`).
+     *
+     * @param {object} t
+     * @param {function(): boolean} wanted
+     * @returns {Promise<{ok?: boolean, data?: Object, detail?: string, skipped?: boolean}>}
+     */
+    async function _extDgUListLoad(t, wanted) {
+        const l = _extDgUListOf(new URL(t.url));
+        if (!l) return { ok: false, detail: 'Not a Discogs list' };
+        const K = _EXT_DGL_KINDS[l.kind];
+        const sub = `${l.kind}:${l.name}`;
+        const res = await _extGet(_extDgUListApiUrl(sub, 1), { wanted, fetchOpts: { accept: /\bjson\b/i, headers: _extDiscogsHeaders() } });
+        if (res.skipped) return { skipped: true };
+        const out = _extApiOutcome(t, res, 'Discogs', `Discogs has no user "${l.name}" (its API answered 404).`);
+        if (out) return out;
+        const d = _extJson(res);
+        const rows = _extDgUListRows(sub, d);
+        if (!rows) return { ok: false, detail: `Discogs answered, but not with ${l.name}'s ${K.what}` };
+        const p = (d && d.pagination) || {};
+        const items = Number(p.items) || rows.length;
+        const rec = _extApiRecord(t, res.status, 'Discogs');
+        rec.title = `${l.name} · ${K.heading.toLowerCase()}`;
+        rec.subtitle = `Discogs · ${l.kind === 'inventory' ? 'seller' : 'user list'}`;
+        rec.type = l.kind;
+        const newest = rows.slice(0, 3).map(r => [r.artist, r.title].filter(Boolean).join(' – ') + (r.price ? ` · ${r.price}` : '')).filter(Boolean);
+        // The card shows `_EXT_CARD_FACTS` (4): the user is in the title.
+        rec.facts = [[l.kind === 'inventory' ? 'For sale' : 'Entries', _extDgNum(items)]];
+        if (l.kind === 'inventory' && d.listings && d.listings[0]) {
+            const st = (d.listings[0].seller && d.listings[0].seller.stats) || {};
+            if (st.rating) rec.facts.push(['Rating', `${st.rating} % of ${_extDgNum(Number(st.total) || 0)}`]);
+            if (d.listings[0].ships_from) rec.facts.push(['Ships from', String(d.listings[0].ships_from)]);
+        }
+        if (newest.length) rec.facts.push(['Newest', newest.join(' · ')]);
+        rec.cardFacts = rec.facts.length;
+        rec.dgUList = { kind: l.kind, name: l.name, sub, items, pages: Math.max(1, Number(p.pages) || 1), rows: rows.filter(r => r.id) };
+        return { ok: true, data: rec };
+    }
+
+    /**
+     * The list reader's window, sides swapped as every Discogs window: on
+     * the left the user (opens in the window) and their other lists; on the
+     * right the rows so far — page 1 from the record, the pages "Load 25
+     * more" asked since (`_extDgListLoad()`, the `ulist` list) — in the
+     * shared Compact table (filter, sort), then the button while there are
+     * more.
+     *
+     * @param {object} t
+     * @param {Object} rec
+     * @returns {{left: string[], right: string[], full: string[], swap: boolean}}
+     */
+    function _extDgUListWindow(t, rec) {
+        const out = { left: [], right: [], full: [], swap: true };
+        const s = rec.dgUList;
+        if (!s) return out;
+        const ui = _extDgXUiOf(t);
+        const list = _extDgList('ulist', s.sub);
+        let rows = s.rows.slice();
+        let busy = false;
+        let failed = '';
+        for (let p = 2; p <= ui.pages; p++) {
+            const st = _mbPop.get(_extDgListKey(list, p));
+            if (!st || st.status === 'loading') busy = true;
+            else if (st.status === 'failed') failed = st.detail;
+            else rows = rows.concat(st.data.rows);
+        }
+        const K = _EXT_DGL_KINDS[s.kind];
+        const n = encodeURIComponent(s.name);
+        const btn = (k, text) => `<a class="mb-dg-btn${k === s.kind ? ' mb-dg-btn-here' : ''}" href="${_rgEsc(_EXT_DGL_KINDS[k].page(n))}" target="_blank" rel="noopener noreferrer">${_rgEsc(text)}</a>`;
+        out.left.push(_extDgSection('dgl-links', 'On Discogs', null, `<div class="mb-dgu-links">` +
+            `<a class="mb-dg-btn" href="https://www.discogs.com/user/${_rgEsc(n)}" target="_blank" rel="noopener noreferrer">${_rgEsc(s.name)}</a>` +
+            `${btn('contributions', 'Contributions')}${btn('submissions', 'Submissions')}${btn('collection', 'Collection')}` +
+            `${btn('wantlist', 'Wantlist')}${btn('inventory', 'For sale')}</div>`));
+        const link = (x, q) => (x.url ? `<a class="mb-dg-name" href="${_rgEsc(x.url)}" target="_blank" rel="noopener noreferrer">${_hlEsc(x.title, q)}</a>` : _hlEsc(x.title, q));
+        const cols = [{ key: 'title', label: 'Title', val: x => x.title, html: link }];
+        if (s.kind === 'submissions') cols.push({ key: 'type', label: 'Type', val: x => x.type, html: x => _rgEsc(x.type) });
+        cols.push({ key: 'artist', label: 'Artist', val: x => x.artist, html: (x, q) => _hlEsc(x.artist, q) },
+            { key: 'format', label: 'Format', val: x => x.format, html: (x, q) => _hlEsc(x.format, q) });
+        if (s.kind === 'inventory') {
+            cols.push({ key: 'media', label: 'Media', val: x => x.media, html: (x, q) => _hlEsc(x.media, q) },
+                { key: 'price', label: 'Price', val: x => x.price, num: true, html: x => _rgEsc(x.price) });
+        } else {
+            cols.push({ key: 'label', label: 'Label', val: x => x.label, html: (x, q) => _hlEsc(x.label, q) },
+                { key: 'year', label: 'Year', val: x => x.year, num: true, html: x => _rgEsc(x.year) });
+        }
+        const table = _dpCompactTableHtml(t, 'dg-ulist', cols, rows, {
+            initial: 'as Discogs lists them', what: K.what, filter: true,
+            search: x => [x.title, x.artist, x.format, x.label, x.media].join(' '), cls: 'mb-dgl-t',
+        });
+        const more = rows.length < s.items && ui.pages < s.pages;
+        const foot = (busy ? '<div class="mb-dg-dim"><span class="mb-dp-spin">◌</span> Loading 25 more…</div>' : '') +
+            (failed ? `<div class="mb-dp-warn">The next 25 did not come: ${_rgEsc(failed)}.</div>` : '') +
+            `<div class="mb-dgq-foot">${more && !busy ? `<button type="button" class="mb-dg-btn" data-mb-dgl-act="more">Load ${_EXT_DGQ_PER_PAGE} more</button>` : ''}` +
+            `<a class="mb-dg-btn" href="${_rgEsc(K.page(n))}" target="_blank" rel="noopener noreferrer">All on Discogs ↗</a></div>` +
+            (s.kind === 'inventory' ? '<div class="mb-dg-dim">Prices as listed; the shop\'s page (its button) adds Discogs\' price in your currency.</div>' : '');
+        out.right.push(_extDgSection('dgl-rows', K.heading, `${_extDgNum(rows.length)} of ${_extDgNum(s.items)}`, table + foot));
+        return out;
+    }
+
+    // --- The listing reader (`dglisting`, 2026-11-10) -------------------------
+    // vzell's answer: a link to a Marketplace listing (`/sell/item/<id>`,
+    // `/shop/item/<id>`: a shop's Item column, dg-sell's, Discogs' own pages)
+    // gets a card from ONE request (`marketplace/listings/<id>`, no token
+    // needed; its `price` is converted for an anonymous request — USD —,
+    // `original_price` is the seller's, which is shown) and a window with the
+    // listing and its release (the release reader's own record and window
+    // parts, one more request, from the window only).
+
+    /** Version of the listing reader's records in IndexedDB; bump when its output changes. */
+    const _EXT_DGLI_VERSION = 1;
+
+    /** A listing's path; group 1 its id. */
+    const _EXT_DGLI_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?(?:sell|shop)\/item\/(\d+)\/?$/;
+
+    /**
+     * A link to a Marketplace listing.
+     * @param {URL} u
+     * @returns {boolean}
+     */
+    function _extDgListingTest(u) {
+        return _extDgOnSite(u) && _EXT_DGLI_PATH_RE.test(u.pathname);
+    }
+
+    /**
+     * The listing reader's cache URL (`keyUrl`): `/sell/item/<id>`, whichever
+     * form the link has.
+     * @param {URL} u
+     * @returns {string}
+     */
+    function _extDgListingKeyUrl(u) {
+        return `https://www.discogs.com/sell/item/${_EXT_DGLI_PATH_RE.exec(u.pathname)[1]}`;
+    }
+
+    /**
+     * The listing reader: the listing from Discogs' API (one request). The
+     * card: the price as listed, the media and sleeve condition, the
+     * seller with their rating; the window adds where it ships from, the
+     * comments, when it was listed, and the release.
+     * @param {object} t
+     * @param {function(): boolean} wanted
+     * @returns {Promise<{ok?: boolean, data?: Object, detail?: string, skipped?: boolean}>}
+     */
+    async function _extDgListingLoad(t, wanted) {
+        const id = _EXT_DGLI_PATH_RE.exec(new URL(t.url).pathname)[1];
+        const res = await _extGet(`https://api.discogs.com/marketplace/listings/${id}`, { wanted, fetchOpts: { accept: /\bjson\b/i, headers: _extDiscogsHeaders() } });
+        if (res.skipped) return { skipped: true };
+        const out = _extApiOutcome(t, res, 'Discogs', 'Discogs has no such listing (its API answered 404: sold or withdrawn?).');
+        if (out) return out;
+        const d = _extJson(res);
+        const r = (d && d.release) || {};
+        if (!d || !d.id || !r.id) return { ok: false, detail: 'Discogs answered, but not with a listing' };
+        const rec = _extApiRecord(t, res.status, 'Discogs');
+        const seller = d.seller || {};
+        const st = seller.stats || {};
+        rec.title = String(r.description || [r.artist, r.title].filter(Boolean).join(' - ') || `Listing ${id}`);
+        rec.subtitle = 'Discogs · for sale';
+        rec.type = 'listing';
+        rec.image = /^https?:\/\//i.test(r.thumbnail || '') ? r.thumbnail : '';
+        rec.facts = [
+            ['Price', String((d.original_price && d.original_price.formatted) || '')], ['Media', String(d.condition || '')],
+            ['Sleeve', String(d.sleeve_condition || '')],
+            ['Seller', seller.username ? `${seller.username}${st.rating ? ` · ${st.rating} % of ${_extDgNum(Number(st.total) || 0)}` : ''}` : ''],
+            ['Ships from', String(d.ships_from || '')], ['Comments', String(d.comments || '').trim()], ['Listed', String(d.posted || '').slice(0, 10)],
+            ['Status', d.status && d.status !== 'For Sale' ? String(d.status) : ''],
+        ].filter(f => f[1]);
+        rec.cardFacts = 4;
+        rec.dgListing = { id: Number(d.id), releaseId: Number(r.id), seller: String(seller.username || '') };
+        return { ok: true, data: rec };
+    }
+
+    /**
+     * Each listing window's release target, by the listing's key, so the
+     * release's record and UI state stay one object across repaints.
+     * @type {Map<string, object>}
+     */
+    const _extDgListingRel = new Map();
+
+    /**
+     * The release target of a listing's window (the release reader's, as a
+     * link to it would resolve: `_extTarget()`); null when none.
+     * @param {object} t - The listing's target.
+     * @param {number} rid
+     * @returns {?object}
+     */
+    function _extDgListingRelTarget(t, rid) {
+        if (_extDgListingRel.has(t.key)) return _extDgListingRel.get(t.key);
+        const a = document.createElement('a');
+        a.setAttribute('href', `https://www.discogs.com/release/${rid}`);
+        const r = _extTarget(a, { inWindow: true });
+        const rt = r ? Object.assign({ src: t.src }, r) : null;
+        if (rt) _extDgListingRel.set(t.key, rt);
+        return rt;
+    }
+
+    /**
+     * The listing reader's window: on the left, under the listing's facts,
+     * its pages on Discogs (the listing, the release and the seller's shop
+     * open in the window; More for sale a new tab) and the release's
+     * companies, credits and identifiers; on the right the release's
+     * tracklist and notes; its images above. The release is the release
+     * reader's own record, loaded by the window (`start`, or while it has no
+     * state: a drill-down, as `_extDgListStart()`).
+     * @param {object} t
+     * @param {Object} rec
+     * @param {{start: boolean, force: boolean, repaint: function(): void}} opts
+     * @returns {{left: string[], right: string[], full: string[], swap: boolean, lead?: string[]}}
+     */
+    function _extDgListingWindow(t, rec, { start, force, repaint }) {
+        const out = { left: [], right: [], full: [], swap: true };
+        const L = rec.dgListing;
+        if (!L) return out;
+        const DG = 'https://www.discogs.com';
+        const btn = (href, text, newTab) => `<a class="mb-dg-btn" href="${_rgEsc(href)}" target="_blank" rel="noopener noreferrer"${newTab ? ' data-mb-dp-newtab' : ''}>${_rgEsc(text)}</a>`;
+        out.left.push(_extDgSection('dgli-links', 'On Discogs', null, '<div class="mb-dgu-links">' +
+            `${btn(`${DG}/sell/item/${L.id}`, 'The listing ↗', true)}${btn(`${DG}/release/${L.releaseId}`, 'Release')}` +
+            `${L.seller ? btn(`${DG}/seller/${encodeURIComponent(L.seller)}/profile`, `${L.seller}'s shop`) : ''}` +
+            `${btn(`${DG}/sell/release/${L.releaseId}`, 'More for sale ↗', true)}</div>`));
+        const rt = _extDgListingRelTarget(t, L.releaseId);
+        if (!rt) return out;
+        if (start || !_mbPop.get(rt.key)) _extLoad(rt, { force, repaint, wanted: () => _extDgShowing(t) });
+        const st = _mbPop.get(rt.key);
+        if (!st || st.status === 'loading') {
+            out.right.push(_extDgSection('dgli-rel', 'Release', null, '<div class="mb-dg-dim"><span class="mb-dp-spin">◌</span> Reading the release from Discogs\' API… (one request)</div>'));
+            return out;
+        }
+        if (st.status === 'failed' || !st.data || !st.data.discogs) {
+            out.right.push(_extDgSection('dgli-rel', 'Release', null, `<div class="mb-dp-warn">Could not read the release${st.detail ? `: ${_rgEsc(st.detail)}` : ''}.</div>`));
+            return out;
+        }
+        const rw = _extDiscogsWindow(rt, st.data, { start: false, force: false, repaint });
+        if (rw.lead) out.lead = rw.lead;
+        out.left.push(...rw.left);
+        out.right.push(...rw.right);
+        return out;
+    }
+
+    /**
+     * A click in the listing reader's window: once the release is read, its
+     * sections' controls are the release window's (`_extDiscogsAreaClick()`
+     * with the release's target: a track's credits, "Show all track
+     * credits", a section head, a link opening in the window); before, the
+     * Discogs family's.
+     * @param {MouseEvent} e
+     * @returns {void}
+     */
+    function _extDgListingAreaClick(e) {
+        const t = _dpDialog.target;
+        const rt = t ? _extDgListingRel.get(t.key) : null;
+        const st = rt ? _mbPop.get(rt.key) : null;
+        if (rt && st && st.status === 'done' && st.data && st.data.discogs) _extDiscogsAreaClick(e, rt);
+        else _extDgFamilyClick(e);
+    }
+
+    /**
+     * A click in the list reader's window: "Load 25 more" asks the next
+     * page (`_extDgListLoad()`, from the window only); anything else is the
+     * Discogs family's (`_extDgFamilyClick()`: section heads, a link opening
+     * in the window).
+     *
+     * @param {MouseEvent} e
+     * @returns {void}
+     */
+    function _extDgUListAreaClick(e) {
+        const more = e.target instanceof Element ? e.target.closest('[data-mb-dgl-act="more"]') : null;
+        const t = _dpDialog.target;
+        if (more && t) {
+            const st = _mbPop.get(t.key);
+            const s = st && st.data && st.data.dgUList;
+            if (!s) return;
+            const ui = _extDgXUiOf(t);
+            ui.pages += 1;
+            _extDgListLoad(t, _extDgList('ulist', s.sub), ui.pages, { repaint: _dpDialog.repaint });
+            if (_dpDialog.repaint) _dpDialog.repaint();
+            return;
+        }
+        _extDgFamilyClick(e);
     }
 
     /**
@@ -82811,10 +83768,15 @@
         const type = (/type=(\w+)/.exec(sub) || [])[1] || '';
         const p = d.pagination || {};
         const items = Number(p.items) || d.results.length;
-        rec.title = `${q}${type ? ` · ${type}s` : ''}`;
+        // A search by the page's filters (2026-11-10): they name it, the
+        // ones the API cannot ask are said.
+        const map = _extDgSearchMap(u);
+        const named = map.filters.filter(f => f[0] !== 'Sort').map(f => f[1]);
+        rec.title = `${[q, ...named].filter(Boolean).join(' · ') || 'Search'}${type ? ` · ${type}s` : ''}`;
         rec.subtitle = 'Discogs · search';
         rec.type = 'search';
-        rec.facts = [['Results', _extDgNum(items)], ['Type', type ? `${type}s` : 'everything']];
+        rec.facts = [['Results', _extDgNum(items)], ['Type', type ? `${type}s` : 'everything'], ...map.filters];
+        if (map.dropped.length) rec.facts.push(['Not applied', map.dropped.join('; ')]);
         rec.dgSearch = { sub, items, pages: Math.max(1, Number(p.pages) || 1), rows: d.results.map(_extDgSearchRow).filter(r => r.url) };
         return { ok: true, data: rec };
     }
@@ -83235,6 +84197,20 @@
             version: _EXT_IDB_VERSION * 100 + _EXT_DISCOGS_VERSION,
             window: _extDiscogsWindow, cardExtra: _extDiscogsCardExtra, onAreaClick: _extDiscogsAreaClick, onAreaInput: _extDiscogsAreaInput,
             kindFor: _extDiscogsKind, factsHtml: _extDiscogsFactsHtml,
+        },
+        {
+            // A Marketplace listing (2026-11-10): before `discogs`, whose
+            // path pattern does not take it, and dgulist (nor that).
+            id: 'dglisting', kind: 'Discogs listing', test: _extDgListingTest, askHost: () => 'api.discogs.com', load: _extDgListingLoad, noLive: true,
+            version: _EXT_IDB_VERSION * 100 + _EXT_DGLI_VERSION, keyUrl: _extDgListingKeyUrl,
+            window: _extDgListingWindow, onAreaClick: _extDgListingAreaClick,
+        },
+        {
+            // A user's list or a seller's shop (2026-11-10); its paths are
+            // none of dguser's (`/user/<name>` exactly), placed first anyway.
+            id: 'dgulist', kind: 'Discogs list', test: _extDgUListTest, askHost: () => 'api.discogs.com', load: _extDgUListLoad, noLive: true,
+            version: _EXT_IDB_VERSION * 100 + _EXT_DGL_VERSION, keyUrl: _extDgUListKeyUrl,
+            window: _extDgUListWindow, onAreaClick: _extDgUListAreaClick,
         },
         {
             id: 'dguser', kind: 'Discogs user', test: _extDgUserTest, askHost: () => 'api.discogs.com', load: _extDgUserLoad, noLive: true,

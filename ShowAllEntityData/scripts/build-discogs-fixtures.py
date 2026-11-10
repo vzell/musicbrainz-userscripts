@@ -319,6 +319,115 @@ def build_search():
             '</body></html>\n'), title
 
 
+def user_page(src, content):
+    """An older page with the user header (`<section aria-label="User">`, `#user_header h1`) above
+    `#page_content`, scripts dropped: a user's ratings, contributions or shop."""
+    header = between(src, '<section aria-label="User">', '</section>')
+    header = re.sub(r'<form id="user_header_form".*?</form>', '', header, flags=re.S)
+    title = text(re.search(r'<title[^>]*>(.*?)</title>', src, re.S).group(1))
+    page = ('<!DOCTYPE html>\n<html lang="en"><head><meta charset="utf-8"><title>{title}</title></head><body class=" ">\n'
+            '<div id="main_wrapper"><div id="__header_root_497"><header class="dg-fx-header">'
+            '<a href="https://www.discogs.com/release/1874253">Header link</a></header></div>\n{header}\n'
+            '<div id="page"><div id="page_content" role="main">\n{content}\n</div></div></div>\n'
+            '<div id="esi-footer-root"><footer class="dg-fx-footer"><a href="https://www.discogs.com/master/26725">Footer link</a></footer></div>\n'
+            '</body></html>\n').format(title=html.escape(title), header=squeeze(header), content=squeeze(content))
+    page = re.sub(r'<script\b.*?</script>', '', page, flags=re.S)
+    return re.sub(r'<!--.*?-->', '', page, flags=re.S), title
+
+
+def build_contributions():
+    """dg-contributions.html (debug/d-contributions-user.html, saved by vzell 2026-11-10, logged in): a user's
+    contributions page (`/contributions?user=vzell`) — the user header, the top pager ("1 – 3 of 3") and the list
+    (3 rows, sorted by Label without saying so in the URL: `a.sortable_link_selected`). The rows come from
+    Discogs' API (dg-user-list)."""
+    src = read_debug('d-contributions-user.html')
+    content = (between(src, '<nav aria-label="Pagination" class="pagination top', '</nav>') +
+               between(src, '<table class="release_list_table', '</table>'))
+    return user_page(src, content)
+
+
+def build_user_submissions():
+    """dg-user-submissions.html (debug/d-user-submissions.html, saved by vzell 2026-11-10, logged in): a user's
+    submissions page (`/user/vzell/submissions`), the browser view — its "1-100 of 638" pager, the first five
+    entries (no release ids), its search box, a stand-in history pane, in Discogs' split pane with subbrowser.css's
+    layout rules. The rows come from Discogs' API (dg-user-list)."""
+    src = read_debug('d-user-submissions.html')
+    title = text(re.search(r'<title[^>]*>(.*?)</title>', src, re.S).group(1))
+    items = re.findall(r'<li id="sub_\d+">.*?</li>', src, re.S)[:5]
+    if len(items) != 5:
+        sys.exit('d-user-submissions.html: fewer than five entries')
+    content = ('<table id="browser" role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%"><tbody><tr>'
+               '<td id="tdl" valign="top" width="200" height="100%"><aside id="items">'
+               '<div id="browser_tdl_items_title"><h2>My Submissions</h2></div>' +
+               between(src, '<div id="browser_tdl_items_pager_short">', '</div>') +
+               f'<ul class="subs_list">{"".join(items)}</ul></aside></td>'
+               '<td valign="top" height="100%"><div id="hpane_wrap"><div id="hpane">'
+               '<form action="https://www.discogs.com/user/vzell/submissions" method="get" class="aside_search_form">'
+               '<input type="text" class="search_table_field" id="searchq" name="q" value="" placeholder="Search Submissions"></form>'
+               '<div id="historyData"><p>Discogs\' history pane (stand-in).</p></div></div></div></td>'
+               '</tr></tbody></table>')
+    page = SHELL.format(title=html.escape(title), content=squeeze(content))
+    return page.replace('</title></head>', '</title>' + SUBBROWSER_CSS + '</head>', 1), title
+
+
+def build_seller(empty=False):
+    """dg-seller-profile.html (debug/d-seller-profile.html, saved by vzell 2026-11-10, logged in): disc-kid's shop
+    (`/seller/disc-kid/profile`) — the user header, the tabs ("4,677 For Sale"), the top pager ("1 – 25 of 4,677") and
+    the first SIX listings of `table.mpitems` (of 25; the rest only add bytes). With `empty`,
+    dg-seller-profile-empty.html (debug/d-seller-profile-empty.html): vzell's empty shop, its tabs ("0 For Sale") and
+    "No items for sale found"."""
+    src = read_debug('d-seller-profile-empty.html' if empty else 'd-seller-profile.html')
+    tabs = between(src, '<nav aria-label="Manage" class="responsive_wrap tabs-wrap', '</nav>')
+    if empty:
+        return user_page(src, tabs + between(src, '<p class="no_marketplace_results">', '</p>'))
+    pager = between(src, '<nav aria-label="Pagination" class="pagination top', '</nav>')
+    table = between(src, '<table class="table_block mpitems', '</table>')
+    head, body = table.split('<tbody>', 1)
+    rows = re.findall(r'<tr class="shortcut_navigable.*?</tr>\s*(?=<tr class="shortcut_navigable|</tbody>)', body, re.S)
+    if len(rows) != 25:
+        sys.exit(f'd-seller-profile.html: {len(rows)} listings, expected 25')
+    return user_page(src, tabs + pager + head + '<tbody>' + ''.join(rows[:6]) + '</tbody></table>')
+
+
+def build_search_facets():
+    """dg-search-facets.html (debug/d-search.html, saved by vzell 2026-11-10, logged in): a search by the page's
+    filters (`/search?style_exact=Rock+%26+Roll&sort=title%2Casc&limit=250&layout=med`), no `q` — its title and,
+    in <main>, the count line ("1 - 250 of 381,026"). The rows come from Discogs' API."""
+    src = read_debug('d-search.html')
+    title = text(re.search(r'<title[^>]*>(.*?)</title>', src, re.S).group(1))
+    m = re.search(r'<p class="hifi-body hifi-body-medium">(\d[\d,]* - \d[\d,]* of \d[\d,]*)<', src)
+    if not m or '<main' not in src or 'id="app"' in src or 'id="page_content"' in src:
+        sys.exit('d-search.html: not the Next.js search page with its count')
+    return ('<!DOCTYPE html>\n<html lang="en"><head><meta charset="utf-8">'
+            f'<title>{html.escape(title)}</title></head><body>\n'
+            '<div id="__header_root_8239"><header class="dg-fx-header"><a href="https://www.discogs.com/release/1874253">Header link</a></header></div>\n'
+            f'<main><p class="hifi-body hifi-body-medium">{m.group(1)}</p><div role="list"></div></main>\n'
+            '<div id="esi-footer-root"><footer class="dg-fx-footer"><a href="https://www.discogs.com/master/26725">Footer link</a></footer></div>\n'
+            '</body></html>\n'), title
+
+
+def build_listing():
+    """dg-listing.html (debug/d-sell-release-expanded.html, saved by vzell 2026-11-10, logged in, tracklist and credits
+    open): a Marketplace listing (`/shop/item/4466508653`), a Next.js page with neither #app nor #page_content — its
+    title and its <main> (the release and artist links, the conditions, the seller, the price with the shipping and
+    total line, the tracklist), scripts, styles and SVG icons dropped. The rows come from Discogs' API."""
+    src = read_debug('d-sell-release-expanded.html')
+    title = text(re.search(r'<title[^>]*>(.*?)</title>', src, re.S).group(1))
+    main = between(src, '<main', '</main>')
+    if 'id="app"' in src or 'id="page_content"' in src or 'hifi-heading-large' not in main:
+        sys.exit('d-sell-release-expanded.html: not the Next.js listing page with its price')
+    for tag in ('script', 'style', 'svg', 'noscript'):
+        main = re.sub(rf'<{tag}\b.*?</{tag}>', '', main, flags=re.S)
+    main = re.sub(r'<!--.*?-->', '', main, flags=re.S)
+    main = re.sub(r' (?:data-[\w-]+|aria-[\w-]+|style|srcset|sizes)="[^"]*"', '', main)
+    return ('<!DOCTYPE html>\n<html lang="en"><head><meta charset="utf-8">'
+            f'<title>{html.escape(title)}</title></head><body>\n'
+            '<div id="__header_root_8239"><header class="dg-fx-header"><a href="https://www.discogs.com/release/1874253">Header link</a></header></div>\n'
+            f'{squeeze(main)}\n'
+            '<div id="esi-footer-root"><footer class="dg-fx-footer"><a href="https://www.discogs.com/master/26725">Footer link</a></footer></div>\n'
+            '</body></html>\n'), title
+
+
 def build_user_wantlist():
     """dg-user-wantlist.html (debug/dg-user-wantlist.html, saved by vzell 2026-10-29, logged in): disc-kid's
     public wantlist page (`/wantlist?user=disc-kid`) — its title and the top pager ("1 – 138 of 138"). The rows
@@ -403,7 +512,13 @@ def main():
                      ('dg-artist-images.html', lambda: build_entity_images('artist')),
                      ('dg-label-images.html', lambda: build_entity_images('label')),
                      ('dg-sell-release.html', build_sell_release),
-                     ('dg-search.html', build_search)):
+                     ('dg-search.html', build_search),
+                     ('dg-contributions.html', build_contributions),
+                     ('dg-user-submissions.html', build_user_submissions),
+                     ('dg-seller-profile.html', build_seller),
+                     ('dg-seller-profile-empty.html', lambda: build_seller(empty=True)),
+                     ('dg-search-facets.html', build_search_facets),
+                     ('dg-listing.html', build_listing)):
         out, title = fn()
         write(name, out, f'title "{title}"')
     return 0

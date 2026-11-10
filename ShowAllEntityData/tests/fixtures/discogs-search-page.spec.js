@@ -109,3 +109,103 @@ test.describe('discogs.com: the search page (dg-search)', () => {
         expect(r.header, 'Discogs\' header').toBeNull();
     });
 });
+
+// A search by the page's filters, no `q` (2026-11-10, feature/dg-user-seller-search;
+// debug/d-search.html; mockup https://claude.ai/artifact/2gnX1gagFEHTCC2LsFEn6n,
+// tab C). The probe (scripts/probe-dg-user-seller-search.py) mapped each
+// filter: style_exact → style, decade → a year range, sort=title,asc → sort
+// and sort_order; a filter the API cannot ask is left out and named (vzell).
+const FACETS_FILE = path.join(__dirname, 'dg-search-facets.html');
+const FACETS_FX = JSON.parse(fs.readFileSync(path.join(__dirname, 'ext-discogs-search-rocknroll-title-p1.json'), 'utf8'));
+const STYLE = 'q=&style=Rock%20%26%20Roll';
+const FACETS_URL = (sub, p) => `https://api.discogs.com/database/search?${sub}&per_page=100&page=${p}`;
+
+/**
+ * Loads the filter search page at `url`, the API's page 1 answering pages 1
+ * and 2 of each query in `subs`, its page count cut to 2.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} url
+ * @param {string[]} subs
+ * @param {Object} [settings]
+ * @returns {Promise<string[]>} Page errors.
+ */
+async function openFacets(page, url, subs, settings = {}) {
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(String(e.stack || e.message || e)));
+    await page.route(/^https?:\/\//, (route) => route.abort('blockedbyclient'));
+    const d = JSON.parse(FACETS_FX.body);
+    d.pagination.pages = 2;
+    const ans = { status: 200, responseHeaders: `Content-Type: ${FACETS_FX.contentType}`, responseText: JSON.stringify(d) };
+    const answers = Object.fromEntries(subs.flatMap(sub => [1, 2].map(p => [FACETS_URL(sub, p), ans])));
+    await page.context().addInitScript((r) => { window.__gmXhrResponses = r; }, answers);
+    await loadUserscriptPage(page, { url, fixtureFile: FACETS_FILE, testMode: true,
+        settingsOverride: { sa_enable_discogs: true, sa_render_threshold: 100000, ...settings } });
+    return errors;
+}
+
+test.describe('discogs.com: a search by the page\'s filters (dg-search)', () => {
+    test('style and title sort, no q: the button, the API asked with style, sort and sort_order; no note', async ({ page }) => {
+        const sub = `${STYLE}&sort=title&sort_order=asc`;
+        const errors = await openFacets(page, 'https://www.discogs.com/search?style_exact=Rock+%26+Roll&sort=title%2Casc&page=1&limit=250&layout=med', [sub]);
+        const root = page.locator('#mb-dg-root');
+        await expect(root.locator('h1.mb-dg-h1 bdi')).toHaveText('Rock & Roll');
+        const btn = root.locator('button[data-label="Show all results"]');
+        await expect(btn).toHaveAttribute('data-mbtt', /The first 10,000 of 381,026 results/);
+        await expect(btn).not.toHaveAttribute('data-mbtt', /Not applied/);
+        expect(await apiLog(page), 'nothing before the press').toEqual([]);
+        await btn.click();
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        expect(await apiLog(page)).toEqual([FACETS_URL(sub, 1), FACETS_URL(sub, 2)]);
+        const n = JSON.parse(FACETS_FX.body).results.filter(r => r.uri).length;
+        await expect(root.locator('table.tbl').first().locator('tbody > tr')).toHaveCount(2 * n);
+        await expect(root.locator('p.mb-dg-note')).toHaveCount(0);
+        expect(errors).toEqual([]);
+    });
+
+    test('a sort the API cannot ask (want): left out, named in the hover text and above the table', async ({ page }) => {
+        const errors = await openFacets(page, 'https://www.discogs.com/search?style_exact=Rock+%26+Roll&sort=want%2Cdesc', [STYLE]);
+        const root = page.locator('#mb-dg-root');
+        const btn = root.locator('button[data-label="Show all results"]');
+        // The hover card's HTML escapes the quotes.
+        await expect(btn).toHaveAttribute('data-mbtt', /Not applied \(Discogs' API cannot ask it\): sort (?:"|&quot;)want,desc(?:"|&quot;)\./);
+        await btn.click();
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        expect(await apiLog(page)).toEqual([FACETS_URL(STYLE, 1), FACETS_URL(STYLE, 2)]);
+        const note = root.locator('p.mb-dg-note');
+        await expect(note).toHaveText('Not applied (Discogs\' API cannot ask it): sort "want,desc".');
+        expect(await note.evaluate(p => p.previousElementSibling.matches('h2.mb-dg-list-heading') && p.nextElementSibling.matches('table.tbl'))).toBe(true);
+        expect(errors).toEqual([]);
+    });
+
+    test('a decade alone is asked as its years; with a year the year wins; a second style is left out', async ({ page }) => {
+        const decade = `${STYLE}&year=1970-1979`;
+        const year = `${STYLE}&year=1975`;
+        await openFacets(page, 'https://www.discogs.com/search?style_exact=Rock+%26+Roll&decade=1970', [decade, year], { sa_pop_ext: true });
+        const r = await page.evaluate(() => {
+            const at = (href) => {
+                const a = document.createElement('a');
+                a.setAttribute('href', href);
+                a.textContent = 'search';
+                document.querySelector('main').appendChild(a);
+                return window.__saTest.popResolve(a);
+            };
+            return {
+                decade: at('/search?style_exact=Rock+%26+Roll&decade=1970'),
+                year: at('/search?style_exact=Rock+%26+Roll&decade=1970&year=1975'),
+                twice: at('/search?style_exact=Rock+%26+Roll&style_exact=Rockabilly'),
+                q: at('/search/?q=Columbia&type=label'),
+                none: at('/search?type=all&layout=med'),
+            };
+        });
+        expect(r.decade).toMatch(/\|ext:dgsearch:https:\/\/www\.discogs\.com\/search\/\?q=&style=Rock%20%26%20Roll&year=1970-1979$/);
+        expect(r.year).toMatch(/\|ext:dgsearch:https:\/\/www\.discogs\.com\/search\/\?q=&style=Rock%20%26%20Roll&year=1975$/);
+        expect(r.twice).toMatch(/\|ext:dgsearch:https:\/\/www\.discogs\.com\/search\/\?q=&style=Rock%20%26%20Roll$/);
+        // A q search keeps the key it always had (its cached records stay).
+        expect(r.q).toMatch(/\|ext:dgsearch:https:\/\/www\.discogs\.com\/search\/\?q=Columbia&type=label$/);
+        expect(r.none, 'no query, no filter: not a search the reader takes').toBeNull();
+        const btn = page.locator('#mb-dg-root button[data-label="Show all results"]');
+        await btn.click();
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        expect((await apiLog(page))[0]).toBe(FACETS_URL(decade, 1));
+    });
+});
