@@ -359,6 +359,18 @@ popup engine's one non-anonymous request; docs/claude/detail-pages.md).
 - Signed out the data is Discogs' login page: the API's images, types and
   order remain, the editor's columns empty (logged with the reason).
 
+**The Image column's card (2026-11-10).** Until then a hover on these two
+tables showed nothing: their thumbnails were `_DG_FI`'s (`data-mb-fi="dg"`),
+whose row is the release or master of the row's Title link
+(`_dgArtRowFor()`), and these tables have no Title column, so `hasRecord()`
+was false. A row here IS one image, so it has its own provider, `_DGI_FI`
+(`data-mb-fi="dgi"`, `single`): the record is the row itself (no request),
+the card the picture big with its caption (type, uploader, date, W × H,
+KB, from the cell's `data-mb-dgi-*`), a click the viewer, Shift+← → the
+rows shown, in their order. A table saved to disk before carries `dg`:
+`_fiProviderOf()` takes a `dg` link in a table with an Uploaded column and
+no Title as `dgi`. Off with `sa_dg_tip_images` (the card only).
+
 ## A user's ratings (`dg-ratings`, 2026-10-19)
 
 `/users/ratings/<name>` (language prefix allowed; snapshot

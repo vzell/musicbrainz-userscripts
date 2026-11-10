@@ -115,16 +115,17 @@ _EXT_READERS, first match wins. "Any window": its links open in place in every w
 | 2  | wikipedia   | <lang>.wikipedia.org/wiki/<title>                                                                                                                                                            | <lang>.wikipedia.org                  | Infobox, opening, sections                                                                             | -          | yes       |
 | 3  | wikidata    | www.wikidata.org/wiki/Q<n>                                                                                                                                                                   | www.wikidata.org, query.wikidata.org  | Statements, identifiers, articles                                                                      | -          | yes       |
 | 4  | dgimages    | discogs.com/release/<id>/images, …/images/update                                                                                                                                             | www.discogs.com (with cookies)        | Window only: every image                                                                               | -          | -         |
-| 5  | dghistory   | discogs.com/(release¦master¦artist¦label)/<id>/history                                                                                                                                       | www.discogs.com                       | Window only: every change and its diff                                                                 | -          | -         |
-| 6  | discogs     | discogs.com/(release¦master¦artist¦label)/<id>                                                                                                                                               | api.discogs.com (+ token)             | The record, versions, credits                                                                          | -          | -         |
-| 7  | dguser      | discogs.com/user/<name>                                                                                                                                                                      | api.discogs.com, www.discogs.com      | Profile, recent activity                                                                               | -          | -         |
-| 8  | dgsearch    | discogs.com/search/?q=…&type=…                                                                                                                                                               | api.discogs.com                       | 25 results, Load 25 more                                                                               | -          | -         |
-| 9  | dgsupport   | support.discogs.com/hc/<lang>/articles/<id>                                                                                                                                                  | support.discogs.com                   | The article                                                                                            | -          | -         |
-| 10 | bbdate      | brucebase.wikidot.com/<yyyy>#<ddmmyy>                                                                                                                                                        | brucebase.wikidot.com (the year page) | The show from its year page                                                                            | yes        | -         |
-| 11 | springsteen | SL item and song pages, jungleland.it/html/<x>.htm, brucespringsteen.it detrec.aspx (records), sd3.aspx (songs) and mn.aspx (shows), Brucebase /song: (and /gig:, /venue:, … on discogs.com) | the link's own host                   | The site's page, parsed                                                                                | yes        | -         |
-| 12 | setlistfm   | setlist.fm /setlist/…, /setlists/…, /venue/… (with the key); /search?artist=…, /festival/<year>/…, /festivals/… (always)                                                                     | api.setlist.fm (key), www.setlist.fm  | The setlist, the artist's or venue's list; a festival edition's setlists by day, a festival's editions | yes        | yes       |
-| 13 | iadetails   | archive.org/details/<id>[/<file>]                                                                                                                                                            | archive.org (/metadata)               | The item, its files, Play here                                                                         | yes        | -         |
-| 14 | generic     | any other http(s) link to another host                                                                                                                                                       | the link's host (its head tags)       | Title, description, picture                                                                            | -          | -         |
+| 5  | dgimgrev    | discogs.com/release/<id>/images/history?rev=N                                                                                                                                                | www.discogs.com (with cookies)        | Window only: every image revision, the linked one highlighted                                          | -          | -         |
+| 6  | dghistory   | discogs.com/(release¦master¦artist¦label)/<id>/history                                                                                                                                       | www.discogs.com                       | Window only: every change and its diff                                                                 | -          | -         |
+| 7  | discogs     | discogs.com/(release¦master¦artist¦label)/<id>                                                                                                                                               | api.discogs.com (+ token)             | The record, versions, credits                                                                          | -          | -         |
+| 8  | dguser      | discogs.com/user/<name>                                                                                                                                                                      | api.discogs.com, www.discogs.com      | Profile, recent activity                                                                               | -          | -         |
+| 9  | dgsearch    | discogs.com/search/?q=…&type=…                                                                                                                                                               | api.discogs.com                       | 25 results, Load 25 more                                                                               | -          | -         |
+| 10 | dgsupport   | support.discogs.com/hc/<lang>/articles/<id>                                                                                                                                                  | support.discogs.com                   | The article                                                                                            | -          | -         |
+| 11 | bbdate      | brucebase.wikidot.com/<yyyy>#<ddmmyy>                                                                                                                                                        | brucebase.wikidot.com (the year page) | The show from its year page                                                                            | yes        | -         |
+| 12 | springsteen | SL item and song pages, jungleland.it/html/<x>.htm, brucespringsteen.it detrec.aspx (records), sd3.aspx (songs) and mn.aspx (shows), Brucebase /song: (and /gig:, /venue:, … on discogs.com) | the link's own host                   | The site's page, parsed                                                                                | yes        | -         |
+| 13 | setlistfm   | setlist.fm /setlist/…, /setlists/…, /venue/… (with the key); /search?artist=…, /festival/<year>/…, /festivals/… (always)                                                                     | api.setlist.fm (key), www.setlist.fm  | The setlist, the artist's or venue's list; a festival edition's setlists by day, a festival's editions | yes        | yes       |
+| 14 | iadetails   | archive.org/details/<id>[/<file>]                                                                                                                                                            | archive.org (/metadata)               | The item, its files, Play here                                                                         | yes        | -         |
+| 15 | generic     | any other http(s) link to another host                                                                                                                                                       | the link's host (its head tags)       | Title, description, picture                                                                            | -          | -         |
 
 * 2b Inside a window: opens here (H) or in a new tab (T)
 
@@ -135,7 +136,7 @@ Columns: 1 MusicBrainz (musicbrainz.org/artist/<mbid>), 2 SL · JL · KF · BB s
 | Window \ link              | 1    | 2 | 3    | 4 | 5    | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
 |----------------------------+------+---+------+---+------+---+---+---+---+----+----+----|
 | MusicBrainz entity         | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
-| Discogs (6 readers)        | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Discogs (7 readers)        | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
 | Wikipedia                  | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
 | Wikidata                   | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
 | setlist.fm                 | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
@@ -150,7 +151,7 @@ Columns: 1 MusicBrainz (musicbrainz.org/artist/<mbid>), 2 SL · JL · KF · BB s
 | Window \ link              | 1    | 2 | 3    | 4 | 5    | 6 | 7 | 8    | 9 | 10 | 11 | 12 |
 |----------------------------+------+---+------+---+------+---+---+------+---+----+----+----|
 | MusicBrainz entity         | H/n2 | H | H/n5 | H | H/n3 | H | H | T/n4 | H | H  | H  | H  |
-| Discogs (6 readers)        | H/n2 | H | H/n5 | H | H/n3 | H | H | T/n4 | H | H  | H  | H  |
+| Discogs (7 readers)        | H/n2 | H | H/n5 | H | H/n3 | H | H | T/n4 | H | H  | H  | H  |
 | Wikipedia                  | H/n2 | H | H/n5 | H | H/n3 | H | H | T/n4 | H | H  | H  | H  |
 | Wikidata                   | H/n2 | H | H/n5 | H | H/n3 | H | H | T/n4 | H | H  | H  | H  |
 | setlist.fm                 | H/n2 | H | H/n5 | H | H/n3 | H | H | T/n4 | H | H  | H  | H  |
@@ -165,7 +166,7 @@ Columns: 1 MusicBrainz (musicbrainz.org/artist/<mbid>), 2 SL · JL · KF · BB s
 | Window \ link              | 1    | 2 | 3    | 4 | 5    | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
 |----------------------------+------+---+------+---+------+---+---+---+---+----+----+----|
 | MusicBrainz entity         | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
-| Discogs (6 readers)        | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Discogs (7 readers)        | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
 | Wikipedia                  | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
 | Wikidata                   | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
 | setlist.fm                 | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
@@ -180,7 +181,7 @@ Columns: 1 MusicBrainz (musicbrainz.org/artist/<mbid>), 2 SL · JL · KF · BB s
 | Window \ link              | 1    | 2    | 3    | 4 | 5    | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
 |----------------------------+------+------+------+---+------+---+---+---+---+----+----+----|
 | MusicBrainz entity         | H/n2 | H/n1 | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
-| Discogs (6 readers)        | H/n2 | H/n1 | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Discogs (7 readers)        | H/n2 | H/n1 | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
 | Wikipedia                  | H/n2 | H/n1 | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
 | Wikidata                   | H/n2 | H/n1 | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
 | setlist.fm                 | H/n2 | H/n1 | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
@@ -195,7 +196,7 @@ Columns: 1 MusicBrainz (musicbrainz.org/artist/<mbid>), 2 SL · JL · KF · BB s
 | Window \ link              | 1    | 2    | 3    | 4 | 5    | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
 |----------------------------+------+------+------+---+------+---+---+---+---+----+----+----|
 | MusicBrainz entity         | H/n2 | H/n1 | H/n1 | H | H/n3 | H | H | H | H | H  | H  | H  |
-| Discogs (6 readers)        | H/n2 | H/n1 | H/n1 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Discogs (7 readers)        | H/n2 | H/n1 | H/n1 | H | H/n3 | H | H | H | H | H  | H  | H  |
 | Wikipedia                  | H/n2 | H/n1 | H/n1 | H | H/n3 | H | H | H | H | H  | H  | H  |
 | Wikidata                   | H/n2 | H/n1 | H/n1 | H | H/n3 | H | H | H | H | H  | H  | H  |
 | setlist.fm                 | H/n2 | H/n1 | H/n1 | H | H/n3 | H | H | H | H | H  | H  | H  |
@@ -210,7 +211,7 @@ Columns: 1 MusicBrainz (musicbrainz.org/artist/<mbid>), 2 SL · JL · KF · BB s
 | Window \ link              | 1    | 2 | 3    | 4 | 5    | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
 |----------------------------+------+---+------+---+------+---+---+---+---+----+----+----|
 | MusicBrainz entity         | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
-| Discogs (6 readers)        | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Discogs (7 readers)        | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
 | Wikipedia                  | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
 | Wikidata                   | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
 | setlist.fm                 | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
@@ -231,7 +232,7 @@ Columns: 1 MusicBrainz (musicbrainz.org/artist/<mbid>), 2 SL · JL · KF · BB s
 ** Windows
 
 - MusicBrainz entity: mb-entity on musicbrainz.org; dg-mb on every other site (_MB_FOREIGN_POP_HOST; the Springsteen sites and archive.org since 2026-11-03)
-- Discogs (6 readers): discogs, dguser, dgsearch, dgsupport, dghistory, dgimages: onAreaClick → _extDgDrill()
+- Discogs (7 readers): discogs, dguser, dgsearch, dgsupport, dghistory, dgimages, dgimgrev: onAreaClick → _extDgDrill()
 - Wikipedia: allLinksReaders
 - Wikidata: allLinksReaders
 - setlist.fm: allLinksReaders

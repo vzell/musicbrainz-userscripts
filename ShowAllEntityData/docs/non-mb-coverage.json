@@ -193,6 +193,7 @@
     { "id": "wikipedia", "links": "<lang>.wikipedia.org/wiki/<title>", "asks": "<lang>.wikipedia.org", "window": "Infobox, opening, sections" },
     { "id": "wikidata", "links": "www.wikidata.org/wiki/Q<n>", "asks": "www.wikidata.org, query.wikidata.org", "window": "Statements, identifiers, articles" },
     { "id": "dgimages", "links": "discogs.com/release/<id>/images, …/images/update", "asks": "www.discogs.com (with cookies)", "window": "Window only: every image" },
+    { "id": "dgimgrev", "links": "discogs.com/release/<id>/images/history?rev=N", "asks": "www.discogs.com (with cookies)", "window": "Window only: every image revision, the linked one highlighted" },
     { "id": "dghistory", "links": "discogs.com/(release|master|artist|label)/<id>/history", "asks": "www.discogs.com", "window": "Window only: every change and its diff" },
     { "id": "discogs", "links": "discogs.com/(release|master|artist|label)/<id>", "asks": "api.discogs.com (+ token)", "window": "The record, versions, credits" },
     { "id": "dguser", "links": "discogs.com/user/<name>", "asks": "api.discogs.com, www.discogs.com", "window": "Profile, recent activity" },
@@ -218,7 +219,7 @@
   ],
   "windows": [
     { "key": "mbent", "label": "MusicBrainz entity", "how": "mb-entity on musicbrainz.org; dg-mb on every other site (_MB_FOREIGN_POP_HOST; the Springsteen sites and archive.org since 2026-11-03)", "allLinks": true },
-    { "key": "dgfam", "label": "Discogs (6 readers)", "how": "discogs, dguser, dgsearch, dgsupport, dghistory, dgimages: onAreaClick → _extDgDrill()", "allLinks": true },
+    { "key": "dgfam", "label": "Discogs (7 readers)", "how": "discogs, dguser, dgsearch, dgsupport, dghistory, dgimages, dgimgrev: onAreaClick → _extDgDrill()", "allLinks": true },
     { "key": "wp", "label": "Wikipedia", "how": "allLinksReaders", "allLinks": true },
     { "key": "wd", "label": "Wikidata", "how": "allLinksReaders", "allLinks": true },
     { "key": "sfm", "label": "setlist.fm", "how": "allLinksReaders", "allLinks": true },

@@ -3254,6 +3254,14 @@ once and without Tampermonkey asking first:
   images and their types from the API, says why the rest is missing, and
   marks the size as the one Discogs serves (at most 600 px), not the image's
   own.
+- A Discogs release's **image revisions** (`…/images/history?rev=N`, the
+  "Images" links in its edit history): the window lists every revision that
+  changed the images, newest first, with who, when and the note. The one the
+  link points to is highlighted, with its images and what changed since the
+  revision before (**+ added**, **moved**, **→ primary**, removed images
+  greyed). Any other revision shows its images when you open it; **Load the
+  N other revisions** reads them all, one request each. Read with your
+  Discogs session, only when you press Space.
 - A Discogs **user** (`discogs.com/user/…`): the card shows their public
   profile — name, location, member since, contributor rank, releases
   contributed, pending submissions, collection and wantlist sizes; the window

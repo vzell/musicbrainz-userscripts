@@ -3313,6 +3313,49 @@ on discogs.com are docs/claude/discogs.md's "A release's images".
 - Specs: popup-ext.spec.js "Discogs Images and Image history (Phase 4)";
   mutations `scripts/mutations/dg-images.json`.
 
+### A Discogs release's image revisions: reader `dgimgrev` (2026-11-10)
+
+vzell: an image revision link (`/release/<id>[-slug]/images/history?rev=N`,
+the "Images" link of an image change in a release's edit history, in the
+history window and on the dg-history FRP) showed the release itself: no
+reader took the path, so `discogs` (`_EXT_DISCOGS_PATH_RE`: `release/<id>`
+then `/`) did. It gets its own window: EVERY image revision of the release,
+the linked one highlighted.
+
+- **Reader `dgimgrev`, BEFORE `discogs`** in `_EXT_READERS` (next to
+  `dgimages`). `_EXT_DGIR_PATH_RE`; `keyUrl` drops slug, language and `rev`
+  (`/release/<id>/images/history`): every revision link of one release is ONE
+  record, the `rev` only picks the highlight (`_extDgImgRevUi`, `revFor` as
+  `_extDgHistWindow()`). `windowOnly` (the data carries the session).
+- **Where a revision's images come from.** The revision page ("Previous
+  State of Images", debug/d-image-revision-{5,6}.html) mounts the same
+  `imageUploaderApp` as the editor, so its list is drawn in the browser (the
+  2026-10-28 lesson). The uploader script asks
+  `$.get("/"+type+"/"+id+"/images/data", {history_revision: …})`
+  (debug/poh-sync/image-uploader-app.js, `historyRevision` from the page
+  config): `/release/<id>/images/data?history_revision=N`, the editor's data
+  shape (BOM included), the state AT revision N. vzell's answers for 1313481
+  (debug/d-image-rev-{4,5,6}.json): 1, 2, 3 images, ids stable across
+  revisions. Asked like the editor's data (`_extDgImgDataGet()`: same-origin
+  on discogs.com, else `session`).
+- **Which revisions.** The release's edit history: every page (the newest
+  through the history reader's own request, the earlier ones through the
+  same per-page keys and cache as "Load the N earlier pages",
+  `_extDgHistPageKey()`; numbered pages never change), its entries with an
+  `images` link carrying `rev=N`: who, when, the note.
+- **Load on Space:** the history pages, then the linked revision and the
+  image revision before it (so the linked one's marks are complete). Every
+  other revision's images on request: "▸ Show images" (one request) or
+  "Load the N other revisions" (one each, Stop). Each revision is its own
+  `_mbPop` key, kept like a history page. Signed out (the data is the login
+  page) the list stays, each revision saying why it has no images.
+- **Change marks by image id, never by position:** "+ added", "moved",
+  "→ primary" / "→ secondary", removed images greyed "− removed"; none
+  without the revision before it loaded.
+- Bump `_EXT_DGIR_VERSION` when the record changes. Specs:
+  discogs-image-revisions.spec.js; mutations
+  `scripts/mutations/dg-image-revisions.json`.
+
 ### Discogs users, searches, support articles; every link in the window (2026-10-18)
 
 Mockup https://claude.ai/artifact/XRTM8v1aLNj3voVt6RxVJz, tab B. Three
