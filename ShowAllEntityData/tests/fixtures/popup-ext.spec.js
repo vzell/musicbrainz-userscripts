@@ -3565,6 +3565,40 @@ test.describe('Discogs Images and Image history (Phase 4)', () => {
         await expect(d.locator('.mb-dp-warn')).toHaveCount(0);
     });
 
+    // vzell, 2026-11-10: the Image history window (from a history page's
+    // link to /images/update) had no card and no viewer on its thumbnails:
+    // they were `_DGW_FI`'s, which looks for the row's release, and these
+    // rows link only their uploader; on MusicBrainz nothing installed the
+    // viewer click either. Now `_DGWI_FI`: the row is the image.
+    test('Image history window: a rest on a thumbnail shows that image with its caption; a click opens the viewer on its 600 px image, Shift+→ the next row', async ({ page }) => {
+        await openImages(page);
+        await ctrlHover(page, probe(page, 1));
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        const rows = d.locator('[data-mb-tbl="dg-imghist"] tbody tr');
+        await expect(rows).toHaveCount(17);
+        const before = (await xhrFull(page)).length;
+        const link = (r) => rows.nth(r).locator('a.mb-dg-vthumblink');
+        await page.mouse.move(0, 0);
+        await link(4).hover();
+        const tip = page.locator('#mb-stat-tooltip');
+        await expect(tip).toBeVisible();
+        await expect(tip.locator('.mb-tt-title')).toHaveText('Secondary · Cl0ver, 2023-06-12 09:01 · 2002 × 2000 · 1.2MB');
+        await expect(tip.locator('img.mb-fi-card-big')).toHaveCount(1);
+        const hrefs = await rows.locator('a.mb-dg-vthumblink').evaluateAll(as => as.map(a => a.href));
+        expect(hrefs[0], 'the link is the 600 px image, not the thumbnail').toMatch(/\/w:500\//);
+        await link(0).click();
+        const viewer = page.locator('#mb-art-viewer');
+        await expect(viewer).toBeVisible();
+        const path = (u) => new URL(u, 'https://www.discogs.com/').pathname;
+        const shown = () => viewer.locator('.mb-artv-stage .mb-artv-img').getAttribute('src');
+        await expect.poll(async () => path(await shown())).toBe(path(hrefs[0]));
+        await page.keyboard.press('Shift+ArrowRight');
+        await expect.poll(async () => path(await shown())).toBe(path(hrefs[1]));
+        expect((await xhrFull(page)).length, 'neither asks anything').toBe(before);
+        await page.keyboard.press('Escape');
+    });
+
     test('with www.discogs.com contacted before, a hover still reads nothing: the session\'s page is read on Space only', async ({ page }) => {
         // The first-contact rule no longer holds the hover back here; only
         // the reader's `windowOnly` does.
@@ -3626,6 +3660,179 @@ test.describe('Discogs Images and Image history (Phase 4)', () => {
         await expect(d.locator('.mb-dp-warn')).toContainText('Discogs did not give the image editor\'s data');
         await expect(rows.nth(4).locator('td')).toHaveText(['5', '', 'Secondary', '—', '—', '600 × 599 served', '—']);
         await expect(d).not.toContainText('Uploaders');
+    });
+});
+
+// vzell, 2026-11-10: an image change's link in a release's edit history
+// (`/release/<id>/images/history?rev=N`) showed the release itself. Reader
+// `dgimgrev` (docs/claude/detail-pages.md, "A Discogs release's image
+// revisions"): EVERY image revision of the release, the linked one
+// highlighted, each with its images (`/images/data?history_revision=N`, with
+// the session) and what changed since the one before, by image id. The
+// history is the release-history fixture (release 8164856, image changes at
+// revisions 7 and 12); the revisions' images are vzell's real answers for
+// 1313481 (tests/fixtures/dg-image-rev-{4,5,6}.json: 1, 2, 3 images,
+// scripts/copy-dg-image-rev-fixtures.py) served for those revisions.
+// Pins: which reader takes the link and its one key per release; what Space
+// asks (the history, the linked revision and the one before it — never
+// from a hover); the highlight; the marks by id (added, moved, retyped,
+// removed); a revision on request and "Load the N other revisions"; every
+// history page read; signed out; the history window's Images link drills in.
+// Mutations: scripts/mutations/dg-image-revisions.json.
+test.describe('Discogs image revisions (dgimgrev, 2026-11-10)', () => {
+    test.use({ timezoneId: 'Europe/Berlin' });
+    const HIST = 'https://www.discogs.com/release/8164856/history';
+    const LINK = (rev) => `https://www.discogs.com/release/8164856-Human-Touch/images/history?rev=${rev}`;
+    const DATA = (rev) => `https://www.discogs.com/release/8164856/images/data?history_revision=${rev}`;
+    const KEY = 'ext|ext:dgimgrev:https://www.discogs.com/release/8164856/images/history';
+    const rev = (n) => JSON.parse(json(`dg-image-rev-${n}.json`));
+    const jsonAnswer = (list) => ({ status: 200, responseHeaders: 'Content-Type: application/json', responseText: JSON.stringify(list) });
+    const histHtml = fs.readFileSync(path.join(__dirname, 'dg-release-history.html'), 'utf8');
+    const block = (page, n) => dialog(page).locator(`.mb-dgir-r[data-mb-dgir-rev="${n}"]`);
+    const marks = (page, n) => block(page, n).locator('.mb-dp-gallery > a').evaluateAll(as => as.map(a =>
+        Array.from(a.querySelectorAll('.mb-dgir-m')).map(m => m.textContent).join(' ')));
+    const dataLog = async (page) => (await xhrFull(page)).filter(r => r.url.includes('/images/data')).map(r => r.url);
+
+    /**
+     * The event page with links to revisions 7 and 12 (and `more`), the
+     * history and the revisions' images answered.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {{revs?: Object<number, Object>, responses?: Object, more?: string[]}} [opts]
+     * @returns {Promise<void>}
+     */
+    async function openRevs(page, { revs = { 7: jsonAnswer(rev(5)), 12: jsonAnswer(rev(6)) }, responses = {}, more = [] } = {}) {
+        await page.context().route('https://i.discogs.com/**', (route) => route.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+        await openEvent(page, {
+            settings: { sa_pop_ext: true },
+            responses: {
+                [HIST]: htmlAnswer(histHtml),
+                ...Object.fromEntries(Object.entries(revs).map(([n, a]) => [DATA(n), a])),
+                ...responses,
+            },
+        });
+        await addAnnotationLinks(page, [LINK(7), LINK(12), ...more]);
+    }
+
+    test('every revision link of a release is the dgimgrev reader\'s, one key; the release link stays the release\'s', async ({ page }) => {
+        await openRevs(page, { more: ['https://www.discogs.com/de/release/8164856/images/history/?rev=3', 'https://www.discogs.com/release/8164856-Human-Touch'] });
+        const keys = await page.evaluate(() => Array.from(document.querySelectorAll('.ext-probe a')).map(a => window.__saTest.popResolve(a)));
+        expect(keys).toEqual([KEY, KEY, KEY, 'ext|ext:discogs:https://www.discogs.com/release/8164856-Human-Touch']);
+    });
+
+    test('Space: the history, then the linked revision and the one before it; the linked one highlighted, its new image "+ added"', async ({ page }) => {
+        await openRevs(page);
+        await ctrlHover(page, probe(page, 1));
+        await expect(card(page)).toContainText('not contacted yet');
+        expect(await xhrFull(page), 'a hover reads nothing').toEqual([]);
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        await expect(d.locator(':scope > div > span').first()).toHaveText('Discogs image revisions');
+        await expect(block(page, 12).locator('.mb-dp-gallery > a')).toHaveCount(3, { timeout: 15000 });
+        await expect(block(page, 7).locator('.mb-dp-gallery > a')).toHaveCount(2, { timeout: 15000 });
+        expect(await d.locator('.mb-dgir-r').evaluateAll(rs => rs.map(r => r.dataset.mbDgirRev)), 'newest first').toEqual(['12', '7']);
+        await expect(d.locator('.mb-dgir-cur')).toHaveCount(1);
+        await expect(d.locator('.mb-dgir-cur')).toHaveAttribute('data-mb-dgir-rev', '12');
+        const log = await xhrFull(page);
+        expect(log.map(r => r.url)).toEqual([HIST, DATA(12), DATA(7)]);
+        expect(log.map(r => r.anonymous), 'the history anonymous, the images with the Discogs session').toEqual([true, false, false]);
+        expect(log[1].headers['X-Requested-With']).toBe('XMLHttpRequest');
+        // rev 12 (1313481's rev 6) adds 1887199 to rev 7's two images.
+        expect(await marks(page, 12)).toEqual(['', '', '+ added']);
+        await expect(block(page, 12).locator('.mb-dgir-sum')).toHaveText('3 images · +1');
+        // rev 7 is the history's first image change: nothing before it.
+        expect(await marks(page, 7)).toEqual(['+ added', '+ added']);
+        await expect(block(page, 12).locator('.mb-dp-gallery > a').first()).toHaveAttribute('href', rev(6)[0].originalSrc);
+        await expect(block(page, 12).locator('.mb-dp-gallery > a').first().locator('span').first()).toHaveText('★ primary');
+        await expect(block(page, 12).locator('.mb-dgir-h')).toContainText('rev 12');
+        await expect(d.locator('[data-mb-dgir-act="all"]'), 'nothing left to load').toHaveCount(0);
+        // A click on an image: the viewer.
+        await block(page, 12).locator('.mb-dp-gallery > a').nth(2).click();
+        await expect(page.locator('#mb-art-viewer')).toBeVisible();
+    });
+
+    test('the marks go by image id: moved, retyped and removed (greyed)', async ({ page }) => {
+        // rev 7: the three images; rev 12: 1887198 made primary and put
+        // first, 1887195 secondary, 1887199 gone.
+        const r6 = rev(6);
+        const r12 = [Object.assign({}, r6[1], { primary: 'true', sortOrder: 0 }), Object.assign({}, r6[0], { primary: 'false', sortOrder: 1 })];
+        await openRevs(page, { revs: { 7: jsonAnswer(r6), 12: jsonAnswer(r12) } });
+        await ctrlHover(page, probe(page, 1));
+        await page.keyboard.press('Space');
+        await expect(block(page, 12).locator('.mb-dp-gallery > a')).toHaveCount(3, { timeout: 15000 });
+        await expect(block(page, 7).locator('.mb-dp-gallery > a')).toHaveCount(3, { timeout: 15000 });
+        expect(await marks(page, 12)).toEqual(['moved → primary', 'moved → secondary', '− removed']);
+        const gone = block(page, 12).locator('.mb-dp-gallery > a').nth(2);
+        await expect(gone).toHaveClass(/\bmb-dgir-gone\b/);
+        await expect(gone).toHaveAttribute('href', r6[2].originalSrc);
+        await expect(block(page, 12).locator('.mb-dgir-sum')).toHaveText('2 images · −1 · 2 moved · 2 retyped');
+    });
+
+    test('a history of two pages: both read; the older revisions on request, one, then "Load the other N"', async ({ page }) => {
+        // The newest page says "page 2 of 2"; page 1 is the same page with
+        // its image changes at revisions 3 and 4 (the mechanism, not Discogs'
+        // content).
+        const pager = '<div class="pagination_links"><a href="/release/8164856/history?page=1">1</a> <span class="currentpage">2</span></div>';
+        const newest = histHtml.replace('<table id="hist"', `${pager}<table id="hist"`);
+        const older = histHtml.replace('images/history?rev=7', 'images/history?rev=3').replace('images/history?rev=12', 'images/history?rev=4');
+        expect(newest).not.toBe(histHtml);
+        await openRevs(page, {
+            revs: { 3: jsonAnswer(rev(4)), 4: jsonAnswer(rev(5)), 7: jsonAnswer(rev(5)), 12: jsonAnswer(rev(6)) },
+            responses: { [HIST]: htmlAnswer(newest), [`${HIST}?page=1`]: htmlAnswer(older) },
+        });
+        await ctrlHover(page, probe(page, 1));
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        await expect(d.locator('.mb-dgir-r')).toHaveCount(4, { timeout: 15000 });
+        await expect(block(page, 7).locator('.mb-dp-gallery > a')).toHaveCount(2, { timeout: 15000 });
+        await expect(block(page, 12).locator('.mb-dp-gallery > a')).toHaveCount(3, { timeout: 15000 });
+        expect(await d.locator('.mb-dgir-r').evaluateAll(rs => rs.map(r => r.dataset.mbDgirRev))).toEqual(['12', '7', '4', '3']);
+        expect((await xhrFull(page)).map(r => r.url).sort()).toEqual([HIST, `${HIST}?page=1`, DATA(12), DATA(7)].sort());
+        // rev 7 is no longer the first image change: 4 is before it, not read.
+        await expect(block(page, 7)).toContainText('Compared with rev 4 once its images are in');
+        expect(await marks(page, 7)).toEqual(['', '']);
+        await expect(block(page, 3).locator('[data-mb-dgir-act="show"]')).toHaveText('▸ Show images');
+        await block(page, 3).locator('[data-mb-dgir-act="show"]').click();
+        await expect(block(page, 3).locator('.mb-dp-gallery > a')).toHaveCount(1, { timeout: 15000 });
+        expect(await marks(page, 3), 'the first image change of the whole history').toEqual(['+ added']);
+        expect(await dataLog(page)).toEqual([DATA(12), DATA(7), DATA(3)]);
+        const all = d.locator('[data-mb-dgir-act="all"]');
+        await expect(all).toContainText('Load the other 1 revision (1 request');
+        await all.click();
+        await expect(block(page, 4).locator('.mb-dp-gallery > a')).toHaveCount(2, { timeout: 15000 });
+        expect(await dataLog(page)).toEqual([DATA(12), DATA(7), DATA(3), DATA(4)]);
+        expect(await marks(page, 4)).toEqual(['', '+ added']);
+        expect(await marks(page, 7), 'rev 4 in: rev 7 changed nothing').toEqual(['', '']);
+        await expect(block(page, 7).locator('.mb-dgir-sum')).toHaveText('2 images · no change to the images');
+        await expect(all).toHaveCount(0);
+    });
+
+    test('signed out of Discogs: the revisions are listed, each says why it has no images', async ({ page }) => {
+        const login = { status: 200, responseHeaders: 'Content-Type: text/html', responseText: '<html><body><form id="login"></form></body></html>' };
+        await openRevs(page, { revs: { 7: login, 12: login } });
+        await ctrlHover(page, probe(page, 1));
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        await expect(d.locator('.mb-dgir-r')).toHaveCount(2);
+        await expect(block(page, 12).locator('.mb-dp-warn')).toContainText('signed out of discogs.com', { timeout: 15000 });
+        await expect(block(page, 12).locator('[data-mb-dgir-act="show"]')).toHaveText('Try again');
+        await expect(block(page, 12).locator('.mb-dgir-h')).toContainText('rev 12');
+    });
+
+    test('in a history window, an image change\'s Images link opens the revisions in the window, one history request; Back returns', async ({ page }) => {
+        await openRevs(page, { more: [HIST] });
+        await ctrlHover(page, probe(page, 2));
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        const title = d.locator(':scope > div > span').first();
+        await expect(title).toHaveText('Discogs release history');
+        await d.locator('.mb-dgh-lk a[href*="images/history?rev=7"]').click();
+        await expect(title).toHaveText('Discogs release history › Discogs image revisions');
+        await expect(d.locator('.mb-dgir-cur')).toHaveAttribute('data-mb-dgir-rev', '7');
+        await expect(block(page, 7).locator('.mb-dp-gallery > a')).toHaveCount(2, { timeout: 15000 });
+        expect(await histLog(page), 'the history window\'s page, not asked again').toEqual([[HIST, true]]);
+        await d.getByRole('button', { name: /Back/ }).click();
+        await expect(title).toHaveText('Discogs release history');
     });
 });
 

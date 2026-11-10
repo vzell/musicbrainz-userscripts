@@ -29085,3 +29085,16 @@ dg-image-history FRP).
    (`data-mb-fi="dg"`); `_DG_FI`'s row is the release of the row's Title link (`_dgArtRowFor()`), these tables
    have no Title column, so `hasRecord()` was false and `_fiCardHtml()` returned null. HELP has said "hover for
    the card" since Phase 4: no spec ever hovered. New provider `_DGI_FI` (docs/claude/discogs.md).
+
+Addendum, same day (vzell's browser check: both items OK live; two more):
+
+3. **The Image history WINDOW had no card and no viewer either** (debug/d-images-update-POH.html, opened from the
+   release-history FRP's link to `/images/update`). Its thumbnails were `_DGW_FI`'s (`_extDgThumbHtml()`), whose
+   row is the first release or master link in the row (`_dgWinArtRowFor()`); these rows link only their uploader,
+   so `hasRecord()` was false. And on MusicBrainz nothing installed the viewer click there: `_fiInstall()` was
+   called by `_extDiscogsWindow()` only. Now `_DGWI_FI` (the row is the image) and `_extDgImgWindow()` installs it.
+4. **The revision page itself had no script.** My first look named `dg-release` as a likely claimant of
+   `…/images/history` (`_dgEntityPageIs()` did not exclude it), but no `@include` line admits the path, so
+   Tampermonkey never injected the script there; sl-include-regex.spec.js even listed `…/images/history?rev=7`
+   among the pages NOT injected. vzell chose "every revision": pageType `dg-image-revisions` (its own `@include`
+   line, the gate, `dg-release` excluding it now).

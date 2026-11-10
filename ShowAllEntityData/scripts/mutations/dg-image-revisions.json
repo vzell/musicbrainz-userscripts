@@ -1,0 +1,301 @@
+[
+    {
+        "name": "revision links left to the release reader",
+        "why": "vzell 2026-11-10: _EXT_DISCOGS_PATH_RE takes /images/history too, so dgimgrev must claim it first.",
+        "edits": [
+            {
+                "find": "            id: 'dgimgrev', kind: 'Discogs image revisions', test: _extDgImgRevTest,",
+                "replace": "            id: 'dgimgrev', kind: 'Discogs image revisions', test: () => false,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "every revision link of a release is the dgimgrev reader",
+        "expect": "fail"
+    },
+    {
+        "name": "the key keeps the revision",
+        "why": "One record per release: the revision only picks the highlight.",
+        "edits": [
+            {
+                "find": "        return `https://www.discogs.com/release/${_EXT_DGIR_PATH_RE.exec(u.pathname)[1]}/images/history`;",
+                "replace": "        return `https://www.discogs.com/release/${_EXT_DGIR_PATH_RE.exec(u.pathname)[1]}/images/history${u.search}`;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "every revision link of a release is the dgimgrev reader",
+        "expect": "fail"
+    },
+    {
+        "name": "no highlight",
+        "why": "vzell: the revision the link points to is highlighted.",
+        "edits": [
+            {
+                "find": "            const cur = rev === ui.rev;\n            const who = e ?",
+                "replace": "            const cur = false;\n            const who = e ?"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "Space: the history, then the linked revision",
+        "expect": "fail"
+    },
+    {
+        "name": "the revision's images asked without history_revision",
+        "why": "Discogs' uploader asks /images/data with history_revision: without it the answer is today's images.",
+        "edits": [
+            {
+                "find": "_extDgImgDataGet(`${_extDgImgDataUrl(id)}?history_revision=${rev}`, wanted)",
+                "replace": "_extDgImgDataGet(_extDgImgDataUrl(id), wanted)"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "Space: the history, then the linked revision",
+        "expect": "fail"
+    },
+    {
+        "name": "the revision before the linked one not asked",
+        "why": "The linked revision's marks need the one before it, asked on opening.",
+        "edits": [
+            {
+                "find": "            if (!stOf(revs[li - 1].rev)) _extDgImgRevDataLoad(id, revs[li - 1].rev);",
+                "replace": "            if (!stOf(revs[li - 1].rev)) void 0;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "Space: the history, then the linked revision",
+        "expect": "fail"
+    },
+    {
+        "name": "the first image change of a complete history not marked added",
+        "why": "Nothing came before the history's first image change: its images are all added.",
+        "edits": [
+            {
+                "find": "            const prevRows = prev ? rowsOf(prev) : (complete ? [] : null);",
+                "replace": "            const prevRows = prev ? rowsOf(prev) : null;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "Space: the history, then the linked revision",
+        "expect": "fail"
+    },
+    {
+        "name": "marks by position instead of image id",
+        "why": "A removed image moves every one after it: only the id says which image is which.",
+        "edits": [
+            {
+                "find": "        const before = new Map(prev.map(r => [r.id, r]));",
+                "replace": "        const before = new Map(prev.map((r, i) => [cur[i] ? cur[i].id : r.id, r]));"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "the marks go by image id",
+        "expect": "fail"
+    },
+    {
+        "name": "the history's earlier pages not read",
+        "why": "vzell 2026-11-10: every image revision is listed, so every history page is read on opening.",
+        "edits": [
+            {
+                "find": "            if (g.hist.pages > 1) _extDgHistPagesRun(hid, g.hist);",
+                "replace": "            if (g.hist.pages > 1) void 0;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a history of two pages",
+        "expect": "fail"
+    },
+    {
+        "name": "Show images does nothing",
+        "why": "Another revision's images load when it is opened.",
+        "edits": [
+            {
+                "find": "            _extDgImgRevDataLoad(id, v, { force: !!(st && st.status === 'failed') });",
+                "replace": "            void st;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a history of two pages",
+        "expect": "fail"
+    },
+    {
+        "name": "Load the N other revisions does nothing",
+        "why": "vzell 2026-11-10: one button reads every other revision.",
+        "edits": [
+            {
+                "find": "        case 'all': _extDgImgRevRun(id, ui.revs.slice()); return;",
+                "replace": "        case 'all': return;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a history of two pages",
+        "expect": "fail"
+    },
+    {
+        "name": "the history asked again though the history window has it",
+        "why": "The history reader's record is the revisions' list: one request for both windows.",
+        "edits": [
+            {
+                "find": "        const have = _mbPop.get(_extDgHistTarget(hid, t).key);\n        let h = have && have.status === 'done' && have.data && have.data.dgHist ? have.data.dgHist : null;",
+                "replace": "        const have = _mbPop.get(_extDgHistTarget(hid, t).key);\n        let h = have ? null : null;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "in a history window, an image change",
+        "expect": "fail"
+    },
+    {
+        "name": "the images table's provider has no record",
+        "why": "vzell 2026-11-10: the Image column of dg-images / dg-image-history gets the card; the row is its own record.",
+        "edits": [
+            {
+                "find": "        rowFor: (a, table, path) => _dgImgArtRowFor(a, table, path),\n        hasRecord: () => true,",
+                "replace": "        rowFor: (a, table, path) => _dgImgArtRowFor(a, table, path),\n        hasRecord: () => false,"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-images.spec.js",
+        "grep": "a hover: this row's image",
+        "expect": "fail"
+    },
+    {
+        "name": "the dgi stamp names no provider",
+        "why": "_fiProvider() must know 'dgi'.",
+        "edits": [
+            {
+                "find": "            case 'dgi': return _DGI_FI;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-images.spec.js",
+        "grep": "a hover: this row's image",
+        "expect": "fail"
+    },
+    {
+        "name": "a table saved before 2026-11-10 left to _DG_FI",
+        "why": "A disk-saved images table carries dg: its headers make it _DGI_FI's.",
+        "edits": [
+            {
+                "find": "        if (key === 'dg' && _dgIsImagesTable(a.closest('table'))) return _DGI_FI;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-images.spec.js",
+        "grep": "a table saved before",
+        "expect": "fail"
+    },
+    {
+        "name": "the images table stamped dg again",
+        "why": "Covered by the saved-table fallback (_fiProviderOf() takes a dg link in an images table as _DGI_FI's), so the card spec cannot see it: recorded, not unmentioned.",
+        "edits": [
+            {
+                "find": "data-mb-fi=\"dgi\" data-mb-dgi-cap=",
+                "replace": "data-mb-fi=\"dg\" data-mb-dgi-cap="
+            }
+        ],
+        "spec": "tests/fixtures/discogs-images.spec.js",
+        "grep": "a hover: this row's image",
+        "expect": "pass"
+    },
+    {
+        "name": "the viewer steps by Discogs' order, not the rows shown",
+        "why": "Shift+Right goes to the next row SHOWN: a sort changes it.",
+        "edits": [
+            {
+                "find": "        Array.from(table.querySelectorAll(`tbody > tr ${p.linkSel}`)).forEach(l => {\n            const tr = l.closest('tr');",
+                "replace": "        Array.from(table.querySelectorAll(`tbody > tr ${p.linkSel}`)).sort((x, y) => Number(x.closest('tr').cells[0].textContent) - Number(y.closest('tr').cells[0].textContent)).forEach(l => {\n            const tr = l.closest('tr');"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-images.spec.js",
+        "grep": "a click: the viewer",
+        "expect": "fail"
+    },
+    {
+        "name": "the Image history window's thumbnails left to _DGW_FI",
+        "why": "vzell 2026-11-10: the window's rows are images; _DGW_FI looks for a release link they do not have.",
+        "edits": [
+            {
+                "find": "        return `<a class=\"mb-dg-vthumblink\" href=\"${_rgEsc(r.full || r.thumb)}\" data-mb-fi=\"dgwi\"",
+                "replace": "        return `<a class=\"mb-dg-vthumblink\" href=\"${_rgEsc(r.full || r.thumb)}\" data-mb-fi=\"dgw\""
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "Image history window: a rest on a thumbnail",
+        "expect": "fail"
+    },
+    {
+        "name": "the Image history window installs no viewer click",
+        "why": "On MusicBrainz only _extDiscogsWindow() installed _fiClick before 2026-11-10.",
+        "edits": [
+            {
+                "find": "            // Its thumbnails' card and viewer click (`_DGWI_FI`), on MusicBrainz too.\n            _fiInstall();",
+                "replace": "            // Its thumbnails' card and viewer click (`_DGWI_FI`), on MusicBrainz too."
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "Image history window: a rest on a thumbnail",
+        "expect": "fail"
+    },
+    {
+        "name": "no @include for the revision page",
+        "why": "Until 2026-11-10 Tampermonkey never injected the script on /images/history.",
+        "edits": [
+            {
+                "find": "// @include      /^https?:\\/\\/(?:www\\.)?discogs\\.com\\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\\/)?release\\/\\d+(?:-[^\\/?#]*)?\\/images\\/history\\/?(?:[?#].*)?$/\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-include-regex.spec.js",
+        "grep": "image revision page",
+        "expect": "fail"
+    },
+    {
+        "name": "the revision page stopped by the #app gate",
+        "why": "An older page without #app: the gate must let the path through with #page_content.",
+        "edits": [
+            {
+                "find": "           _DG_IMGREV_PATH_RE.test(window.location.pathname) || _DG_SELL_PATH_RE",
+                "replace": "           _DG_SELL_PATH_RE"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-images.spec.js",
+        "grep": "the revision page: one sub-table",
+        "expect": "fail"
+    },
+    {
+        "name": "the revision page's Change without the revision before",
+        "why": "Each page compares its revision with the one before it, by image id.",
+        "edits": [
+            {
+                "find": "        const before = prev ? await _extDgImgRevRows(plan.id, prev.rev, wanted) : null;",
+                "replace": "        const before = null;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-images.spec.js",
+        "grep": "the revision page: one sub-table",
+        "expect": "fail"
+    },
+    {
+        "name": "the revision page's removed images left out",
+        "why": "vzell: removed images as rows marked removed.",
+        "edits": [
+            {
+                "find": "            .concat(diff ? diff.removed.map(r => _dgImgRowHtml(r, '− removed', true)) : []);",
+                "replace": "            .concat([]);"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-images.spec.js",
+        "grep": "an image the revision removed",
+        "expect": "fail"
+    },
+    {
+        "name": "the revision page's own revision not marked",
+        "why": "The page's own revision says \"this page\".",
+        "edits": [
+            {
+                "find": "        const heading = [`rev ${g.rev}`, g.here ? 'this page' : '',",
+                "replace": "        const heading = [`rev ${g.rev}`, '',"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-images.spec.js",
+        "grep": "the revision page: one sub-table",
+        "expect": "fail"
+    }
+]

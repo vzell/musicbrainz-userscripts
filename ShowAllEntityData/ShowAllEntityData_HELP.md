@@ -4149,6 +4149,15 @@ section of its own above Discogs' page, with the toolbar and these buttons:
   revision 8 → 10**: each part of the release (master, artist, label) in
   the revision the page shows, old and new, *Marked* "changed" where
   Discogs marked it. Read from the page itself.
+- **Release image revisions — Show every image revision:** a revision
+  page of a release's images (`/release/<id>/images/history?rev=N`, "Previous
+  State of Images"): one sub-table per revision of the images, newest first,
+  its heading the revision, when, who and the note (the page's own says
+  "this page"); the images with a **Change** column against the revision
+  before (**+ added**, **moved**, **→ primary**, **→ secondary**; an image
+  it removed has its own greyed row, **− removed**). The edit history first
+  (one request a page), then one request a revision, with your Discogs
+  session.
 - **Release images — Show every image:** a release's Images page
   (`/release/<id>/images`) and its image editor (`…/images/update`, Image
   history) get the same table: **#**, the image (hover for the card, click

@@ -43,8 +43,8 @@
     "why": "_dgPage()'s path pattern is not anchored at the end, so the master pageType (earlier in pageDefinitions) would claim /master/<id>/history first.",
     "edits": [
       {
-        "find": "        return _dgPage(path)?.kind === kind && !_DG_HIST_PATH_RE.test(path) && !_DG_IMG_PATH_RE.test(path) && !_DG_ENT_IMG_PATH_RE.test(path);",
-        "replace": "        return _dgPage(path)?.kind === kind && (kind === 'release' ? !_DG_HIST_PATH_RE.test(path) : true) && !_DG_IMG_PATH_RE.test(path) && !_DG_ENT_IMG_PATH_RE.test(path);"
+        "find": "        return _dgPage(path)?.kind === kind && !_DG_HIST_PATH_RE.test(path) && !_DG_IMG_PATH_RE.test(path) && !_DG_ENT_IMG_PATH_RE.test(path)",
+        "replace": "        return _dgPage(path)?.kind === kind && (kind === 'release' ? !_DG_HIST_PATH_RE.test(path) : true) && !_DG_IMG_PATH_RE.test(path) && !_DG_ENT_IMG_PATH_RE.test(path)"
       }
     ],
     "spec": "tests/fixtures/discogs-links.spec.js",

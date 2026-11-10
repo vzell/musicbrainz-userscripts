@@ -4,8 +4,8 @@
     "why": "_dgPage()'s path pattern is not anchored at the end: without the exclusion dg-master (earlier in pageDefinitions) claims /master/<id>/images with its Versions button.",
     "edits": [
       {
-        "find": "!_DG_IMG_PATH_RE.test(path) && !_DG_ENT_IMG_PATH_RE.test(path);",
-        "replace": "!_DG_IMG_PATH_RE.test(path);"
+        "find": "!_DG_IMG_PATH_RE.test(path) && !_DG_ENT_IMG_PATH_RE.test(path)",
+        "replace": "!_DG_IMG_PATH_RE.test(path)"
       }
     ],
     "spec": "tests/fixtures/discogs-images.spec.js",

@@ -568,10 +568,27 @@ test.describe('@include coverage', () => {
             'https://www.discogs.com/label/264352-DADC/history',
         ];
         const others = [
-            'https://www.discogs.com/release/8164856-Human-Touch/images/history?rev=7',
             'https://www.discogs.com/release/8164856-Human-Touch/historyx',
             'https://www.discogs.com/user/vzell/history',
             'https://www.discogs.com/master/26725-Born-To-Run/history/more',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
+    // 2026-11-10 (vzell): the image revision page had no script at all; it
+    // is dg-image-revisions now. Until then the history test above listed it
+    // among the pages NOT injected.
+    test('discogs.com: a release\'s image revision page (dg-image-revisions), with or without ?rev=', () => {
+        const pages = [
+            'https://www.discogs.com/release/8164856-Human-Touch/images/history?rev=7',
+            'https://www.discogs.com/release/1313481/images/history',
+            'https://www.discogs.com/de/release/1313481-Born-To-Run/images/history/?rev=6',
+        ];
+        const others = [
+            'https://www.discogs.com/master/26725/images/history?rev=3',
+            'https://www.discogs.com/release/1313481/images/historyx',
+            'https://www.discogs.com/release/1313481/images/history/more',
         ];
         expect(pages.filter((u) => !injected(u))).toEqual([]);
         expect(others.filter((u) => injected(u))).toEqual([]);
