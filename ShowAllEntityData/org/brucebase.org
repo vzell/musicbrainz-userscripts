@@ -508,6 +508,16 @@ covers: "* TODO add additional PTs to BB". 1,942 stats pages in the mirror, most
 (per-song tour counts) and =stats:awards-*=, plus: songs-list, handwritten-lyric-sheets,
 songs-official-video, orphaned-songs, lyrics, songs-by-album, songs-count, bootlegs, bootlegs-label,
 discography (tabs and images), songs-registered (text).
+vzell, 2026-11-11 (moved here from its own note at the end of this file):
+#+begin_example
+https://brucebase.wikidot.com/content:files
+https://brucebase.wikidot.com/stats:on-the-tracks
+https://brucebase.wikidot.com/stats:greetings-from-asbury-park-nj-studio-sessions
+https://brucebase.wikidot.com/stats:wild-innocent-e-street-shuffle-studio-sessions
+... etc. all the links reachable from https://brucebase.wikidot.com/stats:on-the-tracks
+#+end_example
+The mirror has 258 =stats:*studio-sessions*= pages (an album's sessions and its =-details=, =-credits=,
+=-addrec= parts).
 - [ ] survey every listed page and one sample per family (=scripts/probe-bb-stats-pages.py=): which are
   tabviews like stats:songs, plain lists, number grids or text
 - [ ] mockup per shape; vzell picks the first batch
@@ -649,14 +659,3 @@ Switch to plan mode
 2.)
 
 Replace that section with proper new "Phase <Id>" sections
-** add support for new PTs
-
-add support for new PTs
-
-#+begin_example
-https://brucebase.wikidot.com/content:files
-https://brucebase.wikidot.com/stats:on-the-tracks
-https://brucebase.wikidot.com/stats:greetings-from-asbury-park-nj-studio-sessions
-https://brucebase.wikidot.com/stats:wild-innocent-e-street-shuffle-studio-sessions
-... etc. all the links reachable from https://brucebase.wikidot.com/stats:on-the-tracks
-#+end_example
