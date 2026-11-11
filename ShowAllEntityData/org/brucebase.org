@@ -417,9 +417,126 @@ revisions (=table.page-compare= has them); 3. compare any two revisions (the wik
   and its list / compare answers; =bb-history.spec.js= (16), mutations (27)
 - [X] vzell's live check, round 2 (2026-11-11): OK
 
-*** Later (separate TODOs above)
-Extra list pageTypes (stats:discography, …), scroll-to-first-difference userscript, deferred
-year-table columns.
+*** TODO Phase 7 — the "Manage Site" menu cannot be clicked (bug)
+vzell, 2026-11-11 (Image #18): the wiki's top-bar dropdowns (Manage Site …) open over our toolbar and
+status line, and their entries are not mouse selectable; on the initial page too.
+- [ ] evidence first: a fixture (=debug/bb-recent-changes-raw.html=), hover Manage Site, =elementFromPoint=
+  at each entry with SAED on and with =sa_enable_brucebase= off; name what sits on top (our =h1=, the
+  status line, the sticky =#side-bar= stacking context) before any CSS change
+- [ ] the fix in =_ensureBbStyle()= (host-scoped), =bb-topbar-menu.spec.js= (an entry receives the click),
+  a mutation per guard, brucebase.md "Styling", WIP
+- [ ] vzell's live check: system:recent-changes and a song page, every top-bar menu
+
+*** TODO Phase 8 — previews of show links =/2026#020526= on Brucebase itself
+vzell, 2026-11-11: POH for links like =https://brucebase.wikidot.com/2026#020526=. The =bbdate=
+reader (=_extBbDateTest()=, =_extBbDateLoad()=, =_extBbYear()=: the year page read once, cached in
+IndexedDB) already previews them on every other site and INSIDE a window on Brucebase; on Brucebase's
+own pages they were left to the site on purpose (G3, 2026-11-03: the =inWindow= condition in the
+own-host test). Such links sit in the event pages' nav line ("Info & Setlist"), the year listing pages
+(Phase 9) and elsewhere.
+- [ ] list where they occur on the IP and FRP (mirror sweep: event nav, list pages, venue/relation lists)
+- [ ] the card on hover and the window on Space on the page itself (IP and FRP), the click still the
+  site's; a link to the page's own anchor (on =/2026= itself) keeps its jump — card or not: vzell decides
+  in the check
+- [ ] spec (a gig fixture's nav link: card, window, one year-page request; a second date of the same year
+  costs none), mutations, NON-MB-COVERAGE cells, detail-pages.md (the G3 note), HELP, WIP
+- [ ] vzell's live check: a gig's "Info & Setlist", a link on 2026-list
+
+*** TODO Phase 9 — year listing pages =bb-year-list= (/2026-list)
+vzell, 2026-11-11: support =https://brucebase.wikidot.com/2026-list=. 126 pages in the mirror
+(=/1949-64-list= … =/2026-list=): a year nav line, an intro =div.code=, =ul > li= entries
+"=1978-03-05 - RECORD PLANT, NEW YORK CITY, NY=" linking =/1978#050378=, an optional note
+=<em>(Recording Session)</em>= (Rehearsal, Rescheduled, Early/Late, Cancelled, Interview, band or event
+names), tour boxes "Start of the "X" tour[ - U.S.]" / "End of the 2nd leg of the "X" tour" between the lists.
+- [ ] probe over all 126 mirror pages (=scripts/probe-bb-year-list.py=): entry and note counts, box
+  texts, dates with =00=, entries with no note, any other markup
+- [ ] mockup: the table (Date + dateParts, Venue, City, State, Country — the year page's splitter, Note,
+  Tour, Leg), the intro as a text section, "this year" and "all years" (pageKeys over the nav line,
+  126 requests) buttons; questions inside
+- [ ] =bb-year-list=: =_BB_YEAR_LIST_PATH_RE=, =applyBbYearListToTable()=, the Date link previews the
+  entry as on the year page (=_extBbYear()=); =bb-year-list.spec.js=, mutations, coverage rows,
+  brucebase.md, HELP, WIP
+- [ ] vzell's live check: 2026-list, 1978-list, 1949-64-list, all years
+
+*** TODO Phase 10 — Recent changes "changes" button and the first difference
+covers: "* TODO create userscript which directly scrolls to the first difference …" and the original
+"BB changes button" idea.
+- [ ] a per-row button on our Recent changes table: opens the row's page in the window with History open,
+  From = revision N−1, To = N (=_bbHistUi= preset by URL until the page id is known; "(new)" = revision 0
+  against nothing)
+- [ ] the History pane scrolls to its first changed line when a pair is shown
+- [ ] the wiki's own history view (signed in): after its compare / diff loads, scroll to the first
+  =ins=/=del= (a MutationObserver on the history area; probe its DOM first)
+- [ ] specs (=bb-recent-changes.spec.js=, =bb-history.spec.js=), mutations, docs, WIP
+- [ ] vzell's live check
+
+*** TODO Phase 11 — tag pages: system:page-tags, a tag's pages, manage:pages-and-tags
+vzell, 2026-11-11:
+#+begin_example
+https://brucebase.wikidot.com/system:page-tags - an action button that shows all tags in a table; its links get POH
+https://brucebase.wikidot.com/system:page-tags/tag/storyteller - how best to show it (mockup)
+https://brucebase.wikidot.com/manage:pages-and-tags - all pages in a table, "Tags" a multi-row column
+https://brucebase.wikidot.com/manage:pages-and-tags/p/3 - page 3 of the above
+#+end_example
+Found: the tag cloud is 11,562 =a.tag= with the weight only as =font-size: N%=; pages-and-tags is one
+=wiki-content-table= (page(title) | tags as one text cell), 100 rows a page, "page 1 of 35", =/p/N=.
+- [ ] probe (signed out): =/system:page-tags/tag/<tag>= (shape, paging, size for a big tag), pages-and-tags
+  p1/p35 timing, whether the 35 pages are the whole wiki or a filter
+- [ ] mockup: the tag table (Tag, Family via =_bbTagFamily()=, Weight, Pages if the probe gives a count),
+  a tag's pages (a table of pages: Title, Kind from the prefix, Date …), the pages-and-tags table, and a
+  tag link's window (its pages); questions inside
+- [ ] =bb-tags= (the cloud, no request), =bb-tag= (one tag's pages), =bb-pages-and-tags= (=/p/N= paging,
+  "this page" and "all 35" buttons, Tags one row per tag), a tag reader for =/system:page-tags/tag/= links
+  (our window's Tags section included); specs, mutations, coverage rows, docs, WIP
+- [ ] vzell's live check
+
+*** TODO Phase 12 — story pages =bb-story=
+vzell's "no PT yet" (round-2 live check). 1,489 story pages: a Storyteller banner, one
+=<p><strong>Intro to "Song"</strong><br>words</p>= per moment, a "Compiled by" box.
+- [ ] the table Moment / Song / Words (=_bbEventStories()= reused, shared with the window's Story
+  section), the show it belongs to (breadcrumb) and "Compiled by" in the head, the wiki's page below
+- [ ] =bb-story.spec.js= over the story fixture, mutations, coverage row, docs, WIP
+- [ ] vzell's live check
+
+*** TODO Phase 13 — stats list pageTypes
+covers: "* TODO add additional PTs to BB". 1,942 stats pages in the mirror, mostly =stats:<song>-tour=
+(per-song tour counts) and =stats:awards-*=, plus: songs-list, handwritten-lyric-sheets,
+songs-official-video, orphaned-songs, lyrics, songs-by-album, songs-count, bootlegs, bootlegs-label,
+discography (tabs and images), songs-registered (text).
+- [ ] survey every listed page and one sample per family (=scripts/probe-bb-stats-pages.py=): which are
+  tabviews like stats:songs, plain lists, number grids or text
+- [ ] mockup per shape; vzell picks the first batch
+- [ ] build in batches (one shared tabview reader where possible, =bb-songs= as the model); specs,
+  mutations, coverage rows, docs, WIP per batch
+- [ ] vzell's live check per batch
+
+*** TODO Phase 14 — year-table columns from each event's page
+The year table has Type and Tour already; the rest lives on the event's own page: the cast (On stage),
+tags, Storyteller / Recording / Media present, image counts.
+- [ ] mockup: which columns, loaded lazily per visible row like Relationships (one request per event,
+  1 s apart, cached by =_DP_PARSER_VERSION=), how a failed row shows; the performance cost stated
+- [ ] build on the deferred-column pattern (docs/claude/deferred-columns-picard-relationships.md rules:
+  master rows, the four post-render duties); specs, mutations, docs, WIP
+- [ ] vzell's live check
+
+*** TODO Phase 15 — History in Brucebase windows on other sites
+Today the History section is on brucebase.wikidot.com only.
+- [ ] probe userscript run by vzell on musicbrainz.org: a cross-origin anonymous =GM_xmlhttpRequest= POST
+  to =/ajax-module-connector.php= with our own =wikidot_token7= in body and Cookie header; status, ms,
+  whether the token is accepted; no names saved
+- [ ] on that evidence: the section in BB windows on every host (the existing =_dpAwaitSlot()= spacing),
+  or a note why not; specs, docs (detail-pages.md: an external request stays anonymous), WIP
+- [ ] vzell's live check
+
+*** TODO Phase 16 — recheck what our readers miss
+covers: "* TODO recheck rendering all the right info on BB pages" and "* TODO support hovering for all
+BB PTs". Last, once Phases 7–15 have added their readers.
+- [ ] a sweep over the mirror (=scripts/probe-bb-reader-sweep.py=): per family, the page's fields and tabs
+  against what our readers return; every gap listed
+- [ ] links on BB pages and in our windows with no preview (BB, MB, SL and other known hosts):
+  =docs/non-mb-coverage.json= cells refreshed
+- [ ] fixes in batches, each with spec and mutation; docs, WIP
+- [ ] vzell's live check
 
 
 * DONE answers
@@ -472,7 +589,7 @@ for Phase 2 and 3 are also both confirmed like OK
 * TODO adjustments
 ** TODO On The Tracks
 
-takes written like "THE HEIST - V2 - take 14" split them additionally into
+"On The Tracks" entries written like "THE HEIST - V2 - take 14" should split additionally into the following columns
 
 #+begin_example
 title
@@ -481,7 +598,7 @@ take
 #+end_example
 
 ** DONE history additions
-*** initial
+*** DONE initial
 
 Is it possible to add more features to the HISTORY section
 
@@ -508,7 +625,7 @@ e.g. screenshot [Image #13], between e.g. rev. 43 and 28
 
 make some rich HTML based mockups
 
-*** answers
+*** DONE answers
 
 1. Should the chips filter the revisions already read (instant, recommended), or ask Wikidot on each click? INSTANT
 2. Several chips at once (recommended), or one at a time? SEVERAL AT ONCE
@@ -516,15 +633,14 @@ make some rich HTML based mockups
 4. The Tags strip in the comparison: always shown (recommended), or only when the tags differ? ALWAYS SHOWN
 5. From / To pickers on each row (recommended), or Shift+click a second row? FROM / TO PICKERS ON EACH ROW
 6. When you pick backwards (From 43, To 28): older on the left always (recommended), or in the order picked, like the wiki? OLDER ON THE LEFT ALWAYS
+** act on
 
+act on the section "*** TODO further Brucebase work" in @org/brucebase.org
 
-* summary
+1.)
 
-● The branch stays open, and any further Brucebase work goes on feature/bb-overhaul with no merge until you ask.
+Switch to plan mode
 
-  Candidates already in org/brucebase.org:
-  - Extra list pageTypes: stats:discography, the songs lists, bootleg lists and similar pages, which today only get previews.
-  - Scroll to the first difference: the TODO for a userscript that jumps to the first change in the wiki's own history view. The History window may already cover this, so you could close it or keep it for the wiki's own page.
-  - History in Brucebase windows on other sites: today the section appears only on brucebase.wikidot.com. Adding it elsewhere would start with one more small probe of a cross-site request.
-  - Year-table columns: the deferred columns for the year pages.
-  - "Recheck rendering all the right info on BB pages": a sweep across the mirror for fields our readers miss.
+2.)
+
+Replace that section with proper new "Phase <Id>" sections
