@@ -157,16 +157,13 @@ recheck rendering all the right info on BB pages
 
 make the standard BB page, rendered below our table h2/h3 click collapsable (also with Ctrl-Click for ALL sections)
 
-
 * TODO BB Steve van Zandt detail page needs overwhole
 
 BB Steve van Zandt detail page needs overwhole
 
-
 * TODO Use the Discogs history diff format in other pageTypes, for example the BB “changes” button
 
 Use the Discogs history diff format in other pageTypes, for example the BB “changes” button (you have to be logged in).
-
 
 * TODO BB detail page POHs should also get a history diff view of the current entity
 
@@ -182,10 +179,10 @@ on BB PTs where images are involved, parse the image filename for further detail
 
 maybe create image sections with the found info
 
-
 * TODO render the sidebar handle at the top (like in the MB case)
 
 render the sidebar handle at the top (like in the MB case) and not in the middle of the page
+
 
 * TODO Overwhole of, extensions to and beautify of BruceBase (BB) pages
 
@@ -298,10 +295,17 @@ in short form, so it survives on another machine).
     (=news-2020=), =register_…= documents. Parser: decode first, then the shapes, then the folder kind.
 - [X] mockups artifact (=org/bb-overhaul-mockups.html=, https://claude.ai/artifact/3rAGVKsBHEv9jGspkJ5X7Z): M1 event detail page, M2 sidebar handle at the
   top, M3 song/venue/relation/retail/bootleg sketches, M4 history pane (Discogs format); questions inside
-- [ ] record vzell's answers; propose the doc updates (brucebase.md, HELP, coverage registry)
+- [X] vzell's answers (2026-11-11): 1. Setlist = ONE table with a Set column (Soundcheck / Show /
+  Encore); 2. Storyteller = a table (Moment / Song / Words), filterable by song; 3. Photos = one
+  group per photographer inside Photo; 4. History signed out = the message "Sign in to Brucebase to
+  see the history"; 5. the wiki's page below = collapsed by default; 6. song titles = MusicBrainz
+  case (=sa_foreign_mb_titles=), the wiki's capitals as the hover text.
+- [X] doc updates proposed with Phase 0's report: brucebase.md (Detail pages, Tags, Image
+  filenames, History, The side bar), detail-pages.md (parser version), HELP, coverage registry,
+  WIP changelog, CLAUDE.md doc-map row.
 
 *** TODO Phase 1 — shared groundwork
-- [ ] sidebar handle at the top (=_bbArrangeSideBar()=, =_saBody()=; =bb-sidebar.spec.js=)
+- [X] sidebar handle at the top (=_bbArrangeSideBar()=; stays in =document.body=, a foreign-host-only element; =bb-sidebar.spec.js=)
 - [ ] =_bbPageTags()= / =_bbTagFamily()=: Tags in the window and a head card (=_DP_PARSER_VERSION= bump)
 - [ ] =_bbParseImageName()= (grammar A–H): types, photographer credit, caption — card, viewer, window
 - [ ] native page below our section, its headings and tabs collapsible (Ctrl-click: all)
@@ -324,3 +328,12 @@ in short form, so it survives on another machine).
 *** Later (separate TODOs above)
 Extra list pageTypes (stats:discography, …), scroll-to-first-difference userscript, deferred
 year-table columns.
+
+
+* DONE answers
+1. Setlist: one table with a Set column (Soundcheck/Show/Encore), or one table per set? one table
+2. Storyteller: a table you can filter by song, or a closed text section? the table.
+3. Photos: one group per photographer, or the photographer only in each caption? groups
+4. History when signed out: show "Sign in to Brucebase to see the history", or leave the section out? the message
+5. The wiki's page below: collapsed or open by default? collapsed
+6. Song titles: MusicBrainz case (your existing title setting) with the wiki's capitals as hover text, or the wiki's capitals? MusicBrainz case.

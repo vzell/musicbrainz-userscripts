@@ -28576,10 +28576,11 @@
             body.mb-sa-host-bb #content-wrap.mb-bb-sb-collapsed > #side-bar {
                 display: none !important;
             }
+            /* At the side bar's top, as MusicBrainz's handle is: _bbArrangeSideBar()'s
+               place() sets top (vzell, 2026-11-11; it used to sit at 50 %). */
             body.mb-sa-host-bb #mb-bb-sidebar-handle {
                 position: fixed;
-                top: 50%;
-                transform: translateY(-50%);
+                top: 8px;
                 width: 14px;
                 height: 80px;
                 background-color: #f2f2f2;
@@ -28812,7 +28813,12 @@
         /**
          * Puts the handle against the side bar's inner edge, or against the
          * window's edge while the side bar is collapsed or scrolled out of
-         * view; sets its glyph and pressed state.
+         * view; sets its glyph and pressed state. Vertically it sits at the
+         * TOP of the side bar (or of `#main-content` while collapsed), kept
+         * between 8 px from the window's top and 8 px above its bottom — the
+         * rule of MusicBrainz's handle (`initSidebarCollapse()`'s `setTop`;
+         * vzell, 2026-11-11: "render the sidebar handle at the top (like in
+         * the MB case) and not in the middle of the page").
          *
          * @returns {void}
          */
@@ -28822,6 +28828,10 @@
             handle.setAttribute('aria-pressed', collapsed ? 'false' : 'true');
             handle.setAttribute('aria-label', collapsed ? 'Show the side bar' : 'Hide the side bar');
             const r = side.getBoundingClientRect();
+            const topY = collapsed ? main.getBoundingClientRect().top : r.top;
+            const hh = handle.offsetHeight || 80;
+            const top = `${Math.round(Math.min(Math.max(8, window.innerHeight - hh - 8), Math.max(8, topY)))}px`;
+            if (handle.style.top !== top) handle.style.top = top;
             if (right) {
                 handle.style.left = '';
                 handle.style.right = collapsed ? '0px' : `${Math.min(Math.max(0, window.innerWidth - r.left), window.innerWidth)}px`;

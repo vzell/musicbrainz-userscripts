@@ -196,6 +196,12 @@ numbers:
   itself is bound to MusicBrainz's `#sidebar`/`#page`/`#content`, so this is
   its own small copy. It sits against the side bar's inner edge, or the
   window's edge while collapsed, and collapses toward its own side.
+  **Vertically it is at the TOP** of the side bar (collapsed: of
+  `#main-content`), kept between 8 px from the window's top and 8 px above
+  its bottom: MusicBrainz's `setTop()` rule from `initSidebarCollapse()`
+  (vzell, 2026-11-11; until then CSS `top: 50%`). `place()` sets it inline;
+  the CSS `top: 8px` is only the first frame. It stays in `document.body`
+  (a foreign-host-only element, CLAUDE.md "Floating hosts").
   Re-placed on scroll, resize and (ResizeObserver on `#content-wrap`) layout
   changes.
 - Side bar z-index 150 on either side: over the table's sticky header and
@@ -218,7 +224,8 @@ left, the right opt-in, starts hidden, open/close by click and keyboard, no
 handle without `sa_bb_collabsable_sidebar` nor by default with MusicBrainz's
 setting on, in view on both sides after scrolling down and sideways and
 painted over the gutter mask, untouched behind the gate, the right-hand
-post-render case, and Date docked under its h2 bar when scrolled, with
+post-render case, the handle at the side bar's top (open, scrolled down,
+collapsed; both sides), and Date docked under its h2 bar when scrolled, with
 nothing masked unscrolled); mutations `scripts/mutations/bb-sidebar.json`.
 
 ## The status line — under the toolbar `<h1>`, above the theme's rule

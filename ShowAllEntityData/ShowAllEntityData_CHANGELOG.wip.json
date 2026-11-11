@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-11-11",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Brucebase: the side bar's show/hide handle now sits at the top of the side bar, as the MusicBrainz sidebar's does, instead of halfway down the window. Scrolled down, it stays near the top of the window; with the side bar hidden, it sits at the top of the page content."
+        ]
+      }
+    ]
+  }
+]

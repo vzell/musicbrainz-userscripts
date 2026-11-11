@@ -127,6 +127,51 @@ test('by default it stays on the left, first, and collapses to the left', async 
     expect(errors).toEqual([]);
 });
 
+for (const [name, settings] of [['left', DEFAULTS], ['right', RIGHT]]) {
+    test(`the ${name} handle sits at the top of the side bar, as MusicBrainz's does, also scrolled down and collapsed`, async ({ page }) => {
+        // vzell, 2026-11-11 (org/brucebase.org): "render the sidebar handle
+        // at the top (like in the MB case) and not in the middle of the
+        // page". It was `top: 50%` until then. Rendered first, so the page
+        // is tall enough to scroll.
+        const errors = trackPageErrors(page);
+        await loadBbYearPage(page, '2026', { settingsOverride: { ...settings, sa_sidebar_collapsed: false } });
+        await page.click('button[data-label="Show all events"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        /**
+         * Reads the handle's top and the tops of the side bar and the main
+         * content, in viewport pixels.
+         * @returns {Promise<Object>}
+         */
+        const tops = () => page.evaluate(() => {
+            const t = (id) => Math.round(document.getElementById(id).getBoundingClientRect().top);
+            const h = document.getElementById('mb-bb-sidebar-handle').getBoundingClientRect();
+            return { handle: Math.round(h.top), height: Math.round(h.height), side: t('side-bar'), main: t('main-content'), vh: window.innerHeight };
+        });
+        let v = await tops();
+        expect(v.side).toBeGreaterThan(8);
+        // At the side bar's top. (After the render that top is near
+        // the window's middle, so "not centred" is proven by the scrolled
+        // case below: 8 px, where a centred handle stays at vh/2.)
+        expect(Math.abs(v.handle - v.side)).toBeLessThanOrEqual(1);
+
+        await page.evaluate(() => window.scrollTo(0, 3000));
+        await expect.poll(async () => (await tops()).handle).toBe(8);
+
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await page.click('#mb-bb-sidebar-handle');
+        await expect.poll(async () => (await layout(page)).side).toBeNull();
+        // The handle is re-placed on the next frame after the click: poll.
+        // Collapsed it goes to the content's top, kept inside the window
+        // (in the theme-less fixture that top is 907 px down at scrollY 0).
+        await expect.poll(async () => {
+            v = await tops();
+            const want = Math.min(v.vh - v.height - 8, Math.max(8, v.main));
+            return Math.abs(v.handle - want) <= 1 ? true : `handle ${v.handle}, want ${want} (content top ${v.main})`;
+        }).toBe(true);
+        expect(errors).toEqual([]);
+    });
+}
+
 test('without the collapsible sidebar there is no handle and the side bar shows', async ({ page }) => {
     const errors = trackPageErrors(page);
     await loadBbYearPage(page, '2026', { settingsOverride: { ...RIGHT, sa_bb_collabsable_sidebar: false } });
