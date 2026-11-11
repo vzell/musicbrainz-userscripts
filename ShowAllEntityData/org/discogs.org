@@ -420,7 +420,7 @@ when hovering a release in the left sidebar, ONLY the newest change should be sh
 
 
 * TODO make a nice mockup for a release with subheaders
-** initial
+** DONE initial
 
 Currently the FRP of a Discogs release wich has subheaders in a tracklist (YES, discogs supports them on the IP) doesn't
 honor them (MB IP pages with release tracklists do not currently support them, although there are wishlist for them as

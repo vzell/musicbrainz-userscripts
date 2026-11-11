@@ -143,25 +143,9 @@ create userscript which directly scrolls to the first difference on
 http://brucebase.wikidot.com/song:streets-of-minneapolis pages when clicking history
 
 
-* TODO render the sidebar handle at the top (like in the MB case)
-
-render the sidebar handle at the top (like in the MB case) and not in the middle of the page
-
-
 * TODO support hovering for all BB PTs
 
 support hovering for all BB URLs (+ known non-BB URLs like MB/SL URLs) PTs
-
-
-* TODO on BB PTs where images are involved, parse the image filename for further details and present that info also
-
-1.)
-
-on BB PTs where images are involved, parse the image filename for further details and present that info also
-
-2.)
-
-maybe create image sections with the found info
 
 
 * TODO recheck rendering all the right info on BB pages
@@ -187,3 +171,50 @@ Use the Discogs history diff format in other pageTypes, for example the BB “ch
 * TODO BB detail page POHs should also get a history diff view of the current entity
 
 BB detail page POHs should also get a history diff view of the current entity
+
+* TODO on BB PTs where images are involved, parse the image filename for further details and present that info also
+
+1.)
+
+on BB PTs where images are involved, parse the image filename for further details and present that info also
+
+2.)
+
+maybe create image sections with the found info
+
+
+* TODO render the sidebar handle at the top (like in the MB case)
+
+render the sidebar handle at the top (like in the MB case) and not in the middle of the page
+
+* TODO Overwhole of, extensions to and beautify of BruceBase (BB) pages
+
+Overwhole of, extensions to and beautify of BruceBase (BB) pages like events, venues, relations, songs, lyrics,
+recording sessions, retail releases etc:
+
+The goal is to add extensive PTs + POH support to the Bruce Springsteen BruceBase website. We already support a couple
+but they need a more modern and exhaustive rendering overwhoule + the missing ones, something we already did to the SL
+website.
+
+Instead of providing specific raw HTML files in the usual @debug folder, scan the repo (+CLAUDE.md) at the folder
+@/home/vzell/git/scripts/BruceParser/ which provides shell scripts to download/scrape Springsteen related websites,
+specifically also the BB website. We already downloaded the whole website to the filesystem at @/home/vzell/git/scripts/BruceParser/bb/latest
+
+So it's your job to parse all the relevant information you need for implementation purposes right from there.
+
+Provide some nice rich HTML based mockups and ideas before implementing something.
+
+Here a couple of suggestions:
+
+#+begin_example
+- include the tag information for each BB page
+- on BB pages where images are involved, parse the image filename for further details and present that info also (offer to create image sections with the found info)
+- render the sidebar handle at the top (like in the MB case) and not in the middle of the page
+- BB detail page POHs should also get a history diff view of the current entity
+- use the Discogs history diff format in the BB pageTypes, for example the BB “changes” button (I have to be logged in)
+
+#+end_example
+
+
+
+
