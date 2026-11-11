@@ -381,6 +381,25 @@ in short form, so it survives on another machine).
   (=scripts/build-bb-history-fixtures.py=, members scrubbed), mutations =bb-history.json= (15), WIP.8
 - [X] vzell's live check (2026-11-11): OK
 
+*** TODO History round 2 — kinds, tag changes, any two revisions (vzell, 2026-11-11)
+vzell: 1. prefilter by kind like the wiki's =rev-type-*= checkboxes; 2. a diff of the tags between
+revisions (=table.page-compare= has them); 3. compare any two revisions (the wiki's from/to radios); 4. mockups.
+- [X] probe (=scripts/probe-bb-history-shapes.py=, signed out, song:streets-of-minneapolis,
+  2026-11-11T21:21+01:00 · vzell-lap · WSL2 Ubuntu · n/a): PageRevisionListModule filters on the server by
+  =options= ={"all"|"source"|"title"|"move"|"tags"|"meta"|"files": true}= — all 44, source 37, tags 5,
+  metadata 1, title / page name / files 0 (= the flags' counts); =perpage= 100 answers all 44 in one 0.6 s
+  request, no pager. PageDiffModule (any pair, 0.3–0.4 s): =table.page-compare= rows "Created on" and
+  "Tags" (the Tags row only when they differ: 42 vs 43 had none), "Page sources are identical" for a
+  tags-only pair; rebuilding both sources from its inline diff did NOT match PageSourceModule (indentation,
+  line counts), so the line diff stays ours. A page with a T/R revision is still to be probed (title /
+  page-name rows).
+- [X] mockups https://claude.ai/artifact/7X2g3wBLVotb1cFfZdrCxz (=scripts/fetch-bb-history-mockup-data.py=,
+  =scripts/build-bb-history-r2-mockups.py=; the HTML in =debug/=, it names the wiki's members): A the
+  window with all three, B chips ↔ checkboxes, C tag pills from the comment + the Tags strip from
+  PageDiffModule, D From/To pickers vs Shift+click, E requests per act, F narrow; Q1–Q6
+- [ ] vzell's answers
+- [ ] build
+
 *** Later (separate TODOs above)
 Extra list pageTypes (stats:discography, …), scroll-to-first-difference userscript, deferred
 year-table columns.
@@ -443,3 +462,43 @@ title
 version
 take
 #+end_example
+
+** history additions
+
+Is it possible to add more features to the HISTORY section
+
+1.)
+
+add prefiltering of revison changes with types like e.g. "ALL", "source changes", "title changes" etc. like what can be
+done on the IP with the checkboxes '<input class="checkbox" type="checkbox" id="rev-type-all" checked="checked">'
+
+2.)
+
+rendering a diff of the tag value differences between page revisions:
+
+#+begin_example
+[Image #12] - IP of "Streets Of Minneapolis" song page after pressing the "History" -> "Compare versions" buttons and comparing rev. 41 and 40; the table '<table class="page-compare">' actually would have the tag information to show a tag value diff
+[Image #11] - POH of "Streets Of Minneapolis" song page doesn't show the tag differences between revision 41 and 40
+#+end_example
+
+3.)
+
+is it possible to add the feature of the IP page of comparing arbitrary revisions with each other like in
+e.g. screenshot [Image #13], between e.g. rev. 43 and 28
+
+4.)
+
+make some rich HTML based mockups
+
+
+
+* summary
+
+● The branch stays open, and any further Brucebase work goes on feature/bb-overhaul with no merge until you ask.
+
+  Candidates already in org/brucebase.org:
+  - Extra list pageTypes: stats:discography, the songs lists, bootleg lists and similar pages, which today only get previews.
+  - Scroll to the first difference: the TODO for a userscript that jumps to the first change in the wiki's own history view. The History window may already cover this, so you could close it or keep it for the wiki's own page.
+  - History in Brucebase windows on other sites: today the section appears only on brucebase.wikidot.com. Adding it elsewhere would start with one more small probe of a cross-site request.
+  - Year-table columns: the deferred columns for the year pages.
+  - "Recheck rendering all the right info on BB pages": a sweep across the mirror for fields our readers miss.
