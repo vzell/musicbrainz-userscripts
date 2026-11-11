@@ -464,6 +464,7 @@ take
 #+end_example
 
 ** history additions
+*** initial
 
 Is it possible to add more features to the HISTORY section
 
@@ -490,6 +491,14 @@ e.g. screenshot [Image #13], between e.g. rev. 43 and 28
 
 make some rich HTML based mockups
 
+*** answers
+
+1. Should the chips filter the revisions already read (instant, recommended), or ask Wikidot on each click? INSTANT
+2. Several chips at once (recommended), or one at a time? SEVERAL AT ONCE
+3. Tag changes as pills in the list (recommended), or the comment as written? TAG CHANGES AS PILLS IN THE LIST
+4. The Tags strip in the comparison: always shown (recommended), or only when the tags differ? ALWAYS SHOWN
+5. From / To pickers on each row (recommended), or Shift+click a second row? FROM / TO PICKERS ON EACH ROW
+6. When you pick backwards (From 43, To 28): older on the left always (recommended), or in the order picked, like the wiki? OLDER ON THE LEFT ALWAYS
 
 
 * summary
