@@ -280,8 +280,22 @@ in short form, so it survives on another machine).
 
 *** TODO Phase 0 — plan and mockups (no userscript change)
 - [X] write this plan here
-- [ ] =scripts/probe-bb-detail-pages.py= over local copies (=debug/bb-mirror/=): fill rates per family,
+- [X] =scripts/probe-bb-detail-pages.py= over local copies (=debug/bb-mirror/=): fill rates per family,
   tag families, filename grammar coverage
+  Result (2026-11-11T10:05+01:00 · vzell-lap · n/a, offline over the 665-page local sample):
+  - Event family markers: gig Scheduled 95 % / nav 93 % / venue link 100 %; recording nav 96 %
+    but Scheduled 1 %; rehearsal Scheduled 25 %; interview and nogig nav only 35 % (their nav is
+    not the "Info & Setlist" text: read the year anchor and venue link by href, not by text).
+  - Tabs vary more than the survey said: gig adds Cancelled (31/120), News (instead of
+    News/Memorabilia), Appearances, "Performances (w/o Bruce)"; interview has In Studio, Playlist,
+    "From My Home To Yours", On Site, On Set; nogig has named-place tabs ("87 Randolph Street").
+    So: known labels map to tables, any other tab becomes a closed text section.
+  - Tags on every page (97-100 %); onstage tags are mostly squashed names ("word").
+  - Filenames: 3,804 distinct in the sample, 98.5 % read after widening shape H to
+    =Bootleg_<Title>[_<Label>]_(Front|Back|Disc|Cover|Label|Booklet|Tray|Inlay|Insert|Whiteliner)N=.
+    Unread: site icons (=content:files/=, skip), 7-digit dates (=2019116_=), an encoded space
+    (=WarrenLinhart%20_01=, decode and trim), =YYYYMMDD_<Word>_<Word>= with no number
+    (=news-2020=), =register_…= documents. Parser: decode first, then the shapes, then the folder kind.
 - [X] mockups artifact (=org/bb-overhaul-mockups.html=, https://claude.ai/artifact/3rAGVKsBHEv9jGspkJ5X7Z): M1 event detail page, M2 sidebar handle at the
   top, M3 song/venue/relation/retail/bootleg sketches, M4 history pane (Discogs format); questions inside
 - [ ] record vzell's answers; propose the doc updates (brucebase.md, HELP, coverage registry)
