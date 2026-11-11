@@ -28,6 +28,16 @@ And for bb-song / bb-ott (Phase 3):
 - On The Tracks page "Do You Want Me To Say Alright": nine takes, one
   "uncirculating".
 
+And for bb-venue / bb-relation (Phase 4):
+
+- venue Roxy Theatre: Performances, Appearances, Gallery, Streetview;
+- Patti Scialfa, pages 1-3 (fetched from the live site together on
+  2026-11-11T15:26+01:00, a scratch curl kept in debug/bb-mirror/pick/
+  as relation_patti-scialfa_live-pN.html, so the three pages agree): three
+  columns of shows, two of them paged (2 and 3 pages), Recording, Bands,
+  News;
+- Anders Goman: one performance; Malurt: a band with Members.
+
 A song's lyrics are blanked word by word ("la"), as
 scripts/build-detail-fixtures.py does (its `blank_lyrics()`, imported).
 
@@ -57,6 +67,12 @@ PAGES = [
     ('song/song_the-promise.html', 'bb-song-the-promise.html'),
     ('song/song_we-gotta-get-out-of-this-place.html', 'bb-song-we-gotta-get-out-of-this-place.html'),
     ('ott/ott_do-you-want-me-to-say-alright.html', 'bb-ott-do-you-want-me-to-say-alright.html'),
+    ('pick/venue_roxy-theatre-west-hollywood-ca.html', 'bb-venue-roxy-theatre.html'),
+    ('pick/relation_patti-scialfa_live-p1.html', 'bb-relation-patti-scialfa-p1.html'),
+    ('pick/relation_patti-scialfa_live-p2.html', 'bb-relation-patti-scialfa-p2.html'),
+    ('pick/relation_patti-scialfa_live-p3.html', 'bb-relation-patti-scialfa-p3.html'),
+    ('relation/relation_anders-goman.html', 'bb-relation-anders-goman.html'),
+    ('relation/relation_malurt.html', 'bb-relation-malurt.html'),
 ]
 
 

@@ -93,8 +93,9 @@ test.describe('Brucebase: link previews on every page (2026-11-04)', () => {
 
     test('a venue page (no pageType): its Wikipedia link (another site) has a card', async ({ page }) => {
         // The G7 pre-test's page (org/non-MB-coverage.org): it had no
-        // previews at all before 2026-11-04.
-        const errors = await open(page, VENUE_PAGE, 'detail-bb-venue-paramount-theatre.html');
+        // previews at all before 2026-11-04. A venue page is bb-venue's
+        // since 2026-11-11 (Phase 4); with that off it is this catch-all's.
+        const errors = await open(page, VENUE_PAGE, 'detail-bb-venue-paramount-theatre.html', { sa_bb_detail_pages: false });
         const wp = page.locator('#page-content a[href^="http://en.wikipedia.org/wiki/Paramount_Theatre"]').first();
         await ctrlHover(page, wp);
         await expect(page.locator('#mb-dp-peek')).toBeVisible();

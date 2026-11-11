@@ -43,8 +43,8 @@
         "why": "_BB_ENTRY_KINDS names a multi page \"Multiple shows\".",
         "edits": [
             {
-                "find": "    const _BB_ENTRY_KINDS = { ..._BB_EVENT_KINDS, multi: 'Multiple shows', nobruce: 'No Bruce' };\n",
-                "replace": "    const _BB_ENTRY_KINDS = { ..._BB_EVENT_KINDS };\n"
+                "find": "    const _BB_ENTRY_KINDS = { ..._BB_EVENT_KINDS, multi: 'Multiple shows', nobruce: 'No Bruce', onstage: 'On stage', offstage: 'Off stage' };\n",
+                "replace": "    const _BB_ENTRY_KINDS = { ..._BB_EVENT_KINDS, nobruce: 'No Bruce', onstage: 'On stage', offstage: 'Off stage' };\n"
             }
         ],
         "spec": "tests/fixtures/bb-song.spec.js",

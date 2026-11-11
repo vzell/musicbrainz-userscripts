@@ -5130,7 +5130,7 @@
         },
 
         sa_bb_detail_pages: {
-            label: 'Detail pages: events and songs as tables',
+            label: 'Detail pages: events, songs, venues and people as tables',
             type: 'checkbox',
             default: true,
             description: 'Needs a setting above that switches the wiki on. On a Brucebase event page (a gig, no ' +
@@ -5139,8 +5139,11 @@
                          'venue, the recordings and the stories as tables you can filter and sort, with the page\'s ' +
                          'facts, tags and pictures above and the wiki\'s own page folded below. On a song page, ' +
                          '"Show the song": its credits, every performance and the count by tour, snippets, live ' +
-                         'downloads and its takes On The Tracks; on an On The Tracks page, "Show the versions". ' +
-                         'Nothing is fetched. Off: the page stays as the wiki shows it (link previews still work).'
+                         'downloads and its takes On The Tracks; on an On The Tracks page, "Show the versions"; ' +
+                         'on a venue page, "Show the venue"; on a person\'s or band\'s page, "Show the person": ' +
+                         'every performance with Bruce, all of the wiki\'s pages of it read (Steven Van Zandt: ' +
+                         'six). Nothing else is fetched. Off: the page stays as the wiki shows it (link previews ' +
+                         'still work).'
         },
         sa_bb_event_preview: {
             label: 'Preview event, venue and people pages on hover',
@@ -24464,6 +24467,7 @@
         if (t === 'bs-record') return _bsRecordHeadSpec();
         if (t === 'bb-event') return _bbEventHeadSpec();
         if (t === 'bb-song' || t === 'bb-ott') return _bbSongHeadSpec();
+        if (t === 'bb-venue' || t === 'bb-relation') return _bbPlaceHeadSpec();
         return null;
     }
 
@@ -31695,7 +31699,7 @@
      * a page for several shows on one date, a song's Multiples tab).
      * @type {Object<string, string>}
      */
-    const _BB_ENTRY_KINDS = { ..._BB_EVENT_KINDS, multi: 'Multiple shows', nobruce: 'No Bruce' };
+    const _BB_ENTRY_KINDS = { ..._BB_EVENT_KINDS, multi: 'Multiple shows', nobruce: 'No Bruce', onstage: 'On stage', offstage: 'Off stage' };
 
     /**
      * The tab labels of an event page that list its cast; the table takes the
@@ -31913,7 +31917,9 @@
             const a = li.querySelector('a[href]');
             const text = _dpText(li.textContent);
             if (!text) return null;
-            const m = text.match(/^(\d{4}-\d{2}(?:-\d{2})?)\s+(.*)$/);
+            // "2004-09-25 Roxy Theatre …", and once "2015-04-30, Story Chapel, …"
+            // (Patti Scialfa's Performances, 2026-11-11).
+            const m = text.match(/^(\d{4}-\d{2}(?:-\d{2})?)(?:,\s*|\s+)(.*)$/);
             let event = m ? m[2] : text;
             const sm = event.match(/\s*\((Early|Late)\)$/i);
             if (sm) event = event.slice(0, sm.index);
@@ -32163,7 +32169,7 @@
     }
 
     /** @type {Object<string, string>} The data heading of each Brucebase detail kind. */
-    const _BB_DETAIL_HEADINGS = { event: 'Event', song: 'Song', ott: 'Versions' };
+    const _BB_DETAIL_HEADINGS = { event: 'Event', song: 'Song', ott: 'Versions', venue: 'Venue', relation: 'Relation' };
 
     /**
      * The live page's part of a Brucebase detail pageType
@@ -32609,6 +32615,435 @@
                 mediaChips && ['media', 'Media', mediaChips.count, mediaChips.body, true],
                 linkChips && ['links', 'Links', linkChips.count, linkChips.body, true],
             ],
+            pictures, picturesTitle: 'Pictures',
+            title: rec.title, source: 'Brucebase\'s page',
+        };
+    }
+
+    // ── Brucebase venue and person pages: bb-venue, bb-relation
+    // (org/brucebase.org, Plan 2026-11-11, Phase 4; mockup M3) ──
+    // A venue's or a person's (or band's) page as a detail view. Their long
+    // lists are Wikidot ListPages modules that PAGE: "page 1 of 6" on Steven
+    // Van Zandt's E Street column, the next pages at `/<page>/p/2` … (a GET
+    // each). Every module on a page follows the one `/p/N`, and a module past
+    // its last page shows its last page again (Patti Scialfa's /p/3: "page 3
+    // of 3" beside "page 2 of 2"); a list without a pager is the same on
+    // every page (probe 2026-11-11, scratch fetches of /p/1–7). So page N
+    // reads a paged list only while its pager says N, an unpaged one on page
+    // 1 only (`_bbPagedListOk()`).
+
+    /**
+     * The features of bb-venue and bb-relation (a fresh object per call):
+     * page 1 is the copy taken at the press, a later page `/<page>/p/N` is
+     * fetched (same origin); the page count is the largest "page 1 of N".
+     *
+     * @param {string} kind - 'venue' or 'relation'.
+     * @returns {Object}
+     */
+    function _bbPlaceFeatures(kind) {
+        return {
+            bbDetailToTable: kind,
+            groupByH3: true,
+            groupMergeByName: true,
+            // A venue's lists are short (tens of shows); a person's
+            // Performances can be 1,500 rows, so it starts folded there.
+            openSubTables: kind === 'venue' ? true : [ 'Performances by band', 'Appearances', 'Cancelled', 'Recording', 'Bands', 'Members', 'Co-written' ],
+            pageRequest: (p) => {
+                const url = _bbDetailUrl();
+                const base = url.replace(/\/$/, '');
+                return p <= 1
+                    ? { url, fetchText: async () => _bbDetailPageHtml(), toHtml: (text) => _bbPlaceToHtml(text, url, 1) }
+                    : { url: `${base}/p/${p}`, toHtml: (text) => _bbPlaceToHtml(text, url, p) };
+            },
+            pageCountAsync: () => _bbPlacePageCount(document),
+            columnDescriptions: {
+                As: 'The page\'s own split of the shows: as a member of a band, or not (Steven Van Zandt: "As a member of The E Street Band").',
+                Times: 'Performances with Bruce Springsteen, as the page counts them per band.',
+                Credit: 'The page\'s heading over the release: Performer, Producer, …',
+                'Sort name': 'The name as Brucebase sorts it ("Scialfa, Patti").',
+            }
+        };
+    }
+
+    /**
+     * Column headers of the venue and person sub-tables, by kind.
+     * @type {Object<string, string[]>}
+     */
+    const _BB_PLACE_HEADERS = {
+        list: ['Date', 'Event', 'Show', 'Type'],
+        perf: ['Date', 'Event', 'Show', 'As'],
+        bands: ['Band', 'Times'],
+        recording: ['Credit', 'Release', 'Artist', 'Year', 'Song', 'Role'],
+        names: ['Name', 'Sort name'],
+        cowritten: ['Song', 'With'],
+    };
+
+    /** @type {?{rec: ?Object, dp: ?Object}} The page's two readings, made once. */
+    let _bbPlaceCache = null;
+
+    /**
+     * The venue or person page read twice from the copy taken at the press,
+     * once: `rec` by `_bbPlaceRead()` (page 1), `dp` by `_dpParseBb()` (the
+     * preview's record: images, tags, the venue's region and count).
+     *
+     * @returns {{rec: ?Object, dp: ?Object}}
+     */
+    function _bbPlaceSource() {
+        if (!_bbPlaceCache) {
+            const url = _bbDetailUrl();
+            const doc = new DOMParser().parseFromString(_bbDetailPageHtml(), 'text/html');
+            _bbPlaceCache = { rec: _bbPlaceRead(doc, url, 1), dp: _dpParseBb(doc, url) };
+        }
+        return _bbPlaceCache;
+    }
+
+    /**
+     * The pager of the ListPages module a list belongs to ("page 2 of 6"),
+     * null for a list without one.
+     *
+     * @param {Element} list - A `<ul>`/`<ol>`.
+     * @returns {?{cur: number, of: number}}
+     */
+    function _bbPagerOf(list) {
+        const box = list && list.closest('.list-pages-box');
+        const no = box && box.querySelector('.pager-no');
+        const m = no ? _dpText(no.textContent).match(/page\s+(\d+)\s+of\s+(\d+)/i) : null;
+        return m ? { cur: Number(m[1]), of: Number(m[2]) } : null;
+    }
+
+    /**
+     * Whether page `p` should read a list: a paged list while its pager is on
+     * page `p`, a list without a pager on page 1 only (see the block comment
+     * above).
+     *
+     * @param {Element} list
+     * @param {number}  p
+     * @returns {boolean}
+     */
+    function _bbPagedListOk(list, p) {
+        const pg = _bbPagerOf(list);
+        return pg ? pg.cur === p : p === 1;
+    }
+
+    /**
+     * How many pages a venue or person page has: the largest "page 1 of N"
+     * of its modules, 1 without one.
+     *
+     * @param {Document} [doc]
+     * @returns {number}
+     */
+    function _bbPlacePageCount(doc = document) {
+        let n = 1;
+        doc.querySelectorAll('#page-content .pager-no').forEach((x) => {
+            const m = _dpText(x.textContent).match(/page\s+\d+\s+of\s+(\d+)/i);
+            if (m) n = Math.max(n, Number(m[1]));
+        });
+        return n;
+    }
+
+    /**
+     * The rows of the lists in `root` that page `p` reads (`_bbPagedListOk()`),
+     * each list through `_bbEventList()`.
+     *
+     * @param {Element} root
+     * @param {string}  url
+     * @param {number}  p
+     * @returns {Array<Object>}
+     */
+    function _bbPagedRows(root, url, p) {
+        const out = [];
+        root.querySelectorAll('ul, ol').forEach((ul) => {
+            if (ul.parentElement && ul.parentElement.closest('li')) return;
+            if (!ul.querySelector('a[href]') || !_bbPagedListOk(ul, p)) return;
+            const box = document.createElement('div');
+            box.appendChild(ul.cloneNode(true));
+            out.push(..._bbEventList(box, url).rows.filter(r => r.date));
+        });
+        return out;
+    }
+
+    /**
+     * Reads a venue (`/venue:`) or person/band (`/relation:`) page, page `p`
+     * of it. Before the tabs: the description (Wikipedia's, mostly), its
+     * "Source:" and, on a venue, "Springsteen did N performances". The tabs
+     * by label:
+     *
+     * - Performances: the total ("Performed 1517 times with Bruce
+     *   Springsteen"), the count per band ("… as a member of The E Street
+     *   Band"), and the shows — on a band member's page in columns headed
+     *   "As a member of The E Street Band:" / "Not as a member …:", which
+     *   become the As column;
+     * - Appearances, Cancelled: lists of entries;
+     * - Recording: a credit heading ("Performer") over releases (title,
+     *   artist, year) and their songs with the role ("backing vocals");
+     * - Bands / Members: names in sort form, shown in reading order
+     *   (`_bbRelationDisplayName()`);
+     * - Co-written: songs, and who else wrote them;
+     * - Streetview: the map's link; Gallery: the head's pictures; any other
+     *   tab with words: a text section.
+     *
+     * Everything but the paged lists is read on page 1 only.
+     *
+     * @param {Document} doc
+     * @param {string}   url
+     * @param {number}   [p=1]
+     * @returns {?Object} Null when the page has no `#page-content`.
+     */
+    function _bbPlaceRead(doc, url, p = 1) {
+        const content = doc.getElementById('page-content');
+        if (!content) return null;
+        let path = '';
+        try {
+            path = new URL(url).pathname;
+        } catch (_) { /* none */ }
+        const kind = /^\/venue:/.test(path) ? 'venue' : 'relation';
+        const titleEl = doc.getElementById('page-title');
+        const crumbs = doc.getElementById('breadcrumbs');
+        const crumbParts = crumbs ? _dpText(crumbs.textContent).split('»').map(x => _dpText(x)) : [];
+        const nav = content.querySelector('div.yui-navset');
+        const before = (x) => !nav || !!(nav.compareDocumentPosition(x) & Node.DOCUMENT_POSITION_PRECEDING);
+        const paras = Array.from(content.querySelectorAll('p')).filter(x => before(x) && !x.closest('.list-pages-box') && _dpText(x.textContent));
+        const sourceP = paras.find(x => /^Source:/i.test(_dpText(x.textContent)));
+        const about = paras.filter(x => x !== sourceP);
+        const aboutBox = doc.createElement('div');
+        about.forEach(x => aboutBox.appendChild(x.cloneNode(true)));
+        const countBox = Array.from(content.querySelectorAll('.list-pages-box')).find(b => before(b) && /Springsteen did\s+\d+/.test(_dpText(b.textContent)));
+        const cm = countBox ? _dpText(countBox.textContent).match(/Springsteen did\s+(\d+)/) : null;
+        const sourceA = sourceP ? sourceP.querySelector('a[href]') : null;
+        const rec = {
+            url, kind, title: _dpText(titleEl ? titleEl.textContent : ''), page: p,
+            sortName: kind === 'relation' && crumbParts.length > 1 ? crumbParts[crumbParts.length - 1] : '',
+            region: kind === 'venue' ? (crumbParts.slice().reverse().find(x => /^Venues In /i.test(x)) || '').replace(/^Venues In\s+/i, '') : '',
+            about: about.length ? { text: _dpBlockText(aboutBox), html: _dpBlockHtml(aboutBox, url) } : null,
+            source: sourceA ? [_dpText(sourceA.textContent), _dpAbsUrl(sourceA.getAttribute('href'), url)] : null,
+            count: cm ? cm[1] : '', total: '', bands: [], perf: [], lists: [], recording: [], names: null, cowritten: [], texts: [], map: '',
+            pages: _bbPlacePageCount(doc),
+        };
+        _bbEventTabs(content).forEach(({ label, panel }) => {
+            if (/^Performances$/i.test(label)) {
+                const tm = _dpText(panel.textContent).match(/Performed\s+(\d+)\s+times\s+with Bruce Springsteen/i);
+                if (tm) rec.total = tm[1];
+                if (p === 1) {
+                    panel.querySelectorAll('li').forEach((li) => {
+                        const t = _dpText(li.textContent);
+                        const m = t.match(/^Performed\s+(\d+)\s+times?(?:,?\s*excluding\b.*|\s+as a member of\s+(.+?))\.?$/i);
+                        if (m) rec.bands.push({ band: m[2] || 'Not as a member of the bands below', times: Number(m[1]) });
+                    });
+                }
+                // Columns headed "As a member of …:" / "Not as a member …:".
+                // A heading row may come again lower in the same table, for
+                // more columns (Patti Scialfa: two, then "As a member of The
+                // Sessions Band:" under them); each heading row names the
+                // cells of the row after it.
+                // A heading row: no lists, a bold heading in some cell, the
+                // others bold or empty ("As a member of The Sessions Band:"
+                // beside an empty cell).
+                const isHead = (row) => {
+                    const cells = Array.from(row.cells);
+                    return cells.some(c => c.querySelector('strong')) && !cells.some(c => c.querySelector('ul, ol')) &&
+                        cells.every(c => c.querySelector('strong') || !_dpText(c.textContent));
+                };
+                const grid = Array.from(panel.querySelectorAll('table')).find(t => t.rows.length > 1 && isHead(t.rows[0]));
+                if (grid) {
+                    let heads = [];
+                    Array.from(grid.rows).forEach((row) => {
+                        if (isHead(row)) {
+                            heads = Array.from(row.cells, c => _dpText(c.textContent).replace(/:$/, ''));
+                            return;
+                        }
+                        Array.from(row.cells).forEach((cell, i) => {
+                            _bbPagedRows(cell, url, p).forEach(r => rec.perf.push({ ...r, as: heads[i] || '' }));
+                        });
+                    });
+                } else {
+                    _bbPagedRows(panel, url, p).forEach(r => rec.perf.push({ ...r, as: '' }));
+                }
+                return;
+            }
+            if (_BB_EVENT_LIST_TABS.test(label)) {
+                const rows = _bbPagedRows(panel, url, p);
+                if (rows.length) rec.lists.push({ label, rows });
+                return;
+            }
+            if (p !== 1) return;
+            if (/^Recording$/i.test(label)) {
+                let credit = '';
+                panel.querySelectorAll('p, ul').forEach((el) => {
+                    if (el.tagName === 'P') {
+                        const st = el.querySelector(':scope > strong');
+                        if (st && _dpText(st.textContent) === _dpText(el.textContent)) credit = _dpText(st.textContent);
+                        return;
+                    }
+                    if (el.parentElement && el.parentElement.closest('li')) return;
+                    el.querySelectorAll(':scope > li').forEach((li) => {
+                        const sub = li.querySelector(':scope > ul');
+                        const links = Array.from(li.querySelectorAll('a[href]')).filter(a => !sub || !sub.contains(a));
+                        const own = _dpText(Array.from(li.childNodes).filter(n => n !== sub).map(n => n.textContent).join(' '));
+                        const rel = links[0];
+                        const artist = links.find(a => a !== rel && /\/relation:/.test(a.getAttribute('href') || ''));
+                        const base = {
+                            credit, release: rel ? _dpText(rel.textContent) : own, releaseHref: rel ? _dpAbsUrl(rel.getAttribute('href'), url) : '',
+                            artist: artist ? _dpText(artist.textContent) : '', artistHref: artist ? _dpAbsUrl(artist.getAttribute('href'), url) : '',
+                            year: (own.match(/\b(\d{4})\)\s*$/) || own.match(/\b(\d{4})\b/) || [])[1] || '',
+                        };
+                        const songs = sub ? Array.from(sub.querySelectorAll(':scope > li')) : [];
+                        if (!songs.length) rec.recording.push({ ...base, song: '', songHref: '', role: '' });
+                        songs.forEach((sli) => {
+                            const sa = sli.querySelector('a[href]');
+                            const st = _dpText(sli.textContent);
+                            const rm = st.match(/\(([^()]*)\)\s*$/);
+                            rec.recording.push({ ...base, song: sa ? _dpText(sa.textContent) : st.replace(/\s*\([^()]*\)\s*$/, '').replace(/^["“]|["”]$/g, ''),
+                                songHref: sa ? _dpAbsUrl(sa.getAttribute('href'), url) : '', role: rm ? rm[1] : '' });
+                        });
+                    });
+                });
+                return;
+            }
+            if (/^(?:Bands|Members)$/i.test(label)) {
+                const rows = Array.from(panel.querySelectorAll('li a[href]'), a => {
+                    const sort = _dpText(a.textContent);
+                    return { name: _bbRelationDisplayName(sort), sort, href: _dpAbsUrl(a.getAttribute('href'), url) };
+                });
+                if (rows.length) rec.names = { label, rows };
+                return;
+            }
+            if (/^Co-written$/i.test(label)) {
+                panel.querySelectorAll('li').forEach((li) => {
+                    const links = Array.from(li.querySelectorAll('a[href]'));
+                    const song = links.find(a => /\/song:/.test(a.getAttribute('href') || ''));
+                    if (!song) return;
+                    rec.cowritten.push({
+                        song: _dpText(song.textContent), href: _dpAbsUrl(song.getAttribute('href'), url),
+                        with: links.filter(a => a !== song).map(a => ({ name: _dpText(a.textContent), href: _dpAbsUrl(a.getAttribute('href'), url) })),
+                    });
+                });
+                return;
+            }
+            if (/^(?:Streetview|Map)$/i.test(label)) {
+                const fr = panel.querySelector('iframe[src]');
+                if (fr) rec.map = _dpAbsUrl(fr.getAttribute('src'), url);
+                return;
+            }
+            if (/^Gallery$/i.test(label)) return;
+            if (_bbPanelHasText(panel)) rec.texts.push({ label, text: _dpBlockText(panel), html: _dpBlockHtml(panel, url) });
+        });
+        return rec;
+    }
+
+    /**
+     * Whether a venue or person record has anything for a sub-table.
+     *
+     * @param {?Object} rec - `_bbPlaceRead()`'s record.
+     * @returns {boolean}
+     */
+    function _bbPlaceHasTables(rec) {
+        return !!rec && !!(rec.bands.length || rec.perf.length || rec.lists.length || rec.recording.length || rec.names || rec.cowritten.length);
+    }
+
+    /**
+     * `toHtml` of bb-venue and bb-relation, page `p`: Performances by band
+     * (Band · Times), Performances (Date · Event · Show, and As where the page
+     * splits them by band), Appearances / Cancelled (Date · Event · Show ·
+     * Type), Recording (Credit · Release · Artist · Year · Song · Role),
+     * Bands / Members (Name · Sort name), Co-written (Song · With). A later
+     * page holds only the paged lists' next rows; the groups merge by name
+     * (`groupMergeByName`). Page 1 with nothing for a table throws.
+     *
+     * @param {string} text - The page's HTML.
+     * @param {string} base - The page's URL (page 1's).
+     * @param {number} p
+     * @returns {string} An HTML document.
+     * @throws {Error} When page 1 has nothing for a table (`status` 0).
+     */
+    function _bbPlaceToHtml(text, base, p) {
+        const doc = new DOMParser().parseFromString(text, 'text/html');
+        const rec = _bbPlaceRead(doc, base, p);
+        if (p === 1 && !_bbPlaceHasTables(rec)) throw Object.assign(new Error('The Brucebase page has no performances, appearances, recordings or names to show'), { status: 0 });
+        if (!rec) return '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body></body></html>';
+        const e = _rgEsc;
+        const link = (href, inner) => (href ? `<a href="${e(href)}" target="_blank" rel="noopener">${inner}</a>` : inner);
+        const titleCell = (title, href) => {
+            const shown = _mbSiteTitleText(title);
+            const inner = link(href, e(shown));
+            return shown !== title ? `<span data-mb-tip title="${e(`As written on Brucebase:\n${title}`)}">${inner}</span>` : inner;
+        };
+        const table = (name, cols, rows) => `<h3>${e(name)}</h3><table class="tbl" data-mb-col-headers="${e(JSON.stringify(cols))}">` +
+            `<thead><tr>${cols.map(c => `<th>${e(c)}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>`;
+        const out = [];
+        if (rec.bands.length) {
+            out.push(table('Performances by band', _BB_PLACE_HEADERS.bands, rec.bands.map(b => `<tr><td>${e(b.band)}</td><td>${b.times}</td></tr>`)));
+        }
+        if (rec.perf.length) {
+            const split = rec.perf.some(r => r.as);
+            const cols = split ? _BB_PLACE_HEADERS.perf : _BB_PLACE_HEADERS.list;
+            out.push(table('Performances', cols, rec.perf.map(r => `<tr><td>${e(r.date)}</td><td>${link(r.href, e(r.event))}</td><td>${e(r.show)}</td>` +
+                `<td>${e(split ? r.as : r.type)}</td></tr>`)));
+        }
+        rec.lists.forEach((l) => {
+            out.push(table(l.label, _BB_PLACE_HEADERS.list, l.rows.map(r =>
+                `<tr><td>${e(r.date)}</td><td>${link(r.href, e(r.event))}</td><td>${e(r.show)}</td><td>${e(r.type)}</td></tr>`)));
+        });
+        if (rec.recording.length) {
+            out.push(table('Recording', _BB_PLACE_HEADERS.recording, rec.recording.map(r => `<tr><td>${e(r.credit)}</td>` +
+                `<td>${link(r.releaseHref, e(r.release))}</td><td>${link(r.artistHref, e(r.artist))}</td><td>${e(r.year)}</td>` +
+                `<td>${r.song ? titleCell(r.song, r.songHref) : ''}</td><td>${e(r.role)}</td></tr>`)));
+        }
+        if (rec.names) {
+            out.push(table(rec.names.label, _BB_PLACE_HEADERS.names, rec.names.rows.map(r =>
+                `<tr><td>${link(r.href, e(r.name))}</td><td>${e(r.sort)}</td></tr>`)));
+        }
+        if (rec.cowritten.length) {
+            out.push(table('Co-written', _BB_PLACE_HEADERS.cowritten, rec.cowritten.map(r =>
+                `<tr><td>${titleCell(r.song, r.href)}</td><td>${r.with.map(w => link(w.href, e(w.name))).join(', ')}</td></tr>`)));
+        }
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${out.join('')}</body></html>`;
+    }
+
+    /**
+     * The head of a venue or person page (`_fdHeadSpec()`), from the copy
+     * taken at the press (`_bbPlaceSource()`): "~ Venue in California (CA)"
+     * or "~ Person · sort name Scialfa, Patti"; About (the description) and
+     * the word tabs (News, …) as texts; the Venue card (Region, Performances
+     * as the page counts them, Streetview, Source) or the Person card
+     * (Performed with Bruce Springsteen, Sort name, Source); Tags by family;
+     * the pictures by kind and photographer. Null on another page.
+     *
+     * @returns {?Object}
+     */
+    function _bbPlaceHeadSpec() {
+        const h2 = document.querySelector('h2.mb-bb-venue-heading, h2.mb-bb-relation-heading');
+        const t = activeDefinition?.type;
+        if ((t !== 'bb-venue' && t !== 'bb-relation') || !h2) return null;
+        const { rec, dp } = _bbPlaceSource();
+        if (!rec) return null;
+        const url = _bbDetailUrl();
+        const tags = (dp && dp.tags) || [];
+        const tagChips = _fdChips(_BB_TAG_FAMILIES.map(([key, name]) => [name, tags.filter(x => x.family === key).map(x => [x.text, x.href])]));
+        const venue = rec.kind === 'venue';
+        const pictures = ((dp && dp.images) || []).filter(im => im.full || im.thumb).map(im => ({
+            full: im.full || im.thumb, thumb: im.thumb || im.full, caption: im.caption || _fiFileName(im.full || im.thumb),
+            types: [im.label === 'Photo' && im.credit ? `Photo · ${im.credit}` : (im.label || 'Other')],
+        }));
+        const isBand = rec.names && /^Members$/i.test(rec.names.label);
+        const what = venue ? `Venue${rec.region ? ` in ${rec.region}` : ''}` : (isBand ? 'Band' : 'Person');
+        return {
+            root: h2.parentElement, h2,
+            sub: { what, when: rec.sortName && rec.sortName !== rec.title ? `sort name: ${rec.sortName}` : '' },
+            text: rec.about ? { title: 'About', body: rec.about.text, html: rec.about.html } : null,
+            texts: rec.texts.map(x => ({ title: x.label, body: x.text, html: x.html })),
+            facts: [
+                [venue ? 'venue' : 'relation', venue ? 'Venue' : (isBand ? 'Band' : 'Person'), [
+                    ['Region', rec.region],
+                    ['Performances', rec.count ? `${rec.count}, rehearsals not counted` : ''],
+                    ['Performed with Bruce', rec.total ? `${rec.total} times` : ''],
+                    ['Sort name', rec.sortName && rec.sortName !== rec.title ? rec.sortName : ''],
+                    ['Pages', rec.pages > 1 ? `${rec.pages} (the long lists page on the wiki; all read)` : ''],
+                    ['Streetview', rec.map ? _fdLink(rec.map, 'Google Maps') : ''],
+                    ['Source', rec.source ? _fdLink(rec.source[1], rec.source[0]) : ''],
+                    ['This page', _fdLink(url, url.replace(/^https?:\/\/[^/]+\//, ''))],
+                ]],
+            ],
+            others: [tagChips && ['tags', 'Tags', tagChips.count, tagChips.body, true]],
             pictures, picturesTitle: 'Pictures',
             title: rec.title, source: 'Brucebase\'s page',
         };
@@ -53892,6 +54327,38 @@
                 },
                 pageCountAsync: () => 1
             },
+            tableMode: 'multi'
+        },
+        // A Brucebase venue page (`/venue:`; Phase 4): its performances,
+        // cancelled shows and appearances as tables, the description, the
+        // count, the map and the pictures above. Its long lists page on the
+        // wiki (`/p/N`): every page is read (a GET each, page 1 the copy).
+        {
+            type: 'bb-venue',
+            host: 'brucebase.wikidot.com',
+            match: (path) => /^\/venue:[^/]+\/?$/.test(path) && Lib.settings.sa_bb_detail_pages !== false,
+            buttons: [ {
+                label: 'Show the venue', shortLabel: 'Venue',
+                showIf: () => _bbPlaceHasTables(_bbPlaceRead(document, _bbDetailUrl(), 1)),
+                description: 'The performances, cancelled shows and appearances at this venue as tables; the description, the count, the map and the pictures above, the wiki\'s page folded below. A list the wiki splits into pages is read in full (a request per page).'
+            } ],
+            features: _bbPlaceFeatures('venue'),
+            tableMode: 'multi'
+        },
+        // A Brucebase person or band page (`/relation:`; Phase 4): every
+        // performance with Bruce (all pages: Steven Van Zandt's 1,517 in six
+        // pages; by band in an As column), the count per band, appearances,
+        // recordings by song and role, bands or members, co-written songs.
+        {
+            type: 'bb-relation',
+            host: 'brucebase.wikidot.com',
+            match: (path) => /^\/relation:[^/]+\/?$/.test(path) && Lib.settings.sa_bb_detail_pages !== false,
+            buttons: [ {
+                label: 'Show the person', shortLabel: 'Person',
+                showIf: () => _bbPlaceHasTables(_bbPlaceRead(document, _bbDetailUrl(), 1)),
+                description: 'Every performance with Bruce Springsteen (all of the wiki\'s pages), the count per band, appearances, the recordings by song and role, bands or members and co-written songs as tables; the biography, tags and pictures above, the wiki\'s page folded below.'
+            } ],
+            features: _bbPlaceFeatures('relation'),
             tableMode: 'multi'
         },
         {

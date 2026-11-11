@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.5",
+    "date": "2026-11-11",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase venue pages get a button, \"Venue\": the performances, cancelled shows and appearances at the venue as tables, its description, region, count, map link and pictures above, the wiki's page folded below.",
+          "Brucebase pages of people and bands get \"Person\": every performance with Bruce Springsteen as one table — the wiki splits long lists into pages (Steven Van Zandt's 1,517 shows over six), and every page is read, one request each — with an As column saying in which band; the count per band; appearances; the recordings by song and role; their bands or members (in reading order: \"The E Street Band\"); songs co-written with Bruce. The biography, tags and pictures are above. The setting is now called \"Detail pages: events, songs, venues and people as tables\"."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.4",
     "date": "2026-11-11",
     "sections": [

@@ -859,6 +859,67 @@ mirror (`scripts/build-bb-event-fixtures.py`, `loadBbEventPage()` in
 `tests/support/bbFixture.js`); mutations `scripts/mutations/bb-event.json`
 (12).
 
+## Venue and person pages — `bb-venue`, `bb-relation` (Phase 4, 2026-11-11)
+
+Same pattern as `bb-event` and `bb-song`; one reader for both kinds,
+`_bbPlaceRead(doc, url, p)` (the kind from the path), one `toHtml`,
+`_bbPlaceToHtml()`, one head, `_bbPlaceHeadSpec()`, features from
+`_bbPlaceFeatures(kind)`. This phase is also the org/brucebase.org TODO "BB
+Steve van Zandt detail page needs overhaul".
+
+- **The wiki pages its long lists** (Wikidot ListPages, `div.pager` with
+  `.pager-no` "page 1 of 6", the next pages at `/<page>/p/N`). Probe
+  2026-11-11 (scratch curl of Steven Van Zandt's /p/1–7 and Patti Scialfa's
+  /p/1–3; env vzell-lap, n/a): every module of a page follows the one
+  `/p/N`; a module past its last page shows its LAST page again (Patti's
+  /p/3: "page 3 of 3" beside "page 2 of 2"; SVZ /p/7 = /p/6); a list with
+  no pager (SVZ's "Not as a member" column, 211 shows) is the same on every
+  page. Hence `_bbPagedListOk(list, p)`: a paged list while its pager says
+  `p`, an unpaged one on page 1 only; `_bbPagedRows()` applies it per list.
+  `pageCountAsync` is the largest N (`_bbPlacePageCount()`); `pageRequest`
+  gives page 1 from the copy taken at the press and page N as a GET of
+  `/p/N` (same origin); `groupMergeByName` joins the pages' groups. SVZ:
+  six pages → 1,517 rows (1,306 with the E Street Band, 211 without), the
+  page's own count.
+- **Performances**: the total ("Performed 1517 times with Bruce
+  Springsteen"), the count per band (`li` "Performed 34 times as a member
+  of Steel Mill", and "… excluding those as a member of bands below" →
+  "Not as a member of the bands below") → *Performances by band*; the shows
+  in a grid whose HEADING ROWS name the cells of the row after them ("As a
+  member of The E Street Band:" / "Not as a member …:"; Patti Scialfa has a
+  second heading row for The Sessions Band, beside an EMPTY cell — a
+  heading row is: no list, bold in some cell, the others bold or empty) →
+  the As column. Without such a grid, the lists as they are (Type "On
+  stage": a show's link is the wiki's `/onstage:` redirect,
+  `_BB_ENTRY_KINDS`).
+- **Appearances, Cancelled**: lists (Type from the link: No gig, Interview,
+  Off stage, …).
+- **Recording**: a `<p><strong>` credit heading ("Performer") over
+  releases (title, artist link, year) and their songs with the role in
+  brackets → Credit · Release · Artist · Year · Song · Role.
+- **Bands / Members**: names in sort form, shown in reading order by
+  `_bbRelationDisplayName()`; Members makes the head say "Band".
+- **Co-written**: song, and the others named in "(with …)".
+- **Streetview / Map**: the iframe's link in the Venue card; Gallery: the
+  head's pictures; other tabs with words (News): text sections.
+- **Before the tabs**: the description ("About"), "Source:" (a card
+  field), a venue's "Springsteen did N performances" (the Venue card) and
+  its region from the breadcrumbs ("Venues In California (CA)"); a
+  person's sort name from the last breadcrumb.
+- `_bbEventList()` (shared) now also reads "2015-04-30, Story Chapel, …"
+  (a comma after the date: Patti Scialfa's Performances).
+- `openSubTables`: a venue's tables all open; a person's Performances (up
+  to 1,500 rows) folded.
+
+Tests: `tests/fixtures/bb-place.spec.js` (8: the gate; the Roxy's tables
+and head, a show previews (FRP); Patti Scialfa's three pages — every
+distinct show link once, the three As headings, one request per later
+page; per band, Recording, Bands, the head; a one-show person ("On
+stage"); a band's Members; Save → Load from Disk with no request);
+fixtures `bb-venue-roxy-theatre.html`, `bb-relation-*.html` (Patti's three
+pages fetched together from the live site, 2026-11-11T15:26+01:00);
+`loadBbEventPage()` serves `/p/N`; mutations `scripts/mutations/bb-place.json` (10).
+
 ## Song pages — `bb-song`, and On The Tracks — `bb-ott` (Phase 3, 2026-11-11)
 
 Same pattern as `bb-event` (above): a definition before `bb-page` under

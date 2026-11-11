@@ -334,10 +334,21 @@ const BB_EVENT_PAGES = {
     'song-the-promise': ['song:the-promise', 'bb-song-the-promise.html'],
     'song-we-gotta-get-out-of-this-place': ['song:we-gotta-get-out-of-this-place', 'bb-song-we-gotta-get-out-of-this-place.html'],
     'ott-do-you-want-me-to-say-alright': ['ott:do-you-want-me-to-say-alright', 'bb-ott-do-you-want-me-to-say-alright.html'],
+    // bb-venue / bb-relation (Phase 4); Patti Scialfa's later pages are
+    // served at /p/2 and /p/3.
+    'venue-roxy-theatre': ['venue:roxy-theatre-west-hollywood-ca', 'bb-venue-roxy-theatre.html'],
+    'relation-patti-scialfa': ['relation:patti-scialfa', 'bb-relation-patti-scialfa-p1.html',
+        { 2: 'bb-relation-patti-scialfa-p2.html', 3: 'bb-relation-patti-scialfa-p3.html' }],
+    'relation-anders-goman': ['relation:anders-goman', 'bb-relation-anders-goman.html'],
+    'relation-malurt': ['relation:malurt', 'bb-relation-malurt.html'],
 };
 Object.keys(BB_EVENT_PAGES).forEach((k) => {
-    const [p, f] = BB_EVENT_PAGES[k];
-    BB_EVENT_PAGES[k] = { url: `https://brucebase.wikidot.com/${p}`, file: path.join(__dirname, '..', 'fixtures', f) };
+    const [p, f, more] = BB_EVENT_PAGES[k];
+    const fx = (name) => path.join(__dirname, '..', 'fixtures', name);
+    BB_EVENT_PAGES[k] = {
+        url: `https://brucebase.wikidot.com/${p}`, file: fx(f),
+        pages: Object.fromEntries(Object.entries(more || {}).map(([n, name]) => [n, fx(name)])),
+    };
 });
 const BB_EVENT_BUTTON = 'Show the event';
 
@@ -352,10 +363,14 @@ const BB_EVENT_BUTTON = 'Show the event';
  * @returns {Promise<{ requests: string[], url: string }>}
  */
 async function loadBbEventPage(page, key, { enabled = true, detail = true, settingsOverride = {} } = {}) {
-    const { url, file } = BB_EVENT_PAGES[key];
+    const { url, file, pages } = BB_EVENT_PAGES[key];
     const requests = [];
     page.on('request', (req) => requests.push(req.url()));
     await page.route(/^https?:\/\//, (route) => route.abort('blockedbyclient'));
+    // A paged page's later pages (`/p/N`), as the wiki serves them.
+    for (const [n, f] of Object.entries(pages || {})) {
+        await page.route(`${url}/p/${n}`, (route) => route.fulfill({ path: f, contentType: 'text/html; charset=utf-8' }));
+    }
     const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
     await page.route(/brucebase\.wdfiles\.com\//, (route) => route.fulfill({ status: 200, contentType: 'image/png', body: png }));
     await loadUserscriptPage(page, {

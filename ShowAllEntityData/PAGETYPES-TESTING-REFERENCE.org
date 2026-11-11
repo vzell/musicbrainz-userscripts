@@ -322,6 +322,8 @@ skill for turning a =planned= row into a =captured= one.
 | 160 | dg-listing                    | multi        | discogs.com /shop/item/ID (/sell/item/ID)      | NOT MusicBrainz, opt-in; Next.js; the listed release's Tracks view + a For sale card; the listing, then its release |
 | 157 | bs-record                     | multi        | brucespringsteen.it /DB/detrec.aspx?code=CODE  | NOT MusicBrainz; a record's page: a sub-table per record/disc, no request; head (facts, Sources, photo); also in the right frame                                                                                  |
 | 149 | sfm-setlist                   | multi        | setlist.fm /setlist/ARTIST/YEAR/VENUE-ID.html  | NOT MusicBrainz, opt-in; a setlist's own page: a sub-table per set, no request (the live page's list); head as release-tracks |
+| 164 | bb-venue                      | multi        | brucebase.wikidot.com /venue:…                 | NOT MusicBrainz, opt-in (+sa_bb_detail_pages); a venue page: Performances/Cancelled/Appearances, every /p/N page read; head |
+| 165 | bb-relation                   | multi        | brucebase.wikidot.com /relation:…              | NOT MusicBrainz, opt-in (+sa_bb_detail_pages); a person/band page: Performances (As), by band, Appearances, Recording, Bands/Members, Co-written; every /p/N page |
 | 162 | bb-song                       | multi        | brucebase.wikidot.com /song:…                  | NOT MusicBrainz, opt-in (+sa_bb_detail_pages); a song page: Credits, Performances (+ by tour), Multiples, Snippets, Live downloads, On The Tracks; head |
 | 163 | bb-ott                        | multi        | brucebase.wikidot.com /ott:…                   | NOT MusicBrainz, opt-in (+sa_bb_detail_pages); an On The Tracks page: its takes as one table; head (notes, tags)    |
 | 161 | bb-event                      | multi        | brucebase.wikidot.com /gig:… /nogig:… etc.     | NOT MusicBrainz, opt-in (+sa_bb_detail_pages); an event page as a detail view: sub-tables Setlist/cast/lists/Recording/Storyteller, head, no request|
@@ -1304,6 +1306,17 @@ lists converted into sortable tables), tableMode =multi=.
 - URL: [[https://brucebase.wikidot.com/ott:do-you-want-me-to-say-alright][Brucebase: On The Tracks, Do You Want Me To Say Alright]].
 - Match: =/^\/ott:/= and =sa_bb_detail_pages=. Buttons: "Show the versions". One sub-table, On The Tracks (=_bbOttRead()=, =_bbOttRows()= shared with bb-song).
 - Coverage: =tests/fixtures/bb-song.spec.js= ("an On The Tracks page"); fixture =bb-ott-do-you-want-me-to-say-alright.html=.
+
+** 164. bb-venue
+- URL: [[https://brucebase.wikidot.com/venue:roxy-theatre-west-hollywood-ca][Brucebase: Roxy Theatre]] (2026-11-11, org/brucebase.org Plan Phase 4).
+- Match: =/^\/venue:[^/]+\/?$/= and =sa_bb_detail_pages=. Buttons: "Show the venue". tableMode multi (=groupByH3=, =groupMergeByName=, =openSubTables: true=). Pages: =pageCountAsync= = the largest "page 1 of N" (=_bbPlacePageCount()=); page 1 the copy, page N =/<page>/p/N= (=_bbPlaceFeatures()=).
+- Coverage: =tests/fixtures/bb-place.spec.js= (Roxy); mutations =scripts/mutations/bb-place.json=.
+
+** 165. bb-relation
+- URL: [[https://brucebase.wikidot.com/relation:patti-scialfa][Brucebase: Patti Scialfa]] (three pages); [[https://brucebase.wikidot.com/relation:steven-van-zandt][Steven Van Zandt]] (six pages, 1,517 shows).
+- Match: =/^\/relation:[^/]+\/?$/= and =sa_bb_detail_pages=. Buttons: "Show the person". Same features as bb-venue (Performances folded at first).
+- Paging rule (=_bbPagedListOk()=): a paged list on page N only while its pager says N (a module past its last page repeats it), an unpaged list on page 1 only.
+- Coverage: =tests/fixtures/bb-place.spec.js= (Patti Scialfa p1–3, Anders Goman, Malurt, Save/Load); mutations =scripts/mutations/bb-place.json=.
 
 ** Relationship-tables buttons on existing pageTypes (not pageTypes of their own)
 =_relTablesButton()= adds a second button to series-releases, work-recordings, releasegroup-releases, recording-releases (with "Related works" as "Via <work>" tables), label-relationships and artist-relationships ("Relationship lists"), and release-tracks ("Credits", the release's own =#release-relationships= and its group's =#release-group-relationships=, never the per-medium track credits). Each runs as its own pageType for that render (=series-relationship-tables=, =work-relationship-tables=, =releasegroup-relationship-tables=, =recording-relationship-tables=, =label-relationship-tables=, =artist-relationship-tables=, =release-credit-tables=; =buttonConfig.type= switches =pageType= in =startFetchingProcess()=), with only its own features (=replaceFeatures=), and removes the page's main data section (=removeMain=, =_relRemoveMainSections()=). A saved file records that pageType and loads back as the same button (=_activateButtonForSavedPageType()=). Hidden with =sa_enable_relationship_tables= off (=showIf=). Coverage: =tests/fixtures/rel-tables-recording.spec.js= (incl. the main button unchanged and a Save → Load round trip) and =rel-tables-pages.spec.js=, raw captures =tests/fixtures/rel-{series,work,label-rels,artist-rels,release-group,recording,release}-overview.html=.

@@ -4026,13 +4026,13 @@ many rows (*Large Dataset Threshold*, 5000).
 </details>
 
 <details>
-<summary>Brucebase event and song pages</summary>
+<summary>Brucebase event, song, venue and person pages</summary>
 
 A Brucebase page for one event — a gig (`/gig:…`), a show that did not
 happen (`/nogig:…`), a recording session, a rehearsal or an interview —
 gets one button, **Event** (*Show the event*), while ⚙️ Settings →
-*📚 Brucebase* → *Detail pages: events and songs as tables* is on (the
-default). It lays the page out like a MusicBrainz release; nothing is
+*📚 Brucebase* → *Detail pages: events, songs, venues and people as tables*
+is on (the default). It lays the page out like a MusicBrainz release; nothing is
 fetched, everything comes from the page itself:
 
 - **Above the tables:** a line under the heading ("~ Gig at Roxy Theatre
@@ -4071,7 +4071,17 @@ played live, released on, live downloads, takes), its tags, media and
 links. An **On The Tracks** page (`/ott:…`) gets **Versions**: its takes as
 one table. A lyrics page stays as it is.
 
-The setting is *Detail pages: events and songs as tables*. Switched off,
+**Venue pages** (`/venue:…`) get **Venue**: the performances, cancelled
+shows and appearances at the venue, with its description, region, count,
+map link and pictures above. **People and bands** (`/relation:…`) get
+**Person**: every performance with Bruce Springsteen — the wiki splits long
+lists into pages (Steven Van Zandt's 1,517 shows over six), and all of them
+are read, one request per page — with *As* saying in which band ("As a
+member of The E Street Band"); the count per band; appearances; the
+recordings by song and role; their bands or members; songs co-written with
+Bruce. Their biography, tags and pictures are above.
+
+The setting is *Detail pages: events, songs, venues and people as tables*. Switched off,
 these pages stay as the wiki shows them, and their links still preview.
 
 </details>

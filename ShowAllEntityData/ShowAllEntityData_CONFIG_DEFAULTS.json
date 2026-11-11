@@ -269,7 +269,7 @@
     "sa_auto_resize_columns": "Auto-resize columns on load",
     "sa_auto_resize_columns_threshold": "Auto-resize columns threshold (rows)",
     "sa_bb_collabsable_sidebar": "Collabsable sidebar",
-    "sa_bb_detail_pages": "Detail pages: events and songs as tables",
+    "sa_bb_detail_pages": "Detail pages: events, songs, venues and people as tables",
     "sa_bb_detail_preview": "Preview song pages on the Brucebase song list",
     "sa_bb_event_preview": "Preview event, venue and people pages on hover",
     "sa_bb_mb_event_lookup": "MB-Event column: look the events up on MusicBrainz",
