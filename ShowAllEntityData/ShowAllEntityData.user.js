@@ -5187,10 +5187,13 @@
             description: 'Needs a setting above that switches the wiki on. On brucebase.wikidot.com, every ' +
                          'preview window of a page gets a closed "History" section, and ✎ in its title bar (or ' +
                          'H) opens it: the page\'s revisions — number, date, who, what kind of change, the ' +
-                         'comment — and what the revision you pick changed, as two columns, the old lines and ' +
-                         'the new ones with the changed words marked. Signed in or not: the wiki answers both ' +
-                         'the same. The history is read when you open the section (one request for 20 ' +
-                         'revisions, one per revision\'s text, one a second) and kept until the page is left. ' +
+                         'comment, tag changes as pills — with chips that show only some kinds of change, and ' +
+                         'what changed between the revision you click and the one before it, or between any ' +
+                         'two you pick with From and To: the tags, a changed title or page name, and the old ' +
+                         'lines and the new ones side by side with the changed words marked. Signed in or not: ' +
+                         'the wiki answers both the same. The history is read when you open the section (one ' +
+                         'request for 100 revisions, one per comparison and, when the text changed, one per ' +
+                         'revision\'s text, one a second) and kept until the page is left. ' +
                          'The ☰ menu of a page the window shows has "✎ Page history" for the page itself. Off: ' +
                          'no section, no request.'
         },
@@ -34283,9 +34286,12 @@
     const _bbHistSrc = new Map();
 
     /**
-     * Each page's window state, by page id: `rev` (the revision whose changes
-     * are shown, '' = the newest), `all` (every line, not only the changed).
-     * @type {Map<string, {rev: string, all: boolean}>}
+     * Each page's window state, by page id (History round 2, vzell's answers
+     * of 2026-11-11): `from` / `to` (the revision ids picked; '' = the newest
+     * for `to`, the one before `to` for `from`), `all` (every line, not only
+     * the changed), `kinds` (the kind chips on: 'all', or any of
+     * `_BB_HIST_KINDS`' keys).
+     * @type {Map<string, {from: string, to: string, all: boolean, kinds: Set<string>}>}
      */
     const _bbHistUi = new Map();
 
@@ -34293,12 +34299,32 @@
      * A page's window state, made on first use.
      *
      * @param {string} pid
-     * @returns {{rev: string, all: boolean}}
+     * @returns {{from: string, to: string, all: boolean, kinds: Set<string>}}
      */
     function _bbHistUiOf(pid) {
-        if (!_bbHistUi.has(pid)) _bbHistUi.set(pid, { rev: '', all: false });
+        if (!_bbHistUi.has(pid)) _bbHistUi.set(pid, { from: '', to: '', all: false, kinds: new Set(['all']) });
         return _bbHistUi.get(pid);
     }
+
+    /**
+     * The kinds of change the chips filter by: key, label, flag letter — the
+     * wiki's own "Show page changes" checkboxes (`rev-type-<key>`), each
+     * naming the flag its revisions carry (probe 2026-11-11: the wiki's
+     * per-kind counts are the flags' counts; "ST" counts for Source and Title).
+     * @type {Array<[string, string, string]>}
+     */
+    const _BB_HIST_KINDS = [
+        ['all', 'All', ''], ['source', 'Source', 'S'], ['title', 'Title', 'T'], ['move', 'Page name', 'R'],
+        ['tags', 'Tags', 'A'], ['meta', 'Metadata', 'M'], ['files', 'Files', 'F']
+    ];
+
+    /**
+     * Each comparison of two revisions (PageDiffModule), by
+     * "<older id>:<newer id>": `{state, tags?, title?, name?, identical?, detail?}`.
+     * A revision never changes, so a pair is read once.
+     * @type {Map<string, object>}
+     */
+    const _bbHistCmp = new Map();
 
     /**
      * POSTs one Wikidot history module, same-origin, after the window's rate
@@ -34401,8 +34427,10 @@
     }
 
     /**
-     * Reads page `p` of a page's revision list and adds it to `_bbHist`
-     * (page 1 starts the record). Repaints the window when it is in.
+     * Reads page `p` of a page's revision list, 100 revisions a page (all of a
+     * normal page's history in one answer; probe 2026-11-11: 44 in 0.6 s),
+     * and adds it to `_bbHist` (page 1 starts the record). Repaints the
+     * window when it is in.
      *
      * @param {string} pid
      * @param {number} p
@@ -34420,7 +34448,7 @@
         _bbHist.set(pid, h);
         const opts = JSON.stringify({ all: true });
         try {
-            const body = await _bbHistPost('history/PageRevisionListModule', { page_id: pid, page: String(p), perpage: '20', options: opts });
+            const body = await _bbHistPost('history/PageRevisionListModule', { page_id: pid, page: String(p), perpage: '100', options: opts });
             const r = _bbHistParseList(body);
             const seen = new Set(h.revs.map(x => x.id));
             h.revs.push(...r.revs.filter(x => !seen.has(x.id)));
@@ -34464,14 +34492,113 @@
     }
 
     /**
-     * Starts what a page's History section needs: the list's first page,
-     * then the sources of the shown revision and the one before it (the
-     * oldest read revision's predecessor may be on the next list page,
-     * which is read first). Only from the window's own acts — the section
-     * opened, a revision picked, "Load more" — never from a hover. A
-     * failed read is asked again only on `retry` (a click): the section's
-     * `toggle` also fires on every repaint that draws it open, and a retry
-     * from there would loop on a page that keeps failing.
+     * Reads a comparison of two revisions (PageDiffModule's body): its
+     * `table.page-compare` — a row per thing that differs between them,
+     * "Tags:", "Page title:", "Page name:" (probe 2026-11-11: each only when
+     * it differs), plus "Created on:" — with the older revision's cell first
+     * (it is asked as `from_revision_id`); and whether the wiki says the
+     * sources are identical ("Page sources are identical.").
+     *
+     * @param {string} html
+     * @returns {{tags: ?Array<string[]>, title: ?string[], name: ?string[], identical: boolean}}
+     *   `tags` the two revisions' tag lists, `title`/`name` their two values,
+     *   each null when the wiki shows no row (the same in both).
+     */
+    function _bbHistParseCompare(html) {
+        const doc = new DOMParser().parseFromString(`<div id="mb-bbh-root">${html}</div>`, 'text/html');
+        const root = doc.getElementById('mb-bbh-root');
+        const rows = {};
+        root.querySelectorAll('table.page-compare tr').forEach((tr) => {
+            const c = Array.from(tr.children).map(_bbText);
+            if (c.length >= 3 && c[0]) rows[c[0].replace(/:\s*$/, '').toLowerCase()] = [c[1], c[2]];
+        });
+        return {
+            tags: rows.tags ? rows.tags.map(s => s.split(/\s+/).filter(Boolean)) : null,
+            title: rows['page title'] || null,
+            name: rows['page name'] || null,
+            identical: /sources are identical/i.test(root.textContent || '')
+        };
+    }
+
+    /**
+     * What a revision's comment says about its tags ("Added tags: tour_lohadnk.
+     * Removed tags: album_18tracks, album_thepromise."), as pills for the list
+     * (vzell's answer 3), and the rest of the comment.
+     *
+     * @param {string} comment
+     * @returns {{added: string[], removed: string[], rest: string}}
+     */
+    function _bbHistTagChanges(comment) {
+        const take = (re) => {
+            const m = re.exec(comment || '');
+            return m ? m[1].split(',').map(s => s.trim()).filter(Boolean) : [];
+        };
+        return {
+            added: take(/Added tags:\s*([^.]*)\./),
+            removed: take(/Removed tags:\s*([^.]*)\./),
+            rest: String(comment || '').replace(/(?:Added|Removed) tags:\s*[^.]*\.\s*/g, '').trim()
+        };
+    }
+
+    /**
+     * Reads one comparison once, then repaints.
+     *
+     * @param {string} older The older revision's id.
+     * @param {string} newer The newer revision's id.
+     * @returns {Promise<void>}
+     */
+    async function _bbHistLoadCompare(older, newer) {
+        const key = `${older}:${newer}`;
+        const st = _bbHistCmp.get(key);
+        if (st && st.state !== 'failed') return;
+        _bbHistCmp.set(key, { state: 'loading' });
+        try {
+            const body = await _bbHistPost('history/PageDiffModule', { from_revision_id: older, to_revision_id: newer, show_type: 'inline' });
+            _bbHistCmp.set(key, { state: 'ok', ..._bbHistParseCompare(body) });
+        } catch (err) {
+            Lib.warn('detail', `Brucebase comparison ${key}: ${err && err.message}`);
+            _bbHistCmp.set(key, { state: 'failed', detail: (err && err.message) || 'the request failed' });
+        }
+        if (_dpDialog.repaint) _dpDialog.repaint();
+    }
+
+    /**
+     * The two revisions a page's window compares, from its picks: `newer`
+     * the "To" pick (else the newest), `older` the "From" pick (else the
+     * revision before `newer`) — the older always on the left, whatever
+     * order they were picked in (vzell's answer 6).
+     *
+     * @param {object} h The page's history (`_bbHist`).
+     * @param {object} ui The page's window state.
+     * @returns {{newer: ?object, older: ?object, toRow: ?object, fromRow: ?object, needMore: boolean, same: boolean}}
+     *   `toRow`/`fromRow` the rows the pickers show; `needMore` when the
+     *   revision before is on the list's next page; `same` when both picks
+     *   are one revision.
+     */
+    function _bbHistPair(h, ui) {
+        const at = (id) => (id ? h.revs.findIndex(r => r.id === id) : -1);
+        let iTo = at(ui.to);
+        if (iTo < 0) iTo = 0;
+        let iFrom = at(ui.from);
+        if (iFrom < 0) iFrom = iTo + 1;
+        const toRow = h.revs[iTo] || null;
+        const fromRow = h.revs[iFrom] || null;
+        const same = iFrom === iTo;
+        const newer = h.revs[Math.min(iTo, iFrom)] || null;
+        const older = h.revs[Math.max(iTo, iFrom)] || null;
+        return { newer, older, toRow, fromRow, same, needMore: !older && !!newer && newer.n > 0 };
+    }
+
+    /**
+     * Starts what a page's History section needs: the list's first page (100
+     * revisions), then for the picked pair the comparison (its tags, title,
+     * name, and whether the sources differ) and, only when they differ, the
+     * two sources (the older one's row may be on the list's next page, read
+     * first). Only from the window's own acts — the section opened, a row or a
+     * picker, "Load more" — never from a hover. A failed read is asked again
+     * only on `retry` (a click): the section's `toggle` also fires on every
+     * repaint that draws it open, and a retry from there would loop on a page
+     * that keeps failing.
      *
      * @param {string} pid
      * @param {{retry?: boolean}} [opts]
@@ -34487,17 +34614,29 @@
         }
         if (!h || h.state !== 'ok' || !h.revs.length) return;
         const ui = _bbHistUiOf(pid);
-        let i = ui.rev ? h.revs.findIndex(r => r.id === ui.rev) : 0;
-        if (i < 0) i = 0;
-        const cur = h.revs[i];
-        if (!h.revs[i + 1] && cur.n > 0 && h.read < h.pages && !h.more) await _bbHistLoadList(pid, h.read + 1);
-        const prev = h.revs[i + 1] || null;
-        const need = [cur, prev].filter((r) => {
-            if (!r) return false;
+        let p = _bbHistPair(h, ui);
+        if (p.needMore && h.read < h.pages && !h.more) {
+            await _bbHistLoadList(pid, h.read + 1);
+            p = _bbHistPair(h, ui);
+        }
+        if (!p.newer || p.same) return;
+        const srcNeeded = (r) => {
             const st = _bbHistSrc.get(r.id);
             return !st || (retry && st.state === 'failed');
-        });
-        await Promise.all(need.map(r => _bbHistLoadSource(r.id)));
+        };
+        // The page's first revision: all of its source is new.
+        if (!p.older) {
+            if (p.newer.n === 0 && srcNeeded(p.newer)) await _bbHistLoadSource(p.newer.id);
+            return;
+        }
+        const key = `${p.older.id}:${p.newer.id}`;
+        let c = _bbHistCmp.get(key);
+        if (!c || (retry && c.state === 'failed')) {
+            await _bbHistLoadCompare(p.older.id, p.newer.id);
+            c = _bbHistCmp.get(key);
+        }
+        if (!c || c.state !== 'ok' || c.identical) return;
+        await Promise.all([p.newer, p.older].filter(srcNeeded).map(r => _bbHistLoadSource(r.id)));
     }
 
     /**
@@ -34626,10 +34765,52 @@
     }
 
     /**
+     * The Tags strip of a comparison (vzell's answer 4: always shown): every
+     * tag of the two revisions, the added ones "+", the removed ones struck
+     * "−"; "the same in both" when the wiki shows no Tags row.
+     *
+     * @param {?Array<string[]>} tags The older and the newer revision's tags.
+     * @returns {string}
+     */
+    function _bbHistTagStrip(tags) {
+        const head = '<span class="mb-bbh-kl">Tags</span>';
+        if (!tags) return `<div class="mb-bbh-kv">${head}<span class="mb-dg-dim">the same in both</span></div>`;
+        const [a, b] = tags.map(x => new Set(x));
+        const added = [...b].filter(t => !a.has(t));
+        const removed = [...a].filter(t => !b.has(t));
+        const sum = [added.length ? `${added.length} added` : '', removed.length ? `${removed.length} removed` : ''].filter(Boolean).join(', ');
+        const pills = [...new Set([...a, ...b])].sort().map((t) => {
+            const cls = added.includes(t) ? ' mb-bbh-tag-add' : removed.includes(t) ? ' mb-bbh-tag-rem' : '';
+            return `<span class="mb-bbh-tag${cls}">${cls ? (added.includes(t) ? '+ ' : '− ') : ''}${_rgEsc(t)}</span>`;
+        }).join('');
+        return `<div class="mb-bbh-kv">${head}<span>${_rgEsc(sum || 'the same in both')}</span><span class="mb-bbh-pills">${pills}</span></div>`;
+    }
+
+    /**
+     * A value the comparison shows for both revisions (the page title, the
+     * page name): old → new, the changed words marked.
+     *
+     * @param {string} label
+     * @param {string[]} pair The older and the newer value.
+     * @returns {string}
+     */
+    function _bbHistValueRow(label, pair) {
+        const d = _cmpDiff(pair[0], pair[1]);
+        const side = (k, cls) => d.blocks.map((x) => {
+            if (x.eq !== undefined) return _rgEsc(x.eq);
+            return x[k] ? `<span class="${cls}">${_rgEsc(x[k])}</span>` : '';
+        }).join('');
+        return `<div class="mb-bbh-kv"><span class="mb-bbh-kl">${_rgEsc(label)}</span>` +
+            `<span class="mb-bbh-vals"><span>${side('del', 'mb-dgh-rem')}</span> <span class="mb-dg-dim">→</span> <span>${side('ins', 'mb-dgh-add')}</span></span></div>`;
+    }
+
+    /**
      * The History section's body for a page: what is being read, why it
      * failed ("Sign in to Brucebase to see the history" when Wikidot refused
-     * it, vzell's answer 4), or the revision list and the shown revision's
-     * changes.
+     * it, vzell's answer 4 of the overhaul), or the kind chips, the revision
+     * list with its From / To pickers and tag pills, and the picked pair's
+     * comparison: tags, title, name, the source's changed lines (History
+     * round 2, mockups https://claude.ai/artifact/7X2g3wBLVotb1cFfZdrCxz).
      *
      * @param {string} pid
      * @returns {string}
@@ -34649,50 +34830,103 @@
         }
         if (!h.revs.length) return wrap('<div class="mb-dg-dim">Wikidot lists no revisions of this page.</div>');
         const ui = _bbHistUiOf(pid);
-        const i = Math.max(0, ui.rev ? h.revs.findIndex(r => r.id === ui.rev) : 0);
-        const cur = h.revs[i];
+        const p = _bbHistPair(h, ui);
         const total = h.revs[0].n + 1;
+        // The kind chips (answers 1 and 2): the rows read, filtered by their
+        // flags, several kinds at once; each chip counts the rows read.
+        const on = ui.kinds.has('all') ? null : _BB_HIST_KINDS.filter(([k]) => ui.kinds.has(k)).map(([, , f]) => f);
+        const shown = on ? h.revs.filter(r => on.some(f => r.flags.includes(f))) : h.revs;
+        const chips = _BB_HIST_KINDS.map(([k, label, f]) => {
+            const n = f ? h.revs.filter(r => r.flags.includes(f)).length : h.revs.length;
+            const pressed = ui.kinds.has(k);
+            return `<button type="button" class="mb-bbh-chip" data-mb-bbh-act="kind" data-mb-bbh-v="${k}" data-mb-bbh-id="${id}" aria-pressed="${pressed}"` +
+                `${n ? '' : ' disabled'}>${label} <b>${n}</b></button>`;
+        }).join('');
         const editors = new Set(h.revs.map(r => r.user).filter(Boolean));
-        const meta = `<div class="mb-meh-meta"><span><b>${total}</b> revision${total === 1 ? '' : 's'}</span>` +
+        const meta = `<div class="mb-meh-meta"><span><b>${total}</b> revision${total === 1 ? '' : 's'}${h.revs.length < total ? `, ${h.revs.length} read` : ''}</span>` +
             `<span>last <b>${_rgEsc(_bbHistWhen(h.revs[0].at))}</b>${h.revs[0].user ? ` by ${_rgEsc(h.revs[0].user)}` : ''}</span>` +
-            `<span>${h.revs.length} read, <b>${editors.size}</b> editor${editors.size === 1 ? '' : 's'} among them</span></div>`;
+            `<span><b>${editors.size}</b> editor${editors.size === 1 ? '' : 's'}</span>` +
+            (on ? `<span><b>${shown.length}</b> shown</span>` : '') + '</div>';
         const flagPill = (f) => `<span class="mb-dgh-pill mb-dgh-pill-${f === 'N' ? 'ok' : f === 'S' ? 'run' : 'idle'}" data-mb-tip title="${_rgEsc(_BB_CHANGES_FLAGS[f] || f)}">${_rgEsc(f)}</span>`;
-        const rows = h.revs.map(r => `<button type="button" class="mb-bbh-e${r.id === cur.id ? ' mb-dgh-latest' : ''}" data-mb-bbh-act="rev" data-mb-bbh-v="${r.id}" data-mb-bbh-id="${id}" aria-pressed="${r.id === cur.id}">` +
-            `<span class="mb-bbh-n">${r.n}</span><span class="mb-dgh-d">${_rgEsc(_bbHistWhen(r.at))}</span>` +
-            `<span class="mb-dgh-u">${_rgEsc(r.user || '—')}</span><span class="mb-bbh-f">${r.flags.split('').map(flagPill).join('')}</span>` +
-            `<span class="mb-dgh-n">${_rgEsc(r.comment)}</span></button>`).join('');
+        const lo = p.older ? p.older.n : -1;
+        const hi = p.newer ? p.newer.n : -1;
+        const pick = (side, r, checked) => `<label class="mb-bbh-pk" data-mb-bbh-act="${side}" data-mb-bbh-v="${r.id}" data-mb-bbh-id="${id}" data-mb-tip title="Compare ${side} this revision">` +
+            `<input type="radio" name="mb-bbh-${side}-${id}" data-mb-bbh-act="${side}" data-mb-bbh-v="${r.id}" data-mb-bbh-id="${id}"${checked ? ' checked' : ''}><span>${side === 'from' ? 'From' : 'To'}</span></label>`;
+        const rows = shown.map((r) => {
+            const tc = _bbHistTagChanges(r.comment);
+            const pills = tc.added.map(t => `<span class="mb-bbh-tag mb-bbh-tag-add">+ ${_rgEsc(t)}</span>`).join('') +
+                tc.removed.map(t => `<span class="mb-bbh-tag mb-bbh-tag-rem">− ${_rgEsc(t)}</span>`).join('');
+            const cmt = pills ? `${pills}${tc.rest ? ` ${_rgEsc(tc.rest)}` : ''}` : _rgEsc(r.comment);
+            const cls = r.n === hi ? ' mb-dgh-latest' : r.n === lo ? ' mb-bbh-from' : (r.n > lo && r.n < hi ? ' mb-bbh-in' : '');
+            return `<div class="mb-bbh-r${cls}" data-mb-bbh-n="${r.n}">` +
+                pick('from', r, p.fromRow && p.fromRow.id === r.id) + pick('to', r, p.toRow && p.toRow.id === r.id) +
+                `<button type="button" class="mb-bbh-e" data-mb-bbh-act="rev" data-mb-bbh-v="${r.id}" data-mb-bbh-id="${id}" aria-pressed="${r.n === hi}">` +
+                `<span class="mb-bbh-n">${r.n}</span><span class="mb-dgh-d">${_rgEsc(_bbHistWhen(r.at))}</span>` +
+                `<span class="mb-dgh-u">${_rgEsc(r.user || '—')}</span><span class="mb-bbh-f">${r.flags.split('').map(flagPill).join('')}</span>` +
+                `<span class="mb-dgh-n"${pills ? ` data-mb-tip title="${_rgEsc(r.comment)}"` : ''}>${cmt}</span></button></div>`;
+        }).join('');
         let more = '';
         if (h.read < h.pages) {
             more = h.more === 'loading'
                 ? '<span class="mb-dp-spin">◌</span> Reading the next page…'
                 : (h.more === 'failed' ? `<span class="mb-dp-warn">The next page failed: ${_rgEsc(h.detail)}.</span> ` : '') +
-                  btn('more', String(h.read + 1), `Load 20 more (page ${h.read + 1} of ${h.pages})`, false, ' mb-dg-primary');
+                  btn('more', String(h.read + 1), `Load 100 more (page ${h.read + 1} of ${h.pages})`, false, ' mb-dg-primary');
         }
-        const list = `<div class="mb-meh-list mb-bbh-list" data-mb-keep-scroll="bbh-list">${rows}</div>` +
+        const list = `<div class="mb-bbh-chips">${chips}</div>` +
+            `<div class="mb-meh-list mb-bbh-list" data-mb-keep-scroll="bbh-list">${rows || '<div class="mb-dg-dim">No revision of these kinds among those read.</div>'}</div>` +
             (more ? `<div class="mb-meh-more">${more}</div>` : '');
-        // The shown revision's changes: its source against the one before.
-        const prev = h.revs[i + 1] || null;
-        const s1 = _bbHistSrc.get(cur.id);
-        const s0 = prev ? _bbHistSrc.get(prev.id) : { state: 'ok', lines: [] };
-        const title = `Revision ${cur.n}${prev ? ` · against ${prev.n}` : ' · the first'}` +
-            ` · ${_bbHistWhen(cur.at)}${cur.user ? ` · ${cur.user}` : ''}`;
-        let pane;
-        if (!prev && cur.n > 0) {
-            pane = `<div class="mb-dg-dim">The revision before ${cur.n} is on the next page of the list.</div>`;
-        } else if (!s1 || !s0 || s1.state === 'loading' || s0.state === 'loading') {
-            pane = `<div class="mb-dg-dim"><span class="mb-dp-spin">◌</span> Reading revision ${cur.n}${prev ? ` and ${prev.n}` : ''} from brucebase.wikidot.com…</div>`;
-        } else if (s1.state === 'failed' || s0.state === 'failed') {
-            pane = `<div class="mb-dp-warn">Could not read a revision's source: ${_rgEsc((s1.state === 'failed' ? s1 : s0).detail)}.</div> ` +
-                btn('rev', cur.id, 'Try again', false, ' mb-dg-primary');
-        } else {
+        // The picked pair: its comparison, then its sources when they differ.
+        const cur = p.newer;
+        const prev = p.older;
+        const adjacent = !!(cur && prev && h.revs.indexOf(prev) === h.revs.indexOf(cur) + 1 && prev.n === cur.n - 1);
+        let title;
+        if (!cur) title = 'Pick two revisions';
+        else if (!prev) title = `Revision ${cur.n} · the first · ${_bbHistWhen(cur.at)}${cur.user ? ` · ${cur.user}` : ''}`;
+        else if (adjacent) title = `Revision ${cur.n} · against ${prev.n} · ${_bbHistWhen(cur.at)}${cur.user ? ` · ${cur.user}` : ''}`;
+        else {
+            const who = new Set(h.revs.filter(r => r.n > prev.n && r.n <= cur.n).map(r => r.user).filter(Boolean));
+            title = `Revision ${prev.n} → ${cur.n} · ${cur.n - prev.n} revisions apart · ${who.size} editor${who.size === 1 ? '' : 's'}` +
+                ` · ${_bbHistWhen(prev.at)} → ${_bbHistWhen(cur.at)}`;
+        }
+        const diffOf = (s0, s1, label0) => {
+            if (!s1 || !s0 || s1.state === 'loading' || s0.state === 'loading') {
+                return `<div class="mb-dg-dim"><span class="mb-dp-spin">◌</span> Reading revision ${cur.n}${prev ? ` and ${prev.n}` : ''} from brucebase.wikidot.com…</div>`;
+            }
+            if (s1.state === 'failed' || s0.state === 'failed') {
+                return `<div class="mb-dp-warn">Could not read a revision's source: ${_rgEsc((s1.state === 'failed' ? s1 : s0).detail)}.</div> ` +
+                    btn('retry', '1', 'Try again', false, ' mb-dg-primary');
+            }
             const dr = _bbHistDiffRows(s0.lines, s1.lines);
             const changed = dr.filter(r => r.t !== 'same').length;
-            const why = cur.flags.split('').filter(f => f !== 'S').map(f => _BB_CHANGES_FLAGS[f]).filter(Boolean).join(', ');
-            pane = (changed
+            return (changed
                 ? `<div class="mb-meh-meta"><span><b>${changed}</b> line${changed === 1 ? '' : 's'} differ</span>` +
                   `<span>${dr.filter(r => r.t === 'rem' || r.t === 'chg').length} old, ${dr.filter(r => r.t === 'add' || r.t === 'chg').length} new</span></div>`
-                : `<div class="mb-dg-dim">The page's source did not change in this revision${why ? ` (${_rgEsc(why)})` : ''}.</div>`) +
-                (changed || ui.all ? _bbHistDiffHtml(dr, ui, prev ? `Revision ${prev.n}` : 'Before', `Revision ${cur.n}`) : '');
+                : '<div class="mb-dg-dim">The page\'s source is the same in both.</div>') +
+                (changed || ui.all ? _bbHistDiffHtml(dr, ui, label0, `Revision ${cur.n}`) : '');
+        };
+        let pane;
+        if (!cur || p.same) {
+            pane = '<div class="mb-dg-dim">Pick two different revisions with From and To.</div>';
+        } else if (!prev) {
+            pane = cur.n > 0
+                ? `<div class="mb-dg-dim">The revision before ${cur.n} is on the next page of the list.</div>`
+                : '<div class="mb-dg-dim">The page\'s first revision: all of its source is new.</div>' +
+                  diffOf({ state: 'ok', lines: [] }, _bbHistSrc.get(cur.id), 'Before');
+        } else {
+            const c = _bbHistCmp.get(`${prev.id}:${cur.id}`);
+            if (!c || c.state === 'loading') {
+                pane = '<div class="mb-dg-dim"><span class="mb-dp-spin">◌</span> Comparing the two revisions on brucebase.wikidot.com…</div>';
+            } else if (c.state === 'failed') {
+                pane = `<div class="mb-dp-warn">Could not compare the two revisions: ${_rgEsc(c.detail)}.</div> ` +
+                    btn('retry', '1', 'Try again', false, ' mb-dg-primary');
+            } else {
+                const why = adjacent ? cur.flags.split('').filter(f => f !== 'S').map(f => _BB_CHANGES_FLAGS[f]).filter(Boolean).join(', ') : '';
+                pane = `<div class="mb-bbh-cmp">${_bbHistTagStrip(c.tags)}` +
+                    (c.title ? _bbHistValueRow('Page title', c.title) : '') + (c.name ? _bbHistValueRow('Page name', c.name) : '') + '</div>' +
+                    (c.identical
+                        ? `<div class="mb-dg-dim">${adjacent ? `The page's source did not change in this revision${why ? ` (${_rgEsc(why)})` : ''}.` : 'The page\'s source is the same in both revisions.'}</div>`
+                        : diffOf(_bbHistSrc.get(prev.id), _bbHistSrc.get(cur.id), `Revision ${prev.n}`));
+            }
         }
         const act = `<span class="mb-dgh-seg">${btn('all', '0', 'Only what changed', !ui.all)}${btn('all', '1', 'Everything', ui.all)}</span>`;
         return wrap(meta + list +
@@ -34720,8 +34954,9 @@
      * The window's History sections' wiring, installed once: opening the
      * section (or a repaint that draws it open, the reader having opened it
      * before) starts the read (`_bbHistStart()`; it does nothing for what is
-     * read or under way), and the delegated controls — a revision row,
-     * "Only what changed" / "Everything", "Load 20 more", "Try again".
+     * read or under way), and the delegated controls — a revision row, the
+     * From / To pickers, the kind chips, "Only what changed" / "Everything",
+     * "Load 100 more", "Try again".
      *
      * @returns {void}
      */
@@ -34734,34 +34969,62 @@
             const box = d.querySelector('.mb-bbh[data-mb-bbh-id]');
             if (box) _bbHistStart(box.dataset.mbBbhId);
         }, true);
+        // A picker, a row, a chip or a button. A picker's label is cancelled
+        // (the repaint draws the radios from the state); the keyboard moves a
+        // radio without a click, so `change` is handled too.
+        const act = (el) => {
+            const pid = el.dataset.mbBbhId;
+            const v = el.dataset.mbBbhV;
+            const ui = _bbHistUiOf(pid);
+            const kind = el.dataset.mbBbhAct;
+            const repaint = () => { if (_dpDialog.repaint) _dpDialog.repaint(); };
+            if (kind === 'all') {
+                ui.all = v === '1';
+                repaint();
+                return;
+            }
+            if (kind === 'kind') {
+                if (v === 'all') ui.kinds = new Set(['all']);
+                else {
+                    ui.kinds.delete('all');
+                    if (ui.kinds.has(v)) ui.kinds.delete(v);
+                    else ui.kinds.add(v);
+                    if (!ui.kinds.size) ui.kinds.add('all');
+                }
+                repaint();
+                return;
+            }
+            if (kind === 'rev' || kind === 'from' || kind === 'to') {
+                // A row: that revision against the one before it.
+                if (kind === 'rev') {
+                    ui.to = v;
+                    ui.from = '';
+                } else {
+                    ui[kind] = v;
+                }
+                _bbHistStart(pid, { retry: true });
+                repaint();
+                return;
+            }
+            if (kind === 'more') {
+                _bbHistLoadList(pid, parseInt(v, 10)).then(() => _bbHistStart(pid));
+                repaint();
+                return;
+            }
+            if (kind === 'retry') {
+                _bbHistStart(pid, { retry: true });
+                repaint();
+            }
+        };
         document.addEventListener('click', (e) => {
             const el = e.target instanceof Element ? e.target.closest('#mb-dp-dialog [data-mb-bbh-act]') : null;
             if (!el || e.button !== 0) return;
             e.preventDefault();
-            const pid = el.dataset.mbBbhId;
-            const v = el.dataset.mbBbhV;
-            const ui = _bbHistUiOf(pid);
-            const act = el.dataset.mbBbhAct;
-            if (act === 'all') {
-                ui.all = v === '1';
-                if (_dpDialog.repaint) _dpDialog.repaint();
-                return;
-            }
-            if (act === 'rev') {
-                ui.rev = v;
-                _bbHistStart(pid, { retry: true });
-                if (_dpDialog.repaint) _dpDialog.repaint();
-                return;
-            }
-            if (act === 'more') {
-                _bbHistLoadList(pid, parseInt(v, 10)).then(() => _bbHistStart(pid));
-                if (_dpDialog.repaint) _dpDialog.repaint();
-                return;
-            }
-            if (act === 'retry') {
-                _bbHistStart(pid, { retry: true });
-                if (_dpDialog.repaint) _dpDialog.repaint();
-            }
+            act(el);
+        }, true);
+        document.addEventListener('change', (e) => {
+            const el = e.target instanceof Element ? e.target.closest('#mb-dp-dialog input[data-mb-bbh-act]') : null;
+            if (el && el.checked) act(el);
         }, true);
     }
 
@@ -42261,6 +42524,34 @@
                revisions as rows that select, the shown one's changed lines
                OLD | NEW, the words marked inside a changed line. */
             .mb-dp-dialog .mb-bbh-list { max-height: min(40vh, 360px); }
+            /* Round 2: the kind chips, a row's From / To pickers and its
+               revision, the pair's span tinted, tag pills, the comparison's
+               Tags / Page title / Page name rows. */
+            .mb-dp-dialog .mb-bbh-chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 8px; }
+            .mb-dp-dialog .mb-bbh-chip {
+                font: 600 11px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; letter-spacing: 0.04em; cursor: pointer;
+                border: 1px solid #d9cfbd; background: #fff; color: #2b2622; border-radius: 999px; padding: 2px 10px;
+            }
+            .mb-dp-dialog .mb-bbh-chip b { color: #7a6d5c; font-variant-numeric: tabular-nums; }
+            .mb-dp-dialog .mb-bbh-chip[aria-pressed="true"] { background: #2b2622; color: #fbf8f1; border-color: #2b2622; }
+            .mb-dp-dialog .mb-bbh-chip[aria-pressed="true"] b { color: #fbf8f1; opacity: 0.75; }
+            .mb-dp-dialog .mb-bbh-chip:disabled { opacity: 0.45; cursor: default; }
+            .mb-dp-dialog .mb-bbh-chip:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 2px; }
+            .mb-dp-dialog .mb-bbh-r { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 0 6px; align-items: center; padding-left: 4px; border-bottom: 1px dotted #d9cfbd; }
+            .mb-dp-dialog .mb-bbh-r > .mb-bbh-e { border-bottom: 0; }
+            .mb-dp-dialog .mb-bbh-r.mb-dgh-latest, .mb-dp-dialog .mb-bbh-r.mb-bbh-from { background: #eef2f8; box-shadow: inset 3px 0 0 #2f5f9e; }
+            .mb-dp-dialog .mb-bbh-r.mb-bbh-in { background: #f5f7fb; }
+            .mb-dp-dialog .mb-bbh-pk { display: inline-flex; align-items: center; gap: 2px; cursor: pointer; font: 600 9.5px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; letter-spacing: 0.05em; text-transform: uppercase; color: #7a6d5c; }
+            .mb-dp-dialog .mb-bbh-pk input { margin: 0; accent-color: #2f5f9e; }
+            .mb-dp-dialog .mb-bbh-tag { font: 11.5px ui-monospace, Consolas, monospace; border: 1px solid #d9cfbd; border-radius: 3px; padding: 0 5px; background: #fff; color: #7a6d5c; white-space: nowrap; }
+            .mb-dp-dialog .mb-bbh-tag-add { background: #dcefd5; color: #2f6b2a; border-color: transparent; }
+            .mb-dp-dialog .mb-bbh-tag-rem { background: #f3d2cc; color: #9b2218; border-color: transparent; text-decoration: line-through; }
+            .mb-dp-dialog .mb-bbh-e .mb-dgh-n { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; }
+            .mb-dp-dialog .mb-bbh-cmp { display: grid; gap: 6px; margin-bottom: 8px; }
+            .mb-dp-dialog .mb-bbh-kv { display: grid; grid-template-columns: 6.5em minmax(0, 1fr); gap: 4px 10px; align-items: baseline; border: 1px solid #d9cfbd; border-radius: 3px; padding: 6px 9px; font: 12.5px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; }
+            .mb-dp-dialog .mb-bbh-kl { font: 600 10.5px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; letter-spacing: 0.07em; text-transform: uppercase; color: #7a6d5c; }
+            .mb-dp-dialog .mb-bbh-pills { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; }
+            .mb-dp-dialog .mb-bbh-vals { min-width: 0; overflow-wrap: anywhere; }
             .mb-dp-dialog .mb-bbh-e {
                 all: unset; box-sizing: border-box; display: grid; width: 100%; cursor: pointer;
                 grid-template-columns: 2.4em 8.8em minmax(0, 9em) auto minmax(0, 1fr); gap: 2px 8px; align-items: baseline;
@@ -181032,6 +181323,23 @@ a { color: #1565c0; }`;
              * @returns {Array<Object>}
              */
             bbHistDiffRows: (a, b) => _bbHistDiffRows(a, b).map(({ d, ...r }) => r),
+
+            /**
+             * `_bbHistParseCompare()`: a comparison's tags, title, name and
+             * whether the sources are identical.
+             *
+             * @param {string} html
+             * @returns {Object}
+             */
+            bbHistParseCompare: (html) => _bbHistParseCompare(html),
+
+            /**
+             * `_bbHistTagChanges()`: a revision comment's added and removed tags.
+             *
+             * @param {string} comment
+             * @returns {{added: string[], removed: string[], rest: string}}
+             */
+            bbHistTagChanges: (comment) => _bbHistTagChanges(comment),
 
             /**
              * Thin wrapper around `_bbImageCaption()` over

@@ -3931,13 +3931,19 @@ entry, with these columns:
   linked. On brucebase.wikidot.com every window ends with a folded
   *History* section (✎ in the window's title bar, or **H**, opens it): the
   page's revisions, newest first — number, date, who, what kind of change
-  (S the text, A the tags, T the title, …) and the comment — and what the
-  revision you click changed, the old lines on the left and the new ones on
-  the right, the changed words marked, the lines that stayed folded
-  (*Everything* shows them). You need not be signed in. Nothing is read
-  until you open the section; then the list (20 revisions, *Load 20 more*
-  for older ones) and the two texts the newest change needs, one a
-  second. The ☰ menu of a page that has a window has *✎ Page history*,
+  (S the text, A the tags, T the title, …) and the comment, a tag change as
+  pills (*+ tour_lohadnk*) — and what the revision you click changed: the
+  tags (added +, removed struck), a changed title or page name, and the old
+  lines on the left and the new ones on the right, the changed words marked,
+  the lines that stayed folded (*Everything* shows them). The chips above
+  the list (*All*, *Source*, *Title*, *Page name*, *Tags*, *Metadata*,
+  *Files*, each with its count) show only revisions of those kinds; several
+  can be on at once. *From* and *To* on each row compare any two revisions,
+  the older always on the left and the revisions between them tinted; a click
+  on a row's text compares it with the one before again. You need not be
+  signed in. Nothing is read until you open the section; then the list (100
+  revisions, *Load 100 more* for older ones), the comparison and, when the
+  text changed, the two texts, one request a second. The ☰ menu of a page that has a window has *✎ Page history*,
   which opens it for the page itself (⚙️ Settings → *📚 Brucebase* → *Page
   history in the Brucebase window*).
 - **MB-Event:** a small glyph for the entry's kind (a microphone for a gig,

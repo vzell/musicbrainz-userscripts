@@ -399,7 +399,8 @@ const BB_HISTORY_DIR = path.join(__dirname, '..', 'fixtures', 'bb-history');
  * Loads the song page with its page id (bb-history-song-the-promise.html,
  * scripts/build-bb-history-fixtures.py) and answers Wikidot's history
  * modules from tests/fixtures/bb-history/: the revision list's pages
- * (`list-p<N>.json`) and the sources (`source-<revision id>.json`); any
+ * (`list-p<N>.json`), the sources (`source-<revision id>.json`) and the
+ * comparisons (`compare-<from id>-<to id>.json`); any
  * other page of the wiki is the same fixture (so a link's window has a page
  * id too). Every module POST is recorded.
  *
@@ -408,7 +409,7 @@ const BB_HISTORY_DIR = path.join(__dirname, '..', 'fixtures', 'bb-history');
  *   answer?: function({module: string, params: URLSearchParams}): ?{status?: number, json?: object} }} [opts]
  *   `answer` may replace a module's answer (an HTTP status, or Wikidot's
  *   JSON); null keeps the fixture's.
- * @returns {Promise<{ posts: Array<{module: string, page: string, revision: string}>, requests: string[] }>}
+ * @returns {Promise<{ posts: Array<{module: string, page: string, revision: string, pair: string}>, requests: string[] }>}
  */
 async function loadBbHistoryPage(page, { settingsOverride = {}, answer = null } = {}) {
     const posts = [];
@@ -422,7 +423,10 @@ async function loadBbHistoryPage(page, { settingsOverride = {}, answer = null } 
     await page.route('https://brucebase.wikidot.com/ajax-module-connector.php', (route) => {
         const params = new URLSearchParams(route.request().postData() || '');
         const module = params.get('moduleName') || '';
-        posts.push({ module, page: params.get('page') || '', revision: params.get('revision_id') || '' });
+        posts.push({
+            module, page: params.get('page') || '', revision: params.get('revision_id') || '',
+            pair: params.get('from_revision_id') ? `${params.get('from_revision_id')}-${params.get('to_revision_id')}` : '',
+        });
         const own = answer ? answer({ module, params }) : null;
         if (own) {
             return route.fulfill({ status: own.status || 200, contentType: 'application/json', body: JSON.stringify(own.json || {}) });
@@ -430,6 +434,9 @@ async function loadBbHistoryPage(page, { settingsOverride = {}, answer = null } 
         let file = '';
         if (module === 'history/PageRevisionListModule') file = path.join(BB_HISTORY_DIR, `list-p${params.get('page')}.json`);
         if (module === 'history/PageSourceModule') file = path.join(BB_HISTORY_DIR, `source-${params.get('revision_id')}.json`);
+        if (module === 'history/PageDiffModule') {
+            file = path.join(BB_HISTORY_DIR, `compare-${params.get('from_revision_id')}-${params.get('to_revision_id')}.json`);
+        }
         if (!file || !fs.existsSync(file)) {
             return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'not_ok', message: 'no such fixture' }) });
         }

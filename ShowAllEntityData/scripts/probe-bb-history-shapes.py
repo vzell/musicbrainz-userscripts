@@ -16,7 +16,10 @@ For one page (default song:streets-of-minneapolis) it asks:
      `table.page-compare` rows (label → both cells), whether the inline diff
      reconstructs both sources exactly (text outside <ins> = the older
      source, outside <del> = the newer, checked against PageSourceModule),
-     and the marks' counts.
+     and the marks' counts;
+  3. PageDiffModule for the newest title change (T) and rename (R) against
+     the revision before each, when the page has them (a story: page from
+     Recent changes has both).
 Writes a JSON summary (default debug/bb-history-shapes-<date>.json) and
 prints it. Members' names are not written (the list's are counted). 1.1 s
 between requests, about 14 requests.
@@ -154,6 +157,12 @@ def main():
             res['compare'].append(compare(allrows[i + 1], tags_only))
     if len(allrows) > 15:
         res['compare'].append(compare(allrows[15], allrows[0]))
+    # A title change (T) and a rename (R), each against the revision before
+    # it: which rows the compare table adds for them.
+    for flag in 'TR':
+        hit = next((r for r in allrows if flag in r[2]), None)
+        if hit and allrows.index(hit) + 1 < len(allrows):
+            res['compare'].append(compare(allrows[allrows.index(hit) + 1], hit))
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, 'w', encoding='utf-8') as f:
         json.dump(res, f, ensure_ascii=False, indent=2)

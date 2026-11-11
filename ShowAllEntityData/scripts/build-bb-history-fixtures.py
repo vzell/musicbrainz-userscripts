@@ -12,10 +12,20 @@ tests/fixtures/bb-song-the-promise.html already exists):
       declare WIKIREQUEST before it, as the real page has them) — the page
       fixtures drop every script (scripts/build-bb-event-fixtures.py);
   tests/fixtures/bb-history/list-p1.json, list-p2.json
-      history/PageRevisionListModule, 20 a page, pages 1 and 2;
+      history/PageRevisionListModule, pages 1 and 2 asked 20 a page (the
+      script asks 100, which would be one page here: 20 keeps a pager in
+      the fixtures, so "Load 100 more" and a predecessor on the next page
+      stay testable — the answer's shape is the same);
   tests/fixtures/bb-history/source-<revision id>.json
       history/PageSourceModule for the newest six revisions (47–42: four
-      that change lines, two that change only tags).
+      that change lines, two that change only tags);
+  tests/fixtures/bb-history/compare-<older id>-<newer id>.json
+      history/PageDiffModule (History round 2) for each neighbouring pair of
+      those six and for 44 → 47 (any two revisions);
+  tests/fixtures/bb-history/story-compare-{title,name}.json
+      PageDiffModule for story:story-1978-09-15-palladium-new-york-city-ny's
+      title change (6 → 7) and rename (3 → 4): the "Page title:" and "Page
+      name:" rows (probe 2026-11-11, debug/bb-history-shapes-story.json).
 
 The answers are Wikidot's own JSON, asked as the probe found works signed
 out (debug/bb-history-probe-20261111-out.json: every module "ok", the same
@@ -24,7 +34,7 @@ cookie and the same value in the body. Scrubbed before saving: every member
 becomes "Editor N" (in order of first appearance), their profile links
 user:info/editor-n, their numeric ids 0, avatars dropped. Comments and the
 page's source are the wiki's public text and stay. 1.1 s between requests,
-nine requests.
+about 20 requests.
 """
 
 import json
@@ -151,7 +161,25 @@ def main():
     for rid in ids[:6]:
         data = post('history/PageSourceModule', {'revision_id': rid})
         save(os.path.join(OUT_DIR, f'source-{rid}.json'), scrub.answer(data))
+    pairs = [(ids[k + 1], ids[k]) for k in range(5)] + [(ids[3], ids[0])]
+    for older, newer in pairs:
+        data = post('history/PageDiffModule', {'from_revision_id': older, 'to_revision_id': newer, 'show_type': 'inline'})
+        save(os.path.join(OUT_DIR, f'compare-{older}-{newer}.json'), scrub.answer(data))
+    story(scrub)
     print('page id', page_id, '· revisions on page 1:', len(ids), '· members:', len(scrub.names))
+
+
+def story(scrub):
+    """The title change and the rename of one story page, as compare answers."""
+    page = 'story:story-1978-09-15-palladium-new-york-city-ny'
+    sid = re.search(r'WIKIREQUEST\.info\.pageId\s*=\s*(\d+)', get(f'{BASE}/{page}')).group(1)
+    time.sleep(SPACING)
+    body = post('history/PageRevisionListModule', {'page_id': sid, 'page': '1', 'perpage': '100', 'options': json.dumps({'all': True})})['body']
+    rows = [(rid, re.findall(r'class="spantip"[^>]*>(\w)<', tr)) for rid, tr in re.findall(r'<tr id="revision-row-(\d+)">(.*?)</tr>', body, re.S)]
+    for flag, name in (('T', 'title'), ('R', 'name')):
+        k = next(i for i, (_, fl) in enumerate(rows) if flag in fl)
+        data = post('history/PageDiffModule', {'from_revision_id': rows[k + 1][0], 'to_revision_id': rows[k][0], 'show_type': 'inline'})
+        save(os.path.join(OUT_DIR, f'story-compare-{name}.json'), scrub.answer(data))
 
 
 if __name__ == '__main__':

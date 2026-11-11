@@ -1197,8 +1197,53 @@ signed out, "Sign in to Brucebase to see the history".
   refuses a link outside a table on a touch screen), it opens the window on
   the page itself with the section open.
 
+### Round 2: kinds, tag changes, any two revisions (2026-11-11)
+
+vzell's asks and answers (org/brucebase.org, "History round 2"; mockups
+https://claude.ai/artifact/7X2g3wBLVotb1cFfZdrCxz, built by
+`scripts/build-bb-history-r2-mockups.py` from the real history of
+song:streets-of-minneapolis): all six as recommended.
+
+- **The list is read 100 a page** (`_bbHistLoadList()`): a normal page's
+  whole history in one answer (probe: 44 in 0.6 s); "Load 100 more" past it.
+- **Kind chips** (`_BB_HIST_KINDS`, `ui.kinds`): All, Source, Title, Page
+  name, Tags, Metadata, Files — the wiki's `rev-type-*` checkboxes, each
+  matching a flag letter (S, T, R, A, M, F; probe: the wiki's per-kind
+  counts are the flags' counts, "ST" counting for both). They filter the
+  rows READ, by flag (answer 1: instant, no request), several at once
+  (answer 2, OR as the checkboxes), each with its count; All is exclusive; a
+  kind with none is disabled; "N shown" in the meta line.
+- **Tag pills in the list** (answer 3, `_bbHistTagChanges()`): "Added tags:
+  a, b. Removed tags: c." → `+ a`, `+ b`, `− c`; the rest of the comment
+  after them; the whole comment on hover.
+- **The comparison first** (`_bbHistLoadCompare()`, `_bbHistCmp` by
+  "<older id>:<newer id>"): PageDiffModule with the older revision as
+  `from_revision_id`; `_bbHistParseCompare()` reads `table.page-compare` by
+  row label — "Tags:", "Page title:", "Page name:", each present only when
+  it differs (probe on story:story-1978-09-15-palladium-new-york-city-ny,
+  `debug/bb-history-shapes-story.json`) — and "Page sources are identical".
+  The two sources are read only when they differ: a tags-only revision costs
+  one request. Rebuilding the sources from the module's inline diff did not
+  match PageSourceModule (indentation, line counts), so the line diff stays
+  ours.
+- **The Tags strip, always** (answer 4, `_bbHistTagStrip()`): every tag of
+  both, the added `+`, the removed struck; "the same in both" with no Tags
+  row. Page title / Page name rows (`_bbHistValueRow()`): old → new, words
+  marked.
+- **From / To pickers on every row** (answer 5, `_bbHistPair()`): `ui.to`
+  ('' = the newest), `ui.from` ('' = the revision before `to`); a row's text
+  sets `to` and clears `from` (today's "against the one before"). The older
+  is always on the left (answer 6), the rows between tinted
+  (`.mb-bbh-in`), the older row `.mb-bbh-from`, the heading "Revision 28 →
+  43 · 15 revisions apart · N editors". One revision picked twice: "Pick
+  two different revisions". A picker's label click is cancelled (the repaint
+  draws the radios from the state); an arrow key moves a radio with no click,
+  so `change` is handled too.
+
 Tests: `tests/fixtures/bb-history.spec.js` over
 `tests/fixtures/bb-history-song-the-promise.html` and
 `tests/fixtures/bb-history/` (`scripts/build-bb-history-fixtures.py`: the
 real answers for song:the-promise, members scrubbed to "Editor N"; loader
-`loadBbHistoryPage()`); mutations `scripts/mutations/bb-history.json`.
+`loadBbHistoryPage()`; the comparisons `compare-<from>-<to>.json`, the story
+page's `story-compare-{title,name}.json`; the list answers asked 20 a page so
+that a pager stays in them); mutations `scripts/mutations/bb-history.json`.

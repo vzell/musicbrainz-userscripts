@@ -2,7 +2,12 @@
     {
         "name": "the record has no page id",
         "why": "Every history module asks by page id, read from WIKIREQUEST.info.pageId in the page's script; without it the window has no History section.",
-        "edits": [{ "find": "        data.bbPageId = _bbHistPageIdOf(doc);", "replace": "        data.bbPageId = '';" }],
+        "edits": [
+            {
+                "find": "        data.bbPageId = _bbHistPageIdOf(doc);",
+                "replace": "        data.bbPageId = '';"
+            }
+        ],
         "spec": "tests/fixtures/bb-history.spec.js",
         "grep": "a window: the section",
         "expect": "fail"
@@ -10,7 +15,12 @@
     {
         "name": "the section starts open",
         "why": "Mockup M4: closed, read when it opens, so a window costs no history request.",
-        "edits": [{ "find": "html: _bbHistHtml(data.bbPageId), open: false, bbHist: data.bbPageId };", "replace": "html: _bbHistHtml(data.bbPageId), open: true, bbHist: data.bbPageId };" }],
+        "edits": [
+            {
+                "find": "html: _bbHistHtml(data.bbPageId), open: false, bbHist: data.bbPageId };",
+                "replace": "html: _bbHistHtml(data.bbPageId), open: true, bbHist: data.bbPageId };"
+            }
+        ],
         "spec": "tests/fixtures/bb-history.spec.js",
         "grep": "a window: the section",
         "expect": "fail"
@@ -18,7 +28,12 @@
     {
         "name": "opening the section reads nothing",
         "why": "The section's toggle starts the read (_bbHistStart()).",
-        "edits": [{ "find": "            if (box) _bbHistStart(box.dataset.mbBbhId);", "replace": "" }],
+        "edits": [
+            {
+                "find": "            if (box) _bbHistStart(box.dataset.mbBbhId);",
+                "replace": ""
+            }
+        ],
         "spec": "tests/fixtures/bb-history.spec.js",
         "grep": "a window: the section",
         "expect": "fail"
@@ -26,7 +41,12 @@
     {
         "name": "a failed list is asked again by a re-open",
         "why": "The toggle also fires on every repaint that draws the section open; only a click may retry, or a failing page loops.",
-        "edits": [{ "find": "        if (h && h.state === 'failed' && !retry) return;", "replace": "" }],
+        "edits": [
+            {
+                "find": "        if (h && h.state === 'failed' && !retry) return;",
+                "replace": ""
+            }
+        ],
         "spec": "tests/fixtures/bb-history.spec.js",
         "grep": "an HTTP error",
         "expect": "fail"
@@ -34,7 +54,12 @@
     {
         "name": "a failed source is asked again by a repaint",
         "why": "The same rule for a revision's source: Load 20 more repaints twice and must not ask the failed 46 again.",
-        "edits": [{ "find": "            return !st || (retry && st.state === 'failed');", "replace": "            return !st || st.state === 'failed';" }],
+        "edits": [
+            {
+                "find": "            return !st || (retry && st.state === 'failed');",
+                "replace": "            return !st || st.state === 'failed';"
+            }
+        ],
         "spec": "tests/fixtures/bb-history.spec.js",
         "grep": "an HTTP error",
         "expect": "fail"
@@ -42,7 +67,12 @@
     {
         "name": "the predecessor on the next page is not read",
         "why": "The oldest row of the pages read needs the revision before it, the first row of the next list page.",
-        "edits": [{ "find": "        if (!h.revs[i + 1] && cur.n > 0 && h.read < h.pages && !h.more) await _bbHistLoadList(pid, h.read + 1);", "replace": "" }],
+        "edits": [
+            {
+                "find": "        if (p.needMore && h.read < h.pages && !h.more) {",
+                "replace": "        if (false) {"
+            }
+        ],
         "spec": "tests/fixtures/bb-history.spec.js",
         "grep": "oldest row",
         "expect": "fail"
@@ -50,7 +80,12 @@
     {
         "name": "the pager's links are not counted",
         "why": "Page 1's pager says \"page 1\" only; its links say there are 3.",
-        "edits": [{ "find": "            pages = Math.max(1, of ? parseInt(of[1], 10) : 1, ...nums);", "replace": "            pages = Math.max(1, of ? parseInt(of[1], 10) : 1);" }],
+        "edits": [
+            {
+                "find": "            pages = Math.max(1, of ? parseInt(of[1], 10) : 1, ...nums);",
+                "replace": "            pages = Math.max(1, of ? parseInt(of[1], 10) : 1);"
+            }
+        ],
         "spec": "tests/fixtures/bb-history.spec.js",
         "grep": "the readers|Load 20 more",
         "expect": "fail"
@@ -58,7 +93,12 @@
     {
         "name": "the source keeps the newline after <div>",
         "why": "div.page-source opens with a newline: without dropping it every line number is one off and line 1 is blank.",
-        "edits": [{ "find": "        if (lines.length && lines[0] === '') lines.shift();", "replace": "" }],
+        "edits": [
+            {
+                "find": "        if (lines.length && lines[0] === '') lines.shift();",
+                "replace": ""
+            }
+        ],
         "spec": "tests/fixtures/bb-history.spec.js",
         "grep": "the readers",
         "expect": "fail"
@@ -66,7 +106,12 @@
     {
         "name": "no line is paired as changed",
         "why": "A removed and an added line that are close become one changed line, its words marked.",
-        "edits": [{ "find": "                    if (d.plain) continue;", "replace": "                    continue;" }],
+        "edits": [
+            {
+                "find": "                    if (d.plain) continue;",
+                "replace": "                    continue;"
+            }
+        ],
         "spec": "tests/fixtures/bb-history.spec.js",
         "grep": "the readers|a window: the section|a revision picked",
         "expect": "fail"
@@ -74,7 +119,12 @@
     {
         "name": "the changed words are not marked",
         "why": "Inside a changed line the added and removed words carry mb-dgh-add / mb-dgh-rem.",
-        "edits": [{ "find": "            return s ? `<span class=\"${side === 'a' ? 'mb-dgh-rem' : 'mb-dgh-add'}\">${esc(s)}</span>` : '';", "replace": "            return s ? esc(s) : '';" }],
+        "edits": [
+            {
+                "find": "            return s ? `<span class=\"${side === 'a' ? 'mb-dgh-rem' : 'mb-dgh-add'}\">${esc(s)}</span>` : '';",
+                "replace": "            return s ? esc(s) : '';"
+            }
+        ],
         "spec": "tests/fixtures/bb-history.spec.js",
         "grep": "a window: the section|a revision picked",
         "expect": "fail"
@@ -82,7 +132,12 @@
     {
         "name": "the unchanged lines are not folded",
         "why": "Only what changed (the default) folds them into \"⋯ N unchanged lines\".",
-        "edits": [{ "find": "            if (r.t === 'same' && !ui.all) {", "replace": "            if (false) {" }],
+        "edits": [
+            {
+                "find": "            if (r.t === 'same' && !ui.all) {",
+                "replace": "            if (false) {"
+            }
+        ],
         "spec": "tests/fixtures/bb-history.spec.js",
         "grep": "a window: the section",
         "expect": "fail"
@@ -90,7 +145,12 @@
     {
         "name": "a refusal reads as an error",
         "why": "vzell's answer 4: a permission answer shows \"Sign in to Brucebase to see the history\".",
-        "edits": [{ "find": "            err.refused = /permission|login|sign|token/i.test(`${data?.status} ${data?.message || ''}`);", "replace": "            err.refused = false;" }],
+        "edits": [
+            {
+                "find": "            err.refused = /permission|login|sign|token/i.test(`${data?.status} ${data?.message || ''}`);",
+                "replace": "            err.refused = false;"
+            }
+        ],
         "spec": "tests/fixtures/bb-history.spec.js",
         "grep": "a refusal",
         "expect": "fail"
@@ -98,7 +158,12 @@
     {
         "name": "no ✎ in a Brucebase window",
         "why": "✎ and H open the History section (_dpHasHistory()).",
-        "edits": [{ "find": "        return !!(_mbEditsSubject(t) || _dgHistSubject(t) || _bbHistHasSubject(t));", "replace": "        return !!(_mbEditsSubject(t) || _dgHistSubject(t));" }],
+        "edits": [
+            {
+                "find": "        return !!(_mbEditsSubject(t) || _dgHistSubject(t) || _bbHistHasSubject(t));",
+                "replace": "        return !!(_mbEditsSubject(t) || _dgHistSubject(t));"
+            }
+        ],
         "spec": "tests/fixtures/bb-history.spec.js",
         "grep": "title bar and H",
         "expect": "fail"
@@ -106,7 +171,12 @@
     {
         "name": "the ☰ entry asks the source's resolve()",
         "why": "resolve() refuses a link outside a table on a touch screen: the entry would never exist on a phone.",
-        "edits": [{ "find": "        if (!_dpSiteForUrl(a)) return;", "replace": "        if (!src.resolve(a)) return;" }],
+        "edits": [
+            {
+                "find": "        if (!_dpSiteForUrl(a)) return;",
+                "replace": "        if (!src.resolve(a)) return;"
+            }
+        ],
         "spec": "tests/fixtures/bb-history.mobile.spec.js",
         "grep": "a tap on",
         "project": "chromium-mobile",
@@ -115,9 +185,131 @@
     {
         "name": "the setting is ignored",
         "why": "sa_bb_history off: no section, no entry, no request.",
-        "edits": [{ "find": "        return _isBbHost && Lib.settings.sa_bb_history !== false;", "replace": "        return _isBbHost;" }],
+        "edits": [
+            {
+                "find": "        return _isBbHost && Lib.settings.sa_bb_history !== false;",
+                "replace": "        return _isBbHost;"
+            }
+        ],
         "spec": "tests/fixtures/bb-history.spec.js",
         "grep": "the setting off",
+        "expect": "fail"
+    },
+    {
+        "name": "round 2: the kind chips filter nothing",
+        "why": "Answer 1: the chips filter the rows read by their flags.",
+        "edits": [
+            {
+                "find": "        const shown = on ? h.revs.filter(r => on.some(f => r.flags.includes(f))) : h.revs;",
+                "replace": "        const shown = h.revs;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history.spec.js",
+        "grep": "kind chips",
+        "expect": "fail"
+    },
+    {
+        "name": "round 2: no tag pills in the list",
+        "why": "Answer 3: a comment's tag changes become pills.",
+        "edits": [
+            {
+                "find": "            const cmt = pills ? `${pills}${tc.rest ? ` ${_rgEsc(tc.rest)}` : ''}` : _rgEsc(r.comment);",
+                "replace": "            const cmt = _rgEsc(r.comment);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history.spec.js",
+        "grep": "a window: the section",
+        "expect": "fail"
+    },
+    {
+        "name": "round 2: identical sources are read anyway",
+        "why": "The comparison says when the sources are the same: a tags-only revision needs no source.",
+        "edits": [
+            {
+                "find": "        if (!c || c.state !== 'ok' || c.identical) return;",
+                "replace": "        if (!c || c.state !== 'ok') return;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history.spec.js",
+        "grep": "revision picked",
+        "expect": "fail"
+    },
+    {
+        "name": "round 2: the sides follow the picks",
+        "why": "Answer 6: the older revision is always on the left.",
+        "edits": [
+            {
+                "find": "        const newer = h.revs[Math.min(iTo, iFrom)] || null;",
+                "replace": "        const newer = h.revs[iTo] || null;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history.spec.js",
+        "grep": "From / To",
+        "expect": "fail"
+    },
+    {
+        "name": "round 2: the span is not tinted",
+        "why": "The rows between From and To are tinted, so the span is visible.",
+        "edits": [
+            {
+                "find": "(r.n > lo && r.n < hi ? ' mb-bbh-in' : '')",
+                "replace": "''"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history.spec.js",
+        "grep": "From / To",
+        "expect": "fail"
+    },
+    {
+        "name": "round 2: no Tags strip when the tags are the same",
+        "why": "Answer 4: the Tags strip is always shown, \"the same in both\" when the wiki shows no Tags row.",
+        "edits": [
+            {
+                "find": "        if (!tags) return `<div class=\"mb-bbh-kv\">${head}<span class=\"mb-dg-dim\">the same in both</span></div>`;",
+                "replace": "        if (!tags) return '';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history.spec.js",
+        "grep": "a window: the section",
+        "expect": "fail"
+    },
+    {
+        "name": "round 2: the page title row is not read",
+        "why": "The compare table's \"Page title:\" row (probe: story 6 → 7).",
+        "edits": [
+            {
+                "find": "            title: rows['page title'] || null,",
+                "replace": "            title: null,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history.spec.js",
+        "grep": "comparison's rows",
+        "expect": "fail"
+    },
+    {
+        "name": "round 2: removed tags are not read from the comment",
+        "why": "\"Removed tags: …\" pills, as \"Added tags: …\".",
+        "edits": [
+            {
+                "find": "            removed: take(/Removed tags:\\s*([^.]*)\\./),",
+                "replace": "            removed: [],"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history.spec.js",
+        "grep": "comparison's rows",
+        "expect": "fail"
+    },
+    {
+        "name": "round 2: the keyboard moves no picker",
+        "why": "An arrow key moves a radio without a click: `change` is handled too.",
+        "edits": [
+            {
+                "find": "            const el = e.target instanceof Element ? e.target.closest('#mb-dp-dialog input[data-mb-bbh-act]') : null;",
+                "replace": "            const el = null;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history.spec.js",
+        "grep": "From / To",
         "expect": "fail"
     }
 ]

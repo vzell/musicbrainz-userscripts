@@ -1,0 +1,6 @@
+{
+  "status": "ok",
+  "body": "<h2>Page revisions comparison</h2>\n<div class=\"diff-box\">\n\t<table class=\"page-compare\">\n\t\t<tr>\n\t\t\t<th></th>\n\t\t\t<th>Revision 42</th>\n\t\t\t<th>Revision 43</th>\n\t\t</tr>\n\t\t<tr>\n\t\t\t<td>Created on:</td>\n\t\t\t<td><span class=\"odate time_1729878765 format_%25e%20%25b%20%25Y%2C%20%25H%3A%25M%7Cagohover\">25 Oct 2024 17:52</span></td>\n\t\t\t<td><span class=\"odate time_1732148315 format_%25e%20%25b%20%25Y%2C%20%25H%3A%25M%7Cagohover\">21 Nov 2024 00:18</span></td>\n\t\t</tr>\n\t\t\t\t\t\t\t\t\t<tr>\n\t\t\t\t<td>Tags:</td>\n\t\t\t\t<td>info multi pl_sp9ep pl_tdt78 pl_tls14 pl_tls3 pl_trt99 r_18t r_prms song t thepromise tour_dd tour_doteot tour_hh tour_lwst tour_no tour_rnn tour_rsng tour_rvr16 tour_wb</a></td>\n\t\t\t\t<td>info multi offvid pl_sp9ep pl_tdt78 pl_tls14 pl_tls3 pl_trt99 r_18t r_prms song t thepromise tour_dd tour_doteot tour_hh tour_lwst tour_no tour_rnn tour_rsng tour_rvr16 tour_wb</a></td>\n\t\t\t</tr>\n\t\t\t\t\t</table>\n\t<h3>Source change:</h3>\n\t\t\t<p>\n\t\t\tPage sources are identical.\t\t</p>\n\t</div>",
+  "jsInclude": [],
+  "cssInclude": []
+}

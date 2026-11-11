@@ -397,8 +397,18 @@ revisions (=table.page-compare= has them); 3. compare any two revisions (the wik
   =scripts/build-bb-history-r2-mockups.py=; the HTML in =debug/=, it names the wiki's members): A the
   window with all three, B chips ↔ checkboxes, C tag pills from the comment + the Tags strip from
   PageDiffModule, D From/To pickers vs Shift+click, E requests per act, F narrow; Q1–Q6
-- [ ] vzell's answers
-- [ ] build
+- [X] vzell's answers (2026-11-11), all six as recommended: 1. chips filter the rows read (instant);
+  2. several at once; 3. tag changes as pills in the list; 4. the Tags strip always shown; 5. From / To
+  pickers on each row; 6. older on the left always
+- [X] probe of a page with T and R revisions (story:story-1978-09-15-palladium-new-york-city-ny,
+  =debug/bb-history-shapes-story.json=, 2026-11-11 · vzell-lap · n/a): the compare table adds "Page
+  title:" (rev 6 → 7, ST) and "Page name:" (rev 3 → 4, R) rows, each only when it differs, as "Tags:";
+  the Title chip's rows are the revisions with T among their flags ("ST" counts)
+- [X] build (docs/claude/brucebase.md "Round 2"): list 100 a page, kind chips over the rows read, tag
+  pills, PageDiffModule first (Tags strip always, Page title / Page name rows, identical sources read
+  no source), From / To pickers (older left, span tinted, keyboard); =bb-history.spec.js= (14) +
+  mobile (1), compare fixtures, mutations =bb-history.json= (24), WIP.9
+- [ ] vzell's live check
 
 *** Later (separate TODOs above)
 Extra list pageTypes (stats:discography, …), scroll-to-first-difference userscript, deferred
