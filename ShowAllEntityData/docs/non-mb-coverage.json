@@ -95,6 +95,12 @@
         { "type": "bb-event", "url": "https://brucebase.wikidot.com/gig:… (and nogig:, recording:, rehearsal:, interview:)", "mode": "multi",
           "ip": { "state": "yes", "ev": "code", "why": "The wiki's page is the IP, as on bb-page: the site's own detail pages and other sites' links in #page-content." },
           "frp": { "state": "yes", "ev": "spec", "why": "Song, person and event links in the sub-tables; the wiki's page stays below, folded.", "spec": ["tests/fixtures/bb-event.spec.js", "a person in On stage previews"] } },
+        { "type": "bb-song", "url": "https://brucebase.wikidot.com/song:…", "mode": "multi",
+          "ip": { "state": "yes", "ev": "code", "why": "The wiki's page is the IP, as on bb-page." },
+          "frp": { "state": "yes", "ev": "spec", "why": "Person, event and release links in the sub-tables.", "spec": ["tests/fixtures/bb-song.spec.js", "a person in Credits previews"] } },
+        { "type": "bb-ott", "url": "https://brucebase.wikidot.com/ott:…", "mode": "multi",
+          "ip": { "state": "yes", "ev": "code", "why": "The wiki's page is the IP, as on bb-page." },
+          "frp": { "state": "yes", "ev": "code", "why": "Bootleg and release links in the Releases column (bb-song's reader)." } },
         { "type": "bb-page", "url": "https://brucebase.wikidot.com/venue:… (any other page: venue, relation, song, …; an event page with sa_bb_detail_pages off)", "mode": "single",
           "ip": { "state": "yes", "ev": "spec", "why": "Link previews only (vzell, 2026-11-04: every Brucebase page): the site's own detail pages and other sites' links in #page-content; nothing visible added.", "spec": ["tests/fixtures/bb-every-page.spec.js", "a gig page (no pageType)"] },
           "frp": { "state": "na", "ev": "code", "why": "No button, no table." } }

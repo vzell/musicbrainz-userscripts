@@ -18,6 +18,19 @@ picked for a shape the bb-event pageType reads (org/brucebase.org, Plan
   Yours";
 - nogig 2013-04-16 Richard Rodgers Theatre: no setlist, an Appearances list.
 
+And for bb-song / bb-ott (Phase 3):
+
+- song "The Promise": Credits (two releases, a note under a person),
+  Performances with the breakdown by tour, Multiples, Released on Album,
+  Released as Live Download, On The Tracks, Lyrics, Media, Links;
+- song "We Gotta Get Out Of This Place": Performances, Snippets, Live
+  downloads, no credits;
+- On The Tracks page "Do You Want Me To Say Alright": nine takes, one
+  "uncirculating".
+
+A song's lyrics are blanked word by word ("la"), as
+scripts/build-detail-fixtures.py does (its `blank_lyrics()`, imported).
+
 Every <script>, <noscript>, theme @import and non-YouTube <iframe> is
 removed (as scripts/build-bb-fixtures.py and build-bb-youtube-gig-fixture.py
 do); the YouTube iframes stay, the preview reads them. A page not on the
@@ -41,7 +54,20 @@ PAGES = [
     ('rehearsal/rehearsal_2009-01-29a-raymond-james-stadium-tampa-fl.html', 'bb-event-rehearsal-2009-01-29a.html'),
     ('interview/interview_2021-04-28-siriusxm-studio-new-york-city-ny.html', 'bb-event-interview-2021-04-28.html'),
     ('nogig/nogig_2013-04-16-richard-rodgers-theatre-new-york-city-ny.html', 'bb-event-nogig-2013-04-16.html'),
+    ('song/song_the-promise.html', 'bb-song-the-promise.html'),
+    ('song/song_we-gotta-get-out-of-this-place.html', 'bb-song-we-gotta-get-out-of-this-place.html'),
+    ('ott/ott_do-you-want-me-to-say-alright.html', 'bb-ott-do-you-want-me-to-say-alright.html'),
 ]
+
+
+def _blank_lyrics():
+    """scripts/build-detail-fixtures.py's `blank_lyrics()` (a hyphenated module name)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('build_detail_fixtures', os.path.join(HERE, 'build-detail-fixtures.py'))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.blank_lyrics
+
 
 IMPORT_RE = re.compile(r'^[ \t]*@import url\([^)]*\);[ \t]*\n', re.M)
 
@@ -69,8 +95,12 @@ def main():
             continue
         with open(path, encoding='utf-8', errors='replace') as fh:
             html = strip(fh.read())
-        if 'id="page-content"' not in html or 'yui-navset' not in html:
+        if 'id="page-content"' not in html or ('yui-navset' not in html and not out.startswith('bb-ott-')):
             sys.exit(f'{src}: no #page-content or tabview')
+        if out.startswith('bb-song-'):
+            html, blanked = _blank_lyrics()(html, 'bb-song')
+            if not blanked and '>Lyrics</em>' in html:
+                sys.exit(f'{src}: a Lyrics tab, but its lyrics were not blanked')
         note = ('<!-- Built by scripts/build-bb-event-fixtures.py from the BruceParser mirror (2026-10-18); '
                 'scripts, noscripts, theme @imports and non-YouTube iframes removed; do not edit by hand. -->\n')
         html = re.sub(r'(<!DOCTYPE[^>]*>\s*)', lambda m: m.group(1) + note, html, count=1, flags=re.I)

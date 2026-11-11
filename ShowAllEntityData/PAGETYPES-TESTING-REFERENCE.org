@@ -322,6 +322,8 @@ skill for turning a =planned= row into a =captured= one.
 | 160 | dg-listing                    | multi        | discogs.com /shop/item/ID (/sell/item/ID)      | NOT MusicBrainz, opt-in; Next.js; the listed release's Tracks view + a For sale card; the listing, then its release |
 | 157 | bs-record                     | multi        | brucespringsteen.it /DB/detrec.aspx?code=CODE  | NOT MusicBrainz; a record's page: a sub-table per record/disc, no request; head (facts, Sources, photo); also in the right frame                                                                                  |
 | 149 | sfm-setlist                   | multi        | setlist.fm /setlist/ARTIST/YEAR/VENUE-ID.html  | NOT MusicBrainz, opt-in; a setlist's own page: a sub-table per set, no request (the live page's list); head as release-tracks |
+| 162 | bb-song                       | multi        | brucebase.wikidot.com /song:…                  | NOT MusicBrainz, opt-in (+sa_bb_detail_pages); a song page: Credits, Performances (+ by tour), Multiples, Snippets, Live downloads, On The Tracks; head |
+| 163 | bb-ott                        | multi        | brucebase.wikidot.com /ott:…                   | NOT MusicBrainz, opt-in (+sa_bb_detail_pages); an On The Tracks page: its takes as one table; head (notes, tags)    |
 | 161 | bb-event                      | multi        | brucebase.wikidot.com /gig:… /nogig:… etc.     | NOT MusicBrainz, opt-in (+sa_bb_detail_pages); an event page as a detail view: sub-tables Setlist/cast/lists/Recording/Storyteller, head, no request|
 
 * Page type details
@@ -1287,9 +1289,21 @@ lists converted into sortable tables), tableMode =multi=.
 ** 161. bb-event
 - URL: [[https://brucebase.wikidot.com/gig:1978-07-07-roxy-theatre-west-hollywood-ca][Brucebase: 1978-07-07, Roxy Theatre]] (2026-11-11, org/brucebase.org Plan Phase 2; mockup https://claude.ai/artifact/3rAGVKsBHEv9jGspkJ5X7Z).
 - Match: =_BB_EVENT_PATH_RE= (=/gig:=, =/nogig:=, =/recording:=, =/rehearsal:=, =/interview:=) and =sa_bb_detail_pages= (default on; off, the page is bb-page's). BEFORE bb-page; no =@include= of its own (the catch-all line).
-- Buttons: "Show the event" (=showIf=: =_bbEventHasTables()=). tableMode multi (=groupByH3=, =openSubTables: true=): Setlist (Set · # · Song · Segue · Premiere · Note), the cast tab (Name · Band · Role), each list tab (Date · Event · Show · Type), Recording (Release · Kind · Label), Storyteller (Moment · Song · Words; =collapsableColumns: ['Words']=). No request: =pageRequest.fetchText= returns the page copy taken at the press (=_bbEventPageHtml()=, scripts removed).
+- Buttons: "Show the event" (=showIf=: =_bbEventHasTables()=). tableMode multi (=groupByH3=, =openSubTables: true=): Setlist (Set · # · Song · Segue · Premiere · Note), the cast tab (Name · Band · Role), each list tab (Date · Event · Show · Type), Recording (Release · Kind · Label), Storyteller (Moment · Song · Words; =collapsableColumns: ['Words']=). No request: =pageRequest.fetchText= returns the page copy taken at the press (=_bbDetailPageHtml()=, scripts removed).
 - Head (=_bbEventHeadSpec()=): byline, About, the word tabs as texts, Event/Tags/Media cards, the pictures typed by kind and photographer. The wiki's page below, under =h2.mb-bb-native-h2=, folded.
 - Coverage: =tests/fixtures/bb-event.spec.js= (gates, the Roxy gig's tables and head, title case, the native page, FRP preview, soundcheck, recording, interview, nogig, rehearsal, Save/Load); fixtures =bb-event-*.html= (=scripts/build-bb-event-fixtures.py=); mutations =scripts/mutations/bb-event.json=.
+
+** 162. bb-song
+- URL: [[https://brucebase.wikidot.com/song:the-promise][Brucebase: The Promise]] (2026-11-11, org/brucebase.org Plan Phase 3).
+- Match: =/^\/song:/= and =sa_bb_detail_pages=; before bb-page. Buttons: "Show the song" (=showIf=: =_bbSongHasTables()=).
+- tableMode multi (=groupByH3=, =openSubTables=: Credits, Performances by tour, Multiples, Snippets, On The Tracks): Credits (Release · Year · Person · Role), Performances by tour (Tour · Played · Shows · Share; only tours played on), Performances / Multiples / Snippets / Live downloads (Date · Event · Show · Type), On The Tracks (Title · Version · Time · Releases). No request (=_bbDetailPageHtml()=).
+- Head (=_bbSongHeadSpec()=): About this song, Released on Album / Lyrics / notes as texts, the Song card, Tags, Media, Links, pictures.
+- Coverage: =tests/fixtures/bb-song.spec.js=; fixtures =bb-song-*.html= (lyrics blanked); mutations =scripts/mutations/bb-song.json=.
+
+** 163. bb-ott
+- URL: [[https://brucebase.wikidot.com/ott:do-you-want-me-to-say-alright][Brucebase: On The Tracks, Do You Want Me To Say Alright]].
+- Match: =/^\/ott:/= and =sa_bb_detail_pages=. Buttons: "Show the versions". One sub-table, On The Tracks (=_bbOttRead()=, =_bbOttRows()= shared with bb-song).
+- Coverage: =tests/fixtures/bb-song.spec.js= ("an On The Tracks page"); fixture =bb-ott-do-you-want-me-to-say-alright.html=.
 
 ** Relationship-tables buttons on existing pageTypes (not pageTypes of their own)
 =_relTablesButton()= adds a second button to series-releases, work-recordings, releasegroup-releases, recording-releases (with "Related works" as "Via <work>" tables), label-relationships and artist-relationships ("Relationship lists"), and release-tracks ("Credits", the release's own =#release-relationships= and its group's =#release-group-relationships=, never the per-medium track credits). Each runs as its own pageType for that render (=series-relationship-tables=, =work-relationship-tables=, =releasegroup-relationship-tables=, =recording-relationship-tables=, =label-relationship-tables=, =artist-relationship-tables=, =release-credit-tables=; =buttonConfig.type= switches =pageType= in =startFetchingProcess()=), with only its own features (=replaceFeatures=), and removes the page's main data section (=removeMain=, =_relRemoveMainSections()=). A saved file records that pageType and loads back as the same button (=_activateButtonForSavedPageType()=). Hidden with =sa_enable_relationship_tables= off (=showIf=). Coverage: =tests/fixtures/rel-tables-recording.spec.js= (incl. the main button unchanged and a Save → Load round trip) and =rel-tables-pages.spec.js=, raw captures =tests/fixtures/rel-{series,work,label-rels,artist-rels,release-group,recording,release}-overview.html=.

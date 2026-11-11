@@ -318,8 +318,9 @@ async function revealPastStickyColumn(page, locator) {
 }
 
 /**
- * The bb-event fixtures (scripts/build-bb-event-fixtures.py): a Brucebase
- * event page's fixture file by its key, and the page's URL.
+ * The Brucebase detail-page fixtures (scripts/build-bb-event-fixtures.py):
+ * an event, song or On The Tracks page's fixture file by its key, and the
+ * page's URL.
  * @type {Object<string, {url: string, file: string}>}
  */
 const BB_EVENT_PAGES = {
@@ -329,6 +330,10 @@ const BB_EVENT_PAGES = {
     'rehearsal-2009-01-29a': ['rehearsal:2009-01-29a-raymond-james-stadium-tampa-fl', 'bb-event-rehearsal-2009-01-29a.html'],
     'interview-2021-04-28': ['interview:2021-04-28-siriusxm-studio-new-york-city-ny', 'bb-event-interview-2021-04-28.html'],
     'nogig-2013-04-16': ['nogig:2013-04-16-richard-rodgers-theatre-new-york-city-ny', 'bb-event-nogig-2013-04-16.html'],
+    // bb-song / bb-ott (Phase 3): the same builder, lyrics blanked.
+    'song-the-promise': ['song:the-promise', 'bb-song-the-promise.html'],
+    'song-we-gotta-get-out-of-this-place': ['song:we-gotta-get-out-of-this-place', 'bb-song-we-gotta-get-out-of-this-place.html'],
+    'ott-do-you-want-me-to-say-alright': ['ott:do-you-want-me-to-say-alright', 'bb-ott-do-you-want-me-to-say-alright.html'],
 };
 Object.keys(BB_EVENT_PAGES).forEach((k) => {
     const [p, f] = BB_EVENT_PAGES[k];

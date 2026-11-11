@@ -5130,15 +5130,17 @@
         },
 
         sa_bb_detail_pages: {
-            label: 'Event pages: a detail view of the gig',
+            label: 'Detail pages: events and songs as tables',
             type: 'checkbox',
             default: true,
             description: 'Needs a setting above that switches the wiki on. On a Brucebase event page (a gig, no ' +
                          'gig, recording session, rehearsal or interview), a button "Show the event" lays the page ' +
                          'out like a MusicBrainz release: the setlist, who was on stage, the other shows at the ' +
                          'venue, the recordings and the stories as tables you can filter and sort, with the page\'s ' +
-                         'facts, tags and pictures above and the wiki\'s own page folded below. Nothing is fetched. ' +
-                         'Off: the page stays as the wiki shows it (link previews still work).'
+                         'facts, tags and pictures above and the wiki\'s own page folded below. On a song page, ' +
+                         '"Show the song": its credits, every performance and the count by tour, snippets, live ' +
+                         'downloads and its takes On The Tracks; on an On The Tracks page, "Show the versions". ' +
+                         'Nothing is fetched. Off: the page stays as the wiki shows it (link previews still work).'
         },
         sa_bb_event_preview: {
             label: 'Preview event, venue and people pages on hover',
@@ -24461,6 +24463,7 @@
         if (t === 'sl-song') return _slSongHeadSpec();
         if (t === 'bs-record') return _bsRecordHeadSpec();
         if (t === 'bb-event') return _bbEventHeadSpec();
+        if (t === 'bb-song' || t === 'bb-ott') return _bbSongHeadSpec();
         return null;
     }
 
@@ -31687,6 +31690,14 @@
     const _BB_EVENT_KINDS = { gig: 'Gig', nogig: 'No gig', recording: 'Recording session', rehearsal: 'Rehearsal', interview: 'Interview' };
 
     /**
+     * An entry's kind as a list row shows it (`_bbEventList()`): the event
+     * kinds, and the page kinds that also appear in a song's lists ("multi":
+     * a page for several shows on one date, a song's Multiples tab).
+     * @type {Object<string, string>}
+     */
+    const _BB_ENTRY_KINDS = { ..._BB_EVENT_KINDS, multi: 'Multiple shows', nobruce: 'No Bruce' };
+
+    /**
      * The tab labels of an event page that list its cast; the table takes the
      * tab's own name ("In Studio" on a recording session).
      * @type {RegExp}
@@ -31714,7 +31725,7 @@
     };
 
     /** @type {?string} The event page's HTML as it was at the press. */
-    let _bbEventHtml = null;
+    let _bbDetailHtml = null;
 
     /** @type {?{rec: ?Object, dp: ?Object}} Its two readings, made once. */
     let _bbEventCache = null;
@@ -31731,13 +31742,13 @@
      *
      * @returns {string}
      */
-    function _bbEventPageHtml() {
-        if (_bbEventHtml === null) {
+    function _bbDetailPageHtml() {
+        if (_bbDetailHtml === null) {
             const root = document.documentElement.cloneNode(true);
             root.querySelectorAll('script, style, noscript, template').forEach(n => n.remove());
-            _bbEventHtml = `<!DOCTYPE html>${root.outerHTML}`;
+            _bbDetailHtml = `<!DOCTYPE html>${root.outerHTML}`;
         }
-        return _bbEventHtml;
+        return _bbDetailHtml;
     }
 
     /**
@@ -31745,7 +31756,7 @@
      *
      * @returns {string}
      */
-    function _bbEventUrl() {
+    function _bbDetailUrl() {
         return window.location.href.replace(/#.*$/, '');
     }
 
@@ -31759,8 +31770,8 @@
      */
     function _bbEventSource() {
         if (!_bbEventCache) {
-            const url = _bbEventUrl();
-            const doc = new DOMParser().parseFromString(_bbEventPageHtml(), 'text/html');
+            const url = _bbDetailUrl();
+            const doc = new DOMParser().parseFromString(_bbDetailPageHtml(), 'text/html');
             _bbEventCache = { rec: _bbEventRead(doc, url), dp: _dpParseBb(doc, url) };
         }
         return _bbEventCache;
@@ -31912,7 +31923,7 @@
                 path = href ? new URL(href).pathname : '';
             } catch (_) { /* none */ }
             const cat = (path.match(/^\/([a-z]+):/) || [])[1] || '';
-            return { date: m ? m[1].replace(/-00$/, '') : '', event, href, show: sm ? sm[1] : '', type: _BB_EVENT_KINDS[cat] || cat, self: !!path && path === here };
+            return { date: m ? m[1].replace(/-00$/, '') : '', event, href, show: sm ? sm[1] : '', type: _BB_ENTRY_KINDS[cat] || cat, self: !!path && path === here };
         }).filter(Boolean);
         const note = Array.from(panel.querySelectorAll('p')).map(p => _dpText(p.textContent)).filter(t => t && !rows.some(r => t.includes(r.event))).join(' ');
         return { rows, note };
@@ -32151,11 +32162,16 @@
         return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${out.join('')}</body></html>`;
     }
 
+    /** @type {Object<string, string>} The data heading of each Brucebase detail kind. */
+    const _BB_DETAIL_HEADINGS = { event: 'Event', song: 'Song', ott: 'Versions' };
+
     /**
-     * The live page's part of bb-event (`features.bbEventToTable`), at the
-     * press, on a Load from Disk and on every repeat: the copy of the page is
-     * taken (`_bbEventPageHtml()`), then `<h2 class="mb-bb-list-heading
-     * mb-bb-event-heading">Event</h2>` with an EMPTY `table.tbl` goes before
+     * The live page's part of a Brucebase detail pageType
+     * (`features.bbDetailToTable`: 'event' for bb-event, 'song' for bb-song,
+     * 'ott' for bb-ott), at the press, on a Load from Disk and on every
+     * repeat: the copy of the page is taken (`_bbDetailPageHtml()`), then
+     * `<h2 class="mb-bb-list-heading mb-bb-detail-heading
+     * mb-bb-<kind>-heading">` with an EMPTY `table.tbl` goes before
      * `#page-content` for the engine to render into, and after them `<h2
      * class="mb-bb-native-h2">Brucebase page</h2>`: the wiki's own page is
      * that section, folded at first like every heading but the data one
@@ -32165,16 +32181,17 @@
      * @param {Object} def - The active merged pageDefinition.
      * @returns {void}
      */
-    function applyBbEventToTable(def) {
-        if (!def?.features?.bbEventToTable || document.querySelector('table.mb-bb-event-table')) return;
-        _bbEventPageHtml();
+    function applyBbDetailToTable(def) {
+        const kind = def?.features?.bbDetailToTable;
+        if (!kind || document.querySelector('table.mb-bb-detail-table')) return;
+        _bbDetailPageHtml();
         const content = document.getElementById('page-content');
         if (!content) return;
         const h2 = document.createElement('h2');
-        h2.className = 'mb-bb-list-heading mb-bb-event-heading';
-        h2.textContent = 'Event';
+        h2.className = `mb-bb-list-heading mb-bb-detail-heading mb-bb-${kind}-heading`;
+        h2.textContent = _BB_DETAIL_HEADINGS[kind] || 'Details';
         const table = document.createElement('table');
-        table.className = 'tbl mb-bb-event-table';
+        table.className = 'tbl mb-bb-detail-table';
         table.innerHTML = '<thead><tr><th>Song</th></tr></thead><tbody></tbody>';
         let native = document.querySelector('h2.mb-bb-native-h2');
         if (!native) {
@@ -32183,7 +32200,7 @@
             native.textContent = 'Brucebase page';
         }
         content.before(h2, table, native);
-        Lib.debug('init', 'applyBbEventToTable: empty bb-event table in place, the wiki\'s page below.');
+        Lib.debug('init', `applyBbDetailToTable: empty ${kind} table in place, the wiki's page below.`);
     }
 
     /**
@@ -32205,7 +32222,7 @@
         if (activeDefinition?.type !== 'bb-event' || !h2) return null;
         const { rec, dp } = _bbEventSource();
         if (!rec) return null;
-        const url = _bbEventUrl();
+        const url = _bbDetailUrl();
         const tags = (dp && dp.tags) || [];
         const tours = tags.filter(t => t.family === 'tour');
         let tourEl = '';
@@ -32254,6 +32271,343 @@
             others: [
                 tagChips && ['tags', 'Tags', tagChips.count, tagChips.body, true],
                 mediaChips && ['media', 'Media', mediaChips.count, mediaChips.body, true],
+            ],
+            pictures, picturesTitle: 'Pictures',
+            title: rec.title, source: 'Brucebase\'s page',
+        };
+    }
+
+    // ── Brucebase song pages: bb-song, and On The Tracks: bb-ott
+    // (org/brucebase.org, Plan 2026-11-11, Phase 3; mockup M3) ──
+    // A song's page as a detail view: Credits, Performances (and by tour),
+    // Multiples, Snippets, Live downloads and On The Tracks as tables; the
+    // origin, Released on Album and the lyrics as text; the song's facts,
+    // tags, media, links and pictures above. An On The Tracks page (`/ott:`)
+    // is the versions table on its own. A lyrics page (`/lyrics:`) is only
+    // the lyrics: it stays bb-page's (link previews), a table would add
+    // nothing.
+
+    /**
+     * Column headers of the song and On The Tracks sub-tables, by kind.
+     * @type {Object<string, string[]>}
+     */
+    const _BB_SONG_HEADERS = {
+        credits: ['Release', 'Year', 'Person', 'Role'],
+        list: ['Date', 'Event', 'Show', 'Type'],
+        tours: ['Tour', 'Played', 'Shows', 'Share'],
+        ott: ['Title', 'Version', 'Time', 'Releases'],
+    };
+
+    /** @type {?{rec: ?Object, dp: ?Object}} The song page's two readings, made once. */
+    let _bbSongCache = null;
+
+    /**
+     * The song (or On The Tracks) page read twice from the copy taken at the
+     * press, once: `rec` by `_bbSongRead()` (the tables and the head's
+     * facts), `dp` by `_dpParseBb()` (the preview's record: the count, the
+     * last show, the releases, images, tags).
+     *
+     * @returns {{rec: ?Object, dp: ?Object}}
+     */
+    function _bbSongSource() {
+        if (!_bbSongCache) {
+            const url = _bbDetailUrl();
+            const doc = new DOMParser().parseFromString(_bbDetailPageHtml(), 'text/html');
+            const read = activeDefinition?.type === 'bb-ott' ? _bbOttRead : _bbSongRead;
+            _bbSongCache = { rec: read(doc, url), dp: _dpParseBb(doc, url) };
+        }
+        return _bbSongCache;
+    }
+
+    /**
+     * Reads an On The Tracks table (a song's tab, or an `/ott:` page): a row
+     * per version, "THE PROMISE - V1" split into Title and Version, the
+     * running time, and the releases it is on (each an abbreviation linking
+     * a bootleg or release page; "uncirculating" when there is none).
+     *
+     * @param {Element} root - The tab panel or `#page-content`.
+     * @param {string}  url
+     * @returns {Array<{title: string, version: string, time: string, releases: Array<{text: string, href: string}>, note: string}>}
+     */
+    function _bbOttRows(root, url) {
+        const rows = [];
+        root.querySelectorAll('table tr').forEach((tr) => {
+            const td = tr.querySelectorAll(':scope > td');
+            if (td.length < 3) return;
+            const name = _dpText(td[0].textContent);
+            if (!name) return;
+            const m = name.match(/^(.*?)\s+-\s+(V\w+)$/);
+            const releases = Array.from(td[2].querySelectorAll('a[href]'), a => ({ text: _dpText(a.textContent), href: _dpAbsUrl(a.getAttribute('href'), url) }))
+                .filter(r => r.text);
+            rows.push({
+                title: m ? m[1] : name, version: m ? m[2] : '', time: _dpText(td[1].textContent),
+                releases, note: releases.length ? '' : _dpText(td[2].textContent),
+            });
+        });
+        return rows;
+    }
+
+    /**
+     * Reads a song's Credits tab: a release per top-level item (its title
+     * linked, its year in brackets), a row per person under it ("Roy
+     * Bittan: piano" → Person, Role); a line under a person that names no
+     * one ("String arrangement by Ken Asher") is a row of its own, Role only.
+     *
+     * @param {Element} panel
+     * @param {string}  url
+     * @returns {Array<{release: string, releaseHref: string, year: string, person: string, personHref: string, role: string}>}
+     */
+    function _bbSongCredits(panel, url) {
+        const rows = [];
+        panel.querySelectorAll('ul').forEach((ul) => {
+            if (ul.parentElement && ul.parentElement.closest('li')) return;
+            ul.querySelectorAll(':scope > li').forEach((li) => {
+                const sub = li.querySelector(':scope > ul');
+                const ra = Array.from(li.querySelectorAll('a[href]')).find(a => !sub || !sub.contains(a));
+                const own = _dpText(Array.from(li.childNodes).filter(n => n !== sub).map(n => n.textContent).join(' '));
+                const year = (own.match(/\((\d{4})\)/) || [])[1] || '';
+                const release = ra ? _dpText(ra.textContent) : own.replace(/\s*\(\d{4}\)\s*$/, '');
+                const base = { release, releaseHref: ra ? _dpAbsUrl(ra.getAttribute('href'), url) : '', year };
+                const person = (pli, depth) => {
+                    const psub = pli.querySelector(':scope > ul');
+                    const pa = Array.from(pli.querySelectorAll('a[href]')).find(a => !psub || !psub.contains(a));
+                    const ptext = _dpText(Array.from(pli.childNodes).filter(n => n !== psub).map(n => n.textContent).join(' '));
+                    if (pa && depth === 0 && ptext.startsWith(_dpText(pa.textContent))) {
+                        rows.push({ ...base, person: _dpText(pa.textContent), personHref: _dpAbsUrl(pa.getAttribute('href'), url), role: ptext.slice(_dpText(pa.textContent).length).replace(/^\s*:\s*/, '') });
+                    } else if (ptext) {
+                        rows.push({ ...base, person: '', personHref: '', role: ptext });
+                    }
+                    if (psub) psub.querySelectorAll(':scope > li').forEach(x => person(x, depth + 1));
+                };
+                if (sub) sub.querySelectorAll(':scope > li').forEach(x => person(x, 0));
+                else if (release) rows.push({ ...base, person: '', personHref: '', role: '' });
+            });
+        });
+        return rows;
+    }
+
+    /**
+     * Reads a song's Performances tab: the shows (the left cell's list,
+     * newest first: `_bbEventList()`), the count ("Performed live 73
+     * times"), and the right cell's breakdown by tour — "Performed at 1
+     * show(s) of" beside "75 on the The River Tour 2016." — as Tour, Played,
+     * Shows.
+     *
+     * @param {Element} panel
+     * @param {string}  url
+     * @returns {{rows: Array<Object>, count: string, tours: Array<{tour: string, played: number, shows: number}>}}
+     */
+    function _bbSongPerformances(panel, url) {
+        const cells = panel.querySelector('table') ? Array.from(panel.querySelector('table').querySelectorAll(':scope > tbody > tr > td, :scope > tr > td')) : [];
+        const left = cells[0] || panel;
+        const list = _bbEventList(left, url);
+        const cm = _dpText(left.textContent).match(/Performed live\s+(\d+)\s+times?/i);
+        const tours = [];
+        if (cells[1]) {
+            cells[1].querySelectorAll('table').forEach((t) => {
+                const tds = t.querySelectorAll('td');
+                if (tds.length < 2) return;
+                const pm = _dpText(tds[0].textContent).match(/(\d+)\s+show/i);
+                const strongs = Array.from(tds[1].querySelectorAll('strong'), x => _dpText(x.textContent));
+                // The tab lists every tour, most at "0 show(s)": only the
+                // tours the song was played on are rows.
+                if (!pm || strongs.length < 2 || !Number(pm[1])) return;
+                tours.push({ tour: strongs[1], played: Number(pm[1]), shows: Number(strongs[0]) || 0 });
+            });
+        }
+        return { rows: list.rows, count: cm ? cm[1] : '', tours };
+    }
+
+    /**
+     * Reads a Brucebase song page for the bb-song pageType. Tabs by label:
+     * Credits, Performances (and the breakdown by tour), Multiples,
+     * Snippets, Released as Live Download and On The Tracks become tables;
+     * Released on Album, Lyrics and any other tab with words are text
+     * sections; Media (and the players before the tabs) and Links are the
+     * head's; the gallery's images too. The text before the tabs ("Track 18
+     * of 18 Tracks, 1999. …") is the song's origin.
+     *
+     * @param {Document} doc
+     * @param {string}   url
+     * @returns {?Object} Null when the page has no `#page-content`.
+     */
+    function _bbSongRead(doc, url) {
+        const content = doc.getElementById('page-content');
+        if (!content) return null;
+        const titleEl = doc.getElementById('page-title');
+        const nav = content.querySelector('div.yui-navset');
+        const before = (x) => !nav || !!(nav.compareDocumentPosition(x) & Node.DOCUMENT_POSITION_PRECEDING);
+        const origin = Array.from(content.querySelectorAll('p')).filter(p => before(p) && !p.closest('.list-pages-box') && _dpText(p.textContent))
+            .map(p => _dpText(p.textContent)).join(' ');
+        const rec = {
+            url, title: _dpText(titleEl ? titleEl.textContent : ''), origin,
+            credits: [], performances: null, multiples: [], snippets: null, livedl: [], ott: [], texts: [], links: [], media: [],
+        };
+        content.querySelectorAll('iframe[src]').forEach((fr) => {
+            const src = _dpAbsUrl(fr.getAttribute('src'), url);
+            const v = _ytParse(src);
+            if (v) rec.media.push([v.kind === 'playlist' ? 'YouTube playlist' : 'YouTube video', _ytWatchUrl(v)]);
+            else if (/open\.spotify\.com\/embed\//.test(src)) rec.media.push(['Spotify', src.replace('/embed/', '/')]);
+        });
+        _bbEventTabs(content).forEach(({ label, panel }) => {
+            if (/^Credits$/i.test(label)) rec.credits = _bbSongCredits(panel, url);
+            else if (/^Performances$/i.test(label)) rec.performances = _bbSongPerformances(panel, url);
+            else if (/^Multiples$/i.test(label)) rec.multiples = _bbEventList(panel, url).rows;
+            else if (/^Snippets$/i.test(label)) {
+                const cm = _dpText(panel.textContent).match(/Performed live\s+(\d+)\s+times?/i);
+                rec.snippets = { rows: _bbEventList(panel, url).rows, count: cm ? cm[1] : '' };
+            } else if (/^Released as Live Download$/i.test(label)) rec.livedl = _bbEventList(panel, url).rows;
+            else if (/^On The Tracks$/i.test(label)) {
+                rec.ott = _bbOttRows(panel, url);
+                const note = Array.from(panel.querySelectorAll('p')).filter(p => _dpText(p.textContent) && !p.closest('table'));
+                if (note.length) {
+                    const box = doc.createElement('div');
+                    note.forEach(p => box.appendChild(p.cloneNode(true)));
+                    rec.texts.push({ label: 'On The Tracks notes', text: _dpBlockText(box), html: _dpBlockHtml(box, url) });
+                }
+            } else if (/^Links$/i.test(label)) {
+                panel.querySelectorAll('a[href]').forEach(a => rec.links.push([_dpText(a.textContent), _dpAbsUrl(a.getAttribute('href'), url)]));
+            } else if (/^(?:Media|Gallery)$/i.test(label)) {
+                // The head's: Media's players are read above, the gallery's images by the preview.
+            } else if (_bbPanelHasText(panel)) {
+                rec.texts.push({ label, text: _dpBlockText(panel), html: /^Lyrics$/i.test(label) ? '' : _dpBlockHtml(panel, url) });
+            }
+        });
+        return rec;
+    }
+
+    /**
+     * Reads an On The Tracks page (`/ott:<song>`): its versions table and
+     * the note under it.
+     *
+     * @param {Document} doc
+     * @param {string}   url
+     * @returns {?Object}
+     */
+    function _bbOttRead(doc, url) {
+        const content = doc.getElementById('page-content');
+        if (!content) return null;
+        const titleEl = doc.getElementById('page-title');
+        const note = Array.from(content.querySelectorAll('p')).filter(p => !p.closest('table') && !p.closest('.list-pages-box') && _dpText(p.textContent));
+        const box = doc.createElement('div');
+        note.forEach(p => box.appendChild(p.cloneNode(true)));
+        return {
+            url, title: _dpText(titleEl ? titleEl.textContent : ''), origin: '',
+            credits: [], performances: null, multiples: [], snippets: null, livedl: [], ott: _bbOttRows(content, url),
+            texts: note.length ? [{ label: 'Notes', text: _dpBlockText(box), html: _dpBlockHtml(box, url) }] : [], links: [], media: [],
+        };
+    }
+
+    /**
+     * Whether a song record has anything for a sub-table.
+     *
+     * @param {?Object} rec - `_bbSongRead()`'s or `_bbOttRead()`'s record.
+     * @returns {boolean}
+     */
+    function _bbSongHasTables(rec) {
+        return !!rec && !!(rec.credits.length || (rec.performances && (rec.performances.rows.length || rec.performances.tours.length)) ||
+            rec.multiples.length || (rec.snippets && rec.snippets.rows.length) || rec.livedl.length || rec.ott.length);
+    }
+
+    /**
+     * `toHtml` of bb-song and bb-ott: the record's sub-tables — Credits
+     * (Release · Year · Person · Role), Performances, Multiples, Snippets
+     * and Live downloads (Date · Event · Show · Type, each show linked),
+     * Performances by tour (Tour · Played · Shows · Share), On The Tracks
+     * (Title · Version · Time · Releases). Titles in MusicBrainz style, the
+     * wiki's capitals as the hover text. Nothing for a table throws.
+     *
+     * @param {string} text - The page's HTML.
+     * @param {string} base - Its URL.
+     * @param {string} kind - 'song' or 'ott'.
+     * @returns {string} An HTML document.
+     * @throws {Error} When the page has nothing for a table (`status` 0).
+     */
+    function _bbSongToHtml(text, base, kind) {
+        const doc = new DOMParser().parseFromString(text, 'text/html');
+        const rec = kind === 'ott' ? _bbOttRead(doc, base) : _bbSongRead(doc, base);
+        if (!_bbSongHasTables(rec)) throw Object.assign(new Error('The Brucebase page has no credits, performances or versions to show'), { status: 0 });
+        const e = _rgEsc;
+        const link = (href, inner) => (href ? `<a href="${e(href)}" target="_blank" rel="noopener">${inner}</a>` : inner);
+        const titleCell = (title, href) => {
+            const shown = _mbSiteTitleText(title);
+            const inner = link(href, e(shown));
+            return shown !== title ? `<span data-mb-tip title="${e(`As written on Brucebase:\n${title}`)}">${inner}</span>` : inner;
+        };
+        const table = (name, cols, rows) => `<h3>${e(name)}</h3><table class="tbl" data-mb-col-headers="${e(JSON.stringify(cols))}">` +
+            `<thead><tr>${cols.map(c => `<th>${e(c)}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>`;
+        const listRows = (rows) => rows.map(r => `<tr><td>${e(r.date)}</td><td>${link(r.href, e(r.event))}</td><td>${e(r.show)}</td><td>${e(r.type)}</td></tr>`);
+        const out = [];
+        if (rec.credits.length) {
+            out.push(table('Credits', _BB_SONG_HEADERS.credits, rec.credits.map(r =>
+                `<tr><td>${link(r.releaseHref, e(r.release))}</td><td>${e(r.year)}</td><td>${link(r.personHref, e(r.person))}</td><td>${e(r.role)}</td></tr>`)));
+        }
+        if (rec.performances && rec.performances.tours.length) {
+            out.push(table('Performances by tour', _BB_SONG_HEADERS.tours, rec.performances.tours.map(t =>
+                `<tr><td>${e(t.tour)}</td><td>${t.played}</td><td>${t.shows}</td><td>${t.shows ? `${Math.round(100 * t.played / t.shows)} %` : ''}</td></tr>`)));
+        }
+        if (rec.performances && rec.performances.rows.length) out.push(table('Performances', _BB_SONG_HEADERS.list, listRows(rec.performances.rows)));
+        if (rec.multiples.length) out.push(table('Multiples', _BB_SONG_HEADERS.list, listRows(rec.multiples)));
+        if (rec.snippets && rec.snippets.rows.length) out.push(table('Snippets', _BB_SONG_HEADERS.list, listRows(rec.snippets.rows)));
+        if (rec.livedl.length) out.push(table('Live downloads', _BB_SONG_HEADERS.list, listRows(rec.livedl)));
+        if (rec.ott.length) {
+            out.push(table('On The Tracks', _BB_SONG_HEADERS.ott, rec.ott.map(r =>
+                `<tr><td>${titleCell(r.title, '')}</td><td>${e(r.version)}</td><td>${e(r.time)}</td>` +
+                `<td>${r.releases.length ? r.releases.map(x => link(x.href, e(x.text))).join(' / ') : e(r.note)}</td></tr>`)));
+        }
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${out.join('')}</body></html>`;
+    }
+
+    /**
+     * The head of a song or On The Tracks page (`_fdHeadSpec()`), from the
+     * copy taken at the press (`_bbSongSource()`): "~ Song"; About this song
+     * (the text before the tabs), then the word tabs (Released on Album,
+     * Lyrics, notes) as closed text sections; the Song card (Performed live,
+     * Snippets, Last played, Released on, Live downloads, This page), Tags
+     * by family, Media (YouTube, Spotify) and Links; the pictures (lyric
+     * sheets, the song graph) by kind. Null on another page.
+     *
+     * @returns {?Object}
+     */
+    function _bbSongHeadSpec() {
+        const h2 = document.querySelector('h2.mb-bb-song-heading, h2.mb-bb-ott-heading');
+        const t = activeDefinition?.type;
+        if ((t !== 'bb-song' && t !== 'bb-ott') || !h2) return null;
+        const { rec, dp } = _bbSongSource();
+        if (!rec) return null;
+        const url = _bbDetailUrl();
+        const field = (name) => ((dp && dp.fields.find(f => f[0] === name)) || [])[1] || '';
+        const tags = (dp && dp.tags) || [];
+        const chips = (rows) => _fdChips(rows);
+        const tagChips = chips(_BB_TAG_FAMILIES.map(([key, name]) => [name, tags.filter(x => x.family === key).map(x => [x.text, x.href])]));
+        const mediaChips = chips([['YouTube', rec.media.filter(m => /^YouTube/.test(m[0])).map(m => [m[0], m[1]])], ['Spotify', rec.media.filter(m => m[0] === 'Spotify')]]);
+        const linkChips = chips([['Links', rec.links]]);
+        const perf = rec.performances;
+        const pictures = ((dp && dp.images) || []).filter(im => im.full || im.thumb).map(im => ({
+            full: im.full || im.thumb, thumb: im.thumb || im.full, caption: im.caption || _fiFileName(im.full || im.thumb), types: [im.label || 'Other'],
+        }));
+        const ott = t === 'bb-ott';
+        return {
+            root: h2.parentElement, h2,
+            sub: { what: ott ? 'On The Tracks' : 'Song' },
+            text: rec.origin ? { title: 'About this song', body: rec.origin } : null,
+            texts: rec.texts.map(x => ({ title: x.label, body: x.text, ...(x.html ? { html: x.html } : {}) })),
+            facts: [
+                [ott ? 'ott' : 'song', ott ? 'On The Tracks' : 'Song', [
+                    ['Performed live', perf && perf.count ? `${perf.count} time${perf.count === '1' ? '' : 's'}` : ''],
+                    ['Snippets', rec.snippets && rec.snippets.count ? `${rec.snippets.count} time${rec.snippets.count === '1' ? '' : 's'}` : ''],
+                    ['Last played', field('Last played')],
+                    ['Released on', field('Released on')],
+                    ['Released live on', field('Released live on')],
+                    ['Live downloads', rec.livedl.length ? String(rec.livedl.length) : ''],
+                    ['Versions', rec.ott.length ? String(rec.ott.length) : ''],
+                    ['This page', _fdLink(url, url.replace(/^https?:\/\/[^/]+\//, ''))],
+                ]],
+            ],
+            others: [
+                tagChips && ['tags', 'Tags', tagChips.count, tagChips.body, true],
+                mediaChips && ['media', 'Media', mediaChips.count, mediaChips.body, true],
+                linkChips && ['links', 'Links', linkChips.count, linkChips.body, true],
             ],
             pictures, picturesTitle: 'Pictures',
             title: rec.title, source: 'Brucebase\'s page',
@@ -53454,24 +53808,24 @@
         // and the head above, from a copy of the page taken at the press — no
         // request (`features.pageRequest` with its own `fetchText()`). Under
         // `sa_bb_detail_pages` (default on); off, the page is `bb-page`'s.
-        // See applyBbEventToTable() and docs/claude/brucebase.md, "Event pages".
+        // See applyBbDetailToTable() and docs/claude/brucebase.md, "Event pages".
         {
             type: 'bb-event',
             host: 'brucebase.wikidot.com',
             match: (path) => _BB_EVENT_PATH_RE.test(path) && Lib.settings.sa_bb_detail_pages !== false,
             buttons: [ {
                 label: 'Show the event', shortLabel: 'Event',
-                showIf: () => _bbEventHasTables(_bbEventRead(document, _bbEventUrl())),
+                showIf: () => _bbEventHasTables(_bbEventRead(document, _bbDetailUrl())),
                 description: 'No request: the setlist, the cast, the other shows at the venue, the recordings and the stories from this page as tables; the page\'s facts, tags and pictures above, the wiki\'s page folded below.'
             } ],
             features: {
-                bbEventToTable: true,
+                bbDetailToTable: 'event',
                 groupByH3: true,
                 // A few short tables, the page's content: all open.
                 openSubTables: true,
                 pageRequest: () => {
-                    const url = _bbEventUrl();
-                    return { url, fetchText: async () => _bbEventPageHtml(), toHtml: (text) => _bbEventToHtml(text, url) };
+                    const url = _bbDetailUrl();
+                    return { url, fetchText: async () => _bbDetailPageHtml(), toHtml: (text) => _bbEventToHtml(text, url) };
                 },
                 pageCountAsync: () => 1,
                 collapsableColumns: [ 'Words' ],
@@ -53481,6 +53835,62 @@
                     Set: 'The set as the page names it (Soundcheck, Show); "Show" where it names none.',
                     Moment: 'Where in the show the words were said, as the Storyteller tab writes it.',
                 }
+            },
+            tableMode: 'multi'
+        },
+        // A Brucebase song page (`/song:`; org/brucebase.org, Plan 2026-11-11,
+        // Phase 3): Credits, Performances (and by tour), Multiples, Snippets,
+        // Live downloads and On The Tracks as tables, the song's facts,
+        // texts, tags and pictures above, the wiki's page below — from a copy
+        // of the page, no request. Under `sa_bb_detail_pages`. See
+        // _bbSongRead() and docs/claude/brucebase.md, "Song pages".
+        {
+            type: 'bb-song',
+            host: 'brucebase.wikidot.com',
+            match: (path) => /^\/song:/.test(path) && Lib.settings.sa_bb_detail_pages !== false,
+            buttons: [ {
+                label: 'Show the song', shortLabel: 'Song',
+                showIf: () => _bbSongHasTables(_bbSongRead(document, _bbDetailUrl())),
+                description: 'No request: the credits, every performance (and by tour), snippets, live downloads and the versions On The Tracks from this page as tables; the song\'s facts, lyrics, tags and pictures above, the wiki\'s page folded below.'
+            } ],
+            features: {
+                bbDetailToTable: 'song',
+                groupByH3: true,
+                openSubTables: [ 'Credits', 'Performances by tour', 'Multiples', 'Snippets', 'On The Tracks' ],
+                pageRequest: () => {
+                    const url = _bbDetailUrl();
+                    return { url, fetchText: async () => _bbDetailPageHtml(), toHtml: (text) => _bbSongToHtml(text, url, 'song') };
+                },
+                pageCountAsync: () => 1,
+                columnDescriptions: {
+                    Played: 'Shows of the tour at which the song was played (rehearsals and snippets not counted), as the Performances tab counts them.',
+                    Shows: 'Shows of the tour in all.',
+                    Share: 'Played as a share of the tour\'s shows.',
+                    Version: 'The take, as On The Tracks numbers it (V1, V2, …).',
+                    Releases: 'The bootlegs and releases this take is on, by Brucebase\'s abbreviation; each links its page.',
+                }
+            },
+            tableMode: 'multi'
+        },
+        // An On The Tracks page (`/ott:<song>`): the song's takes, a table.
+        {
+            type: 'bb-ott',
+            host: 'brucebase.wikidot.com',
+            match: (path) => /^\/ott:/.test(path) && Lib.settings.sa_bb_detail_pages !== false,
+            buttons: [ {
+                label: 'Show the versions', shortLabel: 'Versions',
+                showIf: () => _bbSongHasTables(_bbOttRead(document, _bbDetailUrl())),
+                description: 'No request: every take this page lists — title, version, running time and the releases it is on — as a table; the page\'s notes and tags above.'
+            } ],
+            features: {
+                bbDetailToTable: 'ott',
+                groupByH3: true,
+                openSubTables: true,
+                pageRequest: () => {
+                    const url = _bbDetailUrl();
+                    return { url, fetchText: async () => _bbDetailPageHtml(), toHtml: (text) => _bbSongToHtml(text, url, 'ott') };
+                },
+                pageCountAsync: () => 1
             },
             tableMode: 'multi'
         },
@@ -123227,10 +123637,10 @@ a { color: #1565c0; }`;
         if (activeDefinition.features?.bsRecordToTable) {
             applyBsRecordToTable(activeDefinition);
         }
-        // A Brucebase event page ('bb-event'): the same, the wiki's page
-        // below under its own h2.
-        if (activeDefinition.features?.bbEventToTable) {
-            applyBbEventToTable(activeDefinition);
+        // A Brucebase detail page ('bb-event', 'bb-song', 'bb-ott'): the
+        // same, the wiki's page below under its own h2.
+        if (activeDefinition.features?.bbDetailToTable) {
+            applyBbDetailToTable(activeDefinition);
         }
 
         // ── moveColumnFirst pre-processing ───────────────────────────────────
@@ -155262,10 +155672,10 @@ a { color: #1565c0; }`;
             if (activeDefinition.features?.bsRecordToTable) {
                 applyBsRecordToTable(activeDefinition);
             }
-            // And a Brucebase event page: its empty table and the wiki's
+            // And a Brucebase detail page: its empty table and the wiki's
             // page under its h2 again.
-            if (activeDefinition.features?.bbEventToTable) {
-                applyBbEventToTable(activeDefinition);
+            if (activeDefinition.features?.bbDetailToTable) {
+                applyBbDetailToTable(activeDefinition);
             }
             // And for the event overview: the reloaded page holds the native
             // relationship lists again, which would otherwise stay on the page
@@ -178495,6 +178905,17 @@ a { color: #1565c0; }`;
              */
             bbEventRead(html, url) {
                 return _bbEventRead(new DOMParser().parseFromString(html, 'text/html'), url);
+            },
+
+            /**
+             * Thin wrapper around `_bbSongRead()` over an HTML string.
+             *
+             * @param {string} html
+             * @param {string} url
+             * @returns {?Object}
+             */
+            bbSongRead(html, url) {
+                return _bbSongRead(new DOMParser().parseFromString(html, 'text/html'), url);
             },
 
             /**

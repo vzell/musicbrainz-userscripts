@@ -789,7 +789,7 @@ release-tracks-style detail page (the foreign-detail pattern of
   `@include` of its own: the catch-all line takes these paths. One button,
   "Show the event" (`showIf`: `_bbEventHasTables()`), `tableMode: 'multi'`,
   `groupByH3`, `openSubTables: true` (new engine feature, see below).
-- **No request**: `pageRequest.fetchText` returns `_bbEventPageHtml()`, a
+- **No request**: `pageRequest.fetchText` returns `_bbDetailPageHtml()`, a
   copy of the page taken at the press **from a clone with every
   `<script>`/`<style>`/`<noscript>`/`<template>` removed, with a doctype**.
   The first version serialised `document.documentElement` as it was: the
@@ -828,9 +828,9 @@ release-tracks-style detail page (the foreign-detail pattern of
   `collapsableColumns: ['Words']`). Songs through `_mbSiteTitleText()`, the
   wiki's capitals in a `data-mb-tip` title (answer 6). Nothing for a table →
   throws `{status: 0}`.
-- **`applyBbEventToTable()`** (press and disk-load sites, beside
+- **`applyBbDetailToTable()`** (press and disk-load sites, beside
   `applyBsRecordToTable()`): `h2.mb-bb-list-heading.mb-bb-event-heading`
-  "Event" + an empty `table.tbl.mb-bb-event-table` + `h2.mb-bb-native-h2`
+  "Event" + an empty `table.tbl.mb-bb-detail-table` + `h2.mb-bb-native-h2`
   "Brucebase page", all before `#page-content`. `makeH2sCollapsible()` folds
   every h2 but the data one, so the wiki's page starts folded (answer 5) and
   its own h2s (an article's title in News/Memorabilia) fold too — the
@@ -858,6 +858,66 @@ rehearsal; Save → Load from Disk); fixtures `bb-event-*.html` from the
 mirror (`scripts/build-bb-event-fixtures.py`, `loadBbEventPage()` in
 `tests/support/bbFixture.js`); mutations `scripts/mutations/bb-event.json`
 (12).
+
+## Song pages — `bb-song`, and On The Tracks — `bb-ott` (Phase 3, 2026-11-11)
+
+Same pattern as `bb-event` (above): a definition before `bb-page` under
+`sa_bb_detail_pages`, one button, no request, the head over the copy of the
+page, the wiki's page folded below. The shared parts were renamed from
+`_bbEvent…` when this phase made them shared: `_bbDetailPageHtml()`,
+`_bbDetailUrl()`, `applyBbDetailToTable()` (now
+`features.bbDetailToTable: 'event' | 'song' | 'ott'`, the data heading from
+`_BB_DETAIL_HEADINGS`, the table `table.mb-bb-detail-table`, the heading
+also `h2.mb-bb-<kind>-heading`).
+
+- **`_bbSongRead()`**, tabs by label (survey of the 60 sampled song pages:
+  Credits, Performances, Multiples, Released on Album, Released as Live
+  Download, On The Tracks, Lyrics, Media, Snippets, Links, Gallery):
+  - Credits (`_bbSongCredits()`): a release per top-level `<li>` (its
+    `<em><a>` and "(1999)"), a row per person under it ("Roy Bittan: piano"
+    → Person, Role); a line under a person that names no one ("String
+    arrangement by Ken Asher") is a row with Role only.
+  - Performances (`_bbSongPerformances()`): the LEFT cell's list
+    (`_bbEventList()` — the right cell's "Performed at N show(s) of" `<li>`s
+    must not be read as shows), "Performed live N times"; the right cell's
+    breakdown by tour, one inner table per tour ("Performed at 1 show(s)
+    of" / "**75** on the **The River Tour 2016**."), only tours with N > 0
+    (the tab lists every tour, most at 0).
+  - Multiples, Snippets ("Performed live N times as a snippet"), Released
+    as Live Download: `_bbEventList()`. A "multi" page's kind is "Multiple
+    shows" (`_BB_ENTRY_KINDS`).
+  - On The Tracks (`_bbOttRows()`): a row per `<tr>` with three cells,
+    "THE PROMISE - V1" → Title, Version; the time; the release
+    abbreviations (each linking a `/bootleg:` or release page) or the
+    text ("uncirculating"). Its paragraphs are a text section.
+  - Released on Album, Lyrics (text only, its lines kept) and any other tab
+    with words: text sections. Media's and the page's iframes: the Media
+    card (YouTube, Spotify). Links: the Links card.
+  - The paragraphs before the tabs ("Track 18 of 18 Tracks, 1999. …"):
+    About this song.
+- **`_bbSongToHtml(text, url, kind)`**: Credits, Performances by tour (with
+  Share), Performances, Multiples, Snippets, Live downloads, On The Tracks;
+  `openSubTables` lists the short ones (Performances and Live downloads,
+  hundreds of rows on a well-known song, start folded).
+- **`_bbSongHeadSpec()`** (both kinds): `_bbSongSource()` reads the copy with
+  `_bbOttRead()` on an `/ott:` page, `_bbSongRead()` otherwise, and
+  `_dpParseBb()` (Last played, Released on, Released live on, images,
+  tags). The Song card: Performed live, Snippets, Last played, Released on,
+  Released live on, Live downloads, Versions, This page.
+- **`/ott:<song>`** (`bb-ott`, `_bbOttRead()`): the versions table and the
+  page's note paragraphs.
+- **`/lyrics:` stays `bb-page`'s** (link previews only): the page is the
+  lyrics and nothing else, so a table view would add nothing (the plan's
+  "+ lyrics:" — decided while building).
+
+Tests: `tests/fixtures/bb-song.spec.js` (8: the gate; The Promise's tables,
+counted from the fixture's tabs, Credits' person and note rows, the tours
+played on with their share, which tables start open; title case and
+links; the head's texts and cards; a person in Credits previews (FRP); a
+song with snippets and no credits; an On The Tracks page; Save → Load from
+Disk); fixtures `bb-song-*.html` and `bb-ott-*.html` (lyrics blanked with
+`build-detail-fixtures.py`'s `blank_lyrics()`); mutations
+`scripts/mutations/bb-song.json` (9).
 
 ## What a filename says, and the page's tags (Phase 1, 2026-11-11)
 

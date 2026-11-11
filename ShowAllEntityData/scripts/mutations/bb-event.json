@@ -69,8 +69,8 @@
         "why": "Performances lists this page too: bold, '(this page)', not linked.",
         "edits": [
             {
-                "find": "            return { date: m ? m[1].replace(/-00$/, '') : '', event, href, show: sm ? sm[1] : '', type: _BB_EVENT_KINDS[cat] || cat, self: !!path && path === here };\n",
-                "replace": "            return { date: m ? m[1].replace(/-00$/, '') : '', event, href, show: sm ? sm[1] : '', type: _BB_EVENT_KINDS[cat] || cat, self: false };\n"
+                "find": "            return { date: m ? m[1].replace(/-00$/, '') : '', event, href, show: sm ? sm[1] : '', type: _BB_ENTRY_KINDS[cat] || cat, self: !!path && path === here };\n",
+                "replace": "            return { date: m ? m[1].replace(/-00$/, '') : '', event, href, show: sm ? sm[1] : '', type: _BB_ENTRY_KINDS[cat] || cat, self: false };\n"
             }
         ],
         "spec": "tests/fixtures/bb-event.spec.js",
@@ -147,8 +147,8 @@
         "why": "Answer 6: MusicBrainz case, the capitals as the hover text.",
         "edits": [
             {
-                "find": "            const shown = _mbSiteTitleText(title);\n            const inner = link(href, e(shown));\n",
-                "replace": "            const shown = title;\n            const inner = link(href, e(shown));\n"
+                "find": "        const songCell = (title, href) => {\n            const shown = _mbSiteTitleText(title);\n            const inner = link(href, e(shown));\n",
+                "replace": "        const songCell = (title, href) => {\n            const shown = title;\n            const inner = link(href, e(shown));\n"
             }
         ],
         "spec": "tests/fixtures/bb-event.spec.js",

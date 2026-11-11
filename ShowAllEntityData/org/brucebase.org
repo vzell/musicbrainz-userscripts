@@ -325,6 +325,13 @@ in short form, so it survives on another machine).
 - [ ] vzell's live check
 
 *** TODO Phase 3 — =bb-song= (+ lyrics:, ott:)
+- [X] =bb-song=: =_bbSongRead()= (Credits, Performances + by tour, Multiples, Snippets, Live downloads,
+  On The Tracks; texts; Media/Links cards), =_bbSongToHtml()=, =_bbSongHeadSpec()=
+- [X] =bb-ott=: =_bbOttRead()= / =_bbOttRows()= (shared with the song's tab)
+- [X] =/lyrics:= left as bb-page (only the lyrics: a table would add nothing) — decided while building
+- [X] shared helpers renamed =_bbDetail…=, =features.bbDetailToTable= ('event' | 'song' | 'ott')
+- [X] =bb-song.spec.js= (8), mutations =bb-song.json= (9), fixtures with lyrics blanked, registries
+- [ ] vzell's live check
 *** TODO Phase 4 — =bb-venue=, =bb-relation= (incl. the Steve Van Zandt TODO)
 *** TODO Phase 5 — =bb-retail= (+ playlist), =bb-bootleg=
 *** TODO Phase 6 — history diff

@@ -4026,12 +4026,12 @@ many rows (*Large Dataset Threshold*, 5000).
 </details>
 
 <details>
-<summary>Brucebase event pages</summary>
+<summary>Brucebase event and song pages</summary>
 
 A Brucebase page for one event — a gig (`/gig:…`), a show that did not
 happen (`/nogig:…`), a recording session, a rehearsal or an interview —
 gets one button, **Event** (*Show the event*), while ⚙️ Settings →
-*📚 Brucebase* → *Event pages: a detail view of the gig* is on (the
+*📚 Brucebase* → *Detail pages: events and songs as tables* is on (the
 default). It lays the page out like a MusicBrainz release; nothing is
 fetched, everything comes from the page itself:
 
@@ -4060,8 +4060,19 @@ fetched, everything comes from the page itself:
 - **The wiki's page** stays below under *Brucebase page*, folded: click the
   heading to read it as it was; its own headings fold too.
 
-Switched off, an event page stays as the wiki shows it, and its links still
-preview.
+**Song pages** (`/song:…`) get **Song** (*Show the song*): Credits (each
+release, who played what), the performances counted by tour (only the
+tours it was played on, with its share of the shows), every performance,
+multiple performances on one date, snippets, the official live downloads,
+and its takes On The Tracks (title, take, running time, the bootlegs and
+releases it is on). Above them: where the song comes from, Released on
+Album, the lyrics and notes (folded), a Song card (how often and when last
+played live, released on, live downloads, takes), its tags, media and
+links. An **On The Tracks** page (`/ott:…`) gets **Versions**: its takes as
+one table. A lyrics page stays as it is.
+
+The setting is *Detail pages: events and songs as tables*. Switched off,
+these pages stay as the wiki shows them, and their links still preview.
 
 </details>
 

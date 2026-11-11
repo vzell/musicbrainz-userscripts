@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-11-11",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase song pages get a button, \"Song\": the credits (each release, who played what), the performances counted by tour (only the tours it was played on, with its share of the shows), every performance, multiple performances on one date, snippets, the official live downloads and its takes On The Tracks (title, take, running time, the bootlegs and releases it is on), as tables you can filter and sort. Above them: where the song comes from, Released on Album, the lyrics and notes (folded), a Song card (how often and when last played live, released on, live downloads, takes), its tags, media and links; the wiki's page folded below. An On The Tracks page gets \"Versions\": its takes as one table. Nothing is fetched. The setting is now called \"Detail pages: events and songs as tables\"."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-11-11",
     "sections": [
