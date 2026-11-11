@@ -432,7 +432,7 @@ status line, and their entries are not mouse selectable; on the initial page too
   brucebase.md "Styling", toolbar-and-header-ui.md, WIP.10; siblings 86 green
 - [X] vzell's live check (2026-11-11): OK
 
-*** TODO Phase 8 — previews of show links =/2026#020526= on Brucebase itself
+*** DONE Phase 8 — previews of show links =/2026#020526= on Brucebase itself
 vzell, 2026-11-11: POH for links like =https://brucebase.wikidot.com/2026#020526=. The =bbdate=
 reader (=_extBbDateTest()=, =_extBbDateLoad()=, =_extBbYear()=: the year page read once, cached in
 IndexedDB) already previews them on every other site and INSIDE a window on Brucebase; on Brucebase's
@@ -450,7 +450,17 @@ own-host test). Such links sit in the event pages' nav line ("Info & Setlist"), 
   rendered head and tables; card, window, ONE year-page request for two 1985 shows; the click not taken;
   =sa_pop_ext= off), G3 test in =popup-ext-foreign.spec.js= flipped, mutations =bb-date-links.json=
   (3, all OK), coverage row (bb-event), detail-pages.md, brucebase.md, HELP, WIP.11; siblings 135 green
-- [ ] vzell's live check: a gig's "Info & Setlist", a link on 2026-list
+- [X] vzell's live check (2026-11-12): OK, with two follow-ups (his notes "** DONE icons missing" and
+  "** DONE venue POHs have NO hover support for e.g Wikipedia links" at the end of this file)
+- [X] follow-up 1: the show's window draws the year page's icons, each with its word (=icons=,
+  =_EXT_BB_YEAR_VERSION= 2, =ul.mb-dp-icons=); the card keeps the line of words
+- [X] follow-up 2: every Brucebase window opens any link with a reader in place (=_dpWinIsBb()=: its own
+  window, the =springsteen= reader on a Brucebase page elsewhere, =bbdate=); specs in
+  =bb-event-preview=, =bb-date-links=, =popup-ext-foreign=; mutations =bb-window-links.json= (8 OK, one
+  =expect: pass=: the year cache's version, no spec sees IndexedDB), two stale finds refreshed (both OK);
+  coverage windows (=bbwin=), docs, HELP, WIP.12; the sibling spec run deferred (vzell, 2026-11-12:
+  "run them after a couple more Phases")
+- [X] vzell's live check of both (2026-11-12): OK
 
 *** TODO Phase 9 — year listing pages =bb-year-list= (/2026-list)
 vzell, 2026-11-11: support =https://brucebase.wikidot.com/2026-list=. 126 pages in the mirror
@@ -664,6 +674,12 @@ Switch to plan mode
 2.)
 
 Replace that section with proper new "Phase <Id>" sections
-** venue POHs have NO hover support for e.g Wikipedia links
+** DONE venue POHs have NO hover support for e.g Wikipedia links
 
 venue POHs have NO hover support for e.g Wikipedia links, e.g. when hovering https://brucebase.wikidot.com/venue:state-farm-arena-atlanta-ga
+
+** DONE icons missing
+
+On the year-event pages e.g. https://brucebase.wikidot.com/2026#020526 there are icons for an evetn if specific information is included in the detail event link, see [Image #21]
+Cound these icons made available on the "Info & Setlist" POH, see [Image #22]
+

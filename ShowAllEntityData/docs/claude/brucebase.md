@@ -1162,6 +1162,14 @@ some release and song pages; none on venue, relation, onstage, bootleg or
 lyrics pages. Details: docs/claude/detail-pages.md, "The Brucebase date
 anchor" and the G3 bullet.
 
+Two follow-ups from vzell's live check (2026-11-12): the show's window draws
+the year page's icons (Photo, Setlist, Memorabilia, Video, …: the site's own
+images, each with its word) where the Fields said "The gig page has …"; and
+every Brucebase window (a venue's, a show's, a Brucebase page's on another
+site) opens any link with a reader in place, as a MusicBrainz entity's window
+does — a venue's "Source: Wikipedia" opens the article there, with Back
+(`_dpWinIsBb()`).
+
 ## A page's history in the window — `_bbHist*` (Phase 6, 2026-11-11)
 
 vzell's mockup M4 (org/bb-overhaul-mockups.html): a closed "History"

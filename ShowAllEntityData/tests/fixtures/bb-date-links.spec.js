@@ -20,6 +20,23 @@ const YEAR = 'https://brucebase.wikidot.com/1985';
 const fixture = (name) => fs.readFileSync(path.join(__dirname, name), 'utf8');
 const card = (page) => page.locator('#mb-dp-peek');
 const dialog = (page) => page.locator('#mb-dp-dialog');
+/**
+ * The icon titles of one show of the 1985 fixture, read with a plain regex
+ * (independent of the parser): from its anchor to the next anchor or <hr>,
+ * every img title but "Help Us…", first of each.
+ *
+ * @param {string} anchor - "130185".
+ * @returns {string[]}
+ */
+function fixtureIconTitles(anchor) {
+    const html = fixture('bb-year-1985.html');
+    const from = html.indexOf(`<a name="${anchor}"`);
+    const rest = html.slice(from + 10);
+    const end = Math.min(...[rest.search(/<a name="\d{6}"/), rest.search(/<hr\b/)].filter(i => i >= 0));
+    const titles = [...rest.slice(0, end).matchAll(/<img[^>]*\btitle="([^"]*)"/g)].map(m => m[1])
+        .filter(t => t && !/^Help/i.test(t));
+    return [...new Set(titles)];
+}
 const yearAsks = (page) => page.evaluate((y) => (window.__gmXhrLog || []).filter(r => r.url === y).length, YEAR);
 
 /**
@@ -99,6 +116,15 @@ test.describe('Brucebase show links on Brucebase pages (Phase 8)', () => {
         await expect(title).toHaveText('Brucebase show');
         await expect(dialog(page).locator('.mb-dp-area')).toContainText('1985-01-13');
         expect(await yearAsks(page)).toBe(1);
+        // The year page's icons (vzell, 2026-11-12, Image #21/#22): each the
+        // site's own image with its word, in place of the line in the Fields.
+        const titles = fixtureIconTitles('130185');
+        expect(titles.length, 'the fixture\'s show has icons').toBeGreaterThan(2);
+        const icons = dialog(page).locator('ul.mb-dp-icons > li');
+        await expect(icons).toHaveText(titles);
+        const srcs = await icons.locator('img').evaluateAll(imgs => imgs.map(i => i.getAttribute('src')));
+        expect(srcs.every(u => /^https:\/\/brucebase\.wdfiles\.com\/local--files\/content:files\/00\w+-32\.png$/.test(u)), srcs.join(' ')).toBe(true);
+        await expect(dialog(page).locator('dl.mb-dp-kv dt', { hasText: 'The gig page has' })).toHaveCount(0);
         await page.keyboard.press('Escape');
         await expect(dialog(page)).toBeHidden();
         // A second show of the same year costs nothing.
@@ -106,6 +132,30 @@ test.describe('Brucebase show links on Brucebase pages (Phase 8)', () => {
         await page.keyboard.press('Space');
         await expect(dialog(page).locator('.mb-dp-area')).toContainText('1985-01-05');
         expect(await yearAsks(page)).toBe(1);
+    });
+
+    test('the show\'s window opens a Wikipedia link in place, with Back (a Brucebase window)', async ({ page }) => {
+        const WIKI = 'https://en.wikipedia.org/wiki/Colonial_Life_Arena';
+        const { a } = await loadWithShowLinks(page);
+        await ctrlHover(page, a);
+        await page.keyboard.press('Space');
+        const title = dialog(page).locator(':scope > div > span').first();
+        await expect(title).toHaveText('Brucebase show');
+        await page.evaluate((h) => {
+            const x = document.createElement('a');
+            x.className = 'p8-wiki';
+            x.href = h;
+            x.target = '_blank';
+            x.textContent = 'Colonial Life Arena';
+            document.querySelector('#mb-dp-dialog .mb-dp-area').appendChild(x);
+        }, WIKI);
+        const pages = [];
+        page.on('popup', (pp) => pages.push(pp.url()));
+        await dialog(page).locator('a.p8-wiki').click();
+        await expect(title, 'one step deeper in the same window').toContainText('›');
+        expect(pages, 'no new tab').toEqual([]);
+        await page.keyboard.press('Backspace');
+        await expect(title).toHaveText('Brucebase show');
     });
 
     test('a click on the page is still the site\'s: not taken, no window', async ({ page }) => {

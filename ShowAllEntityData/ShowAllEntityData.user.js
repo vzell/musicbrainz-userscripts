@@ -37692,7 +37692,16 @@
         const coverScan = data.cover ? (data.images.find(i => i.thumb === data.cover) || {}) : {};
         if (data.cover) left.push(`<a href="${_mbttEscape(coverScan.full || data.cover)}" target="_blank" rel="noopener" data-mb-artv-ext="${artvN++}">` +
             `<img class="mb-dp-xcover" src="${_mbttEscape(data.cover)}" alt="${_mbttEscape(coverScan.label || 'cover')}"></a>`);
-        if (data.fields.length) left.push('<h4>Fields</h4>' + _dpFieldsHtml(data.fields));
+        // A Brucebase show's icons from its year page (`_extBbDateLoad()`,
+        // vzell 2026-11-12): drawn as the year page draws them, each with its
+        // word, in place of the line of words in the Fields.
+        const icons = Array.isArray(data.icons) && data.icons.length ? data.icons : null;
+        const fields = icons ? data.fields.filter(([k]) => k !== 'The gig page has') : data.fields;
+        if (fields.length) left.push('<h4>Fields</h4>' + _dpFieldsHtml(fields));
+        if (icons) {
+            left.push('<h4>The gig page has</h4><ul class="mb-dp-icons">' + icons.map(i =>
+                `<li><img src="${_mbttEscape(i.src)}" alt=""><span>${_mbttEscape(i.title)}</span></li>`).join('') + '</ul>');
+        }
         const scans = data.images.filter(i => i.thumb && i.thumb !== data.cover);
         // A Brucebase image's caption comes from its filename ("Photo · Cliff
         // Breining · #01", `_bbImageCaption()`), the kind otherwise; the
@@ -39392,6 +39401,25 @@
     const _DP_WIN_ALL_LINKS_READERS = new Set(['wikipedia', 'wikidata', 'setlistfm']);
 
     /**
+     * Whether the window shows a Brucebase page, which opens EVERY link with a
+     * reader in the window too, like a MusicBrainz entity's (vzell,
+     * 2026-11-12: a venue window's "Source: Wikipedia" had no card and left
+     * for a new tab). On Brucebase its own source (`_dpSiteSource()`, id the
+     * host); elsewhere the `springsteen` reader on a brucebase.wikidot.com
+     * page, or a show on its year page (`bbdate`). The other Springsteen
+     * sites keep `_DP_WIN_EXT_READERS`.
+     *
+     * @param {object} cur - What the window shows now.
+     * @returns {boolean}
+     */
+    function _dpWinIsBb(cur) {
+        if (cur.src && cur.src.id === 'brucebase.wikidot.com') return true;
+        if (!cur.reader) return false;
+        return cur.reader.id === 'bbdate' ||
+            (cur.reader.id === 'springsteen' && /^https?:\/\/brucebase\.wikidot\.com\//i.test(cur.url || ''));
+    }
+
+    /**
      * What a click on a link to a Brucebase show or a Springsteen site's
      * detail page shows in the window, from any window (vzell, 2026-10-29: a
      * MusicBrainz event's "Review" link to http://brucebase.wikidot.com/2002#100802
@@ -39411,7 +39439,8 @@
         if (!ext || !ext.enabled()) return null;
         const r = _extTarget(a, { inWindow: true });
         if (!r || r.key === cur.key) return null;
-        const all = !!((cur.src && _DP_WIN_ALL_LINKS_SOURCES.has(cur.src.id)) || (cur.reader && _DP_WIN_ALL_LINKS_READERS.has(cur.reader.id)));
+        const all = !!((cur.src && _DP_WIN_ALL_LINKS_SOURCES.has(cur.src.id)) || (cur.reader && _DP_WIN_ALL_LINKS_READERS.has(cur.reader.id))) ||
+            _dpWinIsBb(cur);
         if (!all && !_DP_WIN_EXT_READERS.has(r.reader.id)) return null;
         return Object.assign({ src: ext, el: a, drilled: true }, r);
     }
@@ -42346,6 +42375,10 @@
             .mb-dp-dialog .mb-dp-xtitle { font-weight: 700; font-size: 1.2em; line-height: 1.3; }
             .mb-dp-dialog .mb-dp-xsub { font-style: italic; color: #7a6d5c; }
             .mb-dp-dialog .mb-dp-xcover { display: block; max-width: 100%; max-height: 220px; margin: 8px 0; border: 1px solid #d9cfbd; }
+            /* A Brucebase show's year-page icons, each with its word. */
+            .mb-dp-dialog ul.mb-dp-icons { display: flex; flex-wrap: wrap; gap: 6px 14px; list-style: none; margin: 4px 0; padding: 0; }
+            .mb-dp-dialog ul.mb-dp-icons > li { display: inline-flex; align-items: center; gap: 5px; }
+            .mb-dp-dialog ul.mb-dp-icons img { width: 26px; height: 26px; }
             /* The cover's link as wide as the picture, not the column: the
                pointer beside it is not on the image (org/dp-window-hover.org). */
             .mb-dp-dialog a:has(> img.mb-dp-xcover) { display: inline-block; max-width: 100%; vertical-align: top; }
@@ -88197,7 +88230,7 @@
     const _EXT_BB_MAX_BYTES = 1024 * 1024;
 
     /** Version of the parsed year pages kept in IndexedDB; bump when `_extBbParseYear()`'s output changes. */
-    const _EXT_BB_YEAR_VERSION = 1;
+    const _EXT_BB_YEAR_VERSION = 2;
 
     /**
      * Each year page's load, by its URL: a promise of `_extBbYear()`'s
@@ -88260,15 +88293,22 @@
                 if (n && !people.includes(n)) people.push(n);
             });
             const has = [];
+            // The icons themselves too (vzell, 2026-11-12, Image #21): the
+            // show's window draws them as the year page does.
+            const icons = [];
             block.forEach(el => [el, ...el.querySelectorAll('img[title]')].forEach(img => {
                 const ti = img.tagName === 'IMG' ? img.getAttribute('title') : '';
-                if (ti && !/^Help/i.test(ti) && !has.includes(ti)) has.push(ti);
+                if (ti && !/^Help/i.test(ti) && !has.includes(ti)) {
+                    has.push(ti);
+                    const src = img.getAttribute('src') || '';
+                    if (src) icons.push({ title: ti, src: _dpAbsUrl(src, base) });
+                }
             }));
             shows[name] = {
                 heading, date: /^\d{4}-\d\d-\d\d$/.test(date) ? date : '', venue: rest.join(' - '),
                 gig: gig ? _dpAbsUrl(gig.getAttribute('href'), base) : '', cancelled: !!gig && /^\/nogig:/.test(gig.getAttribute('href')),
                 setlist: setlistP ? _dpText(setlistP.textContent).split(/\s+\/\s+/).filter(Boolean) : [],
-                notes, people, has,
+                notes, people, has, icons,
             };
         });
         return { icon, shows };
@@ -88352,6 +88392,10 @@
         ].filter(f => f[1]);
         dp.tracks = show.setlist.map((s, i) => ({ disc: '', pos: String(i + 1), title: s, from: '' }));
         dp.notes = show.notes;
+        // The year page's icons for the window (`_dpShowInDialog()`); the
+        // card keeps the line of words above. A year read before version 2
+        // has none.
+        if (show.icons && show.icons.length) dp.icons = show.icons;
         Object.assign(rec, { title: dp.title, description: show.notes[0] || '', type: 'show', dp });
         if (show.gig) rec.links.push([show.cancelled ? 'The date\'s page' : 'Gig page', show.gig]);
         return { ok: true, data: rec };

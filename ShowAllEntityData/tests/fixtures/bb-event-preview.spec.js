@@ -285,6 +285,36 @@ test.describe('bb-year: the Event column\'s preview (2026-10-24)', () => {
         expect(errors).toEqual([]);
     });
 
+    // vzell, 2026-11-12: a venue window's "Source: Wikipedia" had no card and
+    // left for a new tab. A Brucebase window opens every link with a reader
+    // in place, like a MusicBrainz entity's (`_dpWinIsBb()`).
+    test('a venue window\'s "Source: Wikipedia" opens in the window, with Back', async ({ page }) => {
+        await page.setViewportSize({ width: 1920, height: 1000 });
+        await openYear(page, { sa_pop_ext: true });
+        const venue = venueLink(page, GIG13);
+        await page.mouse.move(0, 0);
+        await revealPastStickyColumn(page, venue);
+        await page.keyboard.down('Control');
+        await venue.hover();
+        await page.keyboard.up('Control');
+        await expect(peek(page)).toContainText('South Carolina (SC)');
+        await page.keyboard.press('Space');
+        const title = dialog(page).locator(':scope > div > span').first();
+        await expect(dialog(page).locator('.mb-dp-xtitle')).toHaveText('Carolina Coliseum, Columbia, SC');
+        const before = await title.textContent();
+        const about = dialog(page).locator('details.mb-dp-sec[data-mb-dp-sec="About"]');
+        if (!(await about.evaluate(d => d.open))) await about.locator(':scope > summary').click();
+        const wiki = about.locator('a[href*="wikipedia.org/wiki/Carolina_Coliseum"]');
+        await expect(wiki).toHaveCount(1);
+        const pages = [];
+        page.on('popup', (pp) => pages.push(pp.url()));
+        await wiki.click();
+        await expect(title, 'one step deeper in the same window').toContainText('›');
+        expect(pages, 'no new tab').toEqual([]);
+        await page.keyboard.press('Backspace');
+        await expect(title).toHaveText(before);
+    });
+
     test('the year page before any button: an entry heading\'s own link previews its page', async ({ page }) => {
         const errors = [];
         page.on('pageerror', (e) => errors.push(String(e.stack || e.message || e)));

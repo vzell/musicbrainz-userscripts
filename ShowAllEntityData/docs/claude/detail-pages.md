@@ -3558,6 +3558,14 @@ the header's `@connect` and `_EXT_CONNECT_HOSTS` (the parent domain covers
   `_DP_WIN_EXT_READERS` too (branch B), so its pages open in any window.
   A hover over such a link in the window goes through the `ext` source, so
   the first-contact rule (`askHost`) holds there as on the page.
+  **A Brucebase window too** (2026-11-12, vzell: a venue window's "Source:
+  Wikipedia" had no card and left for a new tab): `_dpWinIsBb()` — Brucebase's
+  own window on its own host (source id `brucebase.wikidot.com`), the
+  `springsteen` reader on a brucebase.wikidot.com page elsewhere, a show on
+  its year page (`bbdate`). The other Springsteen sites' windows keep
+  `_DP_WIN_EXT_READERS`. Specs: `bb-event-preview.spec.js` (the venue),
+  `bb-date-links.spec.js` (a show), `popup-ext-foreign.spec.js` (a Brucebase
+  page's window on springsteenlyrics.com); mutations `bb-window-links.json`.
 - **The Brucebase date anchor (`_extBbDateTest()`, `_extBbDateLoad()`; U0
   X8).** MusicBrainz links a show as `/<year>#<ddmmyy>`: the year page,
   scrolled to `<a name="ddmmyy">`. `_extBbYear()` reads the year page ONCE
@@ -3573,7 +3581,11 @@ the header's `@connect` and `_EXT_CONNECT_HOSTS` (the parent domain covers
   between shows, after an `<hr>`): the setlist paragraph (" / " between
   titles; none for a cancelled show), `.list-pages-box` notes with their
   `/relation:` people, and the icons naming what the gig page has ("Help Us"
-  is a request for information, not one of them). The record is a detail
+  is a request for information, not one of them; since 2026-11-12 each
+  icon's image is kept beside its word, `icons`, `_EXT_BB_YEAR_VERSION` 2,
+  and the window draws them as the year page does, `ul.mb-dp-icons` in
+  `_dpExtractedCols()`, in place of the Fields line "The gig page has",
+  which the card keeps — vzell, Image #21/#22). The record is a detail
   record in `rec.dp` (venue, date, the setlist as tracks, People, notes) plus
   the gig page in See also. A date its year page has no show for is `dead`
   ("not available"). Live page: the year page as Brucebase's own Live page

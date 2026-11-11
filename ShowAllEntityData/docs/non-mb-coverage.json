@@ -255,8 +255,9 @@
     { "key": "wp", "label": "Wikipedia", "how": "allLinksReaders", "allLinks": true },
     { "key": "wd", "label": "Wikidata", "how": "allLinksReaders", "allLinks": true },
     { "key": "sfm", "label": "setlist.fm", "how": "allLinksReaders", "allLinks": true },
-    { "key": "spr", "label": "Springsteen detail", "how": "the springsteen reader, or the site's own window on its own host", "allLinks": false },
-    { "key": "bbdate", "label": "Brucebase show (year#date)", "how": "the bbdate reader; also the MB-Event glyph's window", "allLinks": false },
+    { "key": "bbwin", "label": "Brucebase page", "how": "_dpWinIsBb() (vzell, 2026-11-12: a venue window's Source: Wikipedia): Brucebase's own window on its own host, the springsteen reader on a brucebase.wikidot.com page elsewhere", "allLinks": true },
+    { "key": "spr", "label": "Springsteen detail (SL, JL, KF)", "how": "the springsteen reader, or the site's own window on its own host (a Brucebase page: the row above)", "allLinks": false },
+    { "key": "bbdate", "label": "Brucebase show (year#date)", "how": "the bbdate reader; also the MB-Event glyph's window; every link since 2026-11-12 (_dpWinIsBb())", "allLinks": true },
     { "key": "ia", "label": "archive.org item", "how": "the iadetails reader", "allLinks": false },
     { "key": "yt", "label": "YouTube", "how": "the youtube reader", "allLinks": false },
     { "key": "web", "label": "Other web page", "how": "the generic reader", "allLinks": false }

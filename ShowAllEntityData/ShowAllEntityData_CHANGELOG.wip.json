@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.12",
+    "date": "2026-11-12",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Brucebase: the window of a show on its year page (e.g. an event's \"Info & Setlist\") shows the year page's icons — Photo, Setlist, Memorabilia, Video, Bootleg, … — each with its name, instead of a line of words.",
+          "Brucebase: every Brucebase window (a venue, a person, a show, a song; on Brucebase or from another site) opens any link in the same window, as a MusicBrainz window does: a venue's \"Source: Wikipedia\" shows the article there, with Back."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.11",
     "date": "2026-11-11",
     "sections": [

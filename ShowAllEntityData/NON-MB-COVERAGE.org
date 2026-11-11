@@ -153,93 +153,99 @@ Columns: 1 MusicBrainz (musicbrainz.org/artist/<mbid>), 2 SL · JL · KF · BB s
 
 ** On musicbrainz.org
 
-| Window \ link              | 1    | 2 | 3    | 4 | 5    | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
-|----------------------------+------+---+------+---+------+---+---+---+---+----+----+----|
-| MusicBrainz entity         | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
-| Discogs (7 readers)        | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
-| Wikipedia                  | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
-| Wikidata                   | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
-| setlist.fm                 | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
-| Springsteen detail         | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
-| Brucebase show (year#date) | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
-| archive.org item           | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
-| YouTube                    | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
-| Other web page             | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| Window \ link                   | 1    | 2 | 3    | 4 | 5    | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
+|---------------------------------+------+---+------+---+------+---+---+---+---+----+----+----|
+| MusicBrainz entity              | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Discogs (7 readers)             | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Wikipedia                       | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Wikidata                        | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| setlist.fm                      | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Brucebase page                  | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Springsteen detail (SL, JL, KF) | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| Brucebase show (year#date)      | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| archive.org item                | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| YouTube                         | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| Other web page                  | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
 
 ** On discogs.com
 
-| Window \ link              | 1    | 2 | 3    | 4 | 5    | 6 | 7 | 8    | 9 | 10 | 11 | 12 |
-|----------------------------+------+---+------+---+------+---+---+------+---+----+----+----|
-| MusicBrainz entity         | H/n2 | H | H/n5 | H | H/n3 | H | H | T/n4 | H | H  | H  | H  |
-| Discogs (7 readers)        | H/n2 | H | H/n5 | H | H/n3 | H | H | T/n4 | H | H  | H  | H  |
-| Wikipedia                  | H/n2 | H | H/n5 | H | H/n3 | H | H | T/n4 | H | H  | H  | H  |
-| Wikidata                   | H/n2 | H | H/n5 | H | H/n3 | H | H | T/n4 | H | H  | H  | H  |
-| setlist.fm                 | H/n2 | H | H/n5 | H | H/n3 | H | H | T/n4 | H | H  | H  | H  |
-| Springsteen detail         | H/n2 | H | H/n5 | H | H/n3 | H | T | T/n4 | T | T  | T  | T  |
-| Brucebase show (year#date) | H/n2 | H | H/n5 | H | H/n3 | H | T | T/n4 | T | T  | T  | T  |
-| archive.org item           | H/n2 | H | H/n5 | H | H/n3 | H | T | T/n4 | T | T  | T  | T  |
-| YouTube                    | H/n2 | H | H/n5 | H | H/n3 | H | T | T/n4 | T | T  | T  | T  |
-| Other web page             | H/n2 | H | H/n5 | H | H/n3 | H | T | T/n4 | T | T  | T  | T  |
+| Window \ link                   | 1    | 2 | 3    | 4 | 5    | 6 | 7 | 8    | 9 | 10 | 11 | 12 |
+|---------------------------------+------+---+------+---+------+---+---+------+---+----+----+----|
+| MusicBrainz entity              | H/n2 | H | H/n5 | H | H/n3 | H | H | T/n4 | H | H  | H  | H  |
+| Discogs (7 readers)             | H/n2 | H | H/n5 | H | H/n3 | H | H | T/n4 | H | H  | H  | H  |
+| Wikipedia                       | H/n2 | H | H/n5 | H | H/n3 | H | H | T/n4 | H | H  | H  | H  |
+| Wikidata                        | H/n2 | H | H/n5 | H | H/n3 | H | H | T/n4 | H | H  | H  | H  |
+| setlist.fm                      | H/n2 | H | H/n5 | H | H/n3 | H | H | T/n4 | H | H  | H  | H  |
+| Brucebase page                  | H/n2 | H | H/n5 | H | H/n3 | H | H | T/n4 | H | H  | H  | H  |
+| Springsteen detail (SL, JL, KF) | H/n2 | H | H/n5 | H | H/n3 | H | T | T/n4 | T | T  | T  | T  |
+| Brucebase show (year#date)      | H/n2 | H | H/n5 | H | H/n3 | H | H | T/n4 | H | H  | H  | H  |
+| archive.org item                | H/n2 | H | H/n5 | H | H/n3 | H | T | T/n4 | T | T  | T  | T  |
+| YouTube                         | H/n2 | H | H/n5 | H | H/n3 | H | T | T/n4 | T | T  | T  | T  |
+| Other web page                  | H/n2 | H | H/n5 | H | H/n3 | H | T | T/n4 | T | T  | T  | T  |
 
 ** On setlist.fm
 
-| Window \ link              | 1    | 2 | 3    | 4 | 5    | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
-|----------------------------+------+---+------+---+------+---+---+---+---+----+----+----|
-| MusicBrainz entity         | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
-| Discogs (7 readers)        | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
-| Wikipedia                  | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
-| Wikidata                   | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
-| setlist.fm                 | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
-| Springsteen detail         | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
-| Brucebase show (year#date) | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
-| archive.org item           | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
-| YouTube                    | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
-| Other web page             | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| Window \ link                   | 1    | 2 | 3    | 4 | 5    | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
+|---------------------------------+------+---+------+---+------+---+---+---+---+----+----+----|
+| MusicBrainz entity              | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Discogs (7 readers)             | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Wikipedia                       | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Wikidata                        | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| setlist.fm                      | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Brucebase page                  | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Springsteen detail (SL, JL, KF) | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| Brucebase show (year#date)      | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| archive.org item                | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| YouTube                         | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| Other web page                  | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
 
 ** On SL · JL · KF
 
-| Window \ link              | 1    | 2    | 3    | 4 | 5    | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
-|----------------------------+------+------+------+---+------+---+---+---+---+----+----+----|
-| MusicBrainz entity         | H/n2 | H/n1 | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
-| Discogs (7 readers)        | H/n2 | H/n1 | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
-| Wikipedia                  | H/n2 | H/n1 | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
-| Wikidata                   | H/n2 | H/n1 | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
-| setlist.fm                 | H/n2 | H/n1 | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
-| Springsteen detail         | H/n2 | H/n1 | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
-| Brucebase show (year#date) | H/n2 | H/n1 | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
-| archive.org item           | H/n2 | H/n1 | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
-| YouTube                    | H/n2 | H/n1 | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
-| Other web page             | H/n2 | H/n1 | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| Window \ link                   | 1    | 2    | 3    | 4 | 5    | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
+|---------------------------------+------+------+------+---+------+---+---+---+---+----+----+----|
+| MusicBrainz entity              | H/n2 | H/n1 | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Discogs (7 readers)             | H/n2 | H/n1 | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Wikipedia                       | H/n2 | H/n1 | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Wikidata                        | H/n2 | H/n1 | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| setlist.fm                      | H/n2 | H/n1 | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Brucebase page                  | H/n2 | H/n1 | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Springsteen detail (SL, JL, KF) | H/n2 | H/n1 | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| Brucebase show (year#date)      | H/n2 | H/n1 | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| archive.org item                | H/n2 | H/n1 | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| YouTube                         | H/n2 | H/n1 | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| Other web page                  | H/n2 | H/n1 | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
 
 ** On Brucebase
 
-| Window \ link              | 1    | 2    | 3    | 4 | 5    | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
-|----------------------------+------+------+------+---+------+---+---+---+---+----+----+----|
-| MusicBrainz entity         | H/n2 | H/n1 | H/n1 | H | H/n3 | H | H | H | H | H  | H  | H  |
-| Discogs (7 readers)        | H/n2 | H/n1 | H/n1 | H | H/n3 | H | H | H | H | H  | H  | H  |
-| Wikipedia                  | H/n2 | H/n1 | H/n1 | H | H/n3 | H | H | H | H | H  | H  | H  |
-| Wikidata                   | H/n2 | H/n1 | H/n1 | H | H/n3 | H | H | H | H | H  | H  | H  |
-| setlist.fm                 | H/n2 | H/n1 | H/n1 | H | H/n3 | H | H | H | H | H  | H  | H  |
-| Springsteen detail         | H/n2 | H/n1 | H/n1 | H | H/n3 | H | T | T | T | T  | T  | T  |
-| Brucebase show (year#date) | H/n2 | H/n1 | H/n1 | H | H/n3 | H | T | T | T | T  | T  | T  |
-| archive.org item           | H/n2 | H/n1 | H/n1 | H | H/n3 | H | T | T | T | T  | T  | T  |
-| YouTube                    | H/n2 | H/n1 | H/n1 | H | H/n3 | H | T | T | T | T  | T  | T  |
-| Other web page             | H/n2 | H/n1 | H/n1 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| Window \ link                   | 1    | 2    | 3    | 4 | 5    | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
+|---------------------------------+------+------+------+---+------+---+---+---+---+----+----+----|
+| MusicBrainz entity              | H/n2 | H/n1 | H/n1 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Discogs (7 readers)             | H/n2 | H/n1 | H/n1 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Wikipedia                       | H/n2 | H/n1 | H/n1 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Wikidata                        | H/n2 | H/n1 | H/n1 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| setlist.fm                      | H/n2 | H/n1 | H/n1 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Brucebase page                  | H/n2 | H/n1 | H/n1 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Springsteen detail (SL, JL, KF) | H/n2 | H/n1 | H/n1 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| Brucebase show (year#date)      | H/n2 | H/n1 | H/n1 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| archive.org item                | H/n2 | H/n1 | H/n1 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| YouTube                         | H/n2 | H/n1 | H/n1 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| Other web page                  | H/n2 | H/n1 | H/n1 | H | H/n3 | H | T | T | T | T  | T  | T  |
 
 ** On archive.org
 
-| Window \ link              | 1    | 2 | 3    | 4 | 5    | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
-|----------------------------+------+---+------+---+------+---+---+---+---+----+----+----|
-| MusicBrainz entity         | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
-| Discogs (7 readers)        | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
-| Wikipedia                  | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
-| Wikidata                   | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
-| setlist.fm                 | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
-| Springsteen detail         | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
-| Brucebase show (year#date) | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
-| archive.org item           | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
-| YouTube                    | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
-| Other web page             | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| Window \ link                   | 1    | 2 | 3    | 4 | 5    | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
+|---------------------------------+------+---+------+---+------+---+---+---+---+----+----+----|
+| MusicBrainz entity              | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Discogs (7 readers)             | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Wikipedia                       | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Wikidata                        | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| setlist.fm                      | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Brucebase page                  | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| Springsteen detail (SL, JL, KF) | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| Brucebase show (year#date)      | H/n2 | H | H/n5 | H | H/n3 | H | H | H | H | H  | H  | H  |
+| archive.org item                | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| YouTube                         | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
+| Other web page                  | H/n2 | H | H/n5 | H | H/n3 | H | T | T | T | T  | T  | T  |
 
 ** Notes
 
@@ -256,8 +262,9 @@ Columns: 1 MusicBrainz (musicbrainz.org/artist/<mbid>), 2 SL · JL · KF · BB s
 - Wikipedia: allLinksReaders
 - Wikidata: allLinksReaders
 - setlist.fm: allLinksReaders
-- Springsteen detail: the springsteen reader, or the site's own window on its own host
-- Brucebase show (year#date): the bbdate reader; also the MB-Event glyph's window
+- Brucebase page: _dpWinIsBb() (vzell, 2026-11-12: a venue window's Source: Wikipedia): Brucebase's own window on its own host, the springsteen reader on a brucebase.wikidot.com page elsewhere
+- Springsteen detail (SL, JL, KF): the springsteen reader, or the site's own window on its own host (a Brucebase page: the row above)
+- Brucebase show (year#date): the bbdate reader; also the MB-Event glyph's window; every link since 2026-11-12 (_dpWinIsBb())
 - archive.org item: the iadetails reader
 - YouTube: the youtube reader
 - Other web page: the generic reader

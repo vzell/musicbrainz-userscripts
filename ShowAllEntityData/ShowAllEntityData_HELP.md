@@ -3330,7 +3330,13 @@ but Brucebase is slow, and that first request can take several seconds. A
 date the year page has no show for, or a show that did not take place, says
 so. On Brucebase itself such links preview too (an event's *Info & Setlist*,
 a release's "recorded July 6, 1981"); clicking one still goes to the year
-page as before.
+page as before. The window shows the year page's icons for the show (Photo,
+Setlist, Video, …), each with its name.
+
+In a **Brucebase window** (a venue, a person, a show, a song — on Brucebase
+or from another site) every link opens in the same window too, like in a
+MusicBrainz window: a venue's *Source: Wikipedia* shows the article there.
+**← Back** returns; Ctrl/⌘-click opens a new tab instead.
 
 **On the Springsteen sites themselves** (springsteenlyrics.com, Brucebase,
 jungleland.it, brucespringsteen.it, each with its own support switched on),
