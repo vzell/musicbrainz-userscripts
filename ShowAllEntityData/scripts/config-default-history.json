@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "952b79dfdded445f53e94a2b563caa60a624aa5e",
-    "revisions_walked": 1218
+    "head": "f25cf354ec565acef48d8cc20b529ae0fd8096ae",
+    "revisions_walked": 1219
   },
   "changes": [
     {
@@ -1126,6 +1126,7 @@
     "sa_bb_detail_preview": true,
     "sa_bb_detail_pages": true,
     "sa_bb_event_preview": true,
+    "sa_bb_history": true,
     "sa_bb_mb_event_lookup": true,
     "sa_bb_tip_images": true,
     "sa_enable_discogs": true,
