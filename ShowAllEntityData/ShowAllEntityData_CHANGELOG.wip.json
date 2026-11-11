@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.11",
+    "date": "2026-11-11",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Brucebase: links to a show on its year page (an event's \"Info & Setlist\", a release's \"recorded July 6, 1981\", e.g. /2026#020526) now preview on Brucebase's own pages too — the card on hover, the show in the window on Space — as they already did on every other site. Clicking one still goes to the year page."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.10",
     "date": "2026-11-11",
     "sections": [

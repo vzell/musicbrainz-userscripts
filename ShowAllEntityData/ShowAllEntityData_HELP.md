@@ -3328,7 +3328,9 @@ have (unless you have scrolled the page yourself by then). One
 request reads the whole year, so other dates of that year then cost nothing —
 but Brucebase is slow, and that first request can take several seconds. A
 date the year page has no show for, or a show that did not take place, says
-so.
+so. On Brucebase itself such links preview too (an event's *Info & Setlist*,
+a release's "recorded July 6, 1981"); clicking one still goes to the year
+page as before.
 
 **On the Springsteen sites themselves** (springsteenlyrics.com, Brucebase,
 jungleland.it, brucespringsteen.it, each with its own support switched on),

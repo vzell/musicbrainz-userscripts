@@ -1150,6 +1150,18 @@ fixture's tag block; "grouped by photographer" — 1985-01-04's Mic Hampton,
 1985-01-13's unknown photographer; "image groups fold"); mutations
 `scripts/mutations/bb-names-tags.json` and `bb-window-sections.json`.
 
+## Show links on Brucebase's own pages (Phase 8, 2026-11-11)
+
+A show on its year page (`/<yyyy>#<ddmmyy>`: an event's "Info & Setlist", a
+release's or song's "recorded July 6, 1981", the copies in our head and
+tables) previews on Brucebase's own pages with the `bbdate` reader, as it did
+on every other site and, since G3 (2026-11-03), inside a window here. The
+mirror sample has them on most event pages (gig 103/120, nogig 37/40,
+recording 54/60, rehearsal 34/40, interview 28/40), every playlist main page,
+some release and song pages; none on venue, relation, onstage, bootleg or
+lyrics pages. Details: docs/claude/detail-pages.md, "The Brucebase date
+anchor" and the G3 bullet.
+
 ## A page's history in the window — `_bbHist*` (Phase 6, 2026-11-11)
 
 vzell's mockup M4 (org/bb-overhaul-mockups.html): a closed "History"

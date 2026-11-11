@@ -89165,6 +89165,11 @@
                 return null;
             }
         }
+        // Brucebase writes a show on its year page relative ("/1978#070778",
+        // an event's "Info & Setlist"): read against the page, so the
+        // `bbdate` reader takes it there too (Phase 8, 2026-11-11). Only that
+        // shape: the site's other relative links are its own pages.
+        if (_isBbHost && /^\/\d{4}#\d{6}$/.test(href)) href = `${window.location.origin}${href}`;
         if (!/^https?:\/\//i.test(href)) return null;
         let u;
         try {
@@ -89182,14 +89187,17 @@
         // a Discogs page a Discogs reader takes (2026-10-18: a release,
         // master, artist, label or its history, a user, a search).
         // On archive.org (2026-10-31): an item our table links, the
-        // `iadetails` reader's. On Brucebase, IN a window only (G3 of
-        // NON-MB-COVERAGE.org, 2026-11-03): a show on its year page
-        // (`/<yyyy>#<ddmmyy>`, the `bbdate` reader's) — a MusicBrainz event's
-        // Brucebase link, which kept its new tab here and opens in the window
-        // everywhere else. On the page itself such a link stays the site's.
+        // `iadetails` reader's. On Brucebase: a show on its year page
+        // (`/<yyyy>#<ddmmyy>`, the `bbdate` reader's) — first IN a window
+        // only (G3 of NON-MB-COVERAGE.org, 2026-11-03: a MusicBrainz event's
+        // Brucebase link, which kept its new tab there), and since
+        // 2026-11-11 on the page too (vzell, org/brucebase.org Phase 8): an
+        // event's "Info & Setlist", a release's "recorded July 6, 1981", our
+        // tables' copies of them. The card and the window only: a click on
+        // the page is still the site's.
         if (bare(host) === bare(window.location.hostname.toLowerCase()) &&
             !(_isDgHost && _extDgSiteTest(u)) && !(_isIaHost && _extIaTest(u)) && !(_isSfmHost && _extSfmTest(u)) &&
-            !(_isBbHost && inWindow && _extBbDateTest(u))) return null;
+            !(_isBbHost && _extBbDateTest(u))) return null;
         if (_EXT_SKIP_HOST_RE.test(host) || _EXT_SKIP_URL_RE.test(href)) return null;
         // A Relationships icon is an image link that IS the link: it gets
         // the card (2026-10-17). Elsewhere a link around an image is the

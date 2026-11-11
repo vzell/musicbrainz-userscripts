@@ -3512,7 +3512,15 @@ the header's `@connect` and `_EXT_CONNECT_HOSTS` (the parent domain covers
 - **A Brucebase show inside a window on Brucebase** (G3, 2026-11-03):
   `_extTarget()` takes `/<yyyy>#<ddmmyy>` on brucebase.wikidot.com itself
   when `inWindow` (`_extBbDateTest()`), the `bbdate` reader's, as on every
-  other host. On the page itself such a link stays the site's own.
+  other host. Until 2026-11-11 such a link on the page itself stayed the
+  site's own; since then (vzell, org/brucebase.org Phase 8) the condition
+  is gone: the card and the window on the page too (an event's "Info &
+  Setlist", a release's "recorded July 6, 1981", our tables' copies), the
+  click still the site's. The wiki writes the link relative
+  ("/1978#070778"), so `_extTarget()` reads THAT shape (and only it)
+  against the page on Brucebase; every other relative link there is the
+  site's own page, left to the Brucebase sources. Spec
+  `bb-date-links.spec.js`, mutations `bb-date-links.json` (3).
 - **Charset: `_extFetch()`'s `charset`** becomes `overrideMimeType`
   (`text/html; charset=windows-1252` for jungleland.it, which names none);
   `_extFetchText(url, charset)` and `_EXT_LIVE.fetchText` pass it on from

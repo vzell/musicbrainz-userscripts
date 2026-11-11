@@ -290,14 +290,15 @@ test.describe('links inside a window on Brucebase (G2, G3)', () => {
         await expect(title, 'the Brucebase show, one step deeper').toHaveText('Web page › Brucebase show');
         await expect.poll(async () => (await xhrLog(page)).map(r => r.url)).toContain(YEAR);
         expect(pages, 'no new tab').toEqual([]);
-        // On the page itself such a link stays the site's own.
+        // On the page itself the show reader takes it too since 2026-11-11
+        // (org/brucebase.org Phase 8; bb-date-links.spec.js has the rest).
         const onPage = await page.evaluate((h) => {
             const a = document.createElement('a');
             a.setAttribute('href', h);
             document.querySelector('#page-content').appendChild(a);
             return window.__saTest.popResolve(a);
         }, `${YEAR}#130185`);
-        expect(onPage).toBeNull();
+        expect(onPage).toContain('bbdate');
     });
 
     // A generic page's window is no all-links window (`_DP_WIN_ALL_LINKS_*`):

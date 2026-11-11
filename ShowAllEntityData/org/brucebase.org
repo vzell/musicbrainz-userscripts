@@ -439,12 +439,17 @@ IndexedDB) already previews them on every other site and INSIDE a window on Bruc
 own pages they were left to the site on purpose (G3, 2026-11-03: the =inWindow= condition in the
 own-host test). Such links sit in the event pages' nav line ("Info & Setlist"), the year listing pages
 (Phase 9) and elsewhere.
-- [ ] list where they occur on the IP and FRP (mirror sweep: event nav, list pages, venue/relation lists)
-- [ ] the card on hover and the window on Space on the page itself (IP and FRP), the click still the
-  site's; a link to the page's own anchor (on =/2026= itself) keeps its jump — card or not: vzell decides
-  in the check
-- [ ] spec (a gig fixture's nav link: card, window, one year-page request; a second date of the same year
-  costs none), mutations, NON-MB-COVERAGE cells, detail-pages.md (the G3 note), HELP, WIP
+- [X] where they occur (mirror sample, 2026-11-11 · vzell-lap · n/a): gig 103/120, nogig 37/40, recording
+  54/60, rehearsal 34/40, interview 28/40, playlist main 20/20, release main 9/59, song 10/60, ott 4/20;
+  none on venue, relation, onstage, bootleg, lyrics. All in =#page-content= (=extRoot=) or our tables
+- [X] =_extTarget()=: the =inWindow= condition dropped for Brucebase show links, and the wiki's relative
+  "/1978#070778" read against the page (that shape only: the site's other relative links stay its own);
+  the click stays the site's. A link to the page's own anchor (on =/2026= itself) previews like any
+  other — vzell decides in the check
+- [X] =bb-date-links.spec.js= (5: the gig's "Info & Setlist" resolves, other own links do not; the
+  rendered head and tables; card, window, ONE year-page request for two 1985 shows; the click not taken;
+  =sa_pop_ext= off), G3 test in =popup-ext-foreign.spec.js= flipped, mutations =bb-date-links.json=
+  (3, all OK), coverage row (bb-event), detail-pages.md, brucebase.md, HELP, WIP.11; siblings 135 green
 - [ ] vzell's live check: a gig's "Info & Setlist", a link on 2026-list
 
 *** TODO Phase 9 — year listing pages =bb-year-list= (/2026-list)
@@ -659,3 +664,6 @@ Switch to plan mode
 2.)
 
 Replace that section with proper new "Phase <Id>" sections
+** venue POHs have NO hover support for e.g Wikipedia links
+
+venue POHs have NO hover support for e.g Wikipedia links, e.g. when hovering https://brucebase.wikidot.com/venue:state-farm-arena-atlanta-ga

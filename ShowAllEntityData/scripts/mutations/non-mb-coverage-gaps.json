@@ -66,24 +66,11 @@
     },
     {
         "name": "G3: a Brucebase show link on Brucebase is the page's own again",
-        "why": "G3: in a window on brucebase.wikidot.com, /<yyyy>#<ddmmyy> must be the bbdate reader's despite the same host.",
+        "why": "G3: in a window on brucebase.wikidot.com, /<yyyy>#<ddmmyy> must be the bbdate reader's despite the same host (since Phase 8, 2026-11-11, on the page too: bb-date-links.json; the old guard \"the exception reaches the page itself too\" was dropped with it).",
         "edits": [
             {
-                "find": "            !(_isBbHost && inWindow && _extBbDateTest(u))) return null;",
+                "find": "            !(_isBbHost && _extBbDateTest(u))) return null;",
                 "replace": "            true) return null;"
-            }
-        ],
-        "spec": "tests/fixtures/popup-ext-foreign.spec.js",
-        "grep": "G3:",
-        "expect": "fail"
-    },
-    {
-        "name": "G3: the exception reaches the page itself too",
-        "why": "G3 is for links IN a window: on the page itself such a link stays the site's own.",
-        "edits": [
-            {
-                "find": "            !(_isBbHost && inWindow && _extBbDateTest(u))) return null;",
-                "replace": "            !(_isBbHost && _extBbDateTest(u))) return null;"
             }
         ],
         "spec": "tests/fixtures/popup-ext-foreign.spec.js",
