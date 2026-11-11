@@ -420,12 +420,113 @@ when hovering a release in the left sidebar, ONLY the newest change should be sh
 
 
 * TODO make a nice mockup for a release with subheaders
+** initial
 
-make a nice mockup for a release with subheaders
+Currently the FRP of a Discogs release wich has subheaders in a tracklist (YES, discogs supports them on the IP) doesn't
+honor them (MB IP pages with release tracklists do not currently support them, although there are wishlist for them as
+tickets)
+
+1.)
+
+make some nice rich HTML based mockups for a FRP release with subheaders (also for the corresponding POH of such a release)
 
 #+begin_example
-@debug/d-release-with-subheaders.html - IP - https://www.discogs.com/release/2012001-Manfred-Manns-Earth-Band-Bootleg-Archives-Volumes-1-5
+@debug/d-release-with-subheaders-initial.html - IP - https://www.discogs.com/release/2012001-Manfred-Manns-Earth-Band-Bootleg-Archives-Volumes-1-5 - release with tracklists subheaders
+@debug/d-release-with-subheaders-final.html - current FRP - https://www.discogs.com/release/2012001-Manfred-Manns-Earth-Band-Bootleg-Archives-Volumes-1-5
 #+end_example
 
+** Answer 1.) — findings and mockups (2026-11-11)
 
- 
+Env: 2026-11-11T00:17+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.58.1) · browser n/a (snapshots and code reading) · Tampermonkey n/a
+
+Mockups: =org/discogs-subheaders-mockups.html=, published as the private Artifact
+https://claude.ai/artifact/JHuxeos1Yvu7DFwtBftHzg (branch =feature/dg-release-subheaders=).
+No userscript change.
+
+*** What the snapshots show
+
+- IP: Discogs draws each heading as =tr.heading_*= (background =#F5F4EC=); the API marks
+  them =type_: "heading"=, flat, no level. Release 2012001 has 11 headings for 57 tracks,
+  in practice two levels: a volume ("Volume 1: Live In Europe, 1981") and a show inside
+  it ("Cologne 13/02/1981", "Paris 05/02/1981", "Vienna 12/02/1981", "Unknown"). Disc 3
+  has two stacked before 3-1 ("Volume 3: …", "Köln, Germany"); discs 2, 4, 5 only their
+  volume.
+- FRP today: the subheaders are not dropped, they are flattened. =_dgReleaseMedia()=
+  already applies the right level rule: a heading right before a new medium names it
+  (h3 "Disc 1 · Volume 1: Live In Europe, 1981 · CD · 1:16:38"), every other heading
+  becomes the =section= of the tracks after it. =_dgReleaseTracksHtml()= then shows the
+  section as a plain *Section* text column, so the grouping the IP shows is gone.
+- POH window: =_extDgTracklistHtml()= renders every heading as =tr.mb-dg-thead=, italic
+  and grey, a volume and a show alike, no count or length. The card says "Tracks 57".
+
+*** What the mockups propose
+
+- Page, variant A "Bands": a shaded, foldable band per section inside the disc table
+  ("Paris 05/02/1981 · 8 tracks · 51:49"), sticky under the column header; Section
+  column hidden (kept in 📊); sorted by another column the bands step aside and each
+  title carries a section tag (as the window's List tables already do with
+  =tr.mb-dp-tsec= / =.mb-dp-tpart=); filtered, a band reads "2 of 8".
+  Engine note: every =tbody tr= is data today, so a real band row would have to be
+  skipped by counts, filter, sort, 📊, clones. Lighter route: draw the band on the
+  first data row of each section from a =data-mb-sec= attribute plus CSS.
+- Page, variant B "Nested": a heading and a table per section under the disc h3.
+  Needs a nesting level =renderGroupedTable()= does not have.
+- Page, variant C "Ribbon": today's table plus a stripe per section, a heavier rule at
+  a section's start, and the sections as chips in the disc h3. Attributes and CSS only.
+- POH card: "Tracklist · 57 tracks on 5 CDs · 6 sections".
+- POH window: the tracklist as a two-level outline from =_dgReleaseMedia()= (disc bars
+  with count and length, indented section rows, both foldable, a chip strip to jump);
+  no request more; record version bump.
+
+*** Open questions (also in the mockup's Questions tab)
+
+1. Which page variant? (proposal: A, drawn on the first data row; C as fallback)
+2. Sticky bands? (proposal: yes on desktop, off on touch devices)
+3. Section column hidden by default once bands show it? (proposal: yes)
+4. Window outline open or folded? (proposal: all open up to ~40 tracks, else Disc 1 only)
+5. The card's word: always "sections"? (proposal: yes)
+6. Same outline in a master's window? (proposal: yes, same renderer)
+
+*** Answers
+
+1. Which page variant? A
+2. Sticky bands? YES on desktop, OFF on touch devices
+3. Section column hidden by default once bands show it? YES
+4. Window outline open or folded? all open up to ~40 tracks, else Disc 1 only
+5. The card's word: always "sections"? YES
+6. Same outline in a master's window? YES
+
+*** Implementation (2026-11-11, branch =feature/dg-release-subheaders=)
+
+- Bands are REAL rows (=tr.mb-nd-row.mb-sec-band=): a CSS label on a track row
+  cannot stick (vzell chose "real rows, sticky" when asked). Every engine pass over
+  live rows skips them (52 sites; =scripts/list-live-row-passes.py --open=).
+- Section column: =SA_DEFAULT_HIDDEN_COLUMNS_DEFAULT= for =dg-release= and =dg-master=.
+- Touch: =sa_dg_section_bands_sticky_on_touch= (default off).
+- Window: =_extDgOutline()= from =_dgReleaseMedia()=; =_EXT_DISCOGS_VERSION= 6.
+- Card: "57 tracks on 5 CDs · 6 sections" is the card's SUMMARY line, not a facts
+  row as in the mockup: the card shows only its first four facts (=_EXT_CARD_FACTS=).
+  The window's facts have it as "Tracklist".
+- Docs: docs/claude/discogs.md "Section bands of the Tracks view",
+  docs/claude/detail-pages.md "The Discogs tracklist outline",
+  docs/claude/filter-and-cache-invariants.md "Rows that are not data".
+
+*** TODO Re-run the stopped test run on a faster machine
+
+vzell stopped the targeted run on vzell-lap (2026-11-11 ~01:10 CET) after testing live, OK; it was merged
+without =test:full=. 79 passed, 1 failed (discogs-master-tracks, fixed in the same commit), the rest never ran.
+Re-run on a faster host (petri), then =npm run test:full= as the merge gate would have:
+
+#+begin_example
+python3 scripts/run-test-full.py --script test --log <scratch>/mb.log -- \
+  tests/fixtures/collapse-column-width-stable-on-sort.spec.js tests/fixtures/collapse-measure-batched.spec.js \
+  tests/fixtures/collapse-state-filter-staleness.spec.js tests/fixtures/colvis-clean-column-names.spec.js \
+  tests/fixtures/filter-flag-scoping.spec.js tests/fixtures/findings-stamp.spec.js tests/fixtures/findings-menus.spec.js \
+  tests/fixtures/hide-empty-subtables.spec.js tests/fixtures/pending-edits-collapsed-cell.spec.js \
+  tests/fixtures/rel-column-collapse-toggle.spec.js tests/fixtures/rel-uniq-filter-after-collapse-cycle.spec.js \
+  tests/fixtures/row-count-stat-fixed-width.spec.js tests/fixtures/sticky-column-batched.spec.js \
+  tests/fixtures/subtable-tab-handoff.spec.js tests/fixtures/uniq-drop-collapse-gate-glyph-column.spec.js \
+  tests/fixtures/discogs-master-tracks.spec.js tests/fixtures/discogs-pages.spec.js \
+  tests/fixtures/discogs-release-tracks.spec.js tests/fixtures/discogs-release-sections.spec.js --project=chromium-fixtures
+python3 scripts/run-test-full.py --log <scratch>/test-full.log
+#+end_example

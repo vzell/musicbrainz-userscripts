@@ -1,0 +1,233 @@
+[
+    {
+        "name": "Section bands: never drawn",
+        "why": "vzell 2026-11-11 (variant A): each heading inside a disc is a band above its tracks.",
+        "edits": [
+            {
+                "find": "    function _dgSecBandsSync() {\n        if (!_isDgHost) return;",
+                "replace": "    function _dgSecBandsSync() {\n        if (_isDgHost) return;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-sections.spec.js",
+        "grep": "a band above each section of a disc",
+        "expect": "fail"
+    },
+    {
+        "name": "Section bands: not rebuilt after a render",
+        "why": "Every render replaces the tbody; the bands are rebuilt at the end of renderGroupedTable().",
+        "edits": [
+            {
+                "find": "        // above ever met one (and every later one skips _NON_DATA_ROW_SEL).\n        _dgSecBandsSync();",
+                "replace": "        // above ever met one (and every later one skips _NON_DATA_ROW_SEL)."
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-sections.spec.js",
+        "grep": "a band above each section of a disc",
+        "expect": "fail"
+    },
+    {
+        "name": "Section bands: the sub-table filter tests (and hides) a band",
+        "why": "A band is not data: the STF must never test, hide or count it (_NON_DATA_ROW_SEL).",
+        "edits": [
+            {
+                "find": "            Array.from(table.querySelectorAll('tbody tr:not(.mb-nd-row)')).forEach(row => {\n                // Skip rows hidden by global/column filter",
+                "replace": "            Array.from(table.querySelectorAll('tbody tr')).forEach(row => {\n                // Skip rows hidden by global/column filter"
+            },
+            {
+                "find": "            // Section bands: \"k of N\", none for a section with nothing shown (Discogs only).\n            _dgSecBandsSync();",
+                "replace": "            // Section bands: \"k of N\", none for a section with nothing shown (Discogs only)."
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-sections.spec.js",
+        "grep": "a sub-table filter",
+        "expect": "fail"
+    },
+    {
+        "name": "Section bands: the sub-table filter's result is not counted in the bands",
+        "why": "After an STF pass the bands say \"k of N\" and a section with nothing shown has none.",
+        "edits": [
+            {
+                "find": "            // Section bands: \"k of N\", none for a section with nothing shown (Discogs only).\n            _dgSecBandsSync();",
+                "replace": "            // Section bands: \"k of N\", none for a section with nothing shown (Discogs only)."
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-sections.spec.js",
+        "grep": "a sub-table filter",
+        "expect": "fail"
+    },
+    {
+        "name": "Section bands: zebra striping counts a band",
+        "why": "applyZebraStriping() over live rows must skip bands, or the stripes after each band flip.",
+        "edits": [
+            {
+                "find": "        table.querySelectorAll('tbody tr:not(.mb-nd-row)').forEach(tr => {\n            if (tr.style.display === 'none') return;",
+                "replace": "        table.querySelectorAll('tbody tr').forEach(tr => {\n            if (tr.style.display === 'none') return;"
+            },
+            {
+                "find": "        // A Discogs Tracks table's section bands: rebuilt last, so no pass\n        // above ever met one (and every later one skips _NON_DATA_ROW_SEL).\n        _dgSecBandsSync();",
+                "replace": "        // A Discogs Tracks table's section bands: rebuilt last, so no pass\n        // above ever met one (and every later one skips _NON_DATA_ROW_SEL).\n        _dgSecBandsSync();\n        document.querySelectorAll('#mb-dg-root table.tbl').forEach(t => applyZebraStriping(t));"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-sections.spec.js",
+        "grep": "a band above each section of a disc",
+        "expect": "fail"
+    },
+    {
+        "name": "Section bands: CSV export writes a band as a row",
+        "why": "exportTableToCSV() writes tracks only; a band would be a line of its own.",
+        "edits": [
+            {
+                "find": "        }\n\n        const dataRows = table.querySelectorAll('tbody tr:not(.mb-nd-row)');\n",
+                "replace": "        }\n\n        const dataRows = table.querySelectorAll('tbody tr');\n"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-sections.spec.js",
+        "grep": "Export",
+        "expect": "fail"
+    },
+    {
+        "name": "Section bands: drawn even when sorted by another column",
+        "why": "Sorted, a section no longer runs together: no bands, the section as a tag on each title.",
+        "edits": [
+            {
+                "find": "            const inOrder = idx.every((v, k) => k === 0 || v > idx[k - 1]);",
+                "replace": "            const inOrder = true;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-sections.spec.js",
+        "grep": "sorted by another column",
+        "expect": "fail"
+    },
+    {
+        "name": "Section bands: a fold is forgotten",
+        "why": "A click folds a section; the fold survives every re-render.",
+        "edits": [
+            {
+                "find": "                const folded = !!name && shown.length > 0 && _dgSecFolded.has(`${ti}\\u0001${name}`);",
+                "replace": "                const folded = false;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-sections.spec.js",
+        "grep": "a click folds a section",
+        "expect": "fail"
+    },
+    {
+        "name": "Section bands: never sticky",
+        "why": "vzell 2026-11-11: sticky under the column headers on a desktop.",
+        "edits": [
+            {
+                "find": "            table.classList.toggle('mb-sec-sticky', sticky);",
+                "replace": "            table.classList.toggle('mb-sec-sticky', false);"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-sections.spec.js",
+        "grep": "sticky on a desktop",
+        "expect": "fail"
+    },
+    {
+        "name": "Section bands: docked at the top, under the column headers",
+        "why": "A sticky band docks right under the stuck thead, not over it.",
+        "edits": [
+            {
+                "find": "        return Math.floor((parseFloat(cs.top) || 0) + th.getBoundingClientRect().height);",
+                "replace": "        return Math.floor(parseFloat(cs.top) || 0);"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-sections.spec.js",
+        "grep": "sticky on a desktop",
+        "expect": "fail"
+    },
+    {
+        "name": "Section bands: sticky on a touch device by default",
+        "why": "vzell 2026-11-11: off on touch devices unless sa_dg_section_bands_sticky_on_touch.",
+        "edits": [
+            {
+                "find": "        return !_isTouchPrimaryDevice() || Lib.settings.sa_dg_section_bands_sticky_on_touch === true;",
+                "replace": "        return true;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-sections.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "not sticky by default",
+        "expect": "fail"
+    },
+    {
+        "name": "Section bands: the touch setting does nothing",
+        "why": "sa_dg_section_bands_sticky_on_touch turns sticky bands on for a touch device.",
+        "edits": [
+            {
+                "find": "        return !_isTouchPrimaryDevice() || Lib.settings.sa_dg_section_bands_sticky_on_touch === true;",
+                "replace": "        return !_isTouchPrimaryDevice();"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-sections.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "sticky with",
+        "expect": "fail"
+    },
+    {
+        "name": "Section bands: the Section column shown by default",
+        "why": "vzell 2026-11-11: hidden by default once the bands show it (sa_default_hidden_columns).",
+        "edits": [
+            {
+                "find": "        { pageType: 'dg-release', columns: '\"Section\"' },\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-release-sections.spec.js",
+        "grep": "a band above each section of a disc",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs window: the flat tracklist again",
+        "why": "vzell 2026-11-11: the window's tracklist is an outline of discs and sections.",
+        "edits": [
+            {
+                "find": "        const outline = _extDgOutline(list, ui, units);\n        if (outline) return outline;",
+                "replace": "        const outline = null;\n        if (outline) return outline;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "as an outline",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs window: every disc open on a large release",
+        "why": "vzell 2026-11-11: all open up to ~40 tracks, else Disc 1 only.",
+        "edits": [
+            {
+                "find": "    const _EXT_DG_OUTLINE_OPEN_MAX = 40;",
+                "replace": "    const _EXT_DG_OUTLINE_OPEN_MAX = 400;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "five CDs: the card says",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs window: only the first disc open on a small release",
+        "why": "vzell 2026-11-11: all open up to ~40 tracks (a master of 24 tracks: both discs).",
+        "edits": [
+            {
+                "find": "    const _EXT_DG_OUTLINE_OPEN_MAX = 40;",
+                "replace": "    const _EXT_DG_OUTLINE_OPEN_MAX = 4;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "two discs named by their headings",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs card: the plain track count again",
+        "why": "vzell 2026-11-11: the card says \"57 tracks on 5 CDs · 6 sections\".",
+        "edits": [
+            {
+                "find": "                dg.summary || n(dg.tracklist.filter(x => x.type === 'track').length, 'track', 'tracks'), n(credits, 'credit', 'credits'),",
+                "replace": "                n(dg.tracklist.filter(x => x.type === 'track').length, 'track', 'tracks'), n(credits, 'credit', 'credits'),"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "five CDs: the card says",
+        "expect": "fail"
+    }
+]

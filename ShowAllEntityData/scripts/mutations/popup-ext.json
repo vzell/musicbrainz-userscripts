@@ -1391,7 +1391,7 @@
         "why": "A record of reader version 2 has no ids for the names' links: _EXT_DISCOGS_VERSION 3 makes it read again.",
         "edits": [
             {
-                "find": "    const _EXT_DISCOGS_VERSION = 5;",
+                "find": "    const _EXT_DISCOGS_VERSION = 6;",
                 "replace": "    const _EXT_DISCOGS_VERSION = 2;"
             }
         ],
@@ -1607,7 +1607,7 @@
         "why": "A record of reader version 3 has no artist or label window data (rec.discogs): _EXT_DISCOGS_VERSION 4 makes it read again.",
         "edits": [
             {
-                "find": "    const _EXT_DISCOGS_VERSION = 5;",
+                "find": "    const _EXT_DISCOGS_VERSION = 6;",
                 "replace": "    const _EXT_DISCOGS_VERSION = 3;"
             }
         ],

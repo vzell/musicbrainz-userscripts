@@ -69,7 +69,7 @@
     "why": "Counts every tbody row instead of the shown ones — the shape of runFilter()'s old count, which took the group's rows before the sub-table filter hid any. 'tunnel' leaves 1 of 6 rows shown; the span must say 1. Must fail.",
     "edits": [
       {
-        "find": "        const shown = Array.from(table.querySelectorAll('tbody tr'))\n            .filter(r => r.style.display !== 'none').length;",
+        "find": "        const shown = Array.from(table.querySelectorAll('tbody tr:not(.mb-nd-row)'))\n            .filter(r => r.style.display !== 'none').length;",
         "replace": "        const shown = table.querySelectorAll('tbody tr').length;"
       }
     ],

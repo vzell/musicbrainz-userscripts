@@ -2500,6 +2500,118 @@ test.describe('the Discogs window (2026-10-17)', () => {
     });
 });
 
+// The Discogs window's tracklist as an OUTLINE (org/discogs.org, vzell's
+// answers 2026-11-11): the Tracks view's own discs and sections
+// (`_dgReleaseMedia()`), a bar per disc and a row per section with their
+// tracks and length, both folding; chips that jump; all open up to 40
+// tracks, else only Disc 1. The card's summary line: "57 tracks on 5 CDs ·
+// 6 sections". Release 2012001 (5 CDs, 57 tracks, 11 headings) and the
+// split LP 15121926 (one record, a heading per side); Born To Run keeps
+// the flat list.
+test.describe('the Discogs window: the tracklist as an outline (2026-11-11)', () => {
+    const BOX = 'https://www.discogs.com/release/2012001-Manfred-Manns-Earth-Band-Bootleg-Archives-Volumes-1-5';
+    const SPLIT = 'https://www.discogs.com/release/15121926-x';
+
+    /**
+     * The event page with the three releases' answers and a link to each.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @returns {Promise<void>}
+     */
+    async function openBox(page) {
+        await page.context().route('https://i.discogs.com/**', (route) => route.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+        await openEvent(page, {
+            settings: { sa_pop_ext: true },
+            responses: extAnswers('discogs-release-2012001', 'discogs-release-15121926', 'discogs-release'),
+        });
+        await addAnnotationLinks(page, [BOX, SPLIT, DG.release]);
+    }
+
+    test('five CDs: the card says how the tracks split; the window opens Disc 1 only, its four sections, and folds and jumps', async ({ page }) => {
+        await openBox(page);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page).locator('.mb-dg-sum')).toContainText('57 tracks on 5 CDs · 6 sections · ');
+        await page.keyboard.press('Space');
+        const tl = dialog(page).locator('[data-mb-dg-sec="tracklist"]');
+        await expect(tl.locator('.mb-dg-xh')).toHaveText('Tracklist 57');
+        // The chips: each disc, and each section after its disc.
+        await expect(tl.locator('.mb-dg-tlj')).toHaveText(['Disc 1', 'Cologne 13/02/1981', 'Paris 05/02/1981', 'Vienna 12/02/1981', 'Unknown',
+            'Disc 2', 'Disc 3', 'Köln, Germany', 'London, England', 'Disc 4', 'Disc 5']);
+        // 57 tracks > 40: only Disc 1 open.
+        const bars = tl.locator('tr.mb-dg-tm button.mb-dg-tlb');
+        await expect(bars).toHaveCount(5);
+        expect(await bars.evaluateAll(bs => bs.map(b => b.getAttribute('aria-expanded')))).toEqual(['true', 'false', 'false', 'false', 'false']);
+        await expect(bars.first().locator('.mb-dg-tmw')).toHaveText('Disc 1');
+        await expect(bars.first().locator('.mb-dg-tmn')).toHaveText('Volume 1: Live In Europe, 1981');
+        await expect(bars.first().locator('.mb-dg-tst')).toHaveText('13 tracks · 1:16:38');
+        await expect(bars.nth(2).locator('.mb-dg-tst')).toHaveText('13 tracks · 1:16:21');
+        const secs = tl.locator('tr.mb-dg-tsec');
+        await expect(secs.locator('.mb-dg-tsn')).toHaveText(['Cologne 13/02/1981', 'Paris 05/02/1981', 'Vienna 12/02/1981', 'Unknown']);
+        await expect(secs.locator('.mb-dg-tst')).toHaveText(['2 tracks · 10:42', '8 tracks · 51:49', '2 tracks · 6:54', '1 track · 7:13']);
+        const tracks = tl.locator('.mb-dg-pos');
+        await expect(tracks).toHaveCount(13);
+        // A section folds: Paris's eight go.
+        await secs.nth(1).locator('button').click();
+        await expect(tracks).toHaveCount(5);
+        await expect(tl.locator('tr.mb-dg-tsec').nth(1).locator('button')).toHaveAttribute('aria-expanded', 'false');
+        // A chip opens its disc and brings the section into view.
+        await tl.locator('.mb-dg-tlj', { hasText: 'London, England' }).click();
+        await expect(tl.locator('tr.mb-dg-tsec .mb-dg-tsn')).toHaveText(['Cologne 13/02/1981', 'Paris 05/02/1981', 'Vienna 12/02/1981', 'Unknown',
+            'Köln, Germany', 'London, England']);
+        await expect(tl.locator('tr.mb-dg-tsec', { hasText: 'London, England' })).toBeInViewport();
+        // 5 shown on Disc 1 + Disc 3's 13.
+        await expect(tracks).toHaveCount(18);
+        // A disc bar folds its disc.
+        await bars.first().click();
+        await expect(tracks).toHaveCount(13);
+        // The track credits still open one by one (now Disc 3's first, 3-1 Banquet).
+        await tl.locator('.mb-dg-cr').first().click();
+        await expect(tl.locator('.mb-dg-tcred')).toHaveCount(1);
+        expect((await xhrFull(page)).map(r => r.url), 'the card\'s one request').toEqual(['https://api.discogs.com/releases/2012001']);
+    });
+
+    test('one record with a heading per side: sections without disc bars or chips; one record without headings: the flat list', async ({ page }) => {
+        await openBox(page);
+        await ctrlHover(page, probe(page, 1));
+        await expect(card(page).locator('.mb-dg-sum')).toContainText(' · 2 sections · ');
+        await page.keyboard.press('Space');
+        let tl = dialog(page).locator('[data-mb-dg-sec="tracklist"]');
+        await expect(tl.locator('table.mb-dg-outline')).toHaveCount(1);
+        await expect(tl.locator('tr.mb-dg-tm')).toHaveCount(0);
+        await expect(tl.locator('.mb-dg-toc')).toHaveCount(0);
+        await expect(tl.locator('tr.mb-dg-tsec .mb-dg-tsn')).toHaveText(['Born To Run', 'E. C. Was Here']);
+        await page.keyboard.press('Escape');
+        await ctrlHover(page, probe(page, 2));
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('Born To Run', { timeout: 10000 });
+        await expect(card(page).locator('.mb-dg-sum')).toContainText('8 tracks · ');
+        await page.keyboard.press('Space');
+        tl = dialog(page).locator('[data-mb-dg-sec="tracklist"]');
+        await expect(tl.locator('table.mb-dg-tl')).toHaveCount(1);
+        await expect(tl.locator('table.mb-dg-outline')).toHaveCount(0);
+        await expect(tl.locator('.mb-dg-pos')).toHaveCount(8);
+    });
+
+    test('a master (vzell: the same outline): two discs named by their headings, 24 tracks so both open', async ({ page }) => {
+        await page.context().route('https://i.discogs.com/**', (route) => route.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+        await openEvent(page, {
+            settings: { sa_pop_ext: true },
+            responses: extAnswers('discogs-master-1123030', 'discogs-master-1123030-versions-p1'),
+        });
+        await addAnnotationLinks(page, ['https://www.discogs.com/master/1123030-Bruce-Springsteen-Human-Touch-Lucky-Town']);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('Human Touch & Lucky Town');
+        await page.keyboard.press('Space');
+        const tl = dialog(page).locator('[data-mb-dg-sec="tracklist"]');
+        const bars = tl.locator('tr.mb-dg-tm button.mb-dg-tlb');
+        await expect(bars.locator('.mb-dg-tmn')).toHaveText(['Human Touch', 'Lucky Town']);
+        expect(await bars.evaluateAll(bs => bs.map(b => b.getAttribute('aria-expanded')))).toEqual(['true', 'true']);
+        await expect(bars.locator('.mb-dg-tst')).toHaveText([/^14 tracks/, /^10 tracks/]);
+        await expect(tl.locator('tr.mb-dg-tsec')).toHaveCount(0);
+        await expect(tl.locator('.mb-dg-tlj')).toHaveText(['Disc 1', 'Disc 2']);
+        await expect(tl.locator('.mb-dg-pos')).toHaveCount(24);
+    });
+});
+
 // The Discogs artist and label windows (2026-10-18, mockup
 // https://claude.ai/artifact/WuBNbFTgNHJtxip4xBv6yc): the profile, every
 // image, the names and sites come in the reader's ONE answer; an artist's

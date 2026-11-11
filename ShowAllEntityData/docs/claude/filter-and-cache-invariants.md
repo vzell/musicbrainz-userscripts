@@ -561,3 +561,47 @@ decides this at the tail of every `renderGroupedTable()`, just before
 
 Specs: `tests/fixtures/hide-empty-subtables.spec.js`; mutations in
 `scripts/mutations/hide-empty-subtables.json`.
+
+## Rows that are not data
+
+Since 2026-11-11 a live tbody can hold rows that are NOT data: the section
+bands of a Discogs Tracks table (`tr.mb-nd-row.mb-sec-band`,
+`_dgSecBandsSync()`, docs/claude/discogs.md "Section bands of the Tracks
+view"). A band is a real row because only a row can be sticky across a
+table. The rules:
+
+- **Every such row carries `mb-nd-row`** (`_NON_DATA_ROW_CLS`,
+  `_NON_DATA_ROW_SEL`). It holds one `td colspan=999`, so a pass indexing
+  `tr.cells[i]` would read nothing or the wrong thing.
+- **Every pass that walks LIVE rows skips it**: `'tbody tr:not(.mb-nd-row)'`,
+  `.filter(r => !r.classList.contains('mb-nd-row'))` on `tbody.rows`, a
+  `continue` in a `for…of`. 2026-11-11: 52 sites — zebra striping, the
+  sticky column, column visibility (toggle, re-apply, auto-resize), the
+  collapsable columns and their header counts and signatures, the
+  sub-table filter and its counts (`_updateSubTableH3Tooltip()`,
+  `updateH2CountFromSubtables()`, `_buildSubTableFilterStatus()`), the
+  master toggle's real count, `finalCleanup()`, findings stamping, the
+  title flags, Length averages, multi-sort tints, CSV/org export, the
+  stats panel. On MusicBrainz no row has the class, so nothing changes
+  there.
+- **A new pass over live rows must do the same.**
+  `python3 scripts/list-live-row-passes.py --open` lists every row walk
+  that does not name the skip (most of them read a FETCHED document before
+  render, where no band exists — those are fine as they are).
+- **Non-data rows are never in the master rows** (`allRows`,
+  `groupedRows[i].rows`): they are drawn after the render from the data
+  rows' attributes and rebuilt on every render, so no filter, sort or
+  cache ever meets one.
+- **Rebuild them LAST.** `_dgSecBandsSync()` is the final call of
+  `renderGroupedTable()`, so the passes of the same render never see one;
+  passes that run later (a sub-table filter, a column toggle, an export)
+  rely on the skip.
+- The cdtoc tracklist row (`.mb-cdtoc-tracklist-row`) and the YouTube
+  player row (`tr.mb-yt-playerrow`) are older rows of the same kind that do
+  NOT carry `mb-nd-row` yet: giving it to them would change what the
+  sub-table filter does on those MusicBrainz pages, so it waits for its own
+  change.
+
+Specs: `tests/fixtures/discogs-release-sections.spec.js` (striping, h3
+count, sub-table filter, CSV); mutations in
+`scripts/mutations/dg-section-bands.json`.

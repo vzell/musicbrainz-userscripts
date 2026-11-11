@@ -3051,7 +3051,14 @@ once and without Tampermonkey asking first:
   On a narrow screen the two columns become one, information first. The window
   holds all images (a click opens the artwork viewer, ← → step through them), the
   **Tracklist** with each track's credits (closed at first: *▸ 7 credits*
-  opens one track, *Show all track credits* every one), the **Notes**, and
+  opens one track, *Show all track credits* every one) — on a release of
+  several discs, or with headings inside a disc, as an outline: a shaded bar
+  per disc ("Disc 1 · Volume 1: Live In Europe, 1981 · 13 tracks ·
+  1:16:38") and an indented row per heading, each with its tracks and
+  running time; a click on either folds it, and the chips above the list
+  jump to a disc or a heading. Up to about 40 tracks everything starts open,
+  on a bigger release only Disc 1. The card's summary line says how the
+  tracks split ("57 tracks on 5 CDs · 6 sections"). Then the **Notes**, and
   for a release also **Companies, etc.**, **Credits** (with the tracks they
   cover), **Barcode and Other Identifiers**, **Videos** (a master shows its
   videos too; each with a *Play here* tile), and how many Discogs
@@ -4100,8 +4107,20 @@ section of its own above Discogs' page, with the toolbar and these buttons:
   from one request:
   - one table per disc or record ("Disc 1 · CD · 49:50", "Record 1 · Vinyl
     LP · 39:20"; a vinyl record's two sides are one table, as on
-    MusicBrainz), named after Discogs' heading when it has one per disc; a
-    heading inside a disc ("Cologne 13/02/1981") fills a **Section** column;
+    MusicBrainz), named after Discogs' heading when it has one per disc;
+  - a heading inside a disc ("Cologne 13/02/1981", "Paris 05/02/1981" on a
+    box of live shows) is a **band** above its tracks, as on Discogs' page:
+    its name, how many tracks and how long ("8 tracks · 51:49"). A click on
+    a band folds its tracks, a second shows them; a fold stays through
+    sorting and filtering. On a computer the band stays under the column
+    headers while its tracks scroll past; on a phone or tablet only with ⚙️
+    Settings → *💿 Discogs* → *Tracks view: sticky section bands on touch
+    devices*. With a filter on a band says "2 of 8 tracks", and a section
+    with nothing left has no band. Sorted by another column the sections
+    no longer run together: the bands step aside and each title shows its
+    section as a small tag. The **Section** column (the same names as text)
+    is hidden to start with: 👁️ Visible shows it, and its 📊 menu filters
+    by section;
   - **#**, **Title**, **Artist** (a compilation's), **Length**, and the
     credits as columns, one line per name: **Instruments**, **Vocals**,
     **Producer**, **Engineer**, **Mixed by**, **Arranged by** and **Other
