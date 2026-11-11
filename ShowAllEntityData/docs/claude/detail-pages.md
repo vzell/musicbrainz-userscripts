@@ -593,7 +593,11 @@ markup.
   `_dpParseBbPage()`, which the foreign-image card of the year table's
   Media icons asks for (docs/claude/brucebase.md, "Images: the Media icons
   and the song glyph"). `_DP_PARSER_VERSION` 4 (2026-10-24): a
-  `files:setlist-YYYY` image is of kind Setlist. Version 5 (the same day):
+  `files:setlist-YYYY` image is of kind Setlist. Version 19 (2026-11-11):
+  every Brucebase record carries the page's tags and a closed "Tags (N)"
+  section, each image its filename's caption and photographer, and the
+  window groups photos by photographer (docs/claude/brucebase.md, "What a
+  filename says, and the page's tags"). Version 5 (2026-10-24):
   such an entry page has fields and sections, and any text link to one
   previews it under its own setting (`ownLinks`, `_dpOwnLinksOn()`,
   `sa_bb_event_preview`) while `isDetailUrl` stays `/song:`

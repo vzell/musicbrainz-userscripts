@@ -28953,9 +28953,13 @@
      *    (`data.slSong`, `_slSongWindowData()`: sections as blocks, the
      *    versions, editions, rows, Live History, the double-encoded runs),
      *    laid out by `_slSongCols()`; "Single Release" rows are rows.
+     * 19: Brucebase records carry the page's tags (`tags`, `_bbPageTags()`)
+     *    and a closed "Tags (N)" section; each image its photographer
+     *    (`credit`) and caption from its filename (`_bbParseImageName()`),
+     *    and the window groups a page's photos by photographer.
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 18;
+    const _DP_PARSER_VERSION = 19;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -31367,6 +31371,290 @@
     }
 
     /**
+     * The words a Brucebase filename uses for the kind of picture in its
+     * second slot (`YYYYMMDD_<Kind>_NN…`), by their lower-cased spelling,
+     * with the name we show. Any other word in that slot is a photographer
+     * (CamelCase, "CliffBreining"); "Unknown" is a photographer not known.
+     * The set is the mirror survey's (org/brucebase.org, "Plan
+     * (2026-11-11)": Ticket 4,601, Setlist 937, Pass 833, Centermic 325,
+     * Article 118, AdPoster 41, …).
+     * @type {Object<string, string>}
+     */
+    const _BB_IMG_NAME_KINDS = {
+        ticket: 'Ticket', setlist: 'Setlist', pass: 'Pass', centermic: 'Center mic', article: 'Article',
+        adposter: 'Ad poster', advert: 'Advert', banner: 'Banner', merchandise: 'Merchandise',
+        program: 'Program', programme: 'Program', itinerary: 'Itinerary', recording: 'Recording',
+        classphoto: 'Class photo', announcement: 'Announcement', poster: 'Poster', flyer: 'Flyer',
+        tourbook: 'Tour book', logo: 'Logo', news: 'News',
+    };
+
+    /**
+     * Turns a filename word into words: "CliffBreining" → "Cliff Breining",
+     * "Airport-Arrival" → "Airport Arrival", "TM-Verified-Fan" → "TM Verified
+     * Fan". Letter case is kept.
+     *
+     * @param {string} s
+     * @returns {string}
+     */
+    function _bbNameWords(s) {
+        return String(s || '').replace(/[-_]+/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/\s+/g, ' ').trim();
+    }
+
+    /**
+     * A filename's date "YYYYMMDD" as MusicBrainz writes a partial date:
+     * "19780707" → "1978-07-07", "19630900" → "1963-09", "19710000" →
+     * "1971" (the wiki writes an unknown day or month as 00).
+     *
+     * @param {string} y
+     * @param {string} m
+     * @param {string} d
+     * @returns {string}
+     */
+    function _bbNameDate(y, m, d) {
+        if (m === '00') return y;
+        if (d === '00') return `${y}-${m}`;
+        return `${y}-${m}-${d}`;
+    }
+
+    /**
+     * Reads what a Brucebase image's FILENAME says about it. The wiki names
+     * its attachments by convention; eight shapes read 98.5 % of the 3,804
+     * distinct names of the probe's sample (scripts/probe-bb-detail-pages.py,
+     * 2026-11-11; the survey of the whole mirror found the same shapes):
+     *
+     * - A `YYYYMMDD[a]_<Kind|Photographer>_NN[a][_detail]`
+     *   ("19780707_CliffBreining_01", "20240522_Setlist_01_Handwritten",
+     *   "19761126b_Unknown_006_Patti-Smith"): date, show letter, kind or
+     *   photographer, number, detail;
+     * - B `Retail-<CODE>_<Kind>_NN[a][_detail]`: a release's material;
+     * - C `YYYY-<TOUR>_<Kind>_NN[a][-_detail]`: a tour's;
+     * - D `disco_<name>[_variant]`, `digital_…`: a release cover;
+     * - E `bs<YYMMDD>`, `bs<YYYY>_…`: a live download's cover;
+     * - F `lyricsheet_|note_|recording_|graph_<name>`;
+     * - H `Bootleg_<Title>[_<Label>]_<Front|Back|Disc|…>[N]`;
+     * - G `<slug>_NN[_<YYYYMMDD|subject>]`: a venue's or a person's picture.
+     *
+     * The name is decoded first and spaces around an underscore dropped
+     * ("20160208_WarrenLinhart%20_01"). A name no shape reads gives
+     * `shape: ''` and nothing else, so the folder's kind (`_bbImageKind()`)
+     * is all a caller has, as before.
+     *
+     * @param {string} url - The image's URL (original or resized).
+     * @returns {{file: string, shape: string, kind: string, photographer: string,
+     *   unknownPhotographer: boolean, date: string, letter: string, seq: string,
+     *   detail: string, release: string, tour: string, part: string, label: string}}
+     */
+    function _bbParseImageName(url) {
+        const out = { file: '', shape: '', kind: '', photographer: '', unknownPhotographer: false, date: '', letter: '',
+            seq: '', detail: '', release: '', tour: '', part: '', label: '' };
+        const m0 = String(url || '').match(/\/local--(?:files|resized-images)\/[^/]+\/([^/?#]+)/);
+        let file = m0 ? m0[1] : String(url || '').split(/[/?#]/).filter(Boolean).pop() || '';
+        try {
+            file = decodeURIComponent(file);
+        } catch (_) { /* keep it as written */ }
+        out.file = file;
+        const base = file.replace(/\s*_\s*/g, '_').replace(/\.(?:jpe?g|png|gif|webp)$/i, '');
+        const kindOf = (w) => _BB_IMG_NAME_KINDS[String(w).toLowerCase()] || '';
+        let m;
+        if ((m = base.match(/^(\d{4})(\d{2})(\d{2})([a-z])?_([A-Za-z]+)_(\d{2,3})([a-z])?(?:_(.+))?$/))) {
+            out.shape = 'A';
+            out.date = _bbNameDate(m[1], m[2], m[3]);
+            out.letter = m[4] || '';
+            const k = kindOf(m[5]);
+            if (k) out.kind = k;
+            else if (/^unknown$/i.test(m[5])) out.unknownPhotographer = true;
+            else out.photographer = _bbNameWords(m[5]);
+            out.seq = m[6] + (m[7] || '');
+            out.detail = _bbNameWords(m[8] || '');
+        } else if ((m = base.match(/^Retail-([A-Za-z0-9]+)_([A-Za-z]+)_(\d{2})([a-z])?(?:_(.+))?$/))) {
+            out.shape = 'B';
+            out.release = m[1];
+            out.kind = kindOf(m[2]) || _bbNameWords(m[2]);
+            out.seq = m[3] + (m[4] || '');
+            out.detail = _bbNameWords(m[5] || '');
+        } else if ((m = base.match(/^(\d{4})-([A-Za-z0-9]+)_([A-Za-z]+)_(\d{2})([a-z])?(?:[-_](.+))?$/))) {
+            out.shape = 'C';
+            out.tour = `${m[1]}-${m[2]}`;
+            out.kind = kindOf(m[3]) || _bbNameWords(m[3]);
+            out.seq = m[4] + (m[5] || '');
+            out.detail = _bbNameWords(m[6] || '');
+        } else if ((m = base.match(/^bs(\d{2})(\d{2})(\d{2})[a-z]?$/i))) {
+            out.shape = 'E';
+            out.kind = 'Live download';
+            out.date = _bbNameDate((+m[1] >= 70 ? '19' : '20') + m[1], m[2], m[3]);
+        } else if ((m = base.match(/^bs(\d{4})_(.+)$/i))) {
+            out.shape = 'E';
+            out.kind = 'Live download';
+            out.date = m[1];
+            out.detail = _bbNameWords(m[2]);
+        } else if ((m = base.match(/^(disco|digital)_([^_]+)(?:_(.+))?$/i))) {
+            out.shape = 'D';
+            out.kind = m[1].toLowerCase() === 'disco' ? 'Release cover' : 'Digital release cover';
+            out.release = m[2];
+            out.detail = _bbNameWords(m[3] || '');
+        } else if ((m = base.match(/^(lyricsheet|note|recording|graph)_(.+)$/i))) {
+            out.shape = 'F';
+            out.kind = { lyricsheet: 'Lyric sheet', note: 'Note', recording: 'Recording', graph: 'Song graph' }[m[1].toLowerCase()];
+            out.detail = _bbNameWords(m[2]);
+        } else if ((m = base.match(/^Bootleg_(.+?)(?:_([A-Za-z]+))?_(Front|Back|Disc|Cover|Label|Booklet|Tray|Inlay|Insert|Whiteliner)(\d*)$/i))) {
+            out.shape = 'H';
+            out.kind = 'Bootleg';
+            out.release = _bbNameWords(m[1]);
+            out.label = m[2] ? _bbNameWords(m[2]) : '';
+            out.part = m[3] + (m[4] ? ` ${m[4]}` : '');
+        } else if ((m = base.match(/^([a-z0-9-]+)_(\d{2})(?:_(\d{8}|[a-z0-9-]+))?$/i))) {
+            out.shape = 'G';
+            out.seq = m[2];
+            if (m[3] && /^\d{8}$/.test(m[3])) out.date = _bbNameDate(m[3].slice(0, 4), m[3].slice(4, 6), m[3].slice(6));
+            else out.detail = _bbNameWords(m[3] || '');
+        }
+        return out;
+    }
+
+    /**
+     * The words a Brucebase image is shown with, from its filename
+     * (`_bbParseImageName()`) and its folder's kind: "Photo · Cliff Breining
+     * · #01", "Setlist · #01a · Handwritten", "Ticket · #03", "Photo ·
+     * photographer unknown · #006 · Patti Smith", "Bootleg · Restless Night ·
+     * Back". '' when the filename says nothing the kind does not.
+     *
+     * @param {Object} p        - `_bbParseImageName()`'s answer.
+     * @param {string} folderKind - `_bbImageKind()` of its folder.
+     * @returns {string}
+     */
+    function _bbImageCaption(p, folderKind) {
+        if (!p || !p.shape) return '';
+        const parts = [p.kind || folderKind || 'Other'];
+        if (p.photographer) parts.push(p.photographer);
+        else if (p.unknownPhotographer) parts.push('photographer unknown');
+        if (p.release && p.shape !== 'D') parts.push(p.release);
+        if (p.label) parts.push(p.label);
+        if (p.tour) parts.push(`tour ${p.tour}`);
+        if (p.seq) parts.push(`#${p.seq}`);
+        if (p.part) parts.push(p.part);
+        if (p.detail) parts.push(p.detail);
+        if (p.date && p.shape !== 'A') parts.push(p.date);
+        return parts.join(' · ');
+    }
+
+    /**
+     * Brucebase tag families, in the order a Tags list shows them, with
+     * their headings: how `_bbTagFamily()` sorts a page's tags.
+     * @type {Array<[string, string]>}
+     */
+    const _BB_TAG_FAMILIES = [
+        ['date', 'Date'], ['place', 'Place'], ['tour', 'Tour'], ['material', 'On the page'], ['song', 'Songs'],
+        ['person', 'People'], ['release', 'Releases'], ['ott', 'On The Tracks'], ['label', 'Bootleg labels'],
+        ['playlist', 'Playlists'], ['key', 'Keys'], ['snippet', 'Tour snippets'], ['letter', 'Letter'],
+        ['category', 'Category'], ['other', 'Other'],
+    ];
+
+    /** @type {Set<string>} Tags naming a page's kind (`gig`, `song`, …). */
+    const _BB_TAG_CATEGORIES = new Set(['gig', 'nogig', 'recording', 'rehearsal', 'interview', 'song', 'venue',
+        'relation', 'retail', 'bootleg', 'lyrics', 'ott', 'playlist', 'files', 'content', 'info', 'gignote', 'news',
+        'media', 'gallery', 'story', 'eye', 'recnote', 'onstage', 'offstage', 'multi', 'nobruce', 'soundcheck']);
+    /** @type {Set<string>} Tags naming what a page holds (`ticket`, `bootleg`, …). */
+    const _BB_TAG_MATERIAL = new Set(['audio', 'bootleg', 'eyewitness', 'storyteller', 'ticket', 'livedl', 'boxset',
+        'private', 'guest', 'help', 'cancelled', 'rescheduled', 'video', 'prem', 'setlist', 'pass', 'photo',
+        'handwritten', 'printed', 'centermic', 'debut', 'tourpremiere', 'memorabilia']);
+    /** @type {Set<string>} */
+    const _BB_TAG_MONTHS = new Set(['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august',
+        'september', 'october', 'november', 'december']);
+    /** @type {Set<string>} */
+    const _BB_TAG_DAYS = new Set(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']);
+
+    /**
+     * Sorts one Brucebase page tag into its family (`_BB_TAG_FAMILIES`).
+     * The wiki's tags (mirror survey, 2026-11-11) are date parts ("07",
+     * "1978", "july", "friday"), the first letter, the page's category, the
+     * place squashed ("westhollywood", "california(ca)", "usa"), prefixed
+     * keys (`tour_`, `r_`, `ott_`, `lbl_`, `pl_`, `key_`, `toursnip_`), what
+     * the page holds ("ticket", "bootleg"), song and people names squashed
+     * ("badlands", "pattiscialfa", "patti.scialfa") and song abbreviations
+     * ("btn"). Songs and people are recognised by the page's own `/song:` and
+     * `/relation:` links, places by its title; what nothing recognises is
+     * Other (abbreviations among it).
+     *
+     * @param {string} tag - The tag as the page writes it.
+     * @param {{category?: string, songs?: Set<string>, people?: Set<string>, places?: Set<string>}} [ctx]
+     *   The page's category (its path before ":"), squashed slugs of its
+     *   song and people links and of its title's comma parts.
+     * @returns {string} A family key.
+     */
+    function _bbTagFamily(tag, ctx) {
+        const t = String(tag || '').toLowerCase();
+        const c = ctx || {};
+        if (/^\d{4}$/.test(t) || /^\d{2}$/.test(t) || _BB_TAG_MONTHS.has(t) || _BB_TAG_DAYS.has(t)) return 'date';
+        if (/^(?:[a-z]|0-9)$/.test(t)) return 'letter';
+        const pre = t.match(/^(tour|r|ott|lbl|pl|key|toursnip)_/);
+        if (pre) return { tour: 'tour', r: 'release', ott: 'ott', lbl: 'label', pl: 'playlist', key: 'key', toursnip: 'snippet' }[pre[1]];
+        // The page's own category is its kind; another category word on it
+        // ("bootleg", "news", "retail" on a gig) says what it holds.
+        if (c.category && t === c.category) return 'category';
+        if (_BB_TAG_MATERIAL.has(t)) return 'material';
+        if (_BB_TAG_CATEGORIES.has(t)) return c.category && !/^(?:info|content)$/.test(t) ? 'material' : 'category';
+        if (/\([a-z]{2,3}\)$/.test(t) || (c.places && c.places.has(t)) ||
+            /^(?:usa|england|scotland|wales|ireland|germany|canada|italy|france|spain|sweden|norway|denmark|finland|netherlands|belgium|switzerland|austria|australia|newzealand|japan|brazil|argentina|chile|mexico|poland|portugal|czechrepublic|hungary|greece|israel|southafrica|india)$/.test(t)) return 'place';
+        if (c.songs && c.songs.has(t)) return 'song';
+        if (t.includes('.') || (c.people && c.people.has(t))) return 'person';
+        return 'other';
+    }
+
+    /**
+     * A Brucebase page's tags (`div.page-tags > span > a`, every page of the
+     * mirror has the block; signed out too), each with its link and family
+     * (`_bbTagFamily()`), in the page's order. [] when the block is missing.
+     *
+     * @param {Document} doc - The page.
+     * @param {string}   url - Its URL (links are made absolute).
+     * @returns {Array<{text: string, href: string, family: string}>}
+     */
+    function _bbPageTags(doc, url) {
+        const box = doc.querySelector('div.page-tags');
+        if (!box) return [];
+        const squash = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+        const slugs = (prefix) => new Set(Array.from(doc.querySelectorAll(`#page-content a[href*="/${prefix}:"]`),
+            a => squash((a.getAttribute('href') || '').split(`/${prefix}:`)[1] || '')).filter(Boolean));
+        const title = doc.getElementById('page-title');
+        let category = '';
+        try {
+            category = (new URL(url).pathname.match(/^\/([a-z]+):/) || [])[1] || '';
+        } catch (_) { /* no category */ }
+        const ctx = {
+            category,
+            songs: slugs('song'),
+            people: slugs('relation'),
+            places: new Set(_dpText(title ? title.textContent : '').replace(/^\d{4}-\d{2}-\d{2}\s*-?\s*/, '').split(',').map(squash).filter(Boolean)),
+        };
+        return Array.from(box.querySelectorAll('a[href*="/system:page-tags/tag/"]'), a => {
+            const text = _dpText(a.textContent);
+            return text ? { text, href: _dpAbsUrl(a.getAttribute('href'), url), family: _bbTagFamily(text, ctx) } : null;
+        }).filter(Boolean);
+    }
+
+    /**
+     * A Brucebase record's tags as a window section: one row per family
+     * (`_BB_TAG_FAMILIES` order), each tag a link to the wiki's list of
+     * pages with that tag. Closed until opened: a gig carries 50 or more.
+     * Null for no tags.
+     *
+     * @param {Array<{text: string, href: string, family: string}>} tags
+     * @returns {?{label: string, text: string, html: string, open: boolean}}
+     */
+    function _bbTagsSection(tags) {
+        if (!tags || !tags.length) return null;
+        const rows = _BB_TAG_FAMILIES.map(([key, name]) => [name, tags.filter(t => t.family === key)]).filter(([, of]) => of.length);
+        return {
+            label: `Tags (${tags.length})`,
+            open: false,
+            text: rows.map(([name, of]) => `${name}: ${of.map(t => t.text).join(', ')}`).join('\n'),
+            html: '<div class="mb-dp-tags">' + rows.map(([name, of]) => `<div class="mb-dp-tagrow"><span class="mb-dp-tagk">${_mbttEscape(name)}</span><span class="mb-dp-tagv">` +
+                of.map(t => `<a class="mb-dp-tag" href="${_mbttEscape(t.href)}" target="_blank" rel="noopener">${_mbttEscape(t.text)}</a>`).join('') +
+                '</span></div>').join('') + '</div>',
+        };
+    }
+
+    /**
      * A Brucebase page's own images: the thumbnails of its gallery boxes
      * (`#page-content .gallery-box .gallery-item`), whichever tab holds them.
      * That leaves out the side bar's promo cover (`#side-bar`, the same
@@ -31377,11 +31665,13 @@
      * (`local--resized-images/X/thumbnail.jpg` → `local--files/X`, 200 for
      * every folder kind, 2026-10-23), `medium` the page's own link when it
      * is a `medium.jpg` (gallery and news images), `label` the kind
-     * (`_bbImageKind()`).
+     * (`_bbImageKind()`), `credit` the photographer and `caption` the words
+     * the image is shown with, both from its filename (`_bbParseImageName()`,
+     * `_bbImageCaption()`; '' when the filename says nothing).
      *
      * @param {Element} content - `#page-content`.
      * @param {string}  url     - The page's URL.
-     * @returns {Array<{thumb: string, full: string, medium: string, label: string}>}
+     * @returns {Array<{thumb: string, full: string, medium: string, label: string, credit: string, caption: string}>}
      */
     function _bbPageImages(content, url) {
         const out = [];
@@ -31391,11 +31681,17 @@
             if (!m) return;
             const a = img.closest('a[href]');
             const href = a ? _dpAbsUrl(a.getAttribute('href'), url) : '';
+            const label = _bbImageKind(decodeURIComponent(m[2]));
+            const name = _bbParseImageName(thumb);
             out.push({
                 thumb,
                 full: thumb.slice(0, thumb.indexOf('/local--resized-images/')) + '/local--files/' + m[1],
                 medium: /\/medium\.jpg$/.test(href) ? href : '',
-                label: _bbImageKind(decodeURIComponent(m[2])),
+                label,
+                // What the filename says (2026-11-11): the photographer
+                // credit and the words the image is shown with.
+                credit: name.photographer,
+                caption: _bbImageCaption(name, label),
             });
         });
         return out;
@@ -31665,6 +31961,27 @@
     }
 
     /**
+     * The Brucebase reader (`_DP_SITES['brucebase.wikidot.com'].parse`): the
+     * page's record (`_dpParseBbRecord()`), with the page's tags
+     * (`_bbPageTags()`) as `tags` and, last, a closed "Tags (N)" section of
+     * the window (`_bbTagsSection()`; org/brucebase.org, Plan 2026-11-11,
+     * Phase 1). Every kind of page has them: songs, venues, entries.
+     *
+     * @param {Document} doc The fetched page.
+     * @param {string}   url The page's URL.
+     * @returns {?object} The record, or null when the page has no
+     *   `#page-content`.
+     */
+    function _dpParseBb(doc, url) {
+        const data = _dpParseBbRecord(doc, url);
+        if (!data) return data;
+        data.tags = _bbPageTags(doc, url);
+        const sec = _bbTagsSection(data.tags);
+        if (sec) data.sections.push(sec);
+        return data;
+    }
+
+    /**
      * Parses a Brucebase song page (`/song:<slug>`); a venue page goes to
      * `_dpParseBbVenue()`, any other page to `_dpParseBbPage()`.
      *
@@ -31683,7 +32000,7 @@
      * @returns {?object} The record, or null when the page has no
      *   `#page-content`.
      */
-    function _dpParseBb(doc, url) {
+    function _dpParseBbRecord(doc, url) {
         let path = '';
         try {
             path = new URL(url).pathname;
@@ -34202,16 +34519,29 @@
             `<img class="mb-dp-xcover" src="${_mbttEscape(data.cover)}" alt="${_mbttEscape(coverScan.label || 'cover')}"></a>`);
         if (data.fields.length) left.push('<h4>Fields</h4>' + _dpFieldsHtml(data.fields));
         const scans = data.images.filter(i => i.thumb && i.thumb !== data.cover);
-        const tile = (i) => `<a href="${_mbttEscape(i.full || i.thumb)}" target="_blank" rel="noopener" data-mb-artv-ext="${artvN++}"><img src="${_mbttEscape(i.thumb)}" alt="${_mbttEscape(i.label)}">` +
-            (i.label ? `<span>${_mbttEscape(i.label)}</span>` : '') + '</a>';
+        // A Brucebase image's caption comes from its filename ("Photo · Cliff
+        // Breining · #01", `_bbImageCaption()`), the kind otherwise; the
+        // tile shows what follows the kind, the hover text all of it.
+        const tile = (i) => {
+            const cap = i.caption || '';
+            const short = cap && i.label && cap.startsWith(`${i.label} · `) ? cap.slice(i.label.length + 3) : (cap || i.label || '');
+            return `<a href="${_mbttEscape(i.full || i.thumb)}" target="_blank" rel="noopener" data-mb-artv-ext="${artvN++}"` +
+                (cap ? ` data-mb-tip title="${_mbttEscape(cap)}"` : '') + `><img src="${_mbttEscape(i.thumb)}" alt="${_mbttEscape(cap || i.label)}">` +
+                (short ? `<span>${_mbttEscape(short)}</span>` : '') + '</a>';
+        };
         if (scans.length && data.imagesByKind) {
             // Under their kind, in page order, Photo last (vzell,
-            // 2026-10-24); the viewer follows this order (`data-mb-artv-ext`).
+            // 2026-10-24), and Photo once per photographer (vzell,
+            // 2026-11-11, answer 3 to org/bb-overhaul-mockups.html), the
+            // named ones first in page order, then those of no known
+            // photographer; the viewer follows this order (`data-mb-artv-ext`).
+            const groupOf = (i) => (i.label || '') === 'Photo' && i.credit ? `Photo · ${i.credit}` : (i.label || '');
             const kinds = [];
-            scans.forEach(i => { if (!kinds.includes(i.label || '')) kinds.push(i.label || ''); });
-            kinds.sort((a, b) => (a === 'Photo') - (b === 'Photo'));
+            scans.forEach(i => { if (!kinds.includes(groupOf(i))) kinds.push(groupOf(i)); });
+            const photo = (k) => (k === 'Photo' ? 2 : k.startsWith('Photo · ') ? 1 : 0);
+            kinds.sort((a, b) => photo(a) - photo(b));
             left.push(`<h4>Images (${scans.length})</h4>` + kinds.map(k => {
-                const of = scans.filter(i => (i.label || '') === k);
+                const of = scans.filter(i => groupOf(i) === k);
                 return `<h5 class="mb-dp-kind">${_mbttEscape(k || 'Other')} <span>${of.length}</span></h5><div class="mb-dp-gallery">${of.map(tile).join('')}</div>`;
             }).join(''));
         } else if (scans.length) {
@@ -37202,7 +37532,10 @@
                 const small = im.thumb ? im.thumb.replace(/\/thumbnail\.jpg$/, '/small.jpg') : full;
                 return {
                     image: full, thumbnails: { 1200: full, ...(im.medium ? { large: im.medium } : {}), 250: small },
-                    types: [im.label || 'Other'], front: false, comment: _fiFileName(full),
+                    // The filename's reading first ("Photo · Cliff Breining ·
+                    // #01"), then the name itself (2026-11-11).
+                    types: [im.label || 'Other'], front: false,
+                    comment: im.caption ? `${im.caption} — ${_fiFileName(full)}` : _fiFileName(full),
                 };
             });
     }
@@ -39406,6 +39739,15 @@
             .mb-dp-dialog h5.mb-dp-kind { margin: 8px 0 4px; font: 600 10px/1.3 system-ui, Arial, sans-serif; letter-spacing: .07em;
                 text-transform: uppercase; color: #7a6d5c; }
             .mb-dp-dialog h5.mb-dp-kind span { font-weight: 400; margin-left: 3px; }
+            /* A Brucebase page's tags (_bbTagsSection()): a row per family, the
+               tags as pills (the Sidebar card pills' look, _sbInlineEnsureStyle()). */
+            .mb-dp-dialog .mb-dp-tags { display: grid; gap: 5px; }
+            .mb-dp-dialog .mb-dp-tagrow { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 8px; align-items: start; }
+            .mb-dp-dialog .mb-dp-tagk { color: #7a6d5c; font-size: 11px; padding-top: 2px; }
+            .mb-dp-dialog .mb-dp-tagv { display: flex; flex-wrap: wrap; gap: 3px; min-width: 0; }
+            .mb-dp-dialog a.mb-dp-tag { display: inline-block; padding: 0 7px; border: 1px solid #ddd; border-radius: 999px;
+                background: #f1f1f1; color: #333; font-size: 11px; line-height: 18px; text-decoration: none; }
+            .mb-dp-dialog a.mb-dp-tag:hover { border-color: #b9c9de; background: #eef3fa; }
             /* auto-fit, not auto-fill: the empty tracks collapse, so one disc takes the
                whole column instead of one 180px track of it (titles wrapped beside empty space) */
             .mb-dp-dialog .mb-dp-discs { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px 16px; }
@@ -177436,6 +177778,43 @@ a { color: #1565c0; }`;
              */
             bbParseTabLabel(text) {
                 return _bbParseTabLabel(text);
+            },
+
+            /**
+             * Thin wrapper around `_bbParseImageName()` — what a Brucebase
+             * image's filename says (shape, kind, photographer, date, …).
+             *
+             * @param {string} url An image URL or bare filename.
+             * @returns {Object}
+             */
+            bbParseImageName(url) {
+                return _bbParseImageName(url);
+            },
+
+            /**
+             * Thin wrapper around `_bbImageCaption()` over
+             * `_bbParseImageName()` — the words an image is shown with.
+             *
+             * @param {string} url An image URL or bare filename.
+             * @param {string} folderKind The folder's kind (`_bbImageKind()`).
+             * @returns {string}
+             */
+            bbImageCaption(url, folderKind) {
+                return _bbImageCaption(_bbParseImageName(url), folderKind);
+            },
+
+            /**
+             * Thin wrapper around `_bbTagFamily()` — a Brucebase tag's family.
+             *
+             * @param {string} tag
+             * @param {Object} [ctx] `{category, songs, people, places}` with
+             *   arrays in place of sets.
+             * @returns {string}
+             */
+            bbTagFamily(tag, ctx) {
+                const c = ctx || {};
+                const set = (a) => (a ? new Set(a) : undefined);
+                return _bbTagFamily(tag, { category: c.category, songs: set(c.songs), people: set(c.people), places: set(c.places) });
             },
 
             /**

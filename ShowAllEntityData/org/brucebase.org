@@ -306,12 +306,17 @@ in short form, so it survives on another machine).
 
 *** TODO Phase 1 — shared groundwork
 - [X] sidebar handle at the top (=_bbArrangeSideBar()=; stays in =document.body=, a foreign-host-only element; =bb-sidebar.spec.js=)
-- [ ] =_bbPageTags()= / =_bbTagFamily()=: Tags in the window and a head card (=_DP_PARSER_VERSION= bump)
-- [ ] =_bbParseImageName()= (grammar A–H): types, photographer credit, caption — card, viewer, window
-- [ ] native page below our section, its headings and tabs collapsible (Ctrl-click: all)
-- [ ] setting =sa_bb_detail_pages= (default true) for every detail pageType
+- [X] =_bbPageTags()= / =_bbTagFamily()=: a closed Tags section in the window (=_DP_PARSER_VERSION= 19);
+  the head card comes with Phase 2's head
+- [X] =_bbParseImageName()= / =_bbImageCaption()= (grammar A–H): caption and photographer credit in the
+  window and the viewer, photos grouped by photographer in the window (=bb-image-names.spec.js=)
+- moved to Phase 2, where there is a section of ours to put it under: the native page below,
+  collapsible, and the setting =sa_bb_detail_pages=
 
 *** TODO Phase 2 — =bb-event= (gig, recording, rehearsal, interview, nogig)
+- [ ] setting =sa_bb_detail_pages= (default true) for every detail pageType
+- [ ] the wiki's page below our section, collapsed (answer 5), its headings and tabs collapsible
+  (Ctrl-click: all)
 - [ ] =_bbEventRead()= shared with =_dpParseBbPage()=; =_bbEventToHtml()= sub-tables Soundcheck, Setlist,
   On stage, Performances, Appearances, Cancelled, Recording; =_bbEventHeadSpec()=
 - [ ] fixtures from the mirror (=scripts/build-bb-detail-fixtures.py=), =bb-event.spec.js=, mutations,

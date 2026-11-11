@@ -82,7 +82,7 @@
         "why": "vzell: the Photo section is the last one rendered.",
         "edits": [
             {
-                "find": "            kinds.sort((a, b) => (a === 'Photo') - (b === 'Photo'));\n",
+                "find": "            kinds.sort((a, b) => photo(a) - photo(b));\n",
                 "replace": ""
             }
         ],

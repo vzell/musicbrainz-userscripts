@@ -3916,8 +3916,12 @@ entry, with these columns:
   folds or opens all of them at once; the people on stage,
   the songs of the setlist and the other shows are links that open in the
   window (Backspace goes back) and show their card when you point at them;
-  the images are grouped by kind, photos last; a click or **Space** on one
-  opens the viewer at it. A song's window works the
+  the images are grouped by kind, photos last and one group per
+  photographer; each says what its file name tells (*Setlist · #01a ·
+  Handwritten*, *Photo · Cliff Breining · #01*); a click or **Space** on one
+  opens the viewer at it. The last section, *Tags*, is folded at first: the
+  page's tags sorted into Date, Place, Tour, On the page, Songs, People and
+  so on, each a link to the wiki's list of pages with that tag. A song's window works the
   same way, its performances listed (folded at first) with each show
   linked.
 - **MB-Event:** a small glyph for the entry's kind (a microphone for a gig,

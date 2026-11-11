@@ -770,3 +770,53 @@ card and the artwork viewer, through the shared foreign-image path
   one `"expect": "pass"`: the click's own `startAt`, covered by the record's
   arrival). Fixtures `detail-bb-gig-1985-01-04.html` and `-01-07.html`
   (`scripts/build-detail-fixtures.py`).
+
+## What a filename says, and the page's tags (Phase 1, 2026-11-11)
+
+org/brucebase.org, "Plan (2026-11-11)", Phase 1; mockups
+https://claude.ai/artifact/3rAGVKsBHEv9jGspkJ5X7Z (org/bb-overhaul-mockups.html,
+the "Filenames" tab). `_DP_PARSER_VERSION` 19.
+
+- **`_bbParseImageName(url)`** reads the wiki's naming convention: shapes
+  A–H (A `YYYYMMDD[a]_<Kind|Photographer>_NN[a][_detail]`, B `Retail-…`,
+  C `YYYY-TOUR_…`, D `disco_|digital_`, E `bs<YYMMDD>`, F
+  `lyricsheet_|note_|recording_|graph_`, H `Bootleg_<Title>[_<Label>]_<Part>N`,
+  G `<slug>_NN[_date|subject]`). 98.5 % of the 3,804 distinct names of the
+  sample (`scripts/probe-bb-detail-pages.py` over `debug/bb-mirror/`,
+  written by `scripts/sample-bb-mirror.py` from the BruceParser mirror). In
+  shape A the second slot is a kind when `_BB_IMG_NAME_KINDS` knows the word,
+  "Unknown" a photographer not known, anything else a photographer
+  (CamelCase split: "CliffBreining" → "Cliff Breining"). The name is
+  decoded first and spaces around `_` dropped (`WarrenLinhart%20_01`). What
+  no shape reads (7-digit dates, site icons, `register_…` documents) gets
+  `shape: ''`: the folder's kind (`_bbImageKind()`) is all there is, as
+  before. Dates drop `00` parts as MusicBrainz writes them.
+- **`_bbImageCaption(p, folderKind)`** words it: "Photo · Cliff Breining ·
+  #01", "Setlist · #01a · Handwritten". `_bbPageImages()` stores it as
+  `caption` with the photographer as `credit`. The window's tile shows the
+  caption after the kind (the whole caption is its `data-mb-tip` title),
+  the viewer's comment is "caption — filename" (`_bbFiImages()`), and the
+  window's "Images" groups Photo once per photographer ("Photo · Mic
+  Hampton"; vzell's answer 3), named ones first, plain Photo (no known
+  photographer) last.
+- **`_bbPageTags(doc, url)`**: `div.page-tags > span > a`, on every page,
+  signed out too. **`_bbTagFamily(tag, ctx)`** sorts each into
+  `_BB_TAG_FAMILIES` (Date, Place, Tour, On the page, Songs, People,
+  Releases, On The Tracks, Bootleg labels, Playlists, Keys, Tour snippets,
+  Letter, Category, Other). Songs and people are recognised by the page's
+  own `/song:` and `/relation:` links (slug squashed), places by the
+  title's comma parts, `(xx)` and a country list. The page's own category
+  ("gig" on a gig) is Category; another category word on it ("news",
+  "bootleg", "retail") says what the page holds (On the page). Song
+  abbreviations ("btn", "tas") are Other: nothing on the page names them.
+- **`_dpParseBb()`** is now a wrapper: `_dpParseBbRecord()` (the old body:
+  song, venue, entry) plus `tags` and a last, CLOSED "Tags (N)" section
+  (`_bbTagsSection()`, pills by family, each linking the wiki's
+  `/system:page-tags/tag/<tag>#pages`). The window's remembered fold key
+  strips the count, so a toggled Tags section stays so.
+
+Tests: `tests/fixtures/bb-image-names.spec.js` (every shape on real names,
+captions, the three misses; tag families with and without the page's
+category), `bb-event-preview.spec.js` ("tags by family" — counted from the
+fixture's tag block; "grouped by photographer" — 1985-01-04's Mic Hampton,
+1985-01-13's unknown photographer); mutations `scripts/mutations/bb-names-tags.json`.
