@@ -510,3 +510,23 @@ No userscript change.
 - Docs: docs/claude/discogs.md "Section bands of the Tracks view",
   docs/claude/detail-pages.md "The Discogs tracklist outline",
   docs/claude/filter-and-cache-invariants.md "Rows that are not data".
+
+*** TODO Re-run the stopped test run on a faster machine
+
+vzell stopped the targeted run on vzell-lap (2026-11-11 ~01:10 CET) after testing live, OK; it was merged
+without =test:full=. 79 passed, 1 failed (discogs-master-tracks, fixed in the same commit), the rest never ran.
+Re-run on a faster host (petri), then =npm run test:full= as the merge gate would have:
+
+#+begin_example
+python3 scripts/run-test-full.py --script test --log <scratch>/mb.log -- \
+  tests/fixtures/collapse-column-width-stable-on-sort.spec.js tests/fixtures/collapse-measure-batched.spec.js \
+  tests/fixtures/collapse-state-filter-staleness.spec.js tests/fixtures/colvis-clean-column-names.spec.js \
+  tests/fixtures/filter-flag-scoping.spec.js tests/fixtures/findings-stamp.spec.js tests/fixtures/findings-menus.spec.js \
+  tests/fixtures/hide-empty-subtables.spec.js tests/fixtures/pending-edits-collapsed-cell.spec.js \
+  tests/fixtures/rel-column-collapse-toggle.spec.js tests/fixtures/rel-uniq-filter-after-collapse-cycle.spec.js \
+  tests/fixtures/row-count-stat-fixed-width.spec.js tests/fixtures/sticky-column-batched.spec.js \
+  tests/fixtures/subtable-tab-handoff.spec.js tests/fixtures/uniq-drop-collapse-gate-glyph-column.spec.js \
+  tests/fixtures/discogs-master-tracks.spec.js tests/fixtures/discogs-pages.spec.js \
+  tests/fixtures/discogs-release-tracks.spec.js tests/fixtures/discogs-release-sections.spec.js --project=chromium-fixtures
+python3 scripts/run-test-full.py --log <scratch>/test-full.log
+#+end_example
