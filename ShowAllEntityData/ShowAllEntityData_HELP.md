@@ -3918,8 +3918,10 @@ entry, with these columns:
   window (Backspace goes back) and show their card when you point at them;
   the images are grouped by kind, photos last and one group per
   photographer; each says what its file name tells (*Setlist · #01a ·
-  Handwritten*, *Photo · Cliff Breining · #01*); a click or **Space** on one
-  opens the viewer at it. The last section, *Tags*, is folded at first: the
+  Handwritten*, *Photo · Cliff Breining · #01*); a click on a group's
+  heading folds it, and a Ctrl+click folds or opens every group (the text
+  sections stay as they are); a click or **Space** on an image opens the
+  viewer at it. The last section, *Tags*, is folded at first: the
   page's tags sorted into Date, Place, Tour, On the page, Songs, People and
   so on, each a link to the wiki's list of pages with that tag. A song's window works the
   same way, its performances listed (folded at first) with each show

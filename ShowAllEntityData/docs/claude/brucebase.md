@@ -798,7 +798,12 @@ the "Filenames" tab). `_DP_PARSER_VERSION` 19.
   the viewer's comment is "caption — filename" (`_bbFiImages()`), and the
   window's "Images" groups Photo once per photographer ("Photo · Mic
   Hampton"; vzell's answer 3), named ones first, plain Photo (no known
-  photographer) last.
+  photographer) last. Each group is a `details.mb-dp-kindsec`
+  (`data-mb-dp-sec="img:<group>"`): a click on its heading folds it, a
+  Ctrl+click folds or opens every GROUP and leaves the sections alone (and
+  a Ctrl+click on a section leaves the groups), remembered in `_dpSecState`
+  for the page's life (`_dpInitSecToggles()`; vzell, 2026-11-11, a
+  212-image gig window).
 - **`_bbPageTags(doc, url)`**: `div.page-tags > span > a`, on every page,
   signed out too. **`_bbTagFamily(tag, ctx)`** sorts each into
   `_BB_TAG_FAMILIES` (Date, Place, Tour, On the page, Songs, People,
@@ -819,4 +824,5 @@ Tests: `tests/fixtures/bb-image-names.spec.js` (every shape on real names,
 captions, the three misses; tag families with and without the page's
 category), `bb-event-preview.spec.js` ("tags by family" — counted from the
 fixture's tag block; "grouped by photographer" — 1985-01-04's Mic Hampton,
-1985-01-13's unknown photographer); mutations `scripts/mutations/bb-names-tags.json`.
+1985-01-13's unknown photographer; "image groups fold"); mutations
+`scripts/mutations/bb-names-tags.json` and `bb-window-sections.json`.

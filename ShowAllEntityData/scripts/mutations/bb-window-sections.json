@@ -115,5 +115,31 @@
         "spec": "tests/fixtures/bb-event-preview.spec.js",
         "grep": "Ctrl\\+click on a heading",
         "expect": "fail"
+    },
+    {
+        "name": "Ctrl+click on an image group folds only that group",
+        "why": "vzell 2026-11-11: Ctrl-click folds or opens ALL image groups.",
+        "edits": [
+            {
+                "find": "            const family = d.matches(SEC) ? SEC : d.matches(KIND) ? KIND : null;\n",
+                "replace": "            const family = d.matches(SEC) ? SEC : null;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "image groups fold",
+        "expect": "fail"
+    },
+    {
+        "name": "a folded image group is not remembered",
+        "why": "Like the sections, a group the reader folded stays folded for the next record (_dpSecState, key img:<group>).",
+        "edits": [
+            {
+                "find": "            if (d && d.matches && (d.matches(SEC) || d.matches(KIND)) && d.closest('#mb-dp-dialog')) _dpSecState.set(d.dataset.mbDpSec, d.open);\n",
+                "replace": "            if (d && d.matches && d.matches(SEC) && d.closest('#mb-dp-dialog')) _dpSecState.set(d.dataset.mbDpSec, d.open);\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "image groups fold",
+        "expect": "fail"
     }
 ]

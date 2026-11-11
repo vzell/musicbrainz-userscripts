@@ -33746,26 +33746,35 @@
      * all of them take the state the clicked one did not have (vzell,
      * 2026-10-24). Each one's `toggle` then records it. Installed once.
      *
+     * The image groups of a window ("Ticket", "Photo · Alberto Engeli",
+     * `details.mb-dp-kindsec`, 2026-11-11) are a family of their own: a
+     * Ctrl-click on a group's heading folds or opens every GROUP, and leaves
+     * the sections alone (and the other way round), so a long gallery can
+     * be folded away without closing the text the reader is reading.
+     *
      * @returns {void}
      */
     function _dpInitSecToggles() {
         if (_dpInitSecToggles.done) return;
         _dpInitSecToggles.done = true;
         const SEC = 'details.mb-dp-sec[data-mb-dp-sec]';
+        const KIND = 'details.mb-dp-kindsec[data-mb-dp-sec]';
         document.addEventListener('toggle', (e) => {
             const d = e.target;
-            if (d && d.matches && d.matches(SEC) && d.closest('#mb-dp-dialog')) _dpSecState.set(d.dataset.mbDpSec, d.open);
+            if (d && d.matches && (d.matches(SEC) || d.matches(KIND)) && d.closest('#mb-dp-dialog')) _dpSecState.set(d.dataset.mbDpSec, d.open);
         }, true);
         document.addEventListener('click', (e) => {
             if (!(e.ctrlKey || e.metaKey) || e.button !== 0 || !e.target.closest) return;
             const sum = e.target.closest('summary');
             const d = sum && sum.parentElement;
-            if (!d || !d.matches(SEC) || sum !== d.querySelector(':scope > summary')) return;
+            if (!d || sum !== d.querySelector(':scope > summary')) return;
+            const family = d.matches(SEC) ? SEC : d.matches(KIND) ? KIND : null;
+            if (!family) return;
             const win = d.closest('#mb-dp-dialog');
             if (!win) return;
             e.preventDefault();
             const open = !d.open;
-            win.querySelectorAll(SEC).forEach(x => { x.open = open; });
+            win.querySelectorAll(family).forEach(x => { x.open = open; });
         }, true);
     }
 
@@ -34540,9 +34549,19 @@
             scans.forEach(i => { if (!kinds.includes(groupOf(i))) kinds.push(groupOf(i)); });
             const photo = (k) => (k === 'Photo' ? 2 : k.startsWith('Photo · ') ? 1 : 0);
             kinds.sort((a, b) => photo(a) - photo(b));
+            // Each group folds on a click on its heading, and a Ctrl+click
+            // folds or opens every group (vzell, 2026-11-11: "the different
+            // photo sections should be collapsable (Ctrl-click ALL sections)
+            // as for many and large sections it will be convenient");
+            // remembered by name for the page's life, like the sections
+            // (`_dpSecState`, key "img:<group>").
             left.push(`<h4>Images (${scans.length})</h4>` + kinds.map(k => {
                 const of = scans.filter(i => groupOf(i) === k);
-                return `<h5 class="mb-dp-kind">${_mbttEscape(k || 'Other')} <span>${of.length}</span></h5><div class="mb-dp-gallery">${of.map(tile).join('')}</div>`;
+                const key = `img:${k || 'Other'}`;
+                const open = _dpSecState.has(key) ? _dpSecState.get(key) : true;
+                return `<details class="mb-dp-kindsec" data-mb-dp-sec="${_mbttEscape(key)}"${open ? ' open' : ''}>` +
+                    `<summary><h5 class="mb-dp-kind">${_mbttEscape(k || 'Other')} <span>${of.length}</span></h5></summary>` +
+                    `<div class="mb-dp-gallery">${of.map(tile).join('')}</div></details>`;
             }).join(''));
         } else if (scans.length) {
             left.push(`<h4>Images (${scans.length})</h4><div class="mb-dp-gallery">` + scans.map(tile).join('') + '</div>');
@@ -39739,6 +39758,11 @@
             .mb-dp-dialog h5.mb-dp-kind { margin: 8px 0 4px; font: 600 10px/1.3 system-ui, Arial, sans-serif; letter-spacing: .07em;
                 text-transform: uppercase; color: #7a6d5c; }
             .mb-dp-dialog h5.mb-dp-kind span { font-weight: 400; margin-left: 3px; }
+            /* An image group folds on its heading (_dpInitSecToggles(): Ctrl+click folds every group). */
+            .mb-dp-dialog details.mb-dp-kindsec > summary { cursor: pointer; list-style: none; display: flex; align-items: baseline; gap: 5px; }
+            .mb-dp-dialog details.mb-dp-kindsec > summary::-webkit-details-marker { display: none; }
+            .mb-dp-dialog details.mb-dp-kindsec > summary::before { content: '▶'; font-size: 8px; color: #7a6d5c; }
+            .mb-dp-dialog details.mb-dp-kindsec[open] > summary::before { content: '▼'; }
             /* A Brucebase page's tags (_bbTagsSection()): a row per family, the
                tags as pills (the Sidebar card pills' look, _sbInlineEnsureStyle()). */
             .mb-dp-dialog .mb-dp-tags { display: grid; gap: 5px; }

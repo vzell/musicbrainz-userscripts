@@ -488,6 +488,46 @@ test.describe('the Brucebase window: collapsible, linked sections; images by kin
         expect(errors).toEqual([]);
     });
 
+    // vzell, 2026-11-11 (screenshot of a 212-image gig window): "the
+    // different photo sections should be collapsable (Ctrl-click ALL
+    // sections)". Pinned: a click folds ONE group and hides its tiles; a
+    // Ctrl+click folds or opens EVERY group and leaves the text sections
+    // alone, and a Ctrl+click on a section leaves the groups alone; a folded
+    // group stays folded for the next record.
+    test('image groups fold: a click folds one, a Ctrl+click every group, and the sections stay as they are', async ({ page }) => {
+        const { errors } = await openWindow(page);
+        const groups = dialog(page).locator('details.mb-dp-kindsec');
+        const gstates = () => groups.evaluateAll(ds => ds.map(d => d.open));
+        const sstates = () => dialog(page).locator('details.mb-dp-sec').evaluateAll(ds => ds.map(d => d.open));
+        const n = await groups.count();
+        expect(n, 'premise: several image groups').toBeGreaterThan(3);
+        expect(await gstates()).toEqual(Array(n).fill(true));
+        const sections = await sstates();
+        const head = (name) => groups.filter({ has: page.locator('summary h5', { hasText: new RegExp(`^${name}\\b`) }) }).locator('summary');
+
+        await head('Ticket').click();
+        await expect(groups.filter({ has: page.locator('summary h5', { hasText: /^Ticket\b/ }) }).locator('.mb-dp-gallery')).toBeHidden();
+        expect((await gstates()).filter(o => !o).length).toBe(1);
+
+        await head('Setlist').click({ modifiers: ['Control'] });
+        await expect.poll(gstates).toEqual(Array(n).fill(false));
+        expect(await sstates(), 'the sections are not groups').toEqual(sections);
+        await head('News').click({ modifiers: ['Control'] });
+        await expect.poll(gstates).toEqual(Array(n).fill(true));
+
+        // A Ctrl+click on a section folds the sections, not the groups.
+        await dialog(page).locator('details.mb-dp-sec[data-mb-dp-sec="On stage"] > summary').click({ modifiers: ['Control'] });
+        await expect.poll(async () => (await sstates()).every(o => !o)).toBe(true);
+        expect(await gstates()).toEqual(Array(n).fill(true));
+
+        // Kept for the next record (← to 1985-01-07, which has a fixture).
+        await head('News').click();
+        for (let k = 0; k < 3; k++) await page.keyboard.press('ArrowLeft');
+        await expect(dialog(page).locator('.mb-dp-xtitle')).toContainText('1985-01-07', { timeout: 15000 });
+        await expect(groups.filter({ has: page.locator('summary h5', { hasText: /^News\b/ }) })).not.toHaveAttribute('open', /.*/);
+        expect(errors).toEqual([]);
+    });
+
     // org/TODO.org "some more BB and MB fixes/enhancements" 1b (vzell,
     // 2026-10-24): Space on an image of a Brucebase window opens the viewer
     // at it, as a click does; Esc closes the viewer and leaves the window.

@@ -6,7 +6,7 @@
       {
         "label": "✨ Improve",
         "items": [
-          "Brucebase previews: a picture now says what its file name tells, the photographer included (\"Photo · Cliff Breining · #01\", \"Setlist · #01a · Handwritten\", \"Pass · #01 · Backstage\"), in the window and in the full-size viewer. The window shows the photos once per photographer, those without a known photographer last.",
+          "Brucebase previews: a picture now says what its file name tells, the photographer included (\"Photo · Cliff Breining · #01\", \"Setlist · #01a · Handwritten\", \"Pass · #01 · Backstage\"), in the window and in the full-size viewer. The window shows the photos once per photographer, those without a known photographer last. Each group folds on a click on its heading, and a Ctrl+click folds or opens every group at once, so a gig with hundreds of photos can be folded away; the text sections stay as they are.",
           "Brucebase previews: the window ends with the page's tags, folded at first, sorted into Date, Place, Tour, On the page, Songs, People, Releases and more; each tag links to the wiki's list of pages with it. Previews already cached are read once more."
         ]
       }
