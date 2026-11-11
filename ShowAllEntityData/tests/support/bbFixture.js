@@ -317,7 +317,51 @@ async function revealPastStickyColumn(page, locator) {
     await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 }
 
+/**
+ * The bb-event fixtures (scripts/build-bb-event-fixtures.py): a Brucebase
+ * event page's fixture file by its key, and the page's URL.
+ * @type {Object<string, {url: string, file: string}>}
+ */
+const BB_EVENT_PAGES = {
+    'gig-1978-07-07': ['gig:1978-07-07-roxy-theatre-west-hollywood-ca', 'bb-event-gig-1978-07-07.html'],
+    'gig-2005-06-20': ['gig:2005-06-20-palais-omnisports-paris-france', 'bb-event-gig-2005-06-20.html'],
+    'recording-1979-04-09': ['recording:1979-04-09-power-station-new-york-city-ny', 'bb-event-recording-1979-04-09.html'],
+    'rehearsal-2009-01-29a': ['rehearsal:2009-01-29a-raymond-james-stadium-tampa-fl', 'bb-event-rehearsal-2009-01-29a.html'],
+    'interview-2021-04-28': ['interview:2021-04-28-siriusxm-studio-new-york-city-ny', 'bb-event-interview-2021-04-28.html'],
+    'nogig-2013-04-16': ['nogig:2013-04-16-richard-rodgers-theatre-new-york-city-ny', 'bb-event-nogig-2013-04-16.html'],
+};
+Object.keys(BB_EVENT_PAGES).forEach((k) => {
+    const [p, f] = BB_EVENT_PAGES[k];
+    BB_EVENT_PAGES[k] = { url: `https://brucebase.wikidot.com/${p}`, file: path.join(__dirname, '..', 'fixtures', f) };
+});
+const BB_EVENT_BUTTON = 'Show the event';
+
+/**
+ * Loads a Brucebase event page fixture (`bb-event`) with the userscript
+ * injected, behind the catch-all abort; every image is answered with one
+ * transparent pixel so the head's pictures load.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} key A `BB_EVENT_PAGES` key ('gig-1978-07-07', …).
+ * @param {{ enabled?: boolean, detail?: boolean, settingsOverride?: Object<string, *> }} [opts]
+ * @returns {Promise<{ requests: string[], url: string }>}
+ */
+async function loadBbEventPage(page, key, { enabled = true, detail = true, settingsOverride = {} } = {}) {
+    const { url, file } = BB_EVENT_PAGES[key];
+    const requests = [];
+    page.on('request', (req) => requests.push(req.url()));
+    await page.route(/^https?:\/\//, (route) => route.abort('blockedbyclient'));
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
+    await page.route(/brucebase\.wdfiles\.com\//, (route) => route.fulfill({ status: 200, contentType: 'image/png', body: png }));
+    await loadUserscriptPage(page, {
+        url, fixtureFile: file, testMode: true,
+        settingsOverride: { sa_enable_brucebase: enabled, sa_bb_detail_pages: detail, ...settingsOverride },
+    });
+    return { requests, url };
+}
+
 module.exports = {
+    BB_EVENT_PAGES, BB_EVENT_BUTTON, loadBbEventPage,
     BB_SONGS_URL, BB_FIXTURE, BB_BUTTON, loadBbSongsPage, renderedBbRows, renderedBbHeaders,
     BB_YEAR_BUTTON, bbYearFixture, loadBbYearPage, renderedBbYearRows, revealPastStickyColumn,
     BB_HOME_URL, BB_HOME_BUTTON, loadBbHomePage,

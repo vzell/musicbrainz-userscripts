@@ -3,10 +3,10 @@
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
     "script_version": "9.99.1598+2026-11-11",
-    "schema_entries": 500,
+    "schema_entries": 501,
     "sections": 54,
-    "settings": 446,
-    "settings_with_default": 441,
+    "settings": 447,
+    "settings_with_default": 442,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 269,
+      "checkbox": 270,
       "color_picker": 62,
       "divider": 54,
       "number": 53,
@@ -269,6 +269,7 @@
     "sa_auto_resize_columns": "Auto-resize columns on load",
     "sa_auto_resize_columns_threshold": "Auto-resize columns threshold (rows)",
     "sa_bb_collabsable_sidebar": "Collabsable sidebar",
+    "sa_bb_detail_pages": "Event pages: a detail view of the gig",
     "sa_bb_detail_preview": "Preview song pages on the Brucebase song list",
     "sa_bb_event_preview": "Preview event, venue and people pages on hover",
     "sa_bb_mb_event_lookup": "MB-Event column: look the events up on MusicBrainz",
@@ -717,6 +718,7 @@
     "sa_auto_resize_columns": true,
     "sa_auto_resize_columns_threshold": 10000,
     "sa_bb_collabsable_sidebar": true,
+    "sa_bb_detail_pages": true,
     "sa_bb_detail_preview": true,
     "sa_bb_event_preview": true,
     "sa_bb_mb_event_lookup": true,

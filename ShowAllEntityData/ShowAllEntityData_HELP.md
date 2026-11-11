@@ -4026,6 +4026,46 @@ many rows (*Large Dataset Threshold*, 5000).
 </details>
 
 <details>
+<summary>Brucebase event pages</summary>
+
+A Brucebase page for one event — a gig (`/gig:…`), a show that did not
+happen (`/nogig:…`), a recording session, a rehearsal or an interview —
+gets one button, **Event** (*Show the event*), while ⚙️ Settings →
+*📚 Brucebase* → *Event pages: a detail view of the gig* is on (the
+default). It lays the page out like a MusicBrainz release; nothing is
+fetched, everything comes from the page itself:
+
+- **Above the tables:** a line under the heading ("~ Gig at Roxy Theatre
+  (The), West Hollywood, CA (1978-07-07)"); *About this show* (the page's
+  summary) and, folded, the tabs that are words (Eyewitness,
+  News/Memorabilia, the recording's notes, …); *Details* with the **Event**
+  card (type, date and weekday, scheduled time, venue, tour, the year page,
+  running time), the page's **Tags** by family and its **Media** (each
+  YouTube player as a link); and the page's **Pictures**, a chip per kind
+  (Ticket, Setlist, News, …) and one per photographer, each captioned from
+  its file name, with the same layouts and viewer as MusicBrainz's cover
+  art.
+- **The tables**, all open, each filterable and sortable:
+  - **Setlist:** one table for the night, *Set* saying Soundcheck or Show
+    where the page names them; *#* within the set; *Song* in MusicBrainz
+    style, the wiki's capitals on hover; *Segue* for songs played straight
+    on ("→ She's the One"); *Premiere* ★ for a song in bold on the wiki (a
+    premiere or tour debut); *Note* for "(with Tom Morello)" and the like.
+  - **On stage** (*In studio* for a session): name, band, role ("(Guest)").
+  - **Performances**, **Appearances**, **Cancelled**: the other entries at
+    the venue, this page in bold.
+  - **Recording:** the official releases, bootlegs with their labels, the
+    live download.
+  - **Storyteller:** what was said before or during which song.
+- **The wiki's page** stays below under *Brucebase page*, folded: click the
+  heading to read it as it was; its own headings fold too.
+
+Switched off, an event page stays as the wiki shows it, and its links still
+preview.
+
+</details>
+
+<details>
 <summary>Brucebase Relations</summary>
 
 Brucebase lists everyone Bruce Springsteen shared a stage or a studio with —

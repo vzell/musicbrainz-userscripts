@@ -1,5 +1,23 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-11-11",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase event pages (a gig, a show that did not happen, a recording session, a rehearsal, an interview) get a button, \"Event\", that lays the page out like a MusicBrainz release, from the page itself with nothing fetched. Above the tables: what it was, where and when; About this show; an Event card (type, date and weekday, scheduled time, venue, tour, the year page, running time), the page's tags by family and its YouTube links; the pictures with a chip per kind and per photographer. The tables: the Setlist as one table (Set, #, Song in MusicBrainz style, Segue, Premiere ★ for a song in bold on the wiki, Note), who was on stage with their band and role, the other shows at the venue (this one in bold), the recordings (official releases, bootlegs with their labels, the live download) and the Storyteller's words by song. The wiki's own page stays below, folded, its headings folding too. Setting \"Event pages: a detail view of the gig\" (on). Mockup: https://claude.ai/artifact/3rAGVKsBHEv9jGspkJ5X7Z"
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Brucebase previews: the scheduled time is read on pages that write it \"Scheduled: 21:00 | Local Start Time …\" too; the card left it out."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-11-11",
     "sections": [

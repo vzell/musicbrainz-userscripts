@@ -95,7 +95,7 @@
         "why": "vzell 2026-10-24: Ctrl-clicking a header toggles ALL sections.",
         "edits": [
             {
-                "find": "            win.querySelectorAll(SEC).forEach(x => { x.open = open; });\n",
+                "find": "            win.querySelectorAll(family).forEach(x => { x.open = open; });\n",
                 "replace": "            d.open = open;\n"
             }
         ],

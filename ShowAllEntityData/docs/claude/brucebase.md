@@ -71,6 +71,10 @@ Other host-aware code:
 
 ## Every other page — `bb-page`: link previews only (2026-11-04)
 
+(Since 2026-11-11 an event page — gig, nogig, recording, rehearsal,
+interview — is `bb-event`'s while `sa_bb_detail_pages` is on: see "Event
+pages — `bb-event`".)
+
 vzell: "previews should run on every Brucebase page" (the G7 pre-test of
 org/non-MB-coverage.org found a venue page with none). A catch-all
 `@include` line lets the script onto every page of the wiki, and `bb-page`,
@@ -770,6 +774,90 @@ card and the artwork viewer, through the shared foreign-image path
   one `"expect": "pass"`: the click's own `startAt`, covered by the record's
   arrival). Fixtures `detail-bb-gig-1985-01-04.html` and `-01-07.html`
   (`scripts/build-detail-fixtures.py`).
+
+## Event pages — `bb-event` (Phase 2, 2026-11-11)
+
+org/brucebase.org, "Plan (2026-11-11)", Phase 2; mockup M1,
+https://claude.ai/artifact/3rAGVKsBHEv9jGspkJ5X7Z; vzell's answers 1–6 in the
+plan. A gig, no-gig, recording session, rehearsal or interview page as a
+release-tracks-style detail page (the foreign-detail pattern of
+`bs-record`/`sl-song`, docs/claude/detail-pages.md).
+
+- **Definition** BEFORE `bb-page`: `match` = `_BB_EVENT_PATH_RE` and
+  `sa_bb_detail_pages !== false` (default **on**; off, the page is
+  `bb-page`'s again — `bb-every-page.spec.js`'s gig test seeds it off). No
+  `@include` of its own: the catch-all line takes these paths. One button,
+  "Show the event" (`showIf`: `_bbEventHasTables()`), `tableMode: 'multi'`,
+  `groupByH3`, `openSubTables: true` (new engine feature, see below).
+- **No request**: `pageRequest.fetchText` returns `_bbEventPageHtml()`, a
+  copy of the page taken at the press **from a clone with every
+  `<script>`/`<style>`/`<noscript>`/`<template>` removed, with a doctype**.
+  The first version serialised `document.documentElement` as it was: the
+  fixture harness injects the userscript inline, its source holds
+  "</script>", and the re-parse ended that script early and parsed the rest
+  as markup, which put Setlist and every later tab outside the tabview (only
+  On Stage rendered). A real page with another script's inline text could do
+  the same.
+- **Two readings of the copy, once** (`_bbEventSource()`): `_bbEventRead()`
+  (tables, the head's own facts) and `_dpParseBb()` — the very record the
+  hover preview shows (Scheduled, images with captions, tags, Media), so the
+  page and its card agree. `_dpParseBbPage()` itself is unchanged.
+- **`_bbEventRead()`** reads the one tabview by label (`_bbEventTabs()`: label
+  i with panel i): the cast tab (`_BB_EVENT_CAST_TABS`: On Stage, In Studio,
+  On Set, On Site → `_bbEventCast()`, a band's members carry the band, the
+  words after a name are the Role), Setlist (`_bbEventSetlist()`: the left
+  cell of its table; a `<p>` that is one `<strong>` names the set, else
+  "Show" — only 19 of 120 sampled gigs label sets; per `<li>`: first song
+  link, the rest Segue, a song in `<strong>` a premiere, the rest of the
+  text the Note), the list tabs (`_BB_EVENT_LIST_TABS` → `_bbEventList()`:
+  Date, Event, Show = Early/Late, Type by the link's category, `self` for
+  the page's own entry), Recording (`_bbEventRecording()`: `/retail:`,
+  `/bootleg:` with the `<sup>` label after it, `/playlist:`, the live
+  download by its `artwork-livedl` cover, "Running Time"), Storyteller
+  (`_bbEventStories()`: a `<p>` led by a bold heading is a row — Moment, the
+  quoted Song linked through the setlist's songs (`_bbSongKey()`), Words; a
+  `<p>` without one carries on the row above; "Compiled by" the note). The
+  gignote is the first `.list-pages-box` before the tabview that holds no
+  `[id^="social"]` (the Share box). Gallery and Media are the head's; any
+  other tab with words is a text section (`rec.texts`).
+- **`_bbEventToHtml()`**: Setlist (`_BB_EVENT_HEADERS.setlist`: Set · # ·
+  Song · Segue · Premiere · Note — one table, answer 1), the cast under its
+  tab's name ("On stage", "In studio"), each list (Date · Event · Show ·
+  Type, the page's own entry `<b>… (this page)</b>`), Recording (Release ·
+  Kind · Label), Storyteller (Moment · Song · Words, answer 2;
+  `collapsableColumns: ['Words']`). Songs through `_mbSiteTitleText()`, the
+  wiki's capitals in a `data-mb-tip` title (answer 6). Nothing for a table →
+  throws `{status: 0}`.
+- **`applyBbEventToTable()`** (press and disk-load sites, beside
+  `applyBsRecordToTable()`): `h2.mb-bb-list-heading.mb-bb-event-heading`
+  "Event" + an empty `table.tbl.mb-bb-event-table` + `h2.mb-bb-native-h2`
+  "Brucebase page", all before `#page-content`. `makeH2sCollapsible()` folds
+  every h2 but the data one, so the wiki's page starts folded (answer 5) and
+  its own h2s (an article's title in News/Memorabilia) fold too — the
+  original TODO's "make the standard BB page h2/h3 click collapsable".
+  `#page-content` itself is never moved or edited.
+- **`_bbEventHeadSpec()`**: `sub` "~ Gig at <place> (<date>)"; About this
+  show/session/interview/rehearsal; `rec.texts` as closed texts; facts: the
+  Event card (Type, Date + weekday, Scheduled, Venue, Tour from `tour_`
+  tags, Year page, Running time, This page); others: Tags by family
+  (`_fdChips()` rows in `_BB_TAG_FAMILIES` order) and Media (the preview's
+  Media section links); pictures from the preview record, `types` = kind or
+  "Photo · <photographer>" (answer 3), caption from the filename.
+- **`_bbScheduledText()`** now reads "Scheduled: 21:00 | Local Start Time
+  …" too (the "|" form; the preview missed it before).
+- **Engine: `features.openSubTables`** (`_defOpensSubTable()`, read in
+  `renderGroupedTable()`'s auto-expand and the reset after a discography
+  view switch): `true` or a list of h3 names that start open. No MusicBrainz
+  definition sets it.
+
+Tests: `tests/fixtures/bb-event.spec.js` (14: both gates and the default;
+the Roxy gig's tables with counts read from the fixture's own tabs, title
+case, the head's cards and pictures, the native page; a person link in On
+stage previews (FRP); a soundcheck, a session, an interview, a no gig, a
+rehearsal; Save → Load from Disk); fixtures `bb-event-*.html` from the
+mirror (`scripts/build-bb-event-fixtures.py`, `loadBbEventPage()` in
+`tests/support/bbFixture.js`); mutations `scripts/mutations/bb-event.json`
+(12).
 
 ## What a filename says, and the page's tags (Phase 1, 2026-11-11)
 

@@ -60,8 +60,11 @@ async function ctrlHover(page, el) {
 }
 
 test.describe('Brucebase: link previews on every page (2026-11-04)', () => {
+    // A gig page is bb-event's since 2026-11-11 (org/brucebase.org, Phase 2,
+    // tests/fixtures/bb-event.spec.js); with its setting off it is this
+    // catch-all's again, which is what this test pins.
     test('a gig page (no pageType): no toolbar; its venue link has the venue card, Space the window, an image the viewer; Back; no page error', async ({ page }) => {
-        const errors = await open(page, GIG, 'detail-bb-gig-1985-01-13.html');
+        const errors = await open(page, GIG, 'detail-bb-gig-1985-01-13.html', { sa_bb_detail_pages: false });
         await expect(page.locator('button[data-label]'), 'no toolbar: nothing but previews').toHaveCount(0);
         await expect(page.locator('h1.mb-bb-preview-only'), 'the pageType\'s header, hidden').toBeHidden();
         await expect(page.locator('#page-title'), 'the wiki\'s own title, as it was').toBeVisible();

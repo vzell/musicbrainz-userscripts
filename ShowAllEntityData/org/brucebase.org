@@ -314,13 +314,15 @@ in short form, so it survives on another machine).
   collapsible, and the setting =sa_bb_detail_pages=
 
 *** TODO Phase 2 — =bb-event= (gig, recording, rehearsal, interview, nogig)
-- [ ] setting =sa_bb_detail_pages= (default true) for every detail pageType
-- [ ] the wiki's page below our section, collapsed (answer 5), its headings and tabs collapsible
-  (Ctrl-click: all)
-- [ ] =_bbEventRead()= shared with =_dpParseBbPage()=; =_bbEventToHtml()= sub-tables Soundcheck, Setlist,
-  On stage, Performances, Appearances, Cancelled, Recording; =_bbEventHeadSpec()=
-- [ ] fixtures from the mirror (=scripts/build-bb-detail-fixtures.py=), =bb-event.spec.js=, mutations,
-  coverage rows, =bb-every-page= adjusted
+- [X] setting =sa_bb_detail_pages= (default true) for every detail pageType
+- [X] the wiki's page below our section, collapsed (answer 5), its own h2s folding (Ctrl-click: all
+  sections, the engine's rule); its tabs are the wiki's
+- [X] =_bbEventRead()= (the tables) beside =_dpParseBb()= (the head's images, tags, Media, the same
+  record the preview shows) over ONE copy of the page; =_bbEventToHtml()= sub-tables Setlist (Set
+  column), the cast, Performances/Appearances/Cancelled, Recording, Storyteller; =_bbEventHeadSpec()=
+- [X] fixtures from the mirror (=scripts/build-bb-event-fixtures.py=), =bb-event.spec.js= (14),
+  mutations =bb-event.json= (12), coverage row, =bb-every-page= adjusted, =features.openSubTables=
+- [ ] vzell's live check
 
 *** TODO Phase 3 — =bb-song= (+ lyrics:, ott:)
 *** TODO Phase 4 — =bb-venue=, =bb-relation= (incl. the Steve Van Zandt TODO)
