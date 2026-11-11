@@ -353,10 +353,17 @@ in short form, so it survives on another machine).
 - [X] fixes on the way: =_ytParse()= read =embed/playlist?list== as a video "playlist"; On The
   Tracks versions with a suffix ("V2 - take 14")
 - [X] =bb-release.spec.js= (16), mutations =bb-release.json= (23), registries, docs, WIP.7
-- [ ] vzell's live check
+- [X] vzell's live check (2026-11-11): OK
 *** TODO Phase 6 — history diff
-- [ ] =scripts/probe-bb-history.user.js= (vzell runs it logged in and out; status/shape/timing only,
-  no user name, no cookies)
+- [X] =scripts/probe-bb-history.user.js= written (2026-11-11): Tampermonkey menu "Probe: page history
+  (this page)"; six POSTs to =/ajax-module-connector.php= 1.1 s apart (PageHistoryModule,
+  PageRevisionListModule, PageSourceModule ×2, PageVersionModule, PageDiffModule =show_type: inline=);
+  reports HTTP/JSON status, keys, =jsInclude=, ms, markup skeleton, class counts, field NAMES, onclick
+  handlers (digits as N), cell KINDS (a member reads "user", a comment its length), source line count and
+  diff mark counts — no names, no page text, no revision ids. Its privacy is pinned by
+  =scripts/check-probe-bb-history.js= (21 checks; two planted leaks fail it)
+- [ ] vzell runs it on one page signed in AND signed out, saves both JSON files to =debug/=
+  (=bb-history-probe-YYYYMMDD-in.json=, =-out.json=)
 - [ ] POH "History" section + "changes" button, revision list, diff in the Discogs grid
 
 *** Later (separate TODOs above)
