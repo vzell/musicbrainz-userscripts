@@ -217,6 +217,96 @@ Here a couple of suggestions:
 
 Also write the plan/implementation steps to this file so that we can eventually pickup on a faster machine
 
+** Plan (2026-11-11, branch feature/bb-overhaul)
 
+Env: 2026-11-11T09:40+01:00 · vzell-lap · WSL2 Ubuntu (Linux 6.18.58.1) · n/a (code reading,
+mirror survey). Full plan text: ~/.claude/plans/act-on-section-compiled-zephyr.md (copied below
+in short form, so it survives on another machine).
 
+*** Decisions (vzell, 2026-11-11)
 
+- First detail slice: the *event family* — gig / recording / rehearsal / interview / nogig
+  (one page layout, ~5,000 pages).
+- History diff: *probe first* (logged in and logged out), build afterwards.
+- The wiki's own page *stays below* our section, its h2/h3 (and tabs) collapsible, Ctrl-click for all.
+- Status conflict noted: "add support for logged in case" is DONE here but still TODO in
+  [[file:springsteenlyrics.org]]; its Answer (2026-10-16) sections 3 and 4 remain the BB logged-in plan.
+
+*** Findings (mirror survey, bb/latest → /mnt/share/brucebase/2026-10-18, slow share: copy samples first)
+
+- *Shell*: =#page-content= holds a Share list-pages-box first and a footer box last (strip both),
+  plus a photo-credit =<p><sup><em>© All credits …= after galleries. Tabviews:
+  =div.yui-navset > ul.yui-nav > li > a > em= paired with =.yui-content > div=; tab ids REPEAT
+  across tabviews of one page (retail has three =wiki-tab-0-0=): scope by tabview + index.
+- *Event family*: =div.code= "Scheduled: 21:00 | Local Start Time ??:?? / End Time ??:??"; nav line
+  "Info & Setlist" (=/YYYY#ddmmyy[a]=) | "Venue" (=/venue:=) — bare =<br/>= on nogig; gignote
+  list-pages-box; tabs On Stage (recording: In Studio) | Setlist | Performances | Appearances | Gallery |
+  Media | Recording | Storyteller | Eyewitness | News/Memorabilia (nogig: Performances | Cancelled |
+  Gallery | Media | News). Setlist: =<strong>Soundcheck</strong><ul>=, =<strong>Show</strong><ol>=,
+  segues "a - a" in one =li=, =<strong>= song = premiere/debut, handwritten setlist image on the right.
+- *song*: "Track N of /Album/, year", Spotify iframe; tabs Credits | Performances | Multiples |
+  Released on Album | Released as Live Download | On The Tracks | Lyrics.
+- *venue*: Wikipedia text + Source, "Springsteen did N performances…", tabs Performances | Gallery.
+- *relation*: bio, tabs Performances (onstage: links) | Appearances | Recording | Bands | News | Gallery.
+- *retail* (+ playlist): =div.code= fields (Commercially Released, Label, Produced/Recorded/Mixed/
+  Mastered/Design/Photography by), footnotes, Released tabview (one tracklist table per edition:
+  # | Song Title | Running Time | Release), Additional Information tabview.
+- *bootleg*: Label / Catalog # / Time / Format / Source in one =<p>=, =ol= tracklist ("//" = side
+  break), Notes, Artwork tab (=Bootleg_<T>_{Front,Back,Disc}.jpg=).
+- *Content fragments* (gignote, news, recnote, gallery, media, story, eye) are pulled into the gig's
+  tabs; their breadcrumb is the parent gig. onstage/offstage are redirect stubs whose TAGS are the cast.
+- *Tags*: =div.page-tags > span > a[href="/system:page-tags/tag/<enc>#pages"]=; families: date parts,
+  first letter, category, squashed name, place, material (ticket, bootleg, cancelled, …), prefixed
+  (=tour_=, =r_=, =ott_=, =lbl_=, =pl_=, =key_=, =toursnip_=), song abbreviations, dotted person aliases.
+- *Image filenames* (14,032 unique sampled; grammar covers 98.5 %):
+  A =YYYYMMDD[a]_<KIND|Photographer>_<NN>[a][_detail]= (72 %; KIND Ticket, Setlist, Pass, Centermic,
+  Article, AdPoster, Merchandise, …; =Unknown= = unknown photographer; detail Handwritten/Printed,
+  Before/After, Backstage, Shirt/Tourbook, a hyphenated subject), B =Retail-CODE_KIND_NN=,
+  C =YYYY-TOUR_KIND_NN=, D =disco_|digital_<name>[_variant]=, E =bs<YYMMDD>=, G =<slug>_NN[_date|subject]=,
+  F =lyricsheet_|note_|recording_|graph_=, H =Bootleg_<T>_{Front,Back,Disc}=.
+- *History*: signed out there is no =#page-info= and no option buttons. Signed in: =#history-button= →
+  =history/PageHistoryModule=, which calls =history/PageRevisionListModule=, =PageDiffModule=
+  (=show_type: inline=), =PageVersionModule=, =PageSourceModule= — POSTs to =/ajax-module-connector.php=
+  with =wikidot_token7= (as =_bbChangesRequest()= does). Anonymous answers: unknown → probe.
+
+*** Reuse (userscript survey)
+
+- Detail pageType: definition BEFORE =bb-page=, one =_fdHeadSpec()= line, HeadSpec rendered by
+  =_fdHeadInsertSections()=; pictures by =_fdArtSection()= (only =types=/=front=); =_fdPills()= for tags.
+- One parse shared by preview, table and head (=bs-record= / =sl-song= pattern; page copy taken once).
+- Diff: Discogs' look (=.mb-dgh-diff=, =.mb-dgh-add/-chg/-rem=, legend); Discogs marks are server-side,
+  so lines via =_slLcs()= and words via =_cmpDiff()=.
+- Sidebar handle: =_ensureBbStyle()= centres it (=top:50%=); use MB's =setTop(rect.top)= clamp.
+
+*** TODO Phase 0 — plan and mockups (no userscript change)
+- [X] write this plan here
+- [ ] =scripts/probe-bb-detail-pages.py= over local copies (=debug/bb-mirror/=): fill rates per family,
+  tag families, filename grammar coverage
+- [ ] mockups artifact (=org/bb-overhaul-mockups.html=): M1 event detail page, M2 sidebar handle at the
+  top, M3 song/venue/relation/retail/bootleg sketches, M4 history pane (Discogs format); questions inside
+- [ ] record vzell's answers; propose the doc updates (brucebase.md, HELP, coverage registry)
+
+*** TODO Phase 1 — shared groundwork
+- [ ] sidebar handle at the top (=_bbArrangeSideBar()=, =_saBody()=; =bb-sidebar.spec.js=)
+- [ ] =_bbPageTags()= / =_bbTagFamily()=: Tags in the window and a head card (=_DP_PARSER_VERSION= bump)
+- [ ] =_bbParseImageName()= (grammar A–H): types, photographer credit, caption — card, viewer, window
+- [ ] native page below our section, its headings and tabs collapsible (Ctrl-click: all)
+- [ ] setting =sa_bb_detail_pages= (default true) for every detail pageType
+
+*** TODO Phase 2 — =bb-event= (gig, recording, rehearsal, interview, nogig)
+- [ ] =_bbEventRead()= shared with =_dpParseBbPage()=; =_bbEventToHtml()= sub-tables Soundcheck, Setlist,
+  On stage, Performances, Appearances, Cancelled, Recording; =_bbEventHeadSpec()=
+- [ ] fixtures from the mirror (=scripts/build-bb-detail-fixtures.py=), =bb-event.spec.js=, mutations,
+  coverage rows, =bb-every-page= adjusted
+
+*** TODO Phase 3 — =bb-song= (+ lyrics:, ott:)
+*** TODO Phase 4 — =bb-venue=, =bb-relation= (incl. the Steve Van Zandt TODO)
+*** TODO Phase 5 — =bb-retail= (+ playlist), =bb-bootleg=
+*** TODO Phase 6 — history diff
+- [ ] =scripts/probe-bb-history.user.js= (vzell runs it logged in and out; status/shape/timing only,
+  no user name, no cookies)
+- [ ] POH "History" section + "changes" button, revision list, diff in the Discogs grid
+
+*** Later (separate TODOs above)
+Extra list pageTypes (stats:discography, …), scroll-to-first-difference userscript, deferred
+year-table columns.
