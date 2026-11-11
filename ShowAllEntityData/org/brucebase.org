@@ -282,7 +282,7 @@ in short form, so it survives on another machine).
 - [X] write this plan here
 - [ ] =scripts/probe-bb-detail-pages.py= over local copies (=debug/bb-mirror/=): fill rates per family,
   tag families, filename grammar coverage
-- [ ] mockups artifact (=org/bb-overhaul-mockups.html=): M1 event detail page, M2 sidebar handle at the
+- [X] mockups artifact (=org/bb-overhaul-mockups.html=, https://claude.ai/artifact/3rAGVKsBHEv9jGspkJ5X7Z): M1 event detail page, M2 sidebar handle at the
   top, M3 song/venue/relation/retail/bootleg sketches, M4 history pane (Discogs format); questions inside
 - [ ] record vzell's answers; propose the doc updates (brucebase.md, HELP, coverage registry)
 
