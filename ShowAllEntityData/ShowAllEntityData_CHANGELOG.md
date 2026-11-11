@@ -4,9 +4,17 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1768 versions; the month pages hold all of them.
+This page shows the newest 100 of 1769 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1598 — 2026-11-11
+
+**🚀 Feature**
+
+- A Discogs release's or master's Tracks view now shows the headings Discogs puts inside a disc ("Cologne 13/02/1981", "Paris 05/02/1981" on a box of live shows) as bands above their tracks, the way Discogs' own page does. Each band says how many tracks it holds and how long they run, and a click folds or shows them; a fold stays through sorting and filtering. On a computer a band stays under the column headers while its tracks scroll past; on a phone or tablet only with the new setting "Tracks view: sticky section bands on touch devices". With a filter on, a band says "2 of 8 tracks", and a section with nothing left loses its band. Sorted by any other column the sections no longer run together, so the bands step aside and each title shows its section as a small tag. The Section column is now hidden by default (it would say the same twice); it is still in 👁️ Visible and the 📊 menu. Mockup: https://claude.ai/artifact/JHuxeos1Yvu7DFwtBftHzg
+- The Discogs link preview's window shows a release's or master's tracklist as an outline: a shaded bar per disc ("Disc 1 · Volume 1: Live In Europe, 1981 · 13 tracks · 1:16:38") and an indented row per section, each with its tracks and running time, both folding on a click. Chips above the list jump to a disc or a section. Up to about 40 tracks everything starts open; on a bigger release only Disc 1. The card's summary line says how the tracks split: "57 tracks on 5 CDs · 6 sections". Previews already cached are asked from Discogs once more.
+
 
 ## 9.99.1597 — 2026-11-10
 
@@ -876,18 +884,6 @@ This page shows the newest 100 of 1768 versions; the month pages hold all of the
 
 - Link previews, an event's window: a setlist in parts (Soundcheck, Concert, Encore, …) shows a heading row for each part with its number of songs and its notes, numbers its songs within each part, and gets a chip per part to show only that part. A song played in two parts says so ("↺ also in Soundcheck"). Before, every song was numbered in one run and the part names were loose lines under the table.
 - The event card previews the setlist's longest part (usually the concert, not the soundcheck) and names the other parts.
-
-
-## 9.99.1498 — 2026-10-29
-
-**✨ Improve**
-
-- discogs.com: the history page of a master, an artist or a label (e.g. /master/26725-Born-To-Run/history) now has the "Show the changes and the diff" button too, as a release's has had.
-
-**🐛 Fix**
-
-- discogs.com history pages: "Show the changes and the diff" read only the first page of a longer history, which holds the oldest changes. It now reads every page.
-- An artist's or label's edit history: the diff of a change came out empty, on the history page and in the preview window. It now shows each field (Real Name, Profile, Sites, …), old and new.
 
 
 ---
