@@ -69,8 +69,8 @@
         "why": "Performances lists this page too: bold, '(this page)', not linked.",
         "edits": [
             {
-                "find": "            return { date: m ? m[1].replace(/-00$/, '') : '', event, href, show: sm ? sm[1] : '', type: _BB_ENTRY_KINDS[cat] || cat, self: !!path && path === here };\n",
-                "replace": "            return { date: m ? m[1].replace(/-00$/, '') : '', event, href, show: sm ? sm[1] : '', type: _BB_ENTRY_KINDS[cat] || cat, self: false };\n"
+                "find": "type: _BB_ENTRY_KINDS[cat] || cat, self: !!path && path === here,\n",
+                "replace": "type: _BB_ENTRY_KINDS[cat] || cat, self: false,\n"
             }
         ],
         "spec": "tests/fixtures/bb-event.spec.js",

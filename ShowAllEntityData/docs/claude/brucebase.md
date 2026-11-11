@@ -907,7 +907,19 @@ Steve van Zandt detail page needs overhaul".
   its region from the breadcrumbs ("Venues In California (CA)"); a
   person's sort name from the last breadcrumb.
 - `_bbEventList()` (shared) now also reads "2015-04-30, Story Chapel, …"
-  (a comma after the date: Patti Scialfa's Performances).
+  (a comma after the date: Patti Scialfa's Performances), and flags it: the
+  ⚠️ finding `bb-date-comma` on the Date cell (`_bbDateCell()`;
+  docs/claude/findings.md). The list entries are the linked pages' titles,
+  so that page's title is the one to fix.
+- **A show's link is the wiki's `/onstage:<event>`** (`/offstage:` in
+  Appearances), which the server answers with a 301 to the event (curl,
+  2026-11-11; one of Patti Scialfa's, Story Chapel's, redirects to a gig page
+  that answers 404 — the wiki's data). Since the same day both are
+  `ownLinks` of the preview, and `_dpParseBb()` reads the record at the
+  event's own address, `_bbRedirectedUrl()`: `fetch()` follows the 301 but
+  the reader is handed the `/onstage:` URL, so the page's inline
+  `WIKIREQUEST.info.requestPageName = "gig:…"` names the address (the tags'
+  Category is then "gig", not something the page holds).
 - `openSubTables`: a venue's tables all open; a person's Performances (up
   to 1,500 rows) folded.
 

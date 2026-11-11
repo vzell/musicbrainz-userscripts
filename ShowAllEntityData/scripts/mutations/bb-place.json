@@ -128,5 +128,83 @@
         "spec": "tests/fixtures/bb-place.spec.js",
         "grep": "the head",
         "expect": "fail"
+    },
+    {
+        "name": "bb-date-comma: the detector never matches",
+        "why": "The finding reads the Date cell's data-mb-bb-date-comma (source-row markup).",
+        "edits": [
+            {
+                "find": "            test: cell => cell.dataset.mbBbDateComma === '1',\n",
+                "replace": "            test: () => false,\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-place.spec.js",
+        "grep": "the WARNING menu counts",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-date-comma: the comma is not recorded",
+        "why": "_bbEventList() keeps whether the entry has a comma after its date.",
+        "edits": [
+            {
+                "find": "                dateComma: !!m && /^\\d{4}-\\d{2}(?:-\\d{2})?,/.test(text), entry: text,\n",
+                "replace": "                dateComma: false, entry: text,\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-place.spec.js",
+        "grep": "the WARNING menu counts",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-date-comma: the tint setting is ignored",
+        "why": "sa_findings_tint_bb_date_comma off: no tint, the menu row stays.",
+        "edits": [
+            {
+                "find": "            tint: _findingTintSetting('sa_findings_tint_bb_date_comma'),\n",
+                "replace": "            tint: () => true,\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-place.spec.js",
+        "grep": "the tint setting off",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-date-comma: the finding's setting is ignored",
+        "why": "sa_findings_bb_date_comma off: no menu row.",
+        "edits": [
+            {
+                "find": "            enabled: () => !!_isBbHost && Lib.settings.sa_findings_bb_date_comma !== false,\n",
+                "replace": "            enabled: () => !!_isBbHost,\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-place.spec.js",
+        "grep": "the finding switched off",
+        "expect": "fail"
+    },
+    {
+        "name": "/onstage: links do not preview",
+        "why": "vzell 2026-11-11: the wiki's redirect pages should preview their event.",
+        "edits": [
+            {
+                "find": "|venue|relation|onstage|offstage):[^/]+$/.test(u.pathname),",
+                "replace": "|venue|relation):[^/]+$/.test(u.pathname),"
+            }
+        ],
+        "spec": "tests/fixtures/bb-place.spec.js",
+        "grep": "previews its event",
+        "expect": "fail"
+    },
+    {
+        "name": "an /onstage: record keeps the redirect's address",
+        "why": "_bbRedirectedUrl(): the record is read at the event's own address (its tags: gig is the Category).",
+        "edits": [
+            {
+                "find": "        url = _bbRedirectedUrl(doc, url);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-place.spec.js",
+        "grep": "previews its event",
+        "expect": "fail"
     }
 ]

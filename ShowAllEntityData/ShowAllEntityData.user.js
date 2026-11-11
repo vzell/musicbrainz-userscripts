@@ -2892,6 +2892,23 @@
                          'Brucebase link"); the cell\'s card names the link it would have.'
         },
 
+        sa_findings_bb_date_comma: {
+            label: 'Find Brucebase entries with a comma after their date',
+            type: 'checkbox',
+            default: true,
+            description: 'On a Brucebase detail page (event, song, venue, person): a list entry the wiki writes ' +
+                         '"2015-04-30, Story Chapel, …" instead of "2015-04-30 Story Chapel, …". A WARNING ' +
+                         '("Brucebase entry with a comma after its date"); the entry is the linked page\'s title.'
+        },
+
+        sa_findings_tint_bb_date_comma: {
+            label: 'Highlight Date cells of Brucebase entries with a comma after their date',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint the Date cell light yellow with a ⚠️ when the wiki writes the entry with a comma ' +
+                         'after its date.'
+        },
+
         sa_findings_tint_bb_mbev_link: {
             label: 'Highlight MB-Event cells whose Brucebase link differs or is missing',
             type: 'checkbox',
@@ -31906,7 +31923,7 @@
      *
      * @param {Element} panel
      * @param {string} url - The page's URL.
-     * @returns {{rows: Array<{date: string, event: string, href: string, show: string, type: string, self: boolean}>, note: string}}
+     * @returns {{rows: Array<{date: string, event: string, href: string, show: string, type: string, self: boolean, dateComma: boolean, entry: string}>, note: string}}
      */
     function _bbEventList(panel, url) {
         let here = '';
@@ -31929,7 +31946,11 @@
                 path = href ? new URL(href).pathname : '';
             } catch (_) { /* none */ }
             const cat = (path.match(/^\/([a-z]+):/) || [])[1] || '';
-            return { date: m ? m[1].replace(/-00$/, '') : '', event, href, show: sm ? sm[1] : '', type: _BB_ENTRY_KINDS[cat] || cat, self: !!path && path === here };
+            return {
+                date: m ? m[1].replace(/-00$/, '') : '', event, href, show: sm ? sm[1] : '', type: _BB_ENTRY_KINDS[cat] || cat, self: !!path && path === here,
+                // The `bb-date-comma` finding: the entry as the wiki writes it.
+                dateComma: !!m && /^\d{4}-\d{2}(?:-\d{2})?,/.test(text), entry: text,
+            };
         }).filter(Boolean);
         const note = Array.from(panel.querySelectorAll('p')).map(p => _dpText(p.textContent)).filter(t => t && !rows.some(r => t.includes(r.event))).join(' ');
         return { rows, note };
@@ -32112,6 +32133,21 @@
     }
 
     /**
+     * The Date cell of a list row (`_bbEventList()`): the date, and for an
+     * entry the wiki writes with a comma after its date ("2015-04-30, Story
+     * Chapel, …") the marks of the `bb-date-comma` finding — the entry as
+     * written (`data-mb-bb-entry`) and `data-mb-bb-date-comma`. Source-row
+     * markup, so the finding's stamp reads it on every render.
+     *
+     * @param {{date: string, dateComma?: boolean, entry?: string}} r
+     * @returns {string} A `<td>`.
+     */
+    function _bbDateCell(r) {
+        const e = _rgEsc;
+        return r.dateComma ? `<td data-mb-bb-date-comma="1" data-mb-bb-entry="${e(r.entry || '')}">${e(r.date)}</td>` : `<td>${e(r.date)}</td>`;
+    }
+
+    /**
      * `toHtml` of bb-event: the record's sub-tables (`_bbEventRead()`) —
      * Setlist (Set · # · Song · Segue · Premiere · Note; one table, the set
      * a column: vzell's answer 1), the cast under its tab's name (Name ·
@@ -32154,7 +32190,7 @@
         rec.lists.forEach((l) => {
             out.push(table(l.label, _BB_EVENT_HEADERS.list, l.rows.map((r) => {
                 const ev = r.self ? `<b>${e(r.event)} (this page)</b>` : link(r.href, e(r.event));
-                return `<tr><td>${e(r.date)}</td><td>${ev}</td><td>${e(r.show)}</td><td>${e(r.type)}</td></tr>`;
+                return `<tr>${_bbDateCell(r)}<td>${ev}</td><td>${e(r.show)}</td><td>${e(r.type)}</td></tr>`;
             })));
         });
         if (rec.recording) {
@@ -32542,7 +32578,7 @@
         };
         const table = (name, cols, rows) => `<h3>${e(name)}</h3><table class="tbl" data-mb-col-headers="${e(JSON.stringify(cols))}">` +
             `<thead><tr>${cols.map(c => `<th>${e(c)}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>`;
-        const listRows = (rows) => rows.map(r => `<tr><td>${e(r.date)}</td><td>${link(r.href, e(r.event))}</td><td>${e(r.show)}</td><td>${e(r.type)}</td></tr>`);
+        const listRows = (rows) => rows.map(r => `<tr>${_bbDateCell(r)}<td>${link(r.href, e(r.event))}</td><td>${e(r.show)}</td><td>${e(r.type)}</td></tr>`);
         const out = [];
         if (rec.credits.length) {
             out.push(table('Credits', _BB_SONG_HEADERS.credits, rec.credits.map(r =>
@@ -32976,12 +33012,12 @@
         if (rec.perf.length) {
             const split = rec.perf.some(r => r.as);
             const cols = split ? _BB_PLACE_HEADERS.perf : _BB_PLACE_HEADERS.list;
-            out.push(table('Performances', cols, rec.perf.map(r => `<tr><td>${e(r.date)}</td><td>${link(r.href, e(r.event))}</td><td>${e(r.show)}</td>` +
+            out.push(table('Performances', cols, rec.perf.map(r => `<tr>${_bbDateCell(r)}<td>${link(r.href, e(r.event))}</td><td>${e(r.show)}</td>` +
                 `<td>${e(split ? r.as : r.type)}</td></tr>`)));
         }
         rec.lists.forEach((l) => {
             out.push(table(l.label, _BB_PLACE_HEADERS.list, l.rows.map(r =>
-                `<tr><td>${e(r.date)}</td><td>${link(r.href, e(r.event))}</td><td>${e(r.show)}</td><td>${e(r.type)}</td></tr>`)));
+                `<tr>${_bbDateCell(r)}<td>${link(r.href, e(r.event))}</td><td>${e(r.show)}</td><td>${e(r.type)}</td></tr>`)));
         });
         if (rec.recording.length) {
             out.push(table('Recording', _BB_PLACE_HEADERS.recording, rec.recording.map(r => `<tr><td>${e(r.credit)}</td>` +
@@ -33359,6 +33395,32 @@
     }
 
     /**
+     * The address a fetched Brucebase page really has, when `url` is one of
+     * the wiki's redirect pages (`/onstage:<event>`, `/offstage:<event>`:
+     * the server answers 301 to the event, and `fetch()` follows it, so the
+     * page parsed is the event's while `url` still names the redirect). The
+     * page names itself in its inline script, `WIKIREQUEST.info.requestPageName
+     * = "gig:2002-08-24-forum-inglewood-ca"` (curl, 2026-11-11). Any other
+     * `url`, or a page without that line, is returned as it is.
+     *
+     * @param {Document} doc
+     * @param {string}   url
+     * @returns {string}
+     */
+    function _bbRedirectedUrl(doc, url) {
+        let u;
+        try {
+            u = new URL(url);
+        } catch (_) {
+            return url;
+        }
+        if (!/^\/(?:onstage|offstage):/.test(u.pathname)) return url;
+        const script = Array.from(doc.querySelectorAll('script'), x => x.textContent).find(t => /requestPageName\s*=/.test(t));
+        const m = script ? script.match(/requestPageName\s*=\s*"([^"]+)"/) : null;
+        return m && !/^(?:onstage|offstage):/.test(m[1]) ? `${u.origin}/${m[1]}` : url;
+    }
+
+    /**
      * The Brucebase reader (`_DP_SITES['brucebase.wikidot.com'].parse`): the
      * page's record (`_dpParseBbRecord()`), with the page's tags
      * (`_bbPageTags()`) as `tags` and, last, a closed "Tags (N)" section of
@@ -33371,6 +33433,7 @@
      *   `#page-content`.
      */
     function _dpParseBb(doc, url) {
+        url = _bbRedirectedUrl(doc, url);
         const data = _dpParseBbRecord(doc, url);
         if (!data) return data;
         data.tags = _bbPageTags(doc, url);
@@ -33581,8 +33644,12 @@
             // icon (an `<img>` link) stays the image card's.
             ownLinks: {
                 // Venue and people pages too (2026-10-24: "all relations
-                // under On stage … should support detail hovering").
-                test: (u) => /^\/(?:gig|nogig|recording|rehearsal|interview|nobruce|venue|relation):[^/]+$/.test(u.pathname),
+                // under On stage … should support detail hovering"); and
+                // the wiki's /onstage: and /offstage: pages (2026-11-11, a
+                // person's Performances and Appearances link those), which
+                // the server redirects (301) to the event: `_dpParseBb()`
+                // reads the record at the event's own address.
+                test: (u) => /^\/(?:gig|nogig|recording|rehearsal|interview|nobruce|venue|relation|onstage|offstage):[^/]+$/.test(u.pathname),
                 setting: 'sa_bb_event_preview',
             },
             // A year table's Venue cell links the ENTRY page (the year page
@@ -66046,6 +66113,24 @@
                 return c ? `The event would link ${c.own}.` : '';
             },
             tint: _findingTintSetting('sa_findings_tint_bb_mbev_link'),
+        },
+        // A Brucebase list entry written with a comma after its date
+        // ("2015-04-30, Story Chapel, Mount Auburn Cemetery, Cambridge, MA",
+        // Patti Scialfa's Performances; vzell, 2026-11-11: "should be flagged
+        // as finding on the PT"). The lists on event, song, venue and person
+        // pages are the linked pages' TITLES (Wikidot ListPages), so the
+        // place to fix it is that page's title. Read from the Date cell's own
+        // markup (`_bbDateCell()`), never from a render-tail decoration.
+        {
+            id: 'bb-date-comma', level: 'warn', glyph: ',', scope: 'cell',
+            label: 'Brucebase entry with a comma after its date',
+            tip: 'Brucebase lists this entry as "2015-04-30, Story Chapel, …": every other entry has a space after the date ("2004-09-25 Roxy Theatre (The), West Hollywood, CA"). The lists are the linked pages\' titles, so the page to edit is the one the row links: rename it without the comma. The row is read all the same.',
+            enabled: () => !!_isBbHost && Lib.settings.sa_findings_bb_date_comma !== false,
+            cols: name => name === 'Date',
+            rowGate: row => !!row.querySelector('td[data-mb-bb-date-comma]'),
+            test: cell => cell.dataset.mbBbDateComma === '1',
+            detail: cell => `Brucebase writes it "${cell.dataset.mbBbEntry || ''}".`,
+            tint: _findingTintSetting('sa_findings_tint_bb_date_comma'),
         },
         {
             id: 'pending', level: 'warn', glyph: '⏳', scope: 'row',

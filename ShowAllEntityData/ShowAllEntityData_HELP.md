@@ -842,6 +842,7 @@ back).
 | ⚠️     | Several links to one site in Relationships (once loaded)        | Relationships                               |
 | ⚠️     | Old springsteenlyrics.com address in the annotation             | Annotation                                  |
 | ⚠️     | MB-Event: no Brucebase link (once looked up)                    | Brucebase year: MB-Event                    |
+| ⚠️     | Brucebase entry with a comma after its date                     | Brucebase detail pages: Date                |
 | ⚠️     | Pending edits                                                   | any column                                  |
 | ⚠️     | Live credit without a date                                      | Release tracklist: credit columns           |
 | ❌    | MB-Event: the Brucebase link differs (once looked up)           | Brucebase year: MB-Event                    |
@@ -4079,7 +4080,13 @@ lists into pages (Steven Van Zandt's 1,517 shows over six), and all of them
 are read, one request per page — with *As* saying in which band ("As a
 member of The E Street Band"); the count per band; appearances; the
 recordings by song and role; their bands or members; songs co-written with
-Bruce. Their biography, tags and pictures are above.
+Bruce. Their biography, tags and pictures are above. A show in their
+lists links the wiki's "on stage" page for it, which the wiki forwards to
+the show: pointing at it (Ctrl) previews the show itself. An entry the wiki
+writes with a comma after its date ("2015-04-30, Story Chapel, …") is
+still read, and flagged as a ⚠️ WARNING, *Brucebase entry with a comma
+after its date*: the lists are the linked pages' titles, so that page's
+title is the one to fix.
 
 The setting is *Detail pages: events, songs, venues and people as tables*. Switched off,
 these pages stay as the wiki shows them, and their links still preview.

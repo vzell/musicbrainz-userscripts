@@ -198,6 +198,100 @@ test.describe('bb-relation: Patti Scialfa, three pages', () => {
     });
 });
 
+// The `bb-date-comma` finding (vzell, 2026-11-11: "should be flagged as
+// finding on the PT"): Patti Scialfa's "2015-04-30, Story Chapel, Mount
+// Auburn Cemetery, Cambridge, MA" (pages 2 and 3; page 3's is the repeated
+// module, read once). Pinned: the count equals the rows carrying the stamp
+// AND the fixture's own comma entries (distinct links); the filter leaves
+// exactly those rows and gives every row back; the cell's tint, ⚠️ and the
+// entry in its tooltip; the tint setting off keeps the menu row; the
+// finding's setting off removes it.
+test.describe('bb-relation: the bb-date-comma finding', () => {
+    const rowsOf = (page) => page.evaluate(() => {
+        const rows = Array.from(document.querySelectorAll('table.tbl tbody tr'));
+        return { rows: rows.length, withFinding: rows.filter(tr => tr.querySelector('td[data-mb-findings~="bb-date-comma"]')).length };
+    });
+
+    test('flagged on the Date cell; the WARNING menu counts and filters it; its look', async ({ page }) => {
+        const { findingRow, clickFinding } = require('../support/findingsMenu');
+        await loadBbEventPage(page, 'relation-patti-scialfa');
+        const fx = BB_EVENT_PAGES['relation-patti-scialfa'];
+        const html = [fx.file, ...Object.values(fx.pages)].map(f => fs.readFileSync(f, 'utf8')).join('\n');
+        const commaLinks = new Set((html.match(/<a href="(\/[a-z]+:[^"]+)">\d{4}-\d{2}-\d{2},/g) || []).map(m => m.match(/href="([^"]+)"/)[1]));
+        expect(commaLinks.size, 'premise: the fixture has such an entry').toBeGreaterThan(0);
+        await press(page, PERSON_BUTTON);
+        const before = await rowsOf(page);
+        expect(before.withFinding).toBe(commaLinks.size);
+        const row = await findingRow(page, 'warn', 'bb-date-comma');
+        expect(row).toMatchObject({ label: 'Brucebase entry with a comma after its date', count: commaLinks.size });
+        const cell = page.locator('td[data-mb-findings~="bb-date-comma"]').first();
+        await expect(cell).toHaveAttribute('title', /Brucebase writes it "2015-04-30, Story Chapel, Mount Auburn Cemetery, Cambridge, MA"\./);
+        const look = await cell.evaluate(td => ({ bg: getComputedStyle(td).backgroundColor, after: getComputedStyle(td, '::after').content }));
+        expect(look.bg).not.toBe('rgba(0, 0, 0, 0)');
+        expect(look.after).toContain('⚠');
+        await clickFinding(page, 'bb-date-comma');
+        await expect.poll(() => rowsOf(page)).toEqual({ rows: commaLinks.size, withFinding: commaLinks.size });
+        await clickFinding(page, 'bb-date-comma');
+        await expect.poll(() => rowsOf(page)).toEqual(before);
+    });
+
+    test('the tint setting off: no tint, the menu row stays; the finding\'s setting off: no menu row', async ({ page }) => {
+        const { findingRow } = require('../support/findingsMenu');
+        await loadBbEventPage(page, 'relation-patti-scialfa', { settingsOverride: { sa_findings_tint_bb_date_comma: false } });
+        await press(page, PERSON_BUTTON);
+        expect(await findingRow(page, 'warn', 'bb-date-comma')).toMatchObject({ count: 1 });
+        const after = await page.locator('td[data-mb-findings~="bb-date-comma"]').first().evaluate(td => getComputedStyle(td, '::after').content);
+        expect(after).not.toContain('⚠');
+    });
+
+    test('the finding switched off', async ({ page }) => {
+        const { findingRow } = require('../support/findingsMenu');
+        await loadBbEventPage(page, 'relation-patti-scialfa', { settingsOverride: { sa_findings_bb_date_comma: false } });
+        await press(page, PERSON_BUTTON);
+        expect(await findingRow(page, 'warn', 'bb-date-comma')).toBeFalsy();
+        await expect(page.locator('td[data-mb-findings~="bb-date-comma"]')).toHaveCount(0);
+    });
+});
+
+// vzell, 2026-11-11: the wiki's /onstage: redirect pages "should also be
+// supported". A person's show links are /onstage:<event>, which the server
+// answers with a 301 to the event. Pinned: Ctrl+hover shows the EVENT's
+// card; the record is read at the event's own address (the page's
+// `requestPageName`), so its tag "gig" is the page's Category, not
+// something it holds.
+test.describe('bb-relation: an /onstage: link previews its event', () => {
+    test('the card is the event\'s; the window\'s tags read the event as a gig', async ({ page }) => {
+        const errors = trackPageErrors(page);
+        const { requests } = await loadBbEventPage(page, 'relation-patti-scialfa', {
+            settingsOverride: { sa_bb_event_preview: true, sa_pop_ext: true, sa_rich_tooltip_delay_ms: 0 },
+        });
+        const gig = 'https://brucebase.wikidot.com/gig:1978-07-07-roxy-theatre-west-hollywood-ca';
+        const gigHtml = fs.readFileSync(BB_EVENT_PAGES['gig-1978-07-07'].file, 'utf8').replace('</head>',
+            '<script>var WIKIREQUEST = { info: {} }; WIKIREQUEST.info.requestPageName = "gig:1978-07-07-roxy-theatre-west-hollywood-ca";</script></head>');
+        await page.route(/\/onstage:/, (route) => route.fulfill({ status: 301, headers: { location: gig } }));
+        await page.route(gig, (route) => route.fulfill({ body: gigHtml, contentType: 'text/html; charset=utf-8' }));
+        await press(page, PERSON_BUTTON);
+        // Performances starts folded: open it.
+        await page.locator('h3', { hasText: /^.?Performances \(\d+\)/ }).first().click();
+        const a = page.locator('table.tbl tbody a[href*="/onstage:"]:visible').first();
+        await a.scrollIntoViewIfNeeded();
+        const href = await a.getAttribute('href');
+        await page.mouse.move(0, 0);
+        await page.keyboard.down('Control');
+        await a.hover();
+        await page.keyboard.up('Control');
+        await expect(page.locator('#mb-dp-peek')).toContainText('1978-07-07 Roxy Theatre (The), West Hollywood, CA');
+        await expect.poll(() => requests).toContain(href);
+        await page.keyboard.press('Space');
+        const dialog = page.locator('#mb-dp-dialog');
+        const tags = dialog.locator('details.mb-dp-sec[data-mb-dp-sec="Tags"]');
+        await tags.locator('summary').click();
+        const cat = await tags.locator('.mb-dp-tagrow', { has: page.locator('.mb-dp-tagk', { hasText: /^Category$/ }) }).locator('a.mb-dp-tag').allTextContents();
+        expect(cat).toEqual(['gig']);
+        expect(errors).toEqual([]);
+    });
+});
+
 test.describe('bb-relation: smaller pages', () => {
     test('a person with one show: its kind reads "On stage"', async ({ page }) => {
         await loadBbEventPage(page, 'relation-anders-goman');

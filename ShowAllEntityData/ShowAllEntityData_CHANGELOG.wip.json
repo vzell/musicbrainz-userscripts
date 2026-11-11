@@ -1,5 +1,23 @@
 [
   {
+    "version": "WIP.6",
+    "date": "2026-11-11",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Brucebase: the shows in a person's lists link the wiki's \"on stage\" pages, which the wiki forwards to the show; these links now preview the show itself, card and window."
+        ]
+      },
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "A new WARNING on the Brucebase detail pages, \"Brucebase entry with a comma after its date\": an entry the wiki lists as \"2015-04-30, Story Chapel, …\" instead of \"2015-04-30 Story Chapel, …\". It is still read; the Date cell is tinted, its tooltip quotes the entry, and the lists being the linked pages' titles, that page's title is the one to fix. Settings \"Find Brucebase entries with a comma after their date\" and its highlight (both on)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.5",
     "date": "2026-11-11",
     "sections": [

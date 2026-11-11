@@ -302,6 +302,22 @@ only (`enabled()` checks `_isBbHost`).
 - Specs `tests/fixtures/bb-mb-event.spec.js` ("the MB-Event Brucebase-link
   findings"); mutations `scripts/mutations/bb-mb-event.json`.
 
+### A Brucebase entry with a comma after its date: `bb-date-comma`
+
+vzell, 2026-11-11 (org/brucebase.org, Phase 4 follow-up): the lists of the
+Brucebase detail pages (event, song, venue, person) are Wikidot ListPages of
+the linked pages' TITLES, "2004-09-25 Roxy Theatre (The), West Hollywood,
+CA"; one is written "2015-04-30, Story Chapel, Mount Auburn Cemetery,
+Cambridge, MA" (Patti Scialfa's Performances). `_bbEventList()` reads it all
+the same (a comma or a space after the date) and records `dateComma` and the
+entry's text; `_bbDateCell()` writes them into the Date cell's own markup
+(`data-mb-bb-date-comma`, `data-mb-bb-entry`), so the stamp reads source-row
+data. ⚠️, cell scope, column Date, Brucebase only (`enabled()`:
+`_isBbHost` and `sa_findings_bb_date_comma`); generic tint
+`sa_findings_tint_bb_date_comma`; the tooltip quotes the entry. Specs
+`tests/fixtures/bb-place.spec.js` ("the bb-date-comma finding"); mutations
+`scripts/mutations/bb-place.json`.
+
 ## On demand: the title-style findings
 
 `title-case`, `title-typography`, `title-series-sep`, `title-feat` and

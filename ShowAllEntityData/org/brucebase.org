@@ -338,7 +338,9 @@ in short form, so it survives on another machine).
 - [X] Steven Van Zandt: six pages, 1,517 shows (1,306 E Street, 211 not) — the page's own count;
   checked once over the six live pages (scratch), Patti Scialfa's three pages are the fixture
 - [X] =bb-place.spec.js= (8), mutations =bb-place.json= (10), registries, docs
-- [ ] vzell's live check (relation:steven-van-zandt, relation:patti-scialfa, a venue)
+- [X] vzell's live check (relation:steven-van-zandt, relation:patti-scialfa, a venue): OK, two follow-ups
+- [X] follow-up 1: the "comma after the date" entry is a finding, ⚠️ =bb-date-comma= (Date cell)
+- [X] follow-up 2: =/onstage:= (and =/offstage:=) links preview their event (=_bbRedirectedUrl()=)
 *** TODO Phase 5 — =bb-retail= (+ playlist), =bb-bootleg=
 *** TODO Phase 6 — history diff
 - [ ] =scripts/probe-bb-history.user.js= (vzell runs it logged in and out; status/shape/timing only,
@@ -357,3 +359,17 @@ year-table columns.
 4. History when signed out: show "Sign in to Brucebase to see the history", or leave the section out? the message
 5. The wiki's page below: collapsed or open by default? collapsed
 6. Song titles: MusicBrainz case (your existing title setting) with the wiki's capitals as hover text, or the wiki's capitals? MusicBrainz case.
+
+* enhancements
+
+1.)
+
+The "A show written "2015-04-30, Story Chapel, …", with a comma after the date, was dropped." should be flagged as finding on the PT
+
+2.)
+
+The "wiki's /onstage: redirect pages, which aren't among the page kinds the preview reads" should also be supported
+
+3.)
+
+everything else tested live, OK
