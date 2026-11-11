@@ -633,7 +633,7 @@ make some rich HTML based mockups
 4. The Tags strip in the comparison: always shown (recommended), or only when the tags differ? ALWAYS SHOWN
 5. From / To pickers on each row (recommended), or Shift+click a second row? FROM / TO PICKERS ON EACH ROW
 6. When you pick backwards (From 43, To 28): older on the left always (recommended), or in the order picked, like the wiki? OLDER ON THE LEFT ALWAYS
-** act on
+** DONE act on
 
 act on the section "*** TODO further Brucebase work" in @org/brucebase.org
 
