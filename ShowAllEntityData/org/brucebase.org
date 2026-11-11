@@ -385,3 +385,16 @@ The "wiki's /onstage: redirect pages, which aren't among the page kinds the prev
 3.)
 
 everything else tested live, OK
+
+* TODO adjustments
+** TODO On The Tracks
+
+takes written like "THE HEIST - V2 - take 14" split them additionally into
+
+#+begin_example
+title
+version
+take
+#+end_example
+
+
