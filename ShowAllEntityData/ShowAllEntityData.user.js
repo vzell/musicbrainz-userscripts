@@ -28634,6 +28634,21 @@
             }
             /* At the side bar's top, as MusicBrainz's handle is: _bbArrangeSideBar()'s
                place() sets top (vzell, 2026-11-11; it used to sit at 50 %). */
+            /* The wiki's #header (relative, z-index 30 in its theme) holds
+               the top-bar menus ("Manage Site", "Help Docs", ...), whose
+               dropdowns open down over our toolbar h1 and status line. The
+               sticky bars stamp those .mb-vsb-head (z-index 105, 107 raised),
+               which covered the entries, and a pointer moving down onto them
+               left the li's :hover, so the menu closed (vzell, 2026-11-11,
+               Phase 7). _vsbLiftChrome() marks #header as it marks
+               MusicBrainz's top header; 108 is VSB_Z_CHROME. */
+            html.mb-vsb-on body.mb-sa-host-bb #header.mb-vsb-chrome {
+                position: relative;
+                z-index: 108;
+            }
+            html.mb-vsb-on body.mb-sa-host-bb #header.mb-vsb-chrome-stuck:is(:hover, :focus-within) {
+                z-index: 108;
+            }
             body.mb-sa-host-bb #mb-bb-sidebar-handle {
                 position: fixed;
                 top: 8px;
@@ -61170,7 +61185,8 @@
     }
 
     /**
-     * Lifts the MusicBrainz top header (`body > div.header`) above the stuck
+     * Lifts the MusicBrainz top header (`body > div.header`; on Brucebase the
+     * wiki's `#header`, styled by `_ensureBbStyle()`) above the stuck
      * header block while there is one: `.mb-vsb-chrome` (relative, z-index
      * VSB_Z_CHROME) for a header in the flow, `.mb-vsb-chrome-stuck` (raised
      * only while hovered or holding focus) for one a userstyle made sticky
@@ -61184,7 +61200,12 @@
      * @returns {void}
      */
     function _vsbLiftChrome(on) {
-        const hdr = document.querySelector('body > div.header');
+        // Brucebase: the wiki's #header (relative, z-index 30 in its theme)
+        // holds the top-bar menus ("Manage Site", …), which open down over
+        // our toolbar h1 and status line; the rule is _ensureBbStyle()'s
+        // (vzell, 2026-11-11, org/brucebase.org Phase 7).
+        const hdr = document.querySelector('body > div.header') ||
+            (_isBbHost ? document.getElementById('header') : null);
         if (!hdr) return;
         hdr.classList.remove('mb-vsb-chrome', 'mb-vsb-chrome-stuck');
         if (!on) return;

@@ -147,6 +147,22 @@ Text sort is the engine's own (`localeCompare` with `numeric: true`), so
 - **`_ensureForeignTableStyle()`**'s `:is()` list names `.mb-sa-host-bb`.
 - **`_ensureBbStyle()`** adds only the injected `<h1>`/`<h2>` and
   `.mb-bb-hidden`; the wiki's own fonts are kept.
+- **The top-bar menus stay on top (Phase 7, 2026-11-11).** The theme puts
+  `#header` at `position: relative; z-index: 30` and `#top-bar` (Manage
+  Site, Help Docs, …) at its bottom, its dropdowns opening down over our
+  toolbar `<h1>` and status line. The sticky filter bars stamp those
+  `.mb-vsb-head` (z-index 105, 107 raised on hover or focus), from page init
+  on: they covered the entries, and a pointer moving down from the toggle
+  left the `li`'s `:hover`, so the menu closed before any entry was reached
+  (vzell, Image #18, before a press too). `_vsbLiftChrome()` now marks
+  `#header` as it marks MusicBrainz's top header (`.mb-vsb-chrome`, host
+  scoped by `_isBbHost`), and `_ensureBbStyle()` gives it z-index 108
+  (VSB_Z_CHROME); the shared CSS text is unchanged. Found with
+  `elementFromPoint` over the theme's own rules (`bb-topbar-menu.spec.js`
+  carries them verbatim: the fixtures have no theme CSS). Mutations:
+  `scripts/mutations/bb-topbar-menu.json` (3). A click on an entry after a
+  render still asks first: that is the navigation guard, as for any link
+  leaving a loaded table.
 
 ## Tests
 

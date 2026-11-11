@@ -417,15 +417,20 @@ revisions (=table.page-compare= has them); 3. compare any two revisions (the wik
   and its list / compare answers; =bb-history.spec.js= (16), mutations (27)
 - [X] vzell's live check, round 2 (2026-11-11): OK
 
-*** TODO Phase 7 — the "Manage Site" menu cannot be clicked (bug)
+*** DONE Phase 7 — the "Manage Site" menu cannot be clicked (bug)
 vzell, 2026-11-11 (Image #18): the wiki's top-bar dropdowns (Manage Site …) open over our toolbar and
 status line, and their entries are not mouse selectable; on the initial page too.
-- [ ] evidence first: a fixture (=debug/bb-recent-changes-raw.html=), hover Manage Site, =elementFromPoint=
-  at each entry with SAED on and with =sa_enable_brucebase= off; name what sits on top (our =h1=, the
-  status line, the sticky =#side-bar= stacking context) before any CSS change
-- [ ] the fix in =_ensureBbStyle()= (host-scoped), =bb-topbar-menu.spec.js= (an entry receives the click),
-  a mutation per guard, brucebase.md "Styling", WIP
-- [ ] vzell's live check: system:recent-changes and a song page, every top-bar menu
+- [X] evidence first (2026-11-11T23:23+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.58.1) ·
+  Playwright 1.62.1 Chromium, no Tampermonkey): the theme's =#header= is relative, z-index 30, with
+  =#top-bar= at its bottom; =elementFromPoint= at Search and Pages hit =h1.mb-bb-h1.mb-vsb-head= — the
+  sticky filter bars' stuck header block (z-index 105, 107 raised), from page init on. A pointer moving
+  down from the toggle lands on it, the =li= loses =:hover=, the menu closes: no entry reachable
+- [X] the fix: =_vsbLiftChrome()= marks =#header= on Brucebase as it marks MusicBrainz's top header,
+  =_ensureBbStyle()= gives it z-index 108 (VSB_Z_CHROME); =bb-topbar-menu.spec.js= (3: every entry on
+  top before and after a press and with focus raising the block to 107; the pointer walks down and
+  clicks on two menus; sticky bars off, no class), mutations =bb-topbar-menu.json= (3, all OK),
+  brucebase.md "Styling", toolbar-and-header-ui.md, WIP.10; siblings 86 green
+- [X] vzell's live check (2026-11-11): OK
 
 *** TODO Phase 8 — previews of show links =/2026#020526= on Brucebase itself
 vzell, 2026-11-11: POH for links like =https://brucebase.wikidot.com/2026#020526=. The =bbdate=
@@ -644,3 +649,14 @@ Switch to plan mode
 2.)
 
 Replace that section with proper new "Phase <Id>" sections
+** add support for new PTs
+
+add support for new PTs
+
+#+begin_example
+https://brucebase.wikidot.com/content:files
+https://brucebase.wikidot.com/stats:on-the-tracks
+https://brucebase.wikidot.com/stats:greetings-from-asbury-park-nj-studio-sessions
+https://brucebase.wikidot.com/stats:wild-innocent-e-street-shuffle-studio-sessions
+... etc. all the links reachable from https://brucebase.wikidot.com/stats:on-the-tracks
+#+end_example

@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.10",
+    "date": "2026-11-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Brucebase: the wiki's top-bar menus (Manage Site, Help Docs, …) can be used again. Their entries opened under our toolbar and status line, and the menu closed as the pointer moved down onto them, before any button was pressed too. The wiki's header is now lifted over our pinned toolbar, as MusicBrainz's top header already was."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.9",
     "date": "2026-11-11",
     "sections": [

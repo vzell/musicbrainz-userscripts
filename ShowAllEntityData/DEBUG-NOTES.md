@@ -29161,3 +29161,24 @@ guarded passes (collapse, column visibility, filter scoping, findings, empty sub
 plus the Discogs specs: 79 passed and 1 failed before vzell stopped it (he had tested live, OK): discogs-master-tracks
 counted `tbody > tr` on Stars On 45, whose medley headings are bands now — moved to data rows, green. Not run:
 `test:full` (the merge gate).
+
+## 2026-11-11 — Brucebase top-bar menus could not be used (feature/bb-overhaul, Phase 7)
+
+Env: 2026-11-11T23:23+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.58.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Symptom (vzell, Image #18, system:recent-changes): the "Manage Site" dropdown opened over our toolbar
+`<h1>` and status line, the status line's text painted over its entries, and no entry could be clicked —
+on the initial page too. Root cause, with evidence: Wikidot's theme (common--theme/base/css/style.css,
+fetched 2026-11-11) puts `#header` at `position: relative; z-index: 30`, `#top-bar` absolute at its
+bottom, and a dropdown is an absolute `<ul>` shown on `li:hover`. The sticky filter bars stamp our h1 and
+status line `.mb-vsb-head` (z-index 105, 107 raised) from page init on. `elementFromPoint` at "Search"
+and "Pages" returned `h1.mb-bb-h1.mb-vsb-head`; a pointer moving down from the toggle lands on that block,
+the `li` loses `:hover` and the whole menu closes. MusicBrainz's own top header already had the fix
+(`_vsbLiftChrome()`, `.mb-vsb-chrome`, 108) but it looked for `body > div.header` only. Fix: on
+Brucebase it marks `#header`, and `_ensureBbStyle()` lifts it to 108 (shared CSS text untouched, so no
+MusicBrainz snapshot drift). Side finding while writing the spec: after a render a click on an entry is
+cancelled by the navigation guard when its confirm is declined (Playwright declines by default) — by
+design, not this bug. Spec `tests/fixtures/bb-topbar-menu.spec.js` (theme rules inline, the fixture has
+none), mutations `scripts/mutations/bb-topbar-menu.json` 3/3 OK (the third, 106 instead of 108, needed the
+focused case: focus on a toolbar button raises the block to 107). Siblings (sticky-filter-bars, bb-sidebar,
+bb-recent-changes, bb-every-page, bb-event, bb-history, bb-topbar-menu): 86 passed. vzell's live check: OK.
