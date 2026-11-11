@@ -6,7 +6,8 @@
       {
         "label": "✨ Improve",
         "items": [
-          "The Brucebase window's History section: chips for the kinds of change (All, Source, Title, Page name, Tags, Metadata, Files, each with its count; several at once) filter the revisions at once; a tag change in the list shows as pills (+ tour_lohadnk, − album_thepromise); From and To on every row compare any two revisions, the older always on the left and the revisions between them tinted; every comparison shows the tags of both (added +, removed struck, or \"the same in both\") and a changed page title or page name. The list is read 100 revisions a page, and a revision that changed only tags no longer reads the page's text twice (WIP.8's History section)."
+          "The Brucebase window's History section: chips for the kinds of change (All, Source, Title, Page name, Tags, Metadata, Files, each with its count; several at once) filter the revisions at once; a tag change in the list shows as pills (+ tour_lohadnk, − album_thepromise); From and To on every row compare any two revisions, the older always on the left and the revisions between them tinted; every comparison shows the tags of both (added +, removed struck, or \"the same in both\") and a changed page title or page name. The list is read 100 revisions a page, and a revision that changed only tags no longer reads the page's text twice (WIP.8's History section).",
+          "\"✎ Page history\" is now in the ☰ menu of every Brucebase page with the toolbar, Recent changes and the year pages included (their own history: the 2026 page is at revision 310). Links to Brucebase story pages (the Storyteller words of a show) preview them, with the story's words and the History section, so a story page's title changes and renames can be seen too."
         ]
       }
     ]

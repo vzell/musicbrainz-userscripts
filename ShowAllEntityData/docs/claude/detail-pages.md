@@ -605,7 +605,9 @@ markup.
   playlist and bootleg pages"). Version 21 (2026-11-11): every Brucebase
   record carries the page id (`bbPageId`), which the window's History
   section asks Wikidot's history modules by (docs/claude/brucebase.md, "A
-  page's history in the window"). Version 5 (2026-10-24):
+  page's history in the window"). Version 22 (2026-11-11): a story page's
+  links preview, its words a "Story" section; a page without a tabview
+  folds its sections. Version 5 (2026-10-24):
   such an entry page has fields and sections, and any text link to one
   previews it under its own setting (`ownLinks`, `_dpOwnLinksOn()`,
   `sa_bb_event_preview`) while `isDetailUrl` stays `/song:`

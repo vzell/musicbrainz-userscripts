@@ -1156,7 +1156,7 @@ signed out, "Sign in to Brucebase to see the history".
   `_bbWikidotToken()`, as Recent changes), after `_dpAwaitSlot()` (the
   window's one-a-second gate). The page id is `WIKIREQUEST.info.pageId` in
   the page's script (`_bbHistPageIdOf()`): the record carries it as
-  `bbPageId` (`_dpParseBb()`, `_DP_PARSER_VERSION` 21), the ☰ entry reads it
+  `bbPageId` (`_dpParseBb()`, `_DP_PARSER_VERSION` 21; 22 for story pages), the ☰ entry reads it
   from the live page. Only on brucebase.wikidot.com (`_bbHistOn()`, with
   `sa_bb_history`): a cross-origin POST with the token was not probed, so a
   Brucebase window on another host has no section.
@@ -1193,9 +1193,20 @@ signed out, "Sign in to Brucebase to see the history".
   H (`_dpHasHistory()` → `_bbHistHasSubject()`, `_dpOpenEdits()` →
   `_bbHistReveal()`) open the section in place.
 - **☰ "✎ Page history"** (`_saedBbHistoryEntry()`, the SAED History group):
-  on a page the window shows (`_dpSiteForUrl()`, not `src.resolve()`, which
-  refuses a link outside a table on a touch screen), it opens the window on
-  the page itself with the section open.
+  on EVERY page with our toolbar and a page id (since vzell's live check of
+  round 2: Recent changes, year pages — 2026 is at revision 310 —, stats
+  pages; it first required a page a link previews), it opens the window on
+  the page itself with the section open. The window reads any page of the
+  wiki (`_dpParseBbPage()`); no link test at all (`src.resolve()` would also
+  refuse a link outside a table on a touch screen).
+- **Story pages** (`/story:`, 1,486 of them, no pageType; listed by
+  `system:page-tags/tag/storyteller`): their links preview since the same
+  check (`ownLinks`), so their window and its History are reachable; the
+  window shows the story's words as a "Story" section, and a page without
+  a tabview now folds its sections like every Brucebase window
+  (`_DP_PARSER_VERSION` 22). Fixture `tests/fixtures/bb-history-story-1978-09-15.html`
+  (its title change 6 → 7 and rename 3 → 4 drive the Page title / Page
+  name rows end to end).
 
 ### Round 2: kinds, tag changes, any two revisions (2026-11-11)
 

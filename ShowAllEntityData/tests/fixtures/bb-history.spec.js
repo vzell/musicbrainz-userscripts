@@ -379,6 +379,51 @@ test.describe('Brucebase page history (Phase 6)', () => {
         expect(modules(posts)).toContain('PageRevisionListModule p1');
     });
 
+    test('a story page (no pageType): its link previews, its window has the story and the History with title and name changes', async ({ page }) => {
+        const { posts } = await loadBbHistoryPage(page);
+        // The song page links no story: one link put into its first tab.
+        await page.evaluate((href) => {
+            const a = Object.assign(document.createElement('a'), { href, textContent: 'The Palladium story' });
+            a.id = 'mb-test-story';
+            document.querySelector('#page-content .yui-content > div').prepend(a);
+        }, '/story:story-1978-09-15-palladium-new-york-city-ny');
+        const link = page.locator('#mb-test-story');
+        await page.mouse.move(0, 0);
+        await page.keyboard.down('Control');
+        await link.hover();
+        await page.keyboard.up('Control');
+        await expect(page.locator('#mb-dp-peek')).toBeVisible();
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator('.mb-dp-xtitle')).toHaveText('Story 1978-09-15 Palladium, New York City, NY');
+        await expect(dialog(page).locator('details.mb-dp-sec[data-mb-dp-sec="Story"]')).toContainText('Intro to "Something in the Night"');
+        await openHistory(page);
+        await expect(rows(page)).toHaveCount(8);
+        await expect(histSec(page).locator('.mb-bbh-chip')).toHaveText(['All 8', 'Source 2', 'Title 1', 'Page name 2', 'Tags 2', 'Metadata 1', 'Files 0']);
+        const pane = histSec(page).locator('.mb-bbh-pane');
+        // 7 changed the title (and the text): the Page title row.
+        await rowOf(page, 7).locator('.mb-bbh-e').click();
+        const titleRow = pane.locator('.mb-bbh-kv').filter({ hasText: 'Page title' });
+        await expect(titleRow).toContainText('Story 1978-09-15 New York City, NY', { timeout: 10000 });
+        await expect(titleRow.locator('.mb-dgh-add')).toContainText('Palladium');
+        // 4 renamed it: the Page name row, the source the same.
+        await rowOf(page, 4).locator('.mb-bbh-e').click();
+        const nameRow = pane.locator('.mb-bbh-kv').filter({ hasText: 'Page name' });
+        await expect(nameRow).toContainText('story:story-1978-09-15-new-york-city-ny', { timeout: 10000 });
+        await expect(nameRow.locator('.mb-dgh-add')).toContainText('palladium');
+        await expect(pane).toContainText('The page\'s source did not change in this revision (page renamed/moved).');
+        expect(modules(posts).filter(m => m.startsWith('PageRevisionListModule'))).toEqual(['PageRevisionListModule p1']);
+    });
+
+    test('the ☰ entry on a page no link previews: system:recent-changes', async ({ page }) => {
+        const { posts } = await loadBbHistoryPage(page, { url: 'https://brucebase.wikidot.com/system:recent-changes' });
+        expect(await openToolbarMenu(page, 'saed')).toBe(true);
+        await expect(page.locator('#mb-saed-bbhist-btn')).toHaveText('✎ Page history');
+        await clickToolbarItem(page, '#mb-saed-bbhist-btn');
+        await expect(histSec(page)).toHaveAttribute('open', '');
+        await expect(rows(page)).toHaveCount(20);
+        expect(modules(posts)).toContain('PageRevisionListModule p1');
+    });
+
     test('the setting off: no section, no ☰ entry, no request', async ({ page }) => {
         const { posts } = await loadBbHistoryPage(page, { settingsOverride: { sa_bb_history: false, sa_bb_detail_preview: true } });
         await openLinkWindow(page);

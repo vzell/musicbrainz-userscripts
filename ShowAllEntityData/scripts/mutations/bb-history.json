@@ -169,20 +169,6 @@
         "expect": "fail"
     },
     {
-        "name": "the ☰ entry asks the source's resolve()",
-        "why": "resolve() refuses a link outside a table on a touch screen: the entry would never exist on a phone.",
-        "edits": [
-            {
-                "find": "        if (!_dpSiteForUrl(a)) return;",
-                "replace": "        if (!src.resolve(a)) return;"
-            }
-        ],
-        "spec": "tests/fixtures/bb-history.mobile.spec.js",
-        "grep": "a tap on",
-        "project": "chromium-mobile",
-        "expect": "fail"
-    },
-    {
         "name": "the setting is ignored",
         "why": "sa_bb_history off: no section, no entry, no request.",
         "edits": [
@@ -297,6 +283,72 @@
         ],
         "spec": "tests/fixtures/bb-history.spec.js",
         "grep": "comparison's rows",
+        "expect": "fail"
+    },
+    {
+        "name": "the ☰ entry only where a link would preview",
+        "why": "vzell's live check: Recent changes, year and stats pages have a history too; the window reads any page.",
+        "edits": [
+            {
+                "find": "        if (!pid || !src || !src.enabled()) return;",
+                "replace": "        if (!pid || !src || !src.enabled() || !_dpSiteForUrl(Object.assign(document.createElement('a'), { href: window.location.href }))) return;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history.spec.js",
+        "grep": "no link previews",
+        "expect": "fail"
+    },
+    {
+        "name": "the ☰ entry asks the source's resolve()",
+        "why": "resolve() refuses a link outside a table on a touch screen: the entry would never exist on a phone.",
+        "edits": [
+            {
+                "find": "        if (!pid || !src || !src.enabled()) return;",
+                "replace": "        if (!pid || !src || !src.enabled() || !src.resolve(Object.assign(document.createElement('a'), { href: window.location.href }))) return;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history.mobile.spec.js",
+        "grep": "a tap on",
+        "project": "chromium-mobile",
+        "expect": "fail"
+    },
+    {
+        "name": "story links do not preview",
+        "why": "A /story: page has no pageType; its window (and History) is reached through its links.",
+        "edits": [
+            {
+                "find": "|retail|playlist|bootleg|story):[^/]+$/.test(u.pathname),",
+                "replace": "|retail|playlist|bootleg):[^/]+$/.test(u.pathname),"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history.spec.js",
+        "grep": "a story page",
+        "expect": "fail"
+    },
+    {
+        "name": "a page without a tabview does not fold",
+        "why": "Without collapsible a story's window gets no History section.",
+        "edits": [
+            {
+                "find": "            data.collapsible = true;\n            return data;\n        }\n        const labels",
+                "replace": "            return data;\n        }\n        const labels"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history.spec.js",
+        "grep": "a story page",
+        "expect": "fail"
+    },
+    {
+        "name": "a story's words are not a section",
+        "why": "A story page's window shows its Storyteller words.",
+        "edits": [
+            {
+                "find": "                data.sections.push({ label: 'Story', text: _dpBlockText(content), html: _dpBlockHtml(content, url) });",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-history.spec.js",
+        "grep": "a story page",
         "expect": "fail"
     }
 ]

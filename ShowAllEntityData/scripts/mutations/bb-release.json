@@ -238,8 +238,8 @@
         "why": "A link to a /retail:, /playlist: or /bootleg: page previews it (Phase 5).",
         "edits": [
             {
-                "find": "offstage|retail|playlist|bootleg):[^/]+$/.test(u.pathname),",
-                "replace": "offstage):[^/]+$/.test(u.pathname),"
+                "find": "offstage|retail|playlist|bootleg|story):[^/]+$/.test(u.pathname),",
+                "replace": "offstage|story):[^/]+$/.test(u.pathname),"
             }
         ],
         "spec": "tests/fixtures/bb-release.spec.js",

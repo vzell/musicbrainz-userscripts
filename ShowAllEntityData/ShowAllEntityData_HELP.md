@@ -3943,9 +3943,13 @@ entry, with these columns:
   on a row's text compares it with the one before again. You need not be
   signed in. Nothing is read until you open the section; then the list (100
   revisions, *Load 100 more* for older ones), the comparison and, when the
-  text changed, the two texts, one request a second. The ☰ menu of a page that has a window has *✎ Page history*,
-  which opens it for the page itself (⚙️ Settings → *📚 Brucebase* → *Page
-  history in the Brucebase window*).
+  text changed, the two texts, one request a second. The ☰ menu of every
+  Brucebase page with our toolbar (Recent changes and the year pages too)
+  has *✎ Page history*, which opens it for the page itself. A story page
+  (the Storyteller words of a show) has no toolbar; its links preview, for
+  example on the wiki's list of every story,
+  `system:page-tags/tag/storyteller`, and its window has the History too
+  (⚙️ Settings → *📚 Brucebase* → *Page history in the Brucebase window*).
 - **MB-Event:** a small glyph for the entry's kind (a microphone for a gig,
   struck through for a show that did not happen, a tape reel for a
   recording, a metronome for a rehearsal, a speech bubble for an interview,

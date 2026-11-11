@@ -157,19 +157,19 @@ recheck rendering all the right info on BB pages
 
 make the standard BB page, rendered below our table h2/h3 click collapsable (also with Ctrl-Click for ALL sections)
 
-* TODO BB Steve van Zandt detail page needs overwhole
+* DONE BB Steve van Zandt detail page needs overwhole
 
 BB Steve van Zandt detail page needs overwhole
 
-* TODO Use the Discogs history diff format in other pageTypes, for example the BB “changes” button
+* DONE Use the Discogs history diff format in other pageTypes, for example the BB “changes” button
 
 Use the Discogs history diff format in other pageTypes, for example the BB “changes” button (you have to be logged in).
 
-* TODO BB detail page POHs should also get a history diff view of the current entity
+* DONE BB detail page POHs should also get a history diff view of the current entity
 
 BB detail page POHs should also get a history diff view of the current entity
 
-* TODO on BB PTs where images are involved, parse the image filename for further details and present that info also
+* DONE on BB PTs where images are involved, parse the image filename for further details and present that info also
 
 1.)
 
@@ -179,7 +179,7 @@ on BB PTs where images are involved, parse the image filename for further detail
 
 maybe create image sections with the found info
 
-* TODO render the sidebar handle at the top (like in the MB case)
+* DONE render the sidebar handle at the top (like in the MB case)
 
 render the sidebar handle at the top (like in the MB case) and not in the middle of the page
 
@@ -409,7 +409,13 @@ revisions (=table.page-compare= has them); 3. compare any two revisions (the wik
   no source), From / To pickers (older left, span tinted, keyboard); =bb-history.spec.js= (14) +
   mobile (1), compare fixtures, mutations =bb-history.json= (23, all OK; a `change` listener for
   the keyboard was removed: its mutation passed, an arrow key clicks the radio), WIP.9
-- [ ] vzell's live check
+- [X] vzell's live check, round 1 (2026-11-11): test 5 "no PT yet" — a story page has no toolbar, and
+  story links did not preview; and system:recent-changes had no ☰ entry (it was only on pages a link
+  previews)
+- [X] follow-up: the ☰ entry on every page with our toolbar and a page id; =/story:= links preview
+  (=ownLinks=), the window shows the story's words and folds (=_DP_PARSER_VERSION= 22); story fixture
+  and its list / compare answers; =bb-history.spec.js= (16), mutations (27)
+- [ ] vzell's live check, round 2
 
 *** Later (separate TODOs above)
 Extra list pageTypes (stats:discography, …), scroll-to-first-difference userscript, deferred
@@ -474,7 +480,7 @@ version
 take
 #+end_example
 
-** history additions
+** DONE history additions
 *** initial
 
 Is it possible to add more features to the HISTORY section

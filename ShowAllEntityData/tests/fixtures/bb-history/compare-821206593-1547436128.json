@@ -1,0 +1,6 @@
+{
+  "status": "ok",
+  "body": "<h2>Page revisions comparison</h2>\n<div class=\"diff-box\">\n\t<table class=\"page-compare\">\n\t\t<tr>\n\t\t\t<th></th>\n\t\t\t<th>Revision 3</th>\n\t\t\t<th>Revision 4</th>\n\t\t</tr>\n\t\t<tr>\n\t\t\t<td>Created on:</td>\n\t\t\t<td><span class=\"odate time_1556983850 format_%25e%20%25b%20%25Y%2C%20%25H%3A%25M%7Cagohover\">04 May 2019 15:30</span></td>\n\t\t\t<td><span class=\"odate time_1791733358 format_%25e%20%25b%20%25Y%2C%20%25H%3A%25M%7Cagohover\">11 Oct 2026 15:42</span></td>\n\t\t</tr>\n\t\t\t\t\t\t\t<tr>\n\t\t\t\t<td>Page name:</td>\n\t\t\t\t<td>story:story-1978-09-15-new-york-city-ny</td>\n\t\t\t\t<td>story:story-1978-09-15-palladium-new-york-city-ny</td>\n\t\t\t</tr>\n\t\t\t\t\t\t\t</table>\n\t<h3>Source change:</h3>\n\t\t\t<p>\n\t\t\tPage sources are identical.\t\t</p>\n\t</div>",
+  "jsInclude": [],
+  "cssInclude": []
+}

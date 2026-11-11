@@ -22,10 +22,13 @@ tests/fixtures/bb-song-the-promise.html already exists):
   tests/fixtures/bb-history/compare-<older id>-<newer id>.json
       history/PageDiffModule (History round 2) for each neighbouring pair of
       those six and for 44 → 47 (any two revisions);
-  tests/fixtures/bb-history/story-compare-{title,name}.json
-      PageDiffModule for story:story-1978-09-15-palladium-new-york-city-ny's
-      title change (6 → 7) and rename (3 → 4): the "Page title:" and "Page
-      name:" rows (probe 2026-11-11, debug/bb-history-shapes-story.json).
+  tests/fixtures/bb-history-story-1978-09-15.html, bb-history/story-list.json,
+  bb-history/story-compare-{title,name}.json (and the same two as
+  compare-<from>-<to>.json)
+      story:story-1978-09-15-palladium-new-york-city-ny: the page (mirror,
+      debug/bb-mirror/story/), its 8 revisions, its title change (6 → 7)
+      and rename (3 → 4) — the "Page title:" and "Page name:" rows (probe
+      2026-11-11, debug/bb-history-shapes-story.json).
 
 The answers are Wikidot's own JSON, asked as the probe found works signed
 out (debug/bb-history-probe-20261111-out.json: every module "ok", the same
@@ -53,6 +56,8 @@ PAGE = 'song:the-promise'
 BASE = 'https://brucebase.wikidot.com'
 PAGE_FIXTURE = os.path.join(FIX, 'bb-song-the-promise.html')
 OUT_PAGE = os.path.join(FIX, 'bb-history-song-the-promise.html')
+STORY_SRC = os.path.join(ROOT, 'debug', 'bb-mirror', 'story', 'story_story-1978-09-15-palladium-new-york-city-ny.html')
+OUT_STORY = os.path.join(FIX, 'bb-history-story-1978-09-15.html')
 SPACING = 1.1
 UA = 'Mozilla/5.0 (fixture builder; ShowAllEntityData tests)'
 TOKEN = secrets.token_hex(4)
@@ -170,16 +175,37 @@ def main():
 
 
 def story(scrub):
-    """The title change and the rename of one story page, as compare answers."""
+    """A story page (no pageType; its links preview since 2026-11-11): the
+    page from the BruceParser mirror, stripped as the event fixtures are
+    (scripts/build-bb-event-fixtures.py's `strip()`), its page id line put
+    back; its whole revision list (100 a page: 8 revisions), and its title
+    change and rename as compare answers, saved twice — by what they show
+    (`story-compare-{title,name}.json`, the parser test) and by their
+    revision ids (`compare-<from>-<to>.json`, the window test)."""
     page = 'story:story-1978-09-15-palladium-new-york-city-ny'
-    sid = re.search(r'WIKIREQUEST\.info\.pageId\s*=\s*(\d+)', get(f'{BASE}/{page}')).group(1)
+    live = get(f'{BASE}/{page}')
+    sid = re.search(r'WIKIREQUEST\.info\.pageId\s*=\s*(\d+)', live).group(1)
     time.sleep(SPACING)
-    body = post('history/PageRevisionListModule', {'page_id': sid, 'page': '1', 'perpage': '100', 'options': json.dumps({'all': True})})['body']
-    rows = [(rid, re.findall(r'class="spantip"[^>]*>(\w)<', tr)) for rid, tr in re.findall(r'<tr id="revision-row-(\d+)">(.*?)</tr>', body, re.S)]
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    strip = __import__('build-bb-event-fixtures').strip
+    with open(STORY_SRC, encoding='utf-8', errors='replace') as f:
+        html = strip(f.read())
+    script = ('<script type="text/javascript">var WIKIREQUEST = {}; WIKIREQUEST.info = {}; '
+              f'WIKIREQUEST.info.pageId = {sid};</script>\n')
+    note = ('<!-- Built by scripts/build-bb-history-fixtures.py from the BruceParser mirror (2026-10-18): '
+            "scripts removed, the page id line of Wikidot's page script put back; do not edit by hand. -->\n")
+    with open(OUT_STORY, 'w', encoding='utf-8', newline='\n') as f:
+        f.write(note + html.replace('</head>', script + '</head>', 1))
+    print('wrote', os.path.relpath(OUT_STORY, ROOT))
+    data = post('history/PageRevisionListModule', {'page_id': sid, 'page': '1', 'perpage': '100', 'options': json.dumps({'all': True})})
+    save(os.path.join(OUT_DIR, 'story-list.json'), scrub.answer(data))
+    rows = [(rid, re.findall(r'class="spantip"[^>]*>(\w)<', tr)) for rid, tr in re.findall(r'<tr id="revision-row-(\d+)">(.*?)</tr>', data['body'], re.S)]
     for flag, name in (('T', 'title'), ('R', 'name')):
         k = next(i for i, (_, fl) in enumerate(rows) if flag in fl)
-        data = post('history/PageDiffModule', {'from_revision_id': rows[k + 1][0], 'to_revision_id': rows[k][0], 'show_type': 'inline'})
-        save(os.path.join(OUT_DIR, f'story-compare-{name}.json'), scrub.answer(data))
+        older, newer = rows[k + 1][0], rows[k][0]
+        data = scrub.answer(post('history/PageDiffModule', {'from_revision_id': older, 'to_revision_id': newer, 'show_type': 'inline'}))
+        save(os.path.join(OUT_DIR, f'story-compare-{name}.json'), data)
+        save(os.path.join(OUT_DIR, f'compare-{older}-{newer}.json'), data)
 
 
 if __name__ == '__main__':

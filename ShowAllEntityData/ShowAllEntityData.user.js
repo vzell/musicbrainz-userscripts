@@ -5170,7 +5170,7 @@
             default: true,
             description: 'Needs a setting above that switches the wiki on. On every Brucebase page, resting the ' +
                          'pointer on a link to an event\'s page (a gig, no gig, recording, rehearsal, interview or ' +
-                         '"no Bruce" page), a venue, a person, a release, a playlist or a bootleg — the Event and Venue columns of a year table, a ' +
+                         '"no Bruce" page), a venue, a person, a release, a playlist, a bootleg or a story — the Event and Venue columns of a year table, a ' +
                          'mention in its Notes, the Recent changes list, the wiki\'s own lists, the links in a ' +
                          'preview window — with Ctrl held, unless every preview ' +
                          'shows on a plain hover, shows a card with what its page adds: when it was scheduled, ' +
@@ -29019,9 +29019,12 @@
      *    versions keep their suffix ("V2 - take 14").
      * 21: Brucebase records carry the page id (`bbPageId`), which the
      *    window's History section asks Wikidot's history modules by.
+     * 22: a Brucebase story page (`/story:`, its links preview) has its
+     *    words as a "Story" section; a page without a tabview folds its
+     *    sections (and so gets the History section) like every other.
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 21;
+    const _DP_PARSER_VERSION = 22;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -33943,7 +33946,17 @@
         const sched = code ? _bbScheduledText(_dpText(code.textContent)) : '';
         if (sched) data.fields.push(['Scheduled', sched]);
         const nav = content.querySelector('div.yui-navset');
-        if (!nav) return data;
+        if (!nav) {
+            // A story page (Storyteller words, no tabview; its links preview
+            // since 2026-11-11): its words as the window's one section.
+            if (/^\/story:/.test(new URL(url, 'https://brucebase.wikidot.com/').pathname) && _dpText(content.textContent)) {
+                data.sections.push({ label: 'Story', text: _dpBlockText(content), html: _dpBlockHtml(content, url) });
+            }
+            // Folding sections, and so the History section (`_bbHistSection()`),
+            // as every Brucebase window.
+            data.collapsible = true;
+            return data;
+        }
         const labels = Array.from(nav.querySelectorAll(':scope > ul.yui-nav > li')).map(li => _dpText(li.textContent));
         const panels = Array.from((nav.querySelector(':scope > .yui-content') || { children: [] }).children);
         const tab = (name) => panels[labels.indexOf(name)] || null;
@@ -35072,11 +35085,14 @@
     }
 
     /**
-     * "✎ Page history" in the SAED menu's History group on a Brucebase page
-     * the window shows (a song, an event, a venue, a person, a release, a
-     * bootleg; vzell's mockup M4, the "changes" entry): opens the window on
-     * the page itself with its History section open. Only with a page id
-     * in the page's script and the window's source on.
+     * "✎ Page history" in the SAED menu's History group on every Brucebase
+     * page with our toolbar (vzell's mockup M4, the "changes" entry; since
+     * his live check of History round 2 also the pages no link previews:
+     * Recent changes, a year page — 2026 is at revision 310 —, the stats
+     * pages): opens the window on the page itself with its History section
+     * open. The window reads any page of the wiki (`_dpParseBbPage()`), so
+     * the page needs no kind of its own; only a page id in its script and
+     * the window's source on (one of the two Brucebase preview settings).
      *
      * @returns {void}
      */
@@ -35084,13 +35100,12 @@
         if (!_bbHistOn() || document.getElementById('mb-saed-bbhist-btn')) return;
         const pid = _bbHistPageIdOf(document);
         const src = _popSources().find(s => s.id === 'brucebase.wikidot.com');
-        if (!pid || !src) return;
+        if (!pid || !src || !src.enabled()) return;
         const a = document.createElement('a');
         a.href = window.location.href.replace(/#.*$/, '');
         a.textContent = _dpText((document.getElementById('page-title') || {}).textContent || document.title);
-        // The URL test alone: `src.resolve()` refuses a link outside a table
-        // on a touch screen, and this one is in no page at all.
-        if (!_dpSiteForUrl(a)) return;
+        // No link test: neither `src.resolve()` (it refuses a link outside a
+        // table on a touch screen) nor the kinds of page a link previews.
         const row = document.createElement('button');
         row.id = 'mb-saed-bbhist-btn';
         row.type = 'button';
@@ -35315,8 +35330,12 @@
                 // person's Performances and Appearances link those), which
                 // the server redirects (301) to the event: `_dpParseBb()`
                 // reads the record at the event's own address. Releases,
-                // playlists and bootlegs since Phase 5 (2026-11-11).
-                test: (u) => /^\/(?:gig|nogig|recording|rehearsal|interview|nobruce|venue|relation|onstage|offstage|retail|playlist|bootleg):[^/]+$/.test(u.pathname),
+                // playlists and bootlegs since Phase 5 (2026-11-11); the
+                // 1,486 story pages (Storyteller words, listed by the tag
+                // page system:page-tags/tag/storyteller) the same night,
+                // so their window and its History are reachable (vzell's
+                // live check of History round 2: "no PT yet").
+                test: (u) => /^\/(?:gig|nogig|recording|rehearsal|interview|nobruce|venue|relation|onstage|offstage|retail|playlist|bootleg|story):[^/]+$/.test(u.pathname),
                 setting: 'sa_bb_event_preview',
             },
             // A year table's Venue cell links the ENTRY page (the year page

@@ -394,6 +394,9 @@ async function loadBbEventPage(page, key, { enabled = true, detail = true, setti
 const BB_HISTORY_URL = 'https://brucebase.wikidot.com/song:the-promise';
 const BB_HISTORY_FIXTURE = path.join(__dirname, '..', 'fixtures', 'bb-history-song-the-promise.html');
 const BB_HISTORY_DIR = path.join(__dirname, '..', 'fixtures', 'bb-history');
+/** A story page (no pageType; its links preview), its page id and its 8 revisions. */
+const BB_HISTORY_STORY_URL = 'https://brucebase.wikidot.com/story:story-1978-09-15-palladium-new-york-city-ny';
+const BB_HISTORY_STORY_FIXTURE = path.join(__dirname, '..', 'fixtures', 'bb-history-story-1978-09-15.html');
 
 /**
  * Loads the song page with its page id (bb-history-song-the-promise.html,
@@ -402,16 +405,19 @@ const BB_HISTORY_DIR = path.join(__dirname, '..', 'fixtures', 'bb-history');
  * (`list-p<N>.json`), the sources (`source-<revision id>.json`) and the
  * comparisons (`compare-<from id>-<to id>.json`); any
  * other page of the wiki is the same fixture (so a link's window has a page
- * id too). Every module POST is recorded.
+ * id too; a `/story:` page is the story fixture, its list `story-list.json`).
+ * Every module POST is recorded.
  *
  * @param {import('@playwright/test').Page} page
- * @param {{ settingsOverride?: Object<string, *>,
+ * @param {{ settingsOverride?: Object<string, *>, url?: string,
  *   answer?: function({module: string, params: URLSearchParams}): ?{status?: number, json?: object} }} [opts]
  *   `answer` may replace a module's answer (an HTTP status, or Wikidot's
- *   JSON); null keeps the fixture's.
+ *   JSON); null keeps the fixture's. `url`: the address the fixture is
+ *   served at (default the song's; a page no link previews, such as
+ *   system:recent-changes, for the ☰ entry).
  * @returns {Promise<{ posts: Array<{module: string, page: string, revision: string, pair: string}>, requests: string[] }>}
  */
-async function loadBbHistoryPage(page, { settingsOverride = {}, answer = null } = {}) {
+async function loadBbHistoryPage(page, { settingsOverride = {}, answer = null, url = BB_HISTORY_URL } = {}) {
     const posts = [];
     const requests = [];
     page.on('request', (req) => requests.push(`${req.method()} ${req.url()}`));
@@ -419,7 +425,11 @@ async function loadBbHistoryPage(page, { settingsOverride = {}, answer = null } 
     const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
     await page.route(/brucebase\.wdfiles\.com\//, (route) => route.fulfill({ status: 200, contentType: 'image/png', body: png }));
     await page.route((u) => u.hostname === 'brucebase.wikidot.com' && u.pathname !== '/ajax-module-connector.php',
-        (route) => route.fulfill({ path: BB_HISTORY_FIXTURE, contentType: 'text/html; charset=utf-8' }));
+        (route) => route.fulfill({
+            path: /^\/story:/.test(new URL(route.request().url()).pathname) ? BB_HISTORY_STORY_FIXTURE : BB_HISTORY_FIXTURE,
+            contentType: 'text/html; charset=utf-8',
+        }));
+    const storyId = /WIKIREQUEST\.info\.pageId = (\d+)/.exec(fs.readFileSync(BB_HISTORY_STORY_FIXTURE, 'utf8'))[1];
     await page.route('https://brucebase.wikidot.com/ajax-module-connector.php', (route) => {
         const params = new URLSearchParams(route.request().postData() || '');
         const module = params.get('moduleName') || '';
@@ -432,7 +442,9 @@ async function loadBbHistoryPage(page, { settingsOverride = {}, answer = null } 
             return route.fulfill({ status: own.status || 200, contentType: 'application/json', body: JSON.stringify(own.json || {}) });
         }
         let file = '';
-        if (module === 'history/PageRevisionListModule') file = path.join(BB_HISTORY_DIR, `list-p${params.get('page')}.json`);
+        if (module === 'history/PageRevisionListModule') {
+            file = path.join(BB_HISTORY_DIR, params.get('page_id') === storyId ? 'story-list.json' : `list-p${params.get('page')}.json`);
+        }
         if (module === 'history/PageSourceModule') file = path.join(BB_HISTORY_DIR, `source-${params.get('revision_id')}.json`);
         if (module === 'history/PageDiffModule') {
             file = path.join(BB_HISTORY_DIR, `compare-${params.get('from_revision_id')}-${params.get('to_revision_id')}.json`);
@@ -443,14 +455,14 @@ async function loadBbHistoryPage(page, { settingsOverride = {}, answer = null } 
         return route.fulfill({ path: file, contentType: 'application/json' });
     });
     await loadUserscriptPage(page, {
-        url: BB_HISTORY_URL, fixtureFile: BB_HISTORY_FIXTURE, testMode: true,
+        url, fixtureFile: BB_HISTORY_FIXTURE, testMode: true,
         settingsOverride: { sa_enable_brucebase: true, ...settingsOverride },
     });
     return { posts, requests };
 }
 
 module.exports = {
-    BB_HISTORY_URL, BB_HISTORY_DIR, loadBbHistoryPage,
+    BB_HISTORY_URL, BB_HISTORY_DIR, BB_HISTORY_STORY_URL, loadBbHistoryPage,
     BB_EVENT_PAGES, BB_EVENT_BUTTON, loadBbEventPage,
     BB_SONGS_URL, BB_FIXTURE, BB_BUTTON, loadBbSongsPage, renderedBbRows, renderedBbHeaders,
     BB_YEAR_BUTTON, bbYearFixture, loadBbYearPage, renderedBbYearRows, revealPastStickyColumn,
