@@ -381,7 +381,7 @@ in short form, so it survives on another machine).
   (=scripts/build-bb-history-fixtures.py=, members scrubbed), mutations =bb-history.json= (15), WIP.8
 - [X] vzell's live check (2026-11-11): OK
 
-*** TODO History round 2 — kinds, tag changes, any two revisions (vzell, 2026-11-11)
+*** DONE History round 2 — kinds, tag changes, any two revisions (vzell, 2026-11-11)
 vzell: 1. prefilter by kind like the wiki's =rev-type-*= checkboxes; 2. a diff of the tags between
 revisions (=table.page-compare= has them); 3. compare any two revisions (the wiki's from/to radios); 4. mockups.
 - [X] probe (=scripts/probe-bb-history-shapes.py=, signed out, song:streets-of-minneapolis,
@@ -415,7 +415,7 @@ revisions (=table.page-compare= has them); 3. compare any two revisions (the wik
 - [X] follow-up: the ☰ entry on every page with our toolbar and a page id; =/story:= links preview
   (=ownLinks=), the window shows the story's words and folds (=_DP_PARSER_VERSION= 22); story fixture
   and its list / compare answers; =bb-history.spec.js= (16), mutations (27)
-- [ ] vzell's live check, round 2
+- [X] vzell's live check, round 2 (2026-11-11): OK
 
 *** Later (separate TODOs above)
 Extra list pageTypes (stats:discography, …), scroll-to-first-difference userscript, deferred
