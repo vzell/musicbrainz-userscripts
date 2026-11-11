@@ -108,6 +108,7 @@
         "why": "resolve() refuses a link outside a table on a touch screen: the entry would never exist on a phone.",
         "edits": [{ "find": "        if (!_dpSiteForUrl(a)) return;", "replace": "        if (!src.resolve(a)) return;" }],
         "spec": "tests/fixtures/bb-history.mobile.spec.js",
+        "grep": "a tap on",
         "project": "chromium-mobile",
         "expect": "fail"
     },
