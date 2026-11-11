@@ -2853,7 +2853,8 @@ userscript lists that host, so Tampermonkey does not ask first).
   *Preview external links on hover* is on. A Brucebase **gig, venue or
   person** page (`/gig:…`, `/venue:…`, `/relation:…`) shows Brucebase's own
   card and window wherever you are, on MusicBrainz too, while *Preview event,
-  venue and people pages on hover* (📚 Brucebase) is on.
+  venue, people, release and bootleg pages on hover* (📚 Brucebase) is on
+  (the window's *History* section only on brucebase.wikidot.com itself).
   On discogs.com, setlist.fm, archive.org and the four Springsteen sites, a
   **MusicBrainz link** in any window opens MusicBrainz's own window there
   too (*Preview linked entities on hover* on); its Live page and editing history are
@@ -3843,8 +3844,9 @@ song, a show, a venue or a person for Brucebase's own card, on a link to
 another site (Wikipedia, YouTube, archive.org, …) for that site's; **Space**
 opens the window. Nothing else changes on those pages: no buttons, no
 toolbar. It follows the same switches: *Enable on the Brucebase song list*,
-*Preview song pages on the Brucebase song list*, *Preview event, venue and
-people pages on hover* and *Preview external links on hover*.
+*Preview song pages on the Brucebase song list*, *Preview event, venue, people,
+release and bootleg pages on hover*, *Page history in the Brucebase window* and
+*Preview external links on hover*.
 
 </details>
 
@@ -3926,7 +3928,18 @@ entry, with these columns:
   page's tags sorted into Date, Place, Tour, On the page, Songs, People and
   so on, each a link to the wiki's list of pages with that tag. A song's window works the
   same way, its performances listed (folded at first) with each show
-  linked.
+  linked. On brucebase.wikidot.com every window ends with a folded
+  *History* section (✎ in the window's title bar, or **H**, opens it): the
+  page's revisions, newest first — number, date, who, what kind of change
+  (S the text, A the tags, T the title, …) and the comment — and what the
+  revision you click changed, the old lines on the left and the new ones on
+  the right, the changed words marked, the lines that stayed folded
+  (*Everything* shows them). You need not be signed in. Nothing is read
+  until you open the section; then the list (20 revisions, *Load 20 more*
+  for older ones) and the two texts the newest change needs, one a
+  second. The ☰ menu of a page that has a window has *✎ Page history*,
+  which opens it for the page itself (⚙️ Settings → *📚 Brucebase* → *Page
+  history in the Brucebase window*).
 - **MB-Event:** a small glyph for the entry's kind (a microphone for a gig,
   struck through for a show that did not happen, a tape reel for a
   recording, a metronome for a rehearsal, a speech bubble for an interview,

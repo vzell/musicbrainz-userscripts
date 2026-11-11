@@ -1133,3 +1133,72 @@ category), `bb-event-preview.spec.js` ("tags by family" — counted from the
 fixture's tag block; "grouped by photographer" — 1985-01-04's Mic Hampton,
 1985-01-13's unknown photographer; "image groups fold"); mutations
 `scripts/mutations/bb-names-tags.json` and `bb-window-sections.json`.
+
+## A page's history in the window — `_bbHist*` (Phase 6, 2026-11-11)
+
+vzell's mockup M4 (org/bb-overhaul-mockups.html): a closed "History"
+section in the window of any Brucebase page, read when it opens and never
+on a hover; the Discogs look; a "changes" entry in the ☰ menu. Answer 4:
+signed out, "Sign in to Brucebase to see the history".
+
+- **The probe decided the scope.** `scripts/probe-bb-history.user.js`
+  (privacy pinned by `scripts/check-probe-bb-history.js`), run by vzell on
+  song:streets-of-minneapolis signed in and signed out
+  (`debug/bb-history-probe-20261111-{in,out}.json`): Wikidot's history
+  modules — PageHistoryModule, PageRevisionListModule, PageSourceModule,
+  PageVersionModule, PageDiffModule (`show_type: inline`) — answer a
+  visitor exactly as a member: status "ok", the same bodies (only the
+  random tabview id differs), 110–400 ms each. The site hides its history
+  button signed out, not the history. So the section is everyone's, and
+  "Sign in…" is what a refusal (a permission or token answer) shows.
+- **Requests**: `_bbHistPost(module, params)`, a same-origin `fetch()` POST
+  to `/ajax-module-connector.php` with `wikidot_token7` (the cookie's value,
+  `_bbWikidotToken()`, as Recent changes), after `_dpAwaitSlot()` (the
+  window's one-a-second gate). The page id is `WIKIREQUEST.info.pageId` in
+  the page's script (`_bbHistPageIdOf()`): the record carries it as
+  `bbPageId` (`_dpParseBb()`, `_DP_PARSER_VERSION` 21), the ☰ entry reads it
+  from the live page. Only on brucebase.wikidot.com (`_bbHistOn()`, with
+  `sa_bb_history`): a cross-origin POST with the token was not probed, so a
+  Brucebase window on another host has no section.
+- **Readers.** `_bbHistParseList()`: `tr#revision-row-<id>`, newest first —
+  number, flag letters (`_BB_CHANGES_FLAGS`), member and profile link,
+  `odate time_N`, comment; the pager's page count ("page 2 of 3", or on page
+  1 only "page 1" with links up to the last). `_bbHistParseSource()`:
+  `div.page-source` (a `<br />` and a newline per line; the brs dropped, the
+  newline after `<div>` and trailing blank lines too).
+- **What is read, when.** `_bbHistStart(pid)`: the list's page 1 (20
+  revisions), then the sources of the shown revision and the one before it
+  (its predecessor may be on the next list page, read first). Memory only,
+  for the page's life (`_bbHist`, `_bbHistSrc`, `_bbHistUi`); a revision's
+  source is read once. **A failure is asked again only on a click** ("Try
+  again", or the revision's row): the section's `toggle` also fires on
+  every repaint that draws it open, and a retry from there loops.
+- **The diff is ours**, not PageDiffModule's (one stream of ins/del marks):
+  `_bbHistDiffRows(a, b)` trims the common start and end, matches lines
+  (`_slLcs()`; a rewrite larger than 4 M cells is all removed + added), and
+  pairs a removed run with an added one line by line into a changed row when
+  `_cmpDiff()` finds them close (not `plain`). `_bbHistDiffHtml()`: OLD | NEW
+  in the MusicBrainz history's grid (`mb-dgh-diff mb-meh-diff`, the new
+  column `.mb-meh-n`, a fold row `.mb-meh-ctx`), line numbers, words marked
+  `mb-dgh-rem` / `mb-dgh-add`; "Only what changed" (default) folds the
+  unchanged lines into "⋯ N unchanged lines", "Everything" shows them. A
+  revision whose source equals the one before (tags, title, parent) says
+  so, with its flags.
+- **The window.** `_bbHistSection(data)` is drawn by `_dpExtractedCols()`
+  after the record's sections, `details.mb-dp-sec[data-mb-dp-sec="History"]`
+  (so Ctrl+click and `_dpSecState` treat it as any section), closed by
+  default, "History (N)" once the list is in (N = the newest number + 1).
+  Rows are buttons (`[data-mb-bbh-act="rev"]`); controls `all`, `more`,
+  `retry`, wired once by `_bbHistInit()` (delegated). ✎ in the title bar and
+  H (`_dpHasHistory()` → `_bbHistHasSubject()`, `_dpOpenEdits()` →
+  `_bbHistReveal()`) open the section in place.
+- **☰ "✎ Page history"** (`_saedBbHistoryEntry()`, the SAED History group):
+  on a page the window shows (`_dpSiteForUrl()`, not `src.resolve()`, which
+  refuses a link outside a table on a touch screen), it opens the window on
+  the page itself with the section open.
+
+Tests: `tests/fixtures/bb-history.spec.js` over
+`tests/fixtures/bb-history-song-the-promise.html` and
+`tests/fixtures/bb-history/` (`scripts/build-bb-history-fixtures.py`: the
+real answers for song:the-promise, members scrubbed to "Editor N"; loader
+`loadBbHistoryPage()`); mutations `scripts/mutations/bb-history.json`.

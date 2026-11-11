@@ -1,5 +1,23 @@
 [
   {
+    "version": "WIP.8",
+    "date": "2026-11-11",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Every Brucebase preview window on brucebase.wikidot.com ends with a folded \"History\" section: the page's revisions, newest first (number, date, who, the kind of change, the comment), and what the revision you click changed — the old lines and the new ones side by side, the changed words marked, the unchanged lines folded (\"Everything\" shows them), a revision that changed only tags or the title saying so. You need not be signed in: the wiki answers its history to everyone (probed signed in and signed out). Nothing is read until the section opens; then 20 revisions (\"Load 20 more\" for older ones) and the two texts the change needs, one request a second, kept until you leave the page. ✎ in the window's title bar and H open it; on a page that has a window, the ☰ menu's \"✎ Page history\" opens it for the page itself. Setting: Page history in the Brucebase window (on)."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Help: the window's History section; two places still named the event preview setting by its old label."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.7",
     "date": "2026-11-11",
     "sections": [

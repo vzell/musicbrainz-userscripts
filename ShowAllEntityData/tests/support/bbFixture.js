@@ -390,7 +390,60 @@ async function loadBbEventPage(page, key, { enabled = true, detail = true, setti
     return { requests, url };
 }
 
+/** The page the history fixtures are of, and its fixture (with its page id). */
+const BB_HISTORY_URL = 'https://brucebase.wikidot.com/song:the-promise';
+const BB_HISTORY_FIXTURE = path.join(__dirname, '..', 'fixtures', 'bb-history-song-the-promise.html');
+const BB_HISTORY_DIR = path.join(__dirname, '..', 'fixtures', 'bb-history');
+
+/**
+ * Loads the song page with its page id (bb-history-song-the-promise.html,
+ * scripts/build-bb-history-fixtures.py) and answers Wikidot's history
+ * modules from tests/fixtures/bb-history/: the revision list's pages
+ * (`list-p<N>.json`) and the sources (`source-<revision id>.json`); any
+ * other page of the wiki is the same fixture (so a link's window has a page
+ * id too). Every module POST is recorded.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {{ settingsOverride?: Object<string, *>,
+ *   answer?: function({module: string, params: URLSearchParams}): ?{status?: number, json?: object} }} [opts]
+ *   `answer` may replace a module's answer (an HTTP status, or Wikidot's
+ *   JSON); null keeps the fixture's.
+ * @returns {Promise<{ posts: Array<{module: string, page: string, revision: string}>, requests: string[] }>}
+ */
+async function loadBbHistoryPage(page, { settingsOverride = {}, answer = null } = {}) {
+    const posts = [];
+    const requests = [];
+    page.on('request', (req) => requests.push(`${req.method()} ${req.url()}`));
+    await page.route(/^https?:\/\//, (route) => route.abort('blockedbyclient'));
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
+    await page.route(/brucebase\.wdfiles\.com\//, (route) => route.fulfill({ status: 200, contentType: 'image/png', body: png }));
+    await page.route((u) => u.hostname === 'brucebase.wikidot.com' && u.pathname !== '/ajax-module-connector.php',
+        (route) => route.fulfill({ path: BB_HISTORY_FIXTURE, contentType: 'text/html; charset=utf-8' }));
+    await page.route('https://brucebase.wikidot.com/ajax-module-connector.php', (route) => {
+        const params = new URLSearchParams(route.request().postData() || '');
+        const module = params.get('moduleName') || '';
+        posts.push({ module, page: params.get('page') || '', revision: params.get('revision_id') || '' });
+        const own = answer ? answer({ module, params }) : null;
+        if (own) {
+            return route.fulfill({ status: own.status || 200, contentType: 'application/json', body: JSON.stringify(own.json || {}) });
+        }
+        let file = '';
+        if (module === 'history/PageRevisionListModule') file = path.join(BB_HISTORY_DIR, `list-p${params.get('page')}.json`);
+        if (module === 'history/PageSourceModule') file = path.join(BB_HISTORY_DIR, `source-${params.get('revision_id')}.json`);
+        if (!file || !fs.existsSync(file)) {
+            return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'not_ok', message: 'no such fixture' }) });
+        }
+        return route.fulfill({ path: file, contentType: 'application/json' });
+    });
+    await loadUserscriptPage(page, {
+        url: BB_HISTORY_URL, fixtureFile: BB_HISTORY_FIXTURE, testMode: true,
+        settingsOverride: { sa_enable_brucebase: true, ...settingsOverride },
+    });
+    return { posts, requests };
+}
+
 module.exports = {
+    BB_HISTORY_URL, BB_HISTORY_DIR, loadBbHistoryPage,
     BB_EVENT_PAGES, BB_EVENT_BUTTON, loadBbEventPage,
     BB_SONGS_URL, BB_FIXTURE, BB_BUTTON, loadBbSongsPage, renderedBbRows, renderedBbHeaders,
     BB_YEAR_BUTTON, bbYearFixture, loadBbYearPage, renderedBbYearRows, revealPastStickyColumn,

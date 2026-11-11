@@ -1,0 +1,122 @@
+[
+    {
+        "name": "the record has no page id",
+        "why": "Every history module asks by page id, read from WIKIREQUEST.info.pageId in the page's script; without it the window has no History section.",
+        "edits": [{ "find": "        data.bbPageId = _bbHistPageIdOf(doc);", "replace": "        data.bbPageId = '';" }],
+        "spec": "tests/fixtures/bb-history.spec.js",
+        "grep": "a window: the section",
+        "expect": "fail"
+    },
+    {
+        "name": "the section starts open",
+        "why": "Mockup M4: closed, read when it opens, so a window costs no history request.",
+        "edits": [{ "find": "html: _bbHistHtml(data.bbPageId), open: false, bbHist: data.bbPageId };", "replace": "html: _bbHistHtml(data.bbPageId), open: true, bbHist: data.bbPageId };" }],
+        "spec": "tests/fixtures/bb-history.spec.js",
+        "grep": "a window: the section",
+        "expect": "fail"
+    },
+    {
+        "name": "opening the section reads nothing",
+        "why": "The section's toggle starts the read (_bbHistStart()).",
+        "edits": [{ "find": "            if (box) _bbHistStart(box.dataset.mbBbhId);", "replace": "" }],
+        "spec": "tests/fixtures/bb-history.spec.js",
+        "grep": "a window: the section",
+        "expect": "fail"
+    },
+    {
+        "name": "a failed list is asked again by a re-open",
+        "why": "The toggle also fires on every repaint that draws the section open; only a click may retry, or a failing page loops.",
+        "edits": [{ "find": "        if (h && h.state === 'failed' && !retry) return;", "replace": "" }],
+        "spec": "tests/fixtures/bb-history.spec.js",
+        "grep": "an HTTP error",
+        "expect": "fail"
+    },
+    {
+        "name": "a failed source is asked again by a repaint",
+        "why": "The same rule for a revision's source: Load 20 more repaints twice and must not ask the failed 46 again.",
+        "edits": [{ "find": "            return !st || (retry && st.state === 'failed');", "replace": "            return !st || st.state === 'failed';" }],
+        "spec": "tests/fixtures/bb-history.spec.js",
+        "grep": "an HTTP error",
+        "expect": "fail"
+    },
+    {
+        "name": "the predecessor on the next page is not read",
+        "why": "The oldest row of the pages read needs the revision before it, the first row of the next list page.",
+        "edits": [{ "find": "        if (!h.revs[i + 1] && cur.n > 0 && h.read < h.pages && !h.more) await _bbHistLoadList(pid, h.read + 1);", "replace": "" }],
+        "spec": "tests/fixtures/bb-history.spec.js",
+        "grep": "oldest row",
+        "expect": "fail"
+    },
+    {
+        "name": "the pager's links are not counted",
+        "why": "Page 1's pager says \"page 1\" only; its links say there are 3.",
+        "edits": [{ "find": "            pages = Math.max(1, of ? parseInt(of[1], 10) : 1, ...nums);", "replace": "            pages = Math.max(1, of ? parseInt(of[1], 10) : 1);" }],
+        "spec": "tests/fixtures/bb-history.spec.js",
+        "grep": "the readers|Load 20 more",
+        "expect": "fail"
+    },
+    {
+        "name": "the source keeps the newline after <div>",
+        "why": "div.page-source opens with a newline: without dropping it every line number is one off and line 1 is blank.",
+        "edits": [{ "find": "        if (lines.length && lines[0] === '') lines.shift();", "replace": "" }],
+        "spec": "tests/fixtures/bb-history.spec.js",
+        "grep": "the readers",
+        "expect": "fail"
+    },
+    {
+        "name": "no line is paired as changed",
+        "why": "A removed and an added line that are close become one changed line, its words marked.",
+        "edits": [{ "find": "                    if (d.plain) continue;", "replace": "                    continue;" }],
+        "spec": "tests/fixtures/bb-history.spec.js",
+        "grep": "the readers|a window: the section|a revision picked",
+        "expect": "fail"
+    },
+    {
+        "name": "the changed words are not marked",
+        "why": "Inside a changed line the added and removed words carry mb-dgh-add / mb-dgh-rem.",
+        "edits": [{ "find": "            return s ? `<span class=\"${side === 'a' ? 'mb-dgh-rem' : 'mb-dgh-add'}\">${esc(s)}</span>` : '';", "replace": "            return s ? esc(s) : '';" }],
+        "spec": "tests/fixtures/bb-history.spec.js",
+        "grep": "a window: the section|a revision picked",
+        "expect": "fail"
+    },
+    {
+        "name": "the unchanged lines are not folded",
+        "why": "Only what changed (the default) folds them into \"⋯ N unchanged lines\".",
+        "edits": [{ "find": "            if (r.t === 'same' && !ui.all) {", "replace": "            if (false) {" }],
+        "spec": "tests/fixtures/bb-history.spec.js",
+        "grep": "a window: the section",
+        "expect": "fail"
+    },
+    {
+        "name": "a refusal reads as an error",
+        "why": "vzell's answer 4: a permission answer shows \"Sign in to Brucebase to see the history\".",
+        "edits": [{ "find": "            err.refused = /permission|login|sign|token/i.test(`${data?.status} ${data?.message || ''}`);", "replace": "            err.refused = false;" }],
+        "spec": "tests/fixtures/bb-history.spec.js",
+        "grep": "a refusal",
+        "expect": "fail"
+    },
+    {
+        "name": "no ✎ in a Brucebase window",
+        "why": "✎ and H open the History section (_dpHasHistory()).",
+        "edits": [{ "find": "        return !!(_mbEditsSubject(t) || _dgHistSubject(t) || _bbHistHasSubject(t));", "replace": "        return !!(_mbEditsSubject(t) || _dgHistSubject(t));" }],
+        "spec": "tests/fixtures/bb-history.spec.js",
+        "grep": "title bar and H",
+        "expect": "fail"
+    },
+    {
+        "name": "the ☰ entry asks the source's resolve()",
+        "why": "resolve() refuses a link outside a table on a touch screen: the entry would never exist on a phone.",
+        "edits": [{ "find": "        if (!_dpSiteForUrl(a)) return;", "replace": "        if (!src.resolve(a)) return;" }],
+        "spec": "tests/fixtures/bb-history.mobile.spec.js",
+        "project": "chromium-mobile",
+        "expect": "fail"
+    },
+    {
+        "name": "the setting is ignored",
+        "why": "sa_bb_history off: no section, no entry, no request.",
+        "edits": [{ "find": "        return _isBbHost && Lib.settings.sa_bb_history !== false;", "replace": "        return _isBbHost;" }],
+        "spec": "tests/fixtures/bb-history.spec.js",
+        "grep": "the setting off",
+        "expect": "fail"
+    }
+]

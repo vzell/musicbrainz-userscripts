@@ -5180,6 +5180,20 @@
                          'wiki\'s own page. ← and → step through the rows. The page is read when you point at it, ' +
                          'never at load, and kept for 30 days. Independent of the song preview above.'
         },
+        sa_bb_history: {
+            label: 'Page history in the Brucebase window',
+            type: 'checkbox',
+            default: true,
+            description: 'Needs a setting above that switches the wiki on. On brucebase.wikidot.com, every ' +
+                         'preview window of a page gets a closed "History" section, and ✎ in its title bar (or ' +
+                         'H) opens it: the page\'s revisions — number, date, who, what kind of change, the ' +
+                         'comment — and what the revision you pick changed, as two columns, the old lines and ' +
+                         'the new ones with the changed words marked. Signed in or not: the wiki answers both ' +
+                         'the same. The history is read when you open the section (one request for 20 ' +
+                         'revisions, one per revision\'s text, one a second) and kept until the page is left. ' +
+                         'The ☰ menu of a page the window shows has "✎ Page history" for the page itself. Off: ' +
+                         'no section, no request.'
+        },
 
         sa_bb_mb_event_lookup: {
             label: 'MB-Event column: look the events up on MusicBrainz',
@@ -29000,9 +29014,11 @@
      *    own (`_dpParseBbRelease()`: facts, tracks, Personnel, Related
      *    releases); images carry `nameKind` and `part`; On The Tracks
      *    versions keep their suffix ("V2 - take 14").
+     * 21: Brucebase records carry the page id (`bbPageId`), which the
+     *    window's History section asks Wikidot's history modules by.
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 20;
+    const _DP_PARSER_VERSION = 21;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -34200,7 +34216,634 @@
         data.tags = _bbPageTags(doc, url);
         const sec = _bbTagsSection(data.tags);
         if (sec) data.sections.push(sec);
+        // The page id its history is asked by (Phase 6, `_bbHistSection()`).
+        data.bbPageId = _bbHistPageIdOf(doc);
         return data;
+    }
+
+    // --- A Brucebase page's history in the window (org/brucebase.org, Phase 6) ---
+    // Probe 2026-11-11 (scripts/probe-bb-history.user.js, debug/bb-history-probe-
+    // 20261111-{in,out}.json): Wikidot's history modules answer a visitor who is
+    // NOT signed in exactly as they answer a member (status "ok", the same
+    // bodies), in 110–400 ms, although the site shows its "history" button to
+    // members only. So every Brucebase window on brucebase.wikidot.com gets a
+    // closed "History" section (vzell's mockup M4); opening it reads the
+    // revision list (history/PageRevisionListModule, 20 a page), then the
+    // sources of the newest revision and the one before it
+    // (history/PageSourceModule), and shows what changed in the Discogs
+    // look: the revisions as a list, OLD | NEW with the changed lines, the
+    // words marked inside a changed line (`_cmpDiff()`), "Only what changed".
+    // Our own diff, not Wikidot's PageDiffModule: its inline diff is one
+    // stream of ins/del marks, ours pairs the lines. Requests: same-origin
+    // POSTs with the wikidot_token7 cookie (`_bbWikidotToken()`, as Recent
+    // changes), one a second (`_dpAwaitSlot()`), kept in memory for the
+    // page's life; a revision never changes, so its source is read once.
+    // On other hosts the section is absent (a cross-origin POST with the
+    // token was not probed). Setting `sa_bb_history`.
+
+    /**
+     * The page id Wikidot's page script names (`WIKIREQUEST.info.pageId =
+     * N;`), which every history module asks for.
+     *
+     * @param {Document} doc A Brucebase page (fetched, or the live one).
+     * @returns {string} The id, '' when the page has none.
+     */
+    function _bbHistPageIdOf(doc) {
+        for (const s of doc.querySelectorAll('script')) {
+            const m = /WIKIREQUEST\.info\.pageId\s*=\s*(\d+)/.exec(s.textContent || '');
+            if (m) return m[1];
+        }
+        return '';
+    }
+
+    /**
+     * Whether a page's history can be shown here: on brucebase.wikidot.com,
+     * with `sa_bb_history` on.
+     *
+     * @returns {boolean}
+     */
+    function _bbHistOn() {
+        return _isBbHost && Lib.settings.sa_bb_history !== false;
+    }
+
+    /**
+     * Each page's history, by page id: `state` 'loading' | 'ok' | 'failed',
+     * `revs` (newest first, every page read so far), `pages` (the list's
+     * page count), `read` (pages read), `detail` (why it failed), `refused`
+     * (Wikidot refused it: the "Sign in" message), `more` ('loading' |
+     * 'failed' | '' for the next page).
+     * @type {Map<string, object>}
+     */
+    const _bbHist = new Map();
+
+    /**
+     * Each revision's source, by revision id: `{state, lines?, detail?}`.
+     * @type {Map<string, object>}
+     */
+    const _bbHistSrc = new Map();
+
+    /**
+     * Each page's window state, by page id: `rev` (the revision whose changes
+     * are shown, '' = the newest), `all` (every line, not only the changed).
+     * @type {Map<string, {rev: string, all: boolean}>}
+     */
+    const _bbHistUi = new Map();
+
+    /**
+     * A page's window state, made on first use.
+     *
+     * @param {string} pid
+     * @returns {{rev: string, all: boolean}}
+     */
+    function _bbHistUiOf(pid) {
+        if (!_bbHistUi.has(pid)) _bbHistUi.set(pid, { rev: '', all: false });
+        return _bbHistUi.get(pid);
+    }
+
+    /**
+     * POSTs one Wikidot history module, same-origin, after the window's rate
+     * slot, and returns its body.
+     *
+     * @param {string} module   e.g. "history/PageRevisionListModule".
+     * @param {Object<string, string>} params The module's fields.
+     * @returns {Promise<string>} The answer's `body` (HTML).
+     * @throws {Error} A failed request (`status` the HTTP status), an answer
+     *   that is not JSON, or a JSON `status` other than "ok" (`refused`
+     *   true for a permission or token answer).
+     */
+    async function _bbHistPost(module, params) {
+        await _dpAwaitSlot();
+        const body = new URLSearchParams({ ...params, moduleName: module, wikidot_token7: _bbWikidotToken() });
+        const res = await fetch(new URL('/ajax-module-connector.php', window.location.href).href, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+            body: body.toString()
+        });
+        if (!res.ok) {
+            const err = new Error(`HTTP ${res.status}`);
+            err.status = res.status;
+            throw err;
+        }
+        let data;
+        try {
+            data = JSON.parse(await res.text());
+        } catch (e) {
+            throw new Error('Wikidot answered with something that is not JSON', { cause: e });
+        }
+        if (data?.status !== 'ok' || typeof data.body !== 'string') {
+            const err = new Error(`Wikidot answered "${data?.status}"${data?.message ? `: ${_dpText(String(data.message))}` : ''}`);
+            err.refused = /permission|login|sign|token/i.test(`${data?.status} ${data?.message || ''}`);
+            throw err;
+        }
+        return data.body;
+    }
+
+    /**
+     * Reads a revision list (PageRevisionListModule's body): one entry per
+     * `tr#revision-row-<id>`, newest first — its number ("47."), its flags
+     * (the letters, explained by `_BB_CHANGES_FLAGS`), who (the member's
+     * name and profile link), when (epoch seconds from `odate time_N`), the
+     * comment — and the list's page count from its pager ("page 2 of 3", or
+     * on page 1 only "page 1" with links up to the last page).
+     *
+     * @param {string} html
+     * @returns {{revs: Array<{id: string, n: number, flags: string, user: string, userUrl: string,
+     *   at: number, comment: string}>, pages: number}}
+     */
+    function _bbHistParseList(html) {
+        const doc = new DOMParser().parseFromString(`<div id="mb-bbh-root">${html}</div>`, 'text/html');
+        const root = doc.getElementById('mb-bbh-root');
+        const revs = Array.from(root.querySelectorAll('tr[id^="revision-row-"]')).map((tr) => {
+            const td = tr.children;
+            const span = tr.querySelector('span.odate');
+            const m = /\btime_(\d+)\b/.exec(span ? span.className : '');
+            const who = tr.querySelector('.printuser');
+            const link = who ? Array.from(who.querySelectorAll('a')).filter(a => _bbText(a)).pop() : null;
+            return {
+                id: tr.id.replace(/^revision-row-/, ''),
+                n: parseInt(_bbText(td[0]), 10),
+                flags: Array.from(tr.querySelectorAll('span.spantip')).map(_bbText).join(''),
+                user: link ? _bbText(link) : (who ? _bbText(who) : ''),
+                userUrl: link ? link.getAttribute('href') || '' : '',
+                at: m ? parseInt(m[1], 10) : 0,
+                comment: td.length ? _bbText(td[td.length - 1]) : ''
+            };
+        }).filter(r => /^\d+$/.test(r.id) && Number.isFinite(r.n));
+        const pager = root.querySelector('.pager');
+        let pages = 1;
+        if (pager) {
+            const of = /of\s+(\d+)/.exec(_bbText(pager.querySelector('.pager-no')));
+            const nums = Array.from(pager.querySelectorAll('a[onclick]'))
+                .map(a => parseInt((/updatePagedList\((\d+)\)/.exec(a.getAttribute('onclick')) || [])[1], 10))
+                .filter(Number.isFinite);
+            pages = Math.max(1, of ? parseInt(of[1], 10) : 1, ...nums);
+        }
+        return { revs, pages };
+    }
+
+    /**
+     * A revision's wiki source as lines (PageSourceModule's body: the text in
+     * `div.page-source`, a `<br />` and a newline after each line).
+     *
+     * @param {string} html
+     * @returns {string[]}
+     */
+    function _bbHistParseSource(html) {
+        const doc = new DOMParser().parseFromString(`<div id="mb-bbh-root">${html}</div>`, 'text/html');
+        const box = doc.querySelector('.page-source');
+        if (!box) throw new Error('the answer holds no page source');
+        box.querySelectorAll('br').forEach(br => br.remove());
+        const lines = box.textContent.replace(/\r/g, '').split('\n');
+        if (lines.length && lines[0] === '') lines.shift();
+        while (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
+        return lines;
+    }
+
+    /**
+     * Reads page `p` of a page's revision list and adds it to `_bbHist`
+     * (page 1 starts the record). Repaints the window when it is in.
+     *
+     * @param {string} pid
+     * @param {number} p
+     * @returns {Promise<void>}
+     */
+    async function _bbHistLoadList(pid, p) {
+        const h = _bbHist.get(pid) || { state: 'loading', revs: [], pages: 1, read: 0, more: '' };
+        if (p === 1) {
+            h.state = 'loading';
+            h.revs = [];
+            h.read = 0;
+        } else {
+            h.more = 'loading';
+        }
+        _bbHist.set(pid, h);
+        const opts = JSON.stringify({ all: true });
+        try {
+            const body = await _bbHistPost('history/PageRevisionListModule', { page_id: pid, page: String(p), perpage: '20', options: opts });
+            const r = _bbHistParseList(body);
+            const seen = new Set(h.revs.map(x => x.id));
+            h.revs.push(...r.revs.filter(x => !seen.has(x.id)));
+            h.pages = r.pages;
+            h.read = p;
+            h.more = '';
+            if (p === 1) h.state = 'ok';
+            Lib.debug('detail', `Brucebase history ${pid}: page ${p} of ${r.pages}, ${r.revs.length} revisions`);
+        } catch (err) {
+            Lib.warn('detail', `Brucebase history ${pid}, page ${p}: ${err && err.message}`);
+            if (p === 1) {
+                h.state = 'failed';
+                h.detail = (err && err.message) || 'the request failed';
+                h.refused = !!(err && err.refused);
+            } else {
+                h.more = 'failed';
+                h.detail = (err && err.message) || 'the request failed';
+            }
+        }
+        if (_dpDialog.repaint) _dpDialog.repaint();
+    }
+
+    /**
+     * Reads a revision's source once (a revision never changes), then repaints.
+     *
+     * @param {string} rid
+     * @returns {Promise<void>}
+     */
+    async function _bbHistLoadSource(rid) {
+        const st = _bbHistSrc.get(rid);
+        if (st && st.state !== 'failed') return;
+        _bbHistSrc.set(rid, { state: 'loading' });
+        try {
+            const lines = _bbHistParseSource(await _bbHistPost('history/PageSourceModule', { revision_id: rid }));
+            _bbHistSrc.set(rid, { state: 'ok', lines });
+        } catch (err) {
+            Lib.warn('detail', `Brucebase revision ${rid}: ${err && err.message}`);
+            _bbHistSrc.set(rid, { state: 'failed', detail: (err && err.message) || 'the request failed' });
+        }
+        if (_dpDialog.repaint) _dpDialog.repaint();
+    }
+
+    /**
+     * Starts what a page's History section needs: the list's first page,
+     * then the sources of the shown revision and the one before it (the
+     * oldest read revision's predecessor may be on the next list page,
+     * which is read first). Only from the window's own acts — the section
+     * opened, a revision picked, "Load more" — never from a hover. A
+     * failed read is asked again only on `retry` (a click): the section's
+     * `toggle` also fires on every repaint that draws it open, and a retry
+     * from there would loop on a page that keeps failing.
+     *
+     * @param {string} pid
+     * @param {{retry?: boolean}} [opts]
+     * @returns {Promise<void>}
+     */
+    async function _bbHistStart(pid, { retry = false } = {}) {
+        if (!_bbHistOn() || !pid) return;
+        let h = _bbHist.get(pid);
+        if (h && h.state === 'failed' && !retry) return;
+        if (!h || h.state === 'failed') {
+            await _bbHistLoadList(pid, 1);
+            h = _bbHist.get(pid);
+        }
+        if (!h || h.state !== 'ok' || !h.revs.length) return;
+        const ui = _bbHistUiOf(pid);
+        let i = ui.rev ? h.revs.findIndex(r => r.id === ui.rev) : 0;
+        if (i < 0) i = 0;
+        const cur = h.revs[i];
+        if (!h.revs[i + 1] && cur.n > 0 && h.read < h.pages && !h.more) await _bbHistLoadList(pid, h.read + 1);
+        const prev = h.revs[i + 1] || null;
+        const need = [cur, prev].filter((r) => {
+            if (!r) return false;
+            const st = _bbHistSrc.get(r.id);
+            return !st || (retry && st.state === 'failed');
+        });
+        await Promise.all(need.map(r => _bbHistLoadSource(r.id)));
+    }
+
+    /**
+     * The rows of a line diff of two sources: the lines both have, in order
+     * (`_slLcs()` over what lies between their common start and end), and
+     * between them the removed and added runs, paired line by line into a
+     * `chg` row when the two lines share enough (`_cmpDiff()` not `plain`).
+     *
+     * @param {string[]} a The older source.
+     * @param {string[]} b The newer source.
+     * @returns {Array<{t: string, a?: string, b?: string, an?: number, bn?: number, d?: object}>}
+     *   `t` 'same' | 'chg' | 'rem' | 'add'; `an`/`bn` 1-based line numbers.
+     */
+    function _bbHistDiffRows(a, b) {
+        const rows = [];
+        let pre = 0;
+        while (pre < a.length && pre < b.length && a[pre] === b[pre]) pre++;
+        let suf = 0;
+        while (suf < a.length - pre && suf < b.length - pre && a[a.length - 1 - suf] === b[b.length - 1 - suf]) suf++;
+        for (let i = 0; i < pre; i++) rows.push({ t: 'same', a: a[i], b: b[i], an: i + 1, bn: i + 1 });
+        const ma = a.slice(pre, a.length - suf);
+        const mb = b.slice(pre, b.length - suf);
+        // A whole rewrite of a long page: no line matching (its table would
+        // be too large), every old line removed, every new one added.
+        const pairs = ma.length * mb.length > 4e6 ? [] : _slLcs(ma, mb, (x, y) => x === y);
+        let ai = 0;
+        let bi = 0;
+        // Between two matched lines: each old line is paired, in order, with
+        // the first of the next few new lines it is close to (a changed
+        // line); a new line passed over is added, an old line with no
+        // partner removed. By position alone, one removed line before a
+        // changed one would pair every line after it with the wrong one.
+        const WINDOW = 8;
+        const hunk = (ea, eb) => {
+            const olds = ma.slice(ai, ea);
+            const news = mb.slice(bi, eb);
+            let j = 0;
+            const add = (upTo) => {
+                for (; j < upTo; j++) rows.push({ t: 'add', b: news[j], bn: pre + bi + j + 1 });
+            };
+            olds.forEach((o, i) => {
+                const an = pre + ai + i + 1;
+                for (let k = j; k < Math.min(news.length, j + WINDOW); k++) {
+                    const d = _cmpDiff(o, news[k]);
+                    if (d.plain) continue;
+                    add(k);
+                    rows.push({ t: 'chg', a: o, b: news[k], an, bn: pre + bi + k + 1, d });
+                    j = k + 1;
+                    return;
+                }
+                rows.push({ t: 'rem', a: o, an });
+            });
+            add(news.length);
+        };
+        for (const [pi, pj] of pairs) {
+            hunk(pi, pj);
+            rows.push({ t: 'same', a: ma[pi], b: mb[pj], an: pre + pi + 1, bn: pre + pj + 1 });
+            ai = pi + 1;
+            bi = pj + 1;
+        }
+        hunk(ma.length, mb.length);
+        for (let i = 0; i < suf; i++) {
+            const x = a.length - suf + i;
+            const y = b.length - suf + i;
+            rows.push({ t: 'same', a: a[x], b: b[y], an: x + 1, bn: y + 1 });
+        }
+        return rows;
+    }
+
+    /**
+     * A revision's time as "YYYY-MM-DD HH:MM", in the reader's time zone.
+     *
+     * @param {number} at Epoch seconds.
+     * @returns {string}
+     */
+    function _bbHistWhen(at) {
+        if (!at) return '';
+        const d = new Date(at * 1000);
+        const z = (n) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`;
+    }
+
+    /**
+     * The OLD | NEW grid of one revision's changes, with the legend.
+     *
+     * @param {Array<object>} rows `_bbHistDiffRows()`.
+     * @param {object} ui The page's window state (`all`).
+     * @param {string} oldLabel
+     * @param {string} newLabel
+     * @returns {string}
+     */
+    function _bbHistDiffHtml(rows, ui, oldLabel, newLabel) {
+        const esc = (s) => _rgEsc(s);
+        const num = (n) => `<span class="mb-bbh-ln">${n || ''}</span>`;
+        const marked = (d, side) => d.blocks.map((x) => {
+            if (x.eq !== undefined) return esc(x.eq);
+            const s = side === 'a' ? x.del : x.ins;
+            return s ? `<span class="${side === 'a' ? 'mb-dgh-rem' : 'mb-dgh-add'}">${esc(s)}</span>` : '';
+        }).join('');
+        const cells = [`<div class="mb-dgh-dh">${esc(oldLabel)}</div>`, `<div class="mb-dgh-dh">${esc(newLabel)}</div>`];
+        let skipped = 0;
+        const flush = () => {
+            if (skipped) cells.push(`<div class="mb-meh-ctx mb-bbh-skip">⋯ ${skipped} unchanged line${skipped === 1 ? '' : 's'}</div>`);
+            skipped = 0;
+        };
+        rows.forEach((r) => {
+            if (r.t === 'same' && !ui.all) {
+                skipped++;
+                return;
+            }
+            flush();
+            if (r.t === 'same') {
+                cells.push(`<div class="mb-bbh-l">${num(r.an)}${esc(r.a)}</div>`, `<div class="mb-bbh-l mb-meh-n">${num(r.bn)}${esc(r.b)}</div>`);
+            } else if (r.t === 'chg') {
+                cells.push(`<div class="mb-bbh-l mb-bbh-chg">${num(r.an)}${marked(r.d, 'a')}</div>`,
+                    `<div class="mb-bbh-l mb-bbh-chg mb-meh-n">${num(r.bn)}${marked(r.d, 'b')}</div>`);
+            } else if (r.t === 'rem') {
+                cells.push(`<div class="mb-bbh-l mb-bbh-rem">${num(r.an)}${esc(r.a)}</div>`, '<div class="mb-bbh-l mb-meh-n"></div>');
+            } else {
+                cells.push('<div class="mb-bbh-l"></div>', `<div class="mb-bbh-l mb-bbh-add mb-meh-n">${num(r.bn)}${esc(r.b)}</div>`);
+            }
+        });
+        flush();
+        return `<div class="mb-dgh-diff mb-meh-diff mb-bbh-diff">${cells.join('')}</div>` +
+            '<div class="mb-dgh-legend"><span class="mb-dgh-rem">removed</span> <span class="mb-dgh-chg">changed</span> <span class="mb-dgh-add">added</span></div>';
+    }
+
+    /**
+     * The History section's body for a page: what is being read, why it
+     * failed ("Sign in to Brucebase to see the history" when Wikidot refused
+     * it, vzell's answer 4), or the revision list and the shown revision's
+     * changes.
+     *
+     * @param {string} pid
+     * @returns {string}
+     */
+    function _bbHistHtml(pid) {
+        const id = _rgEsc(pid);
+        const btn = (act, v, label, on = false, extra = '') =>
+            `<button type="button" class="mb-dg-btn${extra}" data-mb-bbh-act="${act}" data-mb-bbh-v="${_rgEsc(v)}" data-mb-bbh-id="${id}" aria-pressed="${on}">${label}</button>`;
+        const wrap = (inner) => `<div class="mb-bbh" data-mb-bbh-id="${id}">${inner}</div>`;
+        const h = _bbHist.get(pid);
+        if (!h) return wrap('<div class="mb-dg-dim">Opening this section reads the page\'s history from Brucebase.</div>');
+        if (h.state === 'loading') return wrap('<div class="mb-dg-dim"><span class="mb-dp-spin">◌</span> Reading the history from brucebase.wikidot.com…</div>');
+        if (h.state === 'failed') {
+            return wrap(h.refused
+                ? '<div class="mb-dp-warn">Sign in to Brucebase to see the history.</div>'
+                : `<div class="mb-dp-warn">Could not read the history: ${_rgEsc(h.detail)}.</div> ${btn('retry', '1', 'Try again', false, ' mb-dg-primary')}`);
+        }
+        if (!h.revs.length) return wrap('<div class="mb-dg-dim">Wikidot lists no revisions of this page.</div>');
+        const ui = _bbHistUiOf(pid);
+        const i = Math.max(0, ui.rev ? h.revs.findIndex(r => r.id === ui.rev) : 0);
+        const cur = h.revs[i];
+        const total = h.revs[0].n + 1;
+        const editors = new Set(h.revs.map(r => r.user).filter(Boolean));
+        const meta = `<div class="mb-meh-meta"><span><b>${total}</b> revision${total === 1 ? '' : 's'}</span>` +
+            `<span>last <b>${_rgEsc(_bbHistWhen(h.revs[0].at))}</b>${h.revs[0].user ? ` by ${_rgEsc(h.revs[0].user)}` : ''}</span>` +
+            `<span>${h.revs.length} read, <b>${editors.size}</b> editor${editors.size === 1 ? '' : 's'} among them</span></div>`;
+        const flagPill = (f) => `<span class="mb-dgh-pill mb-dgh-pill-${f === 'N' ? 'ok' : f === 'S' ? 'run' : 'idle'}" data-mb-tip title="${_rgEsc(_BB_CHANGES_FLAGS[f] || f)}">${_rgEsc(f)}</span>`;
+        const rows = h.revs.map(r => `<button type="button" class="mb-bbh-e${r.id === cur.id ? ' mb-dgh-latest' : ''}" data-mb-bbh-act="rev" data-mb-bbh-v="${r.id}" data-mb-bbh-id="${id}" aria-pressed="${r.id === cur.id}">` +
+            `<span class="mb-bbh-n">${r.n}</span><span class="mb-dgh-d">${_rgEsc(_bbHistWhen(r.at))}</span>` +
+            `<span class="mb-dgh-u">${_rgEsc(r.user || '—')}</span><span class="mb-bbh-f">${r.flags.split('').map(flagPill).join('')}</span>` +
+            `<span class="mb-dgh-n">${_rgEsc(r.comment)}</span></button>`).join('');
+        let more = '';
+        if (h.read < h.pages) {
+            more = h.more === 'loading'
+                ? '<span class="mb-dp-spin">◌</span> Reading the next page…'
+                : (h.more === 'failed' ? `<span class="mb-dp-warn">The next page failed: ${_rgEsc(h.detail)}.</span> ` : '') +
+                  btn('more', String(h.read + 1), `Load 20 more (page ${h.read + 1} of ${h.pages})`, false, ' mb-dg-primary');
+        }
+        const list = `<div class="mb-meh-list mb-bbh-list" data-mb-keep-scroll="bbh-list">${rows}</div>` +
+            (more ? `<div class="mb-meh-more">${more}</div>` : '');
+        // The shown revision's changes: its source against the one before.
+        const prev = h.revs[i + 1] || null;
+        const s1 = _bbHistSrc.get(cur.id);
+        const s0 = prev ? _bbHistSrc.get(prev.id) : { state: 'ok', lines: [] };
+        const title = `Revision ${cur.n}${prev ? ` · against ${prev.n}` : ' · the first'}` +
+            ` · ${_bbHistWhen(cur.at)}${cur.user ? ` · ${cur.user}` : ''}`;
+        let pane;
+        if (!prev && cur.n > 0) {
+            pane = `<div class="mb-dg-dim">The revision before ${cur.n} is on the next page of the list.</div>`;
+        } else if (!s1 || !s0 || s1.state === 'loading' || s0.state === 'loading') {
+            pane = `<div class="mb-dg-dim"><span class="mb-dp-spin">◌</span> Reading revision ${cur.n}${prev ? ` and ${prev.n}` : ''} from brucebase.wikidot.com…</div>`;
+        } else if (s1.state === 'failed' || s0.state === 'failed') {
+            pane = `<div class="mb-dp-warn">Could not read a revision's source: ${_rgEsc((s1.state === 'failed' ? s1 : s0).detail)}.</div> ` +
+                btn('rev', cur.id, 'Try again', false, ' mb-dg-primary');
+        } else {
+            const dr = _bbHistDiffRows(s0.lines, s1.lines);
+            const changed = dr.filter(r => r.t !== 'same').length;
+            const why = cur.flags.split('').filter(f => f !== 'S').map(f => _BB_CHANGES_FLAGS[f]).filter(Boolean).join(', ');
+            pane = (changed
+                ? `<div class="mb-meh-meta"><span><b>${changed}</b> line${changed === 1 ? '' : 's'} differ</span>` +
+                  `<span>${dr.filter(r => r.t === 'rem' || r.t === 'chg').length} old, ${dr.filter(r => r.t === 'add' || r.t === 'chg').length} new</span></div>`
+                : `<div class="mb-dg-dim">The page's source did not change in this revision${why ? ` (${_rgEsc(why)})` : ''}.</div>`) +
+                (changed || ui.all ? _bbHistDiffHtml(dr, ui, prev ? `Revision ${prev.n}` : 'Before', `Revision ${cur.n}`) : '');
+        }
+        const act = `<span class="mb-dgh-seg">${btn('all', '0', 'Only what changed', !ui.all)}${btn('all', '1', 'Everything', ui.all)}</span>`;
+        return wrap(meta + list +
+            `<div class="mb-bbh-pane"><div class="mb-bbh-ph"><b>${_rgEsc(title)}</b> ${act}</div>${pane}</div>`);
+    }
+
+    /**
+     * The History section of a Brucebase record, for `_dpExtractedCols()`:
+     * closed unless the reader opened it before (`_dpSecState`), its count
+     * once the list is in; null off brucebase.wikidot.com, with the setting
+     * off, or for a page without an id.
+     *
+     * @param {object} data A Brucebase record (`bbPageId`).
+     * @returns {?{label: string, html: string, open: boolean, bbHist: string}}
+     */
+    function _bbHistSection(data) {
+        if (!data || !data.bbPageId || !_bbHistOn()) return null;
+        _bbHistInit();
+        const h = _bbHist.get(data.bbPageId);
+        const n = h && h.state === 'ok' && h.revs.length ? h.revs[0].n + 1 : 0;
+        return { label: n ? `History (${n})` : 'History', html: _bbHistHtml(data.bbPageId), open: false, bbHist: data.bbPageId };
+    }
+
+    /**
+     * The window's History sections' wiring, installed once: opening the
+     * section (or a repaint that draws it open, the reader having opened it
+     * before) starts the read (`_bbHistStart()`; it does nothing for what is
+     * read or under way), and the delegated controls — a revision row,
+     * "Only what changed" / "Everything", "Load 20 more", "Try again".
+     *
+     * @returns {void}
+     */
+    function _bbHistInit() {
+        if (_bbHistInit.done) return;
+        _bbHistInit.done = true;
+        document.addEventListener('toggle', (e) => {
+            const d = e.target;
+            if (!(d instanceof Element) || !d.open || !d.matches('details.mb-dp-sec[data-mb-dp-sec="History"]') || !d.closest('#mb-dp-dialog')) return;
+            const box = d.querySelector('.mb-bbh[data-mb-bbh-id]');
+            if (box) _bbHistStart(box.dataset.mbBbhId);
+        }, true);
+        document.addEventListener('click', (e) => {
+            const el = e.target instanceof Element ? e.target.closest('#mb-dp-dialog [data-mb-bbh-act]') : null;
+            if (!el || e.button !== 0) return;
+            e.preventDefault();
+            const pid = el.dataset.mbBbhId;
+            const v = el.dataset.mbBbhV;
+            const ui = _bbHistUiOf(pid);
+            const act = el.dataset.mbBbhAct;
+            if (act === 'all') {
+                ui.all = v === '1';
+                if (_dpDialog.repaint) _dpDialog.repaint();
+                return;
+            }
+            if (act === 'rev') {
+                ui.rev = v;
+                _bbHistStart(pid, { retry: true });
+                if (_dpDialog.repaint) _dpDialog.repaint();
+                return;
+            }
+            if (act === 'more') {
+                _bbHistLoadList(pid, parseInt(v, 10)).then(() => _bbHistStart(pid));
+                if (_dpDialog.repaint) _dpDialog.repaint();
+                return;
+            }
+            if (act === 'retry') {
+                _bbHistStart(pid, { retry: true });
+                if (_dpDialog.repaint) _dpDialog.repaint();
+            }
+        }, true);
+    }
+
+    /**
+     * The window target a Brucebase window shows the history of: the page id
+     * of its record, '' for every other target (or off this host).
+     *
+     * @param {?object} t A window target.
+     * @returns {string}
+     */
+    function _bbHistSubject(t) {
+        if (!_bbHistHasSubject(t)) return '';
+        const e = _dpMem.get(t.src.liveUrl ? t.src.liveUrl(t) : t.url);
+        return (e && e.data && e.data.bbPageId) || '';
+    }
+
+    /**
+     * Whether a window target is a Brucebase page whose window can show its
+     * history here — known before its record is in, so ✎ and H show from
+     * the start (`_dpHasHistory()`).
+     *
+     * @param {?object} t A window target.
+     * @returns {boolean}
+     */
+    function _bbHistHasSubject(t) {
+        return !!(t && t.src && t.src.id === 'brucebase.wikidot.com' && _bbHistOn());
+    }
+
+    /**
+     * ✎ / H in a Brucebase window: opens its History section and brings it
+     * into view (the section reads the history as it opens). Before the
+     * record is in, the section is opened for when it is drawn.
+     *
+     * @returns {boolean} Whether the window is a Brucebase one.
+     */
+    function _bbHistReveal() {
+        if (!_bbHistHasSubject(_dpDialog.target)) return false;
+        const pid = _bbHistSubject(_dpDialog.target);
+        _dpSecState.set('History', true);
+        if (!pid) return true;
+        const d = document.querySelector('#mb-dp-dialog details.mb-dp-sec[data-mb-dp-sec="History"]');
+        if (d) {
+            d.open = true;
+            d.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        }
+        _bbHistStart(pid);
+        return true;
+    }
+
+    /**
+     * "✎ Page history" in the SAED menu's History group on a Brucebase page
+     * the window shows (a song, an event, a venue, a person, a release, a
+     * bootleg; vzell's mockup M4, the "changes" entry): opens the window on
+     * the page itself with its History section open. Only with a page id
+     * in the page's script and the window's source on.
+     *
+     * @returns {void}
+     */
+    function _saedBbHistoryEntry() {
+        if (!_bbHistOn() || document.getElementById('mb-saed-bbhist-btn')) return;
+        const pid = _bbHistPageIdOf(document);
+        const src = _popSources().find(s => s.id === 'brucebase.wikidot.com');
+        if (!pid || !src) return;
+        const a = document.createElement('a');
+        a.href = window.location.href.replace(/#.*$/, '');
+        a.textContent = _dpText((document.getElementById('page-title') || {}).textContent || document.title);
+        // The URL test alone: `src.resolve()` refuses a link outside a table
+        // on a touch screen, and this one is in no page at all.
+        if (!_dpSiteForUrl(a)) return;
+        const row = document.createElement('button');
+        row.id = 'mb-saed-bbhist-btn';
+        row.type = 'button';
+        row.textContent = '✎ Page history';
+        _setTip(row, 'This page\'s revisions on Brucebase and what each one changed, in the window');
+        row.addEventListener('click', () => {
+            if (!src.enabled()) return;
+            _dpSecState.set('History', true);
+            _dpOpenDialog({ src, el: a, key: a.href, url: a.href, table: null });
+            _bbHistStart(pid);
+        });
+        _saedGroup('hist').adopt(row);
+        Lib.debug('ui', `SAED: Brucebase page history entry for page ${pid}`);
     }
 
     /**
@@ -36827,6 +37470,15 @@
                 '<summary data-mb-tip title="Click: open or close · Ctrl+click: every section">' +
                 `<h4>${_mbttEscape(s.label)}</h4></summary>${body}</details>`);
         });
+        // A Brucebase page's history, last and closed (Phase 6): its body is
+        // drawn here at every paint, from what is read so far.
+        const hist = data.collapsible ? _bbHistSection(data) : null;
+        if (hist) {
+            const open = _dpSecState.has('History') ? _dpSecState.get('History') : hist.open;
+            right.push(`<details class="mb-dp-sec mb-bbh-sec" data-mb-dp-sec="History"${open ? ' open' : ''}>` +
+                '<summary data-mb-tip title="Click: open or close · Ctrl+click: every section">' +
+                `<h4>${_mbttEscape(hist.label)}</h4></summary><div class="mb-dp-section">${hist.html}</div></details>`);
+        }
         if (!right.length) right.push('<h4>Tracklist</h4><div class="mb-dp-xsub">The page has no tracklist.</div>');
         return { left, right };
     }
@@ -38039,10 +38691,13 @@
             // A Discogs release, master, artist or label has one too, without
             // the ▾ (org/POH-headerline.org item 4).
             const dg = subj ? '' : _dgHistSubject(t);
+            // A Brucebase page: its History section (Phase 6).
+            const bb = !subj && !dg && _bbHistHasSubject(t);
             const c = _dpDialog.controls;
-            (c.histSplit || c.hist).style.display = subj || dg ? '' : 'none';
+            (c.histSplit || c.hist).style.display = subj || dg || bb ? '' : 'none';
             _setTip(c.hist, dg ? `This ${dg.split('/')[0]}'s edit history on Discogs, in this window (H)`
-                : 'This entity\'s editing history on MusicBrainz, in this window (H)');
+                : bb ? 'This page\'s history on Brucebase: its History section (H)'
+                    : 'This entity\'s editing history on MusicBrainz, in this window (H)');
             // The ▾ presets: an entity's only (`_mbHistPresets()`), never an editor's.
             const withMore = !!subj && !subj.startsWith('user/');
             if (c.histMore) c.histMore.style.display = withMore ? '' : 'none';
@@ -41602,7 +42257,33 @@
             .mb-dp-dialog .mb-dgs-article table { border-collapse: collapse; }
             .mb-dp-dialog .mb-dgs-article td, .mb-dp-dialog .mb-dgs-article th { border: 1px solid #d9cfbd; padding: 2px 6px; }
             .mb-dp-dialog .mb-dgs-mark { background: #fff3c4; box-shadow: 0 0 0 2px #fff3c4; }
+            /* A Brucebase page's history (Phase 6, _bbHistHtml()): the
+               revisions as rows that select, the shown one's changed lines
+               OLD | NEW, the words marked inside a changed line. */
+            .mb-dp-dialog .mb-bbh-list { max-height: min(40vh, 360px); }
+            .mb-dp-dialog .mb-bbh-e {
+                all: unset; box-sizing: border-box; display: grid; width: 100%; cursor: pointer;
+                grid-template-columns: 2.4em 8.8em minmax(0, 9em) auto minmax(0, 1fr); gap: 2px 8px; align-items: baseline;
+                padding: 4px; border-bottom: 1px dotted #d9cfbd; color: #2b2622; font: 12.5px/1.4 system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+            }
+            .mb-dp-dialog .mb-bbh-e:hover { background: #f4eee2; }
+            .mb-dp-dialog .mb-bbh-e.mb-dgh-latest { background: #eef2f8; box-shadow: inset 3px 0 0 #2f5f9e; }
+            .mb-dp-dialog .mb-bbh-e:focus-visible { outline: 2px solid #2f5f9e; outline-offset: -2px; }
+            .mb-dp-dialog .mb-bbh-n { font: 600 12px ui-monospace, Consolas, monospace; color: #2f5f9e; text-align: right; }
+            .mb-dp-dialog .mb-bbh-f { display: inline-flex; gap: 2px; }
+            .mb-dp-dialog .mb-bbh-pane { margin-top: 10px; }
+            .mb-dp-dialog .mb-bbh-ph { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; margin-bottom: 6px; font-size: 12.5px; }
+            .mb-dp-dialog .mb-bbh-diff > div { padding: 1px 8px; }
+            .mb-dp-dialog .mb-bbh-diff > .mb-dgh-dh { padding: 5px 8px; }
+            .mb-dp-dialog .mb-bbh-l { font: 12px/1.45 ui-monospace, Consolas, monospace; white-space: pre-wrap; }
+            .mb-dp-dialog .mb-bbh-ln { display: inline-block; min-width: 2.4em; margin-right: 6px; color: #a89a85; text-align: right; user-select: none; }
+            .mb-dp-dialog .mb-bbh-rem { background: #fbefed; }
+            .mb-dp-dialog .mb-bbh-add { background: #f1f8ee; }
+            .mb-dp-dialog .mb-bbh-chg { background: #fdf7e1; }
+            .mb-dp-dialog .mb-bbh-diff > .mb-bbh-skip { padding: 2px 8px; text-align: center; color: #7a6d5c; font: 11px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; }
             @media (max-width: 760px) {
+                .mb-dp-dialog .mb-bbh-e { grid-template-columns: 2.4em minmax(0, 1fr) auto; }
+                .mb-dp-dialog .mb-bbh-e > .mb-dgh-u, .mb-dp-dialog .mb-bbh-e > .mb-dgh-n { grid-column: 2 / -1; }
                 .mb-dp-dialog .mb-dgh-e { grid-template-columns: 1fr auto; }
                 .mb-dp-dialog .mb-dgh-n, .mb-dp-dialog .mb-dgh-lk { grid-column: 1 / -1; }
                 .mb-dp-dialog .mb-dgh-diff { grid-template-columns: minmax(0, 1fr); }
@@ -74318,7 +74999,7 @@
      * @returns {boolean}
      */
     function _dpHasHistory(t) {
-        return !!(_mbEditsSubject(t) || _dgHistSubject(t));
+        return !!(_mbEditsSubject(t) || _dgHistSubject(t) || _bbHistHasSubject(t));
     }
 
     /**
@@ -74372,6 +75053,8 @@
      * @returns {void}
      */
     function _dpOpenEdits() {
+        // A Brucebase page: its History section, in place (Phase 6).
+        if (_bbHistReveal()) return;
         const cur = _dpDialog.target;
         const id = _mbEditsSubject(cur);
         // A Discogs release, master, artist or label: its edit history page
@@ -104141,6 +104824,8 @@ a { color: #1565c0; }`;
     // on discogs.com its Discogs edit history, `_saedDgHistoryEntry()`).
     _saedHistoryGroup();
     _saedDgHistoryEntry();
+    // On brucebase.wikidot.com, the page's own history (Phase 6).
+    _saedBbHistoryEntry();
 
     // --- Fetch progress line (shown during data loading, hidden otherwise) ---
     // The bar itself is the running action segment (`_saedRunStart()`); this
@@ -180321,6 +181006,32 @@ a { color: #1565c0; }`;
             bbBootlegRead(html, url) {
                 return _bbBootlegRead(new DOMParser().parseFromString(html, 'text/html'), url);
             },
+
+            /**
+             * `_bbHistParseList()`: a Wikidot revision list's body read.
+             *
+             * @param {string} html
+             * @returns {{revs: Array<Object>, pages: number}}
+             */
+            bbHistParseList: (html) => _bbHistParseList(html),
+
+            /**
+             * `_bbHistParseSource()`: a revision's source as lines.
+             *
+             * @param {string} html
+             * @returns {string[]}
+             */
+            bbHistParseSource: (html) => _bbHistParseSource(html),
+
+            /**
+             * `_bbHistDiffRows()`: the line diff of two sources, each row's
+             * `d` (the word blocks) left out.
+             *
+             * @param {string[]} a
+             * @param {string[]} b
+             * @returns {Array<Object>}
+             */
+            bbHistDiffRows: (a, b) => _bbHistDiffRows(a, b).map(({ d, ...r }) => r),
 
             /**
              * Thin wrapper around `_bbImageCaption()` over

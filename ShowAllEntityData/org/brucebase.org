@@ -322,7 +322,7 @@ in short form, so it survives on another machine).
   column), the cast, Performances/Appearances/Cancelled, Recording, Storyteller; =_bbEventHeadSpec()=
 - [X] fixtures from the mirror (=scripts/build-bb-event-fixtures.py=), =bb-event.spec.js= (14),
   mutations =bb-event.json= (12), coverage row, =bb-every-page= adjusted, =features.openSubTables=
-- [ ] vzell's live check
+- [X] vzell's live check (confirmed 2026-11-11 with the Phase 6 probe files): OK
 
 *** TODO Phase 3 — =bb-song= (+ lyrics:, ott:)
 - [X] =bb-song=: =_bbSongRead()= (Credits, Performances + by tour, Multiples, Snippets, Live downloads,
@@ -331,7 +331,7 @@ in short form, so it survives on another machine).
 - [X] =/lyrics:= left as bb-page (only the lyrics: a table would add nothing) — decided while building
 - [X] shared helpers renamed =_bbDetail…=, =features.bbDetailToTable= ('event' | 'song' | 'ott')
 - [X] =bb-song.spec.js= (8), mutations =bb-song.json= (9), fixtures with lyrics blanked, registries
-- [ ] vzell's live check
+- [X] vzell's live check (confirmed 2026-11-11 with the Phase 6 probe files): OK
 *** TODO Phase 4 — =bb-venue=, =bb-relation= (incl. the Steve Van Zandt TODO)
 - [X] one reader =_bbPlaceRead()= for both; the wiki's ListPages paging (=/p/N=, =_bbPagedListOk()=:
   a paged list while its pager says N, an unpaged one on page 1 only; probe 2026-11-11)
@@ -362,9 +362,24 @@ in short form, so it survives on another machine).
   handlers (digits as N), cell KINDS (a member reads "user", a comment its length), source line count and
   diff mark counts — no names, no page text, no revision ids. Its privacy is pinned by
   =scripts/check-probe-bb-history.js= (21 checks; two planted leaks fail it)
-- [ ] vzell runs it on one page signed in AND signed out, saves both JSON files to =debug/=
-  (=bb-history-probe-YYYYMMDD-in.json=, =-out.json=)
-- [ ] POH "History" section + "changes" button, revision list, diff in the Discogs grid
+- [X] vzell ran it on song:streets-of-minneapolis signed in and signed out (2026-11-11,
+  =debug/bb-history-probe-20261111-{in,out}.json=, user agent Chrome/157): EVERY module answers signed out as
+  signed in — HTTP 200, status "ok", the same bodies (only the random tabview id differs), 110–400 ms.
+  Signed out the page has no =#page-info= and no history button, but the history is public. So the
+  section is everyone's, and answer 4's "Sign in to Brucebase to see the history" is what a refusal
+  shows. Shapes: the list =table.page-history > tr#revision-row-N= (rev., from/to radios, flags,
+  V/S/R actions, =.printuser=, =odate time_N=, comment), pager "page 1" / "page 2 of 3";
+  =div.page-source= with a =<br />= per line; PageDiffModule =div.inline-diff.page-source= with
+  =ins=/=del=.
+- [X] the History section (=_bbHist*=, docs/claude/brucebase.md "A page's history in the window"):
+  closed, read when it opens (list p1 + the two sources), the revision list, our own line diff
+  (=_slLcs()= lines, =_cmpDiff()= words) in the MusicBrainz/Discogs history grid, "Only what changed" /
+  "Everything", "Load 20 more", Sign in / Try again; ✎ and H in the window; ☰ "✎ Page history" (the
+  "changes" entry) on a page the window shows; setting =sa_bb_history= (on); only on
+  brucebase.wikidot.com (a cross-origin POST with the token was not probed); =_DP_PARSER_VERSION= 21
+- [X] =bb-history.spec.js= (10), =bb-history.mobile.spec.js= (1), fixtures from the live site
+  (=scripts/build-bb-history-fixtures.py=, members scrubbed), mutations =bb-history.json= (15), WIP.8
+- [ ] vzell's live check
 
 *** Later (separate TODOs above)
 Extra list pageTypes (stats:discography, …), scroll-to-first-difference userscript, deferred
@@ -403,5 +418,28 @@ title
 version
 take
 #+end_example
+* probe
+
+1.)
+
+Both files are in @debug
+
+#+begin_example
+bb-history-probe-20261111-in.json
+bb-history-probe-20261111-out.json
+#+end_example
+
+2.)
+
+The entries
+
+#+begin_example
+- [ ] vzell's live check
+#+end_example
+
+for Phase 2 and 3 are also both confiremd like OK
+
+
+
 
 

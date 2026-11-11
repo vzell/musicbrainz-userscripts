@@ -602,7 +602,10 @@ markup.
   (`_dpParseBbRelease()`: facts, tracks, Personnel, Related releases), its
   links preview (`ownLinks`), images carry `nameKind` and `part`, and On
   The Tracks versions keep their suffix (docs/claude/brucebase.md, "Release,
-  playlist and bootleg pages"). Version 5 (2026-10-24):
+  playlist and bootleg pages"). Version 21 (2026-11-11): every Brucebase
+  record carries the page id (`bbPageId`), which the window's History
+  section asks Wikidot's history modules by (docs/claude/brucebase.md, "A
+  page's history in the window"). Version 5 (2026-10-24):
   such an entry page has fields and sections, and any text link to one
   previews it under its own setting (`ownLinks`, `_dpOwnLinksOn()`,
   `sa_bb_event_preview`) while `isDetailUrl` stays `/song:`

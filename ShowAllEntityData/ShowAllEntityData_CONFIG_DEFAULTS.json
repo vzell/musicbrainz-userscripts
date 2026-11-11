@@ -3,10 +3,10 @@
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
     "script_version": "9.99.1598+2026-11-11",
-    "schema_entries": 503,
+    "schema_entries": 504,
     "sections": 54,
-    "settings": 449,
-    "settings_with_default": 444,
+    "settings": 450,
+    "settings_with_default": 445,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 272,
+      "checkbox": 273,
       "color_picker": 62,
       "divider": 54,
       "number": 53,
@@ -272,6 +272,7 @@
     "sa_bb_detail_pages": "Detail pages: events, songs, venues, people, releases and bootlegs as tables",
     "sa_bb_detail_preview": "Preview song pages on the Brucebase song list",
     "sa_bb_event_preview": "Preview event, venue, people, release and bootleg pages on hover",
+    "sa_bb_history": "Page history in the Brucebase window",
     "sa_bb_mb_event_lookup": "MB-Event column: look the events up on MusicBrainz",
     "sa_bb_sidebar_right": "Show the Brucebase side bar on the right",
     "sa_bb_tip_images": "Media icons and song glyphs: the page's images on hover",
@@ -723,6 +724,7 @@
     "sa_bb_detail_pages": true,
     "sa_bb_detail_preview": true,
     "sa_bb_event_preview": true,
+    "sa_bb_history": true,
     "sa_bb_mb_event_lookup": true,
     "sa_bb_sidebar_right": false,
     "sa_bb_tip_images": true,
