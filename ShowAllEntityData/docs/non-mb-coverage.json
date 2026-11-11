@@ -107,6 +107,12 @@
         { "type": "bb-relation", "url": "https://brucebase.wikidot.com/relation:…", "mode": "multi",
           "ip": { "state": "yes", "ev": "code", "why": "The wiki's page is the IP, as on bb-page." },
           "frp": { "state": "yes", "ev": "spec", "why": "Song, release, person and event links preview; a show's link is the wiki's /onstage: redirect, which previews its event (_bbRedirectedUrl()).", "spec": ["tests/fixtures/bb-place.spec.js", "an /onstage: link previews its event"] } },
+        { "type": "bb-retail", "url": "https://brucebase.wikidot.com/retail:… (and playlist:)", "mode": "multi",
+          "ip": { "state": "yes", "ev": "code", "why": "The wiki's page is the IP, as on bb-page; its release, bootleg, person and gig links preview (ownLinks)." },
+          "frp": { "state": "yes", "ev": "spec", "why": "Song, person, release, bootleg and gig links in the sub-tables; a release link previews its tracks (_dpParseBbRelease()).", "spec": ["tests/fixtures/bb-release.spec.js", "a link to a release page previews its tracks"] } },
+        { "type": "bb-bootleg", "url": "https://brucebase.wikidot.com/bootleg:…", "mode": "multi",
+          "ip": { "state": "yes", "ev": "code", "why": "The wiki's page is the IP, as on bb-page." },
+          "frp": { "state": "na", "ev": "code", "why": "The tracklist has no links (the wiki writes a bootleg's songs as plain text)." } },
         { "type": "bb-page", "url": "https://brucebase.wikidot.com/lyrics:… (any other page: lyrics, stats, …; a detail page with sa_bb_detail_pages off)", "mode": "single",
           "ip": { "state": "yes", "ev": "spec", "why": "Link previews only (vzell, 2026-11-04: every Brucebase page): the site's own detail pages and other sites' links in #page-content; nothing visible added.", "spec": ["tests/fixtures/bb-every-page.spec.js", "a gig page (no pageType)"] },
           "frp": { "state": "na", "ev": "code", "why": "No button, no table." } }
@@ -226,7 +232,7 @@
     { "id": "dgsearch", "links": "discogs.com/search/?q=…&type=…, or a filter (style, genre, format, country, year, decade)", "asks": "api.discogs.com", "window": "25 results, Load 25 more" },
     { "id": "dgsupport", "links": "support.discogs.com/hc/<lang>/articles/<id>", "asks": "support.discogs.com", "window": "The article" },
     { "id": "bbdate", "links": "brucebase.wikidot.com/<yyyy>#<ddmmyy>", "asks": "brucebase.wikidot.com (the year page)", "window": "The show from its year page" },
-    { "id": "springsteen", "links": "SL item and song pages, jungleland.it/html/<x>.htm, brucespringsteen.it detrec.aspx (records), sd3.aspx (songs) and mn.aspx (shows), Brucebase /song: (and /gig:, /venue:, … on discogs.com)", "asks": "the link's own host", "window": "The site's page, parsed" },
+    { "id": "springsteen", "links": "SL item and song pages, jungleland.it/html/<x>.htm, brucespringsteen.it detrec.aspx (records), sd3.aspx (songs) and mn.aspx (shows), Brucebase /song: (and /gig:, /venue:, /retail:, /bootleg:, … on discogs.com)", "asks": "the link's own host", "window": "The site's page, parsed" },
     { "id": "setlistfm", "links": "setlist.fm /setlist/…, /setlists/…, /venue/… (with the key); /search?artist=…, /festival/<year>/…, /festivals/… (always)", "asks": "api.setlist.fm (key), www.setlist.fm", "window": "The setlist, the artist's or venue's list; a festival edition's setlists by day, a festival's editions" },
     { "id": "iadetails", "links": "archive.org/details/<id>[/<file>]", "asks": "archive.org (/metadata)", "window": "The item, its files, Play here" },
     { "id": "generic", "links": "any other http(s) link to another host", "asks": "the link's host (its head tags)", "window": "Title, description, picture" }
@@ -258,7 +264,7 @@
   "families": [
     { "key": "mb", "label": "MusicBrainz", "example": "musicbrainz.org/artist/<mbid>", "route": { "*": "here^n2" } },
     { "key": "spr", "label": "SL · JL · KF · BB song", "example": "brucebase.wikidot.com/song:badlands", "route": { "spr": "here^n1", "bb": "here^n1", "*": "here" } },
-    { "key": "bbgig", "label": "BB gig · venue · relation", "example": "brucebase.wikidot.com/gig:1985-01-13-…", "route": { "bb": "here^n1", "*": "here^n5" } },
+    { "key": "bbgig", "label": "BB gig · venue · relation · release · bootleg", "example": "brucebase.wikidot.com/gig:1985-01-13-…", "route": { "bb": "here^n1", "*": "here^n5" } },
     { "key": "bbdate", "label": "BB year#date", "example": "brucebase.wikidot.com/1985#130185", "route": { "*": "here" } },
     { "key": "sfm", "label": "setlist.fm", "example": "setlist.fm/setlist/…-<id>.html", "route": { "*": "here^n3" } },
     { "key": "ia", "label": "archive.org item", "example": "archive.org/details/<id>", "route": { "*": "here" } },

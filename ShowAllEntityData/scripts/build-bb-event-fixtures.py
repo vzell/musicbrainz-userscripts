@@ -38,6 +38,22 @@ And for bb-venue / bb-relation (Phase 4):
   News;
 - Anders Goman: one performance; Malurt: a band with Members.
 
+And for bb-retail / bb-bootleg (Phase 5; main pages copied to
+debug/bb-mirror/retail-main/ and playlist-main/, the subpages left out):
+
+- release "Born To Run": one edition, the facts and their footnotes,
+  Personnel (Bruce, then the band), History, Media, Related Releases, On
+  The Tracks (63 takes, "V2 - take 14"), Performance, Lyrics' links;
+- release "Live/1975-85": one edition in four tables (discs), Recording
+  'Live' Dates by disc with footnotes;
+- release "The Promise (Boxset)": two editions, the video one's tables cut
+  into parts by one-cell heading rows (the Blu-ray films);
+- playlist "Songs Of Love": the playlist layout (Recording 'Live' Dates);
+- bootlegs: "The River Outtakes" (facts, "Disc 1: (43:31)", one note under
+  both discs), "Criminals And Artists" (sides marked "//"), "Definitive
+  Remastered Darkness Outtakes" (numbered lines, "Disc 1"), "The Born To Run
+  Outtakes" (two lines of its own, no facts).
+
 A song's lyrics are blanked word by word ("la"), as
 scripts/build-detail-fixtures.py does (its `blank_lyrics()`, imported).
 
@@ -73,6 +89,14 @@ PAGES = [
     ('pick/relation_patti-scialfa_live-p3.html', 'bb-relation-patti-scialfa-p3.html'),
     ('relation/relation_anders-goman.html', 'bb-relation-anders-goman.html'),
     ('relation/relation_malurt.html', 'bb-relation-malurt.html'),
+    ('retail-main/retail_born-to-run.html', 'bb-retail-born-to-run.html'),
+    ('retail-main/retail_live-1975-85.html', 'bb-retail-live-1975-85.html'),
+    ('retail-main/retail_the-promise-boxset.html', 'bb-retail-the-promise-boxset.html'),
+    ('playlist-main/playlist_songs-of-love.html', 'bb-playlist-songs-of-love.html'),
+    ('bootleg/bootleg_river-outtakes-wrr.html', 'bb-bootleg-river-outtakes-wrr.html'),
+    ('bootleg/bootleg_criminals-and-artists.html', 'bb-bootleg-criminals-and-artists.html'),
+    ('bootleg/bootleg_definitive-remastered-darkness-outtakes-gfr.html', 'bb-bootleg-definitive-remastered-darkness-outtakes-gfr.html'),
+    ('bootleg/bootleg_born-to-run-outtakes.html', 'bb-bootleg-born-to-run-outtakes.html'),
 ]
 
 

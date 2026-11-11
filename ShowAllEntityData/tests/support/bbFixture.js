@@ -341,6 +341,16 @@ const BB_EVENT_PAGES = {
         { 2: 'bb-relation-patti-scialfa-p2.html', 3: 'bb-relation-patti-scialfa-p3.html' }],
     'relation-anders-goman': ['relation:anders-goman', 'bb-relation-anders-goman.html'],
     'relation-malurt': ['relation:malurt', 'bb-relation-malurt.html'],
+    // bb-retail / bb-bootleg (Phase 5).
+    'retail-born-to-run': ['retail:born-to-run', 'bb-retail-born-to-run.html'],
+    'retail-live-1975-85': ['retail:live-1975-85', 'bb-retail-live-1975-85.html'],
+    'retail-the-promise-boxset': ['retail:the-promise-boxset', 'bb-retail-the-promise-boxset.html'],
+    'playlist-songs-of-love': ['playlist:songs-of-love', 'bb-playlist-songs-of-love.html'],
+    'bootleg-river-outtakes-wrr': ['bootleg:river-outtakes-wrr', 'bb-bootleg-river-outtakes-wrr.html'],
+    'bootleg-criminals-and-artists': ['bootleg:criminals-and-artists', 'bb-bootleg-criminals-and-artists.html'],
+    'bootleg-definitive-remastered-darkness-outtakes-gfr': ['bootleg:definitive-remastered-darkness-outtakes-gfr',
+        'bb-bootleg-definitive-remastered-darkness-outtakes-gfr.html'],
+    'bootleg-born-to-run-outtakes': ['bootleg:born-to-run-outtakes', 'bb-bootleg-born-to-run-outtakes.html'],
 };
 Object.keys(BB_EVENT_PAGES).forEach((k) => {
     const [p, f, more] = BB_EVENT_PAGES[k];

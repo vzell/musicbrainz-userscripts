@@ -597,7 +597,12 @@ markup.
   every Brucebase record carries the page's tags and a closed "Tags (N)"
   section, each image its filename's caption and photographer, and the
   window groups photos by photographer (docs/claude/brucebase.md, "What a
-  filename says, and the page's tags"). Version 5 (2026-10-24):
+  filename says, and the page's tags"). Version 20 (2026-11-11): a
+  release, playlist or bootleg page is a record of its own
+  (`_dpParseBbRelease()`: facts, tracks, Personnel, Related releases), its
+  links preview (`ownLinks`), images carry `nameKind` and `part`, and On
+  The Tracks versions keep their suffix (docs/claude/brucebase.md, "Release,
+  playlist and bootleg pages"). Version 5 (2026-10-24):
   such an entry page has fields and sections, and any text link to one
   previews it under its own setting (`ownLinks`, `_dpOwnLinksOn()`,
   `sa_bb_event_preview`) while `isDetailUrl` stays `/song:`

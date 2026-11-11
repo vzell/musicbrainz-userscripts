@@ -3912,7 +3912,7 @@ entry, with these columns:
   that page: when it was scheduled, who was on stage, the setlist, the
   images. **Space** pins it into a window with the whole setlist, the other
   shows at that venue, the recording and the stories; ← → step through the
-  rows (⚙️ Settings → *📚 Brucebase* → *Preview event, venue and people pages on hover*). In
+  rows (⚙️ Settings → *📚 Brucebase* → *Preview event, venue, people, release and bootleg pages on hover*). In
   the window a click on a section's heading folds it, and a Ctrl+click
   folds or opens all of them at once; the people on stage,
   the songs of the setlist and the other shows are links that open in the
@@ -4027,12 +4027,12 @@ many rows (*Large Dataset Threshold*, 5000).
 </details>
 
 <details>
-<summary>Brucebase event, song, venue and person pages</summary>
+<summary>Brucebase event, song, venue, person, release and bootleg pages</summary>
 
 A Brucebase page for one event — a gig (`/gig:…`), a show that did not
 happen (`/nogig:…`), a recording session, a rehearsal or an interview —
 gets one button, **Event** (*Show the event*), while ⚙️ Settings →
-*📚 Brucebase* → *Detail pages: events, songs, venues and people as tables*
+*📚 Brucebase* → *Detail pages: events, songs, venues, people, releases and bootlegs as tables*
 is on (the default). It lays the page out like a MusicBrainz release; nothing is
 fetched, everything comes from the page itself:
 
@@ -4088,7 +4088,25 @@ still read, and flagged as a ⚠️ WARNING, *Brucebase entry with a comma
 after its date*: the lists are the linked pages' titles, so that page's
 title is the one to fix.
 
-The setting is *Detail pages: events, songs, venues and people as tables*. Switched off,
+**Releases and playlists** (`/retail:…`, `/playlist:…`) get **Release**
+(*Show the release*): a table per edition and disc (#, song, running time,
+where the track comes from, the page's footnote on it; a box set's films
+each a table of their own), the personnel (who played what, band beside
+name), the related releases, the recording dates of a live release (disc,
+song, the show's date and place, linked), the takes On The Tracks and how
+often each song was played live. Above them: the facts the page states
+(released, label, produced, recorded, mixed, mastered, design, photography),
+the running time of each edition, the overview, the footnotes and the
+history (folded), tags, media and the lyrics' pages, and the artwork typed
+by its file names (Release cover, Ad poster, Article, …). **Bootlegs**
+(`/bootleg:…`) get **Bootleg** (*Show the bootleg*): the tracklist, a table
+per disc with each song's time, and a *Side* column where the page marks the
+sides; the label, catalog number, time, format, source and sound in a
+Bootleg card, the notes, and the Front, Back and Disc artwork. Pointing at
+a link to a release, playlist or bootleg (Ctrl) previews it: its facts and
+tracks; Space opens the window.
+
+The setting is *Detail pages: events, songs, venues, people, releases and bootlegs as tables*. Switched off,
 these pages stay as the wiki shows them, and their links still preview.
 
 </details>
@@ -4725,7 +4743,7 @@ that site's own switch in ⚙️ Settings:
 | 🌴 jungleland.it         | *Preview artwork pages on the jungleland.it list*            | the uploader and the scans (front, back, discs, booklet)                                                                                                    |
 | 💿 brucespringsteen.it   | *Preview record pages in the brucespringsteen.it database*   | the tracklist, the show each track comes from, the notes, the photo; on a record page also its songs (lyric versions) and shows (setlist, the records it is on) |
 | 📚 Brucebase             | *Preview song pages on the Brucebase song list*              | the album it comes from, how often and when last it was played live, releases, the graph and lyric sheets                                                   |
-| 📚 Brucebase             | *Preview event, venue and people pages on hover*             | when it was scheduled, who was on stage, the setlist, the images; Space: the whole setlist, the other shows there, the recording                            |
+| 📚 Brucebase             | *Preview event, venue, people, release and bootleg pages on hover* | when it was scheduled, who was on stage, the setlist, the images; a release's or bootleg's facts and tracks; Space: the whole setlist, the other shows there, the recording |
 
 **Rest the pointer on a title** for a moment and a card opens beside it. If
 you would rather move the pointer across the table without opening cards or

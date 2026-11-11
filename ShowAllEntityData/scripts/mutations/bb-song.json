@@ -56,7 +56,7 @@
         "why": "\"THE PROMISE - V1\" is Title and Version.",
         "edits": [
             {
-                "find": "            const m = name.match(/^(.*?)\\s+-\\s+(V\\w+)$/);\n",
+                "find": "            const m = name.match(/^(.*?)\\s+-\\s+(V\\d\\w*\\b.*)$/);\n",
                 "replace": "            const m = null;\n"
             }
         ],

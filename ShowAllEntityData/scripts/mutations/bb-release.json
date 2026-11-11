@@ -1,0 +1,301 @@
+[
+    {
+        "name": "facts: a continued line dropped",
+        "why": "A line that starts with a space continues the fact before it (\"Recorded by … / at Record Plant Studios\").",
+        "edits": [
+            {
+                "find": "            else if (_dpText(line) && out.length) out[out.length - 1][1] = `${out[out.length - 1][1]} ${_dpText(line)}`;",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-release.spec.js",
+        "grep": "release's facts|the head: Overview",
+        "expect": "fail"
+    },
+    {
+        "name": "editions: a heading row opens no part",
+        "why": "The Promise's Blu-ray films: a one-cell <th> row inside a table opens a part of its own.",
+        "edits": [
+            {
+                "find": "                        if (th.length === 1 && _dpText(th[0].textContent)) {\n                            disc = { name: _dpText(th[0].textContent), rows: [] };",
+                "replace": "                        if (false) {\n                            disc = { name: _dpText(th[0].textContent), rows: [] };"
+            }
+        ],
+        "spec": "tests/fixtures/bb-release.spec.js",
+        "grep": "The Promise",
+        "expect": "fail"
+    },
+    {
+        "name": "editions: the footnote mark is the Note, not its text",
+        "why": "\"THE WAY (1)\": footnote 1 under the tab is the track's Note.",
+        "edits": [
+            {
+                "find": "                        releaseText: td[3] ? _dpText(td[3].textContent) : '',\n                        note: mark ? (notes.get(mark) || mark) : '',",
+                "replace": "                        releaseText: td[3] ? _dpText(td[3].textContent) : '',\n                        note: mark,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-release.spec.js",
+        "grep": "The Promise",
+        "expect": "fail"
+    },
+    {
+        "name": "sup removed by a string replace",
+        "why": "A footnote mark \"a\" removed by replace cuts the first \"a\" of the title (\"Asbury Prk\").",
+        "edits": [
+            {
+                "find": "        c.querySelectorAll('sup').forEach(n => n.remove());\n        return _dpText(c.textContent);",
+                "replace": "        return _dpText(c.textContent);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-release.spec.js",
+        "grep": "Live/1975-85",
+        "expect": "fail"
+    },
+    {
+        "name": "Personnel: the first list only",
+        "why": "A release's Personnel is Bruce's list, then the band's: every top-level list.",
+        "edits": [
+            {
+                "find": "        const lists = all ? Array.from(panel.querySelectorAll('ul, ol'))",
+                "replace": "        const lists = false ? Array.from(panel.querySelectorAll('ul, ol'))"
+            }
+        ],
+        "spec": "tests/fixtures/bb-release.spec.js",
+        "grep": "sub-tables, their headers",
+        "expect": "fail"
+    },
+    {
+        "name": "Personnel: the colon kept in the role",
+        "why": "\"Roy Bittan: Piano\" gives the Instruments \"Piano\".",
+        "edits": [
+            {
+                "find": "            const role = _dpText(a ? own.replace(name, '') : '').replace(all ? /^[,:\\s]+/ : /^[,\\s]+/, '');",
+                "replace": "            const role = _dpText(a ? own.replace(name, '') : '').replace(/^[,\\s]+/, '');"
+            }
+        ],
+        "spec": "tests/fixtures/bb-release.spec.js",
+        "grep": "sub-tables, their headers",
+        "expect": "fail"
+    },
+    {
+        "name": "On The Tracks: a version's suffix not read",
+        "why": "\"THE HEIST - V2 - take 14\": Title The Heist, Version \"V2 - take 14\".",
+        "edits": [
+            {
+                "find": "            const m = name.match(/^(.*?)\\s+-\\s+(V\\d\\w*\\b.*)$/);",
+                "replace": "            const m = name.match(/^(.*?)\\s+-\\s+(V\\w+)$/);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-release.spec.js",
+        "grep": "sub-tables, their headers",
+        "expect": "fail"
+    },
+    {
+        "name": "Related releases: no note",
+        "why": "The <sup> beside a release (\"(2005)\") is its Note.",
+        "edits": [
+            {
+                "find": "                    const note = sups.map(n => _dpText(n.textContent).replace(/^\\((.*)\\)$/, '$1')).filter(Boolean).join(' ');",
+                "replace": "                    const note = '';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-release.spec.js",
+        "grep": "sub-tables, their headers",
+        "expect": "fail"
+    },
+    {
+        "name": "Recording dates: the wiki's date kept",
+        "why": "\"October 18, 1975\" is shown as 1975-10-18, the wiki's words on hover.",
+        "edits": [
+            {
+                "find": "                    date: _bbLongDate(dateText) || dateText, dateText,",
+                "replace": "                    date: dateText, dateText,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-release.spec.js",
+        "grep": "Live/1975-85",
+        "expect": "fail"
+    },
+    {
+        "name": "Released: no running time",
+        "why": "The card's Running time is the tab's \"Total Running Time\".",
+        "edits": [
+            {
+                "find": "            const total = (_dpText(panel.textContent).match(/Total Running Time:\\s*([\\d:]+)/i) || [])[1] || '';",
+                "replace": "            const total = '';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-release.spec.js",
+        "grep": "the head: Overview|The Promise",
+        "expect": "fail"
+    },
+    {
+        "name": "Additional Information read as editions",
+        "why": "The tabview under \"Additional Information\" (or with its tab labels) is read by label, never as editions.",
+        "edits": [
+            {
+                "find": "            const info = /^Additional Information$/i.test(heading) ||",
+                "replace": "            const info = false &&"
+            }
+        ],
+        "spec": "tests/fixtures/bb-release.spec.js",
+        "grep": "sub-tables, their headers",
+        "expect": "fail"
+    },
+    {
+        "name": "bootleg: \"//\" ends no side",
+        "why": "Criminals And Artists: side A to \"Sandy (5.35) //\", side B after it.",
+        "edits": [
+            {
+                "find": "            if (ends) {\n                side++;",
+                "replace": "            if (false) {\n                side++;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-release.spec.js",
+        "grep": "Criminals And Artists|bootleg's lines",
+        "expect": "fail"
+    },
+    {
+        "name": "bootleg: no time from the brackets",
+        "why": "\"Cindy (2:27)\", \"Rosalita (7.02)\": the time out of the title.",
+        "edits": [
+            {
+                "find": "            const tm = t.match(/\\s*\\((\\d{1,3}[:.]\\d{2}(?:[:.]\\d{2})?)\\)\\s*$/);",
+                "replace": "            const tm = null;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-release.spec.js",
+        "grep": "River Outtakes|Criminals And Artists",
+        "expect": "fail"
+    },
+    {
+        "name": "bootleg: numbered lines are no tracklist",
+        "why": "A paragraph of \"1-Rendezvous\" lines is the tracklist.",
+        "edits": [
+            {
+                "find": "            const numbered = nNumbered >= 2 && nNumbered * 2 >= lines.length;",
+                "replace": "            const numbered = false;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-release.spec.js",
+        "grep": "numbered lines in a paragraph",
+        "expect": "fail"
+    },
+    {
+        "name": "bootleg: \"Disc One:\" names no disc",
+        "why": "The Price You Pay: \"Disc One:\" over a disc.",
+        "edits": [
+            {
+                "find": "        const DISC_RE = /^(?:Disc|CD|DVD)\\s*(\\d+|[A-Z]|One|Two|Three|Four|Five|Six)\\s*",
+                "replace": "        const DISC_RE = /^(?:Disc|CD|DVD)\\s*(\\d+|[A-Z])\\s*"
+            }
+        ],
+        "spec": "tests/fixtures/bb-release.spec.js",
+        "grep": "bootleg's lines",
+        "expect": "fail"
+    },
+    {
+        "name": "bootleg: a quote in the notes read as a fact",
+        "why": "\"Appel: Now people …\" in the notes is a note; only a bootleg's own facts are facts there.",
+        "edits": [
+            {
+                "find": "(!notes || _BB_BOOTLEG_FACT_RE.test(fm[1]))",
+                "replace": "true"
+            }
+        ],
+        "spec": "tests/fixtures/bb-release.spec.js",
+        "grep": "bootleg's lines",
+        "expect": "fail"
+    },
+    {
+        "name": "bootleg: a note repeated under every disc kept twice",
+        "why": "The River Outtakes repeats its note under both discs: one note.",
+        "edits": [
+            {
+                "find": "        rec.notes = rec.notes.filter((l, i, a) => a.indexOf(l) === i);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-release.spec.js",
+        "grep": "River Outtakes",
+        "expect": "fail"
+    },
+    {
+        "name": "artwork: the part not typed",
+        "why": "A bootleg's artwork is typed Front, Back, Disc by its filename.",
+        "edits": [
+            {
+                "find": "                nameKind: name.kind,\n                part: name.part,",
+                "replace": "                nameKind: name.kind,\n                part: '',"
+            }
+        ],
+        "spec": "tests/fixtures/bb-release.spec.js",
+        "grep": "River Outtakes",
+        "expect": "fail"
+    },
+    {
+        "name": "previews: release links not own links",
+        "why": "A link to a /retail:, /playlist: or /bootleg: page previews it (Phase 5).",
+        "edits": [
+            {
+                "find": "offstage|retail|playlist|bootleg):[^/]+$/.test(u.pathname),",
+                "replace": "offstage):[^/]+$/.test(u.pathname),"
+            }
+        ],
+        "spec": "tests/fixtures/bb-release.spec.js",
+        "grep": "previews its tracks",
+        "expect": "fail"
+    },
+    {
+        "name": "previews: no track count",
+        "why": "The card's highlight is the track count (\"8 tracks\").",
+        "edits": [
+            {
+                "find": "        if (data.tracks.length) data.highlight = { value: String(data.tracks.length), label: data.tracks.length === 1 ? 'track' : 'tracks' };",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-release.spec.js",
+        "grep": "previews its tracks",
+        "expect": "fail"
+    },
+    {
+        "name": "YouTube: embed/playlist read as a video",
+        "why": "Brucebase's \"embed/playlist?list=\" player is a playlist, never a video named \"playlist\".",
+        "edits": [
+            {
+                "find": "        if (/^\\/(?:playlist|embed\\/(?:videoseries|playlist))\\/?$/.test(u.pathname))",
+                "replace": "        if (/^\\/(?:playlist|embed\\/videoseries)\\/?$/.test(u.pathname))"
+            }
+        ],
+        "spec": "tests/fixtures/bb-release.spec.js",
+        "grep": "the head: Overview",
+        "expect": "fail"
+    },
+    {
+        "name": "a playlist headed Release",
+        "why": "A /playlist: page's data heading is Playlist.",
+        "edits": [
+            {
+                "find": "        h2.textContent = kind === 'retail' && /^\\/playlist:/.test(window.location.pathname) ? 'Playlist'",
+                "replace": "        h2.textContent = false ? 'Playlist'"
+            }
+        ],
+        "spec": "tests/fixtures/bb-release.spec.js",
+        "grep": "a playlist",
+        "expect": "fail"
+    },
+    {
+        "name": "the discography strip read as editions",
+        "why": "The strip at the top (Original | Collaboration | …) is a ListPages box: skipped. Its tabs hold only images, so read as editions they give no table; no fixture can see the guard (a strip tab with a table would).",
+        "edits": [
+            {
+                "find": "            .filter(n => !n.closest('.list-pages-box') && !(n.parentElement && n.parentElement.closest('div.yui-navset')));",
+                "replace": "            .filter(n => !(n.parentElement && n.parentElement.closest('div.yui-navset')));"
+            }
+        ],
+        "spec": "tests/fixtures/bb-release.spec.js",
+        "grep": "sub-tables, their headers",
+        "expect": "pass"
+    }
+]

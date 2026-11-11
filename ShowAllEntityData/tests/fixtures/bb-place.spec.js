@@ -286,8 +286,7 @@ test.describe('bb-relation: an /onstage: link previews its event', () => {
         const dialog = page.locator('#mb-dp-dialog');
         const tags = dialog.locator('details.mb-dp-sec[data-mb-dp-sec="Tags"]');
         await tags.locator('summary').click();
-        const cat = await tags.locator('.mb-dp-tagrow', { has: page.locator('.mb-dp-tagk', { hasText: /^Category$/ }) }).locator('a.mb-dp-tag').allTextContents();
-        expect(cat).toEqual(['gig']);
+        await expect(tags.locator('.mb-dp-tagrow', { has: page.locator('.mb-dp-tagk', { hasText: /^Category$/ }) }).locator('a.mb-dp-tag')).toHaveText(['gig']);
         expect(errors).toEqual([]);
     });
 });

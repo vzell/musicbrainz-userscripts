@@ -342,6 +342,18 @@ in short form, so it survives on another machine).
 - [X] follow-up 1: the "comma after the date" entry is a finding, ⚠️ =bb-date-comma= (Date cell)
 - [X] follow-up 2: =/onstage:= (and =/offstage:=) links preview their event (=_bbRedirectedUrl()=)
 *** TODO Phase 5 — =bb-retail= (+ playlist), =bb-bootleg=
+- [X] survey 2026-11-11: 59 release + 20 playlist main pages, 30 bootlegs (the mirror's subpages
+  =-release=, =-credits=, … are the main page's parts); release and playlist one layout
+- [X] =_bbReleaseRead()=: =div.code= facts (+ footnotes), Overview, Released (a table per edition and
+  disc, one-cell heading rows open parts), Additional Information by tab label (Personnel, Related
+  Releases, On The Tracks, Recording 'Live' Dates, Performance; Media, Lyrics, Artwork for the head)
+- [X] =_bbBootlegRead()=: facts, notes, discs, lists or numbered lines, "//" sides — all 30 sampled
+  bootlegs give a tracklist
+- [X] previews of =/retail:=, =/playlist:=, =/bootleg:= links (=_dpParseBbRelease()=, parser version 20)
+- [X] fixes on the way: =_ytParse()= read =embed/playlist?list== as a video "playlist"; On The
+  Tracks versions with a suffix ("V2 - take 14")
+- [X] =bb-release.spec.js= (16), mutations =bb-release.json= (23), registries, docs, WIP.7
+- [ ] vzell's live check
 *** TODO Phase 6 — history diff
 - [ ] =scripts/probe-bb-history.user.js= (vzell runs it logged in and out; status/shape/timing only,
   no user name, no cookies)

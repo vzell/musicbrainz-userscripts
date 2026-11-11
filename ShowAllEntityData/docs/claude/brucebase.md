@@ -932,6 +932,92 @@ fixtures `bb-venue-roxy-theatre.html`, `bb-relation-*.html` (Patti's three
 pages fetched together from the live site, 2026-11-11T15:26+01:00);
 `loadBbEventPage()` serves `/p/N`; mutations `scripts/mutations/bb-place.json` (10).
 
+## Release, playlist and bootleg pages — `bb-retail`, `bb-bootleg` (Phase 5, 2026-11-11)
+
+Same pattern as the other detail pageTypes: a copy of the page at the
+press, no request; readers `_bbReleaseRead(doc, url)` (a `/retail:` or
+`/playlist:` page) and `_bbBootlegRead(doc, url)`, one `toHtml`,
+`_bbReleaseToHtml(text, base, kind)`, one head, `_bbReleaseHeadSpec()`,
+the cache `_bbReleaseSource()`. The same readers make the preview's
+record, `_dpParseBbRelease()` (parser version 20): facts as fields, the
+tracks with their times (`data.tracks`), the count as the highlight,
+Overview / Personnel / Related releases (or the bootleg's notes) as closed
+window sections; `ownLinks` takes `/retail:`, `/playlist:` and `/bootleg:`
+links since this phase, so any link to one previews on every Brucebase page
+(and, through `_extDpTest()`, on the other hosts).
+
+Survey (2026-11-11T17:20+01:00 · vzell-lap · n/a: offline, 59 release and
+20 playlist main pages and 30 bootlegs of the mirror, copied to
+`debug/bb-mirror/{retail-main,playlist-main,bootleg}/`; the readers run over
+every one in a throwaway spec):
+
+- **A release and a playlist are one layout.** The discography strip at
+  the top (a ListPages box with a tabview Original | Collaboration |
+  Compilation | Playlist of covers: skipped by `.closest('.list-pages-box')`),
+  the cover, a `div.code` block of facts, its footnotes, then h1 sections
+  Overview, Released, Additional Information (48 of 59; the rest are the
+  main page's SUBPAGES — `-release`, `-credits`, `-overview`, `-addinfo`,
+  `-recgig`, `-liner`, `-history`, 190 of each kind in the mirror — which
+  the main page includes; a subpage has no h1, so a tabview is told by its
+  tab labels, `_BB_RELEASE_INFO_TAB_RE`).
+- **Facts** (`_bbReleaseFacts()`): "Commercially Released*: …" (the
+  footnote stars dropped, the name in sentence case), "Produced** by …"
+  (a name of four words at most before "by"), a line that starts with a
+  space continuing the one before ("at Record Plant Studios …"). The
+  paragraphs between the block and the first h1 are its footnotes (Notes).
+- **Released**: a tab per edition, a `<table>` per disc ("# · Song Title ·
+  Running Time · Release", "1.1." numbering), a ONE-CELL `<th>` row inside
+  a table opening a part (The Promise's six Blu-ray films), "Total Running
+  Time" under the tables; a song's `<sup>` mark ("(1)") is looked up in the
+  tab's footnotes ("1: Hidden in the previous track.") for the Note column
+  (`_bbFootnotes()`). A disc's sub-table is named "<edition>" alone, or
+  "<edition> · Disc N" (N from "2.1.") / "· <part>" when a tab has more
+  than one.
+- **Additional Information**, by tab label: Personnel (`_bbEventCast()`
+  with `all`: every top-level list — Bruce's, then the band's — and the
+  colon after a name stripped), Related Releases (group, release, its
+  bracketed `<sup>` as the Note; the release is the item's words, since a
+  link may name only part of the title), On The Tracks (`_bbOttRows()`,
+  whose version now keeps a suffix: "V2 - take 14", "V1 (August 1, 1974)" —
+  bb-song's too), Recording 'Live' Dates (one-cell rows name the disc,
+  "October 18, 1975" → 1975-10-18 with the wiki's words on hover, the marks
+  looked up as above), Performance (the songs' live counts); Media's players
+  and Lyrics' links are head chips, Artwork and the galleries the pictures,
+  any other tab with words (History, Studios, News) a text section.
+- **A footnote mark is removed from a COPY** (`_bbTextWithoutSup()`): a
+  string replace of "a" cut the first "a" of "Asbury Park".
+- **YouTube**: the release pages embed `youtube.com/embed/playlist?list=…`,
+  which `_ytParse()` read as a VIDEO named "playlist" (shared code, fixed:
+  it is a playlist, like `embed/videoseries`).
+- **A bootleg is free text** in its Bootleg tab (beside Artwork). Lines
+  (`_bbLines()`: a `<br>` ends one) are read in order: "Disc 1: (43:31)",
+  "Disc 2", "Disc One:" open a disc; a list's items, or a paragraph whose
+  lines are at least half numbered ("1-Rendezvous", "01 Guns Of Kid Cole
+  (4:50)", "101 - Mary Queen Of Arkansas", "1-46 reporters …"), are tracks,
+  the time in brackets ("(2:27)", "(5.35)") out of the title, "//" after a
+  song ending a side (sides A, B, … through the discs; a Side column only
+  then); "Name: value" lines are facts (Label, Catalog #, Time, Format,
+  Source, Sound, …; a name with an empty value takes the next line);
+  "Notes:" starts the notes, where only `_BB_BOOTLEG_FACT_RE`'s names are
+  facts ("Appel: Now people …" is a quote); the lines before any of these
+  are the bootleg's own description. A note repeated under every disc is
+  one. All 30 sampled bootlegs give a tracklist.
+- **Pictures** are typed by what the filename says: `_bbPageImages()`
+  carries `nameKind` and `part` (`_bbParseImageName()`), so a release's
+  artwork shows "Release cover", "Ad poster", "Article" …, a bootleg's
+  Front, Back, Disc.
+- **Heading**: "Release", "Playlist" on a `/playlist:` page, "Bootleg".
+
+Tests: `tests/fixtures/bb-release.spec.js` (16: the gate on both; Born To
+Run's tables, rows and head; Live/1975-85's discs and Recording dates; The
+Promise's editions and parts; a playlist; a release link previews its
+tracks (FRP); four bootlegs — facts, discs, sides, numbered lines, no
+facts; both readers on synthetic lines; Save → Load from Disk); fixtures
+`bb-retail-*.html`, `bb-playlist-songs-of-love.html`, `bb-bootleg-*.html`
+(`scripts/build-bb-event-fixtures.py`; it keeps only YouTube iframes, so
+the Spotify player is not in them); mutations
+`scripts/mutations/bb-release.json` (23).
+
 ## Song pages — `bb-song`, and On The Tracks — `bb-ott` (Phase 3, 2026-11-11)
 
 Same pattern as `bb-event` (above): a definition before `bb-page` under

@@ -116,6 +116,7 @@ test.describe('YouTube in place — Step 1: the shared tile and player', () => {
             ['nocookie', 'https://www.youtube-nocookie.com/embed/Wu4_zVxmufY'],
             ['playlist', 'https://www.youtube.com/playlist?list=PLM0aPYPhFzkrHWh8uoXwAsxdDXyFEEELt'],
             ['videoseries', 'https://www.youtube.com/embed/videoseries?si=xY&list=PLTejJhB5zqTA'],
+            ['embedPlaylist', 'https://www.youtube.com/embed/playlist?list=OLAK5uy_nZs0gvllzGn7y9-5OuorN7W37HPrPGrn8'],
             ['channel', 'http://www.youtube.com/brucebasewiki'],
             ['noId', 'https://www.youtube.com/watch'],
             ['relative', '/watch?v=Wu4_zVxmufY'],
@@ -136,6 +137,8 @@ test.describe('YouTube in place — Step 1: the shared tile and player', () => {
         expect(r.playlist).toEqual({ kind: 'playlist', id: '', list: 'PLM0aPYPhFzkrHWh8uoXwAsxdDXyFEEELt' });
         expect(r.videoseries, 'embed/videoseries is the playlist, never a video named "videoseries"')
             .toEqual({ kind: 'playlist', id: '', list: 'PLTejJhB5zqTA' });
+        expect(r.embedPlaylist, 'embed/playlist (Brucebase\'s release pages) is the playlist too')
+            .toEqual({ kind: 'playlist', id: '', list: 'OLAK5uy_nZs0gvllzGn7y9-5OuorN7W37HPrPGrn8' });
         for (const k of ['channel', 'noId', 'relative', 'otherSite', 'lookalike']) expect(r[k], k).toBeNull();
     });
 

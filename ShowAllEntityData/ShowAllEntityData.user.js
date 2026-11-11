@@ -5147,7 +5147,7 @@
         },
 
         sa_bb_detail_pages: {
-            label: 'Detail pages: events, songs, venues and people as tables',
+            label: 'Detail pages: events, songs, venues, people, releases and bootlegs as tables',
             type: 'checkbox',
             default: true,
             description: 'Needs a setting above that switches the wiki on. On a Brucebase event page (a gig, no ' +
@@ -5159,16 +5159,18 @@
                          'downloads and its takes On The Tracks; on an On The Tracks page, "Show the versions"; ' +
                          'on a venue page, "Show the venue"; on a person\'s or band\'s page, "Show the person": ' +
                          'every performance with Bruce, all of the wiki\'s pages of it read (Steven Van Zandt: ' +
-                         'six). Nothing else is fetched. Off: the page stays as the wiki shows it (link previews ' +
+                         'six); on a release or playlist page, "Show the release": a tracklist per edition and ' +
+                         'disc, the personnel, related releases and recording dates; on a bootleg page, "Show ' +
+                         'the bootleg": its tracklist by disc. Nothing else is fetched. Off: the page stays as the wiki shows it (link previews ' +
                          'still work).'
         },
         sa_bb_event_preview: {
-            label: 'Preview event, venue and people pages on hover',
+            label: 'Preview event, venue, people, release and bootleg pages on hover',
             type: 'checkbox',
             default: true,
             description: 'Needs a setting above that switches the wiki on. On every Brucebase page, resting the ' +
                          'pointer on a link to an event\'s page (a gig, no gig, recording, rehearsal, interview or ' +
-                         '"no Bruce" page), a venue or a person — the Event and Venue columns of a year table, a ' +
+                         '"no Bruce" page), a venue, a person, a release, a playlist or a bootleg — the Event and Venue columns of a year table, a ' +
                          'mention in its Notes, the Recent changes list, the wiki\'s own lists, the links in a ' +
                          'preview window — with Ctrl held, unless every preview ' +
                          'shows on a plain hover, shows a card with what its page adds: when it was scheduled, ' +
@@ -24485,6 +24487,7 @@
         if (t === 'bb-event') return _bbEventHeadSpec();
         if (t === 'bb-song' || t === 'bb-ott') return _bbSongHeadSpec();
         if (t === 'bb-venue' || t === 'bb-relation') return _bbPlaceHeadSpec();
+        if (t === 'bb-retail' || t === 'bb-bootleg') return _bbReleaseHeadSpec();
         return null;
     }
 
@@ -28993,9 +28996,13 @@
      *    and a closed "Tags (N)" section; each image its photographer
      *    (`credit`) and caption from its filename (`_bbParseImageName()`),
      *    and the window groups a page's photos by photographer.
+     * 20: Brucebase release, playlist and bootleg pages are records of their
+     *    own (`_dpParseBbRelease()`: facts, tracks, Personnel, Related
+     *    releases); images carry `nameKind` and `part`; On The Tracks
+     *    versions keep their suffix ("V2 - take 14").
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 19;
+    const _DP_PARSER_VERSION = 20;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -31799,14 +31806,24 @@
     }
 
     /**
-     * An event page's main tabview as label → panel pairs, label i with panel
-     * i (tab ids repeat between tabviews of one page, so never by id).
+     * An event page's main tabview (the page's first) as label → panel
+     * pairs (`_bbNavTabs()`).
      *
      * @param {Element} content - `#page-content`.
      * @returns {Array<{label: string, panel: Element}>}
      */
     function _bbEventTabs(content) {
-        const nav = content.querySelector('div.yui-navset');
+        return _bbNavTabs(content.querySelector('div.yui-navset'));
+    }
+
+    /**
+     * A tabview as label → panel pairs, label i with panel i (tab ids repeat
+     * between tabviews of one page, so never by id).
+     *
+     * @param {?Element} nav - A `div.yui-navset`.
+     * @returns {Array<{label: string, panel: Element}>}
+     */
+    function _bbNavTabs(nav) {
         if (!nav) return [];
         const labels = Array.from(nav.querySelectorAll(':scope > ul.yui-nav > li'), li => _dpText(li.textContent));
         const panels = Array.from((nav.querySelector(':scope > .yui-content') || { children: [] }).children);
@@ -31889,26 +31906,30 @@
      * Reads a cast tab (On Stage, In Studio, …): a row per person or band,
      * a band's members with the band beside them; the words after a name
      * ("(Guest)") are the Role. Paragraphs outside the list are its note
-     * ("Complete lineup of performers is not known.").
+     * ("Complete lineup of performers is not known."). With `all`, every
+     * top-level list of the tab is read (a release's Personnel: Bruce's,
+     * then the band's), and "Roy Bittan: Piano" gives the Role "Piano".
      *
      * @param {Element} panel
      * @param {string} url
+     * @param {boolean} [all=false]
      * @returns {{rows: Array<{name: string, href: string, band: string, bandHref: string, role: string}>, note: string}}
      */
-    function _bbEventCast(panel, url) {
+    function _bbEventCast(panel, url, all = false) {
         const rows = [];
         const item = (li, band) => {
             const sub = li.querySelector(':scope > ul, :scope > ol');
             const a = Array.from(li.querySelectorAll('a[href]')).find(x => !sub || !sub.contains(x));
             const own = _dpText(Array.from(li.childNodes).filter(n => n !== sub).map(n => n.textContent).join(' '));
             const name = a ? _dpText(a.textContent) : own;
-            const role = _dpText(a ? own.replace(name, '') : '').replace(/^[,\s]+/, '');
+            const role = _dpText(a ? own.replace(name, '') : '').replace(all ? /^[,:\s]+/ : /^[,\s]+/, '');
             const href = a ? _dpAbsUrl(a.getAttribute('href'), url) : '';
             if (name) rows.push({ name, href, band: band ? band.name : '', bandHref: band ? band.href : '', role });
             if (sub) sub.querySelectorAll(':scope > li').forEach(x => item(x, { name, href }));
         };
-        const list = panel.querySelector('ul, ol');
-        if (list) list.querySelectorAll(':scope > li').forEach(li => item(li, null));
+        const lists = all ? Array.from(panel.querySelectorAll('ul, ol')).filter(l => !(l.parentElement && l.parentElement.closest('li')))
+            : [panel.querySelector('ul, ol')].filter(Boolean);
+        lists.forEach(list => list.querySelectorAll(':scope > li').forEach(li => item(li, null)));
         const note = Array.from(panel.querySelectorAll('p')).filter(p => !p.closest('li')).map(p => _dpText(p.textContent)).filter(Boolean).join(' ');
         return { rows, note };
     }
@@ -32205,7 +32226,7 @@
     }
 
     /** @type {Object<string, string>} The data heading of each Brucebase detail kind. */
-    const _BB_DETAIL_HEADINGS = { event: 'Event', song: 'Song', ott: 'Versions', venue: 'Venue', relation: 'Relation' };
+    const _BB_DETAIL_HEADINGS = { event: 'Event', song: 'Song', ott: 'Versions', venue: 'Venue', relation: 'Relation', retail: 'Release', bootleg: 'Bootleg' };
 
     /**
      * The live page's part of a Brucebase detail pageType
@@ -32231,7 +32252,7 @@
         if (!content) return;
         const h2 = document.createElement('h2');
         h2.className = `mb-bb-list-heading mb-bb-detail-heading mb-bb-${kind}-heading`;
-        h2.textContent = _BB_DETAIL_HEADINGS[kind] || 'Details';
+        h2.textContent = kind === 'retail' && /^\/playlist:/.test(window.location.pathname) ? 'Playlist' : (_BB_DETAIL_HEADINGS[kind] || 'Details');
         const table = document.createElement('table');
         table.className = 'tbl mb-bb-detail-table';
         table.innerHTML = '<thead><tr><th>Song</th></tr></thead><tbody></tbody>';
@@ -32378,7 +32399,9 @@
             if (td.length < 3) return;
             const name = _dpText(td[0].textContent);
             if (!name) return;
-            const m = name.match(/^(.*?)\s+-\s+(V\w+)$/);
+            // "BORN TO RUN - V3f", "JUNGLELAND - V1 (August 1, 1974)",
+            // "THE HEIST - V2 - take 14" (a release's tab, 2026-11-11).
+            const m = name.match(/^(.*?)\s+-\s+(V\d\w*\b.*)$/);
             const releases = Array.from(td[2].querySelectorAll('a[href]'), a => ({ text: _dpText(a.textContent), href: _dpAbsUrl(a.getAttribute('href'), url) }))
                 .filter(r => r.text);
             rows.push({
@@ -33085,6 +33108,740 @@
         };
     }
 
+    // ── Brucebase releases, playlists and bootlegs: bb-retail, bb-bootleg
+    // (org/brucebase.org, Plan 2026-11-11, Phase 5; mockup M3) ──
+    // An official release (`/retail:`) and a playlist (`/playlist:`) share
+    // one layout (59 releases and 20 playlists sampled, 2026-11-11): the
+    // discography strip (a ListPages box: skipped), the cover, a `div.code`
+    // block of facts ("Commercially Released: …", "Produced by …") with
+    // footnotes under it, then h1 sections: Overview (words), Released (a
+    // tabview, a tab per edition, a table per disc — # · Song Title ·
+    // Running Time · Release — a one-cell heading row inside a table opening
+    // a part, "Total Running Time" under it) and Additional Information (a
+    // tabview: Artwork, Personnel, History, Media, Related Releases, On The
+    // Tracks, Recording 'Live' Dates, Performance, Gallery/News, Lyrics). A
+    // release's subpages (`-release`, `-credits`, …) are the main page's
+    // parts, with no h1: their tabviews are told apart by their labels.
+    // A bootleg (`/bootleg:`, 30 sampled) is a tabview Bootleg | Artwork
+    // whose first tab is free text: "Label: …" lines, the tracklist as lists
+    // or as numbered lines, "//" ending a side, "Disc 1: (43:31)" over a disc.
+
+    /**
+     * Column headers of the release and bootleg sub-tables, by kind.
+     * @type {Object<string, string[]>}
+     */
+    const _BB_RELEASE_HEADERS = {
+        tracks: ['#', 'Song', 'Time', 'Release', 'Note'],
+        bootleg: ['#', 'Song', 'Time'],
+        bootlegSides: ['#', 'Side', 'Song', 'Time'],
+        personnel: ['Name', 'Band', 'Instruments'],
+        related: ['Group', 'Release', 'Note'],
+        dates: ['Disc', '#', 'Song', 'Date', 'Location', 'Note'],
+        performance: ['Song', 'Performed'],
+    };
+
+    /**
+     * The Additional Information tabs of a release, by label: how a
+     * subpage's tabview (no h1 over it) is told from a Released one.
+     * @type {RegExp}
+     */
+    const _BB_RELEASE_INFO_TAB_RE = /^(?:Artwork|Personnel|History|Media|Related Releases|On The Tracks|Recording (?:'Live' )?Dates|Performance|Gallery(?:\/News)?|News|Lyrics|Studios)$/i;
+
+    /**
+     * An element's text as lines, a `<br>` ending one (at any depth).
+     *
+     * @param {Element} el
+     * @returns {string[]} The non-empty lines, whitespace collapsed.
+     */
+    function _bbLines(el) {
+        const lines = [''];
+        const walk = (n) => {
+            n.childNodes.forEach((c) => {
+                if (c.nodeName === 'BR') lines.push('');
+                else if (c.nodeType === 3) lines[lines.length - 1] += c.textContent;
+                else if (c.nodeType === 1 && c.nodeName !== 'SCRIPT' && c.nodeName !== 'STYLE') walk(c);
+            });
+        };
+        walk(el);
+        return lines.map(_dpText).filter(Boolean);
+    }
+
+    /**
+     * An element's words without its `<sup>`s (a footnote mark, a year):
+     * removed from a copy — a string replace of the mark ("a") would cut
+     * the first "a" of the title instead ("Asbury Prk").
+     *
+     * @param {Element} el
+     * @returns {string}
+     */
+    function _bbTextWithoutSup(el) {
+        const c = el.cloneNode(true);
+        c.querySelectorAll('sup').forEach(n => n.remove());
+        return _dpText(c.textContent);
+    }
+
+    /**
+     * A tab's footnotes ("1: Hidden in the previous track.", "a: Mistitled
+     * as …"): the paragraphs outside its tables, a line each, by mark.
+     *
+     * @param {Element} panel
+     * @returns {Map<string, string>} Mark → text.
+     */
+    function _bbFootnotes(panel) {
+        const notes = new Map();
+        panel.querySelectorAll('p').forEach((p) => {
+            if (p.closest('table')) return;
+            _bbLines(p).forEach((line) => {
+                const m = line.match(/^([a-z]|\d{1,2})\s*:\s+(.+)$/i);
+                if (m) notes.set(m[1], m[2]);
+            });
+        });
+        return notes;
+    }
+
+    /**
+     * "October 18, 1975" as "1975-10-18"; '' for any other text.
+     *
+     * @param {string} s
+     * @returns {string}
+     */
+    function _bbLongDate(s) {
+        const m = String(s || '').match(/^([A-Za-z]{3,})\.?\s+(\d{1,2}),?\s+(\d{4})$/);
+        if (!m) return '';
+        const i = Array.from(_BB_TAG_MONTHS).findIndex(x => x.startsWith(m[1].toLowerCase().slice(0, 3)));
+        return i < 0 ? '' : `${m[3]}-${String(i + 1).padStart(2, '0')}-${m[2].padStart(2, '0')}`;
+    }
+
+    /**
+     * Reads a release's `div.code` block: "Commercially Released*: August
+     * 25, 1975", "Label: Columbia", "Produced** by …" — a fact per line, the
+     * footnote stars dropped, a line that starts with a space or names no
+     * fact ("at Record Plant Studios …") continuing the one before.
+     *
+     * @param {?Element} code - The `div.code`.
+     * @returns {Array<[string, string]>} Name ("Produced by") and value.
+     */
+    function _bbReleaseFacts(code) {
+        const out = [];
+        if (!code) return out;
+        const cap = (x) => x.charAt(0).toUpperCase() + x.slice(1).toLowerCase();
+        String(code.textContent || '').split('\n').forEach((line) => {
+            const lead = /^\S/.test(line);
+            const by = lead && line.match(/^([A-Za-z][A-Za-z /&'-]*?)\**\s+by\s+(.+)$/i);
+            const colon = lead && !by && line.match(/^([A-Za-z][A-Za-z /&'-]*?)\**\s*:\s*(.+)$/);
+            if (by && by[1].trim().split(/\s+/).length <= 4) out.push([`${cap(by[1].trim())} by`, _dpText(by[2])]);
+            else if (colon) out.push([cap(colon[1].trim()), _dpText(colon[2])]);
+            else if (_dpText(line) && out.length) out[out.length - 1][1] = `${out[out.length - 1][1]} ${_dpText(line)}`;
+        });
+        return out;
+    }
+
+    /**
+     * Reads a Released tabview: an edition per tab, a disc per table (a
+     * one-cell heading row inside a table opens a part: The Promise's
+     * Blu-ray films), a row per track — #, the song (linked; its footnote
+     * mark, "(1)", read as the Note), the running time, the releases it
+     * comes from (abbreviations, linked) — and the tab's "Total Running
+     * Time". A disc is named "<edition> · Disc N" (N from "2.1.") or by its
+     * part when a tab has more than one.
+     *
+     * @param {Element} nav
+     * @param {string}  url
+     * @returns {Array<{label: string, total: string, discs: Array<{label: string, rows: Array<Object>}>, notes: Array<{label: string, text: string, html: string}>}>}
+     */
+    function _bbReleaseEditions(nav, url) {
+        const out = [];
+        _bbNavTabs(nav).forEach(({ label, panel }) => {
+            const notes = _bbFootnotes(panel);
+            const total = (_dpText(panel.textContent).match(/Total Running Time:\s*([\d:]+)/i) || [])[1] || '';
+            const discs = [];
+            Array.from(panel.querySelectorAll('table')).filter(t => !(t.parentElement && t.parentElement.closest('table'))).forEach((t) => {
+                let disc = null;
+                Array.from(t.rows).forEach((tr) => {
+                    const td = Array.from(tr.querySelectorAll(':scope > td'));
+                    if (!td.length) {
+                        const th = tr.querySelectorAll(':scope > th');
+                        if (th.length === 1 && _dpText(th[0].textContent)) {
+                            disc = { name: _dpText(th[0].textContent), rows: [] };
+                            discs.push(disc);
+                        }
+                        return;
+                    }
+                    if (!disc) {
+                        disc = { name: '', rows: [] };
+                        discs.push(disc);
+                    }
+                    const songTd = td[1] || null;
+                    const a = songTd ? songTd.querySelector('a[href*="/song:"]') : null;
+                    const sup = songTd ? songTd.querySelector('sup') : null;
+                    const mark = sup ? _dpText(sup.textContent).replace(/^\(|\)$/g, '') : '';
+                    const song = a ? _dpText(a.textContent) : (songTd ? _bbTextWithoutSup(songTd) : '');
+                    if (!song) return;
+                    disc.rows.push({
+                        n: _dpText(td[0].textContent).replace(/\.$/, ''),
+                        song, href: a ? _dpAbsUrl(a.getAttribute('href'), url) : '',
+                        time: td[2] ? _dpText(td[2].textContent) : '',
+                        release: td[3] ? _dpBlockHtml(td[3], url).replace(/\n+/g, ' ') : '',
+                        releaseText: td[3] ? _dpText(td[3].textContent) : '',
+                        note: mark ? (notes.get(mark) || mark) : '',
+                    });
+                });
+            });
+            const kept = discs.filter(d => d.rows.length);
+            kept.forEach((d, i) => {
+                const n = (d.rows[0].n.match(/^(\d+)\.\d/) || [])[1];
+                d.label = kept.length === 1 && !d.name ? label : `${label} · ${d.name || `Disc ${n || i + 1}`}`;
+            });
+            // The tab's words outside its tables that are not a footnote
+            // read into a Note: a release's remarks.
+            const box = panel.ownerDocument.createElement('div');
+            panel.querySelectorAll('p').forEach((p) => {
+                if (p.closest('table')) return;
+                const lines = _bbLines(p).filter(l => !/^Total Running Time:/i.test(l) && !/^([a-z]|\d{1,2})\s*:\s+/i.test(l));
+                if (lines.length) box.appendChild(p.cloneNode(true));
+            });
+            const words = _dpText(box.textContent) ? [{ label: `${label}: notes`, text: _dpBlockText(box), html: _dpBlockHtml(box, url) }] : [];
+            if (kept.length) out.push({ label, total, discs: kept, notes: words });
+        });
+        return out;
+    }
+
+    /**
+     * Reads a Related Releases tab: a group per top-level item ("All
+     * Versions", "Other", "Single"), a row per release under it, its link
+     * (a release page or Discogs) and its bracketed `<sup>` ("(2005)",
+     * "(Japan only)") as the Note.
+     *
+     * @param {Element} panel
+     * @param {string}  url
+     * @returns {Array<{group: string, release: string, href: string, note: string}>}
+     */
+    function _bbReleaseRelated(panel, url) {
+        const rows = [];
+        panel.querySelectorAll('ul, ol').forEach((ul) => {
+            if (ul.parentElement && ul.parentElement.closest('li')) return;
+            ul.querySelectorAll(':scope > li').forEach((li) => {
+                const sub = li.querySelector(':scope > ul, :scope > ol');
+                const group = _dpText(Array.from(li.childNodes).filter(n => n !== sub).map(n => n.textContent).join(' '));
+                (sub ? Array.from(sub.querySelectorAll(':scope > li')) : [li]).forEach((x) => {
+                    const a = x.querySelector('a[href]');
+                    const sups = Array.from(x.querySelectorAll('sup'));
+                    const note = sups.map(n => _dpText(n.textContent).replace(/^\((.*)\)$/, '$1')).filter(Boolean).join(' ');
+                    // The item's words without its note: a link may name only
+                    // part of the title ("The Promise" + ": The Darkness On
+                    // The Edge Of Town Story").
+                    const release = _bbTextWithoutSup(x);
+                    if (!release) return;
+                    rows.push({ group: sub ? group : '', release, href: a ? _dpAbsUrl(a.getAttribute('href'), url) : '', note });
+                });
+            });
+        });
+        return rows;
+    }
+
+    /**
+     * Reads a Recording 'Live' Dates tab: the header row, a one-cell row
+     * per disc ("Disc 1 - Club Shows"), a row per track — # ("D1/1."), the
+     * song (its footnote mark read as the Note), the show's date (linked:
+     * the gig or the year page's entry; "October 18, 1975" as an ISO date)
+     * and the place.
+     *
+     * @param {Element} panel
+     * @param {string}  url
+     * @returns {Array<{disc: string, n: string, song: string, date: string, dateText: string, href: string, location: string, note: string}>}
+     */
+    function _bbReleaseDates(panel, url) {
+        const notes = _bbFootnotes(panel);
+        const rows = [];
+        panel.querySelectorAll('table').forEach((t) => {
+            let disc = '';
+            Array.from(t.rows).forEach((tr) => {
+                const td = Array.from(tr.querySelectorAll(':scope > td'));
+                if (!td.length) {
+                    const th = tr.querySelectorAll(':scope > th');
+                    if (th.length === 1) disc = _dpText(th[0].textContent);
+                    return;
+                }
+                if (td.length < 3) return;
+                const sup = td[1].querySelector('sup');
+                const mark = sup ? _dpText(sup.textContent).replace(/^\(|\)$/g, '') : '';
+                const song = _bbTextWithoutSup(td[1]);
+                const a = td[2].querySelector('a[href]');
+                const dateText = _dpText(td[2].textContent);
+                rows.push({
+                    disc, n: _dpText(td[0].textContent).replace(/\.$/, ''), song,
+                    date: _bbLongDate(dateText) || dateText, dateText, href: a ? _dpAbsUrl(a.getAttribute('href'), url) : '',
+                    location: td[3] ? _dpText(td[3].textContent) : '', note: mark ? (notes.get(mark) || mark) : '',
+                });
+            });
+        });
+        return rows;
+    }
+
+    /**
+     * Reads a Performance tab: a row per song of the release, its link and
+     * how often it was played live (the page's count, a ListPages box).
+     *
+     * @param {Element} panel
+     * @param {string}  url
+     * @returns {Array<{song: string, href: string, count: string}>}
+     */
+    function _bbReleasePerformance(panel, url) {
+        const rows = [];
+        panel.querySelectorAll('tr').forEach((tr) => {
+            const td = tr.querySelectorAll(':scope > td');
+            const a = td[0] && td[0].querySelector('a[href*="/song:"]');
+            if (!a || td.length < 2) return;
+            rows.push({ song: _dpText(a.textContent), href: _dpAbsUrl(a.getAttribute('href'), url), count: (_dpText(td[1].textContent).match(/\d[\d,]*/) || [''])[0].replace(/,/g, '') });
+        });
+        return rows;
+    }
+
+    /**
+     * Reads a Brucebase release or playlist page for the bb-retail
+     * pageType: the facts of its `div.code` block and the footnotes under
+     * it; Overview's words; the Released tabview (`_bbReleaseEditions()`);
+     * the Additional Information tabs by label — Personnel (`_bbEventCast()`
+     * over every list), Related Releases, On The Tracks (`_bbOttRows()`),
+     * Recording 'Live' Dates, Performance as tables; Media's players and
+     * Lyrics' links for the head; Artwork and the galleries the preview's
+     * images; any other tab with words (History, Studios) a text section.
+     * The discography strip at the top (a ListPages box) is skipped.
+     *
+     * @param {Document} doc
+     * @param {string}   url
+     * @returns {?Object} Null when the page has no `#page-content`.
+     */
+    function _bbReleaseRead(doc, url) {
+        const content = doc.getElementById('page-content');
+        if (!content) return null;
+        const titleEl = doc.getElementById('page-title');
+        let path = '';
+        try {
+            path = new URL(url).pathname;
+        } catch (_) { /* no path: a release */ }
+        const rec = {
+            url, title: _dpText(titleEl ? titleEl.textContent : ''), kind: /^\/playlist:/.test(path) ? 'playlist' : 'release',
+            facts: [], about: null, texts: [], editions: [], personnel: [], related: [], ott: [], dates: [], performance: [],
+            media: [], lyrics: [],
+        };
+        const code = Array.from(content.querySelectorAll('div.code')).find(c => !c.closest('.list-pages-box, .yui-navset'));
+        rec.facts = _bbReleaseFacts(code);
+        const h1s = Array.from(content.querySelectorAll('h1'));
+        // The footnotes under the facts: the paragraphs between the block
+        // and the first h1 (the table of contents and empty anchors aside).
+        if (code) {
+            const box = doc.createElement('div');
+            for (let n = code.nextElementSibling; n && n.tagName !== 'H1'; n = n.nextElementSibling) {
+                if (n.tagName === 'P' && _dpText(n.textContent)) box.appendChild(n.cloneNode(true));
+            }
+            if (_dpText(box.textContent)) rec.texts.push({ label: 'Notes', text: _dpBlockText(box), html: _dpBlockHtml(box, url) });
+        }
+        const section = (h1) => {
+            const box = doc.createElement('div');
+            for (let n = h1.nextElementSibling; n && n.tagName !== 'H1'; n = n.nextElementSibling) {
+                if (!n.matches('div.yui-navset') && _dpText(n.textContent)) box.appendChild(n.cloneNode(true));
+            }
+            return box;
+        };
+        const overview = h1s.find(h => /^Overview$/i.test(_dpText(h.textContent)));
+        if (overview) {
+            const box = section(overview);
+            if (_dpText(box.textContent)) rec.about = { text: _dpBlockText(box), html: _dpBlockHtml(box, url) };
+        }
+        const navs = Array.from(content.querySelectorAll('div.yui-navset'))
+            .filter(n => !n.closest('.list-pages-box') && !(n.parentElement && n.parentElement.closest('div.yui-navset')));
+        navs.forEach((nav) => {
+            const h1 = h1s.filter(h => h.compareDocumentPosition(nav) & Node.DOCUMENT_POSITION_FOLLOWING).pop();
+            const heading = h1 ? _dpText(h1.textContent) : '';
+            const tabs = _bbNavTabs(nav);
+            const info = /^Additional Information$/i.test(heading) ||
+                (!/^Released$/i.test(heading) && tabs.some(t => _BB_RELEASE_INFO_TAB_RE.test(t.label)));
+            if (!info) {
+                const eds = _bbReleaseEditions(nav, url);
+                rec.editions.push(...eds);
+                eds.forEach(ed => rec.texts.push(...ed.notes));
+                return;
+            }
+            tabs.forEach(({ label, panel }) => {
+                if (/^Personnel$/i.test(label)) rec.personnel = _bbEventCast(panel, url, true).rows;
+                else if (/^Related Releases$/i.test(label)) rec.related = _bbReleaseRelated(panel, url);
+                else if (/^On The Tracks$/i.test(label)) {
+                    rec.ott = _bbOttRows(panel, url);
+                    const note = Array.from(panel.querySelectorAll('p')).filter(p => _dpText(p.textContent) && !p.closest('table'));
+                    if (note.length) {
+                        const box = doc.createElement('div');
+                        note.forEach(p => box.appendChild(p.cloneNode(true)));
+                        rec.texts.push({ label: 'On The Tracks notes', text: _dpBlockText(box), html: _dpBlockHtml(box, url) });
+                    }
+                } else if (/^Recording (?:'Live' )?Dates$/i.test(label)) {
+                    rec.dates = _bbReleaseDates(panel, url);
+                    if (!rec.dates.length && _bbPanelHasText(panel)) rec.texts.push({ label, text: _dpBlockText(panel), html: _dpBlockHtml(panel, url) });
+                } else if (/^Performance$/i.test(label)) rec.performance = _bbReleasePerformance(panel, url);
+                else if (/^Lyrics$/i.test(label)) {
+                    panel.querySelectorAll('a[href*="/lyrics:"]').forEach(a => rec.lyrics.push([_dpText(a.textContent), _dpAbsUrl(a.getAttribute('href'), url)]));
+                } else if (/^(?:Media|Artwork|Gallery(?:\/News)?)$/i.test(label)) {
+                    // The head's: Media's players are read below, the galleries' images by the preview.
+                } else if (_bbPanelHasText(panel)) {
+                    rec.texts.push({ label, text: _dpBlockText(panel), html: _dpBlockHtml(panel, url) });
+                }
+            });
+        });
+        content.querySelectorAll('iframe[src]').forEach((fr) => {
+            const src = _dpAbsUrl(fr.getAttribute('src'), url);
+            const v = _ytParse(src);
+            if (v) rec.media.push([v.kind === 'playlist' ? 'YouTube playlist' : 'YouTube video', _ytWatchUrl(v)]);
+            else if (/open\.spotify\.com\/embed\//.test(src)) rec.media.push(['Spotify', src.replace('/embed/', '/')]);
+        });
+        return rec;
+    }
+
+    /**
+     * The facts a bootleg page states, by name: in its notes, a line
+     * "Name: …" is a fact only when it names one of these.
+     * @type {RegExp}
+     */
+    const _BB_BOOTLEG_FACT_RE = /^(?:Label|Catalog\s*#?|Cat(?:alog)?\.?\s*No\.?|Time|Total Time|Running time|Format|Source|Sound|Location|Lineage|Recorded|Venue|Date|Taper|Quality)$/i;
+
+    /**
+     * Reads a Brucebase bootleg page for the bb-bootleg pageType: its
+     * Bootleg tab's lines — "Label: …", "Catalog #: …", "Time: …" and the
+     * like as facts; "Notes:" and the lines after it as notes; "Disc 1:
+     * (43:31)", "Disc 2" or "Disc One:" over a disc; the tracklist, a list
+     * or a paragraph of numbered lines (half of its lines at least:
+     * "1-Rendezvous", "01 Guns Of Kid Cole (4:50)"), a song's time in
+     * brackets ("(2:27)", "(5.35)"),
+     * "//" after a song ending a side (sides A, B, … through the discs); the
+     * lines before any of these, the bootleg's own description.
+     *
+     * @param {Document} doc
+     * @param {string}   url
+     * @returns {?Object} Null when the page has no `#page-content`.
+     */
+    function _bbBootlegRead(doc, url) {
+        const content = doc.getElementById('page-content');
+        if (!content) return null;
+        const titleEl = doc.getElementById('page-title');
+        const tabs = _bbEventTabs(content);
+        const tab = tabs.find(t => /^Bootleg$/i.test(t.label)) || tabs[0];
+        const main = tab ? tab.panel : content;
+        const rec = { url, title: _dpText(titleEl ? titleEl.textContent : ''), facts: [], about: [], notes: [], discs: [], sides: false };
+        let disc = null;
+        let notes = false;
+        let side = 0;
+        let pendingFact = null;
+        const discOf = () => {
+            if (!disc) {
+                disc = { name: '', time: '', rows: [] };
+                rec.discs.push(disc);
+            }
+            return disc;
+        };
+        const track = (n, text) => {
+            let t = _dpText(text);
+            const ends = /\s*\/\/\s*$/.test(t);
+            t = t.replace(/\s*\/\/\s*$/, '');
+            const tm = t.match(/\s*\((\d{1,3}[:.]\d{2}(?:[:.]\d{2})?)\)\s*$/);
+            if (tm) t = t.slice(0, tm.index);
+            if (!t) return;
+            const d = discOf();
+            d.rows.push({ n: n || String(d.rows.length + 1), song: _dpText(t), time: tm ? tm[1].replace('.', ':') : '', side });
+            if (ends) {
+                side++;
+                rec.sides = true;
+            }
+            notes = false;
+        };
+        const DISC_RE = /^(?:Disc|CD|DVD)\s*(\d+|[A-Z]|One|Two|Three|Four|Five|Six)\s*:?\s*(?:\((\d{1,3}[:.]\d{2}(?:[:.]\d{2})?)\))?\s*$/i;
+        // "1-Rendezvous", "01- Preacher's Daughter", "01 Guns Of Kid Cole
+        // (4:50)", "101 - Mary Queen Of Arkansas", "1-46 reporters …".
+        const LINE_TRACK_RE = /^(\d{1,3}(?:-\d{1,3})?)(?:\s*[-.)]\s*|\s+)(\S.*)$/;
+        Array.from(main.children).forEach((el) => {
+            if (el.matches('ol, ul')) {
+                el.querySelectorAll(':scope > li').forEach((li, i) => track(String(i + 1), li.textContent));
+                return;
+            }
+            if (!el.matches('p, div:not(.gallery-box)') || el.querySelector('.gallery-box')) return;
+            const lines = _bbLines(el);
+            const nNumbered = lines.filter(l => LINE_TRACK_RE.test(l)).length;
+            const numbered = nNumbered >= 2 && nNumbered * 2 >= lines.length;
+            lines.forEach((line) => {
+                const dm = line.match(DISC_RE);
+                if (dm) {
+                    disc = { name: `Disc ${dm[1]}`, time: dm[2] ? dm[2].replace('.', ':') : '', rows: [] };
+                    rec.discs.push(disc);
+                    notes = false;
+                    pendingFact = null;
+                    return;
+                }
+                const tm = numbered && line.match(LINE_TRACK_RE);
+                if (tm) {
+                    track(tm[1], tm[2]);
+                    return;
+                }
+                const fm = line.match(/^([A-Z][A-Za-z #.']{0,30}?)\s*:\s*(.*)$/);
+                // In the notes, only a bootleg's own facts are facts ("Appel:
+                // Now people …" is a quote).
+                if (fm && !/^Notes\b/i.test(fm[1]) && fm[1].split(' ').length <= 4 && (!notes || _BB_BOOTLEG_FACT_RE.test(fm[1]))) {
+                    pendingFact = null;
+                    notes = false;
+                    if (fm[2]) rec.facts.push([fm[1], fm[2]]);
+                    else pendingFact = fm[1];
+                    return;
+                }
+                if (fm && /^Notes\b/i.test(fm[1])) {
+                    notes = true;
+                    pendingFact = null;
+                    if (fm[2]) rec.notes.push(fm[2]);
+                    return;
+                }
+                if (pendingFact) {
+                    rec.facts.push([pendingFact, line]);
+                    pendingFact = null;
+                } else if (notes || rec.discs.length) {
+                    rec.notes.push(line);
+                } else {
+                    rec.about.push(line);
+                }
+            });
+        });
+        rec.discs = rec.discs.filter(d => d.rows.length);
+        // A note repeated under every disc (The River Outtakes) is one note.
+        rec.notes = rec.notes.filter((l, i, a) => a.indexOf(l) === i);
+        return rec;
+    }
+
+    /**
+     * Whether a release or bootleg record has anything for a sub-table.
+     *
+     * @param {?Object} rec - `_bbReleaseRead()`'s or `_bbBootlegRead()`'s record.
+     * @returns {boolean}
+     */
+    function _bbReleaseHasTables(rec) {
+        if (!rec) return false;
+        if (rec.discs) return rec.discs.length > 0;
+        return !!(rec.editions.length || rec.personnel.length || rec.related.length || rec.ott.length || rec.dates.length || rec.performance.length);
+    }
+
+    /** @type {?{rec: ?Object, dp: ?Object}} The release or bootleg page's two readings, made once. */
+    let _bbReleaseCache = null;
+
+    /**
+     * The release, playlist or bootleg page read twice from the copy taken
+     * at the press, once: `rec` by `_bbReleaseRead()` or `_bbBootlegRead()`,
+     * `dp` by `_dpParseBb()` (the preview's record: images, tags).
+     *
+     * @returns {{rec: ?Object, dp: ?Object}}
+     */
+    function _bbReleaseSource() {
+        if (!_bbReleaseCache) {
+            const url = _bbDetailUrl();
+            const doc = new DOMParser().parseFromString(_bbDetailPageHtml(), 'text/html');
+            const read = activeDefinition?.type === 'bb-bootleg' ? _bbBootlegRead : _bbReleaseRead;
+            _bbReleaseCache = { rec: read(doc, url), dp: _dpParseBb(doc, url) };
+        }
+        return _bbReleaseCache;
+    }
+
+    /**
+     * `toHtml` of bb-retail and bb-bootleg. A release: a sub-table per
+     * edition and disc (# · Song · Time · Release · Note), Personnel (Name
+     * · Band · Instruments), Related releases (Group · Release · Note),
+     * Recording dates (Disc · # · Song · Date · Location · Note), On The
+     * Tracks (Title · Version · Time · Releases), Performance (Song ·
+     * Performed). A bootleg: a sub-table per disc (# · Song · Time; a Side
+     * column when the page marks its sides). Song titles in MusicBrainz
+     * style, the wiki's capitals as the hover text. Nothing for a table
+     * throws.
+     *
+     * @param {string} text - The page's HTML.
+     * @param {string} base - Its URL.
+     * @param {string} kind - 'retail' or 'bootleg'.
+     * @returns {string} An HTML document.
+     * @throws {Error} When the page has nothing for a table (`status` 0).
+     */
+    function _bbReleaseToHtml(text, base, kind) {
+        const doc = new DOMParser().parseFromString(text, 'text/html');
+        const rec = kind === 'bootleg' ? _bbBootlegRead(doc, base) : _bbReleaseRead(doc, base);
+        if (!_bbReleaseHasTables(rec)) throw Object.assign(new Error('The Brucebase page has no tracklist or credits to show'), { status: 0 });
+        const e = _rgEsc;
+        const link = (href, inner) => (href ? `<a href="${e(href)}" target="_blank" rel="noopener">${inner}</a>` : inner);
+        const titleCell = (title, href) => {
+            const shown = _mbSiteTitleText(title);
+            const inner = link(href, e(shown));
+            return shown !== title ? `<span data-mb-tip title="${e(`As written on Brucebase:\n${title}`)}">${inner}</span>` : inner;
+        };
+        const table = (name, cols, rows) => `<h3>${e(name)}</h3><table class="tbl" data-mb-col-headers="${e(JSON.stringify(cols))}">` +
+            `<thead><tr>${cols.map(c => `<th>${e(c)}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>`;
+        const out = [];
+        if (kind === 'bootleg') {
+            const cols = rec.sides ? _BB_RELEASE_HEADERS.bootlegSides : _BB_RELEASE_HEADERS.bootleg;
+            rec.discs.forEach((d, i) => {
+                const name = d.name || (rec.discs.length > 1 ? `Disc ${i + 1}` : 'Tracklist');
+                out.push(table(name, cols, d.rows.map(r => `<tr><td>${e(r.n)}</td>${rec.sides ? `<td>${e(String.fromCharCode(65 + Math.min(r.side, 25)))}</td>` : ''}` +
+                    `<td>${titleCell(r.song, '')}</td><td>${e(r.time)}</td></tr>`)));
+            });
+        } else {
+            rec.editions.forEach(ed => ed.discs.forEach((d) => {
+                out.push(table(d.label, _BB_RELEASE_HEADERS.tracks, d.rows.map(r =>
+                    `<tr><td>${e(r.n)}</td><td>${titleCell(r.song, r.href)}</td><td>${e(r.time)}</td><td>${r.release}</td><td>${e(r.note)}</td></tr>`)));
+            }));
+            if (rec.personnel.length) {
+                out.push(table('Personnel', _BB_RELEASE_HEADERS.personnel, rec.personnel.map(r =>
+                    `<tr><td>${link(r.href, e(r.name))}</td><td>${link(r.bandHref, e(r.band))}</td><td>${e(r.role)}</td></tr>`)));
+            }
+            if (rec.related.length) {
+                out.push(table('Related releases', _BB_RELEASE_HEADERS.related, rec.related.map(r =>
+                    `<tr><td>${e(r.group)}</td><td>${link(r.href, e(r.release))}</td><td>${e(r.note)}</td></tr>`)));
+            }
+            if (rec.dates.length) {
+                out.push(table('Recording dates', _BB_RELEASE_HEADERS.dates, rec.dates.map(r =>
+                    `<tr><td>${e(r.disc)}</td><td>${e(r.n)}</td><td>${titleCell(r.song, '')}</td>` +
+                    `<td>${r.date !== r.dateText ? `<span data-mb-tip title="${e(`As written on Brucebase:\n${r.dateText}`)}">${link(r.href, e(r.date))}</span>` : link(r.href, e(r.date))}</td>` +
+                    `<td>${e(r.location)}</td><td>${e(r.note)}</td></tr>`)));
+            }
+            if (rec.ott.length) {
+                out.push(table('On The Tracks', _BB_SONG_HEADERS.ott, rec.ott.map(r =>
+                    `<tr><td>${titleCell(r.title, '')}</td><td>${e(r.version)}</td><td>${e(r.time)}</td>` +
+                    `<td>${r.releases.length ? r.releases.map(x => link(x.href, e(x.text))).join(' / ') : e(r.note)}</td></tr>`)));
+            }
+            if (rec.performance.length) {
+                out.push(table('Performance', _BB_RELEASE_HEADERS.performance, rec.performance.map(r =>
+                    `<tr><td>${titleCell(r.song, r.href)}</td><td>${e(r.count)}</td></tr>`)));
+            }
+        }
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${out.join('')}</body></html>`;
+    }
+
+    /**
+     * The head of a release, playlist or bootleg page (`_fdHeadSpec()`),
+     * from the copy taken at the press (`_bbReleaseSource()`): "~ Release ·
+     * August 25, 1975" (or Playlist, Bootleg); Overview (or the bootleg's
+     * own lines) as the text, the footnotes, the editions' remarks and the
+     * word tabs (History, the bootleg's Notes) as closed texts; the Release
+     * card (its `div.code` facts, the running time of each edition, the
+     * tracks) or the Bootleg card (Label, Catalog #, Time, Format, Source,
+     * …); Tags by family, Media (YouTube, Spotify) and the Lyrics' pages;
+     * the pictures typed by what their filenames say (Release cover, a
+     * bootleg's Front, Back, Disc). Null on another page.
+     *
+     * @returns {?Object}
+     */
+    function _bbReleaseHeadSpec() {
+        const h2 = document.querySelector('h2.mb-bb-retail-heading, h2.mb-bb-bootleg-heading');
+        const t = activeDefinition?.type;
+        if ((t !== 'bb-retail' && t !== 'bb-bootleg') || !h2) return null;
+        const { rec, dp } = _bbReleaseSource();
+        if (!rec) return null;
+        const url = _bbDetailUrl();
+        const tags = (dp && dp.tags) || [];
+        const tagChips = _fdChips(_BB_TAG_FAMILIES.map(([key, name]) => [name, tags.filter(x => x.family === key).map(x => [x.text, x.href])]));
+        const pictures = ((dp && dp.images) || []).filter(im => im.full || im.thumb).map(im => ({
+            full: im.full || im.thumb, thumb: im.thumb || im.full, caption: im.caption || _fiFileName(im.full || im.thumb),
+            types: [(im.part && im.part.replace(/\s*\d+$/, '')) || im.nameKind || im.label || 'Other'],
+        }));
+        const thisPage = ['This page', _fdLink(url, url.replace(/^https?:\/\/[^/]+\//, ''))];
+        if (t === 'bb-bootleg') {
+            const tracks = rec.discs.reduce((n, d) => n + d.rows.length, 0);
+            return {
+                root: h2.parentElement, h2,
+                sub: { what: 'Bootleg' },
+                text: rec.about.length ? { title: 'About this bootleg', body: rec.about.join('\n') } : null,
+                texts: rec.notes.length ? [{ title: 'Notes', body: rec.notes.join('\n') }] : [],
+                facts: [
+                    ['bootleg', 'Bootleg', [
+                        ...rec.facts,
+                        ['Discs', rec.discs.length > 1 ? String(rec.discs.length) : ''],
+                        ['Tracks', tracks ? String(tracks) : ''],
+                        thisPage,
+                    ]],
+                ],
+                others: [tagChips && ['tags', 'Tags', tagChips.count, tagChips.body, true]],
+                pictures, picturesTitle: 'Artwork',
+                title: rec.title, source: 'Brucebase\'s page',
+            };
+        }
+        const released = (rec.facts.find(f => /^Commercially released$/i.test(f[0])) || [])[1] || '';
+        const tracks = rec.editions.reduce((n, ed) => n + ed.discs.reduce((m, d) => m + d.rows.length, 0), 0);
+        const totals = rec.editions.filter(ed => ed.total).map(ed => (rec.editions.length > 1 ? `${ed.label}: ${ed.total}` : ed.total));
+        const mediaChips = _fdChips([['YouTube', rec.media.filter(m => /^YouTube/.test(m[0]))], ['Spotify', rec.media.filter(m => m[0] === 'Spotify')]]);
+        const lyricChips = _fdChips([['Lyrics', rec.lyrics]]);
+        const playlist = rec.kind === 'playlist';
+        return {
+            root: h2.parentElement, h2,
+            sub: { what: playlist ? 'Playlist' : 'Release', when: released },
+            text: rec.about ? { title: 'Overview', body: rec.about.text, html: rec.about.html } : null,
+            texts: rec.texts.map(x => ({ title: x.label, body: x.text, ...(x.html ? { html: x.html } : {}) })),
+            facts: [
+                [playlist ? 'playlist' : 'release', playlist ? 'Playlist' : 'Release', [
+                    ...rec.facts,
+                    ['Editions', rec.editions.length > 1 ? rec.editions.map(ed => ed.label).join(' · ') : ''],
+                    ['Running time', totals.join(' · ')],
+                    ['Tracks', tracks ? String(tracks) : ''],
+                    thisPage,
+                ]],
+            ],
+            others: [
+                tagChips && ['tags', 'Tags', tagChips.count, tagChips.body, true],
+                mediaChips && ['media', 'Media', mediaChips.count, mediaChips.body, true],
+                lyricChips && ['lyrics', 'Lyrics', lyricChips.count, lyricChips.body, true],
+            ],
+            pictures, picturesTitle: 'Artwork',
+            title: rec.title, source: 'Brucebase\'s page',
+        };
+    }
+
+    /**
+     * Parses a Brucebase release, playlist or bootleg page for its preview
+     * (any link to one; `_DP_SITES[…].ownLinks`), from the readers the
+     * bb-retail and bb-bootleg pageTypes use (`_bbReleaseRead()`,
+     * `_bbBootlegRead()`), so the card and the page never disagree: the
+     * facts as fields, the tracks (by edition and disc, or the bootleg's
+     * discs) with their times, the track count as the highlight; the window
+     * adds Overview or the bootleg's notes, Personnel and Related releases
+     * as closed sections; the images by kind.
+     *
+     * @param {Document} doc
+     * @param {string}   url
+     * @param {boolean}  bootleg - A `/bootleg:` page.
+     * @returns {?object} The record, or null when the page has no
+     *   `#page-content`.
+     */
+    function _dpParseBbRelease(doc, url, bootleg) {
+        const rec = bootleg ? _bbBootlegRead(doc, url) : _bbReleaseRead(doc, url);
+        if (!rec) return null;
+        const data = _dpEmpty();
+        data.title = rec.title;
+        data.images = _bbPageImages(doc.getElementById('page-content'), url);
+        rec.facts.forEach(f => data.fields.push([f[0], f[1]]));
+        const add = (disc, rows) => rows.forEach((r) => {
+            const t = { disc, pos: r.n, title: _mbSiteTitleText(r.song), from: '' };
+            if (r.time) t.length = r.time;
+            data.tracks.push(t);
+        });
+        if (bootleg) {
+            if (rec.about.length) data.subtitle = rec.about.join(' · ');
+            rec.discs.forEach((d, i) => add(d.name || (rec.discs.length > 1 ? `Disc ${i + 1}` : ''), d.rows));
+            if (rec.notes.length) data.sections.push({ label: 'Notes', text: rec.notes.join('\n'), open: false });
+        } else {
+            rec.editions.forEach(ed => ed.discs.forEach(d => add(d.label, d.rows)));
+            if (rec.about) data.sections.push({ label: 'Overview', text: rec.about.text, html: rec.about.html, open: false });
+            if (rec.personnel.length) {
+                const lines = rec.personnel.map(r => `${r.name}${r.band ? ` (${r.band})` : ''}${r.role ? `: ${r.role}` : ''}`);
+                data.sections.push({ label: `Personnel (${rec.personnel.length})`, text: lines.join('\n'), open: false });
+            }
+            if (rec.related.length) {
+                const html = rec.related.map(r => `${r.group ? `${_mbttEscape(r.group)}: ` : ''}${r.href ? `<a href="${_mbttEscape(r.href)}" target="_blank" rel="noopener">${_mbttEscape(r.release)}</a>` : _mbttEscape(r.release)}${r.note ? ` (${_mbttEscape(r.note)})` : ''}`);
+                const text = rec.related.map(r => `${r.group ? `${r.group}: ` : ''}${r.release}${r.note ? ` (${r.note})` : ''}`);
+                data.sections.push({ label: `Related releases (${rec.related.length})`, text: text.join('\n'), html: html.join('\n'), open: false });
+            }
+        }
+        if (data.tracks.length) data.highlight = { value: String(data.tracks.length), label: data.tracks.length === 1 ? 'track' : 'tracks' };
+        data.collapsible = true;
+        data.imagesByKind = true;
+        return data;
+    }
+
     /**
      * A Brucebase page's own images: the thumbnails of its gallery boxes
      * (`#page-content .gallery-box .gallery-item`), whichever tab holds them.
@@ -33123,6 +33880,10 @@
                 // credit and the words the image is shown with.
                 credit: name.photographer,
                 caption: _bbImageCaption(name, label),
+                // A release's or bootleg's artwork (Phase 5): "Release
+                // cover", a bootleg's Front, Back, Disc.
+                nameKind: name.kind,
+                part: name.part,
             });
         });
         return out;
@@ -33467,6 +34228,8 @@
             path = new URL(url).pathname;
         } catch (_) { /* not a URL: read it as a song page */ }
         if (/^\/venue:/.test(path)) return _dpParseBbVenue(doc, url);
+        if (/^\/(?:retail|playlist):/.test(path)) return _dpParseBbRelease(doc, url, false);
+        if (/^\/bootleg:/.test(path)) return _dpParseBbRelease(doc, url, true);
         if (path && !/^\/song:/.test(path)) return _dpParseBbPage(doc, url);
         const content = doc.getElementById('page-content');
         if (!content) return null;
@@ -33648,8 +34411,9 @@
                 // the wiki's /onstage: and /offstage: pages (2026-11-11, a
                 // person's Performances and Appearances link those), which
                 // the server redirects (301) to the event: `_dpParseBb()`
-                // reads the record at the event's own address.
-                test: (u) => /^\/(?:gig|nogig|recording|rehearsal|interview|nobruce|venue|relation|onstage|offstage):[^/]+$/.test(u.pathname),
+                // reads the record at the event's own address. Releases,
+                // playlists and bootlegs since Phase 5 (2026-11-11).
+                test: (u) => /^\/(?:gig|nogig|recording|rehearsal|interview|nobruce|venue|relation|onstage|offstage|retail|playlist|bootleg):[^/]+$/.test(u.pathname),
                 setting: 'sa_bb_event_preview',
             },
             // A year table's Venue cell links the ENTRY page (the year page
@@ -54426,6 +55190,70 @@
                 description: 'Every performance with Bruce Springsteen (all of the wiki\'s pages), the count per band, appearances, the recordings by song and role, bands or members and co-written songs as tables; the biography, tags and pictures above, the wiki\'s page folded below.'
             } ],
             features: _bbPlaceFeatures('relation'),
+            tableMode: 'multi'
+        },
+        // A Brucebase release or playlist page (`/retail:`, `/playlist:`;
+        // Phase 5): a sub-table per edition and disc, the personnel, related
+        // releases, recording dates, On The Tracks and the songs' live
+        // counts; the facts, Overview, tags and artwork above — from a copy
+        // of the page, no request. See _bbReleaseRead() and
+        // docs/claude/brucebase.md, "Release and bootleg pages".
+        {
+            type: 'bb-retail',
+            host: 'brucebase.wikidot.com',
+            match: (path) => /^\/(?:retail|playlist):[^/]+\/?$/.test(path) && Lib.settings.sa_bb_detail_pages !== false,
+            buttons: [ {
+                label: 'Show the release', shortLabel: 'Release',
+                showIf: () => _bbReleaseHasTables(_bbReleaseRead(document, _bbDetailUrl())),
+                description: 'No request: every edition\'s tracklist (a table per disc), the personnel, the related releases, the recording dates, the takes On The Tracks and how often each song was played live, from this page as tables; the facts, the overview, tags and artwork above, the wiki\'s page folded below.'
+            } ],
+            features: {
+                bbDetailToTable: 'retail',
+                groupByH3: true,
+                openSubTables: true,
+                pageRequest: () => {
+                    const url = _bbDetailUrl();
+                    return { url, fetchText: async () => _bbDetailPageHtml(), toHtml: (text) => _bbReleaseToHtml(text, url, 'retail') };
+                },
+                pageCountAsync: () => 1,
+                integerColumns: [ { sourceColumn: 'Performed', align: 'R' } ],
+                columnDescriptions: {
+                    Release: 'Where the track comes from, by Brucebase\'s abbreviation (the album, a single, a session); each links its page.',
+                    Note: 'The page\'s footnote on this track.',
+                    Instruments: 'What the person plays or sings on the release, as Personnel lists it.',
+                    Performed: 'How often the song was played live, as the wiki counts it today.',
+                    Version: 'The take, as On The Tracks numbers it (V1, V2, …).',
+                    Releases: 'The bootlegs and releases this take is on, by Brucebase\'s abbreviation; each links its page.',
+                }
+            },
+            tableMode: 'multi'
+        },
+        // A Brucebase bootleg page (`/bootleg:`; Phase 5): its tracklist, a
+        // sub-table per disc (sides where the page marks them); the label,
+        // catalog number, time, format and source, the notes and the
+        // artwork above. No request.
+        {
+            type: 'bb-bootleg',
+            host: 'brucebase.wikidot.com',
+            match: (path) => /^\/bootleg:[^/]+\/?$/.test(path) && Lib.settings.sa_bb_detail_pages !== false,
+            buttons: [ {
+                label: 'Show the bootleg', shortLabel: 'Bootleg',
+                showIf: () => _bbReleaseHasTables(_bbBootlegRead(document, _bbDetailUrl())),
+                description: 'No request: the tracklist, a table per disc, from this page; the label, catalog number, time, format, source, notes and artwork above, the wiki\'s page folded below.'
+            } ],
+            features: {
+                bbDetailToTable: 'bootleg',
+                groupByH3: true,
+                openSubTables: true,
+                pageRequest: () => {
+                    const url = _bbDetailUrl();
+                    return { url, fetchText: async () => _bbDetailPageHtml(), toHtml: (text) => _bbReleaseToHtml(text, url, 'bootleg') };
+                },
+                pageCountAsync: () => 1,
+                columnDescriptions: {
+                    Side: 'The record side, as the page marks it ("//" after a side\'s last song).',
+                }
+            },
             tableMode: 'multi'
         },
         {
@@ -76821,7 +77649,9 @@
     /**
      * A YouTube link as something to play: a video (`watch?v=`, `youtu.be/`,
      * `/v/`, `/live/`, `/embed/<id>`), a short (`/shorts/<id>`) or a playlist
-     * (`/playlist?list=`, `/embed/videoseries?list=`), on youtube.com (www.,
+     * (`/playlist?list=`, `/embed/videoseries?list=`, `/embed/playlist?list=`
+     * — Brucebase's release pages, 2026-11-11: read as a video "playlist"
+     * before), on youtube.com (www.,
      * m., music.) or youtube-nocookie.com — `_extYouTubeTest()`'s shapes plus
      * the embeds. An absolute or protocol-relative link only (MusicBrainz
      * writes `//www.youtube.com/…`); a relative one is the page's own. A
@@ -76852,7 +77682,7 @@
             const v = u.searchParams.get('v') || '';
             return /^[\w-]{6,}$/.test(v) ? { kind: 'video', id: v, list } : null;
         }
-        if (/^\/(?:playlist|embed\/videoseries)\/?$/.test(u.pathname)) return list ? { kind: 'playlist', id: '', list } : null;
+        if (/^\/(?:playlist|embed\/(?:videoseries|playlist))\/?$/.test(u.pathname)) return list ? { kind: 'playlist', id: '', list } : null;
         if ((m = /^\/(v|shorts|embed|live)\/([\w-]{6,})/.exec(u.pathname))) {
             return { kind: m[1] === 'shorts' ? 'short' : 'video', id: m[2], list };
         }
@@ -179468,6 +180298,28 @@ a { color: #1565c0; }`;
              */
             bbSongRead(html, url) {
                 return _bbSongRead(new DOMParser().parseFromString(html, 'text/html'), url);
+            },
+
+            /**
+             * Thin wrapper around `_bbReleaseRead()` over an HTML string.
+             *
+             * @param {string} html
+             * @param {string} url
+             * @returns {?Object}
+             */
+            bbReleaseRead(html, url) {
+                return _bbReleaseRead(new DOMParser().parseFromString(html, 'text/html'), url);
+            },
+
+            /**
+             * Thin wrapper around `_bbBootlegRead()` over an HTML string.
+             *
+             * @param {string} html
+             * @param {string} url
+             * @returns {?Object}
+             */
+            bbBootlegRead(html, url) {
+                return _bbBootlegRead(new DOMParser().parseFromString(html, 'text/html'), url);
             },
 
             /**

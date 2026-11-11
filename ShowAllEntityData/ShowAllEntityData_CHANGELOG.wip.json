@@ -1,5 +1,26 @@
 [
   {
+    "version": "WIP.7",
+    "date": "2026-11-11",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase release and playlist pages get a button, \"Release\": a table per edition and disc (song, running time, where the track comes from, the page's footnote on it; a box set's films each a table of their own), the personnel, the related releases, a live release's recording dates (the show's date and place, linked), the takes On The Tracks and how often each song was played live. Above them the facts the page states (released, label, produced, recorded, mixed, mastered, design, photography), each edition's running time, the overview, footnotes and history, tags, media, the lyrics' pages and the artwork typed by its file names; the wiki's page folded below. Nothing is fetched.",
+          "Brucebase bootleg pages get \"Bootleg\": the tracklist, a table per disc with each song's time and, where the page marks them, the sides; the label, catalog number, time, format, source and sound in a Bootleg card, the notes and the Front, Back and Disc artwork. The wiki writes bootlegs as free text — lists, numbered lines, \"Disc 1: (43:31)\", \"//\" after a side's last song — and all of it is read.",
+          "Links to Brucebase release, playlist and bootleg pages preview them (Ctrl+hover): their facts and tracks; Space opens the window with the overview, personnel and related releases. The settings are now called \"Detail pages: events, songs, venues, people, releases and bootlegs as tables\" and \"Preview event, venue, people, release and bootleg pages on hover\"."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "A YouTube player embedded as \"youtube.com/embed/playlist?list=…\" (Brucebase's release pages) was taken for a video named \"playlist\"; it is the playlist.",
+          "Brucebase On The Tracks: a take written \"THE HEIST - V2 - take 14\" or \"JUNGLELAND - V1 (August 1, 1974)\" is now split into title and version too (song pages and the new release pages)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.6",
     "date": "2026-11-11",
     "sections": [
