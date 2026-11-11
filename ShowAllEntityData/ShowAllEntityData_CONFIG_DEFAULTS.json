@@ -2,11 +2,11 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1581+2026-11-08",
-    "schema_entries": 499,
+    "script_version": "9.99.1597+2026-11-10",
+    "schema_entries": 500,
     "sections": 54,
-    "settings": 445,
-    "settings_with_default": 440,
+    "settings": 446,
+    "settings_with_default": 441,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 268,
+      "checkbox": 269,
       "color_picker": 62,
       "divider": 54,
       "number": 53,
@@ -321,6 +321,7 @@
     "sa_dg_master_versions_count": "Master page: the number of versions in the Tracks view",
     "sa_dg_mb_auto_lookup": "MusicBrainz column: look up missing rows automatically",
     "sa_dg_mb_column": "MusicBrainz column (with the Discogs importer userscript)",
+    "sa_dg_section_bands_sticky_on_touch": "Tracks view: sticky section bands on touch devices",
     "sa_dg_tip_images": "Image column: all images of a row on hover",
     "sa_dialog_save_export_autoclose_ms": "Save / Export dialog auto-close delay (ms)",
     "sa_dp_hover_without_ctrl": "Show every preview on a plain hover (without Ctrl)",
@@ -767,6 +768,7 @@
     "sa_dg_master_versions_count": true,
     "sa_dg_mb_auto_lookup": true,
     "sa_dg_mb_column": true,
+    "sa_dg_section_bands_sticky_on_touch": false,
     "sa_dg_tip_images": true,
     "sa_dialog_save_export_autoclose_ms": 1800,
     "sa_dp_hover_without_ctrl": true,
@@ -1141,6 +1143,14 @@
         [
           "release-tracks",
           "\"ARs\""
+        ],
+        [
+          "dg-release",
+          "\"Section\""
+        ],
+        [
+          "dg-master",
+          "\"Section\""
         ]
       ]
     },

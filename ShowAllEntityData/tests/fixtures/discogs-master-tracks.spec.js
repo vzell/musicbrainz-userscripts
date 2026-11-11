@@ -225,7 +225,8 @@ test.describe('Discogs master: the Tracks view, as a release\'s (2026-11-04)', (
         expect((await h3s(page)).filter(h => h !== 'Videos')).toHaveLength(1);
         const t = tables(page).first();
         expect(await heads(t)).toContain('Section');
-        await expect(t.locator('tbody > tr')).toHaveCount(159);
+        // Data rows: each medley's heading is a section band too (2026-11-11).
+        await expect(t.locator('tbody > tr:not(.mb-nd-row)')).toHaveCount(159);
 
         // The River: four sides, two records.
         await openMaster(page, master(27194), { sa_dg_master_versions_count: false });

@@ -5247,6 +5247,18 @@
                          'is left out.'
         },
 
+        sa_dg_section_bands_sticky_on_touch: {
+            label: 'Tracks view: sticky section bands on touch devices',
+            type: 'checkbox',
+            default: false,
+            description: 'A release\'s or master\'s Tracks view shows each heading of Discogs\' tracklist ' +
+                         'inside a disc ("Paris 05/02/1981") as a band above its tracks, with their number ' +
+                         'and running time; a click folds them. On a computer the band stays under the column ' +
+                         'headers while its tracks scroll past. On a touch-primary device (a phone or tablet: ' +
+                         'no hover, coarse pointer) it scrolls with the table unless this is on: a sticky band ' +
+                         'takes too much of a small screen.'
+        },
+
         // ============================================================
         // INTERNET ARCHIVE (archive.org, 2026-10-31;
         // docs/claude/internet-archive.md)
@@ -19754,7 +19766,8 @@
      *
      * @param {Object} d - The release answer.
      * @returns {{media: Object[], tracks: Object[]}} Each track: pos, title,
-     *   indexTitle, dur, artists, credits, medium (index), section, side.
+     *   indexTitle, dur, artists, credits, medium (index), section, side,
+     *   src (the tracklist entry it was read from).
      */
     function _dgReleaseMedia(d) {
         const media = [];
@@ -19810,6 +19823,9 @@
                 artists: Array.isArray(x.artists) ? x.artists.filter(a => a && a.name) : [],
                 credits: (x.extraartists || []).filter(a => a && a.name).map(_extDiscogsCredit),
                 medium: media.length - 1, section, side, range: [],
+                // The entry it came from: the window's outline maps a track
+                // back to its row of the record's list (`_extDgOutline()`).
+                src: x,
             };
             tracks.push(t);
             cur.tracks.push(t);
@@ -19881,6 +19897,76 @@
     }
 
     /**
+     * The format unit of one medium (`_dgFormatUnits()`) and the word it is
+     * called by: the unit of its index when the counts agree, else a disc
+     * prefix's ("CD", "DVD" against a format's label), else the one unit
+     * when all are alike; the word from the unit, else from the positions
+     * (sides → "Record", "Disc"). Shared by the Tracks view's headings and
+     * the window's outline (`_extDgOutline()`).
+     *
+     * @param {Object} md - One medium of `_dgReleaseMedia()`.
+     * @param {number} k - Its index.
+     * @param {number} count - The number of media.
+     * @param {Array<{label: string, word: string}>} units
+     * @returns {{unit: ?{label: string, word: string}, word: string}}
+     */
+    function _dgMediumUnit(md, k, count, units) {
+        const norm = x => String(x || '').trim().toUpperCase();
+        const sameUnit = units.length && units.every(u => u.label === units[0].label) ? units[0] : null;
+        const unit = units.length === count ? units[k]
+            : (md.kind === 'disc' && units.find(u => norm(u.label).startsWith(norm(md.key).replace(/\d+$/, '')) && /\D/.test(md.key))) || sameUnit;
+        return { unit: unit || null, word: (unit && unit.word) || (md.kind === 'sides' ? 'Record' : 'Disc') };
+    }
+
+    /**
+     * A release's or master's tracklist in one line, for the link preview's
+     * card: "57 tracks on 5 CDs · 6 sections" (vzell, 2026-11-11: always
+     * "sections"). The media and sections are the Tracks view's own
+     * (`_dgReleaseMedia()`); "on …" only with more than one medium, named by
+     * the units when all are alike ("CDs"), else by the word ("discs",
+     * "records").
+     *
+     * @param {Object} d - The release or master answer (`tracklist`, `formats`).
+     * @returns {string} '' for no track.
+     */
+    function _dgTracklistSummary(d) {
+        const m = _dgReleaseMedia(d);
+        const n = m.tracks.length;
+        if (!n) return '';
+        const parts = [`${n} track${n === 1 ? '' : 's'}`];
+        if (m.media.length > 1) {
+            const units = _dgFormatUnits(d.formats);
+            const named = m.media.map((md, k) => _dgMediumUnit(md, k, m.media.length, units));
+            const label = named.every(x => x.unit && x.unit.label === named[0].unit.label) ? named[0].unit.label : '';
+            parts[0] += ` on ${m.media.length} ${label ? `${label}s` : `${named[0].word.toLowerCase()}s`}`;
+        }
+        const secs = m.media.reduce((s, md) => s + new Set(md.tracks.map(t => t.section).filter(Boolean)).size, 0);
+        if (secs) parts.push(`${secs} section${secs === 1 ? '' : 's'}`);
+        return parts.join(' · ');
+    }
+
+    /**
+     * The sections of one medium's tracks (`_dgReleaseMedia()`'s `section`),
+     * each with its track count and running time ("8", "51:49"; '' when no
+     * track of it has a length). A section is counted per medium: two media
+     * may share a heading text and stay apart.
+     *
+     * @param {Object[]} tracks - One medium's tracks.
+     * @returns {Map<string, {n: number, len: string}>} In first-seen order.
+     */
+    function _dgSectionStats(tracks) {
+        const acc = new Map();
+        tracks.forEach((t) => {
+            if (!t.section) return;
+            const a = acc.get(t.section) || { n: 0, secs: 0 };
+            a.n++;
+            a.secs += _dgDurSeconds(t.dur);
+            acc.set(t.section, a);
+        });
+        return new Map(Array.from(acc, ([k, a]) => [k, { n: a.n, len: a.secs ? _iaLenText(a.secs) : '' }]));
+    }
+
+    /**
      * The Tracks view of a release (dg-release's first button): one
      * sub-table per medium (`_dgReleaseMedia()`), named as release-tracks
      * names a medium ("Disc 1 · CD · 49:50", "Record 1 · Vinyl LP · 39:26"),
@@ -19946,19 +20032,20 @@
             `${_rgEsc(a.anv || _extDiscogsName(a.name))}</a>` : _rgEsc(a.anv || _extDiscogsName(a.name))) +
             (i < list.length - 1 ? _rgEsc(` ${String(a.join || ',').trim()} `).replace(/^ ,/, ',') : '')).join('');
         const units = _dgFormatUnits(d.formats);
-        // A disc prefix ("CD", "DVD") against a format's label.
-        const norm = x => String(x || '').trim().toUpperCase();
-        const sameUnit = units.length && units.every(u => u.label === units[0].label) ? units[0] : null;
         const html = m.media.map((md, k) => {
-            const unit = units.length === m.media.length ? units[k]
-                : (md.kind === 'disc' && units.find(u => norm(u.label).startsWith(norm(md.key).replace(/\d+$/, '')) && /\D/.test(md.key))) || sameUnit;
-            const word = (unit && unit.word) || (md.kind === 'sides' ? 'Record' : 'Disc');
+            const { unit, word } = _dgMediumUnit(md, k, m.media.length, units);
             const secs = md.tracks.reduce((s, t) => s + _dgDurSeconds(t.dur), 0);
             const name = [`${word} ${k + 1}`, md.title, unit && unit.label, secs ? _iaLenText(secs) : ''].filter(Boolean).join(' · ');
+            const secStats = _dgSectionStats(md.tracks);
             const rows = md.tracks.map((t) => {
                 const i = m.tracks.indexOf(t);
                 const title = (t.indexTitle ? `<span class="mb-dg-index">${_rgEsc(t.indexTitle)} ›</span> ` : '') + _rgEsc(t.title);
-                return `<tr>${_dgCell(t.pos)}<td>${title}</td>${hasArtist ? `<td>${artists(t.artists)}</td>` : ''}` +
+                // The section bands (`_dgSecBandsSync()`) read the section
+                // and its totals from the row, the sorted view's tag from the
+                // Title cell: attributes, so no text is added to filter on.
+                const st = t.section ? secStats.get(t.section) : null;
+                const sec = st ? ` data-mb-sec="${_rgEsc(t.section)}" data-mb-sec-n="${st.n}" data-mb-sec-len="${_rgEsc(st.len)}"` : '';
+                return `<tr${sec}>${_dgCell(t.pos)}<td${st ? ` data-mb-sec="${_rgEsc(t.section)}"` : ''}>${title}</td>${hasArtist ? `<td>${artists(t.artists)}</td>` : ''}` +
                     `${hasSection ? _dgCell(t.section) : ''}<td class="mb-dg-when">${_rgEsc(t.dur)}</td>` +
                     roleCols.map(col => `<td>${cells[i][col] ? `<ul>${cells[i][col].join('')}</ul>` : ''}</td>`).join('') + '</tr>';
             });
@@ -19966,6 +20053,202 @@
         }).join('');
         const rc = releaseCredits.map(c => `<tr><td>${_dgRoleHtml(c.role)}</td><td>${link(c)}</td>${_dgCell(c.tracks)}</tr>`);
         return html + (rc.length ? _dgTableHtml('Release credits', _DG_HEADERS.release.Credits, rc) : '');
+    }
+
+    // ── Section bands of the Tracks view (org/discogs.org, 2026-11-11) ──────
+    // Discogs' tracklist headings inside a medium ("Cologne 13/02/1981",
+    // "Paris 05/02/1981" on release 2012001) are the Section of the tracks
+    // after them (`_dgReleaseMedia()`). The live table shows each as a band
+    // above its tracks: name · count · length, folded by a click, sticky
+    // under the column headers (desktop; on a touch device only with
+    // `sa_dg_section_bands_sticky_on_touch`). A band is a REAL row
+    // (`tr.mb-nd-row.mb-sec-band`): only a row can stick across the table.
+    // Every engine pass that walks a table's live rows skips
+    // `_NON_DATA_ROW_SEL`, so a band is never filtered, counted, sorted,
+    // striped, exported or given a cell of a column
+    // (docs/claude/filter-and-cache-invariants.md, "Rows that are not data").
+    // Bands live in the live tbody only, never in the master rows: each
+    // render rebuilds them (`_dgSecBandsSync()`).
+
+    /** The class of every table row that is not data (a section band). @type {string} */
+    const _NON_DATA_ROW_CLS = 'mb-nd-row';
+
+    /** Selector of the rows above, for `:not()` and `matches()`. @type {string} */
+    const _NON_DATA_ROW_SEL = 'tr.mb-nd-row';
+
+    /**
+     * The folded sections of this page, as "<table index>\u0001<section>".
+     * The table index is the table's place among `#mb-dg-root table.tbl`,
+     * the same on every render of the page.
+     * @type {Set<string>}
+     */
+    const _dgSecFolded = new Set();
+
+    /**
+     * Whether section bands stick under the column headers here: always on
+     * a mouse-and-hover device, on a touch-primary one only with
+     * `sa_dg_section_bands_sticky_on_touch` (vzell, 2026-11-11: a sticky
+     * band takes too much of a phone's screen).
+     *
+     * @returns {boolean}
+     */
+    function _dgSecBandsSticky() {
+        return !_isTouchPrimaryDevice() || Lib.settings.sa_dg_section_bands_sticky_on_touch === true;
+    }
+
+    /**
+     * Where a sticky band docks: right under the table's sticky thead (its
+     * `top` plus its height), else at the top of the scroll area.
+     *
+     * @param {HTMLTableElement} table
+     * @returns {number} Pixels.
+     */
+    function _dgSecBandTop(table) {
+        const th = table.tHead;
+        if (!th) return 0;
+        const cs = getComputedStyle(th);
+        if (cs.position !== 'sticky') return 0;
+        return Math.floor((parseFloat(cs.top) || 0) + th.getBoundingClientRect().height);
+    }
+
+    /**
+     * Builds one section band: a full-width row holding a button with the
+     * section's name and "N tracks · length" ("k of N tracks" while a filter
+     * hides some of them).
+     *
+     * @param {string} name
+     * @param {number} shown - Its tracks on screen.
+     * @param {number} total - All its tracks.
+     * @param {string} len - Its running time ('' for none).
+     * @param {boolean} folded
+     * @returns {HTMLTableRowElement}
+     */
+    function _dgSecBandRow(name, shown, total, len, folded) {
+        const tr = document.createElement('tr');
+        tr.className = `${_NON_DATA_ROW_CLS} mb-sec-band`;
+        tr.dataset.mbSecBand = name;
+        const td = document.createElement('td');
+        td.colSpan = 999;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'mb-sec-band-btn';
+        btn.setAttribute('aria-expanded', String(!folded));
+        const nm = document.createElement('span');
+        nm.className = 'mb-sec-band-name';
+        nm.textContent = name;
+        const meta = document.createElement('span');
+        meta.className = 'mb-sec-band-meta';
+        const count = shown === total ? `${total} track${total === 1 ? '' : 's'}` : `${shown} of ${total} tracks`;
+        meta.textContent = len ? `${count} · ${len}` : count;
+        btn.append(nm, meta);
+        _setTip(btn, folded ? `Show the tracks of "${name}"` : `Fold the tracks of "${name}"`);
+        td.appendChild(btn);
+        tr.appendChild(td);
+        return tr;
+    }
+
+    /**
+     * Rebuilds the section bands of every Tracks table on the page from its
+     * live rows. In the tracklist's own order (`data-mb-row-idx` rising) a
+     * band goes above the first shown track of each run of one section;
+     * a section with no track shown (a filter) gets none. Sorted by any
+     * other order the table gets `.mb-sec-sorted` instead: no bands (a
+     * section no longer runs together), each Title cell shows its section
+     * as a tag (CSS from the cell's `data-mb-sec`). Folded sections' rows
+     * get `.mb-sec-folded`. Idempotent; a table without sections is left
+     * as it is. Called at the end of every multi-table render and after
+     * the sub-table filter changed what is shown.
+     *
+     * @returns {void}
+     */
+    function _dgSecBandsSync() {
+        if (!_isDgHost) return;
+        const sticky = _dgSecBandsSticky();
+        document.querySelectorAll('#mb-dg-root table.tbl').forEach((table, ti) => {
+            const tbody = table.tBodies[0];
+            if (!tbody) return;
+            tbody.querySelectorAll(':scope > tr.mb-sec-band').forEach(tr => tr.remove());
+            const rows = Array.from(tbody.rows).filter(r => !r.matches(_NON_DATA_ROW_SEL));
+            if (!rows.some(r => r.hasAttribute('data-mb-sec'))) {
+                table.classList.remove('mb-sec-sorted', 'mb-sec-sticky');
+                return;
+            }
+            const idx = rows.map(r => Number(r.dataset.mbRowIdx));
+            const inOrder = idx.every((v, k) => k === 0 || v > idx[k - 1]);
+            table.classList.toggle('mb-sec-sorted', !inOrder);
+            if (!inOrder) {
+                rows.forEach(r => r.classList.remove('mb-sec-folded'));
+                return;
+            }
+            table.classList.toggle('mb-sec-sticky', sticky);
+            if (sticky) table.style.setProperty('--mb-sec-band-top', `${_dgSecBandTop(table)}px`);
+            let k = 0;
+            while (k < rows.length) {
+                const name = rows[k].dataset.mbSec || '';
+                let e = k;
+                while (e < rows.length && (rows[e].dataset.mbSec || '') === name) e++;
+                const run = rows.slice(k, e);
+                k = e;
+                // The sub-table filter hides by display:none; a page filter
+                // leaves the row out.
+                const shown = run.filter(r => r.style.display !== 'none');
+                const folded = !!name && shown.length > 0 && _dgSecFolded.has(`${ti}\u0001${name}`);
+                run.forEach(r => r.classList.toggle('mb-sec-folded', folded));
+                if (!name || !shown.length) continue;
+                const total = Number(run[0].dataset.mbSecN) || run.length;
+                shown[0].before(_dgSecBandRow(name, shown.length, total, run[0].dataset.mbSecLen || '', folded));
+            }
+        });
+        _dgSecBandsInstall();
+    }
+
+    /** Whether `_dgSecBandsInstall()` ran. @type {boolean} */
+    let _dgSecBandsInstalled = false;
+
+    /**
+     * Once per page: a band's click folds or shows its section (one
+     * delegated listener: bands are rebuilt on every render), and a window
+     * resize re-measures where sticky bands dock.
+     *
+     * @returns {void}
+     */
+    function _dgSecBandsInstall() {
+        if (_dgSecBandsInstalled) return;
+        _dgSecBandsInstalled = true;
+        document.addEventListener('click', (e) => {
+            const btn = e.target instanceof Element ? e.target.closest('button.mb-sec-band-btn') : null;
+            if (!btn) return;
+            const table = btn.closest('table.tbl');
+            const ti = Array.from(document.querySelectorAll('#mb-dg-root table.tbl')).indexOf(table);
+            const name = btn.closest('tr.mb-sec-band').dataset.mbSecBand;
+            if (ti < 0 || !name) return;
+            e.preventDefault();
+            const key = `${ti}\u0001${name}`;
+            if (_dgSecFolded.has(key)) _dgSecFolded.delete(key);
+            else _dgSecFolded.add(key);
+            Lib.debug('render', `section band "${name}" (table ${ti}) ${_dgSecFolded.has(key) ? 'folded' : 'shown'}`);
+            _dgSecBandsSync();
+            const again = Array.from(table.querySelectorAll('tr.mb-sec-band')).find(tr => tr.dataset.mbSecBand === name);
+            if (again) again.querySelector('button').focus({ preventScroll: true });
+        });
+        let t = 0;
+        window.addEventListener('resize', () => {
+            clearTimeout(t);
+            t = setTimeout(_dgSecBandsRemeasure, 150);
+        }, { passive: true });
+    }
+
+    /**
+     * Re-measures where each sticky band docks (`_dgSecBandTop()`): after a
+     * window resize and whenever the sticky filter bars moved the thead
+     * (`_vsbRefresh()`).
+     *
+     * @returns {void}
+     */
+    function _dgSecBandsRemeasure() {
+        document.querySelectorAll('#mb-dg-root table.tbl.mb-sec-sticky').forEach((table) => {
+            table.style.setProperty('--mb-sec-band-top', `${_dgSecBandTop(table)}px`);
+        });
     }
 
     /**
@@ -20448,6 +20731,34 @@
             body.mb-sa-host-dg img.mb-dg-thumb { display: block; width: 40px; height: 40px; object-fit: cover; border: 1px solid #ddd; }
             body.mb-sa-host-dg .mb-dg-main { color: #b8860b; cursor: help; }
             body.mb-sa-host-dg td.mb-dg-when { white-space: nowrap; font-variant-numeric: tabular-nums; }
+            /* The Tracks view's section bands (_dgSecBandsSync(), 2026-11-11):
+               Discogs' heading row colour family, one full-width row above a
+               section's tracks; sticky under the thead (z 100) and over the
+               rows and the sticky column (z 1 to 3). The button keeps its
+               text at the left edge while the table scrolls sideways. */
+            body.mb-sa-host-dg #mb-dg-root table.tbl tr.mb-sec-band > td {
+                padding: 4px 8px; background: #efeadb; color: #3b3427;
+                border-left: 0; border-right: 0; border-top: 1px solid #d9cfbd;
+            }
+            body.mb-sa-host-dg #mb-dg-root table.tbl.mb-sec-sticky tr.mb-sec-band > td {
+                position: sticky; top: var(--mb-sec-band-top, 0px); z-index: 99;
+            }
+            body.mb-sa-host-dg button.mb-sec-band-btn {
+                all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; gap: 8px; align-items: baseline;
+                position: sticky; left: 8px; font: 13px/1.4 Arial, Helvetica, sans-serif; color: #3b3427;
+            }
+            body.mb-sa-host-dg button.mb-sec-band-btn::before { content: "\\25BC"; font-size: 10px; color: #7a6d5c; width: 1em; }
+            body.mb-sa-host-dg button.mb-sec-band-btn[aria-expanded="false"]::before { content: "\\25B6"; }
+            body.mb-sa-host-dg button.mb-sec-band-btn:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 2px; }
+            body.mb-sa-host-dg .mb-sec-band-name { font-weight: 700; }
+            body.mb-sa-host-dg .mb-sec-band-meta { color: #7a6d5c; font-size: 12px; font-variant-numeric: tabular-nums; }
+            body.mb-sa-host-dg #mb-dg-root table.tbl tr.mb-sec-folded { display: none; }
+            /* Sorted by another column a section no longer runs together:
+               no bands, the section rides each title as a tag. */
+            body.mb-sa-host-dg #mb-dg-root table.tbl.mb-sec-sorted td[data-mb-sec]::after {
+                content: attr(data-mb-sec); margin-left: 6px; padding: 0 5px; border: 1px solid #d9cfbd; border-radius: 3px;
+                font: 600 10.5px/1.5 Arial, Helvetica, sans-serif; color: #7a6d5c; background: #efeadb; white-space: nowrap;
+            }
             /* Discogs' older pages (the submissions list, a user's page) load
                discogs.css, whose input[type=search] rule (box-sizing:
                content-box) is more specific than .mb-col-filter-input: a
@@ -38717,6 +39028,31 @@
             .mb-dp-dialog .mb-dg-dur { width: 3.4em; text-align: right; color: #7a6d5c; }
             .mb-dp-dialog .mb-dg-tt { font-weight: 600; }
             .mb-dp-dialog .mb-dg-thead td { font-style: italic; color: #7a6d5c; padding-top: 8px; }
+            /* The tracklist's outline (_extDgOutline(), 2026-11-11): a shaded bar
+               per disc, an indented row per section, both fold; chips above. */
+            .mb-dp-dialog .mb-dg-outline tr.mb-dg-tm > td { background: #efe6d4; padding: 0; border-top: 1px solid #d9cfbd; }
+            .mb-dp-dialog .mb-dg-outline tr.mb-dg-tsec > td { padding: 0 0 0 1.2em; }
+            .mb-dp-dialog .mb-dg-tlb {
+                all: unset; box-sizing: border-box; cursor: pointer; display: flex; gap: 8px; align-items: baseline; width: 100%; padding: 5px 8px;
+            }
+            .mb-dp-dialog .mb-dg-tlb::before { content: "\\25BE"; font-size: 10px; color: #7a6d5c; width: 1em; flex: none; }
+            .mb-dp-dialog .mb-dg-tlb[aria-expanded="false"]::before { content: "\\25B8"; }
+            .mb-dp-dialog .mb-dg-tlb:focus-visible { outline: 2px solid #2f5f9e; outline-offset: -2px; }
+            .mb-dp-dialog .mb-dg-tmw { font: 600 10.5px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; letter-spacing: 0.1em; text-transform: uppercase; color: #2b2622; white-space: nowrap; }
+            .mb-dp-dialog .mb-dg-tmn { font-weight: 700; min-width: 0; }
+            .mb-dp-dialog .mb-dg-tsn { font-style: italic; font-weight: 600; min-width: 0; }
+            .mb-dp-dialog .mb-dg-tst { margin-left: auto; padding-left: 8px; font: 11.5px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: #7a6d5c; white-space: nowrap; }
+            .mb-dp-dialog .mb-dg-outline tr.mb-dg-tin > td.mb-dg-pos { padding-left: 1.2em !important; }
+            .mb-dp-dialog .mb-dg-outline tr.mb-dg-tix > td { font-style: normal; font-weight: 600; color: #2b2622; }
+            .mb-dp-dialog .mb-dg-outline tr.mb-dg-tsub > td:nth-child(2) { padding-left: 1.2em; }
+            .mb-dp-dialog .mb-dg-toc { display: flex; flex-wrap: wrap; gap: 4px 6px; margin: 2px 0 8px; }
+            .mb-dp-dialog .mb-dg-tlj {
+                all: unset; cursor: pointer; font: 12px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: #2b2622;
+                border: 1px solid #d9cfbd; border-radius: 999px; padding: 1px 8px; background: #fff; white-space: nowrap;
+            }
+            .mb-dp-dialog .mb-dg-tlj.mb-dg-tljs { border-style: dashed; color: #7a6d5c; }
+            .mb-dp-dialog .mb-dg-tlj:hover { background: #f4eee2; }
+            .mb-dp-dialog .mb-dg-tlj:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 1px; }
             /* A List table's part heading row (_dpListTableHtml() group, an
                event's "Soundcheck" / "Concert", 2026-10-29): not a row to
                click, so no hover tint and no pointer. While the table is
@@ -57207,6 +57543,8 @@
         }
         dyn.textContent = css;
         Lib.debug('ui', `Sticky filter bars: base ${base}px, header block ${headsH}px (${heads.length}), h2 ${h2h}px, h3 ${h3Box}px (${shown.length} shown), thead at ${theadTop}/${theadTopH3}px.`);
+        // A Discogs Tracks table's section bands dock under its thead.
+        if (_isDgHost) _dgSecBandsRemeasure();
     }
 
     /**
@@ -59058,7 +59396,7 @@
     function applyZebraStriping(table) {
         if (!table) return;
         let visIdx = 0;
-        table.querySelectorAll('tbody tr').forEach(tr => {
+        table.querySelectorAll('tbody tr:not(.mb-nd-row)').forEach(tr => {
             if (tr.style.display === 'none') return;
             // Re-assign the native MusicBrainz even/odd class based on the current
             // visual position, which may have changed after a sort or filter.
@@ -59272,7 +59610,7 @@
             // computed background depend on another cell's inline style or
             // classes, so the values read are the same.
             const _rows = [];
-            table.querySelectorAll('tbody tr').forEach(tr => {
+            table.querySelectorAll('tbody tr:not(.mb-nd-row)').forEach(tr => {
                 const cell = tr.cells[stickyIdx];
                 if (!cell) return;
                 cell.style.position  = 'sticky';
@@ -59518,7 +59856,7 @@
      * @returns {boolean}
      */
     function _isProseCollapseColumn(table, colIndex) {
-        return Array.from(table.querySelectorAll('tbody tr')).some(tr => {
+        return Array.from(table.querySelectorAll('tbody tr:not(.mb-nd-row)')).some(tr => {
             const td = tr.cells[colIndex];
             return !!(td && td.querySelector(':scope > .mb-text-clamp-marker'));
         });
@@ -59545,7 +59883,7 @@
             });
 
             // Toggle all cells in the column for all body rows
-            const rows = currentTable.querySelectorAll('tbody tr');
+            const rows = currentTable.querySelectorAll('tbody tr:not(.mb-nd-row)');
             rows.forEach(row => {
                 if (row.cells[columnIndex]) {
                     row.cells[columnIndex].style.display = display;
@@ -59588,7 +59926,7 @@
                         }
 
                         // Measure sample data cells (up to 100 rows)
-                        const dataRows = currentTable.querySelectorAll('tbody tr');
+                        const dataRows = currentTable.querySelectorAll('tbody tr:not(.mb-nd-row)');
                         const sampleSize = Math.min(dataRows.length, 100);
                         const sampleStep = Math.max(1, Math.floor(dataRows.length / sampleSize));
 
@@ -59692,7 +60030,7 @@
         });
 
         // Toggle body cells
-        table.querySelectorAll('tbody tr').forEach(row => {
+        table.querySelectorAll('tbody tr:not(.mb-nd-row)').forEach(row => {
             if (row.cells[columnIndex]) row.cells[columnIndex].style.display = display;
         });
 
@@ -59717,7 +60055,7 @@
                         th.childNodes.forEach(n => measureDiv.appendChild(n.cloneNode(true)));
                         maxWidth = Math.max(maxWidth, measureDiv.offsetWidth);
                     }
-                    const dataRows = table.querySelectorAll('tbody tr');
+                    const dataRows = table.querySelectorAll('tbody tr:not(.mb-nd-row)');
                     const step = Math.max(1, Math.floor(dataRows.length / Math.min(dataRows.length, 100)));
                     for (let i = 0; i < dataRows.length; i += step) {
                         const cell = dataRows[i].cells[columnIndex];
@@ -59795,7 +60133,7 @@
         });
         if (hiddenIndices.length === 0) return;
 
-        table.querySelectorAll('tbody tr').forEach(row => {
+        table.querySelectorAll('tbody tr:not(.mb-nd-row)').forEach(row => {
             hiddenIndices.forEach(i => {
                 if (row.cells[i]) row.cells[i].style.display = 'none';
             });
@@ -60074,7 +60412,7 @@
             hdrBtns.forEach(hdrBtn => {
                 const colIdx = parseInt(hdrBtn.dataset.colIndex, 10);
                 if (isNaN(colIdx)) return;
-                Array.from(table.querySelectorAll('tbody tr')).forEach(tr => {
+                Array.from(table.querySelectorAll('tbody tr:not(.mb-nd-row)')).forEach(tr => {
                     const td = tr.cells[colIdx];
                     if (!td) return;
                     const toggle = td.querySelector('.mb-cell-collapse-toggle');
@@ -61784,7 +62122,7 @@
             }
             if (!idxs.length) return;
             const owners = new Set();
-            Array.from(tbody.rows).forEach(row => {
+            Array.from(tbody.rows).filter(r => !r.classList.contains('mb-nd-row')).forEach(row => {
                 styleRow(row, idxs);
                 const m = row.dataset.mbRowIdx !== undefined ? master.get(row.dataset.mbRowIdx) : null;
                 if (!m) return;
@@ -63079,7 +63417,7 @@
             const colIdxs = _liveTitleColIdxs(table);
             if (!colIdxs.length) return;
             const owners = new Set();
-            Array.from(tbody.rows).forEach(row => {
+            Array.from(tbody.rows).filter(r => !r.classList.contains('mb-nd-row')).forEach(row => {
                 _stampLiveTitleRow(row, colIdxs);
                 const m = row.dataset.mbRowIdx !== undefined ? master.get(row.dataset.mbRowIdx) : null;
                 if (!m) return;
@@ -78512,10 +78850,13 @@
      * Discogs id, for its link; 4 since an artist or a label has a window of
      * its own (profile, images, names with ids, sites: 2026-10-18); 5 since a
      * master carries its videos too (org/youtube.org, decision 3: the master
-     * window's Videos section). Only Discogs records are read again.
+     * window's Videos section); 6 since the tracklist is an outline of
+     * discs and sections (a sub-track says so, the format units are kept)
+     * and the card's "Tracklist" fact reads "57 tracks on 5 CDs · 6
+     * sections" (2026-11-11). Only Discogs records are read again.
      * @type {number}
      */
-    const _EXT_DISCOGS_VERSION = 5;
+    const _EXT_DISCOGS_VERSION = 6;
 
     /**
      * How many rows of a list one request asks for (a master's versions, an
@@ -78580,11 +78921,12 @@
     /**
      * A release's or master's tracklist for the window, in Discogs' order:
      * tracks, headings (`type: 'heading'`) and an index track's title
-     * (`'index'`) followed by its sub-tracks. Each track keeps its own
-     * credits (`extraartists`).
+     * (`'index'`) followed by its sub-tracks (`sub: true` since
+     * `_EXT_DISCOGS_VERSION` 6, so the outline can put them back under it).
+     * Each track keeps its own credits (`extraartists`).
      *
      * @param {Object[]} list - The answer's `tracklist`.
-     * @returns {Array<{type: string, pos: string, title: string, dur: string, credits: Object[]}>}
+     * @returns {Array<{type: string, pos: string, title: string, dur: string, credits: Object[], sub?: boolean}>}
      */
     function _extDiscogsTracklist(list) {
         const one = (x, type) => ({
@@ -78595,7 +78937,7 @@
         (list || []).forEach((x) => {
             const type = x.type_ === 'heading' || x.type_ === 'index' ? x.type_ : 'track';
             out.push(one(x, type));
-            if (type === 'index') (x.sub_tracks || []).forEach(s => out.push(one(s, 'track')));
+            if (type === 'index') (x.sub_tracks || []).forEach(s => out.push({ ...one(s, 'track'), sub: true }));
         });
         return out;
     }
@@ -78667,6 +79009,9 @@
             const labels = (d.labels || []).map(l => `${_extDiscogsName(l.name)}${l.catno && l.catno !== 'none' ? ` – ${l.catno}` : ''}`)
                 .join('; ');
             const tracks = (d.tracklist || []).filter(x => !x.type_ || x.type_ === 'track').length;
+            // "57 tracks on 5 CDs · 6 sections": the window's Tracklist fact
+            // and the card's summary line (2026-11-11).
+            const tlSummary = _dgTracklistSummary(d);
             const community = d.community || {};
             const num = (n) => Number(n).toLocaleString('en-US');
             rec.title = String(d.title);
@@ -78679,7 +79024,9 @@
                 ['Format', formats],
                 ['Label', labels],
                 ['Genre', [...(d.genres || []), ...(d.styles || [])].join(', ')],
-                ['Tracks', tracks ? String(tracks) : ''],
+                // "57 tracks on 5 CDs · 6 sections" (2026-11-11), the Tracks
+                // view's own media and sections; the bare count if that fails.
+                ['Tracklist', tracks ? (tlSummary || String(tracks)) : ''],
                 ['Community', kind === 'release' && typeof community.have === 'number'
                     ? `${num(community.have)} have · ${num(community.want || 0)} want` : ''],
                 ['Data quality', kind === 'release' ? String(d.data_quality || '') : ''],
@@ -78693,6 +79040,9 @@
             rec.imageFull = primary ? primary.full : '';
             rec.discogs = {
                 kind, id: Number(id), tracklist: _extDiscogsTracklist(d.tracklist), images,
+                // The format units, for the outline's disc names (`_extDgOutline()`).
+                units: _dgFormatUnits(d.formats),
+                summary: tlSummary,
                 notes: String(d.notes || '').slice(0, 20000),
                 // The "Artist" and "Label" facts again, with their ids (`_extDiscogsFactsHtml()`).
                 artists: (d.artists || []).filter(a => a && a.name).map(a => ({
@@ -79362,24 +79712,131 @@
 
     /**
      * The tracklist: position, title, duration; a track with credits has a
-     * "▸ N credits" toggle (closed unless opened, or "Show all"); headings
-     * and an index track's title as their own rows.
+     * "▸ N credits" toggle (closed unless opened, or "Show all"). With more
+     * than one disc or any section, the outline of `_extDgOutline()`;
+     * otherwise flat, headings and an index track's title as their own rows.
      *
      * @param {Object[]} list - `_extDiscogsTracklist()`.
      * @param {Object} ui - `_extDgUiOf()`.
+     * @param {Array<{label: string, word: string}>} [units] - The record's format units (disc names).
      * @returns {string}
      */
-    function _extDgTracklistHtml(list, ui) {
+    function _extDgTracklistHtml(list, ui, units = []) {
+        const outline = _extDgOutline(list, ui, units);
+        if (outline) return outline;
         return '<table class="mb-dg-tl">' + list.map((x, i) => {
             if (x.type !== 'track') return `<tr class="mb-dg-thead"><td colspan="3">${_rgEsc(x.title)}</td></tr>`;
-            const n = x.credits.length;
-            const open = n > 0 && (ui.allCredits || ui.open.has(i));
-            const toggle = n ? `<button type="button" class="mb-dg-cr" data-mb-dg-tr="${i}" aria-expanded="${open}">` +
-                `${open ? '▾' : '▸'} ${n} credit${n === 1 ? '' : 's'}</button>` : '';
-            return `<tr><td class="mb-dg-pos">${_rgEsc(x.pos)}</td><td><span class="mb-dg-tt">${_rgEsc(x.title)}</span>${toggle}` +
-                `${open ? `<div class="mb-dg-tcred">${_extDgCreditLines(x.credits, false)}</div>` : ''}</td>` +
-                `<td class="mb-dg-dur">${_rgEsc(x.dur)}</td></tr>`;
+            return _extDgTrackRowHtml(x, i, ui);
         }).join('') + '</table>';
+    }
+
+    /**
+     * One track row of the window's tracklist: position, title with its
+     * "▸ N credits" toggle (the credits under it when open), duration.
+     *
+     * @param {Object} x - One track of `_extDiscogsTracklist()`.
+     * @param {number} i - Its index in that list (the toggle's key in `ui.open`).
+     * @param {Object} ui - `_extDgUiOf()`.
+     * @param {string} [cls] - Classes of the row.
+     * @returns {string}
+     */
+    function _extDgTrackRowHtml(x, i, ui, cls = '') {
+        const n = x.credits.length;
+        const open = n > 0 && (ui.allCredits || ui.open.has(i));
+        const toggle = n ? `<button type="button" class="mb-dg-cr" data-mb-dg-tr="${i}" aria-expanded="${open}">` +
+            `${open ? '▾' : '▸'} ${n} credit${n === 1 ? '' : 's'}</button>` : '';
+        return `<tr${cls ? ` class="${cls}"` : ''}><td class="mb-dg-pos">${_rgEsc(x.pos)}</td><td><span class="mb-dg-tt">${_rgEsc(x.title)}</span>${toggle}` +
+            `${open ? `<div class="mb-dg-tcred">${_extDgCreditLines(x.credits, false)}</div>` : ''}</td>` +
+            `<td class="mb-dg-dur">${_rgEsc(x.dur)}</td></tr>`;
+    }
+
+    /**
+     * Above how many tracks the window's outline opens with only its first
+     * disc (vzell, 2026-11-11: "all open up to ~40 tracks, else Disc 1 only").
+     * @type {number}
+     */
+    const _EXT_DG_OUTLINE_OPEN_MAX = 40;
+
+    /**
+     * The window's tracklist as an outline (vzell, 2026-11-11): the Tracks
+     * view's own media and sections (`_dgReleaseMedia()`, fed back the
+     * record's list), a bar per disc ("DISC 1 · Volume 1: … · 13 tracks ·
+     * 1:16:38") when there is more than one, a row per section inside it
+     * ("Paris 05/02/1981 · 8 tracks · 51:49"), each folded by a click
+     * (`ui.tl`, keyed "d<k>" and "s<k>\u0001<name>"); an index track's title
+     * as a row above its parts; above it all, with more than one disc,
+     * chips that jump to a disc or a section. All open up to
+     * `_EXT_DG_OUTLINE_OPEN_MAX` tracks, else only the first disc. Null for a
+     * tracklist with one medium and no section: the flat list says it all.
+     *
+     * @param {Object[]} list - `_extDiscogsTracklist()`.
+     * @param {Object} ui - `_extDgUiOf()`.
+     * @param {Array<{label: string, word: string}>} units - The record's format units.
+     * @returns {?string}
+     */
+    function _extDgOutline(list, ui, units) {
+        // The record's list back in the API's shape, each entry knowing its row.
+        const api = [];
+        list.forEach((x, i) => {
+            if (x.type === 'heading') api.push({ type_: 'heading', title: x.title });
+            else if (x.type === 'index') api.push({ type_: 'index', title: x.title, sub_tracks: [] });
+            else if (x.sub && api.length && api[api.length - 1].type_ === 'index') {
+                api[api.length - 1].sub_tracks.push({ position: x.pos, title: x.title, duration: x.dur, _i: i });
+            } else api.push({ type_: 'track', position: x.pos, title: x.title, duration: x.dur, _i: i });
+        });
+        const m = _dgReleaseMedia({ tracklist: api });
+        const anySec = m.tracks.some(t => t.section);
+        if (m.media.length < 2 && !anySec) return null;
+        ui.tl = ui.tl || new Map();
+        const allOpen = m.tracks.length <= _EXT_DG_OUTLINE_OPEN_MAX;
+        // A disc by the rule above; a section open whenever its disc is.
+        const isOpen = (key, k) => (ui.tl.has(key) ? ui.tl.get(key) : (key[0] === 's' || allOpen || k === 0));
+        const multi = m.media.length > 1;
+        const bar = (key, open, body, extra = '') => `<button type="button" class="mb-dg-tlb" data-mb-dg-tl="${_rgEsc(key)}" aria-expanded="${open}"${extra}>${body}</button>`;
+        const stat = (n, secs) => `${n} track${n === 1 ? '' : 's'}${secs ? ` · ${_iaLenText(secs)}` : ''}`;
+        const toc = [];
+        let rows = '';
+        m.media.forEach((md, k) => {
+            const dKey = `d${k}`;
+            const dOpen = !multi || isOpen(dKey, k);
+            const word = _dgMediumUnit(md, k, m.media.length, units).word;
+            if (multi) {
+                const secs = md.tracks.reduce((s, t) => s + _dgDurSeconds(t.dur), 0);
+                toc.push(`<button type="button" class="mb-dg-tlj" data-mb-dg-tlj="${dKey}">${_rgEsc(word)} ${k + 1}</button>`);
+                rows += `<tr class="mb-dg-tm"><td colspan="3">${bar(dKey, dOpen,
+                    `<span class="mb-dg-tmw">${_rgEsc(word)} ${k + 1}</span>${md.title ? `<span class="mb-dg-tmn">${_rgEsc(md.title)}</span>` : ''}` +
+                    `<span class="mb-dg-tst">${stat(md.tracks.length, secs)}</span>`)}</td></tr>`;
+            }
+            const stats = _dgSectionStats(md.tracks);
+            const seen = new Set();
+            let lastSec = null, lastIdx = '';
+            md.tracks.forEach((t) => {
+                const sKey = `s${k}\u0001${t.section}`;
+                if (t.section && !seen.has(t.section)) {
+                    seen.add(t.section);
+                    toc.push(`<button type="button" class="mb-dg-tlj mb-dg-tljs" data-mb-dg-tlj="${_rgEsc(sKey)}">${_rgEsc(t.section)}</button>`);
+                    if (dOpen) {
+                        const st = stats.get(t.section);
+                        rows += `<tr class="mb-dg-tsec"><td colspan="3">${bar(sKey, isOpen(sKey, k),
+                            `<span class="mb-dg-tsn">${_rgEsc(t.section)}</span><span class="mb-dg-tst">${_rgEsc(`${st.n} track${st.n === 1 ? '' : 's'}${st.len ? ` · ${st.len}` : ''}`)}</span>`)}</td></tr>`;
+                    }
+                }
+                if (t.section !== lastSec) {
+                    lastSec = t.section;
+                    lastIdx = '';
+                }
+                if (!dOpen || (t.section && !isOpen(sKey, k))) return;
+                const inSec = t.section ? ' mb-dg-tin' : '';
+                if (t.indexTitle && t.indexTitle !== lastIdx) {
+                    rows += `<tr class="mb-dg-thead mb-dg-tix${inSec}"><td></td><td colspan="2">${_rgEsc(t.indexTitle)} ›</td></tr>`;
+                }
+                lastIdx = t.indexTitle;
+                const i = t.src && Number.isInteger(t.src._i) ? t.src._i : -1;
+                if (i >= 0) rows += _extDgTrackRowHtml(list[i], i, ui, `${inSec}${t.indexTitle ? ' mb-dg-tsub' : ''}`.trim());
+            });
+        });
+        return (multi ? `<div class="mb-dg-toc" role="navigation" aria-label="Discs and sections">${toc.join('')}</div>` : '') +
+            `<table class="mb-dg-tl mb-dg-outline">${rows}</table>`;
     }
 
     /**
@@ -80636,7 +81093,7 @@
             const n = dg.tracklist.filter(x => x.type === 'track').length;
             const act = dg.tracklist.some(x => x.credits.length)
                 ? `<button type="button" class="mb-dg-btn" data-mb-dg-act="allcred">${ui.allCredits ? 'Hide' : 'Show'} all track credits</button>` : '';
-            out.right.push(_extDgSection('tracklist', 'Tracklist', n, _extDgTracklistHtml(dg.tracklist, ui), act));
+            out.right.push(_extDgSection('tracklist', 'Tracklist', n, _extDgTracklistHtml(dg.tracklist, ui, dg.units || []), act));
         }
         if (dg.notes) out.right.push(_extDgSection('notes', 'Notes', null, `<div class="mb-dg-notes">${_extDiscogsMarkupHtml(dg.notes)}</div>`));
         if (dg.kind === 'release') {
@@ -80709,8 +81166,10 @@
         const n = (k, one, many) => (k ? `${_extDgNum(k)} ${k === 1 ? one : many}` : '');
         if (dg.kind === 'release') {
             const credits = dg.credits.length + dg.tracklist.reduce((s, x) => s + x.credits.length, 0);
+            // The tracks as the Tracks view splits them: "57 tracks on 5 CDs
+            // · 6 sections" (2026-11-11); a plain count for an older record.
             const parts = [
-                n(dg.tracklist.filter(x => x.type === 'track').length, 'track', 'tracks'), n(credits, 'credit', 'credits'),
+                dg.summary || n(dg.tracklist.filter(x => x.type === 'track').length, 'track', 'tracks'), n(credits, 'credit', 'credits'),
                 n(dg.companies.length, 'company', 'companies'), n(dg.identifiers.length, 'identifier', 'identifiers'),
                 n(dg.images.length, 'image', 'images'),
             ].filter(Boolean);
@@ -80920,6 +81379,31 @@
             if (_extDgCollapsed.has(id)) _extDgCollapsed.delete(id);
             else _extDgCollapsed.add(id);
             repaint();
+            return;
+        }
+        // The tracklist's outline (`_extDgOutline()`): a disc's or a
+        // section's bar folds it; a chip opens one and brings it into view.
+        const tlb = e.target.closest('button.mb-dg-tlb');
+        if (tlb) {
+            ui.tl = ui.tl || new Map();
+            ui.tl.set(tlb.dataset.mbDgTl, tlb.getAttribute('aria-expanded') !== 'true');
+            repaint();
+            return;
+        }
+        const tlj = e.target.closest('button.mb-dg-tlj');
+        if (tlj) {
+            const key = tlj.dataset.mbDgTlj;
+            ui.tl = ui.tl || new Map();
+            ui.tl.set(key, true);
+            if (key[0] === 's') ui.tl.set(`d${key.slice(1).split('\u0001')[0]}`, true);
+            repaint();
+            // After the repaint has put back the window's scroll positions.
+            requestAnimationFrame(() => {
+                const to = Array.from(document.querySelectorAll('.mb-dp-dialog button.mb-dg-tlb')).find(b => b.dataset.mbDgTl === key);
+                if (!to) return;
+                to.scrollIntoView({ block: 'start' });
+                to.focus({ preventScroll: true });
+            });
             return;
         }
         const tr = e.target.closest('[data-mb-dg-tr]');
@@ -85091,7 +85575,7 @@
     function _forEachStampRow(table, master, fn) {
         const done = new Set();
         const owners = new Set();
-        Array.from(table.tBodies[0].rows).forEach(row => {
+        Array.from(table.tBodies[0].rows).filter(r => !r.classList.contains('mb-nd-row')).forEach(row => {
             fn(row);
             const m = row.dataset.mbRowIdx !== undefined ? master.get(row.dataset.mbRowIdx) : null;
             if (!m) return;
@@ -88389,7 +88873,12 @@
     // GM storage the first time _loadDefaultHiddenColumnsMap() runs with no
     // stored rows yet.
     const SA_DEFAULT_HIDDEN_COLUMNS_DEFAULT = [
-        { pageType: 'release-tracks', columns: '"ARs"' }
+        { pageType: 'release-tracks', columns: '"ARs"' },
+        // A Discogs release's or master's Tracks view shows each section as a
+        // band above its tracks (_dgSecBandsSync(), vzell 2026-11-11), so the
+        // Section column would say it twice. Still in 📊 and 👁️ Visible.
+        { pageType: 'dg-release', columns: '"Section"' },
+        { pageType: 'dg-master', columns: '"Section"' },
     ];
 
     /**
@@ -90005,7 +90494,7 @@
             totalCells += headers.length;
         }
 
-        const dataRows = table.querySelectorAll('tbody tr');
+        const dataRows = table.querySelectorAll('tbody tr:not(.mb-nd-row)');
         let rowsExported = 0, rowsSkipped = 0;
         dataRows.forEach(row => {
             if (row.style.display === 'none') { rowsSkipped++; return; }
@@ -90189,7 +90678,7 @@
                 lines.push('|' + headers.map(() => '---').join('+') + '|');
             }
             let exported = 0, skipped = 0;
-            tbl.querySelectorAll('tbody tr').forEach(row => {
+            tbl.querySelectorAll('tbody tr:not(.mb-nd-row)').forEach(row => {
                 if (row.style.display === 'none') { skipped++; return; }
                 const cells = [];
                 Array.from(row.cells).forEach(cell => {
@@ -95211,7 +95700,7 @@ ${sections.join('\n')}
 
         // Count ALL tbody rows (not filtered) — display:none rows included
         let _rows = 0;
-        _tbls.forEach(t => { _rows += t.querySelectorAll('tbody tr').length; });
+        _tbls.forEach(t => { _rows += t.querySelectorAll('tbody tr:not(.mb-nd-row)').length; });
 
         // Resolve artwork context: EAA for addEAA pages, CAA for all others
         const _artCtx = _getActiveArtCtx();
@@ -95395,7 +95884,7 @@ ${sections.join('\n')}
 
         let totalRows = 0;
         tables.forEach(t => {
-            totalRows += t.querySelectorAll('tbody tr').length;
+            totalRows += t.querySelectorAll('tbody tr:not(.mb-nd-row)').length;
         });
 
         const firstTable = tables[0];
@@ -95508,7 +95997,7 @@ ${sections.join('\n')}
             })();
             const _name = _h3 || _h2 || `Table ${tIdx + 1}`;
 
-            const _rs    = Array.from(tbl.querySelectorAll('tbody tr'));
+            const _rs    = Array.from(tbl.querySelectorAll('tbody tr:not(.mb-nd-row)'));
             const _total = _rs.length;
             const _vis   = _rs.filter(r => r.style.display !== 'none').length;
 
@@ -95591,7 +96080,7 @@ ${sections.join('\n')}
 
                 const _mrCount = (() => {
                     let n = 0;
-                    tbl.querySelectorAll('tbody tr').forEach(row => {
+                    tbl.querySelectorAll('tbody tr:not(.mb-nd-row)').forEach(row => {
                         const cell = row.cells[ci];
                         // _classifyCollapseCell unifies list cells and prose cells
                         // (e.g. "Annotation") under one multi-row concept.
@@ -98814,7 +99303,7 @@ a { color: #1565c0; }`;
             });
 
             // Measure ALL data rows — no sampling.
-            const rows = table.querySelectorAll('tbody tr');
+            const rows = table.querySelectorAll('tbody tr:not(.mb-nd-row)');
             for (let i = 0; i < rows.length; i++) {
                 const row = rows[i];
                 if (row.style.display === 'none') continue;
@@ -112723,7 +113212,7 @@ a { color: #1565c0; }`;
 
             const tables = document.querySelectorAll('table.tbl');
             tables.forEach(table => {
-                table.querySelectorAll('tbody tr').forEach(row => {
+                table.querySelectorAll('tbody tr:not(.mb-nd-row)').forEach(row => {
                     highlightText(row, query, caseSensitive, -1, isRegex, 'prefilter');
                 });
             });
@@ -115573,7 +116062,7 @@ a { color: #1565c0; }`;
             parts.push(`${cols.length} COLUMN FILTER${cols.length > 1 ? 'S' : ''} [${cols.join(', ')}]`);
         }
         if (parts.length === 0) return '';
-        const shown = Array.from(table.querySelectorAll('tbody tr'))
+        const shown = Array.from(table.querySelectorAll('tbody tr:not(.mb-nd-row)'))
             .filter(r => r.style.display !== 'none').length;
         return `✓ Filtered ${shown} ${shown === 1 ? 'row' : 'rows'} [${parts.join(', ')}]`;
     }
@@ -126573,6 +127062,8 @@ a { color: #1565c0; }`;
                     const _stc = _h3c ? _h3c.querySelector('.mb-filter-status') : null;
                     if (_stc && !_stc.dataset.colRxError) _stc.textContent = '';
                 }
+                // Section bands count the shown tracks (Discogs only).
+                _dgSecBandsSync();
                 return;
             }
 
@@ -126612,7 +127103,10 @@ a { color: #1565c0; }`;
             // ── Step 4: Evaluate every row that is currently visible (i.e. not
             //    hidden by the global / column filter — those rows have no stf-hidden
             //    marker and their display is already 'none' from the outer filter).
-            Array.from(table.querySelectorAll('tbody tr')).forEach(row => {
+            //    A row that is not data (a section band, _NON_DATA_ROW_SEL) is
+            //    never tested: it would never match, and hiding it is
+            //    _dgSecBandsSync()'s business.
+            Array.from(table.querySelectorAll('tbody tr:not(.mb-nd-row)')).forEach(row => {
                 // Skip rows hidden by global/column filter (they have no stf-hidden
                 // marker but their display is 'none').
                 if (row.style.display === 'none') return;
@@ -126727,6 +127221,8 @@ a { color: #1565c0; }`;
                 caaUpdateBigBoxForTable(table, _stfTblIdx);
                 eaaUpdateBigBoxForTable(table, _stfTblIdx);
             }
+            // Section bands: "k of N", none for a section with nothing shown (Discogs only).
+            _dgSecBandsSync();
         }
 
         /**
@@ -126959,7 +127455,7 @@ a { color: #1565c0; }`;
         const _countStat = _h3.querySelector('.mb-row-count-stat');
         if (!_countStat) return;
 
-        const _allRows = Array.from(tbl.querySelectorAll('tbody tr'));
+        const _allRows = Array.from(tbl.querySelectorAll('tbody tr:not(.mb-nd-row)'));
         const _total   = parseInt(tbl.dataset.mbTotalRows || '0', 10) || _allRows.length;
         const _denom   = _allRows.filter(r =>
             r.style.display !== 'none' || r.dataset.mbStfHidden
@@ -127129,7 +127625,7 @@ a { color: #1565c0; }`;
 
         tables.forEach(table => {
             const total = parseInt(table.dataset.mbTotalRows || '0', 10);
-            const allRows = Array.from(table.querySelectorAll('tbody tr'));
+            const allRows = Array.from(table.querySelectorAll('tbody tr:not(.mb-nd-row)'));
             const denominator = allRows.filter(r =>
                 r.style.display !== 'none' || r.dataset.mbStfHidden
             ).length;
@@ -128248,7 +128744,7 @@ a { color: #1565c0; }`;
                         // updateSubTableRowCount() shows "(N)" and not "(N of N+1)".
                         // Harmless to redo when _em was absent (disk-load / re-render)
                         // since tbody.rows.length is already correct in that case.
-                        const _realCount = tbody.rows.length;
+                        const _realCount = tbody.querySelectorAll(':scope > tr:not(.mb-nd-row)').length;
                         table.dataset.mbTotalRows = String(_realCount);
                         const _statSpan = h3.querySelector('.mb-row-count-stat');
                         if (_statSpan) {
@@ -128352,7 +128848,7 @@ a { color: #1565c0; }`;
                         // Patch mbTotalRows to the real count. Harmless to redo when
                         // _foundInDom is false (disk-load / re-render) since
                         // tbody.rows.length is already correct in that case.
-                        const _realCount = tbody.rows.length;
+                        const _realCount = tbody.querySelectorAll(':scope > tr:not(.mb-nd-row)').length;
                         table.dataset.mbTotalRows = String(_realCount);
                         const _statSpan = h3.querySelector('.mb-row-count-stat');
                         if (_statSpan) {
@@ -128616,7 +129112,7 @@ a { color: #1565c0; }`;
                 const totalInGroup = parseInt(table.dataset.mbTotalRows || '0', 10)
                     || (groupedRows.find(g => (g.category || g.key || 'Unknown') === categoryName)?.rows.length || 0);
                 if (countStat) {
-                    const _allTbodyRows = Array.from(table.querySelectorAll('tbody tr'));
+                    const _allTbodyRows = Array.from(table.querySelectorAll('tbody tr:not(.mb-nd-row)'));
                     const _visibleCount = _allTbodyRows.filter(r => r.style.display !== 'none').length;
                     _setCountStatText(countStat, (_visibleCount === totalInGroup)
                         ? `(${totalInGroup})`
@@ -129075,6 +129571,10 @@ a { color: #1565c0; }`;
             ...(activeDefinition?.features?._workArColumnNames || []),
             ...(activeDefinition?.features?._dynamicArColumnGlyphs || []).map(g => g.columnName),
         ].forEach(_stampArColumnHeaderBg);
+
+        // A Discogs Tracks table's section bands: rebuilt last, so no pass
+        // above ever met one (and every later one skips _NON_DATA_ROW_SEL).
+        _dgSecBandsSync();
 
         // A re-render can rebuild the h3 bars: re-measure the sticky filter bars.
         _vsbScheduleRefresh();
@@ -133657,7 +134157,7 @@ a { color: #1565c0; }`;
         // Own signature over EVERY row (not _visibleRowSetSignature's
         // visible-only one) — see this function's own JSDoc for why.
         let sig = '';
-        for (const row of tbody.rows) sig += row.dataset.mbRowIdx + ',';
+        for (const row of tbody.rows) { if (row.classList.contains('mb-nd-row')) continue; sig += row.dataset.mbRowIdx + ','; }
         const perTable = _lengthColumnAveragesCache.get(table);
         const cached = perTable && perTable.get(lengthColName);
         if (cached && cached.sig === sig) return cached.data;
@@ -133675,7 +134175,7 @@ a { color: #1565c0; }`;
         const data = { ...empty, hasLiveCol: liveIdx !== -1, liveIdx };
         if (lengthIdx !== -1) {
             let studioSum = 0, studioN = 0, liveSum = 0, liveN = 0;
-            Array.from(tbody.rows).forEach(row => {
+            Array.from(tbody.rows).filter(r => !r.classList.contains('mb-nd-row')).forEach(row => {
                 const secs = _findCellLengthSeconds(row.cells[lengthIdx]);
                 if (secs == null) return;
                 const isLive = liveIdx !== -1 && _findCellIsLiveAttribute(row.cells[liveIdx]);
@@ -134748,7 +135248,7 @@ a { color: #1565c0; }`;
         // resolved once per open, -1 (section skipped) on every other table.
         const _recOfWorkIdx = isTitleInfoCol ? _findRecOfWorkColIdx(table) : -1;
         if (!_uniqCacheHit && tbody) {
-            Array.from(tbody.rows).forEach(row => {
+            Array.from(tbody.rows).filter(r => !r.classList.contains('mb-nd-row')).forEach(row => {
                 if (row.style.display === 'none') return;
                 const cell = row.cells[colIndex];
                 if (!cell) return;
@@ -136360,6 +136860,7 @@ a { color: #1565c0; }`;
             }
 
             for (const row of tbody.rows) {
+                if (row.classList.contains('mb-nd-row')) continue;
                 if (row.style.display === 'none') continue;
                 const cell = row.cells[colIndex];
                 if (!cell) continue;
@@ -136402,6 +136903,7 @@ a { color: #1565c0; }`;
         const isRelCellCol = _uniqCacheHit ? _uniqCacheHit.isRelCellCol : (() => {
             if (!tbody) return false;
             for (const row of tbody.rows) {
+                if (row.classList.contains('mb-nd-row')) continue;
                 if (row.style.display === 'none') continue;
                 const cell = row.cells[colIndex];
                 if (cell && cell.classList.contains('mb-rel-cell')) return true;
@@ -136425,6 +136927,7 @@ a { color: #1565c0; }`;
             counts._famHosts = famHosts;
             if (!tbody) return counts;
             for (const row of tbody.rows) {
+                if (row.classList.contains('mb-nd-row')) continue;
                 if (row.style.display === 'none') continue;
                 const cell = row.cells[colIndex];
                 if (!cell) continue;
@@ -136455,6 +136958,7 @@ a { color: #1565c0; }`;
             const counts = { pending: 0, has: 0, none: 0, error: 0 };
             if (!tbody) return counts;
             for (const row of tbody.rows) {
+                if (row.classList.contains('mb-nd-row')) continue;
                 if (row.style.display === 'none') continue;
                 const st = _relCellLoadState(row.cells[colIndex]);
                 if (st) counts[st]++;
@@ -136468,6 +136972,7 @@ a { color: #1565c0; }`;
         const isRecofCol = _uniqCacheHit ? _uniqCacheHit.isRecofCol : (() => {
             if (!tbody) return false;
             for (const row of tbody.rows) {
+                if (row.classList.contains('mb-nd-row')) continue;
                 const cell = row.cells[colIndex];
                 if (cell) return cell.classList.contains('mb-recof-cell');
             }
@@ -136478,6 +136983,7 @@ a { color: #1565c0; }`;
             const counts = { pending: 0, has: 0, suggested: 0, none: 0, error: 0 };
             if (!tbody) return counts;
             for (const row of tbody.rows) {
+                if (row.classList.contains('mb-nd-row')) continue;
                 if (row.style.display === 'none') continue;
                 const st = _recOfCellLoadState(row.cells[colIndex]);
                 if (st) counts[st]++;
@@ -136490,6 +136996,7 @@ a { color: #1565c0; }`;
         const isWsugCol = _uniqCacheHit ? _uniqCacheHit.isWsugCol : (() => {
             if (!tbody) return false;
             for (const row of tbody.rows) {
+                if (row.classList.contains('mb-nd-row')) continue;
                 const cell = row.cells[colIndex];
                 if (cell && cell.dataset.wsug) return true;
             }
@@ -136499,6 +137006,7 @@ a { color: #1565c0; }`;
             : isWsugCol ? (() => {
             const counts = { pending: 0, suggested: 0, none: 0, error: 0 };
             for (const row of tbody.rows) {
+                if (row.classList.contains('mb-nd-row')) continue;
                 if (row.style.display === 'none') continue;
                 const st = _wsugCellState(row.cells[colIndex]);
                 if (st) counts[st]++;
@@ -136510,6 +137018,7 @@ a { color: #1565c0; }`;
             const counts = new Map();
             if (!tbody) return counts;
             for (const row of tbody.rows) {
+                if (row.classList.contains('mb-nd-row')) continue;
                 if (row.style.display === 'none') continue;
                 const cell = row.cells[colIndex];
                 if (!cell) continue;
@@ -136529,7 +137038,7 @@ a { color: #1565c0; }`;
         let inlineArtYes     = _uniqCacheHit ? _uniqCacheHit.inlineArtYes : 0;   // cells with a loaded inline thumbnail
         let inlineArtNo      = _uniqCacheHit ? _uniqCacheHit.inlineArtNo  : 0;   // cells with ph span but no loaded thumbnail
         if (!_uniqCacheHit && tbody) {
-            Array.from(tbody.rows).forEach(row => {
+            Array.from(tbody.rows).filter(r => !r.classList.contains('mb-nd-row')).forEach(row => {
                 if (row.style.display === 'none') return;
                 const cell = row.cells[colIndex];
                 if (!cell) return;
@@ -140082,7 +140591,7 @@ a { color: #1565c0; }`;
                 if (isNaN(colIdx)) return;
                 const tbl = btn.closest('table.tbl');
                 if (!tbl) return;
-                Array.from(tbl.querySelectorAll('tbody tr')).forEach(tr => {
+                Array.from(tbl.querySelectorAll('tbody tr:not(.mb-nd-row)')).forEach(tr => {
                     const td = tr.cells[colIdx];
                     if (!td) return;
                     const toggle = td.querySelector('.mb-cell-collapse-toggle');
@@ -140354,6 +140863,7 @@ a { color: #1565c0; }`;
         if (!tbody) return '';
         let sig = '';
         for (const row of tbody.rows) {
+            if (row.classList.contains('mb-nd-row')) continue;
             if (row.style.display !== 'none') sig += row.dataset.mbRowIdx + ',';
         }
         return sig;
@@ -140402,6 +140912,7 @@ a { color: #1565c0; }`;
         if (!tbody) return '';
         const idxs = [];
         for (const row of tbody.rows) {
+            if (row.classList.contains('mb-nd-row')) continue;
             if (row.style.display !== 'none') idxs.push(row.dataset.mbRowIdx || '?');
         }
         idxs.sort();
@@ -140700,6 +141211,7 @@ a { color: #1565c0; }`;
                     // shape materialised the whole row list up to twice per
                     // column (42 times per pass on `artist-events`).
                     for (const row of tbody.rows) {
+                        if (row.classList.contains('mb-nd-row')) continue;
                         if (row.style.display === 'none') continue;
                         const cell = row.cells[colIndex];
                         if (!cell) continue;
@@ -140715,6 +141227,7 @@ a { color: #1565c0; }`;
                 if (!_usable) {
                     const seen = new Set();
                     for (const row of tbody.rows) {
+                        if (row.classList.contains('mb-nd-row')) continue;
                         if (row.style.display === 'none') continue;
                         const cell = row.cells[colIndex];
                         if (!cell) continue;
@@ -141005,7 +141518,7 @@ a { color: #1565c0; }`;
         // Hoist the tbody-row snapshot once — reused for every collapsable column
         // and for the art-cell hidden-match scan.  Querying per column would run
         // O(collapsableColumns × bodyRows) DOM walks; one shared query is O(1).
-        const bodyRows = Array.from(table.querySelectorAll('tbody tr'));
+        const bodyRows = Array.from(table.querySelectorAll('tbody tr:not(.mb-nd-row)'));
 
         // ── One read phase for ALL columns (PERFORMANCE.org Step 40) ──────────
         // Each column is a generator: it does its writes (toggles, hidden <li>s,
@@ -141525,7 +142038,7 @@ a { color: #1565c0; }`;
 
                 // Drive every cell toggle in this column directly (avoids isTrusted
                 // synthetic-event suppression in some browsers / userscript managers).
-                Array.from(table.querySelectorAll('tbody tr')).forEach(tr => {
+                Array.from(table.querySelectorAll('tbody tr:not(.mb-nd-row)')).forEach(tr => {
                     const td = tr.cells[colIndex];
                     if (!td) return;
                     const toggle = td.querySelector('.mb-cell-collapse-toggle');
@@ -141658,7 +142171,7 @@ a { color: #1565c0; }`;
                         collapseHdrBtns.forEach(btn => {
                             const colIdx = parseInt(btn.dataset.colIndex, 10);
                             if (isNaN(colIdx)) return;
-                            Array.from(table.querySelectorAll('tbody tr')).forEach(tr => {
+                            Array.from(table.querySelectorAll('tbody tr:not(.mb-nd-row)')).forEach(tr => {
                                 const td = tr.cells[colIdx];
                                 if (!td) return;
                                 const toggle = td.querySelector('.mb-cell-collapse-toggle');
@@ -141822,7 +142335,7 @@ a { color: #1565c0; }`;
                 'mb-mscol-hdr-4','mb-mscol-hdr-5','mb-mscol-hdr-6','mb-mscol-hdr-7'
             ];
 
-            const bodyRows = Array.from(table.querySelectorAll('tbody tr'));
+            const bodyRows = Array.from(table.querySelectorAll('tbody tr:not(.mb-nd-row)'));
             const mainHeaderRow = table.querySelector('thead tr:first-child');
 
             columnsToPaint.forEach((sortCol, priorityIdx) => {
@@ -143398,7 +143911,7 @@ a { color: #1565c0; }`;
             let _lastRow      = null;
 
             if (_tbl) {
-                const _rows = _tbl.querySelectorAll('tbody tr');
+                const _rows = _tbl.querySelectorAll('tbody tr:not(.mb-nd-row)');
                 if (_rows.length > 0) {
                     const _candidate = _rows[_rows.length - 1];
                     const _m = _candidate.textContent.trim()
@@ -143417,7 +143930,7 @@ a { color: #1565c0; }`;
                 _spliceFooterRow(_lastRow);
                 // Patch count stat.
                 if (_tbl) {
-                    const _newCount = _tbl.querySelectorAll('tbody tr').length;
+                    const _newCount = _tbl.querySelectorAll('tbody tr:not(.mb-nd-row)').length;
                     _tbl.dataset.mbTotalRows = String(_newCount);
                     const _stat = document.querySelector('h2 .mb-row-count-stat');
                     if (_stat) {
@@ -143469,7 +143982,7 @@ a { color: #1565c0; }`;
             let _lastRow   = null;
 
             if (_tbl) {
-                const _rows = _tbl.querySelectorAll('tbody tr');
+                const _rows = _tbl.querySelectorAll('tbody tr:not(.mb-nd-row)');
                 if (_rows.length > 0) {
                     const _candidate = _rows[_rows.length - 1];
                     const _m = _candidate.textContent.trim()
@@ -143492,7 +144005,7 @@ a { color: #1565c0; }`;
 
                 // 2. Patch table.dataset.mbTotalRows and the h2 row-count stat.
                 if (_tbl) {
-                    const _newCount = _tbl.querySelectorAll('tbody tr').length;
+                    const _newCount = _tbl.querySelectorAll('tbody tr:not(.mb-nd-row)').length;
                     _tbl.dataset.mbTotalRows = String(_newCount);
                     const _stat = document.querySelector('h2 .mb-row-count-stat');
                     if (_stat) {

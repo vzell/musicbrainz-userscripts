@@ -317,7 +317,7 @@ test.describe('Discogs release: the Tracks view, as release-tracks (2026-11-04)'
             'Disc 5 · Volume 5: Live In Markranstadt - 23/06/2007 · CD']);
         const t = tables(page).first();
         expect(await heads(t)).toContain('Section');
-        const sections = await t.locator('tbody > tr').evaluateAll((trs, i) => trs.map(tr => tr.cells[i].textContent.trim()),
+        const sections = await t.locator('tbody > tr:not(.mb-nd-row)').evaluateAll((trs, i) => trs.map(tr => tr.cells[i].textContent.trim()),
             (await heads(t)).indexOf('Section'));
         // Disc 1's own headings (the Discogs data also has one called "Unknown").
         expect([...new Set(sections)]).toEqual(expect.arrayContaining(['Cologne 13/02/1981', 'Paris 05/02/1981', 'Vienna 12/02/1981']));
@@ -358,7 +358,7 @@ test.describe('Discogs release: the Tracks view, as release-tracks (2026-11-04)'
         expect(names[0]).not.toContain('Born To Run');
         const t = tables(page).first();
         const i = (await heads(t)).indexOf('Section');
-        const secs = await t.locator('tbody > tr').evaluateAll((trs, k) => trs.map(tr => tr.cells[k].textContent.trim()), i);
+        const secs = await t.locator('tbody > tr:not(.mb-nd-row)').evaluateAll((trs, k) => trs.map(tr => tr.cells[k].textContent.trim()), i);
         expect([...new Set(secs)]).toEqual(['Born To Run', 'E. C. Was Here']);
         expect(errors).toEqual([]);
     });

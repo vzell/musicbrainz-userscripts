@@ -3433,6 +3433,40 @@ Tests: `discogs-user-list-reader.spec.js`, `discogs-listing.spec.js`,
 `discogs-search-page.spec.js`; mutations
 `scripts/mutations/dg-user-seller-search.json`.
 
+### The Discogs tracklist outline (2026-11-11)
+
+org/discogs.org, "make a nice mockup for a release with subheaders";
+vzell's answers: the window's tracklist as an outline, all open up to ~40
+tracks else Disc 1 only, the card's word always "sections", masters the
+same.
+
+- **Same split as the page.** `_extDgOutline()` gives the record's list
+  back to `_dgReleaseMedia()` in the API's shape (each entry with `_i`, its
+  row in the list, so a track keeps its "▸ N credits" toggle key); since
+  `_EXT_DISCOGS_VERSION` 6 a sub-track carries `sub: true` and the record
+  keeps `units` (`_dgFormatUnits()`) and `summary`. A disc is named by
+  `_dgMediumUnit()`, the helper the Tracks view's h3 uses too.
+- **Shape.** More than one medium: a chip strip (`.mb-dg-toc`, a disc
+  solid, a section dashed) and a bar per disc (`tr.mb-dg-tm`: word and
+  number, the heading, "N tracks · length"). Any section: an indented row
+  (`tr.mb-dg-tsec`, "name · N tracks · length"). An index track's title
+  as its own row above its parts (`tr.mb-dg-tix`). One medium without
+  sections: null, and the flat list as before.
+- **State** in `ui.tl` (`_extDgUiOf()`), keyed "d<k>" and
+  "s<k>\u0001<name>": a bar's click flips it; a chip opens it (and its
+  disc), repaints and scrolls its bar into view one frame later (after the
+  repaint has put back the window's scroll positions). Default: a disc open
+  when the release has at most `_EXT_DG_OUTLINE_OPEN_MAX` (40) tracks, else
+  only the first; a section open whenever its disc is.
+- **The card**: the summary line's first part is `rec.discogs.summary`
+  (`_dgTracklistSummary()`: "57 tracks on 5 CDs · 6 sections"; "on …" only
+  with more than one medium, by the unit label when all are alike, else the
+  word). The window's facts call it "Tracklist" (the card shows only the
+  first `_EXT_CARD_FACTS`, so the facts row alone would never reach it).
+- **Tests**: `popup-ext.spec.js` "the Discogs window: the tracklist as an
+  outline" (2012001, 15121926, 1874253 flat, master 1123030 both open);
+  mutations in `scripts/mutations/dg-section-bands.json`.
+
 ## The Springsteen sites across hosts (org/iframe.org "* generalize to URLs", U4)
 
 Two readers in `_EXT_READERS`, before the generic one; the four hosts are in

@@ -1095,3 +1095,68 @@ videos as a sub-table under the tracks.
   (`scripts/wrap-dg-release-fixtures.py … master-<id> master-<id>-versions-p1`).
 - **Tests**: `tests/fixtures/discogs-master-tracks.spec.js`; mutations
   `scripts/mutations/dg-master-tracks.json` (16).
+
+## Section bands of the Tracks view (2026-11-11)
+
+org/discogs.org, "make a nice mockup for a release with subheaders"; mockup
+`org/discogs-subheaders-mockups.html` (https://claude.ai/artifact/JHuxeos1Yvu7DFwtBftHzg).
+vzell's answers the same day: variant A (bands as on Discogs' page), sticky
+on a desktop and off on touch devices, the Section column hidden by
+default, the window as an outline (all open up to ~40 tracks, else Disc 1
+only), the card's word always "sections", masters the same.
+
+- **Levels come from `_dgReleaseMedia()`, unchanged**: a heading right
+  before a new medium names it (the h3), every other heading is the
+  `section` of the tracks after it. Discogs' API has no heading level;
+  this split already was the right one (release 2012001: "Volume 1: …" →
+  Disc 1, "Cologne 13/02/1981" … → sections).
+- **The converter marks, the render draws.** `_dgReleaseTracksHtml()` puts
+  `data-mb-sec`, `data-mb-sec-n` and `data-mb-sec-len` (`_dgSectionStats()`,
+  per medium) on each track row, and `data-mb-sec` on its Title cell.
+  Attributes only: no text a filter could match, and they survive
+  `cloneNode`.
+- **A band is a REAL row** (`tr.mb-nd-row.mb-sec-band`, one
+  `td colspan=999` holding a button), because only a row can stick across
+  the table; a CSS label on a track row cannot leave its cell. Bands live in
+  the live tbody only, never in `groupedRows`: `_dgSecBandsSync()` removes
+  and rebuilds them at the END of `renderGroupedTable()` (after every
+  other post-render pass), after the sub-table filter (`applySubFilter()`,
+  both exits) and after a fold. Every engine pass that walks live rows
+  skips `_NON_DATA_ROW_SEL` — docs/claude/filter-and-cache-invariants.md,
+  "Rows that are not data"; `scripts/list-live-row-passes.py` lists them.
+- **In order or not**: bands only while the live rows' `data-mb-row-idx`
+  rise (the tracklist's order). Sorted by anything else the table gets
+  `.mb-sec-sorted`: no bands, and the Title cell's `::after` shows
+  `attr(data-mb-sec)` as a tag (drawn, never written).
+- **Counts**: "N tracks · length" from the row attributes; while a page
+  filter leaves rows out or the sub-table filter hides some
+  (`display: none`), "k of N tracks"; a section with nothing shown has no
+  band. Never counted as a track (the h3 "(13)", zebra striping, CSV).
+- **Folding**: `_dgSecFolded` ("<table index>\u0001<section>", the
+  table's place among `#mb-dg-root table.tbl`), applied as
+  `tr.mb-sec-folded` on every rebuild, so a fold survives sort and filter.
+  The row counts still include folded rows: folding is not filtering.
+- **Sticky**: `table.mb-sec-sticky` (`_dgSecBandsSticky()`: always on a
+  hover device, on a touch-primary one only with
+  `sa_dg_section_bands_sticky_on_touch`, default off), the band's `td`
+  `position: sticky` at `--mb-sec-band-top` = the thead's computed `top`
+  plus its height (`_dgSecBandTop()`), z-index 99 (thead 100, sticky
+  column 1-3). Re-measured on resize and whenever `_vsbRefresh()` rewrites
+  the sticky filter bars' offsets (`_dgSecBandsRemeasure()`). The button
+  inside is `position: sticky; left: 8px`, so the name stays in view while
+  the table scrolls sideways.
+- **Section column hidden by default**: `SA_DEFAULT_HIDDEN_COLUMNS_DEFAULT`
+  rows `dg-release` and `dg-master` → `"Section"` (announced by the seed
+  ledger: a column vanishing on upgrade is explained).
+- **The window and the card** (docs/claude/detail-pages.md, "The Discogs
+  tracklist outline"): the same `_dgReleaseMedia()`, fed back the record's
+  list (`_extDgOutline()`); `_dgMediumUnit()` names a disc for both.
+- **Tests**: `tests/fixtures/discogs-release-sections.spec.js` (bands,
+  places, counts, Section hidden, striping, fold through a re-render, page
+  filter "k of N", sub-table filter, sorted tags, sticky docking, split LP,
+  no bands without sections, CSV), `discogs-release-sections.mobile.spec.js`
+  (not sticky on touch, the setting); `popup-ext.spec.js` "the Discogs
+  window: the tracklist as an outline". Mutations
+  `scripts/mutations/dg-section-bands.json`. A spec on this page must OPEN
+  the sub-tables first (they start collapsed): on a hidden table every
+  "hidden" and geometry assertion passes for nothing.

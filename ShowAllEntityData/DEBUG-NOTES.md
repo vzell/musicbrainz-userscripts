@@ -29127,3 +29127,37 @@ debug/d-sell-release.html and -expanded.html (`/shop/item/4466508653`). The full
 Tests: every Discogs fixture spec and sl-include-regex.spec.js, 179/180 on the first batch (13 m 56 s, vzell-lap; the
 one failure the old "/sell/item is not injected" case, now dg-listing's, rewritten), then each new spec green. Not
 run yet: the new mutation list (it edits the live userscript while vzell tests) and `test:full` (the merge gate).
+
+## 2026-11-11 — Discogs tracklist subheaders: section bands, the window's outline (feature/dg-release-subheaders)
+
+Env: 2026-11-11T01:07:37+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.58.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs); Pixel 7 emulation for the mobile spec · vzell's browser: tested live, OK (versions not given)
+
+Snapshots (vzell): debug/d-release-with-subheaders-initial.html (Discogs' page of release 2012001: `tr.heading_*`
+rows, 11 headings, 57 tracks) and debug/d-release-with-subheaders-final.html (our Tracks view before this change).
+Mockup: org/discogs-subheaders-mockups.html; decisions in org/discogs.org.
+
+1. **Nothing was dropped, it was flattened.** `_dgReleaseMedia()` already split the headings right (before a new
+   disc → the h3, inside → `section`); the page showed the sections only as a Section text column, the window as
+   flat italic rows. So the change is all drawing; the splitter is untouched.
+2. **Sticky needs a real row.** A label drawn by CSS on a track row cannot leave its cell, so a sticky band is a
+   `tr` (`tr.mb-nd-row.mb-sec-band`). 92 code lines walk `tbody tr`/`.rows` and none skipped such a row (cdtoc's
+   sub-row survives only because few passes run on that page). The generic live-row passes now skip
+   `tr.mb-nd-row` (52 sites, `scripts/list-live-row-passes.py`); the bands are rebuilt LAST in
+   `renderGroupedTable()` and after the sub-table filter. No MusicBrainz row has the class.
+3. **The sub-tables of this page start collapsed.** The first spec run passed "Section hidden" and "sticky" on
+   hidden tables (a hidden th is hidden; a hidden band sits 0 px from a hidden thead). The spec now opens the
+   sub-tables and asserts the table is visible first.
+4. **A sticky cell, not a sticky row.** The first docking assertion measured the band's `tr`, whose box stays in
+   the flow; the `td` is what sticks. Measured on the cell, 0-2 px under the thead.
+5. **The card shows only four facts** (`_EXT_CARD_FACTS`): the mockup's "Tracklist · 57 tracks on 5 CDs · 6
+   sections" would never have reached it as a fact, so it is the summary line's first part.
+6. Stale mutation finds my edits moved, repointed: filter-flag-scoping.json F4 (the shown-rows selector),
+   popup-ext.json ×2 (`_EXT_DISCOGS_VERSION` 6).
+
+Tests: discogs-release-sections.spec.js 8/8, .mobile 2/2, popup-ext "as an outline" 3/3 and its Discogs window
+block, discogs-release-tracks 8/8 (two reads moved to data rows). Mutations dg-section-bands.json 17/17 caught
+(one grep fixed: `(` is a regex in `-g`). `check-mutation-finds.py`: 0 stale. A batch of 15 MusicBrainz specs over the
+guarded passes (collapse, column visibility, filter scoping, findings, empty sub-tables, row counts, sticky column, …)
+plus the Discogs specs: 79 passed and 1 failed before vzell stopped it (he had tested live, OK): discogs-master-tracks
+counted `tbody > tr` on Stars On 45, whose medley headings are bands now — moved to data rows, green. Not run:
+`test:full` (the merge gate).

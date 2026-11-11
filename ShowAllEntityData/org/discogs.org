@@ -420,6 +420,7 @@ when hovering a release in the left sidebar, ONLY the newest change should be sh
 
 
 * TODO make a nice mockup for a release with subheaders
+** initial
 
 Currently the FRP of a Discogs release wich has subheaders in a tracklist (YES, discogs supports them on the IP) doesn't
 honor them (MB IP pages with release tracklists do not currently support them, although there are wishlist for them as
@@ -433,9 +434,6 @@ make some nice rich HTML based mockups for a FRP release with subheaders (also f
 @debug/d-release-with-subheaders-initial.html - IP - https://www.discogs.com/release/2012001-Manfred-Manns-Earth-Band-Bootleg-Archives-Volumes-1-5 - release with tracklists subheaders
 @debug/d-release-with-subheaders-final.html - current FRP - https://www.discogs.com/release/2012001-Manfred-Manns-Earth-Band-Bootleg-Archives-Volumes-1-5
 #+end_example
-
-
- 
 
 ** Answer 1.) — findings and mockups (2026-11-11)
 
@@ -488,3 +486,27 @@ No userscript change.
 4. Window outline open or folded? (proposal: all open up to ~40 tracks, else Disc 1 only)
 5. The card's word: always "sections"? (proposal: yes)
 6. Same outline in a master's window? (proposal: yes, same renderer)
+
+*** Answers
+
+1. Which page variant? A
+2. Sticky bands? YES on desktop, OFF on touch devices
+3. Section column hidden by default once bands show it? YES
+4. Window outline open or folded? all open up to ~40 tracks, else Disc 1 only
+5. The card's word: always "sections"? YES
+6. Same outline in a master's window? YES
+
+*** Implementation (2026-11-11, branch =feature/dg-release-subheaders=)
+
+- Bands are REAL rows (=tr.mb-nd-row.mb-sec-band=): a CSS label on a track row
+  cannot stick (vzell chose "real rows, sticky" when asked). Every engine pass over
+  live rows skips them (52 sites; =scripts/list-live-row-passes.py --open=).
+- Section column: =SA_DEFAULT_HIDDEN_COLUMNS_DEFAULT= for =dg-release= and =dg-master=.
+- Touch: =sa_dg_section_bands_sticky_on_touch= (default off).
+- Window: =_extDgOutline()= from =_dgReleaseMedia()=; =_EXT_DISCOGS_VERSION= 6.
+- Card: "57 tracks on 5 CDs · 6 sections" is the card's SUMMARY line, not a facts
+  row as in the mockup: the card shows only its first four facts (=_EXT_CARD_FACTS=).
+  The window's facts have it as "Tracklist".
+- Docs: docs/claude/discogs.md "Section bands of the Tracks view",
+  docs/claude/detail-pages.md "The Discogs tracklist outline",
+  docs/claude/filter-and-cache-invariants.md "Rows that are not data".
