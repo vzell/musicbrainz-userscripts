@@ -407,7 +407,8 @@ revisions (=table.page-compare= has them); 3. compare any two revisions (the wik
 - [X] build (docs/claude/brucebase.md "Round 2"): list 100 a page, kind chips over the rows read, tag
   pills, PageDiffModule first (Tags strip always, Page title / Page name rows, identical sources read
   no source), From / To pickers (older left, span tinted, keyboard); =bb-history.spec.js= (14) +
-  mobile (1), compare fixtures, mutations =bb-history.json= (24), WIP.9
+  mobile (1), compare fixtures, mutations =bb-history.json= (23, all OK; a `change` listener for
+  the keyboard was removed: its mutation passed, an arrow key clicks the radio), WIP.9
 - [ ] vzell's live check
 
 *** Later (separate TODOs above)

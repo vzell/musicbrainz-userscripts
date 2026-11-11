@@ -34969,9 +34969,10 @@
             const box = d.querySelector('.mb-bbh[data-mb-bbh-id]');
             if (box) _bbHistStart(box.dataset.mbBbhId);
         }, true);
-        // A picker, a row, a chip or a button. A picker's label is cancelled
-        // (the repaint draws the radios from the state); the keyboard moves a
-        // radio without a click, so `change` is handled too.
+        // A picker, a row, a chip or a button. A picker's click is cancelled
+        // (the repaint draws the radios from the state). An arrow key on a
+        // picker clicks the radio it moves to, so the keyboard needs nothing
+        // more (mutation check 2026-11-11: a `change` listener added nothing).
         const act = (el) => {
             const pid = el.dataset.mbBbhId;
             const v = el.dataset.mbBbhV;
@@ -35021,10 +35022,6 @@
             if (!el || e.button !== 0) return;
             e.preventDefault();
             act(el);
-        }, true);
-        document.addEventListener('change', (e) => {
-            const el = e.target instanceof Element ? e.target.closest('#mb-dp-dialog input[data-mb-bbh-act]') : null;
-            if (el && el.checked) act(el);
         }, true);
     }
 

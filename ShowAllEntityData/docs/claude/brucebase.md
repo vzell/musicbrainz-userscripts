@@ -1236,9 +1236,10 @@ song:streets-of-minneapolis): all six as recommended.
   is always on the left (answer 6), the rows between tinted
   (`.mb-bbh-in`), the older row `.mb-bbh-from`, the heading "Revision 28 →
   43 · 15 revisions apart · N editors". One revision picked twice: "Pick
-  two different revisions". A picker's label click is cancelled (the repaint
-  draws the radios from the state); an arrow key moves a radio with no click,
-  so `change` is handled too.
+  two different revisions". A picker's click is cancelled (the repaint draws
+  the radios from the state); an arrow key on a picker clicks the radio it
+  moves to, so the keyboard goes through the same handler (a `change`
+  listener was tried and removed: its mutation passed).
 
 Tests: `tests/fixtures/bb-history.spec.js` over
 `tests/fixtures/bb-history-song-the-promise.html` and

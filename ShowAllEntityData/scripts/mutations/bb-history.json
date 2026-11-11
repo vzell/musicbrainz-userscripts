@@ -298,18 +298,5 @@
         "spec": "tests/fixtures/bb-history.spec.js",
         "grep": "comparison's rows",
         "expect": "fail"
-    },
-    {
-        "name": "round 2: the keyboard moves no picker",
-        "why": "An arrow key moves a radio without a click: `change` is handled too.",
-        "edits": [
-            {
-                "find": "            const el = e.target instanceof Element ? e.target.closest('#mb-dp-dialog input[data-mb-bbh-act]') : null;",
-                "replace": "            const el = null;"
-            }
-        ],
-        "spec": "tests/fixtures/bb-history.spec.js",
-        "grep": "From / To",
-        "expect": "fail"
     }
 ]

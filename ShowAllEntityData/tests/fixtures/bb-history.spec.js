@@ -256,7 +256,7 @@ test.describe('Brucebase page history (Phase 6)', () => {
         await pick(page, 'from', 47).click();
         await expect(pane.locator('.mb-bbh-ph b')).toHaveText(/^Revision 44 → 47 · /);
         await expect(pane.locator('.mb-dgh-dh')).toHaveText(['Revision 44', 'Revision 47']);
-        // The keyboard: an arrow key moves a picker without a click (`change`).
+        // The keyboard: an arrow key moves a picker (it clicks the radio).
         await rowOf(page, 47).locator('input[data-mb-bbh-act="from"]').focus();
         await page.keyboard.press('ArrowDown');
         await expect(rowOf(page, 46).locator('input[data-mb-bbh-act="from"]')).toBeChecked();
