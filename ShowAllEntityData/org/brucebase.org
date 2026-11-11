@@ -360,7 +360,7 @@ year-table columns.
 5. The wiki's page below: collapsed or open by default? collapsed
 6. Song titles: MusicBrainz case (your existing title setting) with the wiki's capitals as hover text, or the wiki's capitals? MusicBrainz case.
 
-* enhancements
+* DONE enhancements
 
 1.)
 
