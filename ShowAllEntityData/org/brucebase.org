@@ -275,7 +275,7 @@ in short form, so it survives on another machine).
   so lines via =_slLcs()= and words via =_cmpDiff()=.
 - Sidebar handle: =_ensureBbStyle()= centres it (=top:50%=); use MB's =setTop(rect.top)= clamp.
 
-*** TODO Phase 0 — plan and mockups (no userscript change)
+*** DONE Phase 0 — plan and mockups (no userscript change)
 - [X] write this plan here
 - [X] =scripts/probe-bb-detail-pages.py= over local copies (=debug/bb-mirror/=): fill rates per family,
   tag families, filename grammar coverage
@@ -304,7 +304,7 @@ in short form, so it survives on another machine).
   filenames, History, The side bar), detail-pages.md (parser version), HELP, coverage registry,
   WIP changelog, CLAUDE.md doc-map row.
 
-*** TODO Phase 1 — shared groundwork
+*** DONE Phase 1 — shared groundwork
 - [X] sidebar handle at the top (=_bbArrangeSideBar()=; stays in =document.body=, a foreign-host-only element; =bb-sidebar.spec.js=)
 - [X] =_bbPageTags()= / =_bbTagFamily()=: a closed Tags section in the window (=_DP_PARSER_VERSION= 19);
   the head card comes with Phase 2's head
@@ -313,7 +313,7 @@ in short form, so it survives on another machine).
 - moved to Phase 2, where there is a section of ours to put it under: the native page below,
   collapsible, and the setting =sa_bb_detail_pages=
 
-*** TODO Phase 2 — =bb-event= (gig, recording, rehearsal, interview, nogig)
+*** DONE Phase 2 — =bb-event= (gig, recording, rehearsal, interview, nogig)
 - [X] setting =sa_bb_detail_pages= (default true) for every detail pageType
 - [X] the wiki's page below our section, collapsed (answer 5), its own h2s folding (Ctrl-click: all
   sections, the engine's rule); its tabs are the wiki's
@@ -324,7 +324,7 @@ in short form, so it survives on another machine).
   mutations =bb-event.json= (12), coverage row, =bb-every-page= adjusted, =features.openSubTables=
 - [X] vzell's live check (confirmed 2026-11-11 with the Phase 6 probe files): OK
 
-*** TODO Phase 3 — =bb-song= (+ lyrics:, ott:)
+*** DONE Phase 3 — =bb-song= (+ lyrics:, ott:)
 - [X] =bb-song=: =_bbSongRead()= (Credits, Performances + by tour, Multiples, Snippets, Live downloads,
   On The Tracks; texts; Media/Links cards), =_bbSongToHtml()=, =_bbSongHeadSpec()=
 - [X] =bb-ott=: =_bbOttRead()= / =_bbOttRows()= (shared with the song's tab)
@@ -332,7 +332,7 @@ in short form, so it survives on another machine).
 - [X] shared helpers renamed =_bbDetail…=, =features.bbDetailToTable= ('event' | 'song' | 'ott')
 - [X] =bb-song.spec.js= (8), mutations =bb-song.json= (9), fixtures with lyrics blanked, registries
 - [X] vzell's live check (confirmed 2026-11-11 with the Phase 6 probe files): OK
-*** TODO Phase 4 — =bb-venue=, =bb-relation= (incl. the Steve Van Zandt TODO)
+*** DONE Phase 4 — =bb-venue=, =bb-relation= (incl. the Steve Van Zandt TODO)
 - [X] one reader =_bbPlaceRead()= for both; the wiki's ListPages paging (=/p/N=, =_bbPagedListOk()=:
   a paged list while its pager says N, an unpaged one on page 1 only; probe 2026-11-11)
 - [X] Steven Van Zandt: six pages, 1,517 shows (1,306 E Street, 211 not) — the page's own count;
@@ -341,7 +341,7 @@ in short form, so it survives on another machine).
 - [X] vzell's live check (relation:steven-van-zandt, relation:patti-scialfa, a venue): OK, two follow-ups
 - [X] follow-up 1: the "comma after the date" entry is a finding, ⚠️ =bb-date-comma= (Date cell)
 - [X] follow-up 2: =/onstage:= (and =/offstage:=) links preview their event (=_bbRedirectedUrl()=)
-*** TODO Phase 5 — =bb-retail= (+ playlist), =bb-bootleg=
+*** DONE Phase 5 — =bb-retail= (+ playlist), =bb-bootleg=
 - [X] survey 2026-11-11: 59 release + 20 playlist main pages, 30 bootlegs (the mirror's subpages
   =-release=, =-credits=, … are the main page's parts); release and playlist one layout
 - [X] =_bbReleaseRead()=: =div.code= facts (+ footnotes), Overview, Released (a table per edition and
@@ -354,7 +354,7 @@ in short form, so it survives on another machine).
   Tracks versions with a suffix ("V2 - take 14")
 - [X] =bb-release.spec.js= (16), mutations =bb-release.json= (23), registries, docs, WIP.7
 - [X] vzell's live check (2026-11-11): OK
-*** TODO Phase 6 — history diff
+*** DONE Phase 6 — history diff
 - [X] =scripts/probe-bb-history.user.js= written (2026-11-11): Tampermonkey menu "Probe: page history
   (this page)"; six POSTs to =/ajax-module-connector.php= 1.1 s apart (PageHistoryModule,
   PageRevisionListModule, PageSourceModule ×2, PageVersionModule, PageDiffModule =show_type: inline=);
@@ -379,7 +379,7 @@ in short form, so it survives on another machine).
   brucebase.wikidot.com (a cross-origin POST with the token was not probed); =_DP_PARSER_VERSION= 21
 - [X] =bb-history.spec.js= (10), =bb-history.mobile.spec.js= (1), fixtures from the live site
   (=scripts/build-bb-history-fixtures.py=, members scrubbed), mutations =bb-history.json= (15), WIP.8
-- [ ] vzell's live check
+- [X] vzell's live check (2026-11-11): OK
 
 *** Later (separate TODOs above)
 Extra list pageTypes (stats:discography, …), scroll-to-first-difference userscript, deferred
@@ -408,17 +408,7 @@ The "wiki's /onstage: redirect pages, which aren't among the page kinds the prev
 
 everything else tested live, OK
 
-* TODO adjustments
-** TODO On The Tracks
-
-takes written like "THE HEIST - V2 - take 14" split them additionally into
-
-#+begin_example
-title
-version
-take
-#+end_example
-* probe
+* DONE probe
 
 1.)
 
@@ -437,9 +427,19 @@ The entries
 - [ ] vzell's live check
 #+end_example
 
-for Phase 2 and 3 are also both confiremd like OK
+for Phase 2 and 3 are also both confirmed like OK
 
 
 
 
 
+* TODO adjustments
+** TODO On The Tracks
+
+takes written like "THE HEIST - V2 - take 14" split them additionally into
+
+#+begin_example
+title
+version
+take
+#+end_example
