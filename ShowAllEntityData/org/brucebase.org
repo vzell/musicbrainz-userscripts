@@ -194,7 +194,7 @@ recording sessions, retail releases etc:
 
 The goal is to add extensive PTs + POH support to the Bruce Springsteen BruceBase website. We already support a couple
 but they need a more modern and exhaustive rendering overwhoule + the missing ones, something we already did to the SL
-website.
+and Discogs website.
 
 Instead of providing specific raw HTML files in the usual @debug folder, scan the repo (+CLAUDE.md) at the folder
 @/home/vzell/git/scripts/BruceParser/ which provides shell scripts to download/scrape Springsteen related websites,
@@ -212,8 +212,10 @@ Here a couple of suggestions:
 - render the sidebar handle at the top (like in the MB case) and not in the middle of the page
 - BB detail page POHs should also get a history diff view of the current entity
 - use the Discogs history diff format in the BB pageTypes, for example the BB “changes” button (I have to be logged in)
-
+- etc.
 #+end_example
+
+Also write the plan/implementation steps to this file so that we can eventually pickup on a faster machine
 
 
 
