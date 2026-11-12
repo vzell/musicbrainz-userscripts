@@ -824,6 +824,14 @@ BB PTs". Last, once Phases 7–15 have added their readers.
 - [X] links on BB pages and in our windows with no preview (BB, MB, SL and other known hosts):
   =docs/non-mb-coverage.json= cells refreshed — listed above (L1–L6); the cells change with the fixes
 - [ ] fixes in batches, each with spec and mutation; docs, WIP
+  vzell's pick (2026-11-12): ALL of G1–G7 and L1–L4 (L5, L6 left, as recommended). Batches, each with a
+  mockup and questions first:
+  1. event windows: G1 the description, G2 the cast tabs, G3 an interview's Playlist
+  2. person and release windows: G4 the biography and its Wikipedia link, G5 On The Tracks, Recording
+     'Live' Dates, Gallery/News
+  3. new previews: L1 stats: (studio sessions, tour counts, discographies), L2 lyrics:, L3 ott:, L4
+     multi:/soundcheck: as their gig
+  4. small ones: G6 a story's picture, G7 a song intro's links and the Lyrics section's springsteenlyrics.com link
 - [ ] vzell's live check
 
 *** Handoff to petri (2026-11-12T04:05+01:00, from vzell-lap)
