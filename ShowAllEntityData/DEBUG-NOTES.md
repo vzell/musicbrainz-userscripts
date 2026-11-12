@@ -29346,3 +29346,22 @@ youtube-embeds, bs-record-preview, sl-song-window, sl-tracklist-links, popup-ext
   The year table's splitter then turned the 2009 rehearsal (two groups, guests last) into a run-on
   first row, as it had been one row before (its last bracket "(Guests)" has no comma): it goes group by
   group now, the first row as Phase 14 drew it. Spec 6/6, mutations 21/21, BB specs 334/334.
+
+## 2026-11-12 — Brucebase finding bb-onstage-tab; late re-stamp of rows the filter hides (feature/bb-overhaul, Phase 16)
+Env: 2026-11-12T22:50+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+- vzell: a cast tab spelled "Onstage" should be a finding. `bb-onstage-tab` (⚠️, cell, Content) is late
+  data: `_bbEvpRenderCell()` marks the Content cell (`data-mb-bbevp-onstage`, live and source) and queues
+  the row.
+- Found by the test "the finding ticked while pages arrive": the year table's event-page columns read
+  rows the filter has taken out of the page, but `_queueFindingsRestamp()` dropped every row not in the
+  page, so a row flagged while the finding filtered never got its stamp and never joined the table. The
+  queue now takes such a row with its table (a Map row → table); `_flushFindingsRestamp()` stamps it
+  against that table's plan. Rows in the page behave as before (artwork, Relationships, sl-double-utf8,
+  MB-Event specs 208/208).
+- The mutation "not a late finding" passes: a cell-scope tick is a value in the column's filter input,
+  so `_anyFilterActive()` is true and `_bbEvpScheduleRefresh()` re-runs the filter itself; recorded
+  `expect: pass` with that reason.
+- `rel-column-site-kind-discogs.spec.js` "FINDING COUNT + FILTER + LOOK + SURVIVAL" failed once in a
+  208-test mixed run (withFinding 0 for 2 after two global-filter re-renders); not reproduced alone ×3,
+  in parallel ×4 (32/32) or in the same mixed run again (208/208). Load flake, watch it at test:full.
+- vzell's live check of batch 1 and the finding: OK.
