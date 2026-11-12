@@ -27841,7 +27841,9 @@
         (data.images || []).forEach((im) => { const k = im.label || 'Other'; kinds.set(k, (kinds.get(k) || 0) + 1); });
         const start = field('Scheduled').split(' · ')[0];
         return {
-            stage: field('On stage'),
+            // Whoever the page lists in its cast tab, whatever it is called
+            // (Phase 16, answer 4): On stage, In studio, On set, …
+            stage: ((data.fields || []).find(f => _BB_EVENT_CAST_TABS.test(f[0])) || [])[1] || '',
             content: field('On the page').split(' · ').filter(t => t && !_BB_EVP_PLAIN_TABS.has(t)),
             images: Array.from(kinds, ([k, n]) => `${k} ${n}`),
             start: /^time not known/i.test(start) ? '' : start,
@@ -31587,9 +31589,13 @@
      *    sections (and so gets the History section) like every other.
      * 23: a story page's record names its kind, date, "Compiled by" and
      *    how many moments or turns it has (`_bbStoryRead()`, Phase 12).
+     * 24: a Brucebase event page's record has its description ("About this
+     *    show", `cardLine`), every cast tab (In studio, On set, …), an
+     *    interview's Playlist, the venue's other lists and an older page's
+     *    News tab (Phase 16, batch 1).
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 23;
+    const _DP_PARSER_VERSION = 24;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -34698,7 +34704,7 @@
         const yearA = Array.from(content.querySelectorAll('a[href]')).find(a => before(a) && /^\/(?:\d{4}|1949-64)#/.test(a.getAttribute('href') || ''));
         const venueA = Array.from(content.querySelectorAll('a[href*="/venue:"]')).find(before);
         const code = content.querySelector('div.code');
-        const note = Array.from(content.querySelectorAll('.list-pages-box')).find(b => before(b) && !b.querySelector('[id^="social"]') && _dpText(b.textContent));
+        const note = _bbEventAboutEl(content);
         const rec = {
             url, category, kind: _BB_EVENT_KINDS[category] || '', title,
             date: tm ? tm[1].replace(/-00(?=$|-)/g, '') : '', place: tm ? tm[2] : title,
@@ -36846,7 +36852,16 @@
             return data;
         }
         const labels = Array.from(nav.querySelectorAll(':scope > ul.yui-nav > li')).map(li => _dpText(li.textContent));
-        const panels = Array.from((nav.querySelector(':scope > .yui-content') || { children: [] }).children);
+        // A panel with Wikidot's Flickr gallery (a `.wikidot-hybrid-module`
+        // whose hidden div holds the module's JSON, drawn by the wiki's own
+        // scripts) is read without that JSON (Phase 16: 86 of 3,284 pages
+        // sampled; the window showed it as text).
+        const panels = Array.from((nav.querySelector(':scope > .yui-content') || { children: [] }).children).map((p) => {
+            if (!p.querySelector('.wikidot-hybrid-module')) return p;
+            const c = p.cloneNode(true);
+            c.querySelectorAll('.wikidot-hybrid-module').forEach(m => m.remove());
+            return c;
+        });
         const tab = (name) => panels[labels.indexOf(name)] || null;
         const has = (panel) => {
             const t = panel ? _dpText(panel.textContent) : '';
@@ -36854,9 +36869,15 @@
             // (debug/bb-event-youtube.html): that is content too.
             return (!!t && !/^Sorry,? no\b.*\bavailable\.?$/i.test(t)) || !!(panel && panel.querySelector('iframe[src*="youtube"]'));
         };
-        const stage = tab('On Stage');
-        const onStage = stage ? _bbOnStageText(stage) : '';
-        if (onStage) data.fields.push(['On stage', onStage]);
+        // Every cast tab in the page's order (Phase 16, G2; `_BB_EVENT_CAST_TABS`:
+        // On Stage, In Studio, On Studio, On Set, On Site): a fact and a section
+        // under the tab's own name ("In studio"); a tab's bold line ("Greetings
+        // From Asbury Park, N.J. Recording Session") leads its section.
+        const casts = labels.map((label, i) => ({ label, panel: panels[i] }))
+            .filter(c => c.panel && _BB_EVENT_CAST_TABS.test(c.label))
+            .map(c => ({ ...c, name: c.label.charAt(0).toUpperCase() + c.label.slice(1).toLowerCase(), text: _bbOnStageText(c.panel) }))
+            .filter(c => c.text);
+        casts.forEach(c => data.fields.push([c.name, c.text]));
         const setPanel = tab('Setlist');
         const songs = setPanel ? Array.from(setPanel.querySelectorAll('li')).map(li => _mbSiteTitleText(_dpText(li.textContent))).filter(Boolean) : [];
         if (songs.length) {
@@ -36874,6 +36895,14 @@
                 }).join('\n'),
             });
         }
+        // An interview's Playlist (Phase 16, G3), as the Setlist: a fact and a
+        // numbered section, each song with its original artist.
+        const playlist = _bbPlaylistSection(tab('Playlist'), url);
+        if (playlist) {
+            data.fields.push(['Playlist', playlist.fact]);
+            const at = data.sections.findIndex(s => /^Setlist \(/.test(s.label));
+            data.sections.splice(at < 0 ? data.sections.length : at + 1, 0, playlist.section);
+        }
         if (data.images.length) {
             const kinds = new Map();
             data.images.forEach(im => kinds.set(im.label, (kinds.get(im.label) || 0) + 1));
@@ -36881,9 +36910,22 @@
         }
         const filled = labels.filter((l, i) => has(panels[i]));
         if (filled.length) data.fields.push(['On the page', filled.join(' · ')]);
-        if (onStage) data.sections.unshift({ label: 'On stage', text: _dpBlockText(stage), html: _dpBlockHtml(stage, url) });
-        // Media in the page's own order, between Performances and Recording.
-        ['Performances', 'Media', 'Recording', 'Storyteller', 'Eyewitness', 'News/Memorabilia'].forEach(name => {
+        casts.slice().reverse().forEach(c => data.sections.unshift(_bbCastSection(c, url)));
+        // Media in the page's own order, between Performances and Recording;
+        // the venue's other lists (Phase 16, answer 5) folded after
+        // Performances; an older page's "News" tab is its News/Memorabilia
+        // (answer 6).
+        const listTab = /^(?:Appearances|Cancelled|Performances \(w\/o Bruce\)|From My Home To Yours)$/i;
+        const newsName = labels.includes('News/Memorabilia') ? 'News/Memorabilia' : 'News';
+        ['Performances', 'lists', 'Media', 'Recording', 'Storyteller', 'Eyewitness', newsName].forEach(name => {
+            if (name === 'lists') {
+                labels.forEach((label, i) => {
+                    if (!listTab.test(label) || !has(panels[i])) return;
+                    const n = panels[i].querySelectorAll('li').length;
+                    data.sections.push({ label: n ? `${label} (${n})` : label, text: _dpBlockText(panels[i]), html: _dpBlockHtml(panels[i], url), open: false });
+                });
+                return;
+            }
             const panel = tab(name);
             if (name === 'Media') {
                 const media = panel ? _bbMediaSection(panel, url) : null;
@@ -36891,8 +36933,18 @@
                 return;
             }
             const text = has(panel) ? _dpBlockText(panel) : '';
-            if (text) data.sections.push({ label: name, text, html: _dpBlockHtml(panel, url) });
+            if (text) data.sections.push({ label: name === 'News' ? 'News/Memorabilia' : name, text, html: _dpBlockHtml(panel, url) });
         });
+        // The description (Phase 16, G1; answers 1 and 2): "About this show"
+        // first and open, its first sentence on the hover card.
+        if (_BB_EVENT_PAGE_RE.test(new URL(url, 'https://brucebase.wikidot.com/').pathname)) {
+            const about = _bbEventAboutEl(content);
+            const text = about ? _dpBlockText(about) : '';
+            if (text) {
+                data.sections.unshift({ label: 'About this show', text, html: _dpBlockHtml(about, url) });
+                data.cardLine = _bbFirstSentence(text);
+            }
+        }
         data.collapsible = true;
         data.imagesByKind = true;
         // The window adds a "Play here" tile after each YouTube link of the
@@ -36979,6 +37031,127 @@
             return members.length ? `${name} (${members.join(', ')})` : name;
         };
         return Array.from(list.querySelectorAll(':scope > li')).map(item).filter(Boolean).join(', ');
+    }
+
+    /**
+     * The event pages whose window gets the description (Phase 16, G1): the
+     * event kinds, and the redirect kinds whose address the record may keep
+     * (multi:, soundcheck: answer 301 to the gig; onstage:/offstage: are
+     * resolved by `_bbRedirectedUrl()`).
+     *
+     * @type {RegExp}
+     */
+    const _BB_EVENT_PAGE_RE = /^\/(?:gig|nogig|recording|rehearsal|interview|nobruce|multi|soundcheck|onstage|offstage):/;
+
+    /**
+     * An event page's description, the text above its tabs (the page view's
+     * "About this show", the window's since Phase 16): the first
+     * `.list-pages-box` before the tabview that is not the Share box, or else
+     * the plain paragraphs before the tabview — some pages have their
+     * description as bare `<p>`s between the "Info & Setlist | Venue" line
+     * and the tabs (gig:1974-08-14-monmouth-arts-center-red-bank-nj-early),
+     * which that line itself is not.
+     *
+     * @param {Element} content The page's `#page-content`.
+     * @returns {?Element} The box, a `<div>` holding copies of the
+     *   paragraphs, or null.
+     */
+    function _bbEventAboutEl(content) {
+        const nav = content.querySelector('div.yui-navset');
+        const before = (x) => !nav || !!(nav.compareDocumentPosition(x) & Node.DOCUMENT_POSITION_PRECEDING);
+        const box = Array.from(content.querySelectorAll('.list-pages-box')).find(b => before(b) && !b.querySelector('[id^="social"]') && _dpText(b.textContent));
+        if (box) return box;
+        const ps = Array.from(content.children).filter(el => el.tagName === 'P' && before(el) && _dpText(el.textContent) &&
+            !/^Info\s*&\s*Setlist\b/i.test(_dpText(el.textContent)));
+        if (!ps.length) return null;
+        const div = content.ownerDocument.createElement('div');
+        ps.forEach(p => div.appendChild(p.cloneNode(true)));
+        return div;
+    }
+
+    /**
+     * A cast tab's window section (Phase 16, G2): under the tab's own name;
+     * a tab other than On Stage that opens with a bold line ("Greetings From
+     * Asbury Park, N.J. Recording Session", "E Street Radio") has it as its
+     * first line, in italics (vzell's answer 3), then the rest of the panel.
+     *
+     * @param {{label: string, name: string, panel: Element}} c
+     * @param {string} url
+     * @returns {{label: string, text: string, html: string}}
+     */
+    function _bbCastSection(c, url) {
+        const first = c.panel.firstElementChild;
+        const strong = first && first.tagName === 'P' && first.children.length === 1 && first.firstElementChild.tagName === 'STRONG' &&
+            _dpText(first.textContent) === _dpText(first.firstElementChild.textContent) ? first : null;
+        if (/^On Stage$/i.test(c.label) || !strong) return { label: c.name, text: _dpBlockText(c.panel), html: _dpBlockHtml(c.panel, url) };
+        const line = _dpText(strong.textContent);
+        const rest = c.panel.cloneNode(true);
+        rest.firstElementChild.remove();
+        if (rest.firstElementChild && rest.firstElementChild.tagName === 'HR') rest.firstElementChild.remove();
+        return {
+            label: c.name,
+            text: `${line}\n${_dpBlockText(rest)}`,
+            html: `<p><em>${_mbttEscape(line)}</em></p>${_dpBlockHtml(rest, url)}`,
+        };
+    }
+
+    /**
+     * An interview's Playlist tab as the window has it (Phase 16, G3), read
+     * as the Setlist is: the songs in MusicBrainz's title style
+     * (`_mbSiteTitleText()`), each with its original artist (the small
+     * italic bracket after it, "(The Rascals)"), the tab's bold line first
+     * ("Guest DJ at WMMR-FM"), its note last ("Note: Bruce did not perform
+     * …"); the fact "11 songs: Good Lovin', …".
+     *
+     * @param {?Element} panel
+     * @param {string} url
+     * @returns {?{fact: string, section: {label: string, text: string, html: string}}}
+     */
+    function _bbPlaylistSection(panel, url) {
+        if (!panel) return null;
+        const items = Array.from(panel.querySelectorAll(':scope > ul > li')).map((li) => {
+            const a = li.querySelector(':scope > a[href]');
+            const em = li.querySelector(':scope > span em');
+            const own = a ? a.textContent : Array.from(li.childNodes).filter(n => n.nodeType === 3).map(n => n.textContent).join(' ');
+            return {
+                title: _mbSiteTitleText(_dpText(own)),
+                href: a ? _dpAbsUrl(a.getAttribute('href'), url) : '',
+                by: em ? _dpText(em.textContent).replace(/^\((.*)\)$/, '$1') : '',
+            };
+        }).filter(x => x.title);
+        if (!items.length) return null;
+        const n = items.length;
+        const t = items.map(x => x.title);
+        const first = panel.querySelector(':scope > p > strong');
+        const line = first ? _dpText(first.textContent) : '';
+        const noteP = Array.from(panel.querySelectorAll(':scope > p')).find(p => /^Note\b/i.test(_dpText(p.textContent)));
+        const note = noteP ? _dpText(noteP.textContent) : '';
+        return {
+            fact: `${n} song${n === 1 ? '' : 's'}: ${t.slice(0, 3).join(', ')}` + (n > 4 ? ` … ${t[n - 1]}` : n === 4 ? `, ${t[3]}` : ''),
+            section: {
+                label: `Playlist (${n})`,
+                text: (line ? `${line}\n` : '') + items.map((x, i) => `${i + 1}. ${x.title}${x.by ? ` (${x.by})` : ''}`).join('\n') + (note ? `\n${note}` : ''),
+                html: (line ? `<p><em>${_mbttEscape(line)}</em></p>` : '') + '<ol>' + items.map(x =>
+                    `<li>${x.href ? `<a href="${_mbttEscape(x.href)}" target="_blank" rel="noopener">${_mbttEscape(x.title)}</a>` : _mbttEscape(x.title)}` +
+                    `${x.by ? ` <span class="mb-dp-xsub">(${_mbttEscape(x.by)})</span>` : ''}</li>`).join('') + '</ol>' +
+                    (note ? `<p class="mb-dp-xsub">${_mbttEscape(note)}</p>` : ''),
+            },
+        };
+    }
+
+    /**
+     * A text's first sentence for the hover card (Phase 16, answer 2): up to
+     * its first full stop, question or exclamation mark after 20 characters,
+     * cut at a word near 160 characters ("…").
+     *
+     * @param {string} text
+     * @returns {string}
+     */
+    function _bbFirstSentence(text) {
+        const t = _dpText(text);
+        const m = /^(.{20,}?[.!?])(?=\s|$)/.exec(t);
+        const s = m ? m[1] : t;
+        return s.length > 160 ? `${s.slice(0, 159).replace(/\s+\S*$/, '')} …` : s;
     }
 
     /**
@@ -39304,6 +39477,8 @@
         parts.push(`<div class="mb-dp-head">${data.cover ? `<img class="mb-dp-cover" src="${_mbttEscape(data.cover)}" alt="">` : ''}<div class="mb-dp-headtext">` +
             `<div class="mb-tt-title">${_mbttEscape(data.title || '(untitled)')}</div>` +
             (data.subtitle ? `<div class="mb-tt-comment">${_mbttEscape(data.subtitle)}</div>` : '') +
+            // A Brucebase event's description, its first sentence (Phase 16).
+            (data.cardLine ? `<div class="mb-tt-comment mb-dp-cardline">${_mbttEscape(data.cardLine)}</div>` : '') +
             (data.highlight ? `<div class="mb-dp-stat"><b>${_mbttEscape(data.highlight.value)}</b> ${_mbttEscape(data.highlight.label)}</div>` : '') +
             _dpFieldsHtml(data.fields.filter(([k]) => !data.highlight || k !== 'Performed live'), 160) + '</div></div>');
         if (data.tracks.length) {

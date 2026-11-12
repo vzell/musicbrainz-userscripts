@@ -84,8 +84,9 @@ test('the reader: an entry page\'s Scheduled, On stage, Setlist, images and tabs
     // "Sorry, no Media available." is no content.
     expect(f['On the page'].split(' · ')).not.toContain('Media');
     expect(f['On the page'].split(' · ')).toEqual(expect.arrayContaining(['On Stage', 'Setlist', 'Performances', 'Recording', 'Storyteller', 'Eyewitness']));
-    // The page's tags close every Brucebase record since Phase 1 (2026-11-11).
-    expect(rec.sections.map(s => s.label)).toEqual(['On stage', 'Setlist (28)', 'Performances', 'Recording', 'Storyteller', 'Eyewitness', 'News/Memorabilia', expect.stringMatching(/^Tags \(\d+\)$/)]);
+    // The page's tags close every Brucebase record since Phase 1 (2026-11-11);
+    // its description opens it since Phase 16 (batch 1).
+    expect(rec.sections.map(s => s.label)).toEqual(['About this show', 'On stage', 'Setlist (28)', 'Performances', 'Recording', 'Storyteller', 'Eyewitness', 'News/Memorabilia', expect.stringMatching(/^Tags \(\d+\)$/)]);
     expect(rec.sections.find(s => s.label === 'Setlist (28)').text.split('\n')[0]).toBe('1. BORN IN THE U.S.A.');
 });
 
@@ -400,8 +401,9 @@ test.describe('the Brucebase window: collapsible, linked sections; images by kin
         // From a closed one, Ctrl+click opens them all again.
         await summary('Performances').click({ modifiers: ['Control'] });
         await expect.poll(states).toEqual(Array(n).fill(true));
+        // On stage comes second, after "About this show" (Phase 16).
         await summary('On stage').click();
-        await expect.poll(states).toEqual([false, ...Array(n - 1).fill(true)]);
+        await expect.poll(states).toEqual([true, false, ...Array(n - 2).fill(true)]);
         await summary('Recording').click({ modifiers: ['Control'] });
         await expect.poll(states).toEqual(Array(n).fill(false));
         // Kept for the next record (← to 1985-01-07, which has a fixture).

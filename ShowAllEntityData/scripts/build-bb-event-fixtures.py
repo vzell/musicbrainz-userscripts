@@ -17,6 +17,10 @@ picked for a shape the bb-event pageType reads (org/brucebase.org, Plan
 - interview 2021-04-28 SiriusXM: In Studio, Playlist, "From My Home To
   Yours";
 - nogig 2013-04-16 Richard Rodgers Theatre: no setlist, an Appearances list.
+- gig 1974-08-14 Monmouth Arts Center (early show; Phase 16): the description as plain
+  paragraphs (no box), Appearances, Cancelled, Performances (w/o Bruce), an old "News" tab.
+- gig 1978-06-23 Paramount Theatre, Portland (Phase 16): the "Info & Setlist | Venue" line as a
+  <p>, then the description as a plain paragraph.
 
 And for bb-song / bb-ott (Phase 3):
 
@@ -80,6 +84,8 @@ PAGES = [
     ('rehearsal/rehearsal_2009-01-29a-raymond-james-stadium-tampa-fl.html', 'bb-event-rehearsal-2009-01-29a.html'),
     ('interview/interview_2021-04-28-siriusxm-studio-new-york-city-ny.html', 'bb-event-interview-2021-04-28.html'),
     ('nogig/nogig_2013-04-16-richard-rodgers-theatre-new-york-city-ny.html', 'bb-event-nogig-2013-04-16.html'),
+    ('gig/gig_1974-08-14-monmouth-arts-center-red-bank-nj-early.html', 'bb-event-gig-1974-08-14.html'),
+    ('year-1978/gig_1978-06-23-paramount-theatre-portland-or.html', 'bb-event-gig-1978-06-23.html'),
     ('song/song_the-promise.html', 'bb-song-the-promise.html'),
     ('song/song_we-gotta-get-out-of-this-place.html', 'bb-song-we-gotta-get-out-of-this-place.html'),
     ('ott/ott_do-you-want-me-to-say-alright.html', 'bb-ott-do-you-want-me-to-say-alright.html'),

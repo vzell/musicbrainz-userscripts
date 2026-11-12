@@ -1873,3 +1873,63 @@ page with a link in its annotation, springsteenlyrics.com's bootleg list;
 the page and the modules' answers through the GM stub's responder);
 mutations `scripts/mutations/bb-history-foreign.json` (11, one on the wiki's
 own path with bb-history.spec.js).
+
+## What the readers miss — the sweep and its fixes (Phase 16, 2026-11-12)
+
+**The sweep.** `scripts/probe-bb-reader-sweep.js` runs the SHIPPED readers
+in the real userscript through the harness over the mirror copies in
+`debug/bb-mirror/` (`scripts/copy-bb-sweep-samples.sh`: 40 a family where
+none was copied), 3,284 pages in 32 families: the window's record
+(`dpParse()`) and, where a hook exists, the page view's reading (counted
+with the window's record, which the view draws too). Per page: the text
+blocks of `#page-content` (leaf p/li/td/th/dt/dd/h1–h4, by tab or heading),
+links by target, pictures; a block is kept when its text is in the reader's.
+Left out as chrome: the footer, the "Share:" bar, link-only lines, the
+wiki's placeholders ("Sorry, no Photos available."). The gaps, each checked
+on a page (rewordings are not gaps), are listed in org/brucebase.org (G1–G7,
+L1–L6); vzell picked all of G1–G7 and L1–L4. The redirect kinds
+(onstage:, offstage:, multi:, soundcheck:) answer 301 to the gig live
+(`scripts/probe-bb-redirect-kinds.py`); the mirror stores them as the
+Redirect module, so their rows are empty, not a reader gap.
+
+### Batch 1: the event windows (G1–G3)
+
+Mockup https://claude.ai/artifact/RX3xHaYRozwSiZP2g5MujY
+(`scripts/extract-bb-event-window-mockup.js`,
+`scripts/build-bb-event-window-mockup.py` with its template); vzell's
+answers, all as recommended. In `_dpParseBbPage()` (`_DP_PARSER_VERSION` 24):
+
+- **The description** (`_bbEventAboutEl()`, shared with the page view's
+  `_bbEventRead()`): the first `.list-pages-box` before the tabview that is
+  not the Share box, or else the plain `<p>`s before the tabview, the "Info
+  & Setlist | Venue" line excepted (Red Bank 1974-08-14, Portland 1978-06-23:
+  no box; the page view missed these too). Event pages only
+  (`_BB_EVENT_PAGE_RE`, the redirect kinds included): a person page's text
+  above its tabs is its biography (batch 2). "About this show", the first
+  section, open (answer 1); its first sentence (`_bbFirstSentence()`, cut at
+  a word near 160) as the record's `cardLine`, which the hover card draws
+  under the title (`.mb-dp-cardline`, answer 2) and the window does not.
+- **Every cast tab** (`_BB_EVENT_CAST_TABS`: On Stage, In Studio, On
+  Studio, On Set, On Site), in the page's order, as a fact and a section
+  under the tab's own name ("In studio"); a tab other than On Stage that
+  opens with a bold line has it first, in italics (`_bbCastSection()`,
+  answer 3). On Stage is unchanged. The sample's rarer names (On Phone, On
+  Call, In Room, one page each) are not cast tabs yet. The year table's On
+  stage column takes the first cast fact (`_bbEvpView()`, answer 4).
+- **An interview's Playlist** (`_bbPlaylistSection()`): the fact "20 songs:
+  …" and a numbered section after the Setlist (or the cast), each song in
+  the title style (`_mbSiteTitleText()`) with its original artist, the tab's
+  bold line first, its note last.
+- **The venue's other lists** — Appearances, Cancelled, Performances (w/o
+  Bruce), From My Home To Yours — folded sections (`open: false`) after
+  Performances, with their counts (answer 5). An older page's **"News"** tab
+  is read as News/Memorabilia (answer 6).
+- **Wikidot's Flickr gallery module** (a `.wikidot-hybrid-module` whose
+  hidden div holds the module's JSON) is left out of every panel: the
+  window showed that JSON as text (86 of 3,284 pages sampled).
+
+Tests: `tests/fixtures/bb-event-window-gaps.spec.js` (the event fixtures,
+two new ones: `bb-event-gig-1974-08-14.html`, `bb-event-gig-1978-06-23.html`
+by `scripts/build-bb-event-fixtures.py`); the On stage column in
+`bb-year-event-pages.spec.js`; `bb-event-preview.spec.js` updated for the
+section order. Mutations `scripts/mutations/bb-event-window-gaps.json` (16).

@@ -29319,3 +29319,23 @@ Env: 2026-11-12T20:28:30+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1)
   are on (musicbrainz.org) — a mutation pins that no such cookie appears.
 Spec `bb-history-foreign.spec.js` 5/5, mutations `bb-history-foreign.json` 11/11; bb-history*,
 popup-ext-foreign*, bb-every-page 39/39; popup-ext + detail-preview 146/146.
+
+## 2026-11-12 — Brucebase readers swept; event windows' gaps fixed (feature/bb-overhaul, Phase 16 batch 1)
+Env: 2026-11-12T21:11:14+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs); redirect probe 21:12:47+01:00 (n/a, Python urllib)
+- `scripts/probe-bb-reader-sweep.js` over 3,284 mirror pages (32 families): page text blocks, links,
+  pictures against the window's record and the page views' readings. Gaps listed in org/brucebase.org
+  (G1–G7, L1–L6). False losses found and not listed: rewordings (Personnel "Roy Bittan (The E Street
+  Band): Piano", a bootleg's notes without their label, a song's intro as the subtitle). onstage:/
+  offstage:/multi:/soundcheck: all answer 301 to the gig (`scripts/probe-bb-redirect-kinds.py`); the
+  mirror keeps their Redirect-module stubs.
+- Batch 1 (mockup https://claude.ai/artifact/RX3xHaYRozwSiZP2g5MujY, all answers as recommended): the
+  event window's description ("About this show", first sentence on the card), every cast tab, the
+  Playlist, the venue's other lists, News as News/Memorabilia, the year table's On stage from any cast
+  tab. Found on the way: (1) some pages have their description as plain `<p>`s, not in a
+  `.list-pages-box` — the page view's About this show missed them too; `_bbEventAboutEl()` reads both,
+  minus the "Info & Setlist" line when that is a `<p>` (Portland 1978-06-23 pins it; a mutation of that
+  guard first survived on Red Bank, where the line is loose text); (2) Wikidot's Flickr gallery
+  placeholder (`.wikidot-hybrid-module`, hidden JSON) was read as text into News/Memorabilia (86 pages).
+Spec `bb-event-window-gaps.spec.js` 5/5, mutations `bb-event-window-gaps.json` 16/16; BB specs +
+popup-ext-foreign + detail-preview 333/333 after updating bb-event-preview's section order (2 tests);
+youtube-embeds, bs-record-preview, sl-song-window, sl-tracklist-links, popup-ext's BB tests 95/95.

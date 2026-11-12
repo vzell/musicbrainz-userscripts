@@ -3920,9 +3920,14 @@ entry, with these columns:
   at it to see the name as the wiki writes it. With Ctrl held (or with
   *Show every preview on a plain hover*), resting the pointer on it, or on
   any other link to an event's page on a Brucebase page, shows a card of
-  that page: when it was scheduled, who was on stage, the setlist, the
-  images. **Space** pins it into a window with the whole setlist, the other
-  shows at that venue, the recording and the stories; ← → step through the
+  that page: the first sentence of its description, when it was
+  scheduled, who was on stage (or in the studio), the setlist, the images.
+  **Space** pins it into a window that starts with the description (*About
+  this show*), then the people under the tab's own name (*On stage*, *In
+  studio*, *On set*, …), the whole setlist, an interview's playlist (each
+  song with its original artist), the other shows at that venue and,
+  folded, its other lists (*Appearances*, *Cancelled*, …), the recording
+  and the stories; ← → step through the
   rows (⚙️ Settings → *📚 Brucebase* → *Preview event, venue, people, release and bootleg pages on hover*). In
   the window a click on a section's heading folds it, and a Ctrl+click
   folds or opens all of them at once; the people on stage,
@@ -4015,7 +4020,8 @@ entry, with these columns:
   own page, so they stay empty (—) until that page is read. **▶ Pages** in
   the On stage header reads the pages of the rows you can see, and then of
   each row you scroll to, one page a second; press it again (■ Pages) to
-  stop. *On stage* is the line-up, its band's members folded under ▶ (the
+  stop. *On stage* is the line-up (for a recording session, who was in the
+  studio), its band's members folded under ▶ (the
   filter finds them anyway); *Content* the tabs with something in them
   (Recording, Storyteller, Media, Eyewitness, News/Memorabilia, …); *Images*
   the pictures by kind (*Photo 2 · Ticket 4 · News 7*); *Start* the scheduled

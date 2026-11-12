@@ -1,0 +1,210 @@
+[
+    {
+        "name": "no description section",
+        "why": "G1, answer 1: \"About this show\" first and open.",
+        "edits": [
+            {
+                "find": "                data.sections.unshift({ label: 'About this show', text, html: _dpBlockHtml(about, url) });",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-window-gaps.spec.js",
+        "grep": "the description:",
+        "expect": "fail"
+    },
+    {
+        "name": "the description on every page, not only event pages",
+        "why": "A person page's text above its tabs is its biography (batch 2), not an event's description.",
+        "edits": [
+            {
+                "find": "        if (_BB_EVENT_PAGE_RE.test(new URL(url, 'https://brucebase.wikidot.com/').pathname)) {",
+                "replace": "        if (true) {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-window-gaps.spec.js",
+        "grep": "the description:",
+        "expect": "fail"
+    },
+    {
+        "name": "no first sentence for the card",
+        "why": "Answer 2: the card shows the description's first sentence.",
+        "edits": [
+            {
+                "find": "                data.cardLine = _bbFirstSentence(text);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-window-gaps.spec.js",
+        "grep": "the description:",
+        "expect": "fail"
+    },
+    {
+        "name": "the card does not draw the first sentence",
+        "why": "Answer 2: the card's line under the title.",
+        "edits": [
+            {
+                "find": "            (data.cardLine ? `<div class=\"mb-tt-comment mb-dp-cardline\">${_mbttEscape(data.cardLine)}</div>` : '') +",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-window-gaps.spec.js",
+        "grep": "on a hover",
+        "expect": "fail"
+    },
+    {
+        "name": "the first sentence is not cut",
+        "why": "Answer 2: cut at about 160 characters.",
+        "edits": [
+            {
+                "find": "        return s.length > 160 ? `${s.slice(0, 159).replace(/\\s+\\S*$/, '')} …` : s;",
+                "replace": "        return s;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-window-gaps.spec.js",
+        "grep": "the description:",
+        "expect": "fail"
+    },
+    {
+        "name": "plain-paragraph descriptions are missed",
+        "why": "Some pages have the description as bare <p>s before the tabs (Red Bank 1974-08-14); the page view missed them too.",
+        "edits": [
+            {
+                "find": "        if (box) return box;\n        const ps = ",
+                "replace": "        if (box || !box) return box;\n        const ps = "
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-window-gaps.spec.js",
+        "grep": "the description:",
+        "expect": "fail"
+    },
+    {
+        "name": "the Info & Setlist line is read as description",
+        "why": "That line is navigation.",
+        "edits": [
+            {
+                "find": "            !/^Info\\s*&\\s*Setlist\\b/i.test(_dpText(el.textContent)));",
+                "replace": "            true);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-window-gaps.spec.js",
+        "grep": "the description:",
+        "expect": "fail"
+    },
+    {
+        "name": "only On Stage is a cast tab",
+        "why": "G2: In Studio, On Set, On Site, … are cast tabs too.",
+        "edits": [
+            {
+                "find": "            .filter(c => c.panel && _BB_EVENT_CAST_TABS.test(c.label))",
+                "replace": "            .filter(c => c.panel && /^On Stage$/i.test(c.label))"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-window-gaps.spec.js",
+        "grep": "a cast tab under its own name",
+        "expect": "fail"
+    },
+    {
+        "name": "a cast tab's bold line is not lifted",
+        "why": "Answer 3: the bold line leads the section, in italics.",
+        "edits": [
+            {
+                "find": "        if (/^On Stage$/i.test(c.label) || !strong) return",
+                "replace": "        if (true) return"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-window-gaps.spec.js",
+        "grep": "a cast tab under its own name",
+        "expect": "fail"
+    },
+    {
+        "name": "no Playlist",
+        "why": "G3: an interview's Playlist as the Setlist.",
+        "edits": [
+            {
+                "find": "        const playlist = _bbPlaylistSection(tab('Playlist'), url);",
+                "replace": "        const playlist = null;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-window-gaps.spec.js",
+        "grep": "Playlist as the Setlist",
+        "expect": "fail"
+    },
+    {
+        "name": "a Playlist song without its original artist",
+        "why": "The mockup's Playlist: each song with its original artist.",
+        "edits": [
+            {
+                "find": "                by: em ? _dpText(em.textContent).replace(/^\\((.*)\\)$/, '$1') : '',",
+                "replace": "                by: '',"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-window-gaps.spec.js",
+        "grep": "Playlist as the Setlist",
+        "expect": "fail"
+    },
+    {
+        "name": "the venue's other lists are left out",
+        "why": "Answer 5.",
+        "edits": [
+            {
+                "find": "        const listTab = /^(?:Appearances|Cancelled|Performances \\(w\\/o Bruce\\)|From My Home To Yours)$/i;",
+                "replace": "        const listTab = /^$/;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-window-gaps.spec.js",
+        "grep": "the venue's other lists",
+        "expect": "fail"
+    },
+    {
+        "name": "the venue's other lists start open",
+        "why": "Answer 5: folded.",
+        "edits": [
+            {
+                "find": "html: _dpBlockHtml(panels[i], url), open: false });",
+                "replace": "html: _dpBlockHtml(panels[i], url) });"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-window-gaps.spec.js",
+        "grep": "the venue's other lists",
+        "expect": "fail"
+    },
+    {
+        "name": "an old News tab is left out",
+        "why": "Answer 6: News is News/Memorabilia under its old name.",
+        "edits": [
+            {
+                "find": "        const newsName = labels.includes('News/Memorabilia') ? 'News/Memorabilia' : 'News';",
+                "replace": "        const newsName = 'News/Memorabilia';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-window-gaps.spec.js",
+        "grep": "the venue's other lists",
+        "expect": "fail"
+    },
+    {
+        "name": "the Flickr module's JSON is read as text",
+        "why": "86 of 3,284 sampled pages: the window showed the hidden module config.",
+        "edits": [
+            {
+                "find": "            c.querySelectorAll('.wikidot-hybrid-module').forEach(m => m.remove());",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-window-gaps.spec.js",
+        "grep": "the venue's other lists",
+        "expect": "fail"
+    },
+    {
+        "name": "the year table's On stage column reads On Stage only",
+        "why": "Answer 4: whoever the page lists in its cast tab.",
+        "edits": [
+            {
+                "find": "            stage: ((data.fields || []).find(f => _BB_EVENT_CAST_TABS.test(f[0])) || [])[1] || '',",
+                "replace": "            stage: field('On stage'),"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-event-pages.spec.js",
+        "grep": "In Studio people fill On stage",
+        "expect": "fail"
+    }
+]

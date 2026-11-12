@@ -217,6 +217,26 @@ test.describe('Brucebase year table: the columns from each event\'s page (Phase 
         expect(done.every(r => r.stage.join() === want.stage.join())).toBe(true);
     });
 
+    // Phase 16, vzell's answer 4: the column shows whoever the page lists in
+    // its cast tab, whatever the tab is called — a recording's In Studio.
+    test('a recording\'s In Studio people fill On stage', async ({ page }) => {
+        const STUDIO = path.join(__dirname, 'bb-event-recording-1979-04-09.html');
+        await loadBbYearPage(page, '1985');
+        await serveEvents(page, STUDIO);
+        await show(page, BB_YEAR_BUTTON);
+        const want = await page.evaluate((html) => {
+            const d = window.__saTest.dpParse('brucebase.wikidot.com', html, 'https://brucebase.wikidot.com/recording:1979-04-09-power-station-new-york-city-ny');
+            return { studio: (d.fields.find(f => f[0] === 'In studio') || [])[1] || '', stage: (d.fields.find(f => f[0] === 'On stage') || [])[1] || '' };
+        }, fs.readFileSync(STUDIO, 'utf8'));
+        expect(want.stage).toBe('');
+        expect(want.studio.split(', ')).toHaveLength(7);
+        await pagesBtn(page).click();
+        await expect.poll(async () => (await cells(page)).filter(r => r.state === 'done').length, { timeout: 20000 }).toBeGreaterThanOrEqual(2);
+        await pagesBtn(page).click();
+        const done = (await cells(page)).filter(r => r.state === 'done');
+        expect(done.every(r => r.stage.join(', ') === want.studio)).toBe(true);
+    });
+
     test('a failed row: ⟳ in its On stage cell asks again', async ({ page }) => {
         await loadBbYearPage(page, '1985');
         let failUrl = '';
