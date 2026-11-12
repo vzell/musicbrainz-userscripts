@@ -577,7 +577,7 @@ vzell's "no PT yet" (round-2 live check). 1,489 story pages: a Storyteller banne
   reference (172), WIP.16; the wider sibling run still deferred
 - [X] vzell's live check (2026-11-12): OK
 
-*** TODO Phase 13 — stats list pageTypes
+*** DONE Phase 13 — stats list pageTypes
 covers: "* TODO add additional PTs to BB". 1,942 stats pages in the mirror, mostly =stats:<song>-tour=
 (per-song tour counts) and =stats:awards-*=, plus: songs-list, handwritten-lyric-sheets,
 songs-official-video, orphaned-songs, lyrics, songs-by-album, songs-count, bootlegs, bootlegs-label,
@@ -687,11 +687,11 @@ The mirror has 258 =stats:*studio-sessions*= pages (an album's sessions and its 
   =bb-gallery-registered.spec.js= (5), =scripts/mutations/bb-gallery-registered.json= (17 OK, 1
   =expect: pass= — a bold link without a year, which no page of the copy has); coverage rows, PAGETYPES
   reference (176, 177), HELP, CLAUDE.md, WIP.19
-- [ ] vzell's live check of batch 3 (e.g. stats:discography-album, stats:discography-retail,
-  stats:discography-single, stats:songs-registered)
-- [ ] build in batches (one shared tabview reader where possible, =bb-songs= as the model); specs,
+- [X] vzell's live check of batch 3 (e.g. stats:discography-album, stats:discography-retail,
+  stats:discography-single, stats:songs-registered): OK (2026-11-12)
+- [X] build in batches (one shared tabview reader where possible, =bb-songs= as the model); specs,
   mutations, coverage rows, docs, WIP per batch
-- [ ] vzell's live check per batch
+- [X] vzell's live check per batch
 
 *** TODO Phase 14 — year-table columns from each event's page
 The year table has Type and Tour already; the rest lives on the event's own page: the cast (On stage),
