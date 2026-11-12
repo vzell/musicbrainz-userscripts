@@ -1294,6 +1294,44 @@ signed out, "Sign in to Brucebase to see the history".
   (its title change 6 → 7 and rename 3 → 4 drive the Page title / Page
   name rows end to end).
 
+### Phase 10: the Recent changes button and the first difference (2026-11-12)
+
+- **The button** (`button.mb-bb-changes-btn`, in our Recent changes table's
+  Page cell after the link; the original "BB changes button" TODO): its glyph
+  is CSS (`::before`), so the cell's text, which the filter and
+  `bb-recent-changes.spec.js` read, stays the title. Rows are cloned on every
+  render, so one delegated click (`_bbChangesBtnInit()`) opens the row's
+  page in the window with History open (`_dpSecState`), as the ☰ entry does.
+  The row knows the revision NUMBER, the History state wants an id: the
+  click leaves `_bbHistWant` (page URL, `_bbHistKey()` → number);
+  `_bbHistSection()` moves it to `_bbHistPick` (page id) when the window's
+  record names the page; `_bbHistStart()` finds the row — reading the
+  list's next pages while the number is older than the last row read — and
+  sets To to it, From to the one before. Only under `sa_bb_history`.
+- **The first changed line** (the TODO "create userscript which directly
+  scrolls to the first difference … when clicking history"):
+  `_bbHistScrollFirst()` at the end of `_bbHistStart()`, once per pair
+  (`ui.scrolled`): the first `.mb-bbh-chg/-rem/-add` cell of the grid gets
+  `.mb-bbh-first` (a bar at its left edge) and is scrolled to the middle.
+- **The wiki's own history** (signed in): `_bbWikiDiffScrollInit()`, called
+  with the ☰ entry, observes `#action-area` only (the wiki's history module
+  draws there; our tables never do), and when a `div.diff-box` arrives
+  (PageDiffModule's answer: `table.page-compare`, then `div.inline-diff` with
+  `ins`/`del`), `_bbWikiDiffScroll()` marks its first `ins`/`del`
+  (`.mb-bb-first-diff`) and scrolls it to the middle, at once and again after
+  `_BB_WIKI_DIFF_AGAIN_MS` (the wiki's own animated scroll), unless the
+  reader scrolled (wheel, key, touch) meanwhile. Where the module puts the
+  comparison inside `#action-area` was not probed signed in; the observer
+  takes it anywhere below it. Under `sa_bb_history`.
+- **Tests**: `tests/fixtures/bb-history-changes.spec.js` (5: the button on
+  revision 46 — the pickers, ONE comparison 45→46, the first change marked
+  and in view; an older revision from the list's page 2; no button with the
+  history off; the wiki's comparison, the saved PageDiffModule answer put
+  under `#action-area`, scrolled and marked; left alone with the history
+  off). `loadBbHistoryPage()` takes a `fixtureFile` (Recent changes, its list
+  answered with one change of song:the-promise). Mutations
+  `scripts/mutations/bb-history-changes.json` (11).
+
 ### Round 2: kinds, tag changes, any two revisions (2026-11-11)
 
 vzell's asks and answers (org/brucebase.org, "History round 2"; mockups

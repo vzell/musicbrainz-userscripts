@@ -491,14 +491,22 @@ an optional note =<em>(Recording Session)</em>=, tour boxes between the lists.
 *** TODO Phase 10 — Recent changes "changes" button and the first difference
 covers: "* TODO create userscript which directly scrolls to the first difference …" and the original
 "BB changes button" idea.
-- [ ] a per-row button on our Recent changes table: opens the row's page in the window with History open,
-  From = revision N−1, To = N (=_bbHistUi= preset by URL until the page id is known; "(new)" = revision 0
-  against nothing)
-- [ ] the History pane scrolls to its first changed line when a pair is shown
-- [ ] the wiki's own history view (signed in): after its compare / diff loads, scroll to the first
-  =ins=/=del= (a MutationObserver on the history area; probe its DOM first)
-- [ ] specs (=bb-recent-changes.spec.js=, =bb-history.spec.js=), mutations, docs, WIP
-- [ ] vzell's live check
+- [X] a per-row button on our Recent changes table (=button.mb-bb-changes-btn= in the Page cell, its
+  glyph CSS so the cell's text stays the title; one delegated click, =_bbChangesBtnInit()=): opens the
+  row's page in the window with History open, To = revision N, From = the one before (=_bbHistWant= by
+  URL → =_bbHistPick= by page id in =_bbHistSection()= → the row in =_bbHistStart()=, reading later list
+  pages for an older revision); "(new)" = revision 0 against nothing
+- [X] the History pane scrolls to its first changed line when a pair is shown (=_bbHistScrollFirst()=,
+  once per pair, =.mb-bbh-first=)
+- [X] the wiki's own history view (signed in): =_bbWikiDiffScrollInit()= observes =#action-area=; a
+  =div.diff-box= arriving gets its first =ins=/=del= marked and scrolled to (=_bbWikiDiffScroll()=, again
+  after the wiki's own animated scroll unless the reader scrolled). Not probed signed in: where in
+  =#action-area= the comparison lands — the observer takes any depth
+- [X] =bb-history-changes.spec.js= (5), =bb-history= + mobile + =bb-recent-changes= 30 green, mutations
+  =bb-history-changes.json= (11), loader =fixtureFile=, coverage row, brucebase.md, CLAUDE.md, HELP,
+  WIP.14; the wider sibling run still deferred
+- [ ] vzell's live check: system:recent-changes → ✎ on a row; signed in, a page's History → compare two
+  revisions on the wiki
 
 *** TODO Phase 11 — tag pages: system:page-tags, a tag's pages, manage:pages-and-tags
 vzell, 2026-11-11:

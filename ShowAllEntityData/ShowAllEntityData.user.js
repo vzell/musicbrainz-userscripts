@@ -28410,6 +28410,36 @@
     }
 
     /**
+     * The Recent changes "changes" buttons' one delegated click (rows are
+     * cloned on every render, so no listener sits on a button): opens the
+     * row's page in the window with its History section open, on that
+     * revision against the one before it (`_bbHistWant`). Ctrl/⌘-click is
+     * left alone. Installed once.
+     *
+     * @returns {void}
+     */
+    function _bbChangesBtnInit() {
+        if (_bbChangesBtnInit.done) return;
+        _bbChangesBtnInit.done = true;
+        document.addEventListener('click', (e) => {
+            const b = e.target instanceof Element ? e.target.closest('button.mb-bb-changes-btn') : null;
+            if (!b || e.button !== 0) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const a = b.parentElement && b.parentElement.querySelector('a[href]');
+            const src = _popSources().find(s => s.id === 'brucebase.wikidot.com');
+            if (!a || !src || !src.enabled()) {
+                Lib.warn('ui', 'Recent changes: the Brucebase window is off (its preview settings), so the changes button has nothing to open.');
+                return;
+            }
+            const href = a.href.replace(/#.*$/, '');
+            _bbHistWant.set(_bbHistKey(href), parseInt(b.dataset.mbBbRev, 10));
+            _dpSecState.set('History', true);
+            _dpOpenDialog({ src, el: a, key: href, url: href, table: null });
+        }, true);
+    }
+
+    /**
      * Builds one table row of the Recent changes table, in
      * `_BB_CHANGES_HEADERS` order, from one `div.changes-list-item`.
      *
@@ -28420,6 +28450,8 @@
      * changes in 200 carry two, "S" and "T"), the letter before its meaning.
      * Date and Time are the local date and time (`_bbChangeDate()`). Revision is the number in "(rev. 34)", 0 for "(new)". User links the
      * Wikidot profile in a new tab. Comment is the change's comment line.
+     * With the history on (`_bbHistOn()`), the Page cell also holds the
+     * "changes" button (`button.mb-bb-changes-btn`, `_bbChangesBtnInit()`).
      *
      * @param {Element}  item       The change.
      * @param {Document} docContext The document the row is built in.
@@ -28448,6 +28480,23 @@
             a.setAttribute('href', _bbAbsHref(rawHref));
             a.textContent = title;
             pageTd.appendChild(a);
+            // What this revision changed, in the window (Phase 10, the "BB
+            // changes button" TODO): the page's History section opened on
+            // this revision against the one before it. No text of its own (the
+            // glyph is CSS), so the cell's filter text stays the title.
+            const revNo = (_bbText(item.querySelector('td.revision-no')).match(/\d+/) || [])[0] ||
+                (/new/i.test(_bbText(item.querySelector('td.revision-no'))) ? '0' : '');
+            if (revNo && _bbHistOn()) {
+                _bbChangesBtnInit();
+                const b = docContext.createElement('button');
+                b.type = 'button';
+                b.className = 'mb-bb-changes-btn';
+                b.dataset.mbBbRev = revNo;
+                b.setAttribute('aria-label', `What revision ${revNo} changed`);
+                b.setAttribute('data-mb-tip', '');
+                b.title = `What revision ${revNo} changed: this page's History in the window, revision ${revNo} against the one before it`;
+                pageTd.appendChild(b);
+            }
         } else {
             pageTd.textContent = title;
         }
@@ -28906,6 +28955,26 @@
                 clip: rect(0 0 0 0);
                 white-space: nowrap;
             }
+            /* Recent changes: what a revision changed, in the window (Phase 10).
+               The glyph is the button's only content, so the Page cell's text
+               (what the filter reads) stays the title. */
+            body.mb-sa-host-bb button.mb-bb-changes-btn {
+                margin-left: 6px;
+                padding: 0 5px;
+                border: 1px solid #c8c8d8;
+                border-radius: 3px;
+                background: #f4f4fa;
+                color: #444;
+                cursor: pointer;
+                font-size: 11px;
+                line-height: 1.4;
+                vertical-align: 1px;
+            }
+            body.mb-sa-host-bb button.mb-bb-changes-btn::before { content: '✎'; }
+            body.mb-sa-host-bb button.mb-bb-changes-btn:hover { background: #e4e4f2; }
+            /* The wiki's own comparison: its first difference, scrolled to
+               (_bbWikiDiffScroll()). */
+            body.mb-sa-host-bb .mb-bb-first-diff { outline: 2px solid #c9a227; outline-offset: 1px; }
             body.mb-sa-host-bb .mb-bb-flag {
                 display: inline-block;
                 min-width: 1.2em;
@@ -34532,6 +34601,64 @@
     const _bbHistCmp = new Map();
 
     /**
+     * A revision asked for before its page's id is known (Phase 10, the
+     * Recent changes "changes" button): page URL (`_bbHistKey()`) → revision
+     * number. `_bbHistSection()` moves it to `_bbHistPick` once the window's
+     * record names the page id; `_bbHistStart()` turns the number into that
+     * row's id (`ui.to`, the one before it as From) and forgets it.
+     * @type {Map<string, number>}
+     */
+    const _bbHistWant = new Map();
+
+    /** A wanted revision number by page id (`_bbHistWant`). @type {Map<string, number>} */
+    const _bbHistPick = new Map();
+
+    /**
+     * A Brucebase page URL as the history's want maps key it: https, no query,
+     * no fragment.
+     *
+     * @param {string} url
+     * @returns {string}
+     */
+    function _bbHistKey(url) {
+        try {
+            const u = new URL(url, 'https://brucebase.wikidot.com/');
+            return `https://${u.host.toLowerCase()}${u.pathname}`;
+        } catch (_) {
+            return String(url || '');
+        }
+    }
+
+    /**
+     * Brings the first changed line of a page's comparison into view, once
+     * per pair (Phase 10, covering the TODO "scroll to the first difference":
+     * vzell, a userscript that jumps to the first change). The diff grid's
+     * changed cells are `.mb-bbh-chg/-rem/-add` in row order, so the first one
+     * is the first change; a pair with no line diff (the sources identical,
+     * the first revision) is left where it is.
+     *
+     * @param {string} pid
+     * @returns {void}
+     */
+    function _bbHistScrollFirst(pid) {
+        const h = _bbHist.get(pid);
+        if (!h || h.state !== 'ok') return;
+        const ui = _bbHistUiOf(pid);
+        const p = _bbHistPair(h, ui);
+        if (!p.newer || !p.older || p.same) return;
+        const key = `${p.older.id}:${p.newer.id}`;
+        if (ui.scrolled === key) return;
+        requestAnimationFrame(() => {
+            const box = document.querySelector(`#mb-dp-dialog .mb-bbh[data-mb-bbh-id="${CSS.escape(pid)}"]`);
+            const first = box && box.querySelector('.mb-bbh-diff .mb-bbh-chg, .mb-bbh-diff .mb-bbh-rem, .mb-bbh-diff .mb-bbh-add');
+            if (!first) return;
+            ui.scrolled = key;
+            first.classList.add('mb-bbh-first');
+            first.scrollIntoView({ block: 'center' });
+        });
+    }
+
+    /**
      * POSTs one Wikidot history module, same-origin, after the window's rate
      * slot, and returns its body.
      *
@@ -34819,6 +34946,24 @@
         }
         if (!h || h.state !== 'ok' || !h.revs.length) return;
         const ui = _bbHistUiOf(pid);
+        // A revision the Recent changes button asked for: its row (on a later
+        // page of the list when it is older than the first 100), then that
+        // revision against the one before it.
+        if (_bbHistPick.has(pid)) {
+            const want = _bbHistPick.get(pid);
+            let row = h.revs.find(r => r.n === want);
+            while (!row && h.read < h.pages && h.revs.length && h.revs[h.revs.length - 1].n > want) {
+                await _bbHistLoadList(pid, h.read + 1);
+                h = _bbHist.get(pid);
+                row = h.revs.find(r => r.n === want);
+            }
+            _bbHistPick.delete(pid);
+            if (row) {
+                ui.to = row.id;
+                ui.from = '';
+                if (_dpDialog.repaint) _dpDialog.repaint();
+            }
+        }
         let p = _bbHistPair(h, ui);
         if (p.needMore && h.read < h.pages && !h.more) {
             await _bbHistLoadList(pid, h.read + 1);
@@ -34842,6 +34987,7 @@
         }
         if (!c || c.state !== 'ok' || c.identical) return;
         await Promise.all([p.newer, p.older].filter(srcNeeded).map(r => _bbHistLoadSource(r.id)));
+        _bbHistScrollFirst(pid);
     }
 
     /**
@@ -35150,6 +35296,12 @@
     function _bbHistSection(data) {
         if (!data || !data.bbPageId || !_bbHistOn()) return null;
         _bbHistInit();
+        const t = _dpDialog.target;
+        const wk = t && t.url ? _bbHistKey(t.url) : '';
+        if (wk && _bbHistWant.has(wk)) {
+            _bbHistPick.set(data.bbPageId, _bbHistWant.get(wk));
+            _bbHistWant.delete(wk);
+        }
         const h = _bbHist.get(data.bbPageId);
         const n = h && h.state === 'ok' && h.revs.length ? h.revs[0].n + 1 : 0;
         return { label: n ? `History (${n})` : 'History', html: _bbHistHtml(data.bbPageId), open: false, bbHist: data.bbPageId };
@@ -35277,6 +35429,67 @@
     }
 
     /**
+     * The wiki's own history view (signed in: History → compare two
+     * revisions, or a row's "changes"): when its comparison arrives
+     * (`div.diff-box`, PageDiffModule's answer, drawn under `#action-area`),
+     * its first difference is scrolled into view and marked (Phase 10: the
+     * TODO "create userscript which directly scrolls to the first difference
+     * … when clicking history"). One observer on `#action-area` only — the
+     * wiki's history module draws there, our own tables never do — installed
+     * once, under the history setting (`sa_bb_history`).
+     *
+     * @returns {void}
+     */
+    function _bbWikiDiffScrollInit() {
+        if (_bbWikiDiffScrollInit.done || !_bbHistOn()) return;
+        const area = document.getElementById('action-area');
+        if (!area) return;
+        _bbWikiDiffScrollInit.done = true;
+        new MutationObserver((muts) => {
+            for (const m of muts) {
+                for (const n of m.addedNodes) {
+                    if (n.nodeType !== 1) continue;
+                    const box = n.matches('div.diff-box') ? n : n.querySelector('div.diff-box');
+                    if (box) {
+                        _bbWikiDiffScroll(box);
+                        return;
+                    }
+                }
+            }
+        }).observe(area, { childList: true, subtree: true });
+    }
+
+    /**
+     * Scrolls a wiki comparison's first difference (`ins` / `del` of its
+     * inline diff) to the middle of the window and marks it: at once, and
+     * again after the wiki's own animated scroll to the history area
+     * (`_BB_WIKI_DIFF_AGAIN_MS`), unless the reader scrolled meanwhile (a
+     * wheel, a key, a touch). A comparison whose sources are the same (only
+     * tags or the title changed) has none and is left alone.
+     *
+     * @param {Element} box The comparison's `div.diff-box`.
+     * @returns {void}
+     */
+    function _bbWikiDiffScroll(box) {
+        const first = box.querySelector('.inline-diff ins, .inline-diff del') || box.querySelector('ins, del');
+        if (!first) return;
+        first.classList.add('mb-bb-first-diff');
+        let moved = false;
+        const mark = () => { moved = true; };
+        const evs = ['wheel', 'keydown', 'touchmove'];
+        evs.forEach(ev => window.addEventListener(ev, mark, { passive: true, once: true }));
+        const go = () => { if (!moved && first.isConnected) first.scrollIntoView({ block: 'center' }); };
+        requestAnimationFrame(go);
+        setTimeout(() => {
+            go();
+            evs.forEach(ev => window.removeEventListener(ev, mark));
+        }, _BB_WIKI_DIFF_AGAIN_MS);
+    }
+
+    /** When the wiki comparison's first difference is scrolled to again: after the wiki's own animated scroll to it. */
+    const _BB_WIKI_DIFF_AGAIN_MS = 900;
+
+    /**
      * "✎ Page history" in the SAED menu's History group on every Brucebase
      * page with our toolbar (vzell's mockup M4, the "changes" entry; since
      * his live check of History round 2 also the pages no link previews:
@@ -35289,6 +35502,7 @@
      * @returns {void}
      */
     function _saedBbHistoryEntry() {
+        _bbWikiDiffScrollInit();
         if (!_bbHistOn() || document.getElementById('mb-saed-bbhist-btn')) return;
         const pid = _bbHistPageIdOf(document);
         const src = _popSources().find(s => s.id === 'brucebase.wikidot.com');
@@ -42812,6 +43026,7 @@
             .mb-dp-dialog .mb-bbh-rem { background: #fbefed; }
             .mb-dp-dialog .mb-bbh-add { background: #f1f8ee; }
             .mb-dp-dialog .mb-bbh-chg { background: #fdf7e1; }
+            .mb-dp-dialog .mb-bbh-diff > .mb-bbh-first { box-shadow: inset 3px 0 0 #c9a227; }
             .mb-dp-dialog .mb-bbh-diff > .mb-bbh-skip { padding: 2px 8px; text-align: center; color: #7a6d5c; font: 11px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; }
             @media (max-width: 760px) {
                 .mb-dp-dialog .mb-bbh-e { grid-template-columns: 2.4em minmax(0, 1fr) auto; }

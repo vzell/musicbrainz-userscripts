@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.14",
+    "date": "2026-11-12",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Brucebase Recent changes: each row's page has a ✎ button that opens the page's History in the window on that revision against the one before it (an older revision too: the list's later pages are read for it).",
+          "Brucebase History: every comparison scrolls to its first changed line and marks it; and on the wiki's own History (signed in), a comparison opened there scrolls to its first difference."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.13",
     "date": "2026-11-12",
     "sections": [

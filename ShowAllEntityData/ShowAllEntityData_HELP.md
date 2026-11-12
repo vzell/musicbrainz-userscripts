@@ -3948,7 +3948,10 @@ entry, with these columns:
   *Files*, each with its count) show only revisions of those kinds; several
   can be on at once. *From* and *To* on each row compare any two revisions,
   the older always on the left and the revisions between them tinted; a click
-  on a row's text compares it with the one before again. You need not be
+  on a row's text compares it with the one before again. Each comparison
+  scrolls to its first changed line, marked at its left edge. On the wiki's
+  own *History* (signed in), a comparison you open there also scrolls to its
+  first difference. You need not be
   signed in. Nothing is read until you open the section; then the list (100
   revisions, *Load 100 more* for older ones), the comparison and, when the
   text changed, the two texts, one request a second. The ☰ menu of every
@@ -4190,7 +4193,9 @@ buttons always load 200 per page (the most the site offers), and the site's
 The site's form still decides **what** is loaded: untick *ALL* and tick, say,
 *new pages*, or pick a category, before pressing a button. The columns:
 
-- **Page:** the page's title, linked to it.
+- **Page:** the page's title, linked to it, and a small **✎** button: what
+  that revision changed, in the window — the page's *History* opened on this
+  revision against the one before it, scrolled to the first changed line.
 - **Category:** the part of the page's name before the colon (*gig*, *song*,
   *gallery*, …); empty for a page in no category.
 - **Flags:** what changed, one row per flag, the site's letter and its

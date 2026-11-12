@@ -85,7 +85,7 @@
           "frp": { "state": "yes", "ev": "code" } },
         { "type": "bb-recent-changes", "url": "https://brucebase.wikidot.com/system:recent-changes", "mode": "single",
           "ip": { "state": "yes", "ev": "spec", "why": "A changed page's link.", "spec": ["tests/fixtures/bb-event-preview.spec.js", "Recent changes: a changed event page's link previews it"] },
-          "frp": { "state": "yes", "ev": "code" } },
+          "frp": { "state": "yes", "ev": "spec", "why": "The Page links; and each row's ✎ button opens the page's window on its History, that revision against the one before (Phase 10).", "spec": ["tests/fixtures/bb-history-changes.spec.js", "a row's changes button: the page's History in the window, that revision against the one before"] } },
         { "type": "bb-year", "url": "https://brucebase.wikidot.com/1985", "mode": "single",
           "ip": { "state": "yes", "ev": "code", "why": "Show links (/gig:, /nogig:, … : ownLinks)." },
           "frp": { "state": "yes", "ev": "spec", "why": "Also the MB-Event glyph and the Venue column, table only.", "spec": ["tests/fixtures/bb-event-preview.spec.js", "Ctrl+hover on Event: ONE request"] } },

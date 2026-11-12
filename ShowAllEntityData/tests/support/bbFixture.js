@@ -464,10 +464,12 @@ const BB_HISTORY_STORY_FIXTURE = path.join(__dirname, '..', 'fixtures', 'bb-hist
  *   `answer` may replace a module's answer (an HTTP status, or Wikidot's
  *   JSON); null keeps the fixture's. `url`: the address the fixture is
  *   served at (default the song's; a page no link previews, such as
- *   system:recent-changes, for the ☰ entry).
+ *   system:recent-changes, for the ☰ entry). `fixtureFile`: the page served
+ *   at `url` (default the song's; the Recent changes fixture for its
+ *   changes button, its list answered through `answer`).
  * @returns {Promise<{ posts: Array<{module: string, page: string, revision: string, pair: string}>, requests: string[] }>}
  */
-async function loadBbHistoryPage(page, { settingsOverride = {}, answer = null, url = BB_HISTORY_URL } = {}) {
+async function loadBbHistoryPage(page, { settingsOverride = {}, answer = null, url = BB_HISTORY_URL, fixtureFile = BB_HISTORY_FIXTURE } = {}) {
     const posts = [];
     const requests = [];
     page.on('request', (req) => requests.push(`${req.method()} ${req.url()}`));
@@ -505,7 +507,7 @@ async function loadBbHistoryPage(page, { settingsOverride = {}, answer = null, u
         return route.fulfill({ path: file, contentType: 'application/json' });
     });
     await loadUserscriptPage(page, {
-        url, fixtureFile: BB_HISTORY_FIXTURE, testMode: true,
+        url, fixtureFile, testMode: true,
         settingsOverride: { sa_enable_brucebase: true, ...settingsOverride },
     });
     return { posts, requests };
@@ -520,4 +522,5 @@ module.exports = {
     BB_YEAR_LIST_BUTTON, BB_YEAR_LIST_ALL_BUTTON, bbYearListFixture, loadBbYearListPage,
     BB_RELATIONS_URL, BB_RELATIONS_FIXTURE, BB_RELATIONS_BUTTON, loadBbRelationsPage,
     BB_CHANGES_URL, BB_CHANGES_FIXTURE, BB_CHANGES_AJAX, loadBbChangesPage,
+    BB_HISTORY_FIXTURE,
 };
