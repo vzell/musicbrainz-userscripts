@@ -488,7 +488,7 @@ an optional note =<em>(Recording Session)</em>=, tour boxes between the lists.
   spec at its first failure (=--max-failures=1=) and writes =~/.cache/sa-mutation/status.json=, which
   =~/.claude/statusline.sh= shows (vzell: "yes change the runner"); every entry got a one-test =grep=
 
-*** TODO Phase 10 — Recent changes "changes" button and the first difference
+*** DONE Phase 10 — Recent changes "changes" button and the first difference
 covers: "* TODO create userscript which directly scrolls to the first difference …" and the original
 "BB changes button" idea.
 - [X] a per-row button on our Recent changes table (=button.mb-bb-changes-btn= in the Page cell, its
@@ -505,8 +505,8 @@ covers: "* TODO create userscript which directly scrolls to the first difference
 - [X] =bb-history-changes.spec.js= (5), =bb-history= + mobile + =bb-recent-changes= 30 green, mutations
   =bb-history-changes.json= (11), loader =fixtureFile=, coverage row, brucebase.md, CLAUDE.md, HELP,
   WIP.14; the wider sibling run still deferred
-- [ ] vzell's live check: system:recent-changes → ✎ on a row; signed in, a page's History → compare two
-  revisions on the wiki
+- [X] vzell's live check (2026-11-12): OK (asked on the way how to compare any two revisions: the From /
+  To pickers; a click on a row's text is "this revision against the one before")
 
 *** TODO Phase 11 — tag pages: system:page-tags, a tag's pages, manage:pages-and-tags
 vzell, 2026-11-11:
