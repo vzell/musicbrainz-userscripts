@@ -667,9 +667,9 @@ The mirror has 258 =stats:*studio-sessions*= pages (an album's sessions and its 
   bb-song-tours' (a never-toured song replaces it); =scripts/mutations/bb-song-tours-sessions.json= (32) +
   4 refreshed finds (bb-release, bb-song ×2, bb-stats): 36 OK; all 27 BB specs + sl-include-regex 295
   green; coverage rows, PAGETYPES reference (174, 175), HELP, CLAUDE.md, WIP.18
-- [ ] vzell's live check of batch 2 (e.g. stats:hungry-heart-tour, stats:born-to-run-studio-sessions,
+- [X] vzell's live check of batch 2 (e.g. stats:hungry-heart-tour, stats:born-to-run-studio-sessions,
   stats:darkness-on-the-edge-of-town-studio-sessions, stats:nebraska-studio-sessions-details, and the
-  On The Tracks of song:the-heist or retail:born-to-run)
+  On The Tracks of song:the-heist or retail:born-to-run): OK (2026-11-12, with the Note column)
 - [ ] batch 3: E, F
 - [ ] build in batches (one shared tabview reader where possible, =bb-songs= as the model); specs,
   mutations, coverage rows, docs, WIP per batch
