@@ -620,7 +620,17 @@ The mirror has 258 =stats:*studio-sessions*= pages (an album's sessions and its 
   survey table, A–F with real rows, Q1–Q8 inside (recommended: batch 1 = A + B; one table with a Tab
   column; show links split; sub-table per tab/heading; C and D (with the On The Tracks title / version /
   take split) batch 2; E and F batch 3; fragments only through their main page)
-- [ ] vzell's answers; vzell picks the first batch
+- [X] vzell's answers (2026-11-12, "* DONE stats answers" below), all eight as recommended: batch 1 = A
+  (link lists) + B (wiki tables) — Q1's "about 135 pages" was the mockup's stale option text, the copy
+  has 202 + 46; one table with a Tab column, nested tabs one path; show links split (Date with date
+  parts, Venue turned round, City, State, Kind; the wiki's text as the hover); a sub-table per tab or
+  heading, the first open; batch 2 = C (song tour counts) and D (studio sessions with the On The Tracks
+  title / version / take split); batch 3 = E (galleries, Cover column) and F; fragments only through
+  their main page
+- [ ] batch 1: =bb-stats-list= (A) and =bb-stats-table= (B); probe the readers over every page of both
+  shapes in the copy first; specs, mutations, coverage rows, docs, WIP
+- [ ] batch 2: C, D (+ the On The Tracks split)
+- [ ] batch 3: E, F
 - [ ] build in batches (one shared tabview reader where possible, =bb-songs= as the model); specs,
   mutations, coverage rows, docs, WIP per batch
 - [ ] vzell's live check per batch
@@ -764,6 +774,17 @@ for Phase 2 and 3 are also both confirmed like OK
 6. In the Tags cell, group the tags by family, or keep the site's alphabetical order? [alphabetical]
 7. Tag link hover card: show the newest six pages, or the first six by title? [newest]
 8. Tag link window for a big tag: load the first 250 with a "Load all" button, or everything at once? [first 250 plus the button]
+
+* DONE stats answers
+
+1. Which shapes go into the first batch? [A (link lists) and B (wiki tables): about 135 pages, two readers]
+2. Tabs on a link list: one table with a Tab column, or a sub-table per tab? [One table with a Tab column; nested tabs as one path "Audio › Born To Run (1975)"]
+3. Show links ("2014-12-07 Kennedy Center, Washington, DC"): split into columns? [Yes: Date (with the date parts), Venue, City, State, Kind; the sort form "Left Foot (The)" turned round, the wiki's text as the hover]
+4. A wiki table per tab or heading (Awards, Openers and Closers): sub-tables, or one table with a group column? [A sub-table per tab or heading, the first open]
+5. The 1,299 song tour pages: a pageType of their own (C), or leave them to the song page's "Performances by tour"? [Their own pageType, batch 2 (it adds the tour totals and the share)]
+6. Studio sessions (D): a detail pageType like bb-retail, with the Song / Version / Take split shared with On The Tracks? [Yes, batch 2, and the On The Tracks split (the open TODO) built with it]
+7. Galleries (E): rows with a Cover column and the image card, or leave the tiles? [Rows with a Cover column, batch 3]
+8. Include fragments (performances-with-bruce-*, awards-*): read only through their main page? [Yes, only through the main page; the fragments keep link previews]
 
 
 * TODO adjustments
