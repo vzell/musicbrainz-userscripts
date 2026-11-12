@@ -592,9 +592,35 @@ https://brucebase.wikidot.com/stats:wild-innocent-e-street-shuffle-studio-sessio
 #+end_example
 The mirror has 258 =stats:*studio-sessions*= pages (an album's sessions and its =-details=, =-credits=,
 =-addrec= parts).
-- [ ] survey every listed page and one sample per family (=scripts/probe-bb-stats-pages.py=): which are
-  tabviews like stats:songs, plain lists, number grids or text
-- [ ] mockup per shape; vzell picks the first batch
+- [X] survey (=scripts/copy-bb-stats-sample.sh= → =debug/bb-mirror/stats/=, 721 pages: every stats page
+  outside the three big families, all =awards-*= and =*studio-sessions*=, one =<song>-tour= in 50, the 23
+  =content:files*=; =scripts/probe-bb-stats-pages.py= → =debug/bb-stats-probe.json=; Env:
+  2026-11-12T09:23+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) · n/a). Shapes:
+  - A tabbed link lists, 202 pages in the copy: letter tabs as stats:songs or named tabs (labels, years,
+    tours, regions; nested tabs on circulating-audio), each tab =li > a= to ONE kind (song:, bootleg:,
+    gig:/nogig:/interview:/rehearsal:/recording:, venue:, lyrics:, recnote:, relation:). Show links read
+    "2014-12-07 Kennedy Center, Washington, DC" (no " - " as on the year pages), venues in sort form
+    "Left Foot (The)"
+  - B wiki tables with a header row, 46: awards (a table per ceremony tab), song-count-by-tour-* (28,
+    # | Title | Count), city/state/country/continent-performance-count, songs-count, the-live-top-100,
+    set-openers-and-closers (a table per tour h2), on-the-tracks-timeline (Date | Song Title | Location |
+    Personnel) and -key, longest-shows, video-footage-statistics-1970s, tour-statistics
+  - C =<song>-tour= (1,299): one-row boxes "Performed at 59 show(s) of 130 on the 2023-25 International
+    Tour" (+ "(Excl./Incl. …)" notes); 12 of the 26 sampled have none of them — the whole family before specs
+  - D =*-studio-sessions= (35 main pages, 223 parts the main page includes: -overview, -release, -addrec,
+    -details, -credits, -altseq-N, …): tabviews Released/Unreleased, Version History/Timeline, Potential
+    Sequence #N; version tables headed "BORN TO RUN - V1a | 4:24 | release"
+  - E galleries: discography-* (cover tiles =disco_<name>.jpg= linking retail:/playlist:), songs-by-album,
+    song-count-by-album
+  - F text: songs-registered (182 plain =li= titles, 96 of them match a stats:songs title), songs-list
+    (1,679 song links in paragraphs), hubs (on-the-tracks, venues, statistics, studio-bootlegs)
+  - fragments the main pages include: performances-with-bruce-* (raw =[[row]]= markup), awards-*
+- [X] mockups https://claude.ai/artifact/G2buE4qzMUojqXwkEGCiPH (=scripts/build-bb-stats-mockups.py= +
+  =scripts/bb-stats-mockups.template.html=; the HTML =debug/bb-stats-mockups.html=, no member names):
+  survey table, A–F with real rows, Q1–Q8 inside (recommended: batch 1 = A + B; one table with a Tab
+  column; show links split; sub-table per tab/heading; C and D (with the On The Tracks title / version /
+  take split) batch 2; E and F batch 3; fragments only through their main page)
+- [ ] vzell's answers; vzell picks the first batch
 - [ ] build in batches (one shared tabview reader where possible, =bb-songs= as the model); specs,
   mutations, coverage rows, docs, WIP per batch
 - [ ] vzell's live check per batch
@@ -662,6 +688,21 @@ share: copy samples to the scratchpad first; 17 min for 1,489 files on 2026-11-1
 petri. =debug/= is gitignored: the probes' outputs (=debug/bb-story-probe.json=, the raw tag pages, …)
 are NOT on petri; rerun the probe scripts (=scripts/probe-bb-*.py=) when they are needed. The fixtures
 and captured answers the specs use are committed.
+
+*** Picked up on petri (2026-11-12)
+Env: 2026-11-12T09:15:55+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) · Playwright 1.62.1
+Chromium, no Tampermonkey (GM stubs).
+- Correction to "Files" above (vzell): the mirror is on vzell's NAS, the same path on all three machines
+  (still slow), and vzell synced =debug/= from vzell-lap by hand — the probes' outputs ARE on petri.
+- Owed 1: =test:full= at f6bfc2b1, 3,026 tests, 19 m 7 s: 3,025 passed, 1 failed —
+  =table-seed-ledger.spec.js:363=, stale since main's Discogs section bands (=74af55ee=) added two built-in
+  hidden-columns rows; fixed in the spec (drops only release-tracks' ledger key), the file 12/12. The fix
+  goes to main with this branch (main itself still fails that test). The popup-ext-foreign flake did not
+  show. Row in =tests/MEASUREMENTS.org=.
+- Owed 2: check-mutation-finds (285 lists, 0 stale), lint-summary =--check=, build-coverage-report
+  =--check=, audit-docs: all OK.
+- Owed 3: Phase 13 survey and mockups done (above); waiting for vzell's answers.
+- The working rules are now in petri's Claude memory too.
 
 
 * DONE answers
