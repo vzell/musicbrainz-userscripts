@@ -29365,3 +29365,17 @@ Env: 2026-11-12T22:50+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) ·
   208-test mixed run (withFinding 0 for 2 after two global-filter re-renders); not reproduced alone ×3,
   in parallel ×4 (32/32) or in the same mixed run again (208/208). Load flake, watch it at test:full.
 - vzell's live check of batch 1 and the finding: OK.
+
+## 2026-11-13 — Brucebase person and release windows (feature/bb-overhaul, Phase 16 batch 2)
+Env: 2026-11-13T00:02+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+- Mockup https://claude.ai/artifact/LHEdFVu715Qu4z2dUackmb, all answers as recommended. A person's
+  biography as "About" (batch 1's `_bbEventAboutEl()`, its first sentence on the card); a release's or
+  playlist's window adds the page view's reading as folded sections (`_bbReleaseWindowExtras()`) plus
+  Gallery/News (`_bbGalleryNewsSection()`, which the page view does not read). Parser version 25.
+- The sweep re-run on these families: person windows keep 97% of the page's text blocks (79%), releases
+  62% (26%), playlists 65% (29%); the remaining "losses" checked: rewordings (Personnel "Name (Band):
+  role", On The Tracks "Song" + "V2" for "SONG - V2"), table headers, the empty "Additional Information"
+  heading, On The Tracks group headings (the page view drops those too).
+- A side effect of batch 1 noticed here: its list sections (Appearances, …) reach person windows too,
+  folded — consistent, live-checked with batch 1.
+Spec 4/4, mutations 13/13 (+2 batch 1 finds refreshed), BB specs 343/343, popup-ext BB + YouTube 44/44.

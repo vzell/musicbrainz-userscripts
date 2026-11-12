@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.23",
+    "date": "2026-11-13",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Brucebase: the window of a person or band starts with the biography (About) and its source, and the hover card shows its first sentence.",
+          "Brucebase: the window of a release or playlist also shows, folded, its On The Tracks versions under each song (with the releases each is on), its Recording 'Live' Dates under each disc with each date linked to its show, its Gallery/News press links, how often its songs were played live, its notes and history, and the links to its lyrics and media."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.22",
     "date": "2026-11-12",
     "sections": [

@@ -1948,3 +1948,35 @@ by `scripts/build-bb-event-fixtures.py`; then `bb-event-interview-2019-07-10.htm
 `bb-year-event-pages.spec.js`; `bb-event-preview.spec.js` updated for the
 section order. Mutations `scripts/mutations/bb-event-window-gaps.json` (21;
 two older finds refreshed: bb-release's Personnel, Phase 14's "the line-up is one row").
+
+### Batch 2: the person and release windows (G4, G5)
+
+Mockup https://claude.ai/artifact/LHEdFVu715Qu4z2dUackmb
+(`scripts/extract-bb-batch2-mockup.js`, `scripts/build-bb-batch2-mockup.py`
+with its template); vzell's answers, all as recommended. `_DP_PARSER_VERSION` 25.
+
+- **A person's biography** (answers 1, 2): `_dpParseBbPage()` reads a
+  `/relation:` page's text above the tabs with batch 1's
+  `_bbEventAboutEl()` (plain paragraphs, the "Source: Wikipedia" line last)
+  as "About", first and open, its first sentence as `cardLine` — the venue
+  window's "About" for people and bands. 41 of 42 person pages sampled.
+  (Batch 1's list sections reach person windows too: their Appearances are
+  a folded section.)
+- **A release's or playlist's window** (answers 3–6): `_dpParseBbRelease()`
+  adds `_bbReleaseWindowExtras(rec, doc, url)` from the page view's own
+  reading (`_bbReleaseRead()`), each a folded section after Related
+  releases: On The Tracks (the versions under each song in the title style:
+  version, take, date, time, the releases it is on, its note); Recording
+  'Live' Dates (the songs under each disc, each date linked to its show);
+  Gallery/News (`_bbGalleryNewsSection()`: its headings and press lines,
+  the galleries, the photo credits and "Sorry, no … available." left out —
+  the page view does not read this tab); then Performed live (the songs'
+  live counts), the text tabs (Notes, History, On The Tracks notes, …),
+  Lyrics and Media as links. Bootlegs are unchanged. The sweep then kept
+  62% of a release's text blocks (26% before) and 65% of a playlist's
+  (29%); the rest are rewordings and table headers.
+
+Tests: `tests/fixtures/bb-person-release-windows.spec.js` (the person and
+release fixtures of Phases 4–5); mutations
+`scripts/mutations/bb-person-release-windows.json` (13; two finds of
+`bb-event-window-gaps.json` refreshed).

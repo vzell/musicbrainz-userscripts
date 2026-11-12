@@ -4,7 +4,7 @@
         "why": "G1, answer 1: \"About this show\" first and open.",
         "edits": [
             {
-                "find": "                data.sections.unshift({ label: 'About this show', text, html: _dpBlockHtml(about, url) });",
+                "find": "                data.sections.unshift({ label: aboutLabel, text, html: _dpBlockHtml(about, url) });",
                 "replace": ""
             }
         ],
@@ -17,8 +17,8 @@
         "why": "A person page's text above its tabs is its biography (batch 2), not an event's description.",
         "edits": [
             {
-                "find": "        if (_BB_EVENT_PAGE_RE.test(new URL(url, 'https://brucebase.wikidot.com/').pathname)) {",
-                "replace": "        if (true) {"
+                "find": "        const aboutLabel = _BB_EVENT_PAGE_RE.test(aboutPath) ? 'About this show' : /^\\/relation:/.test(aboutPath) ? 'About' : '';",
+                "replace": "        const aboutLabel = 'About this show';"
             }
         ],
         "spec": "tests/fixtures/bb-event-window-gaps.spec.js",

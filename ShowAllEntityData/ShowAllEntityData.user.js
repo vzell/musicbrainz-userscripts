@@ -31642,9 +31642,13 @@
      *    show", `cardLine`), every cast tab (In studio, On set, …), an
      *    interview's Playlist, the venue's other lists and an older page's
      *    News tab (Phase 16, batch 1).
+     * 25: a person page's record has its biography ("About", `cardLine`); a
+     *    release's or playlist's On The Tracks, Recording 'Live' Dates,
+     *    Gallery/News, Performed live, text tabs, Lyrics and Media
+     *    (`_bbReleaseWindowExtras()`, Phase 16 batch 2).
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 24;
+    const _DP_PARSER_VERSION = 25;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -36750,6 +36754,103 @@
     }
 
     /**
+     * A link of a window section: the site's own markup for one.
+     *
+     * @param {string} href
+     * @param {string} text
+     * @returns {string}
+     */
+    function _bbWinLink(href, text) {
+        return href ? `<a href="${_mbttEscape(href)}" target="_blank" rel="noopener">${_mbttEscape(text)}</a>` : _mbttEscape(text);
+    }
+
+    /**
+     * A release's Gallery/News tab for its window (Phase 16 batch 2, answer
+     * 5): its headings and press lines with their links; the galleries (the
+     * window's Images have the pictures), the photo credit under each and the
+     * "Sorry, no … available." lines left out. Null when nothing is left.
+     *
+     * @param {Document} doc
+     * @param {string} url
+     * @returns {?{label: string, text: string, html: string, open: boolean}}
+     */
+    function _bbGalleryNewsSection(doc, url) {
+        for (const nav of doc.querySelectorAll('#page-content .yui-navset')) {
+            const labels = Array.from(nav.querySelectorAll(':scope > ul.yui-nav > li')).map(li => _dpText(li.textContent));
+            const panels = Array.from((nav.querySelector(':scope > .yui-content') || { children: [] }).children);
+            const i = labels.indexOf('Gallery/News');
+            if (i < 0 || !panels[i]) continue;
+            const c = panels[i].cloneNode(true);
+            c.querySelectorAll('.gallery-box, .wikidot-hybrid-module, script').forEach(n => n.remove());
+            c.querySelectorAll('p').forEach((p) => {
+                const t = _dpText(p.textContent);
+                if (!t || /^©\s*All credits\b/i.test(t) || /^Sorry,? no\b/i.test(t)) p.remove();
+            });
+            const text = _dpBlockText(c);
+            return text ? { label: 'Gallery/News', text, html: _dpBlockHtml(c, url), open: false } : null;
+        }
+        return null;
+    }
+
+    /**
+     * What a release's or playlist's window adds from the page view's own
+     * reading (`_bbReleaseRead()`; Phase 16 batch 2, vzell's answers 3–6),
+     * each a folded section: On The Tracks, the versions under each song
+     * (version, take, date, time, the releases it is on, its note); Recording
+     * 'Live' Dates, the songs under each disc, each date linked to its show;
+     * Gallery/News (`_bbGalleryNewsSection()`); then Performed live (the
+     * songs' live counts), the text tabs (Notes, History, On The Tracks
+     * notes, …), Lyrics and Media as links.
+     *
+     * @param {Object} rec `_bbReleaseRead()`'s record.
+     * @param {Document} doc
+     * @param {string} url
+     * @returns {Array<{label: string, text: string, html: string, open: boolean}>}
+     */
+    function _bbReleaseWindowExtras(rec, doc, url) {
+        const out = [];
+        const sec = (label, text, html) => out.push({ label, text, html, open: false });
+        const group = (rows, keyOf) => {
+            const by = new Map();
+            rows.forEach((r) => { const k = keyOf(r); if (!by.has(k)) by.set(k, []); by.get(k).push(r); });
+            return Array.from(by);
+        };
+        if (rec.ott && rec.ott.length) {
+            const what = r => [r.version, r.take && `take ${r.take}`, r.date, r.time].filter(Boolean).join(' · ');
+            const groups = group(rec.ott, r => _mbSiteTitleText(r.title));
+            sec(`On The Tracks (${rec.ott.length})`,
+                groups.map(([t, rs]) => `${t}\n` + rs.map(r => `  ${what(r)}${r.releases.length ? ` — ${r.releases.map(x => x.text).join(', ')}` : ''}${r.note ? ` (${r.note})` : ''}`).join('\n')).join('\n'),
+                groups.map(([t, rs]) => `<p><b>${_mbttEscape(t)}</b></p><ul>` + rs.map(r => `<li>${_mbttEscape(what(r))}` +
+                    (r.releases.length ? ` — ${r.releases.map(x => _bbWinLink(x.href, x.text)).join(', ')}` : '') +
+                    (r.note ? ` <span class="mb-dp-xsub">(${_mbttEscape(r.note)})</span>` : '') + '</li>').join('') + '</ul>').join(''));
+        }
+        if (rec.dates && rec.dates.length) {
+            const line = r => `${r.n ? `${r.n} ` : ''}${r.song} — ${r.date || r.dateText} ${r.location}${r.note ? ` (${r.note})` : ''}`;
+            const lineHtml = r => `${_mbttEscape(r.n ? `${r.n} ` : '')}${_mbttEscape(_mbSiteTitleText(r.song))} — ${_bbWinLink(r.href, r.date || r.dateText)} ` +
+                `${_mbttEscape(r.location)}${r.note ? ` <span class="mb-dp-xsub">(${_mbttEscape(r.note)})</span>` : ''}`;
+            const groups = rec.dates.some(r => r.disc) ? group(rec.dates, r => r.disc || '') : [['', rec.dates]];
+            sec(`Recording 'Live' Dates (${rec.dates.length})`,
+                groups.map(([d, rs]) => (d ? `${d}\n` : '') + rs.map(line).join('\n')).join('\n'),
+                groups.map(([d, rs]) => (d ? `<p><b>${_mbttEscape(d)}</b></p>` : '') + `<ul>${rs.map(r => `<li>${lineHtml(r)}</li>`).join('')}</ul>`).join(''));
+        }
+        const news = _bbGalleryNewsSection(doc, url);
+        if (news) out.push(news);
+        if (rec.performance && rec.performance.length) {
+            const n = c => (/^\d+$/.test(String(c)) ? Number(c).toLocaleString('en-US') : String(c || ''));
+            sec(`Performed live (${rec.performance.length})`,
+                rec.performance.map(p => `${_mbSiteTitleText(p.song)}: ${n(p.count)}`).join('\n'),
+                `<ul>${rec.performance.map(p => `<li>${_bbWinLink(p.href, _mbSiteTitleText(p.song))} <span class="mb-dp-xsub">${_mbttEscape(n(p.count))}</span></li>`).join('')}</ul>`);
+        }
+        (rec.texts || []).forEach(t => sec(t.label, t.text, t.html || ''));
+        const links = (label, list) => {
+            if (list && list.length) sec(`${label} (${list.length})`, list.map(([t]) => t).join('\n'), `<ul>${list.map(([t, h]) => `<li>${_bbWinLink(h, t)}</li>`).join('')}</ul>`);
+        };
+        links('Lyrics', rec.lyrics);
+        links('Media', rec.media);
+        return out;
+    }
+
+    /**
      * Parses a Brucebase release, playlist or bootleg page for its preview
      * (any link to one; `_DP_SITES[…].ownLinks`), from the readers the
      * bb-retail and bb-bootleg pageTypes use (`_bbReleaseRead()`,
@@ -36793,6 +36894,8 @@
                 const text = rec.related.map(r => `${r.group ? `${r.group}: ` : ''}${r.release}${r.note ? ` (${r.note})` : ''}`);
                 data.sections.push({ label: `Related releases (${rec.related.length})`, text: text.join('\n'), html: html.join('\n'), open: false });
             }
+            // What the page view also reads, folded (Phase 16 batch 2).
+            data.sections.push(..._bbReleaseWindowExtras(rec, doc, url));
         }
         if (data.tracks.length) data.highlight = { value: String(data.tracks.length), label: data.tracks.length === 1 ? 'track' : 'tracks' };
         data.collapsible = true;
@@ -36989,12 +37092,16 @@
             if (text) data.sections.push({ label: name === 'News' ? 'News/Memorabilia' : name, text, html: _dpBlockHtml(panel, url) });
         });
         // The description (Phase 16, G1; answers 1 and 2): "About this show"
-        // first and open, its first sentence on the hover card.
-        if (_BB_EVENT_PAGE_RE.test(new URL(url, 'https://brucebase.wikidot.com/').pathname)) {
+        // first and open, its first sentence on the hover card. A person's
+        // biography the same way, as "About" (batch 2, G4), its "Source:
+        // Wikipedia" line last, as a venue's window has it.
+        const aboutPath = new URL(url, 'https://brucebase.wikidot.com/').pathname;
+        const aboutLabel = _BB_EVENT_PAGE_RE.test(aboutPath) ? 'About this show' : /^\/relation:/.test(aboutPath) ? 'About' : '';
+        if (aboutLabel) {
             const about = _bbEventAboutEl(content);
             const text = about ? _dpBlockText(about) : '';
             if (text) {
-                data.sections.unshift({ label: 'About this show', text, html: _dpBlockHtml(about, url) });
+                data.sections.unshift({ label: aboutLabel, text, html: _dpBlockHtml(about, url) });
                 data.cardLine = _bbFirstSentence(text);
             }
         }
@@ -37101,7 +37208,8 @@
 
     /**
      * An event page's description, the text above its tabs (the page view's
-     * "About this show", the window's since Phase 16): the first
+     * "About this show", the window's since Phase 16), and a person page's
+     * biography (the window's "About", batch 2): the first
      * `.list-pages-box` before the tabview that is not the Share box, or else
      * the plain paragraphs before the tabview — some pages have their
      * description as bare `<p>`s between the "Info & Setlist | Venue" line

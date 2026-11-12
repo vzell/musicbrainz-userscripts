@@ -1,0 +1,171 @@
+[
+    {
+        "name": "a person has no About",
+        "why": "G4, answer 1: the biography as \"About\".",
+        "edits": [
+            {
+                "find": "/^\\/relation:/.test(aboutPath) ? 'About' : '';",
+                "replace": "'';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-person-release-windows.spec.js",
+        "grep": "a person:",
+        "expect": "fail"
+    },
+    {
+        "name": "the release window gets nothing of the page view's reading",
+        "why": "G5, answers 3–6.",
+        "edits": [
+            {
+                "find": "            data.sections.push(..._bbReleaseWindowExtras(rec, doc, url));",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-person-release-windows.spec.js",
+        "grep": "a release:",
+        "expect": "fail"
+    },
+    {
+        "name": "On The Tracks not grouped by song",
+        "why": "Answer 3: the versions under each song.",
+        "edits": [
+            {
+                "find": "            const groups = group(rec.ott, r => _mbSiteTitleText(r.title));",
+                "replace": "            const groups = rec.ott.map(r => [_mbSiteTitleText(r.title), [r]]);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-person-release-windows.spec.js",
+        "grep": "a release:",
+        "expect": "fail"
+    },
+    {
+        "name": "On The Tracks without the releases a version is on",
+        "why": "Answer 3: … the releases it is on.",
+        "edits": [
+            {
+                "find": "                    (r.releases.length ? ` — ${r.releases.map(x => _bbWinLink(x.href, x.text)).join(', ')}` : '') +",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-person-release-windows.spec.js",
+        "grep": "a release:",
+        "expect": "fail"
+    },
+    {
+        "name": "the live dates not grouped by disc",
+        "why": "Answer 4: the songs under each disc.",
+        "edits": [
+            {
+                "find": "            const groups = rec.dates.some(r => r.disc) ? group(rec.dates, r => r.disc || '') : [['', rec.dates]];",
+                "replace": "            const groups = [['', rec.dates]];"
+            }
+        ],
+        "spec": "tests/fixtures/bb-person-release-windows.spec.js",
+        "grep": "Recording 'Live' Dates under each disc",
+        "expect": "fail"
+    },
+    {
+        "name": "a live date not linked to its show",
+        "why": "Answer 4: each date linked to its show.",
+        "edits": [
+            {
+                "find": "${_bbWinLink(r.href, r.date || r.dateText)} ",
+                "replace": "${_mbttEscape(r.date || r.dateText)} "
+            }
+        ],
+        "spec": "tests/fixtures/bb-person-release-windows.spec.js",
+        "grep": "Recording 'Live' Dates under each disc",
+        "expect": "fail"
+    },
+    {
+        "name": "Gallery/News keeps the photo credits and the placeholders",
+        "why": "Answer 5.",
+        "edits": [
+            {
+                "find": "                if (!t || /^©\\s*All credits\\b/i.test(t) || /^Sorry,? no\\b/i.test(t)) p.remove();",
+                "replace": "                if (!t) p.remove();"
+            }
+        ],
+        "spec": "tests/fixtures/bb-person-release-windows.spec.js",
+        "grep": "a release:",
+        "expect": "fail"
+    },
+    {
+        "name": "no Gallery/News",
+        "why": "Answer 5.",
+        "edits": [
+            {
+                "find": "        if (news) out.push(news);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-person-release-windows.spec.js",
+        "grep": "a release:",
+        "expect": "fail"
+    },
+    {
+        "name": "the new sections start open",
+        "why": "Answers 3–6: each folded.",
+        "edits": [
+            {
+                "find": "        const sec = (label, text, html) => out.push({ label, text, html, open: false });",
+                "replace": "        const sec = (label, text, html) => out.push({ label, text, html });"
+            }
+        ],
+        "spec": "tests/fixtures/bb-person-release-windows.spec.js",
+        "grep": "a release:",
+        "expect": "fail"
+    },
+    {
+        "name": "no Performed live",
+        "why": "Answer 6.",
+        "edits": [
+            {
+                "find": "        if (rec.performance && rec.performance.length) {",
+                "replace": "        if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-person-release-windows.spec.js",
+        "grep": "a release:",
+        "expect": "fail"
+    },
+    {
+        "name": "no text tabs (Notes, History, …)",
+        "why": "Answer 6.",
+        "edits": [
+            {
+                "find": "        (rec.texts || []).forEach(t => sec(t.label, t.text, t.html || ''));",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-person-release-windows.spec.js",
+        "grep": "a release:",
+        "expect": "fail"
+    },
+    {
+        "name": "no Lyrics",
+        "why": "Answer 6.",
+        "edits": [
+            {
+                "find": "        links('Lyrics', rec.lyrics);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-person-release-windows.spec.js",
+        "grep": "a release:",
+        "expect": "fail"
+    },
+    {
+        "name": "a person's card has no first sentence",
+        "why": "Answer 2 (the card draws cardLine).",
+        "edits": [
+            {
+                "find": "            (data.cardLine ? `<div class=\"mb-tt-comment mb-dp-cardline\">${_mbttEscape(data.cardLine)}</div>` : '') +",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-person-release-windows.spec.js",
+        "grep": "on a hover",
+        "expect": "fail"
+    }
+]

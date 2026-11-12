@@ -4179,7 +4179,9 @@ lists into pages (Steven Van Zandt's 1,517 shows over six), and all of them
 are read, one request per page — with *As* saying in which band ("As a
 member of The E Street Band"); the count per band; appearances; the
 recordings by song and role; their bands or members; songs co-written with
-Bruce. Their biography, tags and pictures are above. A show in their
+Bruce. Their biography, tags and pictures are above. Pointing at a link to
+a person or band (Ctrl) shows the biography's first sentence on the card,
+and the window starts with the whole biography (*About*) and its source. A show in their
 lists links the wiki's "on stage" page for it, which the wiki forwards to
 the show: pointing at it (Ctrl) previews the show itself. An entry the wiki
 writes with a comma after its date ("2015-04-30, Story Chapel, …") is
@@ -4203,7 +4205,11 @@ per disc with each song's time, and a *Side* column where the page marks the
 sides; the label, catalog number, time, format, source and sound in a
 Bootleg card, the notes, and the Front, Back and Disc artwork. Pointing at
 a link to a release, playlist or bootleg (Ctrl) previews it: its facts and
-tracks; Space opens the window.
+tracks; Space opens the window, where a release or playlist also has, folded,
+its On The Tracks versions under each song, its Recording 'Live' Dates under
+each disc (each date linked to its show), its Gallery/News press links, how
+often its songs were played live, its notes and history, and the links to
+its lyrics and media.
 
 A **story page** (`/story:…`: a show's Storyteller words, and the speeches,
 interviews, phone calls, podcasts, DJ sets and eulogies the wiki keeps the
