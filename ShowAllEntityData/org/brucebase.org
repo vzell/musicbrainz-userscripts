@@ -878,7 +878,22 @@ BB PTs". Last, once Phases 7–15 have added their readers.
   discography, an On The Tracks page, Born In The U.S.A.'s lyrics — no preview today. Questions: 1 the
   setting(s), 2 a sessions page's tables (100 rows / all / names), 3 a discography grouped or flat, 4 a
   lyrics card's first lines, 5 the lyrics window's versions, 6 the other stats pages. multi:/soundcheck:
-  preview as their gig (no question). Waiting for vzell.
+  preview as their gig (no question).
+  vzell's answers (2026-11-13): all six as recommended —
+  1. a song's pages (tour counts =stats:…-tour=, =ott:=, =lyrics:=) under the song preview's setting
+     (=sa_bb_detail_preview=); studio sessions and discographies under the event, venue, people and release
+     setting (=sa_bb_event_preview=, =ownLinks=);
+  2. a sessions page's tables each a folded section, the first 100 rows, then "N more rows on the page";
+  3. a discography's releases under the page's own headings, each with year, release date and label; the
+     covers as the window's pictures;
+  4. a lyrics card: the first four lines of the first version and how many versions;
+  5. a lyrics window: a section per version, the first open, the others folded; the springsteenlyrics.com
+     link last;
+  6. the other stats pages (stats:on-the-tracks, the song lists, the menus): no preview.
+  Plus multi:/soundcheck: as their gig (in =ownLinks= and =_bbRedirectedUrl()=). Next: build batch 3 (readers
+  reused: =_bbTourCounts()=, =_bbSessionsRead()=, =_bbGalleryRead()=, =_bbOttRead()=; a new lyrics reader),
+  specs, mutations, docs, WIP.24; then vzell's live check; then batch 4 (G6 a story's picture, G7 a song
+  intro's links and the Lyrics section's springsteenlyrics.com link); then test:full before any merge.
 - [ ] vzell's live check
 
 *** Handoff to petri (2026-11-12T04:05+01:00, from vzell-lap)
