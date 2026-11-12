@@ -732,7 +732,7 @@ tags, Storyteller / Recording / Media present, image counts.
 - [X] vzell's live check (e.g. /1985 and /1978: ▶ Pages, scroll, a filter on On stage; /1985-list): OK
   (2026-11-12); the columns stay shown before ▶ Pages (the render cost was put to him, no change asked)
 
-*** TODO Phase 15 — History in Brucebase windows on other sites
+*** DONE Phase 15 — History in Brucebase windows on other sites
 Today the History section is on brucebase.wikidot.com only.
 - [X] probe userscript run by vzell on musicbrainz.org: a cross-origin anonymous =GM_xmlhttpRequest= POST
   to =/ajax-module-connector.php= with our own =wikidot_token7= in body and Cookie header; status, ms,
@@ -759,7 +759,7 @@ Today the History section is on brucebase.wikidot.com only.
   load), =_bbHistWindowOn()=; ✎ / H in those windows; a token refusal off the wiki says so instead of
   "Sign in". Spec =bb-history-foreign.spec.js= 5/5, mutations 11/11, siblings 185/185. Docs:
   brucebase.md "Phase 15: the section on other sites", detail-pages.md, HELP, the setting's text.
-- [ ] vzell's live check
+- [X] vzell's live check — OK (2026-11-12)
 
 *** TODO Phase 16 — recheck what our readers miss
 covers: "* TODO recheck rendering all the right info on BB pages" and "* TODO support hovering for all
