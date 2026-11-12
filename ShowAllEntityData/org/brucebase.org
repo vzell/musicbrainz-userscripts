@@ -518,11 +518,26 @@ https://brucebase.wikidot.com/manage:pages-and-tags/p/3 - page 3 of the above
 #+end_example
 Found: the tag cloud is 11,562 =a.tag= with the weight only as =font-size: N%=; pages-and-tags is one
 =wiki-content-table= (page(title) | tags as one text cell), 100 rows a page, "page 1 of 35", =/p/N=.
-- [ ] probe (signed out): =/system:page-tags/tag/<tag>= (shape, paging, size for a big tag), pages-and-tags
-  p1/p35 timing, whether the 35 pages are the whole wiki or a filter
-- [ ] mockup: the tag table (Tag, Family via =_bbTagFamily()=, Weight, Pages if the probe gives a count),
-  a tag's pages (a table of pages: Title, Kind from the prefix, Date …), the pages-and-tags table, and a
-  tag link's window (its pages); questions inside
+- [X] probe (signed out; =scripts/probe-bb-tag-pages.py=, =probe-bb-tag-pages-shape.py=,
+  =probe-bb-tag-listpages.py=; Env: 2026-11-12T01:36+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux
+  6.18.58.1) · n/a):
+  - the cloud: 11,571 =a.tag=, 1.67 MB, 1.1 s; =font-size= 100–300% is linear in the count,
+    =100 + 200 · pages / max= (max = content, 24,695; 11 tags checked, within ±60); 10,940 tags sit at 100%
+    (under ~62 pages)
+  - a tag's page: ONE page, no pager, the whole list in =div#tagged-pages-list > div.pages-list-item >
+    div.title > a= (sorted by title), after the whole cloud again: storyteller 3,008 items 2.2 MB 1.4 s
+    (story 1,486, gig 1,374, content 65, interview 51, …), content 24,695 items 6.2 MB 4.5 s
+  - Wikidot's =list/ListPagesModule= answers over AJAX signed out (token in body = cookie, as Recent
+    changes): =%%total%%= with perPage 1 → 0.9 KB, 0.4 s; 250 a call with fullname, title, created_at,
+    updated_at, rating, comments, size, tags → ~180 KB, ~1.5 s (storyteller 13 calls, content 99)
+  - pages-and-tags: 35 pages × 100 (p35: 86), ~0.8 s and ~45 KB each, page(title) | tags (3–40, one
+    space-separated cell); every row an =onstage:= page — a filter, not the whole wiki (42,660 pages)
+- [X] mockup https://claude.ai/artifact/CRpe5M7DbHfou2rFR9bYCT (=scripts/fetch-bb-tags-mockup-data.py=,
+  =scripts/build-bb-tags-mockups.py=, =show-bb-tags-mockup-data.py=; the HTML in =debug/=): A the cloud as a
+  table (Tag, Family, Weight, Pages ≈ from the weight), B a tag's pages (Page, Kind, Date, Venue, City,
+  State; a second button over ListPages adds Created, Updated, Size, Comments, Tags), C pages-and-tags
+  (this page / all 35, Tags one row per tag), D the tag link's card (count + newest six, one call) and
+  window; questions 1–8 inside
 - [ ] =bb-tags= (the cloud, no request), =bb-tag= (one tag's pages), =bb-pages-and-tags= (=/p/N= paging,
   "this page" and "all 35" buttons, Tags one row per tag), a tag reader for =/system:page-tags/tag/= links
   (our window's Tags section included); specs, mutations, coverage rows, docs, WIP
