@@ -737,6 +737,18 @@ Today the History section is on brucebase.wikidot.com only.
 - [ ] probe userscript run by vzell on musicbrainz.org: a cross-origin anonymous =GM_xmlhttpRequest= POST
   to =/ajax-module-connector.php= with our own =wikidot_token7= in body and Cookie header; status, ms,
   whether the token is accepted; no names saved
+  - server side, done from petri (=scripts/probe-bb-history-token.py=, no session, no cookie jar):
+    Env: 2026-11-12T20:28:30+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) · n/a (Python urllib).
+    On /song:streets-of-minneapolis: the page GET 200 in 719 ms; PageRevisionListModule with a fresh
+    random token as cookie AND in the body: 200, "ok", 20 revision rows, 511 ms; no cookie: "wrong_token7"
+    (399 ms); cookie ≠ body: "wrong_token7" (333 ms). So Wikidot checks the pair and nothing else — no
+    session needed.
+  - browser side, for vzell: =scripts/probe-bb-history-xorigin.user.js= (check:
+    =node scripts/check-probe-bb-history-xorigin.js=, 22/22). On musicbrainz.org, Tampermonkey menu
+    "Probe: Brucebase history from here": the same four variants as anonymous =GM_xmlhttpRequest= — the
+    cookie as a Cookie HEADER, as Tampermonkey's =cookie= FIELD, none, ≠ body — then one PageSourceModule
+    with the first variant accepted. Answers whether Tampermonkey delivers the cookie on an anonymous
+    request. Report: =debug/bb-history-xorigin-probe-YYYYMMDD.json=.
 - [ ] on that evidence: the section in BB windows on every host (the existing =_dpAwaitSlot()= spacing),
   or a note why not; specs, docs (detail-pages.md: an external request stays anonymous), WIP
 - [ ] vzell's live check
@@ -848,7 +860,6 @@ for Phase 2 and 3 are also both confirmed like OK
 
 
 
-
 * DONE tag answers
 
 1. Tag cloud table, Family column: about 85% of the tags come out as "Other", because songs and people can't be recognised from the word alone. Keep it, drop it, or read the song and people lists once (2
@@ -941,6 +952,18 @@ What you mean with "The Timeline is not split. Its cells list several takes for 
 * add features
 
 The "Note:" paragraphs under each song's version table:  I want them as a multi-row column
+
+* ● Phase 14 is closed in org/brucebase.org, committed and pushed (6c03bf27). Since you didn't ask for a change, I've left the four columns visible before ▶ Pages, as built. The 7–11% render cost is recorded, and hiding them until pressed can still be done later.
+
+  Phase 15 is next: the page-history section in Brucebase windows opened on other sites, such as MusicBrainz. It can't be built from here, because its first step needs a run in your browser:
+
+  - I write a small probe userscript that you install and run on musicbrainz.org.
+  - On a Brucebase page, the History section is read from Wikidot with a POST that carries a token, and the token in the body must equal the cookie. From musicbrainz.org that has to be a cross-site request, and it can't use your session.
+  - The probe sends that request with a token of its own, anonymously, and reports the status, the time taken, and whether Wikidot accepts the token. It saves no names.
+  - If the token is accepted, the History section goes into Brucebase windows on every host, at the same one-request-a-second pace. If not, I write down why it isn't possible.
+
+  Should I write the probe userscript now?
+
 
 * TODO adjustments
 ** DONE On The Tracks
