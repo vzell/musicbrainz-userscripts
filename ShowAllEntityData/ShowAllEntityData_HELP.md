@@ -4197,8 +4197,8 @@ name), the related releases, the recording dates of a live release (disc,
 song, the show's date and place, linked), the takes On The Tracks and how
 often each song was played live. Above them: the facts the page states
 (released, label, produced, recorded, mixed, mastered, design, photography),
-the running time of each edition, the overview, the footnotes and the
-history (folded), tags, media and the lyrics' pages, and the artwork typed
+the running time of each edition, the overview, the footnotes, the
+history and the Gallery/News press links (folded), tags, media and the lyrics' pages, and the artwork typed
 by its file names (Release cover, Ad poster, Article, …). **Bootlegs**
 (`/bootleg:…`) get **Bootleg** (*Show the bootleg*): the tracklist, a table
 per disc with each song's time, and a *Side* column where the page marks the

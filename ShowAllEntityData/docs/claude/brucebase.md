@@ -1968,9 +1968,11 @@ with its template); vzell's answers, all as recommended. `_DP_PARSER_VERSION` 25
   releases: On The Tracks (the versions under each song in the title style:
   version, take, date, time, the releases it is on, its note); Recording
   'Live' Dates (the songs under each disc, each date linked to its show);
-  Gallery/News (`_bbGalleryNewsSection()`: its headings and press lines,
-  the galleries, the photo credits and "Sorry, no … available." left out —
-  the page view does not read this tab); then Performed live (the songs'
+  Gallery/News (`_bbGalleryNewsFromPanel()`: its headings and press lines,
+  the galleries, the photo credits and "Sorry, no … available." left out;
+  since vzell's live check one of `_bbReleaseRead()`'s text tabs, so the
+  page view's head shows it too, `_DP_PARSER_VERSION` 26; the window draws
+  it in its place, after the live dates); then Performed live (the songs'
   live counts), the text tabs (Notes, History, On The Tracks notes, …),
   Lyrics and Media as links. Bootlegs are unchanged. The sweep then kept
   62% of a release's text blocks (26% before) and 65% of a playlist's
@@ -1978,5 +1980,6 @@ with its template); vzell's answers, all as recommended. `_DP_PARSER_VERSION` 25
 
 Tests: `tests/fixtures/bb-person-release-windows.spec.js` (the person and
 release fixtures of Phases 4–5); mutations
-`scripts/mutations/bb-person-release-windows.json` (13; two finds of
-`bb-event-window-gaps.json` refreshed).
+`scripts/mutations/bb-person-release-windows.json` (15; two finds of
+`bb-event-window-gaps.json` refreshed); the head's Gallery/News in
+`bb-release.spec.js`.

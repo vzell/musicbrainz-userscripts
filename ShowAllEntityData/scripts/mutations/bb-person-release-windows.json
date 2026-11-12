@@ -82,8 +82,8 @@
         "why": "Answer 5.",
         "edits": [
             {
-                "find": "                if (!t || /^©\\s*All credits\\b/i.test(t) || /^Sorry,? no\\b/i.test(t)) p.remove();",
-                "replace": "                if (!t) p.remove();"
+                "find": "            if (!t || /^©\\s*All credits\\b/i.test(t) || /^Sorry,? no\\b/i.test(t)) p.remove();",
+                "replace": "            if (!t) p.remove();"
             }
         ],
         "spec": "tests/fixtures/bb-person-release-windows.spec.js",
@@ -95,7 +95,7 @@
         "why": "Answer 5.",
         "edits": [
             {
-                "find": "        if (news) out.push(news);",
+                "find": "        if (news) sec('Gallery/News', news.text, news.html);",
                 "replace": ""
             }
         ],
@@ -134,7 +134,7 @@
         "why": "Answer 6.",
         "edits": [
             {
-                "find": "        (rec.texts || []).forEach(t => sec(t.label, t.text, t.html || ''));",
+                "find": "        (rec.texts || []).filter(t => t.label !== 'Gallery/News').forEach(t => sec(t.label, t.text, t.html || ''));",
                 "replace": ""
             }
         ],
@@ -166,6 +166,32 @@
         ],
         "spec": "tests/fixtures/bb-person-release-windows.spec.js",
         "grep": "on a hover",
+        "expect": "fail"
+    },
+    {
+        "name": "the release page view has no Gallery/News",
+        "why": "vzell: the page view should get it too.",
+        "edits": [
+            {
+                "find": "                    if (news) rec.texts.push({ label: 'Gallery/News', ...news });",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-release.spec.js",
+        "grep": "the head: Overview",
+        "expect": "fail"
+    },
+    {
+        "name": "the window shows Gallery/News twice",
+        "why": "It is one of the reading's text tabs; the window draws it once, after the live dates.",
+        "edits": [
+            {
+                "find": "        (rec.texts || []).filter(t => t.label !== 'Gallery/News').forEach(",
+                "replace": "        (rec.texts || []).forEach("
+            }
+        ],
+        "spec": "tests/fixtures/bb-person-release-windows.spec.js",
+        "grep": "a release:",
         "expect": "fail"
     }
 ]

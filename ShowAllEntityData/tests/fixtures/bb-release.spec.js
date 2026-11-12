@@ -193,8 +193,14 @@ test.describe('bb-retail: "Born To Run"', () => {
         const c = await fixtureTabs(page, 'retail-born-to-run');
         await press(page, RELEASE_BUTTON);
         await expect(page.locator('p.mb-fd-sub')).toHaveText('~ Release (August 25, 1975)');
-        expect(await headSections(page)).toEqual(['Overview', 'Notes', 'History', 'On The Tracks notes',
+        // Gallery/News since Phase 16 batch 2 (vzell: the page view too): the
+        // press links, without the photo credits and placeholders.
+        expect(await headSections(page)).toEqual(['Overview', 'Notes', 'History', 'On The Tracks notes', 'Gallery/News',
             expect.stringMatching(/^Details \(\d+\)$/), expect.stringMatching(/^Artwork \(\d+\)$/)]);
+        const news = page.locator('.mb-fd-head .mb-fd-text', { has: page.locator('a[href="https://ew.com/music/tom-hanks-jimmy-fallon-bruce-springsteen-born-to-run/"]') });
+        await expect(news).toHaveCount(1);
+        await expect(news).not.toContainText('All credits');
+        await expect(news).not.toContainText('Sorry, no');
         const kv = await card(page, 'Release');
         expect(kv).toEqual(expect.objectContaining({
             'Commercially released': 'August 25, 1975', Label: 'Columbia', 'Produced by': 'Bruce Springsteen, Jon Landau and Mike Appel',

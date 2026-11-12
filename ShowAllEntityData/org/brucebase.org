@@ -866,7 +866,10 @@ BB PTs". Last, once Phases 7–15 have added their readers.
   disc, Gallery/News, Performed live, text tabs, Lyrics, Media, all folded). =_DP_PARSER_VERSION= 25. Spec
   =bb-person-release-windows.spec.js= 4/4, mutations 13/13 (+2 refreshed), BB specs 343/343, popup-ext BB +
   YouTube 44/44. Sweep after: person windows 97% (79%), releases 62% (26%), playlists 65% (29%).
-  - [ ] vzell's live check of batch 2
+  vzell (2026-11-13): the release page view should get Gallery/News too — done: one of =_bbReleaseRead()='s
+  text tabs (=_bbGalleryNewsFromPanel()=), the window keeps it after the live dates; parser version 26.
+  Mutations 15/15 (+5 for this), BB specs 343/343.
+  - [X] vzell's live check of batch 2 — OK (2026-11-13), with the page view's Gallery/News asked for
 - [ ] vzell's live check
 
 *** Handoff to petri (2026-11-12T04:05+01:00, from vzell-lap)

@@ -31646,9 +31646,11 @@
      *    release's or playlist's On The Tracks, Recording 'Live' Dates,
      *    Gallery/News, Performed live, text tabs, Lyrics and Media
      *    (`_bbReleaseWindowExtras()`, Phase 16 batch 2).
+     * 26: a release's Gallery/News is one of its reading's text tabs (the
+     *    page view shows it too).
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 25;
+    const _DP_PARSER_VERSION = 26;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -36443,7 +36445,12 @@
                 } else if (/^Performance$/i.test(label)) rec.performance = _bbReleasePerformance(panel, url);
                 else if (/^Lyrics$/i.test(label)) {
                     panel.querySelectorAll('a[href*="/lyrics:"]').forEach(a => rec.lyrics.push([_dpText(a.textContent), _dpAbsUrl(a.getAttribute('href'), url)]));
-                } else if (/^(?:Media|Artwork|Gallery(?:\/News)?)$/i.test(label)) {
+                } else if (/^Gallery\/News$/i.test(label)) {
+                    // Its headings and press lines (Phase 16 batch 2; vzell: the
+                    // page view too), the pictures left to the artwork.
+                    const news = _bbGalleryNewsFromPanel(panel, url);
+                    if (news) rec.texts.push({ label: 'Gallery/News', ...news });
+                } else if (/^(?:Media|Artwork|Gallery)$/i.test(label)) {
                     // The head's: Media's players are read below, the galleries' images by the preview.
                 } else if (_bbPanelHasText(panel)) {
                     rec.texts.push({ label, text: _dpBlockText(panel), html: _dpBlockHtml(panel, url) });
@@ -36765,31 +36772,25 @@
     }
 
     /**
-     * A release's Gallery/News tab for its window (Phase 16 batch 2, answer
-     * 5): its headings and press lines with their links; the galleries (the
-     * window's Images have the pictures), the photo credit under each and the
-     * "Sorry, no … available." lines left out. Null when nothing is left.
+     * A release's Gallery/News tab (Phase 16 batch 2, answer 5; read by
+     * `_bbReleaseRead()` for the page view and the window): its headings and
+     * press lines with their links; the galleries (the pictures are the
+     * artwork's), the photo credit under each and the "Sorry, no …
+     * available." lines left out. Null when nothing is left.
      *
-     * @param {Document} doc
+     * @param {Element} panel The tab's panel.
      * @param {string} url
-     * @returns {?{label: string, text: string, html: string, open: boolean}}
+     * @returns {?{text: string, html: string}}
      */
-    function _bbGalleryNewsSection(doc, url) {
-        for (const nav of doc.querySelectorAll('#page-content .yui-navset')) {
-            const labels = Array.from(nav.querySelectorAll(':scope > ul.yui-nav > li')).map(li => _dpText(li.textContent));
-            const panels = Array.from((nav.querySelector(':scope > .yui-content') || { children: [] }).children);
-            const i = labels.indexOf('Gallery/News');
-            if (i < 0 || !panels[i]) continue;
-            const c = panels[i].cloneNode(true);
-            c.querySelectorAll('.gallery-box, .wikidot-hybrid-module, script').forEach(n => n.remove());
-            c.querySelectorAll('p').forEach((p) => {
-                const t = _dpText(p.textContent);
-                if (!t || /^©\s*All credits\b/i.test(t) || /^Sorry,? no\b/i.test(t)) p.remove();
-            });
-            const text = _dpBlockText(c);
-            return text ? { label: 'Gallery/News', text, html: _dpBlockHtml(c, url), open: false } : null;
-        }
-        return null;
+    function _bbGalleryNewsFromPanel(panel, url) {
+        const c = panel.cloneNode(true);
+        c.querySelectorAll('.gallery-box, .wikidot-hybrid-module, script').forEach(n => n.remove());
+        c.querySelectorAll('p').forEach((p) => {
+            const t = _dpText(p.textContent);
+            if (!t || /^©\s*All credits\b/i.test(t) || /^Sorry,? no\b/i.test(t)) p.remove();
+        });
+        const text = _dpBlockText(c);
+        return text ? { text, html: _dpBlockHtml(c, url) } : null;
     }
 
     /**
@@ -36798,7 +36799,7 @@
      * each a folded section: On The Tracks, the versions under each song
      * (version, take, date, time, the releases it is on, its note); Recording
      * 'Live' Dates, the songs under each disc, each date linked to its show;
-     * Gallery/News (`_bbGalleryNewsSection()`); then Performed live (the
+     * Gallery/News; then Performed live (the
      * songs' live counts), the text tabs (Notes, History, On The Tracks
      * notes, …), Lyrics and Media as links.
      *
@@ -36833,15 +36834,17 @@
                 groups.map(([d, rs]) => (d ? `${d}\n` : '') + rs.map(line).join('\n')).join('\n'),
                 groups.map(([d, rs]) => (d ? `<p><b>${_mbttEscape(d)}</b></p>` : '') + `<ul>${rs.map(r => `<li>${lineHtml(r)}</li>`).join('')}</ul>`).join(''));
         }
-        const news = _bbGalleryNewsSection(doc, url);
-        if (news) out.push(news);
+        // Gallery/News (`_bbGalleryNewsFromPanel()`, one of the reading's text
+        // tabs) in its place after the live dates.
+        const news = (rec.texts || []).find(t => t.label === 'Gallery/News');
+        if (news) sec('Gallery/News', news.text, news.html);
         if (rec.performance && rec.performance.length) {
             const n = c => (/^\d+$/.test(String(c)) ? Number(c).toLocaleString('en-US') : String(c || ''));
             sec(`Performed live (${rec.performance.length})`,
                 rec.performance.map(p => `${_mbSiteTitleText(p.song)}: ${n(p.count)}`).join('\n'),
                 `<ul>${rec.performance.map(p => `<li>${_bbWinLink(p.href, _mbSiteTitleText(p.song))} <span class="mb-dp-xsub">${_mbttEscape(n(p.count))}</span></li>`).join('')}</ul>`);
         }
-        (rec.texts || []).forEach(t => sec(t.label, t.text, t.html || ''));
+        (rec.texts || []).filter(t => t.label !== 'Gallery/News').forEach(t => sec(t.label, t.text, t.html || ''));
         const links = (label, list) => {
             if (list && list.length) sec(`${label} (${list.length})`, list.map(([t]) => t).join('\n'), `<ul>${list.map(([t, h]) => `<li>${_bbWinLink(h, t)}</li>`).join('')}</ul>`);
         };

@@ -29379,3 +29379,8 @@ Env: 2026-11-13T00:02+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) ·
 - A side effect of batch 1 noticed here: its list sections (Appearances, …) reach person windows too,
   folded — consistent, live-checked with batch 1.
 Spec 4/4, mutations 13/13 (+2 batch 1 finds refreshed), BB specs 343/343, popup-ext BB + YouTube 44/44.
+- vzell's live check of batch 2: OK, with one ask: the release page view should show Gallery/News too.
+  `_bbReleaseRead()` skipped the tab with Artwork and Gallery; it now reads it
+  (`_bbGalleryNewsFromPanel()`) as one of its text tabs, which the head draws as a folded section; the
+  window takes it from there, in its place after the live dates, and leaves it out of the other text
+  tabs (a mutation pins "not twice"). Parser version 26. BB specs 343/343.
