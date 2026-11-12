@@ -95,7 +95,7 @@
         "why": "features.openSubTables: a detail page's tables are its content.",
         "edits": [
             {
-                "find": "        return o === true || (Array.isArray(o) && o.includes(name));\n",
+                "find": "        return o === true || (o === 'first' && index === 0) || (Array.isArray(o) && o.includes(name));\n",
                 "replace": "        return false;\n"
             }
         ],

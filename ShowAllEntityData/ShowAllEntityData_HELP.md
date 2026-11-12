@@ -4221,6 +4221,38 @@ Everything is on the page; nothing is fetched.
 </details>
 
 <details>
+<summary>Brucebase stats pages</summary>
+
+The wiki's other statistics pages (`https://brucebase.wikidot.com/stats:…`:
+bootlegs by label, shows with circulating audio, the venues of a state, the
+awards, the song counts of a tour, the performance counts per city, …) get the
+usual toolbar with a button for each kind of content the page has. They come
+with *Enable on the Brucebase song list*; nothing is fetched, the script reads
+the page itself, and the wiki's page stays below, folded under *Brucebase page*.
+
+- **List** turns the page's list of links into one table. The first column
+  links each page and is named after what the list holds (*Song*, *Bootleg*,
+  *Name*, *Event*, *Venue*, or *Page* for a mix); **Kind** says what each
+  link is when the list mixes them (a gig, a rehearsal, a venue); a show's or
+  a venue's title is split into **Date** (with its day, month and year
+  columns), **Venue**, **City**, **State** and **Country**; **Tab** is the tab
+  of the page it is listed under (the letter for an A–Z list). The wiki's
+  sort forms are turned round — "Left Foot (The)" reads "The Left Foot",
+  "Band, The" reads "The Band" — and song titles follow *Titles in MusicBrainz
+  style*; resting the pointer shows the wiki's own text.
+- **Tables** shows the page's own tables, one sub-table per tab or heading,
+  the first one open. A row that names the rows below it (an awards ceremony,
+  a letter of the alphabet) becomes a **Section** column.
+
+A page with both kinds of content (songs by album) has both buttons; a second
+press loads the page again for the other view. The pages that are neither a
+list nor tables — a song's counts per tour, the parts of a studio-sessions
+page, the overview pages — stay as the wiki shows them, and their links still
+preview.
+
+</details>
+
+<details>
 <summary>Brucebase Recent changes</summary>
 
 `https://brucebase.wikidot.com/system:recent-changes` is the wiki's log of

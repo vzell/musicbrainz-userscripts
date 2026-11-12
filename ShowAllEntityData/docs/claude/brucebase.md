@@ -1349,6 +1349,82 @@ folded below), the head `_bbStoryHeadSpec()`.
   (`scripts/capture-bb-story-answers.py`), mutations
   `scripts/mutations/bb-story.json` (14).
 
+## Stats pages — `bb-stats` (Phase 13, batch 1, 2026-11-12)
+
+The wiki's other `stats:` pages (org/brucebase.org Phase 13). Survey
+(`scripts/copy-bb-stats-sample.sh` → `debug/bb-mirror/stats/`, 721 pages;
+`scripts/probe-bb-stats-pages.py` → `debug/bb-stats-probe.json`; Env:
+2026-11-12T09:23+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) ·
+n/a); mockup https://claude.ai/artifact/G2buE4qzMUojqXwkEGCiPH; vzell's
+answers in org/brucebase.org, "* DONE stats answers". Batch 1 is shapes A
+(lists of links) and B (the wiki's tables); C (a song's tour counts), D
+(studio sessions) and E/F (galleries, text) follow.
+
+- **One pageType, a button per shape** (not the plan's two pageTypes: a
+  page can hold both — songs-by-album, no-circulating-audio — and a button's
+  `tableMode` overrides the definition's). "Show the list" (single) shows
+  when the live page has list items, "Show the tables" (multi) when it has
+  tables (`showIf` over `_bbStatsLive()`, the live page read once). Both are
+  `features.pageRequest` over the copy of the page (`_bbDetailPageHtml()`),
+  no request; `applyBbDetailToTable()` puts our heading ("List" /
+  "Tables") and the empty table before `#page-content`, the wiki's page
+  folded below, as on the detail pages. The list's table gets its real
+  columns at once (a single table keeps the live table's header).
+- **The match** (`_BB_STATS_PATH_RE`): any `/stats:<name>` but stats:songs
+  and stats:relations (their own pageTypes, earlier in pageDefinitions) and
+  the fragments other stats pages include, `awards-*` and
+  `performances-with-bruce-*` (answer 8) — AND the live page must have one
+  of the two shapes: a song's tour counts, a studio session's parts and the
+  hubs stay `bb-page`'s (previews only) until batch 2. The `@include` line
+  that admits every Brucebase page already covers them.
+- **The list** (`_bbStatsRead()` `list`): every `li` led by a link to a
+  page, once per link and tab path. Links to other stats pages and the
+  wiki's help and system pages are its navigation
+  (`_BB_STATS_SKIP_KINDS`): stats:for-collectors, a hub of them, has no
+  list. Columns (`_bbStatsListCols()`): the first named after the items'
+  kind (`_BB_STATS_KIND_LABELS`: Song, Bootleg, Name, Event, Venue, …;
+  "Page" for mixed kinds), Note (text after the link) when any item has
+  one, Kind when there is more than one, Date, Venue, City, State, Country
+  when an item is a show (a date-led title, "2014-12-07 Kennedy Center,
+  Washington, DC": no " - " as on the year pages) or a venue
+  (`_bbParseHeading()`; a list of venues alone: City, State, Country, the
+  venue the first column), Tab (`_bbStatsTabPath()`: the tab labels the
+  item sits under, a letter tab as its letter; nested tabs one path, though
+  none of the copy's pages nests them). The wiki's sort forms are turned
+  round — a venue "Left Foot (The)" (`_bbStatsTurn()`), a person "Band,
+  The" (`_bbRelationDisplayName()`) — a song's title is in the MusicBrainz
+  style while `sa_foreign_mb_titles` is on; each with the wiki's text as
+  the hover (answer 3). Date gets `dateParts`; an extractor whose column a
+  page lacks is skipped by the engine.
+- **The tables** (`_bbStatsRead()` `tables`): every table not inside
+  another with two or more columns and data rows. The columns: a first row
+  of headings (`th`, a row bold by its style as on Awards, or every filled
+  cell one bold run); else the last heading-only table of the same width
+  (Set Openers And Closers: one heading table, then a table per tour); else
+  "Column N"; repeated names get " (2)". A first row of one cell is the
+  caption; a one-cell row spanning the table further down names the rows
+  below it — a Section column (Awards: the ceremony; the city counts: the
+  letter). The name: the tab path and the caption, else the nearest heading
+  before the table, else the page title; a repeated name " (2)" (Grammy's
+  second table; On The Tracks - Timeline's tables, which nothing between
+  them names). Cells keep their text and links (`_bbStatsCellHtml()`). The
+  first sub-table open, the others closed: `openSubTables: 'first'`, new
+  in `_defOpensSubTable()` (answer 4; no MusicBrainz definition sets it).
+- **The whole copy**: `node scripts/check-bb-stats-reader.js` runs the
+  shipped reader over every page of `debug/bb-mirror/stats/` (698 stats
+  pages; 2026-11-12T10:20+01:00 · petri · WSL2 Ubuntu 24.04.3 · Playwright
+  1.62.1 Chromium): 601 match the path, 456 of them with a shape — 249
+  lists (61,394 items, 42,225 shows split, 3,454 venues turned round), 213
+  with tables (1,311), 6 with both; no list item with an empty first cell,
+  no date-led item without a date, no ragged table. All-"Column N" tables
+  remain on the studio-session pages (batch 2) and six others
+  (on-the-tracks-key, scans-setlist(-yes), song-count-by-album,
+  songs-by-album, tour-statistics).
+- **Tests**: `tests/fixtures/bb-stats.spec.js` (8), loader
+  `loadBbStatsPage()`, fixtures `bb-stats-<name>.html` (nine pages,
+  `scripts/build-bb-stats-fixtures.py`), mutations
+  `scripts/mutations/bb-stats.json` (17).
+
 ## Show links on Brucebase's own pages (Phase 8, 2026-11-11)
 
 A show on its year page (`/<yyyy>#<ddmmyy>`: an event's "Info & Setlist", a

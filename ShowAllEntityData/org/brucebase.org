@@ -627,8 +627,22 @@ The mirror has 258 =stats:*studio-sessions*= pages (an album's sessions and its 
   heading, the first open; batch 2 = C (song tour counts) and D (studio sessions with the On The Tracks
   title / version / take split); batch 3 = E (galleries, Cover column) and F; fragments only through
   their main page
-- [ ] batch 1: =bb-stats-list= (A) and =bb-stats-table= (B); probe the readers over every page of both
-  shapes in the copy first; specs, mutations, coverage rows, docs, WIP
+- [X] batch 1 (docs/claude/brucebase.md "Stats pages"): ONE pageType =bb-stats= with a button per shape
+  ("Show the list" single, "Show the tables" multi; each =showIf= its shape) instead of the planned two —
+  six pages of the copy hold both, and a button's =tableMode= overrides the definition's; =match= also
+  needs a shape, so the 145 path matches with neither (tour counts, studio-session parts, hubs) stay
+  =bb-page=. =_bbStatsRead()= / =_bbStatsListCols()= / =_bbStatsCellHtml()=, =openSubTables: 'first'=
+  (new in =_defOpensSubTable()=). Found on the way: Awards' heading row is bold by its =tr= style and
+  its ceremonies are full-width rows (→ a Section column); no page of the copy nests tabs (the
+  mockup's "Audio › …" path does not occur); a tab's second table repeats the name " (2)" (Grammy, the
+  Timeline's five). =scripts/check-bb-stats-reader.js= over the copy (2026-11-12T10:20+01:00 · petri ·
+  WSL2 Ubuntu 24.04.3 · Playwright 1.62.1 Chromium): 456 pages with a shape, 61,394 list items, 1,311
+  tables, no empty first cell, no undated show, no ragged table. =bb-stats.spec.js= (8),
+  =scripts/mutations/bb-stats.json= (17, all OK), bb-event.json's openSubTables find refreshed (OK);
+  siblings (13 BB/preview specs) 182 green; coverage row, PAGETYPES reference (173), HELP, CLAUDE.md,
+  WIP.17
+- [ ] vzell's live check of batch 1 (e.g. stats:venues-in-new-jersey, stats:circulating-audio,
+  stats:awards, stats:set-openers-and-closers, stats:songs-by-album)
 - [ ] batch 2: C, D (+ the On The Tracks split)
 - [ ] batch 3: E, F
 - [ ] build in batches (one shared tabview reader where possible, =bb-songs= as the model); specs,

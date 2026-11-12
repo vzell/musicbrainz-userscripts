@@ -29182,3 +29182,29 @@ design, not this bug. Spec `tests/fixtures/bb-topbar-menu.spec.js` (theme rules 
 none), mutations `scripts/mutations/bb-topbar-menu.json` 3/3 OK (the third, 106 instead of 108, needed the
 focused case: focus on a toolbar button raises the block to 107). Siblings (sticky-filter-bars, bb-sidebar,
 bb-recent-changes, bb-every-page, bb-event, bb-history, bb-topbar-menu): 86 passed. vzell's live check: OK.
+
+## 2026-11-12 — Brucebase stats pages as bb-stats, and a stale seed-ledger spec (feature/bb-overhaul, Phase 13 batch 1)
+
+Env: 2026-11-12T10:48+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs).
+
+`test:full` on petri at f6bfc2b1 (3,026 tests, 19 m 7 s) failed one test,
+`table-seed-ledger.spec.js:363`: 3 rows offered where it expects 1. Cause, on main and
+not this branch: the Discogs section bands (74af55ee) added two built-in
+`sa_default_hidden_columns` rows, and the spec emptied the whole ledger entry instead of
+dropping release-tracks' key. Fixed in the spec (`pretendRowIsNew()`); the file 12/12.
+
+`bb-stats` (docs/claude/brucebase.md "Stats pages"): the survey's two shapes, links in
+tabs and the wiki's tables, as one pageType with a button per shape — not two pageTypes,
+because six pages of the copy hold both and a button's `tableMode` overrides the
+definition's. Three things the mockup's sample did not show, found by running the shipped
+reader over the whole copy (`scripts/check-bb-stats-reader.js`, 698 pages): Awards' heading
+row is bold by its `tr` style (no `th`, no `strong`) and its ceremonies are full-width rows
+inside the data (now a Section column); 145 path matches have neither shape and would have
+got a toolbar with no button (now `match` asks for a shape and they stay `bb-page`); the one
+fragment fixture first chosen (awards-academy-1993) has no table, so it could not show the
+fragment exclusion — awards-ama, which has one, replaced it. The navigation guard
+(`_BB_STATS_SKIP_KINDS`) passed its first mutation run: no list fixture had a stats link in
+an item; stats:for-collectors (a hub of them) was added and the mutation fails now.
+`bb-stats.spec.js` 8/8, `scripts/mutations/bb-stats.json` 17/17 OK, 13 sibling specs 182
+green. `_defOpensSubTable()` takes `'first'` and the group's index; bb-event.json's find for
+it refreshed (OK).

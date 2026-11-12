@@ -1,5 +1,23 @@
 [
   {
+    "version": "WIP.17",
+    "date": "2026-11-12",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase: the statistics pages (…/stats:…: bootlegs by label, shows with circulating audio, the venues of a state, awards, song counts per tour, performance counts per city, …) get a button for each kind of content they have. List: the page's links in one table with the tab they are under, a show's or venue's title split into date, venue, city, state and country, the wiki's sort forms (\"Left Foot (The)\", \"Band, The\") turned round. Tables: the page's own tables, one per tab or heading, the first open, with a Section column where a row names the rows below it. Nothing is fetched; the wiki's page stays below, folded."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "A test of the built-in hidden-columns rows offered on upgrade expected one row; since the Discogs Section rows there are three, so it now re-offers only the one it checks."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.16",
     "date": "2026-11-12",
     "sections": [

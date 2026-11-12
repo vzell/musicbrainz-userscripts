@@ -83,6 +83,9 @@
         { "type": "bb-relations", "url": "https://brucebase.wikidot.com/stats:relations", "mode": "single",
           "ip": { "state": "yes", "ev": "code", "why": "/relation: links, under sa_bb_event_preview." },
           "frp": { "state": "yes", "ev": "code" } },
+        { "type": "bb-stats", "url": "https://brucebase.wikidot.com/stats:… (a list of links and/or the wiki's own tables; not stats:songs, stats:relations, the awards-* and performances-with-bruce-* fragments, or a page with neither shape)", "mode": "single",
+          "ip": { "state": "yes", "ev": "code", "why": "The wiki's page is the IP, as on bb-page: its list links are the site's own detail pages." },
+          "frp": { "state": "yes", "ev": "spec", "why": "The list's first column links each page (a show, a venue, a song, a bootleg, …); the tables keep the wiki's links. The tables view is multi (a sub-table per tab or heading).", "spec": ["tests/fixtures/bb-stats.spec.js", "a show in the list previews (Ctrl+hover: the card, one request for its page)"] } },
         { "type": "bb-recent-changes", "url": "https://brucebase.wikidot.com/system:recent-changes", "mode": "single",
           "ip": { "state": "yes", "ev": "spec", "why": "A changed page's link.", "spec": ["tests/fixtures/bb-event-preview.spec.js", "Recent changes: a changed event page's link previews it"] },
           "frp": { "state": "yes", "ev": "spec", "why": "The Page links; and each row's ✎ button opens the page's window on its History, that revision against the one before (Phase 10).", "spec": ["tests/fixtures/bb-history-changes.spec.js", "a row's changes button: the page's History in the window, that revision against the one before"] } },
@@ -128,7 +131,7 @@
         { "type": "bb-story", "url": "https://brucebase.wikidot.com/story:… (story, speech, interview, dj, podcast, eulogy, phonecall, about, talk)", "mode": "multi",
           "ip": { "state": "part", "ev": "code", "why": "The wiki's page is the IP, as on bb-page; a story page holds almost no links (the tags line: bbtag)." },
           "frp": { "state": "yes", "ev": "spec", "why": "The head's Event links the show's page (found by name, one ListPages call); the tables' songs are text, as the page writes them.", "spec": ["tests/fixtures/bb-story.spec.js", "a show's Storyteller words: Moment, Song, Words, one row per bold heading; the event page found by name"] } },
-        { "type": "bb-page", "url": "https://brucebase.wikidot.com/lyrics:… (any other page: lyrics, stats, …; a detail page with sa_bb_detail_pages off)", "mode": "single",
+        { "type": "bb-page", "url": "https://brucebase.wikidot.com/lyrics:… (any other page: lyrics, a stats page with no list or table, …; a detail page with sa_bb_detail_pages off)", "mode": "single",
           "ip": { "state": "yes", "ev": "spec", "why": "Link previews only (vzell, 2026-11-04: every Brucebase page): the site's own detail pages and other sites' links in #page-content; nothing visible added.", "spec": ["tests/fixtures/bb-every-page.spec.js", "a gig page (no pageType)"] },
           "frp": { "state": "na", "ev": "code", "why": "No button, no table." } }
       ]

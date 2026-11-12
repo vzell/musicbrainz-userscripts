@@ -29312,6 +29312,427 @@
         Lib.debug('init', `_bbTagsLive: empty ${view} table in place, the wiki's page below.`);
     }
 
+    // ── Brucebase stats pages — `bb-stats` (org/brucebase.org Phase 13) ──────
+    // The wiki's `stats:` pages in two shapes (scripts/probe-bb-stats-pages.py,
+    // 2026-11-12): tabbed lists of links to one kind of page, and the wiki's
+    // own tables. One pageType, a button per shape the page has; both read the
+    // copy of the page taken at the press (`_bbDetailPageHtml()`), no request.
+    // Mockup https://claude.ai/artifact/G2buE4qzMUojqXwkEGCiPH; docs/claude/
+    // brucebase.md, "Stats pages".
+
+    /**
+     * A stats page `bb-stats` reads: any `/stats:<name>` but the song list
+     * and Relations (their own pageTypes, earlier in pageDefinitions) and
+     * the fragments other stats pages include (`awards-*`,
+     * `performances-with-bruce-*`: read through their main page, vzell's
+     * answer 8).
+     * @type {RegExp}
+     */
+    const _BB_STATS_PATH_RE = /^\/stats:(?!(?:songs|relations)\/?$)(?!awards-|performances-with-bruce-)[^/]+\/?$/;
+
+    /**
+     * Page categories a stats list links that are not list items: the
+     * wiki's own navigation (other stats pages, the A–Z hubs), its help and
+     * system pages.
+     * @type {Set<string>}
+     */
+    const _BB_STATS_SKIP_KINDS = new Set(['stats', 'content', 'system', 'search', 'manage', 'nav', 'admin', 'forum']);
+
+    /**
+     * The list's first column, named after the kind of page its items link:
+     * one label shared by every item names the column, "Page" otherwise.
+     * @type {Object<string, string>}
+     */
+    const _BB_STATS_KIND_LABELS = {
+        song: 'Song', ott: 'Song', lyrics: 'Lyrics', bootleg: 'Bootleg', recnote: 'Recording', relation: 'Name',
+        retail: 'Release', playlist: 'Release', venue: 'Venue',
+        gig: 'Event', nogig: 'Event', interview: 'Event', rehearsal: 'Event', recording: 'Event', nobruce: 'Event',
+    };
+
+    /** @type {?{list: Array<Object>, tables: Array<Object>}} The live page's read, for the buttons' showIf. */
+    let _bbStatsLiveRec = null;
+
+    /**
+     * Turns the wiki's sort form of a name round: "Left Foot (The)" → "The
+     * Left Foot", "Ball (A)" → "A Ball"; any other name as written.
+     *
+     * @param {string} name
+     * @returns {string}
+     */
+    function _bbStatsTurn(name) {
+        const m = /^(.*\S) \((The|A|An)\)$/.exec(String(name || ''));
+        return m ? `${m[2]} ${m[1]}` : String(name || '');
+    }
+
+    /**
+     * The tab labels an element sits under, outermost first: for each YUI
+     * panel among its ancestors (a `div` child of `.yui-content`), the label
+     * of the tab at the panel's position (`ul.yui-nav > li`), a letter tab
+     * read as its letter (`_bbParseTabLabel()`: "=- A -=" → "A").
+     *
+     * @param {Element} el
+     * @returns {string[]}
+     */
+    function _bbStatsTabPath(el) {
+        const path = [];
+        for (let p = el; p && p.parentElement; p = p.parentElement) {
+            const par = p.parentElement;
+            if (p.tagName !== 'DIV' || !par.classList.contains('yui-content')) continue;
+            const panels = Array.from(par.children).filter(c => c.tagName === 'DIV');
+            const nav = par.parentElement && par.parentElement.querySelector(':scope > ul.yui-nav');
+            const labels = nav ? Array.from(nav.children).filter(c => c.tagName === 'LI').map(li => _bbParseTabLabel(li.textContent)) : [];
+            const i = panels.indexOf(p);
+            path.unshift(labels[i] || `Tab ${i + 1}`);
+        }
+        return path;
+    }
+
+    /**
+     * The kind of page a link goes to: its category on Brucebase (`gig`,
+     * `song`, …; '' for a page in none), another site's host, or null for a
+     * link that is no item (`javascript:`, `mailto:`, an anchor).
+     *
+     * @param {string} raw - The `href` as written.
+     * @returns {?string}
+     */
+    function _bbStatsLinkKind(raw) {
+        const h = String(raw || '').trim();
+        if (!h || /^(?:javascript|mailto):/i.test(h) || h.startsWith('#')) return null;
+        const m = /^(?:https?:\/\/brucebase\.wikidot\.com)?\/([a-z][a-z0-9-]*):/i.exec(h);
+        if (m) return m[1].toLowerCase();
+        const host = /^https?:\/\/([^/]+)/i.exec(h);
+        if (host) return /(^|\.)brucebase\.wikidot\.com$/i.test(host[1]) ? '' : host[1].toLowerCase().replace(/^www\./, '');
+        return '';
+    }
+
+    /**
+     * Reads a stats page's two shapes from its `#page-content`:
+     *
+     * - `list`: every `li` led by a link to a page (not the wiki's
+     *   navigation, `_BB_STATS_SKIP_KINDS`), once per link and tab path —
+     *   `{href, text, kind, tab, note, loc}`; `loc` is `_bbParseHeading()`'s
+     *   split for a date-led title ("2014-12-07 Kennedy Center, Washington,
+     *   DC") and for a venue's ("D'Scene, South Amboy, NJ"), its venue
+     *   turned round (`_bbStatsTurn()`); `note` is the item's text after
+     *   the link.
+     * - `tables`: every table not inside another with two or more columns
+     *   and two or more data rows — `{name, cols, rows}` (`rows` are cell
+     *   HTML, `_bbStatsCellHtml()`, padded for colspans). A first row of
+     *   one cell is the table's caption; a first row of headings (`th`, or
+     *   every filled cell one bold run) its columns; otherwise the columns
+     *   of the last heading-only table of the same width (Set Openers And
+     *   Closers: one heading table, then a table per tour), else "Column N".
+     *   A heading row may be bold by its own style (Awards). A one-cell
+     *   row spanning the table further down names the rows below it: a
+     *   Section column carries its text (Awards: the ceremony).
+     *   The name is the tab path, then the caption; with neither, the
+     *   nearest heading before the table, else the page's title; a
+     *   repeated name gets " (2)".
+     *
+     * @param {Document} doc
+     * @param {string} base - The page's URL.
+     * @returns {?{list: Array<Object>, tables: Array<{name: string, cols: string[], rows: string[][]}>}}
+     */
+    function _bbStatsRead(doc, base) {
+        const root = doc.getElementById('page-content');
+        if (!root) return null;
+        const list = [];
+        const seen = new Set();
+        root.querySelectorAll('li').forEach((li) => {
+            if (li.closest('ul.yui-nav')) return;
+            const a = li.querySelector('a[href]');
+            if (!a || a.closest('li') !== li) return;
+            const raw = a.getAttribute('href') || '';
+            const kind = _bbStatsLinkKind(raw);
+            if (kind === null || _BB_STATS_SKIP_KINDS.has(kind)) return;
+            const own = li.cloneNode(true);
+            own.querySelectorAll('ul, ol').forEach(n => n.remove());
+            const whole = _bbText(own);
+            const text = _bbText(a);
+            if (!text || !whole.startsWith(text)) return;
+            const href = _bbAbsHref(raw);
+            const tab = _bbStatsTabPath(li);
+            const key = `${href}\u0001${tab.join('\u0001')}`;
+            if (seen.has(key)) return;
+            seen.add(key);
+            const dated = /^\d{4}-\d\d-\d\d\b/.test(text);
+            let loc = null;
+            if (dated || kind === 'venue') {
+                loc = _bbParseHeading(text, raw);
+                loc = { ...loc, venue: _bbStatsTurn(loc.venue) };
+            }
+            list.push({
+                href, text, kind, tab, loc,
+                note: whole.slice(text.length).replace(/^[\s\-–—:,]+/, '').trim(),
+            });
+        });
+
+        const tables = [];
+        const names = new Map();
+        let lastHead = null;
+        const isHeadRow = (tr) => {
+            const cells = Array.from(tr.cells);
+            const filled = cells.filter(c => _bbText(c));
+            const boldRow = /font-weight:\s*bold/i.test(tr.getAttribute('style') || '');
+            return filled.length > 0 && filled.every((c) => {
+                if (c.tagName === 'TH' || boldRow) return true;
+                const b = c.querySelector('strong, b');
+                return !!b && _bbText(b) === _bbText(c);
+            });
+        };
+        const width = tr => Array.from(tr.cells).reduce((n, c) => n + Math.max(1, c.colSpan || 1), 0);
+        root.querySelectorAll('table').forEach((t) => {
+            if (t.parentElement && t.parentElement.closest('table')) return;
+            const trs = Array.from(t.rows);
+            if (!trs.length) return;
+            const cols = Math.max(...trs.map(width));
+            if (cols < 2) return;
+            let i = 0;
+            let caption = '';
+            if (trs[0].cells.length === 1) {
+                caption = _bbText(trs[0].cells[0]);
+                i = 1;
+            }
+            let head = null;
+            if (trs[i] && width(trs[i]) === cols && isHeadRow(trs[i])) {
+                head = Array.from(trs[i].cells).flatMap(c => [_bbText(c), ...Array(Math.max(1, c.colSpan || 1) - 1).fill('')]);
+                i += 1;
+            }
+            const data = trs.slice(i);
+            if (!data.length && head) {
+                lastHead = head;
+                return;
+            }
+            if (data.length < 2) return;
+            if (!head) head = lastHead && lastHead.length === cols ? lastHead : [];
+            // A one-cell row spanning the table inside the data names the
+            // rows below it (Awards: a ceremony, its year and place): a
+            // Section column carries it, the row itself goes.
+            const isSection = tr => tr.cells.length === 1 && width(tr) === cols && cols > 1;
+            const sectioned = data.some(isSection);
+            if (sectioned) head = ['Section', ...(head.length ? head : Array(cols).fill(''))];
+            const used = new Map();
+            const heads = Array.from({ length: sectioned ? cols + 1 : cols }, (_, k) => {
+                let h = head[k] || `Column ${k + 1}`;
+                const n = (used.get(h) || 0) + 1;
+                used.set(h, n);
+                if (n > 1) h = `${h} (${n})`;
+                return h;
+            });
+            let section = '';
+            const rows = data.map((tr) => {
+                if (sectioned && isSection(tr)) {
+                    section = _bbStatsCellHtml(tr.cells[0]);
+                    return null;
+                }
+                const cells = [];
+                Array.from(tr.cells).forEach((c) => {
+                    cells.push(_bbStatsCellHtml(c));
+                    for (let k = 1; k < Math.max(1, c.colSpan || 1); k++) cells.push('');
+                });
+                while (cells.length < cols) cells.push('');
+                return sectioned ? [section, ...cells.slice(0, cols)] : cells.slice(0, cols);
+            }).filter(r => r && r.slice(sectioned ? 1 : 0).some(Boolean));
+            if (rows.length < 2) return;
+            const tab = _bbStatsTabPath(t);
+            let name = [...tab, caption].filter(Boolean).join(' › ');
+            if (!name) {
+                let heading = '';
+                const all = Array.from(root.querySelectorAll('h1, h2, h3, table'));
+                for (const n of all) {
+                    if (n === t) break;
+                    if (n.tagName !== 'TABLE') heading = _bbText(n);
+                }
+                name = heading || _bbText(doc.getElementById('page-title')) || 'Table';
+            }
+            const n = (names.get(name) || 0) + 1;
+            names.set(name, n);
+            tables.push({ name: n > 1 ? `${name} (${n})` : name, cols: heads, rows });
+        });
+        Lib.debug('init', `_bbStatsRead: ${list.length} list item(s), ${tables.length} table(s) on ${base}.`);
+        return { list, tables };
+    }
+
+    /**
+     * A table cell of a stats page as our cell's HTML: its text, its links
+     * (absolute, a new tab; a song link's title in the MusicBrainz style
+     * while that setting is on, the wiki's text as the hover), a line break
+     * for each `br` and block; pictures and scripts left out.
+     *
+     * @param {Element} td
+     * @returns {string}
+     */
+    function _bbStatsCellHtml(td) {
+        const e = _rgEsc;
+        const out = [];
+        const walk = (node) => {
+            node.childNodes.forEach((k) => {
+                if (k.nodeType === 3) {
+                    out.push(e(k.nodeValue.replace(/\s+/g, ' ')));
+                    return;
+                }
+                if (k.nodeType !== 1) return;
+                const tag = k.tagName;
+                if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'IMG') return;
+                if (tag === 'BR') {
+                    out.push('<br>');
+                    return;
+                }
+                const raw = tag === 'A' ? (k.getAttribute('href') || '') : '';
+                if (raw && !/^javascript:/i.test(raw)) {
+                    const text = _bbText(k);
+                    if (!text) return;
+                    const shown = /^(?:https?:\/\/[^/]+)?\/(?:song|ott):/i.test(raw) ? _mbSiteTitleText(text) : text;
+                    const a = `<a href="${e(_bbAbsHref(raw))}" target="_blank" rel="noopener">${e(shown)}</a>`;
+                    out.push(shown !== text ? `<span data-mb-tip title="${e(`As written on Brucebase:\n${text}`)}">${a}</span>` : a);
+                    return;
+                }
+                walk(k);
+                if (/^(?:P|DIV|LI|UL|OL|TR)$/.test(tag)) out.push('<br>');
+            });
+        };
+        walk(td);
+        return out.join('').replace(/\s{2,}/g, ' ').replace(/(?:\s*<br>\s*){2,}/g, '<br>').replace(/^(?:\s*<br>)+|(?:<br>\s*)+$/g, '').trim();
+    }
+
+    /**
+     * The list's columns from its items: the first named after the items'
+     * kind (`_BB_STATS_KIND_LABELS`, "Page" for mixed kinds); Note when an
+     * item has text after its link; Kind when the items link more than one
+     * kind; Date, Venue, City, State, Country when any item is a show or a
+     * venue (a list of venues only: City, State, Country, the venue being
+     * the first column); Tab when the list sits in tabs.
+     *
+     * @param {Array<Object>} list - `_bbStatsRead()`'s `list`.
+     * @returns {string[]}
+     */
+    function _bbStatsListCols(list) {
+        const labels = new Set(list.map(r => _BB_STATS_KIND_LABELS[r.kind] || 'Page'));
+        const main = labels.size === 1 ? [...labels][0] : 'Page';
+        const cols = [main];
+        if (list.some(r => r.note)) cols.push('Note');
+        if (new Set(list.map(r => r.kind)).size > 1) cols.push('Kind');
+        if (list.some(r => r.loc)) cols.push(...(main === 'Venue' ? [] : ['Date', 'Venue']), 'City', 'State', 'Country');
+        if (list.some(r => r.tab.length)) cols.push('Tab');
+        return cols;
+    }
+
+    /**
+     * One list item's row for `cols` (`_bbStatsListCols()`): the item linked
+     * — a song's title in the MusicBrainz style (setting on), a person's sort
+     * name turned round (`_bbRelationDisplayName()`), a venue turned round,
+     * each with the wiki's text as the hover when it differs — its Kind
+     * (`_bbParseHeading()`'s type for a show, the category or host
+     * otherwise), the place columns, the tab path ("Audio › Born To Run
+     * (1975)").
+     *
+     * @param {Object} r - A `list` item.
+     * @param {string[]} cols
+     * @returns {string} A `<tr>`.
+     */
+    function _bbStatsListRowHtml(r, cols) {
+        const e = _rgEsc;
+        const tip = (shown, inner) => (shown !== r.text ? `<span data-mb-tip title="${e(`As written on Brucebase:\n${r.text}`)}">${inner}</span>` : inner);
+        let shown = r.text;
+        if (r.kind === 'song' || r.kind === 'ott' || r.kind === 'lyrics') shown = _mbSiteTitleText(r.text);
+        else if (r.kind === 'relation') shown = _bbRelationDisplayName(r.text);
+        else if (cols[0] === 'Venue' && r.loc) shown = r.loc.venue || r.text;
+        const kind = r.loc && r.loc.type ? r.loc.type : (_BB_YEAR_TYPES[r.kind] || (r.kind ? r.kind.charAt(0).toUpperCase() + r.kind.slice(1) : ''));
+        const cell = {
+            Note: e(r.note), Kind: e(kind), Tab: e(r.tab.join(' › ')),
+            Date: e(r.loc ? r.loc.date : ''), Venue: e(r.loc ? r.loc.venue : ''), City: e(r.loc ? r.loc.city : ''),
+            State: e(r.loc ? r.loc.state : ''), Country: e(r.loc ? r.loc.country : ''),
+        };
+        const first = tip(shown, `<a href="${e(r.href)}" target="_blank" rel="noopener">${e(shown)}</a>`);
+        return `<tr>${cols.map((c, i) => `<td>${i === 0 ? first : (cell[c] || '')}</td>`).join('')}</tr>`;
+    }
+
+    /**
+     * The live page's read (`_bbStatsRead()`), once a page load: the buttons'
+     * `showIf` and the list's columns ask it before the press.
+     *
+     * @returns {{list: Array<Object>, tables: Array<Object>}}
+     */
+    function _bbStatsLive() {
+        if (!_bbStatsLiveRec) _bbStatsLiveRec = _bbStatsRead(document, _bbDetailUrl()) || { list: [], tables: [] };
+        return _bbStatsLiveRec;
+    }
+
+    /**
+     * `toHtml` of the list view: the copy's list as one `table.tbl`.
+     *
+     * @param {string} text - The page's HTML.
+     * @param {string} base - Its URL.
+     * @returns {string} An HTML document.
+     * @throws {Error} When the page lists no pages (`status` 0).
+     */
+    function _bbStatsListToHtml(text, base) {
+        const rec = _bbStatsRead(new DOMParser().parseFromString(text, 'text/html'), base);
+        if (!rec || !rec.list.length) throw Object.assign(new Error('This Brucebase page lists no pages'), { status: 0 });
+        const cols = _bbStatsListCols(rec.list);
+        const head = cols.map(c => `<th>${_rgEsc(c)}</th>`).join('');
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><table class="tbl"><thead><tr>${head}</tr></thead>` +
+            `<tbody>${rec.list.map(r => _bbStatsListRowHtml(r, cols)).join('')}</tbody></table></body></html>`;
+    }
+
+    /**
+     * `toHtml` of the tables view: an `<h3>` and a `table.tbl` with its own
+     * columns (`data-mb-col-headers`) per table of the copy.
+     *
+     * @param {string} text - The page's HTML.
+     * @param {string} base - Its URL.
+     * @returns {string} An HTML document.
+     * @throws {Error} When the page has no table to show (`status` 0).
+     */
+    function _bbStatsTablesToHtml(text, base) {
+        const rec = _bbStatsRead(new DOMParser().parseFromString(text, 'text/html'), base);
+        if (!rec || !rec.tables.length) throw Object.assign(new Error('This Brucebase page has no table to show'), { status: 0 });
+        const e = _rgEsc;
+        const out = rec.tables.map(t => `<h3>${e(t.name)}</h3><table class="tbl" data-mb-col-headers="${e(JSON.stringify(t.cols))}">` +
+            `<thead><tr>${t.cols.map(c => `<th>${e(c)}</th>`).join('')}</tr></thead>` +
+            `<tbody>${t.rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`);
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${out.join('')}</body></html>`;
+    }
+
+    /**
+     * The features of a stats page's button, a fresh object per call: the
+     * list ('list', one table, single mode) or the page's tables ('tables',
+     * a sub-table each, the first open: vzell's answer 4). Both read the
+     * copy of the page (no request). The list's first column is sticky; its
+     * name depends on the page, so it is read from the live page when the
+     * press merges the features (a getter).
+     *
+     * @param {'list'|'tables'} view
+     * @returns {Object}
+     */
+    function _bbStatsFeatures(view) {
+        const copy = toHtml => () => {
+            const url = _bbDetailUrl();
+            return { url, fetchText: async () => _bbDetailPageHtml(), toHtml: text => toHtml(text, url) };
+        };
+        if (view === 'tables') {
+            return { bbDetailToTable: 'stats-tables', groupByH3: true, openSubTables: 'first', pageRequest: copy(_bbStatsTablesToHtml), pageCountAsync: () => 1 };
+        }
+        return {
+            bbDetailToTable: 'stats-list',
+            pageRequest: copy(_bbStatsListToHtml),
+            pageCountAsync: () => 1,
+            columnExtractors: [
+                { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
+            ],
+            integerColumns: [ { sourceColumn: 'DD', align: 'R' }, { sourceColumn: 'MM', align: 'R' }, { sourceColumn: 'YYYY', align: 'C' } ],
+            columnDescriptions: {
+                Tab: 'The tab of the Brucebase page the item is listed under; tabs inside tabs as one path ("Audio › Born To Run (1975)").',
+                Kind: 'The kind of page the item links: a gig, a rehearsal, a song, …, or the site it is on.',
+                Note: 'What the list says after the link.',
+            },
+            get stickyColumn() {
+                const list = _bbStatsLive().list;
+                return list.length ? _bbStatsListCols(list)[0] : 'Page';
+            },
+        };
+    }
+
     /**
      * Installs the Brucebase stylesheet, once per document.
      *
@@ -33058,7 +33479,7 @@
     }
 
     /** @type {Object<string, string>} The data heading of each Brucebase detail kind. */
-    const _BB_DETAIL_HEADINGS = { event: 'Event', song: 'Song', ott: 'Versions', venue: 'Venue', relation: 'Relation', retail: 'Release', bootleg: 'Bootleg', story: 'Story' };
+    const _BB_DETAIL_HEADINGS = { event: 'Event', song: 'Song', ott: 'Versions', venue: 'Venue', relation: 'Relation', retail: 'Release', bootleg: 'Bootleg', story: 'Story', 'stats-list': 'List', 'stats-tables': 'Tables' };
 
     /**
      * The live page's part of a Brucebase detail pageType
@@ -33074,6 +33495,9 @@
      * Idempotent. The tag views (`_BB_TAGS_HEADERS`: bb-tags, bb-tag,
      * bb-pages-and-tags, Phase 11) are `_bbTagsLive()`'s: their table has
      * its columns from the start, and another button's view replaces it.
+     * A stats page's list ('stats-list', bb-stats, Phase 13) gets its
+     * columns from the start too (`_bbStatsListCols()` over the live page),
+     * as a single table would otherwise keep the placeholder's.
      *
      * @param {Object} def - The active merged pageDefinition.
      * @returns {void}
@@ -33093,7 +33517,8 @@
         h2.textContent = kind === 'retail' && /^\/playlist:/.test(window.location.pathname) ? 'Playlist' : (_BB_DETAIL_HEADINGS[kind] || 'Details');
         const table = document.createElement('table');
         table.className = 'tbl mb-bb-detail-table';
-        table.innerHTML = '<thead><tr><th>Song</th></tr></thead><tbody></tbody>';
+        const cols = kind === 'stats-list' && _bbStatsLive().list.length ? _bbStatsListCols(_bbStatsLive().list) : ['Song'];
+        table.innerHTML = `<thead><tr>${cols.map(c => `<th>${_rgEsc(c)}</th>`).join('')}</tr></thead><tbody></tbody>`;
         let native = document.querySelector('h2.mb-bb-native-h2');
         if (!native) {
             native = document.createElement('h2');
@@ -57283,6 +57708,39 @@
                 bbRelationsToTable: true,
                 stickyColumn: 'Name'
             },
+            tableMode: 'single'
+        },
+
+        // Brucebase's other stats pages (`stats:<name>`; org/brucebase.org
+        // Phase 13): a button per shape the page has — its list of links
+        // (bootlegs by label, shows with circulating audio, venues of a
+        // state, …: one table, a Tab column) and its own tables (awards,
+        // song counts per tour, performance counts per city, …: a sub-table
+        // each, the first open). From a copy of the page, no request; the
+        // wiki's page folded below. Covered by `sa_enable_brucebase`. See
+        // _bbStatsRead() and docs/claude/brucebase.md, "Stats pages".
+        {
+            type: 'bb-stats',
+            host: 'brucebase.wikidot.com',
+            // Only a page with one of the two shapes: the rest (a song's
+            // tour counts, a studio-session page's parts, the hubs) stay
+            // `bb-page`'s, link previews only, until batch 2.
+            match: (path) => _BB_STATS_PATH_RE.test(path) && (_bbStatsLive().list.length > 0 || _bbStatsLive().tables.length > 0),
+            buttons: [
+                {
+                    label: 'Show the list', shortLabel: 'List', tableMode: 'single',
+                    showIf: () => _bbStatsLive().list.length > 0,
+                    features: _bbStatsFeatures('list'),
+                    description: 'No request: every page this page lists, in one table with the tab it is under; for a show its date, venue, city, state and country from its title. The wiki\'s page folded below.'
+                },
+                {
+                    label: 'Show the tables', shortLabel: 'Tables', tableMode: 'multi',
+                    showIf: () => _bbStatsLive().tables.length > 0,
+                    features: _bbStatsFeatures('tables'),
+                    description: 'No request: the page\'s own tables, a sub-table per tab or heading, the first open. The wiki\'s page folded below.'
+                }
+            ],
+            features: {},
             tableMode: 'single'
         },
 
@@ -133344,17 +133802,20 @@ a { color: #1565c0; }`;
 
     /**
      * Whether the active definition asks for a sub-table to start open
-     * (`features.openSubTables`: `true` for every one, or a list of h3
-     * names). A detail page's few short tables are its content, not a list
-     * to pick from (bb-event: Setlist, On stage, …; 2026-11-11). No
+     * (`features.openSubTables`: `true` for every one, a list of h3 names,
+     * or `'first'` for the first sub-table only). A detail page's few short
+     * tables are its content, not a list to pick from (bb-event: Setlist, On
+     * stage, …; 2026-11-11); a Brucebase stats page's tables are as many as
+     * its tabs, the first open (bb-stats, vzell's answer 4, 2026-11-12). No
      * MusicBrainz definition sets it, so their rule is unchanged.
      *
      * @param {string} name - The group's name (its h3).
+     * @param {number} [index=-1] - The group's position among the page's sub-tables.
      * @returns {boolean}
      */
-    function _defOpensSubTable(name) {
+    function _defOpensSubTable(name, index = -1) {
         const o = activeDefinition?.features?.openSubTables;
-        return o === true || (Array.isArray(o) && o.includes(name));
+        return o === true || (o === 'first' && index === 0) || (Array.isArray(o) && o.includes(name));
     }
 
     /**
@@ -134096,7 +134557,7 @@ a { color: #1565c0; }`;
                 // widths are still measured as 0 on a hidden table.
                 const isSingleSubTable = dataArray.length === 1;
                 const isReleaseTracks = activeDefinition?.type === 'release-tracks';
-                const shouldStayOpen = isSingleSubTable || isReleaseTracks || _defOpensSubTable(categoryName) ||
+                const shouldStayOpen = isSingleSubTable || isReleaseTracks || _defOpensSubTable(categoryName, index) ||
                     ((catLower === 'album' || catLower === 'official') && group.rows.length < Lib.settings.sa_auto_expand);
                 table.style.display = shouldStayOpen ? '' : 'none';
                 Lib.debug('render', `Group "${categoryName}" auto-expand status: ${shouldStayOpen} (singleSubTable=${isSingleSubTable})`);
@@ -135471,7 +135932,7 @@ a { color: #1565c0; }`;
             const _catLow = (_grp.category || _grp.key || '').toLowerCase();
             const _single = _allH3s.length === 1;
             const _autoEx = Lib.settings.sa_auto_expand;
-            const _shouldOpen = _single || _defOpensSubTable(_grp.category || _grp.key || '') ||
+            const _shouldOpen = _single || _defOpensSubTable(_grp.category || _grp.key || '', _idx) ||
                 ((_catLow === 'album' || _catLow === 'official') &&
                  _grp.rows.length < _autoEx);
 

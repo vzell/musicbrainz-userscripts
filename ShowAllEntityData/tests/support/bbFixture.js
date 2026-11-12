@@ -623,7 +623,42 @@ async function loadBbStoryPage(page, name, { settingsOverride = {}, url = '' } =
     return { posts };
 }
 
+/**
+ * The URL and fixture file of a stats page (scripts/build-bb-stats-fixtures.py).
+ *
+ * @param {string} name - The page name after `stats:` ("awards").
+ * @returns {{url: string, file: string}}
+ */
+function bbStatsFixture(name) {
+    return { url: `https://brucebase.wikidot.com/stats:${name}`, file: path.join(__dirname, '..', 'fixtures', `bb-stats-${name}.html`) };
+}
+
+/**
+ * Loads a stats page fixture (`bb-stats`, Phase 13) with the userscript
+ * injected; every other request is refused and recorded (the views read
+ * the page itself, so a spec can assert there are none).
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} name
+ * @param {{ settingsOverride?: Object<string, *> }} [opts]
+ * @returns {Promise<{ requests: string[] }>}
+ */
+async function loadBbStatsPage(page, name, { settingsOverride = {} } = {}) {
+    const fx = bbStatsFixture(name);
+    const requests = [];
+    await page.route(/^https?:\/\//, (route) => {
+        if (route.request().url() !== fx.url) requests.push(route.request().url());
+        return route.abort('blockedbyclient');
+    });
+    await loadUserscriptPage(page, {
+        url: fx.url, fixtureFile: fx.file, testMode: true,
+        settingsOverride: { sa_enable_brucebase: true, sa_foreign_mb_titles: false, sa_foreign_typography: false, ...settingsOverride },
+    });
+    return { requests };
+}
+
 module.exports = {
+    bbStatsFixture, loadBbStatsPage,
     BB_STORY_ANSWERS, bbStoryFixture, loadBbStoryPage,
     BB_TAG_PAGES, BB_TAG_ANSWERS, loadBbTagPage,
     BB_HISTORY_URL, BB_HISTORY_DIR, BB_HISTORY_STORY_URL, loadBbHistoryPage,

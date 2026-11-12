@@ -1,0 +1,223 @@
+[
+    {
+        "name": "stats pages are not matched",
+        "why": "bb-stats' match: without it every stats page is bb-page (previews only, no button).",
+        "edits": [
+            {
+                "find": "            match: (path) => _BB_STATS_PATH_RE.test(path) && (_bbStatsLive().list.length > 0 || _bbStatsLive().tables.length > 0),",
+                "replace": "            match: (path) => false && _BB_STATS_PATH_RE.test(path) && (_bbStatsLive().list.length > 0 || _bbStatsLive().tables.length > 0),"
+            }
+        ],
+        "spec": "tests/fixtures/bb-stats.spec.js",
+        "grep": "a list of venues and shows",
+        "expect": "fail"
+    },
+    {
+        "name": "a page with neither shape is matched",
+        "why": "Without the shape condition a song's tour page gets bb-stats with no button, not bb-page.",
+        "edits": [
+            {
+                "find": "            match: (path) => _BB_STATS_PATH_RE.test(path) && (_bbStatsLive().list.length > 0 || _bbStatsLive().tables.length > 0),",
+                "replace": "            match: (path) => _BB_STATS_PATH_RE.test(path),"
+            }
+        ],
+        "spec": "tests/fixtures/bb-stats.spec.js",
+        "grep": "stay bb-page",
+        "expect": "fail"
+    },
+    {
+        "name": "fragments are not excluded",
+        "why": "awards-ama (a fragment with a table) must stay bb-page (vzell's answer 8).",
+        "edits": [
+            {
+                "find": "    const _BB_STATS_PATH_RE = /^\\/stats:(?!(?:songs|relations)\\/?$)(?!awards-|performances-with-bruce-)[^/]+\\/?$/;",
+                "replace": "    const _BB_STATS_PATH_RE = /^\\/stats:(?!(?:songs|relations)\\/?$)[^/]+\\/?$/;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-stats.spec.js",
+        "grep": "stay bb-page",
+        "expect": "fail"
+    },
+    {
+        "name": "no tab path",
+        "why": "The Tab column: each item under its tab label.",
+        "edits": [
+            {
+                "find": "            path.unshift(labels[i] || `Tab ${i + 1}`);",
+                "replace": "            if (false) path.unshift(labels[i] || `Tab ${i + 1}`);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-stats.spec.js",
+        "grep": "a list of venues and shows",
+        "expect": "fail"
+    },
+    {
+        "name": "a letter tab is not read as its letter",
+        "why": "\"=- A -=\" → \"A\" (_bbParseTabLabel()).",
+        "edits": [
+            {
+                "find": ".map(li => _bbParseTabLabel(li.textContent)) : [];",
+                "replace": ".map(li => li.textContent.trim()) : [];"
+            }
+        ],
+        "spec": "tests/fixtures/bb-stats.spec.js",
+        "grep": "letter tabs",
+        "expect": "fail"
+    },
+    {
+        "name": "sort forms are not turned round",
+        "why": "\"Left Foot (The)\" → \"The Left Foot\" (_bbStatsTurn()).",
+        "edits": [
+            {
+                "find": "        return m ? `${m[2]} ${m[1]}` : String(name || '');",
+                "replace": "        return String(name || '');"
+            }
+        ],
+        "spec": "tests/fixtures/bb-stats.spec.js",
+        "grep": "a list of venues and shows",
+        "expect": "fail"
+    },
+    {
+        "name": "a person's sort name is not turned round",
+        "why": "\"Band, The\" → \"The Band\" (_bbRelationDisplayName()).",
+        "edits": [
+            {
+                "find": "        else if (r.kind === 'relation') shown = _bbRelationDisplayName(r.text);",
+                "replace": "        else if (r.kind === 'relation') shown = r.text;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-stats.spec.js",
+        "grep": "names in sort form",
+        "expect": "fail"
+    },
+    {
+        "name": "song titles not in the MusicBrainz style",
+        "why": "sa_foreign_mb_titles on: \"4th of July, …\", the wiki's text as the hover.",
+        "edits": [
+            {
+                "find": "        if (r.kind === 'song' || r.kind === 'ott' || r.kind === 'lyrics') shown = _mbSiteTitleText(r.text);",
+                "replace": "        if (false) shown = _mbSiteTitleText(r.text);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-stats.spec.js",
+        "grep": "letter tabs",
+        "expect": "fail"
+    },
+    {
+        "name": "the wiki navigation is taken for items",
+        "why": "Links to other stats pages are the wiki's navigation, not list items: a hub of them (for-collectors) stays bb-page.",
+        "edits": [
+            {
+                "find": "    const _BB_STATS_SKIP_KINDS = new Set(['stats', 'content', 'system', 'search', 'manage', 'nav', 'admin', 'forum']);",
+                "replace": "    const _BB_STATS_SKIP_KINDS = new Set([]);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-stats.spec.js",
+        "grep": "stay bb-page",
+        "expect": "fail"
+    },
+    {
+        "name": "a bold heading row is not a heading",
+        "why": "Awards: the heading row is bold by its tr style.",
+        "edits": [
+            {
+                "find": "                if (c.tagName === 'TH' || boldRow) return true;",
+                "replace": "                if (c.tagName === 'TH') return true;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-stats.spec.js",
+        "grep": "tables in tabs",
+        "expect": "fail"
+    },
+    {
+        "name": "no Section column",
+        "why": "Awards: a ceremony row spanning the table names the rows below it.",
+        "edits": [
+            {
+                "find": "            const sectioned = data.some(isSection);",
+                "replace": "            const sectioned = false;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-stats.spec.js",
+        "grep": "tables in tabs",
+        "expect": "fail"
+    },
+    {
+        "name": "a heading-only table gives no columns",
+        "why": "Set Openers And Closers: one heading table, then a table per tour.",
+        "edits": [
+            {
+                "find": "            if (!head) head = lastHead && lastHead.length === cols ? lastHead : [];",
+                "replace": "            if (!head) head = [];"
+            }
+        ],
+        "spec": "tests/fixtures/bb-stats.spec.js",
+        "grep": "heading-only table",
+        "expect": "fail"
+    },
+    {
+        "name": "a caption row is not the name",
+        "why": "Set Openers And Closers: each tour table opens with its title in one cell.",
+        "edits": [
+            {
+                "find": "            if (trs[0].cells.length === 1) {\n                caption = _bbText(trs[0].cells[0]);",
+                "replace": "            if (false) {\n                caption = _bbText(trs[0].cells[0]);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-stats.spec.js",
+        "grep": "heading-only table",
+        "expect": "fail"
+    },
+    {
+        "name": "openSubTables 'first' not read",
+        "why": "Answer 4: the first sub-table open, the others closed.",
+        "edits": [
+            {
+                "find": "        return o === true || (o === 'first' && index === 0) || (Array.isArray(o) && o.includes(name));",
+                "replace": "        return o === true || (Array.isArray(o) && o.includes(name));"
+            }
+        ],
+        "spec": "tests/fixtures/bb-stats.spec.js",
+        "grep": "tables in tabs",
+        "expect": "fail"
+    },
+    {
+        "name": "no date parts",
+        "why": "The list's Date is split into DD, MM, YYYY, Day, Month.",
+        "edits": [
+            {
+                "find": "            columnExtractors: [\n                { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }\n            ],\n            integerColumns: [ { sourceColumn: 'DD', align: 'R' }, { sourceColumn: 'MM', align: 'R' }, { sourceColumn: 'YYYY', align: 'C' } ],\n            columnDescriptions: {\n                Tab:",
+                "replace": "            columnExtractors: [],\n            integerColumns: [ { sourceColumn: 'DD', align: 'R' }, { sourceColumn: 'MM', align: 'R' }, { sourceColumn: 'YYYY', align: 'C' } ],\n            columnDescriptions: {\n                Tab:"
+            }
+        ],
+        "spec": "tests/fixtures/bb-stats.spec.js",
+        "grep": "a list of venues and shows",
+        "expect": "fail"
+    },
+    {
+        "name": "no tables button",
+        "why": "\"Show the tables\" would not show on a page with tables.",
+        "edits": [
+            {
+                "find": "                    showIf: () => _bbStatsLive().tables.length > 0,",
+                "replace": "                    showIf: () => false,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-stats.spec.js",
+        "grep": "both shapes",
+        "expect": "fail"
+    },
+    {
+        "name": "the list's columns are not in the live table",
+        "why": "The live table gets the list's columns at the press, as the tag views' (a single table would otherwise keep the placeholder's).",
+        "edits": [
+            {
+                "find": "        const cols = kind === 'stats-list' && _bbStatsLive().list.length ? _bbStatsListCols(_bbStatsLive().list) : ['Song'];",
+                "replace": "        const cols = ['Song'];"
+            }
+        ],
+        "spec": "tests/fixtures/bb-stats.spec.js",
+        "grep": "list of",
+        "expect": "fail"
+    }
+]
