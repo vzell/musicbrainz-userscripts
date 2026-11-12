@@ -832,6 +832,13 @@ BB PTs". Last, once Phases 7–15 have added their readers.
   3. new previews: L1 stats: (studio sessions, tour counts, discographies), L2 lyrics:, L3 ott:, L4
      multi:/soundcheck: as their gig
   4. small ones: G6 a story's picture, G7 a song intro's links and the Lyrics section's springsteenlyrics.com link
+  Batch 1 mockup (2026-11-12): https://claude.ai/artifact/RX3xHaYRozwSiZP2g5MujY
+  (=scripts/extract-bb-event-window-mockup.js= → =debug/bb-event-window-mockup.json=,
+  =scripts/build-bb-event-window-mockup.py= with =scripts/bb-event-window-mockup.template.html=): five
+  real pages (gig 1984-10-29 Los Angeles, recording 1972-06-27 914 Sound, interviews 1974-04-07 WMMR and
+  2020-04-24 SiriusXM, gig 1974-08-14 Red Bank), today and with batch 1. Questions: 1 where the
+  description goes, 2 its first sentence on the card, 3 a cast tab's bold line, 4 the year table's On
+  stage column for In Studio, 5 the venue's other lists, 6 an older page's News tab. Waiting for vzell.
 - [ ] vzell's live check
 
 *** Handoff to petri (2026-11-12T04:05+01:00, from vzell-lap)
