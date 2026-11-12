@@ -670,7 +670,12 @@ The mirror has 258 =stats:*studio-sessions*= pages (an album's sessions and its 
 - [X] vzell's live check of batch 2 (e.g. stats:hungry-heart-tour, stats:born-to-run-studio-sessions,
   stats:darkness-on-the-edge-of-town-studio-sessions, stats:nebraska-studio-sessions-details, and the
   On The Tracks of song:the-heist or retail:born-to-run): OK (2026-11-12, with the Note column)
-- [ ] batch 3: E, F
+- [ ] batch 3: E, F. vzell's answers (2026-11-12, asked before building: the copy differs from the
+  mockup): E's rows are each page's own ENTRIES ("2025 Nebraska '82" · subtitle · cover · Released ·
+  Label; 114 on -album, 363 on -retail, 143 on -single), not the cover strip at the top — that strip is
+  the same 203 covers on all 11 discography pages (the wiki's navigation); its tab (Original /
+  Collaboration / Compilation / Playlist) is a Tab column where the release is in it. stats:songs-list
+  (every song as links in paragraphs, the same songs as stats:songs) is left alone: link previews
 - [ ] build in batches (one shared tabview reader where possible, =bb-songs= as the model); specs,
   mutations, coverage rows, docs, WIP per batch
 - [ ] vzell's live check per batch

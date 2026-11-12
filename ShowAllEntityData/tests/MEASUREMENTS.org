@@ -4245,3 +4245,17 @@ expects 1. Not this branch: main's Discogs section bands (=74af55ee=,
 spec emptied the whole ledger entry, so the pass re-offered all three. Fixed in
 the spec: it drops only release-tracks' key (=pretendRowIsNew()=); the file
 12/12 (09:36 CET). The known popup-ext-foreign flake did not show.
+
+* 2026-11-12 — =npm run test:full= on =petri=, after BB Phase 13 batches 1 and 2 (feature/bb-overhaul at 7d0e33dd, 9.99.1598)
+
+Env: 2026-11-12T13:58:48+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                         | Tests | Workers | Wall clock  | Basis                                     |
+|-----------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, merge check  |  3042 |      12 | *18 m 45 s* | =run-test-full.py=, 13:58:48–14:17:33 CET |
+
+3042 passed. The wide sweep owed after the stats pages (bb-stats, bb-song-tours,
+bb-sessions) changed shared code: =_defOpensSubTable()= ('first'),
+=applyBbDetailToTable()=, the song, On The Tracks and release renderers; the
+MusicBrainz fixture specs and popup-ext* green. The known popup-ext-foreign
+flake did not show.

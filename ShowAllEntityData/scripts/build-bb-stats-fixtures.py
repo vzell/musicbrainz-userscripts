@@ -2,7 +2,8 @@
 """Builds the Brucebase stats page fixtures (`bb-stats`, org/brucebase.org
 Phase 13, batch 1; `bb-song-tours` and `bb-sessions`, batch 2) from a copy of
 the mirror's stats folder, one page per shape scripts/check-bb-stats-reader.js
-and scripts/check-bb-tours-sessions.js found (2026-11-12):
+and scripts/check-bb-tours-sessions.js found (2026-11-12; batch 3: `bb-gallery`,
+`bb-registered`):
 
   venues-in-kentucky              a list of mixed kinds (venues, gigs, no gigs)
                                   in named tabs; venues in sort form
@@ -35,6 +36,12 @@ and scripts/check-bb-tours-sessions.js found (2026-11-12):
   devils-and-dust-studio-sessions-details
                                   a part: Version History with takes and titles
                                   that name none
+  discography-album               a gallery (batch 3): the cover strip in tabs,
+                                  then the page's entries, one section
+  discography-retail              a gallery with nine sections (Album, Video,
+                                  Single, …)
+  discography-single              a gallery whose entries link song pages
+  songs-registered                a text page: titles as plain list items
 
 Written as tests/fixtures/bb-stats-<name>.html. Scripts, noscripts and
 theme @imports are removed (scripts/build-bb-event-fixtures.py's
@@ -70,6 +77,10 @@ PAGES = [
     'darkness-on-the-edge-of-town-studio-sessions-timeline',
     'born-to-run-studio-sessions-overview',
     'devils-and-dust-studio-sessions-details',
+    'discography-album',
+    'discography-retail',
+    'discography-single',
+    'songs-registered',
 ]
 
 
