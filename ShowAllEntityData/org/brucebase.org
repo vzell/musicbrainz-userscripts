@@ -696,8 +696,23 @@ The mirror has 258 =stats:*studio-sessions*= pages (an album's sessions and its 
 *** TODO Phase 14 — year-table columns from each event's page
 The year table has Type and Tour already; the rest lives on the event's own page: the cast (On stage),
 tags, Storyteller / Recording / Media present, image counts.
-- [ ] mockup: which columns, loaded lazily per visible row like Relationships (one request per event,
-  1 s apart, cached by =_DP_PARSER_VERSION=), how a failed row shows; the performance cost stated
+- [X] survey (=scripts/copy-bb-year-events.sh 1978= → =debug/bb-mirror/year-1978/=, 173 event pages;
+  =scripts/probe-bb-year-events.js= runs the shipped preview parser, =__saTest.dpParse()=, over each →
+  =debug/bb-year-events-1978.json=; Env: 2026-11-12T18:50+01:00 · petri · WSL2 Ubuntu 24.04.3 ·
+  Playwright 1.62.1 Chromium, GM stubs): Scheduled on 120 pages (mostly "20:00 · start and end not
+  known"), On stage 121 (9 line-ups: 112 are Bruce Springsteen and The E Street Band; Warren Zevon,
+  Southside Johnny, The Knack, Bruce as a radio guest), setlist 154, images 91 (Photo 1,140, News 377,
+  Ticket 185), tabs with content Recording 142, Storyteller 81, Media 61, Eyewitness 46,
+  News/Memorabilia 92; tags on all, mostly the wiki's song shortcodes. A page: 37 KB median, 115 KB max;
+  the year 7.1 MB. The mirror: 5,010 entries in 78 years (1973: 277). The previews keep a record 30
+  days and read one page a second (=_DP_SPACING_MS=)
+- [X] mockup https://claude.ai/artifact/WribjsoLZpeUYU8k8Vx3eY (=scripts/build-bb-year-columns-mockup.py=
+  + =scripts/bb-year-columns-mockup.template.html= → =debug/bb-year-columns-mockup.html=): 1978's table
+  with On stage, Content, Images, Start filling in live (rows already in the previews' store at once,
+  one failure with ⟳), the three ways to read as a live choice, the cost; Q1–Q5 inside (recommended:
+  On stage, Content, Images, Start; read after a press, the rows as they come into view; ⟳ per cell +
+  "Retry the N failed"; the whole line-up, members folded; the year listings too)
+- [ ] vzell's answers
 - [ ] build on the deferred-column pattern (docs/claude/deferred-columns-picard-relationships.md rules:
   master rows, the four post-render duties); specs, mutations, docs, WIP
 - [ ] vzell's live check
