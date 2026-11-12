@@ -431,6 +431,9 @@ Previous / Listing / Next line stay. On the live document
   WARNING). Space: the same card and the event's links, no Live page view.
   **The findings** (item g): `bb-mbev-link-mismatch` (❌) and
   `bb-mbev-link-missing` (⚠️), docs/claude/findings.md.
+- **On stage, Content, Images, Start** (after Tour; Phase 14): from each
+  entry's own page — "The year table's columns from each event's page"
+  below.
 - Date goes through the MusicBrainz `dateParts` extractor unchanged.
 - **The sticky column must be the FIRST one** — Event since 2026-10-24,
   Date before (the paragraph below tells it with Date). The first
@@ -1575,6 +1578,70 @@ and table before `#page-content` ('gallery' → "Releases", 'registered' →
   mutations `scripts/mutations/bb-gallery-registered.json` (18; one
   `expect: pass`: a bold link without a year, which no page of the copy
   has).
+
+## The year table's columns from each event's page — `_bbEvp*` (Phase 14, 2026-11-12)
+
+org/brucebase.org Phase 14; mockup https://claude.ai/artifact/WribjsoLZpeUYU8k8Vx3eY
+(`scripts/build-bb-year-columns-mockup.py`); vzell's answers: all five as
+recommended. Survey: `scripts/copy-bb-year-events.sh 1978` →
+`debug/bb-mirror/year-1978/` (173 event pages), `scripts/probe-bb-year-events.js`
+runs the shipped preview parser (`__saTest.dpParse()`) over each (Env:
+2026-11-12T18:50+01:00 · petri · Playwright 1.62.1 Chromium, GM stubs):
+On stage on 121 (9 line-ups; 112 are Bruce and The E Street Band),
+Scheduled on 120 (mostly "20:00"), images on 91, Recording 142,
+Storyteller 81, Media 61; tags mostly the wiki's song shortcodes (left
+out). A page is 37 KB (median), 1978 7.1 MB; 5,010 entries in all.
+
+- **The cells** (`_bbEvpCells()`): four after Tour in the year table
+  (bb-year, bb-home) and in the listings (bb-year-list), built with the row,
+  keyed by the Event link — the entry's page, or on a listing the show on
+  its year page (/1985#130185, a second show of a day /1985#290685a). Empty
+  until read: their states (cold —, queued, reading…, ⟳ not read) are CSS
+  words, so the filter never reads them; an entry with no page of its own
+  is `none`.
+- **The record is the link previews'** (`_dpGet()`, `_dpParseBb()`),
+  `_bbEvpView()`: On stage (the field; `_bbEvpStageLines()` makes the band
+  one row and each member of its last bracket of two or more a row, the
+  column collapsable — "(Guest)" stays), Content (the tabs with content but
+  `_BB_EVP_PLAIN_TABS`: On Stage, Setlist, Performances, Gallery — the
+  images are their own column), Images (by kind), Start (the scheduled
+  time, '' for "time not known"). Kept 30 days, by `_DP_PARSER_VERSION`, in
+  the previews' store, shared both ways.
+- **When** (`_bbEvpToggle()`, `_bbEvpObserve()`, `_bbEvpOnSeen()`): nothing
+  before ▶ Pages (`.mb-bbevp-col-hdr-btn` on On stage's header, in the
+  shared header-button CSS lists); then an IntersectionObserver (200 px
+  margin) queues each cold row that comes into view and takes back one
+  that leaves before its turn; a second press stops (the queue back to
+  cold, the row under way finishes). `_bbEvpPump()` reads one row at a
+  time: its page (`_bbEvpPageUrl()`: a listing's show link through
+  `_extBbYear()`, one request a year, kept), then `_dpGet()` — memory, the
+  store, else one request after the previews' rate slot (one a second,
+  the hover cards' queue). Progress in the async job popup (`bbevp`: Stop,
+  Retry the N failed); a failed row's ⟳ asks again.
+- **Rows read before** paint at a fresh render or a disk load
+  (`_bbEvpAfterRender(true)`: once a page load the previews' store is read,
+  `_fiDpPeek()`, one IndexedDB read, no request); a re-render (sort, filter
+  keystroke) walks no source row (`_bbEvpAfterRender(false)`: the header
+  buttons and the watch only).
+- **The four duties** of a late cell write (`_bbEvpScheduleRefresh()`, at
+  most once a second): 📊 caches of the tables with the columns, the filter
+  cache, the header buttons, `runFilter()` when a filter is set — else
+  `initCollapsableColumns()` lays out On stage's ▶ (at most every 3 s while
+  pages arrive); the row text cache in `_bbEvpRenderCell()`; live and
+  source rows (`_bbEvpCellIndex()`).
+- **The cost** (tests/MEASUREMENTS.org, 2026-11-12, `scripts/measure-bb-year-render.js`):
+  before any page is read, the 1985 render is 7–11 % slower (+42 to +67 ms
+  on 94 rows; four more columns, 19 → 23); a sort is unchanged; the paint
+  pass is not the cost.
+- **Tests**: `tests/fixtures/bb-year-event-pages.spec.js` (7: nothing before
+  the press, the rows in view and no others, Stop; the filter on a folded
+  member and a re-render that asks nothing; a filter set while pages arrive
+  — rows filtered away but still queued come back once read, which pins the
+  four duties and the source-row write; "??:??" leaves Start empty; a failed
+  row and its ⟳; rows read before in a second tab, from the store; a listing
+  row through its year page), the
+  fixture `bb-year-list-1985.html` (`scripts/build-bb-year-list-fixtures.py`);
+  mutations `scripts/mutations/bb-year-event-pages.json` (14).
 
 ## Show links on Brucebase's own pages (Phase 8, 2026-11-11)
 

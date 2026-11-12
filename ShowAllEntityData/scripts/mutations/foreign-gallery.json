@@ -17,8 +17,8 @@
         "why": "Known overlap: on dg-release a global filter keeps the <h3> (and its 🖼), so the hook in runFilter()'s multi branch has nothing to restore here; kept for the re-renders that do rebuild the <h3>s.",
         "edits": [
             {
-                "find": "            _bbMbevAfterRender(false);\n            // A foreign table's 🖼 gallery opener, after its row count.\n            _fgalAfterRender();\n",
-                "replace": "            _bbMbevAfterRender(false);\n"
+                "find": "            _bbMbevAfterRender(false);\n            // Its event-page columns: ▶ Pages and the watch.\n            _bbEvpAfterRender(false);\n            // A foreign table's 🖼 gallery opener, after its row count.\n            _fgalAfterRender();\n",
+                "replace": "            _bbMbevAfterRender(false);\n            // Its event-page columns: ▶ Pages and the watch.\n            _bbEvpAfterRender(false);\n"
             }
         ],
         "spec": "tests/fixtures/foreign-gallery.spec.js",

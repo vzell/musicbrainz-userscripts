@@ -993,6 +993,7 @@ lists converted into sortable tables), tableMode =multi=.
 - Not MusicBrainz, and opt-in twice: =sa_enable_brucebase= and =sa_bb_year_pages= (both default off); the year gate sits right after the host gate.
 - Features exercised: =bbYearToTable= (=applyBbYearToTable()=): an entry opens at a paragraph that is one date-led =<strong>= (anchor optional, 712 lettered); set paragraphs vs description by content (=_bbSetParagraphKind()=); Soundcheck/Setlist =<ul><li>= one song per row, other labelled sets in Setlist with =.mb-bb-set-label=; Tour from Start/End/Continuation boxes; Notes cloned with absolute links (song preview); Media from the icon FILE names, Help Us → Info wanted; Date (00 day/month dropped) through =dateParts=; =collapsableColumns= Soundcheck/Setlist/Notes.
 - Coverage: =tests/fixtures/bb-year.spec.js= (both gates, rows, heading split, sets, notes, tours, media, filters, Date sort, regions, letter anchors, italic setlists, no MusicBrainz request, Notes song preview, Save/Load twice, parser tables), =sl-include-regex.spec.js=; fixtures =bb-year-{2026,1968,1985,2018}.html= (=scripts/build-bb-fixtures.py=); probe =scripts/probe-bb-year-pages.py=, whole-corpus check =scripts/check-bb-year-converter.js=; live =tests/live/bb-year.spec.js= (=@extended=); mutations in =scripts/mutations/bb-year.json=.
+- Phase 14 (2026-11-12): On stage, Content, Images, Start from each entry's page (=_bbEvp*=, ▶ Pages): =tests/fixtures/bb-year-event-pages.spec.js=, mutations =scripts/mutations/bb-year-event-pages.json=.
 
 ** 98. bb-home
 - URL: [[https://brucebase.wikidot.com/][brucebase.wikidot.com]] (and =/home=, its wiki name)
@@ -1353,7 +1354,8 @@ lists converted into sortable tables), tableMode =multi=.
 - Buttons: "Show this year's events" (Events), "Show the events of all years" (All years: =pageKeys= over the nav line, the live listing reused for its own key).
 - tableMode: single
 - Features exercised: =bbYearListToTable= (=applyBbYearListToTable()=, =_bbYearListEntries()=): lists and tour boxes in document order, Event the year table's cell linking the show (=bbdate= preview), Date through =dateParts=, Note from the =<em>=, Tour from =_bbParseTourHeading()= (now also ", and Start of").
-- Coverage: =tests/fixtures/bb-year-list.spec.js=; fixtures =bb-year-list-{2026,1978,1949-64,1981,2005,1973}.html= (=scripts/build-bb-year-list-fixtures.py=); probe =scripts/probe-bb-year-list.py=; mutations =scripts/mutations/bb-year-list.json=.
+- Coverage: =tests/fixtures/bb-year-list.spec.js=; fixtures =bb-year-list-{2026,1978,1949-64,1981,2005,1973,1985}.html= (=scripts/build-bb-year-list-fixtures.py=); probe =scripts/probe-bb-year-list.py=; mutations =scripts/mutations/bb-year-list.json=.
+- Phase 14 (2026-11-12): the same four event-page columns, a row's page found on its year page: =tests/fixtures/bb-year-event-pages.spec.js= (with =bb-year-list-1985.html= and =bb-year-1985.html=).
 
 ** 169. bb-tags
 - URL: [[https://brucebase.wikidot.com/system:page-tags][brucebase.wikidot.com/system:page-tags]] (11,571 tags, 1.67 MB)

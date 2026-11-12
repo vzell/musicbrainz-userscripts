@@ -29276,3 +29276,26 @@ is both now. One mutation is `expect: pass`: an entry must open with its year, a
 the copy has a bold link without one outside a tab. mutation-check printed the harness's auth
 hint as the error line of "a single's song not in MusicBrainz style" again (the spec's `styled`
 row is undefined without the tip: the right reason).
+
+## 2026-11-12 — Brucebase year table: columns from each event's page (feature/bb-overhaul, Phase 14)
+
+Env: 2026-11-12T19:36+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs).
+
+`_bbEvp*` (docs/claude/brucebase.md, "The year table's columns from each event's page"):
+On stage, Content, Images, Start, filled from the link previews' record after ▶ Pages, the rows
+as they come into view. Found while building:
+- A year listing's Event link is a show on the year page (/1985#130185, and /1985#290685a for a
+  day's second show), not the event's page: the page comes from the year page (`_extBbYear()`).
+- The first render tail walked every live and source cell, and it ran on every re-render, i.e.
+  each filter keystroke; on the 5,010-row all-years table that is on the hot path. A re-render now
+  only puts back the header buttons and the watch (`_bbEvpAfterRender(false)`).
+- The cost before any page is read, measured in one session against the commit before
+  (tests/MEASUREMENTS.org): the 1985 render +42–67 ms (7–11 %), the paint pass not the cause (cut
+  off, the same); the sort unchanged. Reported to vzell with the alternative.
+- Five mutations first passed. The spec never waited for the reading to settle (so "all rows
+  read" looked like "the rows in view"); it filtered only after loading had stopped, so the four
+  duties of a late write were never needed (a filter set WHILE pages arrive pins them: rows
+  filtered away stay queued and come back once read); no fixture had a page without a time (the
+  rehearsal fixture's "??:??"). On the way: the table starts 1,290 px down the page in the
+  fixture, so a short window shows two rows — the duty test scrolls the table to the top first.
+Spec 7/7, the 14 mutations and 4 refreshed finds OK, 27 BB specs + sl-include-regex 307 green.

@@ -712,10 +712,24 @@ tags, Storyteller / Recording / Media present, image counts.
   one failure with ⟳), the three ways to read as a live choice, the cost; Q1–Q5 inside (recommended:
   On stage, Content, Images, Start; read after a press, the rows as they come into view; ⟳ per cell +
   "Retry the N failed"; the whole line-up, members folded; the year listings too)
-- [ ] vzell's answers
-- [ ] build on the deferred-column pattern (docs/claude/deferred-columns-picard-relationships.md rules:
-  master rows, the four post-render duties); specs, mutations, docs, WIP
-- [ ] vzell's live check
+- [X] vzell's answers (2026-11-12): all five as recommended — On stage, Content, Images and Start; read
+  after a press of the button, the rows as they come into view (one a second); a failed row: ⟳ in its
+  cell and "Retry the N failed" above the table; On stage the whole line-up, the members folded; the
+  year listings (bb-year-list) get the same columns
+- [X] build on the deferred-column pattern (docs/claude/brucebase.md "The year table's columns from each
+  event's page"): =_bbEvp*= modelled on the MB-Event column — four cells after Tour (bb-year, bb-home,
+  bb-year-list), keyed by the Event link; the previews' record (=_dpGet()=); ▶ Pages on On stage's header,
+  then an IntersectionObserver queues the rows in view and drops those that leave; a listing row's page
+  through its year page (=_extBbYear()=); rows read before painted at render (=_fiDpPeek()=, no request);
+  the four duties at most once a second (=initCollapsableColumns()= for On stage's ▶ at most every 3 s
+  while loading); the job popup =bbevp=. Cost (tests/MEASUREMENTS.org): the 1985 render 7–11 % slower
+  (+42–67 ms, four more columns), the sort unchanged — told vzell, the alternative being the columns
+  hidden until ▶ Pages. =bb-year-event-pages.spec.js= (7), =bb-year-list-1985.html=,
+  =scripts/mutations/bb-year-event-pages.json= (14, all OK after the spec was tightened: five first
+  passed — no wait for the reading to settle, a filter only after loading, no page without a time) + 4
+  refreshed finds; bb-year/bb-year-list specs' header lists; 27 BB specs + sl-include-regex 307 green;
+  HELP, WIP.20
+- [ ] vzell's live check (e.g. /1985 and /1978: ▶ Pages, scroll, a filter on On stage; /1985-list)
 
 *** TODO Phase 15 — History in Brucebase windows on other sites
 Today the History section is on brucebase.wikidot.com only.

@@ -4010,6 +4010,21 @@ entry, with these columns:
 - **Tour:** the tour, tour leg or band era the entry belongs to, taken from
   the wiki's "Start of …" / "Continuation of …" / "End of …" boxes. Entries
   outside any box, such as those before a year's first box, are empty.
+- **On stage**, **Content**, **Images** and **Start** come from each entry's
+  own page, so they stay empty (—) until that page is read. **▶ Pages** in
+  the On stage header reads the pages of the rows you can see, and then of
+  each row you scroll to, one page a second; press it again (■ Pages) to
+  stop. *On stage* is the line-up, its band's members folded under ▶ (the
+  filter finds them anyway); *Content* the tabs with something in them
+  (Recording, Storyteller, Media, Eyewitness, News/Memorabilia, …); *Images*
+  the pictures by kind (*Photo 2 · Ticket 4 · News 7*); *Start* the scheduled
+  time. They use the same copy of the page as the hover card: a row whose
+  card you opened in the last 30 days fills in at once, with no request, and
+  a row read here opens its card at once. A row whose page could not be read
+  shows *⟳ not read*; a click asks again (the progress card, opened from
+  ▶ Pages, has *Retry the N failed*). The year listings (`/1985-list`) have
+  the same four columns; there a row's page is found on its year page first
+  (one request for the year).
 - **Soundcheck:** the soundcheck, one song per row.
 - **Setlist:** the set, one song per row, each title written the MusicBrainz
   way ("I'M ON FIRE" reads "I’m on Fire"), the rest as the wiki has it: bold for a tour

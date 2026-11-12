@@ -16,7 +16,8 @@ const {
 } = require('../support/bbFixture');
 const { waitForRenderComplete } = require('../support/browser');
 
-const HEADERS = ['Event', 'Date', 'Venue', 'City', 'State', 'Country', 'Note', 'Tour', 'DD', 'MM', 'YYYY', 'Day', 'Month'];
+// Since 2026-11-12 (Phase 14): the four columns from each entry's own page after Tour.
+const HEADERS = ['Event', 'Date', 'Venue', 'City', 'State', 'Country', 'Note', 'Tour', 'On stage', 'Content', 'Images', 'Start', 'DD', 'MM', 'YYYY', 'Day', 'Month'];
 
 /**
  * The entries of a listing fixture, read with plain regexes in document

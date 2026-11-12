@@ -9,6 +9,8 @@ Pages, each chosen for a shape (scripts/probe-bb-year-list.py, 2026-11-12):
   1981-list     "End of the 1st leg, and Start of the 2nd leg of … - Europe"
   2005-list     "… era / Start of …", and an entry with a stray "]"
   1973-list     "Continuation of …" at the top
+  1985-list     the listing of the year fixture bb-year-1985.html: its show links
+                resolve to event pages through that year page (Phase 14)
 
 Scripts, noscripts and theme @imports are removed (scripts/build-bb-event-
 fixtures.py's `strip()`); nothing else changes.
@@ -24,7 +26,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 OUT = os.path.join(ROOT, 'tests', 'fixtures')
 MIRROR = sys.argv[1] if len(sys.argv) > 1 else '/home/vzell/git/scripts/BruceParser/bb/latest'
-KEYS = ['2026', '1978', '1949-64', '1981', '2005', '1973']
+KEYS = ['2026', '1978', '1949-64', '1981', '2005', '1973', '1985']
 
 
 def _strip():

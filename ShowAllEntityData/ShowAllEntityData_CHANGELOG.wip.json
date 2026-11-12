@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.20",
+    "date": "2026-11-12",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase: the year table and the year listings get four columns from each event's own page: who was on stage (the band's members folded), which tabs have something in them (Recording, Storyteller, Media, …), the pictures by kind, and the scheduled start. They fill in after ▶ Pages in the On stage header: the rows you can see, then each row you scroll to, one page a second; a row whose hover card you opened before fills in at once, with no request. A row that could not be read shows ⟳ to ask again."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.19",
     "date": "2026-11-12",
     "sections": [

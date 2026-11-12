@@ -26361,7 +26361,7 @@
      * @type {string[]}
      */
     const _BB_YEAR_HEADERS = ['Event', 'MB-Event', 'Media', 'Date', 'Type', 'Venue', 'City', 'State', 'Country', 'Tour',
-        'Soundcheck', 'Setlist', 'Set note', 'Notes', 'Info wanted'];
+        'On stage', 'Content', 'Images', 'Start', 'Soundcheck', 'Setlist', 'Set note', 'Notes', 'Info wanted'];
 
     /**
      * An entry's Type, by the prefix of its heading link (`/gig:…`). Any
@@ -27770,6 +27770,558 @@
         };
     }
 
+    // ── The Brucebase event-page columns (Phase 14) ─────────────────────────
+    //
+    // org/brucebase.org Phase 14; mockup https://claude.ai/artifact/WribjsoLZpeUYU8k8Vx3eY,
+    // vzell's answers (2026-11-12): the year table (bb-year, bb-home) and the
+    // year listings (bb-year-list) get four columns from each event's own
+    // page — On stage (the whole line-up, its members folded), Content (the
+    // tabs with something in them: Recording, Storyteller, Media, …),
+    // Images (by kind) and Start (the scheduled time). The record is the link
+    // previews' own (`_dpGet()`, `_dpParseBb()`), so a row whose card or
+    // window was opened costs nothing and a row read here opens its card at
+    // once; kept 30 days, by parser version. Nothing is asked before the
+    // ▶ Pages header button: then the rows as they come into view, one
+    // request a second in the previews' rate slot (`_dpAwaitSlot()`); a row
+    // scrolled away before its turn is not asked. Rows read before paint at
+    // render, with no request. A listing's row links the show on its year
+    // page (/1978#290778): its page comes from that year page
+    // (`_extBbYear()`, one request a year, kept). Every write owes the four
+    // filter duties (`_bbEvpScheduleRefresh()`, the row text cache in
+    // `_bbEvpRenderCell()`).
+
+    /** @type {string[]} The four columns, in order. */
+    const _BB_EVP_COLS = ['On stage', 'Content', 'Images', 'Start'];
+    /** @type {Set<string>} Tabs every page has or the year table shows already: not Content. */
+    const _BB_EVP_PLAIN_TABS = new Set(['On Stage', 'Setlist', 'Performances', 'Gallery']);
+    /** @type {Map<string, {view?: object, failed?: boolean, none?: boolean, detail?: string}>} By row key. */
+    const _bbEvpMem = new Map();
+    /** The reading's state: the header button, the queue, the job popup's counts. */
+    const _bbEvp = {
+        active: false, running: false, queue: [], queued: new Set(), io: null,
+        done: 0, failed: 0, requests: 0, refreshTimer: 0, lastRefresh: 0, collapseAt: 0,
+        pageOf: new Map(),
+    };
+
+    /**
+     * The four cells of a row, empty until its page is read: what they need
+     * is on each as data, so it survives clones and a save to disk — the
+     * row's key (the Event link: the entry's page, or on a listing the show
+     * on its year page), the column, the state (cold, or none for an entry
+     * with no page of its own).
+     *
+     * @param {string}   key - The Event link, absolute; '' for none.
+     * @param {Document} docContext
+     * @returns {HTMLTableCellElement[]}
+     */
+    function _bbEvpCells(key, docContext) {
+        return _BB_EVP_COLS.map((col) => {
+            const td = docContext.createElement('td');
+            td.className = 'mb-bbevp-cell';
+            td.dataset.mbBbevpCol = col;
+            if (key) td.dataset.mbBbevpKey = key;
+            td.dataset.mbBbevpState = key ? 'cold' : 'none';
+            return td;
+        });
+    }
+
+    /**
+     * What the four columns show, from an event page's preview record:
+     * On stage (the field as the window writes it), the tabs with content
+     * but those every page has (`_BB_EVP_PLAIN_TABS`), the images by kind,
+     * the scheduled start ("20:00"; '' for "time not known").
+     *
+     * @param {object} data - `_dpParseBb()`'s record.
+     * @returns {{stage: string, content: string[], images: string[], start: string}}
+     */
+    function _bbEvpView(data) {
+        const field = n => ((data.fields || []).find(f => f[0] === n) || [])[1] || '';
+        const kinds = new Map();
+        (data.images || []).forEach((im) => { const k = im.label || 'Other'; kinds.set(k, (kinds.get(k) || 0) + 1); });
+        const start = field('Scheduled').split(' · ')[0];
+        return {
+            stage: field('On stage'),
+            content: field('On the page').split(' · ').filter(t => t && !_BB_EVP_PLAIN_TABS.has(t)),
+            images: Array.from(kinds, ([k, n]) => `${k} ${n}`),
+            start: /^time not known/i.test(start) ? '' : start,
+        };
+    }
+
+    /**
+     * A line-up as list rows: the names before the last bracket that lists
+     * two or more names, then each of those ("Bruce Springsteen, The E
+     * Street Band (Roy Bittan, Clarence Clemons, …)" → the band, then six
+     * members); a bracket of one ("Bruce Springsteen (Guest)") stays.
+     *
+     * @param {string} s
+     * @returns {string[]}
+     */
+    function _bbEvpStageLines(s) {
+        const m = String(s || '').match(/^(.*?)\s*\(([^()]*,[^()]*)\)\s*$/);
+        return m ? [m[1], ...m[2].split(/\s*,\s*/).filter(Boolean)] : (s ? [s] : []);
+    }
+
+    /**
+     * A cell's markup for its row's record: On stage as `<ul><li>` rows (the
+     * column is collapsable: one line until ▶), the others as text; a failed
+     * row's On stage cell a ⟳ button (its words are CSS, so the filter never
+     * reads them).
+     *
+     * @param {string} col
+     * @param {?object} rec - `_bbEvpMem`'s entry.
+     * @returns {string}
+     */
+    function _bbEvpCellHtml(col, rec) {
+        const e = _rgEsc;
+        if (rec && rec.failed) {
+            return col === 'On stage' ? `<button type="button" class="mb-bbevp-retry" aria-label="Not read: ask again" data-mb-tip title="${e(`The event's page was not read (${rec.detail || 'no answer'}). Click: ask again.`)}"></button>` : '';
+        }
+        if (!rec || !rec.view) return '';
+        const v = rec.view;
+        if (col === 'On stage') {
+            const lines = _bbEvpStageLines(v.stage);
+            return lines.length ? `<ul>${lines.map(l => `<li>${e(l)}</li>`).join('')}</ul>` : '';
+        }
+        if (col === 'Content') return e(v.content.join(' · '));
+        if (col === 'Images') return e(v.images.join(' · '));
+        return e(v.start);
+    }
+
+    /**
+     * Rewrites one cell from what is known (`_bbEvpMem`; `state` for a cell
+     * still waiting), and clears its row's filter text cache.
+     *
+     * @param {HTMLTableCellElement} td
+     * @param {?string} [state] - queued | run; null: from the record.
+     * @returns {void}
+     */
+    function _bbEvpRenderCell(td, state = null) {
+        const rec = _bbEvpMem.get(td.dataset.mbBbevpKey);
+        const st = rec ? (rec.failed ? 'failed' : rec.none ? 'none' : 'done') : state || 'cold';
+        td.innerHTML = _bbEvpCellHtml(td.dataset.mbBbevpCol, rec);
+        td.dataset.mbBbevpState = st;
+        const row = td.parentElement;
+        const rc = row && _rowTextCache.get(row);
+        if (rc) { rc.cols = []; rc.full = null; }
+    }
+
+    /**
+     * Every event-page cell per row key, live AND in the source rows the
+     * next re-render clones from (a Set: a single table's live rows are its
+     * source rows).
+     *
+     * @returns {Map<string, Set<HTMLTableCellElement>>}
+     */
+    function _bbEvpCellIndex() {
+        const map = new Map();
+        const add = (td) => {
+            const k = td.dataset.mbBbevpKey;
+            if (!k) return;
+            let s = map.get(k);
+            if (!s) { s = new Set(); map.set(k, s); }
+            s.add(td);
+        };
+        document.querySelectorAll('body.mb-sa-host-bb table.tbl td.mb-bbevp-cell[data-mb-bbevp-key]').forEach(add);
+        _msSourceRows().forEach(row => row.querySelectorAll('td.mb-bbevp-cell[data-mb-bbevp-key]').forEach(add));
+        return map;
+    }
+
+    /**
+     * Repaints every cell of the given keys.
+     *
+     * @param {Map<string, Set<HTMLTableCellElement>>} index
+     * @param {Iterable<string>} keys
+     * @param {?string} [state]
+     * @returns {number} Cells written.
+     */
+    function _bbEvpRepaint(index, keys, state = null) {
+        let n = 0;
+        Array.from(keys).forEach(k => (index.get(k) || []).forEach((td) => {
+            _bbEvpRenderCell(td, state);
+            n++;
+        }));
+        return n;
+    }
+
+    /**
+     * After cells changed (docs/claude/filter-and-cache-invariants.md, the
+     * four duties of a post-render cell write; the fourth, the row text
+     * cache, is `_bbEvpRenderCell()`'s): the 📊 caches of the tables with the
+     * columns, every cached filter result, the header buttons, and the
+     * filter itself when one is set (its re-render lays out On stage's
+     * lists); with no filter the collapse toggles of On stage are laid out
+     * here, at most every 3 s while pages arrive. At most once a second, or
+     * at once.
+     *
+     * @param {boolean} [now]
+     * @returns {void}
+     */
+    function _bbEvpScheduleRefresh(now) {
+        clearTimeout(_bbEvp.refreshTimer);
+        const wait = now ? 0 : Math.max(0, 1000 - (Date.now() - _bbEvp.lastRefresh));
+        _bbEvp.refreshTimer = setTimeout(() => {
+            _bbEvp.lastRefresh = Date.now();
+            const tables = Array.from(document.querySelectorAll('body.mb-sa-host-bb table.tbl')).filter(t => t.querySelector('td.mb-bbevp-cell'));
+            tables.forEach(t => _invalidateUniqDropDataCacheForTable(t));
+            _invalidateFilterCache();
+            _bbEvpUpdateHdrBtns();
+            if (_anyFilterActive()) {
+                runFilter();
+            } else if (now || !_bbEvp.running || Date.now() - _bbEvp.collapseAt >= 3000) {
+                _bbEvp.collapseAt = Date.now();
+                tables.forEach(t => initCollapsableColumns(t));
+            }
+            _bbEvpObserve();
+        }, wait);
+    }
+
+    /**
+     * A row key's event page: the key itself for an entry's page; for a
+     * listing's show link (/1978#290778) the page its year page names for
+     * that anchor (`_extBbYear()`, one request a year, kept; '' when the
+     * entry has no page of its own); null when no caller wanted it once its
+     * slot came up.
+     *
+     * @param {string} key
+     * @returns {Promise<?string>}
+     * @throws {Error} When the year page could not be read.
+     */
+    async function _bbEvpPageUrl(key) {
+        let u;
+        try { u = new URL(key); } catch (err) { return ''; }
+        if (!(u.hash && /^\/(?:\d{4}|1949-64)\/?$/.test(u.pathname))) return u.href;
+        if (_bbEvp.pageOf.has(key)) return _bbEvp.pageOf.get(key);
+        const y = await _extBbYear(`https://brucebase.wikidot.com${u.pathname.replace(/\/$/, '')}`, () => _bbEvp.active);
+        if (y.skipped) return null;
+        if (!y.ok) throw new Error(y.detail || 'The year page could not be read.');
+        const show = y.year && y.year.shows ? y.year.shows[u.hash.slice(1)] : null;
+        const page = show && show.gig ? show.gig : '';
+        _bbEvp.pageOf.set(key, page);
+        return page;
+    }
+
+    /**
+     * Queues a row (a failed one again: its ⟳, or "Retry the N failed").
+     *
+     * @param {string} key
+     * @param {boolean} [again]
+     * @returns {void}
+     */
+    function _bbEvpEnqueue(key, again = false) {
+        const rec = _bbEvpMem.get(key);
+        if (_bbEvp.queued.has(key) || (rec && !(again && rec.failed))) return;
+        if (rec) _bbEvpMem.delete(key);
+        _bbEvp.queued.add(key);
+        _bbEvp.queue.push(key);
+        _bbEvpRepaint(_bbEvpCellIndex(), [key], 'queued');
+        _bbEvpPump();
+    }
+
+    /**
+     * Reads the queue, one row at a time: its page (`_bbEvpPageUrl()`), then
+     * its record (`_dpGet()`: memory, the store, else one request after the
+     * previews' rate slot). A row still queued when its slot comes up but
+     * no longer wanted (the button stopped) goes back to cold, unasked.
+     *
+     * @returns {Promise<void>}
+     */
+    async function _bbEvpPump() {
+        if (_bbEvp.running) return;
+        _bbEvp.running = true;
+        _bbEvpRegisterProvider();
+        _bbEvpUpdateHdrBtns();
+        const site = _DP_SITES['brucebase.wikidot.com'];
+        while (_bbEvp.queue.length) {
+            const key = _bbEvp.queue.shift();
+            _bbEvp.queued.delete(key);
+            if (!_bbEvp.active) {
+                _bbEvpRepaint(_bbEvpCellIndex(), [key]);
+                continue;
+            }
+            _bbEvpRepaint(_bbEvpCellIndex(), [key], 'run');
+            let rec = null;
+            try {
+                const page = await _bbEvpPageUrl(key);
+                if (page === '') {
+                    rec = { none: true };
+                } else if (page) {
+                    const res = await _dpGet(page, site, { wanted: () => _bbEvp.active });
+                    if (res.outcome === 'ok') {
+                        rec = { view: _bbEvpView(res.data) };
+                        if (!res.cached) _bbEvp.requests++;
+                    } else if (res.outcome === 'error') {
+                        rec = { failed: true, detail: res.detail };
+                    }
+                }
+            } catch (err) {
+                rec = { failed: true, detail: (err && err.message) || 'no answer' };
+            }
+            if (rec) {
+                _bbEvpMem.set(key, rec);
+                if (rec.failed) {
+                    _bbEvp.failed++;
+                    _ajLog('bbevp', null, `${key.replace(/^https?:\/\/[^/]+\//, '')}: ${rec.detail}`, 'bad');
+                } else {
+                    _bbEvp.done++;
+                }
+            }
+            _bbEvpRepaint(_bbEvpCellIndex(), [key]);
+            _ajChanged('bbevp', null);
+            _bbEvpScheduleRefresh(false);
+        }
+        _bbEvp.running = false;
+        // While the reading is on, the job lasts: the next rows scrolled to
+        // carry it on. It ends when the button stops it.
+        if (!_bbEvp.active) _ajFinish('bbevp', null, _bbEvp.failed);
+        _bbEvpScheduleRefresh(true);
+    }
+
+    /**
+     * Watches the live rows not read yet while the reading is on: a row that
+     * comes within 200 px of the window is queued, one that leaves before
+     * its turn is taken out again (`_bbEvpOnSeen()`). Again after every
+     * render (the live rows are new clones).
+     *
+     * @returns {void}
+     */
+    function _bbEvpObserve() {
+        if (!_bbEvp.active || typeof IntersectionObserver === 'undefined') return;
+        if (!_bbEvp.io) _bbEvp.io = new IntersectionObserver(_bbEvpOnSeen, { rootMargin: '200px 0px' });
+        _bbEvp.io.disconnect();
+        document.querySelectorAll('body.mb-sa-host-bb table.tbl td.mb-bbevp-cell[data-mb-bbevp-col="On stage"][data-mb-bbevp-key]').forEach((td) => {
+            const st = td.dataset.mbBbevpState;
+            if (st === 'cold' || st === 'queued') _bbEvp.io.observe(td);
+        });
+    }
+
+    /**
+     * The observer's callback: queue what came into view, take back what
+     * left it before its turn.
+     *
+     * @param {IntersectionObserverEntry[]} entries
+     * @returns {void}
+     */
+    function _bbEvpOnSeen(entries) {
+        if (!_bbEvp.active) return;
+        const back = [];
+        entries.forEach((en) => {
+            const key = en.target.dataset.mbBbevpKey;
+            if (!key) return;
+            if (en.isIntersecting) {
+                _bbEvpEnqueue(key);
+            } else if (_bbEvp.queued.has(key)) {
+                _bbEvp.queued.delete(key);
+                _bbEvp.queue = _bbEvp.queue.filter(k => k !== key);
+                back.push(key);
+            }
+        });
+        if (back.length) _bbEvpRepaint(_bbEvpCellIndex(), back);
+    }
+
+    /**
+     * The ▶ Pages button: starts the reading (the rows in view, then the
+     * rows that come into view) or stops it (the queue goes back to cold;
+     * the row under way finishes).
+     *
+     * @param {?Element} anchor - The button, for the job popup.
+     * @returns {void}
+     */
+    function _bbEvpToggle(anchor) {
+        if (_bbEvp.active) {
+            _bbEvp.active = false;
+            if (_bbEvp.io) _bbEvp.io.disconnect();
+            const back = _bbEvp.queue.splice(0);
+            _bbEvp.queued.clear();
+            _bbEvpRepaint(_bbEvpCellIndex(), back);
+            _ajLog('bbevp', null, 'Stopped');
+            if (!_bbEvp.running) _ajFinish('bbevp', null, _bbEvp.failed);
+            _bbEvpUpdateHdrBtns();
+            return;
+        }
+        _bbEvp.active = true;
+        _bbEvpRegisterProvider();
+        Object.assign(_bbEvp, { done: 0, failed: 0, requests: 0 });
+        _ajStart('bbevp', null, { user: true, anchor });
+        _ajLog('bbevp', null, 'Reading the event pages of the rows in view');
+        _bbEvpObserve();
+        _bbEvpUpdateHdrBtns();
+    }
+
+    /**
+     * The render tail on brucebase.wikidot.com: the ▶ Pages header buttons
+     * (a re-render rebuilds every head from a clone) and the watch on the
+     * new live rows while reading; after a fresh render or a disk load
+     * (`full`) also the rows read before, painted (memory, and once a page
+     * load the previews' store: one read, no request). A re-render (a sort,
+     * a filter keystroke) walks no source row: the clones carry what was
+     * painted. Nothing without the columns.
+     *
+     * @param {boolean} [full]
+     * @returns {Promise<void>}
+     */
+    async function _bbEvpAfterRender(full) {
+        if (!_isBbHost || !document.querySelector('body.mb-sa-host-bb td.mb-bbevp-cell')) return;
+        _bbEvpInitColHeaderToggles();
+        if (!full) {
+            _bbEvpObserve();
+            return;
+        }
+        const site = _DP_SITES['brucebase.wikidot.com'];
+        const index = _bbEvpCellIndex();
+        const pages = new Set(Array.from(index.keys()).filter(k => !/#/.test(k) && !_bbEvpMem.has(k)));
+        if (pages.size && !_bbEvpAfterRender.peeked) {
+            _bbEvpAfterRender.peeked = true;
+            await _fiDpPeek(pages, site);
+        }
+        const now = [];
+        pages.forEach((k) => {
+            const mem = _dpMem.get(k);
+            if (mem && _dpSessionFits(mem.data, site)) {
+                _bbEvpMem.set(k, { view: _bbEvpView(mem.data) });
+                now.push(k);
+            }
+        });
+        const fresh = _bbEvpCellIndex();
+        const known = Array.from(fresh.keys()).filter(k => _bbEvpMem.has(k)
+            && Array.from(fresh.get(k)).some(td => td.dataset.mbBbevpState === 'cold'));
+        if (_bbEvpRepaint(fresh, known)) _bbEvpScheduleRefresh(true);
+        Lib.debug('detail', `event-page columns: ${known.length} row(s) painted from what was read before (${now.length} from the previews' store).`);
+        _bbEvpObserve();
+    }
+
+    /**
+     * Adds the ▶ Pages toggle to every On stage header that lacks one;
+     * installs the click delegates once.
+     *
+     * @returns {void}
+     */
+    function _bbEvpInitColHeaderToggles() {
+        _bbEvpRegisterProvider();
+        _bbEvpEnsureDelegates();
+        document.querySelectorAll('body.mb-sa-host-bb table.tbl thead th').forEach((th) => {
+            if (th.dataset.colName !== 'On stage' || th.querySelector('.mb-bbevp-col-hdr-btn')) return;
+            if (!th.closest('table').querySelector('td.mb-bbevp-cell')) return;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'mb-bbevp-col-hdr-btn';
+            btn.dataset.mbAj = 'bbevp';
+            btn.dataset.mbAjName = '▶ Pages';
+            btn.setAttribute('aria-pressed', 'false');
+            btn.setAttribute('aria-label', 'Read the event pages of the rows in view (one a second)');
+            const flex = th.querySelector('.mb-col-hdr-flex');
+            (flex || th).prepend(btn);
+        });
+        _bbEvpUpdateHdrBtns();
+    }
+
+    /**
+     * Repaints every ▶ Pages toggle: pressed while reading, a read/seen badge
+     * while rows are queued, yellow after a failure.
+     *
+     * @returns {void}
+     */
+    function _bbEvpUpdateHdrBtns() {
+        document.querySelectorAll('.mb-bbevp-col-hdr-btn').forEach((b) => {
+            b.setAttribute('aria-pressed', _bbEvp.active ? 'true' : 'false');
+            const total = _bbEvp.done + _bbEvp.failed + _bbEvp.queue.length + (_bbEvp.running ? 1 : 0);
+            if (_bbEvp.active && total) b.dataset.bbevpProgress = `${_bbEvp.done}/${total}`;
+            else delete b.dataset.bbevpProgress;
+            if (_bbEvp.failed && Array.from(_bbEvpMem.values()).some(r => r.failed)) b.dataset.bbevpState = 'error';
+            else delete b.dataset.bbevpState;
+        });
+    }
+
+    /**
+     * The delegated clicks, installed once (capture phase, so the header's
+     * sort never sees them): the ▶ Pages toggle, and a failed row's ⟳.
+     *
+     * @returns {void}
+     */
+    function _bbEvpEnsureDelegates() {
+        if (_bbEvpEnsureDelegates.done) return;
+        _bbEvpEnsureDelegates.done = true;
+        document.addEventListener('click', (e) => {
+            const t = e.target;
+            const btn = t.closest && t.closest('.mb-bbevp-col-hdr-btn');
+            const retry = !btn && t.closest && t.closest('td.mb-bbevp-cell button.mb-bbevp-retry');
+            if (!btn && !retry) return;
+            e.preventDefault();
+            e.stopPropagation();
+            if (btn) {
+                _bbEvpToggle(btn);
+                return;
+            }
+            _bbEvp.failed = Math.max(0, _bbEvp.failed - 1);
+            if (!_bbEvp.active) _bbEvpToggle(null);
+            _bbEvpEnqueue(retry.closest('td').dataset.mbBbevpKey, true);
+        }, true);
+    }
+
+    /**
+     * Queues every failed row again ("Retry the N failed").
+     *
+     * @returns {void}
+     */
+    function _bbEvpRetryFailed() {
+        const keys = Array.from(_bbEvpMem.entries()).filter(([, r]) => r.failed).map(([k]) => k);
+        if (!keys.length) return;
+        _bbEvp.failed = 0;
+        if (!_bbEvp.active) _bbEvpToggle(null);
+        keys.forEach(k => _bbEvpEnqueue(k, true));
+    }
+
+    /**
+     * Registers the event-page columns' provider of the async job popup.
+     *
+     * @returns {void}
+     */
+    function _bbEvpRegisterProvider() {
+        _ajRegister('bbevp', {
+            glyph: '▶',
+            label: 'Event pages',
+            scopeOf: () => null,
+            snapshot: (scope, job) => _bbEvpSnapshot(job),
+            act: (scope, id) => {
+                if (id === 'retry') _bbEvpRetryFailed();
+                if (id === 'stop' && _bbEvp.active) _bbEvpToggle(null);
+            },
+        });
+    }
+
+    /**
+     * The progress card's content (see `_ajRender()`).
+     *
+     * @param {?object} job
+     * @returns {object}
+     */
+    function _bbEvpSnapshot(job) {
+        const fmt = n => Number(n).toLocaleString('en-US');
+        const failedNow = Array.from(_bbEvpMem.values()).filter(r => r.failed).length;
+        const actions = [];
+        if (_bbEvp.active) actions.push({ id: 'stop', label: 'Stop', kind: 'danger' });
+        if (failedNow) actions.push({ id: 'retry', label: `Retry the ${fmt(failedNow)} failed`, kind: 'danger' });
+        const cache = [['Store', 'the link previews\' own, 30 days: a row whose card was opened costs nothing']];
+        const queued = _bbEvp.queue.length + (_bbEvp.running ? 1 : 0);
+        if (!job) {
+            return {
+                phase: 'idle', summary: 'Nothing read yet. Click ▶ Pages: the rows in view, then the rows you scroll to, one a second.',
+                facts: [['Rate', 'one page a second, shared with the hover cards']], cache, actions,
+            };
+        }
+        const s = Math.round(((job.t1 || Date.now()) - job.t0) / 1000);
+        return {
+            phase: job.phase,
+            summary: _bbEvp.active ? 'Reading the event pages of the rows in view' : 'Stopped',
+            done: _bbEvp.done, total: _bbEvp.done + _bbEvp.failed + queued, failed: failedNow, queued, unit: 'rows',
+            facts: [
+                ['Requests', `${fmt(_bbEvp.requests)} made (the rest were read before)`],
+                ['Rate', 'one page a second, shared with the hover cards'],
+                ['Time', `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}${job.t1 ? '' : ' elapsed'}`],
+            ],
+            cache, actions,
+        };
+    }
+
     /**
      * Builds one table row of the Brucebase year table, in `_BB_YEAR_HEADERS`
      * order.
@@ -27963,6 +28515,9 @@
         if (h.country === 'USA') textCell(h.country);
         else _mbSetSiteTitle(textCell(''), h.country);
         textCell(entry.tour);
+        // From the entry's own page (Phase 14): empty until it is read
+        // (`_bbEvpPump()`, after ▶ Pages; or read before, at render).
+        _bbEvpCells(href ? _bbAbsHref(href) : '', docContext).forEach(td => tr.appendChild(td));
         listCell(soundcheck);
         listCell(setlist);
         textCell(notes.join(' '));
@@ -28099,7 +28654,7 @@
     // "DATE - VENUE", 2,285 notes (589 distinct), 308 00 dates.
 
     /** The listing table's columns, in order; DD … Month come from Date's dateParts. */
-    const _BB_YEAR_LIST_HEADERS = ['Event', 'Date', 'Venue', 'City', 'State', 'Country', 'Note', 'Tour'];
+    const _BB_YEAR_LIST_HEADERS = ['Event', 'Date', 'Venue', 'City', 'State', 'Country', 'Note', 'Tour', 'On stage', 'Content', 'Images', 'Start'];
 
     /**
      * Collects a year listing page's entries in one pass over `#page-content`
@@ -28181,6 +28736,9 @@
         else _mbSetSiteTitle(textCell(''), h.country);
         textCell(entry.note);
         textCell(entry.tour);
+        // From the entry's own page (Phase 14): the row links the show on its
+        // year page, which names the page (`_bbEvpPageUrl()`).
+        _bbEvpCells(entry.href ? _bbAbsHref(entry.href) : '', docContext).forEach(td => tr.appendChild(td));
         return tr;
     }
 
@@ -30643,6 +31201,15 @@
             body.mb-sa-host-bb td.mb-bb-event-cell { white-space: nowrap; }
             /* The MB-Event glyphs and their states (mockup, 2026-10-24). */
             body.mb-sa-host-bb td.mb-bbev-cell { white-space: nowrap; text-align: center; }
+            /* The event-page columns (Phase 14): their states as CSS words,
+               never text the filter reads. */
+            body.mb-sa-host-bb td.mb-bbevp-cell[data-mb-bbevp-state="cold"]::before { content: "—"; color: #a89a86; }
+            body.mb-sa-host-bb td.mb-bbevp-cell[data-mb-bbevp-state="queued"]::before { content: "queued"; color: #a89a86; font-size: 11px; }
+            body.mb-sa-host-bb td.mb-bbevp-cell[data-mb-bbevp-state="run"]::before { content: "reading…"; color: #2f5f9e; font-size: 11px; }
+            body.mb-sa-host-bb td.mb-bbevp-cell[data-mb-bbevp-col="Start"] { white-space: nowrap; font-variant-numeric: tabular-nums; }
+            body.mb-sa-host-bb button.mb-bbevp-retry { border: 1px solid #9b2218; color: #9b2218; background: transparent; border-radius: 3px;
+                font: 600 10px/1.4 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; letter-spacing: .06em; padding: 1px 6px; cursor: pointer; }
+            body.mb-sa-host-bb button.mb-bbevp-retry::before { content: "⟳ not read"; }
             body.mb-sa-host-bb .mb-bbev-g { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
                 position: relative; color: #2b2622; text-decoration: none; vertical-align: middle; }
             body.mb-sa-host-bb .mb-bbev-g svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.4;
@@ -54408,6 +54975,8 @@
             integerColumns: [
                 { sourceColumn: 'DD', align: 'R' }, { sourceColumn: 'MM', align: 'R' }, { sourceColumn: 'YYYY', align: 'C' }
             ],
+            // On stage: the line-up, its members folded (Phase 14).
+            collapsableColumns: [ 'On stage' ],
             stickyColumn: 'Event'
         };
     }
@@ -54429,7 +54998,7 @@
             integerColumns: [
                 { sourceColumn: 'DD', align: 'R' }, { sourceColumn: 'MM', align: 'R' }, { sourceColumn: 'YYYY', align: 'C' }
             ],
-            collapsableColumns: [ 'Soundcheck', 'Setlist', 'Notes' ],
+            collapsableColumns: [ 'On stage', 'Soundcheck', 'Setlist', 'Notes' ],
             // The FIRST column is the sticky one, so no column sits before
             // it. With a later one (Venue), the sticky page headers dock the
             // columns before it too and give each a gutter mask (a box-shadow
@@ -112729,6 +113298,7 @@ a { color: #1565c0; }`;
         .mb-wsug-col-hdr-btn,
         .mb-dgmb-col-hdr-btn,
         .mb-bbmbev-col-hdr-btn,
+        .mb-bbevp-col-hdr-btn,
         .mb-re-col-hdr-btn,
         .mb-barcode-col-hdr-btn,
         .mb-col-collapse-hdr-btn,
@@ -112759,6 +113329,7 @@ a { color: #1565c0; }`;
         .mb-wsug-col-hdr-btn:hover,
         .mb-dgmb-col-hdr-btn:hover,
         .mb-bbmbev-col-hdr-btn:hover,
+        .mb-bbevp-col-hdr-btn:hover,
         .mb-re-col-hdr-btn:hover,
         .mb-barcode-col-hdr-btn:hover,
         .mb-col-collapse-hdr-btn:hover,
@@ -112775,6 +113346,7 @@ a { color: #1565c0; }`;
         .mb-wsug-col-hdr-btn:focus-visible,
         .mb-dgmb-col-hdr-btn:focus-visible,
         .mb-bbmbev-col-hdr-btn:focus-visible,
+        .mb-bbevp-col-hdr-btn:focus-visible,
         .mb-re-col-hdr-btn:focus-visible,
         .mb-barcode-col-hdr-btn:focus-visible {
             outline: 2px solid rgba(0, 100, 255, 0.55);
@@ -112792,6 +113364,7 @@ a { color: #1565c0; }`;
         .mb-wsug-col-hdr-btn[aria-pressed="true"],
         .mb-dgmb-col-hdr-btn[aria-pressed="true"],
         .mb-bbmbev-col-hdr-btn[aria-pressed="true"],
+        .mb-bbevp-col-hdr-btn[aria-pressed="true"],
         .mb-barcode-col-hdr-btn[aria-pressed="true"],
         .mb-col-collapse-hdr-btn[aria-expanded="true"] {
             background: var(--mb-hdr-pill-engaged-bg);
@@ -112847,6 +113420,10 @@ a { color: #1565c0; }`;
         .mb-bbmbev-col-hdr-btn[aria-pressed="true"]::before { content: "▼ MB"; }
         .mb-bbmbev-col-hdr-btn[data-bbmbev-progress]::after { content: " " attr(data-bbmbev-progress); font-variant-numeric: tabular-nums; }
         .mb-bbmbev-col-hdr-btn[data-bbmbev-state="error"] { background: rgba(255, 193, 7, 0.55); border-color: rgba(190, 140, 0, 0.70); }
+        .mb-bbevp-col-hdr-btn::before { content: "▶ Pages"; }
+        .mb-bbevp-col-hdr-btn[aria-pressed="true"]::before { content: "■ Pages"; }
+        .mb-bbevp-col-hdr-btn[data-bbevp-progress]::after { content: " " attr(data-bbevp-progress); font-variant-numeric: tabular-nums; }
+        .mb-bbevp-col-hdr-btn[data-bbevp-state="error"] { background: rgba(255, 193, 7, 0.55); border-color: rgba(190, 140, 0, 0.70); }
         /* "Recording of" cells: the attribute words in light green italics
            (column-scoped, over the shared .mb-credit-attr colour), a
            suggested work in orange italics. */
@@ -126617,6 +127194,8 @@ a { color: #1565c0; }`;
             _dgMbAfterRender(false);
             // brucebase.wikidot.com's MB-Event column, the same way.
             _bbMbevAfterRender(false);
+            // Its event-page columns: ▶ Pages and the watch.
+            _bbEvpAfterRender(false);
             // A foreign table's 🖼 gallery opener, after its row count.
             _fgalAfterRender();
             // Same reason as the line above: the <thead> this writes into may
@@ -126909,6 +127488,8 @@ a { color: #1565c0; }`;
                 _dgMbAfterRender(false);
                 // brucebase.wikidot.com's MB-Event column, the same way.
                 _bbMbevAfterRender(false);
+                // Its event-page columns: ▶ Pages and the watch.
+                _bbEvpAfterRender(false);
                 // A foreign table's 🖼 gallery opener, after its row count.
                 _fgalAfterRender();
                 // Same reason as the line above: the <thead> this writes into may
@@ -131785,6 +132366,8 @@ a { color: #1565c0; }`;
             _dgMbAfterRender(true);
             // brucebase.wikidot.com's MB-Event column, the same way.
             _bbMbevAfterRender(true);
+            // Its event-page columns: ▶ Pages, what was read before, the watch.
+            _bbEvpAfterRender(true);
             // A foreign table's 🖼 gallery opener, after its row count.
             _fgalAfterRender();
             // jungleland.it / brucespringsteen.it lazy Art / Photo cells and
@@ -162216,6 +162799,8 @@ a { color: #1565c0; }`;
             _dgMbAfterRender(true);
             // brucebase.wikidot.com's MB-Event column, the same way.
             _bbMbevAfterRender(true);
+            // Its event-page columns: ▶ Pages, what was read before, the watch.
+            _bbEvpAfterRender(true);
             // A foreign table's 🖼 gallery opener, after its row count.
             _fgalAfterRender();
             // jungleland.it / brucespringsteen.it lazy Art / Photo cells and

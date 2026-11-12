@@ -1,0 +1,184 @@
+[
+    {
+        "name": "the rows are read before the press",
+        "why": "Nothing is asked before ▶ Pages (vzell's answer 2).",
+        "edits": [
+            {
+                "find": "        if (!_bbEvp.active || typeof IntersectionObserver === 'undefined') return;\n        if (!_bbEvp.io)",
+                "replace": "        if (typeof IntersectionObserver === 'undefined') return;\n        _bbEvp.active = true;\n        if (!_bbEvp.io)"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-event-pages.spec.js",
+        "grep": "before ▶ Pages",
+        "expect": "fail"
+    },
+    {
+        "name": "every row is read, not the rows in view",
+        "why": "Answer 2: the rows as they come into view; a year is 100–280 requests.",
+        "edits": [
+            {
+                "find": "            if (st === 'cold' || st === 'queued') _bbEvp.io.observe(td);",
+                "replace": "            if (st === 'cold' || st === 'queued') _bbEvpEnqueue(td.dataset.mbBbevpKey);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-event-pages.spec.js",
+        "grep": "before ▶ Pages",
+        "expect": "fail"
+    },
+    {
+        "name": "Stop does not stop",
+        "why": "The button toggles: a second press takes the queue back.",
+        "edits": [
+            {
+                "find": "        if (_bbEvp.active) {\n            _bbEvp.active = false;",
+                "replace": "        if (false) {\n            _bbEvp.active = false;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-event-pages.spec.js",
+        "grep": "before ▶ Pages",
+        "expect": "fail"
+    },
+    {
+        "name": "the record is not the previews' view",
+        "why": "On stage, Content, Images, Start from the previews' fields.",
+        "edits": [
+            {
+                "find": "            content: field('On the page').split(' · ').filter(t => t && !_BB_EVP_PLAIN_TABS.has(t)),",
+                "replace": "            content: field('On the page').split(' · ').filter(Boolean),"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-event-pages.spec.js",
+        "grep": "before ▶ Pages",
+        "expect": "fail"
+    },
+    {
+        "name": "the line-up is one row",
+        "why": "Answer 4: the members as rows of their own, folded.",
+        "edits": [
+            {
+                "find": "        return m ? [m[1], ...m[2].split(/\\s*,\\s*/).filter(Boolean)] : (s ? [s] : []);",
+                "replace": "        return s ? [s] : [];"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-event-pages.spec.js",
+        "grep": "before ▶ Pages",
+        "expect": "fail"
+    },
+    {
+        "name": "\"time not known\" is a start",
+        "why": "Start: the scheduled time only.",
+        "edits": [
+            {
+                "find": "            start: /^time not known/i.test(start) ? '' : start,",
+                "replace": "            start,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-event-pages.spec.js",
+        "grep": "Start is the scheduled time",
+        "expect": "fail"
+    },
+    {
+        "name": "the row text cache is not cleared",
+        "why": "The fourth filter duty of a late cell write.",
+        "edits": [
+            {
+                "find": "        const rc = row && _rowTextCache.get(row);\n        if (rc) { rc.cols = []; rc.full = null; }\n    }\n\n    /**\n     * Every event-page cell per row key",
+                "replace": "        const rc = null;\n        if (rc) { rc.cols = []; rc.full = null; }\n    }\n\n    /**\n     * Every event-page cell per row key"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-event-pages.spec.js",
+        "grep": "a filter set while pages arrive",
+        "expect": "fail"
+    },
+    {
+        "name": "the source rows are not written",
+        "why": "A re-render clones the source rows: cells written only live are lost.",
+        "edits": [
+            {
+                "find": "        _msSourceRows().forEach(row => row.querySelectorAll('td.mb-bbevp-cell[data-mb-bbevp-key]').forEach(add));",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-event-pages.spec.js",
+        "grep": "a filter set while pages arrive",
+        "expect": "fail"
+    },
+    {
+        "name": "the filter cache is not dropped",
+        "why": "A filter result cached before a cell filled hides the row.",
+        "edits": [
+            {
+                "find": "            tables.forEach(t => _invalidateUniqDropDataCacheForTable(t));\n            _invalidateFilterCache();\n            _bbEvpUpdateHdrBtns();",
+                "replace": "            tables.forEach(t => _invalidateUniqDropDataCacheForTable(t));\n            _bbEvpUpdateHdrBtns();"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-event-pages.spec.js",
+        "grep": "a filter set while pages arrive",
+        "expect": "fail"
+    },
+    {
+        "name": "a failure is not kept",
+        "why": "A failed row shows ⟳, not cold.",
+        "edits": [
+            {
+                "find": "                    } else if (res.outcome === 'error') {\n                        rec = { failed: true, detail: res.detail };",
+                "replace": "                    } else if (res.outcome === 'error') {\n                        rec = null;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-event-pages.spec.js",
+        "grep": "a failed row",
+        "expect": "fail"
+    },
+    {
+        "name": "⟳ does nothing",
+        "why": "The failed cell's button asks again.",
+        "edits": [
+            {
+                "find": "            _bbEvpEnqueue(retry.closest('td').dataset.mbBbevpKey, true);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-event-pages.spec.js",
+        "grep": "a failed row",
+        "expect": "fail"
+    },
+    {
+        "name": "the store is not read at render",
+        "why": "Rows read before fill in at once, no request (the previews' store).",
+        "edits": [
+            {
+                "find": "            await _fiDpPeek(pages, site);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-event-pages.spec.js",
+        "grep": "rows read before",
+        "expect": "fail"
+    },
+    {
+        "name": "a listing row is asked as its show link",
+        "why": "The show link (/1985#130185) is no page: its year page names it.",
+        "edits": [
+            {
+                "find": "        if (!(u.hash && /^\\/(?:\\d{4}|1949-64)\\/?$/.test(u.pathname))) return u.href;",
+                "replace": "        if (true) return u.href;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-event-pages.spec.js",
+        "grep": "a show link finds its page",
+        "expect": "fail"
+    },
+    {
+        "name": "the header button is missing",
+        "why": "▶ Pages on On stage's header.",
+        "edits": [
+            {
+                "find": "            if (th.dataset.colName !== 'On stage' || th.querySelector('.mb-bbevp-col-hdr-btn')) return;",
+                "replace": "            if (true) return;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-event-pages.spec.js",
+        "grep": "before ▶ Pages",
+        "expect": "fail"
+    }
+]
