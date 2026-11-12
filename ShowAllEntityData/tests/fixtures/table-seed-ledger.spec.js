@@ -374,15 +374,17 @@ test.describe('built-in lookup-table rows shipped in a later version', () => {
             // `release-tracks`, so the row is manufactured the only way a test
             // can: seed it, record the built-ins, then drop the key from the
             // ledger and let the pass decide it is new.
+            //
+            // Only release-tracks' key is dropped (pretendRowIsNew), not the
+            // whole entry: the table has more than one built-in row since the
+            // Discogs Section rows (dg-release, dg-master; 74af55ee), and
+            // emptying the entry re-offered all three (offered 3, test:full
+            // on petri, 2026-11-12).
             await writeGm(page, HIDDEN_COLS, [['series-releases', '"Artist"']]);
             await seedPass(page);
-            await page.evaluate((k) => {
-                const led = window.GM_getValue(k, {}) || {};
-                led['sa_default_hidden_columns'] = [];
-                window.GM_setValue(k, led);
-                // Remove the row again so the pass has something to re-offer.
-                window.GM_setValue('sa_default_hidden_columns', [['other-page', '"Foo"']]);
-            }, LEDGER);
+            await pretendRowIsNew(page, HIDDEN_COLS, 'release-tracks');
+            // Remove the row again so the pass has something to re-offer.
+            await writeGm(page, HIDDEN_COLS, [['other-page', '"Foo"']]);
 
             const summary = await seedPass(page);
             expect(summary.offered, 'the pass offered the built-in row').toBe(1);
