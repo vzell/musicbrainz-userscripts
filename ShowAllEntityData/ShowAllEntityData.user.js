@@ -27851,17 +27851,34 @@
     }
 
     /**
-     * A line-up as list rows: the names before the last bracket that lists
-     * two or more names, then each of those ("Bruce Springsteen, The E
-     * Street Band (Roy Bittan, Clarence Clemons, …)" → the band, then six
-     * members); a bracket of one ("Bruce Springsteen (Guest)") stays.
+     * A line-up as list rows: the names up to the first group that lists two
+     * or more names, on one row with that group's name, then its members
+     * ("Bruce Springsteen, The E Street Band (Roy Bittan, Clarence Clemons,
+     * …)" → "Bruce Springsteen, The E Street Band", then six members); after
+     * it (Phase 16) every name a row of its own and every further group its
+     * name, then its members ("…, Soozie Tyrell, The E Street Horns (Curt
+     * Ramm, …), The Joyce Garrett Singers (Guests)"); a bracket of one
+     * ("Bruce Springsteen (Guest)") stays with its name; a line-up without a
+     * group is one row.
      *
      * @param {string} s
      * @returns {string[]}
      */
     function _bbEvpStageLines(s) {
-        const m = String(s || '').match(/^(.*?)\s*\(([^()]*,[^()]*)\)\s*$/);
-        return m ? [m[1], ...m[2].split(/\s*,\s*/).filter(Boolean)] : (s ? [s] : []);
+        const t = String(s || '');
+        // The names, split at the commas outside brackets.
+        const items = t.split(/,\s*(?![^()]*\))/).map(x => x.trim()).filter(Boolean);
+        const group = x => x.match(/^(.*?)\s*\(([^()]*,[^()]*)\)$/);
+        const first = items.findIndex(x => group(x));
+        if (first < 0) return t ? [t] : [];
+        const members = m => m[2].split(/\s*,\s*/).filter(Boolean);
+        const g = group(items[first]);
+        const rows = [[...items.slice(0, first), g[1]].join(', '), ...members(g)];
+        for (const x of items.slice(first + 1)) {
+            const m = group(x);
+            rows.push(...(m ? [m[1], ...members(m)] : [x]));
+        }
+        return rows.filter(Boolean);
     }
 
     /**
@@ -34323,7 +34340,10 @@
      * tab's own name ("In Studio" on a recording session).
      * @type {RegExp}
      */
-    const _BB_EVENT_CAST_TABS = /^(?:On Stage|In Studio|On Studio|On Set|On Site)$/i;
+    // Phase 16 (vzell, 2026-11-12): also the rarer names, one page each in the
+    // sweep's sample — On Phone, On Call, In Room — and "Onstage" written as
+    // one word.
+    const _BB_EVENT_CAST_TABS = /^(?:On Stage|Onstage|In Studio|On Studio|On Set|On Site|On Phone|On Call|In Room)$/i;
 
     /**
      * The tab labels that list other entries ("2004-09-25 Roxy Theatre (The),
@@ -34520,8 +34540,9 @@
             if (name) rows.push({ name, href, band: band ? band.name : '', bandHref: band ? band.href : '', role });
             if (sub) sub.querySelectorAll(':scope > li').forEach(x => item(x, { name, href }));
         };
-        const lists = all ? Array.from(panel.querySelectorAll('ul, ol')).filter(l => !(l.parentElement && l.parentElement.closest('li')))
-            : [panel.querySelector('ul, ol')].filter(Boolean);
+        // Every top-level list, the guests' too (Phase 16; `all` now only
+        // decides how a role is read).
+        const lists = Array.from(panel.querySelectorAll('ul, ol')).filter(l => !(l.parentElement && l.parentElement.closest('li')));
         lists.forEach(list => list.querySelectorAll(':scope > li').forEach(li => item(li, null)));
         const note = Array.from(panel.querySelectorAll('p')).filter(p => !p.closest('li')).map(p => _dpText(p.textContent)).filter(Boolean).join(' ');
         return { rows, note };
@@ -37021,8 +37042,11 @@
      * @returns {string}
      */
     function _bbOnStageText(panel) {
-        const list = panel.querySelector('ul, ol');
-        if (!list) return _dpText(panel.textContent);
+        // Every top-level list (Phase 16): a second one holds the guests
+        // ("Bruce Springsteen (Guest)" on another act's gig; 47 of 304 On
+        // Stage tabs sampled) or, on a radio show, the guest after the hosts.
+        const lists = Array.from(panel.querySelectorAll('ul, ol')).filter(l => !(l.parentElement && l.parentElement.closest('li')));
+        if (!lists.length) return _dpText(panel.textContent);
         const item = (li) => {
             const sub = li.querySelector(':scope > ul, :scope > ol');
             const own = Array.from(li.childNodes).filter(n => n !== sub).map(n => n.textContent).join(' ');
@@ -37030,7 +37054,7 @@
             const name = _dpText(own);
             return members.length ? `${name} (${members.join(', ')})` : name;
         };
-        return Array.from(list.querySelectorAll(':scope > li')).map(item).filter(Boolean).join(', ');
+        return lists.flatMap(l => Array.from(l.querySelectorAll(':scope > li'))).map(item).filter(Boolean).join(', ');
     }
 
     /**
@@ -185281,6 +185305,14 @@ a { color: #1565c0; }`;
             bbEventRead(html, url) {
                 return _bbEventRead(new DOMParser().parseFromString(html, 'text/html'), url);
             },
+
+            /**
+             * The year table's line-up rows (`_bbEvpStageLines()`), pure.
+             *
+             * @param {string} s
+             * @returns {string[]}
+             */
+            bbEvpStageLines: s => _bbEvpStageLines(s),
 
             /**
              * Thin wrapper around `_bbSongRead()` over an HTML string.

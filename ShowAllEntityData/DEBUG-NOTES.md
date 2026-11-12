@@ -29339,3 +29339,10 @@ Env: 2026-11-12T21:11:14+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1)
 Spec `bb-event-window-gaps.spec.js` 5/5, mutations `bb-event-window-gaps.json` 16/16; BB specs +
 popup-ext-foreign + detail-preview 333/333 after updating bb-event-preview's section order (2 tests);
 youtube-embeds, bs-record-preview, sl-song-window, sl-tracklist-links, popup-ext's BB tests 95/95.
+- Follow-up the same evening (vzell: the rare cast tabs should be cast tabs): adding On Phone showed
+  that a cast tab's people were read from its FIRST list only — the second holds the guests (47 of 304
+  On Stage tabs sampled; e.g. gig:1979-03-14 Fast Lane lost Bruce Springsteen and Garry Tallent as
+  guests), in the window, the year table and the page view alike. Every top-level list is read now.
+  The year table's splitter then turned the 2009 rehearsal (two groups, guests last) into a run-on
+  first row, as it had been one row before (its last bracket "(Guests)" has no comma): it goes group by
+  group now, the first row as Phase 14 drew it. Spec 6/6, mutations 21/21, BB specs 334/334.

@@ -120,6 +120,53 @@ test.describe('Brucebase event windows: what they left out (Phase 16, batch 1)',
         expect(section(r.roxy, /^On stage$/).html).not.toMatch(/<em>/);
     });
 
+    // vzell, 2026-11-12: the rarer cast tabs too; every list of a cast tab
+    // (a second one holds the guests).
+    test('the rarer cast tabs (On Phone, In Room) and a cast tab\'s second list, the guests', async ({ page }) => {
+        await loadBbEventPage(page, 'gig-1978-07-07');
+        const out = await page.evaluate((all) => {
+            const T = window.__saTest;
+            const rec = (k) => T.dpParse('brucebase.wikidot.com', all[k][0], all[k][1]);
+            const f = (r, n) => (r.fields.find(x => x[0] === n) || [])[1];
+            const phone = rec('phone');
+            const room = rec('room');
+            const lane = rec('lane');
+            const view = T.bbEventRead(all.phone[0], all.phone[1]);
+            const laneView = T.bbEventRead(all.lane[0], all.lane[1]);
+            return {
+                phone: f(phone, 'On phone'), phoneSec: (phone.sections.find(s => s.label === 'On phone') || {}).html || '',
+                room: f(room, 'In room'), lane: f(lane, 'On stage'),
+                view: view.cast ? { label: view.cast.label, names: view.cast.rows.map(r => r.name) } : null,
+                laneView: laneView.cast ? laneView.cast.rows.map(r => `${r.name}${r.role ? ` ${r.role}` : ''}`) : null,
+                lines: T.bbEvpStageLines('Bruce Springsteen, The E Street Band (Roy Bittan, Clarence Clemons), Southside Johnny (Guest), Garry Tallent (Guest)'),
+                plain: T.bbEvpStageLines('Bruce Springsteen, The E Street Band (Roy Bittan, Clarence Clemons)'),
+                two: T.bbEvpStageLines('Bruce Springsteen, The E Street Band (Roy Bittan, Max Weinberg), Soozie Tyrell, ' +
+                    'The E Street Horns (Curt Ramm, Ed Manion), The Joyce Garrett Singers (Guests)'),
+                none: T.bbEvpStageLines('Robert Gordon, Chris Spedding, Bruce Springsteen (Guest)'),
+            };
+        }, {
+            phone: [FX('bb-event-interview-2019-07-10.html'), 'https://brucebase.wikidot.com/interview:2019-07-10-siriusxm-studio-new-york-city-ny'],
+            room: [FX('bb-event-gig-1978-10-17.html'), 'https://brucebase.wikidot.com/gig:1978-10-17-sunset-marquis-hotel-west-hollywood-ca'],
+            lane: [FX('bb-event-gig-1979-03-14.html'), 'https://brucebase.wikidot.com/gig:1979-03-14-fast-lane-asbury-park-nj'],
+        });
+        // On Phone: the hosts, then Bruce from the second list.
+        expect(out.phone).toBe('Dave Marsh, Jim Rotolo, Bruce Springsteen (Guest)');
+        expect(out.phoneSec).toMatch(/^<p><em>E Street Radio<\/em><\/p>/);
+        expect(out.view).toEqual({ label: 'On Phone', names: ['Dave Marsh', 'Jim Rotolo', 'Bruce Springsteen'] });
+        expect(out.room).toBe('Bruce Springsteen, The Knack (Bruce Gary)');
+        // On Stage's second list: the guests, in the window and the page view.
+        expect(out.lane).toMatch(/, Bruce Springsteen \(Guest\), Garry Tallent \(Guest\)$/);
+        expect(out.laneView).toEqual(expect.arrayContaining(['Bruce Springsteen (Guest)', 'Garry Tallent (Guest)']));
+        // The year table's rows: the band folded as before, the guests after it.
+        expect(out.plain).toEqual(['Bruce Springsteen, The E Street Band', 'Roy Bittan', 'Clarence Clemons']);
+        expect(out.lines).toEqual(['Bruce Springsteen, The E Street Band', 'Roy Bittan', 'Clarence Clemons', 'Southside Johnny (Guest)', 'Garry Tallent (Guest)']);
+        // Two groups (the 2009 rehearsal): each its name, then its members.
+        expect(out.two).toEqual(['Bruce Springsteen, The E Street Band', 'Roy Bittan', 'Max Weinberg', 'Soozie Tyrell',
+            'The E Street Horns', 'Curt Ramm', 'Ed Manion', 'The Joyce Garrett Singers (Guests)']);
+        // No group: one row, as before.
+        expect(out.none).toEqual(['Robert Gordon, Chris Spedding, Bruce Springsteen (Guest)']);
+    });
+
     test('an interview\'s Playlist as the Setlist: the fact, numbered songs with their artists, after In studio', async ({ page }) => {
         await loadBbEventPage(page, 'gig-1978-07-07');
         const r = await records(page);

@@ -206,5 +206,70 @@
         "spec": "tests/fixtures/bb-year-event-pages.spec.js",
         "grep": "In Studio people fill On stage",
         "expect": "fail"
+    },
+    {
+        "name": "the rarer cast tabs are not cast tabs",
+        "why": "vzell, 2026-11-12: On Phone, On Call, In Room (and Onstage) are cast tabs too.",
+        "edits": [
+            {
+                "find": "    const _BB_EVENT_CAST_TABS = /^(?:On Stage|Onstage|In Studio|On Studio|On Set|On Site|On Phone|On Call|In Room)$/i;",
+                "replace": "    const _BB_EVENT_CAST_TABS = /^(?:On Stage|In Studio|On Studio|On Set|On Site)$/i;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-window-gaps.spec.js",
+        "grep": "the rarer cast tabs",
+        "expect": "fail"
+    },
+    {
+        "name": "a cast tab's first list only, in the window",
+        "why": "A second list holds the guests (47 of 304 On Stage tabs sampled).",
+        "edits": [
+            {
+                "find": "        // Stage tabs sampled) or, on a radio show, the guest after the hosts.\n        const lists = Array.from(panel.querySelectorAll('ul, ol')).filter(l => !(l.parentElement && l.parentElement.closest('li')));",
+                "replace": "        // Stage tabs sampled) or, on a radio show, the guest after the hosts.\n        const lists = [panel.querySelector('ul, ol')].filter(Boolean);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-window-gaps.spec.js",
+        "grep": "the rarer cast tabs",
+        "expect": "fail"
+    },
+    {
+        "name": "a cast tab's first list only, in the page view",
+        "why": "The page view's cast table needs the guests too.",
+        "edits": [
+            {
+                "find": "        // decides how a role is read).\n        const lists = Array.from(panel.querySelectorAll('ul, ol')).filter(l => !(l.parentElement && l.parentElement.closest('li')));",
+                "replace": "        // decides how a role is read).\n        const lists = [panel.querySelector('ul, ol')].filter(Boolean);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-window-gaps.spec.js",
+        "grep": "the rarer cast tabs",
+        "expect": "fail"
+    },
+    {
+        "name": "the year table's rows drop the guests after the band",
+        "why": "Names after the band's bracket are rows of their own.",
+        "edits": [
+            {
+                "find": "            rows.push(...(m ? [m[1], ...members(m)] : [x]));",
+                "replace": "            if (m) rows.push(m[1], ...members(m));"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-window-gaps.spec.js",
+        "grep": "the rarer cast tabs",
+        "expect": "fail"
+    },
+    {
+        "name": "a further group is not split into its members",
+        "why": "Two groups (the 2009 rehearsal's E Street Band and E Street Horns): each its name, then its members.",
+        "edits": [
+            {
+                "find": "            rows.push(...(m ? [m[1], ...members(m)] : [x]));",
+                "replace": "            rows.push(x);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-window-gaps.spec.js",
+        "grep": "the rarer cast tabs",
+        "expect": "fail"
     }
 ]

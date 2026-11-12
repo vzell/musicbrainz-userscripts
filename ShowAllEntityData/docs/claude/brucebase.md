@@ -1909,13 +1909,25 @@ answers, all as recommended. In `_dpParseBbPage()` (`_DP_PARSER_VERSION` 24):
   section, open (answer 1); its first sentence (`_bbFirstSentence()`, cut at
   a word near 160) as the record's `cardLine`, which the hover card draws
   under the title (`.mb-dp-cardline`, answer 2) and the window does not.
-- **Every cast tab** (`_BB_EVENT_CAST_TABS`: On Stage, In Studio, On
-  Studio, On Set, On Site), in the page's order, as a fact and a section
-  under the tab's own name ("In studio"); a tab other than On Stage that
-  opens with a bold line has it first, in italics (`_bbCastSection()`,
-  answer 3). On Stage is unchanged. The sample's rarer names (On Phone, On
-  Call, In Room, one page each) are not cast tabs yet. The year table's On
-  stage column takes the first cast fact (`_bbEvpView()`, answer 4).
+- **Every cast tab** (`_BB_EVENT_CAST_TABS`: On Stage, Onstage, In Studio,
+  On Studio, On Set, On Site, On Phone, On Call, In Room — the last three
+  and "Onstage" one page each in the sample, added on vzell's yes), in the
+  page's order, as a fact and a section under the tab's own name ("In
+  studio"); a tab other than On Stage that opens with a bold line has it
+  first, in italics (`_bbCastSection()`, answer 3). On Stage is unchanged.
+  The year table's On stage column takes the first cast fact (`_bbEvpView()`,
+  answer 4).
+- **Every list of a cast tab**: `_bbOnStageText()` (window, year table) and
+  `_bbEventCast()` (page view) read every top-level list, not the first
+  only — a second list holds the guests ("Bruce Springsteen (Guest)" on
+  another act's gig, 47 of 304 On Stage tabs sampled; the guest after a radio
+  show's hosts). The year table's rows (`_bbEvpStageLines()`, hook
+  `bbEvpStageLines`) go group by group: the names up to the first group on
+  one row with it (as Phase 14 drew it), its members, then each further
+  name and group (the 2009 rehearsal: the E Street Band, then Charles
+  Giordano, Soozie Tyrell, the E Street Horns with their members, the
+  singers); before, a line-up whose last bracket was "(Guests)" was one
+  row.
 - **An interview's Playlist** (`_bbPlaylistSection()`): the fact "20 songs:
   …" and a numbered section after the Setlist (or the cast), each song in
   the title style (`_mbSiteTitleText()`) with its original artist, the tab's
@@ -1930,6 +1942,9 @@ answers, all as recommended. In `_dpParseBbPage()` (`_DP_PARSER_VERSION` 24):
 
 Tests: `tests/fixtures/bb-event-window-gaps.spec.js` (the event fixtures,
 two new ones: `bb-event-gig-1974-08-14.html`, `bb-event-gig-1978-06-23.html`
-by `scripts/build-bb-event-fixtures.py`); the On stage column in
+by `scripts/build-bb-event-fixtures.py`; then `bb-event-interview-2019-07-10.html`
+(On Phone, two lists), `bb-event-gig-1978-10-17.html` (In Room),
+`bb-event-gig-1979-03-14.html` (On Stage's guests' list)); the On stage column in
 `bb-year-event-pages.spec.js`; `bb-event-preview.spec.js` updated for the
-section order. Mutations `scripts/mutations/bb-event-window-gaps.json` (16).
+section order. Mutations `scripts/mutations/bb-event-window-gaps.json` (21;
+two older finds refreshed: bb-release's Personnel, Phase 14's "the line-up is one row").

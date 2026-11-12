@@ -844,8 +844,11 @@ BB PTs". Last, once Phases 7–15 have added their readers.
   (=cardLine=), every cast tab (=_bbCastSection()=), the Playlist (=_bbPlaylistSection()=), the venue's
   other lists folded, News as News/Memorabilia, the year table's On stage from any cast tab; also the
   Flickr module's JSON no longer read as text (86 pages sampled). =_DP_PARSER_VERSION= 24. Spec
-  =bb-event-window-gaps.spec.js= 5/5, mutations 16/16, siblings 333 + 95 green. Open: the rare cast
-  names On Phone, On Call, In Room (one page each) are not cast tabs yet.
+  =bb-event-window-gaps.spec.js= 5/5, mutations 16/16, siblings 333 + 95 green.
+  vzell (2026-11-12): the rare cast names On Phone, On Call, In Room should be cast tabs — done, with
+  "Onstage"; on the way every list of a cast tab is read (a second list holds the guests: 47 of 304 On
+  Stage tabs sampled), in the window, the year table and the page view, and the year table's line-up
+  rows go group by group. Spec 6/6, mutations 21/21 (+2 older finds refreshed), BB specs 334/334.
   - [ ] vzell's live check of batch 1
 - [ ] vzell's live check
 

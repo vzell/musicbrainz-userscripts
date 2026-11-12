@@ -50,11 +50,12 @@ function expected(page, file = EVENT_FILE) {
     return page.evaluate(({ html, plain }) => {
         const d = window.__saTest.dpParse('brucebase.wikidot.com', html, 'https://brucebase.wikidot.com/gig:1978-07-07-roxy-theatre-west-hollywood-ca');
         const f = n => (d.fields.find(x => x[0] === n) || [])[1] || '';
-        const m = f('On stage').match(/^(.*?)\s*\(([^()]*,[^()]*)\)\s*$/);
         const kinds = new Map();
         d.images.forEach((im) => { kinds.set(im.label || 'Other', (kinds.get(im.label || 'Other') || 0) + 1); });
         return {
-            stage: m ? [m[1], ...m[2].split(/\s*,\s*/)] : [f('On stage')],
+            // The rows as the column splits them (pinned on its own in
+            // bb-event-window-gaps.spec.js: the band folded, guests after it).
+            stage: window.__saTest.bbEvpStageLines(f('On stage')),
             content: f('On the page').split(' · ').filter(t => t && !plain.includes(t)).join(' · '),
             images: Array.from(kinds, ([k, n]) => `${k} ${n}`).join(' · '),
             start: f('Scheduled').split(' · ')[0],

@@ -21,6 +21,9 @@ picked for a shape the bb-event pageType reads (org/brucebase.org, Plan
   paragraphs (no box), Appearances, Cancelled, Performances (w/o Bruce), an old "News" tab.
 - gig 1978-06-23 Paramount Theatre, Portland (Phase 16): the "Info & Setlist | Venue" line as a
   <p>, then the description as a plain paragraph.
+- interview 2019-07-10 SiriusXM (Phase 16): an "On Phone" cast tab in two lists (the hosts, then
+  Bruce as guest); gig 1978-10-17 Sunset Marquis: an "In Room" cast tab; gig 1979-03-14 Fast Lane:
+  On Stage with a second list, the guests.
 
 And for bb-song / bb-ott (Phase 3):
 
@@ -86,6 +89,9 @@ PAGES = [
     ('nogig/nogig_2013-04-16-richard-rodgers-theatre-new-york-city-ny.html', 'bb-event-nogig-2013-04-16.html'),
     ('gig/gig_1974-08-14-monmouth-arts-center-red-bank-nj-early.html', 'bb-event-gig-1974-08-14.html'),
     ('year-1978/gig_1978-06-23-paramount-theatre-portland-or.html', 'bb-event-gig-1978-06-23.html'),
+    ('interview/interview_2019-07-10-siriusxm-studio-new-york-city-ny.html', 'bb-event-interview-2019-07-10.html'),
+    ('year-1978/gig_1978-10-17-sunset-marquis-hotel-west-hollywood-ca.html', 'bb-event-gig-1978-10-17.html'),
+    ('gig/gig_1979-03-14-fast-lane-asbury-park-nj.html', 'bb-event-gig-1979-03-14.html'),
     ('song/song_the-promise.html', 'bb-song-the-promise.html'),
     ('song/song_we-gotta-get-out-of-this-place.html', 'bb-song-we-gotta-get-out-of-this-place.html'),
     ('ott/ott_do-you-want-me-to-say-alright.html', 'bb-ott-do-you-want-me-to-say-alright.html'),

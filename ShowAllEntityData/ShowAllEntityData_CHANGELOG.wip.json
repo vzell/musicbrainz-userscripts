@@ -9,6 +9,7 @@
           "Brucebase: the window of a show, recording session or interview now starts with the page's description (About this show), and its hover card shows the description's first sentence. A page whose description is plain text above the tabs shows it too, in the page's own view as well.",
           "Brucebase: the window lists the people under the tab's own name: In studio for a recording session (with the session's name first), On set, On site. An interview's playlist is listed like a setlist, each song with its original artist. The venue's other lists (Appearances, Cancelled, Performances without Bruce, the From My Home To Yours episodes) are folded sections, and an older page's News tab shows as News/Memorabilia.",
           "Brucebase: the year table's On stage column shows a recording session's people too.",
+          "Brucebase: the window, the year table and the event page's own view now list a show's guests too (a second list on the wiki's page: Bruce Springsteen as guest at another act's show, a radio show's guest after its hosts), and the people of the rarer tabs (On Phone, On Call, In Room). In the year table a line-up with several groups shows each group's members under it.",
           "Brucebase: a window no longer shows the code of the wiki's Flickr gallery as text."
         ]
       }

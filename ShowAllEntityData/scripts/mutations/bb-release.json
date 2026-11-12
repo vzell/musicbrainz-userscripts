@@ -56,8 +56,8 @@
         "why": "A release's Personnel is Bruce's list, then the band's: every top-level list.",
         "edits": [
             {
-                "find": "        const lists = all ? Array.from(panel.querySelectorAll('ul, ol'))",
-                "replace": "        const lists = false ? Array.from(panel.querySelectorAll('ul, ol'))"
+                "find": "        // decides how a role is read).\n        const lists = Array.from(panel.querySelectorAll('ul, ol')).filter(l => !(l.parentElement && l.parentElement.closest('li')));",
+                "replace": "        // decides how a role is read).\n        const lists = [panel.querySelector('ul, ol')].filter(Boolean);"
             }
         ],
         "spec": "tests/fixtures/bb-release.spec.js",

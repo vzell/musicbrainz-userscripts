@@ -56,8 +56,8 @@
         "why": "Answer 4: the members as rows of their own, folded.",
         "edits": [
             {
-                "find": "        return m ? [m[1], ...m[2].split(/\\s*,\\s*/).filter(Boolean)] : (s ? [s] : []);",
-                "replace": "        return s ? [s] : [];"
+                "find": "        if (first < 0) return t ? [t] : [];",
+                "replace": "        return t ? [t] : [];"
             }
         ],
         "spec": "tests/fixtures/bb-year-event-pages.spec.js",
