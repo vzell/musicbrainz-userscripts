@@ -1053,6 +1053,53 @@ The "Note:" paragraphs under each song's version table:  I want them as a multi-
 
   Should I write the probe userscript now?
 
+* The finding:
+
+a WARNING, "Brucebase event page with an 'Onstage' tab". It goes on the Content cell of the year table and the year listing, because those are the only tables that read event pages and Content already lists the tabs by name. It shows once ▶ Pages has read the page, and it has its own settings to
+switch it and its tint off.
+
+Writing its tests turned up a gap in shared code. Rows read while the warning's filter was on never got their stamp, so they never joined the filtered table. The shared re-stamp queue now also takes those rows. The specs of every other late finding still pass (208 of 208), MusicBrainz ones included.
+
+- The finding's tests pass, 5 of 5, against a real "Onstage" page.
+- 8 of its 9 mutations fail as they should. The ninth passes because the event-page columns already re-run the filter themselves; I recorded that reason in the mutation list.
+- One unrelated MusicBrainz test (Relationships) failed once under heavy load. It didn't recur in 3 solo runs, 32 parallel runs or a full rerun of that batch.
+
+URLs for your live check:
+
+┌────────────────────────────────────────────────────────────────────────┬─────────────────────────────────────────────────────────────────────────────────────┐
+│                                  What                                  │                                         URL                                         │
+├────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+│ Description, card's first sentence                                     │ https://brucebase.wikidot.com/gig:1978-07-07-roxy-theatre-west-hollywood-ca         │
+├────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+│ Description as plain text, other venue lists, old "News" tab           │ https://brucebase.wikidot.com/gig:1974-08-14-monmouth-arts-center-red-bank-nj-early │
+├────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+│ Plain description after the "Info & Setlist" line                      │ https://brucebase.wikidot.com/gig:1978-06-23-paramount-theatre-portland-or          │
+├────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+│ In studio with its session line                                        │ https://brucebase.wikidot.com/recording:1979-04-09-power-station-new-york-city-ny   │
+├────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+│ In studio, Playlist, From My Home To Yours                             │ https://brucebase.wikidot.com/interview:2021-04-28-siriusxm-studio-new-york-city-ny │
+├────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+│ Playlist with original artists                                         │ https://brucebase.wikidot.com/interview:1974-04-07-wmmr-studio-philadelphia-pa      │
+├────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+│ On phone: the hosts, then Bruce as guest                               │ https://brucebase.wikidot.com/interview:2019-07-10-siriusxm-studio-new-york-city-ny │
+├────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+│ In room                                                                │ https://brucebase.wikidot.com/gig:1978-10-17-sunset-marquis-hotel-west-hollywood-ca │
+├────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+│ On Stage guests list                                                   │ https://brucebase.wikidot.com/gig:1979-03-14-fast-lane-asbury-park-nj               │
+├────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+│ The "Onstage" page                                                     │ https://brucebase.wikidot.com/interview:2017-04-28-beacon-theatre-new-york-city-ny  │
+├────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+│ Year table, the finding: ▶ Pages, then scroll to April 28              │ https://brucebase.wikidot.com/2017                                                  │
+├────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+│ Year table, guests in On stage                                         │ https://brucebase.wikidot.com/1979                                                  │
+├────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+│ Year table, a line-up with several bands (the rehearsal of 29 January) │ https://brucebase.wikidot.com/2009                                                  │
+└────────────────────────────────────────────────────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────┘
+
+Ctrl+hover a link to one of these pages from another Brucebase page (for example a year table's Event column) to see the
+card, then press Space for the window. On musicbrainz.org, any Springsteen event with a Brucebase link works the same
+way. I didn't look up a specific event before the limit hit.
+
 
 * TODO adjustments
 ** DONE On The Tracks
