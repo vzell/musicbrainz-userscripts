@@ -559,7 +559,7 @@ Found: the tag cloud is 11,562 =a.tag= with the weight only as =font-size: N%=; 
   (169–171), WIP.15; the wider sibling run still deferred
 - [X] vzell's live check (2026-11-12): OK
 
-*** TODO Phase 12 — story pages =bb-story=
+*** DONE Phase 12 — story pages =bb-story=
 vzell's "no PT yet" (round-2 live check). 1,489 story pages: a Storyteller banner, one
 =<p><strong>Intro to "Song"</strong><br>words</p>= per moment, a "Compiled by" box.
 - [X] probe over the mirror's 1,489 (=scripts/probe-bb-story-pages.py=; Env: 2026-11-12T02:45+01:00 · vzell-lap ·
@@ -578,7 +578,7 @@ vzell's "no PT yet" (round-2 live check). 1,489 story pages: a Storyteller banne
   single-quoted song heading, which no fixture has), siblings bb-event, bb-history, bb-every-page,
   bb-event-preview 54 green; coverage row, brucebase.md "Story pages", CLAUDE.md, HELP, PAGETYPES
   reference (172), WIP.16; the wider sibling run still deferred
-- [ ] vzell's live check
+- [X] vzell's live check (2026-11-12): OK
 
 *** TODO Phase 13 — stats list pageTypes
 covers: "* TODO add additional PTs to BB". 1,942 stats pages in the mirror, mostly =stats:<song>-tour=
