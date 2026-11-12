@@ -854,6 +854,13 @@ BB PTs". Last, once Phases 7–15 have added their readers.
   queue now also takes a source row the filter hides, with its table). Spec 5/5, mutations 9 (one
   recorded as covered by =_bbEvpScheduleRefresh()=), WIP.22.
   - [X] vzell's live check of batch 1 (and the finding) — OK (2026-11-12)
+  Batch 2 mockup (2026-11-12): https://claude.ai/artifact/LHEdFVu715Qu4z2dUackmb
+  (=scripts/extract-bb-batch2-mockup.js= → =debug/bb-batch2-mockup.json=, =scripts/build-bb-batch2-mockup.py=
+  with =scripts/bb-batch2-mockup.template.html=): Patti Scialfa; Born To Run, Live/1975–85, Get Up! Stand Up!
+  Highlights, Songs Of Love — today and with batch 2. Questions: 1 the biography's place, 2 its first sentence
+  on the card, 3 On The Tracks grouped or flat, 4 the live dates by disc or flat, 5 Gallery/News, 6 also
+  Performed live, Notes, History, On The Tracks notes, Lyrics, Media (in the page view, not in the sweep's
+  list). Waiting for vzell.
 - [ ] vzell's live check
 
 *** Handoff to petri (2026-11-12T04:05+01:00, from vzell-lap)
