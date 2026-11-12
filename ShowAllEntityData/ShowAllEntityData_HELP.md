@@ -843,6 +843,7 @@ back).
 | ⚠️     | Old springsteenlyrics.com address in the annotation             | Annotation                                  |
 | ⚠️     | MB-Event: no Brucebase link (once looked up)                    | Brucebase year: MB-Event                    |
 | ⚠️     | Brucebase entry with a comma after its date                     | Brucebase detail pages: Date                |
+| ⚠️     | Brucebase event page with an "Onstage" tab (once read)          | Brucebase year: Content                     |
 | ⚠️     | Pending edits                                                   | any column                                  |
 | ⚠️     | Live credit without a date                                      | Release tracklist: credit columns           |
 | ❌    | MB-Event: the Brucebase link differs (once looked up)           | Brucebase year: MB-Event                    |

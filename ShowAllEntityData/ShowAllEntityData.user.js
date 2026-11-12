@@ -2909,6 +2909,23 @@
                          'after its date.'
         },
 
+        sa_findings_bb_onstage_tab: {
+            label: 'Find Brucebase event pages whose cast tab is spelled "Onstage"',
+            type: 'checkbox',
+            default: true,
+            description: 'On a Brucebase year table or year listing, once ▶ Pages has read an entry\'s page: the ' +
+                         'page names its cast tab "Onstage", in one word, where every other page writes "On ' +
+                         'Stage". A WARNING ("Brucebase event page with an \'Onstage\' tab") on its Content cell.'
+        },
+
+        sa_findings_tint_bb_onstage_tab: {
+            label: 'Highlight Content cells of Brucebase event pages with an "Onstage" tab',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint the Content cell light yellow with a ⚠️ when the entry\'s page spells its cast tab ' +
+                         '"Onstage".'
+        },
+
         sa_findings_tint_bb_mbev_link: {
             label: 'Highlight MB-Event cells whose Brucebase link differs or is missing',
             type: 'checkbox',
@@ -27920,6 +27937,21 @@
         const st = rec ? (rec.failed ? 'failed' : rec.none ? 'none' : 'done') : state || 'cold';
         td.innerHTML = _bbEvpCellHtml(td.dataset.mbBbevpCol, rec);
         td.dataset.mbBbevpState = st;
+        // The `bb-onstage-tab` finding (Phase 16): the page's cast tab is
+        // written "Onstage". A mark of the cell's own, so the stamp reads it on
+        // a source row too; the live row is queued for its re-stamp.
+        if (td.dataset.mbBbevpCol === 'Content') {
+            const was = td.hasAttribute('data-mb-bbevp-onstage');
+            const now = !!(rec && rec.view && rec.view.content.includes('Onstage'));
+            td.toggleAttribute('data-mb-bbevp-onstage', now);
+            // A source row the filter hides is read too: it names its table,
+            // so its stamp is made and the filter can bring it back.
+            if (was !== now) {
+                const live = td.isConnected ? td.closest('table.tbl') : null;
+                const table = live || Array.from(document.querySelectorAll('table.tbl')).find(t => t.querySelector('td.mb-bbevp-cell'));
+                if (table) _queueFindingsRestamp(td.parentElement, ['bb-onstage-tab'], live ? null : table);
+            }
+        }
         const row = td.parentElement;
         const rc = row && _rowTextCache.get(row);
         if (rc) { rc.cols = []; rc.full = null; }
@@ -71690,6 +71722,21 @@
             test: cell => cell.dataset.mbBbDateComma === '1',
             detail: cell => `Brucebase writes it "${cell.dataset.mbBbEntry || ''}".`,
             tint: _findingTintSetting('sa_findings_tint_bb_date_comma'),
+        },
+        // vzell, 2026-11-12 (org/brucebase.org, Phase 16 batch 1): the cast tab
+        // written "Onstage" (one page in the sweep's 305 cast tabs). Late data:
+        // the year table's Content cell is filled once ▶ Pages has read the
+        // entry's page (`_bbEvpRenderCell()` marks the cell, live and source,
+        // and queues the row).
+        {
+            id: 'bb-onstage-tab', level: 'warn', glyph: '␣', scope: 'cell',
+            label: 'Brucebase event page with an "Onstage" tab',
+            tip: 'The entry\'s page names its cast tab "Onstage", in one word; every other page writes "On Stage". The page to edit is the one the row links: rename the tab. The row is read all the same: its people are in On stage.',
+            enabled: () => !!_isBbHost && Lib.settings.sa_findings_bb_onstage_tab !== false,
+            cols: name => name === 'Content',
+            rowGate: row => !!row.querySelector('td[data-mb-bbevp-onstage]'),
+            test: cell => cell.hasAttribute('data-mb-bbevp-onstage'),
+            tint: _findingTintSetting('sa_findings_tint_bb_onstage_tab'),
         },
         {
             id: 'pending', level: 'warn', glyph: '⏳', scope: 'row',
@@ -177592,7 +177639,7 @@ a { color: #1565c0; }`;
      * Relationships column (`rel-multi-site`). Each is re-stamped per row
      * through `_queueFindingsRestamp()`.
      */
-    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-site', 'bb-mbev-link-mismatch', 'bb-mbev-link-missing', 'sl-double-utf8'];
+    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-site', 'bb-mbev-link-mismatch', 'bb-mbev-link-missing', 'sl-double-utf8', 'bb-onstage-tab'];
 
     /**
      * Queues a re-stamp of a row whose late data (`_LATE_FINDING_IDS`) has
@@ -177600,15 +177647,24 @@ a { color: #1565c0; }`;
      * flushed in batches by `_flushFindingsRestamp()`, 150 ms after the
      * first row of a batch.
      *
+     * A row the active filter took out of the page (a source row) is queued
+     * too when its caller names the table it belongs to (`table`): the Brucebase
+     * year table's event-page columns read such rows while the filter hides
+     * them (Phase 16, `bb-onstage-tab`), and a flagged row must then join the
+     * filtered table.
+     *
      * @param   {?HTMLTableRowElement} tr
      * @param   {string[]} ids The findings this data feeds.
+     * @param   {?HTMLTableElement} [table] For a row not in the page: its table.
      * @returns {void}
      */
-    function _queueFindingsRestamp(tr, ids) {
+    function _queueFindingsRestamp(tr, ids, table = null) {
         if (!ids.some(id => { const f = _FINDING_BY_ID.get(id); return f && (!f.enabled || f.enabled()); })) return;
-        if (!tr || !tr.isConnected) return;
-        if (!_queueFindingsRestamp.rows) _queueFindingsRestamp.rows = new Set();
-        _queueFindingsRestamp.rows.add(tr);
+        if (!tr) return;
+        const t = tr.isConnected ? tr.closest('table.tbl') : table;
+        if (!t || !t.isConnected) return;
+        if (!_queueFindingsRestamp.rows) _queueFindingsRestamp.rows = new Map();
+        _queueFindingsRestamp.rows.set(tr, t);
         if (!_queueFindingsRestamp.timer) _queueFindingsRestamp.timer = setTimeout(_flushFindingsRestamp, 150);
     }
 
@@ -177640,8 +177696,10 @@ a { color: #1565c0; }`;
      * @returns {void}
      */
     function _flushFindingsRestamp() {
-        const rows = Array.from(_queueFindingsRestamp.rows || []).filter(r => r.isConnected);
-        _queueFindingsRestamp.rows = new Set();
+        const queued = Array.from(_queueFindingsRestamp.rows || new Map()).filter(([r, t]) => r.isConnected || t.isConnected);
+        const rows = queued.map(([r]) => r);
+        const tableOf = new Map(queued);
+        _queueFindingsRestamp.rows = new Map();
         _queueFindingsRestamp.timer = 0;
         if (!rows.length) return;
         const master = _buildMasterRowIndex();
@@ -177649,7 +177707,7 @@ a { color: #1565c0; }`;
         const touched = new Set();
         const sig = r => Array.from(r.cells).map(td => `${td.dataset.mbFindings || ''}|${td.dataset.mbFinding || ''}`).join(';');
         rows.forEach(tr => {
-            const table = tr.closest('table.tbl');
+            const table = tr.isConnected ? tr.closest('table.tbl') : tableOf.get(tr);
             if (!table) return;
             if (!plans.has(table)) plans.set(table, _findingPlanForTable(table));
             const plan = plans.get(table);

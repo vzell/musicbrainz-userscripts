@@ -10,7 +10,8 @@
           "Brucebase: the window lists the people under the tab's own name: In studio for a recording session (with the session's name first), On set, On site. An interview's playlist is listed like a setlist, each song with its original artist. The venue's other lists (Appearances, Cancelled, Performances without Bruce, the From My Home To Yours episodes) are folded sections, and an older page's News tab shows as News/Memorabilia.",
           "Brucebase: the year table's On stage column shows a recording session's people too.",
           "Brucebase: the window, the year table and the event page's own view now list a show's guests too (a second list on the wiki's page: Bruce Springsteen as guest at another act's show, a radio show's guest after its hosts), and the people of the rarer tabs (On Phone, On Call, In Room). In the year table a line-up with several groups shows each group's members under it.",
-          "Brucebase: a window no longer shows the code of the wiki's Flickr gallery as text."
+          "Brucebase: a window no longer shows the code of the wiki's Flickr gallery as text.",
+          "Brucebase: a new WARNING, \"Brucebase event page with an 'Onstage' tab\": in a year table or year listing, an entry whose page spells its cast tab \"Onstage\" (one word) is flagged on its Content cell once ▶ Pages has read it, also when the warning's filter is on while pages arrive. Its own settings switch it and its tint off."
         ]
       }
     ]

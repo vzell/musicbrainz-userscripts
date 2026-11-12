@@ -318,6 +318,22 @@ data. ⚠️, cell scope, column Date, Brucebase only (`enabled()`:
 `tests/fixtures/bb-place.spec.js` ("the bb-date-comma finding"); mutations
 `scripts/mutations/bb-place.json`.
 
+### A Brucebase event page with an "Onstage" tab: `bb-onstage-tab`
+
+vzell, 2026-11-12 (org/brucebase.org, Phase 16 batch 1): the cast tab written
+"Onstage" (one page of the sweep's 305 cast tabs). ⚠️, cell scope, column
+Content of the year table and year listing, late data: `_bbEvpRenderCell()`
+marks the Content cell (`data-mb-bbevp-onstage`, live and source) once the
+page is read and queues the row. A source row the filter hides is read too,
+so `_queueFindingsRestamp(tr, ids, table)` takes a detached row with its
+table (the flush stamps it against that table's plan) — without that, rows
+read while the finding filters never joined the table. In `_LATE_FINDING_IDS`;
+its mutation passes because the tick is a column-filter value, so
+`_bbEvpScheduleRefresh()` re-runs the filter anyway. Settings
+`sa_findings_bb_onstage_tab`, `sa_findings_tint_bb_onstage_tab`. Specs
+`bb-year-event-pages.spec.js` ("the bb-onstage-tab finding"); mutations
+`scripts/mutations/bb-onstage-tab.json`.
+
 ## On demand: the title-style findings
 
 `title-case`, `title-typography`, `title-series-sep`, `title-feat` and

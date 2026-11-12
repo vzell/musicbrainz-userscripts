@@ -1,0 +1,119 @@
+[
+    {
+        "name": "bb-onstage-tab: the detector never matches",
+        "why": "The finding reads the Content cell's mark.",
+        "edits": [
+            {
+                "find": "            test: cell => cell.hasAttribute('data-mb-bbevp-onstage'),",
+                "replace": "            test: () => false,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-event-pages.spec.js",
+        "grep": "the read rows are flagged",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-onstage-tab: the cell is never marked",
+        "why": "_bbEvpRenderCell() marks a Content cell whose page has an \"Onstage\" tab.",
+        "edits": [
+            {
+                "find": "            const now = !!(rec && rec.view && rec.view.content.includes('Onstage'));",
+                "replace": "            const now = false;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-event-pages.spec.js",
+        "grep": "the read rows are flagged",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-onstage-tab: every read row is flagged",
+        "why": "Only a page whose cast tab is spelled \"Onstage\".",
+        "edits": [
+            {
+                "find": "            const now = !!(rec && rec.view && rec.view.content.includes('Onstage'));",
+                "replace": "            const now = !!(rec && rec.view);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-event-pages.spec.js",
+        "grep": "is not flagged",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-onstage-tab: no re-stamp when the page arrives",
+        "why": "Late data: the row is queued for its re-stamp.",
+        "edits": [
+            {
+                "find": "                if (table) _queueFindingsRestamp(td.parentElement, ['bb-onstage-tab'], live ? null : table);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-event-pages.spec.js",
+        "grep": "the read rows are flagged",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-onstage-tab: not a late finding",
+        "why": "_LATE_FINDING_IDS: a changed stamp re-runs the filter while a late finding filters. Covered here by another path: a cell-scope finding is ticked as a value in its column's filter input (_setFinding() → _writeUniqValueSet()), so _anyFilterActive() is true and the event-page columns' own refresh (_bbEvpScheduleRefresh()) re-runs the filter after every page read. Kept in the list for a row-scope fallback (two columns, Exclude mode), which no fixture reaches.",
+        "edits": [
+            {
+                "find": "'sl-double-utf8', 'bb-onstage-tab'];",
+                "replace": "'sl-double-utf8'];"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-event-pages.spec.js",
+        "grep": "ticked while pages arrive",
+        "expect": "pass"
+    },
+    {
+        "name": "bb-onstage-tab: the tint setting is ignored",
+        "why": "sa_findings_tint_bb_onstage_tab off: no tint.",
+        "edits": [
+            {
+                "find": "            tint: _findingTintSetting('sa_findings_tint_bb_onstage_tab'),",
+                "replace": "            tint: () => true,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-event-pages.spec.js",
+        "grep": "the tint setting off",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-onstage-tab: the finding's setting is ignored",
+        "why": "sa_findings_bb_onstage_tab off: no finding.",
+        "edits": [
+            {
+                "find": "            enabled: () => !!_isBbHost && Lib.settings.sa_findings_bb_onstage_tab !== false,",
+                "replace": "            enabled: () => !!_isBbHost,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-event-pages.spec.js",
+        "grep": "the finding's setting off",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-onstage-tab: a filtered-away source row is not re-stamped",
+        "why": "Rows read while the finding filters must join the filtered table: the queue takes a detached row with its table.",
+        "edits": [
+            {
+                "find": "                if (table) _queueFindingsRestamp(td.parentElement, ['bb-onstage-tab'], live ? null : table);",
+                "replace": "                if (table) _queueFindingsRestamp(td.parentElement, ['bb-onstage-tab'], null);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-event-pages.spec.js",
+        "grep": "ticked while pages arrive",
+        "expect": "fail"
+    },
+    {
+        "name": "the restamp queue drops rows that are not in the page",
+        "why": "_queueFindingsRestamp(): a detached row with its table is kept (Phase 16).",
+        "edits": [
+            {
+                "find": "        const t = tr.isConnected ? tr.closest('table.tbl') : table;",
+                "replace": "        const t = tr.isConnected ? tr.closest('table.tbl') : null;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-event-pages.spec.js",
+        "grep": "ticked while pages arrive",
+        "expect": "fail"
+    }
+]

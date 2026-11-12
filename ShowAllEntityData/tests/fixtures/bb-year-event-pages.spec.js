@@ -16,6 +16,7 @@ const { test, expect } = require('../support/test');
 const { loadBbYearPage, loadBbYearListPage, BB_YEAR_BUTTON, BB_YEAR_LIST_BUTTON, revealPastStickyColumn } = require('../support/bbFixture');
 const { waitForRenderComplete } = require('../support/browser');
 const { columnFilterInput } = require('../support/filterSortAssertions');
+const { findingRow, clickFinding, findingRowState } = require('../support/findingsMenu');
 
 const EVENT_RE = /^https:\/\/brucebase\.wikidot\.com\/(?:gig|nogig|recording|rehearsal|interview):[^/?#]+$/;
 const EVENT_FILE = path.join(__dirname, 'bb-event-gig-1978-07-07.html');
@@ -318,5 +319,94 @@ test.describe('Brucebase year listing: the same columns, a row\'s page from its 
             expect(html, `${slug} is linked from the year page`).toContain(`href="${slug}"`);
         });
         await pagesBtn(page).click();
+    });
+});
+
+// vzell, 2026-11-12 (Phase 16 batch 1): a page whose cast tab is spelled
+// "Onstage" is a finding, on its row's Content cell, once ▶ Pages has read it.
+test.describe('Brucebase year table: the bb-onstage-tab finding (Phase 16)', () => {
+    const BEACON = path.join(__dirname, 'bb-event-interview-2017-04-28.html');
+    const marked = page => page.evaluate(() => Array.from(document.querySelectorAll('table.tbl tbody td.mb-bbevp-cell[data-mb-bbevp-col="Content"]'))
+        .filter(td => td.closest('tr').style.display !== 'none')
+        .map(td => ({ mark: td.hasAttribute('data-mb-bbevp-onstage'), stamp: (td.dataset.mbFindings || '').split(' ').includes('bb-onstage-tab'), level: td.dataset.mbFinding || '' })));
+
+    /**
+     * The 1985 table with every event page served from `file`, read for the
+     * rows in view, then stopped.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {string} file
+     * @param {Object} [settings]
+     * @returns {Promise<number>} The rows read.
+     */
+    async function readSome(page, file, settings = {}) {
+        await page.setViewportSize({ width: 1600, height: 700 });
+        await loadBbYearPage(page, '1985', { settingsOverride: settings });
+        await serveEvents(page, file);
+        await show(page, BB_YEAR_BUTTON);
+        await pagesBtn(page).click();
+        await expect.poll(async () => (await cells(page)).filter(r => r.state === 'done').length, { timeout: 20000 }).toBeGreaterThanOrEqual(2);
+        await pagesBtn(page).click();
+        return (await cells(page)).filter(r => r.state === 'done').length;
+    }
+
+    test('the read rows are flagged on Content: counted, filtered, tinted; the stamps survive the re-render', async ({ page }) => {
+        const n = await readSome(page, BEACON);
+        await expect.poll(async () => (await marked(page)).filter(c => c.stamp).length).toBe(n);
+        expect((await marked(page)).filter(c => c.mark).length).toBe(n);
+        await expect.poll(async () => (await findingRow(page, 'warn', 'bb-onstage-tab') || {}).count).toBe(n);
+        const look = await page.evaluate(() => {
+            const td = document.querySelector('td.mb-bbevp-cell[data-mb-bbevp-onstage]');
+            return { level: td.dataset.mbFinding, bg: getComputedStyle(td).backgroundColor, after: getComputedStyle(td, '::after').content, text: td.textContent };
+        });
+        expect(look.level).toBe('warn');
+        expect(look.bg).not.toMatch(/^rgba?\(255, 255, 255/);
+        expect(look.after).toContain('⚠');
+        expect(look.text).toContain('Onstage');
+        // The filter (a re-render from the source rows): only the flagged rows, still stamped.
+        await clickFinding(page, 'bb-onstage-tab');
+        await expect.poll(() => findingRowState(page, 'bb-onstage-tab')).toEqual({ visible: n, withFinding: n });
+        await clickFinding(page, 'bb-onstage-tab');
+        await expect.poll(async () => (await findingRowState(page, null)).visible).toBeGreaterThan(n);
+        expect((await marked(page)).filter(c => c.stamp).length).toBe(n);
+    });
+
+    test('the finding ticked while pages arrive: rows flagged later join the filtered table (a late finding)', async ({ page }) => {
+        await page.setViewportSize({ width: 1600, height: 1400 });
+        await loadBbYearPage(page, '1985');
+        await serveEvents(page, BEACON);
+        await show(page, BB_YEAR_BUTTON);
+        await page.evaluate(() => window.scrollTo(0, document.querySelector('table.tbl').getBoundingClientRect().top + window.scrollY));
+        await pagesBtn(page).click();
+        await expect.poll(async () => (await findingRow(page, 'warn', 'bb-onstage-tab') || {}).count, { timeout: 20000 }).toBeGreaterThanOrEqual(1);
+        expect((await cells(page)).filter(r => r.state === 'queued').length, 'rows still queued').toBeGreaterThan(2);
+        await clickFinding(page, 'bb-onstage-tab');
+        const shown1 = (await findingRowState(page, 'bb-onstage-tab')).visible;
+        // Each row read later is flagged and its re-stamp re-runs the filter.
+        await expect.poll(async () => (await findingRowState(page, 'bb-onstage-tab')).visible, { timeout: 30000 }).toBeGreaterThan(shown1 + 1);
+        const st = await findingRowState(page, 'bb-onstage-tab');
+        expect(st.withFinding).toBe(st.visible);
+        await pagesBtn(page).click();
+    });
+
+    test('a page with "On Stage" is not flagged', async ({ page }) => {
+        await readSome(page, EVENT_FILE);
+        await page.evaluate(() => new Promise(r => setTimeout(r, 400)));
+        expect((await marked(page)).some(c => c.mark || c.stamp)).toBe(false);
+        expect(await findingRow(page, 'warn', 'bb-onstage-tab')).toBeUndefined();
+    });
+
+    test('the tint setting off: stamped and counted, not painted', async ({ page }) => {
+        const n = await readSome(page, BEACON, { sa_findings_tint_bb_onstage_tab: false });
+        await expect.poll(async () => (await marked(page)).filter(c => c.stamp).length).toBe(n);
+        expect((await marked(page)).every(c => c.level === '')).toBe(true);
+        await expect.poll(async () => (await findingRow(page, 'warn', 'bb-onstage-tab') || {}).count).toBe(n);
+    });
+
+    test('the finding\'s setting off: no stamp, no menu row', async ({ page }) => {
+        await readSome(page, BEACON, { sa_findings_bb_onstage_tab: false });
+        await page.evaluate(() => new Promise(r => setTimeout(r, 400)));
+        expect((await marked(page)).some(c => c.stamp)).toBe(false);
+        expect(await findingRow(page, 'warn', 'bb-onstage-tab')).toBeUndefined();
     });
 });

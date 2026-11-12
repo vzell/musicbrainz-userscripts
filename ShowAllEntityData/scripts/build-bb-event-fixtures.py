@@ -24,6 +24,7 @@ picked for a shape the bb-event pageType reads (org/brucebase.org, Plan
 - interview 2019-07-10 SiriusXM (Phase 16): an "On Phone" cast tab in two lists (the hosts, then
   Bruce as guest); gig 1978-10-17 Sunset Marquis: an "In Room" cast tab; gig 1979-03-14 Fast Lane:
   On Stage with a second list, the guests.
+- interview 2017-04-28 Beacon Theatre (Phase 16): the cast tab spelled "Onstage" (the bb-onstage-tab finding).
 
 And for bb-song / bb-ott (Phase 3):
 
@@ -92,6 +93,7 @@ PAGES = [
     ('interview/interview_2019-07-10-siriusxm-studio-new-york-city-ny.html', 'bb-event-interview-2019-07-10.html'),
     ('year-1978/gig_1978-10-17-sunset-marquis-hotel-west-hollywood-ca.html', 'bb-event-gig-1978-10-17.html'),
     ('gig/gig_1979-03-14-fast-lane-asbury-park-nj.html', 'bb-event-gig-1979-03-14.html'),
+    ('interview/interview_2017-04-28-beacon-theatre-new-york-city-ny.html', 'bb-event-interview-2017-04-28.html'),
     ('song/song_the-promise.html', 'bb-song-the-promise.html'),
     ('song/song_we-gotta-get-out-of-this-place.html', 'bb-song-we-gotta-get-out-of-this-place.html'),
     ('ott/ott_do-you-want-me-to-say-alright.html', 'bb-ott-do-you-want-me-to-say-alright.html'),
