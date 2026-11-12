@@ -1515,6 +1515,67 @@ page (no request) and put our heading and table before `#page-content`
   checks the Take and Date of On The Tracks; mutations
   `scripts/mutations/bb-song-tours-sessions.json` (32).
 
+## Discographies — `bb-gallery`, and registered songs — `bb-registered` (Phase 13, batch 3, 2026-11-12)
+
+Shapes E and F of the stats survey (mockup answer 7: rows with a Cover
+column; F as the mockup's songs-registered table). Asked again before
+building, because the copy differed from the mockup (vzell, 2026-11-12,
+org/brucebase.org Phase 13): the mockup's gallery rows came from the cover
+strip at the top of a discography page, but that strip is the SAME 203
+covers on all 11 discography pages — the wiki's navigation; each page's own
+content is its entries. And stats:songs-list (every song as links in
+paragraphs, the same songs as stats:songs) is left alone. Both definitions
+sit before `bb-song-tours`, read the copy of the page and put our heading
+and table before `#page-content` ('gallery' → "Releases", 'registered' →
+"Songs"); single tables, their columns set at the press.
+
+- **`bb-gallery`** (`_BB_GALLERY_PATH_RE`, `stats:discography-*`):
+  `_bbGalleryRead()` takes each paragraph outside a tabview whose bold part
+  starts with a year and links the release (a single: the song's page),
+  then up to the next rule, h1 or entry its covers (every `img`) and its
+  lines — a paragraph's split at its line breaks, or loose text between the
+  elements (Hammersmith Odeon London '75 leaves "Released: …<br>Label: …"
+  outside a paragraph). Columns (`_bbGalleryCols()`): Year, Release,
+  Subtitle (the heading paragraph's text after the bold part, "(digital)"
+  without its brackets), Cover, Released (`_bbGalleryIso()`: "October 17,
+  2025" → 2025-10-17, "June, 1975" → 1975-06, "1975"; "Spring, 2006", "April
+  23/24, 2001" as written; the wiki's text as the hover; `dateParts`),
+  Label, Note (any other line; none in the copy), Section (the h1 without
+  its `<sup>` small print, on a page with several: -retail's nine,
+  -specials' five), Tab (the strip's tab the release is in). `match` needs
+  an entry: the playlist pages (the strip and lists only) and the hub
+  stats:discography (its tabs include the other discography pages, so its
+  entries sit in a tab) stay `bb-stats`'.
+- **The Cover column** (`_BBG_FI`, `_bbGalleryArtRowFor()`): each cover an
+  `a.mb-bb-cover` (`data-mb-fi="bbg"`) around the wiki's thumbnail, to its
+  full image (`_bbWdFullImage()`: `local--resized-images/X/thumbnail.jpg` →
+  `local--files/X`). A provider as Discogs' images table (`_DGI_FI`): the
+  row's picture is on the page, its record the row itself, nothing asked;
+  the card shows the full image (the thumbnail is ~100 px), a click the
+  viewer, Shift+← → the rows shown. Off with `sa_bb_tip_images`.
+- **`bb-registered`** (`stats:songs-registered`): `_bbRegisteredRead()` —
+  the list items with no link (182 titles) and the paragraphs before the
+  list (the registration record). Title (MusicBrainz style, the wiki's as
+  the hover), Song page ("song page", linked) from `_bbSongIndex`:
+  `_bbSongIndexLoad()` reads stats:songs once (one GET after the windows'
+  rate slot, in the button's `fetchText`), every song link's title and slug
+  squashed to letters and digits (`_bbSquash()`, "&" as "and"); a failure
+  leaves the column empty with a warning. The head
+  (`_bbRegisteredHeadSpec()`): the record as text, the card (Titles, With a
+  song page, This page).
+- **The whole family**: `node scripts/check-bb-galleries.js`
+  (2026-11-12T14:21+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) ·
+  Playwright 1.62.1 Chromium) over the 13 discography pages: 10 with
+  entries (116 album, 361 retail, 141 single, …), every entry with a cover
+  and a Released date (all but three ISO), all but History Books (no label
+  on the wiki) with a label; the playlist pages and the hub with none.
+- **Tests**: `tests/fixtures/bb-gallery-registered.spec.js` (5), fixtures
+  `bb-stats-discography{,-album,-retail,-single,-playlist}.html`,
+  `bb-stats-songs-registered.html` (and `bb-songs.html` as stats:songs);
+  mutations `scripts/mutations/bb-gallery-registered.json` (18; one
+  `expect: pass`: a bold link without a year, which no page of the copy
+  has).
+
 ## Show links on Brucebase's own pages (Phase 8, 2026-11-11)
 
 A show on its year page (`/<yyyy>#<ddmmyy>`: an event's "Info & Setlist", a

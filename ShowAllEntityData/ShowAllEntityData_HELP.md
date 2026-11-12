@@ -4268,8 +4268,23 @@ press loads the page again for the other view.
   It comes with *Detail pages*; with that off the page gets
   **Tables**.
 
-The overview pages and the studio-session parts that are only text stay as
-the wiki shows them, and their links still preview.
+- **Releases**, on a discography page (`stats:discography-album`, `-retail`,
+  `-single`, the specials, `-video`): one row per release the page lists —
+  **Year**, the **Release** (a single's song page), its **Subtitle**, the
+  **Cover**, **Released** (as a date where the wiki's allows, with its day,
+  month and year columns), **Label**, and the **Section** and cover-strip
+  **Tab** it is under. Resting the pointer on a cover shows it big; a click
+  opens the viewer, and Shift+← → steps through the rows. The pages without
+  a list of releases (the playlists, the main discography page) keep
+  **List**.
+- **Songs**, on the songs registered at the Library of Congress
+  (`stats:songs-registered`): every **Title**, with its **Song page** where
+  the wiki's song list has it — one request, for that list — and the
+  registration record above.
+
+The overview pages, the full song list (`stats:songs-list`; `stats:songs` has
+the table) and the studio-session parts that are only text stay as the wiki
+shows them, and their links still preview.
 
 </details>
 

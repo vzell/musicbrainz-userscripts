@@ -29257,3 +29257,22 @@ taken only from a group's SECOND table on, and Backstreets, the one song checked
 every song's rows are checked now. mutation-check again printed the harness's auth hint as the
 error line of one entry, planted by hand: it fails on Jungleland's note, the right reason.
 Spec 8/8, the six note mutations OK, 27 BB specs + sl-include-regex 295 green.
+
+## 2026-11-12 — Brucebase discographies and registered songs (feature/bb-overhaul, Phase 13 batch 3)
+
+Env: 2026-11-12T14:21+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs).
+
+`bb-gallery` and `bb-registered` (docs/claude/brucebase.md, "Discographies … and registered
+songs"). The mockup's gallery rows came from the cover strip at the top of
+stats:discography-album; reading the family showed that strip is the same 203 covers on
+every discography page (an include: the wiki's navigation), while each page's content is its
+entries below it — asked before building; vzell: the entries. Two shapes the family check
+(`scripts/check-bb-galleries.js`) found: Hammersmith Odeon London '75's "Released: …<br>Label:
+…" are text nodes between the elements, not a paragraph (the walker reads loose text now); the
+hub stats:discography is a tabview whose Retail tab holds discography-retail's entries
+(entries inside a tabview are not read, so the hub keeps bb-stats' List). The image card would
+have shown the wiki's ~100 px thumbnail (`thumbnails[250]` of the row); the cover's full image
+is both now. One mutation is `expect: pass`: an entry must open with its year, and no page of
+the copy has a bold link without one outside a tab. mutation-check printed the harness's auth
+hint as the error line of "a single's song not in MusicBrainz style" again (the spec's `styled`
+row is undefined without the tip: the right reason).

@@ -670,12 +670,25 @@ The mirror has 258 =stats:*studio-sessions*= pages (an album's sessions and its 
 - [X] vzell's live check of batch 2 (e.g. stats:hungry-heart-tour, stats:born-to-run-studio-sessions,
   stats:darkness-on-the-edge-of-town-studio-sessions, stats:nebraska-studio-sessions-details, and the
   On The Tracks of song:the-heist or retail:born-to-run): OK (2026-11-12, with the Note column)
-- [ ] batch 3: E, F. vzell's answers (2026-11-12, asked before building: the copy differs from the
+- [X] batch 3: E, F. vzell's answers (2026-11-12, asked before building: the copy differs from the
   mockup): E's rows are each page's own ENTRIES ("2025 Nebraska '82" · subtitle · cover · Released ·
   Label; 114 on -album, 363 on -retail, 143 on -single), not the cover strip at the top — that strip is
   the same 203 covers on all 11 discography pages (the wiki's navigation); its tab (Original /
   Collaboration / Compilation / Playlist) is a Tab column where the release is in it. stats:songs-list
   (every song as links in paragraphs, the same songs as stats:songs) is left alone: link previews
+  Built (docs/claude/brucebase.md "Discographies … and registered songs"): =bb-gallery= (single: Year,
+  Release, Subtitle, Cover — the image card and the viewer, =_BBG_FI=, the row's own picture, no request —
+  Released in ISO with date parts, Label, Section on a page with several, Tab) and =bb-registered=
+  (Title, Song page from stats:songs, one request; the record as the head). Whole family first
+  (=scripts/check-bb-galleries.js=, 2026-11-12T14:21+01:00 · petri · Playwright 1.62.1 Chromium): 10 of
+  13 discography pages with entries, every one with a cover and a Released date (all but 3 ISO); found:
+  Hammersmith Odeon London '75's "Released/Label" are loose text outside a paragraph (read now), the hub
+  stats:discography holds discography-retail's entries in a tab (not read: it keeps bb-stats' List).
+  =bb-gallery-registered.spec.js= (5), =scripts/mutations/bb-gallery-registered.json= (17 OK, 1
+  =expect: pass= — a bold link without a year, which no page of the copy has); coverage rows, PAGETYPES
+  reference (176, 177), HELP, CLAUDE.md, WIP.19
+- [ ] vzell's live check of batch 3 (e.g. stats:discography-album, stats:discography-retail,
+  stats:discography-single, stats:songs-registered)
 - [ ] build in batches (one shared tabview reader where possible, =bb-songs= as the model); specs,
   mutations, coverage rows, docs, WIP per batch
 - [ ] vzell's live check per batch

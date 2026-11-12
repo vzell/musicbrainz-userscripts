@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.19",
+    "date": "2026-11-12",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase: a discography page (…/stats:discography-album, -retail, -single, the specials, -video) gets a button that shows every release it lists in one table: year, title, subtitle, cover, release date (with its day, month and year), label, and the section and tab it is under. A cover shows big on hover and opens in the viewer on a click. Nothing is fetched.",
+          "Brucebase: the songs registered at the Library of Congress (…/stats:songs-registered) get a button that shows every title in a table with its song page where the wiki's song list has it (one request), the registration record above."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.18",
     "date": "2026-11-12",
     "sections": [

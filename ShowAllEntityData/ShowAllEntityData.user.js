@@ -24518,6 +24518,7 @@
         if (t === 'bb-retail' || t === 'bb-bootleg') return _bbReleaseHeadSpec();
         if (t === 'bb-story') return _bbStoryHeadSpec();
         if (t === 'bb-sessions') return _bbSessionsHeadSpec();
+        if (t === 'bb-registered') return _bbRegisteredHeadSpec();
         return null;
     }
 
@@ -30137,6 +30138,352 @@
         };
     }
 
+    // ── Brucebase galleries — `bb-gallery` (Phase 13, batch 3, E) ──
+    // `stats:discography-*`: at the top a strip of cover tiles in tabs
+    // (Original, Collaboration, Compilation, Playlist) — the same 203 covers
+    // on every discography page, the wiki's navigation — and below it the
+    // page's own entries: "2025 Nebraska '82" (the year and the release's
+    // or single's page), a subtitle ("Expanded Edition", "(digital)"), the
+    // cover, "Released: October 17, 2025", "Label: Columbia", a rule. As one
+    // table, a row per entry (vzell, 2026-11-12: the entries, not the strip):
+    // Year, Release, Subtitle, Cover (the image card and the viewer,
+    // `_BBG_FI`), Released (ISO where the wiki's date allows, date parts),
+    // Label, Note, Section (the h1, on a page with several), Tab (the
+    // strip's tab the release is in).
+
+    /** @type {RegExp} A discography page. */
+    const _BB_GALLERY_PATH_RE = /^\/stats:discography(?:-[^/]+)?\/?$/;
+
+    /** @type {?Object} `_bbGalleryRead()` of the live page, read once. */
+    let _bbGalleryLiveRec = null;
+
+    /**
+     * A Wikidot thumbnail's full image: `local--resized-images/<page>/<file>/
+     * thumbnail.jpg` → `local--files/<page>/<file>`; any other URL as it is.
+     *
+     * @param {string} src
+     * @returns {string}
+     */
+    function _bbWdFullImage(src) {
+        const m = String(src || '').match(/^(.*)\/local--resized-images\/([^/]+\/[^/]+)\/[^/]+$/);
+        return m ? `${m[1]}/local--files/${m[2]}` : String(src || '');
+    }
+
+    /**
+     * A Released date as the wiki writes it, in ISO where it can be: "October
+     * 17, 2025" → 2025-10-17, "June, 1975" / "June 1975" → 1975-06, "1975";
+     * '' for the rest ("Spring, 1975", "May 23/24, 1980").
+     *
+     * @param {string} s
+     * @returns {string}
+     */
+    function _bbGalleryIso(s) {
+        const t = String(s || '').trim();
+        const full = _bbLongDate(t);
+        if (full) return full;
+        const my = t.match(/^([A-Za-z]{3,})\.?,?\s+(\d{4})$/);
+        if (my) {
+            const i = Array.from(_BB_TAG_MONTHS).findIndex(x => x.startsWith(my[1].toLowerCase().slice(0, 3)));
+            return i < 0 ? '' : `${my[2]}-${String(i + 1).padStart(2, '0')}`;
+        }
+        return /^\d{4}$/.test(t) ? t : '';
+    }
+
+    /**
+     * Reads a discography page: its entries — each a paragraph whose bold
+     * part starts with a year and links the release (or the single's song),
+     * then up to the next rule, heading or entry its covers and its "Key:
+     * value" lines — and the strip's tab of each release. Entries inside a
+     * tabview are not read: the main stats:discography is a hub of tabs
+     * that include the other discography pages (it stays bb-stats').
+     *
+     * @param {Document} doc
+     * @param {string} base - The page's URL.
+     * @returns {?{entries: Array<{year: string, href: string, text: string, subtitle: string, covers: Array<{thumb: string, full: string, cap: string}>, released: string, label: string, note: string, section: string, tab: string}>, sections: number}}
+     */
+    function _bbGalleryRead(doc, base) {
+        const root = doc.getElementById('page-content');
+        if (!root) return null;
+        const tabOf = new Map();
+        root.querySelectorAll('.yui-navset .yui-content a[href] > img').forEach((img) => {
+            const a = img.parentElement;
+            const href = _bbAbsHref(a.getAttribute('href'));
+            if (!tabOf.has(href)) tabOf.set(href, _bbStatsTabPath(a).join(' › '));
+        });
+        const isEntry = (p) => {
+            if (!p || p.tagName !== 'P' || p.closest('.yui-navset')) return null;
+            const strong = p.querySelector(':scope > strong');
+            const a = strong && strong.querySelector('a[href]');
+            return a && /^\d{4}\b/.test(_bbText(strong)) ? { strong, a } : null;
+        };
+        const entries = [];
+        let section = '';
+        const sectionNames = new Set();
+        Array.from(root.querySelectorAll('h1, p')).forEach((el) => {
+            if (el.tagName === 'H1') {
+                const h = el.cloneNode(true);
+                h.querySelectorAll('sup').forEach(x => x.remove());
+                section = _bbText(h);
+                return;
+            }
+            const hit = isEntry(el);
+            if (!hit) return;
+            const own = el.cloneNode(true);
+            own.querySelector(':scope > strong').remove();
+            const e = {
+                year: (_bbText(hit.strong).match(/^\d{4}/) || [''])[0], href: _bbAbsHref(hit.a.getAttribute('href')), text: _bbText(hit.a),
+                subtitle: _bbText(own).replace(/^\((.*)\)$/, '$1'), covers: [], released: '', label: '', note: '', section, tab: '',
+            };
+            e.tab = tabOf.get(e.href) || '';
+            // Up to the rule: the covers, and the lines — a paragraph's, split
+            // at its line breaks, or loose text between the elements (the
+            // wiki sometimes leaves "Released: …<br>Label: …" outside a
+            // paragraph: Hammersmith Odeon London '75).
+            const lines = [];
+            let loose = '';
+            const flush = () => {
+                if (_dpText(loose)) lines.push(_dpText(loose));
+                loose = '';
+            };
+            const cover = (img) => {
+                const src = img.getAttribute('src') || '';
+                if (src) e.covers.push({ thumb: src, full: _bbWdFullImage(src), cap: img.getAttribute('title') || img.getAttribute('alt') || e.text });
+            };
+            for (let n = el.nextSibling; n; n = n.nextSibling) {
+                if (n.nodeType === 3) {
+                    loose += n.nodeValue;
+                    continue;
+                }
+                if (n.nodeType !== 1) continue;
+                if (n.tagName === 'HR' || n.tagName === 'H1' || isEntry(n)) break;
+                if (n.tagName === 'BR') {
+                    flush();
+                    continue;
+                }
+                flush();
+                if (n.tagName === 'IMG') cover(n);
+                n.querySelectorAll('img').forEach(cover);
+                if (n.tagName !== 'P') continue;
+                (n.innerHTML || '').split(/<br\s*\/?>/i).forEach((h) => {
+                    const box = doc.createElement('span');
+                    box.innerHTML = h;
+                    if (_bbText(box)) lines.push(_bbText(box));
+                });
+            }
+            flush();
+            const notes = [];
+            lines.forEach((line) => {
+                const m = line.match(/^(Released|Label)\s*:\s*(?:Released\s*:\s*)?(.*)$/i);
+                if (m && /^released$/i.test(m[1]) && !e.released) e.released = m[2].trim();
+                else if (m && /^label$/i.test(m[1]) && !e.label) e.label = m[2].trim();
+                else notes.push(line);
+            });
+            e.note = notes.join(' · ');
+            if (section) sectionNames.add(section);
+            entries.push(e);
+        });
+        Lib.debug('init', `_bbGalleryRead: ${entries.length} entr${entries.length === 1 ? 'y' : 'ies'}, ${tabOf.size} strip covers on ${base}.`);
+        return { entries, sections: sectionNames.size };
+    }
+
+    /**
+     * The live page's entries (`_bbGalleryRead()`), once a page load:
+     * `match` and the table's columns ask it before the press.
+     *
+     * @returns {{entries: Array<Object>, sections: number}}
+     */
+    function _bbGalleryLive() {
+        if (!_bbGalleryLiveRec) _bbGalleryLiveRec = _bbGalleryRead(document, _bbDetailUrl()) || { entries: [], sections: 0 };
+        return _bbGalleryLiveRec;
+    }
+
+    /**
+     * The gallery table's columns: Year, Release, Subtitle (when an entry has
+     * one), Cover, Released, Label, Note (when one has more lines), Section
+     * (a page with several), Tab (when a release is in the strip).
+     *
+     * @param {{entries: Array<Object>, sections: number}} rec
+     * @returns {string[]}
+     */
+    function _bbGalleryCols(rec) {
+        const any = k => rec.entries.some(x => x[k]);
+        return ['Year', 'Release', ...(any('subtitle') ? ['Subtitle'] : []), 'Cover', 'Released', 'Label',
+            ...(any('note') ? ['Note'] : []), ...(rec.sections > 1 ? ['Section'] : []), ...(any('tab') ? ['Tab'] : [])];
+    }
+
+    /**
+     * `toHtml` of bb-gallery: the copy's entries as one `table.tbl`. The
+     * release linked (a single's song in the MusicBrainz style while that
+     * setting is on, the wiki's title as the hover); each cover an
+     * `a.mb-bb-cover` around its thumbnail, to the full image, the image
+     * card's and viewer's trigger (`data-mb-fi="bbg"`); Released in ISO where
+     * it can be, the wiki's text as the hover.
+     *
+     * @param {string} text - The page's HTML.
+     * @param {string} base - Its URL.
+     * @returns {string} An HTML document.
+     * @throws {Error} When the page has no entry (`status` 0).
+     */
+    function _bbGalleryToHtml(text, base) {
+        const rec = _bbGalleryRead(new DOMParser().parseFromString(text, 'text/html'), base);
+        if (!rec || !rec.entries.length) throw Object.assign(new Error('This Brucebase page lists no release'), { status: 0 });
+        const e = _rgEsc;
+        const cols = _bbGalleryCols(rec);
+        const tip = (shown, raw, inner) => (shown !== raw ? `<span data-mb-tip title="${e(`As written on Brucebase:\n${raw}`)}">${inner}</span>` : inner);
+        const rows = rec.entries.map((x) => {
+            const shown = /\/(?:song|ott):/.test(x.href) ? _mbSiteTitleText(x.text) : x.text;
+            const iso = _bbGalleryIso(x.released);
+            const cell = {
+                Year: e(x.year),
+                Release: tip(shown, x.text, `<a href="${e(x.href)}" target="_blank" rel="noopener">${e(shown)}</a>`),
+                Subtitle: e(x.subtitle),
+                Cover: x.covers.map(c => `<a class="mb-bb-cover" data-mbtt-fn="fi-img" data-mb-fi="bbg" data-mb-bbg-cap="${e(c.cap)}" href="${e(c.full)}" target="_blank" rel="noopener noreferrer">` +
+                    `<img src="${e(c.thumb)}" alt="" loading="lazy"></a>`).join(''),
+                Released: iso ? tip(iso, x.released, e(iso)) : e(x.released),
+                Label: e(x.label), Note: e(x.note), Section: e(x.section), Tab: e(x.tab),
+            };
+            return `<tr>${cols.map(c => `<td>${cell[c] || ''}</td>`).join('')}</tr>`;
+        });
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><table class="tbl"><thead><tr>${cols.map(c => `<th>${e(c)}</th>`).join('')}</tr></thead>` +
+            `<tbody>${rows.join('')}</tbody></table></body></html>`;
+    }
+
+    /**
+     * One Cover of a gallery row as the image card and the viewer take it
+     * (`_BBG_FI`): the full image for both — the table's thumbnail is the
+     * wiki's ~100 px one, too small for the card — and its caption.
+     *
+     * @param {HTMLAnchorElement} a - The row's `a.mb-bb-cover`.
+     * @param {HTMLTableElement} table
+     * @param {string} path - The viewer's key for the row.
+     * @returns {{thumb: string, small: string, title: string, type: string, asked: boolean, path: string}}
+     */
+    function _bbGalleryArtRowFor(a, table, path) {
+        return { thumb: a.href, small: a.href, title: a.dataset.mbBbgCap || 'Brucebase cover', type: '', asked: false, path };
+    }
+
+    // ── Brucebase registered songs — `bb-registered` (Phase 13, batch 3, F) ──
+    // `stats:songs-registered`: the songs registered at the Library of
+    // Congress, plain list items with no links, under the registration
+    // record. As a table: Title, and Song page — the song's page when its
+    // title is on stats:songs (one request for that list, read once). The
+    // record is the head's text.
+
+    /** @type {?Map<string, string>} stats:songs' titles (squashed) → the song's page. */
+    let _bbSongIndex = null;
+
+    /**
+     * A title for matching: lower case, letters and digits only.
+     *
+     * @param {string} s
+     * @returns {string}
+     */
+    function _bbSquash(s) {
+        return String(s || '').toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '');
+    }
+
+    /**
+     * Reads stats:songs once a page load (one GET after the windows' rate
+     * slot) into `_bbSongIndex`: every song link's title and slug, squashed,
+     * to its page. A failure leaves the index empty with a warning: the
+     * table still comes, its Song page column empty.
+     *
+     * @returns {Promise<void>}
+     */
+    async function _bbSongIndexLoad() {
+        if (_bbSongIndex) return;
+        const index = new Map();
+        try {
+            await _dpAwaitSlot();
+            const d = new DOMParser().parseFromString(await fetchHtml(new URL('/stats:songs', window.location.href).href), 'text/html');
+            d.querySelectorAll('#page-content a[href*="/song:"]').forEach((a) => {
+                const href = _bbAbsHref(a.getAttribute('href'));
+                const name = _bbSquash(a.textContent);
+                if (name && !index.has(name)) index.set(name, href);
+                const slug = _bbSquash((href.split('/song:')[1] || '').replace(/-/g, ''));
+                if (slug && !index.has(slug)) index.set(slug, href);
+            });
+        } catch (err) {
+            Lib.warn('fetch', `Brucebase registered songs: stats:songs could not be read (${err && err.message}); no Song page column.`);
+        }
+        _bbSongIndex = index;
+        Lib.debug('fetch', `Brucebase registered songs: ${index.size} song names from stats:songs.`);
+    }
+
+    /**
+     * Reads stats:songs-registered: the list items with no link (the
+     * titles) and the paragraphs before the list (the registration record).
+     *
+     * @param {Document} doc
+     * @returns {?{titles: string[], record: string}}
+     */
+    function _bbRegisteredRead(doc) {
+        const root = doc.getElementById('page-content');
+        if (!root) return null;
+        const titles = Array.from(root.querySelectorAll('li'))
+            .filter(li => !li.closest('ul.yui-nav') && !li.querySelector('a') && _bbText(li))
+            .map(li => _bbText(li));
+        const list = root.querySelector('ul');
+        const record = Array.from(root.querySelectorAll('p'))
+            .filter(p => !list || (p.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING))
+            .map(p => _dpBlockText(p)).filter(Boolean).join('\n\n');
+        return { titles, record };
+    }
+
+    /**
+     * `toHtml` of bb-registered: a row per title — Title (the MusicBrainz
+     * style while that setting is on, the wiki's text as the hover), Song
+     * page ("song page", linked, when `_bbSongIndex` knows the title).
+     *
+     * @param {string} text - The page's HTML.
+     * @returns {string} An HTML document.
+     * @throws {Error} When the page lists no title (`status` 0).
+     */
+    function _bbRegisteredToHtml(text) {
+        const rec = _bbRegisteredRead(new DOMParser().parseFromString(text, 'text/html'));
+        if (!rec || !rec.titles.length) throw Object.assign(new Error('This Brucebase page lists no title'), { status: 0 });
+        const e = _rgEsc;
+        const index = _bbSongIndex || new Map();
+        const rows = rec.titles.map((t) => {
+            const shown = _mbSiteTitleText(t);
+            const title = shown !== t ? `<span data-mb-tip title="${e(`As written on Brucebase:\n${t}`)}">${e(shown)}</span>` : e(t);
+            const href = index.get(_bbSquash(t));
+            return `<tr><td>${title}</td><td>${href ? `<a href="${e(href)}" target="_blank" rel="noopener">song page</a>` : ''}</td></tr>`;
+        });
+        return '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><table class="tbl"><thead><tr><th>Title</th><th>Song page</th></tr></thead>' +
+            `<tbody>${rows.join('')}</tbody></table></body></html>`;
+    }
+
+    /**
+     * The head of stats:songs-registered (`_fdHeadSpec()`): the registration
+     * record as its text, the card (Titles, With a song page, This page).
+     * Null on another page.
+     *
+     * @returns {?Object}
+     */
+    function _bbRegisteredHeadSpec() {
+        const h2 = document.querySelector('h2.mb-bb-registered-heading');
+        if (activeDefinition?.type !== 'bb-registered' || !h2) return null;
+        const rec = _bbRegisteredRead(new DOMParser().parseFromString(_bbDetailPageHtml(), 'text/html'));
+        if (!rec) return null;
+        const url = _bbDetailUrl();
+        const index = _bbSongIndex || new Map();
+        const known = rec.titles.filter(t => index.has(_bbSquash(t))).length;
+        return {
+            root: h2.parentElement, h2,
+            sub: { what: 'Registered songs' },
+            text: rec.record ? { title: 'The registration', body: rec.record } : null,
+            facts: [
+                ['registered', 'Registered songs', [
+                    ['Titles', String(rec.titles.length)],
+                    ['With a song page', _bbSongIndex ? String(known) : ''],
+                    ['This page', _fdLink(url, url.replace(/^https?:\/\/[^/]+\//, ''))],
+                ]],
+            ],
+            title: _bbText(document.getElementById('page-title')), source: 'Brucebase\'s page',
+        };
+    }
+
     /**
      * Installs the Brucebase stylesheet, once per document.
      *
@@ -30178,6 +30525,17 @@
             }
             body.mb-sa-host-bb .mb-bb-hidden {
                 display: none !important;
+            }
+            /* bb-gallery: the covers, small; the card and the viewer show them big. */
+            body.mb-sa-host-bb a.mb-bb-cover {
+                display: inline-block;
+                margin-right: 3px;
+            }
+            body.mb-sa-host-bb a.mb-bb-cover > img {
+                height: 48px;
+                width: auto;
+                vertical-align: middle;
+                border: 1px solid #d9cfbd;
             }
             /* bb-song-tours: the share of the tour's shows, as a bar. */
             body.mb-sa-host-bb .mb-bb-share-bar {
@@ -33899,7 +34257,7 @@
     }
 
     /** @type {Object<string, string>} The data heading of each Brucebase detail kind. */
-    const _BB_DETAIL_HEADINGS = { event: 'Event', song: 'Song', ott: 'Versions', venue: 'Venue', relation: 'Relation', retail: 'Release', bootleg: 'Bootleg', story: 'Story', 'stats-list': 'List', 'stats-tables': 'Tables', 'song-tours': 'Tours', sessions: 'Sessions' };
+    const _BB_DETAIL_HEADINGS = { event: 'Event', song: 'Song', ott: 'Versions', venue: 'Venue', relation: 'Relation', retail: 'Release', bootleg: 'Bootleg', story: 'Story', 'stats-list': 'List', 'stats-tables': 'Tables', 'song-tours': 'Tours', sessions: 'Sessions', gallery: 'Releases', registered: 'Songs' };
 
     /**
      * The live page's part of a Brucebase detail pageType
@@ -33915,10 +34273,12 @@
      * Idempotent. The tag views (`_BB_TAGS_HEADERS`: bb-tags, bb-tag,
      * bb-pages-and-tags, Phase 11) are `_bbTagsLive()`'s: their table has
      * its columns from the start, and another button's view replaces it.
-     * A stats page's list ('stats-list', bb-stats, Phase 13) and a song's
-     * tour counts ('song-tours', bb-song-tours) get their columns from the
-     * start too (`_bbStatsListCols()`, `_bbSongToursCols()` over the live
-     * page), as a single table would otherwise keep the placeholder's.
+     * A stats page's list ('stats-list', bb-stats, Phase 13), a song's
+     * tour counts ('song-tours', bb-song-tours), a discography ('gallery')
+     * and the registered songs ('registered') get their columns from the
+     * start too (`_bbStatsListCols()`, `_bbSongToursCols()`,
+     * `_bbGalleryCols()` over the live page), as a single table would
+     * otherwise keep the placeholder's.
      *
      * @param {Object} def - The active merged pageDefinition.
      * @returns {void}
@@ -33941,6 +34301,8 @@
         let cols = ['Song'];
         if (kind === 'stats-list' && _bbStatsLive().list.length) cols = _bbStatsListCols(_bbStatsLive().list);
         else if (kind === 'song-tours') cols = _bbSongToursCols(_bbSongToursLive());
+        else if (kind === 'gallery') cols = _bbGalleryCols(_bbGalleryLive());
+        else if (kind === 'registered') cols = ['Title', 'Song page'];
         table.innerHTML = `<thead><tr>${cols.map(c => `<th>${_rgEsc(c)}</th>`).join('')}</tr></thead><tbody></tbody>`;
         let native = document.querySelector('h2.mb-bb-native-h2');
         if (!native) {
@@ -42040,6 +42402,7 @@
             case 'bs': return _BS_FI;
             case 'bb': return _BB_FI;
             case 'bbs': return _BBS_FI;
+            case 'bbg': return _BBG_FI;
             case 'sll': return _SLL_FI;
             case 'ia': return _IA_FI;
             default: return null;
@@ -42976,6 +43339,40 @@
         loadingText: 'Loading the images from the song\'s page…',
         foot: 'Click: viewer · Ctrl-click: the song\'s page',
     });
+
+    /**
+     * The artwork viewer's context for a Brucebase discography's Cover
+     * column (`_BBG_FI`).
+     * @type {ArtCtx}
+     */
+    const _BBG_ART_CTX = { key: 'bbg', column: 'Cover', external: true, imagesCache: new Map() };
+
+    /**
+     * A Brucebase discography's Cover column (bb-gallery, Phase 13 batch 3;
+     * mockup E: "the cover in the image card and the viewer") as a provider
+     * of the foreign-image card and viewer, as a Discogs release's images
+     * table (`_DGI_FI`): the row's picture is on the page, so its record is
+     * the row itself — nothing is asked. The card is the cover, big, with
+     * its caption; a click opens the viewer at full size, Shift+← → step
+     * through the rows shown. Off with `sa_bb_tip_images` (the card only).
+     * @type {FiProvider}
+     */
+    const _BBG_FI = {
+        ..._DGI_FI,
+        ctx: _BBG_ART_CTX,
+        name: 'Brucebase',
+        tableSel: 'body.mb-sa-host-bb table.tbl',
+        tableIs: null,
+        linkSel: 'a.mb-bb-cover[data-mb-fi="bbg"]',
+        cardOn: () => Lib.settings.sa_bb_tip_images !== false,
+        rowFor: (a, table, path) => _bbGalleryArtRowFor(a, table, path),
+        title: () => {
+            const h1 = document.querySelector('h1.mb-bb-h1 bdi');
+            return h1 ? h1.textContent : '';
+        },
+        kept: () => '',
+        gal: { heading: 'Covers', where: 'Cover column', point: 'its cover', rows: 'releases', page: 'cover', pages: 'covers' },
+    };
 
     /**
      * springsteenlyrics.com's lyrics index as a provider (mockup L1,
@@ -58151,6 +58548,76 @@
             features: {
                 bbRelationsToTable: true,
                 stickyColumn: 'Name'
+            },
+            tableMode: 'single'
+        },
+
+        // A discography (`stats:discography-*`; org/brucebase.org Phase 13,
+        // batch 3): a row per entry of the page — year, release, subtitle,
+        // cover (the image card and the viewer), released, label — with the
+        // section and the cover strip's tab. From a copy of the page, no
+        // request. A page with no entries (the playlist ones) stays bb-stats'.
+        {
+            type: 'bb-gallery',
+            host: 'brucebase.wikidot.com',
+            match: (path) => _BB_GALLERY_PATH_RE.test(path) && _bbGalleryLive().entries.length > 0,
+            buttons: [ {
+                label: 'Show the releases', shortLabel: 'Releases',
+                description: 'No request: every release this page lists — year, title, subtitle, cover, release date, label, and the section and tab it is under — in one table; a cover opens big on hover and in the viewer on a click. The wiki\'s page folded below.'
+            } ],
+            features: {
+                bbDetailToTable: 'gallery',
+                pageRequest: () => {
+                    const url = _bbDetailUrl();
+                    return { url, fetchText: async () => _bbDetailPageHtml(), toHtml: text => _bbGalleryToHtml(text, url) };
+                },
+                pageCountAsync: () => 1,
+                stickyColumn: 'Release',
+                columnExtractors: [
+                    { sourceColumn: 'Released', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
+                ],
+                integerColumns: [ { sourceColumn: 'Year', align: 'C' }, { sourceColumn: 'DD', align: 'R' }, { sourceColumn: 'MM', align: 'R' }, { sourceColumn: 'YYYY', align: 'C' } ],
+                columnDescriptions: {
+                    Subtitle: 'What the wiki writes under the title ("Expanded Edition", "digital").',
+                    Released: 'The release date, in ISO where the wiki\'s date allows ("October 17, 2025" → 2025-10-17); its text as the hover.',
+                    Section: 'The part of the page the release is listed in (Album Release, Single Release, Record Store Day, …).',
+                    Tab: 'The tab of the cover strip at the top of the page the release is in.',
+                    Note: 'Any other line the entry has.',
+                }
+            },
+            tableMode: 'single'
+        },
+
+        // The songs registered at the Library of Congress
+        // (`stats:songs-registered`; Phase 13, batch 3): a row per title, its
+        // song page when stats:songs has the title (one request for that
+        // list); the registration record above.
+        {
+            type: 'bb-registered',
+            host: 'brucebase.wikidot.com',
+            match: (path) => /^\/stats:songs-registered\/?$/.test(path),
+            buttons: [ {
+                label: 'Show the songs', shortLabel: 'Songs',
+                description: 'Every title on this page in one table, with the song\'s Brucebase page where the song list has it (one request, for stats:songs); the registration record above, the wiki\'s page folded below.'
+            } ],
+            features: {
+                bbDetailToTable: 'registered',
+                pageRequest: () => {
+                    const url = _bbDetailUrl();
+                    return {
+                        url,
+                        fetchText: async () => {
+                            await _bbSongIndexLoad();
+                            return _bbDetailPageHtml();
+                        },
+                        toHtml: text => _bbRegisteredToHtml(text)
+                    };
+                },
+                pageCountAsync: () => 1,
+                stickyColumn: 'Title',
+                columnDescriptions: {
+                    'Song page': 'The song\'s Brucebase page, when stats:songs lists the title (matched letters and digits only).',
+                }
             },
             tableMode: 'single'
         },

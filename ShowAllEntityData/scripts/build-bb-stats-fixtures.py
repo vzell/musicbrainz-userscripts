@@ -41,6 +41,10 @@ and scripts/check-bb-tours-sessions.js found (2026-11-12; batch 3: `bb-gallery`,
   discography-retail              a gallery with nine sections (Album, Video,
                                   Single, …)
   discography-single              a gallery whose entries link song pages
+  discography-playlist            a discography page with the strip and lists
+                                  but no entries: stays bb-stats
+  discography                     the hub: its tabs include the other discography
+                                  pages, entries inside a tab: stays bb-stats
   songs-registered                a text page: titles as plain list items
 
 Written as tests/fixtures/bb-stats-<name>.html. Scripts, noscripts and
@@ -80,6 +84,8 @@ PAGES = [
     'discography-album',
     'discography-retail',
     'discography-single',
+    'discography-playlist',
+    'discography',
     'songs-registered',
 ]
 
