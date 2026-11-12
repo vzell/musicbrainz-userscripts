@@ -185484,6 +185484,19 @@ a { color: #1565c0; }`;
             bbEvpStageLines: s => _bbEvpStageLines(s),
 
             /**
+             * Phase 16 batch 3: the readers of the stats, On The Tracks and
+             * discography pages over an HTML string (the window's sources).
+             *
+             * @param {string} html
+             * @param {string} url
+             * @returns {?Object}
+             */
+            bbTourCounts: (html) => _bbTourCounts(new DOMParser().parseFromString(html, 'text/html').getElementById('page-content')),
+            bbSessionsRead: (html, url) => _bbSessionsRead(new DOMParser().parseFromString(html, 'text/html'), url),
+            bbGalleryRead: (html, url) => _bbGalleryRead(new DOMParser().parseFromString(html, 'text/html'), url),
+            bbOttRead: (html, url) => _bbOttRead(new DOMParser().parseFromString(html, 'text/html'), url),
+
+            /**
              * Thin wrapper around `_bbSongRead()` over an HTML string.
              *
              * @param {string} html

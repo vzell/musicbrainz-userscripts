@@ -871,6 +871,14 @@ BB PTs". Last, once Phases 7–15 have added their readers.
   Mutations 15/15 (+5 for this), BB specs 343/343.
   - [X] vzell's live check of batch 2 — OK (2026-11-13), with the page view's Gallery/News asked for
   - [X] vzell's live check of the page view's Gallery/News — OK (2026-11-13)
+  Batch 3 mockup (2026-11-13): https://claude.ai/artifact/6HcKkN6QeAvw1SKk4BYC5f
+  (=scripts/extract-bb-batch3-mockup.js= → =debug/bb-batch3-mockup.json=, =scripts/build-bb-batch3-mockup.py=
+  with =scripts/bb-batch3-mockup.template.html=; test hooks =bbTourCounts=, =bbSessionsRead=, =bbGalleryRead=,
+  =bbOttRead= added): Thunder Road's tour counts, Born To Run's studio sessions, the retail-audio
+  discography, an On The Tracks page, Born In The U.S.A.'s lyrics — no preview today. Questions: 1 the
+  setting(s), 2 a sessions page's tables (100 rows / all / names), 3 a discography grouped or flat, 4 a
+  lyrics card's first lines, 5 the lyrics window's versions, 6 the other stats pages. multi:/soundcheck:
+  preview as their gig (no question). Waiting for vzell.
 - [ ] vzell's live check
 
 *** Handoff to petri (2026-11-12T04:05+01:00, from vzell-lap)
