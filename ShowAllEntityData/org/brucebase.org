@@ -870,6 +870,7 @@ BB PTs". Last, once Phases 7–15 have added their readers.
   text tabs (=_bbGalleryNewsFromPanel()=), the window keeps it after the live dates; parser version 26.
   Mutations 15/15 (+5 for this), BB specs 343/343.
   - [X] vzell's live check of batch 2 — OK (2026-11-13), with the page view's Gallery/News asked for
+  - [X] vzell's live check of the page view's Gallery/News — OK (2026-11-13)
 - [ ] vzell's live check
 
 *** Handoff to petri (2026-11-12T04:05+01:00, from vzell-lap)
