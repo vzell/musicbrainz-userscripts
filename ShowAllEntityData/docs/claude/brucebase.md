@@ -1209,7 +1209,8 @@ also `h2.mb-bb-<kind>-heading`).
     as Live Download: `_bbEventList()`. A "multi" page's kind is "Multiple
     shows" (`_BB_ENTRY_KINDS`).
   - On The Tracks (`_bbOttRows()`): a row per `<tr>` with three cells,
-    "THE PROMISE - V1" → Title, Version; the time; the release
+    "THE PROMISE - V1" → Title, Version (since Phase 13 batch 2 also Take
+    and Date, `_bbSplitVersion()`: "Stats pages", batch 2); the time; the release
     abbreviations (each linking a `/bootleg:` or release page) or the
     text ("uncirculating"). Its paragraphs are a text section.
   - Released on Album, Lyrics (text only, its lines kept) and any other tab
@@ -1375,7 +1376,9 @@ answers in org/brucebase.org, "* DONE stats answers". Batch 1 is shapes A
   the fragments other stats pages include, `awards-*` and
   `performances-with-bruce-*` (answer 8) — AND the live page must have one
   of the two shapes: a song's tour counts, a studio session's parts and the
-  hubs stay `bb-page`'s (previews only) until batch 2. The `@include` line
+  hubs stay `bb-page`'s (previews only) until batch 2 (since batch 2 the
+  tour counts and studio sessions have pageTypes of their own, before
+  this one; below). The `@include` line
   that admits every Brucebase page already covers them.
 - **The list** (`_bbStatsRead()` `list`): every `li` led by a link to a
   page, once per link and tab path. Links to other stats pages and the
@@ -1399,7 +1402,10 @@ answers in org/brucebase.org, "* DONE stats answers". Batch 1 is shapes A
 - **The tables** (`_bbStatsRead()` `tables`): every table not inside
   another with two or more columns and data rows. The columns: a first row
   of headings (`th`, a row bold by its style as on Awards, or every filled
-  cell one bold run); else the last heading-only table of the same width
+  cell one bold run; since batch 2 a row bold by its style only when a row
+  follows that is not bold the same way with as many cells — a studio
+  session's version tables bold every row, and had their first take as
+  the header); else the last heading-only table of the same width
   (Set Openers And Closers: one heading table, then a table per tour); else
   "Column N"; repeated names get " (2)". A first row of one cell is the
   caption; a one-cell row spanning the table further down names the rows
@@ -1424,6 +1430,81 @@ answers in org/brucebase.org, "* DONE stats answers". Batch 1 is shapes A
   `loadBbStatsPage()`, fixtures `bb-stats-<name>.html` (nine pages,
   `scripts/build-bb-stats-fixtures.py`), mutations
   `scripts/mutations/bb-stats.json` (17).
+
+## Song tour counts — `bb-song-tours`, and studio sessions — `bb-sessions` (Phase 13, batch 2, 2026-11-12)
+
+Shapes C and D of the stats survey (same mockup and answers: 5, a pageType
+of their own for the tour counts; 6, studio sessions as a detail pageType
+like bb-retail, with the On The Tracks title / version / take split built
+alongside). Both definitions sit before `bb-stats`, read the copy of the
+page (no request) and put our heading and table before `#page-content`
+(`applyBbDetailToTable()`: 'song-tours' → "Tours", 'sessions' →
+"Sessions"), the wiki's page folded below.
+
+- **`bb-song-tours`** (`stats:<song>-tour`, `_BB_SONG_TOURS_PATH_RE`):
+  `_bbTourCounts()` reads the page's one-row boxes — "Performed at 59
+  show(s) of" beside "130 on the 2023-25 International Tour.", the note
+  under it ("(Excl. the first leg of …)") — and the last box, "Performed
+  at 5 known other show(s), plus 0 public tour rehearsal(s)." One single
+  table (its columns set at the press, `_bbSongToursCols()`): Tour,
+  Played, Tour shows, Share ("45.4%"), Bar (a span sized to the share,
+  `.mb-bb-share-bar`), Note when a box has one (every page since the 2025
+  legs); every tour in the page's order, the zeros too; then "Other known
+  shows" and "Public tour rehearsals". The song page's Performances by
+  tour reads its tab with the same function and keeps only the tours
+  played on. `match` needs a tour row: a song never played on a tour (only
+  the box of other shows) and the `shows-*-tour` pages stay `bb-stats`'
+  or `bb-page`'s.
+- **`bb-sessions`** (`stats:<album>-studio-sessions` and its parts,
+  `_BB_SESSIONS_PATH_RE`; under `sa_bb_detail_pages`, off → bb-stats):
+  `_bbSessionsRead()` takes `_bbStatsRead()`'s tables with one-row tables
+  kept (`minRows: 1`: a song with one version), names each by its section
+  (the h1 before it, unless it is the tab's own label) › tab path ›
+  caption, merges consecutive tables of one name and columns (Version
+  History is a table per song on the wiki, one here), heads a two-column
+  list numbered "1." # / Song, and splits a Song Title column of takes.
+  `match` needs a table: a part that is only words (`-overview`,
+  `-credits`) is not bb-sessions. All sub-tables start open.
+- **The split** (`_bbSplitVersion()`, shared with On The Tracks:
+  `_bbOttRows()`, `_bbOttCols()`, `_bbOttRowHtml()` on the song, OTT and
+  release pages — the "On The Tracks" TODO): "BORN TO RUN - V3a" → Song,
+  Version; "THE HEIST - V2 - take 14", "(take 1)", "(takes 5-8)" → Take;
+  a bracket with a year in it → Date as written ("August 1, 1974", "poss.
+  October 16, 1974", "Jun-29-1983"); what is left stays with the version
+  ("V14b radio mix", "V7b (mix 2)"). Take and Date are columns only where a
+  row has one. In the sessions, a column splits when a cell names one
+  take; a title naming none keeps its cell as Song; a column where a cell
+  lists several takes (the Timeline: a day's songs) is not split.
+- **The head** (`_bbSessionsHeadSpec()`): "~ Studio sessions"; Overview
+  (the h1's paragraphs); Credits (the page's code block, "Commercially
+  Released*: …", "Label: …", and its footnote) closed; the Studio sessions
+  card — Album (the first `/retail:` link), Released, Label, Sections (the
+  h1s), Tables, Links (songs, bootlegs, people, venues linked), This page;
+  the tags; the pictures (the cover).
+- **The whole families**: `node scripts/check-bb-tours-sessions.js`
+  (2026-11-12T12:38+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) ·
+  Playwright 1.62.1 Chromium) over every tour page
+  (`scripts/copy-bb-stats-tours.sh` → `debug/bb-mirror/stats-tour/`, 1,270)
+  and every studio-session page (258): 599 tour pages with tour rows (8,667,
+  2,352 played), 614 with only the other shows, 57 with neither (the
+  `shows-*-tour` pages); no box the reader missed, no tour played more often
+  than it had shows. 182 session pages with a table (487 sub-tables from
+  822 wiki tables, 5,888 takes split), 76 without; the 35 main pages: 34
+  with the album, 27 with a release date, 24 a label, 31 an overview. No
+  ragged table; all-"Column N" tables remain on the irregular sequence
+  layouts (Final Sequence's sides, 11 pages). The batch-1 check
+  (`check-bb-stats-reader.js`) over the other stats pages is unchanged by
+  the header rule (compared table by table).
+- **Not taken from the mockup**: the notes under each song's version table
+  (Version History's "Note: …" paragraphs) are not in the table — the
+  mockup had none; they stay in the wiki's page below.
+- **Tests**: `tests/fixtures/bb-song-tours-sessions.spec.js` (7), fixtures
+  `bb-stats-57-channels-and-nothin-on-tour`, `-ain-t-that-a-shame-tour`,
+  `-born-to-run-studio-sessions`, `-…-timeline`, `-…-overview`,
+  `-devils-and-dust-studio-sessions-details`, and the tour fixture of
+  batch 1 (`4th-of-july-…-tour`, now bb-song-tours'); `bb-release.spec.js`
+  checks the Take and Date of On The Tracks; mutations
+  `scripts/mutations/bb-song-tours-sessions.json` (26).
 
 ## Show links on Brucebase's own pages (Phase 8, 2026-11-11)
 

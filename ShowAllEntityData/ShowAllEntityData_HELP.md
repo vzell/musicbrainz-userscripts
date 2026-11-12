@@ -4140,8 +4140,9 @@ fetched, everything comes from the page itself:
 release, who played what), the performances counted by tour (only the
 tours it was played on, with its share of the shows), every performance,
 multiple performances on one date, snippets, the official live downloads,
-and its takes On The Tracks (title, take, running time, the bootlegs and
-releases it is on). Above them: where the song comes from, Released on
+and its takes On The Tracks (title, version, and the take and recording date
+where the wiki names them — "THE HEIST - V2 - take 14" reads *The Heist*,
+*V2*, *14* — running time, the bootlegs and releases it is on). Above them: where the song comes from, Released on
 Album, the lyrics and notes (folded), a Song card (how often and when last
 played live, released on, live downloads, takes), its tags, media and
 links. An **On The Tracks** page (`/ott:…`) gets **Versions**: its takes as
@@ -4245,10 +4246,28 @@ the page itself, and the wiki's page stays below, folded under *Brucebase page*.
   a letter of the alphabet) becomes a **Section** column.
 
 A page with both kinds of content (songs by album) has both buttons; a second
-press loads the page again for the other view. The pages that are neither a
-list nor tables — a song's counts per tour, the parts of a studio-sessions
-page, the overview pages — stay as the wiki shows them, and their links still
-preview.
+press loads the page again for the other view.
+
+- **Tours**, on a song's tour page (`stats:<song>-tour`): one row per tour —
+  how often the song was **Played**, the tour's own number of shows (**Tour
+  shows**), the **Share** with a bar, and the page's **Note** ("Excl. the
+  first leg of …") — every tour, the ones it was not played on too, then the
+  other known shows and the public tour rehearsals. A song never played on a
+  tour has nothing to show and keeps the wiki's page.
+- **Sessions**, on an album's studio sessions page
+  (`stats:<album>-studio-sessions`, and each of its parts on its own): a
+  sub-table per section and tab (*Released › Born To Run*, *Additional
+  Recordings › Unreleased*, *Details › Version History*, *Details ›
+  Timeline*, the potential album sequences), all open. Version History is
+  one table of every take, its name split into **Song**, **Version**,
+  **Take** and **Date** ("JUNGLELAND - V1 (August 1, 1974)"); what else the
+  wiki says about a take ("radio mix", "[Demo]") stays with the version.
+  Above them the album and its release date, label, credits and overview.
+  It comes with *Detail pages*; with that off the page gets
+  **Tables**.
+
+The overview pages and the studio-session parts that are only text stay as
+the wiki shows them, and their links still preview.
 
 </details>
 

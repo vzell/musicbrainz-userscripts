@@ -29208,3 +29208,36 @@ an item; stats:for-collectors (a hub of them) was added and the mutation fails n
 `bb-stats.spec.js` 8/8, `scripts/mutations/bb-stats.json` 17/17 OK, 13 sibling specs 182
 green. `_defOpensSubTable()` takes `'first'` and the group's index; bb-event.json's find for
 it refreshed (OK).
+
+## 2026-11-12 — Brucebase song tour counts and studio sessions; bold rows taken as headers (feature/bb-overhaul, Phase 13 batch 2)
+
+Env: 2026-11-12T12:56+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs).
+
+`bb-song-tours` and `bb-sessions` (docs/claude/brucebase.md, "Song tour counts … and studio
+sessions"), and the On The Tracks take split. Both families were read whole before any spec
+(`scripts/copy-bb-stats-tours.sh`, `scripts/check-bb-tours-sessions.js`): of the 1,270 tour
+pages 599 have tour rows, 614 only the box of other shows, 57 (`shows-*-tour`) neither — so
+`match` asks for a tour row, as bb-stats asks for a shape.
+
+Root cause found on the studio-session pages, in batch 1's `_bbStatsRead()`: their version
+tables set `font-weight: bold` on every `tr`, and the reader took a `tr` bold by its style as a
+heading row (added for Awards). So each song's first take was the table's header ("BACKSTREETS
+- V1 | Column 2 | uncirculating"), and a table of ONE bold row was read as a heading-only table
+whose row then became `lastHead` for the tables after it ("COMIN' DOWN MARIA | 04:22 | GUEST:
+BABYLON" over Greatest Hits' other songs; "1. | ATLANTIC CITY" on Nebraska's electric
+sessions). Fix: a style-bold row is a header only when a row follows that is not bold the same
+way with as many cells. The first form of the fix (just "the next row is not bold") broke
+Awards — its header row is followed by a ceremony row, bold too but one spanning cell — which
+the whole-copy check showed before any spec ran: compared table by table with the earlier
+`debug/bb-stats-reader.json`, 15 award pages lost their columns; with the cell-count condition
+none of the non-session pages changes.
+
+The take split: a Timeline cell lists a day's songs, several takes in one cell, and splitting
+the cells that happened to name one take left a half-filled Version column; a column is split
+only when no cell lists several. Two mutations first passed (`one-row tables are dropped`: BTR's
+Version History has no one-version song, the one-row tables are all in "Possible BTR-era
+Songs", whose row count no assertion read; `a title with no take loses its cell`: the check
+accepted an empty Song); the spec pins both now and they fail. mutation-check reported the
+first with the harness's auth hint as its error line, so it was planted by hand once: the
+sub-table is gone (TypeError on its rows), the right reason. Results: the new spec 7/7, 26 + 4
+refreshed mutations OK, all 27 BB specs + sl-include-regex 294 green.

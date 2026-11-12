@@ -153,7 +153,7 @@ test.describe('bb-retail: "Born To Run"', () => {
         expect(t['Born To Run'].headers).toEqual(['#', 'Song', 'Time', 'Release', 'Note']);
         expect(t.Personnel.headers).toEqual(['Name', 'Band', 'Instruments']);
         expect(t['Related releases'].headers).toEqual(['Group', 'Release', 'Note']);
-        expect(t['On The Tracks'].headers).toEqual(['Title', 'Version', 'Time', 'Releases']);
+        expect(t['On The Tracks'].headers, 'a take and a date split from the version (Phase 13)').toEqual(['Title', 'Version', 'Take', 'Date', 'Time', 'Releases']);
         expect(t.Performance.headers).toEqual(['Song', 'Performed']);
         expect(t['Born To Run'].rows).toHaveLength(c['Born To Run'].tracks);
         // Personnel: Bruce's list and the band's, every person a row.
@@ -168,9 +168,11 @@ test.describe('bb-retail: "Born To Run"', () => {
         // Related releases: the group, the release, its <sup> as the Note.
         expect(t['Related releases'].rows).toContainEqual(['Other', 'Born To Run (30th Anniversary Edition)', '2005']);
         expect(t['Related releases'].rows).toContainEqual(['Other', 'The Album Collection, Vol.1 (1973-1984)', '']);
-        // A take's version keeps what follows it.
-        expect(t['On The Tracks'].rows).toContainEqual(['The Heist', 'V2 - take 14', '0:13', 'BTRCS']);
-        expect(t['On The Tracks'].rows).toContainEqual(['Jungleland', 'V1 (August 1, 1974)', '', 'uncirculating']);
+        // "THE HEIST - V2 - take 14": Title, Version, Take; a bracket with a
+        // year in it is the Date (org/brucebase.org, "On The Tracks").
+        expect(t['On The Tracks'].rows).toContainEqual(['The Heist', 'V2', '14', '', '0:13', 'BTRCS']);
+        expect(t['On The Tracks'].rows).toContainEqual(['Jungleland', 'V1', '', 'August 1, 1974', '', 'uncirculating']);
+        expect(t['On The Tracks'].rows).toContainEqual(expect.arrayContaining(['Jungleland', 'V3', '', 'poss. October 16, 1974']));
         expect(t.Performance.rows[0]).toEqual(['Thunder Road', '1582']);
         expect(Object.values(t).every(x => x.open)).toBe(true);
         expect(requests.slice(before).filter(u => !/wdfiles\.com/.test(u))).toEqual([]);

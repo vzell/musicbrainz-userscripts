@@ -212,8 +212,8 @@
         "why": "The live table gets the list's columns at the press, as the tag views' (a single table would otherwise keep the placeholder's).",
         "edits": [
             {
-                "find": "        const cols = kind === 'stats-list' && _bbStatsLive().list.length ? _bbStatsListCols(_bbStatsLive().list) : ['Song'];",
-                "replace": "        const cols = ['Song'];"
+                "find": "        if (kind === 'stats-list' && _bbStatsLive().list.length) cols = _bbStatsListCols(_bbStatsLive().list);",
+                "replace": "        if (false) cols = _bbStatsListCols(_bbStatsLive().list);"
             }
         ],
         "spec": "tests/fixtures/bb-stats.spec.js",

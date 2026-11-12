@@ -79,11 +79,11 @@
     },
     {
         "name": "On The Tracks: a version's suffix not read",
-        "why": "\"THE HEIST - V2 - take 14\": Title The Heist, Version \"V2 - take 14\".",
+        "why": "\"THE HEIST - V2 - take 14\": split with what follows the version (_bbSplitVersion()), not left whole in Title.",
         "edits": [
             {
-                "find": "            const m = name.match(/^(.*?)\\s+-\\s+(V\\d\\w*\\b.*)$/);",
-                "replace": "            const m = name.match(/^(.*?)\\s+-\\s+(V\\w+)$/);"
+                "find": "        const m = s.match(/^(.*?)\\s+-\\s+(V\\d+[A-Za-z]*\\d*)\\b\\s*(.*)$/);",
+                "replace": "        const m = s.match(/^(.*?)\\s+-\\s+(V\\d+[A-Za-z]*\\d*)()$/);"
             }
         ],
         "spec": "tests/fixtures/bb-release.spec.js",

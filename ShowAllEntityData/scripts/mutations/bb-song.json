@@ -30,8 +30,8 @@
         "why": "The Performances tab lists every tour; only those the song was played on are rows.",
         "edits": [
             {
-                "find": "                if (!pm || strongs.length < 2 || !Number(pm[1])) return;\n",
-                "replace": "                if (!pm || strongs.length < 2) return;\n"
+                "find": "        const tours = cells[1] ? _bbTourCounts(cells[1]).tours.filter(t => t.played).map(",
+                "replace": "        const tours = cells[1] ? _bbTourCounts(cells[1]).tours.filter(t => t || t.played).map("
             }
         ],
         "spec": "tests/fixtures/bb-song.spec.js",
@@ -56,8 +56,8 @@
         "why": "\"THE PROMISE - V1\" is Title and Version.",
         "edits": [
             {
-                "find": "            const m = name.match(/^(.*?)\\s+-\\s+(V\\d\\w*\\b.*)$/);\n",
-                "replace": "            const m = null;\n"
+                "find": "            const v = _bbSplitVersion(name);\n",
+                "replace": "            const v = { song: name, version: '', take: '', date: '' };\n"
             }
         ],
         "spec": "tests/fixtures/bb-song.spec.js",

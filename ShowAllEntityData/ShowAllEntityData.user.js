@@ -5161,8 +5161,10 @@
                          'every performance with Bruce, all of the wiki\'s pages of it read (Steven Van Zandt: ' +
                          'six); on a release or playlist page, "Show the release": a tracklist per edition and ' +
                          'disc, the personnel, related releases and recording dates; on a bootleg page, "Show ' +
-                         'the bootleg": its tracklist by disc. Nothing else is fetched. Off: the page stays as the wiki shows it (link previews ' +
-                         'still work).'
+                         'the bootleg": its tracklist by disc; on an album\'s studio sessions page, "Show the ' +
+                         'sessions": its tables, every take split into song, version, take and date. Nothing else ' +
+                         'is fetched. Off: the page stays as the wiki shows it (link previews still work; a studio ' +
+                         'sessions page gets the stats page\'s "Show the tables").'
         },
         sa_bb_event_preview: {
             label: 'Preview event, venue, people, release and bootleg pages on hover',
@@ -24515,6 +24517,7 @@
         if (t === 'bb-venue' || t === 'bb-relation') return _bbPlaceHeadSpec();
         if (t === 'bb-retail' || t === 'bb-bootleg') return _bbReleaseHeadSpec();
         if (t === 'bb-story') return _bbStoryHeadSpec();
+        if (t === 'bb-sessions') return _bbSessionsHeadSpec();
         return null;
     }
 
@@ -29422,20 +29425,29 @@
      *   every filled cell one bold run) its columns; otherwise the columns
      *   of the last heading-only table of the same width (Set Openers And
      *   Closers: one heading table, then a table per tour), else "Column N".
-     *   A heading row may be bold by its own style (Awards). A one-cell
+     *   A heading row may be bold by its own style (Awards, whose next
+     *   row, a ceremony, is bold too but one cell) — only when a row
+     *   follows that is not a row like it: a studio session's version
+     *   tables set every row bold (one row, often), and their columns come
+     *   from the heading-only table above them. A one-cell
      *   row spanning the table further down names the rows below it: a
      *   Section column carries its text (Awards: the ceremony).
      *   The name is the tab path, then the caption; with neither, the
      *   nearest heading before the table, else the page's title; a
-     *   repeated name gets " (2)".
+     *   repeated name gets " (2)". Each table also carries what its name
+     *   was made of (`tab`, `caption`, `heading`: the nearest h1–h3 before
+     *   it) and its cells' text (`texts`), for `_bbSessionsRead()`.
      *
      * @param {Document} doc
      * @param {string} base - The page's URL.
-     * @returns {?{list: Array<Object>, tables: Array<{name: string, cols: string[], rows: string[][]}>}}
+     * @param {{minRows?: number}} [opts] - `minRows`: the fewest data rows a
+     *   table needs (2; a studio session's one-version tables, 1).
+     * @returns {?{list: Array<Object>, tables: Array<{name: string, cols: string[], rows: string[][], texts: string[][], tab: string[], caption: string, heading: string}>}}
      */
-    function _bbStatsRead(doc, base) {
+    function _bbStatsRead(doc, base, opts = {}) {
         const root = doc.getElementById('page-content');
         if (!root) return null;
+        const minRows = opts.minRows || 2;
         const list = [];
         const seen = new Set();
         root.querySelectorAll('li').forEach((li) => {
@@ -29470,10 +29482,11 @@
         const tables = [];
         const names = new Map();
         let lastHead = null;
-        const isHeadRow = (tr) => {
+        const boldStyled = tr => !!tr && /font-weight:\s*bold/i.test(tr.getAttribute('style') || '');
+        const isHeadRow = (tr, next) => {
             const cells = Array.from(tr.cells);
             const filled = cells.filter(c => _bbText(c));
-            const boldRow = /font-weight:\s*bold/i.test(tr.getAttribute('style') || '');
+            const boldRow = boldStyled(tr) && !!next && !(boldStyled(next) && next.cells.length === tr.cells.length);
             return filled.length > 0 && filled.every((c) => {
                 if (c.tagName === 'TH' || boldRow) return true;
                 const b = c.querySelector('strong, b');
@@ -29481,6 +29494,12 @@
             });
         };
         const width = tr => Array.from(tr.cells).reduce((n, c) => n + Math.max(1, c.colSpan || 1), 0);
+        const headingOf = new Map();
+        let lastHeading = '';
+        root.querySelectorAll('h1, h2, h3, table').forEach((n) => {
+            if (n.tagName === 'TABLE') headingOf.set(n, lastHeading);
+            else lastHeading = _bbText(n);
+        });
         root.querySelectorAll('table').forEach((t) => {
             if (t.parentElement && t.parentElement.closest('table')) return;
             const trs = Array.from(t.rows);
@@ -29494,7 +29513,7 @@
                 i = 1;
             }
             let head = null;
-            if (trs[i] && width(trs[i]) === cols && isHeadRow(trs[i])) {
+            if (trs[i] && width(trs[i]) === cols && isHeadRow(trs[i], trs[i + 1])) {
                 head = Array.from(trs[i].cells).flatMap(c => [_bbText(c), ...Array(Math.max(1, c.colSpan || 1) - 1).fill('')]);
                 i += 1;
             }
@@ -29503,7 +29522,7 @@
                 lastHead = head;
                 return;
             }
-            if (data.length < 2) return;
+            if (data.length < minRows) return;
             if (!head) head = lastHead && lastHead.length === cols ? lastHead : [];
             // A one-cell row spanning the table inside the data names the
             // rows below it (Awards: a ceremony, its year and place): a
@@ -29520,34 +29539,41 @@
                 return h;
             });
             let section = '';
-            const rows = data.map((tr) => {
+            let sectionText = '';
+            const read = data.map((tr) => {
                 if (sectioned && isSection(tr)) {
                     section = _bbStatsCellHtml(tr.cells[0]);
+                    sectionText = _bbText(tr.cells[0]);
                     return null;
                 }
                 const cells = [];
+                const texts = [];
                 Array.from(tr.cells).forEach((c) => {
                     cells.push(_bbStatsCellHtml(c));
-                    for (let k = 1; k < Math.max(1, c.colSpan || 1); k++) cells.push('');
+                    texts.push(_bbText(c));
+                    for (let k = 1; k < Math.max(1, c.colSpan || 1); k++) {
+                        cells.push('');
+                        texts.push('');
+                    }
                 });
-                while (cells.length < cols) cells.push('');
-                return sectioned ? [section, ...cells.slice(0, cols)] : cells.slice(0, cols);
-            }).filter(r => r && r.slice(sectioned ? 1 : 0).some(Boolean));
-            if (rows.length < 2) return;
-            const tab = _bbStatsTabPath(t);
-            let name = [...tab, caption].filter(Boolean).join(' › ');
-            if (!name) {
-                let heading = '';
-                const all = Array.from(root.querySelectorAll('h1, h2, h3, table'));
-                for (const n of all) {
-                    if (n === t) break;
-                    if (n.tagName !== 'TABLE') heading = _bbText(n);
+                while (cells.length < cols) {
+                    cells.push('');
+                    texts.push('');
                 }
-                name = heading || _bbText(doc.getElementById('page-title')) || 'Table';
-            }
+                return sectioned ? { html: [section, ...cells.slice(0, cols)], text: [sectionText, ...texts.slice(0, cols)] }
+                    : { html: cells.slice(0, cols), text: texts.slice(0, cols) };
+            }).filter(r => r && r.html.slice(sectioned ? 1 : 0).some(Boolean));
+            if (read.length < minRows) return;
+            const tab = _bbStatsTabPath(t);
+            const heading = headingOf.get(t) || '';
+            let name = [...tab, caption].filter(Boolean).join(' › ');
+            if (!name) name = heading || _bbText(doc.getElementById('page-title')) || 'Table';
             const n = (names.get(name) || 0) + 1;
             names.set(name, n);
-            tables.push({ name: n > 1 ? `${name} (${n})` : name, cols: heads, rows });
+            tables.push({
+                name: n > 1 ? `${name} (${n})` : name, cols: heads, rows: read.map(r => r.html), texts: read.map(r => r.text),
+                tab, caption, heading,
+            });
         });
         Lib.debug('init', `_bbStatsRead: ${list.length} list item(s), ${tables.length} table(s) on ${base}.`);
         return { list, tables };
@@ -29733,6 +29759,357 @@
         };
     }
 
+    // ── Brucebase song tour pages — `bb-song-tours` (Phase 13, batch 2, C) ──
+    // `stats:<song>-tour` is a run of one-row boxes, "Performed at 59
+    // show(s) of" beside "130 on the 2023-25 International Tour.", one per
+    // tour (every tour, most at 0), and a last box "Performed at 5 known
+    // other show(s), plus 0 public tour rehearsal(s)." As one table: Tour,
+    // Played, Tour shows, Share and its bar, the box's note; the other
+    // shows and the rehearsals as two rows at the end (vzell's answer 5:
+    // the tour's total and the share are what the song page lacks).
+
+    /** @type {RegExp} A song's tour counts page. */
+    const _BB_SONG_TOURS_PATH_RE = /^\/stats:[^/]+-tour\/?$/;
+
+    /** @type {?Object} `_bbTourCounts()` of the live page, read once. */
+    let _bbSongToursLiveRec = null;
+
+    /**
+     * Reads the "Performed at" boxes under `root`, one table each: per tour
+     * the count, the tour's own count of shows and the note under it
+     * ("Excl. the first leg of …"), in the page's order; and the box of
+     * other shows and public rehearsals. A table holding tables is no box.
+     * Shared with the song page's Performances tab (`_bbSongPerformances()`).
+     *
+     * @param {Element} root
+     * @returns {{tours: Array<{tour: string, played: number, shows: number, note: string}>, other: ?{shows: number, rehearsals: number}}}
+     */
+    function _bbTourCounts(root) {
+        const tours = [];
+        let other = null;
+        root.querySelectorAll('table').forEach((t) => {
+            if (t.querySelector('table')) return;
+            const tds = t.querySelectorAll('td');
+            if (tds.length < 2) return;
+            const left = _dpText(tds[0].textContent);
+            const strongs = Array.from(tds[1].querySelectorAll('strong'), x => _dpText(x.textContent));
+            const om = left.match(/Performed at\s+(\d+)\s+known other show/i);
+            if (om) {
+                other = { shows: Number(om[1]), rehearsals: Number(strongs[0]) || 0 };
+                return;
+            }
+            const pm = left.match(/(\d+)\s+show/i);
+            if (!pm || strongs.length < 2) return;
+            const sup = tds[1].querySelector('sup');
+            tours.push({
+                tour: strongs[1], played: Number(pm[1]), shows: Number(strongs[0]) || 0,
+                note: sup ? _dpText(sup.textContent).replace(/^\(|\)$/g, '').replace(/\.$/, '') : '',
+            });
+        });
+        return { tours, other };
+    }
+
+    /**
+     * The live page's tour counts (`_bbTourCounts()` over `#page-content`),
+     * once a page load: `match`, the button and the table's columns ask it
+     * before the press.
+     *
+     * @returns {{tours: Array<Object>, other: ?Object}}
+     */
+    function _bbSongToursLive() {
+        if (!_bbSongToursLiveRec) {
+            const root = document.getElementById('page-content');
+            _bbSongToursLiveRec = root ? _bbTourCounts(root) : { tours: [], other: null };
+        }
+        return _bbSongToursLiveRec;
+    }
+
+    /**
+     * The tour table's columns: Tour, Played, Tour shows, Share, Bar, and
+     * Note when a box has one.
+     *
+     * @param {{tours: Array<Object>}} rec
+     * @returns {string[]}
+     */
+    function _bbSongToursCols(rec) {
+        return ['Tour', 'Played', 'Tour shows', 'Share', 'Bar', ...(rec.tours.some(t => t.note) ? ['Note'] : [])];
+    }
+
+    /**
+     * `toHtml` of bb-song-tours: the copy's boxes as one `table.tbl`, a row
+     * per tour, then Other known shows and Public tour rehearsals (no tour
+     * total, no share). Share is "45.4%", its bar a span sized to it.
+     *
+     * @param {string} text - The page's HTML.
+     * @returns {string} An HTML document.
+     * @throws {Error} When the page counts no tour (`status` 0).
+     */
+    function _bbSongToursToHtml(text) {
+        const doc = new DOMParser().parseFromString(text, 'text/html');
+        const root = doc.getElementById('page-content');
+        const rec = root ? _bbTourCounts(root) : { tours: [], other: null };
+        if (!rec.tours.length) throw Object.assign(new Error('This Brucebase page counts no tour'), { status: 0 });
+        const e = _rgEsc;
+        const cols = _bbSongToursCols(rec);
+        const row = (cells) => `<tr>${cols.map(c => `<td>${cells[c] || ''}</td>`).join('')}</tr>`;
+        const rows = rec.tours.map((t) => {
+            const share = t.shows ? `${(100 * t.played / t.shows).toFixed(1)}%` : '';
+            const bar = share ? `<span class="mb-bb-share-bar" data-mb-tip title="${share}"><i style="width:${Math.min(100, 100 * t.played / t.shows).toFixed(1)}%"></i></span>` : '';
+            return row({ Tour: e(t.tour), Played: String(t.played), 'Tour shows': String(t.shows), Share: share, Bar: bar, Note: e(t.note) });
+        });
+        if (rec.other) {
+            rows.push(row({ Tour: 'Other known shows', Played: String(rec.other.shows) }));
+            rows.push(row({ Tour: 'Public tour rehearsals', Played: String(rec.other.rehearsals) }));
+        }
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><table class="tbl"><thead><tr>${cols.map(c => `<th>${e(c)}</th>`).join('')}</tr></thead>` +
+            `<tbody>${rows.join('')}</tbody></table></body></html>`;
+    }
+
+    // ── Brucebase studio sessions — `bb-sessions` (Phase 13, batch 2, D) ──
+    // `stats:<album>-studio-sessions` and its parts (`-details`, `-addrec`,
+    // `-altseq-N`, …, each also a page of its own): an Overview, then a
+    // section per h1 (Released, Additional Recordings, Details, Potential
+    // Album Sequences, …), each a tabview of the wiki's tables. As a
+    // release's page (bb-retail; vzell's answer 6): the head (the album,
+    // its release and credits, the overview), a sub-table per section and
+    // tab; the per-song tables of Version History one table, each take's
+    // "BORN TO RUN - V3a" split into Song / Version / Take / Date
+    // (`_bbSplitVersion()`, shared with On The Tracks).
+
+    /** @type {RegExp} A studio sessions page or one of its parts. */
+    const _BB_SESSIONS_PATH_RE = /^\/stats:[^/]+-studio-sessions(?:-[^/]+)?\/?$/;
+
+    /** @type {?{rec: ?Object, dp: ?Object}} The sessions page's readings, made once. */
+    let _bbSessionsCache = null;
+
+    /** @type {number} The live page's table count (`_bbSessionsLiveTables()`); -1 until read. */
+    let _bbSessionsLiveCount = -1;
+
+    /**
+     * How many tables `_bbSessionsRead()` finds on the live page, read once
+     * a page load (`match` asks it before the press).
+     *
+     * @returns {number}
+     */
+    function _bbSessionsLiveTables() {
+        if (_bbSessionsLiveCount < 0) {
+            const rec = _bbSessionsRead(document, _bbDetailUrl());
+            _bbSessionsLiveCount = rec ? rec.tables.length : 0;
+        }
+        return _bbSessionsLiveCount;
+    }
+
+    /**
+     * Splits a take's name as On The Tracks and the studio sessions write
+     * it: "BORN TO RUN - V3a" → Song, Version; "THE HEIST - V2 - take 14",
+     * "LOSIN' KIND - V3 (take 1)", "BORN IN THE U.S.A. - V11 (takes 5-8)" →
+     * a Take ("14", "1", "5-8"); "JUNGLELAND - V1 (August 1, 1974)", "MY
+     * HOMETOWN - V3 (Jun-29-1983 take 1)", "(poss. October 16, 1974)" → a
+     * Date, as written (a bracket with a year in it). What is left ("mix 1",
+     * "radio mix", "[Demo]", "track 12") stays with the version: "V14b
+     * radio mix". A name with no " - V<n>" is all Song.
+     *
+     * @param {string} name
+     * @returns {{song: string, version: string, take: string, date: string}}
+     */
+    function _bbSplitVersion(name) {
+        const s = _dpText(name);
+        const m = s.match(/^(.*?)\s+-\s+(V\d+[A-Za-z]*\d*)\b\s*(.*)$/);
+        if (!m) return { song: s, version: '', take: '', date: '' };
+        let take = '';
+        let date = '';
+        let rest = m[3].replace(/\btakes?\s+#?(\d+(?:\s*[-–]\s*\d+)?)/i, (all, n) => {
+            take = n.replace(/\s+/g, '');
+            return '';
+        });
+        rest = rest.replace(/\(([^)]*)\)/g, (all, inner) => {
+            const t = inner.replace(/\s{2,}/g, ' ').trim();
+            if (!date && /\b(?:19[5-9]\d|20[0-4]\d)\b/.test(t)) {
+                date = t;
+                return '';
+            }
+            return t ? `(${t})` : '';
+        });
+        rest = rest.replace(/(?:\s*[-–]\s*){2,}/g, ' - ').replace(/\s{2,}/g, ' ').replace(/^\s*[-–]\s*|\s*[-–]\s*$/g, '').trim();
+        return { song: m[1], version: rest ? `${m[2]} ${rest}` : m[2], take, date };
+    }
+
+    /**
+     * Reads a studio sessions page (or one of its parts): the page's title,
+     * the Overview's text, the credits block ("Commercially Released*:
+     * August 25, 1975", "Label: Columbia", …) and its footnote, the album
+     * (the first `/retail:` link), the sections (h1s), the links by kind,
+     * and the tables — `_bbStatsRead()`'s with one-row tables kept, named
+     * by section › tab path › caption, consecutive tables of one name and
+     * width merged (Version History: a table per song), a two-column list
+     * numbered "1." headed # / Song, and a Song Title column of takes split
+     * (`_bbSplitVersion()`: Song, Version, and Take and Date where a take
+     * has them); a title with no take keeps its cell as Song, and a column
+     * with a cell listing several takes (the Timeline) is not split.
+     *
+     * @param {Document} doc
+     * @param {string} url
+     * @returns {?{title: string, overview: string, credits: string, released: string, label: string, album: ?{text: string, href: string}, sections: string[], links: Object<string, number>, tables: Array<{name: string, cols: string[], rows: string[][]}>}}
+     */
+    function _bbSessionsRead(doc, url) {
+        const root = doc.getElementById('page-content');
+        if (!root) return null;
+        const e = _rgEsc;
+        const title = _bbText(doc.getElementById('page-title'));
+        const st = _bbStatsRead(doc, url, { minRows: 1 }) || { tables: [] };
+        const groups = [];
+        let prev = null;
+        st.tables.forEach((t) => {
+            const lead = t.heading && t.heading !== t.tab[0] ? [t.heading] : [];
+            const name = [...lead, ...t.tab, t.caption].filter(Boolean).join(' › ') || title || 'Table';
+            if (prev && prev.name === name && prev.cols.join('\u0001') === t.cols.join('\u0001')) {
+                prev.rows.push(...t.rows);
+                prev.texts.push(...t.texts);
+                return;
+            }
+            prev = { name, cols: t.cols.slice(), rows: t.rows.slice(), texts: t.texts.slice() };
+            groups.push(prev);
+        });
+        const seen = new Map();
+        groups.forEach((g) => {
+            const n = (seen.get(g.name) || 0) + 1;
+            seen.set(g.name, n);
+            if (n > 1) g.name = `${g.name} (${n})`;
+            const generic = g.cols.every(c => /^Column \d+$/.test(c));
+            if (generic && g.cols.length === 2 && g.texts.every(r => /^\d+\.?$/.test(r[0]))) g.cols = ['#', 'Song'];
+            let col = g.cols.findIndex(c => /^(?:Song Title|Song|Title)$/i.test(c));
+            if (col < 0 && generic) col = 0;
+            if (col < 0) return;
+            // A column of takes splits, a cell each; a column where a cell
+            // lists several (the Timeline: a day's songs) stays as it is,
+            // and so does one where no cell names a take.
+            const takes = g.texts.map(r => ((r[col] || '').match(/\s-\s+V\d/g) || []).length);
+            if (takes.some(k => k > 1) || !takes.some(k => k === 1)) return;
+            const split = g.texts.map((r, i) => (takes[i] === 1 ? _bbSplitVersion(r[col]) : { song: '', version: '' }));
+            const cols = ['Song', 'Version', ...(split.some(s => s.take) ? ['Take'] : []), ...(split.some(s => s.date) ? ['Date'] : [])];
+            g.rows = g.rows.map((r, i) => {
+                const s = split[i];
+                if (!s.version) return [...r.slice(0, col), r[col], ...cols.slice(1).map(() => ''), ...r.slice(col + 1)];
+                const shown = _mbSiteTitleText(s.song);
+                const href = (/<a href="([^"]+)"/.exec(r[col]) || [])[1];
+                const inner = href ? `<a href="${href}" target="_blank" rel="noopener">${e(shown)}</a>` : e(shown);
+                const song = shown !== s.song ? `<span data-mb-tip title="${e(`As written on Brucebase:\n${g.texts[i][col]}`)}">${inner}</span>` : inner;
+                const cell = { Song: song, Version: e(s.version), Take: e(s.take), Date: e(s.date) };
+                return [...r.slice(0, col), ...cols.map(c => cell[c]), ...r.slice(col + 1)];
+            });
+            g.cols.splice(col, 1, ...cols);
+        });
+        const code = root.querySelector('div.code pre');
+        const credits = code ? code.textContent.replace(/\r/g, '').trim() : '';
+        const field = re => ((credits.match(re) || [])[1] || '').trim();
+        const foot = code && code.closest('div.code') && code.closest('div.code').nextElementSibling;
+        const footText = foot && foot.tagName === 'P' && foot.querySelector('sup') ? _dpText(foot.textContent) : '';
+        const overview = [];
+        const ovH = Array.from(root.querySelectorAll('h1')).find(h => /^Overview$/i.test(_bbText(h)));
+        for (let n = ovH && ovH.nextElementSibling; n && n.tagName !== 'H1'; n = n.nextElementSibling) {
+            if (n.tagName === 'P' && _dpText(n.textContent)) overview.push(_dpText(n.textContent));
+        }
+        const albumA = root.querySelector('a[href^="/retail:"], a[href^="/playlist:"]');
+        const links = {};
+        const seenHref = new Set();
+        root.querySelectorAll('a[href]').forEach((a) => {
+            const kind = _bbStatsLinkKind(a.getAttribute('href'));
+            if (!kind || !/^(?:bootleg|relation|venue|song)$/.test(kind)) return;
+            const href = a.getAttribute('href').replace(/#.*$/, '');
+            if (seenHref.has(href)) return;
+            seenHref.add(href);
+            links[kind] = (links[kind] || 0) + 1;
+        });
+        Lib.debug('init', `_bbSessionsRead: ${groups.length} table(s) from ${st.tables.length} on ${url}.`);
+        return {
+            title, overview: overview.join('\n\n'),
+            credits: [credits, footText].filter(Boolean).join('\n\n'),
+            released: field(/^Commercially Released\**:\s*(.+)$/im) || field(/^Released\**:\s*(.+)$/im), label: field(/^Label:\s*(.+)$/im),
+            album: albumA ? { text: _bbText(albumA), href: _bbAbsHref(albumA.getAttribute('href')) } : null,
+            sections: Array.from(root.querySelectorAll('h1'), h => _bbText(h)).filter(Boolean),
+            links, tables: groups.map(g => ({ name: g.name, cols: g.cols, rows: g.rows })),
+        };
+    }
+
+    /**
+     * The sessions page's readings of the copy taken at the press: ours
+     * (`_bbSessionsRead()`) and the preview's (`_dpParseBb()`: tags,
+     * pictures). Made once.
+     *
+     * @returns {{rec: ?Object, dp: ?Object}}
+     */
+    function _bbSessionsSource() {
+        if (!_bbSessionsCache) {
+            const url = _bbDetailUrl();
+            const doc = new DOMParser().parseFromString(_bbDetailPageHtml(), 'text/html');
+            _bbSessionsCache = { rec: _bbSessionsRead(doc, url), dp: _dpParseBb(doc, url) };
+        }
+        return _bbSessionsCache;
+    }
+
+    /**
+     * `toHtml` of bb-sessions: an `<h3>` and a `table.tbl` with its own
+     * columns per table of `_bbSessionsRead()`.
+     *
+     * @param {string} text - The page's HTML.
+     * @param {string} base - Its URL.
+     * @returns {string} An HTML document.
+     * @throws {Error} When the page has no table (`status` 0).
+     */
+    function _bbSessionsToHtml(text, base) {
+        const rec = _bbSessionsRead(new DOMParser().parseFromString(text, 'text/html'), base);
+        if (!rec || !rec.tables.length) throw Object.assign(new Error('This Brucebase page has no session table to show'), { status: 0 });
+        const e = _rgEsc;
+        const out = rec.tables.map(t => `<h3>${e(t.name)}</h3><table class="tbl" data-mb-col-headers="${e(JSON.stringify(t.cols))}">` +
+            `<thead><tr>${t.cols.map(c => `<th>${e(c)}</th>`).join('')}</tr></thead>` +
+            `<tbody>${t.rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`);
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${out.join('')}</body></html>`;
+    }
+
+    /**
+     * The head of a studio sessions page (`_fdHeadSpec()`), from the copy
+     * taken at the press (`_bbSessionsSource()`): "~ Studio sessions";
+     * Overview, then the credits block as a closed text section; the
+     * Sessions card (Album, Released, Label, Sections, the links by kind,
+     * This page), the tags by family, the pictures (the cover). Null on
+     * another page.
+     *
+     * @returns {?Object}
+     */
+    function _bbSessionsHeadSpec() {
+        const h2 = document.querySelector('h2.mb-bb-sessions-heading');
+        if (activeDefinition?.type !== 'bb-sessions' || !h2) return null;
+        const { rec, dp } = _bbSessionsSource();
+        if (!rec) return null;
+        const url = _bbDetailUrl();
+        const tags = (dp && dp.tags) || [];
+        const tagChips = _fdChips(_BB_TAG_FAMILIES.map(([key, name]) => [name, tags.filter(t => t.family === key).map(t => [t.text, t.href])]));
+        const pictures = ((dp && dp.images) || []).filter(im => im.full || im.thumb).map(im => ({
+            full: im.full || im.thumb, thumb: im.thumb || im.full, caption: im.caption || _fiFileName(im.full || im.thumb), types: [im.label || 'Other'],
+        }));
+        const n = (k, one, many) => (rec.links[k] ? `${rec.links[k]} ${rec.links[k] === 1 ? one : many}` : '');
+        const linked = [n('song', 'song', 'songs'), n('bootleg', 'bootleg', 'bootlegs'), n('relation', 'person', 'people'), n('venue', 'venue', 'venues')].filter(Boolean).join(' · ');
+        return {
+            root: h2.parentElement, h2,
+            sub: { what: 'Studio sessions' },
+            text: rec.overview ? { title: 'Overview', body: rec.overview } : null,
+            texts: rec.credits ? [{ title: 'Credits', body: rec.credits }] : [],
+            facts: [
+                ['sessions', 'Studio sessions', [
+                    ['Album', rec.album ? _fdLink(rec.album.href, rec.album.text) : ''],
+                    ['Released', rec.released], ['Label', rec.label],
+                    ['Sections', rec.sections.join(' · ')],
+                    ['Tables', String(rec.tables.length)],
+                    ['Links', linked],
+                    ['This page', _fdLink(url, url.replace(/^https?:\/\/[^/]+\//, ''))],
+                ]],
+            ],
+            others: [ tagChips && ['tags', 'Tags', tagChips.count, tagChips.body, true] ],
+            pictures, picturesTitle: 'Pictures',
+            title: rec.title, source: 'Brucebase\'s page',
+        };
+    }
+
     /**
      * Installs the Brucebase stylesheet, once per document.
      *
@@ -29774,6 +30151,22 @@
             }
             body.mb-sa-host-bb .mb-bb-hidden {
                 display: none !important;
+            }
+            /* bb-song-tours: the share of the tour's shows, as a bar. */
+            body.mb-sa-host-bb .mb-bb-share-bar {
+                display: inline-block;
+                width: 80px;
+                height: 8px;
+                vertical-align: middle;
+                background: #ece5d6;
+                border: 1px solid #d9cfbd;
+                border-radius: 3px;
+                overflow: hidden;
+            }
+            body.mb-sa-host-bb .mb-bb-share-bar > i {
+                display: block;
+                height: 100%;
+                background: #2f5f9e;
             }
             body.mb-sa-host-bb #content-wrap.mb-bb-cw {
                 display: flex;
@@ -33479,7 +33872,7 @@
     }
 
     /** @type {Object<string, string>} The data heading of each Brucebase detail kind. */
-    const _BB_DETAIL_HEADINGS = { event: 'Event', song: 'Song', ott: 'Versions', venue: 'Venue', relation: 'Relation', retail: 'Release', bootleg: 'Bootleg', story: 'Story', 'stats-list': 'List', 'stats-tables': 'Tables' };
+    const _BB_DETAIL_HEADINGS = { event: 'Event', song: 'Song', ott: 'Versions', venue: 'Venue', relation: 'Relation', retail: 'Release', bootleg: 'Bootleg', story: 'Story', 'stats-list': 'List', 'stats-tables': 'Tables', 'song-tours': 'Tours', sessions: 'Sessions' };
 
     /**
      * The live page's part of a Brucebase detail pageType
@@ -33495,9 +33888,10 @@
      * Idempotent. The tag views (`_BB_TAGS_HEADERS`: bb-tags, bb-tag,
      * bb-pages-and-tags, Phase 11) are `_bbTagsLive()`'s: their table has
      * its columns from the start, and another button's view replaces it.
-     * A stats page's list ('stats-list', bb-stats, Phase 13) gets its
-     * columns from the start too (`_bbStatsListCols()` over the live page),
-     * as a single table would otherwise keep the placeholder's.
+     * A stats page's list ('stats-list', bb-stats, Phase 13) and a song's
+     * tour counts ('song-tours', bb-song-tours) get their columns from the
+     * start too (`_bbStatsListCols()`, `_bbSongToursCols()` over the live
+     * page), as a single table would otherwise keep the placeholder's.
      *
      * @param {Object} def - The active merged pageDefinition.
      * @returns {void}
@@ -33517,7 +33911,9 @@
         h2.textContent = kind === 'retail' && /^\/playlist:/.test(window.location.pathname) ? 'Playlist' : (_BB_DETAIL_HEADINGS[kind] || 'Details');
         const table = document.createElement('table');
         table.className = 'tbl mb-bb-detail-table';
-        const cols = kind === 'stats-list' && _bbStatsLive().list.length ? _bbStatsListCols(_bbStatsLive().list) : ['Song'];
+        let cols = ['Song'];
+        if (kind === 'stats-list' && _bbStatsLive().list.length) cols = _bbStatsListCols(_bbStatsLive().list);
+        else if (kind === 'song-tours') cols = _bbSongToursCols(_bbSongToursLive());
         table.innerHTML = `<thead><tr>${cols.map(c => `<th>${_rgEsc(c)}</th>`).join('')}</tr></thead><tbody></tbody>`;
         let native = document.querySelector('h2.mb-bb-native-h2');
         if (!native) {
@@ -33909,13 +34305,16 @@
 
     /**
      * Reads an On The Tracks table (a song's tab, or an `/ott:` page): a row
-     * per version, "THE PROMISE - V1" split into Title and Version, the
-     * running time, and the releases it is on (each an abbreviation linking
-     * a bootleg or release page; "uncirculating" when there is none).
+     * per version, its name split by `_bbSplitVersion()` — "THE PROMISE -
+     * V1" into Title and Version, "THE HEIST - V2 - take 14" also a Take,
+     * "JUNGLELAND - V1 (August 1, 1974)" a Date (org/brucebase.org, "On The
+     * Tracks", built with Phase 13's studio sessions) — the running time,
+     * and the releases it is on (each an abbreviation linking a bootleg or
+     * release page; "uncirculating" when there is none).
      *
      * @param {Element} root - The tab panel or `#page-content`.
      * @param {string}  url
-     * @returns {Array<{title: string, version: string, time: string, releases: Array<{text: string, href: string}>, note: string}>}
+     * @returns {Array<{title: string, version: string, take: string, date: string, time: string, releases: Array<{text: string, href: string}>, note: string}>}
      */
     function _bbOttRows(root, url) {
         const rows = [];
@@ -33924,17 +34323,46 @@
             if (td.length < 3) return;
             const name = _dpText(td[0].textContent);
             if (!name) return;
-            // "BORN TO RUN - V3f", "JUNGLELAND - V1 (August 1, 1974)",
-            // "THE HEIST - V2 - take 14" (a release's tab, 2026-11-11).
-            const m = name.match(/^(.*?)\s+-\s+(V\d\w*\b.*)$/);
+            const v = _bbSplitVersion(name);
             const releases = Array.from(td[2].querySelectorAll('a[href]'), a => ({ text: _dpText(a.textContent), href: _dpAbsUrl(a.getAttribute('href'), url) }))
                 .filter(r => r.text);
             rows.push({
-                title: m ? m[1] : name, version: m ? m[2] : '', time: _dpText(td[1].textContent),
+                title: v.song, version: v.version, take: v.take, date: v.date, time: _dpText(td[1].textContent),
                 releases, note: releases.length ? '' : _dpText(td[2].textContent),
             });
         });
         return rows;
+    }
+
+    /**
+     * The On The Tracks table's columns: Title, Version, Take and Date when
+     * a row has one, Time, Releases (`_BB_SONG_HEADERS.ott` with the two).
+     *
+     * @param {Array<Object>} rows - `_bbOttRows()`'s.
+     * @returns {string[]}
+     */
+    function _bbOttCols(rows) {
+        const [title, version, ...rest] = _BB_SONG_HEADERS.ott;
+        return [title, version, ...(rows.some(r => r.take) ? ['Take'] : []), ...(rows.some(r => r.date) ? ['Date'] : []), ...rest];
+    }
+
+    /**
+     * One On The Tracks row for `cols` (`_bbOttCols()`), shared by the song,
+     * On The Tracks and release pages.
+     *
+     * @param {Object}   r - A `_bbOttRows()` row.
+     * @param {string[]} cols
+     * @param {function(string, string): string} titleCell - The page's title cell.
+     * @param {function(string, string): string} link - The page's link maker.
+     * @returns {string} A `<tr>`.
+     */
+    function _bbOttRowHtml(r, cols, titleCell, link) {
+        const e = _rgEsc;
+        const cell = {
+            Title: titleCell(r.title, ''), Version: e(r.version), Take: e(r.take), Date: e(r.date), Time: e(r.time),
+            Releases: r.releases.length ? r.releases.map(x => link(x.href, e(x.text))).join(' / ') : e(r.note),
+        };
+        return `<tr>${cols.map(c => `<td>${cell[c] || ''}</td>`).join('')}</tr>`;
     }
 
     /**
@@ -33992,19 +34420,10 @@
         const left = cells[0] || panel;
         const list = _bbEventList(left, url);
         const cm = _dpText(left.textContent).match(/Performed live\s+(\d+)\s+times?/i);
-        const tours = [];
-        if (cells[1]) {
-            cells[1].querySelectorAll('table').forEach((t) => {
-                const tds = t.querySelectorAll('td');
-                if (tds.length < 2) return;
-                const pm = _dpText(tds[0].textContent).match(/(\d+)\s+show/i);
-                const strongs = Array.from(tds[1].querySelectorAll('strong'), x => _dpText(x.textContent));
-                // The tab lists every tour, most at "0 show(s)": only the
-                // tours the song was played on are rows.
-                if (!pm || strongs.length < 2 || !Number(pm[1])) return;
-                tours.push({ tour: strongs[1], played: Number(pm[1]), shows: Number(strongs[0]) || 0 });
-            });
-        }
+        // The tab lists every tour, most at "0 show(s)": only the tours the
+        // song was played on are rows (the tour page, bb-song-tours, keeps
+        // them all).
+        const tours = cells[1] ? _bbTourCounts(cells[1]).tours.filter(t => t.played).map(({ tour, played, shows }) => ({ tour, played, shows })) : [];
         return { rows: list.rows, count: cm ? cm[1] : '', tours };
     }
 
@@ -34141,9 +34560,8 @@
         if (rec.snippets && rec.snippets.rows.length) out.push(table('Snippets', _BB_SONG_HEADERS.list, listRows(rec.snippets.rows)));
         if (rec.livedl.length) out.push(table('Live downloads', _BB_SONG_HEADERS.list, listRows(rec.livedl)));
         if (rec.ott.length) {
-            out.push(table('On The Tracks', _BB_SONG_HEADERS.ott, rec.ott.map(r =>
-                `<tr><td>${titleCell(r.title, '')}</td><td>${e(r.version)}</td><td>${e(r.time)}</td>` +
-                `<td>${r.releases.length ? r.releases.map(x => link(x.href, e(x.text))).join(' / ') : e(r.note)}</td></tr>`)));
+            const cols = _bbOttCols(rec.ott);
+            out.push(table('On The Tracks', cols, rec.ott.map(r => _bbOttRowHtml(r, cols, titleCell, link))));
         }
         return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${out.join('')}</body></html>`;
     }
@@ -35226,9 +35644,8 @@
                     `<td>${e(r.location)}</td><td>${e(r.note)}</td></tr>`)));
             }
             if (rec.ott.length) {
-                out.push(table('On The Tracks', _BB_SONG_HEADERS.ott, rec.ott.map(r =>
-                    `<tr><td>${titleCell(r.title, '')}</td><td>${e(r.version)}</td><td>${e(r.time)}</td>` +
-                    `<td>${r.releases.length ? r.releases.map(x => link(x.href, e(x.text))).join(' / ') : e(r.note)}</td></tr>`)));
+                const cols = _bbOttCols(rec.ott);
+                out.push(table('On The Tracks', cols, rec.ott.map(r => _bbOttRowHtml(r, cols, titleCell, link))));
             }
             if (rec.performance.length) {
                 out.push(table('Performance', _BB_RELEASE_HEADERS.performance, rec.performance.map(r =>
@@ -57711,6 +58128,74 @@
             tableMode: 'single'
         },
 
+        // A song's tour counts (`stats:<song>-tour`; org/brucebase.org Phase
+        // 13, batch 2): a row per tour — played, the tour's shows, the share
+        // — then the other shows and rehearsals. From a copy of the page, no
+        // request. A song never played on a tour (only the box of other
+        // shows) stays bb-page's. See _bbTourCounts().
+        {
+            type: 'bb-song-tours',
+            host: 'brucebase.wikidot.com',
+            match: (path) => _BB_SONG_TOURS_PATH_RE.test(path) && _bbSongToursLive().tours.length > 0,
+            buttons: [ {
+                label: 'Show the tours', shortLabel: 'Tours',
+                description: 'No request: every tour this page counts, with how often the song was played, the tour\'s own number of shows and the share, then the other shows and the public rehearsals. The wiki\'s page folded below.'
+            } ],
+            features: {
+                bbDetailToTable: 'song-tours',
+                pageRequest: () => {
+                    const url = _bbDetailUrl();
+                    return { url, fetchText: async () => _bbDetailPageHtml(), toHtml: text => _bbSongToursToHtml(text) };
+                },
+                pageCountAsync: () => 1,
+                stickyColumn: 'Tour',
+                integerColumns: [ { sourceColumn: 'Played', align: 'R' }, { sourceColumn: 'Tour shows', align: 'R' }, { sourceColumn: 'Share', align: 'R' } ],
+                columnDescriptions: {
+                    Played: 'At how many of the tour\'s shows the song was played (not counting rehearsals and snippets).',
+                    'Tour shows': 'How many shows the tour had, as Brucebase counts them.',
+                    Share: 'Played as a share of the tour\'s shows.',
+                    Note: 'The page\'s note on the count ("Excl. the first leg of …").',
+                }
+            },
+            tableMode: 'single'
+        },
+
+        // An album's studio sessions (`stats:<album>-studio-sessions` and its
+        // parts; Phase 13, batch 2): a sub-table per section and tab —
+        // released, additional recordings, every take of Version History
+        // (Song / Version / Take / Date), the timeline, the potential album
+        // sequences — the album, release, credits and overview above. From a
+        // copy of the page, no request. Under `sa_bb_detail_pages`; off, the
+        // page is bb-stats'. See _bbSessionsRead().
+        {
+            type: 'bb-sessions',
+            host: 'brucebase.wikidot.com',
+            // Only a page with a table: a part that is only words
+            // (`-overview`, `-credits`) stays bb-stats' or bb-page's.
+            match: (path) => _BB_SESSIONS_PATH_RE.test(path) && Lib.settings.sa_bb_detail_pages !== false && _bbSessionsLiveTables() > 0,
+            buttons: [ {
+                label: 'Show the sessions', shortLabel: 'Sessions',
+                description: 'No request: the released and additional recordings, every take (song, version, take, date, running time, the releases it is on), the timeline and the potential album sequences, a table per section and tab; the album, release, credits and overview above, the wiki\'s page folded below.'
+            } ],
+            features: {
+                bbDetailToTable: 'sessions',
+                groupByH3: true,
+                openSubTables: true,
+                pageRequest: () => {
+                    const url = _bbDetailUrl();
+                    return { url, fetchText: async () => _bbDetailPageHtml(), toHtml: text => _bbSessionsToHtml(text, url) };
+                },
+                pageCountAsync: () => 1,
+                columnDescriptions: {
+                    Version: 'The version, as On The Tracks numbers it (V1, V2a, …), and what the wiki adds to it ("radio mix", "[Demo]").',
+                    Take: 'The take, when the wiki names it ("take 14", "takes 5-8").',
+                    Date: 'When the take was recorded, as the wiki writes it.',
+                    Release: 'Where the track comes from, by Brucebase\'s abbreviation; each links its page.',
+                }
+            },
+            tableMode: 'multi'
+        },
+
         // Brucebase's other stats pages (`stats:<name>`; org/brucebase.org
         // Phase 13): a button per shape the page has — its list of links
         // (bootlegs by label, shows with circulating audio, venues of a
@@ -57722,9 +58207,10 @@
         {
             type: 'bb-stats',
             host: 'brucebase.wikidot.com',
-            // Only a page with one of the two shapes: the rest (a song's
-            // tour counts, a studio-session page's parts, the hubs) stay
-            // `bb-page`'s, link previews only, until batch 2.
+            // Only a page with one of the two shapes: the rest (a song
+            // never played on a tour, the hubs) stay `bb-page`'s, link
+            // previews only. Tour counts and studio sessions are taken by
+            // the two definitions above.
             match: (path) => _BB_STATS_PATH_RE.test(path) && (_bbStatsLive().list.length > 0 || _bbStatsLive().tables.length > 0),
             buttons: [
                 {

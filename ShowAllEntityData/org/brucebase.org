@@ -641,9 +641,33 @@ The mirror has 258 =stats:*studio-sessions*= pages (an album's sessions and its 
   =scripts/mutations/bb-stats.json= (17, all OK), bb-event.json's openSubTables find refreshed (OK);
   siblings (13 BB/preview specs) 182 green; coverage row, PAGETYPES reference (173), HELP, CLAUDE.md,
   WIP.17
-- [ ] vzell's live check of batch 1 (e.g. stats:venues-in-new-jersey, stats:circulating-audio,
-  stats:awards, stats:set-openers-and-closers, stats:songs-by-album)
-- [ ] batch 2: C, D (+ the On The Tracks split)
+- [X] vzell's live check of batch 1 (e.g. stats:venues-in-new-jersey, stats:circulating-audio,
+  stats:awards, stats:set-openers-and-closers, stats:songs-by-album): OK (2026-11-12)
+- [X] batch 2: C, D (+ the On The Tracks split) (docs/claude/brucebase.md "Song tour counts … and studio
+  sessions"): two pageTypes before bb-stats. =bb-song-tours= (=stats:<song>-tour=, single): Tour, Played,
+  Tour shows, Share, Bar, Note, every tour (zeros too), then Other known shows and Public tour rehearsals
+  (=_bbTourCounts()=, now also the song page's Performances by tour); =match= needs a tour row.
+  =bb-sessions= (=*-studio-sessions*= and its parts, multi, under =sa_bb_detail_pages=): a sub-table per
+  h1 › tab › caption, consecutive tables of one name merged (Version History: a table per song → one),
+  one-row tables kept, a numbered list # / Song, takes split Song / Version / Take / Date
+  (=_bbSplitVersion()=, shared with =_bbOttRows()=: the "On The Tracks" TODO below); the head (Overview,
+  Credits, Album, Released, Label, Sections, Links). Whole families first (=scripts/copy-bb-stats-tours.sh=
+  → =debug/bb-mirror/stats-tour/=, =scripts/check-bb-tours-sessions.js=; 2026-11-12T12:38+01:00 · petri ·
+  WSL2 Ubuntu 24.04.3 · Playwright 1.62.1 Chromium): 599 of 1,270 tour pages with tour rows (614 only
+  other shows, 57 neither: they stay bb-page/bb-stats), no box missed; 182 of 258 session pages with a
+  table (487 from 822, 5,888 takes split). Found on the way, fixed in =_bbStatsRead()=: every row of a
+  session's version table is bold by its style, so batch 1 took the first take as the header and a
+  one-row bold table gave its row as the header to the tables after it — a bold-styled row is a header
+  only when a row follows that is not like it (Awards' header, followed by a one-cell ceremony row,
+  stays); the batch-1 check over the other stats pages is unchanged table by table. Not in the mockup,
+  so left out: the "Note:" paragraphs under each song's version table (in the wiki's page below).
+  =bb-song-tours-sessions.spec.js= (7), =bb-release.spec.js= Take/Date, batch 1's tour fixture now
+  bb-song-tours' (a never-toured song replaces it); =scripts/mutations/bb-song-tours-sessions.json= (26) +
+  4 refreshed finds (bb-release, bb-song ×2, bb-stats): 30 OK; all 27 BB specs + sl-include-regex 294
+  green; coverage rows, PAGETYPES reference (174, 175), HELP, CLAUDE.md, WIP.18
+- [ ] vzell's live check of batch 2 (e.g. stats:hungry-heart-tour, stats:born-to-run-studio-sessions,
+  stats:darkness-on-the-edge-of-town-studio-sessions, stats:nebraska-studio-sessions-details, and the
+  On The Tracks of song:the-heist or retail:born-to-run)
 - [ ] batch 3: E, F
 - [ ] build in batches (one shared tabview reader where possible, =bb-songs= as the model); specs,
   mutations, coverage rows, docs, WIP per batch
@@ -802,7 +826,9 @@ for Phase 2 and 3 are also both confirmed like OK
 
 
 * TODO adjustments
-** TODO On The Tracks
+** DONE On The Tracks
+Done with Phase 13 batch 2 (2026-11-12): =_bbSplitVersion()= — Title, Version, and Take and Date where a
+take names them; what else follows the version stays with it ("V14b radio mix").
 
 "On The Tracks" entries written like "THE HEIST - V2 - take 14" should split additionally into the following columns
 

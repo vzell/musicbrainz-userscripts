@@ -223,8 +223,10 @@ test.describe('Brucebase stats pages (Phase 13, batch 1)', () => {
         expect(rows.length).toBeGreaterThan(500);
     });
 
-    test('a song\'s tour counts, a fragment of stats:awards and a hub of stats links stay bb-page: no button', async ({ page }) => {
-        await loadBbStatsPage(page, '4th-of-july-asbury-park-sandy-tour');
+    test('a song never played on a tour, a fragment of stats:awards and a hub of stats links stay bb-page: no button', async ({ page }) => {
+        // Only the box of other shows: nothing for bb-song-tours (batch 2) either.
+        await loadBbStatsPage(page, 'ain-t-that-a-shame-tour');
+        await expect(page.locator('button[data-label="Show the tours"]')).toHaveCount(0);
         await expect(page.locator('h1.mb-bb-preview-only'), 'bb-page\'s hidden header').toHaveCount(1);
         await expect(page.locator(`button[data-label="${LIST}"], button[data-label="${TABLES}"]`)).toHaveCount(0);
         await page.goto('about:blank');
