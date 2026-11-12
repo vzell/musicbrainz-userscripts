@@ -825,6 +825,73 @@ for Phase 2 and 3 are also both confirmed like OK
 8. Include fragments (performances-with-bruce-*, awards-*): read only through their main page? [Yes, only through the main page; the fragments keep link previews]
 
 
+* ● Batch 2 is built, committed and pushed (d632e92d on feature/bb-overhaul). It needs your live check before batch 3.
+
+  What changed:
+  - Song tour pages (stats:<song>-tour) get Tours: one row per tour with Played, Tour shows, Share (with a bar) and the page's note ("Excl. the first leg of …"). Tours where the song wasn't played are included. Two last rows give the other known shows and the public rehearsals.
+  - Studio sessions pages (stats:<album>-studio-sessions) get Sessions: a sub-table per section and tab, all open (for example "Released › Born To Run", "Details › Version History", "Details › Timeline", the potential sequences).
+    - Version History becomes one table; the wiki has a separate table per song.
+    - Each take is split into Song, Version, Take and Date: "THE HEIST - V2 - take 14" gives The Heist / V2 / 14.
+    - Above the tables: the album, release date, label, credits and overview.
+    - It comes with the detail-pages setting; with that off, the page gets Tables instead.
+  - On The Tracks on song, OTT and release pages now has Take and Date columns too, which closes that TODO.
+
+  Where it differs from the mockup:
+  - Each studio-session part page (-details, -addrec, …) also gets Sessions when it has a table. The mockup had parts read only through their main page.
+  - The other shows and rehearsals rows weren't in the mockup's sample. I added them because the page states them.
+  - The "Note:" paragraphs under each song's version table aren't in the table, because the mockup had none. They stay in the wiki's page below. Say if you want them as a column.
+  - The Timeline is not split. Its cells list several takes for one day.
+
+  A batch-1 bug, fixed: on studio-session pages every row of the version tables is bold, so Tables took the first take ("BACKSTREETS - V1") as the column names. A table of one bold row also passed its row on as the column names for the tables after it. Now a bold row only counts as a header when the row after it
+  isn't the same kind of row. I compared the other stats pages table by table before and after, and none changed.
+
+  Tests:
+  - I ran the readers over the whole page families first: all 1,270 tour pages and all 258 studio-session pages. 599 tour pages have tour rows; the 671 without any stay as they are.
+  - The new spec passes 7 of 7.
+  - 30 planted defects all fail the spec. Two didn't at first; I tightened the spec until they did.
+  - All 27 Brucebase specs pass (294 tests).
+  - Lint, the coverage report, the docs audit and the mutation finds are clean.
+  - test:full is still left for the wider sweep.
+
+  Please try:
+  - stats:hungry-heart-tour
+  - stats:born-to-run-studio-sessions
+  - stats:darkness-on-the-edge-of-town-studio-sessions
+  - stats:nebraska-studio-sessions-details (many takes and mixes)
+  - the On The Tracks table of retail:born-to-run
+
+* questions
+** q
+
+What you mean with "The Timeline is not split. Its cells list several takes for one day.", show me a full URL and where I have to look
+
+** ● The Timeline lists recording sessions by day, and one row can name several takes in a single cell. Here is an example.
+
+  URL: https://brucebase.wikidot.com/stats:darkness-on-the-edge-of-town-studio-sessions
+
+  Where to look: scroll to the Details heading, open the Timeline tab, and find the row dated July 1976. On our page it is the sub-table Details › Timeline. The same table is also on its own page, https://brucebase.wikidot.com/stats:darkness-on-the-edge-of-town-studio-sessions-timeline
+
+  That row's Song Title cell holds a list of seven songs for that one day:
+
+  July 1976 | • SAVE MY LOVE - V1          | Telegraph Hill Studio, New Jersey | Produced by …
+            | • CANDY'S BOY - V1
+            | • THE PROMISE - V1
+            | • RENDEZVOUS - V1
+            | • SOMETHING IN THE NIGHT - V1
+            | • WHEN YOU DANCE
+            | • RAISE YOUR HAND
+
+  Why it isn't split: in Version History a row is one take ("BORN TO RUN - V1a"), so one Song, Version, Take and Date per row works. A Timeline row is one session day. Splitting that cell would need seven Song values and five Version values in one row.
+
+  What happened before I excluded it: the split only applied to cells naming exactly one take. Days with a single take got a Version, and days like July 1976 stayed whole. The result was a Version column filled on some rows and empty on the busy days, which looked broken. So a column with any multi-take cell is now
+  left as the wiki writes it.
+
+  One possible improvement (not built): give the Timeline one row per take, repeating the date, location and personnel. The July 1976 day would become seven rows, and the table would get Song and Version columns like Version History, so you could filter it by song or version. Do you want that?
+
+* add features
+
+The "Note:" paragraphs under each song's version table:  I want them as a multi-row column
+
 * TODO adjustments
 ** DONE On The Tracks
 Done with Phase 13 batch 2 (2026-11-12): =_bbSplitVersion()= — Title, Version, and Take and Date where a
