@@ -1,0 +1,145 @@
+[
+    {
+        "name": "the section stays on the wiki",
+        "why": "Phase 15: the History section in Brucebase windows on every host.",
+        "edits": [
+            {
+                "find": "    function _bbHistWindowOn() {\n        return Lib.settings.sa_bb_history !== false;",
+                "replace": "    function _bbHistWindowOn() {\n        return _isBbHost && Lib.settings.sa_bb_history !== false;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history-foreign.spec.js",
+        "grep": "the section, closed",
+        "expect": "fail"
+    },
+    {
+        "name": "the setting off is ignored off the wiki",
+        "why": "sa_bb_history off: no section, no request, on every host.",
+        "edits": [
+            {
+                "find": "    function _bbHistWindowOn() {\n        return Lib.settings.sa_bb_history !== false;",
+                "replace": "    function _bbHistWindowOn() {\n        return true;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history-foreign.spec.js",
+        "grep": "the setting off",
+        "expect": "fail"
+    },
+    {
+        "name": "no ✎ in another site's Brucebase window",
+        "why": "✎ and H belong to every window that has the section.",
+        "edits": [
+            {
+                "find": "        if (!t.reader || t.reader.id !== 'springsteen' || !t.url) return false;",
+                "replace": "        return false;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history-foreign.spec.js",
+        "grep": "✎ in the title bar",
+        "expect": "fail"
+    },
+    {
+        "name": "H does not find the page id of another site's window",
+        "why": "_bbHistSubject() reads the link record's dp off the wiki.",
+        "edits": [
+            {
+                "find": "            return (st && st.status === 'done' && st.data && st.data.dp && st.data.dp.bbPageId) || '';",
+                "replace": "            return '';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history-foreign.spec.js",
+        "grep": "✎ in the title bar",
+        "expect": "fail"
+    },
+    {
+        "name": "the request sends the browser's cookies",
+        "why": "An external request is anonymous (docs/claude/detail-pages.md).",
+        "edits": [
+            {
+                "find": "                url: 'https://brucebase.wikidot.com/ajax-module-connector.php',\n                anonymous: true,",
+                "replace": "                url: 'https://brucebase.wikidot.com/ajax-module-connector.php',\n                anonymous: false,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history-foreign.spec.js",
+        "grep": "the section, closed",
+        "expect": "fail"
+    },
+    {
+        "name": "no Cookie header",
+        "why": "Wikidot refuses a token that no cookie repeats (probe: wrong_token7).",
+        "edits": [
+            {
+                "find": "                    Cookie: `wikidot_token7=${token}`,\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-history-foreign.spec.js",
+        "grep": "the section, closed",
+        "expect": "fail"
+    },
+    {
+        "name": "the wiki's own token helper off the wiki",
+        "why": "_bbWikidotToken() would set a wikidot_token7 cookie on the site we are on.",
+        "edits": [
+            {
+                "find": "        const token = _isBbHost ? _bbWikidotToken() : _bbHistOffsiteToken();",
+                "replace": "        const token = _bbWikidotToken();"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history-foreign.spec.js",
+        "grep": "the section, closed",
+        "expect": "fail"
+    },
+    {
+        "name": "a new token per request",
+        "why": "One token for the page load.",
+        "edits": [
+            {
+                "find": "        if (!_bbHistOffsiteToken.v) _bbHistOffsiteToken.v =",
+                "replace": "        _bbHistOffsiteToken.v ="
+            }
+        ],
+        "spec": "tests/fixtures/bb-history-foreign.spec.js",
+        "grep": "the section, closed",
+        "expect": "fail"
+    },
+    {
+        "name": "a same-origin fetch off the wiki",
+        "why": "From another site only a GM request reaches the wiki (CORS).",
+        "edits": [
+            {
+                "find": "        let res;\n        if (_isBbHost) {",
+                "replace": "        let res;\n        if (true) {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history-foreign.spec.js",
+        "grep": "the section, closed",
+        "expect": "fail"
+    },
+    {
+        "name": "a GM request on the wiki itself",
+        "why": "On brucebase.wikidot.com the section keeps its same-origin POST with the wiki's cookie.",
+        "edits": [
+            {
+                "find": "        let res;\n        if (_isBbHost) {",
+                "replace": "        let res;\n        if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history.spec.js",
+        "grep": "a window: the section is there",
+        "expect": "fail"
+    },
+    {
+        "name": "off the wiki a refusal says Sign in",
+        "why": "Off the wiki a refusal is the token check, not a missing sign-in.",
+        "edits": [
+            {
+                "find": "                ? (_isBbHost\n",
+                "replace": "                ? (true\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history-foreign.spec.js",
+        "grep": "token refusal",
+        "expect": "fail"
+    }
+]

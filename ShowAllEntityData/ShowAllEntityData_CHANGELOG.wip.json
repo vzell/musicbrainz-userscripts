@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.21",
+    "date": "2026-11-12",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Brucebase: a page's History section, with ✎ and H, is now in its window on every site, MusicBrainz included, not only on brucebase.wikidot.com. From another site the requests carry none of your cookies."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.20",
     "date": "2026-11-12",
     "sections": [

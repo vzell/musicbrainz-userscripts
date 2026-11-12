@@ -5186,17 +5186,18 @@
             label: 'Page history in the Brucebase window',
             type: 'checkbox',
             default: true,
-            description: 'Needs a setting above that switches the wiki on. On brucebase.wikidot.com, every ' +
-                         'preview window of a page gets a closed "History" section, and ✎ in its title bar (or ' +
-                         'H) opens it: the page\'s revisions — number, date, who, what kind of change, the ' +
+            description: 'Needs a setting that shows Brucebase previews. Every preview window of a Brucebase ' +
+                         'page, on brucebase.wikidot.com and on every other site, gets a closed "History" ' +
+                         'section, and ✎ in its title bar (or H) opens it: the page\'s revisions — number, date, who, what kind of change, the ' +
                          'comment, tag changes as pills — with chips that show only some kinds of change, and ' +
                          'what changed between the revision you click and the one before it, or between any ' +
                          'two you pick with From and To: the tags, a changed title or page name, and the old ' +
                          'lines and the new ones side by side with the changed words marked. Signed in or not: ' +
                          'the wiki answers both the same. The history is read when you open the section (one ' +
                          'request for 100 revisions, one per comparison and, when the text changed, one per ' +
-                         'revision\'s text, one a second) and kept until the page is left. ' +
-                         'The ☰ menu of a page the window shows has "✎ Page history" for the page itself. Off: ' +
+                         'revision\'s text, one a second) and kept until the page is left. From another site ' +
+                         'the requests carry none of your cookies. On brucebase.wikidot.com, the ☰ menu of a ' +
+                         'page the window shows has "✎ Page history" for the page itself. Off: ' +
                          'no section, no request.'
         },
 
@@ -37141,8 +37142,16 @@
     // POSTs with the wikidot_token7 cookie (`_bbWikidotToken()`, as Recent
     // changes), one a second (`_dpAwaitSlot()`), kept in memory for the
     // page's life; a revision never changes, so its source is read once.
-    // On other hosts the section is absent (a cross-origin POST with the
-    // token was not probed). Setting `sa_bb_history`.
+    // On every other host too since Phase 15 (2026-11-12): the same modules
+    // through an anonymous GM_xmlhttpRequest (`_bbHistGmPost()`), with a
+    // token of our own as the cookie AND in the body — Wikidot checks only
+    // that the two match (scripts/probe-bb-history-token.py: no session, no
+    // cookie jar, "ok"; no cookie or a different one, "wrong_token7"), and
+    // Tampermonkey 5.5.1 delivers a Cookie header on an anonymous request
+    // (scripts/probe-bb-history-xorigin.user.js on musicbrainz.org,
+    // debug/bb-history-xorigin-probe-20261112.json: the header and its
+    // `cookie` field both accepted, both controls refused, 230–250 ms).
+    // Setting `sa_bb_history`.
 
     /**
      * The page id Wikidot's page script names (`WIKIREQUEST.info.pageId =
@@ -37167,6 +37176,19 @@
      */
     function _bbHistOn() {
         return _isBbHost && Lib.settings.sa_bb_history !== false;
+    }
+
+    /**
+     * Whether a Brucebase window shows its page's History section: with
+     * `sa_bb_history` on, on any host (Phase 15) — the window is there only
+     * when one of the Brucebase previews is on. `_bbHistOn()` stays the gate
+     * of what the wiki's own pages get (the ☰ entry, the Recent changes
+     * buttons, the scroll to the wiki's own diff).
+     *
+     * @returns {boolean}
+     */
+    function _bbHistWindowOn() {
+        return Lib.settings.sa_bb_history !== false;
     }
 
     /**
@@ -37285,8 +37307,58 @@
     }
 
     /**
-     * POSTs one Wikidot history module, same-origin, after the window's rate
-     * slot, and returns its body.
+     * The token a Brucebase window off the wiki sends, as its cookie and in
+     * the body: made once per page load, never the browser's own cookie
+     * (which an anonymous request cannot carry, and should not).
+     *
+     * @returns {string}
+     */
+    function _bbHistOffsiteToken() {
+        if (!_bbHistOffsiteToken.v) _bbHistOffsiteToken.v = Math.random().toString(16).slice(2, 10).padEnd(8, '0');
+        return _bbHistOffsiteToken.v;
+    }
+
+    /**
+     * A Wikidot module POST from another host (Phase 15): an anonymous
+     * GM_xmlhttpRequest (an external request sends none of the browser's
+     * cookies, docs/claude/detail-pages.md), the token as a Cookie header of
+     * its own, the same token in the body.
+     *
+     * @param {string} body The form body, `wikidot_token7` = `token`.
+     * @param {string} token
+     * @returns {Promise<{status: number, text: string}>}
+     * @throws {Error} A network error or a timeout (`status` 0).
+     */
+    function _bbHistGmPost(body, token) {
+        return new Promise((resolve, reject) => {
+            const fail = (why) => {
+                const err = new Error(why);
+                err.status = 0;
+                reject(err);
+            };
+            GM_xmlhttpRequest({
+                method: 'POST',
+                url: 'https://brucebase.wikidot.com/ajax-module-connector.php',
+                anonymous: true,
+                timeout: _EXT_TIMEOUT_MS,
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                    Cookie: `wikidot_token7=${token}`,
+                },
+                data: body,
+                onload: r => resolve({ status: Number(r.status) || 0, text: String(r.responseText || '') }),
+                onerror: r => fail(`brucebase.wikidot.com could not be reached${r && r.error ? ` (${r.error})` : ''}`),
+                ontimeout: () => fail('brucebase.wikidot.com did not answer in time'),
+                onabort: () => fail('the request was stopped'),
+            });
+        });
+    }
+
+    /**
+     * POSTs one Wikidot history module after the window's rate slot, and
+     * returns its body: same-origin with the wiki's cookie on
+     * brucebase.wikidot.com, an anonymous GM request with a token of our own
+     * elsewhere (`_bbHistGmPost()`).
      *
      * Also the tag pages' and the tag reader's ListPages calls (Phase 11).
      *
@@ -37303,21 +37375,28 @@
     async function _bbHistPost(module, params, wanted = null) {
         await _dpAwaitSlot();
         if (wanted && !wanted()) return null;
-        const body = new URLSearchParams({ ...params, moduleName: module, wikidot_token7: _bbWikidotToken() });
-        const res = await fetch(new URL('/ajax-module-connector.php', window.location.href).href, {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
-            body: body.toString()
-        });
-        if (!res.ok) {
+        const token = _isBbHost ? _bbWikidotToken() : _bbHistOffsiteToken();
+        const body = new URLSearchParams({ ...params, moduleName: module, wikidot_token7: token });
+        let res;
+        if (_isBbHost) {
+            const r = await fetch(new URL('/ajax-module-connector.php', window.location.href).href, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                body: body.toString()
+            });
+            res = { status: r.status, text: r.ok ? await r.text() : '' };
+        } else {
+            res = await _bbHistGmPost(body.toString(), token);
+        }
+        if (res.status < 200 || res.status > 299) {
             const err = new Error(`HTTP ${res.status}`);
             err.status = res.status;
             throw err;
         }
         let data;
         try {
-            data = JSON.parse(await res.text());
+            data = JSON.parse(res.text);
         } catch (e) {
             throw new Error('Wikidot answered with something that is not JSON', { cause: e });
         }
@@ -37569,7 +37648,7 @@
      * @returns {Promise<void>}
      */
     async function _bbHistStart(pid, { retry = false } = {}) {
-        if (!_bbHistOn() || !pid) return;
+        if (!_bbHistWindowOn() || !pid) return;
         let h = _bbHist.get(pid);
         if (h && h.state === 'failed' && !retry) return;
         if (!h || h.state === 'failed') {
@@ -37807,8 +37886,13 @@
         if (!h) return wrap('<div class="mb-dg-dim">Opening this section reads the page\'s history from Brucebase.</div>');
         if (h.state === 'loading') return wrap('<div class="mb-dg-dim"><span class="mb-dp-spin">◌</span> Reading the history from brucebase.wikidot.com…</div>');
         if (h.state === 'failed') {
+            // Off the wiki a refusal is the token check (Phase 15): the
+            // history is then still in the wiki's own window.
             return wrap(h.refused
-                ? '<div class="mb-dp-warn">Sign in to Brucebase to see the history.</div>'
+                ? (_isBbHost
+                    ? '<div class="mb-dp-warn">Sign in to Brucebase to see the history.</div>'
+                    : '<div class="mb-dp-warn">Brucebase did not accept the request from this site. ' +
+                      'The page\'s window on brucebase.wikidot.com shows its history.</div>')
                 : `<div class="mb-dp-warn">Could not read the history: ${_rgEsc(h.detail)}.</div> ${btn('retry', '1', 'Try again', false, ' mb-dg-primary')}`);
         }
         if (!h.revs.length) return wrap('<div class="mb-dg-dim">Wikidot lists no revisions of this page.</div>');
@@ -37919,14 +38003,14 @@
     /**
      * The History section of a Brucebase record, for `_dpExtractedCols()`:
      * closed unless the reader opened it before (`_dpSecState`), its count
-     * once the list is in; null off brucebase.wikidot.com, with the setting
-     * off, or for a page without an id.
+     * once the list is in; null with the setting off or for a page without
+     * an id. On every host (Phase 15).
      *
      * @param {object} data A Brucebase record (`bbPageId`).
      * @returns {?{label: string, html: string, open: boolean, bbHist: string}}
      */
     function _bbHistSection(data) {
-        if (!data || !data.bbPageId || !_bbHistOn()) return null;
+        if (!data || !data.bbPageId || !_bbHistWindowOn()) return null;
         _bbHistInit();
         const t = _dpDialog.target;
         const wk = t && t.url ? _bbHistKey(t.url) : '';
@@ -38023,6 +38107,12 @@
      */
     function _bbHistSubject(t) {
         if (!_bbHistHasSubject(t)) return '';
+        // Another site's window of a Brucebase page (the `springsteen`
+        // reader): the page's record is the link record's `dp`.
+        if (t.reader) {
+            const st = _mbPop.get(t.key);
+            return (st && st.status === 'done' && st.data && st.data.dp && st.data.dp.bbPageId) || '';
+        }
         const e = _dpMem.get(t.src.liveUrl ? t.src.liveUrl(t) : t.url);
         return (e && e.data && e.data.bbPageId) || '';
     }
@@ -38036,7 +38126,16 @@
      * @returns {boolean}
      */
     function _bbHistHasSubject(t) {
-        return !!(t && t.src && t.src.id === 'brucebase.wikidot.com' && _bbHistOn());
+        if (!t || !_bbHistWindowOn()) return false;
+        if (t.src && t.src.id === 'brucebase.wikidot.com') return true;
+        // A Brucebase page read by the Springsteen sites' reader, on any host
+        // (Phase 15).
+        if (!t.reader || t.reader.id !== 'springsteen' || !t.url) return false;
+        try {
+            return new URL(t.url).hostname.toLowerCase() === 'brucebase.wikidot.com';
+        } catch (_) {
+            return false;
+        }
     }
 
     /**

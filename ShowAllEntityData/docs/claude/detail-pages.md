@@ -1995,6 +1995,14 @@ generalize to URLs".
   `scripts/probe-dg-poh-headerline.user.js`); the Web Service there stays
   anonymous (`_mbWsGetForeign()`); `scripts/mutations/poh-headerline.json`
   pins it. Every other caller stays anonymous.
+  Anonymous with a cookie of OUR OWN is not an exception (no browser cookie
+  leaves): a Brucebase window's History section on another host
+  (`_bbHistGmPost()`, Phase 15 of org/brucebase.org) sends
+  `Cookie: wikidot_token7=<a token made for the page load>` and the same
+  token in its POST body, which is all Wikidot's AJAX modules check
+  (probes `scripts/probe-bb-history-token.py`,
+  `scripts/probe-bb-history-xorigin.user.js`: Tampermonkey 5.5.1 delivers a
+  Cookie header on an anonymous request).
   `_extGet()` adds the gate, `wanted()` after the slot, and one retry on a
   transient status.
 - **One rate gate per HOST: `_extAwaitSlot(host)`** (`_extSpacingMs(host)`:

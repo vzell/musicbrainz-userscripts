@@ -1686,9 +1686,8 @@ signed out, "Sign in to Brucebase to see the history".
   window's one-a-second gate). The page id is `WIKIREQUEST.info.pageId` in
   the page's script (`_bbHistPageIdOf()`): the record carries it as
   `bbPageId` (`_dpParseBb()`, `_DP_PARSER_VERSION` 21; 22 for story pages), the ☰ entry reads it
-  from the live page. Only on brucebase.wikidot.com (`_bbHistOn()`, with
-  `sa_bb_history`): a cross-origin POST with the token was not probed, so a
-  Brucebase window on another host has no section.
+  from the live page. On every host since Phase 15 (below, "Phase 15: the
+  section on other sites"); until then only on brucebase.wikidot.com.
 - **Readers.** `_bbHistParseList()`: `tr#revision-row-<id>`, newest first —
   number, flag letters (`_BB_CHANGES_FLAGS`), member and profile link,
   `odate time_N`, comment; the pager's page count ("page 2 of 3", or on page
@@ -1826,3 +1825,51 @@ real answers for song:the-promise, members scrubbed to "Editor N"; loader
 `loadBbHistoryPage()`; the comparisons `compare-<from>-<to>.json`, the story
 page's `story-compare-{title,name}.json`; the list answers asked 20 a page so
 that a pager stays in them); mutations `scripts/mutations/bb-history.json`.
+
+### Phase 15: the section on other sites (2026-11-12)
+
+A Brucebase page's window on any host (musicbrainz.org, the other
+Springsteen sites, discogs.com, …: the Springsteen sites' reader
+`springsteen`, `_extDpLoad()`) has the same History section, ✎ and H.
+
+- **The probes.** Server side, `scripts/probe-bb-history-token.py` from
+  petri (no session, no cookie jar; 2026-11-12T20:28:30+01:00 · petri ·
+  WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) · n/a): PageRevisionListModule with
+  a fresh random token as the Cookie AND in the body, "ok", 20 rows, 511 ms;
+  no cookie, or a cookie that differs, "wrong_token7". Wikidot checks the
+  pair, nothing else. Browser side, `scripts/probe-bb-history-xorigin.user.js`
+  (privacy pinned by `scripts/check-probe-bb-history-xorigin.js`), run by
+  vzell on musicbrainz.org (2026-11-12T20:31:09+01:00 · Windows · Chrome 152
+  · Tampermonkey 5.5.1; `debug/bb-history-xorigin-probe-20261112.json`): an
+  anonymous `GM_xmlhttpRequest` with the token as a `Cookie` header and as
+  Tampermonkey's `cookie` field both accepted, both controls refused;
+  230–250 ms a request; PageSourceModule accepted too (143 lines).
+- **The request.** `_bbHistPost()` off the wiki: `_bbHistGmPost()`, an
+  anonymous GM POST to `https://brucebase.wikidot.com/ajax-module-connector.php`
+  with `Cookie: wikidot_token7=<token>` and the same token in the body;
+  the token is ours, `_bbHistOffsiteToken()`, made once per page load —
+  never the browser's Brucebase cookie (an anonymous request cannot carry
+  it), and nothing is set on the site we are on (`_bbWikidotToken()` would
+  set a cookie there). The header, not the `cookie` field: both worked, and
+  the header is what a plain HTTP client sends too. Still after
+  `_dpAwaitSlot()`. On the wiki itself nothing changed (same-origin
+  `fetch()` with the wiki's cookie). The tag reader's ListPages calls go
+  through the same function but stay on the wiki (`_extBbTagTest()`).
+- **The gates.** `_bbHistWindowOn()` (the setting, any host) for the
+  window: `_bbHistSection()`, `_bbHistStart()`, `_bbHistHasSubject()`.
+  `_bbHistOn()` (the wiki and the setting) stays the gate of the wiki's own
+  pages: the ☰ entry, the Recent changes buttons, the scroll to the wiki's
+  diff. `_bbHistHasSubject()` also takes a `springsteen` target on
+  brucebase.wikidot.com, and `_bbHistSubject()` reads its page id from the
+  link record (`_mbPop.get(t.key).data.dp.bbPageId`). The record already
+  carried `bbPageId` on every host (`_dpParseBb()`), so no parser bump.
+- **A refusal off the wiki** is the token check, not a sign-in: "Brucebase
+  did not accept the request from this site. The page's window on
+  brucebase.wikidot.com shows its history." (no Try again; it would be
+  refused again). On the wiki: "Sign in to Brucebase…" as before.
+
+Tests: `tests/fixtures/bb-history-foreign.spec.js` (musicbrainz.org's event
+page with a link in its annotation, springsteenlyrics.com's bootleg list;
+the page and the modules' answers through the GM stub's responder);
+mutations `scripts/mutations/bb-history-foreign.json` (11, one on the wiki's
+own path with bb-history.spec.js).

@@ -2854,7 +2854,8 @@ userscript lists that host, so Tampermonkey does not ask first).
   person** page (`/gig:…`, `/venue:…`, `/relation:…`) shows Brucebase's own
   card and window wherever you are, on MusicBrainz too, while *Preview event,
   venue, people, release and bootleg pages on hover* (📚 Brucebase) is on
-  (the window's *History* section only on brucebase.wikidot.com itself).
+  (the window's *History* section there too; its requests carry none of
+  your cookies).
   On discogs.com, setlist.fm, archive.org and the four Springsteen sites, a
   **MusicBrainz link** in any window opens MusicBrainz's own window there
   too (*Preview linked entities on hover* on); its Live page and editing history are
@@ -3936,8 +3937,8 @@ entry, with these columns:
   page's tags sorted into Date, Place, Tour, On the page, Songs, People and
   so on, each a link to the wiki's list of pages with that tag. A song's window works the
   same way, its performances listed (folded at first) with each show
-  linked. On brucebase.wikidot.com every window ends with a folded
-  *History* section (✎ in the window's title bar, or **H**, opens it): the
+  linked. Every Brucebase window, on brucebase.wikidot.com and on every
+  other site, ends with a folded *History* section (✎ in the window's title bar, or **H**, opens it): the
   page's revisions, newest first — number, date, who, what kind of change
   (S the text, A the tags, T the title, …) and the comment, a tag change as
   pills (*+ tour_lohadnk*) — and what the revision you click changed: the

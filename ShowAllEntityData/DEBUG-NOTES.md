@@ -29299,3 +29299,23 @@ as they come into view. Found while building:
   rehearsal fixture's "??:??"). On the way: the table starts 1,290 px down the page in the
   fixture, so a short window shows two rows — the duty test scrolls the table to the top first.
 Spec 7/7, the 14 mutations and 4 refreshed finds OK, 27 BB specs + sl-include-regex 307 green.
+
+## 2026-11-12 — Brucebase page history in windows on other sites (feature/bb-overhaul, Phase 15)
+Env: 2026-11-12T20:28:30+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) · probes: n/a (Python urllib) and vzell's Chrome 152 · Tampermonkey 5.5.1 on musicbrainz.org (20:31:09+01:00) · specs: Playwright Chromium, no Tampermonkey (GM stubs)
+- Question: can the History section (Wikidot's history modules, POST /ajax-module-connector.php with
+  `wikidot_token7` in the body equal to the cookie) work off brucebase.wikidot.com, where the
+  request must be an anonymous GM_xmlhttpRequest? `scripts/probe-bb-history-token.py`: a fresh random
+  token as cookie and in the body, no session, "ok" (20 rows, 511 ms); no cookie and cookie ≠ body
+  "wrong_token7". `scripts/probe-bb-history-xorigin.user.js` (vzell, `debug/bb-history-xorigin-probe-20261112.json`):
+  Tampermonkey delivers both a `Cookie` header and its `cookie` field on an anonymous request; both
+  controls refused; 230–250 ms; PageSourceModule accepted.
+- Done: `_bbHistPost()` off the wiki goes through `_bbHistGmPost()` (anonymous, Cookie header, one
+  token per page load, `_bbHistOffsiteToken()`); `_bbHistWindowOn()` (setting only) gates the window's
+  section, ✎ and H on every host; `_bbHistHasSubject()`/`_bbHistSubject()` take the `springsteen`
+  reader's Brucebase targets (page id from the link record's `dp`). `_bbHistOn()` keeps the wiki-only
+  page features. Off the wiki a token refusal reads "Brucebase did not accept the request from this
+  site …" instead of "Sign in".
+- Trap avoided: `_bbWikidotToken()` off the wiki would set a `wikidot_token7` cookie on the host we
+  are on (musicbrainz.org) — a mutation pins that no such cookie appears.
+Spec `bb-history-foreign.spec.js` 5/5, mutations `bb-history-foreign.json` 11/11; bb-history*,
+popup-ext-foreign*, bb-every-page 39/39; popup-ext + detail-preview 146/146.

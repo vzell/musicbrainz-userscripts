@@ -734,7 +734,7 @@ tags, Storyteller / Recording / Media present, image counts.
 
 *** TODO Phase 15 — History in Brucebase windows on other sites
 Today the History section is on brucebase.wikidot.com only.
-- [ ] probe userscript run by vzell on musicbrainz.org: a cross-origin anonymous =GM_xmlhttpRequest= POST
+- [X] probe userscript run by vzell on musicbrainz.org: a cross-origin anonymous =GM_xmlhttpRequest= POST
   to =/ajax-module-connector.php= with our own =wikidot_token7= in body and Cookie header; status, ms,
   whether the token is accepted; no names saved
   - server side, done from petri (=scripts/probe-bb-history-token.py=, no session, no cookie jar):
@@ -749,8 +749,16 @@ Today the History section is on brucebase.wikidot.com only.
     cookie as a Cookie HEADER, as Tampermonkey's =cookie= FIELD, none, ≠ body — then one PageSourceModule
     with the first variant accepted. Answers whether Tampermonkey delivers the cookie on an anonymous
     request. Report: =debug/bb-history-xorigin-probe-YYYYMMDD.json=.
-- [ ] on that evidence: the section in BB windows on every host (the existing =_dpAwaitSlot()= spacing),
+  - vzell's run: =debug/bb-history-xorigin-probe-20261112.json= (2026-11-12T20:31:09+01:00, Windows,
+    Chrome 152, Tampermonkey 5.5.1): the Cookie header and the =cookie= field both accepted (20 rows,
+    250 / 235 ms), no cookie and cookie ≠ body both "wrong_token7", PageSourceModule accepted (143
+    lines). =usable: true=.
+- [X] on that evidence: the section in BB windows on every host (the existing =_dpAwaitSlot()= spacing),
   or a note why not; specs, docs (detail-pages.md: an external request stays anonymous), WIP
+  Done 2026-11-12 (WIP.21): =_bbHistGmPost()= (anonymous, Cookie header, one token of our own per page
+  load), =_bbHistWindowOn()=; ✎ / H in those windows; a token refusal off the wiki says so instead of
+  "Sign in". Spec =bb-history-foreign.spec.js= 5/5, mutations 11/11, siblings 185/185. Docs:
+  brucebase.md "Phase 15: the section on other sites", detail-pages.md, HELP, the setting's text.
 - [ ] vzell's live check
 
 *** TODO Phase 16 — recheck what our readers miss
