@@ -659,11 +659,13 @@ The mirror has 258 =stats:*studio-sessions*= pages (an album's sessions and its 
   session's version table is bold by its style, so batch 1 took the first take as the header and a
   one-row bold table gave its row as the header to the tables after it — a bold-styled row is a header
   only when a row follows that is not like it (Awards' header, followed by a one-cell ceremony row,
-  stays); the batch-1 check over the other stats pages is unchanged table by table. Not in the mockup,
-  so left out: the "Note:" paragraphs under each song's version table (in the wiki's page below).
-  =bb-song-tours-sessions.spec.js= (7), =bb-release.spec.js= Take/Date, batch 1's tour fixture now
-  bb-song-tours' (a never-toured song replaces it); =scripts/mutations/bb-song-tours-sessions.json= (26) +
-  4 refreshed finds (bb-release, bb-song ×2, bb-stats): 30 OK; all 27 BB specs + sl-include-regex 294
+  stays); the batch-1 check over the other stats pages is unchanged table by table. The "Note:"
+  paragraphs under each song's version table (not in the mockup) were first left out; vzell: "I want
+  them as a multi-row column" → a collapsed Note column on each of the song's takes, a paragraph per
+  line, past a recording sheet's picture (2,639 of the family's 2,642 "Note:" paragraphs; the 3 others
+  are page notes). =bb-song-tours-sessions.spec.js= (8), =bb-release.spec.js= Take/Date, batch 1's tour fixture now
+  bb-song-tours' (a never-toured song replaces it); =scripts/mutations/bb-song-tours-sessions.json= (32) +
+  4 refreshed finds (bb-release, bb-song ×2, bb-stats): 36 OK; all 27 BB specs + sl-include-regex 295
   green; coverage rows, PAGETYPES reference (174, 175), HELP, CLAUDE.md, WIP.18
 - [ ] vzell's live check of batch 2 (e.g. stats:hungry-heart-tour, stats:born-to-run-studio-sessions,
   stats:darkness-on-the-edge-of-town-studio-sessions, stats:nebraska-studio-sessions-details, and the

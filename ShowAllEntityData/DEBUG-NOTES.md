@@ -29241,3 +29241,19 @@ accepted an empty Song); the spec pins both now and they fail. mutation-check re
 first with the harness's auth hint as its error line, so it was planted by hand once: the
 sub-table is gone (TypeError on its rows), the right reason. Results: the new spec 7/7, 26 + 4
 refreshed mutations OK, all 27 BB specs + sl-include-regex 294 green.
+
+## 2026-11-12 — bb-sessions: the notes under each song's table as a Note column (feature/bb-overhaul, Phase 13 batch 2)
+
+Env: 2026-11-12T13:31+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs).
+
+vzell asked for Version History's "Note:" paragraphs as a multi-row column. A note is the
+paragraphs right after a song's table from one beginning "Note:"; the first reader stopped at
+the first non-paragraph and so lost the notes on 12 pages — a recording sheet's picture
+(`div.image-container`) sits between those tables and their notes (BTR's Jungleland, Walking
+In The Street). It steps over pictures now; `scripts/check-bb-tours-sessions.js` compares the
+page's "Note:" paragraphs with the notes read: 2,642 / 2,639, the 3 others page notes under no
+table. One mutation first passed (the note on the first take only): the note's merge path is
+taken only from a group's SECOND table on, and Backstreets, the one song checked, is the first;
+every song's rows are checked now. mutation-check again printed the harness's auth hint as the
+error line of one entry, planted by hand: it fails on Jungleland's note, the right reason.
+Spec 8/8, the six note mutations OK, 27 BB specs + sl-include-regex 295 green.

@@ -29436,13 +29436,15 @@
      *   nearest heading before the table, else the page's title; a
      *   repeated name gets " (2)". Each table also carries what its name
      *   was made of (`tab`, `caption`, `heading`: the nearest h1–h3 before
-     *   it) and its cells' text (`texts`), for `_bbSessionsRead()`.
+     *   it), its cells' text (`texts`) and the note under it (`notes`: the
+     *   paragraphs right after it from one beginning "Note:", as cell HTML,
+     *   the "Note:" dropped), for `_bbSessionsRead()`.
      *
      * @param {Document} doc
      * @param {string} base - The page's URL.
      * @param {{minRows?: number}} [opts] - `minRows`: the fewest data rows a
      *   table needs (2; a studio session's one-version tables, 1).
-     * @returns {?{list: Array<Object>, tables: Array<{name: string, cols: string[], rows: string[][], texts: string[][], tab: string[], caption: string, heading: string}>}}
+     * @returns {?{list: Array<Object>, tables: Array<{name: string, cols: string[], rows: string[][], texts: string[][], tab: string[], caption: string, heading: string, notes: string[]}>}}
      */
     function _bbStatsRead(doc, base, opts = {}) {
         const root = doc.getElementById('page-content');
@@ -29570,9 +29572,23 @@
             if (!name) name = heading || _bbText(doc.getElementById('page-title')) || 'Table';
             const n = (names.get(name) || 0) + 1;
             names.set(name, n);
+            // The note under a table: the paragraphs right after it, the
+            // first beginning "Note:" (a studio session's song), each a
+            // paragraph of its own; empty ones (the next song's anchor) and
+            // a picture beside the note (a recording sheet,
+            // `div.image-container`) are skipped, anything else ends it.
+            const notes = [];
+            const picture = el => el.tagName === 'DIV' && el.classList.contains('image-container');
+            for (let el = t.nextElementSibling; el && (el.tagName === 'P' || picture(el)); el = el.nextElementSibling) {
+                if (picture(el)) continue;
+                const text = _bbText(el);
+                if (!text) continue;
+                if (!notes.length && !/^Notes?\s*:/i.test(text)) break;
+                notes.push(_bbStatsCellHtml(el).replace(/^Notes?\s*:\s*/i, ''));
+            }
             tables.push({
                 name: n > 1 ? `${name} (${n})` : name, cols: heads, rows: read.map(r => r.html), texts: read.map(r => r.text),
-                tab, caption, heading,
+                tab, caption, heading, notes,
             });
         });
         Lib.debug('init', `_bbStatsRead: ${list.length} list item(s), ${tables.length} table(s) on ${base}.`);
@@ -29945,7 +29961,9 @@
      * numbered "1." headed # / Song, and a Song Title column of takes split
      * (`_bbSplitVersion()`: Song, Version, and Take and Date where a take
      * has them); a title with no take keeps its cell as Song, and a column
-     * with a cell listing several takes (the Timeline) is not split.
+     * with a cell listing several takes (the Timeline) is not split. The
+     * note under a table (`_bbStatsRead()`'s `notes`) is a last column,
+     * Note, on each of its rows, a paragraph per line.
      *
      * @param {Document} doc
      * @param {string} url
@@ -29965,9 +29983,10 @@
             if (prev && prev.name === name && prev.cols.join('\u0001') === t.cols.join('\u0001')) {
                 prev.rows.push(...t.rows);
                 prev.texts.push(...t.texts);
+                prev.notes.push(...t.rows.map(() => t.notes));
                 return;
             }
-            prev = { name, cols: t.cols.slice(), rows: t.rows.slice(), texts: t.texts.slice() };
+            prev = { name, cols: t.cols.slice(), rows: t.rows.slice(), texts: t.texts.slice(), notes: t.rows.map(() => t.notes) };
             groups.push(prev);
         });
         const seen = new Map();
@@ -29998,6 +30017,14 @@
                 return [...r.slice(0, col), ...cols.map(c => cell[c]), ...r.slice(col + 1)];
             });
             g.cols.splice(col, 1, ...cols);
+        });
+        // The note under a song's table (vzell, 2026-11-12): a Note column,
+        // the note on every row of that table (each of the song's takes),
+        // a paragraph a line; collapsed (`collapsableColumns`).
+        groups.forEach((g) => {
+            if (!g.notes.some(n => n.length)) return;
+            g.cols.push('Note');
+            g.rows = g.rows.map((r, i) => [...r, g.notes[i].length ? `<ul>${g.notes[i].map(x => `<li>${x}</li>`).join('')}</ul>` : '']);
         });
         const code = root.querySelector('div.code pre');
         const credits = code ? code.textContent.replace(/\r/g, '').trim() : '';
@@ -58186,7 +58213,9 @@
                     return { url, fetchText: async () => _bbDetailPageHtml(), toHtml: text => _bbSessionsToHtml(text, url) };
                 },
                 pageCountAsync: () => 1,
+                collapsableColumns: [ 'Note' ],
                 columnDescriptions: {
+                    Note: 'The wiki\'s note under the song\'s table, a paragraph per line; on each of the song\'s takes.',
                     Version: 'The version, as On The Tracks numbers it (V1, V2a, …), and what the wiki adds to it ("radio mix", "[Demo]").',
                     Take: 'The take, when the wiki names it ("take 14", "takes 5-8").',
                     Date: 'When the take was recorded, as the wiki writes it.',

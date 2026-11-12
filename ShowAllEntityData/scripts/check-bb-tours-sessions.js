@@ -15,7 +15,9 @@
  *   debug/bb-mirror/stats/: the tables, their names and columns, how many
  *   takes split into Song / Version / Take / Date; tables whose columns are
  *   all "Column N", a ragged row, a "Song Title" column of takes left
- *   unsplit, a take whose version keeps a bracket.
+ *   unsplit, a take whose version keeps a bracket; the notes under the
+ *   tables — the page's paragraphs beginning "Note:" against the notes
+ *   read, and the ones missed (a Note paragraph not right after a table).
  * - `_bbSplitVersion()` over every take name of those pages and of
  *   debug/bb-mirror/ott/: the Take and Date shapes, and what is left beside
  *   the version.
@@ -105,13 +107,24 @@ async function main() {
     const versions = [];
     for (const f of pages('stats', /^stats_.*-studio-sessions.*\.html$/)) {
         sessions.push(await run(({ code, html, file }) => {
-            const api = new Function(`${code}\nreturn { _bbSessionsRead, _bbSplitVersion, _BB_SESSIONS_PATH_RE };`)();
+            const api = new Function(`${code}\nreturn { _bbSessionsRead, _bbSplitVersion, _bbStatsRead, _BB_SESSIONS_PATH_RE };`)();
             const name = file.replace(/^stats_/, '').replace(/\.html$/, '');
             const url = `https://brucebase.wikidot.com/stats:${name}`;
             const doc = new DOMParser().parseFromString(html, 'text/html');
             const rec = api._bbSessionsRead(doc, url);
             const strip = h => h.replace(/<[^>]+>/g, '').trim();
+            const noteRe = /^Notes?\s*:/i;
+            const saidP = Array.from(doc.querySelectorAll('#page-content p')).filter(x => noteRe.test(x.textContent.replace(/\s+/g, ' ').trim()));
+            const st = api._bbStatsRead(doc, url, { minRows: 1 }) || { tables: [] };
+            const readFirst = { size: st.tables.filter(t => t.notes.length).length };
+            const missed = saidP.filter((x) => {
+                let prev = x.previousElementSibling;
+                while (prev && ((prev.tagName === 'P' && !prev.textContent.trim()) || prev.classList.contains('image-container'))) prev = prev.previousElementSibling;
+                return !(prev && prev.tagName === 'TABLE');
+            }).map(x => x.textContent.replace(/\s+/g, ' ').trim().slice(0, 70));
             return {
+                notesSaid: saidP.length, notesRead: readFirst.size, notesMissed: missed,
+                notedRows: rec ? rec.tables.reduce((n, t) => n + (t.cols.includes('Note') ? t.rows.filter(r => r[t.cols.indexOf('Note')]).length : 0), 0) : 0,
                 name, matches: api._BB_SESSIONS_PATH_RE.test(`/stats:${name}`),
                 album: rec && rec.album ? rec.album.text : '', released: rec ? rec.released : '', label: rec ? rec.label : '',
                 sections: rec ? rec.sections : [], links: rec ? rec.links : {}, overview: rec ? rec.overview.length : 0,
@@ -161,6 +174,8 @@ async function main() {
     prob('pages with an all-"Column N" table', sm.filter(r => r.tables.some(t => t.generic)), r => `${r.name} [${r.tables.filter(t => t.generic).map(t => t.name).join('; ')}]`);
     prob('pages with a ragged table', sm.filter(r => r.tables.some(t => t.ragged)));
     prob('pages with takes left in a Song Title column', sm.filter(r => r.tables.some(t => t.unsplit)), r => `${r.name} [${r.tables.filter(t => t.unsplit).map(t => t.name).join('; ')}]`);
+    console.log(`notes: ${sm.reduce((n, r) => n + r.notesSaid, 0)} "Note:" paragraphs, ${sm.reduce((n, r) => n + r.notesRead, 0)} notes read, on ${sm.reduce((n, r) => n + r.notedRows, 0)} rows`);
+    prob('pages where a "Note:" paragraph does not follow a table', sm.filter(r => r.notesMissed.length), r => `${r.name}: ${r.notesMissed.slice(0, 2).join(' / ')}`);
     prob('pages with a bracket left in Version', sm.filter(r => r.tables.some(t => t.bracket.length)), r => `${r.name}: ${r.tables.flatMap(t => t.bracket).slice(0, 3).join(' / ')}`);
 
     console.log(`\n== take names: ${versions.length}; with a version ${versions.filter(v => v.version).length}, a take ${versions.filter(v => v.take).length}, a date ${versions.filter(v => v.date).length}`);

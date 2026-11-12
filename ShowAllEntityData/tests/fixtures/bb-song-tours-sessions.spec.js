@@ -130,6 +130,63 @@ function fixtureSectionRows(page, name, section) {
     }, { h: html, section });
 }
 
+/**
+ * The fixture's notes by song, read with a plain DOM: for each table of
+ * Details › Version History, the paragraphs after it from the one beginning
+ * "Note:" ("Note:" dropped), stepping over empty paragraphs and pictures.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} name
+ * @returns {Promise<Object<string, string[]>>} The song (first cell before " - V") → its paragraphs.
+ */
+function notesUnder(page, name) {
+    const html = fs.readFileSync(bbStatsFixture(name).file, 'utf8');
+    return page.evaluate((h) => {
+        const d = new DOMParser().parseFromString(h, 'text/html');
+        const out = {};
+        d.querySelectorAll('#page-content table').forEach((t) => {
+            const td = t.querySelector('td');
+            if (!td) return;
+            const song = td.textContent.replace(/\s+/g, ' ').trim().replace(/\s+-\s+V\d.*$/, '');
+            const lis = [];
+            for (let el = t.nextElementSibling; el && (el.tagName === 'P' || el.classList.contains('image-container')); el = el.nextElementSibling) {
+                const text = el.tagName === 'P' ? el.textContent.replace(/\s+/g, ' ').trim() : '';
+                if (!text) continue;
+                if (!lis.length && !/^Notes?\s*:/.test(text)) break;
+                lis.push(text.replace(/^Notes?\s*:\s*/, ''));
+            }
+            if (lis.length && !out[song]) out[song] = lis;
+        });
+        return out;
+    }, html);
+}
+
+/**
+ * A sub-table's Note cells: per row the Song cell's text, the note's lines
+ * (`li` texts) and whether the cell has its collapse toggle.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} name - The sub-table's h3 name.
+ * @returns {Promise<Array<{song: string, lis: string[], toggle: boolean}>>}
+ */
+function noteCells(page, name) {
+    return page.evaluate((want) => {
+        const t = Array.from(document.querySelectorAll('table.tbl')).find((x) => {
+            let h3 = x.previousElementSibling;
+            while (h3 && h3.tagName !== 'H3') h3 = h3.previousElementSibling;
+            return h3 && h3.textContent.replace(/[▲▼]/g, '').trim().startsWith(want);
+        });
+        const headers = Array.from(t.tHead.rows[0].cells, c => c.dataset.colName || c.textContent.trim());
+        const si = headers.indexOf('Song');
+        const ni = headers.indexOf('Note');
+        return Array.from(t.tBodies[0].rows, tr => ({
+            song: tr.cells[si].textContent.replace(/\s+/g, ' ').trim(),
+            lis: Array.from(tr.cells[ni].querySelectorAll('li'), li => li.textContent.replace(/\s+/g, ' ').trim()),
+            toggle: !!tr.cells[ni].querySelector('.mb-cell-collapse-toggle'),
+        }));
+    }, name);
+}
+
 /** Requests to the wiki itself (pages, AJAX): the views make none. */
 const wikiRequests = reqs => reqs.filter(u => /^https?:\/\/brucebase\.wikidot\.com\//.test(u));
 
@@ -194,10 +251,10 @@ test.describe('Brucebase studio sessions (Phase 13, batch 2)', () => {
         // Version History: every song's table in one, the columns from the
         // heading-only table above them (not the first take's row).
         const v = t['Details › Version History'];
-        expect(v.headers).toEqual(['Song', 'Version', 'Take', 'Date', 'Running Time', 'Release']);
+        expect(v.headers).toEqual(['Song', 'Version', 'Take', 'Date', 'Running Time', 'Release', 'Note']);
         expect(v.rows).toHaveLength(vh.length);
-        expect(v.rows[0]).toEqual(['BACKSTREETS', 'V1', '', '', '', 'uncirculating']);
-        expect(v.rows).toContainEqual(['BORN TO RUN', 'V1a', '', '', '4:24', 'ESR / BTRS']);
+        expect(v.rows[0].slice(0, 6)).toEqual(['BACKSTREETS', 'V1', '', '', '', 'uncirculating']);
+        expect(v.rows.map(r => r.slice(0, 6))).toContainEqual(['BORN TO RUN', 'V1a', '', '', '4:24', 'ESR / BTRS']);
         expect(v.rows).toContainEqual(expect.arrayContaining(['THE HEIST', 'V2', '14']));
         expect(v.rows).toContainEqual(expect.arrayContaining(['JUNGLELAND', 'V1', '', 'August 1, 1974']));
         expect(v.rows).toContainEqual(expect.arrayContaining(['JUNGLELAND', 'V6', '', 'April - July 1975']));
@@ -210,6 +267,33 @@ test.describe('Brucebase studio sessions (Phase 13, batch 2)', () => {
         expect(wikiRequests(requests), 'read from the page itself').toEqual([]);
     });
 
+    test('the note under a song\'s table: a Note column on each of its takes, a paragraph a line, collapsed; past a picture', async ({ page }) => {
+        await loadBbStatsPage(page, 'born-to-run-studio-sessions');
+        const fx = await notesUnder(page, 'born-to-run-studio-sessions');
+        await press(page, SESSIONS);
+        const notes = await noteCells(page, 'Details › Version History');
+        // Every take of a song carries its note; the wiki's paragraphs, "Note:" dropped.
+        const back = notes.filter(n => n.song === 'BACKSTREETS');
+        expect(back.length).toBeGreaterThan(5);
+        expect(back.every(n => n.lis.join('|') === back[0].lis.join('|'))).toBe(true);
+        expect(back[0].lis).toEqual(fx.BACKSTREETS);
+        expect(back[0].lis.length, 'a note of two paragraphs').toBe(2);
+        expect(back[0].lis[0]).toMatch(/^The story that the song "Born To Run" took six months/);
+        // Every song, every take: its own note, as the page writes it under its table.
+        const songs = [...new Set(notes.map(n => n.song))].filter(x => fx[x]);
+        expect(songs.length).toBeGreaterThan(8);
+        songs.forEach((x) => {
+            expect(notes.filter(n => n.song === x).every(n => n.lis.join('|') === fx[x].join('|')), x).toBe(true);
+        });
+        expect(back[0].toggle, 'more than one line: collapsed with its toggle').toBe(true);
+        // A recording sheet's picture between the table and its note.
+        const walking = notes.find(n => n.song === 'WALKING IN THE STREET');
+        expect(walking.lis[0]).toMatch(/^There is very little information about "Walking In The Street"/);
+        // "Total Running Time" under a release's table is no note.
+        const t = await subTables(page);
+        expect(t['Released › Born To Run'].headers).not.toContain('Note');
+    });
+
     test('a title with no take keeps its cell as Song; in MusicBrainz case with the wiki\'s name as the hover', async ({ page }) => {
         await loadBbStatsPage(page, 'born-to-run-studio-sessions', { settingsOverride: { sa_foreign_mb_titles: true } });
         await press(page, SESSIONS);
@@ -219,7 +303,7 @@ test.describe('Brucebase studio sessions (Phase 13, batch 2)', () => {
         expect(i).toBeGreaterThanOrEqual(0);
         expect(v.tips[i]).toContain('BORN TO RUN - V1a');
         // A list of titles naming no take is not split.
-        expect(t['Possible BTR-era Songs'].headers).toEqual(['Song Title', 'Running Time', 'Release']);
+        expect(t['Possible BTR-era Songs'].headers).toEqual(['Song Title', 'Running Time', 'Release', 'Note']);
         // Takes and titles with none in one table: the title stays whole, Version empty.
         await page.goto('about:blank');
         await loadBbStatsPage(page, 'devils-and-dust-studio-sessions-details');

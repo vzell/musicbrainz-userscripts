@@ -336,5 +336,83 @@
         "spec": "tests/fixtures/bb-release.spec.js",
         "grep": "counted from the page's own tabs",
         "expect": "fail"
+    },
+    {
+        "name": "the note under a table is not read",
+        "why": "vzell, 2026-11-12: the \"Note:\" paragraphs under each song's version table as a Note column.",
+        "edits": [
+            {
+                "find": "                if (!notes.length && !/^Notes?\\s*:/i.test(text)) break;",
+                "replace": "                break;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "the note under",
+        "expect": "fail"
+    },
+    {
+        "name": "any paragraph after a table is a note",
+        "why": "\"Total Running Time: 39:28\" under a release's table is no note: a note begins \"Note:\".",
+        "edits": [
+            {
+                "find": "                if (!notes.length && !/^Notes?\\s*:/i.test(text)) break;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "the note under",
+        "expect": "fail"
+    },
+    {
+        "name": "a picture ends the note",
+        "why": "A recording sheet's picture (div.image-container) sits between some tables and their notes.",
+        "edits": [
+            {
+                "find": "                if (picture(el)) continue;",
+                "replace": "                if (picture(el)) break;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "the note under",
+        "expect": "fail"
+    },
+    {
+        "name": "the note is on the first take only",
+        "why": "Each of the song's takes carries the note (rows sort and filter apart).",
+        "edits": [
+            {
+                "find": "                prev.notes.push(...t.rows.map(() => t.notes));",
+                "replace": "                prev.notes.push(...t.rows.map((r, k) => (k ? [] : t.notes)));"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "the note under",
+        "expect": "fail"
+    },
+    {
+        "name": "the Note column is not collapsed",
+        "why": "collapsableColumns: a long note folds to its first line.",
+        "edits": [
+            {
+                "find": "                collapsableColumns: [ 'Note' ],\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "the note under",
+        "expect": "fail"
+    },
+    {
+        "name": "\"Note:\" stays in the note",
+        "why": "The column is Note: the wiki's \"Note:\" is dropped.",
+        "edits": [
+            {
+                "find": "                notes.push(_bbStatsCellHtml(el).replace(/^Notes?\\s*:\\s*/i, ''));",
+                "replace": "                notes.push(_bbStatsCellHtml(el));"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "the note under",
+        "expect": "fail"
     }
 ]

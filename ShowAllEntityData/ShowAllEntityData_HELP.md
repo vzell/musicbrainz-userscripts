@@ -4261,7 +4261,9 @@ press loads the page again for the other view.
   Timeline*, the potential album sequences), all open. Version History is
   one table of every take, its name split into **Song**, **Version**,
   **Take** and **Date** ("JUNGLELAND - V1 (August 1, 1974)"); what else the
-  wiki says about a take ("radio mix", "[Demo]") stays with the version.
+  wiki says about a take ("radio mix", "[Demo]") stays with the version, and
+  the wiki's note under each song is a **Note** column on each of its takes,
+  a paragraph per line, folded to its first line.
   Above them the album and its release date, label, credits and overview.
   It comes with *Detail pages*; with that off the page gets
   **Tables**.

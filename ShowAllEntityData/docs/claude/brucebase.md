@@ -1495,16 +1495,25 @@ page (no request) and put our heading and table before `#page-content`
   layouts (Final Sequence's sides, 11 pages). The batch-1 check
   (`check-bb-stats-reader.js`) over the other stats pages is unchanged by
   the header rule (compared table by table).
-- **Not taken from the mockup**: the notes under each song's version table
-  (Version History's "Note: …" paragraphs) are not in the table — the
-  mockup had none; they stay in the wiki's page below.
-- **Tests**: `tests/fixtures/bb-song-tours-sessions.spec.js` (7), fixtures
+- **The notes** (vzell, 2026-11-12, after the batch was built: the mockup
+  had none): the paragraphs under a song's version table, from the one
+  beginning "Note:" ("Notes:"), are a last column **Note** on each of the
+  song's takes, a paragraph per `li`, collapsed (`collapsableColumns`).
+  `_bbStatsRead()` reads them (`notes`), stepping over empty paragraphs
+  (the next song's anchor) and a recording sheet's picture
+  (`div.image-container`) between the table and its note; anything else
+  ends a note, and a table whose next paragraph does not begin "Note:"
+  ("Total Running Time: 39:28" under a release) has none. Over the family:
+  2,642 "Note:" paragraphs, 2,639 read as notes of a table (on 6,339 rows);
+  the 3 others are page notes, under no table ("For a scrollable page
+  click here", the Nebraska stereo-mix CDs).
+- **Tests**: `tests/fixtures/bb-song-tours-sessions.spec.js` (8), fixtures
   `bb-stats-57-channels-and-nothin-on-tour`, `-ain-t-that-a-shame-tour`,
   `-born-to-run-studio-sessions`, `-…-timeline`, `-…-overview`,
   `-devils-and-dust-studio-sessions-details`, and the tour fixture of
   batch 1 (`4th-of-july-…-tour`, now bb-song-tours'); `bb-release.spec.js`
   checks the Take and Date of On The Tracks; mutations
-  `scripts/mutations/bb-song-tours-sessions.json` (26).
+  `scripts/mutations/bb-song-tours-sessions.json` (32).
 
 ## Show links on Brucebase's own pages (Phase 8, 2026-11-11)
 

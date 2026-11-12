@@ -7,7 +7,7 @@
         "label": "🚀 Feature",
         "items": [
           "Brucebase: a song's tour page (…/stats:hungry-heart-tour) gets a button that shows every tour in one table: how often the song was played, the tour's own number of shows, the share with a bar and the page's note, then the other known shows and the public rehearsals. Nothing is fetched.",
-          "Brucebase: an album's studio sessions page (…/stats:born-to-run-studio-sessions, and each of its parts) gets a button that shows its tables, one per section and tab: the released and additional recordings, every take of the version history in one table with its name split into song, version, take and date, the timeline and the potential album sequences; the album, its release date, label, credits and overview above. Nothing is fetched."
+          "Brucebase: an album's studio sessions page (…/stats:born-to-run-studio-sessions, and each of its parts) gets a button that shows its tables, one per section and tab: the released and additional recordings, every take of the version history in one table with its name split into song, version, take and date and the wiki's note on the song as a column, the timeline and the potential album sequences; the album, its release date, label, credits and overview above. Nothing is fetched."
         ]
       },
       {
