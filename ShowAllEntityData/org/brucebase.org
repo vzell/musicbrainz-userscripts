@@ -630,6 +630,42 @@ BB PTs". Last, once Phases 7–15 have added their readers.
 - [ ] fixes in batches, each with spec and mutation; docs, WIP
 - [ ] vzell's live check
 
+*** Handoff to petri (2026-11-12T04:05+01:00, from vzell-lap)
+State: branch =feature/bb-overhaul= pushed, working tree clean, Phases 0–12 DONE and live-checked. Newest WIP
+entry: WIP.16 (next: WIP.17). No =// @version= bump, no real changelog entry on this branch; no merge to
+=main= without asking vzell.
+
+Owed, in this order:
+1. =npm run test:full= on petri (the merge gate, never run on this branch yet), through
+   =python3 scripts/run-test-full.py --log <scratchpad>/test-full.log=, announced with start time, host,
+   SHA and finish window. It covers the "wider sibling sweep" deferred since Phase 8 (BB specs,
+   popup-ext*, popup-mb, sticky-filter-bars, the MusicBrainz fixture specs): every phase changed shared
+   code (=_extTarget()=, =_dpWinIsBb()=, =extRoot=, =_bbHistPost()=, =_bbStoryQuote()=,
+   =applyBbDetailToTable()=, =_DP_PARSER_VERSION= 23). Known flake: popup-ext-foreign.spec.js "a Brucebase
+   page's window on springsteenlyrics.com opens a Wikipedia link in place, with Back" timed out once on a
+   detached link (green alone and on a rerun). Fix real failures; report flakes.
+2. =python3 scripts/check-mutation-finds.py= (0 stale at handoff), =lint-summary.py --check=,
+   =build-coverage-report.py --check=, =audit-docs.py=.
+3. Phases 13 → 16 as written above, one at a time, each ending with vzell's live check.
+
+Working rules (vzell-lap's Claude memory, not in the repo):
+- After each task: commit AND push, vzell's own edits to this file included; commit messages start
+  with =[ShowAllEntityData]=.
+- Per phase run only that phase's new or changed specs plus its mutation list; a wide sweep after a few phases.
+- Warn vzell before a mutation run: =scripts/mutation-check.py= edits the live userscript he may
+  install. Every entry gets a one-test =grep=; a guard no spec can see is =expect: pass= with the reason.
+- Every DOM change: a spec that fails without it, and a mutation for it.
+- Foreign-site converters: probe the WHOLE page family before writing specs (e.g.
+  =scripts/check-bb-story-reader.js= over every story page).
+- Mockups with questions before building, as a private Artifact; one naming wiki members stays in =debug/=.
+- Times in Europe/Berlin with the offset; an Env stamp on every probe result.
+
+Files: the BruceParser mirror was =/home/vzell/git/scripts/BruceParser/bb/latest= on vzell-lap (a slow
+share: copy samples to the scratchpad first; 17 min for 1,489 files on 2026-11-12) — check its path on
+petri. =debug/= is gitignored: the probes' outputs (=debug/bb-story-probe.json=, the raw tag pages, …)
+are NOT on petri; rerun the probe scripts (=scripts/probe-bb-*.py=) when they are needed. The fixtures
+and captured answers the specs use are committed.
+
 
 * DONE answers
 1. Setlist: one table with a Set column (Soundcheck/Show/Encore), or one table per set? one table
