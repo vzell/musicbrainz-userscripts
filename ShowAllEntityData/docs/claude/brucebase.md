@@ -1297,6 +1297,58 @@ fixture's tag block; "grouped by photographer" — 1985-01-04's Mic Hampton,
 1985-01-13's unknown photographer; "image groups fold"); mutations
 `scripts/mutations/bb-names-tags.json` and `bb-window-sections.json`.
 
+## Story pages — `bb-story` (Phase 12, 2026-11-12)
+
+`/story:…` (vzell's "no PT yet", round-2 live check of the History). Under
+`sa_bb_detail_pages`, like the other detail pages; the live part is
+`applyBbDetailToTable()` (kind `story`, heading "Story", the wiki's page
+folded below), the head `_bbStoryHeadSpec()`.
+
+- **The family** (`scripts/probe-bb-story-pages.py` over the mirror's 1,489,
+  2026-11-12 · vzell-lap · n/a): named by kind, the name's first word —
+  story 1,399 (a show's Storyteller words: 11,800 bold headings, "Intro to"
+  8,745, "Middle of" 1,298, "After" 415, …), dj 31 (a radio show's talk, an
+  `h2` "Part 1", plain paragraphs and bold first names), speech 26,
+  podcast 9 ("Speaker: words", the name in a coloured span, no bold;
+  2,104 turns), about 8, interview 8 and phonecall 3 (a bold speaker per
+  turn), eulogy 4, talk 1. A Storyteller banner on top; "Compiled by : …" in
+  a box (a table cell) at the end. **The breadcrumbs are empty**, live too:
+  no link to the show.
+- **The reader** `_bbStoryRead(doc, url)` (shared with the window,
+  `_dpParseBbPage()`: Kind, Date, Moments / Turns / Paragraphs, Compiled
+  by; `_DP_PARSER_VERSION` 23): parts at each `h2` (else one, named by the
+  kind, `_BB_STORY_KINDS`); per paragraph, a bold heading is, in this order,
+  a moment with its song (`_bbStoryQuote()`, shared with the event page's
+  Storyteller tab), a question or a sentence (words), a song quoted inside a
+  longer heading (double quotes only: an apostrophe is too often a
+  possessive), a moment (`_BB_STORY_MOMENT_RE`, or a "02.11.78 …" date), a
+  "Name: words" heading, a show story's heading in capitals (a song), a
+  caption (more than five words, or a possessive "'s": a part of its
+  own), else a speaker. A coloured "Name:" span is a speaker; a paragraph
+  without a heading carries on a row that has one, else is a row of words.
+  `scripts/check-bb-story-reader.js` runs the reader over the whole
+  mirror in Chromium: every page has rows, "Compiled by" on 1,395 of the
+  1,399 show stories; the first version read it from paragraphs only
+  (133) and took captions and questions for speakers.
+- **The tables** (`_bbStoryToHtml()`, `tableMode: 'multi'`): a sub-table per
+  part, with only the columns its rows use — Moment, Song (MusicBrainz title
+  style, the wiki's text as the hover), Speaker, Words (collapsable).
+- **The show** (`_bbStoryEventLookup()`, at the press, in the pageRequest's
+  `fetchText()`): one ListPages call, `name=<slug>*` in the five event
+  categories (the star: Wikidot cuts long names short —
+  story:speech-2026-10-17-…-theatre-r → nogig:…-theatre-red-bank;
+  `scripts/probe-bb-story-lookup*.py`; `link_to` finds nothing: an event
+  page does not link its story). An older story named by date and town
+  (story:story-1971-05-15-union-nj; 128 of the mirror's,
+  `scripts/probe-bb-story-events.py`) finds nothing so, and a second call
+  lists that date's events ("Events that day"). No date in the name
+  (about-…): no call.
+- **Tests**: `tests/fixtures/bb-story.spec.js` (9), loader
+  `loadBbStoryPage()`, fixtures `bb-story-<name>.html` (six shapes,
+  `scripts/build-bb-story-fixtures.py`) and `tests/fixtures/bb-story/`
+  (`scripts/capture-bb-story-answers.py`), mutations
+  `scripts/mutations/bb-story.json` (14).
+
 ## Show links on Brucebase's own pages (Phase 8, 2026-11-11)
 
 A show on its year page (`/<yyyy>#<ddmmyy>`: an event's "Info & Setlist", a

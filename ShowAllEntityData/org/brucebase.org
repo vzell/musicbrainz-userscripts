@@ -562,9 +562,22 @@ Found: the tag cloud is 11,562 =a.tag= with the weight only as =font-size: N%=; 
 *** TODO Phase 12 — story pages =bb-story=
 vzell's "no PT yet" (round-2 live check). 1,489 story pages: a Storyteller banner, one
 =<p><strong>Intro to "Song"</strong><br>words</p>= per moment, a "Compiled by" box.
-- [ ] the table Moment / Song / Words (=_bbEventStories()= reused, shared with the window's Story
-  section), the show it belongs to (breadcrumb) and "Compiled by" in the head, the wiki's page below
-- [ ] =bb-story.spec.js= over the story fixture, mutations, coverage row, docs, WIP
+- [X] probe over the mirror's 1,489 (=scripts/probe-bb-story-pages.py=; Env: 2026-11-12T02:45+01:00 · vzell-lap ·
+  WSL2 Ubuntu 24.04.4 (Linux 6.18.58.1) · n/a): kinds story 1,399 (11,800 moments), dj 31, speech 26,
+  podcast 9, about 8, interview 8, eulogy 4, phonecall 3, talk 1; four shapes — moment headings, bold
+  speakers, "Speaker:" spans (podcasts), plain paragraphs (in =h2= parts); "Compiled by" in a table cell;
+  the breadcrumbs are EMPTY (live too), so the show is found by name: one ListPages =name=<slug>*=
+  (the star: cut names), for an older date-and-town name a second =<date>*= ("Events that day";
+  =scripts/probe-bb-story-lookup*.py=, =probe-bb-story-events.py=)
+- [X] =bb-story= (=_bbStoryRead()=, shared with the window's facts, =_DP_PARSER_VERSION= 23;
+  =_bbStoryToHtml()=: a sub-table per part with the columns it uses, Moment / Song / Speaker / Words;
+  =_bbStoryHeadSpec()=; =_bbStoryQuote()= now shared with the event page's Storyteller tab);
+  =scripts/check-bb-story-reader.js= over the whole mirror: every page has rows, "Compiled by" on 1,395 of
+  1,399 (the first version: 133, and captions and questions taken for speakers)
+- [X] =bb-story.spec.js= (9 green), mutations =bb-story.json= (14, all OK; one =expect: pass=: the
+  single-quoted song heading, which no fixture has), siblings bb-event, bb-history, bb-every-page,
+  bb-event-preview 54 green; coverage row, brucebase.md "Story pages", CLAUDE.md, HELP, PAGETYPES
+  reference (172), WIP.16; the wider sibling run still deferred
 - [ ] vzell's live check
 
 *** TODO Phase 13 — stats list pageTypes

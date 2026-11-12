@@ -4181,6 +4181,17 @@ Bootleg card, the notes, and the Front, Back and Disc artwork. Pointing at
 a link to a release, playlist or bootleg (Ctrl) previews it: its facts and
 tracks; Space opens the window.
 
+A **story page** (`/story:…`: a show's Storyteller words, and the speeches,
+interviews, phone calls, podcasts, DJ sets and eulogies the wiki keeps the
+same way) gets **Story**: its words as tables, one per part of the page —
+**Moment** and **Song** for a show's words ("Intro to" · "Rave On"),
+**Speaker** for an interview or a podcast, and **Words**. Above them the
+Story card: the kind, the date, the show's own page (the script finds it
+with one small request: a story page does not link it; an older story
+named only by date and town lists that day's events), who compiled it, and
+the tags. A story link's window names the kind, the date, how many moments
+or turns the page has and who compiled it.
+
 The setting is *Detail pages: events, songs, venues, people, releases and bootlegs as tables*. Switched off,
 these pages stay as the wiki shows them, and their links still preview.
 

@@ -581,7 +581,50 @@ async function loadBbTagPage(page, which, { settingsOverride = {}, url = '', fix
     return { gets, posts };
 }
 
+/** The story fixtures' directory of ListPages answers (scripts/capture-bb-story-answers.py). */
+const BB_STORY_ANSWERS = path.join(__dirname, '..', 'fixtures', 'bb-story');
+
+/**
+ * The URL and fixture file of a story page (scripts/build-bb-story-fixtures.py).
+ *
+ * @param {string} name - The page name after `story:` ("story-1978-07-07-roxy-theatre-west-hollywood-ca").
+ * @returns {{url: string, file: string}}
+ */
+function bbStoryFixture(name) {
+    return { url: `https://brucebase.wikidot.com/story:${name}`, file: path.join(__dirname, '..', 'fixtures', `bb-story-${name}.html`) };
+}
+
+/**
+ * Loads a story page fixture (`bb-story`, Phase 12) with the userscript
+ * injected, and answers the event lookup's ListPages POSTs by their `name`
+ * (`lookup-<name without the star>.json`; none: an empty list). `url`
+ * serves the fixture at another address (a story with no date in its name).
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} name
+ * @param {{ settingsOverride?: Object<string, *>, url?: string }} [opts]
+ * @returns {Promise<{ posts: Array<Object<string, string>> }>}
+ */
+async function loadBbStoryPage(page, name, { settingsOverride = {}, url = '' } = {}) {
+    const posts = [];
+    const fx = bbStoryFixture(name);
+    await page.route(/^https?:\/\//, (route) => route.abort('blockedbyclient'));
+    await page.route(BB_AJAX_URL, (route) => {
+        const f = Object.fromEntries(new URLSearchParams(route.request().postData() || ''));
+        posts.push(f);
+        const file = path.join(BB_STORY_ANSWERS, `lookup-${(f.name || '').replace(/\*$/, '')}.json`);
+        if (fs.existsSync(file)) return route.fulfill({ path: file, contentType: 'application/json; charset=utf-8' });
+        return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ status: 'ok', body: '<div class="list-pages-box"></div>' }) });
+    });
+    await loadUserscriptPage(page, {
+        url: url || fx.url, fixtureFile: fx.file, testMode: true,
+        settingsOverride: { sa_enable_brucebase: true, sa_bb_detail_pages: true, sa_foreign_mb_titles: false, sa_foreign_typography: false, ...settingsOverride },
+    });
+    return { posts };
+}
+
 module.exports = {
+    BB_STORY_ANSWERS, bbStoryFixture, loadBbStoryPage,
     BB_TAG_PAGES, BB_TAG_ANSWERS, loadBbTagPage,
     BB_HISTORY_URL, BB_HISTORY_DIR, BB_HISTORY_STORY_URL, loadBbHistoryPage,
     BB_EVENT_PAGES, BB_EVENT_BUTTON, loadBbEventPage,

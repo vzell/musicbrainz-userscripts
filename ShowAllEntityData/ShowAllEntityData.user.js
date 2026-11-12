@@ -24514,6 +24514,7 @@
         if (t === 'bb-song' || t === 'bb-ott') return _bbSongHeadSpec();
         if (t === 'bb-venue' || t === 'bb-relation') return _bbPlaceHeadSpec();
         if (t === 'bb-retail' || t === 'bb-bootleg') return _bbReleaseHeadSpec();
+        if (t === 'bb-story') return _bbStoryHeadSpec();
         return null;
     }
 
@@ -29817,9 +29818,11 @@
      * 22: a Brucebase story page (`/story:`, its links preview) has its
      *    words as a "Story" section; a page without a tabview folds its
      *    sections (and so gets the History section) like every other.
+     * 23: a story page's record names its kind, date, "Compiled by" and
+     *    how many moments or turns it has (`_bbStoryRead()`, Phase 12).
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 22;
+    const _DP_PARSER_VERSION = 23;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -32844,6 +32847,22 @@
     }
 
     /**
+     * Splits a Storyteller heading into the moment and the song it names:
+     * 'Intro to "Rave On"' → "Intro to" and "Rave On". Double quotes (",
+     * “”, ´´) first, so a title's own apostrophe at its end stays ("Long
+     * Time Comin'"); single quotes only without them. A heading naming no
+     * song is all moment. Shared by the event's Storyteller tab
+     * (`_bbEventStories()`) and the story pages (`_bbStoryRead()`).
+     *
+     * @param {string} head
+     * @returns {{moment: string, song: string}}
+     */
+    function _bbStoryQuote(head) {
+        const q = head.match(/^(.*?)\s*["“”´`]+(.+?)["“”´`]+\s*$/) || head.match(/^(.*?)\s*'(.+)'\s*$/);
+        return q ? { moment: q[1], song: q[2] } : { moment: head, song: '' };
+    }
+
+    /**
      * Reads the Storyteller tab: a paragraph led by a bold heading ("Intro to
      * "Rave On"", "After "Thunder Road"", "Middle of "Backstreets"") is a row
      * — Moment (the heading's words), Song (the quoted title, linked when the
@@ -32875,11 +32894,7 @@
                 if (rows.length) rows[rows.length - 1].words += `\n${text}`;
                 return;
             }
-            // Double quotes (", “”, ´´) first, so a title's own apostrophe at
-            // its end stays ("Long Time Comin'"); single quotes only without them.
-            const q = head.match(/^(.*?)\s*["“”´`]+(.+?)["“”´`]+\s*$/) || head.match(/^(.*?)\s*'(.+)'\s*$/);
-            const moment = q ? q[1] : head;
-            const song = q ? q[2] : '';
+            const { moment, song } = _bbStoryQuote(head);
             const words = _dpText(text.slice(text.indexOf(head) + head.length));
             const href = song ? (songs.get(_bbSongKey(song)) || songs.get(_bbSongKey(song.replace(/\s*-\s*.*$/, ''))) || '') : '';
             rows.push({ moment, song, href, words });
@@ -33043,7 +33058,7 @@
     }
 
     /** @type {Object<string, string>} The data heading of each Brucebase detail kind. */
-    const _BB_DETAIL_HEADINGS = { event: 'Event', song: 'Song', ott: 'Versions', venue: 'Venue', relation: 'Relation', retail: 'Release', bootleg: 'Bootleg' };
+    const _BB_DETAIL_HEADINGS = { event: 'Event', song: 'Song', ott: 'Versions', venue: 'Venue', relation: 'Relation', retail: 'Release', bootleg: 'Bootleg', story: 'Story' };
 
     /**
      * The live page's part of a Brucebase detail pageType
@@ -33158,6 +33173,268 @@
                 tagChips && ['tags', 'Tags', tagChips.count, tagChips.body, true],
                 mediaChips && ['media', 'Media', mediaChips.count, mediaChips.body, true],
             ],
+            pictures, picturesTitle: 'Pictures',
+            title: rec.title, source: 'Brucebase\'s page',
+        };
+    }
+
+    // ── Brucebase story pages: bb-story (org/brucebase.org Phase 12) ──
+    // 1,489 `story:` pages (scripts/probe-bb-story-pages.py over the mirror,
+    // 2026-11-12), named by kind: story (1,399: a show's Storyteller words,
+    // 11,800 moments "Intro to "Song"", "Middle of …", "After …" in a bold
+    // heading before the words), dj (31: a radio show's talk in parts,
+    // "Part 1"), speech (26), interview (8) and phonecall (3: a bold
+    // speaker's name before each turn), podcast (9: "Speaker: words" in one
+    // paragraph, the name in a coloured span), eulogy (4), about (8), talk
+    // (1): plain paragraphs. A Storyteller banner on top, "Compiled by : …"
+    // in a box at the end. The breadcrumbs are empty (live too): the show is
+    // found by name, the same slug in an event category, with one ListPages
+    // `name=<slug>*` call (the star: Wikidot cuts long names short;
+    // scripts/probe-bb-story-lookup*.py).
+
+    /** @type {Object<string, string>} A story page's kind (its name's first word) as a heading. */
+    const _BB_STORY_KINDS = {
+        story: 'Storyteller', talk: 'Talk', speech: 'Speech', interview: 'Interview', dj: 'DJ set', podcast: 'Podcast',
+        eulogy: 'Eulogy', phonecall: 'Phone call', about: 'About',
+    };
+
+    /** A heading that is a moment of the show, not a speaker ("Intro to", "Towards the end of"). @type {RegExp} */
+    const _BB_STORY_MOMENT_RE = /^(?:\S.*?,\s*)?(?:intro|outro|middle|after|before|during|end|towards|at the end|start|beginning|between|in the|prior)\b/i;
+
+    /** @type {?Array<{href: string, title: string}>} The story page's event pages (`_bbStoryEventLookup()`); null before the lookup. */
+    let _bbStoryEvent = null;
+
+    /**
+     * Reads a story page: its kind (`_BB_STORY_KINDS`), title, date and place
+     * ("Story 1978-09-15 Palladium, New York City, NY"), "Compiled by", and
+     * the words as parts — a new part at each `h2` (a DJ set's "Part 1"),
+     * else one part named by the kind. In a part, a row per paragraph:
+     *
+     * - a bold heading first: a moment with the song it names
+     *   (`_bbStoryQuote()`, "Intro to "Rave On""), a moment without one
+     *   (`_BB_STORY_MOMENT_RE`), or else a speaker ("Bob Harris"; a trailing
+     *   colon dropped);
+     * - a coloured name and a colon first (a podcast's "Bruce Springsteen:
+     *   …"): a speaker;
+     * - no heading: the words carry on the row above when that row has a
+     *   heading, else a row of words alone (a speech's paragraphs).
+     *
+     * @param {Document} doc
+     * @param {string}   url
+     * @returns {?{kind: string, label: string, title: string, date: string, place: string, compiled: string,
+     *   slug: string, parts: Array<{label: string, rows: Array<{moment: string, song: string, speaker: string, words: string}>}>}}
+     *   Null without `#page-content`.
+     */
+    function _bbStoryRead(doc, url) {
+        const content = doc.getElementById('page-content');
+        if (!content) return null;
+        let name = '';
+        try {
+            name = decodeURIComponent(new URL(url).pathname).replace(/^\/story:/, '').replace(/\/$/, '');
+        } catch (_) { /* none */ }
+        const kind = (name.match(/^([a-z]+)-/) || [])[1] || '';
+        const titleEl = doc.getElementById('page-title');
+        const title = _dpText(titleEl ? titleEl.textContent : '');
+        const tm = title.match(/^\S+\s+(\d{4}-\d{2}-\d{2})\s*-?\s*(.*)$/);
+        const label = _BB_STORY_KINDS[kind] || 'Story';
+        const parts = [{ label, rows: [] }];
+        const newPart = (name) => {
+            const cur = parts[parts.length - 1];
+            if (!cur.rows.length) cur.label = name;
+            else parts.push({ label: name, rows: [] });
+        };
+        // In a box of its own at the end (a table cell), on 1,393 of the
+        // 1,399 show stories (probe).
+        const compiledEl = Array.from(content.querySelectorAll('td, p')).find(x => /^Compiled by\b/i.test(_dpText(x.textContent)));
+        const compiled = compiledEl ? _dpText(compiledEl.textContent).replace(/^Compiled by\s*:?\s*/i, '').replace(/\.$/, '') : '';
+        content.querySelectorAll('h2, p').forEach((el) => {
+            const text = _dpText(el.textContent);
+            if (!text || /^Compiled by\b/i.test(text)) return;
+            if (el.tagName === 'H2') {
+                newPart(text);
+                return;
+            }
+            const rows = parts[parts.length - 1].rows;
+            const strong = el.querySelector('strong');
+            const raw = strong && el.textContent.trim().startsWith(strong.textContent.trim()) ? _dpText(strong.textContent) : '';
+            if (raw) {
+                const rest = _dpText(text.slice(text.indexOf(raw) + raw.length)).replace(/^:\s*/, '');
+                // A colour left as wiki text ("##030390|Intro to …").
+                const head = raw.replace(/^##[0-9a-f]{6}\|/i, '');
+                const nWords = head.split(/\s+/).length;
+                const q = _bbStoryQuote(head);
+                // A song quoted inside a longer heading ("Intro to "Fire"
+                // (following …)"; double quotes only: an apostrophe is too
+                // often a possessive).
+                const inner = !q.song && head.match(/^(.*?)["“”´`]+([^"“”´`]+?)["“”´`]+(.*)$/);
+                const said = head.match(/^([^:]{1,30}):\s+(.+)$/);
+                if (q.song) rows.push({ moment: q.moment, song: q.song, speaker: '', words: rest });
+                // A question, or a sentence: words, not a name.
+                else if (/\?$/.test(head) || nWords > 12) rows.push({ moment: '', song: '', speaker: '', words: rest ? `${head}\n${rest}` : head });
+                else if (inner && inner[2].trim()) rows.push({ moment: _dpText(`${inner[1]} ${inner[3]}`), song: inner[2].trim(), speaker: '', words: rest });
+                else if (_BB_STORY_MOMENT_RE.test(head) || /^\d\d\.\d\d\.\d\d\b/.test(head)) rows.push({ moment: head, song: '', speaker: '', words: rest });
+                // "DJ: Direct from California?": the speaker and what they said.
+                else if (said) rows.push({ moment: '', song: '', speaker: said[1], words: _dpText(`${said[2]}\n${rest}`) });
+                // A show story's heading in capitals is a song title ("CIRCUS SONG").
+                else if (kind === 'story' && /[A-Z]/.test(head) && !/[a-z]/.test(head)) rows.push({ moment: '', song: head, speaker: '', words: rest });
+                // A caption ("Bruce Springsteen's Induction Speech For Patti
+                // Scialfa", "Patti Scialfa's Acceptance Speech"): a part of
+                // its own. A name is short and owns nothing.
+                else if (nWords > 5 || /['’]s\s/.test(head)) {
+                    newPart(head.replace(/:\s*$/, ''));
+                    if (rest) parts[parts.length - 1].rows.push({ moment: '', song: '', speaker: '', words: rest });
+                } else rows.push({ moment: '', song: '', speaker: head.replace(/\s*:\s*$/, ''), words: rest });
+                return;
+            }
+            const first = el.firstElementChild;
+            const lead = first && first.tagName === 'SPAN' && el.textContent.trim().startsWith(first.textContent.trim()) ? _dpText(first.textContent) : '';
+            const after = lead ? text.slice(text.indexOf(lead) + lead.length) : '';
+            if (lead && lead.length <= 60 && /^\s*:/.test(after)) {
+                rows.push({ moment: '', song: '', speaker: lead, words: _dpText(after.replace(/^\s*:\s*/, '')) });
+                return;
+            }
+            const prev = rows[rows.length - 1];
+            if (prev && (prev.moment || prev.song || prev.speaker)) prev.words += `\n${text}`;
+            else rows.push({ moment: '', song: '', speaker: '', words: text });
+        });
+        return {
+            kind, label, title, date: tm ? tm[1].replace(/-00(?=$|-)/g, '') : '', place: tm ? tm[2] : '',
+            compiled, slug: name.replace(/^[a-z]+-/, ''), parts: parts.filter(p => p.rows.length),
+        };
+    }
+
+    /**
+     * Whether a story page has rows for a table.
+     *
+     * @param {?Object} rec - `_bbStoryRead()`'s.
+     * @returns {boolean}
+     */
+    function _bbStoryHasTables(rec) {
+        return !!(rec && rec.parts.length);
+    }
+
+    /**
+     * `toHtml` of bb-story: a sub-table per part (`_bbStoryRead()`), each
+     * with the columns its rows use — Moment and Song (a show's
+     * Storyteller words), Speaker (an interview, a podcast), Words always.
+     * Songs in MusicBrainz title style while `sa_foreign_mb_titles` is on,
+     * the wiki's capitals as the hover text, as on the event page.
+     *
+     * @param {string} text - The page's HTML.
+     * @param {string} base - Its URL.
+     * @returns {string}
+     * @throws {Error} When the page has no words (`status` 0).
+     */
+    function _bbStoryToHtml(text, base) {
+        const doc = new DOMParser().parseFromString(text, 'text/html');
+        const rec = _bbStoryRead(doc, base);
+        if (!_bbStoryHasTables(rec)) throw Object.assign(new Error('The Brucebase story page has no words to show'), { status: 0 });
+        const e = _rgEsc;
+        const songCell = (title) => {
+            const shown = _mbSiteTitleText(title);
+            return shown !== title ? `<span data-mb-tip title="${e(`As written on Brucebase:\n${title}`)}">${e(shown)}</span>` : e(shown);
+        };
+        return '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>' + rec.parts.map((part) => {
+            const has = (k) => part.rows.some(r => r[k]);
+            const cols = [has('moment') && 'Moment', has('song') && 'Song', has('speaker') && 'Speaker', 'Words'].filter(Boolean);
+            const cell = { Moment: r => e(r.moment), Song: r => (r.song ? songCell(r.song) : ''), Speaker: r => e(r.speaker), Words: r => e(r.words).replace(/\n/g, '<br>') };
+            return `<h3>${e(part.label)}</h3><table class="tbl" data-mb-col-headers="${e(JSON.stringify(cols))}">` +
+                `<thead><tr>${cols.map(c => `<th>${e(c)}</th>`).join('')}</tr></thead><tbody>` +
+                part.rows.map(r => `<tr>${cols.map(c => `<td>${cell[c](r)}</td>`).join('')}</tr>`).join('') + '</tbody></table>';
+        }).join('') + '</body></html>';
+    }
+
+    /**
+     * Finds the story page's event pages (`_bbStoryEvent`) at the press with
+     * ONE ListPages call: the same slug, `*` after it (Wikidot cuts long
+     * names short), in the five event categories (probe 2026-11-12:
+     * story:story-1978-09-15-… → gig:, story:dj-2020-04-08-… → interview:,
+     * story:speech-2026-10-17-…-theatre-r → nogig:…-theatre-red-bank). An
+     * older story named by date and town only (story:story-1971-05-15-union-nj:
+     * 128 of the mirror's, scripts/probe-bb-story-events.py) finds nothing so,
+     * and a second call lists that date's events (up to five) instead. A
+     * page with no date in its name (about-…) asks nothing; a failed call
+     * leaves the Event fact out.
+     *
+     * @returns {Promise<void>}
+     */
+    async function _bbStoryEventLookup() {
+        if (_bbStoryEvent) return;
+        const name = decodeURIComponent(window.location.pathname).replace(/^\/story:/, '').replace(/\/$/, '');
+        const slug = name.replace(/^[a-z]+-/, '');
+        const date = (slug.match(/^\d{4}-\d\d-\d\d/) || [])[0];
+        if (!date) return;
+        const ask = async (pattern) => _bbLpParse(await _bbHistPost('list/ListPagesModule', {
+            category: 'gig nogig recording rehearsal interview', name: pattern, perPage: '5', order: 'fullname',
+            separate: 'false', module_body: _BB_LP_TEMPLATE, p: '1',
+        })).map(h => ({ href: h.href, title: h.title }));
+        try {
+            let hits = await ask(`${slug}*`);
+            if (!hits.length) hits = await ask(`${date}*`);
+            _bbStoryEvent = hits;
+        } catch (err) {
+            Lib.warn('fetch', `Brucebase story: its event page could not be looked up (${err && err.message}).`);
+        }
+    }
+
+    /** @type {?{rec: ?Object, dp: ?Object}} The story page's two readings, made once. */
+    let _bbStoryCache = null;
+
+    /**
+     * The head's Event fact: each event page the lookup found, linked (a
+     * card on hover, its window on Space); '' for none.
+     *
+     * @returns {(HTMLElement|string)}
+     */
+    function _bbStoryEventsEl() {
+        const hits = _bbStoryEvent || [];
+        if (!hits.length) return '';
+        const span = document.createElement('span');
+        hits.forEach((h, i) => {
+            if (i) span.append(' · ');
+            span.appendChild(_fdLink(h.href, h.title));
+        });
+        return span;
+    }
+
+    /**
+     * The head of a story page (`_fdHeadSpec()`), from the copy taken at the
+     * press: "Storyteller · Palladium, New York City, NY (1978-09-15)"; the
+     * Story card (Kind, Date, the Event page the lookup found, Compiled by,
+     * the rows, This page), the tags by family, the pictures (a DJ set's or
+     * podcast's banners). Null on another page.
+     *
+     * @returns {?Object}
+     */
+    function _bbStoryHeadSpec() {
+        const h2 = document.querySelector('h2.mb-bb-story-heading');
+        if (activeDefinition?.type !== 'bb-story' || !h2) return null;
+        if (!_bbStoryCache) {
+            const doc = new DOMParser().parseFromString(_bbDetailPageHtml(), 'text/html');
+            _bbStoryCache = { rec: _bbStoryRead(doc, _bbDetailUrl()), dp: _dpParseBb(doc, _bbDetailUrl()) };
+        }
+        const { rec, dp } = _bbStoryCache;
+        if (!rec) return null;
+        const url = _bbDetailUrl();
+        const tags = (dp && dp.tags) || [];
+        const tagChips = _fdChips(_BB_TAG_FAMILIES.map(([key, name]) => [name, tags.filter(t => t.family === key).map(t => [t.text, t.href])]));
+        const rows = rec.parts.reduce((n, p) => n + p.rows.length, 0);
+        const pictures = ((dp && dp.images) || []).filter(im => im.full || im.thumb).map(im => ({
+            full: im.full || im.thumb, thumb: im.thumb || im.full, caption: im.caption || _fiFileName(im.full || im.thumb), types: [im.label || 'Other'],
+        }));
+        return {
+            root: h2.parentElement, h2,
+            sub: { what: `${rec.label}${rec.place ? ` · ${rec.place}` : ''}`, when: rec.date },
+            facts: [
+                ['story', 'Story', [
+                    ['Kind', rec.label], ['Date', rec.date],
+                    [(_bbStoryEvent || []).length > 1 ? 'Events that day' : 'Event', _bbStoryEventsEl()],
+                    ['Compiled by', rec.compiled],
+                    ['Parts', rec.parts.length > 1 ? String(rec.parts.length) : ''], ['Rows', String(rows)],
+                    ['This page', _fdLink(url, url.replace(/^https?:\/\/[^/]+\//, ''))],
+                ]],
+            ],
+            others: [ tagChips && ['tags', 'Tags', tagChips.count, tagChips.body, true] ],
             pictures, picturesTitle: 'Pictures',
             title: rec.title, source: 'Brucebase\'s page',
         };
@@ -34751,6 +35028,17 @@
             // A story page (Storyteller words, no tabview; its links preview
             // since 2026-11-11): its words as the window's one section.
             if (/^\/story:/.test(new URL(url, 'https://brucebase.wikidot.com/').pathname) && _dpText(content.textContent)) {
+                // Its kind, date and compiler as facts (Phase 12), read as
+                // the bb-story page reads them (`_bbStoryRead()`).
+                const st = _bbStoryRead(doc, url);
+                if (st) {
+                    const rows = st.parts.reduce((n, p) => n + p.rows.length, 0);
+                    const moments = st.parts.reduce((n, p) => n + p.rows.filter(r => r.moment || r.song).length, 0);
+                    const turns = st.parts.reduce((n, p) => n + p.rows.filter(r => r.speaker).length, 0);
+                    data.fields.push(['Kind', st.label], ['Date', st.date],
+                        [moments ? 'Moments' : turns ? 'Turns' : 'Paragraphs', String(moments || turns || rows)], ['Compiled by', st.compiled]);
+                    data.fields = data.fields.filter(f => f[1]);
+                }
                 data.sections.push({ label: 'Story', text: _dpBlockText(content), html: _dpBlockHtml(content, url) });
             }
             // Folding sections, and so the History section (`_bbHistSection()`),
@@ -57343,6 +57631,45 @@
                 pageCountAsync: () => 1,
                 columnDescriptions: {
                     Side: 'The record side, as the page marks it ("//" after a side\'s last song).',
+                }
+            },
+            tableMode: 'multi'
+        },
+        // A Brucebase story page (`/story:`; org/brucebase.org Phase 12): the
+        // words as tables, a sub-table per part — Moment, Song (a show's
+        // Storyteller words), Speaker (an interview, a podcast), Words — the
+        // kind, date, event page and "Compiled by" above, the wiki's page
+        // below. From a copy of the page; one small request finds the event
+        // page (`_bbStoryEventLookup()`). Under `sa_bb_detail_pages`.
+        {
+            type: 'bb-story',
+            host: 'brucebase.wikidot.com',
+            match: (path) => /^\/story:[^/]+\/?$/.test(path) && Lib.settings.sa_bb_detail_pages !== false,
+            buttons: [ {
+                label: 'Show the story', shortLabel: 'Story',
+                showIf: () => _bbStoryHasTables(_bbStoryRead(document, _bbDetailUrl())),
+                description: 'The words of this page as tables — each moment of the show with the song it leads into, or each speaker\'s turn — a table per part; the kind, date, the show\'s own page (one small request finds it) and who compiled it above, the wiki\'s page folded below.'
+            } ],
+            features: {
+                bbDetailToTable: 'story',
+                groupByH3: true,
+                openSubTables: true,
+                pageRequest: () => {
+                    const url = _bbDetailUrl();
+                    return {
+                        url,
+                        fetchText: async () => {
+                            await _bbStoryEventLookup();
+                            return _bbDetailPageHtml();
+                        },
+                        toHtml: (text) => _bbStoryToHtml(text, url)
+                    };
+                },
+                pageCountAsync: () => 1,
+                collapsableColumns: [ 'Words' ],
+                columnDescriptions: {
+                    Moment: 'Where in the show the words were said, as the page writes it ("Intro to", "Middle of", "After").',
+                    Speaker: 'Who speaks, as the page names them (an interview, a podcast).',
                 }
             },
             tableMode: 'multi'

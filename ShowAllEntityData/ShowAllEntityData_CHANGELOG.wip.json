@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.16",
+    "date": "2026-11-12",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase: a story page (…/story:…: a show's Storyteller words, an interview, a podcast, a speech, a DJ set) gets a button that shows its words as tables — each moment of the show with the song it leads into, or each speaker's turn, a table per part — with the kind, the date, the show's own page (found with one small request) and who compiled it above.",
+          "Brucebase: a story link's window names the page's kind, date, how many moments or turns it has and who compiled it."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.15",
     "date": "2026-11-12",
     "sections": [

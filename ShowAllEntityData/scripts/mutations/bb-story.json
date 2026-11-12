@@ -1,0 +1,184 @@
+[
+    {
+        "name": "story pages are not matched",
+        "why": "bb-story's match: without it a story page is bb-page (previews only, no button).",
+        "edits": [
+            {
+                "find": "            match: (path) => /^\\/story:[^/]+\\/?$/.test(path) && Lib.settings.sa_bb_detail_pages !== false,\n",
+                "replace": "            match: (path) => false && /^\\/story:[^/]+\\/?$/.test(path) && Lib.settings.sa_bb_detail_pages !== false,\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-story.spec.js",
+        "grep": "Storyteller words",
+        "expect": "fail"
+    },
+    {
+        "name": "a heading's song is not split off",
+        "why": "'Intro to \"Rave On\"': Moment \"Intro to\", Song \"Rave On\" (_bbStoryQuote()). The rule after it (a song quoted inside a longer heading, double quotes) gives the same for every double-quoted heading, so only a single-quoted title ('Intro to 'Sandy'', 27 headings of the mirror) needs it; no fixture has one — a story page with such a heading would see it.",
+        "edits": [
+            {
+                "find": "                const q = _bbStoryQuote(head);\n                // A song quoted inside a longer heading",
+                "replace": "                const q = { moment: head, song: '' };\n                // A song quoted inside a longer heading"
+            }
+        ],
+        "spec": "tests/fixtures/bb-story.spec.js",
+        "grep": "Storyteller words",
+        "expect": "pass"
+    },
+    {
+        "name": "\"Compiled by\" is looked for in paragraphs only",
+        "why": "The show stories write it in a table cell (1,393 of 1,399).",
+        "edits": [
+            {
+                "find": "        const compiledEl = Array.from(content.querySelectorAll('td, p'))",
+                "replace": "        const compiledEl = Array.from(content.querySelectorAll('p'))"
+            }
+        ],
+        "spec": "tests/fixtures/bb-story.spec.js",
+        "grep": "Storyteller words",
+        "expect": "fail"
+    },
+    {
+        "name": "an h2 does not start a part",
+        "why": "A DJ set's \"Part 1\", an interview's title: the part's name.",
+        "edits": [
+            {
+                "find": "            if (el.tagName === 'H2') {\n                newPart(text);\n                return;\n            }\n",
+                "replace": "            if (el.tagName === 'H2') return;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-story.spec.js",
+        "grep": "Speaker and Words, a turn per bold name",
+        "expect": "fail"
+    },
+    {
+        "name": "a podcast's coloured \"Name:\" is not a speaker",
+        "why": "The podcasts write the speaker as a span and a colon, no bold heading.",
+        "edits": [
+            {
+                "find": "            if (lead && lead.length <= 60 && /^\\s*:/.test(after)) {\n",
+                "replace": "            if (false && lead && lead.length <= 60 && /^\\s*:/.test(after)) {\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-story.spec.js",
+        "grep": "a podcast",
+        "expect": "fail"
+    },
+    {
+        "name": "a possessive caption is a speaker",
+        "why": "\"Patti Scialfa's Acceptance Speech\" (four words) is a caption: a part of its own.",
+        "edits": [
+            {
+                "find": "                else if (nWords > 5 || /['’]s\\s/.test(head)) {\n",
+                "replace": "                else if (nWords > 5) {\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-story.spec.js",
+        "grep": "a speech",
+        "expect": "fail"
+    },
+    {
+        "name": "a long caption is a speaker",
+        "why": "\"Bruce Springsteen's Induction Speech For Patti Scialfa\": a part of its own, never a name.",
+        "edits": [
+            {
+                "find": "                else if (nWords > 5 || /['’]s\\s/.test(head)) {\n",
+                "replace": "                else if (false) {\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-story.spec.js",
+        "grep": "a speech",
+        "expect": "fail"
+    },
+    {
+        "name": "every table gets every column",
+        "why": "A part shows the columns its rows use: an interview has no Moment or Song.",
+        "edits": [
+            {
+                "find": "            const cols = [has('moment') && 'Moment', has('song') && 'Song', has('speaker') && 'Speaker', 'Words'].filter(Boolean);\n",
+                "replace": "            const cols = ['Moment', 'Song', 'Speaker', 'Words'];\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-story.spec.js",
+        "grep": "Speaker and Words, a turn per bold name",
+        "expect": "fail"
+    },
+    {
+        "name": "the event lookup has no star",
+        "why": "Wikidot cuts long names short: name=<slug>* finds the event of a cut name.",
+        "edits": [
+            {
+                "find": "            let hits = await ask(`${slug}*`);\n",
+                "replace": "            let hits = await ask(`${slug}`);\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-story.spec.js",
+        "grep": "Storyteller words",
+        "expect": "fail"
+    },
+    {
+        "name": "no date fallback for an older name",
+        "why": "story:story-1971-05-15-union-nj names no event by its slug: that day's events instead.",
+        "edits": [
+            {
+                "find": "            if (!hits.length) hits = await ask(`${date}*`);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-story.spec.js",
+        "grep": "date and town",
+        "expect": "fail"
+    },
+    {
+        "name": "a story with no date asks anyway",
+        "why": "about-… names no show: no lookup.",
+        "edits": [
+            {
+                "find": "        const date = (slug.match(/^\\d{4}-\\d\\d-\\d\\d/) || [])[0];\n        if (!date) return;\n",
+                "replace": "        const date = (slug.match(/^\\d{4}-\\d\\d-\\d\\d/) || [])[0];\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-story.spec.js",
+        "grep": "no date in its name",
+        "expect": "fail"
+    },
+    {
+        "name": "the head is not dispatched",
+        "why": "_fdHeadSpec() names bb-story's head; without it no Story card.",
+        "edits": [
+            {
+                "find": "        if (t === 'bb-story') return _bbStoryHeadSpec();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-story.spec.js",
+        "grep": "Storyteller words",
+        "expect": "fail"
+    },
+    {
+        "name": "the story window names no kind or compiler",
+        "why": "_dpParseBbPage() reads a story page with _bbStoryRead() for its facts (_DP_PARSER_VERSION 23).",
+        "edits": [
+            {
+                "find": "                    data.fields.push(['Kind', st.label], ['Date', st.date],\n",
+                "replace": "                    data.fields.push(\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-story.spec.js",
+        "grep": "window names its kind",
+        "expect": "fail"
+    },
+    {
+        "name": "a paragraph with no heading never carries on",
+        "why": "\"(during the song) …\" goes on the row above when that row has a heading (the 1971 Union story has one such paragraph).",
+        "edits": [
+            {
+                "find": "            if (prev && (prev.moment || prev.song || prev.speaker)) prev.words += `\\n${text}`;\n",
+                "replace": "            if (false) prev.words += `\\n${text}`;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-story.spec.js",
+        "grep": "date and town",
+        "expect": "fail"
+    }
+]

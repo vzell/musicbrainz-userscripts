@@ -125,6 +125,9 @@
         { "type": "bb-bootleg", "url": "https://brucebase.wikidot.com/bootleg:…", "mode": "multi",
           "ip": { "state": "yes", "ev": "code", "why": "The wiki's page is the IP, as on bb-page." },
           "frp": { "state": "na", "ev": "code", "why": "The tracklist has no links (the wiki writes a bootleg's songs as plain text)." } },
+        { "type": "bb-story", "url": "https://brucebase.wikidot.com/story:… (story, speech, interview, dj, podcast, eulogy, phonecall, about, talk)", "mode": "multi",
+          "ip": { "state": "part", "ev": "code", "why": "The wiki's page is the IP, as on bb-page; a story page holds almost no links (the tags line: bbtag)." },
+          "frp": { "state": "yes", "ev": "spec", "why": "The head's Event links the show's page (found by name, one ListPages call); the tables' songs are text, as the page writes them.", "spec": ["tests/fixtures/bb-story.spec.js", "a show's Storyteller words: Moment, Song, Words, one row per bold heading; the event page found by name"] } },
         { "type": "bb-page", "url": "https://brucebase.wikidot.com/lyrics:… (any other page: lyrics, stats, …; a detail page with sa_bb_detail_pages off)", "mode": "single",
           "ip": { "state": "yes", "ev": "spec", "why": "Link previews only (vzell, 2026-11-04: every Brucebase page): the site's own detail pages and other sites' links in #page-content; nothing visible added.", "spec": ["tests/fixtures/bb-every-page.spec.js", "a gig page (no pageType)"] },
           "frp": { "state": "na", "ev": "code", "why": "No button, no table." } }
