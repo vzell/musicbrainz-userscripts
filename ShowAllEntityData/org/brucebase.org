@@ -693,7 +693,7 @@ The mirror has 258 =stats:*studio-sessions*= pages (an album's sessions and its 
   mutations, coverage rows, docs, WIP per batch
 - [X] vzell's live check per batch
 
-*** TODO Phase 14 — year-table columns from each event's page
+*** DONE Phase 14 — year-table columns from each event's page
 The year table has Type and Tour already; the rest lives on the event's own page: the cast (On stage),
 tags, Storyteller / Recording / Media present, image counts.
 - [X] survey (=scripts/copy-bb-year-events.sh 1978= → =debug/bb-mirror/year-1978/=, 173 event pages;
@@ -729,7 +729,8 @@ tags, Storyteller / Recording / Media present, image counts.
   passed — no wait for the reading to settle, a filter only after loading, no page without a time) + 4
   refreshed finds; bb-year/bb-year-list specs' header lists; 27 BB specs + sl-include-regex 307 green;
   HELP, WIP.20
-- [ ] vzell's live check (e.g. /1985 and /1978: ▶ Pages, scroll, a filter on On stage; /1985-list)
+- [X] vzell's live check (e.g. /1985 and /1978: ▶ Pages, scroll, a filter on On stage; /1985-list): OK
+  (2026-11-12); the columns stay shown before ▶ Pages (the render cost was put to him, no change asked)
 
 *** TODO Phase 15 — History in Brucebase windows on other sites
 Today the History section is on brucebase.wikidot.com only.
