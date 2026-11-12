@@ -109,6 +109,45 @@ Make some suggestions here how to present to the user in one or more columns, us
 
 The whole feature should be configurable (default off, as the main userscript is normally used just with MusicBrainz)
 
+* DONE BB Steve van Zandt detail page needs overwhole
+
+BB Steve van Zandt detail page needs overwhole
+
+* DONE Use the Discogs history diff format in other pageTypes, for example the BB “changes” button
+
+Use the Discogs history diff format in other pageTypes, for example the BB “changes” button (you have to be logged in).
+
+* DONE BB detail page POHs should also get a history diff view of the current entity
+
+BB detail page POHs should also get a history diff view of the current entity
+
+* DONE on BB PTs where images are involved, parse the image filename for further details and present that info also
+
+1.)
+
+on BB PTs where images are involved, parse the image filename for further details and present that info also
+
+2.)
+
+maybe create image sections with the found info
+
+* DONE render the sidebar handle at the top (like in the MB case)
+
+render the sidebar handle at the top (like in the MB case) and not in the middle of the page
+
+* DONE create userscript which directly scrolls to the first difference on http://brucebase.wikidot.com/song:streets-of-minneapolis pages when clicking history
+
+create userscript which directly scrolls to the first difference on
+http://brucebase.wikidot.com/song:streets-of-minneapolis pages when clicking history
+
+* DONE support hovering for all BB PTs
+
+support hovering for all BB URLs (+ known non-BB URLs like MB/SL URLs) PTs
+
+* DONE recheck rendering all the right info on BB pages
+
+recheck rendering all the right info on BB pages
+
 
 * TODO add additional PTs to BB
 
@@ -137,51 +176,9 @@ https://brucebase.wikidot.com/stats:songs-registered - text page - @debug/BB-son
 #+end_example
 
 
-* TODO create userscript which directly scrolls to the first difference on http://brucebase.wikidot.com/song:streets-of-minneapolis pages when clicking history
-
-create userscript which directly scrolls to the first difference on
-http://brucebase.wikidot.com/song:streets-of-minneapolis pages when clicking history
-
-
-* TODO support hovering for all BB PTs
-
-support hovering for all BB URLs (+ known non-BB URLs like MB/SL URLs) PTs
-
-
-* TODO recheck rendering all the right info on BB pages
-
-recheck rendering all the right info on BB pages
-
-
 * TODO make the standard BB page, rendered below our table h2/h3 click collapsable (also with Ctrl-Click for ALL sections)
 
 make the standard BB page, rendered below our table h2/h3 click collapsable (also with Ctrl-Click for ALL sections)
-
-* DONE BB Steve van Zandt detail page needs overwhole
-
-BB Steve van Zandt detail page needs overwhole
-
-* DONE Use the Discogs history diff format in other pageTypes, for example the BB “changes” button
-
-Use the Discogs history diff format in other pageTypes, for example the BB “changes” button (you have to be logged in).
-
-* DONE BB detail page POHs should also get a history diff view of the current entity
-
-BB detail page POHs should also get a history diff view of the current entity
-
-* DONE on BB PTs where images are involved, parse the image filename for further details and present that info also
-
-1.)
-
-on BB PTs where images are involved, parse the image filename for further details and present that info also
-
-2.)
-
-maybe create image sections with the found info
-
-* DONE render the sidebar handle at the top (like in the MB case)
-
-render the sidebar handle at the top (like in the MB case) and not in the middle of the page
 
 
 * TODO Overwhole of, extensions to and beautify of BruceBase (BB) pages
@@ -713,6 +710,20 @@ for Phase 2 and 3 are also both confirmed like OK
 
 
 
+* DONE tag answers
+
+1. Tag cloud table, Family column: about 85% of the tags come out as "Other", because songs and people can't be recognised from the word alone. Keep it, drop it, or read the song and people lists once (2
+   requests) to sort them? [read the lists]
+2. Pages column: show the estimate from the text size ("≈ 2,963" / "< 62"), or fetch exact counts for the 631 larger tags (about 11 min)? Exact counts for all 11,571 would take over 3 hours. [estimate; the
+   exact count is on the tag's hover card]
+3. One tag's page: the first button needs no request and gives Page, Kind, Date, Venue, City and State. Is a second button worth it that adds Created, Updated, Size, Comments and Tags? It costs 13 calls
+   (about 30 s) for storyteller and 99 calls (about 4 min) for content. [yes]
+4. With that second button, should Tags be a column, or stay only in the row's window? [column, collapsed]
+5. manage:pages-and-tags: add a third button, "all 42,660 pages with their tags"? It is 171 calls, about 7 min, and it would also give every tag's exact count. [yes, as an extra button]
+6. In the Tags cell, group the tags by family, or keep the site's alphabetical order? [alphabetical]
+7. Tag link hover card: show the newest six pages, or the first six by title? [newest]
+8. Tag link window for a big tag: load the first 250 with a "Load all" button, or everything at once? [first 250 plus the button]
+
 
 * TODO adjustments
 ** TODO On The Tracks
@@ -780,18 +791,4 @@ venue POHs have NO hover support for e.g Wikipedia links, e.g. when hovering htt
 
 On the year-event pages e.g. https://brucebase.wikidot.com/2026#020526 there are icons for an evetn if specific information is included in the detail event link, see [Image #21]
 Cound these icons made available on the "Info & Setlist" POH, see [Image #22]
-
-* tag answers
-
-1. Tag cloud table, Family column: about 85% of the tags come out as "Other", because songs and people can't be recognised from the word alone. Keep it, drop it, or read the song and people lists once (2
-   requests) to sort them? [read the lists]
-2. Pages column: show the estimate from the text size ("≈ 2,963" / "< 62"), or fetch exact counts for the 631 larger tags (about 11 min)? Exact counts for all 11,571 would take over 3 hours. [estimate; the
-   exact count is on the tag's hover card]
-3. One tag's page: the first button needs no request and gives Page, Kind, Date, Venue, City and State. Is a second button worth it that adds Created, Updated, Size, Comments and Tags? It costs 13 calls
-   (about 30 s) for storyteller and 99 calls (about 4 min) for content. [yes]
-4. With that second button, should Tags be a column, or stay only in the row's window? [column, collapsed]
-5. manage:pages-and-tags: add a third button, "all 42,660 pages with their tags"? It is 171 calls, about 7 min, and it would also give every tag's exact count. [yes, as an extra button]
-6. In the Tags cell, group the tags by family, or keep the site's alphabetical order? [alphabetical]
-7. Tag link hover card: show the newest six pages, or the first six by title? [newest]
-8. Tag link window for a big tag: load the first 250 with a "Load all" button, or everything at once? [first 250 plus the button]
 
