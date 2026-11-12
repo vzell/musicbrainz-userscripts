@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.13",
+    "date": "2026-11-12",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase: the year listing pages (https://brucebase.wikidot.com/2026-list, …, /1949-64-list) get two buttons. Events turns the year's list into a table — Event (linked to the show on the year page, with its card and window), Date with its parts, Venue, City, State, Country, Note (Recording Session, Rehearsal, Rescheduled, …) and Tour (from the Start of / End of boxes); All years reads every year's listing into one table. Under the year pages' switch.",
+          "Brucebase: a tour box that ends one leg and starts the next in one line (\"End of the 1st leg, and Start of the 2nd leg of …\") now starts the new leg, on the year pages too."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.12",
     "date": "2026-11-12",
     "sections": [

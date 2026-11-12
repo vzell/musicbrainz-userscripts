@@ -508,6 +508,56 @@ the server writes `&quot;`) and `debug/bb-year-cache/` (the probe's cache);
 a snapshot not on the machine is skipped and its fixture kept.
 `tests/support/bbFixture.js`'s `loadBbYearPage()` serves them.
 
+## Year listing pages — `bb-year-list` (Phase 9, 2026-11-12)
+
+`/2026-list`, …, `/1949-64-list` (vzell, 2026-11-11): one line per entry of
+the year page. Same switch as the year pages (`sa_bb_year_pages`, the gate
+names `_BB_YEAR_LIST_PATH_RE`); no new `@include` (the catch-all line).
+
+- **The page** (`scripts/probe-bb-year-list.py` over the mirror's 63
+  listings, 2026-11-12 · vzell-lap · n/a): a year nav line (a
+  `.list-pages-box`, every listing linked, this one too), an `h1` "1978
+  listing by date / location", an intro `div.code` (62 of 63), then `<ul>`s
+  of `<li><a href="/1978#050378">1978-03-05 - RECORD PLANT, NEW YORK CITY,
+  NY</a> <span style="font-size:80%;"><em>(Recording Session)</em></span></li>`
+  — 5,001 entries, every link `/YEAR#ddmmyy`, every label "DATE - VENUE";
+  2,285 notes (589 distinct: Recording Session 467, Rehearsal 153,
+  Rescheduled 121, Early/Late 113, Cancelled 104, Interview 66, band and
+  event names), 308 `00` dates, one stray "]" (2005). Between the lists,
+  tour boxes (`<table>`, no `h2` unlike the year page) and tour banners
+  (`div.image-container`).
+- **The converter** `applyBbYearListToTable()` (`features.bbYearListToTable`,
+  the three call sites of `applyBbYearToTable()`): `_bbYearListEntries()`
+  walks `#page-content`'s children in order — a box through
+  `_bbParseTourHeading()` (a start names the tour, an end clears it), each
+  `ul > li` show link with its note (the `<em>` without brackets) — and the
+  range from the first list to the last list or box is replaced by the
+  table; the nav line, the `h1` and the intro stay. Columns
+  `_BB_YEAR_LIST_HEADERS`: Event (`_bbYearEventCell()`, the year table's
+  cell, its link `a.mb-bb-show-link` to the show, which previews with the
+  `bbdate` reader since Phase 8), Date (`_bbParseHeading()`, `00` dropped,
+  then `dateParts`), Venue, City, State, Country (title style as on the year
+  table), Note, Tour. Event is the sticky first column
+  (`_bbYearListTableFeatures()`).
+- **`_bbParseTourHeading()`** now also splits ", and Start of" (1981: "End
+  of the 1st leg, and Start of the 2nd leg of "The River" tour - Europe"; 4
+  boxes on the listings), which the year page reads the same way.
+- **Two buttons**: "Show this year's events" (the live page, no request) and
+  "Show the events of all years" (`bbYearListToTable: 'all'`, `pageKeys`
+  over `#page-content a[href]` with `_BB_YEAR_LIST_PATH_RE_KEY`: the nav
+  line's 63 listings in order). The engine reuses the live document for the
+  key the URL shows, so this year is NOT emptied first: the first version
+  gave the live page an empty table as the start page does and lost this
+  year's rows (caught by the spec). 63 pages pass the High Page Count gate.
+- **Tests**: `tests/fixtures/bb-year-list.spec.js` (11: gate on/off, 2026's
+  every column against a regex read of the fixture, the five other fixtures'
+  tours, notes and links, the show link's `bbdate` resolve, all years over
+  three listings, the tour heading table), loader `loadBbYearListPage()`,
+  fixtures `bb-year-list-{2026,1978,1949-64,1981,2005,1973}.html`
+  (`scripts/build-bb-year-list-fixtures.py`), mutations
+  `scripts/mutations/bb-year-list.json` (10; one `expect: pass`: no spec
+  loads a listing from disk yet).
+
 ## Relations — `bb-relations`
 
 Written on branch `feature/bb-recent-changes-relations` (2026-10-13).

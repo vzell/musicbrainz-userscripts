@@ -78,6 +78,12 @@ is Chromium's emulation, not Firefox Android, which Playwright cannot drive: see
 a spec needs ="project": "chromium-mobile"= (=scripts/mutation-check.py=).
 =scripts/check-mutation-finds.py= (read-only, about a second) lists every
 mutation entry whose =find= no longer occurs exactly once, in every list.
+Since 2026-11-12 a =mutation-check.py= run shows in the prompt's status line
+(=🧬 mutations <list> · done/total · now: <entry> · script modified=, from
+=~/.cache/sa-mutation/status.json=), and each spec run stops at its first
+failing test (=--max-failures=1=): an entry that breaks every test of its spec
+costs one timeout, not one per test. Give each entry a =grep= naming the one
+test that should catch it.
 
 *Fixtures* serve a saved local HTML file at a real musicbrainz.org-shaped URL
 via Playwright's =page.route()=, so the userscript believes it is on the real

@@ -462,21 +462,31 @@ own-host test). Such links sit in the event pages' nav line ("Info & Setlist"), 
   "run them after a couple more Phases")
 - [X] vzell's live check of both (2026-11-12): OK
 
-*** TODO Phase 9 — year listing pages =bb-year-list= (/2026-list)
-vzell, 2026-11-11: support =https://brucebase.wikidot.com/2026-list=. 126 pages in the mirror
-(=/1949-64-list= … =/2026-list=): a year nav line, an intro =div.code=, =ul > li= entries
-"=1978-03-05 - RECORD PLANT, NEW YORK CITY, NY=" linking =/1978#050378=, an optional note
-=<em>(Recording Session)</em>= (Rehearsal, Rescheduled, Early/Late, Cancelled, Interview, band or event
-names), tour boxes "Start of the "X" tour[ - U.S.]" / "End of the 2nd leg of the "X" tour" between the lists.
-- [ ] probe over all 126 mirror pages (=scripts/probe-bb-year-list.py=): entry and note counts, box
-  texts, dates with =00=, entries with no note, any other markup
-- [ ] mockup: the table (Date + dateParts, Venue, City, State, Country — the year page's splitter, Note,
-  Tour, Leg), the intro as a text section, "this year" and "all years" (pageKeys over the nav line,
-  126 requests) buttons; questions inside
-- [ ] =bb-year-list=: =_BB_YEAR_LIST_PATH_RE=, =applyBbYearListToTable()=, the Date link previews the
-  entry as on the year page (=_extBbYear()=); =bb-year-list.spec.js=, mutations, coverage rows,
-  brucebase.md, HELP, WIP
-- [ ] vzell's live check: 2026-list, 1978-list, 1949-64-list, all years
+*** DONE Phase 9 — year listing pages =bb-year-list= (/2026-list)
+vzell, 2026-11-11: support =https://brucebase.wikidot.com/2026-list=. 63 listings in the mirror
+(=/1949-64-list= … =/2026-list=; the 126 counted first included their =.txt= copies): a year nav line, an
+intro =div.code=, =ul > li= entries "=1978-03-05 - RECORD PLANT, NEW YORK CITY, NY=" linking =/1978#050378=,
+an optional note =<em>(Recording Session)</em>=, tour boxes between the lists.
+- [X] probe (=scripts/probe-bb-year-list.py=, 2026-11-12T00:29+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4
+  (Linux 6.18.58.1) · n/a): 63 listings, 5,001 entries, every link =/YEAR#ddmmyy=, every label "DATE -
+  VENUE"; 2,285 notes (589 distinct), 308 =00= dates, one stray "]" (2005); boxes Start / End /
+  Continuation / legs / eras / regions, 4 of them "End of the 1st leg, and Start of the 2nd leg of …"
+- [X] mockup: skipped — the table is the year table's columns minus the sets, so it was built straight
+  away; one Tour column as on the year table (the leg is in its text), no Leg column
+- [X] =bb-year-list=: =_BB_YEAR_LIST_PATH_RE= (gate: =sa_bb_year_pages=), =applyBbYearListToTable()=,
+  =_bbYearListEntries()=, Event = =_bbYearEventCell()= linking the show (=a.mb-bb-show-link=, the =bbdate=
+  preview of Phase 8), Date/Venue/City/State/Country from =_bbParseHeading()=, Note, Tour;
+  =_bbParseTourHeading()= now splits ", and Start of" (the year page too); "all years" by =pageKeys= over
+  the nav line — the live listing is reused for its own key (the first version emptied it and lost this
+  year's rows); =bb-year-list.spec.js= (11), =bb-year.spec.js= 22 green (shared parser), mutations
+  =bb-year-list.json= (10, all OK; one =expect: pass=: no disk-load spec), 6 stale finds refreshed
+  (bb-home, bb-year, foreign-titles; all OK); coverage row, brucebase.md, PAGETYPES reference (168), CLAUDE.md, HELP,
+  WIP.13; the wider sibling run still deferred
+- [X] vzell's live check (2026-11-12): OK
+- [X] on the way: the first mutation run sat 11 minutes on its first entry (no button, every test of
+  the spec waiting 90 s) and did not show in the prompt line; =scripts/mutation-check.py= now stops each
+  spec at its first failure (=--max-failures=1=) and writes =~/.cache/sa-mutation/status.json=, which
+  =~/.claude/statusline.sh= shows (vzell: "yes change the runner"); every entry got a one-test =grep=
 
 *** TODO Phase 10 — Recent changes "changes" button and the first difference
 covers: "* TODO create userscript which directly scrolls to the first difference …" and the original

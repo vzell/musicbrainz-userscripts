@@ -238,12 +238,12 @@
         "why": "City and Country (not USA) are in MusicBrainz style; the spec pins \"Hampton\" and \"Australia\".",
         "edits": [
             {
-                "find": "        _mbSetSiteTitle(textCell(''), h.city);",
-                "replace": "        textCell(h.city);"
+                "find": "        // State is a code (\"NJ\") or a region and is left alone.\n        _mbSetSiteTitle(textCell(''), h.city);",
+                "replace": "        // State is a code (\"NJ\") or a region and is left alone.\n        textCell(h.city);"
             },
             {
-                "find": "        else _mbSetSiteTitle(textCell(''), h.country);",
-                "replace": "        else textCell(h.country);"
+                "find": "        else _mbSetSiteTitle(textCell(''), h.country);\n        textCell(entry.tour);\n        listCell(soundcheck);",
+                "replace": "        else textCell(h.country);\n        textCell(entry.tour);\n        listCell(soundcheck);"
             }
         ],
         "spec": "tests/fixtures/mb-title-case.spec.js",
@@ -255,8 +255,8 @@
         "why": "The request: leave a Country of \"USA\" as it is. The explicit exception is belt and braces: USA is also in _MBTC_ACRONYMS, so the title style would keep it anyway and no spec can see this one.",
         "edits": [
             {
-                "find": "        if (h.country === 'USA') textCell(h.country);\n        else _mbSetSiteTitle(textCell(''), h.country);",
-                "replace": "        _mbSetSiteTitle(textCell(''), h.country);"
+                "find": "        if (h.country === 'USA') textCell(h.country);\n        else _mbSetSiteTitle(textCell(''), h.country);\n        textCell(entry.tour);\n        listCell(soundcheck);",
+                "replace": "        _mbSetSiteTitle(textCell(''), h.country);\n        textCell(entry.tour);\n        listCell(soundcheck);"
             }
         ],
         "spec": "tests/fixtures/mb-title-case.spec.js",

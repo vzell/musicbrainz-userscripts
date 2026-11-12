@@ -146,6 +146,56 @@ async function loadBbHomePage(page, { years = true, titles = false, settingsOver
     return { requests, served };
 }
 
+/** The year listing's buttons (`bb-year-list`, org/brucebase.org Phase 9). */
+const BB_YEAR_LIST_BUTTON = 'Show this year\'s events';
+const BB_YEAR_LIST_ALL_BUTTON = 'Show the events of all years';
+
+/**
+ * A year listing's URL and fixture (scripts/build-bb-year-list-fixtures.py).
+ *
+ * @param {string} key '2026', '1978', '1949-64', …
+ * @returns {{ url: string, file: string }}
+ */
+function bbYearListFixture(key) {
+    return {
+        url: `https://brucebase.wikidot.com/${key}-list`,
+        file: path.join(__dirname, '..', 'fixtures', `bb-year-list-${key}.html`),
+    };
+}
+
+/**
+ * Loads a year listing fixture (`bb-year-list`) with the userscript
+ * injected, and serves the other listings the "all years" button fetches:
+ * each from its fixture, any other as a 404. Every other request is aborted.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} key '2026', '1978', '1949-64', …
+ * @param {{ years?: boolean, titles?: boolean, settingsOverride?: Object<string, *> }} [opts]
+ * @returns {Promise<{ requests: string[], served: string[] }>}
+ */
+async function loadBbYearListPage(page, key, { years = true, titles = false, settingsOverride = {} } = {}) {
+    const requests = [];
+    const served = [];
+    page.on('request', (req) => requests.push(req.url()));
+    await page.route(/^https?:\/\//, (route) => route.abort('blockedbyclient'));
+    const fx = bbYearListFixture(key);
+    await loadUserscriptPage(page, {
+        url: fx.url,
+        fixtureFile: fx.file,
+        testMode: true,
+        settingsOverride: { sa_enable_brucebase: true, sa_bb_year_pages: years, sa_foreign_mb_titles: titles, sa_foreign_typography: titles, ...settingsOverride },
+    });
+    await page.route((url) => url.hostname === 'brucebase.wikidot.com' && /^\/(\d{4}|1949-64)-list\/?$/.test(url.pathname), (route) => {
+        const url = new URL(route.request().url());
+        served.push(url.href);
+        const file = bbYearListFixture(url.pathname.replace(/^\/|-list\/?$/g, '')).file;
+        return fs.existsSync(file)
+            ? route.fulfill({ path: file, contentType: 'text/html; charset=utf-8' })
+            : route.fulfill({ status: 404, contentType: 'text/html', body: '<html><body>Not found</body></html>' });
+    });
+    return { requests, served };
+}
+
 /**
  * Reads the rendered year table's visible rows: every column's text, plus
  * the list items of Soundcheck / Setlist / Media, the set labels, the
@@ -467,6 +517,7 @@ module.exports = {
     BB_SONGS_URL, BB_FIXTURE, BB_BUTTON, loadBbSongsPage, renderedBbRows, renderedBbHeaders,
     BB_YEAR_BUTTON, bbYearFixture, loadBbYearPage, renderedBbYearRows, revealPastStickyColumn,
     BB_HOME_URL, BB_HOME_BUTTON, loadBbHomePage,
+    BB_YEAR_LIST_BUTTON, BB_YEAR_LIST_ALL_BUTTON, bbYearListFixture, loadBbYearListPage,
     BB_RELATIONS_URL, BB_RELATIONS_FIXTURE, BB_RELATIONS_BUTTON, loadBbRelationsPage,
     BB_CHANGES_URL, BB_CHANGES_FIXTURE, BB_CHANGES_AJAX, loadBbChangesPage,
 };

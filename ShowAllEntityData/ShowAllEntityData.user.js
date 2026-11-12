@@ -7014,6 +7014,14 @@
     const _BB_YEAR_PATH_RE = /^\/(?:\d{4}|1949-64)\/?$/;
 
     /**
+     * A Brucebase year LISTING page's path: `/2026-list`, …, `/1949-64-list`
+     * (pageType `bb-year-list`, org/brucebase.org Phase 9): one line per
+     * entry of the year page. Under the year pages' switch too.
+     * @type {RegExp}
+     */
+    const _BB_YEAR_LIST_PATH_RE = /^\/(?:\d{4}|1949-64)-list\/?$/;
+
+    /**
      * The Brucebase start page's path: `/`, and `/home`, its wiki name
      * (pageType `bb-home`, which pages through every year page). Read by the
      * year-page opt-in gate below and by the `bb-home` definition's `match`.
@@ -7094,7 +7102,8 @@
     // Its year pages have a switch of their own (`sa_bb_year_pages`, default
     // on) on top of that one, gated as early — and so has the start page,
     // whose one button pages through all of them.
-    if (_isBbHost && (_BB_YEAR_PATH_RE.test(window.location.pathname) || _BB_HOME_PATH_RE.test(window.location.pathname)) &&
+    if (_isBbHost && (_BB_YEAR_PATH_RE.test(window.location.pathname) || _BB_HOME_PATH_RE.test(window.location.pathname) ||
+        _BB_YEAR_LIST_PATH_RE.test(window.location.pathname)) &&
         Lib.settings.sa_bb_year_pages !== true) {
         Lib.info('init', 'brucebase.wikidot.com year pages are off (sa_bb_year_pages) — nothing to do.');
         return;
@@ -26546,14 +26555,17 @@
      * `{start: true, name: '"Earth" era'}`. Tour legs ("End of the 1st leg
      * of …", "Start of the 2nd leg of … - Europe") are tours of their own,
      * and a year that opens mid-tour says so with "Continuation of …",
-     * which starts it like a "Start of".
+     * which starts it like a "Start of". The year listing pages also write
+     * "End of the 1st leg, and Start of the 2nd leg of "The River" tour -
+     * Europe": ", and" before "Start of" splits like " / " (Phase 9,
+     * 2026-11-12); the second part names the tour from "Start of" on.
      *
      * @param {string} text The box heading's text.
      * @returns {?{start: boolean, name: string}} `null` when it is neither a start nor an end.
      */
     function _bbParseTourHeading(text) {
         let out = null;
-        String(text || '').replace(/\s+/g, ' ').trim().split(/\s+\/\s+(?=(?:Start|End|Continuation) of\b)/i).forEach(part => {
+        String(text || '').replace(/\s+/g, ' ').trim().split(/(?:\s+\/|,\s*and)\s+(?=(?:Start|End|Continuation) of\b)/i).forEach(part => {
             const m = part.match(/^(Start|End|Continuation) of (?:the )?(.*)$/i);
             if (m) out = { start: !/^end$/i.test(m[1]), name: m[2].trim() };
         });
@@ -28068,6 +28080,171 @@
         content.insertBefore(table, content.firstChild);
         content.insertBefore(h2, table);
         Lib.debug('init', 'applyBbYearToTable: start page — empty year table in place for the fetched year pages.');
+    }
+
+    // --- Brucebase year listing pages (`bb-year-list`) -----------------------
+    // `/2026-list`, …, `/1949-64-list` (org/brucebase.org Phase 9, vzell
+    // 2026-11-11): a year nav line, an h1, an intro div.code, then <ul>s of
+    // `<li><a href="/1978#050378">1978-03-05 - RECORD PLANT, NEW YORK CITY,
+    // NY</a> <span style="font-size:80%;"><em>(Recording Session)</em></span></li>`
+    // with tour boxes (a <table>: "Start of the "X" tour", "End of the 2nd
+    // leg of …", "Continuation of …") and tour banners between them. Probe
+    // over the mirror's 63 listings (scripts/probe-bb-year-list.py,
+    // 2026-11-12): 5,001 entries, every link /YEAR#ddmmyy and every label
+    // "DATE - VENUE", 2,285 notes (589 distinct), 308 00 dates.
+
+    /** The listing table's columns, in order; DD … Month come from Date's dateParts. */
+    const _BB_YEAR_LIST_HEADERS = ['Event', 'Date', 'Venue', 'City', 'State', 'Country', 'Note', 'Tour'];
+
+    /**
+     * Collects a year listing page's entries in one pass over `#page-content`
+     * in document order: every `ul > li` whose first child is a link to a
+     * show on its year page (`/<year>#<ddmmyy>`), with the note after it
+     * (the `<em>` text without its parentheses) and the tour of the last
+     * box before it (`_bbParseTourHeading()`: a start names it, an end
+     * clears it). The lists, boxes, banners and rules between the first and
+     * the last list are the range the table replaces. Nothing is moved.
+     *
+     * @param {Element} content The page's `#page-content`.
+     * @returns {{entries: Array<{heading: string, href: string, note: string, tour: string}>, first: ?Element, last: ?Element}}
+     */
+    function _bbYearListEntries(content) {
+        const entries = [];
+        let tour = '';
+        let first = null;
+        let last = null;
+        Array.from(content.children).forEach(el => {
+            if (el.tagName === 'TABLE') {
+                const t = _bbParseTourHeading(_bbText(el));
+                if (t) {
+                    tour = t.start ? t.name : '';
+                    if (first) last = el;
+                }
+                return;
+            }
+            if (el.tagName !== 'UL') {
+                if (first && /^(?:HR|DIV|P)$/.test(el.tagName) && !el.matches('.list-pages-box') && !_bbText(el)) last = el;
+                return;
+            }
+            let any = false;
+            el.querySelectorAll(':scope > li').forEach(li => {
+                const a = li.querySelector(':scope > a[href]');
+                const href = a ? a.getAttribute('href') || '' : '';
+                if (!/^(?:https?:\/\/brucebase\.wikidot\.com)?\/(?:\d{4}|1949-64)#\d{6}[a-z]?$/i.test(href)) return;
+                const em = li.querySelector(':scope > span em, :scope > em');
+                const note = em ? _bbText(em).replace(/^\(\s*/, '').replace(/\s*\)$/, '') : '';
+                entries.push({ heading: _bbText(a), href, note, tour });
+                any = true;
+            });
+            if (any) {
+                if (!first) first = el;
+                last = el;
+            }
+        });
+        return { entries, first, last };
+    }
+
+    /**
+     * Builds one listing row in `_BB_YEAR_LIST_HEADERS` order. Event is the
+     * year table's cell (`_bbYearEventCell()`: the place in MusicBrainz
+     * title style, the site's capitals as the hover text) linking the show
+     * on its year page, which previews with the `bbdate` reader (Phase 8);
+     * Date, Venue, City, State and Country are `_bbParseHeading()`'s.
+     *
+     * @param {{heading: string, href: string, note: string, tour: string}} entry
+     * @param {Document} docContext
+     * @returns {HTMLTableRowElement}
+     */
+    function _bbYearListBuildRow(entry, docContext) {
+        const h = _bbParseHeading(entry.heading, '');
+        const tr = docContext.createElement('tr');
+        const ev = _bbYearEventCell({ heading: entry.heading }, h, entry.href, docContext);
+        const a = ev.querySelector('a');
+        if (a) a.className = 'mb-bb-show-link';
+        tr.appendChild(ev);
+        const textCell = (v) => {
+            const td = docContext.createElement('td');
+            td.textContent = v || '';
+            tr.appendChild(td);
+            return td;
+        };
+        textCell(h.date);
+        _mbSetSiteTitle(textCell(''), h.venue || entry.heading);
+        _mbSetSiteTitle(textCell(''), h.city);
+        textCell(h.state);
+        if (h.country === 'USA') textCell(h.country);
+        else _mbSetSiteTitle(textCell(''), h.country);
+        textCell(entry.note);
+        textCell(entry.tour);
+        return tr;
+    }
+
+    /**
+     * An empty listing table under `<h2 class="mb-bb-list-heading">`, in
+     * `docContext`.
+     *
+     * @param {Document} docContext
+     * @returns {HTMLTableElement}
+     */
+    function _bbYearListTable(docContext) {
+        const table = docContext.createElement('table');
+        table.className = 'tbl mb-bb-table mb-bb-year-list-table';
+        const thead = docContext.createElement('thead');
+        const hr = docContext.createElement('tr');
+        _BB_YEAR_LIST_HEADERS.forEach(name => {
+            const th = docContext.createElement('th');
+            th.textContent = name;
+            hr.appendChild(th);
+        });
+        thead.appendChild(hr);
+        table.appendChild(thead);
+        table.appendChild(docContext.createElement('tbody'));
+        return table;
+    }
+
+    /**
+     * Converts a Brucebase year listing page's entries into a
+     * `<table class="tbl">` (`features.bbYearListToTable`), called from the
+     * same three places as `applyBbYearToTable()`. The table replaces the
+     * lists, tour boxes and banners; the nav line, the h1 and the intro stay.
+     * With `bbYearListToTable: 'all'` (the "all years" button, which pages
+     * through the nav line's listings, `features.pageKeys`) every fetched
+     * listing is converted as above, and the live one too: the engine
+     * reuses the live document for the key the URL shows (this year), so
+     * an empty table there would lose this year's rows (the first version
+     * did). Only the heading says "all years". Idempotent: once the lists
+     * are gone, a second call is a no-op.
+     *
+     * @param {object}   def                   The active merged pageDefinition.
+     * @param {Document} [docContext=document] The live or a fetched document.
+     * @returns {void}
+     */
+    function applyBbYearListToTable(def, docContext = document) {
+        const mode = def?.features?.bbYearListToTable;
+        if (!mode) return;
+        const content = docContext.getElementById('page-content');
+        const { entries, first, last } = content ? _bbYearListEntries(content) : { entries: [] };
+        if (!entries.length) {
+            if (!docContext.querySelector('table.mb-bb-year-list-table')) {
+                Lib.warn('init', `applyBbYearListToTable: no entries on the ${docContext === document ? 'live' : 'fetched'} listing — nothing converted.`);
+            }
+            return;
+        }
+        const table = _bbYearListTable(docContext);
+        const tbody = table.tBodies[0];
+        entries.forEach(e => tbody.appendChild(_bbYearListBuildRow(e, docContext)));
+        const range = docContext.createRange();
+        range.setStartBefore(first);
+        range.setEndAfter(last);
+        range.deleteContents();
+        range.insertNode(table);
+        if (docContext === document && !document.querySelector('h2.mb-bb-list-heading')) {
+            const h2 = document.createElement('h2');
+            h2.className = 'mb-bb-list-heading';
+            h2.textContent = mode === 'all' ? 'Events — all years' : 'Events';
+            table.parentNode.insertBefore(h2, table);
+        }
+        Lib.debug('init', `applyBbYearListToTable: converted ${tbody.rows.length} entr${tbody.rows.length === 1 ? 'y' : 'ies'} → table.`);
     }
 
     // --- Brucebase "Recent changes" (`bb-recent-changes`) ---------------------
@@ -51891,6 +52068,32 @@
     const _BB_YEAR_PATH_RE_KEY = /^\/(\d{4}|1949-64)\/?$/;
 
     /**
+     * A Brucebase year listing's path with its year captured (`/2026-list`
+     * → `2026`): the page key of `bb-year-list`'s "all years" button.
+     * @type {RegExp}
+     */
+    const _BB_YEAR_LIST_PATH_RE_KEY = /^\/(\d{4}|1949-64)-list\/?$/;
+
+    /**
+     * The listing table's features (`bb-year-list`), a fresh object per call:
+     * Date's dateParts, as on the year table, and Event the sticky first
+     * column.
+     *
+     * @returns {object}
+     */
+    function _bbYearListTableFeatures() {
+        return {
+            columnExtractors: [
+                { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
+            ],
+            integerColumns: [
+                { sourceColumn: 'DD', align: 'R' }, { sourceColumn: 'MM', align: 'R' }, { sourceColumn: 'YYYY', align: 'C' }
+            ],
+            stickyColumn: 'Event'
+        };
+    }
+
+    /**
      * The table features the Brucebase year table has wherever it is built,
      * on a year page (`bb-year`) or from the start page (`bb-home`); a fresh
      * object per call, so neither definition shares arrays with the other.
@@ -56082,6 +56285,33 @@
             features: {
                 bbYearToTable: true,
                 ..._bbYearTableFeatures()
+            },
+            tableMode: 'single'
+        },
+
+        // The Brucebase year listing pages (`/2026-list`, …, `/1949-64-list`;
+        // org/brucebase.org Phase 9): one line per entry of the year page.
+        // "This year" converts the live page, no request; "all years" pages
+        // through the nav line's listings (`features.pageKeys`), the live page
+        // getting an empty table. Under `sa_bb_year_pages` too. See
+        // applyBbYearListToTable() and docs/claude/brucebase.md.
+        {
+            type: 'bb-year-list',
+            host: 'brucebase.wikidot.com',
+            match: (path) => _BB_YEAR_LIST_PATH_RE.test(path),
+            buttons: [
+                { label: 'Show this year\'s events', shortLabel: 'Events' },
+                {
+                    label: 'Show the events of all years', shortLabel: 'All years',
+                    features: {
+                        bbYearListToTable: 'all',
+                        pageKeys: { pathRe: _BB_YEAR_LIST_PATH_RE_KEY, selector: '#page-content a[href]', unit: 'year' }
+                    }
+                }
+            ],
+            features: {
+                bbYearListToTable: true,
+                ..._bbYearListTableFeatures()
             },
             tableMode: 'single'
         },
@@ -126045,6 +126275,10 @@ a { color: #1565c0; }`;
         if (activeDefinition.features?.bbYearToTable) {
             applyBbYearToTable(activeDefinition);
         }
+        // The year listing pages ('bb-year-list'), the same way.
+        if (activeDefinition.features?.bbYearListToTable) {
+            applyBbYearListToTable(activeDefinition);
+        }
         // Brucebase Relations ('bb-relations'): the letter tabs become a table.
         if (activeDefinition.features?.bbRelationsToTable) {
             applyBbRelationsToTable(activeDefinition);
@@ -126617,6 +126851,9 @@ a { color: #1565c0; }`;
                 }
                 if (doc !== document && activeDefinition.features?.bbYearToTable) {
                     applyBbYearToTable(activeDefinition, doc);
+                }
+                if (doc !== document && activeDefinition.features?.bbYearListToTable) {
+                    applyBbYearListToTable(activeDefinition, doc);
                 }
                 if (doc !== document && activeDefinition.features?.bbRelationsToTable) {
                     applyBbRelationsToTable(activeDefinition, doc);
@@ -158091,6 +158328,9 @@ a { color: #1565c0; }`;
             // And the year pages: the reloaded page holds the entries again.
             if (activeDefinition.features?.bbYearToTable) {
                 applyBbYearToTable(activeDefinition);
+            }
+            if (activeDefinition.features?.bbYearListToTable) {
+                applyBbYearListToTable(activeDefinition);
             }
             // And Relations (the letter tabs again), and Recent changes (the
             // site's list again; an empty table takes its place).

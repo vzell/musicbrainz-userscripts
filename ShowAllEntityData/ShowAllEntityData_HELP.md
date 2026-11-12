@@ -4055,6 +4055,19 @@ few minutes, and the script asks twice: first because the page count is
 above *Max Page Warning* (50), then, when everything is in, how to show that
 many rows (*Large Dataset Threshold*, 5000).
 
+**The year listings** (`https://brucebase.wikidot.com/2026-list`, …,
+`/1949-64-list`: one line per entry, "1978-03-05 - RECORD PLANT, NEW YORK
+CITY, NY (Recording Session)") come under the same switch. **Events** turns
+this year's list into a table — **Event** (the line, linked to the show on
+the year page: rest the pointer on it for the show's card, Space for its
+window), **Date** (with DD, MM, YYYY, Day, Month), **Venue**, **City**,
+**State**, **Country**, **Note** (the words in brackets: Recording Session,
+Rehearsal, Rescheduled, Early, Late, …) and **Tour** (from the "Start of … /
+End of …" boxes between the lists). **All years** reads every listing named
+in the line of years at the top into one table; the listings are small, so
+that is quicker than the start page's button, but it still asks first
+(more than 50 pages).
+
 </details>
 
 <details>
