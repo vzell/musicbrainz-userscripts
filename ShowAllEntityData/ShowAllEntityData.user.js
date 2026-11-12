@@ -28777,6 +28777,540 @@
         Lib.debug('init', `applyBbRelationsToTable: converted ${tbody.rows.length} relation${tbody.rows.length === 1 ? '' : 's'} → table.`);
     }
 
+    // --- Brucebase tag pages (`bb-tags`, `bb-tag`, `bb-pages-and-tags`) -------
+    // org/brucebase.org Phase 11; mockup https://claude.ai/artifact/CRpe5M7DbHfou2rFR9bYCT,
+    // vzell's answers 1–8 (2026-11-12). What the probes found (signed out,
+    // scripts/probe-bb-tag-pages.py, probe-bb-tag-listpages.py,
+    // probe-bb-listpages-titles.py, probe-bb-listpages-order.py, 2026-11-12):
+    //  - system:page-tags is the tag cloud: 11,571 `a.tag` in
+    //    `div.pages-tag-cloud-box`, the weight only as `font-size` 100–300%,
+    //    linear in the count (100 + 200 · pages / the biggest tag's pages;
+    //    11 tags checked, within ±60); 10,940 tags sit at 100%.
+    //  - system:page-tags/tag/<tag> is ONE page, the whole list
+    //    (`#tagged-pages-list .pages-list-item .title a`, by title), after the
+    //    whole cloud again: storyteller 3,008 items, 2.2 MB; content 24,695,
+    //    6.2 MB.
+    //  - manage:pages-and-tags lists the `onstage:` pages only, 35 pages of
+    //    100 (`/p/N`), "page(title) | tags".
+    //  - Wikidot's `list/ListPagesModule` answers over AJAX signed out (the
+    //    token in the body equal to the cookie, as Recent changes):
+    //    `%%total%%` with perPage 1 is 0.9 KB in 0.4 s; 250 pages a call with
+    //    the fields of `_BB_LP_TEMPLATE` ~180 KB in ~1.5 s. A title comes back
+    //    as written only inside `@@…@@` (verbatim): a plain `%%title%%` came
+    //    back with no-break spaces and a double space lost (27 of 750).
+    // Every view is a pageRequest whose `toHtml` builds the table, so the
+    // live page only gets the heading and an empty table
+    // (`applyBbDetailToTable()` → `_bbTagsLive()`); the wiki's page stays
+    // below, folded, as on the detail pages.
+
+    /** system:page-tags, the tag cloud. @type {RegExp} */
+    const _BB_TAGS_PATH_RE = /^\/system:page-tags\/?$/;
+    /** One tag's pages, `/system:page-tags/tag/<tag>`; group 1 the tag as written in the path. @type {RegExp} */
+    const _BB_TAG_PATH_RE = /^\/system:page-tags\/tag\/([^/]+)\/?$/;
+    /** manage:pages-and-tags and its pages (`/p/N`, group 1). @type {RegExp} */
+    const _BB_PAT_PATH_RE = /^\/manage:pages-and-tags(?:\/p\/(\d+))?\/?$/;
+
+    /** Pages per ListPages call: the module's most. @type {number} */
+    const _BB_LP_PER_PAGE = 250;
+    /** Field and item separators of `_BB_LP_TEMPLATE` (characters no title holds). @type {string} */
+    const _BB_LP_SEP = '␂';
+    /** @type {string} */
+    const _BB_LP_END = '␃';
+    /**
+     * The ListPages item template: name, title (verbatim), created, updated,
+     * size, comments, tags, and the list's total, which every item repeats.
+     * @type {string}
+     */
+    const _BB_LP_TEMPLATE = ['%%fullname%%', '@@%%title%%@@', '%%created_at%%', '%%updated_at%%', '%%size%%', '%%comments%%',
+        '%%tags%%', '%%total%%'].join(_BB_LP_SEP) + _BB_LP_END;
+
+    /**
+     * The columns of each tag view (`features.bbDetailToTable`): the cloud,
+     * a tag's pages from the page or from ListPages, pages-and-tags from its
+     * pages or from ListPages over the whole wiki.
+     * @type {Object<string, string[]>}
+     */
+    const _BB_TAGS_HEADERS = (() => {
+        const page = ['Page', 'Kind', 'Date', 'Venue', 'City', 'State', 'Country'];
+        const lp = [...page, 'Created', 'Updated', 'Size', 'Comments', 'Tag count', 'Tags'];
+        const pat = [...page, 'Tag count', 'Tags'];
+        return { tags: ['Tag', 'Family', 'Weight', 'Pages'], tag: page, 'tag-lp': lp, pat, 'pat-all': pat, 'pat-lp': lp };
+    })();
+
+    /** @type {Object<string, string>} The data heading of each tag view. */
+    const _BB_TAGS_HEADINGS = { tags: 'Tags', tag: 'Tagged pages', 'tag-lp': 'Tagged pages', pat: 'Pages and tags', 'pat-all': 'Pages and tags', 'pat-lp': 'Every page and its tags' };
+
+    /**
+     * What the tag cloud's Family column knows besides the word itself
+     * (vzell's answer 1: "read the lists"): the squashed slugs and names of
+     * every song (`stats:songs`) and person or band (`stats:relations`),
+     * and the biggest tag's page count (one `%%total%%`), for the Pages
+     * estimate. Read at the first press of the cloud's button, kept for the
+     * page load; the tag reader's card uses it when it is there.
+     * @type {?{songs: Set<string>, people: Set<string>, max: number, maxTag: string}}
+     */
+    let _bbTagsCtx = null;
+
+    /**
+     * The tag a `/system:page-tags/tag/<tag>` path names, decoded; '' for
+     * another path.
+     *
+     * @param {string} path
+     * @returns {string}
+     */
+    function _bbTagOfPath(path) {
+        const m = _BB_TAG_PATH_RE.exec(path || '');
+        if (!m) return '';
+        try {
+            return decodeURIComponent(m[1]);
+        } catch (_) {
+            return m[1];
+        }
+    }
+
+    /**
+     * A tag's page on Brucebase, absolute.
+     *
+     * @param {string} tag
+     * @returns {string}
+     */
+    function _bbTagUrl(tag) {
+        return `https://brucebase.wikidot.com/system:page-tags/tag/${encodeURIComponent(tag)}`;
+    }
+
+    /**
+     * A family key's heading (`_BB_TAG_FAMILIES`).
+     *
+     * @param {string} key
+     * @returns {string}
+     */
+    function _bbTagFamilyName(key) {
+        return (_BB_TAG_FAMILIES.find(f => f[0] === key) || [key, key])[1];
+    }
+
+    /**
+     * The ListPages fields of a request: one tag's pages (`tag`) or every
+     * page of the wiki (`tag` ''), page `p` of `perPage`, in `order`.
+     *
+     * @param {string} tag
+     * @param {number} p
+     * @param {number} [perPage]
+     * @param {string} [order] - Wikidot's order ('titleAsc', 'created_at desc', 'fullname').
+     * @param {string} [body] - The item template.
+     * @returns {Object<string, string>}
+     */
+    function _bbLpParams(tag, p, perPage = _BB_LP_PER_PAGE, order = 'titleAsc', body = _BB_LP_TEMPLATE) {
+        const params = { category: '*', perPage: String(perPage), order, separate: 'false', module_body: body, p: String(p) };
+        if (tag) params.tags = tag;
+        return params;
+    }
+
+    /**
+     * The `features.pageRequest` of a ListPages view: a POST to Wikidot's
+     * AJAX module (`_bbLpParams()`), the answer made a table
+     * (`_bbTagsTableHtml()`).
+     *
+     * @param {string} view - 'tag-lp' or 'pat-lp'.
+     * @param {Object<string, string>} params
+     * @returns {{url: string, init: RequestInit, toHtml: function(string): string}}
+     */
+    function _bbLpRequest(view, params) {
+        const body = new URLSearchParams({ ...params, moduleName: 'list/ListPagesModule', wikidot_token7: _bbWikidotToken() });
+        return {
+            url: new URL('/ajax-module-connector.php', window.location.href).href,
+            init: {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                body: body.toString()
+            },
+            toHtml: (text) => _bbTagsTableHtml(view, _bbLpParse(_bbAjaxBody(text)))
+        };
+    }
+
+    /**
+     * The HTML of a Wikidot AJAX answer (its JSON's `body`).
+     *
+     * @param {string} text
+     * @returns {string}
+     * @throws {Error} When the answer is not JSON or its `status` is not "ok"
+     *   (`status` 0, so the loop records a failed page).
+     */
+    function _bbAjaxBody(text) {
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            throw Object.assign(new Error('Wikidot answered with something that is not JSON'), { status: 0 });
+        }
+        if (data?.status !== 'ok' || typeof data.body !== 'string') {
+            throw Object.assign(new Error(`Wikidot answered "${data?.status}"${data?.message ? `: ${_dpText(String(data.message))}` : ''}`), { status: 0 });
+        }
+        return data.body;
+    }
+
+    /**
+     * Reads a ListPages answer made with `_BB_LP_TEMPLATE`: each item's page
+     * (name, its category as Kind, the title as written), created and
+     * updated (epoch seconds from the `odate time_N` spans), size, comments,
+     * tags (in the site's order: alphabetical) and the list's total.
+     *
+     * @param {string} html - The answer's body.
+     * @returns {Array<{name: string, kind: string, href: string, title: string, created: number, updated: number,
+     *   size: number, comments: number, tags: string[], total: number}>}
+     */
+    function _bbLpParse(html) {
+        const doc = new DOMParser().parseFromString(`<div id="mb-bblp-root">${html}</div>`, 'text/html');
+        const root = doc.getElementById('mb-bblp-root');
+        root.querySelectorAll('span.odate').forEach((s) => {
+            const m = /\btime_(\d+)\b/.exec(s.className);
+            s.replaceWith(doc.createTextNode(m ? `@${m[1]}` : ''));
+        });
+        root.querySelectorAll('.pager').forEach(p => p.remove());
+        const epoch = (v) => Number((/^@(\d+)$/.exec(v.trim()) || [])[1] || 0);
+        return root.textContent.split(_BB_LP_END).map((chunk) => {
+            const f = chunk.split(_BB_LP_SEP);
+            if (f.length !== 8) return null;
+            const name = f[0].trim();
+            if (!name) return null;
+            return {
+                name, kind: name.includes(':') ? name.split(':')[0] : '', href: _bbAbsHref(`/${name}`),
+                title: f[1].trim() || name, created: epoch(f[2]), updated: epoch(f[3]),
+                size: parseInt(f[4], 10) || 0, comments: parseInt(f[5], 10) || 0,
+                tags: f[6].split(/\s+/).filter(Boolean), total: parseInt(f[7], 10) || 0,
+            };
+        }).filter(Boolean);
+    }
+
+    /**
+     * The count a `%%total%%` ListPages answer holds: its first paragraph
+     * (the pager after it holds other numbers); 0 for none.
+     *
+     * @param {string} html - The answer's body.
+     * @returns {number}
+     */
+    function _bbLpTotal(html) {
+        const p = new DOMParser().parseFromString(html, 'text/html').querySelector('p');
+        return p ? parseInt(_dpText(p.textContent).replace(/[^\d]/g, ''), 10) || 0 : 0;
+    }
+
+    /**
+     * A local date ("YYYY-MM-DD") of epoch seconds; '' for 0.
+     *
+     * @param {number} sec
+     * @returns {string}
+     */
+    function _bbEpochDate(sec) {
+        if (!sec) return '';
+        const d = new Date(sec * 1000);
+        const z = (n) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
+    }
+
+    /**
+     * The cells of a page's row a tag view shows: the page linked by its
+     * title, its Kind (the category: `gig`, `story`, …; empty for a page in
+     * none), and for a date-led title ("1971-05-15 Newark State College,
+     * Union, NJ") Date, Venue, City, State and Country from the year page's
+     * splitter (`_bbParseHeading()`); empty for any other title. Then, from
+     * a ListPages item, Created, Updated, Size, Comments; and with tags, the
+     * count and one row per tag, each linking the tag's page.
+     *
+     * @param {string} view - A `_BB_TAGS_HEADERS` key.
+     * @param {{href: string, title: string, kind: string, created?: number, updated?: number, size?: number,
+     *   comments?: number, tags?: string[]}} r
+     * @returns {string} A `<tr>`.
+     */
+    function _bbTagsPageRowHtml(view, r) {
+        const e = _rgEsc;
+        const h = /^\d{4}-\d\d-\d\d\b/.test(r.title) ? _bbParseHeading(r.title, r.href) : null;
+        let row = `<td><a href="${e(r.href)}">${e(r.title)}</a></td><td>${e(r.kind)}</td>` +
+            [h ? h.date : '', h ? h.venue : '', h ? h.city : '', h ? h.state : '', h ? h.country : ''].map(v => `<td>${e(v)}</td>`).join('');
+        if (view === 'tag-lp' || view === 'pat-lp') {
+            row += `<td>${_bbEpochDate(r.created)}</td><td>${_bbEpochDate(r.updated)}</td><td>${r.size || 0}</td><td>${r.comments || 0}</td>`;
+        }
+        if (view !== 'tag') {
+            const tags = r.tags || [];
+            row += `<td>${tags.length}</td><td>${tags.length ? `<ul>${tags.map(t => `<li><a href="${e(_bbTagUrl(t))}">${e(t)}</a></li>`).join('')}</ul>` : ''}</td>`;
+        }
+        return `<tr>${row}</tr>`;
+    }
+
+    /**
+     * A tag view's rows as an HTML document of one `table.tbl`, the columns
+     * `_BB_TAGS_HEADERS[view]`.
+     *
+     * @param {string} view
+     * @param {Array<Object>} rows - Page rows (`_bbTagsPageRowHtml()`), or for 'tags' ready `<tr>` strings.
+     * @returns {string}
+     */
+    function _bbTagsTableHtml(view, rows) {
+        const e = _rgEsc;
+        const head = _BB_TAGS_HEADERS[view].map(c => `<th>${e(c)}</th>`).join('');
+        const body = rows.map(r => (typeof r === 'string' ? r : _bbTagsPageRowHtml(view, r))).join('');
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><table class="tbl"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></body></html>`;
+    }
+
+    /**
+     * A tag's page estimate from its cloud weight (`font-size` %), which is
+     * linear in the count: 100 + 200 · pages / the biggest tag's pages. A
+     * weight of 100 is fewer than half a step ("< 62" for 24,695); '' when
+     * the biggest count is not known.
+     *
+     * @param {number} weight
+     * @param {number} max - The biggest tag's pages, 0 for not known.
+     * @returns {string}
+     */
+    function _bbTagPagesEstimate(weight, max) {
+        if (!max) return '';
+        if (weight <= 100) return `< ${Math.ceil(max / 400).toLocaleString('en')}`;
+        return `≈ ${Math.round((weight - 100) / 200 * max).toLocaleString('en')}`;
+    }
+
+    /**
+     * Reads what the cloud's Family and Pages columns need (`_bbTagsCtx`),
+     * once a page load: the song list and Relations (a GET each, after the
+     * windows' rate slot) and the biggest tag's count (one `%%total%%`).
+     * Each part that fails is left out with a warning, so the table still
+     * comes: its tags then sort as the word alone allows, Pages stays empty.
+     *
+     * @param {Document} doc - The cloud page (its biggest tag).
+     * @returns {Promise<void>}
+     */
+    async function _bbTagsContextLoad(doc) {
+        if (_bbTagsCtx) return;
+        const squash = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+        const ctx = { songs: new Set(), people: new Set(), max: 0, maxTag: '' };
+        const read = async (path, prefix, into) => {
+            try {
+                await _dpAwaitSlot();
+                const d = new DOMParser().parseFromString(await fetchHtml(new URL(path, window.location.href).href), 'text/html');
+                d.querySelectorAll(`a[href*="/${prefix}:"]`).forEach((a) => {
+                    const slug = squash((a.getAttribute('href') || '').split(`/${prefix}:`)[1] || '');
+                    if (slug) into.add(slug);
+                    const name = squash(prefix === 'relation' ? _bbRelationDisplayName(a.textContent) : a.textContent);
+                    if (name) into.add(name);
+                });
+            } catch (err) {
+                Lib.warn('fetch', `Brucebase tags: ${path} could not be read (${err && err.message}); its tags stay in Other.`);
+            }
+        };
+        await read('/stats:songs', 'song', ctx.songs);
+        await read('/stats:relations', 'relation', ctx.people);
+        let big = null;
+        doc.querySelectorAll('div.pages-tag-cloud-box a.tag').forEach((a) => {
+            const w = parseFloat((/font-size:\s*([\d.]+)%/.exec(a.getAttribute('style') || '') || [])[1]) || 0;
+            if (!big || w > big.w) big = { w, tag: _dpText(a.textContent) };
+        });
+        if (big && big.tag) {
+            try {
+                const body = await _bbHistPost('list/ListPagesModule', _bbLpParams(big.tag, 1, 1, 'titleAsc', '%%total%%'));
+                ctx.max = _bbLpTotal(body);
+                ctx.maxTag = big.tag;
+            } catch (err) {
+                Lib.warn('fetch', `Brucebase tags: the count of "${big.tag}" could not be read (${err && err.message}); no Pages estimate.`);
+            }
+        }
+        _bbTagsCtx = ctx;
+        Lib.debug('fetch', `Brucebase tags: ${ctx.songs.size} song and ${ctx.people.size} relation names, "${ctx.maxTag}" ${ctx.max} pages.`);
+    }
+
+    /**
+     * `toHtml` of the cloud ('tags'): every `a.tag` of the copy as a row —
+     * Tag (the tag's page), Family (`_bbTagFamily()` with the songs and
+     * people of `_bbTagsCtx`), Weight (the `font-size` %), Pages
+     * (`_bbTagPagesEstimate()`, vzell's answer 2: the exact count is on the
+     * tag's card).
+     *
+     * @param {string} text - The page's HTML.
+     * @returns {string}
+     * @throws {Error} When the page has no cloud (`status` 0).
+     */
+    function _bbTagsCloudToHtml(text) {
+        const doc = new DOMParser().parseFromString(text, 'text/html');
+        const links = Array.from(doc.querySelectorAll('div.pages-tag-cloud-box a.tag'));
+        if (!links.length) throw Object.assign(new Error('The page has no tag cloud'), { status: 0 });
+        const ctx = _bbTagsCtx || { songs: new Set(), people: new Set(), max: 0 };
+        const e = _rgEsc;
+        const rows = links.map((a) => {
+            const tag = _dpText(a.textContent);
+            const w = Math.round(parseFloat((/font-size:\s*([\d.]+)%/.exec(a.getAttribute('style') || '') || [])[1]) || 100);
+            const fam = _bbTagFamilyName(_bbTagFamily(tag, { songs: ctx.songs, people: ctx.people }));
+            return `<tr><td><a href="${e(_bbTagUrl(tag))}">${e(tag)}</a></td><td>${e(fam)}</td><td>${w}</td><td>${e(_bbTagPagesEstimate(w, ctx.max))}</td></tr>`;
+        });
+        return _bbTagsTableHtml('tags', rows);
+    }
+
+    /**
+     * `toHtml` of a tag's page ('tag', no request): every entry of
+     * `#tagged-pages-list` of the copy, in the site's order.
+     *
+     * @param {string} text - The page's HTML.
+     * @returns {string}
+     * @throws {Error} When the page lists no page (`status` 0).
+     */
+    function _bbTagPageToHtml(text) {
+        const doc = new DOMParser().parseFromString(text, 'text/html');
+        const links = Array.from(doc.querySelectorAll('#tagged-pages-list .pages-list-item .title a[href]'));
+        if (!links.length) throw Object.assign(new Error('No page carries this tag'), { status: 0 });
+        return _bbTagsTableHtml('tag', links.map((a) => {
+            const raw = a.getAttribute('href') || '';
+            const name = raw.replace(/^\//, '');
+            return { href: _bbAbsHref(raw), title: _dpText(a.textContent) || name, kind: name.includes(':') ? name.split(':')[0] : '' };
+        }));
+    }
+
+    /**
+     * `toHtml` of a pages-and-tags page ('pat', 'pat-all'): the rows of its
+     * `table.wiki-content-table` (page(title) | the tags as one
+     * space-separated cell), the header row left out.
+     *
+     * @param {string} text - The page's HTML.
+     * @returns {string}
+     * @throws {Error} When the page has no such table (`status` 0).
+     */
+    function _bbPatToHtml(text) {
+        const doc = new DOMParser().parseFromString(text, 'text/html');
+        const table = doc.querySelector('#page-content table.wiki-content-table');
+        if (!table) throw Object.assign(new Error('The page has no table of pages and tags'), { status: 0 });
+        const rows = Array.from(table.querySelectorAll('tr')).map((tr) => {
+            const a = tr.querySelector('td a[href]');
+            const tds = tr.querySelectorAll('td');
+            if (!a || tds.length < 2) return null;
+            const raw = a.getAttribute('href') || '';
+            const name = raw.replace(/^\//, '');
+            return {
+                href: _bbAbsHref(raw), title: _dpText(a.textContent) || name, kind: name.includes(':') ? name.split(':')[0] : '',
+                tags: _dpText(tds[tds.length - 1].textContent).split(' ').filter(Boolean),
+            };
+        }).filter(Boolean);
+        return _bbTagsTableHtml('pat', rows);
+    }
+
+    /**
+     * The page of manage:pages-and-tags the URL shows (`/p/N`), 1 without.
+     *
+     * @returns {number}
+     */
+    function _bbPatCurrentPage() {
+        const m = _BB_PAT_PATH_RE.exec(window.location.pathname);
+        return m && m[1] ? Number(m[1]) : 1;
+    }
+
+    /**
+     * The features of one tag view's button (`bb-tags`, `bb-tag`,
+     * `bb-pages-and-tags`), a fresh object per call: its view, its requests
+     * and how many, and its columns' features.
+     *
+     * - 'tags': no request for the tags (the copy of the page), three for
+     *   Family and Pages (`_bbTagsContextLoad()`).
+     * - 'tag': no request (the copy). 'tag-lp': ListPages over the tag, 250
+     *   a call, as many as the page lists entries.
+     * - 'pat': this page (the copy). 'pat-all': every page of the list, the
+     *   one shown from the copy, the others a GET of `/p/N`. 'pat-lp':
+     *   ListPages over the whole wiki by name, as many calls as one
+     *   `%%total%%` says.
+     *
+     * @param {string} view
+     * @returns {Object}
+     */
+    function _bbTagsFeatures(view) {
+        const copy = (toHtml, before) => ({
+            url: _bbDetailUrl(),
+            fetchText: async () => {
+                if (before) await before();
+                return _bbDetailPageHtml();
+            },
+            toHtml
+        });
+        const date = {
+            columnExtractors: [
+                { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
+            ],
+        };
+        const ints = (...cols) => ({
+            integerColumns: [ ...cols.map(c => ({ sourceColumn: c, align: 'R' })),
+                { sourceColumn: 'DD', align: 'R' }, { sourceColumn: 'MM', align: 'R' }, { sourceColumn: 'YYYY', align: 'C' } ],
+        });
+        const tagCols = { collapsableColumns: [ 'Tags' ] };
+        const tag = () => _bbTagOfPath(window.location.pathname);
+        switch (view) {
+        case 'tags':
+            return {
+                bbDetailToTable: 'tags',
+                pageRequest: () => copy(_bbTagsCloudToHtml, () => _bbTagsContextLoad(document)),
+                pageCountAsync: () => 1,
+                integerColumns: [ { sourceColumn: 'Weight', align: 'R' } ],
+                stickyColumn: 'Tag',
+            };
+        case 'tag':
+            return { bbDetailToTable: 'tag', pageRequest: () => copy(_bbTagPageToHtml), pageCountAsync: () => 1, ...date, ...ints(), stickyColumn: 'Page' };
+        case 'tag-lp':
+            return {
+                bbDetailToTable: 'tag-lp',
+                pageRequest: (p) => _bbLpRequest('tag-lp', _bbLpParams(tag(), p)),
+                pageCountAsync: () => Math.max(1, Math.ceil(document.querySelectorAll('#tagged-pages-list .pages-list-item').length / _BB_LP_PER_PAGE)),
+                ...date, ...ints('Size', 'Comments', 'Tag count'), ...tagCols, stickyColumn: 'Page',
+            };
+        case 'pat':
+            return { bbDetailToTable: 'pat', pageRequest: () => copy(_bbPatToHtml), pageCountAsync: () => 1, ...date, ...ints('Tag count'), ...tagCols, stickyColumn: 'Page' };
+        case 'pat-all':
+            return {
+                bbDetailToTable: 'pat-all',
+                pageRequest: (p) => (p === _bbPatCurrentPage()
+                    ? copy(_bbPatToHtml)
+                    : { url: new URL(`/manage:pages-and-tags/p/${p}`, window.location.href).href, toHtml: _bbPatToHtml }),
+                pageCountAsync: () => _bbPlacePageCount(document),
+                ...date, ...ints('Tag count'), ...tagCols, stickyColumn: 'Page',
+            };
+        case 'pat-lp':
+            return {
+                bbDetailToTable: 'pat-lp',
+                pageRequest: (p) => _bbLpRequest('pat-lp', _bbLpParams('', p, _BB_LP_PER_PAGE, 'fullname')),
+                pageCountAsync: async () => {
+                    const body = await _bbHistPost('list/ListPagesModule', _bbLpParams('', 1, 1, 'fullname', '%%total%%'));
+                    const n = _bbLpTotal(body);
+                    return Math.max(1, Math.ceil(n / _BB_LP_PER_PAGE));
+                },
+                ...date, ...ints('Size', 'Comments', 'Tag count'), ...tagCols, stickyColumn: 'Page',
+            };
+        default:
+            return {};
+        }
+    }
+
+    /**
+     * The live page's part of a tag view (`applyBbDetailToTable()` hands it
+     * these views): the data heading and an EMPTY `table.tbl` with this
+     * view's columns before `#page-content`, the wiki's page after them under
+     * "Brucebase page", folded like every heading but the data one. Never
+     * the rows: they come from the pageRequest. Idempotent; a press of the
+     * page's other button reloads the page first (the engine's second-press
+     * rule), so one page only ever holds one view.
+     *
+     * @param {string} view
+     * @returns {void}
+     */
+    function _bbTagsLive(view) {
+        if (document.querySelector('table.mb-bb-detail-table')) return;
+        _bbDetailPageHtml();
+        const content = document.getElementById('page-content');
+        if (!content) return;
+        const table = document.createElement('table');
+        table.className = 'tbl mb-bb-detail-table mb-bb-tags-table';
+        table.innerHTML = `<thead><tr>${_BB_TAGS_HEADERS[view].map(c => `<th>${_rgEsc(c)}</th>`).join('')}</tr></thead><tbody></tbody>`;
+        const h2 = document.createElement('h2');
+        h2.className = 'mb-bb-list-heading mb-bb-detail-heading mb-bb-tags-heading';
+        h2.textContent = view === 'tag' || view === 'tag-lp' ? `Pages tagged "${_bbTagOfPath(window.location.pathname)}"` : _BB_TAGS_HEADINGS[view];
+        let native = document.querySelector('h2.mb-bb-native-h2');
+        if (!native) {
+            native = document.createElement('h2');
+            native.className = 'mb-bb-native-h2';
+            native.textContent = 'Brucebase page';
+        }
+        content.before(h2, table, native);
+        Lib.debug('init', `_bbTagsLive: empty ${view} table in place, the wiki's page below.`);
+    }
+
     /**
      * Installs the Brucebase stylesheet, once per document.
      *
@@ -32522,13 +33056,19 @@
      * class="mb-bb-native-h2">Brucebase page</h2>`: the wiki's own page is
      * that section, folded at first like every heading but the data one
      * (`makeH2sCollapsible()`; vzell's answer 5), its own h2s folding too.
-     * Idempotent.
+     * Idempotent. The tag views (`_BB_TAGS_HEADERS`: bb-tags, bb-tag,
+     * bb-pages-and-tags, Phase 11) are `_bbTagsLive()`'s: their table has
+     * its columns from the start, and another button's view replaces it.
      *
      * @param {Object} def - The active merged pageDefinition.
      * @returns {void}
      */
     function applyBbDetailToTable(def) {
         const kind = def?.features?.bbDetailToTable;
+        if (kind && Object.prototype.hasOwnProperty.call(_BB_TAGS_HEADERS, kind)) {
+            _bbTagsLive(kind);
+            return;
+        }
         if (!kind || document.querySelector('table.mb-bb-detail-table')) return;
         _bbDetailPageHtml();
         const content = document.getElementById('page-content');
@@ -34662,15 +35202,21 @@
      * POSTs one Wikidot history module, same-origin, after the window's rate
      * slot, and returns its body.
      *
+     * Also the tag pages' and the tag reader's ListPages calls (Phase 11).
+     *
      * @param {string} module   e.g. "history/PageRevisionListModule".
      * @param {Object<string, string>} params The module's fields.
-     * @returns {Promise<string>} The answer's `body` (HTML).
+     * @param {?function(): boolean} [wanted] - Asked after the slot: false
+     *   sends nothing and answers null (the card moved on).
+     * @returns {Promise<?string>} The answer's `body` (HTML); null when no
+     *   longer wanted.
      * @throws {Error} A failed request (`status` the HTTP status), an answer
      *   that is not JSON, or a JSON `status` other than "ok" (`refused`
      *   true for a permission or token answer).
      */
-    async function _bbHistPost(module, params) {
+    async function _bbHistPost(module, params, wanted = null) {
         await _dpAwaitSlot();
+        if (wanted && !wanted()) return null;
         const body = new URLSearchParams({ ...params, moduleName: module, wikidot_token7: _bbWikidotToken() });
         const res = await fetch(new URL('/ajax-module-connector.php', window.location.href).href, {
             method: 'POST',
@@ -35779,7 +36325,10 @@
             },
             // The wiki's own text (estreetshuffle.com and the like, U5
             // census); its top bar, header and footer are wikidot's chrome.
-            extRoot: '#page-content'
+            // The tags line under every page too (`div.page-tags`, outside
+            // `#page-content`): its links are tags, the `bbtag` reader's
+            // (Phase 11).
+            extRoot: '#page-content, div.page-tags'
         },
         // discogs.com (2026-10-18): no detail pages of its own to parse —
         // a Discogs link is the Discogs reader's (`_EXT_READERS`), which
@@ -36870,6 +37419,7 @@
         youtube: 'Read from YouTube\'s own description of the video: its title and channel.',
         springsteen: 'Read from the page itself: the site\'s own record of a show, song, venue or person.',
         bbdate: 'Read from Brucebase\'s year page: the show at this date.',
+        bbtag: 'Read from Brucebase\'s page lists: the pages carrying this tag.',
         generic: 'Read from the page itself: its title, description and the facts it states.',
     };
 
@@ -39806,7 +40356,7 @@
     function _dpWinIsBb(cur) {
         if (cur.src && cur.src.id === 'brucebase.wikidot.com') return true;
         if (!cur.reader) return false;
-        return cur.reader.id === 'bbdate' ||
+        return cur.reader.id === 'bbdate' || cur.reader.id === 'bbtag' ||
             (cur.reader.id === 'springsteen' && /^https?:\/\/brucebase\.wikidot\.com\//i.test(cur.url || ''));
     }
 
@@ -56483,6 +57033,66 @@
                 collapsableColumns: [ 'Flags' ],
                 stickyColumn: 'Page'
             },
+            tableMode: 'single'
+        },
+
+        // Brucebase's tag pages (org/brucebase.org Phase 11; the views,
+        // requests and columns: _bbTagsFeatures(), docs/claude/brucebase.md
+        // "Tag pages"). Covered by `sa_enable_brucebase`. The tag cloud
+        // (`system:page-tags`): every tag in a table, no request for the tags
+        // themselves.
+        {
+            type: 'bb-tags',
+            host: 'brucebase.wikidot.com',
+            match: (path) => _BB_TAGS_PATH_RE.test(path),
+            buttons: [ {
+                label: 'Show all tags', shortLabel: 'Tags',
+                description: 'Every tag of the cloud in a table: its family, its weight on the cloud and about how many pages carry it. Three small requests: the song list and Relations (which tags are songs and people) and the biggest tag\'s count (what a weight means).'
+            } ],
+            features: _bbTagsFeatures('tags'),
+            tableMode: 'single'
+        },
+        // One tag's pages (`system:page-tags/tag/<tag>`): the page's own list,
+        // or the same pages over ListPages with dates, sizes and tags.
+        {
+            type: 'bb-tag',
+            host: 'brucebase.wikidot.com',
+            match: (path) => _BB_TAG_PATH_RE.test(path),
+            buttons: [
+                {
+                    label: 'Show the tagged pages', shortLabel: 'Pages',
+                    description: 'No request: every page this tag page lists, as a table — its kind, and for a show the date, venue, city, state and country from its title.'
+                },
+                {
+                    label: 'Show the tagged pages with dates and sizes', shortLabel: 'With dates', features: _bbTagsFeatures('tag-lp'),
+                    description: 'The same pages read from the wiki\'s page lists (one request per 250 pages: about 13 for storyteller, 99 for content), with when each was created and last changed, its size, its comments and its tags.'
+                }
+            ],
+            features: _bbTagsFeatures('tag'),
+            tableMode: 'single'
+        },
+        // Pages & Tags (`manage:pages-and-tags`, `/p/N`): the onstage pages
+        // with their tags, this page or all of the list; or every page of the
+        // wiki over ListPages.
+        {
+            type: 'bb-pages-and-tags',
+            host: 'brucebase.wikidot.com',
+            match: (path) => _BB_PAT_PATH_RE.test(path),
+            buttons: [
+                {
+                    label: 'Show this page', shortLabel: 'This page',
+                    description: 'No request: the pages and tags of this page of the list (100), the tags one row each.'
+                },
+                {
+                    label: 'Show all pages of the list', shortLabel: 'All pages', features: _bbTagsFeatures('pat-all'),
+                    description: 'Every page of this list (35 of 100 pages each, the onstage pages): a request per page, this one excepted.'
+                },
+                {
+                    label: 'Show every page of the wiki with its tags', shortLabel: 'Whole wiki', features: _bbTagsFeatures('pat-lp'),
+                    description: 'Every page of Brucebase (about 42,700) with its tags, when it was created and last changed, its size and comments, read from the wiki\'s page lists: one request per 250 pages, about 171, some 7 minutes.'
+                }
+            ],
+            features: _bbTagsFeatures('pat'),
             tableMode: 'single'
         },
 
@@ -88909,6 +89519,230 @@
         return `https://brucebase.wikidot.com${u.pathname}${u.hash}`;
     }
 
+    // --- The Brucebase tag reader (`bbtag`; org/brucebase.org Phase 11) ------
+    // A link to a tag's page (`/system:page-tags/tag/<tag>`: the cloud, the
+    // tag tables, the tags line under every page, our windows' Tags
+    // sections) on Brucebase itself: the card from ONE ListPages call (the
+    // count and the newest six, ~5 KB; vzell's answer 7), the window the
+    // tag's pages by title, the first 250 at once and "Load all" for the rest
+    // (answer 8). The tag's own page is no use as a source: one page of
+    // 2–6 MB, the whole tag cloud included. Brucebase only: the call is a
+    // same-origin POST with the site's token (Phase 15 asks whether it works
+    // from other sites).
+
+    /** Version of the tag reader's records in IndexedDB; bump when its output changes. */
+    const _EXT_BBT_VERSION = 1;
+    /** Pages on a tag's card. */
+    const _EXT_BBT_CARD_ROWS = 6;
+
+    /**
+     * A link to a Brucebase tag's page, on Brucebase.
+     *
+     * @param {URL} u
+     * @returns {boolean}
+     */
+    function _extBbTagTest(u) {
+        return _isBbHost && u.hostname.toLowerCase() === 'brucebase.wikidot.com' && _BB_TAG_PATH_RE.test(u.pathname);
+    }
+
+    /**
+     * The tag reader's cache URL (`keyUrl`): the tag's page without the
+     * site's `#pages` and in one spelling of the tag.
+     *
+     * @param {URL} u
+     * @returns {string}
+     */
+    function _extBbTagKeyUrl(u) {
+        return _bbTagUrl(_bbTagOfPath(u.pathname));
+    }
+
+    /**
+     * The tag reader's load: one ListPages call, the newest pages first
+     * (`created_at desc`), each item carrying the list's total. The record:
+     * the tag, its page count and family as facts, `bbTag` (the newest
+     * six) for the card's list (`_extBbTagCardExtra()`).
+     *
+     * @param {object} t
+     * @param {function(): boolean} wanted
+     * @returns {Promise<{ok?: boolean, data?: Object, detail?: string, skipped?: boolean}>}
+     */
+    async function _extBbTagLoad(t, wanted) {
+        const tag = _bbTagOfPath(new URL(t.url).pathname);
+        let body;
+        try {
+            body = await _bbHistPost('list/ListPagesModule', _bbLpParams(tag, 1, _EXT_BBT_CARD_ROWS, 'created_at desc'), wanted);
+        } catch (err) {
+            return { ok: false, detail: (err && err.message) || 'the request failed' };
+        }
+        if (body === null) return { skipped: true };
+        const items = _bbLpParse(body);
+        const total = items.length ? items[0].total : 0;
+        const ctx = _bbTagsCtx || {};
+        const rec = _extApiRecord(t, 200, 'Brucebase');
+        const family = _bbTagFamilyName(_bbTagFamily(tag, { songs: ctx.songs, people: ctx.people }));
+        rec.title = tag;
+        rec.subtitle = `Brucebase tag · ${family}`;
+        rec.type = 'tag';
+        rec.facts = [['Pages', total.toLocaleString('en')], ['Family', family]];
+        rec.cardFacts = 1;
+        if (!total) rec.description = 'No page carries this tag.';
+        rec.bbTag = { tag, total, newest: items.map(i => ({ href: i.href, title: i.title, kind: i.kind, created: i.created })) };
+        return { ok: true, data: rec };
+    }
+
+    /**
+     * The tag card's own lines: the newest pages, each with its kind and the
+     * day it was created.
+     *
+     * @param {object} t
+     * @param {Object} rec
+     * @returns {string}
+     */
+    function _extBbTagCardExtra(t, rec) {
+        const s = rec.bbTag;
+        if (!s || !s.newest.length) return '';
+        return '<div class="mb-tt-dim">Newest</div><ul class="mb-dp-tracks mb-bbt-newest">' + s.newest.map(x =>
+            `<li><span class="mb-dp-pos">${_rgEsc(x.kind || '–')}</span>${_rgEsc(x.title)} <span class="mb-tt-dim">${_bbEpochDate(x.created)}</span></li>`).join('') + '</ul>';
+    }
+
+    /**
+     * Each tag window's pages, by the target's key: `rows` by ListPages page,
+     * `state` by page ('loading', 'done', 'failed'), `all` while "Load all"
+     * runs, `detail` the last failure.
+     * @type {Map<string, {rows: Map<number, Array<Object>>, state: Map<number, string>, all: boolean, detail: string}>}
+     */
+    const _extBbTagWin = new Map();
+
+    /**
+     * A tag window's state (`_extBbTagWin`), made on first use.
+     *
+     * @param {object} t
+     * @returns {{rows: Map<number, Array<Object>>, state: Map<number, string>, all: boolean, detail: string}}
+     */
+    function _extBbTagWinOf(t) {
+        if (!_extBbTagWin.has(t.key)) _extBbTagWin.set(t.key, { rows: new Map(), state: new Map(), all: false, detail: '' });
+        return _extBbTagWin.get(t.key);
+    }
+
+    /**
+     * Reads page `p` (250 by title) of a tag's pages for its window, after
+     * the windows' rate slot and only while the window shows the tag, then
+     * repaints.
+     *
+     * @param {object} t
+     * @param {number} p
+     * @returns {Promise<boolean>} Whether the page came.
+     */
+    async function _extBbTagWinLoad(t, p) {
+        const w = _extBbTagWinOf(t);
+        const tag = _bbTagOfPath(new URL(t.url).pathname);
+        w.state.set(p, 'loading');
+        let ok = false;
+        try {
+            const body = await _bbHistPost('list/ListPagesModule', _bbLpParams(tag, p), () => _extDgShowing(t));
+            if (body === null) {
+                w.state.delete(p);
+            } else {
+                w.rows.set(p, _bbLpParse(body));
+                w.state.set(p, 'done');
+                ok = true;
+            }
+        } catch (err) {
+            w.state.set(p, 'failed');
+            w.detail = (err && err.message) || 'the request failed';
+            Lib.warn('detail', `Brucebase tag "${tag}", page ${p}: ${w.detail}`);
+        }
+        if (_dpDialog.repaint && _extDgShowing(t)) _dpDialog.repaint();
+        return ok;
+    }
+
+    /**
+     * "Load all": the tag's remaining pages one after the other, until the
+     * last, a failure, or the window moving on.
+     *
+     * @param {object} t
+     * @param {number} pages
+     * @returns {Promise<void>}
+     */
+    async function _extBbTagWinAll(t, pages) {
+        const w = _extBbTagWinOf(t);
+        if (w.all) return;
+        w.all = true;
+        for (let p = 2; p <= pages; p++) {
+            if (w.state.get(p) === 'done') continue;
+            if (!(await _extBbTagWinLoad(t, p)) || !_extDgShowing(t)) break;
+        }
+        w.all = false;
+        if (_dpDialog.repaint && _extDgShowing(t)) _dpDialog.repaint();
+    }
+
+    /**
+     * The tag reader's window: under the columns, the tag's pages by title
+     * in the shared Compact table (filter, sort, pages of rows): Page (opens
+     * in the window), Kind, Created, Updated. The first 250 are read when the
+     * window opens (`start`), the rest by "Load all N" (vzell's answer 8).
+     *
+     * @param {object} t
+     * @param {Object} rec
+     * @param {{start: boolean}} opts
+     * @returns {{left: string[], right: string[], full: string[]}}
+     */
+    function _extBbTagWindow(t, rec, { start }) {
+        const out = { left: [], right: [], full: [] };
+        const s = rec.bbTag;
+        if (!s || !s.total) return out;
+        const w = _extBbTagWinOf(t);
+        if (start && !w.state.has(1)) _extBbTagWinLoad(t, 1);
+        const pages = Math.max(1, Math.ceil(s.total / _BB_LP_PER_PAGE));
+        let rows = [];
+        let read = 0;
+        for (let p = 1; p <= pages && w.state.get(p) === 'done'; p++) {
+            rows = rows.concat(w.rows.get(p));
+            read = p;
+        }
+        const busy = Array.from(w.state.values()).includes('loading');
+        const failed = Array.from(w.state.values()).includes('failed');
+        const e = _rgEsc;
+        const cols = [
+            { key: 'title', label: 'Page', val: x => x.title, html: (x, q) => `<a href="${e(x.href)}" target="_blank" rel="noopener">${_hlEsc(x.title, q)}</a>` },
+            { key: 'kind', label: 'Kind', val: x => x.kind, html: x => e(x.kind) },
+            { key: 'created', label: 'Created', val: x => x.created, num: true, html: x => _bbEpochDate(x.created) },
+            { key: 'updated', label: 'Updated', val: x => x.updated, num: true, html: x => _bbEpochDate(x.updated) },
+        ];
+        const table = rows.length ? _dpCompactTableHtml(t, 'bbtag', cols, rows, {
+            initial: 'by title, as Brucebase lists them', what: 'pages', filter: true,
+            search: x => `${x.title} ${x.kind}`, cls: 'mb-bbt-t',
+        }) : '';
+        // By pages read, not rows: the list may have changed since the count.
+        const more = read > 0 && read < pages;
+        const foot = (busy ? `<div class="mb-dg-dim"><span class="mb-dp-spin">◌</span> Reading ${rows.length ? 'the next' : 'the first'} ${_BB_LP_PER_PAGE} from Brucebase…</div>` : '') +
+            (failed ? `<div class="mb-dp-warn">Brucebase did not answer: ${e(w.detail)}.</div>` : '') +
+            (!busy && !w.state.has(1) ? '<div class="mb-dg-dim"><kbd>Space</kbd> reads the pages from Brucebase.</div>' : '') +
+            (more && !busy && !w.all
+                ? `<div class="mb-dgq-foot"><button type="button" class="mb-dg-btn" data-mb-bbt-act="all">Load all ${s.total.toLocaleString('en')}</button>` +
+                  ` <span class="mb-dg-dim">${pages - read} more request${pages - read === 1 ? '' : 's'}</span></div>` : '');
+        out.full.push(`<section class="mb-bbt-sec"><h4>Pages <span class="mb-dg-c">${rows.length.toLocaleString('en')} of ${s.total.toLocaleString('en')}</span></h4>${table}${foot}</section>`);
+        return out;
+    }
+
+    /**
+     * A click in the tag reader's window: "Load all" reads the rest of the
+     * tag's pages (`_extBbTagWinAll()`); links are the window's own.
+     *
+     * @param {MouseEvent} e
+     * @returns {void}
+     */
+    function _extBbTagAreaClick(e) {
+        const b = e.target instanceof Element ? e.target.closest('[data-mb-bbt-act="all"]') : null;
+        const t = _dpDialog.target;
+        if (!b || !t) return;
+        const st = _mbPop.get(t.key);
+        const s = st && st.data && st.data.bbTag;
+        if (!s) return;
+        _extBbTagWinAll(t, Math.ceil(s.total / _BB_LP_PER_PAGE));
+        if (_dpDialog.repaint) _dpDialog.repaint();
+    }
+
     /**
      * The Live page of a Wikipedia article: the article (`#content`), its
      * siblings — the site's header, menus and tools — hidden.
@@ -89028,6 +89862,13 @@
             id: 'bbdate', kind: 'Brucebase show', test: _extBbDateTest, askHost: () => 'brucebase.wikidot.com', load: _extBbDateLoad,
             noLive: false, liveFor: _extBbDateLive, liveUrlFor: _extBbDateLiveUrl, version: _EXT_IDB_VERSION * 100 + _EXT_BB_YEAR_VERSION,
             loadingNote: 'Brucebase\'s year page can take several seconds.',
+        },
+        {
+            // A Brucebase tag's page, on Brucebase (Phase 11): before
+            // `springsteen`, which would read the 2–6 MB page itself.
+            id: 'bbtag', kind: 'Brucebase tag', test: _extBbTagTest, askHost: () => 'brucebase.wikidot.com', load: _extBbTagLoad,
+            noLive: true, version: _EXT_IDB_VERSION * 100 + _EXT_BBT_VERSION, keyUrl: _extBbTagKeyUrl,
+            cardExtra: _extBbTagCardExtra, window: _extBbTagWindow, onAreaClick: _extBbTagAreaClick,
         },
         {
             id: 'springsteen', kind: 'Detail page', test: _extDpTest, askHost: (u) => u.hostname.toLowerCase(), load: _extDpLoad,
@@ -89657,8 +90498,10 @@
         // Brucebase writes a show on its year page relative ("/1978#070778",
         // an event's "Info & Setlist"): read against the page, so the
         // `bbdate` reader takes it there too (Phase 8, 2026-11-11). Only that
-        // shape: the site's other relative links are its own pages.
-        if (_isBbHost && /^\/\d{4}#\d{6}$/.test(href)) href = `${window.location.origin}${href}`;
+        // shape: the site's other relative links are its own pages. A tag's
+        // page too (`/system:page-tags/tag/<tag>`: the cloud, the tags line
+        // under every page; the `bbtag` reader's, Phase 11).
+        if (_isBbHost && (/^\/\d{4}#\d{6}$/.test(href) || /^\/system:page-tags\/tag\/[^/]+/.test(href))) href = `${window.location.origin}${href}`;
         if (!/^https?:\/\//i.test(href)) return null;
         let u;
         try {
@@ -89683,10 +90526,11 @@
         // 2026-11-11 on the page too (vzell, org/brucebase.org Phase 8): an
         // event's "Info & Setlist", a release's "recorded July 6, 1981", our
         // tables' copies of them. The card and the window only: a click on
-        // the page is still the site's.
+        // the page is still the site's. A tag's page since Phase 11
+        // (`bbtag`, 2026-11-12): the cloud, the tag tables, the tags line.
         if (bare(host) === bare(window.location.hostname.toLowerCase()) &&
             !(_isDgHost && _extDgSiteTest(u)) && !(_isIaHost && _extIaTest(u)) && !(_isSfmHost && _extSfmTest(u)) &&
-            !(_isBbHost && _extBbDateTest(u))) return null;
+            !(_isBbHost && (_extBbDateTest(u) || _extBbTagTest(u)))) return null;
         if (_EXT_SKIP_HOST_RE.test(host) || _EXT_SKIP_URL_RE.test(href)) return null;
         // A Relationships icon is an image link that IS the link: it gets
         // the card (2026-10-17). Elsewhere a link around an image is the

@@ -43,8 +43,8 @@
         "why": "The page count is the largest \"page 1 of N\".",
         "edits": [
             {
-                "find": "            pageCountAsync: () => _bbPlacePageCount(document),\n",
-                "replace": "            pageCountAsync: () => 1,\n"
+                "find": "            pageCountAsync: () => _bbPlacePageCount(document),\n            columnDescriptions: {\n",
+                "replace": "            pageCountAsync: () => 1,\n            columnDescriptions: {\n"
             }
         ],
         "spec": "tests/fixtures/bb-place.spec.js",

@@ -327,6 +327,9 @@ skill for turning a =planned= row into a =captured= one.
 | 166 | bb-retail                     | multi        | brucebase.wikidot.com /retail:… /playlist:…    | NOT MusicBrainz, opt-in (+sa_bb_detail_pages); a release or playlist page: a table per edition and disc, Personnel, Related releases, Recording dates, On The Tracks, Performance; head|
 | 167 | bb-bootleg                    | multi        | brucebase.wikidot.com /bootleg:…               | NOT MusicBrainz, opt-in (+sa_bb_detail_pages); a bootleg page: its tracklist by disc (sides from "//"); head (facts, notes, artwork)                              |
 | 168 | bb-year-list                  | single       | brucebase.wikidot.com /<YYYY>-list             | NOT MusicBrainz, opt-in (+sa_bb_year_pages); a year listing: Event/Date/Venue/City/State/Country/Note/Tour; all years via pageKeys                                |
+| 169 | bb-tags                       | single       | brucebase.wikidot.com /system:page-tags        | NOT MusicBrainz, opt-in; the tag cloud: Tag/Family/Weight/Pages; no request for the tags, 2 lists + 1 count for the columns                                       |
+| 170 | bb-tag                        | single       | brucebase.wikidot.com /system:page-tags/tag/T  | NOT MusicBrainz, opt-in; a tag's pages: the page's list (no request) or ListPages over AJAX (250 a call) with dates, size, tags                                  |
+| 171 | bb-pages-and-tags             | single       | brucebase.wikidot.com /manage:pages-and-tags   | NOT MusicBrainz, opt-in; the onstage pages and tags: this page, all /p/N, or every page of the wiki over ListPages                                                 |
 | 162 | bb-song                       | multi        | brucebase.wikidot.com /song:…                  | NOT MusicBrainz, opt-in (+sa_bb_detail_pages); a song page: Credits, Performances (+ by tour), Multiples, Snippets, Live downloads, On The Tracks; head |
 | 163 | bb-ott                        | multi        | brucebase.wikidot.com /ott:…                   | NOT MusicBrainz, opt-in (+sa_bb_detail_pages); an On The Tracks page: its takes as one table; head (notes, tags)    |
 | 161 | bb-event                      | multi        | brucebase.wikidot.com /gig:… /nogig:… etc.     | NOT MusicBrainz, opt-in (+sa_bb_detail_pages); an event page as a detail view: sub-tables Setlist/cast/lists/Recording/Storyteller, head, no request|
@@ -1340,6 +1343,25 @@ lists converted into sortable tables), tableMode =multi=.
 - tableMode: single
 - Features exercised: =bbYearListToTable= (=applyBbYearListToTable()=, =_bbYearListEntries()=): lists and tour boxes in document order, Event the year table's cell linking the show (=bbdate= preview), Date through =dateParts=, Note from the =<em>=, Tour from =_bbParseTourHeading()= (now also ", and Start of").
 - Coverage: =tests/fixtures/bb-year-list.spec.js=; fixtures =bb-year-list-{2026,1978,1949-64,1981,2005,1973}.html= (=scripts/build-bb-year-list-fixtures.py=); probe =scripts/probe-bb-year-list.py=; mutations =scripts/mutations/bb-year-list.json=.
+
+** 169. bb-tags
+- URL: [[https://brucebase.wikidot.com/system:page-tags][brucebase.wikidot.com/system:page-tags]] (11,571 tags, 1.67 MB)
+- Match: =_BB_TAGS_PATH_RE= ~/^\/system:page-tags\/?$/~, host =brucebase.wikidot.com=. Gate: =sa_enable_brucebase=.
+- Buttons: "Show all tags" (Tags). tableMode: single.
+- Features exercised: =bbDetailToTable: 'tags'= (=_bbTagsFeatures()=, =_bbTagsLive()=, =_bbTagsCloudToHtml()=, =_bbTagsContextLoad()=: GET stats:songs and stats:relations for Family, a =%%total%%= of the biggest tag for =_bbTagPagesEstimate()=).
+- Coverage: =tests/fixtures/bb-tags.spec.js=; fixture =bb-page-tags.html= (=scripts/build-bb-tag-fixtures.py=); probes =scripts/probe-bb-tag-pages.py=, =probe-bb-tag-listpages.py=; mutations =scripts/mutations/bb-tags.json=.
+
+** 170. bb-tag
+- URL: [[https://brucebase.wikidot.com/system:page-tags/tag/storyteller][…/system:page-tags/tag/storyteller]] (3,008 pages; content 24,695)
+- Match: =_BB_TAG_PATH_RE= ~/^\/system:page-tags\/tag\/([^/]+)\/?$/~. Gate: =sa_enable_brucebase=.
+- Buttons: "Show the tagged pages" (Pages: the page's own list, no request), "Show the tagged pages with dates and sizes" (With dates: ListPages over AJAX, 250 a call, =_bbLpRequest()=). tableMode: single.
+- Coverage: =tests/fixtures/bb-tags.spec.js=; fixtures =bb-tag-storyteller.html=, =tests/fixtures/bb-tags/lp-storyteller-*.json= (=scripts/capture-bb-tag-answers.py=); the tag reader =bbtag= (card, window) in the same spec.
+
+** 171. bb-pages-and-tags
+- URL: [[https://brucebase.wikidot.com/manage:pages-and-tags][…/manage:pages-and-tags]] and =/p/N= (35 pages of 100: the onstage pages)
+- Match: =_BB_PAT_PATH_RE= ~/^\/manage:pages-and-tags(?:\/p\/(\d+))?\/?$/~. Gate: =sa_enable_brucebase=.
+- Buttons: "Show this page" (no request), "Show all pages of the list" (a GET per =/p/N=, the shown page from the copy), "Show every page of the wiki with its tags" (a =%%total%%=, then ListPages by =fullname=, ~171 calls). tableMode: single.
+- Coverage: =tests/fixtures/bb-tags.spec.js=; fixtures =bb-pages-and-tags-p{1,2,35}.html=, =tests/fixtures/bb-tags/lp-wiki-*.json=, =total-wiki.json=.
 
 ** Relationship-tables buttons on existing pageTypes (not pageTypes of their own)
 =_relTablesButton()= adds a second button to series-releases, work-recordings, releasegroup-releases, recording-releases (with "Related works" as "Via <work>" tables), label-relationships and artist-relationships ("Relationship lists"), and release-tracks ("Credits", the release's own =#release-relationships= and its group's =#release-group-relationships=, never the per-medium track credits). Each runs as its own pageType for that render (=series-relationship-tables=, =work-relationship-tables=, =releasegroup-relationship-tables=, =recording-relationship-tables=, =label-relationship-tables=, =artist-relationship-tables=, =release-credit-tables=; =buttonConfig.type= switches =pageType= in =startFetchingProcess()=), with only its own features (=replaceFeatures=), and removes the page's main data section (=removeMain=, =_relRemoveMainSections()=). A saved file records that pageType and loads back as the same button (=_activateButtonForSavedPageType()=). Hidden with =sa_enable_relationship_tables= off (=showIf=). Coverage: =tests/fixtures/rel-tables-recording.spec.js= (incl. the main button unchanged and a Save → Load round trip) and =rel-tables-pages.spec.js=, raw captures =tests/fixtures/rel-{series,work,label-rels,artist-rels,release-group,recording,release}-overview.html=.

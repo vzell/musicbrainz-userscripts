@@ -4,8 +4,8 @@
         "why": "Phase 8: on a Brucebase page a /<yyyy>#<ddmmyy> link is no longer the site's own; with the inWindow condition back it resolves to nothing on the page.",
         "edits": [
             {
-                "find": "            !(_isBbHost && _extBbDateTest(u))) return null;",
-                "replace": "            !(_isBbHost && false && _extBbDateTest(u))) return null;"
+                "find": "            !(_isBbHost && (_extBbDateTest(u) || _extBbTagTest(u)))) return null;",
+                "replace": "            !(_isBbHost && _extBbTagTest(u))) return null;"
             }
         ],
         "spec": "tests/fixtures/bb-date-links.spec.js",
@@ -17,8 +17,8 @@
         "why": "The wiki writes \"/1978#070778\" relative; without the BB branch _extTarget() drops every non-absolute href.",
         "edits": [
             {
-                "find": "        if (_isBbHost && /^\\/\\d{4}#\\d{6}$/.test(href)) href = `${window.location.origin}${href}`;\n",
-                "replace": ""
+                "find": "        if (_isBbHost && (/^\\/\\d{4}#\\d{6}$/.test(href) || /^\\/system:page-tags\\/tag\\/[^/]+/.test(href))) href = `${window.location.origin}${href}`;\n",
+                "replace": "        if (_isBbHost && /^\\/system:page-tags\\/tag\\/[^/]+/.test(href)) href = `${window.location.origin}${href}`;\n"
             }
         ],
         "spec": "tests/fixtures/bb-date-links.spec.js",
@@ -30,11 +30,11 @@
         "why": "Only the show shape is another reader's: a relative /1978 (the year page) or /gig:… must stay the site's own (no ext card claiming it before the Brucebase sources).",
         "edits": [
             {
-                "find": "        if (_isBbHost && /^\\/\\d{4}#\\d{6}$/.test(href)) href = `${window.location.origin}${href}`;\n",
+                "find": "        if (_isBbHost && (/^\\/\\d{4}#\\d{6}$/.test(href) || /^\\/system:page-tags\\/tag\\/[^/]+/.test(href))) href = `${window.location.origin}${href}`;\n",
                 "replace": "        if (_isBbHost && /^\\/[^/]/.test(href)) href = `${window.location.origin}${href}`;\n"
             },
             {
-                "find": "            !(_isBbHost && _extBbDateTest(u))) return null;",
+                "find": "            !(_isBbHost && (_extBbDateTest(u) || _extBbTagTest(u)))) return null;",
                 "replace": "            !_isBbHost) return null;"
             }
         ],

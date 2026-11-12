@@ -121,8 +121,8 @@
         "why": "Answer 5: the wiki's page below, folded, under its own h2.",
         "edits": [
             {
-                "find": "        content.before(h2, table, native);\n",
-                "replace": "        content.before(h2, table);\n"
+                "find": "        content.before(h2, table, native);\n        Lib.debug('init', `applyBbDetailToTable: empty ${kind} table in place, the wiki's page below.`);\n",
+                "replace": "        content.before(h2, table);\n        Lib.debug('init', `applyBbDetailToTable: empty ${kind} table in place, the wiki's page below.`);\n"
             }
         ],
         "spec": "tests/fixtures/bb-event.spec.js",

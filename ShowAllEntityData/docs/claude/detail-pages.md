@@ -3566,6 +3566,17 @@ the header's `@connect` and `_EXT_CONNECT_HOSTS` (the parent domain covers
   `_DP_WIN_EXT_READERS`. Specs: `bb-event-preview.spec.js` (the venue),
   `bb-date-links.spec.js` (a show), `popup-ext-foreign.spec.js` (a Brucebase
   page's window on springsteenlyrics.com); mutations `bb-window-links.json`.
+- **A Brucebase tag (`bbtag`, `_extBbTagTest()`, `_extBbTagLoad()`; Phase
+  11, 2026-11-12).** A link to `/system:page-tags/tag/<tag>`, on Brucebase
+  only: the card is ONE ListPages call over Wikidot's AJAX (the count and
+  the newest six, ~5 KB), the window the tag's pages by title, 250 at once,
+  "Load all" for the rest — never the tag's own page (one page of 2–6 MB,
+  the whole tag cloud in it). `_extTarget()` reads the site's relative tag
+  links against the page and lets them through its own-host test, as the
+  `bbdate` shape; the tags line under every page (`div.page-tags`) is in
+  `_DP_SITES['brucebase.wikidot.com'].extRoot`. Its window is a Brucebase
+  window (`_dpWinIsBb()`). Requests, fields and the template:
+  docs/claude/brucebase.md, "Tag pages".
 - **The Brucebase date anchor (`_extBbDateTest()`, `_extBbDateLoad()`; U0
   X8).** MusicBrainz links a show as `/<year>#<ddmmyy>`: the year page,
   scrolled to `<a name="ddmmyy">`. `_extBbYear()` reads the year page ONCE

@@ -558,6 +558,103 @@ names `_BB_YEAR_LIST_PATH_RE`); no new `@include` (the catch-all line).
   `scripts/mutations/bb-year-list.json` (10; one `expect: pass`: no spec
   loads a listing from disk yet).
 
+## Tag pages — `bb-tags`, `bb-tag`, `bb-pages-and-tags` (Phase 11, 2026-11-12)
+
+The tag cloud (`system:page-tags`), one tag's pages
+(`system:page-tags/tag/<tag>`) and Pages & Tags (`manage:pages-and-tags`,
+`/p/N`); mockup https://claude.ai/artifact/CRpe5M7DbHfou2rFR9bYCT, vzell's
+answers 1–8 in org/brucebase.org ("tag answers"). Under
+`sa_enable_brucebase`, no switch of their own.
+
+- **The pages** (signed out; `scripts/probe-bb-tag-pages.py`,
+  `probe-bb-tag-pages-shape.py`; Env: 2026-11-12T01:36+01:00 · vzell-lap ·
+  WSL2 Ubuntu 24.04.4 (Linux 6.18.58.1) · n/a):
+  - the cloud: 11,571 `a.tag` in `div.pages-tag-cloud-box`, 1.67 MB, the
+    weight only as `font-size` 100–300%, **linear in the count**:
+    `100 + 200 · pages / the biggest tag's pages` (the biggest is content,
+    24,695; 11 tags checked with `%%total%%`, within ±60). 10,940 tags sit at
+    100% (fewer than ~62 pages).
+  - a tag's page is ONE page, no pager: the whole list in
+    `#tagged-pages-list .pages-list-item .title a` (by title), after the
+    whole cloud again — storyteller 3,008 entries 2.2 MB, content 24,695
+    6.2 MB 4.5 s. So it is no source for a card.
+  - Pages & Tags lists the `onstage:` pages only (a ListPages filter on the
+    wiki page): 35 pages of 100, `table.wiki-content-table`, page(title) |
+    the tags as one space-separated cell.
+- **Wikidot's ListPages over AJAX** (`scripts/probe-bb-tag-listpages.py`,
+  `probe-bb-listpages-titles.py`, `probe-bb-listpages-order.py`): a POST of
+  `moduleName=list/ListPagesModule` with `tags`, `category=*`, `perPage`
+  (most 250), `order` (`titleAsc`, `created_at desc`, `fullname`), `p` and a
+  `module_body` template answers signed out, the token in the body equal to
+  the cookie as for Recent changes. `%%total%%` with perPage 1 is 0.9 KB in
+  0.4 s; 250 pages with `_BB_LP_TEMPLATE`'s fields ~180 KB in ~1.5 s. **A
+  title comes back as written only inside `@@…@@`** (verbatim): a plain
+  `%%title%%` came back with no-break spaces and a double space lost (27 of
+  750). `%%tags%%` is the page's tags, alphabetical, the first gap a
+  no-break space. `_bbLpParams()` builds the fields, `_bbLpParse()` reads
+  an answer (the `odate time_N` spans as epoch seconds), `_bbLpTotal()` a
+  count. The calls go through `_bbHistPost()` (the windows' rate slot; its
+  `wanted` is asked after the slot) or, for a button's pages, as a
+  `features.pageRequest` (`_bbLpRequest()`).
+- **The views** (`_bbTagsFeatures(view)`, `features.bbDetailToTable` = the
+  view): every one is a pageRequest whose `toHtml` builds the table, so the
+  live page only gets the heading and an empty table with the view's
+  columns (`applyBbDetailToTable()` → `_bbTagsLive()`), the wiki's page
+  below, folded under "Brucebase page", as on the detail pages. Columns:
+  `_BB_TAGS_HEADERS`.
+  - `tags` (bb-tags, "Show all tags"): Tag, Family, Weight, Pages. No
+    request for the tags; three for the columns (`_bbTagsContextLoad()`,
+    once a page load, `_bbTagsCtx`): GET `stats:songs` and
+    `stats:relations` (their squashed slugs and names: Family can then
+    tell songs and people, answer 1; a list that fails leaves its tags in
+    Other) and the biggest tag's `%%total%%` (the scale of
+    `_bbTagPagesEstimate()`: "≈ 2,963", "< 62" for 100%, answer 2 — the
+    exact count is the tag's card). 11,571 rows meet the render threshold
+    dialog.
+  - `tag` (bb-tag, "Show the tagged pages"): no request — Page, Kind (the
+    page name's category; empty for none), and for a date-led title Date,
+    Venue, City, State, Country from `_bbParseHeading()` (00 dropped, then
+    `dateParts`). `tag-lp` ("…with dates and sizes", answer 3): the same
+    pages over ListPages, 250 a call (as many as the page lists entries),
+    plus Created, Updated, Size, Comments, Tag count and Tags (one row per
+    tag, collapsable, each linking its page; answer 4).
+  - `pat` (bb-pages-and-tags, "Show this page"): the page's 100 rows, no
+    request; `pat-all` ("Show all pages of the list"): every page, the one
+    the URL shows from the copy, the others a GET of `/p/N`
+    (`_bbPatCurrentPage()`, the count `_bbPlacePageCount()`); `pat-lp`
+    ("Show every page of the wiki with its tags", answer 5): one
+    `%%total%%`, then ListPages by `fullname`, 250 a call (~171, the High
+    Page Count dialog first). Tags in the site's alphabetical order
+    (answer 6).
+  - A second press of the page's other button RELOADS the page (the
+    engine's rule), so one page only ever holds one view; `_bbTagsLive()`
+    is idempotent and never swaps tables.
+- **The tag reader `bbtag`** (`_extBbTagTest()`, Brucebase only: the call is
+  a same-origin POST with the site's token; Phase 15 asks about other
+  sites): a link to a tag's page — the cloud, our Tag and Tags columns,
+  the tags line under every page (`div.page-tags`, outside
+  `#page-content`: `_DP_SITES` `extRoot` names it), a window's Tags
+  section. `_extTarget()` reads the relative `/system:page-tags/tag/…`
+  against the page and lets it through the own-host test. The card: one
+  call, newest first, six (`_extBbTagLoad()`: Pages and Family as facts,
+  the six with kind and day, `_extBbTagCardExtra()`; answer 7). The window
+  (`_extBbTagWindow()`): the tag's pages by title in the Compact table,
+  the first 250 when it opens (`start` only), "Load all N" for the rest
+  (`_extBbTagWinAll()`, one page after the other, stops when the window
+  moves on; answer 8). Done is decided by PAGES read, not rows (the first
+  version kept the button when a page held fewer than 250). Its window is
+  a Brucebase window (`_dpWinIsBb()`): every link opens in it.
+- **Tests**: `tests/fixtures/bb-tags.spec.js` (10), loader
+  `loadBbTagPage()` (GET /stats:*, /p/N, every ListPages POST answered by
+  its fields; `totals`/`total` rewrite counts so a run is two pages),
+  fixtures `bb-page-tags.html`, `bb-tag-storyteller.html`,
+  `bb-pages-and-tags-p{1,2,35}.html` (`scripts/build-bb-tag-fixtures.py`:
+  the cloud cut to 25 tags, the list to 34 entries) and
+  `tests/fixtures/bb-tags/*.json` (`scripts/capture-bb-tag-answers.py`,
+  with the userscript's own template), mutations
+  `scripts/mutations/bb-tags.json` (19; one `expect: pass`: no spec moves
+  off a card inside its rate slot).
+
 ## Relations — `bb-relations`
 
 Written on branch `feature/bb-recent-changes-relations` (2026-10-13).

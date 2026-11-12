@@ -82,8 +82,8 @@
         "why": "A Brucebase show on its year page is a Brucebase window too.",
         "edits": [
             {
-                "find": "        return cur.reader.id === 'bbdate' ||\n",
-                "replace": "        return false ||\n"
+                "find": "        return cur.reader.id === 'bbdate' || cur.reader.id === 'bbtag' ||\n",
+                "replace": "        return cur.reader.id === 'bbtag' ||\n"
             }
         ],
         "spec": "tests/fixtures/bb-date-links.spec.js",

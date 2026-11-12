@@ -4071,6 +4071,34 @@ in the line of years at the top into one table; the listings are small, so
 that is quicker than the start page's button, but it still asks first
 (more than 50 pages).
 
+**The tag pages.** On the tag cloud (`https://brucebase.wikidot.com/system:page-tags`)
+**Tags** shows every tag in a table — **Tag**, **Family** (Date, Place,
+Tour, Songs, People, …; to tell songs and people from other words the
+script reads the song list and Relations first), **Weight** (how big the
+cloud draws it) and **Pages**, about how many pages carry it, worked out
+from the weight ("≈ 2,963"; the smallest tags read "< 62"). The exact
+number is on the tag's card. About 11,500 tags, so the script asks how to
+show that many rows.
+
+On one tag's page (`…/system:page-tags/tag/storyteller`) **Pages** shows the
+tagged pages as a table without asking the site anything: **Page**,
+**Kind** (gig, story, retail, …) and, for a show, **Date**, **Venue**,
+**City**, **State** and **Country** from its title. **With dates** reads
+the same pages from the wiki's page lists — one request per 250 pages, so
+about 13 for storyteller and 99 for content — and adds **Created**,
+**Updated**, **Size**, **Comments** and **Tags** (one row per tag).
+
+On Pages & Tags (`…/manage:pages-and-tags`, which lists the onstage pages)
+**This page** shows its 100 rows, **All pages** all 35 pages of the list,
+and **Whole wiki** every page of Brucebase with its tags (about 42,700
+pages, some 171 requests, several minutes; the script asks first).
+
+Every link to a tag's page — on the cloud, in these tables, in the tags
+line under each Brucebase page and in a window's Tags — shows on hover how
+many pages carry the tag and the newest six; **Space** opens the tag's
+pages in the window, the first 250 at once and **Load all** for the rest.
+This works on Brucebase itself only.
+
 </details>
 
 <details>

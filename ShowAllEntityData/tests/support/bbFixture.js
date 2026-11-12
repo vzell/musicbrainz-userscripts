@@ -513,7 +513,76 @@ async function loadBbHistoryPage(page, { settingsOverride = {}, answer = null, u
     return { posts, requests };
 }
 
+/** The tag pages' fixtures (Phase 11; scripts/build-bb-tag-fixtures.py) by name, with their URLs. */
+const BB_TAG_PAGES = {
+    cloud: { url: 'https://brucebase.wikidot.com/system:page-tags', file: path.join(__dirname, '..', 'fixtures', 'bb-page-tags.html') },
+    tag: { url: 'https://brucebase.wikidot.com/system:page-tags/tag/storyteller', file: path.join(__dirname, '..', 'fixtures', 'bb-tag-storyteller.html') },
+    pat: { url: 'https://brucebase.wikidot.com/manage:pages-and-tags', file: path.join(__dirname, '..', 'fixtures', 'bb-pages-and-tags-p1.html') },
+};
+/** The ListPages answers (scripts/capture-bb-tag-answers.py). */
+const BB_TAG_ANSWERS = path.join(__dirname, '..', 'fixtures', 'bb-tags');
+
+/**
+ * Loads a tag page fixture (`bb-tags`, `bb-tag`, `bb-pages-and-tags`) with
+ * the userscript injected, and answers what its buttons and the tag reader
+ * ask: GET /stats:songs and /stats:relations (the song list and Relations
+ * fixtures), GET /manage:pages-and-tags/p/N (`patPages[N]`, a fixture file,
+ * else 404), and every ListPages POST by its fields — a `%%total%%` call
+ * (`totals`: tag → count; the captured content and whole-wiki answers
+ * otherwise), the card's (`created_at desc`), a tag's pages by title
+ * (lp-<tag>-pN), the whole wiki by name (lp-wiki-pN). `total` rewrites the
+ * total every item of a page answer repeats. `fail` names GET paths
+ * answered 500. Every GET and POST is recorded, in order.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {'cloud'|'tag'|'pat'} which
+ * @param {{ settingsOverride?: Object<string, *>, url?: string, fixtureFile?: string, patPages?: Object<number, string>,
+ *   totals?: Object<string, number>, total?: number, fail?: string[] }} [opts]
+ * @returns {Promise<{ gets: string[], posts: Array<Object<string, string>> }>}
+ */
+async function loadBbTagPage(page, which, { settingsOverride = {}, url = '', fixtureFile = '', patPages = {}, totals = {}, total = 0, fail = [] } = {}) {
+    const gets = [];
+    const posts = [];
+    const fx = BB_TAG_PAGES[which];
+    await page.route(/^https?:\/\//, (route) => route.abort('blockedbyclient'));
+    await page.route((u) => u.hostname === 'brucebase.wikidot.com' && u.pathname !== '/ajax-module-connector.php', (route) => {
+        const u = new URL(route.request().url());
+        gets.push(u.pathname);
+        if (fail.includes(u.pathname)) return route.fulfill({ status: 500, contentType: 'text/html', body: 'error' });
+        if (u.pathname === '/stats:songs') return route.fulfill({ path: BB_FIXTURE, contentType: 'text/html; charset=utf-8' });
+        if (u.pathname === '/stats:relations') return route.fulfill({ path: BB_RELATIONS_FIXTURE, contentType: 'text/html; charset=utf-8' });
+        const m = /^\/manage:pages-and-tags\/p\/(\d+)$/.exec(u.pathname);
+        if (m && patPages[m[1]]) return route.fulfill({ path: patPages[m[1]], contentType: 'text/html; charset=utf-8' });
+        return route.fulfill({ status: 404, contentType: 'text/html', body: 'not here' });
+    });
+    await page.route('https://brucebase.wikidot.com/ajax-module-connector.php', (route) => {
+        const f = Object.fromEntries(new URLSearchParams(route.request().postData() || ''));
+        posts.push(f);
+        const read = (name) => JSON.parse(fs.readFileSync(path.join(BB_TAG_ANSWERS, `${name}.json`), 'utf8'));
+        let js;
+        if (f.module_body === '%%total%%') {
+            js = read(f.tags ? 'total-content' : 'total-wiki');
+            const n = f.tags ? totals[f.tags] : totals[''];
+            if (n !== undefined) js.body = js.body.replace(/<p>\d+<\/p>/, `<p>${n}</p>`);
+        } else {
+            const name = f.order === 'created_at desc' ? `lp-${f.tags}-card` : f.tags ? `lp-${f.tags}-p${f.p}` : `lp-wiki-p${f.p}`;
+            if (!fs.existsSync(path.join(BB_TAG_ANSWERS, `${name}.json`))) {
+                return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ status: 'not_ok', message: `no fixture ${name}` }) });
+            }
+            js = read(name);
+            if (total) js.body = js.body.replace(/␂\d+␃/g, `␂${total}␃`);
+        }
+        return route.fulfill({ contentType: 'application/json; charset=utf-8', body: JSON.stringify(js) });
+    });
+    await loadUserscriptPage(page, {
+        url: url || fx.url, fixtureFile: fixtureFile || fx.file, testMode: true,
+        settingsOverride: { sa_enable_brucebase: true, sa_foreign_mb_titles: false, sa_foreign_typography: false, ...settingsOverride },
+    });
+    return { gets, posts };
+}
+
 module.exports = {
+    BB_TAG_PAGES, BB_TAG_ANSWERS, loadBbTagPage,
     BB_HISTORY_URL, BB_HISTORY_DIR, BB_HISTORY_STORY_URL, loadBbHistoryPage,
     BB_EVENT_PAGES, BB_EVENT_BUTTON, loadBbEventPage,
     BB_SONGS_URL, BB_FIXTURE, BB_BUTTON, loadBbSongsPage, renderedBbRows, renderedBbHeaders,

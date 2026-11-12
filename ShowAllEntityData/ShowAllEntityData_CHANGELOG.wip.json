@@ -1,5 +1,20 @@
 [
   {
+    "version": "WIP.15",
+    "date": "2026-11-12",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase: the tag cloud (https://brucebase.wikidot.com/system:page-tags) gets a button that shows every tag in a table: its family (songs and people told apart with the song list and Relations), its weight on the cloud and about how many pages carry it.",
+          "Brucebase: a tag's page (…/system:page-tags/tag/storyteller) gets two buttons: the tagged pages as a table (kind, and for a show its date, venue, city, state and country), and the same pages read from the wiki's page lists with when each was created and last changed, its size, comments and tags.",
+          "Brucebase: Pages & Tags (…/manage:pages-and-tags) gets three buttons: this page, every page of its list, and every page of the wiki with its tags; the tags one row each.",
+          "Brucebase: every link to a tag's page (the cloud, our tables, the tags line under each page, a window's Tags) shows how many pages carry the tag and the newest six on hover; Space opens the tag's pages in the window, the first 250 at once and \"Load all\" for the rest."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.14",
     "date": "2026-11-12",
     "sections": [

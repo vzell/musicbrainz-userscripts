@@ -508,7 +508,7 @@ covers: "* TODO create userscript which directly scrolls to the first difference
 - [X] vzell's live check (2026-11-12): OK (asked on the way how to compare any two revisions: the From /
   To pickers; a click on a row's text is "this revision against the one before")
 
-*** TODO Phase 11 — tag pages: system:page-tags, a tag's pages, manage:pages-and-tags
+*** DONE Phase 11 — tag pages: system:page-tags, a tag's pages, manage:pages-and-tags
 vzell, 2026-11-11:
 #+begin_example
 https://brucebase.wikidot.com/system:page-tags - an action button that shows all tags in a table; its links get POH
@@ -538,10 +538,26 @@ Found: the tag cloud is 11,562 =a.tag= with the weight only as =font-size: N%=; 
   State; a second button over ListPages adds Created, Updated, Size, Comments, Tags), C pages-and-tags
   (this page / all 35, Tags one row per tag), D the tag link's card (count + newest six, one call) and
   window; questions 1–8 inside
-- [ ] =bb-tags= (the cloud, no request), =bb-tag= (one tag's pages), =bb-pages-and-tags= (=/p/N= paging,
-  "this page" and "all 35" buttons, Tags one row per tag), a tag reader for =/system:page-tags/tag/= links
-  (our window's Tags section included); specs, mutations, coverage rows, docs, WIP
-- [ ] vzell's live check
+- [X] vzell's answers (2026-11-12, "I go with your recommendations"; the list under "* tag answers"):
+  Family with the song list and Relations read; Pages estimated from the weight (exact on the card); a
+  second tag button over ListPages; Tags a collapsed column; a whole-wiki button; tags alphabetical; the
+  card's newest six; the window's first 250 and "Load all"
+- [X] build: =bb-tags= (Tag / Family / Weight / Pages; =_bbTagsContextLoad()=: stats:songs, stats:relations,
+  the biggest tag's =%%total%%=), =bb-tag= (the page's list, no request; "with dates and sizes" over
+  ListPages, 250 a call), =bb-pages-and-tags= (this page; all =/p/N=; every page of the wiki by =fullname=),
+  all through =_bbTagsFeatures()= / =_bbTagsLive()= (=applyBbDetailToTable()='s path); the reader =bbtag=
+  (=_extBbTagLoad()=, card and window; =_extTarget()= reads the relative tag links; =extRoot= adds
+  =div.page-tags=). On the way: a plain =%%title%%= loses no-break spaces (27 of 750) — the template wraps it
+  in =@@…@@= (=scripts/probe-bb-listpages-titles.py=); a second press of the other button reloads the page,
+  so a page only ever holds one view; "Load all" decided by pages read, not rows (the first version kept it)
+- [X] =bb-tags.spec.js= (10 green), mutations =bb-tags.json= (19, all OK; one =expect: pass=: no spec moves
+  off a card inside its rate slot), 8 stale finds refreshed (bb-date-links, bb-window-links, bb-place,
+  bb-event, non-mb-coverage-gaps; their 7 entries all OK); siblings bb-date-links, bb-history,
+  bb-history-changes, bb-every-page, popup-ext-foreign green (one flake there: "a Brucebase page's window on
+  springsteenlyrics.com …" timed out once on a detached link, green alone and on the file's rerun);
+  coverage rows, brucebase.md "Tag pages", detail-pages.md, CLAUDE.md, HELP, PAGETYPES reference
+  (169–171), WIP.15; the wider sibling run still deferred
+- [X] vzell's live check (2026-11-12): OK
 
 *** TODO Phase 12 — story pages =bb-story=
 vzell's "no PT yet" (round-2 live check). 1,489 story pages: a Storyteller banner, one
@@ -715,4 +731,18 @@ venue POHs have NO hover support for e.g Wikipedia links, e.g. when hovering htt
 
 On the year-event pages e.g. https://brucebase.wikidot.com/2026#020526 there are icons for an evetn if specific information is included in the detail event link, see [Image #21]
 Cound these icons made available on the "Info & Setlist" POH, see [Image #22]
+
+* tag answers
+
+1. Tag cloud table, Family column: about 85% of the tags come out as "Other", because songs and people can't be recognised from the word alone. Keep it, drop it, or read the song and people lists once (2
+   requests) to sort them? [read the lists]
+2. Pages column: show the estimate from the text size ("≈ 2,963" / "< 62"), or fetch exact counts for the 631 larger tags (about 11 min)? Exact counts for all 11,571 would take over 3 hours. [estimate; the
+   exact count is on the tag's hover card]
+3. One tag's page: the first button needs no request and gives Page, Kind, Date, Venue, City and State. Is a second button worth it that adds Created, Updated, Size, Comments and Tags? It costs 13 calls
+   (about 30 s) for storyteller and 99 calls (about 4 min) for content. [yes]
+4. With that second button, should Tags be a column, or stay only in the row's window? [column, collapsed]
+5. manage:pages-and-tags: add a third button, "all 42,660 pages with their tags"? It is 171 calls, about 7 min, and it would also give every tag's exact count. [yes, as an extra button]
+6. In the Tags cell, group the tags by family, or keep the site's alphabetical order? [alphabetical]
+7. Tag link hover card: show the newest six pages, or the first six by title? [newest]
+8. Tag link window for a big tag: load the first 250 with a "Load all" button, or everything at once? [first 250 plus the button]
 

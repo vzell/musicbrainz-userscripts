@@ -69,7 +69,7 @@
         "why": "G3: in a window on brucebase.wikidot.com, /<yyyy>#<ddmmyy> must be the bbdate reader's despite the same host (since Phase 8, 2026-11-11, on the page too: bb-date-links.json; the old guard \"the exception reaches the page itself too\" was dropped with it).",
         "edits": [
             {
-                "find": "            !(_isBbHost && _extBbDateTest(u))) return null;",
+                "find": "            !(_isBbHost && (_extBbDateTest(u) || _extBbTagTest(u)))) return null;",
                 "replace": "            true) return null;"
             }
         ],
