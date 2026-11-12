@@ -764,10 +764,65 @@ Today the History section is on brucebase.wikidot.com only.
 *** TODO Phase 16 — recheck what our readers miss
 covers: "* TODO recheck rendering all the right info on BB pages" and "* TODO support hovering for all
 BB PTs". Last, once Phases 7–15 have added their readers.
-- [ ] a sweep over the mirror (=scripts/probe-bb-reader-sweep.py=): per family, the page's fields and tabs
+- [X] a sweep over the mirror (=scripts/probe-bb-reader-sweep.py=): per family, the page's fields and tabs
   against what our readers return; every gap listed
-- [ ] links on BB pages and in our windows with no preview (BB, MB, SL and other known hosts):
-  =docs/non-mb-coverage.json= cells refreshed
+  Done as =scripts/probe-bb-reader-sweep.js= (node, not Python: it runs the SHIPPED readers in the real
+  userscript through the harness — the window's =dpParse()= and, where a hook exists, the page view's
+  =bbEventRead=/=bbSongRead=/=bbReleaseRead=/=bbBootlegRead=, the view counted with the window's record it
+  also draws). Samples: =scripts/copy-bb-sweep-samples.sh= (40 a family where none was copied) plus the
+  earlier phases' copies, 3,284 pages in 32 families. A page's text blocks (leaf p/li/td/th/dt/dd/h1–h4 of
+  =#page-content=, by tab or heading), links by target and pictures, against each reader's text and links.
+  Left out as chrome: the footer (Disclaimer, ©, social icons), the "Share:" bar, link-only lines ("Info &
+  Setlist | Venue"), the wiki's placeholders ("Sorry, no Photos available.", …). Output
+  =debug/bb-reader-sweep.json=.
+  Env: 2026-11-12T21:11:14+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) · Playwright 1.62.1
+  Chromium · no Tampermonkey (GM stubs).
+  Every candidate below was checked on a page; rewordings the matcher counted as lost are not listed (a
+  release's Personnel "Roy Bittan (The E Street Band): Piano", a bootleg's notes without "Notes from info
+  file:", a song's intro as the window's subtitle).
+  *Gaps in the window (hover card / Space window, every host)*
+  - G1 event pages: the description above the tabs (the page view's "About this show") is not in the
+    window — gig 228/233, nogig 53/53, recording 89/91, rehearsal 39/41, interview 44/44, nobruce 11/11
+    (e.g. gig:1984-10-29-memorial-sports-arena-los-angeles-ca: "Tour debut and only tour performance for
+    Night …"); its links (songs, year anchors) go with it.
+  - G2 event pages: a cast tab other than On Stage — In Studio (recording 83/91), On Set, On Site — is not
+    in the window: no heading line ("Greetings From Asbury Park, N.J. Recording Session"), no people (the
+    window's "On stage" section is on 3 of 90 recordings).
+  - G3 interview pages: the Playlist tab (a DJ's playlist; 10/44) is not in the window (the view has it).
+  - G4 person pages: the biography above the tabs ("Vivienne Patricia "Patti" Scialfa (born July 29, 1953
+    …") is not in the window (41/42), nor its Wikipedia link (27/42).
+  - G5 release pages (retail main pages, 56; playlists, 20): the On The Tracks tab (retail 29/56), the
+    "Recording 'Live' Dates" tab (retail 25/56, playlist 20/20) and the Gallery/News text with its press
+    links (retail 21/56) are not in the window; the view keeps Recording 'Live' Dates, not Gallery/News
+    (21/56) and part of On The Tracks (its group headings, "GUEST: BABYLON / GUEST: LABOUREP", 20/56).
+  - G6 story pages: the window has no picture (40/40 pages carry one).
+  - G7 song pages: the intro (the window's subtitle) keeps its words, not its person links (20/60); the
+    Lyrics section drops its springsteenlyrics.com link (20/60).
+  *Links with no preview (on BB pages and in our windows)* — the previews today: song: and gig, nogig,
+  recording, rehearsal, interview, nobruce, venue, relation, onstage, offstage, retail, playlist, bootleg,
+  story (=ownLinks=), year anchors (=bbshow=), tags (=bbtag=, on the wiki).
+  - L1 stats: links — on nearly every page, but mostly the wiki's menus (stats:reference, :statistics,
+    :songs, …). The ones a page means: its studio sessions (recording 78/91, retail 56/56, song 39/60), On
+    The Tracks (recording 77/91), discographies, tour statistics. A stats window would show Tags only today:
+    the readers exist (=_bbSessionsRead()=, =_bbTourCounts()=, =_bbGalleryRead()=, =_bbStatsRead()=) but not
+    for the window.
+  - L2 lyrics: links (from release pages) — no preview; the window would show Tags only (the lyrics and
+    each version's heading are not read, 20/20).
+  - L3 ott: links — no preview; Tags only (20/20), though =_bbOttRows()= reads the page for bb-ott.
+  - L4 multi: and soundcheck: links (song pages, rare) — no preview, and not in =_bbRedirectedUrl()=. Probe
+    =scripts/probe-bb-redirect-kinds.py= (2026-11-12T21:12:47+01:00 · petri · n/a): onstage:, offstage:,
+    multi:, soundcheck: all answer 301 to the gig, 357–448 ms; the mirror stores them as the Redirect module
+    (every onstage/offstage/multi/soundcheck copy), so their sweep rows are empty, not a reader gap.
+  - L5 the wiki's include pages (news:, eye:, gignote:, recnote:, media:, gallery:, files:, content:) —
+    their text is in the event or release page that includes them; links to them are rare (news: on 3 of
+    the 900 main pages sampled); their windows show Tags only. Recommendation: leave.
+  - L6 a bare year link (/1978, the year page itself): Tags only; year links in text are anchors (the show
+    reader). Rare. Recommendation: leave.
+  Other hosts: links to MusicBrainz, springsteenlyrics.com and the other known sites in a BB window keep
+  their readers (=_extSource()=); only G7's springsteenlyrics.com link is dropped before that. The
+  coverage registry (=docs/non-mb-coverage.json=) changes with the batches vzell picks.
+- [X] links on BB pages and in our windows with no preview (BB, MB, SL and other known hosts):
+  =docs/non-mb-coverage.json= cells refreshed — listed above (L1–L6); the cells change with the fixes
 - [ ] fixes in batches, each with spec and mutation; docs, WIP
 - [ ] vzell's live check
 
