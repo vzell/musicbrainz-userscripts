@@ -903,6 +903,18 @@ BB PTs". Last, once Phases 7–15 have added their readers.
   sessions 0% → 69%, discographies 0% → 35%, tours 0% (wording).
   - [X] vzell's live check of batch 3 — OK (2026-11-13). The open question (a sessions page's anchors to
     itself preview the page itself) left as it is; ask again with batch 4.
+  Batch 4 mockup (2026-11-13): https://claude.ai/artifact/CZ2t1cS2fw7W4RDSyTvoNo
+  (=scripts/extract-bb-batch4-mockup.js= → =debug/bb-batch4-mockup.json=, =scripts/build-bb-batch4-mockup.py=
+  with =scripts/bb-batch4-mockup.template.html=). Probe first (=scripts/probe-bb-story-images.py=, all
+  1,489 story pages, 2026-11-13T01:28+01:00 · petri · n/a): 1,449 carry only the Storyteller badge in their
+  title band; 42 have a picture of their own (44 E Street Radio / DJ-set banners, Wikidot's
+  =image-container=, which =_bbPageImages()= does not read: it reads gallery boxes). Song pages: the intro
+  keeps its words, not its links (20/60); the Lyrics tab is a lyrics page's shape (heading tables,
+  verses, a springsteenlyrics.com line after each version), so batch 3's =_bbLyricsRead()= reads it.
+  Questions: 1 a story's picture (own picture, badge left out / badge as picture / badge as fact), 2 a
+  song's intro (the window's line keeps its links / also an "About this song" section), 3 the Lyrics
+  section (one section, the SL line kept after each version / a section per version as a lyrics page),
+  4 batch 3's open question: a link to the page you are on that only adds an #anchor (no preview / keep).
 - [ ] vzell's live check
 
 *** Handoff to petri (2026-11-12T04:05+01:00, from vzell-lap)

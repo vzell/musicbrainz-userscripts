@@ -1,0 +1,247 @@
+<title>Brucebase story and song windows</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: a header, a page picker, the window as it would open (with its hover card beside it), then the questions. "Liner notes" look. */
+:root {
+    --paper: #fbf8f1;
+    --sheet: #fffdf8;
+    --ink: #2b2622;
+    --rule: #d9cfbd;
+    --muted: #7a6d5c;
+    --accent: #2f5f9e;
+    --ok: #3f7a3a;
+    --warn: #9a6a00;
+    --tint: #f3ecdd;
+    --newbg: #eaf2e4;
+    --newedge: #9cbf8c;
+    --field: #ffffff;
+    --shadow: 0 10px 24px -8px rgba(60, 40, 20, .35);
+    --serif: Georgia, "Times New Roman", serif;
+    --sans: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --paper: #1f1b17; --sheet: #27221d; --ink: #ece4d6; --rule: #4a4136; --muted: #a8998a; --accent: #8fb2e6;
+        --ok: #8cc47e; --warn: #d9a640; --tint: #322b24; --newbg: #24331f; --newedge: #5d8a4e; --field: #1b1814;
+        --shadow: 0 10px 24px -8px rgba(0, 0, 0, .6); color-scheme: dark;
+    }
+}
+:root[data-theme="dark"] {
+    --paper: #1f1b17; --sheet: #27221d; --ink: #ece4d6; --rule: #4a4136; --muted: #a8998a; --accent: #8fb2e6;
+    --ok: #8cc47e; --warn: #d9a640; --tint: #322b24; --newbg: #24331f; --newedge: #5d8a4e; --field: #1b1814;
+    --shadow: 0 10px 24px -8px rgba(0, 0, 0, .6); color-scheme: dark;
+}
+body { background: var(--paper); color: var(--ink); font: 15px/1.5 var(--serif); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 28px 64px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: grid; gap: 24px; }
+h1 { font-size: 30px; margin: 0; font-weight: normal; text-wrap: balance; }
+h2 { font-size: 21px; margin: 0; font-weight: normal; text-wrap: balance; }
+p { margin: 0; max-width: 74ch; }
+a { color: var(--accent); }
+.label, button, .chip, .tag { font: 600 11px/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; }
+.label { color: var(--muted); }
+code { font-family: var(--mono); font-size: 12.5px; }
+header { display: grid; gap: 10px; }
+.env { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chip { border: 1px solid var(--rule); background: var(--sheet); color: var(--ink); border-radius: 3px; padding: 7px 9px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 3px; overflow: hidden; }
+.seg .chip { border: 0; border-radius: 0; }
+.seg .chip + .chip { border-left: 1px solid var(--rule); }
+button:focus-visible, .chip:focus-visible, summary:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+@media (max-width: 900px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+/* the window */
+.win { background: var(--sheet); border: 1px solid var(--rule); border-radius: 4px; box-shadow: var(--shadow); min-width: 0; display: grid; }
+.win-bar { display: flex; gap: 10px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--rule); background: var(--tint); }
+.win-bar .kind { color: var(--muted); }
+.win-bar .sp { flex: 1; }
+.win-bar .ic { font: 14px var(--sans); color: var(--muted); }
+.win-body { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 18px; padding: 14px 16px 18px; }
+@media (max-width: 640px) { .win-body { grid-template-columns: minmax(0, 1fr); } }
+.xtitle { font-size: 19px; line-height: 1.3; }
+.sub { color: var(--muted); font-size: 14px; }
+.facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 5px 14px; margin: 10px 0 0; font-size: 14px; }
+.facts dt { font-style: italic; color: var(--muted); }
+.facts dd { margin: 0; min-width: 0; }
+.new { background: var(--newbg); box-shadow: inset 3px 0 0 var(--newedge); }
+.facts .new { padding: 0 4px; border-radius: 2px; }
+.tag { display: inline-block; margin-left: 6px; padding: 2px 4px; border-radius: 2px; border: 1px solid var(--ok); color: var(--ok); font-size: 9px; vertical-align: 2px; }
+details.sec { border-top: 1px solid var(--rule); padding: 6px 0; }
+details.sec.new { padding-left: 8px; }
+details.sec > summary { cursor: pointer; list-style: none; display: flex; align-items: baseline; gap: 6px; }
+details.sec > summary::before { content: "▸"; color: var(--muted); font-size: 12px; }
+details.sec[open] > summary::before { content: "▾"; }
+details.sec > summary h4 { margin: 0; font: 600 12px/1.6 var(--sans); letter-spacing: .06em; text-transform: uppercase; }
+.secbody { font-size: 14px; padding: 4px 0 2px 16px; max-height: 260px; overflow: auto; }
+.secbody p { margin: 0 0 6px; }
+.secbody ul, .secbody ol { margin: 4px 0; padding-left: 18px; }
+.secbody .pre { white-space: pre-line; }
+.secbody .line { font-style: italic; }
+.secbody .by { color: var(--muted); }
+.secbody .note { color: var(--muted); font-size: 13px; }
+/* the hover card */
+.card { background: var(--sheet); border: 1px solid var(--rule); border-radius: 4px; box-shadow: var(--shadow); padding: 12px 14px; font-size: 13.5px; display: grid; gap: 6px; min-width: 0; }
+.card .ttl { font-weight: bold; }
+.card .about { font-size: 13px; padding: 4px 6px; border-radius: 2px; }
+.card dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 10px; margin: 0; }
+.card dt { font-style: italic; color: var(--muted); }
+.card dd { margin: 0; min-width: 0; }
+.cardcap { color: var(--muted); font: 12px var(--sans); }
+/* questions */
+.qs { display: grid; gap: 12px; }
+.q { border: 1px solid var(--rule); border-radius: 3px; padding: 12px; display: grid; gap: 8px; background: var(--sheet); }
+.q h3 { font-weight: normal; font-size: 16px; margin: 0; }
+.q label { display: flex; gap: 8px; align-items: baseline; cursor: pointer; }
+.q .rec { color: var(--ok); font: 600 10px/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; }
+textarea#answers { width: 100%; min-height: 140px; font: 12.5px/1.45 var(--mono); border: 1px solid var(--rule); border-radius: 3px; padding: 8px; background: var(--field); color: var(--ink); box-sizing: border-box; }
+.status { font: 12px var(--sans); color: var(--ok); min-height: 1em; }
+.notes { display: grid; gap: 6px; font-size: 14px; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+.today { border: 1px dashed var(--rule); border-radius: 4px; padding: 14px 16px; color: var(--muted); font-size: 14px; display: grid; gap: 6px; }
+.today a { color: var(--accent); }
+.excerpt { font-style: italic; white-space: pre-line; }
+.cov { display: inline-block; width: 28px; height: 28px; background: var(--tint); border: 1px solid var(--rule); border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+.pics { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.pics figure { margin: 0; display: grid; gap: 3px; max-width: 160px; }
+.pics .ph { width: 160px; height: 90px; border: 1px solid var(--rule); border-radius: 2px; background: var(--tint); display: grid; place-items: center; padding: 6px; box-sizing: border-box; font: 11px var(--mono); color: var(--muted); text-align: center; word-break: break-all; }
+.pics figcaption { font: 12px var(--sans); color: var(--muted); }
+.lyr { white-space: pre-line; }
+.visit { font-style: italic; font-size: 13px; color: var(--muted); margin: 2px 0 10px; }
+</style>
+
+<div class="wrap">
+<header>
+    <span class="label">ShowAllEntityData · feature/bb-overhaul · Phase 16, batch 4 mockup</span>
+    <h1>Brucebase story and song windows</h1>
+    <p>The last two gaps the sweep found. A <b>story page</b>'s window shows no picture: 42 of the wiki's 1,489 story pages have one of their own (the E Street Radio and DJ-set banners, 44 in all), and 1,449 carry the wiki's Storyteller badge in their title band. A <b>song page</b>'s window shows the song's intro as plain words, without its links (the writers, the original artist, the album: 20 of 60 song pages sampled), and its Lyrics section leaves out the "Visit SpringsteenLyrics.com for other versions of this song." link (20 of 60). Lyrics are cut to four lines a version here.</p>
+    <div class="env" id="env"></div>
+</header>
+
+<div class="chips" role="group" aria-label="Page">__VIEWS__</div>
+<div class="chips">
+    <span class="seg" role="group" aria-label="Show">
+        <button type="button" class="chip" id="m-today" aria-pressed="false">Today</button>
+        <button type="button" class="chip" id="m-new" aria-pressed="true">With batch 4</button>
+    </span>
+</div>
+
+<div id="stage"></div>
+
+<section class="qs" aria-labelledby="qh">
+    <h2 id="qh">Questions</h2>
+    <div class="q" data-q="1">
+        <h3>1. A story page's picture?</h3>
+        <label><input type="radio" name="q1" value="own" checked> Its own picture in the window's Images, with its title as the caption; the Storyteller badge left out (it is the wiki's mark on almost every story) <span class="rec">Recommended</span></label>
+        <label><input type="radio" name="q1" value="badge"> Its own picture, and the Storyteller badge as a picture too</label>
+        <label><input type="radio" name="q1" value="fact"> Its own picture; the badge as a fact (“Storyteller: yes”)</label>
+    </div>
+    <div class="q" data-q="2">
+        <h3>2. A song's intro (“Billy Gibbons, Dusty Hill, and Frank Beard, 1979. Originally recorded by ZZ Top.”)?</h3>
+        <label><input type="radio" name="q2" value="line" checked> The window's line under the title keeps the intro's links; the card keeps it as words <span class="rec">Recommended</span></label>
+        <label><input type="radio" name="q2" value="section"> The line stays words; the intro with its links is also a first section, “About this song”, open</label>
+    </div>
+    <div class="q" data-q="3">
+        <h3>3. A song's Lyrics section?</h3>
+        <label><input type="radio" name="q3" value="keep" checked> One section as today, the “Visit SpringsteenLyrics.com …” line kept after each version, linked <span class="rec">Recommended</span></label>
+        <label><input type="radio" name="q3" value="split"> As a lyrics page's window (batch 3): a section per version, the first open, the links last in “Other versions”</label>
+    </div>
+    <div class="q" data-q="4">
+        <h3>4. From batch 3: a page's links to its own anchors (a studio sessions page's “…-studio-sessions#thunderroad”) preview that same page. Keep that?</h3>
+        <label><input type="radio" name="q4" value="skip" checked> No preview for a link to the page you are on that only adds an #anchor <span class="rec">Recommended</span></label>
+        <label><input type="radio" name="q4" value="keep"> Keep the preview</label>
+    </div>
+    <textarea id="answers" readonly aria-label="Your answers"></textarea>
+    <div class="chips"><button type="button" class="chip" id="copy">Copy the answers</button><span class="status" id="status"></span></div>
+</section>
+</div>
+
+<script>
+const DATA = __DATA__;
+const ENV = __ENV__;
+const state = { view: 0, mode: 'new' };
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const ans = (n) => (document.querySelector(`input[name="q${n}"]:checked`) || {}).value;
+const link = (h, t) => (h ? `<a href="${esc(h)}">${esc(t)}</a>` : esc(t));
+const SL = 'https://www.springsteenlyrics.com/';
+const BADGE = 'https://brucebase.wdfiles.com/local--files/content:files/storyteller.gif';
+function model(p, isNew) {
+    const facts = (p.fields || []).map(f => ({ k: f[0], v: esc(f[1]) }));
+    let sub = esc(p.subtitle);
+    let subNew = false;
+    const pics = [];
+    const secs = [];
+    if (p.kind === 'story') {
+        if (isNew) {
+            p.pictures.forEach(x => pics.push({ src: x.thumb, cap: x.title || 'Picture', isNew: true }));
+            if (p.badge && ans(1) === 'badge') pics.push({ src: BADGE, cap: 'Storyteller', isNew: true });
+            if (p.badge && ans(1) === 'fact') facts.push({ k: 'Storyteller', v: 'yes', isNew: true });
+        }
+        p.todaySections.filter(s => !/^Tags/.test(s.label)).forEach(s => secs.push({ label: s.label, open: s.open !== false, html: `<p class="pre">${esc(s.text)} …</p>` }));
+    } else {
+        const intro = p.intro.join(' ');
+        const hasLinks = /<a\b/.test(intro);
+        if (isNew && hasLinks && ans(2) === 'line') { sub = intro; subNew = true; }
+        if (isNew && hasLinks && ans(2) === 'section') secs.push({ label: 'About this song', open: true, html: `<p>${intro}</p>`, isNew: true });
+        p.todaySections.filter(s => !/^Tags/.test(s.label)).forEach((s) => {
+            if (s.label === 'Lyrics' && p.lyrics) {
+                if (!isNew) { secs.push({ label: 'Lyrics', open: s.open !== false, html: `<div class="lyr">${p.lyrics.versions.map(v => `${esc(v.name)}${v.date ? ` · ${esc(v.date)}` : ''}\n${esc(v.lines)}\n…`).join('\n\n')}</div>` }); return; }
+                if (ans(3) === 'keep') {
+                    secs.push({ label: 'Lyrics', open: s.open !== false, isNew: true, html: p.lyrics.versions.map((v, i) => {
+                        const sl = p.lyrics.sl.find(x => x.version === v.name);
+                        return `<div class="lyr">${esc(v.name)}${v.date ? ` · ${esc(v.date)}` : ''}\n${esc(v.lines)}\n…</div>` + (sl ? `<p class="visit">Visit ${link(sl.href, 'SpringsteenLyrics.com')} for other versions of this song.</p>` : '');
+                    }).join('') });
+                } else {
+                    p.lyrics.versions.forEach((v, i) => secs.push({ label: v.date ? `${v.name} · ${v.date}` : v.name, open: i === 0, isNew: true, html: `<div class="lyr">${esc(v.lines)}\n…</div>` }));
+                    secs.push({ label: 'Other versions', open: true, isNew: true, html: `<ul>${p.lyrics.sl.map(x => `<li>${link(x.href, 'SpringsteenLyrics.com')} — ${esc(x.version)}</li>`).join('')}</ul>` });
+                }
+                return;
+            }
+            secs.push({ label: s.label, open: s.open !== false && !/^Performances/.test(s.label), html: `<p class="pre">${esc(s.text)}${s.text.length >= 300 ? ' …' : ''}</p>` });
+        });
+    }
+    return { facts, sub, subNew, pics, secs, cardSub: esc(p.subtitle) };
+}
+function render() {
+    const p = DATA[state.view];
+    const m = model(p, state.mode === 'new');
+    $('stage').innerHTML = `<div class="stage"><div class="win" role="dialog" aria-label="The window">
+        <div class="win-bar"><span class="label kind">Detail page</span><span class="sp"></span><span class="ic">✎</span><span class="ic">⧉</span><span class="ic">×</span></div>
+        <div class="win-body"><div><div class="xtitle">${esc(p.title)}</div>${m.sub ? `<p class="sub${m.subNew ? ' new' : ''}">${m.sub}</p>` : ''}
+        <dl class="facts">${m.facts.map(f => `<dt${f.isNew ? ' class="new"' : ''}>${esc(f.k)}</dt><dd${f.isNew ? ' class="new"' : ''}>${f.v}</dd>`).join('')}</dl>
+        ${m.pics.length ? `<p class="label" style="margin-top:12px">Images (${m.pics.length})</p><div class="pics">${m.pics.map(x => `<figure class="new"><div class="ph">${esc(decodeURIComponent(x.src.split('/').slice(-2).join('/')))}</div><figcaption>${esc(x.cap)}</figcaption></figure>`).join('')}</div>` : (p.kind === 'story' ? '<p class="sub" style="margin-top:12px">No images.</p>' : '')}</div>
+        <div>${m.secs.map(s => `<details class="sec${s.isNew ? ' new' : ''}"${s.open ? ' open' : ''}><summary><h4>${esc(s.label)}</h4>${s.isNew ? '<span class="tag">new</span>' : ''}</summary><div class="secbody">${s.html}</div></details>`).join('')}
+        <details class="sec"><summary><h4>Tags</h4></summary><div class="secbody sub">The page's tags, as today.</div></details>
+        <details class="sec"><summary><h4>History</h4></summary><div class="secbody sub">Opening this section reads the page's history from Brucebase.</div></details></div></div></div>
+        <div style="display:grid; gap:6px; min-width:0"><span class="cardcap">The hover card (Ctrl+hover on the link)</span>
+        <div class="card"><div class="ttl">${esc(p.title)}</div>${m.cardSub ? `<div class="sub">${m.cardSub}</div>` : ''}
+        <dl>${(p.fields || []).slice(0, 4).map(f => `<dt>${esc(f[0])}</dt><dd>${esc(f[1])}</dd>`).join('')}</dl><div class="cardcap">brucebase.wikidot.com · Space: the window</div></div>
+        <span class="cardcap">A picture is drawn as its file name here (the mockup page cannot load brucebase.wdfiles.com); links here do nothing.</span></div></div>`;
+    document.querySelectorAll('[data-view]').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.view) === state.view)));
+    $('m-today').setAttribute('aria-pressed', String(state.mode === 'today'));
+    $('m-new').setAttribute('aria-pressed', String(state.mode === 'new'));
+    $('answers').value = ['Phase 16 batch 4 — answers', ...[1, 2, 3, 4].map((n) => {
+        const lab = document.querySelector(`.q[data-q="${n}"] input:checked`).closest('label').textContent.replace(/\s*Recommended\s*$/, '').trim();
+        return `${n}. ${lab}`;
+    })].join('\n');
+}
+$('env').textContent = ENV;
+document.addEventListener('click', (e) => {
+    const v = e.target.closest('[data-view]');
+    if (v) { state.view = Number(v.dataset.view); render(); return; }
+    if (e.target.id === 'm-today') { state.mode = 'today'; render(); }
+    if (e.target.id === 'm-new') { state.mode = 'new'; render(); }
+    if (e.target.closest('#stage a')) e.preventDefault();
+});
+document.addEventListener('change', (e) => { if (e.target.matches('.q input')) render(); });
+$('copy').addEventListener('click', () => {
+    const t = $('answers');
+    navigator.clipboard.writeText(t.value).then(() => { $('status').textContent = 'Copied.'; },
+        () => { t.select(); $('status').textContent = 'Selected: press Ctrl+C.'; });
+});
+render();
+</script>
