@@ -29419,3 +29419,27 @@ Env: 2026-11-13T01:50+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) ·
 - Batch 3's open question answered: `_dpSiteForUrl()` refuses a link to the current page that only adds a hash
   (shared by every foreign host).
 Spec 5/5, mutations 12 (11 fail, 1 pass as recorded), bb/sl/jl/bs + popup-ext specs 720/720.
+
+## 2026-11-13 — Multi-table FRP flicker: sticky h3 min-height oscillates 22↔23 px (fix/sticky-h3-subpixel-flicker)
+Env: 2026-11-13T16:59+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) · the report: vzell's browser, version unknown, Tampermonkey unknown · the fix: Playwright Chromium, no Tampermonkey (GM stubs)
+- Report: `artist-releasegroups` (Bruce Springsteen, 70248960-…), after the render a click on the "Album + Compilation
+  + Live" h3 makes the whole page flicker; closing the section again or scrolling stops it.
+  `debug/MB-flicker-FRP.html` (FRP), `debug/MB-flicker-FRP.log` (console), `debug/MB-flicker-FRP.mp4` (video).
+- The log has no errors: after the toggle it holds 152 `ui` lines "Sticky filter bars: …", one per frame (~20 ms),
+  alternating exactly between `h3 30.8001220703125px` (76×) and `h3 30.8px` (76×). The difference is 1/8192 px.
+  The snapshot's `#mb-vsb-dyn-style` has `h3.mb-toggle-h3 { … min-height: 22px; }`.
+- Cause: `_vsbRefresh()` writes `min-height: ${Math.ceil(content)}px`, with `content` = the tallest h3's Range
+  height (`_vsbH3ContentHeight()`). The read was 22.000122 → ceil 23 px → every bar grows by 1 px → the
+  ResizeObserver schedules a refresh → the children now sit at other fractional coordinates and the Range reads
+  exactly 22 → 22 px → the bars shrink → again. The `css === _vsb.css` guard cannot stop it: the text really
+  differs each time. Opening the section only moved the children onto an unlucky fractional position; scrolling
+  or closing it moves them off, so the loop settles.
+- Fix: `_vsbH3ContentHeight()` snaps its result to 1/100 px, so both consumers (the min-height's `ceil` and
+  `h3Box` → `theadTopH3`) see 22. The h2, thead and header heights are not snapped: nothing is written back
+  to them, so they cannot feed back.
+- Spec "float noise in an h3's content height does not make the bars pulse" (sticky-filter-bars.spec.js)
+  replays the log: a patched `Range.prototype.getBoundingClientRect` reads 1/8192 px too tall exactly while
+  the bar's min-height equals its content height; it counts `#mb-vsb-dyn-style` rewrites over 1 s (≤ 2) and
+  checks the final min-height. Mutation "the h3 content height is not snapped" fails it on the rewrite count;
+  the "ratchet" entry's find was moved to the new return line.
+Spec file 25/25 (Playwright 1.62.1, chromium-fixtures), mutation 1/1 (expected fail), finds 0 stale, lint within baseline.

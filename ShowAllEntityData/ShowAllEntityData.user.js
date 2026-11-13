@@ -65203,7 +65203,9 @@
     //       tallest bar's CONTENT height, read through a Range so the
     //       min-height itself never feeds back into it): a taller earlier
     //       bar would otherwise peek out under a shorter later one, since
-    //       every passed h3 stays stuck underneath.
+    //       every passed h3 stays stuck underneath. That height is snapped
+    //       to 1/100 px before it is rounded up: float noise (22.000122)
+    //       would otherwise add a whole pixel and feed back after all.
     // thead: B + H2 for every table, B + H2 + H3 for a table that follows an
     // h3 bar. `scroll-padding-top` covers bars and header, so scrollIntoView
     // and anchor jumps land below them.
@@ -65472,14 +65474,21 @@
      * shared min-height: a Range over its children measures their boxes,
      * which the bar's own min-height cannot change. 0 for a hidden bar.
      *
+     * Snapped to 1/100 px: the Range's height carries float noise that
+     * depends on where the children sit (22.000122 for a 22 px bar), and
+     * `_vsbRefresh()` rounds it UP for the min-height. Unsnapped, 22.000122
+     * became 23 px, the bar grew, its children moved, the next read was 22,
+     * and the bars pulsed by 1 px every frame through the ResizeObserver
+     * (the multi-table flicker, DEBUG-NOTES.md 2026-11-13).
+     *
      * @param {HTMLElement} h3
-     * @returns {number} Pixels.
+     * @returns {number} Pixels, to 1/100.
      */
     function _vsbH3ContentHeight(h3) {
         if (!h3.getClientRects().length) return 0;
         const range = document.createRange();
         range.selectNodeContents(h3);
-        return range.getBoundingClientRect().height;
+        return Math.round(range.getBoundingClientRect().height * 100) / 100;
     }
 
     /**

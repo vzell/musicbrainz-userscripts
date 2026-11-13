@@ -1,0 +1,14 @@
+[
+    {
+        "version": "WIP.1",
+        "date": "2026-11-13",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Multi-table pages with sticky filter bars: opening a sub-table (e.g. \"Album + Compilation + Live\" on an artist's release groups) could make the whole page flicker until the section was closed again or the page scrolled. The h3 bars' shared height was rounded up from a measurement with a tiny rounding error (22.0001 px), so it switched between 22 and 23 px on every frame; the measurement is now snapped to 1/100 px first."
+                ]
+            }
+        ]
+    }
+]

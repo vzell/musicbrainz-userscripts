@@ -134,7 +134,7 @@
         "why": "Measured on the box, the min-height holds itself up: the bars never shrink back.",
         "edits": [
             {
-                "find": "        return range.getBoundingClientRect().height;\n",
+                "find": "        return Math.round(range.getBoundingClientRect().height * 100) / 100;\n",
                 "replace": "        return h3.getBoundingClientRect().height - 9;\n"
             }
         ],
@@ -343,6 +343,19 @@
         ],
         "spec": "tests/fixtures/sticky-filter-bars.spec.js",
         "grep": "shows through it or beside it",
+        "expect": "fail"
+    },
+    {
+        "name": "the h3 content height is not snapped",
+        "why": "A Range's height carries float noise (22.000122); rounded up for the min-height it adds a pixel, the bar grows, the next read is 22, and the bars pulse every frame (debug/MB-flicker-FRP.log, 2026-11-13).",
+        "edits": [
+            {
+                "find": "        return Math.round(range.getBoundingClientRect().height * 100) / 100;\n",
+                "replace": "        return range.getBoundingClientRect().height;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "float noise",
         "expect": "fail"
     }
 ]

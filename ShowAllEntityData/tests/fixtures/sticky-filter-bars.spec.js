@@ -578,6 +578,47 @@ test.describe('sticky filter bars — multi-table page', () => {
         await expect.poll(heights, { message: 'and shrink back' }).toEqual(before);
     });
 
+    test('float noise in an h3\'s content height does not make the bars pulse', async ({ page }) => {
+        // debug/MB-flicker-FRP.log (2026-11-13): after an h3 was opened the
+        // bars' content measured 22.000122 px and 22 px on alternate frames;
+        // rounded up, the shared min-height went 23 / 22 / 23 …, every bar
+        // moved by 1 px per frame, and the page flickered. This replays it:
+        // a Range over an h3 reads 1/8192 px too tall exactly while the bar's
+        // min-height equals its (whole-pixel) content height, as in the log.
+        await openRatings(page);
+        const res = await page.evaluate(async () => {
+            const orig = Range.prototype.getBoundingClientRect;
+            const base = (h3) => {
+                const r = document.createRange();
+                r.selectNodeContents(h3);
+                return Math.round(orig.call(r).height);
+            };
+            const want = Math.max(...Array.from(document.querySelectorAll('h3.mb-toggle-h3'))
+                .filter((h) => h.getClientRects().length).map(base));
+            Range.prototype.getBoundingClientRect = function () {
+                const r = orig.call(this);
+                const h3 = this.commonAncestorContainer;
+                if (!(h3 instanceof HTMLElement) || !h3.matches('h3.mb-toggle-h3')) return r;
+                const h = Math.round(r.height);
+                const noisy = getComputedStyle(h3).minHeight === `${h}px`;
+                return new DOMRect(r.x, r.y, r.width, h + (noisy ? 1 / 8192 : 0));
+            };
+            const style = document.getElementById('mb-vsb-dyn-style');
+            let rewrites = 0;
+            const mo = new MutationObserver(() => { rewrites++; });
+            mo.observe(style, { childList: true, characterData: true, subtree: true });
+            window.dispatchEvent(new Event('resize'));
+            // A measurement window, not a settle: the bug rewrites every frame.
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            mo.disconnect();
+            Range.prototype.getBoundingClientRect = orig;
+            const m = /h3\.mb-toggle-h3 \{[^}]*min-height: (\d+)px/.exec(style.textContent);
+            return { rewrites, want, minHeight: m ? Number(m[1]) : null };
+        });
+        expect(res.rewrites, 'the bars settle: at most a couple of style rewrites in a second').toBeLessThanOrEqual(2);
+        expect(res.minHeight, 'the min-height is the content height, not one pixel more').toBe(res.want);
+    });
+
     test('with the setting off, h3 bars scroll away', async ({ page }) => {
         await openRatings(page, { sa_enable_sticky_filter_bars: false });
         const t2 = await page.evaluate(() => document.querySelectorAll('table.tbl')[2].tBodies[0].rows[0]
