@@ -761,7 +761,7 @@ Today the History section is on brucebase.wikidot.com only.
   brucebase.md "Phase 15: the section on other sites", detail-pages.md, HELP, the setting's text.
 - [X] vzell's live check — OK (2026-11-12)
 
-*** TODO Phase 16 — recheck what our readers miss
+*** DONE Phase 16 — recheck what our readers miss
 covers: "* TODO recheck rendering all the right info on BB pages" and "* TODO support hovering for all
 BB PTs". Last, once Phases 7–15 have added their readers.
 - [X] a sweep over the mirror (=scripts/probe-bb-reader-sweep.py=): per family, the page's fields and tabs
@@ -922,8 +922,8 @@ BB PTs". Last, once Phases 7–15 have added their readers.
   springsteenlyrics.com line linked); =_dpSiteForUrl()= refuses a link to this page that only adds an
   #anchor (every foreign host). =_DP_PARSER_VERSION= 28. Spec =bb-story-song-windows.spec.js= 5/5,
   mutations 12 (11 fail, 1 pass as recorded), bb/sl/jl/bs + popup-ext specs 720/720.
-  - [ ] vzell's live check of batch 4
-- [ ] vzell's live check
+  - [X] vzell's live check of batch 4 — OK (2026-11-13). Phase 16 done: all four batches live-checked.
+- [X] vzell's live check — OK (2026-11-13), every batch
 
 *** Handoff to petri (2026-11-12T04:05+01:00, from vzell-lap)
 State: branch =feature/bb-overhaul= pushed, working tree clean, Phases 0–12 DONE and live-checked. Newest WIP
