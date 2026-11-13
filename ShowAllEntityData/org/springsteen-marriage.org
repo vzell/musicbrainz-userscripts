@@ -1,0 +1,218 @@
+#+title: Bringing BruceParser, BruceBaseParser and volkerzell.de into ShowAllEntityData
+#+date: 2026-11-13
+
+Env: 2026-11-13 · plan written in a Claude Code session (plan mode), code reading only · n/a
+
+Plan for pickup on another host. Nothing below is implemented yet.
+
+* Track A: BruceParser and BruceBaseParser into ShowAllEntityData
+
+** Context
+
+There are three Springsteen tools today:
+
+| Tool                                | Where                                         | What it is                                                                                                                                                                      | Size                                         |
+|-------------------------------------+-----------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------|
+| ShowAllEntityData (SAED), main one  | =~/git/musicbrainz-userscripts/ShowAllEntityData= | Userscript: MusicBrainz table engine plus BB, SL, JL, KF, DI, IA and SFM pageTypes, link previews and FINDINGS                                                           | 10,150,618 bytes, 186,459 lines (9.99.1624) |
+| BruceBaseParser (BBP)               | =~/git/userscripts/BruceBaseParser=           | Userscript on brucebase only: the YEAR, LIST, DETAIL, VENUE, RETAIL, SONG, RELATION and Recent changes pages. It checks the wiki against itself (event names, venues, setlists, expected tags compared with actual tags) | 588 KB, 12,263 lines (v3.33)                 |
+| BruceParser (bbp.sh)                | =~/git/scripts/BruceParser=                   | Offline Bash pipeline that downloads the whole wiki (=bb/latest=) plus SL, KF, JL and MB, and writes site-wide QA reports                                                     | 277 KB of =.sh=                              |
+
+Decisions (vzell, 2026-11-13):
+- SAED is the home.
+- BBP retires once SAED covers all of its checks.
+- BruceParser keeps running offline and publishes a compact JSON feed to GitHub raw, which SAED reads.
+
+Generic MusicBrainz behaviour must not change.
+
+*The gap vzell named: tags that spill onto the onstage page.* Wikidot limits how many tags one page can hold. A gig, rehearsal or interview page with an "On Stage" tab can park its overflow tags on =/onstage:<slug>/noredirect/true=. BBP handles this in =fetchOnstageCompanionTags()= (=BruceBaseParser.user.js:6831=, doc =doc/TAGS.md= "Onstage companion page tags"). BruceParser's =efc.sh:331= notes a second form: category pages that reach the limit get =-2=, =-3= … sibling pages that redirect to the main one (=MULTI-title-postfix.txt=). SAED's =_bbPageTags(doc, url)= reads only =div.page-tags= of the page itself. So three places miss the spilled tags:
+- the bb-event head and its Tags card;
+- every BB preview window, through =_dpParseBb()=, including windows opened on musicbrainz.org;
+- the year table's ▶ Pages columns.
+
+** The ideas, ordered by value per byte
+
+1. *Spilled tags (phase 1, below).* One shared reader change fixes all three places.
+2. *BBP's checks become FINDINGS entries, not ported code.* SAED already has the registry, the ⚠️/❌ menus, the cell tint and the 📊 sections, and four BB findings already exist (=bb-mbev-link-*=, =bb-date-comma=, =bb-onstage-tab=). BBP's checks fit as entries over data SAED already reads (the =_bbEvp*= year columns read each event's page, as BBP's =processOneYearEvent= does):
+   - YEAR vs DETAIL event name (=extractDetailEventName= / =normalizeDetailName=)
+   - venue name
+   - the year page's anchor date (=checkYearAnchorConsistency=)
+   - setlist songs without their tag (=checkSetlistSongTags=)
+   - expected vs actual tags: date parts, places, relations, tours and premieres (=computeExpectedTags= and its siblings)
+   - spurious tags
+   BBP's own UI is not ported. Save/Load, SmartTable, the lightbox and the keyboard shortcuts all already exist in SAED, and some came from SAED in the first place.
+3. *BBP's lookup tables move into the feed instead of the script.* Examples: =TOUR_DEFINITIONS=, =SONG_TAG_ALIAS_OVERRIDES=, =VENUE_TAG_ALIAS_OVERRIDES=, =RELATION_TAG_ALIAS_OVERRIDES=. BruceParser generates or curates them, and SAED fetches them once a day and caches them. That keeps them out of the 10 MB file and lets vzell update them without a release.
+4. *BruceParser's site-wide reports become findings in the browser.* =bbp.sh= writes =bb-feed.json=, keyed by page path:
+   - setlist differences YEAR vs DETAIL
+   - titles that differ between YEAR, YEAR-LIST and DETAIL
+   - URLs shortened at a different place (=URL-shortening=)
+   - pages missing their first-character tag or a date-part tag
+   - =files= tag vs images
+   - pages with no parent
+   SAED stamps these on BB rows and in previews without extra requests. Each finding's card names the report it came from and the feed's date.
+5. *Cross-checks on MusicBrainz, gated to entities with a brucebase URL relationship.* On an E with a BB "reviews" link, the feed already holds BruceParser's =search/= comparison (MB event title vs the MB-style title derived from BB), and the same goes for W vs BB song (=esfsl.sh=). Shown as findings only when the row's entity carries a =brucebase.wikidot.com= URL and the feed is loaded. Any other MB page makes zero requests and takes no new code path, and the MB fixture suite proves it.
+6. *Retirement matrix.* =org/bbp-parity.org= lists every BBP check and feature with its SAED counterpart (finding id, pageType or feed key) and a state. BBP is frozen when every row is done. Until then, test that SAED and BBP can run on the same page together, since both match the same URLs.
+
+*Size budget.* Port checks as data and findings, never as BBP's code. Target for the whole of Track A: at most about 150 KB (~1.5 %). Record the bytes each phase adds in its changelog entry. Data goes through the feed.
+
+** TODO Phase 1: spilled tags in SAED
+
+Branch =feat/bb-spilled-tags=. Track changes in =ShowAllEntityData_CHANGELOG.wip.json=: no =@version= bump or real changelog entry on the branch; those come at merge.
+
+1. *Probe first.* =scripts/probe-bb-tag-spillover.py= runs over the =bb/latest= mirror on the NAS (slow; sample first). It answers:
+   - How many gig, rehearsal and interview pages have an On Stage tab and an onstage page whose tags the main page lacks?
+   - What is the actual limit: tag count, or total tag characters as vzell remembers it? Measure from the largest =div.page-tags=.
+   - How common are the =-N= redirecting siblings?
+   The result goes into =docs/claude/brucebase.md= with an Env stamp.
+2. *Mockup first (LAF).* How a spilled tag looks: in the Tags card or section, a small "from the On stage page" mark per tag, or a separate group, plus the link to that page. Publish the mockup and wait for approval.
+3. *Reader.* A helper =_bbSpilledTags(doc, url)= builds the onstage address the way BBP's =fetchOnstageCompanionTags= does (gig, rehearsal, interview, only when the On Stage tab exists, =/noredirect/true=). It reads the extra tags with =_bbPageTags()= and returns the tags the main page lacks, each marked =spill: true=. It is called from:
+   - =_dpParseBb()=, which is already async with a request; one more GET there goes through the preview's own rate slot, and =_DP_PARSER_VERSION= goes from 28 to 29;
+   - the bb-event head (its "no request" rule gets one documented exception, made at the press);
+   - the =_bbEvp*= year columns.
+   If the probe confirms the =-N= siblings, it covers them too.
+4. *Setting* =sa_bb_spilled_tags=, default =true= per the non-MB rule. It is listed in =ShowAllEntityData_CONFIG_DEFAULTS.json=. Phase 1 does not add it to the fixture override list.
+5. *Docs:*
+   - =docs/claude/brucebase.md=: a section on spilled tags
+   - =docs/non-mb-coverage.json=, then =build-coverage-report.py=
+   - HELP
+   - a =DEBUG-NOTES.md= entry
+
+*** Critical files
+
+- =ShowAllEntityData.user.js=: =_bbPageTags=, =_bbTagsSection=, =_dpParseBb=, =_DP_PARSER_VERSION=, the bb-event head (=_bbEventHeadSpec=), =_bbEvp*=, =configSchema=
+- Reference only: =~/git/userscripts/BruceBaseParser/BruceBaseParser.user.js:6831= and =doc/TAGS.md=; =~/git/scripts/BruceParser/efc.sh:331=
+- New: =scripts/probe-bb-tag-spillover.py=, a fixture =tests/fixtures/bb-event-spilled-tags.spec.js= (+ the gig page and its onstage page, from the mirror), and an entry in =scripts/mutations/*.json=
+
+*** Verification
+
+- A fixture spec serves a gig page plus its onstage page. It asserts that the window's and the head's Tags show the spilled tags as marked and that their count includes them. A second case, a page without an On Stage tab, asserts that no second request is made. Mutation check: plant an early =return= in =_bbSpilledTags=, and the spec must fail.
+- The MusicBrainz fixture suite and =npm run test:full= via =python3 scripts/run-test-full.py=, with the start announced. Plus =lint-summary.py --check=, =build-coverage-report.py --check= and =audit-config-defaults.py=.
+- vzell checks in the real browser on a gig with spilled tags, on BB and from an MB event's BB link, before any merge.
+
+Later phases (ideas 2–6 above) each get their own plan, branch and mockup.
+
+* Track B: volkerzell.de (Ionos shared hosting: PHP + MySQL/MariaDB)
+
+** Context
+
+Today volkerzell.de serves only the SL mirror at =/springsteenlyrics/=. Ground rules (vzell, 2026-11-13):
+- *The site is for three audiences:* fans, MB and BB editors, and SAED users.
+- *SAED never calls the site*, so the feed stays on GitHub raw. That means no visitor IPs from userscript users and no new =@connect=.
+- *Shared hosting:* PHP, a database and SFTP. Long Bash pipelines don't run there.
+
+The resulting split:
+- *The heavy work stays at home.* =bbp.sh= runs on petri.
+- *One export step pushes the results up.* A new step at the end of =bbp.sh=, =publish.sh=, exports to JSON or SQL and uploads it over SFTP/SSH.
+- *The site reads its own database.* PHP serves pages from MySQL only and never scrapes anything itself.
+
+** One data spine, three outputs
+
+=bbp.sh= already joins BB, SL, KF, JL and MB data. The new =publish.sh= step writes one normalised dataset:
+- shows: date, venue, kind, setlist, tour;
+- songs, venues and people;
+- for each show, its links: BB page and anchor, MB event MBID, setlist.fm, SL, JL, KF, IA;
+- the findings from the reports.
+
+That dataset feeds three outputs:
+1. =bb-feed.json= on GitHub raw, for SAED (Track A, idea 4).
+2. The MySQL import for volkerzell.de.
+3. A run record (counts, timings, what changed since the last run) from =docs/timings.tsv= and =run-history.md=.
+
+** 1) The public homepage (fans, editors, SAED users)
+
+It uses the "Liner notes" look: paper ground, serif, small caps labels. Page ideas:
+
+- *Show finder.* Every show is one page: date, venue, setlist, tour. Its "Sources" strip links each site's page for that show (BB, MB, setlist.fm, SL, JL, KF, IA). Browse by year, tour, venue or song, with SAED-like filtering through a small sortable table in plain JS, no framework.
+- *On this day.* Today's date across the years: shows, first and last performances, plus an RSS/Atom feed.
+- *Song pages.* Times played, first and last time, the longest gap, a play count by tour (BB stats), and links to SL lyrics and MB works.
+- *Data health, for editors.* BruceParser's reports become live, filterable pages instead of =.html= files on disk:
+  - MB events without a BB link
+  - titles that differ MB vs BB
+  - setlists that differ YEAR vs DETAIL
+  - tags missing or spilled
+  - wrongly shortened URLs
+  Each row has a "fix it here" link (MB edit page, BB page) and shows its trend run by run. That gives the community an obvious use for the pipeline.
+- *"What changed on Brucebase."* The wiki shows only the latest 1,000 recent changes, and BBP's SmartTable stops there too. =publish.sh= uploads each run's diff, so the site keeps a permanent, searchable change history.
+- *The userscripts' home.* Install buttons that point at the =vzell/mb-userscripts= raw URLs (GitHub stays the install and update source), "What's new" from =ShowAllEntityData_RELEASES.md=, the help, screenshots and the FORUM.org videos, and the supported sites from =NON-MB-COVERAGE.html=. The ❓ and 📜 dialogs keep reading GitHub.
+
+** 2) Private and internal use (behind HTTP auth)
+
+- *A dashboard of runs and measurements.* =bbp.sh= timings for each host, =test:full= wall clocks, the perf baselines and the lint counts, as charts across petri, NB-3641 and vzell-lap. Today these sit in =tests/MEASUREMENTS.org= and =docs/timings.tsv=.
+- *A place for =debug/= snapshots.* =debug/= is synced between hosts by hand today. A small upload-and-list PHP page (or SFTP to a private folder) holds the snapshots and logs, each with its Env stamp. The NAS stays the home of the full =bb/latest= mirror, which is too big for shared web space.
+- *Review queues.* A finding accepted as "known exception" in the browser goes into a DB table. =publish.sh= downloads it as the allowlist that the reports' =-CLEANEDUP= steps now hard-code in the scripts.
+- *A public status page for the feed.* The feed's date, the counts and whether the last run failed (from =timings.tsv='s failed-steps column), so it is visible at a glance that =bb-feed.json= is current.
+
+** 3) The database as the shared archive (from [[file:offline.org][offline.org]])
+
+=offline.org= deliberately left one question open: where the "local store" lives, a folder or a local SQLite server (❓ in its Phase 2). It also named the weaknesses of every local option:
+- each archive is invisible to the other machines;
+- IndexedDB is per browser and per site, and can be evicted;
+- replication needs PouchDB and CouchDB.
+
+MariaDB on Ionos fills that gap *as the hub between machines*. The offline view itself stays local, because offline means no Ionos either.
+
+- *Snapshots go into the database.* Format 1.2 (=key=, =text= for each column, absolute URLs, optional =images=) maps onto:
+  - =snapshot(id, site, pagetype, button, taken_at, script_version, row_count, incomplete, same_as)=
+  - =snapshot_row(snapshot_id, row_key, text_json, html)=
+  The row keys are the ones =offline.org= item 4 already defined:
+  - SL: path + =item=
+  - JL: =YYYYMMDD[_N].htm=
+  - BS: =Code=
+  - BB: the page link
+  BruceParser's feed uses the same keys, so the DB, the feed and SAED all speak one key. A "same as <date>" snapshot stores only a reference, so a weekly run of a frozen site like JL or KF costs a few bytes.
+- *Uploads come from home, never from the userscript.* SAED's 📸 Snapshot job writes to the local folder or server, as in =offline.org=. A small =scripts/sync-archive.py= uploads new snapshots and =publish.sh= uploads BruceParser's, over SFTP or a PHP import endpoint with a token.
+- *The diff is computed by the server.* The added, changed, removed and moved rows that =offline.org= Phase 3 computes in the browser become an SQL join on =row_key= between two snapshots. That gives three things:
+  - "What changed" pages for all four Springsteen sites, not only BB;
+  - one row's history (mockup F) as a page;
+  - the diff of each run in the run record.
+  =applySnapshotDiffToTable()= in SAED stays the in-browser view of the same data.
+- *Search.* =offline.org= suggested SQLite FTS5 and Datasette for querying. MariaDB =FULLTEXT= indexes over =snapshot_row.text_json= give that over every snapshot. Full text goes in the private area; the public search covers facts only.
+- *Every machine can work offline.* A =scripts/pull-archive.py= turns the MariaDB data into a local =.sqlite= file. petri, NB-3641 and vzell-lap each get the same archive for =offline.org='s local page B (Phase 4) and its local server option. This settles the ❓ in =offline.org= Phase 2: a local server with SQLite, fed from the hub.
+- *WARCs.* The raw WARC crawls (the shutdown insurance) stay on the NAS, because they are too big for shared web space. The database keeps only their index:
+  - which crawl;
+  - when;
+  - which URLs;
+  - which content hash.
+  Ionos can hold an off-site copy of the small ones (JL, KF) if the quota allows.
+- *Rights.* =offline.org= item 6 already says it: snapshots and WARCs are for personal use and preservation. They stay in the private area. The public site shows facts and links and credits the owners (below).
+
+** Credits on every page that uses their work (very important)
+
+The data comes from people, and the site says so where their data appears, not only in a footer:
+- *Eddy Wehbe*, springsteenlyrics.com:
+  - song and lyrics pages, the collection ("Eddy" bootlegs);
+  - every Sources strip and data-health row from SL.
+- *Danny van der Linden*, brucebase.wikidot.com:
+  - show, song, venue and person pages;
+  - On this day;
+  - "What changed on Brucebase", every data-health row from BB, and the tag spillover findings.
+- *Stefano Taverna, the one and only Italian stallion of Bruce bootlegging*:
+  - the bootleg and release pages, and every row from his brucelegs list (BruceParser's "Stefano" releases).
+
+How the credit appears:
+- each source's credit line in the page's Sources strip, with a link to the original page, the owner's name and the "as of" date of the snapshot;
+- a "Sources & thanks" page with all three portraits in prose, and the jungleland.it and brucespringsteen.it owners too once vzell supplies their names (they are not in the repos);
+- the same credits on the userscripts page, since SAED's foreign-site support exists because of their sites.
+
+Whether to ask Eddy, Danny and Stefano before the launch is vzell's call; Claude can draft that message for vzell to send.
+
+** Constraints to settle before building
+
+- *A German site needs an Impressum and a Datenschutzerklärung.* Avoid analytics and third-party fonts and CDNs, and keep the Ionos access logs short.
+- *Link and derive, never republish.* Setlists, dates and counts are facts. Lyrics, wiki prose and images belong to BB and SL, so show page links rather than copies. Also check whether the public SL mirror at =/springsteenlyrics/= is allowed; if not, put it behind auth.
+- *Shared hosting limits.* Check whether the package includes SSH and cron, and what its PHP and MySQL versions and its space are. Without cron, everything is pushed from petri, which is fine.
+
+** TODO First steps (own repo, e.g. =~/git/volkerzell.de=, own CLAUDE.md)
+
+1. *Mockup first.* An interactive LAF mockup of the homepage:
+   - the show page with its Sources strip and credits;
+   - On this day;
+   - one data-health table;
+   - "What changed" (a diff of two snapshots);
+   - Sources & thanks;
+   - the userscripts page.
+   It uses realistic sample data from =bb/latest=. Wait for vzell's approval.
+2. *Database schema.* Tables for the data spine (shows, songs, venues, people, links, findings) and the archive (=snapshot=, =snapshot_row=, the WARC index), keyed as in =offline.org= item 4. Tested locally in MariaDB.
+3. *The =publish.sh= step in BruceParser.* It writes the normalised dataset (JSON plus SQL), and a dry run shows the counts before anything is uploaded. Version bump and CHANGELOG entry there, and it gets a =step_done= call and an entry in =timing_steps=. Then =sync-archive.py= and =pull-archive.py= for the snapshots.
+4. *The PHP site, read-only, on top of the import.* Start with the show finder, data health and Sources & thanks; the private area, the archive and full-text search follow.
+
+Verification: run =publish.sh= locally against =bb/latest=. Check that its row counts equal the report counts in =run-history.md=. Load the SQL into a local MariaDB and serve the PHP with =php -S=, then upload to the live site once vzell has approved it.
