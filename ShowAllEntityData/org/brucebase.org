@@ -823,7 +823,9 @@ BB PTs". Last, once Phases 7–15 have added their readers.
   coverage registry (=docs/non-mb-coverage.json=) changes with the batches vzell picks.
 - [X] links on BB pages and in our windows with no preview (BB, MB, SL and other known hosts):
   =docs/non-mb-coverage.json= cells refreshed — listed above (L1–L6); the cells change with the fixes
-- [ ] fixes in batches, each with spec and mutation; docs, WIP
+- [X] fixes in batches, each with spec and mutation; docs, WIP — done (2026-11-13): batches 1–4 below,
+  WIP.22–WIP.25, each live-checked OK; the coverage registry's =springsteen= reader row now names every
+  Brucebase link kind that previews (it still said "/song: (and /gig:, … on discogs.com)").
   vzell's pick (2026-11-12): ALL of G1–G7 and L1–L4 (L5, L6 left, as recommended). Batches, each with a
   mockup and questions first:
   1. event windows: G1 the description, G2 the cast tabs, G3 an interview's Playlist
