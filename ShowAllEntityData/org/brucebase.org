@@ -901,7 +901,8 @@ BB PTs". Last, once Phases 7–15 have added their readers.
   tour's song counts and shows, 28 + 29 pages) and the two playlist discographies (no release entries). Spec =bb-song-pages-windows.spec.js= 8/8,
   mutations 31/31 (+6 refreshed), BB + popup-ext specs 436/436. Sweep: lyrics 5% → 89%, ott 13% → 77%,
   sessions 0% → 69%, discographies 0% → 35%, tours 0% (wording).
-  - [ ] vzell's live check of batch 3
+  - [X] vzell's live check of batch 3 — OK (2026-11-13). The open question (a sessions page's anchors to
+    itself preview the page itself) left as it is; ask again with batch 4.
 - [ ] vzell's live check
 
 *** Handoff to petri (2026-11-12T04:05+01:00, from vzell-lap)
