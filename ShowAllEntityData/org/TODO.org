@@ -6359,8 +6359,48 @@ on the POH the "/ She's the One" from the medley "Mona / She's the One" is in th
 
 make the doubling of the IP information on non-MB PTs shine through instead of appending it again on the FRP
 
+
 * TODO BUG: When marking text on a POH and pressing "Ctrl-C", then text is not copied but instead the first table column is focused
 
 BUG: When marking text on a POH and pressing "Ctrl-C", then text is not copied but instead the first table column is focused
+
+
+* DONE merge sections
+
+Actually the two new sections
+
+#+begin_example
+    267:## Changes since last version (9.99.1167 -> 9.99.1426)
+    578:## Changes since last version (9.99.1426 -> 9.99.1623)
+#+end_example
+
+should be merged into one, as the last officially released version is 9.99.1167
+
+1.)
+
+Prominently mention the following at the beginning
+
+#+begin_example
+the new ☰ SAED menu
+real SAED PT support for 'release-tracks' PTs (don't use abbreviations for the forum, or at least explain them before using)
+hover support for almost every link
+new native SAED support for non-MB PTs
+ - mention specifically discogs, setlist.fm, Internet Archive (which is probably useful for lots of MB editors)
+ - also mention the Bruce Springsteen related sites for die-hard Bruce fans
+our internal viewer support (or image handling in general on all supported PTs)
+interoperability with majkinetor userscripts
+sidebar addition
+relationships as tables
+findings menues
+YouTube in-place
+#+end_example
+
+2.)
+
+not too many details if not important
+
+3.)
+
+Explicitly mention the possibility of storing the Discogs and setlist.fm API keys and their advantage when using them
 
 
