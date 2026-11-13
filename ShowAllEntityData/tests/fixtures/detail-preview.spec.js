@@ -432,7 +432,10 @@ test.describe('detail-page parsers (one record per saved page)', () => {
         expect(perf.label).toBe('Performances (250)');
         expect(perf.open).toBe(false);
         expect(perf.html).toContain('<a href="https://brucebase.wikidot.com/gig:2024-09-15c-beach-asbury-park-nj"');
-        expect(r.sections[2].html, 'the lyrics have no links').toBe('');
+        // Since Phase 16 batch 4 (_DP_PARSER_VERSION 28, vzell's answer 3) the
+        // Lyrics section keeps its one kind of link, the "Visit
+        // SpringsteenLyrics.com …" line after each version.
+        expect((r.sections[2].html.match(/<a href="[^"]*"/g) || []), 'the lyrics\' only link').toEqual(['<a href="https://www.springsteenlyrics.com/lyrics.php?song=4thofjulyasburypark"']);
         expect(r.collapsible && r.imagesByKind).toBe(true);
         // The fixture's lyrics are blanked (build-detail-fixtures.py): pin the
         // shape, never the words.

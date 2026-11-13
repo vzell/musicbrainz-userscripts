@@ -4281,3 +4281,17 @@ The render is 7–11 % slower with the columns (+42 to +67 ms on 94 rows); the p
 A): it is the four more columns themselves (19 → 23 with their filter boxes, 📊 and the collapse pass
 of On stage). The sort does not change. Reported to vzell with the alternative (the columns hidden
 until ▶ Pages is pressed) before the merge.
+
+* 2026-11-13 — =npm run test:full= on =petri=, the BB overhaul's merge check after Phase 16 (feature/bb-overhaul at 9fdef5e8, 9.99.1598)
+
+Env: 2026-11-13T01:54:19+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                         | Tests | Workers | Wall clock  | Basis                                     |
+|-----------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, merge check  |  3088 |      12 | *20 m 1 s*  | =run-test-full.py=, 01:54:19–02:14:20 CET |
+
+3087 passed, 1 failed: =detail-preview.spec.js= "Brucebase: origin, the performance count, …" still
+pinned the song window's Lyrics section as link-free (=html= ''), which Phase 16 batch 4 (answer 3)
+changed on purpose; the spec now pins its one link, the springsteenlyrics.com line (a mutation added
+to =bb-story-song-windows.json=), and its file re-ran 32/32. No code changed after the run. The
+=rel-column-site-kind-discogs= flake of Phase 16 batch 1 and the popup-ext-foreign flake did not show.

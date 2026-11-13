@@ -117,6 +117,19 @@
         "expect": "fail"
     },
     {
+        "name": "the Lyrics section without its links (detail-preview)",
+        "why": "G7, answer 3. The parser spec of the song fixture pins it too.",
+        "edits": [
+            {
+                "find": "            if (text) data.sections.push({ label: name, text, html: _dpBlockHtml(panel, url) });",
+                "replace": "            if (text) data.sections.push({ label: name, text, html: name === 'Lyrics' ? '' : _dpBlockHtml(panel, url) });"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "Brucebase: origin, the performance count",
+        "expect": "fail"
+    },
+    {
         "name": "a link to this page's anchor previews",
         "why": "Answer 4.",
         "edits": [
