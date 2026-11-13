@@ -6404,3 +6404,22 @@ not too many details if not important
 Explicitly mention the possibility of storing the Discogs and setlist.fm API keys and their advantage when using them
 
 
+* DONE MB flicker
+
+There are situations when the FRP on a MB multi-table PT starts flickering
+
+#+begin_example
+@debug/MB-flicker-FRP.html - FRP - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f
+#+end_example
+
+For example after the final rendering when I click the "Album + Compilation + Live" h3 line to uncollapse the section,
+the flickering starts and the console emits the following errors at the same time. It stops flickering when clicking the
+headerline again, it also stops flickering when starting scrolling and the section is still uncollpased.
+
+#+begin_example
+@debug/MB-flicker-FRP.log - console log when clicking
+@debug/MB-flicker-FRP.mp4 - video of the whole scenario
+#+end_example
+
+
+

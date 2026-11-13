@@ -1243,3 +1243,16 @@ venue POHs have NO hover support for e.g Wikipedia links, e.g. when hovering htt
 On the year-event pages e.g. https://brucebase.wikidot.com/2026#020526 there are icons for an evetn if specific information is included in the detail event link, see [Image #21]
 Cound these icons made available on the "Info & Setlist" POH, see [Image #22]
 
+
+* TODO Wikidot tagsize limit of 500 chars for all tags of a wiki page together
+
+Wikidot tagsize limit of 500 chars for all tags of a wiki page together
+
+* reexecute bbp.sh
+
+Currently we have only run the @bbp.sh shell script on the "NB-3641" host. On "petri" and "vzell-lap" (my other hosts
+where Claude Code is installed) there is just a @bb/latest symlink to my NAS drive (the content was retrieved once on
+"NB-3641" and copied from there to the NAS).
+
+I want to re-execute bbp.sh now on "petri" to have the latest data from the Springsteen sites like e.g. BruceBase etc.
+
