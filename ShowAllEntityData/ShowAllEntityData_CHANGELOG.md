@@ -4,9 +4,238 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1769 versions; the month pages hold all of them.
+This page shows the newest 100 of 1794 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1623 — 2026-11-13
+
+**✨ Improve**
+
+- Brucebase: a story page's window shows the page's own picture (the E Street Radio and DJ-set banners) with its title; the Storyteller badge is left out.
+- Brucebase: a song's window keeps the links of the song's intro under its title (the writers, the original artist, the album); the hover card still shows it as words. Its Lyrics section keeps the "Visit SpringsteenLyrics.com for other versions of this song." link after each version.
+- Link previews on the Springsteen sites: a link to the page you are on that only adds an \#anchor (a jump within the page) no longer opens a preview of that same page.
+
+
+## 9.99.1622 — 2026-11-13
+
+**✨ Improve**
+
+- Brucebase: links to a song's tour page, its On The Tracks page and its lyrics page now preview (Ctrl+hover), under the song preview's setting. The tour page's card says how often the song was played on tour and on how many tours, the window lists every tour; On The Tracks shows the versions under each song with the releases each is on; a lyrics page's card shows its first four lines and how many versions it has, the window each version (the first open) and the springsteenlyrics.com link last.
+- Brucebase: links to an album's studio sessions page and to a discography page now preview, under the event, venue, people and release setting. A sessions window has the overview, the credits and each table folded with its first 100 rows; a discography window has the releases under the page's own headings, each with its cover, year, release date and label, and the covers as its pictures. The other stats pages still have no preview.
+- Brucebase: links to /multi: and /soundcheck: pages preview the show they lead to, as /onstage: links do.
+
+
+## 9.99.1621 — 2026-11-13
+
+**✨ Improve**
+
+- Brucebase: the window of a person or band starts with the biography (About) and its source, and the hover card shows its first sentence.
+- Brucebase: the window of a release or playlist also shows, folded, its On The Tracks versions under each song (with the releases each is on), its Recording 'Live' Dates under each disc with each date linked to its show, its Gallery/News press links, how often its songs were played live, its notes and history, and the links to its lyrics and media.
+- Brucebase: a release's page (Release button) shows its Gallery/News press links too, folded above the details.
+
+
+## 9.99.1620 — 2026-11-13
+
+**✨ Improve**
+
+- Brucebase: the window of a show, recording session or interview now starts with the page's description (About this show), and its hover card shows the description's first sentence. A page whose description is plain text above the tabs shows it too, in the page's own view as well.
+- Brucebase: the window lists the people under the tab's own name: In studio for a recording session (with the session's name first), On set, On site. An interview's playlist is listed like a setlist, each song with its original artist. The venue's other lists (Appearances, Cancelled, Performances without Bruce, the From My Home To Yours episodes) are folded sections, and an older page's News tab shows as News/Memorabilia.
+- Brucebase: the year table's On stage column shows a recording session's people too.
+- Brucebase: the window, the year table and the event page's own view now list a show's guests too (a second list on the wiki's page: Bruce Springsteen as guest at another act's show, a radio show's guest after its hosts), and the people of the rarer tabs (On Phone, On Call, In Room). In the year table a line-up with several groups shows each group's members under it.
+- Brucebase: a window no longer shows the code of the wiki's Flickr gallery as text.
+- Brucebase: a new WARNING, "Brucebase event page with an 'Onstage' tab": in a year table or year listing, an entry whose page spells its cast tab "Onstage" (one word) is flagged on its Content cell once ▶ Pages has read it, also when the warning's filter is on while pages arrive. Its own settings switch it and its tint off.
+
+
+## 9.99.1619 — 2026-11-13
+
+**✨ Improve**
+
+- Brucebase: a page's History section, with ✎ and H, is now in its window on every site, MusicBrainz included, not only on brucebase.wikidot.com. From another site the requests carry none of your cookies.
+
+
+## 9.99.1618 — 2026-11-13
+
+**🚀 Feature**
+
+- Brucebase: the year table and the year listings get four columns from each event's own page: who was on stage (the band's members folded), which tabs have something in them (Recording, Storyteller, Media, …), the pictures by kind, and the scheduled start. They fill in after ▶ Pages in the On stage header: the rows you can see, then each row you scroll to, one page a second; a row whose hover card you opened before fills in at once, with no request. A row that could not be read shows ⟳ to ask again.
+
+
+## 9.99.1617 — 2026-11-13
+
+**🚀 Feature**
+
+- Brucebase: a discography page (…/stats:discography-album, -retail, -single, the specials, -video) gets a button that shows every release it lists in one table: year, title, subtitle, cover, release date (with its day, month and year), label, and the section and tab it is under. A cover shows big on hover and opens in the viewer on a click. Nothing is fetched.
+- Brucebase: the songs registered at the Library of Congress (…/stats:songs-registered) get a button that shows every title in a table with its song page where the wiki's song list has it (one request), the registration record above.
+
+
+## 9.99.1616 — 2026-11-13
+
+**🚀 Feature**
+
+- Brucebase: a song's tour page (…/stats:hungry-heart-tour) gets a button that shows every tour in one table: how often the song was played, the tour's own number of shows, the share with a bar and the page's note, then the other known shows and the public rehearsals. Nothing is fetched.
+- Brucebase: an album's studio sessions page (…/stats:born-to-run-studio-sessions, and each of its parts) gets a button that shows its tables, one per section and tab: the released and additional recordings, every take of the version history in one table with its name split into song, version, take and date and the wiki's note on the song as a column, the timeline and the potential album sequences; the album, its release date, label, credits and overview above. Nothing is fetched.
+
+**✨ Improve**
+
+- Brucebase: On The Tracks (on song, On The Tracks and release pages) splits a take's name further: "THE HEIST - V2 - take 14" gets a Take column, "JUNGLELAND - V1 (August 1, 1974)" a Date column.
+
+**🐛 Fix**
+
+- Brucebase: on a stats page's Tables (9.99.1615), a table whose every row is bold no longer takes its first row as the column names (a studio session's version tables), and a table of one bold row no longer gives its row as the column names to the tables after it.
+
+
+## 9.99.1615 — 2026-11-13
+
+**🚀 Feature**
+
+- Brucebase: the statistics pages (…/stats:…: bootlegs by label, shows with circulating audio, the venues of a state, awards, song counts per tour, performance counts per city, …) get a button for each kind of content they have. List: the page's links in one table with the tab they are under, a show's or venue's title split into date, venue, city, state and country, the wiki's sort forms ("Left Foot (The)", "Band, The") turned round. Tables: the page's own tables, one per tab or heading, the first open, with a Section column where a row names the rows below it. Nothing is fetched; the wiki's page stays below, folded.
+
+**🔧 Refactor**
+
+- A test of the built-in hidden-columns rows offered on upgrade expected one row; since the Discogs Section rows there are three, so it now re-offers only the one it checks.
+
+
+## 9.99.1614 — 2026-11-13
+
+**🚀 Feature**
+
+- Brucebase: a story page (…/story:…: a show's Storyteller words, an interview, a podcast, a speech, a DJ set) gets a button that shows its words as tables — each moment of the show with the song it leads into, or each speaker's turn, a table per part — with the kind, the date, the show's own page (found with one small request) and who compiled it above.
+- Brucebase: a story link's window names the page's kind, date, how many moments or turns it has and who compiled it.
+
+
+## 9.99.1613 — 2026-11-13
+
+**🚀 Feature**
+
+- Brucebase: the tag cloud (https://brucebase.wikidot.com/system:page-tags) gets a button that shows every tag in a table: its family (songs and people told apart with the song list and Relations), its weight on the cloud and about how many pages carry it.
+- Brucebase: a tag's page (…/system:page-tags/tag/storyteller) gets two buttons: the tagged pages as a table (kind, and for a show its date, venue, city, state and country), and the same pages read from the wiki's page lists with when each was created and last changed, its size, comments and tags.
+- Brucebase: Pages & Tags (…/manage:pages-and-tags) gets three buttons: this page, every page of its list, and every page of the wiki with its tags; the tags one row each.
+- Brucebase: every link to a tag's page (the cloud, our tables, the tags line under each page, a window's Tags) shows how many pages carry the tag and the newest six on hover; Space opens the tag's pages in the window, the first 250 at once and "Load all" for the rest.
+
+
+## 9.99.1612 — 2026-11-13
+
+**✨ Improve**
+
+- Brucebase Recent changes: each row's page has a ✎ button that opens the page's History in the window on that revision against the one before it (an older revision too: the list's later pages are read for it).
+- Brucebase History: every comparison scrolls to its first changed line and marks it; and on the wiki's own History (signed in), a comparison opened there scrolls to its first difference.
+
+
+## 9.99.1611 — 2026-11-13
+
+**🚀 Feature**
+
+- Brucebase: the year listing pages (https://brucebase.wikidot.com/2026-list, …, /1949-64-list) get two buttons. Events turns the year's list into a table — Event (linked to the show on the year page, with its card and window), Date with its parts, Venue, City, State, Country, Note (Recording Session, Rehearsal, Rescheduled, …) and Tour (from the Start of / End of boxes); All years reads every year's listing into one table. Under the year pages' switch.
+- Brucebase: a tour box that ends one leg and starts the next in one line ("End of the 1st leg, and Start of the 2nd leg of …") now starts the new leg, on the year pages too.
+
+
+## 9.99.1610 — 2026-11-13
+
+**✨ Improve**
+
+- Brucebase: the window of a show on its year page (e.g. an event's "Info & Setlist") shows the year page's icons — Photo, Setlist, Memorabilia, Video, Bootleg, … — each with its name, instead of a line of words.
+- Brucebase: every Brucebase window (a venue, a person, a show, a song; on Brucebase or from another site) opens any link in the same window, as a MusicBrainz window does: a venue's "Source: Wikipedia" shows the article there, with Back.
+
+
+## 9.99.1609 — 2026-11-13
+
+**✨ Improve**
+
+- Brucebase: links to a show on its year page (an event's "Info & Setlist", a release's "recorded July 6, 1981", e.g. /2026\#020526) now preview on Brucebase's own pages too — the card on hover, the show in the window on Space — as they already did on every other site. Clicking one still goes to the year page.
+
+
+## 9.99.1608 — 2026-11-13
+
+**🐛 Fix**
+
+- Brucebase: the wiki's top-bar menus (Manage Site, Help Docs, …) can be used again. Their entries opened under our toolbar and status line, and the menu closed as the pointer moved down onto them, before any button was pressed too. The wiki's header is now lifted over our pinned toolbar, as MusicBrainz's top header already was.
+
+
+## 9.99.1607 — 2026-11-13
+
+**✨ Improve**
+
+- The Brucebase window's History section: chips for the kinds of change (All, Source, Title, Page name, Tags, Metadata, Files, each with its count; several at once) filter the revisions at once; a tag change in the list shows as pills (+ tour\_lohadnk, − album\_thepromise); From and To on every row compare any two revisions, the older always on the left and the revisions between them tinted; every comparison shows the tags of both (added +, removed struck, or "the same in both") and a changed page title or page name. The list is read 100 revisions a page, and a revision that changed only tags no longer reads the page's text twice (9.99.1606's History section).
+- "✎ Page history" is now in the ☰ menu of every Brucebase page with the toolbar, Recent changes and the year pages included (their own history: the 2026 page is at revision 310). Links to Brucebase story pages (the Storyteller words of a show) preview them, with the story's words and the History section, so a story page's title changes and renames can be seen too.
+
+
+## 9.99.1606 — 2026-11-13
+
+**🚀 Feature**
+
+- Every Brucebase preview window on brucebase.wikidot.com ends with a folded "History" section: the page's revisions, newest first (number, date, who, the kind of change, the comment), and what the revision you click changed — the old lines and the new ones side by side, the changed words marked, the unchanged lines folded ("Everything" shows them), a revision that changed only tags or the title saying so. You need not be signed in: the wiki answers its history to everyone (probed signed in and signed out). Nothing is read until the section opens; then 20 revisions ("Load 20 more" for older ones) and the two texts the change needs, one request a second, kept until you leave the page. ✎ in the window's title bar and H open it; on a page that has a window, the ☰ menu's "✎ Page history" opens it for the page itself. Setting: Page history in the Brucebase window (on).
+
+**📝 Docs**
+
+- Help: the window's History section; two places still named the event preview setting by its old label.
+
+
+## 9.99.1605 — 2026-11-13
+
+**🚀 Feature**
+
+- Brucebase release and playlist pages get a button, "Release": a table per edition and disc (song, running time, where the track comes from, the page's footnote on it; a box set's films each a table of their own), the personnel, the related releases, a live release's recording dates (the show's date and place, linked), the takes On The Tracks and how often each song was played live. Above them the facts the page states (released, label, produced, recorded, mixed, mastered, design, photography), each edition's running time, the overview, footnotes and history, tags, media, the lyrics' pages and the artwork typed by its file names; the wiki's page folded below. Nothing is fetched.
+- Brucebase bootleg pages get "Bootleg": the tracklist, a table per disc with each song's time and, where the page marks them, the sides; the label, catalog number, time, format, source and sound in a Bootleg card, the notes and the Front, Back and Disc artwork. The wiki writes bootlegs as free text — lists, numbered lines, "Disc 1: (43:31)", "//" after a side's last song — and all of it is read.
+- Links to Brucebase release, playlist and bootleg pages preview them (Ctrl+hover): their facts and tracks; Space opens the window with the overview, personnel and related releases. The settings are now called "Detail pages: events, songs, venues, people, releases and bootlegs as tables" and "Preview event, venue, people, release and bootleg pages on hover".
+
+**🐛 Fix**
+
+- A YouTube player embedded as "youtube.com/embed/playlist?list=…" (Brucebase's release pages) was taken for a video named "playlist"; it is the playlist.
+- Brucebase On The Tracks: a take written "THE HEIST - V2 - take 14" or "JUNGLELAND - V1 (August 1, 1974)" is now split into title and version too (song pages and the new release pages).
+
+
+## 9.99.1604 — 2026-11-13
+
+**✨ Improve**
+
+- Brucebase: the shows in a person's lists link the wiki's "on stage" pages, which the wiki forwards to the show; these links now preview the show itself, card and window.
+
+**🚀 Feature**
+
+- A new WARNING on the Brucebase detail pages, "Brucebase entry with a comma after its date": an entry the wiki lists as "2015-04-30, Story Chapel, …" instead of "2015-04-30 Story Chapel, …". It is still read; the Date cell is tinted, its tooltip quotes the entry, and the lists being the linked pages' titles, that page's title is the one to fix. Settings "Find Brucebase entries with a comma after their date" and its highlight (both on).
+
+
+## 9.99.1603 — 2026-11-13
+
+**🚀 Feature**
+
+- Brucebase venue pages get a button, "Venue": the performances, cancelled shows and appearances at the venue as tables, its description, region, count, map link and pictures above, the wiki's page folded below.
+- Brucebase pages of people and bands get "Person": every performance with Bruce Springsteen as one table — the wiki splits long lists into pages (Steven Van Zandt's 1,517 shows over six), and every page is read, one request each — with an As column saying in which band; the count per band; appearances; the recordings by song and role; their bands or members (in reading order: "The E Street Band"); songs co-written with Bruce. The biography, tags and pictures are above. The setting is now called "Detail pages: events, songs, venues and people as tables".
+
+
+## 9.99.1602 — 2026-11-13
+
+**🚀 Feature**
+
+- Brucebase song pages get a button, "Song": the credits (each release, who played what), the performances counted by tour (only the tours it was played on, with its share of the shows), every performance, multiple performances on one date, snippets, the official live downloads and its takes On The Tracks (title, take, running time, the bootlegs and releases it is on), as tables you can filter and sort. Above them: where the song comes from, Released on Album, the lyrics and notes (folded), a Song card (how often and when last played live, released on, live downloads, takes), its tags, media and links; the wiki's page folded below. An On The Tracks page gets "Versions": its takes as one table. Nothing is fetched. The setting is now called "Detail pages: events and songs as tables".
+
+
+## 9.99.1601 — 2026-11-13
+
+**🚀 Feature**
+
+- Brucebase event pages (a gig, a show that did not happen, a recording session, a rehearsal, an interview) get a button, "Event", that lays the page out like a MusicBrainz release, from the page itself with nothing fetched. Above the tables: what it was, where and when; About this show; an Event card (type, date and weekday, scheduled time, venue, tour, the year page, running time), the page's tags by family and its YouTube links; the pictures with a chip per kind and per photographer. The tables: the Setlist as one table (Set, \#, Song in MusicBrainz style, Segue, Premiere ★ for a song in bold on the wiki, Note), who was on stage with their band and role, the other shows at the venue (this one in bold), the recordings (official releases, bootlegs with their labels, the live download) and the Storyteller's words by song. The wiki's own page stays below, folded, its headings folding too. Setting "Event pages: a detail view of the gig" (on). Mockup: https://claude.ai/artifact/3rAGVKsBHEv9jGspkJ5X7Z
+
+**🐛 Fix**
+
+- Brucebase previews: the scheduled time is read on pages that write it "Scheduled: 21:00 \| Local Start Time …" too; the card left it out.
+
+
+## 9.99.1600 — 2026-11-13
+
+**✨ Improve**
+
+- Brucebase previews: a picture now says what its file name tells, the photographer included ("Photo · Cliff Breining · \#01", "Setlist · \#01a · Handwritten", "Pass · \#01 · Backstage"), in the window and in the full-size viewer. The window shows the photos once per photographer, those without a known photographer last. Each group folds on a click on its heading, and a Ctrl+click folds or opens every group at once, so a gig with hundreds of photos can be folded away; the text sections stay as they are.
+- Brucebase previews: the window ends with the page's tags, folded at first, sorted into Date, Place, Tour, On the page, Songs, People, Releases and more; each tag links to the wiki's list of pages with it. Previews already cached are read once more.
+
+
+## 9.99.1599 — 2026-11-13
+
+**✨ Improve**
+
+- Brucebase: the side bar's show/hide handle now sits at the top of the side bar, as the MusicBrainz sidebar's does, instead of halfway down the window. Scrolled down, it stays near the top of the window; with the side bar hidden, it sits at the top of the page content.
+
 
 ## 9.99.1598 — 2026-11-11
 
@@ -636,254 +865,6 @@ This page shows the newest 100 of 1769 versions; the month pages hold all of the
 **✨ Improve**
 
 - archive.org item window (link preview): a new "Images" section shows every picture the uploader added (cover, back, booklet, …), not just archive.org's tile. A click opens them in the viewer, and ← → step through all of them. A click on the cover now opens the cover itself at full size.
-
-
-## 9.99.1523 — 2026-11-02
-
-**✨ Improve**
-
-- archive.org search table: the Collection column lists one collection per line and links each one to its archive.org page. It names them as archive.org does ("Radio Nowhere", "Recordings of Independent Origin") rather than by their ids. This costs one more request to archive.org for a page that brings new collections.
-
-
-## 9.99.1522 — 2026-11-01
-
-**🚀 Feature**
-
-- Internet Archive (archive.org): on a search page such as everything with the subject "Bruce Springsteen" in 1975, a new "Items" button lists every item of that search as one filterable, sortable table: picture, date, title, venue, source, type, and what archive.org only shows when you rest on a tile (views, favorites, reviews, when it was added, size, collection). The rows come first by date, from the Internet Archive's search API (100 a request, one a second); archive.org's own page holds none of them. Rest on an item's picture for a card with its own pictures (the uploader's scans of the cover, back, booklet or discs, or a video's stills); a click opens them full size in the viewer, and 🖼 shows the whole table's pictures. New settings section 🏛 Internet Archive, "Enable on archive.org" and "Art column: the item's pictures on hover", on by default. Mockup: https://claude.ai/artifact/4aXkdPxudwhuzACj4Wg81C
-- Link previews: a link to an archive.org item (archive.org/details/…), on MusicBrainz, Brucebase, archive.org or anywhere else previews look, has a card (date, venue, source, tracks and running time, the first songs) and a window on Space (facts, description, lineage, links to Brucebase and Databruce, the whole setlist with each song's length). A link to one track opens its show with that track marked. A video item shows its picture, thumbnails and files.
-- Play in the window: each song of an archive.org show has a ▶ and a video item a "Play here" tile, which play in archive.org's own player in the window, one at a time with YouTube's; Esc or "■ Stop" ends it. New setting "Play archive.org tracks and videos in the window", on by default.
-
-**📝 Docs**
-
-- Help: the list of supported sites said each other site was "off until you switch it on"; every site's switch has been on by default since 2026-10-26. Now it says so.
-
-
-## 9.99.1521 — 2026-10-31
-
-**🐛 Fix**
-
-- Link previews: the page's own title in the header (the release group's, artist's, … name) has its card and window again when jesus2099's "mb. SUPER MIND CONTROL Ⅱ X TURBO" has its option "unlink entity headers" on. That script turns the title into plain text the first time the pointer passes over it, so every later hover found no link. The title now stands for the page's own entity, also on its other tabs. As for every link outside a table, this follows "Also preview links outside tables".
-
-
-## 9.99.1520 — 2026-10-31
-
-**✨ Improve**
-
-- The read-only "Sidebar" section shown below the Credits or Relationships section now starts closed by default; a click on its heading opens it. Setting: "… start the 'Sidebar' section closed", now on by default (off: it starts open). A profile that kept the old value only because SAVE stored it moves to the new default once.
-
-
-## 9.99.1519 — 2026-10-31
-
-**✨ Improve**
-
-- Popup window: the last table in the right column (an artist's release groups, an event's setlist, a work's recordings, a Discogs label's releases, …) now reaches down to the window's bottom edge. A taller window shows more rows, and the right column stays where it is while the left one scrolls. A window too low to leave the table 160 px keeps the usual 460 px table.
-- Popup window: every other table that scrolls has a grip under it. Drag it to change the table's height (a label shows the height and how many rows fit), use ↑/↓ on the focused grip for 20 px steps, Esc while dragging to cancel, and double-click to go back to 460 px. The height is kept for that kind of table in every later window and is part of the settings export (panel geometry). On a phone the window is one column; the grips work by touch.
-
-
-## 9.99.1518 — 2026-10-30
-
-**✨ Improve**
-
-- The title-style check now also covers event names, for punctuation only: a new warning, "ASCII punctuation in event name" ("Max's" for "Max’s", "..." for "…", "2024-2025" for "2024–2025"). Capitalization of event names is never checked: they follow the poster. A live-form name's date and names that almost follow the event style guide keep their own warnings and are not flagged twice. Pages with events (an artist's Events, …) now get the Aa button too; its panel lists only the warnings the page can have, and counts "names" where there are only event names. New setting: ⚠️ Findings → Title style: find ASCII punctuation in event names.
-
-**🔧 Refactor**
-
-- FINDINGS event-typography (\_findingEventTypo(), \_findCellEventEl()), \_tableStyleCols() (was \_tableHasTitleInfo()), \_titleStylePageCols(), \_titleStyleNoun(); \_titleStyleAvail counts event-name columns. Mockup approved 2026-10-29, variant A: https://claude.ai/artifact/PB5NwvrZz61sMqju5qxFYu. Tests: findings-event-typography.spec.js (new, 6); scripts/mutations/event-typography.json (new: 6 caught, 1 recorded as not observable, with why). scripts/mutations/title-style.json: "the click does not turn the findings on" re-anchored (its find had not matched since 9.99.1516).
-
-
-## 9.99.1517 — 2026-10-29
-
-**🔧 Refactor**
-
-- scripts/run-test-full.py --script NAME runs any test script of package.json (default test:full, the merge gate, unchanged), so a development run of npm test shows in the Claude Code status line too ("🧪 test · …"). Each script keeps its own ETA baseline (\~/.cache/sa-test-full/last-&lt;host&gt;-&lt;script&gt;.json; test:full keeps last-&lt;host&gt;.json), and the status file names the script, which \~/.claude/statusline.sh shows (a file without it reads as test:full). CLAUDE.md: every suite run goes through the wrapper.
-
-
-## 9.99.1516 — 2026-10-29
-
-**✨ Improve**
-
-- "Check title style" is now where you see it: an Aa button next to the filters, in the filter bar after Cc / Rx / Ex on a page with one table, and in every sub-table heading on a page with several. It checks the whole page, as the ⚠️ list's row does, which stays. Afterwards each button shows its own table's result, "Aa 4 titles off-style ▾" in amber or a green "✓ Style OK". Clicking it (or resting on it) opens a small panel: titles checked, time taken, the five title-style warnings with their counts — a warning found on the page is a white box with a checkbox and its count in a pill, one found nowhere is greyed out — ticked to show only those rows in every table (the ⚠️ list shows the same tick), the table's titles struck through over their MusicBrainz style (click one to go to its row), and the "Check every page by itself" switch. Esc or a click outside closes it.
-- A short hint under the first Aa button, a moment after a page with unchecked titles renders, offers the check: Check now, Always check, or Not now. It closes by itself after 14 seconds, on Esc, or on a click anywhere else; "Don’t show this again" stops it (new setting: ⚠️ Findings → Offer the title-style check in a hint).
-
-**🔧 Refactor**
-
-- \_updateTitleStyleControls() (tail of \_updateFindingMenus()), \_titleStyleScopes(), \_tableHasTitleInfo(), \_titleStyleOffRows() (source rows, memoized per stamp generation), \_titleStyleRequestCheck() / \_titleStyleStampNow() (shared with \_runTitleStyleCheck()), the panel \_tsPop\* (\#mb-title-style-pop, the async pop's frame and CSS, \_titleStyleProposal()), the hint \_titleStyleHint\* (\#mb-title-style-hint). New setting sa\_findings\_title\_style\_hint (default true; off for every Playwright load through the new HARNESS\_SETTINGS\_ALWAYS in tests/support/loadPage.js and realNetworkGmXhr.js). Mockup approved 2026-10-29, preset "B + C": https://claude.ai/artifact/HvdfbmeTUdcR34J4TrNycD; the panel's warning rows variant A of https://claude.ai/artifact/XFAcJ9zn5brXitDzJogXqn. Departures from the mockup, agreed: short labels and one 20 px button size everywhere (the non-wrapping global bar overflowed a 900 px window), a click outside closes the hint. Tests: findings-title-style.spec.js (+10), findings-title-style.mobile.spec.js (new), filter-bar-containers.spec.js (the button in the inventory), user-ratings-multigroup.spec.js (expands a heading by its toggle icon, not its centre, where the button sits); scripts/mutations/title-style.json (+13). docs/claude/findings.md, HELP, CLAUDE.md.
-
-
-## 9.99.1515 — 2026-10-29
-
-**🚀 Feature**
-
-- Link previews: a Wikidata item's window (Space) shows its statements, its picture, every identifier as a link in three groups that fold (Music, Libraries and authority files, Other) with a filter, and its Wikipedia articles; a Language choice switches the names. A Wikipedia article's window shows its infobox, its opening, the other languages, and its sections, each read into the window when you open it. Links inside both open in the same window. The cards stay as quick as before. The identifiers' filter marks what it matched. In a window's path, every step on another site (Wikidata, Wikipedia, setlist.fm, Brucebase, any page; Discogs keeps its own marks) starts with that site's icon, and so does a MusicBrainz URL's ("\[info\]") step, with the icon of the site it names (the icons the cards and windows already show; a hover asks for none). Resting on such an icon shows a card: which site it is, what the step shows and how it was read (through Wikidata's, Wikipedia's or setlist.fm's API, from the page itself …), and that the icon is the site's own, asked once and kept for a month. A click on the icon opens the site's home page in a new tab (the pointer shows a finger there, as on MusicBrainz's own icons).
-
-**🔧 Refactor**
-
-- \_extWdWindow() / \_extWdClaims() / \_extWdNamesFor() (wbgetentities once, two SPARQL queries on query.wikidata.org: @connect, \_EXT\_CONNECT\_HOSTS), \_extWpWindow() / \_extWpLeadFor() / \_extWpSectionFor() (action=parse), \_extWpSafe() (Wikipedia's text rebuilt from a few tags), \_DP\_WIN\_ALL\_LINKS\_READERS. Probe scripts/probe-wiki-rich.py (--save: tests/fixtures/ext-wd-\*.json, ext-wp-\*.json). Tests: popup-ext.spec.js (2); scripts/mutations/wiki-setlistfm.json (+10: 9 caught, 1 recorded as not seen, with why). docs/claude/detail-pages.md (new section), HELP. \_hlEsc()/\_hlHtml() in the identifier rows; \_dpKindGlyph() gives every reader but the Discogs family, and a MusicBrainz url step (\_mbPopUrlResource()), the cached site icon (\_dpSiteIconGlyph(), \_extIcons); the URL window asks its site's icon (\_mbPopUrlIconStart(), first-contact rule kept) and draws its path again once its address is known; and \_extIconEnsure() draws the path again when an icon arrives (it is drawn on a step only). The icon's hover text: \_dpSiteIconTip() (\_DP\_SITE\_ICON\_READS per reader), set by \_dpCrumbsRender() through \_setTip(). The icon is a.mb-dp-crumb-site (href the site's home, a new tab).
-
-
-## 9.99.1514 — 2026-10-29
-
-**🚀 Feature**
-
-- Link previews: setlist.fm links (a setlist, an artist's setlists, a venue) get a card and a window from setlist.fm's own API, with a free key of your own (new setting: setlist.fm API key, kept like the Discogs token: never exported). A setlist shows its songs by set, the encore too, covers with their original artist linked to MusicBrainz, guests, songs from tape and the show's notes; an artist's or a venue's window lists their setlists 20 at a time with "Load 20 more" and counts the tours, venues or artists of what is loaded. Links inside open in the same window. Without a key nothing changes.
-
-**🔧 Refactor**
-
-- The setlistfm reader in \_EXT\_READERS (\_extSfmPage(), \_extSfmLoad(), \_extSfmGet(), \_extSfmSetlist(), \_extSfmWindow(), \_extSfmFactsHtml(), \_extSfmAreaClick(), \_extSfmPageLoad()), only while sa\_pop\_ext\_setlistfm\_key is set (secret: true); @connect api.setlist.fm and \_EXT\_CONNECT\_HOSTS; setlistfm in \_DP\_WIN\_EXT\_READERS. Mockup 4: https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag. Probe scripts/probe-setlistfm-api.py (run by vzell with their key; fixtures tests/fixtures/ext-sfm-\*.json). Tests: popup-ext.spec.js "setlist.fm through its API" (4); scripts/mutations/wiki-setlistfm.json. ShowAllEntityData\_CONFIG\_DEFAULTS.json and scripts/config-default-history.json regenerated. docs/claude/detail-pages.md (new section), settings-and-config.md, HELP.
-
-
-## 9.99.1513 — 2026-10-29
-
-**✨ Improve**
-
-- Link previews: in the window of a MusicBrainz artist, place, label, event or any other entity, a link to another site (Wikipedia, Wikidata, Discogs, YouTube, setlist.fm, any page) opens in the same window, with Back, instead of a new tab. Ctrl-click still opens a new tab.
-
-**🔧 Refactor**
-
-- \_dpWinExtTarget(): in a window whose source is in \_DP\_WIN\_ALL\_LINKS\_SOURCES (mb-entity, dg-mb, mb-release-group, mb-event-rg) every reader's link opens here; other windows keep \_DP\_WIN\_EXT\_READERS. Test: popup-mb.spec.js (the event window's setlist.fm link opens here, Back, Ctrl-click a new tab). docs/claude/detail-pages.md, HELP.
-
-
-## 9.99.1512 — 2026-10-29
-
-**✨ Improve**
-
-- Link previews: in an event's window, "Recorded here" has a filter on both its tables, also when there are only a few releases (it used to appear only above 25 rows). The filter looks at the name and its comment ("live, 1988-03-28 …", "version 1"), and the heading counts what it shows ("Recordings · 3 of 40"). "Releases" and "Recordings" fold: click a heading to fold it, Ctrl-click to fold or open both; the next event you open keeps them as you left them.
-
-**🔧 Refactor**
-
-- \_dpFoldGroupHtml() / \_dpFoldClick() / \_dpFolded (a group that folds, Ctrl/⌘ every group of the window, from \_dpTblClick()); \_mbPopRelGroupHtml() and \_mbPopRelTableCols(); \_dpCompactTableHtml() takes filter; \_mbPopRelTableRows() rows carry comment. Mockup 2f: https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag. Tests: popup-mb.spec.js (the event window's filter and groups; a new test of the filter, the count, folding, Ctrl-click and the memory); scripts/mutations/poh-fixes.json (+6, all caught). docs/claude/detail-pages.md, HELP.
-
-
-## 9.99.1511 — 2026-10-29
-
-**🐛 Fix**
-
-- Link previews: with "MusicBrainz Right Side Flags Everywhere" installed, a country's flag in a window no longer covers the green dot of the name after it, and no longer blinks when you click in the window. That script put its own, wider flag into the window's.
-
-**✨ Improve**
-
-- Link previews: the green dot in a window (the link is already loaded, so a click opens it at once) no longer pushes the text: every link that opens in the window keeps its place. When you rest on a link that has the dot, a small note above its card says what the dot means.
-
-**🔧 Refactor**
-
-- \_mbPopFlagHtml(): span.flag-XX.mb-pop-flag (no flag class) with data-hq-skip, the slot overflow: hidden. \_dpWinMark() puts mb-dp-dots on the area while sa\_dp\_window\_read\_ahead is on; every mb-dp-l-here link keeps the dot's ::before, transparent until mb-dp-l-read. \_dpShowPeek() records t.wasRead as the card comes up; \_dpCollectNotes() adds a kind-read box (\_dpReadNoteHtml()). Mockup 2e: https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag. Tests: popup-mb.spec.js H5 on/off (the link's box unchanged when read, the note on a dotted link's card and not on another's); pop-area-flags.spec.js gains a Right Side Flags stand-in test; scripts/mutations/poh-fixes.json (+7, all caught). DEBUG-NOTES.md, docs/claude/detail-pages.md, HELP.
-
-
-## 9.99.1510 — 2026-10-29
-
-**✨ Improve**
-
-- Link previews: in an artist's or a label's window, the ISNI is a link to its record on isni.org (a new tab), written in groups of four as ISNI does (0000 0001 2141 8834).
-
-**🔧 Refactor**
-
-- \_mbPopIsniHtml() in the artist and label kinds' windowHtml; the cards keep the text. Tests: popup-mb.spec.js (the artist's ISNI; a new label test with two ISNIs, one ending in X); scripts/mutations/poh-fixes.json (+3, all caught). docs/claude/detail-pages.md, HELP.
-
-
-## 9.99.1509 — 2026-10-29
-
-**🐛 Fix**
-
-- Link previews: with "MusicBrainz More Flags Everywhere" installed, the areas in a window (an artist's Area and Born, a label's or place's Area, an event's Held at) no longer jump. That script added its flag a moment after every change of the window, so the names moved while the window loaded and flicked when you clicked in it (a release-group type, a chip). The window now draws the flags itself, in a place of fixed size: each country's, and each state's (read from Wikidata the first time a window shows that state, then kept; on discogs.com a country shows its code).
-
-**🔧 Refactor**
-
-- \_mbPopAreaHtml() stamps data-flag-processed and puts \_mbPopFlagHtml() before the link (.mb-pop-flag, 16 × 11): a country MusicBrainz's span.flag.flag-XX, off musicbrainz.org its ISO code; a state (\_mbPopIsState()) its Wikidata P41 through \_mbPopFlagLoad() / \_mbPopFlagRecordFor() (area url-rels, wbgetclaims; key pop:flag:area:&lt;id&gt;, \_MB\_POP\_FLAG\_VERSION 1), started from \_mbPopAreaChainLoad(). \_\_saTest.mbPopFlagHtml(). Tests: new pop-area-flags.spec.js (3); popup-mb.spec.js counts flag lookups apart from chain steps; scripts/mutations/poh-fixes.json (+8, all caught). DEBUG-NOTES.md, docs/claude/detail-pages.md, HELP.
-
-
-## 9.99.1508 — 2026-10-29
-
-**✨ Improve**
-
-- Link previews: a MusicBrainz label's window (on MusicBrainz, and from the MusicBrainz column on discogs.com) shows its links on the left, under its facts, as an artist's window does; the right side keeps the related labels, people, places and series.
-
-**🔧 Refactor**
-
-- The label kind's windowHtml puts \_mbPopUrlLinksTableHtml() after the facts in the first column. Test: popup-mb.spec.js "the label card and window"; scripts/mutations/poh-fixes.json (+1, caught). docs/claude/detail-pages.md, HELP.
-
-
-## 9.99.1507 — 2026-10-29
-
-**✨ Improve**
-
-- Link previews: in a tag's window, each kind under "By kind" now says what a click does when you rest the pointer on it, e.g. "Show the 661,243 recordings tagged rock on the right, most votes first: the first 100 now, 100 more a page on demand"; the kind already listed says so. An editor's tag window names the editor.
-
-**🔧 Refactor**
-
-- \_mbTagKindTip() gives each mb-pop-kindbtn its data-mb-tip text in \_mbPopTagWindowHtml(); \_MB\_POP\_TAG\_KIND\_PAGE (100). Tests: popup-mb.spec.js and popup-mb-user-lists.spec.js assert the words; scripts/mutations/poh-fixes.json (4, all caught). docs/claude/detail-pages.md, HELP.
-
-
-## 9.99.1506 — 2026-10-29
-
-**✨ Improve**
-
-- Page heading: the ❌ errors and ⚠️ warnings buttons, and 🔄 when pages failed to load, moved out of the SAED button into a small rounded bar of their own right after it. The SAED button keeps the same shape on every page; the second bar appears only when the page has something to show. ⚠️ still shows at 0 where it starts the title-style check.
-
-**🔧 Refactor**
-
-- The attn area is the one area of \#mb-saed-attn-bar (class mb-saed-bar, the same custom properties), built next to \#mb-saed-bar and held in \_saedAttnBarEl; \_saedAreaFor() resolves attn there, \_saedMarkFirst() marks each bar, \_orderToolbar() hides the bar while it is empty (.mb-saed-bar\[hidden\], since the bar's display beats the browser's own rule), and \_TOOLBAR\_TAIL\_ORDER names both bars. Approved mockup https://claude.ai/artifact/URrn3dps1EMtnkjKBvsvag. Tests: saed-toolbar, findings-menus (placement, rounded corners, hidden when empty) and fetch-in-segment updated; scripts/mutations/saed-attn-bar.json (6, all caught). docs/claude/toolbar-and-header-ui.md, findings.md, CLAUDE.md, HELP.
-
-
-## 9.99.1505 — 2026-10-29
-
-**🐛 Fix**
-
-- A MusicBrainz window (on MusicBrainz and on discogs.com): Ctrl+hovering a link in it during its first seconds now shows the card. The window keeps loading for a few seconds after it opens (an artist's links, its area, its release-group counts, about one a second) and rebuilds its content with each answer; a card waiting for its short delay was dropped when that happened, and one already showing stayed up after the pointer left. The card now follows the link through the rebuild.
-
-
-## 9.99.1504 — 2026-10-29
-
-**🔧 Refactor**
-
-- Tests: the two failures of the 9.99.1503 merge gate are fixed. \_\_saTest.getUniqDropSections() now moves a 📊 panel that opened off-screen into view: the panel is placed from its button, so for a header below the fold no entry could be ticked. It moves the panel, never the page, because a page scroll that moves the button closes the panel (a first version that scrolled broke the medley specs' second tick). New harness-uniq-drop-hook.spec.js; both mutations are caught. And the fixture projects answer MusicBrainz's CDN (static.metabrainz.org) from a disk cache (tests/support/test.js, tests/.cache/static-mb/, gitignored): on a slow line a fixture load under 28 workers took 27 s median and 73 s at worst and a full run timed out in page.goto(); cached, 7.4 s and 9.6 s, with the same files and MusicBrainz's scripts still running. A spec that blocks that host still wins. No change for users.
-
-
-## 9.99.1503 — 2026-10-29
-
-**🚀 Feature**
-
-- Release tracklist: every empty "Recording of work" cell shows a 💡. Click it, or ▶💡 in the column header for all of them, and the script suggests the work with the closest title among the works of the track's artists, in orange and marked "suggested:", with "exact title" or "≈ N % alike" and a ➕ relate link to the recording's edit page. Each artist's work list is loaded once and kept for 30 days, shared with the artist Recordings page's suggestions. Nothing loads until you click, and a suggestion is not a link: the track keeps its "no associated work" flag. The column's 📊 gets a "Recording of work - Suggestions" section. New setting: "Suggest a work for tracks whose recording has none" (on).
-
-
-## 9.99.1502 — 2026-10-29
-
-**🚀 Feature**
-
-- discogs.com: a user's collection or wantlist page of its own (/user/&lt;name&gt;/collection, /wantlist?user=&lt;name&gt;, your /mywantlist) gets the "Show the collection" or "Show the wantlist" button, the same table as on the user's page, read from Discogs' API. The button says how many entries the page counts, and stays away when the page says the list is empty.
-- discogs.com: a master's, artist's or label's Images page gets "Show every image": every image with its type and size, from Discogs' API in one request.
-- discogs.com: a release's Marketplace page (/sell/release/&lt;id&gt;) gets "Show every listing": every listing in one table with its conditions, seller and rating, where it ships from, price, shipping, and the price in your currency to compare.
-- discogs.com: the search page gets "Show all results": the results in one table from Discogs' API, 100 a request (Discogs' API gives at most the first 10,000 of a search; the button says so).
-
-**🐛 Fix**
-
-- discogs.com search results: with the "Import Discogs releases to MusicBrainz" userscript installed, the table no longer gets a MusicBrainz column header without its cells, which put every later heading over the wrong column.
-
-
-## 9.99.1501 — 2026-10-29
-
-**🚀 Feature**
-
-- Every picture an artist, label, place, series, instrument or area links (its image, logo and poster links, its Wikimedia Commons files), which MusicBrainz itself does not show, now appears beside its name: one, or several fading from one to the next every 6 seconds, with ‹ › on hover and a click opening them all in the viewer. A picture link that does not load is left out. The script asks MusicBrainz once for the links and remembers them; with the "MusicBrainz Entity Images" userscript installed it uses that script's pictures instead. New setting: "Entity pictures from its links" (on).
-- Link previews: an artist's, label's or place's window shows all of these pictures: one large, a strip of the others (click one to make it the large one), and a line naming the links that did not load. The card shows the first with "+N".
-
-**🐛 Fix**
-
-- The sidebar picture: with the "MusicBrainz Entity Images" userscript showing a logo link first, a Wikimedia Commons picture shown after it no longer goes without its card and viewer, and the picture used is the one that script shows.
-
-
-## 9.99.1500 — 2026-10-29
-
-**✨ Improve**
-
-- Link previews: in a preview window, a link to a Brucebase show or page (an event's "Review" link to brucebase.wikidot.com/2002\#100802, for example) or to another Springsteen site's page now opens in the same window, with Back, instead of a new tab.
-
-
-## 9.99.1499 — 2026-10-29
-
-**✨ Improve**
-
-- Link previews, an event's window: a setlist in parts (Soundcheck, Concert, Encore, …) shows a heading row for each part with its number of songs and its notes, numbers its songs within each part, and gets a chip per part to show only that part. A song played in two parts says so ("↺ also in Soundcheck"). Before, every song was numbered in one run and the part names were loose lines under the table.
-- The event card previews the setlist's longest part (usually the concert, not the soundcheck) and names the other parts.
 
 
 ---
