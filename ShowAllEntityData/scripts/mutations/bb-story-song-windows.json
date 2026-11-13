@@ -1,0 +1,158 @@
+[
+    {
+        "name": "a story without its own picture",
+        "why": "G6, answer 1.",
+        "edits": [
+            {
+                "find": "                data.images.push(..._bbStoryPictures(content, url));\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-story-song-windows.spec.js",
+        "grep": "a story page",
+        "expect": "fail"
+    },
+    {
+        "name": "the Storyteller badge as a picture",
+        "why": "Answer 1: the badge left out. A safeguard only: on all 1,449 story pages that carry it (NAS mirror, 2026-11-13) the badge is a plain <img> in the title band, never inside an .image-container, so the selector never meets it. A story page with the badge written as [[image]] would cover it.",
+        "edits": [
+            {
+                "find": ".filter(img => !/\\/storyteller\\.gif$/i.test(img.getAttribute('src')))",
+                "replace": ".filter(Boolean)"
+            }
+        ],
+        "spec": "tests/fixtures/bb-story-song-windows.spec.js",
+        "grep": "a story page",
+        "expect": "pass"
+    },
+    {
+        "name": "a story picture read from the whole page",
+        "why": "Only #page-content: the side bar's promo is an image block too.",
+        "edits": [
+            {
+                "find": "        return Array.from(content.querySelectorAll('.image-container img[src]'))",
+                "replace": "        return Array.from(content.ownerDocument.querySelectorAll('.image-container img[src]'))"
+            }
+        ],
+        "spec": "tests/fixtures/bb-story-song-windows.spec.js",
+        "grep": "a story page",
+        "expect": "fail"
+    },
+    {
+        "name": "a story picture without its caption",
+        "why": "Answer 1: its title as the caption.",
+        "edits": [
+            {
+                "find": "caption: _dpText(img.getAttribute('title') || img.getAttribute('alt') || ''),",
+                "replace": "caption: '',"
+            }
+        ],
+        "spec": "tests/fixtures/bb-story-song-windows.spec.js",
+        "grep": "a story page",
+        "expect": "fail"
+    },
+    {
+        "name": "a story picture's full image is the thumbnail",
+        "why": "The viewer shows the original.",
+        "edits": [
+            {
+                "find": "thumb, full: _bbWdFullImage(thumb), medium: ''",
+                "replace": "thumb, full: thumb, medium: ''"
+            }
+        ],
+        "spec": "tests/fixtures/bb-story-song-windows.spec.js",
+        "grep": "a story page",
+        "expect": "fail"
+    },
+    {
+        "name": "a song's intro without its links",
+        "why": "G7, answer 2.",
+        "edits": [
+            {
+                "find": "        if (intro.querySelector('a[href]')) data.subtitleHtml = ",
+                "replace": "        if (false) data.subtitleHtml = "
+            }
+        ],
+        "spec": "tests/fixtures/bb-story-song-windows.spec.js",
+        "grep": "a song's intro",
+        "expect": "fail"
+    },
+    {
+        "name": "every intro gets a linked line",
+        "why": "Only an intro with links.",
+        "edits": [
+            {
+                "find": "        if (intro.querySelector('a[href]')) data.subtitleHtml = ",
+                "replace": "        if (true) data.subtitleHtml = "
+            }
+        ],
+        "spec": "tests/fixtures/bb-story-song-windows.spec.js",
+        "grep": "a song's intro",
+        "expect": "fail"
+    },
+    {
+        "name": "the window draws the intro's words",
+        "why": "Answer 2: the window's line keeps the links.",
+        "edits": [
+            {
+                "find": "<div class=\"mb-dp-xsub\">${data.subtitleHtml || _mbttEscape(data.subtitle)}</div>",
+                "replace": "<div class=\"mb-dp-xsub\">${_mbttEscape(data.subtitle)}</div>"
+            }
+        ],
+        "spec": "tests/fixtures/bb-story-song-windows.spec.js",
+        "grep": "on a hover",
+        "expect": "fail"
+    },
+    {
+        "name": "the Lyrics section without its links",
+        "why": "G7, answer 3.",
+        "edits": [
+            {
+                "find": "            if (text) data.sections.push({ label: name, text, html: _dpBlockHtml(panel, url) });",
+                "replace": "            if (text) data.sections.push({ label: name, text, html: name === 'Lyrics' ? '' : _dpBlockHtml(panel, url) });"
+            }
+        ],
+        "spec": "tests/fixtures/bb-story-song-windows.spec.js",
+        "grep": "a song's Lyrics",
+        "expect": "fail"
+    },
+    {
+        "name": "a link to this page's anchor previews",
+        "why": "Answer 4.",
+        "edits": [
+            {
+                "find": "        if (u.hash && u.pathname === window.location.pathname && u.search === window.location.search) return null;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-story-song-windows.spec.js",
+        "grep": "no preview for a link",
+        "expect": "fail"
+    },
+    {
+        "name": "every link to this page is skipped",
+        "why": "Answer 4: only one that adds an #anchor.",
+        "edits": [
+            {
+                "find": "        if (u.hash && u.pathname === window.location.pathname && u.search === window.location.search) return null;",
+                "replace": "        if (u.pathname === window.location.pathname && u.search === window.location.search) return null;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-story-song-windows.spec.js",
+        "grep": "no preview for a link",
+        "expect": "fail"
+    },
+    {
+        "name": "every anchor link is skipped",
+        "why": "Answer 4: only one to this page.",
+        "edits": [
+            {
+                "find": "        if (u.hash && u.pathname === window.location.pathname && u.search === window.location.search) return null;",
+                "replace": "        if (u.hash) return null;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-story-song-windows.spec.js",
+        "grep": "no preview for a link",
+        "expect": "fail"
+    }
+]

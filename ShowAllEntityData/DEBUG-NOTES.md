@@ -29405,3 +29405,17 @@ Env: 2026-11-13T01:13+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) ·
   discographies 0% → 35%, tour counts 0% → 0% (wording differs from the page's word for word; see
   docs/claude/brucebase.md "Batch 3").
 Spec 8/8, mutations 31/31 (+6 finds of other lists refreshed and re-run: 6/6), BB + popup-ext specs 436/436.
+
+## 2026-11-13 — Brucebase story pictures and song windows' links; no preview of this page's #anchor (feature/bb-overhaul, Phase 16 batch 4)
+Env: 2026-11-13T01:50+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs); the story probe n/a (Python over the NAS mirror)
+- Mockup https://claude.ai/artifact/CZ2t1cS2fw7W4RDSyTvoNo, all four answers as recommended.
+- G6 measured whole before the mockup (`scripts/probe-bb-story-images.py`, 1,489 pages): the sweep's "40/40 pages
+  carry a picture" was mostly the Storyteller badge (1,449); real pictures are 44 banners on 42 pages, all
+  Wikidot `.image-container` blocks — the window never read them because `_bbPageImages()` reads gallery boxes.
+  The badge is never inside an image block (0 of 1,449), so the badge filter is a safeguard no fixture can see
+  (mutation recorded `expect: pass`).
+- G7: the song window's intro gets `subtitleHtml` (links kept; the card keeps the words); the Lyrics section's
+  `html` was '' since WIP.8, which dropped the "Visit SpringsteenLyrics.com" links — now `_dpBlockHtml()`.
+- Batch 3's open question answered: `_dpSiteForUrl()` refuses a link to the current page that only adds a hash
+  (shared by every foreign host).
+Spec 5/5, mutations 12 (11 fail, 1 pass as recorded), bb/sl/jl/bs + popup-ext specs 720/720.

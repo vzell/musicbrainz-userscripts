@@ -4229,7 +4229,9 @@ Story card: the kind, the date, the show's own page (the script finds it
 with one small request: a story page does not link it; an older story
 named only by date and town lists that day's events), who compiled it, and
 the tags. A story link's window names the kind, the date, how many moments
-or turns the page has and who compiled it.
+or turns the page has and who compiled it, and shows the page's own picture
+(the E Street Radio and DJ-set banners) with its title; the Storyteller
+badge most story pages carry is left out.
 
 The setting is *Detail pages: events, songs, venues, people, releases and bootlegs as tables*. Switched off,
 these pages stay as the wiki shows them, and their links still preview.
@@ -4985,8 +4987,12 @@ type into the filter box stays in the filter box. In the window:
   release page's Cover art: zoom, ← → through every image of the page, grid,
   download; **Esc** returns to the window). Ctrl-click opens the image in a
   new tab instead. On Brucebase it also has the credits, the studio
-  versions and the lyrics, and lists the releases one per line, the live
-  releases apart. A **springsteenlyrics.com song** has a window of its own,
+  versions and the lyrics (each version followed by its "Visit
+  SpringsteenLyrics.com …" link), and lists the releases one per line, the
+  live releases apart; the song's intro under the title keeps its links (the
+  writers, the original artist, the album), the card shows it as words. A
+  link to the page you are on that only adds an `#anchor` (a jump within the
+  page) shows no preview. A **springsteenlyrics.com song** has a window of its own,
   described next.
 
 <details>

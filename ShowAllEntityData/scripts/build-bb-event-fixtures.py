@@ -62,6 +62,7 @@ debug/bb-mirror/retail-main/ and playlist-main/, the subpages left out):
   Remastered Darkness Outtakes" (numbered lines, "Disc 1"), "The Born To Run
   Outtakes" (two lines of its own, no facts).
 
+- song "I'm Bad, I'm Nationwide": an intro with four person links (Phase 16 batch 4);
 - lyrics "Born In The U.S.A." (three versions, a springsteenlyrics.com link
   after each) and "American Babylon" (a live version, its date under the
   heading; Phase 16 batch 3).
@@ -102,6 +103,7 @@ PAGES = [
     ('interview/interview_2017-04-28-beacon-theatre-new-york-city-ny.html', 'bb-event-interview-2017-04-28.html'),
     ('song/song_the-promise.html', 'bb-song-the-promise.html'),
     ('song/song_we-gotta-get-out-of-this-place.html', 'bb-song-we-gotta-get-out-of-this-place.html'),
+    ('song/song_i-m-bad-i-m-nationwide.html', 'bb-song-i-m-bad-i-m-nationwide.html'),
     ('ott/ott_do-you-want-me-to-say-alright.html', 'bb-ott-do-you-want-me-to-say-alright.html'),
     ('pick/venue_roxy-theatre-west-hollywood-ca.html', 'bb-venue-roxy-theatre.html'),
     ('pick/relation_patti-scialfa_live-p1.html', 'bb-relation-patti-scialfa-p1.html'),

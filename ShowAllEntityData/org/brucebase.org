@@ -915,6 +915,14 @@ BB PTs". Last, once Phases 7–15 have added their readers.
   song's intro (the window's line keeps its links / also an "About this song" section), 3 the Lyrics
   section (one section, the SL line kept after each version / a section per version as a lyrics page),
   4 batch 3's open question: a link to the page you are on that only adds an #anchor (no preview / keep).
+  vzell's answers (2026-11-13): all four as recommended. Built (WIP.25): =_bbStoryPictures()= (a story's own
+  pictures, label "Picture", its title the caption; the badge filtered out — a safeguard, its mutation
+  =expect: pass=: the badge is never inside an image block); a song's =subtitleHtml= (the intro's links on
+  the window's line, the card keeps the words); the Lyrics section's =html= (=_dpBlockHtml()=, the
+  springsteenlyrics.com line linked); =_dpSiteForUrl()= refuses a link to this page that only adds an
+  #anchor (every foreign host). =_DP_PARSER_VERSION= 28. Spec =bb-story-song-windows.spec.js= 5/5,
+  mutations 12 (11 fail, 1 pass as recorded), bb/sl/jl/bs + popup-ext specs 720/720.
+  - [ ] vzell's live check of batch 4
 - [ ] vzell's live check
 
 *** Handoff to petri (2026-11-12T04:05+01:00, from vzell-lap)

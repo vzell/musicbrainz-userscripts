@@ -448,7 +448,11 @@ parsed from the list page.
 
 A link qualifies (`_dpSiteForLink()`) when it is in a `table.tbl > tbody`,
 wraps no image (springsteenlyrics.com's Cover cell links to the same page),
-and its URL is same-origin and passes the host's `isDetailUrl`.
+and its URL is same-origin and passes the host's `isDetailUrl`. Since
+Phase 16 batch 4 of org/brucebase.org (vzell, 2026-11-13) `_dpSiteForUrl()`
+refuses a link to the page you are on that only adds an `#anchor` (same
+path and query, a hash): a jump within the page, not a page to preview (a
+Brucebase studio sessions page's "#thunderroad"; on every foreign host).
 
 ## Fetching, parsing, caching
 

@@ -31654,9 +31654,12 @@
      * 27: records of their own for a song's tour counts, an album's studio
      *    sessions, a discography, an On The Tracks page and a lyrics page
      *    (Phase 16 batch 3); `excerpt.foot`.
+     * 28: a story page's own pictures (`_bbStoryPictures()`), a song's
+     *    intro with its links (`subtitleHtml`) and its Lyrics section with
+     *    the springsteenlyrics.com links (Phase 16 batch 4).
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 27;
+    const _DP_PARSER_VERSION = 28;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -36982,6 +36985,32 @@
     }
 
     /**
+     * A story page's own pictures for its window (Phase 16 batch 4, G6;
+     * vzell's answer 1 to https://claude.ai/artifact/CZ2t1cS2fw7W4RDSyTvoNo):
+     * Wikidot's `[[image]]` blocks (`.image-container img`, outside a gallery
+     * box, so `_bbPageImages()` does not see them) — the E Street Radio and
+     * DJ-set banners, 44 on 42 of the 1,489 story pages
+     * (`scripts/probe-bb-story-images.py`) — each captioned with its title;
+     * the Storyteller badge (`storyteller.gif`, in the title band of 1,449)
+     * left out, the wiki's mark rather than the page's picture.
+     *
+     * @param {Element} content `#page-content`.
+     * @param {string} url
+     * @returns {Array<{thumb: string, full: string, medium: string, label: string, credit: string, caption: string}>}
+     */
+    function _bbStoryPictures(content, url) {
+        return Array.from(content.querySelectorAll('.image-container img[src]'))
+            .filter(img => !/\/storyteller\.gif$/i.test(img.getAttribute('src')))
+            .map((img) => {
+                const thumb = _dpAbsUrl(img.getAttribute('src'), url);
+                return {
+                    thumb, full: _bbWdFullImage(thumb), medium: '', label: 'Picture', credit: '',
+                    caption: _dpText(img.getAttribute('title') || img.getAttribute('alt') || ''),
+                };
+            });
+    }
+
+    /**
      * Parses any Brucebase page that is not a song: an entry of a year page
      * (`/gig:`, `/nogig:`, `/recording:`, `/rehearsal:`, …): its title and
      * gallery images (`_bbPageImages()`, for the foreign-image card and
@@ -37032,6 +37061,8 @@
                     data.fields = data.fields.filter(f => f[1]);
                 }
                 data.sections.push({ label: 'Story', text: _dpBlockText(content), html: _dpBlockHtml(content, url) });
+                // Its own picture (Phase 16 batch 4, answer 1).
+                data.images.push(..._bbStoryPictures(content, url));
             }
             // Folding sections, and so the History section (`_bbHistSection()`),
             // as every Brucebase window.
@@ -38956,6 +38987,16 @@
             if (n.nodeName !== 'SCRIPT' && n.nodeName !== 'STYLE') before.push(n.textContent);
         }
         data.subtitle = _dpText(before.join(' ')).replace(/\s+([,.])/g, '$1');
+        // The intro's links (the writers, the original artist, the album)
+        // for the window's line under the title (Phase 16 batch 4, G7,
+        // answer 2); the card keeps the words.
+        const intro = doc.createElement('div');
+        for (const n of Array.from(content.childNodes)) {
+            if (nav && (n === nav || (n.contains && n.contains(nav)))) break;
+            if (n.nodeName !== 'SCRIPT' && n.nodeName !== 'STYLE') intro.appendChild(n.cloneNode(true));
+        }
+        intro.querySelectorAll('script, style, iframe').forEach(n => n.remove());
+        if (intro.querySelector('a[href]')) data.subtitleHtml = _dpBlockHtml(intro, url).replace(/\s*\n\s*/g, ' ').replace(/\s+([,.])/g, '$1').trim();
         if (!nav) return data;
         const labels = Array.from(nav.querySelectorAll(':scope > ul.yui-nav > li')).map(li => _dpText(li.textContent));
         const panels = Array.from((nav.querySelector(':scope > .yui-content') || { children: [] }).children);
@@ -38983,7 +39024,10 @@
         ['Credits', 'On The Tracks', 'Lyrics'].forEach(name => {
             const panel = tab(name);
             const text = panel ? _dpBlockText(panel) : '';
-            if (text) data.sections.push({ label: name, text, html: name === 'Lyrics' ? '' : _dpBlockHtml(panel, url) });
+            // Lyrics too since Phase 16 batch 4 (G7, answer 3): its links are
+            // the "Visit SpringsteenLyrics.com for other versions of this
+            // song." line after each version.
+            if (text) data.sections.push({ label: name, text, html: _dpBlockHtml(panel, url) });
         });
         // Every performance, each show linked (2026-10-24): long, so it
         // starts closed.
@@ -39323,6 +39367,10 @@
             return null;
         }
         if (u.origin !== window.location.origin) return null;
+        // A link to the page you are on that only adds an #anchor (a studio
+        // sessions page's "#thunderroad") is a jump within it, not a page
+        // to preview (Phase 16 batch 4, answer 4).
+        if (u.hash && u.pathname === window.location.pathname && u.search === window.location.search) return null;
         // A site's own links (Brucebase's event pages): their own setting.
         const own = _dpOwnLinksOn();
         if (own && own.ownLinks.test(u)) return own;
@@ -41483,7 +41531,9 @@
         const left = [];
         const right = [];
         left.push(`<div class="mb-dp-xtitle">${_mbttEscape(data.title || '(untitled)')}</div>`);
-        if (data.subtitle) left.push(`<div class="mb-dp-xsub">${_mbttEscape(data.subtitle)}</div>`);
+        // A Brucebase song's intro keeps its links here (`subtitleHtml`,
+        // `_dpBlockHtml()`'s escaped text and links only; Phase 16 batch 4).
+        if (data.subtitle) left.push(`<div class="mb-dp-xsub">${data.subtitleHtml || _mbttEscape(data.subtitle)}</div>`);
         if (data.highlight) left.push(`<div class="mb-dp-stat"><b>${_mbttEscape(data.highlight.value)}</b> ${_mbttEscape(data.highlight.label)}</div>`);
         // A plain click on the cover or a scan opens the artwork viewer
         // (`_dpArtViewerClick()`), the cover first and the scans after it, in
@@ -185848,6 +185898,20 @@ a { color: #1565c0; }`;
                 return site.ownLinks.test(u) ? site.ownLinks.setting : site.isDetailUrl(u) ? site.setting : '';
             },
             bbRedirectedUrl: (html, url) => _bbRedirectedUrl(new DOMParser().parseFromString(html, 'text/html'), url),
+            /**
+             * Whether this foreign host's preview takes a link by its URL
+             * (`_dpSiteForUrl()`, the shipping test; Phase 16 batch 4: not a
+             * link to this page that only adds an #anchor).
+             *
+             * @param {string} href
+             * @returns {boolean}
+             */
+            dpPreviewsHref: (href) => {
+                const a = document.createElement('a');
+                a.href = href;
+                return !!_dpSiteForUrl(a);
+            },
+            bbStoryPictures: (html, url) => _bbStoryPictures(new DOMParser().parseFromString(html, 'text/html').getElementById('page-content'), url),
 
             /**
              * Thin wrapper around `_bbSongRead()` over an HTML string.

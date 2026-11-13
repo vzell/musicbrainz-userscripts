@@ -2048,3 +2048,36 @@ fixtures from `scripts/build-bb-event-fixtures.py`, their verses blanked by
 `blank_bb_lyrics()`); mutations `scripts/mutations/bb-song-pages-windows.json`
 (31; six finds of other lists refreshed, the link tests and the shared On The
 Tracks lines moved).
+
+### Batch 4: a story's picture, a song's links (G6, G7)
+
+Mockup https://claude.ai/artifact/CZ2t1cS2fw7W4RDSyTvoNo
+(`scripts/extract-bb-batch4-mockup.js`, `scripts/build-bb-batch4-mockup.py`
+with its template); vzell's answers (2026-11-13), all as recommended.
+`_DP_PARSER_VERSION` 28.
+
+- **A story's picture** (answer 1): probed whole first
+  (`scripts/probe-bb-story-images.py`, all 1,489 story pages): 1,449 carry
+  the Storyteller badge, a plain `<img>` in the title band (never inside an
+  image block); 42 have pictures of their own, 44 E Street Radio / DJ-set
+  banners, Wikidot's `[[image]]` (`.image-container`), which
+  `_bbPageImages()` (gallery boxes only) never read. `_bbStoryPictures()`
+  adds those to a story's window, label "Picture", the image's title as the
+  caption, the original via `_bbWdFullImage()`; the badge is filtered out
+  (a safeguard: the mutation is recorded `expect: pass`). Only
+  `#page-content`: the side bar's promo is an image block too.
+- **A song's intro** (answer 2): `_dpParseBbRecord()` keeps `subtitle` (the
+  words: the card) and adds `subtitleHtml` (`_dpBlockHtml()` of the nodes
+  before the tabview, frames and scripts out) when the intro has a link;
+  the window's line under the title draws it.
+- **A song's Lyrics** (answer 3): the section's `html` is the panel's
+  `_dpBlockHtml()` (it was ''), so the "Visit SpringsteenLyrics.com …" line
+  after each version keeps its link; the text is unchanged.
+- **A link to this page's #anchor** (answer 4, batch 3's open question):
+  `_dpSiteForUrl()` refuses a same-path, same-query link with a hash, on
+  every foreign host (docs/claude/detail-pages.md).
+
+Tests: `tests/fixtures/bb-story-song-windows.spec.js` (5; a new song fixture,
+"I'm Bad, I'm Nationwide", from `scripts/build-bb-event-fixtures.py`);
+mutations `scripts/mutations/bb-story-song-windows.json` (12, one `expect:
+pass`).

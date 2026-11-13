@@ -1,5 +1,19 @@
 [
   {
+    "version": "WIP.25",
+    "date": "2026-11-13",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Brucebase: a story page's window shows the page's own picture (the E Street Radio and DJ-set banners) with its title; the Storyteller badge is left out.",
+          "Brucebase: a song's window keeps the links of the song's intro under its title (the writers, the original artist, the album); the hover card still shows it as words. Its Lyrics section keeps the \"Visit SpringsteenLyrics.com for other versions of this song.\" link after each version.",
+          "Link previews on the Springsteen sites: a link to the page you are on that only adds an #anchor (a jump within the page) no longer opens a preview of that same page."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.24",
     "date": "2026-11-13",
     "sections": [
