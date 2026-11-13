@@ -61,7 +61,7 @@ Env: 2026-11-13T23:29:43+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 
    *Open question for vzell; the recommendation is the near-full check.*
 
-** Status 2026-11-14 00:35 CET: built, tested, documented. test:full STOPPED by vzell (136 passed, 0 failed when stopped); rerun it before the merge
+** Status 2026-11-14: built, tested, documented, CONFIRMED LIVE by vzell ("all confirmed live, OK"). Still to do before the merge: a complete test:full (the 00:28 CET run was stopped at 136 passed, 0 failed)
 
 Done since the list below:
 - *Spec:* =tests/fixtures/bb-onstage-tags.spec.js=, 8/8. Its fixtures are three shows and six onstage pages from the 2026-11-13 mirror, via =scripts/build-bb-event-fixtures.py=.
@@ -75,7 +75,7 @@ Done since the list below:
 
 Next:
 1. =test:full=: rerun (the 00:28 CET run on petri was stopped at 136 passed, 0 failed).
-2. vzell checks in his browser (BB show with a cast, MSG 2009, an MB event's BB link).
+2. DONE vzell checked it in his browser on the real URLs (2026-11-14, browser and Tampermonkey versions: unknown): the five BB show pages, the 2016 year page window, the MB event, a Discogs release.
 3. Only on vzell's word: merge (=merge-push-remove=).
 
 ** Phase 1 step 3: the build (2026-11-14)
