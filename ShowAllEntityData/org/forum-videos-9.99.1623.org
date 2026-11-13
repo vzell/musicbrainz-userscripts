@@ -1,0 +1,165 @@
+#+TITLE: Videos for the 9.99.1167 -> 9.99.1623 forum post
+#+STARTUP: overview
+
+Short screen videos (Windows Game Bar, Win+Alt+R starts and stops) for the
+release post in FORUM.org. One heading per video; the IDs (V1 …) are the ones
+the post's =[SCREENSHOT: V…]= lines name. Each video: 20–60 s, one feature.
+
+Every URL below comes from the repo (tests, docs, changelog examples) or from
+a MusicBrainz lookup; none is invented. "200" = the page answered on
+2026-11-13T13:00+01:00 from petri (a plain GET, logged out). setlist.fm pages
+cannot be fetched from Claude Code (bot check): those are as the repo records
+them, *not verified here*.
+
+Before recording: default settings (⚙️ Settings → RESET, or a fresh profile),
+logged in to MusicBrainz, browser zoom 100 %, the window about 1600 px wide,
+other userscripts off unless the video says otherwise. Hover cards show on a
+plain hover by default; hold Ctrl if you switched that off.
+
+* V1 — the ☰ SAED menu (MusicBrainz)
+- URL: https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f (200)
+- Steps:
+  1. Point at the heading: the SAED button (fetch buttons | 📀 | ☰ SAED ▾).
+  2. Rest on ☰ SAED: the card with version, library, browser.
+  3. Click ☰ SAED: walk ↓ through the groups; → on Export ▸; Esc, Esc.
+  4. Press the first fetch button ("🧮¹ …"): it fills blue, "■ Stop · n / N".
+  5. Let it finish; then click ☰ SAED → View → Density, then Statistics.
+- Shows: one button, the menu's groups, the fetch in its button.
+
+* V2 — release pages, done properly (MusicBrainz)
+** V2a — cover art, live events
+- URL: https://musicbrainz.org/release/d390b4ff-38ab-4783-99ef-2c4d338e016b
+  ("Berlin Night", 200): 1996‐04‐19 Berlin plus a track from 1992‐06‐26,
+  so it should show "🎪 2 events" and an E chip. If it does not, any release of
+  release group https://musicbrainz.org/release-group/fa9c43a7-2592-3336-a09b-1414b4b6ee68
+  with tracks from other shows (e.g. "Old Habits", "Born Again") does.
+- Steps:
+  1. Press "Show all Tracks for Release".
+  2. Scroll to "Cover art (N)": click the chips Front, Back; switch Grid / By type / Spreads.
+  3. Scroll to the tracklist: point at "🎪 N events" (legend), at an E1 chip.
+  4. Rest on a "#" cell of a live track: the event card and the release group card.
+  5. Open the Disambiguation column's 📊 and tick one event: only its tracks stay.
+** V2b — medium images, Credits as tables
+- URL: https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd
+  ("The Rising: Tour Edition With Bonus DVD", CD + DVD, 7 images, 200)
+- Steps: press the Tracks button; show the thumbs in the CD / DVD headings;
+  then press "Credits" (the second button): one table per kind of entity;
+  scroll to the "Sidebar" heading and open it (it starts closed).
+** V2c — 💡 work suggestion
+- URL: *pick one*. It needs a release whose tracks include a song without a
+  work ("Recording of work" shows MusicBrainz's "no associated work" mark).
+  "Berlin Night" has only an "[intro]" and a "[short interview]" without a
+  work, which make a poor demo. A bootleg entered recently is the best bet.
+- Steps: click a cell's 💡, or ▶💡 in the header; rest on the orange
+  "suggested:" title; point at its ➕ relate link (do not click it on camera
+  unless you mean to edit).
+** V2d — the same layout on other sites
+- Discogs release: https://www.discogs.com/release/1874253-Bruce-Springsteen-Born-To-Run
+  → "Tracks": the tables per side, the credit columns, Notes / Details / Images above.
+- Then V4a–V4c show the other sites' own versions; one cut here is enough.
+
+* V3 — a preview for almost every link (MusicBrainz)
+- URL: https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c
+  ("Tougher Than the Rest", 200)
+- Steps:
+  1. Press the page's button; rest on a release title: the card.
+  2. Press Space: the window. Click the label in the window (it opens there),
+     then ← Back. Show the path in the title bar; click its first step.
+  3. Click the artist name in the window: the artist's window, its release
+     groups by type; type "live" into its filter; click a type chip.
+  4. Scroll the list to "Load N more pages" and press it; Stop.
+  5. Resize the window by its corner; drag the grip under a table.
+- Optional extra cut, other kinds of link:
+  genre https://musicbrainz.org/genre/883d75d5-1365-46ee-8cbe-d3ae2facdd93 (200),
+  label https://musicbrainz.org/label/011d1192-6f65-45bd-85c4-0400dd45693e (200).
+
+* V4 — the script on other sites
+** V4a — Discogs
+- Master: https://www.discogs.com/master/26725-Bruce-Springsteen-Born-To-Run
+  1. "Tracks": tables, Credits card ("Guitar A1–B2 …"). 2. "Versions": the
+     versions table; sort by Year; type "vinyl" in the Format filter; open 📊
+     on Country. 3. Rest on a thumbnail: every image; click: the viewer.
+- Search: https://www.discogs.com/search?q=bruce+springsteen&type=all → "Show all results".
+- Seller: https://www.discogs.com/seller/disc-kid/profile → "Show everything for sale"; sort by price.
+- With murdos' importer installed: the MusicBrainz column on the master's versions.
+** V4b — setlist.fm (not verified here)
+- Venue: https://www.setlist.fm/venue/los-angeles-sports-arena-los-angeles-ca-usa-3d6c967.html
+  → "Setlists": sort by date; filter Tour; open 📊 on Songs.
+- Setlist: https://www.setlist.fm/setlist/bruce-springsteen/2016/los-angeles-sports-arena-los-angeles-ca-4bf0375a.html
+  → "Setlist": a table per set, Details (set times, guests); a ▶ Play on one song.
+- Artist: https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html (only if time allows; many pages).
+** V4c — Internet Archive
+- Search: https://archive.org/search?query=subject%3A%22Bruce+Springsteen%22&sort=title&and%5B%5D=year%3A%221975%22
+  → "Items": sort by Date; rest on a picture (the uploader's scans); 🖼 gallery.
+- Item: https://archive.org/details/bs1975-12-27.aud.jk.cb.hrubesh.flac16 (200)
+  → "Tracks": Description / Details / Pictures above; ▶ a song; Esc stops it.
+** V4d — springsteenlyrics.com
+- Bootleg list: https://www.springsteenlyrics.com/bootlegs.php?cmd=list&category=aud_live2014
+  → the button; rest on a Cover (every scan), click (viewer); the compact bar's menus.
+- Song version: https://springsteenlyrics.com/lyrics.php?song=backstreets_unofficial1
+  → rest on a song link of a tracklist, Space: the song window, "Differs from
+  the album version" chip, Side by side.
+- Lyrics letter: https://www.springsteenlyrics.com/lyrics.php?cmd=list&letter=b → "This letter".
+** V4e — Brucebase
+- Year page: https://brucebase.wikidot.com/1985 → "Events": the MB-Event
+  column filling in; rest on a Media icon (photos); ▶ Pages in "On stage".
+- Show: https://brucebase.wikidot.com/gig:1985-01-13-carolina-coliseum-columbia-sc
+  → "Event": the setlist table, the pictures by kind (two handwritten setlists).
+- Song: https://brucebase.wikidot.com/song:4th-of-july-asbury-park-sandy → "Song".
+- Song list: https://brucebase.wikidot.com/stats:songs → the button, one row per song.
+** V4f — jungleland.it and brucespringsteen.it
+- https://www.jungleland.it/html/list.htm (open it as its own tab) → the button; rest on an Art tile.
+- https://www.brucespringsteen.it/DB/records.aspx?tipe=-1,4&sort=0 (own tab) → Unofficial; the Photo column.
+- Record: https://www.brucespringsteen.it/DB/detrec.aspx?code=CR1AD1 → "Tracklist".
+
+* V5 — the artwork viewer, and pictures everywhere
+- URL: https://musicbrainz.org/release/52c6808b-037d-47d5-b0c7-17331c9d36cd
+  ("Tougher Than the Rest" 7", 8 images, 200)
+- Steps: press the Tracks button; click a tile in "Cover art": ← →, wheel zoom,
+  R, H, A (drag brightness), C (compare), L (loupe), I (info), ? (all keys), Esc.
+- Pictures beside the name: https://musicbrainz.org/label/011d1192-6f65-45bd-85c4-0400dd45693e
+  (Columbia, 200: three picture links): wait for the fade, ‹ ›, click.
+
+* V6 — working with majkinetor's userscripts
+- Needs String Theory / Event Horizon / ISRC Scout installed (current versions).
+- URL: https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd
+- Steps: with Event Horizon showing, open its ⋯ menu: "SAED: Show all Tracks
+  for Release"; click it. After the render: the corner launchers are gone;
+  ☰ SAED → View → "Show corner launchers". Press H on the page: nothing leaves it.
+- Skip the request-budget part on camera: nothing to see.
+
+* V7 — the sidebar, reorganised
+- URL: https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f (200)
+- Steps: open two sidebar sections, reload: they stay open; the counts; the
+  external links grouped by kind; press the page's button, scroll to the
+  "Sidebar" heading, open it: the cards.
+
+* V8 — relationships as tables
+- Event: https://musicbrainz.org/event/47b84024-bd3b-4e36-80e1-b051e12ede2f
+  ("2025‐10‐26: The Stone Pony", 200) → "Relationships": Artists with split
+  credits, the setlist tables; filter "guitar" in Credits.
+- Work: https://musicbrainz.org/work/9893a23c-f282-3b07-a2db-b4f2f3b9f4b2
+  ("Born to Run", 200) → the Relationships button beside the main one.
+
+* V9 — ⚠️ WARNING / ❌ ERROR menus
+- Events (title style for event names): https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events (200)
+- Recordings: https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings (200)
+- Steps: press the button; open ⚠️ in the bar after SAED; click whichever
+  warning has rows (the tables narrow); rest on a tinted cell (what differs);
+  click the warning again. Then the Aa button → the panel; tick one warning.
+- Which warnings appear depends on the data of the day; check before recording.
+
+* V10 — YouTube in place
+- URL: https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships (200;
+  the artist has three YouTube links)
+- Steps: press "Relationships"; in the URLs table click a "Play here" tile;
+  Esc stops it. Then the sidebar's small tile under "Play on YouTube".
+
+* V11 — editing history in a window
+- URL: https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f (200)
+- Steps: ☰ SAED → Editing history → "✎ Entity history ▸" → All edits; click
+  an edit (old | new); chips for category and status. Then the window's ▾:
+  "Edits by others". Then H inside any open window.
+- Other sites (short cut): https://www.discogs.com/release/8164856-Human-Touch/history
+  (a Discogs history with its diffs) and the History section of a Brucebase
+  show window (V4e's show page, ✎ in its title bar).
