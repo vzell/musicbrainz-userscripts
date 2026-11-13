@@ -4,7 +4,7 @@
         "why": "Answer 1: tour counts under the song preview's setting.",
         "edits": [
             {
-                "find": " ||\n                (_BB_SONG_TOURS_PATH_RE.test(u.pathname) && !/^\\/stats:songs-/.test(u.pathname)),",
+                "find": " ||\n                (_BB_SONG_TOURS_PATH_RE.test(u.pathname) && !/^\\/stats:(?:songs|shows)-/.test(u.pathname)),",
                 "replace": ","
             }
         ],
@@ -17,8 +17,21 @@
         "why": "Answer 6: stats:songs-<tour>-tour is another stats page.",
         "edits": [
             {
-                "find": " && !/^\\/stats:songs-/.test(u.pathname)),",
+                "find": " && !/^\\/stats:(?:songs|shows)-/.test(u.pathname)),",
                 "replace": "),"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-pages-windows.spec.js",
+        "grep": "which setting",
+        "expect": "fail"
+    },
+    {
+        "name": "a tour's shows preview as a song's tour counts",
+        "why": "Answer 6: stats:shows-<tour>-tour is another stats page.",
+        "edits": [
+            {
+                "find": " && !/^\\/stats:(?:songs|shows)-/.test(u.pathname)),",
+                "replace": " && !/^\\/stats:songs-/.test(u.pathname)),"
             }
         ],
         "spec": "tests/fixtures/bb-song-pages-windows.spec.js",

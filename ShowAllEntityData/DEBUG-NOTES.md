@@ -29394,8 +29394,9 @@ Env: 2026-11-13T01:13+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) ·
   heading table per version (h2, and a live version's date in a `<p>` under it — which the probe first
   counted as "other text"), centred verse blocks, a springsteenlyrics.com table after each version (one page
   with none, one with four); `'Til We Outnumber 'Em` is a two-column table (song | story), read as its text.
-- Two exclusions the sweep found, both "other stats pages" (answer 6): `stats:songs-<tour>-tour` (28 pages)
-  is a TOUR's song counts, not a song's tour counts, though it ends in `-tour`; the playlist discographies
+- Exclusions the sweep found, all "other stats pages" (answer 6): `stats:songs-<tour>-tour` (28 pages) and
+  `stats:shows-<tour>-tour` (29) are a TOUR's song counts and shows, not a song's tour counts, though they end
+  in `-tour` (exactly the 57 of 1,270 `-tour` pages without "Performed at" boxes); the playlist discographies
   (`-playlist`, `-playlist-songs`) have no release entries and would have been a near-empty card.
 - A mutation find collision: the lyrics reader's `return c.textContent.split('\n')` contained
   popup-annotations.json's find (`            return c.textContent.split('\n')`, now 2x); the reader splits on
@@ -29403,4 +29404,4 @@ Env: 2026-11-13T01:13+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) ·
 - Sweep before → after (window's kept text blocks): lyrics 5% → 89%, ott 13% → 77%, sessions 0% → 69%,
   discographies 0% → 35%, tour counts 0% → 0% (wording differs from the page's word for word; see
   docs/claude/brucebase.md "Batch 3").
-Spec 8/8, mutations 30/30 (+6 finds of other lists refreshed and re-run: 6/6), BB + popup-ext specs 436/436.
+Spec 8/8, mutations 31/31 (+6 finds of other lists refreshed and re-run: 6/6), BB + popup-ext specs 436/436.

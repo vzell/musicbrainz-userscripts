@@ -1995,9 +1995,11 @@ dispatches by path before the generic `_dpParseBbPage()`):
 
 - **Which links, which setting** (answers 1, 6): `isDetailUrl` (the song
   preview, `sa_bb_detail_preview`) takes `/ott:`, `/lyrics:` and a song's
-  tour counts (`_BB_SONG_TOURS_PATH_RE`) — but not a tour's song counts,
-  `stats:songs-<tour>-tour` (28 pages, `bb-stats`'; no song's address starts
-  with "songs-"); `ownLinks` (`sa_bb_event_preview`) takes the studio
+  tour counts (`_BB_SONG_TOURS_PATH_RE`) — but not a tour's song counts or
+  shows, `stats:songs-<tour>-tour` and `stats:shows-<tour>-tour` (28 and 29
+  of the mirror's 1,270 `-tour` pages, exactly the ones without a song's
+  "Performed at" boxes; `bb-stats`'; no song's address starts with "songs-"
+  or "shows-"); `ownLinks` (`sa_bb_event_preview`) takes the studio
   sessions (`_BB_SESSIONS_PATH_RE`) and the discographies
   (`_BB_DISCOGRAPHY_PAGE_RE`: not the hub, not the two playlist ones, which
   have no release entries — a plain card was answer 6's rejected option),
@@ -2044,5 +2046,5 @@ shows", so no block matches word for word.
 Tests: `tests/fixtures/bb-song-pages-windows.spec.js` (8; two new lyrics
 fixtures from `scripts/build-bb-event-fixtures.py`, their verses blanked by
 `blank_bb_lyrics()`); mutations `scripts/mutations/bb-song-pages-windows.json`
-(30; six finds of other lists refreshed, the link tests and the shared On The
+(31; six finds of other lists refreshed, the link tests and the shared On The
 Tracks lines moved).

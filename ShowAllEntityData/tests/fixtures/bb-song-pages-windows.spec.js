@@ -63,7 +63,7 @@ test.describe('Brucebase song and album pages\' previews (Phase 16, batch 3)', (
         const got = await page.evaluate(hrefs => Object.fromEntries(hrefs.map(h => [h, window.__saTest.bbPreviewSetting(h)])), [
             '/song:thunder-road', '/stats:thunder-road-tour', '/ott:do-you-want-me-to-say-alright', '/lyrics:born-in-the-u-s-a',
             '/stats:born-to-run-studio-sessions', '/stats:born-to-run-studio-sessions-details', '/stats:discography-album',
-            '/stats:discography', '/stats:discography-playlist', '/stats:discography-playlist-songs', '/stats:on-the-tracks', '/stats:songs-list', '/stats:songs-btr-tour', '/multi:1978-07-07-x', '/soundcheck:2016-01-16-x',
+            '/stats:discography', '/stats:discography-playlist', '/stats:discography-playlist-songs', '/stats:on-the-tracks', '/stats:songs-list', '/stats:songs-btr-tour', '/stats:shows-btr-tour', '/multi:1978-07-07-x', '/soundcheck:2016-01-16-x',
         ]);
         expect(got).toEqual({
             '/song:thunder-road': 'sa_bb_detail_preview',
@@ -79,6 +79,7 @@ test.describe('Brucebase song and album pages\' previews (Phase 16, batch 3)', (
             '/stats:on-the-tracks': '',
             '/stats:songs-list': '',
             '/stats:songs-btr-tour': '',
+            '/stats:shows-btr-tour': '',
             '/multi:1978-07-07-x': 'sa_bb_event_preview',
             '/soundcheck:2016-01-16-x': 'sa_bb_event_preview',
         });

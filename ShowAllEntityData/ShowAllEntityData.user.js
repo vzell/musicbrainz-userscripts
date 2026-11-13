@@ -39112,11 +39112,13 @@
             setting: 'sa_bb_detail_preview',
             // A song's own pages too (Phase 16 batch 3, answer 1): its tour
             // counts, On The Tracks and lyrics. Not the other stats pages
-            // (answer 6), among them a tour's song counts, whose address
-            // ends in -tour too (`stats:songs-btr-tour`, 28 pages; no song's
-            // address starts with "songs-").
+            // (answer 6), among them a tour's song counts and its shows,
+            // whose addresses end in -tour too (`stats:songs-btr-tour`,
+            // `stats:shows-btr-tour`: 28 and 29 of the mirror's 1,270 -tour
+            // pages, the only ones without a song's "Performed at" boxes; no
+            // song's address starts with "songs-" or "shows-").
             isDetailUrl: (u) => /^\/(?:song|ott|lyrics):[^/]+$/.test(u.pathname) ||
-                (_BB_SONG_TOURS_PATH_RE.test(u.pathname) && !/^\/stats:songs-/.test(u.pathname)),
+                (_BB_SONG_TOURS_PATH_RE.test(u.pathname) && !/^\/stats:(?:songs|shows)-/.test(u.pathname)),
             // Event pages (org/TODO.org "Some enhancements" 3b; vzell,
             // 2026-10-24: "on all BB PTs where an event href is involved in
             // a column or elsewhere"): any link to one previews under its

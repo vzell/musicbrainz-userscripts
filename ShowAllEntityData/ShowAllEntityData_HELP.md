@@ -4335,8 +4335,8 @@ first 100 rows ("N more rows on the page" after them); a discography's
 number of releases and their years, and in the window the releases under
 the page's own headings, each with its cover, year, release date and label,
 the covers also as the window's pictures. The other stats pages (a tour's
-song counts, the lists, the menus, the playlist discographies) have no
-preview.
+song counts and shows, the lists, the menus, the playlist discographies)
+have no preview.
 
 </details>
 
