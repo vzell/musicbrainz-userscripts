@@ -4295,3 +4295,13 @@ pinned the song window's Lyrics section as link-free (=html= ''), which Phase 16
 changed on purpose; the spec now pins its one link, the springsteenlyrics.com line (a mutation added
 to =bb-story-song-windows.json=), and its file re-ran 32/32. No code changed after the run. The
 =rel-column-site-kind-discogs= flake of Phase 16 batch 1 and the popup-ext-foreign flake did not show.
+
+* 2026-11-13 — =npm run test:full= on =petri=, =main= after merging feature/bb-overhaul (main at 83794f7d, 9.99.1623)
+
+Env: 2026-11-13T02:18:57+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                         | Tests | Workers | Wall clock  | Basis                                     |
+|-----------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, merge check  |  3088 |      12 | *20 m 14 s* | =run-test-full.py=, 02:18:57–02:39:11 CET |
+
+3088 passed, on the merged tree with the WIP changelog folded (9.99.1599–9.99.1623). No flake showed.
