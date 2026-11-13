@@ -4,9 +4,16 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1794 versions; the month pages hold all of them.
+This page shows the newest 100 of 1795 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1624 — 2026-11-13
+
+**🐛 Fix**
+
+- Multi-table pages with sticky filter bars: opening a sub-table (e.g. "Album + Compilation + Live" on an artist's release groups) could make the whole page flicker until the section was closed again or the page scrolled. The h3 bars' shared height was rounded up from a measurement with a tiny rounding error (22.0001 px), so it switched between 22 and 23 px on every frame; the measurement is now snapped to 1/100 px first.
+
 
 ## 9.99.1623 — 2026-11-13
 
@@ -858,13 +865,6 @@ This page shows the newest 100 of 1794 versions; the month pages hold all of the
 
 - setlist.fm window of a venue or an artist: "In the loaded setlists" lists the artists and tours (a venue's) or the tours and venues (an artist's) as small tables you can sort and filter, most setlists first. The number of setlists is a button: it keeps the Setlists table on the right to that artist, tour or venue, and works together with the table's text filter. A second click, or the ✕ of the "Only …" label above the table, shows them all again.
 - setlist.fm windows: a tour is a link, as on setlist.fm. It goes to setlist.fm's search for that artist and tour; in the window it opens the tour's setlists (20 at a time, "Load 20 more", its venues on the left), and ← Back returns. A setlist's window links its tour the same way.
-
-
-## 9.99.1524 — 2026-11-02
-
-**✨ Improve**
-
-- archive.org item window (link preview): a new "Images" section shows every picture the uploader added (cover, back, booklet, …), not just archive.org's tile. A click opens them in the viewer, and ← → step through all of them. A click on the cover now opens the cover itself at full size.
 
 
 ---
