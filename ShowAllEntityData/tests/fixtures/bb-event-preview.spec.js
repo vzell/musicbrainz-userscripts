@@ -84,7 +84,9 @@ test('the reader: an entry page\'s Scheduled, On stage, Setlist, images and tabs
     // "Sorry, no Media available." is no content.
     expect(f['On the page'].split(' · ')).not.toContain('Media');
     expect(f['On the page'].split(' · ')).toEqual(expect.arrayContaining(['On Stage', 'Setlist', 'Performances', 'Recording', 'Storyteller', 'Eyewitness']));
-    expect(rec.sections.map(s => s.label)).toEqual(['On stage', 'Setlist (28)', 'Performances', 'Recording', 'Storyteller', 'Eyewitness', 'News/Memorabilia']);
+    // The page's tags close every Brucebase record since Phase 1 (2026-11-11);
+    // its description opens it since Phase 16 (batch 1).
+    expect(rec.sections.map(s => s.label)).toEqual(['About this show', 'On stage', 'Setlist (28)', 'Performances', 'Recording', 'Storyteller', 'Eyewitness', 'News/Memorabilia', expect.stringMatching(/^Tags \(\d+\)$/)]);
     expect(rec.sections.find(s => s.label === 'Setlist (28)').text.split('\n')[0]).toBe('1. BORN IN THE U.S.A.');
 });
 
@@ -105,14 +107,14 @@ test('the venue reader: region, count, the lists of entries, the description, th
     expect(cc.highlight).toEqual({ value: '2', label: 'performances here, rehearsals not counted' });
     expect(f).toEqual({ Source: 'Wikipedia', Performances: '2 · 1981-02-22 to 1985-01-13', Images: '1', 'On the page': 'Performances · Gallery' });
     expect(cc.summary).toMatch(/^The Carolina Coliseum is a 12,401 seat multi-purpose arena/);
-    expect(cc.sections.map(s => s.label)).toEqual(['About', 'Performances (2)']);
+    expect(cc.sections.map(s => s.label)).toEqual(['About', 'Performances (2)', expect.stringMatching(/^Tags \(\d+\)$/)]);
     expect(cc.sections[0].html).toContain('Wikipedia</a>');
     expect(cc.sections[1].html).toContain('href="https://brucebase.wikidot.com/gig:1981-02-22-carolina-coliseum-columbia-sc"');
     expect(cc.images.map(i => i.label)).toEqual(['Photo']);
     expect(cc.collapsible && cc.imagesByKind).toBe(true);
 
     const msa = await parse('detail-bb-venue-market-square-arena.html', VENUE07);
-    expect(msa.sections.map(s => s.label)).toEqual(['About', 'Performances (5)', 'Cancelled (1)']);
+    expect(msa.sections.map(s => s.label)).toEqual(['About', 'Performances (5)', 'Cancelled (1)', expect.stringMatching(/^Tags \(\d+\)$/)]);
     expect(Object.fromEntries(msa.fields).Cancelled).toBe('1 · 1981-02-09');
 
     const pt = await parse('detail-bb-venue-paramount-theatre.html', 'https://brucebase.wikidot.com/venue:paramount-theatre-asbury-park-nj');
@@ -270,7 +272,7 @@ test.describe('bb-year: the Event column\'s preview (2026-10-24)', () => {
         await expect(peek(page)).toContainText('South Carolina (SC)');
         await page.keyboard.press('Space');
         await expect(dialog(page).locator('.mb-dp-xtitle')).toHaveText('Carolina Coliseum, Columbia, SC');
-        await expect(dialog(page).locator('details.mb-dp-sec > summary h4')).toHaveText(['About', 'Performances (2)']);
+        await expect(dialog(page).locator('details.mb-dp-sec > summary h4')).toHaveText(['About', 'Performances (2)', /^Tags \(\d+\)$/]);
         const shows = dialog(page).locator('details.mb-dp-sec[data-mb-dp-sec="Performances"] .mb-dp-section a');
         await expect(shows).toHaveCount(2);
         await expect(shows.filter({ hasText: '1981-02-22' })).toHaveAttribute('href', /\/gig:1981-02-22-carolina-coliseum-columbia-sc$/);
@@ -279,9 +281,39 @@ test.describe('bb-year: the Event column\'s preview (2026-10-24)', () => {
         // would title the window "1985-01-07 …".
         for (let k = 0; k < 3; k++) await page.keyboard.press('ArrowLeft');
         await expect(dialog(page).locator('.mb-dp-xtitle')).toHaveText('Market Square Arena, Indianapolis, IN', { timeout: 15000 });
-        await expect(dialog(page).locator('details.mb-dp-sec > summary h4')).toHaveText(['About', 'Performances (5)', 'Cancelled (1)']);
+        await expect(dialog(page).locator('details.mb-dp-sec > summary h4')).toHaveText(['About', 'Performances (5)', 'Cancelled (1)', /^Tags \(\d+\)$/]);
         expect(served).toEqual(expect.arrayContaining([VENUE07, 'https://brucebase.wikidot.com/gig:1985-01-07-market-square-arena-indianapolis-in']));
         expect(errors).toEqual([]);
+    });
+
+    // vzell, 2026-11-12: a venue window's "Source: Wikipedia" had no card and
+    // left for a new tab. A Brucebase window opens every link with a reader
+    // in place, like a MusicBrainz entity's (`_dpWinIsBb()`).
+    test('a venue window\'s "Source: Wikipedia" opens in the window, with Back', async ({ page }) => {
+        await page.setViewportSize({ width: 1920, height: 1000 });
+        await openYear(page, { sa_pop_ext: true });
+        const venue = venueLink(page, GIG13);
+        await page.mouse.move(0, 0);
+        await revealPastStickyColumn(page, venue);
+        await page.keyboard.down('Control');
+        await venue.hover();
+        await page.keyboard.up('Control');
+        await expect(peek(page)).toContainText('South Carolina (SC)');
+        await page.keyboard.press('Space');
+        const title = dialog(page).locator(':scope > div > span').first();
+        await expect(dialog(page).locator('.mb-dp-xtitle')).toHaveText('Carolina Coliseum, Columbia, SC');
+        const before = await title.textContent();
+        const about = dialog(page).locator('details.mb-dp-sec[data-mb-dp-sec="About"]');
+        if (!(await about.evaluate(d => d.open))) await about.locator(':scope > summary').click();
+        const wiki = about.locator('a[href*="wikipedia.org/wiki/Carolina_Coliseum"]');
+        await expect(wiki).toHaveCount(1);
+        const pages = [];
+        page.on('popup', (pp) => pages.push(pp.url()));
+        await wiki.click();
+        await expect(title, 'one step deeper in the same window').toContainText('›');
+        expect(pages, 'no new tab').toEqual([]);
+        await page.keyboard.press('Backspace');
+        await expect(title).toHaveText(before);
     });
 
     test('the year page before any button: an entry heading\'s own link previews its page', async ({ page }) => {
@@ -360,15 +392,18 @@ test.describe('the Brucebase window: collapsible, linked sections; images by kin
         const states = () => secs.evaluateAll(ds => ds.map(d => d.open));
         const n = await secs.count();
         expect(n, 'premise: several sections').toBeGreaterThan(3);
-        expect(await states(), 'all open at first').toEqual(Array(n).fill(true));
+        // All open at first but the last, the page's tags (closed until
+        // opened: a gig carries 50 or more; Phase 1, 2026-11-11).
+        expect(await states(), 'all open at first, Tags closed').toEqual([...Array(n - 1).fill(true), false]);
         const summary = (name) => dialog(page).locator(`details.mb-dp-sec[data-mb-dp-sec="${name}"] > summary`);
         await summary('Setlist').click({ modifiers: ['Control'] });
         await expect.poll(states).toEqual(Array(n).fill(false));
         // From a closed one, Ctrl+click opens them all again.
         await summary('Performances').click({ modifiers: ['Control'] });
         await expect.poll(states).toEqual(Array(n).fill(true));
+        // On stage comes second, after "About this show" (Phase 16).
         await summary('On stage').click();
-        await expect.poll(states).toEqual([false, ...Array(n - 1).fill(true)]);
+        await expect.poll(states).toEqual([true, false, ...Array(n - 2).fill(true)]);
         await summary('Recording').click({ modifiers: ['Control'] });
         await expect.poll(states).toEqual(Array(n).fill(false));
         // Kept for the next record (← to 1985-01-07, which has a fixture).
@@ -413,6 +448,115 @@ test.describe('the Brucebase window: collapsible, linked sections; images by kin
         expect([...kinds].sort()).toEqual(['Memorabilia', 'News', 'Photo', 'Setlist', 'Ticket']);
         const order = await dialog(page).locator('a[data-mb-artv-ext]').evaluateAll(as => as.map(a => Number(a.dataset.mbArtvExt)));
         expect(order).toEqual([...order].sort((a, b) => a - b));
+        expect(errors).toEqual([]);
+    });
+
+    // org/brucebase.org, Plan (2026-11-11), Phase 1: the page's tags, by
+    // family, in a closed section; every tag of the fixture's tag block is
+    // there (counted from the file, not from the script), each a link to the
+    // wiki's list of pages with that tag. Families pinned on one tag each:
+    // a date part, the place from the title, the tour key, what the page
+    // holds, a song from the setlist's links, the category, an
+    // abbreviation (Other).
+    test('the window lists the page\'s tags by family, closed, each linking to the wiki\'s tag list', async ({ page }) => {
+        const { errors } = await openWindow(page);
+        const file = fs.readFileSync(path.join(__dirname, 'detail-bb-gig-1985-01-13.html'), 'utf8');
+        const block = file.slice(file.indexOf('class="page-tags"'));
+        const want = (block.match(/\/system:page-tags\/tag\/[^"]*#pages">[^<]+</g) || []).length;
+        expect(want).toBeGreaterThan(40);
+        const sec = dialog(page).locator('details.mb-dp-sec').filter({ has: page.locator('summary', { hasText: /^Tags \(\d+\)/ }) });
+        await expect(sec).toHaveCount(1);
+        await expect(sec).not.toHaveAttribute('open', /.*/);
+        await expect(sec.locator('summary')).toContainText(`Tags (${want})`);
+        await sec.locator('summary').click();
+        const rows = await sec.locator('.mb-dp-tagrow').evaluateAll(rs => rs.map(r => [
+            r.querySelector('.mb-dp-tagk').textContent, Array.from(r.querySelectorAll('a.mb-dp-tag'), a => a.textContent)]));
+        const of = (name) => (rows.find(([k]) => k === name) || [null, []])[1];
+        expect(rows.reduce((n, [, t]) => n + t.length, 0)).toBe(want);
+        expect(of('Date')).toEqual(expect.arrayContaining(['13', '1985', 'january', 'sunday']));
+        expect(of('Place')).toEqual(expect.arrayContaining(['columbia', 'southcarolina(sc)', 'usa']));
+        expect(of('Tour')).toEqual(['tour_bitusa']);
+        expect(of('On the page')).toEqual(expect.arrayContaining(['bootleg', 'handwritten', 'news', 'setlist', 'ticket']));
+        expect(of('Songs')).toEqual(expect.arrayContaining(['badlands', 'thunderroad', 'johnny99']));
+        expect(of('Category')).toEqual(['gig']);
+        expect(of('Other')).toEqual(expect.arrayContaining(['btr', 'tas']));
+        // The order of the families is _BB_TAG_FAMILIES'.
+        expect(rows.map(([k]) => k).indexOf('Date')).toBe(0);
+        const hrefs = await sec.locator('a.mb-dp-tag').evaluateAll(as => as.map(a => a.href));
+        expect(hrefs.every(h => /^https:\/\/brucebase\.wikidot\.com\/system:page-tags\/tag\/[^#]+#pages$/.test(h))).toBe(true);
+        expect(errors).toEqual([]);
+    });
+
+    // Phase 1, answer 3 to org/bb-overhaul-mockups.html: what an image's
+    // FILENAME says is its caption ("Setlist · #01a · Handwritten"), and a
+    // page's photos are grouped by photographer ("Photo · Mic Hampton",
+    // 19850104_MicHampton_01.jpg); photos of no known photographer
+    // (19850113_Unknown_001.jpg) stay under plain "Photo", last.
+    test('images carry what their filenames say; photos are grouped by photographer', async ({ page }) => {
+        const { errors } = await openWindow(page);
+        const setlist = dialog(page).locator('a[data-mb-artv-ext][href$="19850113_Setlist_01a_Handwritten.jpg"]').first();
+        await expect(setlist).toHaveAttribute('title', 'Setlist · #01a · Handwritten');
+        await expect(setlist.locator('span')).toHaveText('#01a · Handwritten');
+        const unknown = dialog(page).locator('a[data-mb-artv-ext][href$="19850113_Unknown_001.jpg"]').first();
+        await expect(unknown).toHaveAttribute('title', 'Photo · photographer unknown · #001');
+        let kinds = await dialog(page).locator('h5.mb-dp-kind').evaluateAll(hs => hs.map(h => h.firstChild.textContent.trim()));
+        expect(kinds[kinds.length - 1]).toBe('Photo');
+
+        await page.keyboard.press('Escape');
+        await expect(dialog(page)).toBeHidden();
+        const gig04 = 'https://brucebase.wikidot.com/gig:1985-01-04-roads-coliseum-hampton-va';
+        await eventLink(page, gig04).scrollIntoViewIfNeeded();
+        await ctrlHover(page, eventLink(page, gig04));
+        await expect(peek(page)).toContainText('27 songs', { timeout: 15000 });
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator('.mb-dp-xtitle')).toContainText('1985-01-04');
+        kinds = await dialog(page).locator('h5.mb-dp-kind').evaluateAll(hs => hs.map(h => h.firstChild.textContent.trim()));
+        expect(kinds).toContain('Photo · Mic Hampton');
+        expect(kinds.indexOf('Photo · Mic Hampton')).toBeGreaterThan(kinds.indexOf('Ticket'));
+        const n = await dialog(page).locator('h5.mb-dp-kind', { hasText: 'Photo · Mic Hampton' }).locator('span').textContent();
+        const file = fs.readFileSync(path.join(__dirname, 'detail-bb-gig-1985-01-04.html'), 'utf8');
+        const want = new Set(file.match(/19850104_MicHampton_\d+\.jpg/g) || []).size;
+        expect(Number(n)).toBe(want);
+        expect(errors).toEqual([]);
+    });
+
+    // vzell, 2026-11-11 (screenshot of a 212-image gig window): "the
+    // different photo sections should be collapsable (Ctrl-click ALL
+    // sections)". Pinned: a click folds ONE group and hides its tiles; a
+    // Ctrl+click folds or opens EVERY group and leaves the text sections
+    // alone, and a Ctrl+click on a section leaves the groups alone; a folded
+    // group stays folded for the next record.
+    test('image groups fold: a click folds one, a Ctrl+click every group, and the sections stay as they are', async ({ page }) => {
+        const { errors } = await openWindow(page);
+        const groups = dialog(page).locator('details.mb-dp-kindsec');
+        const gstates = () => groups.evaluateAll(ds => ds.map(d => d.open));
+        const sstates = () => dialog(page).locator('details.mb-dp-sec').evaluateAll(ds => ds.map(d => d.open));
+        const n = await groups.count();
+        expect(n, 'premise: several image groups').toBeGreaterThan(3);
+        expect(await gstates()).toEqual(Array(n).fill(true));
+        const sections = await sstates();
+        const head = (name) => groups.filter({ has: page.locator('summary h5', { hasText: new RegExp(`^${name}\\b`) }) }).locator('summary');
+
+        await head('Ticket').click();
+        await expect(groups.filter({ has: page.locator('summary h5', { hasText: /^Ticket\b/ }) }).locator('.mb-dp-gallery')).toBeHidden();
+        expect((await gstates()).filter(o => !o).length).toBe(1);
+
+        await head('Setlist').click({ modifiers: ['Control'] });
+        await expect.poll(gstates).toEqual(Array(n).fill(false));
+        expect(await sstates(), 'the sections are not groups').toEqual(sections);
+        await head('News').click({ modifiers: ['Control'] });
+        await expect.poll(gstates).toEqual(Array(n).fill(true));
+
+        // A Ctrl+click on a section folds the sections, not the groups.
+        await dialog(page).locator('details.mb-dp-sec[data-mb-dp-sec="On stage"] > summary').click({ modifiers: ['Control'] });
+        await expect.poll(async () => (await sstates()).every(o => !o)).toBe(true);
+        expect(await gstates()).toEqual(Array(n).fill(true));
+
+        // Kept for the next record (← to 1985-01-07, which has a fixture).
+        await head('News').click();
+        for (let k = 0; k < 3; k++) await page.keyboard.press('ArrowLeft');
+        await expect(dialog(page).locator('.mb-dp-xtitle')).toContainText('1985-01-07', { timeout: 15000 });
+        await expect(groups.filter({ has: page.locator('summary h5', { hasText: /^News\b/ }) })).not.toHaveAttribute('open', /.*/);
         expect(errors).toEqual([]);
     });
 

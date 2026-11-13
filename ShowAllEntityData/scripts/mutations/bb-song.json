@@ -1,0 +1,119 @@
+[
+    {
+        "name": "sa_bb_detail_pages does not gate bb-song",
+        "why": "Off, a song page is bb-page's.",
+        "edits": [
+            {
+                "find": "            match: (path) => /^\\/song:/.test(path) && Lib.settings.sa_bb_detail_pages !== false,\n",
+                "replace": "            match: (path) => /^\\/song:/.test(path),\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song.spec.js",
+        "grep": "sa_bb_detail_pages off",
+        "expect": "fail"
+    },
+    {
+        "name": "a credit's person is not split from the role",
+        "why": "\"Roy Bittan: piano\" is Person and Role.",
+        "edits": [
+            {
+                "find": "                    if (pa && depth === 0 && ptext.startsWith(_dpText(pa.textContent))) {\n",
+                "replace": "                    if (false) {\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song.spec.js",
+        "grep": "counted from the page's own tabs",
+        "expect": "fail"
+    },
+    {
+        "name": "tours played on no show are rows",
+        "why": "The Performances tab lists every tour; only those the song was played on are rows.",
+        "edits": [
+            {
+                "find": "        const tours = cells[1] ? _bbTourCounts(cells[1]).tours.filter(t => t.played).map(",
+                "replace": "        const tours = cells[1] ? _bbTourCounts(cells[1]).tours.filter(t => t || t.played).map("
+            }
+        ],
+        "spec": "tests/fixtures/bb-song.spec.js",
+        "grep": "counted from the page's own tabs",
+        "expect": "fail"
+    },
+    {
+        "name": "a 'multi' entry shows its raw category",
+        "why": "_BB_ENTRY_KINDS names a multi page \"Multiple shows\".",
+        "edits": [
+            {
+                "find": "    const _BB_ENTRY_KINDS = { ..._BB_EVENT_KINDS, multi: 'Multiple shows', nobruce: 'No Bruce', onstage: 'On stage', offstage: 'Off stage' };\n",
+                "replace": "    const _BB_ENTRY_KINDS = { ..._BB_EVENT_KINDS, nobruce: 'No Bruce', onstage: 'On stage', offstage: 'Off stage' };\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song.spec.js",
+        "grep": "counted from the page's own tabs",
+        "expect": "fail"
+    },
+    {
+        "name": "a take is not split from its title",
+        "why": "\"THE PROMISE - V1\" is Title and Version.",
+        "edits": [
+            {
+                "find": "            const v = _bbSplitVersion(name);\n",
+                "replace": "            const v = { song: name, version: '', take: '', date: '' };\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song.spec.js",
+        "grep": "counted from the page's own tabs|On The Tracks page",
+        "expect": "fail"
+    },
+    {
+        "name": "song sub-tables all start folded",
+        "why": "openSubTables names the short tables that start open.",
+        "edits": [
+            {
+                "find": "                openSubTables: [ 'Credits', 'Performances by tour', 'Multiples', 'Snippets', 'On The Tracks' ],\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-song.spec.js",
+        "grep": "counted from the page's own tabs",
+        "expect": "fail"
+    },
+    {
+        "name": "the On The Tracks page's head reads it as a song",
+        "why": "_bbSongSource() reads an /ott: page with _bbOttRead().",
+        "edits": [
+            {
+                "find": "            const read = activeDefinition?.type === 'bb-ott' ? _bbOttRead : _bbSongRead;\n",
+                "replace": "            const read = _bbSongRead;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song.spec.js",
+        "grep": "On The Tracks page",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-song has no head",
+        "why": "_fdHeadSpec() names each detail pageType's head.",
+        "edits": [
+            {
+                "find": "        if (t === 'bb-song' || t === 'bb-ott') return _bbSongHeadSpec();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-song.spec.js",
+        "grep": "the head:",
+        "expect": "fail"
+    },
+    {
+        "name": "snippets are not counted",
+        "why": "The Song card's Snippets: the Snippets tab's \"Performed live N times as a snippet\".",
+        "edits": [
+            {
+                "find": "                rec.snippets = { rows: _bbEventList(panel, url).rows, count: cm ? cm[1] : '' };\n",
+                "replace": "                rec.snippets = { rows: _bbEventList(panel, url).rows, count: '' };\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song.spec.js",
+        "grep": "snippets and no credits",
+        "expect": "fail"
+    }
+]

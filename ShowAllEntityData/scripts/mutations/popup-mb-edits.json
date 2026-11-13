@@ -17,7 +17,7 @@
         "why": "The button must follow _mbEditsSubject(): an ISRC, an edit or the history itself has no editing history.",
         "edits": [
             {
-                "find": "            (c.histSplit || c.hist).style.display = subj || dg ? '' : 'none';",
+                "find": "            (c.histSplit || c.hist).style.display = subj || dg || bb ? '' : 'none';",
                 "replace": "            (c.histSplit || c.hist).style.display = '';"
             }
         ],

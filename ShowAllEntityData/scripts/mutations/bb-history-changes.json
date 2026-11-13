@@ -1,0 +1,145 @@
+[
+    {
+        "name": "no changes button on a row",
+        "why": "The Page cell gets button.mb-bb-changes-btn with the row's revision.",
+        "edits": [
+            {
+                "find": "            if (revNo && _bbHistOn()) {\n",
+                "replace": "            if (false && revNo && _bbHistOn()) {\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history-changes.spec.js",
+        "grep": "a row's changes button",
+        "expect": "fail"
+    },
+    {
+        "name": "the button ignores the history setting",
+        "why": "With sa_bb_history off there is no History section to open, so no button.",
+        "edits": [
+            {
+                "find": "            if (revNo && _bbHistOn()) {\n",
+                "replace": "            if (revNo) {\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history-changes.spec.js",
+        "grep": "with the history off",
+        "expect": "fail"
+    },
+    {
+        "name": "the button has text of its own",
+        "why": "The glyph is CSS: a text node would change what the Page cell's filter reads.",
+        "edits": [
+            {
+                "find": "                b.dataset.mbBbRev = revNo;\n",
+                "replace": "                b.dataset.mbBbRev = revNo;\n                b.textContent = '✎';\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history-changes.spec.js",
+        "grep": "a row's changes button",
+        "expect": "fail"
+    },
+    {
+        "name": "the wanted revision never reaches the page id",
+        "why": "_bbHistSection() moves the URL's wanted revision to the page id once the record names it.",
+        "edits": [
+            {
+                "find": "            _bbHistPick.set(data.bbPageId, _bbHistWant.get(wk));\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-history-changes.spec.js",
+        "grep": "a row's changes button",
+        "expect": "fail"
+    },
+    {
+        "name": "the wanted revision is not picked",
+        "why": "_bbHistStart() makes the wanted row To (the one before it From).",
+        "edits": [
+            {
+                "find": "            if (row) {\n                ui.to = row.id;\n",
+                "replace": "            if (row) {\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history-changes.spec.js",
+        "grep": "a row's changes button",
+        "expect": "fail"
+    },
+    {
+        "name": "an older revision's list page is not read",
+        "why": "A revision past the first page: the next pages are read until its row is in.",
+        "edits": [
+            {
+                "find": "            while (!row && h.read < h.pages && h.revs.length && h.revs[h.revs.length - 1].n > want) {\n",
+                "replace": "            while (false && !row && h.read < h.pages && h.revs.length && h.revs[h.revs.length - 1].n > want) {\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history-changes.spec.js",
+        "grep": "an older revision",
+        "expect": "fail"
+    },
+    {
+        "name": "no scroll to the first changed line",
+        "why": "_bbHistStart() ends with _bbHistScrollFirst() once the sources are in.",
+        "edits": [
+            {
+                "find": "        await Promise.all([p.newer, p.older].filter(srcNeeded).map(r => _bbHistLoadSource(r.id)));\n        _bbHistScrollFirst(pid);\n",
+                "replace": "        await Promise.all([p.newer, p.older].filter(srcNeeded).map(r => _bbHistLoadSource(r.id)));\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history-changes.spec.js",
+        "grep": "a row's changes button",
+        "expect": "fail"
+    },
+    {
+        "name": "the mark lands on the last changed line",
+        "why": "The FIRST changed cell, in row order.",
+        "edits": [
+            {
+                "find": "            const first = box && box.querySelector('.mb-bbh-diff .mb-bbh-chg, .mb-bbh-diff .mb-bbh-rem, .mb-bbh-diff .mb-bbh-add');\n",
+                "replace": "            const all = box ? box.querySelectorAll('.mb-bbh-diff .mb-bbh-chg, .mb-bbh-diff .mb-bbh-rem, .mb-bbh-diff .mb-bbh-add') : [];\n            const first = all[all.length - 1];\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history-changes.spec.js",
+        "grep": "a row's changes button",
+        "expect": "fail"
+    },
+    {
+        "name": "the wiki's comparison is not watched",
+        "why": "_bbWikiDiffScrollInit() observes #action-area for the wiki's div.diff-box.",
+        "edits": [
+            {
+                "find": "        _bbWikiDiffScrollInit.done = true;\n        new MutationObserver((muts) => {\n",
+                "replace": "        _bbWikiDiffScrollInit.done = true;\n        if (true) return;\n        new MutationObserver((muts) => {\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history-changes.spec.js",
+        "grep": "the wiki's own comparison",
+        "expect": "fail"
+    },
+    {
+        "name": "the wiki's first difference is not scrolled to",
+        "why": "The first ins/del is scrolled to the middle of the window.",
+        "edits": [
+            {
+                "find": "        const go = () => { if (!moved && first.isConnected) first.scrollIntoView({ block: 'center' }); };\n",
+                "replace": "        const go = () => {};\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history-changes.spec.js",
+        "grep": "the wiki's own comparison",
+        "expect": "fail"
+    },
+    {
+        "name": "the wiki's comparison watched with the history off",
+        "why": "Under sa_bb_history, as the window's History section.",
+        "edits": [
+            {
+                "find": "        if (_bbWikiDiffScrollInit.done || !_bbHistOn()) return;\n",
+                "replace": "        if (_bbWikiDiffScrollInit.done) return;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-history-changes.spec.js",
+        "grep": "left alone",
+        "expect": "fail"
+    }
+]

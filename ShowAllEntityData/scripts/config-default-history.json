@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "6c0128682a38fb554dec28aeb90ed445311dda00",
-    "revisions_walked": 1194
+    "head": "f25cf354ec565acef48d8cc20b529ae0fd8096ae",
+    "revisions_walked": 1219
   },
   "changes": [
     {
@@ -834,6 +834,7 @@
     "sa_column_descriptions": true,
     "sa_enable_density_control": true,
     "sa_mbu_quiet_corner": true,
+    "sa_mb_shared_gate": true,
     "sa_enable_sticky_headers": true,
     "sa_enable_sticky_filter_bars": true,
     "sa_enable_sticky_columns": true,
@@ -963,6 +964,8 @@
     "sa_findings_rel_multi_site_ignore": "",
     "sa_findings_bb_mbev_link_mismatch": true,
     "sa_findings_bb_mbev_link_missing": true,
+    "sa_findings_bb_date_comma": true,
+    "sa_findings_tint_bb_date_comma": true,
     "sa_findings_tint_bb_mbev_link": true,
     "sa_findings_tint_sl_old_address": true,
     "sa_findings_tint_sl_double_utf8": true,
@@ -1121,7 +1124,9 @@
     "sa_bb_collabsable_sidebar": true,
     "sa_bb_sidebar_right": false,
     "sa_bb_detail_preview": true,
+    "sa_bb_detail_pages": true,
     "sa_bb_event_preview": true,
+    "sa_bb_history": true,
     "sa_bb_mb_event_lookup": true,
     "sa_bb_tip_images": true,
     "sa_enable_discogs": true,
@@ -1129,6 +1134,7 @@
     "sa_dg_mb_auto_lookup": true,
     "sa_dg_tip_images": true,
     "sa_dg_master_versions_count": true,
+    "sa_dg_section_bands_sticky_on_touch": false,
     "sa_enable_internetarchive": true,
     "sa_ia_tip_images": true,
     "sa_ia_play_in_place": true,

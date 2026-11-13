@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- SKELETON-END: everything above this line is dropped when the page is published as an Artifact. -->
+<title>BruceBase Overhaul</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+  Mockups for org/brucebase.org, "Overwhole of, extensions to and beautify of
+  BruceBase (BB) pages", Plan (2026-11-11), Phase 0 step 3. Branch
+  feature/bb-overhaul.
+  Data: real, from the BruceParser mirror (bb/latest = /mnt/share/brucebase/
+  2026-10-18), local sample debug/bb-mirror/ (scripts/sample-bb-mirror.py):
+  gig:1978-07-07-roxy-theatre-west-hollywood-ca for M1; filenames from the
+  mirror survey of the same day for the filename grammar. Images are NOT
+  embedded: every tile shows what its FILENAME says, which is the point of
+  the image-section part (the Artifact sandbox blocks the wiki's images).
+  Code facts: the two Explore reports of 2026-11-11 (reuse map in the plan).
+-->
+<script type="application/json" id="mockup-images">{}</script>
+<!--EMBED-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a design bench (house style of org/foreign-detail-PTs-mockups.html).
+   Verdict strip, then one tab per mockup; each tab is a mock browser window
+   with the Brucebase page as our script would render it, notes beside it.
+   The mocked site is light in both themes, as the real wiki is. */
+:root {
+    --bg: #e9edf1;
+    --surface: #f8fafc;
+    --ink: #18202b;
+    --muted: #556070;
+    --line: #cfd6df;
+    --accent: #24527f;
+    --accent-ink: #ffffff;
+    --accent-soft: #dbe6f1;
+    --ok: #2c7347;
+    --ok-soft: #dcefe2;
+    --warn: #8f5a00;
+    --warn-soft: #f6e8cc;
+    --shadow: 0 1px 0 rgba(20, 30, 45, 0.05), 0 12px 32px -18px rgba(20, 30, 45, 0.35);
+
+    --site-bg: #ffffff;
+    --site-ink: #222222;
+    --site-dim: #6b6b6b;
+    --site-line: #dddddd;
+    --site-head: #eceef1;
+    --site-even: #f6f7f9;
+    --site-link: #1d4f96;
+    --site-chrome: #f1f3f6;
+    --site-chrome-ink: #4d5664;
+    --site-h3: #f0f3f7;
+    --site-tag: #f1f1f1;
+    --site-tag-line: #dddddd;
+    --site-pill: #e5f2e8;
+    --site-pill-ink: #24613a;
+    --bb-head: #1f4e79;
+    --bb-head-ink: #ffffff;
+    --bb-side: #eef3f8;
+    --add: #d9f2df;
+    --add-ink: #1d5e30;
+    --rem: #fbe0e0;
+    --rem-ink: #8a1f1f;
+    --chg: #fdf0c8;
+    --tile: #dfe5ec;
+    --tile-ink: #3b4757;
+
+    --f-display: "Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+    --f-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, Consolas, "Courier New", monospace;
+    --f-site: Verdana, Arial, Helvetica, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg: #11161d; --surface: #19212b; --ink: #e2e7ee; --muted: #9aa5b4; --line: #2c3746;
+        --accent: #86b4e2; --accent-ink: #0e1620; --accent-soft: #1f3248;
+        --ok: #74c494; --ok-soft: #1c3326; --warn: #e3ac4c; --warn-soft: #3a2d14;
+        --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 14px 34px -16px rgba(0, 0, 0, 0.7);
+        color-scheme: dark;
+    }
+}
+:root[data-theme="dark"] {
+    --bg: #11161d; --surface: #19212b; --ink: #e2e7ee; --muted: #9aa5b4; --line: #2c3746;
+    --accent: #86b4e2; --accent-ink: #0e1620; --accent-soft: #1f3248;
+    --ok: #74c494; --ok-soft: #1c3326; --warn: #e3ac4c; --warn-soft: #3a2d14;
+    --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 14px 34px -16px rgba(0, 0, 0, 0.7);
+    color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+    background: var(--bg); color: var(--ink); font: 15px/1.55 var(--f-body); margin: 0;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 0 64px;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 1280px; margin: 0 auto; display: grid; gap: 28px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(28px, 4vw, 40px); font-weight: 800; font-stretch: 85%; }
+h2 { font-size: 22px; font-weight: 700; font-stretch: 90%; }
+p { margin: 0; max-width: 76ch; }
+code { font-family: var(--f-mono); font-size: 0.87em; }
+.eyebrow { font: 600 11px/1 var(--f-body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.muted { color: var(--muted); }
+header.top { padding-block: 32px 0; display: grid; gap: 12px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); min-width: 0; }
+
+.verdicts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.verdict { padding: 14px 16px; display: grid; gap: 6px; align-content: start; }
+.verdict h3 { font-size: 16px; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.pill { font: 600 11.5px/1 var(--f-body); padding: 4px 8px; border-radius: 999px; white-space: nowrap; }
+.pill.yes { background: var(--ok-soft); color: var(--ok); }
+.pill.up { background: var(--accent-soft); color: var(--accent); }
+.pill.wait { background: var(--warn-soft); color: var(--warn); }
+.verdict p { font-size: 13.5px; color: var(--muted); }
+
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 10px; border-bottom: 1px solid var(--line); }
+.tabs button { font: 600 13px/1 var(--f-body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 9px 14px; cursor: pointer; }
+.tabs button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.bench { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
+@media (max-width: 980px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+.notes { padding: 16px; display: grid; gap: 12px; font-size: 13.5px; position: sticky; top: 64px; }
+.notes h3 { font-size: 15px; }
+.notes ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.notes .q { border-left: 3px solid var(--warn); background: var(--warn-soft); padding: 8px 10px; border-radius: 0 6px 6px 0; }
+.notes .q b { color: var(--warn); }
+
+/* The mock browser window and the Brucebase page inside it */
+.mock { background: var(--site-bg); color: var(--site-ink); border-radius: 8px; border: 1px solid var(--line); overflow: hidden; box-shadow: var(--shadow); min-width: 0; font: 12.5px/1.45 var(--f-site); }
+.chrome { background: var(--site-chrome); color: var(--site-chrome-ink); padding: 8px 12px; font: 12px/1 var(--f-mono); display: flex; gap: 10px; align-items: center; border-bottom: 1px solid var(--site-line); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.chrome i { width: 10px; height: 10px; border-radius: 50%; background: var(--site-line); flex: none; }
+.bbhead { background: var(--bb-head); color: var(--bb-head-ink); padding: 10px 14px; font: 700 18px/1 Georgia, "Times New Roman", serif; }
+.bbcw { display: grid; grid-template-columns: 150px minmax(0, 1fr); position: relative; }
+@media (max-width: 640px) { .bbcw { grid-template-columns: minmax(0, 1fr); } .bbside { display: none; } }
+.bbside { background: var(--bb-side); border-right: 1px solid var(--site-line); padding: 10px; font-size: 11px; color: var(--site-dim); display: grid; gap: 6px; align-content: start; min-height: 100%; }
+.bbside b { color: var(--site-ink); }
+.bbmain { padding: 14px 16px 20px; min-width: 0; display: grid; gap: 12px; align-content: start; }
+.site a, .mock a { color: var(--site-link); text-decoration: none; }
+.mb-h1 { font: 700 20px/1.2 var(--f-site); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; border-bottom: 1px dotted #aaa; padding-bottom: 6px; }
+.saed { display: inline-flex; border: 1px solid #b9c3cf; border-radius: 5px; overflow: hidden; font: 600 11.5px/1 var(--f-body); }
+.saed span { padding: 6px 9px; background: #f4f6f9; color: #2d3a4a; }
+.saed span + span { border-left: 1px solid #b9c3cf; }
+.saed span.on { background: #24527f; color: #fff; }
+.byline { color: var(--site-dim); font-size: 12px; }
+.byline a { font-weight: 600; }
+.sh2 { font: 700 15px/1.2 var(--f-site); background: var(--site-head); padding: 6px 8px; border-radius: 4px; display: flex; gap: 8px; align-items: center; cursor: pointer; user-select: none; }
+.sh2 .tw { font-size: 10px; color: var(--site-dim); width: 10px; }
+.sh2 .cnt { font-weight: 400; color: var(--site-dim); font-size: 12px; }
+.sec.closed > :not(.sh2) { display: none; }
+.sec.closed > .sh2 .tw::before { content: "▶"; }
+.sec:not(.closed) > .sh2 .tw::before { content: "▼"; }
+.sec { display: grid; gap: 8px; }
+.textsec { font-size: 12.5px; line-height: 1.55; max-width: 80ch; }
+
+/* Details cards (the _sbInline layout) */
+.cards { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+@media (max-width: 720px) { .cards { grid-template-columns: minmax(0, 1fr); } }
+.col { display: grid; gap: 10px; align-content: start; }
+.card { border: 1px solid var(--site-line); border-radius: 5px; min-width: 0; }
+.card h4 { margin: 0; font: 700 12px/1 var(--f-site); padding: 7px 9px; background: var(--site-h3); border-bottom: 1px solid var(--site-line); display: flex; justify-content: space-between; }
+.card h4 .n { color: var(--site-dim); font-weight: 400; }
+.card dl { margin: 0; padding: 8px 9px; display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 4px 8px; }
+.card dt { color: var(--site-dim); }
+.card dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.chips { padding: 8px 9px; display: grid; gap: 6px; }
+.chiprow { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 8px; align-items: start; }
+.chiprow .k { color: var(--site-dim); padding-top: 2px; }
+.chiprow .v { display: flex; flex-wrap: wrap; gap: 4px; }
+.tag { background: var(--site-tag); border: 1px solid var(--site-tag-line); border-radius: 999px; padding: 1px 7px; font-size: 11px; color: var(--site-ink); }
+.tag.hi { background: var(--site-pill); border-color: #bcdcc5; color: var(--site-pill-ink); }
+.yt { display: inline-flex; gap: 5px; align-items: center; border: 1px solid var(--site-line); border-radius: 4px; padding: 2px 6px; font-size: 11px; background: #fff; }
+.yt b { color: #c4302b; }
+
+/* Art section */
+.artbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 11.5px; }
+.chipbtn { border: 1px solid var(--site-line); border-radius: 999px; padding: 2px 8px; background: #fff; color: var(--site-ink); }
+.chipbtn.on { background: #24527f; color: #fff; border-color: #24527f; }
+.seg { display: inline-flex; border: 1px solid var(--site-line); border-radius: 4px; overflow: hidden; margin-left: auto; }
+.seg span { padding: 2px 8px; background: #fff; }
+.seg span.on { background: var(--site-h3); font-weight: 700; }
+.group { display: grid; gap: 6px; }
+.group h5 { margin: 0; font: 700 11.5px/1 var(--f-site); color: var(--site-dim); text-transform: uppercase; letter-spacing: 0.06em; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+.tile { margin: 0; display: grid; gap: 3px; min-width: 0; }
+.tile .img { aspect-ratio: 4 / 3; max-width: 100%; background: repeating-linear-gradient(135deg, var(--tile), var(--tile) 8px, #e7ecf2 8px, #e7ecf2 16px); border-radius: 4px; display: grid; place-items: center; color: var(--tile-ink); font: 600 11px/1.2 var(--f-body); text-align: center; padding: 6px; border: 1px solid var(--site-line); }
+.tile.portrait .img { aspect-ratio: 3 / 4; }
+.tile figcaption { font-size: 10.5px; color: var(--site-dim); line-height: 1.3; overflow-wrap: anywhere; }
+.tile figcaption b { color: var(--site-ink); font-weight: 600; }
+
+/* Tables (the script's table.tbl look) */
+.tblwrap { overflow-x: auto; border: 1px solid var(--site-line); border-radius: 4px; }
+table.tbl { border-collapse: collapse; width: 100%; font-size: 12px; font-variant-numeric: tabular-nums; }
+.tbl th { background: var(--site-head); text-align: left; padding: 5px 7px; border-bottom: 1px solid var(--site-line); white-space: nowrap; font-weight: 700; }
+.tbl th .fl { display: block; margin-top: 3px; height: 16px; border: 1px solid var(--site-line); border-radius: 3px; background: #fff; }
+.tbl td { padding: 4px 7px; border-bottom: 1px solid #eee; vertical-align: top; }
+.tbl tr:nth-child(even) td { background: var(--site-even); }
+.tbl td.num { text-align: right; color: var(--site-dim); width: 1%; }
+.prem { color: #b8860b; font-weight: 700; }
+.h3 { font: 700 13px/1.2 var(--f-site); background: var(--site-h3); padding: 5px 8px; border-left: 3px solid #24527f; display: flex; gap: 8px; align-items: center; cursor: pointer; }
+.h3 .cnt { font-weight: 400; color: var(--site-dim); font-size: 11.5px; }
+.filterbar { display: flex; gap: 8px; align-items: center; font-size: 11.5px; color: var(--site-dim); }
+.filterbar .gf { flex: 1; max-width: 340px; height: 22px; border: 1px solid var(--site-line); border-radius: 3px; background: #fff; }
+
+/* Native page below */
+.native { border: 1px dashed #9fb0c3; border-radius: 6px; padding: 10px; display: grid; gap: 8px; background: #fbfcfe; }
+.native .navtabs { display: flex; flex-wrap: wrap; gap: 2px; }
+.native .navtabs span { font-size: 11px; padding: 3px 7px; background: #e6ecf3; border-radius: 3px 3px 0 0; }
+.native .navtabs span.on { background: #fff; border: 1px solid var(--site-line); border-bottom: 0; font-weight: 700; }
+.nh { font: 700 13px/1.2 var(--f-site); display: flex; gap: 6px; align-items: center; cursor: pointer; }
+.nh .tw { font-size: 10px; color: var(--site-dim); }
+
+/* M2: handle */
+.handle-demo { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.hd { position: relative; height: 300px; border: 1px solid var(--site-line); border-radius: 6px; background: var(--site-bg); overflow: hidden; }
+.hd .sb { position: absolute; top: 0; left: 0; bottom: 0; width: 96px; background: var(--bb-side); border-right: 1px solid var(--site-line); padding: 8px; font-size: 10px; color: var(--site-dim); display: grid; gap: 4px; align-content: start; }
+.hd .hdl { position: absolute; left: 96px; width: 14px; height: 80px; background: #24527f; border-radius: 0 6px 6px 0; color: #fff; font-size: 10px; display: grid; place-items: center; }
+.hd .hdl.mid { top: 50%; transform: translateY(-50%); background: #9aa8b8; }
+.hd .hdl.top { top: 8px; }
+.hd .body { position: absolute; left: 120px; right: 10px; top: 10px; display: grid; gap: 6px; }
+.hd .body i { display: block; height: 9px; background: #e7ecf2; border-radius: 3px; }
+.hd .cap { position: absolute; bottom: 8px; left: 120px; right: 10px; font: 600 11px/1.3 var(--f-body); color: var(--site-dim); }
+
+/* M3 sketches */
+.sketches { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
+.sk { display: grid; gap: 8px; padding: 12px; }
+.sk .mock { font-size: 11.5px; }
+.sk .bbmain { padding: 10px 12px 14px; gap: 8px; }
+
+/* M4 diff */
+.dgh-list { display: grid; gap: 0; border: 1px solid var(--site-line); border-radius: 4px; overflow: hidden; }
+.dgh-e { display: grid; grid-template-columns: 54px 128px 110px minmax(0, 1fr) auto; gap: 8px; padding: 5px 8px; border-bottom: 1px solid #eee; align-items: center; font-size: 11.5px; }
+@media (max-width: 640px) { .dgh-e { grid-template-columns: 44px minmax(0, 1fr) auto; } .dgh-e .u, .dgh-e .n { display: none; } }
+.dgh-e:nth-child(even) { background: var(--site-even); }
+.dgh-e .r { font-weight: 700; }
+.dgh-e .d { color: var(--site-dim); font-variant-numeric: tabular-nums; }
+.dgh-e .k { display: inline-flex; gap: 3px; }
+.flag { font: 700 10px/1 var(--f-mono); border: 1px solid var(--site-line); border-radius: 3px; padding: 2px 4px; background: #fff; }
+.vbtn { border: 1px solid #24527f; color: #24527f; background: #fff; border-radius: 4px; padding: 2px 7px; font-size: 11px; }
+.vbtn.on { background: #24527f; color: #fff; }
+.diff { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); border: 1px solid var(--site-line); border-radius: 4px; overflow: hidden; font: 11.5px/1.5 var(--f-mono); }
+.diff .dh { background: var(--site-head); font: 700 11px/1 var(--f-body); padding: 6px 8px; border-bottom: 1px solid var(--site-line); }
+.diff .ln { padding: 2px 8px; border-bottom: 1px solid #f0f0f0; white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
+.diff .ln + .ln { border-left: 0; }
+.diff .o { border-right: 1px solid var(--site-line); }
+.diff .rem { background: var(--rem); }
+.diff .add { background: var(--add); }
+.diff .chg { background: var(--chg); }
+.diff .ctx { grid-column: 1 / -1; color: var(--site-dim); background: var(--site-even); font-family: var(--f-body); font-size: 11px; text-align: center; }
+.diff del { background: #f4b9b9; color: var(--rem-ink); text-decoration: line-through; }
+.diff ins { background: #a8e2b7; color: var(--add-ink); text-decoration: none; }
+.legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11px; color: var(--site-dim); }
+.legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 4px; vertical-align: -1px; border-radius: 2px; background: var(--c); border: 1px solid var(--site-line); }
+.window { border: 1px solid #8796a8; border-radius: 6px; box-shadow: 0 18px 40px -20px rgba(0,0,0,.45); background: var(--site-bg); display: grid; }
+.window .wt { display: flex; gap: 8px; align-items: center; padding: 7px 10px; background: #24527f; color: #fff; font: 600 12px/1.2 var(--f-body); border-radius: 6px 6px 0 0; }
+.window .wt .x { margin-left: auto; opacity: .8; }
+.window .wb { padding: 10px; display: grid; gap: 10px; }
+
+.gram { overflow-x: auto; }
+.gram table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+.gram th, .gram td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+.gram th { font: 600 11px/1.2 var(--f-body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.gram td code { font-size: 11.5px; }
+.gram .k { color: var(--accent); font-weight: 600; }
+
+.qs { padding: 18px; display: grid; gap: 14px; }
+.qs ol { margin: 0; padding-left: 22px; display: grid; gap: 12px; }
+.qs li b { display: block; }
+.qs .opt { color: var(--muted); font-size: 13.5px; }
+.qs .rec { color: var(--ok); font-weight: 600; }
+@media (prefers-reduced-motion: no-preference) { .tabs button { transition: background-color .15s; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+    <span class="eyebrow">ShowAllEntityData · brucebase.wikidot.com · Phase 0 mockups · 2026-11-11</span>
+    <h1>BruceBase overhaul</h1>
+    <p class="muted">Every Brucebase detail page rendered the way a MusicBrainz release page is: a head with byline, text and Details cards, picture sections typed from the image <em>filenames</em>, then filterable sub-tables, with the wiki's own page kept below and collapsible. The data is real (the 1978-07-07 Roxy gig from the BruceParser mirror). Questions are in each tab's notes and gathered in the last tab.</p>
+</header>
+
+<section class="verdicts" aria-label="Summary">
+    <div class="panel verdict"><h3>Event family <span class="pill up">Phase 2</span></h3><p>gig, recording, rehearsal, interview, nogig: one layout, one parser, about 5,000 pages. Mockup M1.</p></div>
+    <div class="panel verdict"><h3>Shared groundwork <span class="pill up">Phase 1</span></h3><p>Tags card, filename parser (98.5 % of 14,032 names), the wiki page collapsible below, the side-bar handle at the top (M2).</p></div>
+    <div class="panel verdict"><h3>Songs, venues, people, releases <span class="pill up">Phases 3–5</span></h3><p>Same head and table engine, one parser each. Sketches in M3.</p></div>
+    <div class="panel verdict"><h3>History diff <span class="pill wait">Probe first</span></h3><p>Signed-out pages have no history buttons. A probe you run decides what we can read; M4 shows the target look.</p></div>
+</section>
+
+<nav class="tabs" role="tablist" aria-label="Mockups">
+    <button type="button" id="t-m1" aria-pressed="true" data-tab="m1">M1 · Event page</button>
+    <button type="button" id="t-fn" aria-pressed="false" data-tab="fn">Filenames</button>
+    <button type="button" id="t-m2" aria-pressed="false" data-tab="m2">M2 · Side-bar handle</button>
+    <button type="button" id="t-m3" aria-pressed="false" data-tab="m3">M3 · Other pages</button>
+    <button type="button" id="t-m4" aria-pressed="false" data-tab="m4">M4 · History</button>
+    <button type="button" id="t-q" aria-pressed="false" data-tab="q">Questions</button>
+</nav>
+
+<!-- ============================== M1 ============================== -->
+<section data-pane="m1" class="bench">
+<div class="mock">
+    <div class="chrome"><i></i><i></i><i></i> brucebase.wikidot.com/gig:1978-07-07-roxy-theatre-west-hollywood-ca</div>
+    <div class="bbhead">Brucebase Wiki</div>
+    <div class="bbcw">
+        <aside class="bbside" aria-label="Wiki side bar"><b>Site Navigation</b><span>Songs | Lyrics</span><span>Recording Sessions</span><span>Relations</span><b>Gig Pages</b><span>1949-64 | 1965 | … | 1978 | … | 2026</span></aside>
+        <div class="bbmain site">
+            <div class="mb-h1"><span>Brucebase — 1978-07-07 · Roxy Theatre, West Hollywood, CA</span>
+                <span class="saed"><span class="on">Event</span><span>⇩</span><span>☰</span></span></div>
+            <div class="byline">~ Gig at <a href="#">Roxy Theatre</a>, West Hollywood, CA, USA · Friday 1978-07-07 · <a href="#">Darkness Tour</a> · <a href="#">1978 year page</a></div>
+
+            <div class="sec">
+                <div class="sh2"><span class="tw"></span>About this show</div>
+                <p class="textsec">Broadcast on KMET-FM radio. Remarkable setlist includes the premieres of "<a href="#">Point Blank</a>", "<a href="#">Rave On</a>" and "<a href="#">Heartbreak Hotel</a>". Another live debut "Independence Day" is performed solo on piano for only time on the tour. "Point Blank" features different lyrics to later versions and is played slightly differently. Also includes the first known tour performances of both "Twist And Shout" and "Raise Your Hand". "Night" is dropped for the first confirmed time on the tour. This show is widely seen as one of the great Springsteen shows of all time.</p>
+            </div>
+
+            <div class="sec">
+                <div class="sh2"><span class="tw"></span>Details</div>
+                <div class="cards">
+                    <div class="col">
+                        <div class="card"><h4>Event</h4><dl>
+                            <dt>Type</dt><dd>Gig</dd>
+                            <dt>Date</dt><dd>1978-07-07 (Friday)</dd>
+                            <dt>Scheduled</dt><dd>21:00 · start ??:?? · end ??:??</dd>
+                            <dt>Venue</dt><dd><a href="#">Roxy Theatre</a>, West Hollywood, CA, USA</dd>
+                            <dt>Tour</dt><dd><a href="#">Darkness On The Edge Of Town Tour</a> <span class="tag">tour_doteot</span></dd>
+                            <dt>Year page</dt><dd><a href="#">1978 #070778</a></dd>
+                            <dt>Running time</dt><dd>3:06:17</dd>
+                        </dl></div>
+                        <div class="card"><h4>Media <span class="n">2</span></h4><div class="chips">
+                            <div class="chiprow"><span class="k">YouTube</span><span class="v"><span class="yt"><b>▶</b> playlist PLnbVaK2…</span><span class="yt"><b>▶</b> playlist PLu8VBPt…</span></span></div>
+                            <div class="chiprow"><span class="k"></span><span class="v muted">“Play here” tiles, the player loads on click only</span></div>
+                        </div></div>
+                    </div>
+                    <div class="col">
+                        <div class="card"><h4>Tags <span class="n">57</span></h4><div class="chips">
+                            <div class="chiprow"><span class="k">Date</span><span class="v"><span class="tag">friday</span><span class="tag">07</span><span class="tag">july</span><span class="tag">1978</span></span></div>
+                            <div class="chiprow"><span class="k">Place</span><span class="v"><span class="tag">roxytheatre</span><span class="tag">westhollywood</span><span class="tag">losangeles</span><span class="tag">california(ca)</span><span class="tag">usa</span></span></div>
+                            <div class="chiprow"><span class="k">Tour</span><span class="v"><span class="tag hi">tour_doteot</span></span></div>
+                            <div class="chiprow"><span class="k">On the page</span><span class="v"><span class="tag hi">audio</span><span class="tag hi">bootleg</span><span class="tag hi">boxset</span><span class="tag hi">livedl</span><span class="tag hi">retail</span><span class="tag hi">storyteller</span><span class="tag hi">eyewitness</span><span class="tag hi">news</span><span class="tag hi">ticket</span><span class="tag hi">prem</span><span class="tag hi">pian78</span></span></div>
+                            <div class="chiprow"><span class="k">Songs</span><span class="v"><span class="tag">raveon</span><span class="tag">badlands</span><span class="tag">sitn</span><span class="tag">doteot</span><span class="tag">candysroom</span><span class="tag">foryou</span><span class="tag">pointblank</span><span class="tag">tpl</span><span class="tag">pian</span><span class="tag">rits</span><span class="tag">thunderroad</span><span class="tag">pbtc</span><span class="tag">fire</span><span class="tag">arac</span><span class="tag">sto</span><span class="tag">growinup</span><span class="tag">ihtbasitc</span><span class="tag">backstreets</span><span class="tag">heartbreakhotel</span><span class="tag">rosalita</span><span class="tag">independenceday</span><span class="tag">btr</span><span class="tag">btn</span><span class="tag">ryh</span><span class="tag">tas</span><span class="tag">msto</span><span class="tag">daninterlude</span><span class="tag">sadeyesinterlude</span></span></div>
+                            <div class="chiprow"><span class="k">Other</span><span class="v"><span class="tag">gig</span><span class="tag">brucespringsteen</span><span class="tag">6</span></span></div>
+                        </div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sec">
+                <div class="sh2"><span class="tw"></span>Pictures <span class="cnt">(17)</span></div>
+                <div class="artbar"><span class="chipbtn on">All 17</span><span class="chipbtn">Photo 2</span><span class="chipbtn">Ticket 4</span><span class="chipbtn">News 7</span><span class="chipbtn">Release 4</span>
+                    <span class="seg"><span>Grid</span><span class="on">By type</span><span>Table</span></span></div>
+                <div class="group"><h5>Photo · by photographer</h5><div class="tiles">
+                    <figure class="tile"><div class="img">Photo</div><figcaption><b>Cliff Breining</b> · #01</figcaption></figure>
+                    <figure class="tile"><div class="img">Photo</div><figcaption><b>Dari</b> · #01</figcaption></figure>
+                </div></div>
+                <div class="group"><h5>Ticket</h5><div class="tiles">
+                    <figure class="tile"><div class="img">Ticket</div><figcaption><b>Ticket</b> · #01</figcaption></figure>
+                    <figure class="tile"><div class="img">Ticket</div><figcaption><b>Ticket</b> · #02</figcaption></figure>
+                    <figure class="tile"><div class="img">Ticket</div><figcaption><b>Ticket</b> · #03</figcaption></figure>
+                    <figure class="tile"><div class="img">Ticket</div><figcaption><b>Ticket</b> · #04</figcaption></figure>
+                </div></div>
+                <div class="group"><h5>News &amp; memorabilia</h5><div class="tiles">
+                    <figure class="tile portrait"><div class="img">Ad poster</div><figcaption><b>Ad poster</b> · #01</figcaption></figure>
+                    <figure class="tile portrait"><div class="img">Article</div><figcaption><b>Article</b> · #01</figcaption></figure>
+                    <figure class="tile portrait"><div class="img">Article</div><figcaption><b>Article</b> · #02</figcaption></figure>
+                    <figure class="tile"><div class="img">Merchandise · Shirt</div><figcaption><b>Merchandise</b> · #01a · Shirt</figcaption></figure>
+                    <figure class="tile"><div class="img">Merchandise · Shirt</div><figcaption><b>Merchandise</b> · #01b · Shirt</figcaption></figure>
+                    <figure class="tile"><div class="img">Recording · Reels</div><figcaption><b>Recording</b> · #01 · Reels</figcaption></figure>
+                    <figure class="tile"><div class="img">Recording · Spine</div><figcaption><b>Recording</b> · #02 · Spine</figcaption></figure>
+                </div></div>
+                <div class="group"><h5>Release covers (Recording tab)</h5><div class="tiles">
+                    <figure class="tile"><div class="img">Live/1975-85</div><figcaption><b>Album</b> · disco_live197585</figcaption></figure>
+                    <figure class="tile"><div class="img">Live Collection</div><figcaption><b>EP</b> · disco_livecollectioni_ep</figcaption></figure>
+                    <figure class="tile"><div class="img">Live download</div><figcaption><b>Live download</b> · bs780707 → 1978-07-07</figcaption></figure>
+                    <figure class="tile"><div class="img">8-show box set</div><figcaption><b>Box set</b> · bs1978_boxset_01_broadcast</figcaption></figure>
+                </div></div>
+            </div>
+
+            <div class="sec">
+                <div class="sh2"><span class="tw"></span>Event <span class="cnt">(6 tables)</span></div>
+                <div class="filterbar"><span>Filter</span><span class="gf"></span><span>⊞ Show all</span></div>
+
+                <div class="h3">Setlist <span class="cnt">25 rows</span></div>
+                <div class="tblwrap"><table class="tbl">
+                    <thead><tr><th>#</th><th>Song<span class="fl"></span></th><th>Segue<span class="fl"></span></th><th>Premiere<span class="fl"></span></th><th>Note<span class="fl"></span></th></tr></thead>
+                    <tbody>
+                        <tr><td class="num">1</td><td><a href="#">Rave On</a></td><td></td><td class="prem">★ premiere</td><td></td></tr>
+                        <tr><td class="num">2</td><td><a href="#">Badlands</a></td><td></td><td></td><td></td></tr>
+                        <tr><td class="num">3</td><td><a href="#">Spirit in the Night</a></td><td></td><td></td><td></td></tr>
+                        <tr><td class="num">7</td><td><a href="#">Point Blank</a></td><td></td><td class="prem">★ premiere</td><td></td></tr>
+                        <tr><td class="num">15</td><td><a href="#">Mona</a></td><td>→ <a href="#">She’s the One</a></td><td></td><td></td></tr>
+                        <tr><td class="num">19</td><td><a href="#">Heartbreak Hotel</a></td><td></td><td class="prem">★ premiere</td><td></td></tr>
+                        <tr><td class="num">21</td><td><a href="#">Independence Day</a></td><td></td><td class="prem">★ live debut</td><td>solo piano</td></tr>
+                        <tr><td class="num">24</td><td><a href="#">Raise Your Hand</a></td><td></td><td class="prem">★</td><td></td></tr>
+                        <tr><td class="num">25</td><td><a href="#">Twist and Shout</a></td><td></td><td class="prem">★</td><td></td></tr>
+                    </tbody></table></div>
+                <p class="byline">Rows 4–6, 8–14, 16–18, 20, 22–23 elided in the mockup. Titles in MusicBrainz case (<code>sa_foreign_mb_titles</code>), the wiki's capitals as the hover text. “No Handwritten or Printed Setlist available.” becomes a note under the table.</p>
+
+                <div class="h3">On stage <span class="cnt">7 rows</span></div>
+                <div class="tblwrap"><table class="tbl">
+                    <thead><tr><th>Name<span class="fl"></span></th><th>Band<span class="fl"></span></th><th>Role<span class="fl"></span></th></tr></thead>
+                    <tbody>
+                        <tr><td><a href="#">Bruce Springsteen</a></td><td></td><td></td></tr>
+                        <tr><td><a href="#">Roy Bittan</a></td><td><a href="#">The E Street Band</a></td><td></td></tr>
+                        <tr><td><a href="#">Clarence Clemons</a></td><td><a href="#">The E Street Band</a></td><td></td></tr>
+                        <tr><td><a href="#">Danny Federici</a></td><td><a href="#">The E Street Band</a></td><td></td></tr>
+                        <tr><td><a href="#">Garry Tallent</a></td><td><a href="#">The E Street Band</a></td><td></td></tr>
+                        <tr><td><a href="#">Steven Van Zandt</a></td><td><a href="#">The E Street Band</a></td><td></td></tr>
+                        <tr><td><a href="#">Max Weinberg</a></td><td><a href="#">The E Street Band</a></td><td></td></tr>
+                    </tbody></table></div>
+
+                <div class="h3">Performances at this venue <span class="cnt">9 rows</span></div>
+                <div class="tblwrap"><table class="tbl">
+                    <thead><tr><th>Date<span class="fl"></span></th><th>Event<span class="fl"></span></th><th>Show<span class="fl"></span></th><th>YYYY</th></tr></thead>
+                    <tbody>
+                        <tr><td>2004-09-25</td><td><a href="#">Roxy Theatre, West Hollywood, CA</a></td><td></td><td>2004</td></tr>
+                        <tr><td><b>1978-07-07</b></td><td><b>this page</b></td><td></td><td>1978</td></tr>
+                        <tr><td>1976-09-30</td><td><a href="#">Roxy Theatre, West Hollywood, CA</a></td><td></td><td>1976</td></tr>
+                        <tr><td>1975-10-18</td><td><a href="#">Roxy Theatre, West Hollywood, CA</a></td><td>Late</td><td>1975</td></tr>
+                        <tr><td>1975-10-18</td><td><a href="#">Roxy Theatre, West Hollywood, CA</a></td><td>Early</td><td>1975</td></tr>
+                    </tbody></table></div>
+
+                <div class="h3">Appearances at this venue <span class="cnt">1 row</span></div>
+                <div class="tblwrap"><table class="tbl">
+                    <thead><tr><th>Date<span class="fl"></span></th><th>Event<span class="fl"></span></th><th>Type<span class="fl"></span></th></tr></thead>
+                    <tbody><tr><td>1982-03</td><td><a href="#">Roxy Theatre, West Hollywood, CA</a></td><td>No gig</td></tr></tbody></table></div>
+
+                <div class="h3">Recording <span class="cnt">13 rows</span></div>
+                <div class="tblwrap"><table class="tbl">
+                    <thead><tr><th>Release<span class="fl"></span></th><th>Kind<span class="fl"></span></th><th>Label<span class="fl"></span></th></tr></thead>
+                    <tbody>
+                        <tr><td><a href="#">Live/1975-85</a></td><td>Official</td><td>Columbia</td></tr>
+                        <tr><td><a href="#">Live Collection (EP)</a></td><td>Official</td><td></td></tr>
+                        <tr><td><a href="#">PBS Exclusive 2005 (EP)</a></td><td>Official</td><td></td></tr>
+                        <tr><td><a href="#">Spare Parts</a></td><td>Playlist</td><td></td></tr>
+                        <tr><td>1978-07-07 Roxy Theatre</td><td>Live download</td><td>nugs.net</td></tr>
+                        <tr><td><a href="#">Roxy Night</a></td><td>Bootleg</td><td>Crystal Cat</td></tr>
+                        <tr><td>… seven more bootlegs</td><td>Bootleg</td><td>Ev2, Growin’, JEMS, Leftfield Media, Lobster, RoxVox</td></tr>
+                    </tbody></table></div>
+
+                <div class="h3">Storyteller <span class="cnt">25 rows</span></div>
+                <div class="tblwrap"><table class="tbl">
+                    <thead><tr><th>Moment<span class="fl"></span></th><th>Song<span class="fl"></span></th><th>Words<span class="fl"></span></th></tr></thead>
+                    <tbody>
+                        <tr><td>Intro</td><td><a href="#">Rave On</a></td><td>“Hello… hey, gimme some lights up here… how you doing?… alright, first, I’d like to say a few things first…” ▶</td></tr>
+                        <tr><td>Intro</td><td><a href="#">Point Blank</a></td><td>“This next song is a new song… no, it’s newer than that… a song I wrote I guess it er, didn’t make it on Darkness…” ▶</td></tr>
+                        <tr><td>After</td><td><a href="#">Thunder Road</a></td><td>“Thank you… we’re gonna take a fifteen minute break and we’ll be right back…”</td></tr>
+                        <tr><td>Middle of</td><td><a href="#">Backstreets</a></td><td>“I remember you… baby, I remember you… standing on the corner of Richmond Avenue…” ▶</td></tr>
+                    </tbody></table></div>
+                <p class="byline">“Compiled by: Johanna Pirttijärvi &amp; Brucebase.” as the table's note. Eyewitness: four accounts (John, Jamie, John Hocking, Peggy Hannan) as a closed text section, or a two-column table — see question 3.</p>
+            </div>
+
+            <div class="sec closed" id="native">
+                <div class="sh2"><span class="tw"></span>Brucebase page <span class="cnt">(the wiki's own, as it was)</span></div>
+                <div class="native">
+                    <div class="nh"><span class="tw">▼</span>Info &amp; Setlist | Venue</div>
+                    <div class="navtabs"><span class="on">On Stage</span><span>Setlist</span><span>Performances</span><span>Appearances</span><span>Gallery</span><span>Media</span><span>Recording</span><span>Storyteller</span><span>Eyewitness</span><span>News/Memorabilia</span></div>
+                    <p class="byline">The tabview stays the wiki's; each of its headings folds on click, Ctrl-click folds every one.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<aside class="panel notes">
+    <h3>M1 · how it is built</h3>
+    <ul>
+        <li><b>One button</b>, “Event”. Nothing changes on the page before it is pressed, as on every pageType.</li>
+        <li><b>One parse</b> of the page (taken once) feeds the head, the tables and the existing hover preview, so the card and the page never disagree.</li>
+        <li><b>Head</b>: byline, “About this show” from the gignote, Details cards, the picture section. Same component as a MusicBrainz release or a Discogs release page.</li>
+        <li><b>Tables</b> appear only when the page has that data. Each is filterable, sortable and in the 📊 dropdown like any other.</li>
+        <li><b>Pictures</b> are typed by filename, never by guessing: <code>19780707_CliffBreining_01.jpg</code> → Photo by Cliff Breining.</li>
+        <li><b>The wiki page</b> is kept below, closed, under its own heading. Click the heading to try it.</li>
+        <li>A recording, rehearsal, interview or nogig page gets the same layout; nogig adds a Cancelled table, recording renames On stage to In studio.</li>
+    </ul>
+    <p class="q"><b>Q1.</b> Setlist: one table with a Set column (Soundcheck / Show / Encore), or one table per set?</p>
+    <p class="q"><b>Q2.</b> Storyteller as a table (filterable by song), or a closed text section?</p>
+</aside>
+</section>
+
+<!-- ============================== Filenames ============================== -->
+<section data-pane="fn" class="bench" hidden>
+<div class="panel" style="padding:16px; display:grid; gap:12px;">
+    <h2>What a filename tells us</h2>
+    <p class="muted">The wiki names its attachments by a convention. Eight shapes cover 98.5 % of the 14,032 distinct names found by the mirror survey (2026-11-11). The parser gives every picture its type, its photographer credit and its detail, for the card, the viewer and the picture sections.</p>
+    <div class="gram"><table>
+        <thead><tr><th>Shape</th><th>Example (real)</th><th>Read as</th><th>Share</th></tr></thead>
+        <tbody>
+            <tr><td class="k">A</td><td><code>19780707_CliffBreining_01.jpg</code></td><td>1978-07-07 · Photo · by Cliff Breining · #01</td><td rowspan="5">72 %</td></tr>
+            <tr><td class="k">A</td><td><code>20240522_Setlist_01_Handwritten.jpg</code></td><td>2024-05-22 · Setlist · #01 · handwritten</td></tr>
+            <tr><td class="k">A</td><td><code>19781216_Pass_01_Backstage.jpg</code></td><td>1978-12-16 · Pass · #01 · backstage</td></tr>
+            <tr><td class="k">A</td><td><code>19761126b_Unknown_006_Patti-Smith.jpg</code></td><td>1976-11-26, second show · Photo · photographer unknown · #006 · “Patti Smith”</td></tr>
+            <tr><td class="k">A</td><td><code>20120329_Centermic_01_Before.jpg</code></td><td>2012-03-29 · Center mic · #01 · before</td></tr>
+            <tr><td class="k">B</td><td><code>Retail-BTR_AdPoster_01b_Custom.jpg</code></td><td>release BTR · Ad poster · #01b · custom</td><td>10 %</td></tr>
+            <tr><td class="k">C</td><td><code>2023-INT_Announcement_01_TM-Verified-Fan.jpg</code></td><td>tour 2023-INT · Announcement · #01 · “TM Verified Fan”</td><td>5.5 %</td></tr>
+            <tr><td class="k">D</td><td><code>disco_borntorun_single.jpg</code></td><td>release cover · Born To Run · single</td><td>3.8 %</td></tr>
+            <tr><td class="k">E</td><td><code>bs780707.jpg</code></td><td>live download cover · 1978-07-07</td><td>2.7 %</td></tr>
+            <tr><td class="k">G</td><td><code>apollo-theatre-manchester-england_03_19810513.jpg</code></td><td>venue picture #03 · 1981-05-13</td><td>1.9 %</td></tr>
+            <tr><td class="k">F</td><td><code>lyricsheet_riverhorse_3.jpg</code></td><td>Lyric sheet · River Horse · #3</td><td>1.5 %</td></tr>
+            <tr><td class="k">H</td><td><code>Bootleg_Restless-Night_Back.jpg</code></td><td>bootleg Restless Night · back</td><td>0.1 %</td></tr>
+            <tr><td class="muted">other</td><td><code>artwork-concept_fire_01_front_us.jpg</code></td><td>kind from the folder only</td><td>1.5 %</td></tr>
+        </tbody></table></div>
+    <p class="muted">Kinds seen in shape A: Ticket 4,601 · Setlist 937 · Pass 833 · Centermic 325 · Article 118 · AdPoster 41 · Merchandise · Program · Advert · Banner · Itinerary · Recording · ClassPhoto. Anything else in that slot is a photographer; <code>Unknown</code> (1,636) means none is known.</p>
+</div>
+<aside class="panel notes">
+    <h3>Where it shows</h3>
+    <ul>
+        <li>Picture sections on every detail page: chips per kind, “By type” layout, photographers as groups inside Photo.</li>
+        <li>The existing image card and viewer (year table Media icons, song glyph): the caption names the photographer.</li>
+        <li>The hover window's “Images by kind”: the same groups.</li>
+        <li>A name the grammar cannot read keeps the folder's kind and shows the bare filename, as today.</li>
+    </ul>
+    <p class="q"><b>Q3.</b> Group photos by photographer (as shown), or one Photo group with the photographer in each caption only?</p>
+</aside>
+</section>
+
+<!-- ============================== M2 ============================== -->
+<section data-pane="m2" class="bench" hidden>
+<div class="panel" style="padding:16px; display:grid; gap:12px;">
+    <h2>The side-bar handle</h2>
+    <p class="muted">Today the Brucebase handle sits halfway down the window. MusicBrainz puts its handle at the top of the sidebar, 8 px from the window's top edge when scrolled. Brucebase gets the same rule.</p>
+    <div class="handle-demo">
+        <div class="hd"><div class="sb"><b>Site Navigation</b><span>Songs</span><span>Relations</span><b>Gig Pages</b></div><div class="hdl mid">◀</div><div class="body"><i></i><i></i><i style="width:70%"></i><i></i></div><div class="cap">Now: centred (top: 50 %)</div></div>
+        <div class="hd"><div class="sb"><b>Site Navigation</b><span>Songs</span><span>Relations</span><b>Gig Pages</b></div><div class="hdl top">◀</div><div class="body"><i></i><i></i><i style="width:70%"></i><i></i></div><div class="cap">New: at the side bar's top, at least 8 px from the window's top, never below its bottom</div></div>
+    </div>
+</div>
+<aside class="panel notes">
+    <h3>M2 · notes</h3>
+    <ul>
+        <li>Collapsed, it sits at the top of the page content, as MusicBrainz's does.</li>
+        <li>Left and right placement (<code>sa_bb_sidebar_right</code>) keep working; only the vertical position changes.</li>
+        <li>Inserted into MusicBrainz's body helper, so a second userscript cannot lose it.</li>
+    </ul>
+</aside>
+</section>
+
+<!-- ============================== M3 ============================== -->
+<section data-pane="m3" hidden>
+<div class="sketches">
+    <div class="panel sk"><h3>Song · <code>song:blood-brothers</code></h3>
+        <div class="mock"><div class="bbmain site">
+            <div class="mb-h1"><span>Brucebase — Blood Brothers</span><span class="saed"><span class="on">Song</span><span>☰</span></span></div>
+            <div class="byline">~ Song · Track 17 of <a href="#">Greatest Hits</a>, 1995 · performed live 6 times</div>
+            <div class="cards"><div class="card"><h4>Song</h4><dl><dt>Performed live</dt><dd>6 times total, 1 in the rock version</dd><dt>Released on</dt><dd><a href="#">Greatest Hits</a> (1995) …</dd></dl></div>
+            <div class="card"><h4>Tags <span class="n">9</span></h4><div class="chips"><div class="chiprow"><span class="k">Letter</span><span class="v"><span class="tag">b</span></span></div><div class="chiprow"><span class="k">Name</span><span class="v"><span class="tag">bloodbrothers</span></span></div></div></div></div>
+            <div class="h3">Credits <span class="cnt">Release / Year / Person / Instruments</span></div>
+            <div class="h3">Performances <span class="cnt">Date / Event / Tour</span></div>
+            <div class="h3">Performances per tour <span class="cnt">Tour / Shows</span></div>
+            <div class="h3">On The Tracks <span class="cnt">Title / Version / Time / Release</span></div>
+            <div class="sh2"><span class="tw">▶</span>Lyrics</div>
+        </div></div></div>
+    <div class="panel sk"><h3>Venue · <code>venue:roxy-theatre-west-hollywood-ca</code></h3>
+        <div class="mock"><div class="bbmain site">
+            <div class="mb-h1"><span>Brucebase — Roxy Theatre</span><span class="saed"><span class="on">Venue</span><span>☰</span></span></div>
+            <div class="byline">~ Venue in California (CA) · 9 performances, excl. rehearsals</div>
+            <div class="sh2"><span class="tw">▼</span>About</div><p class="textsec">Wikipedia summary, “Source: Wikipedia”.</p>
+            <div class="cards"><div class="card"><h4>Venue</h4><dl><dt>Region</dt><dd>California (CA), USA</dd><dt>Streetview</dt><dd><a href="#">Google Maps ↗</a></dd></dl></div></div>
+            <div class="h3">Performances <span class="cnt">Date / Event / Show</span></div>
+            <div class="h3">Cancelled · Appearances <span class="cnt">when present</span></div>
+        </div></div></div>
+    <div class="panel sk"><h3>Person · <code>relation:patti-scialfa</code></h3>
+        <div class="mock"><div class="bbmain site">
+            <div class="mb-h1"><span>Brucebase — Patti Scialfa</span><span class="saed"><span class="on">Person</span><span>☰</span></span></div>
+            <div class="byline">~ Person · sort name “Scialfa, Patti” · performed 1,057 times</div>
+            <div class="cards"><div class="card"><h4>Performed with</h4><dl><dt>The E Street Band</dt><dd>…</dd><dt>Solo</dt><dd>…</dd></dl></div></div>
+            <div class="h3">Performances <span class="cnt">Date / Event (onstage link → gig)</span></div>
+            <div class="h3">Recording <span class="cnt">Release / Artist / Year / Song / Role</span></div>
+            <div class="h3">Bands · Appearances <span class="cnt">when present</span></div>
+            <p class="byline">Phase 4 also redoes the Steven Van Zandt page from the TODO list.</p>
+        </div></div></div>
+    <div class="panel sk"><h3>Release · <code>retail:born-to-run</code></h3>
+        <div class="mock"><div class="bbmain site">
+            <div class="mb-h1"><span>Brucebase — Born To Run</span><span class="saed"><span class="on">Tracks</span><span>☰</span></span></div>
+            <div class="byline">~ Album · released August 25, 1975 · Columbia</div>
+            <div class="cards"><div class="card"><h4>Release</h4><dl><dt>Released</dt><dd>1975-08-25*</dd><dt>Label</dt><dd>Columbia</dd><dt>Produced by</dt><dd>Bruce Springsteen, Jon Landau and Mike Appel**</dd><dt>Recorded at</dt><dd>Record Plant Studios (April–July 1975), 914 Sound Recording Studios (May 1974–March 1975)</dd><dt>Mastered by</dt><dd>Greg Calbi</dd><dt>Photography</dt><dd>Eric Meola</dd></dl></div></div>
+            <div class="h3">Original release <span class="cnt"># / Song / Running time / Session · total 39:28</span></div>
+            <div class="h3">Each further edition <span class="cnt">one table per Released tab</span></div>
+            <div class="sh2"><span class="tw">▶</span>Personnel · History · Related releases</div>
+            <p class="byline">Artwork section: <code>disco_</code> and <code>artwork-concept_</code> names give front / back / sleeve.</p>
+        </div></div></div>
+    <div class="panel sk"><h3>Bootleg · <code>bootleg:restless-nights-vvii</code></h3>
+        <div class="mock"><div class="bbmain site">
+            <div class="mb-h1"><span>Brucebase — Restless Nights</span><span class="saed"><span class="on">Tracks</span><span>☰</span></span></div>
+            <div class="byline">~ Bootleg · VV II · WIL A/B · 1LP picture disc</div>
+            <div class="cards"><div class="card"><h4>Bootleg</h4><dl><dt>Label</dt><dd>VV II</dd><dt>Catalog #</dt><dd>WIL A/B</dd><dt>Time</dt><dd>33:00</dd><dt>Format</dt><dd>1LP Pic Disc</dd><dt>Source</dt><dd>Studio</dd></dl></div></div>
+            <div class="h3">Side A · Side B <span class="cnt"># / Title / Time — “//” splits the sides</span></div>
+            <div class="sh2"><span class="tw">▶</span>Notes</div>
+            <p class="byline">Artwork: Front · Back · Disc from <code>Bootleg_…_Front.jpg</code>.</p>
+        </div></div></div>
+</div>
+</section>
+
+<!-- ============================== M4 ============================== -->
+<section data-pane="m4" class="bench" hidden>
+<div class="window">
+    <div class="wt">History · gig:1978-07-07-roxy-theatre-west-hollywood-ca <span class="x">✕</span></div>
+    <div class="wb site">
+        <div class="byline">Revisions of this page on Brucebase · newest first · <b>example rows</b>: the real list needs the probe</div>
+        <div class="dgh-list">
+            <div class="dgh-e"><span class="r">rev. 17</span><span class="d">2026-03-24 23:00</span><span class="u"><a href="#">editor A</a></span><span class="n">Added Eyewitness account</span><span class="k"><span class="flag" title="content source text changed">S</span><button type="button" class="vbtn on">View changes</button></span></div>
+            <div class="dgh-e"><span class="r">rev. 16</span><span class="d">2025-11-02 14:12</span><span class="u"><a href="#">editor B</a></span><span class="n">Setlist image</span><span class="k"><span class="flag" title="file action">F</span><button type="button" class="vbtn">View changes</button></span></div>
+            <div class="dgh-e"><span class="r">rev. 15</span><span class="d">2024-06-30 09:41</span><span class="u"><a href="#">editor A</a></span><span class="n">Tags</span><span class="k"><span class="flag" title="tags changed">A</span><button type="button" class="vbtn">View changes</button></span></div>
+        </div>
+        <div class="legend"><span style="--c: var(--rem)">removed</span><span style="--c: var(--add)">added</span><span style="--c: var(--chg)">changed line</span><span>· Only what changed ▾ / the whole page</span></div>
+        <div class="diff" role="table" aria-label="Revision 16 to 17">
+            <div class="dh o">rev. 16 · 2025-11-02</div><div class="dh">rev. 17 · 2026-03-24</div>
+            <div class="ln ctx">… 42 unchanged lines …</div>
+            <div class="ln o">||~ Name ||~ Comment ||</div><div class="ln">||~ Name ||~ Comment ||</div>
+            <div class="ln o chg">|| John || I have the boot of this show and although the quality <del>isnt</del> the best …||</div><div class="ln chg">|| John || I have the boot of this show and although the quality <ins>isn't</ins> the best …||</div>
+            <div class="ln o"></div><div class="ln add">|| Peggy Hannan || They announced this show on the way home from the forum, Called in sick the next day to go get tickets …||</div>
+            <div class="ln ctx">… 61 unchanged lines …</div>
+        </div>
+    </div>
+</div>
+<aside class="panel notes">
+    <h3>M4 · how it is reached</h3>
+    <ul>
+        <li><b>In the hover window</b> of any Brucebase page: a “History” section, closed. It loads on opening, never on hover.</li>
+        <li><b>On our detail pages</b>: a “changes” entry in the ☰ menu opens the same window.</li>
+        <li><b>The look is Discogs'</b>: the revision list, “View changes”, two columns old/new, the legend, “Only what changed”.</li>
+        <li><b>The diff is ours</b>: lines matched first, words marked inside a changed line. Wikidot's own inline diff is used instead if the probe shows it is cleaner to read.</li>
+        <li><b>First</b> a small probe you run logged in and logged out records what the four history modules answer (status and shape only, never your name or cookies).</li>
+    </ul>
+    <p class="q"><b>Q4.</b> If history turns out to need a login, should the History section be absent when signed out, or show “Sign in to Brucebase to see the history”?</p>
+</aside>
+</section>
+
+<!-- ============================== Questions ============================== -->
+<section data-pane="q" class="panel qs" hidden>
+    <h2>Questions before Phase 1</h2>
+    <ol>
+        <li><b>Setlist shape (M1).</b><span class="opt">One table with a Set column (Soundcheck / Show / Encore) — <span class="rec">recommended</span>: one filter, one sort, a premiere filter across the whole night; or one table per set.</span></li>
+        <li><b>Storyteller (M1).</b><span class="opt">A table Moment / Song / Words, filterable by song — <span class="rec">recommended</span>; or a closed text section. Eyewitness stays a closed text section either way.</span></li>
+        <li><b>Photographers (Filenames).</b><span class="opt">A group per photographer inside Photo — <span class="rec">recommended</span>; or one Photo group with the credit in the caption only.</span></li>
+        <li><b>History signed out (M4).</b><span class="opt">Show “Sign in to Brucebase to see the history” — <span class="rec">recommended</span>, so it is clear why it is empty; or leave the section out.</span></li>
+        <li><b>The wiki's page below (M1).</b><span class="opt">Closed by default — <span class="rec">recommended</span>, our head and tables already carry the content; or open.</span></li>
+        <li><b>Song titles.</b><span class="opt">MusicBrainz case through the existing setting <code>sa_foreign_mb_titles</code>, the wiki's capitals as the hover text — <span class="rec">recommended</span>; or the wiki's capitals.</span></li>
+    </ol>
+    <p class="muted">Answer in chat (for example “1 rec, 2 table, 3 caption only …”). The answers go into org/brucebase.org before Phase 1 starts.</p>
+</section>
+
+</div>
+<script>
+(function () {
+    'use strict';
+    /** Switches the visible pane when a tab button is pressed. */
+    function show(name) {
+        document.querySelectorAll('[data-pane]').forEach(function (p) { p.hidden = p.getAttribute('data-pane') !== name; });
+        document.querySelectorAll('.tabs button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-tab') === name)); });
+    }
+    document.querySelectorAll('.tabs button').forEach(function (b) {
+        b.addEventListener('click', function () { show(b.getAttribute('data-tab')); });
+    });
+    /** Folds a section; Ctrl/⌘-click folds every section to the clicked one's new state. */
+    document.addEventListener('click', function (e) {
+        var h = e.target.closest('.sh2');
+        if (!h || !h.parentElement.classList.contains('sec')) return;
+        var sec = h.parentElement;
+        var closing = !sec.classList.contains('closed');
+        if (e.ctrlKey || e.metaKey) {
+            sec.closest('.bbmain').querySelectorAll('.sec').forEach(function (s) { s.classList.toggle('closed', closing); });
+        } else {
+            sec.classList.toggle('closed', closing);
+        }
+    });
+})();
+</script>
+</body>
+</html>

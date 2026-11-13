@@ -128,5 +128,18 @@
         "spec": "tests/fixtures/bb-sidebar.spec.js",
         "grep": "its own setting",
         "expect": "fail"
+    },
+    {
+        "name": "the handle is not placed at the side bar's top",
+        "why": "place() sets the handle's top from the side bar's (or, collapsed, the content's) top, kept 8 px inside the window; without it the handle stays at the CSS top (8 px) even with the side bar 350 px down.",
+        "edits": [
+            {
+                "find": "            const top = `${Math.round(Math.min(Math.max(8, window.innerHeight - hh - 8), Math.max(8, topY)))}px`;\n            if (handle.style.top !== top) handle.style.top = top;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-sidebar.spec.js",
+        "grep": "handle sits at the top",
+        "expect": "fail"
     }
 ]

@@ -1,0 +1,268 @@
+<title>Brucebase new previews</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: a header, a page picker, the window as it would open (with its hover card beside it), then the questions. "Liner notes" look. */
+:root {
+    --paper: #fbf8f1;
+    --sheet: #fffdf8;
+    --ink: #2b2622;
+    --rule: #d9cfbd;
+    --muted: #7a6d5c;
+    --accent: #2f5f9e;
+    --ok: #3f7a3a;
+    --warn: #9a6a00;
+    --tint: #f3ecdd;
+    --newbg: #eaf2e4;
+    --newedge: #9cbf8c;
+    --field: #ffffff;
+    --shadow: 0 10px 24px -8px rgba(60, 40, 20, .35);
+    --serif: Georgia, "Times New Roman", serif;
+    --sans: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --paper: #1f1b17; --sheet: #27221d; --ink: #ece4d6; --rule: #4a4136; --muted: #a8998a; --accent: #8fb2e6;
+        --ok: #8cc47e; --warn: #d9a640; --tint: #322b24; --newbg: #24331f; --newedge: #5d8a4e; --field: #1b1814;
+        --shadow: 0 10px 24px -8px rgba(0, 0, 0, .6); color-scheme: dark;
+    }
+}
+:root[data-theme="dark"] {
+    --paper: #1f1b17; --sheet: #27221d; --ink: #ece4d6; --rule: #4a4136; --muted: #a8998a; --accent: #8fb2e6;
+    --ok: #8cc47e; --warn: #d9a640; --tint: #322b24; --newbg: #24331f; --newedge: #5d8a4e; --field: #1b1814;
+    --shadow: 0 10px 24px -8px rgba(0, 0, 0, .6); color-scheme: dark;
+}
+body { background: var(--paper); color: var(--ink); font: 15px/1.5 var(--serif); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 28px 64px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: grid; gap: 24px; }
+h1 { font-size: 30px; margin: 0; font-weight: normal; text-wrap: balance; }
+h2 { font-size: 21px; margin: 0; font-weight: normal; text-wrap: balance; }
+p { margin: 0; max-width: 74ch; }
+a { color: var(--accent); }
+.label, button, .chip, .tag { font: 600 11px/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; }
+.label { color: var(--muted); }
+code { font-family: var(--mono); font-size: 12.5px; }
+header { display: grid; gap: 10px; }
+.env { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chip { border: 1px solid var(--rule); background: var(--sheet); color: var(--ink); border-radius: 3px; padding: 7px 9px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 3px; overflow: hidden; }
+.seg .chip { border: 0; border-radius: 0; }
+.seg .chip + .chip { border-left: 1px solid var(--rule); }
+button:focus-visible, .chip:focus-visible, summary:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+@media (max-width: 900px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+/* the window */
+.win { background: var(--sheet); border: 1px solid var(--rule); border-radius: 4px; box-shadow: var(--shadow); min-width: 0; display: grid; }
+.win-bar { display: flex; gap: 10px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--rule); background: var(--tint); }
+.win-bar .kind { color: var(--muted); }
+.win-bar .sp { flex: 1; }
+.win-bar .ic { font: 14px var(--sans); color: var(--muted); }
+.win-body { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 18px; padding: 14px 16px 18px; }
+@media (max-width: 640px) { .win-body { grid-template-columns: minmax(0, 1fr); } }
+.xtitle { font-size: 19px; line-height: 1.3; }
+.sub { color: var(--muted); font-size: 14px; }
+.facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 5px 14px; margin: 10px 0 0; font-size: 14px; }
+.facts dt { font-style: italic; color: var(--muted); }
+.facts dd { margin: 0; min-width: 0; }
+.new { background: var(--newbg); box-shadow: inset 3px 0 0 var(--newedge); }
+.facts .new { padding: 0 4px; border-radius: 2px; }
+.tag { display: inline-block; margin-left: 6px; padding: 2px 4px; border-radius: 2px; border: 1px solid var(--ok); color: var(--ok); font-size: 9px; vertical-align: 2px; }
+details.sec { border-top: 1px solid var(--rule); padding: 6px 0; }
+details.sec.new { padding-left: 8px; }
+details.sec > summary { cursor: pointer; list-style: none; display: flex; align-items: baseline; gap: 6px; }
+details.sec > summary::before { content: "▸"; color: var(--muted); font-size: 12px; }
+details.sec[open] > summary::before { content: "▾"; }
+details.sec > summary h4 { margin: 0; font: 600 12px/1.6 var(--sans); letter-spacing: .06em; text-transform: uppercase; }
+.secbody { font-size: 14px; padding: 4px 0 2px 16px; max-height: 260px; overflow: auto; }
+.secbody p { margin: 0 0 6px; }
+.secbody ul, .secbody ol { margin: 4px 0; padding-left: 18px; }
+.secbody .pre { white-space: pre-line; }
+.secbody .line { font-style: italic; }
+.secbody .by { color: var(--muted); }
+.secbody .note { color: var(--muted); font-size: 13px; }
+/* the hover card */
+.card { background: var(--sheet); border: 1px solid var(--rule); border-radius: 4px; box-shadow: var(--shadow); padding: 12px 14px; font-size: 13.5px; display: grid; gap: 6px; min-width: 0; }
+.card .ttl { font-weight: bold; }
+.card .about { font-size: 13px; padding: 4px 6px; border-radius: 2px; }
+.card dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 10px; margin: 0; }
+.card dt { font-style: italic; color: var(--muted); }
+.card dd { margin: 0; min-width: 0; }
+.cardcap { color: var(--muted); font: 12px var(--sans); }
+/* questions */
+.qs { display: grid; gap: 12px; }
+.q { border: 1px solid var(--rule); border-radius: 3px; padding: 12px; display: grid; gap: 8px; background: var(--sheet); }
+.q h3 { font-weight: normal; font-size: 16px; margin: 0; }
+.q label { display: flex; gap: 8px; align-items: baseline; cursor: pointer; }
+.q .rec { color: var(--ok); font: 600 10px/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; }
+textarea#answers { width: 100%; min-height: 140px; font: 12.5px/1.45 var(--mono); border: 1px solid var(--rule); border-radius: 3px; padding: 8px; background: var(--field); color: var(--ink); box-sizing: border-box; }
+.status { font: 12px var(--sans); color: var(--ok); min-height: 1em; }
+.notes { display: grid; gap: 6px; font-size: 14px; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+.today { border: 1px dashed var(--rule); border-radius: 4px; padding: 14px 16px; color: var(--muted); font-size: 14px; display: grid; gap: 6px; }
+.today a { color: var(--accent); }
+.excerpt { font-style: italic; white-space: pre-line; }
+.cov { display: inline-block; width: 28px; height: 28px; background: var(--tint); border: 1px solid var(--rule); border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+</style>
+
+<div class="wrap">
+<header>
+    <span class="label">ShowAllEntityData · feature/bb-overhaul · Phase 16, batch 3 mockup</span>
+    <h1>Brucebase new previews</h1>
+    <p>Links to these Brucebase pages have no hover card and no window today: a song's tour counts (<code>stats:…-tour</code>), an album's studio sessions (<code>stats:…-studio-sessions</code>), a discography (<code>stats:discography-…</code>), an On The Tracks page (<code>ott:</code>) and a lyrics page (<code>lyrics:</code>). This mockup shows what they would get, on five real pages, read by the readers the page buttons already use (the lyrics have no reader yet). A <code>multi:</code> or <code>soundcheck:</code> link would preview as the show it leads to: Brucebase forwards it there (probed), as it does an <code>onstage:</code> link.</p>
+    <div class="env" id="env"></div>
+</header>
+
+<div class="chips" role="group" aria-label="Page">__VIEWS__</div>
+<div class="chips">
+    <span class="seg" role="group" aria-label="Show">
+        <button type="button" class="chip" id="m-today" aria-pressed="false">Today</button>
+        <button type="button" class="chip" id="m-new" aria-pressed="true">With batch 3</button>
+    </span>
+</div>
+
+<div id="stage"></div>
+
+<section class="qs" aria-labelledby="qh">
+    <h2 id="qh">Questions</h2>
+    <div class="q" data-q="1">
+        <h3>1. Which setting switches these previews on and off?</h3>
+        <label><input type="radio" name="q1" value="split" checked> A song's pages (tour counts, On The Tracks, lyrics) the song preview's setting; studio sessions and discographies the event, venue, people and release setting <span class="rec">Recommended</span></label>
+        <label><input type="radio" name="q1" value="one"> All of them the event, venue, people and release setting</label>
+    </div>
+    <div class="q" data-q="2">
+        <h3>2. A studio-sessions page's tables (Version History, Timeline, the potential album sequences, …: up to a few thousand rows)?</h3>
+        <label><input type="radio" name="q2" value="cap" checked> Each a folded section, its first 100 rows, then “N more rows on the page” <span class="rec">Recommended</span></label>
+        <label><input type="radio" name="q2" value="all"> Each a folded section with every row</label>
+        <label><input type="radio" name="q2" value="names"> Only each table's name and row count</label>
+    </div>
+    <div class="q" data-q="3">
+        <h3>3. A discography's releases?</h3>
+        <label><input type="radio" name="q3" value="grouped" checked> Under the page's own headings (Album Release, Collaborations, …), each with its year, release date and label; the covers as the window's pictures <span class="rec">Recommended</span></label>
+        <label><input type="radio" name="q3" value="flat"> One list by year</label>
+    </div>
+    <div class="q" data-q="4">
+        <h3>4. A lyrics page's hover card?</h3>
+        <label><input type="radio" name="q4" value="lines" checked> The first four lines of the first version, and how many versions <span class="rec">Recommended</span></label>
+        <label><input type="radio" name="q4" value="count"> Only how many versions</label>
+    </div>
+    <div class="q" data-q="5">
+        <h3>5. A lyrics page's window?</h3>
+        <label><input type="radio" name="q5" value="first" checked> A section per version, the first open, the others folded; the springsteenlyrics.com link last <span class="rec">Recommended</span></label>
+        <label><input type="radio" name="q5" value="all"> Every version open</label>
+    </div>
+    <div class="q" data-q="6">
+        <h3>6. The other stats pages a page links (stats:on-the-tracks, the song lists, the wiki's menu pages)?</h3>
+        <label><input type="radio" name="q6" value="none" checked> No preview, as today <span class="rec">Recommended</span></label>
+        <label><input type="radio" name="q6" value="generic"> A plain card: the page's title and its first lines</label>
+    </div>
+    <textarea id="answers" readonly aria-label="Your answers"></textarea>
+    <div class="chips"><button type="button" class="chip" id="copy">Copy the answers</button><span class="status" id="status"></span></div>
+</section>
+</div>
+
+<script>
+const DATA = __DATA__;
+const ENV = __ENV__;
+const state = { view: 0, mode: 'new' };
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const ans = (n) => (document.querySelector(`input[name="q${n}"]:checked`) || {}).value;
+const small = new Set(['a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'in', 'of', 'on', 'or', 'the', 'to']);
+const titled = (s) => (s === s.toUpperCase() ? s.toLowerCase().split(' ').map((w, i) => (i && small.has(w) ? w : w.charAt(0).toUpperCase() + w.slice(1))).join(' ') : s);
+const link = (h, t) => (h ? `<a href="${esc(h)}">${esc(t)}</a>` : esc(t));
+const num = n => Number(n).toLocaleString('en-US');
+function model(p) {
+    const facts = [];
+    const secs = [];
+    let card = '';
+    let highlight = '';
+    if (p.kind === 'tour') {
+        const t = p.tours;
+        const played = t.tours.reduce((a, x) => a + (x.played || 0), 0);
+        highlight = `${num(played)} tour performances`;
+        facts.push(['Tours', String(t.tours.filter(x => x.played).length)]);
+        if (t.other) facts.push(['Other shows', `${t.other.shows} known · ${t.other.rehearsals} public rehearsals`]);
+        secs.push({ label: `Tours (${t.tours.length})`, open: true, html: `<ul>${t.tours.map(x => `<li>${esc(x.tour)} — <b>${x.played}</b> of ${x.shows} shows${x.shows ? ` (${Math.round(100 * x.played / x.shows)}%)` : ''}${x.note ? ` <span class="by">(${esc(x.note)})</span>` : ''}</li>`).join('')}</ul>` });
+    } else if (p.kind === 'sessions') {
+        const s = p.sessions;
+        [['Released', s.released], ['Label', s.label], ['Album', s.album && s.album.text]].forEach(f => f[1] && facts.push(f));
+        facts.push(['Tables', String(s.tables.length)]);
+        if (s.overview) secs.push({ label: 'Overview', open: true, html: `<p>${esc(s.overview)}</p>` });
+        if (s.credits) secs.push({ label: 'Credits', open: false, html: `<div class="pre">${esc(s.credits)}</div>` });
+        s.tables.forEach((t) => {
+            if (ans(2) === 'names') return;
+            const rows = ans(2) === 'cap' ? t.rows.slice(0, 100) : t.rows;
+            const more = t.total - rows.length;
+            secs.push({ label: `${t.name} (${t.total})`, open: false, html: `<ul>${rows.map(r => `<li>${r.map(c => esc(c)).filter(Boolean).join(' · ')}</li>`).join('')}</ul>` + (more > 0 ? `<p class="note">${num(more)} more rows on the page</p>` : '') });
+        });
+        if (ans(2) === 'names') secs.push({ label: `Tables (${s.tables.length})`, open: true, html: `<ul>${s.tables.map(t => `<li>${esc(t.name)} <span class="by">${t.total} rows</span></li>`).join('')}</ul>` });
+    } else if (p.kind === 'discography') {
+        facts.push(['Releases', String(p.entries.length)], ['Years', `${p.entries[0].year}–${p.entries[p.entries.length - 1].year}`]);
+        const line = e => `<li><span class="cov"></span>${esc(e.year)} ${link(e.href, e.text)}${e.subtitle ? ` <span class="by">${esc(e.subtitle)}</span>` : ''}${e.released ? ` · ${esc(e.released)}` : ''}${e.label ? ` · ${esc(e.label)}` : ''}</li>`;
+        if (ans(3) === 'grouped') {
+            const by = new Map();
+            p.entries.forEach(e => { const k = e.section || e.tab || ''; if (!by.has(k)) by.set(k, []); by.get(k).push(e); });
+            by.forEach((es, k) => secs.push({ label: `${k || 'Releases'} (${es.length})`, open: false, html: `<ul>${es.map(line).join('')}</ul>` }));
+        } else {
+            secs.push({ label: `Releases (${p.entries.length})`, open: false, html: `<ul>${p.entries.slice().sort((a, b) => a.year.localeCompare(b.year)).map(line).join('')}</ul>` });
+        }
+    } else if (p.kind === 'ott') {
+        const circ = p.ott.filter(r => r.releases.length).length;
+        facts.push(['Versions', String(p.ott.length)], ['Circulating', `${circ} of ${p.ott.length}`]);
+        const by = new Map();
+        p.ott.forEach(r => { const k = titled(r.title); if (!by.has(k)) by.set(k, []); by.get(k).push(r); });
+        secs.push({ label: `Versions (${p.ott.length})`, open: true, html: Array.from(by, ([t, rs]) => `<p><b>${esc(t)}</b></p><ul>${rs.map(r => `<li>${esc([r.version, r.take && `take ${r.take}`, r.date, r.time].filter(Boolean).join(' · '))}${r.releases.length ? ` — ${r.releases.map(x => link(x.href, x.text)).join(', ')}` : ''}${r.note ? ` <span class="by">(${esc(r.note)})</span>` : ''}</li>`).join('')}</ul>`).join('') });
+        if (p.notes) secs.push({ label: 'Notes', open: false, html: p.notes });
+    } else {
+        facts.push(['Versions', String(p.versions.length)]);
+        if (ans(4) === 'lines' && p.versions[0]) card = p.versions[0].verses.flat().slice(0, 4).join('\n');
+        p.versions.forEach((v, i) => secs.push({ label: v.name, open: i === 0 || ans(5) === 'all', html: v.verses.map(vs => `<p>${vs.map(esc).join('<br>')}</p>`).join('') }));
+        if (p.sl) secs.push({ label: 'Other versions', open: true, html: `<p>${link(p.sl, 'SpringsteenLyrics.com')}</p>` });
+    }
+    return { facts, secs, card, highlight };
+}
+function render() {
+    const p = DATA[state.view];
+    if (state.mode === 'today') {
+        $('stage').innerHTML = `<div class="today"><b>Today</b><span>Pointing at a link to <code>${esc(p.url.replace('https://brucebase.wikidot.com/', ''))}</code> shows nothing; Space does nothing; a click leaves for <a href="${esc(p.url)}">${esc(p.url)}</a>.</span></div>`;
+    } else {
+        const m = model(p);
+        $('stage').innerHTML = `<div class="stage"><div class="win" role="dialog" aria-label="The window">
+            <div class="win-bar"><span class="label kind">Detail page</span><span class="sp"></span><span class="ic">✎</span><span class="ic">⧉</span><span class="ic">×</span></div>
+            <div class="win-body"><div><div class="xtitle">${esc(p.title)}</div>${m.highlight ? `<p class="sub">${esc(m.highlight)}</p>` : ''}
+            <dl class="facts">${m.facts.map(f => `<dt>${esc(f[0])}</dt><dd>${esc(f[1])}</dd>`).join('')}</dl>
+            ${p.kind === 'discography' ? `<p class="sub" style="margin-top:10px">${p.entries.filter(e => e.cover).length} covers (tiles, “Cover”)</p>` : ''}</div>
+            <div>${m.secs.map(s => `<details class="sec new"${s.open ? ' open' : ''}><summary><h4>${esc(s.label)}</h4><span class="tag">new</span></summary><div class="secbody">${s.html}</div></details>`).join('')}
+            <details class="sec"><summary><h4>Tags</h4></summary><div class="secbody sub">The page's tags, as today.</div></details>
+            <details class="sec"><summary><h4>History</h4></summary><div class="secbody sub">Opening this section reads the page's history from Brucebase.</div></details></div></div></div>
+            <div style="display:grid; gap:6px; min-width:0"><span class="cardcap">The hover card (Ctrl+hover on the link)</span>
+            <div class="card new"><div class="ttl">${esc(p.title)}</div>${m.highlight ? `<div>${esc(m.highlight)}</div>` : ''}${m.card ? `<div class="excerpt">${esc(m.card)}</div><div class="cardcap">${p.versions.length} versions (Space for all)</div>` : ''}
+            <dl>${m.facts.slice(0, 4).map(f => `<dt>${esc(f[0])}</dt><dd>${esc(f[1])}</dd>`).join('')}</dl><div class="cardcap">brucebase.wikidot.com · Space: the window</div></div></div></div>`;
+    }
+    document.querySelectorAll('[data-view]').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.view) === state.view)));
+    $('m-today').setAttribute('aria-pressed', String(state.mode === 'today'));
+    $('m-new').setAttribute('aria-pressed', String(state.mode === 'new'));
+    $('answers').value = ['Phase 16 batch 3 — answers', ...[1, 2, 3, 4, 5, 6].map((n) => {
+        const lab = document.querySelector(`.q[data-q="${n}"] input:checked`).closest('label').textContent.replace(/\s*Recommended\s*$/, '').trim();
+        return `${n}. ${lab}`;
+    })].join('\n');
+}
+$('env').textContent = ENV;
+document.addEventListener('click', (e) => {
+    const v = e.target.closest('[data-view]');
+    if (v) { state.view = Number(v.dataset.view); render(); return; }
+    if (e.target.id === 'm-today') { state.mode = 'today'; render(); }
+    if (e.target.id === 'm-new') { state.mode = 'new'; render(); }
+    if (e.target.closest('#stage a')) e.preventDefault();
+});
+document.addEventListener('change', (e) => { if (e.target.matches('.q input')) render(); });
+$('copy').addEventListener('click', () => {
+    const t = $('answers');
+    navigator.clipboard.writeText(t.value).then(() => { $('status').textContent = 'Copied.'; },
+        () => { t.select(); $('status').textContent = 'Selected: press Ctrl+C.'; });
+});
+render();
+</script>

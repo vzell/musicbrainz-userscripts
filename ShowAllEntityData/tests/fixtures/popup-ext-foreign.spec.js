@@ -158,6 +158,36 @@ test.describe('external link previews on the Springsteen sites (U5)', () => {
         expect(ws2).toEqual([]);
     });
 
+    // vzell, 2026-11-12: a Brucebase window opens every link with a reader in
+    // place, as a MusicBrainz entity's does (`_dpWinIsBb()`) — here the
+    // `springsteen` reader's window of a Brucebase page on another site.
+    test('a Brucebase page\'s window on springsteenlyrics.com opens a Wikipedia link in place, with Back', async ({ page }) => {
+        const WIKI = 'https://en.wikipedia.org/wiki/Asbury_Park,_New_Jersey';
+        await answer(page, { [BB_SONG]: { status: 200, responseHeaders: HTML_HEADERS, responseText: fixture('detail-bb-4th-of-july.html') } });
+        await loadSlListPage(page, { kind: 'bootlegs', settingsOverride: { sa_pop_ext: true, sa_rich_tooltip_delay_ms: 0 } });
+        const link = await addLink(page, '.project-detail', BB_SONG, '4th Of July');
+        await ctrlHover(page, link);
+        await expect(card(page).locator('.mb-tt-title').first()).toHaveText('4th Of July, Asbury Park (Sandy)');
+        await page.keyboard.press('Space');
+        const title = dialog(page).locator(':scope > div > span').first();
+        await expect(title).toHaveText('Detail page');
+        await page.evaluate((h) => {
+            const a = document.createElement('a');
+            a.className = 'g-probe';
+            a.href = h;
+            a.target = '_blank';
+            a.textContent = 'Asbury Park';
+            document.querySelector('#mb-dp-dialog .mb-dp-area').appendChild(a);
+        }, WIKI);
+        const pages = [];
+        page.on('popup', (pp) => pages.push(pp.url()));
+        await dialog(page).locator('a.g-probe').click();
+        await expect(title, 'one step deeper in the same window').toContainText('›');
+        expect(pages, 'no new tab').toEqual([]);
+        await page.keyboard.press('Backspace');
+        await expect(title).toHaveText('Detail page');
+    });
+
     test('Brucebase: the wiki text\'s link to another site, never wikidot\'s menus, header or footer', async ({ page }) => {
         await answer(page, {
             [SHUFFLE]: {
@@ -290,14 +320,15 @@ test.describe('links inside a window on Brucebase (G2, G3)', () => {
         await expect(title, 'the Brucebase show, one step deeper').toHaveText('Web page › Brucebase show');
         await expect.poll(async () => (await xhrLog(page)).map(r => r.url)).toContain(YEAR);
         expect(pages, 'no new tab').toEqual([]);
-        // On the page itself such a link stays the site's own.
+        // On the page itself the show reader takes it too since 2026-11-11
+        // (org/brucebase.org Phase 8; bb-date-links.spec.js has the rest).
         const onPage = await page.evaluate((h) => {
             const a = document.createElement('a');
             a.setAttribute('href', h);
             document.querySelector('#page-content').appendChild(a);
             return window.__saTest.popResolve(a);
         }, `${YEAR}#130185`);
-        expect(onPage).toBeNull();
+        expect(onPage).toContain('bbdate');
     });
 
     // A generic page's window is no all-links window (`_DP_WIN_ALL_LINKS_*`):

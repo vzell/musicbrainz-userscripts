@@ -29161,3 +29161,261 @@ guarded passes (collapse, column visibility, filter scoping, findings, empty sub
 plus the Discogs specs: 79 passed and 1 failed before vzell stopped it (he had tested live, OK): discogs-master-tracks
 counted `tbody > tr` on Stars On 45, whose medley headings are bands now — moved to data rows, green. Not run:
 `test:full` (the merge gate).
+
+## 2026-11-11 — Brucebase top-bar menus could not be used (feature/bb-overhaul, Phase 7)
+
+Env: 2026-11-11T23:23+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.58.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Symptom (vzell, Image #18, system:recent-changes): the "Manage Site" dropdown opened over our toolbar
+`<h1>` and status line, the status line's text painted over its entries, and no entry could be clicked —
+on the initial page too. Root cause, with evidence: Wikidot's theme (common--theme/base/css/style.css,
+fetched 2026-11-11) puts `#header` at `position: relative; z-index: 30`, `#top-bar` absolute at its
+bottom, and a dropdown is an absolute `<ul>` shown on `li:hover`. The sticky filter bars stamp our h1 and
+status line `.mb-vsb-head` (z-index 105, 107 raised) from page init on. `elementFromPoint` at "Search"
+and "Pages" returned `h1.mb-bb-h1.mb-vsb-head`; a pointer moving down from the toggle lands on that block,
+the `li` loses `:hover` and the whole menu closes. MusicBrainz's own top header already had the fix
+(`_vsbLiftChrome()`, `.mb-vsb-chrome`, 108) but it looked for `body > div.header` only. Fix: on
+Brucebase it marks `#header`, and `_ensureBbStyle()` lifts it to 108 (shared CSS text untouched, so no
+MusicBrainz snapshot drift). Side finding while writing the spec: after a render a click on an entry is
+cancelled by the navigation guard when its confirm is declined (Playwright declines by default) — by
+design, not this bug. Spec `tests/fixtures/bb-topbar-menu.spec.js` (theme rules inline, the fixture has
+none), mutations `scripts/mutations/bb-topbar-menu.json` 3/3 OK (the third, 106 instead of 108, needed the
+focused case: focus on a toolbar button raises the block to 107). Siblings (sticky-filter-bars, bb-sidebar,
+bb-recent-changes, bb-every-page, bb-event, bb-history, bb-topbar-menu): 86 passed. vzell's live check: OK.
+
+## 2026-11-12 — Brucebase stats pages as bb-stats, and a stale seed-ledger spec (feature/bb-overhaul, Phase 13 batch 1)
+
+Env: 2026-11-12T10:48+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs).
+
+`test:full` on petri at f6bfc2b1 (3,026 tests, 19 m 7 s) failed one test,
+`table-seed-ledger.spec.js:363`: 3 rows offered where it expects 1. Cause, on main and
+not this branch: the Discogs section bands (74af55ee) added two built-in
+`sa_default_hidden_columns` rows, and the spec emptied the whole ledger entry instead of
+dropping release-tracks' key. Fixed in the spec (`pretendRowIsNew()`); the file 12/12.
+
+`bb-stats` (docs/claude/brucebase.md "Stats pages"): the survey's two shapes, links in
+tabs and the wiki's tables, as one pageType with a button per shape — not two pageTypes,
+because six pages of the copy hold both and a button's `tableMode` overrides the
+definition's. Three things the mockup's sample did not show, found by running the shipped
+reader over the whole copy (`scripts/check-bb-stats-reader.js`, 698 pages): Awards' heading
+row is bold by its `tr` style (no `th`, no `strong`) and its ceremonies are full-width rows
+inside the data (now a Section column); 145 path matches have neither shape and would have
+got a toolbar with no button (now `match` asks for a shape and they stay `bb-page`); the one
+fragment fixture first chosen (awards-academy-1993) has no table, so it could not show the
+fragment exclusion — awards-ama, which has one, replaced it. The navigation guard
+(`_BB_STATS_SKIP_KINDS`) passed its first mutation run: no list fixture had a stats link in
+an item; stats:for-collectors (a hub of them) was added and the mutation fails now.
+`bb-stats.spec.js` 8/8, `scripts/mutations/bb-stats.json` 17/17 OK, 13 sibling specs 182
+green. `_defOpensSubTable()` takes `'first'` and the group's index; bb-event.json's find for
+it refreshed (OK).
+
+## 2026-11-12 — Brucebase song tour counts and studio sessions; bold rows taken as headers (feature/bb-overhaul, Phase 13 batch 2)
+
+Env: 2026-11-12T12:56+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs).
+
+`bb-song-tours` and `bb-sessions` (docs/claude/brucebase.md, "Song tour counts … and studio
+sessions"), and the On The Tracks take split. Both families were read whole before any spec
+(`scripts/copy-bb-stats-tours.sh`, `scripts/check-bb-tours-sessions.js`): of the 1,270 tour
+pages 599 have tour rows, 614 only the box of other shows, 57 (`shows-*-tour`) neither — so
+`match` asks for a tour row, as bb-stats asks for a shape.
+
+Root cause found on the studio-session pages, in batch 1's `_bbStatsRead()`: their version
+tables set `font-weight: bold` on every `tr`, and the reader took a `tr` bold by its style as a
+heading row (added for Awards). So each song's first take was the table's header ("BACKSTREETS
+- V1 | Column 2 | uncirculating"), and a table of ONE bold row was read as a heading-only table
+whose row then became `lastHead` for the tables after it ("COMIN' DOWN MARIA | 04:22 | GUEST:
+BABYLON" over Greatest Hits' other songs; "1. | ATLANTIC CITY" on Nebraska's electric
+sessions). Fix: a style-bold row is a header only when a row follows that is not bold the same
+way with as many cells. The first form of the fix (just "the next row is not bold") broke
+Awards — its header row is followed by a ceremony row, bold too but one spanning cell — which
+the whole-copy check showed before any spec ran: compared table by table with the earlier
+`debug/bb-stats-reader.json`, 15 award pages lost their columns; with the cell-count condition
+none of the non-session pages changes.
+
+The take split: a Timeline cell lists a day's songs, several takes in one cell, and splitting
+the cells that happened to name one take left a half-filled Version column; a column is split
+only when no cell lists several. Two mutations first passed (`one-row tables are dropped`: BTR's
+Version History has no one-version song, the one-row tables are all in "Possible BTR-era
+Songs", whose row count no assertion read; `a title with no take loses its cell`: the check
+accepted an empty Song); the spec pins both now and they fail. mutation-check reported the
+first with the harness's auth hint as its error line, so it was planted by hand once: the
+sub-table is gone (TypeError on its rows), the right reason. Results: the new spec 7/7, 26 + 4
+refreshed mutations OK, all 27 BB specs + sl-include-regex 294 green.
+
+## 2026-11-12 — bb-sessions: the notes under each song's table as a Note column (feature/bb-overhaul, Phase 13 batch 2)
+
+Env: 2026-11-12T13:31+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs).
+
+vzell asked for Version History's "Note:" paragraphs as a multi-row column. A note is the
+paragraphs right after a song's table from one beginning "Note:"; the first reader stopped at
+the first non-paragraph and so lost the notes on 12 pages — a recording sheet's picture
+(`div.image-container`) sits between those tables and their notes (BTR's Jungleland, Walking
+In The Street). It steps over pictures now; `scripts/check-bb-tours-sessions.js` compares the
+page's "Note:" paragraphs with the notes read: 2,642 / 2,639, the 3 others page notes under no
+table. One mutation first passed (the note on the first take only): the note's merge path is
+taken only from a group's SECOND table on, and Backstreets, the one song checked, is the first;
+every song's rows are checked now. mutation-check again printed the harness's auth hint as the
+error line of one entry, planted by hand: it fails on Jungleland's note, the right reason.
+Spec 8/8, the six note mutations OK, 27 BB specs + sl-include-regex 295 green.
+
+## 2026-11-12 — Brucebase discographies and registered songs (feature/bb-overhaul, Phase 13 batch 3)
+
+Env: 2026-11-12T14:21+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs).
+
+`bb-gallery` and `bb-registered` (docs/claude/brucebase.md, "Discographies … and registered
+songs"). The mockup's gallery rows came from the cover strip at the top of
+stats:discography-album; reading the family showed that strip is the same 203 covers on
+every discography page (an include: the wiki's navigation), while each page's content is its
+entries below it — asked before building; vzell: the entries. Two shapes the family check
+(`scripts/check-bb-galleries.js`) found: Hammersmith Odeon London '75's "Released: …<br>Label:
+…" are text nodes between the elements, not a paragraph (the walker reads loose text now); the
+hub stats:discography is a tabview whose Retail tab holds discography-retail's entries
+(entries inside a tabview are not read, so the hub keeps bb-stats' List). The image card would
+have shown the wiki's ~100 px thumbnail (`thumbnails[250]` of the row); the cover's full image
+is both now. One mutation is `expect: pass`: an entry must open with its year, and no page of
+the copy has a bold link without one outside a tab. mutation-check printed the harness's auth
+hint as the error line of "a single's song not in MusicBrainz style" again (the spec's `styled`
+row is undefined without the tip: the right reason).
+
+## 2026-11-12 — Brucebase year table: columns from each event's page (feature/bb-overhaul, Phase 14)
+
+Env: 2026-11-12T19:36+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs).
+
+`_bbEvp*` (docs/claude/brucebase.md, "The year table's columns from each event's page"):
+On stage, Content, Images, Start, filled from the link previews' record after ▶ Pages, the rows
+as they come into view. Found while building:
+- A year listing's Event link is a show on the year page (/1985#130185, and /1985#290685a for a
+  day's second show), not the event's page: the page comes from the year page (`_extBbYear()`).
+- The first render tail walked every live and source cell, and it ran on every re-render, i.e.
+  each filter keystroke; on the 5,010-row all-years table that is on the hot path. A re-render now
+  only puts back the header buttons and the watch (`_bbEvpAfterRender(false)`).
+- The cost before any page is read, measured in one session against the commit before
+  (tests/MEASUREMENTS.org): the 1985 render +42–67 ms (7–11 %), the paint pass not the cause (cut
+  off, the same); the sort unchanged. Reported to vzell with the alternative.
+- Five mutations first passed. The spec never waited for the reading to settle (so "all rows
+  read" looked like "the rows in view"); it filtered only after loading had stopped, so the four
+  duties of a late write were never needed (a filter set WHILE pages arrive pins them: rows
+  filtered away stay queued and come back once read); no fixture had a page without a time (the
+  rehearsal fixture's "??:??"). On the way: the table starts 1,290 px down the page in the
+  fixture, so a short window shows two rows — the duty test scrolls the table to the top first.
+Spec 7/7, the 14 mutations and 4 refreshed finds OK, 27 BB specs + sl-include-regex 307 green.
+
+## 2026-11-12 — Brucebase page history in windows on other sites (feature/bb-overhaul, Phase 15)
+Env: 2026-11-12T20:28:30+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) · probes: n/a (Python urllib) and vzell's Chrome 152 · Tampermonkey 5.5.1 on musicbrainz.org (20:31:09+01:00) · specs: Playwright Chromium, no Tampermonkey (GM stubs)
+- Question: can the History section (Wikidot's history modules, POST /ajax-module-connector.php with
+  `wikidot_token7` in the body equal to the cookie) work off brucebase.wikidot.com, where the
+  request must be an anonymous GM_xmlhttpRequest? `scripts/probe-bb-history-token.py`: a fresh random
+  token as cookie and in the body, no session, "ok" (20 rows, 511 ms); no cookie and cookie ≠ body
+  "wrong_token7". `scripts/probe-bb-history-xorigin.user.js` (vzell, `debug/bb-history-xorigin-probe-20261112.json`):
+  Tampermonkey delivers both a `Cookie` header and its `cookie` field on an anonymous request; both
+  controls refused; 230–250 ms; PageSourceModule accepted.
+- Done: `_bbHistPost()` off the wiki goes through `_bbHistGmPost()` (anonymous, Cookie header, one
+  token per page load, `_bbHistOffsiteToken()`); `_bbHistWindowOn()` (setting only) gates the window's
+  section, ✎ and H on every host; `_bbHistHasSubject()`/`_bbHistSubject()` take the `springsteen`
+  reader's Brucebase targets (page id from the link record's `dp`). `_bbHistOn()` keeps the wiki-only
+  page features. Off the wiki a token refusal reads "Brucebase did not accept the request from this
+  site …" instead of "Sign in".
+- Trap avoided: `_bbWikidotToken()` off the wiki would set a `wikidot_token7` cookie on the host we
+  are on (musicbrainz.org) — a mutation pins that no such cookie appears.
+Spec `bb-history-foreign.spec.js` 5/5, mutations `bb-history-foreign.json` 11/11; bb-history*,
+popup-ext-foreign*, bb-every-page 39/39; popup-ext + detail-preview 146/146.
+
+## 2026-11-12 — Brucebase readers swept; event windows' gaps fixed (feature/bb-overhaul, Phase 16 batch 1)
+Env: 2026-11-12T21:11:14+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs); redirect probe 21:12:47+01:00 (n/a, Python urllib)
+- `scripts/probe-bb-reader-sweep.js` over 3,284 mirror pages (32 families): page text blocks, links,
+  pictures against the window's record and the page views' readings. Gaps listed in org/brucebase.org
+  (G1–G7, L1–L6). False losses found and not listed: rewordings (Personnel "Roy Bittan (The E Street
+  Band): Piano", a bootleg's notes without their label, a song's intro as the subtitle). onstage:/
+  offstage:/multi:/soundcheck: all answer 301 to the gig (`scripts/probe-bb-redirect-kinds.py`); the
+  mirror keeps their Redirect-module stubs.
+- Batch 1 (mockup https://claude.ai/artifact/RX3xHaYRozwSiZP2g5MujY, all answers as recommended): the
+  event window's description ("About this show", first sentence on the card), every cast tab, the
+  Playlist, the venue's other lists, News as News/Memorabilia, the year table's On stage from any cast
+  tab. Found on the way: (1) some pages have their description as plain `<p>`s, not in a
+  `.list-pages-box` — the page view's About this show missed them too; `_bbEventAboutEl()` reads both,
+  minus the "Info & Setlist" line when that is a `<p>` (Portland 1978-06-23 pins it; a mutation of that
+  guard first survived on Red Bank, where the line is loose text); (2) Wikidot's Flickr gallery
+  placeholder (`.wikidot-hybrid-module`, hidden JSON) was read as text into News/Memorabilia (86 pages).
+Spec `bb-event-window-gaps.spec.js` 5/5, mutations `bb-event-window-gaps.json` 16/16; BB specs +
+popup-ext-foreign + detail-preview 333/333 after updating bb-event-preview's section order (2 tests);
+youtube-embeds, bs-record-preview, sl-song-window, sl-tracklist-links, popup-ext's BB tests 95/95.
+- Follow-up the same evening (vzell: the rare cast tabs should be cast tabs): adding On Phone showed
+  that a cast tab's people were read from its FIRST list only — the second holds the guests (47 of 304
+  On Stage tabs sampled; e.g. gig:1979-03-14 Fast Lane lost Bruce Springsteen and Garry Tallent as
+  guests), in the window, the year table and the page view alike. Every top-level list is read now.
+  The year table's splitter then turned the 2009 rehearsal (two groups, guests last) into a run-on
+  first row, as it had been one row before (its last bracket "(Guests)" has no comma): it goes group by
+  group now, the first row as Phase 14 drew it. Spec 6/6, mutations 21/21, BB specs 334/334.
+
+## 2026-11-12 — Brucebase finding bb-onstage-tab; late re-stamp of rows the filter hides (feature/bb-overhaul, Phase 16)
+Env: 2026-11-12T22:50+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+- vzell: a cast tab spelled "Onstage" should be a finding. `bb-onstage-tab` (⚠️, cell, Content) is late
+  data: `_bbEvpRenderCell()` marks the Content cell (`data-mb-bbevp-onstage`, live and source) and queues
+  the row.
+- Found by the test "the finding ticked while pages arrive": the year table's event-page columns read
+  rows the filter has taken out of the page, but `_queueFindingsRestamp()` dropped every row not in the
+  page, so a row flagged while the finding filtered never got its stamp and never joined the table. The
+  queue now takes such a row with its table (a Map row → table); `_flushFindingsRestamp()` stamps it
+  against that table's plan. Rows in the page behave as before (artwork, Relationships, sl-double-utf8,
+  MB-Event specs 208/208).
+- The mutation "not a late finding" passes: a cell-scope tick is a value in the column's filter input,
+  so `_anyFilterActive()` is true and `_bbEvpScheduleRefresh()` re-runs the filter itself; recorded
+  `expect: pass` with that reason.
+- `rel-column-site-kind-discogs.spec.js` "FINDING COUNT + FILTER + LOOK + SURVIVAL" failed once in a
+  208-test mixed run (withFinding 0 for 2 after two global-filter re-renders); not reproduced alone ×3,
+  in parallel ×4 (32/32) or in the same mixed run again (208/208). Load flake, watch it at test:full.
+- vzell's live check of batch 1 and the finding: OK.
+
+## 2026-11-13 — Brucebase person and release windows (feature/bb-overhaul, Phase 16 batch 2)
+Env: 2026-11-13T00:02+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+- Mockup https://claude.ai/artifact/LHEdFVu715Qu4z2dUackmb, all answers as recommended. A person's
+  biography as "About" (batch 1's `_bbEventAboutEl()`, its first sentence on the card); a release's or
+  playlist's window adds the page view's reading as folded sections (`_bbReleaseWindowExtras()`) plus
+  Gallery/News (`_bbGalleryNewsSection()`, which the page view does not read). Parser version 25.
+- The sweep re-run on these families: person windows keep 97% of the page's text blocks (79%), releases
+  62% (26%), playlists 65% (29%); the remaining "losses" checked: rewordings (Personnel "Name (Band):
+  role", On The Tracks "Song" + "V2" for "SONG - V2"), table headers, the empty "Additional Information"
+  heading, On The Tracks group headings (the page view drops those too).
+- A side effect of batch 1 noticed here: its list sections (Appearances, …) reach person windows too,
+  folded — consistent, live-checked with batch 1.
+Spec 4/4, mutations 13/13 (+2 batch 1 finds refreshed), BB specs 343/343, popup-ext BB + YouTube 44/44.
+- vzell's live check of batch 2: OK, with one ask: the release page view should show Gallery/News too.
+  `_bbReleaseRead()` skipped the tab with Artwork and Gallery; it now reads it
+  (`_bbGalleryNewsFromPanel()`) as one of its text tabs, which the head draws as a folded section; the
+  window takes it from there, in its place after the live dates, and leaves it out of the other text
+  tabs (a mutation pins "not twice"). Parser version 26. BB specs 343/343.
+
+## 2026-11-13 — Brucebase new previews: tour counts, sessions, discographies, On The Tracks, lyrics (feature/bb-overhaul, Phase 16 batch 3)
+Env: 2026-11-13T01:13+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs); the lyrics probe n/a (Python over the mirror)
+- Mockup https://claude.ai/artifact/6HcKkN6QeAvw1SKk4BYC5f, all six answers as recommended. Records of their
+  own (`_dpParseBbTours()`, `_dpParseBbSessions()`, `_dpParseBbDiscography()`, `_dpParseBbOtt()`,
+  `_dpParseBbLyrics()` with the new `_bbLyricsRead()`), dispatched by `_dpParseBbRecord()`; parser version 27.
+- Lyrics family probed whole first (`scripts/probe-bb-lyrics-shape.py`, 508 pages of the NAS mirror): a
+  heading table per version (h2, and a live version's date in a `<p>` under it — which the probe first
+  counted as "other text"), centred verse blocks, a springsteenlyrics.com table after each version (one page
+  with none, one with four); `'Til We Outnumber 'Em` is a two-column table (song | story), read as its text.
+- Exclusions the sweep found, all "other stats pages" (answer 6): `stats:songs-<tour>-tour` (28 pages) and
+  `stats:shows-<tour>-tour` (29) are a TOUR's song counts and shows, not a song's tour counts, though they end
+  in `-tour` (exactly the 57 of 1,270 `-tour` pages without "Performed at" boxes); the playlist discographies
+  (`-playlist`, `-playlist-songs`) have no release entries and would have been a near-empty card.
+- A mutation find collision: the lyrics reader's `return c.textContent.split('\n')` contained
+  popup-annotations.json's find (`            return c.textContent.split('\n')`, now 2x); the reader splits on
+  `/\n/` instead.
+- Sweep before → after (window's kept text blocks): lyrics 5% → 89%, ott 13% → 77%, sessions 0% → 69%,
+  discographies 0% → 35%, tour counts 0% → 0% (wording differs from the page's word for word; see
+  docs/claude/brucebase.md "Batch 3").
+Spec 8/8, mutations 31/31 (+6 finds of other lists refreshed and re-run: 6/6), BB + popup-ext specs 436/436.
+
+## 2026-11-13 — Brucebase story pictures and song windows' links; no preview of this page's #anchor (feature/bb-overhaul, Phase 16 batch 4)
+Env: 2026-11-13T01:50+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs); the story probe n/a (Python over the NAS mirror)
+- Mockup https://claude.ai/artifact/CZ2t1cS2fw7W4RDSyTvoNo, all four answers as recommended.
+- G6 measured whole before the mockup (`scripts/probe-bb-story-images.py`, 1,489 pages): the sweep's "40/40 pages
+  carry a picture" was mostly the Storyteller badge (1,449); real pictures are 44 banners on 42 pages, all
+  Wikidot `.image-container` blocks — the window never read them because `_bbPageImages()` reads gallery boxes.
+  The badge is never inside an image block (0 of 1,449), so the badge filter is a safeguard no fixture can see
+  (mutation recorded `expect: pass`).
+- G7: the song window's intro gets `subtitleHtml` (links kept; the card keeps the words); the Lyrics section's
+  `html` was '' since WIP.8, which dropped the "Visit SpringsteenLyrics.com" links — now `_dpBlockHtml()`.
+- Batch 3's open question answered: `_dpSiteForUrl()` refuses a link to the current page that only adds a hash
+  (shared by every foreign host).
+Spec 5/5, mutations 12 (11 fail, 1 pass as recorded), bb/sl/jl/bs + popup-ext specs 720/720.

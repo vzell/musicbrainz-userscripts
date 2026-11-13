@@ -4228,3 +4228,70 @@ expects "300 of 528": the run had finished before Stop landed. Rerun alone
 branch does not touch (Discogs windows go through =_extExtracted()=, whose
 only change is passing the target to =_dpExtractedCols()= for Springsteen-site
 records).
+
+* 2026-11-12 — =npm run test:full= on =petri=, the BB overhaul (feature/bb-overhaul at f6bfc2b1, main at 74030257, 9.99.1598)
+
+Env: 2026-11-12T09:15:55+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                         | Tests | Workers | Wall clock | Basis                                     |
+|-----------------------------------+-------+---------+------------+-------------------------------------------|
+| =npm run test:full=, merge check  |  3026 |      12 | *19 m 7 s* | =run-test-full.py=, 09:15:55–09:35:02 CET |
+
+3025 passed, 1 failed: =table-seed-ledger.spec.js:363= ("a newly-offered
+hidden-columns row actually hides the column") saw 3 rows offered where it
+expects 1. Not this branch: main's Discogs section bands (=74af55ee=,
+2026-11-11, after petri's last full run) added two built-in
+=sa_default_hidden_columns= rows (dg-release, dg-master "Section"), and the
+spec emptied the whole ledger entry, so the pass re-offered all three. Fixed in
+the spec: it drops only release-tracks' key (=pretendRowIsNew()=); the file
+12/12 (09:36 CET). The known popup-ext-foreign flake did not show.
+
+* 2026-11-12 — =npm run test:full= on =petri=, after BB Phase 13 batches 1 and 2 (feature/bb-overhaul at 7d0e33dd, 9.99.1598)
+
+Env: 2026-11-12T13:58:48+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                         | Tests | Workers | Wall clock  | Basis                                     |
+|-----------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, merge check  |  3042 |      12 | *18 m 45 s* | =run-test-full.py=, 13:58:48–14:17:33 CET |
+
+3042 passed. The wide sweep owed after the stats pages (bb-stats, bb-song-tours,
+bb-sessions) changed shared code: =_defOpensSubTable()= ('first'),
+=applyBbDetailToTable()=, the song, On The Tracks and release renderers; the
+MusicBrainz fixture specs and popup-ext* green. The known popup-ext-foreign
+flake did not show.
+
+* 2026-11-12 — Brucebase year table: the cost of Phase 14's four event-page columns before any page is read (=petri=)
+
+Env: 2026-11-12T19:14+01:00–19:22+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs).
+
+=node scripts/measure-bb-year-render.js 1985 7= (bb-year, =tableMode: single=, "Brucebase — 1985", 94
+rows; the fixture =bb-year-1985.html=): click on "Show all events" to =waitForRenderComplete=, then a
+click on Date's header to the re-render's end; 7 fresh pages an arm, median (range). Arm B: the commit
+before Phase 14 (=f4bce910=, a git worktree with the same script); A: with the columns; X: A with the
+render-tail paint pass (=_bbEvpAfterRender(true)=) cut off. Three rounds, the arms interleaved, after a
+first pair of rounds (B 503/510, A 555/563 ms render).
+
+| Round | B render     | A render     | X render     | B sort     | A sort     | X sort     |
+|-------+--------------+--------------+--------------+------------+------------+------------|
+|     1 | 597 (589–612) | 639 (612–655) | 645 (627–669) | 78 (66–80) | 78 (72–81) | 80 (71–90) |
+|     2 | 589 (557–615) | 656 (646–672) | 660 (625–665) | 80 (76–95) | 80 (70–94) | 78 (72–82) |
+|     3 | 596 (557–612) | 654 (643–685) | 647 (624–664) | 71 (63–78) | 82 (68–97) | 83 (73–95) |
+
+The render is 7–11 % slower with the columns (+42 to +67 ms on 94 rows); the paint pass is not it (X ≈
+A): it is the four more columns themselves (19 → 23 with their filter boxes, 📊 and the collapse pass
+of On stage). The sort does not change. Reported to vzell with the alternative (the columns hidden
+until ▶ Pages is pressed) before the merge.
+
+* 2026-11-13 — =npm run test:full= on =petri=, the BB overhaul's merge check after Phase 16 (feature/bb-overhaul at 9fdef5e8, 9.99.1598)
+
+Env: 2026-11-13T01:54:19+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                         | Tests | Workers | Wall clock  | Basis                                     |
+|-----------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, merge check  |  3088 |      12 | *20 m 1 s*  | =run-test-full.py=, 01:54:19–02:14:20 CET |
+
+3087 passed, 1 failed: =detail-preview.spec.js= "Brucebase: origin, the performance count, …" still
+pinned the song window's Lyrics section as link-free (=html= ''), which Phase 16 batch 4 (answer 3)
+changed on purpose; the spec now pins its one link, the springsteenlyrics.com line (a mutation added
+to =bb-story-song-windows.json=), and its file re-ran 32/32. No code changed after the run. The
+=rel-column-site-kind-discogs= flake of Phase 16 batch 1 and the popup-ext-foreign flake did not show.

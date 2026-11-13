@@ -28,7 +28,10 @@ const { clickToolbarItem } = require('../support/toolbarMenu');
 // Since 2026-10-24 (org/TODO.org "Some enhancements" 3a, 3d): Event first,
 // the sticky column; Media second (at the far right it took a horizontal
 // scroll to see).
+// Since 2026-11-12 (org/brucebase.org Phase 14): the four columns from each
+// entry's own page after Tour (bb-year-event-pages.spec.js).
 const HEADERS = ['Event', 'MB-Event', 'Media', 'Date', 'Type', 'Venue', 'City', 'State', 'Country', 'Tour',
+    'On stage', 'Content', 'Images', 'Start',
     'Soundcheck', 'Setlist', 'Set note', 'Notes', 'Info wanted',
     'DD', 'MM', 'YYYY', 'Day', 'Month'];
 

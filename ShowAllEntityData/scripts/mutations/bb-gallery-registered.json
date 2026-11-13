@@ -1,0 +1,236 @@
+[
+    {
+        "name": "discographies are not matched",
+        "why": "bb-gallery's match: without it a discography is bb-stats' or bb-page's.",
+        "edits": [
+            {
+                "find": "            match: (path) => _BB_GALLERY_PATH_RE.test(path) && _bbGalleryLive().entries.length > 0,",
+                "replace": "            match: (path) => false && _BB_GALLERY_PATH_RE.test(path),"
+            }
+        ],
+        "spec": "tests/fixtures/bb-gallery-registered.spec.js",
+        "grep": "a row per entry",
+        "expect": "fail"
+    },
+    {
+        "name": "a page with no entries is matched",
+        "why": "The playlist pages and the hub have no entries: they keep bb-stats' list.",
+        "edits": [
+            {
+                "find": "            match: (path) => _BB_GALLERY_PATH_RE.test(path) && _bbGalleryLive().entries.length > 0,",
+                "replace": "            match: (path) => _BB_GALLERY_PATH_RE.test(path),"
+            }
+        ],
+        "spec": "tests/fixtures/bb-gallery-registered.spec.js",
+        "grep": "no entries",
+        "expect": "fail"
+    },
+    {
+        "name": "entries in a tab are read",
+        "why": "The hub stats:discography includes discography-retail in a tab: it stays bb-stats'.",
+        "edits": [
+            {
+                "find": "            if (!p || p.tagName !== 'P' || p.closest('.yui-navset')) return null;",
+                "replace": "            if (!p || p.tagName !== 'P') return null;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-gallery-registered.spec.js",
+        "grep": "no entries",
+        "expect": "fail"
+    },
+    {
+        "name": "a bold link with no year is an entry",
+        "why": "An entry opens with its year (\"2025 Nebraska '82\"). No page of the copy has a bold link without a year outside a tab (scripts/check-bb-galleries.js, 2026-11-12), so no spec can see the guard; kept as the entry's shape.",
+        "edits": [
+            {
+                "find": "            const a = strong && strong.querySelector('a[href]');\n            return a && /^\\d{4}\\b/.test(_bbText(strong)) ? { strong, a } : null;",
+                "replace": "            const a = strong && strong.querySelector('a[href]');\n            return a ? { strong, a } : null;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-gallery-registered.spec.js",
+        "grep": "a row per entry|nine sections",
+        "expect": "pass"
+    },
+    {
+        "name": "the strip's tab is not read",
+        "why": "Tab: the strip's tab the release is in.",
+        "edits": [
+            {
+                "find": "            if (!tabOf.has(href)) tabOf.set(href, _bbStatsTabPath(a).join(' › '));",
+                "replace": "            if (false) tabOf.set(href, _bbStatsTabPath(a).join(' › '));"
+            }
+        ],
+        "spec": "tests/fixtures/bb-gallery-registered.spec.js",
+        "grep": "a row per entry",
+        "expect": "fail"
+    },
+    {
+        "name": "loose Released/Label text is not read",
+        "why": "Hammersmith Odeon London '75: \"Released: …<br>Label: …\" outside a paragraph.",
+        "edits": [
+            {
+                "find": "                if (n.nodeType === 3) {\n                    loose += n.nodeValue;\n                    continue;\n                }",
+                "replace": "                if (n.nodeType === 3) continue;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-gallery-registered.spec.js",
+        "grep": "a row per entry",
+        "expect": "fail"
+    },
+    {
+        "name": "a thumbnail is not turned to its full image",
+        "why": "The cover links the full image (the card, the viewer).",
+        "edits": [
+            {
+                "find": "        return m ? `${m[1]}/local--files/${m[2]}` : String(src || '');",
+                "replace": "        return String(src || '');"
+            }
+        ],
+        "spec": "tests/fixtures/bb-gallery-registered.spec.js",
+        "grep": "a row per entry",
+        "expect": "fail"
+    },
+    {
+        "name": "Released is not ISO",
+        "why": "\"October 17, 2025\" → 2025-10-17 (dateParts takes ISO only).",
+        "edits": [
+            {
+                "find": "                Released: iso ? tip(iso, x.released, e(iso)) : e(x.released),",
+                "replace": "                Released: e(x.released),"
+            }
+        ],
+        "spec": "tests/fixtures/bb-gallery-registered.spec.js",
+        "grep": "a row per entry",
+        "expect": "fail"
+    },
+    {
+        "name": "the subtitle is not read",
+        "why": "\"Expanded Edition\" under the title.",
+        "edits": [
+            {
+                "find": "                subtitle: _bbText(own).replace(/^\\((.*)\\)$/, '$1'), covers: [],",
+                "replace": "                subtitle: '', covers: [],"
+            }
+        ],
+        "spec": "tests/fixtures/bb-gallery-registered.spec.js",
+        "grep": "a row per entry",
+        "expect": "fail"
+    },
+    {
+        "name": "the gallery's columns are not in the live table",
+        "why": "A single table keeps the placeholder's columns unless set at the press.",
+        "edits": [
+            {
+                "find": "        else if (kind === 'gallery') cols = _bbGalleryCols(_bbGalleryLive());",
+                "replace": "        else if (false) cols = _bbGalleryCols(_bbGalleryLive());"
+            }
+        ],
+        "spec": "tests/fixtures/bb-gallery-registered.spec.js",
+        "grep": "a row per entry",
+        "expect": "fail"
+    },
+    {
+        "name": "the section keeps its small print",
+        "why": "\"Album Release\" without \"Not incl. Special Releases\" (the h1's sup).",
+        "edits": [
+            {
+                "find": "                h.querySelectorAll('sup').forEach(x => x.remove());",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-gallery-registered.spec.js",
+        "grep": "nine sections",
+        "expect": "fail"
+    },
+    {
+        "name": "no Section column on a page of nine",
+        "why": "Section: the h1, on a page with several.",
+        "edits": [
+            {
+                "find": "...(rec.sections > 1 ? ['Section'] : []),",
+                "replace": "...(false ? ['Section'] : []),"
+            }
+        ],
+        "spec": "tests/fixtures/bb-gallery-registered.spec.js",
+        "grep": "nine sections",
+        "expect": "fail"
+    },
+    {
+        "name": "a single's song not in MusicBrainz style",
+        "why": "sa_foreign_mb_titles on: the song's title styled, the wiki's as the hover.",
+        "edits": [
+            {
+                "find": "            const shown = /\\/(?:song|ott):/.test(x.href) ? _mbSiteTitleText(x.text) : x.text;",
+                "replace": "            const shown = x.text;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-gallery-registered.spec.js",
+        "grep": "nine sections",
+        "expect": "fail"
+    },
+    {
+        "name": "the cover has no provider",
+        "why": "_fiProvider('bbg'): the image card and the viewer.",
+        "edits": [
+            {
+                "find": "            case 'bbg': return _BBG_FI;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-gallery-registered.spec.js",
+        "grep": "a cover:",
+        "expect": "fail"
+    },
+    {
+        "name": "the card shows the thumbnail",
+        "why": "The wiki's thumbnail is ~100 px: the card shows the full image.",
+        "edits": [
+            {
+                "find": "        return { thumb: a.href, small: a.href, title: a.dataset.mbBbgCap || 'Brucebase cover', type: '', asked: false, path };",
+                "replace": "        return { thumb: a.href, small: a.querySelector('img').getAttribute('src'), title: a.dataset.mbBbgCap || 'Brucebase cover', type: '', asked: false, path };"
+            }
+        ],
+        "spec": "tests/fixtures/bb-gallery-registered.spec.js",
+        "grep": "a cover:",
+        "expect": "fail"
+    },
+    {
+        "name": "stats:songs is not read",
+        "why": "The Song page column: one request for stats:songs.",
+        "edits": [
+            {
+                "find": "                            await _bbSongIndexLoad();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-gallery-registered.spec.js",
+        "grep": "Title, Song page",
+        "expect": "fail"
+    },
+    {
+        "name": "titles do not match their song",
+        "why": "Letters and digits only: \"1945\", \"Adelita\".",
+        "edits": [
+            {
+                "find": "            const href = index.get(_bbSquash(t));",
+                "replace": "            const href = index.get(t);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-gallery-registered.spec.js",
+        "grep": "Title, Song page",
+        "expect": "fail"
+    },
+    {
+        "name": "the registration record is not the head",
+        "why": "_fdHeadSpec() names bb-registered's head.",
+        "edits": [
+            {
+                "find": "        if (t === 'bb-registered') return _bbRegisteredHeadSpec();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-gallery-registered.spec.js",
+        "grep": "Title, Song page",
+        "expect": "fail"
+    }
+]

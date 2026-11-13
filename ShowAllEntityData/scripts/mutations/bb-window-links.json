@@ -1,0 +1,106 @@
+[
+    {
+        "name": "the show's icons are not kept",
+        "why": "_extBbParseYear() keeps each icon's image beside its title (vzell 2026-11-12, Image #21); without it the window has nothing to draw.",
+        "edits": [
+            {
+                "find": "                    if (src) icons.push({ title: ti, src: _dpAbsUrl(src, base) });\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-date-links.spec.js",
+        "grep": "one year-page request",
+        "expect": "fail"
+    },
+    {
+        "name": "the window does not draw the icons",
+        "why": "_dpExtractedCols() draws data.icons in place of the Fields line.",
+        "edits": [
+            {
+                "find": "        const icons = Array.isArray(data.icons) && data.icons.length ? data.icons : null;\n",
+                "replace": "        const icons = null;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-date-links.spec.js",
+        "grep": "one year-page request",
+        "expect": "fail"
+    },
+    {
+        "name": "the record carries no icons",
+        "why": "_extBbDateLoad() hands the show's icons to the window record (dp.icons).",
+        "edits": [
+            {
+                "find": "        if (show.icons && show.icons.length) dp.icons = show.icons;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-date-links.spec.js",
+        "grep": "one year-page request",
+        "expect": "fail"
+    },
+    {
+        "name": "the year cache's version not bumped",
+        "why": "A year parsed before the icons (version 1) sits in IndexedDB without them: version 2 reads it again. No spec can see it: every test starts with an empty IndexedDB and memory. A spec seeding an ext-bbyear:<year> row of version 1 would.",
+        "edits": [
+            {
+                "find": "    const _EXT_BB_YEAR_VERSION = 2;",
+                "replace": "    const _EXT_BB_YEAR_VERSION = 1;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-date-links.spec.js",
+        "grep": "one year-page request",
+        "expect": "pass"
+    },
+    {
+        "name": "a Brucebase window opens only its readers again",
+        "why": "_dpWinIsBb(): a Brucebase window opens every link with a reader in place (vzell 2026-11-12: a venue's Source: Wikipedia).",
+        "edits": [
+            {
+                "find": "        const all = !!((cur.src && _DP_WIN_ALL_LINKS_SOURCES.has(cur.src.id)) || (cur.reader && _DP_WIN_ALL_LINKS_READERS.has(cur.reader.id))) ||\n            _dpWinIsBb(cur);\n",
+                "replace": "        const all = !!((cur.src && _DP_WIN_ALL_LINKS_SOURCES.has(cur.src.id)) || (cur.reader && _DP_WIN_ALL_LINKS_READERS.has(cur.reader.id)));\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "Source: Wikipedia",
+        "expect": "fail"
+    },
+    {
+        "name": "Brucebase's own window (on Brucebase) not counted",
+        "why": "On Brucebase a venue's window is its own source, id brucebase.wikidot.com.",
+        "edits": [
+            {
+                "find": "        if (cur.src && cur.src.id === 'brucebase.wikidot.com') return true;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "Source: Wikipedia",
+        "expect": "fail"
+    },
+    {
+        "name": "a show's window (bbdate) not counted",
+        "why": "A Brucebase show on its year page is a Brucebase window too.",
+        "edits": [
+            {
+                "find": "        return cur.reader.id === 'bbdate' || cur.reader.id === 'bbtag' ||\n",
+                "replace": "        return cur.reader.id === 'bbtag' ||\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-date-links.spec.js",
+        "grep": "Wikipedia link in place",
+        "expect": "fail"
+    },
+    {
+        "name": "a Brucebase page's window on another site not counted",
+        "why": "Elsewhere a Brucebase page opens through the springsteen reader; only brucebase.wikidot.com pages count.",
+        "edits": [
+            {
+                "find": "            (cur.reader.id === 'springsteen' && /^https?:\\/\\/brucebase\\.wikidot\\.com\\//i.test(cur.url || ''));\n",
+                "replace": "            false;\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext-foreign.spec.js",
+        "grep": "opens a Wikipedia link in place",
+        "expect": "fail"
+    }
+]

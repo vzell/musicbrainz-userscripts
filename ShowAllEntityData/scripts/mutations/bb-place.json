@@ -1,0 +1,210 @@
+[
+    {
+        "name": "sa_bb_detail_pages does not gate bb-venue",
+        "why": "Off, a venue page is bb-page's.",
+        "edits": [
+            {
+                "find": "            match: (path) => /^\\/venue:[^/]+\\/?$/.test(path) && Lib.settings.sa_bb_detail_pages !== false,\n",
+                "replace": "            match: (path) => /^\\/venue:[^/]+\\/?$/.test(path),\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-place.spec.js",
+        "grep": "sa_bb_detail_pages off",
+        "expect": "fail"
+    },
+    {
+        "name": "a paged list is read on every page",
+        "why": "A module past its last page repeats it: read only while its pager says this page.",
+        "edits": [
+            {
+                "find": "        return pg ? pg.cur === p : p === 1;\n",
+                "replace": "        return pg ? true : p === 1;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-place.spec.js",
+        "grep": "every show of all three pages once",
+        "expect": "fail"
+    },
+    {
+        "name": "an unpaged list is read on every page",
+        "why": "A list without a pager is the same on every page: page 1 only.",
+        "edits": [
+            {
+                "find": "        return pg ? pg.cur === p : p === 1;\n",
+                "replace": "        return pg ? pg.cur === p : true;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-place.spec.js",
+        "grep": "every show of all three pages once",
+        "expect": "fail"
+    },
+    {
+        "name": "only page 1 is read",
+        "why": "The page count is the largest \"page 1 of N\".",
+        "edits": [
+            {
+                "find": "            pageCountAsync: () => _bbPlacePageCount(document),\n            columnDescriptions: {\n",
+                "replace": "            pageCountAsync: () => 1,\n            columnDescriptions: {\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-place.spec.js",
+        "grep": "every show of all three pages once",
+        "expect": "fail"
+    },
+    {
+        "name": "a later heading row is not read",
+        "why": "Patti Scialfa's third column heading is a second heading row (beside an empty cell).",
+        "edits": [
+            {
+                "find": "                        cells.every(c => c.querySelector('strong') || !_dpText(c.textContent));\n",
+                "replace": "                        cells.every(c => c.querySelector('strong'));\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-place.spec.js",
+        "grep": "every show of all three pages once",
+        "expect": "fail"
+    },
+    {
+        "name": "a date with a comma after it is no row",
+        "why": "\"2015-04-30, Story Chapel, …\" is a show.",
+        "edits": [
+            {
+                "find": "            const m = text.match(/^(\\d{4}-\\d{2}(?:-\\d{2})?)(?:,\\s*|\\s+)(.*)$/);\n",
+                "replace": "            const m = text.match(/^(\\d{4}-\\d{2}(?:-\\d{2})?)\\s+(.*)$/);\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-place.spec.js",
+        "grep": "every show of all three pages once",
+        "expect": "fail"
+    },
+    {
+        "name": "groups of later pages do not merge",
+        "why": "groupMergeByName: page 2's Performances joins page 1's.",
+        "edits": [
+            {
+                "find": "            groupMergeByName: true,\n            // A venue's lists are short",
+                "replace": "            // A venue's lists are short"
+            }
+        ],
+        "spec": "tests/fixtures/bb-place.spec.js",
+        "grep": "every show of all three pages once",
+        "expect": "fail"
+    },
+    {
+        "name": "Bands keep the sort form",
+        "why": "_bbRelationDisplayName(): \"E Street Band, The\" → \"The E Street Band\".",
+        "edits": [
+            {
+                "find": "                    return { name: _bbRelationDisplayName(sort), sort, href: _dpAbsUrl(a.getAttribute('href'), url) };\n",
+                "replace": "                    return { name: sort, sort, href: _dpAbsUrl(a.getAttribute('href'), url) };\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-place.spec.js",
+        "grep": "Bands in reading order|a band:",
+        "expect": "fail"
+    },
+    {
+        "name": "onstage keeps its raw kind",
+        "why": "_BB_ENTRY_KINDS: onstage → On stage.",
+        "edits": [
+            {
+                "find": "    const _BB_ENTRY_KINDS = { ..._BB_EVENT_KINDS, multi: 'Multiple shows', nobruce: 'No Bruce', onstage: 'On stage', offstage: 'Off stage' };\n",
+                "replace": "    const _BB_ENTRY_KINDS = { ..._BB_EVENT_KINDS, multi: 'Multiple shows', nobruce: 'No Bruce' };\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-place.spec.js",
+        "grep": "one show",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-venue / bb-relation have no head",
+        "why": "_fdHeadSpec() names each detail pageType's head.",
+        "edits": [
+            {
+                "find": "        if (t === 'bb-venue' || t === 'bb-relation') return _bbPlaceHeadSpec();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-place.spec.js",
+        "grep": "the head",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-date-comma: the detector never matches",
+        "why": "The finding reads the Date cell's data-mb-bb-date-comma (source-row markup).",
+        "edits": [
+            {
+                "find": "            test: cell => cell.dataset.mbBbDateComma === '1',\n",
+                "replace": "            test: () => false,\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-place.spec.js",
+        "grep": "the WARNING menu counts",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-date-comma: the comma is not recorded",
+        "why": "_bbEventList() keeps whether the entry has a comma after its date.",
+        "edits": [
+            {
+                "find": "                dateComma: !!m && /^\\d{4}-\\d{2}(?:-\\d{2})?,/.test(text), entry: text,\n",
+                "replace": "                dateComma: false, entry: text,\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-place.spec.js",
+        "grep": "the WARNING menu counts",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-date-comma: the tint setting is ignored",
+        "why": "sa_findings_tint_bb_date_comma off: no tint, the menu row stays.",
+        "edits": [
+            {
+                "find": "            tint: _findingTintSetting('sa_findings_tint_bb_date_comma'),\n",
+                "replace": "            tint: () => true,\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-place.spec.js",
+        "grep": "the tint setting off",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-date-comma: the finding's setting is ignored",
+        "why": "sa_findings_bb_date_comma off: no menu row.",
+        "edits": [
+            {
+                "find": "            enabled: () => !!_isBbHost && Lib.settings.sa_findings_bb_date_comma !== false,\n",
+                "replace": "            enabled: () => !!_isBbHost,\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-place.spec.js",
+        "grep": "the finding switched off",
+        "expect": "fail"
+    },
+    {
+        "name": "/onstage: links do not preview",
+        "why": "vzell 2026-11-11: the wiki's redirect pages should preview their event.",
+        "edits": [
+            {
+                "find": "|venue|relation|onstage|offstage|retail|playlist|bootleg|story):[^/]+$/.test(u.pathname) ||",
+                "replace": "|venue|relation|retail|playlist|bootleg|story):[^/]+$/.test(u.pathname) ||"
+            }
+        ],
+        "spec": "tests/fixtures/bb-place.spec.js",
+        "grep": "previews its event",
+        "expect": "fail"
+    },
+    {
+        "name": "an /onstage: record keeps the redirect's address",
+        "why": "_bbRedirectedUrl(): the record is read at the event's own address (its tags: gig is the Category).",
+        "edits": [
+            {
+                "find": "        url = _bbRedirectedUrl(doc, url);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-place.spec.js",
+        "grep": "previews its event",
+        "expect": "fail"
+    }
+]

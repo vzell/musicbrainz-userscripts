@@ -109,8 +109,46 @@ Make some suggestions here how to present to the user in one or more columns, us
 
 The whole feature should be configurable (default off, as the main userscript is normally used just with MusicBrainz)
 
+* DONE BB Steve van Zandt detail page needs overwhole
 
-* TODO add additional PTs to BB
+BB Steve van Zandt detail page needs overwhole
+
+* DONE Use the Discogs history diff format in other pageTypes, for example the BB “changes” button
+
+Use the Discogs history diff format in other pageTypes, for example the BB “changes” button (you have to be logged in).
+
+* DONE BB detail page POHs should also get a history diff view of the current entity
+
+BB detail page POHs should also get a history diff view of the current entity
+
+* DONE on BB PTs where images are involved, parse the image filename for further details and present that info also
+
+1.)
+
+on BB PTs where images are involved, parse the image filename for further details and present that info also
+
+2.)
+
+maybe create image sections with the found info
+
+* DONE render the sidebar handle at the top (like in the MB case)
+
+render the sidebar handle at the top (like in the MB case) and not in the middle of the page
+
+* DONE create userscript which directly scrolls to the first difference on http://brucebase.wikidot.com/song:streets-of-minneapolis pages when clicking history
+
+create userscript which directly scrolls to the first difference on
+http://brucebase.wikidot.com/song:streets-of-minneapolis pages when clicking history
+
+* DONE support hovering for all BB PTs
+
+support hovering for all BB URLs (+ known non-BB URLs like MB/SL URLs) PTs
+
+* DONE recheck rendering all the right info on BB pages
+
+recheck rendering all the right info on BB pages
+
+* DONE add additional PTs to BB
 
 add additional PTs to BB:
 
@@ -137,57 +175,12 @@ https://brucebase.wikidot.com/stats:songs-registered - text page - @debug/BB-son
 #+end_example
 
 
-* TODO create userscript which directly scrolls to the first difference on http://brucebase.wikidot.com/song:streets-of-minneapolis pages when clicking history
-
-create userscript which directly scrolls to the first difference on
-http://brucebase.wikidot.com/song:streets-of-minneapolis pages when clicking history
-
-
-* TODO support hovering for all BB PTs
-
-support hovering for all BB URLs (+ known non-BB URLs like MB/SL URLs) PTs
-
-
-* TODO recheck rendering all the right info on BB pages
-
-recheck rendering all the right info on BB pages
-
-
 * TODO make the standard BB page, rendered below our table h2/h3 click collapsable (also with Ctrl-Click for ALL sections)
 
 make the standard BB page, rendered below our table h2/h3 click collapsable (also with Ctrl-Click for ALL sections)
 
 
-* TODO BB Steve van Zandt detail page needs overwhole
-
-BB Steve van Zandt detail page needs overwhole
-
-
-* TODO Use the Discogs history diff format in other pageTypes, for example the BB “changes” button
-
-Use the Discogs history diff format in other pageTypes, for example the BB “changes” button (you have to be logged in).
-
-
-* TODO BB detail page POHs should also get a history diff view of the current entity
-
-BB detail page POHs should also get a history diff view of the current entity
-
-* TODO on BB PTs where images are involved, parse the image filename for further details and present that info also
-
-1.)
-
-on BB PTs where images are involved, parse the image filename for further details and present that info also
-
-2.)
-
-maybe create image sections with the found info
-
-
-* TODO render the sidebar handle at the top (like in the MB case)
-
-render the sidebar handle at the top (like in the MB case) and not in the middle of the page
-
-* TODO Overwhole of, extensions to and beautify of BruceBase (BB) pages
+* DONE Overwhole of, extensions to and beautify of BruceBase (BB) pages
 
 Overwhole of, extensions to and beautify of BruceBase (BB) pages like events, venues, relations, songs, lyrics,
 recording sessions, retail releases etc:
@@ -217,6 +210,1036 @@ Here a couple of suggestions:
 
 Also write the plan/implementation steps to this file so that we can eventually pickup on a faster machine
 
+** Plan (2026-11-11, branch feature/bb-overhaul)
+
+Env: 2026-11-11T09:40+01:00 · vzell-lap · WSL2 Ubuntu (Linux 6.18.58.1) · n/a (code reading,
+mirror survey). Full plan text: ~/.claude/plans/act-on-section-compiled-zephyr.md (copied below
+in short form, so it survives on another machine).
+
+*** Decisions (vzell, 2026-11-11)
+
+- First detail slice: the *event family* — gig / recording / rehearsal / interview / nogig
+  (one page layout, ~5,000 pages).
+- History diff: *probe first* (logged in and logged out), build afterwards.
+- The wiki's own page *stays below* our section, its h2/h3 (and tabs) collapsible, Ctrl-click for all.
+- Status conflict noted: "add support for logged in case" is DONE here but still TODO in
+  [[file:springsteenlyrics.org]]; its Answer (2026-10-16) sections 3 and 4 remain the BB logged-in plan.
+
+*** Findings (mirror survey, bb/latest → /mnt/share/brucebase/2026-10-18, slow share: copy samples first)
+
+- *Shell*: =#page-content= holds a Share list-pages-box first and a footer box last (strip both),
+  plus a photo-credit =<p><sup><em>© All credits …= after galleries. Tabviews:
+  =div.yui-navset > ul.yui-nav > li > a > em= paired with =.yui-content > div=; tab ids REPEAT
+  across tabviews of one page (retail has three =wiki-tab-0-0=): scope by tabview + index.
+- *Event family*: =div.code= "Scheduled: 21:00 | Local Start Time ??:?? / End Time ??:??"; nav line
+  "Info & Setlist" (=/YYYY#ddmmyy[a]=) | "Venue" (=/venue:=) — bare =<br/>= on nogig; gignote
+  list-pages-box; tabs On Stage (recording: In Studio) | Setlist | Performances | Appearances | Gallery |
+  Media | Recording | Storyteller | Eyewitness | News/Memorabilia (nogig: Performances | Cancelled |
+  Gallery | Media | News). Setlist: =<strong>Soundcheck</strong><ul>=, =<strong>Show</strong><ol>=,
+  segues "a - a" in one =li=, =<strong>= song = premiere/debut, handwritten setlist image on the right.
+- *song*: "Track N of /Album/, year", Spotify iframe; tabs Credits | Performances | Multiples |
+  Released on Album | Released as Live Download | On The Tracks | Lyrics.
+- *venue*: Wikipedia text + Source, "Springsteen did N performances…", tabs Performances | Gallery.
+- *relation*: bio, tabs Performances (onstage: links) | Appearances | Recording | Bands | News | Gallery.
+- *retail* (+ playlist): =div.code= fields (Commercially Released, Label, Produced/Recorded/Mixed/
+  Mastered/Design/Photography by), footnotes, Released tabview (one tracklist table per edition:
+  # | Song Title | Running Time | Release), Additional Information tabview.
+- *bootleg*: Label / Catalog # / Time / Format / Source in one =<p>=, =ol= tracklist ("//" = side
+  break), Notes, Artwork tab (=Bootleg_<T>_{Front,Back,Disc}.jpg=).
+- *Content fragments* (gignote, news, recnote, gallery, media, story, eye) are pulled into the gig's
+  tabs; their breadcrumb is the parent gig. onstage/offstage are redirect stubs whose TAGS are the cast.
+- *Tags*: =div.page-tags > span > a[href="/system:page-tags/tag/<enc>#pages"]=; families: date parts,
+  first letter, category, squashed name, place, material (ticket, bootleg, cancelled, …), prefixed
+  (=tour_=, =r_=, =ott_=, =lbl_=, =pl_=, =key_=, =toursnip_=), song abbreviations, dotted person aliases.
+- *Image filenames* (14,032 unique sampled; grammar covers 98.5 %):
+  A =YYYYMMDD[a]_<KIND|Photographer>_<NN>[a][_detail]= (72 %; KIND Ticket, Setlist, Pass, Centermic,
+  Article, AdPoster, Merchandise, …; =Unknown= = unknown photographer; detail Handwritten/Printed,
+  Before/After, Backstage, Shirt/Tourbook, a hyphenated subject), B =Retail-CODE_KIND_NN=,
+  C =YYYY-TOUR_KIND_NN=, D =disco_|digital_<name>[_variant]=, E =bs<YYMMDD>=, G =<slug>_NN[_date|subject]=,
+  F =lyricsheet_|note_|recording_|graph_=, H =Bootleg_<T>_{Front,Back,Disc}=.
+- *History*: signed out there is no =#page-info= and no option buttons. Signed in: =#history-button= →
+  =history/PageHistoryModule=, which calls =history/PageRevisionListModule=, =PageDiffModule=
+  (=show_type: inline=), =PageVersionModule=, =PageSourceModule= — POSTs to =/ajax-module-connector.php=
+  with =wikidot_token7= (as =_bbChangesRequest()= does). Anonymous answers: unknown → probe.
+
+*** Reuse (userscript survey)
+
+- Detail pageType: definition BEFORE =bb-page=, one =_fdHeadSpec()= line, HeadSpec rendered by
+  =_fdHeadInsertSections()=; pictures by =_fdArtSection()= (only =types=/=front=); =_fdPills()= for tags.
+- One parse shared by preview, table and head (=bs-record= / =sl-song= pattern; page copy taken once).
+- Diff: Discogs' look (=.mb-dgh-diff=, =.mb-dgh-add/-chg/-rem=, legend); Discogs marks are server-side,
+  so lines via =_slLcs()= and words via =_cmpDiff()=.
+- Sidebar handle: =_ensureBbStyle()= centres it (=top:50%=); use MB's =setTop(rect.top)= clamp.
+
+*** DONE Phase 0 — plan and mockups (no userscript change)
+- [X] write this plan here
+- [X] =scripts/probe-bb-detail-pages.py= over local copies (=debug/bb-mirror/=): fill rates per family,
+  tag families, filename grammar coverage
+  Result (2026-11-11T10:05+01:00 · vzell-lap · n/a, offline over the 665-page local sample):
+  - Event family markers: gig Scheduled 95 % / nav 93 % / venue link 100 %; recording nav 96 %
+    but Scheduled 1 %; rehearsal Scheduled 25 %; interview and nogig nav only 35 % (their nav is
+    not the "Info & Setlist" text: read the year anchor and venue link by href, not by text).
+  - Tabs vary more than the survey said: gig adds Cancelled (31/120), News (instead of
+    News/Memorabilia), Appearances, "Performances (w/o Bruce)"; interview has In Studio, Playlist,
+    "From My Home To Yours", On Site, On Set; nogig has named-place tabs ("87 Randolph Street").
+    So: known labels map to tables, any other tab becomes a closed text section.
+  - Tags on every page (97-100 %); onstage tags are mostly squashed names ("word").
+  - Filenames: 3,804 distinct in the sample, 98.5 % read after widening shape H to
+    =Bootleg_<Title>[_<Label>]_(Front|Back|Disc|Cover|Label|Booklet|Tray|Inlay|Insert|Whiteliner)N=.
+    Unread: site icons (=content:files/=, skip), 7-digit dates (=2019116_=), an encoded space
+    (=WarrenLinhart%20_01=, decode and trim), =YYYYMMDD_<Word>_<Word>= with no number
+    (=news-2020=), =register_…= documents. Parser: decode first, then the shapes, then the folder kind.
+- [X] mockups artifact (=org/bb-overhaul-mockups.html=, https://claude.ai/artifact/3rAGVKsBHEv9jGspkJ5X7Z): M1 event detail page, M2 sidebar handle at the
+  top, M3 song/venue/relation/retail/bootleg sketches, M4 history pane (Discogs format); questions inside
+- [X] vzell's answers (2026-11-11): 1. Setlist = ONE table with a Set column (Soundcheck / Show /
+  Encore); 2. Storyteller = a table (Moment / Song / Words), filterable by song; 3. Photos = one
+  group per photographer inside Photo; 4. History signed out = the message "Sign in to Brucebase to
+  see the history"; 5. the wiki's page below = collapsed by default; 6. song titles = MusicBrainz
+  case (=sa_foreign_mb_titles=), the wiki's capitals as the hover text.
+- [X] doc updates proposed with Phase 0's report: brucebase.md (Detail pages, Tags, Image
+  filenames, History, The side bar), detail-pages.md (parser version), HELP, coverage registry,
+  WIP changelog, CLAUDE.md doc-map row.
+
+*** DONE Phase 1 — shared groundwork
+- [X] sidebar handle at the top (=_bbArrangeSideBar()=; stays in =document.body=, a foreign-host-only element; =bb-sidebar.spec.js=)
+- [X] =_bbPageTags()= / =_bbTagFamily()=: a closed Tags section in the window (=_DP_PARSER_VERSION= 19);
+  the head card comes with Phase 2's head
+- [X] =_bbParseImageName()= / =_bbImageCaption()= (grammar A–H): caption and photographer credit in the
+  window and the viewer, photos grouped by photographer in the window (=bb-image-names.spec.js=)
+- moved to Phase 2, where there is a section of ours to put it under: the native page below,
+  collapsible, and the setting =sa_bb_detail_pages=
+
+*** DONE Phase 2 — =bb-event= (gig, recording, rehearsal, interview, nogig)
+- [X] setting =sa_bb_detail_pages= (default true) for every detail pageType
+- [X] the wiki's page below our section, collapsed (answer 5), its own h2s folding (Ctrl-click: all
+  sections, the engine's rule); its tabs are the wiki's
+- [X] =_bbEventRead()= (the tables) beside =_dpParseBb()= (the head's images, tags, Media, the same
+  record the preview shows) over ONE copy of the page; =_bbEventToHtml()= sub-tables Setlist (Set
+  column), the cast, Performances/Appearances/Cancelled, Recording, Storyteller; =_bbEventHeadSpec()=
+- [X] fixtures from the mirror (=scripts/build-bb-event-fixtures.py=), =bb-event.spec.js= (14),
+  mutations =bb-event.json= (12), coverage row, =bb-every-page= adjusted, =features.openSubTables=
+- [X] vzell's live check (confirmed 2026-11-11 with the Phase 6 probe files): OK
+
+*** DONE Phase 3 — =bb-song= (+ lyrics:, ott:)
+- [X] =bb-song=: =_bbSongRead()= (Credits, Performances + by tour, Multiples, Snippets, Live downloads,
+  On The Tracks; texts; Media/Links cards), =_bbSongToHtml()=, =_bbSongHeadSpec()=
+- [X] =bb-ott=: =_bbOttRead()= / =_bbOttRows()= (shared with the song's tab)
+- [X] =/lyrics:= left as bb-page (only the lyrics: a table would add nothing) — decided while building
+- [X] shared helpers renamed =_bbDetail…=, =features.bbDetailToTable= ('event' | 'song' | 'ott')
+- [X] =bb-song.spec.js= (8), mutations =bb-song.json= (9), fixtures with lyrics blanked, registries
+- [X] vzell's live check (confirmed 2026-11-11 with the Phase 6 probe files): OK
+*** DONE Phase 4 — =bb-venue=, =bb-relation= (incl. the Steve Van Zandt TODO)
+- [X] one reader =_bbPlaceRead()= for both; the wiki's ListPages paging (=/p/N=, =_bbPagedListOk()=:
+  a paged list while its pager says N, an unpaged one on page 1 only; probe 2026-11-11)
+- [X] Steven Van Zandt: six pages, 1,517 shows (1,306 E Street, 211 not) — the page's own count;
+  checked once over the six live pages (scratch), Patti Scialfa's three pages are the fixture
+- [X] =bb-place.spec.js= (8), mutations =bb-place.json= (10), registries, docs
+- [X] vzell's live check (relation:steven-van-zandt, relation:patti-scialfa, a venue): OK, two follow-ups
+- [X] follow-up 1: the "comma after the date" entry is a finding, ⚠️ =bb-date-comma= (Date cell)
+- [X] follow-up 2: =/onstage:= (and =/offstage:=) links preview their event (=_bbRedirectedUrl()=)
+*** DONE Phase 5 — =bb-retail= (+ playlist), =bb-bootleg=
+- [X] survey 2026-11-11: 59 release + 20 playlist main pages, 30 bootlegs (the mirror's subpages
+  =-release=, =-credits=, … are the main page's parts); release and playlist one layout
+- [X] =_bbReleaseRead()=: =div.code= facts (+ footnotes), Overview, Released (a table per edition and
+  disc, one-cell heading rows open parts), Additional Information by tab label (Personnel, Related
+  Releases, On The Tracks, Recording 'Live' Dates, Performance; Media, Lyrics, Artwork for the head)
+- [X] =_bbBootlegRead()=: facts, notes, discs, lists or numbered lines, "//" sides — all 30 sampled
+  bootlegs give a tracklist
+- [X] previews of =/retail:=, =/playlist:=, =/bootleg:= links (=_dpParseBbRelease()=, parser version 20)
+- [X] fixes on the way: =_ytParse()= read =embed/playlist?list== as a video "playlist"; On The
+  Tracks versions with a suffix ("V2 - take 14")
+- [X] =bb-release.spec.js= (16), mutations =bb-release.json= (23), registries, docs, WIP.7
+- [X] vzell's live check (2026-11-11): OK
+*** DONE Phase 6 — history diff
+- [X] =scripts/probe-bb-history.user.js= written (2026-11-11): Tampermonkey menu "Probe: page history
+  (this page)"; six POSTs to =/ajax-module-connector.php= 1.1 s apart (PageHistoryModule,
+  PageRevisionListModule, PageSourceModule ×2, PageVersionModule, PageDiffModule =show_type: inline=);
+  reports HTTP/JSON status, keys, =jsInclude=, ms, markup skeleton, class counts, field NAMES, onclick
+  handlers (digits as N), cell KINDS (a member reads "user", a comment its length), source line count and
+  diff mark counts — no names, no page text, no revision ids. Its privacy is pinned by
+  =scripts/check-probe-bb-history.js= (21 checks; two planted leaks fail it)
+- [X] vzell ran it on song:streets-of-minneapolis signed in and signed out (2026-11-11,
+  =debug/bb-history-probe-20261111-{in,out}.json=, user agent Chrome/157): EVERY module answers signed out as
+  signed in — HTTP 200, status "ok", the same bodies (only the random tabview id differs), 110–400 ms.
+  Signed out the page has no =#page-info= and no history button, but the history is public. So the
+  section is everyone's, and answer 4's "Sign in to Brucebase to see the history" is what a refusal
+  shows. Shapes: the list =table.page-history > tr#revision-row-N= (rev., from/to radios, flags,
+  V/S/R actions, =.printuser=, =odate time_N=, comment), pager "page 1" / "page 2 of 3";
+  =div.page-source= with a =<br />= per line; PageDiffModule =div.inline-diff.page-source= with
+  =ins=/=del=.
+- [X] the History section (=_bbHist*=, docs/claude/brucebase.md "A page's history in the window"):
+  closed, read when it opens (list p1 + the two sources), the revision list, our own line diff
+  (=_slLcs()= lines, =_cmpDiff()= words) in the MusicBrainz/Discogs history grid, "Only what changed" /
+  "Everything", "Load 20 more", Sign in / Try again; ✎ and H in the window; ☰ "✎ Page history" (the
+  "changes" entry) on a page the window shows; setting =sa_bb_history= (on); only on
+  brucebase.wikidot.com (a cross-origin POST with the token was not probed); =_DP_PARSER_VERSION= 21
+- [X] =bb-history.spec.js= (10), =bb-history.mobile.spec.js= (1), fixtures from the live site
+  (=scripts/build-bb-history-fixtures.py=, members scrubbed), mutations =bb-history.json= (15), WIP.8
+- [X] vzell's live check (2026-11-11): OK
+
+*** DONE History round 2 — kinds, tag changes, any two revisions (vzell, 2026-11-11)
+vzell: 1. prefilter by kind like the wiki's =rev-type-*= checkboxes; 2. a diff of the tags between
+revisions (=table.page-compare= has them); 3. compare any two revisions (the wiki's from/to radios); 4. mockups.
+- [X] probe (=scripts/probe-bb-history-shapes.py=, signed out, song:streets-of-minneapolis,
+  2026-11-11T21:21+01:00 · vzell-lap · WSL2 Ubuntu · n/a): PageRevisionListModule filters on the server by
+  =options= ={"all"|"source"|"title"|"move"|"tags"|"meta"|"files": true}= — all 44, source 37, tags 5,
+  metadata 1, title / page name / files 0 (= the flags' counts); =perpage= 100 answers all 44 in one 0.6 s
+  request, no pager. PageDiffModule (any pair, 0.3–0.4 s): =table.page-compare= rows "Created on" and
+  "Tags" (the Tags row only when they differ: 42 vs 43 had none), "Page sources are identical" for a
+  tags-only pair; rebuilding both sources from its inline diff did NOT match PageSourceModule (indentation,
+  line counts), so the line diff stays ours. A page with a T/R revision is still to be probed (title /
+  page-name rows).
+- [X] mockups https://claude.ai/artifact/7X2g3wBLVotb1cFfZdrCxz (=scripts/fetch-bb-history-mockup-data.py=,
+  =scripts/build-bb-history-r2-mockups.py=; the HTML in =debug/=, it names the wiki's members): A the
+  window with all three, B chips ↔ checkboxes, C tag pills from the comment + the Tags strip from
+  PageDiffModule, D From/To pickers vs Shift+click, E requests per act, F narrow; Q1–Q6
+- [X] vzell's answers (2026-11-11), all six as recommended: 1. chips filter the rows read (instant);
+  2. several at once; 3. tag changes as pills in the list; 4. the Tags strip always shown; 5. From / To
+  pickers on each row; 6. older on the left always
+- [X] probe of a page with T and R revisions (story:story-1978-09-15-palladium-new-york-city-ny,
+  =debug/bb-history-shapes-story.json=, 2026-11-11 · vzell-lap · n/a): the compare table adds "Page
+  title:" (rev 6 → 7, ST) and "Page name:" (rev 3 → 4, R) rows, each only when it differs, as "Tags:";
+  the Title chip's rows are the revisions with T among their flags ("ST" counts)
+- [X] build (docs/claude/brucebase.md "Round 2"): list 100 a page, kind chips over the rows read, tag
+  pills, PageDiffModule first (Tags strip always, Page title / Page name rows, identical sources read
+  no source), From / To pickers (older left, span tinted, keyboard); =bb-history.spec.js= (14) +
+  mobile (1), compare fixtures, mutations =bb-history.json= (23, all OK; a `change` listener for
+  the keyboard was removed: its mutation passed, an arrow key clicks the radio), WIP.9
+- [X] vzell's live check, round 1 (2026-11-11): test 5 "no PT yet" — a story page has no toolbar, and
+  story links did not preview; and system:recent-changes had no ☰ entry (it was only on pages a link
+  previews)
+- [X] follow-up: the ☰ entry on every page with our toolbar and a page id; =/story:= links preview
+  (=ownLinks=), the window shows the story's words and folds (=_DP_PARSER_VERSION= 22); story fixture
+  and its list / compare answers; =bb-history.spec.js= (16), mutations (27)
+- [X] vzell's live check, round 2 (2026-11-11): OK
+
+*** DONE Phase 7 — the "Manage Site" menu cannot be clicked (bug)
+vzell, 2026-11-11 (Image #18): the wiki's top-bar dropdowns (Manage Site …) open over our toolbar and
+status line, and their entries are not mouse selectable; on the initial page too.
+- [X] evidence first (2026-11-11T23:23+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.58.1) ·
+  Playwright 1.62.1 Chromium, no Tampermonkey): the theme's =#header= is relative, z-index 30, with
+  =#top-bar= at its bottom; =elementFromPoint= at Search and Pages hit =h1.mb-bb-h1.mb-vsb-head= — the
+  sticky filter bars' stuck header block (z-index 105, 107 raised), from page init on. A pointer moving
+  down from the toggle lands on it, the =li= loses =:hover=, the menu closes: no entry reachable
+- [X] the fix: =_vsbLiftChrome()= marks =#header= on Brucebase as it marks MusicBrainz's top header,
+  =_ensureBbStyle()= gives it z-index 108 (VSB_Z_CHROME); =bb-topbar-menu.spec.js= (3: every entry on
+  top before and after a press and with focus raising the block to 107; the pointer walks down and
+  clicks on two menus; sticky bars off, no class), mutations =bb-topbar-menu.json= (3, all OK),
+  brucebase.md "Styling", toolbar-and-header-ui.md, WIP.10; siblings 86 green
+- [X] vzell's live check (2026-11-11): OK
+
+*** DONE Phase 8 — previews of show links =/2026#020526= on Brucebase itself
+vzell, 2026-11-11: POH for links like =https://brucebase.wikidot.com/2026#020526=. The =bbdate=
+reader (=_extBbDateTest()=, =_extBbDateLoad()=, =_extBbYear()=: the year page read once, cached in
+IndexedDB) already previews them on every other site and INSIDE a window on Brucebase; on Brucebase's
+own pages they were left to the site on purpose (G3, 2026-11-03: the =inWindow= condition in the
+own-host test). Such links sit in the event pages' nav line ("Info & Setlist"), the year listing pages
+(Phase 9) and elsewhere.
+- [X] where they occur (mirror sample, 2026-11-11 · vzell-lap · n/a): gig 103/120, nogig 37/40, recording
+  54/60, rehearsal 34/40, interview 28/40, playlist main 20/20, release main 9/59, song 10/60, ott 4/20;
+  none on venue, relation, onstage, bootleg, lyrics. All in =#page-content= (=extRoot=) or our tables
+- [X] =_extTarget()=: the =inWindow= condition dropped for Brucebase show links, and the wiki's relative
+  "/1978#070778" read against the page (that shape only: the site's other relative links stay its own);
+  the click stays the site's. A link to the page's own anchor (on =/2026= itself) previews like any
+  other — vzell decides in the check
+- [X] =bb-date-links.spec.js= (5: the gig's "Info & Setlist" resolves, other own links do not; the
+  rendered head and tables; card, window, ONE year-page request for two 1985 shows; the click not taken;
+  =sa_pop_ext= off), G3 test in =popup-ext-foreign.spec.js= flipped, mutations =bb-date-links.json=
+  (3, all OK), coverage row (bb-event), detail-pages.md, brucebase.md, HELP, WIP.11; siblings 135 green
+- [X] vzell's live check (2026-11-12): OK, with two follow-ups (his notes "** DONE icons missing" and
+  "** DONE venue POHs have NO hover support for e.g Wikipedia links" at the end of this file)
+- [X] follow-up 1: the show's window draws the year page's icons, each with its word (=icons=,
+  =_EXT_BB_YEAR_VERSION= 2, =ul.mb-dp-icons=); the card keeps the line of words
+- [X] follow-up 2: every Brucebase window opens any link with a reader in place (=_dpWinIsBb()=: its own
+  window, the =springsteen= reader on a Brucebase page elsewhere, =bbdate=); specs in
+  =bb-event-preview=, =bb-date-links=, =popup-ext-foreign=; mutations =bb-window-links.json= (8 OK, one
+  =expect: pass=: the year cache's version, no spec sees IndexedDB), two stale finds refreshed (both OK);
+  coverage windows (=bbwin=), docs, HELP, WIP.12; the sibling spec run deferred (vzell, 2026-11-12:
+  "run them after a couple more Phases")
+- [X] vzell's live check of both (2026-11-12): OK
+
+*** DONE Phase 9 — year listing pages =bb-year-list= (/2026-list)
+vzell, 2026-11-11: support =https://brucebase.wikidot.com/2026-list=. 63 listings in the mirror
+(=/1949-64-list= … =/2026-list=; the 126 counted first included their =.txt= copies): a year nav line, an
+intro =div.code=, =ul > li= entries "=1978-03-05 - RECORD PLANT, NEW YORK CITY, NY=" linking =/1978#050378=,
+an optional note =<em>(Recording Session)</em>=, tour boxes between the lists.
+- [X] probe (=scripts/probe-bb-year-list.py=, 2026-11-12T00:29+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4
+  (Linux 6.18.58.1) · n/a): 63 listings, 5,001 entries, every link =/YEAR#ddmmyy=, every label "DATE -
+  VENUE"; 2,285 notes (589 distinct), 308 =00= dates, one stray "]" (2005); boxes Start / End /
+  Continuation / legs / eras / regions, 4 of them "End of the 1st leg, and Start of the 2nd leg of …"
+- [X] mockup: skipped — the table is the year table's columns minus the sets, so it was built straight
+  away; one Tour column as on the year table (the leg is in its text), no Leg column
+- [X] =bb-year-list=: =_BB_YEAR_LIST_PATH_RE= (gate: =sa_bb_year_pages=), =applyBbYearListToTable()=,
+  =_bbYearListEntries()=, Event = =_bbYearEventCell()= linking the show (=a.mb-bb-show-link=, the =bbdate=
+  preview of Phase 8), Date/Venue/City/State/Country from =_bbParseHeading()=, Note, Tour;
+  =_bbParseTourHeading()= now splits ", and Start of" (the year page too); "all years" by =pageKeys= over
+  the nav line — the live listing is reused for its own key (the first version emptied it and lost this
+  year's rows); =bb-year-list.spec.js= (11), =bb-year.spec.js= 22 green (shared parser), mutations
+  =bb-year-list.json= (10, all OK; one =expect: pass=: no disk-load spec), 6 stale finds refreshed
+  (bb-home, bb-year, foreign-titles; all OK); coverage row, brucebase.md, PAGETYPES reference (168), CLAUDE.md, HELP,
+  WIP.13; the wider sibling run still deferred
+- [X] vzell's live check (2026-11-12): OK
+- [X] on the way: the first mutation run sat 11 minutes on its first entry (no button, every test of
+  the spec waiting 90 s) and did not show in the prompt line; =scripts/mutation-check.py= now stops each
+  spec at its first failure (=--max-failures=1=) and writes =~/.cache/sa-mutation/status.json=, which
+  =~/.claude/statusline.sh= shows (vzell: "yes change the runner"); every entry got a one-test =grep=
+
+*** DONE Phase 10 — Recent changes "changes" button and the first difference
+covers: "* TODO create userscript which directly scrolls to the first difference …" and the original
+"BB changes button" idea.
+- [X] a per-row button on our Recent changes table (=button.mb-bb-changes-btn= in the Page cell, its
+  glyph CSS so the cell's text stays the title; one delegated click, =_bbChangesBtnInit()=): opens the
+  row's page in the window with History open, To = revision N, From = the one before (=_bbHistWant= by
+  URL → =_bbHistPick= by page id in =_bbHistSection()= → the row in =_bbHistStart()=, reading later list
+  pages for an older revision); "(new)" = revision 0 against nothing
+- [X] the History pane scrolls to its first changed line when a pair is shown (=_bbHistScrollFirst()=,
+  once per pair, =.mb-bbh-first=)
+- [X] the wiki's own history view (signed in): =_bbWikiDiffScrollInit()= observes =#action-area=; a
+  =div.diff-box= arriving gets its first =ins=/=del= marked and scrolled to (=_bbWikiDiffScroll()=, again
+  after the wiki's own animated scroll unless the reader scrolled). Not probed signed in: where in
+  =#action-area= the comparison lands — the observer takes any depth
+- [X] =bb-history-changes.spec.js= (5), =bb-history= + mobile + =bb-recent-changes= 30 green, mutations
+  =bb-history-changes.json= (11), loader =fixtureFile=, coverage row, brucebase.md, CLAUDE.md, HELP,
+  WIP.14; the wider sibling run still deferred
+- [X] vzell's live check (2026-11-12): OK (asked on the way how to compare any two revisions: the From /
+  To pickers; a click on a row's text is "this revision against the one before")
+
+*** DONE Phase 11 — tag pages: system:page-tags, a tag's pages, manage:pages-and-tags
+vzell, 2026-11-11:
+#+begin_example
+https://brucebase.wikidot.com/system:page-tags - an action button that shows all tags in a table; its links get POH
+https://brucebase.wikidot.com/system:page-tags/tag/storyteller - how best to show it (mockup)
+https://brucebase.wikidot.com/manage:pages-and-tags - all pages in a table, "Tags" a multi-row column
+https://brucebase.wikidot.com/manage:pages-and-tags/p/3 - page 3 of the above
+#+end_example
+Found: the tag cloud is 11,562 =a.tag= with the weight only as =font-size: N%=; pages-and-tags is one
+=wiki-content-table= (page(title) | tags as one text cell), 100 rows a page, "page 1 of 35", =/p/N=.
+- [X] probe (signed out; =scripts/probe-bb-tag-pages.py=, =probe-bb-tag-pages-shape.py=,
+  =probe-bb-tag-listpages.py=; Env: 2026-11-12T01:36+01:00 · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux
+  6.18.58.1) · n/a):
+  - the cloud: 11,571 =a.tag=, 1.67 MB, 1.1 s; =font-size= 100–300% is linear in the count,
+    =100 + 200 · pages / max= (max = content, 24,695; 11 tags checked, within ±60); 10,940 tags sit at 100%
+    (under ~62 pages)
+  - a tag's page: ONE page, no pager, the whole list in =div#tagged-pages-list > div.pages-list-item >
+    div.title > a= (sorted by title), after the whole cloud again: storyteller 3,008 items 2.2 MB 1.4 s
+    (story 1,486, gig 1,374, content 65, interview 51, …), content 24,695 items 6.2 MB 4.5 s
+  - Wikidot's =list/ListPagesModule= answers over AJAX signed out (token in body = cookie, as Recent
+    changes): =%%total%%= with perPage 1 → 0.9 KB, 0.4 s; 250 a call with fullname, title, created_at,
+    updated_at, rating, comments, size, tags → ~180 KB, ~1.5 s (storyteller 13 calls, content 99)
+  - pages-and-tags: 35 pages × 100 (p35: 86), ~0.8 s and ~45 KB each, page(title) | tags (3–40, one
+    space-separated cell); every row an =onstage:= page — a filter, not the whole wiki (42,660 pages)
+- [X] mockup https://claude.ai/artifact/CRpe5M7DbHfou2rFR9bYCT (=scripts/fetch-bb-tags-mockup-data.py=,
+  =scripts/build-bb-tags-mockups.py=, =show-bb-tags-mockup-data.py=; the HTML in =debug/=): A the cloud as a
+  table (Tag, Family, Weight, Pages ≈ from the weight), B a tag's pages (Page, Kind, Date, Venue, City,
+  State; a second button over ListPages adds Created, Updated, Size, Comments, Tags), C pages-and-tags
+  (this page / all 35, Tags one row per tag), D the tag link's card (count + newest six, one call) and
+  window; questions 1–8 inside
+- [X] vzell's answers (2026-11-12, "I go with your recommendations"; the list under "* tag answers"):
+  Family with the song list and Relations read; Pages estimated from the weight (exact on the card); a
+  second tag button over ListPages; Tags a collapsed column; a whole-wiki button; tags alphabetical; the
+  card's newest six; the window's first 250 and "Load all"
+- [X] build: =bb-tags= (Tag / Family / Weight / Pages; =_bbTagsContextLoad()=: stats:songs, stats:relations,
+  the biggest tag's =%%total%%=), =bb-tag= (the page's list, no request; "with dates and sizes" over
+  ListPages, 250 a call), =bb-pages-and-tags= (this page; all =/p/N=; every page of the wiki by =fullname=),
+  all through =_bbTagsFeatures()= / =_bbTagsLive()= (=applyBbDetailToTable()='s path); the reader =bbtag=
+  (=_extBbTagLoad()=, card and window; =_extTarget()= reads the relative tag links; =extRoot= adds
+  =div.page-tags=). On the way: a plain =%%title%%= loses no-break spaces (27 of 750) — the template wraps it
+  in =@@…@@= (=scripts/probe-bb-listpages-titles.py=); a second press of the other button reloads the page,
+  so a page only ever holds one view; "Load all" decided by pages read, not rows (the first version kept it)
+- [X] =bb-tags.spec.js= (10 green), mutations =bb-tags.json= (19, all OK; one =expect: pass=: no spec moves
+  off a card inside its rate slot), 8 stale finds refreshed (bb-date-links, bb-window-links, bb-place,
+  bb-event, non-mb-coverage-gaps; their 7 entries all OK); siblings bb-date-links, bb-history,
+  bb-history-changes, bb-every-page, popup-ext-foreign green (one flake there: "a Brucebase page's window on
+  springsteenlyrics.com …" timed out once on a detached link, green alone and on the file's rerun);
+  coverage rows, brucebase.md "Tag pages", detail-pages.md, CLAUDE.md, HELP, PAGETYPES reference
+  (169–171), WIP.15; the wider sibling run still deferred
+- [X] vzell's live check (2026-11-12): OK
+
+*** DONE Phase 12 — story pages =bb-story=
+vzell's "no PT yet" (round-2 live check). 1,489 story pages: a Storyteller banner, one
+=<p><strong>Intro to "Song"</strong><br>words</p>= per moment, a "Compiled by" box.
+- [X] probe over the mirror's 1,489 (=scripts/probe-bb-story-pages.py=; Env: 2026-11-12T02:45+01:00 · vzell-lap ·
+  WSL2 Ubuntu 24.04.4 (Linux 6.18.58.1) · n/a): kinds story 1,399 (11,800 moments), dj 31, speech 26,
+  podcast 9, about 8, interview 8, eulogy 4, phonecall 3, talk 1; four shapes — moment headings, bold
+  speakers, "Speaker:" spans (podcasts), plain paragraphs (in =h2= parts); "Compiled by" in a table cell;
+  the breadcrumbs are EMPTY (live too), so the show is found by name: one ListPages =name=<slug>*=
+  (the star: cut names), for an older date-and-town name a second =<date>*= ("Events that day";
+  =scripts/probe-bb-story-lookup*.py=, =probe-bb-story-events.py=)
+- [X] =bb-story= (=_bbStoryRead()=, shared with the window's facts, =_DP_PARSER_VERSION= 23;
+  =_bbStoryToHtml()=: a sub-table per part with the columns it uses, Moment / Song / Speaker / Words;
+  =_bbStoryHeadSpec()=; =_bbStoryQuote()= now shared with the event page's Storyteller tab);
+  =scripts/check-bb-story-reader.js= over the whole mirror: every page has rows, "Compiled by" on 1,395 of
+  1,399 (the first version: 133, and captions and questions taken for speakers)
+- [X] =bb-story.spec.js= (9 green), mutations =bb-story.json= (14, all OK; one =expect: pass=: the
+  single-quoted song heading, which no fixture has), siblings bb-event, bb-history, bb-every-page,
+  bb-event-preview 54 green; coverage row, brucebase.md "Story pages", CLAUDE.md, HELP, PAGETYPES
+  reference (172), WIP.16; the wider sibling run still deferred
+- [X] vzell's live check (2026-11-12): OK
+
+*** DONE Phase 13 — stats list pageTypes
+covers: "* TODO add additional PTs to BB". 1,942 stats pages in the mirror, mostly =stats:<song>-tour=
+(per-song tour counts) and =stats:awards-*=, plus: songs-list, handwritten-lyric-sheets,
+songs-official-video, orphaned-songs, lyrics, songs-by-album, songs-count, bootlegs, bootlegs-label,
+discography (tabs and images), songs-registered (text).
+vzell, 2026-11-11 (moved here from its own note at the end of this file):
+#+begin_example
+https://brucebase.wikidot.com/content:files
+https://brucebase.wikidot.com/stats:on-the-tracks
+https://brucebase.wikidot.com/stats:greetings-from-asbury-park-nj-studio-sessions
+https://brucebase.wikidot.com/stats:wild-innocent-e-street-shuffle-studio-sessions
+... etc. all the links reachable from https://brucebase.wikidot.com/stats:on-the-tracks
+#+end_example
+The mirror has 258 =stats:*studio-sessions*= pages (an album's sessions and its =-details=, =-credits=,
+=-addrec= parts).
+- [X] survey (=scripts/copy-bb-stats-sample.sh= → =debug/bb-mirror/stats/=, 721 pages: every stats page
+  outside the three big families, all =awards-*= and =*studio-sessions*=, one =<song>-tour= in 50, the 23
+  =content:files*=; =scripts/probe-bb-stats-pages.py= → =debug/bb-stats-probe.json=; Env:
+  2026-11-12T09:23+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) · n/a). Shapes:
+  - A tabbed link lists, 202 pages in the copy: letter tabs as stats:songs or named tabs (labels, years,
+    tours, regions; nested tabs on circulating-audio), each tab =li > a= to ONE kind (song:, bootleg:,
+    gig:/nogig:/interview:/rehearsal:/recording:, venue:, lyrics:, recnote:, relation:). Show links read
+    "2014-12-07 Kennedy Center, Washington, DC" (no " - " as on the year pages), venues in sort form
+    "Left Foot (The)"
+  - B wiki tables with a header row, 46: awards (a table per ceremony tab), song-count-by-tour-* (28,
+    # | Title | Count), city/state/country/continent-performance-count, songs-count, the-live-top-100,
+    set-openers-and-closers (a table per tour h2), on-the-tracks-timeline (Date | Song Title | Location |
+    Personnel) and -key, longest-shows, video-footage-statistics-1970s, tour-statistics
+  - C =<song>-tour= (1,299): one-row boxes "Performed at 59 show(s) of 130 on the 2023-25 International
+    Tour" (+ "(Excl./Incl. …)" notes); 12 of the 26 sampled have none of them — the whole family before specs
+  - D =*-studio-sessions= (35 main pages, 223 parts the main page includes: -overview, -release, -addrec,
+    -details, -credits, -altseq-N, …): tabviews Released/Unreleased, Version History/Timeline, Potential
+    Sequence #N; version tables headed "BORN TO RUN - V1a | 4:24 | release"
+  - E galleries: discography-* (cover tiles =disco_<name>.jpg= linking retail:/playlist:), songs-by-album,
+    song-count-by-album
+  - F text: songs-registered (182 plain =li= titles, 96 of them match a stats:songs title), songs-list
+    (1,679 song links in paragraphs), hubs (on-the-tracks, venues, statistics, studio-bootlegs)
+  - fragments the main pages include: performances-with-bruce-* (raw =[[row]]= markup), awards-*
+- [X] mockups https://claude.ai/artifact/G2buE4qzMUojqXwkEGCiPH (=scripts/build-bb-stats-mockups.py= +
+  =scripts/bb-stats-mockups.template.html=; the HTML =debug/bb-stats-mockups.html=, no member names):
+  survey table, A–F with real rows, Q1–Q8 inside (recommended: batch 1 = A + B; one table with a Tab
+  column; show links split; sub-table per tab/heading; C and D (with the On The Tracks title / version /
+  take split) batch 2; E and F batch 3; fragments only through their main page)
+- [X] vzell's answers (2026-11-12, "* DONE stats answers" below), all eight as recommended: batch 1 = A
+  (link lists) + B (wiki tables) — Q1's "about 135 pages" was the mockup's stale option text, the copy
+  has 202 + 46; one table with a Tab column, nested tabs one path; show links split (Date with date
+  parts, Venue turned round, City, State, Kind; the wiki's text as the hover); a sub-table per tab or
+  heading, the first open; batch 2 = C (song tour counts) and D (studio sessions with the On The Tracks
+  title / version / take split); batch 3 = E (galleries, Cover column) and F; fragments only through
+  their main page
+- [X] batch 1 (docs/claude/brucebase.md "Stats pages"): ONE pageType =bb-stats= with a button per shape
+  ("Show the list" single, "Show the tables" multi; each =showIf= its shape) instead of the planned two —
+  six pages of the copy hold both, and a button's =tableMode= overrides the definition's; =match= also
+  needs a shape, so the 145 path matches with neither (tour counts, studio-session parts, hubs) stay
+  =bb-page=. =_bbStatsRead()= / =_bbStatsListCols()= / =_bbStatsCellHtml()=, =openSubTables: 'first'=
+  (new in =_defOpensSubTable()=). Found on the way: Awards' heading row is bold by its =tr= style and
+  its ceremonies are full-width rows (→ a Section column); no page of the copy nests tabs (the
+  mockup's "Audio › …" path does not occur); a tab's second table repeats the name " (2)" (Grammy, the
+  Timeline's five). =scripts/check-bb-stats-reader.js= over the copy (2026-11-12T10:20+01:00 · petri ·
+  WSL2 Ubuntu 24.04.3 · Playwright 1.62.1 Chromium): 456 pages with a shape, 61,394 list items, 1,311
+  tables, no empty first cell, no undated show, no ragged table. =bb-stats.spec.js= (8),
+  =scripts/mutations/bb-stats.json= (17, all OK), bb-event.json's openSubTables find refreshed (OK);
+  siblings (13 BB/preview specs) 182 green; coverage row, PAGETYPES reference (173), HELP, CLAUDE.md,
+  WIP.17
+- [X] vzell's live check of batch 1 (e.g. stats:venues-in-new-jersey, stats:circulating-audio,
+  stats:awards, stats:set-openers-and-closers, stats:songs-by-album): OK (2026-11-12)
+- [X] batch 2: C, D (+ the On The Tracks split) (docs/claude/brucebase.md "Song tour counts … and studio
+  sessions"): two pageTypes before bb-stats. =bb-song-tours= (=stats:<song>-tour=, single): Tour, Played,
+  Tour shows, Share, Bar, Note, every tour (zeros too), then Other known shows and Public tour rehearsals
+  (=_bbTourCounts()=, now also the song page's Performances by tour); =match= needs a tour row.
+  =bb-sessions= (=*-studio-sessions*= and its parts, multi, under =sa_bb_detail_pages=): a sub-table per
+  h1 › tab › caption, consecutive tables of one name merged (Version History: a table per song → one),
+  one-row tables kept, a numbered list # / Song, takes split Song / Version / Take / Date
+  (=_bbSplitVersion()=, shared with =_bbOttRows()=: the "On The Tracks" TODO below); the head (Overview,
+  Credits, Album, Released, Label, Sections, Links). Whole families first (=scripts/copy-bb-stats-tours.sh=
+  → =debug/bb-mirror/stats-tour/=, =scripts/check-bb-tours-sessions.js=; 2026-11-12T12:38+01:00 · petri ·
+  WSL2 Ubuntu 24.04.3 · Playwright 1.62.1 Chromium): 599 of 1,270 tour pages with tour rows (614 only
+  other shows, 57 neither: they stay bb-page/bb-stats), no box missed; 182 of 258 session pages with a
+  table (487 from 822, 5,888 takes split). Found on the way, fixed in =_bbStatsRead()=: every row of a
+  session's version table is bold by its style, so batch 1 took the first take as the header and a
+  one-row bold table gave its row as the header to the tables after it — a bold-styled row is a header
+  only when a row follows that is not like it (Awards' header, followed by a one-cell ceremony row,
+  stays); the batch-1 check over the other stats pages is unchanged table by table. The "Note:"
+  paragraphs under each song's version table (not in the mockup) were first left out; vzell: "I want
+  them as a multi-row column" → a collapsed Note column on each of the song's takes, a paragraph per
+  line, past a recording sheet's picture (2,639 of the family's 2,642 "Note:" paragraphs; the 3 others
+  are page notes). =bb-song-tours-sessions.spec.js= (8), =bb-release.spec.js= Take/Date, batch 1's tour fixture now
+  bb-song-tours' (a never-toured song replaces it); =scripts/mutations/bb-song-tours-sessions.json= (32) +
+  4 refreshed finds (bb-release, bb-song ×2, bb-stats): 36 OK; all 27 BB specs + sl-include-regex 295
+  green; coverage rows, PAGETYPES reference (174, 175), HELP, CLAUDE.md, WIP.18
+- [X] vzell's live check of batch 2 (e.g. stats:hungry-heart-tour, stats:born-to-run-studio-sessions,
+  stats:darkness-on-the-edge-of-town-studio-sessions, stats:nebraska-studio-sessions-details, and the
+  On The Tracks of song:the-heist or retail:born-to-run): OK (2026-11-12, with the Note column)
+- [X] batch 3: E, F. vzell's answers (2026-11-12, asked before building: the copy differs from the
+  mockup): E's rows are each page's own ENTRIES ("2025 Nebraska '82" · subtitle · cover · Released ·
+  Label; 114 on -album, 363 on -retail, 143 on -single), not the cover strip at the top — that strip is
+  the same 203 covers on all 11 discography pages (the wiki's navigation); its tab (Original /
+  Collaboration / Compilation / Playlist) is a Tab column where the release is in it. stats:songs-list
+  (every song as links in paragraphs, the same songs as stats:songs) is left alone: link previews
+  Built (docs/claude/brucebase.md "Discographies … and registered songs"): =bb-gallery= (single: Year,
+  Release, Subtitle, Cover — the image card and the viewer, =_BBG_FI=, the row's own picture, no request —
+  Released in ISO with date parts, Label, Section on a page with several, Tab) and =bb-registered=
+  (Title, Song page from stats:songs, one request; the record as the head). Whole family first
+  (=scripts/check-bb-galleries.js=, 2026-11-12T14:21+01:00 · petri · Playwright 1.62.1 Chromium): 10 of
+  13 discography pages with entries, every one with a cover and a Released date (all but 3 ISO); found:
+  Hammersmith Odeon London '75's "Released/Label" are loose text outside a paragraph (read now), the hub
+  stats:discography holds discography-retail's entries in a tab (not read: it keeps bb-stats' List).
+  =bb-gallery-registered.spec.js= (5), =scripts/mutations/bb-gallery-registered.json= (17 OK, 1
+  =expect: pass= — a bold link without a year, which no page of the copy has); coverage rows, PAGETYPES
+  reference (176, 177), HELP, CLAUDE.md, WIP.19
+- [X] vzell's live check of batch 3 (e.g. stats:discography-album, stats:discography-retail,
+  stats:discography-single, stats:songs-registered): OK (2026-11-12)
+- [X] build in batches (one shared tabview reader where possible, =bb-songs= as the model); specs,
+  mutations, coverage rows, docs, WIP per batch
+- [X] vzell's live check per batch
+
+*** DONE Phase 14 — year-table columns from each event's page
+The year table has Type and Tour already; the rest lives on the event's own page: the cast (On stage),
+tags, Storyteller / Recording / Media present, image counts.
+- [X] survey (=scripts/copy-bb-year-events.sh 1978= → =debug/bb-mirror/year-1978/=, 173 event pages;
+  =scripts/probe-bb-year-events.js= runs the shipped preview parser, =__saTest.dpParse()=, over each →
+  =debug/bb-year-events-1978.json=; Env: 2026-11-12T18:50+01:00 · petri · WSL2 Ubuntu 24.04.3 ·
+  Playwright 1.62.1 Chromium, GM stubs): Scheduled on 120 pages (mostly "20:00 · start and end not
+  known"), On stage 121 (9 line-ups: 112 are Bruce Springsteen and The E Street Band; Warren Zevon,
+  Southside Johnny, The Knack, Bruce as a radio guest), setlist 154, images 91 (Photo 1,140, News 377,
+  Ticket 185), tabs with content Recording 142, Storyteller 81, Media 61, Eyewitness 46,
+  News/Memorabilia 92; tags on all, mostly the wiki's song shortcodes. A page: 37 KB median, 115 KB max;
+  the year 7.1 MB. The mirror: 5,010 entries in 78 years (1973: 277). The previews keep a record 30
+  days and read one page a second (=_DP_SPACING_MS=)
+- [X] mockup https://claude.ai/artifact/WribjsoLZpeUYU8k8Vx3eY (=scripts/build-bb-year-columns-mockup.py=
+  + =scripts/bb-year-columns-mockup.template.html= → =debug/bb-year-columns-mockup.html=): 1978's table
+  with On stage, Content, Images, Start filling in live (rows already in the previews' store at once,
+  one failure with ⟳), the three ways to read as a live choice, the cost; Q1–Q5 inside (recommended:
+  On stage, Content, Images, Start; read after a press, the rows as they come into view; ⟳ per cell +
+  "Retry the N failed"; the whole line-up, members folded; the year listings too)
+- [X] vzell's answers (2026-11-12): all five as recommended — On stage, Content, Images and Start; read
+  after a press of the button, the rows as they come into view (one a second); a failed row: ⟳ in its
+  cell and "Retry the N failed" above the table; On stage the whole line-up, the members folded; the
+  year listings (bb-year-list) get the same columns
+- [X] build on the deferred-column pattern (docs/claude/brucebase.md "The year table's columns from each
+  event's page"): =_bbEvp*= modelled on the MB-Event column — four cells after Tour (bb-year, bb-home,
+  bb-year-list), keyed by the Event link; the previews' record (=_dpGet()=); ▶ Pages on On stage's header,
+  then an IntersectionObserver queues the rows in view and drops those that leave; a listing row's page
+  through its year page (=_extBbYear()=); rows read before painted at render (=_fiDpPeek()=, no request);
+  the four duties at most once a second (=initCollapsableColumns()= for On stage's ▶ at most every 3 s
+  while loading); the job popup =bbevp=. Cost (tests/MEASUREMENTS.org): the 1985 render 7–11 % slower
+  (+42–67 ms, four more columns), the sort unchanged — told vzell, the alternative being the columns
+  hidden until ▶ Pages. =bb-year-event-pages.spec.js= (7), =bb-year-list-1985.html=,
+  =scripts/mutations/bb-year-event-pages.json= (14, all OK after the spec was tightened: five first
+  passed — no wait for the reading to settle, a filter only after loading, no page without a time) + 4
+  refreshed finds; bb-year/bb-year-list specs' header lists; 27 BB specs + sl-include-regex 307 green;
+  HELP, WIP.20
+- [X] vzell's live check (e.g. /1985 and /1978: ▶ Pages, scroll, a filter on On stage; /1985-list): OK
+  (2026-11-12); the columns stay shown before ▶ Pages (the render cost was put to him, no change asked)
+
+*** DONE Phase 15 — History in Brucebase windows on other sites
+Today the History section is on brucebase.wikidot.com only.
+- [X] probe userscript run by vzell on musicbrainz.org: a cross-origin anonymous =GM_xmlhttpRequest= POST
+  to =/ajax-module-connector.php= with our own =wikidot_token7= in body and Cookie header; status, ms,
+  whether the token is accepted; no names saved
+  - server side, done from petri (=scripts/probe-bb-history-token.py=, no session, no cookie jar):
+    Env: 2026-11-12T20:28:30+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) · n/a (Python urllib).
+    On /song:streets-of-minneapolis: the page GET 200 in 719 ms; PageRevisionListModule with a fresh
+    random token as cookie AND in the body: 200, "ok", 20 revision rows, 511 ms; no cookie: "wrong_token7"
+    (399 ms); cookie ≠ body: "wrong_token7" (333 ms). So Wikidot checks the pair and nothing else — no
+    session needed.
+  - browser side, for vzell: =scripts/probe-bb-history-xorigin.user.js= (check:
+    =node scripts/check-probe-bb-history-xorigin.js=, 22/22). On musicbrainz.org, Tampermonkey menu
+    "Probe: Brucebase history from here": the same four variants as anonymous =GM_xmlhttpRequest= — the
+    cookie as a Cookie HEADER, as Tampermonkey's =cookie= FIELD, none, ≠ body — then one PageSourceModule
+    with the first variant accepted. Answers whether Tampermonkey delivers the cookie on an anonymous
+    request. Report: =debug/bb-history-xorigin-probe-YYYYMMDD.json=.
+  - vzell's run: =debug/bb-history-xorigin-probe-20261112.json= (2026-11-12T20:31:09+01:00, Windows,
+    Chrome 152, Tampermonkey 5.5.1): the Cookie header and the =cookie= field both accepted (20 rows,
+    250 / 235 ms), no cookie and cookie ≠ body both "wrong_token7", PageSourceModule accepted (143
+    lines). =usable: true=.
+- [X] on that evidence: the section in BB windows on every host (the existing =_dpAwaitSlot()= spacing),
+  or a note why not; specs, docs (detail-pages.md: an external request stays anonymous), WIP
+  Done 2026-11-12 (WIP.21): =_bbHistGmPost()= (anonymous, Cookie header, one token of our own per page
+  load), =_bbHistWindowOn()=; ✎ / H in those windows; a token refusal off the wiki says so instead of
+  "Sign in". Spec =bb-history-foreign.spec.js= 5/5, mutations 11/11, siblings 185/185. Docs:
+  brucebase.md "Phase 15: the section on other sites", detail-pages.md, HELP, the setting's text.
+- [X] vzell's live check — OK (2026-11-12)
+
+*** DONE Phase 16 — recheck what our readers miss
+covers: "* TODO recheck rendering all the right info on BB pages" and "* TODO support hovering for all
+BB PTs". Last, once Phases 7–15 have added their readers.
+- [X] a sweep over the mirror (=scripts/probe-bb-reader-sweep.py=): per family, the page's fields and tabs
+  against what our readers return; every gap listed
+  Done as =scripts/probe-bb-reader-sweep.js= (node, not Python: it runs the SHIPPED readers in the real
+  userscript through the harness — the window's =dpParse()= and, where a hook exists, the page view's
+  =bbEventRead=/=bbSongRead=/=bbReleaseRead=/=bbBootlegRead=, the view counted with the window's record it
+  also draws). Samples: =scripts/copy-bb-sweep-samples.sh= (40 a family where none was copied) plus the
+  earlier phases' copies, 3,284 pages in 32 families. A page's text blocks (leaf p/li/td/th/dt/dd/h1–h4 of
+  =#page-content=, by tab or heading), links by target and pictures, against each reader's text and links.
+  Left out as chrome: the footer (Disclaimer, ©, social icons), the "Share:" bar, link-only lines ("Info &
+  Setlist | Venue"), the wiki's placeholders ("Sorry, no Photos available.", …). Output
+  =debug/bb-reader-sweep.json=.
+  Env: 2026-11-12T21:11:14+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) · Playwright 1.62.1
+  Chromium · no Tampermonkey (GM stubs).
+  Every candidate below was checked on a page; rewordings the matcher counted as lost are not listed (a
+  release's Personnel "Roy Bittan (The E Street Band): Piano", a bootleg's notes without "Notes from info
+  file:", a song's intro as the window's subtitle).
+  *Gaps in the window (hover card / Space window, every host)*
+  - G1 event pages: the description above the tabs (the page view's "About this show") is not in the
+    window — gig 228/233, nogig 53/53, recording 89/91, rehearsal 39/41, interview 44/44, nobruce 11/11
+    (e.g. gig:1984-10-29-memorial-sports-arena-los-angeles-ca: "Tour debut and only tour performance for
+    Night …"); its links (songs, year anchors) go with it.
+  - G2 event pages: a cast tab other than On Stage — In Studio (recording 83/91), On Set, On Site — is not
+    in the window: no heading line ("Greetings From Asbury Park, N.J. Recording Session"), no people (the
+    window's "On stage" section is on 3 of 90 recordings).
+  - G3 interview pages: the Playlist tab (a DJ's playlist; 10/44) is not in the window (the view has it).
+  - G4 person pages: the biography above the tabs ("Vivienne Patricia "Patti" Scialfa (born July 29, 1953
+    …") is not in the window (41/42), nor its Wikipedia link (27/42).
+  - G5 release pages (retail main pages, 56; playlists, 20): the On The Tracks tab (retail 29/56), the
+    "Recording 'Live' Dates" tab (retail 25/56, playlist 20/20) and the Gallery/News text with its press
+    links (retail 21/56) are not in the window; the view keeps Recording 'Live' Dates, not Gallery/News
+    (21/56) and part of On The Tracks (its group headings, "GUEST: BABYLON / GUEST: LABOUREP", 20/56).
+  - G6 story pages: the window has no picture (40/40 pages carry one).
+  - G7 song pages: the intro (the window's subtitle) keeps its words, not its person links (20/60); the
+    Lyrics section drops its springsteenlyrics.com link (20/60).
+  *Links with no preview (on BB pages and in our windows)* — the previews today: song: and gig, nogig,
+  recording, rehearsal, interview, nobruce, venue, relation, onstage, offstage, retail, playlist, bootleg,
+  story (=ownLinks=), year anchors (=bbshow=), tags (=bbtag=, on the wiki).
+  - L1 stats: links — on nearly every page, but mostly the wiki's menus (stats:reference, :statistics,
+    :songs, …). The ones a page means: its studio sessions (recording 78/91, retail 56/56, song 39/60), On
+    The Tracks (recording 77/91), discographies, tour statistics. A stats window would show Tags only today:
+    the readers exist (=_bbSessionsRead()=, =_bbTourCounts()=, =_bbGalleryRead()=, =_bbStatsRead()=) but not
+    for the window.
+  - L2 lyrics: links (from release pages) — no preview; the window would show Tags only (the lyrics and
+    each version's heading are not read, 20/20).
+  - L3 ott: links — no preview; Tags only (20/20), though =_bbOttRows()= reads the page for bb-ott.
+  - L4 multi: and soundcheck: links (song pages, rare) — no preview, and not in =_bbRedirectedUrl()=. Probe
+    =scripts/probe-bb-redirect-kinds.py= (2026-11-12T21:12:47+01:00 · petri · n/a): onstage:, offstage:,
+    multi:, soundcheck: all answer 301 to the gig, 357–448 ms; the mirror stores them as the Redirect module
+    (every onstage/offstage/multi/soundcheck copy), so their sweep rows are empty, not a reader gap.
+  - L5 the wiki's include pages (news:, eye:, gignote:, recnote:, media:, gallery:, files:, content:) —
+    their text is in the event or release page that includes them; links to them are rare (news: on 3 of
+    the 900 main pages sampled); their windows show Tags only. Recommendation: leave.
+  - L6 a bare year link (/1978, the year page itself): Tags only; year links in text are anchors (the show
+    reader). Rare. Recommendation: leave.
+  Other hosts: links to MusicBrainz, springsteenlyrics.com and the other known sites in a BB window keep
+  their readers (=_extSource()=); only G7's springsteenlyrics.com link is dropped before that. The
+  coverage registry (=docs/non-mb-coverage.json=) changes with the batches vzell picks.
+- [X] links on BB pages and in our windows with no preview (BB, MB, SL and other known hosts):
+  =docs/non-mb-coverage.json= cells refreshed — listed above (L1–L6); the cells change with the fixes
+- [X] fixes in batches, each with spec and mutation; docs, WIP — done (2026-11-13): batches 1–4 below,
+  WIP.22–WIP.25, each live-checked OK; the coverage registry's =springsteen= reader row now names every
+  Brucebase link kind that previews (it still said "/song: (and /gig:, … on discogs.com)").
+  vzell's pick (2026-11-12): ALL of G1–G7 and L1–L4 (L5, L6 left, as recommended). Batches, each with a
+  mockup and questions first:
+  1. event windows: G1 the description, G2 the cast tabs, G3 an interview's Playlist
+  2. person and release windows: G4 the biography and its Wikipedia link, G5 On The Tracks, Recording
+     'Live' Dates, Gallery/News
+  3. new previews: L1 stats: (studio sessions, tour counts, discographies), L2 lyrics:, L3 ott:, L4
+     multi:/soundcheck: as their gig
+  4. small ones: G6 a story's picture, G7 a song intro's links and the Lyrics section's springsteenlyrics.com link
+  Batch 1 mockup (2026-11-12): https://claude.ai/artifact/RX3xHaYRozwSiZP2g5MujY
+  (=scripts/extract-bb-event-window-mockup.js= → =debug/bb-event-window-mockup.json=,
+  =scripts/build-bb-event-window-mockup.py= with =scripts/bb-event-window-mockup.template.html=): five
+  real pages (gig 1984-10-29 Los Angeles, recording 1972-06-27 914 Sound, interviews 1974-04-07 WMMR and
+  2020-04-24 SiriusXM, gig 1974-08-14 Red Bank), today and with batch 1. Questions: 1 where the
+  description goes, 2 its first sentence on the card, 3 a cast tab's bold line, 4 the year table's On
+  stage column for In Studio, 5 the venue's other lists, 6 an older page's News tab.
+  vzell's answers (2026-11-12): all six as recommended. Built (WIP.22): the description
+  (=_bbEventAboutEl()=, shared with the page view, plain paragraphs too), its first sentence on the card
+  (=cardLine=), every cast tab (=_bbCastSection()=), the Playlist (=_bbPlaylistSection()=), the venue's
+  other lists folded, News as News/Memorabilia, the year table's On stage from any cast tab; also the
+  Flickr module's JSON no longer read as text (86 pages sampled). =_DP_PARSER_VERSION= 24. Spec
+  =bb-event-window-gaps.spec.js= 5/5, mutations 16/16, siblings 333 + 95 green.
+  vzell (2026-11-12): the rare cast names On Phone, On Call, In Room should be cast tabs — done, with
+  "Onstage"; on the way every list of a cast tab is read (a second list holds the guests: 47 of 304 On
+  Stage tabs sampled), in the window, the year table and the page view, and the year table's line-up
+  rows go group by group. Spec 6/6, mutations 21/21 (+2 older finds refreshed), BB specs 334/334.
+  vzell (2026-11-12): the one-word "Onstage" should be a finding — done: =bb-onstage-tab=, a WARNING on
+  the year table's / year listing's Content cell once ▶ Pages read the page (late data; the re-stamp
+  queue now also takes a source row the filter hides, with its table). Spec 5/5, mutations 9 (one
+  recorded as covered by =_bbEvpScheduleRefresh()=), WIP.22.
+  - [X] vzell's live check of batch 1 (and the finding) — OK (2026-11-12)
+  Batch 2 mockup (2026-11-12): https://claude.ai/artifact/LHEdFVu715Qu4z2dUackmb
+  (=scripts/extract-bb-batch2-mockup.js= → =debug/bb-batch2-mockup.json=, =scripts/build-bb-batch2-mockup.py=
+  with =scripts/bb-batch2-mockup.template.html=): Patti Scialfa; Born To Run, Live/1975–85, Get Up! Stand Up!
+  Highlights, Songs Of Love — today and with batch 2. Questions: 1 the biography's place, 2 its first sentence
+  on the card, 3 On The Tracks grouped or flat, 4 the live dates by disc or flat, 5 Gallery/News, 6 also
+  Performed live, Notes, History, On The Tracks notes, Lyrics, Media (in the page view, not in the sweep's
+  list).
+  vzell's answers (2026-11-13): all six as recommended. Built (WIP.23): a person's "About" (biography,
+  Source line, =cardLine=); a release's =_bbReleaseWindowExtras()= (On The Tracks by song, live dates by
+  disc, Gallery/News, Performed live, text tabs, Lyrics, Media, all folded). =_DP_PARSER_VERSION= 25. Spec
+  =bb-person-release-windows.spec.js= 4/4, mutations 13/13 (+2 refreshed), BB specs 343/343, popup-ext BB +
+  YouTube 44/44. Sweep after: person windows 97% (79%), releases 62% (26%), playlists 65% (29%).
+  vzell (2026-11-13): the release page view should get Gallery/News too — done: one of =_bbReleaseRead()='s
+  text tabs (=_bbGalleryNewsFromPanel()=), the window keeps it after the live dates; parser version 26.
+  Mutations 15/15 (+5 for this), BB specs 343/343.
+  - [X] vzell's live check of batch 2 — OK (2026-11-13), with the page view's Gallery/News asked for
+  - [X] vzell's live check of the page view's Gallery/News — OK (2026-11-13)
+  Batch 3 mockup (2026-11-13): https://claude.ai/artifact/6HcKkN6QeAvw1SKk4BYC5f
+  (=scripts/extract-bb-batch3-mockup.js= → =debug/bb-batch3-mockup.json=, =scripts/build-bb-batch3-mockup.py=
+  with =scripts/bb-batch3-mockup.template.html=; test hooks =bbTourCounts=, =bbSessionsRead=, =bbGalleryRead=,
+  =bbOttRead= added): Thunder Road's tour counts, Born To Run's studio sessions, the retail-audio
+  discography, an On The Tracks page, Born In The U.S.A.'s lyrics — no preview today. Questions: 1 the
+  setting(s), 2 a sessions page's tables (100 rows / all / names), 3 a discography grouped or flat, 4 a
+  lyrics card's first lines, 5 the lyrics window's versions, 6 the other stats pages. multi:/soundcheck:
+  preview as their gig (no question).
+  vzell's answers (2026-11-13): all six as recommended —
+  1. a song's pages (tour counts =stats:…-tour=, =ott:=, =lyrics:=) under the song preview's setting
+     (=sa_bb_detail_preview=); studio sessions and discographies under the event, venue, people and release
+     setting (=sa_bb_event_preview=, =ownLinks=);
+  2. a sessions page's tables each a folded section, the first 100 rows, then "N more rows on the page";
+  3. a discography's releases under the page's own headings, each with year, release date and label; the
+     covers as the window's pictures;
+  4. a lyrics card: the first four lines of the first version and how many versions;
+  5. a lyrics window: a section per version, the first open, the others folded; the springsteenlyrics.com
+     link last;
+  6. the other stats pages (stats:on-the-tracks, the song lists, the menus): no preview.
+  Plus multi:/soundcheck: as their gig (in =ownLinks= and =_bbRedirectedUrl()=). Next: build batch 3 (readers
+  reused: =_bbTourCounts()=, =_bbSessionsRead()=, =_bbGalleryRead()=, =_bbOttRead()=; a new lyrics reader),
+  specs, mutations, docs, WIP.24; then vzell's live check; then batch 4 (G6 a story's picture, G7 a song
+  intro's links and the Lyrics section's springsteenlyrics.com link); then test:full before any merge.
+  Built (2026-11-13, WIP.24): records of their own for tour counts, studio sessions, discographies, On
+  The Tracks and lyrics (=_bbLyricsRead()=, the lyrics family probed whole first:
+  =scripts/probe-bb-lyrics-shape.py=), =_DP_PARSER_VERSION= 27; multi:/soundcheck: as their show.
+  Exclusions found on the way, all answer 6: =stats:songs-<tour>-tour= and =stats:shows-<tour>-tour= (a
+  tour's song counts and shows, 28 + 29 pages) and the two playlist discographies (no release entries). Spec =bb-song-pages-windows.spec.js= 8/8,
+  mutations 31/31 (+6 refreshed), BB + popup-ext specs 436/436. Sweep: lyrics 5% → 89%, ott 13% → 77%,
+  sessions 0% → 69%, discographies 0% → 35%, tours 0% (wording).
+  - [X] vzell's live check of batch 3 — OK (2026-11-13). The open question (a sessions page's anchors to
+    itself preview the page itself) left as it is; ask again with batch 4.
+  Batch 4 mockup (2026-11-13): https://claude.ai/artifact/CZ2t1cS2fw7W4RDSyTvoNo
+  (=scripts/extract-bb-batch4-mockup.js= → =debug/bb-batch4-mockup.json=, =scripts/build-bb-batch4-mockup.py=
+  with =scripts/bb-batch4-mockup.template.html=). Probe first (=scripts/probe-bb-story-images.py=, all
+  1,489 story pages, 2026-11-13T01:28+01:00 · petri · n/a): 1,449 carry only the Storyteller badge in their
+  title band; 42 have a picture of their own (44 E Street Radio / DJ-set banners, Wikidot's
+  =image-container=, which =_bbPageImages()= does not read: it reads gallery boxes). Song pages: the intro
+  keeps its words, not its links (20/60); the Lyrics tab is a lyrics page's shape (heading tables,
+  verses, a springsteenlyrics.com line after each version), so batch 3's =_bbLyricsRead()= reads it.
+  Questions: 1 a story's picture (own picture, badge left out / badge as picture / badge as fact), 2 a
+  song's intro (the window's line keeps its links / also an "About this song" section), 3 the Lyrics
+  section (one section, the SL line kept after each version / a section per version as a lyrics page),
+  4 batch 3's open question: a link to the page you are on that only adds an #anchor (no preview / keep).
+  vzell's answers (2026-11-13): all four as recommended. Built (WIP.25): =_bbStoryPictures()= (a story's own
+  pictures, label "Picture", its title the caption; the badge filtered out — a safeguard, its mutation
+  =expect: pass=: the badge is never inside an image block); a song's =subtitleHtml= (the intro's links on
+  the window's line, the card keeps the words); the Lyrics section's =html= (=_dpBlockHtml()=, the
+  springsteenlyrics.com line linked); =_dpSiteForUrl()= refuses a link to this page that only adds an
+  #anchor (every foreign host). =_DP_PARSER_VERSION= 28. Spec =bb-story-song-windows.spec.js= 5/5,
+  mutations 12 (11 fail, 1 pass as recorded), bb/sl/jl/bs + popup-ext specs 720/720.
+  - [X] vzell's live check of batch 4 — OK (2026-11-13). Phase 16 done: all four batches live-checked.
+- [X] vzell's live check — OK (2026-11-13), every batch
+
+*** Handoff to petri (2026-11-12T04:05+01:00, from vzell-lap)
+State: branch =feature/bb-overhaul= pushed, working tree clean, Phases 0–12 DONE and live-checked. Newest WIP
+entry: WIP.16 (next: WIP.17). No =// @version= bump, no real changelog entry on this branch; no merge to
+=main= without asking vzell.
+
+Owed, in this order:
+1. =npm run test:full= on petri (the merge gate, never run on this branch yet), through
+   =python3 scripts/run-test-full.py --log <scratchpad>/test-full.log=, announced with start time, host,
+   SHA and finish window. It covers the "wider sibling sweep" deferred since Phase 8 (BB specs,
+   popup-ext*, popup-mb, sticky-filter-bars, the MusicBrainz fixture specs): every phase changed shared
+   code (=_extTarget()=, =_dpWinIsBb()=, =extRoot=, =_bbHistPost()=, =_bbStoryQuote()=,
+   =applyBbDetailToTable()=, =_DP_PARSER_VERSION= 23). Known flake: popup-ext-foreign.spec.js "a Brucebase
+   page's window on springsteenlyrics.com opens a Wikipedia link in place, with Back" timed out once on a
+   detached link (green alone and on a rerun). Fix real failures; report flakes.
+2. =python3 scripts/check-mutation-finds.py= (0 stale at handoff), =lint-summary.py --check=,
+   =build-coverage-report.py --check=, =audit-docs.py=.
+3. Phases 13 → 16 as written above, one at a time, each ending with vzell's live check.
+
+Working rules (vzell-lap's Claude memory, not in the repo):
+- After each task: commit AND push, vzell's own edits to this file included; commit messages start
+  with =[ShowAllEntityData]=.
+- Per phase run only that phase's new or changed specs plus its mutation list; a wide sweep after a few phases.
+- Warn vzell before a mutation run: =scripts/mutation-check.py= edits the live userscript he may
+  install. Every entry gets a one-test =grep=; a guard no spec can see is =expect: pass= with the reason.
+- Every DOM change: a spec that fails without it, and a mutation for it.
+- Foreign-site converters: probe the WHOLE page family before writing specs (e.g.
+  =scripts/check-bb-story-reader.js= over every story page).
+- Mockups with questions before building, as a private Artifact; one naming wiki members stays in =debug/=.
+- Times in Europe/Berlin with the offset; an Env stamp on every probe result.
+
+Files: the BruceParser mirror was =/home/vzell/git/scripts/BruceParser/bb/latest= on vzell-lap (a slow
+share: copy samples to the scratchpad first; 17 min for 1,489 files on 2026-11-12) — check its path on
+petri. =debug/= is gitignored: the probes' outputs (=debug/bb-story-probe.json=, the raw tag pages, …)
+are NOT on petri; rerun the probe scripts (=scripts/probe-bb-*.py=) when they are needed. The fixtures
+and captured answers the specs use are committed.
+
+*** Picked up on petri (2026-11-12)
+Env: 2026-11-12T09:15:55+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) · Playwright 1.62.1
+Chromium, no Tampermonkey (GM stubs).
+- Correction to "Files" above (vzell): the mirror is on vzell's NAS, the same path on all three machines
+  (still slow), and vzell synced =debug/= from vzell-lap by hand — the probes' outputs ARE on petri.
+- Owed 1: =test:full= at f6bfc2b1, 3,026 tests, 19 m 7 s: 3,025 passed, 1 failed —
+  =table-seed-ledger.spec.js:363=, stale since main's Discogs section bands (=74af55ee=) added two built-in
+  hidden-columns rows; fixed in the spec (drops only release-tracks' ledger key), the file 12/12. The fix
+  goes to main with this branch (main itself still fails that test). The popup-ext-foreign flake did not
+  show. Row in =tests/MEASUREMENTS.org=.
+- Owed 2: check-mutation-finds (285 lists, 0 stale), lint-summary =--check=, build-coverage-report
+  =--check=, audit-docs: all OK.
+- Owed 3: Phase 13 survey and mockups done (above); waiting for vzell's answers.
+- The working rules are now in petri's Claude memory too.
 
 
+* DONE answers
+1. Setlist: one table with a Set column (Soundcheck/Show/Encore), or one table per set? one table
+2. Storyteller: a table you can filter by song, or a closed text section? the table.
+3. Photos: one group per photographer, or the photographer only in each caption? groups
+4. History when signed out: show "Sign in to Brucebase to see the history", or leave the section out? the message
+5. The wiki's page below: collapsed or open by default? collapsed
+6. Song titles: MusicBrainz case (your existing title setting) with the wiki's capitals as hover text, or the wiki's capitals? MusicBrainz case.
+
+* DONE enhancements
+
+1.)
+
+The "A show written "2015-04-30, Story Chapel, …", with a comma after the date, was dropped." should be flagged as finding on the PT
+
+2.)
+
+The "wiki's /onstage: redirect pages, which aren't among the page kinds the preview reads" should also be supported
+
+3.)
+
+everything else tested live, OK
+
+* DONE probe
+
+1.)
+
+Both files are in @debug
+
+#+begin_example
+bb-history-probe-20261111-in.json
+bb-history-probe-20261111-out.json
+#+end_example
+
+2.)
+
+The entries
+
+#+begin_example
+- [ ] vzell's live check
+#+end_example
+
+for Phase 2 and 3 are also both confirmed like OK
+
+
+* DONE tag answers
+
+1. Tag cloud table, Family column: about 85% of the tags come out as "Other", because songs and people can't be recognised from the word alone. Keep it, drop it, or read the song and people lists once (2
+   requests) to sort them? [read the lists]
+2. Pages column: show the estimate from the text size ("≈ 2,963" / "< 62"), or fetch exact counts for the 631 larger tags (about 11 min)? Exact counts for all 11,571 would take over 3 hours. [estimate; the
+   exact count is on the tag's hover card]
+3. One tag's page: the first button needs no request and gives Page, Kind, Date, Venue, City and State. Is a second button worth it that adds Created, Updated, Size, Comments and Tags? It costs 13 calls
+   (about 30 s) for storyteller and 99 calls (about 4 min) for content. [yes]
+4. With that second button, should Tags be a column, or stay only in the row's window? [column, collapsed]
+5. manage:pages-and-tags: add a third button, "all 42,660 pages with their tags"? It is 171 calls, about 7 min, and it would also give every tag's exact count. [yes, as an extra button]
+6. In the Tags cell, group the tags by family, or keep the site's alphabetical order? [alphabetical]
+7. Tag link hover card: show the newest six pages, or the first six by title? [newest]
+8. Tag link window for a big tag: load the first 250 with a "Load all" button, or everything at once? [first 250 plus the button]
+
+* DONE stats answers
+
+1. Which shapes go into the first batch? [A (link lists) and B (wiki tables): about 135 pages, two readers]
+2. Tabs on a link list: one table with a Tab column, or a sub-table per tab? [One table with a Tab column; nested tabs as one path "Audio › Born To Run (1975)"]
+3. Show links ("2014-12-07 Kennedy Center, Washington, DC"): split into columns? [Yes: Date (with the date parts), Venue, City, State, Kind; the sort form "Left Foot (The)" turned round, the wiki's text as the hover]
+4. A wiki table per tab or heading (Awards, Openers and Closers): sub-tables, or one table with a group column? [A sub-table per tab or heading, the first open]
+5. The 1,299 song tour pages: a pageType of their own (C), or leave them to the song page's "Performances by tour"? [Their own pageType, batch 2 (it adds the tour totals and the share)]
+6. Studio sessions (D): a detail pageType like bb-retail, with the Song / Version / Take split shared with On The Tracks? [Yes, batch 2, and the On The Tracks split (the open TODO) built with it]
+7. Galleries (E): rows with a Cover column and the image card, or leave the tiles? [Rows with a Cover column, batch 3]
+8. Include fragments (performances-with-bruce-*, awards-*): read only through their main page? [Yes, only through the main page; the fragments keep link previews]
+
+
+* ● Batch 2 is built, committed and pushed (d632e92d on feature/bb-overhaul). It needs your live check before batch 3.
+
+  What changed:
+  - Song tour pages (stats:<song>-tour) get Tours: one row per tour with Played, Tour shows, Share (with a bar) and the page's note ("Excl. the first leg of …"). Tours where the song wasn't played are included. Two last rows give the other known shows and the public rehearsals.
+  - Studio sessions pages (stats:<album>-studio-sessions) get Sessions: a sub-table per section and tab, all open (for example "Released › Born To Run", "Details › Version History", "Details › Timeline", the potential sequences).
+    - Version History becomes one table; the wiki has a separate table per song.
+    - Each take is split into Song, Version, Take and Date: "THE HEIST - V2 - take 14" gives The Heist / V2 / 14.
+    - Above the tables: the album, release date, label, credits and overview.
+    - It comes with the detail-pages setting; with that off, the page gets Tables instead.
+  - On The Tracks on song, OTT and release pages now has Take and Date columns too, which closes that TODO.
+
+  Where it differs from the mockup:
+  - Each studio-session part page (-details, -addrec, …) also gets Sessions when it has a table. The mockup had parts read only through their main page.
+  - The other shows and rehearsals rows weren't in the mockup's sample. I added them because the page states them.
+  - The "Note:" paragraphs under each song's version table aren't in the table, because the mockup had none. They stay in the wiki's page below. Say if you want them as a column.
+  - The Timeline is not split. Its cells list several takes for one day.
+
+  A batch-1 bug, fixed: on studio-session pages every row of the version tables is bold, so Tables took the first take ("BACKSTREETS - V1") as the column names. A table of one bold row also passed its row on as the column names for the tables after it. Now a bold row only counts as a header when the row after it
+  isn't the same kind of row. I compared the other stats pages table by table before and after, and none changed.
+
+  Tests:
+  - I ran the readers over the whole page families first: all 1,270 tour pages and all 258 studio-session pages. 599 tour pages have tour rows; the 671 without any stay as they are.
+  - The new spec passes 7 of 7.
+  - 30 planted defects all fail the spec. Two didn't at first; I tightened the spec until they did.
+  - All 27 Brucebase specs pass (294 tests).
+  - Lint, the coverage report, the docs audit and the mutation finds are clean.
+  - test:full is still left for the wider sweep.
+
+  Please try:
+  - stats:hungry-heart-tour
+  - stats:born-to-run-studio-sessions
+  - stats:darkness-on-the-edge-of-town-studio-sessions
+  - stats:nebraska-studio-sessions-details (many takes and mixes)
+  - the On The Tracks table of retail:born-to-run
+
+* questions
+** q
+
+What you mean with "The Timeline is not split. Its cells list several takes for one day.", show me a full URL and where I have to look
+
+** ● The Timeline lists recording sessions by day, and one row can name several takes in a single cell. Here is an example.
+
+  URL: https://brucebase.wikidot.com/stats:darkness-on-the-edge-of-town-studio-sessions
+
+  Where to look: scroll to the Details heading, open the Timeline tab, and find the row dated July 1976. On our page it is the sub-table Details › Timeline. The same table is also on its own page, https://brucebase.wikidot.com/stats:darkness-on-the-edge-of-town-studio-sessions-timeline
+
+  That row's Song Title cell holds a list of seven songs for that one day:
+
+  July 1976 | • SAVE MY LOVE - V1          | Telegraph Hill Studio, New Jersey | Produced by …
+            | • CANDY'S BOY - V1
+            | • THE PROMISE - V1
+            | • RENDEZVOUS - V1
+            | • SOMETHING IN THE NIGHT - V1
+            | • WHEN YOU DANCE
+            | • RAISE YOUR HAND
+
+  Why it isn't split: in Version History a row is one take ("BORN TO RUN - V1a"), so one Song, Version, Take and Date per row works. A Timeline row is one session day. Splitting that cell would need seven Song values and five Version values in one row.
+
+  What happened before I excluded it: the split only applied to cells naming exactly one take. Days with a single take got a Version, and days like July 1976 stayed whole. The result was a Version column filled on some rows and empty on the busy days, which looked broken. So a column with any multi-take cell is now
+  left as the wiki writes it.
+
+  One possible improvement (not built): give the Timeline one row per take, repeating the date, location and personnel. The July 1976 day would become seven rows, and the table would get Song and Version columns like Version History, so you could filter it by song or version. Do you want that?
+
+* add features
+
+The "Note:" paragraphs under each song's version table:  I want them as a multi-row column
+
+* ● Phase 14 is closed in org/brucebase.org, committed and pushed (6c03bf27). Since you didn't ask for a change, I've left the four columns visible before ▶ Pages, as built. The 7–11% render cost is recorded, and hiding them until pressed can still be done later.
+
+  Phase 15 is next: the page-history section in Brucebase windows opened on other sites, such as MusicBrainz. It can't be built from here, because its first step needs a run in your browser:
+
+  - I write a small probe userscript that you install and run on musicbrainz.org.
+  - On a Brucebase page, the History section is read from Wikidot with a POST that carries a token, and the token in the body must equal the cookie. From musicbrainz.org that has to be a cross-site request, and it can't use your session.
+  - The probe sends that request with a token of its own, anonymously, and reports the status, the time taken, and whether Wikidot accepts the token. It saves no names.
+  - If the token is accepted, the History section goes into Brucebase windows on every host, at the same one-request-a-second pace. If not, I write down why it isn't possible.
+
+  Should I write the probe userscript now?
+
+* The finding:
+
+a WARNING, "Brucebase event page with an 'Onstage' tab". It goes on the Content cell of the year table and the year listing, because those are the only tables that read event pages and Content already lists the tabs by name. It shows once ▶ Pages has read the page, and it has its own settings to
+switch it and its tint off.
+
+Writing its tests turned up a gap in shared code. Rows read while the warning's filter was on never got their stamp, so they never joined the filtered table. The shared re-stamp queue now also takes those rows. The specs of every other late finding still pass (208 of 208), MusicBrainz ones included.
+
+- The finding's tests pass, 5 of 5, against a real "Onstage" page.
+- 8 of its 9 mutations fail as they should. The ninth passes because the event-page columns already re-run the filter themselves; I recorded that reason in the mutation list.
+- One unrelated MusicBrainz test (Relationships) failed once under heavy load. It didn't recur in 3 solo runs, 32 parallel runs or a full rerun of that batch.
+
+URLs for your live check:
+
+┌────────────────────────────────────────────────────────────────────────┬─────────────────────────────────────────────────────────────────────────────────────┐
+│                                  What                                  │                                         URL                                         │
+├────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+│ Description, card's first sentence                                     │ https://brucebase.wikidot.com/gig:1978-07-07-roxy-theatre-west-hollywood-ca         │
+├────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+│ Description as plain text, other venue lists, old "News" tab           │ https://brucebase.wikidot.com/gig:1974-08-14-monmouth-arts-center-red-bank-nj-early │
+├────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+│ Plain description after the "Info & Setlist" line                      │ https://brucebase.wikidot.com/gig:1978-06-23-paramount-theatre-portland-or          │
+├────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+│ In studio with its session line                                        │ https://brucebase.wikidot.com/recording:1979-04-09-power-station-new-york-city-ny   │
+├────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+│ In studio, Playlist, From My Home To Yours                             │ https://brucebase.wikidot.com/interview:2021-04-28-siriusxm-studio-new-york-city-ny │
+├────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+│ Playlist with original artists                                         │ https://brucebase.wikidot.com/interview:1974-04-07-wmmr-studio-philadelphia-pa      │
+├────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+│ On phone: the hosts, then Bruce as guest                               │ https://brucebase.wikidot.com/interview:2019-07-10-siriusxm-studio-new-york-city-ny │
+├────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+│ In room                                                                │ https://brucebase.wikidot.com/gig:1978-10-17-sunset-marquis-hotel-west-hollywood-ca │
+├────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+│ On Stage guests list                                                   │ https://brucebase.wikidot.com/gig:1979-03-14-fast-lane-asbury-park-nj               │
+├────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+│ The "Onstage" page                                                     │ https://brucebase.wikidot.com/interview:2017-04-28-beacon-theatre-new-york-city-ny  │
+├────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+│ Year table, the finding: ▶ Pages, then scroll to April 28              │ https://brucebase.wikidot.com/2017                                                  │
+├────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+│ Year table, guests in On stage                                         │ https://brucebase.wikidot.com/1979                                                  │
+├────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+│ Year table, a line-up with several bands (the rehearsal of 29 January) │ https://brucebase.wikidot.com/2009                                                  │
+└────────────────────────────────────────────────────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────┘
+
+Ctrl+hover a link to one of these pages from another Brucebase page (for example a year table's Event column) to see the
+card, then press Space for the window. On musicbrainz.org, any Springsteen event with a Brucebase link works the same
+way. I didn't look up a specific event before the limit hit.
+
+
+* TODO adjustments
+** DONE On The Tracks
+Done with Phase 13 batch 2 (2026-11-12): =_bbSplitVersion()= — Title, Version, and Take and Date where a
+take names them; what else follows the version stays with it ("V14b radio mix").
+
+"On The Tracks" entries written like "THE HEIST - V2 - take 14" should split additionally into the following columns
+
+#+begin_example
+title
+version
+take
+#+end_example
+
+** DONE history additions
+*** DONE initial
+
+Is it possible to add more features to the HISTORY section
+
+1.)
+
+add prefiltering of revison changes with types like e.g. "ALL", "source changes", "title changes" etc. like what can be
+done on the IP with the checkboxes '<input class="checkbox" type="checkbox" id="rev-type-all" checked="checked">'
+
+2.)
+
+rendering a diff of the tag value differences between page revisions:
+
+#+begin_example
+[Image #12] - IP of "Streets Of Minneapolis" song page after pressing the "History" -> "Compare versions" buttons and comparing rev. 41 and 40; the table '<table class="page-compare">' actually would have the tag information to show a tag value diff
+[Image #11] - POH of "Streets Of Minneapolis" song page doesn't show the tag differences between revision 41 and 40
+#+end_example
+
+3.)
+
+is it possible to add the feature of the IP page of comparing arbitrary revisions with each other like in
+e.g. screenshot [Image #13], between e.g. rev. 43 and 28
+
+4.)
+
+make some rich HTML based mockups
+
+*** DONE answers
+
+1. Should the chips filter the revisions already read (instant, recommended), or ask Wikidot on each click? INSTANT
+2. Several chips at once (recommended), or one at a time? SEVERAL AT ONCE
+3. Tag changes as pills in the list (recommended), or the comment as written? TAG CHANGES AS PILLS IN THE LIST
+4. The Tags strip in the comparison: always shown (recommended), or only when the tags differ? ALWAYS SHOWN
+5. From / To pickers on each row (recommended), or Shift+click a second row? FROM / TO PICKERS ON EACH ROW
+6. When you pick backwards (From 43, To 28): older on the left always (recommended), or in the order picked, like the wiki? OLDER ON THE LEFT ALWAYS
+** DONE act on
+
+act on the section "*** TODO further Brucebase work" in @org/brucebase.org
+
+1.)
+
+Switch to plan mode
+
+2.)
+
+Replace that section with proper new "Phase <Id>" sections
+** DONE venue POHs have NO hover support for e.g Wikipedia links
+
+venue POHs have NO hover support for e.g Wikipedia links, e.g. when hovering https://brucebase.wikidot.com/venue:state-farm-arena-atlanta-ga
+
+** DONE icons missing
+
+On the year-event pages e.g. https://brucebase.wikidot.com/2026#020526 there are icons for an evetn if specific information is included in the detail event link, see [Image #21]
+Cound these icons made available on the "Info & Setlist" POH, see [Image #22]
 

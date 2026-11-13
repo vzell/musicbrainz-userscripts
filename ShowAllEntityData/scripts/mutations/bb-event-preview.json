@@ -4,8 +4,8 @@
         "why": "vzell, 2026-10-24: every event page previews (gig, no gig, recording, rehearsal, interview, no Bruce); Recent changes links an interview page.",
         "edits": [
             {
-                "find": "                test: (u) => /^\\/(?:gig|nogig|recording|rehearsal|interview|nobruce|venue|relation):[^/]+$/.test(u.pathname),",
-                "replace": "                test: (u) => /^\\/(?:gig|venue|relation):[^/]+$/.test(u.pathname),"
+                "find": "|nogig|recording|rehearsal|interview|nobruce|multi|soundcheck|venue|",
+                "replace": "|venue|"
             }
         ],
         "spec": "tests/fixtures/bb-event-preview.spec.js",

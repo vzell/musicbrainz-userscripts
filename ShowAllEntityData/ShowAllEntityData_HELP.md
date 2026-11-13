@@ -842,6 +842,8 @@ back).
 | ⚠️     | Several links to one site in Relationships (once loaded)        | Relationships                               |
 | ⚠️     | Old springsteenlyrics.com address in the annotation             | Annotation                                  |
 | ⚠️     | MB-Event: no Brucebase link (once looked up)                    | Brucebase year: MB-Event                    |
+| ⚠️     | Brucebase entry with a comma after its date                     | Brucebase detail pages: Date                |
+| ⚠️     | Brucebase event page with an "Onstage" tab (once read)          | Brucebase year: Content                     |
 | ⚠️     | Pending edits                                                   | any column                                  |
 | ⚠️     | Live credit without a date                                      | Release tracklist: credit columns           |
 | ❌    | MB-Event: the Brucebase link differs (once looked up)           | Brucebase year: MB-Event                    |
@@ -2852,7 +2854,9 @@ userscript lists that host, so Tampermonkey does not ask first).
   *Preview external links on hover* is on. A Brucebase **gig, venue or
   person** page (`/gig:…`, `/venue:…`, `/relation:…`) shows Brucebase's own
   card and window wherever you are, on MusicBrainz too, while *Preview event,
-  venue and people pages on hover* (📚 Brucebase) is on.
+  venue, people, release and bootleg pages on hover* (📚 Brucebase) is on
+  (the window's *History* section there too; its requests carry none of
+  your cookies).
   On discogs.com, setlist.fm, archive.org and the four Springsteen sites, a
   **MusicBrainz link** in any window opens MusicBrainz's own window there
   too (*Preview linked entities on hover* on); its Live page and editing history are
@@ -3326,7 +3330,15 @@ have (unless you have scrolled the page yourself by then). One
 request reads the whole year, so other dates of that year then cost nothing —
 but Brucebase is slow, and that first request can take several seconds. A
 date the year page has no show for, or a show that did not take place, says
-so.
+so. On Brucebase itself such links preview too (an event's *Info & Setlist*,
+a release's "recorded July 6, 1981"); clicking one still goes to the year
+page as before. The window shows the year page's icons for the show (Photo,
+Setlist, Video, …), each with its name.
+
+In a **Brucebase window** (a venue, a person, a show, a song — on Brucebase
+or from another site) every link opens in the same window too, like in a
+MusicBrainz window: a venue's *Source: Wikipedia* shows the article there.
+**← Back** returns; Ctrl/⌘-click opens a new tab instead.
 
 **On the Springsteen sites themselves** (springsteenlyrics.com, Brucebase,
 jungleland.it, brucespringsteen.it, each with its own support switched on),
@@ -3842,8 +3854,9 @@ song, a show, a venue or a person for Brucebase's own card, on a link to
 another site (Wikipedia, YouTube, archive.org, …) for that site's; **Space**
 opens the window. Nothing else changes on those pages: no buttons, no
 toolbar. It follows the same switches: *Enable on the Brucebase song list*,
-*Preview song pages on the Brucebase song list*, *Preview event, venue and
-people pages on hover* and *Preview external links on hover*.
+*Preview song pages on the Brucebase song list*, *Preview event, venue, people,
+release and bootleg pages on hover*, *Page history in the Brucebase window* and
+*Preview external links on hover*.
 
 </details>
 
@@ -3908,18 +3921,53 @@ entry, with these columns:
   at it to see the name as the wiki writes it. With Ctrl held (or with
   *Show every preview on a plain hover*), resting the pointer on it, or on
   any other link to an event's page on a Brucebase page, shows a card of
-  that page: when it was scheduled, who was on stage, the setlist, the
-  images. **Space** pins it into a window with the whole setlist, the other
-  shows at that venue, the recording and the stories; ← → step through the
-  rows (⚙️ Settings → *📚 Brucebase* → *Preview event, venue and people pages on hover*). In
+  that page: the first sentence of its description, when it was
+  scheduled, who was on stage (or in the studio), the setlist, the images.
+  **Space** pins it into a window that starts with the description (*About
+  this show*), then the people under the tab's own name (*On stage*, *In
+  studio*, *On set*, …), the whole setlist, an interview's playlist (each
+  song with its original artist), the other shows at that venue and,
+  folded, its other lists (*Appearances*, *Cancelled*, …), the recording
+  and the stories; ← → step through the
+  rows (⚙️ Settings → *📚 Brucebase* → *Preview event, venue, people, release and bootleg pages on hover*). In
   the window a click on a section's heading folds it, and a Ctrl+click
   folds or opens all of them at once; the people on stage,
   the songs of the setlist and the other shows are links that open in the
   window (Backspace goes back) and show their card when you point at them;
-  the images are grouped by kind, photos last; a click or **Space** on one
-  opens the viewer at it. A song's window works the
+  the images are grouped by kind, photos last and one group per
+  photographer; each says what its file name tells (*Setlist · #01a ·
+  Handwritten*, *Photo · Cliff Breining · #01*); a click on a group's
+  heading folds it, and a Ctrl+click folds or opens every group (the text
+  sections stay as they are); a click or **Space** on an image opens the
+  viewer at it. The last section, *Tags*, is folded at first: the
+  page's tags sorted into Date, Place, Tour, On the page, Songs, People and
+  so on, each a link to the wiki's list of pages with that tag. A song's window works the
   same way, its performances listed (folded at first) with each show
-  linked.
+  linked. Every Brucebase window, on brucebase.wikidot.com and on every
+  other site, ends with a folded *History* section (✎ in the window's title bar, or **H**, opens it): the
+  page's revisions, newest first — number, date, who, what kind of change
+  (S the text, A the tags, T the title, …) and the comment, a tag change as
+  pills (*+ tour_lohadnk*) — and what the revision you click changed: the
+  tags (added +, removed struck), a changed title or page name, and the old
+  lines on the left and the new ones on the right, the changed words marked,
+  the lines that stayed folded (*Everything* shows them). The chips above
+  the list (*All*, *Source*, *Title*, *Page name*, *Tags*, *Metadata*,
+  *Files*, each with its count) show only revisions of those kinds; several
+  can be on at once. *From* and *To* on each row compare any two revisions,
+  the older always on the left and the revisions between them tinted; a click
+  on a row's text compares it with the one before again. Each comparison
+  scrolls to its first changed line, marked at its left edge. On the wiki's
+  own *History* (signed in), a comparison you open there also scrolls to its
+  first difference. You need not be
+  signed in. Nothing is read until you open the section; then the list (100
+  revisions, *Load 100 more* for older ones), the comparison and, when the
+  text changed, the two texts, one request a second. The ☰ menu of every
+  Brucebase page with our toolbar (Recent changes and the year pages too)
+  has *✎ Page history*, which opens it for the page itself. A story page
+  (the Storyteller words of a show) has no toolbar; its links preview, for
+  example on the wiki's list of every story,
+  `system:page-tags/tag/storyteller`, and its window has the History too
+  (⚙️ Settings → *📚 Brucebase* → *Page history in the Brucebase window*).
 - **MB-Event:** a small glyph for the entry's kind (a microphone for a gig,
   struck through for a show that did not happen, a tape reel for a
   recording, a metronome for a rehearsal, a speech bubble for an interview,
@@ -3969,6 +4017,22 @@ entry, with these columns:
 - **Tour:** the tour, tour leg or band era the entry belongs to, taken from
   the wiki's "Start of …" / "Continuation of …" / "End of …" boxes. Entries
   outside any box, such as those before a year's first box, are empty.
+- **On stage**, **Content**, **Images** and **Start** come from each entry's
+  own page, so they stay empty (—) until that page is read. **▶ Pages** in
+  the On stage header reads the pages of the rows you can see, and then of
+  each row you scroll to, one page a second; press it again (■ Pages) to
+  stop. *On stage* is the line-up (for a recording session, who was in the
+  studio), its band's members folded under ▶ (the
+  filter finds them anyway); *Content* the tabs with something in them
+  (Recording, Storyteller, Media, Eyewitness, News/Memorabilia, …); *Images*
+  the pictures by kind (*Photo 2 · Ticket 4 · News 7*); *Start* the scheduled
+  time. They use the same copy of the page as the hover card: a row whose
+  card you opened in the last 30 days fills in at once, with no request, and
+  a row read here opens its card at once. A row whose page could not be read
+  shows *⟳ not read*; a click asks again (the progress card, opened from
+  ▶ Pages, has *Retry the N failed*). The year listings (`/1985-list`) have
+  the same four columns; there a row's page is found on its year page first
+  (one request for the year).
 - **Soundcheck:** the soundcheck, one song per row.
 - **Setlist:** the set, one song per row, each title written the MusicBrainz
   way ("I'M ON FIRE" reads "I’m on Fire"), the rest as the wiki has it: bold for a tour
@@ -3997,8 +4061,9 @@ you scroll a wide table sideways. ⚙️ Settings → *📚 Brucebase* →
 *Show the Brucebase side bar on the right* moves it to the right, as on
 MusicBrainz. *Collabsable sidebar* in the same section (on by default, and
 separate from the MusicBrainz setting of that name) gives it the same handle
-as the MusicBrainz sidebar: click it (or focus it and press Enter) to show
-or hide the side bar. It then starts hidden while the MusicBrainz setting
+as the MusicBrainz sidebar, at the top of the side bar as there (when you
+scroll down it stays near the top of the window): click it (or focus it and
+press Enter) to show or hide the side bar. It then starts hidden while the MusicBrainz setting
 *Start with sidebar collapsed* is on, and collapses toward its own side.
 When you scroll a table sideways, its first column (Event on a year page) stays in view, lined up
 under the table's heading bar, just right of the side bar.
@@ -4015,6 +4080,161 @@ the start page. That is over sixty pages and about 5,000 rows, so it takes a
 few minutes, and the script asks twice: first because the page count is
 above *Max Page Warning* (50), then, when everything is in, how to show that
 many rows (*Large Dataset Threshold*, 5000).
+
+**The year listings** (`https://brucebase.wikidot.com/2026-list`, …,
+`/1949-64-list`: one line per entry, "1978-03-05 - RECORD PLANT, NEW YORK
+CITY, NY (Recording Session)") come under the same switch. **Events** turns
+this year's list into a table — **Event** (the line, linked to the show on
+the year page: rest the pointer on it for the show's card, Space for its
+window), **Date** (with DD, MM, YYYY, Day, Month), **Venue**, **City**,
+**State**, **Country**, **Note** (the words in brackets: Recording Session,
+Rehearsal, Rescheduled, Early, Late, …) and **Tour** (from the "Start of … /
+End of …" boxes between the lists). **All years** reads every listing named
+in the line of years at the top into one table; the listings are small, so
+that is quicker than the start page's button, but it still asks first
+(more than 50 pages).
+
+**The tag pages.** On the tag cloud (`https://brucebase.wikidot.com/system:page-tags`)
+**Tags** shows every tag in a table — **Tag**, **Family** (Date, Place,
+Tour, Songs, People, …; to tell songs and people from other words the
+script reads the song list and Relations first), **Weight** (how big the
+cloud draws it) and **Pages**, about how many pages carry it, worked out
+from the weight ("≈ 2,963"; the smallest tags read "< 62"). The exact
+number is on the tag's card. About 11,500 tags, so the script asks how to
+show that many rows.
+
+On one tag's page (`…/system:page-tags/tag/storyteller`) **Pages** shows the
+tagged pages as a table without asking the site anything: **Page**,
+**Kind** (gig, story, retail, …) and, for a show, **Date**, **Venue**,
+**City**, **State** and **Country** from its title. **With dates** reads
+the same pages from the wiki's page lists — one request per 250 pages, so
+about 13 for storyteller and 99 for content — and adds **Created**,
+**Updated**, **Size**, **Comments** and **Tags** (one row per tag).
+
+On Pages & Tags (`…/manage:pages-and-tags`, which lists the onstage pages)
+**This page** shows its 100 rows, **All pages** all 35 pages of the list,
+and **Whole wiki** every page of Brucebase with its tags (about 42,700
+pages, some 171 requests, several minutes; the script asks first).
+
+Every link to a tag's page — on the cloud, in these tables, in the tags
+line under each Brucebase page and in a window's Tags — shows on hover how
+many pages carry the tag and the newest six; **Space** opens the tag's
+pages in the window, the first 250 at once and **Load all** for the rest.
+This works on Brucebase itself only.
+
+</details>
+
+<details>
+<summary>Brucebase event, song, venue, person, release and bootleg pages</summary>
+
+A Brucebase page for one event — a gig (`/gig:…`), a show that did not
+happen (`/nogig:…`), a recording session, a rehearsal or an interview —
+gets one button, **Event** (*Show the event*), while ⚙️ Settings →
+*📚 Brucebase* → *Detail pages: events, songs, venues, people, releases and bootlegs as tables*
+is on (the default). It lays the page out like a MusicBrainz release; nothing is
+fetched, everything comes from the page itself:
+
+- **Above the tables:** a line under the heading ("~ Gig at Roxy Theatre
+  (The), West Hollywood, CA (1978-07-07)"); *About this show* (the page's
+  summary) and, folded, the tabs that are words (Eyewitness,
+  News/Memorabilia, the recording's notes, …); *Details* with the **Event**
+  card (type, date and weekday, scheduled time, venue, tour, the year page,
+  running time), the page's **Tags** by family and its **Media** (each
+  YouTube player as a link); and the page's **Pictures**, a chip per kind
+  (Ticket, Setlist, News, …) and one per photographer, each captioned from
+  its file name, with the same layouts and viewer as MusicBrainz's cover
+  art.
+- **The tables**, all open, each filterable and sortable:
+  - **Setlist:** one table for the night, *Set* saying Soundcheck or Show
+    where the page names them; *#* within the set; *Song* in MusicBrainz
+    style, the wiki's capitals on hover; *Segue* for songs played straight
+    on ("→ She's the One"); *Premiere* ★ for a song in bold on the wiki (a
+    premiere or tour debut); *Note* for "(with Tom Morello)" and the like.
+  - **On stage** (*In studio* for a session): name, band, role ("(Guest)").
+  - **Performances**, **Appearances**, **Cancelled**: the other entries at
+    the venue, this page in bold.
+  - **Recording:** the official releases, bootlegs with their labels, the
+    live download.
+  - **Storyteller:** what was said before or during which song.
+- **The wiki's page** stays below under *Brucebase page*, folded: click the
+  heading to read it as it was; its own headings fold too.
+
+**Song pages** (`/song:…`) get **Song** (*Show the song*): Credits (each
+release, who played what), the performances counted by tour (only the
+tours it was played on, with its share of the shows), every performance,
+multiple performances on one date, snippets, the official live downloads,
+and its takes On The Tracks (title, version, and the take and recording date
+where the wiki names them — "THE HEIST - V2 - take 14" reads *The Heist*,
+*V2*, *14* — running time, the bootlegs and releases it is on). Above them: where the song comes from, Released on
+Album, the lyrics and notes (folded), a Song card (how often and when last
+played live, released on, live downloads, takes), its tags, media and
+links. An **On The Tracks** page (`/ott:…`) gets **Versions**: its takes as
+one table. A lyrics page stays as it is.
+
+Pointing at a link to an On The Tracks page or a lyrics page (`/lyrics:…`;
+Ctrl) previews it too, with the song pages' setting. On The Tracks: how many
+versions and how many of them circulate; the window has the versions under
+each song, with the releases each is on, and the page's notes, folded. A
+lyrics page: its first four lines and how many versions it has; the window
+has each version (a live version with its date), the first open, the others
+folded, and the springsteenlyrics.com link(s) last.
+
+**Venue pages** (`/venue:…`) get **Venue**: the performances, cancelled
+shows and appearances at the venue, with its description, region, count,
+map link and pictures above. **People and bands** (`/relation:…`) get
+**Person**: every performance with Bruce Springsteen — the wiki splits long
+lists into pages (Steven Van Zandt's 1,517 shows over six), and all of them
+are read, one request per page — with *As* saying in which band ("As a
+member of The E Street Band"); the count per band; appearances; the
+recordings by song and role; their bands or members; songs co-written with
+Bruce. Their biography, tags and pictures are above. Pointing at a link to
+a person or band (Ctrl) shows the biography's first sentence on the card,
+and the window starts with the whole biography (*About*) and its source. A show in their
+lists links the wiki's "on stage" page for it, which the wiki forwards to
+the show: pointing at it (Ctrl) previews the show itself. An entry the wiki
+writes with a comma after its date ("2015-04-30, Story Chapel, …") is
+still read, and flagged as a ⚠️ WARNING, *Brucebase entry with a comma
+after its date*: the lists are the linked pages' titles, so that page's
+title is the one to fix.
+
+**Releases and playlists** (`/retail:…`, `/playlist:…`) get **Release**
+(*Show the release*): a table per edition and disc (#, song, running time,
+where the track comes from, the page's footnote on it; a box set's films
+each a table of their own), the personnel (who played what, band beside
+name), the related releases, the recording dates of a live release (disc,
+song, the show's date and place, linked), the takes On The Tracks and how
+often each song was played live. Above them: the facts the page states
+(released, label, produced, recorded, mixed, mastered, design, photography),
+the running time of each edition, the overview, the footnotes, the
+history and the Gallery/News press links (folded), tags, media and the
+lyrics' pages, and the artwork typed by its file names (Release cover, Ad
+poster, Article, …). **Bootlegs**
+(`/bootleg:…`) get **Bootleg** (*Show the bootleg*): the tracklist, a table
+per disc with each song's time, and a *Side* column where the page marks the
+sides; the label, catalog number, time, format, source and sound in a
+Bootleg card, the notes, and the Front, Back and Disc artwork. Pointing at
+a link to a release, playlist or bootleg (Ctrl) previews it: its facts and
+tracks; Space opens the window, where a release or playlist also has, folded,
+its On The Tracks versions under each song, its Recording 'Live' Dates under
+each disc (each date linked to its show), its Gallery/News press links, how
+often its songs were played live, its notes and history, and the links to
+its lyrics and media.
+
+A **story page** (`/story:…`: a show's Storyteller words, and the speeches,
+interviews, phone calls, podcasts, DJ sets and eulogies the wiki keeps the
+same way) gets **Story**: its words as tables, one per part of the page —
+**Moment** and **Song** for a show's words ("Intro to" · "Rave On"),
+**Speaker** for an interview or a podcast, and **Words**. Above them the
+Story card: the kind, the date, the show's own page (the script finds it
+with one small request: a story page does not link it; an older story
+named only by date and town lists that day's events), who compiled it, and
+the tags. A story link's window names the kind, the date, how many moments
+or turns the page has and who compiled it, and shows the page's own picture
+(the E Street Radio and DJ-set banners) with its title; the Storyteller
+badge most story pages carry is left out.
+
+The setting is *Detail pages: events, songs, venues, people, releases and bootlegs as tables*. Switched off,
+these pages stay as the wiki shows them, and their links still preview.
 
 </details>
 
@@ -4042,6 +4262,87 @@ Everything is on the page; nothing is fetched.
 </details>
 
 <details>
+<summary>Brucebase stats pages</summary>
+
+The wiki's other statistics pages (`https://brucebase.wikidot.com/stats:…`:
+bootlegs by label, shows with circulating audio, the venues of a state, the
+awards, the song counts of a tour, the performance counts per city, …) get the
+usual toolbar with a button for each kind of content the page has. They come
+with *Enable on the Brucebase song list*; nothing is fetched, the script reads
+the page itself, and the wiki's page stays below, folded under *Brucebase page*.
+
+- **List** turns the page's list of links into one table. The first column
+  links each page and is named after what the list holds (*Song*, *Bootleg*,
+  *Name*, *Event*, *Venue*, or *Page* for a mix); **Kind** says what each
+  link is when the list mixes them (a gig, a rehearsal, a venue); a show's or
+  a venue's title is split into **Date** (with its day, month and year
+  columns), **Venue**, **City**, **State** and **Country**; **Tab** is the tab
+  of the page it is listed under (the letter for an A–Z list). The wiki's
+  sort forms are turned round — "Left Foot (The)" reads "The Left Foot",
+  "Band, The" reads "The Band" — and song titles follow *Titles in MusicBrainz
+  style*; resting the pointer shows the wiki's own text.
+- **Tables** shows the page's own tables, one sub-table per tab or heading,
+  the first one open. A row that names the rows below it (an awards ceremony,
+  a letter of the alphabet) becomes a **Section** column.
+
+A page with both kinds of content (songs by album) has both buttons; a second
+press loads the page again for the other view.
+
+- **Tours**, on a song's tour page (`stats:<song>-tour`): one row per tour —
+  how often the song was **Played**, the tour's own number of shows (**Tour
+  shows**), the **Share** with a bar, and the page's **Note** ("Excl. the
+  first leg of …") — every tour, the ones it was not played on too, then the
+  other known shows and the public tour rehearsals. A song never played on a
+  tour has nothing to show and keeps the wiki's page.
+- **Sessions**, on an album's studio sessions page
+  (`stats:<album>-studio-sessions`, and each of its parts on its own): a
+  sub-table per section and tab (*Released › Born To Run*, *Additional
+  Recordings › Unreleased*, *Details › Version History*, *Details ›
+  Timeline*, the potential album sequences), all open. Version History is
+  one table of every take, its name split into **Song**, **Version**,
+  **Take** and **Date** ("JUNGLELAND - V1 (August 1, 1974)"); what else the
+  wiki says about a take ("radio mix", "[Demo]") stays with the version, and
+  the wiki's note under each song is a **Note** column on each of its takes,
+  a paragraph per line, folded to its first line.
+  Above them the album and its release date, label, credits and overview.
+  It comes with *Detail pages*; with that off the page gets
+  **Tables**.
+
+- **Releases**, on a discography page (`stats:discography-album`, `-retail`,
+  `-single`, the specials, `-video`): one row per release the page lists —
+  **Year**, the **Release** (a single's song page), its **Subtitle**, the
+  **Cover**, **Released** (as a date where the wiki's allows, with its day,
+  month and year columns), **Label**, and the **Section** and cover-strip
+  **Tab** it is under. Resting the pointer on a cover shows it big; a click
+  opens the viewer, and Shift+← → steps through the rows. The pages without
+  a list of releases (the playlists, the main discography page) keep
+  **List**.
+- **Songs**, on the songs registered at the Library of Congress
+  (`stats:songs-registered`): every **Title**, with its **Song page** where
+  the wiki's song list has it — one request, for that list — and the
+  registration record above.
+
+The overview pages, the full song list (`stats:songs-list`; `stats:songs` has
+the table) and the studio-session parts that are only text stay as the wiki
+shows them, and their links still preview.
+
+Links to three kinds of these pages preview (Ctrl): a song's tour page with
+the song pages' setting (*Preview song pages on the Brucebase song list*) —
+how often the song was played on tour and on how many tours, the other
+shows, and in the window every tour with its count; an album's studio
+sessions and a discography page with *Preview event, venue, people, release
+and bootleg pages on hover* — the sessions' release date, label and album,
+and in the window the overview, the credits and each table, folded, with its
+first 100 rows ("N more rows on the page" after them); a discography's
+number of releases and their years, and in the window the releases under
+the page's own headings, each with its cover, year, release date and label,
+the covers also as the window's pictures. The other stats pages (a tour's
+song counts and shows, the lists, the menus, the playlist discographies)
+have no preview.
+
+</details>
+
+<details>
 <summary>Brucebase Recent changes</summary>
 
 `https://brucebase.wikidot.com/system:recent-changes` is the wiki's log of
@@ -4053,7 +4354,9 @@ buttons always load 200 per page (the most the site offers), and the site's
 The site's form still decides **what** is loaded: untick *ALL* and tick, say,
 *new pages*, or pick a category, before pressing a button. The columns:
 
-- **Page:** the page's title, linked to it.
+- **Page:** the page's title, linked to it, and a small **✎** button: what
+  that revision changed, in the window — the page's *History* opened on this
+  revision against the one before it, scrolled to the first changed line.
 - **Category:** the part of the page's name before the colon (*gig*, *song*,
   *gallery*, …); empty for a page in no category.
 - **Flags:** what changed, one row per flag, the site's letter and its
@@ -4650,7 +4953,7 @@ that site's own switch in ⚙️ Settings:
 | 🌴 jungleland.it         | *Preview artwork pages on the jungleland.it list*            | the uploader and the scans (front, back, discs, booklet)                                                                                                    |
 | 💿 brucespringsteen.it   | *Preview record pages in the brucespringsteen.it database*   | the tracklist, the show each track comes from, the notes, the photo; on a record page also its songs (lyric versions) and shows (setlist, the records it is on) |
 | 📚 Brucebase             | *Preview song pages on the Brucebase song list*              | the album it comes from, how often and when last it was played live, releases, the graph and lyric sheets                                                   |
-| 📚 Brucebase             | *Preview event, venue and people pages on hover*             | when it was scheduled, who was on stage, the setlist, the images; Space: the whole setlist, the other shows there, the recording                            |
+| 📚 Brucebase             | *Preview event, venue, people, release and bootleg pages on hover* | when it was scheduled, who was on stage, the setlist, the images; a release's or bootleg's facts and tracks; Space: the whole setlist, the other shows there, the recording |
 
 **Rest the pointer on a title** for a moment and a card opens beside it. If
 you would rather move the pointer across the table without opening cards or
@@ -4684,8 +4987,12 @@ type into the filter box stays in the filter box. In the window:
   release page's Cover art: zoom, ← → through every image of the page, grid,
   download; **Esc** returns to the window). Ctrl-click opens the image in a
   new tab instead. On Brucebase it also has the credits, the studio
-  versions and the lyrics, and lists the releases one per line, the live
-  releases apart. A **springsteenlyrics.com song** has a window of its own,
+  versions and the lyrics (each version followed by its "Visit
+  SpringsteenLyrics.com …" link), and lists the releases one per line, the
+  live releases apart; the song's intro under the title keeps its links (the
+  writers, the original artist, the album), the card shows it as words. A
+  link to the page you are on that only adds an `#anchor` (a jump within the
+  page) shows no preview. A **springsteenlyrics.com song** has a window of its own,
   described next.
 
 <details>

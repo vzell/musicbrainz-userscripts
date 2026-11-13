@@ -1,0 +1,397 @@
+<title>Brucebase Year Columns</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one reading column of "liner notes" sections — the year table with the new columns live, what it costs, the questions. */
+:root {
+    --paper: #fbf8f1;
+    --sheet: #fffdf8;
+    --ink: #2b2622;
+    --rule: #d9cfbd;
+    --muted: #7a6d5c;
+    --accent: #2f5f9e;
+    --ok: #3f7a3a;
+    --warn: #9a6a00;
+    --alert: #9b2218;
+    --tint: #f3ecdd;
+    --newcol: #eef4ea;
+    --newhead: #e2edd9;
+    --rowhover: #fbf3e2;
+    --hatch: #efe6d4;
+    --field: #ffffff;
+    --shadow: 0 10px 24px -8px rgba(60, 40, 20, .35);
+    --serif: Georgia, "Times New Roman", serif;
+    --sans: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    color-scheme: light;
+}
+body { background: var(--paper); color: var(--ink); font: 15px/1.5 var(--serif); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 28px 64px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: grid; gap: 28px; }
+h1 { font-size: 30px; margin: 0; font-weight: normal; text-wrap: balance; }
+h2 { font-size: 21px; margin: 0; font-weight: normal; text-wrap: balance; }
+h3 { font-size: 16px; margin: 0; }
+p { margin: 0; max-width: 74ch; }
+a { color: var(--accent); }
+.label, .pill, button, .chip, .seg-legend { font: 600 11px/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; }
+.label { color: var(--muted); }
+code, .mono { font-family: var(--mono); font-size: 12.5px; }
+header { display: grid; gap: 10px; }
+.env { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+section.mock { background: var(--sheet); border: 1px solid var(--rule); border-radius: 4px; box-shadow: var(--shadow);
+    padding: 20px; display: grid; gap: 14px; min-width: 0; }
+section.mock > * { min-width: 0; }
+.sechead { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: baseline; }
+.sechead .id { font: 600 12px/1 var(--mono); color: var(--muted); }
+.facts { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; margin: 0; }
+.facts dt { font-style: italic; color: var(--muted); }
+.facts dd { margin: 0; min-width: 0; }
+.pill { display: inline-block; padding: 4px 7px; border-radius: 3px; border: 1px solid currentColor; }
+.pill.ok { color: var(--ok); } .pill.run { color: var(--accent); } .pill.warn { color: var(--warn); } .pill.alert { color: var(--alert); } .pill.idle { color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--rule); background: var(--paper); color: var(--ink); border-radius: 3px; padding: 6px 8px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.chip:focus-visible, button:focus-visible, input:focus-visible, label:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+button { border: 1px solid var(--rule); background: var(--sheet); color: var(--ink); border-radius: 3px; padding: 7px 10px; cursor: pointer; }
+button.primary { border-color: var(--accent); color: var(--accent); }
+button.danger { border-color: var(--alert); color: var(--alert); }
+button:hover { border-color: var(--ink); }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.toolbar input[type="search"] { font: 14px var(--serif); padding: 6px 8px; border: 1px solid var(--rule); border-radius: 3px; background: var(--field); color: var(--ink); width: 220px; max-width: 100%; }
+.modes { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 14px; }
+.modes label { display: flex; gap: 6px; align-items: baseline; cursor: pointer; }
+.count { font: 12px var(--mono); color: var(--muted); }
+/* the segmented progress bar: from the store (hatched), read, failed, queued */
+.segbar { display: flex; height: 8px; border: 1px solid var(--rule); border-radius: 2px; overflow: hidden; background: var(--tint); }
+.segbar i { display: block; height: 100%; transition: width .2s; }
+.segbar .s-store { background: repeating-linear-gradient(45deg, var(--muted), var(--muted) 2px, var(--hatch) 2px, var(--hatch) 5px); }
+.segbar .s-read { background: var(--ok); }
+.segbar .s-fail { background: var(--alert); }
+.segbar .s-queue { background: var(--accent); opacity: .45; }
+.seg-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--muted); font-weight: 500; letter-spacing: .04em; text-transform: none; font-size: 12px; }
+.seg-legend b { font-family: var(--mono); font-weight: 600; color: var(--ink); }
+.seg-legend .f b { color: var(--alert); }
+.tblbox { overflow: auto; border: 1px solid var(--rule); border-radius: 3px; max-height: 480px; }
+table.tbl { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+table.tbl th { position: sticky; top: 0; z-index: 1; background: var(--tint); text-align: left; font: 600 11px/1.2 var(--sans); letter-spacing: .06em;
+    text-transform: uppercase; padding: 7px 9px; border-bottom: 1px solid var(--rule); cursor: pointer; white-space: nowrap; user-select: none; }
+table.tbl th.new { background: var(--newhead); }
+table.tbl th[aria-sort="ascending"]::after { content: " ▲"; } table.tbl th[aria-sort="descending"]::after { content: " ▼"; }
+table.tbl td { padding: 5px 9px; border-bottom: 1px solid var(--tint); vertical-align: top; }
+table.tbl td.new { background: var(--newcol); }
+table.tbl tr:hover td { background: var(--rowhover); }
+td.date { font-family: var(--mono); font-size: 12.5px; white-space: nowrap; }
+.cold { color: var(--muted); border-bottom: 1px dashed var(--rule); }
+.reading { color: var(--accent); font: 12px var(--sans); }
+.stored { background-image: repeating-linear-gradient(45deg, transparent, transparent 4px, var(--hatch) 4px, var(--hatch) 6px); }
+button.retry { color: var(--alert); border-color: var(--alert); padding: 2px 6px; font-size: 10px; }
+.stage { display: grid; gap: 2px; }
+.stage ul { margin: 0; padding-left: 16px; color: var(--muted); }
+.stage .tg { border: 0; padding: 0 4px 0 0; background: none; color: var(--muted); font-size: 11px; }
+.tags { display: flex; flex-wrap: wrap; gap: 3px; }
+.tags span { font: 11px var(--sans); border: 1px solid var(--rule); border-radius: 3px; padding: 1px 5px; background: var(--sheet); white-space: nowrap; }
+.note { border-left: 3px solid var(--rule); padding: 4px 0 4px 12px; color: var(--muted); font-size: 14px; }
+.q { border: 1px solid var(--rule); border-radius: 3px; padding: 12px; display: grid; gap: 8px; background: var(--paper); }
+.q h3 { font-weight: normal; font-size: 16px; }
+.q label { display: flex; gap: 8px; align-items: baseline; cursor: pointer; }
+.q .rec { color: var(--ok); font: 600 10px/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; }
+textarea#answers { width: 100%; min-height: 150px; font: 12.5px/1.45 var(--mono); border: 1px solid var(--rule); border-radius: 3px; padding: 8px; background: var(--field); color: var(--ink); box-sizing: border-box; }
+.status { font: 12px var(--sans); color: var(--ok); min-height: 1em; }
+@media (max-width: 560px) { .facts { grid-template-columns: 1fr; } .facts dt { margin-top: 6px; } h1 { font-size: 24px; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+<header>
+    <span class="label">ShowAllEntityData · feature/bb-overhaul · Phase 14 mockup</span>
+    <h1>Brucebase year columns</h1>
+    <p>The year table (<code>bb-year</code>) has each entry's date, place, type and tour from the year page. Everything else lives on the event's own page: who was on stage, which tabs have content (a recording, Storyteller, media, eyewitness reports), the pictures. This mockup adds those columns to the real <span id="yearWord"></span> table and shows them filling in, one event page a second, the way the link previews read the same pages. The new columns are green.</p>
+    <div class="env" id="env"></div>
+</header>
+
+<section class="mock" aria-labelledby="m1h">
+    <div class="sechead"><span class="id">1</span><h2 id="m1h">The year table, with the event-page columns</h2><span class="pill idle" id="runPill">Idle</span></div>
+    <div class="toolbar">
+        <button class="primary" id="go" type="button">▶ Read the event pages</button>
+        <button id="retryAll" type="button" hidden>⟳ Retry the 0 failed</button>
+        <input type="search" id="flt" placeholder="Filter the rows (try “Knack”, “Recording”)" aria-label="Filter the rows">
+        <span class="count" id="shown"></span>
+    </div>
+    <div class="modes" role="radiogroup" aria-label="What gets read">
+        <span class="label">Read</span>
+        <label><input type="radio" name="mode" id="modeView" value="view" checked> the rows as they come into view</label>
+        <label><input type="radio" name="mode" id="modeAll" value="all"> the whole year</label>
+        <label><input type="radio" name="mode" id="modeHover" value="hover"> only a row I point at</label>
+    </div>
+    <div class="chips" role="group" aria-label="Columns">
+        <span class="label" style="align-self:center">Columns</span>
+    </div>
+    <div class="segbar" aria-hidden="true"><i class="s-store"></i><i class="s-read"></i><i class="s-fail"></i><i class="s-queue"></i></div>
+    <div class="seg-legend" id="legend" aria-live="polite"></div>
+    <div class="tblbox" id="box"><table class="tbl" id="tbl"><thead></thead><tbody></tbody></table></div>
+    <p class="note">Shown four times faster than the real pace of one request a second. The hatched rows were already read by a hover card or a window in the last 30 days: they fill in at once, with no request. The 7th row fails on its first read, to show a failure; its ⟳ asks again.</p>
+</section>
+
+<section class="mock" aria-labelledby="m2h">
+    <div class="sechead"><span class="id">2</span><h2 id="m2h">What it costs</h2></div>
+    <dl class="facts" id="cost"></dl>
+</section>
+
+<section class="mock" aria-labelledby="m3h">
+    <div class="sechead"><span class="id">3</span><h2 id="m3h">Questions</h2></div>
+    <p>Pick an answer for each; the recommended one is marked and preselected. Copy the answers into the chat.</p>
+    <div id="qs" style="display:grid;gap:10px"></div>
+    <textarea id="answers" readonly aria-label="Your answers"></textarea>
+    <div class="toolbar"><button class="primary" id="copy" type="button">Copy answers</button><span class="status" id="copyStatus" role="status"></span></div>
+</section>
+</div>
+
+<script>
+const D = /*DATA*/null;
+const $ = s => document.querySelector(s);
+const el = (tag, attrs = {}, kids = []) => {
+    const n = document.createElement(tag);
+    Object.entries(attrs).forEach(([k, v]) => { if (k === 'text') n.textContent = v; else if (k.startsWith('on')) n.addEventListener(k.slice(2), v); else n.setAttribute(k, v); });
+    [].concat(kids).forEach(k => k != null && n.append(k));
+    return n;
+};
+const BB = 'https://brucebase.wikidot.com';
+const TICK = 250;          // the real pace: 1000 ms
+$('#env').textContent = `Survey: ${D.rows.length} event pages of ${D.year}. Env: ${D.env}`;
+$('#yearWord').textContent = D.year;
+
+// --- rows and their state: cold | stored | queued | loading | done | failed
+const rows = D.rows.map((r, i) => ({ ...r, i, state: i % 12 === 5 ? 'stored' : 'cold', failOnce: i === 6 }));
+const COLS = [
+    { k: 'date', h: 'Date' }, { k: 'event', h: 'Event' }, { k: 'type', h: 'Type' }, { k: 'city', h: 'City' }, { k: 'state', h: 'State' },
+    { k: 'stage', h: 'On stage', nw: true }, { k: 'content', h: 'Content', nw: true }, { k: 'images', h: 'Images', nw: true }, { k: 'start', h: 'Start', nw: true },
+];
+const shownCols = new Set(['stage', 'content', 'images', 'start']);
+const chipBox = document.querySelector('.chips');
+COLS.filter(c => c.nw).forEach((c) => {
+    const b = el('button', { class: 'chip', type: 'button', 'aria-pressed': 'true', text: c.h, onclick: () => {
+        const on = b.getAttribute('aria-pressed') !== 'true';
+        b.setAttribute('aria-pressed', String(on));
+        if (on) shownCols.add(c.k); else shownCols.delete(c.k);
+        render();
+    } });
+    chipBox.append(b);
+});
+
+let sortKey = 'date';
+let sortDir = 1;
+let running = false;
+const queue = [];
+
+const known = r => r.state === 'stored' || r.state === 'done';
+const textOf = (r, k) => {
+    if (k === 'event') return r.venue;
+    if (['stage', 'content', 'images', 'start'].includes(k)) {
+        if (!known(r)) return '';
+        if (k === 'content') return r.content.join(' ');
+        if (k === 'images') return Object.entries(r.images).map(([a, n]) => `${a} ${n}`).join(' ');
+        return r[k];
+    }
+    return r[k] || '';
+};
+
+/** A cell of one of the new columns, by the row's state. */
+function newCell(r, k) {
+    const td = el('td', { class: 'new' + (r.state === 'stored' ? ' stored' : '') });
+    if (r.state === 'cold' || r.state === 'queued') { td.append(el('span', { class: 'cold', text: r.state === 'queued' ? 'queued' : '—' })); return td; }
+    if (r.state === 'loading') { td.append(el('span', { class: 'reading', text: 'reading…' })); return td; }
+    if (r.state === 'failed') {
+        if (k === 'stage') td.append(el('button', { class: 'retry', type: 'button', text: '⟳ not read', title: 'HTTP 503 from Brucebase. Click to ask again.', onclick: (e) => { e.stopPropagation(); enqueue(r, true); } }));
+        return td;
+    }
+    if (k === 'stage') {
+        if (!r.stage) return td;
+        const m = r.stage.match(/^(.*?)\s*\((.*)\)\s*$/);
+        const head = m ? m[1] : r.stage;
+        const members = m ? m[2].split(/,\s*/) : [];
+        const box = el('div', { class: 'stage' });
+        const line = el('div', {}, [head]);
+        box.append(line);
+        if (members.length) {
+            const ul = el('ul', {}, members.map(x => el('li', { text: x })));
+            ul.hidden = true;
+            const tg = el('button', { class: 'tg', type: 'button', text: `▶ ${members.length}`, 'aria-expanded': 'false', onclick: (e) => {
+                e.stopPropagation(); ul.hidden = !ul.hidden; tg.textContent = `${ul.hidden ? '▶' : '▼'} ${members.length}`; tg.setAttribute('aria-expanded', String(!ul.hidden));
+            } });
+            line.prepend(tg);
+            box.append(ul);
+        }
+        td.append(box);
+    } else if (k === 'content') {
+        td.append(el('div', { class: 'tags' }, r.content.map(t => el('span', { text: t }))));
+    } else if (k === 'images') {
+        td.textContent = Object.entries(r.images).map(([a, n]) => `${a} ${n}`).join(' · ');
+    } else {
+        td.textContent = r.start;
+        td.style.fontFamily = 'var(--mono)';
+    }
+    return td;
+}
+
+const io = new IntersectionObserver((entries) => {
+    if (!running || mode() !== 'view') return;
+    entries.forEach((en) => { if (en.isIntersecting) { const r = rows[+en.target.dataset.i]; if (r.state === 'cold') enqueue(r); } });
+}, { root: $('#box'), rootMargin: '40px' });
+
+/** Draws the table: headers, the rows shown (filter, sort). */
+function render() {
+    const cols = COLS.filter(c => !c.nw || shownCols.has(c.k));
+    const thead = $('#tbl thead');
+    thead.replaceChildren(el('tr', {}, cols.map(c => {
+        const th = el('th', { class: c.nw ? 'new' : '', scope: 'col', tabindex: '0', text: c.h, onclick: () => { sortDir = sortKey === c.k ? -sortDir : 1; sortKey = c.k; render(); } });
+        if (sortKey === c.k) th.setAttribute('aria-sort', sortDir > 0 ? 'ascending' : 'descending');
+        return th;
+    })));
+    const q = $('#flt').value.trim().toLowerCase();
+    const list = rows.filter(r => !q || cols.some(c => textOf(r, c.k).toLowerCase().includes(q)))
+        .sort((a, b) => sortDir * textOf(a, sortKey).localeCompare(textOf(b, sortKey)) || a.i - b.i);
+    io.disconnect();
+    const tb = $('#tbl tbody');
+    tb.replaceChildren(...list.map((r) => {
+        const tr = el('tr', { 'data-i': String(r.i) });
+        cols.forEach((c) => {
+            if (c.nw) { tr.append(newCell(r, c.k)); return; }
+            if (c.k === 'event') tr.append(el('td', {}, el('a', { href: r.url, target: '_blank', rel: 'noopener', text: r.venue })));
+            else tr.append(el('td', { class: c.k === 'date' ? 'date' : '', text: r[c.k] }));
+        });
+        tr.addEventListener('mouseenter', () => { if (mode() === 'hover' && (r.state === 'cold')) { running = true; enqueue(r); } });
+        io.observe(tr);
+        return tr;
+    }));
+    $('#shown').textContent = `${list.length} of ${rows.length} rows`;
+    status();
+}
+
+const mode = () => document.querySelector('input[name="mode"]:checked').value;
+
+/** Queues a row (a failed one again on its ⟳). */
+function enqueue(r, again = false) {
+    if (r.state !== 'cold' && !(again && r.state === 'failed')) return;
+    r.state = 'queued';
+    queue.push(r);
+    paint(r);
+    pump();
+}
+
+let timer = null;
+/** One request a tick: the next queued row is read (or, once, fails). */
+function pump() {
+    if (timer) return;
+    timer = setInterval(() => {
+        const r = queue.shift();
+        if (!r) { clearInterval(timer); timer = null; if (mode() !== 'view') running = false; status(); return; }
+        r.state = 'loading';
+        paint(r);
+        setTimeout(() => {
+            if (r.failOnce) { r.failOnce = false; r.state = 'failed'; } else r.state = 'done';
+            paint(r);
+            status();
+        }, TICK * .8);
+    }, TICK);
+    status();
+}
+
+/** Repaints one row's new cells where it is shown. */
+function paint(r) {
+    const tr = document.querySelector(`#tbl tbody tr[data-i="${r.i}"]`);
+    if (!tr) return;
+    const cols = COLS.filter(c => !c.nw || shownCols.has(c.k));
+    cols.forEach((c, j) => { if (c.nw) tr.children[j].replaceWith(newCell(r, c.k)); });
+}
+
+/** The pill, the bar, the counts, the buttons. */
+function status() {
+    const n = rows.length;
+    const c = s => rows.filter(r => r.state === s).length;
+    const st = c('stored'); const rd = c('done'); const fl = c('failed'); const qd = c('queued') + c('loading'); const cold = c('cold');
+    const w = x => `${(100 * x / n).toFixed(2)}%`;
+    const bar = document.querySelectorAll('.segbar i');
+    [st, rd, fl, qd].forEach((x, i) => { bar[i].style.width = w(x); });
+    const left = qd + (mode() === 'all' && running ? cold : 0);
+    $('#legend').replaceChildren(
+        el('span', {}, [el('b', { text: String(st) }), ' from the previews\' store']),
+        el('span', {}, [el('b', { text: String(rd) }), ' read']),
+        el('span', { class: fl ? 'f' : '' }, [el('b', { text: String(fl) }), ' failed']),
+        el('span', {}, [el('b', { text: String(qd) }), ' queued']),
+        el('span', {}, [el('b', { text: String(cold) }), ' not read']),
+        el('span', {}, left ? `about ${Math.ceil(left / 60)} min left at one request a second` : ''),
+    );
+    const pill = $('#runPill');
+    pill.className = 'pill ' + (timer ? 'run' : fl ? 'warn' : rd ? 'ok' : 'idle');
+    pill.textContent = timer ? 'Running' : fl ? 'Done with errors' : rd ? 'Done' : 'Idle';
+    $('#go').textContent = timer || (running && mode() === 'view') ? `■ Stop · ${rd + st} / ${n}` : '▶ Read the event pages';
+    $('#go').classList.toggle('danger', !!(timer || (running && mode() === 'view')));
+    $('#retryAll').hidden = !fl;
+    $('#retryAll').textContent = `⟳ Retry the ${fl} failed`;
+}
+
+$('#go').addEventListener('click', () => {
+    if (timer || running) {
+        running = false;
+        queue.splice(0).forEach((r) => { r.state = 'cold'; paint(r); });
+        clearInterval(timer); timer = null; status();
+        return;
+    }
+    running = true;
+    if (mode() === 'all') rows.filter(r => r.state === 'cold').forEach(r => enqueue(r));
+    else render();
+    status();
+});
+$('#retryAll').addEventListener('click', () => rows.filter(r => r.state === 'failed').forEach(r => enqueue(r, true)));
+$('#flt').addEventListener('input', render);
+document.querySelectorAll('input[name="mode"]').forEach(x => x.addEventListener('change', () => { status(); }));
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && document.activeElement === $('#flt')) { $('#flt').value = ''; render(); } });
+render();
+
+// --- cost
+(function () {
+    const kb = D.rows.map(r => r.kb).sort((a, b) => a - b);
+    const sum = kb.reduce((a, b) => a + b, 0);
+    const facts = [
+        ['A request', 'One GET of the event\'s page per row, after the link previews\' rate slot: one a second, the same pace and the same queue as the hover cards.'],
+        ['A page', `${kb[Math.floor(kb.length / 2)]} KB in the middle of ${D.year}'s ${kb.length} pages, the largest ${kb[kb.length - 1]} KB.`],
+        [`The whole of ${D.year}`, `${kb.length} requests, ${(sum / 1024).toFixed(1)} MB, about ${Math.round(kb.length / 60)} minutes. The busiest year, ${D.years.max[1]}, has ${D.years.max[0]} entries (about ${Math.round(D.years.max[0] / 60)} minutes).`],
+        ['Every year', `${D.years.entries.toLocaleString('en')} entries in ${D.years.years} year pages: about ${Math.round(D.years.entries / 60)} minutes for all of them. Read as rows come into view, a reader of one year asks only for what is scrolled past.`],
+        ['Kept', '30 days, in the previews\' own store, shared both ways: a row whose card or window was opened costs nothing here, and a row read here opens its card at once. Bumping the parser\'s version reads them again.'],
+        ['The table', 'Each page that arrives fills its row in the table and in the rows behind it (sorting, filtering and Save keep it). While pages arrive the filter runs again at most once a second; on a year table that is a short pause, to be measured in the build against today\'s render.'],
+        ['Not touched', 'Nothing changes for MusicBrainz, nor for the year table before the button: no request is made until you press it (or point at a row in the third way).'],
+    ];
+    $('#cost').replaceChildren(...facts.flatMap(([k, v]) => [el('dt', { text: k }), el('dd', { text: v })]));
+})();
+
+// --- questions
+const QS = [
+    ['Which columns from the event page?', ['On stage, Content, Images and Start', 'On stage and Content only', 'All four and Tags (the page tags, mostly the wiki\'s song shortcodes: "btn", "pian78")', 'Something else (say which)'], 0],
+    ['When are the event pages read?', ['After a press of the button, the rows as they come into view (one a second)', 'After a press, the whole year at once (about 3 minutes for 1978)', 'Never from the table: only a row I point at (its hover card reads it, the row fills in)'], 0],
+    ['A row that failed (HTTP 503, timeout)?', ['⟳ in its cell asks again; "Retry the N failed" above the table', 'Retry once by itself after 30 s, then ⟳', 'Leave it empty'], 0],
+    ['On stage: the whole line-up, or only what differs from Bruce and the band?', ['The whole line-up, its members folded (▶ 6); the filter finds every name', 'Only guests and other bands (112 of 1978\'s 121 line-ups are Bruce Springsteen and The E Street Band)'], 0],
+    ['The year listings (bb-year-list, one year or every year, 5,010 entries)?', ['The same columns, read as rows come into view', 'The year pages only'], 0],
+];
+(function () {
+    const host = $('#qs');
+    const out = $('#answers');
+    const sel = QS.map(q => q[2]);
+    const write = () => { out.value = QS.map((q, i) => `${i + 1}. ${q[0]} [${q[1][sel[i]]}]`).join('\n'); };
+    QS.forEach((q, i) => {
+        const box = el('div', { class: 'q' }, el('h3', { text: `${i + 1}. ${q[0]}` }));
+        q[1].forEach((opt, j) => {
+            const id = `q${i}o${j}`;
+            const input = el('input', { type: 'radio', name: `q${i}`, id, value: String(j) });
+            if (j === q[2]) input.checked = true;
+            input.addEventListener('change', () => { sel[i] = j; write(); });
+            box.append(el('label', { for: id }, [input, el('span', { text: opt }), j === q[2] ? el('span', { class: 'rec', text: 'Recommended' }) : null]));
+        });
+        host.append(box);
+    });
+    write();
+    $('#copy').addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(out.value); $('#copyStatus').textContent = 'Copied.'; }
+        catch (e) { out.focus(); out.select(); $('#copyStatus').textContent = 'Selected: press Ctrl+C to copy.'; }
+    });
+})();
+</script>

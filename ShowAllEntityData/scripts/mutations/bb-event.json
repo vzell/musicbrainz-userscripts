@@ -1,0 +1,158 @@
+[
+    {
+        "name": "sa_bb_detail_pages does not gate bb-event",
+        "why": "Off, an event page is bb-page's (link previews only).",
+        "edits": [
+            {
+                "find": "            match: (path) => _BB_EVENT_PATH_RE.test(path) && Lib.settings.sa_bb_detail_pages !== false,\n",
+                "replace": "            match: (path) => _BB_EVENT_PATH_RE.test(path),\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event.spec.js",
+        "grep": "sa_bb_detail_pages off",
+        "expect": "fail"
+    },
+    {
+        "name": "the page copy keeps its scripts",
+        "why": "A script holding </script> (the injected userscript) breaks the re-parse: every tab after the first falls out of the tabview.",
+        "edits": [
+            {
+                "find": "            root.querySelectorAll('script, style, noscript, template').forEach(n => n.remove());\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-event.spec.js",
+        "grep": "counted from the page's own tabs",
+        "expect": "fail"
+    },
+    {
+        "name": "a bold song is no premiere",
+        "why": "Answer to the mockup: bold on Brucebase is a premiere or tour debut.",
+        "edits": [
+            {
+                "find": "                    premiere: !!li.querySelector('strong a[href*=\"/song:\"], a[href*=\"/song:\"] strong'),\n",
+                "replace": "                    premiere: false,\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event.spec.js",
+        "grep": "counted from the page's own tabs",
+        "expect": "fail"
+    },
+    {
+        "name": "a set label is not read",
+        "why": "Answer 1: one table, the set a column (Soundcheck / Show).",
+        "edits": [
+            {
+                "find": "                if (strong && _dpText(strong.textContent) === _dpText(el.textContent) && _dpText(el.textContent)) set = _dpText(strong.textContent);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-event.spec.js",
+        "grep": "a soundcheck",
+        "expect": "fail"
+    },
+    {
+        "name": "a band's members lose their band",
+        "why": "On Stage nests members under the band.",
+        "edits": [
+            {
+                "find": "            if (name) rows.push({ name, href, band: band ? band.name : '', bandHref: band ? band.href : '', role });\n",
+                "replace": "            if (name) rows.push({ name, href, band: '', bandHref: band ? band.href : '', role });\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event.spec.js",
+        "grep": "counted from the page's own tabs",
+        "expect": "fail"
+    },
+    {
+        "name": "the page's own entry is not marked",
+        "why": "Performances lists this page too: bold, '(this page)', not linked.",
+        "edits": [
+            {
+                "find": "type: _BB_ENTRY_KINDS[cat] || cat, self: !!path && path === here,\n",
+                "replace": "type: _BB_ENTRY_KINDS[cat] || cat, self: false,\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event.spec.js",
+        "grep": "counted from the page's own tabs|a no gig",
+        "expect": "fail"
+    },
+    {
+        "name": "a bootleg's label is not read",
+        "why": "The label is the <sup> after the bootleg's link: (Crystal Cat).",
+        "edits": [
+            {
+                "find": "            if (next && next.tagName === 'SUP') label = _dpText(next.textContent).replace(/^\\(|\\)$/g, '');\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-event.spec.js",
+        "grep": "counted from the page's own tabs",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-event's sub-tables start collapsed",
+        "why": "features.openSubTables: a detail page's tables are its content.",
+        "edits": [
+            {
+                "find": "        return o === true || (o === 'first' && index === 0) || (Array.isArray(o) && o.includes(name));\n",
+                "replace": "        return false;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event.spec.js",
+        "grep": "counted from the page's own tabs",
+        "expect": "fail"
+    },
+    {
+        "name": "the Scheduled line with '|' is not read",
+        "why": "\"Scheduled: 21:00 | Local Start Time …\" (the Roxy gig).",
+        "edits": [
+            {
+                "find": "        const m = String(text).match(/Scheduled:\\s*([^\\s|]+)\\s*(?:\\|\\s*)?(?:Local\\s+)?Start Time\\s+(\\S+)\\s*\\/\\s*End Time\\s+(\\S+)/i);\n",
+                "replace": "        const m = String(text).match(/Scheduled:\\s*(\\S+)(?:\\s+Local)?\\s+Start Time\\s+(\\S+)\\s*\\/\\s*End Time\\s+(\\S+)/i);\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event.spec.js",
+        "grep": "the head:",
+        "expect": "fail"
+    },
+    {
+        "name": "the wiki's page gets no heading of its own",
+        "why": "Answer 5: the wiki's page below, folded, under its own h2.",
+        "edits": [
+            {
+                "find": "        content.before(h2, table, native);\n        Lib.debug('init', `applyBbDetailToTable: empty ${kind} table in place, the wiki's page below.`);\n",
+                "replace": "        content.before(h2, table);\n        Lib.debug('init', `applyBbDetailToTable: empty ${kind} table in place, the wiki's page below.`);\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event.spec.js",
+        "grep": "folded, and as it was",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-event has no head",
+        "why": "_fdHeadSpec() names each detail pageType's head.",
+        "edits": [
+            {
+                "find": "        if (t === 'bb-event') return _bbEventHeadSpec();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-event.spec.js",
+        "grep": "the head:",
+        "expect": "fail"
+    },
+    {
+        "name": "songs keep the wiki's capitals",
+        "why": "Answer 6: MusicBrainz case, the capitals as the hover text.",
+        "edits": [
+            {
+                "find": "        const songCell = (title, href) => {\n            const shown = _mbSiteTitleText(title);\n            const inner = link(href, e(shown));\n",
+                "replace": "        const songCell = (title, href) => {\n            const shown = title;\n            const inner = link(href, e(shown));\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event.spec.js",
+        "grep": "MusicBrainz case",
+        "expect": "fail"
+    }
+]

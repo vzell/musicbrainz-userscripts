@@ -1096,8 +1096,8 @@
         "why": "The icon asks readers for information: it is not a section of the gig page.",
         "edits": [
             {
-                "find": "                if (ti && !/^Help/i.test(ti) && !has.includes(ti)) has.push(ti);",
-                "replace": "                if (ti && !has.includes(ti)) has.push(ti);"
+                "find": "                if (ti && !/^Help/i.test(ti) && !has.includes(ti)) {",
+                "replace": "                if (ti && !has.includes(ti)) {"
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",

@@ -108,8 +108,8 @@
         "why": "status \"wrong_token7\" must fail the page (the loop stops), not render nothing and go on to pages 2-5.",
         "edits": [
             {
-                "find": "if (data?.status !== 'ok' || typeof data.body !== 'string') {",
-                "replace": "if (false) {"
+                "find": "        if (data?.status !== 'ok' || typeof data.body !== 'string') {\n            const err = new Error(`Wikidot answered \"${data?.status}\"${data?.message ? `: ${data.message}` : ''}`);",
+                "replace": "        if (false) {\n            const err = new Error(`Wikidot answered \"${data?.status}\"${data?.message ? `: ${data.message}` : ''}`);"
             }
         ],
         "spec": "tests/fixtures/bb-recent-changes.spec.js",

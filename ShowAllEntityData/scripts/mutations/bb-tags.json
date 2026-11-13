@@ -1,0 +1,249 @@
+[
+    {
+        "name": "the cloud is not matched",
+        "why": "bb-tags' match: without it system:page-tags is bb-page (previews only, no button).",
+        "edits": [
+            {
+                "find": "            match: (path) => _BB_TAGS_PATH_RE.test(path),\n",
+                "replace": "            match: (path) => false && _BB_TAGS_PATH_RE.test(path),\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-tags.spec.js",
+        "grep": "the cloud as a table",
+        "expect": "fail"
+    },
+    {
+        "name": "the song list is not read for the cloud's families",
+        "why": "vzell's answer 1: songs are told from the word only by stats:songs' slugs.",
+        "edits": [
+            {
+                "find": "        await read('/stats:songs', 'song', ctx.songs);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-tags.spec.js",
+        "grep": "the cloud as a table",
+        "expect": "fail"
+    },
+    {
+        "name": "the biggest tag's count is not kept",
+        "why": "The Pages estimate scales by the biggest tag's pages; without it Pages is empty.",
+        "edits": [
+            {
+                "find": "                ctx.max = _bbLpTotal(body);\n",
+                "replace": "                ctx.max = 0;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-tags.spec.js",
+        "grep": "the cloud as a table",
+        "expect": "fail"
+    },
+    {
+        "name": "a 100% tag is estimated, not \"< N\"",
+        "why": "10,940 tags sit at 100%: fewer than half a step, never \"≈ 0\".",
+        "edits": [
+            {
+                "find": "        if (weight <= 100) return `< ${Math.ceil(max / 400).toLocaleString('en')}`;\n",
+                "replace": "        if (weight < 100) return `< ${Math.ceil(max / 400).toLocaleString('en')}`;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-tags.spec.js",
+        "grep": "the cloud as a table",
+        "expect": "fail"
+    },
+    {
+        "name": "a show's title is not split into date and place",
+        "why": "A date-led title gets Date, Venue, City, State, Country from the year page's splitter.",
+        "edits": [
+            {
+                "find": "        const h = /^\\d{4}-\\d\\d-\\d\\d\\b/.test(r.title) ? _bbParseHeading(r.title, r.href) : null;\n",
+                "replace": "        const h = null;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-tags.spec.js",
+        "grep": "from the page: no request",
+        "expect": "fail"
+    },
+    {
+        "name": "a tag page's entries lose their kind",
+        "why": "Kind is the page name's category (gig:, story:, …).",
+        "edits": [
+            {
+                "find": "            return { href: _bbAbsHref(raw), title: _dpText(a.textContent) || name, kind: name.includes(':') ? name.split(':')[0] : '' };\n",
+                "replace": "            return { href: _bbAbsHref(raw), title: _dpText(a.textContent) || name, kind: '' };\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-tags.spec.js",
+        "grep": "from the page: no request",
+        "expect": "fail"
+    },
+    {
+        "name": "the ListPages title is not verbatim",
+        "why": "A plain %%title%% comes back with no-break spaces and a double space lost (27 of 750, probe-bb-listpages-titles.py).",
+        "edits": [
+            {
+                "find": "    const _BB_LP_TEMPLATE = ['%%fullname%%', '@@%%title%%@@', ",
+                "replace": "    const _BB_LP_TEMPLATE = ['%%fullname%%', '%%title%%', "
+            }
+        ],
+        "spec": "tests/fixtures/bb-tags.spec.js",
+        "grep": "over ListPages: dates",
+        "expect": "fail"
+    },
+    {
+        "name": "a ListPages item's tags are not read",
+        "why": "Tags, one row each, and Tag count come from %%tags%%.",
+        "edits": [
+            {
+                "find": "                tags: f[6].split(/\\s+/).filter(Boolean), total: parseInt(f[7], 10) || 0,\n",
+                "replace": "                tags: [], total: parseInt(f[7], 10) || 0,\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-tags.spec.js",
+        "grep": "over ListPages: dates",
+        "expect": "fail"
+    },
+    {
+        "name": "pages-and-tags rows lose their tags",
+        "why": "The site writes the tags as one space-separated cell; each becomes a row of Tags.",
+        "edits": [
+            {
+                "find": "                tags: _dpText(tds[tds.length - 1].textContent).split(' ').filter(Boolean),\n",
+                "replace": "                tags: [],\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-tags.spec.js",
+        "grep": "this page: no request",
+        "expect": "fail"
+    },
+    {
+        "name": "all pages of the list fetch the page shown too",
+        "why": "The page the URL shows comes from the copy; only the others are a GET of /p/N.",
+        "edits": [
+            {
+                "find": "                pageRequest: (p) => (p === _bbPatCurrentPage()\n",
+                "replace": "                pageRequest: (p) => (p === -1\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-tags.spec.js",
+        "grep": "all pages of the list",
+        "expect": "fail"
+    },
+    {
+        "name": "the whole wiki is one call",
+        "why": "As many ListPages calls as the %%total%% says, 250 each.",
+        "edits": [
+            {
+                "find": "                    return Math.max(1, Math.ceil(n / _BB_LP_PER_PAGE));\n",
+                "replace": "                    return 1;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-tags.spec.js",
+        "grep": "every page of the wiki",
+        "expect": "fail"
+    },
+    {
+        "name": "a tag link on Brucebase is not \"another site\"",
+        "why": "_extTarget()'s own-host test lets the bbtag reader's links through on Brucebase.",
+        "edits": [
+            {
+                "find": "            !(_isBbHost && (_extBbDateTest(u) || _extBbTagTest(u)))) return null;\n",
+                "replace": "            !(_isBbHost && _extBbDateTest(u))) return null;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-tags.spec.js",
+        "grep": "card: the count",
+        "expect": "fail"
+    },
+    {
+        "name": "a relative tag link is not resolved",
+        "why": "The cloud and the tags line write /system:page-tags/tag/<tag>.",
+        "edits": [
+            {
+                "find": "        if (_isBbHost && (/^\\/\\d{4}#\\d{6}$/.test(href) || /^\\/system:page-tags\\/tag\\/[^/]+/.test(href))) href = `${window.location.origin}${href}`;\n",
+                "replace": "        if (_isBbHost && /^\\/\\d{4}#\\d{6}$/.test(href)) href = `${window.location.origin}${href}`;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-tags.spec.js",
+        "grep": "card: the count",
+        "expect": "fail"
+    },
+    {
+        "name": "the tags line is outside the previews' scope",
+        "why": "div.page-tags is outside #page-content: extRoot names it.",
+        "edits": [
+            {
+                "find": "            extRoot: '#page-content, div.page-tags'\n",
+                "replace": "            extRoot: '#page-content'\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-tags.spec.js",
+        "grep": "card: the count",
+        "expect": "fail"
+    },
+    {
+        "name": "the card lists the first six by title",
+        "why": "vzell's answer 7: the newest six (created_at desc).",
+        "edits": [
+            {
+                "find": "            body = await _bbHistPost('list/ListPagesModule', _bbLpParams(tag, 1, _EXT_BBT_CARD_ROWS, 'created_at desc'), wanted);\n",
+                "replace": "            body = await _bbHistPost('list/ListPagesModule', _bbLpParams(tag, 1, _EXT_BBT_CARD_ROWS, 'titleAsc'), wanted);\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-tags.spec.js",
+        "grep": "card: the count",
+        "expect": "fail"
+    },
+    {
+        "name": "the window has no \"Load all\"",
+        "why": "vzell's answer 8: the first 250, then a button for the rest.",
+        "edits": [
+            {
+                "find": "        const more = read > 0 && read < pages;\n",
+                "replace": "        const more = false;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-tags.spec.js",
+        "grep": "window: the first 250",
+        "expect": "fail"
+    },
+    {
+        "name": "\"Load all\" stays after every page is read (the first version)",
+        "why": "By rows, a list shorter than its count (the fixture: 30 a page) keeps the button for ever.",
+        "edits": [
+            {
+                "find": "        const more = read > 0 && read < pages;\n",
+                "replace": "        const more = rows.length < s.total;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-tags.spec.js",
+        "grep": "window: the first 250",
+        "expect": "fail"
+    },
+    {
+        "name": "a card that moved on still asks",
+        "why": "_bbHistPost()'s wanted, asked after the rate slot. No spec moves off a card within its slot; a test hovering two tag links in a row inside one second would see the first one's call.",
+        "edits": [
+            {
+                "find": "        await _dpAwaitSlot();\n        if (wanted && !wanted()) return null;\n",
+                "replace": "        await _dpAwaitSlot();\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-tags.spec.js",
+        "grep": "card: the count",
+        "expect": "pass"
+    },
+    {
+        "name": "the wiki's page is not kept under its own heading",
+        "why": "_bbTagsLive(): the data heading, the empty table, then \"Brucebase page\" over the wiki's page.",
+        "edits": [
+            {
+                "find": "        content.before(h2, table, native);\n        Lib.debug('init', `_bbTagsLive: empty ${view} table in place, the wiki's page below.`);\n",
+                "replace": "        content.before(table);\n        Lib.debug('init', `_bbTagsLive: empty ${view} table in place, the wiki's page below.`);\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-tags.spec.js",
+        "grep": "the cloud as a table",
+        "expect": "fail"
+    }
+]

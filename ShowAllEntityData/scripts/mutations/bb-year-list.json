@@ -1,0 +1,132 @@
+[
+    {
+        "name": "the listing pages are not matched",
+        "why": "bb-year-list's match: without it a listing is bb-page (previews only, no button).",
+        "edits": [
+            {
+                "find": "            match: (path) => _BB_YEAR_LIST_PATH_RE.test(path),\n",
+                "replace": "            match: (path) => false && _BB_YEAR_LIST_PATH_RE.test(path),\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-list.spec.js",
+        "grep": "the gate: under",
+        "expect": "fail"
+    },
+    {
+        "name": "the listings ignore the year pages' switch",
+        "why": "sa_bb_year_pages gates the listing pages too: off, nothing visible happens.",
+        "edits": [
+            {
+                "find": "    if (_isBbHost && (_BB_YEAR_PATH_RE.test(window.location.pathname) || _BB_HOME_PATH_RE.test(window.location.pathname) ||\n        _BB_YEAR_LIST_PATH_RE.test(window.location.pathname)) &&\n",
+                "replace": "    if (_isBbHost && (_BB_YEAR_PATH_RE.test(window.location.pathname) || _BB_HOME_PATH_RE.test(window.location.pathname)) &&\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-list.spec.js",
+        "grep": "the gate off",
+        "expect": "fail"
+    },
+    {
+        "name": "the note is not read",
+        "why": "An entry's (Recording Session), (Rehearsal), … goes to the Note column.",
+        "edits": [
+            {
+                "find": "                const note = em ? _bbText(em).replace(/^\\(\\s*/, '').replace(/\\s*\\)$/, '') : '';\n",
+                "replace": "                const note = '';\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-list.spec.js",
+        "grep": "2026: one row",
+        "expect": "fail"
+    },
+    {
+        "name": "the note keeps its parentheses",
+        "why": "The site writes (Recording Session); the column holds the words.",
+        "edits": [
+            {
+                "find": "                const note = em ? _bbText(em).replace(/^\\(\\s*/, '').replace(/\\s*\\)$/, '') : '';\n",
+                "replace": "                const note = em ? _bbText(em) : '';\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-list.spec.js",
+        "grep": "2026: one row",
+        "expect": "fail"
+    },
+    {
+        "name": "a tour box is ignored",
+        "why": "A box between the lists names (start) or clears (end) the tour of the entries after it.",
+        "edits": [
+            {
+                "find": "                if (t) {\n                    tour = t.start ? t.name : '';\n",
+                "replace": "                if (t) {\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-list.spec.js",
+        "grep": "1981:",
+        "expect": "fail"
+    },
+    {
+        "name": "\", and Start of\" does not split",
+        "why": "1981's \"End of the 1st leg, and Start of the 2nd leg of … - Europe\" starts the 2nd leg; read as one part it is an End.",
+        "edits": [
+            {
+                "find": ".split(/(?:\\s+\\/|,\\s*and)\\s+(?=(?:Start|End|Continuation) of\\b)/i)",
+                "replace": ".split(/\\s+\\/\\s+(?=(?:Start|End|Continuation) of\\b)/i)"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-list.spec.js",
+        "grep": "1981:",
+        "expect": "fail"
+    },
+    {
+        "name": "the Event link is not marked a show link",
+        "why": "a.mb-bb-show-link, not the year table's mb-bb-event-link (whose links are the event pages').",
+        "edits": [
+            {
+                "find": "        if (a) a.className = 'mb-bb-show-link';\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-list.spec.js",
+        "grep": "bbdate reader",
+        "expect": "fail"
+    },
+    {
+        "name": "a fetched listing is not converted",
+        "why": "\"All years\" fetches the other listings: each is converted in the fetch loop.",
+        "edits": [
+            {
+                "find": "                if (doc !== document && activeDefinition.features?.bbYearListToTable) {\n                    applyBbYearListToTable(activeDefinition, doc);\n                }\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-list.spec.js",
+        "grep": "all years",
+        "expect": "fail"
+    },
+    {
+        "name": "the live listing is emptied for all years (the first version)",
+        "why": "The engine reuses the live document for this year's key: an empty table there loses this year's rows.",
+        "edits": [
+            {
+                "find": "        const content = docContext.getElementById('page-content');\n        const { entries, first, last } = content ? _bbYearListEntries(content) : { entries: [] };\n",
+                "replace": "        const content = docContext.getElementById('page-content');\n        if (mode === 'all' && docContext === document) { const tb = _bbYearListTable(document); content.insertBefore(tb, content.firstChild); return; }\n        const { entries, first, last } = content ? _bbYearListEntries(content) : { entries: [] };\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-list.spec.js",
+        "grep": "all years",
+        "expect": "fail"
+    },
+    {
+        "name": "Load from Disk does not convert the reloaded listing",
+        "why": "The third call site (the disk load reloads the live page). No spec loads a listing from disk yet; a Save → Load from Disk test like bb-year.spec.js's would see it.",
+        "edits": [
+            {
+                "find": "            if (activeDefinition.features?.bbYearListToTable) {\n                applyBbYearListToTable(activeDefinition);\n            }\n            // And Relations",
+                "replace": "            // And Relations"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year-list.spec.js",
+        "grep": "2026: one row",
+        "expect": "pass"
+    }
+]

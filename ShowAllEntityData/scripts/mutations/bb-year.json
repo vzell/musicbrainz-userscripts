@@ -4,7 +4,7 @@
         "why": "Year pages are opt-in (sa_bb_year_pages, default off) on top of sa_enable_brucebase. Without their gate the toolbar appears with only the Brucebase switch on; the spec must see it appear.",
         "edits": [
             {
-                "find": "if (_isBbHost && (_BB_YEAR_PATH_RE.test(window.location.pathname) || _BB_HOME_PATH_RE.test(window.location.pathname)) &&\n        Lib.settings.sa_bb_year_pages !== true) {",
+                "find": "if (_isBbHost && (_BB_YEAR_PATH_RE.test(window.location.pathname) || _BB_HOME_PATH_RE.test(window.location.pathname) ||\n        _BB_YEAR_LIST_PATH_RE.test(window.location.pathname)) &&\n        Lib.settings.sa_bb_year_pages !== true) {",
                 "replace": "if (false) {"
             }
         ],
@@ -82,7 +82,7 @@
         "why": "'End of the \"Castiles\" era / Start of the \"Earth\" era' (1968) would end the tour and never start the next.",
         "edits": [
             {
-                "find": ".split(/\\s+\\/\\s+(?=(?:Start|End|Continuation) of\\b)/i)",
+                "find": ".split(/(?:\\s+\\/|,\\s*and)\\s+(?=(?:Start|End|Continuation) of\\b)/i)",
                 "replace": ".split(/$^/)"
             }
         ],
@@ -212,8 +212,8 @@
         "why": "The table must take the entries' place; without the removal every entry shows twice.",
         "edits": [
             {
-                "find": "        range.deleteContents();\n        range.insertNode(table);",
-                "replace": "        range.collapse(true);\n        range.insertNode(table);"
+                "find": "        range.setEndAfter(last.blocks.length ? last.blocks[last.blocks.length - 1] : last.top);\n        range.deleteContents();\n        range.insertNode(table);",
+                "replace": "        range.setEndAfter(last.blocks.length ? last.blocks[last.blocks.length - 1] : last.top);\n        range.collapse(true);\n        range.insertNode(table);"
             }
         ],
         "spec": "tests/fixtures/bb-year.spec.js",
@@ -277,8 +277,8 @@
         "why": "org/TODO.org Some enhancements 3d (2026-10-24): _BB_YEAR_HEADERS and _bbYearBuildRow()'s cell order must move together; a header list left behind labels every cell after Date with the wrong column.",
         "edits": [
             {
-                "find": "    const _BB_YEAR_HEADERS = ['Event', 'MB-Event', 'Media', 'Date', 'Type', 'Venue', 'City', 'State', 'Country', 'Tour',\n        'Soundcheck', 'Setlist', 'Set note', 'Notes', 'Info wanted'];",
-                "replace": "    const _BB_YEAR_HEADERS = ['Event', 'MB-Event', 'Date', 'Type', 'Venue', 'City', 'State', 'Country', 'Tour',\n        'Soundcheck', 'Setlist', 'Set note', 'Notes', 'Media', 'Info wanted'];"
+                "find": "    const _BB_YEAR_HEADERS = ['Event', 'MB-Event', 'Media', 'Date', 'Type', 'Venue', 'City', 'State', 'Country', 'Tour',\n        'On stage', 'Content', 'Images', 'Start', 'Soundcheck', 'Setlist', 'Set note', 'Notes', 'Info wanted'];",
+                "replace": "    const _BB_YEAR_HEADERS = ['Event', 'MB-Event', 'Date', 'Type', 'Venue', 'City', 'State', 'Country', 'Tour',\n        'On stage', 'Content', 'Images', 'Start', 'Soundcheck', 'Setlist', 'Set note', 'Notes', 'Media', 'Info wanted'];"
             }
         ],
         "spec": "tests/fixtures/bb-year.spec.js",

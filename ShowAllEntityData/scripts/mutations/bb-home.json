@@ -30,8 +30,8 @@
         "why": "The start page shares the year pages' opt-in; without its path in the gate the toolbar appears with sa_bb_year_pages off.",
         "edits": [
             {
-                "find": "if (_isBbHost && (_BB_YEAR_PATH_RE.test(window.location.pathname) || _BB_HOME_PATH_RE.test(window.location.pathname)) &&",
-                "replace": "if (_isBbHost && (_BB_YEAR_PATH_RE.test(window.location.pathname)) &&"
+                "find": "if (_isBbHost && (_BB_YEAR_PATH_RE.test(window.location.pathname) || _BB_HOME_PATH_RE.test(window.location.pathname) ||",
+                "replace": "if (_isBbHost && (_BB_YEAR_PATH_RE.test(window.location.pathname) ||"
             }
         ],
         "spec": "tests/fixtures/bb-home.spec.js",

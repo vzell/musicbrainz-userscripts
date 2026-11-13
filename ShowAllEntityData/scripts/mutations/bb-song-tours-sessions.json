@@ -1,0 +1,418 @@
+[
+    {
+        "name": "a song never played on a tour is matched",
+        "why": "Only the box of other shows: nothing to tabulate, the page stays bb-page.",
+        "edits": [
+            {
+                "find": "            match: (path) => _BB_SONG_TOURS_PATH_RE.test(path) && _bbSongToursLive().tours.length > 0,",
+                "replace": "            match: (path) => _BB_SONG_TOURS_PATH_RE.test(path),"
+            }
+        ],
+        "spec": "tests/fixtures/bb-stats.spec.js",
+        "grep": "never played on a tour",
+        "expect": "fail"
+    },
+    {
+        "name": "tour pages are not matched",
+        "why": "bb-song-tours' match: without it a tour page is bb-stats' or bb-page's.",
+        "edits": [
+            {
+                "find": "            match: (path) => _BB_SONG_TOURS_PATH_RE.test(path) && _bbSongToursLive().tours.length > 0,",
+                "replace": "            match: (path) => false && _BB_SONG_TOURS_PATH_RE.test(path) && _bbSongToursLive().tours.length > 0,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "a row per tour",
+        "expect": "fail"
+    },
+    {
+        "name": "tours at 0 are dropped",
+        "why": "The tour page keeps every tour, the zeros too (the song page drops them).",
+        "edits": [
+            {
+                "find": "            if (!pm || strongs.length < 2) return;",
+                "replace": "            if (!pm || strongs.length < 2 || !Number(pm[1])) return;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "a row per tour",
+        "expect": "fail"
+    },
+    {
+        "name": "the other shows are not rows",
+        "why": "The last box: \"Performed at 5 known other show(s), plus 0 public tour rehearsal(s)\".",
+        "edits": [
+            {
+                "find": "            rows.push(row({ Tour: 'Other known shows', Played: String(rec.other.shows) }));\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "a row per tour",
+        "expect": "fail"
+    },
+    {
+        "name": "a box's note is not read",
+        "why": "\"(Excl. the first leg of the Land Of Hope And Dream Tour.)\" → Note.",
+        "edits": [
+            {
+                "find": "                note: sup ? _dpText(sup.textContent).replace(/^\\(|\\)$/g, '').replace(/\\.$/, '') : '',",
+                "replace": "                note: '',"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "Note column",
+        "expect": "fail"
+    },
+    {
+        "name": "the share is rounded",
+        "why": "Share as the mockup: one decimal, \"45.4%\".",
+        "edits": [
+            {
+                "find": "            const share = t.shows ? `${(100 * t.played / t.shows).toFixed(1)}%` : '';",
+                "replace": "            const share = t.shows ? `${Math.round(100 * t.played / t.shows)}%` : '';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "a row per tour",
+        "expect": "fail"
+    },
+    {
+        "name": "the bar is not sized",
+        "why": "The Bar column: a span sized to the share.",
+        "edits": [
+            {
+                "find": "<i style=\"width:${Math.min(100, 100 * t.played / t.shows).toFixed(1)}%\"></i>",
+                "replace": "<i style=\"width:0%\"></i>"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "a row per tour",
+        "expect": "fail"
+    },
+    {
+        "name": "the tour table's columns are not in the live table",
+        "why": "A single table keeps the placeholder's columns unless they are set at the press.",
+        "edits": [
+            {
+                "find": "        else if (kind === 'song-tours') cols = _bbSongToursCols(_bbSongToursLive());",
+                "replace": "        else if (false) cols = _bbSongToursCols(_bbSongToursLive());"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "a row per tour",
+        "expect": "fail"
+    },
+    {
+        "name": "a bold-styled row is always a header",
+        "why": "A studio session's version tables are bold on every row: the first take became the header.",
+        "edits": [
+            {
+                "find": "            const boldRow = boldStyled(tr) && !!next && !(boldStyled(next) && next.cells.length === tr.cells.length);",
+                "replace": "            const boldRow = boldStyled(tr);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "no table is no sessions page",
+        "expect": "fail"
+    },
+    {
+        "name": "a bold-styled header followed by a bold row is no header",
+        "why": "Awards: the heading row is followed by a ceremony, bold too but one cell.",
+        "edits": [
+            {
+                "find": "            const boldRow = boldStyled(tr) && !!next && !(boldStyled(next) && next.cells.length === tr.cells.length);",
+                "replace": "            const boldRow = boldStyled(tr) && !!next && !boldStyled(next);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-stats.spec.js",
+        "grep": "tables in tabs",
+        "expect": "fail"
+    },
+    {
+        "name": "one-row tables are dropped",
+        "why": "A song with one version is a one-row table (minRows 1 for the sessions).",
+        "edits": [
+            {
+                "find": "        const st = _bbStatsRead(doc, url, { minRows: 1 }) || { tables: [] };",
+                "replace": "        const st = _bbStatsRead(doc, url) || { tables: [] };"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "a sub-table per section",
+        "expect": "fail"
+    },
+    {
+        "name": "studio sessions are not matched",
+        "why": "bb-sessions' match: without it the page is bb-stats'.",
+        "edits": [
+            {
+                "find": "            match: (path) => _BB_SESSIONS_PATH_RE.test(path) && Lib.settings.sa_bb_detail_pages !== false && _bbSessionsLiveTables() > 0,",
+                "replace": "            match: (path) => false && _BB_SESSIONS_PATH_RE.test(path),"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "a sub-table per section",
+        "expect": "fail"
+    },
+    {
+        "name": "a part with no table is matched",
+        "why": "A part that is only words gets no empty toolbar.",
+        "edits": [
+            {
+                "find": "            match: (path) => _BB_SESSIONS_PATH_RE.test(path) && Lib.settings.sa_bb_detail_pages !== false && _bbSessionsLiveTables() > 0,",
+                "replace": "            match: (path) => _BB_SESSIONS_PATH_RE.test(path) && Lib.settings.sa_bb_detail_pages !== false,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "no table is no sessions page",
+        "expect": "fail"
+    },
+    {
+        "name": "sa_bb_detail_pages does not gate bb-sessions",
+        "why": "Off, a sessions page is bb-stats'.",
+        "edits": [
+            {
+                "find": "            match: (path) => _BB_SESSIONS_PATH_RE.test(path) && Lib.settings.sa_bb_detail_pages !== false && _bbSessionsLiveTables() > 0,",
+                "replace": "            match: (path) => _BB_SESSIONS_PATH_RE.test(path) && _bbSessionsLiveTables() > 0,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "no table is no sessions page",
+        "expect": "fail"
+    },
+    {
+        "name": "a song's tables are not merged",
+        "why": "Version History: a table per song on the wiki, one table here.",
+        "edits": [
+            {
+                "find": "            if (prev && prev.name === name && prev.cols.join('\\u0001') === t.cols.join('\\u0001')) {",
+                "replace": "            if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "a sub-table per section",
+        "expect": "fail"
+    },
+    {
+        "name": "the section is not in the name",
+        "why": "\"Details › Version History\": the h1 before the tab path.",
+        "edits": [
+            {
+                "find": "            const lead = t.heading && t.heading !== t.tab[0] ? [t.heading] : [];",
+                "replace": "            const lead = [];"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "a sub-table per section",
+        "expect": "fail"
+    },
+    {
+        "name": "takes are not split",
+        "why": "\"BORN TO RUN - V1a\" → Song, Version (vzell's answer 6).",
+        "edits": [
+            {
+                "find": "            if (takes.some(k => k > 1) || !takes.some(k => k === 1)) return;",
+                "replace": "            return;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "a sub-table per section",
+        "expect": "fail"
+    },
+    {
+        "name": "a cell listing several takes splits its column",
+        "why": "The Timeline: a day's songs in one cell; its column stays whole.",
+        "edits": [
+            {
+                "find": "            if (takes.some(k => k > 1) || !takes.some(k => k === 1)) return;",
+                "replace": "            if (!takes.some(k => k === 1)) return;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "Timeline alone",
+        "expect": "fail"
+    },
+    {
+        "name": "a title with no take loses its cell",
+        "why": "A Version History row naming no take keeps the wiki's title as Song.",
+        "edits": [
+            {
+                "find": "                if (!s.version) return [...r.slice(0, col), r[col], ...cols.slice(1).map(() => ''), ...r.slice(col + 1)];",
+                "replace": "                if (!s.version) return [...r.slice(0, col), '', ...cols.slice(1).map(() => ''), ...r.slice(col + 1)];"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "title with no take",
+        "expect": "fail"
+    },
+    {
+        "name": "the Song is not in the MusicBrainz style",
+        "why": "sa_foreign_mb_titles on: \"Born to Run\", the wiki's name as the hover.",
+        "edits": [
+            {
+                "find": "                const shown = _mbSiteTitleText(s.song);\n                const href = (/<a href=",
+                "replace": "                const shown = s.song;\n                const href = (/<a href="
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "title with no take",
+        "expect": "fail"
+    },
+    {
+        "name": "a numbered list is not headed # / Song",
+        "why": "A potential album sequence: \"1.\" | \"Angel Baby\".",
+        "edits": [
+            {
+                "find": "            if (generic && g.cols.length === 2 && g.texts.every(r => /^\\d+\\.?$/.test(r[0]))) g.cols = ['#', 'Song'];",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "a sub-table per section",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-sessions has no head",
+        "why": "_fdHeadSpec() names each detail pageType's head.",
+        "edits": [
+            {
+                "find": "        if (t === 'bb-sessions') return _bbSessionsHeadSpec();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "the head:",
+        "expect": "fail"
+    },
+    {
+        "name": "the credits block is not read",
+        "why": "\"Label: Columbia\" from the page's code block.",
+        "edits": [
+            {
+                "find": "        const code = root.querySelector('div.code pre');",
+                "replace": "        const code = null;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "the head:",
+        "expect": "fail"
+    },
+    {
+        "name": "a take is not split off",
+        "why": "\"THE HEIST - V2 - take 14\" → Take 14 (the On The Tracks TODO).",
+        "edits": [
+            {
+                "find": "            take = n.replace(/\\s+/g, '');\n            return '';",
+                "replace": "            return all;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-release.spec.js",
+        "grep": "counted from the page's own tabs",
+        "expect": "fail"
+    },
+    {
+        "name": "a date is not split off",
+        "why": "\"JUNGLELAND - V1 (August 1, 1974)\" → Date.",
+        "edits": [
+            {
+                "find": "            if (!date && /\\b(?:19[5-9]\\d|20[0-4]\\d)\\b/.test(t)) {",
+                "replace": "            if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "a sub-table per section",
+        "expect": "fail"
+    },
+    {
+        "name": "On The Tracks has no Take column",
+        "why": "The release page's On The Tracks: Take and Date where a row has one.",
+        "edits": [
+            {
+                "find": "        return [title, version, ...(rows.some(r => r.take) ? ['Take'] : []), ...(rows.some(r => r.date) ? ['Date'] : []), ...rest];",
+                "replace": "        return [title, version, ...rest];"
+            }
+        ],
+        "spec": "tests/fixtures/bb-release.spec.js",
+        "grep": "counted from the page's own tabs",
+        "expect": "fail"
+    },
+    {
+        "name": "the note under a table is not read",
+        "why": "vzell, 2026-11-12: the \"Note:\" paragraphs under each song's version table as a Note column.",
+        "edits": [
+            {
+                "find": "                if (!notes.length && !/^Notes?\\s*:/i.test(text)) break;",
+                "replace": "                break;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "the note under",
+        "expect": "fail"
+    },
+    {
+        "name": "any paragraph after a table is a note",
+        "why": "\"Total Running Time: 39:28\" under a release's table is no note: a note begins \"Note:\".",
+        "edits": [
+            {
+                "find": "                if (!notes.length && !/^Notes?\\s*:/i.test(text)) break;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "the note under",
+        "expect": "fail"
+    },
+    {
+        "name": "a picture ends the note",
+        "why": "A recording sheet's picture (div.image-container) sits between some tables and their notes.",
+        "edits": [
+            {
+                "find": "                if (picture(el)) continue;",
+                "replace": "                if (picture(el)) break;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "the note under",
+        "expect": "fail"
+    },
+    {
+        "name": "the note is on the first take only",
+        "why": "Each of the song's takes carries the note (rows sort and filter apart).",
+        "edits": [
+            {
+                "find": "                prev.notes.push(...t.rows.map(() => t.notes));",
+                "replace": "                prev.notes.push(...t.rows.map((r, k) => (k ? [] : t.notes)));"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "the note under",
+        "expect": "fail"
+    },
+    {
+        "name": "the Note column is not collapsed",
+        "why": "collapsableColumns: a long note folds to its first line.",
+        "edits": [
+            {
+                "find": "                collapsableColumns: [ 'Note' ],\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "the note under",
+        "expect": "fail"
+    },
+    {
+        "name": "\"Note:\" stays in the note",
+        "why": "The column is Note: the wiki's \"Note:\" is dropped.",
+        "edits": [
+            {
+                "find": "                notes.push(_bbStatsCellHtml(el).replace(/^Notes?\\s*:\\s*/i, ''));",
+                "replace": "                notes.push(_bbStatsCellHtml(el));"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-tours-sessions.spec.js",
+        "grep": "the note under",
+        "expect": "fail"
+    }
+]

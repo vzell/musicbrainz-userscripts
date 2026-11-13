@@ -4,8 +4,8 @@
     "why": "vzell 2026-10-29: \"the Links section should render the actual links inside the same window instead of a new tab, for all entity POHs\".",
     "edits": [
       {
-        "find": "        const all = !!((cur.src && _DP_WIN_ALL_LINKS_SOURCES.has(cur.src.id)) || (cur.reader && _DP_WIN_ALL_LINKS_READERS.has(cur.reader.id)));",
-        "replace": "        const all = !!(cur.reader && _DP_WIN_ALL_LINKS_READERS.has(cur.reader.id));"
+        "find": "        const all = !!((cur.src && _DP_WIN_ALL_LINKS_SOURCES.has(cur.src.id)) || (cur.reader && _DP_WIN_ALL_LINKS_READERS.has(cur.reader.id))) ||\n            _dpWinIsBb(cur);",
+        "replace": "        const all = !!(cur.reader && _DP_WIN_ALL_LINKS_READERS.has(cur.reader.id)) ||\n            _dpWinIsBb(cur);"
       }
     ],
     "spec": "tests/fixtures/popup-mb.spec.js",

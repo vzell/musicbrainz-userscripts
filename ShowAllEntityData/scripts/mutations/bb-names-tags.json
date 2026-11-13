@@ -1,0 +1,67 @@
+[
+    {
+        "name": "a filename's photographer is not read",
+        "why": "Shape A's second slot is a photographer unless it names a kind; without it no photo has a credit, a caption or a photographer group.",
+        "edits": [
+            {
+                "find": "            else out.photographer = _bbNameWords(m[5]);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-image-names.spec.js|tests/fixtures/bb-event-preview.spec.js",
+        "grep": "every shape|grouped by photographer",
+        "expect": "fail"
+    },
+    {
+        "name": "a filename is not decoded",
+        "why": "An encoded space (WarrenLinhart%20_01) then defeats shape A.",
+        "edits": [
+            {
+                "find": "            file = decodeURIComponent(file);\n        } catch (_) { /* keep it as written */ }",
+                "replace": "        } catch (_) { /* keep it as written */ }"
+            }
+        ],
+        "spec": "tests/fixtures/bb-image-names.spec.js",
+        "grep": "every shape",
+        "expect": "fail"
+    },
+    {
+        "name": "the page's own category is not its kind",
+        "why": "Without the rule, 'gig' on a gig page is read as something the page holds (material).",
+        "edits": [
+            {
+                "find": "        if (c.category && t === c.category) return 'category';\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-image-names.spec.js|tests/fixtures/bb-event-preview.spec.js",
+        "grep": "sorts a page's tags|tags by family",
+        "expect": "fail"
+    },
+    {
+        "name": "the window does not group photos by photographer",
+        "why": "Answer 3 to org/bb-overhaul-mockups.html: Photo once per photographer.",
+        "edits": [
+            {
+                "find": "            const groupOf = (i) => (i.label || '') === 'Photo' && i.credit ? `Photo · ${i.credit}` : (i.label || '');\n",
+                "replace": "            const groupOf = (i) => (i.label || '');\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "grouped by photographer",
+        "expect": "fail"
+    },
+    {
+        "name": "a Brucebase record has no Tags section",
+        "why": "_dpParseBb() appends the page's tags as the window's last, closed section.",
+        "edits": [
+            {
+                "find": "        const sec = _bbTagsSection(data.tags);\n        if (sec) data.sections.push(sec);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-event-preview.spec.js",
+        "grep": "tags by family",
+        "expect": "fail"
+    }
+]

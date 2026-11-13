@@ -1,0 +1,285 @@
+<title>Brucebase event windows</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: a header, a page picker, the window as it would open (with its hover card beside it), then the questions. "Liner notes" look. */
+:root {
+    --paper: #fbf8f1;
+    --sheet: #fffdf8;
+    --ink: #2b2622;
+    --rule: #d9cfbd;
+    --muted: #7a6d5c;
+    --accent: #2f5f9e;
+    --ok: #3f7a3a;
+    --warn: #9a6a00;
+    --tint: #f3ecdd;
+    --newbg: #eaf2e4;
+    --newedge: #9cbf8c;
+    --field: #ffffff;
+    --shadow: 0 10px 24px -8px rgba(60, 40, 20, .35);
+    --serif: Georgia, "Times New Roman", serif;
+    --sans: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --paper: #1f1b17; --sheet: #27221d; --ink: #ece4d6; --rule: #4a4136; --muted: #a8998a; --accent: #8fb2e6;
+        --ok: #8cc47e; --warn: #d9a640; --tint: #322b24; --newbg: #24331f; --newedge: #5d8a4e; --field: #1b1814;
+        --shadow: 0 10px 24px -8px rgba(0, 0, 0, .6); color-scheme: dark;
+    }
+}
+:root[data-theme="dark"] {
+    --paper: #1f1b17; --sheet: #27221d; --ink: #ece4d6; --rule: #4a4136; --muted: #a8998a; --accent: #8fb2e6;
+    --ok: #8cc47e; --warn: #d9a640; --tint: #322b24; --newbg: #24331f; --newedge: #5d8a4e; --field: #1b1814;
+    --shadow: 0 10px 24px -8px rgba(0, 0, 0, .6); color-scheme: dark;
+}
+body { background: var(--paper); color: var(--ink); font: 15px/1.5 var(--serif); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 28px 64px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: grid; gap: 24px; }
+h1 { font-size: 30px; margin: 0; font-weight: normal; text-wrap: balance; }
+h2 { font-size: 21px; margin: 0; font-weight: normal; text-wrap: balance; }
+p { margin: 0; max-width: 74ch; }
+a { color: var(--accent); }
+.label, button, .chip, .tag { font: 600 11px/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; }
+.label { color: var(--muted); }
+code { font-family: var(--mono); font-size: 12.5px; }
+header { display: grid; gap: 10px; }
+.env { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chip { border: 1px solid var(--rule); background: var(--sheet); color: var(--ink); border-radius: 3px; padding: 7px 9px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 3px; overflow: hidden; }
+.seg .chip { border: 0; border-radius: 0; }
+.seg .chip + .chip { border-left: 1px solid var(--rule); }
+button:focus-visible, .chip:focus-visible, summary:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+@media (max-width: 900px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+/* the window */
+.win { background: var(--sheet); border: 1px solid var(--rule); border-radius: 4px; box-shadow: var(--shadow); min-width: 0; display: grid; }
+.win-bar { display: flex; gap: 10px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--rule); background: var(--tint); }
+.win-bar .kind { color: var(--muted); }
+.win-bar .sp { flex: 1; }
+.win-bar .ic { font: 14px var(--sans); color: var(--muted); }
+.win-body { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 18px; padding: 14px 16px 18px; }
+@media (max-width: 640px) { .win-body { grid-template-columns: minmax(0, 1fr); } }
+.xtitle { font-size: 19px; line-height: 1.3; }
+.sub { color: var(--muted); font-size: 14px; }
+.facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 5px 14px; margin: 10px 0 0; font-size: 14px; }
+.facts dt { font-style: italic; color: var(--muted); }
+.facts dd { margin: 0; min-width: 0; }
+.new { background: var(--newbg); box-shadow: inset 3px 0 0 var(--newedge); }
+.facts .new { padding: 0 4px; border-radius: 2px; }
+.tag { display: inline-block; margin-left: 6px; padding: 2px 4px; border-radius: 2px; border: 1px solid var(--ok); color: var(--ok); font-size: 9px; vertical-align: 2px; }
+details.sec { border-top: 1px solid var(--rule); padding: 6px 0; }
+details.sec.new { padding-left: 8px; }
+details.sec > summary { cursor: pointer; list-style: none; display: flex; align-items: baseline; gap: 6px; }
+details.sec > summary::before { content: "▸"; color: var(--muted); font-size: 12px; }
+details.sec[open] > summary::before { content: "▾"; }
+details.sec > summary h4 { margin: 0; font: 600 12px/1.6 var(--sans); letter-spacing: .06em; text-transform: uppercase; }
+.secbody { font-size: 14px; padding: 4px 0 2px 16px; max-height: 260px; overflow: auto; }
+.secbody p { margin: 0 0 6px; }
+.secbody ul, .secbody ol { margin: 4px 0; padding-left: 18px; }
+.secbody .pre { white-space: pre-line; }
+.secbody .line { font-style: italic; }
+.secbody .by { color: var(--muted); }
+.secbody .note { color: var(--muted); font-size: 13px; }
+/* the hover card */
+.card { background: var(--sheet); border: 1px solid var(--rule); border-radius: 4px; box-shadow: var(--shadow); padding: 12px 14px; font-size: 13.5px; display: grid; gap: 6px; min-width: 0; }
+.card .ttl { font-weight: bold; }
+.card .about { font-size: 13px; padding: 4px 6px; border-radius: 2px; }
+.card dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 10px; margin: 0; }
+.card dt { font-style: italic; color: var(--muted); }
+.card dd { margin: 0; min-width: 0; }
+.cardcap { color: var(--muted); font: 12px var(--sans); }
+/* questions */
+.qs { display: grid; gap: 12px; }
+.q { border: 1px solid var(--rule); border-radius: 3px; padding: 12px; display: grid; gap: 8px; background: var(--sheet); }
+.q h3 { font-weight: normal; font-size: 16px; margin: 0; }
+.q label { display: flex; gap: 8px; align-items: baseline; cursor: pointer; }
+.q .rec { color: var(--ok); font: 600 10px/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; }
+textarea#answers { width: 100%; min-height: 140px; font: 12.5px/1.45 var(--mono); border: 1px solid var(--rule); border-radius: 3px; padding: 8px; background: var(--field); color: var(--ink); box-sizing: border-box; }
+.status { font: 12px var(--sans); color: var(--ok); min-height: 1em; }
+.notes { display: grid; gap: 6px; font-size: 14px; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+<header>
+    <span class="label">ShowAllEntityData · feature/bb-overhaul · Phase 16, batch 1 mockup</span>
+    <h1>Brucebase event windows</h1>
+    <p>The window and hover card of a Brucebase event page (a gig, a recording session, an interview) on any site. Today the window leaves out three things the page has: the description above the tabs, a cast tab that is not On Stage (In Studio, On Set, On Site, …) and an interview's Playlist. It also leaves out the venue's other lists (Appearances, Cancelled, …) and an older page's News tab. This mockup shows five real pages from the wiki, today and with batch 1. What batch 1 adds is green.</p>
+    <div class="env" id="env"></div>
+</header>
+
+<div class="chips" role="group" aria-label="Page">__VIEWS__</div>
+<div class="chips">
+    <span class="seg" role="group" aria-label="Show">
+        <button type="button" class="chip" id="m-today" aria-pressed="false">Today</button>
+        <button type="button" class="chip" id="m-new" aria-pressed="true">With batch 1</button>
+    </span>
+    <span class="label" id="added"></span>
+</div>
+
+<div class="stage">
+    <div class="win" role="dialog" aria-label="The window">
+        <div class="win-bar"><span class="label kind">Detail page</span><span class="sp"></span><span class="ic" title="Page history (H)">✎</span><span class="ic" title="Live page">⧉</span><span class="ic">×</span></div>
+        <div class="win-body">
+            <div id="left"></div>
+            <div id="right"></div>
+        </div>
+    </div>
+    <div style="display:grid; gap:6px; min-width:0">
+        <span class="cardcap">The hover card (Ctrl+hover on the link)</span>
+        <div class="card" id="card"></div>
+    </div>
+</div>
+
+<section class="qs" aria-labelledby="qh">
+    <h2 id="qh">Questions</h2>
+    <div class="q" data-q="1">
+        <h3>1. Where does the description go in the window?</h3>
+        <label><input type="radio" name="q1" value="open" checked> The first section, “About this show”, open, as on the page's own view <span class="rec">Recommended</span></label>
+        <label><input type="radio" name="q1" value="folded"> The first section, folded</label>
+        <label><input type="radio" name="q1" value="sub"> Under the title, as running text, no section</label>
+    </div>
+    <div class="q" data-q="2">
+        <h3>2. Does the hover card show the description's first sentence?</h3>
+        <label><input type="radio" name="q2" value="yes" checked> Yes, its first sentence, cut at about 160 characters <span class="rec">Recommended</span></label>
+        <label><input type="radio" name="q2" value="no"> No, the card stays as it is</label>
+    </div>
+    <div class="q" data-q="3">
+        <h3>3. A cast tab that is not On Stage (In Studio, On Set, On Site, …): how is its bold line shown (“Greetings From Asbury Park, N.J. Recording Session”)?</h3>
+        <label><input type="radio" name="q3" value="head" checked> As the first line of the tab's section; the facts get “In studio” with the people, like “On stage” <span class="rec">Recommended</span></label>
+        <label><input type="radio" name="q3" value="fact"> Also as a fact of its own, “Session”</label>
+    </div>
+    <div class="q" data-q="4">
+        <h3>4. Should the year table's On stage column (Phase 14) also show a recording's In Studio people?</h3>
+        <label><input type="radio" name="q4" value="yes" checked> Yes: the column shows whoever the page lists in its cast tab, whatever the tab is called <span class="rec">Recommended</span></label>
+        <label><input type="radio" name="q4" value="no"> No: On Stage only, as today</label>
+    </div>
+    <div class="q" data-q="5">
+        <h3>5. The venue's other lists (Appearances, Cancelled, Performances (w/o Bruce), From My Home To Yours)?</h3>
+        <label><input type="radio" name="q5" value="folded" checked> Folded sections after Performances, each with its note and count <span class="rec">Recommended</span></label>
+        <label><input type="radio" name="q5" value="none"> Leave them out, as today</label>
+    </div>
+    <div class="q" data-q="6">
+        <h3>6. An older page's “News” tab (77 of the pages sampled), which is the News/Memorabilia tab under its old name?</h3>
+        <label><input type="radio" name="q6" value="yes" checked> Read it as News/Memorabilia <span class="rec">Recommended</span></label>
+        <label><input type="radio" name="q6" value="no"> Leave it out, as today</label>
+    </div>
+    <div class="notes">
+        <p>Not a question: the Playlist reads like the Setlist. The facts get “Playlist: 11 songs: …”, and the section numbers the songs, each with its original artist, the song names in MusicBrainz's title style as the Setlist does. Its note (“Bruce did not perform…”) comes last.</p>
+        <p>What the sample shows: the description is on nearly every event page (228 of 233 gigs, all 53 nogig pages, 89 of 91 recordings, all 44 interviews); In Studio is on 95 pages, Playlist on 10, the other lists on 300. Nothing new is requested: all of it is in the page the window already reads.</p>
+    </div>
+    <textarea id="answers" readonly aria-label="Your answers"></textarea>
+    <div class="chips"><button type="button" class="chip" id="copy">Copy the answers</button><span class="status" id="status"></span></div>
+</section>
+</div>
+
+<script>
+const DATA = __DATA__;
+const ENV = __ENV__;
+const VIEWLABELS = __VIEWLABELS__;
+const state = { view: 0, mode: 'new' };
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const ans = (n) => (document.querySelector(`input[name="q${n}"]:checked`) || {}).value;
+const sentence = (s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+// The wiki's capitals in a title style (an approximation of _mbSiteTitleText for the mockup).
+const small = new Set(['a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'in', 'of', 'on', 'or', 'the', 'to']);
+const titled = (s) => (s === s.toUpperCase() ? s.toLowerCase().split(' ').map((w, i) => (i && small.has(w) ? w : w.charAt(0).toUpperCase() + w.slice(1))).join(' ') : s);
+function firstSentence(html) {
+    const t = new DOMParser().parseFromString(html, 'text/html').body.textContent.replace(/\s+/g, ' ').trim();
+    const m = /^(.{20,}?[.!?])(?:\s|$)/.exec(t);
+    const s = m ? m[1] : t;
+    return s.length > 160 ? `${s.slice(0, 157).replace(/\s\S*$/, '')} …` : s;
+}
+function model(p, withNew) {
+    const facts = p.today.fields.map(f => ({ k: f[0], v: f[1] }));
+    const secs = p.today.sections.map(s => ({ label: s.label, html: s.html.includes('\n') && !/<(?:p|ul|li|div|br)/.test(s.html) ? `<div class="pre">${s.html}</div>` : s.html, open: !/^Tags/.test(s.label) }));
+    let sub = '';
+    if (!withNew) return { facts, secs, sub, about: '' };
+    const at = (k) => facts.findIndex(f => f.k === k);
+    const after = (k, item) => { const i = at(k); facts.splice(i < 0 ? 0 : i + 1, 0, item); };
+    for (const c of p.casts) {
+        const who = c.people.map(x => x.members.length ? `${x.name} (${x.members.join(', ')})` : x.name).join(', ');
+        after('Scheduled', { k: sentence(c.label), v: who, isNew: true });
+        if (ans(3) === 'fact' && c.line) after(sentence(c.label), { k: 'Session', v: c.line, isNew: true });
+    }
+    if (p.playlist && p.playlist.songs.length) {
+        const n = p.playlist.songs.length;
+        const t = p.playlist.songs.map(s => titled(s.song));
+        after(at('Setlist') >= 0 ? 'Setlist' : (p.casts[0] ? sentence(p.casts[0].label) : 'On stage'),
+            { k: 'Playlist', v: `${n} songs: ${t.slice(0, 3).join(', ')}${n > 4 ? ` … ${t[n - 1]}` : ''}`, isNew: true });
+    }
+    // The sections: description, cast, playlist, lists.
+    const castSecs = p.casts.map(c => ({
+        label: sentence(c.label), open: true, isNew: true,
+        html: (ans(3) === 'head' && c.line ? `<p class="line">${esc(c.line)}</p>` : '') +
+            `<ul>${c.people.map(x => `<li><a href="${esc(x.href)}">${esc(x.name)}</a>${x.members.length ? `<ul>${x.members.map(m => `<li>${esc(m)}</li>`).join('')}</ul>` : ''}</li>`).join('')}</ul>`,
+    }));
+    const idxOf = (re) => secs.findIndex(s => re.test(s.label));
+    let ins = Math.max(0, idxOf(/^On stage$/) + 1);
+    secs.splice(ins, 0, ...castSecs);
+    if (p.playlist && p.playlist.songs.length) {
+        const pl = p.playlist;
+        const s = { label: `Playlist (${pl.songs.length})`, open: true, isNew: true,
+            html: (pl.line ? `<p class="line">${esc(pl.line)}</p>` : '') +
+                `<ol>${pl.songs.map(x => `<li>${x.href ? `<a href="${esc(x.href)}">${esc(titled(x.song))}</a>` : esc(titled(x.song))}${x.by ? ` <span class="by">(${esc(x.by)})</span>` : ''}</li>`).join('')}</ol>` +
+                (pl.note ? `<p class="note">${esc(pl.note)}</p>` : '') };
+        const si = idxOf(/^Setlist/);
+        secs.splice(si >= 0 ? si + 1 : ins + castSecs.length, 0, s);
+    }
+    if (ans(5) === 'folded' && p.lists.length) {
+        const pi = idxOf(/^Performances$/);
+        const ls = p.lists.map(l => ({ label: `${l.label} (${l.items.length})`, open: false, isNew: true,
+            html: (l.note ? `<p class="note">${esc(l.note)}</p>` : '') + `<ul>${l.items.map(i => `<li><a href="${esc(i.href)}">${esc(i.text)}</a></li>`).join('')}</ul>` }));
+        secs.splice(pi >= 0 ? pi + 1 : secs.length - 1, 0, ...ls);
+    }
+    if (p.description) {
+        if (ans(1) === 'sub') sub = p.description;
+        else secs.unshift({ label: 'About this show', html: p.description, open: ans(1) === 'open', isNew: true });
+    }
+    return { facts, secs, sub, about: p.description && ans(2) === 'yes' ? firstSentence(p.description) : '' };
+}
+function render() {
+    const p = DATA[state.view];
+    const m = model(p, state.mode === 'new');
+    const nNew = m.facts.filter(f => f.isNew).length + m.secs.filter(s => s.isNew).length + (m.sub ? 1 : 0);
+    $('added').textContent = state.mode === 'new' ? (nNew ? `${nNew} additions on this page` : 'nothing to add on this page') : 'what the window shows now';
+    const facts = m.facts.map(f => `<dt class="${f.isNew ? 'new' : ''}">${esc(f.k)}</dt><dd class="${f.isNew ? 'new' : ''}">${esc(f.v)}${f.isNew ? '<span class="tag">new</span>' : ''}</dd>`).join('');
+    $('left').innerHTML = `<div class="xtitle">${esc(p.today.title)}</div>` +
+        (m.sub ? `<div class="sub new" style="padding:6px 8px; margin-top:6px">${m.sub}<span class="tag">new</span></div>` : '') +
+        `<dl class="facts">${facts}</dl>` + (p.today.images ? `<p class="sub" style="margin-top:10px">${p.today.images} picture${p.today.images === 1 ? '' : 's'} (tiles)</p>` : '');
+    $('right').innerHTML = m.secs.map(s => `<details class="sec${s.isNew ? ' new' : ''}"${s.open ? ' open' : ''}><summary><h4>${esc(s.label)}</h4>${s.isNew ? '<span class="tag">new</span>' : ''}</summary><div class="secbody">${s.html}</div></details>`).join('') +
+        '<details class="sec"><summary><h4>History</h4></summary><div class="secbody sub">Opening this section reads the page\'s history from Brucebase.</div></details>';
+    const cardFacts = m.facts.filter(f => f.k !== 'On the page').slice(0, 5);
+    $('card').innerHTML = `<div class="ttl">${esc(p.today.title)}</div>` +
+        (m.about ? `<div class="about new">${esc(m.about)}<span class="tag">new</span></div>` : '') +
+        `<dl>${cardFacts.map(f => `<dt>${esc(f.k)}</dt><dd class="${f.isNew ? 'new' : ''}">${esc(f.v)}</dd>`).join('')}</dl>` +
+        '<div class="cardcap">brucebase.wikidot.com · Space: the window</div>';
+    document.querySelectorAll('[data-view]').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.view) === state.view)));
+    $('m-today').setAttribute('aria-pressed', String(state.mode === 'today'));
+    $('m-new').setAttribute('aria-pressed', String(state.mode === 'new'));
+    $('answers').value = ['Phase 16 batch 1 — answers', ...[1, 2, 3, 4, 5, 6].map((n) => {
+        const box = document.querySelector(`.q[data-q="${n}"]`);
+        const lab = box.querySelector('input:checked').closest('label').textContent.replace(/\s*Recommended\s*$/, '').trim();
+        return `${n}. ${lab}`;
+    })].join('\n');
+}
+$('env').textContent = ENV;
+document.addEventListener('click', (e) => {
+    const v = e.target.closest('[data-view]');
+    if (v) { state.view = Number(v.dataset.view); render(); return; }
+    if (e.target.id === 'm-today') { state.mode = 'today'; render(); }
+    if (e.target.id === 'm-new') { state.mode = 'new'; render(); }
+    if (e.target.closest('#right a, #left a')) e.preventDefault();
+});
+document.addEventListener('change', (e) => { if (e.target.matches('.q input')) render(); });
+$('copy').addEventListener('click', () => {
+    const t = $('answers');
+    navigator.clipboard.writeText(t.value).then(() => { $('status').textContent = 'Copied.'; },
+        () => { t.select(); $('status').textContent = 'Selected: press Ctrl+C.'; });
+});
+render();
+</script>

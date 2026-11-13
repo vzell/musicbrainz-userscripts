@@ -424,12 +424,18 @@ test.describe('detail-page parsers (one record per saved page)', () => {
         ]);
         // Since 2026-10-24 a fourth, every performance with its show linked,
         // closed at first; the sections carry their links (`html`).
-        expect(r.sections.map((s) => s.label.replace(/\(\d+\)/, '(N)'))).toEqual(['Credits', 'On The Tracks', 'Lyrics', 'Performances (N)']);
+        // Since 2026-11-11 (_DP_PARSER_VERSION 19) the page's tags close
+        // every Brucebase record (docs/claude/brucebase.md, "What a filename
+        // says, and the page's tags").
+        expect(r.sections.map((s) => s.label.replace(/\(\d+\)/, '(N)'))).toEqual(['Credits', 'On The Tracks', 'Lyrics', 'Performances (N)', 'Tags (N)']);
         const perf = r.sections[3];
         expect(perf.label).toBe('Performances (250)');
         expect(perf.open).toBe(false);
         expect(perf.html).toContain('<a href="https://brucebase.wikidot.com/gig:2024-09-15c-beach-asbury-park-nj"');
-        expect(r.sections[2].html, 'the lyrics have no links').toBe('');
+        // Since Phase 16 batch 4 (_DP_PARSER_VERSION 28, vzell's answer 3) the
+        // Lyrics section keeps its one kind of link, the "Visit
+        // SpringsteenLyrics.com …" line after each version.
+        expect((r.sections[2].html.match(/<a href="[^"]*"/g) || []), 'the lyrics\' only link').toEqual(['<a href="https://www.springsteenlyrics.com/lyrics.php?song=4thofjulyasburypark"']);
         expect(r.collapsible && r.imagesByKind).toBe(true);
         // The fixture's lyrics are blanked (build-detail-fixtures.py): pin the
         // shape, never the words.
@@ -1016,7 +1022,9 @@ test.describe('the other hosts', () => {
         await page.keyboard.press('Space');
         const dialog = page.locator('#mb-dp-dialog');
         await expect(dialog.locator('h4', { hasText: 'Lyrics' })).toBeVisible();
-        expect(await dialog.locator('.mb-dp-section').last().evaluate((el) => el.textContent.split('\n').filter(Boolean).length))
+        // The Lyrics section's own body (no longer the last one: Tags is).
+        const lyrics = dialog.locator('details.mb-dp-sec', { has: page.locator('summary h4', { hasText: /^Lyrics$/ }) }).locator('.mb-dp-section');
+        expect(await lyrics.evaluate((el) => el.textContent.split('\n').filter(Boolean).length))
             .toBeGreaterThan(20);
         // The window shows the releases one per line ...
         const released = dialog.locator('.mb-dp-kv dt:text-is("Released on") + dd');

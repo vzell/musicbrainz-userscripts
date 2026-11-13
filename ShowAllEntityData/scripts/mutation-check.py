@@ -48,22 +48,69 @@ Safety:
   - every target is restored in a `finally` after each mutation, and each one's
     SHA-256 is verified against its pre-run hash at the very end.
 
+Each spec run stops at its first failing test (`--max-failures=1`,
+2026-11-12): for an `expect: "fail"` entry one failure settles it, and a
+mutation that breaks every test of a spec (a pageType that no longer
+matches, so no button) cost one 90-second timeout per test before — the
+Phase 9 list sat 11 minutes on its first entry. An `expect: "pass"` entry
+still needs every selected test to pass, which the flag does not change.
+
+Status line (2026-11-12, vzell: a mutation run did not show in the prompt
+line): progress goes to ~/.cache/sa-mutation/status.json — the list, host,
+branch@sha, start, done/total, OK / UNEXPECTED / ERROR counts, the mutation
+running now, and at the end the finish, wall clock and whether every file was
+restored. ~/.claude/statusline.sh shows it while the run lasts ("script
+modified": the userscript holds a planted defect) and for an hour after, as
+it does for scripts/run-test-full.py. Times are Berlin time with the offset.
+
 usage:
   python3 scripts/mutation-check.py scripts/mutations/rel-column-fetch-failure.json
 """
+import datetime
 import hashlib
 import json
 import os
 import shutil
+import socket
 import subprocess
 import sys
 import time
+import zoneinfo
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 USERSCRIPT = os.path.join(ROOT, 'ShowAllEntityData.user.js')
 DEFAULT_TARGET = 'ShowAllEntityData.user.js'
 BACKUP_SUFFIX = '.mutation-backup'
 DEFAULT_PROJECT = 'chromium-fixtures'
+BERLIN = zoneinfo.ZoneInfo('Europe/Berlin')
+STATUS_DIR = os.path.expanduser('~/.cache/sa-mutation')
+STATUS_PATH = os.path.join(STATUS_DIR, 'status.json')
+
+
+def berlin_now():
+    """The current time, Berlin, whole seconds, as an aware datetime."""
+    return datetime.datetime.now(BERLIN).replace(microsecond=0)
+
+
+def git(*args):
+    """Stripped stdout of a git command in the repo, or 'unknown'."""
+    try:
+        return subprocess.run(['git', *args], cwd=ROOT, capture_output=True, text=True,
+                              check=True).stdout.strip() or 'unknown'
+    except (OSError, subprocess.CalledProcessError):
+        return 'unknown'
+
+
+def write_status(status):
+    """Atomically replace the status file the status line reads; never fatal."""
+    try:
+        os.makedirs(STATUS_DIR, exist_ok=True)
+        tmp = STATUS_PATH + '.tmp'
+        with open(tmp, 'w', encoding='utf-8') as fh:
+            json.dump(status, fh, indent=2)
+        os.replace(tmp, STATUS_PATH)
+    except OSError:
+        pass
 
 
 def target_path(rel):
@@ -96,7 +143,7 @@ def run_spec(spec, grep, project=DEFAULT_PROJECT):
     expression", which four entries scored as OK.
     """
     cmd = ['npx', 'playwright', 'test', spec, f'--project={project}',
-           '--reporter=line', '--workers=1', '-g', grep]
+           '--reporter=line', '--workers=1', '--max-failures=1', '-g', grep]
     proc = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
     out = (proc.stdout or '') + (proc.stderr or '')
     lines = [ln for ln in out.splitlines() if ln.strip()]
@@ -137,9 +184,27 @@ def main():
             shutil.copyfile(backups[rel], p)
 
     results = []
+    start = berlin_now()
+    status = {
+        'state': 'running', 'pid': os.getpid(), 'list': os.path.basename(sys.argv[1]),
+        'host': socket.gethostname(), 'branch': git('branch', '--show-current'),
+        'sha': git('rev-parse', '--short', 'HEAD'), 'start': start.isoformat(),
+        'total': len(mutations), 'done': 0, 'ok': 0, 'unexpected': 0, 'error': 0,
+        'current': None, 'finish': None, 'wall_s': None, 'restored': None,
+    }
+    write_status(status)
+
+    def tally(verdict):
+        """Count one finished mutation into the status file."""
+        status['done'] += 1
+        status[{'OK': 'ok', 'UNEXPECTED': 'unexpected'}.get(verdict, 'error')] += 1
+        write_status(status)
+
     try:
         for m in mutations:
             name = m['name']
+            status['current'] = name
+            write_status(status)
             rel = m.get('file', DEFAULT_TARGET)
             text = original[rel]
             problem = ''
@@ -153,6 +218,7 @@ def main():
             if problem:
                 results.append((name, m['expect'], 'ERROR', problem))
                 print(f'[{name}] ERROR — {problem}', flush=True)
+                tally('ERROR')
                 continue
 
             started = time.time()
@@ -167,12 +233,14 @@ def main():
                            'this result proves nothing either way')
                 results.append((name, m['expect'], 'ERROR', problem))
                 print(f'[{name}] ERROR — {problem}', flush=True)
+                tally('ERROR')
                 continue
             actual = 'pass' if passed else 'fail'
             verdict = 'OK' if actual == m['expect'] else 'UNEXPECTED'
             results.append((name, m['expect'], actual, verdict if verdict == 'UNEXPECTED' else detail))
             print(f'[{name}] expected {m["expect"]}, got {actual} — {verdict} '
                   f'({time.time() - started:.0f}s) {detail}', flush=True)
+            tally(verdict)
     finally:
         restore_all()
         bad = [rel for rel, p in paths.items() if sha256(p) != original_hash[rel]]
@@ -180,6 +248,14 @@ def main():
         if restored_ok:
             for bak in backups.values():
                 os.remove(bak)
+        finish = berlin_now()
+        status.update({
+            'state': 'passed' if restored_ok and not status['unexpected'] and not status['error']
+                     and status['done'] == status['total'] else 'failed',
+            'current': None, 'finish': finish.isoformat(),
+            'wall_s': int((finish - start).total_seconds()), 'restored': 'yes' if restored_ok else 'NO',
+        })
+        write_status(status)
 
     print('\n== SUMMARY ==')
     unexpected = 0

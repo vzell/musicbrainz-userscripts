@@ -1,0 +1,463 @@
+<title>Brucebase Stats Pages</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one reading column of "liner notes" sections, each a mockup with its real rows; questions last. */
+:root {
+    --paper: #fbf8f1;
+    --sheet: #fffdf8;
+    --ink: #2b2622;
+    --rule: #d9cfbd;
+    --muted: #7a6d5c;
+    --accent: #2f5f9e;
+    --ok: #3f7a3a;
+    --warn: #9a6a00;
+    --alert: #9b2218;
+    --tint: #f3ecdd;
+    --shadow: 0 10px 24px -8px rgba(60, 40, 20, .35);
+    --serif: Georgia, "Times New Roman", serif;
+    --sans: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    color-scheme: light;
+}
+body { background: var(--paper); color: var(--ink); font: 15px/1.5 var(--serif); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 28px 64px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: grid; gap: 28px; }
+h1 { font-size: 30px; margin: 0; font-weight: normal; text-wrap: balance; }
+h2 { font-size: 21px; margin: 0; font-weight: normal; text-wrap: balance; }
+h3 { font-size: 16px; margin: 0; }
+p { margin: 0; max-width: 72ch; }
+a { color: var(--accent); }
+.label, .pill, button, .chip { font: 600 11px/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; }
+.label { color: var(--muted); }
+code, .mono { font-family: var(--mono); font-size: 12.5px; }
+header { display: grid; gap: 10px; }
+.env { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+nav.toc { display: flex; flex-wrap: wrap; gap: 6px; }
+nav.toc a { text-decoration: none; border: 1px solid var(--rule); border-radius: 3px; padding: 6px 9px; background: var(--sheet); color: var(--ink); }
+nav.toc a:hover, nav.toc a:focus-visible { border-color: var(--ink); }
+section.mock { background: var(--sheet); border: 1px solid var(--rule); border-radius: 4px; box-shadow: var(--shadow);
+    padding: 20px; display: grid; gap: 14px; min-width: 0; }
+section.mock > *, .sub > .body, .subs > * { min-width: 0; }
+.sechead { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: baseline; }
+.sechead .id { font: 600 12px/1 var(--mono); color: var(--muted); }
+.facts { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0; }
+.facts dt { font-style: italic; color: var(--muted); }
+.facts dd { margin: 0; min-width: 0; }
+.pill { display: inline-block; padding: 4px 7px; border-radius: 3px; border: 1px solid currentColor; }
+.pill.ok { color: var(--ok); } .pill.run { color: var(--accent); } .pill.warn { color: var(--warn); } .pill.alert { color: var(--alert); } .pill.idle { color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--rule); background: var(--paper); color: var(--ink); border-radius: 3px; padding: 6px 8px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.chip:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.chip .n { font-family: var(--mono); letter-spacing: 0; text-transform: none; opacity: .75; margin-left: 4px; }
+button { border: 1px solid var(--rule); background: var(--sheet); color: var(--ink); border-radius: 3px; padding: 7px 10px; cursor: pointer; }
+button.primary { border-color: var(--accent); color: var(--accent); }
+button:hover { border-color: var(--ink); }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.toolbar input[type="search"] { font: 14px var(--serif); padding: 6px 8px; border: 1px solid var(--rule); border-radius: 3px; background: #fff; color: var(--ink); min-width: 0; width: 240px; max-width: 100%; }
+.count { font: 12px var(--mono); color: var(--muted); }
+.tblbox { overflow-x: auto; border: 1px solid var(--rule); border-radius: 3px; max-height: 460px; overflow-y: auto; }
+table.tbl { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+table.tbl th { position: sticky; top: 0; background: var(--tint); text-align: left; font: 600 11px/1.2 var(--sans); letter-spacing: .06em;
+    text-transform: uppercase; padding: 7px 9px; border-bottom: 1px solid var(--rule); cursor: pointer; white-space: nowrap; user-select: none; }
+table.tbl th[aria-sort="ascending"]::after { content: " ▲"; } table.tbl th[aria-sort="descending"]::after { content: " ▼"; }
+table.tbl td { padding: 5px 9px; border-bottom: 1px solid #eee4d3; vertical-align: top; }
+table.tbl td.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 12.5px; }
+table.tbl tr:hover td { background: #fbf3e2; }
+.new { background: #eef4ea; }
+th.new { background: #e2edd9 !important; }
+.more { padding: 8px 9px; }
+.sub { border: 1px solid var(--rule); border-radius: 3px; }
+.sub > h3 { padding: 8px 10px; cursor: pointer; display: flex; gap: 8px; align-items: baseline; background: var(--paper); }
+.sub > h3::before { content: "▶"; font-size: 10px; color: var(--muted); }
+.sub.open > h3::before { content: "▼"; }
+.sub > .body { display: none; padding: 8px; }
+.sub.open > .body { display: block; }
+.subs { display: grid; gap: 6px; }
+.note { border-left: 3px solid var(--rule); padding: 4px 0 4px 12px; color: var(--muted); font-size: 14px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--muted); }
+.legend span::before { content: ""; display: inline-block; width: 12px; height: 12px; border: 1px solid var(--rule); vertical-align: -2px; margin-right: 5px; background: var(--sheet); }
+.legend span.n::before { background: #e2edd9; }
+.bar { height: 8px; background: var(--tint); border-radius: 2px; min-width: 60px; position: relative; }
+.bar i { position: absolute; inset: 0 auto 0 0; background: var(--ok); border-radius: 2px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.tile { border: 1px solid var(--rule); border-radius: 3px; background: var(--paper); display: grid; grid-template-rows: 110px auto; overflow: hidden; }
+.tile .art { background: repeating-linear-gradient(45deg, var(--tint), var(--tint) 6px, #efe6d4 6px, #efe6d4 12px); display: grid; place-items: center; color: var(--muted); font: 11px var(--mono); padding: 6px; text-align: center; word-break: break-all; }
+.tile .cap { padding: 6px 8px; font-size: 13px; display: grid; gap: 2px; min-width: 0; }
+.tile .cap a { overflow-wrap: anywhere; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.grid2 > * { min-width: 0; }
+.headcard { border: 1px solid var(--rule); border-radius: 3px; padding: 12px; background: var(--paper); display: grid; gap: 8px; }
+.q { border: 1px solid var(--rule); border-radius: 3px; padding: 12px; display: grid; gap: 8px; background: var(--paper); }
+.q h3 { font-weight: normal; font-size: 16px; }
+.q label { display: flex; gap: 8px; align-items: baseline; cursor: pointer; }
+.q .rec { color: var(--ok); font: 600 10px/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; }
+textarea#answers { width: 100%; min-height: 170px; font: 12.5px/1.45 var(--mono); border: 1px solid var(--rule); border-radius: 3px; padding: 8px; background: #fff; color: var(--ink); box-sizing: border-box; }
+.status { font: 12px var(--sans); color: var(--ok); min-height: 1em; }
+.shapes td:first-child { white-space: nowrap; }
+@media (max-width: 520px) { .facts { grid-template-columns: 1fr; } .facts dt { margin-top: 6px; } h1 { font-size: 24px; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+<header>
+    <span class="label">ShowAllEntityData · feature/bb-overhaul · Phase 13 mockups</span>
+    <h1>Brucebase stats pages</h1>
+    <p>How the wiki's <code>stats:</code> pages would look as our tables. Each section takes real rows from the mirror copy and shows one page shape. The columns marked green are ones we would add; everything else is the page's own. The questions at the end decide the first batch.</p>
+    <div class="env" id="env"></div>
+    <nav class="toc" aria-label="Sections">
+        <a href="#survey">Survey</a><a href="#m1">A · Link lists</a><a href="#m2">B · Wiki tables</a>
+        <a href="#m3">C · Song tour counts</a><a href="#m4">D · Studio sessions</a><a href="#m5">E · Galleries</a>
+        <a href="#m6">F · Text pages</a><a href="#skip">Left alone</a><a href="#questions">Questions</a>
+    </nav>
+</header>
+
+<section class="mock" id="survey">
+    <div class="sechead"><span class="id">SURVEY</span><h2>What the mirror holds</h2></div>
+    <p>1,942 <code>stats:</code> pages: 1,299 are one song's tour counts, 258 are album studio-session pages and their parts, 86 are award fragments. The rest are about 300 pages of their own. The survey read every page in the copy below; the tour family was sampled (one in 50) and gets a full run before its specs.</p>
+    <div class="tblbox" style="max-height:none"><table class="tbl shapes" id="shapeTbl"></table></div>
+    <div class="toolbar"><input type="search" id="pageFilter" placeholder="Find a page, shape or family" aria-label="Find a surveyed page"><span class="count" id="pageCount"></span></div>
+    <div class="tblbox" id="pageBox"></div>
+</section>
+
+<section class="mock" id="m1">
+    <div class="sechead"><span class="id">A</span><h2>Tabbed link lists</h2><span class="pill run">Batch 1 proposed</span></div>
+    <p>The largest group, <span id="aCount"></span>: tabs (letters as on <code>stats:songs</code>, or names: labels, years, tours), each tab a list of links to one kind of page. One reader covers them all. A show link's text, "2014-12-07 Kennedy Center, Washington, DC", splits into Date, Venue, City and State. The wiki's sort form "Left Foot (The)" is turned round. Nested tabs (Audio › Born To Run (1975)) become one path.</p>
+    <div class="chips" id="m1pick" role="group" aria-label="Page"></div>
+    <div id="m1facet" class="chips" role="group" aria-label="Tab filter"></div>
+    <div id="m1tbl"></div>
+</section>
+
+<section class="mock" id="m2">
+    <div class="sechead"><span class="id">B</span><h2>Wiki tables</h2><span class="pill run">Batch 1 proposed</span></div>
+    <p><span id="bCount"></span> hold real tables with a header row: awards per ceremony, song counts per tour, performance counts per city, state and country, the On The Tracks timeline and key, the live top 100, openers and closers. The header becomes the columns. A page with one table per tab or heading gets a sub-table each; numbers sort as numbers.</p>
+    <div class="chips" id="m2pick" role="group" aria-label="Page"></div>
+    <div id="m2tbl"></div>
+</section>
+
+<section class="mock" id="m3">
+    <div class="sechead"><span class="id">C</span><h2>One song's tour counts</h2><span class="pill idle">Batch 2</span></div>
+    <p>1,299 pages <code>stats:&lt;song&gt;-tour</code>, each a run of one-row boxes: "Performed at 59 show(s) of 130 on the 2023-25 International Tour". As a table: Tour, Played, Tour shows and the share. The song page (<code>bb-song</code>) already has "Performances by tour" counted from its own list; this page adds the tour's total.</p>
+    <div class="chips" id="m3pick" role="group" aria-label="Song"></div>
+    <div id="m3tbl"></div>
+</section>
+
+<section class="mock" id="m4">
+    <div class="sechead"><span class="id">D</span><h2>An album's studio sessions</h2><span class="pill idle">Batch 2</span></div>
+    <p>35 main pages <code>stats:&lt;album&gt;-studio-sessions</code>, put together from parts the wiki includes (<code>-overview</code>, <code>-release</code>, <code>-addrec</code>, <code>-details</code>, <code>-credits</code>, <code>-altseq-N</code>, …). Laid out like a release (<code>bb-retail</code>): the head, then a sub-table per part. Each version heading "BORN TO RUN - V1a" splits into Song / Version / Take / Date, the same split the open TODO asks for on On The Tracks.</p>
+    <div class="grid2">
+        <div class="headcard" id="m4head"></div>
+        <div class="headcard"><span class="label">Tabs on the page</span><div id="m4tabs" class="chips"></div></div>
+    </div>
+    <div class="subs" id="m4subs"></div>
+</section>
+
+<section class="mock" id="m5">
+    <div class="sechead"><span class="id">E</span><h2>Galleries</h2><span class="pill idle">Batch 3</span></div>
+    <p>The discography pages are cover tiles, each linking a release. As a table: Release, Cover, Tab, with the cover in the image card and the viewer as on other Brucebase pages. What the filename says (<code>disco_&lt;name&gt;</code>) comes from <code>_bbParseImageName()</code>. Below: the tiles as they are read, the pictures drawn as placeholders here.</p>
+    <div class="toolbar"><span class="count" id="m5count"></span></div>
+    <div class="tiles" id="m5tiles"></div>
+</section>
+
+<section class="mock" id="m6">
+    <div class="sechead"><span class="id">F</span><h2>Text pages</h2><span class="pill idle">Batch 3</span></div>
+    <p><code>stats:songs-registered</code> lists songs registered at the Library of Congress as plain text, no links. As a table with a Song page column, matched by title against <code>stats:songs</code>: <span id="m6known"></span>. The registration record above the list stays as text above the table.</p>
+    <div id="m6tbl"></div>
+</section>
+
+<section class="mock" id="skip">
+    <div class="sechead"><span class="id">—</span><h2>Left alone</h2><span class="pill idle">Previews only</span></div>
+    <dl class="facts">
+        <dt>Include fragments</dt><dd><code>performances-with-bruce-*</code> (11) and <code>awards-*</code> (84) are parts the main pages <code>stats:performances-with-bruce</code> and <code>stats:awards</code> pull in; read there, not on their own.</dd>
+        <dt>Hub pages</dt><dd><code>stats:on-the-tracks</code>, <code>stats:venues</code>, <code>stats:statistics</code>, <code>stats:studio-bootlegs</code>: running text with links to other stats pages. They keep the link previews they have today.</dd>
+        <dt>Sub-pages</dt><dd>Studio-session parts and <code>content:files-*</code> parts are read through their main page.</dd>
+    </dl>
+</section>
+
+<section class="mock" id="questions">
+    <div class="sechead"><span class="id">Q</span><h2>Questions</h2></div>
+    <p>Each question has a recommended answer marked. Your choices fill the box at the end, ready to paste into brucebase.org.</p>
+    <div class="subs" id="qs"></div>
+    <div class="toolbar"><button class="primary" id="copy" type="button">Copy answers</button><span class="status" id="copyStatus" role="status"></span></div>
+    <textarea id="answers" readonly aria-label="Your answers"></textarea>
+</section>
+</div>
+
+<script>
+const D = /*__DATA__*/null;
+const BB = 'https://brucebase.wikidot.com';
+const $ = (s, r = document) => r.querySelector(s);
+const el = (tag, props = {}, kids = []) => {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(props)) {
+        if (k === 'class') e.className = v; else if (k === 'text') e.textContent = v;
+        else if (k.startsWith('on')) e.addEventListener(k.slice(2), v); else e.setAttribute(k, v);
+    }
+    for (const k of [].concat(kids)) if (k != null) e.append(k);
+    return e;
+};
+const cellText = c => (c && typeof c === 'object') ? (c.t || '') : String(c ?? '');
+const cellNode = c => {
+    if (c && typeof c === 'object' && c.h) {
+        const href = /^https?:/.test(c.h) ? c.h : BB + c.h;
+        return el('a', { href, target: '_blank', rel: 'noopener', text: c.t || c.h });
+    }
+    return document.createTextNode(cellText(c));
+};
+const isNum = s => /^[\d,.]+%?$/.test(s.trim());
+
+/** A sortable, filterable table: cols, rows; newCols marks our added columns. */
+function table(host, cols, rows, opts = {}) {
+    host.textContent = '';
+    const numCol = cols.map((_, i) => {
+        const v = rows.map(r => cellText(r[i])).filter(Boolean);
+        return v.length > 0 && v.filter(isNum).length / v.length >= .8;
+    });
+    let sortBy = -1, dir = 1, limit = opts.limit || 60, q = opts.query || '';
+    const box = el('div', { class: 'tblbox' });
+    const cnt = el('span', { class: 'count' });
+    const input = el('input', { type: 'search', placeholder: 'Filter these rows', 'aria-label': 'Filter rows' });
+    input.id = 'f-' + Math.random().toString(36).slice(2);
+    input.value = q;
+    if (!opts.noFilter) host.append(el('div', { class: 'toolbar' }, [input, cnt]));
+    else host.append(el('div', { class: 'toolbar' }, [cnt]));
+    host.append(box);
+    function draw() {
+        const ql = q.toLowerCase();
+        let list = rows.filter(r => (!opts.pred || opts.pred(r)) && (!ql || r.some(c => cellText(c).toLowerCase().includes(ql))));
+        if (sortBy >= 0) {
+            const k = r => numCol[sortBy] ? parseFloat(cellText(r[sortBy]).replace(/,/g, '')) || 0 : cellText(r[sortBy]);
+            list = list.slice().sort((a, b) => { const x = k(a), y = k(b); return (typeof x === 'number' ? x - y : x.localeCompare(y, undefined, { numeric: true })) * dir; });
+        }
+        cnt.textContent = list.length === rows.length ? `${rows.length} rows` : `${list.length} of ${rows.length} rows`;
+        const t = el('table', { class: 'tbl' });
+        const hr = el('tr');
+        cols.forEach((c, i) => {
+            const th = el('th', { class: (opts.newCols || []).includes(c) ? 'new' : '', scope: 'col', tabindex: '0', text: c });
+            if (i === sortBy) th.setAttribute('aria-sort', dir > 0 ? 'ascending' : 'descending');
+            const go = () => { if (sortBy === i) dir = -dir; else { sortBy = i; dir = 1; } draw(); };
+            th.addEventListener('click', go);
+            th.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+            hr.append(th);
+        });
+        t.append(el('thead', {}, hr));
+        const tb = el('tbody');
+        for (const r of list.slice(0, limit)) {
+            const tr = el('tr');
+            cols.forEach((c, i) => {
+                const td = el('td', { class: [numCol[i] ? 'num' : '', (opts.newCols || []).includes(c) ? 'new' : ''].join(' ').trim() });
+                if (opts.render && opts.render[i]) td.append(opts.render[i](r[i], r)); else td.append(cellNode(r[i]));
+                tr.append(td);
+            });
+            tb.append(tr);
+        }
+        t.append(tb);
+        box.textContent = '';
+        box.append(t);
+        if (list.length > limit) box.append(el('div', { class: 'more' }, el('button', { type: 'button', text: `Show all ${list.length}`, onclick: () => { limit = Infinity; draw(); } })));
+    }
+    input.addEventListener('input', () => { q = input.value; draw(); });
+    host._redraw = draw;
+    draw();
+}
+
+/** Chips that pick one item; calls back with the index. */
+function picker(host, labels, onPick, start = 0) {
+    host.textContent = '';
+    const btns = labels.map((l, i) => el('button', { class: 'chip', type: 'button', 'aria-pressed': String(i === start), onclick: () => {
+        btns.forEach((b, j) => b.setAttribute('aria-pressed', String(i === j))); onPick(i); } }, l));
+    host.append(...btns);
+    onPick(start);
+}
+
+// --- survey
+$('#env').textContent = 'Env: ' + D.env + ' · survey of ' + D.pages_read + ' pages';
+const SHAPES = [
+    ['Fragments', p => p[1].includes('include') || p[2] === 'awards-*' || p[2] === 'performances-with-bruce-*', 'none', '—'],
+    ['A · Link lists', p => /tabview\+list|^list/.test(p[1]) && !p[2].includes('studio') && !p[1].includes('include'), 'bb-stats-list', '1'],
+    ['B · Wiki tables', p => /table|number-grid/.test(p[1]) && !p[2].includes('studio') && !p[1].includes('include') && !/images/.test(p[1]), 'bb-stats-table', '1'],
+    ['C · Song tour counts', p => p[2] === '<song>-tour', 'bb-song-tours', '2'],
+    ['D · Studio sessions', p => p[2] === '*-studio-sessions*', 'bb-sessions', '2'],
+    ['E · Galleries', p => /images/.test(p[1]), '(Art column)', '3'],
+    ['F · Text pages', p => /^text|^small/.test(p[1]) && !p[2], 'one page at a time', '3'],
+];
+(function () {
+    const t = $('#shapeTbl');
+    t.append(el('thead', {}, el('tr', {}, ['Shape', 'Pages in the copy', 'Examples', 'Reader', 'Batch'].map(h => el('th', { text: h })))));
+    const tb = el('tbody');
+    const taken = new Set();
+    const tally = [];
+    for (const [name, pred, reader, batch] of SHAPES) {
+        const ps = D.pages.filter(p => !taken.has(p[0]) && pred(p));
+        ps.forEach(p => taken.add(p[0]));
+        tally.push(new Set(ps.map(p => p[0])));
+        tb.append(el('tr', {}, [el('td', { text: name }), el('td', { class: 'num', text: String(ps.length) }),
+            el('td', { text: ps.filter(p => !p[2]).slice(0, 4).map(p => p[0]).join(', ') || ps.slice(0, 3).map(p => p[0]).join(', ') }),
+            el('td', {}, el('code', { text: reader })), el('td', { text: batch })]));
+    }
+    const fill = (id, i) => {
+        const ps = D.pages.filter(p => tally[i].has(p[0]));
+        const fam = ps.filter(p => p[2]);
+        const names = [...new Set(fam.map(p => p[2]))].slice(0, 5).join(', ');
+        $(id).textContent = `${ps.length} pages in the copy (${ps.length - fam.length} of their own, ${fam.length} in families: ${names})`;
+    };
+    fill('#aCount', 1); fill('#bCount', 2);
+    const rest = D.pages.filter(p => !taken.has(p[0]));
+    tb.append(el('tr', {}, [el('td', { text: 'Other' }), el('td', { class: 'num', text: String(rest.length) }), el('td', { text: rest.slice(0, 5).map(p => p[0]).join(', ') }), el('td', { text: 'decide per page' }), el('td', { text: '—' })]));
+    t.append(tb);
+    const rows = D.pages.map(p => [{ t: p[0], h: '/' + (p[0].startsWith('content_') ? p[0].replace('content_', 'content:') : 'stats:' + p[0]) }, p[3], p[1], p[2], String(p[4]), String(p[5])]);
+    const host = $('#pageBox');
+    const filt = $('#pageFilter');
+    table(host, ['Page', 'Title', 'Shape', 'Family', 'Biggest table', 'Linked items'], rows, { noFilter: true, limit: 40 });
+    const all = rows;
+    filt.addEventListener('input', () => {
+        const q = filt.value.toLowerCase();
+        const sub = all.filter(r => r.some(c => cellText(c).toLowerCase().includes(q)));
+        table(host, ['Page', 'Title', 'Shape', 'Family', 'Biggest table', 'Linked items'], sub, { noFilter: true, limit: 40 });
+        $('#pageCount').textContent = q ? `${sub.length} of ${all.length} pages` : '';
+    });
+})();
+
+// --- A
+picker($('#m1pick'), D.m1.map(p => p.title), i => {
+    const p = D.m1[i];
+    const tabCol = p.cols.length - 1;
+    const counts = new Map();
+    p.rows.forEach(r => { const k = cellText(r[tabCol]); counts.set(k, (counts.get(k) || 0) + 1); });
+    const picked = new Set();
+    const facet = $('#m1facet');
+    facet.textContent = '';
+    facet.append(el('span', { class: 'label', text: p.cols[tabCol] + ':' }));
+    const host = $('#m1tbl');
+    const newCols = p.cols.length > 2 ? ['Date', 'Venue', 'City', 'State', 'Kind', 'Tab'] : [];
+    const redraw = () => table(host, p.cols, p.rows, { newCols, pred: r => !picked.size || picked.has(cellText(r[tabCol])) });
+    [...counts.entries()].slice(0, 16).forEach(([k, n]) => {
+        const b = el('button', { class: 'chip', type: 'button', 'aria-pressed': 'false', onclick: () => {
+            if (picked.has(k)) picked.delete(k); else picked.add(k);
+            b.setAttribute('aria-pressed', String(picked.has(k))); redraw(); } }, [k || '(none)', el('span', { class: 'n', text: String(n) })]);
+        facet.append(b);
+    });
+    if (counts.size > 16) facet.append(el('span', { class: 'count', text: `+ ${counts.size - 16} more tabs` }));
+    redraw();
+});
+
+// --- B
+picker($('#m2pick'), D.m2.map(p => p.title), i => {
+    const p = D.m2[i];
+    const host = $('#m2tbl');
+    host.textContent = '';
+    if (p.mode === 'single') { table(host, p.groups[0].cols, p.groups[0].rows); return; }
+    const subs = el('div', { class: 'subs' });
+    const master = el('button', { type: 'button', text: 'Show all sub-tables' });
+    let open = false;
+    master.addEventListener('click', () => { open = !open; subs.querySelectorAll('.sub').forEach(s => s.classList.toggle('open', open)); master.textContent = open ? 'Hide all sub-tables' : 'Show all sub-tables'; });
+    host.append(el('div', { class: 'toolbar' }, [master, el('span', { class: 'count', text: `${p.groups.length} sub-tables · Ctrl-click a heading for all` })]), subs);
+    p.groups.forEach((g, gi) => {
+        const body = el('div', { class: 'body' });
+        const h = el('h3', { tabindex: '0' }, [g.name || '(untitled)', el('span', { class: 'count', text: `${g.rows.length} rows` })]);
+        const sub = el('div', { class: 'sub' + (gi === 0 ? ' open' : '') }, [h, body]);
+        let drawn = false;
+        const ensure = () => { if (!drawn) { table(body, g.cols, g.rows, { limit: 30 }); drawn = true; } };
+        if (gi === 0) ensure();
+        const toggle = e => {
+            const to = !sub.classList.contains('open');
+            if (e.ctrlKey || e.metaKey) subs.querySelectorAll('.sub').forEach(s => { s.classList.toggle('open', to); s._ensure && s._ensure(); });
+            else { sub.classList.toggle('open', to); ensure(); }
+        };
+        sub._ensure = ensure;
+        h.addEventListener('click', toggle);
+        h.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(e); } });
+        subs.append(sub);
+    });
+});
+
+// --- C
+const songName = id => id.replace(/-tour$/, '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+picker($('#m3pick'), D.m3.map(p => songName(p.id)), i => {
+    const p = D.m3[i];
+    const rows = p.rows.map(r => [r[0], String(r[1]), String(r[2]), r[3].toFixed(1) + '%', r[3], r[4]]);
+    table($('#m3tbl'), ['Tour', 'Played', 'Tour shows', 'Share', 'Bar', 'Note'], rows, {
+        newCols: ['Share', 'Bar'], noFilter: true,
+        render: { 4: v => { const b = el('div', { class: 'bar', title: v + '%' }); const f = el('i'); f.style.width = Math.min(100, v) + '%'; b.append(f); return b; } },
+    });
+});
+
+// --- D
+(function () {
+    const m = D.m4;
+    const head = $('#m4head');
+    head.append(el('span', { class: 'label', text: 'Head' }), el('h3', { text: 'Born To Run - Studio Sessions' }),
+        el('dl', { class: 'facts' }, [el('dt', { text: 'Album' }), el('dd', {}, el('a', { href: BB + '/retail:born-to-run', target: '_blank', rel: 'noopener', text: 'Born To Run' })),
+            el('dt', { text: 'Parts read' }), el('dd', { text: 'Overview · Released · Additional Recordings · Details · Potential Album Sequences' }),
+            el('dt', { text: 'Links' }), el('dd', { text: '173 bootlegs · 125 people · 33 venues (the Details tab)' })]));
+    m.tabs.forEach(labels => labels.forEach(l => $('#m4tabs').append(el('span', { class: 'chip', text: l }))));
+    const subs = $('#m4subs');
+    const add = (name, cols, rows, opts, open) => {
+        const body = el('div', { class: 'body' });
+        const sub = el('div', { class: 'sub' + (open ? ' open' : '') }, [el('h3', { tabindex: '0', onclick: () => sub.classList.toggle('open') }, [name, el('span', { class: 'count', text: `${rows.length} rows` })]), body]);
+        table(body, cols, rows, opts);
+        subs.append(sub);
+    };
+    if (m.released) add('Released', m.released.header, m.released.rows, { noFilter: true }, true);
+    add('Additional Recordings (first six songs)', ['Song', 'Version', 'Take', 'Date', 'Running Time', 'Release'], m.versions, { newCols: ['Song', 'Version', 'Take', 'Date'] }, true);
+})();
+
+// --- E
+(function () {
+    const tiles = $('#m5tiles');
+    const shown = D.m5.slice(0, 30);
+    $('#m5count').textContent = `${D.m5.length} tiles on stats:discography-album; the first ${shown.length} shown`;
+    for (const t of shown) {
+        const slug = (t.href || '').replace('/retail:', '').replace('/playlist:', '');
+        tiles.append(el('div', { class: 'tile' }, [el('div', { class: 'art', text: t.file }),
+            el('div', { class: 'cap' }, [t.href ? el('a', { href: BB + t.href, target: '_blank', rel: 'noopener', text: t.alt || slug }) : el('span', { text: t.alt || '—' }), el('span', { class: 'label', text: t.tab })])]));
+    }
+})();
+
+// --- F
+(function () {
+    const m = D.m6;
+    $('#m6known').textContent = `${m.known} of ${m.rows.length} titles have a song page`;
+    const rows = m.rows.map(r => [r[0], r[1] ? { t: 'song page', h: r[1] } : '']);
+    table($('#m6tbl'), ['Title', 'Song page'], rows, { newCols: ['Song page'] });
+})();
+
+// --- questions
+const QS = [
+    ['Which shapes go into the first batch?', ['A (link lists) and B (wiki tables): about 135 pages, two readers', 'A only', 'A, B and C (adds the 1,299 tour pages)', 'Something else (say which)'], 0],
+    ['Tabs on a link list: one table with a Tab column, or a sub-table per tab?', ['One table with a Tab column; nested tabs as one path "Audio › Born To Run (1975)"', 'A sub-table per tab'], 0],
+    ['Show links ("2014-12-07 Kennedy Center, Washington, DC"): split into columns?', ['Yes: Date (with the date parts), Venue, City, State, Kind; the sort form "Left Foot (The)" turned round, the wiki\'s text as the hover', 'Keep the link text as one column'], 0],
+    ['A wiki table per tab or heading (Awards, Openers and Closers): sub-tables, or one table with a group column?', ['A sub-table per tab or heading, the first open', 'One table with a Group column'], 0],
+    ['The 1,299 song tour pages: a pageType of their own (C), or leave them to the song page\'s "Performances by tour"?', ['Their own pageType, batch 2 (it adds the tour totals and the share)', 'Leave them as they are'], 0],
+    ['Studio sessions (D): a detail pageType like bb-retail, with the Song / Version / Take split shared with On The Tracks?', ['Yes, batch 2, and the On The Tracks split (the open TODO) built with it', 'Do the On The Tracks split now, studio sessions later', 'Leave studio sessions for now'], 0],
+    ['Galleries (E): rows with a Cover column and the image card, or leave the tiles?', ['Rows with a Cover column, batch 3', 'Leave the tiles'], 0],
+    ['Include fragments (performances-with-bruce-*, awards-*): read only through their main page?', ['Yes, only through the main page; the fragments keep link previews', 'Give them a table too'], 0],
+];
+(function () {
+    const host = $('#qs');
+    const out = $('#answers');
+    const sel = QS.map(q => q[2]);
+    const write = () => { out.value = QS.map((q, i) => `${i + 1}. ${q[0]} [${q[1][sel[i]]}]`).join('\n'); };
+    QS.forEach((q, i) => {
+        const box = el('div', { class: 'q' }, el('h3', { text: `${i + 1}. ${q[0]}` }));
+        q[1].forEach((opt, j) => {
+            const id = `q${i}o${j}`;
+            const r = el('input', { type: 'radio', name: `q${i}`, id, value: String(j) });
+            if (j === q[2]) r.checked = true;
+            r.addEventListener('change', () => { sel[i] = j; write(); });
+            box.append(el('label', { for: id }, [r, el('span', { text: opt }), j === q[2] ? el('span', { class: 'rec', text: 'recommended' }) : null]));
+        });
+        host.append(box);
+    });
+    write();
+    $('#copy').addEventListener('click', () => {
+        const st = $('#copyStatus');
+        const done = () => { st.textContent = 'Copied'; setTimeout(() => { st.textContent = ''; }, 2000); };
+        const fallback = () => { out.focus(); out.select(); st.textContent = 'Selected: press Ctrl+C'; };
+        try { navigator.clipboard.writeText(out.value).then(done, fallback); } catch (e) { fallback(); }
+    });
+})();
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { const a = document.activeElement; if (a && a.blur) a.blur(); } });
+</script>

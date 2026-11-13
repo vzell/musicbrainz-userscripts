@@ -448,7 +448,11 @@ parsed from the list page.
 
 A link qualifies (`_dpSiteForLink()`) when it is in a `table.tbl > tbody`,
 wraps no image (springsteenlyrics.com's Cover cell links to the same page),
-and its URL is same-origin and passes the host's `isDetailUrl`.
+and its URL is same-origin and passes the host's `isDetailUrl`. Since
+Phase 16 batch 4 of org/brucebase.org (vzell, 2026-11-13) `_dpSiteForUrl()`
+refuses a link to the page you are on that only adds an `#anchor` (same
+path and query, a hash): a jump within the page, not a page to preview (a
+Brucebase studio sessions page's "#thunderroad"; on every foreign host).
 
 ## Fetching, parsing, caching
 
@@ -593,7 +597,21 @@ markup.
   `_dpParseBbPage()`, which the foreign-image card of the year table's
   Media icons asks for (docs/claude/brucebase.md, "Images: the Media icons
   and the song glyph"). `_DP_PARSER_VERSION` 4 (2026-10-24): a
-  `files:setlist-YYYY` image is of kind Setlist. Version 5 (the same day):
+  `files:setlist-YYYY` image is of kind Setlist. Version 19 (2026-11-11):
+  every Brucebase record carries the page's tags and a closed "Tags (N)"
+  section, each image its filename's caption and photographer, and the
+  window groups photos by photographer (docs/claude/brucebase.md, "What a
+  filename says, and the page's tags"). Version 20 (2026-11-11): a
+  release, playlist or bootleg page is a record of its own
+  (`_dpParseBbRelease()`: facts, tracks, Personnel, Related releases), its
+  links preview (`ownLinks`), images carry `nameKind` and `part`, and On
+  The Tracks versions keep their suffix (docs/claude/brucebase.md, "Release,
+  playlist and bootleg pages"). Version 21 (2026-11-11): every Brucebase
+  record carries the page id (`bbPageId`), which the window's History
+  section asks Wikidot's history modules by (docs/claude/brucebase.md, "A
+  page's history in the window"). Version 22 (2026-11-11): a story page's
+  links preview, its words a "Story" section; a page without a tabview
+  folds its sections. Version 5 (2026-10-24):
   such an entry page has fields and sections, and any text link to one
   previews it under its own setting (`ownLinks`, `_dpOwnLinksOn()`,
   `sa_bb_event_preview`) while `isDetailUrl` stays `/song:`
@@ -1981,6 +1999,14 @@ generalize to URLs".
   `scripts/probe-dg-poh-headerline.user.js`); the Web Service there stays
   anonymous (`_mbWsGetForeign()`); `scripts/mutations/poh-headerline.json`
   pins it. Every other caller stays anonymous.
+  Anonymous with a cookie of OUR OWN is not an exception (no browser cookie
+  leaves): a Brucebase window's History section on another host
+  (`_bbHistGmPost()`, Phase 15 of org/brucebase.org) sends
+  `Cookie: wikidot_token7=<a token made for the page load>` and the same
+  token in its POST body, which is all Wikidot's AJAX modules check
+  (probes `scripts/probe-bb-history-token.py`,
+  `scripts/probe-bb-history-xorigin.user.js`: Tampermonkey 5.5.1 delivers a
+  Cookie header on an anonymous request).
   `_extGet()` adds the gate, `wanted()` after the slot, and one retry on a
   transient status.
 - **One rate gate per HOST: `_extAwaitSlot(host)`** (`_extSpacingMs(host)`:
@@ -3498,7 +3524,15 @@ the header's `@connect` and `_EXT_CONNECT_HOSTS` (the parent domain covers
 - **A Brucebase show inside a window on Brucebase** (G3, 2026-11-03):
   `_extTarget()` takes `/<yyyy>#<ddmmyy>` on brucebase.wikidot.com itself
   when `inWindow` (`_extBbDateTest()`), the `bbdate` reader's, as on every
-  other host. On the page itself such a link stays the site's own.
+  other host. Until 2026-11-11 such a link on the page itself stayed the
+  site's own; since then (vzell, org/brucebase.org Phase 8) the condition
+  is gone: the card and the window on the page too (an event's "Info &
+  Setlist", a release's "recorded July 6, 1981", our tables' copies), the
+  click still the site's. The wiki writes the link relative
+  ("/1978#070778"), so `_extTarget()` reads THAT shape (and only it)
+  against the page on Brucebase; every other relative link there is the
+  site's own page, left to the Brucebase sources. Spec
+  `bb-date-links.spec.js`, mutations `bb-date-links.json` (3).
 - **Charset: `_extFetch()`'s `charset`** becomes `overrideMimeType`
   (`text/html; charset=windows-1252` for jungleland.it, which names none);
   `_extFetchText(url, charset)` and `_EXT_LIVE.fetchText` pass it on from
@@ -3536,6 +3570,25 @@ the header's `@connect` and `_EXT_CONNECT_HOSTS` (the parent domain covers
   `_DP_WIN_EXT_READERS` too (branch B), so its pages open in any window.
   A hover over such a link in the window goes through the `ext` source, so
   the first-contact rule (`askHost`) holds there as on the page.
+  **A Brucebase window too** (2026-11-12, vzell: a venue window's "Source:
+  Wikipedia" had no card and left for a new tab): `_dpWinIsBb()` — Brucebase's
+  own window on its own host (source id `brucebase.wikidot.com`), the
+  `springsteen` reader on a brucebase.wikidot.com page elsewhere, a show on
+  its year page (`bbdate`). The other Springsteen sites' windows keep
+  `_DP_WIN_EXT_READERS`. Specs: `bb-event-preview.spec.js` (the venue),
+  `bb-date-links.spec.js` (a show), `popup-ext-foreign.spec.js` (a Brucebase
+  page's window on springsteenlyrics.com); mutations `bb-window-links.json`.
+- **A Brucebase tag (`bbtag`, `_extBbTagTest()`, `_extBbTagLoad()`; Phase
+  11, 2026-11-12).** A link to `/system:page-tags/tag/<tag>`, on Brucebase
+  only: the card is ONE ListPages call over Wikidot's AJAX (the count and
+  the newest six, ~5 KB), the window the tag's pages by title, 250 at once,
+  "Load all" for the rest — never the tag's own page (one page of 2–6 MB,
+  the whole tag cloud in it). `_extTarget()` reads the site's relative tag
+  links against the page and lets them through its own-host test, as the
+  `bbdate` shape; the tags line under every page (`div.page-tags`) is in
+  `_DP_SITES['brucebase.wikidot.com'].extRoot`. Its window is a Brucebase
+  window (`_dpWinIsBb()`). Requests, fields and the template:
+  docs/claude/brucebase.md, "Tag pages".
 - **The Brucebase date anchor (`_extBbDateTest()`, `_extBbDateLoad()`; U0
   X8).** MusicBrainz links a show as `/<year>#<ddmmyy>`: the year page,
   scrolled to `<a name="ddmmyy">`. `_extBbYear()` reads the year page ONCE
@@ -3551,7 +3604,11 @@ the header's `@connect` and `_EXT_CONNECT_HOSTS` (the parent domain covers
   between shows, after an `<hr>`): the setlist paragraph (" / " between
   titles; none for a cancelled show), `.list-pages-box` notes with their
   `/relation:` people, and the icons naming what the gig page has ("Help Us"
-  is a request for information, not one of them). The record is a detail
+  is a request for information, not one of them; since 2026-11-12 each
+  icon's image is kept beside its word, `icons`, `_EXT_BB_YEAR_VERSION` 2,
+  and the window draws them as the year page does, `ul.mb-dp-icons` in
+  `_dpExtractedCols()`, in place of the Fields line "The gig page has",
+  which the card keeps — vzell, Image #21/#22). The record is a detail
   record in `rec.dp` (venue, date, the setlist as tracks, People, notes) plus
   the gig page in See also. A date its year page has no show for is `dead`
   ("not available"). Live page: the year page as Brucebase's own Live page

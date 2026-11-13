@@ -1133,6 +1133,9 @@ h3 and thead offsets start below them), z-index 105 (`VSB_Z_HEAD`).
   first version decided once at page init, when a later userstyle was not
   there yet, and its `relative` then overrode the userstyle's `sticky` (and
   hid it from `_vsbBaseOffset()`), caught by that same SPH test.
+  On Brucebase the wiki's `#header` (theme z-index 30, the top-bar menus)
+  is lifted the same way, `_isBbHost` only, its rule in `_ensureBbStyle()`
+  (2026-11-11; docs/claude/brucebase.md, "Styling").
 - **The backdrop, `#mb-vsb-mask`.** The block has no background and is
   narrower than the table, so what scrolled under it showed through it and
   beside it (reported the same day: artist releases, the tabs ran through

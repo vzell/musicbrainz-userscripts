@@ -1,0 +1,41 @@
+[
+    {
+        "name": "the wiki's #header is not marked for the lift",
+        "why": "_vsbLiftChrome() finds only MusicBrainz's body > div.header; on Brucebase #header stays at the theme's z-index 30, under the stuck h1 and status line (105).",
+        "edits": [
+            {
+                "find": "        const hdr = document.querySelector('body > div.header') ||\n            (_isBbHost ? document.getElementById('header') : null);\n",
+                "replace": "        const hdr = document.querySelector('body > div.header');\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-topbar-menu.spec.js",
+        "grep": "Phase 7",
+        "expect": "fail"
+    },
+    {
+        "name": "the marked #header gets no z-index",
+        "why": "The class alone changes nothing: _ensureBbStyle()'s rule puts #header.mb-vsb-chrome at 108, over the stuck block.",
+        "edits": [
+            {
+                "find": "            html.mb-vsb-on body.mb-sa-host-bb #header.mb-vsb-chrome {\n                position: relative;\n                z-index: 108;\n",
+                "replace": "            html.mb-vsb-on body.mb-sa-host-bb #header.mb-vsb-chrome {\n                position: relative;\n                z-index: 30;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-topbar-menu.spec.js",
+        "grep": "Phase 7",
+        "expect": "fail"
+    },
+    {
+        "name": "the lift rule only below the raised block (107)",
+        "why": "A hovered or focused stuck block is raised to 107 (SPH_Z_RAISED); a header under that is covered again while the pointer rests on the h1 and moves down into the menu.",
+        "edits": [
+            {
+                "find": "            html.mb-vsb-on body.mb-sa-host-bb #header.mb-vsb-chrome {\n                position: relative;\n                z-index: 108;\n",
+                "replace": "            html.mb-vsb-on body.mb-sa-host-bb #header.mb-vsb-chrome {\n                position: relative;\n                z-index: 106;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-topbar-menu.spec.js",
+        "grep": "Phase 7",
+        "expect": "fail"
+    }
+]
