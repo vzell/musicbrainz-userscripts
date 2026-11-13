@@ -61,7 +61,48 @@ Env: 2026-11-13T23:29:43+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 
    *Open question for vzell; the recommendation is the near-full check.*
 
-** TODO Phase 1 step 2: mockup published, WAITING FOR vzell's APPROVAL
+** TODO Phase 1 step 3: the build (in progress, 2026-11-14)
+
+What is in place in =ShowAllEntityData.user.js=. It is not yet tested in a browser; =node --check= and =lint-summary.py --check= pass.
+- =_bbTagCtx()=, =_bbRawTags()=: split out of =_bbPageTags()=.
+- =_bbSiblingName()= (the 60-character rule) and =_bbTagInfo()=, now in =_dpParseBb()= as =data.bbTagInfo=.
+- =_bbTagPagesEligible()=, =_bbTagPageGet()=: one tag page, cached under the IDB key "bbtags:<url>". A 404 is "missing"; the request goes through =_dpAwaitSlot()= on BB and =_extGet()= elsewhere.
+- =_bbTagPagesStart()=: the chain walker, with the state in =_bbTagPages=.
+- =_bbTagRows()=, =_bbTagPagesParts()=, =_bbTagBoxSet()=, =_bbTagPagesNotify()=.
+- =_bbTagChips(dp)=: now used by the 6 BB heads.
+- =_bbTagsWindowPart()=: drawn in =_dpExtractedCols()= for a section with =bbTags=.
+- *Kicks:* the BB site's =windowKick= starts the reads on BB; =_extExtracted()= adds =_bbTagPagesWant= on the other hosts.
+- *The chip box* =_cbx*= (=_cbxSet=, =_cbxInner=, =_cbxRefresh=, =_cbxInit=, =_cbxEnsureStyle=). =_fdChips()= now builds one, so EVERY chip card gets the tool row from 6 chips on (=_CBX_TOOLS_MIN=).
+- *Storage:* =MB_FD_CHIP_VIEW_KEY= (Group by and sort per card kind) and the workspace group "fdchips".
+- *Setting* =sa_bb_onstage_tags=; =_DP_PARSER_VERSION= 28 → 29; WIP.1 in =ShowAllEntityData_CHANGELOG.wip.json=.
+
+Still to do:
+- *Fixture specs:*
+  - BB event head + window with a routed onstage page, -2 chain, -1 start, a 404, a failure with Retry;
+  - the tool row (Show / filter highlight / Group by / sort remembered);
+  - a non-BB chip card (Discogs or SL head) keeps working.
+- *Checks:*
+  - mutation entries;
+  - the MusicBrainz fixture suite;
+  - =test:full=.
+- *Docs:*
+  - =docs/claude/brucebase.md=;
+  - =docs/non-mb-coverage.json=;
+  - HELP;
+  - =DEBUG-NOTES.md=;
+  - delete =scripts/oneoff-bb-tag-chips-callers.py= before the merge.
+- *Choices to report to vzell:*
+  - A–Z is now the DEFAULT order of every chip card (the mockup's default); before, cards kept the page's order.
+  - The tool row appears only from 6 chips on.
+
+** DONE Phase 1 step 2: mockup APPROVED (vzell, 2026-11-14)
+
+Decisions:
+- Mockup version 2 is the build target.
+- Group by and the sort direction are remembered between pages; the filter text is not.
+- The tool row goes on EVERY chip card (=_fdChips()=), on every non-MusicBrainz detail page, not only Brucebase's Tags card. Group by Page applies only where a card has several pages.
+
+** Phase 1 step 2 history: the mockup
 
 Mockup M1: https://claude.ai/artifact/18teQxyrom93rWw5mvY98D. The local copy is [[file:bb-onstage-tags-mockup.html][bb-onstage-tags-mockup.html]]; republish from it to keep the URL. It covers:
 - *Two places:* the bb-event head's Tags card, and the preview window's "Tags (N)" section.

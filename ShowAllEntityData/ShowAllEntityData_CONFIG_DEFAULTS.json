@@ -2,11 +2,11 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1598+2026-11-11",
-    "schema_entries": 506,
+    "script_version": "9.99.1624+2026-11-13",
+    "schema_entries": 507,
     "sections": 54,
-    "settings": 452,
-    "settings_with_default": 447,
+    "settings": 453,
+    "settings_with_default": 448,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 275,
+      "checkbox": 276,
       "color_picker": 62,
       "divider": 54,
       "number": 53,
@@ -274,6 +274,7 @@
     "sa_bb_event_preview": "Preview event, venue, people, release and bootleg pages on hover",
     "sa_bb_history": "Page history in the Brucebase window",
     "sa_bb_mb_event_lookup": "MB-Event column: look the events up on MusicBrainz",
+    "sa_bb_onstage_tags": "Show the tags kept on a show's On stage page",
     "sa_bb_sidebar_right": "Show the Brucebase side bar on the right",
     "sa_bb_tip_images": "Media icons and song glyphs: the page's images on hover",
     "sa_bb_year_pages": "Enable on the Brucebase year pages (event lists)",
@@ -728,6 +729,7 @@
     "sa_bb_event_preview": true,
     "sa_bb_history": true,
     "sa_bb_mb_event_lookup": true,
+    "sa_bb_onstage_tags": true,
     "sa_bb_sidebar_right": false,
     "sa_bb_tip_images": true,
     "sa_bb_year_pages": true,
