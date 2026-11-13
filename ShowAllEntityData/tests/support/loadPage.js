@@ -122,6 +122,11 @@ const FIXTURE_SETTINGS_OVERRIDE = {
     // after a render; the song links themselves need nothing and stay on.
     sa_sl_song_versions: false,
     sa_sl_mb_works: false,
+    // Brucebase's tags kept on other pages (2026-11-14, org/springsteen-marriage.org
+    // Phase 1): a press or Space on a show reads its /onstage: page and, when its
+    // tags are nearly full, its "-2" — requests every spec that counts a page's
+    // requests would see. bb-onstage-tags.spec.js seeds it back on.
+    sa_bb_onstage_tags: false,
     sa_dp_path_label: 'kind',
 };
 

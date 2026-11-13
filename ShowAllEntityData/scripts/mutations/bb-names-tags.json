@@ -56,7 +56,7 @@
         "why": "_dpParseBb() appends the page's tags as the window's last, closed section.",
         "edits": [
             {
-                "find": "        const sec = _bbTagsSection(data.tags);\n        if (sec) data.sections.push(sec);\n",
+                "find": "        if (sec) data.sections.push(Object.assign(sec, { bbTags: true }));\n",
                 "replace": ""
             }
         ],

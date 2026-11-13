@@ -24508,7 +24508,10 @@
         let all;
         try { all = GM_getValue(MB_FD_CHIP_VIEW_KEY, null); } catch (_) { all = null; }
         const v = (all && typeof all === 'object' && all[key]) || {};
-        return { group: ['kind', 'page', 'none'].includes(v.group) ? v.group : 'kind', dir: v.dir === -1 ? -1 : 1 };
+        // A–Z by default for Brucebase's tags (the wiki lists them so anyway);
+        // any other card keeps its page's order (0) until a sort is pressed.
+        const dflt = key === 'bb-tags' ? 1 : 0;
+        return { group: ['kind', 'page', 'none'].includes(v.group) ? v.group : 'kind', dir: [1, -1, 0].includes(v.dir) ? v.dir : dflt };
     }
 
     /**
@@ -24586,7 +24589,7 @@
         const group = view.group === 'page' && !pages.length ? 'kind' : view.group;
         const q = ui.q.trim().toLowerCase();
         const shown = all.filter(x => (show === 'all' || (show === 'own' ? !x.page : !!x.page)) && (!q || x.text.toLowerCase().includes(q)))
-            .sort((a, b) => view.dir * a.text.localeCompare(b.text, undefined, { sensitivity: 'base' }));
+            .sort((a, b) => (view.dir ? view.dir * a.text.localeCompare(b.text, undefined, { sensitivity: 'base' }) : 0));
         let groups;
         if (group === 'kind') groups = m.rows.map(([kind]) => [kind, shown.filter(x => x.kind === kind)]);
         else if (group === 'page') groups = [['This page', shown.filter(x => !x.page)]].concat(pages.map(p => [p.label, shown.filter(x => x.page === p.id)]));
@@ -24601,8 +24604,8 @@
                 : `<span class="mb-sb-chip${xc}"${tip}><a href="${esc(x.href)}" target="_blank" rel="noopener noreferrer">${label}</a></span>`;
         };
         const row = ([kind, of]) => (dp
-            ? `<div class="mb-dp-tagrow"><span class="mb-dp-tagk">${esc(kind)}<span class="mb-cbx-n">${of.length}</span></span><span class="mb-dp-tagv">${of.map(chip).join('')}</span></div>`
-            : `<div class="mb-sb-chip-row"><span class="mb-sb-chip-kind">${esc(kind)}<span class="mb-cbx-n">${of.length}</span></span>${of.map(chip).join('')}</div>`);
+            ? `<div class="mb-dp-tagrow"><span class="mb-dp-tagk" data-mb-cbx-n="${of.length}">${esc(kind)}</span><span class="mb-dp-tagv">${of.map(chip).join('')}</span></div>`
+            : `<div class="mb-sb-chip-row"><span class="mb-sb-chip-kind" data-mb-cbx-n="${of.length}">${esc(kind)}</span>${of.map(chip).join('')}</div>`);
         const rows = groups.filter(([, of]) => of.length).map(row).join('') ||
             `<div class="mb-cbx-none">No ${q ? `chip contains “${esc(ui.q.trim())}”` : 'chip to show'}${show === 'own' ? ' on this page' : show === 'extra' ? ' on the other pages' : ''}.</div>`;
         let tools = '';
@@ -24673,7 +24676,9 @@
             const ui = _cbxUiOf(id);
             if (b.classList.contains('mb-cbx-clr')) ui.q = '';
             else if (b.dataset.mbCbxK === 'show') ui.show = b.dataset.mbCbxV;
-            else _cbxViewSet(m.key, b.dataset.mbCbxK, b.dataset.mbCbxK === 'dir' ? Number(b.dataset.mbCbxV) : b.dataset.mbCbxV);
+            // A pressed sort pressed again: back to the page's order.
+            else if (b.dataset.mbCbxK === 'dir') _cbxViewSet(m.key, 'dir', b.getAttribute('aria-pressed') === 'true' ? 0 : Number(b.dataset.mbCbxV));
+            else _cbxViewSet(m.key, b.dataset.mbCbxK, b.dataset.mbCbxV);
             // Group by and the sort are one choice for every box of that kind.
             if (b.dataset.mbCbxK === 'group' || b.dataset.mbCbxK === 'dir') {
                 _cbxModels.forEach((mm, oid) => { if (mm.key === m.key) _cbxRefresh(oid); });
@@ -24729,7 +24734,8 @@
             .mb-cbx .mb-cbx-clr { border: 0; background: none; color: #7a6d5c; cursor: pointer; font-size: 12px; padding: 0 2px; }
             .mb-cbx .mb-cbx-cnt, .mb-cbx .mb-cbx-counts { font: 11.5px system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: #7a6d5c;
                 font-variant-numeric: tabular-nums; }
-            .mb-cbx .mb-cbx-n { font: 10px system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; margin-left: 4px; color: #7a6d5c;
+            .mb-cbx .mb-sb-chip-kind[data-mb-cbx-n]::after, .mb-cbx .mb-dp-tagk[data-mb-cbx-n]::after { content: attr(data-mb-cbx-n);
+                font: 10px system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; margin-left: 4px; color: #7a6d5c;
                 letter-spacing: 0; text-transform: none; font-weight: normal; }
             .mb-cbx .mb-cbx-none { font: italic 12.5px Georgia, "Times New Roman", serif; color: #7a6d5c; }
             .mb-cbx .mb-sb-chip.mb-cbx-x, .mb-cbx a.mb-dp-tag.mb-cbx-x { border-style: dashed; border-color: #b7a98f; background: #fbf8f1; }
@@ -34959,11 +34965,20 @@
     function _bbTagPagesNotify(name) {
         (_bbTagPagesBoxes.get(name) || new Set()).forEach((id) => {
             const src = _cbxSet.src && _cbxSet.src.get(id);
-            if (!src || src.style !== 'sb') return;
-            _bbTagBoxSet(id, src.tags, src.info, src.style);
+            if (!src) return;
+            const n = _bbTagBoxSet(id, src.tags, src.info, src.style);
             _cbxRefresh(id);
+            // The window's box: its section's heading counts too. In place,
+            // never a repaint of the window (it would race a fold the reader
+            // is making); the next paint draws the same state.
+            if (src.style === 'dp') {
+                document.querySelectorAll(`#mb-dp-dialog .mb-cbx[data-mb-cbx-id="${CSS.escape(id)}"]`).forEach((box) => {
+                    const h = box.closest('details.mb-dp-sec');
+                    const h4 = h && h.querySelector(':scope > summary h4');
+                    if (h4) h4.textContent = `Tags (${n})`;
+                });
+            }
         });
-        if (_dpDialog.repaint) _dpDialog.repaint();
     }
 
     /**
