@@ -76,7 +76,18 @@ Mockup M1: https://claude.ai/artifact/18teQxyrom93rWw5mvY98D. The local copy is 
 - *Progress:* a segmented progress bar.
 - *The setting row* =sa_bb_onstage_tags=.
 
-Open question in the mockup: should the Tags card also get a "This page / On stage page" filter? It is not in the mockup, since it wasn't asked for.
+vzell, 2026-11-14: "YES; there should be a possibility to filter (inclusive highlighting) and sort tags". Mockup version 2 adds a tool row to BOTH panels, each with its own state:
+- *Show:* All / This page / On stage, with counts.
+- *Filter box:* keeps the tags that contain the text and highlights every occurrence, without regard to case. Families with no match disappear and "N of M" says how many are left. Esc or ✕ clears it, and the caret survives the re-render while pages are being read.
+- *Group by:* Family / Page / None.
+- *Sort:* A–Z / Z–A inside each group; each row's label carries its count.
+
+Open question in version 2: should Group by and the sort direction be remembered between pages (the filter text never is)?
+
+Notes for the build:
+- The head card is built by =_fdChips()= and the window section by =_bbTagsSection()= as an HTML string. Both need the tool row.
+- The window's markup is a string, so wire its tool row by delegation on the dialog, not by per-element listeners (the window re-renders).
+- Check whether the shared head-card code (=_fdChips=, used by every foreign detail head) should get the tool row for all cards, or only the BB Tags card. *Ask vzell.*
 
 ** Decisions (vzell, 2026-11-14: "I agree to the open questions")
 

@@ -67,6 +67,21 @@ code, .mono { font-family: var(--mono); font-size: 12px; }
 @keyframes arrive { from { background: #e6f0e4; } }
 @media (prefers-reduced-motion: reduce) { .chip.new { animation: none; } }
 
+.tools { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.segc { display: inline-flex; border: 1px solid var(--rule); border-radius: 3px; overflow: hidden; }
+.segc button { font: 600 10.5px/1 var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink); background: var(--card); border: 0; border-left: 1px solid var(--rule); padding: 5px 8px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.segc button:first-child { border-left: 0; }
+.segc button:hover { background: var(--hover); }
+.segc button[aria-pressed="true"] { background: #eef3fa; color: var(--run); }
+.segc button:disabled { color: #b9ae9c; cursor: default; background: var(--card); }
+.fbox { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--rule); border-radius: 3px; background: var(--card); padding: 0 6px; min-width: 0; flex: 1 1 140px; max-width: 220px; }
+.fbox:focus-within { border-color: var(--run); }
+.fbox input { border: 0; background: transparent; font: 12.5px/24px var(--sans); color: var(--ink); min-width: 0; flex: 1; outline: none; }
+.fbox .clr { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 13px; padding: 0 2px; }
+.matchn { font: 12px var(--sans); color: var(--muted); font-variant-numeric: tabular-nums; }
+.chip mark { background: #f3dd8a; color: inherit; border-radius: 2px; padding: 0 1px; }
+.nomatch { font: italic 13px var(--serif); color: var(--muted); }
+.row .k .c { font-style: normal; font-size: 11px; margin-left: 3px; }
 .foot { border-top: 1px solid var(--rule); padding-top: 8px; font-size: 13px; display: grid; gap: 4px; }
 .foot .why { color: var(--muted); font-style: italic; }
 .foot ul { margin: 2px 0 0; padding-left: 18px; }
@@ -159,7 +174,14 @@ details.sec .rows { margin-top: 6px; }
                 <input type="checkbox" id="set-os" checked>
                 <span>Show the tags kept on a show's On stage page<br><span class="h">A show's cast is tagged on its On stage page, because Brucebase allows 512 characters of tags per page. On: one more page is read per show with a cast, sometimes two or three. Default: on.</span></span>
             </label>
-            <p class="q"><b>Open question:</b> should the Tags card also get a "This page / On stage page" filter? You didn't ask for one, so the mockup leaves it out.</p>
+            <span class="lab">The tool row (vzell, 2026-11-14: "filter (inclusive highlighting) and sort")</span>
+            <ul>
+                <li><b>Show</b> All / This page / On stage, with counts. On stage is greyed out when the show has no On stage page.</li>
+                <li><b>Filter</b> keeps the tags that contain the text and highlights it in each chip, every occurrence, without regard to case. Families with no match disappear and "12 of 69" says how many are left. Esc or ✕ clears it, and the caret stays put while pages are still being read.</li>
+                <li><b>Group by</b> Family (today's rows) / Page (this page, then each On stage page) / None (one row). <b>A–Z / Z–A</b> sorts inside each group, and each row's label carries its count.</li>
+                <li>Each panel has its own tool row, so the head card and the window don't change each other.</li>
+            </ul>
+            <p class="q"><b>Open question:</b> should Group by and the sort direction be remembered between pages, like the other cards' choices? The filter text would not be. In the mockup they reset when you reload the page.</p>
         </div>
     </div>
 </div>
@@ -216,7 +238,12 @@ details.sec .rows { margin-top: 6px; }
         },
     };
 
-    const st = { ex: 'pgh', net: 'ok', timers: [], tipFor: null, hideT: 0 };
+    const st = { ex: 'pgh', net: 'ok', timers: [], tipFor: null, hideT: 0, step: 0, fresh: new Set() };
+    /** Each panel's own view: which tags, the filter text, how they are grouped, the sort direction. */
+    const VIEW = {
+        head: { show: 'all', q: '', group: 'family', dir: 1 },
+        win: { show: 'all', q: '', group: 'family', dir: 1 },
+    };
     const $ = (id) => document.getElementById(id);
     const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const words = (s) => (s || '').split(/\s+/).filter(Boolean);
@@ -247,13 +274,51 @@ details.sec .rows { margin-top: 6px; }
         return [...seen.values()];
     }
 
-    function rowsHtml(tags, fresh) {
-        return '<div class="rows">' + FAMILIES.map(([key, name]) => {
-            const of = tags.filter((x) => x.fam === key);
-            if (!of.length) return '';
-            return `<div class="row"><span class="k">${name}</span><span class="v">` + of.map((x) =>
-                `<a class="chip${x.page ? ' os' : ''}${x.page && fresh.has(x.page.path) ? ' new' : ''}" href="${BASE}system:page-tags/tag/${encodeURIComponent(x.t)}#pages" data-t="${esc(x.t)}" data-p="${x.page ? esc(x.page.path) : ''}" target="_blank" rel="noopener">${esc(x.t)}</a>`).join('') + '</span></div>';
-        }).join('') + '</div>';
+    /** A chip, the filter's match highlighted (every occurrence, case-insensitive). */
+    function chipHtml(x, fresh, q) {
+        let label = esc(x.t);
+        if (q) {
+            const lo = x.t.toLowerCase();
+            let out = '', i = 0, at;
+            while ((at = lo.indexOf(q, i)) >= 0) {
+                out += esc(x.t.slice(i, at)) + '<mark>' + esc(x.t.slice(at, at + q.length)) + '</mark>';
+                i = at + q.length;
+            }
+            label = out + esc(x.t.slice(i));
+        }
+        return `<a class="chip${x.page ? ' os' : ''}${x.page && fresh.has(x.page.path) ? ' new' : ''}" href="${BASE}system:page-tags/tag/${encodeURIComponent(x.t)}#pages" data-t="${esc(x.t)}" data-p="${x.page ? esc(x.page.path) : ''}" target="_blank" rel="noopener">${label}</a>`;
+    }
+
+    /** The tags a panel's view lets through: the Show choice, then the filter text. */
+    function visible(tags, v) {
+        const q = v.q.trim().toLowerCase();
+        return tags.filter((x) => (v.show === 'all' || (v.show === 'own' ? !x.page : !!x.page)) && (!q || x.t.toLowerCase().includes(q)));
+    }
+
+    /** The tag rows of a panel: grouped by family, by page or not at all, A–Z or Z–A inside each group. */
+    function rowsHtml(tags, fresh, v, ex) {
+        const q = v.q.trim().toLowerCase();
+        const shown = visible(tags, v).sort((a, b) => v.dir * a.t.localeCompare(b.t));
+        if (!shown.length) return `<div class="rows"><span class="nomatch">No tag ${q ? `contains “${esc(v.q.trim())}”` : 'to show'}${v.show !== 'all' ? (v.show === 'own' ? ' on this page' : ' on the On stage pages') : ''}.</span></div>`;
+        let groups;
+        if (v.group === 'family') groups = FAMILIES.map(([key, name]) => [name, shown.filter((x) => x.fam === key)]);
+        else if (v.group === 'page') groups = [['This page', shown.filter((x) => !x.page)]].concat(ex.pages.map((p, i) => [`On stage${ex.pages.length > 1 ? ' ' + (i + 1) : ''}`, shown.filter((x) => x.page === p)]));
+        else groups = [['All', shown]];
+        return '<div class="rows">' + groups.filter(([, of]) => of.length).map(([name, of]) =>
+            `<div class="row"><span class="k">${name}<span class="c">${of.length}</span></span><span class="v">` + of.map((x) => chipHtml(x, fresh, q)).join('') + '</span></div>').join('') + '</div>';
+    }
+
+    /** The tool row above a panel's tags: Show, the filter, Group by, A–Z. */
+    function toolsHtml(id, tags, v) {
+        const own = tags.filter((x) => !x.page).length, os = tags.length - own;
+        const seg = (key, val, label) => `<button type="button" data-pn="${id}" data-k="${key}" data-v="${val}" aria-pressed="${String(v[key] === val)}"${key === 'show' && val === 'os' && !os ? ' disabled' : ''}>${label}</button>`;
+        const n = visible(tags, v).length;
+        return '<div class="tools">' +
+            `<span class="segc" role="group" aria-label="Show">${seg('show', 'all', `All ${tags.length}`)}${seg('show', 'own', `This page ${own}`)}${seg('show', 'os', `On stage ${os}`)}</span>` +
+            `<label class="fbox"><span aria-hidden="true">⌕</span><input id="q-${id}" type="text"placeholder="Filter tags" value="${esc(v.q)}" aria-label="Filter tags" autocomplete="off">${v.q ? `<button type="button" class="clr" data-clr="${id}" aria-label="Clear the filter">✕</button>` : ''}</label>` +
+            `<span class="segc" role="group" aria-label="Group by">${seg('group', 'family', 'Family')}${seg('group', 'page', 'Page')}${seg('group', 'none', 'None')}</span>` +
+            `<span class="segc" role="group" aria-label="Sort">${seg('dir', 1, 'A–Z')}${seg('dir', -1, 'Z–A')}</span>` +
+            (v.q || v.show !== 'all' ? `<span class="matchn" id="n-${id}">${n} of ${tags.length}</span>` : '') + '</div>';
     }
 
     /** The phase: how many On stage pages are read, which one is reading, which one failed. */
@@ -306,23 +371,63 @@ details.sec .rows { margin-top: 6px; }
     }
 
     function render(step, fresh) {
+        st.step = step;
+        st.fresh = fresh;
         const ex = EX[st.ex];
         const ph = phase(ex, step);
+        // keep the caret in a filter box across a re-render (the reading re-renders every 0.9 s)
+        const act = document.activeElement;
+        const keep = act && /^q-/.test(act.id) ? [act.id, act.selectionStart, act.selectionEnd] : null;
         const tags = collect(ex, ph.read);
         const osN = tags.filter((x) => x.page).length;
         const legend = osN ? '<div class="legend"><span class="chip" style="cursor:default">this page</span><span class="chip os" style="cursor:default">kept on an On stage page</span></div>' : '';
         $('head').innerHTML =
             `<div class="card-h"><span class="ttl">Tags</span><span class="n">${tags.length}${osN ? ` · ${osN} from the On stage page` : ''}</span>${statusHtml(ex, ph)}</div>` +
             `<div class="card-b"><div class="showline">${esc(ex.title)}<small>${esc(ex.sub)} · this page's tags use ${ex.chars} of 512 characters</small></div>` +
-            progressHtml(ex, ph) + legend + rowsHtml(tags, fresh) + footHtml(ex, tags, ph) + '</div>';
+            progressHtml(ex, ph) + toolsHtml('head', tags, VIEW.head) + legend + rowsHtml(tags, fresh, VIEW.head, ex) + footHtml(ex, tags, ph) + '</div>';
         $('win').innerHTML =
             `<div class="win-h"><b>${esc(ex.title)}</b><span class="x">Esc closes</span></div><div class="win-b">` +
             '<div class="dimsec">▶ Setlist</div><div class="dimsec">▶ On stage</div><div class="dimsec">▶ History</div>' +
             `<details class="sec" open><summary>Tags (${tags.length})${osN ? `<span class="sub">${osN} from the On stage page${ph.read > 1 ? 's' : ''}</span>` : ''}${!ph.done ? '<span class="sub">· reading…</span>' : ''}</summary>` +
-            progressHtml(ex, ph) + rowsHtml(tags, fresh) + footHtml(ex, tags, ph) + '</details></div>';
-        const r = document.getElementById('retry');
-        if (r) r.addEventListener('click', () => { st.net = 'ok'; syncButtons(); play(ex.pages.length - 1); });
+            progressHtml(ex, ph) + toolsHtml('win', tags, VIEW.win) + rowsHtml(tags, fresh, VIEW.win, ex) + footHtml(ex, tags, ph) + '</details></div>';
+        document.querySelectorAll('#retry').forEach((r) => r.addEventListener('click', () => { st.net = 'ok'; syncButtons(); play(ex.pages.length - 1); }));
+        if (keep) {
+            const el = document.getElementById(keep[0]);
+            if (el) { el.focus(); el.setSelectionRange(keep[1], keep[2]); }
+        }
     }
+
+    /* the tool rows: one delegated listener each for clicks, typing and Esc */
+    document.addEventListener('click', (e) => {
+        const b = e.target.closest('button[data-pn]');
+        if (b && !b.disabled) {
+            const v = VIEW[b.dataset.pn];
+            v[b.dataset.k] = b.dataset.k === 'dir' ? Number(b.dataset.v) : b.dataset.v;
+            render(st.step, new Set());
+            return;
+        }
+        const c = e.target.closest('button[data-clr]');
+        if (c) {
+            VIEW[c.dataset.clr].q = '';
+            render(st.step, new Set());
+            const el = document.getElementById('q-' + c.dataset.clr);
+            if (el) el.focus();
+        }
+    });
+    document.addEventListener('input', (e) => {
+        const m = /^q-(head|win)$/.exec(e.target.id || '');
+        if (!m) return;
+        VIEW[m[1]].q = e.target.value;
+        render(st.step, new Set());
+    });
+    document.addEventListener('keydown', (e) => {
+        const m = /^q-(head|win)$/.exec(e.target.id || '');
+        if (m && e.key === 'Escape' && VIEW[m[1]].q) {
+            e.stopPropagation();
+            VIEW[m[1]].q = '';
+            render(st.step, new Set());
+        }
+    }, true);
 
     function clearTimers() { st.timers.forEach(clearTimeout); st.timers = []; }
 
