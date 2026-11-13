@@ -3,7 +3,69 @@
 
 Env: 2026-11-13 · plan written in a Claude Code session (plan mode), code reading only · n/a
 
-Plan for pickup on another host. Nothing below is implemented yet.
+Plan for pickup on another host.
+
+* PICKUP HERE: status at the end of the session of 2026-11-13
+
+- *Branch:* =feat/bb-spilled-tags= (pushed), cut from =main= at =871bd93e=. No userscript change yet, so no WIP changelog yet.
+- *Done:* Phase 1 step 1, the probe =scripts/probe-bb-tag-spillover.py=, run over the WHOLE mirror. The results are below; its raw output went to =debug/bb-spill/= on petri (gitignored, so copy it by hand or just rerun the probe: 12 s on a local disk).
+- *Next:* Phase 1 step 2, the mockup (LAF), with the findings below in mind. Then steps 3–5.
+- *Commands to resume:*
+  #+begin_src bash
+  cd ~/git/musicbrainz-userscripts && git fetch && git checkout feat/bb-spilled-tags
+  python3 ShowAllEntityData/scripts/probe-bb-tag-spillover.py --json /tmp/probe.json   # mirror: ~/git/scripts/BruceParser/bb/latest
+  #+end_src
+  =bb/latest= on petri now points to a LOCAL run (=bb/2026-11-13=, a fresh =bbp.sh=). On the other hosts it may still point to the NAS copy from 2026-10-18 (slow, older).
+
+** Probe results (Phase 1 step 1)
+
+Env: 2026-11-13T23:29:43+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · n/a (Python over the mirror =bb/2026-11-13=) · code at =871bd93e=
+
+42,531 pages read, 42,236 of them with tags, 3,998 redirect pages.
+
+1. *The limit is 512 characters, not a tag count. vzell remembered it right.* The tags of a page, joined by one space, never exceed 512 characters. Four pages sit at exactly 512 and eleven more at 507–511. The tag count varies freely at the limit, from 45 to 65 tags. Largest pages:
+   - =gig:2009-11-08-madison-square-garden-new-york-city-ny=: 512 chars, 60 tags
+   - =gig:1978-08-09-agora-cleveland-oh=: 512 chars, 48 tags
+   - =recording:1986-02-00b-shorefire-studios-long-branch-nj=: 512 chars, 45 tags
+   - =gig:1988-07-03-stockholms-stadion-stockholm-sweden=: 511 chars, 65 tags (most tags)
+
+   BBP's =doc/TAGS.md= says "caps the number of tags per page", which is wrong and should be corrected there.
+2. */onstage: pages are not only overflow: they are where the cast tags live.*
+   - *Counts:* there are 3,479 onstage pages. 3,307 carry tags their event lacks; 172 targets are missing from the mirror.
+   - *Kinds:* the events behind them are gig 3,134, rehearsal 170, nogig 2 and interview 1.
+   - *Tab:* 3,303 of these events have an On Stage tab; 4 do not.
+   - *Event size:* the event can be as small as 84 characters and 10 tags when tags are still on its onstage page. So this is not only spillover at 512.
+   - *What is there:* the =onstage= tag itself (3,304) and the band and cast names: garrytallent 2,091, estreetband 1,949, roybittan 1,759, …
+   - *How many per page:* median 9, maximum 44 (=gig:1990-01-17-waldorf-astoria-hotel-new-york-city-ny=).
+   - *Consequences for the plan:*
+     - Name the feature "the show's tags from its On stage page", not "spilled". The UI should say that the cast tags are kept on the On stage page.
+     - The address rule needs =nogig= too, not only gig, rehearsal and interview (BBP lacks it as well).
+     - The On Stage tab is a near-perfect predictor: 3,303 of 3,307 events with onstage tags have one. As a pre-check it saves the request on every page without a cast and misses only 4 pages. Whether to keep it is an *open question for vzell* (below).
+     - The onstage page itself is a Redirect module. Fetch it with =/noredirect/true=, as BBP does, or the server answers with the event.
+3. *Redirecting -N siblings ("-2", "-3", …): 46 pages, 35 with tags the target lacks.* By kind:
+   - gig 18
+   - relation 8
+   - recording 6
+   - rehearsal 2
+   - retail 1
+
+   Biggest:
+   - =recording:1985-07-00-shakedown-studios-new-york-city-ny= (40 + 13 from two siblings)
+   - =relation:artists-united-against-apartheid= (39)
+   - =recording:1985-01-28-a-m-studios-hollywood-ca= (29)
+   - =relation:usa-for-africa= (15)
+
+   The targets sit at 482–508 characters, so these really are overflow pages. Unlike onstage, a sibling cannot be derived from the event page alone. Two options:
+   - try =-2= with =/noredirect/true= for every page whose own tags are near 512 characters (for example over 400), which costs one request only on full pages;
+   - take the list of siblings from BruceParser's feed (=MULTI-title-postfix.txt=, Track A idea 4).
+
+   *Open question for vzell; the recommendation is the near-full check.*
+
+** Open questions for vzell (answer before step 3)
+
+1. *Wording:* "Tags from the On stage page" rather than "spilled tags"? This also renames the setting =sa_bb_spilled_tags= and the helper =_bbSpilledTags= (to e.g. =sa_bb_onstage_tags= / =_bbOnstageTags=).
+2. *The On Stage tab:* keep it as a pre-check (it loses 4 pages, saves requests on pages without a cast), or always try?
+3. *-N siblings:* try =-2= only on pages over ~400 tag characters (recommended), or wait for the feed?
 
 * Track A: BruceParser and BruceBaseParser into ShowAllEntityData
 
