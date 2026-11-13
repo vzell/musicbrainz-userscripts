@@ -983,6 +983,13 @@ render sites), `_vsbRefresh()`, `_vsbBaseOffset()`.
   forever. For the same reason a SHRINKING bar does not change its box, so
   the ResizeObserver never hears of it: a MutationObserver on the bars'
   content (re-armed when the set of bars changes) schedules the re-measure.
+  **The content height is snapped to 1/100 px before the min-height rounds
+  it up.** A Range's height carries float noise (22.000122 for a 22 px bar)
+  that depends on where the children sit: rounded up unsnapped, it adds a
+  pixel, the bars grow, the next read is 22, and they pulse 22/23 px every
+  frame through the ResizeObserver: the multi-table flicker of 2026-11-13
+  (`debug/MB-flicker-FRP.*`, DEBUG-NOTES.md; spec "float noise in an h3's
+  content height does not make the bars pulse").
 - **The h3's indent** (`margin-left: 1.5em`, the table under it sits 4 px
   further left in the fixture) is masked with a page-coloured `box-shadow`
   shifted left, so rows never show beside a stuck bar.
