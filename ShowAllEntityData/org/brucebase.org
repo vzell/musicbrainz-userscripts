@@ -148,8 +148,7 @@ support hovering for all BB URLs (+ known non-BB URLs like MB/SL URLs) PTs
 
 recheck rendering all the right info on BB pages
 
-
-* TODO add additional PTs to BB
+* DONE add additional PTs to BB
 
 add additional PTs to BB:
 
@@ -181,7 +180,7 @@ https://brucebase.wikidot.com/stats:songs-registered - text page - @debug/BB-son
 make the standard BB page, rendered below our table h2/h3 click collapsable (also with Ctrl-Click for ALL sections)
 
 
-* TODO Overwhole of, extensions to and beautify of BruceBase (BB) pages
+* DONE Overwhole of, extensions to and beautify of BruceBase (BB) pages
 
 Overwhole of, extensions to and beautify of BruceBase (BB) pages like events, venues, relations, songs, lyrics,
 recording sessions, retail releases etc:
@@ -1021,7 +1020,6 @@ The entries
 #+end_example
 
 for Phase 2 and 3 are also both confirmed like OK
-
 
 
 * DONE tag answers
