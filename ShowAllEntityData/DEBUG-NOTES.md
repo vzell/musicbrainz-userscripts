@@ -29443,3 +29443,37 @@ Env: 2026-11-13T16:59+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) ·
   checks the final min-height. Mutation "the h3 content height is not snapped" fails it on the rewrite count;
   the "ratchet" entry's find was moved to the new return line.
 Spec file 25/25 (Playwright 1.62.1, chromium-fixtures), mutation 1/1 (expected fail), finds 0 stale, lint within baseline.
+
+## 2026-11-14 — Brucebase tags kept on other pages; chip boxes on every head card (feat/bb-spilled-tags)
+Env: 2026-11-14T00:26:56+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (chromium-fixtures), no Tampermonkey (GM stubs); probes: Python over the mirror bb/2026-11-13, n/a
+- **Symptom (vzell):** BruceBaseParser merges the tags of a show's /onstage: page ("tags-per-page cap
+  spillover"), but SAED's `_bbPageTags()` read only the page itself. So the bb-* heads, every BB window
+  (musicbrainz.org's too) and the year table's records missed the cast tags.
+- **Root facts (`scripts/probe-bb-tag-spillover.py`, whole mirror, 42,531 pages):**
+  - *The limit:* 512 characters of tags (joined by one space), not a count. BBP's doc/TAGS.md "caps the
+    number of tags" is wrong.
+  - *Onstage pages:* 3,307 of the 3,479 carry the show's cast whatever the show's size.
+  - *Siblings:* `-N` pages, onstage pages included, are named by base[:60-len('-N')] + '-N', which held for
+    31 of 31. Waldorf 1990's chain starts at -1. A missing page answers 404 (curl, 2026-11-14).
+- **Fix:**
+  - *The reader* `_bbTagPagesStart()`: own siblings while the last page read is over 450 chars, then the
+    onstage page (or -1) and its siblings. Tags are classified with the SHOW's context.
+  - *The chip box* `_cbx*` behind `_fdChips()` and the window's Tags: Show / filter with marks / Group by /
+    A–Z.
+  - *Where it shows:* `_bbTagChips()` in the six BB heads, `_bbTagsWindowPart()` in `_dpExtractedCols()`.
+  - *When it starts:* a press, or Space (BB `windowKick`, `_extExtracted()` → `_bbTagPagesWant`).
+- **Three traps the first wide run (26 specs, 8 failures) found:**
+  1. *A row count inside the label's text* ("Date4") broke every spec that reads a kind label. It is now
+     CSS, from `data-mb-cbx-n`.
+  2. *An A–Z default on every card* reordered Discogs' External links. Now only "bb-tags" sorts A–Z by
+     default.
+  3. *Full window repaints* from the tag reads raced the fold specs' Ctrl+click (the `toggle` events had not
+     recorded the states yet). Progress now refreshes the box and its heading in place.
+  The ← → step spec saw the gig's own "-2" read; `sa_bb_onstage_tags` is now off in
+  `FIXTURE_SETTINGS_OVERRIDE`.
+- **Tests:**
+  - *Spec:* `bb-onstage-tags.spec.js` 8/8.
+  - *The specs reading chips and heads:* 310/310.
+  - *Mutations:* `bb-onstage-tags.json` 10/10 as recorded. "A hover starts the reads" is covered by the
+    window's `wanted()`, so it is expect pass.
+  - *Stale finds:* 3 moved (bb-names-tags, bb-window-sections, youtube-embeds); 0 stale.

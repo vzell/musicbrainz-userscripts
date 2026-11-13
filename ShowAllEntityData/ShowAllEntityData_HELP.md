@@ -4139,7 +4139,8 @@ fetched, everything comes from the page itself:
   summary) and, folded, the tabs that are words (Eyewitness,
   News/Memorabilia, the recording's notes, …); *Details* with the **Event**
   card (type, date and weekday, scheduled time, venue, tour, the year page,
-  running time), the page's **Tags** by family and its **Media** (each
+  running time), the page's **Tags** by family (with the tags kept on its
+  On stage page, below) and its **Media** (each
   YouTube player as a link); and the page's **Pictures**, a chip per kind
   (Ticket, Setlist, News, …) and one per photographer, each captioned from
   its file name, with the same layouts and viewer as MusicBrainz's cover
@@ -4158,6 +4159,37 @@ fetched, everything comes from the page itself:
   - **Storyteller:** what was said before or during which song.
 - **The wiki's page** stays below under *Brucebase page*, folded: click the
   heading to read it as it was; its own headings fold too.
+
+**Tags kept on another page.** Brucebase allows 512 characters of tags per
+page, so a show's cast is tagged on its own *On stage* page, and a page
+that is full continues on a second one ("-2", "-3"). The Tags of a page's
+head and of its preview window (Space, on Brucebase and on every other
+site) show those tags too:
+- **How they look:** drawn dashed with ↪. Hover one to see which page
+  keeps it; the pages are listed under the tags, with how many each adds.
+- **When they are read:** when you press the page's button or open the
+  window with Space, never from a hover. That is one more page for a show
+  with an On Stage tab, and the next one only while the page before is
+  nearly full.
+- **Progress and failures:** a thin bar shows the pages being read. A page
+  that fails says so, with **Retry**.
+- **The setting:** *Show the tags kept on a show's On stage page*. Off
+  shows only the page's own tags, and nothing extra is read.
+
+**The tool row of chip cards.** Every card of chips at the head of another
+site's detail page (Brucebase, springsteenlyrics.com, Discogs, archive.org,
+setlist.fm, …), and a Brucebase window's Tags, get a row of controls once
+they hold six chips or more:
+- **Show** — All / This page / On stage (where a card has tags from other
+  pages).
+- **Filter** — keeps the chips that contain what you type and marks it in
+  each; Esc or ✕ clears it.
+- **Group by** — the card's own kinds (Family for tags), Page, or None.
+- **A–Z / Z–A** — press the pressed one again to go back to the page's
+  order. Brucebase tags start A–Z; every other card starts in the page's
+  order.
+
+Group by and the sort are remembered for the next page; the filter is not.
 
 **Song pages** (`/song:…`) get **Song** (*Show the song*): Credits (each
 release, who played what), the performances counted by tour (only the

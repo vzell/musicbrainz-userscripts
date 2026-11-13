@@ -1301,6 +1301,96 @@ fixture's tag block; "grouped by photographer" — 1985-01-04's Mic Hampton,
 1985-01-13's unknown photographer; "image groups fold"); mutations
 `scripts/mutations/bb-names-tags.json` and `bb-window-sections.json`.
 
+## Tags kept on other pages, and the chip boxes (2026-11-14)
+
+Plan and probe: `org/springsteen-marriage.org` (Track A, Phase 1); mockup
+https://claude.ai/artifact/18teQxyrom93rWw5mvY98D (local copy
+`org/bb-onstage-tags-mockup.html`), version 2 approved by vzell.
+
+**What the wiki does** (`scripts/probe-bb-tag-spillover.py` over all 42,531
+pages of the 2026-11-13 mirror):
+- A page's tags, joined by one space, never exceed **512 characters**. Four
+  pages sit at exactly 512, so the limit is characters, not a count.
+- A show's **cast is tagged on its `/onstage:` page**: 3,307 of the 3,479
+  onstage pages carry tags their show lacks, even when the show is far from
+  full. 3,303 of those shows have an On Stage tab.
+- **A full page continues on `<name>-2`, `-3`**, onstage pages included (MSG
+  2009-05-03: three onstage pages). The name is cut so that "-N" fits
+  Wikidot's **60 characters** (`…west-long-branch-2`, the "-nj" gone):
+  `_bbSiblingName()`. The rule held for all 31 siblings with a base page.
+- **A chain can start at -1:** Waldorf 1990-01-17 has no onstage page of the
+  show's own name.
+- Both kinds of page are Redirect modules back to the show: read with
+  `/noredirect/true`.
+- A page the wiki does not have answers **HTTP 404**.
+
+**The reader** (`_bbTagPagesStart()`, one run per record, again on Retry):
+1. The record's own siblings, only while the page read last is over
+   `_BB_TAG_PAGE_FULL` (450) characters. The probe weighed this threshold:
+   828 pages are over 400 and 19 of them have a sibling; 253 are over 450
+   and 18 of them have one.
+2. Then, for a gig, nogig, rehearsal or interview with an On Stage tab
+   (`_bbTagInfo().castTab`): its onstage page, or `-1` when that is
+   missing, and that page's siblings the same way.
+
+Each page goes through `_bbTagPageGet()`:
+- *Memory and storage:* the session's memory, then IndexedDB (the detail
+  pages' store and lifetime, key `bbtags:<url>`; a 404 is remembered as
+  "missing", a failure never).
+- *The request:* `_dpAwaitSlot()` + `fetch()` on brucebase.wikidot.com,
+  `_extGet()` elsewhere.
+
+`_dpParseBb()` writes `bbTagInfo` (name, tag characters, cast tab, the
+families' context as arrays) and marks its Tags section `bbTags`
+(`_DP_PARSER_VERSION` 29). Tags from another page are classified with the
+SHOW's context, because the onstage pages have no /relation: links.
+
+**Where it starts, and where it shows:**
+- *The head:* a press. Every BB head's Tags card is `_bbTagChips(dp)`.
+- *The window:* Space. On BB the site's `windowKick`; on any other host
+  `_extExtracted()` adds `_bbTagPagesWant`, consumed by the first paint
+  (`_bbTagsWindowPart()`).
+- *Never from a hover:* the `wanted` of a window read is "a dialog is open",
+  so a read started by a hover is skipped too (mutation entry
+  `"expect": "pass"`).
+- *Progress:* `_bbTagPagesNotify()` refreshes the boxes in place, the
+  window's Tags heading too. It never repaints the window, because a
+  repaint raced the fold specs' Ctrl+click.
+
+**The chip box** (`_cbx*`, after `_fdChips()`): every chip card of a
+foreign detail page's head, and a Brucebase window's Tags, are drawn from a
+model (`_cbxSet()`) as HTML, so one box works as a node (`_cbxElement()`) and
+in the window's string (`_cbxHtml()`). The controls are delegated
+(`_cbxInit()`).
+- *When the tool row shows:* from 6 chips on (`_CBX_TOOLS_MIN`).
+- *The tool row:*
+  - Show (only where a card has chips from other pages);
+  - the filter, which keeps the chips that contain the text and marks it
+    with `_hlHtml()`; Esc clears it first;
+  - Group by: the card's kinds, Page, None;
+  - A–Z / Z–A; pressing the active one again returns to the page's order.
+- *Remembered* per card kind under `MB_FD_CHIP_VIEW_KEY` ("bb-tags", "fd"):
+  Group by and the sort. Show and the filter are not.
+- *Default order:* A–Z only for "bb-tags"; every other card keeps its
+  page's order. Discogs' External links "Release, Master, History" is an
+  order, and the first wide run caught the A–Z default reordering it.
+- *Row counts:* drawn by CSS from `data-mb-cbx-n`, so a label's text stays
+  "Date".
+
+Tests: `tests/fixtures/bb-onstage-tags.spec.js`. Its fixtures are three shows
+and six onstage pages from the 2026-11-13 mirror, built by
+`scripts/build-bb-event-fixtures.py`. It counts the expected tags from the
+fixture files and checks:
+- which pages are asked, in order;
+- the setting off;
+- a failure and Retry;
+- the tool row and the remembered view;
+- the window on musicbrainz.org: a hover reads no tag page.
+
+`sa_bb_onstage_tags` is off in `FIXTURE_SETTINGS_OVERRIDE`. Mutations:
+`scripts/mutations/bb-onstage-tags.json` (10 entries, 9 expected to fail
+and 1 to pass).
+
 ## Story pages — `bb-story` (Phase 12, 2026-11-12)
 
 `/story:…` (vzell's "no PT yet", round-2 live check of the History). Under
