@@ -61,11 +61,43 @@ Env: 2026-11-13T23:29:43+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 
    *Open question for vzell; the recommendation is the near-full check.*
 
-** Open questions for vzell (answer before step 3)
+** Decisions (vzell, 2026-11-14: "I agree to the open questions")
 
-1. *Wording:* "Tags from the On stage page" rather than "spilled tags"? This also renames the setting =sa_bb_spilled_tags= and the helper =_bbSpilledTags= (to e.g. =sa_bb_onstage_tags= / =_bbOnstageTags=).
-2. *The On Stage tab:* keep it as a pre-check (it loses 4 pages, saves requests on pages without a cast), or always try?
-3. *-N siblings:* try =-2= only on pages over ~400 tag characters (recommended), or wait for the feed?
+1. *Naming:* "Tags from the On stage page". The setting is =sa_bb_onstage_tags= and the helper =_bbOnstageTags()=. Replace every =spilled= name in Phase 1 with these.
+2. *The On Stage tab stays a pre-check.* Pages without it make no extra request; the cost is 4 missed pages.
+3. *-N siblings are tried only on nearly full pages*, never from the feed.
+
+** Probe, second pass: the -N chains (same Env as above)
+
+Section 4 of the probe treats every redirect page named =<base>-N=, onstage pages included:
+- *Pages and bases:* 56 sibling pages, 28 bases found. The other 25 are =multi:…-1/-2=: "several shows on one date" pages, not overflow, with no base page.
+- *Naming rule:* base =[:60 - len("-N")]=, a trailing =-= dropped, then =-N=. It holds for all 31 siblings with a base, with 0 failures. Wikidot page names are at most 60 characters, so a long name is CUT before the suffix:
+  - =onstage:2026-06-04-oceanfirst-bank-center-west-long-branch-2= (the =-nj= is gone);
+  - =onstage:2004-10-13-continental-airlines-arena-east-rutherf-2=.
+
+  Build the address with this rule, never by appending =-2=.
+- *Overflow vs alias:* the base of a real overflow chain is over 400 characters. 19 of the 28 bases are; the rest are renamed pages (=relation:steve-van-zandt-2=, 24 characters) or =multi:= pages.
+- *Onstage pages have chains too.* =onstage:2009-05-03-madison-square-garden-new-york-city-ny= (Pete Seeger's 90th) goes on to =-2= and =-3=. The gig itself carries 27 tags, and its three onstage pages 40 + 35 + 18. The reader therefore walks: event page → On stage page → its siblings while each read page is nearly full.
+- *A chain can start at -1:* =gig:1990-01-17-waldorf-astoria…= has no base onstage page, only =onstage:…-1= (44 tags) and =-2= (7 tags). So when the onstage page is missing, try =-1= once.
+- *Suffixes:* =-2= 24, =-3= 3, =-1= 4.
+- *What the trigger costs*, as pages over N characters and how many of them really have a sibling:
+
+  | over | pages | with a sibling |
+  |------+-------+----------------|
+  |  400 |   828 |             19 |
+  |  450 |   253 |             18 |
+  |  480 |    94 |             16 |
+  |  500 |    35 |             10 |
+
+  Recommendation: use *450*, not 400. It is 3× fewer wasted requests and misses 1 chain. It is one constant, easy to move.
+
+The reader that follows from this:
+1. *The show's own tags* come from the event page (no request).
+2. *The On stage page:* if the On Stage tab exists, fetch =onstage:<slug>/noredirect/true=. If that page does not exist, fetch =…-1= once.
+3. *Siblings:* for each page read so far whose tags are over 450 characters, fetch its =-2= (by the name rule), then =-3=, … until one is missing. That is at most 3 pages deep in the mirror.
+4. *The result:* the union of all their tags, each tag knowing which page it came from. The families are classified with the EVENT page's context, because the onstage pages have no =/relation:= links of their own.
+
+Also: =_dpParseBb()= is SYNCHRONOUS (the plan said async). The extra requests belong in the Brucebase loader (=_extDpLoad()= / the =_dpGet()= path) after the parse, and must go through the same rate slot.
 
 * Track A: BruceParser and BruceBaseParser into ShowAllEntityData
 

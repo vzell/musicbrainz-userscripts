@@ -168,6 +168,61 @@ def main(argv):
             print(f"  target size when it spills: chars min {full[0][0]}, max {full[-1][0]}; "
                   f"tags min {min(f[1] for f in full)}, max {max(f[1] for f in full)}")
 
+    # 4. Sibling chains: every redirect page named <base>-N, onstage ones too.
+    # Rule under test: Wikidot page names are at most 60 characters, so a
+    # sibling's name is base[:60 - len('-N')] (trailing '-' dropped) + '-N'.
+    print('\n== 4. -N sibling chains (all kinds, onstage included) ==')
+    all_refs = set(tags_of)
+    sibs = sorted(r for r in redirects if SIBLING_RE.search(r.split(':', 1)[1]))
+    chains = defaultdict(list)
+    rule_ok, rule_bad, no_base = 0, [], []
+    for ref in sibs:
+        suffix = re.search(r'-[1-9]$', ref).group(0)
+        stem = ref[:-len(suffix)]
+        # The base: the stem itself, or a page whose name truncates to the stem.
+        cands = [stem] if stem in all_refs else sorted(
+            r for r in all_refs if r.startswith(stem) and r != ref and not SIBLING_RE.search(r[len(stem):]))
+        base = cands[0] if cands else None
+        if not base:
+            no_base.append(ref)
+            continue
+        chains[base].append(ref)
+        derived = base[:60 - len(suffix)].rstrip('-') + suffix
+        if derived == ref:
+            rule_ok += 1
+        else:
+            rule_bad.append((ref, base, derived))
+    print(f'Sibling pages: {len(sibs):,}; bases found: {len(chains):,}; no base in mirror: {len(no_base)}')
+    print(f'Name rule base[:60-len(-N)]+-N holds: {rule_ok}; fails: {len(rule_bad)}')
+    for ref, base, derived in rule_bad[:10]:
+        print(f'  FAIL {ref}  base {base}  derived {derived}')
+    for ref in no_base[:10]:
+        print(f'  NO BASE {ref}')
+    lens = Counter(len(v) for v in chains.values())
+    print('Chain lengths (siblings per base): ' + ', '.join(f'{k}: {n}' for k, n in sorted(lens.items())))
+    suffixes = Counter(re.search(r'-([1-9])$', r).group(1) for v in chains.values() for r in v)
+    print('Suffixes used: ' + ', '.join(f'-{k}: {n}' for k, n in sorted(suffixes.items())))
+    base_chars = sorted(len(' '.join(tags_of.get(b, []))) for b in chains)
+    if base_chars:
+        print(f'Base page tag length when it has siblings: min {base_chars[0]}, median '
+              f'{base_chars[len(base_chars) // 2]}, max {base_chars[-1]}; over 400: '
+              f'{sum(1 for c in base_chars if c > 400)} of {len(base_chars)}')
+        low = sorted((len(' '.join(tags_of.get(b, []))), b) for b in chains)[:8]
+        for c, b in low:
+            print(f'  {c:4d} chars  {b}  -> {", ".join(chains[b])}')
+    # What a "near full, try a sibling" trigger would cost: pages over N
+    # characters, and how many of them really have a sibling.
+    overflow_bases = {b for b in chains if len(' '.join(tags_of.get(b, []))) > 400}
+    print('Trigger cost (pages over N tag characters / of them with a sibling):')
+    for n in (400, 450, 480, 490, 500):
+        over = [r for r in tags_of if len(' '.join(tags_of[r])) > n and not SIBLING_RE.search(r.split(':', 1)[1])]
+        hit = sum(1 for r in over if r in chains)
+        print(f'  > {n}: {len(over):5d} pages, {hit:3d} with a sibling')
+    print('Overflow chains (base over 400 chars): ' + '; '.join(f'{b} -> {", ".join(chains[b])}' for b in sorted(overflow_bases)))
+    results['chains'] = {b: v for b, v in chains.items()}
+    results['chain_rule_fail'] = rule_bad
+    results['chain_no_base'] = no_base
+
     if out_json:
         with open(out_json, 'w', encoding='utf-8') as fh:
             json.dump(results, fh, indent=1)
