@@ -61,6 +61,23 @@ Env: 2026-11-13T23:29:43+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 
    *Open question for vzell; the recommendation is the near-full check.*
 
+** TODO Phase 1 step 2: mockup published, WAITING FOR vzell's APPROVAL
+
+Mockup M1: https://claude.ai/artifact/18teQxyrom93rWw5mvY98D. The local copy is [[file:bb-onstage-tags-mockup.html][bb-onstage-tags-mockup.html]]; republish from it to keep the URL. It covers:
+- *Two places:* the bb-event head's Tags card, and the preview window's "Tags (N)" section.
+- *Four real shows* from the mirror:
+  - Pittsburgh 2016: 58 own tags + 11 from the onstage page.
+  - MSG 2009, Pete Seeger's 90th: 27 own + three onstage pages (40/34/17 new tags).
+  - Waldorf 1990: no base page, the chain starts at =-1=, then =-2=.
+  - Golden Globes 2024: no On Stage tab, so no request.
+- *Network states:* normal (a page every 0.9 s, the new tags tinted), from cache, the last page fails (Retry), setting off.
+- *Marks:* a tag from an onstage page has a dashed outline and ↪. Its hover card gives the family, which page keeps it, and that page's character count; Esc closes it, it has a grace period, and touch opens it with a tap.
+- *Under the tags:* a footer naming each onstage page and how many tags it adds.
+- *Progress:* a segmented progress bar.
+- *The setting row* =sa_bb_onstage_tags=.
+
+Open question in the mockup: should the Tags card also get a "This page / On stage page" filter? It is not in the mockup, since it wasn't asked for.
+
 ** Decisions (vzell, 2026-11-14: "I agree to the open questions")
 
 1. *Naming:* "Tags from the On stage page". The setting is =sa_bb_onstage_tags= and the helper =_bbOnstageTags()=. Replace every =spilled= name in Phase 1 with these.
