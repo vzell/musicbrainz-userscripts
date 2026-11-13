@@ -186,8 +186,8 @@
         "why": "vzell 2026-11-11: the wiki's redirect pages should preview their event.",
         "edits": [
             {
-                "find": "|venue|relation|onstage|offstage|retail|playlist|bootleg|story):[^/]+$/.test(u.pathname),",
-                "replace": "|venue|relation|retail|playlist|bootleg|story):[^/]+$/.test(u.pathname),"
+                "find": "|venue|relation|onstage|offstage|retail|playlist|bootleg|story):[^/]+$/.test(u.pathname) ||",
+                "replace": "|venue|relation|retail|playlist|bootleg|story):[^/]+$/.test(u.pathname) ||"
             }
         ],
         "spec": "tests/fixtures/bb-place.spec.js",

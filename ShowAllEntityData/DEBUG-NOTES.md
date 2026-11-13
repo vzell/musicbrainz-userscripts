@@ -29384,3 +29384,23 @@ Spec 4/4, mutations 13/13 (+2 batch 1 finds refreshed), BB specs 343/343, popup-
   (`_bbGalleryNewsFromPanel()`) as one of its text tabs, which the head draws as a folded section; the
   window takes it from there, in its place after the live dates, and leaves it out of the other text
   tabs (a mutation pins "not twice"). Parser version 26. BB specs 343/343.
+
+## 2026-11-13 — Brucebase new previews: tour counts, sessions, discographies, On The Tracks, lyrics (feature/bb-overhaul, Phase 16 batch 3)
+Env: 2026-11-13T01:13+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs); the lyrics probe n/a (Python over the mirror)
+- Mockup https://claude.ai/artifact/6HcKkN6QeAvw1SKk4BYC5f, all six answers as recommended. Records of their
+  own (`_dpParseBbTours()`, `_dpParseBbSessions()`, `_dpParseBbDiscography()`, `_dpParseBbOtt()`,
+  `_dpParseBbLyrics()` with the new `_bbLyricsRead()`), dispatched by `_dpParseBbRecord()`; parser version 27.
+- Lyrics family probed whole first (`scripts/probe-bb-lyrics-shape.py`, 508 pages of the NAS mirror): a
+  heading table per version (h2, and a live version's date in a `<p>` under it — which the probe first
+  counted as "other text"), centred verse blocks, a springsteenlyrics.com table after each version (one page
+  with none, one with four); `'Til We Outnumber 'Em` is a two-column table (song | story), read as its text.
+- Two exclusions the sweep found, both "other stats pages" (answer 6): `stats:songs-<tour>-tour` (28 pages)
+  is a TOUR's song counts, not a song's tour counts, though it ends in `-tour`; the playlist discographies
+  (`-playlist`, `-playlist-songs`) have no release entries and would have been a near-empty card.
+- A mutation find collision: the lyrics reader's `return c.textContent.split('\n')` contained
+  popup-annotations.json's find (`            return c.textContent.split('\n')`, now 2x); the reader splits on
+  `/\n/` instead.
+- Sweep before → after (window's kept text blocks): lyrics 5% → 89%, ott 13% → 77%, sessions 0% → 69%,
+  discographies 0% → 35%, tour counts 0% → 0% (wording differs from the page's word for word; see
+  docs/claude/brucebase.md "Batch 3").
+Spec 8/8, mutations 30/30 (+6 finds of other lists refreshed and re-run: 6/6), BB + popup-ext specs 436/436.

@@ -62,8 +62,14 @@ debug/bb-mirror/retail-main/ and playlist-main/, the subpages left out):
   Remastered Darkness Outtakes" (numbered lines, "Disc 1"), "The Born To Run
   Outtakes" (two lines of its own, no facts).
 
+- lyrics "Born In The U.S.A." (three versions, a springsteenlyrics.com link
+  after each) and "American Babylon" (a live version, its date under the
+  heading; Phase 16 batch 3).
+
 A song's lyrics are blanked word by word ("la"), as
-scripts/build-detail-fixtures.py does (its `blank_lyrics()`, imported).
+scripts/build-detail-fixtures.py does (its `blank_lyrics()`, imported); a
+lyrics page's verses too (every centred block that does not start with a
+heading: `blank_bb_lyrics()`).
 
 Every <script>, <noscript>, theme @import and non-YouTube <iframe> is
 removed (as scripts/build-bb-fixtures.py and build-bb-youtube-gig-fixture.py
@@ -111,7 +117,27 @@ PAGES = [
     ('bootleg/bootleg_criminals-and-artists.html', 'bb-bootleg-criminals-and-artists.html'),
     ('bootleg/bootleg_definitive-remastered-darkness-outtakes-gfr.html', 'bb-bootleg-definitive-remastered-darkness-outtakes-gfr.html'),
     ('bootleg/bootleg_born-to-run-outtakes.html', 'bb-bootleg-born-to-run-outtakes.html'),
+    ('lyrics/lyrics_born-in-the-u-s-a.html', 'bb-lyrics-born-in-the-u-s-a.html'),
+    ('lyrics/lyrics_american-babylon.html', 'bb-lyrics-american-babylon.html'),
 ]
+
+
+VERSE_RE = re.compile(r'(<div style="text-align: center;">)(?!\s*<h2)(.*?)(</div>)', re.S)
+
+
+def blank_bb_lyrics(html):
+    """Blanks a lyrics page's verses: each centred block not opened by a heading; returns (html, count)."""
+    blank = _blank_words()
+    return VERSE_RE.subn(lambda m: m.group(1) + blank(m.group(2)) + m.group(3), html)
+
+
+def _blank_words():
+    """scripts/build-detail-fixtures.py's `blank_words()`."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('build_detail_fixtures', os.path.join(HERE, 'build-detail-fixtures.py'))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.blank_words
 
 
 def _blank_lyrics():
@@ -149,12 +175,16 @@ def main():
             continue
         with open(path, encoding='utf-8', errors='replace') as fh:
             html = strip(fh.read())
-        if 'id="page-content"' not in html or ('yui-navset' not in html and not out.startswith('bb-ott-')):
+        if 'id="page-content"' not in html or ('yui-navset' not in html and not out.startswith(('bb-ott-', 'bb-lyrics-'))):
             sys.exit(f'{src}: no #page-content or tabview')
         if out.startswith('bb-song-'):
             html, blanked = _blank_lyrics()(html, 'bb-song')
             if not blanked and '>Lyrics</em>' in html:
                 sys.exit(f'{src}: a Lyrics tab, but its lyrics were not blanked')
+        if out.startswith('bb-lyrics-'):
+            html, n = blank_bb_lyrics(html)
+            if not n:
+                sys.exit(f'{src}: a lyrics page, but no verses were blanked')
         note = ('<!-- Built by scripts/build-bb-event-fixtures.py from the BruceParser mirror (2026-10-18); '
                 'scripts, noscripts, theme @imports and non-YouTube iframes removed; do not edit by hand. -->\n')
         html = re.sub(r'(<!DOCTYPE[^>]*>\s*)', lambda m: m.group(1) + note, html, count=1, flags=re.I)

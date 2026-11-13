@@ -894,6 +894,14 @@ BB PTs". Last, once Phases 7–15 have added their readers.
   reused: =_bbTourCounts()=, =_bbSessionsRead()=, =_bbGalleryRead()=, =_bbOttRead()=; a new lyrics reader),
   specs, mutations, docs, WIP.24; then vzell's live check; then batch 4 (G6 a story's picture, G7 a song
   intro's links and the Lyrics section's springsteenlyrics.com link); then test:full before any merge.
+  Built (2026-11-13, WIP.24): records of their own for tour counts, studio sessions, discographies, On
+  The Tracks and lyrics (=_bbLyricsRead()=, the lyrics family probed whole first:
+  =scripts/probe-bb-lyrics-shape.py=), =_DP_PARSER_VERSION= 27; multi:/soundcheck: as their show. Two
+  exclusions found on the way, both answer 6: =stats:songs-<tour>-tour= (a tour's song counts, 28 pages)
+  and the two playlist discographies (no release entries). Spec =bb-song-pages-windows.spec.js= 8/8,
+  mutations 30/30 (+6 refreshed), BB + popup-ext specs 436/436. Sweep: lyrics 5% → 89%, ott 13% → 77%,
+  sessions 0% → 69%, discographies 0% → 35%, tours 0% (wording).
+  - [ ] vzell's live check of batch 3
 - [ ] vzell's live check
 
 *** Handoff to petri (2026-11-12T04:05+01:00, from vzell-lap)

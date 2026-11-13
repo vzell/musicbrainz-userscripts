@@ -30,8 +30,8 @@
         "why": "Answer 3: the versions under each song.",
         "edits": [
             {
-                "find": "            const groups = group(rec.ott, r => _mbSiteTitleText(r.title));",
-                "replace": "            const groups = rec.ott.map(r => [_mbSiteTitleText(r.title), [r]]);"
+                "find": "        const groups = Array.from(by);\n        return {",
+                "replace": "        const groups = rows.map(r => [_mbSiteTitleText(r.title), [r]]);\n        return {"
             }
         ],
         "spec": "tests/fixtures/bb-person-release-windows.spec.js",
@@ -43,8 +43,8 @@
         "why": "Answer 3: … the releases it is on.",
         "edits": [
             {
-                "find": "                    (r.releases.length ? ` — ${r.releases.map(x => _bbWinLink(x.href, x.text)).join(', ')}` : '') +",
-                "replace": ""
+                "find": "                (r.releases.length ? ` — ${r.releases.map(x => _bbWinLink(x.href, x.text)).join(', ')}` : '') +\n                (r.note ?",
+                "replace": "                (r.note ?"
             }
         ],
         "spec": "tests/fixtures/bb-person-release-windows.spec.js",

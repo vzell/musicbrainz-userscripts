@@ -1,0 +1,392 @@
+[
+    {
+        "name": "a tour-counts link is not a song page's",
+        "why": "Answer 1: tour counts under the song preview's setting.",
+        "edits": [
+            {
+                "find": " ||\n                (_BB_SONG_TOURS_PATH_RE.test(u.pathname) && !/^\\/stats:songs-/.test(u.pathname)),",
+                "replace": ","
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-pages-windows.spec.js",
+        "grep": "which setting",
+        "expect": "fail"
+    },
+    {
+        "name": "a tour's song counts preview as a song's tour counts",
+        "why": "Answer 6: stats:songs-<tour>-tour is another stats page.",
+        "edits": [
+            {
+                "find": " && !/^\\/stats:songs-/.test(u.pathname)),",
+                "replace": "),"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-pages-windows.spec.js",
+        "grep": "which setting",
+        "expect": "fail"
+    },
+    {
+        "name": "ott: and lyrics: links are not a song page's",
+        "why": "Answer 1.",
+        "edits": [
+            {
+                "find": "/^\\/(?:song|ott|lyrics):[^/]+$/.test(u.pathname) ||",
+                "replace": "/^\\/song:[^/]+$/.test(u.pathname) ||"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-pages-windows.spec.js",
+        "grep": "which setting",
+        "expect": "fail"
+    },
+    {
+        "name": "sessions and discographies are not the event setting's",
+        "why": "Answer 1.",
+        "edits": [
+            {
+                "find": "                    _BB_SESSIONS_PATH_RE.test(u.pathname) || _BB_DISCOGRAPHY_PAGE_RE.test(u.pathname),",
+                "replace": "                    false,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-pages-windows.spec.js",
+        "grep": "which setting",
+        "expect": "fail"
+    },
+    {
+        "name": "the discography hub previews too",
+        "why": "Answer 6: the hub is a stats page of tabs.",
+        "edits": [
+            {
+                "find": "const _BB_DISCOGRAPHY_PAGE_RE = /^\\/stats:discography-(?!playlist(?:-songs)?\\/?$)[^/]+\\/?$/;",
+                "replace": "const _BB_DISCOGRAPHY_PAGE_RE = /^\\/stats:discography(?:-(?!playlist(?:-songs)?\\/?$)[^/]+)?\\/?$/;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-pages-windows.spec.js",
+        "grep": "which setting",
+        "expect": "fail"
+    },
+    {
+        "name": "the playlist discographies preview",
+        "why": "Answer 6: no entries, no plain card.",
+        "edits": [
+            {
+                "find": "const _BB_DISCOGRAPHY_PAGE_RE = /^\\/stats:discography-(?!playlist(?:-songs)?\\/?$)[^/]+\\/?$/;",
+                "replace": "const _BB_DISCOGRAPHY_PAGE_RE = /^\\/stats:discography-[^/]+\\/?$/;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-pages-windows.spec.js",
+        "grep": "which setting",
+        "expect": "fail"
+    },
+    {
+        "name": "multi: and soundcheck: links do not preview",
+        "why": "Their show (vzell, no question).",
+        "edits": [
+            {
+                "find": "nobruce|multi|soundcheck|venue|relation",
+                "replace": "nobruce|venue|relation"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-pages-windows.spec.js",
+        "grep": "which setting",
+        "expect": "fail"
+    },
+    {
+        "name": "multi: and soundcheck: read at their own address",
+        "why": "_bbRedirectedUrl().",
+        "edits": [
+            {
+                "find": "if (!/^\\/(?:onstage|offstage|multi|soundcheck):/.test(u.pathname)) return url;",
+                "replace": "if (!/^\\/(?:onstage|offstage):/.test(u.pathname)) return url;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-pages-windows.spec.js",
+        "grep": "multi:",
+        "expect": "fail"
+    },
+    {
+        "name": "tour counts read as any page",
+        "why": "L1: the dispatch.",
+        "edits": [
+            {
+                "find": "        if (_BB_SONG_TOURS_PATH_RE.test(path)) return _dpParseBbTours(doc, url);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-pages-windows.spec.js",
+        "grep": "tour counts:",
+        "expect": "fail"
+    },
+    {
+        "name": "the tours' total not summed",
+        "why": "The highlight.",
+        "edits": [
+            {
+                "find": "const played = rec.tours.reduce((n, t) => n + (t.played || 0), 0);",
+                "replace": "const played = rec.tours.length;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-pages-windows.spec.js",
+        "grep": "tour counts:",
+        "expect": "fail"
+    },
+    {
+        "name": "every tour counted, played or not",
+        "why": "The Tours fact.",
+        "edits": [
+            {
+                "find": "data.fields.push(['Tours', String(rec.tours.filter(t => t.played).length)]);",
+                "replace": "data.fields.push(['Tours', String(rec.tours.length)]);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-pages-windows.spec.js",
+        "grep": "tour counts:",
+        "expect": "fail"
+    },
+    {
+        "name": "studio sessions read as any page",
+        "why": "L2: the dispatch.",
+        "edits": [
+            {
+                "find": "        if (_BB_SESSIONS_PATH_RE.test(path)) return _dpParseBbSessions(doc, url);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-pages-windows.spec.js",
+        "grep": "studio sessions:",
+        "expect": "fail"
+    },
+    {
+        "name": "every row of a sessions table",
+        "why": "Answer 2: the first 100.",
+        "edits": [
+            {
+                "find": "const rows = t.rows.slice(0, _BB_WIN_SESSION_ROWS).map(",
+                "replace": "const rows = t.rows.map("
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-pages-windows.spec.js",
+        "grep": "studio sessions:",
+        "expect": "fail"
+    },
+    {
+        "name": "no \"more rows\" line",
+        "why": "Answer 2.",
+        "edits": [
+            {
+                "find": "const moreLine = more > 0 ? `${more.toLocaleString('en-US')} more rows on the page` : '';",
+                "replace": "const moreLine = '';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-pages-windows.spec.js",
+        "grep": "studio sessions:",
+        "expect": "fail"
+    },
+    {
+        "name": "a sessions table open",
+        "why": "Answer 2: folded.",
+        "edits": [
+            {
+                "find": "                html: `<ul>${rows.map(r => `<li>${r.join(' · ')}</li>`).join('')}</ul>` + (moreLine ? `<p class=\"mb-dp-xsub\">${moreLine}</p>` : ''),\n                open: false,",
+                "replace": "                html: `<ul>${rows.map(r => `<li>${r.join(' · ')}</li>`).join('')}</ul>` + (moreLine ? `<p class=\"mb-dp-xsub\">${moreLine}</p>` : ''),"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-pages-windows.spec.js",
+        "grep": "studio sessions:",
+        "expect": "fail"
+    },
+    {
+        "name": "the credits block open",
+        "why": "The mockup: Credits folded.",
+        "edits": [
+            {
+                "find": "if (rec.credits) data.sections.push({ label: 'Credits', text: rec.credits, open: false });",
+                "replace": "if (rec.credits) data.sections.push({ label: 'Credits', text: rec.credits });"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-pages-windows.spec.js",
+        "grep": "studio sessions:",
+        "expect": "fail"
+    },
+    {
+        "name": "a discography read as any page",
+        "why": "L3: the dispatch.",
+        "edits": [
+            {
+                "find": "        if (_BB_DISCOGRAPHY_PAGE_RE.test(path)) return _dpParseBbDiscography(doc, url);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-pages-windows.spec.js",
+        "grep": "a discography:",
+        "expect": "fail"
+    },
+    {
+        "name": "a discography in one list",
+        "why": "Answer 3: under the page's headings.",
+        "edits": [
+            {
+                "find": "const k = e.section || e.tab || 'Releases';",
+                "replace": "const k = 'Releases';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-pages-windows.spec.js",
+        "grep": "a discography:",
+        "expect": "fail"
+    },
+    {
+        "name": "a discography's release without its date and label",
+        "why": "Answer 3.",
+        "edits": [
+            {
+                "find": "`${e.released ? ` · ${_mbttEscape(e.released)}` : ''}${e.label ? ` · ${_mbttEscape(e.label)}` : ''}</li>`;",
+                "replace": "'</li>';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-pages-windows.spec.js",
+        "grep": "a discography:",
+        "expect": "fail"
+    },
+    {
+        "name": "a discography without its covers as pictures",
+        "why": "Answer 3.",
+        "edits": [
+            {
+                "find": "if (c && (c.thumb || c.full)) data.images.push(",
+                "replace": "if (false) data.images.push("
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-pages-windows.spec.js",
+        "grep": "a discography:",
+        "expect": "fail"
+    },
+    {
+        "name": "an ott: page read as any page",
+        "why": "L4: the dispatch.",
+        "edits": [
+            {
+                "find": "        if (/^\\/ott:/.test(path)) return _dpParseBbOtt(doc, url);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-pages-windows.spec.js",
+        "grep": "On The Tracks page",
+        "expect": "fail"
+    },
+    {
+        "name": "an ott: page's versions not grouped by song",
+        "why": "The mockup: under each song.",
+        "edits": [
+            {
+                "find": "            const k = _mbSiteTitleText(r.title);\n            if (!by.has(k)) by.set(k, []);",
+                "replace": "            const k = _mbSiteTitleText(r.title) + by.size;\n            if (!by.has(k)) by.set(k, []);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-pages-windows.spec.js",
+        "grep": "On The Tracks page",
+        "expect": "fail"
+    },
+    {
+        "name": "an ott: page's notes open",
+        "why": "The mockup: folded.",
+        "edits": [
+            {
+                "find": "rec.texts.forEach(t => data.sections.push({ label: t.label, text: t.text, html: t.html || '', open: false }));",
+                "replace": "rec.texts.forEach(t => data.sections.push({ label: t.label, text: t.text, html: t.html || '' }));"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-pages-windows.spec.js",
+        "grep": "On The Tracks page",
+        "expect": "fail"
+    },
+    {
+        "name": "a lyrics page read as any page",
+        "why": "The dispatch.",
+        "edits": [
+            {
+                "find": "        if (/^\\/lyrics:/.test(path)) return _dpParseBbLyrics(doc, url);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-pages-windows.spec.js",
+        "grep": "a lyrics page",
+        "expect": "fail"
+    },
+    {
+        "name": "every lyrics version open",
+        "why": "Answer 5: the first open.",
+        "edits": [
+            {
+                "find": "text: v.text, ...(i ? { open: false } : {}) }));",
+                "replace": "text: v.text }));"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-pages-windows.spec.js",
+        "grep": "a lyrics page",
+        "expect": "fail"
+    },
+    {
+        "name": "a live version without its date",
+        "why": "Its label names the show's date.",
+        "edits": [
+            {
+                "find": "const label = v => (v.date ? `${v.name} · ${v.date}` : v.name);",
+                "replace": "const label = v => v.name;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-pages-windows.spec.js",
+        "grep": "a lyrics page",
+        "expect": "fail"
+    },
+    {
+        "name": "a heading table does not start a version",
+        "why": "_bbLyricsRead(): a version per heading.",
+        "edits": [
+            {
+                "find": "            const h2 = el.matches('h2') ? el : el.querySelector('h2');\n            if (h2) {\n                flush();",
+                "replace": "            const h2 = el.matches('h2') ? el : null;\n            if (h2) {\n                flush();"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-pages-windows.spec.js",
+        "grep": "a lyrics page",
+        "expect": "fail"
+    },
+    {
+        "name": "no springsteenlyrics.com links",
+        "why": "Answer 5: last.",
+        "edits": [
+            {
+                "find": "        if (rec.sl.length) {\n            const named",
+                "replace": "        if (false) {\n            const named"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-pages-windows.spec.js",
+        "grep": "a lyrics page",
+        "expect": "fail"
+    },
+    {
+        "name": "the card shows every line",
+        "why": "Answer 4: the first four.",
+        "edits": [
+            {
+                "find": "data.excerpt = { label: label(first), lines: lines.slice(0, 4),",
+                "replace": "data.excerpt = { label: label(first), lines,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-pages-windows.spec.js",
+        "grep": "a lyrics page",
+        "expect": "fail"
+    },
+    {
+        "name": "the card does not say how many versions",
+        "why": "Answer 4.",
+        "edits": [
+            {
+                "find": "if (data.excerpt.foot) parts.push(",
+                "replace": "if (false) parts.push("
+            }
+        ],
+        "spec": "tests/fixtures/bb-song-pages-windows.spec.js",
+        "grep": "on a hover",
+        "expect": "fail"
+    }
+]

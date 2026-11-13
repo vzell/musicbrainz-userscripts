@@ -4171,6 +4171,14 @@ played live, released on, live downloads, takes), its tags, media and
 links. An **On The Tracks** page (`/ott:…`) gets **Versions**: its takes as
 one table. A lyrics page stays as it is.
 
+Pointing at a link to an On The Tracks page or a lyrics page (`/lyrics:…`;
+Ctrl) previews it too, with the song pages' setting. On The Tracks: how many
+versions and how many of them circulate; the window has the versions under
+each song, with the releases each is on, and the page's notes, folded. A
+lyrics page: its first four lines and how many versions it has; the window
+has each version (a live version with its date), the first open, the others
+folded, and the springsteenlyrics.com link(s) last.
+
 **Venue pages** (`/venue:…`) get **Venue**: the performances, cancelled
 shows and appearances at the venue, with its description, region, count,
 map link and pictures above. **People and bands** (`/relation:…`) get
@@ -4315,6 +4323,20 @@ press loads the page again for the other view.
 The overview pages, the full song list (`stats:songs-list`; `stats:songs` has
 the table) and the studio-session parts that are only text stay as the wiki
 shows them, and their links still preview.
+
+Links to three kinds of these pages preview (Ctrl): a song's tour page with
+the song pages' setting (*Preview song pages on the Brucebase song list*) —
+how often the song was played on tour and on how many tours, the other
+shows, and in the window every tour with its count; an album's studio
+sessions and a discography page with *Preview event, venue, people, release
+and bootleg pages on hover* — the sessions' release date, label and album,
+and in the window the overview, the credits and each table, folded, with its
+first 100 rows ("N more rows on the page" after them); a discography's
+number of releases and their years, and in the window the releases under
+the page's own headings, each with its cover, year, release date and label,
+the covers also as the window's pictures. The other stats pages (a tour's
+song counts, the lists, the menus, the playlist discographies) have no
+preview.
 
 </details>
 

@@ -5160,7 +5160,9 @@
                          'shows the credits, the studio versions and the lyrics; ← and → step ' +
                          'through the rows, and its "Live page" view shows the wiki\'s own page ' +
                          'with every tab opened. Esc closes either. On a touch screen, tapping a ' +
-                         'title opens the window.'
+                         'title opens the window. A link to a song\'s tour counts, its On The Tracks page or its ' +
+                         'lyrics previews too: the tours with how often it was played; the versions and the ' +
+                         'releases they are on; the first lines and each version of the lyrics.'
         },
 
         sa_bb_detail_pages: {
@@ -5189,7 +5191,8 @@
             default: true,
             description: 'Needs a setting above that switches the wiki on. On every Brucebase page, resting the ' +
                          'pointer on a link to an event\'s page (a gig, no gig, recording, rehearsal, interview or ' +
-                         '"no Bruce" page), a venue, a person, a release, a playlist, a bootleg or a story — the Event and Venue columns of a year table, a ' +
+                         '"no Bruce" page), a venue, a person, a release, a playlist, a bootleg, a story, an ' +
+                         'album\'s studio sessions or a discography — the Event and Venue columns of a year table, a ' +
                          'mention in its Notes, the Recent changes list, the wiki\'s own lists, the links in a ' +
                          'preview window — with Ctrl held, unless every preview ' +
                          'shows on a plain hover, shows a card with what its page adds: when it was scheduled, ' +
@@ -31648,9 +31651,12 @@
      *    (`_bbReleaseWindowExtras()`, Phase 16 batch 2).
      * 26: a release's Gallery/News is one of its reading's text tabs (the
      *    page view shows it too).
+     * 27: records of their own for a song's tour counts, an album's studio
+     *    sessions, a discography, an On The Tracks page and a lyrics page
+     *    (Phase 16 batch 3); `excerpt.foot`.
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 26;
+    const _DP_PARSER_VERSION = 27;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -36794,6 +36800,33 @@
     }
 
     /**
+     * On The Tracks rows (`_bbOttRows()`) for a window section, the versions
+     * under each song (in MusicBrainz style): version · take · date · time —
+     * the releases it is on, each linked — its note. A release's window
+     * (`_bbReleaseWindowExtras()`) and an On The Tracks page's
+     * (`_dpParseBbOtt()`).
+     *
+     * @param {Array<Object>} rows
+     * @returns {{text: string, html: string}}
+     */
+    function _bbOttWindowBody(rows) {
+        const what = r => [r.version, r.take && `take ${r.take}`, r.date, r.time].filter(Boolean).join(' · ');
+        const by = new Map();
+        rows.forEach((r) => {
+            const k = _mbSiteTitleText(r.title);
+            if (!by.has(k)) by.set(k, []);
+            by.get(k).push(r);
+        });
+        const groups = Array.from(by);
+        return {
+            text: groups.map(([t, rs]) => `${t}\n` + rs.map(r => `  ${what(r)}${r.releases.length ? ` — ${r.releases.map(x => x.text).join(', ')}` : ''}${r.note ? ` (${r.note})` : ''}`).join('\n')).join('\n'),
+            html: groups.map(([t, rs]) => `<p><b>${_mbttEscape(t)}</b></p><ul>` + rs.map(r => `<li>${_mbttEscape(what(r))}` +
+                (r.releases.length ? ` — ${r.releases.map(x => _bbWinLink(x.href, x.text)).join(', ')}` : '') +
+                (r.note ? ` <span class="mb-dp-xsub">(${_mbttEscape(r.note)})</span>` : '') + '</li>').join('') + '</ul>').join(''),
+        };
+    }
+
+    /**
      * What a release's or playlist's window adds from the page view's own
      * reading (`_bbReleaseRead()`; Phase 16 batch 2, vzell's answers 3–6),
      * each a folded section: On The Tracks, the versions under each song
@@ -36817,13 +36850,8 @@
             return Array.from(by);
         };
         if (rec.ott && rec.ott.length) {
-            const what = r => [r.version, r.take && `take ${r.take}`, r.date, r.time].filter(Boolean).join(' · ');
-            const groups = group(rec.ott, r => _mbSiteTitleText(r.title));
-            sec(`On The Tracks (${rec.ott.length})`,
-                groups.map(([t, rs]) => `${t}\n` + rs.map(r => `  ${what(r)}${r.releases.length ? ` — ${r.releases.map(x => x.text).join(', ')}` : ''}${r.note ? ` (${r.note})` : ''}`).join('\n')).join('\n'),
-                groups.map(([t, rs]) => `<p><b>${_mbttEscape(t)}</b></p><ul>` + rs.map(r => `<li>${_mbttEscape(what(r))}` +
-                    (r.releases.length ? ` — ${r.releases.map(x => _bbWinLink(x.href, x.text)).join(', ')}` : '') +
-                    (r.note ? ` <span class="mb-dp-xsub">(${_mbttEscape(r.note)})</span>` : '') + '</li>').join('') + '</ul>').join(''));
+            const o = _bbOttWindowBody(rec.ott);
+            sec(`On The Tracks (${rec.ott.length})`, o.text, o.html);
         }
         if (rec.dates && rec.dates.length) {
             const line = r => `${r.n ? `${r.n} ` : ''}${r.song} — ${r.date || r.dateText} ${r.location}${r.note ? ` (${r.note})` : ''}`;
@@ -37435,10 +37463,10 @@
         } catch (_) {
             return url;
         }
-        if (!/^\/(?:onstage|offstage):/.test(u.pathname)) return url;
+        if (!/^\/(?:onstage|offstage|multi|soundcheck):/.test(u.pathname)) return url;
         const script = Array.from(doc.querySelectorAll('script'), x => x.textContent).find(t => /requestPageName\s*=/.test(t));
         const m = script ? script.match(/requestPageName\s*=\s*"([^"]+)"/) : null;
-        return m && !/^(?:onstage|offstage):/.test(m[1]) ? `${u.origin}/${m[1]}` : url;
+        return m && !/^(?:onstage|offstage|multi|soundcheck):/.test(m[1]) ? `${u.origin}/${m[1]}` : url;
     }
 
     /**
@@ -38598,6 +38626,290 @@
         Lib.debug('ui', `SAED: Brucebase page history entry for page ${pid}`);
     }
 
+    // ── Brucebase previews of a song's and an album's other pages (Phase 16, batch 3) ──
+    // org/brucebase.org, the sweep's L1–L4; mockup
+    // https://claude.ai/artifact/6HcKkN6QeAvw1SKk4BYC5f, vzell's answers
+    // (2026-11-13) all as recommended. Each record is read by the reader
+    // the page's own button uses, so the window and the page never
+    // disagree: a song's tour counts (`_bbTourCounts()`), an album's studio
+    // sessions (`_bbSessionsRead()`), a discography (`_bbGalleryRead()`),
+    // an On The Tracks page (`_bbOttRead()`) and a lyrics page
+    // (`_bbLyricsRead()`, the one new reader).
+
+    /** @type {number} The rows of a sessions table a window section shows (answer 2). */
+    const _BB_WIN_SESSION_ROWS = 100;
+
+    /**
+     * A discography page with releases of its own: not the hub
+     * (`stats:discography`, the wiki's tabs of them), nor the two playlist
+     * ones (`-playlist`, `-playlist-songs`: lists of links, no release
+     * entries; the mirror's 13 discography pages, 2026-11-13), which have
+     * no preview (answer 6).
+     * @type {RegExp}
+     */
+    const _BB_DISCOGRAPHY_PAGE_RE = /^\/stats:discography-(?!playlist(?:-songs)?\/?$)[^/]+\/?$/;
+
+    /**
+     * The text of an HTML fragment of ours (a sessions cell), its markup
+     * dropped, in an inert document.
+     *
+     * @param {Document} doc
+     * @param {string} html
+     * @returns {string}
+     */
+    function _bbHtmlText(doc, html) {
+        const d = doc.createElement('div');
+        d.innerHTML = html;
+        return _dpText(d.textContent);
+    }
+
+    /**
+     * A song's tour counts (`stats:<song>-tour`) for its preview: how often
+     * the song was played on tour as the highlight; the tours it was played
+     * on and the other shows as facts; every tour the page counts — played,
+     * of the tour's shows, the share, its note — as an open "Tours (N)"
+     * section. A page that counts nothing is read as any page.
+     *
+     * @param {Document} doc
+     * @param {string} url
+     * @returns {?object}
+     */
+    function _dpParseBbTours(doc, url) {
+        const content = doc.getElementById('page-content');
+        if (!content) return null;
+        const rec = _bbTourCounts(content);
+        if (!rec.tours.length && !rec.other) return _dpParseBbPage(doc, url);
+        const data = _dpEmpty();
+        data.title = _bbText(doc.getElementById('page-title'));
+        data.images = _bbPageImages(content, url);
+        const played = rec.tours.reduce((n, t) => n + (t.played || 0), 0);
+        data.highlight = { value: played.toLocaleString('en-US'), label: played === 1 ? 'tour performance' : 'tour performances' };
+        data.fields.push(['Tours', String(rec.tours.filter(t => t.played).length)]);
+        if (rec.other) data.fields.push(['Other shows', `${rec.other.shows} known · ${rec.other.rehearsals} public rehearsals`]);
+        if (rec.tours.length) {
+            const pct = t => (t.shows ? ` (${Math.round(100 * t.played / t.shows)}%)` : '');
+            data.sections.push({
+                label: `Tours (${rec.tours.length})`,
+                text: rec.tours.map(t => `${t.tour} — ${t.played} of ${t.shows} shows${pct(t)}${t.note ? ` (${t.note})` : ''}`).join('\n'),
+                html: `<ul>${rec.tours.map(t => `<li>${_mbttEscape(t.tour)} — <b>${t.played}</b> of ${t.shows} shows${pct(t)}` +
+                    `${t.note ? ` <span class="mb-dp-xsub">(${_mbttEscape(t.note)})</span>` : ''}</li>`).join('')}</ul>`,
+            });
+        }
+        data.collapsible = true;
+        data.imagesByKind = true;
+        return data;
+    }
+
+    /**
+     * An album's studio sessions page (or one of its parts) for its
+     * preview: Released, Label, Album and how many tables as facts; the
+     * Overview (open), the credits block, then each table a folded section
+     * "<name> (N)" with its first `_BB_WIN_SESSION_ROWS` rows, a line each
+     * (the cells joined by " · ", their links kept), and "N more rows on the
+     * page" (answer 2). A page with neither tables nor an overview is read
+     * as any page.
+     *
+     * @param {Document} doc
+     * @param {string} url
+     * @returns {?object}
+     */
+    function _dpParseBbSessions(doc, url) {
+        const rec = _bbSessionsRead(doc, url);
+        if (!rec || (!rec.tables.length && !rec.overview)) return _dpParseBbPage(doc, url);
+        const data = _dpEmpty();
+        data.title = rec.title;
+        data.images = _bbPageImages(doc.getElementById('page-content'), url);
+        [['Released', rec.released], ['Label', rec.label], ['Album', rec.album && rec.album.text]].forEach(([k, v]) => { if (v) data.fields.push([k, v]); });
+        data.fields.push(['Tables', String(rec.tables.length)]);
+        if (rec.overview) data.sections.push({ label: 'Overview', text: rec.overview });
+        if (rec.credits) data.sections.push({ label: 'Credits', text: rec.credits, open: false });
+        rec.tables.forEach((t) => {
+            const rows = t.rows.slice(0, _BB_WIN_SESSION_ROWS).map(r => r.filter(c => _bbHtmlText(doc, c)));
+            const more = t.rows.length - rows.length;
+            const moreLine = more > 0 ? `${more.toLocaleString('en-US')} more rows on the page` : '';
+            data.sections.push({
+                label: `${t.name} (${t.rows.length})`,
+                text: rows.map(r => r.map(c => _bbHtmlText(doc, c)).join(' · ')).join('\n') + (moreLine ? `\n${moreLine}` : ''),
+                html: `<ul>${rows.map(r => `<li>${r.join(' · ')}</li>`).join('')}</ul>` + (moreLine ? `<p class="mb-dp-xsub">${moreLine}</p>` : ''),
+                open: false,
+            });
+        });
+        data.collapsible = true;
+        data.imagesByKind = true;
+        return data;
+    }
+
+    /**
+     * A discography page (`stats:discography-*`) for its preview (answer
+     * 3): how many releases and their years as facts; the releases under
+     * the page's own headings (or the cover strip's tab), each a folded
+     * section, a line per release — its cover small, the year, the release
+     * linked, the subtitle, the release date and the label; the covers as
+     * the window's pictures ("Cover"), not the strip of every discography
+     * at the top. A page with no entries is read as any page.
+     *
+     * @param {Document} doc
+     * @param {string} url
+     * @returns {?object}
+     */
+    function _dpParseBbDiscography(doc, url) {
+        const rec = _bbGalleryRead(doc, url);
+        if (!rec || !rec.entries.length) return _dpParseBbPage(doc, url);
+        const data = _dpEmpty();
+        data.title = _bbText(doc.getElementById('page-title'));
+        const years = rec.entries.map(e => e.year).filter(Boolean).sort();
+        data.fields.push(['Releases', String(rec.entries.length)]);
+        if (years.length) data.fields.push(['Years', years[0] === years[years.length - 1] ? years[0] : `${years[0]}–${years[years.length - 1]}`]);
+        const by = new Map();
+        rec.entries.forEach((e) => {
+            const k = e.section || e.tab || 'Releases';
+            if (!by.has(k)) by.set(k, []);
+            by.get(k).push(e);
+        });
+        const textOf = e => [`${e.year} ${e.text}${e.subtitle ? ` ${e.subtitle}` : ''}`, e.released, e.label].filter(Boolean).join(' · ');
+        const htmlOf = (e) => {
+            const cover = e.covers[0] && e.covers[0].thumb ? `<img class="mb-dp-bbcov" src="${_mbttEscape(e.covers[0].thumb)}" alt="" loading="lazy">` : '';
+            return `<li>${cover}${_mbttEscape(e.year)} ${_bbWinLink(e.href, e.text)}${e.subtitle ? ` <span class="mb-dp-xsub">${_mbttEscape(e.subtitle)}</span>` : ''}` +
+                `${e.released ? ` · ${_mbttEscape(e.released)}` : ''}${e.label ? ` · ${_mbttEscape(e.label)}` : ''}</li>`;
+        };
+        by.forEach((es, k) => data.sections.push({
+            label: `${k} (${es.length})`, text: es.map(textOf).join('\n'), html: `<ul class="mb-dp-bbdisc">${es.map(htmlOf).join('')}</ul>`, open: false,
+        }));
+        rec.entries.forEach((e) => {
+            const c = e.covers[0];
+            if (c && (c.thumb || c.full)) data.images.push({ thumb: c.thumb || c.full, full: c.full || c.thumb, medium: '', label: 'Cover', credit: '', caption: `Cover · ${e.year} ${e.text}` });
+        });
+        data.collapsible = true;
+        data.imagesByKind = true;
+        return data;
+    }
+
+    /**
+     * An On The Tracks page (`/ott:<song>`) for its preview: how many
+     * versions and how many of them circulate as facts; the versions under
+     * each song (`_bbOttWindowBody()`) open; the page's notes folded.
+     *
+     * @param {Document} doc
+     * @param {string} url
+     * @returns {?object}
+     */
+    function _dpParseBbOtt(doc, url) {
+        const rec = _bbOttRead(doc, url);
+        if (!rec || !rec.ott.length) return _dpParseBbPage(doc, url);
+        const data = _dpEmpty();
+        data.title = rec.title;
+        data.images = _bbPageImages(doc.getElementById('page-content'), url);
+        const circ = rec.ott.filter(r => r.releases.length).length;
+        data.fields.push(['Versions', String(rec.ott.length)], ['Circulating', `${circ} of ${rec.ott.length}`]);
+        const o = _bbOttWindowBody(rec.ott);
+        data.sections.push({ label: `Versions (${rec.ott.length})`, text: o.text, html: o.html });
+        rec.texts.forEach(t => data.sections.push({ label: t.label, text: t.text, html: t.html || '', open: false }));
+        data.collapsible = true;
+        data.imagesByKind = true;
+        return data;
+    }
+
+    /**
+     * Reads a lyrics page (`/lyrics:<song>`; all 508 of the mirror,
+     * scripts/probe-bb-lyrics-shape.py, 2026-11-13: 468 with one version,
+     * 38 with two, one each with three and four): a version per heading
+     * table (its `<h2>`, "Born In The U.S.A. (Tracks)", and the line under
+     * it, a live version's date), its verses (the paragraphs that follow,
+     * each a list of lines), its text as shown (`_dpBlockText()`: the one
+     * page whose version is a table of two columns, song and story, keeps
+     * that), and the springsteenlyrics.com link after it ("Visit
+     * SpringsteenLyrics.com for other versions of this song.").
+     *
+     * @param {Document} doc
+     * @param {string} url
+     * @returns {?{title: string, versions: Array<{name: string, date: string, verses: string[][], text: string}>, sl: Array<{href: string, version: string}>}}
+     */
+    function _bbLyricsRead(doc, url) {
+        const content = doc.getElementById('page-content');
+        if (!content) return null;
+        const title = _bbText(doc.getElementById('page-title'));
+        const versions = [];
+        const sl = [];
+        let cur = null;
+        const blocks = [];
+        const flush = () => {
+            if (!cur) return;
+            const box = doc.createElement('div');
+            blocks.forEach(b => box.appendChild(b.cloneNode(true)));
+            cur.text = _dpBlockText(box);
+            box.querySelectorAll('table p').forEach(p => p.remove());
+            cur.verses = Array.from(box.querySelectorAll('p')).map((p) => {
+                const c = p.cloneNode(true);
+                c.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+                return c.textContent.split(/\n/).map(l => _dpText(l)).filter(Boolean);
+            }).filter(v => v.length);
+            if (!cur.verses.length && cur.text) cur.verses = [cur.text.split('\n').filter(Boolean)];
+            blocks.length = 0;
+        };
+        Array.from(content.children).forEach((el) => {
+            if (el.matches('script, style')) return;
+            const h2 = el.matches('h2') ? el : el.querySelector('h2');
+            if (h2) {
+                flush();
+                const date = Array.from(el.querySelectorAll('p')).map(p => _dpText(p.textContent)).filter(Boolean).join(' · ');
+                cur = { name: _dpText(h2.textContent), date, verses: [], text: '' };
+                versions.push(cur);
+                return;
+            }
+            const a = el.matches('table') ? el.querySelector('a[href*="springsteenlyrics.com"]') : null;
+            if (a) {
+                sl.push({ href: _dpAbsUrl(a.getAttribute('href'), url), version: cur ? cur.name : '' });
+                return;
+            }
+            if (!_dpText(el.textContent)) return;
+            if (!cur) {
+                cur = { name: title, date: '', verses: [], text: '' };
+                versions.push(cur);
+            }
+            blocks.push(el);
+        });
+        flush();
+        return { title, versions: versions.filter(v => v.text), sl };
+    }
+
+    /**
+     * A lyrics page for its preview: the card shows the first four lines of
+     * the first version and how many versions there are (answer 4); the
+     * window a section per version, its date in the label, the first open
+     * and the others folded, then the springsteenlyrics.com link(s) last
+     * (answer 5).
+     *
+     * @param {Document} doc
+     * @param {string} url
+     * @returns {?object}
+     */
+    function _dpParseBbLyrics(doc, url) {
+        const rec = _bbLyricsRead(doc, url);
+        if (!rec || !rec.versions.length) return _dpParseBbPage(doc, url);
+        const data = _dpEmpty();
+        data.title = rec.title;
+        data.images = _bbPageImages(doc.getElementById('page-content'), url);
+        const n = rec.versions.length;
+        data.fields.push(['Versions', String(n)]);
+        const label = v => (v.date ? `${v.name} · ${v.date}` : v.name);
+        rec.versions.forEach((v, i) => data.sections.push({ label: label(v), text: v.text, ...(i ? { open: false } : {}) }));
+        const first = rec.versions[0];
+        const lines = first.verses.flat();
+        data.excerpt = { label: label(first), lines: lines.slice(0, 4), total: lines.length, foot: `${n} ${n === 1 ? 'version' : 'versions'} (Space for all)` };
+        if (rec.sl.length) {
+            const named = rec.sl.length > 1;
+            data.sections.push({
+                label: 'Other versions',
+                text: rec.sl.map(x => `SpringsteenLyrics.com${named && x.version ? ` — ${x.version}` : ''}`).join('\n'),
+                html: named ? `<ul>${rec.sl.map(x => `<li>${_bbWinLink(x.href, 'SpringsteenLyrics.com')}${x.version ? ` — ${_mbttEscape(x.version)}` : ''}</li>`).join('')}</ul>`
+                    : `<p>${_bbWinLink(rec.sl[0].href, 'SpringsteenLyrics.com')}</p>`,
+            });
+        }
+        data.collapsible = true;
+        data.imagesByKind = true;
+        return data;
+    }
+
     /**
      * Parses a Brucebase song page (`/song:<slug>`); a venue page goes to
      * `_dpParseBbVenue()`, any other page to `_dpParseBbPage()`.
@@ -38625,6 +38937,12 @@
         if (/^\/venue:/.test(path)) return _dpParseBbVenue(doc, url);
         if (/^\/(?:retail|playlist):/.test(path)) return _dpParseBbRelease(doc, url, false);
         if (/^\/bootleg:/.test(path)) return _dpParseBbRelease(doc, url, true);
+        // A song's and an album's other pages (Phase 16 batch 3).
+        if (_BB_SONG_TOURS_PATH_RE.test(path)) return _dpParseBbTours(doc, url);
+        if (_BB_SESSIONS_PATH_RE.test(path)) return _dpParseBbSessions(doc, url);
+        if (_BB_DISCOGRAPHY_PAGE_RE.test(path)) return _dpParseBbDiscography(doc, url);
+        if (/^\/ott:/.test(path)) return _dpParseBbOtt(doc, url);
+        if (/^\/lyrics:/.test(path)) return _dpParseBbLyrics(doc, url);
         if (path && !/^\/song:/.test(path)) return _dpParseBbPage(doc, url);
         const content = doc.getElementById('page-content');
         if (!content) return null;
@@ -38792,7 +39110,13 @@
         },
         'brucebase.wikidot.com': {
             setting: 'sa_bb_detail_preview',
-            isDetailUrl: (u) => /^\/song:[^/]+$/.test(u.pathname),
+            // A song's own pages too (Phase 16 batch 3, answer 1): its tour
+            // counts, On The Tracks and lyrics. Not the other stats pages
+            // (answer 6), among them a tour's song counts, whose address
+            // ends in -tour too (`stats:songs-btr-tour`, 28 pages; no song's
+            // address starts with "songs-").
+            isDetailUrl: (u) => /^\/(?:song|ott|lyrics):[^/]+$/.test(u.pathname) ||
+                (_BB_SONG_TOURS_PATH_RE.test(u.pathname) && !/^\/stats:songs-/.test(u.pathname)),
             // Event pages (org/TODO.org "Some enhancements" 3b; vzell,
             // 2026-10-24: "on all BB PTs where an event href is involved in
             // a column or elsewhere"): any link to one previews under its
@@ -38812,7 +39136,12 @@
                 // page system:page-tags/tag/storyteller) the same night,
                 // so their window and its History are reachable (vzell's
                 // live check of History round 2: "no PT yet").
-                test: (u) => /^\/(?:gig|nogig|recording|rehearsal|interview|nobruce|venue|relation|onstage|offstage|retail|playlist|bootleg|story):[^/]+$/.test(u.pathname),
+                // An album's studio sessions and a discography (not the hub)
+                // since Phase 16 batch 3 (answer 1), and /multi: and
+                // /soundcheck:, which the server redirects to their show as
+                // it does /onstage:.
+                test: (u) => /^\/(?:gig|nogig|recording|rehearsal|interview|nobruce|multi|soundcheck|venue|relation|onstage|offstage|retail|playlist|bootleg|story):[^/]+$/.test(u.pathname) ||
+                    _BB_SESSIONS_PATH_RE.test(u.pathname) || _BB_DISCOGRAPHY_PAGE_RE.test(u.pathname),
                 setting: 'sa_bb_event_preview',
             },
             // A year table's Venue cell links the ENTRY page (the year page
@@ -39664,7 +39993,10 @@
         if (data.excerpt && data.excerpt.lines.length) {
             parts.push('<div class="mb-tt-rule"></div>');
             parts.push(`<div class="mb-tt-body mb-dp-excerpt">${data.excerpt.lines.map(l => _mbttEscape(l)).join('<br>')}</div>`);
-            if (data.excerpt.total > data.excerpt.lines.length) {
+            // A Brucebase lyrics page says how many versions it has instead
+            // (Phase 16 batch 3, answer 4).
+            if (data.excerpt.foot) parts.push(`<div class="mb-tt-dim">${_mbttEscape(data.excerpt.foot)}</div>`);
+            else if (data.excerpt.total > data.excerpt.lines.length) {
                 parts.push(`<div class="mb-tt-dim">${_mbttEscape(data.excerpt.label)}: ${data.excerpt.total} lines (Space for all)</div>`);
             }
         }
@@ -46433,6 +46765,10 @@
             .mb-dp-dialog .mb-dg-warnbox { border: 1px solid #e7d3a1; background: #fcf6e6; border-radius: 4px; padding: 8px 12px; margin: 6px 0 8px; }
             .mb-dp-dialog .mb-dp-note { white-space: pre-wrap; margin-bottom: 6px; }
             .mb-dp-dialog .mb-dp-section { white-space: pre-wrap; }
+            /* A Brucebase discography's releases, each with its cover small (Phase 16 batch 3). */
+            .mb-dp-dialog ul.mb-dp-bbdisc { list-style: none; padding-left: 0; }
+            .mb-dp-dialog ul.mb-dp-bbdisc > li { margin: 0 0 4px; }
+            .mb-dp-dialog img.mb-dp-bbcov { width: 28px; height: 28px; object-fit: cover; vertical-align: middle; margin-right: 6px; border: 1px solid #d9cfbd; border-radius: 2px; }
             .mb-dp-dialog ol.mb-dp-contents { list-style: none; margin: 0; padding: 0; white-space: normal; }
             .mb-dp-dialog ol.mb-dp-contents > li { margin: 0 0 6px; }
             /* Collapsible sections and images by kind (Brucebase, 2026-10-24). */
@@ -185495,6 +185831,21 @@ a { color: #1565c0; }`;
             bbSessionsRead: (html, url) => _bbSessionsRead(new DOMParser().parseFromString(html, 'text/html'), url),
             bbGalleryRead: (html, url) => _bbGalleryRead(new DOMParser().parseFromString(html, 'text/html'), url),
             bbOttRead: (html, url) => _bbOttRead(new DOMParser().parseFromString(html, 'text/html'), url),
+            bbLyricsRead: (html, url) => _bbLyricsRead(new DOMParser().parseFromString(html, 'text/html'), url),
+            /**
+             * Which setting a Brucebase link previews under (Phase 16 batch
+             * 3): the song preview's (`isDetailUrl`), the event, venue,
+             * people and release one (`ownLinks`), or '' (no preview).
+             *
+             * @param {string} href
+             * @returns {string}
+             */
+            bbPreviewSetting: (href) => {
+                const site = _DP_SITES['brucebase.wikidot.com'];
+                const u = new URL(href, 'https://brucebase.wikidot.com/');
+                return site.ownLinks.test(u) ? site.ownLinks.setting : site.isDetailUrl(u) ? site.setting : '';
+            },
+            bbRedirectedUrl: (html, url) => _bbRedirectedUrl(new DOMParser().parseFromString(html, 'text/html'), url),
 
             /**
              * Thin wrapper around `_bbSongRead()` over an HTML string.

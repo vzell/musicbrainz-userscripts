@@ -317,8 +317,8 @@
         "why": "A /story: page has no pageType; its window (and History) is reached through its links.",
         "edits": [
             {
-                "find": "|retail|playlist|bootleg|story):[^/]+$/.test(u.pathname),",
-                "replace": "|retail|playlist|bootleg):[^/]+$/.test(u.pathname),"
+                "find": "|retail|playlist|bootleg|story):[^/]+$/.test(u.pathname) ||",
+                "replace": "|retail|playlist|bootleg):[^/]+$/.test(u.pathname) ||"
             }
         ],
         "spec": "tests/fixtures/bb-history.spec.js",

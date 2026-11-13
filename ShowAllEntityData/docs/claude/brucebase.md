@@ -1983,3 +1983,66 @@ release fixtures of Phases 4–5); mutations
 `scripts/mutations/bb-person-release-windows.json` (15; two finds of
 `bb-event-window-gaps.json` refreshed); the head's Gallery/News in
 `bb-release.spec.js`.
+
+### Batch 3: new previews (L1–L4)
+
+Mockup https://claude.ai/artifact/6HcKkN6QeAvw1SKk4BYC5f
+(`scripts/extract-bb-batch3-mockup.js`, `scripts/build-bb-batch3-mockup.py`
+with its template); vzell's answers (2026-11-13), all as recommended.
+`_DP_PARSER_VERSION` 27. Links that had no preview get records of their own,
+each read by the reader the page's button uses (`_dpParseBbRecord()`
+dispatches by path before the generic `_dpParseBbPage()`):
+
+- **Which links, which setting** (answers 1, 6): `isDetailUrl` (the song
+  preview, `sa_bb_detail_preview`) takes `/ott:`, `/lyrics:` and a song's
+  tour counts (`_BB_SONG_TOURS_PATH_RE`) — but not a tour's song counts,
+  `stats:songs-<tour>-tour` (28 pages, `bb-stats`'; no song's address starts
+  with "songs-"); `ownLinks` (`sa_bb_event_preview`) takes the studio
+  sessions (`_BB_SESSIONS_PATH_RE`) and the discographies
+  (`_BB_DISCOGRAPHY_PAGE_RE`: not the hub, not the two playlist ones, which
+  have no release entries — a plain card was answer 6's rejected option),
+  and `/multi:`, `/soundcheck:`, which `_bbRedirectedUrl()` reads at their
+  show's address as it does `/onstage:` (the server's 301, probed in the
+  sweep). Every other stats page: no preview.
+- **Tour counts** (`_dpParseBbTours()`, `_bbTourCounts()`): the tour
+  performances as the highlight, Tours (played on) and Other shows as
+  facts, every tour in an open "Tours (N)".
+- **Studio sessions** (`_dpParseBbSessions()`, `_bbSessionsRead()`; answer
+  2): Released, Label, Album, Tables; Overview open, Credits folded, each
+  table a folded section of its first `_BB_WIN_SESSION_ROWS` (100) rows,
+  cells joined by " · " with their links, then "N more rows on the page".
+- **Discographies** (`_dpParseBbDiscography()`, `_bbGalleryRead()`; answer
+  3): Releases and Years; a folded section per page heading (or strip tab),
+  a line per release with its cover small (`img.mb-dp-bbcov`, lazy), the
+  year, the release linked, the subtitle, date and label; the entries'
+  covers as the window's pictures ("Cover"), never the strip.
+- **On The Tracks** (`_dpParseBbOtt()`, `_bbOttRead()`): Versions and
+  Circulating; "Versions (N)" open, the versions under each song
+  (`_bbOttWindowBody()`, now shared with a release's window); Notes folded.
+- **Lyrics** (`_dpParseBbLyrics()`, the new `_bbLyricsRead()`; answers 4,
+  5): a version per heading table (its `<h2>`, and the line under it, a live
+  version's date, in the label), its verses, the springsteenlyrics.com link
+  after it. The card's `excerpt` is the first version's first four lines
+  with `excerpt.foot` ("3 versions (Space for all)") in place of the line
+  count; the window a section per version, the first open, then "Other
+  versions" with the link(s). The whole family was probed first
+  (`scripts/probe-bb-lyrics-shape.py`, all 508 pages: 468 with one version,
+  38 with two, one each with three and four; one page's version is a
+  two-column table, song and story, kept as its text).
+
+The sweep (`node scripts/probe-bb-reader-sweep.js
+stats-tour,stats-sessions,stats-discography,ott,lyrics`, 2026-11-13T01:06+01:00
+· petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) · Playwright 1.62.1 Chromium ·
+no Tampermonkey (GM stubs)), the window's kept text blocks before → after:
+lyrics 5% → 89%, On The Tracks 13% → 77%, studio sessions 0% → 69% (the rows
+after the first 100 of a table), discographies 0% → 35% (the hub's tabs and
+the strip, neither previewed), tour counts 0% → 0% — a measuring artefact:
+the page writes "Performed at 120 show(s) of" / "130 on the 2023-25
+International Tour.", the window "2023-25 International Tour — 120 of 130
+shows", so no block matches word for word.
+
+Tests: `tests/fixtures/bb-song-pages-windows.spec.js` (8; two new lyrics
+fixtures from `scripts/build-bb-event-fixtures.py`, their verses blanked by
+`blank_bb_lyrics()`); mutations `scripts/mutations/bb-song-pages-windows.json`
+(30; six finds of other lists refreshed, the link tests and the shared On The
+Tracks lines moved).

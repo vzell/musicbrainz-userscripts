@@ -1,5 +1,19 @@
 [
   {
+    "version": "WIP.24",
+    "date": "2026-11-13",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Brucebase: links to a song's tour page, its On The Tracks page and its lyrics page now preview (Ctrl+hover), under the song preview's setting. The tour page's card says how often the song was played on tour and on how many tours, the window lists every tour; On The Tracks shows the versions under each song with the releases each is on; a lyrics page's card shows its first four lines and how many versions it has, the window each version (the first open) and the springsteenlyrics.com link last.",
+          "Brucebase: links to an album's studio sessions page and to a discography page now preview, under the event, venue, people and release setting. A sessions window has the overview, the credits and each table folded with its first 100 rows; a discography window has the releases under the page's own headings, each with its cover, year, release date and label, and the covers as its pictures. The other stats pages still have no preview.",
+          "Brucebase: links to /multi: and /soundcheck: pages preview the show they lead to, as /onstage: links do."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.23",
     "date": "2026-11-13",
     "sections": [
