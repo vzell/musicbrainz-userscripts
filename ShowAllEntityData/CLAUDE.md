@@ -455,6 +455,10 @@ stale here or missing from the mirror at script parity, because the Tampermonkey
   still hold. The `merge-push-remove` skill describes HOW to merge once that
   decision is made; invoking it is never the decision itself. Ask, and let the
   user exercise the change in a real browser first.
+  **Every such request lists real URLs** (vzell, 2026-11-14): each one with
+  the step to take (which button, Ctrl+hover, Space) and what should appear.
+  Take them from the mirror, the fixtures, a probe or a live lookup, never
+  from memory, and say which path is unverified.
   This rule exists because it was broken: on 2026-09-16 the Relationships
   batch/load-state branch was merged locally on the strength of 287 green
   fixture tests, and minutes later a human clicking through a real
@@ -719,7 +723,9 @@ The harness lives under `tests/`; how to run each suite and what it costs:
   and the two YouTube keys (`sa_yt_play_in_place`, `sa_yt_stills`) and
   `sa_entity_images` (2026-10-29: a url-rels lookup on entity pages) and
   the two SL tracklist lookups (`sa_sl_song_versions`, `sa_sl_mb_works`;
-  2026-11-05: the site's letter pages, MusicBrainz's work browse) OFF
+  2026-11-05: the site's letter pages, MusicBrainz's work browse) and
+  `sa_bb_onstage_tags` (2026-11-14: a show's /onstage: page and a full
+  page's "-2", read on a press or Space) OFF
   — a "cannot reproduce" means nothing until they are back on. Seeding a key
   as `undefined` in `settingsOverride` un-seeds it (the schema default).
   That list applies only to a spec that serves an HTML fixture

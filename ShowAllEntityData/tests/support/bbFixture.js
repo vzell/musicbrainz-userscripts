@@ -380,6 +380,11 @@ const BB_EVENT_PAGES = {
     'rehearsal-2009-01-29a': ['rehearsal:2009-01-29a-raymond-james-stadium-tampa-fl', 'bb-event-rehearsal-2009-01-29a.html'],
     'interview-2021-04-28': ['interview:2021-04-28-siriusxm-studio-new-york-city-ny', 'bb-event-interview-2021-04-28.html'],
     'nogig-2013-04-16': ['nogig:2013-04-16-richard-rodgers-theatre-new-york-city-ny', 'bb-event-nogig-2013-04-16.html'],
+    // The tags kept on other pages (org/springsteen-marriage.org, Phase 1):
+    // their /onstage: pages are BB_ONSTAGE_PAGES.
+    'gig-2016-01-16': ['gig:2016-01-16-consol-energy-center-pittsburgh-pa', 'bb-event-gig-2016-01-16.html'],
+    'gig-2009-05-03': ['gig:2009-05-03-madison-square-garden-new-york-city-ny', 'bb-event-gig-2009-05-03.html'],
+    'gig-1990-01-17': ['gig:1990-01-17-waldorf-astoria-hotel-new-york-city-ny', 'bb-event-gig-1990-01-17.html'],
     // bb-song / bb-ott (Phase 3): the same builder, lyrics blanked.
     'song-the-promise': ['song:the-promise', 'bb-song-the-promise.html'],
     'song-we-gotta-get-out-of-this-place': ['song:we-gotta-get-out-of-this-place', 'bb-song-we-gotta-get-out-of-this-place.html'],

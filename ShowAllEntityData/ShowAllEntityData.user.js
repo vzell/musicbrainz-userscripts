@@ -5221,6 +5221,19 @@
                          'no section, no request.'
         },
 
+        sa_bb_onstage_tags: {
+            label: 'Show the tags kept on a show\'s On stage page',
+            type: 'checkbox',
+            default: true,
+            description: 'Brucebase allows 512 characters of tags per page, so a show\'s cast is tagged on its ' +
+                         'own "On stage" page, and a page that is full continues on a second one ("-2"). On: ' +
+                         'the Tags of a Brucebase page\'s head and of its preview window (on every site) also ' +
+                         'show those tags, drawn dashed with ↪, with the pages they come from below them. ' +
+                         'They are read when you press the page\'s button or open the window with Space: one ' +
+                         'more page for a show with an On Stage tab, sometimes two or three, one a second, ' +
+                         'and kept like the other preview pages. Off: only the page\'s own tags, no request.'
+        },
+
         sa_bb_mb_event_lookup: {
             label: 'MB-Event column: look the events up on MusicBrainz',
             type: 'checkbox',
@@ -24447,26 +24460,301 @@
     function _fdChips(rows) {
         rows = rows.filter(([, list]) => list.length);
         if (!rows.length) return null;
-        const body = document.createElement('div');
-        body.className = 'mb-sb-chips';
-        let count = 0;
-        rows.forEach(([kind, list]) => {
-            const line = document.createElement('div');
-            line.className = 'mb-sb-chip-row';
-            const k = document.createElement('span');
-            k.className = 'mb-sb-chip-kind';
-            k.textContent = kind;
-            line.appendChild(k);
-            list.forEach(([text, href]) => {
-                const chip = document.createElement('span');
-                chip.className = 'mb-sb-chip';
-                chip.appendChild(_fdLink(href, text));
-                line.appendChild(chip);
-                count++;
-            });
-            body.appendChild(line);
+        const id = `fd:${rows.map(([k]) => k).join('|')}`;
+        _cbxSet(id, { key: 'fd', style: 'sb', kindLabel: 'Kind', rows: rows.map(([kind, list]) => [kind, list.map(([text, href]) => ({ text, href }))]) });
+        return { body: _cbxElement(id), count: rows.reduce((s, [, list]) => s + list.length, 0) };
+    }
+
+    // ── Chip boxes: every card of chips gets Show / Filter / Group by / Sort
+    // (vzell, 2026-11-14, mockup https://claude.ai/artifact/18teQxyrom93rWw5mvY98D
+    // version 2: "filter (inclusive highlighting) and sort", on every chip card) ──
+    // A box is drawn from a model (`_cbxSet()`) as HTML, so the same box
+    // lives in a head card (a node, `_cbxElement()`) and in the window (a
+    // string its paint inserts, `_cbxHtml()`). The controls are wired once,
+    // by delegation (`_cbxInit()`), and a box is redrawn in place
+    // (`_cbxRefresh()`). Group by and the sort are remembered per kind of
+    // card (`MB_FD_CHIP_VIEW_KEY`); Show and the filter text are not.
+
+    /** @type {number} A box with fewer chips than this has no tool row: nothing to filter. */
+    const _CBX_TOOLS_MIN = 6;
+    /** @type {Map<string, Object>} A box's model, by its id. */
+    const _cbxModels = new Map();
+    /** @type {Map<string, {show: string, q: string}>} A box's Show choice and filter text, for the page's life. */
+    const _cbxUi = new Map();
+
+    /**
+     * Sets a chip box's model.
+     *
+     * @param {string} id - The box's id: the same id draws the same box (a repaint keeps its filter).
+     * @param {{key: string, style: string, kindLabel?: string, rows: Array<[string, Array<{text: string,
+     *   href: string, page?: string, tip?: string}>]>, pages?: Array<{id: string, label: string}>,
+     *   head?: string, foot?: string}} model - `key`: which remembered view it uses; `style`: 'sb'
+     *   (a head card's chips) or 'dp' (the window's pills); a chip with `page` comes from another
+     *   page (`pages`), is drawn dashed with ↪ and shows `tip` as its hover card; `head`/`foot`:
+     *   HTML above the tool row and below the chips.
+     * @returns {void}
+     */
+    function _cbxSet(id, model) {
+        _cbxModels.set(id, model);
+    }
+
+    /**
+     * The remembered Group by and sort of a kind of card.
+     *
+     * @param {string} key - The model's `key`.
+     * @returns {{group: string, dir: number}}
+     */
+    function _cbxViewOf(key) {
+        let all;
+        try { all = GM_getValue(MB_FD_CHIP_VIEW_KEY, null); } catch (_) { all = null; }
+        const v = (all && typeof all === 'object' && all[key]) || {};
+        // A–Z by default for Brucebase's tags (the wiki lists them so anyway);
+        // any other card keeps its page's order (0) until a sort is pressed.
+        const dflt = key === 'bb-tags' ? 1 : 0;
+        return { group: ['kind', 'page', 'none'].includes(v.group) ? v.group : 'kind', dir: [1, -1, 0].includes(v.dir) ? v.dir : dflt };
+    }
+
+    /**
+     * Remembers a kind of card's Group by or sort.
+     *
+     * @param {string} key   - The model's `key`.
+     * @param {string} field - 'group' or 'dir'.
+     * @param {string|number} value
+     * @returns {void}
+     */
+    function _cbxViewSet(key, field, value) {
+        let all;
+        try { all = GM_getValue(MB_FD_CHIP_VIEW_KEY, null); } catch (_) { all = null; }
+        all = all && typeof all === 'object' ? all : {};
+        all[key] = Object.assign({}, all[key], { [field]: value });
+        try { GM_setValue(MB_FD_CHIP_VIEW_KEY, all); } catch (_) { /* storage blocked: still switch for this page */ }
+    }
+
+    /**
+     * A box's Show choice and filter text.
+     *
+     * @param {string} id
+     * @returns {{show: string, q: string}}
+     */
+    function _cbxUiOf(id) {
+        if (!_cbxUi.has(id)) _cbxUi.set(id, { show: 'all', q: '' });
+        return _cbxUi.get(id);
+    }
+
+    /**
+     * A box as a node for a head card (`div.mb-sb-chips.mb-cbx`).
+     *
+     * @param {string} id
+     * @returns {HTMLElement}
+     */
+    function _cbxElement(id) {
+        _cbxInit();
+        const tpl = document.createElement('template');
+        tpl.innerHTML = _cbxHtml(id);
+        return tpl.content.firstElementChild;
+    }
+
+    /**
+     * A box as HTML: its container and what is in it.
+     *
+     * @param {string} id
+     * @returns {string}
+     */
+    function _cbxHtml(id) {
+        _cbxInit();
+        const m = _cbxModels.get(id);
+        const cls = m && m.style === 'dp' ? 'mb-dp-tags mb-cbx' : 'mb-sb-chips mb-cbx';
+        return `<div class="${cls}" data-mb-cbx-id="${_mbttEscape(id)}">${_cbxInner(id)}</div>`;
+    }
+
+    /**
+     * What a box holds: its head, the tool row, the rows of chips the
+     * view lets through (grouped, sorted, the filter text marked) and its
+     * foot.
+     *
+     * @param {string} id
+     * @returns {string}
+     */
+    function _cbxInner(id) {
+        const m = _cbxModels.get(id);
+        if (!m) return '';
+        const esc = _mbttEscape;
+        const ui = _cbxUiOf(id);
+        const view = _cbxViewOf(m.key);
+        const pages = m.pages || [];
+        const all = m.rows.flatMap(([kind, list]) => list.map(x => Object.assign({ kind }, x)));
+        const own = all.filter(x => !x.page).length;
+        const extra = all.length - own;
+        const show = extra ? ui.show : 'all';
+        const group = view.group === 'page' && !pages.length ? 'kind' : view.group;
+        const q = ui.q.trim().toLowerCase();
+        const shown = all.filter(x => (show === 'all' || (show === 'own' ? !x.page : !!x.page)) && (!q || x.text.toLowerCase().includes(q)))
+            .sort((a, b) => (view.dir ? view.dir * a.text.localeCompare(b.text, undefined, { sensitivity: 'base' }) : 0));
+        let groups;
+        if (group === 'kind') groups = m.rows.map(([kind]) => [kind, shown.filter(x => x.kind === kind)]);
+        else if (group === 'page') groups = [['This page', shown.filter(x => !x.page)]].concat(pages.map(p => [p.label, shown.filter(x => x.page === p.id)]));
+        else groups = [['All', shown]];
+        const dp = m.style === 'dp';
+        const chip = (x) => {
+            const label = _hlHtml(esc(x.text), q);
+            const tip = x.tip ? ` data-mbtt="${esc(x.tip)}"` : '';
+            const xc = x.page ? ' mb-cbx-x' : '';
+            return dp
+                ? `<a class="mb-dp-tag${xc}" href="${esc(x.href)}" target="_blank" rel="noopener"${tip}>${label}</a>`
+                : `<span class="mb-sb-chip${xc}"${tip}><a href="${esc(x.href)}" target="_blank" rel="noopener noreferrer">${label}</a></span>`;
+        };
+        const row = ([kind, of]) => (dp
+            ? `<div class="mb-dp-tagrow"><span class="mb-dp-tagk" data-mb-cbx-n="${of.length}">${esc(kind)}</span><span class="mb-dp-tagv">${of.map(chip).join('')}</span></div>`
+            : `<div class="mb-sb-chip-row"><span class="mb-sb-chip-kind" data-mb-cbx-n="${of.length}">${esc(kind)}</span>${of.map(chip).join('')}</div>`);
+        const rows = groups.filter(([, of]) => of.length).map(row).join('') ||
+            `<div class="mb-cbx-none">No ${q ? `chip contains “${esc(ui.q.trim())}”` : 'chip to show'}${show === 'own' ? ' on this page' : show === 'extra' ? ' on the other pages' : ''}.</div>`;
+        let tools = '';
+        if (all.length >= _CBX_TOOLS_MIN) {
+            const b = (k, v, text, on, off) => `<button type="button" class="mb-cbx-b" data-mb-cbx="${esc(id)}" data-mb-cbx-k="${k}" data-mb-cbx-v="${v}" aria-pressed="${String(!!on)}"${off ? ' disabled' : ''}>${text}</button>`;
+            tools = '<div class="mb-cbx-tools">' +
+                (extra ? `<span class="mb-cbx-seg-g" role="group" aria-label="Show">${b('show', 'all', `All ${all.length}`, show === 'all')}${b('show', 'own', `This page ${own}`, show === 'own')}${b('show', 'extra', `${pages.length === 1 && /^On stage/.test(pages[0].label) ? 'On stage' : 'Other pages'} ${extra}`, show === 'extra')}</span>` : '') +
+                `<span class="mb-cbx-f"><span aria-hidden="true">⌕</span><input type="text" class="mb-cbx-q" data-mb-cbx="${esc(id)}" data-mb-keep-focus="cbx-${esc(id)}" placeholder="Filter" aria-label="Filter" autocomplete="off" value="${esc(ui.q)}">` +
+                (ui.q ? `<button type="button" class="mb-cbx-clr" data-mb-cbx="${esc(id)}" aria-label="Clear the filter">✕</button>` : '') + '</span>' +
+                `<span class="mb-cbx-seg-g" role="group" aria-label="Group by">${b('group', 'kind', esc(m.kindLabel || 'Kind'), group === 'kind')}${pages.length ? b('group', 'page', 'Page', group === 'page') : ''}${b('group', 'none', 'None', group === 'none')}</span>` +
+                `<span class="mb-cbx-seg-g" role="group" aria-label="Sort">${b('dir', '1', 'A–Z', view.dir === 1)}${b('dir', '-1', 'Z–A', view.dir === -1)}</span>` +
+                (q || show !== 'all' ? `<span class="mb-cbx-cnt">${shown.length} of ${all.length}</span>` : '') + '</div>';
+        }
+        return (m.head || '') + tools + `<div class="mb-cbx-rows">${rows}</div>` + (m.foot || '');
+    }
+
+    /**
+     * Redraws every copy of a box in place (a head card, the window),
+     * keeping the caret in its filter; a head card's count follows.
+     *
+     * @param {string} id
+     * @returns {void}
+     */
+    function _cbxRefresh(id) {
+        const m = _cbxModels.get(id);
+        if (!m) return;
+        const n = m.rows.reduce((s, [, of]) => s + of.length, 0);
+        document.querySelectorAll(`.mb-cbx[data-mb-cbx-id="${CSS.escape(id)}"]`).forEach((box) => {
+            const act = document.activeElement;
+            const caret = act && box.contains(act) && act.matches('input.mb-cbx-q') ? [act.selectionStart, act.selectionEnd] : null;
+            box.innerHTML = _cbxInner(id);
+            if (caret) {
+                const inp = box.querySelector('input.mb-cbx-q');
+                if (inp) { inp.focus(); inp.setSelectionRange(caret[0], caret[1]); }
+            }
+            const cnt = box.closest('.mb-sb-card') && box.closest('.mb-sb-card').querySelector(':scope > .mb-sb-card-head .mb-sb-card-count');
+            if (cnt) cnt.textContent = String(n);
         });
-        return { body, count };
+    }
+
+    /**
+     * Wires every chip box's controls, once, by delegation: a button
+     * (Show, Group by, Sort, ✕, a tag page's Retry), typing in the filter,
+     * and Esc in the filter (clears it first, before anything else takes
+     * Esc). Installs the boxes' style.
+     *
+     * @returns {void}
+     */
+    function _cbxInit() {
+        if (_cbxInit.done) return;
+        _cbxInit.done = true;
+        _cbxEnsureStyle();
+        document.addEventListener('click', (e) => {
+            const t = e.target instanceof Element ? e.target : null;
+            if (!t) return;
+            const retry = t.closest('button.mb-cbx-retry[data-mb-bbtp]');
+            if (retry) {
+                const src = _cbxSet.src && Array.from(_cbxSet.src.values()).find(s => s.info && s.info.name === retry.dataset.mbBbtp);
+                if (src) _bbTagPagesStart(src.info, { retry: true });
+                return;
+            }
+            const b = t.closest('button.mb-cbx-b, button.mb-cbx-clr');
+            if (!b || b.disabled) return;
+            const id = b.dataset.mbCbx;
+            const m = _cbxModels.get(id);
+            if (!m) return;
+            e.preventDefault();
+            const ui = _cbxUiOf(id);
+            if (b.classList.contains('mb-cbx-clr')) ui.q = '';
+            else if (b.dataset.mbCbxK === 'show') ui.show = b.dataset.mbCbxV;
+            // A pressed sort pressed again: back to the page's order.
+            else if (b.dataset.mbCbxK === 'dir') _cbxViewSet(m.key, 'dir', b.getAttribute('aria-pressed') === 'true' ? 0 : Number(b.dataset.mbCbxV));
+            else _cbxViewSet(m.key, b.dataset.mbCbxK, b.dataset.mbCbxV);
+            // Group by and the sort are one choice for every box of that kind.
+            if (b.dataset.mbCbxK === 'group' || b.dataset.mbCbxK === 'dir') {
+                _cbxModels.forEach((mm, oid) => { if (mm.key === m.key) _cbxRefresh(oid); });
+            } else _cbxRefresh(id);
+            if (b.classList.contains('mb-cbx-clr')) {
+                const inp = document.querySelector(`input.mb-cbx-q[data-mb-cbx="${CSS.escape(id)}"]`);
+                if (inp) inp.focus();
+            }
+        });
+        document.addEventListener('input', (e) => {
+            const inp = e.target instanceof Element && e.target.matches('input.mb-cbx-q') ? e.target : null;
+            if (!inp || !_cbxModels.has(inp.dataset.mbCbx)) return;
+            _cbxUiOf(inp.dataset.mbCbx).q = inp.value;
+            _cbxRefresh(inp.dataset.mbCbx);
+        });
+        document.addEventListener('keydown', (e) => {
+            const inp = e.target instanceof Element && e.target.matches('input.mb-cbx-q') ? e.target : null;
+            if (!inp || e.key !== 'Escape' || !inp.value) return;
+            e.preventDefault();
+            e.stopPropagation();
+            _cbxUiOf(inp.dataset.mbCbx).q = '';
+            _cbxRefresh(inp.dataset.mbCbx);
+        }, true);
+    }
+
+    /**
+     * The chip boxes' look ("Liner notes"): the tool row's small bordered
+     * segments, the filter field, the counts, the dashed ↪ chip of a tag
+     * kept on another page, the progress bar and the foot. Once.
+     *
+     * @returns {void}
+     */
+    function _cbxEnsureStyle() {
+        if (_cbxEnsureStyle.done) return;
+        _cbxEnsureStyle.done = true;
+        GM_addStyle(`
+            .mb-cbx { display: grid; gap: 6px; }
+            .mb-cbx .mb-cbx-rows { display: grid; gap: 5px; }
+            .mb-cbx .mb-cbx-tools { display: flex; flex-wrap: wrap; gap: 5px 8px; align-items: center; }
+            .mb-cbx .mb-cbx-seg-g { display: inline-flex; border: 1px solid #d9cfbd; border-radius: 3px; overflow: hidden; }
+            .mb-cbx .mb-cbx-b { font: 600 10px/1 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; letter-spacing: .06em;
+                text-transform: uppercase; color: #2b2622; background: #fffdf8; border: 0; border-left: 1px solid #d9cfbd; padding: 4px 7px;
+                cursor: pointer; font-variant-numeric: tabular-nums; }
+            .mb-cbx .mb-cbx-b:first-child { border-left: 0; }
+            .mb-cbx .mb-cbx-b:hover { background: #eef3fa; }
+            .mb-cbx .mb-cbx-b[aria-pressed="true"] { background: #eef3fa; color: #2f5f9e; }
+            .mb-cbx .mb-cbx-b:disabled { color: #b9ae9c; cursor: default; background: #fffdf8; }
+            .mb-cbx .mb-cbx-f { display: inline-flex; align-items: center; gap: 3px; border: 1px solid #d9cfbd; border-radius: 3px;
+                background: #fffdf8; padding: 0 5px; min-width: 0; flex: 1 1 110px; max-width: 200px; color: #7a6d5c; }
+            .mb-cbx .mb-cbx-f:focus-within { border-color: #2f5f9e; }
+            .mb-cbx .mb-cbx-q { border: 0; background: transparent; font: 12px/20px system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+                color: #2b2622; min-width: 0; flex: 1; outline: none; padding: 0; }
+            .mb-cbx .mb-cbx-clr { border: 0; background: none; color: #7a6d5c; cursor: pointer; font-size: 12px; padding: 0 2px; }
+            .mb-cbx .mb-cbx-cnt, .mb-cbx .mb-cbx-counts { font: 11.5px system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: #7a6d5c;
+                font-variant-numeric: tabular-nums; }
+            .mb-cbx .mb-sb-chip-kind[data-mb-cbx-n]::after, .mb-cbx .mb-dp-tagk[data-mb-cbx-n]::after { content: attr(data-mb-cbx-n);
+                font: 10px system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; margin-left: 4px; color: #7a6d5c;
+                letter-spacing: 0; text-transform: none; font-weight: normal; }
+            .mb-cbx .mb-cbx-none { font: italic 12.5px Georgia, "Times New Roman", serif; color: #7a6d5c; }
+            .mb-cbx .mb-sb-chip.mb-cbx-x, .mb-cbx a.mb-dp-tag.mb-cbx-x { border-style: dashed; border-color: #b7a98f; background: #fbf8f1; }
+            .mb-cbx .mb-sb-chip.mb-cbx-x::before, .mb-cbx a.mb-dp-tag.mb-cbx-x::before { content: "↪ "; font-size: 0.85em; color: #7a6d5c; }
+            .mb-cbx .mb-cbx-bar { display: flex; gap: 2px; height: 5px; }
+            .mb-cbx .mb-cbx-seg { flex: 1; border-radius: 1px; background: #d9cfbd; }
+            .mb-cbx .mb-cbx-seg.mb-cbx-ok { background: #3f7a3a; }
+            .mb-cbx .mb-cbx-seg.mb-cbx-bad { background: #9b2218; }
+            .mb-cbx .mb-cbx-seg.mb-cbx-run { background: #2f5f9e; animation: mb-cbx-pulse 1s ease-in-out infinite; }
+            @keyframes mb-cbx-pulse { 50% { opacity: .45; } }
+            @media (prefers-reduced-motion: reduce) { .mb-cbx .mb-cbx-seg.mb-cbx-run { animation: none; } }
+            .mb-cbx .mb-cbx-badtxt { color: #9b2218; }
+            .mb-cbx .mb-cbx-foot { border-top: 1px solid #d9cfbd; padding-top: 6px; font-size: 12.5px; display: grid; gap: 3px; }
+            .mb-cbx .mb-cbx-pages { margin: 0; padding-left: 18px; }
+            .mb-cbx .mb-cbx-why { color: #7a6d5c; font-style: italic; }
+            .mb-cbx .mb-cbx-err { border-left: 3px solid #9b2218; background: #f6e6dc; padding: 4px 8px; }
+            .mb-cbx .mb-cbx-retry { font: 600 10px/1 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; letter-spacing: .06em;
+                text-transform: uppercase; color: #9b2218; background: #fffdf8; border: 1px solid #9b2218; border-radius: 3px; padding: 4px 7px; cursor: pointer; }
+        `);
     }
 
     /**
@@ -30723,8 +31011,7 @@
         const { rec, dp } = _bbSessionsSource();
         if (!rec) return null;
         const url = _bbDetailUrl();
-        const tags = (dp && dp.tags) || [];
-        const tagChips = _fdChips(_BB_TAG_FAMILIES.map(([key, name]) => [name, tags.filter(t => t.family === key).map(t => [t.text, t.href])]));
+        const tagChips = _bbTagChips(dp);
         const pictures = ((dp && dp.images) || []).filter(im => im.full || im.thumb).map(im => ({
             full: im.full || im.thumb, thumb: im.thumb || im.full, caption: im.caption || _fiFileName(im.full || im.thumb), types: [im.label || 'Other'],
         }));
@@ -31657,9 +31944,13 @@
      * 28: a story page's own pictures (`_bbStoryPictures()`), a song's
      *    intro with its links (`subtitleHtml`) and its Lyrics section with
      *    the springsteenlyrics.com links (Phase 16 batch 4).
+     * 29: a Brucebase record says where more of its tags may be
+     *    (`bbTagInfo`: name, tag characters, an On Stage tab, the families'
+     *    context) and marks its Tags section (`bbTags`) for the window to
+     *    draw at paint time (org/springsteen-marriage.org, Phase 1).
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 28;
+    const _DP_PARSER_VERSION = 29;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -34310,8 +34601,20 @@
      * @returns {Array<{text: string, href: string, family: string}>}
      */
     function _bbPageTags(doc, url) {
-        const box = doc.querySelector('div.page-tags');
-        if (!box) return [];
+        const ctx = _bbTagCtx(doc, url);
+        return _bbRawTags(doc, url).map(t => ({ ...t, family: _bbTagFamily(t.text, ctx) }));
+    }
+
+    /**
+     * What `_bbTagFamily()` recognises a page's tags by: the page's category
+     * (its path before ":"), the squashed slugs of its /song: and /relation:
+     * links and of its title's comma parts.
+     *
+     * @param {Document} doc - The page.
+     * @param {string}   url - Its URL.
+     * @returns {{category: string, songs: Set<string>, people: Set<string>, places: Set<string>}}
+     */
+    function _bbTagCtx(doc, url) {
         const squash = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
         const slugs = (prefix) => new Set(Array.from(doc.querySelectorAll(`#page-content a[href*="/${prefix}:"]`),
             a => squash((a.getAttribute('href') || '').split(`/${prefix}:`)[1] || '')).filter(Boolean));
@@ -34320,16 +34623,402 @@
         try {
             category = (new URL(url).pathname.match(/^\/([a-z]+):/) || [])[1] || '';
         } catch (_) { /* no category */ }
-        const ctx = {
+        return {
             category,
             songs: slugs('song'),
             people: slugs('relation'),
             places: new Set(_dpText(title ? title.textContent : '').replace(/^\d{4}-\d{2}-\d{2}\s*-?\s*/, '').split(',').map(squash).filter(Boolean)),
         };
+    }
+
+    /**
+     * A page's tags as the wiki lists them (`div.page-tags`), text and
+     * absolute link, without a family. [] when the block is missing.
+     *
+     * @param {Document} doc - The page.
+     * @param {string}   url - Its URL (links are made absolute).
+     * @returns {Array<{text: string, href: string}>}
+     */
+    function _bbRawTags(doc, url) {
+        const box = doc.querySelector('div.page-tags');
+        if (!box) return [];
         return Array.from(box.querySelectorAll('a[href*="/system:page-tags/tag/"]'), a => {
             const text = _dpText(a.textContent);
-            return text ? { text, href: _dpAbsUrl(a.getAttribute('href'), url), family: _bbTagFamily(text, ctx) } : null;
+            return text ? { text, href: _dpAbsUrl(a.getAttribute('href'), url) } : null;
         }).filter(Boolean);
+    }
+
+    // ── Tags kept on other pages (org/springsteen-marriage.org, Phase 1;
+    // mockup https://claude.ai/artifact/18teQxyrom93rWw5mvY98D) ──
+    // Brucebase allows 512 characters of tags per page (the tags joined by
+    // one space; scripts/probe-bb-tag-spillover.py over the whole mirror,
+    // 2026-11-13: four pages at exactly 512, none above). A show's cast is
+    // tagged on its /onstage: page (3,307 of 3,479 onstage pages carry tags
+    // their show lacks), and a page that is full continues on a sibling
+    // named <page>-2, -3 (the name cut to Wikidot's 60 characters first).
+    // Both are Redirect modules back to the show: read with /noredirect/true.
+
+    /** @type {number} A page's tags (joined by one space) over this many characters: it may continue on a sibling. */
+    const _BB_TAG_PAGE_FULL = 450;
+    /** @type {number} Wikidot's longest page name, category included. */
+    const _BB_PAGE_NAME_MAX = 60;
+    /** @type {RegExp} Page kinds whose cast is tagged on an /onstage: page. */
+    const _BB_ONSTAGE_KINDS = /^(?:gig|nogig|rehearsal|interview)$/;
+
+    /**
+     * Whether the tags kept on a show's On stage page (and on a full page's
+     * siblings) are read (`sa_bb_onstage_tags`, default on).
+     *
+     * @returns {boolean}
+     */
+    function _bbOnstageTagsOn() {
+        return Lib.settings.sa_bb_onstage_tags !== false;
+    }
+
+    /**
+     * The name of a page's N-th sibling: the name cut so that "-N" fits in
+     * Wikidot's 60 characters, a trailing "-" dropped, then "-N"
+     * (`onstage:2026-06-04-oceanfirst-bank-center-west-long-branch-2`, the
+     * "-nj" cut away). The probe found the rule true for all 31 siblings
+     * with a base page in the mirror.
+     *
+     * @param {string} name - The base page's name ("onstage:2009-05-03-…").
+     * @param {number} n    - The sibling's number (1–9).
+     * @returns {string}
+     */
+    function _bbSiblingName(name, n) {
+        const sfx = `-${n}`;
+        return name.slice(0, _BB_PAGE_NAME_MAX - sfx.length).replace(/-+$/, '') + sfx;
+    }
+
+    /**
+     * What the tags of a record need to look for pages of their own: its
+     * name, how full its tags are, whether it has a cast tab, and the
+     * context its tags were classified by (`_bbTagCtx()`, as arrays, so the
+     * record stays cloneable into IndexedDB). Null for a page that is not a
+     * category page.
+     *
+     * @param {Document} doc
+     * @param {string}   url
+     * @param {Array<{text: string}>} tags - The page's own tags.
+     * @returns {?{name: string, chars: number, castTab: boolean, ctx: Object}}
+     */
+    function _bbTagInfo(doc, url, tags) {
+        let name;
+        try {
+            name = decodeURIComponent(new URL(url).pathname.replace(/^\//, '').replace(/\/.*$/, ''));
+        } catch (_) { return null; }
+        if (!/^[a-z]+:[^/]+$/.test(name)) return null;
+        const content = doc.getElementById('page-content');
+        const castTab = !!content && _bbEventTabs(content).some(t => /^On ?Stage$/i.test(t.label));
+        const ctx = _bbTagCtx(doc, url);
+        return {
+            name, chars: tags.map(t => t.text).join(' ').length, castTab,
+            ctx: { category: ctx.category, songs: [...ctx.songs], people: [...ctx.people], places: [...ctx.places] },
+        };
+    }
+
+    /**
+     * Whether a record's tags may continue on other pages: its cast on an
+     * /onstage: page (a show with an On Stage tab), or its own siblings
+     * (tags over `_BB_TAG_PAGE_FULL` characters). False with the setting off.
+     *
+     * @param {?Object} info - `_bbTagInfo()`.
+     * @returns {boolean}
+     */
+    function _bbTagPagesEligible(info) {
+        if (!info || !_bbOnstageTagsOn()) return false;
+        const kind = info.name.split(':')[0];
+        return (info.castTab && _BB_ONSTAGE_KINDS.test(kind)) || (info.chars > _BB_TAG_PAGE_FULL && !/-[1-9]$/.test(info.name));
+    }
+
+    /** @type {Map<string, Object>} A tag page's read, by its name: `{state: 'ok', page}` or `{state: 'missing'}`. */
+    const _bbTagPageMem = new Map();
+
+    /**
+     * Reads one page for its tags (`<name>/noredirect/true`): from this
+     * session's memory, then IndexedDB (the detail pages' store and
+     * lifetime, key "bbtags:" + URL), then the wiki, through the detail
+     * pages' rate slot on brucebase.wikidot.com and through `_extGet()`
+     * elsewhere. A page the wiki does not have (HTTP 404) is "missing" and
+     * remembered as such; a failure is not remembered.
+     *
+     * @param {string} name   - The page's name ("onstage:2016-01-16-…").
+     * @param {function(): boolean} wanted - Asked when the request's slot comes up.
+     * @returns {Promise<{state: string, page?: Object, detail?: string}>}
+     *   `ok` (page: {name, url, tags, chars}), `missing`, `error` or `skipped`.
+     */
+    async function _bbTagPageGet(name, wanted) {
+        const mem = _bbTagPageMem.get(name);
+        if (mem) return mem;
+        const origin = _isBbHost ? location.origin : 'https://brucebase.wikidot.com';
+        const url = `${origin}/${name}/noredirect/true`;
+        const key = `bbtags:https://brucebase.wikidot.com/${name}`;
+        const site = _DP_SITES['brucebase.wikidot.com'];
+        const rec = await _dpIdbGet(key).catch(() => null);
+        if (_dpRecUsable(rec, site, Date.now()) && rec.data && rec.data.bbTagPage) {
+            _bbTagPageMem.set(name, rec.data.res);
+            return rec.data.res;
+        }
+        let status;
+        let body = '';
+        if (_isBbHost) {
+            await _dpAwaitSlot();
+            if (!wanted()) return { state: 'skipped' };
+            try {
+                const r = await fetch(url, { credentials: 'same-origin' });
+                status = r.status;
+                if (r.ok) body = await r.text();
+            } catch (e) {
+                return { state: 'error', detail: (e && e.message) || 'no answer' };
+            }
+        } else {
+            const r = await _extGet(url, { wanted });
+            if (r.skipped) return { state: 'skipped' };
+            if (r.error) return { state: 'error', detail: _extFailText(r) };
+            status = r.status;
+            body = status >= 200 && status < 300 ? r.body : '';
+        }
+        let res;
+        if (status === 404) res = { state: 'missing' };
+        else if (status < 200 || status > 299 || !body) return { state: 'error', detail: `HTTP ${status}` };
+        else {
+            const doc = new DOMParser().parseFromString(body, 'text/html');
+            const tags = _bbRawTags(doc, url);
+            res = { state: 'ok', page: { name, url, tags, chars: tags.map(t => t.text).join(' ').length } };
+        }
+        _bbTagPageMem.set(name, res);
+        _dpIdbPut({ url: key, v: _DP_PARSER_VERSION, at: Date.now(), data: { bbTagPage: true, res } }).catch(() => { /* memory has it */ });
+        return res;
+    }
+
+    /** @type {Map<string, Object>} The read of a record's other tag pages, by the record's name: `{state, pages, failed}`. */
+    const _bbTagPages = new Map();
+    /** @type {Map<string, Set<string>>} The chip boxes showing a record's tags (`_cbx*`), by the record's name. */
+    const _bbTagPagesBoxes = new Map();
+    /** @type {Set<string>} Window targets (`t.key`) whose window asked for its tag pages (Space, any host). */
+    const _bbTagPagesWant = new Set();
+
+    /**
+     * Starts reading a record's other tag pages, once per record (again on
+     * `retry`): first its own siblings while the page read last is nearly
+     * full, then, for a show with an On Stage tab, its /onstage: page (or,
+     * when there is none, "-1": Waldorf 1990 starts there) and that page's
+     * siblings the same way. Every page read updates the chip boxes and the
+     * window (`_bbTagPagesNotify()`). Called on a press (the head) and on
+     * Space (the window), never from a hover or a repaint.
+     *
+     * @param {?Object} info - `_bbTagInfo()`.
+     * @param {{wanted?: function(): boolean, retry?: boolean}} [opts]
+     * @returns {void}
+     */
+    function _bbTagPagesStart(info, { wanted = () => true, retry = false } = {}) {
+        if (!_bbTagPagesEligible(info)) return;
+        const cur = _bbTagPages.get(info.name);
+        if (cur && !retry && !(cur.state === 'done' && cur.skipped)) return;
+        const st = { state: 'loading', pages: [], failed: [], skipped: false, reading: '' };
+        _bbTagPages.set(info.name, st);
+        const read = async (name) => {
+            st.reading = name;
+            _bbTagPagesNotify(info.name);
+            const r = await _bbTagPageGet(name, wanted);
+            if (r.state === 'ok') st.pages.push(r.page);
+            else if (r.state === 'skipped') st.skipped = true;
+            else if (r.state === 'error') st.failed.push({ name, detail: r.detail || '' });
+            return r;
+        };
+        const chain = async (base, from, chars) => {
+            for (let n = from, last = chars; last > _BB_TAG_PAGE_FULL && n <= 9; n++) {
+                const r = await read(_bbSiblingName(base, n));
+                if (r.state !== 'ok') return;
+                last = r.page.chars;
+            }
+        };
+        (async () => {
+            if (!/-[1-9]$/.test(info.name)) await chain(info.name, 2, info.chars);
+            const [kind, slug] = info.name.split(/:(.*)/s);
+            if (info.castTab && _BB_ONSTAGE_KINDS.test(kind) && !st.skipped) {
+                const base = `onstage:${slug}`;
+                let r = await read(base);
+                const from = 2;
+                if (r.state === 'missing') r = await read(_bbSiblingName(base, 1));
+                if (r.state === 'ok') await chain(base, from, r.page.chars);
+            }
+        })().catch((e) => {
+            st.failed.push({ name: st.reading, detail: (e && e.message) || String(e) });
+        }).finally(() => {
+            st.state = 'done';
+            st.reading = '';
+            _bbTagPagesNotify(info.name);
+        });
+    }
+
+    /**
+     * A record's tags with those kept on its other pages (`_bbTagPages`),
+     * as a chip box's rows: one row per family, in `_BB_TAG_FAMILIES`
+     * order. A tag already on the page itself is shown once. Tags from
+     * another page are classified with the RECORD's context: the onstage
+     * pages have no /relation: links of their own.
+     *
+     * @param {Array<{text: string, href: string, family: string}>} tags - The page's own tags.
+     * @param {?Object} info - `_bbTagInfo()`.
+     * @returns {Array<[string, Array<Object>]>} `_cbx` rows.
+     */
+    function _bbTagRows(tags, info) {
+        const seen = new Set(tags.map(t => t.text.toLowerCase()));
+        const items = tags.map(t => ({ text: t.text, href: t.href, family: t.family }));
+        const st = info && _bbTagPagesEligible(info) ? _bbTagPages.get(info.name) : null;
+        if (st) {
+            const c = info.ctx;
+            const ctx = { category: c.category, songs: new Set(c.songs), people: new Set(c.people), places: new Set(c.places) };
+            st.pages.forEach((p) => {
+                const onstage = /^onstage:/.test(p.name);
+                const tip = `<div class="mb-tt-title">Kept on ${_mbttEscape(onstage ? 'the On stage page' : 'a continuation page')}</div>` +
+                    `<div class="mb-tt-body"><code>${_mbttEscape(p.name)}</code>: ${p.tags.length} tags, ${p.chars} of 512 characters.</div>` +
+                    `<div class="mb-tt-dim">${onstage ? 'The show has an On Stage tab, and its cast is tagged on that page.'
+                        : 'Brucebase allows 512 characters of tags per page; a full page continues on the next one.'}</div>`;
+                p.tags.forEach((t) => {
+                    const k = t.text.toLowerCase();
+                    if (seen.has(k)) return;
+                    seen.add(k);
+                    items.push({ text: t.text, href: t.href, family: _bbTagFamily(t.text, ctx), page: p.name, tip });
+                });
+            });
+        }
+        return _BB_TAG_FAMILIES.map(([key, name]) => [name, items.filter(x => x.family === key)]).filter(([, of]) => of.length);
+    }
+
+    /**
+     * The parts of a tag chip box that say what the other tag pages are
+     * doing (mockup M1): above the tags, while pages are read or after one
+     * failed, a segmented bar and its counts; below them, the pages that
+     * keep some of the tags, and a failure with Retry.
+     *
+     * @param {?Object} info - `_bbTagInfo()`.
+     * @param {Array<[string, Array<Object>]>} rows - `_bbTagRows()`.
+     * @returns {{head: string, foot: string, pages: Array<{id: string, label: string}>}}
+     */
+    function _bbTagPagesParts(info, rows) {
+        const st = info && _bbTagPagesEligible(info) ? _bbTagPages.get(info.name) : null;
+        if (!st) return { head: '', foot: '', pages: [] };
+        const esc = _mbttEscape;
+        const items = rows.flatMap(([, of]) => of);
+        const per = st.pages.map(p => [p, items.filter(x => x.page === p.name).length]).filter(([, n]) => n);
+        const pages = per.map(([p], i) => ({ id: p.name, label: /^onstage:/.test(p.name) ? `On stage${per.length > 1 ? ` ${i + 1}` : ''}` : p.name.replace(/^.*(-\d)$/, 'Page $1') }));
+        let head = '';
+        if (st.state === 'loading' || st.failed.length) {
+            const segs = ['<span class="mb-cbx-seg mb-cbx-ok"></span>']
+                .concat(st.pages.map(() => '<span class="mb-cbx-seg mb-cbx-ok"></span>'))
+                .concat(st.failed.map(() => '<span class="mb-cbx-seg mb-cbx-bad"></span>'))
+                .concat(st.state === 'loading' ? ['<span class="mb-cbx-seg mb-cbx-run"></span>'] : []);
+            const txt = `${1 + st.pages.length} page${st.pages.length ? 's' : ''} read` +
+                (st.failed.length ? ` · <span class="mb-cbx-badtxt">${st.failed.length} failed</span>` : '') +
+                (st.state === 'loading' && st.reading ? ` · reading <code>${esc(st.reading)}</code>` : '');
+            head = `<div class="mb-cbx-bar" aria-hidden="true">${segs.join('')}</div><div class="mb-cbx-counts">${txt}</div>`;
+        }
+        let foot = '';
+        const n = per.reduce((s, [, k]) => s + k, 0);
+        if (n) {
+            foot += `<div>${n} of ${items.length} tags are kept on ${per.length === 1 ? 'another page' : `${per.length} other pages`}:</div><ul class="mb-cbx-pages">` +
+                per.map(([p, k]) => `<li><a href="${esc(p.url.replace(/^http:/, 'https:'))}" target="_blank" rel="noopener noreferrer"><code>${esc(p.name)}</code></a> · ${k} tag${k === 1 ? '' : 's'}</li>`).join('') + '</ul>';
+        }
+        if (st.failed.length) {
+            foot += `<div class="mb-cbx-err">Could not read <code>${esc(st.failed[0].name)}</code>${st.failed[0].detail ? ` (${esc(st.failed[0].detail)})` : ''}. ` +
+                `The tags shown are complete for the pages that loaded. <button type="button" class="mb-cbx-retry" data-mb-bbtp="${esc(info.name)}">Retry</button></div>`;
+        }
+        if (n || st.failed.length) foot += '<div class="mb-cbx-why">Brucebase allows 512 characters of tags per page; a show\'s cast is tagged on its On stage page.</div>';
+        return { head, foot: foot ? `<div class="mb-cbx-foot">${foot}</div>` : '', pages };
+    }
+
+    /**
+     * Fills a chip box with a record's tags (`_bbTagRows()`), its other
+     * pages' progress and pages, and remembers that the box shows that
+     * record, so the read's progress refills it.
+     *
+     * @param {string}  id    - The box's id (`_cbxSet()`).
+     * @param {Array<{text: string, href: string, family: string}>} tags
+     * @param {?Object} info  - `_bbTagInfo()`.
+     * @param {string}  style - 'sb' (a head card) or 'dp' (the window).
+     * @returns {number} The number of tags.
+     */
+    function _bbTagBoxSet(id, tags, info, style) {
+        const rows = _bbTagRows(tags, info);
+        const parts = _bbTagPagesParts(info, rows);
+        _cbxSet(id, { key: 'bb-tags', style, kindLabel: 'Family', rows, pages: parts.pages, head: parts.head, foot: parts.foot });
+        if (info) {
+            if (!_bbTagPagesBoxes.has(info.name)) _bbTagPagesBoxes.set(info.name, new Set());
+            _bbTagPagesBoxes.get(info.name).add(id);
+            _cbxSet.src = _cbxSet.src || new Map();
+            _cbxSet.src.set(id, { tags, info, style });
+        }
+        return rows.reduce((s, [, of]) => s + of.length, 0);
+    }
+
+    /**
+     * A record's other tag pages moved on: refills every chip box that
+     * shows the record (a head card, live) and repaints the window (which
+     * draws its Tags section from the same state).
+     *
+     * @param {string} name - The record's name.
+     * @returns {void}
+     */
+    function _bbTagPagesNotify(name) {
+        (_bbTagPagesBoxes.get(name) || new Set()).forEach((id) => {
+            const src = _cbxSet.src && _cbxSet.src.get(id);
+            if (!src) return;
+            const n = _bbTagBoxSet(id, src.tags, src.info, src.style);
+            _cbxRefresh(id);
+            // The window's box: its section's heading counts too. In place,
+            // never a repaint of the window (it would race a fold the reader
+            // is making); the next paint draws the same state.
+            if (src.style === 'dp') {
+                document.querySelectorAll(`#mb-dp-dialog .mb-cbx[data-mb-cbx-id="${CSS.escape(id)}"]`).forEach((box) => {
+                    const h = box.closest('details.mb-dp-sec');
+                    const h4 = h && h.querySelector(':scope > summary h4');
+                    if (h4) h4.textContent = `Tags (${n})`;
+                });
+            }
+        });
+    }
+
+    /**
+     * A Brucebase head's Tags card body (every bb-* detail page): the
+     * page's tags by family in a chip box, with the tags kept on its other
+     * pages once they are read. Starts that read (the press that rendered
+     * the head). Null without tags.
+     *
+     * @param {?Object} dp - The page's record (`_dpParseBb()`).
+     * @returns {?{body: HTMLElement, count: number}}
+     */
+    function _bbTagChips(dp) {
+        const tags = (dp && dp.tags) || [];
+        if (!tags.length) return null;
+        const info = (dp && dp.bbTagInfo) || null;
+        _bbTagPagesStart(info);
+        const id = `fd:bb-tags:${info ? info.name : location.pathname}`;
+        const count = _bbTagBoxSet(id, tags, info, 'sb');
+        return { body: _cbxElement(id), count };
+    }
+
+    /**
+     * The window's Tags section of a Brucebase record, drawn at every paint
+     * from the record and what its other tag pages have read so far. The
+     * window that asked for them on Space (`_bbTagPagesWant`, any host)
+     * starts the read here, once.
+     *
+     * @param {Object}  data - The record.
+     * @param {?Object} t    - The window's target.
+     * @returns {{label: string, html: string}}
+     */
+    function _bbTagsWindowPart(data, t) {
+        const info = data.bbTagInfo || null;
+        if (t && _bbTagPagesWant.has(t.key)) {
+            _bbTagPagesWant.delete(t.key);
+            _bbTagPagesStart(info, { wanted: () => !!document.getElementById('mb-dp-dialog') });
+        }
+        const id = `dp:bb-tags:${info ? info.name : (t && t.key) || ''}`;
+        const count = _bbTagBoxSet(id, data.tags || [], info, 'dp');
+        return { label: `Tags (${count})`, html: _cbxHtml(id) };
     }
 
     /**
@@ -34991,7 +35680,7 @@
             const d = new Date(`${rec.date}T12:00:00Z`);
             if (!isNaN(d)) weekday = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][d.getUTCDay()];
         }
-        const tagChips = _fdChips(_BB_TAG_FAMILIES.map(([key, name]) => [name, tags.filter(t => t.family === key).map(t => [t.text, t.href])]));
+        const tagChips = _bbTagChips(dp);
         const media = [];
         const mediaSec = dp ? dp.sections.find(s => s.label === 'Media') : null;
         if (mediaSec && mediaSec.html) {
@@ -35268,8 +35957,7 @@
         const { rec, dp } = _bbStoryCache;
         if (!rec) return null;
         const url = _bbDetailUrl();
-        const tags = (dp && dp.tags) || [];
-        const tagChips = _fdChips(_BB_TAG_FAMILIES.map(([key, name]) => [name, tags.filter(t => t.family === key).map(t => [t.text, t.href])]));
+        const tagChips = _bbTagChips(dp);
         const rows = rec.parts.reduce((n, p) => n + p.rows.length, 0);
         const pictures = ((dp && dp.images) || []).filter(im => im.full || im.thumb).map(im => ({
             full: im.full || im.thumb, thumb: im.thumb || im.full, caption: im.caption || _fiFileName(im.full || im.thumb), types: [im.label || 'Other'],
@@ -35616,9 +36304,8 @@
         if (!rec) return null;
         const url = _bbDetailUrl();
         const field = (name) => ((dp && dp.fields.find(f => f[0] === name)) || [])[1] || '';
-        const tags = (dp && dp.tags) || [];
         const chips = (rows) => _fdChips(rows);
-        const tagChips = chips(_BB_TAG_FAMILIES.map(([key, name]) => [name, tags.filter(x => x.family === key).map(x => [x.text, x.href])]));
+        const tagChips = _bbTagChips(dp);
         const mediaChips = chips([['YouTube', rec.media.filter(m => /^YouTube/.test(m[0])).map(m => [m[0], m[1]])], ['Spotify', rec.media.filter(m => m[0] === 'Spotify')]]);
         const linkChips = chips([['Links', rec.links]]);
         const perf = rec.performances;
@@ -36050,8 +36737,7 @@
         const { rec, dp } = _bbPlaceSource();
         if (!rec) return null;
         const url = _bbDetailUrl();
-        const tags = (dp && dp.tags) || [];
-        const tagChips = _fdChips(_BB_TAG_FAMILIES.map(([key, name]) => [name, tags.filter(x => x.family === key).map(x => [x.text, x.href])]));
+        const tagChips = _bbTagChips(dp);
         const venue = rec.kind === 'venue';
         const pictures = ((dp && dp.images) || []).filter(im => im.full || im.thumb).map(im => ({
             full: im.full || im.thumb, thumb: im.thumb || im.full, caption: im.caption || _fiFileName(im.full || im.thumb),
@@ -36712,8 +37398,7 @@
         const { rec, dp } = _bbReleaseSource();
         if (!rec) return null;
         const url = _bbDetailUrl();
-        const tags = (dp && dp.tags) || [];
-        const tagChips = _fdChips(_BB_TAG_FAMILIES.map(([key, name]) => [name, tags.filter(x => x.family === key).map(x => [x.text, x.href])]));
+        const tagChips = _bbTagChips(dp);
         const pictures = ((dp && dp.images) || []).filter(im => im.full || im.thumb).map(im => ({
             full: im.full || im.thumb, thumb: im.thumb || im.full, caption: im.caption || _fiFileName(im.full || im.thumb),
             types: [(im.part && im.part.replace(/\s*\d+$/, '')) || im.nameKind || im.label || 'Other'],
@@ -37517,8 +38202,14 @@
         const data = _dpParseBbRecord(doc, url);
         if (!data) return data;
         data.tags = _bbPageTags(doc, url);
+        // What the tags need to find the pages that keep more of them (a
+        // show's /onstage: page, a full page's -2): read on a press or on
+        // Space, never here (`_bbTagPagesStart()`).
+        data.bbTagInfo = _bbTagInfo(doc, url, data.tags);
         const sec = _bbTagsSection(data.tags);
-        if (sec) data.sections.push(sec);
+        // `bbTags`: the window draws this section at every paint, with the
+        // tags read so far from the other pages (`_bbTagsWindowPart()`).
+        if (sec) data.sections.push(Object.assign(sec, { bbTags: true }));
         // The page id its history is asked by (Phase 6, `_bbHistSection()`).
         data.bbPageId = _bbHistPageIdOf(doc);
         return data;
@@ -39154,6 +39845,10 @@
         },
         'brucebase.wikidot.com': {
             setting: 'sa_bb_detail_preview',
+            // The window, on Space, reads the pages that keep more of the
+            // record's tags (`_bbTagPagesStart()`: a show's /onstage: page,
+            // a full page's -2); never the hover card.
+            windowKick: (data) => _bbTagPagesStart(data && data.bbTagInfo, { wanted: () => !!document.getElementById('mb-dp-dialog') }),
             // A song's own pages too (Phase 16 batch 3, answer 1): its tour
             // counts, On The Tracks and lyrics. Not the other stats pages
             // (answer 6), among them a tour's song counts and its shows,
@@ -41609,21 +42304,25 @@
             }
         }
         data.sections.forEach(s => {
+            // A Brucebase record's Tags: drawn now, with the tags its other
+            // pages have given so far, in a chip box (`_bbTagsWindowPart()`).
+            const tagPart = s.bbTags ? _bbTagsWindowPart(data, t) : null;
+            const label = tagPart ? tagPart.label : s.label;
             // A Brucebase entry's sections: a "Play here" tile after each YouTube link (org/youtube.org).
-            const html = s.html && data.ytTiles ? _ytDecorateHtml(s.html) : s.html;
+            const html = tagPart ? tagPart.html : s.html && data.ytTiles ? _ytDecorateHtml(s.html) : s.html;
             const body = `<div class="mb-dp-section">${html || _mbttEscape(s.text)}</div>`;
             if (!data.collapsible) {
-                right.push(`<h4>${_mbttEscape(s.label)}</h4>${body}`);
+                right.push(`<h4>${_mbttEscape(label)}</h4>${body}`);
                 return;
             }
             // Collapsible (Brucebase, 2026-10-24): open unless the section
             // starts closed (`open: false`); a section the reader opened or
             // closed stays so for the page's life (`_dpSecState`).
-            const name = s.label.replace(/\s*\(\d+\)$/, '');
+            const name = label.replace(/\s*\(\d+\)$/, '');
             const open = _dpSecState.has(name) ? _dpSecState.get(name) : s.open !== false;
             right.push(`<details class="mb-dp-sec" data-mb-dp-sec="${_mbttEscape(name)}"${open ? ' open' : ''}>` +
                 '<summary data-mb-tip title="Click: open or close · Ctrl+click: every section">' +
-                `<h4>${_mbttEscape(s.label)}</h4></summary>${body}</details>`);
+                `<h4>${_mbttEscape(label)}</h4></summary>${body}</details>`);
         });
         // A Brucebase page's history, last and closed (Phase 6): its body is
         // drawn here at every paint, from what is read so far.
@@ -93500,6 +94199,9 @@
      */
     function _extExtracted(t, start, force, repaint) {
         if (start) _extLoad(t, { force, repaint });
+        // A Brucebase page's window asks for the pages that keep more of its
+        // tags; its first paint with the record starts the read (`_bbTagsWindowPart()`).
+        if (start && /(?:^|\.)brucebase\.wikidot\.com$/i.test(_extHostOf(t.url))) _bbTagPagesWant.add(t.key);
         const mbq = _extMbQuery(t);
         if (start && mbq) _extMbLoad(t, mbq, force, repaint);
         const mbSec = mbq ? _extMbSectionHtml(t, mbq) : '';
@@ -122821,6 +123523,14 @@ a { color: #1565c0; }`;
      * archives'. Same TDZ placement as the keys above.
      */
     const MB_FD_ART_LAYOUT_KEY = 'mb_sa_fd_art_layout';
+
+    /**
+     * GM storage key for the chip boxes' Group by and sort (`_cbxViewOf()`:
+     * `{<card kind>: {group, dir}}`; "bb-tags" for a Brucebase page's tags,
+     * "fd" for every other chip card of a foreign detail page's head).
+     * Remembered between pages (vzell, 2026-11-14); the filter text never is.
+     */
+    const MB_FD_CHIP_VIEW_KEY = 'mb_sa_fd_chip_view';
 
     /**
      * GM storage key for the art sections' tile size in px (the Tiles
@@ -154378,6 +155088,11 @@ a { color: #1565c0; }`;
             group: 'fdart',
             label: 'Other sites\' detail pages: picture layout',
             keys: [MB_FD_ART_LAYOUT_KEY],
+        },
+        {
+            group: 'fdchips',
+            label: 'Other sites\' detail pages: how chip cards group and sort',
+            keys: [MB_FD_CHIP_VIEW_KEY],
         },
         {
             group: 'artsectile',

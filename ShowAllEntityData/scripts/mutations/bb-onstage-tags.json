@@ -1,0 +1,136 @@
+[
+  {
+    "name": "tag rows: the other pages' tags are never added",
+    "why": "The head's Tags card would show only the page's own tags: the cast kept on the onstage page is missing (org/springsteen-marriage.org, Phase 1).",
+    "edits": [
+      {
+        "find": "        const st = info && _bbTagPagesEligible(info) ? _bbTagPages.get(info.name) : null;\n        if (st) {\n            const c = info.ctx;",
+        "replace": "        const st = null;\n        if (st) {\n            const c = info.ctx;"
+      }
+    ],
+    "spec": "tests/fixtures/bb-onstage-tags.spec.js",
+    "grep": "Pittsburgh 2016",
+    "expect": "fail"
+  },
+  {
+    "name": "chain: never reads a next page (the nearly-full test always false)",
+    "why": "MSG 2009 keeps its cast on three onstage pages; without the chain only the first is read.",
+    "edits": [
+      {
+        "find": "            for (let n = from, last = chars; last > _BB_TAG_PAGE_FULL && n <= 9; n++) {",
+        "replace": "            for (let n = from, last = chars; last > 99999 && n <= 9; n++) {"
+      }
+    ],
+    "spec": "tests/fixtures/bb-onstage-tags.spec.js",
+    "grep": "MSG 2009",
+    "expect": "fail"
+  },
+  {
+    "name": "chain: no -1 when the onstage page is missing",
+    "why": "Waldorf 1990 has no onstage page of the show's own name, only -1 and -2.",
+    "edits": [
+      {
+        "find": "                if (r.state === 'missing') r = await read(_bbSiblingName(base, 1));",
+        "replace": "                if (r.state === 'missing') r = { state: 'missing' };"
+      }
+    ],
+    "spec": "tests/fixtures/bb-onstage-tags.spec.js",
+    "grep": "Waldorf 1990",
+    "expect": "fail"
+  },
+  {
+    "name": "setting: sa_bb_onstage_tags ignored",
+    "why": "Off must mean no request and only the page's own tags.",
+    "edits": [
+      {
+        "find": "        return Lib.settings.sa_bb_onstage_tags !== false;",
+        "replace": "        return true;"
+      }
+    ],
+    "spec": "tests/fixtures/bb-onstage-tags.spec.js",
+    "grep": "setting off",
+    "expect": "fail"
+  },
+  {
+    "name": "retry: the Retry button does nothing",
+    "why": "A page that failed could never be read again without leaving the page.",
+    "edits": [
+      {
+        "find": "                if (src) _bbTagPagesStart(src.info, { retry: true });",
+        "replace": "                if (src) void 0;"
+      }
+    ],
+    "spec": "tests/fixtures/bb-onstage-tags.spec.js",
+    "grep": "a page that fails",
+    "expect": "fail"
+  },
+  {
+    "name": "filter: the match is not marked",
+    "why": "vzell asked for a filter with inclusive highlighting (2026-11-14).",
+    "edits": [
+      {
+        "find": "            const label = _hlHtml(esc(x.text), q);",
+        "replace": "            const label = esc(x.text);"
+      }
+    ],
+    "spec": "tests/fixtures/bb-onstage-tags.spec.js",
+    "grep": "keeps and marks",
+    "expect": "fail"
+  },
+  {
+    "name": "view: Group by and the sort are not remembered",
+    "why": "vzell, 2026-11-14: Group by and the sort carry over to the next page.",
+    "edits": [
+      {
+        "find": "        try { GM_setValue(MB_FD_CHIP_VIEW_KEY, all); } catch (_) { /* storage blocked: still switch for this page */ }",
+        "replace": "        try { _cbxUi.set('__v', all); } catch (_) { /* storage blocked: still switch for this page */ }"
+      }
+    ],
+    "spec": "tests/fixtures/bb-onstage-tags.spec.js",
+    "grep": "keeps and marks",
+    "expect": "fail"
+  },
+  {
+    "name": "window: Space on another site never asks for the tag pages",
+    "why": "The window on musicbrainz.org would show only the show's own tags.",
+    "edits": [
+      {
+        "find": "        if (start && /(?:^|\\.)brucebase\\.wikidot\\.com$/i.test(_extHostOf(t.url))) _bbTagPagesWant.add(t.key);",
+        "replace": "        if (false) _bbTagPagesWant.add(t.key);"
+      }
+    ],
+    "spec": "tests/fixtures/bb-onstage-tags.spec.js",
+    "grep": "a hover reads the show only",
+    "expect": "fail"
+  },
+  {
+    "name": "window: a hover starts the tag pages too (the want set on every load)",
+    "why": "Only Space may read the tag pages, never a hover (detail-pages.md: only a call with start may start a request). Covered twice: even when a hover starts the read, each page asks wanted() when its rate slot comes up, and with no window open (wanted = the dialog exists) it is skipped, so the spec sees no request. Recorded as pass (2026-11-14).",
+    "edits": [
+      {
+        "find": "        if (t && _bbTagPagesWant.has(t.key)) {\n            _bbTagPagesWant.delete(t.key);",
+        "replace": "        if (t) {\n            _bbTagPagesWant.delete(t.key);"
+      },
+      {
+        "find": "                body = _dpCardBodyHtml(rec.dp) +",
+        "replace": "                body = (_bbTagsWindowPart(rec.dp, t), '') + _dpCardBodyHtml(rec.dp) +"
+      }
+    ],
+    "spec": "tests/fixtures/bb-onstage-tags.spec.js",
+    "grep": "a hover reads the show only",
+    "expect": "pass"
+  },
+  {
+    "name": "chip boxes: every card sorted A–Z by default",
+    "why": "A card that is an order, not a list (Discogs' External links: Release, Master, History), must keep the page's order until a sort is pressed (2026-11-14, the first wide run).",
+    "edits": [
+      {
+        "find": "        const dflt = key === 'bb-tags' ? 1 : 0;",
+        "replace": "        const dflt = 1;"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-release-tracks.spec.js",
+    "grep": "the head as release-tracks",
+    "expect": "fail"
+  }
+]

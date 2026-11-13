@@ -67,6 +67,16 @@ debug/bb-mirror/retail-main/ and playlist-main/, the subpages left out):
   after each) and "American Babylon" (a live version, its date under the
   heading; Phase 16 batch 3).
 
+And for the tags kept on other pages (org/springsteen-marriage.org, Phase 1;
+from the 2026-11-13 mirror, copied to debug/bb-mirror/onstage-tags/):
+
+- gig 2016-01-16 Pittsburgh: its own tags at 508 of the 512 characters (so a
+  "-2" is asked and is missing), its cast on one /onstage: page;
+- gig 2009-05-03 Madison Square Garden (Pete Seeger's 90th): the cast on
+  three onstage pages (the page, -2 and -3; 510, 504, 245 characters);
+- gig 1990-01-17 Waldorf-Astoria: no onstage page of the show's own name,
+  only -1 (496 characters) and -2.
+
 A song's lyrics are blanked word by word ("la"), as
 scripts/build-detail-fixtures.py does (its `blank_lyrics()`, imported); a
 lyrics page's verses too (every centred block that does not start with a
@@ -121,6 +131,15 @@ PAGES = [
     ('bootleg/bootleg_born-to-run-outtakes.html', 'bb-bootleg-born-to-run-outtakes.html'),
     ('lyrics/lyrics_born-in-the-u-s-a.html', 'bb-lyrics-born-in-the-u-s-a.html'),
     ('lyrics/lyrics_american-babylon.html', 'bb-lyrics-american-babylon.html'),
+    ('onstage-tags/gig_2016-01-16-consol-energy-center-pittsburgh-pa.html', 'bb-event-gig-2016-01-16.html', '2026-11-13'),
+    ('onstage-tags/onstage_2016-01-16-consol-energy-center-pittsburgh-pa.html', 'bb-onstage-2016-01-16.html', '2026-11-13'),
+    ('onstage-tags/gig_2009-05-03-madison-square-garden-new-york-city-ny.html', 'bb-event-gig-2009-05-03.html', '2026-11-13'),
+    ('onstage-tags/onstage_2009-05-03-madison-square-garden-new-york-city-ny.html', 'bb-onstage-2009-05-03.html', '2026-11-13'),
+    ('onstage-tags/onstage_2009-05-03-madison-square-garden-new-york-city-ny-2.html', 'bb-onstage-2009-05-03-2.html', '2026-11-13'),
+    ('onstage-tags/onstage_2009-05-03-madison-square-garden-new-york-city-ny-3.html', 'bb-onstage-2009-05-03-3.html', '2026-11-13'),
+    ('onstage-tags/gig_1990-01-17-waldorf-astoria-hotel-new-york-city-ny.html', 'bb-event-gig-1990-01-17.html', '2026-11-13'),
+    ('onstage-tags/onstage_1990-01-17-waldorf-astoria-hotel-new-york-city-ny-1.html', 'bb-onstage-1990-01-17-1.html', '2026-11-13'),
+    ('onstage-tags/onstage_1990-01-17-waldorf-astoria-hotel-new-york-city-ny-2.html', 'bb-onstage-1990-01-17-2.html', '2026-11-13'),
 ]
 
 
@@ -170,14 +189,15 @@ def strip(html):
 def main():
     """Write each fixture whose source page is on the machine."""
     wrote = 0
-    for src, out in PAGES:
+    for src, out, *more in PAGES:
+        when = more[0] if more else '2026-10-18'
         path = os.path.join(SRC, src)
         if not os.path.exists(path):
             print(f'skip {out}: {os.path.relpath(path, ROOT)} not on this machine (run scripts/sample-bb-mirror.py)')
             continue
         with open(path, encoding='utf-8', errors='replace') as fh:
             html = strip(fh.read())
-        if 'id="page-content"' not in html or ('yui-navset' not in html and not out.startswith(('bb-ott-', 'bb-lyrics-'))):
+        if 'id="page-content"' not in html or ('yui-navset' not in html and not out.startswith(('bb-ott-', 'bb-lyrics-', 'bb-onstage-'))):
             sys.exit(f'{src}: no #page-content or tabview')
         if out.startswith('bb-song-'):
             html, blanked = _blank_lyrics()(html, 'bb-song')
@@ -187,7 +207,7 @@ def main():
             html, n = blank_bb_lyrics(html)
             if not n:
                 sys.exit(f'{src}: a lyrics page, but no verses were blanked')
-        note = ('<!-- Built by scripts/build-bb-event-fixtures.py from the BruceParser mirror (2026-10-18); '
+        note = (f'<!-- Built by scripts/build-bb-event-fixtures.py from the BruceParser mirror ({when}); '
                 'scripts, noscripts, theme @imports and non-YouTube iframes removed; do not edit by hand. -->\n')
         html = re.sub(r'(<!DOCTYPE[^>]*>\s*)', lambda m: m.group(1) + note, html, count=1, flags=re.I)
         target = os.path.join(OUT, out)

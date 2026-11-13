@@ -264,8 +264,8 @@
         "why": "The tiles are added at render (the cached record has none), only for a record marked ytTiles.",
         "edits": [
             {
-                "find": "            const html = s.html && data.ytTiles ? _ytDecorateHtml(s.html) : s.html;",
-                "replace": "            const html = s.html;"
+                "find": "            const html = tagPart ? tagPart.html : s.html && data.ytTiles ? _ytDecorateHtml(s.html) : s.html;",
+                "replace": "            const html = tagPart ? tagPart.html : s.html;"
             }
         ],
         "spec": "tests/fixtures/youtube-embeds.spec.js",

@@ -1,0 +1,31 @@
+* TODO how do I provide the login details to Ionos
+
+● Don't paste the passwords into this chat. Set up an SSH key once, and after that I can connect without ever seeing a password.
+
+  1. In the Ionos control panel
+  - Under the hosting section, find the SFTP/SSH access page and note the host name and user name. The user usually looks like u12345678 and the host like access-….webspace-host.com. If your package offers SSH, make sure it's switched on.
+  - Under the database section, create the MariaDB/MySQL database and note the database host, database name and user.
+
+  2. In your own terminal on petri (not through me, because the password prompt is interactive):
+  ssh-keygen -t ed25519 -f ~/.ssh/ionos_volkerzell -C "petri → volkerzell.de"
+  ssh-copy-id -i ~/.ssh/ionos_volkerzell.pub <user>@<host>     # asks for the Ionos password once
+  If ssh-copy-id doesn't work on your package, upload the .pub file's line into ~/.ssh/authorized_keys on the webspace with any SFTP client instead.
+
+  3. Give the connection a short name, in ~/.ssh/config:
+  Host ionos-vz
+      HostName <host>
+      User <user>
+      IdentityFile ~/.ssh/ionos_volkerzell
+      IdentitiesOnly yes
+  Then ssh ionos-vz and sftp ionos-vz work for both of us without a password.
+
+  4. Database credentials go in a local file outside every repo, for example ~/.config/volkerzell/db.env, made readable only by you with chmod 600:
+  DB_HOST=…
+  DB_NAME=…
+  DB_USER=…
+  DB_PASS=…
+  Scripts like publish.sh read that file. On the server, the PHP site gets its own config file outside the web root. Ionos databases usually accept connections only from the webspace itself, so imports will run over SSH or through a small PHP import page, not straight from petri.
+
+  5. Other hosts: do steps 2–3 on NB-3641 and vzell-lap too, each with its own key, so you can revoke one machine without touching the others.
+
+  Once ssh ionos-vz works, tell me and I'll check it with a harmless read-only command such as ssh ionos-vz 'php -v; ls'. Nothing gets uploaded without your OK. I'm not sure of the exact Ionos menu names, so go by the descriptions above.

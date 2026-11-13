@@ -3,7 +3,187 @@
 
 Env: 2026-11-13 · plan written in a Claude Code session (plan mode), code reading only · n/a
 
-Plan for pickup on another host. Nothing below is implemented yet.
+Plan for pickup on another host.
+
+* PICKUP HERE: status at the end of the session of 2026-11-13
+
+- *Branch:* =feat/bb-spilled-tags= (pushed), cut from =main= at =871bd93e=. No userscript change yet, so no WIP changelog yet.
+- *Done:* Phase 1 step 1, the probe =scripts/probe-bb-tag-spillover.py=, run over the WHOLE mirror. The results are below; its raw output went to =debug/bb-spill/= on petri (gitignored, so copy it by hand or just rerun the probe: 12 s on a local disk).
+- *Next:* Phase 1 step 2, the mockup (LAF), with the findings below in mind. Then steps 3–5.
+- *Commands to resume:*
+  #+begin_src bash
+  cd ~/git/musicbrainz-userscripts && git fetch && git checkout feat/bb-spilled-tags
+  python3 ShowAllEntityData/scripts/probe-bb-tag-spillover.py --json /tmp/probe.json   # mirror: ~/git/scripts/BruceParser/bb/latest
+  #+end_src
+  =bb/latest= on petri now points to a LOCAL run (=bb/2026-11-13=, a fresh =bbp.sh=). On the other hosts it may still point to the NAS copy from 2026-10-18 (slow, older).
+
+** Probe results (Phase 1 step 1)
+
+Env: 2026-11-13T23:29:43+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · n/a (Python over the mirror =bb/2026-11-13=) · code at =871bd93e=
+
+42,531 pages read, 42,236 of them with tags, 3,998 redirect pages.
+
+1. *The limit is 512 characters, not a tag count. vzell remembered it right.* The tags of a page, joined by one space, never exceed 512 characters. Four pages sit at exactly 512 and eleven more at 507–511. The tag count varies freely at the limit, from 45 to 65 tags. Largest pages:
+   - =gig:2009-11-08-madison-square-garden-new-york-city-ny=: 512 chars, 60 tags
+   - =gig:1978-08-09-agora-cleveland-oh=: 512 chars, 48 tags
+   - =recording:1986-02-00b-shorefire-studios-long-branch-nj=: 512 chars, 45 tags
+   - =gig:1988-07-03-stockholms-stadion-stockholm-sweden=: 511 chars, 65 tags (most tags)
+
+   BBP's =doc/TAGS.md= says "caps the number of tags per page", which is wrong and should be corrected there.
+2. */onstage: pages are not only overflow: they are where the cast tags live.*
+   - *Counts:* there are 3,479 onstage pages. 3,307 carry tags their event lacks; 172 targets are missing from the mirror.
+   - *Kinds:* the events behind them are gig 3,134, rehearsal 170, nogig 2 and interview 1.
+   - *Tab:* 3,303 of these events have an On Stage tab; 4 do not.
+   - *Event size:* the event can be as small as 84 characters and 10 tags when tags are still on its onstage page. So this is not only spillover at 512.
+   - *What is there:* the =onstage= tag itself (3,304) and the band and cast names: garrytallent 2,091, estreetband 1,949, roybittan 1,759, …
+   - *How many per page:* median 9, maximum 44 (=gig:1990-01-17-waldorf-astoria-hotel-new-york-city-ny=).
+   - *Consequences for the plan:*
+     - Name the feature "the show's tags from its On stage page", not "spilled". The UI should say that the cast tags are kept on the On stage page.
+     - The address rule needs =nogig= too, not only gig, rehearsal and interview (BBP lacks it as well).
+     - The On Stage tab is a near-perfect predictor: 3,303 of 3,307 events with onstage tags have one. As a pre-check it saves the request on every page without a cast and misses only 4 pages. Whether to keep it is an *open question for vzell* (below).
+     - The onstage page itself is a Redirect module. Fetch it with =/noredirect/true=, as BBP does, or the server answers with the event.
+3. *Redirecting -N siblings ("-2", "-3", …): 46 pages, 35 with tags the target lacks.* By kind:
+   - gig 18
+   - relation 8
+   - recording 6
+   - rehearsal 2
+   - retail 1
+
+   Biggest:
+   - =recording:1985-07-00-shakedown-studios-new-york-city-ny= (40 + 13 from two siblings)
+   - =relation:artists-united-against-apartheid= (39)
+   - =recording:1985-01-28-a-m-studios-hollywood-ca= (29)
+   - =relation:usa-for-africa= (15)
+
+   The targets sit at 482–508 characters, so these really are overflow pages. Unlike onstage, a sibling cannot be derived from the event page alone. Two options:
+   - try =-2= with =/noredirect/true= for every page whose own tags are near 512 characters (for example over 400), which costs one request only on full pages;
+   - take the list of siblings from BruceParser's feed (=MULTI-title-postfix.txt=, Track A idea 4).
+
+   *Open question for vzell; the recommendation is the near-full check.*
+
+** Status 2026-11-14: built, tested, documented, CONFIRMED LIVE by vzell ("all confirmed live, OK"). Still to do before the merge: a complete test:full (the 00:28 CET run was stopped at 136 passed, 0 failed)
+
+Done since the list below:
+- *Spec:* =tests/fixtures/bb-onstage-tags.spec.js=, 8/8. Its fixtures are three shows and six onstage pages from the 2026-11-13 mirror, via =scripts/build-bb-event-fixtures.py=.
+- *Mutations:* =scripts/mutations/bb-onstage-tags.json=, 10/10 as recorded. Three stale finds were moved.
+- *The specs that touch heads and chips:* 310/310.
+- *Docs:* brucebase.md "Tags kept on other pages, and the chip boxes"; HELP; DEBUG-NOTES; CLAUDE.md (=sa_bb_onstage_tags= is in =FIXTURE_SETTINGS_OVERRIDE=).
+- *Changed after the first wide run:*
+  - the row counts are drawn by CSS;
+  - only Brucebase tags start A–Z, every other card keeps its page's order;
+  - the window refreshes in place, never repaints.
+
+Next:
+1. =test:full=: rerun (the 00:28 CET run on petri was stopped at 136 passed, 0 failed).
+2. DONE vzell checked it in his browser on the real URLs (2026-11-14, browser and Tampermonkey versions: unknown): the five BB show pages, the 2016 year page window, the MB event, a Discogs release.
+3. Only on vzell's word: merge (=merge-push-remove=).
+
+** Phase 1 step 3: the build (2026-11-14)
+
+What is in place in =ShowAllEntityData.user.js=. It is not yet tested in a browser; =node --check= and =lint-summary.py --check= pass.
+- =_bbTagCtx()=, =_bbRawTags()=: split out of =_bbPageTags()=.
+- =_bbSiblingName()= (the 60-character rule) and =_bbTagInfo()=, now in =_dpParseBb()= as =data.bbTagInfo=.
+- =_bbTagPagesEligible()=, =_bbTagPageGet()=: one tag page, cached under the IDB key "bbtags:<url>". A 404 is "missing"; the request goes through =_dpAwaitSlot()= on BB and =_extGet()= elsewhere.
+- =_bbTagPagesStart()=: the chain walker, with the state in =_bbTagPages=.
+- =_bbTagRows()=, =_bbTagPagesParts()=, =_bbTagBoxSet()=, =_bbTagPagesNotify()=.
+- =_bbTagChips(dp)=: now used by the 6 BB heads.
+- =_bbTagsWindowPart()=: drawn in =_dpExtractedCols()= for a section with =bbTags=.
+- *Kicks:* the BB site's =windowKick= starts the reads on BB; =_extExtracted()= adds =_bbTagPagesWant= on the other hosts.
+- *The chip box* =_cbx*= (=_cbxSet=, =_cbxInner=, =_cbxRefresh=, =_cbxInit=, =_cbxEnsureStyle=). =_fdChips()= now builds one, so EVERY chip card gets the tool row from 6 chips on (=_CBX_TOOLS_MIN=).
+- *Storage:* =MB_FD_CHIP_VIEW_KEY= (Group by and sort per card kind) and the workspace group "fdchips".
+- *Setting* =sa_bb_onstage_tags=; =_DP_PARSER_VERSION= 28 → 29; WIP.1 in =ShowAllEntityData_CHANGELOG.wip.json=.
+
+Still to do:
+- *Fixture specs:*
+  - BB event head + window with a routed onstage page, -2 chain, -1 start, a 404, a failure with Retry;
+  - the tool row (Show / filter highlight / Group by / sort remembered);
+  - a non-BB chip card (Discogs or SL head) keeps working.
+- *Checks:*
+  - mutation entries;
+  - the MusicBrainz fixture suite;
+  - =test:full=.
+- *Docs:*
+  - =docs/claude/brucebase.md=;
+  - =docs/non-mb-coverage.json=;
+  - HELP;
+  - =DEBUG-NOTES.md=;
+  - delete =scripts/oneoff-bb-tag-chips-callers.py= before the merge.
+- *Choices to report to vzell:*
+  - A–Z is now the DEFAULT order of every chip card (the mockup's default); before, cards kept the page's order.
+  - The tool row appears only from 6 chips on.
+
+** DONE Phase 1 step 2: mockup APPROVED (vzell, 2026-11-14)
+
+Decisions:
+- Mockup version 2 is the build target.
+- Group by and the sort direction are remembered between pages; the filter text is not.
+- The tool row goes on EVERY chip card (=_fdChips()=), on every non-MusicBrainz detail page, not only Brucebase's Tags card. Group by Page applies only where a card has several pages.
+
+** Phase 1 step 2 history: the mockup
+
+Mockup M1: https://claude.ai/artifact/18teQxyrom93rWw5mvY98D. The local copy is [[file:bb-onstage-tags-mockup.html][bb-onstage-tags-mockup.html]]; republish from it to keep the URL. It covers:
+- *Two places:* the bb-event head's Tags card, and the preview window's "Tags (N)" section.
+- *Four real shows* from the mirror:
+  - Pittsburgh 2016: 58 own tags + 11 from the onstage page.
+  - MSG 2009, Pete Seeger's 90th: 27 own + three onstage pages (40/34/17 new tags).
+  - Waldorf 1990: no base page, the chain starts at =-1=, then =-2=.
+  - Golden Globes 2024: no On Stage tab, so no request.
+- *Network states:* normal (a page every 0.9 s, the new tags tinted), from cache, the last page fails (Retry), setting off.
+- *Marks:* a tag from an onstage page has a dashed outline and ↪. Its hover card gives the family, which page keeps it, and that page's character count; Esc closes it, it has a grace period, and touch opens it with a tap.
+- *Under the tags:* a footer naming each onstage page and how many tags it adds.
+- *Progress:* a segmented progress bar.
+- *The setting row* =sa_bb_onstage_tags=.
+
+vzell, 2026-11-14: "YES; there should be a possibility to filter (inclusive highlighting) and sort tags". Mockup version 2 adds a tool row to BOTH panels, each with its own state:
+- *Show:* All / This page / On stage, with counts.
+- *Filter box:* keeps the tags that contain the text and highlights every occurrence, without regard to case. Families with no match disappear and "N of M" says how many are left. Esc or ✕ clears it, and the caret survives the re-render while pages are being read.
+- *Group by:* Family / Page / None.
+- *Sort:* A–Z / Z–A inside each group; each row's label carries its count.
+
+Open question in version 2: should Group by and the sort direction be remembered between pages (the filter text never is)?
+
+Notes for the build:
+- The head card is built by =_fdChips()= and the window section by =_bbTagsSection()= as an HTML string. Both need the tool row.
+- The window's markup is a string, so wire its tool row by delegation on the dialog, not by per-element listeners (the window re-renders).
+- Check whether the shared head-card code (=_fdChips=, used by every foreign detail head) should get the tool row for all cards, or only the BB Tags card. *Ask vzell.*
+
+** Decisions (vzell, 2026-11-14: "I agree to the open questions")
+
+1. *Naming:* "Tags from the On stage page". The setting is =sa_bb_onstage_tags= and the helper =_bbOnstageTags()=. Replace every =spilled= name in Phase 1 with these.
+2. *The On Stage tab stays a pre-check.* Pages without it make no extra request; the cost is 4 missed pages.
+3. *-N siblings are tried only on nearly full pages*, never from the feed.
+
+** Probe, second pass: the -N chains (same Env as above)
+
+Section 4 of the probe treats every redirect page named =<base>-N=, onstage pages included:
+- *Pages and bases:* 56 sibling pages, 28 bases found. The other 25 are =multi:…-1/-2=: "several shows on one date" pages, not overflow, with no base page.
+- *Naming rule:* base =[:60 - len("-N")]=, a trailing =-= dropped, then =-N=. It holds for all 31 siblings with a base, with 0 failures. Wikidot page names are at most 60 characters, so a long name is CUT before the suffix:
+  - =onstage:2026-06-04-oceanfirst-bank-center-west-long-branch-2= (the =-nj= is gone);
+  - =onstage:2004-10-13-continental-airlines-arena-east-rutherf-2=.
+
+  Build the address with this rule, never by appending =-2=.
+- *Overflow vs alias:* the base of a real overflow chain is over 400 characters. 19 of the 28 bases are; the rest are renamed pages (=relation:steve-van-zandt-2=, 24 characters) or =multi:= pages.
+- *Onstage pages have chains too.* =onstage:2009-05-03-madison-square-garden-new-york-city-ny= (Pete Seeger's 90th) goes on to =-2= and =-3=. The gig itself carries 27 tags, and its three onstage pages 40 + 35 + 18. The reader therefore walks: event page → On stage page → its siblings while each read page is nearly full.
+- *A chain can start at -1:* =gig:1990-01-17-waldorf-astoria…= has no base onstage page, only =onstage:…-1= (44 tags) and =-2= (7 tags). So when the onstage page is missing, try =-1= once.
+- *Suffixes:* =-2= 24, =-3= 3, =-1= 4.
+- *What the trigger costs*, as pages over N characters and how many of them really have a sibling:
+
+  | over | pages | with a sibling |
+  |------+-------+----------------|
+  |  400 |   828 |             19 |
+  |  450 |   253 |             18 |
+  |  480 |    94 |             16 |
+  |  500 |    35 |             10 |
+
+  Recommendation: use *450*, not 400. It is 3× fewer wasted requests and misses 1 chain. It is one constant, easy to move.
+
+The reader that follows from this:
+1. *The show's own tags* come from the event page (no request).
+2. *The On stage page:* if the On Stage tab exists, fetch =onstage:<slug>/noredirect/true=. If that page does not exist, fetch =…-1= once.
+3. *Siblings:* for each page read so far whose tags are over 450 characters, fetch its =-2= (by the name rule), then =-3=, … until one is missing. That is at most 3 pages deep in the mirror.
+4. *The result:* the union of all their tags, each tag knowing which page it came from. The families are classified with the EVENT page's context, because the onstage pages have no =/relation:= links of their own.
+
+Also: =_dpParseBb()= is SYNCHRONOUS (the plan said async). The extra requests belong in the Brucebase loader (=_extDpLoad()= / the =_dpGet()= path) after the parse, and must go through the same rate slot.
 
 * Track A: BruceParser and BruceBaseParser into ShowAllEntityData
 

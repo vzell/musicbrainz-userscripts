@@ -4,8 +4,8 @@
         "why": "vzell, 2026-10-24: the window's sections on the right fold with a click on their heading.",
         "edits": [
             {
-                "find": "            if (!data.collapsible) {\n                right.push(`<h4>${_mbttEscape(s.label)}</h4>${body}`);",
-                "replace": "            if (true) {\n                right.push(`<h4>${_mbttEscape(s.label)}</h4>${body}`);"
+                "find": "            if (!data.collapsible) {\n                right.push(`<h4>${_mbttEscape(label)}</h4>${body}`);",
+                "replace": "            if (true) {\n                right.push(`<h4>${_mbttEscape(label)}</h4>${body}`);"
             }
         ],
         "spec": "tests/fixtures/bb-event-preview.spec.js",

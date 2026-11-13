@@ -1,0 +1,510 @@
+<title>On stage page tags</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: a controls strip, then the two places tags show (show page head, preview window) side by side, notes below. */
+:root {
+    --paper: #fbf8f1; --ink: #2b2622; --rule: #d9cfbd; --muted: #7a6d5c; --card: #fffdf8;
+    --ok: #3f7a3a; --run: #2f5f9e; --warn: #9a6a00; --alert: #9b2218;
+    --chip: #f3eee3; --chip-os: #fbf8f1; --hover: #eef3fa;
+    --shadow: 0 10px 24px -8px rgba(60,40,20,.35);
+    --serif: Georgia, "Times New Roman", serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    color-scheme: light;
+}
+html, body { background: var(--paper); color: var(--ink); }
+body { font: 15px/1.5 var(--serif); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 40px; }
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 18px; }
+h1 { font-size: 24px; margin: 0; font-weight: normal; text-wrap: balance; }
+.lede { color: var(--muted); margin: 4px 0 0; max-width: 70ch; }
+.lab { font: 600 10.5px/1 var(--sans); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+code, .mono { font-family: var(--mono); font-size: 12px; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: center; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); padding-block: 10px; }
+.ctl { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.btn { font: 600 11px/1 var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink); background: var(--card); border: 1px solid var(--rule); border-radius: 3px; padding: 6px 9px; cursor: pointer; }
+.btn:hover { border-color: #b9c9de; background: var(--hover); }
+.btn[aria-pressed="true"] { border-color: var(--run); color: var(--run); background: #eef3fa; }
+.btn.primary { border-color: var(--run); color: var(--run); }
+.btn:focus-visible, a:focus-visible, .chip:focus-visible { outline: 2px solid var(--run); outline-offset: 1px; }
+
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 860px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+.where { display: grid; gap: 6px; min-width: 0; }
+.where > .lab { padding-left: 2px; }
+
+.card { background: var(--card); border: 1px solid var(--rule); border-radius: 4px; box-shadow: var(--shadow); min-width: 0; }
+.card-h { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 9px 12px; border-bottom: 1px solid var(--rule); }
+.card-h .ttl { font: 600 11px/1 var(--sans); letter-spacing: .09em; text-transform: uppercase; }
+.card-h .n { font: 12px/1 var(--sans); color: var(--muted); font-variant-numeric: tabular-nums; }
+.card-b { padding: 10px 12px 12px; display: grid; gap: 10px; }
+.showline { font-size: 17px; }
+.showline small { display: block; color: var(--muted); font-size: 12.5px; font-style: italic; }
+
+.pill { font: 600 10px/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; padding: 4px 7px; border-radius: 999px; border: 1px solid currentColor; margin-left: auto; white-space: nowrap; }
+.pill.run { color: var(--run); } .pill.ok { color: var(--ok); } .pill.warn { color: var(--warn); } .pill.alert { color: var(--alert); } .pill.idle { color: var(--muted); }
+
+.bar { display: flex; height: 6px; gap: 2px; }
+.seg { flex: 1; border-radius: 1px; background: var(--rule); }
+.seg.loaded { background: var(--ok); }
+.seg.cache { background: repeating-linear-gradient(135deg, var(--ok) 0 3px, #cfe0cc 3px 6px); }
+.seg.failed { background: var(--alert); }
+.seg.reading { background: var(--run); animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) { .seg.reading { animation: none; } }
+.counts { font: 12px/1.4 var(--sans); color: var(--muted); font-variant-numeric: tabular-nums; }
+.counts .bad { color: var(--alert); }
+
+.rows { display: grid; gap: 5px; }
+.row { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 8px; align-items: start; }
+.row .k { font-style: italic; color: var(--muted); font-size: 12.5px; padding-top: 1px; }
+.row .v { display: flex; flex-wrap: wrap; gap: 3px; min-width: 0; }
+.chip { display: inline-flex; align-items: center; gap: 3px; font: 12px/18px var(--sans); padding: 0 7px; border: 1px solid var(--rule); border-radius: 999px; background: var(--chip); color: var(--ink); text-decoration: none; cursor: pointer; }
+.chip:hover { border-color: #b9c9de; background: var(--hover); }
+.chip.os { background: var(--chip-os); border-style: dashed; border-color: #b7a98f; }
+.chip.os::before { content: "↪"; font-size: 10px; color: var(--muted); }
+.chip.new { animation: arrive .5s ease-out; }
+@keyframes arrive { from { background: #e6f0e4; } }
+@media (prefers-reduced-motion: reduce) { .chip.new { animation: none; } }
+
+.tools { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.segc { display: inline-flex; border: 1px solid var(--rule); border-radius: 3px; overflow: hidden; }
+.segc button { font: 600 10.5px/1 var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink); background: var(--card); border: 0; border-left: 1px solid var(--rule); padding: 5px 8px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.segc button:first-child { border-left: 0; }
+.segc button:hover { background: var(--hover); }
+.segc button[aria-pressed="true"] { background: #eef3fa; color: var(--run); }
+.segc button:disabled { color: #b9ae9c; cursor: default; background: var(--card); }
+.fbox { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--rule); border-radius: 3px; background: var(--card); padding: 0 6px; min-width: 0; flex: 1 1 140px; max-width: 220px; }
+.fbox:focus-within { border-color: var(--run); }
+.fbox input { border: 0; background: transparent; font: 12.5px/24px var(--sans); color: var(--ink); min-width: 0; flex: 1; outline: none; }
+.fbox .clr { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 13px; padding: 0 2px; }
+.matchn { font: 12px var(--sans); color: var(--muted); font-variant-numeric: tabular-nums; }
+.chip mark { background: #f3dd8a; color: inherit; border-radius: 2px; padding: 0 1px; }
+.nomatch { font: italic 13px var(--serif); color: var(--muted); }
+.row .k .c { font-style: normal; font-size: 11px; margin-left: 3px; }
+.foot { border-top: 1px solid var(--rule); padding-top: 8px; font-size: 13px; display: grid; gap: 4px; }
+.foot .why { color: var(--muted); font-style: italic; }
+.foot ul { margin: 2px 0 0; padding-left: 18px; }
+.foot li { font-size: 12.5px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; font: 12px var(--sans); color: var(--muted); }
+.err { border-left: 3px solid var(--alert); background: #f6e6dc; padding: 6px 9px; font-size: 13px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.err .btn { border-color: var(--alert); color: var(--alert); }
+
+/* the preview window (Space): its Tags section */
+.win-h { display: flex; gap: 8px; align-items: baseline; padding: 10px 14px; border-bottom: 1px solid var(--rule); }
+.win-h b { font-weight: normal; font-size: 16px; }
+.win-h .x { margin-left: auto; color: var(--muted); font: 12px var(--sans); }
+.win-b { padding: 10px 14px 14px; display: grid; gap: 8px; }
+details.sec { border-top: 1px solid var(--rule); padding-top: 6px; }
+details.sec > summary { cursor: pointer; list-style: none; display: flex; gap: 6px; align-items: baseline; font: 600 11px/1.6 var(--sans); letter-spacing: .08em; text-transform: uppercase; }
+details.sec > summary::-webkit-details-marker { display: none; }
+details.sec > summary::before { content: "▶"; font-size: 8px; color: var(--muted); }
+details.sec[open] > summary::before { content: "▼"; }
+details.sec > summary .sub { font: 12px var(--sans); text-transform: none; letter-spacing: 0; color: var(--muted); }
+details.sec .rows { margin-top: 6px; }
+.dimsec { color: var(--muted); font: 600 11px/1.6 var(--sans); letter-spacing: .08em; text-transform: uppercase; border-top: 1px solid var(--rule); padding-top: 6px; }
+
+/* the hover card */
+#tip { position: fixed; z-index: 50; max-width: 340px; background: var(--card); border: 1px solid var(--rule); border-radius: 4px; box-shadow: var(--shadow); padding: 9px 11px; font-size: 13px; display: grid; gap: 6px; }
+#tip .t { font-size: 15px; }
+#tip dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; margin: 0; }
+#tip dt { font-style: italic; color: var(--muted); }
+#tip dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+#tip .f { color: var(--muted); font-style: italic; font-size: 12px; }
+
+.notes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; }
+@media (max-width: 860px) { .notes { grid-template-columns: minmax(0, 1fr); } }
+.note { border-top: 1px solid var(--rule); padding-top: 8px; font-size: 14px; }
+.note ul, .note ol { padding-left: 20px; margin: 6px 0; }
+.note li { margin: 3px 0; }
+.q { border-left: 3px solid var(--warn); padding-left: 9px; }
+.setting { display: flex; gap: 10px; align-items: flex-start; background: var(--card); border: 1px solid var(--rule); border-radius: 4px; padding: 10px 12px; }
+.setting input { margin-top: 4px; }
+.setting .h { color: var(--muted); font-size: 13px; font-style: italic; }
+</style>
+
+<div class="wrap">
+    <header>
+        <h1>Tags kept on a show's On stage page</h1>
+        <p class="lede">Brucebase keeps a page's tags under 512 characters, and a show's cast tags live on its separate On stage page (sometimes two or three of them). Today the show page head and the preview window show only the show page's own tags. Mockup with real tags from the 2026-11-13 mirror.</p>
+    </header>
+
+    <div class="controls" role="toolbar" aria-label="Mockup controls">
+        <div class="ctl"><span class="lab">Show</span>
+            <button class="btn" data-ex="pgh" id="ex-pgh">Pittsburgh 2016</button>
+            <button class="btn" data-ex="msg" id="ex-msg">Pete Seeger 90th, MSG 2009</button>
+            <button class="btn" data-ex="wal" id="ex-wal">Hall of Fame, Waldorf 1990</button>
+            <button class="btn" data-ex="bev" id="ex-bev">Golden Globes 2024 (no cast tab)</button>
+        </div>
+        <div class="ctl"><span class="lab">Network</span>
+            <button class="btn" data-net="ok" id="net-ok">Normal</button>
+            <button class="btn" data-net="cache" id="net-cache">From cache</button>
+            <button class="btn" data-net="fail" id="net-fail">Last page fails</button>
+            <button class="btn" data-net="off" id="net-off">Setting off</button>
+        </div>
+        <button class="btn primary" id="replay">↻ Replay</button>
+    </div>
+
+    <div class="stage">
+        <section class="where" aria-label="Show page head">
+            <span class="lab">1 · Show page, the head's Tags card (bb-event)</span>
+            <div class="card" id="head"></div>
+        </section>
+        <section class="where" aria-label="Preview window">
+            <span class="lab">2 · Preview window (Space on a show link, on Brucebase or MusicBrainz)</span>
+            <div class="card" id="win"></div>
+        </section>
+    </div>
+
+    <div class="notes">
+        <div class="note">
+            <span class="lab">What it does</span>
+            <ul>
+                <li>The show page's own tags look as they do today. Tags from an On stage page get a dashed outline and a <span class="chip os" style="cursor:default">↪</span> mark. Hover or tap one to see which page it is kept on.</li>
+                <li>The count includes them, and the line under the tags names each On stage page with how many tags it adds.</li>
+                <li>Tags that already appear on the show page are shown once. The <code>onstage</code> tag counts once too.</li>
+                <li>The On stage pages are read only when the show page has an On Stage tab. The next page (<code>-2</code>, <code>-3</code>) is read only while the page before it is nearly full (over 450 of 512 characters).</li>
+                <li>On the show page, the pages are read when you press the button, together with the rest of the page. In the preview window they are read after the card, through the same queue, and each one is cached like every other page.</li>
+                <li>The year table is unchanged: its ▶ Pages columns show no tags.</li>
+            </ul>
+        </div>
+        <div class="note">
+            <span class="lab">Setting (Brucebase group)</span>
+            <label class="setting" for="set-os">
+                <input type="checkbox" id="set-os" checked>
+                <span>Show the tags kept on a show's On stage page<br><span class="h">A show's cast is tagged on its On stage page, because Brucebase allows 512 characters of tags per page. On: one more page is read per show with a cast, sometimes two or three. Default: on.</span></span>
+            </label>
+            <span class="lab">The tool row (vzell, 2026-11-14: "filter (inclusive highlighting) and sort")</span>
+            <ul>
+                <li><b>Show</b> All / This page / On stage, with counts. On stage is greyed out when the show has no On stage page.</li>
+                <li><b>Filter</b> keeps the tags that contain the text and highlights it in each chip, every occurrence, without regard to case. Families with no match disappear and "12 of 69" says how many are left. Esc or ✕ clears it, and the caret stays put while pages are still being read.</li>
+                <li><b>Group by</b> Family (today's rows) / Page (this page, then each On stage page) / None (one row). <b>A–Z / Z–A</b> sorts inside each group, and each row's label carries its count.</li>
+                <li>Each panel has its own tool row, so the head card and the window don't change each other.</li>
+            </ul>
+            <p class="q"><b>Open question:</b> should Group by and the sort direction be remembered between pages, like the other cards' choices? The filter text would not be. In the mockup they reset when you reload the page.</p>
+        </div>
+    </div>
+</div>
+<div id="tip" hidden role="tooltip"></div>
+
+<script>
+(function () {
+    'use strict';
+    const MONTHS = new Set('january february march april may june july august september october november december'.split(' '));
+    const DAYS = new Set('sunday monday tuesday wednesday thursday friday saturday'.split(' '));
+    const MATERIAL = new Set('audio bootleg eyewitness storyteller ticket livedl boxset private guest help cancelled rescheduled video prem setlist pass photo handwritten printed centermic debut tourpremiere memorabilia retail news onstage'.split(' '));
+    const CATS = new Set('gig nogig recording rehearsal interview'.split(' '));
+    const FAMILIES = [['date', 'Date'], ['place', 'Place'], ['tour', 'Tour'], ['material', 'On the page'], ['song', 'Songs'], ['person', 'People'], ['release', 'Releases'], ['category', 'Category'], ['other', 'Other']];
+    const BASE = 'https://brucebase.wikidot.com/';
+
+    /** Example shows: own tags, the page family, the On stage pages (real tags, mirror 2026-11-13). */
+    const EX = {
+        pgh: {
+            path: 'gig:2016-01-16-consol-energy-center-pittsburgh-pa', title: '2016-01-16 Consol Energy Center, Pittsburgh, PA', sub: 'The River Tour 2016 · gig', chars: 508, tab: true,
+            own: '16 2016 backstreets badlands bobbyjean bootleg brilliantdisguise brucespringsteen btn btr cadillacranch consolenergycenter coy dan ditd fadeaway gig hscw hungryheart iar independenceday ittsnip iwmy jacksoncage january livedl memorabilia mmitc news oits pennsylvania(pa) pittsburgh pointblank prem printed r_rvr ramrod rebelrebel rosalita saturday setlist sherrydarling shout stolencar storyteller therising theriver thunderroad ticket tmttrsnip tour_rvr16 tpyp tttb twohearts usa wreckingball wroth yclbybnt',
+            places: 'consolenergycenter pittsburgh pennsylvania(pa) usa',
+            songs: 'backstreets badlands bobbyjean brilliantdisguise cadillacranch fadeaway hungryheart independenceday jacksoncage pointblank ramrod rebelrebel sherrydarling shout stolencar therising theriver thunderroad twohearts wreckingball',
+            people: 'brucespringsteen charlesgiordano garrytallent jakeclemons maxweinberg nilslofgren pattiscialfa roybittan soozietyrell stevenvanzandt',
+            pages: [{ path: 'onstage:2016-01-16-consol-energy-center-pittsburgh-pa', chars: 147, tags: 'charlesgiordano estreetband garrytallent jakeclemons maxweinberg nilslofgren onstage pattiscialfa roybittan soozietyrell stevenvanzandt' }],
+        },
+        msg: {
+            path: 'gig:2009-05-03-madison-square-garden-new-york-city-ny', title: '2009-05-03 Madison Square Garden, New York City, NY', sub: 'Clearwater Concert, Pete Seeger\'s 90th birthday · gig', chars: 224, tab: true,
+            own: '03 2009 birthday bootleg brucespringsteen celebration clearwater gig goodnightirene guest hbty madisonsquaregarden may news newyork(ny) newyorkcity retail storyteller sunday tgotj tliyl tllom tour_no tribute usa wmtwg wtsgmi',
+            places: 'madisonsquaregarden newyork(ny) newyorkcity usa', songs: 'goodnightirene',
+            otherOs: 'joelastiejr nyclaborchorus ramblinjackelliott onstage',
+            pages: [
+                { path: 'onstage:2009-05-03-madison-square-garden-new-york-city-ny', chars: 510, tags: 'abednegomazibuko abigailwashburn albertmazibuko anidifranco annamcgarrigle arloguthrie belafleck benbridwell benharper benjaffe bernicejohnsonreagon billmiller billnershi billybragg brucecockburn carollspinney caseydriessen charliegabriel clintmaedgen darwilliams davematthews davidamram delmccoury ellenharper emmylouharris ericweissberg freddielonzo guydavis jacobsilver jayungar joanbaez joanneshenandoah joelastiejr johnmellencamp josephfirecrow josephshabalala juanes katemcgarrigle kellerwilliams onstage' },
+                { path: 'onstage:2009-05-03-madison-square-garden-new-york-city-ny-2', chars: 504, tags: 'kriskristofferson ladysmithblackmambazo larrylong lauracortese lennypickett margothunderbird markbraud mfanafuthidlamini michaelfranti michaelmark mikemerenda milesrobbins mollymason msizishabalala nativeamericanindianculturalalliance nyclaborchorus onstage pattersonhood pattiscialfa peggyseeger peteseeger preservationhalljazzband ramblinjackelliott richiehavens rickiemonie rogermcguinn rubydee rufuswainwright russelmthembu ruthungar scarlettleemoore sibongisenishabalala steveearle suechase tajmahal' },
+                { path: 'onstage:2009-05-03-madison-square-garden-new-york-city-ny-3', chars: 245, tags: 'marthawainwright onstage taorodriguezseeger teddythompson thamsanqashabalala thulanishabalala timrobbins tiokasinghosthorse tomchapin tommorello tommysands tompacheco tonytrischka toshiseeger tylerramsey vernonmasayesva walterpayton warrenhaynes' },
+            ],
+        },
+        wal: {
+            path: 'gig:1990-01-17-waldorf-astoria-hotel-new-york-city-ny', title: '1990-01-17 Waldorf-Astoria Hotel, New York City, NY', sub: 'Rock and Roll Hall of Fame induction · gig', chars: 276, tab: true,
+            own: '17 1990 botw brucespringsteen ccrider gig gsg guest halloffame help ichmsphb induction january lts mtk news newyork(ny) newyorkcity pinballwizard r_rarhofpml r_rnrhof r_rnrhofl r_tborarhofpml retail substitute theboxer tour_no usa waldorfastoriahotel wednesday wgfa wylmt yrgm',
+            places: 'waldorfastoriahotel newyork(ny) newyorkcity usa', songs: 'pinballwizard theboxer substitute',
+            otherOs: 'cbsorchestra fourtops fourseasons kinks who onst2 onstage',
+            missing: 'onstage:1990-01-17-waldorf-astoria-hotel-new-york-city-ny',
+            pages: [
+                { path: 'onstage:1990-01-17-waldorf-astoria-hotel-new-york-city-ny-1', chars: 496, tags: 'alchez antonfig artgarfunkel beneking bobgaudio bonnieraitt bozscaggs brucekapler caroleking cbsorchestra davedavies davidsanborn debbiegibson dianaross diondimucci dukefakir fourtops frankievalli georgebenson grahamnash hankballard jamestaylor johnentwistle johnfogerty lawrencepayton levistubbs maxweinberg michaelbolton mickavory nickmassi obiebenson onst2 onstage paulshaffer paulsimon petequaife petetownshend phoebesnow raydavies rickieleejones rogerdaltrey sidmcginnis simongarfunkel sting' },
+                { path: 'onstage:1990-01-17-waldorf-astoria-hotel-new-york-city-ny-2', chars: 60, tags: 'fourseasons kinks onstage tommydevito vernonreid who willlee' },
+            ],
+        },
+        bev: {
+            path: 'nogig:2024-01-07-beverly-hilton-beverly-hills-ca', title: '2024-01-07 Beverly Hilton (The), Beverly Hills, CA', sub: 'Golden Globe Awards · no gig', chars: 240, tab: false,
+            own: '07 2024 andraday award beverlyhills beverlyhilton bootleg brucespringsteen california(ca) goldenglobe guest january katecapshaw martinscorsese memorabilia news nogig pattiscialfa robertdeniro robertdowneyjr sunday taylorswift trevornoah usa',
+            places: 'beverlyhills beverlyhilton california(ca) usa',
+            people: 'andraday brucespringsteen katecapshaw martinscorsese pattiscialfa robertdeniro robertdowneyjr taylorswift trevornoah',
+            pages: [],
+        },
+    };
+
+    const st = { ex: 'pgh', net: 'ok', timers: [], tipFor: null, hideT: 0, step: 0, fresh: new Set() };
+    /** Each panel's own view: which tags, the filter text, how they are grouped, the sort direction. */
+    const VIEW = {
+        head: { show: 'all', q: '', group: 'family', dir: 1 },
+        win: { show: 'all', q: '', group: 'family', dir: 1 },
+    };
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const words = (s) => (s || '').split(/\s+/).filter(Boolean);
+
+    /** A tag's family, a small version of the userscript's _bbTagFamily(). */
+    function family(t, ex, fromOs) {
+        if (/^\d{4}$/.test(t) || /^\d{2}$/.test(t) || MONTHS.has(t) || DAYS.has(t)) return 'date';
+        if (/^tour_/.test(t)) return 'tour';
+        if (/^r_/.test(t)) return 'release';
+        if (CATS.has(t)) return 'category';
+        if (MATERIAL.has(t)) return 'material';
+        if (words(ex.places).includes(t)) return 'place';
+        if (words(ex.songs).includes(t)) return 'song';
+        if (words(ex.otherOs).includes(t)) return 'other';
+        if (words(ex.people).includes(t)) return 'person';
+        if (fromOs) return 'person';
+        if (t === 'brucespringsteen') return 'person';
+        return 'other';
+    }
+
+    /** Every tag of the show with where it is kept, given how many On stage pages have been read. */
+    function collect(ex, readN) {
+        const seen = new Map();
+        words(ex.own).forEach((t) => seen.set(t, { t, page: null, fam: family(t, ex, false) }));
+        ex.pages.slice(0, readN).forEach((p) => words(p.tags).forEach((t) => {
+            if (!seen.has(t)) seen.set(t, { t, page: p, fam: family(t, ex, true) });
+        }));
+        return [...seen.values()];
+    }
+
+    /** A chip, the filter's match highlighted (every occurrence, case-insensitive). */
+    function chipHtml(x, fresh, q) {
+        let label = esc(x.t);
+        if (q) {
+            const lo = x.t.toLowerCase();
+            let out = '', i = 0, at;
+            while ((at = lo.indexOf(q, i)) >= 0) {
+                out += esc(x.t.slice(i, at)) + '<mark>' + esc(x.t.slice(at, at + q.length)) + '</mark>';
+                i = at + q.length;
+            }
+            label = out + esc(x.t.slice(i));
+        }
+        return `<a class="chip${x.page ? ' os' : ''}${x.page && fresh.has(x.page.path) ? ' new' : ''}" href="${BASE}system:page-tags/tag/${encodeURIComponent(x.t)}#pages" data-t="${esc(x.t)}" data-p="${x.page ? esc(x.page.path) : ''}" target="_blank" rel="noopener">${label}</a>`;
+    }
+
+    /** The tags a panel's view lets through: the Show choice, then the filter text. */
+    function visible(tags, v) {
+        const q = v.q.trim().toLowerCase();
+        return tags.filter((x) => (v.show === 'all' || (v.show === 'own' ? !x.page : !!x.page)) && (!q || x.t.toLowerCase().includes(q)));
+    }
+
+    /** The tag rows of a panel: grouped by family, by page or not at all, A–Z or Z–A inside each group. */
+    function rowsHtml(tags, fresh, v, ex) {
+        const q = v.q.trim().toLowerCase();
+        const shown = visible(tags, v).sort((a, b) => v.dir * a.t.localeCompare(b.t));
+        if (!shown.length) return `<div class="rows"><span class="nomatch">No tag ${q ? `contains “${esc(v.q.trim())}”` : 'to show'}${v.show !== 'all' ? (v.show === 'own' ? ' on this page' : ' on the On stage pages') : ''}.</span></div>`;
+        let groups;
+        if (v.group === 'family') groups = FAMILIES.map(([key, name]) => [name, shown.filter((x) => x.fam === key)]);
+        else if (v.group === 'page') groups = [['This page', shown.filter((x) => !x.page)]].concat(ex.pages.map((p, i) => [`On stage${ex.pages.length > 1 ? ' ' + (i + 1) : ''}`, shown.filter((x) => x.page === p)]));
+        else groups = [['All', shown]];
+        return '<div class="rows">' + groups.filter(([, of]) => of.length).map(([name, of]) =>
+            `<div class="row"><span class="k">${name}<span class="c">${of.length}</span></span><span class="v">` + of.map((x) => chipHtml(x, fresh, q)).join('') + '</span></div>').join('') + '</div>';
+    }
+
+    /** The tool row above a panel's tags: Show, the filter, Group by, A–Z. */
+    function toolsHtml(id, tags, v) {
+        const own = tags.filter((x) => !x.page).length, os = tags.length - own;
+        const seg = (key, val, label) => `<button type="button" data-pn="${id}" data-k="${key}" data-v="${val}" aria-pressed="${String(v[key] === val)}"${key === 'show' && val === 'os' && !os ? ' disabled' : ''}>${label}</button>`;
+        const n = visible(tags, v).length;
+        return '<div class="tools">' +
+            `<span class="segc" role="group" aria-label="Show">${seg('show', 'all', `All ${tags.length}`)}${seg('show', 'own', `This page ${own}`)}${seg('show', 'os', `On stage ${os}`)}</span>` +
+            `<label class="fbox"><span aria-hidden="true">⌕</span><input id="q-${id}" type="text"placeholder="Filter tags" value="${esc(v.q)}" aria-label="Filter tags" autocomplete="off">${v.q ? `<button type="button" class="clr" data-clr="${id}" aria-label="Clear the filter">✕</button>` : ''}</label>` +
+            `<span class="segc" role="group" aria-label="Group by">${seg('group', 'family', 'Family')}${seg('group', 'page', 'Page')}${seg('group', 'none', 'None')}</span>` +
+            `<span class="segc" role="group" aria-label="Sort">${seg('dir', 1, 'A–Z')}${seg('dir', -1, 'Z–A')}</span>` +
+            (v.q || v.show !== 'all' ? `<span class="matchn" id="n-${id}">${n} of ${tags.length}</span>` : '') + '</div>';
+    }
+
+    /** The phase: how many On stage pages are read, which one is reading, which one failed. */
+    function phase(ex, step) {
+        const n = ex.pages.length;
+        if (st.net === 'off' || !ex.tab) return { read: 0, reading: -1, failed: -1, done: true };
+        const failAt = st.net === 'fail' ? n - 1 : -1;
+        if (st.net === 'cache') return { read: n, reading: -1, failed: -1, done: true, cache: true };
+        if (step >= n) return { read: failAt >= 0 ? n - 1 : n, reading: -1, failed: failAt, done: true };
+        if (failAt >= 0 && step > failAt) return { read: failAt, reading: -1, failed: failAt, done: true };
+        return { read: step, reading: step, failed: -1, done: false };
+    }
+
+    function statusHtml(ex, ph) {
+        if (st.net === 'off') return '<span class="pill idle">Off</span>';
+        if (!ex.tab) return '<span class="pill idle">No cast tab</span>';
+        if (!ph.done) return '<span class="pill run">Reading</span>';
+        if (ph.failed >= 0) return '<span class="pill warn">Done with errors</span>';
+        return '<span class="pill ok">Done</span>';
+    }
+
+    function progressHtml(ex, ph) {
+        if (st.net === 'off' || !ex.tab) return '';
+        const segs = ['<span class="seg loaded" title="Show page"></span>'];
+        ex.pages.forEach((p, i) => {
+            const cls = ph.cache ? 'cache' : i < ph.read ? 'loaded' : i === ph.reading ? 'reading' : i === ph.failed ? 'failed' : '';
+            segs.push(`<span class="seg ${cls}" title="${esc(p.path)}"></span>`);
+        });
+        const total = ex.pages.length + 1;
+        const got = 1 + ph.read;
+        let txt = `${got} of ${total} pages read`;
+        if (ph.cache) txt += ` · ${ex.pages.length} from the cache`;
+        if (ex.missing) txt += ' · 1 page does not exist (the chain starts at -1)';
+        if (ph.failed >= 0) txt += ' · <span class="bad">1 failed</span>';
+        if (!ph.done && ph.reading >= 0) txt += ` · reading <span class="mono">${esc(ex.pages[ph.reading].path)}</span>`;
+        return `<div class="bar" aria-hidden="true">${segs.join('')}</div><div class="counts">${txt}</div>`;
+    }
+
+    function footHtml(ex, tags, ph) {
+        if (st.net === 'off') return '<div class="foot"><span class="why">The tags kept on the On stage page are not shown (setting off).</span></div>';
+        if (!ex.tab) return '<div class="foot"><span class="why">This page has no On Stage tab, so no other page was read.</span></div>';
+        const os = tags.filter((x) => x.page);
+        const per = ex.pages.slice(0, ph.read).map((p) => [p, os.filter((x) => x.page === p).length]);
+        let h = '<div class="foot">';
+        if (os.length) h += `<span>${os.length} of ${tags.length} tags are kept on ${per.length === 1 ? 'the On stage page' : `${per.length} On stage pages`}:</span><ul>` +
+            per.map(([p, k]) => `<li><a href="${BASE}${esc(p.path)}/noredirect/true" target="_blank" rel="noopener" class="mono">${esc(p.path)}</a> · ${k} tag${k === 1 ? '' : 's'}</li>`).join('') + '</ul>';
+        if (ph.failed >= 0) h += `<div class="err">Could not read <span class="mono">${esc(ex.pages[ph.failed].path)}</span>: no answer after 30 s. The tags above are complete for the pages that loaded. <button class="btn" id="retry">Retry</button></div>`;
+        h += '<span class="why">Brucebase allows 512 characters of tags per page; a show\'s cast is tagged on its On stage page.</span></div>';
+        return h;
+    }
+
+    function render(step, fresh) {
+        st.step = step;
+        st.fresh = fresh;
+        const ex = EX[st.ex];
+        const ph = phase(ex, step);
+        // keep the caret in a filter box across a re-render (the reading re-renders every 0.9 s)
+        const act = document.activeElement;
+        const keep = act && /^q-/.test(act.id) ? [act.id, act.selectionStart, act.selectionEnd] : null;
+        const tags = collect(ex, ph.read);
+        const osN = tags.filter((x) => x.page).length;
+        const legend = osN ? '<div class="legend"><span class="chip" style="cursor:default">this page</span><span class="chip os" style="cursor:default">kept on an On stage page</span></div>' : '';
+        $('head').innerHTML =
+            `<div class="card-h"><span class="ttl">Tags</span><span class="n">${tags.length}${osN ? ` · ${osN} from the On stage page` : ''}</span>${statusHtml(ex, ph)}</div>` +
+            `<div class="card-b"><div class="showline">${esc(ex.title)}<small>${esc(ex.sub)} · this page's tags use ${ex.chars} of 512 characters</small></div>` +
+            progressHtml(ex, ph) + toolsHtml('head', tags, VIEW.head) + legend + rowsHtml(tags, fresh, VIEW.head, ex) + footHtml(ex, tags, ph) + '</div>';
+        $('win').innerHTML =
+            `<div class="win-h"><b>${esc(ex.title)}</b><span class="x">Esc closes</span></div><div class="win-b">` +
+            '<div class="dimsec">▶ Setlist</div><div class="dimsec">▶ On stage</div><div class="dimsec">▶ History</div>' +
+            `<details class="sec" open><summary>Tags (${tags.length})${osN ? `<span class="sub">${osN} from the On stage page${ph.read > 1 ? 's' : ''}</span>` : ''}${!ph.done ? '<span class="sub">· reading…</span>' : ''}</summary>` +
+            progressHtml(ex, ph) + toolsHtml('win', tags, VIEW.win) + rowsHtml(tags, fresh, VIEW.win, ex) + footHtml(ex, tags, ph) + '</details></div>';
+        document.querySelectorAll('#retry').forEach((r) => r.addEventListener('click', () => { st.net = 'ok'; syncButtons(); play(ex.pages.length - 1); }));
+        if (keep) {
+            const el = document.getElementById(keep[0]);
+            if (el) { el.focus(); el.setSelectionRange(keep[1], keep[2]); }
+        }
+    }
+
+    /* the tool rows: one delegated listener each for clicks, typing and Esc */
+    document.addEventListener('click', (e) => {
+        const b = e.target.closest('button[data-pn]');
+        if (b && !b.disabled) {
+            const v = VIEW[b.dataset.pn];
+            v[b.dataset.k] = b.dataset.k === 'dir' ? Number(b.dataset.v) : b.dataset.v;
+            render(st.step, new Set());
+            return;
+        }
+        const c = e.target.closest('button[data-clr]');
+        if (c) {
+            VIEW[c.dataset.clr].q = '';
+            render(st.step, new Set());
+            const el = document.getElementById('q-' + c.dataset.clr);
+            if (el) el.focus();
+        }
+    });
+    document.addEventListener('input', (e) => {
+        const m = /^q-(head|win)$/.exec(e.target.id || '');
+        if (!m) return;
+        VIEW[m[1]].q = e.target.value;
+        render(st.step, new Set());
+    });
+    document.addEventListener('keydown', (e) => {
+        const m = /^q-(head|win)$/.exec(e.target.id || '');
+        if (m && e.key === 'Escape' && VIEW[m[1]].q) {
+            e.stopPropagation();
+            VIEW[m[1]].q = '';
+            render(st.step, new Set());
+        }
+    }, true);
+
+    function clearTimers() { st.timers.forEach(clearTimeout); st.timers = []; }
+
+    /** Replays the reading: a page every 0.9 s (the wiki's rate slot), each new page's tags tinted as they arrive. */
+    function play(from) {
+        clearTimers();
+        hideTip(true);
+        const ex = EX[st.ex];
+        let step = from || 0;
+        render(step, new Set());
+        const instant = st.net === 'cache' || st.net === 'off' || !ex.tab;
+        if (instant) return;
+        const tick = () => {
+            step++;
+            const fresh = new Set(step > 0 && ex.pages[step - 1] ? [ex.pages[step - 1].path] : []);
+            render(step, fresh);
+            if (!phase(ex, step).done) st.timers.push(setTimeout(tick, 900));
+        };
+        st.timers.push(setTimeout(tick, 900));
+    }
+
+    function syncButtons() {
+        document.querySelectorAll('[data-ex]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.ex === st.ex)));
+        document.querySelectorAll('[data-net]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.net === st.net)));
+        $('set-os').checked = st.net !== 'off';
+    }
+
+    /* hover card: opens at the chip, Esc closes, hover keeps it, a grace period to reach it, tap on touch */
+    const tip = $('tip');
+    function showTip(chip) {
+        clearTimeout(st.hideT);
+        const ex = EX[st.ex];
+        const t = chip.dataset.t;
+        const path = chip.dataset.p;
+        const page = ex.pages.find((p) => p.path === path);
+        const fam = FAMILIES.find(([k]) => k === family(t, ex, !!path))[1];
+        tip.innerHTML = `<div class="t">${esc(t)}</div><dl><dt>Family</dt><dd>${fam}</dd><dt>Kept on</dt><dd class="mono">${esc(path || ex.path)}</dd>` +
+            (page ? `<dt>That page</dt><dd>${words(page.tags).length} tags, ${page.chars} of 512 characters</dd>` : '') + '</dl>' +
+            `<div class="f">${page ? 'The show page has an On Stage tab, and its cast is tagged there.' : 'One of the show page\'s own tags.'} Click lists every page with this tag.</div>`;
+        tip.hidden = false;
+        const r = chip.getBoundingClientRect();
+        const w = tip.offsetWidth, h = tip.offsetHeight;
+        let x = Math.min(Math.max(8, r.left), window.innerWidth - w - 8);
+        let y = r.bottom + 6;
+        if (y + h > window.innerHeight - 8) y = Math.max(8, r.top - h - 6);
+        tip.style.left = x + 'px';
+        tip.style.top = y + 'px';
+        st.tipFor = chip;
+    }
+    function hideTip(now) {
+        clearTimeout(st.hideT);
+        if (now) { tip.hidden = true; st.tipFor = null; return; }
+        st.hideT = setTimeout(() => { tip.hidden = true; st.tipFor = null; }, 350);
+    }
+    document.addEventListener('pointerover', (e) => {
+        const c = e.target.closest('.chip[data-t]');
+        if (c && e.pointerType !== 'touch') showTip(c);
+        else if (e.target.closest('#tip')) clearTimeout(st.hideT);
+    });
+    document.addEventListener('pointerout', (e) => {
+        if (e.pointerType === 'touch') return;
+        if (e.target.closest('.chip[data-t]') || e.target.closest('#tip')) hideTip(false);
+    });
+    document.addEventListener('click', (e) => {
+        const c = e.target.closest('.chip[data-t]');
+        if (c && (e.pointerType === 'touch' || matchMedia('(hover: none)').matches)) {
+            if (st.tipFor !== c) { e.preventDefault(); showTip(c); }
+        } else if (!e.target.closest('#tip') && !c) hideTip(true);
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !tip.hidden) hideTip(true); });
+    document.addEventListener('focusin', (e) => { const c = e.target.closest('.chip[data-t]'); if (c) showTip(c); });
+
+    document.querySelectorAll('[data-ex]').forEach((b) => b.addEventListener('click', () => { st.ex = b.dataset.ex; syncButtons(); play(0); }));
+    document.querySelectorAll('[data-net]').forEach((b) => b.addEventListener('click', () => { st.net = b.dataset.net; syncButtons(); play(0); }));
+    $('replay').addEventListener('click', () => play(0));
+    $('set-os').addEventListener('change', (e) => { st.net = e.target.checked ? 'ok' : 'off'; syncButtons(); play(0); });
+    syncButtons();
+    play(0);
+})();
+</script>
