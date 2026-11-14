@@ -160,7 +160,7 @@ def main():
                 if not anchor.startswith(want):
                     flag('bb-anchor-date', want=want)
                 if anchors[anchor] > 1:
-                    stats['anchor used twice (not a batch 1 finding)'] += 1
+                    flag('bb-anchor-shared', times=anchors[anchor])
             if title_spaces(raw):
                 flag('bb-title-spaces', where='heading')
             m = re.match(r'^/([a-z]+):(\d{4}-\d\d-\d\d)([a-z])?-(.*)$', href)
@@ -218,7 +218,7 @@ def main():
         print(f'  {k}: {v}')
     print('\nRows flagged:')
     for fid in ('bb-name-mismatch', 'bb-name-variant', 'bb-anchor-date', 'bb-anchor-link',
-                'bb-anchor-postfix', 'bb-title-spaces'):
+                'bb-anchor-postfix', 'bb-anchor-shared', 'bb-title-spaces'):
         rows = flagged[fid]
         top = ', '.join(f'{y} {n}' for y, n in per_year[fid].most_common(5))
         print(f'  {fid}: {len(rows)} rows in {len(per_year[fid])} years (most: {top})')

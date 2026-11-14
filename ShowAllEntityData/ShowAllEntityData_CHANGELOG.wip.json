@@ -1,5 +1,24 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-11-14",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase year pages: a seventh finding of WIP.1's family, ❌ \"Brucebase anchor used by two entries of the year page\". Two entries of one year page have the same anchor (\"000472b\" on 1972-04-00 and on 1972-05-00), so a link to it, from an event page or from MusicBrainz, reaches only the first. Both rows are flagged, with the table and without any request. Its switch is in ⚙️ Settings → ⚠️ Findings; the tint is the anchor family's."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Brucebase year pages: a table saved with Save to Disk came back with most of its errors gone (1972: 39 saved, 3 loaded). The MB-Event column's answers, the columns filled by ▶ Pages and both header buttons were not in the file. They are now: a loaded year shows the same findings as the saved one, the ▼ MB and ▶ Pages buttons are back, and nothing is asked again. A file saved before this update loads as before.",
+          "Brucebase, springsteenlyrics.com, jungleland.it, brucespringsteen.it: the title of the Save to Disk dialog (\"Save Table Data\") stood pushed aside and wrapped when the table was wider than the window. The sticky page headers took it for a heading of the page."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-11-14",
     "sections": [

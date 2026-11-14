@@ -238,6 +238,18 @@ numbers:
   exclusion lookups (`_sphCollectTargets()`, `_sphContentBodies()`); on
   MusicBrainz it is `#sidebar` as before. `_sphSidebarBlocksWidening()` is
   NOT given it.
+- **Nor may they pin a heading of our own floating panels** (vzell,
+  2026-11-14: the Save to Disk dialog's title "Save Table Data" stood
+  pushed aside and wrapped). This host has no page element, so the h2/h3
+  pass searches `<body>`, where our dialogs are appended; the dialog is
+  `position: fixed` and so not a target itself, which left its `<h3>`
+  without a pinned ancestor to ride on, and the h3 was pinned and capped
+  as a page heading whenever the table is wider than the window. On a
+  host searched from `<body>` (also springsteenlyrics.com, jungleland.it,
+  brucespringsteen.it) `_sphCollectTargets()` now skips an h2/h3 with a
+  `fixed` or `absolute` ancestor. MusicBrainz and the hosts with a root of
+  ours (`_sphPageEl()`) are searched inside it and are not touched. Spec:
+  `bb-year.spec.js`, "the Save to Disk dialog's title …".
 
 Tests: `tests/fixtures/bb-sidebar.spec.js` (left by default and collapsing
 left, the right opt-in, starts hidden, open/close by click and keyboard, no
@@ -1747,6 +1759,7 @@ tint and the tooltip card are the findings' own.
 | `bb-anchor-date`    | ⚠️    | the row         | the anchor does not start with the heading date's DDMMYY                                     |
 | `bb-anchor-link`    | ❌    | the event page  | "Info & Setlist" names another anchor, or a year page that does not cover the date's year    |
 | `bb-anchor-postfix` | ⚠️    | the row         | the anchor's letter ≠ the letter after the date in the event page's address                  |
+| `bb-anchor-shared`  | ❌    | the year page   | another entry of the same year page has the same anchor (both rows; added 2026-11-14)        |
 | `bb-title-spaces`   | ⚠️    | row, then page  | two blanks in a row or a blank before a comma, in the heading or the title                   |
 
 - **The name rule** (`_bbNormName()`, BruceBaseParser's
@@ -1762,7 +1775,7 @@ tint and the tooltip card are the findings' own.
   Second, Third, Morning, Soundcheck, which BruceParser's `eefyp.sh` also
   strips. The mirror has the four extra ones once each (1969-05-28
   Pandemonium ×3, 2002-07-30 Convention Hall); with four words they would
-  be errors. *vzell to confirm.*
+  be errors. Confirmed by vzell, 2026-11-14 ("Keep the nine variant words").
 - **The letter rule is BruceParser's**: the anchor without its digits
   against `[a-z]` after the date in the address (`/gig:1970-05-02a-…`).
   An address without a letter under an anchor with one is flagged, which is
@@ -1786,27 +1799,47 @@ tint and the tooltip card are the findings' own.
   | `bb-anchor-date`    |    1 |     1 | the same one: 1972-05-00 Mediasound, anchor `000472b`                                           |
   | `bb-anchor-link`    |    7 |     7 | not a report                                                                                    |
   | `bb-anchor-postfix` |  338 |     9 | the same 338 (1973: 129, 1974: 80, 1972: 41, 1971: 38, 1975: 30)                                |
+  | `bb-anchor-shared`  |    2 |     1 | not a report: 1972-04-00 and 1972-05-00 Mediasound, both `000472b`                              |
   | `bb-title-spaces`   |    5 |     5 | not a report; all five in event page titles, no heading                                         |
 
   22 of the 38 mismatches are 1949-64's "87 RANDOLPH STREET" against
   "Springsteen Residence" (BruceParser's cleaned-up report drops them as
-  known). Two anchors are used twice (`000472b` in 1972) — not a finding
-  yet.
+  known). One anchor is on two entries (`000472b` in 1972): since vzell's
+  browser check `bb-anchor-shared`, an error on both, because the page does
+  not say which of the two is wrong.
 - **The shipped code against the probe**
   (`scripts/check-bb-batch1-findings.js ROWS.json`, the userscript in
   Chromium through the test harness; rows from the probe's `--rows`): the
   reader's title and link on all 5,016 pages and the checks on all 5,018
   entries, 0 differences.
-- **Tests**: `tests/fixtures/bb-findings-batch1.spec.js` (9): 1972's year
+- **Tests**: `tests/fixtures/bb-findings-batch1.spec.js` (10): 1972's year
   page with eight real entries and their pages
   (`scripts/build-bb-findings-batch1-fixtures.py`: `bb-year-1972-findings.html`,
-  `bb-findings/`); mutations `scripts/mutations/bb-findings-batch1.json` (32).
-- **Seen on the way, not changed**: Load from Disk rebuilds each `<td>`
-  from its saved inner markup, so the year table's cell classes and data
-  attributes are gone on a loaded page — the Event cell's `nowrap`, and
-  the event-page cells' key and state (`data-mb-bbevp-*`), so ▶ Pages has
-  nothing to read there. `_bbEvpCells()`'s JSDoc says the data "survives
-  … a save to disk"; this run says it does not. Open, for vzell.
+  `bb-findings/`); mutations `scripts/mutations/bb-findings-batch1.json` (43).
+- **A saved year keeps its cells' own marks** (vzell's browser check,
+  2026-11-14: 1972 showed 39 errors, and 3 after Save to Disk and Load from
+  Disk; the 36 lost ones were `bb-mbev-link-mismatch`, and ▼ MB and
+  ▶ Pages were gone from the headers). Load from Disk rebuilds each `<td>`
+  from its saved inner markup, and these columns keep their identity ON
+  the `<td>`. The cell record now has a `bb` field
+  (`_bbDiskCellData()` in `_buildDiskCellData()`): an MB-Event cell's key,
+  type, date, anchor, query and — only when settled — its answer (MBID,
+  Brucebase links, the other events on the anchor); an event-page cell's
+  column, key, state (`done`/`none`, anything else `cold`) and "Onstage"
+  mark; the Event cell's class; a Date cell's comma mark.
+  `_bbRestoreDiskCell()` reads it in both hydrate loops. Rules:
+  - a saved file is the user's data: known kinds and values only, texts
+    cut at 500 characters, an MBID must look like one, and **a key must be
+    a Brucebase address** (the event-page columns REQUEST their key; an
+    MB-Event key may also be "heading:…");
+  - a cell saved while it waited comes back not asked, with that markup;
+  - `_bbMbevRun()` does not ask again for a cell that came back answered
+    (our own answers may not have it); a press on ▶ MB does;
+  - a file saved before this has no `bb` and loads as before.
+  Not restored: the Event cell's own tooltip ("As written on the site"), a
+  `title` on the `<td>`; its findings' lines show without it.
+  Spec: `tests/fixtures/bb-mb-event.spec.js`, "Save to Disk → Load from
+  Disk"; the validation in the batch spec, "a saved cell record …".
 
 ## Show links on Brucebase's own pages (Phase 8, 2026-11-11)
 

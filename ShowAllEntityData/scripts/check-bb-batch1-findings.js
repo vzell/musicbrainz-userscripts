@@ -72,6 +72,10 @@ async function main() {
         diffs++;
         if (diffs <= 40) console.log(`DIFF ${what}: ${row.year} ${row.href || row.heading}\n  probe:  ${JSON.stringify(a)}\n  script: ${JSON.stringify(b)}`);
     };
+    // How often each year page uses an anchor (bb-anchor-shared): the
+    // userscript counts it while it converts a page, here from the rows.
+    const uses = new Map();
+    rows.forEach((r) => { if (r.anchor) uses.set(`${r.year}#${r.anchor}`, (uses.get(`${r.year}#${r.anchor}`) || 0) + 1); });
     for (const row of rows) {
         let pageData = row.title === null ? null : { title: row.title, infoHref: row.infoHref || '' };
         if (!RULES_ONLY && pageData) {
@@ -85,7 +89,7 @@ async function main() {
             if (read) pageData = read;
         }
         const got = await page.evaluate(({ r, p }) => window.__saTest.bbEventChecks(r, p),
-            { r: { heading: row.heading, anchor: row.anchor, href: row.href ? `https://brucebase.wikidot.com${row.href}` : '' }, p: pageData });
+            { r: { heading: row.heading, anchor: row.anchor, href: row.href ? `https://brucebase.wikidot.com${row.href}` : '', uses: uses.get(`${row.year}#${row.anchor}`) || 1 }, p: pageData });
         got.forEach((t) => { counts[t] = (counts[t] || 0) + 1; });
         if (got.slice().sort().join(' ') !== row.checks.slice().sort().join(' ')) say('checks', row, row.checks, got);
     }

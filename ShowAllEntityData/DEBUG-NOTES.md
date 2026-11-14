@@ -29505,3 +29505,41 @@ Env: 2026-11-14T11:26:21+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
   `000472b` (1972-04-00 and 1972-05-00 Mediasound; the second is the `bb-anchor-date` row).
 - **Existing lists moved:** three finds of `scripts/mutations/bb-onstage-tab.json`, one of `link-site-uvd.json`
   and one of `tooltip-diff.json` named lines this change rewrote (`check-mutation-finds.py`: 5 stale, then 0).
+
+## 2026-11-14 — Brucebase year table after vzell's browser check: shared anchors, the disk round trip, the dialog title (feat/bb-findings-batch1)
+Env: 2026-11-14T16:02:51+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright Chromium 151.0.7922.34 (chromium-fixtures), no Tampermonkey (GM stubs); the reports are vzell's, from his own browser on https://brucebase.wikidot.com/1972 (browser and Tampermonkey versions unknown); probe: Python over the mirror bb/2026-11-13, n/a
+- **Reported (three screenshots):** the rendered 1972 table had 39 errors and 68 warnings; the same table after
+  Save to Disk and Load from Disk 3 errors and 68 warnings; the Save to Disk dialog's title "Save Table Data"
+  stood right of the middle, wrapped after "Table". Everything else of the browser list was OK live.
+- **39 → 3, root cause:** the 36 lost errors were `bb-mbev-link-mismatch` (the only other ❌ finding on this host;
+  not counted separately on vzell's page). Its `test()` reads the MB-Event cell's dataset
+  (`data-mb-bbev-state/-mbid/-links/-anchor-events`), and a saved cell is `getCleanCellHtml()` plus a few named
+  flags (`_buildDiskCellData()`): nothing of a `<td>`'s class or dataset. So a loaded year had no
+  `td.mb-bbev-cell` and no `td.mb-bbevp-cell` at all: no finding, no ▼ MB, no ▶ Pages (both header buttons are
+  only made for a table with such cells). The JSDoc of `_bbMbevCell()` and `_bbEvpCells()` said the data
+  "survives … a save to disk"; it never did, on `main` either. The 3 that survived were this branch's, whose data
+  is on a carrier inside the cell.
+- **Fix:** the cell record's `bb` (`_bbDiskCellData()`, `_bbRestoreDiskCell()`, both hydrate loops); rules in
+  docs/claude/brucebase.md, "A saved year keeps its cells' own marks". `_bbMbevRun()` skips a cell that came back
+  answered unless the user pressed ▶ MB. First version of the restore dropped a partial date ("1985-07"): the
+  round-trip test compares every cell before and after, and caught it.
+- **A test that proved less than it said:** the round-trip test first loaded the file in a second page of the SAME
+  browser context. Two mutations passed there ("a saved answer is not kept", "a cell answered in the loaded file
+  is asked again"): the saving page's stored answers (same origin, same context) answered for the file. The load
+  now runs in a context of its own, and both fail as they should. A disk test that says "only the file can supply
+  this" needs a fresh context.
+- **The dialog title, root cause:** not the wiki's CSS (checked against its two stylesheets, base and
+  flannel-ocean: with them the title sits at the left) but the sticky page headers. `_sphPageEl()` is null on this
+  host, so `_sphCollectTargets()` searches `<body>` for h2/h3 and finds `#sa-sd-title`; its dialog is fixed, hence
+  no target, hence no pinned ancestor to drop the h3 — it got `.mb-sph-target` (sticky, `left`, `max-width`) while
+  `html.mb-sph-on`, i.e. only with the table wider than the window, which is why a 1700 px fixture window did not
+  show it. Fix: on a `<body>`-searched host an h2/h3 with a fixed or absolute ancestor is skipped.
+- **bb-anchor-shared (❌):** two entries of a year page with one anchor; counted per converted page
+  (`applyBbYearToTable()`), on the carrier as `data-mb-bb-anchor-uses`. Probe: 2 rows in the mirror, 1972's two
+  Mediasound entries (`000472b`); the shipped rule against the probe on all 5,018 entries: no difference
+  (`check-bb-batch1-findings.js --rules-only`). The level is Claude's choice, open for vzell.
+- **Tests:** `bb-findings-batch1.spec.js` 10, `bb-mb-event.spec.js` + 1, `bb-year.spec.js` + 1; 11 new mutation
+  entries, all failing their test as recorded; one find of `len-flag-disk-roundtrip.json` moved (re-run: pass, as
+  recorded). No render measurement: per cell one `classList`/`dataset` look at save and one early return at load;
+  the year table's build gains one Map pass over its entries.
+  `npm run test:full` 16:02:51–16:21:44 CET on petri (working tree on `9949594e`): 3,109 passed, 0 failed.

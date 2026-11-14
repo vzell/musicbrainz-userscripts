@@ -351,9 +351,23 @@ this file must record:
   `-anchor`, `-raw-title`, `-info-href`, `-checks`. Save to Disk keeps a
   cell's inner markup only (`_buildDiskCellData()`: `html`, the spans and a
   few named flags), so **a mark on the `<td>` is gone after Load from
-  Disk** — the first version of this batch lost every finding there, and
-  `bb-date-comma` / `bb-onstage-tab` (marks on the `<td>`) still do. A new
-  finding that should survive a disk load puts its mark inside the cell.
+  Disk** — the first version of this batch lost every finding there. A new
+  finding that should survive a disk load puts its mark inside the cell, or
+  names it in the cell record: since vzell's browser check of 2026-11-14
+  (1972 saved with 39 errors, loaded with 3) the Brucebase cells' own
+  `<td>` marks travel as the record's `bb` (`_bbDiskCellData()`,
+  `_bbRestoreDiskCell()`: the MB-Event cell with its answer, the
+  event-page cells, the Event cell's class, `bb-date-comma`), so
+  `bb-mbev-link-*`, `bb-onstage-tab` and `bb-date-comma` come back too.
+  The restore takes only known values, and a key only when it is a
+  Brucebase address (the event-page columns request their key).
+- **`bb-anchor-shared`** (❌, added 2026-11-14 after the browser check;
+  setting `sa_findings_bb_anchor_shared`, the anchor family's tint): two
+  entries of one year page with the same anchor, both flagged. The count
+  is the page's, not the row's: `applyBbYearToTable()` counts each anchor
+  of the page it converts (`entry.anchorUses`), the carrier keeps it as
+  `data-mb-bb-anchor-uses` when above 1, and `_bbEventChecks()` reads it
+  as `row.uses`. Build-time. The mirror has 2 rows (1972, `000472b`).
 - **Two are build-time, four are late.** `bb-anchor-date` and
   `bb-anchor-postfix` are written with the row (`_bbYearEventCell()` →
   `_bbEventChecksWrite()`); the others need the event page:
@@ -377,8 +391,9 @@ this file must record:
   `_name_variant`, `_anchor_date`, `_anchor_link`, `_anchor_postfix`,
   `_title_spaces`), three tints (`sa_findings_tint_bb_name`, `_bb_anchor`,
   `_bb_title_spaces`).
-- Specs `tests/fixtures/bb-findings-batch1.spec.js` (9); mutations
-  `scripts/mutations/bb-findings-batch1.json`.
+- Specs `tests/fixtures/bb-findings-batch1.spec.js` (10), the disk round
+  trip of the MB-Event cells in `tests/fixtures/bb-mb-event.spec.js`;
+  mutations `scripts/mutations/bb-findings-batch1.json` (43).
 
 ## On demand: the title-style findings
 

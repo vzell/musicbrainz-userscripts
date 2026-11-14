@@ -7,6 +7,7 @@
 //   bb-anchor-date   (⚠️)  the anchor is not the date's DDMMYY
 //   bb-anchor-link   (❌)  the page's "Info & Setlist" link names another anchor
 //   bb-anchor-postfix(⚠️)  the anchor's letter ≠ the address's
+//   bb-anchor-shared (❌)  two entries of the page have the same anchor
 //   bb-title-spaces  (⚠️)  two blanks, or a blank before a comma
 // The fixture is 1972's year page with eight of its entries and those
 // entries' own pages, all real (scripts/build-bb-findings-batch1-fixtures.py);
@@ -28,7 +29,8 @@ const YEAR_URL = 'https://brucebase.wikidot.com/1972';
 const YEAR_FILE = path.join(__dirname, 'bb-year-1972-findings.html');
 const EVENT_DIR = path.join(__dirname, 'bb-findings');
 const EVENT_RE = /^https:\/\/brucebase\.wikidot\.com\/((?:gig|nogig|recording|rehearsal|interview):[^/?#]+)$/;
-const IDS = ['bb-name-mismatch', 'bb-name-variant', 'bb-anchor-date', 'bb-anchor-link', 'bb-anchor-postfix', 'bb-title-spaces'];
+const IDS = ['bb-name-mismatch', 'bb-name-variant', 'bb-anchor-date', 'bb-anchor-link', 'bb-anchor-postfix', 'bb-anchor-shared', 'bb-title-spaces'];
+const ERRORS = ['bb-name-mismatch', 'bb-anchor-link', 'bb-anchor-shared'];
 
 // Each entry's failed checks: before its page is read, and after. In the
 // page's order (the wiki lists 1972-05-02 before 1972-05-00).
@@ -36,9 +38,10 @@ const ROWS = {
     'gig:1972-01-21-captain-s-garter-neptune-nj': { build: [], read: [] },
     'gig:1972-02-12-sunshine-in-asbury-park-nj-early': { build: ['anchor-postfix'], read: ['anchor-postfix', 'name-variant'] },
     'gig:1972-02-12-sunshine-in-asbury-park-nj-late': { build: ['anchor-postfix'], read: ['anchor-postfix', 'name-variant'] },
-    'recording:1972-04-00b-mediasound-studios-new-york-city-ny': { build: [], read: [] },
+    // The two Mediasound entries share the anchor 000472b (bb-anchor-shared: vzell, 2026-11-14).
+    'recording:1972-04-00b-mediasound-studios-new-york-city-ny': { build: ['anchor-shared'], read: ['anchor-shared'] },
     'gig:1972-05-02-cbs-records-new-york-city-ny': { build: ['anchor-postfix'], read: ['anchor-postfix'] },
-    'recording:1972-05-00-mediasound-studios-new-york-city-ny': { build: ['anchor-date', 'anchor-postfix'], read: ['anchor-date', 'anchor-link', 'anchor-postfix'] },
+    'recording:1972-05-00-mediasound-studios-new-york-city-ny': { build: ['anchor-date', 'anchor-postfix', 'anchor-shared'], read: ['anchor-date', 'anchor-link', 'anchor-postfix', 'anchor-shared'] },
     'gig:1972-06-00-unknown-location-point-pleasant-nj': { build: ['anchor-postfix'], read: ['anchor-postfix', 'name-mismatch'] },
     'gig:1972-12-29-hara-arena-dayton-oh': { build: [], read: ['name-mismatch'] },
 };
@@ -156,7 +159,7 @@ async function expectPhase(page, phase) {
     const got = await eventCells(page);
     expect(got.map(r => [r.key, r.checks])).toEqual(KEYS.map(k => [k, ROWS[k][phase]]));
     for (const id of IDS) {
-        const level = id === 'bb-name-mismatch' || id === 'bb-anchor-link' ? 'error' : 'warn';
+        const level = ERRORS.includes(id) ? 'error' : 'warn';
         const n = countOf(phase, id.slice(3));
         // The count is the rows carrying the stamp, on the page.
         expect(got.filter(r => r.stamps.includes(id)).length, id).toBe(n);
@@ -180,9 +183,21 @@ test.describe('Brucebase year table: the name and anchor findings (bbp-parity ba
             return { raw: d.getAttribute('data-mb-bb-raw-heading'), anchor: d.getAttribute('data-mb-bb-anchor'), title: d.hasAttribute('data-mb-bb-raw-title'), hidden: getComputedStyle(d).display };
         });
         expect(data).toEqual({ raw: '1972-05-00 - MEDIASOUND STUDIOS, STUDIO C, NEW YORK CITY, NY', anchor: '000472b', title: false, hidden: 'none' });
+        // One anchor on two entries (bb-anchor-shared): both rows, an error, known with the table.
+        const shared = await page.evaluate(() => Array.from(document.querySelectorAll('span.mb-bb-ev-data[data-mb-bb-checks~="anchor-shared"]')).map(d => ({
+            anchor: d.getAttribute('data-mb-bb-anchor'), uses: d.getAttribute('data-mb-bb-anchor-uses'),
+            level: d.parentElement.dataset.mbFinding, tip: /The anchor "000472b" is on 2 entries/.test(d.parentElement.getAttribute('title') || ''),
+        })));
+        expect(shared).toEqual([1, 2].map(() => ({ anchor: '000472b', uses: '2', level: 'error', tip: true })));
+        expect(await page.evaluate(() => document.querySelectorAll('span.mb-bb-ev-data[data-mb-bb-anchor-uses]').length)).toBe(2);
+        expect((await findingRow(page, 'error', 'bb-anchor-shared')).count).toBe(2);
+        await clickFinding(page, 'bb-anchor-shared');
+        await expect.poll(() => findingRowState(page, 'bb-anchor-shared')).toEqual({ visible: 2, withFinding: 2 });
+        await clickFinding(page, 'bb-anchor-shared');
+        await expect.poll(async () => (await findingRowState(page, null)).visible).toBe(KEYS.length);
         // The look: a warning's tint and glyph.
         const look = await page.evaluate(() => {
-            const td = document.querySelector('span.mb-bb-ev-data[data-mb-bb-checks~="anchor-postfix"]').parentElement;
+            const td = document.querySelector('span.mb-bb-ev-data[data-mb-bb-checks="anchor-postfix"]').parentElement;
             return { level: td.dataset.mbFinding, bg: getComputedStyle(td).backgroundColor, after: getComputedStyle(td, '::after').content };
         });
         expect(look.level).toBe('warn');
@@ -401,6 +416,43 @@ test.describe('Brucebase year table: the name and anchor findings (bbp-parity ba
         } finally {
             fs.rmSync(tmpDir, { recursive: true, force: true });
         }
+    });
+
+    // A saved file is the user's data: the cell record's `bb` may set only
+    // what the columns themselves write. The event-page columns REQUEST their
+    // key, so a key that is not a Brucebase address is never taken.
+    test('a saved cell record sets only known marks: no foreign address as a key, no made-up MBID', async ({ page }) => {
+        await loadYear(page);
+        const out = await page.evaluate(() => {
+            const run = (bb) => {
+                const td = document.createElement('td');
+                td.innerHTML = 'kept';
+                window.__saTest.bbRestoreDiskCell(td, { html: 'kept', bb });
+                return { cls: td.className, data: { ...td.dataset }, html: td.innerHTML };
+            };
+            return {
+                evpForeign: run({ k: 'evp', col: 'On stage', key: 'https://example.org/gig:1972', state: 'cold' }),
+                evpDone: run({ k: 'evp', col: 'Content', key: 'https://brucebase.wikidot.com/gig:1972-01-21-x', state: 'done', onstage: true }),
+                evpWaiting: run({ k: 'evp', col: 'On stage', key: 'https://brucebase.wikidot.com/gig:1972-01-21-x', state: 'queued' }),
+                evpColumn: run({ k: 'evp', col: 'Event', key: 'https://brucebase.wikidot.com/gig:1972-01-21-x', state: 'done' }),
+                evForeign: run({ k: 'ev', key: 'https://example.org/x', done: true, mbid: '00000000-0000-4000-8000-000000000001' }),
+                evBadId: run({ k: 'ev', key: 'https://brucebase.wikidot.com/gig:1972-01-21-x', type: 'gig', date: '1972-01', anchor: 'a', q: 'q', done: true, mbid: '"><img>', anchorEvents: 'x 00000000-0000-4000-8000-000000000002' }),
+                unknown: run({ k: 'other', key: 'https://brucebase.wikidot.com/x' }),
+                noRecord: run(undefined),
+            };
+        });
+        const KEY = 'https://brucebase.wikidot.com/gig:1972-01-21-x';
+        expect(out.evpForeign).toEqual({ cls: 'mb-bbevp-cell', data: { mbBbevpCol: 'On stage', mbBbevpState: 'none' }, html: 'kept' });
+        expect(out.evpDone).toEqual({ cls: 'mb-bbevp-cell', data: { mbBbevpCol: 'Content', mbBbevpKey: KEY, mbBbevpState: 'done', mbBbevpOnstage: '' }, html: 'kept' });
+        expect(out.evpWaiting).toEqual({ cls: 'mb-bbevp-cell', data: { mbBbevpCol: 'On stage', mbBbevpKey: KEY, mbBbevpState: 'cold' }, html: '' });
+        expect(out.evpColumn).toEqual({ cls: '', data: {}, html: 'kept' });
+        expect(out.evForeign).toEqual({ cls: '', data: {}, html: 'kept' });
+        expect(out.evBadId).toEqual({
+            cls: 'mb-bbev-cell', html: 'kept',
+            data: { mbBbevKey: KEY, mbBbevType: 'gig', mbBbevDate: '1972-01', mbBbevAnchor: 'a', mbBbevQ: 'q', mbBbevState: 'done', mbBbevAnchorEvents: '00000000-0000-4000-8000-000000000002' },
+        });
+        expect(out.unknown).toEqual({ cls: '', data: {}, html: 'kept' });
+        expect(out.noRecord).toEqual({ cls: '', data: {}, html: 'kept' });
     });
 
     test('the rules, pure: the article, the " - ", the variants, 1949-64, a listing row', async ({ page }) => {

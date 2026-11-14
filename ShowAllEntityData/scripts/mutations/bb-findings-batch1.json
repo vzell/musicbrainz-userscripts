@@ -414,5 +414,148 @@
         "spec": "tests/fixtures/bb-findings-batch1.spec.js",
         "grep": "the title style of other sites",
         "expect": "fail"
+    },
+    {
+        "name": "bb-anchor-shared: the detector never matches",
+        "why": "The finding reads the Event cell's check.",
+        "edits": [
+            {
+                "find": "            test: cell => _bbHasCheck(cell, 'anchor-shared'),",
+                "replace": "            test: () => false,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "before any page is read",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-anchor-shared: the page's anchors are not counted",
+        "why": "Two entries of 1972 have the anchor 000472b: applyBbYearToTable() counts each anchor of the page it converts.",
+        "edits": [
+            {
+                "find": "        entries.forEach((e) => { e.anchorUses = e.anchor ? anchorUses.get(e.anchor) : 0; });",
+                "replace": "        entries.forEach((e) => { e.anchorUses = 0; });"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "before any page is read",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-anchor-shared: an anchor used once is shared too",
+        "why": "Only an anchor on two or more entries.",
+        "edits": [
+            {
+                "find": "        if (yearRow && anchor && row.uses > 1) out.push('anchor-shared');",
+                "replace": "        if (yearRow && anchor) out.push('anchor-shared');"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "before any page is read",
+        "expect": "fail"
+    },
+    {
+        "name": "Save to Disk drops the Brucebase cells' marks",
+        "why": "vzell, 2026-11-14: 39 errors saved, 3 loaded. The MB-Event column's data is on the <td>; the cell record carries it as `bb`.",
+        "edits": [
+            {
+                "find": "        if (bb) data.bb = bb;",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-mb-event.spec.js",
+        "grep": "Save to Disk",
+        "expect": "fail"
+    },
+    {
+        "name": "Load from Disk does not re-mark a single table's Brucebase cells",
+        "why": "The year table is a single table: its loop calls _bbRestoreDiskCell().",
+        "edits": [
+            {
+                "find": "                        _restoreNoWorkFlag(td, cellData);\n                        _bbRestoreDiskCell(td, cellData);\n",
+                "replace": "                        _restoreNoWorkFlag(td, cellData);\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-mb-event.spec.js",
+        "grep": "Save to Disk",
+        "expect": "fail"
+    },
+    {
+        "name": "a saved answer is not kept: the cell comes back not asked",
+        "why": "Only a settled answer is saved, and it comes back as one, with the event's links the findings read.",
+        "edits": [
+            {
+                "find": "            if (bb.done === true) {\n                td.dataset.mbBbevState = 'done';",
+                "replace": "            if (bb.done === 'never') {\n                td.dataset.mbBbevState = 'done';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-mb-event.spec.js",
+        "grep": "Save to Disk",
+        "expect": "fail"
+    },
+    {
+        "name": "a cell answered in the loaded file is asked again",
+        "why": "The automatic lookup skips a cell that came back answered: our own answers may not have it.",
+        "edits": [
+            {
+                "find": "            if (st === 'done' && !user) return;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-mb-event.spec.js",
+        "grep": "Save to Disk",
+        "expect": "fail"
+    },
+    {
+        "name": "a saved record may name any address as an event-page key",
+        "why": "The event-page columns request their key: only a Brucebase address is taken from a file.",
+        "edits": [
+            {
+                "find": "        const page = v => /^https?:\\/\\/brucebase\\.wikidot\\.com\\//.test(str(v));",
+                "replace": "        const page = v => !!str(v);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "saved cell record",
+        "expect": "fail"
+    },
+    {
+        "name": "a saved record may set any text as an MBID",
+        "why": "An MBID from a file must look like one.",
+        "edits": [
+            {
+                "find": "                if (mbid.test(str(bb.mbid))) td.dataset.mbBbevMbid = bb.mbid;",
+                "replace": "                if (str(bb.mbid)) td.dataset.mbBbevMbid = bb.mbid;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "saved cell record",
+        "expect": "fail"
+    },
+    {
+        "name": "a cell saved while it waited keeps its state",
+        "why": "Queued, running and failed are not settled: such a cell comes back not asked.",
+        "edits": [
+            {
+                "find": "            const st = !key ? 'none' : bb.state === 'done' || bb.state === 'none' ? bb.state : 'cold';",
+                "replace": "            const st = !key ? 'none' : String(bb.state);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "saved cell record",
+        "expect": "fail"
+    },
+    {
+        "name": "a heading in a floating panel is pinned as a page heading",
+        "why": "On a host searched from <body> (brucebase.wikidot.com) the Save to Disk dialog's title was pinned and capped by the sticky page headers.",
+        "edits": [
+            {
+                "find": "            if (page || !floats(el)) add(el, false);",
+                "replace": "            add(el, false);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year.spec.js",
+        "grep": "dialog's title",
+        "expect": "fail"
     }
 ]

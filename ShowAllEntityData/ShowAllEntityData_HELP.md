@@ -853,6 +853,7 @@ back).
 | ❌    | MB-Event: the Brucebase link differs (once looked up)           | Brucebase year: MB-Event                    |
 | ❌    | Brucebase event page named differently from the year page (once read) | Brucebase year: Event                 |
 | ❌    | Brucebase event page links another entry of the year page (once read) | Brucebase year: Event                 |
+| ❌    | Brucebase anchor used by two entries of the year page                 | Brucebase year: Event                 |
 | ❌    | Double-encoded text (springsteenlyrics.com)                     | springsteenlyrics.com: any column (the lyrics index: once the song's page was read) |
 | ❌    | Track and recording length far apart                            | Release tracklist: Length, Recording length |
 | ❌    | Video on a medium that cannot carry video                       | Release tracklist: Video                    |
@@ -4043,15 +4044,19 @@ entry, with these columns:
   menus (see *Warnings and errors*). With the table, and without any
   request: an anchor that is not the entry's date ("000472b" on an entry of
   1972-05-00), an anchor whose letter is not the one in the address of the
-  entry's page (several entries on one date; common in the early 1970s), and
-  a heading with two blanks in a row or a blank before a comma. Once
+  entry's page (several entries on one date; common in the early 1970s), an
+  anchor that two entries of the page share (❌ on both: a link to it
+  reaches only the first), and a heading with two blanks in a row or a blank
+  before a comma. Once
   ▶ Pages has read an entry's page: the page is named differently from the
   year page (❌), it only adds "(Early)", "(Late)" and the like (⚠️), its
   "Info & Setlist" link leads to another entry (❌), or its title has two
   blanks. Names are compared as the wiki writes them, in capitals, with
   "Stone Pony (The)" read as "The Stone Pony". The cell's hover text says
   what differs, above "As written on the site". Each check has its own
-  switch in ⚙️ Settings → ⚠️ Findings.
+  switch in ⚙️ Settings → ⚠️ Findings. A year saved with **Save to Disk**
+  comes back with all of them, the MB-Event column's answers and the pages
+  read so far included, and asks nothing again.
 - **Soundcheck:** the soundcheck, one song per row.
 - **Setlist:** the set, one song per row, each title written the MusicBrainz
   way ("I'M ON FIRE" reads "I’m on Fire"), the rest as the wiki has it: bold for a tour

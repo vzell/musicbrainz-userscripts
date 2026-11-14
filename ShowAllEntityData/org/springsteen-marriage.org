@@ -9,7 +9,8 @@ Plan for pickup on another host.
 
 - *BruceParser 0.17.0 is pushed* (=4978b0e=): =dc.sh= 1.5 with =-j "${BBP_JOBS:-4}"= on both =parallel= calls, =checkURLandTitles.sh= 1.5 with the literal word removal in three places. Checked with =bash -n= and =-V= only. Still to do there, by vzell: a full =bbp.sh= run for the report comparison, and the download time with 4 jobs.
 - *Track A batch 1 is on =feat/bb-findings-batch1=, pushed, NOT merged:* six findings on the year table's Event cell. What was built, the probe's counts and three points that differ from the plan are in =org/bbp-parity.org=, "Batch 1: built on …".
-- *Next:* vzell checks the four year pages in the browser (the list is in the session's closing message and in =org/bbp-parity.org=), answers the three points, then the merge (=merge-push-remove=). After that, batch 2.
+- *vzell's browser check (2026-11-14, afternoon):* all rows OK live; the nine variant words stay. Three things came out of it and are built on the same branch: the finding =bb-anchor-shared= (two entries with one anchor), a saved year keeping the MB-Event column's findings (39 errors had become 3 after Load from Disk), and the Save to Disk dialog's title on Brucebase. Details: =org/bbp-parity.org=, "After vzell's browser check".
+- *Next:* vzell checks the three NEW rows of the browser list in =org/bbp-parity.org= and says whether =bb-anchor-shared= is an error or a warning, then the merge (=merge-push-remove=). After that, batch 2.
 
 * Status at the end of the session of 2026-11-14 (01:40 CET)
 

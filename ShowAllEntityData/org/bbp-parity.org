@@ -102,7 +102,13 @@ The four rows above say DONE for the branch; =main= has them once vzell has chec
   1. *Nine variant words, not four.* First, Second, Third, Morning and Soundcheck are variants too, as in BruceParser's =eefyp.sh=. The mirror has four such pages; with the four words of decision 1 they would be errors. Say so if you want the four only.
   2. *The data sits inside the cell, not on it.* Save to Disk keeps a cell's inner markup only, so a =data-mb-bb-raw-*= attribute on the cell (decision 2's wording) would be gone after Load from Disk. It is on a hidden =span.mb-bb-ev-data= in the cell.
   3. *A finding's tooltip now sits above the cell's own.* Every Event cell already has "As written on the site" as its tooltip, and a cell with a tooltip got no finding text. The Event cell opts in to both (=data-mb-tip-base=); no other cell changes.
-- *Not in batch 1:* a title's blanks on the bb-event head's h1 and in the window's title (vzell, 2026-11-14: table cells only; with batch 3 and a mockup). An anchor used twice on one year page (=000472b= in 1972) is not a finding yet.
+- *Not in batch 1:* a title's blanks on the bb-event head's h1 and in the window's title (vzell, 2026-11-14: table cells only; with batch 3 and a mockup).
+- *After vzell's browser check (2026-11-14, afternoon; "everything else is OK, tested live"):*
+  - *The nine variant words stay* (point 1 above is settled).
+  - *A seventh finding, =bb-anchor-shared= (❌):* two entries of a year page with the same anchor, both flagged. 2 rows in the mirror (1972-04-00 and 1972-05-00 Mediasound, =000472b=). The level is Claude's choice, for vzell to confirm: an error, because a link to the anchor reaches only the first entry.
+  - *39 errors became 3 after Load from Disk:* the 36 lost ones were the MB-Event column's "the Brucebase link differs". That column keeps its data on the cell, which a saved file did not carry (so on =main= too). Fixed: a saved year now keeps the MB-Event answers, the event-page columns and their header buttons, and asks nothing again.
+  - *The "Save Table Data" title stood aside and wrapped:* on Brucebase the sticky page headers took the dialog's title for a page heading. Fixed for every host that is searched from =<body>=.
+  - Tests (petri, 2026-11-14): the three specs' new tests pass, the 11 new mutations fail them as recorded; =npm run test:full= 16:02:51–16:21:44 CET, 3,109 passed, 0 failed. Details: =DEBUG-NOTES.md=, the entry of this follow-up.
 - *Tests* (petri, 2026-11-14): the new spec 9/9; its 32 mutations as recorded (30 fail, 2 pass with the reason); the five moved entries of three older lists as recorded; =npm run test:full= 11:37:33–11:57:20 CET, 3,106 passed, 0 failed (working tree on =d0871f8c=).
 - *Render cost:* none measurable (=tests/MEASUREMENTS.org=, 2026-11-14: branch / main 1.00–1.01 on the 1985 table).
 
@@ -121,5 +127,8 @@ On each page press *Show all events*. "With the table" needs nothing more. "Afte
 | https://brucebase.wikidot.com/2026  | after ▶ Pages    | 2026-08-28 The Stone Pony, Summer Stage: ❌ named differently AND ⚠️ two blanks                                                                        |
 | any of them                         | a menu row       | a click leaves exactly the flagged rows, a second click brings all back; ⚙️ → ⚠️ Findings has the six switches and three tints                         |
 | https://brucebase.wikidot.com/1972  | Save / Load disk | after ▶ Pages, Save to Disk, reload, Load from Disk: the same cells are flagged, with no request                                                     |
+| https://brucebase.wikidot.com/1972  | with the table   | NEW: ❌ menu: "anchor used by two entries" 2 (1972-04-00 and 1972-05-00 Mediasound, both red; hover: "000472b" is on 2 entries)                       |
+| https://brucebase.wikidot.com/1972  | Save / Load disk | NEW: the ❌ and ⚠️ counts are the same before and after (39 and 68 became 41 and 68 with the two rows above); ▼ MB and ▶ Pages are in the headers       |
+| https://brucebase.wikidot.com/1972  | Save to Disk     | NEW: the dialog's title "Save Table Data" is one line at the left, also with the table wider than the window                                         |
 
 Unverified: all of it on the live site (the fixtures are the mirror's pages; Claude made no request to the wiki). A page read before this update is asked once more (the stored records are from the older reader).

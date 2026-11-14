@@ -18,6 +18,7 @@
 // and the setting: off asks nothing until ▶ MB.
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { test, expect } = require('../support/test');
 const { loadBbYearPage, BB_YEAR_BUTTON, revealPastStickyColumn } = require('../support/bbFixture');
@@ -25,6 +26,7 @@ const { addRequiredLibs, MB_LIBRARY_PATH, USERSCRIPT_PATH } = require('../suppor
 const { waitForRenderComplete } = require('../support/browser');
 const { columnFilterInput, typeGlobalFilter } = require('../support/filterSortAssertions');
 const { findingRow, clickFinding, findingRowState } = require('../support/findingsMenu');
+const { clickToolbarItem } = require('../support/toolbarMenu');
 
 const NO_LINK = ['1985-01-07', '1985-01-08'];
 const NO_EVENT = ['1985-01-10', '1985-01-15'];
@@ -356,5 +358,58 @@ test.describe('bb-year: the MB-Event Brucebase-link findings (2026-10-24)', () =
         expect(await stamped(page, 'bb-mbev-link-missing')).toEqual([]);
         expect(await findingRow(page, 'error', 'bb-mbev-link-mismatch')).toBeUndefined();
         expect(errors).toEqual([]);
+    });
+
+    // vzell, 2026-11-14: 1972 saved with 39 errors came back with 3. A saved
+    // cell is its inner markup, and the column's data is on the <td>: the
+    // cell record now carries it (`bb`, _bbDiskCellData()). The second page
+    // has no MusicBrainz stub and no stored answer, so what it shows can only
+    // come from the file; its lookup is ON, and still asks nothing, because
+    // every cell came back answered.
+    test('Save to Disk → Load from Disk: the answers, the findings and the header button come back, and nothing is asked', async ({ context, browser }) => {
+        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sa-bb-mbev-disk-'));
+        // A context of its own: the saving page's stored answers (the same
+        // origin's storage within one context) must not answer for the file.
+        const fresh = await browser.newContext();
+        try {
+            const source = await context.newPage();
+            await openYear(source);
+            await expect.poll(() => unsettled(source), { timeout: 30000 }).toBe(0);
+            await expect.poll(async () => (await findingRow(source, 'error', 'bb-mbev-link-mismatch') || {}).count).toBe(1);
+            const before = await cells(source);
+            const downloadPromise = source.waitForEvent('download', { timeout: 60000 });
+            await clickToolbarItem(source, '#mb-save-to-disk-btn');
+            await source.locator('#sa-sd-save-confirm').waitFor({ state: 'visible', timeout: 15000 });
+            await source.click('#sa-sd-save-confirm');
+            const saved = path.join(tmpDir, 'bb-year.json.gz');
+            await (await downloadPromise).saveAs(saved);
+            await source.close();
+
+            const page = await fresh.newPage();
+            await loadBbYearPage(page, '1985', { settingsOverride: { sa_render_threshold: 100000, sa_bb_mb_event_lookup: true } });
+            await clickToolbarItem(page, '#mb-load-from-disk-btn');
+            await page.locator('input[type="file"][accept*="json"]').setInputFiles(saved);
+            const renderBtn = page.locator('#sa-render-no-filter-confirm');
+            await renderBtn.waitFor({ state: 'attached', timeout: 15000 });
+            await renderBtn.evaluate(el => el.click());
+            await waitForRenderComplete(page, { waitForAutoResize: false });
+            expect(await cells(page)).toEqual(before);
+            await expect.poll(() => stamped(page, 'bb-mbev-link-mismatch')).toEqual(['1985-01-24']);
+            expect((await stamped(page, 'bb-mbev-link-missing')).sort()).toEqual([...NO_LINK].sort());
+            await expect.poll(async () => (await findingRow(page, 'error', 'bb-mbev-link-mismatch') || {}).count).toBe(1);
+            await expect.poll(async () => (await findingRow(page, 'warn', 'bb-mbev-link-missing') || {}).count).toBe(NO_LINK.length);
+            // The cells are the column's again: its header button, the Event cell's class, the event-page columns.
+            expect(await page.evaluate(() => ({
+                mb: document.querySelectorAll('th[data-col-name="MB-Event"] .mb-bbmbev-col-hdr-btn').length,
+                pages: document.querySelectorAll('th[data-col-name="On stage"] .mb-bbevp-col-hdr-btn').length,
+                event: document.querySelectorAll('table.tbl tbody td.mb-bb-event-cell').length > 80,
+                cold: document.querySelectorAll('table.tbl tbody td.mb-bbevp-cell[data-mb-bbevp-col="On stage"][data-mb-bbevp-state="cold"]').length > 80,
+            }))).toEqual({ mb: 1, pages: 1, event: true, cold: true });
+            await page.evaluate(() => new Promise(r => setTimeout(r, 1500)));
+            expect(await page.evaluate(() => (window.__gmXhrLog || []).filter(r => /musicbrainz\.org/.test(r.url)).length)).toBe(0);
+        } finally {
+            await fresh.close();
+            fs.rmSync(tmpDir, { recursive: true, force: true });
+        }
     });
 });

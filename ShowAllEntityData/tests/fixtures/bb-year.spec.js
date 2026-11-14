@@ -573,3 +573,29 @@ test('_bbParseHeading and _bbParseTourHeading', async ({ page }) => {
         null,
     ]);
 });
+
+// vzell, 2026-11-14: on brucebase.wikidot.com the Save to Disk dialog's title
+// stood pushed aside and wrapped. The sticky page headers search <body> for
+// h2/h3 on a host without a page element, and took the title of our own
+// floating dialog for a page heading: pinned and capped like one.
+test('the Save to Disk dialog\'s title is not pinned as a page heading while the table overflows', async ({ page }) => {
+    await page.setViewportSize({ width: 900, height: 900 });
+    await loadBbYearPage(page, '1985');
+    await page.$eval(`button[data-label="${BB_YEAR_BUTTON}"]`, b => b.click());
+    await waitForRenderComplete(page, { waitForAutoResize: false });
+    await page.waitForFunction(() => document.documentElement.classList.contains('mb-sph-on'), null, { timeout: 10000 });
+    await clickToolbarItem(page, '#mb-save-to-disk-btn');
+    await page.locator('#sa-sd-save-confirm').waitFor({ state: 'visible', timeout: 15000 });
+    // A pass with the dialog open (a resize asks for one).
+    await page.setViewportSize({ width: 880, height: 900 });
+    await page.evaluate(() => new Promise(r => setTimeout(r, 600)));
+    const got = await page.evaluate(() => {
+        const t = document.getElementById('sa-sd-title');
+        return {
+            pinned: t.classList.contains('mb-sph-target'),
+            position: getComputedStyle(t).position,
+            left: Math.round(t.getBoundingClientRect().left - t.parentElement.getBoundingClientRect().left),
+        };
+    });
+    expect(got).toEqual({ pinned: false, position: 'static', left: 0 });
+});
