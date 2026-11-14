@@ -95,8 +95,8 @@
         "why": "The card then shows the detail prose again instead of the two values one under the other.",
         "edits": [
             {
-                "find": "            _setTipCmp(td, text, cmp);\n            td.dataset.mbFindingTip = '1';",
-                "replace": "            _setTipCmp(td, text, null);\n            td.dataset.mbFindingTip = '1';"
+                "find": "            else _setTipCmp(td, text, cmp);\n            td.dataset.mbFindingTip = '1';",
+                "replace": "            else _setTipCmp(td, text, null);\n            td.dataset.mbFindingTip = '1';"
             }
         ],
         "spec": "tests/fixtures/tooltip-diff.spec.js",

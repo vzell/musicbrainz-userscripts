@@ -2926,6 +2926,94 @@
                          '"Onstage".'
         },
 
+        sa_findings_bb_name_mismatch: {
+            label: 'Find Brucebase event pages named differently from the year page',
+            type: 'checkbox',
+            default: true,
+            description: 'On a Brucebase year table, once ▶ Pages has read an entry\'s page: the year page\'s ' +
+                         'heading and the page\'s title name different things. An ERROR ("Brucebase event page ' +
+                         'named differently from the year page") on the Event cell.'
+        },
+
+        sa_findings_bb_name_variant: {
+            label: 'Find Brucebase event pages that add "(Early)", "(Late)", … to the name',
+            type: 'checkbox',
+            default: true,
+            description: 'On a Brucebase year table, once ▶ Pages has read an entry\'s page: its title is the ' +
+                         'year page\'s heading plus (Early), (Late), (Afternoon), (Evening), (First), (Second), ' +
+                         '(Third), (Morning) or (Soundcheck). A WARNING on the Event cell.'
+        },
+
+        sa_findings_tint_bb_name: {
+            label: 'Highlight Event cells of Brucebase entries whose page is named differently',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint the Event cell light red with a ❌ when the entry\'s page is named differently ' +
+                         'from the year page, light yellow with a ⚠️ when it only adds "(Early)", "(Late)", ….'
+        },
+
+        sa_findings_bb_anchor_date: {
+            label: 'Find Brucebase anchors with another date than their entry',
+            type: 'checkbox',
+            default: true,
+            description: 'On a Brucebase year table: the entry\'s anchor does not start with its date as day, ' +
+                         'month, year ("000472b" on an entry of 1972-05-00). A WARNING on the Event cell. No ' +
+                         'request.'
+        },
+
+        sa_findings_bb_anchor_link: {
+            label: 'Find Brucebase event pages that link another entry of the year page',
+            type: 'checkbox',
+            default: true,
+            description: 'On a Brucebase year table, once ▶ Pages has read an entry\'s page: its "Info & ' +
+                         'Setlist" link names another anchor than the entry\'s, or another year. An ERROR on ' +
+                         'the Event cell.'
+        },
+
+        sa_findings_bb_anchor_postfix: {
+            label: 'Find Brucebase anchors whose letter differs from the event page\'s address',
+            type: 'checkbox',
+            default: true,
+            description: 'On a Brucebase year table: the letter of the entry\'s anchor ("020570a") is not the ' +
+                         'letter after the date in the address of its page ("gig:1970-05-02-…"). A WARNING on ' +
+                         'the Event cell; many rows in the early 1970s. No request.'
+        },
+
+        sa_findings_bb_anchor_shared: {
+            label: 'Find Brucebase anchors used by two entries of a year page',
+            type: 'checkbox',
+            default: true,
+            description: 'On a Brucebase year table: two entries of the page have the same anchor ("000472b" ' +
+                         'twice in 1972), so a link to it reaches only the first. An ERROR on the Event cell ' +
+                         'of both. No request.'
+        },
+
+        sa_findings_tint_bb_anchor: {
+            label: 'Highlight Event cells of Brucebase entries with an anchor problem',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint the Event cell when the entry\'s anchor has another date or letter (light ' +
+                         'yellow, ⚠️), or its page links another entry or two entries share the anchor ' +
+                         '(light red, ❌).'
+        },
+
+        sa_findings_bb_title_spaces: {
+            label: 'Find Brucebase titles with two blanks or a blank before a comma',
+            type: 'checkbox',
+            default: true,
+            description: 'On a Brucebase year table or year listing: the heading, or the title of the entry\'s ' +
+                         'page once ▶ Pages has read it, has two blanks in a row or a blank before a comma. A ' +
+                         'WARNING on the Event cell.'
+        },
+
+        sa_findings_tint_bb_title_spaces: {
+            label: 'Highlight Event cells of Brucebase titles with two blanks or a blank before a comma',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint the Event cell light yellow with a ⚠️ when the heading or the page\'s title has ' +
+                         'two blanks in a row or a blank before a comma.'
+        },
+
         sa_findings_tint_bb_mbev_link: {
             label: 'Highlight MB-Event cells whose Brucebase link differs or is missing',
             type: 'checkbox',
@@ -26847,8 +26935,12 @@
      * MB-Event column compares it with the event's Brucebase link
      * (`_bbMbevAnchorUrl()`).
      *
+     * `raw` is the heading as the wiki writes it, only its ends trimmed
+     * (two blanks in a row stay two): what the name and blank findings read
+     * (`_bbEventChecks()`, org/bbp-parity.org batch 1).
+     *
      * @param {Element} el A child of `#page-content`.
-     * @returns {?{heading: string, link: ?HTMLAnchorElement, anchor: string}} The heading's text, link and anchor name, or `null`.
+     * @returns {?{heading: string, raw: string, link: ?HTMLAnchorElement, anchor: string}} The heading's text, link and anchor name, or `null`.
      */
     function _bbYearEntryHead(el) {
         if (el.tagName !== 'P') return null;
@@ -26859,7 +26951,7 @@
         let named = el.querySelector(':scope > a[name]');
         const prev = el.previousElementSibling;
         if (!named && prev && prev.tagName === 'P' && !_bbText(prev)) named = prev.querySelector(':scope > a[name]');
-        return { heading, link: strong.querySelector('a[href]'), anchor: named ? named.getAttribute('name') || '' : '' };
+        return { heading, raw: _bbRawText(strong), link: strong.querySelector('a[href]'), anchor: named ? named.getAttribute('name') || '' : '' };
     }
 
     /**
@@ -26907,7 +26999,7 @@
         Array.from(content.children).forEach(el => {
             const head = _bbYearEntryHead(el);
             if (head) {
-                cur = { heading: head.heading, link: head.link, anchor: head.anchor, tour, top: el, blocks: [] };
+                cur = { heading: head.heading, raw: head.raw, link: head.link, anchor: head.anchor, tour, top: el, blocks: [] };
                 entries.push(cur);
                 return;
             }
@@ -27162,7 +27254,16 @@
      * the heading as the site writes it. A heading without a date shows as
      * written, in title style.
      *
-     * @param {{heading: string}} entry One entry of `_bbYearEntries()`.
+     * The cell also keeps what the batch 1 findings read
+     * (org/bbp-parity.org; vzell's decision 2: the RAW heading, never the
+     * restyled text), on a hidden `span.mb-bb-ev-data` inside it — NOT on
+     * the `<td>`: Save to Disk keeps a cell's inner markup only, so a mark
+     * on the `<td>` is gone after Load from Disk. `data-mb-bb-raw-heading`,
+     * on a year row `data-mb-bb-anchor` (an entry with `anchor`, '' for
+     * none; a listing row has none), and `data-mb-bb-checks`, the checks
+     * that fail (`_bbEventChecks()`).
+     *
+     * @param {{heading: string, raw: ?string, anchor: ?string}} entry One entry of `_bbYearEntries()`.
      * @param {object}   h          `_bbParseHeading()` of the heading.
      * @param {string}   href       The heading link's href, '' for none.
      * @param {Document} docContext The document the row is built in.
@@ -27185,8 +27286,258 @@
             holder.setAttribute('href', _bbAbsHref(href));
             td.appendChild(holder);
         }
-        if (shown !== entry.heading) _mbSiteTitleTip(td, entry.heading, shown);
+        if (shown !== entry.heading) {
+            _mbSiteTitleTip(td, entry.heading, shown);
+            // The cell's findings are written above this tip, not instead of
+            // it (`_writeFindingAttrs()`, `_findingTipBase()`).
+            td.setAttribute('data-mb-tip-base', td.getAttribute('data-mb-tip-cmp') || JSON.stringify({ t: td.getAttribute('title') || '', c: [] }));
+        }
+        const data = docContext.createElement('span');
+        data.className = 'mb-bb-ev-data';
+        data.hidden = true;
+        data.setAttribute('data-mb-bb-raw-heading', entry.raw || entry.heading);
+        if (typeof entry.anchor === 'string') data.setAttribute('data-mb-bb-anchor', entry.anchor);
+        if (entry.anchorUses > 1) data.setAttribute('data-mb-bb-anchor-uses', String(entry.anchorUses));
+        td.appendChild(data);
+        _bbEventChecksWrite(td);
         return td;
+    }
+
+    // ── The year table's name and anchor checks (org/bbp-parity.org, batch 1) ──
+    //
+    // BruceBaseParser's YEAR-vs-DETAIL checks as findings on the Event cell.
+    // Probe scripts/probe-bb-batch1-findings.py over the mirror of 2026-11-13
+    // (Env: 2026-11-14T11:00+01:00 · petri · Python over bb/2026-11-13 · n/a),
+    // 5,018 entries on 63 year pages, 5,016 event pages read:
+    //   bb-name-mismatch 38 rows (22 of them 1949-64's "87 Randolph Street" /
+    //   "Springsteen Residence"), bb-name-variant 277, bb-anchor-date 1
+    //   (1972-05-00 Mediasound, anchor 000472b), bb-anchor-link 7,
+    //   bb-anchor-postfix 338 (1973: 129), bb-title-spaces 5 (all in event
+    //   page titles). Against BruceParser's reports of the same run: the
+    //   postfix rows are the same 338, the anchor date the same one, the
+    //   titles the same 34; three more there are the false reports its 0.16.0
+    //   fixed, four more here are titles with two blanks, which 0.16.0 keeps.
+    // bb-anchor-shared (vzell, 2026-11-14, after the browser check): 2 rows,
+    // 1972's two Mediasound entries, both with the anchor 000472b.
+    // No request of its own: the event page's part comes with the record
+    // ▶ Pages reads (`_bbEvpRenderCell()`).
+
+    /**
+     * The words an event page's title may add in brackets after a name that
+     * is otherwise the year page's: BruceBaseParser's four and the five
+     * more BruceParser's `eefyp.sh` strips (the mirror has First, Second,
+     * Third and Morning once each).
+     * @type {string[]}
+     */
+    const _BB_NAME_VARIANTS = ['Early', 'Late', 'Afternoon', 'Evening', 'First', 'Second', 'Third', 'Morning', 'Soundcheck'];
+
+    /**
+     * An element's text as written: only its ends trimmed, every blank
+     * inside kept (`_bbText()` makes two blanks one).
+     *
+     * @param {?Element} el
+     * @returns {string}
+     */
+    function _bbRawText(el) {
+        return (el?.textContent || '').replace(/^[ \t\r\n]+|[ \t\r\n]+$/g, '');
+    }
+
+    /**
+     * A year heading or an event page's title as the name check compares
+     * them (BruceBaseParser's `normalizeDetailName()`, BruceParser 0.16.0):
+     * the date, and the rest in upper case with "Stone Pony (The)" written
+     * "The Stone Pony" in each comma part. The heading's " - " after the
+     * date and a letter on the date are left out. Blanks stay as written.
+     *
+     * @param {string} name
+     * @returns {{date: string, rest: string}} `date` '' for a name without one.
+     */
+    function _bbNormName(name) {
+        const m = String(name || '').match(/^(\d{4}-\d\d-\d\d)[a-z]?\s+(?:-\s+)?([\s\S]*)$/);
+        if (!m) return { date: '', rest: String(name || '').toUpperCase() };
+        const rest = m[2].split(',').map((part) => {
+            const a = part.match(/^(\s*)([\s\S]*?)\s*\((The|Le|De)\)(\s*)$/);
+            return a ? `${a[1]}${a[3]} ${a[2]}${a[4]}` : part;
+        }).join(',').toUpperCase();
+        return { date: m[1], rest };
+    }
+
+    /**
+     * Compares a year heading with its event page's title.
+     *
+     * @param {string} heading The heading as written.
+     * @param {string} title   The title as written.
+     * @returns {string} '' when they name the same, the word of
+     *   `_BB_NAME_VARIANTS` the title adds ("Early"), or 'mismatch'.
+     */
+    function _bbNameCheck(heading, title) {
+        const h = _bbNormName(heading);
+        const t = _bbNormName(title);
+        if (h.date === t.date && h.rest === t.rest) return '';
+        if (h.date === t.date) {
+            const word = _BB_NAME_VARIANTS.find(w => t.rest === `${h.rest} (${w.toUpperCase()})`);
+            if (word) return word;
+        }
+        return 'mismatch';
+    }
+
+    /**
+     * Whether a Brucebase title has two blanks in a row or a blank before a
+     * comma.
+     *
+     * @param {string} text The title as written.
+     * @returns {boolean}
+     */
+    function _bbTitleSpaces(text) {
+        return /[ \u00a0]{2}|[ \u00a0],/.test(String(text || ''));
+    }
+
+    /**
+     * Whether a year page covers a year: "1985" its own, "1949-64" the
+     * years 1949 to 1964.
+     *
+     * @param {string} slug The year page's name.
+     * @param {string} year Four digits.
+     * @returns {boolean}
+     */
+    function _bbYearSlugHas(slug, year) {
+        const m = String(slug || '').match(/^(\d{4})(?:-(\d\d))?$/);
+        if (!m) return false;
+        const first = Number(m[1]);
+        const last = m[2] ? Number(m[1].slice(0, 2) + m[2]) : first;
+        return first <= Number(year) && Number(year) <= last;
+    }
+
+    /**
+     * The checks a year row fails, as tokens (the ids of the findings
+     * without "bb-"). Pure: the row's own data, and the event page's once
+     * it is read.
+     *
+     * - `anchor-date`: the anchor does not start with the heading date's
+     *   DDMMYY.
+     * - `anchor-postfix`: the anchor's letter is not the letter after the
+     *   date in the event page's address (BruceParser's rule; the report
+     *   of 2026-11-13 has the same 338 rows).
+     * - `anchor-shared`: another entry of the same year page has the same
+     *   anchor (`uses`, counted by `applyBbYearToTable()`).
+     * - `title-spaces`: the heading, or the event page's title.
+     * - `name-mismatch`, `name-variant`: `_bbNameCheck()`.
+     * - `anchor-link`: the page's "Info & Setlist" link names another
+     *   anchor, or a year page that does not cover the date's year.
+     *
+     * A listing row (`anchor` null) gets `title-spaces` only: its heading
+     * is the listing's, which batch 2 compares.
+     *
+     * @param {{heading: string, anchor: ?string, href: string, uses?: number}} row The
+     *   heading as written, the year page's anchor (null on a listing row),
+     *   the Event link and how many entries of the page have that anchor.
+     * @param {?{title: string, infoHref: string}} page The event page's
+     *   title as written and its "Info & Setlist" href; null while unread.
+     * @returns {string[]}
+     */
+    function _bbEventChecks(row, page) {
+        const out = [];
+        const heading = String(row.heading || '');
+        const d = heading.match(/^(\d{4})-(\d\d)-(\d\d)/);
+        const yearRow = typeof row.anchor === 'string';
+        const anchor = row.anchor || '';
+        if (yearRow && d && anchor) {
+            if (!anchor.startsWith(d[3] + d[2] + d[1].slice(2))) out.push('anchor-date');
+            const u = String(row.href || '').match(/\/[a-z]+:\d{4}-\d\d-\d\d([a-z])?-/);
+            if (u && anchor.replace(/\d/g, '') !== (u[1] || '')) out.push('anchor-postfix');
+        }
+        if (yearRow && anchor && row.uses > 1) out.push('anchor-shared');
+        const title = page ? String(page.title || '') : '';
+        if (_bbTitleSpaces(heading) || _bbTitleSpaces(title)) out.push('title-spaces');
+        if (yearRow && d && page) {
+            if (title) {
+                const res = _bbNameCheck(heading, title);
+                if (res) out.push(res === 'mismatch' ? 'name-mismatch' : 'name-variant');
+            }
+            const info = String(page.infoHref || '').match(/^(?:https?:\/\/[^/]+)?\/([\w-]+)#(\w+)$/);
+            if (info && ((anchor && info[2] !== anchor) || !_bbYearSlugHas(info[1], d[1]))) out.push('anchor-link');
+        }
+        return out;
+    }
+
+    /**
+     * An Event cell's data carrier (`span.mb-bb-ev-data`, hidden, written by
+     * `_bbYearEventCell()`): inside the cell, so a clone, a source row and a
+     * row loaded from disk all have it.
+     *
+     * @param {?Element} cell The Event cell.
+     * @returns {?HTMLElement}
+     */
+    function _bbEvData(cell) {
+        return cell ? cell.querySelector(':scope > span.mb-bb-ev-data') : null;
+    }
+
+    /**
+     * One datum of an Event cell's carrier.
+     *
+     * @param {?Element} cell The Event cell.
+     * @param {string}   name `raw-heading`, `anchor`, `anchor-uses`, `raw-title`, `info-href` or `checks`.
+     * @returns {string} '' when the cell has none.
+     */
+    function _bbEvDatum(cell, name) {
+        const d = _bbEvData(cell);
+        return d ? d.getAttribute(`data-mb-bb-${name}`) || '' : '';
+    }
+
+    /**
+     * Writes an Event cell's `data-mb-bb-checks` from its own data
+     * (`data-mb-bb-raw-heading`, `data-mb-bb-anchor`, its link) and, when
+     * given, the event page's (`data-mb-bb-raw-title`,
+     * `data-mb-bb-info-href`), all on the cell's carrier (`_bbEvData()`).
+     *
+     * @param {HTMLTableCellElement} td The Event cell.
+     * @param {?{rawTitle: string, infoHref: string}} [view] `_bbEvpView()`'s
+     *   record once the page is read; omitted: what the cell already has.
+     * @returns {boolean} Whether the checks changed.
+     */
+    function _bbEventChecksWrite(td, view = null) {
+        const d = _bbEvData(td);
+        if (!d) return false;
+        if (view) {
+            d.setAttribute('data-mb-bb-raw-title', view.rawTitle || '');
+            d.setAttribute('data-mb-bb-info-href', view.infoHref || '');
+        }
+        const a = td.querySelector('a[href]');
+        const read = d.hasAttribute('data-mb-bb-raw-title');
+        const checks = _bbEventChecks({
+            heading: d.getAttribute('data-mb-bb-raw-heading') || '',
+            anchor: d.getAttribute('data-mb-bb-anchor'),
+            href: a ? a.getAttribute('href') || '' : '',
+            uses: Number(d.getAttribute('data-mb-bb-anchor-uses')) || 1,
+        }, read ? { title: d.getAttribute('data-mb-bb-raw-title'), infoHref: d.getAttribute('data-mb-bb-info-href') } : null).join(' ');
+        const was = d.getAttribute('data-mb-bb-checks') || '';
+        if (checks) d.setAttribute('data-mb-bb-checks', checks);
+        else d.removeAttribute('data-mb-bb-checks');
+        return was !== checks;
+    }
+
+    /**
+     * Whether an Event cell fails a check (`_bbEventChecks()`'s token).
+     *
+     * @param {Element} cell
+     * @param {string}  token
+     * @returns {boolean}
+     */
+    function _bbHasCheck(cell, token) {
+        return _bbEvDatum(cell, 'checks').split(' ').includes(token);
+    }
+
+    /**
+     * The two names of a row as the name check compares them, for the
+     * finding's card: "1967-08-00 PRIVATE PROPERTY, HOWELL, NJ".
+     *
+     * @param {Element} cell The Event cell.
+     * @returns {{la: string, lb: string, a: string, b: string}}
+     */
+    function _bbNameCompare(cell) {
+        const h = _bbNormName(_bbEvDatum(cell, 'raw-heading'));
+        const t = _bbNormName(_bbEvDatum(cell, 'raw-title'));
+        return { la: 'Year page', lb: 'Event page', a: `${h.date} ${h.rest}`.trim(), b: `${t.date} ${t.rest}`.trim() };
     }
 
     // ── The Brucebase MB-Event column ───────────────────────────────────────
@@ -27298,7 +27649,8 @@
     /**
      * The MB-Event cell of a Brucebase year row, built with the row: the
      * type's glyph, not looked up yet. What the lookup needs is on the cell
-     * as data, so it survives clones and a save to disk: the row's key (the
+     * as data, so it survives clones and — through the cell record's `bb`
+     * (`_bbDiskCellData()`, `_bbRestoreDiskCell()`) — a save to disk: the row's key (the
      * entry page, or its heading), type, date, its anchor URL and the name
      * query.
      *
@@ -27744,6 +28096,10 @@
             const td = cells.values().next().value;
             const st = td.dataset.mbBbevState;
             if (st === 'error' && !(withFailed || user)) return;
+            // Answered in a file loaded from disk (`_bbRestoreDiskCell()`):
+            // our own answers may not have it, the cell does. Only a press
+            // asks again.
+            if (st === 'done' && !user) return;
             misses.push({ key, date: td.dataset.mbBbevDate || '', anchor: td.dataset.mbBbevAnchor || '', q: td.dataset.mbBbevQ || '' });
         });
         if (!misses.length || (!user && !_bbMbevAuto())) {
@@ -28114,7 +28470,7 @@
 
     /**
      * The four cells of a row, empty until its page is read: what they need
-     * is on each as data, so it survives clones and a save to disk — the
+     * is on each as data, so it survives clones and (as the cell record's `bb`, `_bbDiskCellData()`) a save to disk — the
      * row's key (the Event link: the entry's page, or on a listing the show
      * on its year page), the column, the state (cold, or none for an entry
      * with no page of its own).
@@ -28140,8 +28496,11 @@
      * but those every page has (`_BB_EVP_PLAIN_TABS`), the images by kind,
      * the scheduled start ("20:00"; '' for "time not known").
      *
+     * `rawTitle` and `infoHref` are for the Event cell's name and anchor
+     * checks (`_bbEventChecksWrite()`).
+     *
      * @param {object} data - `_dpParseBb()`'s record.
-     * @returns {{stage: string, content: string[], images: string[], start: string}}
+     * @returns {{stage: string, content: string[], images: string[], start: string, rawTitle: string, infoHref: string}}
      */
     function _bbEvpView(data) {
         const field = n => ((data.fields || []).find(f => f[0] === n) || [])[1] || '';
@@ -28155,6 +28514,8 @@
             content: field('On the page').split(' · ').filter(t => t && !_BB_EVP_PLAIN_TABS.has(t)),
             images: Array.from(kinds, ([k, n]) => `${k} ${n}`),
             start: /^time not known/i.test(start) ? '' : start,
+            rawTitle: data.bbRawTitle || '',
+            infoHref: data.bbInfoHref || '',
         };
     }
 
@@ -28216,6 +28577,13 @@
     }
 
     /**
+     * The findings of the Event cell that need the event's page
+     * (`_bbEventChecks()`; in `_LATE_FINDING_IDS`).
+     * @type {string[]}
+     */
+    const _BB_EVENT_CHECK_LATE_IDS = ['bb-name-mismatch', 'bb-name-variant', 'bb-anchor-link', 'bb-title-spaces'];
+
+    /**
      * Rewrites one cell from what is known (`_bbEvpMem`; `state` for a cell
      * still waiting), and clears its row's filter text cache.
      *
@@ -28235,12 +28603,18 @@
             const was = td.hasAttribute('data-mb-bbevp-onstage');
             const now = !!(rec && rec.view && rec.view.content.includes('Onstage'));
             td.toggleAttribute('data-mb-bbevp-onstage', now);
+            // The name and anchor checks (org/bbp-parity.org batch 1): the
+            // page's title and "Info & Setlist" link go on the row's Event
+            // cell, live and source, once per row (here, on Content). Found
+            // by its carrier: a row loaded from disk has no cell classes.
+            const evData = rec && rec.view && td.parentElement ? td.parentElement.querySelector('td > span.mb-bb-ev-data') : null;
+            const checksChanged = evData ? _bbEventChecksWrite(evData.parentElement, rec.view) : false;
             // A source row the filter hides is read too: it names its table,
             // so its stamp is made and the filter can bring it back.
-            if (was !== now) {
+            if (was !== now || checksChanged) {
                 const live = td.isConnected ? td.closest('table.tbl') : null;
                 const table = live || Array.from(document.querySelectorAll('table.tbl')).find(t => t.querySelector('td.mb-bbevp-cell'));
-                if (table) _queueFindingsRestamp(td.parentElement, ['bb-onstage-tab'], live ? null : table);
+                if (table) _queueFindingsRestamp(td.parentElement, ['bb-onstage-tab', ..._BB_EVENT_CHECK_LATE_IDS], live ? null : table);
             }
         }
         const row = td.parentElement;
@@ -28909,6 +29283,11 @@
         }
         const content = docContext.getElementById('page-content');
         const entries = content ? _bbYearEntries(content) : [];
+        // How often the page uses each anchor (`bb-anchor-shared`): a page's
+        // own matter, so counted here, per converted page.
+        const anchorUses = new Map();
+        entries.forEach((e) => { if (e.anchor) anchorUses.set(e.anchor, (anchorUses.get(e.anchor) || 0) + 1); });
+        entries.forEach((e) => { e.anchorUses = e.anchor ? anchorUses.get(e.anchor) : 0; });
         if (entries.length === 0) {
             // Said out loud, like applyBbSongsToTable(): a page this function
             // already converted is the one legitimate silent case.
@@ -29036,7 +29415,7 @@
                 if (!/^(?:https?:\/\/brucebase\.wikidot\.com)?\/(?:\d{4}|1949-64)#\d{6}[a-z]?$/i.test(href)) return;
                 const em = li.querySelector(':scope > span em, :scope > em');
                 const note = em ? _bbText(em).replace(/^\(\s*/, '').replace(/\s*\)$/, '') : '';
-                entries.push({ heading: _bbText(a), href, note, tour });
+                entries.push({ heading: _bbText(a), raw: _bbRawText(a), href, note, tour });
                 any = true;
             });
             if (any) {
@@ -29061,7 +29440,7 @@
     function _bbYearListBuildRow(entry, docContext) {
         const h = _bbParseHeading(entry.heading, '');
         const tr = docContext.createElement('tr');
-        const ev = _bbYearEventCell({ heading: entry.heading }, h, entry.href, docContext);
+        const ev = _bbYearEventCell({ heading: entry.heading, raw: entry.raw }, h, entry.href, docContext);
         const a = ev.querySelector('a');
         if (a) a.className = 'mb-bb-show-link';
         tr.appendChild(ev);
@@ -31950,7 +32329,7 @@
      *    draw at paint time (org/springsteen-marriage.org, Phase 1).
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 29;
+    const _DP_PARSER_VERSION = 30;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -37718,6 +38097,14 @@
         if (!content) return null;
         const data = _dpEmpty();
         data.title = _dpText(doc.getElementById('page-title') ? doc.getElementById('page-title').textContent : '');
+        // The title as written (two blanks stay two) and the "Info & Setlist"
+        // link back to the year page: what the year table's name and anchor
+        // findings compare (`_bbEventChecks()`; BruceBaseParser's
+        // `findInfoSetlistLink()`).
+        data.bbRawTitle = _bbRawText(doc.getElementById('page-title'));
+        const infoA = Array.from(content.querySelectorAll('a[href]'))
+            .find(a => /^\/\d[\w-]*#[A-Za-z0-9]+$/.test(a.getAttribute('href') || '') && /info/i.test(a.textContent));
+        data.bbInfoHref = infoA ? infoA.getAttribute('href') : '';
         data.images = _bbPageImages(content, url);
         // The venue's page, from the "Info & Setlist | Venue" line under
         // the Scheduled block (debug/bb-event-detail.html): what the Venue
@@ -67185,7 +67572,22 @@
             }
         });
 
-        (page || document.body).querySelectorAll('h2, h3').forEach(el => add(el, false));
+        // A host without a page element is searched from <body>, where our
+        // own floating panels live too: a heading inside one (the Save to
+        // Disk dialog's title on brucebase.wikidot.com, 2026-11-14: pinned
+        // and capped, it was pushed aside and wrapped) is never a page
+        // heading. MusicBrainz and the hosts with a root of ours are
+        // searched inside it, as before.
+        const floats = el => {
+            for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+                const pos = getComputedStyle(p).position;
+                if (pos === 'fixed' || pos === 'absolute') return true;
+            }
+            return false;
+        };
+        (page || document.body).querySelectorAll('h2, h3').forEach((el) => {
+            if (page || !floats(el)) add(el, false);
+        });
         _sphContentBodies().forEach(el => add(el, false, 'body'));
         document.querySelectorAll('table.tbl').forEach(el => add(el, false, 'table'));
 
@@ -72945,6 +73347,103 @@
             test: cell => cell.hasAttribute('data-mb-bbevp-onstage'),
             tint: _findingTintSetting('sa_findings_tint_bb_onstage_tab'),
         },
+        // org/bbp-parity.org batch 1 (vzell, 2026-11-14): BruceBaseParser's
+        // year-page checks, on the Event cell of the year table. Each reads
+        // the cell's `data-mb-bb-checks`, on its hidden carrier
+        // `span.mb-bb-ev-data` (`_bbEventChecks()`: written
+        // with the row, and again — live and source — once ▶ Pages has read
+        // the entry's page), from the RAW heading and title, never the
+        // restyled text. The first four need the page: `_LATE_FINDING_IDS`.
+        {
+            id: 'bb-name-mismatch', level: 'error', glyph: '≠', scope: 'cell',
+            label: 'Brucebase event page named differently from the year page',
+            tip: 'The year page\'s heading and the title of the entry\'s own page name different things ("PRIVATE PROPERTY, HOWELL, NJ" on the year page, "Unknown Location, Howell, NJ" on the event page). Compared as written, in capitals, "Stone Pony (The)" read as "The Stone Pony"; two blanks in a row count as a difference. Known once ▶ Pages has read the entry\'s page. One of the two pages needs the edit.',
+            enabled: () => !!_isBbHost && Lib.settings.sa_findings_bb_name_mismatch !== false,
+            cols: name => name === 'Event',
+            rowGate: row => !!row.querySelector('span.mb-bb-ev-data[data-mb-bb-checks]'),
+            test: cell => _bbHasCheck(cell, 'name-mismatch'),
+            detail: cell => `Year page "${_bbEvDatum(cell, 'raw-heading')}", event page "${_bbEvDatum(cell, 'raw-title')}".`,
+            compare: cell => _bbNameCompare(cell),
+            tint: _findingTintSetting('sa_findings_tint_bb_name'),
+        },
+        {
+            id: 'bb-anchor-link', level: 'error', glyph: '⚓', scope: 'cell',
+            label: 'Brucebase event page links another entry of the year page',
+            tip: 'The "Info & Setlist" link on the entry\'s own page does not lead back to this entry: it names another anchor, or a year page that does not hold the entry\'s date. Known once ▶ Pages has read the entry\'s page. The page to edit is the one the row links.',
+            enabled: () => !!_isBbHost && Lib.settings.sa_findings_bb_anchor_link !== false,
+            cols: name => name === 'Event',
+            rowGate: row => !!row.querySelector('span.mb-bb-ev-data[data-mb-bb-checks]'),
+            test: cell => _bbHasCheck(cell, 'anchor-link'),
+            detail: cell => `This entry's anchor is "${_bbEvDatum(cell, 'anchor')}", its page links "${_bbEvDatum(cell, 'info-href')}".`,
+            tint: _findingTintSetting('sa_findings_tint_bb_anchor'),
+        },
+        // vzell, 2026-11-14: one anchor on two entries of a year page (1972's
+        // 000472b). Both rows: the page does not say which of them is wrong.
+        // Known with the row, no request.
+        {
+            id: 'bb-anchor-shared', level: 'error', glyph: '⧉', scope: 'cell',
+            label: 'Brucebase anchor used by two entries of the year page',
+            tip: 'Another entry of the same year page has the same anchor ("000472b" on 1972-04-00 and on 1972-05-00). A link to that anchor, from an event page or from MusicBrainz, reaches only the first of them. Both entries are flagged: one of the two anchors is to be changed on the year page, and the "Info & Setlist" link of that entry\'s page with it.',
+            enabled: () => !!_isBbHost && Lib.settings.sa_findings_bb_anchor_shared !== false,
+            cols: name => name === 'Event',
+            rowGate: row => !!row.querySelector('span.mb-bb-ev-data[data-mb-bb-checks]'),
+            test: cell => _bbHasCheck(cell, 'anchor-shared'),
+            detail: cell => `The anchor "${_bbEvDatum(cell, 'anchor')}" is on ${_bbEvDatum(cell, 'anchor-uses')} entries of this year page.`,
+            tint: _findingTintSetting('sa_findings_tint_bb_anchor'),
+        },
+        {
+            id: 'bb-name-variant', level: 'warn', glyph: '≈', scope: 'cell',
+            label: 'Brucebase event page adds "(Early)", "(Late)", … to the name',
+            tip: 'The entry\'s own page is named as the year page\'s heading plus a show of the day in brackets: (Early), (Late), (Afternoon), (Evening), (First), (Second), (Third), (Morning) or (Soundcheck). The wiki does this for several shows on one date, so it is a note, not an error. Known once ▶ Pages has read the entry\'s page.',
+            enabled: () => !!_isBbHost && Lib.settings.sa_findings_bb_name_variant !== false,
+            cols: name => name === 'Event',
+            rowGate: row => !!row.querySelector('span.mb-bb-ev-data[data-mb-bb-checks]'),
+            test: cell => _bbHasCheck(cell, 'name-variant'),
+            detail: cell => `The event page is "${_bbEvDatum(cell, 'raw-title')}".`,
+            tint: _findingTintSetting('sa_findings_tint_bb_name'),
+        },
+        {
+            id: 'bb-anchor-date', level: 'warn', glyph: '#', scope: 'cell',
+            label: 'Brucebase anchor with another date than its entry',
+            tip: 'The year page\'s anchor for this entry does not start with the entry\'s date as day, month, year ("1972-05-00" should be "000572"; the page has "000472b"). Links to the entry from other pages and from MusicBrainz use the anchor. The page to edit is the year page.',
+            enabled: () => !!_isBbHost && Lib.settings.sa_findings_bb_anchor_date !== false,
+            cols: name => name === 'Event',
+            rowGate: row => !!row.querySelector('span.mb-bb-ev-data[data-mb-bb-checks]'),
+            test: cell => _bbHasCheck(cell, 'anchor-date'),
+            detail: cell => `The anchor is "${_bbEvDatum(cell, 'anchor')}".`,
+            tint: _findingTintSetting('sa_findings_tint_bb_anchor'),
+        },
+        {
+            id: 'bb-anchor-postfix', level: 'warn', glyph: 'ᵃ', scope: 'cell',
+            label: 'Brucebase anchor letter differs from the event page\'s address',
+            tip: 'Several entries on one date get a letter: on the year page\'s anchor ("020570a") and after the date in the address of the entry\'s page ("gig:1970-05-02a-…"). Here the two differ, most often because the address has no letter. Common in the early 1970s (338 entries in November 2026).',
+            enabled: () => !!_isBbHost && Lib.settings.sa_findings_bb_anchor_postfix !== false,
+            cols: name => name === 'Event',
+            rowGate: row => !!row.querySelector('span.mb-bb-ev-data[data-mb-bb-checks]'),
+            test: cell => _bbHasCheck(cell, 'anchor-postfix'),
+            detail: (cell) => {
+                const a = cell.querySelector('a[href]');
+                const u = a ? (a.getAttribute('href') || '').match(/\/[a-z]+:\d{4}-\d\d-\d\d([a-z])?-/) : null;
+                return `The anchor is "${_bbEvDatum(cell, 'anchor')}", the address has ${u && u[1] ? `"${u[1]}"` : 'no letter'}.`;
+            },
+            tint: _findingTintSetting('sa_findings_tint_bb_anchor'),
+        },
+        {
+            id: 'bb-title-spaces', level: 'warn', glyph: '⎵', scope: 'cell',
+            label: 'Brucebase title with two blanks or a blank before a comma',
+            tip: 'The year page\'s heading, or the title of the entry\'s own page (once ▶ Pages has read it), has two blanks in a row or a blank before a comma: "Summer Stage,  Asbury Park". A browser shows one blank, so it is easy to miss; lists and searches that compare titles see two.',
+            enabled: () => !!_isBbHost && Lib.settings.sa_findings_bb_title_spaces !== false,
+            cols: name => name === 'Event',
+            rowGate: row => !!row.querySelector('span.mb-bb-ev-data[data-mb-bb-checks]'),
+            test: cell => _bbHasCheck(cell, 'title-spaces'),
+            detail: (cell) => {
+                const mark = s => s.replace(/[ \u00a0]{2,}/g, m => '␣'.repeat(m.length)).replace(/[ \u00a0],/g, '␣,');
+                const h = _bbEvDatum(cell, 'raw-heading');
+                const t = _bbEvDatum(cell, 'raw-title');
+                return [_bbTitleSpaces(h) ? `Year page "${mark(h)}"` : '', _bbTitleSpaces(t) ? `Event page "${mark(t)}"` : ''].filter(Boolean).join(', ') + ' (␣ marks the blanks).';
+            },
+            tint: _findingTintSetting('sa_findings_tint_bb_title_spaces'),
+        },
         {
             id: 'pending', level: 'warn', glyph: '⏳', scope: 'row',
             label: 'Pending edits',
@@ -73183,7 +73682,10 @@
      *   - `title`: the findings' labels, only on a cell with no tooltip of
      *     its own and no family flag (`data-mb-finding-tip` marks one this
      *     function wrote), each followed by the finding's `detail` for this
-     *     cell when it has one;
+     *     cell when it has one; a cell that names its own tooltip as a base
+     *     (`data-mb-tip-base`, the Brucebase Event cell's "As written on the
+     *     site") gets the findings' lines above that text, and the text
+     *     alone again when the findings go (`_findingTipBase()`);
      *   - `data-mb-tip-cmp`: with that title, the findings' `compare` values,
      *     so the rich card shows the label and the two values one under the
      *     other instead of the detail prose (`_setTipCmp()`).
@@ -73201,10 +73703,12 @@
             delete td.dataset.mbFinding;
             delete td.dataset.mbFindingInline;
             if (td.dataset.mbFindingTip) {
+                const base = _findingTipBase(td);
                 td.removeAttribute('title');
                 td.removeAttribute('data-mb-dp-saved-title'); // parked by a preview card
                 td.removeAttribute('data-mb-tip-cmp');
                 delete td.dataset.mbFindingTip;
+                if (base) _setTipCmp(td, base.t, base.c);
             }
             return;
         }
@@ -73223,10 +73727,35 @@
         // or deliberately none — a disk record whose tooltip was not a string).
         // A title a preview card parked (`_dpStashTitles()`) is still the
         // cell's title.
-        if (!familyPainted && (!(td.hasAttribute('title') || td.hasAttribute('data-mb-dp-saved-title')) || td.dataset.mbFindingTip)) {
+        const base = _findingTipBase(td);
+        if (!familyPainted && (base || !(td.hasAttribute('title') || td.hasAttribute('data-mb-dp-saved-title')) || td.dataset.mbFindingTip)) {
             const { text, cmp } = _findingTitle(ids, details, compares);
-            _setTipCmp(td, text, cmp);
+            // The base's comparisons name their lines by index: they move
+            // down by the findings' lines (one line per finding).
+            if (base) _setTipCmp(td, `${text}\n${base.t}`, [...cmp, ...base.c.map(c => ({ ...c, at: c.at + ids.length }))]);
+            else _setTipCmp(td, text, cmp);
             td.dataset.mbFindingTip = '1';
+        }
+    }
+
+    /**
+     * A cell's own tooltip that its findings are written above
+     * (`data-mb-tip-base`: `{t: text, c: comparisons}`, `_setTipCmp()`'s
+     * arguments). Opt-in: only a cell that carries the attribute — the
+     * Brucebase Event cell, whose "As written on the site" tip is on nearly
+     * every row, so its findings would otherwise never say what they found.
+     *
+     * @param {Element} td
+     * @returns {?{t: string, c: Array<object>}} null for a cell without one.
+     */
+    function _findingTipBase(td) {
+        const raw = td.getAttribute('data-mb-tip-base');
+        if (!raw) return null;
+        try {
+            const b = JSON.parse(raw);
+            return b && typeof b.t === 'string' ? { t: b.t, c: Array.isArray(b.c) ? b.c : [] } : null;
+        } catch (_) {
+            return null;
         }
     }
 
@@ -107671,10 +108200,13 @@ a { color: #1565c0; }`;
      * `_applyNoWorkFlag()`) travels as `workFlag` alone — its tooltip is a
      * fixed text that `_restoreNoWorkFlag()` re-supplies.
      *
+     * A Brucebase cell's identity (`bb`, see `_bbDiskCellData()`) is on the
+     * `<td>` too; `_bbRestoreDiskCell()` is its reader.
+     *
      * @param {HTMLTableCellElement} cell
      * @returns {{html: string, colSpan: number, rowSpan: number, mbid?: (string|null), relDone?: boolean,
      *            lenFlag?: string, lenTip?: string, lenCmp?: Array<object>, videoFlag?: string, videoTip?: string,
-     *            workFlag?: string}}
+     *            workFlag?: string, bb?: object}}
      */
     function _buildDiskCellData(cell) {
         const data = {
@@ -107709,7 +108241,106 @@ a { color: #1565c0; }`;
             const st = cell.dataset.recof;
             if (st === 'has' || st === 'none' || st === 'suggested') data.recofState = st;
         }
+        const bb = _bbDiskCellData(cell);
+        if (bb) data.bb = bb;
         return data;
+    }
+
+    /**
+     * What a Brucebase table cell keeps on its `<td>`, for a save to disk
+     * (vzell, 2026-11-14: a year saved with 39 errors came back with 3 — the
+     * MB-Event column's findings, its ▼ MB button and ▶ Pages were gone,
+     * because a saved cell is its inner markup only). Four kinds:
+     *
+     * - `ev`: an MB-Event cell (`_bbMbevCell()`): the lookup's key, type,
+     *   date, anchor and query; when answered also the event's MBID, its
+     *   Brucebase links and the other events linking the anchor, which the
+     *   `bb-mbev-link-*` findings read. Only a SETTLED answer is kept.
+     * - `evp`: a cell of the event-page columns (`_bbEvpCells()`): column,
+     *   key, whether its page was read, and the "Onstage" mark.
+     * - `event`: the Event cell (its class).
+     * - `date`: a Date cell with a comma after its date (`bb-date-comma`).
+     *
+     * @param {HTMLTableCellElement} cell
+     * @returns {?object} null for any other cell.
+     */
+    function _bbDiskCellData(cell) {
+        const ds = cell.dataset;
+        if (cell.classList.contains('mb-bbev-cell')) {
+            const out = { k: 'ev', key: ds.mbBbevKey || '', type: ds.mbBbevType || '', date: ds.mbBbevDate || '', anchor: ds.mbBbevAnchor || '', q: ds.mbBbevQ || '' };
+            if (ds.mbBbevState === 'done') {
+                out.done = true;
+                if (ds.mbBbevMbid) out.mbid = ds.mbBbevMbid;
+                if (ds.mbBbevLinks) out.links = ds.mbBbevLinks;
+                if (ds.mbBbevAnchorEvents) out.anchorEvents = ds.mbBbevAnchorEvents;
+            }
+            return out;
+        }
+        if (cell.classList.contains('mb-bbevp-cell')) {
+            const st = ds.mbBbevpState;
+            const out = { k: 'evp', col: ds.mbBbevpCol || '', key: ds.mbBbevpKey || '', state: st === 'done' || st === 'none' ? st : 'cold' };
+            if (cell.hasAttribute('data-mb-bbevp-onstage')) out.onstage = true;
+            return out;
+        }
+        if (cell.classList.contains('mb-bb-event-cell')) return { k: 'event' };
+        if (ds.mbBbDateComma === '1') return { k: 'date', entry: ds.mbBbEntry || '' };
+        return null;
+    }
+
+    /**
+     * Re-marks a hydrated Brucebase cell from its saved record (`bb`,
+     * written by `_bbDiskCellData()`). A saved file is user-supplied data:
+     * only the known kinds and values are accepted, a text is cut at 500
+     * characters, a key must be a Brucebase address (the event-page columns
+     * REQUEST their key) or an MB-Event cell's "heading:…", an MBID must
+     * look like one. A cell saved while it waited comes back not asked, with
+     * the markup of one.
+     *
+     * @param {HTMLTableCellElement} td - The reconstructed cell.
+     * @param {Object} cellData - Its saved record.
+     * @returns {void}
+     */
+    function _bbRestoreDiskCell(td, cellData) {
+        const bb = cellData && cellData.bb;
+        if (!bb || typeof bb !== 'object') return;
+        const str = v => (typeof v === 'string' ? v.slice(0, 500) : '');
+        const page = v => /^https?:\/\/brucebase\.wikidot\.com\//.test(str(v));
+        const mbid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
+        if (bb.k === 'ev') {
+            const key = str(bb.key);
+            if (!page(key) && !key.startsWith('heading:')) return;
+            td.classList.add('mb-bbev-cell');
+            td.dataset.mbBbevKey = key;
+            td.dataset.mbBbevType = /^[a-z]+$/.test(str(bb.type)) ? bb.type : '';
+            td.dataset.mbBbevDate = /^\d{4}(?:-\d\d){0,2}$/.test(str(bb.date)) ? bb.date : '';
+            td.dataset.mbBbevAnchor = str(bb.anchor);
+            td.dataset.mbBbevQ = str(bb.q);
+            if (bb.done === true) {
+                td.dataset.mbBbevState = 'done';
+                if (mbid.test(str(bb.mbid))) td.dataset.mbBbevMbid = bb.mbid;
+                const ids = str(bb.anchorEvents).split(' ').filter(id => mbid.test(id));
+                if (str(bb.links)) td.dataset.mbBbevLinks = str(bb.links);
+                if (ids.length) td.dataset.mbBbevAnchorEvents = ids.join(' ');
+            } else {
+                td.dataset.mbBbevState = 'pending';
+                td.innerHTML = _bbMbevInner(td, null, 'pending');
+            }
+        } else if (bb.k === 'evp') {
+            if (!_BB_EVP_COLS.includes(bb.col)) return;
+            const key = page(bb.key) ? str(bb.key) : '';
+            td.classList.add('mb-bbevp-cell');
+            td.dataset.mbBbevpCol = bb.col;
+            if (key) td.dataset.mbBbevpKey = key;
+            const st = !key ? 'none' : bb.state === 'done' || bb.state === 'none' ? bb.state : 'cold';
+            td.dataset.mbBbevpState = st;
+            if (st === 'cold') td.innerHTML = '';
+            if (st === 'done' && bb.col === 'Content' && bb.onstage === true) td.setAttribute('data-mb-bbevp-onstage', '');
+        } else if (bb.k === 'event') {
+            td.classList.add('mb-bb-event-cell');
+        } else if (bb.k === 'date') {
+            td.dataset.mbBbDateComma = '1';
+            td.dataset.mbBbEntry = str(bb.entry);
+        }
     }
 
     /**
@@ -163615,6 +164246,7 @@ a { color: #1565c0; }`;
                             _restoreVideoMediumFlag(td, cellData);
                             _recOfRestoreCell(td, cellData);
                             _restoreNoWorkFlag(td, cellData);
+                            _bbRestoreDiskCell(td, cellData);
                             tr.appendChild(td);
                         });
 
@@ -163780,6 +164412,7 @@ a { color: #1565c0; }`;
                         _restoreVideoMediumFlag(td, cellData);
                         _recOfRestoreCell(td, cellData);
                         _restoreNoWorkFlag(td, cellData);
+                        _bbRestoreDiskCell(td, cellData);
                         if (_beforeFp !== null) {
                             const _afterFp = _caaArtDebugFingerprint(td.innerHTML);
                             Lib.debug('cache',
@@ -178862,7 +179495,7 @@ a { color: #1565c0; }`;
      * Relationships column (`rel-multi-site`). Each is re-stamped per row
      * through `_queueFindingsRestamp()`.
      */
-    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-site', 'bb-mbev-link-mismatch', 'bb-mbev-link-missing', 'sl-double-utf8', 'bb-onstage-tab'];
+    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-site', 'bb-mbev-link-mismatch', 'bb-mbev-link-missing', 'sl-double-utf8', 'bb-onstage-tab', ..._BB_EVENT_CHECK_LATE_IDS];
 
     /**
      * Queues a re-stamp of a row whose late data (`_LATE_FINDING_IDS`) has
@@ -186594,6 +187227,18 @@ a { color: #1565c0; }`;
              * @returns {string[]}
              */
             bbEvpStageLines: s => _bbEvpStageLines(s),
+
+            /**
+             * The year table's name and anchor checks (`_bbEventChecks()`),
+             * pure: the tokens a row fails.
+             *
+             * @param {{heading: string, anchor: ?string, href: string}} row
+             * @param {?{title: string, infoHref: string}} page
+             * @returns {string[]}
+             */
+            bbEventChecks: (row, page) => _bbEventChecks(row, page),
+            /** A cell re-marked from a saved record's `bb` (`_bbRestoreDiskCell()`): what a file may set. */
+            bbRestoreDiskCell: (td, cellData) => _bbRestoreDiskCell(td, cellData),
 
             /**
              * Phase 16 batch 3: the readers of the stats, On The Tracks and
