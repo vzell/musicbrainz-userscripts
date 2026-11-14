@@ -4,9 +4,29 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1796 versions; the month pages hold all of them.
+This page shows the newest 100 of 1798 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1627 — 2026-11-14
+
+**🚀 Feature**
+
+- Brucebase year pages: a seventh finding of 9.99.1626's family, ❌ "Brucebase anchor used by two entries of the year page". Two entries of one year page have the same anchor ("000472b" on 1972-04-00 and on 1972-05-00), so a link to it, from an event page or from MusicBrainz, reaches only the first. Both rows are flagged, with the table and without any request. Its switch is in ⚙️ Settings → ⚠️ Findings; the tint is the anchor family's.
+
+**🐛 Fix**
+
+- Brucebase year pages: a table saved with Save to Disk came back with most of its errors gone (1972: 39 saved, 3 loaded). The MB-Event column's answers, the columns filled by ▶ Pages and both header buttons were not in the file. They are now: a loaded year shows the same findings as the saved one, the ▼ MB and ▶ Pages buttons are back, and nothing is asked again. A file saved before this update loads as before.
+- Brucebase, springsteenlyrics.com, jungleland.it, brucespringsteen.it: the title of the Save to Disk dialog ("Save Table Data") stood pushed aside and wrapped when the table was wider than the window. The sticky page headers took it for a heading of the page.
+
+
+## 9.99.1626 — 2026-11-14
+
+**🚀 Feature**
+
+- Brucebase year pages: six new findings on the Event column, the checks BruceBaseParser made on a year page. Two need no request and show with the table: ⚠️ "Brucebase anchor with another date than its entry" (the anchor is not the date as day, month, year: "000472b" on an entry of 1972-05-00) and ⚠️ "Brucebase anchor letter differs from the event page's address" (several entries on one date: the letter on the anchor against the letter after the date in the address; common in the early 1970s). The others show once ▶ Pages has read an entry's page, with no request of their own: ❌ "Brucebase event page named differently from the year page", ⚠️ "Brucebase event page adds (Early), (Late), … to the name" (also Afternoon, Evening, First, Second, Third, Morning, Soundcheck), ❌ "Brucebase event page links another entry of the year page" (its "Info & Setlist" link), and ⚠️ "Brucebase title with two blanks or a blank before a comma" (the heading at once, the page's title once read; year listings too). Names are compared as the wiki writes them, in capitals, with "Stone Pony (The)" read as "The Stone Pony" — never the text in MusicBrainz title style. Each has a row in the ⚠️ / ❌ menus and the 📊 dropdown, tints its Event cell, says what differs in the cell's tooltip (above "As written on the site"), and is kept by Save to Disk. Nine new settings under ⚙️ → ⚠️ Findings: a switch per finding and three tints (name, anchor, blanks), all on.
+- Link previews of other sites are read again once after this update (their stored records get two new fields for the checks above): the first hover or ▶ Pages on a page read before asks the site again.
+
 
 ## 9.99.1625 — 2026-11-14
 
@@ -846,21 +866,6 @@ This page shows the newest 100 of 1796 versions; the month pages hold all of the
 
 - setlist.fm tables: the page now scrolls sideways, so a table wider than the window can be read to its last column. setlist.fm's own stylesheet turns sideways scrolling off for the whole page.
 - setlist.fm tables: a show at a stage inside a venue ("NAC Opera Hall at National Arts Centre, Ottawa") no longer repeats the venue in the Event column.
-
-
-## 9.99.1527 — 2026-11-03
-
-**🚀 Feature**
-
-- setlist.fm: on the list of a venue's setlists (setlist.fm/venue/…) or an artist's (setlist.fm/setlists/…), a new "Setlists" button lists every setlist as one filterable, sortable table: date (linked to the setlist), artist or venue, event, tour, doors, start and end (24-hour), how many songs the list shows ("12+" when there are more) and those songs. The rows come from setlist.fm's own pages, 10 setlists each, one page after another; no API key is needed. Upcoming shows stay out of the table. With your setlist.fm API key set, the table's setlist links get their card and window on setlist.fm too. Its own switch, ⚙️ Settings → 🎤 setlist.fm → "Enable on setlist.fm", is on by default.
-
-
-## 9.99.1526 — 2026-11-03
-
-**✨ Improve**
-
-- setlist.fm windows (link preview, with your setlist.fm API key): set times. The Setlists table of a venue, an artist or a tour has a "Set times" column (doors, and the show from start to end), and a setlist's window lists Doors, Scheduled, Start (how long after doors) and End (how long the show was). The times are on a 24-hour clock, as on MusicBrainz. setlist.fm's API has no set times, so they are read from setlist.fm's own pages: only once the window is open, never for the hover card, two pages for every 20 setlists, at most one a second. "…" means the page is still being read, "?" that it could not be (⟳ Try again), "—" that setlist.fm has none.
-- setlist.fm window of a venue: what the API leaves out, read from the venue's own page with the set times: its address, when it opened (or was open), other names, its web links and how many attendances setlist.fm's users have logged.
 
 
 ---
