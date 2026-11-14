@@ -251,8 +251,8 @@
         "why": "Late data: the row is queued for its re-stamp.",
         "edits": [
             {
-                "find": "            if (was !== now || checksChanged) {",
-                "replace": "            if (was !== now) {"
+                "find": "            if (was !== now || checksChanged || venueChanged) {",
+                "replace": "            if (was !== now || venueChanged) {"
             }
         ],
         "spec": "tests/fixtures/bb-findings-batch1.spec.js",
@@ -264,8 +264,8 @@
         "why": "A row read while a finding filters must join the filtered table: the queue takes a detached row with its table.",
         "edits": [
             {
-                "find": "                if (table) _queueFindingsRestamp(td.parentElement, ['bb-onstage-tab', ..._BB_EVENT_CHECK_LATE_IDS], live ? null : table);",
-                "replace": "                if (table) _queueFindingsRestamp(td.parentElement, ['bb-onstage-tab', ..._BB_EVENT_CHECK_LATE_IDS], null);"
+                "find": "                if (table) _queueFindingsRestamp(td.parentElement, ['bb-onstage-tab', 'bb-venue-mismatch', ..._BB_EVENT_CHECK_LATE_IDS], live ? null : table);",
+                "replace": "                if (table) _queueFindingsRestamp(td.parentElement, ['bb-onstage-tab', 'bb-venue-mismatch', ..._BB_EVENT_CHECK_LATE_IDS], null);"
             }
         ],
         "spec": "tests/fixtures/bb-findings-batch1.spec.js",
@@ -277,8 +277,8 @@
         "why": "_LATE_FINDING_IDS: a changed stamp re-runs the filter while a late finding filters. Covered here by another path, as for bb-onstage-tab (scripts/mutations/bb-onstage-tab.json): a cell-scope finding is ticked as a value in its column's filter input, so the event-page columns' own refresh (_bbEvpScheduleRefresh()) re-runs the filter after every page read. Kept for a row-scope fallback, which no fixture reaches.",
         "edits": [
             {
-                "find": "'sl-double-utf8', 'bb-onstage-tab', ..._BB_EVENT_CHECK_LATE_IDS];",
-                "replace": "'sl-double-utf8', 'bb-onstage-tab'];"
+                "find": "'sl-double-utf8', 'bb-onstage-tab', 'bb-venue-mismatch', ..._BB_EVENT_CHECK_LATE_IDS, ..._BB_LIST_CHECK_IDS];",
+                "replace": "'sl-double-utf8', 'bb-onstage-tab', 'bb-venue-mismatch', ..._BB_LIST_CHECK_IDS];"
             }
         ],
         "spec": "tests/fixtures/bb-findings-batch1.spec.js",
@@ -329,8 +329,8 @@
         "why": "The window's title has one blank; the finding needs the title as written.",
         "edits": [
             {
-                "find": "        data.bbRawTitle = _bbRawText(doc.getElementById('page-title'));",
-                "replace": "        data.bbRawTitle = data.title;"
+                "find": "        // `findInfoSetlistLink()`).\n        data.bbRawTitle = _bbRawText(doc.getElementById('page-title'));",
+                "replace": "        // `findInfoSetlistLink()`).\n        data.bbRawTitle = data.title;"
             }
         ],
         "spec": "tests/fixtures/bb-findings-batch1.spec.js",

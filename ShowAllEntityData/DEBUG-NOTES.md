@@ -29543,3 +29543,31 @@ Env: 2026-11-14T16:02:51+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
   recorded). No render measurement: per cell one `classList`/`dataset` look at save and one early return at load;
   the year table's build gains one Map pass over its entries.
   `npm run test:full` 16:02:51–16:21:44 CET on petri (working tree on `9949594e`): 3,109 passed, 0 failed.
+
+## 2026-11-14 — Brucebase findings, batch 2 parts 1 and 2: the listings and the venues (feat/bb-findings-batch2)
+Env: 2026-11-14T21:15:06+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright Chromium 151.0.7922.34 (chromium-fixtures), no Tampermonkey (GM stubs); probe: Python over the mirror bb/2026-11-13, n/a
+- **What:** `bb-list-title`, `bb-list-anchor` (a year listing against its year page) and `bb-venue-mismatch` (an event
+  page's venue against the venue page). Rules, counts and the comparison with BruceParser's reports:
+  docs/claude/brucebase.md, "The listing and venue checks". The setlist findings are probed and mocked up, not built.
+- **Root fact 1 — `_extBbParseYear()` left out most of what a listing links.** It took anchors of exactly six digits
+  and an entry's `/gig:` or `/nogig:` link. So on a listing ▶ Pages called every recording session, rehearsal and
+  interview, and every entry with a lettered anchor (712 of 5,018), a row with "no page of its own", silently. Found
+  because the new spec asserted the page of 1972's `000472b`. Version 3 takes lettered anchors and the heading's link
+  of any kind, keeps the FIRST show of a shared anchor (later headings in `also`), and reads the heading paragraph
+  after an anchor that has a paragraph of its own.
+- **Root fact 2 — the checker over the mirror found what the fixtures could not.** 2015's `000515` has its anchor in
+  a paragraph of its own; the reader took the heading from the anchor's paragraph: ''. The listing check then called
+  the entry "named differently". One false row in 5,008; `scripts/check-bb-batch2-findings.js` printed it. A second
+  difference was the probe's: a venue page titled with two blanks, which the shipped rule (whitespace as one blank)
+  rightly does not call another name; the probe follows now, and its 128 rows are exactly BruceParser's 128.
+- **Root fact 3 — a finding that costs requests must be painted from the store with care.** Rows read before are
+  painted at a render from the previews' store. With the venue check, a row whose venue page is not in the store
+  would either stay unpainted (the first version: it broke "a reload paints the rows read before" wherever a venue
+  cannot be read) or be painted without its check for the event record's 30 days. Now it is painted and marked
+  `venueDue`; the watch takes it and the pump asks the venue only, once a session.
+- **A mutation the spec cannot see, recorded as such:** reading a `venueDue` row again whole ends in the same cells
+  and the same requests (the event comes from memory).
+- **Existing lists moved:** ten finds in five lists named lines this change rewrote (`check-mutation-finds.py`: 10
+  stale, then 0).
+- **Tests:** `bb-findings-batch2.spec.js` 15; 28 mutation entries (27 fail their test, 1 pass as recorded); render
+  B/M 1.01 (tests/MEASUREMENTS.org); `npm run test:full` 21:15:06–21:34:18 CET on petri: 3,124 passed, 0 failed.

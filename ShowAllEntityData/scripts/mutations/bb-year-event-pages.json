@@ -17,8 +17,8 @@
         "why": "Answer 2: the rows as they come into view; a year is 100–280 requests.",
         "edits": [
             {
-                "find": "            if (st === 'cold' || st === 'queued') _bbEvp.io.observe(td);",
-                "replace": "            if (st === 'cold' || st === 'queued') _bbEvpEnqueue(td.dataset.mbBbevpKey);"
+                "find": "            if (st === 'cold' || st === 'queued' || td.hasAttribute('data-mb-bbevp-venue-due')) _bbEvp.io.observe(td);",
+                "replace": "            if (st === 'cold' || st === 'queued' || td.hasAttribute('data-mb-bbevp-venue-due')) _bbEvpEnqueue(td.dataset.mbBbevpKey);"
             }
         ],
         "spec": "tests/fixtures/bb-year-event-pages.spec.js",

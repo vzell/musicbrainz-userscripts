@@ -1841,6 +1841,87 @@ tint and the tooltip card are the findings' own.
   Spec: `tests/fixtures/bb-mb-event.spec.js`, "Save to Disk → Load from
   Disk"; the validation in the batch spec, "a saved cell record …".
 
+## The listing and venue checks (bbp-parity batch 2, 2026-11-14)
+
+org/bbp-parity.org, Track A batch 2; vzell's decisions of 2026-11-14 (venue
+pages with ▶ Pages; an extra descriptive part is no finding; setlists ❌
+songs / ⚠️ spelling). Parts 1 and 2 are built; the setlist comparison
+(part 3) waits for the mockup (https://claude.ai/artifact/T1D2ghbx9zHHCh8jgfr5g7).
+
+| Finding             | Level | Table        | Cell  | Rule                                                                                      |
+|---------------------|-------|--------------|-------|-------------------------------------------------------------------------------------------|
+| `bb-list-title`     | ❌    | bb-year-list | Event | the label is none of the year page's headings for the linked anchor (blanks as one, upper case) |
+| `bb-list-anchor`    | ⚠️    | bb-year-list | Event | the anchor is not the label date's DDMMYY, the link names a year page not covering the year, or the year page has no such anchor |
+| `bb-venue-mismatch` | ⚠️    | bb-year      | Venue | the venue part of the event page's title ≠ the venue page's title, after the two accepted cases |
+
+- **One year page answers a whole year** (`_bbListApplyYear()`):
+  `_bbEvpPageUrl()` already reads a listing row's year page
+  (`_extBbYear()`, one request a year, kept). The first time it has one
+  (`_bbEvp.listYears`) every listing row linking that page gets the
+  headings of its anchor on its carrier, live and source rows.
+- **The year reader changed** (`_extBbParseYear()`,
+  `_EXT_BB_YEAR_VERSION` 3; every kept year page is read once more):
+  - anchors with a letter are shows too (`\d{6}[a-z]?`; 712 of 5,018
+    entries were left out, so their listing rows had "no page of its own");
+  - an entry's page is its heading's link of ANY kind (it was `/gig:` and
+    `/nogig:` only: no recording session, rehearsal or interview on a
+    listing was ever read by ▶ Pages);
+  - one anchor on two entries: the FIRST stays the show (a link reaches the
+    first), later headings go to `also`, and the listing's label may be
+    either;
+  - an anchor in a paragraph of its own (2015's `000515`, two entries)
+    takes the heading paragraph after it. Read from the anchor's own
+    paragraph the heading was '' and the page missing; the checker found
+    it as a false `list-title`.
+  The `bbdate` preview's gate (`_extBbIsDate()`, six digits) is unchanged.
+- **The venue rule** (`_bbVenuePart()`, `_bbVenueCheck()`):
+  BruceBaseParser's venue check with `findVenueDetailExtra()`.
+  Case-sensitive, "(The)" not moved, whitespace as one blank. Accepted:
+  a show of the day in brackets (`_BB_NAME_VARIANTS`), a description
+  between the venue's name and its city (four or more comma parts, the
+  first and the last two being the venue's title), and both at once
+  (BBP checks each alone).
+- **The venue requests** (`_bbEvpVenue()`): after a row's event page,
+  `_dpGet(view.venueUrl)` — memory, the store, else one request in the
+  previews' queue — so a venue is asked once for all its events; counted
+  in the job's requests. Not at all while `sa_findings_bb_venue_mismatch`
+  is off (`_bbVenueOn()`). A venue page that fails leaves the row read,
+  without a venue check. `_dpParseBbVenue()` adds `bbRawTitle`;
+  `_DP_PARSER_VERSION` 31 (every stored preview record of a foreign host
+  is read once more).
+- **Rows read before** (`_bbEvpAfterRender(true)`): the venue records are
+  peeked from the store too (one more store read, no request). A row
+  whose venue is not there is painted all the same and marked `venueDue`
+  (`data-mb-bbevp-venue-due` on its On stage cell): the watch takes it,
+  and the pump asks its venue only, once a session.
+- **Probe** (`scripts/probe-bb-batch2-findings.py`, read-only; Env:
+  2026-11-14T21:00+01:00 · petri · Python over the mirror bb/2026-11-13 ·
+  n/a): 63 listings with 5,010 entries, 4,993 events with a venue page
+  (1,561 venue pages).
+
+  | Finding             | Rows | Years | Against BruceParser's report of the same run                                          |
+  |---------------------|------|-------|---------------------------------------------------------------------------------------|
+  | `bb-list-title`     |   35 |    11 | 33 in both (48 there). Only here: 2009#181109, 2011#000211 (a label with another date) |
+  | `bb-list-anchor`    |    9 |     8 | not a report (date 4, no such anchor 3, year 1, year and date 1)                      |
+  | `bb-venue-mismatch` |  128 |    39 | all 128 in DIFFERENCES-venues.org (488 there, before the accepted cases)              |
+
+  Venue results: equal 4,257, a show of the day 271, a description 337,
+  mismatch 128. The 15 listing rows only in BruceParser's report are year
+  entries NO listing line links (its report lists them with an empty
+  listing title: 1977-07-29, 1987-09-29, 2010-07-23, 2025-10-16, …) and
+  the shared anchor of 1972. A missing listing line has no row to flag;
+  open, for vzell (it would be a finding on the YEAR table, needing the
+  listing: one more request a year).
+- **The shipped code against the probe**
+  (`scripts/check-bb-batch2-findings.js ROWS.json`): the year reader and
+  the listing checks on 5,008 entries, the venue check on 4,993 events,
+  0 differences.
+- **Tests**: `tests/fixtures/bb-findings-batch2.spec.js` (15): the
+  listings of 1966 and 2011 with their year pages, whole; batch 1's 1972
+  fixture with the six venue pages its events link
+  (`scripts/build-bb-findings-batch2-fixtures.py`). Mutations
+  `scripts/mutations/bb-findings-batch2.json` (28; one `expect: pass`).
+
 ## Show links on Brucebase's own pages (Phase 8, 2026-11-11)
 
 A show on its year page (`/<yyyy>#<ddmmyy>`: an event's "Info & Setlist", a

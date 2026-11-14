@@ -1,5 +1,19 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-11-14",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase year pages: a new finding on the Venue column, ⚠️ \"Brucebase event page names its venue differently from the venue page\". The title of an entry's own page names the venue differently from the title of the venue's page it links (\"CBS Records\" against \"CBS\"). A show of the day in brackets (\"(Late)\") and a description between the venue and its city (\"Mediasound Studios, Studio C, New York City, NY\") are accepted. It shows once ▶ Pages has read the entry's page.",
+          "▶ Pages on a Brucebase year table now also reads each entry's venue page: one more request per venue (not per entry), kept 30 days. The first reading of a year takes about a third to a half longer. Switch the venue finding off in ⚙️ Settings → ⚠️ Findings and no venue page is read.",
+          "Link previews of other sites are read again once after this update (the venue pages' records get a new field): the first hover or ▶ Pages on a page read before asks the site again."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-11-14",
     "sections": [

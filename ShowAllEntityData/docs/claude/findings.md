@@ -395,6 +395,35 @@ this file must record:
   trip of the MB-Event cells in `tests/fixtures/bb-mb-event.spec.js`;
   mutations `scripts/mutations/bb-findings-batch1.json` (43).
 
+### Brucebase, batch 2: `bb-list-title`, `bb-list-anchor`, `bb-venue-mismatch`
+
+vzell, 2026-11-14 (org/bbp-parity.org, Track A batch 2). Full text:
+docs/claude/brucebase.md, "The listing and venue checks". What this file
+must record:
+
+- **The listing's two are tokens of `_bbEventChecks()`** (`list-title`,
+  `list-anchor`), on the Event cell's carrier like batch 1's, for a row
+  whose carrier has `data-mb-bb-list`. The year page's headings for the
+  row's anchor are `data-mb-bb-list-headings` (a JSON list; absent =
+  unread, `[]` = no such anchor). They arrive for a whole YEAR at once:
+  `_bbEvpPageUrl()` hands the year page it read for one row to
+  `_bbListApplyYear()`, which writes every listing row of that year, live
+  and source, and queues the changed ones (`_BB_LIST_CHECK_IDS`, in
+  `_LATE_FINDING_IDS`). `list-anchor` is half build-time (the link's date
+  and year need no page).
+- **The venue's is NOT on the Event cell**: `bb-venue-mismatch` reads a
+  second carrier, `span.mb-bb-venue-data` inside the Venue cell
+  (`data-mb-bb-venue-part`, `-title`, `-check`), written by
+  `_bbEvpRenderCell()` beside the Event cell's. Its `enabled()` is
+  `_bbVenueOn()`, which also gates the venue REQUESTS: a finding that
+  costs requests switches them off with itself.
+- **A cell with a tooltip of its own needs `data-mb-tip-base`** to show a
+  finding's line (batch 1): the Venue cell sets it when it has a title.
+- Settings: `sa_findings_bb_list_title`, `_list_anchor`,
+  `_venue_mismatch`; tints `sa_findings_tint_bb_list`, `_bb_venue`.
+- Spec `tests/fixtures/bb-findings-batch2.spec.js` (15); mutations
+  `scripts/mutations/bb-findings-batch2.json` (28, one `expect: pass`).
+
 ## On demand: the title-style findings
 
 `title-case`, `title-typography`, `title-series-sep`, `title-feat` and

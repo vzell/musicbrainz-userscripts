@@ -3032,6 +3032,24 @@
                          'such anchor. A WARNING on the Event cell.'
         },
 
+        sa_findings_bb_venue_mismatch: {
+            label: 'Find Brucebase event pages that name their venue differently from the venue page',
+            type: 'checkbox',
+            default: true,
+            description: 'On a Brucebase year table, once ▶ Pages has read an entry\'s page: the venue in its ' +
+                         'title differs from the title of the venue\'s page. A WARNING on the Venue cell. ' +
+                         'While this is on, ▶ Pages also reads each venue\'s page: one more request per ' +
+                         'venue, kept 30 days.'
+        },
+
+        sa_findings_tint_bb_venue: {
+            label: 'Highlight Venue cells of Brucebase entries whose venue is named differently',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint the Venue cell light yellow with a ⚠️ when the entry\'s page and the venue\'s ' +
+                         'page name the venue differently.'
+        },
+
         sa_findings_tint_bb_list: {
             label: 'Highlight Event cells of Brucebase listing entries that differ from the year page',
             type: 'checkbox',
@@ -27561,6 +27579,108 @@
     }
 
     /**
+     * The venue part of an event page's title: what follows the date
+     * ("1968-12-28 Crystal Ballroom, Hotel Diplomat, New York City, NY").
+     * Whitespace as one blank: blanks are `bb-title-spaces`' matter.
+     *
+     * @param {string} title The title as written.
+     * @returns {string} '' for a title without a date.
+     */
+    function _bbVenuePart(title) {
+        const m = String(title || '').match(/^\d{4}-\d\d-\d\d[a-z]?\s*(?:-\s*)?([\s\S]*)$/);
+        return m ? m[1].replace(/\s+/g, ' ').trim() : '';
+    }
+
+    /**
+     * An event title's venue part against its venue page's title
+     * (BruceBaseParser's venue check and `findVenueDetailExtra()`).
+     * Case-sensitive, "(The)" not moved, as there. Accepted, and no finding
+     * (vzell, 2026-11-14): a show of the day in brackets at the end
+     * (`_BB_NAME_VARIANTS`), and a description between the venue's name and
+     * its city, which a venue page never has ("Crystal Ballroom, Hotel
+     * Diplomat, New York City, NY" for "Crystal Ballroom, New York City,
+     * NY"); both at once too.
+     *
+     * Probe (scripts/probe-bb-batch2-findings.py, mirror of 2026-11-13;
+     * Env: 2026-11-14T18:00+01:00 · petri · Python · n/a): 4,993 events
+     * with a venue page — equal 4,255, variant 271, detail 337, mismatch
+     * 130 (in 39 years; 128 of them in BruceParser's DIFFERENCES-venues.org).
+     *
+     * @param {string} part  `_bbVenuePart()` of the event page's title.
+     * @param {string} venue The venue page's title.
+     * @returns {string} '' (equal), 'variant', 'detail' or 'mismatch'.
+     */
+    function _bbVenueCheck(part, venue) {
+        const v = String(venue || '').replace(/\s+/g, ' ').trim();
+        if (part === v) return '';
+        let bare = part;
+        const sm = part.match(new RegExp(`\\s*\\((?:${_BB_NAME_VARIANTS.join('|')})\\)\\s*$`, 'i'));
+        if (sm) {
+            bare = part.slice(0, sm.index).trim();
+            if (bare === v) return 'variant';
+        }
+        const parts = bare.split(',').map(s => s.trim()).filter(Boolean);
+        if (parts.length >= 4 && `${parts[0]}, ${parts[parts.length - 2]}, ${parts[parts.length - 1]}` === v) return 'detail';
+        return 'mismatch';
+    }
+
+    /**
+     * Writes a Venue cell's check from the event page's record: the title's
+     * venue part, the venue page's title, and the result when it is a
+     * mismatch, on the cell's carrier (`span.mb-bb-venue-data`). Nothing
+     * while the venue page is not read.
+     *
+     * @param {HTMLElement} d The carrier.
+     * @param {{rawTitle: string, venueTitle?: string}} view `_bbEvpView()`'s record.
+     * @returns {boolean} Whether the result changed.
+     */
+    function _bbVenueCheckWrite(d, view) {
+        if (!view || !view.venueTitle) return false;
+        const part = _bbVenuePart(view.rawTitle);
+        if (!part) return false;
+        d.setAttribute('data-mb-bb-venue-part', part);
+        d.setAttribute('data-mb-bb-venue-title', String(view.venueTitle).replace(/\s+/g, ' ').trim());
+        const was = d.getAttribute('data-mb-bb-venue-check') || '';
+        const now = _bbVenueCheck(part, view.venueTitle) === 'mismatch' ? 'mismatch' : '';
+        if (now) d.setAttribute('data-mb-bb-venue-check', now);
+        else d.removeAttribute('data-mb-bb-venue-check');
+        return was !== now;
+    }
+
+    /**
+     * Whether the venue pages are read with ▶ Pages: while the finding that
+     * needs them is on.
+     *
+     * @returns {boolean}
+     */
+    function _bbVenueOn() {
+        return Lib.settings.sa_findings_bb_venue_mismatch !== false;
+    }
+
+    /**
+     * Reads an event's venue page for its title (`bb-venue-mismatch`;
+     * vzell, 2026-11-14: with ▶ Pages): the previews' record of the venue —
+     * memory, the store, else one request after the previews' rate slot, so
+     * a venue is asked once for all its events. A venue page that cannot be
+     * read leaves the row as it is, without a venue check.
+     *
+     * @param {object} view `_bbEvpView()`'s record; gets `venueTitle`.
+     * @param {object} site The `_DP_SITES` entry.
+     * @returns {Promise<void>}
+     */
+    async function _bbEvpVenue(view, site) {
+        if (!view || !view.venueUrl || !_bbVenueOn()) return;
+        try {
+            const v = await _dpGet(view.venueUrl, site, { wanted: () => _bbEvp.active });
+            if (v.outcome !== 'ok') return;
+            view.venueTitle = v.data.bbRawTitle || v.data.title || '';
+            if (!v.cached) _bbEvp.requests++;
+        } catch (err) {
+            Lib.debug('detail', `event-page columns: the venue page ${view.venueUrl} was not read (${(err && err.message) || err}).`);
+        }
+    }
+
+    /**
      * The year page's headings for a listing row's anchor, from its carrier
      * (`data-mb-bb-list-headings`, a JSON list written by
      * `_bbListApplyYear()`).
@@ -28608,10 +28728,11 @@
      * the scheduled start ("20:00"; '' for "time not known").
      *
      * `rawTitle` and `infoHref` are for the Event cell's name and anchor
-     * checks (`_bbEventChecksWrite()`).
+     * checks (`_bbEventChecksWrite()`); `venueUrl` names the venue's page,
+     * whose title `_bbEvpVenue()` adds as `venueTitle`.
      *
      * @param {object} data - `_dpParseBb()`'s record.
-     * @returns {{stage: string, content: string[], images: string[], start: string, rawTitle: string, infoHref: string}}
+     * @returns {{stage: string, content: string[], images: string[], start: string, rawTitle: string, infoHref: string, venueUrl: string, venueTitle?: string}}
      */
     function _bbEvpView(data) {
         const field = n => ((data.fields || []).find(f => f[0] === n) || [])[1] || '';
@@ -28627,6 +28748,7 @@
             start: /^time not known/i.test(start) ? '' : start,
             rawTitle: data.bbRawTitle || '',
             infoHref: data.bbInfoHref || '',
+            venueUrl: data.venueUrl || '',
         };
     }
 
@@ -28714,6 +28836,9 @@
         const st = rec ? (rec.failed ? 'failed' : rec.none ? 'none' : 'done') : state || 'cold';
         td.innerHTML = _bbEvpCellHtml(td.dataset.mbBbevpCol, rec);
         td.dataset.mbBbevpState = st;
+        // Read, but its venue page is not (`_bbEvpAfterRender()`): the
+        // watch takes such a row too.
+        td.toggleAttribute('data-mb-bbevp-venue-due', !!(rec && rec.venueDue));
         // The `bb-onstage-tab` finding (Phase 16): the page's cast tab is
         // written "Onstage". A mark of the cell's own, so the stamp reads it on
         // a source row too; the live row is queued for its re-stamp.
@@ -28727,12 +28852,15 @@
             // by its carrier: a row loaded from disk has no cell classes.
             const evData = rec && rec.view && td.parentElement ? td.parentElement.querySelector('td > span.mb-bb-ev-data') : null;
             const checksChanged = evData ? _bbEventChecksWrite(evData.parentElement, rec.view) : false;
+            // The venue check (batch 2), on the row's Venue cell.
+            const venueData = rec && rec.view && td.parentElement ? td.parentElement.querySelector('td > span.mb-bb-venue-data') : null;
+            const venueChanged = venueData ? _bbVenueCheckWrite(venueData, rec.view) : false;
             // A source row the filter hides is read too: it names its table,
             // so its stamp is made and the filter can bring it back.
-            if (was !== now || checksChanged) {
+            if (was !== now || checksChanged || venueChanged) {
                 const live = td.isConnected ? td.closest('table.tbl') : null;
                 const table = live || Array.from(document.querySelectorAll('table.tbl')).find(t => t.querySelector('td.mb-bbevp-cell'));
-                if (table) _queueFindingsRestamp(td.parentElement, ['bb-onstage-tab', ..._BB_EVENT_CHECK_LATE_IDS], live ? null : table);
+                if (table) _queueFindingsRestamp(td.parentElement, ['bb-onstage-tab', 'bb-venue-mismatch', ..._BB_EVENT_CHECK_LATE_IDS], live ? null : table);
             }
         }
         const row = td.parentElement;
@@ -28850,11 +28978,14 @@
      */
     function _bbEvpEnqueue(key, again = false) {
         const rec = _bbEvpMem.get(key);
-        if (_bbEvp.queued.has(key) || (rec && !(again && rec.failed))) return;
-        if (rec) _bbEvpMem.delete(key);
+        // A row painted from the store whose venue page is still to read
+        // (`venueDue`) is queued too, and keeps what it shows meanwhile.
+        const due = !!(rec && rec.venueDue && !rec.failed);
+        if (_bbEvp.queued.has(key) || (rec && !(again && rec.failed) && !due)) return;
+        if (rec && !due) _bbEvpMem.delete(key);
         _bbEvp.queued.add(key);
         _bbEvp.queue.push(key);
-        _bbEvpRepaint(_bbEvpCellIndex(), [key], 'queued');
+        if (!due) _bbEvpRepaint(_bbEvpCellIndex(), [key], 'queued');
         _bbEvpPump();
     }
 
@@ -28879,6 +29010,15 @@
                 _bbEvpRepaint(_bbEvpCellIndex(), [key]);
                 continue;
             }
+            // Only the venue is missing: one try, the row stays as painted.
+            const kept = _bbEvpMem.get(key);
+            if (kept && kept.venueDue) {
+                kept.venueDue = false;
+                await _bbEvpVenue(kept.view, site);
+                _bbEvpRepaint(_bbEvpCellIndex(), [key]);
+                _bbEvpScheduleRefresh(false);
+                continue;
+            }
             _bbEvpRepaint(_bbEvpCellIndex(), [key], 'run');
             let rec = null;
             try {
@@ -28890,6 +29030,7 @@
                     if (res.outcome === 'ok') {
                         rec = { view: _bbEvpView(res.data) };
                         if (!res.cached) _bbEvp.requests++;
+                        await _bbEvpVenue(rec.view, site);
                     } else if (res.outcome === 'error') {
                         rec = { failed: true, detail: res.detail };
                     }
@@ -28931,7 +29072,7 @@
         _bbEvp.io.disconnect();
         document.querySelectorAll('body.mb-sa-host-bb table.tbl td.mb-bbevp-cell[data-mb-bbevp-col="On stage"][data-mb-bbevp-key]').forEach((td) => {
             const st = td.dataset.mbBbevpState;
-            if (st === 'cold' || st === 'queued') _bbEvp.io.observe(td);
+            if (st === 'cold' || st === 'queued' || td.hasAttribute('data-mb-bbevp-venue-due')) _bbEvp.io.observe(td);
         });
     }
 
@@ -29015,12 +29156,28 @@
             await _fiDpPeek(pages, site);
         }
         const now = [];
+        const views = new Map();
         pages.forEach((k) => {
             const mem = _dpMem.get(k);
-            if (mem && _dpSessionFits(mem.data, site)) {
-                _bbEvpMem.set(k, { view: _bbEvpView(mem.data) });
-                now.push(k);
+            if (mem && _dpSessionFits(mem.data, site)) views.set(k, _bbEvpView(mem.data));
+        });
+        // The venue check needs the venue's page too (batch 2): its stored
+        // record, one more read of the store and no request. A row whose
+        // venue is not there is painted all the same and marked `venueDue`:
+        // ▶ Pages reads the venue when the row is seen (`_bbEvpPump()`),
+        // once, instead of leaving the row without its check for the
+        // event record's 30 days.
+        const venues = new Set(Array.from(views.values(), v => v.venueUrl).filter(u => u && !_dpMem.has(u)));
+        if (venues.size && _bbVenueOn()) await _fiDpPeek(venues, site);
+        views.forEach((view, k) => {
+            const rec = { view };
+            if (view.venueUrl && _bbVenueOn()) {
+                const vm = _dpMem.get(view.venueUrl);
+                if (vm && _dpSessionFits(vm.data, site)) view.venueTitle = vm.data.bbRawTitle || vm.data.title || '';
+                else rec.venueDue = true;
             }
+            _bbEvpMem.set(k, rec);
+            now.push(k);
         });
         const fresh = _bbEvpCellIndex();
         const known = Array.from(fresh.keys()).filter(k => _bbEvpMem.has(k)
@@ -29346,6 +29503,17 @@
             venueTd.appendChild(venueA);
         } else {
             _mbSetSiteTitle(venueTd, venueText);
+        }
+        // The venue check's data (`bb-venue-mismatch`): a hidden carrier
+        // INSIDE the cell, as the Event cell's, so a clone, a source row and
+        // a row loaded from disk have it. The cell's findings go above its
+        // own tooltip (`_findingTipBase()`).
+        const venueData = docContext.createElement('span');
+        venueData.className = 'mb-bb-venue-data';
+        venueData.hidden = true;
+        venueTd.appendChild(venueData);
+        if (venueTd.hasAttribute('title')) {
+            venueTd.setAttribute('data-mb-tip-base', venueTd.getAttribute('data-mb-tip-cmp') || JSON.stringify({ t: venueTd.getAttribute('title') || '', c: [] }));
         }
         tr.appendChild(venueTd);
         // City and Country in MusicBrainz style too ("HAMPTON" → "Hampton",
@@ -32453,7 +32621,7 @@
      *    draw at paint time (org/springsteen-marriage.org, Phase 1).
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 30;
+    const _DP_PARSER_VERSION = 31;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -38611,6 +38779,9 @@
         if (!content) return null;
         const data = _dpEmpty();
         data.title = _dpText(doc.getElementById('page-title') ? doc.getElementById('page-title').textContent : '');
+        // The title as written: what an event page's venue part is compared
+        // with (`bb-venue-mismatch`, org/bbp-parity.org batch 2).
+        data.bbRawTitle = _bbRawText(doc.getElementById('page-title'));
         data.images = _bbPageImages(content, url);
         const crumbs = doc.getElementById('breadcrumbs');
         const region = crumbs ? Array.from(crumbs.querySelectorAll('a'))
@@ -73552,6 +73723,29 @@
             },
             tint: _findingTintSetting('sa_findings_tint_bb_anchor'),
         },
+        // org/bbp-parity.org batch 2 (vzell, 2026-11-14): the venue part of
+        // the event page's title against the venue page's title. Late data:
+        // ▶ Pages reads the venue page after the event page
+        // (`_bbEvpVenue()`), `_bbEvpRenderCell()` writes the result to the
+        // row's Venue cell carrier, live and source.
+        {
+            id: 'bb-venue-mismatch', level: 'warn', glyph: '📍', scope: 'cell',
+            label: 'Brucebase event page names its venue differently from the venue page',
+            tip: 'The title of the entry\'s own page names the venue differently from the title of the venue\'s page it links ("Paramount Theatre" against "Paramount Theater"). A show of the day in brackets ("(Late)") and a description between the venue and its city ("Crystal Ballroom, Hotel Diplomat, New York City, NY") are accepted. Known once ▶ Pages has read the entry\'s page and its venue\'s page (one request per venue). Compared as written. The page to edit is the entry\'s, or the venue\'s.',
+            enabled: () => !!_isBbHost && _bbVenueOn(),
+            cols: name => name === 'Venue',
+            rowGate: row => !!row.querySelector('span.mb-bb-venue-data[data-mb-bb-venue-check]'),
+            test: cell => !!cell.querySelector(':scope > span.mb-bb-venue-data[data-mb-bb-venue-check="mismatch"]'),
+            detail: (cell) => {
+                const d = cell.querySelector(':scope > span.mb-bb-venue-data');
+                return d ? `Event page "${d.getAttribute('data-mb-bb-venue-part') || ''}", venue page "${d.getAttribute('data-mb-bb-venue-title') || ''}".` : '';
+            },
+            compare: (cell) => {
+                const d = cell.querySelector(':scope > span.mb-bb-venue-data');
+                return { la: 'Event page', lb: 'Venue page', a: d ? d.getAttribute('data-mb-bb-venue-part') || '' : '', b: d ? d.getAttribute('data-mb-bb-venue-title') || '' : '' };
+            },
+            tint: _findingTintSetting('sa_findings_tint_bb_venue'),
+        },
         // org/bbp-parity.org batch 2 (vzell, 2026-11-14): a year listing
         // against its year page. Late data: the year page is read with
         // ▶ Pages (`_bbEvpPageUrl()`, one request a year), and
@@ -93917,10 +94111,16 @@
             // version 3 only /gig: and /nogig: were taken, so a recording
             // session, a rehearsal or an interview had "no page of its own"
             // on a listing (found by the batch 2 spec, 2026-11-14).
-            const own = Array.from(top.querySelectorAll('strong a[href]')).find(x => /^\/[a-z]+:/.test(x.getAttribute('href') || ''));
+            // Two entries have their anchor in a paragraph of its own
+            // (2015's "000515"): the heading is the paragraph after it.
+            // Read from `top` alone it was '' for such a recording session,
+            // which the listing check then called a different name (found
+            // by scripts/check-bb-batch2-findings.js on the mirror).
+            const headEl = top.querySelector('strong') || !block[0] || !block[0].querySelector(':scope > strong') ? top : block[0];
+            const own = Array.from(headEl.querySelectorAll('strong a[href]')).find(x => /^\/[a-z]+:/.test(x.getAttribute('href') || ''));
             const gig = own || top.querySelector('a[href^="/gig:"], a[href^="/nogig:"]') ||
                 block.map(el => el.querySelector('a[href^="/gig:"], a[href^="/nogig:"]')).find(Boolean) || null;
-            const heading = _dpText((top.querySelector('strong') || gig || top).textContent);
+            const heading = _dpText((headEl.querySelector('strong') || gig || top).textContent);
             // One anchor on two entries (1972's "000472b", `bb-anchor-shared`):
             // a link to it reaches the first, so the first stays the show;
             // the later headings are kept for the listing check.
@@ -179669,7 +179869,7 @@ a { color: #1565c0; }`;
      * Relationships column (`rel-multi-site`). Each is re-stamped per row
      * through `_queueFindingsRestamp()`.
      */
-    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-site', 'bb-mbev-link-mismatch', 'bb-mbev-link-missing', 'sl-double-utf8', 'bb-onstage-tab', ..._BB_EVENT_CHECK_LATE_IDS, ..._BB_LIST_CHECK_IDS];
+    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-site', 'bb-mbev-link-mismatch', 'bb-mbev-link-missing', 'sl-double-utf8', 'bb-onstage-tab', 'bb-venue-mismatch', ..._BB_EVENT_CHECK_LATE_IDS, ..._BB_LIST_CHECK_IDS];
 
     /**
      * Queues a re-stamp of a row whose late data (`_LATE_FINDING_IDS`) has
@@ -187415,6 +187615,8 @@ a { color: #1565c0; }`;
             bbRestoreDiskCell: (td, cellData) => _bbRestoreDiskCell(td, cellData),
             /** The shows of a Brucebase year page by anchor (`_extBbParseYear()`): the listing check's source. */
             extBbParseYear: (html, base) => _extBbParseYear(html, base),
+            /** The venue check, pure (`_bbVenuePart()`, `_bbVenueCheck()`): '' | variant | detail | mismatch. */
+            bbVenueCheck: (title, venue) => _bbVenueCheck(_bbVenuePart(title), venue),
 
             /**
              * Phase 16 batch 3: the readers of the stats, On The Tracks and

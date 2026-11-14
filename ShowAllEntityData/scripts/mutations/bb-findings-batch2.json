@@ -1,0 +1,366 @@
+[
+    {
+        "name": "bb-list-title: the detector never matches",
+        "why": "The finding reads the Event cell's check.",
+        "edits": [
+            {
+                "find": "            test: cell => _bbHasCheck(cell, 'list-title'),",
+                "replace": "            test: () => false,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "1966: nothing before",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-list-anchor: the detector never matches",
+        "why": "The finding reads the Event cell's check.",
+        "edits": [
+            {
+                "find": "            test: cell => _bbHasCheck(cell, 'list-anchor'),",
+                "replace": "            test: () => false,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "2011: a link",
+        "expect": "fail"
+    },
+    {
+        "name": "the year page read for a listing row is not applied to the listing",
+        "why": "_bbEvpPageUrl() hands the year page to _bbListApplyYear(): every row of that year is answered at once.",
+        "edits": [
+            {
+                "find": "            if (_bbListApplyYear(yearUrl, y.year)) _bbEvpScheduleRefresh(false);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "1966: nothing before",
+        "expect": "fail"
+    },
+    {
+        "name": "a listing row is not marked as one",
+        "why": "The carrier says `data-mb-bb-list`: only such a row gets the listing checks.",
+        "edits": [
+            {
+                "find": "        if (entry.list) data.setAttribute('data-mb-bb-list', '1');",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "1966: nothing before",
+        "expect": "fail"
+    },
+    {
+        "name": "an answered listing row is not queued for its stamp",
+        "why": "Late data: the row whose checks changed is re-stamped, live or source.",
+        "edits": [
+            {
+                "find": "                if (table) _queueFindingsRestamp(row, _BB_LIST_CHECK_IDS, live ? null : table);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "1966: nothing before",
+        "expect": "fail"
+    },
+    {
+        "name": "the listing check compares the case",
+        "why": "BruceBaseParser compares in upper case.",
+        "edits": [
+            {
+                "find": "            const flat = s => String(s).replace(/\\s+/g, ' ').trim().toUpperCase();\n            if (known",
+                "replace": "            const flat = s => String(s).replace(/\\s+/g, ' ').trim();\n            if (known"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "the rules, pure: the date",
+        "expect": "fail"
+    },
+    {
+        "name": "an anchor the year page lacks is not a wrong link",
+        "why": "1972's listing links #000572b, which the year page does not have.",
+        "edits": [
+            {
+                "find": " || (known && !row.listHeadings.length))) out.push('list-anchor');",
+                "replace": ")) out.push('list-anchor');"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "the rules, pure: the date",
+        "expect": "fail"
+    },
+    {
+        "name": "a link to another year's page is not a wrong link",
+        "why": "The year page named must cover the label's year (1949-64 aware).",
+        "edits": [
+            {
+                "find": " || !_bbYearSlugHas(l[1], d[1]) || (known",
+                "replace": " || (known"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "the rules, pure: the date",
+        "expect": "fail"
+    },
+    {
+        "name": "the label's date is not compared with the anchor",
+        "why": "2011-02-15 linking #000211: known with the table.",
+        "edits": [
+            {
+                "find": "            if (l && (!l[2].startsWith(d[3] + d[2] + d[1].slice(2)) || ",
+                "replace": "            if (l && ("
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "2011: a link",
+        "expect": "fail"
+    },
+    {
+        "name": "a shared anchor: the later heading is dropped",
+        "why": "1972's 000472b is on two entries: the listing's label may be either.",
+        "edits": [
+            {
+                "find": "                shows[name].also.push(heading);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "the year reader",
+        "expect": "fail"
+    },
+    {
+        "name": "a shared anchor: the last entry wins",
+        "why": "A link to a shared anchor reaches the first entry: the first stays the show.",
+        "edits": [
+            {
+                "find": "            if (shows[name]) {\n                shows[name].also.push(heading);\n                return;\n            }",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "the year reader",
+        "expect": "fail"
+    },
+    {
+        "name": "the year reader takes anchors of six digits only",
+        "why": "712 entries have a letter after the digits: their listing rows had no page.",
+        "edits": [
+            {
+                "find": "            if (!/^\\d{6}[a-z]?$/.test(name)) return;",
+                "replace": "            if (!/^\\d{6}$/.test(name)) return;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "the year reader",
+        "expect": "fail"
+    },
+    {
+        "name": "the year reader takes gig pages only",
+        "why": "A recording session, rehearsal or interview has a page of its own too.",
+        "edits": [
+            {
+                "find": "            const gig = own || top.querySelector(",
+                "replace": "            const gig = top.querySelector("
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "the year reader",
+        "expect": "fail"
+    },
+    {
+        "name": "the listing tint setting is ignored",
+        "why": "sa_findings_tint_bb_list off: no tint.",
+        "edits": [
+            {
+                "find": "            compare: cell => _bbListCompare(cell),\n            tint: _findingTintSetting('sa_findings_tint_bb_list'),",
+                "replace": "            compare: cell => _bbListCompare(cell),\n            tint: () => true,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "a tint setting off",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-list-title's setting is ignored",
+        "why": "sa_findings_bb_list_title off: no finding.",
+        "edits": [
+            {
+                "find": "            enabled: () => !!_isBbHost && Lib.settings.sa_findings_bb_list_title !== false,",
+                "replace": "            enabled: () => !!_isBbHost,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "the switches",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-venue-mismatch: the detector never matches",
+        "why": "The finding reads the Venue cell's carrier.",
+        "edits": [
+            {
+                "find": "            test: cell => !!cell.querySelector(':scope > span.mb-bb-venue-data[data-mb-bb-venue-check=\"mismatch\"]'),",
+                "replace": "            test: () => false,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "each venue page is read once",
+        "expect": "fail"
+    },
+    {
+        "name": "the venue check is never written to the Venue cell",
+        "why": "_bbEvpRenderCell() writes it once the event page and its venue page are read.",
+        "edits": [
+            {
+                "find": "            const venueChanged = venueData ? _bbVenueCheckWrite(venueData, rec.view) : false;",
+                "replace": "            const venueChanged = false;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "each venue page is read once",
+        "expect": "fail"
+    },
+    {
+        "name": "no re-stamp when only the venue check changes",
+        "why": "The CBS row has no other late finding: the venue check alone must queue it.",
+        "edits": [
+            {
+                "find": "            if (was !== now || checksChanged || venueChanged) {",
+                "replace": "            if (was !== now || checksChanged) {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "each venue page is read once",
+        "expect": "fail"
+    },
+    {
+        "name": "a description between the venue and its city is a mismatch",
+        "why": "vzell, 2026-11-14: no finding (\"Mediasound Studios, Studio C, New York City, NY\").",
+        "edits": [
+            {
+                "find": "        if (parts.length >= 4 && `${parts[0]}, ${parts[parts.length - 2]}, ${parts[parts.length - 1]}` === v) return 'detail';",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "the rule, pure: equal",
+        "expect": "fail"
+    },
+    {
+        "name": "a description is accepted on the real rows too (the table)",
+        "why": "The two Mediasound sessions are not flagged.",
+        "edits": [
+            {
+                "find": "        if (parts.length >= 4 && `${parts[0]}, ${parts[parts.length - 2]}, ${parts[parts.length - 1]}` === v) return 'detail';",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "each venue page is read once",
+        "expect": "fail"
+    },
+    {
+        "name": "a show of the day in brackets is a mismatch",
+        "why": "\"(Early)\", \"(Late)\", … after an equal venue.",
+        "edits": [
+            {
+                "find": "            if (bare === v) return 'variant';",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "the rule, pure: equal",
+        "expect": "fail"
+    },
+    {
+        "name": "the venue pages are read with the finding off",
+        "why": "No request for a check nobody sees.",
+        "edits": [
+            {
+                "find": "        if (!view || !view.venueUrl || !_bbVenueOn()) return;",
+                "replace": "        if (!view || !view.venueUrl) return;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "the finding switched off",
+        "expect": "fail"
+    },
+    {
+        "name": "the venue tint setting is ignored",
+        "why": "sa_findings_tint_bb_venue off: no tint.",
+        "edits": [
+            {
+                "find": "            tint: _findingTintSetting('sa_findings_tint_bb_venue'),",
+                "replace": "            tint: () => true,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "the tint off: stamped",
+        "expect": "fail"
+    },
+    {
+        "name": "a reload does not read the stored venue pages",
+        "why": "Rows read before are painted with their venue check from the store, with no request.",
+        "edits": [
+            {
+                "find": "        if (venues.size && _bbVenueOn()) await _fiDpPeek(venues, site);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "a reload paints the rows",
+        "expect": "fail"
+    },
+    {
+        "name": "a painted row whose venue is not stored is never asked for it",
+        "why": "`venueDue`: ▶ Pages reads the venue when the row is seen.",
+        "edits": [
+            {
+                "find": "                else rec.venueDue = true;",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "never read",
+        "expect": "fail"
+    },
+    {
+        "name": "a row whose venue is due is not watched",
+        "why": "The watch takes cold and queued rows, and those marked venue-due.",
+        "edits": [
+            {
+                "find": "            if (st === 'cold' || st === 'queued' || td.hasAttribute('data-mb-bbevp-venue-due')) _bbEvp.io.observe(td);",
+                "replace": "            if (st === 'cold' || st === 'queued') _bbEvp.io.observe(td);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "never read",
+        "expect": "fail"
+    },
+    {
+        "name": "a row whose venue is due is read again whole",
+        "why": "Only the venue is asked: the event is kept as painted. NOT VISIBLE to the spec: read again whole, the event comes from memory (no request), the venue is asked once all the same, and the row ends as it was; only its cells pass through \"reading…\". Kept so that a change to the pump which makes the second read cost a request shows up here.",
+        "edits": [
+            {
+                "find": "            if (kept && kept.venueDue) {",
+                "replace": "            if (kept && kept.venueDue && false) {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "never read",
+        "expect": "pass"
+    },
+    {
+        "name": "an anchor in a paragraph of its own has no heading",
+        "why": "2015's 000515: the heading is the paragraph after the anchor's; read as '' the listing check called it another name.",
+        "edits": [
+            {
+                "find": "            const headEl = top.querySelector('strong') || !block[0] || !block[0].querySelector(':scope > strong') ? top : block[0];",
+                "replace": "            const headEl = top;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "the year reader",
+        "expect": "fail"
+    }
+]

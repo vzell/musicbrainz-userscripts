@@ -239,5 +239,258 @@ test.describe('Brucebase year listing: the entries against their year page (bbp-
         expect(shows['000472b'].gig).toBe('https://brucebase.wikidot.com/recording:1972-04-00b-mediasound-studios-new-york-city-ny');
         expect(shows['120272a'].gig).toContain('sunshine-in-asbury-park-nj-early');
         expect(shows['210172'].also).toEqual([]);
+        // An anchor in a paragraph of its own (2015's "000515", copied from the mirror's 2015 page):
+        // the heading and the page are the paragraph's after it.
+        const own = '<html><body><div id="page-content"><hr /><p><a name="000515"></a></p>\n' +
+            '<p><strong><a href="/recording:2015-05-00-stone-hill-studio-colts-neck-nj">2015-05-00 - STONE HILL STUDIO, COLTS NECK, NJ</a></strong></p>\n' +
+            '<blockquote><p>UNKNOWN SONG</p></blockquote><hr /></div></body></html>';
+        const alone = await page.evaluate(h => window.__saTest.extBbParseYear(h, 'https://brucebase.wikidot.com/2015').shows, own);
+        expect(alone['000515'].heading).toBe('2015-05-00 - STONE HILL STUDIO, COLTS NECK, NJ');
+        expect(alone['000515'].gig).toBe('https://brucebase.wikidot.com/recording:2015-05-00-stone-hill-studio-colts-neck-nj');
+    });
+});
+
+// Part 2, the venue named on an event page against the venue's own page:
+//   bb-venue-mismatch (⚠️)  on the year table's Venue cell
+// The fixture is batch 1's 1972 year page (eight entries, their pages) plus
+// the six venue pages those events link, all real. ▶ Pages reads an entry's
+// page, then its venue's page: once per venue.
+//   CBS Records (1972-05-02): "CBS Records, New York City, NY" on the event
+//     page, "CBS, New York City, NY" on the venue page — the mismatch;
+//   Sunshine In (two shows): "(Early)" / "(Late)" — accepted;
+//   Mediasound (two sessions): "Mediasound Studios, Studio C, …" — accepted;
+//   the Captain's Garter, Point Pleasant, Hara Arena — equal.
+const { loadUserscriptPage } = require('../support/loadPage');
+const { BB_YEAR_BUTTON } = require('../support/bbFixture');
+
+const Y72_URL = 'https://brucebase.wikidot.com/1972';
+const Y72_FILE = path.join(__dirname, 'bb-year-1972-findings.html');
+const PAGE_DIR = path.join(__dirname, 'bb-findings');
+const PAGE_RE = /^https:\/\/brucebase\.wikidot\.com\/((?:gig|nogig|recording|rehearsal|interview|venue):[^/?#]+)$/;
+const VENUES = ['captain-s-garter-neptune-nj', 'sunshine-in-asbury-park-nj', 'mediasound-studios-new-york-city-ny',
+    'cbs-records-new-york-city-ny', 'unknown-location-point-pleasant-nj', 'hara-arena-dayton-oh'].map(v => `venue:${v}`).sort();
+
+/**
+ * The 1972 fixture rendered, its event and venue pages served and logged.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {{ settings?: Object<string, *>, venues?: boolean }} [opts] `venues: false` answers every venue page 404.
+ * @returns {Promise<string[]>} The pages asked ("gig:…", "venue:…"), in order.
+ */
+async function openYear72(page, { settings = {}, venues = true } = {}) {
+    await page.setViewportSize({ width: 1700, height: 1400 });
+    await page.route(/^https?:\/\//, route => route.abort('blockedbyclient'));
+    await loadUserscriptPage(page, {
+        url: Y72_URL, fixtureFile: Y72_FILE, testMode: true,
+        settingsOverride: { sa_enable_brucebase: true, sa_bb_year_pages: true, sa_foreign_mb_titles: false, sa_foreign_typography: false, ...settings },
+    });
+    const asked = [];
+    await page.route(PAGE_RE, (route) => {
+        const key = route.request().url().match(PAGE_RE)[1];
+        asked.push(key);
+        const file = path.join(PAGE_DIR, `${key.replace(':', '_')}.html`);
+        if (!fs.existsSync(file) || (!venues && key.startsWith('venue:'))) return route.fulfill({ status: 404, contentType: 'text/plain', body: 'no such page' });
+        return route.fulfill({ path: file, contentType: 'text/html; charset=utf-8' });
+    });
+    await page.click(`button[data-label="${BB_YEAR_BUTTON}"]`);
+    await waitForRenderComplete(page, { waitForAutoResize: false });
+    return asked;
+}
+
+/**
+ * The live rows' Venue cells: the entry, what the carrier holds, the stamp
+ * and the paint level, and whether the row's page is read.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<Array<{key: string, part: ?string, title: ?string, check: string, stamp: boolean, level: string, state: string}>>}
+ */
+function venueCells(page) {
+    return page.evaluate(() => Array.from(document.querySelectorAll('table.tbl tbody tr')).filter(tr => tr.style.display !== 'none').map((tr) => {
+        const d = tr.querySelector('td > span.mb-bb-venue-data');
+        const td = d.parentElement;
+        const a = tr.querySelector('td > span.mb-bb-ev-data').parentElement.querySelector('a[href]');
+        const st = tr.querySelector('td.mb-bbevp-cell[data-mb-bbevp-col="On stage"]');
+        return {
+            key: a ? new URL(a.href).pathname.slice(1) : '', part: d.getAttribute('data-mb-bb-venue-part'), title: d.getAttribute('data-mb-bb-venue-title'),
+            check: d.getAttribute('data-mb-bb-venue-check') || '', stamp: (td.dataset.mbFindings || '').split(' ').includes('bb-venue-mismatch'),
+            level: td.dataset.mbFinding || '', state: st ? st.dataset.mbBbevpState : '',
+        };
+    }));
+}
+
+/**
+ * Presses ▶ Pages, brings every row into view until all are read, stops.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<void>}
+ */
+async function readAll72(page) {
+    await pagesBtn(page).click();
+    await expect.poll(async () => {
+        await page.evaluate(() => {
+            const td = document.querySelector('table.tbl tbody td.mb-bbevp-cell[data-mb-bbevp-col="On stage"][data-mb-bbevp-state="cold"]');
+            if (td) td.scrollIntoView({ block: 'center' });
+        });
+        return (await venueCells(page)).filter(r => r.state !== 'done').length;
+    }, { timeout: 60000 }).toBe(0);
+    await pagesBtn(page).click();
+}
+
+const CBS = 'gig:1972-05-02-cbs-records-new-york-city-ny';
+
+test.describe('Brucebase year table: the venue of an event page against the venue\'s page (bbp-parity batch 2)', () => {
+    test('nothing before ▶ Pages; then each venue page is read once, and one venue is named differently', async ({ page }) => {
+        const asked = await openYear72(page);
+        expect((await venueCells(page)).map(r => [r.part, r.check, r.stamp])).toEqual(Array.from({ length: 8 }, () => [null, '', false]));
+        await page.evaluate(() => new Promise(r => setTimeout(r, 800)));
+        expect(asked).toEqual([]);
+        await readAll72(page);
+        // Eight events, six venues: a venue two events share is asked once.
+        expect(asked.filter(k => k.startsWith('venue:')).sort()).toEqual(VENUES);
+        expect(asked.filter(k => !k.startsWith('venue:')).length).toBe(8);
+        const got = await venueCells(page);
+        expect(got.map(r => [r.key.split(':')[1].slice(0, 10), r.part, r.title, r.check])).toEqual([
+            ['1972-01-21', 'Captain\'s Garter (The), Neptune, NJ', 'Captain\'s Garter (The), Neptune, NJ', ''],
+            ['1972-02-12', 'Sunshine In, Asbury Park, NJ (Early)', 'Sunshine In, Asbury Park, NJ', ''],
+            ['1972-02-12', 'Sunshine In, Asbury Park, NJ (Late)', 'Sunshine In, Asbury Park, NJ', ''],
+            ['1972-04-00', 'Mediasound Studios, Studio C, New York City, NY', 'Mediasound Studios, New York City, NY', ''],
+            ['1972-05-02', 'CBS Records, New York City, NY', 'CBS, New York City, NY', 'mismatch'],
+            ['1972-05-00', 'Mediasound Studios, Studio C, New York City, NY', 'Mediasound Studios, New York City, NY', ''],
+            ['1972-06-00', 'Unknown Location, Point Pleasant, NJ', 'Unknown Location, Point Pleasant, NJ', ''],
+            ['1972-12-29', 'Hara Arena, Dayton, OH', 'Hara Arena, Dayton, OH', ''],
+        ]);
+        await expect.poll(async () => (await venueCells(page)).filter(r => r.stamp).map(r => [r.key, r.level])).toEqual([[CBS, 'warn']]);
+        expect((await findingRow(page, 'warn', 'bb-venue-mismatch')).count).toBe(1);
+        // The look, and both names in the cell's tooltip.
+        const look = await page.evaluate(() => {
+            const td = document.querySelector('span.mb-bb-venue-data[data-mb-bb-venue-check]').parentElement;
+            return { bg: getComputedStyle(td).backgroundColor, after: getComputedStyle(td, '::after').content, tip: td.getAttribute('title') || '', cmp: td.getAttribute('data-mb-tip-cmp') || '' };
+        });
+        expect(look.bg).not.toMatch(/^rgba?\(255, 255, 255|rgba\(0, 0, 0, 0\)/);
+        expect(look.after).toContain('⚠');
+        expect(look.tip).toContain('Event page "CBS Records, New York City, NY", venue page "CBS, New York City, NY".');
+        expect(look.cmp).toContain('CBS Records');
+        // The filter: that row alone (a re-render from the source rows), then all again.
+        await clickFinding(page, 'bb-venue-mismatch');
+        await expect.poll(() => findingRowState(page, 'bb-venue-mismatch')).toEqual({ visible: 1, withFinding: 1 });
+        await clickFinding(page, 'bb-venue-mismatch');
+        await expect.poll(async () => (await findingRowState(page, null)).visible).toBe(8);
+    });
+
+    test('the finding switched off: no venue page is asked at all', async ({ page }) => {
+        const asked = await openYear72(page, { settings: { sa_findings_bb_venue_mismatch: false } });
+        await readAll72(page);
+        expect(asked.filter(k => k.startsWith('venue:'))).toEqual([]);
+        expect((await venueCells(page)).every(r => r.part === null && !r.stamp)).toBe(true);
+        expect(await findingRow(page, 'warn', 'bb-venue-mismatch')).toBeUndefined();
+    });
+
+    test('the tint off: stamped and counted, not painted', async ({ page }) => {
+        await openYear72(page, { settings: { sa_findings_tint_bb_venue: false } });
+        await readAll72(page);
+        await expect.poll(async () => (await venueCells(page)).filter(r => r.stamp).map(r => [r.key, r.level])).toEqual([[CBS, '']]);
+        expect((await findingRow(page, 'warn', 'bb-venue-mismatch')).count).toBe(1);
+    });
+
+    test('a venue page that cannot be read leaves its rows read, without a venue check', async ({ page }) => {
+        const asked = await openYear72(page, { venues: false });
+        await readAll72(page);
+        expect(asked.filter(k => k.startsWith('venue:')).length).toBeGreaterThan(0);
+        const got = await venueCells(page);
+        expect(got.every(r => r.state === 'done' && r.part === null && !r.stamp)).toBe(true);
+    });
+
+    test('a reload paints the rows read before with their venue check, and asks nothing', async ({ page }) => {
+        await openYear72(page);
+        await readAll72(page);
+        await expect.poll(async () => (await venueCells(page)).filter(r => r.stamp).length).toBe(1);
+        const asked = await openYear72(page);
+        await expect.poll(async () => (await venueCells(page)).filter(r => r.state === 'done').length, { timeout: 15000 }).toBe(8);
+        await expect.poll(async () => (await venueCells(page)).filter(r => r.stamp).map(r => r.key)).toEqual([CBS]);
+        expect(asked).toEqual([]);
+    });
+
+    test('rows read before whose venue page was never read: painted at the reload, and ▶ Pages then asks the venues only', async ({ page }) => {
+        await openYear72(page, { venues: false });
+        await readAll72(page);
+        expect((await venueCells(page)).every(r => r.part === null)).toBe(true);
+        const asked = await openYear72(page);
+        await expect.poll(async () => (await venueCells(page)).filter(r => r.state === 'done').length, { timeout: 15000 }).toBe(8);
+        expect(asked).toEqual([]);
+        expect((await venueCells(page)).every(r => r.part === null && !r.stamp)).toBe(true);
+        await pagesBtn(page).click();
+        // A row is read when it is seen: bring the next one still due into view.
+        await expect.poll(async () => {
+            await page.evaluate(() => {
+                const td = document.querySelector('table.tbl tbody td.mb-bbevp-cell[data-mb-bbevp-venue-due]');
+                if (td) td.scrollIntoView({ block: 'center' });
+            });
+            return (await venueCells(page)).filter(r => r.part !== null).length;
+        }, { timeout: 40000 }).toBe(8);
+        await expect.poll(async () => (await venueCells(page)).filter(r => r.stamp).map(r => r.key)).toEqual([CBS]);
+        expect(await page.evaluate(() => document.querySelectorAll('td[data-mb-bbevp-venue-due]').length)).toBe(0);
+        await pagesBtn(page).click();
+        // The events came from the store; each venue was asked once.
+        expect(asked.slice().sort()).toEqual(VENUES);
+    });
+
+    test('Save to Disk → Load from Disk: the venue check comes back, and nothing is asked', async ({ context, browser }) => {
+        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sa-bb-venue-disk-'));
+        const fresh = await browser.newContext();
+        try {
+            const source = await context.newPage();
+            await openYear72(source);
+            await readAll72(source);
+            await expect.poll(async () => (await venueCells(source)).filter(r => r.stamp).length).toBe(1);
+            const downloadPromise = source.waitForEvent('download', { timeout: 60000 });
+            await clickToolbarItem(source, '#mb-save-to-disk-btn');
+            await source.locator('#sa-sd-save-confirm').waitFor({ state: 'visible', timeout: 15000 });
+            await source.click('#sa-sd-save-confirm');
+            const saved = path.join(tmpDir, 'bb-year.json.gz');
+            await (await downloadPromise).saveAs(saved);
+            await source.close();
+
+            const page = await fresh.newPage();
+            await page.setViewportSize({ width: 1700, height: 1400 });
+            await page.route(/^https?:\/\//, route => route.abort('blockedbyclient'));
+            await loadUserscriptPage(page, { url: Y72_URL, fixtureFile: Y72_FILE, testMode: true, settingsOverride: { sa_enable_brucebase: true, sa_bb_year_pages: true } });
+            const asked = [];
+            await page.route(PAGE_RE, (route) => { asked.push(route.request().url()); return route.abort('blockedbyclient'); });
+            await clickToolbarItem(page, '#mb-load-from-disk-btn');
+            await page.locator('input[type="file"][accept*="json"]').setInputFiles(saved);
+            const renderBtn = page.locator('#sa-render-no-filter-confirm');
+            await renderBtn.waitFor({ state: 'attached', timeout: 15000 });
+            await renderBtn.evaluate(el => el.click());
+            await waitForRenderComplete(page, { waitForAutoResize: false });
+            await expect.poll(async () => (await venueCells(page)).filter(r => r.stamp).map(r => [r.key, r.title])).toEqual([[CBS, 'CBS, New York City, NY']]);
+            expect((await findingRow(page, 'warn', 'bb-venue-mismatch')).count).toBe(1);
+            expect(asked).toEqual([]);
+        } finally {
+            await fresh.close();
+            fs.rmSync(tmpDir, { recursive: true, force: true });
+        }
+    });
+
+    test('the rule, pure: equal, a show of the day, a description between, both, and real differences', async ({ page }) => {
+        await openYear72(page);
+        const out = await page.evaluate(() => {
+            const c = window.__saTest.bbVenueCheck;
+            return [
+                c('1972-12-29 Hara Arena, Dayton, OH', 'Hara Arena, Dayton, OH'),
+                c('1972-12-29  Hara Arena,  Dayton, OH', 'Hara Arena, Dayton, OH'),
+                c('1972-02-12 Sunshine In, Asbury Park, NJ (Early)', 'Sunshine In, Asbury Park, NJ'),
+                c('1969-05-28 Pandemonium, Wanamassa, NJ (Second)', 'Pandemonium, Wanamassa, NJ'),
+                c('1968-12-28 Crystal Ballroom, Hotel Diplomat, New York City, NY', 'Crystal Ballroom, New York City, NY'),
+                c('1973-01-01 A Hall, A College, A Campus, Richmond, VA (Late)', 'A Hall, Richmond, VA'),
+                c('1972-05-02 CBS Records, New York City, NY', 'CBS, New York City, NY'),
+                c('1985-06-15 Waldstadion, Frankfurt, West Germany', 'Waldstadion, Frankfurt, Germany'),
+                // Compared as written: case, and "(The)" where each page has it.
+                c('1972-01-21 Captain\'s Garter (The), Neptune, NJ', 'The Captain\'s Garter, Neptune, NJ'),
+                c('1972-12-29 HARA ARENA, Dayton, OH', 'Hara Arena, Dayton, OH'),
+                // Three parts cannot hold a description.
+                c('1972-12-29 Hara Arena, Dayton, OH', 'Hara Arena, OH'),
+            ];
+        });
+        expect(out).toEqual(['', '', 'variant', 'variant', 'detail', 'detail', 'mismatch', 'mismatch', 'mismatch', 'mismatch', 'mismatch']);
     });
 });

@@ -11,6 +11,17 @@ The listing checks (bb-list-title, bb-list-anchor), whole pages:
       #000211, where the year page has 2011-02-00: bb-list-anchor (the
       anchor is not the date) and bb-list-title.
 
+The venue check (bb-venue-mismatch), on batch 1's 1972 fixture
+(bb-year-1972-findings.html and its eight event pages in bb-findings/): the
+six venue pages those events link, whole:
+  tests/fixtures/bb-findings/venue_<slug>.html
+      captain-s-garter-neptune-nj         equal
+      unknown-location-point-pleasant-nj  equal
+      hara-arena-dayton-oh                equal
+      sunshine-in-asbury-park-nj          two events, "(Early)" / "(Late)": accepted
+      mediasound-studios-new-york-city-ny two events, "Studio C" between: accepted
+      cbs-records-new-york-city-ny        "CBS Records" against "CBS": the mismatch
+
 What scripts/probe-bb-batch2-findings.py found on them (2026-11-13 mirror).
 Scripts, noscripts and theme @imports are removed
 (scripts/build-bb-event-fixtures.py's `strip()`); nothing else changes.
@@ -32,6 +43,9 @@ WHOLE = [
     ('2011-list.html', 'bb-year-list-2011.html'),
     ('2011.html', 'bb-year-2011.html'),
 ]
+VENUES = ['captain-s-garter-neptune-nj', 'unknown-location-point-pleasant-nj', 'hara-arena-dayton-oh',
+          'sunshine-in-asbury-park-nj', 'mediasound-studios-new-york-city-ny', 'cbs-records-new-york-city-ny']
+WHOLE += [(f'venue/venue_{v}.html', f'bb-findings/venue_{v}.html') for v in VENUES]
 
 
 def _strip():

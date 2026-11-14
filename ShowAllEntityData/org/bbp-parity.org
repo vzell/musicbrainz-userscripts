@@ -26,9 +26,9 @@ State: DONE (SAED has it), PART, TODO, NOT (not ported, with the reason).
 | Anchor: the year page's anchor = the DETAIL page's "Info & Setlist" fragment | doc/ANCHORS.md check 1                          | finding                                                                               | DONE  |     1 |
 | Anchor: it starts with =dateToAnchor(date)= (DDMMYY)                         | ANCHORS check 2                                 | finding, no request: the row has both                                                 | DONE  |     1 |
 | Anchor: the "Info & Setlist" href's year = the event's year (1949-64 slug)   | ANCHORS check 3                                 | finding                                                                               | DONE  |     1 |
-| LIST page event title vs YEAR page                                           | doc/LIST_PAGE.md                                | finding on bb-year-list (needs the YEAR page: one request per year)                   | TODO  |     2 |
+| LIST page event title vs YEAR page                                           | doc/LIST_PAGE.md                                | finding on bb-year-list (needs the YEAR page: one request per year)                   | DONE  |     2 |
 | Setlist YEAR vs DETAIL (LCS diff, char diffs)                                | doc/SETLIST.md                                  | finding + a diff card on the year row (the window's setlist is the DETAIL one)        | TODO  |     2 |
-| Venue name: DETAIL title's venue part vs the venue page's title              | =findVenueLink=, =renderVenueInfo=              | finding; one more request per row (the venue page), on ▶ Pages only                   | TODO  |     2 |
+| Venue name: DETAIL title's venue part vs the venue page's title              | =findVenueLink=, =renderVenueInfo=              | finding; one more request per row (the venue page), on ▶ Pages only                   | DONE  |     2 |
 | Expected tags: date parts, day suffix, event type                            | =computeExpectedTags=                           | finding on the bb-event head's Tags card and the window (union with the onstage tags) | TODO  |     3 |
 | Expected tags: content (bootleg, livedl, news, memorabilia, ticket, …)       | =computeExpectedTags= table                     | same                                                                                  | TODO  |     3 |
 | Expected tags: tour premiere count + prem                                    | =countTourPremiereSongs=                        | same                                                                                  | TODO  |     3 |
@@ -148,3 +148,49 @@ On each page press *Show all events*. "With the table" needs nothing more. "Afte
 | https://brucebase.wikidot.com/1972  | Save to Disk     | NEW: the dialog's title "Save Table Data" is one line at the left, also with the table wider than the window                                         |
 
 Unverified: all of it on the live site (the fixtures are the mirror's pages; Claude made no request to the wiki). A page read before this update is asked once more (the stored records are from the older reader).
+
+* Batch 2: the listings, the venues, the setlists (=feat/bb-findings-batch2=, 2026-11-14; not merged)
+
+Env: 2026-11-14T21:15+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright
+Chromium 151.0.7922.34 (chromium-fixtures), no Tampermonkey (GM stubs); probe: Python over the mirror bb/2026-11-13, n/a
+
+*Decisions (vzell, 2026-11-14):* the venue pages are read with ▶ Pages; an extra descriptive part in a title is no
+finding; setlists get ❌ for songs and ⚠️ for spelling.
+
+*Parts 1 and 2 are built and pushed. Part 3 (the setlists) waits for vzell's word on the mockup:*
+https://claude.ai/artifact/T1D2ghbx9zHHCh8jgfr5g7
+
+- *Part 1, the listings:* =bb-list-title= (❌) and =bb-list-anchor= (⚠️) on a listing's Event cell. The year page that
+  ▶ Pages reads for one row answers every row of that year. Probe: 35 and 9 rows. 33 of the 35 are in BruceParser's
+  report; the 15 it has beyond them are year entries that no listing line links at all, which has no row to flag here.
+  *Open, for vzell:* should a missing listing line become a finding on the YEAR table? It needs the listing: one more
+  request a year.
+- *Found on the way, fixed:* on a listing ▶ Pages said "no page of its own" for every recording session, rehearsal and
+  interview, and for every entry whose anchor ends in a letter. The year page was read for =/gig:= and =/nogig:= links
+  and six-digit anchors only.
+- *Part 2, the venues:* =bb-venue-mismatch= (⚠️) on the year table's Venue cell. Probe: 128 rows in 39 years, all 128
+  in BruceParser's =DIFFERENCES-venues.org=; 271 "(Early)"-style and 337 description cases are accepted, as decided.
+  Many of the 128 are one venue under two names (1980: "Telegraph Hill Studio" against "Springsteen Residence").
+- *The shipped code against the probe* (=scripts/check-bb-batch2-findings.js=): no difference on 5,008 listing entries
+  and 4,993 events.
+- *Part 3, the setlists, probed only:* =bb-setlist-songs= 112 events, =bb-setlist-spelling= 22. BruceParser's report
+  has 342 events; it also counts section names ("Pre-show jam" against "Pre-Show Jam") and prose in the year page's
+  set line, which this rule sets aside. The mockup lists that as an open point.
+- *Tests* (petri, 2026-11-14): the new spec 15/15; 28 mutations as recorded (27 fail, 1 passes with the reason);
+  render branch / main 1.01; =npm run test:full= 21:15:06–21:34:18 CET, 3,124 passed, 0 failed.
+- *Details:* =docs/claude/brucebase.md=, "The listing and venue checks".
+
+** The browser check of parts 1 and 2, for vzell (rows from the mirror of 2026-11-13; unverified on the live wiki)
+
+| Page                                    | Step                         | Expected                                                                                              |
+|-----------------------------------------+------------------------------+-------------------------------------------------------------------------------------------------------|
+| https://brucebase.wikidot.com/1966-list | Show this year's events      | nothing flagged, no request                                                                           |
+| https://brucebase.wikidot.com/1966-list | ▶ Pages (On stage header)    | ❌ 2: 1966-07-25 and 1966-07-26 "Business District"; hover: the year page says "UNKNOWN LOCATION"     |
+| https://brucebase.wikidot.com/2011-list | Show this year's events      | ⚠️ 1 at once: "2011-02-15 - Stone Hill Studio" (its link is /2011#000211)                             |
+| https://brucebase.wikidot.com/2011-list | ▶ Pages                      | that row turns ❌ too (the year page has 2011-02-00 there); the 2011-02-00 row beside it stays clean  |
+| https://brucebase.wikidot.com/1973-list | ▶ Pages                      | ❌ 6, e.g. 1973-02-14 "New Gymnasium" (year page "VCU NEW GYM"), 1973-04-23 "Shaboo"                  |
+| https://brucebase.wikidot.com/1973-list | ▶ Pages, a Recording Session | its four columns fill (before: "no page of its own"); so does a row whose link ends in a letter       |
+| https://brucebase.wikidot.com/1972      | Show all events, ▶ Pages     | Venue ⚠️ on 1972-05-02 and 1972-05-00 CBS Records (venue page "CBS"); Mediasound, Sunshine In clean   |
+| https://brucebase.wikidot.com/1985      | Show all events, ▶ Pages     | Venue ⚠️ on 1985-06-15 Frankfurt and 1985-06-18 Munich ("West Germany" / "Germany"), 1985-08-07       |
+| https://brucebase.wikidot.com/1985      | the job popup while reading  | the request count grows by one per venue as well as one per entry                                     |
+| any of them                             | Save to Disk, Load from Disk | the same cells are flagged, nothing is asked                                                          |

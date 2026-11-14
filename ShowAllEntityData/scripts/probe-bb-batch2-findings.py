@@ -20,6 +20,9 @@ Usage:
 
     --mirror DIR  the mirror (default ~/git/scripts/BruceParser/bb/latest)
     --json FILE   write every flagged row as JSON
+    --rows FILE   write EVERY listing entry and every event with a venue page, with
+                  its inputs and result, as JSON: the input of
+                  scripts/check-bb-batch2-findings.js
     --list ID     print every row flagged with this finding id
     --show EVENT  print both setlists of one event ("gig:1978-09-20-…") and their difference
 """
@@ -79,8 +82,12 @@ def venue_check(part, venue):
     BBP's findVenueDetailExtra(): a trailing "(Early)"… is a show of the day,
     and the parts between the venue's name and its city are a description the
     venue page never has. Both at once are accepted too (BBP checks each
-    alone). Case-sensitive, "(The)" not moved, as BBP.
+    alone). Case-sensitive, "(The)" not moved, as BBP. Whitespace counts as
+    one blank: a venue page titled with two blanks ("United Methodist Church
+    Of Red Bank,  Red Bank, NJ", two events) is not another name.
     """
+    part = ' '.join(part.split())
+    venue = ' '.join(venue.split())
     if part == venue:
         return ''
     bare = part
@@ -238,6 +245,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--mirror', default=os.path.expanduser('~/git/scripts/BruceParser/bb/latest'))
     ap.add_argument('--json')
+    ap.add_argument('--rows')
     ap.add_argument('--list')
     ap.add_argument('--show')
     args = ap.parse_args()
@@ -247,6 +255,7 @@ def main():
     per_year = defaultdict(Counter)
     stats = Counter()
     venue_titles = {}
+    all_rows = {'list': [], 'venue': []}
 
     def flag(fid, slug, **row):
         flagged[fid].append(dict(year=slug, **row))
@@ -262,7 +271,7 @@ def main():
             if anchor is None:
                 lone = b1.LONE_ANCHOR_RE.search(page[max(0, m.start() - 200):m.start()])
                 anchor = lone.group(1) if lone else ''
-            by_anchor.setdefault(anchor, raw)
+            by_anchor.setdefault(anchor, []).append(raw)
             link = b1.LINK_RE.search(m.group(2))
             href = html.unescape(link.group(1)) if link else ''
             stats['year entries'] += 1
@@ -284,6 +293,7 @@ def main():
                     stats['venue pages not in the mirror'] += 1
                 else:
                     res = venue_check(venue_part(title), vt)
+                    all_rows['venue'].append({'event': href[1:], 'title': title, 'venue': vt, 'result': res})
                     stats[f'venue: {res or "equal"}'] += 1
                     if res == 'mismatch':
                         flag('bb-venue-mismatch', slug, event=href[1:], part=venue_part(title), venue=vt, venueHref=vhref)
@@ -336,10 +346,15 @@ def main():
                 stats['listing links to another year page'] += 1
             elif anchor not in by_anchor:
                 why.append('no such anchor')
-            elif label.upper() != by_anchor[anchor].upper():
-                flag('bb-list-title', slug, anchor=anchor, label=label, heading=by_anchor[anchor])
+            elif not any(' '.join(label.upper().split()) == ' '.join(h.upper().split()) for h in by_anchor[anchor]):
+                # One anchor on two entries (1972's 000472b): the label may be either heading.
+                flag('bb-list-title', slug, anchor=anchor, label=label, heading=by_anchor[anchor][0])
             if why:
                 flag('bb-list-anchor', slug, anchor=anchor, label=label, why='+'.join(why))
+            if href_year == slug:
+                checks = (['list-anchor'] if why else []) + (['list-title'] if flagged['bb-list-title'] and flagged['bb-list-title'][-1].get('label') == label
+                                                                 and flagged['bb-list-title'][-1].get('anchor') == anchor and flagged['bb-list-title'][-1]['year'] == slug else [])
+                all_rows['list'].append({'year': slug, 'href': f'/{href_year}#{anchor}', 'label': label, 'checks': checks})
 
     print(f'Mirror: {mirror}')
     print(f'Year pages: {len(years)}, venue pages read: {len(venue_titles)}')
@@ -382,6 +397,9 @@ def main():
         print(f'\n{args.list}:')
         for r in flagged[args.list]:
             print('  ' + json.dumps(r, ensure_ascii=False))
+    if args.rows:
+        with open(args.rows, 'w', encoding='utf-8') as fh:
+            json.dump(all_rows, fh, ensure_ascii=False)
     if args.json:
         with open(args.json, 'w', encoding='utf-8') as fh:
             json.dump(flagged, fh, ensure_ascii=False, indent=1)

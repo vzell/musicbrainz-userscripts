@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "f25cf354ec565acef48d8cc20b529ae0fd8096ae",
-    "revisions_walked": 1219
+    "head": "442dc51966cf089f44fd2510986e134236380f4f",
+    "revisions_walked": 1254
   },
   "changes": [
     {
@@ -966,6 +966,21 @@
     "sa_findings_bb_mbev_link_missing": true,
     "sa_findings_bb_date_comma": true,
     "sa_findings_tint_bb_date_comma": true,
+    "sa_findings_bb_onstage_tab": true,
+    "sa_findings_tint_bb_onstage_tab": true,
+    "sa_findings_bb_name_mismatch": true,
+    "sa_findings_bb_name_variant": true,
+    "sa_findings_tint_bb_name": true,
+    "sa_findings_bb_anchor_date": true,
+    "sa_findings_bb_anchor_link": true,
+    "sa_findings_bb_anchor_postfix": true,
+    "sa_findings_bb_anchor_shared": true,
+    "sa_findings_tint_bb_anchor": true,
+    "sa_findings_bb_title_spaces": true,
+    "sa_findings_tint_bb_title_spaces": true,
+    "sa_findings_bb_list_title": true,
+    "sa_findings_bb_list_anchor": true,
+    "sa_findings_tint_bb_list": true,
     "sa_findings_tint_bb_mbev_link": true,
     "sa_findings_tint_sl_old_address": true,
     "sa_findings_tint_sl_double_utf8": true,
@@ -1127,6 +1142,7 @@
     "sa_bb_detail_pages": true,
     "sa_bb_event_preview": true,
     "sa_bb_history": true,
+    "sa_bb_onstage_tags": true,
     "sa_bb_mb_event_lookup": true,
     "sa_bb_tip_images": true,
     "sa_enable_discogs": true,
