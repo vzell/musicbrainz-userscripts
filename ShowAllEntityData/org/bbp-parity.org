@@ -1,0 +1,85 @@
+#+title: BruceBaseParser → ShowAllEntityData: what is covered, what is left
+#+date: 2026-11-14
+
+Track A, idea 6 of [[file:springsteen-marriage.org][springsteen-marriage.org]]. BruceBaseParser (BBP, =~/git/userscripts/BruceBaseParser=, v3.33, 12,263 lines) retires when every row below is DONE. The rule: BBP's checks come over as FINDINGS entries (⚠️/❌ menus, cell tint, 📊), never as its code or UI. Its lookup tables (tours, aliases) come through BruceParser's feed (idea 3), not into the 10 MB script.
+
+Env: 2026-11-14 · petri · reading BBP's doc/*.md and code · n/a
+
+* The matrix
+
+State: DONE (SAED has it), PART, TODO, NOT (not ported, with the reason).
+
+| BBP feature or check                                                         | BBP source                                      | SAED counterpart                                                                          | State | Batch |
+|------------------------------------------------------------------------------+-------------------------------------------------+-------------------------------------------------------------------------------------------+-------+-------|
+| Onstage page's tags merged                                                   | =fetchOnstageCompanionTags=                     | =_bbTagPagesStart()= (9.99.1625), with -N siblings and -1, which BBP lacks                | DONE  |     — |
+| Save / Load a processed page                                                 | doc/CACHE.md                                    | Save to disk / Load from disk                                                             | DONE  |     — |
+| SmartTable (YEAR, LIST, HOME, Recent changes)                                | doc/SMARTTABLE.md                               | bb-year, bb-year-list, bb-home, bb-recent-changes                                         | DONE  |     — |
+| Keyboard shortcuts                                                           | doc/KEYBOARD.md (a port FROM SAED)              | SAED's own                                                                                | DONE  |     — |
+| Lightbox, icons and panels per tab                                           | doc/ICONS_PANELS.md                             | the art viewer, the window's sections, the bb-event head                                  | DONE  |     — |
+| Scheduled / start time blocks                                                | =extractTimingBlocks=                           | the Start column (=_bbEvpView=), the Event card                                           | DONE  |     — |
+| Tour name annotation                                                         | =checkEventTourTags= (display half)             | the Event card's Tour, from the tour tags                                                 | DONE  |     — |
+| Filter with highlighting                                                     | doc/FILTERING.md                                | the table engine's filters                                                                | DONE  |     — |
+| YEAR vs DETAIL event name (✅/❌, early/late as info)                         | =extractDetailEventName=, =normalizeDetailName= | finding on the year table's Event cell, once ▶ Pages has read the row                     | TODO  |     1 |
+| Anchor: the year page's anchor = the DETAIL page's "Info & Setlist" fragment | doc/ANCHORS.md check 1                          | finding                                                                                   | TODO  |     1 |
+| Anchor: it starts with =dateToAnchor(date)= (DDMMYY)                         | ANCHORS check 2                                 | finding, no request: the row has both                                                     | TODO  |     1 |
+| Anchor: the "Info & Setlist" href's year = the event's year (1949-64 slug)   | ANCHORS check 3                                 | finding                                                                                   | TODO  |     1 |
+| LIST page event title vs YEAR page                                           | doc/LIST_PAGE.md                                | finding on bb-year-list (needs the YEAR page: one request per year)                       | TODO  |     2 |
+| Setlist YEAR vs DETAIL (LCS diff, char diffs)                                | doc/SETLIST.md                                  | finding + a diff card on the year row (the window's setlist is the DETAIL one)            | TODO  |     2 |
+| Venue name: DETAIL title's venue part vs the venue page's title              | =findVenueLink=, =renderVenueInfo=              | finding; one more request per row (the venue page), on ▶ Pages only                       | TODO  |     2 |
+| Expected tags: date parts, day suffix, event type                            | =computeExpectedTags=                           | finding on the bb-event head's Tags card and the window (union with the onstage tags)     | TODO  |     3 |
+| Expected tags: content (bootleg, livedl, news, memorabilia, ticket, …)       | =computeExpectedTags= table                     | same                                                                                      | TODO  |     3 |
+| Expected tags: tour premiere count + prem                                    | =countTourPremiereSongs=                        | same                                                                                      | TODO  |     3 |
+| Expected tags: tour association                                              | =checkEventTourTags=, =TOUR_DEFINITIONS=        | same; =TOUR_DEFINITIONS= from the feed                                                    | TODO  |     3 |
+| Expected tags: location (title / venue)                                      | =checkEventNameLocationTags= …                  | same; the state/province/country tables (small, may stay in code)                         | TODO  |     3 |
+| Expected tags: relations of the cast tab                                     | =checkOnStageRelationTags=                      | same; the alias overrides from the feed                                                   | TODO  |     3 |
+| Expected tags: setlist songs                                                 | =checkSetlistSongTags=, =computeSongTagAlias=   | same; the song alias overrides from the feed                                              | TODO  |     3 |
+| Spurious tags (present, not expected)                                        | =SPURIOUS_TAG_REASONS=                          | same                                                                                      | TODO  |     3 |
+| Tag source highlight (which text made a tag expected)                        | doc/TAGS.md, opt-in                             | the finding's card names the source                                                       | TODO  |     3 |
+| VENUE / SONG / RELATION / RETAIL page tag checks                             | =annotate*PageTags=                             | findings on bb-venue, bb-song, bb-relation, bb-retail heads                               | TODO  |     4 |
+| Help-icon tag check                                                          | =hasHelpIcon=                                   | needs the YEAR page's icon: with batch 2's per-year read                                  | TODO  |     4 |
+| HOME page: fetch every year, mismatch filter                                 | doc/HOME_PAGE.md                                | bb-home + the findings above                                                              | PART  |     — |
+| ⇄ Original Page toggle                                                       | every page                                      | the wiki's page folded under "Brucebase page"                                             | DONE  |     — |
+| The sticky bar, Ctrl+B                                                       | =toggleStickyBar=                               | SAED's toolbar                                                                            | DONE  |     — |
+
+* Batch 1: the year table's name and anchor findings (next)
+
+*Where:* the bb-year table. ▶ Pages already reads each row's event page (=_bbEvp*=, the record of =_dpParseBb()=), so batch 1 makes NO new request. The checks run on the row's own data plus that record (late data, as =bb-onstage-tab= does): =_bbEvpRenderCell()= marks the cell, live and source, and queues the row.
+
+*The findings, through the add-finding skill:*
+1. =bb-name-mismatch= (error) on the Event cell: the year page's heading differs from the event page's title after =normalizeDetailName='s rules.
+   - Rules to port: "(The)" moved before the comma, " - " after the date, upper case.
+   - "(early)", "(late)", "(afternoon)" and "(evening)" are a variant, not an error: a warn finding of its own, or none. *Ask vzell.*
+2. =bb-anchor-date= (warn): the row's anchor does not start with the date's DDMMYY. No request at all.
+3. =bb-anchor-link= (error): the event page's "Info & Setlist" link points to another anchor or another year (1949-64 aware).
+
+4. =bb-title-spaces= (warn), added by vzell on 2026-11-14 ("findings should actually also show up as findings later on in our userscript").
+   - *What it flags:* a Brucebase title with two blanks in a row, or a blank before a comma.
+   - *Known case:* "2026-08-28 Stone Pony (The), Summer Stage,  Asbury Park, NJ", found by =scripts/probe-bruceparser-title-rules.py=.
+   - *Cost:* no request. It reads the row's own title (Event cell, any bb-* list's title), the head's h1 and the window's title.
+
+*Every Brucebase data error an audit or a report finds becomes a finding* (vzell, 2026-11-14). The known cases are the specs' oracle:
+
+| Data error                                 | Known case (2026-11-13 run)                                                          | Finding                           | Batch                 |
+|--------------------------------------------+--------------------------------------------------------------------------------------+-----------------------------------+-----------------------|
+| Year page anchor date ≠ title date         | 1972-05-00 Mediasound: anchor =000472b= (April), title May                           | =bb-anchor-date=                  | 1                     |
+| YEAR heading ≠ DETAIL title (per-part rule) | 1967-08-00 Howell ("private property" vs "unknown location"), the rest of the cleaned-up report | =bb-name-mismatch=                | 1                     |
+| Two blanks in a title                      | 2026-08-28 Stone Pony, Summer Stage                                                  | =bb-title-spaces=                 | 1                     |
+| URL shortened differently from the title   | BruceParser's =URL-shortening-CLEANEDUP= (with 0.16.0's suffix fix)                  | =bb-url-shortening= (feed)        | feed (idea 4)         |
+| Anchor postfix ≠ URL postfix (a/b/c)       | =differences-date-postfix-detail-and-year.txt= (1,352 lines)                         | =bb-anchor-postfix=, if vzell wants it | 1 (question above) |
+| Stray tag "onst2"                          | =onstage:1990-01-17-waldorf-astoria-hotel-new-york-city-ny-1=                        | spurious tags                     | 3                     |
+
+*Before code:*
+- probe all year pages of the mirror (=bb/latest=, 2026-11-13) for how many rows each finding would flag, and compare with BruceParser's =REPORTING/differences-anchor-date-year-and-title-date-detail.txt= and =differences-detail-title-year-title.txt=, which already list these;
+- the add-finding skill;
+- a spec on the 1985 year fixture with planted rows.
+
+*What BruceParser's own reports say* (=bb/latest/REPORTING/=, the 2026-11-13 run on petri; 4 lines per entry):
+- =differences-detail-title-year-title.txt=: 148 lines, about 37 shows whose title differs. The =-cleanedup= variant, with the known exceptions dropped, has 48 lines, about 12 shows. For example, 1967-08-00 Howell: the YEAR page says "private property", the DETAIL page "unknown location".
+- =differences-anchor-date-year-and-title-date-detail.txt=: 5 lines, ONE show, 1972-05-00 Mediasound: its anchor =000472b= says April.
+- =differences-date-postfix-detail-and-year.txt=: 1,352 lines, the a/b/c postfix of the URL vs the anchor. BBP's check 2 (=startsWith=) does not look at the postfix. *Ask vzell* whether SAED should.
+
+So batch 1 flags few rows. These reports are also the test oracle: the probe must find the same shows.
+
+*Open questions for vzell:*
+1. The early/late variant: a warn finding, or nothing?
+2. Should the name check use the RAW heading, before the MusicBrainz title style (=sa_foreign_mb_titles=) rewrites it? Recommended: the raw one, kept in the cell's data.

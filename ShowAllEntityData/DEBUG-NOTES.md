@@ -29477,3 +29477,8 @@ Env: 2026-11-14T00:26:56+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
   - *Mutations:* `bb-onstage-tags.json` 10/10 as recorded. "A hover starts the reads" is covered by the
     window's `wanted()`, so it is expect pass.
   - *Stale finds:* 3 moved (bb-names-tags, bb-window-sections, youtube-embeds); 0 stale.
+- **The merge gate on =main= (=cdfcfa7a= + the 9.99.1625 fold), petri, 12 workers:**
+  - *First run, 00:44–01:04 CET:* 3,096 passed and 1 failed. =bb-year-event-pages.spec.js:374= ("rows flagged later join the filtered table") waits up to 30 s for two more rows to be read at the 1.1 s request spacing, and got only one under the full suite's CPU load.
+  - *The same file alone:* 39/39 (13 tests × 3).
+  - *Second full run, 01:06–01:26 CET:* 3,097/3,097.
+  - *Verdict:* a load-sensitive timeout, not this change. With =sa_bb_onstage_tags= off in fixtures, ▶ Pages makes no extra request; the only new work per page is =_bbTagInfo()='s few DOM queries. If it fails again under load, widen that poll rather than retrying.

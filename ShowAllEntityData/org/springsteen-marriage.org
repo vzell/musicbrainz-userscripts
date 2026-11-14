@@ -185,6 +185,124 @@ The reader that follows from this:
 
 Also: =_dpParseBb()= is SYNCHRONOUS (the plan said async). The extra requests belong in the Brucebase loader (=_extDpLoad()= / the =_dpGet()= path) after the parse, and must go through the same rate slot.
 
+* BruceParser's shell logic: an audit (2026-11-14)
+
+vzell: "Don't take the logic of the shell BruceBase Parsers scripts for granted, they have been written by a human (me). Could you check if there is something bogus with it".
+
+Env: 2026-11-14T00:55:51+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · BruceParser at =37dae46=, its run =bb/2026-11-13= · n/a (ShellCheck 0.9.0 and Python over the mirror)
+
+*Method.*
+1. A mechanical pass: =shellcheck -S warning= over all 15 scripts gave 50 warnings, 21 of them unused variables.
+2. The logic behind the reports Track A wants to reuse (titles, anchors, URLs, date tags), read line by line. Each suspicion was checked against tonight's mirror and reports, with =scripts/probe-bruceparser-title-rules.py= (in this repo; it reads every one of the 8,926 event titles).
+
+Nothing below has been changed in BruceParser: the fixes are yours to approve.
+
+** Bugs (confirmed with tonight's data)
+
+1. *=eefyp.sh=: the "(The)" rule is greedy, so it moves the article in front of the wrong part.*
+   - *The code:* =(.*) \((The|Le|De)\)(.*)= puts "The" in front of everything before the article, not in front of its own comma part.
+   - *Example:* "2025-10-14 Spotify HQ, Adelphi (The), London, England" becomes "the spotify hq, adelphi, …", while the year page rightly says "spotify hq, the adelphi".
+   - *Effect:* 3 FALSE "Differing TITLE" reports tonight:
+     - =gig:1997-05-16-opera-berlioz-montpellier-france= ("Corum (Le)")
+     - =gig:2007-06-11-chelsea-piers-new-york-city-ny= ("Lighthouse (The)")
+     - =interview:2025-10-14-adelphi-london-england=
+   - *How it was hidden:* the Chelsea Piers one is hard-coded as an exception (=eefyp.sh:1047=, =1066=, =1083=). That exception papers over this bug; Spotify HQ is still in the cleaned-up report.
+   - *Fix:* move the article per comma part, as BruceBaseParser's =normalizeDetailName()= already does (=/\b([^,(]+?)\s*\((The|Le|De)\)/g=, whose comment names the Spotify HQ case). Then drop the three hard-coded exceptions.
+2. *=checkURLandTitles.sh:609–617=: a "-N" sibling's generated URL is cut AFTER its suffix is added.*
+   - *What Wikidot does* (the probe of 2026-11-13, 31 of 31 siblings): it cuts the base name to 60 − len("-N") characters, drops a trailing "-", then appends "-N".
+   - *What the script does:* it appends first and cuts at 60 after, so the suffix is lost.
+   - *Effect:* false "wrongly shortened" rows tonight, for example:
+     - =onstage:2004-10-13-continental-airlines-arena-east-rutherf-2= vs the generated =…-east-rutherfor=;
+     - =onstage:2026-06-04-oceanfirst-bank-center-west-long-branch-2= vs =…-west-long-branch-n=.
+   - *Fix:* cut =${generated:0:$((60-${#suffix}))}=, strip a trailing "-", then append the suffix. This is the same rule as SAED's =_bbSiblingName()=.
+3. *=checkURLandTitles.sh:398=: =${before_pattern/-/ /}= replaces only the FIRST "-", and replaces it with " /".*
+   - The comment says "get first part before ' ' or '-'". In fact "Oakland-Alameda County Coliseum" splits into "Oakland", "/Alameda", "County", "Coliseum", and a second hyphen is never split.
+   - *Meant:* =${before_pattern//-/ }=.
+   - *Effect:* the "same word before and after the comma" rule misses or garbles hyphenated venue names. The number of affected rows was not measured.
+4. *=eefyp.sh:395–423=: the anchor report mislabels its date and links a page that does not exist.*
+   - *The label:* the date compared is =${year_title:2:8}=, the YEAR page's title date, but the report calls it "TITLE DATE on DETAIL page".
+   - *The link:* it is built from =${detail_id}= (tonight: https://brucebase.wikidot.com/1972-05-00-cbs-records-new-york-city-ny, no such page) instead of =${anchor_id}= (=1972#000472b=).
+   - *Effect:* the check itself is right; only the report misleads. Tonight's only entry, 1972-05-00 Mediasound with anchor =000472b= (April) and a title in May, is a real Brucebase error.
+
+** A Brucebase data error the probe found on the way
+
+- "2026-08-28 Stone Pony (The), Summer Stage,  Asbury Park, NJ" has a DOUBLE space before "Asbury Park". The page to fix is the show's own.
+
+** Risks (not wrong on petri today)
+
+1. *No locale is pinned anywhere.*
+   - =efc.sh= takes month and weekday names from =date +%B= / =%A=, which follow the locale. petri runs =C.UTF-8=, so the names are English. On a host with a German locale, every date-part tag would be reported "wrong".
+   - NB-3641 and vzell-lap: unknown.
+   - *Fix:* =export LC_ALL=C.UTF-8= once in =logging.sh=. That also pins =sort=/=uniq= order between hosts.
+2. *=bbp.sh:136= =cd ./search= has no =|| exit=.* If it fails, =search.sh= runs in the repo root and writes its results there.
+3. *=dc.sh:268=: =curl_args+=( -o ${category_file} … )= is unquoted.* A page name with a glob character (=*=, =?=, =[=) would expand against the working directory. None was seen in the mirror; quoting costs nothing.
+4. *=efc.sh:783–805=: =[[ ${tag} != ${dd_ok} ]]= has an unquoted right-hand side, which makes it a glob pattern.* Harmless for digits and month names; quote it anyway.
+
+** Checked and fine
+
+- The two copies of =year_page_normalize= (=eefyp.sh:44=, =extract-all-event-info-and-setlists.sh:50=) are identical, as CLAUDE.md requires.
+- =efc.sh='s date-part check covers both cases:
+  - a MISSING date tag (=:752–757=, against =category_date_fraction_list=);
+  - a WRONG one (=:780–810=).
+- The =all-media= / =all-news= / =all-recnote= names in its =case= match the loop's list (=:670=).
+- The anchor-to-date check (=eefyp.sh:395–402=, DDMMYY to YY-MM-DD) is right: only its report text is off (bug 4).
+- The "Early/Late/…" suffix rule drops everything after the suffix, but no title has text after one: 0 of 8,926.
+- ShellCheck false alarms:
+  - =bbp-status.sh:307= (=state[…]=done= is a value);
+  - =esfsl.sh:119= (the ’ is meant);
+  - =page-extract.sh:165= (split on purpose, commented);
+  - =logging.sh:40= (=verb_lvl= is set by every caller).
+
+** Not checked yet
+
+- The setlist comparison (=extract-setlists-from-detail-pages.sh=, =extract-all-event-info-and-setlists.sh=).
+- springsteenlyrics.com, brucespringsteen.it and jungleland.it parsing (=esfsl.sh=, =erfsl.sh=).
+- The MusicBrainz side (=search/*.sh=).
+- *The hard-coded exceptions* (the long =sed -e '/…/d'= lists in =eefyp.sh:1040–1090= and elsewhere). Bug 1 shows that an exception can hide a rule bug. Each one deserves a comment saying why it is an exception, and a re-check whenever a rule changes.
+
+** Second pass: performance, sed/awk, loops (2026-11-14, after the fixes of 0.16.0)
+
+vzell: "anything else which should be checked in the shell scripts, as they are hand made, e.g performance aspects, sed/awk etc statements, loops and so on".
+
+*Where the time goes* (=docs/timings.tsv=, the 2026-11-13 run on petri, 681 s in all):
+- =dc.sh= 454 s: the Brucebase downloads;
+- =search= 225 s: MusicBrainz, at 1 request a second, running alongside;
+- every parsing step together about 150 s: =erfsl= 52, =efc= 29 + 28, =esfdp= 23, =checkURLandTitles= 16, =eefyp= 15.
+
+So the CPU side is no problem. The run time is network time, and that is where the one real performance question is.
+
+*Findings*
+
+1. *=dc.sh=: no job limit.*
+   - =parallel … download_categories_batch= (=dc.sh:352=) and the list-page download (=:338=) start one job per CPU core: 24 on petri, 28 on NB-3641. Each job's curl fetches 50 pages back to back, so the wiki gets about two dozen connections at once from one machine.
+   - That is hard on a community wiki and a likely cause of the empty-page retries (=MISSING-category-pages.txt=). It also makes the run time depend on the host, the "7 to 196 min" in CLAUDE.md.
+   - *Proposal:* =-j 4= (a setting, =BBP_JOBS=), then compare the run time and the number of empty pages. *Your call*, because it trades run time for politeness.
+2. *=checkURLandTitles.sh:409=, =:425=, =:477=: =sed -e "s/${pattern}//"= uses a venue word as a REGEX.*
+   - A "." matches any character, and a "/" in the word ("C/O") is a =sed= syntax error, which silently leaves the word in.
+   - It removes the word inside other words too: "Park" out of "Parkway".
+   - It costs two forks per word (=$(echo | sed)=).
+   - *Fix:* =${before_pattern/"${pattern}"/}=, literal (the quotes stop globbing) and without a fork. Not applied yet: it changes which rows the report lists, so it belongs in a run of its own whose report you compare with tonight's.
+3. *=extract-setlists-from-detail-pages.sh:154=: =echo -e "${event_title}:…"=* would read a backslash in a title as an escape (=\c= cuts the line). No title has one today. Use =printf '%s:%s\n'=.
+4. *Small things:*
+   - =cat file | sed …= (=checkURLandTitles.sh:699= and three more): one fork each run, harmless.
+   - The 21 unused variables ShellCheck lists (SC2034) are left over from earlier versions; worth a cleanup commit of their own.
+
+*Checked and fine*
+- *Pacing on MusicBrainz:* =search/*.sh= sleeps 1 s after every request and identifies itself with a User-Agent and a contact address, as MusicBrainz asks. A 503 or rate-limit answer retries the same offset.
+- *Paging:* =offset= follows the rows actually received.
+- *Loops:*
+  - every =read= has =-r=;
+  - no =while= loop sits in a pipe (no variables lost in a subshell);
+  - forks inside loops are few: =date= is used for timings, and =efc.sh= caches date parts per date;
+  - =grep_fw= is a fork-free, fixed-string whole-word match.
+- *Data as a pattern:* no =grep= takes data as a pattern except through =grep_fw=, and no =awk= program has data spliced in.
+- *Parallel output:* =check_urls_batch= and =process_year= write a part file per job (=PARALLEL_SEQ=) and join them in input order, so lines never interleave. =rm -rf -- "${parts_dir:?}"= is guarded against an empty variable.
+
+** What this means for Track A
+
+- *Batch 1's name check* (=org/bbp-parity.org=) follows BruceBaseParser's per-comma-part rule, not =eefyp.sh='s.
+- *The test oracle:* BruceParser's title report is the oracle only after bug 1 is fixed. Until then, the three shows above are expected to DIFFER between the two.
+
 * Track A: BruceParser and BruceBaseParser into ShowAllEntityData
 
 ** Context

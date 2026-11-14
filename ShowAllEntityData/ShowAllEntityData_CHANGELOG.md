@@ -4,9 +4,17 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1795 versions; the month pages hold all of them.
+This page shows the newest 100 of 1796 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1625 — 2026-11-14
+
+**🚀 Feature**
+
+- Brucebase: the Tags of a page's head and of its preview window (on every site) now also show the tags kept on other pages. Brucebase allows 512 characters of tags per page, so a show's cast is tagged on its own On stage page, and a full page continues on a second one ("-2", "-3"). Those tags are drawn dashed with ↪; their hover card names the page that keeps them, and the pages are listed below the tags with how many each adds. They are read when you press the page's button or open the window with Space (never from a hover): for a show with an On Stage tab its On stage page, and the next page only while the one before is nearly full (over 450 of the 512 characters). A bar shows the pages being read, and a page that fails can be read again with Retry. New setting "Show the tags kept on a show's On stage page" (on).
+- Every card of chips at the head of another site's detail page (Brucebase, springsteenlyrics.com, Discogs, archive.org, setlist.fm, …) and a Brucebase window's Tags get a tool row once they hold 6 chips or more: Show (All / This page / the other pages, where a card has them), a filter that keeps the chips containing the text and marks it in each, Group by (the card's own kinds, Page, None) and A–Z / Z–A (press the pressed one again for the page's order; Brucebase tags start A–Z, every other card in the page's order). Group by and the sort are remembered between pages; the filter is not. Esc clears the filter. Each row's label shows how many chips it holds.
+
 
 ## 9.99.1624 — 2026-11-13
 
@@ -853,18 +861,6 @@ This page shows the newest 100 of 1795 versions; the month pages hold all of the
 
 - setlist.fm windows (link preview, with your setlist.fm API key): set times. The Setlists table of a venue, an artist or a tour has a "Set times" column (doors, and the show from start to end), and a setlist's window lists Doors, Scheduled, Start (how long after doors) and End (how long the show was). The times are on a 24-hour clock, as on MusicBrainz. setlist.fm's API has no set times, so they are read from setlist.fm's own pages: only once the window is open, never for the hover card, two pages for every 20 setlists, at most one a second. "…" means the page is still being read, "?" that it could not be (⟳ Try again), "—" that setlist.fm has none.
 - setlist.fm window of a venue: what the API leaves out, read from the venue's own page with the set times: its address, when it opened (or was open), other names, its web links and how many attendances setlist.fm's users have logged.
-
-
-## 9.99.1525 — 2026-11-03
-
-**🐛 Fix**
-
-- setlist.fm window of a venue or an artist (link preview, with your setlist.fm API key): the dates in the Setlists table no longer break onto a second line ("2026-10-20" wrapped at its hyphens).
-
-**✨ Improve**
-
-- setlist.fm window of a venue or an artist: "In the loaded setlists" lists the artists and tours (a venue's) or the tours and venues (an artist's) as small tables you can sort and filter, most setlists first. The number of setlists is a button: it keeps the Setlists table on the right to that artist, tour or venue, and works together with the table's text filter. A second click, or the ✕ of the "Only …" label above the table, shows them all again.
-- setlist.fm windows: a tour is a link, as on setlist.fm. It goes to setlist.fm's search for that artist and tour; in the window it opens the tour's setlists (20 at a time, "Load 20 more", its venues on the left), and ← Back returns. A setlist's window links its tour the same way.
 
 
 ---
