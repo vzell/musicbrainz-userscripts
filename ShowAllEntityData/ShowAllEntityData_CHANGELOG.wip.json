@@ -1,0 +1,20 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-11-14",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase year listings (/1978-list): two new findings on the Event column, BruceBaseParser's listing checks. ❌ \"Brucebase listing entry named differently from the year page\": the listing writes an entry differently from the heading the year page has at the anchor it links (1966: \"BUSINESS DISTRICT\" against \"UNKNOWN LOCATION\"). ⚠️ \"Brucebase listing entry with a wrong link to the year page\": the link's anchor is not the entry's date, it names another year's page, or the year page has no such anchor. The date and year part shows with the table; the rest once ▶ Pages has read the year page, which is one request a year and answers every row of that year at once. A switch for each and one tint setting in ⚙️ Settings → ⚠️ Findings."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Brucebase year listings: ▶ Pages said \"no page of its own\" for every recording session, rehearsal and interview, and for every entry whose anchor ends in a letter (several entries on one date). The year page was read for shows and cancelled shows only, and for anchors of six digits only. Such rows are now read like the others. Year pages kept from before are read once more."
+        ]
+      }
+    ]
+  }
+]
