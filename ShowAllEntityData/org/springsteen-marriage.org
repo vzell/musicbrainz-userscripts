@@ -5,7 +5,13 @@ Env: 2026-11-13 · plan written in a Claude Code session (plan mode), code readi
 
 Plan for pickup on another host.
 
-* PICKUP HERE: status at the end of the session of 2026-11-14 (01:40 CET)
+* PICKUP HERE: status of 2026-11-14 (midday): batch 1 is built on its branch and waits for vzell's browser check
+
+- *BruceParser 0.17.0 is pushed* (=4978b0e=): =dc.sh= 1.5 with =-j "${BBP_JOBS:-4}"= on both =parallel= calls, =checkURLandTitles.sh= 1.5 with the literal word removal in three places. Checked with =bash -n= and =-V= only. Still to do there, by vzell: a full =bbp.sh= run for the report comparison, and the download time with 4 jobs.
+- *Track A batch 1 is on =feat/bb-findings-batch1=, pushed, NOT merged:* six findings on the year table's Event cell. What was built, the probe's counts and three points that differ from the plan are in =org/bbp-parity.org=, "Batch 1: built on …".
+- *Next:* vzell checks the four year pages in the browser (the list is in the session's closing message and in =org/bbp-parity.org=), answers the three points, then the merge (=merge-push-remove=). After that, batch 2.
+
+* Status at the end of the session of 2026-11-14 (01:40 CET)
 
 - *Shipped:* Phase 1 is MERGED. =main= is at 9.99.1625 (=afd922fb=, pushed), the branch is deleted, and =test:full= passed 3097/3097. It is not yet published to =vzell/mb-userscripts=; that is vzell's call.
 - *BruceParser:* 0.16.0 (=69114f8=, pushed) carries the audit's bugs 1–4 and the risk fixes.

@@ -1733,6 +1733,81 @@ out). A page is 37 KB (median), 1978 7.1 MB; 5,010 entries in all.
   fixture `bb-year-list-1985.html` (`scripts/build-bb-year-list-fixtures.py`);
   mutations `scripts/mutations/bb-year-event-pages.json` (14).
 
+## The year table's name and anchor checks (bbp-parity batch 1, 2026-11-14)
+
+org/bbp-parity.org, Track A batch 1; vzell's decisions of 2026-11-14.
+BruceBaseParser's YEAR-vs-DETAIL checks, as six findings on the Event cell
+(docs/claude/findings.md has the registry side). No mockup: the menus, the
+tint and the tooltip card are the findings' own.
+
+| Finding             | Level | Known from      | Rule                                                                                         |
+|---------------------|-------|-----------------|----------------------------------------------------------------------------------------------|
+| `bb-name-mismatch`  | ❌    | the event page  | heading ≠ title after `_bbNormName()`, and no variant                                        |
+| `bb-name-variant`   | ⚠️    | the event page  | title = heading + " (Early)" … (`_BB_NAME_VARIANTS`, nine words)                             |
+| `bb-anchor-date`    | ⚠️    | the row         | the anchor does not start with the heading date's DDMMYY                                     |
+| `bb-anchor-link`    | ❌    | the event page  | "Info & Setlist" names another anchor, or a year page that does not cover the date's year    |
+| `bb-anchor-postfix` | ⚠️    | the row         | the anchor's letter ≠ the letter after the date in the event page's address                  |
+| `bb-title-spaces`   | ⚠️    | row, then page  | two blanks in a row or a blank before a comma, in the heading or the title                   |
+
+- **The name rule** (`_bbNormName()`, BruceBaseParser's
+  `normalizeDetailName()` and BruceParser 0.16.0's per-part article): the
+  date, then the rest in upper case with "X (The|Le|De)" written "The X"
+  in each comma part; the heading's " - " after the date is optional and a
+  letter on the date is left out. **Blanks are compared as written**, as
+  BruceParser 0.16.0 does: a title with two blanks is `bb-title-spaces`
+  AND `bb-name-mismatch` (two blanks right after the date are only the
+  former: `\s+` takes them).
+- **The variants are nine words, not vzell's four**: Early, Late,
+  Afternoon, Evening (BruceBaseParser's, the decision's) plus First,
+  Second, Third, Morning, Soundcheck, which BruceParser's `eefyp.sh` also
+  strips. The mirror has the four extra ones once each (1969-05-28
+  Pandemonium ×3, 2002-07-30 Convention Hall); with four words they would
+  be errors. *vzell to confirm.*
+- **The letter rule is BruceParser's**: the anchor without its digits
+  against `[a-z]` after the date in the address (`/gig:1970-05-02a-…`).
+  An address without a letter under an anchor with one is flagged, which is
+  most of the rows.
+- **A listing row** (bb-year-list; no anchor of its own, its heading is
+  the listing's) gets `bb-title-spaces` only; the rest is batch 2.
+- **What the reader adds** (`_dpParseBbPage()`): `bbRawTitle`
+  (`#page-title`, ends trimmed) and `bbInfoHref` (the first link to
+  `/<year>#<anchor>` whose text says "info", BruceBaseParser's
+  `findInfoSetlistLink()`); `_bbEvpView()` passes them on.
+  `_DP_PARSER_VERSION` 30: every stored preview record of a foreign host
+  is read again once.
+- **Probe** (`scripts/probe-bb-batch1-findings.py`, read-only; Env:
+  2026-11-14T11:00+01:00 · petri · Python over the mirror bb/2026-11-13 ·
+  n/a): 63 year pages, 5,018 entries (2 without a link), 5,016 event pages.
+
+  | Finding             | Rows | Years | Against BruceParser's report of the same run                                                    |
+  |---------------------|------|-------|-------------------------------------------------------------------------------------------------|
+  | `bb-name-mismatch`  |   38 |    10 | 34 in both; 3 only there (the false reports 0.16.0 fixed); 4 only here (titles with two blanks) |
+  | `bb-name-variant`   |  277 |    14 | not a report (Early 131, Late 131, Evening 6, Afternoon 5, the four others 1 each)              |
+  | `bb-anchor-date`    |    1 |     1 | the same one: 1972-05-00 Mediasound, anchor `000472b`                                           |
+  | `bb-anchor-link`    |    7 |     7 | not a report                                                                                    |
+  | `bb-anchor-postfix` |  338 |     9 | the same 338 (1973: 129, 1974: 80, 1972: 41, 1971: 38, 1975: 30)                                |
+  | `bb-title-spaces`   |    5 |     5 | not a report; all five in event page titles, no heading                                         |
+
+  22 of the 38 mismatches are 1949-64's "87 RANDOLPH STREET" against
+  "Springsteen Residence" (BruceParser's cleaned-up report drops them as
+  known). Two anchors are used twice (`000472b` in 1972) — not a finding
+  yet.
+- **The shipped code against the probe**
+  (`scripts/check-bb-batch1-findings.js ROWS.json`, the userscript in
+  Chromium through the test harness; rows from the probe's `--rows`): the
+  reader's title and link on all 5,016 pages and the checks on all 5,018
+  entries, 0 differences.
+- **Tests**: `tests/fixtures/bb-findings-batch1.spec.js` (9): 1972's year
+  page with eight real entries and their pages
+  (`scripts/build-bb-findings-batch1-fixtures.py`: `bb-year-1972-findings.html`,
+  `bb-findings/`); mutations `scripts/mutations/bb-findings-batch1.json` (32).
+- **Seen on the way, not changed**: Load from Disk rebuilds each `<td>`
+  from its saved inner markup, so the year table's cell classes and data
+  attributes are gone on a loaded page — the Event cell's `nowrap`, and
+  the event-page cells' key and state (`data-mb-bbevp-*`), so ▶ Pages has
+  nothing to read there. `_bbEvpCells()`'s JSDoc says the data "survives
+  … a save to disk"; this run says it does not. Open, for vzell.
+
 ## Show links on Brucebase's own pages (Phase 8, 2026-11-11)
 
 A show on its year page (`/<yyyy>#<ddmmyy>`: an event's "Info & Setlist", a

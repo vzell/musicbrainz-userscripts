@@ -43,7 +43,7 @@
         "why": "Late data: the row is queued for its re-stamp.",
         "edits": [
             {
-                "find": "                if (table) _queueFindingsRestamp(td.parentElement, ['bb-onstage-tab'], live ? null : table);",
+                "find": "                if (table) _queueFindingsRestamp(td.parentElement, ['bb-onstage-tab', ..._BB_EVENT_CHECK_LATE_IDS], live ? null : table);",
                 "replace": ""
             }
         ],
@@ -56,8 +56,8 @@
         "why": "_LATE_FINDING_IDS: a changed stamp re-runs the filter while a late finding filters. Covered here by another path: a cell-scope finding is ticked as a value in its column's filter input (_setFinding() → _writeUniqValueSet()), so _anyFilterActive() is true and the event-page columns' own refresh (_bbEvpScheduleRefresh()) re-runs the filter after every page read. Kept in the list for a row-scope fallback (two columns, Exclude mode), which no fixture reaches.",
         "edits": [
             {
-                "find": "'sl-double-utf8', 'bb-onstage-tab'];",
-                "replace": "'sl-double-utf8'];"
+                "find": "'sl-double-utf8', 'bb-onstage-tab', ..._BB_EVENT_CHECK_LATE_IDS];",
+                "replace": "'sl-double-utf8', ..._BB_EVENT_CHECK_LATE_IDS];"
             }
         ],
         "spec": "tests/fixtures/bb-year-event-pages.spec.js",
@@ -95,8 +95,8 @@
         "why": "Rows read while the finding filters must join the filtered table: the queue takes a detached row with its table.",
         "edits": [
             {
-                "find": "                if (table) _queueFindingsRestamp(td.parentElement, ['bb-onstage-tab'], live ? null : table);",
-                "replace": "                if (table) _queueFindingsRestamp(td.parentElement, ['bb-onstage-tab'], null);"
+                "find": "                if (table) _queueFindingsRestamp(td.parentElement, ['bb-onstage-tab', ..._BB_EVENT_CHECK_LATE_IDS], live ? null : table);",
+                "replace": "                if (table) _queueFindingsRestamp(td.parentElement, ['bb-onstage-tab', ..._BB_EVENT_CHECK_LATE_IDS], null);"
             }
         ],
         "spec": "tests/fixtures/bb-year-event-pages.spec.js",

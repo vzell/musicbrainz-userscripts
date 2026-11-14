@@ -29482,3 +29482,26 @@ Env: 2026-11-14T00:26:56+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
   - *The same file alone:* 39/39 (13 tests × 3).
   - *Second full run, 01:06–01:26 CET:* 3,097/3,097.
   - *Verdict:* a load-sensitive timeout, not this change. With =sa_bb_onstage_tags= off in fixtures, ▶ Pages makes no extra request; the only new work per page is =_bbTagInfo()='s few DOM queries. If it fails again under load, widen that poll rather than retrying.
+
+## 2026-11-14 — Brucebase year table: the name and anchor findings (feat/bb-findings-batch1, bbp-parity batch 1)
+Env: 2026-11-14T11:26:21+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright Chromium 151.0.7922.34 (chromium-fixtures), no Tampermonkey (GM stubs); probe: Python over the mirror bb/2026-11-13, n/a
+- **What:** six findings on the year table's Event cell, BruceBaseParser's year-page checks (org/bbp-parity.org):
+  `bb-name-mismatch`, `bb-name-variant`, `bb-anchor-date`, `bb-anchor-link`, `bb-anchor-postfix`, `bb-title-spaces`.
+  Rules, probe counts and the comparison with BruceParser's reports: docs/claude/brucebase.md, "The year table's
+  name and anchor checks".
+- **Root fact 1 — a mark on a `<td>` does not survive Load from Disk.** The first version wrote
+  `data-mb-bb-checks` on the Event `<td>`. The disk round-trip test found rows without `td.mb-bb-event-cell` at
+  all: the load builds each `<td>` anew and sets only `innerHTML` (plus colSpan/rowSpan and a few named flags).
+  So the data moved to a hidden `span.mb-bb-ev-data` inside the cell. The same holds for the marks of
+  `bb-date-comma` and `bb-onstage-tab` (on the `<td>`: lost on a loaded page) and for the event-page cells'
+  `data-mb-bbevp-key`/`-state` (▶ Pages reads nothing on a loaded year). Not changed here; open for vzell.
+- **Root fact 2 — a cell with its own tooltip got no finding text.** `_writeFindingAttrs()` writes the
+  findings' lines only on a cell without a `title`. With `sa_foreign_mb_titles` on (the default) every Event
+  cell has "As written on the site: …", so the six findings would have tinted the cell and said nothing. Seen
+  when a planted heading ("CBS RECORDS , NEW YORK") made the shown name differ from the heading in a profile
+  with the title style off. Fix: an opt-in base (`data-mb-tip-base`, `_findingTipBase()`), set by
+  `_bbYearEventCell()` only; the findings' lines go above it and its comparison moves down by their count.
+- **Root fact 3 — the wiki lists 1972-05-02 before 1972-05-00,** and two entries of 1972 share the anchor
+  `000472b` (1972-04-00 and 1972-05-00 Mediasound; the second is the `bb-anchor-date` row).
+- **Existing lists moved:** three finds of `scripts/mutations/bb-onstage-tab.json`, one of `link-site-uvd.json`
+  and one of `tooltip-diff.json` named lines this change rewrote (`check-mutation-finds.py`: 5 stale, then 0).

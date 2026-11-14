@@ -334,6 +334,52 @@ its mutation passes because the tick is a column-filter value, so
 `bb-year-event-pages.spec.js` ("the bb-onstage-tab finding"); mutations
 `scripts/mutations/bb-onstage-tab.json`.
 
+### The Brucebase year table's name and anchor checks: `bb-name-mismatch`, `bb-name-variant`, `bb-anchor-date`, `bb-anchor-link`, `bb-anchor-postfix`, `bb-title-spaces`
+
+vzell, 2026-11-14 (org/bbp-parity.org, Track A batch 1): BruceBaseParser's
+year-page checks. All cell scope, column Event, Brucebase only; ❌ for
+`bb-name-mismatch` and `bb-anchor-link`, ⚠️ for the rest. Full text:
+docs/claude/brucebase.md, "The year table's name and anchor checks". What
+this file must record:
+
+- **One reader, six entries.** `_bbEventChecks(row, page)` is pure and
+  returns the failed checks as tokens (the ids without `bb-`); the Event
+  cell keeps them in `data-mb-bb-checks`, and each entry's `test()` is
+  `_bbHasCheck(cell, token)`. `rowGate` is one `querySelector`.
+- **The data is on a carrier INSIDE the cell, not on the `<td>`:**
+  `span.mb-bb-ev-data` (hidden, empty), with `data-mb-bb-raw-heading`,
+  `-anchor`, `-raw-title`, `-info-href`, `-checks`. Save to Disk keeps a
+  cell's inner markup only (`_buildDiskCellData()`: `html`, the spans and a
+  few named flags), so **a mark on the `<td>` is gone after Load from
+  Disk** — the first version of this batch lost every finding there, and
+  `bb-date-comma` / `bb-onstage-tab` (marks on the `<td>`) still do. A new
+  finding that should survive a disk load puts its mark inside the cell.
+- **Two are build-time, four are late.** `bb-anchor-date` and
+  `bb-anchor-postfix` are written with the row (`_bbYearEventCell()` →
+  `_bbEventChecksWrite()`); the others need the event page:
+  `_bbEvpRenderCell()` (on the Content cell, once per row) writes the
+  page's raw title and "Info & Setlist" href to the row's carrier, live and
+  source, and queues the row when the checks changed.
+  `_BB_EVENT_CHECK_LATE_IDS` is in `_LATE_FINDING_IDS`. `bb-title-spaces`
+  is both (the heading at once, the title once read).
+- **RAW text** (vzell's decision 2): the heading and title as the wiki
+  writes them (`_bbRawText()`: ends trimmed, blanks kept), never the cell's
+  text, which `sa_foreign_mb_titles` restyles.
+- **A finding's tooltip above the cell's own** — new with this batch:
+  `_writeFindingAttrs()` leaves a cell that already has a `title` alone,
+  and nearly every Event cell has one ("As written on the site"). A cell
+  that carries `data-mb-tip-base` (`{t, c}`, `_setTipCmp()`'s arguments;
+  only the Brucebase Event cell sets it) gets the findings' lines ABOVE
+  that text, the base's comparisons moved down by the findings' line count,
+  and the base alone again when the findings go (`_findingTipBase()`).
+  Opt-in by attribute: no MusicBrainz cell has it.
+- Settings: a switch per finding (`sa_findings_bb_name_mismatch`,
+  `_name_variant`, `_anchor_date`, `_anchor_link`, `_anchor_postfix`,
+  `_title_spaces`), three tints (`sa_findings_tint_bb_name`, `_bb_anchor`,
+  `_bb_title_spaces`).
+- Specs `tests/fixtures/bb-findings-batch1.spec.js` (9); mutations
+  `scripts/mutations/bb-findings-batch1.json`.
+
 ## On demand: the title-style findings
 
 `title-case`, `title-typography`, `title-series-sep`, `title-feat` and

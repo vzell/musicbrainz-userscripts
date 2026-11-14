@@ -1,0 +1,15 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-11-14",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase year pages: six new findings on the Event column, the checks BruceBaseParser made on a year page. Two need no request and show with the table: ⚠️ \"Brucebase anchor with another date than its entry\" (the anchor is not the date as day, month, year: \"000472b\" on an entry of 1972-05-00) and ⚠️ \"Brucebase anchor letter differs from the event page's address\" (several entries on one date: the letter on the anchor against the letter after the date in the address; common in the early 1970s). The others show once ▶ Pages has read an entry's page, with no request of their own: ❌ \"Brucebase event page named differently from the year page\", ⚠️ \"Brucebase event page adds (Early), (Late), … to the name\" (also Afternoon, Evening, First, Second, Third, Morning, Soundcheck), ❌ \"Brucebase event page links another entry of the year page\" (its \"Info & Setlist\" link), and ⚠️ \"Brucebase title with two blanks or a blank before a comma\" (the heading at once, the page's title once read; year listings too). Names are compared as the wiki writes them, in capitals, with \"Stone Pony (The)\" read as \"The Stone Pony\" — never the text in MusicBrainz title style. Each has a row in the ⚠️ / ❌ menus and the 📊 dropdown, tints its Event cell, says what differs in the cell's tooltip (above \"As written on the site\"), and is kept by Save to Disk. Nine new settings under ⚙️ → ⚠️ Findings: a switch per finding and three tints (name, anchor, blanks), all on.",
+          "Link previews of other sites are read again once after this update (their stored records get two new fields for the checks above): the first hover or ▶ Pages on a page read before asks the site again."
+        ]
+      }
+    ]
+  }
+]

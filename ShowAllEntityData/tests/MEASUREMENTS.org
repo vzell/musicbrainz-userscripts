@@ -4305,3 +4305,18 @@ Env: 2026-11-13T02:18:57+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 | =npm run test:full=, merge check  |  3088 |      12 | *20 m 14 s* | =run-test-full.py=, 02:18:57–02:39:11 CET |
 
 3088 passed, on the merged tree with the WIP changelog folded (9.99.1599–9.99.1623). No flake showed.
+
+* 2026-11-14 — Brucebase year table: the cost of the six name and anchor findings at render (=petri=, feat/bb-findings-batch1)
+
+Env: 2026-11-14T11:36:16+01:00–11:37:26+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright bundled Chromium 151.0.7922.34 (headless), no Tampermonkey (GM stubs).
+
+=node scripts/measure-bb-year-render.js 1985 9= (bb-year, =tableMode: single=, "Brucebase — 1985", 94 rows; the fixture =bb-year-1985.html=): click on "Show all events" to =waitForRenderComplete=, then a click on Date's header to the re-render's end; 9 fresh pages an arm, median (range). Arm M: =main= at =d0871f8c= (a git worktree, the same script); B: the branch's working tree (the Event cell's carrier and build-time checks, six more =FINDINGS= entries). Two rounds, the arms interleaved, nothing else running.
+
+| Round | M render      | B render      | M sort     | B sort     |
+|-------+---------------+---------------+------------+------------|
+|     1 | 579 (552–597) | 578 (550–596) | 72 (68–81) | 73 (65–79) |
+|     2 | 580 (559–623) | 586 (562–616) | 75 (68–85) | 76 (69–81) |
+
+B/M: render 1.00 and 1.01, sort 1.01 and 1.01, all inside each arm's own range. No measurable cost before any page is read. Not measured: the re-stamp of a row once ▶ Pages has read its page (one row per second at most).
+
+=npm run test:full= on the same working tree (=petri=, 12 workers): 2026-11-14T11:37:33+01:00–11:57:20+01:00, 19 m 47 s, 3,106 passed, 0 failed.

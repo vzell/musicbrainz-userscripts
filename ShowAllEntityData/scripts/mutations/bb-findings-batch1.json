@@ -1,0 +1,418 @@
+[
+    {
+        "name": "bb-name-mismatch: the detector never matches",
+        "why": "The finding reads the Event cell's check.",
+        "edits": [
+            {
+                "find": "            test: cell => _bbHasCheck(cell, 'name-mismatch'),",
+                "replace": "            test: () => false,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "after ▶ Pages",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-name-variant: the detector never matches",
+        "why": "The finding reads the Event cell's check.",
+        "edits": [
+            {
+                "find": "            test: cell => _bbHasCheck(cell, 'name-variant'),",
+                "replace": "            test: () => false,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "after ▶ Pages",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-anchor-link: the detector never matches",
+        "why": "The finding reads the Event cell's check.",
+        "edits": [
+            {
+                "find": "            test: cell => _bbHasCheck(cell, 'anchor-link'),",
+                "replace": "            test: () => false,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "after ▶ Pages",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-anchor-date: the detector never matches",
+        "why": "The finding reads the Event cell's check.",
+        "edits": [
+            {
+                "find": "            test: cell => _bbHasCheck(cell, 'anchor-date'),",
+                "replace": "            test: () => false,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "before any page is read",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-anchor-postfix: the detector never matches",
+        "why": "The finding reads the Event cell's check.",
+        "edits": [
+            {
+                "find": "            test: cell => _bbHasCheck(cell, 'anchor-postfix'),",
+                "replace": "            test: () => false,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "before any page is read",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-title-spaces: the detector never matches",
+        "why": "The finding reads the Event cell's check.",
+        "edits": [
+            {
+                "find": "            test: cell => _bbHasCheck(cell, 'title-spaces'),",
+                "replace": "            test: () => false,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "a title with two blanks",
+        "expect": "fail"
+    },
+    {
+        "name": "the name check: \"(The)\" is not moved",
+        "why": "\"Captain's Garter (The)\" is the year page's \"THE CAPTAIN'S GARTER\": the row would be a mismatch.",
+        "edits": [
+            {
+                "find": "            return a ? `${a[1]}${a[3]} ${a[2]}${a[4]}` : part;",
+                "replace": "            return part;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "the rules, pure",
+        "expect": "fail"
+    },
+    {
+        "name": "the name check: \"(The)\" is not moved (the table)",
+        "why": "The same rule on a real row: the Captain's Garter fails nothing.",
+        "edits": [
+            {
+                "find": "            return a ? `${a[1]}${a[3]} ${a[2]}${a[4]}` : part;",
+                "replace": "            return part;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "after ▶ Pages",
+        "expect": "fail"
+    },
+    {
+        "name": "the name check: a variant is a mismatch",
+        "why": "\"(Early)\" after an equal name is a warning of its own (vzell's decision 1).",
+        "edits": [
+            {
+                "find": "            if (word) return word;",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "the rules, pure",
+        "expect": "fail"
+    },
+    {
+        "name": "the name check: the names are compared as shown, not in capitals",
+        "why": "The year page writes capitals, the event page title case.",
+        "edits": [
+            {
+                "find": "        }).join(',').toUpperCase();",
+                "replace": "        }).join(',');"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "after ▶ Pages",
+        "expect": "fail"
+    },
+    {
+        "name": "the blank check: a blank before a comma is not one",
+        "why": "bb-title-spaces: two blanks OR a blank before a comma.",
+        "edits": [
+            {
+                "find": "        return /[ \\u00a0]{2}|[ \\u00a0],/.test(String(text || ''));",
+                "replace": "        return /[ \\u00a0]{2}/.test(String(text || ''));"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "a title with two blanks",
+        "expect": "fail"
+    },
+    {
+        "name": "the blank check: two blanks are not one",
+        "why": "bb-title-spaces: two blanks OR a blank before a comma.",
+        "edits": [
+            {
+                "find": "        return /[ \\u00a0]{2}|[ \\u00a0],/.test(String(text || ''));",
+                "replace": "        return /[ \\u00a0],/.test(String(text || ''));"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "a title with two blanks",
+        "expect": "fail"
+    },
+    {
+        "name": "a listing row gets the year row's checks",
+        "why": "A listing row has no anchor of its own, and its heading is the listing's (batch 2): blanks only.",
+        "edits": [
+            {
+                "find": "        const yearRow = typeof row.anchor === 'string';",
+                "replace": "        const yearRow = true;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "the rules, pure",
+        "expect": "fail"
+    },
+    {
+        "name": "the year page 1949-64 covers 1949 only",
+        "why": "An \"Info & Setlist\" link to /1949-64 is right for 1949 to 1964.",
+        "edits": [
+            {
+                "find": "        const last = m[2] ? Number(m[1].slice(0, 2) + m[2]) : first;",
+                "replace": "        const last = first;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "the rules, pure",
+        "expect": "fail"
+    },
+    {
+        "name": "the anchor link: the anchors are not compared",
+        "why": "Mediasound's page links /1972#000572b, the entry's anchor is 000472b.",
+        "edits": [
+            {
+                "find": "            if (info && ((anchor && info[2] !== anchor) || !_bbYearSlugHas(info[1], d[1]))) out.push('anchor-link');",
+                "replace": "            if (info && !_bbYearSlugHas(info[1], d[1])) out.push('anchor-link');"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "after ▶ Pages",
+        "expect": "fail"
+    },
+    {
+        "name": "the anchor link: the year is not compared",
+        "why": "A link to another year's page is the same error.",
+        "edits": [
+            {
+                "find": "            if (info && ((anchor && info[2] !== anchor) || !_bbYearSlugHas(info[1], d[1]))) out.push('anchor-link');",
+                "replace": "            if (info && anchor && info[2] !== anchor) out.push('anchor-link');"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "the rules, pure",
+        "expect": "fail"
+    },
+    {
+        "name": "the anchor date: only the day is compared",
+        "why": "000472b on an entry of 1972-05-00: the month differs.",
+        "edits": [
+            {
+                "find": "            if (!anchor.startsWith(d[3] + d[2] + d[1].slice(2))) out.push('anchor-date');",
+                "replace": "            if (!anchor.startsWith(d[3])) out.push('anchor-date');"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "before any page is read",
+        "expect": "fail"
+    },
+    {
+        "name": "the anchor letter: an address without a letter is never compared",
+        "why": "Most of the 338 rows: a letter on the anchor, none in the address.",
+        "edits": [
+            {
+                "find": "            if (u && anchor.replace(/\\d/g, '') !== (u[1] || '')) out.push('anchor-postfix');",
+                "replace": "            if (u && u[1] && anchor.replace(/\\d/g, '') !== u[1]) out.push('anchor-postfix');"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "before any page is read",
+        "expect": "fail"
+    },
+    {
+        "name": "the page's part is never written to the Event cell",
+        "why": "_bbEvpRenderCell() writes the title and the link once the page is read.",
+        "edits": [
+            {
+                "find": "            const checksChanged = evData ? _bbEventChecksWrite(evData.parentElement, rec.view) : false;",
+                "replace": "            const checksChanged = false;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "after ▶ Pages",
+        "expect": "fail"
+    },
+    {
+        "name": "no re-stamp when the checks change",
+        "why": "Late data: the row is queued for its re-stamp.",
+        "edits": [
+            {
+                "find": "            if (was !== now || checksChanged) {",
+                "replace": "            if (was !== now) {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "after ▶ Pages",
+        "expect": "fail"
+    },
+    {
+        "name": "a filtered-away source row is not re-stamped",
+        "why": "A row read while a finding filters must join the filtered table: the queue takes a detached row with its table.",
+        "edits": [
+            {
+                "find": "                if (table) _queueFindingsRestamp(td.parentElement, ['bb-onstage-tab', ..._BB_EVENT_CHECK_LATE_IDS], live ? null : table);",
+                "replace": "                if (table) _queueFindingsRestamp(td.parentElement, ['bb-onstage-tab', ..._BB_EVENT_CHECK_LATE_IDS], null);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "ticked while pages arrive",
+        "expect": "fail"
+    },
+    {
+        "name": "the four late findings are not late findings",
+        "why": "_LATE_FINDING_IDS: a changed stamp re-runs the filter while a late finding filters. Covered here by another path, as for bb-onstage-tab (scripts/mutations/bb-onstage-tab.json): a cell-scope finding is ticked as a value in its column's filter input, so the event-page columns' own refresh (_bbEvpScheduleRefresh()) re-runs the filter after every page read. Kept for a row-scope fallback, which no fixture reaches.",
+        "edits": [
+            {
+                "find": "'sl-double-utf8', 'bb-onstage-tab', ..._BB_EVENT_CHECK_LATE_IDS];",
+                "replace": "'sl-double-utf8', 'bb-onstage-tab'];"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "ticked while pages arrive",
+        "expect": "pass"
+    },
+    {
+        "name": "the data is written to the cell, not to its carrier",
+        "why": "Save to Disk keeps a cell's inner markup only: the carrier must be inside the cell. Here it is left out, so nothing is read at all.",
+        "edits": [
+            {
+                "find": "        td.appendChild(data);\n        _bbEventChecksWrite(td);",
+                "replace": "        _bbEventChecksWrite(td);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "Save to Disk",
+        "expect": "fail"
+    },
+    {
+        "name": "the checks read the restyled name",
+        "why": "vzell's decision 2: the RAW heading, never the text in MusicBrainz title style.",
+        "edits": [
+            {
+                "find": "        data.setAttribute('data-mb-bb-raw-heading', entry.raw || entry.heading);",
+                "replace": "        data.setAttribute('data-mb-bb-raw-heading', shown);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "the title style of other sites",
+        "expect": "fail"
+    },
+    {
+        "name": "the heading is kept with its blanks made one",
+        "why": "Two blanks in a heading are one in _bbText(): the raw text keeps both.",
+        "edits": [
+            {
+                "find": "raw: _bbRawText(strong), link: strong.querySelector('a[href]')",
+                "replace": "raw: heading, link: strong.querySelector('a[href]')"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "a title with two blanks",
+        "expect": "fail"
+    },
+    {
+        "name": "the reader keeps the title with its blanks made one",
+        "why": "The window's title has one blank; the finding needs the title as written.",
+        "edits": [
+            {
+                "find": "        data.bbRawTitle = _bbRawText(doc.getElementById('page-title'));",
+                "replace": "        data.bbRawTitle = data.title;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "the event page's reader",
+        "expect": "fail"
+    },
+    {
+        "name": "the reader takes any link to a year page as \"Info & Setlist\"",
+        "why": "BruceBaseParser's findInfoSetlistLink(): the link whose text says \"info\". Not visible here (ran 2026-11-14: pass): no fixture page has a second link to a year page's anchor before its \"Info & Setlist\" one; in the mirror's 5,016 event pages the shipped reader and the probe (which also asks for \"info\") agree, so a page that would tell them apart is not known.",
+        "edits": [
+            {
+                "find": "            .find(a => /^\\/\\d[\\w-]*#[A-Za-z0-9]+$/.test(a.getAttribute('href') || '') && /info/i.test(a.textContent));",
+                "replace": "            .find(a => /^\\/\\d[\\w-]*#[A-Za-z0-9]+$/.test(a.getAttribute('href') || ''));"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "the event page's reader",
+        "expect": "pass"
+    },
+    {
+        "name": "the name tint setting is ignored",
+        "why": "sa_findings_tint_bb_name off: no tint.",
+        "edits": [
+            {
+                "find": "            compare: cell => _bbNameCompare(cell),\n            tint: _findingTintSetting('sa_findings_tint_bb_name'),",
+                "replace": "            compare: cell => _bbNameCompare(cell),\n            tint: () => true,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "a tint setting off",
+        "expect": "fail"
+    },
+    {
+        "name": "the variant's setting is ignored",
+        "why": "sa_findings_bb_name_variant off: no finding.",
+        "edits": [
+            {
+                "find": "            enabled: () => !!_isBbHost && Lib.settings.sa_findings_bb_name_variant !== false,",
+                "replace": "            enabled: () => !!_isBbHost,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "a tint setting off",
+        "expect": "fail"
+    },
+    {
+        "name": "a finding replaces the cell's own tooltip",
+        "why": "The Event cell's \"As written on the site\" stays under the findings' lines.",
+        "edits": [
+            {
+                "find": "            if (base) _setTipCmp(td, `${text}\\n${base.t}`, [...cmp, ...base.c.map(c => ({ ...c, at: c.at + ids.length }))]);",
+                "replace": "            if (base) _setTipCmp(td, text, cmp);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "the title style of other sites",
+        "expect": "fail"
+    },
+    {
+        "name": "a cell with its own tooltip gets no finding line",
+        "why": "Every Event cell has a tooltip in MusicBrainz title style: without the base its findings would say nothing.",
+        "edits": [
+            {
+                "find": "        if (!familyPainted && (base || !(td.hasAttribute('title')",
+                "replace": "        if (!familyPainted && (!(td.hasAttribute('title')"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "the title style of other sites",
+        "expect": "fail"
+    },
+    {
+        "name": "the site's comparison keeps its line number under the findings",
+        "why": "The rich card places each comparison by its line: the site's moves down by the findings' lines.",
+        "edits": [
+            {
+                "find": "...base.c.map(c => ({ ...c, at: c.at + ids.length }))]);",
+                "replace": "...base.c]);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "the title style of other sites",
+        "expect": "fail"
+    }
+]
