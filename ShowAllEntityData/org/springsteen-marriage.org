@@ -5,17 +5,22 @@ Env: 2026-11-13 · plan written in a Claude Code session (plan mode), code readi
 
 Plan for pickup on another host.
 
-* PICKUP HERE: status at the end of the session of 2026-11-13
+* PICKUP HERE: status at the end of the session of 2026-11-14 (01:40 CET)
 
-- *Branch:* =feat/bb-spilled-tags= (pushed), cut from =main= at =871bd93e=. No userscript change yet, so no WIP changelog yet.
-- *Done:* Phase 1 step 1, the probe =scripts/probe-bb-tag-spillover.py=, run over the WHOLE mirror. The results are below; its raw output went to =debug/bb-spill/= on petri (gitignored, so copy it by hand or just rerun the probe: 12 s on a local disk).
-- *Next:* Phase 1 step 2, the mockup (LAF), with the findings below in mind. Then steps 3–5.
-- *Commands to resume:*
-  #+begin_src bash
-  cd ~/git/musicbrainz-userscripts && git fetch && git checkout feat/bb-spilled-tags
-  python3 ShowAllEntityData/scripts/probe-bb-tag-spillover.py --json /tmp/probe.json   # mirror: ~/git/scripts/BruceParser/bb/latest
-  #+end_src
-  =bb/latest= on petri now points to a LOCAL run (=bb/2026-11-13=, a fresh =bbp.sh=). On the other hosts it may still point to the NAS copy from 2026-10-18 (slow, older).
+- *Shipped:* Phase 1 is MERGED. =main= is at 9.99.1625 (=afd922fb=, pushed), the branch is deleted, and =test:full= passed 3097/3097. It is not yet published to =vzell/mb-userscripts=; that is vzell's call.
+- *BruceParser:* 0.16.0 (=69114f8=, pushed) carries the audit's bugs 1–4 and the risk fixes.
+- *Next session, two tasks:*
+  1. *BruceParser, two more changes (vzell: "Yes to the BruceParser changes"):*
+     - =dc.sh=: a job limit for both =parallel= calls (=:338=, =:352=), =-j "${BBP_JOBS:-4}"=. Document it in =docs/claude/brucebase.md= / =conventions-and-performance.md=.
+     - =checkURLandTitles.sh:409=, =:425=, =:477=: =sed -e "s/${pattern}//"= becomes the literal =${before_pattern/"${pattern}"/}=, leaving the =sed 's/^-//'= part as it is (or =${x#-}=).
+     - Then: bump the versions, add a CHANGELOG 0.17.0 entry, =bash -n=, =-V=, and commit and push (the push is allowed as =git -C /home/vzell/git/scripts/BruceParser push=).
+     - Do NOT run =bbp.sh= without vzell; the report comparison needs a full run, which vzell starts.
+  2. *ShowAllEntityData, Track A batch 1:* the year table's findings, with vzell's decisions in =org/bbp-parity.org= ("Batch 1", "Decisions"): =bb-name-mismatch=, =bb-name-variant=, =bb-anchor-date=, =bb-anchor-link=, =bb-anchor-postfix=, =bb-title-spaces=.
+     - Branch =feat/bb-findings-batch1=, a WIP changelog, the add-finding skill.
+     - Probe first (the mirror + BruceParser's reports as the oracle), then specs, mutations, docs and =test:full=.
+     - No merge without vzell.
+- *Mirror:* =~/git/scripts/BruceParser/bb/latest= on petri points to the local =bb/2026-11-13=. On other hosts check =ls -la= first.
+- *The rest of this file:* below, the Phase 1 history, the BruceParser audit, and Track B (volkerzell.de, Ionos: =org/ionos.org=).
 
 ** Probe results (Phase 1 step 1)
 

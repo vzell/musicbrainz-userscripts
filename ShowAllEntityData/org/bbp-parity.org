@@ -80,6 +80,7 @@ State: DONE (SAED has it), PART, TODO, NOT (not ported, with the reason).
 
 So batch 1 flags few rows. These reports are also the test oracle: the probe must find the same shows.
 
-*Open questions for vzell:*
-1. The early/late variant: a warn finding, or nothing?
-2. Should the name check use the RAW heading, before the MusicBrainz title style (=sa_foreign_mb_titles=) rewrites it? Recommended: the raw one, kept in the cell's data.
+*Decisions (vzell, 2026-11-14):*
+1. *The early/late variant is a WARN finding* of its own: "(Early)", "(Late)", "(Afternoon)", "(Evening)" after an otherwise equal name. Call it e.g. =bb-name-variant=; it is not an error.
+2. *The name check uses the RAW Brucebase heading and title*, before =sa_foreign_mb_titles= / =sa_foreign_typography= restyle them. Keep the raw text in the cell's data (a =data-mb-bb-raw-*= attribute, as =data-mb-bb-entry= already does), never the render-tail text.
+3. *The anchor postfix is checked too:* =bb-anchor-postfix= (warn), for when the a/b/c postfix of the year page's anchor differs from the one in the event page's address. BruceParser's =differences-date-postfix-detail-and-year.txt= has 1,352 lines, so expect many rows. The probe must count them first; if the count looks wrong, check the rule against the report before shipping.
