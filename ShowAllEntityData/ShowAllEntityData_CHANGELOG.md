@@ -4,9 +4,17 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1802 versions; the month pages hold all of them.
+This page shows the newest 100 of 1803 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1632 — 2026-11-15
+
+**🚀 Feature**
+
+- Brucebase year tables and listings, ▶ Pages: a row that is read can be read again. Move the pointer over the row and click the ⟳ in its On stage cell: its event page and venue page are asked for whatever is kept, its year's listing too (on a listing, the year page), and the row's findings are made again. Up to three requests.
+- "Read every row again" in the ▶ Pages progress card does it for the whole table: every row goes back to "not read" and is read again when it is in view, never all at once; a venue and a year's listing are read again once. Rows not scrolled to before the page is left keep their stored copy.
+
 
 ## 9.99.1631 — 2026-11-15
 
@@ -862,14 +870,6 @@ This page shows the newest 100 of 1802 versions; the month pages hold all of the
 
 - setlist.fm artist, venue, tour and search windows (link preview): next to "Load 20 more", "Load all N" reads every other setlist, one page a second, and "Load all with set times" reads their set times as well. Each button says how many requests that takes and about how long. While it runs, a bar per site fills, the counts say how many are loaded, how many are left and about how long it still takes, and Stop ends the run after the page under way. Pages already read are kept, so the next run only reads what is missing. After "Load all" the set times of the newly loaded rows show "·", and "Read set times for the other N" reads them.
 - setlist.fm's API allows a key 1,440 requests a day. The window counts the requests the script made today (from midnight UTC), shows "API requests today: n of 1,440", and before a run that would need more than are left it says so and offers to load as many as are left instead. A run stops when the day's requests are used up.
-
-
-## 9.99.1532 — 2026-11-03
-
-**✨ Improve**
-
-- setlist.fm setlist window: every artist (the show's own, each cover's original, each guest) is now two links: MusicBrainz's artist icon in front opens the artist on MusicBrainz (its card when you point at it, its window on a click), and the name opens the artist's setlists on setlist.fm. Both open in the same window, with Back. The same in a tour's window and in a venue window's "Artists" table. "· its setlists" after the setlist's artist is gone: the name opens that page.
-- On setlist.fm itself, MusicBrainz links in the preview window now open MusicBrainz's own card and window, as on discogs.com (an artist window's "On MusicBrainz" too), instead of a new tab.
 
 
 ---

@@ -5,7 +5,7 @@ Env: 2026-11-13 · plan written in a Claude Code session (plan mode), code readi
 
 Plan for pickup on another host.
 
-* PICKUP HERE: status of 2026-11-15 (afternoon): batch 2 is merged (9.99.1628–1631); next the reload of ▶ Pages cells, then batch 3
+* PICKUP HERE: status of 2026-11-15 (afternoon): batch 2 (9.99.1628–1631) and the ▶ Pages reload (9.99.1632) are merged; next batch 3
 
 - *BruceParser 0.17.0 is pushed* (=4978b0e=): =dc.sh= 1.5 with =-j "${BBP_JOBS:-4}"= on both =parallel= calls, =checkURLandTitles.sh= 1.5 with the literal word removal in three places. Checked with =bash -n= and =-V= only. Still to do there, by vzell: a full =bbp.sh= run for the report comparison, and the download time with 4 jobs.
 - *Track A batch 1 is MERGED into =main= (9.99.1626 and 9.99.1627, 2026-11-14), the branch is deleted:* six findings on the year table's Event cell. What was built, the probe's counts and three points that differ from the plan are in =org/bbp-parity.org=, "Batch 1: built on …".
@@ -22,8 +22,9 @@ Plan for pickup on another host.
 - *Next:* a reload for the ▶ Pages cells as the Relationships column has (vzell, 2026-11-15: one row by a click on
   its cell; the whole table forgets its kept pages and reads each again as it scrolls into view; no mockup), on a
   branch of its own. After that batch 3 of the matrix (the expected tags).
-- *The reload is built on =feat/bb-pages-reload=, pushed, NOT merged:* a read row's ⟳ and "Read every row again" in
-  the ▶ Pages progress card. It waits for vzell's browser check. No merge without vzell. The plan is =~/.claude/plans/curried-bouncing-nygaard.md=. By vzell, in BruceParser: a full =bbp.sh= run and the =dc.sh= timing with 4 jobs.
+- *The reload is MERGED (9.99.1632, 2026-11-15; vzell: "tested live, OK"), the branch is deleted:* a read row's ⟳ and
+  "Read every row again" in the ▶ Pages progress card. The suite was not run again on =main= (vzell: it had just
+  passed 3,143 of 3,143 on the branch at =edd3d590=). Next: batch 3 of the matrix (the expected tags). The plan is =~/.claude/plans/curried-bouncing-nygaard.md=. By vzell, in BruceParser: a full =bbp.sh= run and the =dc.sh= timing with 4 jobs.
 
 * Status at the end of the session of 2026-11-14 (01:40 CET)
 
