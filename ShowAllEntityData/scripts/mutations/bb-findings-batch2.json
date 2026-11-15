@@ -407,8 +407,8 @@
         "why": "sa_findings_bb_year_unlisted off: no listing is read.",
         "edits": [
             {
-                "find": "        if (!_bbYearUnlistedOn()) return;\n        document.querySelectorAll(",
-                "replace": "        document.querySelectorAll("
+                "find": "        if (!_bbYearUnlistedOn()) return;\n        // A listing to read again",
+                "replace": "        // A listing to read again"
             }
         ],
         "spec": "tests/fixtures/bb-findings-batch2.spec.js",

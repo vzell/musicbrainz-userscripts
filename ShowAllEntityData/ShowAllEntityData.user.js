@@ -28236,10 +28236,10 @@
      * @param {object} site The `_DP_SITES` entry.
      * @returns {Promise<void>}
      */
-    async function _bbEvpVenue(view, site) {
+    async function _bbEvpVenue(view, site, force = false) {
         if (!view || !view.venueUrl || !_bbVenueOn()) return;
         try {
-            const v = await _dpGet(view.venueUrl, site, { wanted: () => _bbEvp.active });
+            const v = await _dpGet(view.venueUrl, site, { wanted: () => _bbEvp.active, force });
             if (v.outcome !== 'ok') return;
             view.venueTitle = v.data.bbRawTitle || v.data.title || '';
             if (!v.cached) _bbEvp.requests++;
@@ -28408,7 +28408,7 @@
         _bbEvp.yearLists.set(slug, 'run');
         let r;
         try {
-            r = await _extBbYearList(`https://brucebase.wikidot.com/${slug}-list`, () => _bbEvp.active);
+            r = await _extBbYearList(`https://brucebase.wikidot.com/${slug}-list`, () => _bbEvp.active, _bbEvp.againLists.has(slug));
         } catch (err) {
             r = { ok: false, detail: (err && err.message) || 'no answer' };
         }
@@ -28422,6 +28422,7 @@
             return;
         }
         _bbEvp.yearLists.set(slug, 'done');
+        _bbEvp.againLists.delete(slug);
         if (!r.cached) _bbEvp.requests++;
         const n = _bbYearApplyListing(slug, r.list.links);
         _ajChanged('bbevp', null);
@@ -29379,6 +29380,11 @@
         active: false, running: false, queue: [], queued: new Set(), io: null,
         done: 0, failed: 0, requests: 0, refreshTimer: 0, lastRefresh: 0, collapseAt: 0,
         pageOf: new Map(), listYears: new Set(), yearLists: new Map(),
+        // Reading again (`_bbEvpReloadRow()`, `_bbEvpReloadAll()`): the row
+        // keys whose kept pages are passed over ('row' | 'all'), the venue
+        // pages already read again since the last "every row", and the
+        // listings and year pages to read again.
+        again: new Map(), againVenues: new Set(), againLists: new Set(), againYears: new Set(),
     };
 
     /**
@@ -29487,12 +29493,21 @@
         const v = rec.view;
         if (col === 'On stage') {
             const lines = _bbEvpStageLines(v.stage);
-            return lines.length ? `<ul>${lines.map(l => `<li>${e(l)}</li>`).join('')}</ul>` : '';
+            return `${lines.length ? `<ul>${lines.map(l => `<li>${e(l)}</li>`).join('')}</ul>` : ''}${_BB_EVP_RELOAD_BTN}`;
         }
         if (col === 'Content') return e(v.content.join(' · '));
         if (col === 'Images') return e(v.images.join(' · '));
         return e(v.start);
     }
+
+    /**
+     * A read row's ⟳ in its On stage cell (vzell, 2026-11-15, as the
+     * Relationships column's): reads the row's pages again
+     * (`_bbEvpReloadRow()`). Its glyph is CSS, so the filter reads no text
+     * of it; shown on the row's hover, on focus and always on touch.
+     * @type {string}
+     */
+    const _BB_EVP_RELOAD_BTN = '<button type="button" class="mb-bbevp-reload" aria-label="Read this row\'s pages again" data-mb-tip title="Read this row\'s pages again: its event page, its venue page and its year\'s listing, whatever is kept (up to three requests)."></button>';
 
     /**
      * The findings of the Event cell that need the event's page
@@ -29656,11 +29671,12 @@
         try { u = new URL(key); } catch (err) { return ''; }
         if (!(u.hash && /^\/(?:\d{4}|1949-64)\/?$/.test(u.pathname))) return u.href;
         if (_bbEvp.pageOf.has(key)) return _bbEvp.pageOf.get(key);
-        const y = await _extBbYear(`https://brucebase.wikidot.com${u.pathname.replace(/\/$/, '')}`, () => _bbEvp.active);
+        const yearUrl = `https://brucebase.wikidot.com${u.pathname.replace(/\/$/, '')}`;
+        const y = await _extBbYear(yearUrl, () => _bbEvp.active, _bbEvp.againYears.has(yearUrl));
         if (y.skipped) return null;
         if (!y.ok) throw new Error(y.detail || 'The year page could not be read.');
+        _bbEvp.againYears.delete(yearUrl);
         // The listing's own checks (batch 2): once per year page.
-        const yearUrl = `https://brucebase.wikidot.com${u.pathname.replace(/\/$/, '')}`;
         if (!_bbEvp.listYears.has(yearUrl)) {
             _bbEvp.listYears.add(yearUrl);
             if (_bbListApplyYear(yearUrl, y.year)) _bbEvpScheduleRefresh(false);
@@ -29728,11 +29744,16 @@
                 if (page === '') {
                     rec = { none: true };
                 } else if (page) {
-                    const res = await _dpGet(page, site, { wanted: () => _bbEvp.active });
+                    // Asked to be read again: the kept page is passed over;
+                    // a venue once per "every row", always for one row.
+                    const again = _bbEvp.again.get(key);
+                    const res = await _dpGet(page, site, { wanted: () => _bbEvp.active, force: !!again });
                     if (res.outcome === 'ok') {
                         rec = { view: _bbEvpView(res.data) };
                         if (!res.cached) _bbEvp.requests++;
-                        await _bbEvpVenue(rec.view, site);
+                        const venue = rec.view.venueUrl;
+                        await _bbEvpVenue(rec.view, site, !!again && (again === 'row' || !_bbEvp.againVenues.has(venue)));
+                        if (again && venue) _bbEvp.againVenues.add(venue);
                     } else if (res.outcome === 'error') {
                         rec = { failed: true, detail: res.detail };
                     }
@@ -29742,6 +29763,7 @@
             }
             if (rec) {
                 _bbEvpMem.set(key, rec);
+                if (!rec.failed) _bbEvp.again.delete(key);
                 if (rec.failed) {
                     _bbEvp.failed++;
                     _ajLog('bbevp', null, `${key.replace(/^https?:\/\/[^/]+\//, '')}: ${rec.detail}`, 'bad');
@@ -29780,7 +29802,11 @@
         // its Event cell is watched too, and the first one seen asks for the
         // listing (`_bbYearListingWant()`), whatever its own pages' state.
         if (!_bbYearUnlistedOn()) return;
-        document.querySelectorAll('body.mb-sa-host-bb table.tbl td.mb-bb-event-cell > span.mb-bb-ev-data[data-mb-bb-anchor]:not([data-mb-bb-listed])').forEach((d) => {
+        // A listing to read again (`_bbEvpReloadAll()`) is asked for by rows
+        // that have their answer too.
+        const unanswered = _bbEvp.againLists.size ? '' : ':not([data-mb-bb-listed])';
+        document.querySelectorAll(`body.mb-sa-host-bb table.tbl td.mb-bb-event-cell > span.mb-bb-ev-data[data-mb-bb-anchor]${unanswered}`).forEach((d) => {
+            if (!unanswered && d.hasAttribute('data-mb-bb-listed') && !_bbEvp.againLists.has(_bbYearRowSlug(d))) return;
             const slug = _bbYearRowSlug(d);
             if (slug && !_bbEvp.yearLists.has(slug)) _bbEvp.io.observe(d.parentElement);
         });
@@ -29866,7 +29892,7 @@
         }
         const site = _DP_SITES['brucebase.wikidot.com'];
         const index = _bbEvpCellIndex();
-        const pages = new Set(Array.from(index.keys()).filter(k => !/#/.test(k) && !_bbEvpMem.has(k)));
+        const pages = new Set(Array.from(index.keys()).filter(k => !/#/.test(k) && !_bbEvpMem.has(k) && !_bbEvp.again.has(k)));
         if (pages.size && !_bbEvpAfterRender.peeked) {
             _bbEvpAfterRender.peeked = true;
             await _fiDpPeek(pages, site);
@@ -29972,17 +29998,95 @@
             const t = e.target;
             const btn = t.closest && t.closest('.mb-bbevp-col-hdr-btn');
             const retry = !btn && t.closest && t.closest('td.mb-bbevp-cell button.mb-bbevp-retry');
-            if (!btn && !retry) return;
+            const reload = !btn && !retry && t.closest && t.closest('td.mb-bbevp-cell button.mb-bbevp-reload');
+            if (!btn && !retry && !reload) return;
             e.preventDefault();
             e.stopPropagation();
             if (btn) {
                 _bbEvpToggle(btn);
                 return;
             }
+            if (reload) {
+                _bbEvpReloadRow(reload.closest('td'));
+                return;
+            }
             _bbEvp.failed = Math.max(0, _bbEvp.failed - 1);
             if (!_bbEvp.active) _bbEvpToggle(null);
             _bbEvpEnqueue(retry.closest('td').dataset.mbBbevpKey, true);
         }, true);
+    }
+
+    /**
+     * Reads one row's pages again (its ⟳): the event page and its venue
+     * page whatever is kept, and — once per press — the year's listing (a
+     * year row) or the year page (a listing row), which answers every row
+     * of that year. Starts the reading when it is off, as a failed row's ⟳
+     * does. Nothing for a row that is waiting or being read.
+     *
+     * @param {?HTMLTableCellElement} td A cell of the row's event-page columns.
+     * @returns {void}
+     */
+    function _bbEvpReloadRow(td) {
+        const key = td && td.dataset.mbBbevpKey;
+        if (!key || _bbEvp.queued.has(key) || td.dataset.mbBbevpState === 'run') return;
+        _bbEvp.again.set(key, 'row');
+        _bbEvpMem.delete(key);
+        const ym = key.match(/^(https?:\/\/[^/]+\/(?:\d{4}|1949-64))\/?#/);
+        if (ym) {
+            _bbEvp.pageOf.delete(key);
+            _bbEvp.listYears.delete(ym[1]);
+            _bbEvp.againYears.add(ym[1]);
+        }
+        if (!_bbEvp.active) _bbEvpToggle(null);
+        const slug = td.parentElement ? _bbYearRowSlug(td.parentElement.querySelector('td > span.mb-bb-ev-data')) : '';
+        if (slug && _bbYearUnlistedOn() && _bbEvp.yearLists.get(slug) !== 'run') {
+            _bbEvp.yearLists.delete(slug);
+            _bbEvp.againLists.add(slug);
+            _bbYearListingWant(slug);
+        }
+        _ajLog('bbevp', null, `Reading again: ${key.replace(/^https?:\/\/[^/]+\//, '')}`);
+        _bbEvpEnqueue(key);
+    }
+
+    /**
+     * Reads every row again ("Read every row again" in the job's card):
+     * what is known of the rows is forgotten for this page's visit, their
+     * cells go back to "not read", and each row is read again when it is
+     * in view, past its kept pages — never all at once (the start page has
+     * 5,018 rows). A venue, a year's listing and a year page are read again
+     * once. The kept copies themselves stay until their re-read replaces
+     * them: a row not scrolled to before the page is left comes from them.
+     *
+     * @returns {void}
+     */
+    function _bbEvpReloadAll() {
+        const index = _bbEvpCellIndex();
+        const back = _bbEvp.queue.splice(0);
+        _bbEvp.queued.clear();
+        _bbEvp.againVenues.clear();
+        _bbEvp.pageOf.clear();
+        index.forEach((tds, key) => {
+            _bbEvp.again.set(key, 'all');
+            _bbEvpMem.delete(key);
+            const ym = key.match(/^(https?:\/\/[^/]+\/(?:\d{4}|1949-64))\/?#/);
+            if (ym) {
+                _bbEvp.listYears.delete(ym[1]);
+                _bbEvp.againYears.add(ym[1]);
+            }
+        });
+        if (_bbYearUnlistedOn()) {
+            _bbYearRowIndex().forEach((ds, slug) => {
+                if (_bbEvp.yearLists.get(slug) === 'run') return;
+                _bbEvp.yearLists.delete(slug);
+                _bbEvp.againLists.add(slug);
+            });
+        }
+        Object.assign(_bbEvp, { done: 0, failed: 0 });
+        _bbEvpRepaint(index, new Set([...index.keys(), ...back]));
+        if (!_bbEvp.active) _bbEvpToggle(null);
+        _ajLog('bbevp', null, `Reading every row again (${Number(index.size).toLocaleString('en-US')}): each when it is in view`);
+        _ajChanged('bbevp', null);
+        _bbEvpScheduleRefresh(true);
     }
 
     /**
@@ -30011,6 +30115,7 @@
             snapshot: (scope, job) => _bbEvpSnapshot(job),
             act: (scope, id) => {
                 if (id === 'retry') _bbEvpRetryFailed();
+                if (id === 'again') _bbEvpReloadAll();
                 if (id === 'stop' && _bbEvp.active) _bbEvpToggle(null);
             },
         });
@@ -30028,6 +30133,8 @@
         const actions = [];
         if (_bbEvp.active) actions.push({ id: 'stop', label: 'Stop', kind: 'danger' });
         if (failedNow) actions.push({ id: 'retry', label: `Retry the ${fmt(failedNow)} failed`, kind: 'danger' });
+        // Something is read: it can be read again.
+        if (document.querySelector('body.mb-sa-host-bb td.mb-bbevp-cell[data-mb-bbevp-state="done"]')) actions.push({ id: 'again', label: 'Read every row again' });
         const cache = [['Store', 'the link previews\' own, 30 days: a row whose card was opened costs nothing']];
         const queued = _bbEvp.queue.length + (_bbEvp.running ? 1 : 0);
         if (!job) {
@@ -32968,6 +33075,14 @@
             body.mb-sa-host-bb button.mb-bbevp-retry { border: 1px solid #9b2218; color: #9b2218; background: transparent; border-radius: 3px;
                 font: 600 10px/1.4 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; letter-spacing: .06em; padding: 1px 6px; cursor: pointer; }
             body.mb-sa-host-bb button.mb-bbevp-retry::before { content: "⟳ not read"; }
+            /* A read row's ⟳ (read again): on the row's hover, on focus, and
+               always on a device without hover. */
+            body.mb-sa-host-bb button.mb-bbevp-reload { border: 0; background: transparent; color: #7a6d5c; padding: 0 2px; cursor: pointer;
+                font: 13px/1 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; opacity: 0; vertical-align: baseline; }
+            body.mb-sa-host-bb button.mb-bbevp-reload::before { content: "⟳"; }
+            body.mb-sa-host-bb tr:hover button.mb-bbevp-reload, body.mb-sa-host-bb button.mb-bbevp-reload:focus-visible { opacity: .75; }
+            body.mb-sa-host-bb button.mb-bbevp-reload:hover { opacity: 1; color: #2f5f9e; }
+            @media (hover: none) { body.mb-sa-host-bb button.mb-bbevp-reload { opacity: .6; } }
             body.mb-sa-host-bb .mb-bbev-g { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
                 position: relative; color: #2b2622; text-decoration: none; vertical-align: middle; }
             body.mb-sa-host-bb .mb-bbev-g svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.4;
@@ -95041,15 +95156,15 @@
      * @param {function(): boolean} wanted
      * @returns {Promise<Object>}
      */
-    function _extBbYear(yearUrl, wanted) {
+    function _extBbYear(yearUrl, wanted, force = false) {
         const cur = _extBbYears.get(yearUrl);
-        if (cur) {
+        if (cur && !force) {
             cur.wants.push(wanted);
             return cur.promise;
         }
         const entry = { wants: [wanted], promise: null };
         entry.promise = (async () => {
-            const kept = await _rgIdbGet(`ext-bbyear:${yearUrl}`, _EXT_BB_YEAR_VERSION, _extTtlMs());
+            const kept = force ? null : await _rgIdbGet(`ext-bbyear:${yearUrl}`, _EXT_BB_YEAR_VERSION, _extTtlMs());
             if (kept && kept.data) return { ok: true, year: kept.data, at: kept.at, cached: true };
             const res = await _extGet(yearUrl, { wanted: () => entry.wants.some(w => w()), fetchOpts: { maxBytes: _EXT_BB_MAX_BYTES } });
             if (res.skipped) return { skipped: true };
@@ -95063,7 +95178,7 @@
         })();
         _extBbYears.set(yearUrl, entry);
         entry.promise.then(r => {
-            if (!r.ok || !r.year) _extBbYears.delete(yearUrl);
+            if ((!r.ok || !r.year) && _extBbYears.get(yearUrl) === entry) _extBbYears.delete(yearUrl);
         });
         return entry.promise;
     }
@@ -95102,15 +95217,15 @@
      * @param {function(): boolean} wanted
      * @returns {Promise<Object>}
      */
-    function _extBbYearList(listUrl, wanted) {
+    function _extBbYearList(listUrl, wanted, force = false) {
         const running = _extBbYearLists.get(listUrl);
-        if (running) {
+        if (running && !force) {
             running.wants.push(wanted);
             return running.promise;
         }
         const entry = { wants: [wanted], promise: null };
         entry.promise = (async () => {
-            const kept = await _rgIdbGet(`ext-bbyearlist:${listUrl}`, _EXT_BB_YEAR_LIST_VERSION, _extTtlMs());
+            const kept = force ? null : await _rgIdbGet(`ext-bbyearlist:${listUrl}`, _EXT_BB_YEAR_LIST_VERSION, _extTtlMs());
             if (kept && kept.data && Array.isArray(kept.data.links)) return { ok: true, list: kept.data, cached: true };
             const res = await _extGet(listUrl, { wanted: () => entry.wants.some(w => w()), fetchOpts: { maxBytes: _EXT_BB_MAX_BYTES } });
             if (res.skipped) return { skipped: true };
@@ -95122,8 +95237,8 @@
         })();
         _extBbYearLists.set(listUrl, entry);
         entry.promise.then((r) => {
-            if (!r.ok) _extBbYearLists.delete(listUrl);
-        }, () => _extBbYearLists.delete(listUrl));
+            if (!r.ok && _extBbYearLists.get(listUrl) === entry) _extBbYearLists.delete(listUrl);
+        }, () => { if (_extBbYearLists.get(listUrl) === entry) _extBbYearLists.delete(listUrl); });
         return entry.promise;
     }
 

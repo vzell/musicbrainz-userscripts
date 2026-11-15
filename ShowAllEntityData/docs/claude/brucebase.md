@@ -1720,6 +1720,28 @@ out). A page is 37 KB (median), 1978 7.1 MB; 5,010 entries in all.
   store, else one request after the previews' rate slot (one a second,
   the hover cards' queue). Progress in the async job popup (`bbevp`: Stop,
   Retry the N failed); a failed row's ⟳ asks again.
+- **Reading again** (vzell, 2026-11-15: "as the Relationships column";
+  no mockup, by his word). A read row's On stage cell ends in
+  `button.mb-bbevp-reload` (`_BB_EVP_RELOAD_BTN`; glyph and visibility are
+  CSS: the row's hover, focus, always without hover). Its click
+  (`_bbEvpReloadRow()`) forgets the row's record, marks the key in
+  `_bbEvp.again` ('row') and queues it; `_bbEvpPump()` then calls `_dpGet()`
+  with `force` for the event page and the venue page, and the year's
+  listing (`againLists` → `_extBbYearList(…, force)`) or, on a listing row,
+  the year page (`againYears` → `_extBbYear(…, force)`) is read again too.
+  "Read every row again" (`_bbEvpReloadAll()`, the job card's `again`
+  action, offered once a row is read) marks EVERY key ('all'), empties the
+  records and repaints: the rows are cold and the watch reads each again
+  when it is in view — never all at once (the start page has 5,018 rows).
+  Under 'all' a venue is forced once (`againVenues`), a listing and a year
+  page once. The marks live for the page's visit only: the stored copies
+  are replaced as rows are re-read, never deleted, so a row not scrolled
+  to before a reload of the page comes from the store again;
+  `_bbEvpAfterRender(true)` skips a marked key so a re-render does not
+  paint it back. A force passes over the readers' in-memory entry as well
+  (`_extBbYears`, `_extBbYearLists`), and an older promise no longer
+  removes a newer entry. Spec `bb-pages-reload.spec.js` (5), mutations
+  `bb-pages-reload.json` (18).
 - **Rows read before** paint at a fresh render or a disk load
   (`_bbEvpAfterRender(true)`: once a page load the previews' store is read,
   `_fiDpPeek()`, one IndexedDB read, no request); a re-render (sort, filter

@@ -1005,7 +1005,7 @@
         "why": "One request reads every show of a year (121 to 363 KB, seconds each): a second date of the same year costs nothing.",
         "edits": [
             {
-                "find": "        if (cur) {\n            cur.wants.push(wanted);\n            return cur.promise;\n        }\n",
+                "find": "        if (cur && !force) {\n            cur.wants.push(wanted);\n            return cur.promise;\n        }\n",
                 "replace": ""
             }
         ],

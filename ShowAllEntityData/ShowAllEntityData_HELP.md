@@ -4044,7 +4044,15 @@ entry, with these columns:
   card you opened in the last 30 days fills in at once, with no request, and
   a row read here opens its card at once. A row whose page could not be read
   shows *⟳ not read*; a click asks again (the progress card, opened from
-  ▶ Pages, has *Retry the N failed*). The year listings (`/1985-list`) have
+  ▶ Pages, has *Retry the N failed*). A row that is read can be read
+  **again**: move the pointer over the row and click the **⟳** in its On
+  stage cell. Its event page and its venue page are then asked for whatever
+  is kept, and its year's listing too (up to three requests), and the row's
+  findings are made again. *Read every row again* in the progress card does
+  it for the whole table: every row goes back to — and is read again when
+  you can see it, never all at once; a venue and a year's listing are read
+  again once. Rows you do not scroll to before leaving the page keep their
+  stored copy. The year listings (`/1985-list`) have
   the same four columns; there a row's page is found on its year page first
   (one request for the year).
 - **What the wiki got wrong** shows on the Event cell and in the ⚠️ / ❌
