@@ -219,7 +219,7 @@ https://claude.ai/artifact/T1D2ghbx9zHHCh8jgfr5g7
 | https://brucebase.wikidot.com/1988      | ▶ Pages, September's shows   | Setlist ⚠️ on most: "Pre-show" against "Pre-Set"                                                      |
 | any of them                             | Save to Disk, Load from Disk | the same cells are flagged, nothing is asked                                                          |
 
-* Batch 3: a show's expected tags against its actual tags (=feat/bb-findings-batch3=, 2026-11-15; built, NOT merged: vzell's browser check is open)
+* Batch 3: a show's expected tags against its actual tags (=feat/bb-findings-batch3=, 2026-11-15; built; vzell, 2026-11-16: "everything tested live, OK"; NOT merged: no word for the merge yet)
 
 Env: 2026-11-15T18:11:50+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · probe: Python
 over the mirror bb/2026-10-18, n/a; the cross-check: Playwright 1.62.1 Chromium, no Tampermonkey
@@ -296,9 +296,10 @@ shipping families: 246 events (156 missing, 124 spurious).
 - *What the surfaces would see differently:* Help Us is only on the year page for 1,165 events; the venue page excuses
   274 venue-description misses; no interview has a spurious =onstage=.
 - *Found on the way, BruceParser:* =bbp-status.sh= split =docs/timings.tsv= with =IFS=$'\t' read -ra=, which drops empty
-  columns (fixed, 0.17.1, =2a546fd=). =MULTI-title-postfix.txt= is always empty: =efc.sh= writes it through =einfo=,
-  which is silent at the default verbosity (not fixed). A stopped =bbp.sh= goes on to its =cp= line and empties
-  =brucebase/DETAIL-title-from-YEAR-array.txt=, which the next run's first step reads (restored from git, not fixed).
+  columns (fixed, 0.17.1, =2a546fd=). =MULTI-title-postfix.txt= was always empty: =efc.sh= wrote it through =einfo=,
+  which is silent at the default verbosity. A stopped =bbp.sh= went on to its =cp= line and emptied
+  =brucebase/DETAIL-title-from-YEAR-array.txt=, which the next run's first step reads. Both fixed in 0.17.2
+  (=fa03525=, 2026-11-16; checked with =bash -n= and a stand-in for the interrupt, no full run since).
 
 ** The browser check of batch 3, for vzell (rows from the mirror of 2026-11-15; unverified on the live wiki)
 
