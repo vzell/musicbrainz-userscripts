@@ -31,7 +31,7 @@ const { loadUserscriptPage } = require('../tests/support/loadPage');
 
 const args = process.argv.slice(2);
 const mi = args.indexOf('--mirror');
-const ROWS = args.find((a, i) => !a.startsWith('--') && i !== mi + 1);
+const ROWS = args.find((a, i) => !a.startsWith('--') && (mi < 0 || i !== mi + 1));
 const MIRROR = fs.realpathSync(mi >= 0 ? args[mi + 1] : path.join(os.homedir(), 'git/scripts/BruceParser/bb/latest'));
 
 /**

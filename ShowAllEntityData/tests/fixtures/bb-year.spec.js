@@ -30,8 +30,10 @@ const { clickToolbarItem } = require('../support/toolbarMenu');
 // scroll to see).
 // Since 2026-11-12 (org/brucebase.org Phase 14): the four columns from each
 // entry's own page after Tour (bb-year-event-pages.spec.js).
+// Since 2026-11-15 (org/bbp-parity.org batch 3): Tags, the fifth of them
+// (bb-findings-batch3.spec.js).
 const HEADERS = ['Event', 'MB-Event', 'Media', 'Date', 'Type', 'Venue', 'City', 'State', 'Country', 'Tour',
-    'On stage', 'Content', 'Images', 'Start',
+    'On stage', 'Content', 'Images', 'Start', 'Tags',
     'Soundcheck', 'Setlist', 'Set note', 'Notes', 'Info wanted',
     'DD', 'MM', 'YYYY', 'Day', 'Month'];
 

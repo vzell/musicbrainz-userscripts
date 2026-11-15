@@ -3079,6 +3079,36 @@
                          'the other does not name. A WARNING on the Setlist cell. No request of its own.'
         },
 
+        sa_findings_bb_tag_missing: {
+            label: 'Find Brucebase shows that lack a tag their page calls for',
+            type: 'checkbox',
+            default: true,
+            description: 'A show\'s page should carry its date as tags (year, month, day, weekday), the letter ' +
+                         'of a second show of a day, its kind (gig, recording, …) and how many songs are tour ' +
+                         'premieres. Marked on the show page\'s Tags card and in its preview window, and an ' +
+                         'ERROR on the year table\'s Tags cell once ▶ Pages has read the entry. Tags kept on ' +
+                         'the show\'s On stage page count as present; on a year table that page is read too ' +
+                         '(one more request per show with a cast) while this setting is on.'
+        },
+
+        sa_findings_bb_tag_spurious: {
+            label: 'Find Brucebase shows with a date, letter, kind or premiere tag that is not expected',
+            type: 'checkbox',
+            default: true,
+            description: 'A tag of those four families that the page does not call for: another weekday, a ' +
+                         'premiere count that differs from the songs in bold, a second kind of page ("recording" ' +
+                         'on a gig). Marked on the Tags card and in the preview window, and a WARNING on the ' +
+                         'year table\'s Tags cell once ▶ Pages has read the entry.'
+        },
+
+        sa_findings_tint_bb_tags: {
+            label: 'Highlight Tags cells of Brucebase entries with a missing or not expected tag',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint the year table\'s Tags cell light red with a ❌ when an expected tag is ' +
+                         'missing, light yellow with a ⚠️ when a tag is not expected.'
+        },
+
         sa_findings_tint_bb_setlist: {
             label: 'Highlight Setlist cells of Brucebase entries that differ from the event page',
             type: 'checkbox',
@@ -24762,12 +24792,19 @@
         const view = _cbxViewOf(m.key);
         const pages = m.pages || [];
         const all = m.rows.flatMap(([kind, list]) => list.map(x => Object.assign({ kind }, x)));
-        const own = all.filter(x => !x.page).length;
-        const extra = all.length - own;
-        const show = extra ? ui.show : 'all';
+        // A chip with `flag: 'miss'` stands for something the page LACKS (a
+        // Brucebase tag it should carry): drawn, never counted.
+        const real = all.filter(x => x.flag !== 'miss');
+        const own = real.filter(x => !x.page).length;
+        const extra = real.length - own;
+        const nMiss = all.length - real.length;
+        const nSpur = real.filter(x => x.flag === 'spur').length;
+        const nFind = nMiss + nSpur;
+        const show = (ui.show === 'find' ? nFind : ui.show !== 'all' && extra) ? ui.show : 'all';
         const group = view.group === 'page' && !pages.length ? 'kind' : view.group;
         const q = ui.q.trim().toLowerCase();
-        const shown = all.filter(x => (show === 'all' || (show === 'own' ? !x.page : !!x.page)) && (!q || x.text.toLowerCase().includes(q)))
+        const inShow = x => show === 'all' || (show === 'find' ? !!x.flag : x.flag !== 'miss' && (show === 'own' ? !x.page : !!x.page));
+        const shown = all.filter(x => inShow(x) && (!q || x.text.toLowerCase().includes(q)))
             .sort((a, b) => (view.dir ? view.dir * a.text.localeCompare(b.text, undefined, { sensitivity: 'base' }) : 0));
         let groups;
         if (group === 'kind') groups = m.rows.map(([kind]) => [kind, shown.filter(x => x.kind === kind)]);
@@ -24775,30 +24812,38 @@
         else groups = [['All', shown]];
         const dp = m.style === 'dp';
         const chip = (x) => {
-            const label = _hlHtml(esc(x.text), q);
+            const label = _hlHtml(esc(x.text), q) + (x.flag === 'miss' ? ' <i>missing</i>' : '');
             const tip = x.tip ? ` data-mbtt="${esc(x.tip)}"` : '';
-            const xc = x.page ? ' mb-cbx-x' : '';
+            const xc = (x.page ? ' mb-cbx-x' : '') + (x.flag === 'miss' ? ' mb-cbx-miss' : x.flag === 'spur' ? ' mb-cbx-spur' : '');
             return dp
                 ? `<a class="mb-dp-tag${xc}" href="${esc(x.href)}" target="_blank" rel="noopener"${tip}>${label}</a>`
                 : `<span class="mb-sb-chip${xc}"${tip}><a href="${esc(x.href)}" target="_blank" rel="noopener noreferrer">${label}</a></span>`;
         };
+        const cnt = of => of.filter(x => x.flag !== 'miss').length;
         const row = ([kind, of]) => (dp
-            ? `<div class="mb-dp-tagrow"><span class="mb-dp-tagk" data-mb-cbx-n="${of.length}">${esc(kind)}</span><span class="mb-dp-tagv">${of.map(chip).join('')}</span></div>`
-            : `<div class="mb-sb-chip-row"><span class="mb-sb-chip-kind" data-mb-cbx-n="${of.length}">${esc(kind)}</span>${of.map(chip).join('')}</div>`);
+            ? `<div class="mb-dp-tagrow"><span class="mb-dp-tagk" data-mb-cbx-n="${cnt(of)}">${esc(kind)}</span><span class="mb-dp-tagv">${of.map(chip).join('')}</span></div>`
+            : `<div class="mb-sb-chip-row"><span class="mb-sb-chip-kind" data-mb-cbx-n="${cnt(of)}">${esc(kind)}</span>${of.map(chip).join('')}</div>`);
         const rows = groups.filter(([, of]) => of.length).map(row).join('') ||
             `<div class="mb-cbx-none">No ${q ? `chip contains “${esc(ui.q.trim())}”` : 'chip to show'}${show === 'own' ? ' on this page' : show === 'extra' ? ' on the other pages' : ''}.</div>`;
+        const b = (k, v, text, on, off, cls) => `<button type="button" class="mb-cbx-b${cls ? ` ${cls}` : ''}" data-mb-cbx="${esc(id)}" data-mb-cbx-k="${k}" data-mb-cbx-v="${v}" aria-pressed="${String(!!on)}"${off ? ' disabled' : ''}>${text}</button>`;
+        // The findings' pills: a press leaves the marked chips, a second
+        // press brings all back (mockup https://claude.ai/artifact/Xx3N3sZgqkoy4DYQK5ZBoo).
+        const pills = nFind ? '<div class="mb-cbx-pills">' +
+            (nMiss ? b('show', 'find', `❌ ${nMiss} missing`, show === 'find', false, 'mb-cbx-pill mb-cbx-pill-e') : '') +
+            (nSpur ? b('show', 'find', `⚠️ ${nSpur} not expected`, show === 'find', false, 'mb-cbx-pill mb-cbx-pill-w') : '') + '</div>' : '';
         let tools = '';
-        if (all.length >= _CBX_TOOLS_MIN) {
-            const b = (k, v, text, on, off) => `<button type="button" class="mb-cbx-b" data-mb-cbx="${esc(id)}" data-mb-cbx-k="${k}" data-mb-cbx-v="${v}" aria-pressed="${String(!!on)}"${off ? ' disabled' : ''}>${text}</button>`;
+        if (real.length >= _CBX_TOOLS_MIN) {
             tools = '<div class="mb-cbx-tools">' +
-                (extra ? `<span class="mb-cbx-seg-g" role="group" aria-label="Show">${b('show', 'all', `All ${all.length}`, show === 'all')}${b('show', 'own', `This page ${own}`, show === 'own')}${b('show', 'extra', `${pages.length === 1 && /^On stage/.test(pages[0].label) ? 'On stage' : 'Other pages'} ${extra}`, show === 'extra')}</span>` : '') +
+                (extra || nFind ? `<span class="mb-cbx-seg-g" role="group" aria-label="Show">${b('show', 'all', `All ${real.length}`, show === 'all')}` +
+                    (extra ? `${b('show', 'own', `This page ${own}`, show === 'own')}${b('show', 'extra', `${pages.length === 1 && /^On stage/.test(pages[0].label) ? 'On stage' : 'Other pages'} ${extra}`, show === 'extra')}` : '') +
+                    (nFind ? b('show', 'find', `Findings ${nFind}`, show === 'find') : '') + '</span>' : '') +
                 `<span class="mb-cbx-f"><span aria-hidden="true">⌕</span><input type="text" class="mb-cbx-q" data-mb-cbx="${esc(id)}" data-mb-keep-focus="cbx-${esc(id)}" placeholder="Filter" aria-label="Filter" autocomplete="off" value="${esc(ui.q)}">` +
                 (ui.q ? `<button type="button" class="mb-cbx-clr" data-mb-cbx="${esc(id)}" aria-label="Clear the filter">✕</button>` : '') + '</span>' +
                 `<span class="mb-cbx-seg-g" role="group" aria-label="Group by">${b('group', 'kind', esc(m.kindLabel || 'Kind'), group === 'kind')}${pages.length ? b('group', 'page', 'Page', group === 'page') : ''}${b('group', 'none', 'None', group === 'none')}</span>` +
                 `<span class="mb-cbx-seg-g" role="group" aria-label="Sort">${b('dir', '1', 'A–Z', view.dir === 1)}${b('dir', '-1', 'Z–A', view.dir === -1)}</span>` +
-                (q || show !== 'all' ? `<span class="mb-cbx-cnt">${shown.length} of ${all.length}</span>` : '') + '</div>';
+                (q || show !== 'all' ? `<span class="mb-cbx-cnt">${cnt(shown)} of ${real.length}</span>` : '') + '</div>';
         }
-        return (m.head || '') + tools + `<div class="mb-cbx-rows">${rows}</div>` + (m.foot || '');
+        return (m.head || '') + pills + tools + `<div class="mb-cbx-rows">${rows}</div>` + (m.foot || '');
     }
 
     /**
@@ -24811,7 +24856,7 @@
     function _cbxRefresh(id) {
         const m = _cbxModels.get(id);
         if (!m) return;
-        const n = m.rows.reduce((s, [, of]) => s + of.length, 0);
+        const n = m.rows.reduce((s, [, of]) => s + of.filter(x => x.flag !== 'miss').length, 0);
         document.querySelectorAll(`.mb-cbx[data-mb-cbx-id="${CSS.escape(id)}"]`).forEach((box) => {
             const act = document.activeElement;
             const caret = act && box.contains(act) && act.matches('input.mb-cbx-q') ? [act.selectionStart, act.selectionEnd] : null;
@@ -24854,7 +24899,8 @@
             e.preventDefault();
             const ui = _cbxUiOf(id);
             if (b.classList.contains('mb-cbx-clr')) ui.q = '';
-            else if (b.dataset.mbCbxK === 'show') ui.show = b.dataset.mbCbxV;
+            // Findings pressed again: every chip back.
+            else if (b.dataset.mbCbxK === 'show') ui.show = b.dataset.mbCbxV === 'find' && b.getAttribute('aria-pressed') === 'true' ? 'all' : b.dataset.mbCbxV;
             // A pressed sort pressed again: back to the page's order.
             else if (b.dataset.mbCbxK === 'dir') _cbxViewSet(m.key, 'dir', b.getAttribute('aria-pressed') === 'true' ? 0 : Number(b.dataset.mbCbxV));
             else _cbxViewSet(m.key, b.dataset.mbCbxK, b.dataset.mbCbxV);
@@ -24919,6 +24965,22 @@
             .mb-cbx .mb-cbx-none { font: italic 12.5px Georgia, "Times New Roman", serif; color: #7a6d5c; }
             .mb-cbx .mb-sb-chip.mb-cbx-x, .mb-cbx a.mb-dp-tag.mb-cbx-x { border-style: dashed; border-color: #b7a98f; background: #fbf8f1; }
             .mb-cbx .mb-sb-chip.mb-cbx-x::before, .mb-cbx a.mb-dp-tag.mb-cbx-x::before { content: "↪ "; font-size: 0.85em; color: #7a6d5c; }
+            .mb-cbx .mb-sb-chip.mb-cbx-miss, .mb-cbx a.mb-dp-tag.mb-cbx-miss { border: 1px dashed #9b2218; background: #f6e6dc; color: #9b2218; }
+            .mb-cbx .mb-sb-chip.mb-cbx-miss a, .mb-cbx a.mb-dp-tag.mb-cbx-miss { color: #9b2218; }
+            .mb-cbx .mb-sb-chip.mb-cbx-miss::before, .mb-cbx a.mb-dp-tag.mb-cbx-miss::before { content: "❌ "; font-size: 0.75em; }
+            .mb-cbx .mb-cbx-miss i { font: italic 0.9em Georgia, "Times New Roman", serif; opacity: .85; }
+            .mb-cbx .mb-sb-chip.mb-cbx-spur, .mb-cbx a.mb-dp-tag.mb-cbx-spur { border-color: #9a6a00; background: #f7efd8; }
+            .mb-cbx .mb-sb-chip.mb-cbx-spur::before, .mb-cbx a.mb-dp-tag.mb-cbx-spur::before { content: "⚠️ "; font-size: 0.85em; }
+            .mb-cbx .mb-cbx-pills { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+            .mb-cbx .mb-cbx-b.mb-cbx-pill { border: 1px solid currentColor; border-radius: 999px; padding: 4px 7px; letter-spacing: .08em; }
+            .mb-cbx .mb-cbx-b.mb-cbx-pill-e, .mb-cbx .mb-cbx-b.mb-cbx-pill-e[aria-pressed="true"] { color: #9b2218; }
+            .mb-cbx .mb-cbx-b.mb-cbx-pill-w, .mb-cbx .mb-cbx-b.mb-cbx-pill-w[aria-pressed="true"] { color: #9a6a00; }
+            .mb-cbx .mb-cbx-pill-ok { font: 600 10px/1 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; letter-spacing: .08em;
+                text-transform: uppercase; color: #3f7a3a; border: 1px solid currentColor; border-radius: 999px; padding: 4px 7px; justify-self: start; }
+            .mb-cbx .mb-cbx-wait { font: italic 12.5px Georgia, "Times New Roman", serif; color: #7a6d5c; }
+            .mb-cbx .mb-cbx-finds { display: grid; gap: 3px; font-size: 12.5px; border-top: 1px solid #d9cfbd; padding-top: 6px; }
+            .mb-cbx .mb-cbx-find-e b { color: #9b2218; font-weight: normal; }
+            .mb-cbx .mb-cbx-find-w b { color: #9a6a00; font-weight: normal; }
             .mb-cbx .mb-cbx-bar { display: flex; gap: 2px; height: 5px; }
             .mb-cbx .mb-cbx-seg { flex: 1; border-radius: 1px; background: #d9cfbd; }
             .mb-cbx .mb-cbx-seg.mb-cbx-ok { background: #3f7a3a; }
@@ -26849,7 +26911,7 @@
      * @type {string[]}
      */
     const _BB_YEAR_HEADERS = ['Event', 'MB-Event', 'Media', 'Date', 'Type', 'Venue', 'City', 'State', 'Country', 'Tour',
-        'On stage', 'Content', 'Images', 'Start', 'Soundcheck', 'Setlist', 'Set note', 'Notes', 'Info wanted'];
+        'On stage', 'Content', 'Images', 'Start', 'Tags', 'Soundcheck', 'Setlist', 'Set note', 'Notes', 'Info wanted'];
 
     /**
      * An entry's Type, by the prefix of its heading link (`/gig:…`). Any
@@ -29369,8 +29431,8 @@
     // filter duties (`_bbEvpScheduleRefresh()`, the row text cache in
     // `_bbEvpRenderCell()`).
 
-    /** @type {string[]} The four columns, in order. */
-    const _BB_EVP_COLS = ['On stage', 'Content', 'Images', 'Start'];
+    /** @type {string[]} The columns, in order (Tags: bbp-parity batch 3). */
+    const _BB_EVP_COLS = ['On stage', 'Content', 'Images', 'Start', 'Tags'];
     /** @type {Set<string>} Tabs every page has or the year table shows already: not Content. */
     const _BB_EVP_PLAIN_TABS = new Set(['On Stage', 'Setlist', 'Performances', 'Gallery']);
     /** @type {Map<string, {view?: object, failed?: boolean, none?: boolean, detail?: string}>} By row key. */
@@ -29440,7 +29502,97 @@
             infoHref: data.bbInfoHref || '',
             venueUrl: data.venueUrl || '',
             setlist: Array.isArray(data.bbSetlistRaw) ? data.bbSetlistRaw : null,
+            // The Tags column (batch 3): the page's own tags, where more of
+            // them may be (name, characters, cast tab: `_bbTagPagesStart()`
+            // needs no more) and what the page says they should be.
+            tags: (data.tags || []).map(t => t.text),
+            tagInfo: data.bbTagInfo ? { name: data.bbTagInfo.name, chars: data.bbTagInfo.chars, castTab: data.bbTagInfo.castTab } : null,
+            tagFacts: data.bbTagFacts || null,
         };
+    }
+
+    /**
+     * Whether the year table reads a show's other tag pages with ▶ Pages:
+     * while missing tags are looked for (a finding that costs requests
+     * switches them off with itself) and those pages are read at all
+     * (`sa_bb_onstage_tags`).
+     *
+     * @returns {boolean}
+     */
+    function _bbEvpTagPagesOn() {
+        return _bbTagMissingOn() && _bbOnstageTagsOn();
+    }
+
+    /**
+     * Reads a row's other tag pages (its On stage page, a full page's
+     * "-2"; `_bbTagPagesStart()`: memory, the store, else a request each in
+     * the previews' queue) and counts the requests made in the job.
+     *
+     * @param {?Object} view  - `_bbEvpView()`.
+     * @param {boolean} force - Pass over the kept pages ("read again").
+     * @returns {Promise<void>}
+     */
+    async function _bbEvpTagPages(view, force) {
+        if (!view || !view.tagInfo || !_bbEvpTagPagesOn() || !_bbTagPagesEligible(view.tagInfo)) return;
+        const before = _bbTagPageGet.requests || 0;
+        try {
+            await _bbTagPagesStart(view.tagInfo, { wanted: () => _bbEvp.active, retry: force, force });
+        } catch (err) {
+            Lib.debug('detail', `event-page columns: the tag pages of ${view.tagInfo.name} were not read (${(err && err.message) || err}).`);
+        }
+        _bbEvp.requests += (_bbTagPageGet.requests || 0) - before;
+    }
+
+    /**
+     * The Tags cell of a read row: every tag a list row (the column folds
+     * like On stage), the page's own and those of its other pages
+     * (`li.mb-bb-tag-os`, ↪ by CSS), A–Z; before them a missing tag
+     * (`li.mb-bb-tag-miss`, "9+ missing") and a tag that is not expected
+     * (`li.mb-bb-tag-spur`), which CSS keeps in view while the cell is
+     * folded (mockup https://claude.ai/artifact/Xx3N3sZgqkoy4DYQK5ZBoo,
+     * version 2). The findings ride on a carrier inside the cell
+     * (`span.mb-bb-tag-data`: `data-mb-bb-tag-check` "missing spurious",
+     * `-detail` in words), so they survive a clone and a save to disk.
+     *
+     * @param {Object} v - `_bbEvpView()`.
+     * @returns {string}
+     */
+    function _bbEvpTagsHtml(v) {
+        const e = _rgEsc;
+        const own = v.tags || [];
+        if (!own.length && !v.tagFacts) return '';
+        const info = v.tagInfo;
+        const st = info && _bbTagPagesEligible(info) ? _bbTagPages.get(info.name) : null;
+        const seen = new Set(own.map(t => t.toLowerCase()));
+        const rows = own.map(t => ({ t, cls: '' }));
+        ((st && st.state === 'done' && st.pages) || []).forEach(p => p.tags.forEach((x) => {
+            const k = x.text.toLowerCase();
+            if (seen.has(k)) return;
+            seen.add(k);
+            rows.push({ t: x.text, cls: 'mb-bb-tag-os' });
+        }));
+        const find = _bbTagFindings(own.map(text => ({ text })), info, v.tagFacts);
+        const spur = new Set(find ? find.spurious.map(s => s.tag) : []);
+        rows.forEach((r) => { if (!r.cls && spur.has(r.t.toLowerCase())) r.cls = 'mb-bb-tag-spur'; });
+        const az = (a, b) => a.t.localeCompare(b.t, undefined, { sensitivity: 'base' });
+        const flagged = rows.filter(r => r.cls === 'mb-bb-tag-spur').sort(az);
+        const rest = rows.filter(r => r.cls !== 'mb-bb-tag-spur').sort(az);
+        // Written FOLDED (vzell, 2026-11-15: the cell starts folded): every
+        // row but the first hidden, as the column's own fold leaves it
+        // (`initCollapsableColumns()` runs only every few seconds while pages
+        // arrive; sixty tags unfolded pushed the rows below out of view, and a
+        // row that leaves the view is taken out of the queue). A flagged row
+        // stays in view by CSS.
+        let nth = 0;
+        const fold = () => (nth++ ? ' style="display: none;"' : '');
+        const li = r => `<li${r.cls ? ` class="${r.cls}"` : ''}${fold()}>${e(r.t)}</li>`;
+        const miss = find ? find.missing : [];
+        const words = (list, lead) => (list.length ? `${lead} ${list.map(x => `${x.tag}${x.why ? ` (${x.why.replace(/\.$/, '')})` : ''}`).join(', ')}` : '');
+        const check = [miss.length ? 'missing' : '', spur.size ? 'spurious' : ''].filter(Boolean).join(' ');
+        const carrier = `<span class="mb-bb-tag-data" hidden${check ? ` data-mb-bb-tag-check="${check}"` : ''}` +
+            (miss.length ? ` data-mb-bb-tag-missing="${e(words(miss, 'missing:'))}"` : '') +
+            (spur.size ? ` data-mb-bb-tag-spurious="${e(words(find.spurious, 'not expected:'))}"` : '') + '></span>';
+        return `${carrier}<ul>${miss.map(m => `<li class="mb-bb-tag-miss"${fold()}>${e(m.tag)} <i>missing</i></li>`).join('')}${flagged.map(li).join('')}${rest.map(li).join('')}</ul>`;
     }
 
     /**
@@ -29497,6 +29649,7 @@
         }
         if (col === 'Content') return e(v.content.join(' · '));
         if (col === 'Images') return e(v.images.join(' · '));
+        if (col === 'Tags') return _bbEvpTagsHtml(v);
         return e(v.start);
     }
 
@@ -29538,6 +29691,37 @@
     const _BB_SETLIST_IDS = ['bb-setlist-songs', 'bb-setlist-spelling', 'bb-setlist-sections'];
 
     /**
+     * The Tags cell's findings, known once the event's page and its other
+     * tag pages are read (`_bbEvpTagsHtml()`; in `_LATE_FINDING_IDS`).
+     * @type {string[]}
+     */
+    const _BB_TAG_IDS = ['bb-tag-missing', 'bb-tag-spurious'];
+
+    /**
+     * What a Tags cell's carrier says, as one string: to see whether a
+     * repaint changed the findings.
+     *
+     * @param {Element} td
+     * @returns {string}
+     */
+    function _bbEvpTagMark(td) {
+        const d = td.querySelector(':scope > span.mb-bb-tag-data');
+        return d && d.dataset.mbBbTagCheck ? `${d.dataset.mbBbTagCheck}|${d.dataset.mbBbTagMissing || ''}|${d.dataset.mbBbTagSpurious || ''}` : '';
+    }
+
+    /**
+     * Whether a Tags cell carries a check (`missing` or `spurious`).
+     *
+     * @param {Element} cell
+     * @param {string}  token
+     * @returns {boolean}
+     */
+    function _bbTagHasCheck(cell, token) {
+        const d = cell.querySelector(':scope > span.mb-bb-tag-data');
+        return !!d && (d.dataset.mbBbTagCheck || '').split(' ').includes(token);
+    }
+
+    /**
      * Rewrites one cell from what is known (`_bbEvpMem`; `state` for a cell
      * still waiting), and clears its row's filter text cache.
      *
@@ -29548,11 +29732,21 @@
     function _bbEvpRenderCell(td, state = null) {
         const rec = _bbEvpMem.get(td.dataset.mbBbevpKey);
         const st = rec ? (rec.failed ? 'failed' : rec.none ? 'none' : 'done') : state || 'cold';
+        const tagWas = td.dataset.mbBbevpCol === 'Tags' ? _bbEvpTagMark(td) : null;
         td.innerHTML = _bbEvpCellHtml(td.dataset.mbBbevpCol, rec);
         td.dataset.mbBbevpState = st;
         // Read, but its venue page is not (`_bbEvpAfterRender()`): the
         // watch takes such a row too.
         td.toggleAttribute('data-mb-bbevp-venue-due', !!(rec && rec.venueDue));
+        // Read, but its other tag pages are not (the same way).
+        td.toggleAttribute('data-mb-bbevp-tags-due', !!(rec && rec.tagsDue));
+        // The tag check (batch 3): the findings are in the cell's own
+        // markup; a change queues the row for its re-stamp.
+        if (tagWas !== null && tagWas !== _bbEvpTagMark(td) && td.parentElement) {
+            const live = td.isConnected ? td.closest('table.tbl') : null;
+            const table = live || Array.from(document.querySelectorAll('table.tbl')).find(t => t.querySelector('td.mb-bbevp-cell'));
+            if (table) _queueFindingsRestamp(td.parentElement, _BB_TAG_IDS, live ? null : table);
+        }
         // The `bb-onstage-tab` finding (Phase 16): the page's cast tab is
         // written "Onstage". A mark of the cell's own, so the stamp reads it on
         // a source row too; the live row is queued for its re-stamp.
@@ -29697,8 +29891,9 @@
     function _bbEvpEnqueue(key, again = false) {
         const rec = _bbEvpMem.get(key);
         // A row painted from the store whose venue page is still to read
-        // (`venueDue`) is queued too, and keeps what it shows meanwhile.
-        const due = !!(rec && rec.venueDue && !rec.failed);
+        // (`venueDue`), or its other tag pages (`tagsDue`), is queued too,
+        // and keeps what it shows meanwhile.
+        const due = !!(rec && (rec.venueDue || rec.tagsDue) && !rec.failed);
         if (_bbEvp.queued.has(key) || (rec && !(again && rec.failed) && !due)) return;
         if (rec && !due) _bbEvpMem.delete(key);
         _bbEvp.queued.add(key);
@@ -29730,9 +29925,11 @@
             }
             // Only the venue is missing: one try, the row stays as painted.
             const kept = _bbEvpMem.get(key);
-            if (kept && kept.venueDue) {
+            if (kept && (kept.venueDue || kept.tagsDue)) {
+                if (kept.venueDue) await _bbEvpVenue(kept.view, site);
+                if (kept.tagsDue) await _bbEvpTagPages(kept.view, false);
                 kept.venueDue = false;
-                await _bbEvpVenue(kept.view, site);
+                kept.tagsDue = false;
                 _bbEvpRepaint(_bbEvpCellIndex(), [key]);
                 _bbEvpScheduleRefresh(false);
                 continue;
@@ -29754,6 +29951,9 @@
                         const venue = rec.view.venueUrl;
                         await _bbEvpVenue(rec.view, site, !!again && (again === 'row' || !_bbEvp.againVenues.has(venue)));
                         if (again && venue) _bbEvp.againVenues.add(venue);
+                        // The show's other tag pages (batch 3): its On
+                        // stage page, a full page's "-2".
+                        await _bbEvpTagPages(rec.view, !!again);
                     } else if (res.outcome === 'error') {
                         rec = { failed: true, detail: res.detail };
                     }
@@ -29796,7 +29996,7 @@
         _bbEvp.io.disconnect();
         document.querySelectorAll('body.mb-sa-host-bb table.tbl td.mb-bbevp-cell[data-mb-bbevp-col="On stage"][data-mb-bbevp-key]').forEach((td) => {
             const st = td.dataset.mbBbevpState;
-            if (st === 'cold' || st === 'queued' || td.hasAttribute('data-mb-bbevp-venue-due')) _bbEvp.io.observe(td);
+            if (st === 'cold' || st === 'queued' || td.hasAttribute('data-mb-bbevp-venue-due') || td.hasAttribute('data-mb-bbevp-tags-due')) _bbEvp.io.observe(td);
         });
         // A year row whose year's listing is not read yet (`bb-year-unlisted`):
         // its Event cell is watched too, and the first one seen asks for the
@@ -29911,8 +30111,14 @@
         // event record's 30 days.
         const venues = new Set(Array.from(views.values(), v => v.venueUrl).filter(u => u && !_dpMem.has(u)));
         if (venues.size && _bbVenueOn()) await _fiDpPeek(venues, site);
+        // The tag check needs the show's other tag pages (batch 3): what
+        // the store keeps of them, one more read and no request. A row
+        // whose pages are not all there is marked `tagsDue`, as a venue.
+        const tagRows = _bbEvpTagPagesOn() ? Array.from(views.values()).filter(v => v.tagInfo && _bbTagPagesEligible(v.tagInfo)) : [];
+        if (tagRows.length) await _bbTagPagesPeekAll();
         views.forEach((view, k) => {
             const rec = { view };
+            if (tagRows.includes(view) && !_bbTagPagesAdopt(view.tagInfo)) rec.tagsDue = true;
             if (view.venueUrl && _bbVenueOn()) {
                 const vm = _dpMem.get(view.venueUrl);
                 if (vm && _dpSessionFits(vm.data, site)) view.venueTitle = vm.data.bbRawTitle || vm.data.title || '';
@@ -30520,7 +30726,7 @@
     // "DATE - VENUE", 2,285 notes (589 distinct), 308 00 dates.
 
     /** The listing table's columns, in order; DD … Month come from Date's dateParts. */
-    const _BB_YEAR_LIST_HEADERS = ['Event', 'Date', 'Venue', 'City', 'State', 'Country', 'Note', 'Tour', 'On stage', 'Content', 'Images', 'Start'];
+    const _BB_YEAR_LIST_HEADERS = ['Event', 'Date', 'Venue', 'City', 'State', 'Country', 'Note', 'Tour', 'On stage', 'Content', 'Images', 'Start', 'Tags'];
 
     /**
      * Collects a year listing page's entries in one pass over `#page-content`
@@ -33069,6 +33275,13 @@
             /* The event-page columns (Phase 14): their states as CSS words,
                never text the filter reads. */
             body.mb-sa-host-bb td.mb-bbevp-cell[data-mb-bbevp-state="cold"]::before { content: "—"; color: #a89a86; }
+            body.mb-sa-host-bb td.mb-bbevp-cell[data-mb-bbevp-col="Tags"] li.mb-bb-tag-miss { color: #9b2218; display: list-item !important; }
+            body.mb-sa-host-bb td.mb-bbevp-cell[data-mb-bbevp-col="Tags"] li.mb-bb-tag-miss::before { content: "❌ "; font-size: 0.75em; }
+            body.mb-sa-host-bb td.mb-bbevp-cell[data-mb-bbevp-col="Tags"] li.mb-bb-tag-miss i { font-family: Georgia, "Times New Roman", serif; font-size: 0.92em; }
+            body.mb-sa-host-bb td.mb-bbevp-cell[data-mb-bbevp-col="Tags"] li.mb-bb-tag-spur { color: #9a6a00; font-weight: 600; display: list-item !important; }
+            body.mb-sa-host-bb td.mb-bbevp-cell[data-mb-bbevp-col="Tags"] li.mb-bb-tag-spur::before { content: "⚠️ "; font-size: 0.85em; font-weight: normal; }
+            body.mb-sa-host-bb td.mb-bbevp-cell[data-mb-bbevp-col="Tags"] li.mb-bb-tag-os { color: #7a6d5c; }
+            body.mb-sa-host-bb td.mb-bbevp-cell[data-mb-bbevp-col="Tags"] li.mb-bb-tag-os::before { content: "↪ "; font-size: 0.85em; }
             body.mb-sa-host-bb td.mb-bbevp-cell[data-mb-bbevp-state="queued"]::before { content: "queued"; color: #a89a86; font-size: 11px; }
             body.mb-sa-host-bb td.mb-bbevp-cell[data-mb-bbevp-state="run"]::before { content: "reading…"; color: #2f5f9e; font-size: 11px; }
             body.mb-sa-host-bb td.mb-bbevp-cell[data-mb-bbevp-col="Start"] { white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -33539,9 +33752,11 @@
      * 31: a Brucebase venue's title as written (`bbRawTitle`, bbp-parity
      *    batch 2).
      * 32: an event page's sets as written (`bbSetlistRaw`, batch 2 part 3).
+     * 33: what a show's page says about the tags it should carry
+     *    (`bbTagFacts`: kind, date, day letter, premiere count; batch 3).
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 32;
+    const _DP_PARSER_VERSION = 33;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -36498,7 +36713,19 @@
      * @returns {boolean}
      */
     function _bbTagPagesEligible(info) {
-        if (!info || !_bbOnstageTagsOn()) return false;
+        return _bbOnstageTagsOn() && _bbTagPagesMay(info);
+    }
+
+    /**
+     * Whether a record's tags may continue on other pages, whatever the
+     * setting says: the tag check must know that it has not seen every tag
+     * (`_bbTagFindings()`), also while those pages are not read.
+     *
+     * @param {?Object} info - `_bbTagInfo()`.
+     * @returns {boolean}
+     */
+    function _bbTagPagesMay(info) {
+        if (!info) return false;
         const kind = info.name.split(':')[0];
         return (info.castTab && _BB_ONSTAGE_KINDS.test(kind)) || (info.chars > _BB_TAG_PAGE_FULL && !/-[1-9]$/.test(info.name));
     }
@@ -36516,21 +36743,25 @@
      *
      * @param {string} name   - The page's name ("onstage:2016-01-16-…").
      * @param {function(): boolean} wanted - Asked when the request's slot comes up.
+     * @param {boolean} [force] - Pass over what memory and the store keep
+     *   (the year table's "read again").
      * @returns {Promise<{state: string, page?: Object, detail?: string}>}
      *   `ok` (page: {name, url, tags, chars}), `missing`, `error` or `skipped`.
      */
-    async function _bbTagPageGet(name, wanted) {
-        const mem = _bbTagPageMem.get(name);
+    async function _bbTagPageGet(name, wanted, force = false) {
+        const mem = force ? null : _bbTagPageMem.get(name);
         if (mem) return mem;
         const origin = _isBbHost ? location.origin : 'https://brucebase.wikidot.com';
         const url = `${origin}/${name}/noredirect/true`;
         const key = `bbtags:https://brucebase.wikidot.com/${name}`;
         const site = _DP_SITES['brucebase.wikidot.com'];
-        const rec = await _dpIdbGet(key).catch(() => null);
+        const rec = force ? null : await _dpIdbGet(key).catch(() => null);
         if (_dpRecUsable(rec, site, Date.now()) && rec.data && rec.data.bbTagPage) {
             _bbTagPageMem.set(name, rec.data.res);
             return rec.data.res;
         }
+        // Counted for the year table's job (`_bbEvpTagPages()`).
+        _bbTagPageGet.requests = (_bbTagPageGet.requests || 0) + 1;
         let status;
         let body = '';
         if (_isBbHost) {
@@ -36580,19 +36811,21 @@
      * Space (the window), never from a hover or a repaint.
      *
      * @param {?Object} info - `_bbTagInfo()`.
-     * @param {{wanted?: function(): boolean, retry?: boolean}} [opts]
-     * @returns {void}
+     * @param {{wanted?: function(): boolean, retry?: boolean, force?: boolean}} [opts]
+     *   `force`: pass over the kept pages too (with `retry`).
+     * @returns {Promise<void>} Settled when the read is done (also one
+     *   started earlier); at once for a record with no other page.
      */
-    function _bbTagPagesStart(info, { wanted = () => true, retry = false } = {}) {
-        if (!_bbTagPagesEligible(info)) return;
+    function _bbTagPagesStart(info, { wanted = () => true, retry = false, force = false } = {}) {
+        if (!_bbTagPagesEligible(info)) return Promise.resolve();
         const cur = _bbTagPages.get(info.name);
-        if (cur && !retry && !(cur.state === 'done' && cur.skipped)) return;
-        const st = { state: 'loading', pages: [], failed: [], skipped: false, reading: '' };
+        if (cur && !retry && !(cur.state === 'done' && cur.skipped)) return cur.promise || Promise.resolve();
+        const st = { state: 'loading', pages: [], failed: [], skipped: false, reading: '', promise: null };
         _bbTagPages.set(info.name, st);
         const read = async (name) => {
             st.reading = name;
             _bbTagPagesNotify(info.name);
-            const r = await _bbTagPageGet(name, wanted);
+            const r = await _bbTagPageGet(name, wanted, force);
             if (r.state === 'ok') st.pages.push(r.page);
             else if (r.state === 'skipped') st.skipped = true;
             else if (r.state === 'error') st.failed.push({ name, detail: r.detail || '' });
@@ -36605,7 +36838,7 @@
                 last = r.page.chars;
             }
         };
-        (async () => {
+        st.promise = (async () => {
             if (!/-[1-9]$/.test(info.name)) await chain(info.name, 2, info.chars);
             const [kind, slug] = info.name.split(/:(.*)/s);
             if (info.castTab && _BB_ONSTAGE_KINDS.test(kind) && !st.skipped) {
@@ -36622,6 +36855,67 @@
             st.reading = '';
             _bbTagPagesNotify(info.name);
         });
+        return st.promise;
+    }
+
+    /**
+     * Takes a record's other tag pages from this session's memory alone
+     * (`_bbTagPageMem`), walking the same chain as `_bbTagPagesStart()`: the
+     * year table's rows read before a reload of the page are painted with
+     * no request. True when every page of the chain was there (the record
+     * then has its `_bbTagPages` entry, done); false leaves it unread.
+     *
+     * @param {?Object} info - `_bbTagInfo()`.
+     * @returns {boolean}
+     */
+    function _bbTagPagesAdopt(info) {
+        if (!_bbTagPagesEligible(info)) return false;
+        if (_bbTagPages.has(info.name)) return _bbTagPages.get(info.name).state === 'done';
+        const pages = [];
+        let whole = true;
+        const read = (name) => {
+            const r = _bbTagPageMem.get(name);
+            if (!r) whole = false;
+            else if (r.state === 'ok') pages.push(r.page);
+            return r || { state: 'unread' };
+        };
+        const chain = (base, chars) => {
+            for (let n = 2, last = chars; whole && last > _BB_TAG_PAGE_FULL && n <= 9; n++) {
+                const r = read(_bbSiblingName(base, n));
+                if (r.state !== 'ok') return;
+                last = r.page.chars;
+            }
+        };
+        if (!/-[1-9]$/.test(info.name)) chain(info.name, info.chars);
+        const [kind, slug] = info.name.split(/:(.*)/s);
+        if (whole && info.castTab && _BB_ONSTAGE_KINDS.test(kind)) {
+            const base = `onstage:${slug}`;
+            let r = read(base);
+            if (r.state === 'missing') r = read(_bbSiblingName(base, 1));
+            if (r.state === 'ok') chain(base, r.page.chars);
+        }
+        if (!whole) return false;
+        _bbTagPages.set(info.name, { state: 'done', pages, failed: [], skipped: false, reading: '', promise: Promise.resolve() });
+        return true;
+    }
+
+    /**
+     * Puts every tag page the previews' store keeps into this session's
+     * memory, once a page load: one read of the store, no request (the year
+     * table's rows read before, `_bbEvpAfterRender()`).
+     *
+     * @returns {Promise<void>}
+     */
+    async function _bbTagPagesPeekAll() {
+        if (_bbTagPagesPeekAll.done) return;
+        _bbTagPagesPeekAll.done = true;
+        const site = _DP_SITES['brucebase.wikidot.com'];
+        const now = Date.now();
+        (await _dpIdbAll().catch(() => [])).forEach((rec) => {
+            const m = rec && typeof rec.url === 'string' ? /^bbtags:https:\/\/brucebase\.wikidot\.com\/(.+)$/.exec(rec.url) : null;
+            if (!m || _bbTagPageMem.has(m[1]) || !_dpRecUsable(rec, site, now) || !rec.data || !rec.data.bbTagPage) return;
+            _bbTagPageMem.set(m[1], rec.data.res);
+        });
     }
 
     /**
@@ -36631,11 +36925,16 @@
      * another page are classified with the RECORD's context: the onstage
      * pages have no /relation: links of their own.
      *
+     * With `find` (`_bbTagFindings()`), a tag that is not expected is
+     * marked (`flag: 'spur'`) and each missing tag is one more chip in its
+     * family's row (`flag: 'miss'`), each with its reason as the hover card.
+     *
      * @param {Array<{text: string, href: string, family: string}>} tags - The page's own tags.
      * @param {?Object} info - `_bbTagInfo()`.
+     * @param {?Object} [find] - `_bbTagFindings()`.
      * @returns {Array<[string, Array<Object>]>} `_cbx` rows.
      */
-    function _bbTagRows(tags, info) {
+    function _bbTagRows(tags, info, find) {
         const seen = new Set(tags.map(t => t.text.toLowerCase()));
         const items = tags.map(t => ({ text: t.text, href: t.href, family: t.family }));
         const st = info && _bbTagPagesEligible(info) ? _bbTagPages.get(info.name) : null;
@@ -36656,7 +36955,96 @@
                 });
             });
         }
+        if (find) {
+            const esc = _mbttEscape;
+            const card = (head, x) => `<div class="mb-tt-title">${esc(head)}: ${esc(x.tag)}</div>` + (x.why ? `<div class="mb-tt-body">${esc(x.why)}</div>` : '');
+            const spur = new Map(find.spurious.map(s => [s.tag, s]));
+            items.forEach((x) => {
+                const s = !x.page && spur.get(x.text.toLowerCase());
+                if (s) Object.assign(x, { flag: 'spur', tip: card('Not expected', s) });
+            });
+            find.missing.forEach((m) => {
+                items.push({
+                    text: m.tag, href: `https://brucebase.wikidot.com/system:page-tags/tag/${encodeURIComponent(m.tag)}#pages`,
+                    family: _BB_TAGCHK_ROW[m.family] || 'other', flag: 'miss', tip: card('Missing', m),
+                });
+            });
+        }
         return _BB_TAG_FAMILIES.map(([key, name]) => [name, items.filter(x => x.family === key)]).filter(([, of]) => of.length);
+    }
+
+    /** The Tags card's row (`_BB_TAG_FAMILIES` key) a missing tag of a checked family is drawn in. */
+    const _BB_TAGCHK_ROW = { date: 'date', letter: 'letter', type: 'category', prem: 'material' };
+
+    /**
+     * Whether a show's missing tags are looked for (`sa_findings_bb_tag_missing`).
+     *
+     * @returns {boolean}
+     */
+    function _bbTagMissingOn() {
+        return Lib.settings.sa_findings_bb_tag_missing !== false;
+    }
+
+    /**
+     * Whether a show's not-expected tags are looked for (`sa_findings_bb_tag_spurious`).
+     *
+     * @returns {boolean}
+     */
+    function _bbTagSpuriousOn() {
+        return Lib.settings.sa_findings_bb_tag_spurious !== false;
+    }
+
+    /**
+     * A show's tag findings as far as they can be said NOW (org/bbp-parity.org
+     * batch 3; mockup https://claude.ai/artifact/Xx3N3sZgqkoy4DYQK5ZBoo).
+     * Nothing is marked while the show's other tag pages are being read. A
+     * missing tag is said only when every page that may keep the show's tags
+     * is read (`_bbTagPagesMay()`: a tag kept on the On stage page is never
+     * called missing); with those pages unread — the setting off, a page
+     * that failed — `wait` says so and only the not-expected tags, which
+     * are the page's own, are marked.
+     *
+     * @param {Array<{text: string}>} tags - The page's own tags.
+     * @param {?Object} info  - `_bbTagInfo()`.
+     * @param {?Object} facts - `_bbTagFacts()`.
+     * @returns {?{missing: Array<Object>, spurious: Array<Object>, wait: string}} Null: not a show, or both findings off.
+     */
+    function _bbTagFindings(tags, info, facts) {
+        if (!facts || (!_bbTagMissingOn() && !_bbTagSpuriousOn())) return null;
+        const st = info ? _bbTagPages.get(info.name) : null;
+        if (st && st.state === 'loading') {
+            return { missing: [], spurious: [], wait: 'The tags are checked once every page that keeps them is read.' };
+        }
+        const known = !_bbTagPagesMay(info) || (_bbTagPagesEligible(info) && !!st && !st.failed.length && !st.skipped);
+        const own = tags.map(t => t.text.toLowerCase());
+        const more = st ? st.pages.flatMap(p => p.tags.map(t => t.text.toLowerCase())) : [];
+        const res = _bbTagCheck(facts, own, more);
+        return {
+            missing: known && _bbTagMissingOn() ? res.missing : [],
+            spurious: _bbTagSpuriousOn() ? res.spurious : [],
+            wait: known || !_bbTagMissingOn() ? '' : 'A missing tag is not looked for: not every page that keeps this show\'s tags is read.',
+        };
+    }
+
+    /**
+     * The parts of a tag chip box that say what the tag check found: above
+     * the tags the wait note or, with nothing found, "as expected"; below
+     * them each finding in words. (The count pills are the chip box's own.)
+     *
+     * @param {?Object} find - `_bbTagFindings()`.
+     * @returns {{head: string, foot: string}}
+     */
+    function _bbTagFindParts(find) {
+        if (!find) return { head: '', foot: '' };
+        const esc = _mbttEscape;
+        const n = find.missing.length + find.spurious.length;
+        let head = find.wait ? `<div class="mb-cbx-wait">${esc(find.wait)}</div>` : '';
+        if (!n && !find.wait) head = '<div class="mb-cbx-pill-ok">✓ date, letter, kind and premiere tags as expected</div>';
+        const line = (cls, glyph, x, text) => `<div class="${cls}"><b>${glyph} ${esc(x.tag)}</b> ${text}${x.why ? ` <span class="mb-cbx-why">${esc(x.why)}</span>` : ''}</div>`;
+        const foot = n ? '<div class="mb-cbx-finds">' +
+            find.missing.map(x => line('mb-cbx-find-e', '❌', x, 'is expected and missing.')).join('') +
+            find.spurious.map(x => line('mb-cbx-find-w', '⚠️', x, 'is not expected.')).join('') + '</div>' : '';
+        return { head, foot };
     }
 
     /**
@@ -36690,7 +37078,7 @@
         let foot = '';
         const n = per.reduce((s, [, k]) => s + k, 0);
         if (n) {
-            foot += `<div>${n} of ${items.length} tags are kept on ${per.length === 1 ? 'another page' : `${per.length} other pages`}:</div><ul class="mb-cbx-pages">` +
+            foot += `<div>${n} of ${items.filter(x => x.flag !== 'miss').length} tags are kept on ${per.length === 1 ? 'another page' : `${per.length} other pages`}:</div><ul class="mb-cbx-pages">` +
                 per.map(([p, k]) => `<li><a href="${esc(p.url.replace(/^http:/, 'https:'))}" target="_blank" rel="noopener noreferrer"><code>${esc(p.name)}</code></a> · ${k} tag${k === 1 ? '' : 's'}</li>`).join('') + '</ul>';
         }
         if (st.failed.length) {
@@ -36710,19 +37098,22 @@
      * @param {Array<{text: string, href: string, family: string}>} tags
      * @param {?Object} info  - `_bbTagInfo()`.
      * @param {string}  style - 'sb' (a head card) or 'dp' (the window).
-     * @returns {number} The number of tags.
+     * @param {?Object} [facts] - `_bbTagFacts()` of a show: its tags are checked (`_bbTagFindings()`).
+     * @returns {number} The number of tags (a missing tag's chip is not one).
      */
-    function _bbTagBoxSet(id, tags, info, style) {
-        const rows = _bbTagRows(tags, info);
+    function _bbTagBoxSet(id, tags, info, style, facts) {
+        const find = _bbTagFindings(tags, info, facts || null);
+        const rows = _bbTagRows(tags, info, find);
         const parts = _bbTagPagesParts(info, rows);
-        _cbxSet(id, { key: 'bb-tags', style, kindLabel: 'Family', rows, pages: parts.pages, head: parts.head, foot: parts.foot });
+        const fp = _bbTagFindParts(find);
+        _cbxSet(id, { key: 'bb-tags', style, kindLabel: 'Family', rows, pages: parts.pages, head: fp.head + parts.head, foot: fp.foot + parts.foot });
         if (info) {
             if (!_bbTagPagesBoxes.has(info.name)) _bbTagPagesBoxes.set(info.name, new Set());
             _bbTagPagesBoxes.get(info.name).add(id);
             _cbxSet.src = _cbxSet.src || new Map();
-            _cbxSet.src.set(id, { tags, info, style });
+            _cbxSet.src.set(id, { tags, info, style, facts: facts || null });
         }
-        return rows.reduce((s, [, of]) => s + of.length, 0);
+        return rows.reduce((s, [, of]) => s + of.filter(x => x.flag !== 'miss').length, 0);
     }
 
     /**
@@ -36737,7 +37128,7 @@
         (_bbTagPagesBoxes.get(name) || new Set()).forEach((id) => {
             const src = _cbxSet.src && _cbxSet.src.get(id);
             if (!src) return;
-            const n = _bbTagBoxSet(id, src.tags, src.info, src.style);
+            const n = _bbTagBoxSet(id, src.tags, src.info, src.style, src.facts);
             _cbxRefresh(id);
             // The window's box: its section's heading counts too. In place,
             // never a repaint of the window (it would race a fold the reader
@@ -36767,7 +37158,7 @@
         const info = (dp && dp.bbTagInfo) || null;
         _bbTagPagesStart(info);
         const id = `fd:bb-tags:${info ? info.name : location.pathname}`;
-        const count = _bbTagBoxSet(id, tags, info, 'sb');
+        const count = _bbTagBoxSet(id, tags, info, 'sb', dp.bbTagFacts);
         return { body: _cbxElement(id), count };
     }
 
@@ -36788,7 +37179,7 @@
             _bbTagPagesStart(info, { wanted: () => !!document.getElementById('mb-dp-dialog') });
         }
         const id = `dp:bb-tags:${info ? info.name : (t && t.key) || ''}`;
-        const count = _bbTagBoxSet(id, data.tags || [], info, 'dp');
+        const count = _bbTagBoxSet(id, data.tags || [], info, 'dp', data.bbTagFacts);
         return { label: `Tags (${count})`, html: _cbxHtml(id) };
     }
 
@@ -39991,6 +40382,9 @@
         // show's /onstage: page, a full page's -2): read on a press or on
         // Space, never here (`_bbTagPagesStart()`).
         data.bbTagInfo = _bbTagInfo(doc, url, data.tags);
+        // What a show's page says about the tags it should carry (batch 3;
+        // null for any other page): checked where the tags are drawn.
+        data.bbTagFacts = _bbTagFacts(doc, url);
         const sec = _bbTagsSection(data.tags);
         // `bbTags`: the window draws this section at every paint, with the
         // tags read so far from the other pages (`_bbTagsWindowPart()`).
@@ -58289,7 +58683,7 @@
                 { sourceColumn: 'DD', align: 'R' }, { sourceColumn: 'MM', align: 'R' }, { sourceColumn: 'YYYY', align: 'C' }
             ],
             // On stage: the line-up, its members folded (Phase 14).
-            collapsableColumns: [ 'On stage' ],
+            collapsableColumns: [ 'On stage', 'Tags' ],
             stickyColumn: 'Event'
         };
     }
@@ -58311,7 +58705,7 @@
             integerColumns: [
                 { sourceColumn: 'DD', align: 'R' }, { sourceColumn: 'MM', align: 'R' }, { sourceColumn: 'YYYY', align: 'C' }
             ],
-            collapsableColumns: [ 'On stage', 'Soundcheck', 'Setlist', 'Notes' ],
+            collapsableColumns: [ 'On stage', 'Tags', 'Soundcheck', 'Setlist', 'Notes' ],
             // The FIRST column is the sticky one, so no column sits before
             // it. With a later one (Venue), the sticky page headers dock the
             // columns before it too and give each a gutter mask (a box-shadow
@@ -74886,6 +75280,34 @@
             test: cell => _bbSetHasCheck(cell, 'sections'),
             detail: cell => _bbSetDetail(cell),
             tint: _findingTintSetting('sa_findings_tint_bb_setlist'),
+        },
+        // org/bbp-parity.org batch 3 (vzell, 2026-11-15): a show's tags
+        // against the ones its page calls for, four families of
+        // BruceBaseParser's check (date parts, day letter, event type,
+        // premiere count). Late data: `_bbEvpTagsHtml()` writes the result
+        // into the Tags cell's own markup once the event's page and its
+        // other tag pages are read.
+        {
+            id: 'bb-tag-missing', level: 'error', glyph: '🏷', scope: 'cell',
+            label: 'Brucebase tags: an expected tag is missing',
+            tip: 'The show\'s page should carry a tag it lacks: a part of its date (year, month, day, weekday), the letter of a second show of the day, its kind of page (gig, recording, …), or how many songs of its setlist are tour premieres (with "prem"). Tags kept on the show\'s On stage page count as present. Known once ▶ Pages has read the entry\'s page and its other tag pages; hover the cell for the tags and why each is expected.',
+            enabled: () => !!_isBbHost && _bbTagMissingOn(),
+            cols: name => name === 'Tags',
+            rowGate: row => !!row.querySelector('span.mb-bb-tag-data[data-mb-bb-tag-check]'),
+            test: cell => _bbTagHasCheck(cell, 'missing'),
+            detail: cell => (cell.querySelector(':scope > span.mb-bb-tag-data') || { dataset: {} }).dataset.mbBbTagMissing || '',
+            tint: _findingTintSetting('sa_findings_tint_bb_tags'),
+        },
+        {
+            id: 'bb-tag-spurious', level: 'warn', glyph: '🏷', scope: 'cell',
+            label: 'Brucebase tags: a tag that is not expected',
+            tip: 'The show\'s page carries a date, letter, kind or premiere tag that its page does not call for: another weekday or year, a premiere count that differs from the songs in bold on its Setlist tab, a second kind of page ("recording" on a gig). Known once ▶ Pages has read the entry\'s page; hover the cell for the tags and why.',
+            enabled: () => !!_isBbHost && _bbTagSpuriousOn(),
+            cols: name => name === 'Tags',
+            rowGate: row => !!row.querySelector('span.mb-bb-tag-data[data-mb-bb-tag-check]'),
+            test: cell => _bbTagHasCheck(cell, 'spurious'),
+            detail: cell => (cell.querySelector(':scope > span.mb-bb-tag-data') || { dataset: {} }).dataset.mbBbTagSpurious || '',
+            tint: _findingTintSetting('sa_findings_tint_bb_tags'),
         },
         // org/bbp-parity.org batch 2 (vzell, 2026-11-14): a year listing
         // against its year page. Late data: the year page is read with
@@ -181096,7 +181518,7 @@ a { color: #1565c0; }`;
      * Relationships column (`rel-multi-site`). Each is re-stamped per row
      * through `_queueFindingsRestamp()`.
      */
-    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-site', 'bb-mbev-link-mismatch', 'bb-mbev-link-missing', 'sl-double-utf8', 'bb-onstage-tab', 'bb-venue-mismatch', ..._BB_EVENT_CHECK_LATE_IDS, ..._BB_LIST_CHECK_IDS, ..._BB_UNLISTED_IDS, ..._BB_SETLIST_IDS];
+    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-site', 'bb-mbev-link-mismatch', 'bb-mbev-link-missing', 'sl-double-utf8', 'bb-onstage-tab', 'bb-venue-mismatch', ..._BB_EVENT_CHECK_LATE_IDS, ..._BB_LIST_CHECK_IDS, ..._BB_UNLISTED_IDS, ..._BB_SETLIST_IDS, ..._BB_TAG_IDS];
 
     /**
      * Queues a re-stamp of a row whose late data (`_LATE_FINDING_IDS`) has
