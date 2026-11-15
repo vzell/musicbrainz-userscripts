@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "1f038610a655a421c4ede3e560857ced093f6eef",
-    "revisions_walked": 1255
+    "head": "d45b8f3a874d3cdc0ed7290a901b42188ddff8b6",
+    "revisions_walked": 1256
   },
   "changes": [
     {
@@ -980,6 +980,7 @@
     "sa_findings_tint_bb_title_spaces": true,
     "sa_findings_bb_list_title": true,
     "sa_findings_bb_list_anchor": true,
+    "sa_findings_bb_year_unlisted": true,
     "sa_findings_bb_venue_mismatch": true,
     "sa_findings_tint_bb_venue": true,
     "sa_findings_tint_bb_list": true,
