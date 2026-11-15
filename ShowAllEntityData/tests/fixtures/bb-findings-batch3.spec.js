@@ -293,14 +293,13 @@ test.describe('Brucebase year table: the Tags column and its findings (bbp-parit
         expect(asked.filter(n => /^onstage:|-2$/.test(n)), 'no tag page asked').toEqual([]);
     });
 
-    test('"missing" switched off: no tag page is asked for it; "not expected" switched off: no warning', async ({ page }) => {
+    test('"missing" switched off: no tag page is asked for it, the tags that are not expected alone', async ({ page }) => {
         await loadYear(page, { ...ON, sa_findings_bb_tag_missing: false });
         const asked = await servePages(page);
         await show(page);
         await readAll(page);
         await expectRead(page, { missing: false });
         expect(asked.filter(n => /^onstage:|-2$/.test(n)), 'no tag page asked').toEqual([]);
-        await page.close();
     });
 
     test('"not expected" switched off: the missing tags alone', async ({ page }) => {
@@ -309,6 +308,8 @@ test.describe('Brucebase year table: the Tags column and its findings (bbp-parit
         await show(page);
         await readAll(page);
         await expectRead(page, { spurious: false });
+        // No row is marked as not expected, in its list either.
+        expect((await tagCells(page)).flatMap(r => r.spur)).toEqual([]);
     });
 
     test('rows read before, in a second tab: tags and findings from the store, with no ▶ Pages and no request', async ({ page }) => {
