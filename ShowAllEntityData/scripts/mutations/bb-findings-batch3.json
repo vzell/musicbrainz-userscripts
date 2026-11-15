@@ -17,8 +17,8 @@
         "why": "A tag of a checked family the facts do not give.",
         "edits": [
             {
-                "find": "            res.spurious.push({ tag, family, why: _bbTagSpuriousWhy(tag, family, facts, expected) });",
-                "replace": "            void family;"
+                "find": "            if (!family || seen.has(tag) || _bbTagPresent(tag, want)) continue;",
+                "replace": "            if (!family || seen.has(tag) || _bbTagPresent(tag, want) || tag) continue;"
             }
         ],
         "spec": "tests/fixtures/bb-findings-batch3.spec.js",
@@ -368,8 +368,8 @@
         "why": "Only with nothing found.",
         "edits": [
             {
-                "find": "        if (!n && !find.wait) head = '<div class=\"mb-cbx-pill-ok\">✓ date, letter, kind and premiere tags as expected</div>';",
-                "replace": "        if (!find.wait) head = '<div class=\"mb-cbx-pill-ok\">✓ date, letter, kind and premiere tags as expected</div>';"
+                "find": "        if (!n && !find.wait) head = '<div class=\"mb-cbx-pill-ok\">✓ date, letter, kind, premiere and icon tags as expected</div>';",
+                "replace": "        if (!find.wait) head = '<div class=\"mb-cbx-pill-ok\">✓ date, letter, kind, premiere and icon tags as expected</div>';"
             }
         ],
         "spec": "tests/fixtures/bb-findings-batch3.spec.js",

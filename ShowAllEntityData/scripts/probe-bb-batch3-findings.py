@@ -365,15 +365,17 @@ def tag_pages(mirror, name, own_tags, cast_tab):
         chain(name, own_tags)
     kind, rest = name.split(':', 1)
     if cast_tab and kind in ONSTAGE_KINDS:
-        on = f'onstage:{rest}'
+        # The On stage page's own name is cut to 60 characters too (101 shows).
+        base = f'onstage:{rest}'[:NAME_MAX].rstrip('-')
+        on = base
         markup = mirror.read(on)
         if markup is None:
-            on = sibling_name(f'onstage:{rest}', 1)
+            on = sibling_name(base, 1)
             markup = mirror.read(on)
         if markup is not None:
             tags = page_tags(markup)
             out.append((on, tags))
-            chain(f'onstage:{rest}', tags)
+            chain(base, tags)
     return out
 
 
@@ -804,6 +806,10 @@ def tour_check(date, alias):
 
 
 FOUR = ('date', 'letter', 'type', 'prem')
+# The help-icon check (vzell, 2026-11-16): a show marked with the Help Us
+# or the Featured icon (on its year page, or on its own page) carries the
+# tag; a show with neither icon does not. Family "icon".
+ICON_TAGS = ('help', 'featured')
 FOUR_TYPES = ('gig', 'interview', 'nobruce', 'nogig', 'offstage', 'recording', 'rehearsal')
 
 
@@ -827,13 +833,18 @@ def checked_family(tag):
     return ''
 
 
-def four_families(exp, own, tags):
+def four_families(exp, own, tags, icons=None, facts_icons=None):
     """What batch 3 ships: {missing: [[tag, family]], spurious: [[tag, family]]}."""
-    want = {t for t, fam in exp.items() if fam in FOUR}
-    missing = [[t, fam] for t, fam in exp.items() if fam in FOUR and not present(t, tags)]
+    ship = {t: fam for t, fam in exp.items() if fam in FOUR}
+    # the icon family: the year page's icon by its file, or the page's own
+    for t in ICON_TAGS:
+        if (icons or {}).get(t) or (facts_icons or {}).get(t):
+            ship[t] = 'icon'
+    want = set(ship)
+    missing = [[t, fam] for t, fam in ship.items() if not present(t, tags)]
     spurious = []
     for t in dict.fromkeys(own):
-        fam = checked_family(t)
+        fam = 'icon' if t in ICON_TAGS else checked_family(t)
         if fam and not present(t, want):
             spurious.append([t, fam])
     return {'missing': missing, 'spurious': spurious}
@@ -850,16 +861,24 @@ def year_icons(mirror):
     BBP's eventHasHelpIcon(): an img.image with that title after the event's
     link and before the next a[name].
     """
-    out = {'Help Us': set(), 'Featured': set()}
+    # 'file:help' / 'file:featured': the same by the icon's FILE (00Help,
+    # 00Star), which is what the page shows: 12 entries have the star with no
+    # title (1968-06-22a), so BBP's title rule misses them (2026-11-16).
+    out = {'Help Us': set(), 'Featured': set(), 'file:help': set(), 'file:featured': set()}
     for fn in sorted(os.listdir(mirror.root)):
         if not re.fullmatch(r'\d{4}(-\d\d)?\.html', fn):
             continue
         with open(os.path.join(mirror.root, fn), encoding='utf-8', errors='replace') as fh:
             page = fh.read()
         marks = []
-        for m in re.finditer(r'<a href="/((?:%s):[^"#]+)"|<a name="|<img\b[^>]*>' % '|'.join(KINDS), page):
+        # The entry's own link is its heading's (<strong><a …>). A link to a
+        # show in another entry's notes is not its entry: taken as one, the
+        # 1993-01-12 gig got the Help Us icon of a 1969 entry that mentions it
+        # (found by scripts/check-bb-batch3-findings.js against the shipped
+        # year reader, 2026-11-16).
+        for m in re.finditer(r'<strong><a href="/((?:%s):[^"#]+)"|<a name="|<img\b[^>]*>' % '|'.join(KINDS), page):
             s = m.group(0)
-            if s.startswith('<a href'):
+            if s.startswith('<strong><a href'):
                 marks.append(('link', m.group(1)))
             elif s.startswith('<a name'):
                 marks.append(('anchor', None))
@@ -868,6 +887,10 @@ def year_icons(mirror):
                 c = re.search(r'class="([^"]*)"', s)
                 if t and c and 'image' in c.group(1).split() and t.group(1) in out:
                     marks.append(('img', t.group(1)))
+                f = re.search(r'/00(Help|Star)-\d+\.png', s)
+                if f or (t and t.group(1) in ('Help Us', 'Featured')):
+                    star = (f.group(1) == 'Star') if f else t.group(1) == 'Featured'
+                    marks.append(('img', 'file:featured' if star else 'file:help'))
         first = {}
         for i, (k, v) in enumerate(marks):
             if k == 'link' and v not in first:
@@ -939,9 +962,13 @@ def analyse(mirror, name, icons):
         'tags': own, 'pages': [[p, t] for p, t in pages],
         'missing': [list(m) for m in missing], 'spurious': spurious,
         'expected': exp, 'helpYear': help_year, 'featYear': feat_year,
-        'four': four_families(exp, own, tags),
+        'four': four_families(exp, own, tags,
+                              {'help': name in icons['file:help'], 'featured': name in icons['file:featured']},
+                              {'help': help_page, 'featured': feat_page}),
+        'iconsYear': {'help': name in icons['file:help'], 'featured': name in icons['file:featured']},
         'facts': {'kind': kind, 'date': date, 'letter': letter or '',
-                  'prem': sum(1 for a in song_links(setlist_container(doc) or doc) if a.inside('strong'))},
+                  'prem': sum(1 for a in song_links(setlist_container(doc) or doc) if a.inside('strong')),
+                  'help': help_page, 'featured': feat_page},
         'dateDiffers': bool(am and date and am.group(1) != date),
         'helpYearOnly': (help_year and not help_page), 'featYearOnly': (feat_year and not feat_page),
         'venueDropped': place_venue_dropped, 'noTitleDate': not date,
@@ -993,7 +1020,8 @@ def main(argv):
 
     print(f'mirror {mirror.root}')
     print(f'{len(rows)} events read, {len(skipped)} "-N" pages without tabs left out')
-    print(f'year pages mark Help Us on {len(icons["Help Us"])} events, Featured on {len(icons["Featured"])}')
+    print(f'year pages mark Help Us on {len(icons["Help Us"])} events, Featured on {len(icons["Featured"])} (by title); '
+          f'by the icon file {len(icons["file:help"])} and {len(icons["file:featured"])}')
     kinds = Counter(r['kind'] for r in rows)
     print('by kind: ' + ', '.join(f'{k} {kinds[k]}' for k in KINDS))
     print(f'with other tag pages: {sum(1 for r in rows if r["pages"])}; '
@@ -1027,9 +1055,9 @@ def main(argv):
             fm[fam] += 1
         for fam in {f for _, f in r['four']['spurious']}:
             fs[fam] += 1
-    print('\nthe four families batch 3 ships (events):')
-    print(f'  missing   {sum(1 for r in rows if r["four"]["missing"]):4}   ' + ', '.join(f'{f} {fm[f]}' for f in FOUR))
-    print(f'  spurious  {sum(1 for r in rows if r["four"]["spurious"]):4}   ' + ', '.join(f'{f} {fs[f]}' for f in FOUR))
+    print('\nthe families that are shipped, batch 3\'s four and the icons (events):')
+    print(f'  missing   {sum(1 for r in rows if r["four"]["missing"]):4}   ' + ', '.join(f'{f} {fm[f]}' for f in FOUR + ("icon",)))
+    print(f'  spurious  {sum(1 for r in rows if r["four"]["spurious"]):4}   ' + ', '.join(f'{f} {fs[f]}' for f in FOUR + ("icon",)))
     print(f'  either    {sum(1 for r in rows if r["four"]["missing"] or r["four"]["spurious"]):4}')
     print('\nwhat the surfaces would see differently:')
     print(f'  Help Us only on the year page: {sum(1 for r in rows if r["helpYearOnly"])}; '

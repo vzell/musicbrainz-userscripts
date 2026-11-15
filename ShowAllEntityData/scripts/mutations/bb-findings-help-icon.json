@@ -1,0 +1,236 @@
+[
+    {
+        "name": "icons: an icon calls for no tag",
+        "why": "The year page's icon, or the page's own, makes its tag expected.",
+        "edits": [
+            {
+                "find": "            if (year || facts[tag]) {",
+                "replace": "            if (!tag) {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-help-icon.spec.js",
+        "grep": "the rule:",
+        "expect": "fail"
+    },
+    {
+        "name": "icons: the page's own icon does not count",
+        "why": "A show's own Help Us icon calls for \"help\" with the year page not known.",
+        "edits": [
+            {
+                "find": "            if (year || facts[tag]) {",
+                "replace": "            if (year) {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-help-icon.spec.js",
+        "grep": "the rule:",
+        "expect": "fail"
+    },
+    {
+        "name": "icons: a tag is \"not expected\" with the year page not known",
+        "why": "Only with the year page known.",
+        "edits": [
+            {
+                "find": "            const icon = icons ? _BB_TAGCHK_ICONS.find(i => i[0] === tag) : null;",
+                "replace": "            const icon = _BB_TAGCHK_ICONS.find(i => i[0] === tag);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-help-icon.spec.js",
+        "grep": "the rule:",
+        "expect": "fail"
+    },
+    {
+        "name": "icons: \"featured\" is not an icon tag",
+        "why": "Both icons, one rule.",
+        "edits": [
+            {
+                "find": "    const _BB_TAGCHK_ICONS = [['help', 'Help Us'], ['featured', 'Featured']];",
+                "replace": "    const _BB_TAGCHK_ICONS = [['help', 'Help Us']];"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-help-icon.spec.js",
+        "grep": "the rule:",
+        "expect": "fail"
+    },
+    {
+        "name": "facts: the page's own Help Us icon is not read",
+        "why": "MSG 2009-05-03 has one.",
+        "edits": [
+            {
+                "find": "            help: !!doc.querySelector('img.image[title=\"Help Us\"]'),",
+                "replace": "            help: false,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-help-icon.spec.js",
+        "grep": "what a page says: its own Help Us icon",
+        "expect": "fail"
+    },
+    {
+        "name": "year reader: no Help Us icon is kept",
+        "why": "Each show's icons, for the tag check.",
+        "edits": [
+            {
+                "find": "            const help = mark('Help', 'Help Us');",
+                "replace": "            const help = false;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-help-icon.spec.js",
+        "grep": "the year reader keeps",
+        "expect": "fail"
+    },
+    {
+        "name": "year reader: the star only by its title",
+        "why": "12 entries have the star with NO title; BruceBaseParser's title rule misses them.",
+        "edits": [
+            {
+                "find": "            const mark = (stem, title) => imgs.some(img => img.getAttribute('title') === title ||\n                new RegExp(`/00${stem}-\\\\d+\\\\.png`, 'i').test(img.getAttribute('src') || ''));",
+                "replace": "            const mark = (stem, title) => imgs.some(img => img.getAttribute('title') === title);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-help-icon.spec.js",
+        "grep": "the year reader keeps",
+        "expect": "fail"
+    },
+    {
+        "name": "year table: the row does not say its icons",
+        "why": "On the Event cell's carrier, from the build.",
+        "edits": [
+            {
+                "find": "        if (evData) evData.setAttribute('data-mb-bb-icons', [infoWanted ? 'help' : '', media.some(i => i.label === 'Featured') ? 'featured' : ''].filter(Boolean).join(' '));",
+                "replace": "        void evData;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-help-icon.spec.js",
+        "grep": "the row knows its icons from the start",
+        "expect": "fail"
+    },
+    {
+        "name": "year table: the Tags cell does not read the row's icons",
+        "why": "The check gets the year page's icons from the row.",
+        "edits": [
+            {
+                "find": "        if (col === 'Tags') return _bbEvpTagsHtml(v, _bbEvpIcons(td));",
+                "replace": "        if (col === 'Tags') return _bbEvpTagsHtml(v, null);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-help-icon.spec.js",
+        "grep": "the row knows its icons from the start",
+        "expect": "fail"
+    },
+    {
+        "name": "year table: a row without an icon is \"not known\"",
+        "why": "An empty value is known: no icon.",
+        "edits": [
+            {
+                "find": "        const d = td && td.parentElement ? td.parentElement.querySelector('td > span.mb-bb-ev-data[data-mb-bb-icons]') : null;\n        if (!d) return null;",
+                "replace": "        const d = td && td.parentElement ? td.parentElement.querySelector('td > span.mb-bb-ev-data[data-mb-bb-icons]') : null;\n        if (!d || !d.getAttribute('data-mb-bb-icons')) return null;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-help-icon.spec.js",
+        "grep": "that the year page does not mark",
+        "expect": "fail"
+    },
+    {
+        "name": "listing: a row does not get its icons with the year page",
+        "why": "_bbListApplyYear() writes them.",
+        "edits": [
+            {
+                "find": "                if (show) d.setAttribute('data-mb-bb-icons', [show.help ? 'help' : '', show.featured ? 'featured' : ''].filter(Boolean).join(' '));",
+                "replace": "                void show;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-help-icon.spec.js",
+        "grep": "the year listing:",
+        "expect": "fail"
+    },
+    {
+        "name": "On stage page: asked by its full name",
+        "why": "The wiki cuts the name to 60 characters; 101 shows have the page under the cut name only.",
+        "edits": [
+            {
+                "find": "        return `onstage:${slug}`.slice(0, _BB_PAGE_NAME_MAX).replace(/-+$/, '');",
+                "replace": "        return `onstage:${slug}`;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-help-icon.spec.js",
+        "grep": "the row knows its icons from the start",
+        "expect": "fail"
+    },
+    {
+        "name": "show page: the year page is not read",
+        "why": "A press reads it once for the icons.",
+        "edits": [
+            {
+                "find": "        _bbTagIconsStart(info, dp.bbTagFacts);",
+                "replace": "        void dp.bbTagFacts;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-help-icon.spec.js",
+        "grep": "the year page is read once for the show",
+        "expect": "fail"
+    },
+    {
+        "name": "show page: the year page is read with both findings off",
+        "why": "A check that costs a request switches it off with itself.",
+        "edits": [
+            {
+                "find": "        if (!info || !facts || (!_bbTagMissingOn() && !_bbTagSpuriousOn())) return;",
+                "replace": "        if (!info || !facts) return;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-help-icon.spec.js",
+        "grep": "both tag findings switched off: the year page is not asked",
+        "expect": "fail"
+    },
+    {
+        "name": "show page: the show is not found on its year page",
+        "why": "The entry whose heading links this page.",
+        "edits": [
+            {
+                "find": "            st.icons = show ? { help: !!show.help, featured: !!show.featured } : null;",
+                "replace": "            st.icons = null;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-help-icon.spec.js",
+        "grep": "the year page is read once for the show",
+        "expect": "fail"
+    },
+    {
+        "name": "show page: a year page that failed counts as \"no icon\"",
+        "why": "Not known: nothing is called not expected.",
+        "edits": [
+            {
+                "find": "            if (!r || !r.ok || !r.year) {\n                st.state = 'failed';\n                return;\n            }",
+                "replace": "            if (!r || !r.ok || !r.year) {\n                st.state = 'done';\n                st.icons = { help: false, featured: false };\n                return;\n            }"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-help-icon.spec.js",
+        "grep": "the year page not read",
+        "expect": "fail"
+    },
+    {
+        "name": "show page: the box is not refilled when the year page is in",
+        "why": "_bbTagPagesNotify() after the answer.",
+        "edits": [
+            {
+                "find": "        }).catch(() => { st.state = 'failed'; }).finally(() => _bbTagPagesNotify(info.name));",
+                "replace": "        }).catch(() => { st.state = 'failed'; });"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-help-icon.spec.js",
+        "grep": "the year page's answer alone refills the card",
+        "expect": "fail"
+    },
+    {
+        "name": "show page: the wrong year page for 1949-64",
+        "why": "Those years share one page. No fixture is of 1949-64, so this spec cannot see it.",
+        "edits": [
+            {
+                "find": "        return `https://brucebase.wikidot.com/${y >= 1949 && y <= 1964 ? '1949-64' : y}`;",
+                "replace": "        return `https://brucebase.wikidot.com/${y}`;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-help-icon.spec.js",
+        "grep": "the year page is read once for the show",
+        "expect": "pass"
+    }
+]

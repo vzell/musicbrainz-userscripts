@@ -3088,16 +3088,18 @@
                          'premieres. Marked on the show page\'s Tags card and in its preview window, and an ' +
                          'ERROR on the year table\'s Tags cell once ▶ Pages has read the entry. Tags kept on ' +
                          'the show\'s On stage page count as present; on a year table that page is read too ' +
-                         '(one more request per show with a cast) while this setting is on.'
+                         '(one more request per show with a cast) while this setting is on. A show the year page marks ' +
+                         'with the Help Us or the Featured icon should carry "help" or "featured": for that, a ' +
+                         'show\'s page and its window read the show\'s year page once (kept afterwards).'
         },
 
         sa_findings_bb_tag_spurious: {
             label: 'Find Brucebase shows with a date, letter, kind or premiere tag that is not expected',
             type: 'checkbox',
             default: true,
-            description: 'A tag of those four families that the page does not call for: another weekday, a ' +
+            description: 'A tag of the checked families that the page does not call for: another weekday, a ' +
                          'premiere count that differs from the songs in bold, a second kind of page ("recording" ' +
-                         'on a gig). Marked on the Tags card and in the preview window, and a WARNING on the ' +
+                         'on a gig), "help" or "featured" without the icon. Marked on the Tags card and in the preview window, and a WARNING on the ' +
                          'year table\'s Tags cell once ▶ Pages has read the entry.'
         },
 
@@ -28375,12 +28377,17 @@
                 const d = row.querySelector('td > span.mb-bb-ev-data[data-mb-bb-list]');
                 if (!d) return;
                 d.setAttribute('data-mb-bb-list-headings', JSON.stringify(headings));
+                // The show's icons on its year page, for the tag check.
+                if (show) d.setAttribute('data-mb-bb-icons', [show.help ? 'help' : '', show.featured ? 'featured' : ''].filter(Boolean).join(' '));
                 if (!_bbEventChecksWrite(d.parentElement)) return;
                 changed++;
                 const live = row.isConnected ? row.closest('table.tbl') : null;
                 const table = live || Array.from(document.querySelectorAll('table.tbl')).find(t => t.querySelector('td.mb-bbevp-cell'));
                 if (table) _queueFindingsRestamp(row, _BB_LIST_CHECK_IDS, live ? null : table);
             });
+            // A row read before its year page was (from the store): its
+            // Tags cell is made again, now with the show's icons.
+            if (show) cells.forEach((td) => { if (td.dataset.mbBbevpCol === 'Tags' && td.dataset.mbBbevpState === 'done') _bbEvpRenderCell(td); });
         });
         return changed;
     }
@@ -29533,6 +29540,22 @@
     }
 
     /**
+     * A row's Help Us and Featured icons as its year page shows them: the
+     * Event cell's carrier says them (`data-mb-bb-icons`: a year row from
+     * its build, a listing row once its year page is read). Null while not
+     * known.
+     *
+     * @param {?Element} td - A cell of the row.
+     * @returns {?{help: boolean, featured: boolean}}
+     */
+    function _bbEvpIcons(td) {
+        const d = td && td.parentElement ? td.parentElement.querySelector('td > span.mb-bb-ev-data[data-mb-bb-icons]') : null;
+        if (!d) return null;
+        const set = d.getAttribute('data-mb-bb-icons').split(' ');
+        return { help: set.includes('help'), featured: set.includes('featured') };
+    }
+
+    /**
      * Whether the year table reads a show's other tag pages with ▶ Pages:
      * while missing tags are looked for (a finding that costs requests
      * switches them off with itself) and those pages are read at all
@@ -29576,9 +29599,10 @@
      * `-detail` in words), so they survive a clone and a save to disk.
      *
      * @param {Object} v - `_bbEvpView()`.
+     * @param {?{help: boolean, featured: boolean}} [icons] - The row's icons on its year page (`_bbEvpIcons()`); null: not known.
      * @returns {string}
      */
-    function _bbEvpTagsHtml(v) {
+    function _bbEvpTagsHtml(v, icons = null) {
         const e = _rgEsc;
         const own = v.tags || [];
         if (!own.length && !v.tagFacts) return '';
@@ -29592,7 +29616,7 @@
             seen.add(k);
             rows.push({ t: x.text, cls: 'mb-bb-tag-os' });
         }));
-        const find = _bbTagFindings(own.map(text => ({ text })), info, v.tagFacts);
+        const find = _bbTagFindings(own.map(text => ({ text })), info, v.tagFacts, icons);
         const spur = new Set(find ? find.spurious.map(s => s.tag) : []);
         rows.forEach((r) => { if (!r.cls && spur.has(r.t.toLowerCase())) r.cls = 'mb-bb-tag-spur'; });
         const az = (a, b) => a.t.localeCompare(b.t, undefined, { sensitivity: 'base' });
@@ -29655,9 +29679,10 @@
      *
      * @param {string} col
      * @param {?object} rec - `_bbEvpMem`'s entry.
+     * @param {?Element} [td] - The cell: the Tags column reads its row's icons (`_bbEvpIcons()`).
      * @returns {string}
      */
-    function _bbEvpCellHtml(col, rec) {
+    function _bbEvpCellHtml(col, rec, td = null) {
         const e = _rgEsc;
         if (rec && rec.failed) {
             return col === 'On stage' ? `<button type="button" class="mb-bbevp-retry" aria-label="Not read: ask again" data-mb-tip title="${e(`The event's page was not read (${rec.detail || 'no answer'}). Click: ask again.`)}"></button>` : '';
@@ -29670,7 +29695,7 @@
         }
         if (col === 'Content') return e(v.content.join(' · '));
         if (col === 'Images') return e(v.images.join(' · '));
-        if (col === 'Tags') return _bbEvpTagsHtml(v);
+        if (col === 'Tags') return _bbEvpTagsHtml(v, _bbEvpIcons(td));
         return e(v.start);
     }
 
@@ -29754,7 +29779,7 @@
         const rec = _bbEvpMem.get(td.dataset.mbBbevpKey);
         const st = rec ? (rec.failed ? 'failed' : rec.none ? 'none' : 'done') : state || 'cold';
         const tagWas = td.dataset.mbBbevpCol === 'Tags' ? _bbEvpTagMark(td) : null;
-        td.innerHTML = _bbEvpCellHtml(td.dataset.mbBbevpCol, rec);
+        td.innerHTML = _bbEvpCellHtml(td.dataset.mbBbevpCol, rec, td);
         td.dataset.mbBbevpState = st;
         // Read, but its venue page is not (`_bbEvpAfterRender()`): the
         // watch takes such a row too.
@@ -30615,6 +30640,11 @@
         tr.appendChild(notesTd);
 
         textCell(infoWanted ? 'yes' : '');
+        // The entry's Help Us and Featured icons, for the tag check (the
+        // help-icon check): on the Event cell's carrier, so a clone, a
+        // source row and a saved file keep them. Present = known.
+        const evData = tr.querySelector('td > span.mb-bb-ev-data');
+        if (evData) evData.setAttribute('data-mb-bb-icons', [infoWanted ? 'help' : '', media.some(i => i.label === 'Featured') ? 'featured' : ''].filter(Boolean).join(' '));
         return tr;
     }
 
@@ -33775,9 +33805,11 @@
      * 32: an event page's sets as written (`bbSetlistRaw`, batch 2 part 3).
      * 33: what a show's page says about the tags it should carry
      *    (`bbTagFacts`: kind, date, day letter, premiere count; batch 3).
+     * 34: `bbTagFacts` says whether the page itself shows the Help Us or
+     *    the Featured icon (the help-icon check).
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 33;
+    const _DP_PARSER_VERSION = 34;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -36519,6 +36551,21 @@
     }
 
     /**
+     * The name of a show's On stage page: "onstage:" and the show's own
+     * name after its category, cut to Wikidot's 60 characters with a
+     * trailing "-" dropped ("onstage:1968-06-22a-off-broad-street-coffee-
+     * house-red-bank-n": the "j" of "-nj" is gone). Asked by its full name
+     * the page was not found, and the reader went on to "-1" for nothing
+     * (until 2026-11-16).
+     *
+     * @param {string} slug - The show's name after "gig:".
+     * @returns {string}
+     */
+    function _bbOnstageName(slug) {
+        return `onstage:${slug}`.slice(0, _BB_PAGE_NAME_MAX).replace(/-+$/, '');
+    }
+
+    /**
      * What the tags of a record need to look for pages of their own: its
      * name, how full its tags are, whether it has a cast tab, and the
      * context its tags were classified by (`_bbTagCtx()`, as arrays, so the
@@ -36567,6 +36614,8 @@
      * "soundcheck" says what the page holds.
      */
     const _BB_TAGCHK_TYPES = new Set(['gig', 'interview', 'nobruce', 'nogig', 'offstage', 'recording', 'rehearsal']);
+    /** The tags an icon of the wiki calls for: the tag, and the icon's title on the year page and on a show's page. */
+    const _BB_TAGCHK_ICONS = [['help', 'Help Us'], ['featured', 'Featured']];
 
     /**
      * What a show's page says about the tags it should carry: its kind and
@@ -36577,7 +36626,11 @@
      *
      * @param {Document} doc
      * @param {string}   url
-     * @returns {?{kind: string, date: string, letter: string, prem: number}}
+     * `help` and `featured`: the page itself shows the Help Us or the
+     * Featured icon (BruceBaseParser's `hasHelpIcon(document)`); the year
+     * page's icons are not the page's to know (`_bbTagCheck()`'s `icons`).
+     *
+     * @returns {?{kind: string, date: string, letter: string, prem: number, help: boolean, featured: boolean}}
      */
     function _bbTagFacts(doc, url) {
         let name;
@@ -36593,6 +36646,8 @@
         return {
             kind: m[1], date: dm ? dm[1] : '', letter: lm ? lm[1] : '',
             prem: box ? box.querySelectorAll('strong a[href^="/song:"]').length : 0,
+            help: !!doc.querySelector('img.image[title="Help Us"]'),
+            featured: !!doc.querySelector('img.image[title="Featured"]'),
         };
     }
 
@@ -36676,25 +36731,46 @@
      * (`_bbTagCheckedFamily()`) that the facts do not give — tags kept on
      * another page are never called that, as in BruceBaseParser.
      *
+     * The icon family (org/bbp-parity.org, the help-icon check; vzell,
+     * 2026-11-16): a show the wiki marks with the Help Us icon should carry
+     * "help", one it marks Featured "featured". The icon is on the YEAR
+     * page (1,307 of 1,405 shows with a Help Us icon have it only there),
+     * so the caller says what the year page shows (`icons`); the page's own
+     * icon counts too. With `icons` null the year page is not known: a tag
+     * is then missing only for the page's own icon, and "help" or
+     * "featured" is never called not expected.
+     *
      * @param {?Object} facts - `_bbTagFacts()`; null gives no finding.
      * @param {Array<string>} own - The page's own tags, lower case.
      * @param {Iterable<string>} [more] - The tags of its other pages, lower case.
+     * @param {?{help: boolean, featured: boolean}} [icons] - The show's icons on its year page; null: not known.
      * @returns {{missing: Array<{tag: string, family: string, why: string}>, spurious: Array<{tag: string, family: string, why: string}>}}
      */
-    function _bbTagCheck(facts, own, more) {
+    function _bbTagCheck(facts, own, more, icons = null) {
         const res = { missing: [], spurious: [] };
         if (!facts) return res;
         const all = new Set(own);
         for (const t of more || []) all.add(t);
         const expected = _bbTagExpected(facts);
+        for (const [tag, name] of _BB_TAGCHK_ICONS) {
+            const year = !!(icons && icons[tag]);
+            if (year || facts[tag]) {
+                expected.push({ tag, family: 'icon', why: year ? `The year page marks this show with the ${name} icon.` : `The show's page has the ${name} icon.` });
+            }
+        }
         const want = new Set(expected.map(e => e.tag));
         for (const e of expected) if (!_bbTagPresent(e.tag, all)) res.missing.push(e);
         const seen = new Set();
         for (const tag of own) {
-            const family = _bbTagCheckedFamily(tag);
+            // An icon tag only with the year page known.
+            const icon = icons ? _BB_TAGCHK_ICONS.find(i => i[0] === tag) : null;
+            const family = icon ? 'icon' : _bbTagCheckedFamily(tag);
             if (!family || seen.has(tag) || _bbTagPresent(tag, want)) continue;
             seen.add(tag);
-            res.spurious.push({ tag, family, why: _bbTagSpuriousWhy(tag, family, facts, expected) });
+            res.spurious.push({
+                tag, family,
+                why: icon ? `Neither the year page nor the show's page has the ${icon[1]} icon.` : _bbTagSpuriousWhy(tag, family, facts, expected),
+            });
         }
         return res;
     }
@@ -36863,7 +36939,11 @@
             if (!/-[1-9]$/.test(info.name)) await chain(info.name, 2, info.chars);
             const [kind, slug] = info.name.split(/:(.*)/s);
             if (info.castTab && _BB_ONSTAGE_KINDS.test(kind) && !st.skipped) {
-                const base = `onstage:${slug}`;
+                // The On stage page's own name is cut to Wikidot's 60 characters
+                // too ("onstage:" is four longer than "gig:"): 101 shows of the
+                // 2026-11-15 mirror have it under the cut name, none under the
+                // full one (`_bbOnstageName()`).
+                const base = _bbOnstageName(slug);
                 let r = await read(base);
                 const from = 2;
                 if (r.state === 'missing') r = await read(_bbSiblingName(base, 1));
@@ -36910,7 +36990,7 @@
         if (!/-[1-9]$/.test(info.name)) chain(info.name, info.chars);
         const [kind, slug] = info.name.split(/:(.*)/s);
         if (whole && info.castTab && _BB_ONSTAGE_KINDS.test(kind)) {
-            const base = `onstage:${slug}`;
+            const base = _bbOnstageName(slug);
             let r = read(base);
             if (r.state === 'missing') r = read(_bbSiblingName(base, 1));
             if (r.state === 'ok') chain(base, r.page.chars);
@@ -36995,7 +37075,7 @@
     }
 
     /** The Tags card's row (`_BB_TAG_FAMILIES` key) a missing tag of a checked family is drawn in. */
-    const _BB_TAGCHK_ROW = { date: 'date', letter: 'letter', type: 'category', prem: 'material' };
+    const _BB_TAGCHK_ROW = { date: 'date', letter: 'letter', type: 'category', prem: 'material', icon: 'material' };
 
     /**
      * Whether a show's missing tags are looked for (`sa_findings_bb_tag_missing`).
@@ -37028,23 +37108,81 @@
      * @param {Array<{text: string}>} tags - The page's own tags.
      * @param {?Object} info  - `_bbTagInfo()`.
      * @param {?Object} facts - `_bbTagFacts()`.
+     * @param {?{help: boolean, featured: boolean}} [icons] - The show's icons on its year page, from a
+     *   caller that has them (the year table's row); left out: what `_bbTagIconsStart()` read
+     *   for the record (the Tags card, the window), null while that is not known.
      * @returns {?{missing: Array<Object>, spurious: Array<Object>, wait: string}} Null: not a show, or both findings off.
      */
-    function _bbTagFindings(tags, info, facts) {
+    function _bbTagFindings(tags, info, facts, icons) {
         if (!facts || (!_bbTagMissingOn() && !_bbTagSpuriousOn())) return null;
         const st = info ? _bbTagPages.get(info.name) : null;
-        if (st && st.state === 'loading') {
+        const ic = icons === undefined && info ? _bbTagIcons.get(info.name) : null;
+        if (icons === undefined) icons = ic && ic.state === 'done' ? ic.icons : null;
+        if ((st && st.state === 'loading') || (ic && ic.state === 'loading')) {
             return { missing: [], spurious: [], wait: 'The tags are checked once every page that keeps them is read.' };
         }
         const known = !_bbTagPagesMay(info) || (_bbTagPagesEligible(info) && !!st && !st.failed.length && !st.skipped);
         const own = tags.map(t => t.text.toLowerCase());
         const more = st ? st.pages.flatMap(p => p.tags.map(t => t.text.toLowerCase())) : [];
-        const res = _bbTagCheck(facts, own, more);
+        const res = _bbTagCheck(facts, own, more, icons);
         return {
             missing: known && _bbTagMissingOn() ? res.missing : [],
             spurious: _bbTagSpuriousOn() ? res.spurious : [],
             wait: known || !_bbTagMissingOn() ? '' : 'A missing tag is not looked for: not every page that keeps this show\'s tags is read.',
         };
+    }
+
+    /** @type {Map<string, {state: string, icons: ?Object}>} A show's icons on its year page, by the record's name (`_bbTagIconsStart()`). */
+    const _bbTagIcons = new Map();
+
+    /**
+     * The year page of a show's date: "1949-64" for those years, else the
+     * year (BruceBaseParser's `yearPageSlug()`). '' without a date.
+     *
+     * @param {string} date - "1972-05-02".
+     * @returns {string} The page's URL.
+     */
+    function _bbTagYearUrl(date) {
+        const y = parseInt(String(date || '').slice(0, 4), 10);
+        if (!y) return '';
+        return `https://brucebase.wikidot.com/${y >= 1949 && y <= 1964 ? '1949-64' : y}`;
+    }
+
+    /**
+     * Reads, once per record, the show's year page for its Help Us and
+     * Featured icons (the help-icon check; vzell, 2026-11-16: the show's
+     * page and its window read the year page for it — one request, kept
+     * like every year page, `_extBbYear()`). The show is the entry whose
+     * heading links this page (BruceBaseParser finds it the same way); a
+     * page no entry links leaves the icons not known. Every box of the
+     * record is refilled when the answer is in (`_bbTagPagesNotify()`).
+     * Called on a press (the head) and on Space (the window), never from
+     * a hover or a repaint; not at all with both tag findings off.
+     *
+     * @param {?Object} info  - `_bbTagInfo()`.
+     * @param {?Object} facts - `_bbTagFacts()`.
+     * @param {function(): boolean} [wanted]
+     * @returns {void}
+     */
+    function _bbTagIconsStart(info, facts, wanted = () => true) {
+        if (!info || !facts || (!_bbTagMissingOn() && !_bbTagSpuriousOn())) return;
+        const yearUrl = _bbTagYearUrl(facts.date);
+        const cur = _bbTagIcons.get(info.name);
+        if (!yearUrl || (cur && cur.state !== 'failed')) return;
+        const st = { state: 'loading', icons: null };
+        _bbTagIcons.set(info.name, st);
+        _extBbYear(yearUrl, wanted).then((r) => {
+            if (!r || !r.ok || !r.year) {
+                st.state = 'failed';
+                return;
+            }
+            const mine = `/${info.name}`;
+            const show = Object.values(r.year.shows || {}).find((s) => {
+                try { return !!s.gig && decodeURIComponent(new URL(s.gig).pathname) === mine; } catch (_) { return false; }
+            });
+            st.icons = show ? { help: !!show.help, featured: !!show.featured } : null;
+            st.state = 'done';
+        }).catch(() => { st.state = 'failed'; }).finally(() => _bbTagPagesNotify(info.name));
     }
 
     /**
@@ -37060,7 +37198,7 @@
         const esc = _mbttEscape;
         const n = find.missing.length + find.spurious.length;
         let head = find.wait ? `<div class="mb-cbx-wait">${esc(find.wait)}</div>` : '';
-        if (!n && !find.wait) head = '<div class="mb-cbx-pill-ok">✓ date, letter, kind and premiere tags as expected</div>';
+        if (!n && !find.wait) head = '<div class="mb-cbx-pill-ok">✓ date, letter, kind, premiere and icon tags as expected</div>';
         const line = (cls, glyph, x, text) => `<div class="${cls}"><b>${glyph} ${esc(x.tag)}</b> ${text}${x.why ? ` <span class="mb-cbx-why">${esc(x.why)}</span>` : ''}</div>`;
         const foot = n ? '<div class="mb-cbx-finds">' +
             find.missing.map(x => line('mb-cbx-find-e', '❌', x, 'is expected and missing.')).join('') +
@@ -37178,6 +37316,7 @@
         if (!tags.length) return null;
         const info = (dp && dp.bbTagInfo) || null;
         _bbTagPagesStart(info);
+        _bbTagIconsStart(info, dp.bbTagFacts);
         const id = `fd:bb-tags:${info ? info.name : location.pathname}`;
         const count = _bbTagBoxSet(id, tags, info, 'sb', dp.bbTagFacts);
         return { body: _cbxElement(id), count };
@@ -37198,6 +37337,7 @@
         if (t && _bbTagPagesWant.has(t.key)) {
             _bbTagPagesWant.delete(t.key);
             _bbTagPagesStart(info, { wanted: () => !!document.getElementById('mb-dp-dialog') });
+            _bbTagIconsStart(info, data.bbTagFacts, () => !!document.getElementById('mb-dp-dialog'));
         }
         const id = `dp:bb-tags:${info ? info.name : (t && t.key) || ''}`;
         const count = _bbTagBoxSet(id, data.tags || [], info, 'dp', data.bbTagFacts);
@@ -95660,7 +95800,7 @@
     const _EXT_BB_MAX_BYTES = 1024 * 1024;
 
     /** Version of the parsed year pages kept in IndexedDB; bump when `_extBbParseYear()`'s output changes. */
-    const _EXT_BB_YEAR_VERSION = 3;
+    const _EXT_BB_YEAR_VERSION = 4;
     /** The kept year listings' record version (`_extBbYearList()`). */
     const _EXT_BB_YEAR_LIST_VERSION = 1;
 
@@ -95749,6 +95889,17 @@
             // The icons themselves too (vzell, 2026-11-12, Image #21): the
             // show's window draws them as the year page does.
             const icons = [];
+            // The Help Us icon (left out of `has`: it says nothing the page
+            // holds) and the Featured one, for the tag check (version 4).
+            // By the icon's FILE (00Help, 00Star), as the year table's own
+            // converter reads them (`_bbIconsOf()`), not by its title alone:
+            // 12 entries of the 2026-11-15 mirror have the star with NO title
+            // (1968-06-22a), and BruceBaseParser, which asks for
+            // title="Featured", calls their "featured" tag not expected.
+            const imgs = [top, ...block].flatMap(el => [el, ...el.querySelectorAll('img')]).filter(x => x.tagName === 'IMG');
+            const mark = (stem, title) => imgs.some(img => img.getAttribute('title') === title ||
+                new RegExp(`/00${stem}-\\d+\\.png`, 'i').test(img.getAttribute('src') || ''));
+            const help = mark('Help', 'Help Us');
             block.forEach(el => [el, ...el.querySelectorAll('img[title]')].forEach(img => {
                 const ti = img.tagName === 'IMG' ? img.getAttribute('title') : '';
                 if (ti && !/^Help/i.test(ti) && !has.includes(ti)) {
@@ -95761,7 +95912,7 @@
                 heading, date: /^\d{4}-\d\d-\d\d$/.test(date) ? date : '', venue: rest.join(' - '),
                 gig: gig ? _dpAbsUrl(gig.getAttribute('href'), base) : '', cancelled: !!gig && /^\/nogig:/.test(gig.getAttribute('href')),
                 setlist: setlistP ? _dpText(setlistP.textContent).split(/\s+\/\s+/).filter(Boolean) : [],
-                notes, people, has, icons, also: [],
+                notes, people, has, icons, also: [], help, featured: mark('Star', 'Featured'),
             };
         });
         return { icon, shows };
@@ -189472,10 +189623,11 @@ a { color: #1565c0; }`;
              * @param {?Object} facts
              * @param {Array<string>} own
              * @param {Array<string>} [more]
+             * @param {?{help: boolean, featured: boolean}} [icons]
              * @returns {{missing: Array<Object>, spurious: Array<Object>}}
              */
-            bbTagCheck(facts, own, more) {
-                return _bbTagCheck(facts, own, more);
+            bbTagCheck(facts, own, more, icons) {
+                return _bbTagCheck(facts, own, more, icons || null);
             },
             /**
              * Thin wrapper around `_bbTagFamily()` — a Brucebase tag's family.

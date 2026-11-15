@@ -39,7 +39,7 @@ State: DONE (SAED has it), PART, TODO, NOT (not ported, with the reason).
 | Spurious tags (present, not expected)                                        | =SPURIOUS_TAG_REASONS=                          | =bb-tag-spurious= for the four families; tour and content tags with 3b                | PART  |     3 |
 | Tag source highlight (which text made a tag expected)                        | doc/TAGS.md, opt-in                             | each finding says its reason in words (chip card, cell hover); no highlight on the page | PART  |     3 |
 | VENUE / SONG / RELATION / RETAIL page tag checks                             | =annotate*PageTags=                             | findings on bb-venue, bb-song, bb-relation, bb-retail heads                           | TODO  |     4 |
-| Help-icon tag check                                                          | =hasHelpIcon=                                   | needs the YEAR page's icon: with batch 2's per-year read                              | TODO  |     4 |
+| Help-icon tag check                                                          | =hasHelpIcon=                                   | the icon family of =bb-tag-missing= / =bb-tag-spurious= (Help Us and Featured)        | DONE  |     4 |
 | HOME page: fetch every year, mismatch filter                                 | doc/HOME_PAGE.md                                | bb-home + the findings above                                                          | PART  |     — |
 | ⇄ Original Page toggle                                                       | every page                                      | the wiki's page folded under "Brucebase page"                                         | DONE  |     — |
 | The sticky bar, Ctrl+B                                                       | =toggleStickyBar=                               | SAED's toolbar                                                                        | DONE  |     — |
@@ -339,3 +339,54 @@ Unverified: all of it on the live site (the fixtures and counts are the mirror's
 request to the wiki). The 2016 menu counts (8 and 5) are the mirror's 12 flagged shows of that year. Two things differ
 from the mockup and are meant so unless vzell says otherwise: the pills are at the top of the Tags box, and a title's
 blanks are a ⚠️ after the title, not marked in place.
+
+* The help-icon check (=feat/bb-findings-help-icon=, 2026-11-16; built, NOT merged: vzell's browser check is open)
+
+Env: 2026-11-16T00:50:45+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright
+1.62.1 bundled Chromium (chromium-fixtures), no Tampermonkey (GM stubs); the probe: Python over the mirror bb/2026-11-15, n/a
+
+Batch 3b (the five noisy tag families) is set aside (vzell, 2026-11-16); this is the one row of batch 4 that is no tag
+family of that kind. Details: =docs/claude/brucebase.md=, "The Help Us and Featured icons".
+
+*Decisions (vzell, 2026-11-16):* both places fully, a show's page and its window reading the year page for it (one
+request, kept); both icons, Help Us and Featured; inside the two existing findings.
+
+- *The rule:* a show the wiki marks with the Help Us icon carries =help=, one with the Featured star =featured=; a show
+  with neither icon carries neither. Family =icon= of =bb-tag-missing= (❌) and =bb-tag-spurious= (⚠️).
+- *Counts* (5,007 events): =icon= missing 115 (=help= 107, =featured= 8), not expected 75 (=help= 74, =featured= 1). All
+  shipped families: 416 events (258 with a missing tag, 196 with one not expected). The shipped rule and the shipped
+  year reader each differ from the probe on 0 events.
+- *Where this differs from BruceBaseParser:* the year page's icons are read by their image FILE, not their title. 12
+  entries have the star with no title; BruceBaseParser asks for =title="Featured"= and calls the =featured= tag of those
+  shows spurious (a BruceBaseParser bug, for as long as it lives).
+- *A reader bug found on the way, fixed:* an On stage page's own name is cut to the wiki's 60 characters; 101 shows
+  have it under the cut name, and the reader of 9.99.1625 asked the full one, so their cast tags were never listed.
+  Rests on the mirror's file names; no request was made to the wiki.
+- *A probe error the checker found:* a link to a show in another entry's notes was taken for the show's own entry
+  (1993-01-12). The 88 % figure of batch 3 is not touched by it.
+- *Tests* (NB-3641, 2026-11-16): =bb-findings-help-icon.spec.js= 11; 18 mutations as recorded (17 fail their test, 1
+  passes with the reason); three older mutation finds rewritten. No render measurement: no column is added.
+  Not covered by a test: the window's start of the year read (the same call as the page's, on Space).
+
+** The browser check of the help-icon check, for vzell (rows from the mirror of 2026-11-15; unverified on the live wiki)
+
+Install the script from the branch =feat/bb-findings-help-icon=. Every stored preview and every stored year page is read
+once more (both readers changed).
+
+| Page                                                                                      | Step                              | Expected                                                                                             |
+|-------------------------------------------------------------------------------------------+-----------------------------------+------------------------------------------------------------------------------------------------------|
+| https://brucebase.wikidot.com/1968                                                        | Show all events, ▶ Pages          | 1968-05-00 Off Broad Street (the "a" entry): Tags ❌, "help missing"; hover: "The year page marks …" |
+| https://brucebase.wikidot.com/1968                                                        | ▶ Pages, June                     | 1968-06-22 Off Broad Street (both): no mark for "featured" (they have the star, which has no title) |
+| https://brucebase.wikidot.com/1968                                                        | ▶ on 1968-06-22a's Tags cell      | its cast is listed with ↪ (castiles, …): missing before, its On stage page has a shortened name     |
+| https://brucebase.wikidot.com/1966                                                        | Show all events, ▶ Pages, July    | 1966-07-25, -26 and -28: Tags ⚠️ "help" (tagged, no Help Us icon on the year page)                   |
+| https://brucebase.wikidot.com/1972                                                        | ▶ Pages, March                    | 1972-03-17 Arena, Richmond: ❌ "featured missing" (the star, no tag)                                  |
+| https://brucebase.wikidot.com/1978                                                        | ▶ Pages, August                   | 1978-08-30 Agora, Cleveland (the "b" entry): ⚠️ "featured" (tagged, no star)                         |
+| https://brucebase.wikidot.com/1968-list                                                   | Show this year's events, ▶ Pages  | the same marks on the listing's rows                                                                 |
+| https://brucebase.wikidot.com/gig:1968-05-00a-off-broad-street-coffee-house-red-bank-nj   | Show the event                    | Tags card: "help missing" under On the page, after one request for /1968; the reason under the chips |
+| https://brucebase.wikidot.com/gig:1966-07-25-unknown-location-asbury-park-nj              | Show the event                    | "help" amber with ⚠️: "Neither the year page nor the show's page has the Help Us icon."              |
+| https://brucebase.wikidot.com/gig:1968-03-10-hullabaloo-freehold-nj                       | Show the event                    | "✓ date, letter, kind, premiere and icon tags as expected"                                           |
+| https://brucebase.wikidot.com/1968                                                        | Ctrl+hover the 1968-05-00a link, Space | the window's Tags section: "help missing" (the year page is kept, no new request)                |
+| any show page                                                                             | both tag findings off, reload, Show the event | no request for the year page; the card without marks                                     |
+
+Unverified: all of it on the live site. The On stage page with the shortened name is the one thing that rests on how
+the live wiki answers: if 1968-06-22a's cast does NOT appear, the wiki answers the full name after all, and the fix is wrong.

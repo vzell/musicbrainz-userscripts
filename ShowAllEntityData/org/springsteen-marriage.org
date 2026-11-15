@@ -5,7 +5,7 @@ Env: 2026-11-13 · plan written in a Claude Code session (plan mode), code readi
 
 Plan for pickup on another host.
 
-* PICKUP HERE: status of 2026-11-16: batch 3 is MERGED (9.99.1633–1635; vzell: "everything tested live, OK"), the branch is deleted; next batch 3b (the other five tag families, one at a time with vzell)
+* PICKUP HERE: status of 2026-11-16: batch 3 is MERGED (9.99.1633–1635); batch 3b is SET ASIDE (vzell); the help-icon check is BUILT on =feat/bb-findings-help-icon=, not merged (browser check open); after it: the feed
 
 - *BruceParser 0.17.0 is pushed* (=4978b0e=): =dc.sh= 1.5 with =-j "${BBP_JOBS:-4}"= on both =parallel= calls, =checkURLandTitles.sh= 1.5 with the literal word removal in three places. Checked with =bash -n= and =-V= only. Still to do there, by vzell: a full =bbp.sh= run for the report comparison, and the download time with 4 jobs.
 - *Track A batch 1 is MERGED into =main= (9.99.1626 and 9.99.1627, 2026-11-14), the branch is deleted:* six findings on the year table's Event cell. What was built, the probe's counts and three points that differ from the plan are in =org/bbp-parity.org=, "Batch 1: built on …".
@@ -41,6 +41,13 @@ Plan for pickup on another host.
   longer empties =brucebase/DETAIL-title-from-YEAR-array.txt=. Not run in full since.
   *Not traced:* =setlist-differences.txt= has 542 lines on NB-3641 (564 in October) against 342 on petri two days
   earlier, with the same setlist line counts: it looks like the host, cause unknown.
+
+- *The help-icon check (2026-11-16, NB-3641):* =help= and =featured= against the wiki's Help Us and Featured icons, a
+  fifth family of the two tag findings; the record and the browser list are in =org/bbp-parity.org=, "The help-icon
+  check". With it: the On stage page's name cut to 60 characters (101 shows had no cast tags).
+- *Next, on vzell's word (2026-11-16: "do the help-icon check first, then the feed"):* the feed (Track A, idea 3
+  and 4). Nothing of it exists. Plan mode first: what the first version carries, where BruceParser publishes it,
+  how the script reads it (a new host, a setting, what happens when it cannot be read).
 
 ** The prompt for the session of 2026-11-15 (batch 3; done, kept as the model for the next one)
 
