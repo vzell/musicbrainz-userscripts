@@ -6422,4 +6422,12 @@ headerline again, it also stops flickering when starting scrolling and the secti
 #+end_example
 
 
+* DONE Finding: ⚠️ "Brucebase year entry missing from the year's listing"
 
+1.)
+
+Everything tested lie, OK;
+
+2.)
+
+For the '- Finding: ⚠️ "Brucebase year entry missing from the year's listing" (bb-year-unlisted) on the year table's Event cell.', I actually want ❌.

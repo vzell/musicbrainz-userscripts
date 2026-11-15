@@ -1855,7 +1855,7 @@ https://claude.ai/artifact/T1D2ghbx9zHHCh8jgfr5g7.
 | `bb-list-title`     | ❌    | bb-year-list | Event | the label is none of the year page's headings for the linked anchor (blanks as one, upper case) |
 | `bb-list-anchor`    | ⚠️    | bb-year-list | Event | the anchor is not the label date's DDMMYY, the link names a year page not covering the year, or the year page has no such anchor |
 | `bb-venue-mismatch` | ⚠️    | bb-year      | Venue | the venue part of the event page's title ≠ the venue page's title, after the two accepted cases |
-| `bb-year-unlisted`  | ⚠️    | bb-year      | Event | no line of the year's listing links the entry's anchor (vzell, 2026-11-15) |
+| `bb-year-unlisted`  | ❌    | bb-year      | Event | no line of the year's listing links the entry's anchor (vzell, 2026-11-15) |
 | `bb-setlist-songs`  | ❌    | bb-year      | Setlist | a song only on the year page, or only on the event page's Setlist tab |
 | `bb-setlist-spelling` | ⚠️  | bb-year      | Setlist | the same songs, one or more written differently (never beside `songs`) |
 | `bb-setlist-sections` | ⚠️  | bb-year      | Setlist | the names of the sets that have songs differ, in number or as written |
@@ -1918,7 +1918,8 @@ https://claude.ai/artifact/T1D2ghbx9zHHCh8jgfr5g7.
   the shared anchor of 1972. A missing listing line has no listing row to
   flag: it is `bb-year-unlisted` on the year table (below).
 - **A year entry the listing lacks** (`bb-year-unlisted`; vzell,
-  2026-11-15: "Yes" to the open decision). The year table has no reason
+  2026-11-15: "Yes" to the open decision; ❌ since his browser check
+  the same day, built as ⚠️ first). The year table has no reason
   of its own to read a listing, so the finding brings the request: with
   ▶ Pages on, `_bbEvpObserve()` also watches the Event cell of every year
   row whose carrier has no `data-mb-bb-listed`, and the first one seen

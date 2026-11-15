@@ -74628,12 +74628,13 @@
             tint: _findingTintSetting('sa_findings_tint_bb_list'),
         },
         // vzell, 2026-11-15 (the batch 2 open decision): a year entry no line
-        // of the year's listing links. Late data: with ▶ Pages on, the
+        // of the year's listing links. An ERROR (vzell after the browser check,
+        // 2026-11-15; built as a warning first). Late data: with ▶ Pages on, the
         // listing of a year whose rows come into view is read
         // (`_bbYearListingWant()`, one request a year, kept), and
         // `_bbYearApplyListing()` answers every row of that year.
         {
-            id: 'bb-year-unlisted', level: 'warn', glyph: '∅', scope: 'cell',
+            id: 'bb-year-unlisted', level: 'error', glyph: '∅', scope: 'cell',
             label: 'Brucebase year entry missing from the year\'s listing',
             tip: 'No line of the year\'s listing (/1977-list) links this entry\'s anchor: the entry is missing there ("1977-07-29 - ATLANTIC STUDIOS"), or its line links another anchor ("2011-02-15", linked as #000211). Known once ▶ Pages is on and the year\'s listing is read: one request answers every row of that year. The page to edit is the listing.',
             enabled: () => !!_isBbHost && _bbYearUnlistedOn(),

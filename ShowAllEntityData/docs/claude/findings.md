@@ -419,7 +419,7 @@ must record:
   costs requests switches them off with itself.
 - **A cell with a tooltip of its own needs `data-mb-tip-base`** to show a
   finding's line (batch 1): the Venue cell sets it when it has a title.
-- **`bb-year-unlisted`** (vzell, 2026-11-15) is a token of
+- **`bb-year-unlisted`** (❌; vzell, 2026-11-15) is a token of
   `_bbEventChecks()` too (`unlisted`), on a YEAR row: its carrier's
   `data-mb-bb-listed` is "0" (absent = the listing is unread, "1" =
   linked). Written for a whole year by `_bbYearApplyListing()`; ids

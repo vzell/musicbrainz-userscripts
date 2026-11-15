@@ -29575,7 +29575,8 @@ Env: 2026-11-14T21:15:06+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 ## 2026-11-15 — Brucebase findings, batch 2: a year entry the listing lacks (`bb-year-unlisted`, feat/bb-findings-batch2)
 Env: 2026-11-15T02:02:31+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright Chromium 151.0.7922.34 (chromium-fixtures), no Tampermonkey (GM stubs); probe: Python over the mirror bb/2026-11-13, n/a
 - **What:** vzell's "Yes" to batch 2's open decision: a year entry that no line of the year's listing links is a ⚠️ on
-  the year table's Event cell. Rules and counts: docs/claude/brucebase.md, "The listing and venue checks". Probe: 16
+  the year table's Event cell (❌ since vzell's browser check, 2026-11-15T14:28+01:00:
+  `level: 'error'`). Rules and counts: docs/claude/brucebase.md, "The listing and venue checks". Probe: 16
   rows in 11 years, all in BruceParser's reports; the shipped reader and token agree on all 5,018 entries
   (`scripts/check-bb-batch2-findings.js`).
 - **Root fact 1 — the request cannot ride on the rows' own queue.** The first design asked for the listing when a

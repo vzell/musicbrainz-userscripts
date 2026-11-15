@@ -20,7 +20,7 @@
       {
         "label": "🚀 Feature",
         "items": [
-          "Brucebase year pages: a new finding on the Event column, ⚠️ \"Brucebase year entry missing from the year's listing\". No line of the year's listing (/1977-list) links the entry: it is missing there (\"1977-07-29 - Atlantic Studios\"), or its line links another anchor. 16 entries in November 2026.",
+          "Brucebase year pages: a new finding on the Event column, ❌ \"Brucebase year entry missing from the year's listing\". No line of the year's listing (/1977-list) links the entry: it is missing there (\"1977-07-29 - Atlantic Studios\"), or its line links another anchor. 16 entries in November 2026.",
           "▶ Pages on a Brucebase year table now also reads the listing of each year whose rows come into view: one more request a year, kept like the year pages, and it answers every row of that year. After a reload the kept listing is used at once, without ▶ Pages. Switch the finding off in ⚙️ Settings → ⚠️ Findings and no listing is read."
         ]
       }

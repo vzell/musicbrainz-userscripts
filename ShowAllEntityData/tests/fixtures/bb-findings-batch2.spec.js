@@ -496,7 +496,8 @@ test.describe('Brucebase year table: the venue of an event page against the venu
 });
 
 // Part 3 (vzell, 2026-11-15), a year entry no line of the year's listing links:
-//   bb-year-unlisted (⚠️)  on the year table's Event cell
+//   bb-year-unlisted (❌)  on the year table's Event cell (a warning until
+//   vzell's browser check of 2026-11-15)
 // The fixtures are 2011's year page and listing, whole (as part 1's): the
 // listing's line for "2011-02-15 - STONE HILL STUDIO" links #000211, so no
 // line links the year page's #150211 — the one entry of 28 the probe found.
@@ -589,10 +590,10 @@ test.describe('Brucebase year table: the entries the year\'s listing lacks (bbp-
         await page.evaluate(() => new Promise(r => setTimeout(r, 800)));
         expect(asked.events).toEqual([]);
         expect(await listAsks(page)).toBe(0);
-        expect(await findingRow(page, 'warn', 'bb-year-unlisted')).toBeUndefined();
+        expect(await findingRow(page, 'error', 'bb-year-unlisted')).toBeUndefined();
 
         await pagesBtn(page).click();
-        await expect.poll(async () => (await listedState(page)).unlisted, { timeout: 20000 }).toEqual([{ ...UNLISTED, check: true, stamp: true, level: 'warn' }]);
+        await expect.poll(async () => (await listedState(page)).unlisted, { timeout: 20000 }).toEqual([{ ...UNLISTED, check: true, stamp: true, level: 'error' }]);
         // Every row of the year is answered by that one read, the rows not read yet too.
         const st = await listedState(page);
         expect(st.answered).toBe(28);
@@ -601,13 +602,13 @@ test.describe('Brucebase year table: the entries the year\'s listing lacks (bbp-
         await pagesBtn(page).click();
         expect(await listAsks(page), 'the listing once').toBe(1);
 
-        expect((await findingRow(page, 'warn', 'bb-year-unlisted')).count).toBe(1);
+        expect((await findingRow(page, 'error', 'bb-year-unlisted')).count).toBe(1);
         const look = await page.evaluate(() => {
             const td = document.querySelector('span.mb-bb-ev-data[data-mb-bb-checks~="unlisted"]').parentElement;
             return { bg: getComputedStyle(td).backgroundColor, after: getComputedStyle(td, '::after').content, tip: td.getAttribute('title') || '' };
         });
         expect(look.bg).not.toMatch(/^rgba?\(255, 255, 255|rgba\(0, 0, 0, 0\)/);
-        expect(look.after).toContain('⚠');
+        expect(look.after).toContain('❌');
         expect(look.tip).toContain('The listing /2011-list has no link to #150211.');
         // The filter: that row alone (a re-render from the source rows), then all again.
         await clickFinding(page, 'bb-year-unlisted');
@@ -624,14 +625,14 @@ test.describe('Brucebase year table: the entries the year\'s listing lacks (bbp-
         await pagesBtn(page).click();
         expect(await listAsks(page)).toBe(0);
         expect(await listedState(page)).toMatchObject({ answered: 0, unlisted: [] });
-        expect(await findingRow(page, 'warn', 'bb-year-unlisted')).toBeUndefined();
+        expect(await findingRow(page, 'error', 'bb-year-unlisted')).toBeUndefined();
     });
 
     test('the unlisted tint off: stamped and counted, not painted', async ({ page }) => {
         await openYear11(page, { settings: { sa_findings_tint_bb_list: false } });
         await pagesBtn(page).click();
         await expect.poll(async () => (await listedState(page)).unlisted, { timeout: 20000 }).toEqual([{ ...UNLISTED, check: true, stamp: true, level: '' }]);
-        expect((await findingRow(page, 'warn', 'bb-year-unlisted')).count).toBe(1);
+        expect((await findingRow(page, 'error', 'bb-year-unlisted')).count).toBe(1);
     });
 
     test('a listing that cannot be read: no row is answered, and it is asked once a press, not once a row', async ({ page }) => {
@@ -660,7 +661,7 @@ test.describe('Brucebase year table: the entries the year\'s listing lacks (bbp-
         expect((await listedState(page)).unlisted).toEqual([]);
         await page.locator('#mb-global-filter-input').fill('');
         await expect.poll(async () => (await listedState(page)).rows, { timeout: 15000 }).toBe(28);
-        await expect.poll(async () => (await listedState(page)).unlisted).toEqual([{ ...UNLISTED, check: true, stamp: true, level: 'warn' }]);
+        await expect.poll(async () => (await listedState(page)).unlisted).toEqual([{ ...UNLISTED, check: true, stamp: true, level: 'error' }]);
         expect((await listedState(page)).answered).toBe(28);
         expect(await listAsks(page)).toBe(1);
     });
@@ -671,9 +672,9 @@ test.describe('Brucebase year table: the entries the year\'s listing lacks (bbp-
         await expect.poll(async () => (await listedState(page)).answered, { timeout: 20000 }).toBe(28);
         await pagesBtn(page).click();
         await openYear11(page);
-        await expect.poll(async () => (await listedState(page)).unlisted, { timeout: 15000 }).toEqual([{ ...UNLISTED, check: true, stamp: true, level: 'warn' }]);
+        await expect.poll(async () => (await listedState(page)).unlisted, { timeout: 15000 }).toEqual([{ ...UNLISTED, check: true, stamp: true, level: 'error' }]);
         expect((await listedState(page)).answered).toBe(28);
-        expect((await findingRow(page, 'warn', 'bb-year-unlisted')).count).toBe(1);
+        expect((await findingRow(page, 'error', 'bb-year-unlisted')).count).toBe(1);
         expect(await listAsks(page)).toBe(0);
     });
 
@@ -706,9 +707,9 @@ test.describe('Brucebase year table: the entries the year\'s listing lacks (bbp-
             await renderBtn.waitFor({ state: 'attached', timeout: 15000 });
             await renderBtn.evaluate(el => el.click());
             await waitForRenderComplete(page, { waitForAutoResize: false });
-            await expect.poll(async () => (await listedState(page)).unlisted).toEqual([{ ...UNLISTED, check: true, stamp: true, level: 'warn' }]);
+            await expect.poll(async () => (await listedState(page)).unlisted).toEqual([{ ...UNLISTED, check: true, stamp: true, level: 'error' }]);
             expect((await listedState(page)).answered).toBe(28);
-            expect((await findingRow(page, 'warn', 'bb-year-unlisted')).count).toBe(1);
+            expect((await findingRow(page, 'error', 'bb-year-unlisted')).count).toBe(1);
             expect(asked.filter(u => /brucebase\.wikidot\.com\/[a-z]+:/.test(u))).toEqual([]);
             expect(await page.evaluate(() => (window.__gmXhrLog || []).length), 'no request of the script\'s own').toBe(0);
         } finally {

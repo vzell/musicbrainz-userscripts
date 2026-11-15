@@ -848,7 +848,6 @@ back).
 | ⚠️     | Brucebase anchor with another date than its entry               | Brucebase year: Event                       |
 | ⚠️     | Brucebase anchor letter differs from the event page's address   | Brucebase year: Event                       |
 | ⚠️     | Brucebase listing entry with a wrong link to the year page      | Brucebase year listing: Event               |
-| ⚠️     | Brucebase year entry missing from the year's listing (once read) | Brucebase year: Event                      |
 | ⚠️     | Brucebase event page names its venue differently (once read)    | Brucebase year: Venue                       |
 | ⚠️     | Brucebase setlist: a song is written differently (once read)    | Brucebase year: Setlist                     |
 | ⚠️     | Brucebase setlist: a set is named differently (once read)       | Brucebase year: Setlist                     |
@@ -860,6 +859,7 @@ back).
 | ❌    | Brucebase event page links another entry of the year page (once read) | Brucebase year: Event                 |
 | ❌    | Brucebase anchor used by two entries of the year page                 | Brucebase year: Event                 |
 | ❌    | Brucebase listing entry named differently from the year page          | Brucebase year listing: Event         |
+| ❌    | Brucebase year entry missing from the year's listing (once read)      | Brucebase year: Event                 |
 | ❌    | Brucebase setlist: songs differ from the event page (once read)       | Brucebase year: Setlist               |
 | ❌    | Double-encoded text (springsteenlyrics.com)                     | springsteenlyrics.com: any column (the lyrics index: once the song's page was read) |
 | ❌    | Track and recording length far apart                            | Release tracklist: Length, Recording length |
