@@ -6423,11 +6423,31 @@ headerline again, it also stops flickering when starting scrolling and the secti
 
 
 * DONE Finding: ⚠️ "Brucebase year entry missing from the year's listing"
+** initial
+
+For the '- Finding: ⚠️ "Brucebase year entry missing from the year's listing" (bb-year-unlisted) on the year table's Event cell.', I actually want ❌.
+
+** why and how
 
 1.)
 
-Everything tested lie, OK;
+On my "petri" host, even after deleting the "1977-01-00" entry with our '<b id="mb-idbo-title">💾 Browser cache</b>'
+dialog in the "Link preview pages" section after searching for it in the "Find and entry" filter field, the finding "Brucebase year entry missing from the year's listing"
+still shows up as a WARNING
 
 2.)
 
-For the '- Finding: ⚠️ "Brucebase year entry missing from the year's listing" (bb-year-unlisted) on the year table's Event cell.', I actually want ❌.
+On "NB-3641" where I never tested before, so nothing was ever cached, the finding shows up as an ERROR
+
+3.)
+
+On MB pages where e.g. the "Relationships" column is present, it's possible to just reload a specific cell value (see
+[Image #7] or all values for the whole table. I want the same feature here.
+
+Until then, what is the way to still clear the cached entry and get the ERROR finding on "petri"
+
+** a
+
+1. merge; 2. as recommended; 3. no mockup + YES you were right, I was running an older userscript version, after installing the latest everything is fine even on "petri"
+
+
