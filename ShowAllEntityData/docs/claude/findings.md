@@ -395,7 +395,7 @@ this file must record:
   trip of the MB-Event cells in `tests/fixtures/bb-mb-event.spec.js`;
   mutations `scripts/mutations/bb-findings-batch1.json` (43).
 
-### Brucebase, batch 2: `bb-list-title`, `bb-list-anchor`, `bb-venue-mismatch`
+### Brucebase, batch 2: `bb-list-title`, `bb-list-anchor`, `bb-venue-mismatch`, `bb-year-unlisted`
 
 vzell, 2026-11-14 (org/bbp-parity.org, Track A batch 2). Full text:
 docs/claude/brucebase.md, "The listing and venue checks". What this file
@@ -419,10 +419,18 @@ must record:
   costs requests switches them off with itself.
 - **A cell with a tooltip of its own needs `data-mb-tip-base`** to show a
   finding's line (batch 1): the Venue cell sets it when it has a title.
+- **`bb-year-unlisted`** (vzell, 2026-11-15) is a token of
+  `_bbEventChecks()` too (`unlisted`), on a YEAR row: its carrier's
+  `data-mb-bb-listed` is "0" (absent = the listing is unread, "1" =
+  linked). Written for a whole year by `_bbYearApplyListing()`; ids
+  `_BB_UNLISTED_IDS`, in `_LATE_FINDING_IDS`. Its `enabled()` is
+  `_bbYearUnlistedOn()`, which also gates the listing REQUEST, as the
+  venue's does.
 - Settings: `sa_findings_bb_list_title`, `_list_anchor`,
-  `_venue_mismatch`; tints `sa_findings_tint_bb_list`, `_bb_venue`.
-- Spec `tests/fixtures/bb-findings-batch2.spec.js` (15); mutations
-  `scripts/mutations/bb-findings-batch2.json` (28, one `expect: pass`).
+  `_venue_mismatch`, `_year_unlisted`; tints `sa_findings_tint_bb_list`
+  (the year table's `bb-year-unlisted` too), `_bb_venue`.
+- Spec `tests/fixtures/bb-findings-batch2.spec.js` (23); mutations
+  `scripts/mutations/bb-findings-batch2.json` (40, one `expect: pass`).
 
 ## On demand: the title-style findings
 

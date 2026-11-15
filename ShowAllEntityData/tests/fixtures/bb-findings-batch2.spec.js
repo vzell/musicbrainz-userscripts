@@ -494,3 +494,247 @@ test.describe('Brucebase year table: the venue of an event page against the venu
         expect(out).toEqual(['', '', 'variant', 'variant', 'detail', 'detail', 'mismatch', 'mismatch', 'mismatch', 'mismatch', 'mismatch']);
     });
 });
+
+// Part 3 (vzell, 2026-11-15), a year entry no line of the year's listing links:
+//   bb-year-unlisted (⚠️)  on the year table's Event cell
+// The fixtures are 2011's year page and listing, whole (as part 1's): the
+// listing's line for "2011-02-15 - STONE HILL STUDIO" links #000211, so no
+// line links the year page's #150211 — the one entry of 28 the probe found.
+// With ▶ Pages on, the listing of a year whose rows come into view is read:
+// one request a year, kept, answering every row of that year.
+const Y11_URL = 'https://brucebase.wikidot.com/2011';
+const Y11_FILE = path.join(__dirname, 'bb-year-2011.html');
+const L11_URL = 'https://brucebase.wikidot.com/2011-list';
+const L11_FILE = path.join(__dirname, 'bb-year-list-2011.html');
+const UNLISTED = { anchor: '150211', heading: '2011-02-15 - STONE HILL STUDIO, COLTS NECK, NJ' };
+
+/**
+ * The 2011 year page rendered, its listing ready for the one request made
+ * for it (or 404: the GM stub's answer to an address it was not given),
+ * every event page served from one real page. The venue check is off: its
+ * requests are part 2's matter.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {{ settings?: Object<string, *>, listing?: boolean }} [opts] `listing: false` answers the listing 404.
+ * @returns {Promise<{ events: string[] }>} The event pages asked, filled as they come; the listing's requests: `listAsks()`.
+ */
+async function openYear11(page, { settings = {}, listing = true } = {}) {
+    await page.setViewportSize({ width: 1700, height: 900 });
+    await page.route(/^https?:\/\//, route => route.abort('blockedbyclient'));
+    if (listing) {
+        await page.context().addInitScript((r) => { window.__gmXhrResponses = r; },
+            { [L11_URL]: { status: 200, responseHeaders: 'content-type: text/html; charset=utf-8\r\n', responseText: fs.readFileSync(L11_FILE, 'utf8') } });
+    }
+    await loadUserscriptPage(page, {
+        url: Y11_URL, fixtureFile: Y11_FILE, testMode: true,
+        settingsOverride: { sa_enable_brucebase: true, sa_bb_year_pages: true, sa_findings_bb_venue_mismatch: false, ...settings },
+    });
+    const asked = { events: [] };
+    await page.route(EVENT_RE, (route) => {
+        asked.events.push(route.request().url());
+        return route.fulfill({ path: EVENT_FILE, contentType: 'text/html; charset=utf-8' });
+    });
+    await page.click(`button[data-label="${BB_YEAR_BUTTON}"]`);
+    await waitForRenderComplete(page, { waitForAutoResize: false });
+    return asked;
+}
+
+/** How often the listing was asked since the page loaded. */
+const listAsks = page => page.evaluate(u => (window.__gmXhrLog || []).filter(r => r.url === u).length, L11_URL);
+
+/**
+ * The year rows: how many, how many know whether the listing has them, and
+ * the ones it lacks (anchor, heading, stamp, paint level).
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<{rows: number, answered: number, read: number, unlisted: Array<{anchor: string, heading: string, stamp: boolean, level: string}>}>}
+ */
+function listedState(page) {
+    return page.evaluate(() => {
+        const ds = Array.from(document.querySelectorAll('table.tbl tbody tr')).filter(tr => tr.style.display !== 'none').map(tr => tr.querySelector('td > span.mb-bb-ev-data'));
+        return {
+            rows: ds.length,
+            answered: ds.filter(d => d.hasAttribute('data-mb-bb-listed')).length,
+            read: document.querySelectorAll('table.tbl tbody td.mb-bbevp-cell[data-mb-bbevp-col="On stage"][data-mb-bbevp-state="done"]').length,
+            unlisted: ds.filter(d => d.getAttribute('data-mb-bb-listed') === '0' || (d.parentElement.dataset.mbFindings || '').split(' ').includes('bb-year-unlisted')).map(d => ({
+                anchor: d.getAttribute('data-mb-bb-anchor'), heading: d.getAttribute('data-mb-bb-raw-heading'),
+                check: (d.getAttribute('data-mb-bb-checks') || '').split(' ').includes('unlisted'),
+                stamp: (d.parentElement.dataset.mbFindings || '').split(' ').includes('bb-year-unlisted'), level: d.parentElement.dataset.mbFinding || '',
+            })),
+        };
+    });
+}
+
+/**
+ * Brings the next row not read yet into view until more than `n` are read.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {number} n
+ * @returns {Promise<void>}
+ */
+async function readMore(page, n) {
+    await expect.poll(async () => {
+        await page.evaluate(() => {
+            const td = document.querySelector('table.tbl tbody td.mb-bbevp-cell[data-mb-bbevp-col="On stage"][data-mb-bbevp-state="cold"]');
+            if (td) td.scrollIntoView({ block: 'center' });
+        });
+        return (await listedState(page)).read;
+    }, { timeout: 60000 }).toBeGreaterThan(n);
+}
+
+test.describe('Brucebase year table: the entries the year\'s listing lacks (bbp-parity batch 2)', () => {
+    test('nothing before ▶ Pages; then one read of the listing answers every row, and one entry is not listed', async ({ page }) => {
+        const asked = await openYear11(page);
+        expect(await listedState(page)).toMatchObject({ rows: 28, answered: 0, unlisted: [] });
+        await page.evaluate(() => new Promise(r => setTimeout(r, 800)));
+        expect(asked.events).toEqual([]);
+        expect(await listAsks(page)).toBe(0);
+        expect(await findingRow(page, 'warn', 'bb-year-unlisted')).toBeUndefined();
+
+        await pagesBtn(page).click();
+        await expect.poll(async () => (await listedState(page)).unlisted, { timeout: 20000 }).toEqual([{ ...UNLISTED, check: true, stamp: true, level: 'warn' }]);
+        // Every row of the year is answered by that one read, the rows not read yet too.
+        const st = await listedState(page);
+        expect(st.answered).toBe(28);
+        // More rows are scrolled to: the listing is not asked again.
+        await readMore(page, st.read);
+        await pagesBtn(page).click();
+        expect(await listAsks(page), 'the listing once').toBe(1);
+
+        expect((await findingRow(page, 'warn', 'bb-year-unlisted')).count).toBe(1);
+        const look = await page.evaluate(() => {
+            const td = document.querySelector('span.mb-bb-ev-data[data-mb-bb-checks~="unlisted"]').parentElement;
+            return { bg: getComputedStyle(td).backgroundColor, after: getComputedStyle(td, '::after').content, tip: td.getAttribute('title') || '' };
+        });
+        expect(look.bg).not.toMatch(/^rgba?\(255, 255, 255|rgba\(0, 0, 0, 0\)/);
+        expect(look.after).toContain('⚠');
+        expect(look.tip).toContain('The listing /2011-list has no link to #150211.');
+        // The filter: that row alone (a re-render from the source rows), then all again.
+        await clickFinding(page, 'bb-year-unlisted');
+        await expect.poll(() => findingRowState(page, 'bb-year-unlisted')).toEqual({ visible: 1, withFinding: 1 });
+        expect((await listedState(page)).unlisted.map(r => r.anchor)).toEqual(['150211']);
+        await clickFinding(page, 'bb-year-unlisted');
+        await expect.poll(async () => (await findingRowState(page, null)).visible).toBe(28);
+    });
+
+    test('the unlisted finding off: the listing is not asked at all', async ({ page }) => {
+        await openYear11(page, { settings: { sa_findings_bb_year_unlisted: false } });
+        await pagesBtn(page).click();
+        await expect.poll(async () => (await listedState(page)).read, { timeout: 20000 }).toBeGreaterThan(2);
+        await pagesBtn(page).click();
+        expect(await listAsks(page)).toBe(0);
+        expect(await listedState(page)).toMatchObject({ answered: 0, unlisted: [] });
+        expect(await findingRow(page, 'warn', 'bb-year-unlisted')).toBeUndefined();
+    });
+
+    test('the unlisted tint off: stamped and counted, not painted', async ({ page }) => {
+        await openYear11(page, { settings: { sa_findings_tint_bb_list: false } });
+        await pagesBtn(page).click();
+        await expect.poll(async () => (await listedState(page)).unlisted, { timeout: 20000 }).toEqual([{ ...UNLISTED, check: true, stamp: true, level: '' }]);
+        expect((await findingRow(page, 'warn', 'bb-year-unlisted')).count).toBe(1);
+    });
+
+    test('a listing that cannot be read: no row is answered, and it is asked once a press, not once a row', async ({ page }) => {
+        await openYear11(page, { listing: false });
+        await pagesBtn(page).click();
+        await expect.poll(async () => (await listedState(page)).read, { timeout: 20000 }).toBeGreaterThan(2);
+        await readMore(page, 8);
+        expect(await listAsks(page)).toBe(1);
+        expect(await listedState(page)).toMatchObject({ answered: 0, unlisted: [] });
+        // A new press asks again.
+        await pagesBtn(page).click();
+        await pagesBtn(page).click();
+        await expect.poll(() => listAsks(page), { timeout: 15000 }).toBe(2);
+    });
+
+    test('the listing read while the table is filtered: the rows filtered away are answered too', async ({ page }) => {
+        await openYear11(page);
+        // The live rows are copies now; the entry the listing lacks is not among them.
+        await page.locator('#mb-global-filter-input').fill('Paramount');
+        await expect.poll(async () => (await listedState(page)).rows, { timeout: 15000 }).toBeLessThan(5);
+        const shown = (await listedState(page)).rows;
+        expect(shown).toBeGreaterThan(0);
+        await pagesBtn(page).click();
+        await expect.poll(async () => (await listedState(page)).answered, { timeout: 20000 }).toBe(shown);
+        await pagesBtn(page).click();
+        expect((await listedState(page)).unlisted).toEqual([]);
+        await page.locator('#mb-global-filter-input').fill('');
+        await expect.poll(async () => (await listedState(page)).rows, { timeout: 15000 }).toBe(28);
+        await expect.poll(async () => (await listedState(page)).unlisted).toEqual([{ ...UNLISTED, check: true, stamp: true, level: 'warn' }]);
+        expect((await listedState(page)).answered).toBe(28);
+        expect(await listAsks(page)).toBe(1);
+    });
+
+    test('after a reload the kept listing answers without ▶ Pages, and asks nothing', async ({ page }) => {
+        await openYear11(page);
+        await pagesBtn(page).click();
+        await expect.poll(async () => (await listedState(page)).answered, { timeout: 20000 }).toBe(28);
+        await pagesBtn(page).click();
+        await openYear11(page);
+        await expect.poll(async () => (await listedState(page)).unlisted, { timeout: 15000 }).toEqual([{ ...UNLISTED, check: true, stamp: true, level: 'warn' }]);
+        expect((await listedState(page)).answered).toBe(28);
+        expect((await findingRow(page, 'warn', 'bb-year-unlisted')).count).toBe(1);
+        expect(await listAsks(page)).toBe(0);
+    });
+
+    test('a saved year: the unlisted entry comes back, and nothing is asked', async ({ context, browser }) => {
+        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sa-bb-unlisted-disk-'));
+        const fresh = await browser.newContext();
+        try {
+            const source = await context.newPage();
+            await openYear11(source);
+            await pagesBtn(source).click();
+            await expect.poll(async () => (await listedState(source)).unlisted.length, { timeout: 20000 }).toBe(1);
+            await pagesBtn(source).click();
+            const downloadPromise = source.waitForEvent('download', { timeout: 60000 });
+            await clickToolbarItem(source, '#mb-save-to-disk-btn');
+            await source.locator('#sa-sd-save-confirm').waitFor({ state: 'visible', timeout: 15000 });
+            await source.click('#sa-sd-save-confirm');
+            const saved = path.join(tmpDir, 'bb-year.json.gz');
+            await (await downloadPromise).saveAs(saved);
+            await source.close();
+
+            const page = await fresh.newPage();
+            await page.setViewportSize({ width: 1700, height: 900 });
+            const asked = [];
+            await page.route(/^https?:\/\//, (route) => { asked.push(route.request().url()); return route.abort('blockedbyclient'); });
+            await loadUserscriptPage(page, { url: Y11_URL, fixtureFile: Y11_FILE, testMode: true, settingsOverride: { sa_enable_brucebase: true, sa_bb_year_pages: true } });
+            asked.length = 0;
+            await clickToolbarItem(page, '#mb-load-from-disk-btn');
+            await page.locator('input[type="file"][accept*="json"]').setInputFiles(saved);
+            const renderBtn = page.locator('#sa-render-no-filter-confirm');
+            await renderBtn.waitFor({ state: 'attached', timeout: 15000 });
+            await renderBtn.evaluate(el => el.click());
+            await waitForRenderComplete(page, { waitForAutoResize: false });
+            await expect.poll(async () => (await listedState(page)).unlisted).toEqual([{ ...UNLISTED, check: true, stamp: true, level: 'warn' }]);
+            expect((await listedState(page)).answered).toBe(28);
+            expect((await findingRow(page, 'warn', 'bb-year-unlisted')).count).toBe(1);
+            expect(asked.filter(u => /brucebase\.wikidot\.com\/[a-z]+:/.test(u))).toEqual([]);
+            expect(await page.evaluate(() => (window.__gmXhrLog || []).length), 'no request of the script\'s own').toBe(0);
+        } finally {
+            await fresh.close();
+            fs.rmSync(tmpDir, { recursive: true, force: true });
+        }
+    });
+
+    test('unlisted, the rule and the listing reader, pure: only a year row the listing was read for, and the listing\'s links as written', async ({ page }) => {
+        await openYear11(page);
+        const html = fs.readFileSync(L11_FILE, 'utf8');
+        const out = await page.evaluate((h) => {
+            const c = row => window.__saTest.bbEventChecks(row, null).includes('unlisted');
+            const row = { heading: '2011-02-15 - STONE HILL STUDIO, COLTS NECK, NJ', anchor: '150211', href: 'https://brucebase.wikidot.com/recording:2011-02-15-stone-hill-studio-colts-neck-nj' };
+            const links = window.__saTest.extBbParseYearList(h).links;
+            return {
+                checks: [c({ ...row, listed: false }), c({ ...row, listed: true }), c({ ...row, listed: null }), c(row),
+                    // A listing row is never "unlisted".
+                    c({ heading: row.heading, anchor: null, href: 'https://brucebase.wikidot.com/2011#000211', list: true, listed: false })],
+                n: links.length, has000211: links.includes('2011#000211'), has150211: links.includes('2011#150211'), first: links[0],
+            };
+        }, html);
+        expect(out.checks).toEqual([true, false, false, false, false]);
+        expect(out).toMatchObject({ has000211: true, has150211: false });
+        expect(out.first).toMatch(/^2011#\d{6}[a-z]?$/);
+        // 28 lines, two of them linking #000211.
+        expect(out.n).toBe(27);
+    });
+});

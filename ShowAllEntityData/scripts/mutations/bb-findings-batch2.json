@@ -362,5 +362,161 @@
         "spec": "tests/fixtures/bb-findings-batch2.spec.js",
         "grep": "the year reader",
         "expect": "fail"
+    },
+    {
+        "name": "bb-year-unlisted: the detector never matches",
+        "why": "The finding reads the Event cell's check.",
+        "edits": [
+            {
+                "find": "            test: cell => _bbHasCheck(cell, 'unlisted'),",
+                "replace": "            test: () => false,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "one read of the listing answers",
+        "expect": "fail"
+    },
+    {
+        "name": "a year row the listing lacks fails no check",
+        "why": "_bbEventChecks(): listed false is the token `unlisted`.",
+        "edits": [
+            {
+                "find": "        if (yearRow && row.listed === false) out.push('unlisted');",
+                "replace": "        if (false && row.listed === false) out.push('unlisted');"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "unlisted, the rule",
+        "expect": "fail"
+    },
+    {
+        "name": "the year rows' Event cells are not watched",
+        "why": "With ▶ Pages on, a year row seen asks for its year's listing.",
+        "edits": [
+            {
+                "find": "            if (slug && !_bbEvp.yearLists.has(slug)) _bbEvp.io.observe(d.parentElement);",
+                "replace": "            if (false) _bbEvp.io.observe(d.parentElement);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "one read of the listing answers",
+        "expect": "fail"
+    },
+    {
+        "name": "the unlisted finding's switch does not stop the listing request",
+        "why": "sa_findings_bb_year_unlisted off: no listing is read.",
+        "edits": [
+            {
+                "find": "        if (!_bbYearUnlistedOn()) return;\n        document.querySelectorAll(",
+                "replace": "        document.querySelectorAll("
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "the unlisted finding off",
+        "expect": "fail"
+    },
+    {
+        "name": "a failed listing is asked again by the next row seen",
+        "why": "A listing that cannot be read is asked once a press.",
+        "edits": [
+            {
+                "find": "            _bbEvp.yearLists.set(slug, 'failed');",
+                "replace": "            _bbEvp.yearLists.delete(slug);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "a listing that cannot be read",
+        "expect": "fail"
+    },
+    {
+        "name": "a new press does not ask a failed listing again",
+        "why": "_bbEvpToggle() forgets the listings that are not done.",
+        "edits": [
+            {
+                "find": "        _bbEvp.yearLists.forEach((st, slug) => { if (st !== 'done') _bbEvp.yearLists.delete(slug); });",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "a listing that cannot be read",
+        "expect": "fail"
+    },
+    {
+        "name": "a kept listing is not applied after a render",
+        "why": "_bbEvpAfterRender(true): the kept listing answers without ▶ Pages, with no request.",
+        "edits": [
+            {
+                "find": "                listed += _bbYearApplyListing(slug, kept.data.links, yearRows);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "after a reload the kept listing",
+        "expect": "fail"
+    },
+    {
+        "name": "the listing's answer does not reach the source rows",
+        "why": "_bbYearRowIndex() walks the source rows too: a filter re-renders from them.",
+        "edits": [
+            {
+                "find": "table.tbl ${carrier}`).forEach(add);\n        _msSourceRows().forEach(row => row.querySelectorAll(carrier).forEach(add));",
+                "replace": "table.tbl ${carrier}`).forEach(add);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "while the table is filtered",
+        "expect": "fail"
+    },
+    {
+        "name": "every year row counts as listed",
+        "why": "_bbYearApplyListing(): an anchor no line links is \"0\".",
+        "edits": [
+            {
+                "find": "linked.has(`${slug}#${anchor}`) ? '1' : '0');",
+                "replace": "linked.has(`${slug}#${anchor}`) ? '1' : '1');"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "one read of the listing answers",
+        "expect": "fail"
+    },
+    {
+        "name": "the listing reader drops the year from its links",
+        "why": "A link is \"2011#150211\": the year page and the anchor.",
+        "edits": [
+            {
+                "find": "            if (m && !links.includes(`${m[1]}#${m[2]}`)) links.push(`${m[1]}#${m[2]}`);",
+                "replace": "            if (m && !links.includes(`${m[1]}#${m[2]}`)) links.push(m[2]);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "unlisted, the rule",
+        "expect": "fail"
+    },
+    {
+        "name": "the listing tint setting is ignored on the year table",
+        "why": "sa_findings_tint_bb_list off: no tint.",
+        "edits": [
+            {
+                "find": "'this entry: it has no anchor'}.`;\n            },\n            tint: _findingTintSetting('sa_findings_tint_bb_list'),",
+                "replace": "'this entry: it has no anchor'}.`;\n            },\n            tint: () => true,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "the unlisted tint off",
+        "expect": "fail"
+    },
+    {
+        "name": "the listed mark is not read back from the carrier",
+        "why": "_bbEventChecksWrite() reads data-mb-bb-listed: a saved year keeps it inside the cell.",
+        "edits": [
+            {
+                "find": "            listed: d.hasAttribute('data-mb-bb-listed') ? d.getAttribute('data-mb-bb-listed') === '1' : null,",
+                "replace": "            listed: null,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "a saved year: the unlisted",
+        "expect": "fail"
     }
 ]

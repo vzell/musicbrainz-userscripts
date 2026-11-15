@@ -13,7 +13,11 @@
  *      then `__saTest.bbEventChecks()` for the row — its `list-title` and
  *      `list-anchor` against the probe's;
  *   2. every event with a venue page: `__saTest.bbVenueCheck(title, venue)`
- *      against the probe's result ('', variant, detail, mismatch).
+ *      against the probe's result ('', variant, detail, mismatch);
+ *   3. every year entry: the year's listing read by the shipped listing
+ *      reader (`__saTest.extBbParseYearList()`), the entry's anchor looked
+ *      up in its links as `_bbYearApplyListing()` does, then
+ *      `__saTest.bbEventChecks()` — its `unlisted` against the probe's.
  *
  * Read-only, no network. Exit code 1 when anything differs.
  *
@@ -48,7 +52,7 @@ async function main() {
         url: 'https://brucebase.wikidot.com/stats:songs', fixtureFile: path.join(ROOT, 'tests', 'fixtures', 'bb-songs.html'), testMode: true,
         settingsOverride: { sa_enable_brucebase: true },
     });
-    await page.waitForFunction(() => window.__saTest && window.__saTest.bbVenueCheck && window.__saTest.extBbParseYear);
+    await page.waitForFunction(() => window.__saTest && window.__saTest.bbVenueCheck && window.__saTest.extBbParseYear && window.__saTest.extBbParseYearList);
     console.log(`Mirror: ${MIRROR}`);
     console.log(`Browser: Chromium ${browser.version()}, GM stubs`);
     let diffs = 0;
@@ -87,6 +91,23 @@ async function main() {
         if (got[i] !== r.result) say('venue', r, r.result, got[i]);
     });
     console.log(`Events with a venue page: ${rows.venue.length}; results (script): ${JSON.stringify(kinds)}`);
+
+    // 3. The year entries against their year's listing.
+    let unlisted = 0;
+    for (const year of Array.from(new Set((rows.year || []).map(r => r.year)))) {
+        const mine = rows.year.filter(r => r.year === year);
+        const res = await page.evaluate(({ html, slug, list }) => {
+            const links = new Set(window.__saTest.extBbParseYearList(html).links);
+            return list.map(r => window.__saTest.bbEventChecks({
+                heading: r.heading, anchor: r.anchor, href: '', listed: !!r.anchor && links.has(`${slug}#${r.anchor}`),
+            }, null).includes('unlisted'));
+        }, { html: fs.readFileSync(path.join(MIRROR, `${year}-list.html`), 'utf8'), slug: year, list: mine });
+        mine.forEach((r, i) => {
+            if (res[i]) unlisted++;
+            if (res[i] !== !r.listed) say('year entry', r, !r.listed, res[i]);
+        });
+    }
+    console.log(`Year entries: ${(rows.year || []).length}; not in their year's listing (script): ${unlisted}`);
     await browser.close();
     console.log(diffs ? `${diffs} DIFFERENCES` : 'No difference: the shipped checks flag the probe\'s rows.');
     process.exitCode = diffs ? 1 : 0;

@@ -12,7 +12,8 @@ Plan for pickup on another host.
 - *vzell's browser check (2026-11-14, afternoon):* all rows OK live; the nine variant words stay. Three things came out of it and are built on the same branch: the finding =bb-anchor-shared= (two entries with one anchor), a saved year keeping the MB-Event column's findings (39 errors had become 3 after Load from Disk), and the Save to Disk dialog's title on Brucebase. Details: =org/bbp-parity.org=, "After vzell's browser check".
 - *vzell, 2026-11-14 evening:* "error is OK, all tested live"; merged. Not yet published to =vzell/mb-userscripts=; that is vzell's call.
 - *Batch 2 is on =feat/bb-findings-batch2=, pushed, NOT merged:* parts 1 and 2 (=bb-list-title=, =bb-list-anchor=,
-  =bb-venue-mismatch=) are built, tested and documented; =org/bbp-parity.org=, "Batch 2", has the counts and the
+  =bb-venue-mismatch=) and, after vzell's "Yes" of 2026-11-15, =bb-year-unlisted= (a year entry the listing lacks)
+  are built, tested and documented; =org/bbp-parity.org=, "Batch 2", has the counts and the
   browser list.
 - *Next:* vzell looks at the setlist card's mockup (https://claude.ai/artifact/T1D2ghbx9zHHCh8jgfr5g7)
   and answers its open points; then part 3 (=bb-setlist-songs=, =bb-setlist-spelling=) on the same branch, vzell's

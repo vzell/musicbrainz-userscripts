@@ -163,8 +163,9 @@ https://claude.ai/artifact/T1D2ghbx9zHHCh8jgfr5g7
 - *Part 1, the listings:* =bb-list-title= (❌) and =bb-list-anchor= (⚠️) on a listing's Event cell. The year page that
   ▶ Pages reads for one row answers every row of that year. Probe: 35 and 9 rows. 33 of the 35 are in BruceParser's
   report; the 15 it has beyond them are year entries that no listing line links at all, which has no row to flag here.
-  *Open, for vzell:* should a missing listing line become a finding on the YEAR table? It needs the listing: one more
-  request a year.
+  *Decided (vzell, 2026-11-15): yes.* A missing listing line is =bb-year-unlisted= (⚠️) on the YEAR table's Event cell.
+  With ▶ Pages on, the listing of a year whose rows come into view is read: one more request a year, kept. Probe: 16
+  rows in 11 years (1977 3, 2025 3, 2007 2), all in BruceParser's reports. The level (⚠️) is Claude's choice.
 - *Found on the way, fixed:* on a listing ▶ Pages said "no page of its own" for every recording session, rehearsal and
   interview, and for every entry whose anchor ends in a letter. The year page was read for =/gig:= and =/nogig:= links
   and six-digit anchors only.
@@ -193,4 +194,9 @@ https://claude.ai/artifact/T1D2ghbx9zHHCh8jgfr5g7
 | https://brucebase.wikidot.com/1972      | Show all events, ▶ Pages     | Venue ⚠️ on 1972-05-02 and 1972-05-00 CBS Records (venue page "CBS"); Mediasound, Sunshine In clean   |
 | https://brucebase.wikidot.com/1985      | Show all events, ▶ Pages     | Venue ⚠️ on 1985-06-15 Frankfurt and 1985-06-18 Munich ("West Germany" / "Germany"), 1985-08-07       |
 | https://brucebase.wikidot.com/1985      | the job popup while reading  | the request count grows by one per venue as well as one per entry                                     |
+| https://brucebase.wikidot.com/1977      | Show all events              | nothing flagged for the listing, no request                                                           |
+| https://brucebase.wikidot.com/1977      | ▶ Pages                      | Event ⚠️ "missing from the year's listing" on 3: 1977-01-00 and 1977-04-00 Telegraph Hill, 1977-07-29 |
+| https://brucebase.wikidot.com/2025      | ▶ Pages                      | Event ⚠️ on 3: 2025-10-16 Claridge's, 2025-10-16 Television Centre, 2025-10-22 TCL Chinese Theatre    |
+| https://brucebase.wikidot.com/2011      | ▶ Pages                      | Event ⚠️ on 2011-02-15 Stone Hill Studio (the listing links it as #000211)                            |
+| https://brucebase.wikidot.com/1977      | reload, Show all events      | the same 3 at once, without ▶ Pages and without a request (the listing is kept)                       |
 | any of them                             | Save to Disk, Load from Disk | the same cells are flagged, nothing is asked                                                          |

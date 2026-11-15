@@ -848,6 +848,7 @@ back).
 | ⚠️     | Brucebase anchor with another date than its entry               | Brucebase year: Event                       |
 | ⚠️     | Brucebase anchor letter differs from the event page's address   | Brucebase year: Event                       |
 | ⚠️     | Brucebase listing entry with a wrong link to the year page      | Brucebase year listing: Event               |
+| ⚠️     | Brucebase year entry missing from the year's listing (once read) | Brucebase year: Event                      |
 | ⚠️     | Brucebase event page names its venue differently (once read)    | Brucebase year: Venue                       |
 | ⚠️     | Brucebase title with two blanks or a blank before a comma       | Brucebase year and year listing: Event      |
 | ⚠️     | Pending edits                                                   | any column                                  |
@@ -4061,9 +4062,13 @@ entry, with these columns:
   the **Venue** cell says the entry's page names the venue differently
   from the venue's own page ("CBS Records" against "CBS"). "(Early)",
   "(Late)" and the like, and a description between the venue and its city
-  ("Mediasound Studios, Studio C, New York City, NY"), are accepted. Each
+  ("Mediasound Studios, Studio C, New York City, NY"), are accepted. With
+  ▶ Pages on, the year's listing (/1977-list) is read too, one more request
+  a year: a ⚠️ on the **Event** cell says no line of the listing links the
+  entry ("1977-07-29 - Atlantic Studios" is missing there). Each
   check has its own switch in ⚙️ Settings → ⚠️ Findings; with the venue
-  check off, no venue page is read. A year saved with **Save to Disk**
+  check off, no venue page is read, and with the listing check off, no
+  listing. A year saved with **Save to Disk**
   comes back with all of them, the MB-Event column's answers and the pages
   read so far included, and asks nothing again.
 - **Soundcheck:** the soundcheck, one song per row.

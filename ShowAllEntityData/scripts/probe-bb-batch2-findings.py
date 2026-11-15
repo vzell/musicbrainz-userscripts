@@ -255,7 +255,7 @@ def main():
     per_year = defaultdict(Counter)
     stats = Counter()
     venue_titles = {}
-    all_rows = {'list': [], 'venue': []}
+    all_rows = {'list': [], 'venue': [], 'year': []}
 
     def flag(fid, slug, **row):
         flagged[fid].append(dict(year=slug, **row))
@@ -265,6 +265,7 @@ def main():
         page = read(os.path.join(mirror, slug + '.html'))
         heads = [m for m in b1.HEAD_RE.finditer(page) if b1.DATE_RE.match(b1.text_of(m.group(2)))]
         by_anchor = {}
+        year_entries = []
         for n, m in enumerate(heads):
             raw = b1.text_of(m.group(2))
             anchor = m.group(1)
@@ -272,6 +273,7 @@ def main():
                 lone = b1.LONE_ANCHOR_RE.search(page[max(0, m.start() - 200):m.start()])
                 anchor = lone.group(1) if lone else ''
             by_anchor.setdefault(anchor, []).append(raw)
+            year_entries.append((anchor, raw))
             link = b1.LINK_RE.search(m.group(2))
             href = html.unescape(link.group(1)) if link else ''
             stats['year entries'] += 1
@@ -331,6 +333,15 @@ def main():
         if not listing:
             stats['years without a listing'] += 1
             continue
+        # bb-year-unlisted (vzell, 2026-11-15): a year entry whose anchor no
+        # line of the year's listing links. An entry without an anchor
+        # cannot be linked, so it counts as unlisted too.
+        linked = {lm.group(2) for lm in LIST_RE.finditer(listing) if lm.group(1) == slug}
+        for anchor, raw in year_entries:
+            listed = bool(anchor) and anchor in linked
+            all_rows['year'].append({'year': slug, 'anchor': anchor, 'heading': raw, 'listed': listed})
+            if not listed:
+                flag('bb-year-unlisted', slug, anchor=anchor, heading=raw)
         for lm in LIST_RE.finditer(listing):
             href_year, anchor, label = lm.group(1), lm.group(2), b1.text_of(lm.group(3))
             d = b1.DATE_RE.match(label)
@@ -361,7 +372,7 @@ def main():
     for k, v in sorted(stats.items()):
         print(f'  {k}: {v}')
     print('\nRows flagged:')
-    for fid in ('bb-list-title', 'bb-list-anchor', 'bb-venue-mismatch', 'bb-setlist-songs', 'bb-setlist-spelling'):
+    for fid in ('bb-list-title', 'bb-list-anchor', 'bb-year-unlisted', 'bb-venue-mismatch', 'bb-setlist-songs', 'bb-setlist-spelling'):
         top = ', '.join(f'{y} {n}' for y, n in per_year[fid].most_common(5))
         print(f'  {fid}: {len(flagged[fid])} rows in {len(per_year[fid])} years (most: {top})')
     print(f'  bb-list-anchor by reason: {dict(Counter(r["why"] for r in flagged["bb-list-anchor"]))}')
@@ -377,6 +388,13 @@ def main():
         print(f'    only ours: {x}')
     for x in sorted(theirs - ours)[:12]:
         print(f'    only theirs: {x}')
+    unlisted = {f'{r["year"]}#{r["anchor"]}' for r in flagged['bb-year-unlisted']}
+    rest = theirs - ours
+    print(f'  bb-year-unlisted: ours {len(unlisted)}; of theirs not in bb-list-title ({len(rest)}): {len(rest & unlisted)} are unlisted')
+    for x in sorted(rest - unlisted)[:12]:
+        print(f'    theirs, neither: {x}')
+    for x in sorted(unlisted - theirs)[:20]:
+        print(f'    unlisted, not theirs: {x}')
     theirs = set(re.findall(r'https://brucebase\.wikidot\.com/([a-z]+:[^\]\s|]+)\]\[', read(os.path.join(rep, 'DIFFERENCES-venues.org'))))
     theirs = {t for t in theirs if not t.startswith('venue:')}
     ours = {r['event'] for r in flagged['bb-venue-mismatch']}

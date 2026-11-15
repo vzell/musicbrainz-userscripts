@@ -3032,6 +3032,16 @@
                          'such anchor. A WARNING on the Event cell.'
         },
 
+        sa_findings_bb_year_unlisted: {
+            label: 'Find Brucebase year entries missing from the year\'s listing',
+            type: 'checkbox',
+            default: true,
+            description: 'On a Brucebase year table, once ▶ Pages is on: no line of the year\'s listing ' +
+                         '(/1977-list) links the entry\'s anchor. A WARNING on the Event cell. While this ' +
+                         'is on, ▶ Pages also reads the listing of each year whose rows come into view: ' +
+                         'one more request a year, kept like the year pages.'
+        },
+
         sa_findings_bb_venue_mismatch: {
             label: 'Find Brucebase event pages that name their venue differently from the venue page',
             type: 'checkbox',
@@ -3055,7 +3065,9 @@
             type: 'checkbox',
             default: true,
             description: 'Tint the Event cell of a year listing light red with a ❌ when the entry is named ' +
-                         'differently from the year page, light yellow with a ⚠️ when its link is wrong.'
+                         'differently from the year page, light yellow with a ⚠️ when its link is wrong; ' +
+                         'and the Event cell of a year table light yellow with a ⚠️ when the listing lacks ' +
+                         'the entry.'
         },
 
         sa_findings_tint_bb_mbev_link: {
@@ -27470,6 +27482,9 @@
      * - `anchor-link`: the page's "Info & Setlist" link names another
      *   anchor, or a year page that does not cover the date's year.
      *
+     * - `unlisted`: no line of the year's listing links the entry's anchor
+     *   (`listed` false, written by `_bbYearApplyListing()`; batch 2).
+     *
      * A listing row (`anchor` null, `list` set; batch 2) gets
      * `title-spaces` and its own two:
      * - `list-anchor`: the link's anchor is not the label date's DDMMYY, the
@@ -27479,9 +27494,11 @@
      *   for the anchor (`listHeadings`; whitespace as one blank, upper
      *   case, as BruceBaseParser's LIST check).
      *
-     * @param {{heading: string, anchor: ?string, href: string, uses?: number, list?: boolean, listHeadings?: ?string[]}} row The
+     * @param {{heading: string, anchor: ?string, href: string, uses?: number, listed?: ?boolean, list?: boolean, listHeadings?: ?string[]}} row The
      *   heading as written, the year page's anchor (null on a listing row),
      *   the Event link and how many entries of the page have that anchor;
+     *   `listed`: whether the year's listing links the anchor (null or
+     *   absent while the listing is unread);
      *   on a listing row `list`, and the year page's headings for the
      *   link's anchor (null while unread, empty for no such anchor).
      * @param {?{title: string, infoHref: string}} page The event page's
@@ -27500,6 +27517,7 @@
             if (u && anchor.replace(/\d/g, '') !== (u[1] || '')) out.push('anchor-postfix');
         }
         if (yearRow && anchor && row.uses > 1) out.push('anchor-shared');
+        if (yearRow && row.listed === false) out.push('unlisted');
         if (row.list && d) {
             const l = String(row.href || '').match(/\/(\d{4}(?:-\d\d)?)#(\w+)$/);
             const known = Array.isArray(row.listHeadings);
@@ -27569,6 +27587,7 @@
             anchor: d.getAttribute('data-mb-bb-anchor'),
             href: a ? a.getAttribute('href') || '' : '',
             uses: Number(d.getAttribute('data-mb-bb-anchor-uses')) || 1,
+            listed: d.hasAttribute('data-mb-bb-listed') ? d.getAttribute('data-mb-bb-listed') === '1' : null,
             list: d.hasAttribute('data-mb-bb-list'),
             listHeadings: _bbListHeadings(d),
         }, read ? { title: d.getAttribute('data-mb-bb-raw-title'), infoHref: d.getAttribute('data-mb-bb-info-href') } : null).join(' ');
@@ -27745,6 +27764,120 @@
         const flat = s => String(s).replace(/\s+/g, ' ').trim().toUpperCase();
         const hs = _bbListHeadings(_bbEvData(cell)) || [];
         return { la: 'Listing', lb: 'Year page', a: flat(_bbEvDatum(cell, 'raw-heading')), b: flat(hs[0] || '') };
+    }
+
+    /**
+     * Whether the year listings are read with ▶ Pages on a year table: while
+     * the finding that needs them is on.
+     *
+     * @returns {boolean}
+     */
+    function _bbYearUnlistedOn() {
+        return Lib.settings.sa_findings_bb_year_unlisted !== false;
+    }
+
+    /**
+     * The year page a year row is on, from its heading's date: "1977", or
+     * "1949-64" for the years that share a page. (No entry of the mirror
+     * of 2026-11-13 is on another year's page: 5,018 of 5,018.)
+     *
+     * @param {?Element} d The Event cell's carrier (`_bbEvData()`).
+     * @returns {string} '' for a listing row, a row without an anchor
+     *   attribute or a heading without a year.
+     */
+    function _bbYearRowSlug(d) {
+        if (!d || !d.hasAttribute('data-mb-bb-anchor') || d.hasAttribute('data-mb-bb-list')) return '';
+        const m = (d.getAttribute('data-mb-bb-raw-heading') || '').match(/^(\d{4})-/);
+        if (!m) return '';
+        return Number(m[1]) >= 1949 && Number(m[1]) <= 1964 ? '1949-64' : m[1];
+    }
+
+    /**
+     * Every year row's carrier, live and source, by its year page
+     * (`_bbYearRowSlug()`).
+     *
+     * @returns {Map<string, Set<HTMLElement>>}
+     */
+    function _bbYearRowIndex() {
+        const map = new Map();
+        const add = (d) => {
+            const slug = _bbYearRowSlug(d);
+            if (!slug) return;
+            let s = map.get(slug);
+            if (!s) { s = new Set(); map.set(slug, s); }
+            s.add(d);
+        };
+        const carrier = 'td.mb-bb-event-cell > span.mb-bb-ev-data[data-mb-bb-anchor]';
+        document.querySelectorAll(`body.mb-sa-host-bb table.tbl ${carrier}`).forEach(add);
+        _msSourceRows().forEach(row => row.querySelectorAll(carrier).forEach(add));
+        return map;
+    }
+
+    /**
+     * A year's listing has been read (`_bbYearListingWant()`, or the kept
+     * one after a render): every year row of that year page, live and
+     * source, gets `data-mb-bb-listed` on its carrier — "1" when a line of
+     * the listing links its anchor, "0" when none does (an entry without an
+     * anchor cannot be linked) — its checks are made again and a changed
+     * row is queued for its stamp (`bb-year-unlisted`).
+     *
+     * @param {string}   slug  The year page's name, "1977" or "1949-64".
+     * @param {string[]} links The listing's show links, "1977#290777".
+     * @param {Map<string, Set<HTMLElement>>} [index] `_bbYearRowIndex()`, when the caller has it.
+     * @returns {number} Rows whose checks changed.
+     */
+    function _bbYearApplyListing(slug, links, index = null) {
+        const linked = new Set(links);
+        let changed = 0;
+        ((index || _bbYearRowIndex()).get(slug) || []).forEach((d) => {
+            const anchor = d.getAttribute('data-mb-bb-anchor') || '';
+            d.setAttribute('data-mb-bb-listed', anchor && linked.has(`${slug}#${anchor}`) ? '1' : '0');
+            const row = d.closest('tr');
+            if (!row || !_bbEventChecksWrite(d.parentElement)) return;
+            changed++;
+            const live = row.isConnected ? row.closest('table.tbl') : null;
+            const table = live || Array.from(document.querySelectorAll('table.tbl')).find(t => t.querySelector('td.mb-bbevp-cell'));
+            if (table) _queueFindingsRestamp(row, _BB_UNLISTED_IDS, live ? null : table);
+        });
+        return changed;
+    }
+
+    /**
+     * Reads a year's listing for the year table's `bb-year-unlisted`, once a
+     * year and reading (`_bbEvp.yearLists`): called for a year row that
+     * came into view while ▶ Pages is on (`_bbEvpOnSeen()`; the watch,
+     * `_bbEvpObserve()`, is what the finding's switch gates). The kept
+     * listing, else ONE request after the previews' rate slot
+     * (`_extBbYearList()`). A listing that cannot be read is logged in the
+     * job and not asked again until ▶ Pages is pressed again.
+     *
+     * @param {string} slug The year page's name.
+     * @returns {Promise<void>}
+     */
+    async function _bbYearListingWant(slug) {
+        if (!slug || !_bbEvp.active || _bbEvp.yearLists.has(slug)) return;
+        _bbEvp.yearLists.set(slug, 'run');
+        let r;
+        try {
+            r = await _extBbYearList(`https://brucebase.wikidot.com/${slug}-list`, () => _bbEvp.active);
+        } catch (err) {
+            r = { ok: false, detail: (err && err.message) || 'no answer' };
+        }
+        if (r.skipped) {
+            _bbEvp.yearLists.delete(slug);
+            return;
+        }
+        if (!r.ok || !r.list) {
+            _bbEvp.yearLists.set(slug, 'failed');
+            _ajLog('bbevp', null, `${slug}-list: ${r.detail || 'no listing'}`, 'bad');
+            return;
+        }
+        _bbEvp.yearLists.set(slug, 'done');
+        if (!r.cached) _bbEvp.requests++;
+        const n = _bbYearApplyListing(slug, r.list.links);
+        _ajChanged('bbevp', null);
+        if (n) _bbEvpScheduleRefresh(false);
+        else _bbEvpObserve();
     }
 
     /**
@@ -28696,7 +28829,7 @@
     const _bbEvp = {
         active: false, running: false, queue: [], queued: new Set(), io: null,
         done: 0, failed: 0, requests: 0, refreshTimer: 0, lastRefresh: 0, collapseAt: 0,
-        pageOf: new Map(), listYears: new Set(),
+        pageOf: new Map(), listYears: new Set(), yearLists: new Map(),
     };
 
     /**
@@ -28822,6 +28955,13 @@
      * @type {string[]}
      */
     const _BB_LIST_CHECK_IDS = ['bb-list-title', 'bb-list-anchor'];
+
+    /**
+     * The year table's finding that needs the year's listing
+     * (`_bbYearApplyListing()`; in `_LATE_FINDING_IDS`).
+     * @type {string[]}
+     */
+    const _BB_UNLISTED_IDS = ['bb-year-unlisted'];
 
     /**
      * Rewrites one cell from what is known (`_bbEvpMem`; `state` for a cell
@@ -29074,6 +29214,14 @@
             const st = td.dataset.mbBbevpState;
             if (st === 'cold' || st === 'queued' || td.hasAttribute('data-mb-bbevp-venue-due')) _bbEvp.io.observe(td);
         });
+        // A year row whose year's listing is not read yet (`bb-year-unlisted`):
+        // its Event cell is watched too, and the first one seen asks for the
+        // listing (`_bbYearListingWant()`), whatever its own pages' state.
+        if (!_bbYearUnlistedOn()) return;
+        document.querySelectorAll('body.mb-sa-host-bb table.tbl td.mb-bb-event-cell > span.mb-bb-ev-data[data-mb-bb-anchor]:not([data-mb-bb-listed])').forEach((d) => {
+            const slug = _bbYearRowSlug(d);
+            if (slug && !_bbEvp.yearLists.has(slug)) _bbEvp.io.observe(d.parentElement);
+        });
     }
 
     /**
@@ -29087,6 +29235,10 @@
         if (!_bbEvp.active) return;
         const back = [];
         entries.forEach((en) => {
+            if (en.target.classList.contains('mb-bb-event-cell')) {
+                if (en.isIntersecting) _bbYearListingWant(_bbYearRowSlug(_bbEvData(en.target)));
+                return;
+            }
             const key = en.target.dataset.mbBbevpKey;
             if (!key) return;
             if (en.isIntersecting) {
@@ -29123,6 +29275,8 @@
         _bbEvp.active = true;
         _bbEvpRegisterProvider();
         Object.assign(_bbEvp, { done: 0, failed: 0, requests: 0 });
+        // A listing that failed is asked again with a new press.
+        _bbEvp.yearLists.forEach((st, slug) => { if (st !== 'done') _bbEvp.yearLists.delete(slug); });
         _ajStart('bbevp', null, { user: true, anchor });
         _ajLog('bbevp', null, 'Reading the event pages of the rows in view');
         _bbEvpObserve();
@@ -29179,10 +29333,23 @@
             _bbEvpMem.set(k, rec);
             now.push(k);
         });
+        // The year's listing, when it is kept (`bb-year-unlisted`): one read
+        // of the store a year, no request, with or without ▶ Pages.
+        let listed = 0;
+        if (_bbYearUnlistedOn()) {
+            const yearRows = _bbYearRowIndex();
+            for (const [slug, ds] of yearRows) {
+                if (!Array.from(ds).some(d => !d.hasAttribute('data-mb-bb-listed'))) continue;
+                const kept = await _rgIdbGet(`ext-bbyearlist:https://brucebase.wikidot.com/${slug}-list`, _EXT_BB_YEAR_LIST_VERSION, _extTtlMs());
+                if (!kept || !kept.data || !Array.isArray(kept.data.links)) continue;
+                _bbEvp.yearLists.set(slug, 'done');
+                listed += _bbYearApplyListing(slug, kept.data.links, yearRows);
+            }
+        }
         const fresh = _bbEvpCellIndex();
         const known = Array.from(fresh.keys()).filter(k => _bbEvpMem.has(k)
             && Array.from(fresh.get(k)).some(td => td.dataset.mbBbevpState === 'cold'));
-        if (_bbEvpRepaint(fresh, known)) _bbEvpScheduleRefresh(true);
+        if (_bbEvpRepaint(fresh, known) || listed) _bbEvpScheduleRefresh(true);
         Lib.debug('detail', `event-page columns: ${known.length} row(s) painted from what was read before (${now.length} from the previews' store).`);
         _bbEvpObserve();
     }
@@ -73781,6 +73948,26 @@
             },
             tint: _findingTintSetting('sa_findings_tint_bb_list'),
         },
+        // vzell, 2026-11-15 (the batch 2 open decision): a year entry no line
+        // of the year's listing links. Late data: with ▶ Pages on, the
+        // listing of a year whose rows come into view is read
+        // (`_bbYearListingWant()`, one request a year, kept), and
+        // `_bbYearApplyListing()` answers every row of that year.
+        {
+            id: 'bb-year-unlisted', level: 'warn', glyph: '∅', scope: 'cell',
+            label: 'Brucebase year entry missing from the year\'s listing',
+            tip: 'No line of the year\'s listing (/1977-list) links this entry\'s anchor: the entry is missing there ("1977-07-29 - ATLANTIC STUDIOS"), or its line links another anchor ("2011-02-15", linked as #000211). Known once ▶ Pages is on and the year\'s listing is read: one request answers every row of that year. The page to edit is the listing.',
+            enabled: () => !!_isBbHost && _bbYearUnlistedOn(),
+            cols: name => name === 'Event',
+            rowGate: row => !!row.querySelector('span.mb-bb-ev-data[data-mb-bb-checks]'),
+            test: cell => _bbHasCheck(cell, 'unlisted'),
+            detail: (cell) => {
+                const d = _bbEvData(cell);
+                const anchor = _bbEvDatum(cell, 'anchor');
+                return `The listing /${_bbYearRowSlug(d)}-list has no link to ${anchor ? `#${anchor}` : 'this entry: it has no anchor'}.`;
+            },
+            tint: _findingTintSetting('sa_findings_tint_bb_list'),
+        },
         {
             id: 'bb-title-spaces', level: 'warn', glyph: '⎵', scope: 'cell',
             label: 'Brucebase title with two blanks or a blank before a comma',
@@ -94056,6 +94243,8 @@
 
     /** Version of the parsed year pages kept in IndexedDB; bump when `_extBbParseYear()`'s output changes. */
     const _EXT_BB_YEAR_VERSION = 3;
+    /** The kept year listings' record version (`_extBbYearList()`). */
+    const _EXT_BB_YEAR_LIST_VERSION = 1;
 
     /**
      * Each year page's load, by its URL: a promise of `_extBbYear()`'s
@@ -94196,6 +94385,65 @@
         entry.promise.then(r => {
             if (!r.ok || !r.year) _extBbYears.delete(yearUrl);
         });
+        return entry.promise;
+    }
+
+    /**
+     * Each year listing's load, by its URL (as `_extBbYears`).
+     * @type {Map<string, {wants: Array<function(): boolean>, promise: Promise<Object>}>}
+     */
+    const _extBbYearLists = new Map();
+
+    /**
+     * The show links of a Brucebase year listing (`/1977-list`), as
+     * "1977#290777": the lines the listing's own table is built from
+     * (`_bbYearListEntries()`).
+     *
+     * @param {string} html
+     * @returns {{links: string[]}}
+     */
+    function _extBbParseYearList(html) {
+        const content = new DOMParser().parseFromString(html, 'text/html').getElementById('page-content');
+        const links = [];
+        (content ? _bbYearListEntries(content).entries : []).forEach((e) => {
+            const m = String(e.href).match(/\/(\d{4}(?:-\d\d)?)#(\w+)$/);
+            if (m && !links.includes(`${m[1]}#${m[2]}`)) links.push(`${m[1]}#${m[2]}`);
+        });
+        return { links };
+    }
+
+    /**
+     * One Brucebase year listing's show links, as `_extBbYear()` reads a
+     * year page: memory, then IndexedDB (younger than `_extTtlMs()`), then
+     * ONE request, shared by every caller while it runs. Answers
+     * `{ok, list, cached}`, `{skipped: true}` or `{ok: false, detail}`.
+     *
+     * @param {string} listUrl - `https://brucebase.wikidot.com/<year>-list`.
+     * @param {function(): boolean} wanted
+     * @returns {Promise<Object>}
+     */
+    function _extBbYearList(listUrl, wanted) {
+        const running = _extBbYearLists.get(listUrl);
+        if (running) {
+            running.wants.push(wanted);
+            return running.promise;
+        }
+        const entry = { wants: [wanted], promise: null };
+        entry.promise = (async () => {
+            const kept = await _rgIdbGet(`ext-bbyearlist:${listUrl}`, _EXT_BB_YEAR_LIST_VERSION, _extTtlMs());
+            if (kept && kept.data && Array.isArray(kept.data.links)) return { ok: true, list: kept.data, cached: true };
+            const res = await _extGet(listUrl, { wanted: () => entry.wants.some(w => w()), fetchOpts: { maxBytes: _EXT_BB_MAX_BYTES } });
+            if (res.skipped) return { skipped: true };
+            if (_extBotCheck(res) || res.error || res.status !== 200) return { ok: false, detail: _extFailText(res) };
+            const list = _extBbParseYearList(res.body || '');
+            if (!list.links.length) return { ok: false, detail: 'The listing has no entries.' };
+            _rgIdbPut(`ext-bbyearlist:${listUrl}`, list, Date.now(), _EXT_BB_YEAR_LIST_VERSION);
+            return { ok: true, list, cached: false };
+        })();
+        _extBbYearLists.set(listUrl, entry);
+        entry.promise.then((r) => {
+            if (!r.ok) _extBbYearLists.delete(listUrl);
+        }, () => _extBbYearLists.delete(listUrl));
         return entry.promise;
     }
 
@@ -179869,7 +180117,7 @@ a { color: #1565c0; }`;
      * Relationships column (`rel-multi-site`). Each is re-stamped per row
      * through `_queueFindingsRestamp()`.
      */
-    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-site', 'bb-mbev-link-mismatch', 'bb-mbev-link-missing', 'sl-double-utf8', 'bb-onstage-tab', 'bb-venue-mismatch', ..._BB_EVENT_CHECK_LATE_IDS, ..._BB_LIST_CHECK_IDS];
+    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-site', 'bb-mbev-link-mismatch', 'bb-mbev-link-missing', 'sl-double-utf8', 'bb-onstage-tab', 'bb-venue-mismatch', ..._BB_EVENT_CHECK_LATE_IDS, ..._BB_LIST_CHECK_IDS, ..._BB_UNLISTED_IDS];
 
     /**
      * Queues a re-stamp of a row whose late data (`_LATE_FINDING_IDS`) has
@@ -187617,6 +187865,7 @@ a { color: #1565c0; }`;
             extBbParseYear: (html, base) => _extBbParseYear(html, base),
             /** The venue check, pure (`_bbVenuePart()`, `_bbVenueCheck()`): '' | variant | detail | mismatch. */
             bbVenueCheck: (title, venue) => _bbVenueCheck(_bbVenuePart(title), venue),
+            extBbParseYearList: html => _extBbParseYearList(html),
 
             /**
              * Phase 16 batch 3: the readers of the stats, On The Tracks and

@@ -3,10 +3,10 @@
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
     "script_version": "9.99.1627+2026-11-14",
-    "schema_entries": 522,
+    "schema_entries": 523,
     "sections": 54,
-    "settings": 468,
-    "settings_with_default": 463,
+    "settings": 469,
+    "settings_with_default": 464,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 291,
+      "checkbox": 292,
       "color_picker": 62,
       "divider": 54,
       "number": 53,
@@ -475,6 +475,7 @@
     "sa_findings_bb_onstage_tab": "Find Brucebase event pages whose cast tab is spelled \"Onstage\"",
     "sa_findings_bb_title_spaces": "Find Brucebase titles with two blanks or a blank before a comma",
     "sa_findings_bb_venue_mismatch": "Find Brucebase event pages that name their venue differently from the venue page",
+    "sa_findings_bb_year_unlisted": "Find Brucebase year entries missing from the year's listing",
     "sa_findings_eti_keywords": "Extra title information keywords",
     "sa_findings_event_typography": "Title style: find ASCII punctuation in event names",
     "sa_findings_no_front_image": "Find releases whose artwork has no Front image",
@@ -944,6 +945,7 @@
     "sa_findings_bb_onstage_tab": true,
     "sa_findings_bb_title_spaces": true,
     "sa_findings_bb_venue_mismatch": true,
+    "sa_findings_bb_year_unlisted": true,
     "sa_findings_eti_keywords": "version, single, album, soundtrack, live, rehearsal, studio, radio, remix, mix, edit, demo, instrumental, acoustic, extended, original, remaster, remastered, take, dub, reprise, mono, stereo, bonus, karaoke",
     "sa_findings_event_typography": true,
     "sa_findings_no_front_image": true,

@@ -1853,6 +1853,7 @@ songs / ⚠️ spelling). Parts 1 and 2 are built; the setlist comparison
 | `bb-list-title`     | ❌    | bb-year-list | Event | the label is none of the year page's headings for the linked anchor (blanks as one, upper case) |
 | `bb-list-anchor`    | ⚠️    | bb-year-list | Event | the anchor is not the label date's DDMMYY, the link names a year page not covering the year, or the year page has no such anchor |
 | `bb-venue-mismatch` | ⚠️    | bb-year      | Venue | the venue part of the event page's title ≠ the venue page's title, after the two accepted cases |
+| `bb-year-unlisted`  | ⚠️    | bb-year      | Event | no line of the year's listing links the entry's anchor (vzell, 2026-11-15) |
 
 - **One year page answers a whole year** (`_bbListApplyYear()`):
   `_bbEvpPageUrl()` already reads a listing row's year page
@@ -1909,9 +1910,34 @@ songs / ⚠️ spelling). Parts 1 and 2 are built; the setlist comparison
   mismatch 128. The 15 listing rows only in BruceParser's report are year
   entries NO listing line links (its report lists them with an empty
   listing title: 1977-07-29, 1987-09-29, 2010-07-23, 2025-10-16, …) and
-  the shared anchor of 1972. A missing listing line has no row to flag;
-  open, for vzell (it would be a finding on the YEAR table, needing the
-  listing: one more request a year).
+  the shared anchor of 1972. A missing listing line has no listing row to
+  flag: it is `bb-year-unlisted` on the year table (below).
+- **A year entry the listing lacks** (`bb-year-unlisted`; vzell,
+  2026-11-15: "Yes" to the open decision). The year table has no reason
+  of its own to read a listing, so the finding brings the request: with
+  ▶ Pages on, `_bbEvpObserve()` also watches the Event cell of every year
+  row whose carrier has no `data-mb-bb-listed`, and the first one seen
+  asks for its year's listing (`_bbYearListingWant()`, once a year and
+  press: `_bbEvp.yearLists`). Rows in view decide, so the start page's
+  63 years are not 63 requests at the press. `_extBbYearList()` is
+  `_extBbYear()`'s twin (memory, IndexedDB `ext-bbyearlist:<url>`,
+  `_EXT_BB_YEAR_LIST_VERSION`, else one request); its record is the
+  listing's show links as "1977#290777", read by the listing table's own
+  `_bbYearListEntries()`. `_bbYearApplyListing()` writes every year row
+  of that year page, live and source (`_bbYearRowIndex()`; the page is
+  the heading date's year, "1949-64" for those years: 5,018 of 5,018
+  entries in the mirror). An entry without an anchor counts as unlisted.
+  A listing that fails is logged in the job and asked again only with a
+  new press. After a render (`_bbEvpAfterRender(true)`) a KEPT listing is
+  applied without ▶ Pages: one store read a year, no request. Off
+  (`sa_findings_bb_year_unlisted`, `_bbYearUnlistedOn()`): no listing is
+  read. Probe (Env: 2026-11-15T01:10+01:00 · petri · Python over the
+  mirror bb/2026-11-13 · n/a): 16 rows in 11 years (1977 3, 2025 3,
+  2007 2). 14 are the rows of BruceParser's titles report beyond
+  `bb-list-title`; 1980-05-30 and 1998-09-20 are in its side-by-side
+  report only. 2011-02-15 is here AND a `bb-list-anchor` on the listing
+  (its line links #000211). The checker runs the shipped listing reader
+  and token over all 5,018 entries.
 - **The shipped code against the probe**
   (`scripts/check-bb-batch2-findings.js ROWS.json`): the year reader and
   the listing checks on 5,008 entries, the venue check on 4,993 events,
@@ -1921,6 +1947,8 @@ songs / ⚠️ spelling). Parts 1 and 2 are built; the setlist comparison
   fixture with the six venue pages its events link
   (`scripts/build-bb-findings-batch2-fixtures.py`). Mutations
   `scripts/mutations/bb-findings-batch2.json` (28; one `expect: pass`).
+  `bb-year-unlisted` adds 8 tests on 2011's year page with its listing
+  (23 in all) and 12 mutations (40), all failing their test.
 
 ## Show links on Brucebase's own pages (Phase 8, 2026-11-11)
 
