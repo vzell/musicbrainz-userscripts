@@ -27,7 +27,7 @@ State: DONE (SAED has it), PART, TODO, NOT (not ported, with the reason).
 | Anchor: it starts with =dateToAnchor(date)= (DDMMYY)                         | ANCHORS check 2                                 | finding, no request: the row has both                                                 | DONE  |     1 |
 | Anchor: the "Info & Setlist" href's year = the event's year (1949-64 slug)   | ANCHORS check 3                                 | finding                                                                               | DONE  |     1 |
 | LIST page event title vs YEAR page                                           | doc/LIST_PAGE.md                                | finding on bb-year-list (needs the YEAR page: one request per year)                   | DONE  |     2 |
-| Setlist YEAR vs DETAIL (LCS diff, char diffs)                                | doc/SETLIST.md                                  | finding + a diff card on the year row (the window's setlist is the DETAIL one)        | TODO  |     2 |
+| Setlist YEAR vs DETAIL (LCS diff, char diffs)                                | doc/SETLIST.md                                  | finding + a diff card on the year row (the window's setlist is the DETAIL one)        | DONE  |     2 |
 | Venue name: DETAIL title's venue part vs the venue page's title              | =findVenueLink=, =renderVenueInfo=              | finding; one more request per row (the venue page), on ▶ Pages only                   | DONE  |     2 |
 | Expected tags: date parts, day suffix, event type                            | =computeExpectedTags=                           | finding on the bb-event head's Tags card and the window (union with the onstage tags) | TODO  |     3 |
 | Expected tags: content (bootleg, livedl, news, memorabilia, ticket, …)       | =computeExpectedTags= table                     | same                                                                                  | TODO  |     3 |
@@ -157,7 +157,10 @@ Chromium 151.0.7922.34 (chromium-fixtures), no Tampermonkey (GM stubs); probe: P
 *Decisions (vzell, 2026-11-14):* the venue pages are read with ▶ Pages; an extra descriptive part in a title is no
 finding; setlists get ❌ for songs and ⚠️ for spelling.
 
-*Parts 1 and 2 are built and pushed. Part 3 (the setlists) waits for vzell's word on the mockup:*
+*Decisions (vzell, 2026-11-15):* a year entry the listing lacks is a finding; a medley against one song is an error;
+set names are a third finding now; the card shows the differences by default, and the full set must be possible.
+
+*All of batch 2 is built and pushed, not merged.* The setlist card's approved mockup:
 https://claude.ai/artifact/T1D2ghbx9zHHCh8jgfr5g7
 
 - *Part 1, the listings:* =bb-list-title= (❌) and =bb-list-anchor= (⚠️) on a listing's Event cell. The year page that
@@ -176,9 +179,13 @@ https://claude.ai/artifact/T1D2ghbx9zHHCh8jgfr5g7
   Many of the 128 are one venue under two names (1980: "Telegraph Hill Studio" against "Springsteen Residence").
 - *The shipped code against the probe* (=scripts/check-bb-batch2-findings.js=): no difference on 5,008 listing entries
   and 4,993 events.
-- *Part 3, the setlists, probed only:* =bb-setlist-songs= 112 events, =bb-setlist-spelling= 22. BruceParser's report
-  has 342 events; it also counts section names ("Pre-show jam" against "Pre-Show Jam") and prose in the year page's
-  set line, which this rule sets aside. The mockup lists that as an open point.
+- *Part 3, the setlists:* =bb-setlist-songs= (❌), =bb-setlist-spelling= (⚠️) and =bb-setlist-sections= (⚠️) on the
+  year table's Setlist cell, and the card with both setlists side by side. No request of its own. The shipped code
+  over the whole mirror (=scripts/check-bb-setlist-findings.js=): 4,378 entries compared; songs 95, spelling 22, set
+  names 112; 214 events, 207 of them in BruceParser's report of 342. Its other 135 differ only in notes in brackets,
+  prose and "…", which the rule sets aside. Two things differ from the mockup: the card opens ABOVE a cell that is
+  low in the window (below, it opened out of sight), and it has a pill and a row for set names (decision 2).
+  Tests (petri, 2026-11-15): 6 more in the spec (29), 31 mutations all caught; render branch / main 1.02.
 - *Tests* (petri, 2026-11-14): the new spec 15/15; 28 mutations as recorded (27 fail, 1 passes with the reason);
   render branch / main 1.01; =npm run test:full= 21:15:06–21:34:18 CET, 3,124 passed, 0 failed.
 - *Details:* =docs/claude/brucebase.md=, "The listing and venue checks".
@@ -201,4 +208,11 @@ https://claude.ai/artifact/T1D2ghbx9zHHCh8jgfr5g7
 | https://brucebase.wikidot.com/2025      | ▶ Pages                      | Event ⚠️ on 3: 2025-10-16 Claridge's, 2025-10-16 Television Centre, 2025-10-22 TCL Chinese Theatre    |
 | https://brucebase.wikidot.com/2011      | ▶ Pages                      | Event ⚠️ on 2011-02-15 Stone Hill Studio (the listing links it as #000211)                            |
 | https://brucebase.wikidot.com/1977      | reload, Show all events      | the same 3 at once, without ▶ Pages and without a request (the listing is kept)                       |
+| https://brucebase.wikidot.com/1981      | Show all events, ▶ Pages     | Setlist ⚠️ on 1981-03-04 Lexington; ❌ on 1981-04-11 Zurich and 1981-06-05 London (scroll to them)    |
+| https://brucebase.wikidot.com/1981      | hover 1981-03-04's Setlist   | card "A song is written differently": TWIST & SHOUT / TWIST AND SHOUT marked, "… 25 songs the same …" |
+| https://brucebase.wikidot.com/1981      | "Show all 27 songs", Esc     | every song listed; Esc closes; the pointer can move from the cell onto the card                       |
+| https://brucebase.wikidot.com/1981      | hover 1981-04-11's Setlist   | "The setlists differ": HUNGRY HEART under SOUNDCHECK only on the year page; pill "sets named …"       |
+| https://brucebase.wikidot.com/1980      | ▶ Pages, 1980-11-05 Tempe    | Setlist ❌: "NO MONEY DOWN - CADILLAC RANCH" only on the event page; CANDY'S ROOM's apostrophe marked |
+| https://brucebase.wikidot.com/1973      | ▶ Pages, 1973-10-06          | Setlist ⚠️ for the set name only: "Pre-show jam" against "Pre-Show Jam"                               |
+| https://brucebase.wikidot.com/1988      | ▶ Pages, September's shows   | Setlist ⚠️ on most: "Pre-show" against "Pre-Set"                                                      |
 | any of them                             | Save to Disk, Load from Disk | the same cells are flagged, nothing is asked                                                          |

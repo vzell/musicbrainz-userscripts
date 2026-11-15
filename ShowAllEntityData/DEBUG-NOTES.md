@@ -29595,3 +29595,29 @@ Env: 2026-11-15T02:02:31+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 - **Tests:** `bb-findings-batch2.spec.js` 23 (8 new); 12 new mutation entries, all failing their test;
   `npm run test:full` 02:02:31–02:21:46 CET on petri (`f0a7088e`): 3,132 passed, 0 failed. No render measurement:
   the row build is unchanged; a full render gains one walk of the year rows and one store read a year.
+
+## 2026-11-15 — Brucebase findings, batch 2 part 3: the setlists and their card (feat/bb-findings-batch2)
+Env: 2026-11-15T03:00+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright Chromium 151.0.7922.34 (chromium-fixtures), no Tampermonkey (GM stubs); mirror bb/2026-11-13
+- **What:** `bb-setlist-songs` (❌), `bb-setlist-spelling` (⚠️), `bb-setlist-sections` (⚠️) on the year table's
+  Setlist cell, and `#mb-bb-setlist-card`. vzell's answers of 2026-11-15: a medley against one song is an error, set
+  names are a finding now, the card shows the differences by default and the full set on demand. Rules, counts and
+  the comparison with BruceParser's report: docs/claude/brucebase.md, "The setlist comparison".
+- **Root fact 1 — the shipped readers were run over the whole mirror before any fixture was chosen**
+  (`scripts/check-bb-setlist-findings.js`), and that changed the rule twice. (a) An event page lists prose as a list
+  item ("blues improvisation", "Q&A session", "unidentified title") where the year page has the same words in its set
+  line; the year reader drops prose, the event reader did not: 7 false `songs`. An event entry in lowercase words now
+  counts only when the year page has it in other case, which keeps "82ND Street?" a spelling difference. (b) "…" in a
+  year page's set line (songs not known) was a song only on the year page: 6 more. A token without a letter or digit
+  is no song. 108 → 95.
+- **Root fact 2 — two songs are "one written differently" only when they are NEIGHBOURS in the aligned list.** A test
+  case with the missing song AFTER the misspelt one aligned as two year-only songs and one event-only song, so the
+  mutation "spelling is reported beside songs" passed. BruceBaseParser's `mergeCharDiffs()` has the same limit; kept.
+- **Root fact 3 — a card that opens under its cell opens out of sight for a cell low in the window.** The mockup
+  always opened below. Seen in the first screenshot (`scripts/shot-bb-setlist-card.js`): nothing visible. It opens
+  above when only there it is in view.
+- **A mutation that needed a sharper test:** dropping the card from `_OTHER_RICH_TIPS` passed while the test looked
+  for the plain tooltip with the pointer on the card; the pointer has to rest on the CELL for the tooltip's delay.
+- **Existing lists moved:** 12 finds in eight lists named four lines this change rewrote
+  (`check-mutation-finds.py`: 12 stale, then 0).
+- **Tests:** `bb-findings-batch2.spec.js` 29 (6 new); 31 new mutation entries, all failing their test; render B/M
+  1.02, sort 1.03–1.04 (tests/MEASUREMENTS.org).

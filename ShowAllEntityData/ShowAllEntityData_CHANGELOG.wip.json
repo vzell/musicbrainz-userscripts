@@ -1,5 +1,19 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-11-15",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase year pages: the Setlist column is compared with the Setlist tab of each entry's own page, once ▶ Pages has read it. Three new findings: ❌ \"Brucebase setlist: songs differ from the event page\" (a song only on one of the two pages; a medley written as one entry counts), ⚠️ \"… a song is written differently\" (\"TWIST & SHOUT\" against \"TWIST AND SHOUT\") and ⚠️ \"… a set is named differently\" (\"Pre-show jam\" against \"Pre-Show Jam\", or a Soundcheck only one page names). Notes in brackets (\"(with Tom Morello)\") are set aside. No request of its own. In November 2026: 95, 22 and 112 entries.",
+          "A flagged Setlist cell has a card with both setlists side by side: hover it, tap it, or focus it and press Enter. It shows the lines that differ with the song before and after each, the letters that differ marked, \"Show all N songs\" for the whole set, and links to the year page and the event page. Esc closes it.",
+          "Link previews of other sites are read again once after this update (an event page's record keeps its sets as written)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-11-15",
     "sections": [

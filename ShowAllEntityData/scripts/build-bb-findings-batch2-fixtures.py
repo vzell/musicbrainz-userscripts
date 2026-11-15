@@ -22,7 +22,21 @@ six venue pages those events link, whole:
       mediasound-studios-new-york-city-ny two events, "Studio C" between: accepted
       cbs-records-new-york-city-ny        "CBS Records" against "CBS": the mismatch
 
-What scripts/probe-bb-batch2-findings.py found on them (2026-11-13 mirror).
+The setlist comparison (bb-setlist-songs, -spelling, -sections), built as
+batch 1's 1972 fixture is (scripts/build-bb-findings-batch1-fixtures.py, with
+another year and other entries):
+  tests/fixtures/bb-year-1981-findings.html
+      the 1981 year page with four of its entries, the rest cut at its <hr />
+  tests/fixtures/bb-findings/gig_1981-….html
+      those entries' own pages, whole:
+      1981-02-01 Saint Paul   the same songs on both pages
+      1981-03-04 Lexington    "TWIST & SHOUT" against "TWIST AND SHOUT": spelling
+      1981-04-11 Zurich       a Soundcheck only on the year page: songs, sections
+      1981-06-05 London       "ROSALITA (COME OUT TONIGHT) - SWEET SOUL MUSIC" as
+                              one entry on the event page: songs
+
+What scripts/probe-bb-batch2-findings.py and
+scripts/check-bb-setlist-findings.js found on them (2026-11-13 mirror).
 Scripts, noscripts and theme @imports are removed
 (scripts/build-bb-event-fixtures.py's `strip()`); nothing else changes.
 
@@ -63,9 +77,36 @@ def with_note(html, what):
     return re.sub(r'(<!DOCTYPE[^>]*>\s*)', lambda m: m.group(1) + note, html, count=1, flags=re.I)
 
 
+SETLIST_YEAR = '1981'
+SETLIST_KEEP = [
+    'gig:1981-02-01-civic-center-saint-paul-mn',
+    'gig:1981-03-04-rupp-arena-lexington-ky',
+    'gig:1981-04-11-hallenstadion-zurich-switzerland',
+    'gig:1981-06-05-wembley-arena-london-england',
+]
+
+
+def setlist_fixtures():
+    """The 1981 year page cut to four entries, and their pages: batch 1's builder with other entries."""
+    spec = importlib.util.spec_from_file_location('batch1_fixtures', os.path.join(HERE, 'build-bb-findings-batch1-fixtures.py'))
+    mod = importlib.util.module_from_spec(spec)
+    saved = sys.argv
+    sys.argv = [saved[0], MIRROR]
+    try:
+        spec.loader.exec_module(mod)
+    finally:
+        sys.argv = saved
+    mod.YEAR = SETLIST_YEAR
+    mod.KEEP = SETLIST_KEEP
+    mod.note = lambda what: (f'<!-- Built by scripts/build-bb-findings-batch2-fixtures.py from the BruceParser mirror '
+                             f'({os.path.basename(MIRROR)}); {what}; do not edit by hand. -->\n')
+    mod.main()
+
+
 def main():
     """Write the fixtures."""
     strip = _strip()
+    setlist_fixtures()
     for src, dst in WHOLE:
         path = os.path.join(MIRROR, src)
         if not os.path.exists(path):

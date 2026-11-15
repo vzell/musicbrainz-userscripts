@@ -738,3 +738,333 @@ test.describe('Brucebase year table: the entries the year\'s listing lacks (bbp-
         expect(out.n).toBe(27);
     });
 });
+
+// Part 4 (vzell, 2026-11-14 and 2026-11-15), the year page's setlist against
+// the event page's Setlist tab, on the year table's Setlist cell:
+//   bb-setlist-songs    (❌)  a song only on one of the two pages
+//   bb-setlist-spelling (⚠️)  the same songs, one written differently
+//   bb-setlist-sections (⚠️)  the sets are named differently
+// and the card that lists both setlists (the approved mockup,
+// https://claude.ai/artifact/T1D2ghbx9zHHCh8jgfr5g7). The fixture is 1981's
+// year page cut to four entries, with their pages, all real
+// (scripts/build-bb-findings-batch2-fixtures.py):
+//   1981-02-01 Saint Paul  the same songs;
+//   1981-03-04 Lexington   "TWIST & SHOUT" against "TWIST AND SHOUT";
+//   1981-04-11 Zurich      a Soundcheck (HUNGRY HEART) only on the year page;
+//   1981-06-05 London      "ROSALITA (COME OUT TONIGHT) - SWEET SOUL MUSIC" as
+//                          one entry on the event page.
+const Y81_URL = 'https://brucebase.wikidot.com/1981';
+const Y81_FILE = path.join(__dirname, 'bb-year-1981-findings.html');
+
+/**
+ * The 1981 fixture rendered, its event pages served and logged. The venue
+ * and listing checks are off: their requests are parts 2 and 3's matter.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {{ settings?: Object<string, *> }} [opts]
+ * @returns {Promise<string[]>} The pages asked, filled as they come.
+ */
+async function openYear81(page, { settings = {} } = {}) {
+    await page.setViewportSize({ width: 1700, height: 1400 });
+    await page.route(/^https?:\/\//, route => route.abort('blockedbyclient'));
+    await loadUserscriptPage(page, {
+        url: Y81_URL, fixtureFile: Y81_FILE, testMode: true,
+        settingsOverride: {
+            sa_enable_brucebase: true, sa_bb_year_pages: true, sa_foreign_mb_titles: false, sa_foreign_typography: false,
+            sa_findings_bb_venue_mismatch: false, sa_findings_bb_year_unlisted: false, ...settings,
+        },
+    });
+    const asked = [];
+    await page.route(PAGE_RE, (route) => {
+        const key = route.request().url().match(PAGE_RE)[1];
+        asked.push(key);
+        return route.fulfill({ path: path.join(PAGE_DIR, `${key.replace(':', '_')}.html`), contentType: 'text/html; charset=utf-8' });
+    });
+    await page.click(`button[data-label="${BB_YEAR_BUTTON}"]`);
+    await waitForRenderComplete(page, { waitForAutoResize: false });
+    return asked;
+}
+
+/**
+ * The live rows' Setlist cells: the entry's date, what the comparison
+ * fails, the stamps, the paint level, whether the cell takes the focus and
+ * whether its page is read.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<Array<{date: string, check: string, stamps: string[], level: string, tab: boolean, state: string}>>}
+ */
+function setCells(page) {
+    return page.evaluate(() => Array.from(document.querySelectorAll('table.tbl tbody tr')).filter(tr => tr.style.display !== 'none').map((tr) => {
+        const d = tr.querySelector('td > span.mb-bb-set-data');
+        const td = d.parentElement;
+        const st = tr.querySelector('td.mb-bbevp-cell[data-mb-bbevp-col="On stage"]');
+        return {
+            date: tr.querySelector('td > span.mb-bb-ev-data').getAttribute('data-mb-bb-raw-heading').slice(0, 10),
+            check: d.getAttribute('data-mb-bb-set-check') || '', stamps: (td.dataset.mbFindings || '').split(' ').filter(x => x.startsWith('bb-setlist')).sort(),
+            level: td.dataset.mbFinding || '', tab: td.getAttribute('tabindex') === '0', state: st ? st.dataset.mbBbevpState : '',
+        };
+    }));
+}
+
+/**
+ * Presses ▶ Pages, brings every row into view until all four are read, stops.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<void>}
+ */
+async function readAll81(page) {
+    await pagesBtn(page).click();
+    await expect.poll(async () => {
+        await page.evaluate(() => {
+            const td = document.querySelector('table.tbl tbody td.mb-bbevp-cell[data-mb-bbevp-col="On stage"][data-mb-bbevp-state="cold"]');
+            if (td) td.scrollIntoView({ block: 'center' });
+        });
+        return (await setCells(page)).filter(r => r.state !== 'done').length;
+    }, { timeout: 60000 }).toBe(0);
+    await pagesBtn(page).click();
+}
+
+/** The Setlist cell of the entry of a date. */
+const setCell = (page, date) => page.locator('table.tbl tbody tr', { has: page.locator(`td.mb-bb-event-cell a[href*="gig:${date}"]`) }).locator('td:has(> span.mb-bb-set-data)');
+
+/**
+ * What the setlist card shows.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<?object>} null while it is closed.
+ */
+function cardState(page) {
+    return page.evaluate(() => {
+        const c = document.getElementById('mb-bb-setlist-card');
+        if (!c || c.style.display === 'none') return null;
+        const txt = sel => Array.from(c.querySelectorAll(sel), e => e.textContent.replace(/\s+/g, ' ').trim());
+        return {
+            title: txt('h3')[0], sub: txt('.mb-bbsl-sub')[0], pills: txt('.mb-bbsl-pill'), secs: txt('tr.mb-bbsl-sec'), gaps: txt('tr.mb-bbsl-gap'),
+            songRows: c.querySelectorAll('table.mb-bbsl-diff tbody tr:not(.mb-bbsl-sec):not(.mb-bbsl-gap)').length,
+            marks: txt('mark.mb-bbsl-ch'), yOnly: txt('td.mb-bbsl-y-only'), eOnly: txt('td.mb-bbsl-e-only'),
+            button: txt('button')[0], links: Array.from(c.querySelectorAll('.mb-bbsl-actions a'), a => [a.textContent, a.getAttribute('href')]),
+            tip: (() => { const t = document.getElementById('mb-stat-tooltip'); return !!t && t.style.display === 'block'; })(),
+        };
+    });
+}
+
+const SET_AFTER = [
+    { date: '1981-02-01', check: '', stamps: [], level: '', tab: false, state: 'done' },
+    { date: '1981-03-04', check: 'spelling', stamps: ['bb-setlist-spelling'], level: 'warn', tab: true, state: 'done' },
+    { date: '1981-04-11', check: 'songs sections', stamps: ['bb-setlist-sections', 'bb-setlist-songs'], level: 'error', tab: true, state: 'done' },
+    { date: '1981-06-05', check: 'songs', stamps: ['bb-setlist-songs'], level: 'error', tab: true, state: 'done' },
+];
+
+test.describe('Brucebase year table: the setlist against the event page\'s (bbp-parity batch 2)', () => {
+    test('setlists: nothing before ▶ Pages; then songs, spelling and set names are flagged, counted and filtered', async ({ page }) => {
+        const asked = await openYear81(page);
+        expect((await setCells(page)).map(r => [r.date, r.check, r.stamps, r.tab])).toEqual(SET_AFTER.map(r => [r.date, '', [], false]));
+        await page.evaluate(() => new Promise(r => setTimeout(r, 800)));
+        expect(asked).toEqual([]);
+        await readAll81(page);
+        await expect.poll(() => setCells(page)).toEqual(SET_AFTER);
+        expect(asked.length, 'the four event pages, nothing more').toBe(4);
+        expect((await findingRow(page, 'error', 'bb-setlist-songs')).count).toBe(2);
+        expect((await findingRow(page, 'warn', 'bb-setlist-spelling')).count).toBe(1);
+        expect((await findingRow(page, 'warn', 'bb-setlist-sections')).count).toBe(1);
+        const look = await page.evaluate(() => {
+            const of = (token) => {
+                const td = document.querySelector(`span.mb-bb-set-data[data-mb-bb-set-check="${token}"]`).parentElement;
+                return { bg: getComputedStyle(td).backgroundColor, after: getComputedStyle(td, '::after').content, tip: td.getAttribute('title') || '' };
+            };
+            return { spell: of('spelling'), songs: of('songs'), both: of('songs sections') };
+        });
+        expect(look.spell.after).toContain('⚠');
+        expect(look.songs.after).toContain('❌');
+        expect(look.spell.bg).not.toBe(look.songs.bg);
+        expect(look.spell.tip).toContain('1 written differently.');
+        expect(look.both.tip).toContain('1 only on the year page; sets: "Soundcheck", the show on the year page, the show on the event page.');
+        // The filter: the two rows (a re-render from the source rows), then all again.
+        await clickFinding(page, 'bb-setlist-songs');
+        await expect.poll(() => findingRowState(page, 'bb-setlist-songs')).toEqual({ visible: 2, withFinding: 2 });
+        expect((await setCells(page)).map(r => r.date)).toEqual(['1981-04-11', '1981-06-05']);
+        await clickFinding(page, 'bb-setlist-songs');
+        await expect.poll(async () => (await findingRowState(page, null)).visible).toBe(4);
+    });
+
+    test('the setlist card: the differences with their neighbours, every song on demand, the pages\' links; Esc, the pointer and the keyboard', async ({ page }) => {
+        await openYear81(page);
+        await readAll81(page);
+        await expect.poll(() => setCells(page)).toEqual(SET_AFTER);
+        // A cell without a finding opens nothing.
+        await setCell(page, '1981-02-01').hover();
+        await page.evaluate(() => new Promise(r => setTimeout(r, 300)));
+        expect(await cardState(page)).toBeNull();
+        // A song written differently: the line, one song before it, the rest folded.
+        await setCell(page, '1981-03-04').hover();
+        await expect.poll(async () => (await cardState(page) || {}).title).toBe('A song is written differently');
+        let c = await cardState(page);
+        expect(c.sub).toBe('1981-03-04 - RUPP ARENA, LEXINGTON, KY');
+        expect(c.pills).toEqual(['1 written differently', '26 the same']);
+        expect(c.secs).toEqual(['Show']);
+        expect(c.gaps).toEqual(['… 25 songs the same …']);
+        expect(c.songRows).toBe(2);
+        expect(c.marks).toEqual(['&', 'AND']);
+        expect(c.button).toBe('Show all 27 songs');
+        expect(c.links).toEqual([['Edit on the year page', 'https://brucebase.wikidot.com/1981#040381'],
+            ['Open the event page', 'https://brucebase.wikidot.com/gig:1981-03-04-rupp-arena-lexington-ky']]);
+        // The cell's own tooltip (its findings' lines) does not open over the card.
+        await page.mouse.move(...Object.values(await setCell(page, '1981-03-04').evaluate((td) => { const b = td.getBoundingClientRect(); return { x: b.left + 12, y: b.top + 12 }; })));
+        await page.evaluate(() => new Promise(r => setTimeout(r, 1500)));
+        expect((await cardState(page)).tip, 'no second tooltip while the card shows').toBe(false);
+        // The pointer reaches the card (the grace period), and the toggle lists every song.
+        await page.locator('#mb-bb-setlist-card button').hover();
+        await page.evaluate(() => new Promise(r => setTimeout(r, 600)));
+        expect(await cardState(page), 'open while the pointer is on it').not.toBeNull();
+        await page.locator('#mb-bb-setlist-card button').click();
+        c = await cardState(page);
+        expect(c.songRows).toBe(27);
+        expect(c.gaps).toEqual([]);
+        expect(c.button).toBe('Show only the differences');
+        expect(c.tip, 'no second tooltip over the card').toBe(false);
+        await page.keyboard.press('Escape');
+        expect(await cardState(page)).toBeNull();
+        // Songs and set names: the Soundcheck's song only on the year page.
+        await setCell(page, '1981-04-11').hover();
+        await expect.poll(async () => (await cardState(page) || {}).title).toBe('The setlists differ');
+        c = await cardState(page);
+        expect(c.pills.slice(0, 2)).toEqual(['1 only on the year page', 'sets named differently']);
+        expect(c.secs).toEqual(['Soundcheck', 'Show']);
+        expect(c.yOnly).toEqual(['HUNGRY HEART']);
+        expect(c.button).toMatch(/^Show all \d+ songs$/);
+        // The pointer leaves both: closed after the grace period.
+        await page.mouse.move(5, 5);
+        await expect.poll(() => cardState(page), { timeout: 5000 }).toBeNull();
+        // A medley as one entry: one song against it, on both sides.
+        await setCell(page, '1981-06-05').hover();
+        await expect.poll(async () => (await cardState(page) || {}).title).toBe('The setlists differ');
+        c = await cardState(page);
+        expect(c.eOnly).toContain('ROSALITA (COME OUT TONIGHT) - SWEET SOUL MUSIC');
+        expect(c.yOnly).toContain('ROSALITA (COME OUT TONIGHT)');
+        await page.keyboard.press('Escape');
+        await page.mouse.move(5, 5);
+        // The keyboard: a flagged cell takes the focus, Enter opens its card.
+        await setCell(page, '1981-03-04').focus();
+        await page.keyboard.press('Enter');
+        await expect.poll(async () => (await cardState(page) || {}).title).toBe('A song is written differently');
+        expect((await cardState(page)).button, 'differences only again').toBe('Show all 27 songs');
+        // A press elsewhere closes it.
+        await page.mouse.click(5, 5);
+        await expect.poll(() => cardState(page)).toBeNull();
+    });
+
+    test('setlists, the switches: a finding off is not stamped; all three off open no card; the tint off paints nothing', async ({ page }) => {
+        await openYear81(page, { settings: { sa_findings_bb_setlist_songs: false } });
+        await readAll81(page);
+        await expect.poll(async () => (await setCells(page)).map(r => r.stamps)).toEqual([[], ['bb-setlist-spelling'], ['bb-setlist-sections'], []]);
+        expect(await findingRow(page, 'error', 'bb-setlist-songs')).toBeUndefined();
+        // The cell flagged for its set names still has its card; the one with songs only has none.
+        await setCell(page, '1981-06-05').hover();
+        await page.evaluate(() => new Promise(r => setTimeout(r, 300)));
+        expect(await cardState(page)).toBeNull();
+    });
+
+    test('setlists, the other switches and the tint', async ({ page }) => {
+        await openYear81(page, { settings: { sa_findings_bb_setlist_spelling: false, sa_findings_bb_setlist_sections: false, sa_findings_tint_bb_setlist: false } });
+        await readAll81(page);
+        await expect.poll(async () => (await setCells(page)).map(r => [r.stamps, r.level])).toEqual([[[], ''], [[], ''], [['bb-setlist-songs'], ''], [['bb-setlist-songs'], '']]);
+        expect(await findingRow(page, 'warn', 'bb-setlist-spelling')).toBeUndefined();
+        expect(await findingRow(page, 'warn', 'bb-setlist-sections')).toBeUndefined();
+        expect((await findingRow(page, 'error', 'bb-setlist-songs')).count).toBe(2);
+    });
+
+    test('a saved year: the setlist findings and the card come back, and nothing is asked', async ({ context, browser }) => {
+        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sa-bb-setlist-disk-'));
+        const fresh = await browser.newContext();
+        try {
+            const source = await context.newPage();
+            await openYear81(source);
+            await readAll81(source);
+            await expect.poll(() => setCells(source)).toEqual(SET_AFTER);
+            const downloadPromise = source.waitForEvent('download', { timeout: 60000 });
+            await clickToolbarItem(source, '#mb-save-to-disk-btn');
+            await source.locator('#sa-sd-save-confirm').waitFor({ state: 'visible', timeout: 15000 });
+            await source.click('#sa-sd-save-confirm');
+            const saved = path.join(tmpDir, 'bb-year.json.gz');
+            await (await downloadPromise).saveAs(saved);
+            await source.close();
+
+            const page = await fresh.newPage();
+            await page.setViewportSize({ width: 1700, height: 1400 });
+            await page.route(/^https?:\/\//, route => route.abort('blockedbyclient'));
+            await loadUserscriptPage(page, { url: Y81_URL, fixtureFile: Y81_FILE, testMode: true, settingsOverride: { sa_enable_brucebase: true, sa_bb_year_pages: true } });
+            const asked = [];
+            await page.route(PAGE_RE, (route) => { asked.push(route.request().url()); return route.abort('blockedbyclient'); });
+            await clickToolbarItem(page, '#mb-load-from-disk-btn');
+            await page.locator('input[type="file"][accept*="json"]').setInputFiles(saved);
+            const renderBtn = page.locator('#sa-render-no-filter-confirm');
+            await renderBtn.waitFor({ state: 'attached', timeout: 15000 });
+            await renderBtn.evaluate(el => el.click());
+            await waitForRenderComplete(page, { waitForAutoResize: false });
+            await expect.poll(async () => (await setCells(page)).map(r => [r.date, r.check, r.stamps, r.level, r.tab]))
+                .toEqual(SET_AFTER.map(r => [r.date, r.check, r.stamps, r.level, r.tab]));
+            await setCell(page, '1981-03-04').hover();
+            await expect.poll(async () => (await cardState(page) || {}).marks).toEqual(['&', 'AND']);
+            expect(asked).toEqual([]);
+        } finally {
+            await fresh.close();
+            fs.rmSync(tmpDir, { recursive: true, force: true });
+        }
+    });
+
+    test('setlists, the rule and the readers, pure', async ({ page }) => {
+        await openYear81(page);
+        const year = fs.readFileSync(Y81_FILE, 'utf8');
+        const zurich = fs.readFileSync(path.join(PAGE_DIR, 'gig_1981-04-11-hallenstadion-zurich-switzerland.html'), 'utf8');
+        const out = await page.evaluate(({ y, z }) => {
+            const c = (a, b) => window.__saTest.bbSetlistCheck(a, b).join(' ');
+            const one = (...s) => [{ l: '', s }];
+            const sets = window.__saTest.bbYearSets(y);
+            const zy = sets.find(e => /1981-04-11/.test(e.href)).sets;
+            const ze = window.__saTest.bbSetlistRaw(z);
+            return {
+                checks: [
+                    c(one('BADLANDS', 'FIRE'), one('BADLANDS', 'FIRE')),
+                    // A note in brackets with a lowercase letter is set aside; capitals in brackets are the title.
+                    c(one('BADLANDS (with Tom Morello)', 'ROSALITA (COME OUT TONIGHT)'), one('BADLANDS', 'ROSALITA (COME OUT TONIGHT)')),
+                    c(one('BADLANDS', 'ROSALITA'), one('BADLANDS', 'ROSALITA (COME OUT TONIGHT)')),
+                    // A medley as one entry against one song: songs, not spelling.
+                    c(one('CADILLAC RANCH'), one('NO MONEY DOWN - CADILLAC RANCH')),
+                    // Case and punctuation: written differently.
+                    c(one('TWIST & SHOUT'), one('TWIST AND SHOUT')),
+                    c(one('82ND STREET?'), one('82ND Street?')),
+                    // Prose: dropped on the year page; on the event page too, unless the year page has it in other case.
+                    c(one('BADLANDS', 'power failure interruption', 'FIRE'), one('BADLANDS', 'FIRE')),
+                    c(one('BADLANDS'), one('BADLANDS', 'blues improvisation')),
+                    // One side without songs.
+                    c([], one('BADLANDS')),
+                    c(one('BADLANDS'), []),
+                    c([], []),
+                    // "A, B, and/or C" reads as a medley.
+                    c(one('GLORIA, LOUIE LOUIE, and/or SHOUT'), one('GLORIA - LOUIE LOUIE - SHOUT')),
+                    // Set names: as written; "Show" is the set without a name; a set without songs does not count.
+                    c([{ l: 'Pre-show jam', s: ['FIRE'] }], [{ l: 'Pre-Show Jam', s: ['FIRE'] }]),
+                    c([{ l: 'Soundcheck', s: ['FIRE'] }, { l: '', s: ['BADLANDS'] }], [{ l: 'Soundcheck', s: ['FIRE'] }, { l: 'Show', s: ['BADLANDS'] }]),
+                    c([{ l: 'Soundcheck', s: ['FIRE'] }, { l: '', s: ['BADLANDS'] }], [{ l: '', s: ['FIRE', 'BADLANDS'] }]),
+                    c([{ l: 'Soundcheck', s: ['no details known'] }, { l: '', s: ['BADLANDS'] }], [{ l: '', s: ['BADLANDS'] }]),
+                    c([{ l: 'Pre-show', s: ['FIRE'] }], [{ l: 'Pre-Show', s: ['FIRE', 'BADLANDS'] }]),
+                    // A song missing and another written differently: songs alone, never both.
+                    c(one('FIRE', 'TWIST & SHOUT'), one('TWIST AND SHOUT')),
+                    // "…" for songs not known is no song.
+                    c(one('…', 'BADLANDS'), one('BADLANDS')),
+                ],
+                zy: zy.map(s => [s.l, s.s.length, s.s[0]]), ze: ze.map(s => [s.l, s.s.length]),
+                noTab: window.__saTest.bbSetlistRaw('<html><body><div id="page-content"><p>No tabs here.</p></div></body></html>'),
+                hrefs: sets.map(e => e.href.slice(5, 15)),
+            };
+        }, { y: year, z: zurich });
+        expect(out.checks).toEqual(['', '', 'songs', 'songs', 'spelling', 'spelling', '', '', 'songs', 'songs', '', '',
+            'sections', '', 'sections', '', 'songs sections', 'songs', '']);
+        expect(out.zy[0]).toEqual(['Soundcheck', 1, 'HUNGRY HEART (Instrumental)']);
+        expect(out.zy.length).toBe(2);
+        expect(out.ze.length).toBe(1);
+        expect(out.ze[0][0]).toBe('');
+        expect(out.noTab).toBeNull();
+        expect(out.hrefs).toEqual(['1981-02-01', '1981-03-04', '1981-04-11', '1981-06-05']);
+    });
+});

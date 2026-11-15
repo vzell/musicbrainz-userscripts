@@ -850,6 +850,8 @@ back).
 | ⚠️     | Brucebase listing entry with a wrong link to the year page      | Brucebase year listing: Event               |
 | ⚠️     | Brucebase year entry missing from the year's listing (once read) | Brucebase year: Event                      |
 | ⚠️     | Brucebase event page names its venue differently (once read)    | Brucebase year: Venue                       |
+| ⚠️     | Brucebase setlist: a song is written differently (once read)    | Brucebase year: Setlist                     |
+| ⚠️     | Brucebase setlist: a set is named differently (once read)       | Brucebase year: Setlist                     |
 | ⚠️     | Brucebase title with two blanks or a blank before a comma       | Brucebase year and year listing: Event      |
 | ⚠️     | Pending edits                                                   | any column                                  |
 | ⚠️     | Live credit without a date                                      | Release tracklist: credit columns           |
@@ -858,6 +860,7 @@ back).
 | ❌    | Brucebase event page links another entry of the year page (once read) | Brucebase year: Event                 |
 | ❌    | Brucebase anchor used by two entries of the year page                 | Brucebase year: Event                 |
 | ❌    | Brucebase listing entry named differently from the year page          | Brucebase year listing: Event         |
+| ❌    | Brucebase setlist: songs differ from the event page (once read)       | Brucebase year: Setlist               |
 | ❌    | Double-encoded text (springsteenlyrics.com)                     | springsteenlyrics.com: any column (the lyrics index: once the song's page was read) |
 | ❌    | Track and recording length far apart                            | Release tracklist: Length, Recording length |
 | ❌    | Video on a medium that cannot carry video                       | Release tracklist: Video                    |
@@ -4068,7 +4071,17 @@ entry, with these columns:
   entry ("1977-07-29 - Atlantic Studios" is missing there). Each
   check has its own switch in ⚙️ Settings → ⚠️ Findings; with the venue
   check off, no venue page is read, and with the listing check off, no
-  listing. A year saved with **Save to Disk**
+  listing. The **Setlist** cell is compared with the Setlist tab of the
+  entry's page, with no request of its own: ❌ when a song is only on one
+  of the two pages (a medley written as one entry counts), ⚠️ when the
+  songs are the same but one is written differently ("TWIST & SHOUT"
+  against "TWIST AND SHOUT"), ⚠️ when the sets are named differently
+  ("Pre-show jam" against "Pre-Show Jam", or a Soundcheck only one page
+  names). Notes in brackets ("(with Tom Morello)") are set aside. Hover a
+  flagged cell (or tap it, or focus it and press Enter) for a card with
+  both setlists side by side: the lines that differ with their
+  neighbours, **Show all N songs** for the whole set, and links to both
+  pages; Esc closes it. A year saved with **Save to Disk**
   comes back with all of them, the MB-Event column's answers and the pages
   read so far included, and asks nothing again.
 - **Soundcheck:** the soundcheck, one song per row.

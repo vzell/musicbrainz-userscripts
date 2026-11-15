@@ -225,7 +225,7 @@
         "why": "The CBS row has no other late finding: the venue check alone must queue it.",
         "edits": [
             {
-                "find": "            if (was !== now || checksChanged || venueChanged) {",
+                "find": "            if (was !== now || checksChanged || venueChanged || setChanged) {",
                 "replace": "            if (was !== now || checksChanged) {"
             }
         ],
@@ -517,6 +517,409 @@
         ],
         "spec": "tests/fixtures/bb-findings-batch2.spec.js",
         "grep": "a saved year: the unlisted",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-setlist-songs: the detector never matches",
+        "why": "The finding reads the Setlist cell's check.",
+        "edits": [
+            {
+                "find": "            test: cell => _bbSetHasCheck(cell, 'songs'),",
+                "replace": "            test: () => false,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "setlists: nothing before",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-setlist-spelling: the detector never matches",
+        "why": "The finding reads the Setlist cell's check.",
+        "edits": [
+            {
+                "find": "            test: cell => _bbSetHasCheck(cell, 'spelling'),",
+                "replace": "            test: () => false,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "setlists: nothing before",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-setlist-sections: the detector never matches",
+        "why": "The finding reads the Setlist cell's check.",
+        "edits": [
+            {
+                "find": "            test: cell => _bbSetHasCheck(cell, 'sections'),",
+                "replace": "            test: () => false,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "setlists: nothing before",
+        "expect": "fail"
+    },
+    {
+        "name": "the event page's sets are not written to the Setlist cell",
+        "why": "_bbEvpRenderCell() hands the page's sets to the row's Setlist carrier.",
+        "edits": [
+            {
+                "find": "            const setChanged = setData ? _bbSetlistCheckWrite(setData, rec.view) : false;",
+                "replace": "            const setChanged = false;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "setlists: nothing before",
+        "expect": "fail"
+    },
+    {
+        "name": "the setlist findings are not stamped when a row is read",
+        "why": "A changed check queues the row's re-stamp.",
+        "edits": [
+            {
+                "find": "            if (was !== now || checksChanged || venueChanged || setChanged) {",
+                "replace": "            if (was !== now || checksChanged || venueChanged) {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "setlists, the other switches",
+        "expect": "fail"
+    },
+    {
+        "name": "the year row keeps no sets of its own",
+        "why": "The row's carrier holds the year page's sets as written.",
+        "edits": [
+            {
+                "find": "            if (s.songs.length) rawSets.push({ l: s.label, s: s.songs.map(f => _bbText(f)) });",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "setlists: nothing before",
+        "expect": "fail"
+    },
+    {
+        "name": "the event reader takes no song",
+        "why": "_bbSetlistRaw(): every item of a top-level list is a song.",
+        "edits": [
+            {
+                "find": "                if (!curList) { curList = { l: label, s: [] }; lists.push(curList); }\n                curList.s.push(raw);",
+                "replace": "                if (!curList) { curList = { l: label, s: [] }; lists.push(curList); }"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "setlists: nothing before",
+        "expect": "fail"
+    },
+    {
+        "name": "a note in brackets is compared",
+        "why": "_bbSetSongKey(): a bracket holding a lowercase letter is set aside.",
+        "edits": [
+            {
+                "find": "        let t = String(raw || '').replace(/\\([^()]*[a-z][^()]*\\)/g, '').replace(/\\s+/g, ' ').trim();",
+                "replace": "        let t = String(raw || '').replace(/\\s+/g, ' ').trim();"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "setlists, the rule and the readers",
+        "expect": "fail"
+    },
+    {
+        "name": "a year page's prose is a song",
+        "why": "_bbSetSongKey(): a YEAR token with two lowercase letters in a row is prose.",
+        "edits": [
+            {
+                "find": "        return year && /[a-z]{2}/.test(t) ? '' : t;",
+                "replace": "        return t;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "setlists, the rule and the readers",
+        "expect": "fail"
+    },
+    {
+        "name": "an event page's prose is a song",
+        "why": "_bbSetlistDiff(): an event entry in lowercase words counts only when the year page has it in other case.",
+        "edits": [
+            {
+                "find": "                    if (!k || (known && /[a-z]{2}/.test(k) && !known.has(k.toUpperCase()))) return;",
+                "replace": "                    if (!k) return;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "setlists, the rule and the readers",
+        "expect": "fail"
+    },
+    {
+        "name": "no pair is one song written differently",
+        "why": "_bbSetlistDiff(): two neighbours within 30 % of each other are one song written differently.",
+        "edits": [
+            {
+                "find": "                if (_bbEditDistance(ys.y.toUpperCase(), ds.d.toUpperCase()) <= 0.3 * Math.max(ys.y.length, ds.d.length)) {",
+                "replace": "                if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "setlists, the rule and the readers",
+        "expect": "fail"
+    },
+    {
+        "name": "\"Show\" is a set name",
+        "why": "_bbSetLabel(): \"Show\" is the set without a name.",
+        "edits": [
+            {
+                "find": "        return /^show$/i.test(t) ? '' : t;",
+                "replace": "        return t;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "setlists, the rule and the readers",
+        "expect": "fail"
+    },
+    {
+        "name": "set names are not compared",
+        "why": "_bbSetlistDiff(): the names of the sets that have songs.",
+        "edits": [
+            {
+                "find": "            sections: Y.labels.join('\\n') !== D.labels.join('\\n'), yLabels: Y.labels, dLabels: D.labels,",
+                "replace": "            sections: false, yLabels: Y.labels, dLabels: D.labels,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "setlists, the rule and the readers",
+        "expect": "fail"
+    },
+    {
+        "name": "spelling is reported beside songs",
+        "why": "_bbSetlistCheck(): songs, or else spelling.",
+        "edits": [
+            {
+                "find": "        else if (df.spell) out.push('spelling');",
+                "replace": "        if (df.spell) out.push('spelling');"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "setlists, the rule and the readers",
+        "expect": "fail"
+    },
+    {
+        "name": "the card opens for a cell without a setlist finding",
+        "why": "_bbSetCardCellOf(): only a cell stamped with a setlist finding.",
+        "edits": [
+            {
+                "find": "        if (!td || !/(?:^| )bb-setlist-/.test(td.dataset.mbFindings || '')) return null;",
+                "replace": "        if (!td) return null;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "setlists, the switches",
+        "expect": "fail"
+    },
+    {
+        "name": "the card lists every song at once",
+        "why": "The card shows the lines that differ with one song before and after; the rest on demand.",
+        "edits": [
+            {
+                "find": "        const keep = lines.map((x, k) => _bbSetCard.all || [-1, 0, 1].some(o => lines[k + o] && lines[k + o].t !== 'same'));",
+                "replace": "        const keep = lines.map(() => true);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "the setlist card: the differences",
+        "expect": "fail"
+    },
+    {
+        "name": "the card's toggle does nothing",
+        "why": "\"Show all N songs\" redraws the card with every song.",
+        "edits": [
+            {
+                "find": "            _bbSetCard.all = !_bbSetCard.all;\n            card.innerHTML = _bbSetCardHtml(_bbSetCard.cell);",
+                "replace": "            card.innerHTML = _bbSetCardHtml(_bbSetCard.cell);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "the setlist card: the differences",
+        "expect": "fail"
+    },
+    {
+        "name": "the card does not mark the letters that differ",
+        "why": "_bbSetCardMarks(): what differs between the two spellings is marked.",
+        "edits": [
+            {
+                "find": "        return _mbttEscape(a.slice(0, p)) + `<mark class=\"mb-bbsl-ch\">${mid ? _mbttEscape(mid) : '&#8202;'}</mark>` + _mbttEscape(a.slice(a.length - e));",
+                "replace": "        return _mbttEscape(a);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "the setlist card: the differences",
+        "expect": "fail"
+    },
+    {
+        "name": "the card closes while the pointer is on it",
+        "why": "The card keeps open while the pointer is on it.",
+        "edits": [
+            {
+                "find": "        card.addEventListener('mouseenter', () => clearTimeout(_bbSetCard.timer));",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "the setlist card: the differences",
+        "expect": "fail"
+    },
+    {
+        "name": "the card stays when the pointer leaves",
+        "why": "Leaving the cell closes the card after the grace period.",
+        "edits": [
+            {
+                "find": "            if (td && td === _bbSetCard.cell && !(e.relatedTarget instanceof Node && td.contains(e.relatedTarget))) _bbSetCardLater();",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "the setlist card: the differences",
+        "expect": "fail"
+    },
+    {
+        "name": "Esc does not close the card",
+        "why": "Esc closes the card.",
+        "edits": [
+            {
+                "find": "            if (e.key === 'Escape' && _bbSetCard.cell) {\n                _bbSetCardHide();\n                return;\n            }",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "the setlist card: the differences",
+        "expect": "fail"
+    },
+    {
+        "name": "Enter on a flagged cell opens no card",
+        "why": "A focused flagged cell opens its card on Enter.",
+        "edits": [
+            {
+                "find": "            e.preventDefault();\n            _bbSetCardShow(td);\n        });\n        document.addEventListener('pointerdown', (e) => {",
+                "replace": "            e.preventDefault();\n        });\n        document.addEventListener('pointerdown', (e) => {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "the setlist card: the differences",
+        "expect": "fail"
+    },
+    {
+        "name": "a press elsewhere leaves the card open",
+        "why": "A press outside the card and its cell closes it.",
+        "edits": [
+            {
+                "find": "            if (e.target.closest('#mb-bb-setlist-card') || _bbSetCardCellOf(e.target) === _bbSetCard.cell) return;\n            _bbSetCardHide();",
+                "replace": "            if (e.target.closest('#mb-bb-setlist-card') || _bbSetCardCellOf(e.target) === _bbSetCard.cell) return;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "the setlist card: the differences",
+        "expect": "fail"
+    },
+    {
+        "name": "the findings' tooltip shows over the card",
+        "why": "The card is one of the rich tips that rule out the plain tooltip.",
+        "edits": [
+            {
+                "find": ", 'mb-dp-peek', 'mb-async-pop', 'mb-bb-setlist-card'];",
+                "replace": ", 'mb-dp-peek', 'mb-async-pop'];"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "the setlist card: the differences",
+        "expect": "fail"
+    },
+    {
+        "name": "a flagged cell cannot take the focus",
+        "why": "_bbSetlistCheckWrite(): a flagged cell gets tabindex 0.",
+        "edits": [
+            {
+                "find": "            if (now) d.parentElement.setAttribute('tabindex', '0');",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "setlists: nothing before",
+        "expect": "fail"
+    },
+    {
+        "name": "a saved flagged cell cannot take the focus",
+        "why": "_bbRestoreDiskCell(): the Setlist cell's tabindex comes back.",
+        "edits": [
+            {
+                "find": "            if (td.querySelector(':scope > span.mb-bb-set-data[data-mb-bb-set-check]')) td.setAttribute('tabindex', '0');",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "a saved year: the setlist",
+        "expect": "fail"
+    },
+    {
+        "name": "the setlist tint setting is ignored",
+        "why": "sa_findings_tint_bb_setlist off: no tint.",
+        "edits": [
+            {
+                "find": "            test: cell => _bbSetHasCheck(cell, 'songs'),\n            detail: cell => _bbSetDetail(cell),\n            tint: _findingTintSetting('sa_findings_tint_bb_setlist'),",
+                "replace": "            test: cell => _bbSetHasCheck(cell, 'songs'),\n            detail: cell => _bbSetDetail(cell),\n            tint: () => true,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "setlists, the other switches",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-setlist-songs' setting is ignored",
+        "why": "sa_findings_bb_setlist_songs off: no finding.",
+        "edits": [
+            {
+                "find": "            enabled: () => !!_isBbHost && Lib.settings.sa_findings_bb_setlist_songs !== false,",
+                "replace": "            enabled: () => !!_isBbHost,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "setlists, the switches",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-setlist-spelling's setting is ignored",
+        "why": "sa_findings_bb_setlist_spelling off: no finding.",
+        "edits": [
+            {
+                "find": "            enabled: () => !!_isBbHost && Lib.settings.sa_findings_bb_setlist_spelling !== false,",
+                "replace": "            enabled: () => !!_isBbHost,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "setlists, the other switches",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-setlist-sections' setting is ignored",
+        "why": "sa_findings_bb_setlist_sections off: no finding.",
+        "edits": [
+            {
+                "find": "            enabled: () => !!_isBbHost && Lib.settings.sa_findings_bb_setlist_sections !== false,",
+                "replace": "            enabled: () => !!_isBbHost,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "setlists, the other switches",
+        "expect": "fail"
+    },
+    {
+        "name": "a placeholder without a letter is a song",
+        "why": "_bbSetSongKey(): \"…\" stands for songs not known.",
+        "edits": [
+            {
+                "find": "        if (!/[A-Za-z0-9À-ÿ]/.test(t)) return '';",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch2.spec.js",
+        "grep": "setlists, the rule and the readers",
         "expect": "fail"
     }
 ]

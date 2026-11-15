@@ -147,8 +147,8 @@
         "why": "One box at a time: while the card shows, #mb-stat-tooltip shows no card of the same link (_OTHER_RICH_TIPS).",
         "edits": [
             {
-                "find": "'mb-rel-tooltip', 'mb-dp-peek', 'mb-async-pop'];",
-                "replace": "'mb-rel-tooltip', 'mb-async-pop'];"
+                "find": "'mb-rel-tooltip', 'mb-dp-peek', 'mb-async-pop', 'mb-bb-setlist-card'];",
+                "replace": "'mb-rel-tooltip', 'mb-async-pop', 'mb-bb-setlist-card'];"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",

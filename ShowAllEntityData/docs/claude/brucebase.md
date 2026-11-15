@@ -1845,8 +1845,10 @@ tint and the tooltip card are the findings' own.
 
 org/bbp-parity.org, Track A batch 2; vzell's decisions of 2026-11-14 (venue
 pages with ▶ Pages; an extra descriptive part is no finding; setlists ❌
-songs / ⚠️ spelling). Parts 1 and 2 are built; the setlist comparison
-(part 3) waits for the mockup (https://claude.ai/artifact/T1D2ghbx9zHHCh8jgfr5g7).
+songs / ⚠️ spelling) and of 2026-11-15 (a medley against one song is an
+error; set names are a third finding now; the card shows the differences
+by default and every song on demand). The setlist card's approved mockup:
+https://claude.ai/artifact/T1D2ghbx9zHHCh8jgfr5g7.
 
 | Finding             | Level | Table        | Cell  | Rule                                                                                      |
 |---------------------|-------|--------------|-------|-------------------------------------------------------------------------------------------|
@@ -1854,6 +1856,9 @@ songs / ⚠️ spelling). Parts 1 and 2 are built; the setlist comparison
 | `bb-list-anchor`    | ⚠️    | bb-year-list | Event | the anchor is not the label date's DDMMYY, the link names a year page not covering the year, or the year page has no such anchor |
 | `bb-venue-mismatch` | ⚠️    | bb-year      | Venue | the venue part of the event page's title ≠ the venue page's title, after the two accepted cases |
 | `bb-year-unlisted`  | ⚠️    | bb-year      | Event | no line of the year's listing links the entry's anchor (vzell, 2026-11-15) |
+| `bb-setlist-songs`  | ❌    | bb-year      | Setlist | a song only on the year page, or only on the event page's Setlist tab |
+| `bb-setlist-spelling` | ⚠️  | bb-year      | Setlist | the same songs, one or more written differently (never beside `songs`) |
+| `bb-setlist-sections` | ⚠️  | bb-year      | Setlist | the names of the sets that have songs differ, in number or as written |
 
 - **One year page answers a whole year** (`_bbListApplyYear()`):
   `_bbEvpPageUrl()` already reads a listing row's year page
@@ -1949,6 +1954,71 @@ songs / ⚠️ spelling). Parts 1 and 2 are built; the setlist comparison
   `scripts/mutations/bb-findings-batch2.json` (28; one `expect: pass`).
   `bb-year-unlisted` adds 8 tests on 2011's year page with its listing
   (23 in all) and 12 mutations (40), all failing their test.
+
+### The setlist comparison (batch 2 part 3, 2026-11-15)
+
+BruceBaseParser's YEAR-vs-DETAIL setlist check (its doc/SETLIST.md).
+
+- **Both sides are sets as written**, `[{l: label, s: [song, …]}]`:
+  - the year page's from the row's build (`_bbYearBuildRow()`:
+    `_bbSplitSet()`'s songs as text, BEFORE a label tag is added and the
+    titles are restyled; the Soundcheck paragraph too), on the Setlist
+    cell's carrier `span.mb-bb-set-data[data-mb-bb-set-year]` — only for
+    an entry with a page of its own;
+  - the event page's from `_bbSetlistRaw()` (the previews' record field
+    `bbSetlistRaw`, null without a Setlist tab; `_DP_PARSER_VERSION` 32,
+    so every stored preview of a foreign host is read once more): a
+    paragraph that is one `<strong>` (alone or with `<span>`s) names the
+    set, a top-level list item is a song — its `/song:` links joined with
+    " - " (a medley), else its text without `<span>` notes; a page
+    without any list has its songs as one-link paragraphs (1974).
+- **The rule** (`_bbSetSongKey()`, `_bbSetlistDiff()`,
+  `_bbSetlistCheck()`): a bracket holding a lowercase letter is a note
+  and set aside; "A, B, and/or C" reads "A - B - C"; a token without a
+  letter or digit ("…") is no song; a year token with two lowercase
+  letters in a row is prose; an event entry like that counts only when
+  the year page has it in other case ("82ND Street?"). The songs of all
+  sets in order are aligned by their longest common run; a year-only
+  song NEXT TO an event-only song, within 30 % of the longer one's
+  length (case set aside), is one song written differently. `songs`: any
+  song left on one side (a medley against one song is that; vzell:
+  error). `spelling`: only when no song is left over. `sections`: the
+  names of the sets that have songs ("Show" is the set without a name),
+  compared as written and by number. An event page without a Setlist tab
+  is not compared (638 of 5,016).
+- **No request**: the event page is the one ▶ Pages reads anyway.
+- **The card** (`#mb-bb-setlist-card`, `_bbSetCardHtml()`, `_bbSetCardInit()`;
+  the approved mockup): hover, a click or tap, or Enter on a focused
+  flagged cell opens it under the cell (above it when only there it is
+  in view: the mockup always opened below, and a cell low in the window
+  opened its card out of sight); the pointer can reach it (350 ms); Esc,
+  leaving, or a press elsewhere closes it. Pills for what differs, both
+  setlists side by side with a row per set, only the lines that differ
+  with one song before and after and "… N songs the same …" between,
+  "Show all N songs" for the whole set (vzell: the full set must be
+  possible), the letters that differ marked, links to the year page's
+  anchor and the event page. Nothing was added to the event window.
+- **Over the mirror** (`node scripts/check-bb-setlist-findings.js
+  FLAGGED.json`: the SHIPPED readers and rule in Chromium on every entry;
+  Env: 2026-11-15T02:50+01:00 · petri · Playwright Chromium
+  151.0.7922.34, GM stubs · mirror bb/2026-11-13): 4,378 entries
+  compared, 4,164 equal; `songs` 95, `spelling` 22, `sections` 112 (a
+  name written differently 74, another number of sets 23, case only 15),
+  214 events in all. 207 of them are in BruceParser's
+  `setlist-differences.txt` (342 there). Its other 135 differ only in
+  what this rule sets aside on purpose: notes in brackets ("(multiple
+  takes)"), prose in the year page's set line, "…". The 7 only here are
+  real (1992-06-15: a Soundcheck only on the event page; 1999-04-19:
+  "LION'S DEN (?)"). Against the Python probe's simpler readers: the
+  same 22 `spelling`, 94 of its 112 `songs`; its other 18 are prose
+  entries, "…" and labelled paragraphs it misread (1977-12-31).
+- **Render cost** (tests/MEASUREMENTS.org, 2026-11-15): B/M 1.02 render,
+  1.03–1.04 sort on 1985, inside each arm's range: the row keeps its sets
+  a second time, as text.
+- **Tests**: 6 more in `bb-findings-batch2.spec.js` (29) on 1981's year
+  page cut to four entries, with their pages; 31 mutation entries, all
+  failing their test. `scripts/shot-bb-setlist-card.js` shoots the card
+  for a look beside the mockup.
 
 ## Show links on Brucebase's own pages (Phase 8, 2026-11-11)
 
