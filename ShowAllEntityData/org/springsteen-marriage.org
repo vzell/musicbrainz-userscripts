@@ -21,7 +21,9 @@ Plan for pickup on another host.
 - *vzell, 2026-11-15 afternoon:* "Everything tested OK"; =bb-year-unlisted= is an ERROR, not a warning; "merge".
 - *Next:* a reload for the ▶ Pages cells as the Relationships column has (vzell, 2026-11-15: one row by a click on
   its cell; the whole table forgets its kept pages and reads each again as it scrolls into view; no mockup), on a
-  branch of its own. After that batch 3 of the matrix (the expected tags). The plan is =~/.claude/plans/curried-bouncing-nygaard.md=. By vzell, in BruceParser: a full =bbp.sh= run and the =dc.sh= timing with 4 jobs.
+  branch of its own. After that batch 3 of the matrix (the expected tags).
+- *The reload is built on =feat/bb-pages-reload=, pushed, NOT merged:* a read row's ⟳ and "Read every row again" in
+  the ▶ Pages progress card. It waits for vzell's browser check. No merge without vzell. The plan is =~/.claude/plans/curried-bouncing-nygaard.md=. By vzell, in BruceParser: a full =bbp.sh= run and the =dc.sh= timing with 4 jobs.
 
 * Status at the end of the session of 2026-11-14 (01:40 CET)
 

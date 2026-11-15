@@ -29629,3 +29629,21 @@ Env: 2026-11-15T03:00+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1
   "Pages 0 of 300" after 5 s. Not this change's code (the tag reader); alone it passed 30 of 30 with
   `--repeat-each 3` right after (15:38 CET), and it passed in both full runs of the night. Taken as a timing
   failure under the full run's load; first seen here, so watch for it.
+
+## 2026-11-15 — Brucebase ▶ Pages: reading a row, or every row, again (feat/bb-pages-reload)
+Env: 2026-11-15T16:01:59+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright Chromium 151.0.7922.34 (chromium-fixtures), no Tampermonkey (GM stubs)
+- **Why:** vzell, after batch 2's browser check: the Relationships column can reload one cell or the whole table; the
+  ▶ Pages columns could only retry a FAILED row. (His warning-instead-of-error on petri was an older installed copy
+  of the script, not a kept page: a finding's level is code, nothing stored carries it.)
+- **What:** a read row's ⟳ (`button.mb-bbevp-reload` in the On stage cell, `_bbEvpReloadRow()`) and "Read every row
+  again" in the job card (`_bbEvpReloadAll()`). Marks in `_bbEvp.again` make `_bbEvpPump()` call `_dpGet()` with
+  `force`; `_extBbYear()` and `_extBbYearList()` got a `force` argument. Rules: docs/claude/brucebase.md, "Reading
+  again". vzell's decisions: the whole table is read again row by row as it comes into view; no mockup.
+- **Limits, by design:** the marks last for the page's visit; stored copies are replaced on re-read, not deleted. A
+  year saved to disk before this change has no ⟳ in its rows until they are read again ("Read every row again" works).
+  A reload that fails leaves the row "⟳ not read" with the findings of the earlier read.
+- **A wrong test first:** the spec's "changed page" signal used a row that already had `bb-name-mismatch`; and the
+  venue asked after the swap is the one the NEW page names. Three older mutation finds named lines this change
+  rewrote (`check-mutation-finds.py`: 3 stale, then 0).
+- **Tests:** `bb-pages-reload.spec.js` 5; `bb-pages-reload.json` 18 mutations, all failing their test; `npm run
+  test:full` on petri at `edd3d590`: 16:01:59–16:21:56 CET, 3,143 passed, 0 failed.
