@@ -479,6 +479,55 @@ stale here or missing from the mirror at script parity, because the Tampermonkey
 - Every DOM/rendering fix must be accompanied by a jsdom or Playwright regression test that fails before the fix and passes after.
 - ESLint is report-only (`eslint.config.js`, `tests/README.org` section "Lint"). Before committing, run `python3 scripts/lint-summary.py --check`: a change must not raise any (file, rule) count above `tests/lint-baseline.json`. After a fix lowers one, rewrite the baseline with `--write` in the same commit. Never weaken a rule to make a count fit.
 
+## Working rules (vzell's standing preferences, added 2026-11-15)
+
+These were in Claude's memory on one machine only; vzell works on three
+(`vzell-lap`, `petri`, `NB-3641`), so they live here.
+
+1. **Doc formatting is vzell's.** He hand-aligns the tables of `.md` and
+   `.org` files. Re-read a doc right before editing it, edit in place with
+   Edit, never reflow or reformat a region you were not asked to change. Pad
+   every cell of a NEW table to its column's widest entry. Commit his own
+   hand edits together with the session's work.
+2. **New visible UI: a mockup first.** Publish an interactive HTML mockup (a
+   private Artifact in the "Liner notes" look), with its open questions
+   numbered inside and a recommendation each, and wait for approval. Build
+   exactly what was approved and name every deviation. A mockup that names a
+   wiki's members keeps its HTML source in `debug/`, never in the repo.
+   Record the link in the plan and the topic doc.
+3. **A long run writes to a log.** Spec runs, mutation checks and
+   measurements send their full output to a log file in the scratchpad;
+   grep or tail the finished log. Never pipe a live run through `head` or
+   `grep`: the closed pipe stalls or kills the run.
+4. **Warn before a mutation run.** `scripts/mutation-check.py` plants
+   defects into the live `ShowAllEntityData.user.js`, which vzell's
+   Tampermonkey may load. Say so in one line before starting. Every entry
+   names one test (`grep`); a guard no spec can see is `"expect": "pass"`
+   with the reason.
+5. **Per-phase test scope.** In a multi-phase feature, run only the phase's
+   new or changed specs and its mutation list; the wide run (`test:full`)
+   comes after a few phases and before any merge. Name the deferred run in
+   the phase's notes.
+6. **Probe the whole page family.** Before writing specs for a converter or
+   reader of another site, run it over EVERY page of the family in the
+   mirror, not a sample. The probe script goes under `scripts/`, its output
+   under `debug/`, the summary with an Env stamp into the notes.
+7. **The Brucebase mirror.** `~/git/scripts/BruceParser/bb/latest`: check
+   `ls -la` first. On `petri` it is a local run of 2026-11-13 (42,531 pages,
+   fast); on other hosts it may still point to the NAS copy
+   (`/mnt/share/brucebase/…`), which is older and slow (copy samples to
+   `debug/bb-mirror/<kind>/` first). Say which mirror a probe ran on.
+   `debug/` is not in git; vzell syncs it between machines by hand.
+8. **Credit the Springsteen site owners.** Any public page built from their
+   data credits them where the data appears, not only in a footer: Eddy
+   Wehbe (springsteenlyrics.com), Danny van der Linden
+   (brucebase.wikidot.com), Stefano Taverna (the bootleg list). The owners
+   of jungleland.it and brucespringsteen.it are not named in the repos: ask.
+9. **Commit and push after each finished task**, on the feature branch,
+   after a `git diff`. In this repo that stands over the global "never push
+   without instruction"; an unpushed commit strands the work on one machine.
+   Never a merge into `main` without asking (Git Workflow above).
+
 ## Debugging DOM/Rendering Bugs
 Before proposing a fix for a rendering or 'element not appearing' bug, first confirm the root cause with evidence: check for late/async DOM injection (MutationObserver), stale node references, and third-party userscript CSS. Do not ship a CSS-overflow or rAF-batching guess as the fix.
 

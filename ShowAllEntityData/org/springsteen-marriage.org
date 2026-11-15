@@ -28,8 +28,8 @@ Plan for pickup on another host.
 
 ** The prompt for the next session (batch 3; written 2026-11-15 for =NB-3641=)
 
-Start the session in =~/git/musicbrainz-userscripts/ShowAllEntityData= and paste the block. Its second half is the
-working rules that are in Claude's memory on =petri= only, not in any =CLAUDE.md= of the repo.
+Start the session in =~/git/musicbrainz-userscripts/ShowAllEntityData= and paste the block. The working rules that
+were in Claude's memory on =petri= only are in =CLAUDE.md= ("Working rules") since 2026-11-15.
 
 #+begin_example
 Continue the BruceBaseParser parity work: Track A batch 3 (the expected tags).
@@ -61,35 +61,7 @@ Do not run bbp.sh. The plan file of batches 1 and 2 was on petri only
 (~/.claude/plans/), so do not look for it here: org/bbp-parity.org is the
 record.
 
-Working rules that no CLAUDE.md of the repo states (keep them all session):
-1. I hand-align the tables of .md and .org files. Re-read a doc right before
-   editing it, edit in place, never reflow or reformat; pad every cell of a new
-   table to its column's width. Commit my own hand edits with your work.
-2. New visible UI: publish an interactive HTML mockup (a private Artifact, the
-   "Liner notes" look, its open questions numbered inside with a
-   recommendation each) and wait for my approval; build exactly that and name
-   every deviation. A mockup that names a wiki's members keeps its source in
-   debug/, never in the repo.
-3. A long run (specs, mutation checks, measurements) writes its full output to
-   a log file in the scratchpad; grep or tail the finished log. Never pipe a
-   live run through head or grep.
-4. Before a mutation run, tell me: mutation-check.py edits the live
-   ShowAllEntityData.user.js, which my Tampermonkey may load. One test (grep)
-   per entry; a guard no spec can see is "expect": "pass" with the reason.
-5. In a multi-phase feature, run only the phase's own specs and mutations;
-   the wide run (test:full) after a few phases and before any merge.
-6. Before specs for a converter or reader of another site, run it over EVERY
-   page of the family in the mirror, not a sample; Env stamp on the result.
-7. The Brucebase mirror: check "ls -la ~/git/scripts/BruceParser/bb/latest"
-   first. On petri it is a local run of 2026-11-13 (42,531 pages, fast); on
-   other hosts it may still point to the NAS copy (/mnt/share/brucebase/…),
-   which is older and slow (copy samples to debug/bb-mirror/ first). Say which
-   mirror a probe ran on. debug/ is not in git; I sync it by hand.
-8. Any public page built from the Springsteen sites' data credits the owners
-   where their data appears: Eddy Wehbe (springsteenlyrics.com), Danny van der
-   Linden (brucebase.wikidot.com), Stefano Taverna (the bootleg list).
-9. After each finished task: git diff, commit, push the feature branch (this
-   repo's rule over "never push without instruction").
+The working rules are in ShowAllEntityData/CLAUDE.md, "Working rules".
 #+end_example
 
 * Status at the end of the session of 2026-11-14 (01:40 CET)
