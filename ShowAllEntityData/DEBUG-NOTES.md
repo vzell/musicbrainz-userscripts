@@ -29647,3 +29647,39 @@ Env: 2026-11-15T16:01:59+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
   rewrote (`check-mutation-finds.py`: 3 stale, then 0).
 - **Tests:** `bb-pages-reload.spec.js` 5; `bb-pages-reload.json` 18 mutations, all failing their test; `npm run
   test:full` on petri at `edd3d590`: 16:01:59–16:21:56 CET, 3,143 passed, 0 failed.
+
+## 2026-11-15 — Brucebase findings, batch 3: a show's expected tags against its actual tags (feat/bb-findings-batch3)
+
+Env: 2026-11-15T23:17:06+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (chromium-fixtures, chromium-mobile), no Tampermonkey (GM stubs); the probe: Python over the mirror bb/2026-11-15, n/a. Not seen in a real browser yet.
+
+- **What it is:** BruceBaseParser's expected-tags check, four families of it (date parts, day letter, kind of page,
+  premiere count), in three places: chips of the event page's Tags card and of the window (`flag` on a chip box
+  item), and a Tags column of the year table with `bb-tag-missing` (❌) and `bb-tag-spurious` (⚠️). Plus a title's two
+  blanks on the byline and the window's title. Full text: docs/claude/brucebase.md, "A show's expected tags against
+  its actual tags"; the record and the browser list: org/bbp-parity.org, "Batch 3".
+- **The finding that shaped it:** with EVERY family of BruceBaseParser's code, 4,395 of 5,007 shows (88 %) are
+  flagged. That is not a port error: `scripts/check-bbp-tag-oracle.js` runs BruceBaseParser's own functions (taken out
+  of its userscript by name) in Chromium on every event page and they give the probe's expected tags exactly (0
+  differences; three planted errors were reported). The content, cast, song, place and tour rules are not how the
+  wiki is tagged. vzell: ship the four families that flag few shows (234), tune the rest one by one.
+- **Nothing on a guess:** a missing tag is said only when every page that may keep the show's tags is read
+  (`_bbTagFindings()`); the year table reads the show's On stage page for it (`_bbEvpTagPages()`), gated by the
+  finding's own switch.
+- **A real bug the old specs caught:** the Tags cell written unfolded (sixty list rows) pushed the rows below out of
+  view before the column's own fold ran, and a row out of view is taken out of the ▶ Pages queue: batch 1's "a row
+  read later joins the filtered table" and the event-page spec's "rows still queued" failed. The cell is now written
+  folded. The batch 3 spec cannot see this (its four rows are all in view): the mutation is recorded as
+  `"expect": "pass"` there and as failing batch 1's test.
+- **Two wrong tests of mine first:** the 2016 interview HAS an On Stage tab (its On stage page does not exist: asked,
+  then "-1"), and Chicago's tags are over 450 characters (its "-2" is asked). The expectations are now counted from
+  the fixtures. A lint miss too: `lint-summary.py --check` piped through `tail` hid its exit code, and one test had
+  only a helper's assertions (playwright/expect-expect 0 → 1); fixed in the next commit.
+- **Stale mutation finds:** eight entries of seven older lists named lines this change rewrote
+  (`check-mutation-finds.py`: 8, then 0); each keeps its defect.
+- **Tests:** `bb-findings-batch3.spec.js` 19; `bb-findings-batch3.json` 34 mutations as recorded (33 fail their test,
+  1 passes with the reason); the shipped rule over the whole mirror equals the probe (`check-bb-batch3-findings.js`,
+  5,007 shows, 0 differences); render branch / main 1.00–1.04, sort 0.99–1.00 (tests/MEASUREMENTS.org); `npm run
+  test:full` on NB-3641 at `9948917f`: 22:54:52–23:17:06 CET, 3,162 passed, 0 failed.
+- **BruceParser, on the way:** `bbp-status.sh` split `docs/timings.tsv` with `IFS=$'\t' read -ra`, which drops empty
+  columns, so on this host a "-" was read as seconds (0.17.1). A full `bbp.sh` run with 4 download jobs: 40 min 49 s,
+  the download 37 min, no failed step.

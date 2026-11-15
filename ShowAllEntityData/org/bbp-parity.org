@@ -262,7 +262,8 @@ list he meant, and the cell starts folded. The mockup is approved.
   table (the page, then its "-1"): 661 shows;
 - *tests* (NB-3641, 2026-11-15): =bb-findings-batch3.spec.js= 19; 34 mutations as recorded (33 fail their test, 1
   passes with the reason); eight older mutation finds this change moved are rewritten; render branch / main 1.00–1.04,
-  sort 0.99–1.00 (=tests/MEASUREMENTS.org=); +38.6 kB in the userscript.
+  sort 0.99–1.00 (=tests/MEASUREMENTS.org=); +38.6 kB in the userscript; =npm run test:full= at =9948917f=:
+  22:54:52–23:17:06 CET, 3,162 passed, 0 failed.
 
 *Next (3b):* tour, place, cast, songs and content, one family at a time, each with its most frequent cases put to
 vzell first.
