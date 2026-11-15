@@ -5,7 +5,7 @@ Env: 2026-11-13 · plan written in a Claude Code session (plan mode), code readi
 
 Plan for pickup on another host.
 
-* PICKUP HERE: status of 2026-11-16: batch 3 is BUILT and tested live by vzell ("everything tested live, OK"), on =feat/bb-findings-batch3=; NOT merged, no word for the merge yet
+* PICKUP HERE: status of 2026-11-16: batch 3 is MERGED (9.99.1633–1635; vzell: "everything tested live, OK"), the branch is deleted; next batch 3b (the other five tag families, one at a time with vzell)
 
 - *BruceParser 0.17.0 is pushed* (=4978b0e=): =dc.sh= 1.5 with =-j "${BBP_JOBS:-4}"= on both =parallel= calls, =checkURLandTitles.sh= 1.5 with the literal word removal in three places. Checked with =bash -n= and =-V= only. Still to do there, by vzell: a full =bbp.sh= run for the report comparison, and the download time with 4 jobs.
 - *Track A batch 1 is MERGED into =main= (9.99.1626 and 9.99.1627, 2026-11-14), the branch is deleted:* six findings on the year table's Event cell. What was built, the probe's counts and three points that differ from the plan are in =org/bbp-parity.org=, "Batch 1: built on …".

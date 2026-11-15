@@ -219,7 +219,7 @@ https://claude.ai/artifact/T1D2ghbx9zHHCh8jgfr5g7
 | https://brucebase.wikidot.com/1988      | ▶ Pages, September's shows   | Setlist ⚠️ on most: "Pre-show" against "Pre-Set"                                                      |
 | any of them                             | Save to Disk, Load from Disk | the same cells are flagged, nothing is asked                                                          |
 
-* Batch 3: a show's expected tags against its actual tags (=feat/bb-findings-batch3=, 2026-11-15; built; vzell, 2026-11-16: "everything tested live, OK"; NOT merged: no word for the merge yet)
+* Batch 3: a show's expected tags against its actual tags (=feat/bb-findings-batch3=, 2026-11-15; merged 2026-11-16 as 9.99.1633–1635; vzell: "everything tested live, OK")
 
 Env: 2026-11-15T18:11:50+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · probe: Python
 over the mirror bb/2026-10-18, n/a; the cross-check: Playwright 1.62.1 Chromium, no Tampermonkey

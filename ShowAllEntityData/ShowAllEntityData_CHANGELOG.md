@@ -4,9 +4,38 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1803 versions; the month pages hold all of them.
+This page shows the newest 100 of 1806 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1635 — 2026-11-16
+
+**🚀 Feature**
+
+- Brucebase: a page title with two blanks in a row, or a blank before a comma, now also gets a ⚠️ after the show page's byline and after the preview window's title (until now only the year table's Event cell said so). Its hover text shows the title with ␣ where the blanks are. It follows the switch "Find Brucebase titles with two blanks or a blank before a comma".
+
+
+## 9.99.1634 — 2026-11-16
+
+**🚀 Feature**
+
+- Brucebase year tables and listings: a new Tags column, filled by ▶ Pages. It lists every tag of the show, one a row and folded like On stage: the page's own tags and, marked ↪, those kept on its On stage page.
+- Two new findings on that cell. ❌ "Brucebase tags: an expected tag is missing": the page should carry a part of its date (year, month, day, weekday), the letter of a second show of a day, its kind of page (gig, recording, …) or the number of tour premieres (the songs in bold, with "prem"), and none of the show's pages has it. ⚠️ "Brucebase tags: a tag that is not expected": a tag of those four families the page does not call for ("wednesday" on a Monday, "recording" on a gig). Marked tags stay in view while the cell is folded; the cell's hover text gives each with its reason. Both are in the ⚠️/❌ menus and the column's 📊, survive Save to Disk, and have their own switches and a tint setting under ⚙️ Settings → ⚠️ Findings.
+- For the missing tags, ▶ Pages also reads each show's On stage page (and a full page's "-2"): about one more request per show with a cast, kept 30 days like the other pages. With the "missing" finding or the On stage tags switched off those pages are not read, and no show with a cast is then said to lack a tag.
+
+**🔧 Refactor**
+
+- Every stored preview of a page on another site is read once more (the Brucebase record now says what a show's page calls for).
+
+
+## 9.99.1633 — 2026-11-16
+
+**🚀 Feature**
+
+- Brucebase show pages and their preview windows: the Tags card checks the show's tags against what the page calls for, in four families — the date, the day letter, the kind of page and the number of tour premieres. A tag that is missing is drawn as a red dashed chip ("9+ missing") in its family's row and is not counted in "Tags (N)"; a tag that is not expected gets an amber outline and a ⚠️. Each says why in its hover card, and under the chips each finding is written out. The pills ❌ N missing and ⚠️ N not expected, and "Findings" in the card's Show control, leave only the marked chips. ✓ says the four families are as expected.
+- Nothing is marked while the show's On stage page is still being read, so a tag kept there is never called missing. With that page unread (the On stage tags switched off, or a page that failed) the card says that no missing tag is looked for. No request beyond the pages a press or Space reads anyway.
+- This is the first part of BruceBaseParser's expected-tags check. Its other families (tour, place, cast, songs, what the page holds) are not checked yet: with BruceBaseParser's rules unchanged they would flag 88 % of all shows.
+
 
 ## 9.99.1632 — 2026-11-15
 
@@ -838,38 +867,6 @@ This page shows the newest 100 of 1803 versions; the month pages hold all of the
 **🚀 Feature**
 
 - archive.org item pages (archive.org/details/…) get two buttons, built like MusicBrainz's release page. "Tracks" lists a show's songs in one table per disc, each named with its format and running time: \#, Title (with the item's card), Length, the file and its size, a column for each copy archive.org made (VBR MP3, …) and ▶ to play the song in archive.org's player. Above the tables: the item's pictures (a click opens the viewer) and its facts (date, venue, source, taper, running time, Brucebase and Databruce links, collections, lineage). A video item lists its video files with a "Play here" tile. "All files" lists every file of the item with its format, size, length and MD5. Both read the item in one request. Before any button, the item page's own links have cards too, its Brucebase link for example.
-
-
-## 9.99.1535 — 2026-11-04
-
-**🐛 Fix**
-
-- setlist.fm windows, "Load all": Stop could still let one more page through. A page waiting its turn (one request a second) when you pressed Stop was read anyway, about half a second later. Now Stop finishes only the page already asked for; the next one is never asked, and "Load all" offers it again.
-
-
-## 9.99.1534 — 2026-11-04
-
-**✨ Improve**
-
-- Link previews on other sites, before you press a button: on a Discogs search page a result's title has its card; on setlist.fm the site's own list does too (a setlist's Tour link, the venue box's website and Wikipedia links; a setlist's own link with the setlist.fm key), but not the Upcoming box's ticket links; on an archive.org search page the site's own result list does (an item's picture or title in any view, next to archive.org's own hover card; not its menu bar), although archive.org builds it in a way the previews could not reach before. On Discogs' older pages (submissions, history, images, user, ratings, sell) the MusicBrainz icons of murdos' importer get MusicBrainz's card there too.
-- Inside a preview window, more links open in the window instead of a new tab: a MusicBrainz link on springsteenlyrics.com, jungleland.it, brucespringsteen.it, Brucebase and archive.org now opens MusicBrainz's own window, as on discogs.com and setlist.fm (its Live page and editing history are read with your musicbrainz.org login, as there). A Brucebase gig, venue or person page now shows Brucebase's own card and window wherever you are, on MusicBrainz too (under "Preview event, venue and people pages on hover"), so a Brucebase show window's own gig page opens in the window. On Brucebase itself, a show link of the form brucebase.wikidot.com/1985\#130185 in a window opens that show in the window.
-- A Discogs window opens a clicked link in the window even before its record has loaded; until now such a click opened a new tab.
-
-**🐛 Fix**
-
-- "All credits on Discogs ↗" in a Discogs artist window opened the same artist again inside the window; it opens Discogs' credits page in a new tab, as its ↗ says. The same for "A table: show it on Wikipedia ↗" in a Wikipedia window, which could reopen the same article in the window when the article had been reached by a redirect or another spelling of its name.
-
-**📝 Docs**
-
-- The non-MusicBrainz coverage report (NON-MB-COVERAGE.html / .org, built from docs/non-mb-coverage.json) lists no open gaps: G1 to G8 of the first report are fixed. scripts/probe-ia-shadow-links.js is a console probe for archive.org's search page, to confirm the shape of its result links in a real browser.
-
-
-## 9.99.1533 — 2026-11-03
-
-**🚀 Feature**
-
-- setlist.fm artist, venue, tour and search windows (link preview): next to "Load 20 more", "Load all N" reads every other setlist, one page a second, and "Load all with set times" reads their set times as well. Each button says how many requests that takes and about how long. While it runs, a bar per site fills, the counts say how many are loaded, how many are left and about how long it still takes, and Stop ends the run after the page under way. Pages already read are kept, so the next run only reads what is missing. After "Load all" the set times of the newly loaded rows show "·", and "Read set times for the other N" reads them.
-- setlist.fm's API allows a key 1,440 requests a day. The window counts the requests the script made today (from midnight UTC), shows "API requests today: n of 1,440", and before a run that would need more than are left it says so and offers to load as many as are left instead. A run stops when the day's requests are used up.
 
 
 ---
