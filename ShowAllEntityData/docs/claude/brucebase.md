@@ -2043,6 +2043,118 @@ BruceBaseParser's YEAR-vs-DETAIL setlist check (its doc/SETLIST.md).
   failing their test. `scripts/shot-bb-setlist-card.js` shoots the card
   for a look beside the mockup.
 
+## A show's expected tags against its actual tags (bbp-parity batch 3, 2026-11-15)
+
+org/bbp-parity.org, Track A batch 3; vzell's decisions of 2026-11-15; mockup
+https://claude.ai/artifact/Xx3N3sZgqkoy4DYQK5ZBoo (`org/bb-tag-findings-mockup.html`,
+`scripts/build-bb-tag-findings-mockup.py`, version 2 approved).
+BruceBaseParser's `computeExpectedTags()`, FOUR families of it.
+
+**Why four.** The probe (`scripts/probe-bb-batch3-findings.py`; Env:
+2026-11-15T22:20+01:00 · NB-3641 · Python over the mirror bb/2026-11-15 ·
+n/a) ran every rule of BruceBaseParser's code over 5,007 shows: 4,395
+(88 %) would be flagged. Its content, cast, song, place and tour rules are
+not how the wiki is tagged (a News/Memorabilia tab holding only ticket
+scans expects `news` and `memorabilia`: 1,134 and 948 shows; `onstage` and
+`studio` from the tab alone; `tour_no` from an alias line). Four families
+flag few shows and those are real: 234 (144 with a missing tag, 125 with
+one not expected). vzell: ship the four, tune the rest one by one.
+
+| Family  | Expected                                                   | From                                        | Missing | Not expected |
+|---------|------------------------------------------------------------|---------------------------------------------|---------|--------------|
+| `date`  | the year, the month's name, the day ("00" too), the weekday | the date in the page's TITLE as written     | 30      | 19           |
+| `letter`| the letter after the date                                  | the address (`gig:1967-05-00b-…`)           | 47      | 16           |
+| `type`  | gig, nogig, rehearsal, recording, interview                | the address's category                      | 13      | 66           |
+| `prem`  | the count (1–9, "9+") and `prem`                           | songs in bold in the setlist's container    | 56      | 26           |
+
+- **The rule** (`_bbTagFacts()`, `_bbTagExpected()`, `_bbTagCheck()`,
+  `_bbTagCheckedFamily()`, `_bbTagPresent()`): missing = an expected tag
+  on NONE of the show's pages; not expected = a tag of the page ITSELF of
+  a checked family that the facts do not give. A number matches with or
+  without its zero ("5", "05"). A single digit is a premiere count before
+  it is a day. `onstage` is not a kind of page here (a show with a cast
+  tab carries it: the cast family) and `soundcheck` is content. A second
+  kind of page (`recording` on a gig; 66 shows) is a warning (vzell). The
+  premiere count's container is BruceBaseParser's: `#wiki-tab-0-1 td`,
+  else the tab, else `#page-content`.
+- **Never on a guess.** A missing tag is said only when every page that
+  may keep the show's tags is read (`_bbTagFindings()`: `_bbTagPagesMay()`
+  — a cast tab, or tags over 450 characters — and the read done without a
+  failure). While those pages are read nothing is marked; with them unread
+  (`sa_bb_onstage_tags` off, a failed page) the card says "A missing tag is
+  not looked for" and only the not-expected tags, which are the page's own,
+  are marked.
+- **The record**: `_dpParseBb()` adds `bbTagFacts` (kind, date, letter,
+  premiere count; null for a page that is no show); `_DP_PARSER_VERSION`
+  33, so every stored preview of a foreign host is read once more.
+- **The checks against each other** (all on the mirror bb/2026-11-15, 5,007
+  shows): `node scripts/check-bbp-tag-oracle.js ROWS.json` takes
+  BruceBaseParser's OWN functions out of its userscript by name and runs
+  them in Chromium: 0 differences from the probe for date parts, letter,
+  type, content and premiere count (three planted errors were reported);
+  `node scripts/check-bb-batch3-findings.js ROWS.json` runs the SHIPPED
+  rule in the real userscript: 0 differences, 234 shows flagged.
+  BruceParser's `MISSING-date-parts-in-tags.org` lists 12 event pages: 8
+  are here too, its other 4 are "-2" pages (no events); the 28 only here
+  are recordings, which that report does not cover.
+
+**The Tags card and the window** (`_bbTagRows()`, `_bbTagFindParts()`, the
+chip box): a missing tag is one more chip in its family's row
+(`flag: 'miss'`, `.mb-cbx-miss`, "9+ missing"), drawn and NEVER counted —
+"Tags (N)", the card's count, the tool row's numbers and the rows' counts
+stay the tags the wiki has. A tag that is not expected keeps its place
+(`flag: 'spur'`, `.mb-cbx-spur`). Each has its reason as its hover card;
+under the chips each finding is said in words; with nothing found the box
+says "as expected". The chip box (`_cbxInner()`) draws the count pills from
+the flags and adds "Findings N" to Show; a pill pressed again brings every
+chip back. No request of its own: the On stage pages are the ones a press
+or Space reads anyway.
+
+**The year table's Tags column** (the fifth of `_BB_EVP_COLS`, on bb-year,
+bb-home and bb-year-list; collapsable):
+- *The cell* (`_bbEvpTagsHtml()`): every tag a list row, the page's own
+  and its other pages' (`li.mb-bb-tag-os`, ↪ by CSS), A–Z; before them the
+  missing (`li.mb-bb-tag-miss`) and the not-expected (`li.mb-bb-tag-spur`)
+  ones. Written FOLDED (every row but the first `display: none`), and CSS
+  keeps a marked row in view while folded. Written unfolded, sixty rows
+  pushed the rows below out of view before the column's own fold ran, and
+  a row out of view is taken out of the queue (batch 1's "a row read later
+  joins the filtered table" caught it).
+- *The findings*: `bb-tag-missing` (❌) and `bb-tag-spurious` (⚠️) read the
+  carrier inside the cell (`span.mb-bb-tag-data`: `data-mb-bb-tag-check`,
+  `-missing`, `-spurious` in words), so they survive a clone and a save to
+  disk; `_bbEvpRenderCell()` queues the row when the carrier changed
+  (`_BB_TAG_IDS`, in `_LATE_FINDING_IDS`).
+- *The requests* (`_bbEvpTagPages()`, in `_bbEvpPump()` after the venue):
+  the show's other tag pages through `_bbTagPagesStart()`, which now
+  returns its promise — memory, the store (30 days, a 404 remembered), else
+  a request each in the previews' queue, counted in the job. About one more
+  request per show with a cast tab; a show with the tab but no On stage
+  page costs two (the page, then "-1": 661 shows of the mirror); a page
+  over 450 characters one for its "-2". Only while `sa_findings_bb_tag_missing`
+  AND `sa_bb_onstage_tags` are on (`_bbEvpTagPagesOn()`).
+- *Rows read before* (`_bbEvpAfterRender(true)`): the kept tag pages come
+  from the store in one read (`_bbTagPagesPeekAll()`) and
+  `_bbTagPagesAdopt()` walks the chain in memory; a row whose pages are not
+  all there is painted and marked `tagsDue` (`data-mb-bbevp-tags-due`), as
+  a venue is. "Read again" passes `force` on to `_bbTagPageGet()`.
+
+**A title's two blanks** (batch 1 left the head and the window for a
+mockup): `_bbTitleBlanksHtml()` adds a ⚠️ after the event page's byline
+(`sub.markHtml` of the head spec) and after the window's title, its hover
+text the title as written with ␣ for each blank; `bb-title-spaces`' rule
+and switch. The mockup marked the blanks in place; the shown title is
+restyled, so the mark sits after it and the hover shows the place.
+
+Settings: `sa_findings_bb_tag_missing`, `sa_findings_bb_tag_spurious`,
+`sa_findings_tint_bb_tags`. Tests: `tests/fixtures/bb-findings-batch3.spec.js`
+(19) on 2016's year page cut to four entries, their pages and On stage
+pages, a 1983 recording and the 2026-08-28 page with the two blanks, all
+real (`scripts/build-bb-findings-batch3-fixtures.py`); the test hook
+`dpWindowHtml()` draws a page's window content; mutations
+`scripts/mutations/bb-findings-batch3.json`. `bb-onstage-tags.spec.js`
+runs with the tag check off: it counts the chips of the tags the pages have.
+
 ## Show links on Brucebase's own pages (Phase 8, 2026-11-11)
 
 A show on its year page (`/<yyyy>#<ddmmyy>`: an event's "Info & Setlist", a

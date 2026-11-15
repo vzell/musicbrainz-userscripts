@@ -69,8 +69,8 @@
     "why": "vzell asked for a filter with inclusive highlighting (2026-11-14).",
     "edits": [
       {
-        "find": "            const label = _hlHtml(esc(x.text), q);",
-        "replace": "            const label = esc(x.text);"
+        "find": "            const label = _hlHtml(esc(x.text), q) + (x.flag === 'miss' ? ' <i>missing</i>' : '');",
+        "replace": "            const label = esc(x.text) + (x.flag === 'miss' ? ' <i>missing</i>' : '');"
       }
     ],
     "spec": "tests/fixtures/bb-onstage-tags.spec.js",

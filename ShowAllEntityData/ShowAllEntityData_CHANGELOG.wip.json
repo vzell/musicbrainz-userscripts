@@ -1,0 +1,48 @@
+[
+  {
+    "version": "WIP.3",
+    "date": "2026-11-15",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase: a page title with two blanks in a row, or a blank before a comma, now also gets a ⚠️ after the show page's byline and after the preview window's title (until now only the year table's Event cell said so). Its hover text shows the title with ␣ where the blanks are. It follows the switch \"Find Brucebase titles with two blanks or a blank before a comma\"."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.2",
+    "date": "2026-11-15",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase year tables and listings: a new Tags column, filled by ▶ Pages. It lists every tag of the show, one a row and folded like On stage: the page's own tags and, marked ↪, those kept on its On stage page.",
+          "Two new findings on that cell. ❌ \"Brucebase tags: an expected tag is missing\": the page should carry a part of its date (year, month, day, weekday), the letter of a second show of a day, its kind of page (gig, recording, …) or the number of tour premieres (the songs in bold, with \"prem\"), and none of the show's pages has it. ⚠️ \"Brucebase tags: a tag that is not expected\": a tag of those four families the page does not call for (\"wednesday\" on a Monday, \"recording\" on a gig). Marked tags stay in view while the cell is folded; the cell's hover text gives each with its reason. Both are in the ⚠️/❌ menus and the column's 📊, survive Save to Disk, and have their own switches and a tint setting under ⚙️ Settings → ⚠️ Findings.",
+          "For the missing tags, ▶ Pages also reads each show's On stage page (and a full page's \"-2\"): about one more request per show with a cast, kept 30 days like the other pages. With the \"missing\" finding or the On stage tags switched off those pages are not read, and no show with a cast is then said to lack a tag."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Every stored preview of a page on another site is read once more (the Brucebase record now says what a show's page calls for)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-11-15",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase show pages and their preview windows: the Tags card checks the show's tags against what the page calls for, in four families — the date, the day letter, the kind of page and the number of tour premieres. A tag that is missing is drawn as a red dashed chip (\"9+ missing\") in its family's row and is not counted in \"Tags (N)\"; a tag that is not expected gets an amber outline and a ⚠️. Each says why in its hover card, and under the chips each finding is written out. The pills ❌ N missing and ⚠️ N not expected, and \"Findings\" in the card's Show control, leave only the marked chips. ✓ says the four families are as expected.",
+          "Nothing is marked while the show's On stage page is still being read, so a tag kept there is never called missing. With that page unread (the On stage tags switched off, or a page that failed) the card says that no missing tag is looked for. No request beyond the pages a press or Space reads anyway.",
+          "This is the first part of BruceBaseParser's expected-tags check. Its other families (tour, place, cast, songs, what the page holds) are not checked yet: with BruceBaseParser's rules unchanged they would flag 88 % of all shows."
+        ]
+      }
+    ]
+  }
+]

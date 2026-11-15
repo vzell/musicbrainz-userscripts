@@ -311,6 +311,24 @@ test.describe('Brucebase year table: the Tags column and its findings (bbp-parit
         await expectRead(page, { spurious: false });
     });
 
+    test('rows read before, in a second tab: tags and findings from the store, with no ▶ Pages and no request', async ({ page }) => {
+        await loadYear(page, ON);
+        await servePages(page);
+        await show(page);
+        await readAll(page);
+        await expectRead(page);
+        // A second tab of the same browser: the store is shared, memory is not.
+        const two = await page.context().newPage();
+        two.on('pageerror', e => pageErrors.push(String(e)));
+        await loadYear(two, ON);
+        const asked = await servePages(two);
+        await show(two);
+        await expectRead(two);
+        await two.evaluate(() => new Promise(r => setTimeout(r, 1200)));
+        expect(asked, 'painted from the store').toEqual([]);
+        await expect(pagesBtn(two)).toHaveAttribute('aria-pressed', 'false');
+    });
+
     test('Save to Disk → Load from Disk: the cells keep their tags and findings, and nothing is asked', async ({ context }) => {
         const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sa-bb-tags-disk-'));
         try {
@@ -426,6 +444,8 @@ test.describe('Brucebase tag check: the event page\'s Tags card (bbp-parity batc
         await expect(c.locator(':scope > .mb-sb-card-head .mb-sb-card-count')).toHaveText(String(t.own.length + t.extra.length));
         await expect(c.locator('.mb-cbx-pill-e')).toHaveText('❌ 1 missing');
         await expect(c.locator('.mb-cbx-pill-w')).toHaveText('⚠️ 1 not expected');
+        // "As expected" is said only with nothing found.
+        await expect(c.locator('.mb-cbx-pill-ok')).toHaveCount(0);
         await expect(c.locator('.mb-cbx-finds .mb-cbx-find-e')).toContainText('3 is expected and missing. 3 songs are in bold on the Setlist tab');
         await expect(c.locator('.mb-cbx-finds .mb-cbx-find-w')).toContainText('2 is not expected. 3 songs are in bold on the Setlist tab, not 2.');
         // Each marked chip says why in its card.

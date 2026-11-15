@@ -329,8 +329,8 @@
         "why": "The watch takes cold and queued rows, and those marked venue-due.",
         "edits": [
             {
-                "find": "            if (st === 'cold' || st === 'queued' || td.hasAttribute('data-mb-bbevp-venue-due')) _bbEvp.io.observe(td);",
-                "replace": "            if (st === 'cold' || st === 'queued') _bbEvp.io.observe(td);"
+                "find": "            if (st === 'cold' || st === 'queued' || td.hasAttribute('data-mb-bbevp-venue-due') || td.hasAttribute('data-mb-bbevp-tags-due')) _bbEvp.io.observe(td);",
+                "replace": "            if (st === 'cold' || st === 'queued' || td.hasAttribute('data-mb-bbevp-tags-due')) _bbEvp.io.observe(td);"
             }
         ],
         "spec": "tests/fixtures/bb-findings-batch2.spec.js",
@@ -342,8 +342,8 @@
         "why": "Only the venue is asked: the event is kept as painted. NOT VISIBLE to the spec: read again whole, the event comes from memory (no request), the venue is asked once all the same, and the row ends as it was; only its cells pass through \"reading…\". Kept so that a change to the pump which makes the second read cost a request shows up here.",
         "edits": [
             {
-                "find": "            if (kept && kept.venueDue) {",
-                "replace": "            if (kept && kept.venueDue && false) {"
+                "find": "            if (kept && (kept.venueDue || kept.tagsDue)) {",
+                "replace": "            if (kept && (kept.venueDue || kept.tagsDue) && false) {"
             }
         ],
         "spec": "tests/fixtures/bb-findings-batch2.spec.js",

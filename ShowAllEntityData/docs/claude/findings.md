@@ -448,6 +448,38 @@ must record:
 - Spec `tests/fixtures/bb-findings-batch2.spec.js` (29); mutations
   `scripts/mutations/bb-findings-batch2.json` (71, one `expect: pass`).
 
+### Brucebase, batch 3: `bb-tag-missing`, `bb-tag-spurious`
+
+vzell, 2026-11-15 (org/bbp-parity.org, Track A batch 3). Full text:
+docs/claude/brucebase.md, "A show's expected tags against its actual
+tags". What this file must record:
+
+- **Two entries on the year table's Tags cell**, ❌ `bb-tag-missing` and ⚠️
+  `bb-tag-spurious`, cell scope, column Tags, Brucebase only. `test()` is
+  `_bbTagHasCheck(cell, token)` on the carrier INSIDE the cell
+  (`span.mb-bb-tag-data[data-mb-bb-tag-check]`); `detail()` is the
+  carrier's own sentence (`data-mb-bb-tag-missing`, `-spurious`: each tag
+  with its reason), which is the cell's hover text.
+- **Late data, written with the cell's markup**: `_bbEvpTagsHtml()` builds
+  the carrier with the list, and `_bbEvpRenderCell()` queues the row when
+  the carrier changed (`_bbEvpTagMark()` before and after; an unflagged
+  cell has no mark and queues nothing). `_BB_TAG_IDS` is in
+  `_LATE_FINDING_IDS`.
+- **`enabled()` is not the only reader of the switches**: the Tags card
+  and the window mark the same findings on every host (a Brucebase window
+  on musicbrainz.org), so they ask `_bbTagMissingOn()` /
+  `_bbTagSpuriousOn()`, not `enabled()` with its `_isBbHost`.
+  `bb-tag-missing`'s switch also gates the tag-page REQUESTS of the year
+  table (`_bbEvpTagPagesOn()`), as the venue's and the listing's do.
+- **These are the first findings also shown OUTSIDE a table cell**: chips
+  of the Tags card and the window (`flag` on a chip box item). The
+  registry knows nothing of them; the menus count the year table's cells
+  only. A bb-event page's own ⚠️/❌ menus do not list them.
+- Settings: `sa_findings_bb_tag_missing`, `sa_findings_bb_tag_spurious`;
+  tint `sa_findings_tint_bb_tags`.
+- Spec `tests/fixtures/bb-findings-batch3.spec.js`; mutations
+  `scripts/mutations/bb-findings-batch3.json`.
+
 ## On demand: the title-style findings
 
 `title-case`, `title-typography`, `title-series-sep`, `title-feat` and
