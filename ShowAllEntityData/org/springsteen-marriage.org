@@ -5,7 +5,7 @@ Env: 2026-11-13 · plan written in a Claude Code session (plan mode), code readi
 
 Plan for pickup on another host.
 
-* PICKUP HERE: status of 2026-11-15 (afternoon): batch 2 (9.99.1628–1631) and the ▶ Pages reload (9.99.1632) are merged; next batch 3
+* PICKUP HERE: status of 2026-11-15 (night): batch 3 is BUILT on =feat/bb-findings-batch3= (NB-3641), not merged; vzell's browser check is open
 
 - *BruceParser 0.17.0 is pushed* (=4978b0e=): =dc.sh= 1.5 with =-j "${BBP_JOBS:-4}"= on both =parallel= calls, =checkURLandTitles.sh= 1.5 with the literal word removal in three places. Checked with =bash -n= and =-V= only. Still to do there, by vzell: a full =bbp.sh= run for the report comparison, and the download time with 4 jobs.
 - *Track A batch 1 is MERGED into =main= (9.99.1626 and 9.99.1627, 2026-11-14), the branch is deleted:* six findings on the year table's Event cell. What was built, the probe's counts and three points that differ from the plan are in =org/bbp-parity.org=, "Batch 1: built on …".
@@ -26,7 +26,20 @@ Plan for pickup on another host.
   "Read every row again" in the ▶ Pages progress card. The suite was not run again on =main= (vzell: it had just
   passed 3,143 of 3,143 on the branch at =edd3d590=). Next: batch 3 of the matrix (the expected tags). The plan is =~/.claude/plans/curried-bouncing-nygaard.md=. By vzell, in BruceParser: a full =bbp.sh= run and the =dc.sh= timing with 4 jobs.
 
-** The prompt for the next session (batch 3; written 2026-11-15 for =NB-3641=)
+- *Batch 3 (2026-11-15, NB-3641):* four families of BruceBaseParser's expected-tags check are built (date parts, day
+  letter, event type, premiere count): marks on the Tags card and in the window, a Tags column on the year table with
+  =bb-tag-missing= (❌) and =bb-tag-spurious= (⚠️), a title's two blanks on the byline and the window title. The
+  record, the decisions, the counts and the browser list are in =org/bbp-parity.org=, "Batch 3". With every family
+  of BruceBaseParser's, 88 % of all shows would be flagged: the other five families (tour, place, cast, songs,
+  content) are batch 3b, tuned with vzell one by one.
+- *BruceParser:* 0.17.1 (=2a546fd=, pushed): =bbp-status.sh= read =docs/timings.tsv= rows with empty columns wrong.
+  The full run vzell owed is done: 2026-11-15 on NB-3641, 40 min 49 s, the download with 4 jobs 37 min (2,219 s), no
+  failed step; its row is in =docs/timings.tsv=, uncommitted there with the regenerated =bb/*.org= reports. Still
+  open: the comparison of that run's reports with the run before (the 0.16.0/0.17.0 changes). Two things found and
+  NOT fixed: =MULTI-title-postfix.txt= is always empty (=efc.sh= writes it through =einfo=); a stopped =bbp.sh= goes
+  on to its =cp= line and empties =brucebase/DETAIL-title-from-YEAR-array.txt=, which the next run reads first.
+
+** The prompt for the session of 2026-11-15 (batch 3; done, kept as the model for the next one)
 
 Start the session in =~/git/musicbrainz-userscripts/ShowAllEntityData= and paste the block. The working rules that
 were in Claude's memory on =petri= only are in =CLAUDE.md= ("Working rules") since 2026-11-15.
