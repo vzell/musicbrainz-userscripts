@@ -480,3 +480,83 @@ test.describe('Brucebase tag check: the event page\'s Tags card (bbp-parity batc
         expect(asked).toEqual(['onstage:2016-09-06-stone-hill-studio-colts-neck-nj', 'onstage:2016-09-06-stone-hill-studio-colts-neck-nj-1']);
     });
 });
+
+test.describe('Brucebase tag check: the preview window, and a title\'s two blanks (bbp-parity batch 3)', () => {
+    const HIT = 'recording:1983-06-13-hit-factory-new-york-city-ny';
+    const PONY = 'gig:2026-08-28-stone-pony-asbury-park-nj';
+
+    /**
+     * A page's preview window content, as the window draws it (the parsed
+     * record's two columns), in a detached box of the page.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {string} name
+     * @returns {Promise<{tags: string, miss: string[], spur: string[], chips: number, finds: string, wait: number, blanks: ?string, title: string}>}
+     */
+    const windowOf = (page, name) => page.evaluate(([html, url]) => {
+        const box = document.createElement('div');
+        box.innerHTML = window.__saTest.dpWindowHtml('brucebase.wikidot.com', html, url);
+        const sec = Array.from(box.querySelectorAll('details.mb-dp-sec')).find(d => /^Tags \(/.test((d.querySelector('summary h4') || {}).textContent || ''));
+        const q = sel => (sec ? Array.from(sec.querySelectorAll(sel), n => n.textContent.trim()) : []);
+        const blanks = box.querySelector('.mb-dp-xtitle .mb-bb-title-blanks');
+        return {
+            tags: sec ? sec.querySelector('summary h4').textContent : '',
+            miss: q('a.mb-dp-tag.mb-cbx-miss'), spur: q('a.mb-dp-tag.mb-cbx-spur'), chips: q('a.mb-dp-tag:not(.mb-cbx-miss)').length,
+            finds: q('.mb-cbx-finds').join(' '), wait: q('.mb-cbx-wait').length,
+            blanks: blanks ? blanks.getAttribute('title') : null,
+            title: box.querySelector('.mb-dp-xtitle').textContent,
+        };
+    }, [fs.readFileSync(fileOf(name), 'utf8'), BB + name]);
+
+    test('the window\'s Tags section: a Monday tagged "wednesday" — "monday" missing and not counted, "wednesday" marked, both in words', async ({ page }) => {
+        await loadYear(page);
+        const w = await windowOf(page, HIT);
+        const own = tagsOf(HIT);
+        // No cast tab of the On stage kind and tags far from full: every tag
+        // of the show is on its page, so the check is made at once.
+        expect(own.join(' ').length).toBeLessThan(450);
+        expect(w.tags).toBe(`Tags (${own.length})`);
+        expect(w.chips).toBe(own.length);
+        expect(w.miss).toEqual(['monday missing']);
+        expect(w.spur).toEqual(['wednesday']);
+        expect(w.finds).toMatch(/monday is expected and missing\. 1983-06-13 is a Monday\./);
+        expect(w.finds).toMatch(/wednesday is not expected\. 1983-06-13 is a Monday\./);
+        expect(w.wait).toBe(0);
+        expect(w.blanks, 'a title without two blanks has no mark').toBeNull();
+    });
+
+    test('the window of a gig with a cast: nothing is called missing before its On stage page is read', async ({ page }) => {
+        await loadYear(page, ON);
+        const w = await windowOf(page, MAD);
+        expect(w.miss).toEqual([]);
+        expect(w.spur).toEqual(['2']);
+        expect(w.wait).toBe(1);
+    });
+
+    test('a title with two blanks: marked on the window\'s title, with the blanks shown; not with the finding off', async ({ page }) => {
+        await loadYear(page);
+        const raw = (fs.readFileSync(fileOf(PONY), 'utf8').match(/<div id="page-title">\s*([^\n]*?)\s*<\/div>/) || [])[1];
+        expect(raw, 'the fixture\'s title has the two blanks').toMatch(/Summer Stage, {2}Asbury Park/);
+        const w = await windowOf(page, PONY);
+        expect(w.blanks).toContain('Summer Stage,␣␣Asbury Park, NJ');
+        expect(w.title).toContain('⚠️');
+        const off = await page.context().newPage();
+        off.on('pageerror', e => pageErrors.push(String(e)));
+        await loadYear(off, { sa_findings_bb_title_spaces: false });
+        expect((await windowOf(off, PONY)).blanks).toBeNull();
+    });
+
+    test('a title with two blanks: marked after the event page\'s byline', async ({ page }) => {
+        await page.setViewportSize({ width: 1500, height: 1200 });
+        await page.route(/^https?:\/\//, route => route.abort('blockedbyclient'));
+        await loadUserscriptPage(page, {
+            url: BB + PONY, fixtureFile: fileOf(PONY), testMode: true,
+            settingsOverride: { sa_enable_brucebase: true, sa_bb_detail_pages: true },
+        });
+        await page.click(`button[data-label="${BB_EVENT_BUTTON}"]`);
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const mark = page.locator('p.mb-fd-sub .mb-bb-title-blanks');
+        await expect(mark).toHaveCount(1);
+        expect(await mark.getAttribute('title')).toContain('Summer Stage,␣␣Asbury Park, NJ');
+    });
+});

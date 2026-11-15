@@ -14,10 +14,17 @@ tags against its actual tags).
       gig 2016-01-19 Chicago      6 songs in bold and the tag "6": as expected
       gig 2016-05-21 Madrid       3 songs in bold, the tag "2": "3" missing,
                                   "2" not expected
-      interview 2016-09-06        also tagged "nogig": not expected; no cast
-                                  tab, so no other page is asked
+      interview 2016-09-06        also tagged "nogig": not expected; it has
+                                  an On Stage tab, but the wiki has no On
+                                  stage page for it (asked, then its "-1")
   tests/fixtures/bb-findings/onstage_2016-….html
       the three gigs' On stage pages, whole: their cast tags
+  tests/fixtures/bb-findings/recording_1983-06-13-hit-factory-new-york-city-ny.html
+      a Monday tagged "wednesday": "monday" missing, "wednesday" not
+      expected; an In Studio tab and 233 characters of tags, so no other
+      page keeps its tags and the check needs no request
+  tests/fixtures/bb-findings/gig_2026-08-28-stone-pony-asbury-park-nj.html
+      its title has two blanks before "Asbury Park" (bb-title-spaces)
 
 What scripts/probe-bb-batch3-findings.py found on them (mirror 2026-11-15).
 Scripts, noscripts and theme @imports are removed
@@ -41,6 +48,11 @@ KEEP = [
     'interview:2016-09-06-stone-hill-studio-colts-neck-nj',
 ]
 ONSTAGE = [k.split(':', 1)[1] for k in KEEP if k.startswith('gig:')]
+# Whole event pages that are no entry of the year fixture.
+EXTRA = [
+    'recording:1983-06-13-hit-factory-new-york-city-ny',
+    'gig:2026-08-28-stone-pony-asbury-park-nj',
+]
 
 
 def batch1():
@@ -65,13 +77,15 @@ def main():
     mod = batch1()
     mod.main()
     strip = mod._strip()
-    for slug in ONSTAGE:
-        path = os.path.join(MIRROR, 'onstage', f'onstage_{slug}.html')
+    for slug in ONSTAGE + EXTRA:
+        kind = slug.split(':', 1)[0] if ':' in slug else 'onstage'
+        slug = slug.split(':', 1)[-1]
+        path = os.path.join(MIRROR, kind, f'{kind}_{slug}.html')
         if not os.path.exists(path):
             sys.exit(f'{path} not on this machine')
         with open(path, encoding='utf-8', errors='replace') as fh:
             page = mod.with_note(strip(fh.read()), 'the whole page, scripts, noscripts and theme @imports removed')
-        target = os.path.join(OUT, 'bb-findings', f'onstage_{slug}.html')
+        target = os.path.join(OUT, 'bb-findings', f'{kind}_{slug}.html')
         with open(target, 'w', encoding='utf-8', newline='\n') as fh:
             fh.write(page)
         print(f'wrote {os.path.relpath(target, ROOT)} ({len(page)} bytes)')

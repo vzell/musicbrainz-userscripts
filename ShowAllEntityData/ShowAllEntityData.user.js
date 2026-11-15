@@ -25107,6 +25107,9 @@
         const sub = el('p', 'mb-fd-sub', `~ ${s.what || 'Item'}${s.by ? ' by ' : ''}`);
         if (s.by) sub.appendChild(s.byHref ? _fdLink(s.byHref, s.by) : el('span', 'mb-fd-by', s.by));
         if (s.when) sub.append(' ', el('span', 'mb-fd-when', `(${s.when})`));
+        // `markHtml`: a mark after the byline, from the page's own code (a
+        // Brucebase title with two blanks, `_bbTitleBlanksHtml()`).
+        if (s.markHtml) sub.insertAdjacentHTML('beforeend', s.markHtml);
         if (h1) h1.after(sub);
 
         const head = el('div', 'mb-fd-head');
@@ -27544,6 +27547,24 @@
      */
     function _bbTitleSpaces(text) {
         return /[ \u00a0]{2}|[ \u00a0],/.test(String(text || ''));
+    }
+
+    /**
+     * The mark of a Brucebase page title that has two blanks in a row or a
+     * blank before a comma (`bb-title-spaces`' rule and switch), for the
+     * event page's head and the window's title (vzell, 2026-11-15; batch 1
+     * marked the year table's cell only): a ⚠️ whose hover text shows the
+     * title as written with ␣ for each such blank. '' for a clean title,
+     * a record of another site, or with the finding switched off.
+     *
+     * @param {?string} raw - The title as the wiki writes it (`bbRawTitle`).
+     * @returns {string} HTML.
+     */
+    function _bbTitleBlanksHtml(raw) {
+        if (!raw || !_bbTitleSpaces(raw) || Lib.settings.sa_findings_bb_title_spaces === false) return '';
+        const marked = String(raw).replace(/[ \u00a0]{2,}/g, m => '␣'.repeat(m.length)).replace(/[ \u00a0],/g, '␣,');
+        const tip = `The page's title has two blanks in a row, or a blank before a comma: "${marked}" (␣ marks the blanks).`;
+        return ` <span class="mb-bb-title-blanks" data-mb-tip title="${_mbttEscape(tip)}" tabindex="0" role="img" aria-label="${_mbttEscape(tip)}">⚠️</span>`;
     }
 
     /**
@@ -37857,7 +37878,7 @@
         }));
         return {
             root: h2.parentElement, h2,
-            sub: { what: `${rec.kind || 'Event'}${rec.place ? ` at ${rec.place}` : ''}`, when: rec.date },
+            sub: { what: `${rec.kind || 'Event'}${rec.place ? ` at ${rec.place}` : ''}`, when: rec.date, markHtml: _bbTitleBlanksHtml(dp && dp.bbRawTitle) },
             text: rec.about ? {
                 title: { recording: 'About this session', interview: 'About this interview', rehearsal: 'About this rehearsal' }[rec.category] || 'About this show',
                 body: rec.about.text, html: rec.about.html,
@@ -44404,7 +44425,7 @@
         if (data.collapsible) _dpInitSecToggles();
         const left = [];
         const right = [];
-        left.push(`<div class="mb-dp-xtitle">${_mbttEscape(data.title || '(untitled)')}</div>`);
+        left.push(`<div class="mb-dp-xtitle">${_mbttEscape(data.title || '(untitled)')}${_bbTitleBlanksHtml(data.bbRawTitle)}</div>`);
         // A Brucebase song's intro keeps its links here (`subtitleHtml`,
         // `_dpBlockHtml()`'s escaped text and links only; Phase 16 batch 4).
         if (data.subtitle) left.push(`<div class="mb-dp-xsub">${data.subtitleHtml || _mbttEscape(data.subtitle)}</div>`);
@@ -188150,6 +188171,23 @@ a { color: #1565c0; }`;
             dpParse(host, html, url) {
                 const site = _DP_SITES[host];
                 return site ? site.parse(new DOMParser().parseFromString(html, 'text/html'), url) : null;
+            },
+            /**
+             * A foreign host's page as its preview window draws it: the
+             * parsed record's two columns (`_dpExtractedCols()`), as HTML,
+             * so a spec can pin what the window shows without opening one.
+             *
+             * @param {string} host  A `_foreignHost` value.
+             * @param {string} html  The page, already decoded.
+             * @param {string} url   The page's URL.
+             * @returns {?string} The window's content, or null.
+             */
+            dpWindowHtml(host, html, url) {
+                const site = _DP_SITES[host];
+                const data = site ? site.parse(new DOMParser().parseFromString(html, 'text/html'), url) : null;
+                if (!data) return null;
+                const { left, right } = _dpExtractedCols(data, null);
+                return left.concat(right).join('');
             },
             /**
              * The song window's lyrics compare (`_slLyricsDiff()`), pure, so

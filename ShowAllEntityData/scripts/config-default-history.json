@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "8bcc5b64acfbad7dfc7c80ca1255c4b81a936e52",
-    "revisions_walked": 1257
+    "head": "2a930204790c57be82bdd47f5b7d51b92bbd5bbb",
+    "revisions_walked": 1263
   },
   "changes": [
     {
@@ -985,6 +985,9 @@
     "sa_findings_bb_setlist_songs": true,
     "sa_findings_bb_setlist_spelling": true,
     "sa_findings_bb_setlist_sections": true,
+    "sa_findings_bb_tag_missing": true,
+    "sa_findings_bb_tag_spurious": true,
+    "sa_findings_tint_bb_tags": true,
     "sa_findings_tint_bb_setlist": true,
     "sa_findings_tint_bb_venue": true,
     "sa_findings_tint_bb_list": true,
