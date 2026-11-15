@@ -218,3 +218,68 @@ https://claude.ai/artifact/T1D2ghbx9zHHCh8jgfr5g7
 | https://brucebase.wikidot.com/1973      | ▶ Pages, 1973-10-06          | Setlist ⚠️ for the set name only: "Pre-show jam" against "Pre-Show Jam"                               |
 | https://brucebase.wikidot.com/1988      | ▶ Pages, September's shows   | Setlist ⚠️ on most: "Pre-show" against "Pre-Set"                                                      |
 | any of them                             | Save to Disk, Load from Disk | the same cells are flagged, nothing is asked                                                          |
+
+* Batch 3: a show's expected tags against its actual tags (=feat/bb-findings-batch3=, started 2026-11-15; NOT built yet)
+
+Env: 2026-11-15T18:11:50+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · probe: Python
+over the mirror bb/2026-10-18, n/a; the cross-check: Playwright 1.62.1 Chromium, no Tampermonkey
+
+The plan is =~/.claude/plans/act-on-section-swift-bengio.md= (NB-3641 only); this section is the record.
+
+*Decisions (vzell, 2026-11-15):*
+1. *Where:* the event page's Tags card and the preview window (chip marks) AND a Tags column on the year table (registry
+   findings, ❌/⚠️ menus, 📊).
+2. *The lookup tables stay in the script for now* (tours, states, provinces, countries, aliases: about 8 KB), one marked
+   block that can move to the feed.
+3. *Requests on the event page and in the window: kept pages only.* Nothing new beyond the On stage pages.
+4. *Mirror:* the probe was written on bb/2026-10-18; the recorded counts, fixtures and browser-check URLs come from the
+   run of 2026-11-15 (started 17:52 CET by Claude on vzell's word, 4 download jobs).
+5. *Batch 3 ships four families:* date parts, the day letter, the event type, the premiere count. Tour, place, cast,
+   songs and content are tuned with vzell one by one and join when their count is believable.
+6. *Levels:* a missing tag is ❌, a tag that is not expected ⚠️. A second event-type tag (a =gig:= page tagged
+   =recording=; 66 shows) is a ⚠️.
+7. *A title's two blanks* are marked on the event page's head and the window title (batch 1 left that for batch 3).
+8. *The year table's Tags cell lists every tag*, a row each (a multi-row column), and still shows the errors and
+   warnings (a hover card).
+
+Mockup: https://claude.ai/artifact/Xx3N3sZgqkoy4DYQK5ZBoo (=org/bb-tag-findings-mockup.html=, built by
+=scripts/build-bb-tag-findings-mockup.py ROWS.json=). Version 2 has the cell of decision 8; vzell, 2026-11-15: it is the
+list he meant, and the cell starts folded. The mockup is approved.
+
+*Built so far:* the rule (=_bbTagFacts()=, =_bbTagExpected()=, =_bbTagCheck()=, =_bbTagCheckedFamily()=; test hooks
+=bbTagFacts=, =bbTagCheck=). =node scripts/check-bb-batch3-findings.js ROWS.json= runs it in the real userscript over
+all 4,998 events: 0 differences from the probe, 246 events flagged. *Not built yet:* the three surfaces (Tags card,
+window, the year table's Tags column), the findings' registry entries and settings, the title-blanks mark, specs,
+mutations, docs.
+
+*The probe* (=scripts/probe-bb-batch3-findings.py=; BruceBaseParser's rules as its CODE has them, its doc/TAGS.md is
+older in five places): 4,998 events (gig 3,589, nogig 447, rehearsal 211, recording 564, interview 187; 12 "-N" pages
+left out), 3,252 of them with tags on other pages. With every rule unchanged 4,387 events (88 %) are flagged:
+
+| Family         | Events missing a tag | What is behind it                                                                        |
+|----------------+----------------------+------------------------------------------------------------------------------------------|
+| date parts     |                   28 | real; 7 in BruceParser's report, the other 27 flagged here are recordings (not covered there) |
+| day letter     |                   47 | real                                                                                     |
+| event type     |                   27 | real                                                                                     |
+| premiere count |                   56 | real                                                                                     |
+| tour           |                  169 | 116 are =tour_no=, expected from the alias line (a guess)                                |
+| place          |                  662 | mixed: =springsteenresidence= 70, =unitedkingdom= 60, Australian states, studios         |
+| songs          |                1,115 | the initials rule: "Mona" expects =m=, 'Paradise by the "C"' expects =pbt"=              |
+| cast           |                1,842 | =onstage= 584 and =studio= 464 from the tab alone, =guest= 407, a name on 684 events     |
+| content        |                2,459 | =memorabilia= 1,128, =news= 946: a tab with only ticket scans expects both               |
+
+Spurious tags: 1,358 events (tour 847, mostly =tour_no=; content 462; type 66; prem 26; date 18; letter 16). The four
+shipping families: 246 events (156 missing, 124 spurious).
+
+- *Against BruceParser:* =MISSING-date-parts-in-tags.org= has 11 event pages; 7 are here too; its other 4 are "-2"
+  sibling pages, which are no events.
+- *Against BruceBaseParser's own code* (=scripts/check-bbp-tag-oracle.js ROWS.json=: its =computeExpectedTags()= and
+  what it calls, taken out of the userscript by name and run in Chromium on every event page): 0 differences on 4,998
+  events for date parts, letter, type, content and premiere count; three planted errors were reported. Tour, place,
+  cast and songs are checked by hand on samples only.
+- *What the surfaces would see differently:* Help Us is only on the year page for 1,165 events; the venue page excuses
+  274 venue-description misses; no interview has a spurious =onstage=.
+- *Found on the way, BruceParser:* =bbp-status.sh= split =docs/timings.tsv= with =IFS=$'\t' read -ra=, which drops empty
+  columns (fixed, 0.17.1, =2a546fd=). =MULTI-title-postfix.txt= is always empty: =efc.sh= writes it through =einfo=,
+  which is silent at the default verbosity (not fixed). A stopped =bbp.sh= goes on to its =cp= line and empties
+  =brucebase/DETAIL-title-from-YEAR-array.txt=, which the next run's first step reads (restored from git, not fixed).

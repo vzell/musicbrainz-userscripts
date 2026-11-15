@@ -36309,6 +36309,186 @@
         };
     }
 
+    // --- A show's expected tags against its actual tags (org/bbp-parity.org, batch 3) ---
+    // BruceBaseParser's computeExpectedTags(), four families of it: the date
+    // parts, the day letter, the event type and the premiere count. Probe
+    // (scripts/probe-bb-batch3-findings.py, mirror bb/2026-10-18, NB-3641,
+    // 2026-11-15): with every family of BruceBaseParser's 4,387 of 4,998
+    // shows are flagged, because its content, cast, song, place and tour
+    // rules are not how the wiki is tagged; these four flag 246 and those
+    // are real (vzell, 2026-11-15: ship the four, tune the rest one by one).
+
+    /** The page kinds whose tags are checked: a show's. */
+    const _BB_TAGCHK_KINDS = /^(?:gig|nogig|rehearsal|recording|interview)$/;
+    /** Month tags, January first. */
+    const _BB_TAGCHK_MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august',
+        'september', 'october', 'november', 'december'];
+    /** Weekday tags, Sunday first (`Date#getDay()`). */
+    const _BB_TAGCHK_DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    /**
+     * The tags that name a kind of page. "onstage" is not here: a show with
+     * an On Stage tab carries it (the cast family, not checked yet), and
+     * "soundcheck" says what the page holds.
+     */
+    const _BB_TAGCHK_TYPES = new Set(['gig', 'interview', 'nobruce', 'nogig', 'offstage', 'recording', 'rehearsal']);
+
+    /**
+     * What a show's page says about the tags it should carry: its kind and
+     * day letter (from the address), its date (from the title as written)
+     * and how many songs of its setlist are in bold (tour premieres;
+     * BruceBaseParser's `countTourPremiereSongs()`, the same container).
+     * Null for a page that is not a show.
+     *
+     * @param {Document} doc
+     * @param {string}   url
+     * @returns {?{kind: string, date: string, letter: string, prem: number}}
+     */
+    function _bbTagFacts(doc, url) {
+        let name;
+        try {
+            name = decodeURIComponent(new URL(url).pathname.replace(/^\//, '').replace(/\/.*$/, ''));
+        } catch (_) { return null; }
+        const m = /^([a-z]+):(.+)$/.exec(name);
+        if (!m || !_BB_TAGCHK_KINDS.test(m[1])) return null;
+        const dm = /^(\d{4}-\d{2}-\d{2})/.exec(_bbRawText(doc.getElementById('page-title')));
+        const lm = /^\d{4}-\d{2}-\d{2}([a-z])(?:-|$)/.exec(m[2]);
+        const box = doc.querySelector('#wiki-tab-0-1 td') || doc.getElementById('wiki-tab-0-1')
+            || doc.getElementById('page-content');
+        return {
+            kind: m[1], date: dm ? dm[1] : '', letter: lm ? lm[1] : '',
+            prem: box ? box.querySelectorAll('strong a[href^="/song:"]').length : 0,
+        };
+    }
+
+    /**
+     * Whether a set of tags has a tag; a number matches with or without its
+     * leading zero ("5" and "05"; BruceBaseParser's `isTagPresent()`).
+     *
+     * @param {string} tag
+     * @param {Set<string>} tags
+     * @returns {boolean}
+     */
+    function _bbTagPresent(tag, tags) {
+        if (tags.has(tag)) return true;
+        if (!/^\d+$/.test(tag)) return false;
+        const n = String(parseInt(tag, 10));
+        return tags.has(n) || tags.has(n.padStart(2, '0'));
+    }
+
+    /**
+     * The tags a show should carry, each with its family (`date`, `letter`,
+     * `type`, `prem`) and what makes it expected, in words.
+     *
+     * @param {{kind: string, date: string, letter: string, prem: number}} facts - `_bbTagFacts()`.
+     * @returns {Array<{tag: string, family: string, why: string}>}
+     */
+    function _bbTagExpected(facts) {
+        const out = [];
+        const dm = /^(\d{4})-(\d{2})-(\d{2})$/.exec(facts.date || '');
+        if (dm) {
+            const mo = parseInt(dm[2], 10);
+            const dd = parseInt(dm[3], 10);
+            const why = `From the date in the title, ${facts.date}.`;
+            out.push({ tag: dm[1], family: 'date', why });
+            if (mo > 0 && mo <= 12) out.push({ tag: _BB_TAGCHK_MONTHS[mo - 1], family: 'date', why });
+            out.push({ tag: dm[3], family: 'date', why });
+            if (dd > 0 && mo > 0) {
+                const d = new Date(parseInt(dm[1], 10), mo - 1, dd);
+                if (!isNaN(d.getTime())) {
+                    const day = _BB_TAGCHK_DAYS[d.getDay()];
+                    out.push({ tag: day, family: 'date', why: `${facts.date} is a ${day[0].toUpperCase()}${day.slice(1)}.` });
+                }
+            }
+        }
+        if (facts.letter) {
+            out.push({ tag: facts.letter, family: 'letter',
+                why: `The address has the letter "${facts.letter}" after the date, for another show of that day.` });
+        }
+        out.push({ tag: facts.kind, family: 'type', why: `The page is a ${facts.kind}: its address starts with "${facts.kind}:".` });
+        if (facts.prem > 0) {
+            const n = facts.prem <= 9 ? String(facts.prem) : '9+';
+            const songs = `${facts.prem} ${facts.prem === 1 ? 'song is' : 'songs are'} in bold on the Setlist tab (tour premieres).`;
+            out.push({ tag: n, family: 'prem', why: `${songs} The page should say how many.` });
+            out.push({ tag: 'prem', family: 'prem', why: songs });
+        }
+        return out;
+    }
+
+    /**
+     * The family of a tag the check may call not expected, '' for a tag it
+     * leaves alone (songs, people, places, tours, what the page holds). A
+     * single digit is a premiere count before it is a day, as
+     * BruceBaseParser's `spuriousTagMsg()` reads it.
+     *
+     * @param {string} tag - Lower case.
+     * @returns {string} `date`, `prem`, `letter`, `type` or ''.
+     */
+    function _bbTagCheckedFamily(tag) {
+        if (/^\d{4}$/.test(tag) || _BB_TAGCHK_MONTHS.includes(tag) || _BB_TAGCHK_DAYS.includes(tag)) return 'date';
+        if (/^[1-9]$/.test(tag) || tag === '9+' || tag === 'prem') return 'prem';
+        if (/^\d{1,2}$/.test(tag) && parseInt(tag, 10) <= 31) return 'date';
+        if (/^[a-z]$/.test(tag)) return 'letter';
+        if (_BB_TAGCHK_TYPES.has(tag)) return 'type';
+        return '';
+    }
+
+    /**
+     * A show's tags against the expected ones. Missing: an expected tag that
+     * no page of the show has (`all`: its own tags and those kept on its
+     * other pages, so a caller that has not read those pages must not ask).
+     * Not expected: a tag of the page ITSELF of a checked family
+     * (`_bbTagCheckedFamily()`) that the facts do not give — tags kept on
+     * another page are never called that, as in BruceBaseParser.
+     *
+     * @param {?Object} facts - `_bbTagFacts()`; null gives no finding.
+     * @param {Array<string>} own - The page's own tags, lower case.
+     * @param {Iterable<string>} [more] - The tags of its other pages, lower case.
+     * @returns {{missing: Array<{tag: string, family: string, why: string}>, spurious: Array<{tag: string, family: string, why: string}>}}
+     */
+    function _bbTagCheck(facts, own, more) {
+        const res = { missing: [], spurious: [] };
+        if (!facts) return res;
+        const all = new Set(own);
+        for (const t of more || []) all.add(t);
+        const expected = _bbTagExpected(facts);
+        const want = new Set(expected.map(e => e.tag));
+        for (const e of expected) if (!_bbTagPresent(e.tag, all)) res.missing.push(e);
+        const seen = new Set();
+        for (const tag of own) {
+            const family = _bbTagCheckedFamily(tag);
+            if (!family || seen.has(tag) || _bbTagPresent(tag, want)) continue;
+            seen.add(tag);
+            res.spurious.push({ tag, family, why: _bbTagSpuriousWhy(tag, family, facts, expected) });
+        }
+        return res;
+    }
+
+    /**
+     * Why a tag is not expected, in words.
+     *
+     * @param {string} tag
+     * @param {string} family - `_bbTagCheckedFamily()`.
+     * @param {Object} facts - `_bbTagFacts()`.
+     * @param {Array<{tag: string, family: string}>} expected - `_bbTagExpected()`.
+     * @returns {string}
+     */
+    function _bbTagSpuriousWhy(tag, family, facts, expected) {
+        if (family === 'type') return `The page is a ${facts.kind}, and "${tag}" is another kind of page.`;
+        if (family === 'letter') {
+            return facts.letter ? `The address has the letter "${facts.letter}" after the date.` : 'The address has no letter after the date.';
+        }
+        if (family === 'prem') {
+            if (!facts.prem) return 'No song is in bold on the Setlist tab, so no tour premiere is counted.';
+            return tag === 'prem' ? '' : `${facts.prem} ${facts.prem === 1 ? 'song is' : 'songs are'} in bold on the Setlist tab, not ${tag}.`;
+        }
+        if (!facts.date) return 'The title has no date.';
+        const day = expected.find(e => _BB_TAGCHK_DAYS.includes(e.tag));
+        if (_BB_TAGCHK_DAYS.includes(tag)) {
+            return day ? `${facts.date} is a ${day.tag[0].toUpperCase()}${day.tag.slice(1)}.` : `The date ${facts.date} names no day.`;
+        }
+        return `Not what the date in the title gives, ${facts.date}.`;
+    }
+
     /**
      * Whether a record's tags may continue on other pages: its cast on an
      * /onstage: page (a show with an On Stage tab), or its own siblings
@@ -188814,6 +188994,29 @@ a { color: #1565c0; }`;
                 return _bbImageCaption(_bbParseImageName(url), folderKind);
             },
 
+            /**
+             * `_bbTagFacts()` of a Brucebase page given as markup: what a
+             * show's page says about the tags it should carry.
+             *
+             * @param {string} html
+             * @param {string} url
+             * @returns {?Object}
+             */
+            bbTagFacts(html, url) {
+                return _bbTagFacts(new DOMParser().parseFromString(html, 'text/html'), url);
+            },
+            /**
+             * Thin wrapper around `_bbTagCheck()`: the missing and the
+             * not-expected tags of a show.
+             *
+             * @param {?Object} facts
+             * @param {Array<string>} own
+             * @param {Array<string>} [more]
+             * @returns {{missing: Array<Object>, spurious: Array<Object>}}
+             */
+            bbTagCheck(facts, own, more) {
+                return _bbTagCheck(facts, own, more);
+            },
             /**
              * Thin wrapper around `_bbTagFamily()` — a Brucebase tag's family.
              *

@@ -1,0 +1,410 @@
+<title>Brucebase tag findings</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: a controls strip, then the two places a show's tags are drawn (event page head, preview window) side by side, the year table under them, questions last. */
+:root {
+    --paper: #fbf8f1; --ink: #2b2622; --rule: #d9cfbd; --muted: #7a6d5c; --card: #fffdf8;
+    --ok: #3f7a3a; --run: #2f5f9e; --warn: #9a6a00; --alert: #9b2218;
+    --chip: #f3eee3; --chip-os: #fbf8f1; --hover: #eef3fa; --press: #eef3fa; --hover-line: #b9c9de;
+    --warn-bg: #f7efd8; --alert-bg: #f6e6dc; --os-line: #b7a98f; --mark: #f3dd8a;
+    --shadow: 0 10px 24px -8px rgba(60,40,20,.35);
+    --serif: Georgia, "Times New Roman", serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    color-scheme: light; /* the script's "Liner notes" look is one look, on paper */
+}
+html, body { background: var(--paper); color: var(--ink); }
+body { font: 15px/1.5 var(--serif); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 40px; }
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 18px; }
+h1 { font-size: 24px; margin: 0; font-weight: normal; text-wrap: balance; }
+h2 { font: 600 11px/1 var(--sans); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.lede { color: var(--muted); margin: 4px 0 0; max-width: 72ch; }
+.lab { font: 600 10.5px/1 var(--sans); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+code, .mono { font-family: var(--mono); font-size: 12px; }
+a { color: var(--run); }
+
+.controls { display: flex; flex-wrap: wrap; gap: 12px 22px; align-items: center; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); padding-block: 10px; }
+.ctl { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.btn { font: 600 11px/1 var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink); background: var(--card); border: 1px solid var(--rule); border-radius: 3px; padding: 6px 9px; cursor: pointer; }
+.btn:hover { border-color: var(--hover-line); background: var(--hover); }
+.btn[aria-pressed="true"] { border-color: var(--run); color: var(--run); background: var(--press); }
+.btn:focus-visible, a:focus-visible, .chip:focus-visible, .cellbtn:focus-visible { outline: 2px solid var(--run); outline-offset: 1px; }
+
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 860px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+.where { display: grid; gap: 6px; min-width: 0; }
+.card { background: var(--card); border: 1px solid var(--rule); border-radius: 4px; box-shadow: var(--shadow); min-width: 0; }
+.card-h { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; padding: 9px 12px; border-bottom: 1px solid var(--rule); }
+.card-h .ttl { font: 600 11px/1 var(--sans); letter-spacing: .09em; text-transform: uppercase; }
+.card-h .n { font: 12px/1 var(--sans); color: var(--muted); font-variant-numeric: tabular-nums; margin-right: auto; }
+.card-b { padding: 10px 12px 12px; display: grid; gap: 10px; }
+.showline { font-size: 17px; overflow-wrap: anywhere; }
+.showline small { display: block; color: var(--muted); font-size: 12.5px; font-style: italic; }
+.pill { font: 600 10px/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; padding: 4px 7px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; background: var(--card); }
+.pill.ok { color: var(--ok); } .pill.warn { color: var(--warn); } .pill.alert { color: var(--alert); } .pill.idle { color: var(--muted); } .pill.run { color: var(--run); }
+button.pill { cursor: pointer; }
+button.pill[aria-pressed="true"] { background: var(--press); }
+
+.tools { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.segc { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--rule); border-radius: 3px; overflow: hidden; }
+.segc button { font: 600 10.5px/1 var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink); background: var(--card); border: 0; border-left: 1px solid var(--rule); padding: 5px 8px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.segc button:first-child { border-left: 0; }
+.segc button:hover { background: var(--hover); }
+.segc button[aria-pressed="true"] { background: var(--press); color: var(--run); }
+.segc button.find[aria-pressed="true"] { color: var(--alert); background: var(--alert-bg); }
+
+.rows { display: grid; gap: 5px; }
+.row { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 8px; align-items: start; }
+@media (max-width: 460px) { .row { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
+.row .k { font-style: italic; color: var(--muted); font-size: 12.5px; padding-top: 1px; }
+.row .k .c { font-style: normal; font-size: 11px; margin-left: 3px; }
+.row .v { display: flex; flex-wrap: wrap; gap: 3px; min-width: 0; }
+.chip { display: inline-flex; align-items: center; gap: 3px; font: 12px/18px var(--sans); padding: 0 7px; border: 1px solid var(--rule); border-radius: 999px; background: var(--chip); color: var(--ink); cursor: default; max-width: 100%; overflow-wrap: anywhere; }
+.chip.os { background: var(--chip-os); border-style: dashed; border-color: var(--os-line); }
+.chip.os::before { content: "↪"; font-size: 10px; color: var(--muted); }
+.chip.miss { background: var(--alert-bg); border: 1px dashed var(--alert); color: var(--alert); cursor: help; }
+.chip.miss::before { content: "❌"; font-size: 9px; }
+.chip.miss i { font: italic 11px var(--serif); opacity: .85; }
+.chip.spur { background: var(--warn-bg); border-color: var(--warn); color: var(--ink); cursor: help; }
+.chip.spur::before { content: "⚠️"; font-size: 10px; }
+.chip.miss:hover, .chip.spur:hover { box-shadow: 0 0 0 2px var(--hover-line); }
+.wait { font: italic 13px var(--serif); color: var(--muted); display: flex; gap: 8px; align-items: center; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--run); animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .dot { animation: none; } }
+.foot { border-top: 1px solid var(--rule); padding-top: 8px; font-size: 13px; display: grid; gap: 5px; }
+.foot .f { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px; }
+.foot .f b { font-weight: normal; }
+.foot .f.e b { color: var(--alert); } .foot .f.w b { color: var(--warn); }
+.foot .why { color: var(--muted); font-style: italic; }
+.clean { color: var(--ok); font-size: 13px; }
+
+.win-h { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; padding: 10px 14px; border-bottom: 1px solid var(--rule); }
+.win-h b { font-weight: normal; font-size: 16px; overflow-wrap: anywhere; min-width: 0; }
+.win-h .x { margin-left: auto; color: var(--muted); font: 12px var(--sans); }
+.win-b { padding: 10px 14px 14px; display: grid; gap: 8px; }
+.dimsec { color: var(--muted); font: 600 11px/1.6 var(--sans); letter-spacing: .08em; text-transform: uppercase; border-top: 1px solid var(--rule); padding-top: 6px; }
+.sec-h { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; border-top: 1px solid var(--rule); padding-top: 8px; font: 600 11px/1.6 var(--sans); letter-spacing: .08em; text-transform: uppercase; }
+.sec-h .sp { margin-right: auto; }
+
+.sp2 { background: var(--mark); border-radius: 2px; padding: 0 1px; font-family: var(--mono); font-size: .8em; color: var(--warn); cursor: help; }
+.tglyph { color: var(--warn); font-size: .75em; cursor: help; }
+
+.tblwrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 4px; background: var(--card); }
+table { border-collapse: collapse; font: 12.5px/1.4 var(--sans); min-width: 760px; width: 100%; }
+th { text-align: left; font: 600 10.5px/1.2 var(--sans); letter-spacing: .07em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--rule); padding: 7px 9px; white-space: nowrap; }
+td { border-bottom: 1px solid var(--rule); padding: 6px 9px; vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.e { background: var(--alert-bg); } td.w { background: var(--warn-bg); }
+td .g { float: right; margin-left: 6px; }
+.tagcell { display: grid; gap: 3px; cursor: help; min-width: 150px; }
+.tagcell .top { display: flex; gap: 6px; align-items: baseline; }
+.tagcell .top .n { font-variant-numeric: tabular-nums; margin-right: auto; }
+.tg { all: unset; cursor: pointer; font-size: 9px; color: var(--muted); padding: 2px 4px; border-radius: 2px; }
+.tg:hover { background: var(--hover); color: var(--run); }
+.tl { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+.tl li { overflow-wrap: anywhere; }
+.tl li.miss { color: var(--alert); }
+.tl li.miss::before { content: "❌ "; font-size: 9px; }
+.tl li.miss i { font: italic 11px var(--serif); }
+.tl li.spur { color: var(--warn); font-weight: 600; }
+.tl li.spur::before { content: "⚠️ "; font-size: 10px; }
+.tl li.os { color: var(--muted); }
+.tl li.os::before { content: "↪ "; font-size: 10px; }
+.tl li.more { color: var(--muted); font-style: italic; }
+#tip .fl { display: grid; gap: 5px; }
+#tip .fl div b { font-weight: normal; }
+#tip .fl .e b { color: var(--alert); } #tip .fl .w b { color: var(--warn); }
+#tip .fl span { color: var(--muted); font-style: italic; }
+tr[hidden] { display: none; }
+.menus { display: flex; flex-wrap: wrap; gap: 10px; }
+.menu { border: 1px solid var(--rule); border-radius: 4px; background: var(--card); min-width: 0; }
+.menu .mh { font: 600 11px/1 var(--sans); letter-spacing: .08em; padding: 7px 10px; border-bottom: 1px solid var(--rule); }
+.menu button { all: unset; display: flex; gap: 10px; justify-content: space-between; align-items: baseline; font: 12.5px/1.3 var(--sans); padding: 6px 10px; cursor: pointer; box-sizing: border-box; width: 100%; }
+.menu button:hover { background: var(--hover); }
+.menu button[aria-pressed="true"] { background: var(--press); color: var(--run); }
+.menu button .c { font-variant-numeric: tabular-nums; color: var(--muted); }
+
+#tip { position: fixed; z-index: 50; max-width: min(340px, calc(100vw - 24px)); background: var(--card); border: 1px solid var(--rule); border-radius: 4px; box-shadow: var(--shadow); padding: 9px 11px; font-size: 13px; display: grid; gap: 6px; }
+#tip .t { font-size: 15px; }
+#tip dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; margin: 0; }
+#tip dt { font-style: italic; color: var(--muted); }
+#tip dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+
+.notes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; }
+@media (max-width: 860px) { .notes { grid-template-columns: minmax(0, 1fr); } }
+.note { border-top: 1px solid var(--rule); padding-top: 8px; font-size: 14px; min-width: 0; }
+.note ul, .note ol { padding-left: 20px; margin: 6px 0; }
+.note li { margin: 4px 0; }
+.q { border-left: 3px solid var(--warn); padding-left: 9px; }
+</style>
+
+<div class="wrap">
+    <header>
+        <h1>A show's expected tags against the tags it has</h1>
+        <p class="lede">Mockup for batch 3. Five real shows from the mirror of 2026-10-18. Four families are checked: date parts, the day letter, the event type and the premiere count. Hover, focus or tap a marked tag to see why.</p>
+    </header>
+
+    <div class="controls">
+        <div class="ctl"><span class="lab">Show</span><span id="showbtns" class="ctl"></span></div>
+        <div class="ctl"><span class="lab">State</span>
+            <button class="btn" data-state="read" aria-pressed="true">Every page read</button>
+            <button class="btn" data-state="reading" aria-pressed="false">On stage page being read</button>
+            <button class="btn" data-state="off" aria-pressed="false">Findings switched off</button>
+        </div>
+    </div>
+
+    <div class="stage">
+        <div class="where">
+            <span class="lab">Event page: the head, after a press</span>
+            <div class="card">
+                <div class="card-b" style="border-bottom:1px solid var(--rule)">
+                    <div class="showline" id="h1"></div>
+                </div>
+                <div class="card-h" id="head-h"></div>
+                <div class="card-b" id="head-b"></div>
+            </div>
+        </div>
+        <div class="where">
+            <span class="lab">Preview window: Space on a link to the show</span>
+            <div class="card">
+                <div class="win-h"><b id="wtitle"></b><span class="x">Esc</span></div>
+                <div class="win-b">
+                    <div class="dimsec">▶ On stage · Setlist · Recording</div>
+                    <div class="sec-h" id="win-h"></div>
+                    <div id="win-b" style="display:grid;gap:10px"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="where">
+        <span class="lab">Year table: a new Tags column, filled by ▶ Pages (the four columns before it are today's)</span>
+        <div class="menus">
+            <div class="menu"><div class="mh">❌ ERROR</div><button id="m-miss" aria-pressed="false"><span>Tags: an expected tag is missing</span><span class="c">156</span></button></div>
+            <div class="menu"><div class="mh">⚠️ WARNING</div><button id="m-spur" aria-pressed="false"><span>Tags: a tag that is not expected</span><span class="c">124</span></button></div>
+        </div>
+        <div class="tblwrap">
+            <table>
+                <thead><tr><th>Date</th><th>Event</th><th>On stage</th><th>Content</th><th>Tags <button class="tg" id="all-open" aria-label="Fold or unfold every row's tags">▶▼</button></th></tr></thead>
+                <tbody id="tb"></tbody>
+            </table>
+        </div>
+        <p class="lede" style="margin:0">The Tags cell lists every tag, one a row, and folds like the On stage column: ▶ on a row, ▶▼ in the header for all. Folded, it keeps the marked tags in view. Hover or focus a flagged cell for the findings in words. The counts in the two menus are the whole mirror's (4,998 shows); a click on a menu row leaves the flagged rows, a second click brings all back.</p>
+    </div>
+
+    <div class="notes">
+        <div class="note">
+            <h2>What is built if you approve</h2>
+            <ul>
+                <li>A missing tag is drawn as a red dashed chip in its family's row. It is not counted in “Tags (N)”: that number stays the tags the wiki has.</li>
+                <li>A tag that is not expected keeps its place and gets an amber outline.</li>
+                <li>Two pills in the heading give the counts. A press on one, or “Findings” in the Show control, leaves only the marked tags.</li>
+                <li>Under the tags each finding is said in words, with what made the tag expected.</li>
+                <li>Nothing is marked before every page that keeps the show's tags is read, so a tag kept on the On stage page is never called missing.</li>
+                <li>The year table's Tags cell lists every tag, a row each, foldable. Tags from the On stage page carry ↪. Its findings are in the ❌ and ⚠️ menus, the column's 📊 and the cell's hover card.</li>
+            </ul>
+        </div>
+        <div class="note">
+            <h2>Decided (vzell, 2026-11-15)</h2>
+            <ul>
+                <li>The two marks look right.</li>
+                <li>Missing is an ❌ error, not expected a ⚠️ warning.</li>
+                <li>A second event-type tag (a <code>gig:</code> page tagged <code>recording</code>; 66 shows) is a warning.</li>
+                <li>A title's two blanks are marked on the head and the window title (planted here on the Café Wha? show).</li>
+                <li>The year table's cell lists every tag and still shows the errors and warnings.</li>
+            </ul>
+            <div class="q" style="margin-top:8px">
+                <h2>Still open</h2>
+                <ol>
+                    <li>Version 2 of the Tags cell: is this the list you meant (folded: the marked tags and “N more”; unfolded: every tag; the findings in the hover card)?</li>
+                    <li>Should the cell start folded, as here, or unfolded?</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="tip" hidden></div>
+
+<script>
+const SHOWS = [{"name": "gig:2016-05-21-estadio-santiago-bernabeu-madrid-spain", "title": "2016-05-21 Estadio Santiago Bernabéu, Madrid, Spain", "tags": ["10th", "2", "21", "2016", "badlands", "bitusa", "bobbyjean", "brucespringsteen", "btn", "btr", "coverme", "darlingtoncounty", "ditd", "downboundtrain", "estadiosantiagobernabeu", "europe", "gig", "glorydays", "humantouch", "hungryheart", "iof", "ittsnip", "johnny99", "livedl", "lohad", "lohad.pgr", "madrid", "may", "mcor", "memorabilia", "mlwnlyd", "news", "oits", "pointblank", "prem", "saturday", "sherrydarling", "sitn", "spain", "storyteller", "tas", "therising", "theriver", "thunderroad", "ticket", "tour_rvr16", "tpl", "trapped", "tttb", "twohearts", "woasd", "woth", "wreckingball"], "pages": [["onstage:2016-05-21-estadio-santiago-bernabeu-madrid-spain", ["charlesgiordano", "estreetband", "garrytallent", "jakeclemons", "maxweinberg", "nilslofgren", "onstage", "pattiscialfa", "roybittan", "soozietyrell", "stevenvanzandt"]]], "missing": [["3", "prem", ""]], "spurious": ["2"], "expected": {"2016": "date", "may": "date", "21": "date", "saturday": "date", "gig": "type", "3": "prem", "prem": "prem"}}, {"name": "recording:1983-06-13-hit-factory-new-york-city-ny", "title": "1983-06-13 Hit Factory (The), New York City, NY", "tags": ["13", "1983", "bootleg", "brucespringsteen", "clarenceclemons", "dannyfederici", "garrytallent", "hitfactory", "june", "maxweinberg", "newyork(ny)", "newyorkcity", "nonebutthebrave", "r_bitusa", "recording", "retail", "roybittan", "stevenvanzandt", "tvmovie", "unsatisfiedheart", "usa", "wednesday"], "pages": [], "missing": [["monday", "date", ""]], "spurious": ["wednesday"], "expected": {"1983": "date", "june": "date", "13": "date", "monday": "date", "recording": "type"}}, {"name": "gig:1967-05-00b-cafe-wha-new-york-city-ny", "title": "1967-05-00 Café Wha?, New York City, NY", "tags": ["00", "1967", "brucespringsteen", "cafewha", "gig", "help", "may", "newyork(ny)", "newyorkcity", "tour_cstls", "usa"], "pages": [["onstage:1967-05-00b-cafe-wha-new-york-city-ny", ["bobalfano", "castiles", "curtfluhr", "georgetheiss", "onstage", "paulpopkin", "vinniemanniello"]]], "missing": [["b", "letter", ""]], "spurious": [], "expected": {"1967": "date", "may": "date", "00": "date", "b": "letter", "gig": "type"}}, {"name": "gig:2018-07-18a-walter-kerr-theatre-new-york-city-ny", "title": "2018-07-18 Walter Kerr Theatre, New York City, NY", "tags": ["18", "2018", "a", "bornintheusa", "borntorun", "brilliantdisguise", "broadway", "brucespringsteen", "dancinginthedark", "growinup", "guest", "help", "july", "landofhopeanddreams", "longtimecomin", "longwalkhome", "memorabilia", "myfathershouse", "myhometown", "news", "newyork(ny)", "newyorkcity", "r_sob", "recording", "retail", "solo", "springsteenonbroadway", "tellhimsnip", "tenthavenuefreezeout", "theghostoftomjoad", "thepromisedland", "therising", "thewish", "thunderroad", "tougherthantherest", "tour_no", "usa", "walterkerrtheatre", "wednesday"], "pages": [["onstage:2018-07-18a-walter-kerr-theatre-new-york-city-ny", ["onstage", "pattiscialfa"]]], "missing": [["gig", "type", ""]], "spurious": ["recording"], "expected": {"2018": "date", "july": "date", "18": "date", "wednesday": "date", "a": "letter", "gig": "type"}}, {"name": "gig:2016-01-16-consol-energy-center-pittsburgh-pa", "title": "2016-01-16 Consol Energy Center, Pittsburgh, PA", "tags": ["16", "2016", "backstreets", "badlands", "bobbyjean", "bootleg", "brilliantdisguise", "brucespringsteen", "btn", "btr", "cadillacranch", "consolenergycenter", "coy", "dan", "ditd", "fadeaway", "gig", "hscw", "hungryheart", "iar", "independenceday", "ittsnip", "iwmy", "jacksoncage", "january", "livedl", "memorabilia", "mmitc", "news", "oits", "pennsylvania(pa)", "pittsburgh", "pointblank", "prem", "printed", "r_rvr", "ramrod", "rebelrebel", "rosalita", "saturday", "setlist", "sherrydarling", "shout", "stolencar", "storyteller", "therising", "theriver", "thunderroad", "ticket", "tmttrsnip", "tour_rvr16", "tpyp", "tttb", "twohearts", "usa", "wreckingball", "wroth", "yclbybnt"], "pages": [["onstage:2016-01-16-consol-energy-center-pittsburgh-pa", ["charlesgiordano", "estreetband", "garrytallent", "jakeclemons", "maxweinberg", "nilslofgren", "onstage", "pattiscialfa", "roybittan", "soozietyrell", "stevenvanzandt"]]], "missing": [["9+", "prem", ""]], "spurious": [], "expected": {"2016": "date", "january": "date", "16": "date", "saturday": "date", "gig": "type", "9+": "prem", "prem": "prem"}}];
+const MONTHS = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+const DAYS = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+const TYPES = ['gig','interview','nobruce','nogig','offstage','onstage','recording','rehearsal'];
+const MATERIAL = ['audio','bootleg','eyewitness','storyteller','ticket','livedl','boxset','private','guest','help','cancelled','rescheduled','video','prem','setlist','pass','photo','handwritten','printed','memorabilia','news','soundcheck','retail','solo','featured'];
+const FAMS = ['Date', 'Letter', 'Category', 'Tour', 'On the page', 'Releases', 'Songs, people, places'];
+const state = { show: 0, mode: 'read', only: { head: false, win: false }, filter: '', open: new Set([1]) };
+
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function famOf(t, kind) {
+    if (/^\d{4}$/.test(t) || /^\d{2}$/.test(t) || MONTHS.includes(t) || DAYS.includes(t)) return 'Date';
+    if (/^[a-z]$/.test(t)) return 'Letter';
+    if (/^[1-9]$/.test(t) || t === '9+') return 'On the page';
+    if (t.startsWith('tour_')) return 'Tour';
+    if (t.startsWith('r_')) return 'Releases';
+    if (TYPES.includes(t)) return 'Category';
+    if (MATERIAL.includes(t)) return 'On the page';
+    return 'Songs, people, places';
+}
+function four(t) { const f = famOf(t); return f === 'Date' || f === 'Letter' || f === 'Category' || /^[1-9]$/.test(t) || t === '9+' || t === 'prem'; }
+function facts(s) {
+    const kind = s.name.split(':')[0];
+    const date = s.title.slice(0, 10);
+    const d = new Date(date + 'T00:00:00Z');
+    const wd = isNaN(d) ? '' : DAYS[d.getUTCDay()];
+    const prem = Object.keys(s.expected).find(t => s.expected[t] === 'prem' && t !== 'prem') || '0';
+    return { kind, date, wd, prem };
+}
+function whyMissing(tag, fam, s) {
+    const f = facts(s);
+    if (fam === 'prem') return tag === 'prem' ? 'Songs in bold on the Setlist tab are tour premieres, and a page with one carries “prem”.' : `${f.prem} songs are in bold on the Setlist tab: tour premieres. The page should say how many.`;
+    if (fam === 'letter') return `The address has the letter “${tag}” after the date (${s.name.split(':')[1].slice(0, 11)}…), for a second show of that day.`;
+    if (fam === 'type') return `The page is a ${f.kind}: its address starts with “${f.kind}:”.`;
+    if (DAYS.includes(tag)) return `${f.date} is a ${tag[0].toUpperCase() + tag.slice(1)}.`;
+    return `From the date in the title, ${f.date}.`;
+}
+function whySpurious(tag, s) {
+    const f = facts(s);
+    if (DAYS.includes(tag)) return `${f.date} is a ${f.wd[0].toUpperCase() + f.wd.slice(1)}, not a ${tag[0].toUpperCase() + tag.slice(1)}.`;
+    if (/^[1-9]$/.test(tag) || tag === '9+') return `The tag says ${tag} tour premieres; ${f.prem} songs are in bold on the Setlist tab.`;
+    if (TYPES.includes(tag)) return `The page is a ${f.kind}, and “${tag}” is another kind of page.`;
+    if (/^[a-z]$/.test(tag)) return 'The address has no such letter after the date.';
+    return `Not what the date ${f.date} gives.`;
+}
+function model(s) {
+    const items = s.tags.map(t => ({ t, fam: famOf(t) }));
+    for (const [page, tags] of s.pages) for (const t of tags) items.push({ t, fam: famOf(t), os: page });
+    const miss = state.mode === 'read' ? s.missing.map(m => ({ t: m[0], fam: famOf(m[0]), miss: whyMissing(m[0], m[1], s) })) : [];
+    const spur = state.mode === 'read' ? s.spurious.filter(four) : [];
+    for (const it of items) if (!it.os && spur.includes(it.t)) it.spur = whySpurious(it.t, s);
+    return { items, miss, spur, own: s.tags.length, os: items.filter(i => i.os).length };
+}
+function chip(it) {
+    if (it.miss) return `<span class="chip miss" tabindex="0" data-tip="${esc(JSON.stringify({ t: it.t, k: 'Missing', w: it.miss }))}">${esc(it.t)} <i>missing</i></span>`;
+    if (it.spur) return `<span class="chip spur" tabindex="0" data-tip="${esc(JSON.stringify({ t: it.t, k: 'Not expected', w: it.spur }))}">${esc(it.t)}</span>`;
+    return `<span class="chip${it.os ? ' os' : ''}">${esc(it.t)}</span>`;
+}
+function box(where, s) {
+    const m = model(s);
+    const only = state.only[where];
+    const all = m.items.concat(m.miss);
+    const shown = only ? all.filter(i => i.miss || i.spur) : all;
+    let rows = '';
+    for (const f of FAMS) {
+        const its = shown.filter(i => i.fam === f).sort((a, b) => a.t.localeCompare(b.t));
+        if (!its.length) continue;
+        const n = its.filter(i => !i.miss).length;
+        rows += `<div class="row"><div class="k">${f}<span class="c">${n}</span></div><div class="v">${its.map(chip).join('')}</div></div>`;
+    }
+    const nf = m.miss.length + m.spur.length;
+    let pills = '';
+    if (state.mode === 'reading') pills = '<span class="pill run">reading…</span>';
+    else if (state.mode === 'off') pills = '';
+    else if (!nf) pills = '<span class="pill ok">✓ as expected</span>';
+    else {
+        if (m.miss.length) pills += `<button class="pill alert" data-only="${where}" aria-pressed="${only}">❌ ${m.miss.length} missing</button>`;
+        if (m.spur.length) pills += `<button class="pill warn" data-only="${where}" aria-pressed="${only}">⚠️ ${m.spur.length} not expected</button>`;
+    }
+    const tools = `<div class="tools"><span class="lab">Show</span><span class="segc">
+        <button data-only-set="${where}:0" aria-pressed="${!only}">All ${m.own + m.os}</button>
+        <button disabled>This page ${m.own}</button><button disabled>On stage ${m.os}</button>
+        ${state.mode === 'read' && nf ? `<button class="find" data-only-set="${where}:1" aria-pressed="${only}">Findings ${nf}</button>` : ''}
+        </span></div>`;
+    let foot = '';
+    if (state.mode === 'reading') foot = '<div class="wait"><span class="dot"></span>The tags are checked once the On stage page is read. Until then nothing is marked.</div>';
+    else if (state.mode === 'read' && nf) {
+        foot = '<div class="foot">' + m.miss.map(i => `<div class="f e"><b>❌ ${esc(i.t)}</b><span>is expected and missing. <span class="why">${esc(i.miss)}</span></span></div>`).join('')
+            + m.items.filter(i => i.spur).map(i => `<div class="f w"><b>⚠️ ${esc(i.t)}</b><span>is not expected. <span class="why">${esc(i.spur)}</span></span></div>`).join('') + '</div>';
+    } else if (state.mode === 'read') foot = '<div class="clean">Date parts, day letter, event type and premiere count are as expected.</div>';
+    return { count: `${m.own} + ${m.os}`, pills, body: tools + `<div class="rows">${rows || '<span class="wait">No tag to show.</span>'}</div>` + foot, m };
+}
+function titleHtml(s) {
+    const planted = s.name.includes('cafe-wha') && state.mode === 'read';
+    if (!planted) return esc(s.title);
+    const t = s.title.replace(', New York', ',  New York');
+    return esc(t).replace(',  ', ',<span class="sp2" tabindex="0" data-tip="' + esc(JSON.stringify({ t: 'Two blanks in the title', k: 'Warning', w: 'The page’s title has two blanks in a row before “New York City”. (Planted for the mockup; the real case is 2026-08-28 Stone Pony, Summer Stage.)' })) + '">␣␣</span>')
+        + ' <span class="tglyph" title="">⚠️</span>';
+}
+function render() {
+    const s = SHOWS[state.show];
+    document.getElementById('h1').innerHTML = titleHtml(s) + `<small>${esc(s.name)}</small>`;
+    document.getElementById('wtitle').innerHTML = titleHtml(s);
+    const h = box('head', s);
+    document.getElementById('head-h').innerHTML = `<span class="ttl">Tags</span><span class="n">${h.count}</span>${h.pills}`;
+    document.getElementById('head-b').innerHTML = h.body;
+    const w = box('win', s);
+    document.getElementById('win-h').innerHTML = `<span class="sp">▼ Tags (${h.m.own + h.m.os})</span>${w.pills}`;
+    document.getElementById('win-b').innerHTML = w.body;
+    document.querySelectorAll('#showbtns .btn').forEach((b, i) => b.setAttribute('aria-pressed', i === state.show));
+    document.querySelectorAll('[data-state]').forEach(b => b.setAttribute('aria-pressed', b.dataset.state === state.mode));
+    table();
+}
+function table() {
+    const tb = document.getElementById('tb');
+    tb.innerHTML = SHOWS.map((s, i) => {
+        const keep = state.mode;
+        state.mode = keep === 'off' ? 'off' : 'read';
+        const m = model(s);
+        state.mode = keep;
+        const cls = m.miss.length ? 'e' : m.spur.length ? 'w' : '';
+        const glyph = m.miss.length ? '❌' : m.spur.length ? '⚠️' : '';
+        const list = m.miss.map(x => ['e', x.t, x.miss]).concat(m.items.filter(x => x.spur).map(x => ['w', x.t, x.spur]));
+        const hide = (state.filter === 'miss' && !m.miss.length) || (state.filter === 'spur' && !m.spur.length);
+        const open = state.open.has(i);
+        const every = m.items.concat(m.miss).sort((a, b) => a.t.localeCompare(b.t));
+        const marked = every.filter(x => x.miss || x.spur);
+        const li = x => `<li class="${x.miss ? 'miss' : x.spur ? 'spur' : x.os ? 'os' : ''}">${esc(x.t)}${x.miss ? ' <i>missing</i>' : ''}</li>`;
+        const rowsHtml = open ? every.map(li).join('')
+            : marked.map(li).join('') + (every.length > marked.length ? `<li class="more">${marked.length ? 'and ' : ''}${every.length - marked.length} ${marked.length ? 'more' : 'tags folded'}</li>` : '');
+        const tipAttr = list.length ? ` tabindex="0" data-tip="${esc(JSON.stringify({ t: s.title, l: list }))}"` : '';
+        const cell = `<div class="tagcell"${tipAttr}><div class="top"><button class="tg" data-open="${i}" aria-label="${open ? 'Fold' : 'Unfold'} the tags">${open ? '▼' : '▶'}</button><span class="n">${m.own + m.os} tags</span><span>${glyph}</span></div><ul class="tl">${rowsHtml}</ul></div>`;
+        const cast = s.pages.length ? 'Bruce Springsteen, …' : 'Bruce Springsteen';
+        return `<tr${hide ? ' hidden' : ''}><td class="num">${esc(s.title.slice(0, 10))}</td><td>${esc(s.title.slice(11))}</td><td>${cast}</td><td>Setlist, Recording</td><td class="${cls}">${cell}</td></tr>`;
+    }).join('');
+    document.getElementById('m-miss').setAttribute('aria-pressed', state.filter === 'miss');
+    document.getElementById('m-spur').setAttribute('aria-pressed', state.filter === 'spur');
+}
+const names = ['Madrid 2016', 'Hit Factory 1983', 'Café Wha? 1967', 'Walter Kerr 2018', 'Pittsburgh 2016'];
+document.getElementById('showbtns').innerHTML = names.map((n, i) => `<button class="btn" data-show="${i}" aria-pressed="false">${n}</button>`).join('');
+document.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (b) {
+        if (b.dataset.show) { state.show = +b.dataset.show; state.only = { head: false, win: false }; }
+        else if (b.dataset.state) { state.mode = b.dataset.state; state.only = { head: false, win: false }; }
+        else if (b.dataset.only) state.only[b.dataset.only] = !state.only[b.dataset.only];
+        else if (b.dataset.onlySet) { const [w, v] = b.dataset.onlySet.split(':'); state.only[w] = v === '1'; }
+        else if (b.dataset.open) { const i = +b.dataset.open; if (state.open.has(i)) state.open.delete(i); else state.open.add(i); }
+        else if (b.id === 'all-open') { if (state.open.size === SHOWS.length) state.open.clear(); else SHOWS.forEach((_, i) => state.open.add(i)); }
+        else if (b.id === 'm-miss') state.filter = state.filter === 'miss' ? '' : 'miss';
+        else if (b.id === 'm-spur') state.filter = state.filter === 'spur' ? '' : 'spur';
+        else if (!b.dataset.tip) return;
+        if (!b.dataset.tip) { hideTip(); render(); return; }
+    }
+    const t = e.target.closest('[data-tip]');
+    if (t) showTip(t); else hideTip();
+});
+const tip = document.getElementById('tip');
+function showTip(el) {
+    const d = JSON.parse(el.dataset.tip);
+    tip.innerHTML = d.l
+        ? `<div class="t">${esc(d.t)}</div><div class="fl">${d.l.map(x => `<div class="${x[0]}"><b>${x[0] === 'e' ? '❌' : '⚠️'} ${esc(x[1])}</b> ${x[0] === 'e' ? 'is expected and missing.' : 'is not expected.'} <span>${esc(x[2])}</span></div>`).join('')}</div>`
+        : `<div class="t">${esc(d.t)}</div><dl><dt>${esc(d.k)}</dt><dd>${esc(d.w)}</dd></dl>`;
+    tip.hidden = false;
+    const r = el.getBoundingClientRect();
+    const tr = tip.getBoundingClientRect();
+    let x = Math.min(Math.max(8, r.left), window.innerWidth - tr.width - 8);
+    let y = r.bottom + 6;
+    if (y + tr.height > window.innerHeight - 8) y = Math.max(8, r.top - tr.height - 6);
+    tip.style.left = x + 'px';
+    tip.style.top = y + 'px';
+}
+function hideTip() { tip.hidden = true; }
+document.addEventListener('mouseover', e => { const t = e.target.closest('[data-tip]'); if (t) showTip(t); });
+document.addEventListener('mouseout', e => { if (e.target.closest('[data-tip]')) hideTip(); });
+document.addEventListener('focusin', e => { const t = e.target.closest('[data-tip]'); if (t) showTip(t); });
+document.addEventListener('focusout', hideTip);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') hideTip(); });
+window.addEventListener('scroll', hideTip, { passive: true });
+render();
+</script>
