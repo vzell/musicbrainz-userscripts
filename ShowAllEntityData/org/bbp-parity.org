@@ -166,6 +166,8 @@ https://claude.ai/artifact/T1D2ghbx9zHHCh8jgfr5g7
   *Decided (vzell, 2026-11-15): yes.* A missing listing line is =bb-year-unlisted= (⚠️) on the YEAR table's Event cell.
   With ▶ Pages on, the listing of a year whose rows come into view is read: one more request a year, kept. Probe: 16
   rows in 11 years (1977 3, 2025 3, 2007 2), all in BruceParser's reports. The level (⚠️) is Claude's choice.
+  Tests (petri, 2026-11-15): the spec 23/23, 12 new mutations all caught, =npm run test:full= 02:02:31–02:21:46 CET,
+  3,132 passed, 0 failed.
 - *Found on the way, fixed:* on a listing ▶ Pages said "no page of its own" for every recording session, rehearsal and
   interview, and for every entry whose anchor ends in a letter. The year page was read for =/gig:= and =/nogig:= links
   and six-digit anchors only.

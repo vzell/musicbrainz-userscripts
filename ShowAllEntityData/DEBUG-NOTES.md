@@ -29573,7 +29573,7 @@ Env: 2026-11-14T21:15:06+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
   B/M 1.01 (tests/MEASUREMENTS.org); `npm run test:full` 21:15:06–21:34:18 CET on petri: 3,124 passed, 0 failed.
 
 ## 2026-11-15 — Brucebase findings, batch 2: a year entry the listing lacks (`bb-year-unlisted`, feat/bb-findings-batch2)
-Env: 2026-11-15T02:20+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright Chromium 151.0.7922.34 (chromium-fixtures), no Tampermonkey (GM stubs); probe: Python over the mirror bb/2026-11-13, n/a
+Env: 2026-11-15T02:02:31+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright Chromium 151.0.7922.34 (chromium-fixtures), no Tampermonkey (GM stubs); probe: Python over the mirror bb/2026-11-13, n/a
 - **What:** vzell's "Yes" to batch 2's open decision: a year entry that no line of the year's listing links is a ⚠️ on
   the year table's Event cell. Rules and counts: docs/claude/brucebase.md, "The listing and venue checks". Probe: 16
   rows in 11 years, all in BruceParser's reports; the shipped reader and token agree on all 5,018 entries
@@ -29592,4 +29592,6 @@ Env: 2026-11-15T02:20+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1
   no answer at all. Settings seeded by an earlier load of the same page stay: one load per test.
 - **Existing lists moved:** five finds (three name the `_LATE_FINDING_IDS` line; two matched twice because the new
   code repeated a line of older code, which was renamed instead). `check-mutation-finds.py`: 5 stale, then 0.
-- **Tests:** `bb-findings-batch2.spec.js` 23 (8 new); 12 new mutation entries, all failing their test.
+- **Tests:** `bb-findings-batch2.spec.js` 23 (8 new); 12 new mutation entries, all failing their test;
+  `npm run test:full` 02:02:31–02:21:46 CET on petri (`f0a7088e`): 3,132 passed, 0 failed. No render measurement:
+  the row build is unchanged; a full render gains one walk of the year rows and one store read a year.
