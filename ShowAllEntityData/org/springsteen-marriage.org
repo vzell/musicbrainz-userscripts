@@ -26,6 +26,72 @@ Plan for pickup on another host.
   "Read every row again" in the ▶ Pages progress card. The suite was not run again on =main= (vzell: it had just
   passed 3,143 of 3,143 on the branch at =edd3d590=). Next: batch 3 of the matrix (the expected tags). The plan is =~/.claude/plans/curried-bouncing-nygaard.md=. By vzell, in BruceParser: a full =bbp.sh= run and the =dc.sh= timing with 4 jobs.
 
+** The prompt for the next session (batch 3; written 2026-11-15 for =NB-3641=)
+
+Start the session in =~/git/musicbrainz-userscripts/ShowAllEntityData= and paste the block. Its second half is the
+working rules that are in Claude's memory on =petri= only, not in any =CLAUDE.md= of the repo.
+
+#+begin_example
+Continue the BruceBaseParser parity work: Track A batch 3 (the expected tags).
+
+First: git checkout main && git pull. main must be at 9.99.1632 or later.
+
+Then read, in this order:
+- org/springsteen-marriage.org, the "PICKUP HERE" section
+- org/bbp-parity.org: the matrix (the rows marked batch 3), and "Batch 1" and
+  "Batch 2" for how the earlier batches were built, probed and decided
+- docs/claude/findings.md and docs/claude/brucebase.md ("The year table's name
+  and anchor checks", "The listing and venue checks", "The setlist comparison",
+  "Reading again")
+
+Work as in batches 1 and 2:
+- plan mode first; name the branch (feat/bb-findings-batch3); list every new
+  request the findings would cost and every open decision before any code
+- a Python probe over the whole mirror (~/git/scripts/BruceParser/bb/latest)
+  compared with BruceParser's own reports in REPORTING/, every difference
+  explained before code; then a checker that runs the SHIPPED code over the
+  same pages and must equal the probe
+- findings through the add-finding skill; a spec from real mirror pages, a
+  mutation list, the render ratio against main in one session
+- WIP changelog only, no @version; docs, DEBUG-NOTES entry with Env stamp
+- commit and push the branch; then ask me for the browser check with real
+  URLs. No merge without my word.
+
+Do not run bbp.sh. The plan file of batches 1 and 2 was on petri only
+(~/.claude/plans/), so do not look for it here: org/bbp-parity.org is the
+record.
+
+Working rules that no CLAUDE.md of the repo states (keep them all session):
+1. I hand-align the tables of .md and .org files. Re-read a doc right before
+   editing it, edit in place, never reflow or reformat; pad every cell of a new
+   table to its column's width. Commit my own hand edits with your work.
+2. New visible UI: publish an interactive HTML mockup (a private Artifact, the
+   "Liner notes" look, its open questions numbered inside with a
+   recommendation each) and wait for my approval; build exactly that and name
+   every deviation. A mockup that names a wiki's members keeps its source in
+   debug/, never in the repo.
+3. A long run (specs, mutation checks, measurements) writes its full output to
+   a log file in the scratchpad; grep or tail the finished log. Never pipe a
+   live run through head or grep.
+4. Before a mutation run, tell me: mutation-check.py edits the live
+   ShowAllEntityData.user.js, which my Tampermonkey may load. One test (grep)
+   per entry; a guard no spec can see is "expect": "pass" with the reason.
+5. In a multi-phase feature, run only the phase's own specs and mutations;
+   the wide run (test:full) after a few phases and before any merge.
+6. Before specs for a converter or reader of another site, run it over EVERY
+   page of the family in the mirror, not a sample; Env stamp on the result.
+7. The Brucebase mirror: check "ls -la ~/git/scripts/BruceParser/bb/latest"
+   first. On petri it is a local run of 2026-11-13 (42,531 pages, fast); on
+   other hosts it may still point to the NAS copy (/mnt/share/brucebase/…),
+   which is older and slow (copy samples to debug/bb-mirror/ first). Say which
+   mirror a probe ran on. debug/ is not in git; I sync it by hand.
+8. Any public page built from the Springsteen sites' data credits the owners
+   where their data appears: Eddy Wehbe (springsteenlyrics.com), Danny van der
+   Linden (brucebase.wikidot.com), Stefano Taverna (the bootleg list).
+9. After each finished task: git diff, commit, push the feature branch (this
+   repo's rule over "never push without instruction").
+#+end_example
+
 * Status at the end of the session of 2026-11-14 (01:40 CET)
 
 - *Shipped:* Phase 1 is MERGED. =main= is at 9.99.1625 (=afd922fb=, pushed), the branch is deleted, and =test:full=
