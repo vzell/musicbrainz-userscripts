@@ -4,9 +4,46 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1798 versions; the month pages hold all of them.
+This page shows the newest 100 of 1802 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1631 — 2026-11-15
+
+**🚀 Feature**
+
+- Brucebase year pages: the Setlist column is compared with the Setlist tab of each entry's own page, once ▶ Pages has read it. Three new findings: ❌ "Brucebase setlist: songs differ from the event page" (a song only on one of the two pages; a medley written as one entry counts), ⚠️ "… a song is written differently" ("TWIST & SHOUT" against "TWIST AND SHOUT") and ⚠️ "… a set is named differently" ("Pre-show jam" against "Pre-Show Jam", or a Soundcheck only one page names). Notes in brackets ("(with Tom Morello)") are set aside. No request of its own. In November 2026: 95, 22 and 112 entries.
+- A flagged Setlist cell has a card with both setlists side by side: hover it, tap it, or focus it and press Enter. It shows the lines that differ with the song before and after each, the letters that differ marked, "Show all N songs" for the whole set, and links to the year page and the event page. Esc closes it.
+- Link previews of other sites are read again once after this update (an event page's record keeps its sets as written).
+
+
+## 9.99.1630 — 2026-11-15
+
+**🚀 Feature**
+
+- Brucebase year pages: a new finding on the Event column, ❌ "Brucebase year entry missing from the year's listing". No line of the year's listing (/1977-list) links the entry: it is missing there ("1977-07-29 - Atlantic Studios"), or its line links another anchor. 16 entries in November 2026.
+- ▶ Pages on a Brucebase year table now also reads the listing of each year whose rows come into view: one more request a year, kept like the year pages, and it answers every row of that year. After a reload the kept listing is used at once, without ▶ Pages. Switch the finding off in ⚙️ Settings → ⚠️ Findings and no listing is read.
+
+
+## 9.99.1629 — 2026-11-15
+
+**🚀 Feature**
+
+- Brucebase year pages: a new finding on the Venue column, ⚠️ "Brucebase event page names its venue differently from the venue page". The title of an entry's own page names the venue differently from the title of the venue's page it links ("CBS Records" against "CBS"). A show of the day in brackets ("(Late)") and a description between the venue and its city ("Mediasound Studios, Studio C, New York City, NY") are accepted. It shows once ▶ Pages has read the entry's page.
+- ▶ Pages on a Brucebase year table now also reads each entry's venue page: one more request per venue (not per entry), kept 30 days. The first reading of a year takes about a third to a half longer. Switch the venue finding off in ⚙️ Settings → ⚠️ Findings and no venue page is read.
+- Link previews of other sites are read again once after this update (the venue pages' records get a new field): the first hover or ▶ Pages on a page read before asks the site again.
+
+
+## 9.99.1628 — 2026-11-15
+
+**🚀 Feature**
+
+- Brucebase year listings (/1978-list): two new findings on the Event column, BruceBaseParser's listing checks. ❌ "Brucebase listing entry named differently from the year page": the listing writes an entry differently from the heading the year page has at the anchor it links (1966: "BUSINESS DISTRICT" against "UNKNOWN LOCATION"). ⚠️ "Brucebase listing entry with a wrong link to the year page": the link's anchor is not the entry's date, it names another year's page, or the year page has no such anchor. The date and year part shows with the table; the rest once ▶ Pages has read the year page, which is one request a year and answers every row of that year at once. A switch for each and one tint setting in ⚙️ Settings → ⚠️ Findings.
+
+**🐛 Fix**
+
+- Brucebase year listings: ▶ Pages said "no page of its own" for every recording session, rehearsal and interview, and for every entry whose anchor ends in a letter (several entries on one date). The year page was read for shows and cancelled shows only, and for anchors of six digits only. Such rows are now read like the others. Year pages kept from before are read once more.
+
 
 ## 9.99.1627 — 2026-11-14
 
@@ -833,39 +870,6 @@ This page shows the newest 100 of 1798 versions; the month pages hold all of the
 
 - setlist.fm setlist window: every artist (the show's own, each cover's original, each guest) is now two links: MusicBrainz's artist icon in front opens the artist on MusicBrainz (its card when you point at it, its window on a click), and the name opens the artist's setlists on setlist.fm. Both open in the same window, with Back. The same in a tour's window and in a venue window's "Artists" table. "· its setlists" after the setlist's artist is gone: the name opens that page.
 - On setlist.fm itself, MusicBrainz links in the preview window now open MusicBrainz's own card and window, as on discogs.com (an artist window's "On MusicBrainz" too), instead of a new tab.
-
-
-## 9.99.1531 — 2026-11-03
-
-**🐛 Fix**
-
-- setlist.fm: the card of a Tour cell (setlist.fm's search for an artist's tour) said "checked by AWS WAF" instead of showing the tour. setlist.fm answers its search pages only when the request carries the browser's setlist.fm cookies; the card now reads them as the page does on setlist.fm, and with your setlist.fm cookies elsewhere. A tour window's set times, which come from the same search pages, are read the same way.
-
-
-## 9.99.1530 — 2026-11-03
-
-**✨ Improve**
-
-- setlist.fm setlist window (link preview, with your setlist.fm API key): every song has a ▶, as on setlist.fm itself. A click finds the song on YouTube (YouTube's own search for the artist and the song, its first video) and plays it in the window, above the setlist, in the same player as YouTube links and archive.org tracks; a second click stops it, and a song played once starts at once the next time. A song YouTube finds nothing for is marked, and its next click opens YouTube's search in a new tab. Follows the setting "Play YouTube videos in place"; with it off, no ▶.
-
-
-## 9.99.1529 — 2026-11-03
-
-**🚀 Feature**
-
-- setlist.fm: a search for an artist's setlists (setlist.fm/search?artist=…, with or without a tour, country, city or venue) gets the same "Setlists" button as an artist's page: every setlist of the search as one table, named after the search's choices ("setlist.fm search: Bruce Springsteen · Land of Hope & Dreams American Tour").
-
-**✨ Improve**
-
-- setlist.fm links: a link to setlist.fm's search for an artist's setlists — every Tour cell of the setlist.fm tables links one — now has its card and window like the other setlist.fm links, also without an API key: they are read from setlist.fm's search page itself. The window lists the search's setlists with their set times, 10 at a time ("Load 10 more"), with the tours and venues on the left.
-
-
-## 9.99.1528 — 2026-11-03
-
-**🐛 Fix**
-
-- setlist.fm tables: the page now scrolls sideways, so a table wider than the window can be read to its last column. setlist.fm's own stylesheet turns sideways scrolling off for the whole page.
-- setlist.fm tables: a show at a stage inside a venue ("NAC Opera Hall at National Arts Centre, Ottawa") no longer repeats the venue in the Event column.
 
 
 ---

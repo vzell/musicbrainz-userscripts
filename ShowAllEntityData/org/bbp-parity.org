@@ -149,7 +149,7 @@ On each page press *Show all events*. "With the table" needs nothing more. "Afte
 
 Unverified: all of it on the live site (the fixtures are the mirror's pages; Claude made no request to the wiki). A page read before this update is asked once more (the stored records are from the older reader).
 
-* Batch 2: the listings, the venues, the setlists (=feat/bb-findings-batch2=, 2026-11-14; not merged)
+* Batch 2: the listings, the venues, the setlists (=feat/bb-findings-batch2=, 2026-11-14; merged 2026-11-15 as 9.99.1628–1631)
 
 Env: 2026-11-14T21:15+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright
 Chromium 151.0.7922.34 (chromium-fixtures), no Tampermonkey (GM stubs); probe: Python over the mirror bb/2026-11-13, n/a
@@ -160,7 +160,7 @@ finding; setlists get ❌ for songs and ⚠️ for spelling.
 *Decisions (vzell, 2026-11-15):* a year entry the listing lacks is a finding; a medley against one song is an error;
 set names are a third finding now; the card shows the differences by default, and the full set must be possible.
 
-*All of batch 2 is built and pushed, not merged.* The setlist card's approved mockup:
+*All of batch 2 is merged into =main= (9.99.1628–1631, 2026-11-15; vzell: "Everything tested OK").* The setlist card's approved mockup:
 https://claude.ai/artifact/T1D2ghbx9zHHCh8jgfr5g7
 
 - *Part 1, the listings:* =bb-list-title= (❌) and =bb-list-anchor= (⚠️) on a listing's Event cell. The year page that

@@ -29623,3 +29623,9 @@ Env: 2026-11-15T03:00+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1
 - **Tests:** `bb-findings-batch2.spec.js` 29 (6 new); 31 new mutation entries, all failing their test; render B/M
   1.02, sort 1.03–1.04 (tests/MEASUREMENTS.org); `npm run test:full` 03:02:06–03:21:34 CET on petri (`e3e1125a`):
   3,138 passed, 0 failed.
+- **Merged 2026-11-15 as 9.99.1628–1631** (vzell: "Everything tested OK", "merge"). `test:full` on `main`
+  (`841fe0f7` plus the fold), petri, 15:17:26–15:37:39 CET, same Playwright Chromium, GM stubs: 3,137 passed, 1
+  failed — `bb-tags.spec.js:225` ("a tag link's window: the first 250 by title"): the window's heading still read
+  "Pages 0 of 300" after 5 s. Not this change's code (the tag reader); alone it passed 30 of 30 with
+  `--repeat-each 3` right after (15:38 CET), and it passed in both full runs of the night. Taken as a timing
+  failure under the full run's load; first seen here, so watch for it.
