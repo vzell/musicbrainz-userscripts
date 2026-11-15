@@ -185,7 +185,8 @@ https://claude.ai/artifact/T1D2ghbx9zHHCh8jgfr5g7
   names 112; 214 events, 207 of them in BruceParser's report of 342. Its other 135 differ only in notes in brackets,
   prose and "…", which the rule sets aside. Two things differ from the mockup: the card opens ABOVE a cell that is
   low in the window (below, it opened out of sight), and it has a pill and a row for set names (decision 2).
-  Tests (petri, 2026-11-15): 6 more in the spec (29), 31 mutations all caught; render branch / main 1.02.
+  Tests (petri, 2026-11-15): 6 more in the spec (29), 31 mutations all caught; render branch / main 1.02;
+  =npm run test:full= 03:02:06–03:21:34 CET, 3,138 passed, 0 failed.
 - *Tests* (petri, 2026-11-14): the new spec 15/15; 28 mutations as recorded (27 fail, 1 passes with the reason);
   render branch / main 1.01; =npm run test:full= 21:15:06–21:34:18 CET, 3,124 passed, 0 failed.
 - *Details:* =docs/claude/brucebase.md=, "The listing and venue checks".

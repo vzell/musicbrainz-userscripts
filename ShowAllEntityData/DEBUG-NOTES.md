@@ -29620,4 +29620,5 @@ Env: 2026-11-15T03:00+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1
 - **Existing lists moved:** 12 finds in eight lists named four lines this change rewrote
   (`check-mutation-finds.py`: 12 stale, then 0).
 - **Tests:** `bb-findings-batch2.spec.js` 29 (6 new); 31 new mutation entries, all failing their test; render B/M
-  1.02, sort 1.03–1.04 (tests/MEASUREMENTS.org).
+  1.02, sort 1.03–1.04 (tests/MEASUREMENTS.org); `npm run test:full` 03:02:06–03:21:34 CET on petri (`e3e1125a`):
+  3,138 passed, 0 failed.
