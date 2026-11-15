@@ -31,8 +31,13 @@ const { waitForRenderComplete } = require('../support/browser');
 
 const FX = (name) => path.join(__dirname, name);
 const BB = 'https://brucebase.wikidot.com/';
-/** The setting back on: FIXTURE_SETTINGS_OVERRIDE switches it off for every other spec. */
-const ON = { sa_bb_onstage_tags: true };
+/**
+ * The setting back on: FIXTURE_SETTINGS_OVERRIDE switches it off for every
+ * other spec. The tag check (batch 3) is off here: it adds a chip for a
+ * MISSING tag (Pittsburgh lacks "9+"), and this spec counts the chips of the
+ * tags the pages have. bb-findings-batch3.spec.js has it on.
+ */
+const ON = { sa_bb_onstage_tags: true, sa_findings_bb_tag_missing: false, sa_findings_bb_tag_spurious: false };
 /** The onstage pages the wiki has, by name: fixture file. */
 const ONSTAGE = {
     'onstage:2016-01-16-consol-energy-center-pittsburgh-pa': 'bb-onstage-2016-01-16.html',

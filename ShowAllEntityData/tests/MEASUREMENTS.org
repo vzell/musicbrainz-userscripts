@@ -4346,3 +4346,16 @@ Env: 2026-11-15T02:56:43+01:00–02:57:50+01:00 · petri · WSL2 Ubuntu 24.04.3 
 |     2 | 543 (520–565) | 552 (547–561) | 68 (65–80) | 70 (65–82) |
 
 B/M: render 1.02 and 1.02, sort 1.04 and 1.03, inside each arm's own range but the same direction four times: a small real cost, the row's sets kept a second time as text (94 attributes of about 1 kB). Not measured: the start page's 5,018 rows.
+
+* 2026-11-15 — Brucebase year table: the cost of the Tags column at render (=NB-3641=, feat/bb-findings-batch3)
+
+Env: 2026-11-15T22:52:41+01:00–22:53:46+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs).
+
+=node scripts/measure-bb-year-render.js 1985 9= (bb-year, =tableMode: single=, "Brucebase — 1985", 94 rows; the fixture =bb-year-1985.html=), as above: before any page is read. Arm M: =main= at =26a308a3= (a git worktree). Arm B: the branch's working tree (=5bf4d0f4=). Alternated M, B, M, B in one session; median (range) of 9, ms.
+
+| Round | M render      | B render      | M sort     | B sort     |
+|-------+---------------+---------------+------------+------------|
+|     1 | 490 (479–510) | 509 (486–526) | 68 (64–78) | 67 (63–80) |
+|     2 | 501 (487–519) | 502 (489–520) | 66 (64–76) | 66 (63–78) |
+
+B/M: render 1.04 and 1.00, sort 0.99 and 1.00. The ranges of the two arms overlap in both rounds: one more empty cell a row (24 columns for 23) is at most a few per cent of the render and nothing at a sort. Not measured: the start page's 5,018 rows, and the table after ▶ Pages has filled the Tags cells (up to about 70 list rows a cell, folded).

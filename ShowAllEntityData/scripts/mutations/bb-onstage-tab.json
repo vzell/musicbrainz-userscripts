@@ -56,8 +56,8 @@
         "why": "_LATE_FINDING_IDS: a changed stamp re-runs the filter while a late finding filters. Covered here by another path: a cell-scope finding is ticked as a value in its column's filter input (_setFinding() → _writeUniqValueSet()), so _anyFilterActive() is true and the event-page columns' own refresh (_bbEvpScheduleRefresh()) re-runs the filter after every page read. Kept in the list for a row-scope fallback (two columns, Exclude mode), which no fixture reaches.",
         "edits": [
             {
-                "find": "'sl-double-utf8', 'bb-onstage-tab', 'bb-venue-mismatch', ..._BB_EVENT_CHECK_LATE_IDS, ..._BB_LIST_CHECK_IDS, ..._BB_UNLISTED_IDS, ..._BB_SETLIST_IDS];",
-                "replace": "'sl-double-utf8', 'bb-venue-mismatch', ..._BB_EVENT_CHECK_LATE_IDS, ..._BB_LIST_CHECK_IDS, ..._BB_UNLISTED_IDS, ..._BB_SETLIST_IDS];"
+                "find": "'sl-double-utf8', 'bb-onstage-tab', 'bb-venue-mismatch', ..._BB_EVENT_CHECK_LATE_IDS, ..._BB_LIST_CHECK_IDS, ..._BB_UNLISTED_IDS, ..._BB_SETLIST_IDS, ..._BB_TAG_IDS];",
+                "replace": "'sl-double-utf8', 'bb-venue-mismatch', ..._BB_EVENT_CHECK_LATE_IDS, ..._BB_LIST_CHECK_IDS, ..._BB_UNLISTED_IDS, ..._BB_SETLIST_IDS, ..._BB_TAG_IDS];"
             }
         ],
         "spec": "tests/fixtures/bb-year-event-pages.spec.js",

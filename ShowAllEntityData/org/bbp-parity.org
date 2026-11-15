@@ -29,15 +29,15 @@ State: DONE (SAED has it), PART, TODO, NOT (not ported, with the reason).
 | LIST page event title vs YEAR page                                           | doc/LIST_PAGE.md                                | finding on bb-year-list (needs the YEAR page: one request per year)                   | DONE  |     2 |
 | Setlist YEAR vs DETAIL (LCS diff, char diffs)                                | doc/SETLIST.md                                  | finding + a diff card on the year row (the window's setlist is the DETAIL one)        | DONE  |     2 |
 | Venue name: DETAIL title's venue part vs the venue page's title              | =findVenueLink=, =renderVenueInfo=              | finding; one more request per row (the venue page), on ▶ Pages only                   | DONE  |     2 |
-| Expected tags: date parts, day suffix, event type                            | =computeExpectedTags=                           | finding on the bb-event head's Tags card and the window (union with the onstage tags) | TODO  |     3 |
-| Expected tags: content (bootleg, livedl, news, memorabilia, ticket, …)       | =computeExpectedTags= table                     | same                                                                                  | TODO  |     3 |
-| Expected tags: tour premiere count + prem                                    | =countTourPremiereSongs=                        | same                                                                                  | TODO  |     3 |
-| Expected tags: tour association                                              | =checkEventTourTags=, =TOUR_DEFINITIONS=        | same; =TOUR_DEFINITIONS= from the feed                                                | TODO  |     3 |
-| Expected tags: location (title / venue)                                      | =checkEventNameLocationTags= …                  | same; the state/province/country tables (small, may stay in code)                     | TODO  |     3 |
-| Expected tags: relations of the cast tab                                     | =checkOnStageRelationTags=                      | same; the alias overrides from the feed                                               | TODO  |     3 |
-| Expected tags: setlist songs                                                 | =checkSetlistSongTags=, =computeSongTagAlias=   | same; the song alias overrides from the feed                                          | TODO  |     3 |
-| Spurious tags (present, not expected)                                        | =SPURIOUS_TAG_REASONS=                          | same                                                                                  | TODO  |     3 |
-| Tag source highlight (which text made a tag expected)                        | doc/TAGS.md, opt-in                             | the finding's card names the source                                                   | TODO  |     3 |
+| Expected tags: date parts, day suffix, event type                            | =computeExpectedTags=                           | =bb-tag-missing= / =bb-tag-spurious=: the Tags card, the window, the year table's Tags | DONE  |     3 |
+| Expected tags: content (bootleg, livedl, news, memorabilia, ticket, …)       | =computeExpectedTags= table                     | the rule flags 2,469 shows as it is: to tune with vzell                               | TODO  |    3b |
+| Expected tags: tour premiere count + prem                                    | =countTourPremiereSongs=                        | same two findings                                                                     | DONE  |     3 |
+| Expected tags: tour association                                              | =checkEventTourTags=, =TOUR_DEFINITIONS=        | the =tour_no= guess flags 118 missing, 663 spurious: to tune; the table in the script | TODO  |    3b |
+| Expected tags: location (title / venue)                                      | =checkEventNameLocationTags= …                  | 663 shows as it is: to tune                                                           | TODO  |    3b |
+| Expected tags: relations of the cast tab                                     | =checkOnStageRelationTags=                      | 1,859 shows as it is: to tune                                                         | TODO  |    3b |
+| Expected tags: setlist songs                                                 | =checkSetlistSongTags=, =computeSongTagAlias=   | 1,114 shows as it is (the initials rule): to tune                                     | TODO  |    3b |
+| Spurious tags (present, not expected)                                        | =SPURIOUS_TAG_REASONS=                          | =bb-tag-spurious= for the four families; tour and content tags with 3b                | PART  |     3 |
+| Tag source highlight (which text made a tag expected)                        | doc/TAGS.md, opt-in                             | each finding says its reason in words (chip card, cell hover); no highlight on the page | PART  |     3 |
 | VENUE / SONG / RELATION / RETAIL page tag checks                             | =annotate*PageTags=                             | findings on bb-venue, bb-song, bb-relation, bb-retail heads                           | TODO  |     4 |
 | Help-icon tag check                                                          | =hasHelpIcon=                                   | needs the YEAR page's icon: with batch 2's per-year read                              | TODO  |     4 |
 | HOME page: fetch every year, mismatch filter                                 | doc/HOME_PAGE.md                                | bb-home + the findings above                                                          | PART  |     — |
@@ -218,3 +218,124 @@ https://claude.ai/artifact/T1D2ghbx9zHHCh8jgfr5g7
 | https://brucebase.wikidot.com/1973      | ▶ Pages, 1973-10-06          | Setlist ⚠️ for the set name only: "Pre-show jam" against "Pre-Show Jam"                               |
 | https://brucebase.wikidot.com/1988      | ▶ Pages, September's shows   | Setlist ⚠️ on most: "Pre-show" against "Pre-Set"                                                      |
 | any of them                             | Save to Disk, Load from Disk | the same cells are flagged, nothing is asked                                                          |
+
+* Batch 3: a show's expected tags against its actual tags (=feat/bb-findings-batch3=, 2026-11-15; built; vzell, 2026-11-16: "everything tested live, OK"; NOT merged: no word for the merge yet)
+
+Env: 2026-11-15T18:11:50+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · probe: Python
+over the mirror bb/2026-10-18, n/a; the cross-check: Playwright 1.62.1 Chromium, no Tampermonkey
+
+The plan is =~/.claude/plans/act-on-section-swift-bengio.md= (NB-3641 only); this section is the record.
+
+*Decisions (vzell, 2026-11-15):*
+1. *Where:* the event page's Tags card and the preview window (chip marks) AND a Tags column on the year table (registry
+   findings, ❌/⚠️ menus, 📊).
+2. *The lookup tables stay in the script for now* (tours, states, provinces, countries, aliases: about 8 KB), one marked
+   block that can move to the feed.
+3. *Requests on the event page and in the window: kept pages only.* Nothing new beyond the On stage pages.
+4. *Mirror:* the probe was written on bb/2026-10-18; the recorded counts, fixtures and browser-check URLs come from the
+   run of 2026-11-15 (started 17:52 CET by Claude on vzell's word, 4 download jobs).
+5. *Batch 3 ships four families:* date parts, the day letter, the event type, the premiere count. Tour, place, cast,
+   songs and content are tuned with vzell one by one and join when their count is believable.
+6. *Levels:* a missing tag is ❌, a tag that is not expected ⚠️. A second event-type tag (a =gig:= page tagged
+   =recording=; 66 shows) is a ⚠️.
+7. *A title's two blanks* are marked on the event page's head and the window title (batch 1 left that for batch 3).
+8. *The year table's Tags cell lists every tag*, a row each (a multi-row column), and still shows the errors and
+   warnings (a hover card).
+
+Mockup: https://claude.ai/artifact/Xx3N3sZgqkoy4DYQK5ZBoo (=org/bb-tag-findings-mockup.html=, built by
+=scripts/build-bb-tag-findings-mockup.py ROWS.json=). Version 2 has the cell of decision 8; vzell, 2026-11-15: it is the
+list he meant, and the cell starts folded. The mockup is approved.
+
+*Built* (details: =docs/claude/brucebase.md=, "A show's expected tags against its actual tags"):
+- the rule for the four families (=_bbTagFacts()=, =_bbTagCheck()=), the marks on the Tags card and in the window, the
+  year table's Tags column with =bb-tag-missing= (❌) and =bb-tag-spurious= (⚠️), the two-blanks mark on the event
+  page's byline and the window's title;
+- *on the mirror of the run of 2026-11-15* (=bb/2026-11-15=, 5,007 events; NB-3641, 40 min 49 s, the download with
+  4 jobs 37 min, no failed step): the four families flag 234 events (144 with a missing tag: date 30, letter 47,
+  type 13, prem 56; 125 with one not expected: date 19, letter 16, type 66, prem 26). BruceBaseParser's own functions
+  (=check-bbp-tag-oracle.js=) and the shipped rule (=check-bb-batch3-findings.js=) each differ from the probe on 0
+  events. With every family, 4,395 events (88 %) would be flagged;
+- *two things differ from the mockup:* the pills are at the top of the Tags box, not in the card's heading line; a
+  title's two blanks are a ⚠️ AFTER the title with the place in its hover text, not marked in place (the shown title
+  is restyled);
+- *a cost the plan did not have:* a show with an On Stage tab and no On stage page costs two requests on the year
+  table (the page, then its "-1"): 661 shows;
+- *tests* (NB-3641, 2026-11-15): =bb-findings-batch3.spec.js= 19; 34 mutations as recorded (33 fail their test, 1
+  passes with the reason); eight older mutation finds this change moved are rewritten; render branch / main 1.00–1.04,
+  sort 0.99–1.00 (=tests/MEASUREMENTS.org=); +38.6 kB in the userscript; =npm run test:full= at =9948917f=:
+  22:54:52–23:17:06 CET, 3,162 passed, 0 failed.
+
+*Next (3b):* tour, place, cast, songs and content, one family at a time, each with its most frequent cases put to
+vzell first.
+
+*The probe* (=scripts/probe-bb-batch3-findings.py=; BruceBaseParser's rules as its CODE has them, its doc/TAGS.md is
+older in five places): 4,998 events (gig 3,589, nogig 447, rehearsal 211, recording 564, interview 187; 12 "-N" pages
+left out), 3,252 of them with tags on other pages. With every rule unchanged 4,387 events (88 %) are flagged:
+
+| Family         | Events missing a tag | What is behind it                                                                        |
+|----------------+----------------------+------------------------------------------------------------------------------------------|
+| date parts     |                   28 | real; 7 in BruceParser's report, the other 27 flagged here are recordings (not covered there) |
+| day letter     |                   47 | real                                                                                     |
+| event type     |                   27 | real                                                                                     |
+| premiere count |                   56 | real                                                                                     |
+| tour           |                  169 | 116 are =tour_no=, expected from the alias line (a guess)                                |
+| place          |                  662 | mixed: =springsteenresidence= 70, =unitedkingdom= 60, Australian states, studios         |
+| songs          |                1,115 | the initials rule: "Mona" expects =m=, 'Paradise by the "C"' expects =pbt"=              |
+| cast           |                1,842 | =onstage= 584 and =studio= 464 from the tab alone, =guest= 407, a name on 684 events     |
+| content        |                2,459 | =memorabilia= 1,128, =news= 946: a tab with only ticket scans expects both               |
+
+Spurious tags: 1,358 events (tour 847, mostly =tour_no=; content 462; type 66; prem 26; date 18; letter 16). The four
+shipping families: 246 events (156 missing, 124 spurious).
+
+- *Against BruceParser:* =MISSING-date-parts-in-tags.org= has 11 event pages; 7 are here too; its other 4 are "-2"
+  sibling pages, which are no events.
+- *Against BruceBaseParser's own code* (=scripts/check-bbp-tag-oracle.js ROWS.json=: its =computeExpectedTags()= and
+  what it calls, taken out of the userscript by name and run in Chromium on every event page): 0 differences on 4,998
+  events for date parts, letter, type, content and premiere count; three planted errors were reported. Tour, place,
+  cast and songs are checked by hand on samples only.
+- *What the surfaces would see differently:* Help Us is only on the year page for 1,165 events; the venue page excuses
+  274 venue-description misses; no interview has a spurious =onstage=.
+- *Found on the way, BruceParser:* =bbp-status.sh= split =docs/timings.tsv= with =IFS=$'\t' read -ra=, which drops empty
+  columns (fixed, 0.17.1, =2a546fd=). =MULTI-title-postfix.txt= was always empty: =efc.sh= wrote it through =einfo=,
+  which is silent at the default verbosity. A stopped =bbp.sh= went on to its =cp= line and emptied
+  =brucebase/DETAIL-title-from-YEAR-array.txt=, which the next run's first step reads. Both fixed in 0.17.2
+  (=fa03525=, 2026-11-16; checked with =bash -n= and a stand-in for the interrupt, no full run since).
+
+** The browser check of batch 3, for vzell (rows from the mirror of 2026-11-15; unverified on the live wiki)
+
+Install the script from the branch =feat/bb-findings-batch3=. Every stored preview is read once more (the reader
+changed), so the first ▶ Pages of a year asks each page again. "▶ Pages" is the button in the On stage header; rows are
+read as they come into view, one page a second, and a show with a cast now takes two (its page, then its On stage page).
+
+| Page                                                                               | Step                                  | Expected                                                                                                              |
+|------------------------------------------------------------------------------------+---------------------------------------+-----------------------------------------------------------------------------------------------------------------------|
+| https://brucebase.wikidot.com/2016                                                 | Show all events                       | a new Tags column after Start, every cell "—"; nothing flagged for tags, no request                                   |
+| https://brucebase.wikidot.com/2016                                                 | ▶ Pages, the first rows               | 2016-01-16 Pittsburgh: Tags ❌, folded, "9+ missing" on top; 2016-01-19 Chicago: no mark, its first tag and ▶          |
+| https://brucebase.wikidot.com/2016                                                 | ▶ on Pittsburgh's Tags cell           | every tag a row, A–Z; the cast's (garrytallent, …) grey with ↪; ▶▤ in the Tags header unfolds every row               |
+| https://brucebase.wikidot.com/2016                                                 | hover Pittsburgh's Tags cell          | "Brucebase tags: an expected tag is missing: missing: 9+ (35 songs are in bold on the Setlist tab …)"                 |
+| https://brucebase.wikidot.com/2016                                                 | scroll to May, ▶ Pages on             | 2016-05-21 Madrid: ❌, "3 missing" and ⚠️ "2" both in view while folded                                                |
+| https://brucebase.wikidot.com/2016                                                 | scroll to September                   | 2016-09-06 interview, Stone Hill Studio: ⚠️ only, "nogig" in view                                                      |
+| https://brucebase.wikidot.com/2016                                                 | the ❌ and ⚠️ menus, all rows read     | "Brucebase tags: an expected tag is missing" 8, "… a tag that is not expected" 5; a click leaves those rows, again all |
+| https://brucebase.wikidot.com/2016                                                 | the job popup while reading           | the request count grows by two for a show with a cast (page, On stage page), three with its venue                     |
+| https://brucebase.wikidot.com/1983                                                 | Show all events, ▶ Pages, May–June    | four Hit Factory recordings (05-23, 05-24, 06-10, 06-13): ❌ a weekday missing, ⚠️ another weekday; no On stage request |
+| https://brucebase.wikidot.com/1967                                                 | Show all events, ▶ Pages              | six Café Wha? gigs (1967-05-00b … 1967-07-00b): ❌ the letter ("b missing")                                            |
+| https://brucebase.wikidot.com/2018                                                 | ▶ Pages, July                         | 2018-07-17 and 2018-07-18 Walter Kerr: ❌ "gig missing", ⚠️ "recording" (a second kind of page)                         |
+| https://brucebase.wikidot.com/2016-list                                            | Show this year's events, ▶ Pages      | the listing has the Tags column too, with the same marks                                                              |
+| https://brucebase.wikidot.com/2016                                                 | Save to Disk, reload, Load from Disk  | the same Tags cells and the same ❌/⚠️ counts, nothing asked                                                            |
+| https://brucebase.wikidot.com/2016                                                 | reload, Show all events (no ▶ Pages)  | the rows read before come back with their tags and marks, with no request                                             |
+| https://brucebase.wikidot.com/gig:2016-05-21-estadio-santiago-bernabeu-madrid-spain | Show the event                        | Tags card: first "The tags are checked once …" while the On stage page is read, then pills ❌ 1 missing, ⚠️ 1 not expected |
+| the same page                                                                      | look at the chips                     | "3 missing" red and dashed under On the page; "2" amber with ⚠️; the count beside "Tags" does not include the 3        |
+| the same page                                                                      | hover "3 missing", then "2"           | cards "Missing: 3" / "Not expected: 2" with the reason; under the chips both are written out                          |
+| the same page                                                                      | press ❌ 1 missing, press it again     | only the two marked chips, then all; "Findings 2" in Show does the same                                               |
+| https://brucebase.wikidot.com/gig:2016-01-19-united-center-chicago-il               | Show the event                        | "✓ date, letter, kind and premiere tags as expected", no pill, no marked chip                                         |
+| https://brucebase.wikidot.com/recording:1983-06-13-hit-factory-new-york-city-ny     | Show the event                        | at once (no other page): "monday missing" under Date, "wednesday" amber                                               |
+| https://brucebase.wikidot.com/gig:2026-08-28-stone-pony-asbury-park-nj              | Show the event                        | a ⚠️ after the byline "~ Gig at …"; hover: the title with "Summer Stage,␣␣Asbury Park"                                 |
+| https://brucebase.wikidot.com/2016                                                 | Ctrl+hover the Madrid link, Space     | the window: open "Tags (N)": the same chips, pills and sentences as on its page                                       |
+| https://brucebase.wikidot.com/2026                                                 | Ctrl+hover 2026-08-28 Stone Pony, Space | the window's title ends in ⚠️ with the same hover text                                                                |
+| any of them                                                                        | ⚙️ Settings → ⚠️ Findings              | three new: "Find Brucebase shows that lack a tag …", "… with a date, letter, kind or premiere tag that is not expected", the Tags tint |
+| https://brucebase.wikidot.com/2016                                                 | "lack a tag" off, reload, ▶ Pages     | no On stage page is asked (one request a show, plus venue); no ❌ for tags; the ⚠️ ones stay                            |
+
+Unverified: all of it on the live site (the fixtures and counts are the mirror's pages of 2026-11-15; Claude made no
+request to the wiki). The 2016 menu counts (8 and 5) are the mirror's 12 flagged shows of that year. Two things differ
+from the mockup and are meant so unless vzell says otherwise: the pills are at the top of the Tags box, and a title's
+blanks are a ⚠️ after the title, not marked in place.

@@ -1,0 +1,444 @@
+[
+    {
+        "name": "tag check: no tag is ever missing",
+        "why": "_bbTagCheck() compares the expected tags with every tag of the show.",
+        "edits": [
+            {
+                "find": "        for (const e of expected) if (!_bbTagPresent(e.tag, all)) res.missing.push(e);",
+                "replace": "        for (const e of expected) if (!e) res.missing.push(e);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "date parts, the day letter",
+        "expect": "fail"
+    },
+    {
+        "name": "tag check: no tag is ever \"not expected\"",
+        "why": "A tag of a checked family the facts do not give.",
+        "edits": [
+            {
+                "find": "            res.spurious.push({ tag, family, why: _bbTagSpuriousWhy(tag, family, facts, expected) });",
+                "replace": "            void family;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "date parts, the day letter",
+        "expect": "fail"
+    },
+    {
+        "name": "tag check: a tag kept on another page does not count",
+        "why": "The On stage page's tags are the show's too.",
+        "edits": [
+            {
+                "find": "        for (const t of more || []) all.add(t);",
+                "replace": "        void more;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "date parts, the day letter",
+        "expect": "fail"
+    },
+    {
+        "name": "tag check: \"5\" is not \"05\"",
+        "why": "A number matches with or without its zero (isTagPresent()).",
+        "edits": [
+            {
+                "find": "        return tags.has(n) || tags.has(n.padStart(2, '0'));",
+                "replace": "        return false;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "date parts, the day letter",
+        "expect": "fail"
+    },
+    {
+        "name": "tag check: a single digit is a day, not a premiere count",
+        "why": "BruceBaseParser reads 1-9 as a count first.",
+        "edits": [
+            {
+                "find": "        if (/^[1-9]$/.test(tag) || tag === '9+' || tag === 'prem') return 'prem';",
+                "replace": "        if (tag === '9+' || tag === 'prem') return 'prem';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "date parts, the day letter",
+        "expect": "fail"
+    },
+    {
+        "name": "tag check: \"onstage\" is a kind of page",
+        "why": "A show with a cast tab carries it: the cast family, not checked yet.",
+        "edits": [
+            {
+                "find": "    const _BB_TAGCHK_TYPES = new Set(['gig', 'interview', 'nobruce', 'nogig', 'offstage', 'recording', 'rehearsal']);",
+                "replace": "    const _BB_TAGCHK_TYPES = new Set(['gig', 'interview', 'nobruce', 'nogig', 'offstage', 'onstage', 'recording', 'rehearsal']);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "date parts, the day letter",
+        "expect": "fail"
+    },
+    {
+        "name": "tag check: ten premieres are \"10\"",
+        "why": "Ten or more are \"9+\".",
+        "edits": [
+            {
+                "find": "            const n = facts.prem <= 9 ? String(facts.prem) : '9+';",
+                "replace": "            const n = String(facts.prem);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "date parts, the day letter",
+        "expect": "fail"
+    },
+    {
+        "name": "tag check: no weekday expected",
+        "why": "A full date gives its weekday.",
+        "edits": [
+            {
+                "find": "            if (dd > 0 && mo > 0) {\n                const d = new Date(parseInt(dm[1], 10), mo - 1, dd);",
+                "replace": "            if (dd < 0 && mo > 0) {\n                const d = new Date(parseInt(dm[1], 10), mo - 1, dd);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "date parts, the day letter",
+        "expect": "fail"
+    },
+    {
+        "name": "tag facts: the day letter is not read",
+        "why": "The letter after the date in the address.",
+        "edits": [
+            {
+                "find": "        const lm = /^\\d{4}-\\d{2}-\\d{2}([a-z])(?:-|$)/.exec(m[2]);",
+                "replace": "        const lm = null;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "what a page says",
+        "expect": "fail"
+    },
+    {
+        "name": "tag facts: any category page is a show",
+        "why": "Only gig, nogig, rehearsal, recording and interview pages are checked.",
+        "edits": [
+            {
+                "find": "        if (!m || !_BB_TAGCHK_KINDS.test(m[1])) return null;",
+                "replace": "        if (!m) return null;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "what a page says",
+        "expect": "fail"
+    },
+    {
+        "name": "tag facts: no song in bold is counted",
+        "why": "The premiere count is the songs in bold of the setlist.",
+        "edits": [
+            {
+                "find": "            prem: box ? box.querySelectorAll('strong a[href^=\"/song:\"]').length : 0,",
+                "replace": "            prem: 0,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "what a page says",
+        "expect": "fail"
+    },
+    {
+        "name": "year table: a row's other tag pages are never read",
+        "why": "_bbEvpPump() reads them after the event page.",
+        "edits": [
+            {
+                "find": "                        await _bbEvpTagPages(rec.view, !!again);",
+                "replace": "                        void again;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "after ▶ Pages",
+        "expect": "fail"
+    },
+    {
+        "name": "year table: a missing tag is said without the On stage page",
+        "why": "Only when every page that may keep the show's tags is read.",
+        "edits": [
+            {
+                "find": "        const known = !_bbTagPagesMay(info) || (_bbTagPagesEligible(info) && !!st && !st.failed.length && !st.skipped);",
+                "replace": "        const known = true;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "the On stage pages switched off: none is asked",
+        "expect": "fail"
+    },
+    {
+        "name": "year table: the tag pages are read with \"missing\" off",
+        "why": "A finding that costs requests switches them off with itself.",
+        "edits": [
+            {
+                "find": "        return _bbTagMissingOn() && _bbOnstageTagsOn();",
+                "replace": "        return _bbOnstageTagsOn();"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "\"missing\" switched off",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-tag-missing: the detector never matches",
+        "why": "The finding reads the Tags cell's carrier.",
+        "edits": [
+            {
+                "find": "            test: cell => _bbTagHasCheck(cell, 'missing'),",
+                "replace": "            test: () => false,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "after ▶ Pages",
+        "expect": "fail"
+    },
+    {
+        "name": "bb-tag-spurious: the detector never matches",
+        "why": "The finding reads the Tags cell's carrier.",
+        "edits": [
+            {
+                "find": "            test: cell => _bbTagHasCheck(cell, 'spurious'),",
+                "replace": "            test: () => false,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "after ▶ Pages",
+        "expect": "fail"
+    },
+    {
+        "name": "year table: a Tags cell whose findings changed is not stamped again",
+        "why": "The row is queued for its re-stamp.",
+        "edits": [
+            {
+                "find": "            if (table) _queueFindingsRestamp(td.parentElement, _BB_TAG_IDS, live ? null : table);",
+                "replace": "            void table;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "after ▶ Pages",
+        "expect": "fail"
+    },
+    {
+        "name": "year table: a tag that is not expected folds away",
+        "why": "A marked row stays in view while the cell is folded.",
+        "edits": [
+            {
+                "find": "li.mb-bb-tag-spur { color: #9a6a00; font-weight: 600; display: list-item !important; }",
+                "replace": "li.mb-bb-tag-spur { color: #9a6a00; font-weight: 600; }"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "after ▶ Pages",
+        "expect": "fail"
+    },
+    {
+        "name": "year table: the Tags cell is written unfolded",
+        "why": "Sixty rows pushed the rows below out of view, and a row out of view leaves the queue. This spec cannot see it: its rows are all in view and the column's own fold has run before it looks. bb-findings-batch1.spec.js sees it (the last entry of this list).",
+        "edits": [
+            {
+                "find": "        const fold = () => (nth++ ? ' style=\"display: none;\"' : '');",
+                "replace": "        const fold = () => '';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "after ▶ Pages",
+        "expect": "pass"
+    },
+    {
+        "name": "year table: a \"not expected\" switch that is off still marks",
+        "why": "The cell marks what the finding looks for.",
+        "edits": [
+            {
+                "find": "            spurious: _bbTagSpuriousOn() ? res.spurious : [],",
+                "replace": "            spurious: res.spurious,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "\"not expected\" switched off",
+        "expect": "fail"
+    },
+    {
+        "name": "year table: the kept tag pages are not taken from the store",
+        "why": "Rows read before are painted with their findings and no request.",
+        "edits": [
+            {
+                "find": "        if (tagRows.length) await _bbTagPagesPeekAll();",
+                "replace": "        void tagRows;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "second tab",
+        "expect": "fail"
+    },
+    {
+        "name": "year table: the Tags cell lists no tag of the On stage page",
+        "why": "Every tag a row, the cast's from the On stage page.",
+        "edits": [
+            {
+                "find": "            rows.push({ t: x.text, cls: 'mb-bb-tag-os' });",
+                "replace": "            void x;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "after ▶ Pages",
+        "expect": "fail"
+    },
+    {
+        "name": "Tags card: a missing tag's chip is counted as a tag",
+        "why": "The count is the tags the wiki has. The window's \"Tags (N)\" is this count (a head card's is set again by _cbxRefresh()).",
+        "edits": [
+            {
+                "find": "        return rows.reduce((s, [, of]) => s + of.filter(x => x.flag !== 'miss').length, 0);",
+                "replace": "        return rows.reduce((s, [, of]) => s + of.length, 0);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "the window's Tags section",
+        "expect": "fail"
+    },
+    {
+        "name": "Tags card: a tag that is not expected is not marked",
+        "why": "Its chip gets the mark and the reason.",
+        "edits": [
+            {
+                "find": "                if (s) Object.assign(x, { flag: 'spur', tip: card('Not expected', s) });",
+                "replace": "                void s;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "Madrid:",
+        "expect": "fail"
+    },
+    {
+        "name": "Tags card: the Findings pill pressed again changes nothing",
+        "why": "A second press brings every chip back.",
+        "edits": [
+            {
+                "find": "            else if (b.dataset.mbCbxK === 'show') ui.show = b.dataset.mbCbxV === 'find' && b.getAttribute('aria-pressed') === 'true' ? 'all' : b.dataset.mbCbxV;",
+                "replace": "            else if (b.dataset.mbCbxK === 'show') ui.show = b.dataset.mbCbxV;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "Madrid:",
+        "expect": "fail"
+    },
+    {
+        "name": "Tags card: the Findings view shows every chip",
+        "why": "It leaves the marked chips.",
+        "edits": [
+            {
+                "find": "        const inShow = x => show === 'all' || (show === 'find' ? !!x.flag : x.flag !== 'miss' && (show === 'own' ? !x.page : !!x.page));",
+                "replace": "        const inShow = x => show === 'all' || show === 'find' || (x.flag !== 'miss' && (show === 'own' ? !x.page : !!x.page));"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "Madrid:",
+        "expect": "fail"
+    },
+    {
+        "name": "Tags card: checked with both findings off",
+        "why": "Null: the card as before.",
+        "edits": [
+            {
+                "find": "        if (!facts || (!_bbTagMissingOn() && !_bbTagSpuriousOn())) return null;",
+                "replace": "        if (!facts) return null;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "both findings switched off",
+        "expect": "fail"
+    },
+    {
+        "name": "Tags card: no note when a missing tag is not looked for",
+        "why": "The card says why nothing is called missing.",
+        "edits": [
+            {
+                "find": "            wait: known || !_bbTagMissingOn() ? '' : 'A missing tag is not looked for: not every page that keeps this show\\'s tags is read.',",
+                "replace": "            wait: '',"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "the On stage pages switched off: no missing tag is said",
+        "expect": "fail"
+    },
+    {
+        "name": "Tags card: \"as expected\" beside a finding",
+        "why": "Only with nothing found.",
+        "edits": [
+            {
+                "find": "        if (!n && !find.wait) head = '<div class=\"mb-cbx-pill-ok\">✓ date, letter, kind and premiere tags as expected</div>';",
+                "replace": "        if (!find.wait) head = '<div class=\"mb-cbx-pill-ok\">✓ date, letter, kind and premiere tags as expected</div>';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "Madrid:",
+        "expect": "fail"
+    },
+    {
+        "name": "window: the tag check is not made",
+        "why": "The window draws the same box with the record's facts.",
+        "edits": [
+            {
+                "find": "        const count = _bbTagBoxSet(id, data.tags || [], info, 'dp', data.bbTagFacts);",
+                "replace": "        const count = _bbTagBoxSet(id, data.tags || [], info, 'dp', null);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "the window's Tags section",
+        "expect": "fail"
+    },
+    {
+        "name": "title blanks: marked with the finding off",
+        "why": "bb-title-spaces' switch.",
+        "edits": [
+            {
+                "find": "        if (!raw || !_bbTitleSpaces(raw) || Lib.settings.sa_findings_bb_title_spaces === false) return '';",
+                "replace": "        if (!raw || !_bbTitleSpaces(raw)) return '';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "marked on the window",
+        "expect": "fail"
+    },
+    {
+        "name": "title blanks: no mark on the window title",
+        "why": "The window's title carries it.",
+        "edits": [
+            {
+                "find": "${_mbttEscape(data.title || '(untitled)')}${_bbTitleBlanksHtml(data.bbRawTitle)}</div>`);",
+                "replace": "${_mbttEscape(data.title || '(untitled)')}</div>`);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "marked on the window",
+        "expect": "fail"
+    },
+    {
+        "name": "title blanks: no mark after the byline",
+        "why": "The event page's head carries it.",
+        "edits": [
+            {
+                "find": "        if (s.markHtml) sub.insertAdjacentHTML('beforeend', s.markHtml);",
+                "replace": "        void s.markHtml;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3.spec.js",
+        "grep": "byline",
+        "expect": "fail"
+    },
+    {
+        "name": "batch 1: a row read later still joins a filtered table with the Tags cell unfolded",
+        "why": "The same guard, seen by the spec that found it.",
+        "edits": [
+            {
+                "find": "        const fold = () => (nth++ ? ' style=\"display: none;\"' : '');",
+                "replace": "        const fold = () => '';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js",
+        "grep": "a row read later joins",
+        "expect": "fail"
+    }
+]

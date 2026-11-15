@@ -852,6 +852,7 @@ back).
 | ⚠️     | Brucebase setlist: a song is written differently (once read)    | Brucebase year: Setlist                     |
 | ⚠️     | Brucebase setlist: a set is named differently (once read)       | Brucebase year: Setlist                     |
 | ⚠️     | Brucebase title with two blanks or a blank before a comma       | Brucebase year and year listing: Event      |
+| ⚠️     | Brucebase tags: a tag that is not expected (once read)          | Brucebase year and year listing: Tags       |
 | ⚠️     | Pending edits                                                   | any column                                  |
 | ⚠️     | Live credit without a date                                      | Release tracklist: credit columns           |
 | ❌    | MB-Event: the Brucebase link differs (once looked up)           | Brucebase year: MB-Event                    |
@@ -861,6 +862,7 @@ back).
 | ❌    | Brucebase listing entry named differently from the year page          | Brucebase year listing: Event         |
 | ❌    | Brucebase year entry missing from the year's listing (once read)      | Brucebase year: Event                 |
 | ❌    | Brucebase setlist: songs differ from the event page (once read)       | Brucebase year: Setlist               |
+| ❌    | Brucebase tags: an expected tag is missing (once read)                | Brucebase year and year listing: Tags |
 | ❌    | Double-encoded text (springsteenlyrics.com)                     | springsteenlyrics.com: any column (the lyrics index: once the song's page was read) |
 | ❌    | Track and recording length far apart                            | Release tracklist: Length, Recording length |
 | ❌    | Video on a medium that cannot carry video                       | Release tracklist: Video                    |
@@ -4031,7 +4033,23 @@ entry, with these columns:
 - **Tour:** the tour, tour leg or band era the entry belongs to, taken from
   the wiki's "Start of …" / "Continuation of …" / "End of …" boxes. Entries
   outside any box, such as those before a year's first box, are empty.
-- **On stage**, **Content**, **Images** and **Start** come from each entry's
+- **Tags** lists every tag of the show, one a row, folded like On stage
+  (▶ in the cell, ▶▤ in the header for all rows): the page's own tags and,
+  marked ↪, those kept on its On stage page. The tags are checked against
+  what the page calls for, in four families: the date (year, month, day,
+  weekday), the letter of a second show of a day, the kind of page (gig,
+  recording, …) and the number of tour premieres (the songs in bold, with
+  "prem"). A tag the page should carry and none of its pages has is listed
+  first as "9+ missing" (❌ on the cell); a tag of those families the page
+  does not call for is marked ⚠️ ("wednesday" on a Monday, "recording" on a
+  gig). Marked rows stay in view while the cell is folded, and the cell's
+  hover text gives each with its reason. For this the show's On stage page
+  is read too with ▶ Pages: about one more request per show with a cast,
+  kept like the others. With *Find Brucebase shows that lack a tag their
+  page calls for* off (⚙️ Settings → ⚠️ Findings), or with the On stage
+  tags switched off, that page is not read, and no show with a cast is
+  said to lack a tag.
+- **On stage**, **Content**, **Images**, **Start** and **Tags** come from each entry's
   own page, so they stay empty (—) until that page is read. **▶ Pages** in
   the On stage header reads the pages of the rows you can see, and then of
   each row you scroll to, one page a second; press it again (■ Pages) to
@@ -4244,13 +4262,27 @@ site) show those tags too:
   that fails says so, with **Retry**.
 - **The setting:** *Show the tags kept on a show's On stage page*. Off
   shows only the page's own tags, and nothing extra is read.
+- **The tag check:** on a show's page and in its window the tags are
+  checked as on the year table (date, day letter, kind of page, tour
+  premieres). A tag that is missing is drawn as a red dashed chip
+  ("9+ missing") in its family's row and is not counted in "Tags (N)"; a
+  tag that is not expected gets an amber outline and a ⚠️. Point at either
+  for the reason; under the chips each is said in words. The pills
+  ❌ *N missing* and ⚠️ *N not expected* (and **Findings** in Show) leave
+  only the marked chips; press again for all. Nothing is marked while the
+  On stage page is still being read, and with that page unread the card
+  says that no missing tag is looked for. ✓ means the four families are
+  as expected. Switches: ⚙️ Settings → ⚠️ Findings.
+- **A title with two blanks** (or a blank before a comma) gets a ⚠️ after
+  the show page's byline and after the window's title; its hover text
+  shows the title with ␣ where the blanks are.
 
 **The tool row of chip cards.** Every card of chips at the head of another
 site's detail page (Brucebase, springsteenlyrics.com, Discogs, archive.org,
 setlist.fm, …), and a Brucebase window's Tags, get a row of controls once
 they hold six chips or more:
 - **Show** — All / This page / On stage (where a card has tags from other
-  pages).
+  pages), and Findings (where a Brucebase show's tags have a marked one).
 - **Filter** — keeps the chips that contain what you type and marks it in
   each; Esc or ✕ clears it.
 - **Group by** — the card's own kinds (Family for tags), Page, or None.
