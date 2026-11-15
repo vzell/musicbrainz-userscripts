@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "d45b8f3a874d3cdc0ed7290a901b42188ddff8b6",
-    "revisions_walked": 1256
+    "head": "8bcc5b64acfbad7dfc7c80ca1255c4b81a936e52",
+    "revisions_walked": 1257
   },
   "changes": [
     {
@@ -982,6 +982,10 @@
     "sa_findings_bb_list_anchor": true,
     "sa_findings_bb_year_unlisted": true,
     "sa_findings_bb_venue_mismatch": true,
+    "sa_findings_bb_setlist_songs": true,
+    "sa_findings_bb_setlist_spelling": true,
+    "sa_findings_bb_setlist_sections": true,
+    "sa_findings_tint_bb_setlist": true,
     "sa_findings_tint_bb_venue": true,
     "sa_findings_tint_bb_list": true,
     "sa_findings_tint_bb_mbev_link": true,
