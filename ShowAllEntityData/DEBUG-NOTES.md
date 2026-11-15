@@ -29543,3 +29543,83 @@ Env: 2026-11-14T16:02:51+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
   recorded). No render measurement: per cell one `classList`/`dataset` look at save and one early return at load;
   the year table's build gains one Map pass over its entries.
   `npm run test:full` 16:02:51–16:21:44 CET on petri (working tree on `9949594e`): 3,109 passed, 0 failed.
+
+## 2026-11-14 — Brucebase findings, batch 2 parts 1 and 2: the listings and the venues (feat/bb-findings-batch2)
+Env: 2026-11-14T21:15:06+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright Chromium 151.0.7922.34 (chromium-fixtures), no Tampermonkey (GM stubs); probe: Python over the mirror bb/2026-11-13, n/a
+- **What:** `bb-list-title`, `bb-list-anchor` (a year listing against its year page) and `bb-venue-mismatch` (an event
+  page's venue against the venue page). Rules, counts and the comparison with BruceParser's reports:
+  docs/claude/brucebase.md, "The listing and venue checks". The setlist findings are probed and mocked up, not built.
+- **Root fact 1 — `_extBbParseYear()` left out most of what a listing links.** It took anchors of exactly six digits
+  and an entry's `/gig:` or `/nogig:` link. So on a listing ▶ Pages called every recording session, rehearsal and
+  interview, and every entry with a lettered anchor (712 of 5,018), a row with "no page of its own", silently. Found
+  because the new spec asserted the page of 1972's `000472b`. Version 3 takes lettered anchors and the heading's link
+  of any kind, keeps the FIRST show of a shared anchor (later headings in `also`), and reads the heading paragraph
+  after an anchor that has a paragraph of its own.
+- **Root fact 2 — the checker over the mirror found what the fixtures could not.** 2015's `000515` has its anchor in
+  a paragraph of its own; the reader took the heading from the anchor's paragraph: ''. The listing check then called
+  the entry "named differently". One false row in 5,008; `scripts/check-bb-batch2-findings.js` printed it. A second
+  difference was the probe's: a venue page titled with two blanks, which the shipped rule (whitespace as one blank)
+  rightly does not call another name; the probe follows now, and its 128 rows are exactly BruceParser's 128.
+- **Root fact 3 — a finding that costs requests must be painted from the store with care.** Rows read before are
+  painted at a render from the previews' store. With the venue check, a row whose venue page is not in the store
+  would either stay unpainted (the first version: it broke "a reload paints the rows read before" wherever a venue
+  cannot be read) or be painted without its check for the event record's 30 days. Now it is painted and marked
+  `venueDue`; the watch takes it and the pump asks the venue only, once a session.
+- **A mutation the spec cannot see, recorded as such:** reading a `venueDue` row again whole ends in the same cells
+  and the same requests (the event comes from memory).
+- **Existing lists moved:** ten finds in five lists named lines this change rewrote (`check-mutation-finds.py`: 10
+  stale, then 0).
+- **Tests:** `bb-findings-batch2.spec.js` 15; 28 mutation entries (27 fail their test, 1 pass as recorded); render
+  B/M 1.01 (tests/MEASUREMENTS.org); `npm run test:full` 21:15:06–21:34:18 CET on petri: 3,124 passed, 0 failed.
+
+## 2026-11-15 — Brucebase findings, batch 2: a year entry the listing lacks (`bb-year-unlisted`, feat/bb-findings-batch2)
+Env: 2026-11-15T02:02:31+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright Chromium 151.0.7922.34 (chromium-fixtures), no Tampermonkey (GM stubs); probe: Python over the mirror bb/2026-11-13, n/a
+- **What:** vzell's "Yes" to batch 2's open decision: a year entry that no line of the year's listing links is a ⚠️ on
+  the year table's Event cell (❌ since vzell's browser check, 2026-11-15T14:28+01:00:
+  `level: 'error'`). Rules and counts: docs/claude/brucebase.md, "The listing and venue checks". Probe: 16
+  rows in 11 years, all in BruceParser's reports; the shipped reader and token agree on all 5,018 entries
+  (`scripts/check-bb-batch2-findings.js`).
+- **Root fact 1 — the request cannot ride on the rows' own queue.** The first design asked for the listing when a
+  row's event page was read. A year whose event pages are all in the previews' store queues nothing, so its listing
+  would never be read: exactly the state of every year vzell has read before this update. The watch
+  (`_bbEvpObserve()`) therefore also takes the Event cell of every year row without `data-mb-bb-listed`, and the
+  first one seen asks (`_bbYearListingWant()`), whatever the state of its pages.
+- **Root fact 2 — a single-table render MOVES its rows, so "written to the source rows" is invisible until a filter.**
+  The mutation that stops `_bbYearRowIndex()` walking the source rows passed all seven first tests: on the first
+  render the live rows ARE the source rows. The test that sees it reads the listing while the table is filtered
+  (the live rows are copies then) and clears the filter.
+- **A spec trap:** `_extGet()` goes through GM_xmlhttpRequest, which the harness answers from `__gmXhrResponses`
+  (404 for anything else) and never through `page.route`. The first version of the spec routed the listing and saw
+  no answer at all. Settings seeded by an earlier load of the same page stay: one load per test.
+- **Existing lists moved:** five finds (three name the `_LATE_FINDING_IDS` line; two matched twice because the new
+  code repeated a line of older code, which was renamed instead). `check-mutation-finds.py`: 5 stale, then 0.
+- **Tests:** `bb-findings-batch2.spec.js` 23 (8 new); 12 new mutation entries, all failing their test;
+  `npm run test:full` 02:02:31–02:21:46 CET on petri (`f0a7088e`): 3,132 passed, 0 failed. No render measurement:
+  the row build is unchanged; a full render gains one walk of the year rows and one store read a year.
+
+## 2026-11-15 — Brucebase findings, batch 2 part 3: the setlists and their card (feat/bb-findings-batch2)
+Env: 2026-11-15T03:00+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright Chromium 151.0.7922.34 (chromium-fixtures), no Tampermonkey (GM stubs); mirror bb/2026-11-13
+- **What:** `bb-setlist-songs` (❌), `bb-setlist-spelling` (⚠️), `bb-setlist-sections` (⚠️) on the year table's
+  Setlist cell, and `#mb-bb-setlist-card`. vzell's answers of 2026-11-15: a medley against one song is an error, set
+  names are a finding now, the card shows the differences by default and the full set on demand. Rules, counts and
+  the comparison with BruceParser's report: docs/claude/brucebase.md, "The setlist comparison".
+- **Root fact 1 — the shipped readers were run over the whole mirror before any fixture was chosen**
+  (`scripts/check-bb-setlist-findings.js`), and that changed the rule twice. (a) An event page lists prose as a list
+  item ("blues improvisation", "Q&A session", "unidentified title") where the year page has the same words in its set
+  line; the year reader drops prose, the event reader did not: 7 false `songs`. An event entry in lowercase words now
+  counts only when the year page has it in other case, which keeps "82ND Street?" a spelling difference. (b) "…" in a
+  year page's set line (songs not known) was a song only on the year page: 6 more. A token without a letter or digit
+  is no song. 108 → 95.
+- **Root fact 2 — two songs are "one written differently" only when they are NEIGHBOURS in the aligned list.** A test
+  case with the missing song AFTER the misspelt one aligned as two year-only songs and one event-only song, so the
+  mutation "spelling is reported beside songs" passed. BruceBaseParser's `mergeCharDiffs()` has the same limit; kept.
+- **Root fact 3 — a card that opens under its cell opens out of sight for a cell low in the window.** The mockup
+  always opened below. Seen in the first screenshot (`scripts/shot-bb-setlist-card.js`): nothing visible. It opens
+  above when only there it is in view.
+- **A mutation that needed a sharper test:** dropping the card from `_OTHER_RICH_TIPS` passed while the test looked
+  for the plain tooltip with the pointer on the card; the pointer has to rest on the CELL for the tooltip's delay.
+- **Existing lists moved:** 12 finds in eight lists named four lines this change rewrote
+  (`check-mutation-finds.py`: 12 stale, then 0).
+- **Tests:** `bb-findings-batch2.spec.js` 29 (6 new); 31 new mutation entries, all failing their test; render B/M
+  1.02, sort 1.03–1.04 (tests/MEASUREMENTS.org); `npm run test:full` 03:02:06–03:21:34 CET on petri (`e3e1125a`):
+  3,138 passed, 0 failed.

@@ -1,0 +1,61 @@
+[
+  {
+    "version": "WIP.4",
+    "date": "2026-11-15",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase year pages: the Setlist column is compared with the Setlist tab of each entry's own page, once ▶ Pages has read it. Three new findings: ❌ \"Brucebase setlist: songs differ from the event page\" (a song only on one of the two pages; a medley written as one entry counts), ⚠️ \"… a song is written differently\" (\"TWIST & SHOUT\" against \"TWIST AND SHOUT\") and ⚠️ \"… a set is named differently\" (\"Pre-show jam\" against \"Pre-Show Jam\", or a Soundcheck only one page names). Notes in brackets (\"(with Tom Morello)\") are set aside. No request of its own. In November 2026: 95, 22 and 112 entries.",
+          "A flagged Setlist cell has a card with both setlists side by side: hover it, tap it, or focus it and press Enter. It shows the lines that differ with the song before and after each, the letters that differ marked, \"Show all N songs\" for the whole set, and links to the year page and the event page. Esc closes it.",
+          "Link previews of other sites are read again once after this update (an event page's record keeps its sets as written)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.3",
+    "date": "2026-11-15",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase year pages: a new finding on the Event column, ❌ \"Brucebase year entry missing from the year's listing\". No line of the year's listing (/1977-list) links the entry: it is missing there (\"1977-07-29 - Atlantic Studios\"), or its line links another anchor. 16 entries in November 2026.",
+          "▶ Pages on a Brucebase year table now also reads the listing of each year whose rows come into view: one more request a year, kept like the year pages, and it answers every row of that year. After a reload the kept listing is used at once, without ▶ Pages. Switch the finding off in ⚙️ Settings → ⚠️ Findings and no listing is read."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.2",
+    "date": "2026-11-14",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase year pages: a new finding on the Venue column, ⚠️ \"Brucebase event page names its venue differently from the venue page\". The title of an entry's own page names the venue differently from the title of the venue's page it links (\"CBS Records\" against \"CBS\"). A show of the day in brackets (\"(Late)\") and a description between the venue and its city (\"Mediasound Studios, Studio C, New York City, NY\") are accepted. It shows once ▶ Pages has read the entry's page.",
+          "▶ Pages on a Brucebase year table now also reads each entry's venue page: one more request per venue (not per entry), kept 30 days. The first reading of a year takes about a third to a half longer. Switch the venue finding off in ⚙️ Settings → ⚠️ Findings and no venue page is read.",
+          "Link previews of other sites are read again once after this update (the venue pages' records get a new field): the first hover or ▶ Pages on a page read before asks the site again."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-11-14",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase year listings (/1978-list): two new findings on the Event column, BruceBaseParser's listing checks. ❌ \"Brucebase listing entry named differently from the year page\": the listing writes an entry differently from the heading the year page has at the anchor it links (1966: \"BUSINESS DISTRICT\" against \"UNKNOWN LOCATION\"). ⚠️ \"Brucebase listing entry with a wrong link to the year page\": the link's anchor is not the entry's date, it names another year's page, or the year page has no such anchor. The date and year part shows with the table; the rest once ▶ Pages has read the year page, which is one request a year and answers every row of that year at once. A switch for each and one tint setting in ⚙️ Settings → ⚠️ Findings."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Brucebase year listings: ▶ Pages said \"no page of its own\" for every recording session, rehearsal and interview, and for every entry whose anchor ends in a letter (several entries on one date). The year page was read for shows and cancelled shows only, and for anchors of six digits only. Such rows are now read like the others. Year pages kept from before are read once more."
+        ]
+      }
+    ]
+  }
+]

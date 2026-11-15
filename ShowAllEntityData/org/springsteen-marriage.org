@@ -5,13 +5,21 @@ Env: 2026-11-13 · plan written in a Claude Code session (plan mode), code readi
 
 Plan for pickup on another host.
 
-* PICKUP HERE: status of 2026-11-14 (evening): batch 1 is merged (9.99.1627); next is batch 2
+* PICKUP HERE: status of 2026-11-15 (night): batch 2 is built whole on its branch; it waits for vzell's browser check and the merge
 
 - *BruceParser 0.17.0 is pushed* (=4978b0e=): =dc.sh= 1.5 with =-j "${BBP_JOBS:-4}"= on both =parallel= calls, =checkURLandTitles.sh= 1.5 with the literal word removal in three places. Checked with =bash -n= and =-V= only. Still to do there, by vzell: a full =bbp.sh= run for the report comparison, and the download time with 4 jobs.
 - *Track A batch 1 is MERGED into =main= (9.99.1626 and 9.99.1627, 2026-11-14), the branch is deleted:* six findings on the year table's Event cell. What was built, the probe's counts and three points that differ from the plan are in =org/bbp-parity.org=, "Batch 1: built on …".
 - *vzell's browser check (2026-11-14, afternoon):* all rows OK live; the nine variant words stay. Three things came out of it and are built on the same branch: the finding =bb-anchor-shared= (two entries with one anchor), a saved year keeping the MB-Event column's findings (39 errors had become 3 after Load from Disk), and the Save to Disk dialog's title on Brucebase. Details: =org/bbp-parity.org=, "After vzell's browser check".
 - *vzell, 2026-11-14 evening:* "error is OK, all tested live"; merged. Not yet published to =vzell/mb-userscripts=; that is vzell's call.
-- *Next:* batch 2 of =org/bbp-parity.org= (the year listings against the year pages, the setlist comparison). By vzell, in BruceParser: a full =bbp.sh= run and the =dc.sh= timing with 4 jobs.
+- *Batch 2 is on =feat/bb-findings-batch2=, pushed, NOT merged:* parts 1 and 2 (=bb-list-title=, =bb-list-anchor=,
+  =bb-venue-mismatch=) and, after vzell's "Yes" of 2026-11-15, =bb-year-unlisted= (a year entry the listing lacks)
+  are built, tested and documented; =org/bbp-parity.org=, "Batch 2", has the counts and the
+  browser list.
+- *2026-11-15:* vzell answered the mockup's points (a medley is an error; set names a finding now; differences by
+  default, the full set possible). Part 3 is built on the same branch: =bb-setlist-songs=, =bb-setlist-spelling=,
+  =bb-setlist-sections= and the setlist card (mockup https://claude.ai/artifact/T1D2ghbx9zHHCh8jgfr5g7).
+- *Next:* vzell's browser check (the table in =org/bbp-parity.org=, "Batch 2"), then the merge on vzell's word. After
+  that batch 3 of the matrix (the expected tags). The plan is =~/.claude/plans/curried-bouncing-nygaard.md=. By vzell, in BruceParser: a full =bbp.sh= run and the =dc.sh= timing with 4 jobs.
 
 * Status at the end of the session of 2026-11-14 (01:40 CET)
 

@@ -395,6 +395,59 @@ this file must record:
   trip of the MB-Event cells in `tests/fixtures/bb-mb-event.spec.js`;
   mutations `scripts/mutations/bb-findings-batch1.json` (43).
 
+### Brucebase, batch 2: `bb-list-title`, `bb-list-anchor`, `bb-venue-mismatch`, `bb-year-unlisted`, `bb-setlist-*`
+
+vzell, 2026-11-14 (org/bbp-parity.org, Track A batch 2). Full text:
+docs/claude/brucebase.md, "The listing and venue checks". What this file
+must record:
+
+- **The listing's two are tokens of `_bbEventChecks()`** (`list-title`,
+  `list-anchor`), on the Event cell's carrier like batch 1's, for a row
+  whose carrier has `data-mb-bb-list`. The year page's headings for the
+  row's anchor are `data-mb-bb-list-headings` (a JSON list; absent =
+  unread, `[]` = no such anchor). They arrive for a whole YEAR at once:
+  `_bbEvpPageUrl()` hands the year page it read for one row to
+  `_bbListApplyYear()`, which writes every listing row of that year, live
+  and source, and queues the changed ones (`_BB_LIST_CHECK_IDS`, in
+  `_LATE_FINDING_IDS`). `list-anchor` is half build-time (the link's date
+  and year need no page).
+- **The venue's is NOT on the Event cell**: `bb-venue-mismatch` reads a
+  second carrier, `span.mb-bb-venue-data` inside the Venue cell
+  (`data-mb-bb-venue-part`, `-title`, `-check`), written by
+  `_bbEvpRenderCell()` beside the Event cell's. Its `enabled()` is
+  `_bbVenueOn()`, which also gates the venue REQUESTS: a finding that
+  costs requests switches them off with itself.
+- **A cell with a tooltip of its own needs `data-mb-tip-base`** to show a
+  finding's line (batch 1): the Venue cell sets it when it has a title.
+- **`bb-year-unlisted`** (❌; vzell, 2026-11-15) is a token of
+  `_bbEventChecks()` too (`unlisted`), on a YEAR row: its carrier's
+  `data-mb-bb-listed` is "0" (absent = the listing is unread, "1" =
+  linked). Written for a whole year by `_bbYearApplyListing()`; ids
+  `_BB_UNLISTED_IDS`, in `_LATE_FINDING_IDS`. Its `enabled()` is
+  `_bbYearUnlistedOn()`, which also gates the listing REQUEST, as the
+  venue's does.
+- **`bb-setlist-songs` (❌), `-spelling` and `-sections` (⚠️)** (vzell,
+  2026-11-14 and -15) read a third carrier, `span.mb-bb-set-data` inside
+  the Setlist cell: `data-mb-bb-set-year` (the year page's sets as
+  written, from the row's build), `data-mb-bb-set-event` (the event
+  page's, written by `_bbEvpRenderCell()`), `data-mb-bb-set-check` (the
+  tokens `songs` or `spelling`, and `sections`). `songs` and `spelling`
+  exclude each other (`_bbSetlistCheck()`). These are the first findings
+  with a card of their OWN: `#mb-bb-setlist-card` (`_bbSetCard*()`), an
+  interactive host, not the tooltip engine's. It opens only for a cell
+  STAMPED with one of them (`_bbSetCardCellOf()`), so a switch that is
+  off opens nothing, and it is in `_OTHER_RICH_TIPS`, so the cell's plain
+  finding tooltip does not open over it. A flagged cell gets
+  `tabindex="0"` (a mark on the `<td>`: saved as the cell record's `bb`
+  kind `set`).
+- Settings: `sa_findings_bb_list_title`, `_list_anchor`,
+  `_venue_mismatch`, `_year_unlisted`, `_setlist_songs`,
+  `_setlist_spelling`, `_setlist_sections`; tints
+  `sa_findings_tint_bb_list` (the year table's `bb-year-unlisted` too),
+  `_bb_venue`, `_bb_setlist`.
+- Spec `tests/fixtures/bb-findings-batch2.spec.js` (29); mutations
+  `scripts/mutations/bb-findings-batch2.json` (71, one `expect: pass`).
+
 ## On demand: the title-style findings
 
 `title-case`, `title-typography`, `title-series-sep`, `title-feat` and

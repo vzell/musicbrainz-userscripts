@@ -129,7 +129,7 @@
     "why": "mb-async-pop leaves _OTHER_RICH_TIPS, so the toggle's Liner-notes card draws over it.",
     "edits": [
       {
-        "find": "'mb-dp-peek', 'mb-async-pop'];",
+        "find": "'mb-dp-peek', 'mb-async-pop', 'mb-bb-setlist-card'];",
         "replace": "'mb-dp-peek'];"
       }
     ],

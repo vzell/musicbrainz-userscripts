@@ -1841,6 +1841,186 @@ tint and the tooltip card are the findings' own.
   Spec: `tests/fixtures/bb-mb-event.spec.js`, "Save to Disk → Load from
   Disk"; the validation in the batch spec, "a saved cell record …".
 
+## The listing and venue checks (bbp-parity batch 2, 2026-11-14)
+
+org/bbp-parity.org, Track A batch 2; vzell's decisions of 2026-11-14 (venue
+pages with ▶ Pages; an extra descriptive part is no finding; setlists ❌
+songs / ⚠️ spelling) and of 2026-11-15 (a medley against one song is an
+error; set names are a third finding now; the card shows the differences
+by default and every song on demand). The setlist card's approved mockup:
+https://claude.ai/artifact/T1D2ghbx9zHHCh8jgfr5g7.
+
+| Finding             | Level | Table        | Cell  | Rule                                                                                      |
+|---------------------|-------|--------------|-------|-------------------------------------------------------------------------------------------|
+| `bb-list-title`     | ❌    | bb-year-list | Event | the label is none of the year page's headings for the linked anchor (blanks as one, upper case) |
+| `bb-list-anchor`    | ⚠️    | bb-year-list | Event | the anchor is not the label date's DDMMYY, the link names a year page not covering the year, or the year page has no such anchor |
+| `bb-venue-mismatch` | ⚠️    | bb-year      | Venue | the venue part of the event page's title ≠ the venue page's title, after the two accepted cases |
+| `bb-year-unlisted`  | ❌    | bb-year      | Event | no line of the year's listing links the entry's anchor (vzell, 2026-11-15) |
+| `bb-setlist-songs`  | ❌    | bb-year      | Setlist | a song only on the year page, or only on the event page's Setlist tab |
+| `bb-setlist-spelling` | ⚠️  | bb-year      | Setlist | the same songs, one or more written differently (never beside `songs`) |
+| `bb-setlist-sections` | ⚠️  | bb-year      | Setlist | the names of the sets that have songs differ, in number or as written |
+
+- **One year page answers a whole year** (`_bbListApplyYear()`):
+  `_bbEvpPageUrl()` already reads a listing row's year page
+  (`_extBbYear()`, one request a year, kept). The first time it has one
+  (`_bbEvp.listYears`) every listing row linking that page gets the
+  headings of its anchor on its carrier, live and source rows.
+- **The year reader changed** (`_extBbParseYear()`,
+  `_EXT_BB_YEAR_VERSION` 3; every kept year page is read once more):
+  - anchors with a letter are shows too (`\d{6}[a-z]?`; 712 of 5,018
+    entries were left out, so their listing rows had "no page of its own");
+  - an entry's page is its heading's link of ANY kind (it was `/gig:` and
+    `/nogig:` only: no recording session, rehearsal or interview on a
+    listing was ever read by ▶ Pages);
+  - one anchor on two entries: the FIRST stays the show (a link reaches the
+    first), later headings go to `also`, and the listing's label may be
+    either;
+  - an anchor in a paragraph of its own (2015's `000515`, two entries)
+    takes the heading paragraph after it. Read from the anchor's own
+    paragraph the heading was '' and the page missing; the checker found
+    it as a false `list-title`.
+  The `bbdate` preview's gate (`_extBbIsDate()`, six digits) is unchanged.
+- **The venue rule** (`_bbVenuePart()`, `_bbVenueCheck()`):
+  BruceBaseParser's venue check with `findVenueDetailExtra()`.
+  Case-sensitive, "(The)" not moved, whitespace as one blank. Accepted:
+  a show of the day in brackets (`_BB_NAME_VARIANTS`), a description
+  between the venue's name and its city (four or more comma parts, the
+  first and the last two being the venue's title), and both at once
+  (BBP checks each alone).
+- **The venue requests** (`_bbEvpVenue()`): after a row's event page,
+  `_dpGet(view.venueUrl)` — memory, the store, else one request in the
+  previews' queue — so a venue is asked once for all its events; counted
+  in the job's requests. Not at all while `sa_findings_bb_venue_mismatch`
+  is off (`_bbVenueOn()`). A venue page that fails leaves the row read,
+  without a venue check. `_dpParseBbVenue()` adds `bbRawTitle`;
+  `_DP_PARSER_VERSION` 31 (every stored preview record of a foreign host
+  is read once more).
+- **Rows read before** (`_bbEvpAfterRender(true)`): the venue records are
+  peeked from the store too (one more store read, no request). A row
+  whose venue is not there is painted all the same and marked `venueDue`
+  (`data-mb-bbevp-venue-due` on its On stage cell): the watch takes it,
+  and the pump asks its venue only, once a session.
+- **Probe** (`scripts/probe-bb-batch2-findings.py`, read-only; Env:
+  2026-11-14T21:00+01:00 · petri · Python over the mirror bb/2026-11-13 ·
+  n/a): 63 listings with 5,010 entries, 4,993 events with a venue page
+  (1,561 venue pages).
+
+  | Finding             | Rows | Years | Against BruceParser's report of the same run                                          |
+  |---------------------|------|-------|---------------------------------------------------------------------------------------|
+  | `bb-list-title`     |   35 |    11 | 33 in both (48 there). Only here: 2009#181109, 2011#000211 (a label with another date) |
+  | `bb-list-anchor`    |    9 |     8 | not a report (date 4, no such anchor 3, year 1, year and date 1)                      |
+  | `bb-venue-mismatch` |  128 |    39 | all 128 in DIFFERENCES-venues.org (488 there, before the accepted cases)              |
+
+  Venue results: equal 4,257, a show of the day 271, a description 337,
+  mismatch 128. The 15 listing rows only in BruceParser's report are year
+  entries NO listing line links (its report lists them with an empty
+  listing title: 1977-07-29, 1987-09-29, 2010-07-23, 2025-10-16, …) and
+  the shared anchor of 1972. A missing listing line has no listing row to
+  flag: it is `bb-year-unlisted` on the year table (below).
+- **A year entry the listing lacks** (`bb-year-unlisted`; vzell,
+  2026-11-15: "Yes" to the open decision; ❌ since his browser check
+  the same day, built as ⚠️ first). The year table has no reason
+  of its own to read a listing, so the finding brings the request: with
+  ▶ Pages on, `_bbEvpObserve()` also watches the Event cell of every year
+  row whose carrier has no `data-mb-bb-listed`, and the first one seen
+  asks for its year's listing (`_bbYearListingWant()`, once a year and
+  press: `_bbEvp.yearLists`). Rows in view decide, so the start page's
+  63 years are not 63 requests at the press. `_extBbYearList()` is
+  `_extBbYear()`'s twin (memory, IndexedDB `ext-bbyearlist:<url>`,
+  `_EXT_BB_YEAR_LIST_VERSION`, else one request); its record is the
+  listing's show links as "1977#290777", read by the listing table's own
+  `_bbYearListEntries()`. `_bbYearApplyListing()` writes every year row
+  of that year page, live and source (`_bbYearRowIndex()`; the page is
+  the heading date's year, "1949-64" for those years: 5,018 of 5,018
+  entries in the mirror). An entry without an anchor counts as unlisted.
+  A listing that fails is logged in the job and asked again only with a
+  new press. After a render (`_bbEvpAfterRender(true)`) a KEPT listing is
+  applied without ▶ Pages: one store read a year, no request. Off
+  (`sa_findings_bb_year_unlisted`, `_bbYearUnlistedOn()`): no listing is
+  read. Probe (Env: 2026-11-15T01:10+01:00 · petri · Python over the
+  mirror bb/2026-11-13 · n/a): 16 rows in 11 years (1977 3, 2025 3,
+  2007 2). 14 are the rows of BruceParser's titles report beyond
+  `bb-list-title`; 1980-05-30 and 1998-09-20 are in its side-by-side
+  report only. 2011-02-15 is here AND a `bb-list-anchor` on the listing
+  (its line links #000211). The checker runs the shipped listing reader
+  and token over all 5,018 entries.
+- **The shipped code against the probe**
+  (`scripts/check-bb-batch2-findings.js ROWS.json`): the year reader and
+  the listing checks on 5,008 entries, the venue check on 4,993 events,
+  0 differences.
+- **Tests**: `tests/fixtures/bb-findings-batch2.spec.js` (15): the
+  listings of 1966 and 2011 with their year pages, whole; batch 1's 1972
+  fixture with the six venue pages its events link
+  (`scripts/build-bb-findings-batch2-fixtures.py`). Mutations
+  `scripts/mutations/bb-findings-batch2.json` (28; one `expect: pass`).
+  `bb-year-unlisted` adds 8 tests on 2011's year page with its listing
+  (23 in all) and 12 mutations (40), all failing their test.
+
+### The setlist comparison (batch 2 part 3, 2026-11-15)
+
+BruceBaseParser's YEAR-vs-DETAIL setlist check (its doc/SETLIST.md).
+
+- **Both sides are sets as written**, `[{l: label, s: [song, …]}]`:
+  - the year page's from the row's build (`_bbYearBuildRow()`:
+    `_bbSplitSet()`'s songs as text, BEFORE a label tag is added and the
+    titles are restyled; the Soundcheck paragraph too), on the Setlist
+    cell's carrier `span.mb-bb-set-data[data-mb-bb-set-year]` — only for
+    an entry with a page of its own;
+  - the event page's from `_bbSetlistRaw()` (the previews' record field
+    `bbSetlistRaw`, null without a Setlist tab; `_DP_PARSER_VERSION` 32,
+    so every stored preview of a foreign host is read once more): a
+    paragraph that is one `<strong>` (alone or with `<span>`s) names the
+    set, a top-level list item is a song — its `/song:` links joined with
+    " - " (a medley), else its text without `<span>` notes; a page
+    without any list has its songs as one-link paragraphs (1974).
+- **The rule** (`_bbSetSongKey()`, `_bbSetlistDiff()`,
+  `_bbSetlistCheck()`): a bracket holding a lowercase letter is a note
+  and set aside; "A, B, and/or C" reads "A - B - C"; a token without a
+  letter or digit ("…") is no song; a year token with two lowercase
+  letters in a row is prose; an event entry like that counts only when
+  the year page has it in other case ("82ND Street?"). The songs of all
+  sets in order are aligned by their longest common run; a year-only
+  song NEXT TO an event-only song, within 30 % of the longer one's
+  length (case set aside), is one song written differently. `songs`: any
+  song left on one side (a medley against one song is that; vzell:
+  error). `spelling`: only when no song is left over. `sections`: the
+  names of the sets that have songs ("Show" is the set without a name),
+  compared as written and by number. An event page without a Setlist tab
+  is not compared (638 of 5,016).
+- **No request**: the event page is the one ▶ Pages reads anyway.
+- **The card** (`#mb-bb-setlist-card`, `_bbSetCardHtml()`, `_bbSetCardInit()`;
+  the approved mockup): hover, a click or tap, or Enter on a focused
+  flagged cell opens it under the cell (above it when only there it is
+  in view: the mockup always opened below, and a cell low in the window
+  opened its card out of sight); the pointer can reach it (350 ms); Esc,
+  leaving, or a press elsewhere closes it. Pills for what differs, both
+  setlists side by side with a row per set, only the lines that differ
+  with one song before and after and "… N songs the same …" between,
+  "Show all N songs" for the whole set (vzell: the full set must be
+  possible), the letters that differ marked, links to the year page's
+  anchor and the event page. Nothing was added to the event window.
+- **Over the mirror** (`node scripts/check-bb-setlist-findings.js
+  FLAGGED.json`: the SHIPPED readers and rule in Chromium on every entry;
+  Env: 2026-11-15T02:50+01:00 · petri · Playwright Chromium
+  151.0.7922.34, GM stubs · mirror bb/2026-11-13): 4,378 entries
+  compared, 4,164 equal; `songs` 95, `spelling` 22, `sections` 112 (a
+  name written differently 74, another number of sets 23, case only 15),
+  214 events in all. 207 of them are in BruceParser's
+  `setlist-differences.txt` (342 there). Its other 135 differ only in
+  what this rule sets aside on purpose: notes in brackets ("(multiple
+  takes)"), prose in the year page's set line, "…". The 7 only here are
+  real (1992-06-15: a Soundcheck only on the event page; 1999-04-19:
+  "LION'S DEN (?)"). Against the Python probe's simpler readers: the
+  same 22 `spelling`, 94 of its 112 `songs`; its other 18 are prose
+  entries, "…" and labelled paragraphs it misread (1977-12-31).
+- **Render cost** (tests/MEASUREMENTS.org, 2026-11-15): B/M 1.02 render,
+  1.03–1.04 sort on 1985, inside each arm's range: the row keeps its sets
+  a second time, as text.
+- **Tests**: 6 more in `bb-findings-batch2.spec.js` (29) on 1981's year
+  page cut to four entries, with their pages; 31 mutation entries, all
+  failing their test. `scripts/shot-bb-setlist-card.js` shoots the card
+  for a look beside the mockup.
+
 ## Show links on Brucebase's own pages (Phase 8, 2026-11-11)
 
 A show on its year page (`/<yyyy>#<ddmmyy>`: an event's "Info & Setlist", a

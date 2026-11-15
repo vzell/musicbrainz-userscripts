@@ -847,6 +847,10 @@ back).
 | ⚠️     | Brucebase event page adds "(Early)", "(Late)", … (once read)    | Brucebase year: Event                       |
 | ⚠️     | Brucebase anchor with another date than its entry               | Brucebase year: Event                       |
 | ⚠️     | Brucebase anchor letter differs from the event page's address   | Brucebase year: Event                       |
+| ⚠️     | Brucebase listing entry with a wrong link to the year page      | Brucebase year listing: Event               |
+| ⚠️     | Brucebase event page names its venue differently (once read)    | Brucebase year: Venue                       |
+| ⚠️     | Brucebase setlist: a song is written differently (once read)    | Brucebase year: Setlist                     |
+| ⚠️     | Brucebase setlist: a set is named differently (once read)       | Brucebase year: Setlist                     |
 | ⚠️     | Brucebase title with two blanks or a blank before a comma       | Brucebase year and year listing: Event      |
 | ⚠️     | Pending edits                                                   | any column                                  |
 | ⚠️     | Live credit without a date                                      | Release tracklist: credit columns           |
@@ -854,6 +858,9 @@ back).
 | ❌    | Brucebase event page named differently from the year page (once read) | Brucebase year: Event                 |
 | ❌    | Brucebase event page links another entry of the year page (once read) | Brucebase year: Event                 |
 | ❌    | Brucebase anchor used by two entries of the year page                 | Brucebase year: Event                 |
+| ❌    | Brucebase listing entry named differently from the year page          | Brucebase year listing: Event         |
+| ❌    | Brucebase year entry missing from the year's listing (once read)      | Brucebase year: Event                 |
+| ❌    | Brucebase setlist: songs differ from the event page (once read)       | Brucebase year: Setlist               |
 | ❌    | Double-encoded text (springsteenlyrics.com)                     | springsteenlyrics.com: any column (the lyrics index: once the song's page was read) |
 | ❌    | Track and recording length far apart                            | Release tracklist: Length, Recording length |
 | ❌    | Video on a medium that cannot carry video                       | Release tracklist: Video                    |
@@ -4053,8 +4060,28 @@ entry, with these columns:
   "Info & Setlist" link leads to another entry (❌), or its title has two
   blanks. Names are compared as the wiki writes them, in capitals, with
   "Stone Pony (The)" read as "The Stone Pony". The cell's hover text says
-  what differs, above "As written on the site". Each check has its own
-  switch in ⚙️ Settings → ⚠️ Findings. A year saved with **Save to Disk**
+  what differs, above "As written on the site". ▶ Pages also reads each
+  entry's venue page (one more request per venue, kept 30 days): a ⚠️ on
+  the **Venue** cell says the entry's page names the venue differently
+  from the venue's own page ("CBS Records" against "CBS"). "(Early)",
+  "(Late)" and the like, and a description between the venue and its city
+  ("Mediasound Studios, Studio C, New York City, NY"), are accepted. With
+  ▶ Pages on, the year's listing (/1977-list) is read too, one more request
+  a year: a ⚠️ on the **Event** cell says no line of the listing links the
+  entry ("1977-07-29 - Atlantic Studios" is missing there). Each
+  check has its own switch in ⚙️ Settings → ⚠️ Findings; with the venue
+  check off, no venue page is read, and with the listing check off, no
+  listing. The **Setlist** cell is compared with the Setlist tab of the
+  entry's page, with no request of its own: ❌ when a song is only on one
+  of the two pages (a medley written as one entry counts), ⚠️ when the
+  songs are the same but one is written differently ("TWIST & SHOUT"
+  against "TWIST AND SHOUT"), ⚠️ when the sets are named differently
+  ("Pre-show jam" against "Pre-Show Jam", or a Soundcheck only one page
+  names). Notes in brackets ("(with Tom Morello)") are set aside. Hover a
+  flagged cell (or tap it, or focus it and press Enter) for a card with
+  both setlists side by side: the lines that differ with their
+  neighbours, **Show all N songs** for the whole set, and links to both
+  pages; Esc closes it. A year saved with **Save to Disk**
   comes back with all of them, the MB-Event column's answers and the pages
   read so far included, and asks nothing again.
 - **Soundcheck:** the soundcheck, one song per row.
@@ -4117,6 +4144,16 @@ End of …" boxes between the lists). **All years** reads every listing named
 in the line of years at the top into one table; the listings are small, so
 that is quicker than the start page's button, but it still asks first
 (more than 50 pages).
+
+A listing is checked against its year page. With the table: ⚠️ on an entry
+whose link does not fit it (its anchor is not the entry's date, or it names
+another year's page). Once ▶ Pages has read the year page — one request,
+which answers every entry of that year at once — also ❌ on an entry the
+listing writes differently from the year page's heading ("BUSINESS
+DISTRICT" where the year page has "UNKNOWN LOCATION"), and ⚠️ on a link to
+an anchor the year page does not have. Recording sessions, rehearsals,
+interviews and second shows of a day are read by ▶ Pages like any other
+entry.
 
 **The tag pages.** On the tag cloud (`https://brucebase.wikidot.com/system:page-tags`)
 **Tags** shows every tag in a table — **Tag**, **Family** (Date, Place,
