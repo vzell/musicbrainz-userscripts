@@ -1,0 +1,236 @@
+[
+    {
+        "name": "a read row gets no ⟳",
+        "why": "The On stage cell of a read row carries the button.",
+        "edits": [
+            {
+                "find": "`).join('')}</ul>` : ''}${_BB_EVP_RELOAD_BTN}`;",
+                "replace": "`).join('')}</ul>` : ''}`;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-pages-reload.spec.js",
+        "grep": "past what is kept",
+        "expect": "fail"
+    },
+    {
+        "name": "the ⟳ is always shown",
+        "why": "Hidden until the row is hovered or it has the focus.",
+        "edits": [
+            {
+                "find": "Helvetica, Arial, sans-serif; opacity: 0; vertical-align: baseline; }",
+                "replace": "Helvetica, Arial, sans-serif; opacity: 1; vertical-align: baseline; }"
+            }
+        ],
+        "spec": "tests/fixtures/bb-pages-reload.spec.js",
+        "grep": "past what is kept",
+        "expect": "fail"
+    },
+    {
+        "name": "a click on the ⟳ does nothing",
+        "why": "The delegate hands the click to _bbEvpReloadRow().",
+        "edits": [
+            {
+                "find": "                _bbEvpReloadRow(reload.closest('td'));",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-pages-reload.spec.js",
+        "grep": "past what is kept",
+        "expect": "fail"
+    },
+    {
+        "name": "a row read again takes its kept event page",
+        "why": "_bbEvpPump() passes the kept page over for a key in _bbEvp.again.",
+        "edits": [
+            {
+                "find": "wanted: () => _bbEvp.active, force: !!again });",
+                "replace": "wanted: () => _bbEvp.active, force: false });"
+            }
+        ],
+        "spec": "tests/fixtures/bb-pages-reload.spec.js",
+        "grep": "past what is kept",
+        "expect": "fail"
+    },
+    {
+        "name": "a row read again takes its kept venue page",
+        "why": "One row: the venue page is read again, always.",
+        "edits": [
+            {
+                "find": "!!again && (again === 'row' || !_bbEvp.againVenues.has(venue))",
+                "replace": "false"
+            }
+        ],
+        "spec": "tests/fixtures/bb-pages-reload.spec.js",
+        "grep": "past what is kept",
+        "expect": "fail"
+    },
+    {
+        "name": "the venue reader ignores force",
+        "why": "_bbEvpVenue() hands force to _dpGet().",
+        "edits": [
+            {
+                "find": "const v = await _dpGet(view.venueUrl, site, { wanted: () => _bbEvp.active, force });",
+                "replace": "const v = await _dpGet(view.venueUrl, site, { wanted: () => _bbEvp.active });"
+            }
+        ],
+        "spec": "tests/fixtures/bb-pages-reload.spec.js",
+        "grep": "past what is kept",
+        "expect": "fail"
+    },
+    {
+        "name": "a row's ⟳ leaves the year's listing alone",
+        "why": "_bbEvpReloadRow() asks for the listing again.",
+        "edits": [
+            {
+                "find": "            _bbEvp.againLists.add(slug);\n            _bbYearListingWant(slug);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-pages-reload.spec.js",
+        "grep": "once a press",
+        "expect": "fail"
+    },
+    {
+        "name": "the listing asked again is the kept one",
+        "why": "_bbYearListingWant() passes the kept listing over for a slug in againLists.",
+        "edits": [
+            {
+                "find": "() => _bbEvp.active, _bbEvp.againLists.has(slug));",
+                "replace": "() => _bbEvp.active, false);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-pages-reload.spec.js",
+        "grep": "once a press",
+        "expect": "fail"
+    },
+    {
+        "name": "the listing reader ignores force",
+        "why": "_extBbYearList() reads the store unless forced.",
+        "edits": [
+            {
+                "find": "const kept = force ? null : await _rgIdbGet(`ext-bbyearlist:${listUrl}`",
+                "replace": "const kept = await _rgIdbGet(`ext-bbyearlist:${listUrl}`"
+            }
+        ],
+        "spec": "tests/fixtures/bb-pages-reload.spec.js",
+        "grep": "once a press",
+        "expect": "fail"
+    },
+    {
+        "name": "\"Read every row again\" is not offered",
+        "why": "The job card lists the action once a row is read.",
+        "edits": [
+            {
+                "find": "actions.push({ id: 'again', label: 'Read every row again' });",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-pages-reload.spec.js",
+        "grep": "a shared venue once",
+        "expect": "fail"
+    },
+    {
+        "name": "\"Read every row again\" does nothing",
+        "why": "The provider hands the action to _bbEvpReloadAll().",
+        "edits": [
+            {
+                "find": "                if (id === 'again') _bbEvpReloadAll();",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-pages-reload.spec.js",
+        "grep": "a shared venue once",
+        "expect": "fail"
+    },
+    {
+        "name": "every row again: the rows keep what was read",
+        "why": "_bbEvpReloadAll() forgets each row's record.",
+        "edits": [
+            {
+                "find": "            _bbEvp.again.set(key, 'all');\n            _bbEvpMem.delete(key);",
+                "replace": "            _bbEvp.again.set(key, 'all');"
+            }
+        ],
+        "spec": "tests/fixtures/bb-pages-reload.spec.js",
+        "grep": "a shared venue once",
+        "expect": "fail"
+    },
+    {
+        "name": "every row again: the kept pages are taken",
+        "why": "_bbEvpReloadAll() marks each key to be read past its kept page.",
+        "edits": [
+            {
+                "find": "            _bbEvp.again.set(key, 'all');\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-pages-reload.spec.js",
+        "grep": "a shared venue once",
+        "expect": "fail"
+    },
+    {
+        "name": "every row again: a shared venue is read for each of its rows",
+        "why": "A venue is read again once per \"every row\".",
+        "edits": [
+            {
+                "find": "                        if (again && venue) _bbEvp.againVenues.add(venue);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-pages-reload.spec.js",
+        "grep": "a shared venue once",
+        "expect": "fail"
+    },
+    {
+        "name": "every row again: the listings are left alone",
+        "why": "_bbEvpReloadAll() marks each year's listing.",
+        "edits": [
+            {
+                "find": "                _bbEvp.yearLists.delete(slug);\n                _bbEvp.againLists.add(slug);\n            });",
+                "replace": "            });"
+            }
+        ],
+        "spec": "tests/fixtures/bb-pages-reload.spec.js",
+        "grep": "only the rows in view",
+        "expect": "fail"
+    },
+    {
+        "name": "every row again: a listing to read again is not watched",
+        "why": "_bbEvpObserve() watches answered rows too while a listing is to be read again.",
+        "edits": [
+            {
+                "find": "const unanswered = _bbEvp.againLists.size ? '' : ':not([data-mb-bb-listed])';",
+                "replace": "const unanswered = ':not([data-mb-bb-listed])';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-pages-reload.spec.js",
+        "grep": "only the rows in view",
+        "expect": "fail"
+    },
+    {
+        "name": "a listing row's ⟳ takes the kept year page",
+        "why": "_bbEvpReloadRow() marks the year page of a listing row.",
+        "edits": [
+            {
+                "find": "            _bbEvp.listYears.delete(ym[1]);\n            _bbEvp.againYears.add(ym[1]);\n        }\n        if (!_bbEvp.active) _bbEvpToggle(null);",
+                "replace": "        }\n        if (!_bbEvp.active) _bbEvpToggle(null);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-pages-reload.spec.js",
+        "grep": "on a year listing",
+        "expect": "fail"
+    },
+    {
+        "name": "the year reader ignores force",
+        "why": "_extBbYear() reads its memo and the store unless forced.",
+        "edits": [
+            {
+                "find": "const kept = force ? null : await _rgIdbGet(`ext-bbyear:${yearUrl}`",
+                "replace": "const kept = await _rgIdbGet(`ext-bbyear:${yearUrl}`"
+            }
+        ],
+        "spec": "tests/fixtures/bb-pages-reload.spec.js",
+        "grep": "on a year listing",
+        "expect": "fail"
+    }
+]
