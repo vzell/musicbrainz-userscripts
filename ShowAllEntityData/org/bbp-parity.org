@@ -393,3 +393,45 @@ once more (both readers changed).
 
 Unverified: all of it on the live site. The On stage page with the shortened name is the one thing that rests on how
 the live wiki answers: if 1968-06-22a's cast does NOT appear, the wiki answers the full name after all, and the fix is wrong.
+
+* The feed, version 1 (=feat/bb-feed=, 2026-11-16; Track A, ideas 3 and 4)
+
+Env: 2026-11-16T11:53:49+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · n/a
+(BruceParser's =feed.sh= over its run =bb/2026-11-15=, and =curl= of the published file)
+
+The plan is =~/.claude/plans/structured-mixing-muffin.md= (NB-3641 only); this section is the record.
+
+*Decisions (vzell, 2026-11-16):*
+1. *Where it lives:* a new public repo, =vzell/brucebase-feed=. BruceParser is private, so its raw URLs answer 404 to
+   everyone else.
+2. *What v1 carries:* pages without a parent; titles of dependent pages that differ from their show's; pages with no
+   tag at all; pages without their first-letter tag. Not the =files= tag against images.
+3. *When it cannot be read:* quietly, saying why. A dim line in the ⚠️/❌ menus ("not loaded (404) · Retry"). An old
+   feed is still used, and its cards call it old after 14 days.
+4. *Publishing:* every run writes the feed and checks it. Only =BBP_PUBLISH=1 ./bbp.sh= (or =publish-feed.sh=) pushes.
+
+*Done, BruceParser 0.18.0* (=e3f821a=, pushed):
+- =feed.sh= writes =bb/<date>/bb-feed.json= from four reports and checks each report's count against what it parsed.
+- =publish-feed.sh= commits the feed to the local clone =~/git/brucebase-feed= and pushes it.
+- =bbp.sh= gets a =feed= step, and =docs/timings.tsv= a =feed= column (older rows migrated by column name).
+- The format: BruceParser's =docs/feed-repo/FORMAT.md=, copied into the feed repo.
+
+*Done, the feed repo:* https://github.com/vzell/brucebase-feed, created on vzell's word. Its first feed is the run of
+2026-11-15 (=102e56b=):
+- 192 pages, 24,138 bytes: dependent-title 39, first-letter 10, no-parent 105, no-tags 38;
+- read at https://raw.githubusercontent.com/vzell/brucebase-feed/main/bb-feed.json, which answers =text/plain;
+  charset=utf-8= with =max-age=300=, so the reader must accept =text/plain=.
+
+*Found on the way:*
+- *A Brucebase error:* =news:web-1975-08-14a-bottom-line-new-york-city-ny= has the 1978 Hampton gig as its breadcrumb
+  parent. The dependent-title report compares a page with its PARENT's title, so a wrong parent shows up as a
+  differing title.
+- *25 shows have a dependent page whose title differs*, and the feed names the show (the =event= field). The mark can
+  therefore go on the show's year-table row with no request. Example: 1975-11-10 Tampa, whose Media and On stage pages
+  say "Jai Alai" where the show says "Jai-Alai".
+
+*Mockup:* https://claude.ai/artifact/65urMwgWSb6zq6xJa9Mf4x
+- source: =debug/bb-feed-mockup.html=, built by =scripts/build-bb-feed-mockup.py= from =debug/bb-feed-mockup.template.html=
+  and =scripts/extract-bb-feed-mockup.py='s data;
+- six questions;
+- *the build waits for vzell's approval.*
