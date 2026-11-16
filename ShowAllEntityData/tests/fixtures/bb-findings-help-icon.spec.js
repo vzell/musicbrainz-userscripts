@@ -263,8 +263,13 @@ test.describe('Brucebase tag check: the Help Us and Featured icons (the help-ico
         await waitForRenderComplete(page, { waitForAutoResize: false });
         expect((await tagCells(page)).map(r => [r.key, r.icons])).toEqual([[SPUR, '']]);
         await readRows(page, () => true);
+        // The stamp is queued 150 ms after the row is read (`_queueFindingsRestamp()`):
+        // polled, or a loaded machine reads the cell before it (seen 2026-11-16, NB-3641).
+        await expect.poll(async () => {
+            const [r] = await tagCells(page);
+            return [r.miss, r.spur, r.level, r.stamps];
+        }).toEqual([[], ['help'], 'warn', ['bb-tag-spurious']]);
         const [row] = await tagCells(page);
-        expect([row.miss, row.spur, row.level, row.stamps]).toEqual([[], ['help'], 'warn', ['bb-tag-spurious']]);
         expect(row.title).toMatch(/not expected: help \(Neither the year page nor the show's page has the Help Us icon\)/);
         expect((await findingRow(page, 'warn', 'bb-tag-spurious')).count).toBe(1);
     });

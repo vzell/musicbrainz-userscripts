@@ -95,8 +95,8 @@
     "why": "The window on musicbrainz.org would show only the show's own tags.",
     "edits": [
       {
-        "find": "        if (start && /(?:^|\\.)brucebase\\.wikidot\\.com$/i.test(_extHostOf(t.url))) _bbTagPagesWant.add(t.key);",
-        "replace": "        if (false) _bbTagPagesWant.add(t.key);"
+        "find": "            _bbTagPagesWant.add(t.key);\n            // The BruceParser feed too",
+        "replace": "            // The BruceParser feed too"
       }
     ],
     "spec": "tests/fixtures/bb-onstage-tags.spec.js",

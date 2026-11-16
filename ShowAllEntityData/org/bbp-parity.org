@@ -433,5 +433,69 @@ The plan is =~/.claude/plans/structured-mixing-muffin.md= (NB-3641 only); this s
 *Mockup:* https://claude.ai/artifact/65urMwgWSb6zq6xJa9Mf4x
 - source: =debug/bb-feed-mockup.html=, built by =scripts/build-bb-feed-mockup.py= from =debug/bb-feed-mockup.template.html=
   and =scripts/extract-bb-feed-mockup.py='s data;
-- six questions;
-- *the build waits for vzell's approval.*
+- six questions.
+
+*vzell's answers (2026-11-16), all as recommended:*
+1. A show is marked too when one of its dependent pages is titled differently: its year-table row, its page and its
+   window, as well as the dependent page itself.
+2. A differing title and a page with no tag are ❌; no parent page and a missing first-letter tag are ⚠️.
+3. On a page with no findings, the feed's line goes into the ☰ menu's Brucebase group ("Brucebase feed · run of
+   2026-11-15 · read today"), with Read again (and Retry after a failure).
+4. When the page in front of you contradicts the feed, the mark is dropped: what the page shows now wins.
+5. The mark goes on the cell that names the row's own page (Event, Name, Song, Page), on every Brucebase list.
+6. The four marks stay: ≢ ⌂ ⊘ Ⓐ.
+
+*Built* (details: =docs/claude/brucebase.md=, "The BruceParser feed"):
+- *Code:* =_bbFeed*=, four FINDINGS entries built from =_BB_FEED_KINDS=, the marks of the heads and windows, the
+  menus' line, and the ☰ group =bb=.
+- *Settings:* =sa_bb_feed=, four finding switches, one tint.
+- *Probe:* =scripts/probe-bb-feed.py=. All 192 pages exist in the mirror and every kind holds on its page. The
+  reverse index has 25 shows; the lists mark songs 4, relations 4 and the storyteller tag page 106 rows.
+- *Checker:* =scripts/check-bb-feed.js=, the shipped code over the same pages: no difference.
+- *Two deviations from the answers:*
+  - A year *listing*'s rows are not marked: they link the year page's anchor, not the show's page (answer 5 says
+    every list).
+  - A column is named "Title" on the songs list, not "Song" as the question had it.
+- *One deviation from the plan:* =raw.githubusercontent.com= is NOT added to =_EXT_CONNECT_HOSTS=. That list
+  only decides whether a HOVER may contact a host, and the feed is never read from a hover. Adding the host would
+  let hovers on raw GitHub links contact it on every page, MusicBrainz included.
+- *Tests* (NB-3641, 2026-11-16):
+  - =bb-feed.spec.js=: 16 tests;
+  - =bb-feed.json=: 24 mutations as recorded, 22 failing their test and 2 passing with the reason. "The format is
+    not checked" passed at first, because the test's bad file also lacked =run=; the test now sends the real feed
+    with only =format= changed.
+  - two older finds rewritten (the window title, the other-host Space);
+  - a race in =bb-findings-help-icon.spec.js= (the year-table stamp read before its 150 ms re-stamp) is now polled:
+    it failed once beside 15 other specs and passed 55 of 55 alone.
+  - No render measurement: MusicBrainz takes no new path (the four findings' =enabled()= needs =_isBbHost=), and on
+    Brucebase the lookup is memoized per link.
+  - +34.4 kB in the userscript.
+
+** The browser check of the feed, for vzell (the published feed of the run of 2026-11-15; the live wiki may have been fixed since)
+
+Install the script from the branch =feat/bb-feed=. The first Brucebase press reads the feed from GitHub (one request,
+then not again for a day).
+
+| Page                                                                         | Step                                          | Expected                                                                                                  |
+|------------------------------------------------------------------------------+-----------------------------------------------+-----------------------------------------------------------------------------------------------------------|
+| https://brucebase.wikidot.com/1972                                           | ☰ SAED before any press                       | a "Brucebase" group: "Brucebase feed · not read yet · Read now" (or the run, if read before)               |
+| https://brucebase.wikidot.com/1972                                           | Show all events                               | 1972-04-00b Mediasound and 1972-06-00 Point Pleasant: Event cell ❌ (red); ☰ now names the run of 2026-11-15 |
+| https://brucebase.wikidot.com/1972                                           | hover the Point Pleasant Event cell           | "Its page gignote:1972-06-00-… is titled "1972-06-00 Private Property, Point Pleasant, NJ" …", the run     |
+| https://brucebase.wikidot.com/1972                                           | the ❌ menu                                    | "Brucebase page titled differently from its show 2"; at the foot "Brucebase feed · run of 2026-11-15 …"    |
+| https://brucebase.wikidot.com/1975                                           | Show all events, November                     | 1975-11-10 Tampa (two pages: Media and On stage, "Jai Alai") and 1975-11-11 Miami: ❌                       |
+| https://brucebase.wikidot.com/gig:1975-11-10-jai-alai-fronton-tampa-fl       | Show the event                                | "❌ ≢" after the byline; its hover names both pages                                                        |
+| https://brucebase.wikidot.com/1975                                           | Ctrl+hover the 1975-11-10 link, Space         | the window's title ends in "❌ ≢"                                                                          |
+| https://brucebase.wikidot.com/stats:songs                                    | Show all songs                                | Dinner At Eight, Follow The Sun, Two Of Us, You're Gonna Miss Me When I'm Gone: ⚠️ (no first-letter tag)  |
+| https://brucebase.wikidot.com/stats:relations                                | Show all relations                            | Rob DeMartin ⚠️ ("d"); Chubby Checker, David Mansfield, Gladys Avignon ❌ (no tag at all)                   |
+| https://brucebase.wikidot.com/system:page-tags/tag/storyteller               | Show the tagged pages                         | 104 story pages ⚠️ (no parent), two ❌ (title); the ⚠️ menu's row counts them                              |
+| https://brucebase.wikidot.com/story:story-1972-01-21-neptune-nj              | Show the story                                | "⚠️ ⌂" after the byline (dropped if the page has a parent by now)                                         |
+| https://brucebase.wikidot.com/relation:chubby-checker                        | Show the person                               | "❌ ⊘" after the byline (dropped if the page has tags by now)                                             |
+| any Brucebase page                                                           | ⚙️ Settings → 📚 BRUCEBASE: the feed off, reload | no Brucebase group in ☰, no mark, no request to raw.githubusercontent.com                                |
+| https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events   | Show all Events                               | nothing new: no request for the feed, no Brucebase group                                                  |
+
+Unverified:
+- all of it on the live wiki;
+- the relations rows of Chubby Checker, David Mansfield and Gladys Avignon (the relations fixture is older and lacks
+  them);
+- the storyteller tag page's count (from the mirror's tags, not from the live tag page);
+- the failure line, which needs GitHub to fail (the spec serves 404 and a bad file).

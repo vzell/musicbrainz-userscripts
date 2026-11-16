@@ -1,0 +1,146 @@
+[
+    {
+        "name": "feed: a fresh kept feed is read again",
+        "why": "A feed younger than a day is not read again.",
+        "edits": [{ "find": "        if (!force && _bbFeed.data && now - _bbFeed.at < _BB_FEED_TTL_MS) return Promise.resolve(false);", "replace": "" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "younger than a day", "expect": "fail"
+    },
+    {
+        "name": "feed: a stale kept feed is never read again",
+        "why": "A feed older than a day is read on the next press.",
+        "edits": [{ "find": "now - _bbFeed.at < _BB_FEED_TTL_MS)", "replace": "true)" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "an older one is read once", "expect": "fail"
+    },
+    {
+        "name": "feed: a failed read is tried again at once",
+        "why": "After a failure the next try waits an hour (Retry does not).",
+        "edits": [{ "find": "        if (!force && _bbFeed.err && now - _bbFeed.errAt < _BB_FEED_RETRY_MS) return Promise.resolve(false);", "replace": "" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "a failed read keeps", "expect": "fail"
+    },
+    {
+        "name": "feed: the format is not checked",
+        "why": "A file of another format is not taken.",
+        "edits": [{ "find": "d.format === _BB_FEED_FORMAT && ", "replace": "" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "a failed read keeps", "expect": "fail"
+    },
+    {
+        "name": "feed: GitHub's text/plain is refused",
+        "why": "raw.githubusercontent.com answers text/plain; the reader must accept it.",
+        "edits": [{ "find": "accept: /\\b(?:json|text\\/plain)\\b/i", "replace": "accept: /\\bjson\\b/i" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "an older one is read once", "expect": "fail"
+    },
+    {
+        "name": "feed: a failed read throws the kept feed away",
+        "why": "A failure keeps the old feed and its marks.",
+        "edits": [{ "find": "                _bbFeed.err = err;\n                _bbFeed.errAt = Date.now();", "replace": "                _bbFeed.err = err;\n                _bbFeed.errAt = Date.now();\n                _bbFeedTake(null);" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "a failed read keeps", "expect": "fail"
+    },
+    {
+        "name": "feed: a press does not read it",
+        "why": "A Brucebase press reads a stale feed.",
+        "edits": [{ "find": "        if (_isBbHost) _bbFeedKick();", "replace": "" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "an older one is read once", "expect": "fail"
+    },
+    {
+        "name": "feed: the setting off still reads",
+        "why": "Off: no request. _bbFeedKick() checks the setting too, so this one guard alone is covered by the other: the read is never started with the setting off.",
+        "edits": [{ "find": "        if (!_bbFeedOn()) return Promise.resolve(false);\n        const now = Date.now();", "replace": "        const now = Date.now();" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "the setting off", "expect": "pass"
+    },
+    {
+        "name": "feed: a feed that comes in late is not stamped",
+        "why": "_bbFeedChanged() stamps the tables once.",
+        "edits": [{ "find": "            stampFindings();\n            const ids = Object.values(_BB_FEED_KINDS).map(k => k.id);", "replace": "            const ids = Object.values(_BB_FEED_KINDS).map(k => k.id);" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "comes in after the render", "expect": "fail"
+    },
+    {
+        "name": "feed: a show is not marked for its dependent pages",
+        "why": "vzell, decision 1: the show too.",
+        "edits": [{ "find": "                    ...(_bbFeed.byEvent.get(name) || []),", "replace": "" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "1972: the two shows", "expect": "fail"
+    },
+    {
+        "name": "feed: only the Event column carries the marks",
+        "why": "vzell, decision 5: the cell naming the row's own page on every list (Name, Title, Page too).",
+        "edits": [{ "find": "            cols: name => _BB_FEED_COLS.has(name),", "replace": "            cols: name => name === 'Event'," }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "Relations: Rob DeMartin", "expect": "fail"
+    },
+    {
+        "name": "feed: a kind's switch is ignored",
+        "why": "Each kind has its own switch.",
+        "edits": [{ "find": "        return !!k && _bbFeedOn() && Lib.settings[k.setting] !== false;", "replace": "        return !!k && _bbFeedOn();" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "switch off", "expect": "fail"
+    },
+    {
+        "name": "feed: the tint setting is ignored",
+        "why": "sa_findings_tint_bb_feed off: no tint, the stamp stays.",
+        "edits": [{ "find": "            tint: _findingTintSetting('sa_findings_tint_bb_feed'),", "replace": "            tint: () => true," }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "tint setting off", "expect": "fail"
+    },
+    {
+        "name": "feed: the detector never matches",
+        "why": "The cells the feed names are stamped.",
+        "edits": [{ "find": "        return _bbFeedCellFacts(cell).facts.some(f => f.kind === kind);", "replace": "        return false;" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "1972: the two shows", "expect": "fail"
+    },
+    {
+        "name": "feed: the page's tags do not drop no-tags",
+        "why": "vzell, decision 4: what the page shows now wins.",
+        "edits": [{ "find": "            if (f.kind === 'no-tags') return tags && tags.length ? null : f;", "replace": "            if (f.kind === 'no-tags') return f;" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "a story page's head", "expect": "fail"
+    },
+    {
+        "name": "feed: the page's breadcrumb does not drop no-parent",
+        "why": "vzell, decision 4.",
+        "edits": [{ "find": "            if (f.kind === 'no-parent') return live.parent === true ? null : f;", "replace": "            if (f.kind === 'no-parent') return f;" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "a story page's head", "expect": "fail"
+    },
+    {
+        "name": "feed: an edited title does not drop the dependent-title mark",
+        "why": "vzell, decision 4: a title changed since the run is no longer the one reported.",
+        "edits": [{ "find": "                ? (title === _bbFeedTitleKey(d.title) && title !== _bbFeedTitleKey(d.eventTitle))", "replace": "                ? true" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "a story page's head", "expect": "fail"
+    },
+    {
+        "name": "feed: no mark on a page's head",
+        "why": "Every Brucebase head carries the page's marks after its byline.",
+        "edits": [{ "find": "        if (_isBbHost) sub.insertAdjacentHTML('beforeend', _bbFeedMarksHtml(_bbFeedPageName(window.location.href), _bbFeedLiveOf(document)));", "replace": "" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "head", "expect": "fail"
+    },
+    {
+        "name": "feed: no mark in a window's title",
+        "why": "The window carries the marks after its title.",
+        "edits": [{ "find": "${_bbTitleBlanksHtml(data.bbRawTitle)}${_bbFeedWindowMarks(data)}</div>", "replace": "${_bbTitleBlanksHtml(data.bbRawTitle)}</div>" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "the window:", "expect": "fail"
+    },
+    {
+        "name": "feed: Space in a Brucebase window does not read it",
+        "why": "A window opened with Space reads a stale feed.",
+        "edits": [{ "find": "            windowKick: (data) => {\n                _bbFeedKick();", "replace": "            windowKick: (data) => {" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "the window:", "expect": "fail"
+    },
+    {
+        "name": "feed: no line in the findings menus",
+        "why": "vzell, decision 3 of the plan: the menus say what the feed is.",
+        "edits": [{ "find": "        if (feedLine) {\n            const feed = document.createElement('button');", "replace": "        if (false) {\n            const feed = document.createElement('button');" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "1972: the two shows", "expect": "fail"
+    },
+    {
+        "name": "feed: no row in the ☰ Brucebase group",
+        "why": "vzell, decision 3 of the mockup.",
+        "edits": [{ "find": "            _saedGroup('bb').adopt(row);", "replace": "" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "Brucebase group", "expect": "fail"
+    },
+    {
+        "name": "feed: the run is never called old",
+        "why": "vzell, decision 3: an old feed is called old after 14 days.",
+        "edits": [{ "find": "        return `From BruceParser's run of ${d}${days >= _BB_FEED_OLD_DAYS ? ` (${days} days old)` : ''}; Brucebase may have been fixed since.`;", "replace": "        return `From BruceParser's run of ${d}; Brucebase may have been fixed since.`;" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "called old", "expect": "fail"
+    },
+    {
+        "name": "feed: the host gate of the findings is dropped",
+        "why": "enabled() needs brucebase.wikidot.com. No MusicBrainz table cell links a Brucebase page in the fixtures, so the detector finds nothing there either way; a MusicBrainz fixture with a Brucebase URL in a table cell would cover it.",
+        "edits": [{ "find": "            enabled: () => !!_isBbHost && _bbFeedKindOn(kind),", "replace": "            enabled: () => _bbFeedKindOn(kind)," }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "MusicBrainz page", "expect": "pass"
+    }
+]

@@ -3111,6 +3111,52 @@
                          'missing, light yellow with a ⚠️ when a tag is not expected.'
         },
 
+        sa_findings_bb_feed_title: {
+            label: 'Find Brucebase pages titled differently from their show (Brucebase feed)',
+            type: 'checkbox',
+            default: true,
+            description: 'From the Brucebase feed: a show\'s own page (its On stage, Notes, Media, News or ' +
+                         'Story page) whose title differs from the show\'s ("Jai Alai" against "Jai-Alai"), or ' +
+                         'from its parent page\'s. An ERROR on the page and on the show: their rows in every ' +
+                         'Brucebase list, their pages and their windows. Needs "Read the Brucebase feed".'
+        },
+
+        sa_findings_bb_feed_no_tags: {
+            label: 'Find Brucebase pages without any tag (Brucebase feed)',
+            type: 'checkbox',
+            default: true,
+            description: 'From the Brucebase feed: a page with no tag at all, so no tag list finds it. An ' +
+                         'ERROR on its rows, its page and its window. Needs "Read the Brucebase feed".'
+        },
+
+        sa_findings_bb_feed_no_parent: {
+            label: 'Find Brucebase pages without a parent page (Brucebase feed)',
+            type: 'checkbox',
+            default: true,
+            description: 'From the Brucebase feed: a story or news page that should have a parent page (its ' +
+                         'show) but has none, so its breadcrumb leads nowhere. A WARNING on its rows, its page ' +
+                         'and its window. Needs "Read the Brucebase feed".'
+        },
+
+        sa_findings_bb_feed_first_letter: {
+            label: 'Find Brucebase pages without their first-letter tag (Brucebase feed)',
+            type: 'checkbox',
+            default: true,
+            description: 'From the Brucebase feed: a song, person, venue or other page that lacks the tag of ' +
+                         'its title\'s first letter ("d" for "Dinner At Eight", "0-9" for a title starting ' +
+                         'with a digit). A WARNING on its rows, its page and its window. Needs "Read the ' +
+                         'Brucebase feed".'
+        },
+
+        sa_findings_tint_bb_feed: {
+            label: 'Highlight cells of Brucebase pages the Brucebase feed names',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint the cell that names a page the Brucebase feed lists light red with a ❌ (a ' +
+                         'title that differs, no tag at all) or light yellow with a ⚠️ (no parent page, no ' +
+                         'first-letter tag).'
+        },
+
         sa_findings_tint_bb_setlist: {
             label: 'Highlight Setlist cells of Brucebase entries that differ from the event page',
             type: 'checkbox',
@@ -5443,6 +5489,20 @@
                          'They are read when you press the page\'s button or open the window with Space: one ' +
                          'more page for a show with an On Stage tab, sometimes two or three, one a second, ' +
                          'and kept like the other preview pages. Off: only the page\'s own tags, no request.'
+        },
+
+        sa_bb_feed: {
+            label: 'Read the Brucebase feed: problems a full read of the wiki found',
+            type: 'checkbox',
+            default: true,
+            description: 'BruceParser reads the whole of Brucebase offline and publishes what only that full ' +
+                         'read can see: pages without a parent page, pages titled differently from their show, ' +
+                         'pages with no tag, pages without their first-letter tag. On: the file is read from ' +
+                         'GitHub (raw.githubusercontent.com/vzell/brucebase-feed, about 25 KB) at most once a ' +
+                         'day, when you press a Brucebase page\'s button or open a Brucebase window with Space, ' +
+                         'and the pages and rows it names are marked, with no request to the wiki. Every mark ' +
+                         'names the run it comes from; the wiki may have been fixed since. The ☰ menu\'s ' +
+                         'Brucebase group says which run is kept, and reads it again. Off: no request, no mark.'
         },
 
         sa_bb_mb_event_lookup: {
@@ -25112,6 +25172,9 @@
         // `markHtml`: a mark after the byline, from the page's own code (a
         // Brucebase title with two blanks, `_bbTitleBlanksHtml()`).
         if (s.markHtml) sub.insertAdjacentHTML('beforeend', s.markHtml);
+        // Every Brucebase page's head: the feed's marks for this page, the
+        // page itself winning where it can tell (`_bbFeedMarksHtml()`).
+        if (_isBbHost) sub.insertAdjacentHTML('beforeend', _bbFeedMarksHtml(_bbFeedPageName(window.location.href), _bbFeedLiveOf(document)));
         if (h1) h1.after(sub);
 
         const head = el('div', 'mb-fd-head');
@@ -27567,6 +27630,515 @@
         const marked = String(raw).replace(/[ \u00a0]{2,}/g, m => '␣'.repeat(m.length)).replace(/[ \u00a0],/g, '␣,');
         const tip = `The page's title has two blanks in a row, or a blank before a comma: "${marked}" (␣ marks the blanks).`;
         return ` <span class="mb-bb-title-blanks" data-mb-tip title="${_mbttEscape(tip)}" tabindex="0" role="img" aria-label="${_mbttEscape(tip)}">⚠️</span>`;
+    }
+
+    // --- The BruceParser feed (org/bbp-parity.org, "The feed, version 1") ---
+    // BruceParser (~/git/scripts/BruceParser, feed.sh) reads the whole wiki
+    // offline and publishes what only that full read can see as one JSON
+    // file in the public repo vzell/brucebase-feed (format: its FORMAT.md).
+    // Read at most once a day, on a press or a Space, never from a hover;
+    // kept in GM storage, so one read serves every site. Mockup
+    // https://claude.ai/artifact/65urMwgWSb6zq6xJa9Mf4x, vzell's answers of
+    // 2026-11-16 all as recommended. Probe scripts/probe-bb-feed.py (mirror
+    // bb/2026-11-15, NB-3641): all 192 pages exist and every kind holds on
+    // its page; a dependent page's title equals the feed's as written (32)
+    // or without its leading kind word, "Web", "Story" (7).
+
+    /** @type {string} The feed's address: raw `main` of the public repo. */
+    const _BB_FEED_URL = 'https://raw.githubusercontent.com/vzell/brucebase-feed/main/bb-feed.json';
+    /** @type {number} The one format this script reads (FORMAT.md); any other is not loaded. */
+    const _BB_FEED_FORMAT = 1;
+    /** @type {string} GM key of the kept feed `{at, data, err, errAt}`: a cache, not a setting, not exported. */
+    const _BB_FEED_KEY = 'mb_sa_bb_feed';
+    /** @type {number} A kept feed older than this is read again (on a press or a Space). */
+    const _BB_FEED_TTL_MS = 24 * 3600 * 1000;
+    /** @type {number} After a failed read, the next try waits this long (Retry does not). */
+    const _BB_FEED_RETRY_MS = 3600 * 1000;
+    /** @type {number} A run older than this many days is called old in every card (vzell, decision 3). */
+    const _BB_FEED_OLD_DAYS = 14;
+    /**
+     * The feed's kinds: their finding, mark, setting and words.
+     * @type {Object<string, {id: string, glyph: string, level: string, setting: string, label: string, report: string}>}
+     */
+    const _BB_FEED_KINDS = {
+        'dependent-title': { id: 'bb-feed-title', glyph: '≢', level: 'error', setting: 'sa_findings_bb_feed_title',
+            label: 'Brucebase page titled differently from its show',
+            report: 'differences-detail-title-category-title-cleanedup, DIFFERENCES-in-titles-between-year-and-detail-pages-CLEANEDUP' },
+        'no-tags': { id: 'bb-feed-no-tags', glyph: '⊘', level: 'error', setting: 'sa_findings_bb_feed_no_tags',
+            label: 'Brucebase page without any tag', report: 'MISSING-tags' },
+        'no-parent': { id: 'bb-feed-no-parent', glyph: '⌂', level: 'warn', setting: 'sa_findings_bb_feed_no_parent',
+            label: 'Brucebase page without a parent page', report: 'NO-PARENT-detail-pages' },
+        'first-letter': { id: 'bb-feed-first-letter', glyph: 'Ⓐ', level: 'warn', setting: 'sa_findings_bb_feed_first_letter',
+            label: 'Brucebase page without its first-letter tag', report: 'MISSING-first-character-tag-in-title' },
+    };
+    /** @type {Set<string>} The columns that name a row's own page, on every Brucebase list (vzell, decision 5). */
+    const _BB_FEED_COLS = new Set(['Event', 'Title', 'Name', 'Page']);
+    /**
+     * The feed in memory: `data` (null without one), `at` (when it was read),
+     * `err`/`errAt` (the last failed read), `gen` (bumped on every change,
+     * the cell memo's key), `byEvent` (show → its dependent pages whose
+     * title differs, the feed's `event` read backwards), `loading`.
+     */
+    const _bbFeed = { read: false, data: null, at: 0, err: '', errAt: 0, gen: 0, byEvent: new Map(), loading: null, memo: new Map() };
+
+    /** @returns {boolean} Whether the feed is read and its marks drawn (`sa_bb_feed`). */
+    function _bbFeedOn() {
+        return Lib.settings.sa_bb_feed !== false;
+    }
+
+    /** @returns {boolean} Whether a feed is kept and the setting is on (a finding's cheap `rowGate()`). */
+    function _bbFeedHasData() {
+        _bbFeedReadKept();
+        return !!_bbFeed.data && _bbFeedOn();
+    }
+
+    /**
+     * Whether one kind's marks are drawn: the feed on and the kind's finding
+     * switch on. The heads and windows ask this (on every host), the
+     * registry's `enabled()` adds `_isBbHost`.
+     *
+     * @param {string} kind - A `_BB_FEED_KINDS` key.
+     * @returns {boolean}
+     */
+    function _bbFeedKindOn(kind) {
+        const k = _BB_FEED_KINDS[kind];
+        return !!k && _bbFeedOn() && Lib.settings[k.setting] !== false;
+    }
+
+    /**
+     * Whether a parsed file is a feed this script reads.
+     *
+     * @param {*} d
+     * @returns {boolean}
+     */
+    function _bbFeedValid(d) {
+        return !!d && typeof d === 'object' && d.format === _BB_FEED_FORMAT && !!d.pages && typeof d.pages === 'object' &&
+            !!d.run && typeof d.run.date === 'string';
+    }
+
+    /**
+     * Takes a feed into memory: the data, the show index and a new generation.
+     *
+     * @param {?Object} data
+     * @returns {void}
+     */
+    function _bbFeedTake(data) {
+        _bbFeed.data = _bbFeedValid(data) ? data : null;
+        _bbFeed.byEvent = new Map();
+        _bbFeed.gen++;
+        _bbFeed.memo = new Map();
+        if (!_bbFeed.data) return;
+        Object.entries(_bbFeed.data.pages).forEach(([name, kinds]) => {
+            const dt = kinds && kinds['dependent-title'];
+            if (!dt || !dt.event) return;
+            if (!_bbFeed.byEvent.has(dt.event)) _bbFeed.byEvent.set(dt.event, []);
+            _bbFeed.byEvent.get(dt.event).push({ name, title: dt.title || '', eventTitle: dt.eventTitle || '', event: dt.event });
+        });
+    }
+
+    /**
+     * Reads the kept feed from GM storage, once per page.
+     *
+     * @returns {void}
+     */
+    function _bbFeedReadKept() {
+        if (_bbFeed.read) return;
+        _bbFeed.read = true;
+        let kept;
+        try { kept = GM_getValue(_BB_FEED_KEY, null); } catch (_) { kept = null; }
+        if (!kept || typeof kept !== 'object') return;
+        _bbFeed.at = Number(kept.at) || 0;
+        _bbFeed.err = String(kept.err || '');
+        _bbFeed.errAt = Number(kept.errAt) || 0;
+        _bbFeedTake(kept.data || null);
+    }
+
+    /**
+     * Reads the feed from GitHub when the kept one is older than a day (or
+     * with `force`, Read again / Retry), never twice at once, and after a
+     * failed read not again within the hour unless forced. A failure keeps
+     * the old feed and records why. Nothing when the setting is off. Callers:
+     * a Brucebase page's button (`_bbFeedKick()`), a Brucebase window
+     * opened with Space, and the ☰ row.
+     *
+     * @param {{force?: boolean}} [opts]
+     * @returns {Promise<boolean>} Whether what is kept changed.
+     */
+    function _bbFeedLoad({ force = false } = {}) {
+        _bbFeedReadKept();
+        if (!_bbFeedOn()) return Promise.resolve(false);
+        const now = Date.now();
+        if (!force && _bbFeed.data && now - _bbFeed.at < _BB_FEED_TTL_MS) return Promise.resolve(false);
+        if (!force && _bbFeed.err && now - _bbFeed.errAt < _BB_FEED_RETRY_MS) return Promise.resolve(false);
+        if (_bbFeed.loading) return _bbFeed.loading;
+        _bbFeed.loading = (async () => {
+            let err = '';
+            let data = null;
+            try {
+                const res = await _extGet(_BB_FEED_URL, { fetchOpts: { accept: /\b(?:json|text\/plain)\b/i } });
+                if (res.error) err = res.error === 'timeout' ? 'no answer in time' : 'no answer from raw.githubusercontent.com';
+                else if (res.status !== 200) err = `GitHub answered ${res.status}`;
+                else {
+                    try { data = JSON.parse(res.body); } catch (_) { data = null; }
+                    if (!_bbFeedValid(data)) err = `the file is not a feed of format ${_BB_FEED_FORMAT}`;
+                }
+            } catch (e) {
+                err = String(e && e.message || e);
+            }
+            const before = _bbFeed.data ? _bbFeed.data.run.date : '';
+            if (err) {
+                _bbFeed.err = err;
+                _bbFeed.errAt = Date.now();
+            } else {
+                _bbFeed.at = Date.now();
+                _bbFeed.err = '';
+                _bbFeed.errAt = 0;
+                _bbFeedTake(data);
+            }
+            try {
+                GM_setValue(_BB_FEED_KEY, { at: _bbFeed.at, data: _bbFeed.data, err: _bbFeed.err, errAt: _bbFeed.errAt });
+            } catch (_) { /* kept in memory only */ }
+            Lib.info('bbfeed', err ? `Brucebase feed: not loaded (${err})`
+                : `Brucebase feed: run of ${_bbFeed.data.run.date}, ${Object.keys(_bbFeed.data.pages).length} pages`);
+            _bbFeed.loading = null;
+            const changed = !err && (data.run.date !== before || force);
+            _bbFeedChanged();
+            return changed;
+        })();
+        return _bbFeed.loading;
+    }
+
+    /**
+     * Starts a read of the feed when a Brucebase page's button is pressed or
+     * a Brucebase window opens (the read waits for nothing; what it changes
+     * is drawn by `_bbFeedChanged()`).
+     *
+     * @returns {void}
+     */
+    function _bbFeedKick() {
+        _bbFeedReadKept();
+        if (_bbFeedOn()) _bbFeedLoad();
+    }
+
+    /**
+     * What a read of the feed changed is drawn: the findings of every table
+     * (one `stampFindings()`, once a day at most) and the filter when a feed
+     * finding is filtering, the marks of the head and of an open window, the
+     * ☰ row and the menus' line.
+     *
+     * @returns {void}
+     */
+    function _bbFeedChanged() {
+        if (_isBbHost && document.querySelector('table.tbl') && typeof stampFindings === 'function') {
+            stampFindings();
+            const ids = Object.values(_BB_FEED_KINDS).map(k => k.id);
+            if (ids.some(id => { const f = _FINDING_BY_ID.get(id); return f && _findingState(f) !== 'off'; })) runFilter();
+        }
+        _bbFeedRefreshMarks();
+        _bbFeedSaedRow();
+        if (typeof _updateFindingMenus === 'function') _updateFindingMenus();
+    }
+
+    /**
+     * A page's name from a link: "story:story-1972-01-21-neptune-nj" for
+     * https://brucebase.wikidot.com/story:story-1972-01-21-neptune-nj (and
+     * its /noredirect/true); '' for any other link.
+     *
+     * @param {string} href - Absolute.
+     * @returns {string}
+     */
+    function _bbFeedPageName(href) {
+        let u;
+        try { u = new URL(href, 'https://brucebase.wikidot.com/'); } catch (_) { return ''; }
+        if (u.hostname !== 'brucebase.wikidot.com') return '';
+        let name;
+        try { name = decodeURIComponent(u.pathname.replace(/^\//, '').replace(/\/.*$/, '')); } catch (_) { return ''; }
+        return /^[a-z0-9_-]+:[^/]+$/.test(name) ? name : '';
+    }
+
+    /**
+     * What the feed says about a page: one fact per kind, each `{kind,
+     * value}`; for a show, `dependent-title` with `deps` (its pages whose
+     * title differs; vzell, decision 1). Only kinds whose finding is on.
+     *
+     * @param {string} name - A page name (`_bbFeedPageName()`).
+     * @returns {Array<{kind: string, value: *, deps?: Array<Object>}>}
+     */
+    function _bbFeedFacts(name) {
+        _bbFeedReadKept();
+        if (!name || !_bbFeed.data || !_bbFeedOn()) return [];
+        const out = [];
+        const kinds = _bbFeed.data.pages[name] || {};
+        Object.keys(_BB_FEED_KINDS).forEach(kind => {
+            if (!_bbFeedKindOn(kind)) return;
+            if (kind === 'dependent-title') {
+                const own = kinds[kind];
+                const deps = [
+                    ...(own ? [{ name, title: own.title || '', eventTitle: own.eventTitle || '', event: own.event || '', own: true }] : []),
+                    ...(_bbFeed.byEvent.get(name) || []),
+                ];
+                if (deps.length) out.push({ kind, value: own || null, deps });
+            } else if (kinds[kind] !== undefined && kinds[kind] !== false) {
+                out.push({ kind, value: kinds[kind] });
+            }
+        });
+        return out;
+    }
+
+    /**
+     * Squeezes a title's blanks and drops a leading kind word before its
+     * date ("Web 1973-12-22 …" → "1973-12-22 …"), the comparison the probe
+     * found true for all 39 dependent pages.
+     *
+     * @param {string} t
+     * @returns {string}
+     */
+    function _bbFeedTitleKey(t) {
+        const s = String(t || '').replace(/\s+/g, ' ').trim();
+        const m = s.match(/^(.*?)\s*(\d{4}-\d{2}-\d{2}\b.*)$/);
+        return m && m[1] ? m[2] : s;
+    }
+
+    /**
+     * The facts the page in front of you does not contradict (vzell,
+     * decision 4: what the page shows now wins). `live` is what the page
+     * itself says, each part null when it cannot tell: its title as written,
+     * its tags, whether its breadcrumb links a parent.
+     * - no tags: dropped once the page has a tag;
+     * - first-letter: dropped once it has that tag;
+     * - no parent: dropped once the breadcrumb links a page;
+     * - a dependent page's own title: dropped when the title is not the one
+     *   the run saw (edited since) or now equals its show's;
+     * - a show's dependents: those whose title now equals the show's title
+     *   are dropped.
+     *
+     * @param {Array<Object>} facts - `_bbFeedFacts()`.
+     * @param {?{title: ?string, tags: ?string[], parent: ?boolean}} live
+     * @returns {Array<Object>}
+     */
+    function _bbFeedLiveFilter(facts, live) {
+        if (!live) return facts;
+        const tags = Array.isArray(live.tags) ? live.tags.map(t => String(t).toLowerCase()) : null;
+        const title = live.title != null ? _bbFeedTitleKey(live.title) : null;
+        return facts.map((f) => {
+            if (f.kind === 'no-tags') return tags && tags.length ? null : f;
+            if (f.kind === 'first-letter') return tags && tags.includes(String(f.value).toLowerCase()) ? null : f;
+            if (f.kind === 'no-parent') return live.parent === true ? null : f;
+            if (f.kind !== 'dependent-title' || title === null) return f;
+            const deps = f.deps.filter(d => d.own
+                ? (title === _bbFeedTitleKey(d.title) && title !== _bbFeedTitleKey(d.eventTitle))
+                : _bbFeedTitleKey(d.title) !== title);
+            return deps.length ? { ...f, deps } : null;
+        }).filter(Boolean);
+    }
+
+    /**
+     * The run's date and, from 14 days on, how old it is.
+     *
+     * @returns {string} "From BruceParser's run of 2026-11-15 (30 days old)."
+     */
+    function _bbFeedSource() {
+        const d = _bbFeed.data ? _bbFeed.data.run.date : '';
+        const days = _bbFeedAgeDays();
+        return `From BruceParser's run of ${d}${days >= _BB_FEED_OLD_DAYS ? ` (${days} days old)` : ''}; Brucebase may have been fixed since.`;
+    }
+
+    /** @returns {number} Whole days since the kept run, 0 without one. */
+    function _bbFeedAgeDays() {
+        const d = _bbFeed.data ? Date.parse(`${_bbFeed.data.run.date}T00:00:00Z`) : NaN;
+        return Number.isFinite(d) ? Math.max(0, Math.floor((Date.now() - d) / 86400000)) : 0;
+    }
+
+    /**
+     * One fact in words, for a cell's tooltip line and a mark's hover text.
+     *
+     * @param {Object} f - A fact of `_bbFeedFacts()`.
+     * @param {string} name - The page it is about.
+     * @returns {string}
+     */
+    function _bbFeedFactText(f, name) {
+        if (f.kind === 'no-tags') return `${name} has no tag at all, so no tag list finds it.`;
+        if (f.kind === 'first-letter') return `${name} lacks the tag "${f.value}" of its title's first letter.`;
+        if (f.kind === 'no-parent') return `${name} has no parent page: its breadcrumb leads nowhere and its show does not list it.`;
+        return f.deps.map(d => (d.own
+            ? `This page's title "${d.title}" differs from its ${d.event ? `show's (${d.event})` : 'parent page\'s'}: "${d.eventTitle}".`
+            : `Its page ${d.name} is titled "${d.title}", the show "${d.eventTitle}".`)).join(' ');
+    }
+
+    /**
+     * The marks of a page's head and of its window's title: one per kind,
+     * ❌ or ⚠️ with the kind's glyph, the words and the run in its hover
+     * text. Wrapped in `span.mb-bb-feed-marks` with the page and what the
+     * page said, so `_bbFeedRefreshMarks()` redraws it when the feed comes
+     * in. '' without a feed: the wrapper alone, empty.
+     *
+     * @param {string} name - The page (`_bbFeedPageName()`).
+     * @param {?{title: ?string, tags: ?string[], parent: ?boolean}} live - `_bbFeedLiveFilter()`.
+     * @returns {string} HTML.
+     */
+    function _bbFeedMarksHtml(name, live) {
+        if (!name || !_bbFeedOn()) return '';
+        const facts = _bbFeedLiveFilter(_bbFeedFacts(name), live);
+        const marks = facts.map((f) => {
+            const k = _BB_FEED_KINDS[f.kind];
+            const tip = `${k.label}. ${_bbFeedFactText(f, name)}\n${_bbFeedSource()}\nReport: ${k.report}.`;
+            return `<span class="mb-bb-feed-mark" data-mb-level="${k.level}" data-mb-feed-kind="${f.kind}" data-mb-tip title="${_mbttEscape(tip)}" ` +
+                `tabindex="0" role="img" aria-label="${_mbttEscape(`${k.label}: ${_bbFeedFactText(f, name)}`)}">${k.level === 'error' ? '❌' : '⚠️'} ${k.glyph}</span>`;
+        }).join(' ');
+        return ` <span class="mb-bb-feed-marks" data-mb-bb-feed-page="${_mbttEscape(name)}" data-mb-bb-feed-live="${_mbttEscape(JSON.stringify(live || null))}">${marks}</span>`;
+    }
+
+    /**
+     * Redraws every feed mark of the page (the head) from the feed now kept,
+     * and repaints an open window.
+     *
+     * @returns {void}
+     */
+    function _bbFeedRefreshMarks() {
+        document.querySelectorAll('span.mb-bb-feed-marks[data-mb-bb-feed-page]').forEach((el) => {
+            if (el.closest('#mb-dp-dialog')) return;
+            let live;
+            try { live = JSON.parse(el.dataset.mbBbFeedLive || 'null'); } catch (_) { live = null; }
+            const tmp = document.createElement('span');
+            tmp.innerHTML = _bbFeedMarksHtml(el.dataset.mbBbFeedPage, live);
+            const fresh = tmp.querySelector('span.mb-bb-feed-marks');
+            if (fresh) el.innerHTML = fresh.innerHTML;
+            else el.innerHTML = '';
+        });
+        if (document.getElementById('mb-dp-dialog') && typeof _dpDialog !== 'undefined' && _dpDialog.repaint) _dpDialog.repaint();
+    }
+
+    /**
+     * What the page in front of you says, for `_bbFeedLiveFilter()`: its
+     * title as written, its tags, whether its breadcrumb links a parent;
+     * each null when the page does not show it.
+     *
+     * @param {Document} doc
+     * @returns {{title: ?string, tags: ?string[], parent: ?boolean}}
+     */
+    function _bbFeedLiveOf(doc) {
+        const titleEl = doc.getElementById('page-title');
+        const tagsBox = doc.querySelector('div.page-tags');
+        const crumbs = doc.getElementById('breadcrumbs');
+        return {
+            title: titleEl ? _bbRawText(titleEl) : null,
+            tags: tagsBox ? _bbRawTags(doc, window.location.href).map(t => t.text) : null,
+            parent: crumbs ? !!crumbs.querySelector('a[href]') : null,
+        };
+    }
+
+    /**
+     * The feed's marks for a window's title: a Brucebase record only (it has
+     * `bbTagInfo`), the page known by its name after any redirect, and what
+     * the record says of itself (its title and own tags; a window cannot see
+     * a breadcrumb, so "no parent" is never dropped there).
+     *
+     * @param {Object} data - A parsed record.
+     * @returns {string} HTML.
+     */
+    function _bbFeedWindowMarks(data) {
+        const name = data && data.bbTagInfo ? data.bbTagInfo.name : '';
+        if (!name) return '';
+        return _bbFeedMarksHtml(name, {
+            title: data.bbRawTitle || data.title || null,
+            tags: Array.isArray(data.tags) ? data.tags.map(t => t.text) : null,
+            parent: null,
+        });
+    }
+
+    /**
+     * The facts of a table cell that names a page (its first link, a year
+     * table's event link first), memoized per link and feed generation:
+     * `stampFindings()` asks every finding of the four for every such cell.
+     *
+     * @param {HTMLTableCellElement} cell
+     * @returns {{name: string, facts: Array<Object>}}
+     */
+    function _bbFeedCellFacts(cell) {
+        const a = cell.querySelector('a.mb-bb-event-link[href]') || cell.querySelector('a[href]');
+        if (!a) return { name: '', facts: [] };
+        const href = a.getAttribute('href') || '';
+        const key = `${_bbFeed.gen}|${href}`;
+        if (_bbFeed.memo.has(key)) return _bbFeed.memo.get(key);
+        const name = _bbFeedPageName(href);
+        const r = { name, facts: name ? _bbFeedFacts(name) : [] };
+        _bbFeed.memo.set(key, r);
+        return r;
+    }
+
+    /**
+     * Whether a cell's page carries one kind (a finding's `test()`).
+     *
+     * @param {HTMLTableCellElement} cell
+     * @param {string} kind
+     * @returns {boolean}
+     */
+    function _bbFeedCellHas(cell, kind) {
+        return _bbFeedCellFacts(cell).facts.some(f => f.kind === kind);
+    }
+
+    /**
+     * One kind of a cell's page in words and the run (a finding's `detail()`).
+     *
+     * @param {HTMLTableCellElement} cell
+     * @param {string} kind
+     * @returns {string}
+     */
+    function _bbFeedCellDetail(cell, kind) {
+        const { name, facts } = _bbFeedCellFacts(cell);
+        const f = facts.find(x => x.kind === kind);
+        return f ? `${_bbFeedFactText(f, name)} ${_bbFeedSource()}` : '';
+    }
+
+    /**
+     * The feed's state in one line, for the ☰ row and the menus' line:
+     * `bad` when the last read failed (and a Retry), else what is kept.
+     *
+     * @returns {?{bad: boolean, text: string, action: string}} null with the setting off.
+     */
+    function _bbFeedStatus() {
+        _bbFeedReadKept();
+        if (!_bbFeedOn()) return null;
+        if (_bbFeed.loading) return { bad: false, text: 'Brucebase feed · reading …', action: '' };
+        const kept = _bbFeed.data
+            ? `run of ${_bbFeed.data.run.date}${_bbFeedAgeDays() >= _BB_FEED_OLD_DAYS ? ` · ${_bbFeedAgeDays()} days old` : ''} · ${Object.keys(_bbFeed.data.pages).length} pages`
+            : '';
+        if (_bbFeed.err) {
+            return { bad: true, text: `Brucebase feed: not loaded (${_bbFeed.err})${kept ? ` · using the ${kept}` : ''}`, action: 'Retry' };
+        }
+        if (!_bbFeed.data) return { bad: false, text: 'Brucebase feed · not read yet', action: 'Read now' };
+        const when = new Date(_bbFeed.at);
+        const today = new Date();
+        const read = when.toDateString() === today.toDateString() ? 'read today' : `read ${when.toISOString().slice(0, 10)}`;
+        return { bad: false, text: `Brucebase feed · ${kept} · ${read}`, action: 'Read again' };
+    }
+
+    /**
+     * The ☰ menu's Brucebase group row (vzell, decision 3): the feed's line;
+     * a click reads it again (Retry after a failure). On brucebase.wikidot.com
+     * only, and only with the setting on.
+     *
+     * @returns {void}
+     */
+    function _bbFeedSaedRow() {
+        if (!_isBbHost || typeof _saedGroup !== 'function') return;
+        const st = _bbFeedStatus();
+        let row = document.getElementById('mb-saed-bbfeed-btn');
+        if (!st) {
+            if (row) row.remove();
+            return;
+        }
+        if (!row) {
+            if (!_toolbarMenus.get('saed')) return;
+            row = document.createElement('button');
+            row.id = 'mb-saed-bbfeed-btn';
+            row.type = 'button';
+            row.addEventListener('click', () => { _bbFeedLoad({ force: true }); _bbFeedSaedRow(); });
+            _saedGroup('bb').adopt(row);
+        }
+        row.textContent = `${st.bad ? '⚠ ' : ''}${st.text}${st.action ? ` · ${st.action}` : ''}`;
+        row.classList.toggle('mb-bb-feed-bad', st.bad);
+        _setTip(row, `${st.action ? `${st.action}: one request to raw.githubusercontent.com. ` : ''}The feed is BruceParser's full read of Brucebase (github.com/vzell/brucebase-feed); its marks name the run they come from.`);
     }
 
     /**
@@ -42188,7 +42760,11 @@
             // The window, on Space, reads the pages that keep more of the
             // record's tags (`_bbTagPagesStart()`: a show's /onstage: page,
             // a full page's -2); never the hover card.
-            windowKick: (data) => _bbTagPagesStart(data && data.bbTagInfo, { wanted: () => !!document.getElementById('mb-dp-dialog') }),
+            // And the BruceParser feed, once a day at most (`_bbFeedKick()`).
+            windowKick: (data) => {
+                _bbFeedKick();
+                return _bbTagPagesStart(data && data.bbTagInfo, { wanted: () => !!document.getElementById('mb-dp-dialog') });
+            },
             // A song's own pages too (Phase 16 batch 3, answer 1): its tour
             // counts, On The Tracks and lyrics. Not the other stats pages
             // (answer 6), among them a tour's song counts and its shows,
@@ -44565,7 +45141,7 @@
         if (data.collapsible) _dpInitSecToggles();
         const left = [];
         const right = [];
-        left.push(`<div class="mb-dp-xtitle">${_mbttEscape(data.title || '(untitled)')}${_bbTitleBlanksHtml(data.bbRawTitle)}</div>`);
+        left.push(`<div class="mb-dp-xtitle">${_mbttEscape(data.title || '(untitled)')}${_bbTitleBlanksHtml(data.bbRawTitle)}${_bbFeedWindowMarks(data)}</div>`);
         // A Brucebase song's intro keeps its links here (`subtitleHtml`,
         // `_dpBlockHtml()`'s escaped text and links only; Phase 16 batch 4).
         if (data.subtitle) left.push(`<div class="mb-dp-xsub">${data.subtitleHtml || _mbttEscape(data.subtitle)}</div>`);
@@ -75542,6 +76118,28 @@
             },
             tint: _findingTintSetting('sa_findings_tint_bb_title_spaces'),
         },
+        // org/bbp-parity.org, "The feed, version 1" (vzell, 2026-11-16): four
+        // findings from BruceParser's feed (`_bbFeed*`), on the cell that
+        // names a row's own page on every Brucebase list (Event, Title,
+        // Name, Page). `test()` reads the cell's own link and the kept feed,
+        // never a decoration; a feed that comes in after the render is
+        // stamped by one `stampFindings()` (`_bbFeedChanged()`).
+        ...Object.entries(_BB_FEED_KINDS).map(([kind, k]) => ({
+            id: k.id, level: k.level, glyph: k.glyph, scope: 'cell',
+            label: k.label,
+            tip: {
+                'dependent-title': 'A page of a show (its On stage, Notes, Media, News or Story page) is titled differently from the show, or from its parent page; marked on that page and on the show. ',
+                'no-tags': 'The page carries no tag at all, so no tag list of the wiki finds it. ',
+                'no-parent': 'The page should have a parent page (its show) but has none: its breadcrumb leads nowhere and the show does not list it. ',
+                'first-letter': 'The page lacks the tag of its title\'s first letter ("d" for "Dinner At Eight", "0-9" for a digit). ',
+            }[kind] + 'From the Brucebase feed: BruceParser\'s full read of the wiki, published at github.com/vzell/brucebase-feed; the hover text names the run, and Brucebase may have been fixed since.',
+            enabled: () => !!_isBbHost && _bbFeedKindOn(kind),
+            cols: name => _BB_FEED_COLS.has(name),
+            rowGate: row => _bbFeedHasData() && !!row.querySelector('a[href]'),
+            test: cell => _bbFeedCellHas(cell, kind),
+            detail: cell => _bbFeedCellDetail(cell, kind),
+            tint: _findingTintSetting('sa_findings_tint_bb_feed'),
+        })),
         {
             id: 'pending', level: 'warn', glyph: '⏳', scope: 'row',
             label: 'Pending edits',
@@ -96921,7 +97519,11 @@
         if (start) _extLoad(t, { force, repaint });
         // A Brucebase page's window asks for the pages that keep more of its
         // tags; its first paint with the record starts the read (`_bbTagsWindowPart()`).
-        if (start && /(?:^|\.)brucebase\.wikidot\.com$/i.test(_extHostOf(t.url))) _bbTagPagesWant.add(t.key);
+        if (start && /(?:^|\.)brucebase\.wikidot\.com$/i.test(_extHostOf(t.url))) {
+            _bbTagPagesWant.add(t.key);
+            // The BruceParser feed too, on this Space only (`_bbFeedKick()`).
+            _bbFeedKick();
+        }
         const mbq = _extMbQuery(t);
         if (start && mbq) _extMbLoad(t, mbq, force, repaint);
         const mbSec = mbq ? _extMbSectionHtml(t, mbq) : '';
@@ -100261,6 +100863,8 @@
         ['data', 'Data'],
         ['view', 'View'],
         ['hist', 'Editing history'],
+        // On brucebase.wikidot.com only: the feed's line (`_bbFeedSaedRow()`).
+        ['bb', 'Brucebase'],
         ['help', 'Help'],
         ['log',  'Changelog'],
     ];
@@ -113212,6 +113816,8 @@ a { color: #1565c0; }`;
     _saedDgHistoryEntry();
     // On brucebase.wikidot.com, the page's own history (Phase 6).
     _saedBbHistoryEntry();
+    // And the BruceParser feed's line in the Brucebase group (no request).
+    _bbFeedSaedRow();
 
     // --- Fetch progress line (shown during data loading, hidden otherwise) ---
     // The bar itself is the running action segment (`_saedRunStart()`); this
@@ -114467,8 +115073,11 @@ a { color: #1565c0; }`;
      * @param {Array<{f: object, n: number, state: string}>} list
      * @param {?{done: boolean, text: string}} [styleRow] - The WARNING menu's
      *   "Check title style" row (`_titleStyleMenuRow()`), first.
+     * @param {?{bad: boolean, text: string, action: string}} [feedLine] - The
+     *   Brucebase feed's line (`_bbFeedStatus()`), last; a click reads the
+     *   feed again (Retry after a failure).
      */
-    function _buildFindingMenuRows(menu, level, list, styleRow = null) {
+    function _buildFindingMenuRows(menu, level, list, styleRow = null, feedLine = null) {
         menu.panel.querySelectorAll('.mb-toolbar-menu-item').forEach(el => el.remove());
         if (styleRow) _buildTitleStyleMenuRow(menu, styleRow);
         list.forEach(({ f, n, state }) => {
@@ -114505,6 +115114,16 @@ a { color: #1565c0; }`;
         clear.setAttribute('aria-disabled', anyOn ? 'false' : 'true');
         menu.adopt(clear);
         clear.addEventListener('click', () => { if (anyOn) _clearFindingLevel(level); });
+        if (feedLine) {
+            const feed = document.createElement('button');
+            feed.type = 'button';
+            feed.className = `mb-findings-menu-item mb-findings-feed-item${feedLine.bad ? ' mb-bb-feed-bad' : ''}`;
+            feed.textContent = `${feedLine.text}${feedLine.action ? ` · ${feedLine.action}` : ''}`;
+            _setTip(feed, `${feedLine.action ? `${feedLine.action}: one request to raw.githubusercontent.com. ` : ''}The Brucebase feed is BruceParser's full read of the wiki (github.com/vzell/brucebase-feed).`);
+            menu.adopt(feed);
+            feed.setAttribute('role', 'menuitem');
+            feed.addEventListener('click', () => { if (feedLine.action) _bbFeedLoad({ force: true }); });
+        }
     }
 
     /**
@@ -115434,11 +116053,15 @@ a { color: #1565c0; }`;
             let menu = _toolbarMenus.get(key);
             if (!list.length && !styleRow && !menu) return;
             menu = menu || _ensureFindingMenu(level);
-            const sig = (styleRow ? `style:${styleRow.text}|` : '') + list.map(x => `${x.f.id}:${x.n}:${x.state}`).join('|');
+            // On brucebase.wikidot.com, the BruceParser feed's line at the
+            // menus' foot (vzell, decision 3: quiet, and saying why).
+            const feedLine = _isBbHost ? _bbFeedStatus() : null;
+            const sig = (styleRow ? `style:${styleRow.text}|` : '') + list.map(x => `${x.f.id}:${x.n}:${x.state}`).join('|') +
+                (feedLine ? `|feed:${feedLine.text}` : '');
             if (menu.panel.dataset.mbSig === sig) return;
             menu.panel.dataset.mbSig = sig;
             changed = true;
-            if (list.length || styleRow) _buildFindingMenuRows(menu, level, list, styleRow);
+            if (list.length || styleRow) _buildFindingMenuRows(menu, level, list, styleRow, feedLine);
             else menu.panel.querySelectorAll('.mb-toolbar-menu-item').forEach(el => el.remove());
             const total = list.reduce((s, x) => s + x.n, 0);
             const word = level === 'error' ? 'ERROR' : 'WARNING';
@@ -118804,6 +119427,18 @@ a { color: #1565c0; }`;
             cursor: default;
             font-size: 0.88em !important;
         }
+        /* The Brucebase feed's line (_buildFindingMenuRows, _bbFeedSaedRow):
+           last in the findings menus, muted; red when the last read failed. */
+        .mb-toolbar-menu-panel .mb-findings-feed-item {
+            border-top: 1px solid #d9cfbd !important;
+            color: #7a6d5c !important;
+            font-size: 0.88em !important;
+        }
+        .mb-toolbar-menu-panel .mb-bb-feed-bad { color: #9b2218 !important; }
+        /* The feed's marks after a Brucebase head's byline and a window's title. */
+        .mb-bb-feed-mark { cursor: help; white-space: nowrap; font-size: 0.85em; font-weight: 600; }
+        .mb-bb-feed-mark[data-mb-level="error"] { color: #9b2218; }
+        .mb-bb-feed-mark[data-mb-level="warn"] { color: #9a6a00; }
 
         /* ── Fallback: browsers that don't support :focus-visible still see
                the ring on keyboard focus; mouse focus is suppressed above. ── */
@@ -133490,6 +134125,11 @@ a { color: #1565c0; }`;
             window.location.reload();
             return;
         }
+
+        // brucebase.wikidot.com: a press reads the BruceParser feed when the
+        // kept one is a day old (`_bbFeedKick()`); the render stamps from
+        // the kept one, and a newer one is stamped when it comes in.
+        if (_isBbHost) _bbFeedKick();
 
         // MERGE LOGIC: Combine base definition with button-specific overrides.
         // For page types that carry an `entityFeatures` map (e.g.
@@ -189628,6 +190268,52 @@ a { color: #1565c0; }`;
              */
             bbTagCheck(facts, own, more, icons) {
                 return _bbTagCheck(facts, own, more, icons || null);
+            },
+            /**
+             * The BruceParser feed's state and lookups (org/bbp-parity.org,
+             * "The feed, version 1"): what is kept, a page's facts, and the
+             * facts the page in front of you leaves standing.
+             *
+             * @param {string} [name] - A page name.
+             * @param {?Object} [live] - `_bbFeedLiveFilter()`'s `live`.
+             * @returns {{date: string, err: string, gen: number, loading: boolean, facts: Array<Object>, kept: Array<Object>, status: ?Object}}
+             */
+            bbFeed(name = '', live = null) {
+                _bbFeedReadKept();
+                const facts = name ? _bbFeedFacts(name) : [];
+                return {
+                    date: _bbFeed.data ? _bbFeed.data.run.date : '', err: _bbFeed.err, gen: _bbFeed.gen, loading: !!_bbFeed.loading,
+                    facts, kept: _bbFeedLiveFilter(facts, live), status: _bbFeedStatus(),
+                };
+            },
+            /**
+             * Thin wrapper around `_bbFeedLoad()`.
+             *
+             * @param {boolean} [force]
+             * @returns {Promise<boolean>}
+             */
+            bbFeedLoad(force = false) {
+                return _bbFeedLoad({ force });
+            },
+            /**
+             * Ages the feed kept in memory by `ms` (a spec's "a day later").
+             *
+             * @param {number} ms
+             * @returns {void}
+             */
+            bbFeedAge(ms) {
+                _bbFeedReadKept();
+                _bbFeed.at -= ms;
+            },
+            /**
+             * Thin wrappers: a page's name from a link, a title's comparison key.
+             *
+             * @param {string} href
+             * @param {string} title
+             * @returns {{name: string, key: string}}
+             */
+            bbFeedNames(href, title) {
+                return { name: _bbFeedPageName(href), key: _bbFeedTitleKey(title) };
             },
             /**
              * Thin wrapper around `_bbTagFamily()` — a Brucebase tag's family.

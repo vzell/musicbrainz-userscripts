@@ -485,6 +485,36 @@ tags". What this file must record:
 - Spec `tests/fixtures/bb-findings-batch3.spec.js`; mutations
   `scripts/mutations/bb-findings-batch3.json`.
 
+### Brucebase, the BruceParser feed: `bb-feed-title`, `bb-feed-no-tags`, `bb-feed-no-parent`, `bb-feed-first-letter`
+
+vzell, 2026-11-16 (org/bbp-parity.org, "The feed, version 1"). Full text:
+docs/claude/brucebase.md, "The BruceParser feed". What this file must record:
+
+- **Four entries from one table**: `_BB_FEED_KINDS` holds each kind's id,
+  level, glyph, switch and words, and the registry spreads one entry per
+  kind out of it. ❌ for title and no-tags, ⚠️ for no-parent and
+  first-letter. Cell scope; `cols` is `_BB_FEED_COLS` (Event, Title, Name,
+  Page), so the cell naming a row's own page on every Brucebase list.
+- **`test()` reads the cell's link and the kept feed**, not a carrier: the
+  data is not in the page at all. That is like the artwork findings, which
+  read a cache. The link is source-row markup, so a master row, a filter
+  re-render and a disk load all see it.
+- **A feed that comes in after the render** is stamped by ONE
+  `stampFindings()` (`_bbFeedChanged()`), not per row. That is at most once
+  a day: one event per page, not one per record, so the O(rows) pass is
+  paid once. The ids are not in `_LATE_FINDING_IDS`.
+- **The findings menus get a last line on Brucebase**: the feed's state
+  (`feedLine`, part of `_updateFindingMenus()`' signature), with Retry or
+  Read again. It is a `menuitem`, not a finding row.
+- **Also outside table cells**: a mark after a Brucebase head's byline and
+  after a window's title (`_bbFeedMarksHtml()`), where the page in front of
+  you wins (`_bbFeedLiveFilter()`). The registry does not know of them.
+- Settings: `sa_findings_bb_feed_title`, `_no_tags`, `_no_parent`,
+  `_first_letter`; tint `sa_findings_tint_bb_feed`; the feed itself
+  `sa_bb_feed`.
+- Spec `tests/fixtures/bb-feed.spec.js`; mutations
+  `scripts/mutations/bb-feed.json`.
+
 ## On demand: the title-style findings
 
 `title-case`, `title-typography`, `title-series-sep`, `title-feat` and

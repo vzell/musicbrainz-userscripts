@@ -774,7 +774,9 @@ The harness lives under `tests/`; how to run each suite and what it costs:
   the two SL tracklist lookups (`sa_sl_song_versions`, `sa_sl_mb_works`;
   2026-11-05: the site's letter pages, MusicBrainz's work browse) and
   `sa_bb_onstage_tags` (2026-11-14: a show's /onstage: page and a full
-  page's "-2", read on a press or Space) OFF
+  page's "-2", read on a press or Space) and `sa_bb_feed` (2026-11-16:
+  BruceParser's feed from raw.githubusercontent.com, read on a Brucebase
+  press or Space) OFF
   — a "cannot reproduce" means nothing until they are back on. Seeding a key
   as `undefined` in `settingsOverride` un-seeds it (the schema default).
   That list applies only to a spec that serves an HTML fixture
