@@ -29716,3 +29716,32 @@ Env: 2026-11-16T01:15:12+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
   times over: 30 of 30 passed. Nothing this branch changes is on that path (the shared MusicBrainz request gate);
   it passed in the full run of 2026-11-15. Read as a load-dependent timing failure, not traced; the full suite was
   not run a second time.
+
+## 2026-11-16 — springsteenlyrics.com on a phone: a white band stays near the top while scrolling (fix/sl-sticky-mask-narrow)
+
+Env: 2026-11-16T14:32:05+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (chromium-fixtures; chromium-mobile: Pixel 7 emulation), no Tampermonkey (GM stubs); the report: Firefox on a Galaxy A34 5G and Firefox's responsive mode (704 px) on the desktop, versions unknown, Tampermonkey unknown
+
+- **Report (vzell):** on `collection.php`, before any press, scrolling down leaves a white area near the top of the
+  window; the page scrolls behind it. Back at the top it is gone, and it returns on the next scroll down.
+  Material in `debug/`: `SL-sticky-area-bug.mp4` (responsive mode), `SL-sticky-area-bug.html` (that page's HTML,
+  scrolled), `Screenshot_20261115_094127_Firefox.jpg` and `Screenshot_20261115_094150_Firefox.jpg` (the phone).
+- **Two causes, both in the sticky header block (`_vsb*`), confirmed before any code changed:**
+  1. *The dock was 80 px too low.* `--mb-sl-navbar-h` was the navbar's height at any width, but the site's
+     `css/style-red.css` (fetched 2026-11-16) has `@media(max-width:992px){ .navbar-default, .navbar-inverse {
+     position: relative !important; } }`. The video shows the navbar scroll away, although the snapshot has the
+     plugin's inline `position: fixed; top: 0px` on it. The toolbar h1 docked at 80 px with the page showing above.
+  2. *The backdrop never went off.* `_vsbUpdateMask()` tested `top <= headTop`. `.project-detail` holds only the h1
+     and the status line here, so its end pushes the h1 out of the window; the h1's top goes negative and the test
+     stays true. The snapshot has `<div id="mb-vsb-mask" class="mb-vsb-mask-on">` at `top: 80px; height: 64px` with
+     the h1 gone. Not phone-only: the same on a wide window, under the fixed navbar.
+- **Fix:** `_slNavbarOffset()` (the navbar's height only if its computed position is `fixed` with `position: fixed`
+  inline; at init, on resize, and as `_vsbBaseOffset()`'s answer on this host); `_vsbUpdateMask()` asks for the head
+  AT its dock (within 0.5 px). MusicBrainz: the block's parent is the page's content, so "above the dock" does not
+  occur while it is stuck; `sticky-filter-bars.spec.js` unchanged and green.
+- **A spec that had to change:** "collection: scrolled down, the list h2 docks under the site's navbar" set the
+  variable by hand; the variable is now measured on every resize, so the test gives the navbar its 52 px instead.
+- **Tests:** `sl-sticky-headers.spec.js` +4 (narrow dock, wide dock, the backdrop on/off/on at both widths) and one
+  assertion (no inline position left behind); `sl-sticky-mask.mobile.spec.js` 1 (Pixel 7). With
+  `sticky-filter-bars.spec.js`: 38 of 38 passed, 14:29:39–14:31:06 CET. `scripts/mutations/sl-sticky-mask.json`:
+  6 entries as recorded (5 fail their test, 1 passes: the resize listener, covered by the bars' own refresh).
+  Deferred: `npm run test:full`, before the merge. Not yet checked in a real browser.

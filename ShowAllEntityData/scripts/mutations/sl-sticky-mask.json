@@ -1,0 +1,82 @@
+[
+    {
+        "name": "the backdrop stays on above the dock (wide window)",
+        "why": "Reported 2026-11-16: a header block pushed out of the window by its parent's end is ABOVE its dock; with <= the backdrop stayed on as a white band the page scrolled behind.",
+        "edits": [
+            {
+                "find": "            Math.abs(head.getBoundingClientRect().top - _vsb.headTop) <= 0.5);",
+                "replace": "            head.getBoundingClientRect().top <= _vsb.headTop + 0.5);"
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-headers.spec.js",
+        "grep": "wide window: the backdrop is there",
+        "expect": "fail"
+    },
+    {
+        "name": "the backdrop stays on above the dock (phone)",
+        "why": "The same guard at the phone's own width, where it was reported.",
+        "edits": [
+            {
+                "find": "            Math.abs(head.getBoundingClientRect().top - _vsb.headTop) <= 0.5);",
+                "replace": "            head.getBoundingClientRect().top <= _vsb.headTop + 0.5);"
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-mask.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "phone: the toolbar h1 docks at the very top",
+        "expect": "fail"
+    },
+    {
+        "name": "the navbar height counts whether or not the navbar can be fixed",
+        "why": "Up to 992 px the site keeps its navbar in the flow (position: relative !important); reserving its 80 px left a gap above the docked h1 that the page showed through.",
+        "edits": [
+            {
+                "find": "            if (canFix) h = navbar.offsetHeight;\n",
+                "replace": "            h = navbar.offsetHeight;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-headers.spec.js",
+        "grep": "narrow window: the site leaves its navbar in the flow",
+        "expect": "fail"
+    },
+    {
+        "name": "the navbar height counts whether or not the navbar can be fixed (phone)",
+        "why": "The same guard at the phone's own width.",
+        "edits": [
+            {
+                "find": "            if (canFix) h = navbar.offsetHeight;\n",
+                "replace": "            h = navbar.offsetHeight;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-mask.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "phone: the toolbar h1 docks at the very top",
+        "expect": "fail"
+    },
+    {
+        "name": "the trial position: fixed stays on the navbar",
+        "why": "The measurement sets position: fixed inline for one read; left there, the navbar would be fixed at the top of an unscrolled page.",
+        "edits": [
+            {
+                "find": "                navbar.style.position = inline;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-headers.spec.js",
+        "grep": "the list h2 docks under the site's navbar",
+        "expect": "fail"
+    },
+    {
+        "name": "no re-measure of the navbar on a window resize",
+        "why": "Known overlap: with the sticky filter bars on, _vsbBaseOffset() calls _slNavbarOffset() on every refresh, and a resize schedules one. The listener of _slPrepareLivePage() only matters with the bars switched off (the thead rule reads the variable), which no spec resizes.",
+        "edits": [
+            {
+                "find": "        window.addEventListener('resize', _slNavbarOffset, { passive: true });\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-headers.spec.js",
+        "grep": "the list h2 docks under the site's navbar",
+        "expect": "pass"
+    }
+]

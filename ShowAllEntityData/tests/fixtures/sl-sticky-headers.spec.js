@@ -211,10 +211,10 @@ test('collection: scrolled down, the list h2 docks under the site\'s navbar and 
     // is a third of the window), so a real one's height is set here.
     await openSl(page, 'collection');
     await page.addStyleTag({ content: 'table.tbl > tbody > tr > td { height: 200px; }' });
-    await page.evaluate(() => {
-        document.documentElement.style.setProperty('--mb-sl-navbar-h', '52px');
-        window.dispatchEvent(new Event('resize'));
-    });
+    // The height is the navbar's own, measured again on every resize
+    // (_slNavbarOffset()), so it is given to the navbar, not to the variable.
+    await page.addStyleTag({ content: '.navbar { height: 52px; overflow: hidden; }' });
+    await page.evaluate(() => { window.dispatchEvent(new Event('resize')); });
     const y = await page.evaluate(() => document.querySelector('table.tbl').getBoundingClientRect().top + window.scrollY + 1200);
     await page.evaluate((v) => window.scrollTo(0, v), y);
     await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
@@ -230,6 +230,10 @@ test('collection: scrolled down, the list h2 docks under the site\'s navbar and 
             headBottom: heads.length ? Math.max(...heads.map((r) => r.bottom)) + 6 : h2.top };
     });
     expect(g.nav, 'premise: the navbar height is known').toBeGreaterThan(0);
+    // The measurement tries `position: fixed` on the navbar for one read
+    // (_slNavbarOffset()); nothing of it may stay behind.
+    expect(await page.evaluate(() => document.querySelector('.navbar.sticky').style.position),
+        'the navbar\'s inline position is left empty').toBe('');
     expect(g.tableTop, 'premise: the table starts above the window').toBeLessThan(-500);
     // The stuck stack (the header block, if it is stuck here, then the h2)
     // starts at the navbar height.
@@ -237,3 +241,130 @@ test('collection: scrolled down, the list h2 docks under the site\'s navbar and 
     expect(Math.abs(g.h2Top - g.headBottom), 'the h2 under the header block').toBeLessThanOrEqual(1);
     expect(Math.abs(g.theadTop - g.h2Bottom), 'the thead docks under the h2').toBeLessThanOrEqual(1);
 });
+
+// ---------------------------------------------------------------------------
+// The navbar on a narrow window, and the backdrop of a block that has left
+// (reported 2026-11-16 from a phone: a white band stayed near the top of
+// collection.php and the page scrolled behind it).
+// ---------------------------------------------------------------------------
+
+/**
+ * The site's navbar rules that matter here (css/style-red.css, read
+ * 2026-11-16): 80 px high, white, and NOT fixed up to 992 px, whatever the
+ * "sticky" plugin writes inline.
+ * @type {string}
+ */
+const NAVBAR_CSS = [
+    '.navbar { min-height: 80px; height: 80px; overflow: hidden; background: #fff; width: 100%; }',
+    '@media (max-width: 992px) { .navbar-default, .navbar-inverse { position: relative !important; } }',
+].join('\n');
+
+/**
+ * Opens the collection entry page WITHOUT pressing anything, with the
+ * navbar's CSS, the plugin's inline `position: fixed` and room to scroll.
+ * @param {import('@playwright/test').Page} page
+ * @param {?{width: number, height: number}} viewport - `null`: the project's own (Pixel 7).
+ * @returns {Promise<void>}
+ */
+async function openSlInitial(page, viewport) {
+    if (viewport) await page.setViewportSize(viewport);
+    await loadSlListPage(page, { kind: 'collection-intro' });
+    await page.addStyleTag({ content: `${BOOTSTRAP_CSS}\n${NAVBAR_CSS}` });
+    await page.evaluate(() => {
+        // jquery.sticky, once scrolled: inline, at any width.
+        const nav = document.querySelector('.navbar.sticky');
+        nav.style.position = 'fixed';
+        nav.style.top = '0px';
+        const spacer = document.createElement('div');
+        spacer.style.height = '4000px';
+        document.body.appendChild(spacer);
+        window.dispatchEvent(new Event('resize'));
+    });
+    await page.waitForFunction(() => document.querySelector('h1.mb-sl-h1.mb-vsb-head') && document.getElementById('mb-vsb-mask'),
+        null, { timeout: 10000 });
+    await frames(page);
+}
+
+/**
+ * Two animation frames: the bars' refresh and the backdrop's scroll update
+ * are each scheduled for the next frame.
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<void>}
+ */
+const frames = (page) => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+
+/**
+ * Scrolls to `y` and reads the h1, the backdrop and what is painted in the
+ * band the backdrop takes.
+ * @param {import('@playwright/test').Page} page
+ * @param {number} y
+ * @returns {Promise<{h1Top: number, h1Bottom: number, maskOn: boolean, bandIsMask: boolean, scrollY: number}>}
+ */
+async function scrollAndRead(page, y) {
+    await page.evaluate((v) => window.scrollTo(0, v), y);
+    await frames(page);
+    return page.evaluate(() => {
+        const r = document.querySelector('h1.mb-sl-h1').getBoundingClientRect();
+        const mask = document.getElementById('mb-vsb-mask');
+        const dock = parseFloat(getComputedStyle(document.querySelector('h1.mb-sl-h1')).top) || 0;
+        const hit = document.elementFromPoint(window.innerWidth - 5, dock + 10);
+        return { h1Top: r.top, h1Bottom: r.bottom, maskOn: mask.classList.contains('mb-vsb-mask-on'),
+            bandIsMask: hit === mask, scrollY: window.scrollY };
+    });
+}
+
+/**
+ * Document positions the scrolls are derived from: the h1's natural top and
+ * the end of its parent (the end of its sticky travel).
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<{h1Y: number, parentEndY: number, dock: number, navVar: string, navH: number}>}
+ */
+const layout = (page) => page.evaluate(() => {
+    window.scrollTo(0, 0);
+    const h1 = document.querySelector('h1.mb-sl-h1');
+    return { h1Y: h1.getBoundingClientRect().top, parentEndY: h1.parentElement.getBoundingClientRect().bottom,
+        dock: parseFloat(getComputedStyle(h1).top), navVar: document.documentElement.style.getPropertyValue('--mb-sl-navbar-h'),
+        navH: document.querySelector('.navbar.sticky').offsetHeight };
+});
+
+test('narrow window: the site leaves its navbar in the flow, so the header block docks at the very top', async ({ page }) => {
+    await openSlInitial(page, { width: 700, height: 800 });
+    const l = await layout(page);
+    expect(l.navH, 'premise: the navbar has its height').toBe(80);
+    expect(await page.evaluate(() => getComputedStyle(document.querySelector('.navbar.sticky')).position),
+        'premise: the site overrides the plugin\'s inline fixed').toBe('relative');
+    expect(l.navVar, 'no navbar height is reserved').toBe('0px');
+    expect(l.dock, 'the h1\'s dock').toBe(0);
+    const g = await scrollAndRead(page, l.h1Y + 3);
+    expect(g.scrollY, 'premise: scrolled').toBeGreaterThan(80);
+    expect(Math.abs(g.h1Top), 'the h1 sits at the top of the window, no gap above it').toBeLessThanOrEqual(1);
+    expect(await page.evaluate(() => document.querySelector('.navbar.sticky').style.position),
+        'the plugin\'s inline position is left as it was').toBe('fixed');
+});
+
+test('wide window: the navbar can be fixed, the header block docks under it', async ({ page }) => {
+    await openSlInitial(page, VIEWPORT);
+    const l = await layout(page);
+    expect(await page.evaluate(() => getComputedStyle(document.querySelector('.navbar.sticky')).position),
+        'premise: the navbar is fixed').toBe('fixed');
+    expect(l.navVar, 'the navbar height is reserved').toBe('80px');
+    expect(l.dock, 'the h1\'s dock').toBe(80);
+});
+
+for (const [name, viewport] of [['narrow', { width: 700, height: 800 }], ['wide', VIEWPORT]]) {
+    test(`${name} window: the backdrop is there while the header block is docked and gone once the block has left`, async ({ page }) => {
+        await openSlInitial(page, viewport);
+        const l = await layout(page);
+        const stuckY = l.h1Y - l.dock + 3;
+        const goneY = l.parentEndY + 300;
+        const stuck = await scrollAndRead(page, stuckY);
+        expect(Math.abs(stuck.h1Top - l.dock), 'premise: the h1 is docked').toBeLessThanOrEqual(1);
+        expect(stuck.maskOn, 'docked: the backdrop is on').toBe(true);
+        const gone = await scrollAndRead(page, goneY);
+        expect(gone.h1Bottom, 'premise: the h1 has left the window with its parent').toBeLessThan(0);
+        expect(gone.maskOn, 'left: the backdrop is off').toBe(false);
+        expect(gone.bandIsMask, 'left: the page, not a white band, is painted where the block was').toBe(false);
+        const back = await scrollAndRead(page, stuckY);
+        expect(back.maskOn, 'docked again: the backdrop is back').toBe(true);
+    });
+}

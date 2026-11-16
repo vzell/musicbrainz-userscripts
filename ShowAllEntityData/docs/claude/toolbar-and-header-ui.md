@@ -1157,6 +1157,12 @@ h3 and thead offsets start below them), z-index 105 (`VSB_Z_HEAD`).
   rectangle read, at most once per frame on scroll): in its natural place
   it would cover the top of MusicBrainz's sidebar. Pinned on painted pixels
   (green rows) in `sticky-filter-bars.spec.js`.
+  AT its sticky top means within 0.5 px of it, not "at or above"
+  (2026-11-16): a block whose parent ends right under it
+  (springsteenlyrics.com's `.project-detail` before any press) is pushed out
+  of the window by that parent's end, and with `<=` the backdrop stayed on
+  as a white band the page scrolled behind. Pinned in
+  `sl-sticky-headers.spec.js` and `sl-sticky-mask.mobile.spec.js`.
 - **Tests and the sticky constraint box:** a sticky element is held inside
   its parent's CONTENT box, so padding on `#page`/`#content` gives no room to
   scroll — `addSpacer()` in the spec appends a real element. The fixtures'

@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-11-16",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "springsteenlyrics.com on a phone or in a narrow window: a white band stayed near the top of the window while scrolling down, and the page scrolled behind it. Two causes. The toolbar heading was docked 80 pixels down, below the site's menu bar, but the site only keeps that bar at the top in windows wider than 992 pixels; in a narrower one the heading now docks at the very top. And the white backdrop behind the docked heading stayed on after the heading itself had scrolled away (in a wide window too); it is now shown only while the heading is docked."
+        ]
+      }
+    ]
+  }
+]

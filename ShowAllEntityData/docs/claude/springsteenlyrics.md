@@ -78,6 +78,20 @@ lets the init-time `_cachedEntityName` capture read it like a MusicBrainz
 `<h1>`. It also adds `body.mb-sa-host-sl`, installs `_ensureSlStyle()`, and
 measures the site's sticky navbar into `--mb-sl-navbar-h`.
 
+**The navbar's height counts only where the navbar can be fixed**
+(`_slNavbarOffset()`, 2026-11-16; at init, on every window resize, and from
+`_vsbBaseOffset()`). The site's stylesheet has
+`@media(max-width:992px){ .navbar-default, .navbar-inverse { position: relative !important; } }`
+(css/style-red.css, read 2026-11-16), while jquery.sticky still writes
+`position: fixed` inline at any width. Up to 992 px the navbar therefore
+scrolls away, and the variable is `0px`: with 80 px reserved, the toolbar
+`<h1>` docked 80 px down and the page showed in the gap. The test is the
+computed position with `position: fixed` inline (the plugin's own, or set for
+one synchronous read and restored), so the breakpoint is the site's, not a
+number repeated in the script. Specs: `sl-sticky-headers.spec.js` (narrow,
+wide), `sl-sticky-mask.mobile.spec.js`; mutations:
+`scripts/mutations/sl-sticky-mask.json`.
+
 **Never scope a lookup to `.project-detail`; find the list from its cards.**
 That was the rule until 2026-10-05, and it made the converter a silent no-op
 on every collection category but "Official Albums". Those pages render a

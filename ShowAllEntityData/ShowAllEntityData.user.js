@@ -15808,6 +15808,47 @@
     }
 
     /**
+     * springsteenlyrics.com: the height the site's navbar takes at the top of
+     * the window once the page is scrolled, kept in `--mb-sl-navbar-h` (the
+     * sticky table header and the sticky filter bars dock under it).
+     *
+     * The site's "sticky" plugin (jquery.sticky) writes `position: fixed;
+     * top: 0` inline on the navbar at any width, but the site's stylesheet
+     * takes that back on a narrow window:
+     * `@media(max-width:992px){ .navbar-default, .navbar-inverse { position:
+     * relative !important; } }` (css/style-red.css, read 2026-11-16). There
+     * the navbar scrolls away like the rest, and an offset of its height left
+     * a gap above the docked toolbar h1 that the page showed through
+     * (DEBUG-NOTES.md 2026-11-16). So the navbar's height counts only if the
+     * navbar CAN be fixed: with `position: fixed` inline (the plugin's own,
+     * or set here for one synchronous read and restored) the computed
+     * position tells whether a rule of the site overrides it. No breakpoint
+     * is repeated here.
+     *
+     * @returns {number} Pixels; 0 with no navbar, or one that never sticks.
+     */
+    function _slNavbarOffset() {
+        const navbar = document.querySelector('.navbar.sticky, .navbar-fixed-top, .navbar');
+        let h = 0;
+        if (navbar && navbar.offsetHeight > 0) {
+            const inline = navbar.style.position;
+            let canFix;
+            if (inline === 'fixed') {
+                canFix = getComputedStyle(navbar).position === 'fixed';
+            } else {
+                navbar.style.position = 'fixed';
+                canFix = getComputedStyle(navbar).position === 'fixed';
+                navbar.style.position = inline;
+            }
+            if (canFix) h = navbar.offsetHeight;
+        }
+        const v = `${h}px`;
+        const root = document.documentElement.style;
+        if (root.getPropertyValue('--mb-sl-navbar-h') !== v) root.setProperty('--mb-sl-navbar-h', v);
+        return h;
+    }
+
+    /**
      * Prepares a springsteenlyrics.com list page at init, standing in for the
      * MusicBrainz header lookup (the init block calls it right after that
      * lookup, for SL definitions only): these pages have no `<h1>` (nor any
@@ -15821,7 +15862,8 @@
      * Also tags `<body>` with `mb-sa-host-sl` (the scope of every SL style
      * rule), installs `_ensureSlStyle()` and the covers' viewer click
      * (`_fiInstall()`), and records the site's navbar height
-     * in `--mb-sl-navbar-h` for the sticky table header. Nothing else on the
+     * in `--mb-sl-navbar-h` for the sticky table header (`_slNavbarOffset()`,
+     * again on every window resize). Nothing else on the
      * page changes until the user presses the "Show all" button.
      *
      * @returns {?HTMLHeadingElement} The `<h1>` to use as header container, or
@@ -15836,10 +15878,10 @@
         document.body.classList.add('mb-sa-host-sl');
         _ensureSlStyle();
         _fiInstall();
-        const navbar = document.querySelector('.navbar.sticky, .navbar-fixed-top, .navbar');
-        if (navbar && navbar.offsetHeight > 0) {
-            document.documentElement.style.setProperty('--mb-sl-navbar-h', `${navbar.offsetHeight}px`);
-        }
+        _slNavbarOffset();
+        // Rotation, or a window dragged across the site's breakpoint: the
+        // navbar stops (or starts) being fixed, see _slNavbarOffset().
+        window.addEventListener('resize', _slNavbarOffset, { passive: true });
 
         const section = document.querySelector('.breadcrumb-wrap h4')?.textContent.replace(/\s+/g, ' ').trim() || '';
         // An item page is named by its item (`_slItemName()`), a song page
@@ -68421,7 +68463,8 @@
     /**
      * The height already taken at the top of the window by something that
      * stays there, under which the bars dock: springsteenlyrics.com's fixed
-     * navbar (`--mb-sl-navbar-h`, measured by `_slPrepareLivePage()`), or a
+     * navbar (`_slNavbarOffset()`: 0 on a narrow window, where the site
+     * leaves it in the flow), or a
      * MusicBrainz header made sticky or fixed by a userstyle (jesus2099's
      * "mb. STICKY HEADER": `html > body > div.header { position: sticky;
      * top: 0 }`). 0 otherwise.
@@ -68429,10 +68472,7 @@
      * @returns {number} Pixels.
      */
     function _vsbBaseOffset() {
-        if (_isSlHost) {
-            const v = parseFloat(document.documentElement.style.getPropertyValue('--mb-sl-navbar-h'));
-            return Number.isFinite(v) && v > 0 ? v : 0;
-        }
+        if (_isSlHost) return _slNavbarOffset();
         const hdr = document.querySelector('body > div.header');
         if (!hdr) return 0;
         const cs = getComputedStyle(hdr);
@@ -68652,9 +68692,13 @@
 
     /**
      * Shows the backdrop behind the header block (`#mb-vsb-mask`) while that
-     * block is stuck: its first part sits at its sticky `top` with the page
-     * scrolled. One rectangle read; called by `_vsbRefresh()` and, once per
-     * frame at most, on scroll.
+     * block is stuck: its first part sits AT its sticky `top` with the page
+     * scrolled. Above it does not count: a block whose parent ends a few
+     * pixels below it (springsteenlyrics.com's `.project-detail` before any
+     * press) is pushed out of the window by that parent's end, and the
+     * backdrop then stayed on as a white band the page scrolled behind
+     * (DEBUG-NOTES.md 2026-11-16). One rectangle read; called by
+     * `_vsbRefresh()` and, once per frame at most, on scroll.
      *
      * @returns {void}
      */
@@ -68662,7 +68706,7 @@
         if (!_vsb.mask) return;
         const head = _vsb.head;
         const on = !!(head && head.isConnected && window.scrollY > 0 &&
-            head.getBoundingClientRect().top <= _vsb.headTop + 0.5);
+            Math.abs(head.getBoundingClientRect().top - _vsb.headTop) <= 0.5);
         if (_vsb.mask.classList.contains('mb-vsb-mask-on') !== on) _vsb.mask.classList.toggle('mb-vsb-mask-on', on);
     }
 
