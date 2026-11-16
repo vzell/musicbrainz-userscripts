@@ -15,8 +15,9 @@
  *   2. the page's own tags as the link previews' parser reads them
  *      (`__saTest.dpParse()`: `tags`), against the probe's;
  *   3. the missing and the not-expected tags (`__saTest.bbTagCheck()`), fed
- *      with the shipped facts, the page's tags and the probe's tags of the
- *      show's other pages, against the probe's four families.
+ *      with the shipped facts, the page's tags, the probe's tags of the
+ *      show's other pages and its icons on the year page, against the
+ *      probe's shipped families (batch 3's four and the icons).
  *
  * Read-only, no network. Exit code 1 when anything differs.
  *
@@ -79,13 +80,15 @@ function key(pairs) {
         const part = rows.slice(at, at + BATCH).map(r => ({
             name: r.name, html: fs.readFileSync(fileOf(r.name), 'utf8'),
             more: [].concat(...r.pages.map(p => p[1].map(t => t.toLowerCase()))),
+            // The show's icons on its year page, as the probe read them.
+            icons: r.iconsYear,
         }));
         const got = await page.evaluate(list => list.map(x => {
             const url = 'https://brucebase.wikidot.com/' + x.name;
             const facts = window.__saTest.bbTagFacts(x.html, url);
             const rec = window.__saTest.dpParse('brucebase.wikidot.com', x.html, url);
             const own = ((rec && rec.tags) || []).map(t => t.text.toLowerCase());
-            const res = window.__saTest.bbTagCheck(facts, own, x.more);
+            const res = window.__saTest.bbTagCheck(facts, own, x.more, x.icons);
             return { facts, own, missing: res.missing.map(m => [m.tag, m.family]), spurious: res.spurious.map(m => [m.tag, m.family]),
                 noWhy: res.missing.concat(res.spurious).filter(m => !m.why && m.tag !== 'prem').map(m => m.tag) };
         }), part);
@@ -104,7 +107,29 @@ function key(pairs) {
             }
         });
     }
+    // The year reader's icons (the help-icon check): every year page of the
+    // mirror through the shipped `_extBbParseYear()`, each show's Help Us
+    // and Featured icon against the probe's reading of the same page.
+    const want = new Map(rows.map(r => [r.name, `${!!r.iconsYear.help}/${!!r.iconsYear.featured}`]));
+    const seen = new Set();
+    let iconDiffs = 0;
+    for (const fn of fs.readdirSync(MIRROR).filter(f => /^\d{4}(-\d\d)?\.html$/.test(f)).sort()) {
+        const url = 'https://brucebase.wikidot.com/' + fn.replace(/\.html$/, '');
+        const shows = await page.evaluate(([h, u]) => Object.values(window.__saTest.extBbParseYear(h, u).shows)
+            .map(s => [s.gig, `${!!s.help}/${!!s.featured}`]), [fs.readFileSync(path.join(MIRROR, fn), 'utf8'), url]);
+        for (const [gig, got] of shows) {
+            if (!gig) continue;
+            const name = decodeURIComponent(new URL(gig).pathname.slice(1));
+            if (!want.has(name) || seen.has(name)) continue;
+            seen.add(name);
+            if (want.get(name) !== got) {
+                iconDiffs++;
+                if (iconDiffs <= 20) console.log(`ICON DIFF ${name}: help/featured ${got} / probe ${want.get(name)}`);
+            }
+        }
+    }
     await browser.close();
     console.log(`${rows.length} events, the shipped tag check against the probe: ${diffs} differ; ${flagged} events flagged`);
-    process.exit(diffs ? 1 : 0);
+    console.log(`${seen.size} events found on the year pages by the shipped year reader, their icons against the probe: ${iconDiffs} differ`);
+    process.exit(diffs || iconDiffs ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(2); });

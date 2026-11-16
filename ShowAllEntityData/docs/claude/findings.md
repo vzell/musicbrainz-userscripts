@@ -475,6 +475,11 @@ tags". What this file must record:
   of the Tags card and the window (`flag` on a chip box item). The
   registry knows nothing of them; the menus count the year table's cells
   only. A bb-event page's own ⚠️/❌ menus do not list them.
+- **The `icon` family** (the help-icon check, 2026-11-16): `help` and
+  `featured` against the wiki's icons, inside the same two findings.
+  The row's icons are on the Event cell's carrier
+  (`data-mb-bb-icons`; `_bbEvpIcons()`), so the Tags cell's findings
+  depend on another cell's carrier of the same row.
 - Settings: `sa_findings_bb_tag_missing`, `sa_findings_bb_tag_spurious`;
   tint `sa_findings_tint_bb_tags`.
 - Spec `tests/fixtures/bb-findings-batch3.spec.js`; mutations

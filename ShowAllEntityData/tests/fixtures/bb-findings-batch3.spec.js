@@ -399,9 +399,9 @@ test.describe('Brucebase tag check: the rule (bbp-parity batch 3)', () => {
     test('what a page says: its kind and letter from the address, its date from the title, the songs in bold', async ({ page }) => {
         await loadYear(page);
         const facts = (name, addr) => page.evaluate(([html, url]) => window.__saTest.bbTagFacts(html, url), [fs.readFileSync(fileOf(name), 'utf8'), BB + (addr || name)]);
-        expect(await facts(PIT)).toEqual({ kind: 'gig', date: '2016-01-16', letter: '', prem: 35 });
-        expect(await facts(MAD)).toEqual({ kind: 'gig', date: '2016-05-21', letter: '', prem: 3 });
-        expect(await facts(INT)).toEqual({ kind: 'interview', date: '2016-09-06', letter: '', prem: 0 });
+        expect(await facts(PIT)).toEqual({ kind: 'gig', date: '2016-01-16', letter: '', prem: 35, help: false, featured: false });
+        expect(await facts(MAD)).toEqual({ kind: 'gig', date: '2016-05-21', letter: '', prem: 3, help: false, featured: false });
+        expect(await facts(INT)).toEqual({ kind: 'interview', date: '2016-09-06', letter: '', prem: 0, help: false, featured: false });
         expect((await facts(MAD, 'gig:2016-05-21b-estadio-santiago-bernabeu-madrid-spain')).letter).toBe('b');
         expect(await facts(MAD, 'venue:estadio-santiago-bernabeu-madrid-spain'), 'not a show').toBeNull();
     });

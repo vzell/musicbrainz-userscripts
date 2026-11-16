@@ -4038,8 +4038,10 @@ entry, with these columns:
   marked ↪, those kept on its On stage page. The tags are checked against
   what the page calls for, in four families: the date (year, month, day,
   weekday), the letter of a second show of a day, the kind of page (gig,
-  recording, …) and the number of tour premieres (the songs in bold, with
-  "prem"). A tag the page should carry and none of its pages has is listed
+  recording, …), the number of tour premieres (the songs in bold, with
+  "prem"), and the wiki's two icons: a show marked with the Help Us icon
+  should carry "help", one with the Featured star "featured", and a show
+  with neither icon neither tag. A tag the page should carry and none of its pages has is listed
   first as "9+ missing" (❌ on the cell); a tag of those families the page
   does not call for is marked ⚠️ ("wednesday" on a Monday, "recording" on a
   gig). Marked rows stay in view while the cell is folded, and the cell's
@@ -4264,7 +4266,7 @@ site) show those tags too:
   shows only the page's own tags, and nothing extra is read.
 - **The tag check:** on a show's page and in its window the tags are
   checked as on the year table (date, day letter, kind of page, tour
-  premieres). A tag that is missing is drawn as a red dashed chip
+  premieres, the two icons). A tag that is missing is drawn as a red dashed chip
   ("9+ missing") in its family's row and is not counted in "Tags (N)"; a
   tag that is not expected gets an amber outline and a ⚠️. Point at either
   for the reason; under the chips each is said in words. The pills
@@ -4272,7 +4274,9 @@ site) show those tags too:
   only the marked chips; press again for all. Nothing is marked while the
   On stage page is still being read, and with that page unread the card
   says that no missing tag is looked for. ✓ means the four families are
-  as expected. Switches: ⚙️ Settings → ⚠️ Findings.
+  as expected. For the Help Us and Featured icons, which are on the
+  year page, the show's year page is read once at the press (or Space
+  in the window) and kept. Switches: ⚙️ Settings → ⚠️ Findings.
 - **A title with two blanks** (or a blank before a comma) gets a ⚠️ after
   the show page's byline and after the window's title; its hover text
   shows the title with ␣ where the blanks are.

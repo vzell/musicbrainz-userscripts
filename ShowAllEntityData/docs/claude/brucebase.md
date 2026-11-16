@@ -2146,6 +2146,67 @@ text the title as written with ␣ for each blank; `bb-title-spaces`' rule
 and switch. The mockup marked the blanks in place; the shown title is
 restyled, so the mark sits after it and the hover shows the place.
 
+### The Help Us and Featured icons (the help-icon check, 2026-11-16)
+
+org/bbp-parity.org, "The help-icon check"; vzell's decisions of 2026-11-16:
+both places fully, with a year-page read on the show's page; both icons;
+inside the two existing findings. A fifth family, `icon`: a show the
+wiki marks with the Help Us icon carries `help`, one it marks Featured
+carries `featured`, and a show with neither icon carries neither.
+
+- **The icon is on the YEAR page** (of 1,404 shows with a Help Us icon,
+  1,306 have it on the year page and 98 only on their own page). So the
+  check takes the year page's icons as an argument (`_bbTagCheck()`'s
+  `icons`); `bbTagFacts` adds the page's OWN icon (`help`, `featured`:
+  `img.image[title=…]`, `_DP_PARSER_VERSION` 34), which counts too.
+  With `icons` null the year page is not known: a tag is then missing
+  only for the page's own icon, and `help`/`featured` is never called
+  not expected.
+- **By the icon's FILE, not its title** — where this differs from
+  BruceBaseParser. `_extBbParseYear()` keeps `help` and `featured` per
+  show (`_EXT_BB_YEAR_VERSION` 4) from `00Help-…png` / `00Star-…png` or
+  the title, over the entry's heading paragraph and its block. 12
+  entries of the mirror have the star with NO title (1968-06-22a);
+  BruceBaseParser asks for `title="Featured"` and calls the `featured`
+  tag of those 12 shows spurious. The year table's own converter
+  already read icons by file (`_bbIconsOf()`), and the spec found the
+  two readers disagreeing.
+- **Where the icons come from**: a year row says them on its Event
+  cell's carrier from its build (`data-mb-bb-icons`: "", "help",
+  "help featured"; present = known; `_bbYearBuildRow()`); a listing row
+  gets the attribute with its year page (`_bbListApplyYear()`, which
+  also makes a Tags cell painted before again); `_bbEvpIcons(td)` reads
+  it for the Tags cell. A show's page and its window read the year
+  page of the title's date (`_bbTagYearUrl()`: "1949-64" for those
+  years) through `_extBbYear()` — ONE request, kept like every year
+  page — at the press or Space (`_bbTagIconsStart()`, state in
+  `_bbTagIcons`); the show is the entry whose heading links the page.
+  Nothing is marked while it loads; a year page that fails leaves the
+  icons not known. Not asked with both tag findings off.
+- **Counts** (probe, mirror bb/2026-11-15, 5,007 shows; Env:
+  2026-11-16T00:30+01:00 · NB-3641 · Python · n/a): `icon` missing 115
+  shows (`help` 107, `featured` 8), not expected 75 (`help` 74,
+  `featured` 1). All shipped families together: 416 shows (258 with a
+  missing tag, 196 with one not expected). The shipped rule and the
+  shipped year reader each differ from the probe on 0 shows
+  (`check-bb-batch3-findings.js`, which now also runs every year page
+  through `_extBbParseYear()`). The check found a probe error first: a
+  link to a show in ANOTHER entry's notes is not that show's entry
+  (1993-01-12, mentioned in a 1969 entry with a Help Us icon).
+- **An On stage page's own name is cut to 60 characters**
+  (`_bbOnstageName()`): "onstage:" is four longer than "gig:", so 123
+  shows with a cast tab have a longer name, and the mirror has 101 of
+  their On stage pages under the cut name, none under the full one.
+  Since 9.99.1625 the reader asked the full name, found nothing and
+  went on to "-1": those shows' cast tags were never listed. Found
+  building this spec's fixtures.
+- Tests: `tests/fixtures/bb-findings-help-icon.spec.js` (10) on 1968's
+  year page cut to three entries, its listing, one 1966 entry and their
+  pages (`scripts/build-bb-findings-help-icon-fixtures.py`); mutations
+  `scripts/mutations/bb-findings-help-icon.json`. Not covered by a
+  test: the WINDOW's start of the year read (the same call as the
+  head's, on Space).
+
 Settings: `sa_findings_bb_tag_missing`, `sa_findings_bb_tag_spurious`,
 `sa_findings_tint_bb_tags`. Tests: `tests/fixtures/bb-findings-batch3.spec.js`
 (19) on 2016's year page cut to four entries, their pages and On stage

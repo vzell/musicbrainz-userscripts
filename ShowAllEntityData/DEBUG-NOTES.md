@@ -29683,3 +29683,36 @@ Env: 2026-11-15T23:17:06+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
 - **BruceParser, on the way:** `bbp-status.sh` split `docs/timings.tsv` with `IFS=$'\t' read -ra`, which drops empty
   columns, so on this host a "-" was read as seconds (0.17.1). A full `bbp.sh` run with 4 download jobs: 40 min 49 s,
   the download 37 min, no failed step.
+
+## 2026-11-16 — Brucebase tag check: the Help Us and Featured icons; the On stage page's cut name (feat/bb-findings-help-icon)
+
+Env: 2026-11-16T01:15:12+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (chromium-fixtures, chromium-mobile), no Tampermonkey (GM stubs); the probe: Python over the mirror bb/2026-11-15, n/a. Not seen in a real browser yet.
+
+- **What it is:** a fifth family (`icon`) of `bb-tag-missing` / `bb-tag-spurious`: `help` and `featured` against the
+  wiki's Help Us and Featured icons, which are on the YEAR page. A year row has them from its build, a listing row
+  with its year page, and a show's page and window read the year page for them (one request, kept). Full text:
+  docs/claude/brucebase.md, "The Help Us and Featured icons"; record and browser list: org/bbp-parity.org.
+- **Two readers disagreed, and the spec saw it:** the year table's converter reads an entry's icons by their FILE
+  (`_bbIconsOf()`), the new code in `_extBbParseYear()` read them by TITLE as BruceBaseParser does. The 1968 fixture's
+  row said "help featured" where the reader said no star: 1968-06-22a's star has NO title. 12 entries of the mirror
+  are like that; by title their `featured` tag is "not expected" (BruceBaseParser says so today). Now by file in both.
+- **The checker found a probe error:** `check-bb-batch3-findings.js` now also runs every year page through the shipped
+  year reader. One show differed (1993-01-12): the probe took a link in a 1969 entry's notes for the show's own entry
+  and gave it that entry's Help Us icon. The probe now takes the heading's link only.
+- **A bug of 9.99.1625 found building the fixtures:** the mirror's file of 1968-06-22a's On stage page ends in
+  "-red-bank-n". An On stage page's own name is cut to the wiki's 60 characters ("onstage:" is four longer than
+  "gig:"); `_bbTagPagesStart()` asked the full name, got "missing" and went on to "-1". 123 shows with a cast tab have
+  such a name; the mirror has 101 of their pages under the cut name and none under the full one. `_bbOnstageName()`.
+  Rests on the mirror's file names: no request was made to the wiki.
+- **A mutation that passed first:** "the box is not refilled when the year page is in" — the On stage read's own
+  refill covered it. A test with the On stage pages off, where the year page's answer is the only thing that comes
+  after the card is drawn, now fails it.
+- **Tests:** `bb-findings-help-icon.spec.js` 11; `bb-findings-help-icon.json` 18 mutations as recorded (17 fail their
+  test, 1 passes: no fixture is of 1949-64); three older finds rewritten; the shipped rule and year reader over the
+  whole mirror equal the probe (5,007 shows, 0 differences; 416 flagged). `npm run test:full` on NB-3641, on the
+  working tree that became `96bd4f76` (the commit's lint step ran beside the suite's first minutes):
+  00:51:56–01:14:12 CET, 3,172 passed, 1 FAILED: `mb-shared-gate.spec.js`, "a hold another script wrote delays our
+  request until it passes" (the request went out after 842 ms where a 3 s hold was seeded). Run again alone three
+  times over: 30 of 30 passed. Nothing this branch changes is on that path (the shared MusicBrainz request gate);
+  it passed in the full run of 2026-11-15. Read as a load-dependent timing failure, not traced; the full suite was
+  not run a second time.
