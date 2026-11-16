@@ -367,6 +367,9 @@ request, kept); both icons, Help Us and Featured; inside the two existing findin
 - *Tests* (NB-3641, 2026-11-16): =bb-findings-help-icon.spec.js= 11; 18 mutations as recorded (17 fail their test, 1
   passes with the reason); three older mutation finds rewritten. No render measurement: no column is added.
   Not covered by a test: the window's start of the year read (the same call as the page's, on Space).
+  =npm run test:full= on the tree that became =96bd4f76=: 00:51:56–01:14:12 CET, 3,172 passed, 1 failed
+  (=mb-shared-gate.spec.js=, a timing test of the MusicBrainz request gate; 30 of 30 when run alone three times;
+  nothing of this branch is on its path). Not run a second time.
 
 ** The browser check of the help-icon check, for vzell (rows from the mirror of 2026-11-15; unverified on the live wiki)
 
