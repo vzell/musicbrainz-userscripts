@@ -78,5 +78,97 @@
         "spec": "tests/fixtures/sl-sticky-headers.spec.js",
         "grep": "the list h2 docks under the site's navbar",
         "expect": "pass"
+    },
+    {
+        "name": "the toolbar h1 is never moved out of .project-detail",
+        "why": "Reported 2026-11-16 (debug/SL-sticky-area-sticky-then-moved-IP.mp4): where the site closes .project-detail right after the category walls, the h1 docked only until .project-detail ended, then scrolled away.",
+        "edits": [
+            {
+                "find": "        const anchor = document.querySelector('table.tbl') || _slFindListHeading(document) || _slFindCards(document)[0] || null;\n",
+                "replace": "        const anchor = null;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-headers.spec.js",
+        "grep": "collection-intro \\(initial page\\): the header block stays docked",
+        "expect": "fail"
+    },
+    {
+        "name": "the toolbar h1 is never moved out of .project-detail (after the press)",
+        "why": "The same at the FRP: the table sits in a later container than .project-detail.",
+        "edits": [
+            {
+                "find": "        const anchor = document.querySelector('table.tbl') || _slFindListHeading(document) || _slFindCards(document)[0] || null;\n",
+                "replace": "        const anchor = null;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-headers.spec.js",
+        "grep": "memorabilia \\(after the press\\): the header block stays docked",
+        "expect": "fail"
+    },
+    {
+        "name": "the toolbar h1 is never moved out of .project-detail (phone)",
+        "why": "The same at the phone's own width.",
+        "edits": [
+            {
+                "find": "        const anchor = document.querySelector('table.tbl') || _slFindListHeading(document) || _slFindCards(document)[0] || null;\n",
+                "replace": "        const anchor = null;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-mask.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "phone: the toolbar h1 docks at the very top",
+        "expect": "fail"
+    },
+    {
+        "name": "the header wrapper gets no side padding",
+        "why": "On memorabilia the h1 leaves the floated .col-sm-12 and its 15 px gutter; without the padding it moves 15 px to the left.",
+        "edits": [
+            {
+                "find": "        box.style.paddingLeft = `${left}px`;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-headers.spec.js",
+        "grep": "memorabilia: the h1 moved out of .project-detail keeps its place",
+        "expect": "fail"
+    },
+    {
+        "name": "the h1 is wrapped even where the list is inside .project-detail",
+        "why": "Pages whose data is inside .project-detail work as they are and must stay byte-identical: no wrapper.",
+        "edits": [
+            {
+                "find": "        if (!box && pd.contains(anchor)) return;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-headers.spec.js",
+        "grep": "a list inside .project-detail: the h1 is left where it is",
+        "expect": "fail"
+    },
+    {
+        "name": "no second placement before the bars measure after a render",
+        "why": "Known overlap: every SL fixture's table lands in the same container as its list, so the placement at init already holds after the press (scripts/probe-sl-sticky-head.probe.js). The call in initStickyFilterBars() is for a table that lands elsewhere, which no fixture has.",
+        "edits": [
+            {
+                "find": "        if (_isSlHost) _slPlaceHead();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-headers.spec.js",
+        "grep": "\\(after the press\\): the header block stays docked",
+        "expect": "pass"
+    },
+    {
+        "name": "the status line is not taken into the wrapper",
+        "why": "Known overlap: at init the status line does not exist yet, and is inserted after the h1, so inside the wrapper. Taking it along matters only for a move after init, which no fixture has (see the entry above).",
+        "edits": [
+            {
+                "find": "            if (status) box.appendChild(status);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-headers.spec.js",
+        "grep": "the header block stays docked past the end of .project-detail",
+        "expect": "pass"
     }
 ]

@@ -1697,6 +1697,7 @@ HTTPS page, so browsers block it and Open Sans never loads. Changing it to https
 autocomplete="current-password" to the login form's password field (hTxtPassword) silences Chrome's hint about it.
 
 * TODO sticky area on mobile bug
+** initial
 
 ON SL pageTypes e.g. on https://www.springsteenlyrics.com/collection.php there is a bug when scrolling with a sticky
 area on mobile, see the following files all in @debug
@@ -1712,3 +1713,11 @@ When scrolling downward there is an area in the upper viewport, where when scrol
 menu is visible, but when scrolling further a white area sits on top of the rest of the page which scrolls behind
 it. When scrolling upwards completely the effect is gone, but repeats when scrolling downward again.
 
+** bugs
+
+The bug is gone on mobile on the IP (checked in firefox), but two other bugs surfaced:
+
+#+begin_example
+SL-sticky-area-sticky-then-moved-IP.mp4 - On the IP the SAED menu line moves out of the window when scrolling down
+SL-sticky-area-stcky-then-moved-FRP.mp4 - On the FRP the SAED menu line moves out of the window when scrolling down
+#+end_example

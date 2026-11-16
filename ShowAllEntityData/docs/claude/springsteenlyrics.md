@@ -743,6 +743,35 @@ still opens above the pinned bars. A sticky cell cannot travel past its
 table's right edge, so a Title column wider than the room left of it is
 pushed back at the far right — plain `position: sticky`, on any host.
 
+**The header block stays docked over the whole list** (`_slPlaceHead()`,
+2026-11-16). The sticky filter bars dock the toolbar `<h1>` and the status
+line at the top, but a sticky element never leaves its parent, and the h1 is
+inserted into `.project-detail`. On the three shapes whose stray `</div>`
+closes `.project-detail` right after the category walls (the collection
+entry page, sampler, memorabilia; `scripts/probe-sl-sticky-head.probe.js` ran
+every SL fixture, `debug/probe-sl-sticky-head.json`, and found no other) the
+block docked, then scrolled away when `.project-detail` ended, on the initial
+page and after the press alike. There the h1 goes into a `div.mb-sl-header` in
+the nearest ancestor that holds the data (`table.tbl`, else the list heading
+or the first card), right before the branch holding `.project-detail`, with
+the side padding of the wrappers it left (memorabilia: the floated
+`.col-sm-12`'s 15 px), and `_vsbHeadBlocks()` takes that wrapper as the block.
+A page whose data is inside `.project-detail` is not touched.
+
+On memorabilia the h1 sits up to 34 px higher than inside the column, and the
+walls up to 16 px: the column starts with a U+FEFF that CSS draws as a 17 px
+line (now under the status line, not over the h1), and a `<p>` margin that
+collapsed up to the container's top while the float was the row's only block
+before it no longer pushes the column down
+(`scripts/probe-sl-head-margins.probe.js`). Spaces of the broken markup close
+up; none opens, nothing moves sideways (`sl-sticky-headers.spec.js`, "keeps
+its place", with `MEMORABILIA_RISE`). The wrapper needs no formatting context
+of its own: the h1's rule is `margin: 0 0 12px` and the status line ends
+without a margin. Specs: `sl-sticky-headers.spec.js` (docked past
+`.project-detail` on each shape before and after the press, in place, no
+wrapper where the list is inside), `sl-sticky-mask.mobile.spec.js`;
+mutations: `scripts/mutations/sl-sticky-mask.json`.
+
 ## Page count and fetching need nothing
 
 - `fetchHtml()` is a same-origin `fetch()`; SL is behind CloudFlare, and the

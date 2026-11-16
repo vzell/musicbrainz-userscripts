@@ -15895,7 +15895,82 @@
             [section, listHeading].filter(Boolean).join(' — ') || 'springsteenlyrics.com';
         h1.appendChild(bdi);
         main.insertBefore(h1, main.firstChild);
+        _slPlaceHead();
         return h1;
+    }
+
+    /**
+     * springsteenlyrics.com: keeps the toolbar `<h1>` (with the status line
+     * that follows it) in an element that also holds the list, so the sticky
+     * header block can stay at the top all the way down.
+     *
+     * A sticky element never leaves its parent. The h1 is inserted as the
+     * first child of `.project-detail`, and on three page shapes the site's
+     * stray `</div>` closes `.project-detail` right after the category walls:
+     * the collection entry page, sampler and memorabilia (the shapes
+     * docs/claude/springsteenlyrics.md names under Sticky Page Headers). The
+     * list, and after the press our table, follow in a later container, so
+     * the h1 docked only until `.project-detail` ended and then scrolled away
+     * (reported 2026-11-16, debug/SL-sticky-area-sticky-then-moved-IP.mp4;
+     * every SL fixture probed, scripts/probe-sl-sticky-head.probe.js,
+     * debug/probe-sl-sticky-head.json: these three and no other).
+     *
+     * There the h1 goes into a `div.mb-sl-header`, placed in the nearest
+     * ancestor of `.project-detail` that holds the data (table.tbl, else the
+     * list heading or the first card), right before the branch holding
+     * `.project-detail`. Its side padding is what the skipped wrappers gave
+     * (padding, border and margin of `.project-detail` and, on memorabilia,
+     * the floated `.col-sm-12`), so nothing moves sideways. No margin can
+     * leave the wrapper (the h1's own rule is `margin: 0 0 12px`, the status
+     * line's bottom margin is 0), so it needs no formatting context of its
+     * own. On memorabilia the h1 does sit up to 34 px higher than inside the
+     * column: two spaces of the site's markup that were above it, a U+FEFF
+     * line box starting the column and a `<p>` margin that collapsed to the
+     * container's top, no longer sit above it (the walls rise up to 16 px
+     * in a wide window): spaces close up, none opens, nothing moves sideways
+     * (scripts/probe-sl-head-margins.probe.js). `_vsbHeadBlocks()`
+     * takes a header wrapper (class ending in "header", no table or h2, as
+     * MusicBrainz's `div.artistheader`) as the block, the status line
+     * inside it. A page whose data is inside `.project-detail` is left as it
+     * is. Idempotent: called after the h1 is inserted and again before the
+     * sticky bars measure after a render (`initStickyFilterBars()`).
+     *
+     * @returns {void}
+     */
+    function _slPlaceHead() {
+        const h1 = document.querySelector('h1.mb-sl-h1');
+        const pd = document.querySelector('.project-detail');
+        if (!h1 || !pd) return;
+        const anchor = document.querySelector('table.tbl') || _slFindListHeading(document) || _slFindCards(document)[0] || null;
+        if (!anchor) return;
+        let box = h1.parentElement.classList.contains('mb-sl-header') ? h1.parentElement : null;
+        if (!box && pd.contains(anchor)) return;
+        let host = box && box.parentElement.contains(anchor) ? box.parentElement : pd.parentElement;
+        while (host && !host.contains(anchor)) host = host.parentElement;
+        if (!host || host === document.documentElement) return;
+        let branch = pd;
+        while (branch.parentElement !== host) branch = branch.parentElement;
+        // What the skipped wrappers (.project-detail up to the branch) gave.
+        let left = 0;
+        let right = 0;
+        for (let el = pd; el; el = el === branch ? null : el.parentElement) {
+            const cs = getComputedStyle(el);
+            left += (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.borderLeftWidth) || 0) + (parseFloat(cs.marginLeft) || 0);
+            right += (parseFloat(cs.paddingRight) || 0) + (parseFloat(cs.borderRightWidth) || 0) + (parseFloat(cs.marginRight) || 0);
+        }
+        if (!box) {
+            box = document.createElement('div');
+            box.className = 'mb-sl-header';
+            const status = h1.nextElementSibling && h1.nextElementSibling.id === 'mb-status-displays-wrapper' ? h1.nextElementSibling : null;
+            box.appendChild(h1);
+            if (status) box.appendChild(status);
+        }
+        box.style.paddingLeft = `${left}px`;
+        box.style.paddingRight = `${right}px`;
+        if (box.parentElement !== host || box.nextElementSibling !== branch) {
+            host.insertBefore(box, branch);
+            Lib.debug('init', `springsteenlyrics.com: the toolbar h1 placed before the ${branch.className || branch.tagName} branch (padding ${left}/${right}px), so it stays docked over the list.`);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -68736,6 +68811,8 @@
      */
     function initStickyFilterBars() {
         if (!_stickyFilterBarsWanted()) return;
+        // The table may sit in another container than the list did.
+        if (_isSlHost) _slPlaceHead();
         _vsbEnsureStyle();
         document.documentElement.classList.add('mb-vsb-on');
         if (!_vsb.initialized) {

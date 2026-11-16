@@ -1126,6 +1126,12 @@ h3 and thead offsets start below them), z-index 105 (`VSB_Z_HEAD`).
   bare h1 inside an entity header: a sticky element only sticks inside its
   parent, so an h1 stuck inside `div.artistheader` goes as soon as that small
   div has scrolled by, and the subheader with the status line goes with it.
+  The same limit one level up: the block itself goes once ITS parent ends.
+  On springsteenlyrics.com, where the site closes `.project-detail` before the
+  list, the h1 and the status line are put in a `div.mb-sl-header` beside the
+  list (`_slPlaceHead()`, 2026-11-16), which this rule then takes as the
+  block; see docs/claude/springsteenlyrics.md, "Sticky Page Headers and the
+  sticky Title".
 - **From page init**, not only after a render: `initStickyFilterBars()` is
   also called right after the status line is placed.
 - **Too tall for the window:** if heads + h2 + h3 + thead exceed

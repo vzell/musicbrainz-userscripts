@@ -29745,3 +29745,48 @@ Env: 2026-11-16T14:32:05+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
   `sticky-filter-bars.spec.js`: 38 of 38 passed, 14:29:39–14:31:06 CET. `scripts/mutations/sl-sticky-mask.json`:
   6 entries as recorded (5 fail their test, 1 passes: the resize listener, covered by the bars' own refresh).
   Deferred: `npm run test:full`, before the merge. Not yet checked in a real browser.
+
+## 2026-11-16 — springsteenlyrics.com: the SAED line docks, then scrolls away on three list shapes (fix/sl-sticky-mask-narrow)
+
+Env: 2026-11-16T15:25:24+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (chromium-fixtures; chromium-mobile: Pixel 7 emulation), no Tampermonkey (GM stubs); the report: Firefox on the desktop, version unknown, Tampermonkey unknown
+
+- **Report (vzell), after the white-band fix above was checked on a phone:** on `collection.php`, the line with the
+  SAED button docks at the top, then scrolls out of the window, on the IP and on the FRP. Material in `debug/`:
+  `SL-sticky-area-sticky-then-moved-IP.mp4` (shows it), `SL-sticky-area-stcky-then-moved-FRP.mp4` (a recording of
+  the file manager, not of the browser: shows nothing of the page), `SL-sticky-area-sticked.html` and
+  `SL-sticky-area-moved.html` (the IP, docked and gone).
+- **Cause, from the snapshots (`scripts/probe-sl-sticky-parent.js`):** the toolbar h1 is inserted as the first child
+  of `.project-detail`, and on this page `.project-detail` holds only the h1, the status line, the compact bar and
+  the hidden walls; the list follows in a sibling `div.container` under `.col-sm-12`. A sticky element never leaves
+  its parent, so the block went when `.project-detail` ended. This is the same limit that left the white band before;
+  with the backdrop fixed it became visible as the block itself leaving.
+- **Whole family (rule 6), `scripts/probe-sl-sticky-head.probe.js` → `debug/probe-sl-sticky-head.json`:** all 13 list
+  kinds with the compact bar off and on, the 10 item pages and the 6 song pages, each before and after its first
+  button, at 80 % of the scroll range, classified docked / carried away / not reached yet. Carried away: exactly
+  collection-intro, sampler and memorabilia (the three shapes whose stray `</div>` closes `.project-detail` early),
+  IP and FRP, compact bar on and off. "Not reached yet" (item pages, two FRPs) is the fixtures' unstyled navbar,
+  thousands of px tall: the block is still below its dock, in its natural place. The first summary of the probe
+  read those as failures; the classification is now in the probe.
+- **Fix:** `_slPlaceHead()` puts the h1 (and the status line, which is inserted after it) into a `div.mb-sl-header`
+  in the nearest ancestor holding the data (`table.tbl`, else the list heading or first card), before the branch
+  holding `.project-detail`, with the side padding of the wrappers it left. `_vsbHeadBlocks()` already takes a
+  `div.*header` without table/h2 as the block (as `div.artistheader`). Called after the h1 is inserted and in
+  `initStickyFilterBars()`. Pages whose data is inside `.project-detail` are not touched (the probe again: their
+  block is still the bare h1).
+- **Memorabilia's vertical place, measured (`scripts/probe-sl-head-margins.probe.js`):** the moved h1 sat 34 px
+  higher than inside the column, and I first took it for margin collapsing and made the wrapper `flow-root` when a
+  skipped wrapper was a formatting context. It changed nothing: the h1's own rule is `margin: 0 0 12px`. The real
+  cause is the site's markup: `.col-sm-12` starts with a text node ending in U+FEFF, which CSS does not treat as white
+  space and draws as a 17 px line, and a `<p>` margin (16 px) collapsed up to the container's top while the float was
+  the row's only block before it. Moved, the BOM line is under the status line and the margin no longer pushes the
+  column down, so the h1 rises up to 34 px and the walls up to 16 px. The `flow-root` branch was removed; the spec
+  allows that rise on memorabilia only (`MEMORABILIA_RISE`), never a sink and nothing sideways.
+- **Tests:** `sl-sticky-headers.spec.js` +10 (docked past `.project-detail`, IP and FRP, on each of the three shapes;
+  in place on each; memorabilia at 700 px and narrowed from 1000 px; no wrapper where the list is inside), the round-1
+  helpers read the sticky block; `sl-sticky-mask.mobile.spec.js` checks the block deep in the list, with the list's
+  end measured from its heading, not from the block's parent; `loadSlListPage()` takes `headCss` (the stand-in CSS in
+  the page's head, so measurements at init see it). All SL and sticky specs: 300 of 300 passed,
+  15:21:36–15:24:10 CET. `scripts/mutations/sl-sticky-mask.json`: 13 entries as recorded (10 fail their test, 3
+  pass: the resize re-measure, the second placement and taking the status line along, each covered by another path,
+  reasons in the entries). `eslint.config.js`: `expectSamePlace` registered as an assertion helper. Deferred:
+  `npm run test:full`, before the merge. Not yet checked in a real browser.

@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-11-16",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "springsteenlyrics.com: on the collection's \"Latest additions\" page and on the sampler and memorabilia lists, the toolbar line (the heading with the SAED button and the status line) stayed at the top of the window only for a short distance and then scrolled away, before and after pressing the button. The site's own page structure ends the block holding the heading right after the category buttons, and a docked line cannot go past the end of the block it is in. The heading is now placed in the block that holds the whole list, so it stays at the top all the way down. Other pages were not affected and are unchanged."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-11-16",
     "sections": [

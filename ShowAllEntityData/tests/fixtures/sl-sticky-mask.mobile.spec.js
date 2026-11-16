@@ -12,7 +12,12 @@
 //     reserved above the docked toolbar h1 (_slNavbarOffset());
 //   - the backdrop behind that h1 (#mb-vsb-mask) is on only while the h1 sits
 //     AT its dock, and off once its parent's end has pushed it out of the
-//     window (_vsbUpdateMask()).
+//     window (_vsbUpdateMask());
+//   - and (reported the same day, debug/SL-sticky-area-sticky-then-moved-IP.mp4)
+//     that parent is no longer .project-detail, which the site closes right
+//     after the category walls on this page: the h1 and the status line sit
+//     in div.mb-sl-header beside the list, and stay docked over all of it
+//     (_slPlaceHead()).
 
 const { test, expect } = require('../support/test');
 const { loadSlListPage } = require('../support/slFixture');
@@ -33,7 +38,8 @@ const NAVBAR_CSS = [
 const frames = (page) => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 
 /**
- * Scrolls to `y`, then reads the h1 and the backdrop.
+ * Scrolls to `y`, then reads the header block (the h1, or the
+ * div.mb-sl-header around it) and the backdrop.
  * @param {import('@playwright/test').Page} page
  * @param {number} y
  * @returns {Promise<{h1Top: number, h1Bottom: number, maskOn: boolean, bandIsMask: boolean}>}
@@ -42,14 +48,15 @@ async function scrollAndRead(page, y) {
     await page.evaluate((v) => window.scrollTo(0, v), y);
     await frames(page);
     return page.evaluate(() => {
-        const r = document.querySelector('h1.mb-sl-h1').getBoundingClientRect();
+        const h1 = document.querySelector('h1.mb-sl-h1');
+        const r = (h1.closest('.mb-vsb-head') || h1).getBoundingClientRect();
         const mask = document.getElementById('mb-vsb-mask');
         return { h1Top: r.top, h1Bottom: r.bottom, maskOn: mask.classList.contains('mb-vsb-mask-on'),
             bandIsMask: document.elementFromPoint(window.innerWidth - 5, 10) === mask };
     });
 }
 
-test('phone: the toolbar h1 docks at the very top, and no white band stays once it has left', async ({ page }) => {
+test('phone: the toolbar h1 docks at the very top, stays there through the list, and no white band stays once it has left', async ({ page }) => {
     await loadSlListPage(page, { kind: 'collection-intro' });
     await page.addStyleTag({ content: NAVBAR_CSS });
     await page.evaluate(() => {
@@ -62,14 +69,20 @@ test('phone: the toolbar h1 docks at the very top, and no white band stays once 
         document.body.appendChild(spacer);
         window.dispatchEvent(new Event('resize'));
     });
-    await page.waitForFunction(() => document.querySelector('h1.mb-sl-h1.mb-vsb-head') && document.getElementById('mb-vsb-mask'),
+    await page.waitForFunction(() => document.querySelector('h1.mb-sl-h1')?.closest('.mb-vsb-head') && document.getElementById('mb-vsb-mask'),
         null, { timeout: 10000 });
     await frames(page);
     const l = await page.evaluate(() => {
         window.scrollTo(0, 0);
         const h1 = document.querySelector('h1.mb-sl-h1');
-        return { h1Y: h1.getBoundingClientRect().top, parentEndY: h1.parentElement.getBoundingClientRect().bottom,
-            dock: parseFloat(getComputedStyle(h1).top), navVar: document.documentElement.style.getPropertyValue('--mb-sl-navbar-h'),
+        const head = h1.closest('.mb-vsb-head') || h1;
+        return { h1Y: head.getBoundingClientRect().top, parentEndY: head.parentElement.getBoundingClientRect().bottom,
+            pdEndY: document.querySelector('.project-detail').getBoundingClientRect().bottom,
+            // The list's own end, whatever the header block's parent is: the
+            // container of its heading ("Latest Additions"), outside the menu.
+            listEndY: Array.from(document.querySelectorAll('h3.heading, h2.heading'))
+                .filter((h) => !h.closest('.navbar')).pop().parentElement.getBoundingClientRect().bottom,
+            dock: parseFloat(getComputedStyle(head).top), navVar: document.documentElement.style.getPropertyValue('--mb-sl-navbar-h'),
             navH: document.querySelector('.navbar.sticky').offsetHeight, width: window.innerWidth };
     });
     expect(l.width, 'premise: a narrow window').toBeLessThan(992);
@@ -80,6 +93,12 @@ test('phone: the toolbar h1 docks at the very top, and no white band stays once 
     const stuck = await scrollAndRead(page, l.h1Y + 3);
     expect(Math.abs(stuck.h1Top), 'the h1 sits at the top of the window').toBeLessThanOrEqual(1);
     expect(stuck.maskOn, 'docked: the backdrop is on').toBe(true);
+
+    // Past the end of .project-detail, deep in the list: still docked.
+    expect(l.listEndY - l.pdEndY, 'premise: the list goes on after .project-detail').toBeGreaterThan(1500);
+    const deep = await scrollAndRead(page, l.pdEndY + 600);
+    expect(Math.abs(deep.h1Top), 'past .project-detail: the header block is still at the top').toBeLessThanOrEqual(1);
+    expect(deep.maskOn, 'past .project-detail: the backdrop is still behind it').toBe(true);
 
     const gone = await scrollAndRead(page, l.parentEndY + 300);
     expect(gone.h1Bottom, 'premise: the h1 has left the window with its parent').toBeLessThan(0);
