@@ -4,9 +4,29 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1806 versions; the month pages hold all of them.
+This page shows the newest 100 of 1808 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1637 — 2026-11-16
+
+**🐛 Fix**
+
+- Brucebase: the tags kept on a show's On stage page were not found for shows with a long address (101 shows). The wiki cuts a page name to 60 characters, and "onstage:" is four characters longer than "gig:", so such a show's On stage page has a shortened name ("…-red-bank-n"). It was asked by its full name, not found, and the cast's tags were missing from the Tags card, the preview window and the year table's Tags column.
+
+
+## 9.99.1636 — 2026-11-16
+
+**🚀 Feature**
+
+- Brucebase tag check: the wiki's two icons are checked too. A show marked with the Help Us icon should carry the tag "help", one marked with the Featured star "featured"; a show with neither icon should carry neither tag. A missing one is listed as "help missing" (❌), one without its icon is marked ⚠️, with the reason, in the same two findings as the date, day letter, kind and premiere tags.
+- On a year table and a year listing the icons come with the page, at no cost. A show's own page and its preview window read the show's year page once for them, at the press or on Space (one more request, kept like every year page); with both tag findings switched off it is not read.
+- The Featured star is recognised by its picture, also where the wiki gives it no title (12 shows).
+
+**🔧 Refactor**
+
+- Every stored preview of a page on another site, and every stored Brucebase year page, is read once more (both readers now keep the icons).
+
 
 ## 9.99.1635 — 2026-11-16
 
@@ -853,20 +873,6 @@ This page shows the newest 100 of 1806 versions; the month pages hold all of the
 **✨ Improve**
 
 - archive.org item page: the part above the tables is laid out like a MusicBrainz release page. Under the title a line "\~ Concert recording by … (date: venue)", then three sections that fold like the release page's: Description (the uploader's text, closed to start with, like a release's Annotation), Details (the facts as cards in the look of the release page's Sidebar section: Show, Item, External links, Collections, Lineage; a click on a card's heading folds it) and Pictures (the scans as tiles, like the release page's Cover art; a click opens the viewer). Typing in a filter no longer rebuilds them.
-
-
-## 9.99.1537 — 2026-11-04
-
-**✨ Improve**
-
-- Brucebase: link previews on every page of the wiki, not only on its song list, Relations, Recent changes, the year pages and the start page. On a show, venue, person or song page, rest the pointer on a link for Brucebase's own card (or another site's, Wikipedia for example), and Space opens the window. Nothing else changes on those pages: no buttons, no toolbar.
-
-
-## 9.99.1536 — 2026-11-04
-
-**🚀 Feature**
-
-- archive.org item pages (archive.org/details/…) get two buttons, built like MusicBrainz's release page. "Tracks" lists a show's songs in one table per disc, each named with its format and running time: \#, Title (with the item's card), Length, the file and its size, a column for each copy archive.org made (VBR MP3, …) and ▶ to play the song in archive.org's player. Above the tables: the item's pictures (a click opens the viewer) and its facts (date, venue, source, taper, running time, Brucebase and Databruce links, collections, lineage). A video item lists its video files with a "Play here" tile. "All files" lists every file of the item with its format, size, length and MD5. Both read the item in one request. Before any button, the item page's own links have cards too, its Brucebase link for example.
 
 
 ---

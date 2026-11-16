@@ -340,7 +340,7 @@ request to the wiki). The 2016 menu counts (8 and 5) are the mirror's 12 flagged
 from the mockup and are meant so unless vzell says otherwise: the pills are at the top of the Tags box, and a title's
 blanks are a ⚠️ after the title, not marked in place.
 
-* The help-icon check (=feat/bb-findings-help-icon=, 2026-11-16; built, NOT merged: vzell's browser check is open)
+* The help-icon check (=feat/bb-findings-help-icon=, 2026-11-16; merged 2026-11-16 as 9.99.1636–1637 on vzell's word)
 
 Env: 2026-11-16T00:50:45+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright
 1.62.1 bundled Chromium (chromium-fixtures), no Tampermonkey (GM stubs); the probe: Python over the mirror bb/2026-11-15, n/a
