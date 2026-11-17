@@ -29821,4 +29821,15 @@ Env: 2026-11-17T17:41:30+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
   than the table gets the site's tag back). All SL and sticky specs: 301 of 301 passed, 17:38:06–17:40:41 CET.
   `scripts/mutations/sl-sticky-mask.json` +4, each failing the assertion it targets (the restore entry first failed on
   a premise, because `initStickyFilterBars()` also runs at init; retargeted). HELP: a bullet under "On a phone or
-  tablet". Deferred: `npm run test:full`, before the merge.
+  tablet".
+- **`npm run test:full` on petri, `5f241175`, 17:42:05–18:02:01 CET: 3,188 passed, 3 failed.** vzell confirmed the
+  branch live in his browser meanwhile (18:0x CET).
+  - `foreign-gallery.mobile.spec.js`, "a touch drag on the title bar moves the window": caused by this branch, the
+    product right. At zoom 1 (no longer zoomed out on the Pixel 7) the 600 px gallery window had its top at 517 px
+    of an 839 px screen, and a drag keeps the whole window on screen (`_makeMovableResizable()`), so the 36 px move
+    ended clamped at 239. The test now scrolls the window to 100 px first and asserts the room as a premise; a
+    clamp-only expectation would have passed with the move ignored.
+  - `popup-mb.spec.js:1591`, "the label window: genres one per line": 3 of 3 alone. Load.
+  - `bb-findings-help-icon.spec.js:259`, "a show tagged help that the year page does not mark": fails beside other
+    specs, passes alone (1 and 3 of 3), and fails the same way on `main` (`b369e7ca`, a worktree, the same three specs
+    together with `--repeat-each=3`: 2 of 3 failed). Load-dependent, from the help-icon branch; not fixed here.

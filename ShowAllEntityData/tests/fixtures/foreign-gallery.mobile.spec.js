@@ -82,12 +82,21 @@ test('a touch drag on the title bar moves the window, and the place is remembere
     await expect(gal).toBeVisible();
     const title = gal.locator('.mb-fgal-head b');
     await title.evaluate(t => t.scrollIntoView({ block: 'center' }));
+    // Room below the window for the 36 px move. Since _slViewportFit()
+    // (2026-11-17) the phone shows the page at zoom 1, not zoomed out, so
+    // the 600 px window fills most of the 839 px screen, and a drag keeps
+    // the whole window inside the screen (_makeMovableResizable()): with
+    // its top at mid-screen any move down ended at the same clamped place,
+    // whether it moved or not.
+    await gal.evaluate(el => window.scrollBy(0, el.getBoundingClientRect().top - 100));
     // Playwright's box coordinates, which its own tap sends through the
     // same CDP call; the zoomed-out phone layout scales them.
     const tb = await title.boundingBox();
     const at = { x: tb.x + 8, y: tb.y + tb.height / 2 };
     const before = await gal.evaluate(el => { const r = el.getBoundingClientRect(); return { x: Math.round(r.left), y: Math.round(r.top) }; });
     const scale = await page.evaluate(() => (window.visualViewport ? window.visualViewport.scale : 1));
+    const room = await gal.evaluate((el, dy) => window.innerHeight - el.getBoundingClientRect().bottom - dy, 36 / scale);
+    expect(room, 'premise: the move down fits on the screen').toBeGreaterThanOrEqual(0);
     const cdp = await page.context().newCDPSession(page);
     const touch = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
     await touch('touchStart', at.x, at.y);
