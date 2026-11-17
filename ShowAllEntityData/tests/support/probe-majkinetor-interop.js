@@ -112,7 +112,8 @@ function parseArgs(argv) {
 /**
  * Reads, in the page, everything the cases compare: the bodies, where SA's
  * bar and floating elements are, whether they can be seen, the FRP, EH's
- * marks on <html>, and a few computed styles that global CSS could move.
+ * marks on <html>, a few computed styles that global CSS could move, and
+ * SAED's launchers in EH's header menus (`ehMenu`).
  *
  * @param {import('@playwright/test').Page} page
  * @returns {Promise<Object>}
@@ -154,6 +155,17 @@ function snapshotState(page) {
             },
             ehLaunch: (() => { const l = document.getElementById('eh-launch'); if (!l) return null; const r = l.getBoundingClientRect(); return { inBody: bodyIdx(l), x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width) }; })(),
             corner: [...document.querySelectorAll('[data-mb-corner]')].map((n) => n.id || n.className),
+            // EH's More (⋯) menu protocol: SAED's hidden launchers
+            // (button[data-mbu-menu-item^="saed:"], _ehMenuSync()) and the
+            // copies EH projects into its header menus ([data-eh-menu-item],
+            // foreignMenuSync()). Since EH 2026.11.16 (#981) the user's menu
+            // configuration may place a copy in the main row instead of ⋯
+            // (`main`), so both counts are kept.
+            ehMenu: (() => {
+                const ours = document.querySelectorAll('button[data-mbu-menu-item^="saed:"]').length;
+                const copies = [...document.querySelectorAll('[data-eh-menu-item^="saed:"]')];
+                return { ours, projected: copies.length, inMore: copies.filter((c) => c.closest('.eh-more')).length, main: copies.filter((c) => !c.closest('.eh-more')).length };
+            })(),
         };
     });
 }
@@ -463,7 +475,7 @@ async function runCase(browser, name, entries, urlOverride, saGate = 'on') {
         const s = { step: label, ...extra, state: await snapshotState(page) };
         steps.push(s);
         const b = s.state.saBar;
-        console.log(`[${name}] ${label}: path=${s.state.path} bodies=${s.state.bodies} docBodyIsMb=${s.state.documentBodyIsMb} saBar=${b ? `body${b.inBody} visible=${b.visible} inApp=${b.inApp}` : 'none'} frpRows=${s.state.frp.rows} sbHandle=${s.state.sidebarHandle ? `body${s.state.sidebarHandle.inBody} visible=${s.state.sidebarHandle.visible}` : 'none'} ${Object.keys(extra).length ? JSON.stringify(extra) : ''}`);
+        console.log(`[${name}] ${label}: path=${s.state.path} bodies=${s.state.bodies} docBodyIsMb=${s.state.documentBodyIsMb} saBar=${b ? `body${b.inBody} visible=${b.visible} inApp=${b.inApp}` : 'none'} frpRows=${s.state.frp.rows} ehMenu=${s.state.ehMenu.ours}/${s.state.ehMenu.projected}(more ${s.state.ehMenu.inMore}, main ${s.state.ehMenu.main}) sbHandle=${s.state.sidebarHandle ? `body${s.state.sidebarHandle.inBody} visible=${s.state.sidebarHandle.visible}` : 'none'} ${Object.keys(extra).length ? JSON.stringify(extra) : ''}`);
     };
     let cfg = ['D', '0', 'F', 'G'].includes(name) ? ARTIST : RELEASE;
     if (name === 'I') cfg = { ...RELEASE, url: urlOverride || ISRC_RELEASE };
