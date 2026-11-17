@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "ec6384718750c92645d143e51b857b548d88fbc8",
-    "revisions_walked": 1265
+    "head": "a121793f1fa1a8a542c342a2b722ffb9c359daae",
+    "revisions_walked": 1276
   },
   "changes": [
     {
@@ -988,6 +988,14 @@
     "sa_findings_bb_tag_missing": true,
     "sa_findings_bb_tag_spurious": true,
     "sa_findings_tint_bb_tags": true,
+    "sa_findings_bb_feed_title": true,
+    "sa_findings_bb_feed_no_tags": true,
+    "sa_findings_bb_feed_no_parent": true,
+    "sa_findings_bb_feed_first_letter": true,
+    "sa_findings_bb_feed_date_missing": true,
+    "sa_findings_bb_feed_date_wrong": true,
+    "sa_findings_bb_feed_files": true,
+    "sa_findings_tint_bb_feed": true,
     "sa_findings_tint_bb_setlist": true,
     "sa_findings_tint_bb_venue": true,
     "sa_findings_tint_bb_list": true,
@@ -1153,6 +1161,7 @@
     "sa_bb_event_preview": true,
     "sa_bb_history": true,
     "sa_bb_onstage_tags": true,
+    "sa_bb_feed": true,
     "sa_bb_mb_event_lookup": true,
     "sa_bb_tip_images": true,
     "sa_enable_discogs": true,

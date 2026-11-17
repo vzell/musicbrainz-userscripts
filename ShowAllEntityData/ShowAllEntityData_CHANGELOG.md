@@ -4,9 +4,22 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1812 versions; the month pages hold all of them.
+This page shows the newest 100 of 1813 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1642 — 2026-11-17
+
+**🚀 Feature**
+
+- Brucebase feed: three more findings from BruceParser's full read of the wiki. ❌ a page that is no show and lacks a tag of the date in its name ("22" for a page of 1978-08-22), ⚠️ one that carries a date tag its date does not have ("23"), ⚠️ a page tagged "files" that shows no picture (30 files index pages and two venues in the run of 2026-11-15). On the cell that names the page in every Brucebase list (the "files", "news" and "media" tag pages above all), in its window, and after a venue page's byline. A show's own date tags stay with the Tags findings, so one error never gets two marks.
+- What the page in front of you shows wins here too: a date tag it has now, a wrong one it no longer has, a picture it shows now or a "files" tag it no longer carries drops the mark. The wiki's social icons, which every page has, are no picture. New settings: a switch for each of the three findings, on.
+- The Brucebase feed's line in the ☰ menu and at the foot of the ⚠️/❌ menus names the BruceParser version of the file kept ("run of 2026-11-15 · BruceParser 0.19.0 · 226 pages"), so two files of one run can be told apart; its hover text names the rest (the feed.sh version and commit, when it was read, its pages per kind).
+
+**📝 Docs**
+
+- Needs the feed of BruceParser 0.19.0 on GitHub; an older feed simply has none of the three. A script before this version ignores the new data.
+
 
 ## 9.99.1641 — 2026-11-17
 
@@ -872,13 +885,6 @@ This page shows the newest 100 of 1812 versions; the month pages hold all of the
 **🚀 Feature**
 
 - setlist.fm: a setlist's own page (setlist.fm/setlist/…) gets a button, Setlist, that lays the setlist out like a MusicBrainz release page, without asking setlist.fm for anything (the page already holds the whole list). One table per set, named as setlist.fm names it ("The River", "Solo Acoustic"), else Set 1, Set 2 …, and Encore. Columns: \# (numbered on through the sets, a tape has none), Song (its statistics on setlist.fm), Cover of, With (each guest on a line), Tape, Info (setlist.fm's notes such as "first time since 2019") and Play, which finds the song on YouTube and plays it in place. Above the tables: "\~ Setlist by … (date: venue)", setlist.fm's Note, and Details: Show (date, artist, venue, tour, how many setlist.fm users were there), Set times, Setlist (songs, sets, encores, covers, tapes), and on the right Guests and Covered artists, the one on the most songs first ("Tom Morello ×2"). A setlist without songs yet has no button.
-
-
-## 9.99.1542 — 2026-11-04
-
-**🐛 Fix**
-
-- Discogs Tracks view (a release's and a master's): track positions with a letter after the same number ("1a", "1b", …, a medley's parts) stay one table. Each part used to start a new disc: "The Very Best Of Stars On 45" came out as 147 tables of one row; now it is one table of 159 rows with a Section per medley.
 
 
 ---
