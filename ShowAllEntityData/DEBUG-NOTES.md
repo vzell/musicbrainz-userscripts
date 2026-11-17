@@ -29989,7 +29989,7 @@ Env: 2026-11-17T19:20+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58
 
 ## 2026-11-17 — Brucebase date links with a lettered anchor, and 1949-64, had no window (fix/bb-date-lettered-anchors)
 
-Env: 2026-11-17T22:15+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright Chromium (chromium-fixtures), no Tampermonkey (GM stubs)
+Env: 2026-11-17T22:10:29+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright Chromium (chromium-fixtures), no Tampermonkey (GM stubs)
 
 - **Symptom** (found while building feed v2, branch 2): a link to a year page's anchor with a letter (`/1972#000472b`,
   `/1985#310385b`) had no card and no window. Neither did any link to the early years' page (`/1949-64#230949`).
