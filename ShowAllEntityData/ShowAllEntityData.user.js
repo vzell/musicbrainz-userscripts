@@ -28278,14 +28278,29 @@
      * The feed's marks for a window's title: a Brucebase record only (it has
      * `bbTagInfo`), the page known by its name after any redirect, and what
      * the record says of itself (its title and own tags; a window cannot see
-     * a breadcrumb, so "no parent" is never dropped there).
+     * a breadcrumb, so "no parent" is never dropped there). On Brucebase, a
+     * year-page anchor's window too (its show: `bbFeedPage`, else the feed's
+     * anchors for the window's link `t.url`).
      *
      * @param {Object} data - A parsed record.
+     * @param {?Object} [t] - The window's target (`url`), for a year-page anchor.
      * @returns {string} HTML.
      */
-    function _bbFeedWindowMarks(data) {
+    function _bbFeedWindowMarks(data, t = null) {
         const name = data && data.bbTagInfo ? data.bbTagInfo.name : '';
-        if (!name) return '';
+        if (!name) {
+            // A year-page anchor's window (the `bbdate` reader, its `dp`;
+            // feed 1.2, vzell, 2026-11-17: on Brucebase only, MusicBrainz
+            // waits for branch 3): the show its year entry names
+            // (`bbFeedPage`, from the entry's gig link), else (a record kept
+            // from before) the feed's anchors for the link, the entry's date
+            // from its subtitle. It shows the year entry, not the page, so
+            // nothing of the page is known.
+            if (!_isBbHost || !data) return '';
+            const d = String(data.subtitle || '').match(/^(\d{4}-\d{2}-\d{2})/);
+            const show = data.bbFeedPage || _bbFeedAnchorPage((t && t.url) || '', d ? d[1] : '');
+            return show ? _bbFeedMarksHtml(show, null) : '';
+        }
         return _bbFeedMarksHtml(name, {
             title: data.bbRawTitle || data.title || null,
             tags: Array.isArray(data.tags) ? data.tags.map(t => t.text) : null,
@@ -28294,9 +28309,41 @@
     }
 
     /**
+     * The show a year-page anchor names, from the feed's `anchors` (feed
+     * 1.2): "1972#210172" → its page. An anchor two entries share
+     * (1972#000472b, both Mediasound sessions) gives the page whose name has
+     * `date` right after its category (`recording:1972-04-00b-…` for
+     * "1972-04-00"; vzell, 2026-11-17); none or two fitting give ''. The map
+     * holds only the shows the feed names, so any other anchor gives ''.
+     *
+     * @param {string} href - A link to a year page's anchor.
+     * @param {string} date - The entry's own date, "YYYY-MM-DD" ('' unknown).
+     * @returns {string} A page name, or ''.
+     */
+    function _bbFeedAnchorPage(href, date) {
+        const map = _bbFeed.data && _bbFeed.data.anchors;
+        if (!map || typeof map !== 'object') return '';
+        let u;
+        try { u = new URL(href, 'https://brucebase.wikidot.com/'); } catch (_) { return ''; }
+        if (u.hostname !== 'brucebase.wikidot.com') return '';
+        const m = u.pathname.match(/^\/(\d{4}(?:-\d\d)?)\/?$/);
+        if (!m || !u.hash) return '';
+        const pages = map[`${m[1]}${u.hash}`];
+        if (!Array.isArray(pages) || !pages.length) return '';
+        if (pages.length === 1) return String(pages[0]);
+        const fit = date ? pages.filter(n => String(n).replace(/^[^:]*:/, '').startsWith(date)) : [];
+        return fit.length === 1 ? String(fit[0]) : '';
+    }
+
+    /**
      * The facts of a table cell that names a page (its first link, a year
      * table's event link first), memoized per link and feed generation:
      * `stampFindings()` asks every finding of the four for every such cell.
+     * A year listing's cell links the year page's anchor instead
+     * (`/1972#210172`): its show comes from the feed's anchors (feed 1.2,
+     * `_bbFeedAnchorPage()`), with the row's own date from the cell's
+     * carrier (`span.mb-bb-ev-data`, source-row markup) for an anchor two
+     * entries share; the memo key then carries that date too.
      *
      * @param {HTMLTableCellElement} cell
      * @returns {{name: string, facts: Array<Object>}}
@@ -28305,9 +28352,16 @@
         const a = cell.querySelector('a.mb-bb-event-link[href]') || cell.querySelector('a[href]');
         if (!a) return { name: '', facts: [] };
         const href = a.getAttribute('href') || '';
-        const key = `${_bbFeed.gen}|${href}`;
+        let name = _bbFeedPageName(href);
+        let date = '';
+        if (!name) {
+            const carrier = cell.querySelector('span.mb-bb-ev-data');
+            const d = carrier ? (carrier.getAttribute('data-mb-bb-raw-heading') || '').match(/^\s*(\d{4}-\d{2}-\d{2})/) : null;
+            date = d ? d[1] : '';
+        }
+        const key = `${_bbFeed.gen}|${href}|${date}`;
         if (_bbFeed.memo.has(key)) return _bbFeed.memo.get(key);
-        const name = _bbFeedPageName(href);
+        if (!name) name = _bbFeedAnchorPage(href, date);
         const r = { name, facts: name ? _bbFeedFacts(name) : [] };
         _bbFeed.memo.set(key, r);
         return r;
@@ -45415,7 +45469,7 @@
         if (data.collapsible) _dpInitSecToggles();
         const left = [];
         const right = [];
-        left.push(`<div class="mb-dp-xtitle">${_mbttEscape(data.title || '(untitled)')}${_bbTitleBlanksHtml(data.bbRawTitle)}${_bbFeedWindowMarks(data)}</div>`);
+        left.push(`<div class="mb-dp-xtitle">${_mbttEscape(data.title || '(untitled)')}${_bbTitleBlanksHtml(data.bbRawTitle)}${_bbFeedWindowMarks(data, t)}</div>`);
         // A Brucebase song's intro keeps its links here (`subtitleHtml`,
         // `_dpBlockHtml()`'s escaped text and links only; Phase 16 batch 4).
         if (data.subtitle) left.push(`<div class="mb-dp-xsub">${data.subtitleHtml || _mbttEscape(data.subtitle)}</div>`);
@@ -96946,6 +97000,9 @@
         if (show.icons && show.icons.length) dp.icons = show.icons;
         Object.assign(rec, { title: dp.title, description: show.notes[0] || '', type: 'show', dp });
         if (show.gig) rec.links.push([show.cancelled ? 'The date\'s page' : 'Gig page', show.gig]);
+        // The show's page, for the feed's marks after the window's title
+        // (`_bbFeedWindowMarks()`, which gets the `dp`; feed 1.2).
+        dp.bbFeedPage = show.gig ? _bbFeedPageName(show.gig) : '';
         return { ok: true, data: rec };
     }
 
@@ -190611,6 +190668,17 @@ a { color: #1565c0; }`;
              */
             bbFeedPictures(doc) {
                 return _bbFeedPictureCount(doc);
+            },
+            /**
+             * Thin wrapper around `_bbFeedAnchorPage()`.
+             *
+             * @param {string} href
+             * @param {string} [date]
+             * @returns {string}
+             */
+            bbFeedAnchor(href, date = '') {
+                _bbFeedReadKept();
+                return _bbFeedAnchorPage(href, date);
             },
             /**
              * Thin wrappers: a page's name from a link, a title's comparison key.

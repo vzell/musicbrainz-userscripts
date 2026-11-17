@@ -569,3 +569,45 @@ before is used for up to a day.
 
 Unverified: all of it on the live wiki (the rows are the mirror's of 2026-11-15; a page fixed since loses its mark
 in its window and head, not on a list).
+
+* Feed v2, branch 2: a year listing's rows, through the anchors (=feat/bb-feed-v2-listing=, 2026-11-17)
+
+Env: 2026-11-17T21:20+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · probe:
+Python over the mirror bb/2026-11-15, n/a; spec, checker: Playwright Chromium, no Tampermonkey (GM stubs)
+
+*Decisions (vzell, 2026-11-17, all as recommended):*
+1. *The map carries only the shows the feed names*, plus any show sharing an anchor with one of them, not all 5,018.
+2. *On a shared anchor the row's own date picks the page*; none or two fitting: no mark.
+3. *The year-anchor window gets the marks too*, on Brucebase only; MusicBrainz waits for branch 3.
+
+*Built:*
+- *BruceParser 0.20.0* (=87dbd04=, pushed, NOT published): =feed.sh= 1.2 adds =anchors= from =brucebase-event.txt=.
+  25 anchors, 26 pages, 29 KB; =1972#000472b= carries both Mediasound sessions.
+  =recording:1984-09-00-shakedown-studios-…= (no-tags) is on no year page and has none (a warning).
+- *SAED:* =_bbFeedAnchorPage()= for a listing row's anchor link, with the row's date from its carrier. The year-anchor
+  window takes the entry's own page (=dp.bbFeedPage=) or the anchors. Details: =docs/claude/brucebase.md=, "Feed 1.2".
+- *The probe* (part 5): 5,010 listing rows, 25 marked (the 25 shows marked through a dependent page). The shared
+  anchor resolves by date to 1972-04-00b, and every anchor is linked by a row. *The checker:* no difference.
+- *Tests* (NB-3641, 2026-11-17): =bb-feed.spec.js= 28 (5 new); 8 new mutations (4 fail their test, 4 pass with the
+  reason); two older finds rewritten for the window's new argument.
+- *Seen on the way, not changed:* the year-anchor window's reader takes six-digit anchors only. A lettered anchor
+  (=#000672b=, =#220973a=; 338 year entries) opens no window at all, so the three 1972 shows below show their mark
+  on the listing row only.
+
+** The browser check of feed v2, branch 2, for vzell (rows from the mirror of 2026-11-15; unverified on the live wiki)
+
+*First:* the feed of BruceParser 0.20.0 must be on GitHub (=./publish-feed.sh= in BruceParser, your call). Then install
+the script from =feat/bb-feed-v2-listing= and press ☰ → Brucebase → Read again: the line must say BruceParser 0.20.0.
+
+| Page                                    | Step                                  | Expected                                                                                                                                        |
+|-----------------------------------------+---------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------|
+| https://brucebase.wikidot.com/1975-list | Show this year's events               | 1975-11-10 Tampa and 1975-11-11 Miami: Event cell ❌ (hover: "Its page … is titled …"); the ❌ menu counts 2                                      |
+| https://brucebase.wikidot.com/1975-list | Ctrl+hover the 1975-11-10 link, Space | the window's title ends in "❌ ≢"                                                                                                                |
+| https://brucebase.wikidot.com/1973-list | Show this year's events               | ❌ on 1973-01-29 and 1973-01-30 914 Sound Studios, 1973-02-16 Boylan Gymnasium, 1973-02-28 Stockton, 1973-09-22 Jai Alai Fronton (Miami)         |
+| https://brucebase.wikidot.com/1972-list | Show this year's events               | ❌ on 1972-04-00 Mediasound (the shared anchor, picked by its date), 1972-06-00 Point Pleasant, 1972-12-07 Ossining; 1972-05-00 Mediasound clean |
+| https://brucebase.wikidot.com/1978-list | Show this year's events               | ❌ on 1978-07-28 Jai Alai Fronton, Miami                                                                                                         |
+| https://brucebase.wikidot.com/1973-list | Save to Disk, reload, Load from Disk  | the same five rows ❌, no request                                                                                                                |
+| https://brucebase.wikidot.com/1985-list | Show this year's events               | no feed mark (no 1985 show is in the feed)                                                                                                      |
+
+Unverified: all of it on the live wiki (rows from the mirror of 2026-11-15; a listing fixed since keeps the mark until the
+next run).

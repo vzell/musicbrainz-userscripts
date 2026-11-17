@@ -22,14 +22,20 @@
 // that are no show only) and bb-feed-files ⚠️ (tagged "files", no picture).
 // tests/fixtures/bb-feed-2026-11-15-v2.json is BruceParser 0.19.0's feed of
 // the same run (published 2026-11-17; the raw file is byte-identical).
+//
+// Feed 1.2 (feed v2, branch 2; vzell, 2026-11-17): the feed's `anchors` map a
+// year page's anchor to the show it names, so a year listing's rows (they
+// link /1973#290173, not the show's page) and a year-anchor window are
+// marked too. tests/fixtures/bb-feed-2026-11-15-v3.json is BruceParser
+// 0.20.0's feed of the same run.
 
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { test, expect } = require('../support/test');
 const { loadUserscriptPage } = require('../support/loadPage');
-const { loadBbYearPage, loadBbRelationsPage, loadBbSongsPage, loadBbStoryPage, loadBbEventPage,
-    BB_YEAR_BUTTON, BB_BUTTON } = require('../support/bbFixture');
+const { loadBbYearPage, loadBbRelationsPage, loadBbSongsPage, loadBbStoryPage, loadBbEventPage, loadBbYearListPage,
+    BB_YEAR_BUTTON, BB_BUTTON, BB_YEAR_LIST_BUTTON } = require('../support/bbFixture');
 const { routeDetailPages } = require('../support/detailFixture');
 const { waitForRenderComplete } = require('../support/browser');
 const { findingRow, clickFinding, findingRowState } = require('../support/findingsMenu');
@@ -38,6 +44,15 @@ const { clickToolbarItem } = require('../support/toolbarMenu');
 const FEED_URL = 'https://raw.githubusercontent.com/vzell/brucebase-feed/main/bb-feed.json';
 const REAL = JSON.parse(fs.readFileSync(path.join(__dirname, 'bb-feed-2026-11-15.json'), 'utf8'));
 const REAL2 = JSON.parse(fs.readFileSync(path.join(__dirname, 'bb-feed-2026-11-15-v2.json'), 'utf8'));
+const REAL3 = JSON.parse(fs.readFileSync(path.join(__dirname, 'bb-feed-2026-11-15-v3.json'), 'utf8'));
+// The 1973 listing's rows of shows the feed names (scripts/probe-bb-feed.py, part 5).
+const LIST1973 = [
+    ['1973#290173', 'recording:1973-01-29-914-sound-studios-blauvelt-ny'],
+    ['1973#300173', 'recording:1973-01-30-914-sound-studios-blauvelt-ny'],
+    ['1973#160273', 'gig:1973-02-16-boylan-gymnasium-west-long-branch-nj'],
+    ['1973#280273', 'gig:1973-02-28-memorial-civic-auditorium-stockton-ca'],
+    ['1973#220973a', 'nogig:1973-09-22a-jai-alai-fronton-miami-fl'],
+];
 const NEWS78 = 'news:1978-08-22-madison-square-garden-new-york-city-ny';
 const ROXY_VENUE = 'venue:roxy-theatre-west-hollywood-ca';
 const DAY = 24 * 3600 * 1000;
@@ -523,6 +538,147 @@ test.describe('the Brucebase feed 1.1: date tags and the files tag', () => {
         await waitForRenderComplete(page, { waitForAutoResize: false });
         expect((await feedCells(page, 'Title')).map(r => [r.name, r.ids])).toEqual([['song:30-days-out', ['bb-feed-date-missing']]]);
         expect(await findingRow(page, 'warn', 'bb-feed-date-wrong')).toBeUndefined();
+    });
+});
+
+/**
+ * A year listing's Event cells that carry a feed finding: the anchor their
+ * link names, the feed ids, the tooltip.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<Array<{anchor: string, ids: string[], tip: string}>>}
+ */
+function listingFeedCells(page) {
+    return page.evaluate(() => {
+        const t = document.querySelector('table.tbl');
+        const names = Array.from(t.querySelectorAll('thead tr:first-child th')).map(th => th.dataset.colName || th.textContent.trim());
+        const i = names.indexOf('Event');
+        return Array.from(t.querySelectorAll('tbody tr')).filter(tr => tr.style.display !== 'none' && tr.cells[i]).map((tr) => {
+            const td = tr.cells[i];
+            const a = td.querySelector('a[href]');
+            const u = a ? new URL(a.href) : null;
+            return {
+                anchor: u ? `${u.pathname.slice(1)}${u.hash}` : '',
+                ids: (td.dataset.mbFindings || '').split(' ').filter(x => x.startsWith('bb-feed-')),
+                tip: td.getAttribute('title') || '',
+            };
+        }).filter(r => r.ids.length);
+    });
+}
+
+test.describe('the Brucebase feed 1.2: a year listing\'s rows, through the anchors', () => {
+    test('BruceParser 0.20.0\'s anchors: the shows the feed names, the shared one with both pages', () => {
+        expect(REAL3.run.feed).toBe('1.2');
+        expect(Object.keys(REAL3.anchors)).toHaveLength(25);
+        expect(REAL3.anchors['1972#000472b']).toEqual([
+            'recording:1972-04-00b-mediasound-studios-new-york-city-ny', 'recording:1972-05-00-mediasound-studios-new-york-city-ny',
+        ]);
+        expect(Object.keys(REAL3.anchors).every(k => /^\d{4}(-\d\d)?#[0-9a-z]+$/.test(k))).toBe(true);
+    });
+
+    test('1973: the listing\'s rows of the five shows are ❌ on their Event cell; nothing else', async ({ page }) => {
+        await loadBbYearListPage(page, '1973', { settingsOverride: feedOn(REAL3) });
+        await page.click(`button[data-label="${BB_YEAR_LIST_BUTTON}"]`);
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const cells = await listingFeedCells(page);
+        expect(cells.map(r => [r.anchor, r.ids])).toEqual(LIST1973.map(([a]) => [a, ['bb-feed-title']]));
+        LIST1973.forEach(([, show], i) => expect(cells[i].tip, show).toContain('is titled'));
+        expect((await findingRow(page, 'error', 'bb-feed-title')).count).toBe(5);
+    });
+
+    test('the lookup: one page, or on a shared anchor the one of the row\'s date; a feed without anchors gives none', async ({ page }) => {
+        await load1972(page, feedOn(REAL3));
+        const look = (h, d) => page.evaluate(([x, y]) => window.__saTest.bbFeedAnchor(x, y), [h, d]);
+        expect(await look(`${BB}1973#290173`, '1973-01-29')).toBe('recording:1973-01-29-914-sound-studios-blauvelt-ny');
+        expect(await look(`${BB}1973#290173`, ''), 'one page: no date needed').toBe('recording:1973-01-29-914-sound-studios-blauvelt-ny');
+        expect(await look(`${BB}1972#000472b`, '1972-04-00')).toBe('recording:1972-04-00b-mediasound-studios-new-york-city-ny');
+        expect(await look(`${BB}1972#000472b`, '1972-05-00')).toBe('recording:1972-05-00-mediasound-studios-new-york-city-ny');
+        expect(await look(`${BB}1972#000472b`, ''), 'shared, no date: none').toBe('');
+        expect(await look(`${BB}1972#000472b`, '1972-03-00'), 'shared, no page of that date: none').toBe('');
+        expect(await look(`${BB}1972#210172`, '1972-01-21'), 'a show the feed does not name').toBe('');
+        expect(await look(`${BB}gig:1972-01-21-captain-s-garter-neptune-nj`, ''), 'a page link is no anchor').toBe('');
+        // Two pages of one date on a shared anchor: none (planted).
+        await page.evaluate(f => window.__saTest.bbFeedSet(f), {
+            ...feedOf({}), anchors: { '1999#010199': ['gig:1999-01-01a-x', 'gig:1999-01-01b-y'] },
+        });
+        expect(await look(`${BB}1999#010199`, '1999-01-01')).toBe('');
+        // A feed before 1.2 has no anchors.
+        await page.evaluate(f => window.__saTest.bbFeedSet(f), REAL2);
+        expect(await look(`${BB}1973#290173`, '1973-01-29')).toBe('');
+    });
+
+    test('Save to Disk → Load from Disk keeps the listing\'s marks', async ({ context }) => {
+        const source = await context.newPage();
+        source.on('pageerror', e => pageErrors.push(String(e.stack || e)));
+        await loadBbYearListPage(source, '1973', { settingsOverride: feedOn(REAL3) });
+        await source.click(`button[data-label="${BB_YEAR_LIST_BUTTON}"]`);
+        await waitForRenderComplete(source, { waitForAutoResize: false });
+        expect(await listingFeedCells(source)).toHaveLength(5);
+        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sa-bb-feed-list-'));
+        try {
+            const downloadPromise = source.waitForEvent('download', { timeout: 60000 });
+            await clickToolbarItem(source, '#mb-save-to-disk-btn');
+            await source.locator('#sa-sd-save-confirm').waitFor({ state: 'visible', timeout: 15000 });
+            await source.click('#sa-sd-save-confirm');
+            const saved = path.join(tmpDir, 'bb-year-list.json.gz');
+            await (await downloadPromise).saveAs(saved);
+            await source.close();
+            const page = await context.newPage();
+            page.on('pageerror', e => pageErrors.push(String(e.stack || e)));
+            await loadBbYearListPage(page, '1973', { settingsOverride: feedOn(REAL3) });
+            await clickToolbarItem(page, '#mb-load-from-disk-btn');
+            await page.locator('input[type="file"][accept*="json"]').setInputFiles(saved);
+            const renderBtn = page.locator('#sa-render-no-filter-confirm');
+            await renderBtn.waitFor({ state: 'attached', timeout: 15000 });
+            await renderBtn.evaluate(el => el.click());
+            await waitForRenderComplete(page, { waitForAutoResize: false });
+            expect((await listingFeedCells(page)).map(r => r.anchor)).toEqual(LIST1973.map(([a]) => a));
+        } finally {
+            fs.rmSync(tmpDir, { recursive: true, force: true });
+        }
+    });
+
+    test('a year-anchor window on Brucebase: the show\'s mark after its title', async ({ page }) => {
+        // The window's reader takes six-digit anchors only (`_extBbDateTest()`),
+        // and the 1972 shows the feed names all have a letter: a planted feed
+        // names 1972-01-21 (#210172) of the 1972 fixture. On the 1973 listing
+        // a link to it is another page's anchor (on 1972's own page an
+        // in-page one, no preview); the window reads 1972's year page, served
+        // from its fixture. The show comes from the entry's gig link
+        // (`bbFeedPage`).
+        const show = 'gig:1972-01-21-captain-s-garter-neptune-nj';
+        const feed = { ...feedOf({ [show]: { 'no-tags': true } }), anchors: { '1972#210172': [show] } };
+        // The reader asks through GM_xmlhttpRequest (not page.route).
+        const html = fs.readFileSync(path.join(__dirname, 'bb-year-1972-findings.html'), 'utf8');
+        await page.addInitScript(({ url, body }) => {
+            window.__gmXhrResponses = Object.assign(window.__gmXhrResponses || {}, {
+                [url]: { status: 200, responseHeaders: 'content-type: text/html; charset=utf-8\r\n', responseText: body, finalUrl: url },
+            });
+        }, { url: `${BB}1972`, body: html });
+        await loadBbYearListPage(page, '1973', { settingsOverride: { ...feedOn(feed), sa_pop_ext: true } });
+        await page.click(`button[data-label="${BB_YEAR_LIST_BUTTON}"]`);
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        await page.evaluate((h) => {
+            const real = document.querySelector('table.tbl tbody a.mb-bb-show-link');
+            const a = document.createElement('a');
+            a.href = h;
+            a.id = 'mb-test-anchor-link';
+            a.className = 'mb-bb-show-link';
+            a.textContent = ' 1972-01-21';
+            real.parentNode.appendChild(a);
+        }, `${BB}1972#210172`);
+        const link = page.locator('#mb-test-anchor-link');
+        expect(await link.evaluate(a => window.__saTest.popResolve(a))).toContain('bbdate');
+        await link.scrollIntoViewIfNeeded();
+        await page.keyboard.down('Control');
+        await link.hover();
+        await page.keyboard.up('Control');
+        await expect(page.locator('#mb-dp-peek')).toBeVisible();
+        await page.keyboard.press('Space');
+        const title = page.locator('#mb-dp-dialog .mb-dp-xtitle');
+        await expect(title).toContainText('CAPTAIN\'S GARTER');
+        await expect(title.locator('.mb-bb-feed-mark')).toHaveText('❌ ⊘');
+        expect(await title.locator('.mb-bb-feed-mark').getAttribute('title')).toContain(`${show} has no tag at all`);
     });
 });
 

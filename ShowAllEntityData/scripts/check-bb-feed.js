@@ -21,7 +21,10 @@
  *      storyteller (from the run's all-sorted.txt) — the probe's counts and
  *      kinds;
  *   3. the shows marked through their dependent pages (the feed's `event`
- *      read backwards) — the probe's 25.
+ *      read backwards) — the probe's 25;
+ *   4. (feed 1.2) every row of every year listing of the mirror, its show
+ *      found by the shipped `_bbFeedAnchorPage()` (the row's anchor and
+ *      date) — the probe's rows, marked rows and kinds.
  *
  * Read-only, no network. Exit code 1 when anything differs.
  *
@@ -142,6 +145,29 @@ function kinds(lists) {
         const same = got.rows === want.rows && got.marked === want.marked && JSON.stringify(Object.entries(got.kinds).sort()) === JSON.stringify(Object.entries(want.kinds).sort());
         if (!same) diffs++;
         console.log(`2. ${label}: ${JSON.stringify(got)} ${same ? '= probe' : `≠ probe ${JSON.stringify(want)}`}`);
+    }
+
+    // 4. the year listings, through the feed's anchors (feed 1.2)
+    if (probe.listings) {
+        const rows = [];
+        fs.readdirSync(MIRROR).filter(f => /^\d{4}(-\d\d)?-list\.html$/.test(f)).sort().forEach((f) => {
+            const src = fs.readFileSync(path.join(MIRROR, f), 'utf8');
+            for (const m of src.matchAll(/<li><a href="\/(\d{4}(?:-\d\d)?#[0-9a-z]+)">([\s\S]*?)<\/a>/g)) {
+                const d = m[2].replace(/<[^>]+>/g, '').match(/^\s*(\d{4}-\d{2}-\d{2})/);
+                rows.push([`https://brucebase.wikidot.com/${m[1]}`, d ? d[1] : '']);
+            }
+        });
+        const res = await page.evaluate(rs => rs.map(([h, d]) => {
+            const n = window.__saTest.bbFeedAnchor(h, d);
+            return n ? window.__saTest.bbFeed(n).facts.map(f => f.kind) : [];
+        }), rows);
+        const markedL = res.filter(k => k.length);
+        const got = { rows: rows.length, marked: markedL.length, kinds: {} };
+        markedL.forEach(ks => ks.forEach((k) => { got.kinds[k] = (got.kinds[k] || 0) + 1; }));
+        const want = probe.listings;
+        const same = got.rows === want.rows && got.marked === want.marked && JSON.stringify(Object.entries(got.kinds).sort()) === JSON.stringify(Object.entries(want.kinds).sort());
+        if (!same) diffs++;
+        console.log(`4. listings: ${JSON.stringify(got)} ${same ? '= probe' : `≠ probe ${JSON.stringify({ rows: want.rows, marked: want.marked, kinds: want.kinds })}`}`);
     }
 
     // 3. the shows marked through their dependent pages

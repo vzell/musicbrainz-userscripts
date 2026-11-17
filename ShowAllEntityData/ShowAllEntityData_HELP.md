@@ -3903,10 +3903,12 @@ site.
   Findings sections, the cell tint), on the cell that names a row's own page
   in every Brucebase list: Event, Title, Name or Page. A show whose dependent
   page is titled differently is marked too, on its year-table row, its page
-  and its window. A year *listing*'s rows are not marked: they link the year
-  page, not the show's page. The wiki builds its song and relations lists
-  from the first-letter tags, so a page without that tag, or without any
-  tag, is not on them: it is marked on its own page only.
+  and its window. A year *listing*'s rows link the year page, not the
+  show's page: the feed names the anchor of every show it marks, so they are
+  marked too, and so is the window of such a link on Brucebase. The wiki
+  builds its song and relations lists from the first-letter tags, so a page
+  without that tag, or without any tag, is not on them: it is marked on its
+  own page only.
 - **On a page's head and in its window** the marks follow the title. What the
   page shows now wins: a page that has tags now, links a parent now, or whose
   title changed since the run is not marked for it.

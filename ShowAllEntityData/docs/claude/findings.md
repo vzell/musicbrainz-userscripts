@@ -515,6 +515,10 @@ docs/claude/brucebase.md, "The BruceParser feed". What this file must record:
   (`date-parts`), and each reads its own list (`src`/`part` in
   `_BB_FEED_KINDS`). That way each finding keeps a single level, as the Tags
   findings do. The heading above keeps its v1 name, because it is cited.
+- **Feed 1.2 (2026-11-17): a year listing's rows** are found by their
+  anchor link through the feed's `anchors` (`_bbFeedAnchorPage()`), with
+  the row's date from the cell's own carrier: still source-row data, and no
+  new entry.
 - Settings: `sa_findings_bb_feed_title`, `_no_tags`, `_no_parent`,
   `_first_letter`, `_date_missing`, `_date_wrong`, `_files`; tint
   `sa_findings_tint_bb_feed`; the feed itself `sa_bb_feed`.

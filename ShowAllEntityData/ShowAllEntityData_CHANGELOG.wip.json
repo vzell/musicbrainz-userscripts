@@ -1,5 +1,24 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-11-17",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase feed: a year listing's rows are marked too (e.g. /1973-list). A listing links the show's entry on its year page, not the show's own page; the feed now names the year-page anchor of every show it marks, so the row of 1975-11-10 Tampa gets the same ❌ as the show's row on the year page. Where two entries of a year page share one anchor (1972's two Mediasound sessions), the row's own date picks the show. No request.",
+          "On Brucebase, the window of such a link (Ctrl+hover a listing row's Event link, Space) carries the show's marks after its title as well."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Needs the feed of BruceParser 0.20.0 on GitHub; an older feed marks no listing row. A script before this version ignores the new data."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-11-17",
     "sections": [

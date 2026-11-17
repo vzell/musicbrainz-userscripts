@@ -110,7 +110,7 @@
     {
         "name": "feed: no mark in a window's title",
         "why": "The window carries the marks after its title.",
-        "edits": [{ "find": "${_bbTitleBlanksHtml(data.bbRawTitle)}${_bbFeedWindowMarks(data)}</div>", "replace": "${_bbTitleBlanksHtml(data.bbRawTitle)}</div>" }],
+        "edits": [{ "find": "${_bbTitleBlanksHtml(data.bbRawTitle)}${_bbFeedWindowMarks(data, t)}</div>", "replace": "${_bbTitleBlanksHtml(data.bbRawTitle)}</div>" }],
         "spec": "tests/fixtures/bb-feed.spec.js", "grep": "the window:", "expect": "fail"
     },
     {
@@ -208,5 +208,53 @@
         "why": "Two files of one run (0.18.0 and 0.19.0 of 2026-11-15) must be told apart in the ☰ line.",
         "edits": [{ "find": "              `${run.bruceparser ? ` · BruceParser ${run.bruceparser}` : ''} · ${Object.keys(_bbFeed.data.pages).length} pages`", "replace": "              ` · ${Object.keys(_bbFeed.data.pages).length} pages`" }],
         "spec": "tests/fixtures/bb-feed.spec.js", "grep": "names the BruceParser version", "expect": "fail"
+    },
+    {
+        "name": "feed 1.2: a listing row's anchor is not looked up",
+        "why": "A year listing's Event cell links the year page's anchor; its show comes from the feed's anchors.",
+        "edits": [{ "find": "        if (!name) name = _bbFeedAnchorPage(href, date);\n", "replace": "" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "the listing's rows of the five shows", "expect": "fail"
+    },
+    {
+        "name": "feed 1.2: one page on an anchor still needs the date",
+        "why": "An anchor with one page names it whatever the date.",
+        "edits": [{ "find": "        if (pages.length === 1) return String(pages[0]);\n", "replace": "" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "the lookup: one page", "expect": "fail"
+    },
+    {
+        "name": "feed 1.2: a shared anchor ignores the row's date",
+        "why": "On 1972#000472b the row's date picks the Mediasound session.",
+        "edits": [{ "find": "        const fit = date ? pages.filter(n => String(n).replace(/^[^:]*:/, '').startsWith(date)) : [];", "replace": "        const fit = [];" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "the lookup: one page", "expect": "fail"
+    },
+    {
+        "name": "feed 1.2: the cell's memo key without the row's date",
+        "why": "Two rows on one shared anchor must not share a memo entry. No fixture listing has two rows on one anchor, and the real 1972 listing links 1972#000472b from one row only, so no spec can see it; the lookup itself is pinned by the hook test.",
+        "edits": [{ "find": "        const key = `${_bbFeed.gen}|${href}|${date}`;", "replace": "        const key = `${_bbFeed.gen}|${href}`;" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "the listing's rows of the five shows", "expect": "pass"
+    },
+    {
+        "name": "feed 1.2: the year-anchor window finds no show",
+        "why": "The window's title carries the show's marks: from the entry's gig link, else the anchors.",
+        "edits": [{ "find": "        dp.bbFeedPage = show.gig ? _bbFeedPageName(show.gig) : '';", "replace": "        dp.bbFeedPage = '';" }, { "find": "            const show = data.bbFeedPage || _bbFeedAnchorPage((t && t.url) || '', d ? d[1] : '');", "replace": "            const show = data.bbFeedPage;" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "year-anchor window", "expect": "fail"
+    },
+    {
+        "name": "feed 1.2: the year-anchor window without the entry's gig link",
+        "why": "The anchors cover it (the window's link is in the planted feed's map), so the test still passes: the fallback for a record kept from before.",
+        "edits": [{ "find": "        dp.bbFeedPage = show.gig ? _bbFeedPageName(show.gig) : '';", "replace": "        dp.bbFeedPage = '';" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "year-anchor window", "expect": "pass"
+    },
+    {
+        "name": "feed 1.2: the year-anchor window without the anchors' fallback",
+        "why": "The entry's gig link covers it, so the test still passes; the fallback serves a record kept from before.",
+        "edits": [{ "find": "            const show = data.bbFeedPage || _bbFeedAnchorPage((t && t.url) || '', d ? d[1] : '');", "replace": "            const show = data.bbFeedPage;" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "year-anchor window", "expect": "pass"
+    },
+    {
+        "name": "feed 1.2: the year-anchor window marked on MusicBrainz too",
+        "why": "On Brucebase only for now (vzell, 2026-11-17; MusicBrainz is branch 3). No MusicBrainz fixture opens a Brucebase anchor's window with a feed kept, and a MusicBrainz press reads no feed, so no spec can see it.",
+        "edits": [{ "find": "            if (!_isBbHost || !data) return '';\n            const d = String(data.subtitle", "replace": "            if (!data) return '';\n            const d = String(data.subtitle" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "MusicBrainz page", "expect": "pass"
     }
 ]

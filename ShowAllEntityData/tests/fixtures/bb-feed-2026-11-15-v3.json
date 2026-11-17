@@ -1,0 +1,976 @@
+{
+  "anchors": {
+    "1967#000867c": [
+      "gig:1967-08-00c-unknown-location-howell-nj"
+    ],
+    "1972#000472b": [
+      "recording:1972-04-00b-mediasound-studios-new-york-city-ny",
+      "recording:1972-05-00-mediasound-studios-new-york-city-ny"
+    ],
+    "1972#000672b": [
+      "gig:1972-06-00-unknown-location-point-pleasant-nj"
+    ],
+    "1972#071272a": [
+      "gig:1972-12-07-correctional-facility-ossining-ny"
+    ],
+    "1973#160273": [
+      "gig:1973-02-16-boylan-gymnasium-west-long-branch-nj"
+    ],
+    "1973#220973a": [
+      "nogig:1973-09-22a-jai-alai-fronton-miami-fl"
+    ],
+    "1973#280273": [
+      "gig:1973-02-28-memorial-civic-auditorium-stockton-ca"
+    ],
+    "1973#290173": [
+      "recording:1973-01-29-914-sound-studios-blauvelt-ny"
+    ],
+    "1973#300173": [
+      "recording:1973-01-30-914-sound-studios-blauvelt-ny"
+    ],
+    "1975#101175": [
+      "gig:1975-11-10-jai-alai-fronton-tampa-fl"
+    ],
+    "1975#111175": [
+      "gig:1975-11-11-jai-alai-fronton-miami-fl"
+    ],
+    "1976#060576": [
+      "gig:1976-05-06-municipal-auditorium-shreveport-la"
+    ],
+    "1978#280778": [
+      "gig:1978-07-28-jai-alai-fronton-miami-fl"
+    ],
+    "1979#051279": [
+      "recording:1979-12-05-power-station-new-york-city-ny"
+    ],
+    "1980#311280": [
+      "gig:1980-12-31-nassau-coliseum-uniondale-ny"
+    ],
+    "1981#140481": [
+      "gig:1981-04-14-festhalle-frankfurt-germany"
+    ],
+    "1987#040487": [
+      "recording:1987-04-04-thrill-hill-east-rumson-nj"
+    ],
+    "1998#240898": [
+      "recording:1998-08-24-boxwood-studio-colts-neck-nj"
+    ],
+    "2024#151024": [
+      "interview:2024-10-15-museum-of-modern-art-new-york-city-ny"
+    ],
+    "2025#240625": [
+      "gig:2025-06-24-reale-arena-donostia-san-sebastian-spain"
+    ],
+    "2026#111126": [
+      "nogig:2026-11-11-st-rose-of-lima-church-freehold-nj"
+    ],
+    "2026#160526": [
+      "gig:2026-05-16-madison-square-garden-new-york-city-ny"
+    ],
+    "2026#240326": [
+      "rehearsal:2026-03-24-youth-temple-ocean-grove-nj"
+    ],
+    "2026#260426": [
+      "gig:2026-04-26-moody-center-austin-tx"
+    ],
+    "2026#280326": [
+      "gig:2026-03-28-state-capitol-saint-paul-mn"
+    ]
+  },
+  "credit": "The data is Brucebase (brucebase.wikidot.com, Danny van der Linden and its editors); the checks are BruceParser's.",
+  "format": 1,
+  "pages": {
+    "content:american-hotel-freehold-nj": {
+      "no-tags": true
+    },
+    "content:asbury-united-methodist-church-janesville-wi": {
+      "no-tags": true
+    },
+    "content:cbs-30th-street-studio-new-york-city-ny": {
+      "no-tags": true
+    },
+    "content:eve-studios-bredbury-england": {
+      "no-tags": true
+    },
+    "content:live-downloads-d": {
+      "no-tags": true
+    },
+    "content:lyrics-dedication": {
+      "no-tags": true
+    },
+    "content:lyrics-folkways": {
+      "no-tags": true
+    },
+    "content:lyrics-on-the-line": {
+      "no-tags": true
+    },
+    "content:palm-theater-telluride-co": {
+      "no-tags": true
+    },
+    "content:reale-arena-donostia-san-sebastian-spain": {
+      "no-tags": true
+    },
+    "content:retail-releases-top-test": {
+      "no-tags": true
+    },
+    "content:springsteen-residence-freehold-nj": {
+      "no-tags": true
+    },
+    "content:table-def-header-details": {
+      "no-tags": true
+    },
+    "content:table-def-header-recgig": {
+      "no-tags": true
+    },
+    "content:tracks-23rd-street-lullaby-limited": {
+      "no-tags": true
+    },
+    "content:tracks-london-calling-note": {
+      "no-tags": true
+    },
+    "content:tracks-magic-tour-highlights": {
+      "no-tags": true
+    },
+    "content:tracks-released-the-human-rights-concerts-video": {
+      "no-tags": true
+    },
+    "content:tracks-silver-patron-saints": {
+      "no-tags": true
+    },
+    "content:tracks-springsteen-on-broadway": {
+      "no-tags": true
+    },
+    "content:tracks-stomping-ground-note": {
+      "no-tags": true
+    },
+    "content:tracks-the-bridge-school-concerts-25": {
+      "no-tags": true
+    },
+    "content:university-of-bridgeport-bridgeport-ct": {
+      "no-tags": true
+    },
+    "content:v-f-w-hall-freehold-nj": {
+      "no-tags": true
+    },
+    "eye:1976-05-06-municipal-auditorium-shreveport-la": {
+      "dependent-title": {
+        "event": "gig:1976-05-06-municipal-auditorium-shreveport-la",
+        "eventTitle": "1976-05-06 Shreveport Municipal Auditorium, Shreveport, LA",
+        "title": "1976-05-06 Municipal Auditorium, Shreveport, LA"
+      }
+    },
+    "eye:1980-12-31-nassau-coliseum-uniondale-ny": {
+      "dependent-title": {
+        "event": "gig:1980-12-31-nassau-coliseum-uniondale-ny",
+        "eventTitle": "1980-12-31 Nassau Veterans Memorial Coliseum, Uniondale, NY",
+        "title": "1980-12-29 Nassau Veterans Memorial Coliseum, Uniondale, NY"
+      }
+    },
+    "eye:1981-04-14-festhalle-frankfurt-germany": {
+      "dependent-title": {
+        "event": "gig:1981-04-14-festhalle-frankfurt-germany",
+        "eventTitle": "1981-04-14 Festhalle, Frankfurt, West Germany",
+        "title": "1981-04-14 Festhalle, Frankfurt, Germany"
+      }
+    },
+    "files:artwork-tour-cs": {
+      "files-no-images": true
+    },
+    "files:artwork-tour-gfapnj": {
+      "files-no-images": true
+    },
+    "files:artwork-tour-lwst": {
+      "files-no-images": true
+    },
+    "files:artwork-tour-nbrsk": {
+      "files-no-images": true
+    },
+    "files:artwork-tour-wiess": {
+      "files-no-images": true
+    },
+    "files:news-magazine-2021": {
+      "files-no-images": true
+    },
+    "files:news-magazine-2022": {
+      "files-no-images": true
+    },
+    "files:news-magazine-2023": {
+      "files-no-images": true
+    },
+    "files:news-magazine-2024": {
+      "files-no-images": true
+    },
+    "files:news-tour-btr": {
+      "files-no-images": true
+    },
+    "files:news-tour-cs": {
+      "files-no-images": true
+    },
+    "files:news-tour-gfapnj": {
+      "files-no-images": true
+    },
+    "files:news-tour-lwst": {
+      "files-no-images": true
+    },
+    "files:news-tour-nbrsk": {
+      "files-no-images": true
+    },
+    "files:news-tour-rvr16": {
+      "files-no-images": true
+    },
+    "files:news-tour-sgrs": {
+      "files-no-images": true
+    },
+    "files:news-tour-vfc": {
+      "files-no-images": true
+    },
+    "files:news-tour-wiess": {
+      "files-no-images": true
+    },
+    "files:news-tour-woad": {
+      "files-no-images": true
+    },
+    "files:pass-1989": {
+      "files-no-images": true
+    },
+    "files:pass-1994": {
+      "files-no-images": true
+    },
+    "files:pass-1998": {
+      "files-no-images": true
+    },
+    "files:pass-2010": {
+      "files-no-images": true
+    },
+    "files:pass-2015": {
+      "files-no-images": true
+    },
+    "files:pass-2020": {
+      "files-no-images": true
+    },
+    "files:setlist-1989": {
+      "files-no-images": true
+    },
+    "files:setlist-1990": {
+      "files-no-images": true
+    },
+    "files:setlist-1991": {
+      "files-no-images": true
+    },
+    "files:ticket-1989": {
+      "files-no-images": true
+    },
+    "files:ticket-1991": {
+      "files-no-images": true
+    },
+    "gallery:1981-04-14-festhalle-frankfurt-germany": {
+      "dependent-title": {
+        "event": "gig:1981-04-14-festhalle-frankfurt-germany",
+        "eventTitle": "1981-04-14 Festhalle, Frankfurt, West Germany",
+        "title": "1981-04-14 Festhalle, Frankfurt, Germany"
+      }
+    },
+    "gallery:2024-10-15-museum-of-modern-art-new-york-city-ny": {
+      "dependent-title": {
+        "event": "interview:2024-10-15-museum-of-modern-art-new-york-city-ny",
+        "eventTitle": "2024-10-15 Roy And Niuta Titus Theater 1 (The), Museum Of Modern Art, New York City, NY",
+        "title": "2024-10-15 Museum Of Modern Art, New York City, NY"
+      }
+    },
+    "gallery:2026-11-11-st-rose-of-lima-church-freehold-nj": {
+      "dependent-title": {
+        "event": "nogig:2026-11-11-st-rose-of-lima-church-freehold-nj",
+        "eventTitle": "2026-11-11 St. Rose Of Lima Church, Freehold, NJ",
+        "title": "2026-11-10 St. Rose Of Lima Church, Freehold, NJ"
+      }
+    },
+    "gignote:1967-08-00c-unknown-location-howell-nj": {
+      "dependent-title": {
+        "event": "gig:1967-08-00c-unknown-location-howell-nj",
+        "eventTitle": "1967-08-00 Unknown Location, Howell, NJ",
+        "title": "1967-08-00 Private Property, Howell, NJ"
+      }
+    },
+    "gignote:1972-06-00-unknown-location-point-pleasant-nj": {
+      "dependent-title": {
+        "event": "gig:1972-06-00-unknown-location-point-pleasant-nj",
+        "eventTitle": "1972-06-00 Unknown Location, Point Pleasant, NJ",
+        "title": "1972-06-00 Private Property, Point Pleasant, NJ"
+      }
+    },
+    "gignote:1973-02-16-boylan-gymnasium-west-long-branch-nj": {
+      "dependent-title": {
+        "event": "gig:1973-02-16-boylan-gymnasium-west-long-branch-nj",
+        "eventTitle": "1973-02-16 William T. Boylan Gymnasium, Monmouth College, West Long Branch, NJ",
+        "title": "1973-02-16 Boylan Gymnasium, Monmouth College, West Long Branch, NJ"
+      }
+    },
+    "gignote:1973-09-22a-jai-alai-fronton-miami-fl": {
+      "dependent-title": {
+        "event": "nogig:1973-09-22a-jai-alai-fronton-miami-fl",
+        "eventTitle": "1973-09-22 Jai-Alai Fronton, Miami, FL",
+        "title": "1973-09-22 Jai Alai Fronton, Miami, FL"
+      }
+    },
+    "gignote:1978-07-28-jai-alai-fronton-miami-fl": {
+      "dependent-title": {
+        "event": "gig:1978-07-28-jai-alai-fronton-miami-fl",
+        "eventTitle": "1978-07-28 Jai-Alai Fronton, Miami, FL",
+        "title": "1978-07-28 Jai Alai Fronton, Miami, FL"
+      }
+    },
+    "media:1975-11-10-jai-alai-fronton-tampa-fl": {
+      "date-parts": {
+        "missing": [
+          "10"
+        ],
+        "wrong": [
+          "11"
+        ]
+      },
+      "dependent-title": {
+        "event": "gig:1975-11-10-jai-alai-fronton-tampa-fl",
+        "eventTitle": "1975-11-10 Jai-Alai Fronton, Tampa, FL",
+        "title": "1975-11-10 Jai Alai Fronton, Tampa, FL"
+      }
+    },
+    "media:2026-03-28-state-capitol-saint-paul-mn": {
+      "dependent-title": {
+        "event": "gig:2026-03-28-state-capitol-saint-paul-mn",
+        "eventTitle": "2026-03-28 Minnesota State Capitol, Saint Paul, MN",
+        "title": "2026-03-28 Minneapolis State Capitol, Saint Paul, MN"
+      }
+    },
+    "news:1976-05-06-municipal-auditorium-shreveport-la": {
+      "dependent-title": {
+        "event": "gig:1976-05-06-municipal-auditorium-shreveport-la",
+        "eventTitle": "1976-05-06 Shreveport Municipal Auditorium, Shreveport, LA",
+        "title": "1976-05-06 Municipal Auditorium, Shreveport, LA"
+      }
+    },
+    "news:1978-08-22-madison-square-garden-new-york-city-ny": {
+      "date-parts": {
+        "missing": [
+          "22"
+        ],
+        "wrong": [
+          "23"
+        ]
+      }
+    },
+    "news:1981-04-14-festhalle-frankfurt-germany": {
+      "dependent-title": {
+        "event": "gig:1981-04-14-festhalle-frankfurt-germany",
+        "eventTitle": "1981-04-14 Festhalle, Frankfurt, West Germany",
+        "title": "1981-04-14 Festhalle, Frankfurt, Germany"
+      }
+    },
+    "news:2026-05-16-madison-square-garden-new-york-city-ny": {
+      "dependent-title": {
+        "event": "gig:2026-05-16-madison-square-garden-new-york-city-ny",
+        "eventTitle": "2026-05-16 Madison Square Garden, New York City, NY",
+        "title": "2026-05-11 Madison Square Garden, New York City, NY"
+      }
+    },
+    "news:essay-1975-12-31-tower-theater-philadelphia-pa": {
+      "date-parts": {
+        "missing": [
+          "1975"
+        ]
+      }
+    },
+    "news:essay-2012-11-15-centurylink-center-omaha-ne": {
+      "dependent-title": {
+        "eventTitle": "2012-11-15 CenturyLink Center, Omaha, NE",
+        "title": "2012-11-15 Centurylink Center, Omaha, NE"
+      }
+    },
+    "news:web-1973-12-22-uncle-al-s-erlton-lounge-cherry-hill-nj": {
+      "no-parent": true
+    },
+    "news:web-1973-12-22a-sir-morgan-s-cove-worcester-ma": {
+      "dependent-title": {
+        "eventTitle": "1973-12-22 Sir Morgan's Cove, Worcester, MA",
+        "title": "1973-12-22 Sir Morgans Cove, Worcester, MA"
+      }
+    },
+    "news:web-1975-08-14a-bottom-line-new-york-city-ny": {
+      "dependent-title": {
+        "eventTitle": "1978-08-14 Hampton Roads Coliseum, Hampton, VA",
+        "title": "1975-08-14 Bottom Line, New York City, NY (Early)"
+      }
+    },
+    "news:web-2024-06-01-san-siro-milan-italy": {
+      "dependent-title": {
+        "eventTitle": "2024-06-01 Stadio Giuseppe Meazza, Milan, Italy",
+        "title": "2024-06-01 San Siro Stadium, Milan, Italy"
+      }
+    },
+    "news:web-2024-06-03-san-siro-milan-italy": {
+      "dependent-title": {
+        "eventTitle": "2024-06-03 Stadio Giuseppe Meazza, Milan, Italy",
+        "title": "2024-06-03 San Siro Stadium, Milan, Italy"
+      }
+    },
+    "news:web-2026-04-07-kia-forum-inglewood-ca": {
+      "no-tags": true
+    },
+    "offstage:1973-02-28-memorial-civic-auditorium-stockton-ca": {
+      "dependent-title": {
+        "event": "gig:1973-02-28-memorial-civic-auditorium-stockton-ca",
+        "eventTitle": "1973-02-28 Stockton Memorial Civic Auditorium, Stockton, CA",
+        "title": "1973-02-28 Memorial Civic Auditorium, Stockton, CA"
+      }
+    },
+    "onstage:1972-12-07-correctional-facility-ossining-ny": {
+      "dependent-title": {
+        "event": "gig:1972-12-07-correctional-facility-ossining-ny",
+        "eventTitle": "1972-12-07 Ossining Correctional Facility, Chapel, Ossining, NY",
+        "title": "1972-12-07 Chapel, Ossining Correctional Facility, Ossining, NY"
+      }
+    },
+    "onstage:1973-02-16-boylan-gymnasium-west-long-branch-nj": {
+      "dependent-title": {
+        "event": "gig:1973-02-16-boylan-gymnasium-west-long-branch-nj",
+        "eventTitle": "1973-02-16 William T. Boylan Gymnasium, Monmouth College, West Long Branch, NJ",
+        "title": "1973-02-16 Boylan Gymnasium, Monmouth College, West Long Branch, NJ"
+      }
+    },
+    "onstage:1975-11-10-jai-alai-fronton-tampa-fl": {
+      "dependent-title": {
+        "event": "gig:1975-11-10-jai-alai-fronton-tampa-fl",
+        "eventTitle": "1975-11-10 Jai-Alai Fronton, Tampa, FL",
+        "title": "1975-11-10 Jai Alai Fronton, Tampa, FL"
+      }
+    },
+    "onstage:1975-11-11-jai-alai-fronton-miami-fl": {
+      "dependent-title": {
+        "event": "gig:1975-11-11-jai-alai-fronton-miami-fl",
+        "eventTitle": "1975-11-11 Jai-Alai Fronton, Miami, FL",
+        "title": "1975-11-11 Jai Alai Fronton, Miami, FL"
+      }
+    },
+    "onstage:1978-07-28-jai-alai-fronton-miami-fl": {
+      "dependent-title": {
+        "event": "gig:1978-07-28-jai-alai-fronton-miami-fl",
+        "eventTitle": "1978-07-28 Jai-Alai Fronton, Miami, FL",
+        "title": "1978-07-28 Jai Alai Fronton, Miami, FL"
+      }
+    },
+    "onstage:2025-06-24-reale-arena-donostia-san-sebastian-spain": {
+      "dependent-title": {
+        "event": "gig:2025-06-24-reale-arena-donostia-san-sebastian-spain",
+        "eventTitle": "2025-06-24 Reale Arena, Donostia-San Sebastián, Spain",
+        "title": "2025-06-21 Reale Arena, Donostia-San Sebastián, Spain"
+      }
+    },
+    "onstage:2026-03-24-youth-temple-ocean-grove-nj": {
+      "dependent-title": {
+        "event": "rehearsal:2026-03-24-youth-temple-ocean-grove-nj",
+        "eventTitle": "2026-03-24 Ocean Grove Youth Temple, Ocean Grove, NJ",
+        "title": "2026-03-21 Ocean Grove Youth Temple, Ocean Grove, NJ"
+      }
+    },
+    "ott:a-rainy-night-in-soho": {
+      "first-letter": "a"
+    },
+    "ott:i-want-you": {
+      "first-letter": "i"
+    },
+    "ott:streets-of-minneapolis": {
+      "first-letter": "s"
+    },
+    "playlist:spare-parts-overview": {
+      "no-tags": true
+    },
+    "recnote:1972-04-00b-mediasound-studios-new-york-city-ny": {
+      "dependent-title": {
+        "event": "recording:1972-04-00b-mediasound-studios-new-york-city-ny",
+        "eventTitle": "1972-04-00 Mediasound Studios, Studio C, New York City, NY",
+        "title": "1972-04-00 Mediasound Studios, Stucio C, New York City, NY"
+      }
+    },
+    "recnote:1973-01-29-914-sound-studios-blauvelt-ny": {
+      "dependent-title": {
+        "event": "recording:1973-01-29-914-sound-studios-blauvelt-ny",
+        "eventTitle": "1973-01-29 914 Sound Studios, Blauvelt, NY",
+        "title": "1972-01-29 914 Sound Studios, Blauvelt, NY"
+      }
+    },
+    "recnote:1973-01-30-914-sound-studios-blauvelt-ny": {
+      "dependent-title": {
+        "event": "recording:1973-01-30-914-sound-studios-blauvelt-ny",
+        "eventTitle": "1973-01-30 914 Sound Studios, Blauvelt, NY",
+        "title": "1972-01-30 914 Sound Studios, Blauvelt, NY"
+      }
+    },
+    "recnote:1979-12-05-power-station-new-york-city-ny": {
+      "dependent-title": {
+        "event": "recording:1979-12-05-power-station-new-york-city-ny",
+        "eventTitle": "1979-12-05 Power Station, New York City, NY",
+        "title": "1979 12 05 Power Station New York City Ny"
+      }
+    },
+    "recnote:1981-04-14-festhalle-frankfurt-germany": {
+      "dependent-title": {
+        "event": "gig:1981-04-14-festhalle-frankfurt-germany",
+        "eventTitle": "1981-04-14 Festhalle, Frankfurt, West Germany",
+        "title": "1981-04-14 Festhalle, Frankfurt, Germany"
+      }
+    },
+    "recnote:1987-04-04-thrill-hill-east-rumson-nj": {
+      "dependent-title": {
+        "event": "recording:1987-04-04-thrill-hill-east-rumson-nj",
+        "eventTitle": "1987-04-04 Thrill Hill East, Rumson, NJ",
+        "title": "1987-04-04, Thrill Hill East, Rumson, NJ"
+      }
+    },
+    "recnote:1998-08-24-boxwood-studio-colts-neck-nj": {
+      "dependent-title": {
+        "event": "recording:1998-08-24-boxwood-studio-colts-neck-nj",
+        "eventTitle": "1998-08-24 Boxwood Studio, Colts Neck, NJ",
+        "title": "1997-08-24 Boxwood Studio, Colts Neck, NJ"
+      }
+    },
+    "recnote:2026-04-26-moody-center-austin-tx": {
+      "dependent-title": {
+        "event": "gig:2026-04-26-moody-center-austin-tx",
+        "eventTitle": "2026-04-26 Moody Center, University Of Texas, Austin, TX",
+        "title": "2026-04-26 Moody Center, Austin, TX"
+      }
+    },
+    "recording:1984-09-00-shakedown-studios-new-york-city-ny": {
+      "no-tags": true
+    },
+    "relation:chubby-checker": {
+      "no-tags": true
+    },
+    "relation:david-mansfield": {
+      "no-tags": true
+    },
+    "relation:gladys-avignon": {
+      "no-tags": true
+    },
+    "relation:rob-demartin": {
+      "first-letter": "d"
+    },
+    "retail:a-more-perfect-union-credits": {
+      "no-tags": true
+    },
+    "retail:elvis-viva-las-vegas-soundtrack-release": {
+      "no-tags": true
+    },
+    "retail:float-away-with-the-friday-night-gods-addinfo": {
+      "no-tags": true
+    },
+    "retail:hammersmith-odeon-london-75-release": {
+      "no-tags": true
+    },
+    "retail:jerry-maguire-soundtrack-credits": {
+      "no-tags": true
+    },
+    "retail:pbs-exclusive-2005-ep-addinfo": {
+      "no-tags": true
+    },
+    "retail:she-came-to-me-soundtrack-overview": {
+      "no-tags": true
+    },
+    "retail:stories-from-a-rock-n-roll-heart-overview": {
+      "no-tags": true
+    },
+    "song:dinner-at-eight": {
+      "first-letter": "d"
+    },
+    "song:follow-the-sun": {
+      "first-letter": "f"
+    },
+    "song:two-of-us": {
+      "first-letter": "t"
+    },
+    "song:you-re-gonna-miss-me-when-i-m-gone": {
+      "first-letter": "y"
+    },
+    "story:story-1972-01-21-neptune-nj": {
+      "no-parent": true
+    },
+    "story:story-1972-08-10-new-york-city-ny": {
+      "no-parent": true
+    },
+    "story:story-1972-12-07-ossining-ny": {
+      "no-parent": true
+    },
+    "story:story-1973-01-09a-boston-ma": {
+      "no-parent": true
+    },
+    "story:story-1973-02-14-richmond-va": {
+      "no-parent": true
+    },
+    "story:story-1973-03-02-berkeley-ca": {
+      "no-parent": true
+    },
+    "story:story-1973-04-24-bryn-mawr-pa": {
+      "no-parent": true
+    },
+    "story:story-1973-05-31a-richmond-va": {
+      "no-parent": true
+    },
+    "story:story-1973-06-13-binghamton-ny": {
+      "no-parent": true
+    },
+    "story:story-1973-07-31-roslyn-ny": {
+      "no-parent": true
+    },
+    "story:story-1973-10-31-bryn-mawr-pa": {
+      "no-parent": true
+    },
+    "story:story-1974-01-06-cambridge-ma": {
+      "no-parent": true
+    },
+    "story:story-1974-01-29-nashville-tn": {
+      "no-parent": true
+    },
+    "story:story-1974-02-01-cleveland-oh": {
+      "no-parent": true
+    },
+    "story:story-1974-03-03-washington-dc": {
+      "no-parent": true
+    },
+    "story:story-1974-03-09-houston-tx": {
+      "no-parent": true
+    },
+    "story:story-1974-03-10-houston-tx": {
+      "no-parent": true
+    },
+    "story:story-1974-03-15-austin-tx": {
+      "no-parent": true
+    },
+    "story:story-1974-05-09-cambridge-ma": {
+      "no-parent": true
+    },
+    "story:story-1974-06-03-cleveland-oh": {
+      "no-parent": true
+    },
+    "story:story-1974-07-13-new-york-city-ny": {
+      "no-parent": true
+    },
+    "story:story-1974-10-04-lincoln-center-ny": {
+      "no-parent": true
+    },
+    "story:story-1974-10-11-gaithersburg-md": {
+      "no-parent": true
+    },
+    "story:story-1974-10-19-schenectady-ny": {
+      "no-parent": true
+    },
+    "story:story-1974-10-26-springfield-ma": {
+      "no-parent": true
+    },
+    "story:story-1974-10-29-boston-ma": {
+      "no-parent": true
+    },
+    "story:story-1975-02-23-westbury-ny": {
+      "no-parent": true
+    },
+    "story:story-1975-03-08-washington-dc": {
+      "no-parent": true
+    },
+    "story:story-1975-07-20-providence-ri": {
+      "no-parent": true
+    },
+    "story:story-1975-07-26-kutztown-pa": {
+      "no-parent": true
+    },
+    "story:story-1975-08-02-norfolk-va": {
+      "no-parent": true
+    },
+    "story:story-1975-08-08-akron-oh": {
+      "no-parent": true
+    },
+    "story:story-1975-08-10-cleveland-oh": {
+      "no-parent": true
+    },
+    "story:story-1975-08-14-new-york-city-ny": {
+      "no-parent": true
+    },
+    "story:story-1975-08-15-new-york-city-ny": {
+      "no-parent": true
+    },
+    "story:story-1975-08-17-new-york-city-ny": {
+      "no-parent": true
+    },
+    "story:story-1975-08-23-atlanta-ga": {
+      "no-parent": true
+    },
+    "story:story-1975-09-12-austin-tx": {
+      "no-parent": true
+    },
+    "story:story-1975-09-13-houston-tx": {
+      "no-parent": true
+    },
+    "story:story-1975-09-23-ann-arbor-mi": {
+      "no-parent": true
+    },
+    "story:story-1975-09-26-iowa-city-ia": {
+      "no-parent": true
+    },
+    "story:story-1975-10-02-milwaukee-wi": {
+      "no-parent": true
+    },
+    "story:story-1975-10-04-detroit-mi": {
+      "no-parent": true
+    },
+    "story:story-1975-10-11-red-bank-nj-early": {
+      "no-parent": true
+    },
+    "story:story-1975-10-11-red-bank-nj-late": {
+      "no-parent": true
+    },
+    "story:story-1975-10-17-los-angeles-ca": {
+      "no-parent": true
+    },
+    "story:story-1975-10-26-seattle-wa": {
+      "no-parent": true
+    },
+    "story:story-1975-11-01-santa-barbara-ca": {
+      "no-parent": true
+    },
+    "story:story-1975-11-10-tampa-fl": {
+      "no-parent": true
+    },
+    "story:story-1975-11-18-london-england": {
+      "no-parent": true
+    },
+    "story:story-1975-11-23-amsterdam-netherlands": {
+      "no-parent": true
+    },
+    "story:story-1975-12-02-boston-ma": {
+      "no-parent": true
+    },
+    "story:story-1975-12-05-washington-dc": {
+      "no-parent": true
+    },
+    "story:story-1975-12-27-philadelphia-pa": {
+      "no-parent": true
+    },
+    "story:story-1975-12-28-philadelphia-pa": {
+      "no-parent": true
+    },
+    "story:story-1975-12-30-philadelphia-pa": {
+      "no-parent": true
+    },
+    "story:story-1975-12-31-philadelphia-pa": {
+      "no-parent": true
+    },
+    "story:story-1976-04-22-burruss-auditorium-blacksburg-va": {
+      "no-parent": true
+    },
+    "story:story-1976-05-10-municipal-auditorium-theater-mobile": {
+      "no-parent": true
+    },
+    "story:story-1977-02-12-ottawa-on": {
+      "no-parent": true
+    },
+    "story:story-1977-02-13-toronto-on": {
+      "no-parent": true
+    },
+    "story:story-1977-02-15-detroit-mi": {
+      "no-parent": true
+    },
+    "story:story-1977-02-19-saint-paul-mn": {
+      "no-parent": true
+    },
+    "story:story-1977-02-22-milwaukee-wi": {
+      "no-parent": true
+    },
+    "story:story-1977-02-26-indianapolis-in": {
+      "no-parent": true
+    },
+    "story:story-1977-02-28-st-louis-mo": {
+      "no-parent": true
+    },
+    "story:story-1977-03-05-orlando-fl": {
+      "no-parent": true
+    },
+    "story:story-1977-03-10-toledo-oh": {
+      "no-parent": true
+    },
+    "story:story-1977-03-11-latrobe-pa": {
+      "no-parent": true
+    },
+    "story:story-1977-03-13-baltimore-md": {
+      "no-parent": true
+    },
+    "story:story-1977-03-14-poughkeepsie-ny": {
+      "no-parent": true
+    },
+    "story:story-1977-03-15-binghamton-ny": {
+      "no-parent": true
+    },
+    "story:story-1977-03-18-new-haven-ct": {
+      "no-parent": true
+    },
+    "story:story-1977-03-19-lewiston-me": {
+      "no-parent": true
+    },
+    "story:story-1977-03-22-boston-ma": {
+      "no-parent": true
+    },
+    "story:story-1977-03-23-boston-ma": {
+      "no-parent": true
+    },
+    "story:story-1977-03-24-boston-ma": {
+      "no-parent": true
+    },
+    "story:story-1977-03-25-boston-ma": {
+      "no-parent": true
+    },
+    "story:story-1977-12-31-passaic-nj": {
+      "no-parent": true
+    },
+    "story:story-1978-07-18-municipal-auditorium-jackson-ms": {
+      "dependent-title": {
+        "eventTitle": "1978-07-18 Jackson Municipal Auditorium, Jackson, MS",
+        "title": "1978-07-18 Municipal Auditorium, Jackson, MS"
+      }
+    },
+    "story:story-1978-09-29-birmingham-al": {
+      "no-parent": true
+    },
+    "story:story-1978-11-01-princeton-nj": {
+      "no-parent": true
+    },
+    "story:story-1978-11-02-largo-md": {
+      "no-parent": true
+    },
+    "story:story-1978-11-08-montreal-qc": {
+      "no-parent": true
+    },
+    "story:story-1978-11-10-st-bonaventure-ny": {
+      "no-parent": true
+    },
+    "story:story-1978-11-12-troy-ny": {
+      "no-parent": true
+    },
+    "story:story-1978-11-14-utica-ny": {
+      "no-parent": true
+    },
+    "story:story-1978-11-16-toronto-on": {
+      "no-parent": true
+    },
+    "story:story-1978-11-20-champaign-il": {
+      "no-parent": true
+    },
+    "story:story-1978-11-21-evanston-il": {
+      "no-parent": true
+    },
+    "story:story-1978-11-25-st-louis-mo": {
+      "no-parent": true
+    },
+    "story:story-1978-11-27-milwaukee-wi": {
+      "no-parent": true
+    },
+    "story:story-1978-11-28-madison-wi": {
+      "no-parent": true
+    },
+    "story:story-1978-11-29-saint-paul-mn": {
+      "no-parent": true
+    },
+    "story:story-1978-12-01-norman-ok": {
+      "no-parent": true
+    },
+    "story:story-1978-12-07-austin-tx": {
+      "no-parent": true
+    },
+    "story:story-1978-12-13-tucson-az": {
+      "no-parent": true
+    },
+    "story:story-1978-12-19-portland-or": {
+      "no-parent": true
+    },
+    "story:story-1978-12-20-seattle-wa": {
+      "no-parent": true
+    },
+    "story:story-1978-12-27-pittsburgh-pa": {
+      "no-parent": true
+    },
+    "story:story-1978-12-28-pittsburgh-pa": {
+      "no-parent": true
+    },
+    "story:story-1978-12-30-detroit-mi": {
+      "no-parent": true
+    },
+    "story:story-1978-12-31-cleveland-oh": {
+      "no-parent": true
+    },
+    "story:story-1981-04-14-festhalle-frankfurt-germany": {
+      "dependent-title": {
+        "eventTitle": "1981-04-14 Festhalle, Frankfurt, West Germany",
+        "title": "1981-04-14 Festhalle, Frankfurt, Germany"
+      }
+    },
+    "story:story-1981-06-04-wembley-arena-london-england": {
+      "no-parent": true
+    },
+    "story:story-1981-07-30-coliseum-richfield-oh": {
+      "no-parent": true
+    },
+    "venue:107-1-the-boss-studio-neptune-nj": {
+      "first-letter": "0-9"
+    },
+    "venue:park-werchter-belgium": {
+      "files-no-images": true
+    },
+    "venue:samson-stages-brooklyn-ny": {
+      "files-no-images": true
+    },
+    "venue:unknown-location-bayonne-nj": {
+      "first-letter": "u"
+    }
+  },
+  "reports": {
+    "date-parts": {
+      "count": 3,
+      "files": [
+        "REPORTING/MISSING-date-parts-in-tags-cleanedup.org"
+      ]
+    },
+    "dependent-title": {
+      "count": 39,
+      "files": [
+        "REPORTING/differences-detail-title-category-title-cleanedup.txt",
+        "REPORTING/DIFFERENCES-in-titles-between-year-and-detail-pages-CLEANEDUP.txt"
+      ]
+    },
+    "files-no-images": {
+      "count": 32,
+      "files": [
+        "REPORTING/MISMATCH-images-files-tag.org"
+      ]
+    },
+    "first-letter": {
+      "count": 10,
+      "files": [
+        "REPORTING/MISSING-first-character-tag-in-title.txt"
+      ]
+    },
+    "no-parent": {
+      "count": 105,
+      "files": [
+        "REPORTING/NO-PARENT-detail-pages.org"
+      ]
+    },
+    "no-tags": {
+      "count": 38,
+      "files": [
+        "REPORTING/MISSING-tags.txt"
+      ]
+    }
+  },
+  "run": {
+    "bruceparser": "0.20.0",
+    "commit": "87dbd04",
+    "date": "2026-11-15",
+    "feed": "1.2"
+  },
+  "site": "https://brucebase.wikidot.com"
+}
