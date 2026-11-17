@@ -529,7 +529,7 @@ Python over the mirror bb/2026-11-15, n/a; spec, checker: Playwright Chromium, n
 6. *Date tags:* only pages that are no show (batch 3 checks a show's).
 
 *Built:*
-- *BruceParser 0.19.0* (=edecd7e=, pushed, NOT published): =feed.sh= 1.1 adds =date-parts= ={missing, wrong}= and
+- *BruceParser 0.19.0* (=edecd7e=, pushed; its feed published 2026-11-17, feed repo =8ea33f1=, FORMAT.md =1babe4f=): =feed.sh= 1.1 adds =date-parts= ={missing, wrong}= and
   =files-no-images=. The run of 2026-11-15 gives 226 pages, 27 KB. Format 1 stays, because a reader ignores a key it
   does not know. =feed.sh= also leaves out a page whose name has no date (efc.sh calls every date tag of
   =news:web-shea-s-theatre-buffalo-ny= "wrong") and a page without tags (=news:web-2026-04-07-…=, already no-tags).
@@ -549,9 +549,9 @@ Python over the mirror bb/2026-11-15, n/a; spec, checker: Playwright Chromium, n
 
 ** The browser check of feed v2, branch 1, for vzell (rows from the mirror of 2026-11-15; unverified on the live wiki)
 
-*First:* the feed of BruceParser 0.19.0 must be on GitHub (=./publish-feed.sh= in BruceParser, your call). Until then
-the script reads the v1 feed and none of the rows below shows. Install the script from =feat/bb-feed-v2-kinds=; then
-☰ → Brucebase → Read again (the feed kept is a day old at most).
+The feed of BruceParser 0.19.0 is on GitHub since 2026-11-17 (=8ea33f1=; the raw file is byte-identical to the spec's
+fixture). Install the script from =feat/bb-feed-v2-kinds=; then ☰ → Brucebase → Read again, because a feed kept from
+before is used for up to a day.
 
 | Page                                                               | Step                                       | Expected                                                                                                                                 |
 |--------------------------------------------------------------------+--------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------|

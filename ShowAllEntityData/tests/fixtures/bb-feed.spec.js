@@ -21,7 +21,7 @@
 // and bb-feed-date-wrong ⚠️ (the two lists of the feed's `date-parts`, pages
 // that are no show only) and bb-feed-files ⚠️ (tagged "files", no picture).
 // tests/fixtures/bb-feed-2026-11-15-v2.json is BruceParser 0.19.0's feed of
-// the same run (not published yet).
+// the same run (published 2026-11-17; the raw file is byte-identical).
 
 const fs = require('fs');
 const os = require('os');

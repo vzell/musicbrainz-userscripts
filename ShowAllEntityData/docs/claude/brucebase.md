@@ -2386,7 +2386,8 @@ in org/bbp-parity.org, "Feed v2".
   `…_files`, all on.
 - **Tests:** `tests/fixtures/bb-feed.spec.js`, 6 more (22 in all). They use
   BruceParser 0.19.0's feed of the same run
-  (`tests/fixtures/bb-feed-2026-11-15-v2.json`, not published yet) and the
+  (`tests/fixtures/bb-feed-2026-11-15-v2.json`, byte-identical to the file
+  published on 2026-11-17, feed repo `8ea33f1`) and the
   Roxy venue fixture: its photos drop "files", and the date mark stays.
   `scripts/mutations/bb-feed.json` has 10 more entries; each fails its test.
 
