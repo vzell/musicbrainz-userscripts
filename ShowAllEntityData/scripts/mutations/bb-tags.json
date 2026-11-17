@@ -160,8 +160,8 @@
         "why": "The cloud and the tags line write /system:page-tags/tag/<tag>.",
         "edits": [
             {
-                "find": "        if (_isBbHost && (/^\\/\\d{4}#\\d{6}$/.test(href) || /^\\/system:page-tags\\/tag\\/[^/]+/.test(href))) href = `${window.location.origin}${href}`;\n",
-                "replace": "        if (_isBbHost && /^\\/\\d{4}#\\d{6}$/.test(href)) href = `${window.location.origin}${href}`;\n"
+                "find": "        if (_isBbHost && (/^\\/(?:\\d{4}|1949-64)#\\d{6}[a-z]?$/.test(href) || /^\\/system:page-tags\\/tag\\/[^/]+/.test(href))) href = `${window.location.origin}${href}`;\n",
+                "replace": "        if (_isBbHost && /^\\/(?:\\d{4}|1949-64)#\\d{6}[a-z]?$/.test(href)) href = `${window.location.origin}${href}`;\n"
             }
         ],
         "spec": "tests/fixtures/bb-tags.spec.js",

@@ -431,6 +431,19 @@ The fix, on a WSL2 host:
   must then name the NTP source and a recent sync;
 - run the check again: 0 jumps.
 
+Still jumping with =systemd-timesyncd= off (NB-3641, a notebook, 2026-11-17):
+=+500= to =+650 ms= every ~30 s, always forward, with no time daemon running.
+The kernel's clock source was =tsc=, which ran slow in the VM, and Hyper-V's
+own time sync (=hv_utils=) stepped it forward. With
+=echo hyperv_clocksource_tsc_page | sudo tee /sys/devices/system/clocksource/clocksource0/current_clocksource=
+the check gave 0 jumps in 60 s. That lasts until the next WSL restart; to keep
+it, =%UserProfile%\.wslconfig= gets =[wsl2]= with
+=kernelCommandLine = clocksource=hyperv_clocksource_tsc_page=, then
+=wsl --shutdown= once. Read the current source in
+=/sys/devices/system/clocksource/clocksource0/current_clocksource=. The failure
+it caused: =mb-shared-gate.spec.js= "two tabs share one schedule" (a 140 ms gap
+where ≥ 900 ms is asserted), 15 of 15 when run alone.
+
 * Reading the results
 
 - =npm run report= opens the last HTML report. It embeds per-test durations,

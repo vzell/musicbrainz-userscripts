@@ -7,6 +7,8 @@
 // window on Brucebase; on the page itself they were the site's own. They sit
 // in an event's "Info & Setlist", a release's "recorded July 6, 1981", a
 // song's text, and our tables' copies of them. The click stays the site's.
+// Since 2026-11-17 an anchor with a letter (`/1985#310385a`: two entries of
+// one date) and the early years' page (`/1949-64#230949`) are taken too.
 // docs/claude/detail-pages.md, "The Brucebase date anchor".
 
 const fs = require('fs');
@@ -77,6 +79,62 @@ async function loadWithShowLinks(page, settings = {}) {
     });
     return { a: page.locator('a.p8-a'), b: page.locator('a.p8-b') };
 }
+
+test.describe('Brucebase show links with a lettered anchor, and the 1949-64 page (2026-11-17)', () => {
+    test('taken: a lettered anchor, relative or absolute, and 1949-64; not: two letters, five digits, the year page alone', async ({ page }) => {
+        await loadBbEventPage(page, 'gig-1978-07-07', { settingsOverride: { sa_pop_ext: true } });
+        const r = await page.evaluate(() => Object.fromEntries([
+            '/1985#310385a', 'https://brucebase.wikidot.com/1972#000472b', '/1949-64#230949',
+            'https://brucebase.wikidot.com/1949-64#230949', '/1985#310385ab', '/1985#31038', '/1949-64',
+        ].map((h) => {
+            const a = document.createElement('a');
+            a.setAttribute('href', h);
+            document.querySelector('#page-content').appendChild(a);
+            const x = window.__saTest.popResolve(a);
+            return [h, !!(x && x.includes('bbdate'))];
+        })));
+        expect(r).toEqual({
+            '/1985#310385a': true, 'https://brucebase.wikidot.com/1972#000472b': true, '/1949-64#230949': true,
+            'https://brucebase.wikidot.com/1949-64#230949': true, '/1985#310385ab': false, '/1985#31038': false, '/1949-64': false,
+        });
+    });
+
+    test('the window of a lettered anchor shows its own entry, not its sibling of the same date', async ({ page }) => {
+        await page.context().addInitScript((r) => { window.__gmXhrResponses = r; },
+            { [YEAR]: { status: 200, responseHeaders: HTML_HEADERS, responseText: fixture('bb-year-1985.html') } });
+        await loadBbEventPage(page, 'gig-1978-07-07', { settingsOverride: { sa_pop_ext: true, sa_rich_tooltip_delay_ms: 0 } });
+        await page.evaluate(() => {
+            const p = document.createElement('p');
+            p.innerHTML = '<a class="lt-a" href="/1985#310385a">March 31, 1985 (a)</a> and <a class="lt-b" href="/1985#310385b">(b)</a>';
+            document.querySelector('#page-content').prepend(p);
+        });
+        await ctrlHover(page, page.locator('a.lt-b'));
+        await expect(card(page)).toBeVisible();
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator('.mb-dp-area')).toContainText('1985-03-31');
+        await expect(dialog(page).locator('.mb-dp-xtitle')).toContainText('QE II JUBILEE SPORTS CENTRE');
+        await expect(dialog(page).locator('.mb-dp-xtitle')).not.toContainText('VELODROME');
+        expect(await yearAsks(page)).toBe(1);
+    });
+
+    test('a 1949-64 anchor reads the 1949-64 page', async ({ page }) => {
+        // The page's own shape is a year page's; the 1985 fixture stands in
+        // for it under the 1949-64 address (no 1949-64 year fixture).
+        const early = 'https://brucebase.wikidot.com/1949-64';
+        await page.context().addInitScript((r) => { window.__gmXhrResponses = r; },
+            { [early]: { status: 200, responseHeaders: HTML_HEADERS, responseText: fixture('bb-year-1985.html') } });
+        await loadBbEventPage(page, 'gig-1978-07-07', { settingsOverride: { sa_pop_ext: true, sa_rich_tooltip_delay_ms: 0 } });
+        await page.evaluate(() => {
+            const p = document.createElement('p');
+            p.innerHTML = '<a class="lt-e" href="/1949-64#130185">early</a>';
+            document.querySelector('#page-content').prepend(p);
+        });
+        await ctrlHover(page, page.locator('a.lt-e'));
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator('.mb-dp-area')).toContainText('1985-01-13');
+        expect(await page.evaluate(u => (window.__gmXhrLog || []).filter(r => r.url === u).length, early)).toBe(1);
+    });
+});
 
 test.describe('Brucebase show links on Brucebase pages (Phase 8)', () => {
     test('the gig\'s own "Info & Setlist" link is a show link the previews take', async ({ page }) => {

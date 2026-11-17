@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-11-17",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Brucebase date links with a letter (`brucebase.wikidot.com/1985#310385b`, one of several shows of one date; 338 entries of the wiki have one) and links to the early years' page (`…/1949-64#230949`) had no card and no window: the reader turned them away although it reads those shows fine. They now preview like every other date link, on Brucebase, on MusicBrainz (an event's \"reviews\" link) and in windows, and each shows its own show, not the other one of the same date."
+        ]
+      }
+    ]
+  }
+]

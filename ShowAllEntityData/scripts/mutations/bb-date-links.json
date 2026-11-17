@@ -17,7 +17,7 @@
         "why": "The wiki writes \"/1978#070778\" relative; without the BB branch _extTarget() drops every non-absolute href.",
         "edits": [
             {
-                "find": "        if (_isBbHost && (/^\\/\\d{4}#\\d{6}$/.test(href) || /^\\/system:page-tags\\/tag\\/[^/]+/.test(href))) href = `${window.location.origin}${href}`;\n",
+                "find": "        if (_isBbHost && (/^\\/(?:\\d{4}|1949-64)#\\d{6}[a-z]?$/.test(href) || /^\\/system:page-tags\\/tag\\/[^/]+/.test(href))) href = `${window.location.origin}${href}`;\n",
                 "replace": "        if (_isBbHost && /^\\/system:page-tags\\/tag\\/[^/]+/.test(href)) href = `${window.location.origin}${href}`;\n"
             }
         ],
@@ -30,7 +30,7 @@
         "why": "Only the show shape is another reader's: a relative /1978 (the year page) or /gig:… must stay the site's own (no ext card claiming it before the Brucebase sources).",
         "edits": [
             {
-                "find": "        if (_isBbHost && (/^\\/\\d{4}#\\d{6}$/.test(href) || /^\\/system:page-tags\\/tag\\/[^/]+/.test(href))) href = `${window.location.origin}${href}`;\n",
+                "find": "        if (_isBbHost && (/^\\/(?:\\d{4}|1949-64)#\\d{6}[a-z]?$/.test(href) || /^\\/system:page-tags\\/tag\\/[^/]+/.test(href))) href = `${window.location.origin}${href}`;\n",
                 "replace": "        if (_isBbHost && /^\\/[^/]/.test(href)) href = `${window.location.origin}${href}`;\n"
             },
             {
@@ -41,5 +41,57 @@
         "spec": "tests/fixtures/bb-date-links.spec.js",
         "grep": "Phase 8",
         "expect": "fail"
+    },
+    {
+        "name": "bbdate: a lettered anchor turned away again",
+        "why": "An anchor with a letter (/1985#310385b) is a show of its year page too.",
+        "edits": [
+            {
+                "find": "&& /^#\\d{6}[a-z]?$/.test(u.hash);",
+                "replace": "&& /^#\\d{6}$/.test(u.hash);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-date-links.spec.js",
+        "grep": "the window of a lettered anchor",
+        "expect": "fail"
+    },
+    {
+        "name": "bbdate: the 1949-64 page turned away again",
+        "why": "The early years' combined page (/1949-64#230949) is a year page.",
+        "edits": [
+            {
+                "find": "    const _EXT_BB_DATE_RE = /^\\/(\\d{4}|1949-64)$/;",
+                "replace": "    const _EXT_BB_DATE_RE = /^\\/(\\d{4})$/;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-date-links.spec.js",
+        "grep": "a 1949-64 anchor reads",
+        "expect": "fail"
+    },
+    {
+        "name": "bbdate: a relative lettered anchor not made absolute",
+        "why": "Brucebase writes a show link relative (/1985#310385b): read against the page, or it is no other site.",
+        "edits": [
+            {
+                "find": "(/^\\/(?:\\d{4}|1949-64)#\\d{6}[a-z]?$/.test(href) ||",
+                "replace": "(/^\\/\\d{4}#\\d{6}$/.test(href) ||"
+            }
+        ],
+        "spec": "tests/fixtures/bb-date-links.spec.js",
+        "grep": "taken: a lettered anchor",
+        "expect": "fail"
+    },
+    {
+        "name": "bbdate: any letters after the anchor",
+        "why": "One letter at most; '/1985#310385ab' is no show link. The test writes it relative, and the relative-link pattern (one letter) already refuses it, so the reader's own limit is covered and no spec can see it.",
+        "edits": [
+            {
+                "find": "&& /^#\\d{6}[a-z]?$/.test(u.hash);",
+                "replace": "&& /^#\\d{6}[a-z]*$/.test(u.hash);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-date-links.spec.js",
+        "grep": "taken: a lettered anchor",
+        "expect": "pass"
     }
 ]
