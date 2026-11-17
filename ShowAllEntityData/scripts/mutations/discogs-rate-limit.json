@@ -89,5 +89,44 @@
         "spec": "tests/fixtures/discogs-rate-limit.spec.js",
         "grep": "a slot far in the future",
         "expect": "fail"
+    },
+    {
+        "name": "ext gate: our slot not written for the other tabs (a wall-clock step)",
+        "why": "With the wall clock stepped 2.8 s after the first ask, the slot must still be written back one spacing after the last ask on the steady clock.",
+        "edits": [
+            {
+                "find": "            GM_setValue(_extSharedSlotKey(host), at);",
+                "replace": "            void at;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-rate-limit.spec.js",
+        "grep": "a step of the wall clock",
+        "expect": "fail"
+    },
+    {
+        "name": "ext gate: our slot written without the spacing (a wall-clock step)",
+        "why": "The same lower bound as the reservation test's, read on the steady clock across a 2.8 s step of the wall clock.",
+        "edits": [
+            {
+                "find": "        _extPushSlot(host, at + _extSpacingMs(host));",
+                "replace": "        _extPushSlot(host, at);"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-rate-limit.spec.js",
+        "grep": "a step of the wall clock",
+        "expect": "fail"
+    },
+    {
+        "name": "ext gate: slots booked on the wall clock again",
+        "why": "_steadyNow() is what keeps a wall-clock step out of the pacing (2026-11-09); booked on Date.now() the stepped clock moves the slot 2.8 s.",
+        "edits": [
+            {
+                "find": "        return p && typeof p.timeOrigin === 'number' && typeof p.now === 'function' ? p.timeOrigin + p.now() : Date.now();",
+                "replace": "        return Date.now();"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-rate-limit.spec.js",
+        "grep": "a step of the wall clock",
+        "expect": "fail"
     }
 ]
