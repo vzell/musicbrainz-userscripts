@@ -2290,10 +2290,14 @@ Mockup https://claude.ai/artifact/65urMwgWSb6zq6xJa9Mf4x; vzell's answers of
   - the ☰ menu's new Brucebase group (`_SAED_GROUPS` `bb`; `_bbFeedSaedRow()`,
     `#mb-saed-bbfeed-btn`), which shows when a page has no findings.
 
-  The line reads "Brucebase feed · run of 2026-11-15 · 192 pages · read
-  today · Read again", or "Brucebase feed: not loaded (GitHub answered 404)
-  · using the run of … · Retry". From 14 days on (`_BB_FEED_OLD_DAYS`) the
-  line and every card add "N days old".
+  The line reads "Brucebase feed · run of 2026-11-15 · BruceParser 0.19.0 ·
+  226 pages · read today · Read again", or "Brucebase feed: not loaded
+  (GitHub answered 404) · using the run of … · Retry". From 14 days on
+  (`_BB_FEED_OLD_DAYS`) the line and every card add "N days old". The
+  BruceParser version (`run.bruceparser`, vzell, 2026-11-17) tells two files
+  of one run apart: 0.18.0 and 0.19.0 both wrote the run of 2026-11-15. The
+  line's hover text (`detail`, `_bbFeedVersionText()`) names the rest: the
+  `feed.sh` version and commit, when the file was read, its pages per kind.
 - **The probe** (`scripts/probe-bb-feed.py FEED RUN_DIR OUT`, output
   `debug/probe-bb-feed.json`):
   - all 192 pages exist in the mirror, and every kind holds on its page;

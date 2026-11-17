@@ -28346,18 +28346,45 @@
     function _bbFeedStatus() {
         _bbFeedReadKept();
         if (!_bbFeedOn()) return null;
-        if (_bbFeed.loading) return { bad: false, text: 'Brucebase feed · reading …', action: '' };
-        const kept = _bbFeed.data
-            ? `run of ${_bbFeed.data.run.date}${_bbFeedAgeDays() >= _BB_FEED_OLD_DAYS ? ` · ${_bbFeedAgeDays()} days old` : ''} · ${Object.keys(_bbFeed.data.pages).length} pages`
+        if (_bbFeed.loading) return { bad: false, text: 'Brucebase feed · reading …', action: '', detail: '' };
+        const run = _bbFeed.data ? _bbFeed.data.run : null;
+        // The BruceParser version tells two files of one run apart (vzell,
+        // 2026-11-17): 0.18.0 and 0.19.0 both wrote the run of 2026-11-15.
+        const kept = run
+            ? `run of ${run.date}${_bbFeedAgeDays() >= _BB_FEED_OLD_DAYS ? ` · ${_bbFeedAgeDays()} days old` : ''}` +
+              `${run.bruceparser ? ` · BruceParser ${run.bruceparser}` : ''} · ${Object.keys(_bbFeed.data.pages).length} pages`
             : '';
+        const detail = _bbFeedVersionText();
         if (_bbFeed.err) {
-            return { bad: true, text: `Brucebase feed: not loaded (${_bbFeed.err})${kept ? ` · using the ${kept}` : ''}`, action: 'Retry' };
+            return { bad: true, text: `Brucebase feed: not loaded (${_bbFeed.err})${kept ? ` · using the ${kept}` : ''}`, action: 'Retry', detail };
         }
-        if (!_bbFeed.data) return { bad: false, text: 'Brucebase feed · not read yet', action: 'Read now' };
+        if (!_bbFeed.data) return { bad: false, text: 'Brucebase feed · not read yet', action: 'Read now', detail };
         const when = new Date(_bbFeed.at);
         const today = new Date();
         const read = when.toDateString() === today.toDateString() ? 'read today' : `read ${when.toISOString().slice(0, 10)}`;
-        return { bad: false, text: `Brucebase feed · ${kept} · ${read}`, action: 'Read again' };
+        return { bad: false, text: `Brucebase feed · ${kept} · ${read}`, action: 'Read again', detail };
+    }
+
+    /**
+     * Which file is kept, in words, for the hover text of the feed's line:
+     * the run, the BruceParser version, `feed.sh`'s version and commit, when
+     * it was read, and its pages per kind. '' without a feed.
+     *
+     * @returns {string} "The kept file: the run of 2026-11-15, written by
+     *   BruceParser 0.19.0 (feed.sh 1.1, commit edecd7e), read 2026-11-17
+     *   19:58. Pages: date-parts 3, …"
+     */
+    function _bbFeedVersionText() {
+        if (!_bbFeed.data) return '';
+        const run = _bbFeed.data.run || {};
+        const by = [run.feed ? `feed.sh ${run.feed}` : '', run.commit ? `commit ${run.commit}` : ''].filter(Boolean).join(', ');
+        const reps = _bbFeed.data.reports && typeof _bbFeed.data.reports === 'object' ? _bbFeed.data.reports : {};
+        const counts = Object.keys(reps).sort().map(k => `${k} ${reps[k] && reps[k].count != null ? reps[k].count : '?'}`).join(', ');
+        const at = _bbFeed.at ? new Date(_bbFeed.at) : null;
+        const pad = n => String(n).padStart(2, '0');
+        const read = at ? ` read ${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())} ${pad(at.getHours())}:${pad(at.getMinutes())}.` : '';
+        return `The kept file: the run of ${run.date}, written by BruceParser ${run.bruceparser || '?'}${by ? ` (${by})` : ''},${read}` +
+            `${counts ? ` Pages: ${counts}.` : ''}`;
     }
 
     /**
@@ -28385,7 +28412,7 @@
         }
         row.textContent = `${st.bad ? '⚠ ' : ''}${st.text}${st.action ? ` · ${st.action}` : ''}`;
         row.classList.toggle('mb-bb-feed-bad', st.bad);
-        _setTip(row, `${st.action ? `${st.action}: one request to raw.githubusercontent.com. ` : ''}The feed is BruceParser's full read of Brucebase (github.com/vzell/brucebase-feed); its marks name the run they come from.`);
+        _setTip(row, `${st.action ? `${st.action}: one request to raw.githubusercontent.com. ` : ''}The feed is BruceParser's full read of Brucebase (github.com/vzell/brucebase-feed); its marks name the run they come from.${st.detail ? `\n${st.detail}` : ''}`);
     }
 
     /**
@@ -115329,7 +115356,7 @@ a { color: #1565c0; }`;
      * @param {Array<{f: object, n: number, state: string}>} list
      * @param {?{done: boolean, text: string}} [styleRow] - The WARNING menu's
      *   "Check title style" row (`_titleStyleMenuRow()`), first.
-     * @param {?{bad: boolean, text: string, action: string}} [feedLine] - The
+     * @param {?{bad: boolean, text: string, action: string, detail?: string}} [feedLine] - The
      *   Brucebase feed's line (`_bbFeedStatus()`), last; a click reads the
      *   feed again (Retry after a failure).
      */
@@ -115375,7 +115402,7 @@ a { color: #1565c0; }`;
             feed.type = 'button';
             feed.className = `mb-findings-menu-item mb-findings-feed-item${feedLine.bad ? ' mb-bb-feed-bad' : ''}`;
             feed.textContent = `${feedLine.text}${feedLine.action ? ` · ${feedLine.action}` : ''}`;
-            _setTip(feed, `${feedLine.action ? `${feedLine.action}: one request to raw.githubusercontent.com. ` : ''}The Brucebase feed is BruceParser's full read of the wiki (github.com/vzell/brucebase-feed).`);
+            _setTip(feed, `${feedLine.action ? `${feedLine.action}: one request to raw.githubusercontent.com. ` : ''}The Brucebase feed is BruceParser's full read of the wiki (github.com/vzell/brucebase-feed).${feedLine.detail ? `\n${feedLine.detail}` : ''}`);
             menu.adopt(feed);
             feed.setAttribute('role', 'menuitem');
             feed.addEventListener('click', () => { if (feedLine.action) _bbFeedLoad({ force: true }); });

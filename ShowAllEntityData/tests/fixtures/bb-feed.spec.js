@@ -202,7 +202,10 @@ test.describe('the Brucebase feed: reading it', () => {
         await expect.poll(async () => (await page.evaluate(() => window.__saTest.bbFeed())).err).toBe('GitHub answered 404');
         const st = await page.evaluate(() => window.__saTest.bbFeed());
         expect(st.date, 'the old feed is kept').toBe('2026-11-15');
-        expect(st.status).toEqual({ bad: true, text: expect.stringMatching(/^Brucebase feed: not loaded \(GitHub answered 404\) · using the run of 2026-11-15/), action: 'Retry' });
+        expect(st.status).toEqual({
+            bad: true, text: expect.stringMatching(/^Brucebase feed: not loaded \(GitHub answered 404\) · using the run of 2026-11-15 · (\d+ days old · )?BruceParser 0\.18\.0 · /),
+            action: 'Retry', detail: expect.stringContaining('written by BruceParser 0.18.0 (feed.sh 1.0, commit e3f821a)'),
+        });
         // Its marks still come from the kept feed.
         expect((await feedCells(page, 'Event')).map(r => r.name).sort()).toEqual([MEDIASOUND, PT_PLEASANT].sort());
         // Within the hour, no second try; Retry (force) asks at once.
@@ -256,7 +259,7 @@ test.describe('the Brucebase feed: rows', () => {
         await expect.poll(async () => (await findingRowState(page)).visible).toBe(all);
         // The menus' line names the run.
         const line = await page.locator('#mb-findings-error-menu-btn-panel .mb-findings-feed-item').textContent();
-        expect(line).toMatch(/^Brucebase feed · run of 2026-11-15 · \d+ days old · 192 pages · read today · Read again$|^Brucebase feed · run of 2026-11-15 · 192 pages · read today · Read again$/);
+        expect(line).toMatch(/^Brucebase feed · run of 2026-11-15 · (\d+ days old · )?BruceParser 0\.18\.0 · 192 pages · read today · Read again$/);
     });
 
     test('the stamp survives a filter re-render; the tint setting off keeps the stamp and the menu row, without the tint', async ({ page }) => {
@@ -418,7 +421,9 @@ test.describe('the Brucebase feed: heads, the window, the ☰ row', () => {
         const row = page.locator('#mb-saed-bbfeed-btn');
         await expect(row).toHaveCount(1);
         expect(await row.evaluate(el => el.closest('.mb-saed-group').dataset.mbGroup)).toBe('bb');
-        await expect(row).toHaveText(/^Brucebase feed · run of 2026-11-15 · (\d+ days old · )?192 pages · read today · Read again$/);
+        await expect(row).toHaveText(/^Brucebase feed · run of 2026-11-15 · (\d+ days old · )?BruceParser 0\.18\.0 · 192 pages · read today · Read again$/);
+        // Which file is kept, in the hover text (vzell, 2026-11-17).
+        expect(await row.getAttribute('title')).toMatch(/\nThe kept file: the run of 2026-11-15, written by BruceParser 0\.18\.0 \(feed\.sh 1\.0, commit e3f821a\), read \d{4}-\d\d-\d\d \d\d:\d\d\. Pages: dependent-title 39, first-letter 10, no-parent 105, no-tags 38\.$/);
         await clickToolbarItem(page, '#mb-saed-bbfeed-btn');
         await expect.poll(() => feedAsks(page)).toBe(1);
     });
@@ -501,6 +506,14 @@ test.describe('the Brucebase feed 1.1: date tags and the files tag', () => {
         expect((await findingRow(page, 'error', 'bb-feed-date-missing')).count).toBe(1);
         expect((await findingRow(page, 'warn', 'bb-feed-date-wrong')).count).toBe(1);
         expect((await findingRow(page, 'warn', 'bb-feed-files')).count).toBe(1);
+    });
+
+    test('the ☰ line names the BruceParser version of the file kept: 0.19.0 against 0.18.0 for one run', async ({ page }) => {
+        await load1972(page, feedOn(REAL2));
+        const row = page.locator('#mb-saed-bbfeed-btn');
+        await expect(row).toHaveText(/^Brucebase feed · run of 2026-11-15 · (\d+ days old · )?BruceParser 0\.19\.0 · 226 pages · read today · Read again$/);
+        expect(await row.getAttribute('title')).toContain('written by BruceParser 0.19.0 (feed.sh 1.1, commit edecd7e)');
+        expect(await row.getAttribute('title')).toContain('Pages: date-parts 3, dependent-title 39, files-no-images 32, first-letter 10, no-parent 105, no-tags 38.');
     });
 
     test('a switch off: the date-wrong finding goes, date-missing stays', async ({ page }) => {

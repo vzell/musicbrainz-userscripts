@@ -3915,10 +3915,13 @@ site.
   stops. The ❌ / ⚠️ menus end with a line saying why ("Brucebase feed: not
   loaded (GitHub answered 404)"), with *Retry*; an earlier copy is still used.
   The ☰ menu's **Brucebase** group has the same line on every Brucebase page
-  ("Brucebase feed · run of 2026-11-15 · 192 pages · read today · Read
-  again"). A failed read is tried again after an hour.
+  ("Brucebase feed · run of 2026-11-15 · BruceParser 0.19.0 · 226 pages ·
+  read today · Read again"). The BruceParser version tells two files of one
+  run apart; the line's hover text names the whole file (its `feed.sh`
+  version and commit, when it was read, its pages per kind). A failed read
+  is tried again after an hour.
 - **Settings:** *Read the Brucebase feed* (⚙️ Settings → 📚 BRUCEBASE) turns it
-  off: no request, no mark. Each of the four findings has its own switch in
+  off: no request, no mark. Each of the seven findings has its own switch in
   ⚠️ Findings, and *Highlight cells of Brucebase pages the Brucebase feed
   names* is their tint.
 - **Date tags and the "files" tag** (since the feed of BruceParser 0.19.0):
