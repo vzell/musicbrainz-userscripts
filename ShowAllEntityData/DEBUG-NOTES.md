@@ -29986,3 +29986,22 @@ Env: 2026-11-17T19:20+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58
   as the script does. On the "news" tag page that was 17 shows; the checker found it (42 against 25).
 - **Not followed up:** `news:`, `media:` and `files:` pages are `bb-page` (no head), so their own page shows no mark;
   their windows and the tag pages do.
+
+## 2026-11-17 — Brucebase date links with a lettered anchor, and 1949-64, had no window (fix/bb-date-lettered-anchors)
+
+Env: 2026-11-17T22:15+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright Chromium (chromium-fixtures), no Tampermonkey (GM stubs)
+
+- **Symptom** (found while building feed v2, branch 2): a link to a year page's anchor with a letter (`/1972#000472b`,
+  `/1985#310385b`) had no card and no window. Neither did any link to the early years' page (`/1949-64#230949`).
+- **Cause:** `_extBbDateTest()` asked for `#\d{6}` and `_EXT_BB_DATE_RE` for a four-digit year. The relative-link rule
+  on Brucebase (`/^\/\d{4}#\d{6}$/`) had the same limit. `_extBbParseYear()` reads lettered anchors and 1949-64 fine:
+  only the test turned them away. 338 year entries of the run of 2026-11-15 have a letter.
+- **Fix:** all three patterns take `(\d{4}|1949-64)` and `\d{6}[a-z]?`. On MusicBrainz too: an event's "reviews" link
+  with a letter now previews, as the six-digit ones did.
+- **Tests:** `bb-date-links.spec.js` 3 more:
+  - which links are taken;
+  - a lettered anchor's window shows its own entry (1985-03-31 b, not a);
+  - a 1949-64 anchor reads the 1949-64 page.
+
+  `scripts/mutations/bb-date-links.json` has 4 more entries (one `"expect": "pass"`: two letters are already refused
+  by the relative-link pattern). Three older finds that held the old pattern are rewritten.

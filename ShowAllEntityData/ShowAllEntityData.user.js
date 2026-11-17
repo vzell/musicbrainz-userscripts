@@ -96675,7 +96675,7 @@
     // nothing.
 
     /** A Brucebase year page with a show anchor: `/2025#261025`. */
-    const _EXT_BB_DATE_RE = /^\/(\d{4})$/;
+    const _EXT_BB_DATE_RE = /^\/(\d{4}|1949-64)$/;
 
     /** The year page's own cap (U0 X8: a late 1978 show sits past 300 KB). */
     const _EXT_BB_MAX_BYTES = 1024 * 1024;
@@ -96694,13 +96694,17 @@
     const _extBbYears = new Map();
 
     /**
-     * A Brucebase year page link naming a show (`/<year>#<ddmmyy>`).
+     * A Brucebase year page link naming a show (`/<year>#<ddmmyy>`): also an
+     * anchor with a letter (`/1972#000472b`: two or more entries of one
+     * date, 338 of them in the run of 2026-11-15) and the combined page of
+     * the early years (`/1949-64#230949`), which `_extBbParseYear()` read
+     * all along and this test turned away until 2026-11-17.
      *
      * @param {URL} u
      * @returns {boolean}
      */
     function _extBbDateTest(u) {
-        return u.hostname.toLowerCase() === 'brucebase.wikidot.com' && _EXT_BB_DATE_RE.test(u.pathname) && /^#\d{6}$/.test(u.hash);
+        return u.hostname.toLowerCase() === 'brucebase.wikidot.com' && _EXT_BB_DATE_RE.test(u.pathname) && /^#\d{6}[a-z]?$/.test(u.hash);
     }
 
     /**
@@ -97997,7 +98001,7 @@
         // shape: the site's other relative links are its own pages. A tag's
         // page too (`/system:page-tags/tag/<tag>`: the cloud, the tags line
         // under every page; the `bbtag` reader's, Phase 11).
-        if (_isBbHost && (/^\/\d{4}#\d{6}$/.test(href) || /^\/system:page-tags\/tag\/[^/]+/.test(href))) href = `${window.location.origin}${href}`;
+        if (_isBbHost && (/^\/(?:\d{4}|1949-64)#\d{6}[a-z]?$/.test(href) || /^\/system:page-tags\/tag\/[^/]+/.test(href))) href = `${window.location.origin}${href}`;
         if (!/^https?:\/\//i.test(href)) return null;
         let u;
         try {

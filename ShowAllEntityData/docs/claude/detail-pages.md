@@ -3591,7 +3591,13 @@ the header's `@connect` and `_EXT_CONNECT_HOSTS` (the parent domain covers
   docs/claude/brucebase.md, "Tag pages".
 - **The Brucebase date anchor (`_extBbDateTest()`, `_extBbDateLoad()`; U0
   X8).** MusicBrainz links a show as `/<year>#<ddmmyy>`: the year page,
-  scrolled to `<a name="ddmmyy">`. `_extBbYear()` reads the year page ONCE
+  scrolled to `<a name="ddmmyy">`. Since 2026-11-17 the test also takes an
+  anchor with a letter (`#310385b`: two or more entries of one date, 338 in
+  the run of 2026-11-15) and the early years' page `/1949-64`
+  (`_EXT_BB_DATE_RE`). The parser read both all along; the test turned them
+  away, so such a link had no card and no window. The relative form on
+  Brucebase (`/1972#000472b`) is made absolute by the same widened
+  pattern. `_extBbYear()` reads the year page ONCE
   (as https, which the site redirects http to; `_EXT_BB_MAX_BYTES` 1 MB; 1 to
   7.5 s, hence its `loadingNote`) and `_extBbParseYear()` parses every show
   in it; the year is kept by URL in `_extBbYears` for the page load (a
