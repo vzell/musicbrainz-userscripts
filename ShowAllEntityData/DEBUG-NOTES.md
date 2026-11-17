@@ -29943,3 +29943,36 @@ Env: 2026-11-17T19:37:31–19:43:25+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (L
   `c3f92427` (2026-11-09 17:24, after that refresh); the remaining match is the Unicode picker's Ctrl+U guard, text
   fields only on purpose. Rewritten as the fixed shape plus `saed-unicode-typing`; `eh-menu-items` count 2; twelve
   new anchors: 68/68, re-pinned, lines updated.
+
+## 2026-11-17 — Link previews honour the shared last-write time (C7, `mbLastWrite`) (feat/mb-last-write)
+
+Env: 2026-11-17T20:42–20:56+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · Playwright 1.62.1, Chromium 151.0.7922.34, no Tampermonkey (GM stubs) · code reading of upstream `0693aea`: n/a.
+
+- **Why:** majkinetor built convention C7 on #938 (2026-11-17). A script that writes to MusicBrainz sets
+  `localStorage['mbLastWrite']` to `Date.now()`, and every answer kept before it is a miss. Before this change a
+  card hovered after rating the artist in Event Horizon showed the old rating for up to `sa_pop_mb_ttl_hours` (24 h).
+- **Who sets the key** (upstream code at `0693aea`): only Event Horizon, from `kpWrote()` at 12 sites (ratings, tag
+  votes, alias POSTs, cancelling an edit, collections, edit votes). Apollo, Group Therapy and MusicBrainz's own forms
+  set nothing, so a relationship or URL edit made there drops nothing yet. SAED's own POSTs all go to Brucebase
+  (wikidot), never to MusicBrainz, so SAED only reads the key.
+- **What:** `_mbKeptStale(key, at)` is true for a key in `_MB_LAST_WRITE_KEYS` (`pop:` except `pop:img:`,
+  `rg-releases:`, `rg-facts:`, `list:`) fetched at or before the last write; never while the key is absent. It is
+  checked at every short-circuit: `_rgIdbGet()` (the one IndexedDB read), and the memory of `_mbLoad()`,
+  `_rgReleasesLoad()` (no `prev` carried over), `_rgFactsLoad()` and `_mbPagedStart()` (rows only; a kept failure
+  stays until ⟳).
+- **Scope, by vzell's choice:** left out are the 30-day bulk stores (`rel-ws2`, `ms-rec-len`, "Recording of"),
+  which no write EH reports can change and whose drop would re-ask a whole table; the external readers (`ext:`,
+  `ext-…:`); and the Wikidata picture (`pop:img:`).
+- **Audit of the 85 `status === 'done'` checks:** the rest only paint, or are outside the key list (the event RG
+  search, `ext:wd-claims`, `pop:img:`). `_mbHistBase()` returns only the page's "Refine this search" query, which no
+  vote changes, so it keeps no guard. Planned but dropped: a guard in `_eiStart()`'s `fromRels()`. No spec could
+  see it, and URL relationships are not among the writes EH reports.
+- **Tests:** popup-mb.spec.js, the new describe "kept answers and the shared last-write time (C7)" (4 tests) and
+  "the work window: its loaded recordings are reused, until another script reports a write": 5/5. Then every
+  popup-mb* spec, pop-mb-image, release-rg-popup and release-rg-main-event: 235/235 (9 m 14 s, 20:46–20:56).
+- **Mutations:** `scripts/mutations/mb-last-write.json`, 10 entries (the IndexedDB guard, four memory guards, the
+  key list twice, the comparison three ways), each failing its test. Four existing entries planted defects at the
+  lines this changes (`dp-shared-tables.json` "paged list: a repaint starts page 1 again", `mb-window-3f.json`
+  "documentation search…", `release-rg-main-event.json` ×2): finds moved to the new shapes, all four behave as
+  before (3 fail, the recorded `"expect": "pass"` passes). `check-mutation-finds.py`: 304 lists, 0 stale.
+- **Not yet:** a browser check by vzell; `test:full` before the merge; the #938 reply on 7/8.

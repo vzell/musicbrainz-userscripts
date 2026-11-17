@@ -574,7 +574,7 @@ is removed only while its value is still ours, and the setter offers its own way
 | C4 | =<html data-mbu-quiet="saed">=                                                                        | SAED        | =mbRestackCorner()=: =[data-mb-corner]= and =#mbu-dock-shelf= =visibility:hidden=                         | *adopted* (9.99.1580, =_mbuQuietSync()=, =sa_mbu_quiet_corner=, ☰ row)                                                              |
 | C5 | /dropped/ ("no SAED-specific detection"); replaced by EH's More (⋯) menu protocol: hidden =button[data-mbu-menu-item][data-mbu-menu-title]= under =<html>= | SAED | EH projects it into its header menus and =.click()=s it; =disabled= hides it                              | *adopted* (9.99.1581, =_ehMenuSync()=, =_ehHandoff()=): "Open in ShowAllEntityData" + one item per button                           |
 | C6 | =mbu:mb-gate= *version 1* (=version=, =tat=, =cool=, =hot=, =lead=, =leadUntil=; Web Lock =mbu-mb-gate=) | majkinetor (documents it) | SAED books its ws/2 there                                                                                  | adopted: SAED 9.99.1583 (TODO "Join majkinetor's cross-tab request gate"); upstream's code moved on since (TODO "Bring SAED's request-gate port in line with upstream") |
-| C7 | =localStorage['mbLastWrite']= (Unix ms): a script that writes to MusicBrainz sets it to =Date.now()=; a kept answer older than it is a miss | any script that writes | EH's =kpWrote()= / kept answers (2026-11-17, #938 point 7; =eh.kept.drop= retired; anchor =conv-c7=) | *not yet*: SAED writes nothing to MusicBrainz, so it only has to READ it, for its kept ws/2 answers (TODO "Stale-while-revalidate …") |
+| C7 | =localStorage['mbLastWrite']= (Unix ms): a script that writes to MusicBrainz sets it to =Date.now()=; a kept answer older than it is a miss | any script that writes | EH's =kpWrote()= / kept answers (2026-11-17, #938 point 7; =eh.kept.drop= retired; anchor =conv-c7=) | *adopted* on =feat/mb-last-write= (WIP.1, 2026-11-17): =_mbKeptStale()= for the popup engine's MusicBrainz records; the 30-day bulk stores and external readers left out (vzell's choice); SAED only reads it (anchor =saed-c7-read=) |
 | C8 | =unsafeWindow.MBU.artistImage= ={find, findAll, distinct, cached}= (EH's instance; answers are copies, in the user's provider order) | EH (publishes) | SAED, when present; own lookup otherwise (#938 point 8, 2026-11-17; anchor =conv-c8=) | *not yet* (TODO "Entity pictures …"); Firefox may wrap the object across sandboxes, so a failed call falls back to SAED's own lookup |
 
 **** Posts to majkinetor (for you to post; not posted anywhere)
@@ -1443,9 +1443,16 @@ Before coding each one, write a real example page into this item, with the click
   =localStorage['mbLastWrite']= (Unix ms) replaces EH's =eh.kept.drop=; a script that writes to MusicBrainz sets it
   to =Date.now()=, and every kept answer older than it is a miss (repo DEVELOP.md "Shared kept answers and artist
   images"; anchor =conv-c7=). SAED writes nothing to MusicBrainz, so it only READS the key: a cached ws/2 answer
-  (=_mbWsLoad()=, =rel-ws2=) stored before =mbLastWrite= is a miss. That much is worth doing before the rest of
-  this item: an edit made with Apollo or Group Therapy then shows in SAED's cards at once. Afterwards, the reply
-  on #938 that 7/8 work (vzell's choice: no reply before).
+  (=_mbWsLoad()=, =rel-ws2=) stored before =mbLastWrite= is a miss.
+- *Done for the popup engine* (=feat/mb-last-write=, WIP.1, 2026-11-17): =_mbKeptStale()= drops the cards', the
+  release groups', the MusicBrainz pages' and the paged lists' kept answers (memory and IndexedDB) once another
+  script reports a write; design in docs/claude/detail-pages.md ("Another script's write ends it sooner"). Left
+  out by vzell's choice: =rel-ws2=, =ms-rec-len=, "Recording of" (30-day bulk stores no write EH reports can
+  change; dropping them re-asks a whole table) and the external readers. Correction: only Event Horizon sets the
+  key today (12 =kpWrote()= sites: ratings, tag votes, alias POSTs, cancelling an edit, collections, edit votes);
+  Apollo, Group Therapy and MusicBrainz's own forms do not, so an edit made there does NOT drop anything yet. When
+  they start setting it on relationship edits, revisit =rel-ws2=. The reply on #938 that 7/8 work waits for
+  vzell's browser check (and maybe C8).
 
 - Show a cached answer at once. After the page is in, re-ask each answer older than a TTL, one at a time in the
   background, and repaint only when it changed (EH =kept=/=kpCheck= 3336-3386).
@@ -1543,7 +1550,7 @@ Before coding each one, write a real example page into this item, with the click
 - *New (2026-11-17)*: EH's menu items take an optional =data-mbu-menu-icon= (an http(s) or =data:image= URL, 16 px;
   anchor =eh-menu-icon=), and since #981 a user can move them from ⋯ into EH's main row (=external:<id>= in its
   header menu configuration). Give SAED's launchers (=_ehMenuSync()=) a small =data:image/svg+xml= icon, so they
-  read in the main row too. Anchor =saed-no-mblastwrite= turns BACK when it lands; split that anchor then.
+  read in the main row too. Anchor =saed-no-c8-icon= turns BACK when it lands; split that anchor then.
 
 - =html{scrollbar-gutter:stable}= on our FRPs (EH:2711): a filter that changes the page height then no longer
   shifts the page sideways when the scrollbar comes and goes.

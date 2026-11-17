@@ -2939,6 +2939,14 @@ hours (*Keep MusicBrainz answers for (hours)*); the card's foot says whether
 it was *fetched now* or *saved today*. A card that could not load says so;
 hover again to retry.
 
+A change you make with majkinetor's Event Horizon (a rating, a tag vote, an
+alias, a collection, a vote on an edit) ends that sooner: the next card or
+window asks MusicBrainz again, in this tab and in every other one. The
+scripts share the time of their last change to MusicBrainz in this browser;
+ShowAllEntityData only reads it and changes nothing itself. The Relationships
+column and the other sites' previews keep what they have, since no such
+change alters it.
+
 Not previewed: the artwork column's links and a link around a picture (they
 have their own preview). The Relationships column's icons are previewed like
 any other link (see *The Relationships column*). Links

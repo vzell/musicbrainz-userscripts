@@ -1085,6 +1085,28 @@ test.describe('MusicBrainz link previews: recording and work (WIP.2)', () => {
         expect(recOffsets({ ws2: log.ws2.slice(before) }), 'nothing asked again').toEqual([]);
     });
 
+    // Convention C7 (#938): rows of a paged list loaded before another
+    // script's last write to MusicBrainz (localStorage `mbLastWrite`) are
+    // read again when the window opens; until then they are reused.
+    test('the work window: its loaded recordings are reused, until another script reports a write (mbLastWrite)', async ({ page }) => {
+        const { log, area } = await openWorkWindow(page);
+        await expect(area.locator('[data-mb-tbl="work-recordings"] tbody tr')).toHaveCount(100);
+        expect(recOffsets(log)).toEqual([0]);
+        const reopen = async () => {
+            await page.keyboard.press('Escape');
+            await expect(dialog(page)).toBeHidden();
+            await ctrlHover(page, page.locator(`a.pop-probe[href="/work/${WORK_ID}"]`));
+            await expect(card(page)).toContainText('Born to Run');
+            await page.keyboard.press('Space');
+            await expect(area.locator('[data-mb-tbl="work-recordings"] tbody tr')).toHaveCount(100);
+        };
+        await reopen();
+        expect(recOffsets(log), 'reopened: the loaded page is reused').toEqual([0]);
+        await page.evaluate(() => localStorage.setItem('mbLastWrite', String(Date.now())));
+        await reopen();
+        await expect.poll(() => recOffsets(log), { timeout: 10000 }).toEqual([0, 0]);
+    });
+
     test('the work window: the filter keeps its focus, a chip per artist (Ctrl adds one), three sort states with ⇅', async ({ page }) => {
         const { area } = await openWorkWindow(page);
         const tbl = area.locator('[data-mb-tbl="work-recordings"]');
@@ -4267,5 +4289,121 @@ test.describe('MusicBrainz link previews: the h1 link another script unlinked', 
         await ctrlHover(page, relLink(page));
         await expect(card(page)).toContainText('fetched now');
         expect(log.browses.concat(log.rgLookups), 'the h1 asked nothing').toEqual([]);
+    });
+});
+
+// Convention C7 (majkinetor/musicbrainz-userscripts #938, 2026-11-17): a
+// script that writes to MusicBrainz sets localStorage `mbLastWrite` to
+// Date.now(), and every answer kept before it is a miss. Event Horizon sets
+// it on ratings, tag votes, alias edits, collections and edit votes. SAED
+// only reads it, for the popup engine's MusicBrainz records
+// (`_mbKeptStale()`): never the external readers, never the bulk stores.
+test.describe('MusicBrainz link previews: kept answers and the shared last-write time (C7)', () => {
+    const setLastWrite = (page, at) => page.evaluate((v) => localStorage.setItem('mbLastWrite', String(v)), at);
+
+    test('a card kept in memory is reused, until another script reports a write', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        await ctrlHover(page, relLink(page));
+        await expect(card(page)).toContainText('fetched now');
+        expect(log.lookups).toHaveLength(1);
+        await ctrlHover(page, relLink(page));
+        await expect(card(page)).toBeVisible();
+        expect(log.lookups, 'from memory').toHaveLength(1);
+
+        await setLastWrite(page, Date.now());
+        await ctrlHover(page, relLink(page));
+        await expect(card(page)).toContainText('fetched now');
+        await expect.poll(() => log.lookups.length, { timeout: 10000 }).toBe(2);
+    });
+
+    test('a card kept in IndexedDB: a write before it keeps it, a write after it drops it', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        // A write an hour ago, before the answer below exists.
+        await setLastWrite(page, Date.now() - 3600 * 1000);
+        await ctrlHover(page, relLink(page));
+        await expect(card(page)).toContainText('fetched now');
+        expect(log.lookups).toHaveLength(1);
+
+        await reloadScript(page);
+        await ctrlHover(page, relLink(page));
+        await expect(card(page)).toContainText('saved today');
+        expect(log.lookups, 'fetched after the last write: kept').toHaveLength(1);
+
+        await setLastWrite(page, Date.now());
+        await reloadScript(page);
+        await ctrlHover(page, relLink(page));
+        await expect(card(page)).toContainText('fetched now');
+        expect(log.lookups, 'fetched before the last write: asked again').toHaveLength(2);
+    });
+
+    test('a release group: its releases and its facts are asked again after a write', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        await page.evaluate(() => {
+            const td = document.querySelector('table.tbl tbody tr td:first-child');
+            const a = document.createElement('a');
+            a.href = '/release-group/499a96d4-0b7c-49d2-9a8d-bd4f7e2e8b2b';
+            a.id = 'rg-probe';
+            a.textContent = 'Berlin probe';
+            td.appendChild(document.createTextNode(' '));
+            td.appendChild(a);
+        });
+        const rg = page.locator('#rg-probe');
+        await ctrlHover(page, rg);
+        await expect(card(page).locator('.mb-rg-table')).toBeVisible();
+        await page.keyboard.press('Space');
+        await expect.poll(() => log.rgLookups.length).toBe(1);
+        await page.keyboard.press('Escape');
+        await expect(dialog(page)).toBeHidden();
+        const browses = log.browses.length;
+
+        // Unchanged without a write: memory serves both.
+        await ctrlHover(page, rg);
+        await expect(card(page).locator('.mb-rg-table')).toBeVisible();
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator('[data-mb-tbl="rg-releases"] tbody tr').first()).toBeVisible();
+        expect(log.browses, 'releases from memory').toHaveLength(browses);
+        expect(log.rgLookups, 'facts from memory').toHaveLength(1);
+        await page.keyboard.press('Escape');
+        await expect(dialog(page)).toBeHidden();
+
+        await setLastWrite(page, Date.now());
+        await ctrlHover(page, rg);
+        await expect.poll(() => log.browses.length, { timeout: 10000 }).toBeGreaterThan(browses);
+        await expect(card(page).locator('.mb-rg-table')).toBeVisible();
+        await page.keyboard.press('Space');
+        await expect.poll(() => log.rgLookups.length, { timeout: 10000 }).toBe(2);
+    });
+
+    test('which keys a write makes stale: MusicBrainz records only, and only those fetched up to it', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const r = await page.evaluate(() => {
+            const t = window.__saTest;
+            const keys = [
+                'pop:release:3ce46b79-5e8c-470a-bcdc-45f301d09f60:artist-credits',
+                'pop:page:edits:artist:x:1',
+                'rg-releases:499a96d4-0b7c-49d2-9a8d-bd4f7e2e8b2b',
+                'rg-facts:499a96d4-0b7c-49d2-9a8d-bd4f7e2e8b2b',
+                'list:work-recs:x',
+                'pop:img:artist:x',
+                'ext:wp-lead:en:Bruce_Springsteen',
+                'ext-icon:https://example.org/',
+            ];
+            const at = 1000000;
+            localStorage.removeItem('mbLastWrite');
+            const none = keys.map(k => t.mbKeptStale(k, at));
+            localStorage.setItem('mbLastWrite', String(at + 1));
+            const after = keys.map(k => t.mbKeptStale(k, at));
+            localStorage.setItem('mbLastWrite', String(at));
+            const same = t.mbKeptStale(keys[0], at);
+            localStorage.setItem('mbLastWrite', String(at - 1));
+            const before = keys.map(k => t.mbKeptStale(k, at));
+            localStorage.removeItem('mbLastWrite');
+            return { none, after, same, before };
+        });
+        expect(r.none, 'no script has written: nothing is stale').toEqual([false, false, false, false, false, false, false, false]);
+        expect(r.after, 'a write after the fetch: the MusicBrainz records, not the picture or external answers')
+            .toEqual([true, true, true, true, true, false, false, false]);
+        expect(r.same, 'a write at the very time of the fetch counts (kept only when fetched strictly after)').toBe(true);
+        expect(r.before, 'a write before the fetch: kept').toEqual([false, false, false, false, false, false, false, false]);
     });
 });

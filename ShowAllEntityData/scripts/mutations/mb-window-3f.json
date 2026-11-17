@@ -121,8 +121,8 @@
         "why": "org/MB-POH-sync-withDiscogs.org Phase 3f: the window shows the card's record; one request. Survives by design (2026-10-27): without the memory guard, _mbLoad() reads the record the card's request put in IndexedDB and still asks nothing, so the spec's one-request assertion is held by either layer alone.",
         "edits": [
             {
-                "find": "        if (!force && cur && cur.status === 'done') return;\n        const st = {\n            status: 'loading', data: null, at: 0, cached: false, detail: '',",
-                "replace": "        if (!force && cur && cur.status === 'done' && !/^pop:docsearch:/.test(cacheKey)) return;\n        const st = {\n            status: 'loading', data: null, at: 0, cached: false, detail: '',"
+                "find": "        if (!force && cur && cur.status === 'done' && !_mbKeptStale(cacheKey, cur.at)) return;\n        const st = {\n            status: 'loading', data: null, at: 0, cached: false, detail: '',",
+                "replace": "        if (!force && cur && cur.status === 'done' && !_mbKeptStale(cacheKey, cur.at) && !/^pop:docsearch:/.test(cacheKey)) return;\n        const st = {\n            status: 'loading', data: null, at: 0, cached: false, detail: '',"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",

@@ -17,8 +17,8 @@
     "why": "Without the done-guard each hover costs a WS/2 request (since the popup engine the guard is in _rgReleasesLoad(); without it a kept list is extended from its end, which is still a request).",
     "edits": [
       {
-        "find": "        if (!force && cur && cur.status === 'done' && (cur.complete || cur.capped || !all)) return;",
-        "replace": "        if (!force && cur && cur.status === 'done' && (cur.complete || cur.capped || !all) && false) return;"
+        "find": "        if (!force && !stale && cur && cur.status === 'done' && (cur.complete || cur.capped || !all)) return;",
+        "replace": "        if (!force && !stale && cur && cur.status === 'done' && (cur.complete || cur.capped || !all) && false) return;"
       }
     ],
     "spec": "tests/fixtures/release-rg-main-event.spec.js",
@@ -30,8 +30,8 @@
     "why": "Caching the failure strands the preview on its error line for the rest of the page.",
     "edits": [
       {
-        "find": "        if (!force && cur && cur.status === 'done' && (cur.complete || cur.capped || !all)) return;",
-        "replace": "        if (!force && cur && (cur.status === 'failed' || (cur.status === 'done' && (cur.complete || cur.capped || !all)))) return;"
+        "find": "        if (!force && !stale && cur && cur.status === 'done' && (cur.complete || cur.capped || !all)) return;",
+        "replace": "        if (!force && !stale && cur && (cur.status === 'failed' || (cur.status === 'done' && (cur.complete || cur.capped || !all)))) return;"
       }
     ],
     "spec": "tests/fixtures/release-rg-main-event.spec.js",
