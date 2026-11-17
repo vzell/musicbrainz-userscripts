@@ -2298,8 +2298,19 @@ Mockup https://claude.ai/artifact/65urMwgWSb6zq6xJa9Mf4x; vzell's answers of
   `debug/probe-bb-feed.json`):
   - all 192 pages exist in the mirror, and every kind holds on its page;
   - the reverse index has 25 shows (32 dependent pages);
-  - the lists mark songs 4 of 1,685 rows, relations 4 of 2,929, and the
-    storyteller tag page 106 of 1,487.
+  - the lists mark songs 0 of 1,679 rows, relations 1 of 2,896 (Rob
+    DeMartin), and the storyteller tag page 106 of 1,487.
+  - **stats:songs and stats:relations list a page by its first-letter
+    tag** (2026-11-17). So a page that lacks its letter tag, or has no tag,
+    is not on them. stats:songs leaves out 6 of the 1,685 `song:` pages,
+    and the feed's four first-letter songs are among them. They are marked
+    on their own page only, after the byline. The Tracks II sessions page
+    also links them, but in a `Song` column, which the feed does not mark
+    (vzell, 2026-11-17). stats:relations leaves out 33 of 2,929 pages,
+    among them the three no-tags relations (not on the live list either,
+    vzell, 2026-11-17). Rob DeMartin is on it because he is tagged "m". Until 2026-11-17 the probe and the checker counted
+    every page of the category as a row (songs 4 of 1,685, relations 4 of
+    2,929), and the browser check expected the four songs on stats:songs.
 
   **The checker** (`scripts/check-bb-feed.js FEED PROBE`) runs the shipped
   lookup and the live filter over the same pages: no difference.

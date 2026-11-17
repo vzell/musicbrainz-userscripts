@@ -12,9 +12,12 @@
  *      the facts the page itself leaves standing (`live` read from its mirror
  *      file: the title as written, its tags, a breadcrumb link) — the probe
  *      found every kind true on its page, so none may be dropped;
- *   2. the rows each list would mark: every song: page, every relation:
- *      page, every story: page tagged storyteller (from the run's
- *      all-sorted.txt) — the probe's counts and kinds;
+ *   2. the rows each list would mark: the song: pages stats:songs links and
+ *      the relation: pages stats:relations links (read from their mirror
+ *      files: the wiki builds both from the first-letter tags, so neither
+ *      lists every page of its category), every story: page tagged
+ *      storyteller (from the run's all-sorted.txt) — the probe's counts and
+ *      kinds;
  *   3. the shows marked through their dependent pages (the feed's `event`
  *      read backwards) — the probe's 25.
  *
@@ -109,9 +112,14 @@ function kinds(lists) {
     if (dropped.length !== probe.kindFalse.length) diffs++;
 
     // 2. the lists
+    // A stats list's rows: the pages of its category that its mirror file links.
+    const listed = (cat, listPage) => {
+        const linked = new Set(Array.from(fs.readFileSync(fileOf(listPage), 'utf8').matchAll(new RegExp(`href="/(${cat}:[^"#?/]+)"`, 'g')), m => m[1]));
+        return lines.map(p => p[0]).filter(n => n.startsWith(`${cat}:`) && linked.has(n));
+    };
     const lists = {
-        'songs (song:)': lines.filter(p => p[0].startsWith('song:')).map(p => p[0]),
-        'relations (relation:)': lines.filter(p => p[0].startsWith('relation:')).map(p => p[0]),
+        'songs (stats:songs)': listed('song', 'stats:songs'),
+        'relations (stats:relations)': listed('relation', 'stats:relations'),
         'tag storyteller (story:)': lines.filter(p => p[0].startsWith('story:') && p[2].split(/\s+/).includes('storyteller')).map(p => p[0]),
     };
     for (const [label, rows] of Object.entries(lists)) {

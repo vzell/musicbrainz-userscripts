@@ -29756,3 +29756,24 @@ Env: 2026-11-16T16:29:08+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
     about 2.8 s earlier than the spacing allows). It fails on `main` too: 3 of 15 runs alone in a worktree of
     `main` (`b369e7ca`), and 2 of 15 on this branch. A pre-existing timing failure of the Discogs request gate,
     not traced.
+
+## 2026-11-17 — The feed's browser check: stats:songs and stats:relations do not list every page (feat/bb-feed)
+
+Env: 2026-11-17T15:08:05+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · n/a (Python over the mirror bb/2026-11-15; vzell's live check: browser and Tampermonkey not recorded)
+
+- **Symptom (vzell, live):** the browser check expected four songs (Dinner At Eight, Follow The Sun, Two Of Us,
+  You're Gonna Miss Me When I'm Gone) marked ⚠️ on stats:songs, and three relations (Chubby Checker, David Mansfield,
+  Gladys Avignon) marked ❌ on stats:relations. None of the seven is on those pages.
+- **Cause: the probe's assumption, not the code.** `scripts/probe-bb-feed.py` (part 4) and `scripts/check-bb-feed.js`
+  counted every `song:` and `relation:` page of the run as a list row. The wiki builds both lists from the
+  first-letter tags (checked on the mirror's tags of every page the lists leave out). A page that lacks its letter
+  tag, which is the feed's first-letter finding, or has no tag at all, the no-tags finding, is therefore never on the
+  list. stats:songs links 1,679 of 1,685 `song:` pages; stats:relations 2,896 of 2,929.
+- **Fix:** probe and checker read each list's rows from the links of its mirror file, and the probe prints the pages
+  each list leaves out. Now songs 0 marked, relations 1 (Rob DeMartin, listed under "m"), the storyteller tag page
+  106 as before. The checker: no difference. The browser-check table in org/bbp-parity.org now has `song:two-of-us`
+  (the mark after its byline) instead of the stats:songs row.
+- **No code change** (vzell, 2026-11-17): the Tracks II sessions page links the four songs in a `Song` column, which
+  stays unmarked.
+- **Seen on the way, not followed up:** the M tab of stats:relations stops before "Mu": 19 person pages tagged "m"
+  (Marcus Mumford … Mweli Mzizi) are missing, which looks like a list limit on the wiki. Unverified on the live page.

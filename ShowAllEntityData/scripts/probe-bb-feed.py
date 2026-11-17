@@ -15,10 +15,14 @@ For every page the feed names:
      - no-parent: the page's breadcrumbs div has no link.
   3. the reverse index: which shows have a dependent page with a differing
      title (the feed's "event"), and on which year pages they are.
-  4. the rows each Brucebase list would mark: songs (stats:songs lists every
-     song: page), relations (stats:relations, every relation: page), the
-     storyteller tag page (every story: page tagged storyteller), and the
-     year tables (the shows of point 3).
+  4. the rows each Brucebase list would mark: songs and relations from the
+     links the mirror's stats:songs and stats:relations pages really have
+     (stats:songs does NOT link every song: page: 1,679 of 1,685 on the run
+     of 2026-11-15, and the four first-letter songs of the feed are among the
+     6 it leaves out; until 2026-11-17 this probe assumed it did), the pages
+     of the category no list links, the storyteller tag page (every story:
+     page tagged storyteller, from the mirror's tags), and the year tables
+     (the shows of point 3).
 
 Counts and every mismatch go to OUT.json; a summary is printed.
 """
@@ -124,12 +128,19 @@ def main():
             if len(p) >= 3:
                 names.append((p[0], p[2].split()))
     flagged = feed['pages']
-    for label, pred in [('songs (song:)', lambda n, t: n.startswith('song:')),
-                        ('relations (relation:)', lambda n, t: n.startswith('relation:')),
-                        ('tag storyteller (story:)', lambda n, t: n.startswith('story:') and 'storyteller' in t)]:
-        rows = [n for n, t in names if pred(n, t)]
+    for label, cat, list_page in [('songs (stats:songs)', 'song', 'stats:songs'),
+                                  ('relations (stats:relations)', 'relation', 'stats:relations')]:
+        linked = set(re.findall(r'href="/(' + cat + r':[^"#?/]+)"', read(page_file(run_dir, list_page))))
+        every = {n for n, t in names if n.startswith(cat + ':')}
+        rows = sorted(every & linked)
         hit = [n for n in rows if n in flagged]
-        out['lists'][label] = {'rows': len(rows), 'marked': len(hit), 'kinds': Counter(k for n in hit for k in flagged[n])}
+        unlinked = sorted(every - linked)
+        out['lists'][label] = {'rows': len(rows), 'marked': len(hit), 'kinds': Counter(k for n in hit for k in flagged[n]),
+                               'pagesOfCategory': len(every), 'unlinked': unlinked,
+                               'unlinkedInFeed': {n: sorted(flagged[n]) for n in unlinked if n in flagged}}
+    rows = [n for n, t in names if n.startswith('story:') and 'storyteller' in t]
+    hit = [n for n in rows if n in flagged]
+    out['lists']['tag storyteller (story:)'] = {'rows': len(rows), 'marked': len(hit), 'kinds': Counter(k for n in hit for k in flagged[n])}
 
     json.dump(out, open(out_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=1, default=dict)
     print(f"feed pages {len(feed['pages'])}, missing in the mirror {len(out['missing'])}: {out['missing'][:5]}")
@@ -144,6 +155,9 @@ def main():
           f"{out['reverse']['showExists']} show pages in the mirror, years {dict(out['reverse']['perYear'])}")
     for k, v in out['lists'].items():
         print(f"list {k}: {v['rows']} rows, {v['marked']} marked {dict(v['kinds'])}")
+        if 'unlinked' in v:
+            print(f"    {len(v['unlinked'])} of {v['pagesOfCategory']} pages not on the list: {v['unlinked']}")
+            print(f"    of them in the feed: {v['unlinkedInFeed']}")
 
 
 if __name__ == '__main__':

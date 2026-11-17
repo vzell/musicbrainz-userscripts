@@ -450,7 +450,10 @@ The plan is =~/.claude/plans/structured-mixing-muffin.md= (NB-3641 only); this s
   menus' line, and the ☰ group =bb=.
 - *Settings:* =sa_bb_feed=, four finding switches, one tint.
 - *Probe:* =scripts/probe-bb-feed.py=. All 192 pages exist in the mirror and every kind holds on its page. The
-  reverse index has 25 shows; the lists mark songs 4, relations 4 and the storyteller tag page 106 rows.
+  reverse index has 25 shows; the lists mark songs 0, relations 1 (Rob DeMartin) and the storyteller tag page 106 rows.
+  Corrected 2026-11-17: the probe first counted every =song:= and =relation:= page as a list row (songs 4, relations
+  4). The wiki builds stats:songs and stats:relations from the first-letter tags, so a page without its letter tag, or
+  without any tag, is not on them.
 - *Checker:* =scripts/check-bb-feed.js=, the shipped code over the same pages: no difference.
 - *Two deviations from the answers:*
   - A year *listing*'s rows are not marked: they link the year page's anchor, not the show's page (answer 5 says
@@ -485,17 +488,24 @@ then not again for a day).
 | https://brucebase.wikidot.com/1975                                           | Show all events, November                     | 1975-11-10 Tampa (two pages: Media and On stage, "Jai Alai") and 1975-11-11 Miami: ❌                       |
 | https://brucebase.wikidot.com/gig:1975-11-10-jai-alai-fronton-tampa-fl       | Show the event                                | "❌ ≢" after the byline; its hover names both pages                                                        |
 | https://brucebase.wikidot.com/1975                                           | Ctrl+hover the 1975-11-10 link, Space         | the window's title ends in "❌ ≢"                                                                          |
-| https://brucebase.wikidot.com/stats:songs                                    | Show all songs                                | Dinner At Eight, Follow The Sun, Two Of Us, You're Gonna Miss Me When I'm Gone: ⚠️ (no first-letter tag)  |
-| https://brucebase.wikidot.com/stats:relations                                | Show all relations                            | Rob DeMartin ⚠️ ("d"); Chubby Checker, David Mansfield, Gladys Avignon ❌ (no tag at all)                   |
+| https://brucebase.wikidot.com/song:two-of-us                                 | Show the song                                 | NEW: "⚠️ Ⓐ" after the byline; hover: no "t" tag (dropped if the page has it by now)                       |
+| https://brucebase.wikidot.com/stats:relations                                | Show all relations                            | Rob DeMartin ⚠️ ("d"); nothing else marked                                                                 |
 | https://brucebase.wikidot.com/system:page-tags/tag/storyteller               | Show the tagged pages                         | 104 story pages ⚠️ (no parent), two ❌ (title); the ⚠️ menu's row counts them                              |
 | https://brucebase.wikidot.com/story:story-1972-01-21-neptune-nj              | Show the story                                | "⚠️ ⌂" after the byline (dropped if the page has a parent by now)                                         |
 | https://brucebase.wikidot.com/relation:chubby-checker                        | Show the person                               | "❌ ⊘" after the byline (dropped if the page has tags by now)                                             |
 | any Brucebase page                                                           | ⚙️ Settings → 📚 BRUCEBASE: the feed off, reload | no Brucebase group in ☰, no mark, no request to raw.githubusercontent.com                                |
 | https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events   | Show all Events                               | nothing new: no request for the feed, no Brucebase group                                                  |
 
+vzell checked the table live (2026-11-17): every row OK but two, which were wrong in this table, not in the code.
+- *stats:songs* expected Dinner At Eight, Follow The Sun, Two Of Us and You're Gonna Miss Me When I'm Gone. They are
+  not on that page. The wiki lists a song by its first-letter tag, and these four lack it, which is the very finding.
+  They are linked from the Tracks II sessions page, in a =Song= column, which the feed does not mark (vzell,
+  2026-11-17). So the mark shows on the song's own page only; the row is now =song:two-of-us=.
+- *stats:relations* expected Chubby Checker, David Mansfield and Gladys Avignon too. They have no tag at all, so the
+  list cannot have them; only Rob DeMartin (tagged "m") is on it. They are marked on their own page
+  (=relation:chubby-checker= above).
+
 Unverified:
-- all of it on the live wiki;
-- the relations rows of Chubby Checker, David Mansfield and Gladys Avignon (the relations fixture is older and lacks
-  them);
+- the =song:two-of-us= row (new, after vzell's check);
 - the storyteller tag page's count (from the mirror's tags, not from the live tag page);
 - the failure line, which needs GitHub to fail (the spec serves 404 and a bad file).
