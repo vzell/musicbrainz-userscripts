@@ -232,5 +232,18 @@
         "spec": "tests/fixtures/bb-findings-help-icon.spec.js",
         "grep": "the year page is read once for the show",
         "expect": "pass"
+    },
+    {
+        "name": "the re-stamp comes 2 s after the row is read",
+        "why": "Not a defect: a loaded machine, made deterministic. The tag findings are stamped by _queueFindingsRestamp() 150 ms after a row is read; the 1966 test read the stamp once, right after, and failed under parallel load (2026-11-16 NB-3641, 2026-11-17 petri, on main too). It now polls (a2bcf54b), so it must pass with the stamp 2 s late; its old form fails here with the same error as in the full runs. The 1968 test is not affected: the row whose stamp it checks is read early, and the last row expects no stamp.",
+        "edits": [
+            {
+                "find": "        if (!_queueFindingsRestamp.timer) _queueFindingsRestamp.timer = setTimeout(_flushFindingsRestamp, 150);\n",
+                "replace": "        if (!_queueFindingsRestamp.timer) _queueFindingsRestamp.timer = setTimeout(_flushFindingsRestamp, 2000);\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-help-icon.spec.js",
+        "grep": "a show tagged .help. that the year page does not mark",
+        "expect": "pass"
     }
 ]

@@ -29895,3 +29895,21 @@ Env: 2026-11-17T17:41:30+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
     specs, passes alone (1 and 3 of 3), and fails the same way on `main` (`b369e7ca`, a worktree, the same three specs
     together with `--repeat-each=3`: 2 of 3 failed). Load-dependent, from the help-icon branch; not fixed here.
 - **`npm run test:full` again on petri, `a3e8fb6c`, 18:06:52–18:26:54 CET: 3,191 of 3,191 passed.**
+
+## 2026-11-17 — bb-findings-help-icon.spec.js: the stamp race, proven fixed (fix/bb-help-icon-spec-stamp-race)
+
+Env: 2026-11-17T18:52:16+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (chromium-fixtures), no Tampermonkey (GM stubs)
+
+- **Asked (vzell):** fix the flaky "the year table: a show tagged help that the year page does not mark" test. It
+  failed in the full run of 2026-11-17 on the sl-sticky branch, and beside two other specs on `main` (`b369e7ca`,
+  2 of 3), passing alone every time.
+- **Already fixed on `main`** by the bb-feed merge (`a2bcf54b`, see the bb-feed entry above: "A race in an older
+  spec"): the finding is stamped by `_queueFindingsRestamp()` 150 ms after the row is read, and the test now polls
+  for it. The runs that failed today were of the spec from before that merge.
+- **Proven, not assumed:** with the re-stamp delayed to 2,000 ms (`scripts/mutation-check.py`), the current test
+  passes and its old form (`96bd4f76`) fails with the error of the full runs (`level: ''`, `stamps: []`). Kept as an
+  `"expect": "pass"` entry in `scripts/mutations/bb-findings-help-icon.json`, so a later removal of the poll shows
+  up in the next mutation run.
+- **The other year-table test of the spec (1968) needs no poll:** a poll added to it could not be shown to matter.
+  It passed without it under the same 2 s delay, because the row whose stamp it checks is read early, the others
+  take several page requests each, and the last row expects no stamp. The change was dropped.
