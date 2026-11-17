@@ -5,13 +5,15 @@ Env: 2026-11-13 · plan written in a Claude Code session (plan mode), code readi
 
 Plan for pickup on another host.
 
-* PICKUP HERE: status of 2026-11-17 (evening): feed v2, branch 1 BUILT on =feat/bb-feed-v2-kinds= (pushed, not merged); BruceParser 0.19.0's feed PUBLISHED; batch 3b SET ASIDE
+* PICKUP HERE: status of 2026-11-17 (night): feed v2, branch 1 MERGED (9.99.1642), the branch is deleted; BruceParser 0.19.0's feed PUBLISHED; next: feed v2, branch 2 (plan mode first); batch 3b SET ASIDE
 
 - *Feed v2, branch 1 (2026-11-17, NB-3641):* three findings from BruceParser 0.19.0's two new keys. ❌ a date tag
   missing and ⚠️ a date tag that is not the page's date, both on pages that are no show (3 pages). ⚠️ "files" tagged
   without a picture (32 pages).
-  - *Next:* vzell checks the rows in =org/bbp-parity.org=, "The browser check of feed v2, branch 1" (the 0.19.0 feed
-    is published, 2026-11-17, feed repo =8ea33f1=); then the merge on his word.
+  - *Merged* as 9.99.1642 (2026-11-17; vzell: "everything tested live OK"), with the ☰ line naming the BruceParser
+    version of the file kept. Merged beside it: the fix of =discogs-rate-limit.spec.js= (it read the shared slot on the
+    wall clock; DEBUG-NOTES.md, 2026-11-17). =test:full= on the merged =main=: 3,215 of 3,215 (20:46:45–21:08:18 CET).
+    Not published to =vzell/mb-userscripts=.
   - *After it:* branch 2 (the year listing's rows, an anchor map in the feed), then branch 3 (MusicBrainz: an MB
     event whose Brucebase anchor the wiki lacks, keyed by MBID). Both get their own plan.
   - *The plan* (NB-3641 only): =~/.claude/plans/pasted-content-id-4795-i-just-giggly-cake.md=; the record is
