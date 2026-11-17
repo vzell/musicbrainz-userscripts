@@ -639,9 +639,9 @@ test.describe('the Brucebase feed 1.2: a year listing\'s rows, through the ancho
     });
 
     test('a year-anchor window on Brucebase: the show\'s mark after its title', async ({ page }) => {
-        // The window's reader takes six-digit anchors only (`_extBbDateTest()`),
-        // and the 1972 shows the feed names all have a letter: a planted feed
-        // names 1972-01-21 (#210172) of the 1972 fixture. On the 1973 listing
+        // A planted feed names 1972-01-21 (#210172) of the 1972 fixture (the
+        // test was written while the reader took six-digit anchors only; the
+        // lettered ones are bb-date-links.spec.js'). On the 1973 listing
         // a link to it is another page's anchor (on 1972's own page an
         // in-page one, no preview); the window reads 1972's year page, served
         // from its fixture. The show comes from the entry's gig link

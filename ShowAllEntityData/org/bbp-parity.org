@@ -590,9 +590,10 @@ Python over the mirror bb/2026-11-15, n/a; spec, checker: Playwright Chromium, n
   anchor resolves by date to 1972-04-00b, and every anchor is linked by a row. *The checker:* no difference.
 - *Tests* (NB-3641, 2026-11-17): =bb-feed.spec.js= 28 (5 new); 8 new mutations (4 fail their test, 4 pass with the
   reason); two older finds rewritten for the window's new argument.
-- *Seen on the way, not changed:* the year-anchor window's reader takes six-digit anchors only. A lettered anchor
-  (=#000672b=, =#220973a=; 338 year entries) opens no window at all, so the three 1972 shows below show their mark
-  on the listing row only.
+- *Seen on the way, fixed the same day* (=fix/bb-date-lettered-anchors=, merged beside this branch): the year-anchor
+  window's reader took six-digit anchors only, so a lettered anchor (=#000672b=, =#220973a=; 338 year entries) and the
+  1949-64 page opened no window. Both do now, so the three 1972 shows below have their window too.
+- *Merged* with the fix (2026-11-17; vzell: "Everything tested live OK").
 
 ** The browser check of feed v2, branch 2, for vzell (rows from the mirror of 2026-11-15; unverified on the live wiki)
 

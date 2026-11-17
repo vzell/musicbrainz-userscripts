@@ -4,9 +4,28 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1813 versions; the month pages hold all of them.
+This page shows the newest 100 of 1815 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1644 — 2026-11-17
+
+**🚀 Feature**
+
+- Brucebase feed: a year listing's rows are marked too (e.g. /1973-list). A listing links the show's entry on its year page, not the show's own page; the feed now names the year-page anchor of every show it marks, so the row of 1975-11-10 Tampa gets the same ❌ as the show's row on the year page. Where two entries of a year page share one anchor (1972's two Mediasound sessions), the row's own date picks the show. No request.
+- On Brucebase, the window of such a link (Ctrl+hover a listing row's Event link, Space) carries the show's marks after its title as well.
+
+**📝 Docs**
+
+- Needs the feed of BruceParser 0.20.0 on GitHub; an older feed marks no listing row. A script before this version ignores the new data.
+
+
+## 9.99.1643 — 2026-11-17
+
+**🐛 Fix**
+
+- Brucebase date links with a letter (`brucebase.wikidot.com/1985#310385b`, one of several shows of one date; 338 entries of the wiki have one) and links to the early years' page (`…/1949-64#230949`) had no card and no window: the reader turned them away although it reads those shows fine. They now preview like every other date link, on Brucebase, on MusicBrainz (an event's "reviews" link) and in windows, and each shows its own show, not the other one of the same date.
+
 
 ## 9.99.1642 — 2026-11-17
 
@@ -871,20 +890,6 @@ This page shows the newest 100 of 1813 versions; the month pages hold all of the
 **🐛 Fix**
 
 - setlist.fm: on a search page (an artist's search, a search by words), the setlists' links had no hover card or window before you pressed the button: setlist.fm lays a search page out differently from a venue's or an artist's list, and the cards were outside the part of the page the previews looked at. On a setlist's own page, the headline's artist and venue, its Tour line and the covers and guests in the song list now preview too.
-
-
-## 9.99.1544 — 2026-11-04
-
-**🚀 Feature**
-
-- setlist.fm: a search by words (setlist.fm/search?query=…, such as "Bruce Springsteen", or "artist:(Bruce Springsteen) tour:(…)" as the Tour links open) gets the Setlists button too. Its table has both an Artist and a Venue column, as such a search can find other artists' setlists; its section is named after the query. These searches had no button before.
-
-
-## 9.99.1543 — 2026-11-04
-
-**🚀 Feature**
-
-- setlist.fm: a setlist's own page (setlist.fm/setlist/…) gets a button, Setlist, that lays the setlist out like a MusicBrainz release page, without asking setlist.fm for anything (the page already holds the whole list). One table per set, named as setlist.fm names it ("The River", "Solo Acoustic"), else Set 1, Set 2 …, and Encore. Columns: \# (numbered on through the sets, a tape has none), Song (its statistics on setlist.fm), Cover of, With (each guest on a line), Tape, Info (setlist.fm's notes such as "first time since 2019") and Play, which finds the song on YouTube and plays it in place. Above the tables: "\~ Setlist by … (date: venue)", setlist.fm's Note, and Details: Show (date, artist, venue, tour, how many setlist.fm users were there), Set times, Setlist (songs, sets, encores, covers, tapes), and on the right Guests and Covered artists, the one on the most songs first ("Tom Morello ×2"). A setlist without songs yet has no button.
 
 
 ---

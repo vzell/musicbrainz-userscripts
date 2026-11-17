@@ -2428,9 +2428,11 @@ branch 2".
   `live` is null: the window shows the year entry, not the page. Ext windows
   draw `rec.dp` (`_dpExtractedCols(rec.dp, t)`), which is why the page goes
   on `dp`, not on `rec`.
-- **Seen on the way, not changed:** the `bbdate` reader takes six-digit
-  anchors only (`_extBbDateTest()`: `/^#\d{6}$/`). A lettered anchor
-  (`#000672b`, `#220973a`) gets no window at all; 338 year entries have one.
+- **Seen on the way, fixed the same day** (`fix/bb-date-lettered-anchors`):
+  the `bbdate` reader took six-digit anchors only (`_extBbDateTest()`), so a
+  lettered anchor (`#000672b`, `#220973a`; 338 year entries) and the 1949-64
+  page had no window. Both open one now (docs/claude/detail-pages.md, "The
+  Brucebase date anchor").
 - **The probe** (part 5, every `<year>-list.html` of the mirror): 5,010
   listing rows, 25 marked (the 25 shows marked through a dependent page).
   The shared anchor resolves to 1972-04-00b by the row's date, and every
