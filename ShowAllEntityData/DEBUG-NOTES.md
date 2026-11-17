@@ -29943,3 +29943,24 @@ Env: 2026-11-17T19:37:31–19:43:25+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (L
   `c3f92427` (2026-11-09 17:24, after that refresh); the remaining match is the Unicode picker's Ctrl+U guard, text
   fields only on purpose. Rewritten as the fixed shape plus `saed-unicode-typing`; `eh-menu-items` count 2; twelve
   new anchors: 68/68, re-pinned, lines updated.
+
+## 2026-11-17 — discogs-rate-limit.spec.js: the shared slot read on the wrong clock (fix/discogs-rate-limit-steady-clock)
+
+Env: 2026-11-17T20:45+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright Chromium (chromium-fixtures), no Tampermonkey (GM stubs)
+
+- **Symptom:** "another tab's reservation is honoured" failed now and then in `test:full`: the stored shared slot was
+  short of "one spacing past the last ask, less timer lateness". On NB-3641 it was 2,836 and 2,833 ms short (two runs
+  on 2026-11-16) and 500 ms short (2026-11-17). Alone it failed 3 of 15 runs, on `main` too.
+- **Cause: the test, not the gate.** Since 2026-11-09 the script books Discogs slots on `_steadyNow()`
+  (`performance.timeOrigin + performance.now()`), which a step of the wall clock does not move. The test still compared
+  the slot with the ask's WALL-clock time and guessed the step from the skew of the last two asks. A step that fell
+  anywhere else (WSL2 resyncs its clock: 500 ms to 2.8 s) put the reading off by exactly that step. The first
+  assertion had the same wall-clock workaround (`s0`).
+- **Fix:** both assertions read the ask on the steady clock, `at - skew` (= `timeOrigin + mono`). The `skewNow()`
+  helper is gone.
+- **Regression test, made on purpose:** "a step of the wall clock during the run moves neither the slot nor its
+  reading". It jumps the page's `Date.now()` 2.8 s after the first ask (an init-script wrapper; `performance.now()`
+  untouched). With the old reading it fails at −300 ms against ≥ 2,000. With the new one it passes. Mutations: three
+  more in `scripts/mutations/discogs-rate-limit.json`, among them slots booked on `Date.now()` again; all 10 entries
+  fail their test as recorded.
+- **Checked:** the fixed test 15 of 15 alone; the spec 6 of 6.
