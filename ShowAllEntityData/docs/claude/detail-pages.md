@@ -427,6 +427,23 @@ hosts (kept, decided 2026-10-07).
 - **TTL: `_mbTtlMs()`** = `sa_pop_mb_ttl_hours` (default 24) for every
   MusicBrainz answer of the engine, the release group's included (it replaced
   the constant `_RG_TTL_MS`).
+- **Another script's write ends it sooner: `_mbKeptStale()`** (convention C7,
+  majkinetor #938, 2026-11-17). localStorage `mbLastWrite` (Unix ms) is set
+  by a script that writes to MusicBrainz (today Event Horizon: ratings, tag
+  votes, alias edits, collections, edit votes); an answer fetched at or before
+  it is reused from neither memory nor IndexedDB. SAED never writes to
+  MusicBrainz, so it never sets the key. It applies to `_MB_LAST_WRITE_KEYS`
+  only (`pop:` except `pop:img:`, `rg-releases:`, `rg-facts:`, `list:`), at
+  every place where a kept answer short-circuits a load: `_rgIdbGet()` (the
+  one IndexedDB read), the memory of `_mbLoad()`, `_rgReleasesLoad()` (no
+  `prev` carried over), `_rgFactsLoad()` and `_mbPagedStart()` (rows only, a
+  kept failure stays until ⟳). NOT the external readers (`ext:`, `ext-…:`), the
+  Wikidata picture (`pop:img:`) or the 30-day bulk stores (`rel-ws2`,
+  `ms-rec-len`, "Recording of"): no write Event Horizon reports changes them,
+  and dropping a bulk store re-asks a whole table (vzell, 2026-11-17). A new
+  kind of MusicBrainz record of the engine with its own memory guard owes the
+  same check. Spec: popup-mb.spec.js "kept answers and the shared last-write
+  time (C7)"; mutations: `scripts/mutations/mb-last-write.json`.
 - **Stepping: `_mbPopSteps(t)`** — the same kind in the same column, the
   column found by HEADER NAME (`_resolveColHeaderName()`) in every visible
   top-level `table.tbl`, so the arrows go on into the next sub-table even

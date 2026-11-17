@@ -4,11 +4,11 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1815 versions; the month pages hold all of them.
+This page shows the newest 100 of 1816 versions; the month pages hold all of them.
 
 ---
 
-## 9.99.1644 — 2026-11-17
+## 9.99.1645 — 2026-11-17
 
 **🚀 Feature**
 
@@ -20,11 +20,18 @@ This page shows the newest 100 of 1815 versions; the month pages hold all of the
 - Needs the feed of BruceParser 0.20.0 on GitHub; an older feed marks no listing row. A script before this version ignores the new data.
 
 
-## 9.99.1643 — 2026-11-17
+## 9.99.1644 — 2026-11-17
 
 **🐛 Fix**
 
 - Brucebase date links with a letter (`brucebase.wikidot.com/1985#310385b`, one of several shows of one date; 338 entries of the wiki have one) and links to the early years' page (`…/1949-64#230949`) had no card and no window: the reader turned them away although it reads those shows fine. They now preview like every other date link, on Brucebase, on MusicBrainz (an event's "reviews" link) and in windows, and each shows its own show, not the other one of the same date.
+
+
+## 9.99.1643 — 2026-11-17
+
+**✨ Improve**
+
+- MusicBrainz link previews follow a change made in Event Horizon at once: after a rating, a tag vote, an alias edit, a collection change or an edit vote there, the next card or window asks MusicBrainz again instead of showing what it kept for up to 24 hours (Keep MusicBrainz answers for (hours)). This uses the shared last-write time majkinetor's scripts keep in this browser (localStorage mbLastWrite, agreed on majkinetor/musicbrainz-userscripts \#938); SAED only reads it. It applies to the entity cards, a release group's releases and facts, edit and editor pages and the paged lists of the windows. The Relationships column, recording lengths and "Recording of" keep their own lifetime, because no such change alters what they hold, and the external sites' previews (Wikipedia, Discogs, setlist.fm, …) are not affected.
 
 
 ## 9.99.1642 — 2026-11-17
@@ -883,13 +890,6 @@ This page shows the newest 100 of 1815 versions; the month pages hold all of the
 
 - setlist.fm: a festival edition's page (setlist.fm/festival/2025/…) gets a button, Setlists: every setlist of the festival from the page itself, one table per day, with Time, Artist (its setlist), Stage and Attendees. Above the tables: the dates and venue, and Details with the festival's facts (setlists, stages, attendances), its stages with their number of setlists, and the ten most attended setlists.
 - setlist.fm: a festival's page (setlist.fm/festivals/…) gets a button, Editions: every edition as one table (Year, Edition, Stages, Venues, Start, End), with the festival's facts and its Artist charts above.
-
-
-## 9.99.1545 — 2026-11-04
-
-**🐛 Fix**
-
-- setlist.fm: on a search page (an artist's search, a search by words), the setlists' links had no hover card or window before you pressed the button: setlist.fm lays a search page out differently from a venue's or an artist's list, and the cards were outside the part of the page the previews looked at. On a setlist's own page, the headline's artist and venue, its Tour line and the covers and guests in the song list now preview too.
 
 
 ---

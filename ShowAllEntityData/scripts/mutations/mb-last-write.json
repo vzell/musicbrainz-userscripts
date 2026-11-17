@@ -1,0 +1,132 @@
+[
+  {
+    "name": "IndexedDB ignores the shared last-write time",
+    "why": "_rgIdbGet() is the one IndexedDB read of the popup engine's MusicBrainz records. Without the C7 check, a card fetched before another script's write is served from IndexedDB for the whole sa_pop_mb_ttl_hours.",
+    "edits": [
+      {
+        "find": "Date.now() - rec.at < ttlMs && !_mbKeptStale(key, rec.at) ? { data: rec.data, at: rec.at } : null;",
+        "replace": "Date.now() - rec.at < ttlMs ? { data: rec.data, at: rec.at } : null;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "a card kept in IndexedDB: a write before it keeps it, a write after it drops it",
+    "expect": "fail"
+  },
+  {
+    "name": "a card in memory ignores the shared last-write time",
+    "why": "_mbLoad()'s memory: a card loaded earlier in this tab short-circuits the load, so a write made since (in Event Horizon's view, or another tab) never shows.",
+    "edits": [
+      {
+        "find": "        if (!force && cur && cur.status === 'done' && !_mbKeptStale(cacheKey, cur.at)) return;",
+        "replace": "        if (!force && cur && cur.status === 'done') return;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "a card kept in memory is reused, until another script reports a write",
+    "expect": "fail"
+  },
+  {
+    "name": "a release group's releases in memory ignore the shared last-write time",
+    "why": "_rgReleasesLoad(): without the stale flag the memory short-circuit and the prev carry-over keep the old releases after a write.",
+    "edits": [
+      {
+        "find": "        const stale = !!cur && cur.status === 'done' && _mbKeptStale(`rg-releases:${gid}`, cur.at);",
+        "replace": "        const stale = false;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "a release group: its releases and its facts are asked again after a write",
+    "expect": "fail"
+  },
+  {
+    "name": "a release group's facts in memory ignore the shared last-write time",
+    "why": "_rgFactsLoad(): the facts carry the ratings and genres Event Horizon's writes change; from memory they stay old.",
+    "edits": [
+      {
+        "find": "        if (!force && cur && cur.status === 'done' && !_mbKeptStale(`rg-facts:${gid}`, cur.at)) return;",
+        "replace": "        if (!force && cur && cur.status === 'done') return;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "a release group: its releases and its facts are asked again after a write",
+    "expect": "fail"
+  },
+  {
+    "name": "a paged list in memory ignores the shared last-write time",
+    "why": "_mbPagedStart(): loaded rows short-circuit the start, so a list window (a work's recordings, a collection, an edit list) keeps the rows of before the write.",
+    "edits": [
+      {
+        "find": "        const fresh = cur && cur.rows.length && !_mbKeptStale(`list:${key}`, cur.at);",
+        "replace": "        const fresh = cur && cur.rows.length;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "its loaded recordings are reused, until another script reports a write",
+    "expect": "fail"
+  },
+  {
+    "name": "every key counts as a MusicBrainz record",
+    "why": "The prefix list keeps the external readers (ext:, ext-...:) and the Wikidata picture (pop:img:) out: no MusicBrainz write changes them. Matching every key would re-ask Wikipedia, Discogs, setlist.fm after each rating.",
+    "edits": [
+      {
+        "find": "    const _MB_LAST_WRITE_KEYS = /^(?:pop:(?!img:)|rg-releases:|rg-facts:|list:)/;",
+        "replace": "    const _MB_LAST_WRITE_KEYS = /^/;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "which keys a write makes stale",
+    "expect": "fail"
+  },
+  {
+    "name": "a card's Wikidata picture counts as a MusicBrainz record",
+    "why": "pop:img: holds what Wikidata/Commons answered, which a MusicBrainz write does not change; the negative lookahead keeps it out of pop:.",
+    "edits": [
+      {
+        "find": "    const _MB_LAST_WRITE_KEYS = /^(?:pop:(?!img:)|rg-releases:|rg-facts:|list:)/;",
+        "replace": "    const _MB_LAST_WRITE_KEYS = /^(?:pop:|rg-releases:|rg-facts:|list:)/;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "which keys a write makes stale",
+    "expect": "fail"
+  },
+  {
+    "name": "the comparison runs the wrong way",
+    "why": "An answer is kept only when fetched strictly AFTER the last write (Event Horizon's rule). Reversed, a write before the fetch drops it and a write after keeps it.",
+    "edits": [
+      {
+        "find": "        return lastWrite > 0 && !(at > lastWrite);",
+        "replace": "        return lastWrite > 0 && !(at < lastWrite);"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "a card kept in IndexedDB: a write before it keeps it, a write after it drops it",
+    "expect": "fail"
+  },
+  {
+    "name": "an answer fetched at the very time of the write is kept",
+    "why": "Kept only when fetched strictly after the write: at === lastWrite counts as stale, as Event Horizon's e.at > mbLastWrite().",
+    "edits": [
+      {
+        "find": "        return lastWrite > 0 && !(at > lastWrite);",
+        "replace": "        return lastWrite > 0 && at < lastWrite;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "which keys a write makes stale",
+    "expect": "fail"
+  },
+  {
+    "name": "no script has written, yet everything is stale",
+    "why": "With the key absent (0) nothing may be stale, or every card would be asked again on every hover.",
+    "edits": [
+      {
+        "find": "        return lastWrite > 0 && !(at > lastWrite);",
+        "replace": "        return !(at > lastWrite) || lastWrite === 0;"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "which keys a write makes stale",
+    "expect": "fail"
+  }
+]

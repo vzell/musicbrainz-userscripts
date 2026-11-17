@@ -17,7 +17,7 @@
         "why": "Detail-pages rule: only a call with start (or ⟳) may start a request; pin() runs from every repaint.",
         "edits": [
             {
-                "find": "        if (cur && (cur.running || (!again && (cur.rows.length || cur.detail)))) return;\n",
+                "find": "        if (cur && (cur.running || (!again && (fresh || cur.detail)))) return;\n",
                 "replace": "        if (cur && cur.running) return;\n"
             }
         ],
