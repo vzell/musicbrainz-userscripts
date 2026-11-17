@@ -29913,3 +29913,33 @@ Env: 2026-11-17T18:52:16+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 - **The other year-table test of the spec (1968) needs no poll:** a poll added to it could not be shown to matter.
   It passed without it under the same 2 s delay, because the row whose stamp it checks is read early, the others
   take several page requests each, and the last row expects no stamp. The change was dropped.
+
+## 2026-11-17 — majkinetor refresh: 68512f9 → 0693aea; his #938 answers (C7 mbLastWrite, C8 MBU.artistImage, idle declined); SAED's gate port lags upstream (docs/majkinetor-refresh-2026-11-17)
+
+Env: 2026-11-17T19:37:31–19:43:25+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · Playwright 1.62.1, Chromium 151.0.7922.34, no Tampermonkey (GM stubs) for the probe · SAED 9.99.1641 from `main` (`0b5d17be`) · code reading: n/a. MusicBrainz reachable over IPv4 (`curl -4` 200 at 19:22).
+
+- Clone `debug/majkinetor/` fetched and reset to `0693aea` (2026-11-17T17:25:46+01:00), 794 commits after `68512f9`
+  (diff from the GitHub compare API; the clone is shallow). ST 2026.11.17.172546 (EH 2026.11.18.011000, ISRC Scout
+  2026.11.17.180001 inside, equal to the standalone copies); main's raw link byte-identical. All three harness
+  copies re-taken; manifest entries re-scanned in place, validated (13 scripts, 14 combinations).
+- #938 (read via the GitHub API): majkinetor declined the idle-mode mark (2026-11-16), allowed taking anything from
+  his repo (adoption questions 1–6), and his bot built points 7 and 8: `localStorage['mbLastWrite']` (C7; commits
+  `04dca330`, then `470baf8c` renamed the key from `mbu:kept-drop`) and `unsafeWindow.MBU.artistImage` (C8). SAED is
+  "Complementary" in his report (`e9ffd930`). "V under `data-mbu-keys-off`" unanswered; EH:15318 still returns early.
+- Upstream code that reaches SAED: EH's `@match` is every MusicBrainz page (its keydown listener with it, so
+  `_ehKeyGuardInstall()` matters on every page SAED runs); #981 lists SAED's launchers in EH's header menu
+  configuration as `external:<id>` and reads an optional `data-mbu-menu-icon`; EH's player `#eh-ply` sits on
+  `<html>` without `data-mb-corner`, so it outlives V and `data-mbu-quiet` does not hide it (from code). The gate
+  (`dev/net/mb-gate.mjs`, still `MBN_VERSION = 1`): `mbnSleep()` (#999), a lock wait raced against a 3 s timer, a
+  stored hold read capped at `MBN_MAX_HOLD`. SAED's port (`_mbGateState()`, `_mbGateSlot()`) has none of the three:
+  new TODO in org/majkinetor.org.
+- Probe (ST A–C, EH 0/A–D, ISRC Scout I alone and in the bundle): every structural row unchanged. New field `ehMenu`
+  in `snapshotState()`: SAED's 3 launchers under `<html>`; EH's copies in ⋯ (3/3, none in the main row) when its
+  header had been drawn, 0 in snapshots right after a load or V (no wait for EH's observer). Case I: 37/37 icons
+  with `data-ii-platform`, 37/37 stamped on the FRP, 51/51 cells. Heavy throttling: case D 17 503s, all on EH's
+  gated GM requests, none on SAED's 32 page fetches or its ws/2, which waited 13.2 s in the shared gate (`hot` 3);
+  case 0 (SAED alone) one 503 on its entity-pictures lookup, held in the gate.
+- Anchors: 55/55 held, but `saed-typing-guard` reported MULTI (1 of 2): the shortcut guard had been fixed in
+  `c3f92427` (2026-11-09 17:24, after that refresh); the remaining match is the Unicode picker's Ctrl+U guard, text
+  fields only on purpose. Rewritten as the fixed shape plus `saed-unicode-typing`; `eh-menu-items` count 2; twelve
+  new anchors: 68/68, re-pinned, lines updated.
