@@ -1696,8 +1696,9 @@ Your pages load their font stylesheet over HTTP (http://fonts.googleapis.com/css
 HTTPS page, so browsers block it and Open Sans never loads. Changing it to https:// fixes that. Separately, adding
 autocomplete="current-password" to the login form's password field (hTxtPassword) silences Chrome's hint about it.
 
-* TODO sticky area on mobile bug
-** initial
+
+* DONE sticky area on mobile bug
+** DONE initial
 
 ON SL pageTypes e.g. on https://www.springsteenlyrics.com/collection.php there is a bug when scrolling with a sticky
 area on mobile, see the following files all in @debug
@@ -1713,7 +1714,7 @@ When scrolling downward there is an area in the upper viewport, where when scrol
 menu is visible, but when scrolling further a white area sits on top of the rest of the page which scrolls behind
 it. When scrolling upwards completely the effect is gone, but repeats when scrolling downward again.
 
-** bugs
+** DONE bugs
 
 The bug is gone on mobile on the IP (checked in firefox), but two other bugs surfaced:
 
@@ -1722,7 +1723,7 @@ SL-sticky-area-sticky-then-moved-IP.mp4 - On the IP the SAED menu line moves out
 SL-sticky-area-stcky-then-moved-FRP.mp4 - On the FRP the SAED menu line moves out of the window when scrolling down
 #+end_example
 
-** still mobile bugs on the FRP
+** DONE still mobile bugs on the FRP
 
 1.)
 
@@ -1733,7 +1734,7 @@ the SL desktop PTs now behave ok
 The mobile IP is also OK, but the FRP on e.g. https://www.springsteenlyrics.com/collection.php does not have any sticky
 areas - [Image #12] from the firefox F12 console in mobile view but also confirmed live on my real mobile
 
-** firefox
+** DONE firefox
 
 OK, the following files are from the FRP of https://www.springsteenlyrics.com/collection.php?cmd=list&category=sampler
 with just 100 rows (instead of the 2770 rows before) which still shows the problem in Firefox - [Image #14]
