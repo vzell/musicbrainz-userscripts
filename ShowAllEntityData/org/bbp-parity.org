@@ -505,7 +505,8 @@ vzell checked the table live (2026-11-17): every row OK but two, which were wron
   list cannot have them; only Rob DeMartin (tagged "m") is on it. They are marked on their own page
   (=relation:chubby-checker= above).
 
+The =song:two-of-us= row: tested live by vzell (2026-11-17, "tested live OK").
+
 Unverified:
-- the =song:two-of-us= row (new, after vzell's check);
 - the storyteller tag page's count (from the mirror's tags, not from the live tag page);
 - the failure line, which needs GitHub to fail (the spec serves 404 and a bad file).
