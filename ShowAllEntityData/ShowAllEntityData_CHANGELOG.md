@@ -4,9 +4,23 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1808 versions; the month pages hold all of them.
+This page shows the newest 100 of 1809 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1638 — 2026-11-17
+
+**🚀 Feature**
+
+- Brucebase: the BruceParser feed. BruceParser reads the whole wiki offline and publishes what only that full read can see, in one small file on GitHub (github.com/vzell/brucebase-feed). The script reads it at most once a day, when you press a Brucebase page's button or open a Brucebase window with Space (never from a hover), keeps it for every site, and marks the pages it names with no request to the wiki.
+- Four new findings: ❌ a page titled differently from its show (an On stage, Notes, Media, News or Story page; marked on that page AND on the show, 25 shows in the run of 2026-11-15), ❌ a page without any tag, ⚠️ a page without a parent page (104 story pages), ⚠️ a page without its first-letter tag. On every Brucebase list they sit on the cell that names the row's own page (Event, Title, Name, Page), with the menus, the 📊 Findings sections and the tint of every other finding; on a page's head after its byline, and in its window after the title.
+- What the page in front of you shows wins: a page that has tags now, links a parent now, or whose title changed since the run is not marked for it. Every mark names the run it comes from, and calls it old after 14 days.
+- When the feed cannot be read, nothing is marked from it and nothing stops; the findings menus and a new Brucebase group in the ☰ menu say why ("not loaded (GitHub answered 404)"), with Retry; an earlier copy is still used. The ☰ line otherwise names the run kept, with Read again. New setting "Read the Brucebase feed" (on), a switch per finding and one tint.
+
+**📝 Docs**
+
+- Not marked yet: a year listing's rows (they link the year page's anchor, not the show's page). Size: +34 KB.
+
 
 ## 9.99.1637 — 2026-11-16
 
@@ -866,13 +880,6 @@ This page shows the newest 100 of 1808 versions; the month pages hold all of the
 **🚀 Feature**
 
 - Discogs release page: a new first button, Tracks, shows the release the way a MusicBrainz release page does, from one request. There is one table per disc or record (a vinyl record's two sides are one table, as on MusicBrainz), named like "Disc 1 · CD · 49:50" and after Discogs' heading when there is one per disc; headings inside a disc fill a Section column. The credits become columns, one line per name: Instruments, Vocals, Producer, Engineer, Mixed by, Arranged by and Other credits. A track's own credits and the release credits that name it ("A1 to A4, B2 to B4") both land on it; the credits naming no track form a Release credits table. Above the tables, as on a MusicBrainz release: "\~ Release by …", Notes (closed to start with), Details (on the left Release, External links, Genres and styles, Contributors and Community: Discogs' Statistics box with its links, and the copies for sale; the Identifiers on the right) and Images. The previous view, without its tracklist, is the second button: Credits, versions. Its labels, formats, country, year, genres and styles and the links in the notes are links, as on Discogs' page, and preview like the tables' links.
-
-
-## 9.99.1538 — 2026-11-04
-
-**✨ Improve**
-
-- archive.org item page: the part above the tables is laid out like a MusicBrainz release page. Under the title a line "\~ Concert recording by … (date: venue)", then three sections that fold like the release page's: Description (the uploader's text, closed to start with, like a release's Annotation), Details (the facts as cards in the look of the release page's Sidebar section: Show, Item, External links, Collections, Lineage; a click on a card's heading folds it) and Pictures (the scans as tiles, like the release page's Cover art; a click opens the viewer). Typing in a filter no longer rebuilds them.
 
 
 ---
