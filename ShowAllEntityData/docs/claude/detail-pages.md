@@ -288,7 +288,10 @@ hosts (kept, decided 2026-10-07).
   relationship or the Wikidata item's P18/P154 (`_mbPopImageLoad()`, from
   `pin()` only), and a later card shows it from memory or IndexedDB
   (`_mbPopImagePeek()`, `spec.cardAside`). A hover never asks Wikidata. Full
-  rules: docs/claude/sidebar.md, "The picture in the entity previews".
+  rules: docs/claude/sidebar.md, "The picture in the entity previews". An
+  artist's or a label's window adds Event Horizon's pictures after SAED's
+  (convention C8, `_ehImagesLoad()`; the card `cached()` only): same doc,
+  "Event Horizon's pictures (C8)".
 - **Codes** are a second path pattern, `_MB_POP_CODE_RE` (`/isrc/`, `/iswc/`,
   `/cdtoc/`); `_MB_POP_CODE_TYPES` maps the page segment to the kind and Web
   Service path — a disc ID's page is `/cdtoc/<id>`, its lookup

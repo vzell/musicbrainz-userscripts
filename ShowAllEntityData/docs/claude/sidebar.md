@@ -518,6 +518,55 @@ Measured: `_sbEnhance()` is about 1.2 ms of a 1.5 ms `makeH2sCollapsible()`
 pass on the artist page (`tests/support/probe-sidebar-cost.js`,
 `__saTest.sidebar.timing()`, tests/MEASUREMENTS.org 2026-10-11).
 
+### Event Horizon's pictures (C8)
+
+2026-11-18, mockup https://claude.ai/artifact/6hYoqwr8EEQdNs2Bo8tvfD
+(approved with every recommendation). majkinetor's Event Horizon publishes its
+artist-image instance as `unsafeWindow.MBU.artistImage` (convention C8,
+majkinetor #938; the repo's DEVELOP.md "Shared kept answers and artist
+images"): `findAll(mbid, urls)` asks its providers (Discogs, Deezer, Tidal,
+Apple Music, SoundCloud, Bandcamp, YouTube Music, Wikipedia) in the user's EH
+order through its own 30-day cache, `cached(mbid)` returns its first known
+picture without asking; answers are `{src, from, key, url}` copies. SAED
+needs `@grant unsafeWindow` for it, its first cross-script JS object (every
+other interop is a DOM mark).
+
+- **Gate: `_ehArtistImage()`**, read at every call (EH may load later or not
+  at all): `sa_pop_mb_image` and `sa_pop_mb_eh_images` on, the object there
+  with `findAll` and `cached`; null on anything else, a throw included.
+  Kinds: artist and label (`_MB_EH_IMG_KINDS`). The settings dialog cannot
+  grey the new row out under the picture setting (VZ_MBLibrary has no such
+  feature); the code ignores it then, and its description says so.
+- **The window (Space): `_ehImagesLoad()`**, started from
+  `_mbPopImageLoad()` once the url-rels are there, so only from a kind's
+  `pin()`. One `findAll(t.id, url strings)` per entity per page load (⟳
+  again), held in `_ehImg`, memory only, APART from SAED's picture record
+  (open question 4: SAED's pictures show at once, `_MB_POP_IMG_VERSION`
+  unchanged). A reject, a throw or no answer within `_EH_IMG_TIMEOUT_MS`
+  (20 s) gives `[]`, never a failure state; while it asks, one line "Asking
+  Event Horizon's sources…" (`.mb-pop-xpic-eh-wait`).
+- **Merge: `_ehExtra(own, eh)`**: after SAED's pictures, never one SAED
+  shows (by `src`), and not EH's Wikipedia picture (`key: 'wikipedia'`) when
+  SAED shows a Commons file. `_ehImgFrom()` maps an answer to the picture
+  shape (`via: 'eh'`, `from`, `key`, the image at every size, the provider's
+  page as `page`).
+- **Marks** (open questions 1 and 2): the caption names the provider plus a
+  blue "via Event Horizon" (`.mb-ei-via`); EH thumbnails carry a small EH
+  (`.mb-ei-ehtag`, which the window's viewer skips when it reads a link's
+  words); the viewer's page link is "Open on <provider>"
+  (`data-mb-artv-page-label`); `_eiOrigin()` says "Discogs · via Event
+  Horizon". Nothing on the card.
+- **No request off Space: `_ehImagesKnown()`**, a window's answer of this
+  page load, else `cached()`: the card (`_mbPopCardPicture()`, after SAED's
+  pictures) and the picture beside the name (`_eiShow()`, last in the turn,
+  its dot ringed, `.mb-ei-eh`). A page never calls `findAll`.
+- **Specs:** pop-mb-image.spec.js "Event Horizon's pictures
+  (sa_pop_mb_eh_images, C8)" (7) and entity-images.spec.js "Event Horizon's
+  picture beside the name" (2), both with the stand-in
+  `tests/support/ehArtistImage.js` (logs every call; the fixture harness has
+  no `unsafeWindow`, so it sits on `window`). Mutations:
+  `scripts/mutations/eh-artist-images.json` (19).
+
 ## The sidebar beside the page's own data (`_sbInline*`, `_sbAppendRelTablesGroups()`)
 
 Mockup picked 2026-10-15 (`https://claude.ai/artifact/FUdHYEuiLqhmrX3hqitzX4`,

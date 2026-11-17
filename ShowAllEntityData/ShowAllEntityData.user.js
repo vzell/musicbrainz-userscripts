@@ -81,6 +81,7 @@
 // @grant        GM_listValues
 // @grant        GM_registerMenuCommand
 // @grant        GM_unregisterMenuCommand
+// @grant        unsafeWindow
 // @license      GPL-3.0-or-later
 // ==/UserScript==
 
@@ -5806,6 +5807,19 @@
                          'logo, else the one its Wikidata item names (one or two small requests to Wikidata). ' +
                          'Click it for the viewer. Asked only on Space, never on a hover; afterwards the card ' +
                          'shows it too, from this browser\'s storage.'
+        },
+
+        sa_pop_mb_eh_images: {
+            label: 'Also Event Horizon\'s pictures, when it is installed',
+            type: 'checkbox',
+            default: true,
+            description: 'On by default; needs "Pictures in artist, label and place previews" above. When ' +
+                         'majkinetor\'s Event Horizon is installed, an artist\'s or a label\'s window also shows ' +
+                         'the pictures Event Horizon finds (Discogs, Deezer, Tidal, Apple Music, SoundCloud, ' +
+                         'Bandcamp, YouTube Music, Wikipedia), after this script\'s own, in the order you set in ' +
+                         'Event Horizon. Asked only on Space, through Event Horizon, which keeps them; the card ' +
+                         'and the picture beside an artist\'s or label\'s name show only what Event Horizon ' +
+                         'already knows, without asking.'
         },
 
         sa_pop_mb_ttl_hours: {
@@ -46975,13 +46989,16 @@
             .filter(l => !seen.has(l.href) && seen.add(l.href));
         const images = links.map((l) => {
             const img = l.querySelector('img');
-            const label = l.querySelector('span');
+            // Not the "EH" tag of an Event Horizon thumbnail (`_mbPopWindowPicture()`):
+            // its picture's words are the image's alt.
+            const label = l.querySelector('span:not(.mb-ei-ehtag)');
             const thumb = img ? (img.currentSrc || img.src) : '';
             return {
                 image: l.href, thumbnails: { 250: thumb || l.href }, types: [], external: true,
                 comment: ((label && label.textContent) || (img && img.alt) || '').trim(),
-                // An entity's Commons picture (`_mbPopWindowPicture()`) links its file page.
-                ...(l.dataset.mbArtvPage ? { pageUrl: l.dataset.mbArtvPage, pageLabel: 'Open on Commons' } : {}),
+                // An entity's Commons picture (`_mbPopWindowPicture()`) links its file page;
+                // an Event Horizon picture its provider's page, which it names.
+                ...(l.dataset.mbArtvPage ? { pageUrl: l.dataset.mbArtvPage, pageLabel: l.dataset.mbArtvPageLabel || 'Open on Commons' } : {}),
             };
         });
         const k = links.findIndex(l => l.href === a.href);
@@ -50927,6 +50944,16 @@
             .mb-dp-dialog .mb-ei-strip a[aria-current="true"] { border-color: #2b2622; box-shadow: 0 0 0 1px #2b2622; }
             .mb-dp-dialog .mb-ei-strip a:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 1px; }
             .mb-dp-dialog .mb-ei-thumb { display: block; width: 100%; height: 100%; object-fit: contain; }
+            /* Event Horizon's pictures (C8, mockup 2026-11-18): a small EH
+               tag on its thumbnails, a blue "via Event Horizon" mark in the
+               caption. */
+            .mb-dp-dialog .mb-ei-strip a { position: relative; }
+            .mb-dp-dialog .mb-ei-ehtag { position: absolute; right: 1px; bottom: 1px; padding: 1px 2px; border: 1px solid #2f5f9e;
+                border-radius: 2px; background: #fff; color: #2f5f9e;
+                font: 700 8px/1 system-ui, -apple-system, "Segoe UI", Arial, sans-serif; letter-spacing: .04em; }
+            .mb-dp-dialog .mb-ei-via { margin-left: 4px; padding: 2px 4px; border: 1px solid #2f5f9e; border-radius: 3px; color: #2f5f9e;
+                font: 600 10px/1 system-ui, -apple-system, "Segoe UI", Arial, sans-serif; letter-spacing: .08em;
+                text-transform: uppercase; white-space: nowrap; }
             .mb-dp-dialog .mb-ei-bad { margin-top: 6px; padding-top: 4px; border-top: 1px dashed #d9cfbd;
                 font: 12px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: #7a6d5c; }
             .mb-dp-dialog .mb-ei-bad summary { cursor: pointer; }
@@ -81543,13 +81570,176 @@
         }));
     }
 
+    // ── Event Horizon's pictures (convention C8, 2026-11-17) ─────────────────
+    // majkinetor's Event Horizon publishes its artist-image instance as
+    // `unsafeWindow.MBU.artistImage` (majkinetor/musicbrainz-userscripts #938;
+    // the repo's DEVELOP.md "Shared kept answers and artist images"):
+    // `findAll(mbid, urls)` asks its providers (Discogs, Deezer, Tidal, Apple
+    // Music, SoundCloud, Bandcamp, YouTube Music, Wikipedia) in the user's
+    // order, through its own cache; `cached(mbid)` answers its first picture
+    // without asking. Each answer is `{src, from, key, url}`, a copy. Looked up
+    // at call time (Event Horizon may load later, or not at all); in Firefox
+    // the object can come wrapped across sandboxes, so every call is guarded
+    // and SAED's own pictures stand alone when it fails. Mockup:
+    // https://claude.ai/artifact/6hYoqwr8EEQdNs2Bo8tvfD (approved 2026-11-18).
+
+    /** The kinds Event Horizon's lookup serves: an artist's picture, a label's logo. */
+    const _MB_EH_IMG_KINDS = new Set(['artist', 'label']);
+
+    /** How long a window waits for Event Horizon's answer before showing SAED's pictures alone, ms. */
+    const _EH_IMG_TIMEOUT_MS = 20000;
+
+    /**
+     * Event Horizon's answers asked from a window (`findAll()`), by
+     * `<type>:<id>`, for this page load only (Event Horizon keeps them for 30
+     * days itself): `loading`, then `done` with its images (`[]` when it gave
+     * none, failed or took too long).
+     * @type {Map<string, {status: ('loading'|'done'), images: Array<Object>, listeners: Set<function(): void>}>}
+     */
+    const _ehImg = new Map();
+
+    /**
+     * Event Horizon's shared artist-image object when it can be used here:
+     * the setting (and the picture setting it belongs to) on, the object
+     * there with the members SAED calls. Null otherwise, and when touching
+     * it throws.
+     * @returns {?{findAll: function(string, string[]): Promise<Array<Object>>, cached: function(string): ?Object}}
+     */
+    function _ehArtistImage() {
+        if (Lib.settings.sa_pop_mb_image === false || Lib.settings.sa_pop_mb_eh_images === false) return null;
+        try {
+            const ns = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
+            const a = ns && ns.MBU && ns.MBU.artistImage;
+            return a && typeof a.findAll === 'function' && typeof a.cached === 'function' ? a : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /**
+     * One of Event Horizon's answers as an entity picture (`_eiImagesFrom()`'s
+     * shape): the image itself at every size, its provider's page as the
+     * page. Null for anything without an https or http image address.
+     * @param {?Object} x - `{src, from, key, url}`.
+     * @returns {?Object}
+     */
+    function _ehImgFrom(x) {
+        const src = x && typeof x.src === 'string' ? x.src : '';
+        if (!/^https?:\/\//i.test(src)) return null;
+        let host;
+        try {
+            host = new URL(src).hostname;
+        } catch (e) {
+            return null;
+        }
+        const page = typeof x.url === 'string' && /^https?:\/\//i.test(x.url) ? x.url : '';
+        return {
+            src, thumb: src, large: src, page, url: page || src, type: 'eh', file: '', host,
+            from: String(x.from || x.key || host), key: String(x.key || ''), via: 'eh',
+        };
+    }
+
+    /**
+     * The entity's relationship URLs as plain strings, for Event Horizon.
+     * @param {Array<Object>} relations
+     * @returns {string[]}
+     */
+    function _ehRelUrls(relations) {
+        return (relations || []).map(r => (r && r.url && r.url.resource) || '').filter(Boolean);
+    }
+
+    /**
+     * Event Horizon's pictures to show after SAED's own: not one SAED already
+     * shows, and not its Wikipedia picture when SAED already shows a Commons
+     * file (the same photograph, as a rule).
+     * @param {Array<Object>} own - SAED's pictures.
+     * @param {Array<Object>} eh - Event Horizon's, as `_ehImgFrom()`.
+     * @returns {Array<Object>}
+     */
+    function _ehExtra(own, eh) {
+        const seen = new Set((own || []).map(im => im.src));
+        const hasCommons = (own || []).some(im => im.host === 'commons.wikimedia.org');
+        return (eh || []).filter(im => im && !(hasCommons && im.key === 'wikipedia') && !seen.has(im.src) && seen.add(im.src));
+    }
+
+    /**
+     * Asks Event Horizon for the entity's pictures, from a window (Space):
+     * once per entity per page load, ⟳ asks again. Resolves into `_ehImg`
+     * and repaints; any failure, a reject, a throw or no answer within
+     * `_EH_IMG_TIMEOUT_MS` leaves `[]`, never an error: SAED's pictures are
+     * complete without it.
+     * @param {object} t - A target of `_mbEntitySource()`.
+     * @param {Array<Object>} relations - The entity's url-rels.
+     * @param {boolean} again - ⟳.
+     * @param {function(): void} repaint
+     * @returns {void}
+     */
+    function _ehImagesLoad(t, relations, again, repaint) {
+        if (!_MB_EH_IMG_KINDS.has(t.type)) return;
+        const api = _ehArtistImage();
+        if (!api) return;
+        const key = `${t.type}:${t.id}`;
+        const cur = _ehImg.get(key);
+        if (cur && cur.status === 'loading') {
+            if (repaint) cur.listeners.add(repaint);
+            return;
+        }
+        if (cur && !again) return;
+        const st = { status: 'loading', images: [], listeners: new Set(repaint ? [repaint] : []) };
+        _ehImg.set(key, st);
+        let timer = 0;
+        const timeout = new Promise((resolve) => { timer = setTimeout(() => resolve(null), _EH_IMG_TIMEOUT_MS); });
+        let ask;
+        try {
+            ask = Promise.resolve(api.findAll(t.id, _ehRelUrls(relations)));
+        } catch (e) {
+            ask = Promise.resolve(null);
+        }
+        Promise.race([ask.catch(() => null), timeout]).then((res) => {
+            clearTimeout(timer);
+            let list;
+            try {
+                list = Array.isArray(res) ? res.map(_ehImgFrom).filter(Boolean) : [];
+            } catch (e) {
+                list = [];
+            }
+            Lib.debug('detail', `Event Horizon's pictures for ${key}: ${list.length}${res === null ? ' (no answer)' : ''}`);
+            Object.assign(st, { status: 'done', images: list });
+            st.listeners.forEach(fn => fn());
+        });
+    }
+
+    /**
+     * The picture Event Horizon already knows for an entity, without asking
+     * anyone: what a window asked this page load, else its `cached()` answer.
+     * For the card and the picture beside the name. `[]` when none.
+     * @param {string} type
+     * @param {string} id
+     * @returns {Array<Object>}
+     */
+    function _ehImagesKnown(type, id) {
+        if (!_MB_EH_IMG_KINDS.has(type)) return [];
+        const api = _ehArtistImage();
+        if (!api) return [];
+        const st = _ehImg.get(`${type}:${id}`);
+        if (st && st.status === 'done') return st.images;
+        try {
+            const im = _ehImgFrom(api.cached(id));
+            return im ? [im] : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
     /**
      * Where a picture comes from, in words: "logo link · seeklogo.com",
-     * "Wikimedia Commons", "Wikidata P154 (logo)".
+     * "Wikimedia Commons", "Wikidata P154 (logo)", "Discogs · via Event
+     * Horizon".
      * @param {Object} im
      * @returns {string}
      */
     function _eiOrigin(im) {
+        if (im.via === 'eh') return `${im.from} · via Event Horizon`;
         if (im.prop) return `Wikidata ${im.prop} (${im.prop === 'P154' ? 'logo' : 'image'})`;
         if (im.file) return 'Wikimedia Commons';
         return `${im.type} link · ${im.host.replace(/^www\./, '')}`;
@@ -81562,7 +81752,9 @@
      * nothing; else one `wbgetclaims` per property of `_MB_POP_IMG_PROPS`
      * until one names a file, through `_extGet()` (Wikidata's own rate gate,
      * anonymous, `wanted()` after the slot). Kept in `_mbPop` and IndexedDB,
-     * "no picture" included; a failure waits for ⟳ or "Try again".
+     * "no picture" included; a failure waits for ⟳ or "Try again". An
+     * artist's or a label's window also asks Event Horizon's sources
+     * (`_ehImagesLoad()`, C8), apart from that record and in memory only.
      *
      * @param {object} t
      * @param {?Array<Object>} relations - The entity's url-rels, once loaded.
@@ -81576,6 +81768,9 @@
         if (again) _mbPopImgAgain.add(key);
         if (!relations) return;
         const force = _mbPopImgAgain.delete(key);
+        // Event Horizon's pictures (C8), apart from SAED's own record: memory
+        // only, shown as they arrive (mockup, open question 4).
+        _ehImagesLoad(t, relations, force, repaint);
         const s = _mbPop.get(key);
         if (!force && s && s.status === 'failed') return;
         _mbLoad(key, async (wanted) => _mbPopImageRecordFor(t, relations, wanted),
@@ -81652,7 +81847,8 @@
     /**
      * The card's picture, 64 px beside the facts, '' when none is known: the
      * first that loads, "+N" for the others (a card never asks: only what a
-     * window or an earlier page load put in memory or IndexedDB). A picture
+     * window or an earlier page load put in memory or IndexedDB, then what
+     * Event Horizon already knows, `_ehImagesKnown()`, unmarked). A picture
      * not yet known to load is checked first (an `<img>`, as version 1's
      * Commons thumbnail was), and the card repaints once all are known.
      * @param {object} t
@@ -81662,7 +81858,10 @@
     function _mbPopCardPicture(t, repaint) {
         if (!_mbPopImgOn(t)) return '';
         const rec = _mbPopImageRecord(t);
-        const images = (rec && rec.images) || [];
+        const own = (rec && rec.images) || [];
+        // Then what Event Horizon already knows (C8): a window's answer of
+        // this page load, else its `cached()` one. Neither asks anybody.
+        const images = own.concat(_ehExtra(own, _ehImagesKnown(t.type, t.id)));
         if (images.some(im => _eiLoadState.get(im.src) !== 'ok' && _eiLoadState.get(im.src) !== 'bad')) {
             _eiProbeAll(images, () => { if (repaint) repaint(); });
         }
@@ -81720,8 +81919,13 @@
                 '<p><button type="button" class="mb-dp-retry">⟳ Try again</button></p>';
         }
         const rec = s.data || {};
-        const images = rec.images || [];
-        if (!images.length) return '';
+        // Event Horizon's pictures after SAED's own (C8): shown as they
+        // arrive, a line while it is still asking, nothing when it gave none.
+        const eh = _MB_EH_IMG_KINDS.has(t.type) && _ehArtistImage() ? _ehImg.get(`${t.type}:${t.id}`) : null;
+        const images = (rec.images || []).concat(eh && eh.status === 'done' ? _ehExtra(rec.images || [], eh.images) : []);
+        const ehWait = eh && eh.status === 'loading'
+            ? '<div class="mb-dp-xsub mb-pop-xpic-eh-wait"><span class="mb-dp-spin">◌</span> Asking Event Horizon\'s sources…</div>' : '';
+        if (!images.length) return ehWait;
         const key = t.key;
         let waiting = 0;
         images.forEach((im) => {
@@ -81738,27 +81942,36 @@
                 `${/^http:/i.test(im.url) ? ' <span class="mb-rg-dim">(http only: an https page cannot show it)</span>' : ''}</li>`).join('') +
             '</ul></details>' : '';
         if (!ok.length) {
-            return waiting ? '<div class="mb-dp-xsub mb-pop-xpic-wait"><span class="mb-dp-spin">◌</span> Loading the pictures…</div>' : badHtml;
+            return (waiting ? '<div class="mb-dp-xsub mb-pop-xpic-wait"><span class="mb-dp-spin">◌</span> Loading the pictures…</div>' : badHtml) + ehWait;
         }
         const pick = Math.min(Math.max(0, _eiWinPick.get(key) || 0), ok.length - 1);
         const cur = ok[pick];
+        // An Event Horizon picture's page is its provider's (the viewer's
+        // link says so); a Commons file's or a link's as before.
         const link = (im, i, inner, extra = '') => `<a href="${_rgEsc(im.large)}" target="_blank" rel="noopener noreferrer" data-mb-artv-ext="${i}"` +
-            `${im.page ? ` data-mb-artv-page="${_rgEsc(im.page)}"` : ''}${extra}>${inner}</a>`;
+            `${im.page ? ` data-mb-artv-page="${_rgEsc(im.page)}"` : ''}` +
+            `${im.via === 'eh' && im.page ? ` data-mb-artv-page-label="${_rgEsc(`Open on ${im.from}`)}"` : ''}${extra}>${inner}</a>`;
         const img = (im, cls) => `<img class="${cls}" src="${_rgEsc(im.thumb)}" alt="${_rgEsc(_eiOrigin(im))}" referrerpolicy="no-referrer">`;
+        // A thumbnail of Event Horizon's carries a small "EH" (open question 2).
+        const ehTag = im => (im.via === 'eh' ? '<span class="mb-ei-ehtag" aria-hidden="true">EH</span>' : '');
         // A Commons file as version 1 named it ("Wikimedia Commons · file",
         // "· from Wikidata Q… (logo)" when Wikidata named it); a link by its
-        // kind and host.
-        const where = im => (im.file
-            ? `<a href="${_rgEsc(im.page)}" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a> · ${_rgEsc(im.file)}` +
-                (im.prop ? ` · from Wikidata ${_rgEsc(rec.item)} (${im.prop === 'P154' ? 'logo' : 'image'})` : '')
-            : `<a href="${_rgEsc(im.url)}" target="_blank" rel="noopener noreferrer">${_rgEsc(_eiOrigin(im))}</a>`);
+        // kind and host; an Event Horizon picture by its provider, marked
+        // "via Event Horizon" (open question 1).
+        const where = im => (im.via === 'eh'
+            ? (im.page ? `<a href="${_rgEsc(im.page)}" target="_blank" rel="noopener noreferrer">${_rgEsc(im.from)}</a>` : _rgEsc(im.from)) +
+                ' <span class="mb-ei-via">via Event Horizon</span>'
+            : im.file
+                ? `<a href="${_rgEsc(im.page)}" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a> · ${_rgEsc(im.file)}` +
+                    (im.prop ? ` · from Wikidata ${_rgEsc(rec.item)} (${im.prop === 'P154' ? 'logo' : 'image'})` : '')
+                : `<a href="${_rgEsc(im.url)}" target="_blank" rel="noopener noreferrer">${_rgEsc(_eiOrigin(im))}</a>`);
         return '<figure class="mb-pop-xpic mb-ei-win">' + link(cur, pick, img(cur, 'mb-dp-xcover')) +
             `<figcaption class="mb-dp-xsub"><span>${where(cur)}</span>` +
             `${ok.length > 1 ? `<span class="mb-ei-pos">${pick + 1} / ${ok.length}</span>` : ''}</figcaption>` +
-            (ok.length > 1 ? '<div class="mb-ei-strip" role="group" aria-label="Pictures">' + ok.map((im, i) => link(im, i, img(im, 'mb-ei-thumb'),
+            (ok.length > 1 ? '<div class="mb-ei-strip" role="group" aria-label="Pictures">' + ok.map((im, i) => link(im, i, img(im, 'mb-ei-thumb') + ehTag(im),
                 ` data-mb-ei-pick="${i}" aria-current="${i === pick}" aria-label="Picture ${i + 1}: ${_rgEsc(_eiOrigin(im))}"`)).join('') + '</div>' : '') +
             (waiting ? '<div class="mb-dp-xsub"><span class="mb-dp-spin">◌</span> Checking more pictures…</div>' : '') +
-            badHtml + '</figure>';
+            ehWait + badHtml + '</figure>';
     }
 
     /**
@@ -145790,6 +146003,7 @@ a { color: #1565c0; }`;
             .mb-ei-avatar .mb-ei-dots { position: absolute; left: 50%; bottom: -7px; display: flex; gap: 2px; transform: translateX(-50%); pointer-events: none; }
             .mb-ei-avatar .mb-ei-dots i { width: 4px; height: 4px; border-radius: 50%; background: #c9bfae; }
             .mb-ei-avatar .mb-ei-dots i.mb-ei-on { background: #2b2622; }
+            .mb-ei-avatar .mb-ei-dots i.mb-ei-eh { box-shadow: 0 0 0 1px #2f5f9e; }
             @media (prefers-reduced-motion: reduce) {
                 .mb-ei-avatar .mb-ei-clip img, .mb-ei-avatar .mb-ei-arr { transition: none; }
             }
@@ -146170,11 +146384,15 @@ a { color: #1565c0; }`;
 
     /**
      * Shows the pictures that load beside the name; nothing when none does.
+     * An artist's or a label's turn also takes the picture Event Horizon
+     * already knows (`_ehImagesKnown()`, C8: no request; the page never asks
+     * Event Horizon to look anything up), last.
      * @param {{type: string, id: string}} ent
      * @param {Array<Object>} images
      * @returns {void}
      */
     function _eiShow(ent, images) {
+        images = images.concat(_ehExtra(images, _ehImagesKnown(ent.type, ent.id)));
         if (!images.length) return;
         _eiProbeAll(images, (ok) => {
             if (ok.length) _eiAvatar(ent, ok);
@@ -146210,7 +146428,11 @@ a { color: #1565c0; }`;
             `<img src="${_rgEsc(im.thumb)}" alt="" referrerpolicy="no-referrer" style="opacity:${i ? 0 : 1}">`).join('') + '</span>' +
             (many ? '<button type="button" class="mb-ei-arr mb-ei-prev" tabindex="-1" aria-label="Previous picture">‹</button>' +
                 '<button type="button" class="mb-ei-arr mb-ei-next" tabindex="-1" aria-label="Next picture">›</button>' +
-                `<span class="mb-ei-dots" aria-hidden="true">${list.map((_, i) => `<i${i ? '' : ' class="mb-ei-on"'}></i>`).join('')}</span>` : '');
+                // An Event Horizon picture's dot has a blue ring (C8, open question 2).
+                `<span class="mb-ei-dots" aria-hidden="true">${list.map((im, i) => {
+                    const cls = [i ? '' : 'mb-ei-on', im.via === 'eh' ? 'mb-ei-eh' : ''].filter(Boolean).join(' ');
+                    return `<i${cls ? ` class="${cls}"` : ''}></i>`;
+                }).join('')}</span>` : '');
         box._eiList = list;
         box.dataset.mbEiI = '0';
         box.dataset.mbttFn = 'ei-pic';
@@ -146277,7 +146499,7 @@ a { color: #1565c0; }`;
         const images = box._eiList.map(im => ({
             image: im.large, thumbnails: { 250: im.thumb }, types: [], external: true,
             comment: [_eiOrigin(im), im.file].filter(Boolean).join(' · '),
-            pageUrl: im.page || im.url, pageLabel: im.file ? 'Open on Commons' : 'Open the link',
+            pageUrl: im.page || im.url, pageLabel: im.file ? 'Open on Commons' : im.via === 'eh' ? `Open on ${im.from}` : 'Open the link',
         }));
         _SB_PIC_CTX.imagesCache.clear();
         _SB_PIC_CTX.imagesCache.set('sidebar', images);

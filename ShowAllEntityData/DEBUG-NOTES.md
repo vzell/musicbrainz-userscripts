@@ -30025,3 +30025,38 @@ Env: 2026-11-17T20:42–20:56+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6
   hover, asked again after a write reported through `mbLastWrite`.
 - **`npm run test:full` on petri, `4e8bba7a`, 22:55:06–23:15:33 CET (20 m 27 s): 3,212 of 3,212 passed.**
 - **Not yet:** the #938 reply on 7/8.
+
+## 2026-11-18 — Event Horizon's artist pictures in the previews and the heading (C8, `MBU.artistImage`) (feat/eh-artist-images)
+
+Env: 2026-11-18T00:13–00:33+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · Playwright 1.62.1, Chromium 151.0.7922.34, no Tampermonkey (GM stubs; Event Horizon replaced by the stand-in `tests/support/ehArtistImage.js`) · code reading of upstream `0693aea`: n/a.
+
+- **Why:** majkinetor built convention C8 on #938 (2026-11-17). Event Horizon publishes `unsafeWindow.MBU.artistImage`:
+  - `findAll(mbid, urls)` asks its providers in the user's order, through its 30-day cache;
+  - `cached(mbid)` returns its first known picture and asks nothing;
+  - answers are `{src, from, key, url}` copies (EH:7912–7920; the API is `dev/artimg/README.md`; `urls` are plain
+    relationship URLs).
+
+  The #938 reply on points 7 and 8 waits for this (vzell, 2026-11-17).
+- **Mockup** https://claude.ai/artifact/6hYoqwr8EEQdNs2Bo8tvfD, approved 2026-11-18 with all six recommendations.
+  Question 4 changed the plan: EH's answer is held in memory only, apart from SAED's picture record, so SAED's
+  pictures show at once and `_MB_POP_IMG_VERSION` stays 2.
+- **What:**
+  - `@grant unsafeWindow`.
+  - Setting `sa_pop_mb_eh_images` (on).
+  - `_ehArtistImage()`, `_ehImgFrom()`, `_ehRelUrls()`, `_ehExtra()`, `_ehImagesLoad()` (from `_mbPopImageLoad()`,
+    so only on Space; 20 s limit; a reject, a throw or no answer gives `[]`) and `_ehImagesKnown()` (`cached()`).
+  - The window, the card and `_eiShow()` merge EH's pictures after SAED's, with the marks.
+  - The viewer's page label comes from `data-mb-artv-page-label`, and its words skip the EH tag.
+- **Deviations from the mockup:**
+  1. The new settings row is not greyed out when the picture setting is off: VZ_MBLibrary's dialog has no such
+     feature. The code ignores the setting then, and its description says so.
+  2. The heading has no caption line under the name (the mockup drew one). The real heading names a picture's source
+     in its hover card, which now says "Discogs · via Event Horizon".
+- **Tests:** pop-mb-image.spec.js "Event Horizon's pictures (sa_pop_mb_eh_images, C8)" (7) and entity-images.spec.js
+  "Event Horizon's picture beside the name" (2): 9/9. The wider set (pop-mb-image, entity-images, popup-mb*,
+  detail-preview, discogs-image-card, sidebar*, both projects): 348/348, 9 m 26 s, finished 00:33:26.
+- **Mutations:** `scripts/mutations/eh-artist-images.json`, 19 entries, all failing their test. One existing entry
+  (`sidebar-overhaul.json` "card picture: no Open on Commons in the viewer") deletes the viewer line this changes:
+  its find was moved, and it still fails. `check-mutation-finds.py`: 305 lists, 0 stale.
+- **Lint:** two `no-useless-assignment` from initial values, removed; back within the baseline.
+- **Not yet:** a browser check by vzell with the real Event Horizon; `test:full`; the #938 reply.

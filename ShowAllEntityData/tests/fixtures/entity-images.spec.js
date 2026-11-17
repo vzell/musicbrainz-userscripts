@@ -24,6 +24,7 @@ const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('../support/test');
 const { loadUserscriptPage, addRequiredLibs, MB_LIBRARY_PATH, USERSCRIPT_PATH } = require('../support/loadPage');
+const { installEhArtistImage, routeEhImages, ehCalls } = require('../support/ehArtistImage');
 
 const LABEL = '011d1192-6f65-45bd-85c4-0400dd45693e';
 const PAGE_URL = `https://musicbrainz.org/label/${LABEL}/relationships`;
@@ -139,5 +140,50 @@ test.describe('the entity\'s pictures beside the name (sa_entity_images)', () =>
         await expect(avatar(page)).toHaveCount(0);
         expect(log.ws2).toEqual([]);
         expect(log.hosts).toEqual({});
+    });
+});
+
+// Event Horizon's picture beside the name (convention C8; mockup
+// https://claude.ai/artifact/6hYoqwr8EEQdNs2Bo8tvfD, approved 2026-11-18):
+// the logo Event Horizon already knows joins the turn, last, with a blue ring
+// on its dot; the page asks Event Horizon to look nothing up (`cached` only).
+test.describe('Event Horizon\'s picture beside the name (sa_pop_mb_eh_images, C8)', () => {
+    const EH_LOGO = { src: 'https://i.discogs.com/eh-columbia-logo.png', from: 'Discogs', key: 'discogs', url: 'https://www.discogs.com/label/1866' };
+
+    test('the logo Event Horizon knows joins the turn, last, ringed; findAll is never called', async ({ page }) => {
+        await installEhArtistImage(page.context(), { cached: EH_LOGO });
+        await routeEhImages(page.context());
+        await open(page);
+        await expect(avatar(page)).toBeVisible({ timeout: 15000 });
+        await expect(avatar(page).locator('.mb-ei-clip img')).toHaveCount(5);
+        await expect(avatar(page).locator('.mb-ei-clip img').last()).toHaveAttribute('src', EH_LOGO.src);
+        await expect(avatar(page).locator('.mb-ei-dots i').last()).toHaveClass(/mb-ei-eh/);
+        await expect(avatar(page).locator('.mb-ei-dots i.mb-ei-eh')).toHaveCount(1);
+        expect(await ehCalls(page, 'findAll'), 'the page never asks Event Horizon to look anything up').toEqual([]);
+        const cached = await ehCalls(page, 'cached');
+        expect(cached.length).toBeGreaterThan(0);
+        expect(cached[0].mbid).toBe(LABEL);
+        // Its hover card names it.
+        await avatar(page).hover();
+        await avatar(page).locator('.mb-ei-prev').click();
+        expect(await shown(page)).toBe('4');
+        await page.mouse.move(0, 0);
+        await avatar(page).locator('.mb-ei-clip').hover();
+        await expect(page.locator('.mb-tt-liner .mb-tt-pill', { hasText: 'Discogs · via Event Horizon' })).toBeVisible();
+        // The viewer links its provider's page.
+        await avatar(page).locator('.mb-ei-clip').click();
+        const viewer = page.locator('#mb-art-viewer');
+        await expect(viewer.locator('.mb-artv-pos')).toHaveText('5 / 5');
+        await expect(viewer.locator('[data-mb-artv-page]')).toHaveAttribute('href', EH_LOGO.url);
+        await expect(viewer.locator('[data-mb-artv-page]')).toContainText('Open on Discogs');
+    });
+
+    test('switched off: not called, the four logos only', async ({ page }) => {
+        await installEhArtistImage(page.context(), { cached: EH_LOGO });
+        await routeEhImages(page.context());
+        await open(page, { sa_pop_mb_eh_images: false });
+        await expect(avatar(page)).toBeVisible({ timeout: 15000 });
+        await expect(avatar(page).locator('.mb-ei-clip img')).toHaveCount(4);
+        expect(await ehCalls(page), 'neither findAll nor cached').toEqual([]);
     });
 });

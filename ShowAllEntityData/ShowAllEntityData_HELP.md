@@ -1086,8 +1086,11 @@ close every sidebar section; the headings of the main page are left alone.
   out. To find them the script asks MusicBrainz once for the entity's links,
   a few seconds after the page opens, and remembers the answer (the preview
   window uses the same one); with the *MusicBrainz Entity Images* userscript
-  installed it uses that script's pictures and asks nothing. Switch: *Entity
-  pictures from its links*.
+  installed it uses that script's pictures and asks nothing. On an artist's
+  or a label's page, the picture majkinetor's *Event Horizon* already knows
+  (once it has looked the artist or label up) joins the turn last, its dot
+  ringed in blue; nothing is asked for it. Switch: *Entity pictures from its
+  links* (and *Also Event Horizon's pictures, when it is installed*).
 - **The picture in previews.** The link previews of an artist, a label or a
   place show its picture too, once you have pressed Space on one: see
   *Link previews on MusicBrainz* under [Page-specific
@@ -2760,7 +2763,17 @@ userscript lists that host, so Tampermonkey does not ask first).
   asked only here, never for a card; after that the card shows the first too,
   small, beside the facts, with "+N" for the others, also after a reload.
   Click the large one for the artwork viewer, on all of them.
-  Switch: *Pictures in artist, label and place previews*. A part that could not be loaded says so, with
+  Switch: *Pictures in artist, label and place previews*. With majkinetor's
+  *Event Horizon* installed, an artist's or a label's window also shows the
+  pictures Event Horizon finds (Discogs, Deezer, Tidal, Apple Music,
+  SoundCloud, Bandcamp, YouTube Music, Wikipedia), after this script's own,
+  in the order you set in Event Horizon: marked *via Event Horizon* under the
+  large picture and with a small *EH* on their thumbnails; the viewer links
+  the provider's page. This script's pictures show at once, with a line while
+  Event Horizon is still asking; when it gives no answer, nothing more is
+  said. Its Wikipedia picture is left out when a Wikimedia Commons file is
+  already there. The card shows what Event Horizon already knows, without
+  asking. Switch: *Also Event Horizon's pictures, when it is installed*. A part that could not be loaded says so, with
   **Try again**. Areas are named down from the city, as on MusicBrainz's
   own pages: the window looks up each area above, one per level, and
   remembers them for every other card; a card shows the whole line only once

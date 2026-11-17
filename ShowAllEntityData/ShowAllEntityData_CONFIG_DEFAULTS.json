@@ -2,11 +2,11 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1642+2026-11-17",
-    "schema_entries": 539,
+    "script_version": "9.99.1643+2026-11-17",
+    "schema_entries": 540,
     "sections": 54,
-    "settings": 485,
-    "settings_with_default": 480,
+    "settings": 486,
+    "settings_with_default": 481,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 308,
+      "checkbox": 309,
       "color_picker": 62,
       "divider": 54,
       "number": 53,
@@ -578,6 +578,7 @@
     "sa_pop_ext_ttl_hours": "Keep external answers for (hours)",
     "sa_pop_initial_page": "Link previews also before a button is pressed",
     "sa_pop_mb": "Preview linked entities on hover",
+    "sa_pop_mb_eh_images": "Also Event Horizon's pictures, when it is installed",
     "sa_pop_mb_image": "Pictures in artist, label and place previews",
     "sa_pop_mb_on_touch": "Preview linked entities on touch devices",
     "sa_pop_mb_page": "Also preview links outside tables",
@@ -1064,6 +1065,7 @@
     "sa_pop_ext_ttl_hours": 168,
     "sa_pop_initial_page": true,
     "sa_pop_mb": true,
+    "sa_pop_mb_eh_images": true,
     "sa_pop_mb_image": true,
     "sa_pop_mb_on_touch": false,
     "sa_pop_mb_page": true,
