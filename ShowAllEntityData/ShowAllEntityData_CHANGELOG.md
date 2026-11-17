@@ -4,9 +4,30 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1809 versions; the month pages hold all of them.
+This page shows the newest 100 of 1812 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1641 — 2026-11-17
+
+**🐛 Fix**
+
+- springsteenlyrics.com on a phone (and in Firefox's responsive design mode): after pressing the button, nothing stayed at the top of the window: not the heading with the buttons, not the section bar, not the column headers. The site is set up for phones, and with a table wider than the screen Firefox let what you see slide around inside a much larger page area, which the docked bars do not follow. While a shown table is wider than the screen, the page can now no longer be zoomed out below 100 %, and the bars stay at the top. Zooming in still works; when the table fits the screen again, zooming out works as before.
+
+
+## 9.99.1640 — 2026-11-17
+
+**🐛 Fix**
+
+- springsteenlyrics.com: on the collection's "Latest additions" page and on the sampler and memorabilia lists, the toolbar line (the heading with the SAED button and the status line) stayed at the top of the window only for a short distance and then scrolled away, before and after pressing the button. The site's own page structure ends the block holding the heading right after the category buttons, and a docked line cannot go past the end of the block it is in. The heading is now placed in the block that holds the whole list, so it stays at the top all the way down. Other pages were not affected and are unchanged.
+
+
+## 9.99.1639 — 2026-11-17
+
+**🐛 Fix**
+
+- springsteenlyrics.com on a phone or in a narrow window: a white band stayed near the top of the window while scrolling down, and the page scrolled behind it. Two causes. The toolbar heading was docked 80 pixels down, below the site's menu bar, but the site only keeps that bar at the top in windows wider than 992 pixels; in a narrower one the heading now docks at the very top. And the white backdrop behind the docked heading stayed on after the heading itself had scrolled away (in a wide window too); it is now shown only while the heading is docked.
+
 
 ## 9.99.1638 — 2026-11-17
 
@@ -858,28 +879,6 @@ This page shows the newest 100 of 1809 versions; the month pages hold all of the
 **🐛 Fix**
 
 - Discogs Tracks view (a release's and a master's): track positions with a letter after the same number ("1a", "1b", …, a medley's parts) stay one table. Each part used to start a new disc: "The Very Best Of Stars On 45" came out as 147 tables of one row; now it is one table of 159 rows with a Section per medley.
-
-
-## 9.99.1541 — 2026-11-04
-
-**✨ Improve**
-
-- Discogs release page, Tracks: the Community card shows its rows in two columns: Have, Want, Avg rating, Ratings and Data quality on the left, Last sold, Low, Median, High and For sale on the right. When the card is narrow it is one column again. The counts have thousands separators, as on Discogs' own box.
-
-
-## 9.99.1540 — 2026-11-04
-
-**🚀 Feature**
-
-- Discogs master page: a new first button, Tracks, shows the master the way the release page's Tracks button shows a release. There is one table per disc or record (named by its positions, or by Discogs' heading when there is one per disc), the credits as columns (Instruments, Vocals, Producer, Engineer, Mixed by, Arranged by, Other credits), and the master's videos in a table under the tracks, with Play. Above the tables: "\~ Master release by … (year)", Notes, Details and Images. Details has on the left Master release (year, the main release ★, the newest release, the number of versions), External links, Genres and styles and Community (Have, Want, ratings and data quality; copies for sale, prices and formats, read from Discogs' own Statistics and For Sale boxes on the page). On the right is Credits: one line per person with their roles and the tracks each is on ("Guitar A1–B2, B4 · Harmonica A1"), the people on the most tracks first. The versions table is the second button, Versions, as before, now under one "Versions" sub-table heading.
-- New setting: ⚙️ Settings → 💿 Discogs → "Master page: the number of versions in the Tracks view" (on). The count costs one request more, the master's first page of versions; off, Tracks asks only for the master.
-
-
-## 9.99.1539 — 2026-11-04
-
-**🚀 Feature**
-
-- Discogs release page: a new first button, Tracks, shows the release the way a MusicBrainz release page does, from one request. There is one table per disc or record (a vinyl record's two sides are one table, as on MusicBrainz), named like "Disc 1 · CD · 49:50" and after Discogs' heading when there is one per disc; headings inside a disc fill a Section column. The credits become columns, one line per name: Instruments, Vocals, Producer, Engineer, Mixed by, Arranged by and Other credits. A track's own credits and the release credits that name it ("A1 to A4, B2 to B4") both land on it; the credits naming no track form a Release credits table. Above the tables, as on a MusicBrainz release: "\~ Release by …", Notes (closed to start with), Details (on the left Release, External links, Genres and styles, Contributors and Community: Discogs' Statistics box with its links, and the copies for sale; the Identifiers on the right) and Images. The previous view, without its tracklist, is the second button: Credits, versions. Its labels, formats, country, year, genres and styles and the links in the notes are links, as on Discogs' page, and preview like the tables' links.
 
 
 ---

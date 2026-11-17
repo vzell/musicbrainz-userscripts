@@ -1,5 +1,41 @@
 [
   {
+    "version": "9.99.1641",
+    "date": "2026-11-17",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "springsteenlyrics.com on a phone (and in Firefox's responsive design mode): after pressing the button, nothing stayed at the top of the window: not the heading with the buttons, not the section bar, not the column headers. The site is set up for phones, and with a table wider than the screen Firefox let what you see slide around inside a much larger page area, which the docked bars do not follow. While a shown table is wider than the screen, the page can now no longer be zoomed out below 100 %, and the bars stay at the top. Zooming in still works; when the table fits the screen again, zooming out works as before."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1640",
+    "date": "2026-11-17",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "springsteenlyrics.com: on the collection's \"Latest additions\" page and on the sampler and memorabilia lists, the toolbar line (the heading with the SAED button and the status line) stayed at the top of the window only for a short distance and then scrolled away, before and after pressing the button. The site's own page structure ends the block holding the heading right after the category buttons, and a docked line cannot go past the end of the block it is in. The heading is now placed in the block that holds the whole list, so it stays at the top all the way down. Other pages were not affected and are unchanged."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1639",
+    "date": "2026-11-17",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "springsteenlyrics.com on a phone or in a narrow window: a white band stayed near the top of the window while scrolling down, and the page scrolled behind it. Two causes. The toolbar heading was docked 80 pixels down, below the site's menu bar, but the site only keeps that bar at the top in windows wider than 992 pixels; in a narrower one the heading now docks at the very top. And the white backdrop behind the docked heading stayed on after the heading itself had scrolled away (in a wide window too); it is now shown only while the heading is docked."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1638",
     "date": "2026-11-17",
     "sections": [
