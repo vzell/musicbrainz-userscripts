@@ -2260,9 +2260,9 @@ Mockup https://claude.ai/artifact/65urMwgWSb6zq6xJa9Mf4x; vzell's answers of
   source-row data and survives a filter re-render and Save/Load to Disk.
   A feed that comes in after the render is stamped by ONE `stampFindings()`
   (`_bbFeedChanged()`), at most once a day, then `runFilter()` while a feed
-  finding filters. **A year listing's rows are not marked**: they link the
-  year page's anchor (`/1978#050378`), and the show's page is known only once
-  ▶ Pages has read the year page.
+  finding filters. A year listing's rows link the year page's anchor
+  (`/1978#050378`), not the show's page: since feed 1.2 the feed's
+  `anchors` name the show (below, "Feed 1.2").
 - **Heads and windows:** `_fdHeadInsertSections()` adds `_bbFeedMarksHtml()`
   after every Brucebase head's byline, and `_dpExtractedCols()` adds
   `_bbFeedWindowMarks()` after a Brucebase window's title (`bbTagInfo.name`,
@@ -2394,6 +2394,58 @@ in org/bbp-parity.org, "Feed v2".
   published on 2026-11-17, feed repo `8ea33f1`) and the
   Roxy venue fixture: its photos drop "files", and the date mark stays.
   `scripts/mutations/bb-feed.json` has 10 more entries; each fails its test.
+
+### Feed 1.2: a year listing's rows, through the anchors (feed v2, branch 2, 2026-11-17)
+
+Env: 2026-11-17T21:20+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux
+6.18.58.1-microsoft-standard-WSL2) · n/a (the probe: Python over the mirror
+bb/2026-11-15; the checker and the spec: Playwright Chromium, no
+Tampermonkey)
+
+BruceParser 0.20.0 (`feed.sh` 1.2, `87dbd04`) adds a top-level `anchors`:
+the year-page anchor of every show the feed names, `"1972#000472b":
+[pages]`, from the run's `brucebase-event.txt`. 25 anchors, 26 pages, the
+feed 29 KB. It keeps format 1: `_bbFeedValid()` checks the envelope only.
+The decisions (vzell, 2026-11-17) are in org/bbp-parity.org, "Feed v2,
+branch 2".
+
+- **The lookup** `_bbFeedAnchorPage(href, date)`: the page of a link
+  `/<year>#<anchor>`. One page is taken as it is. On an anchor two entries
+  share (`1972#000472b`, the only one of the wiki) the page whose name has
+  the row's date right after its category wins; none or two fitting give
+  ''. An anchor the map lacks gives '': the map holds only the shows the
+  feed names.
+- **Rows:** `_bbFeedCellFacts()` falls back to it when the cell's link is
+  no page. The row's date comes from the cell's carrier
+  (`span.mb-bb-ev-data`'s raw heading), source-row markup that survives a
+  re-render and Save/Load to Disk. The memo key carries the date, so two
+  rows on one shared anchor never share an entry.
+- **The year-anchor window** (the `bbdate` reader), on Brucebase only
+  (MusicBrainz is branch 3): `_extBbDateLoad()` puts the entry's own page on
+  the window's `dp` (`bbFeedPage`, from its gig link). `_bbFeedWindowMarks(data,
+  t)` takes it, or for a record kept from before the change the anchors of
+  the window's link `t.url` with the entry's date from `dp.subtitle`.
+  `live` is null: the window shows the year entry, not the page. Ext windows
+  draw `rec.dp` (`_dpExtractedCols(rec.dp, t)`), which is why the page goes
+  on `dp`, not on `rec`.
+- **Seen on the way, not changed:** the `bbdate` reader takes six-digit
+  anchors only (`_extBbDateTest()`: `/^#\d{6}$/`). A lettered anchor
+  (`#000672b`, `#220973a`) gets no window at all; 338 year entries have one.
+- **The probe** (part 5, every `<year>-list.html` of the mirror): 5,010
+  listing rows, 25 marked (the 25 shows marked through a dependent page).
+  The shared anchor resolves to 1972-04-00b by the row's date, and every
+  anchor of the map is linked by a row. The checker runs the shipped lookup
+  over the same rows: no difference.
+- **Tests:** `tests/fixtures/bb-feed.spec.js`, 5 more (28):
+  - the 1973 listing's five rows;
+  - the lookup (one page, shared, none, a feed before 1.2);
+  - Save to Disk → Load from Disk;
+  - the year-anchor window, with a planted feed on a six-digit anchor of the
+    1972 fixture, read through the GM stub, not `page.route`.
+
+  `scripts/mutations/bb-feed.json` has 8 more entries, 4 of them
+  `"expect": "pass"` with the reason (the memo key, either half of the
+  window's two sources, MusicBrainz).
 
 ## Show links on Brucebase's own pages (Phase 8, 2026-11-11)
 

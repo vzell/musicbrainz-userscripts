@@ -35,6 +35,12 @@ For every page the feed names:
      of the category no list links, the storyteller tag page (every story:
      page tagged storyteller, from the mirror's tags), and the year tables
      (the shows of point 3).
+  5. (feed 1.2) the year listings: every row of every <year>-list.html links
+     "/<year>#<anchor>" with its own date first; the feed's "anchors" give
+     its page (one page, or among several the one whose name has the row's
+     date right after the category, else none: the userscript's rule), and
+     the row is marked with that page's kinds; also the anchors no listing
+     row links.
 
 Counts and every mismatch go to OUT.json; a summary is printed.
 """
@@ -196,6 +202,35 @@ def main():
         hit = [n for n in rows if kinds_of(n)]
         out['lists'][label] = {'rows': len(rows), 'marked': len(hit), 'kinds': Counter(k for n in hit for k in kinds_of(n))}
 
+    # 5. the year listings, through the feed's anchors (feed 1.2)
+    anchors = feed.get('anchors') or {}
+    lst = {'rows': 0, 'marked': 0, 'kinds': Counter(), 'shared': [], 'markedRows': [], 'anchorsUnlinked': []}
+    linked = set()
+    for fn in sorted(os.listdir(run_dir)):
+        if not re.match(r'^\d{4}(-\d\d)?-list\.html$', fn):
+            continue
+        src = read(os.path.join(run_dir, fn))
+        for m in re.finditer(r'<li><a href="/(\d{4}(?:-\d\d)?#[0-9a-z]+)">(.*?)</a>', src, re.S):
+            key, text = m.group(1), html.unescape(re.sub(r'<[^>]+>', '', m.group(2)))
+            d = re.match(r'\s*(\d{4}-\d{2}-\d{2})', text)
+            date = d.group(1) if d else ''
+            lst['rows'] += 1
+            linked.add(key)
+            pages = anchors.get(key, [])
+            if len(pages) > 1:
+                fit = [x for x in pages if date and x.split(':', 1)[1].startswith(date)]
+                page = fit[0] if len(fit) == 1 else ''
+                lst['shared'].append({'list': fn, 'anchor': key, 'date': date, 'pages': pages, 'picked': page})
+            else:
+                page = pages[0] if pages else ''
+            k = kinds_of(page) if page else []
+            if k:
+                lst['marked'] += 1
+                lst['kinds'].update(k)
+                lst['markedRows'].append([fn, key, date, page, k])
+    lst['anchorsUnlinked'] = sorted(set(anchors) - linked)
+    out['listings'] = lst
+
     json.dump(out, open(out_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=1, default=dict)
     print(f"feed pages {len(feed['pages'])}, missing in the mirror {len(out['missing'])}: {out['missing'][:5]}")
     print(f"by kind {dict(out['byKind'])} (feed reports {({k: v['count'] for k, v in feed['reports'].items()})})")
@@ -209,6 +244,11 @@ def main():
         print('    odd:', x)
     print(f"reverse index: {out['reverse']['shows']} shows, {out['reverse']['dependents']} dependents, "
           f"{out['reverse']['showExists']} show pages in the mirror, years {dict(out['reverse']['perYear'])}")
+    L = out['listings']
+    print(f"listings: {L['rows']} rows, {L['marked']} marked {dict(L['kinds'])}")
+    for r in L['shared']:
+        print(f"    shared anchor {r['anchor']} on {r['list']}, row date {r['date']}: picked {r['picked'] or 'none'} of {r['pages']}")
+    print(f"    anchors no listing row links: {L['anchorsUnlinked']}")
     for k, v in out['lists'].items():
         print(f"list {k}: {v['rows']} rows, {v['marked']} marked {dict(v['kinds'])}")
         if 'unlinked' in v:

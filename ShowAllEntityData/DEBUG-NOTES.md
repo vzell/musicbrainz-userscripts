@@ -29986,3 +29986,24 @@ Env: 2026-11-17T19:20+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58
   as the script does. On the "news" tag page that was 17 shows; the checker found it (42 against 25).
 - **Not followed up:** `news:`, `media:` and `files:` pages are `bb-page` (no head), so their own page shows no mark;
   their windows and the tag pages do.
+
+## 2026-11-17 — Brucebase feed v2, branch 2: a year listing's rows, through the anchors (feat/bb-feed-v2-listing)
+
+Env: 2026-11-17T21:20+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · probe: Python over the mirror bb/2026-11-15, n/a; spec and checker: Playwright Chromium, no Tampermonkey (GM stubs)
+
+- **What:** BruceParser 0.20.0 (`feed.sh` 1.2) adds `anchors` (year-page anchor → the shows the feed names). The
+  script marks a year listing's rows by their anchor link (`_bbFeedAnchorPage()`), and a year-anchor window on
+  Brucebase. Record and browser check: org/bbp-parity.org, "Feed v2, branch 2"; design: docs/claude/brucebase.md,
+  "Feed 1.2".
+- **The year-anchor window: two traps on the way.**
+  - An ext reader's window draws `rec.dp`, not `rec` (`_dpExtractedCols(rec.dp, t)`): a field put on `rec` never
+    reached `_bbFeedWindowMarks()`. The page now goes on `dp`, and the window's target `t` is passed in, so a record
+    kept from before the change still finds its show through the anchors.
+  - In a spec, an ext reader asks through `GM_xmlhttpRequest`, which `page.route()` does not intercept: the year page
+    must be served through `window.__gmXhrResponses` (as `answerFeed()` does). Served through `page.route()`, the window
+    showed the link's own text as its title.
+- **Seen on the way, not changed:** `_extBbDateTest()` takes six-digit anchors only (`/^#\d{6}$/`). A lettered anchor
+  such as `#000672b` (338 year entries have a letter) gets no window at all; every 1972 show the feed names has one.
+  On 1972's own page, a link to `/1972#…` is an in-page anchor and gets no preview either.
+- **Mutations:** the window's new `t` argument moved two older finds (`bb-feed.json`, `bb-findings-batch3.json`).
+  They are rewritten and still fail their test.

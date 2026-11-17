@@ -407,8 +407,8 @@
         "why": "The window's title carries it.",
         "edits": [
             {
-                "find": "${_mbttEscape(data.title || '(untitled)')}${_bbTitleBlanksHtml(data.bbRawTitle)}${_bbFeedWindowMarks(data)}</div>`);",
-                "replace": "${_mbttEscape(data.title || '(untitled)')}${_bbFeedWindowMarks(data)}</div>`);"
+                "find": "${_mbttEscape(data.title || '(untitled)')}${_bbTitleBlanksHtml(data.bbRawTitle)}${_bbFeedWindowMarks(data, t)}</div>`);",
+                "replace": "${_mbttEscape(data.title || '(untitled)')}${_bbFeedWindowMarks(data, t)}</div>`);"
             }
         ],
         "spec": "tests/fixtures/bb-findings-batch3.spec.js",

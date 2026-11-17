@@ -5,7 +5,14 @@ Env: 2026-11-13 · plan written in a Claude Code session (plan mode), code readi
 
 Plan for pickup on another host.
 
-* PICKUP HERE: status of 2026-11-17 (night): feed v2, branch 1 MERGED (9.99.1642), the branch is deleted; BruceParser 0.19.0's feed PUBLISHED; next: feed v2, branch 2 (plan mode first); batch 3b SET ASIDE
+* PICKUP HERE: status of 2026-11-17 (night): feed v2, branch 2 BUILT on =feat/bb-feed-v2-listing= (pushed, not merged); BruceParser 0.20.0 pushed, its feed NOT published; branch 1 MERGED (9.99.1642); batch 3b SET ASIDE
+
+- *Feed v2, branch 2 (2026-11-17, NB-3641):* a year listing's rows marked through the feed's new =anchors=, and the
+  year-anchor window on Brucebase. 5,010 listing rows in the mirror, 25 marked.
+  - *Next:* vzell publishes the 0.20.0 feed, checks the rows in =org/bbp-parity.org=, "The browser check of feed v2,
+    branch 2"; then the merge on his word. After it: branch 3 (MusicBrainz), its own plan.
+  - *Found:* the year-anchor window's reader takes six-digit anchors only; a lettered anchor (338 entries) opens no
+    window. A candidate for its own small fix.
 
 - *Feed v2, branch 1 (2026-11-17, NB-3641):* three findings from BruceParser 0.19.0's two new keys. ❌ a date tag
   missing and ⚠️ a date tag that is not the page's date, both on pages that are no show (3 pages). ⚠️ "files" tagged
