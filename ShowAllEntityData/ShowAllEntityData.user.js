@@ -190775,16 +190775,6 @@ a { color: #1565c0; }`;
                 return _bbFeedPictureCount(doc);
             },
             /**
-             * Thin wrapper around `_extBbParseYear()` (scripts/check-bb-year-setlist-notes.js).
-             *
-             * @param {string} html
-             * @param {string} base
-             * @returns {{icon: string, shows: Object<string, Object>}}
-             */
-            extBbParseYear(html, base) {
-                return _extBbParseYear(html, base);
-            },
-            /**
              * Thin wrapper around `_bbFeedAnchorPage()`.
              *
              * @param {string} href
