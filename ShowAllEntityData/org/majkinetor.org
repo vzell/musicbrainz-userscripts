@@ -1451,8 +1451,9 @@ Before coding each one, write a real example page into this item, with the click
   change; dropping them re-asks a whole table) and the external readers. Correction: only Event Horizon sets the
   key today (12 =kpWrote()= sites: ratings, tag votes, alias POSTs, cancelling an edit, collections, edit votes);
   Apollo, Group Therapy and MusicBrainz's own forms do not, so an edit made there does NOT drop anything yet. When
-  they start setting it on relationship edits, revisit =rel-ws2=. The reply on #938 that 7/8 work waits for
-  vzell's browser check (and maybe C8).
+  they start setting it on relationship edits, revisit =rel-ws2=. *Browser check by vzell 2026-11-17: OK*
+  (Vivaldi 8.2.4133.96, Tampermonkey 5.5.5, String Theory 2026.11.17.210830). The reply on #938 that 7 works can
+  be drafted now; whether it waits for C8 is vzell's call.
 
 - Show a cached answer at once. After the page is in, re-ask each answer older than a TTL, one at a time in the
   background, and repaint only when it changed (EH =kept=/=kpCheck= 3336-3386).
