@@ -5,7 +5,19 @@ Env: 2026-11-13 · plan written in a Claude Code session (plan mode), code readi
 
 Plan for pickup on another host.
 
-* PICKUP HERE: status of 2026-11-16: batch 3 is MERGED (9.99.1633–1635); batch 3b is SET ASIDE (vzell); the help-icon check is MERGED (9.99.1636–1637), the branch is deleted; the feed is BUILT on =feat/bb-feed=, waiting for vzell's browser check
+* PICKUP HERE: status of 2026-11-17: the feed v1 is MERGED (9.99.1638), the branch is deleted; batch 3b is SET ASIDE (vzell); next: v2 of the feed, plan mode first
+
+- *The feed v1 is MERGED (9.99.1638, 2026-11-17, NB-3641; vzell: every browser-check row tested live OK):*
+  - Two rows of the browser check were wrong, not the code. The wiki builds stats:songs and stats:relations from the
+    first-letter tags, so a page without its letter tag, or without any tag, is never on them. The probe and the
+    checker now read each list's own links. Record: =org/bbp-parity.org=, "The browser check of the feed".
+  - =test:full= on the merged =main=: 3,189 of 3,189 (15:14:30–15:40:27 CET).
+  - Not published to =vzell/mb-userscripts= (vzell's call). The HELP file changed, so the ❓ Help is behind until then.
+  - *Next (v2), from Track A ideas 3, 4 and 5 below:* the reports v1 left out (=URL-shortening=, =files= tag vs
+    images, missing date-part tags), the year listing's rows, the lookup tables (=TOUR_DEFINITIONS=, the alias
+    overrides; they also unblock batch 3b), and the MusicBrainz cross-checks (idea 5).
+  - *Seen on the way:* the M tab of stats:relations stops before "Mu" (19 pages tagged "m" are missing). Looks like a
+    list limit on the wiki; not checked live.
 
 - *The feed, 2026-11-16 (NB-3641):*
   - *Done:* BruceParser 0.18.0 (=e3f821a=, pushed) writes and publishes it. The public repo
