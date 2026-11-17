@@ -30065,3 +30065,29 @@ Env: 2026-11-17T20:42–20:56+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6
   hover, asked again after a write reported through `mbLastWrite`.
 - **`npm run test:full` on petri, `4e8bba7a`, 22:55:06–23:15:33 CET (20 m 27 s): 3,212 of 3,212 passed.**
 - **Not yet:** the #938 reply on 7/8.
+
+## 2026-11-18 — The year reader read a setlist's note as a song (fix/bb-year-setlist-note)
+
+Env: 2026-11-18T00:17:58+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2, clock source hyperv_clocksource_tsc_page) · Playwright Chromium (chromium-fixtures), no Tampermonkey (GM stubs); the check: the shipped parser over the mirror bb/2026-11-15
+
+- **Symptom** (vzell's browser check of the lettered-anchor fix, 2026-11-17): the window of `/1985#310385b` listed
+  track 29 as "TWIST AND SHOUT - DO YOU LOVE ME Setlist may be incorrect or out of order."
+- **Cause:** `_extBbParseYear()` took the setlist paragraph's whole text and split it on " / ". The year page ends the
+  paragraph with `<br><sup><em>…</em></sup>` ("Incomplete setlist." 196 times, "Setlist may be incomplete." 22, …), and
+  645 entries hold only `<sup>No set details known.</sup>`, which became a one-song setlist. With the old line,
+  `scripts/check-bb-year-setlist-notes.js` counts 951 songs that are, or end with, such a note; with the fix 0.
+- **Fix:** the `<sup>`s are taken out of a copy of the paragraph (`setlistNote`) before the split. The window draws it
+  under the tracks (`dp.tracksNote`; under a plain "Tracklist" heading when there are no tracks).
+  `_EXT_BB_YEAR_VERSION` 5 reads the kept year pages again. Only the window uses the reader's setlist.
+- **The check took three tries:**
+  - a count of notes against the parser's (248 against 952: my first regex wanted " / " in the paragraph, so it
+    missed one-song setlists and the notes alone);
+  - any `<sup>` text inside a song (2016's prose entries contain the note "Bruce Springsteen");
+  - the defect's exact shape, a song that IS a note or ENDS with one. That is what it checks now.
+- **Seen on the way, not changed:** an entry whose first paragraph is a description, not a setlist (2016-10-03
+  Barnes & Noble), is read as a one-song setlist by this reader. The year table's converter tells the two apart by
+  content.
+- **Tests:** `bb-date-links.spec.js` 3 more (12): the 1985 fixture's 310385b (29 tracks, the note under them), 300785
+  (no track, "No set details known."), the parser over the whole fixture. `scripts/mutations/bb-date-links.json` has 4
+  more (one `"expect": "pass"`: the cache version, no spec sees a stale IndexedDB entry). Two older finds rewritten
+  (`bb-window-links.json`, `popup-ext.json`).

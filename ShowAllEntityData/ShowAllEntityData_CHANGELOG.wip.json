@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-11-18",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Brucebase date windows: the year page's note on a setlist (\"Incomplete setlist.\", \"Setlist may be incorrect or out of order.\") was read as part of the last song, and \"No set details known.\" as a one-song setlist (951 songs across the year pages). The note is now a line of its own under the songs, and an entry with only that note shows no song. Year pages read before are read once more."
+        ]
+      }
+    ]
+  }
+]

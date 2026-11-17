@@ -11,8 +11,10 @@ Plan for pickup on another host.
   year-anchor window on Brucebase. 5,010 listing rows in the mirror, 25 marked.
   - *Merged* (vzell: "Everything tested live OK") with =fix/bb-date-lettered-anchors=: a lettered anchor and the
     1949-64 page open their window now. The 0.20.0 feed is published (feed repo =2ba2b2a=).
-  - *Found in vzell's check:* the year reader glues the year page's "Setlist may be incorrect or out of order." note
-    to the last song (6 year pages). Being fixed next, on its own branch.
+  - *Found in vzell's check:* the year reader glued the year page's setlist note ("Incomplete setlist.", "Setlist may
+    be incorrect …") to the last song, or made "No set details known." a one-song setlist: 951 songs. Fixed on
+    =fix/bb-year-setlist-note= (2026-11-18, pushed, not merged). Still open there: a description paragraph read as
+    a one-song setlist (2016-10-03 Barnes & Noble).
   - *After it:* branch 3 (MusicBrainz), its own plan. NB-3641's clock: see =tests/README.org= (clock source).
 
 - *Feed v2, branch 1 (2026-11-17, NB-3641):* three findings from BruceParser 0.19.0's two new keys. ❌ a date tag

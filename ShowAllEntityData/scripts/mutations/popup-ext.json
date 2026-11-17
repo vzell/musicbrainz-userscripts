@@ -1057,8 +1057,8 @@
         "why": "The setlist paragraph lists titles with \" / \" between them: each is a track.",
         "edits": [
             {
-                "find": "                setlist: setlistP ? _dpText(setlistP.textContent).split(/\\s+\\/\\s+/).filter(Boolean) : [],",
-                "replace": "                setlist: setlistP ? [_dpText(setlistP.textContent)] : [],"
+                "find": "                setlist: setlistText ? setlistText.split(/\\s+\\/\\s+/).filter(Boolean) : [], setlistNote,",
+                "replace": "                setlist: setlistText ? [setlistText] : [], setlistNote,"
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",

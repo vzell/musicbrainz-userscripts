@@ -3614,7 +3614,18 @@ the header's `@connect` and `_EXT_CONNECT_HOSTS` (the parent domain covers
   (`_EXT_BB_DATE_RE`). The parser read both all along; the test turned them
   away, so such a link had no card and no window. The relative form on
   Brucebase (`/1972#000472b`) is made absolute by the same widened
-  pattern. `_extBbYear()` reads the year page ONCE
+  pattern. **The setlist's note** (version 5, 2026-11-18): a setlist
+  paragraph may end in `<br><sup><em>Incomplete setlist.</em></sup>`, and
+  some hold only `<sup>No set details known.</sup>`. The parser takes
+  the `<sup>`s out (`setlistNote`) before splitting the songs on " / ", and
+  the window draws the note under the tracks (`dp.tracksNote`, also under a
+  plain "Tracklist" heading when there are no tracks). Until then the note
+  was the last song, or a one-song setlist: 951 songs in the run of
+  2026-11-15 (`scripts/check-bb-year-setlist-notes.js`, which runs the
+  shipped parser over every year page). Still open: an entry whose first
+  paragraph is a description, not a setlist (2016-10-03 Barnes & Noble), is
+  read as a one-song setlist; the year table's converter tells the two
+  apart by content, this reader does not. `_extBbYear()` reads the year page ONCE
   (as https, which the site redirects http to; `_EXT_BB_MAX_BYTES` 1 MB; 1 to
   7.5 s, hence its `loadingNote`) and `_extBbParseYear()` parses every show
   in it; the year is kept by URL in `_extBbYears` for the page load (a

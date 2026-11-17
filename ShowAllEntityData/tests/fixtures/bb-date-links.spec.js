@@ -136,6 +136,64 @@ test.describe('Brucebase show links with a lettered anchor, and the 1949-64 page
     });
 });
 
+test.describe('the year page\'s note on a setlist (2026-11-18)', () => {
+    /**
+     * Opens the window of one 1985 show (the year page as the GM answer).
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {string} anchor
+     * @returns {Promise<void>}
+     */
+    async function openShow(page, anchor) {
+        await page.context().addInitScript((r) => { window.__gmXhrResponses = r; },
+            { [YEAR]: { status: 200, responseHeaders: HTML_HEADERS, responseText: fixture('bb-year-1985.html') } });
+        await loadBbEventPage(page, 'gig-1978-07-07', { settingsOverride: { sa_pop_ext: true, sa_rich_tooltip_delay_ms: 0 } });
+        await page.evaluate((h) => {
+            const p = document.createElement('p');
+            p.innerHTML = `<a class="sn-a" href="${h}">the show</a>`;
+            document.querySelector('#page-content').prepend(p);
+        }, `/1985#${anchor}`);
+        await ctrlHover(page, page.locator('a.sn-a'));
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator('.mb-dp-area')).toContainText('1985-');
+    }
+
+    test('the note is no song: the last track is the last song, the note a line under the tracks', async ({ page }) => {
+        await openShow(page, '310385b');
+        const area = dialog(page).locator('.mb-dp-area');
+        await expect(area.locator('h4', { hasText: 'Tracklist · 29 tracks' })).toHaveCount(1);
+        const last = await area.locator('ol li, .mb-dp-track').last().textContent();
+        expect(last).toContain('TWIST AND SHOUT - DO YOU LOVE ME');
+        expect(last).not.toContain('Setlist may be');
+        await expect(area.locator('.mb-dp-tracks-note')).toHaveText('Setlist may be incorrect or out of order.');
+    });
+
+    test('a show with only the note ("No set details known."): no track, the note under "Tracklist"', async ({ page }) => {
+        await openShow(page, '300785');
+        const area = dialog(page).locator('.mb-dp-area');
+        await expect(area.locator('h4', { hasText: /^Tracklist$/ })).toHaveCount(1);
+        await expect(area.locator('h4', { hasText: 'Tracklist ·' })).toHaveCount(0);
+        await expect(area.locator('.mb-dp-tracks-note')).toHaveText('No set details known.');
+    });
+
+    test('the parser: setlistNote apart, every song clean (the whole 1985 fixture)', async ({ page }) => {
+        await loadBbEventPage(page, 'gig-1978-07-07', { settingsOverride: { sa_pop_ext: true } });
+        const r = await page.evaluate((h) => {
+            const y = window.__saTest.extBbParseYear(h, 'https://brucebase.wikidot.com/1985');
+            return {
+                b: [y.shows['310385b'].setlist.slice(-1)[0], y.shows['310385b'].setlistNote],
+                none: [y.shows['300785'].setlist.length, y.shows['300785'].setlistNote],
+                inc: y.shows['140585'].setlistNote,
+                glued: Object.values(y.shows).flatMap(s => s.setlist).filter(t => /setlist|set details/i.test(t)),
+            };
+        }, fixture('bb-year-1985.html'));
+        expect(r.b).toEqual(['TWIST AND SHOUT - DO YOU LOVE ME', 'Setlist may be incorrect or out of order.']);
+        expect(r.none).toEqual([0, 'No set details known.']);
+        expect(r.inc).toBe('Incomplete setlist.');
+        expect(r.glued).toEqual([]);
+    });
+});
+
 test.describe('Brucebase show links on Brucebase pages (Phase 8)', () => {
     test('the gig\'s own "Info & Setlist" link is a show link the previews take', async ({ page }) => {
         await loadBbEventPage(page, 'gig-1978-07-07', { settingsOverride: { sa_pop_ext: true } });

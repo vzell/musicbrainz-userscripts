@@ -93,5 +93,57 @@
         "spec": "tests/fixtures/bb-date-links.spec.js",
         "grep": "taken: a lettered anchor",
         "expect": "pass"
+    },
+    {
+        "name": "year reader: the setlist's note read as a song again",
+        "why": "The year page's <sup> note ends the setlist paragraph; it is no song.",
+        "edits": [
+            {
+                "find": "                setlist: setlistText ? setlistText.split(/\\s+\\/\\s+/).filter(Boolean) : [], setlistNote,",
+                "replace": "                setlist: setlistP ? _dpText(setlistP.textContent).split(/\\s+\\/\\s+/).filter(Boolean) : [], setlistNote,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-date-links.spec.js",
+        "grep": "the note is no song",
+        "expect": "fail"
+    },
+    {
+        "name": "year reader: the note not drawn under the tracks",
+        "why": "The window shows the note on its own line under the tracklist.",
+        "edits": [
+            {
+                "find": "            if (data.tracksNote) right.push(`<div class=\"mb-dp-note mb-dp-tracks-note\">${_mbttEscape(data.tracksNote)}</div>`);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-date-links.spec.js",
+        "grep": "the note is no song",
+        "expect": "fail"
+    },
+    {
+        "name": "year reader: a note without tracks not drawn",
+        "why": "An entry with only \"No set details known.\" shows it under a plain Tracklist heading.",
+        "edits": [
+            {
+                "find": "            right.push(`<h4>Tracklist</h4><div class=\"mb-dp-note mb-dp-tracks-note\">${_mbttEscape(data.tracksNote)}</div>`);",
+                "replace": "            void 0;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-date-links.spec.js",
+        "grep": "a show with only the note",
+        "expect": "fail"
+    },
+    {
+        "name": "year reader: the cache version not bumped",
+        "why": "Year pages kept with the glued song must be read again (version 5). The specs parse fresh pages, so no spec can see a stale IndexedDB entry.",
+        "edits": [
+            {
+                "find": "    const _EXT_BB_YEAR_VERSION = 5;",
+                "replace": "    const _EXT_BB_YEAR_VERSION = 4;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-date-links.spec.js",
+        "grep": "the note is no song",
+        "expect": "pass"
     }
 ]

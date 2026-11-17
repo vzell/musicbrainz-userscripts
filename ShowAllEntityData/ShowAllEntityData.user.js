@@ -45546,6 +45546,13 @@
                 right.push('<div class="mb-dp-discs">' + _dpGroupTracks(data.tracks, 'disc').map(([disc, ts]) =>
                     `<div>${disc ? `<div class="mb-dp-gname">${_mbttEscape(disc)}</div>` : ''}${_dpTrackListHtml(ts, sl)}</div>`).join('') + '</div>');
             }
+            // A note on the list as a whole (a Brucebase year entry's
+            // "Incomplete setlist."), under it.
+            if (data.tracksNote) right.push(`<div class="mb-dp-note mb-dp-tracks-note">${_mbttEscape(data.tracksNote)}</div>`);
+        } else if (data.tracksNote) {
+            // Only the note ("No set details known.": 645 Brucebase year
+            // entries, a one-song setlist until 2026-11-18).
+            right.push(`<h4>Tracklist</h4><div class="mb-dp-note mb-dp-tracks-note">${_mbttEscape(data.tracksNote)}</div>`);
         }
         data.sections.forEach(s => {
             // A Brucebase record's Tags: drawn now, with the tags its other
@@ -96804,8 +96811,8 @@
     /** The year page's own cap (U0 X8: a late 1978 show sits past 300 KB). */
     const _EXT_BB_MAX_BYTES = 1024 * 1024;
 
-    /** Version of the parsed year pages kept in IndexedDB; bump when `_extBbParseYear()`'s output changes. */
-    const _EXT_BB_YEAR_VERSION = 4;
+    /** Version of the parsed year pages kept in IndexedDB; bump when `_extBbParseYear()`'s output changes (5: the setlist's note apart, 2026-11-18). */
+    const _EXT_BB_YEAR_VERSION = 5;
     /** The kept year listings' record version (`_extBbYearList()`). */
     const _EXT_BB_YEAR_LIST_VERSION = 1;
 
@@ -96886,6 +96893,19 @@
             }
             const [date, ...rest] = heading.split(' - ');
             const setlistP = block.find(el => el.tagName === 'P' && !el.closest('.list-pages-box'));
+            // The setlist paragraph may end in a note, `<br><sup><em>Incomplete
+            // setlist.</em></sup>` (248 entries in 28 year pages of the run of
+            // 2026-11-15, always at the end): it is no song. Until version 5 it
+            // was read with the paragraph, so the last song carried it
+            // ("TWIST AND SHOUT - DO YOU LOVE ME Setlist may be incorrect or out
+            // of order."; vzell, 2026-11-17).
+            let setlistNote = '';
+            let setlistText = '';
+            if (setlistP) {
+                const copy = setlistP.cloneNode(true);
+                setlistNote = Array.from(copy.querySelectorAll('sup'), x => { const t = _dpText(x.textContent); x.remove(); return t; }).filter(Boolean).join(' ');
+                setlistText = _dpText(copy.textContent);
+            }
             const notesBox = block.find(el => el.matches('.list-pages-box') || el.querySelector('.list-pages-box'));
             const notesEl = notesBox && (notesBox.matches('.list-pages-box') ? notesBox : notesBox.querySelector('.list-pages-box'));
             const notes = notesEl ? _dpBlockText(notesEl).split(/\n+/).map(_dpText).filter(Boolean) : [];
@@ -96920,7 +96940,7 @@
             shows[name] = {
                 heading, date: /^\d{4}-\d\d-\d\d$/.test(date) ? date : '', venue: rest.join(' - '),
                 gig: gig ? _dpAbsUrl(gig.getAttribute('href'), base) : '', cancelled: !!gig && /^\/nogig:/.test(gig.getAttribute('href')),
-                setlist: setlistP ? _dpText(setlistP.textContent).split(/\s+\/\s+/).filter(Boolean) : [],
+                setlist: setlistText ? setlistText.split(/\s+\/\s+/).filter(Boolean) : [], setlistNote,
                 notes, people, has, icons, also: [], help, featured: mark('Star', 'Featured'),
             };
         });
@@ -97063,6 +97083,9 @@
             ['The gig page has', show.has.join(', ')],
         ].filter(f => f[1]);
         dp.tracks = show.setlist.map((s, i) => ({ disc: '', pos: String(i + 1), title: s, from: '' }));
+        // The year page's note on the setlist ("Incomplete setlist."), under
+        // the tracks (version 5).
+        dp.tracksNote = show.setlistNote || '';
         dp.notes = show.notes;
         // The year page's icons for the window (`_dpShowInDialog()`); the
         // card keeps the line of words above. A year read before version 2
@@ -190750,6 +190773,16 @@ a { color: #1565c0; }`;
              */
             bbFeedPictures(doc) {
                 return _bbFeedPictureCount(doc);
+            },
+            /**
+             * Thin wrapper around `_extBbParseYear()` (scripts/check-bb-year-setlist-notes.js).
+             *
+             * @param {string} html
+             * @param {string} base
+             * @returns {{icon: string, shows: Object<string, Object>}}
+             */
+            extBbParseYear(html, base) {
+                return _extBbParseYear(html, base);
             },
             /**
              * Thin wrapper around `_bbFeedAnchorPage()`.
