@@ -166,6 +166,10 @@ test.describe('the year page\'s note on a setlist (2026-11-18)', () => {
         expect(last).toContain('TWIST AND SHOUT - DO YOU LOVE ME');
         expect(last).not.toContain('Setlist may be');
         await expect(area.locator('.mb-dp-tracks-note')).toHaveText('Setlist may be incorrect or out of order.');
+        // Its description is plain paragraphs, no .list-pages-box: the
+        // window's Notes have it (vzell, 2026-11-18, Image #3/#4).
+        await expect(area.locator('h4', { hasText: 'Notes' })).toHaveCount(1);
+        await expect(area.locator('.mb-dp-note').first()).toContainText('Final tour performances for "Nebraska"');
     });
 
     test('a show with only the note ("No set details known."): no track, the note under "Tracklist"', async ({ page }) => {
@@ -174,6 +178,27 @@ test.describe('the year page\'s note on a setlist (2026-11-18)', () => {
         await expect(area.locator('h4', { hasText: /^Tracklist$/ })).toHaveCount(1);
         await expect(area.locator('h4', { hasText: 'Tracklist ·' })).toHaveCount(0);
         await expect(area.locator('.mb-dp-tracks-note')).toHaveText('No set details known.');
+    });
+
+    test('an entry read as the year table reads it: a prose first paragraph is the description, a label groups its songs', async ({ page }) => {
+        // In the year page's own shape (no 2016 fixture): 2016-10-03 Barnes &
+        // Noble has a description and no setlist, which until version 6 was
+        // a one-song setlist; a soundcheck before the set.
+        await loadBbEventPage(page, 'gig-1978-07-07', { settingsOverride: { sa_pop_ext: true } });
+        const html = '<html><body><div id="page-content">' +
+            '<p><a name="031016"></a><br /><strong><a href="/nogig:2016-10-03-barnes-noble">2016-10-03 - BARNES &amp; NOBLE AT THE GROVE, LOS ANGELES, CA</a></strong></p>' +
+            '<p>Bruce Springsteen makes a special appearance to celebrate the release of his autobiography <em>Born To Run</em>.</p>' +
+            '<img src="https://brucebase.wdfiles.com/local--files/content:files/00Photo-32.png" title="Photo" class="image" /><hr />' +
+            '<p><a name="051016"></a><br /><strong><a href="/gig:2016-10-05-x">2016-10-05 - SOMEWHERE, SAN FRANCISCO, CA</a></strong></p>' +
+            '<p>Soundcheck: BADLANDS / THE RIVER</p><p>THUNDER ROAD / BORN TO RUN<br /><sup><em>Incomplete setlist.</em></sup></p>' +
+            '<p>A short show.</p><hr /></div></body></html>';
+        const r = await page.evaluate(h => window.__saTest.extBbParseYear(h, 'https://brucebase.wikidot.com/2016').shows, html);
+        expect(r['031016'].setlist).toEqual([]);
+        expect(r['031016'].notes.join(' ')).toContain('makes a special appearance');
+        expect(r['051016'].setlist).toEqual(['BADLANDS', 'THE RIVER', 'THUNDER ROAD', 'BORN TO RUN']);
+        expect(r['051016'].setLabels).toEqual(['Soundcheck', 'Soundcheck', '', '']);
+        expect(r['051016'].setlistNote).toBe('Incomplete setlist.');
+        expect(r['051016'].notes).toEqual(['A short show.']);
     });
 
     test('the parser: setlistNote apart, every song clean (the whole 1985 fixture)', async ({ page }) => {

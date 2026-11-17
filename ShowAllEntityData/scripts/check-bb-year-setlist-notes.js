@@ -14,6 +14,14 @@
  * some are not in a setlist paragraph, and the second entry on a shared
  * anchor is no show of its own).
  *
+ * Version 6 (2026-11-18) reads an entry as the year table does: also no
+ * song may be prose (a description paragraph read as a one-song setlist:
+ * over 60 characters, what is in parentheses set aside, with more than
+ * half of its letters lowercase), and
+ * two shows are pinned: 2016-10-03 Barnes & Noble (no song, its description
+ * in the notes) and 1985-03-31b (29 songs, its plain-paragraph description
+ * in the notes). Printed for information: the shows with notes.
+ *
  * Read-only, no network. Exit code 1 when anything differs.
  *
  * usage: node scripts/check-bb-year-setlist-notes.js [--mirror DIR] [--list]
@@ -61,6 +69,9 @@ function rawSups(html) {
     let parsed = 0;
     let shows = 0;
     const glued = [];
+    const prose = [];
+    const pinned = [];
+    let withNotes = 0;
     const byNote = new Map();
     for (const f of files) {
         const html = fs.readFileSync(path.join(MIRROR, f), 'utf8');
@@ -69,7 +80,7 @@ function rawSups(html) {
         const base = `https://brucebase.wikidot.com/${f.replace(/\.html$/, '')}`;
         const res = await page.evaluate(([h, b]) => {
             const y = window.__saTest.extBbParseYear(h, b);
-            return Object.entries(y.shows).map(([a, s]) => ({ a, note: s.setlistNote || '', songs: s.setlist, n: s.setlist.length }));
+            return Object.entries(y.shows).map(([a, s]) => ({ a, note: s.setlistNote || '', songs: s.setlist, n: s.setlist.length, notes: s.notes }));
         }, [html, base]);
         shows += res.length;
         res.forEach((r) => {
@@ -85,6 +96,17 @@ function rawSups(html) {
             // entries contain the note "Bruce Springsteen").
             const bad = r.songs.find(song => sups.texts.some(t => song === t || song.endsWith(` ${t}`)));
             if (bad) glued.push(`${f}#${r.a}: ${bad}`);
+            const lower = (t) => (t.match(/[a-z]/g) || []).length / Math.max(1, (t.match(/[A-Za-z]/g) || []).length);
+            // What sits in parentheses is set aside ("(with Sting, Peter
+            // Gabriel, …)"), as the year table's classifier does.
+            const p = r.songs.find((song) => {
+                const core = song.replace(/\([^()]*\)/g, ' ').replace(/\s+/g, ' ').trim();
+                return core.length > 60 && lower(core) > 0.5;
+            });
+            if (p) prose.push(`${f}#${r.a}: ${p.slice(0, 90)}`);
+            if (r.notes.length) withNotes++;
+            if (f === '2016.html' && r.a === '031016' && !(r.n === 0 && r.notes.join(' ').includes('special appearance'))) pinned.push(`${f}#${r.a}: ${r.n} songs, notes ${JSON.stringify(r.notes).slice(0, 80)}`);
+            if (f === '1985.html' && r.a === '310385b' && !(r.n === 29 && r.notes.join(' ').includes('Final tour performances'))) pinned.push(`${f}#${r.a}: ${r.n} songs, notes ${JSON.stringify(r.notes).slice(0, 80)}`);
         });
     }
     await browser.close();
@@ -92,8 +114,13 @@ function rawSups(html) {
     console.log(`shows with a setlistNote: ${parsed}; <sup>s ending a paragraph: ${raw} (information)`);
     console.log(`a song that is, or ends with, a note: ${glued.length}`);
     glued.slice(0, 10).forEach(g => console.log(`    ${g}`));
+    console.log(`a song that is prose: ${prose.length}`);
+    prose.slice(0, 10).forEach(g => console.log(`    ${g}`));
+    console.log(`the two pinned shows wrong: ${pinned.length}`);
+    pinned.forEach(g => console.log(`    ${g}`));
+    console.log(`shows with notes: ${withNotes} (information)`);
     if (LIST) [...byNote].sort((x, y) => y[1].count - x[1].count).forEach(([n, e]) => console.log(`    ${String(e.count).padStart(4)}  ${JSON.stringify(n).slice(0, 100)}  ${e.first}`));
-    const ok = glued.length === 0 && parsed > 0;
+    const ok = glued.length === 0 && prose.length === 0 && pinned.length === 0 && parsed > 0;
     console.log(ok ? 'no difference' : 'DIFFERENCES');
     process.exit(ok ? 0 : 1);
 })();

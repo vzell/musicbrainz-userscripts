@@ -30091,3 +30091,32 @@ Env: 2026-11-18T00:17:58+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
   (no track, "No set details known."), the parser over the whole fixture. `scripts/mutations/bb-date-links.json` has 4
   more (one `"expect": "pass"`: the cache version, no spec sees a stale IndexedDB entry). Two older finds rewritten
   (`bb-window-links.json`, `popup-ext.json`).
+
+## 2026-11-18 — The year reader reads an entry as the year table does (fix/bb-year-setlist-note, version 6)
+
+Env: 2026-11-18T00:54:56+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2, clock source hyperv_clocksource_tsc_page) · Playwright Chromium (chromium-fixtures), no Tampermonkey (GM stubs); the check: the shipped parser over the mirror bb/2026-11-15
+
+- **vzell's two follow-ups** (after the setlist-note fix, his browser check of 2026-11-18, Image #3/#4):
+  1. an entry whose first paragraph is a description (2016-10-03 Barnes & Noble) was a one-song setlist;
+  2. 1985-03-31b's window had no description at all, though the year page has a long one.
+- **Cause, both:** `_extBbParseYear()` took the first plain paragraph as the setlist and only a `.list-pages-box` as the
+  notes. The year table's converter has known since 2026-10-09 that 2,732 of 5,009 entries write their description as
+  plain paragraphs, and tells a set paragraph from prose by content (`_bbSetParagraphKind()`).
+- **Fix:** the reader uses the table's two phases. The leading set or note paragraphs go through `_bbSplitSet()`
+  (songs, a label such as "Soundcheck" as the window's group, the note). Everything after, up to the icons
+  (`_bbIconsOf()`), is the description: notes and people. `_EXT_BB_YEAR_VERSION` 6 (vzell had version 5 records from
+  testing the branch).
+- **The check** (`scripts/check-bb-year-setlist-notes.js`, now also prose songs and two pinned shows) over all 63 year
+  pages:
+
+  | Parser            | Songs that are or end with a note | Songs that are prose | Shows with notes |
+  |-------------------+-----------------------------------+----------------------+------------------|
+  | `main`'s          |                               951 |                  275 |            2,212 |
+  | version 6         |                                 0 |                    0 |            4,838 |
+
+  The first prose test flagged songs with a long "(with Sting, Peter Gabriel, …)": parentheses are set aside, as the
+  classifier does.
+- **Tests:** `bb-date-links.spec.js` 13. The 1985-03-31b window shows its Notes. A parser test on an entry in the year
+  page's shape covers a prose first paragraph and a soundcheck label. `scripts/mutations/bb-date-links.json` has 3 more
+  (prose as a set, plain paragraphs not read, a label lost). Four finds the rewrite moved are rewritten; all 16 entries
+  of that run behave as recorded.

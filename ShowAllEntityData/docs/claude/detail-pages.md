@@ -3614,18 +3614,24 @@ the header's `@connect` and `_EXT_CONNECT_HOSTS` (the parent domain covers
   (`_EXT_BB_DATE_RE`). The parser read both all along; the test turned them
   away, so such a link had no card and no window. The relative form on
   Brucebase (`/1972#000472b`) is made absolute by the same widened
-  pattern. **The setlist's note** (version 5, 2026-11-18): a setlist
-  paragraph may end in `<br><sup><em>Incomplete setlist.</em></sup>`, and
-  some hold only `<sup>No set details known.</sup>`. The parser takes
-  the `<sup>`s out (`setlistNote`) before splitting the songs on " / ", and
-  the window draws the note under the tracks (`dp.tracksNote`, also under a
-  plain "Tracklist" heading when there are no tracks). Until then the note
-  was the last song, or a one-song setlist: 951 songs in the run of
-  2026-11-15 (`scripts/check-bb-year-setlist-notes.js`, which runs the
-  shipped parser over every year page). Still open: an entry whose first
-  paragraph is a description, not a setlist (2016-10-03 Barnes & Noble), is
-  read as a one-song setlist; the year table's converter tells the two
-  apart by content, this reader does not. `_extBbYear()` reads the year page ONCE
+  pattern. **An entry read as the year table reads it** (version 6,
+  2026-11-18, `_EXT_BB_YEAR_VERSION`): the leading paragraphs that
+  `_bbSetParagraphKind()` calls set or note are split by `_bbSplitSet()`
+  into the songs (`setlist`), the set's label (`setLabels`: "Soundcheck",
+  which groups its songs in the window as the track's `disc`) and the note
+  (`setlistNote`: `<sup>Incomplete setlist.</sup>`, or a lone "No set
+  details known."). The window draws the note under the tracks
+  (`dp.tracksNote`; under a plain "Tracklist" heading when there are no
+  tracks). Everything after, up to the icons (`_bbIconsOf()`, which also
+  takes the "Help Us" request), is the description: the window's Notes and,
+  from its relation links, the People. That works whether it is a
+  `.list-pages-box` or plain paragraphs, as 2,732 of 5,009 entries have it.
+  Until version 5 the first paragraph was the setlist even when it was
+  prose, the note was the last song, and a plain-paragraph description was
+  not read. Over the run of 2026-11-15 (`scripts/check-bb-year-setlist-notes.js`,
+  the shipped parser over every year page), `main`'s parser had 951 songs
+  that were or ended with a note, 275 that were prose, and 2,212 shows with
+  notes. Version 6 has 0, 0 and 4,838. `_extBbYear()` reads the year page ONCE
   (as https, which the site redirects http to; `_EXT_BB_MAX_BYTES` 1 MB; 1 to
   7.5 s, hence its `loadingNote`) and `_extBbParseYear()` parses every show
   in it; the year is kept by URL in `_extBbYears` for the page load (a

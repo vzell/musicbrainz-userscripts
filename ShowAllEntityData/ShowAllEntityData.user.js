@@ -96811,8 +96811,8 @@
     /** The year page's own cap (U0 X8: a late 1978 show sits past 300 KB). */
     const _EXT_BB_MAX_BYTES = 1024 * 1024;
 
-    /** Version of the parsed year pages kept in IndexedDB; bump when `_extBbParseYear()`'s output changes (5: the setlist's note apart, 2026-11-18). */
-    const _EXT_BB_YEAR_VERSION = 5;
+    /** Version of the parsed year pages kept in IndexedDB; bump when `_extBbParseYear()`'s output changes (6: an entry read as the year table reads it, 2026-11-18). */
+    const _EXT_BB_YEAR_VERSION = 6;
     /** The kept year listings' record version (`_extBbYearList()`). */
     const _EXT_BB_YEAR_LIST_VERSION = 1;
 
@@ -96892,25 +96892,48 @@
                 return;
             }
             const [date, ...rest] = heading.split(' - ');
-            const setlistP = block.find(el => el.tagName === 'P' && !el.closest('.list-pages-box'));
-            // The setlist paragraph may end in a note, `<br><sup><em>Incomplete
-            // setlist.</em></sup>` (248 entries in 28 year pages of the run of
-            // 2026-11-15, always at the end): it is no song. Until version 5 it
-            // was read with the paragraph, so the last song carried it
-            // ("TWIST AND SHOUT - DO YOU LOVE ME Setlist may be incorrect or out
-            // of order."; vzell, 2026-11-17).
-            let setlistNote = '';
-            let setlistText = '';
-            if (setlistP) {
-                const copy = setlistP.cloneNode(true);
-                setlistNote = Array.from(copy.querySelectorAll('sup'), x => { const t = _dpText(x.textContent); x.remove(); return t; }).filter(Boolean).join(' ');
-                setlistText = _dpText(copy.textContent);
-            }
-            const notesBox = block.find(el => el.matches('.list-pages-box') || el.querySelector('.list-pages-box'));
-            const notesEl = notesBox && (notesBox.matches('.list-pages-box') ? notesBox : notesBox.querySelector('.list-pages-box'));
-            const notes = notesEl ? _dpBlockText(notesEl).split(/\n+/).map(_dpText).filter(Boolean) : [];
+            // The entry as the year table reads it (`_bbYearBuildRow()`;
+            // version 6, vzell, 2026-11-18): first its set paragraphs
+            // (`_bbSetParagraphKind()`, split by `_bbSplitSet()`: the songs,
+            // a label such as "Soundcheck", and a note such as `<sup>Incomplete
+            // setlist.</sup>` or a lone "No set details known."), then its
+            // description up to the icons: a `.list-pages-box`, or plain
+            // paragraphs, as 2,732 of 5,009 entries have it. Until version 5
+            // the first paragraph was the setlist even when it was prose (a
+            // one-song setlist, 2016-10-03 Barnes & Noble), the note was the
+            // last song, and a description of plain paragraphs was not read
+            // at all (1985-03-31b had no Notes).
+            const setlist = [];
+            const setLabels = [];
+            const setNotes = [];
+            const descEls = [];
+            let inSets = true;
+            block.forEach((el) => {
+                if (inSets) {
+                    const ps = el.tagName === 'P' ? [el]
+                        : el.tagName === 'BLOCKQUOTE' ? Array.from(el.querySelectorAll(':scope > p')) : null;
+                    if (ps && ps.length && ps.every(x => _bbSetParagraphKind(x) !== null)) {
+                        ps.forEach((x) => {
+                            const set = _bbSplitSet(x, doc);
+                            setNotes.push(...set.notes);
+                            set.songs.forEach((f) => {
+                                const t = _dpText(f.textContent);
+                                if (!t) return;
+                                setlist.push(t);
+                                setLabels.push(set.label || '');
+                            });
+                        });
+                        return;
+                    }
+                    inSets = false;
+                }
+                if (_bbIconsOf(el).length || /^(?:SUP|BR|IMG|HR)$/.test(el.tagName)) return;
+                descEls.push(el);
+            });
+            const setlistNote = setNotes.join(' ');
+            const notes = descEls.flatMap(el => _dpBlockText(el).split(/\n+/)).map(_dpText).filter(Boolean);
             const people = [];
-            (notesEl ? Array.from(notesEl.querySelectorAll('a[href^="/relation:"]')) : []).forEach(r => {
+            descEls.flatMap(el => Array.from(el.querySelectorAll('a[href^="/relation:"]'))).forEach(r => {
                 const n = _dpText(r.textContent);
                 if (n && !people.includes(n)) people.push(n);
             });
@@ -96940,7 +96963,7 @@
             shows[name] = {
                 heading, date: /^\d{4}-\d\d-\d\d$/.test(date) ? date : '', venue: rest.join(' - '),
                 gig: gig ? _dpAbsUrl(gig.getAttribute('href'), base) : '', cancelled: !!gig && /^\/nogig:/.test(gig.getAttribute('href')),
-                setlist: setlistText ? setlistText.split(/\s+\/\s+/).filter(Boolean) : [], setlistNote,
+                setlist, setLabels, setlistNote,
                 notes, people, has, icons, also: [], help, featured: mark('Star', 'Featured'),
             };
         });
@@ -97082,7 +97105,10 @@
             ['People', show.people.length > 8 ? `${show.people.slice(0, 8).join(', ')} +${show.people.length - 8}` : show.people.join(', ')],
             ['The gig page has', show.has.join(', ')],
         ].filter(f => f[1]);
-        dp.tracks = show.setlist.map((s, i) => ({ disc: '', pos: String(i + 1), title: s, from: '' }));
+        // A set's label ("Soundcheck", "Without Bruce") groups its songs
+        // (version 6; a year read before has no labels).
+        const labels = Array.isArray(show.setLabels) ? show.setLabels : [];
+        dp.tracks = show.setlist.map((s, i) => ({ disc: labels[i] || '', pos: String(i + 1), title: s, from: '' }));
         // The year page's note on the setlist ("Incomplete setlist."), under
         // the tracks (version 5).
         dp.tracksNote = show.setlistNote || '';
