@@ -1695,3 +1695,51 @@ userscript loaded. The live test exempts that one exact message.
 Your pages load their font stylesheet over HTTP (http://fonts.googleapis.com/css?family=Open+Sans:300,400,700) from an
 HTTPS page, so browsers block it and Open Sans never loads. Changing it to https:// fixes that. Separately, adding
 autocomplete="current-password" to the login form's password field (hTxtPassword) silences Chrome's hint about it.
+
+
+* DONE sticky area on mobile bug
+** DONE initial
+
+ON SL pageTypes e.g. on https://www.springsteenlyrics.com/collection.php there is a bug when scrolling with a sticky
+area on mobile, see the following files all in @debug
+
+#+begin_example
+SL-sticky-area-bug.mp4 - screenshot video from inside the mobile view of firefox developer console
+SL-sticky-area-bug.html - raw HTML file of the above
+Screenshot_20261115_094127_Firefox.jpg - real screenshot from a Galaxy A34 5G mobile
+Screenshot_20261115_094150_Firefox.jpg - real screenshot from a Galaxy A34 5G mobile
+#+end_example
+
+When scrolling downward there is an area in the upper viewport, where when scrolling initially content like our SAED
+menu is visible, but when scrolling further a white area sits on top of the rest of the page which scrolls behind
+it. When scrolling upwards completely the effect is gone, but repeats when scrolling downward again.
+
+** DONE bugs
+
+The bug is gone on mobile on the IP (checked in firefox), but two other bugs surfaced:
+
+#+begin_example
+SL-sticky-area-sticky-then-moved-IP.mp4 - On the IP the SAED menu line moves out of the window when scrolling down
+SL-sticky-area-stcky-then-moved-FRP.mp4 - On the FRP the SAED menu line moves out of the window when scrolling down
+#+end_example
+
+** DONE still mobile bugs on the FRP
+
+1.)
+
+the SL desktop PTs now behave ok
+
+2.)
+
+The mobile IP is also OK, but the FRP on e.g. https://www.springsteenlyrics.com/collection.php does not have any sticky
+areas - [Image #12] from the firefox F12 console in mobile view but also confirmed live on my real mobile
+
+** DONE firefox
+
+OK, the following files are from the FRP of https://www.springsteenlyrics.com/collection.php?cmd=list&category=sampler
+with just 100 rows (instead of the 2770 rows before) which still shows the problem in Firefox - [Image #14]
+
+#+begin_example
+SL-firefox-FRP-non-sticky.html - FRP from the Responsive Design Mode rendering
+SL-firefox-FRP-non-sticky.log - requested console log
+#+end_example

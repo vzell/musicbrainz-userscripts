@@ -204,7 +204,7 @@ module.exports = withRepoRoot([
             // only check is one of these calls is not "a test with no
             // assertion". Add a helper here only once it really calls expect().
             'playwright/expect-expect': ['warn', {
-                assertFunctionNames: ['expectNoGrowth', 'assertGlyphThenTrailingIcon', 'settleRows'],
+                assertFunctionNames: ['expectNoGrowth', 'assertGlyphThenTrailingIcon', 'settleRows', 'expectSamePlace'],
             }],
             // test.skip(condition, reason) is how the harness opts out when the
             // case cannot arise (a fixture that never wraps, an env-gated

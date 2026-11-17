@@ -1,0 +1,230 @@
+[
+    {
+        "name": "the backdrop stays on above the dock (wide window)",
+        "why": "Reported 2026-11-16: a header block pushed out of the window by its parent's end is ABOVE its dock; with <= the backdrop stayed on as a white band the page scrolled behind.",
+        "edits": [
+            {
+                "find": "            Math.abs(head.getBoundingClientRect().top - _vsb.headTop) <= 0.5);",
+                "replace": "            head.getBoundingClientRect().top <= _vsb.headTop + 0.5);"
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-headers.spec.js",
+        "grep": "wide window: the backdrop is there",
+        "expect": "fail"
+    },
+    {
+        "name": "the backdrop stays on above the dock (phone)",
+        "why": "The same guard at the phone's own width, where it was reported.",
+        "edits": [
+            {
+                "find": "            Math.abs(head.getBoundingClientRect().top - _vsb.headTop) <= 0.5);",
+                "replace": "            head.getBoundingClientRect().top <= _vsb.headTop + 0.5);"
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-mask.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "phone: the toolbar h1 docks at the very top",
+        "expect": "fail"
+    },
+    {
+        "name": "the navbar height counts whether or not the navbar can be fixed",
+        "why": "Up to 992 px the site keeps its navbar in the flow (position: relative !important); reserving its 80 px left a gap above the docked h1 that the page showed through.",
+        "edits": [
+            {
+                "find": "            if (canFix) h = navbar.offsetHeight;\n",
+                "replace": "            h = navbar.offsetHeight;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-headers.spec.js",
+        "grep": "narrow window: the site leaves its navbar in the flow",
+        "expect": "fail"
+    },
+    {
+        "name": "the navbar height counts whether or not the navbar can be fixed (phone)",
+        "why": "The same guard at the phone's own width.",
+        "edits": [
+            {
+                "find": "            if (canFix) h = navbar.offsetHeight;\n",
+                "replace": "            h = navbar.offsetHeight;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-mask.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "phone: the toolbar h1 docks at the very top",
+        "expect": "fail"
+    },
+    {
+        "name": "the trial position: fixed stays on the navbar",
+        "why": "The measurement sets position: fixed inline for one read; left there, the navbar would be fixed at the top of an unscrolled page.",
+        "edits": [
+            {
+                "find": "                navbar.style.position = inline;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-headers.spec.js",
+        "grep": "the list h2 docks under the site's navbar",
+        "expect": "fail"
+    },
+    {
+        "name": "no re-measure of the navbar on a window resize",
+        "why": "Known overlap: with the sticky filter bars on, _vsbBaseOffset() calls _slNavbarOffset() on every refresh, and a resize schedules one. The listener of _slPrepareLivePage() only matters with the bars switched off (the thead rule reads the variable), which no spec resizes.",
+        "edits": [
+            {
+                "find": "        window.addEventListener('resize', _slNavbarOffset, { passive: true });\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-headers.spec.js",
+        "grep": "the list h2 docks under the site's navbar",
+        "expect": "pass"
+    },
+    {
+        "name": "the toolbar h1 is never moved out of .project-detail",
+        "why": "Reported 2026-11-16 (debug/SL-sticky-area-sticky-then-moved-IP.mp4): where the site closes .project-detail right after the category walls, the h1 docked only until .project-detail ended, then scrolled away.",
+        "edits": [
+            {
+                "find": "        const anchor = document.querySelector('table.tbl') || _slFindListHeading(document) || _slFindCards(document)[0] || null;\n",
+                "replace": "        const anchor = null;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-headers.spec.js",
+        "grep": "collection-intro \\(initial page\\): the header block stays docked",
+        "expect": "fail"
+    },
+    {
+        "name": "the toolbar h1 is never moved out of .project-detail (after the press)",
+        "why": "The same at the FRP: the table sits in a later container than .project-detail.",
+        "edits": [
+            {
+                "find": "        const anchor = document.querySelector('table.tbl') || _slFindListHeading(document) || _slFindCards(document)[0] || null;\n",
+                "replace": "        const anchor = null;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-headers.spec.js",
+        "grep": "memorabilia \\(after the press\\): the header block stays docked",
+        "expect": "fail"
+    },
+    {
+        "name": "the toolbar h1 is never moved out of .project-detail (phone)",
+        "why": "The same at the phone's own width.",
+        "edits": [
+            {
+                "find": "        const anchor = document.querySelector('table.tbl') || _slFindListHeading(document) || _slFindCards(document)[0] || null;\n",
+                "replace": "        const anchor = null;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-mask.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "phone: the toolbar h1 docks at the very top",
+        "expect": "fail"
+    },
+    {
+        "name": "the header wrapper gets no side padding",
+        "why": "On memorabilia the h1 leaves the floated .col-sm-12 and its 15 px gutter; without the padding it moves 15 px to the left.",
+        "edits": [
+            {
+                "find": "        box.style.paddingLeft = `${left}px`;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-headers.spec.js",
+        "grep": "memorabilia: the h1 moved out of .project-detail keeps its place",
+        "expect": "fail"
+    },
+    {
+        "name": "the h1 is wrapped even where the list is inside .project-detail",
+        "why": "Pages whose data is inside .project-detail work as they are and must stay byte-identical: no wrapper.",
+        "edits": [
+            {
+                "find": "        if (!box && pd.contains(anchor)) return;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-headers.spec.js",
+        "grep": "a list inside .project-detail: the h1 is left where it is",
+        "expect": "fail"
+    },
+    {
+        "name": "no second placement before the bars measure after a render",
+        "why": "Known overlap: every SL fixture's table lands in the same container as its list, so the placement at init already holds after the press (scripts/probe-sl-sticky-head.probe.js). The call in initStickyFilterBars() is for a table that lands elsewhere, which no fixture has.",
+        "edits": [
+            {
+                "find": "        if (_isSlHost) _slPlaceHead();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-headers.spec.js",
+        "grep": "\\(after the press\\): the header block stays docked",
+        "expect": "pass"
+    },
+    {
+        "name": "the status line is not taken into the wrapper",
+        "why": "Known overlap: at init the status line does not exist yet, and is inserted after the h1, so inside the wrapper. Taking it along matters only for a move after init, which no fixture has (see the entry above).",
+        "edits": [
+            {
+                "find": "            if (status) box.appendChild(status);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-headers.spec.js",
+        "grep": "the header block stays docked past the end of .project-detail",
+        "expect": "pass"
+    },
+    {
+        "name": "no viewport fit after a render",
+        "why": "Reported 2026-11-16/17 (debug/SL-firefox-FRP-non-sticky.*): with the site's width=device-width, initial-scale=1 a mobile browser widens the layout viewport to the table, and nothing sticky reaches the visible top.",
+        "edits": [
+            {
+                "find": "        if (_isSlHost) _slViewportFit();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-mask.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "phone, after the press: the layout viewport stays the screen",
+        "expect": "fail"
+    },
+    {
+        "name": "the viewport tag never gets minimum-scale=1",
+        "why": "minimum-scale=1 is what keeps the layout viewport at the screen's width (checked by vzell in Firefox's responsive mode, 2026-11-17).",
+        "edits": [
+            {
+                "find": "        const want = wide && !/minimum-scale/i.test(orig)\n",
+                "replace": "        const want = false && !/minimum-scale/i.test(orig)\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-mask.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "phone, after the press: the layout viewport stays the screen",
+        "expect": "fail"
+    },
+    {
+        "name": "the site's own viewport tag is never put back",
+        "why": "Once the table fits the window again (a rotation, a tablet), zooming out is the site's to allow.",
+        "edits": [
+            {
+                "find": "            ? `${orig ? `${orig}, ` : ''}minimum-scale=1` : orig;\n",
+                "replace": "            ? `${orig ? `${orig}, ` : ''}minimum-scale=1` : meta.getAttribute('content');\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-mask.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "phone, after the press: the layout viewport stays the screen",
+        "expect": "fail"
+    },
+    {
+        "name": "no viewport fit on resize",
+        "why": "The restore case widens the window without a render, so only the resize listener runs the fit again; after a rotation the tag would stay as it was.",
+        "edits": [
+            {
+                "find": "        window.addEventListener('resize', _slViewportFit, { passive: true });\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-mask.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "phone, after the press: the layout viewport stays the screen",
+        "expect": "fail"
+    }
+]

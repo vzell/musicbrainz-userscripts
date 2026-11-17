@@ -15868,6 +15868,47 @@
     }
 
     /**
+     * springsteenlyrics.com: the height the site's navbar takes at the top of
+     * the window once the page is scrolled, kept in `--mb-sl-navbar-h` (the
+     * sticky table header and the sticky filter bars dock under it).
+     *
+     * The site's "sticky" plugin (jquery.sticky) writes `position: fixed;
+     * top: 0` inline on the navbar at any width, but the site's stylesheet
+     * takes that back on a narrow window:
+     * `@media(max-width:992px){ .navbar-default, .navbar-inverse { position:
+     * relative !important; } }` (css/style-red.css, read 2026-11-16). There
+     * the navbar scrolls away like the rest, and an offset of its height left
+     * a gap above the docked toolbar h1 that the page showed through
+     * (DEBUG-NOTES.md 2026-11-16). So the navbar's height counts only if the
+     * navbar CAN be fixed: with `position: fixed` inline (the plugin's own,
+     * or set here for one synchronous read and restored) the computed
+     * position tells whether a rule of the site overrides it. No breakpoint
+     * is repeated here.
+     *
+     * @returns {number} Pixels; 0 with no navbar, or one that never sticks.
+     */
+    function _slNavbarOffset() {
+        const navbar = document.querySelector('.navbar.sticky, .navbar-fixed-top, .navbar');
+        let h = 0;
+        if (navbar && navbar.offsetHeight > 0) {
+            const inline = navbar.style.position;
+            let canFix;
+            if (inline === 'fixed') {
+                canFix = getComputedStyle(navbar).position === 'fixed';
+            } else {
+                navbar.style.position = 'fixed';
+                canFix = getComputedStyle(navbar).position === 'fixed';
+                navbar.style.position = inline;
+            }
+            if (canFix) h = navbar.offsetHeight;
+        }
+        const v = `${h}px`;
+        const root = document.documentElement.style;
+        if (root.getPropertyValue('--mb-sl-navbar-h') !== v) root.setProperty('--mb-sl-navbar-h', v);
+        return h;
+    }
+
+    /**
      * Prepares a springsteenlyrics.com list page at init, standing in for the
      * MusicBrainz header lookup (the init block calls it right after that
      * lookup, for SL definitions only): these pages have no `<h1>` (nor any
@@ -15881,7 +15922,8 @@
      * Also tags `<body>` with `mb-sa-host-sl` (the scope of every SL style
      * rule), installs `_ensureSlStyle()` and the covers' viewer click
      * (`_fiInstall()`), and records the site's navbar height
-     * in `--mb-sl-navbar-h` for the sticky table header. Nothing else on the
+     * in `--mb-sl-navbar-h` for the sticky table header (`_slNavbarOffset()`,
+     * again on every window resize). Nothing else on the
      * page changes until the user presses the "Show all" button.
      *
      * @returns {?HTMLHeadingElement} The `<h1>` to use as header container, or
@@ -15896,10 +15938,12 @@
         document.body.classList.add('mb-sa-host-sl');
         _ensureSlStyle();
         _fiInstall();
-        const navbar = document.querySelector('.navbar.sticky, .navbar-fixed-top, .navbar');
-        if (navbar && navbar.offsetHeight > 0) {
-            document.documentElement.style.setProperty('--mb-sl-navbar-h', `${navbar.offsetHeight}px`);
-        }
+        _slNavbarOffset();
+        // Rotation, or a window dragged across the site's breakpoint: the
+        // navbar stops (or starts) being fixed, see _slNavbarOffset().
+        window.addEventListener('resize', _slNavbarOffset, { passive: true });
+        // Rotation: the table may now fit, or no longer (_slViewportFit()).
+        window.addEventListener('resize', _slViewportFit, { passive: true });
 
         const section = document.querySelector('.breadcrumb-wrap h4')?.textContent.replace(/\s+/g, ' ').trim() || '';
         // An item page is named by its item (`_slItemName()`), a song page
@@ -15913,7 +15957,127 @@
             [section, listHeading].filter(Boolean).join(' — ') || 'springsteenlyrics.com';
         h1.appendChild(bdi);
         main.insertBefore(h1, main.firstChild);
+        _slPlaceHead();
         return h1;
+    }
+
+    /**
+     * springsteenlyrics.com: keeps the toolbar `<h1>` (with the status line
+     * that follows it) in an element that also holds the list, so the sticky
+     * header block can stay at the top all the way down.
+     *
+     * A sticky element never leaves its parent. The h1 is inserted as the
+     * first child of `.project-detail`, and on three page shapes the site's
+     * stray `</div>` closes `.project-detail` right after the category walls:
+     * the collection entry page, sampler and memorabilia (the shapes
+     * docs/claude/springsteenlyrics.md names under Sticky Page Headers). The
+     * list, and after the press our table, follow in a later container, so
+     * the h1 docked only until `.project-detail` ended and then scrolled away
+     * (reported 2026-11-16, debug/SL-sticky-area-sticky-then-moved-IP.mp4;
+     * every SL fixture probed, scripts/probe-sl-sticky-head.probe.js,
+     * debug/probe-sl-sticky-head.json: these three and no other).
+     *
+     * There the h1 goes into a `div.mb-sl-header`, placed in the nearest
+     * ancestor of `.project-detail` that holds the data (table.tbl, else the
+     * list heading or the first card), right before the branch holding
+     * `.project-detail`. Its side padding is what the skipped wrappers gave
+     * (padding, border and margin of `.project-detail` and, on memorabilia,
+     * the floated `.col-sm-12`), so nothing moves sideways. No margin can
+     * leave the wrapper (the h1's own rule is `margin: 0 0 12px`, the status
+     * line's bottom margin is 0), so it needs no formatting context of its
+     * own. On memorabilia the h1 does sit up to 34 px higher than inside the
+     * column: two spaces of the site's markup that were above it, a U+FEFF
+     * line box starting the column and a `<p>` margin that collapsed to the
+     * container's top, no longer sit above it (the walls rise up to 16 px
+     * in a wide window): spaces close up, none opens, nothing moves sideways
+     * (scripts/probe-sl-head-margins.probe.js). `_vsbHeadBlocks()`
+     * takes a header wrapper (class ending in "header", no table or h2, as
+     * MusicBrainz's `div.artistheader`) as the block, the status line
+     * inside it. A page whose data is inside `.project-detail` is left as it
+     * is. Idempotent: called after the h1 is inserted and again before the
+     * sticky bars measure after a render (`initStickyFilterBars()`).
+     *
+     * @returns {void}
+     */
+    function _slPlaceHead() {
+        const h1 = document.querySelector('h1.mb-sl-h1');
+        const pd = document.querySelector('.project-detail');
+        if (!h1 || !pd) return;
+        const anchor = document.querySelector('table.tbl') || _slFindListHeading(document) || _slFindCards(document)[0] || null;
+        if (!anchor) return;
+        let box = h1.parentElement.classList.contains('mb-sl-header') ? h1.parentElement : null;
+        if (!box && pd.contains(anchor)) return;
+        let host = box && box.parentElement.contains(anchor) ? box.parentElement : pd.parentElement;
+        while (host && !host.contains(anchor)) host = host.parentElement;
+        if (!host || host === document.documentElement) return;
+        let branch = pd;
+        while (branch.parentElement !== host) branch = branch.parentElement;
+        // What the skipped wrappers (.project-detail up to the branch) gave.
+        let left = 0;
+        let right = 0;
+        for (let el = pd; el; el = el === branch ? null : el.parentElement) {
+            const cs = getComputedStyle(el);
+            left += (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.borderLeftWidth) || 0) + (parseFloat(cs.marginLeft) || 0);
+            right += (parseFloat(cs.paddingRight) || 0) + (parseFloat(cs.borderRightWidth) || 0) + (parseFloat(cs.marginRight) || 0);
+        }
+        if (!box) {
+            box = document.createElement('div');
+            box.className = 'mb-sl-header';
+            const status = h1.nextElementSibling && h1.nextElementSibling.id === 'mb-status-displays-wrapper' ? h1.nextElementSibling : null;
+            box.appendChild(h1);
+            if (status) box.appendChild(status);
+        }
+        box.style.paddingLeft = `${left}px`;
+        box.style.paddingRight = `${right}px`;
+        if (box.parentElement !== host || box.nextElementSibling !== branch) {
+            host.insertBefore(box, branch);
+            Lib.debug('init', `springsteenlyrics.com: the toolbar h1 placed before the ${branch.className || branch.tagName} branch (padding ${left}/${right}px), so it stays docked over the list.`);
+        }
+    }
+
+    /**
+     * springsteenlyrics.com: keeps a phone's layout viewport as wide as the
+     * screen while the page is wider than it (our table), so everything
+     * sticky (the header block, the data h2, the thead) can stay in view.
+     *
+     * The site declares `<meta name="viewport" content="width=device-width,
+     * initial-scale=1">`. With content wider than the screen, Firefox (on
+     * Android, and in its responsive design mode) widens the LAYOUT viewport
+     * to the content, 2,601 px for a 908 px screen, and in proportion its
+     * height, while keeping the zoom at 1: what shows is a window panning
+     * inside that box, `scrollY` stays 0 and sticky elements, which pin to
+     * the layout viewport's top, sit in their natural places until the
+     * window has panned to its bottom edge (vzell's reading 2026-11-17:
+     * innerWidth 2601, clientWidth 908, visualViewport.offsetTop 1938,
+     * scrollY 0; debug/SL-firefox-FRP-non-sticky.*). It widens because the
+     * page may be zoomed out to fit the content; `minimum-scale=1` forbids
+     * that, so the layout viewport stays the screen's width, the page
+     * scrolls sideways as on a desktop, and the bars stick (checked by
+     * vzell in the same responsive mode by editing the tag; accepted cost:
+     * no pinch-zoom out below 100 % while the wide table is shown).
+     *
+     * Added only while the page is wider than its window (`scrollWidth` >
+     * `clientWidth`), and the site's own content is put back otherwise (the
+     * cards of an initial page fit). The original is kept in
+     * `data-mb-sl-viewport`. Desktop browsers ignore the tag. Called after
+     * every render (`initStickyFilterBars()`, before its setting's test) and
+     * on resize (`_slPrepareLivePage()`). MusicBrainz has no viewport tag.
+     *
+     * @returns {void}
+     */
+    function _slViewportFit() {
+        const meta = document.querySelector('meta[name="viewport"]');
+        if (!meta) return;
+        if (meta.dataset.mbSlViewport === undefined) meta.dataset.mbSlViewport = meta.getAttribute('content') || '';
+        const orig = meta.dataset.mbSlViewport;
+        const root = document.documentElement;
+        const wide = root.scrollWidth > root.clientWidth + 1;
+        const want = wide && !/minimum-scale/i.test(orig)
+            ? `${orig ? `${orig}, ` : ''}minimum-scale=1` : orig;
+        if (meta.getAttribute('content') !== want) {
+            meta.setAttribute('content', want);
+            Lib.debug('ui', `springsteenlyrics.com: viewport "${want}" (page ${root.scrollWidth} px, window ${root.clientWidth} px).`);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -68997,7 +69161,8 @@
     /**
      * The height already taken at the top of the window by something that
      * stays there, under which the bars dock: springsteenlyrics.com's fixed
-     * navbar (`--mb-sl-navbar-h`, measured by `_slPrepareLivePage()`), or a
+     * navbar (`_slNavbarOffset()`: 0 on a narrow window, where the site
+     * leaves it in the flow), or a
      * MusicBrainz header made sticky or fixed by a userstyle (jesus2099's
      * "mb. STICKY HEADER": `html > body > div.header { position: sticky;
      * top: 0 }`). 0 otherwise.
@@ -69005,10 +69170,7 @@
      * @returns {number} Pixels.
      */
     function _vsbBaseOffset() {
-        if (_isSlHost) {
-            const v = parseFloat(document.documentElement.style.getPropertyValue('--mb-sl-navbar-h'));
-            return Number.isFinite(v) && v > 0 ? v : 0;
-        }
+        if (_isSlHost) return _slNavbarOffset();
         const hdr = document.querySelector('body > div.header');
         if (!hdr) return 0;
         const cs = getComputedStyle(hdr);
@@ -69228,9 +69390,13 @@
 
     /**
      * Shows the backdrop behind the header block (`#mb-vsb-mask`) while that
-     * block is stuck: its first part sits at its sticky `top` with the page
-     * scrolled. One rectangle read; called by `_vsbRefresh()` and, once per
-     * frame at most, on scroll.
+     * block is stuck: its first part sits AT its sticky `top` with the page
+     * scrolled. Above it does not count: a block whose parent ends a few
+     * pixels below it (springsteenlyrics.com's `.project-detail` before any
+     * press) is pushed out of the window by that parent's end, and the
+     * backdrop then stayed on as a white band the page scrolled behind
+     * (DEBUG-NOTES.md 2026-11-16). One rectangle read; called by
+     * `_vsbRefresh()` and, once per frame at most, on scroll.
      *
      * @returns {void}
      */
@@ -69238,7 +69404,7 @@
         if (!_vsb.mask) return;
         const head = _vsb.head;
         const on = !!(head && head.isConnected && window.scrollY > 0 &&
-            head.getBoundingClientRect().top <= _vsb.headTop + 0.5);
+            Math.abs(head.getBoundingClientRect().top - _vsb.headTop) <= 0.5);
         if (_vsb.mask.classList.contains('mb-vsb-mask-on') !== on) _vsb.mask.classList.toggle('mb-vsb-mask-on', on);
     }
 
@@ -69267,7 +69433,11 @@
      * @returns {void}
      */
     function initStickyFilterBars() {
+        // Before the setting's test: the sticky thead needs it too.
+        if (_isSlHost) _slViewportFit();
         if (!_stickyFilterBarsWanted()) return;
+        // The table may sit in another container than the list did.
+        if (_isSlHost) _slPlaceHead();
         _vsbEnsureStyle();
         document.documentElement.classList.add('mb-vsb-on');
         if (!_vsb.initialized) {

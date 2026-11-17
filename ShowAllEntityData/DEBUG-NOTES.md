@@ -29777,3 +29777,121 @@ Env: 2026-11-17T15:08:05+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
   stays unmarked.
 - **Seen on the way, not followed up:** the M tab of stats:relations stops before "Mu": 19 person pages tagged "m"
   (Marcus Mumford … Mweli Mzizi) are missing, which looks like a list limit on the wiki. Unverified on the live page.
+
+## 2026-11-16 — springsteenlyrics.com on a phone: a white band stays near the top while scrolling (fix/sl-sticky-mask-narrow)
+
+Env: 2026-11-16T14:32:05+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (chromium-fixtures; chromium-mobile: Pixel 7 emulation), no Tampermonkey (GM stubs); the report: Firefox on a Galaxy A34 5G and Firefox's responsive mode (704 px) on the desktop, versions unknown, Tampermonkey unknown
+
+- **Report (vzell):** on `collection.php`, before any press, scrolling down leaves a white area near the top of the
+  window; the page scrolls behind it. Back at the top it is gone, and it returns on the next scroll down.
+  Material in `debug/`: `SL-sticky-area-bug.mp4` (responsive mode), `SL-sticky-area-bug.html` (that page's HTML,
+  scrolled), `Screenshot_20261115_094127_Firefox.jpg` and `Screenshot_20261115_094150_Firefox.jpg` (the phone).
+- **Two causes, both in the sticky header block (`_vsb*`), confirmed before any code changed:**
+  1. *The dock was 80 px too low.* `--mb-sl-navbar-h` was the navbar's height at any width, but the site's
+     `css/style-red.css` (fetched 2026-11-16) has `@media(max-width:992px){ .navbar-default, .navbar-inverse {
+     position: relative !important; } }`. The video shows the navbar scroll away, although the snapshot has the
+     plugin's inline `position: fixed; top: 0px` on it. The toolbar h1 docked at 80 px with the page showing above.
+  2. *The backdrop never went off.* `_vsbUpdateMask()` tested `top <= headTop`. `.project-detail` holds only the h1
+     and the status line here, so its end pushes the h1 out of the window; the h1's top goes negative and the test
+     stays true. The snapshot has `<div id="mb-vsb-mask" class="mb-vsb-mask-on">` at `top: 80px; height: 64px` with
+     the h1 gone. Not phone-only: the same on a wide window, under the fixed navbar.
+- **Fix:** `_slNavbarOffset()` (the navbar's height only if its computed position is `fixed` with `position: fixed`
+  inline; at init, on resize, and as `_vsbBaseOffset()`'s answer on this host); `_vsbUpdateMask()` asks for the head
+  AT its dock (within 0.5 px). MusicBrainz: the block's parent is the page's content, so "above the dock" does not
+  occur while it is stuck; `sticky-filter-bars.spec.js` unchanged and green.
+- **A spec that had to change:** "collection: scrolled down, the list h2 docks under the site's navbar" set the
+  variable by hand; the variable is now measured on every resize, so the test gives the navbar its 52 px instead.
+- **Tests:** `sl-sticky-headers.spec.js` +4 (narrow dock, wide dock, the backdrop on/off/on at both widths) and one
+  assertion (no inline position left behind); `sl-sticky-mask.mobile.spec.js` 1 (Pixel 7). With
+  `sticky-filter-bars.spec.js`: 38 of 38 passed, 14:29:39–14:31:06 CET. `scripts/mutations/sl-sticky-mask.json`:
+  6 entries as recorded (5 fail their test, 1 passes: the resize listener, covered by the bars' own refresh).
+  Deferred: `npm run test:full`, before the merge. Not yet checked in a real browser.
+
+## 2026-11-16 — springsteenlyrics.com: the SAED line docks, then scrolls away on three list shapes (fix/sl-sticky-mask-narrow)
+
+Env: 2026-11-16T15:25:24+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (chromium-fixtures; chromium-mobile: Pixel 7 emulation), no Tampermonkey (GM stubs); the report: Firefox on the desktop, version unknown, Tampermonkey unknown
+
+- **Report (vzell), after the white-band fix above was checked on a phone:** on `collection.php`, the line with the
+  SAED button docks at the top, then scrolls out of the window, on the IP and on the FRP. Material in `debug/`:
+  `SL-sticky-area-sticky-then-moved-IP.mp4` (shows it), `SL-sticky-area-stcky-then-moved-FRP.mp4` (a recording of
+  the file manager, not of the browser: shows nothing of the page), `SL-sticky-area-sticked.html` and
+  `SL-sticky-area-moved.html` (the IP, docked and gone).
+- **Cause, from the snapshots (`scripts/probe-sl-sticky-parent.js`):** the toolbar h1 is inserted as the first child
+  of `.project-detail`, and on this page `.project-detail` holds only the h1, the status line, the compact bar and
+  the hidden walls; the list follows in a sibling `div.container` under `.col-sm-12`. A sticky element never leaves
+  its parent, so the block went when `.project-detail` ended. This is the same limit that left the white band before;
+  with the backdrop fixed it became visible as the block itself leaving.
+- **Whole family (rule 6), `scripts/probe-sl-sticky-head.probe.js` → `debug/probe-sl-sticky-head.json`:** all 13 list
+  kinds with the compact bar off and on, the 10 item pages and the 6 song pages, each before and after its first
+  button, at 80 % of the scroll range, classified docked / carried away / not reached yet. Carried away: exactly
+  collection-intro, sampler and memorabilia (the three shapes whose stray `</div>` closes `.project-detail` early),
+  IP and FRP, compact bar on and off. "Not reached yet" (item pages, two FRPs) is the fixtures' unstyled navbar,
+  thousands of px tall: the block is still below its dock, in its natural place. The first summary of the probe
+  read those as failures; the classification is now in the probe.
+- **Fix:** `_slPlaceHead()` puts the h1 (and the status line, which is inserted after it) into a `div.mb-sl-header`
+  in the nearest ancestor holding the data (`table.tbl`, else the list heading or first card), before the branch
+  holding `.project-detail`, with the side padding of the wrappers it left. `_vsbHeadBlocks()` already takes a
+  `div.*header` without table/h2 as the block (as `div.artistheader`). Called after the h1 is inserted and in
+  `initStickyFilterBars()`. Pages whose data is inside `.project-detail` are not touched (the probe again: their
+  block is still the bare h1).
+- **Memorabilia's vertical place, measured (`scripts/probe-sl-head-margins.probe.js`):** the moved h1 sat 34 px
+  higher than inside the column, and I first took it for margin collapsing and made the wrapper `flow-root` when a
+  skipped wrapper was a formatting context. It changed nothing: the h1's own rule is `margin: 0 0 12px`. The real
+  cause is the site's markup: `.col-sm-12` starts with a text node ending in U+FEFF, which CSS does not treat as white
+  space and draws as a 17 px line, and a `<p>` margin (16 px) collapsed up to the container's top while the float was
+  the row's only block before it. Moved, the BOM line is under the status line and the margin no longer pushes the
+  column down, so the h1 rises up to 34 px and the walls up to 16 px. The `flow-root` branch was removed; the spec
+  allows that rise on memorabilia only (`MEMORABILIA_RISE`), never a sink and nothing sideways.
+- **Tests:** `sl-sticky-headers.spec.js` +10 (docked past `.project-detail`, IP and FRP, on each of the three shapes;
+  in place on each; memorabilia at 700 px and narrowed from 1000 px; no wrapper where the list is inside), the round-1
+  helpers read the sticky block; `sl-sticky-mask.mobile.spec.js` checks the block deep in the list, with the list's
+  end measured from its heading, not from the block's parent; `loadSlListPage()` takes `headCss` (the stand-in CSS in
+  the page's head, so measurements at init see it). All SL and sticky specs: 300 of 300 passed,
+  15:21:36–15:24:10 CET. `scripts/mutations/sl-sticky-mask.json`: 13 entries as recorded (10 fail their test, 3
+  pass: the resize re-measure, the second placement and taking the status line along, each covered by another path,
+  reasons in the entries). `eslint.config.js`: `expectSamePlace` registered as an assertion helper. Deferred:
+  `npm run test:full`, before the merge. Not yet checked in a real browser.
+
+## 2026-11-17 — springsteenlyrics.com on a phone: nothing sticks after the press (the widened layout viewport) (fix/sl-sticky-mask-narrow)
+
+Env: 2026-11-17T17:41:30+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium and Firefox (fixture and live probes; chromium-mobile: Pixel 7 emulation), no Tampermonkey (GM stubs); the report: vzell's Firefox in responsive design mode (908 × 1377) and Firefox on a Galaxy A34, versions unknown, Tampermonkey unknown
+
+- **Report (vzell, 2026-11-16):** after the header-block fix above, the mobile IP docks, but on the FRP nothing sticks
+  (collection.php with 5,389 rows; then `?cmd=list&category=sampler`, 100 rows). Material: `debug/SL-firefox-FRP-non-sticky.html`
+  (the FRP in responsive mode) and `.log` (the console reading below).
+- **Not reproducible here, and why:** `scripts/probe-sl-frp-sticky.probe.js` read the bars deep in the table on the
+  fixture and on the live page (Chromium Pixel 7, Chromium 908 px touch, Firefox 908 px, Firefox with the touch media
+  query answered): everything stuck. Two blind spots, both found afterwards: Playwright's Firefox ignores the viewport
+  tag, and the probe scrolled with `window.scrollTo()`, which moves the layout viewport directly; a user's scroll pans
+  the visual viewport first.
+- **vzell's reading in his Firefox (a console snippet):** `innerWidth 2601`, `clientWidth 908`, `visualViewport` 908 wide
+  at scale 1 and `offsetTop 1938`, `scrollY 0`; the header block, h2 and thead `position: sticky` with their tops, no
+  ancestor with overflow, transform or contain, and at 382/635/780 px: their natural places. So: the site's
+  `width=device-width, initial-scale=1` lets Firefox widen the layout viewport to the 2,601 px table (and in
+  proportion about 3,944 px tall) while keeping zoom 1; the visible window pans inside it, the layout viewport does not
+  move, and sticky elements pin to its top. On the IP the cards fit, nothing widens. Chromium zooms out to fit
+  instead (`innerWidth` 2,671 for the 412 px Pixel 7 on the SL fixture, `debug/probe-sl-frp-sticky-fixture.json`),
+  which leaves no slack.
+- **Fix, tried by vzell first by editing the tag in the console:** `minimum-scale=1` (no zooming out, so no widened
+  layout viewport). `_slViewportFit()` adds it while `scrollWidth > clientWidth` and restores the site's content
+  otherwise; after every render (before the sticky bars' setting test) and on resize. vzell accepted the cost: no
+  pinch-zoom out below 100 % on a rendered wide SL table. Not applied anywhere else; no other foreign site was
+  checked for the same effect.
+- **Tests:** `sl-sticky-mask.mobile.spec.js` +1 (sampler: the tag is the site's on the IP; after the press
+  `innerWidth == clientWidth`, scale 1, the tag with `minimum-scale=1`, h2 and thead at their docks; a window wider
+  than the table gets the site's tag back). All SL and sticky specs: 301 of 301 passed, 17:38:06–17:40:41 CET.
+  `scripts/mutations/sl-sticky-mask.json` +4, each failing the assertion it targets (the restore entry first failed on
+  a premise, because `initStickyFilterBars()` also runs at init; retargeted). HELP: a bullet under "On a phone or
+  tablet".
+- **`npm run test:full` on petri, `5f241175`, 17:42:05–18:02:01 CET: 3,188 passed, 3 failed.** vzell confirmed the
+  branch live in his browser meanwhile (18:0x CET).
+  - `foreign-gallery.mobile.spec.js`, "a touch drag on the title bar moves the window": caused by this branch, the
+    product right. At zoom 1 (no longer zoomed out on the Pixel 7) the 600 px gallery window had its top at 517 px
+    of an 839 px screen, and a drag keeps the whole window on screen (`_makeMovableResizable()`), so the 36 px move
+    ended clamped at 239. The test now scrolls the window to 100 px first and asserts the room as a premise; a
+    clamp-only expectation would have passed with the move ignored.
+  - `popup-mb.spec.js:1591`, "the label window: genres one per line": 3 of 3 alone. Load.
+  - `bb-findings-help-icon.spec.js:259`, "a show tagged help that the year page does not mark": fails beside other
+    specs, passes alone (1 and 3 of 3), and fails the same way on `main` (`b369e7ca`, a worktree, the same three specs
+    together with `--repeat-each=3`: 2 of 3 failed). Load-dependent, from the help-icon branch; not fixed here.
+- **`npm run test:full` again on petri, `a3e8fb6c`, 18:06:52–18:26:54 CET: 3,191 of 3,191 passed.**

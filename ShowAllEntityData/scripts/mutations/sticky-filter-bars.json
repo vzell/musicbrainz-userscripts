@@ -173,8 +173,8 @@
         "why": "The site's navbar is fixed at the top once scrolled; the thead already stuck below it, the bars must too.",
         "edits": [
             {
-                "find": "            return Number.isFinite(v) && v > 0 ? v : 0;\n",
-                "replace": "            return 0;\n"
+                "find": "        if (_isSlHost) return _slNavbarOffset();\n",
+                "replace": "        if (_isSlHost) return 0;\n"
             }
         ],
         "spec": "tests/fixtures/sl-sticky-headers.spec.js",
@@ -324,7 +324,7 @@
         "why": "In its natural place a window-wide backdrop would cover MusicBrainz's sidebar top.",
         "edits": [
             {
-                "find": "        const on = !!(head && head.isConnected && window.scrollY > 0 &&\n            head.getBoundingClientRect().top <= _vsb.headTop + 0.5);\n",
+                "find": "        const on = !!(head && head.isConnected && window.scrollY > 0 &&\n            Math.abs(head.getBoundingClientRect().top - _vsb.headTop) <= 0.5);\n",
                 "replace": "        const on = !!head;\n"
             }
         ],

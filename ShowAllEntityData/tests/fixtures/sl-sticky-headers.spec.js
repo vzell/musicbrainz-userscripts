@@ -211,10 +211,10 @@ test('collection: scrolled down, the list h2 docks under the site\'s navbar and 
     // is a third of the window), so a real one's height is set here.
     await openSl(page, 'collection');
     await page.addStyleTag({ content: 'table.tbl > tbody > tr > td { height: 200px; }' });
-    await page.evaluate(() => {
-        document.documentElement.style.setProperty('--mb-sl-navbar-h', '52px');
-        window.dispatchEvent(new Event('resize'));
-    });
+    // The height is the navbar's own, measured again on every resize
+    // (_slNavbarOffset()), so it is given to the navbar, not to the variable.
+    await page.addStyleTag({ content: '.navbar { height: 52px; overflow: hidden; }' });
+    await page.evaluate(() => { window.dispatchEvent(new Event('resize')); });
     const y = await page.evaluate(() => document.querySelector('table.tbl').getBoundingClientRect().top + window.scrollY + 1200);
     await page.evaluate((v) => window.scrollTo(0, v), y);
     await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
@@ -230,10 +230,313 @@ test('collection: scrolled down, the list h2 docks under the site\'s navbar and 
             headBottom: heads.length ? Math.max(...heads.map((r) => r.bottom)) + 6 : h2.top };
     });
     expect(g.nav, 'premise: the navbar height is known').toBeGreaterThan(0);
+    // The measurement tries `position: fixed` on the navbar for one read
+    // (_slNavbarOffset()); nothing of it may stay behind.
+    expect(await page.evaluate(() => document.querySelector('.navbar.sticky').style.position),
+        'the navbar\'s inline position is left empty').toBe('');
     expect(g.tableTop, 'premise: the table starts above the window').toBeLessThan(-500);
     // The stuck stack (the header block, if it is stuck here, then the h2)
     // starts at the navbar height.
     expect(Math.abs(g.stackTop - g.nav), 'the stack docks at the navbar height').toBeLessThanOrEqual(1);
     expect(Math.abs(g.h2Top - g.headBottom), 'the h2 under the header block').toBeLessThanOrEqual(1);
     expect(Math.abs(g.theadTop - g.h2Bottom), 'the thead docks under the h2').toBeLessThanOrEqual(1);
+});
+
+// ---------------------------------------------------------------------------
+// The navbar on a narrow window, and the backdrop of a block that has left
+// (reported 2026-11-16 from a phone: a white band stayed near the top of
+// collection.php and the page scrolled behind it).
+// ---------------------------------------------------------------------------
+
+/**
+ * The site's navbar rules that matter here (css/style-red.css, read
+ * 2026-11-16): 80 px high, white, and NOT fixed up to 992 px, whatever the
+ * "sticky" plugin writes inline.
+ * @type {string}
+ */
+const NAVBAR_CSS = [
+    '.navbar { min-height: 80px; height: 80px; overflow: hidden; background: #fff; width: 100%; }',
+    '@media (max-width: 992px) { .navbar-default, .navbar-inverse { position: relative !important; } }',
+].join('\n');
+
+/**
+ * Opens the collection entry page WITHOUT pressing anything, with the
+ * navbar's CSS, the plugin's inline `position: fixed` and room to scroll.
+ * @param {import('@playwright/test').Page} page
+ * @param {?{width: number, height: number}} viewport - `null`: the project's own (Pixel 7).
+ * @returns {Promise<void>}
+ */
+async function openSlInitial(page, viewport) {
+    if (viewport) await page.setViewportSize(viewport);
+    await loadSlListPage(page, { kind: 'collection-intro' });
+    await page.addStyleTag({ content: `${BOOTSTRAP_CSS}\n${NAVBAR_CSS}` });
+    await page.evaluate(() => {
+        // jquery.sticky, once scrolled: inline, at any width.
+        const nav = document.querySelector('.navbar.sticky');
+        nav.style.position = 'fixed';
+        nav.style.top = '0px';
+        const spacer = document.createElement('div');
+        spacer.style.height = '4000px';
+        document.body.appendChild(spacer);
+        window.dispatchEvent(new Event('resize'));
+    });
+    await page.waitForFunction(() => document.querySelector('h1.mb-sl-h1')?.closest('.mb-vsb-head') && document.getElementById('mb-vsb-mask'),
+        null, { timeout: 10000 });
+    await frames(page);
+}
+
+/**
+ * Two animation frames: the bars' refresh and the backdrop's scroll update
+ * are each scheduled for the next frame.
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<void>}
+ */
+const frames = (page) => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+
+/**
+ * Scrolls to `y` and reads the header block, the backdrop and what is
+ * painted in the band the backdrop takes.
+ * @param {import('@playwright/test').Page} page
+ * @param {number} y
+ * @returns {Promise<{h1Top: number, h1Bottom: number, maskOn: boolean, bandIsMask: boolean, scrollY: number}>}
+ */
+async function scrollAndRead(page, y) {
+    await page.evaluate((v) => window.scrollTo(0, v), y);
+    await frames(page);
+    return page.evaluate(() => {
+        // The sticky block: the h1, or the div.mb-sl-header around it
+        // where the site closes .project-detail early (_slPlaceHead()).
+        const h1 = document.querySelector('h1.mb-sl-h1');
+        const head = h1.closest('.mb-vsb-head') || h1;
+        const r = head.getBoundingClientRect();
+        const mask = document.getElementById('mb-vsb-mask');
+        const dock = parseFloat(getComputedStyle(head).top) || 0;
+        const hit = document.elementFromPoint(window.innerWidth - 5, dock + 10);
+        return { h1Top: r.top, h1Bottom: r.bottom, maskOn: mask.classList.contains('mb-vsb-mask-on'),
+            bandIsMask: hit === mask, scrollY: window.scrollY };
+    });
+}
+
+/**
+ * Document positions the scrolls are derived from: the header block's
+ * natural top and the end of its parent (the end of its sticky travel).
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<{h1Y: number, parentEndY: number, dock: number, navVar: string, navH: number}>}
+ */
+const layout = (page) => page.evaluate(() => {
+    window.scrollTo(0, 0);
+    const h1 = document.querySelector('h1.mb-sl-h1');
+    const head = h1.closest('.mb-vsb-head') || h1;
+    return { h1Y: head.getBoundingClientRect().top, parentEndY: head.parentElement.getBoundingClientRect().bottom,
+        dock: parseFloat(getComputedStyle(head).top), navVar: document.documentElement.style.getPropertyValue('--mb-sl-navbar-h'),
+        navH: document.querySelector('.navbar.sticky').offsetHeight };
+});
+
+test('narrow window: the site leaves its navbar in the flow, so the header block docks at the very top', async ({ page }) => {
+    await openSlInitial(page, { width: 700, height: 800 });
+    const l = await layout(page);
+    expect(l.navH, 'premise: the navbar has its height').toBe(80);
+    expect(await page.evaluate(() => getComputedStyle(document.querySelector('.navbar.sticky')).position),
+        'premise: the site overrides the plugin\'s inline fixed').toBe('relative');
+    expect(l.navVar, 'no navbar height is reserved').toBe('0px');
+    expect(l.dock, 'the h1\'s dock').toBe(0);
+    const g = await scrollAndRead(page, l.h1Y + 3);
+    expect(g.scrollY, 'premise: scrolled').toBeGreaterThan(80);
+    expect(Math.abs(g.h1Top), 'the h1 sits at the top of the window, no gap above it').toBeLessThanOrEqual(1);
+    expect(await page.evaluate(() => document.querySelector('.navbar.sticky').style.position),
+        'the plugin\'s inline position is left as it was').toBe('fixed');
+});
+
+test('wide window: the navbar can be fixed, the header block docks under it', async ({ page }) => {
+    await openSlInitial(page, VIEWPORT);
+    const l = await layout(page);
+    expect(await page.evaluate(() => getComputedStyle(document.querySelector('.navbar.sticky')).position),
+        'premise: the navbar is fixed').toBe('fixed');
+    expect(l.navVar, 'the navbar height is reserved').toBe('80px');
+    expect(l.dock, 'the h1\'s dock').toBe(80);
+});
+
+for (const [name, viewport] of [['narrow', { width: 700, height: 800 }], ['wide', VIEWPORT]]) {
+    test(`${name} window: the backdrop is there while the header block is docked and gone once the block has left`, async ({ page }) => {
+        await openSlInitial(page, viewport);
+        const l = await layout(page);
+        const stuckY = l.h1Y - l.dock + 3;
+        const goneY = l.parentEndY + 300;
+        const stuck = await scrollAndRead(page, stuckY);
+        expect(Math.abs(stuck.h1Top - l.dock), 'premise: the h1 is docked').toBeLessThanOrEqual(1);
+        expect(stuck.maskOn, 'docked: the backdrop is on').toBe(true);
+        const gone = await scrollAndRead(page, goneY);
+        expect(gone.h1Bottom, 'premise: the h1 has left the window with its parent').toBeLessThan(0);
+        expect(gone.maskOn, 'left: the backdrop is off').toBe(false);
+        expect(gone.bandIsMask, 'left: the page, not a white band, is painted where the block was').toBe(false);
+        const back = await scrollAndRead(page, stuckY);
+        expect(back.maskOn, 'docked again: the backdrop is back').toBe(true);
+    });
+}
+
+// ---------------------------------------------------------------------------
+// Where the site closes .project-detail early, the header block still stays
+// docked over the whole list (reported 2026-11-16 the same day,
+// debug/SL-sticky-area-sticky-then-moved-IP.mp4: on the collection entry
+// page the SAED line docked, then scrolled away). A sticky element never
+// leaves its parent, and .project-detail ended right after the category
+// walls on these three shapes (scripts/probe-sl-sticky-head.probe.js found
+// no other). _slPlaceHead() wraps the h1 in div.mb-sl-header in the nearest
+// ancestor that holds the list.
+// ---------------------------------------------------------------------------
+
+/** The page shapes whose list comes after `.project-detail` has closed. */
+const EARLY_CLOSE = ['collection-intro', 'sampler', 'memorabilia'];
+
+/**
+ * Opens an SL list with the Bootstrap stand-in in its own `<head>` (so the
+ * header wrapper's side padding is measured against it, as on the real
+ * site), optionally presses its button.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} kind
+ * @param {boolean} press
+ * @param {{css?: string, viewport?: {width: number, height: number}}} [opts]
+ * @returns {Promise<void>}
+ */
+async function openWithHeadCss(page, kind, press, { css = BOOTSTRAP_CSS, viewport = VIEWPORT } = {}) {
+    await page.setViewportSize(viewport);
+    const { spec } = await loadSlListPage(page, { kind, headCss: css, settingsOverride: { sa_render_threshold: 100000 } });
+    if (press) {
+        await page.$eval(`button[data-label="${spec.button}"]`, (b) => b.click());
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        await page.evaluate(() => { if (document.activeElement) document.activeElement.blur(); });
+    }
+    await page.waitForFunction(() => document.querySelector('h1.mb-sl-h1')?.closest('.mb-vsb-head'), null, { timeout: 10000 });
+    await frames(page);
+}
+
+/**
+ * Scrolls to 80 % of the page's scroll range (deep in the list or table on
+ * every list fixture) and reads the header block against its dock and
+ * against the end of `.project-detail`.
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<object>}
+ */
+async function readDeep(page) {
+    await page.evaluate(() => window.scrollTo(0, Math.round((document.documentElement.scrollHeight - innerHeight) * 0.8)));
+    await frames(page);
+    return page.evaluate(() => {
+        const h1 = document.querySelector('h1.mb-sl-h1');
+        const head = h1.closest('.mb-vsb-head');
+        const status = document.getElementById('mb-status-displays-wrapper');
+        return {
+            headTop: head.getBoundingClientRect().top, dock: parseFloat(getComputedStyle(head).top) || 0,
+            projectDetailBottom: document.querySelector('.project-detail').getBoundingClientRect().bottom,
+            statusInHead: !!(status && head.contains(status)),
+            maskOn: document.getElementById('mb-vsb-mask').classList.contains('mb-vsb-mask-on'),
+        };
+    });
+}
+
+for (const kind of EARLY_CLOSE) {
+    for (const press of [false, true]) {
+        test(`${kind} (${press ? 'after the press' : 'initial page'}): the header block stays docked past the end of .project-detail`, async ({ page }) => {
+            await openWithHeadCss(page, kind, press);
+            const g = await readDeep(page);
+            expect(g.projectDetailBottom, 'premise: .project-detail has scrolled out of the window').toBeLessThan(0);
+            expect(Math.abs(g.headTop - g.dock), 'the header block is at its dock').toBeLessThanOrEqual(1);
+            expect(g.statusInHead, 'the status line docks with the h1').toBe(true);
+            expect(g.maskOn, 'the backdrop is behind it').toBe(true);
+        });
+    }
+
+    test(`${kind}: the h1 moved out of .project-detail keeps its place on the page`, async ({ page }) => {
+        await openWithHeadCss(page, kind, false);
+        await expectSamePlace(page, kind === 'memorabilia' ? MEMORABILIA_RISE : 0);
+    });
+}
+
+/**
+ * How far anything may rise on memorabilia, in px. There the h1 leaves the
+ * floated .col-sm-12 for the .row around it, and two spaces of the site's
+ * markup change place (scripts/probe-sl-head-margins.probe.js, 2026-11-16):
+ * a line box of a U+FEFF (a byte-order mark, which CSS does not treat as
+ * white space) that starts the column, 17 px, is now under the status line
+ * instead of over the h1; and a <p>'s 16 px margin that collapsed up to the
+ * container's top while the float was the row's only block before it no
+ * longer pushes the column down (wide window only: under 768 px the column
+ * is not floated). So the h1 sits up to 34 px higher and the walls up to
+ * 16 px: spaces of the broken markup close up, none opens, nothing sinks.
+ * @type {number}
+ */
+const MEMORABILIA_RISE = 34;
+
+/**
+ * Positions as moved, then with the h1 and the status line put back as the
+ * first children of .project-detail (where _slPrepareLivePage() inserts the
+ * h1): nothing may differ by more than a pixel, except that a top edge may
+ * sit up to `rise` px higher (never lower).
+ * @param {import('@playwright/test').Page} page
+ * @param {number} [rise=0]
+ * @returns {Promise<void>}
+ */
+async function expectSamePlace(page, rise = 0) {
+    const g = await page.evaluate(() => {
+        window.scrollTo(0, 0);
+        const h1 = document.querySelector('h1.mb-sl-h1');
+        const pd = document.querySelector('.project-detail');
+        const status = document.getElementById('mb-status-displays-wrapper');
+        const wrapper = h1.parentElement;
+        const next = Array.from(pd.children).find((c) => c.getClientRects().length);
+        const read = () => ({ h1Left: h1.getBoundingClientRect().left, h1Top: h1.getBoundingClientRect().top,
+            statusTop: status.getBoundingClientRect().top, nextTop: next.getBoundingClientRect().top,
+            nextLeft: next.getBoundingClientRect().left });
+        const moved = read();
+        const inWrapper = wrapper.classList.contains('mb-sl-header');
+        pd.insertBefore(status, pd.firstChild);
+        pd.insertBefore(h1, status);
+        wrapper.remove();
+        return { inWrapper, moved, original: read() };
+    });
+    expect(g.inWrapper, 'premise: the h1 was moved').toBe(true);
+    for (const k of Object.keys(g.original)) {
+        if (rise && k.endsWith('Top')) {
+            expect(g.original[k] - g.moved[k], `${k}: never lower than in the original place`).toBeGreaterThanOrEqual(-1);
+            expect(g.original[k] - g.moved[k], `${k}: at most ${rise} px higher`).toBeLessThanOrEqual(rise + 1);
+        } else {
+            expect(Math.abs(g.moved[k] - g.original[k]), `${k}: as in the original place`).toBeLessThanOrEqual(1);
+        }
+    }
+}
+
+/**
+ * Bootstrap's own rule: the column floats only from 768 px. Under it the
+ * column starts no block formatting context, and the h1's margin collapses
+ * up through it as it did in its original place.
+ * @type {string}
+ */
+const BOOTSTRAP_CSS_SM_FLOAT = BOOTSTRAP_CSS.replace(
+    '.col-sm-12 { position: relative; min-height: 1px; padding-left: 15px; padding-right: 15px; float: left; width: 100%; }',
+    '.col-sm-12 { position: relative; min-height: 1px; padding-left: 15px; padding-right: 15px; } '
+    + '@media (min-width: 768px) { .col-sm-12 { float: left; width: 100%; } }');
+
+test('memorabilia at 700 px (the column not floated): the moved h1 keeps its place', async ({ page }) => {
+    expect(BOOTSTRAP_CSS_SM_FLOAT, 'premise: the float rule was replaced').not.toBe(BOOTSTRAP_CSS);
+    await openWithHeadCss(page, 'memorabilia', false, { css: BOOTSTRAP_CSS_SM_FLOAT, viewport: { width: 700, height: 800 } });
+    expect(await page.evaluate(() => getComputedStyle(document.querySelector('.col-sm-12')).float), 'premise').toBe('none');
+    await expectSamePlace(page, MEMORABILIA_RISE);
+});
+
+test('memorabilia opened wide, then narrowed to 700 px: the moved h1 keeps its place', async ({ page }) => {
+    await openWithHeadCss(page, 'memorabilia', false, { css: BOOTSTRAP_CSS_SM_FLOAT });
+    expect(await page.evaluate(() => getComputedStyle(document.querySelector('.col-sm-12')).float), 'premise').toBe('left');
+    await page.setViewportSize({ width: 700, height: 800 });
+    await frames(page);
+    expect(await page.evaluate(() => getComputedStyle(document.querySelector('.col-sm-12')).float), 'premise').toBe('none');
+    await expectSamePlace(page, MEMORABILIA_RISE);
+});
+
+test('a list inside .project-detail: the h1 is left where it is, no wrapper', async ({ page }) => {
+    await openWithHeadCss(page, 'collection', true);
+    const g = await page.evaluate(() => ({
+        parent: document.querySelector('h1.mb-sl-h1').parentElement.className,
+        wrappers: document.querySelectorAll('.mb-sl-header').length,
+    }));
+    expect(g.parent).toBe('project-detail');
+    expect(g.wrappers).toBe(0);
 });

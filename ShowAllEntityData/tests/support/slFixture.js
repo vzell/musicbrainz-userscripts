@@ -22,8 +22,9 @@
  * @module slFixture
  */
 
+const fs = require('fs');
 const path = require('path');
-const { loadUserscriptPage } = require('./loadPage');
+const { loadUserscriptPage, FIXTURE_SETTINGS_OVERRIDE } = require('./loadPage');
 
 const FIXTURE_DIR = path.join(__dirname, '..', 'fixtures');
 
@@ -170,7 +171,7 @@ const SL_KINDS = {
  * Loads one SL list fixture with the userscript injected.
  *
  * @param {import('@playwright/test').Page} page
- * @param {{ kind: ('collection'|'collection-intro'|'sampler'|'memorabilia'|'bootlegs'|'brucelegs'|'collection-logged-in'|'bootlegs-logged-in'|'brucelegs-logged-in'|'lyrics-intro'|'lyrics-b'|'lyrics-b-logged-in'|'bootlegs-intro'), enabled?: boolean, titles?: boolean, settingsOverride?: Object<string, *>, startPage?: number, url?: string }} opts
+ * @param {{ kind: ('collection'|'collection-intro'|'sampler'|'memorabilia'|'bootlegs'|'brucelegs'|'collection-logged-in'|'bootlegs-logged-in'|'brucelegs-logged-in'|'lyrics-intro'|'lyrics-b'|'lyrics-b-logged-in'|'bootlegs-intro'), enabled?: boolean, titles?: boolean, settingsOverride?: Object<string, *>, startPage?: number, url?: string, headCss?: string }} opts
  *   `titles` seeds `sa_foreign_mb_titles` and `sa_foreign_typography`
  *   (default `false` here, although both settings default to ON: these
  *   loaders serve the converter specs, which pin the site's text as
@@ -182,12 +183,16 @@ const SL_KINDS = {
  *   kind's page parameter set. `url` (default: the kind's own) serves the
  *   same fixture at another URL of that list, e.g. with an extra filter in
  *   its query — what the userscript reads from `location` changes, the page
- *   does not.
+ *   does not. `headCss` (default none) is a stand-in for the site's
+ *   stylesheets, put in the page's own `<head>` so it is there when the
+ *   userscript measures at init, as on the real site (a style tag added
+ *   after loading comes too late for anything measured once, such as
+ *   `_slPlaceHead()`'s side padding).
  * @returns {Promise<{ requests: string[], spec: object }>} Every request URL the
  *   page made from the moment of loading (for "no MusicBrainz call" checks),
  *   and the kind's {@link SL_KINDS} entry.
  */
-async function loadSlListPage(page, { kind, enabled = true, titles = false, settingsOverride = {}, startPage = 1, url = null }) {
+async function loadSlListPage(page, { kind, enabled = true, titles = false, settingsOverride = {}, startPage = 1, url = null, headCss = '' }) {
     const spec = SL_KINDS[kind];
     const startUrl = new URL(url || spec.url);
     if (startPage !== 1) startUrl.searchParams.set(spec.pageParam, String(startPage));
@@ -196,11 +201,19 @@ async function loadSlListPage(page, { kind, enabled = true, titles = false, sett
 
     await page.route(/^https?:\/\/(?:www\.)?springsteenlyrics\.com\//, (route) => route.abort('blockedbyclient'));
 
+    // With headCss the page is served here, not as a fixtureFile, and
+    // loadUserscriptPage() then skips FIXTURE_SETTINGS_OVERRIDE: it is
+    // passed explicitly, so both paths load with the same settings.
+    if (headCss) {
+        const html = fs.readFileSync(spec.pages[startPage - 1], 'utf8').replace('</head>', `<style>${headCss}</style></head>`);
+        await page.route(startUrl.toString(), (route) => route.fulfill({ body: html, contentType: 'text/html' }));
+    }
     await loadUserscriptPage(page, {
         url: startUrl.toString(),
-        fixtureFile: spec.pages[startPage - 1],
+        fixtureFile: headCss ? undefined : spec.pages[startPage - 1],
         testMode: true,
         settingsOverride: {
+            ...(headCss ? FIXTURE_SETTINGS_OVERRIDE : {}),
             sa_enable_springsteenlyrics: enabled, sa_foreign_mb_titles: titles, sa_foreign_typography: titles, ...settingsOverride,
         },
     });

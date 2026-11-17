@@ -78,6 +78,20 @@ lets the init-time `_cachedEntityName` capture read it like a MusicBrainz
 `<h1>`. It also adds `body.mb-sa-host-sl`, installs `_ensureSlStyle()`, and
 measures the site's sticky navbar into `--mb-sl-navbar-h`.
 
+**The navbar's height counts only where the navbar can be fixed**
+(`_slNavbarOffset()`, 2026-11-16; at init, on every window resize, and from
+`_vsbBaseOffset()`). The site's stylesheet has
+`@media(max-width:992px){ .navbar-default, .navbar-inverse { position: relative !important; } }`
+(css/style-red.css, read 2026-11-16), while jquery.sticky still writes
+`position: fixed` inline at any width. Up to 992 px the navbar therefore
+scrolls away, and the variable is `0px`: with 80 px reserved, the toolbar
+`<h1>` docked 80 px down and the page showed in the gap. The test is the
+computed position with `position: fixed` inline (the plugin's own, or set for
+one synchronous read and restored), so the breakpoint is the site's, not a
+number repeated in the script. Specs: `sl-sticky-headers.spec.js` (narrow,
+wide), `sl-sticky-mask.mobile.spec.js`; mutations:
+`scripts/mutations/sl-sticky-mask.json`.
+
 **Never scope a lookup to `.project-detail`; find the list from its cards.**
 That was the rule until 2026-10-05, and it made the converter a silent no-op
 on every collection category but "Official Albums". Those pages render a
@@ -728,6 +742,59 @@ The navbar wrapper gets the chrome z-index (106), so the site's mega-menu
 still opens above the pinned bars. A sticky cell cannot travel past its
 table's right edge, so a Title column wider than the room left of it is
 pushed back at the far right — plain `position: sticky`, on any host.
+
+**The header block stays docked over the whole list** (`_slPlaceHead()`,
+2026-11-16). The sticky filter bars dock the toolbar `<h1>` and the status
+line at the top, but a sticky element never leaves its parent, and the h1 is
+inserted into `.project-detail`. On the three shapes whose stray `</div>`
+closes `.project-detail` right after the category walls (the collection
+entry page, sampler, memorabilia; `scripts/probe-sl-sticky-head.probe.js` ran
+every SL fixture, `debug/probe-sl-sticky-head.json`, and found no other) the
+block docked, then scrolled away when `.project-detail` ended, on the initial
+page and after the press alike. There the h1 goes into a `div.mb-sl-header` in
+the nearest ancestor that holds the data (`table.tbl`, else the list heading
+or the first card), right before the branch holding `.project-detail`, with
+the side padding of the wrappers it left (memorabilia: the floated
+`.col-sm-12`'s 15 px), and `_vsbHeadBlocks()` takes that wrapper as the block.
+A page whose data is inside `.project-detail` is not touched.
+
+On memorabilia the h1 sits up to 34 px higher than inside the column, and the
+walls up to 16 px: the column starts with a U+FEFF that CSS draws as a 17 px
+line (now under the status line, not over the h1), and a `<p>` margin that
+collapsed up to the container's top while the float was the row's only block
+before it no longer pushes the column down
+(`scripts/probe-sl-head-margins.probe.js`). Spaces of the broken markup close
+up; none opens, nothing moves sideways (`sl-sticky-headers.spec.js`, "keeps
+its place", with `MEMORABILIA_RISE`). The wrapper needs no formatting context
+of its own: the h1's rule is `margin: 0 0 12px` and the status line ends
+without a margin. Specs: `sl-sticky-headers.spec.js` (docked past
+`.project-detail` on each shape before and after the press, in place, no
+wrapper where the list is inside), `sl-sticky-mask.mobile.spec.js`;
+mutations: `scripts/mutations/sl-sticky-mask.json`.
+
+**No zooming out below 100 % while the table is wider than the screen**
+(`_slViewportFit()`, 2026-11-17). The site declares
+`<meta name="viewport" content="width=device-width, initial-scale=1">`. With
+our table wider than the screen, Firefox (Android, and its responsive design
+mode) widens the LAYOUT viewport to the content and keeps the zoom at 1: what
+shows is a window panning inside that box, `scrollY` stays 0, and nothing
+sticky reaches the visible top until the window has panned to the box's
+bottom (vzell's reading: innerWidth 2601, clientWidth 908,
+`visualViewport.offsetTop` 1938, `scrollY` 0; `debug/SL-firefox-FRP-non-sticky.*`).
+Chromium zooms out to fit instead, so it showed nothing wrong, and every probe
+that scrolled with `window.scrollTo()` moved the layout viewport directly and
+could not see it either. `minimum-scale=1` stops the widening (checked by
+vzell, editing the tag in responsive mode). The function adds it while
+`scrollWidth > clientWidth` and puts the site's own content back otherwise
+(kept in `data-mb-sl-viewport`); it runs after every render
+(`initStickyFilterBars()`, BEFORE its setting's test: the sticky thead needs
+it too) and on resize. Accepted cost (vzell): no pinch-zoom out below 100 %
+on a rendered wide table; zoomed in, the bars can still slide away. Desktop
+browsers ignore the tag; MusicBrainz has none. Spec:
+`sl-sticky-mask.mobile.spec.js` (Chromium's emulation widens the layout
+viewport the same way: `innerWidth` must equal `clientWidth`, and the tag
+returns when the table fits). No other foreign site was checked for the
+same effect.
 
 ## Page count and fetching need nothing
 

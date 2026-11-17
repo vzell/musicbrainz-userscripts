@@ -1126,6 +1126,12 @@ h3 and thead offsets start below them), z-index 105 (`VSB_Z_HEAD`).
   bare h1 inside an entity header: a sticky element only sticks inside its
   parent, so an h1 stuck inside `div.artistheader` goes as soon as that small
   div has scrolled by, and the subheader with the status line goes with it.
+  The same limit one level up: the block itself goes once ITS parent ends.
+  On springsteenlyrics.com, where the site closes `.project-detail` before the
+  list, the h1 and the status line are put in a `div.mb-sl-header` beside the
+  list (`_slPlaceHead()`, 2026-11-16), which this rule then takes as the
+  block; see docs/claude/springsteenlyrics.md, "Sticky Page Headers and the
+  sticky Title".
 - **From page init**, not only after a render: `initStickyFilterBars()` is
   also called right after the status line is placed.
 - **Too tall for the window:** if heads + h2 + h3 + thead exceed
@@ -1157,6 +1163,12 @@ h3 and thead offsets start below them), z-index 105 (`VSB_Z_HEAD`).
   rectangle read, at most once per frame on scroll): in its natural place
   it would cover the top of MusicBrainz's sidebar. Pinned on painted pixels
   (green rows) in `sticky-filter-bars.spec.js`.
+  AT its sticky top means within 0.5 px of it, not "at or above"
+  (2026-11-16): a block whose parent ends right under it
+  (springsteenlyrics.com's `.project-detail` before any press) is pushed out
+  of the window by that parent's end, and with `<=` the backdrop stayed on
+  as a white band the page scrolled behind. Pinned in
+  `sl-sticky-headers.spec.js` and `sl-sticky-mask.mobile.spec.js`.
 - **Tests and the sticky constraint box:** a sticky element is held inside
   its parent's CONTENT box, so padding on `#page`/`#content` gives no room to
   scroll — `addSpacer()` in the spec appends a real element. The fixtures'
