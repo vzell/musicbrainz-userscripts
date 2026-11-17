@@ -4,9 +4,16 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1813 versions; the month pages hold all of them.
+This page shows the newest 100 of 1814 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1643 — 2026-11-17
+
+**✨ Improve**
+
+- MusicBrainz link previews follow a change made in Event Horizon at once: after a rating, a tag vote, an alias edit, a collection change or an edit vote there, the next card or window asks MusicBrainz again instead of showing what it kept for up to 24 hours (Keep MusicBrainz answers for (hours)). This uses the shared last-write time majkinetor's scripts keep in this browser (localStorage mbLastWrite, agreed on majkinetor/musicbrainz-userscripts \#938); SAED only reads it. It applies to the entity cards, a release group's releases and facts, edit and editor pages and the paged lists of the windows. The Relationships column, recording lengths and "Recording of" keep their own lifetime, because no such change alters what they hold, and the external sites' previews (Wikipedia, Discogs, setlist.fm, …) are not affected.
+
 
 ## 9.99.1642 — 2026-11-17
 
@@ -878,13 +885,6 @@ This page shows the newest 100 of 1813 versions; the month pages hold all of the
 **🚀 Feature**
 
 - setlist.fm: a search by words (setlist.fm/search?query=…, such as "Bruce Springsteen", or "artist:(Bruce Springsteen) tour:(…)" as the Tour links open) gets the Setlists button too. Its table has both an Artist and a Venue column, as such a search can find other artists' setlists; its section is named after the query. These searches had no button before.
-
-
-## 9.99.1543 — 2026-11-04
-
-**🚀 Feature**
-
-- setlist.fm: a setlist's own page (setlist.fm/setlist/…) gets a button, Setlist, that lays the setlist out like a MusicBrainz release page, without asking setlist.fm for anything (the page already holds the whole list). One table per set, named as setlist.fm names it ("The River", "Solo Acoustic"), else Set 1, Set 2 …, and Encore. Columns: \# (numbered on through the sets, a tape has none), Song (its statistics on setlist.fm), Cover of, With (each guest on a line), Tape, Info (setlist.fm's notes such as "first time since 2019") and Play, which finds the song on YouTube and plays it in place. Above the tables: "\~ Setlist by … (date: venue)", setlist.fm's Note, and Details: Show (date, artist, venue, tour, how many setlist.fm users were there), Set times, Setlist (songs, sets, encores, covers, tapes), and on the right Guests and Covered artists, the one on the most songs first ("Tom Morello ×2"). A setlist without songs yet has no button.
 
 
 ---
