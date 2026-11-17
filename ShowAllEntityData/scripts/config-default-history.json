@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "a121793f1fa1a8a542c342a2b722ffb9c359daae",
-    "revisions_walked": 1276
+    "head": "f4d88e1eef361cf54b430d2af5244df9dd473a7d",
+    "revisions_walked": 1281
   },
   "changes": [
     {
@@ -1181,6 +1181,7 @@
     "sa_pop_mb_page": true,
     "sa_pop_mb_page_on_touch": false,
     "sa_pop_mb_image": true,
+    "sa_pop_mb_eh_images": true,
     "sa_pop_mb_ttl_hours": 24,
     "sa_rg_window_max_releases": 500,
     "sa_pop_ext": true,

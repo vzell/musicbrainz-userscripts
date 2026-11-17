@@ -634,3 +634,61 @@ test.describe('type: select', () => {
             .toEqual({ v: '__absent__', type: 'string' });
     });
 });
+
+// ── enabledBy (VZ_MBLibrary 4.6.0) ───────────────────────────────────────────
+//
+// A schema entry naming another setting's key in `enabledBy` (a checkbox) is
+// greyed out while that checkbox is unticked IN THE DIALOG: the row gets
+// vz-setting-disabled and aria-disabled, its controls are disabled, its
+// label's tooltip says what it needs. Widget-only: the value is untouched.
+// First user (2026-11-18): sa_pop_mb_eh_images under sa_pop_mb_image
+// (mockup https://claude.ai/artifact/6hYoqwr8EEQdNs2Bo8tvfD, question 3).
+test.describe('enabledBy (VZ_MBLibrary 4.6.0)', () => {
+    let pageErrors;
+    test.beforeEach(async ({ page }) => { pageErrors = collectPageErrors(page); });
+    test.afterEach(() => { expect(pageErrors, 'no uncaught page errors').toEqual([]); });
+
+    const NEEDS = 'Needs "Pictures in artist, label and place previews" ticked.';
+    // The control's OWN disabled property: toBeDisabled() also counts an
+    // aria-disabled ancestor, which the row is, so it cannot tell the two
+    // guarantees apart (a mutation run showed it, 2026-11-18).
+    const ownDisabled = (loc) => loc.evaluate(el => el.disabled);
+
+    test('the row follows its checkbox live: greyed out and disabled while it is unticked, back when ticked', async ({ page }) => {
+        await loadShell(page);
+        await openViaGmMenu(page);
+        const row = rowFor(page, 'sa_pop_mb_eh_images');
+        const own = page.locator(`#${SID}-input-sa_pop_mb_eh_images`);
+        const dep = page.locator(`#${SID}-input-sa_pop_mb_image`);
+        await expect(row).not.toHaveClass(/vz-setting-disabled/);
+        expect(await ownDisabled(own)).toBe(false);
+
+        await dep.evaluate(el => el.click());
+        await expect(row).toHaveClass(/vz-setting-disabled/);
+        await expect(row).toHaveAttribute('aria-disabled', 'true');
+        expect(await ownDisabled(own), 'the checkbox itself is disabled').toBe(true);
+        await expect(own, 'the value itself is untouched').toBeChecked();
+        expect(await row.locator('.vz-setting-label').getAttribute('title')).toMatch(new RegExp('^' + NEEDS.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+
+        await dep.evaluate(el => el.click());
+        await expect(row).not.toHaveClass(/vz-setting-disabled/);
+        await expect(row).toHaveAttribute('aria-disabled', 'false');
+        expect(await ownDisabled(own)).toBe(false);
+        expect(await row.locator('.vz-setting-label').getAttribute('title'), 'its own tooltip back').not.toContain('Needs "');
+    });
+
+    test('opened with the checkbox off, the row starts greyed out; a RESET of that checkbox brings it back', async ({ page }) => {
+        await loadShell(page, { sa_pop_mb_image: false });
+        await openViaGmMenu(page);
+        const row = rowFor(page, 'sa_pop_mb_eh_images');
+        await expect(row).toHaveClass(/vz-setting-disabled/);
+        expect(await ownDisabled(page.locator(`#${SID}-input-sa_pop_mb_eh_images`))).toBe(true);
+
+        const section = await rowFor(page, 'sa_pop_mb_image').getAttribute('data-section');
+        await headerFor(page, section).locator('.vz-section-reset').click();
+        await page.getByRole('button', { name: 'OK', exact: true }).click();
+        await expect(page.locator(`#${SID}-input-sa_pop_mb_image`)).toBeChecked();
+        await expect(row).not.toHaveClass(/vz-setting-disabled/);
+        expect(await ownDisabled(page.locator(`#${SID}-input-sa_pop_mb_eh_images`))).toBe(false);
+    });
+});

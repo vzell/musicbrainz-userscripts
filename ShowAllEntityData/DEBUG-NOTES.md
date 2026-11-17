@@ -30048,8 +30048,10 @@ Env: 2026-11-18T00:13–00:33+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6
   - The window, the card and `_eiShow()` merge EH's pictures after SAED's, with the marks.
   - The viewer's page label comes from `data-mb-artv-page-label`, and its words skip the EH tag.
 - **Deviations from the mockup:**
-  1. The new settings row is not greyed out when the picture setting is off: VZ_MBLibrary's dialog has no such
-     feature. The code ignores the setting then, and its description says so.
+  1. *Resolved the same night (vzell: "add the VZ_MBLibrary change")*: VZ_MBLibrary's dialog had no way to grey
+     a row out under another setting. VZ_MBLibrary 4.6.0 adds the schema key `enabledBy`, and the row now greys out
+     as the mockup showed. The code still ignores the setting while the picture setting is off, for older
+     libraries.
   2. The heading has no caption line under the name (the mockup drew one). The real heading names a picture's source
      in its hover card, which now says "Discogs · via Event Horizon".
 - **Tests:** pop-mb-image.spec.js "Event Horizon's pictures (sa_pop_mb_eh_images, C8)" (7) and entity-images.spec.js
@@ -30059,4 +30061,19 @@ Env: 2026-11-18T00:13–00:33+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6
   (`sidebar-overhaul.json` "card picture: no Open on Commons in the viewer") deletes the viewer line this changes:
   its find was moved, and it still fails. `check-mutation-finds.py`: 305 lists, 0 stale.
 - **Lint:** two `no-useless-assignment` from initial values, removed; back within the baseline.
-- **Not yet:** a browser check by vzell with the real Event Horizon; `test:full`; the #938 reply.
+- **VZ_MBLibrary 4.6.0, `enabledBy`** (second commit):
+  - The dialog greys out a row whose schema entry names a checkbox key while that checkbox is unticked
+    (`applyEnabledBy()`, run with the changed marks).
+  - SAED's `sa_pop_mb_eh_images` names `sa_pop_mb_image`.
+  - Specs: settings-dialog.spec.js "enabledBy (VZ_MBLibrary 4.6.0)", 2/2; the whole spec 31/31.
+  - Mutations: `scripts/mutations/vz-lib-enabled-by.json`, 9 entries, the library ones with `"file":
+    "../lib/VZ_MBLibrary.user.js"`; one is recorded `"expect": "pass"` (a dependency that is not a checkbox: no
+    schema entry names one).
+  - First run: "the controls stay enabled" SURVIVED. Playwright's `toBeDisabled()` also counts an `aria-disabled`
+    ancestor, and the row carries one, so the spec read the control's own `el.disabled` instead. It fails now.
+- **Config audit:** `audit-config-defaults.py` failed on the first commit (`f4d88e1e`). Its history file
+  (`scripts/config-default-history.json`) lacked the new key, and the run's output had been read only at its tail.
+  Fixed in the second commit with `dump-default-history.py`. A new key retires no default, so no
+  `_SETTINGS_MIGRATIONS` entry is owed.
+- **Not yet:** a browser check by vzell with the real Event Horizon (and the library from `main`, which
+  Tampermonkey's `@require` fetches only once it is pushed there); `test:full`; the #938 reply.

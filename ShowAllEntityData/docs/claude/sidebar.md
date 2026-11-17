@@ -534,9 +534,10 @@ other interop is a DOM mark).
 - **Gate: `_ehArtistImage()`**, read at every call (EH may load later or not
   at all): `sa_pop_mb_image` and `sa_pop_mb_eh_images` on, the object there
   with `findAll` and `cached`; null on anything else, a throw included.
-  Kinds: artist and label (`_MB_EH_IMG_KINDS`). The settings dialog cannot
-  grey the new row out under the picture setting (VZ_MBLibrary has no such
-  feature); the code ignores it then, and its description says so.
+  Kinds: artist and label (`_MB_EH_IMG_KINDS`). In the settings dialog the
+  row is greyed out while the picture setting is unticked (schema key
+  `enabledBy: 'sa_pop_mb_image'`, VZ_MBLibrary 4.6.0); the code ignores the
+  setting then too, so an older library (no greying) behaves the same.
 - **The window (Space): `_ehImagesLoad()`**, started from
   `_mbPopImageLoad()` once the url-rels are there, so only from a kind's
   `pin()`. One `findAll(t.id, url strings)` per entity per page load (⟳

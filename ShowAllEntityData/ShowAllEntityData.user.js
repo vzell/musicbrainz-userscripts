@@ -5813,6 +5813,9 @@
             label: 'Also Event Horizon\'s pictures, when it is installed',
             type: 'checkbox',
             default: true,
+            // Greyed out while the picture setting is off (VZ_MBLibrary 4.6.0; an
+            // older library shows it as usual, and _ehArtistImage() ignores it then).
+            enabledBy: 'sa_pop_mb_image',
             description: 'On by default; needs "Pictures in artist, label and place previews" above. When ' +
                          'majkinetor\'s Event Horizon is installed, an artist\'s or a label\'s window also shows ' +
                          'the pictures Event Horizon finds (Discogs, Deezer, Tidal, Apple Music, SoundCloud, ' +
