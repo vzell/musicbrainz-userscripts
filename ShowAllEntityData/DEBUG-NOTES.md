@@ -29716,3 +29716,64 @@ Env: 2026-11-16T01:15:12+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
   times over: 30 of 30 passed. Nothing this branch changes is on that path (the shared MusicBrainz request gate);
   it passed in the full run of 2026-11-15. Read as a load-dependent timing failure, not traced; the full suite was
   not run a second time.
+
+## 2026-11-16 — The BruceParser feed, version 1 (feat/bb-feed)
+
+Env: 2026-11-16T16:29:08+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (chromium-fixtures, chromium-mobile), no Tampermonkey (GM stubs); the probe: Python over the mirror bb/2026-11-15, n/a. Not seen in a real browser yet.
+
+- **What it is:** BruceParser 0.18.0 (`feed.sh`) writes four whole-wiki reports as one JSON file. It is published
+  to the public repo vzell/brucebase-feed, because BruceParser is private and its raw URLs answer 404 to others.
+  The script reads it at most once a day on a Brucebase press or a Space, keeps it in GM storage, and stamps four
+  findings: `bb-feed-title`, `-no-tags`, `-no-parent`, `-first-letter`. Full text: docs/claude/brucebase.md,
+  "The BruceParser feed"; the record and the browser list: org/bbp-parity.org, "The feed, version 1".
+- **GitHub answers `text/plain`** (curl of the published file: `text/plain; charset=utf-8`, `max-age=300`).
+  `_extFetch()`'s default `accept` is HTML only and would skip the body as `type`. The reader passes
+  `/\b(?:json|text\/plain)\b/i`, and a mutation that drops `text/plain` fails the spec.
+- **A wrong parent is a "title" finding:** BruceParser's
+  `DIFFERENCES-in-titles-between-year-and-detail-pages` compares a page's title with its breadcrumb PARENT's. So
+  `news:web-1975-08-14a-bottom-line-new-york-city-ny`, whose parent is the 1978 Hampton gig, shows as a title that
+  differs from "1978-08-14 Hampton Roads Coliseum". The data error is Brucebase's, not the parser's.
+- **The probe decided the "page in front wins" comparison:** 32 of the 39 dependent titles equal the page's own
+  title as written, and the other 7 once their leading kind word ("Web", "Story") is dropped
+  (`_bbFeedTitleKey()`). Every other kind holds on its mirror page (0 contradictions), so nothing real is dropped
+  by the live filter. The checker (`scripts/check-bb-feed.js`) runs the shipped code over the same pages: no
+  difference.
+- **A mutation that passed first:** "the format is not checked". The test's bad file `{"format":2,"pages":{}}` also
+  lacked `run`, which a second guard of `_bbFeedValid()` refuses. The test now sends the real feed with only
+  `format` changed.
+- **A race in an older spec:** `bb-findings-help-icon.spec.js` "the year table: a show tagged help …" read the Tags
+  cell's stamp right after the row was read, but the re-stamp is queued 150 ms later (`_queueFindingsRestamp()`).
+  It failed once beside 15 other specs and passed 55 of 55 alone. Now polled.
+- **One mistake of this session:** a `test:full` was started piped through `head -3`, and the closed pipe ended
+  it before its first test. The working rules forbid that. It was started again without a pipe.
+- **Tests:**
+  - `bb-feed.spec.js`: 16 tests;
+  - `bb-feed.json`: 24 mutations as recorded (22 fail their test, 2 pass with the reason);
+  - two older mutation finds rewritten;
+  - +34,419 bytes.
+  - `npm run test:full` on NB-3641 at `fbc77715` plus the uncommitted work: 16:03:14–16:25:19 CET, 3,188
+    passed, 1 FAILED: `discogs-rate-limit.spec.js:153`, "another tab's reservation is honoured" (the shared slot
+    about 2.8 s earlier than the spacing allows). It fails on `main` too: 3 of 15 runs alone in a worktree of
+    `main` (`b369e7ca`), and 2 of 15 on this branch. A pre-existing timing failure of the Discogs request gate,
+    not traced.
+
+## 2026-11-17 — The feed's browser check: stats:songs and stats:relations do not list every page (feat/bb-feed)
+
+Env: 2026-11-17T15:08:05+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · n/a (Python over the mirror bb/2026-11-15; vzell's live check: browser and Tampermonkey not recorded)
+
+- **Symptom (vzell, live):** the browser check expected four songs (Dinner At Eight, Follow The Sun, Two Of Us,
+  You're Gonna Miss Me When I'm Gone) marked ⚠️ on stats:songs, and three relations (Chubby Checker, David Mansfield,
+  Gladys Avignon) marked ❌ on stats:relations. None of the seven is on those pages.
+- **Cause: the probe's assumption, not the code.** `scripts/probe-bb-feed.py` (part 4) and `scripts/check-bb-feed.js`
+  counted every `song:` and `relation:` page of the run as a list row. The wiki builds both lists from the
+  first-letter tags (checked on the mirror's tags of every page the lists leave out). A page that lacks its letter
+  tag, which is the feed's first-letter finding, or has no tag at all, the no-tags finding, is therefore never on the
+  list. stats:songs links 1,679 of 1,685 `song:` pages; stats:relations 2,896 of 2,929.
+- **Fix:** probe and checker read each list's rows from the links of its mirror file, and the probe prints the pages
+  each list leaves out. Now songs 0 marked, relations 1 (Rob DeMartin, listed under "m"), the storyteller tag page
+  106 as before. The checker: no difference. The browser-check table in org/bbp-parity.org now has `song:two-of-us`
+  (the mark after its byline) instead of the stats:songs row.
+- **No code change** (vzell, 2026-11-17): the Tracks II sessions page links the four songs in a `Song` column, which
+  stays unmarked.
+- **Seen on the way, not followed up:** the M tab of stats:relations stops before "Mu": 19 person pages tagged "m"
+  (Marcus Mumford … Mweli Mzizi) are missing, which looks like a list limit on the wiki. Unverified on the live page.

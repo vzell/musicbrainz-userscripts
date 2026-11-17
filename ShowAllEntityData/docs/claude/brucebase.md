@@ -2216,6 +2216,115 @@ real (`scripts/build-bb-findings-batch3-fixtures.py`); the test hook
 `scripts/mutations/bb-findings-batch3.json`. `bb-onstage-tags.spec.js`
 runs with the tag check off: it counts the chips of the tags the pages have.
 
+## The BruceParser feed (bbp-parity, "The feed, version 1", 2026-11-16)
+
+Env: 2026-11-16T11:53:49+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux
+6.18.58.1-microsoft-standard-WSL2) · n/a (the probe: Python over the mirror
+bb/2026-11-15; the checker: Playwright Chromium, no Tampermonkey)
+
+BruceParser (`~/git/scripts/BruceParser`, 0.18.0) reads the whole wiki
+offline, and its `feed.sh` writes what only that full read can see as one
+JSON file. `publish-feed.sh` pushes it to the PUBLIC repo
+`vzell/brucebase-feed` (BruceParser itself is private, so its raw URLs
+answer 404 to everyone else). The format is the feed repo's `FORMAT.md`.
+Mockup https://claude.ai/artifact/65urMwgWSb6zq6xJa9Mf4x; vzell's answers of
+2026-11-16 all as recommended (org/bbp-parity.org, "The feed, version 1").
+
+- **The file:** `_BB_FEED_URL`, raw `main`, about 24 KB, format
+  `_BB_FEED_FORMAT` (1). A file of another format is not taken. GitHub
+  answers `text/plain`, so `_extGet()` gets an `accept` that lets it through
+  (the default, HTML only, would refuse the body).
+- **When it is read** (`_bbFeedLoad()`): a kept copy older than a day
+  (`_BB_FEED_TTL_MS`) is read again on a Brucebase press
+  (`startFetchingProcess()`, host-gated) or when a Brucebase window opens
+  with Space (the site's `windowKick`; `_extExtracted()` on other hosts).
+  Never from a hover, and never on a MusicBrainz press. A failed read keeps
+  the old copy, records why (`err`), and is not tried again within the hour
+  (`_BB_FEED_RETRY_MS`); Retry and Read again (`force`) ask at once.
+- **Where it is kept:** the GM key `_BB_FEED_KEY` (`mb_sa_bb_feed`, `{at,
+  data, err, errAt}`): GM storage is shared across sites, so one read serves
+  Brucebase and every Brucebase window on MusicBrainz. It is a cache, not a
+  setting, so it is not in the config export. It is read into memory once per
+  page (`_bbFeedReadKept()`), with the show index `byEvent` (a dependent page's
+  `event`, read backwards).
+- **The four kinds** (`_BB_FEED_KINDS`) are four FINDINGS entries, built from
+  that table: ❌ `bb-feed-title` (dependent-title), ❌ `bb-feed-no-tags`, ⚠️
+  `bb-feed-no-parent`, ⚠️ `bb-feed-first-letter`. Each has its own switch,
+  and they share one tint (`sa_findings_tint_bb_feed`). The feed's own switch
+  is `sa_bb_feed`. A show is marked for its dependent pages too (vzell,
+  decision 1): `_bbFeedFacts()` merges the page's own entry with `byEvent`.
+- **Rows:** the cell that names a row's own page on every Brucebase list
+  (`_BB_FEED_COLS`: Event, Title, Name, Page; decision 5). `test()` reads the
+  cell's link (a year table's `a.mb-bb-event-link` first) and the kept feed,
+  memoized per link and feed generation (`_bbFeedCellFacts()`), so it is
+  source-row data and survives a filter re-render and Save/Load to Disk.
+  A feed that comes in after the render is stamped by ONE `stampFindings()`
+  (`_bbFeedChanged()`), at most once a day, then `runFilter()` while a feed
+  finding filters. **A year listing's rows are not marked**: they link the
+  year page's anchor (`/1978#050378`), and the show's page is known only once
+  ▶ Pages has read the year page.
+- **Heads and windows:** `_fdHeadInsertSections()` adds `_bbFeedMarksHtml()`
+  after every Brucebase head's byline, and `_dpExtractedCols()` adds
+  `_bbFeedWindowMarks()` after a Brucebase window's title (`bbTagInfo.name`,
+  the page after any redirect). The marks sit in `span.mb-bb-feed-marks`,
+  which carries the page and what the page said, so `_bbFeedRefreshMarks()`
+  can redraw them when the feed comes in.
+- **The page in front of you wins** (decision 4, `_bbFeedLiveFilter()`):
+  - no-tags is dropped once the page has a tag;
+  - first-letter is dropped once the page has that tag;
+  - no-parent is dropped once its breadcrumb links a page (a head only: a
+    window cannot see the breadcrumb);
+  - a dependent page's own title mark is dropped when its title is not the
+    one the run saw, or now equals its show's;
+  - a show's dependent is dropped when the show's title now equals the
+    dependent's.
+
+  The comparison squeezes blanks and drops a leading kind word before the
+  date ("Web 1973-…", `_bbFeedTitleKey()`). The probe found that this makes
+  all 39 feed titles equal their pages' own: 32 as written, 7 after the kind
+  word is dropped.
+- **Saying why** (decision 3): `_bbFeedStatus()` is one line, used in two
+  places:
+  - the foot of the ⚠️/❌ menus on Brucebase (`_buildFindingMenuRows()`'s
+    `feedLine`, part of the menus' signature);
+  - the ☰ menu's new Brucebase group (`_SAED_GROUPS` `bb`; `_bbFeedSaedRow()`,
+    `#mb-saed-bbfeed-btn`), which shows when a page has no findings.
+
+  The line reads "Brucebase feed · run of 2026-11-15 · 192 pages · read
+  today · Read again", or "Brucebase feed: not loaded (GitHub answered 404)
+  · using the run of … · Retry". From 14 days on (`_BB_FEED_OLD_DAYS`) the
+  line and every card add "N days old".
+- **The probe** (`scripts/probe-bb-feed.py FEED RUN_DIR OUT`, output
+  `debug/probe-bb-feed.json`):
+  - all 192 pages exist in the mirror, and every kind holds on its page;
+  - the reverse index has 25 shows (32 dependent pages);
+  - the lists mark songs 0 of 1,679 rows, relations 1 of 2,896 (Rob
+    DeMartin), and the storyteller tag page 106 of 1,487.
+  - **stats:songs and stats:relations list a page by its first-letter
+    tag** (2026-11-17). So a page that lacks its letter tag, or has no tag,
+    is not on them. stats:songs leaves out 6 of the 1,685 `song:` pages,
+    and the feed's four first-letter songs are among them. They are marked
+    on their own page only, after the byline. The Tracks II sessions page
+    also links them, but in a `Song` column, which the feed does not mark
+    (vzell, 2026-11-17). stats:relations leaves out 33 of 2,929 pages,
+    among them the three no-tags relations (not on the live list either,
+    vzell, 2026-11-17). Rob DeMartin is on it because he is tagged "m". Until 2026-11-17 the probe and the checker counted
+    every page of the category as a row (songs 4 of 1,685, relations 4 of
+    2,929), and the browser check expected the four songs on stats:songs.
+
+  **The checker** (`scripts/check-bb-feed.js FEED PROBE`) runs the shipped
+  lookup and the live filter over the same pages: no difference.
+- **A Brucebase error found on the way:**
+  `news:web-1975-08-14a-bottom-line-new-york-city-ny` has the 1978 Hampton
+  gig as its breadcrumb parent. The dependent-title report compares a page
+  with its parent's title, so a wrong parent shows up as a differing title.
+- Tests: `tests/fixtures/bb-feed.spec.js` (16). It uses the published feed
+  (`tests/fixtures/bb-feed-2026-11-15.json`) on the 1972 year fixture (two
+  real shows) and the relations fixture (`relation:rob-demartin`), and a
+  small feed for the story head, the event head, the 1985 window and the
+  songs list. Mutations: `scripts/mutations/bb-feed.json`.
+  `FIXTURE_SETTINGS_OVERRIDE` has `sa_bb_feed: false`.
+
 ## Show links on Brucebase's own pages (Phase 8, 2026-11-11)
 
 A show on its year page (`/<yyyy>#<ddmmyy>`: an event's "Info & Setlist", a

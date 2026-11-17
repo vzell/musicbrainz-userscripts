@@ -1,0 +1,432 @@
+'use strict';
+
+// The BruceParser feed, version 1 (org/bbp-parity.org, "The feed, version 1";
+// mockup https://claude.ai/artifact/65urMwgWSb6zq6xJa9Mf4x, vzell's answers of
+// 2026-11-16 all as recommended). BruceParser's whole-wiki run publishes one
+// JSON file; the script reads it at most once a day on a press or a Space,
+// keeps it in GM storage, and marks the pages it names:
+//   bb-feed-title ❌ (a show's page titled differently; marked on that page
+//   AND on the show), bb-feed-no-tags ❌, bb-feed-no-parent ⚠️,
+//   bb-feed-first-letter ⚠️ — on the cell naming a row's own page (Event,
+//   Title, Name, Page), after a page head's byline and a window's title.
+//
+// Real data: tests/fixtures/bb-feed-2026-11-15.json is the feed as published
+// (run of 2026-11-15). The 1972 year fixture holds two shows it names through
+// their dependent pages (1972-06-00 Point Pleasant: its Notes page says
+// "Private Property"; 1972-04-00b Mediasound: its Notes page says "Stucio C"),
+// and the relations fixture holds relation:rob-demartin (no "d" tag). The
+// story, event and song cases use a small feed naming pages the fixtures have.
+
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { test, expect } = require('../support/test');
+const { loadUserscriptPage } = require('../support/loadPage');
+const { loadBbYearPage, loadBbRelationsPage, loadBbSongsPage, loadBbStoryPage, loadBbEventPage,
+    BB_YEAR_BUTTON, BB_BUTTON } = require('../support/bbFixture');
+const { routeDetailPages } = require('../support/detailFixture');
+const { waitForRenderComplete } = require('../support/browser');
+const { findingRow, clickFinding, findingRowState } = require('../support/findingsMenu');
+const { clickToolbarItem } = require('../support/toolbarMenu');
+
+const FEED_URL = 'https://raw.githubusercontent.com/vzell/brucebase-feed/main/bb-feed.json';
+const REAL = JSON.parse(fs.readFileSync(path.join(__dirname, 'bb-feed-2026-11-15.json'), 'utf8'));
+const DAY = 24 * 3600 * 1000;
+const BB = 'https://brucebase.wikidot.com/';
+const PT_PLEASANT = 'gig:1972-06-00-unknown-location-point-pleasant-nj';
+const MEDIASOUND = 'recording:1972-04-00b-mediasound-studios-new-york-city-ny';
+const DEMARTIN = 'relation:rob-demartin';
+const STORY = 'story-1971-05-15-union-nj';
+const STORY_TITLE = 'Story 1971-05-15 Newark State College, Union, NJ';
+const ROXY = 'gig:1978-07-07-roxy-theatre-west-hollywood-ca';
+const GIG13 = 'gig:1985-01-13-carolina-coliseum-columbia-sc';
+const RELATIONS_BUTTON = 'Show all relations';
+const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
+
+/**
+ * A feed of format 1 naming `pages`, from a run `daysAgo` days back.
+ *
+ * @param {Object<string, Object>} pages
+ * @param {number} [daysAgo]
+ * @returns {Object}
+ */
+function feedOf(pages, daysAgo = 1) {
+    const date = new Date(Date.now() - daysAgo * DAY).toISOString().slice(0, 10);
+    return { format: 1, run: { date, bruceparser: '0.18.0', commit: 'test', feed: '1.0' }, site: BB, credit: 'test', reports: {}, pages };
+}
+
+/**
+ * Settings that turn the feed on with `kept` as the kept copy, read `ageMs` ago.
+ *
+ * @param {?Object} kept - A feed, or null for none kept.
+ * @param {number} [ageMs]
+ * @param {Object} [extra]
+ * @returns {Object<string, *>}
+ */
+function feedOn(kept, ageMs = 1000, extra = {}) {
+    return {
+        sa_bb_feed: true, sa_foreign_mb_titles: false, sa_foreign_typography: false, sa_render_threshold: 100000,
+        ...(kept ? { mb_sa_bb_feed: { at: Date.now() - ageMs, data: kept, err: '', errAt: 0 } } : {}),
+        ...extra,
+    };
+}
+
+/**
+ * Answers the feed's address (before the page loads): a status, a body,
+ * an optional delay.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {{status?: number, body?: string, delayMs?: number}} answer
+ * @returns {Promise<void>}
+ */
+async function answerFeed(page, { status = 200, body = '', delayMs = 0 }) {
+    await page.addInitScript(({ url, a }) => {
+        window.__gmXhrResponses = Object.assign(window.__gmXhrResponses || {}, {
+            [url]: { status: a.status, responseHeaders: 'content-type: text/plain; charset=utf-8\r\n', responseText: a.body, finalUrl: url, delayMs: a.delayMs },
+        });
+    }, { url: FEED_URL, a: { status, body, delayMs } });
+}
+
+/**
+ * Loads 1972's year page (the batch-1 fixture) with every other request refused.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {Object<string, *>} settings
+ * @returns {Promise<void>}
+ */
+async function load1972(page, settings) {
+    await page.route(/^https?:\/\//, route => route.abort('blockedbyclient'));
+    await loadUserscriptPage(page, {
+        url: `${BB}1972`, fixtureFile: path.join(__dirname, 'bb-year-1972-findings.html'), testMode: true,
+        settingsOverride: { sa_enable_brucebase: true, sa_bb_year_pages: true, ...settings },
+    });
+}
+
+/**
+ * Loads 1972 and shows all its events.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {Object<string, *>} settings
+ * @returns {Promise<void>}
+ */
+async function show1972(page, settings) {
+    await load1972(page, settings);
+    await page.click(`button[data-label="${BB_YEAR_BUTTON}"]`);
+    await waitForRenderComplete(page, { waitForAutoResize: false });
+}
+
+/** @returns {Promise<number>} The requests made for the feed so far. */
+const feedAsks = page => page.evaluate(u => (window.__gmXhrLog || []).filter(r => r.url === u).length, FEED_URL);
+
+/**
+ * The live cells of a column with their feed stamps.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} col
+ * @returns {Promise<Array<{name: string, ids: string[], level: string, tip: string}>>}
+ */
+function feedCells(page, col) {
+    return page.evaluate((c) => {
+        const t = document.querySelector('table.tbl');
+        const names = Array.from(t.querySelectorAll('thead tr:first-child th')).map(th => th.dataset.colName || th.textContent.trim());
+        const i = names.indexOf(c);
+        return Array.from(document.querySelectorAll('table.tbl tbody tr')).filter(tr => tr.style.display !== 'none' && tr.cells[i]).map((tr) => {
+            const td = tr.cells[i];
+            const a = td.querySelector('a.mb-bb-event-link[href]') || td.querySelector('a[href]');
+            return {
+                name: a ? decodeURIComponent(new URL(a.href).pathname.slice(1)) : '',
+                ids: (td.dataset.mbFindings || '').split(' ').filter(x => x.startsWith('bb-feed-')),
+                others: (td.dataset.mbFindings || '').split(' ').filter(x => x && !x.startsWith('bb-feed-')),
+                level: td.dataset.mbFinding || '',
+                tip: td.getAttribute('title') || '',
+            };
+        }).filter(r => r.ids.length);
+    }, col);
+}
+
+let pageErrors;
+test.beforeEach(({ page }) => {
+    pageErrors = [];
+    page.on('pageerror', e => pageErrors.push(String(e.stack || e)));
+});
+test.afterEach(() => {
+    expect(pageErrors, 'no script error').toEqual([]);
+});
+
+test.describe('the Brucebase feed: reading it', () => {
+    test('the published file is format 1 and the pages it names are wiki names', () => {
+        expect(REAL.format).toBe(1);
+        expect(REAL.run.date).toBe('2026-11-15');
+        const names = Object.keys(REAL.pages);
+        expect(names).toHaveLength(192);
+        expect(names.every(n => /^[a-z0-9_-]+:[^/]+$/.test(n))).toBe(true);
+        expect(Object.fromEntries(Object.entries(REAL.reports).map(([k, v]) => [k, v.count])))
+            .toEqual({ 'dependent-title': 39, 'first-letter': 10, 'no-parent': 105, 'no-tags': 38 });
+    });
+
+    test('a kept feed younger than a day is not read again', async ({ page }) => {
+        await answerFeed(page, { body: JSON.stringify(REAL) });
+        await show1972(page, feedOn(REAL, 2 * 3600 * 1000));
+        expect((await page.evaluate(() => window.__saTest.bbFeed())).date).toBe('2026-11-15');
+        expect(await feedAsks(page), 'fresh: no request').toBe(0);
+    });
+
+    test('an older one is read once, on the press, not before; then it is fresh', async ({ page }) => {
+        await answerFeed(page, { body: JSON.stringify(REAL) });
+        await load1972(page, feedOn(REAL, 2 * DAY));
+        await page.locator(`button[data-label="${BB_YEAR_BUTTON}"]`).waitFor();
+        expect(await feedAsks(page), 'nothing before a press').toBe(0);
+        await page.click(`button[data-label="${BB_YEAR_BUTTON}"]`);
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        await expect.poll(() => feedAsks(page)).toBe(1);
+        await expect.poll(async () => (await page.evaluate(() => window.__saTest.bbFeed())).loading).toBe(false);
+        expect(await page.evaluate(() => window.__saTest.bbFeedLoad())).toBe(false);
+        expect(await feedAsks(page), 'read today: no second request').toBe(1);
+        const kept = await page.evaluate(() => window.__gmValues.mb_sa_bb_feed);
+        expect(Date.now() - kept.at).toBeLessThan(60000);
+        expect(kept.data.run.date).toBe('2026-11-15');
+    });
+
+    test('a failed read keeps the old feed, says why, and waits an hour; Retry reads at once; a bad file is not taken', async ({ page }) => {
+        await answerFeed(page, { status: 404, body: '404: Not Found' });
+        await show1972(page, feedOn(REAL, 2 * DAY));
+        await expect.poll(async () => (await page.evaluate(() => window.__saTest.bbFeed())).err).toBe('GitHub answered 404');
+        const st = await page.evaluate(() => window.__saTest.bbFeed());
+        expect(st.date, 'the old feed is kept').toBe('2026-11-15');
+        expect(st.status).toEqual({ bad: true, text: expect.stringMatching(/^Brucebase feed: not loaded \(GitHub answered 404\) · using the run of 2026-11-15/), action: 'Retry' });
+        // Its marks still come from the kept feed.
+        expect((await feedCells(page, 'Event')).map(r => r.name).sort()).toEqual([MEDIASOUND, PT_PLEASANT].sort());
+        // Within the hour, no second try; Retry (force) asks at once.
+        expect(await page.evaluate(() => window.__saTest.bbFeedLoad())).toBe(false);
+        expect(await feedAsks(page)).toBe(1);
+        // A file of another format is not taken either: the real feed with only its format changed.
+        const two = JSON.stringify({ ...REAL, format: 2, run: { ...REAL.run, date: '2026-11-20' } });
+        await page.evaluate(([u, body]) => { window.__gmXhrResponses[u] = { status: 200, responseHeaders: 'content-type: text/plain\r\n', responseText: body }; }, [FEED_URL, two]);
+        await page.evaluate(() => window.__saTest.bbFeedLoad(true));
+        expect(await feedAsks(page)).toBe(2);
+        const st2 = await page.evaluate(() => window.__saTest.bbFeed());
+        expect(st2.err).toBe('the file is not a feed of format 1');
+        expect(st2.date).toBe('2026-11-15');
+    });
+
+    test('the setting off: no request, no mark, no ☰ row, no menu line', async ({ page }) => {
+        await answerFeed(page, { body: JSON.stringify(REAL) });
+        await show1972(page, { ...feedOn(REAL, 2 * DAY), sa_bb_feed: false });
+        expect(await feedAsks(page)).toBe(0);
+        expect(await feedCells(page, 'Event')).toEqual([]);
+        expect(await page.locator('#mb-saed-bbfeed-btn').count()).toBe(0);
+        expect(await page.locator('.mb-findings-feed-item').count()).toBe(0);
+    });
+});
+
+test.describe('the Brucebase feed: rows', () => {
+    test('1972: the two shows whose Notes pages are titled differently are ❌ on their Event cell; the menu counts and filters them', async ({ page }) => {
+        await show1972(page, feedOn(REAL));
+        const cells = await feedCells(page, 'Event');
+        expect(cells.map(r => r.name).sort()).toEqual([MEDIASOUND, PT_PLEASANT].sort());
+        cells.forEach(r => { expect(r.ids).toEqual(['bb-feed-title']); expect(r.level).toBe('error'); });
+        const pp = cells.find(r => r.name === PT_PLEASANT);
+        expect(pp.tip).toContain('gignote:1972-06-00-unknown-location-point-pleasant-nj is titled "1972-06-00 Private Property, Point Pleasant, NJ"');
+        expect(pp.tip).toContain('From BruceParser\'s run of 2026-11-15');
+        // The tint: the generic ❌ on the cell.
+        const look = await page.evaluate((n) => {
+            const a = document.querySelector(`table.tbl tbody a.mb-bb-event-link[href$="${n}"]`);
+            const td = a.closest('td');
+            return { bg: getComputedStyle(td).backgroundColor, after: getComputedStyle(td, '::after').content };
+        }, PT_PLEASANT.split(':')[1]);
+        expect(look.bg).not.toBe('rgba(0, 0, 0, 0)');
+        expect(look.after).toContain('❌');
+        // The menu row counts ROWS, from the page; a click leaves those rows, a second click all.
+        const row = await findingRow(page, 'error', 'bb-feed-title');
+        expect(row.count).toBe(2);
+        expect(row.label).toBe('Brucebase page titled differently from its show');
+        const all = (await findingRowState(page)).visible;
+        await clickFinding(page, 'bb-feed-title');
+        await expect.poll(() => findingRowState(page, 'bb-feed-title')).toEqual({ visible: 2, withFinding: 2 });
+        await clickFinding(page, 'bb-feed-title');
+        await expect.poll(async () => (await findingRowState(page)).visible).toBe(all);
+        // The menus' line names the run.
+        const line = await page.locator('#mb-findings-error-menu-btn-panel .mb-findings-feed-item').textContent();
+        expect(line).toMatch(/^Brucebase feed · run of 2026-11-15 · \d+ days old · 192 pages · read today · Read again$|^Brucebase feed · run of 2026-11-15 · 192 pages · read today · Read again$/);
+    });
+
+    test('the stamp survives a filter re-render; the tint setting off keeps the stamp and the menu row, without the tint', async ({ page }) => {
+        // The two cells' other findings off (bb-anchor-shared, bb-anchor-postfix), so no tint is left.
+        await show1972(page, feedOn(REAL, 1000, { sa_findings_tint_bb_feed: false, sa_findings_bb_anchor_shared: false, sa_findings_bb_anchor_postfix: false }));
+        const cells = await feedCells(page, 'Event');
+        expect(cells).toHaveLength(2);
+        cells.forEach(r => { expect(r.others, 'premise: no other finding').toEqual([]); expect(r.level, 'no tint').toBe(''); });
+        expect((await findingRow(page, 'error', 'bb-feed-title')).count).toBe(2);
+        await page.locator('#mb-global-filter-input').fill('point pleasant');
+        await expect.poll(async () => (await findingRowState(page)).visible).toBeLessThan(10);
+        expect((await feedCells(page, 'Event')).map(r => r.name)).toContain(PT_PLEASANT);
+    });
+
+    test('a feed that comes in after the render is stamped then', async ({ page }) => {
+        await answerFeed(page, { body: JSON.stringify(REAL), delayMs: 1500 });
+        await show1972(page, feedOn(null));
+        expect(await feedCells(page, 'Event'), 'nothing kept at the render').toEqual([]);
+        await expect.poll(() => feedCells(page, 'Event').then(c => c.map(r => r.name).sort()), { timeout: 15000 })
+            .toEqual([MEDIASOUND, PT_PLEASANT].sort());
+        expect((await findingRow(page, 'error', 'bb-feed-title')).count).toBe(2);
+    });
+
+    test('Relations: Rob DeMartin\'s Name cell is ⚠️ (no "d" tag); Save to Disk → Load from Disk keeps it', async ({ context }) => {
+        const source = await context.newPage();
+        source.on('pageerror', e => pageErrors.push(String(e.stack || e)));
+        await loadBbRelationsPage(source, { settingsOverride: feedOn(REAL) });
+        await source.click(`button[data-label="${RELATIONS_BUTTON}"]`);
+        await waitForRenderComplete(source, { waitForAutoResize: false });
+        const before = await feedCells(source, 'Name');
+        expect(before.map(r => [r.name, r.ids, r.level])).toEqual([[DEMARTIN, ['bb-feed-first-letter'], 'warn']]);
+        expect(before[0].tip).toContain('lacks the tag "d" of its title\'s first letter');
+        expect((await findingRow(source, 'warn', 'bb-feed-first-letter')).count).toBe(1);
+        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sa-bb-feed-'));
+        try {
+            const downloadPromise = source.waitForEvent('download', { timeout: 60000 });
+            await clickToolbarItem(source, '#mb-save-to-disk-btn');
+            await source.locator('#sa-sd-save-confirm').waitFor({ state: 'visible', timeout: 15000 });
+            await source.click('#sa-sd-save-confirm');
+            const saved = path.join(tmpDir, 'bb-relations.json.gz');
+            await (await downloadPromise).saveAs(saved);
+            await source.close();
+            const page = await context.newPage();
+            page.on('pageerror', e => pageErrors.push(String(e.stack || e)));
+            await loadBbRelationsPage(page, { settingsOverride: feedOn(REAL) });
+            await clickToolbarItem(page, '#mb-load-from-disk-btn');
+            await page.locator('input[type="file"][accept*="json"]').setInputFiles(saved);
+            const renderBtn = page.locator('#sa-render-no-filter-confirm');
+            await renderBtn.waitFor({ state: 'attached', timeout: 15000 });
+            await renderBtn.evaluate(el => el.click());
+            await waitForRenderComplete(page, { waitForAutoResize: false });
+            expect((await feedCells(page, 'Name')).map(r => [r.name, r.ids, r.level])).toEqual([[DEMARTIN, ['bb-feed-first-letter'], 'warn']]);
+        } finally {
+            fs.rmSync(tmpDir, { recursive: true, force: true });
+        }
+    });
+
+    const SONGS_FEED = { 'song:1945': { 'first-letter': '0-9' }, 'song:30-days-out': { 'no-tags': true } };
+
+    test('Songs: the Title cell of a song the feed names, another kind on another song; a run 30 days back is called old', async ({ page }) => {
+        await loadBbSongsPage(page, { settingsOverride: feedOn(feedOf(SONGS_FEED, 30)) });
+        await page.click(`button[data-label="${BB_BUTTON}"]`);
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const cells = await feedCells(page, 'Title');
+        expect(cells.map(r => [r.name, r.ids[0], r.level]).sort()).toEqual([
+            ['song:1945', 'bb-feed-first-letter', 'warn'],
+            ['song:30-days-out', 'bb-feed-no-tags', 'error'],
+        ]);
+        expect((await findingRow(page, 'error', 'bb-feed-no-tags')).count).toBe(1);
+        expect(cells[0].tip).toContain('(30 days old)');
+        expect((await page.evaluate(() => window.__saTest.bbFeed())).status.text).toContain(' · 30 days old · ');
+    });
+
+    test('a kind\'s switch off: its marks go, the others stay', async ({ page }) => {
+        await loadBbSongsPage(page, { settingsOverride: feedOn(feedOf(SONGS_FEED), 1000, { sa_findings_bb_feed_no_tags: false }) });
+        await page.click(`button[data-label="${BB_BUTTON}"]`);
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        expect((await feedCells(page, 'Title')).map(r => [r.name, r.ids[0]])).toEqual([['song:1945', 'bb-feed-first-letter']]);
+        expect(await findingRow(page, 'error', 'bb-feed-no-tags')).toBeUndefined();
+    });
+});
+
+test.describe('the Brucebase feed: heads, the window, the ☰ row', () => {
+    test('a story page\'s head: the marks the page does not contradict; what the page shows now wins', async ({ page }) => {
+        const feed = feedOf({
+            [`story:${STORY}`]: {
+                'no-parent': true, 'no-tags': true, 'first-letter': 'z',
+                'dependent-title': { title: STORY_TITLE, eventTitle: '1971-05-15 Somewhere Else, Union, NJ' },
+            },
+        });
+        await loadBbStoryPage(page, STORY, { settingsOverride: feedOn(feed) });
+        await page.click('button[data-label="Show the story"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const marks = page.locator('p.mb-fd-sub .mb-bb-feed-mark');
+        // The page has a breadcrumb parent and five tags: no-parent and no-tags go;
+        // "z" is missing indeed; its own title is the one the run saw.
+        await expect(marks).toHaveCount(2);
+        expect(await marks.evaluateAll(ms => ms.map(m => [m.dataset.mbFeedKind, m.dataset.mbLevel, m.textContent]))).toEqual([
+            ['dependent-title', 'error', '❌ ≢'],
+            ['first-letter', 'warn', '⚠️ Ⓐ'],
+        ]);
+        expect(await marks.first().getAttribute('title')).toContain('From BruceParser\'s run of');
+        // The rule itself, case by case.
+        const kept = (facts, live) => page.evaluate(([n, l]) => window.__saTest.bbFeed(n, l).kept.map(f => f.kind), [facts, live]);
+        const live = { title: STORY_TITLE, tags: ['15', '1971', 'a', 'may', 'storyteller'], parent: true };
+        expect(await kept(`story:${STORY}`, { ...live, title: 'Story 1971-05-15 Newark State College, Union, New Jersey' }), 'title edited since the run')
+            .toEqual(['first-letter']);
+        expect(await kept(`story:${STORY}`, { ...live, parent: false, tags: [] })).toEqual(['dependent-title', 'no-tags', 'no-parent', 'first-letter']);
+        expect(await kept(`story:${STORY}`, { title: null, tags: null, parent: null }), 'nothing known: all stay').toHaveLength(4);
+    });
+
+    test('a show\'s head: its dependent page titled differently is marked on the show (vzell, decision 1)', async ({ page }) => {
+        const feed = feedOf({
+            'onstage:1978-07-07-roxy-theatre-west-hollywood-ca': {
+                'dependent-title': { title: '1978-07-07 Roxy, West Hollywood, CA', event: ROXY, eventTitle: '1978-07-07 Roxy Theatre (The), West Hollywood, CA' },
+            },
+        });
+        await loadBbEventPage(page, 'gig-1978-07-07', { settingsOverride: feedOn(feed) });
+        await page.click('button[data-label="Show the event"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const mark = page.locator('p.mb-fd-sub .mb-bb-feed-mark');
+        await expect(mark).toHaveCount(1);
+        await expect(mark).toHaveText('❌ ≢');
+        expect(await mark.getAttribute('title')).toContain('Its page onstage:1978-07-07-roxy-theatre-west-hollywood-ca is titled "1978-07-07 Roxy, West Hollywood, CA"');
+        // The feed off: no mark at all.
+        expect(await page.evaluate(n => window.__saTest.bbFeed(n).facts.length, ROXY)).toBe(1);
+    });
+
+    test('the window: the show\'s mark after its title; a stale feed is read on Space, never on the hover', async ({ page }) => {
+        const feed = feedOf({ [`onstage:${GIG13.split(':')[1]}`]: { 'dependent-title': { title: '1985-01-13 Carolina Coliseum, Columbia, S.C.', event: GIG13, eventTitle: '1985-01-13 Carolina Coliseum, Columbia, SC' } } });
+        await answerFeed(page, { body: JSON.stringify(feed) });
+        await loadBbYearPage(page, '1985', { settingsOverride: { ...feedOn(feed, 2 * DAY), sa_bb_event_preview: true } });
+        await routeDetailPages(page, 'bb');
+        await page.route(/^https:\/\/brucebase\.wdfiles\.com\//, route => route.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+        await page.click(`button[data-label="${BB_YEAR_BUTTON}"]`);
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        await expect.poll(() => feedAsks(page), 'the press reads the stale feed').toBe(1);
+        await expect.poll(async () => (await page.evaluate(() => window.__saTest.bbFeed())).loading).toBe(false);
+        // A day later: the hover must not read it, Space must.
+        await page.evaluate(d => window.__saTest.bbFeedAge(2 * d), DAY);
+        const link = page.locator(`table.tbl tbody a.mb-bb-event-link[href="${BB}${GIG13}"]`).first();
+        await page.mouse.move(0, 0);
+        await link.scrollIntoViewIfNeeded();
+        await page.keyboard.down('Control');
+        await link.hover();
+        await page.keyboard.up('Control');
+        await expect(page.locator('#mb-dp-peek')).toContainText('28 songs');
+        expect(await feedAsks(page), 'the hover reads nothing').toBe(1);
+        await page.keyboard.press('Space');
+        const title = page.locator('#mb-dp-dialog .mb-dp-xtitle');
+        await expect(title).toContainText('1985-01-13 Carolina Coliseum, Columbia, SC');
+        await expect(title.locator('.mb-bb-feed-mark')).toHaveText('❌ ≢');
+        await expect.poll(() => feedAsks(page), 'Space reads the stale feed').toBe(2);
+    });
+
+    test('the ☰ menu\'s Brucebase group: the feed\'s line; Read again reads it', async ({ page }) => {
+        await answerFeed(page, { body: JSON.stringify(REAL) });
+        await load1972(page, feedOn(REAL));
+        const row = page.locator('#mb-saed-bbfeed-btn');
+        await expect(row).toHaveCount(1);
+        expect(await row.evaluate(el => el.closest('.mb-saed-group').dataset.mbGroup)).toBe('bb');
+        await expect(row).toHaveText(/^Brucebase feed · run of 2026-11-15 · (\d+ days old · )?192 pages · read today · Read again$/);
+        await clickToolbarItem(page, '#mb-saed-bbfeed-btn');
+        await expect.poll(() => feedAsks(page)).toBe(1);
+    });
+});
+
+test.describe('the Brucebase feed: MusicBrainz', () => {
+    test('a MusicBrainz page reads no feed on a press and has no Brucebase row', async ({ page }) => {
+        const url = 'https://musicbrainz.org/artist/89729b97-90a3-4f84-9e88-e16f96cab350/events';
+        const file = path.join(__dirname, 'artist-events-names.html');
+        await page.route(/^https?:\/\//, route => route.abort('blockedbyclient'));
+        await answerFeed(page, { body: JSON.stringify(REAL) });
+        await loadUserscriptPage(page, { url, fixtureFile: file, testMode: true, settingsOverride: feedOn(REAL, 2 * DAY) });
+        await page.route(`${url}*`, r => r.fulfill({ path: file, contentType: 'text/html' }));
+        await page.click('button[data-label="Show all Events for Artist"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        expect(await feedAsks(page)).toBe(0);
+        expect(await page.locator('#mb-saed-bbfeed-btn').count()).toBe(0);
+        expect(await page.locator('[data-mb-findings*="bb-feed-"]').count()).toBe(0);
+    });
+});

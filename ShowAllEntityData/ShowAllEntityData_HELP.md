@@ -853,6 +853,8 @@ back).
 | ⚠️     | Brucebase setlist: a set is named differently (once read)       | Brucebase year: Setlist                     |
 | ⚠️     | Brucebase title with two blanks or a blank before a comma       | Brucebase year and year listing: Event      |
 | ⚠️     | Brucebase tags: a tag that is not expected (once read)          | Brucebase year and year listing: Tags       |
+| ⚠️     | Brucebase page without a parent page (Brucebase feed)           | Brucebase lists: Event, Title, Name, Page   |
+| ⚠️     | Brucebase page without its first-letter tag (Brucebase feed)    | Brucebase lists: Event, Title, Name, Page   |
 | ⚠️     | Pending edits                                                   | any column                                  |
 | ⚠️     | Live credit without a date                                      | Release tracklist: credit columns           |
 | ❌    | MB-Event: the Brucebase link differs (once looked up)           | Brucebase year: MB-Event                    |
@@ -863,6 +865,8 @@ back).
 | ❌    | Brucebase year entry missing from the year's listing (once read)      | Brucebase year: Event                 |
 | ❌    | Brucebase setlist: songs differ from the event page (once read)       | Brucebase year: Setlist               |
 | ❌    | Brucebase tags: an expected tag is missing (once read)                | Brucebase year and year listing: Tags |
+| ❌    | Brucebase page titled differently from its show (Brucebase feed)      | Brucebase lists: Event, Title, Name, Page |
+| ❌    | Brucebase page without any tag (Brucebase feed)                       | Brucebase lists: Event, Title, Name, Page |
 | ❌    | Double-encoded text (springsteenlyrics.com)                     | springsteenlyrics.com: any column (the lyrics index: once the song's page was read) |
 | ❌    | Track and recording length far apart                            | Release tracklist: Length, Recording length |
 | ❌    | Video on a medium that cannot carry video                       | Release tracklist: Video                    |
@@ -3873,6 +3877,44 @@ toolbar. It follows the same switches: *Enable on the Brucebase song list*,
 *Preview song pages on the Brucebase song list*, *Preview event, venue, people,
 release and bootleg pages on hover*, *Page history in the Brucebase window* and
 *Preview external links on hover*.
+
+</details>
+
+<details>
+<summary>Brucebase: the BruceParser feed</summary>
+
+Some problems of the wiki show only when the whole wiki is read: a story page
+with no parent page, a show's On stage, Notes or Media page titled
+differently from the show, a page with no tag at all, a page without the tag
+of its title's first letter. BruceParser reads the whole wiki offline and
+publishes these in one small file on GitHub
+([vzell/brucebase-feed](https://github.com/vzell/brucebase-feed)). The script
+reads it at most once a day, when you press a Brucebase page's button or open
+a Brucebase window with **Space** (never from a hover), and keeps it for every
+site.
+
+- **The marks** are findings like the others (the ❌ / ⚠️ menus, the 📊
+  Findings sections, the cell tint), on the cell that names a row's own page
+  in every Brucebase list: Event, Title, Name or Page. A show whose dependent
+  page is titled differently is marked too, on its year-table row, its page
+  and its window. A year *listing*'s rows are not marked: they link the year
+  page, not the show's page.
+- **On a page's head and in its window** the marks follow the title. What the
+  page shows now wins: a page that has tags now, links a parent now, or whose
+  title changed since the run is not marked for it.
+- **Every mark names the run** it comes from ("From BruceParser's run of
+  2026-11-15"); the wiki may have been fixed since. From 14 days on, the run
+  is called old.
+- **When the file cannot be read**, nothing is marked from it and nothing
+  stops. The ❌ / ⚠️ menus end with a line saying why ("Brucebase feed: not
+  loaded (GitHub answered 404)"), with *Retry*; an earlier copy is still used.
+  The ☰ menu's **Brucebase** group has the same line on every Brucebase page
+  ("Brucebase feed · run of 2026-11-15 · 192 pages · read today · Read
+  again"). A failed read is tried again after an hour.
+- **Settings:** *Read the Brucebase feed* (⚙️ Settings → 📚 BRUCEBASE) turns it
+  off: no request, no mark. Each of the four findings has its own switch in
+  ⚠️ Findings, and *Highlight cells of Brucebase pages the Brucebase feed
+  names* is their tint.
 
 </details>
 

@@ -5,7 +5,20 @@ Env: 2026-11-13 · plan written in a Claude Code session (plan mode), code readi
 
 Plan for pickup on another host.
 
-* PICKUP HERE: status of 2026-11-16: batch 3 is MERGED (9.99.1633–1635); batch 3b is SET ASIDE (vzell); the help-icon check is MERGED (9.99.1636–1637), the branch is deleted; next: the feed
+* PICKUP HERE: status of 2026-11-16: batch 3 is MERGED (9.99.1633–1635); batch 3b is SET ASIDE (vzell); the help-icon check is MERGED (9.99.1636–1637), the branch is deleted; the feed is BUILT on =feat/bb-feed=, waiting for vzell's browser check
+
+- *The feed, 2026-11-16 (NB-3641):*
+  - *Done:* BruceParser 0.18.0 (=e3f821a=, pushed) writes and publishes it. The public repo
+    https://github.com/vzell/brucebase-feed holds the run of 2026-11-15: 192 pages, 24 KB.
+  - *The mockup:* https://claude.ai/artifact/65urMwgWSb6zq6xJa9Mf4x, answered by vzell, all as recommended.
+  - *Built, on =feat/bb-feed= (pushed, not merged):* the reader and four findings.
+  - *Tests:* the spec 16 of 16; the mutations 24 as recorded; =test:full= 3,188 of 3,189, the one failure the
+    Discogs rate-limit timing test, which fails on =main= too.
+  - *Next:* vzell's browser check (the list is in =org/bbp-parity.org=, "The browser check of the feed"), then the
+    merge on his word.
+  - *Later:* the year listing's rows (they link the year page, not the show's page), and v2 of the feed: the lookup
+    tables and the MusicBrainz cross-checks.
+  - *The record:* =org/bbp-parity.org=, "The feed, version 1".
 
 - *BruceParser 0.17.0 is pushed* (=4978b0e=): =dc.sh= 1.5 with =-j "${BBP_JOBS:-4}"= on both =parallel= calls, =checkURLandTitles.sh= 1.5 with the literal word removal in three places. Checked with =bash -n= and =-V= only. Still to do there, by vzell: a full =bbp.sh= run for the report comparison, and the download time with 4 jobs.
 - *Track A batch 1 is MERGED into =main= (9.99.1626 and 9.99.1627, 2026-11-14), the branch is deleted:* six findings on the year table's Event cell. What was built, the probe's counts and three points that differ from the plan are in =org/bbp-parity.org=, "Batch 1: built on …".

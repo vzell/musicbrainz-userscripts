@@ -127,6 +127,10 @@ const FIXTURE_SETTINGS_OVERRIDE = {
     // tags are nearly full, its "-2" — requests every spec that counts a page's
     // requests would see. bb-onstage-tags.spec.js seeds it back on.
     sa_bb_onstage_tags: false,
+    // The BruceParser feed (2026-11-16, org/bbp-parity.org "The feed,
+    // version 1"): a Brucebase press reads raw.githubusercontent.com once a
+    // day. bb-feed.spec.js seeds it back on and serves the file.
+    sa_bb_feed: false,
     sa_dp_path_label: 'kind',
 };
 
