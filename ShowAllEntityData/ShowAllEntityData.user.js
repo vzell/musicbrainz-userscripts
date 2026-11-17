@@ -77047,6 +77047,65 @@
         const h = Lib.settings.sa_pop_mb_ttl_hours;
         return (typeof h === 'number' && h > 0 ? h : 24) * 60 * 60 * 1000;
     }
+
+    /**
+     * The localStorage key of the shared last-write time (convention C7,
+     * majkinetor/musicbrainz-userscripts #938, 2026-11-17; the repo's
+     * DEVELOP.md "Shared kept answers and artist images"): a script that
+     * writes to MusicBrainz sets it to `Date.now()`, and every answer kept
+     * before it is a miss. Event Horizon sets it on its ratings, tag votes,
+     * alias edits, collection changes and edit votes (`kpWrote()`). SAED
+     * writes nothing to MusicBrainz, so it only reads it. localStorage is
+     * per origin: only musicbrainz.org's own pages ever see it.
+     * @type {string}
+     */
+    const _MB_LAST_WRITE_KEY = 'mbLastWrite';
+
+    /**
+     * The keys of the popup engine's MusicBrainz records that a write makes
+     * stale (`_mbKeptStale()`): entity cards and MusicBrainz pages (`pop:`),
+     * a release group's releases and facts, paged lists. NOT a card's
+     * Wikidata picture (`pop:img:`) nor the external readers (`ext:`,
+     * `ext-…:`), whose answers no MusicBrainz write changes, and none of the
+     * 30-day bulk stores (the Relationships column's `rel-ws2`, recording
+     * lengths, "Recording of"): a write Event Horizon reports cannot change
+     * what they hold, and dropping them would cost a whole table's requests
+     * (vzell, 2026-11-17).
+     * @type {RegExp}
+     */
+    const _MB_LAST_WRITE_KEYS = /^(?:pop:(?!img:)|rg-releases:|rg-facts:|list:)/;
+
+    /**
+     * The shared last-write time, ms (`_MB_LAST_WRITE_KEY`); 0 when no
+     * script has written, or storage is blocked.
+     * @returns {number}
+     */
+    function _mbLastWrite() {
+        try {
+            return +localStorage.getItem(_MB_LAST_WRITE_KEY) || 0;
+        } catch (e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Whether a kept MusicBrainz answer of the popup engine is stale because
+     * a script wrote to MusicBrainz at or after the time it was fetched
+     * (convention C7). As Event Horizon's rule: an answer is kept only when
+     * fetched strictly after the last write. Never stale while no script has
+     * written, and never for a key outside `_MB_LAST_WRITE_KEYS`.
+     *
+     * @param {string} key - The record's cache key (without the `mb:` prefix
+     *   the detail-page database adds).
+     * @param {number} at - When the answer was fetched, ms.
+     * @returns {boolean}
+     */
+    function _mbKeptStale(key, at) {
+        if (!_MB_LAST_WRITE_KEYS.test(String(key))) return false;
+        const lastWrite = _mbLastWrite();
+        return lastWrite > 0 && !(at > lastWrite);
+    }
+
     /** Version of the release-group records kept in IndexedDB; bump when their shape changes. */
     const _RG_IDB_VERSION = 1;
 
@@ -77251,7 +77310,9 @@
     /**
      * A MusicBrainz record of the popup engine from the detail-page database
      * (IndexedDB of musicbrainz.org's own origin, `_dpOpenIdb()`), when it
-     * is younger than `_mbTtlMs()` and of the version asked for.
+     * is younger than `_mbTtlMs()`, of the version asked for, and not older
+     * than another script's last write to MusicBrainz (`_mbKeptStale()`,
+     * convention C7; for MusicBrainz keys only).
      *
      * @param {string} key - `rg-releases:<gid>`, `rg-facts:<gid>`, or an
      *   entity card's `pop:<kind>:<id>:<inc>` (`_mbWsLoad()`), or an external
@@ -77264,7 +77325,7 @@
      */
     async function _rgIdbGet(key, v = _RG_IDB_VERSION, ttlMs = _mbTtlMs()) {
         const rec = await _dpIdbGet(`mb:${key}`).catch(() => null);
-        return rec && rec.v === v && Date.now() - rec.at < ttlMs ? { data: rec.data, at: rec.at } : null;
+        return rec && rec.v === v && Date.now() - rec.at < ttlMs && !_mbKeptStale(key, rec.at) ? { data: rec.data, at: rec.at } : null;
     }
 
     /**
@@ -77318,8 +77379,12 @@
             cur.wants.push(wanted || (() => true));
             return;
         }
-        if (!force && cur && cur.status === 'done' && (cur.complete || cur.capped || !all)) return;
-        const prev = !force && cur && cur.status === 'done' ? cur : null;
+        // Another script wrote to MusicBrainz since this was loaded (C7):
+        // start again from the first page, as ⟳ would, but through the gate's
+        // background lane.
+        const stale = !!cur && cur.status === 'done' && _mbKeptStale(`rg-releases:${gid}`, cur.at);
+        if (!force && !stale && cur && cur.status === 'done' && (cur.complete || cur.capped || !all)) return;
+        const prev = !force && !stale && cur && cur.status === 'done' ? cur : null;
         const st = {
             status: 'loading', releases: prev ? prev.releases : [], total: prev ? prev.total : null,
             complete: false, capped: false, all, at: 0, cached: false, detail: '',
@@ -77391,7 +77456,7 @@
             if (repaint) cur.listeners.add(repaint);
             return;
         }
-        if (!force && cur && cur.status === 'done') return;
+        if (!force && cur && cur.status === 'done' && !_mbKeptStale(`rg-facts:${gid}`, cur.at)) return;
         const st = { status: 'loading', data: null, at: 0, cached: false, detail: '', listeners: new Set(repaint ? [repaint] : []) };
         _rgFacts.set(gid, st);
         const notify = () => st.listeners.forEach(fn => fn());
@@ -78439,6 +78504,8 @@
      * `force` (⟳) skips both caches. Only a success is kept, and in
      * IndexedDB only when `keep` (if given) agrees; a failure is retried by
      * the next call with `start` (a hover, a pin, ⟳), never by a repaint.
+     * A MusicBrainz answer fetched before another script's last write to
+     * MusicBrainz is reused from neither cache (`_mbKeptStale()`, C7).
      *
      * @param {string} cacheKey
      * @param {function(function(): boolean, boolean): Promise<{ok?: boolean, status?: number, data?: ?Object,
@@ -78456,7 +78523,7 @@
             cur.wants.push(wanted || (() => true));
             return;
         }
-        if (!force && cur && cur.status === 'done') return;
+        if (!force && cur && cur.status === 'done' && !_mbKeptStale(cacheKey, cur.at)) return;
         const st = {
             status: 'loading', data: null, at: 0, cached: false, detail: '',
             listeners: new Set(repaint ? [repaint] : []), wants: [wanted || (() => true)],
@@ -79481,7 +79548,10 @@
     function _mbPagedStart(t, key, spec, again, repaint) {
         const cur = _mbPaged.get(key);
         if (cur) cur.listeners.add(repaint);
-        if (cur && (cur.running || (!again && (cur.rows.length || cur.detail)))) return;
+        // Rows loaded before another script's last write to MusicBrainz (C7)
+        // are read again; a kept failure stays until ⟳, as before.
+        const fresh = cur && cur.rows.length && !_mbKeptStale(`list:${key}`, cur.at);
+        if (cur && (cur.running || (!again && (fresh || cur.detail)))) return;
         const st = _mbPagedNew(t, spec, cur ? cur.listeners : new Set([repaint]));
         _mbPaged.set(key, st);
         (async () => {
@@ -189112,6 +189182,18 @@ a { color: #1565c0; }`;
              */
             reserveMbRateSlots(n) {
                 for (let i = 0; i < n; i++) _relAwaitRateSlot();
+            },
+            /**
+             * The shipping `_mbKeptStale()`: whether a kept answer under `key`,
+             * fetched at `at`, is stale after another script's last write to
+             * MusicBrainz (localStorage `mbLastWrite`, convention C7).
+             *
+             * @param {string} key
+             * @param {number} at
+             * @returns {boolean}
+             */
+            mbKeptStale(key, at) {
+                return _mbKeptStale(key, at);
             },
             /**
              * How long a request asking the one MusicBrainz rate gate now
