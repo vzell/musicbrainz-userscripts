@@ -10,8 +10,10 @@
  * kept (`mb_sa_bb_feed`):
  *   1. every page the feed names: its facts (`__saTest.bbFeed(name)`), and
  *      the facts the page itself leaves standing (`live` read from its mirror
- *      file: the title as written, its tags, a breadcrumb link) — the probe
- *      found every kind true on its page, so none may be dropped;
+ *      file: the title as written, its tags, a breadcrumb link, its
+ *      pictures) — the probe found every kind true on its page, so none may
+ *      be dropped. Feed 1.1's `date-parts` is two kinds in the script,
+ *      `date-missing` and `date-wrong`, one per list it has;
  *   2. the rows each list would mark: the song: pages stats:songs links and
  *      the relation: pages stats:relations links (read from their mirror
  *      files: the wiki builds both from the first-letter tags, so neither
@@ -95,6 +97,10 @@ function kinds(lists) {
                 title: t ? t.textContent.replace(/^\s+|\s+$/g, '') : null,
                 tags: box ? Array.from(box.querySelectorAll('a[href*="/system:page-tags/tag/"]'), a => a.textContent.trim()).filter(Boolean) : null,
                 parent: crumbs ? !!crumbs.querySelector('a[href]') : null,
+                images: doc.getElementById('page-content')
+                    ? Array.from(doc.getElementById('page-content').querySelectorAll('img[src]'))
+                        .filter(img => !/\/local--files\/content:files\//.test(img.getAttribute('src') || '')).length
+                    : null,
             };
             const r = window.__saTest.bbFeed(n, live);
             const own = r.facts.filter(f => f.kind !== 'dependent-title' || f.deps.some(d => d.own));
@@ -102,7 +108,9 @@ function kinds(lists) {
             return { n, own: own.map(f => f.kind), kept: keptOwn.map(f => f.kind) };
         }), part);
         res.forEach((r) => {
-            const want = Object.keys(feed.pages[r.n]).sort().join(' ');
+            const want = Object.entries(feed.pages[r.n]).flatMap(([k, v]) => (k === 'date-parts'
+                ? [...(v.missing && v.missing.length ? ['date-missing'] : []), ...(v.wrong && v.wrong.length ? ['date-wrong'] : [])]
+                : [k])).sort().join(' ');
             if (r.own.slice().sort().join(' ') !== want) { diffs++; console.log(`facts ${r.n}: ${r.own} vs ${want}`); }
             if (r.kept.length !== r.own.length) dropped.push(`${r.n}: ${r.own.filter(k => !r.kept.includes(k))}`);
         });
@@ -121,6 +129,10 @@ function kinds(lists) {
         'songs (stats:songs)': listed('song', 'stats:songs'),
         'relations (stats:relations)': listed('relation', 'stats:relations'),
         'tag storyteller (story:)': lines.filter(p => p[0].startsWith('story:') && p[2].split(/\s+/).includes('storyteller')).map(p => p[0]),
+        // feed 1.1: the tag pages the new kinds show up on
+        'tag files': lines.filter(p => p[2].split(/\s+/).includes('files')).map(p => p[0]),
+        'tag news': lines.filter(p => p[2].split(/\s+/).includes('news')).map(p => p[0]),
+        'tag media': lines.filter(p => p[2].split(/\s+/).includes('media')).map(p => p[0]),
     };
     for (const [label, rows] of Object.entries(lists)) {
         const facts = await page.evaluate(ns => ns.map(n => window.__saTest.bbFeed(n).facts), rows);

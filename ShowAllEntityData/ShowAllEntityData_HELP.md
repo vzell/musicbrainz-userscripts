@@ -855,6 +855,8 @@ back).
 | ⚠️     | Brucebase tags: a tag that is not expected (once read)          | Brucebase year and year listing: Tags       |
 | ⚠️     | Brucebase page without a parent page (Brucebase feed)           | Brucebase lists: Event, Title, Name, Page   |
 | ⚠️     | Brucebase page without its first-letter tag (Brucebase feed)    | Brucebase lists: Event, Title, Name, Page   |
+| ⚠️     | Brucebase page with a date tag that is not its date (Brucebase feed) | Brucebase lists: Event, Title, Name, Page   |
+| ⚠️     | Brucebase page tagged "files" without a picture (Brucebase feed) | Brucebase lists: Event, Title, Name, Page   |
 | ⚠️     | Pending edits                                                   | any column                                  |
 | ⚠️     | Live credit without a date                                      | Release tracklist: credit columns           |
 | ❌    | MB-Event: the Brucebase link differs (once looked up)           | Brucebase year: MB-Event                    |
@@ -867,6 +869,7 @@ back).
 | ❌    | Brucebase tags: an expected tag is missing (once read)                | Brucebase year and year listing: Tags |
 | ❌    | Brucebase page titled differently from its show (Brucebase feed)      | Brucebase lists: Event, Title, Name, Page |
 | ❌    | Brucebase page without any tag (Brucebase feed)                       | Brucebase lists: Event, Title, Name, Page |
+| ❌    | Brucebase page without a date tag of its date (Brucebase feed)        | Brucebase lists: Event, Title, Name, Page |
 | ❌    | Double-encoded text (springsteenlyrics.com)                     | springsteenlyrics.com: any column (the lyrics index: once the song's page was read) |
 | ❌    | Track and recording length far apart                            | Release tracklist: Length, Recording length |
 | ❌    | Video on a medium that cannot carry video                       | Release tracklist: Video                    |
@@ -3886,7 +3889,8 @@ release and bootleg pages on hover*, *Page history in the Brucebase window* and
 Some problems of the wiki show only when the whole wiki is read: a story page
 with no parent page, a show's On stage, Notes or Media page titled
 differently from the show, a page with no tag at all, a page without the tag
-of its title's first letter. BruceParser reads the whole wiki offline and
+of its title's first letter, date tags that do not fit a page's date, a page
+tagged "files" without a picture. BruceParser reads the whole wiki offline and
 publishes these in one small file on GitHub
 ([vzell/brucebase-feed](https://github.com/vzell/brucebase-feed)). The script
 reads it at most once a day, when you press a Brucebase page's button or open
@@ -3911,12 +3915,24 @@ site.
   stops. The ❌ / ⚠️ menus end with a line saying why ("Brucebase feed: not
   loaded (GitHub answered 404)"), with *Retry*; an earlier copy is still used.
   The ☰ menu's **Brucebase** group has the same line on every Brucebase page
-  ("Brucebase feed · run of 2026-11-15 · 192 pages · read today · Read
-  again"). A failed read is tried again after an hour.
+  ("Brucebase feed · run of 2026-11-15 · BruceParser 0.19.0 · 226 pages ·
+  read today · Read again"). The BruceParser version tells two files of one
+  run apart; the line's hover text names the whole file (its `feed.sh`
+  version and commit, when it was read, its pages per kind). A failed read
+  is tried again after an hour.
 - **Settings:** *Read the Brucebase feed* (⚙️ Settings → 📚 BRUCEBASE) turns it
-  off: no request, no mark. Each of the four findings has its own switch in
+  off: no request, no mark. Each of the seven findings has its own switch in
   ⚠️ Findings, and *Highlight cells of Brucebase pages the Brucebase feed
   names* is their tint.
+- **Date tags and the "files" tag** (since the feed of BruceParser 0.19.0):
+  ❌ a page that is no show and lacks a tag of the date in its name ("22"
+  for a page of 1978-08-22); ⚠️ one that carries a date tag its date does
+  not have ("23"); ⚠️ a page tagged "files" that shows no picture. A show's
+  own date tags are checked on its page (the Tags findings), so they are
+  not in the feed. News, media and files pages have no head of their own:
+  their marks are in their windows and on the tag pages that list them. The
+  page in front of you wins here too: a date tag it has now, or a picture
+  it shows now, drops the mark.
 
 </details>
 

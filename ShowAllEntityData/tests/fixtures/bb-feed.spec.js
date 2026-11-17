@@ -16,6 +16,12 @@
 // "Private Property"; 1972-04-00b Mediasound: its Notes page says "Stucio C"),
 // and the relations fixture holds relation:rob-demartin (no "d" tag). The
 // story, event and song cases use a small feed naming pages the fixtures have.
+//
+// Feed 1.1 (feed v2, branch 1; vzell, 2026-11-17): bb-feed-date-missing ❌
+// and bb-feed-date-wrong ⚠️ (the two lists of the feed's `date-parts`, pages
+// that are no show only) and bb-feed-files ⚠️ (tagged "files", no picture).
+// tests/fixtures/bb-feed-2026-11-15-v2.json is BruceParser 0.19.0's feed of
+// the same run (published 2026-11-17; the raw file is byte-identical).
 
 const fs = require('fs');
 const os = require('os');
@@ -31,6 +37,9 @@ const { clickToolbarItem } = require('../support/toolbarMenu');
 
 const FEED_URL = 'https://raw.githubusercontent.com/vzell/brucebase-feed/main/bb-feed.json';
 const REAL = JSON.parse(fs.readFileSync(path.join(__dirname, 'bb-feed-2026-11-15.json'), 'utf8'));
+const REAL2 = JSON.parse(fs.readFileSync(path.join(__dirname, 'bb-feed-2026-11-15-v2.json'), 'utf8'));
+const NEWS78 = 'news:1978-08-22-madison-square-garden-new-york-city-ny';
+const ROXY_VENUE = 'venue:roxy-theatre-west-hollywood-ca';
 const DAY = 24 * 3600 * 1000;
 const BB = 'https://brucebase.wikidot.com/';
 const PT_PLEASANT = 'gig:1972-06-00-unknown-location-point-pleasant-nj';
@@ -193,7 +202,10 @@ test.describe('the Brucebase feed: reading it', () => {
         await expect.poll(async () => (await page.evaluate(() => window.__saTest.bbFeed())).err).toBe('GitHub answered 404');
         const st = await page.evaluate(() => window.__saTest.bbFeed());
         expect(st.date, 'the old feed is kept').toBe('2026-11-15');
-        expect(st.status).toEqual({ bad: true, text: expect.stringMatching(/^Brucebase feed: not loaded \(GitHub answered 404\) · using the run of 2026-11-15/), action: 'Retry' });
+        expect(st.status).toEqual({
+            bad: true, text: expect.stringMatching(/^Brucebase feed: not loaded \(GitHub answered 404\) · using the run of 2026-11-15 · (\d+ days old · )?BruceParser 0\.18\.0 · /),
+            action: 'Retry', detail: expect.stringContaining('written by BruceParser 0.18.0 (feed.sh 1.0, commit e3f821a)'),
+        });
         // Its marks still come from the kept feed.
         expect((await feedCells(page, 'Event')).map(r => r.name).sort()).toEqual([MEDIASOUND, PT_PLEASANT].sort());
         // Within the hour, no second try; Retry (force) asks at once.
@@ -247,7 +259,7 @@ test.describe('the Brucebase feed: rows', () => {
         await expect.poll(async () => (await findingRowState(page)).visible).toBe(all);
         // The menus' line names the run.
         const line = await page.locator('#mb-findings-error-menu-btn-panel .mb-findings-feed-item').textContent();
-        expect(line).toMatch(/^Brucebase feed · run of 2026-11-15 · \d+ days old · 192 pages · read today · Read again$|^Brucebase feed · run of 2026-11-15 · 192 pages · read today · Read again$/);
+        expect(line).toMatch(/^Brucebase feed · run of 2026-11-15 · (\d+ days old · )?BruceParser 0\.18\.0 · 192 pages · read today · Read again$/);
     });
 
     test('the stamp survives a filter re-render; the tint setting off keeps the stamp and the menu row, without the tint', async ({ page }) => {
@@ -409,9 +421,108 @@ test.describe('the Brucebase feed: heads, the window, the ☰ row', () => {
         const row = page.locator('#mb-saed-bbfeed-btn');
         await expect(row).toHaveCount(1);
         expect(await row.evaluate(el => el.closest('.mb-saed-group').dataset.mbGroup)).toBe('bb');
-        await expect(row).toHaveText(/^Brucebase feed · run of 2026-11-15 · (\d+ days old · )?192 pages · read today · Read again$/);
+        await expect(row).toHaveText(/^Brucebase feed · run of 2026-11-15 · (\d+ days old · )?BruceParser 0\.18\.0 · 192 pages · read today · Read again$/);
+        // Which file is kept, in the hover text (vzell, 2026-11-17).
+        expect(await row.getAttribute('title')).toMatch(/\nThe kept file: the run of 2026-11-15, written by BruceParser 0\.18\.0 \(feed\.sh 1\.0, commit e3f821a\), read \d{4}-\d\d-\d\d \d\d:\d\d\. Pages: dependent-title 39, first-letter 10, no-parent 105, no-tags 38\.$/);
         await clickToolbarItem(page, '#mb-saed-bbfeed-btn');
         await expect.poll(() => feedAsks(page)).toBe(1);
+    });
+});
+
+test.describe('the Brucebase feed 1.1: date tags and the files tag', () => {
+    test('BruceParser 0.19.0\'s file: format 1, the two new keys, and the counts the probe found', () => {
+        expect(REAL2.format).toBe(1);
+        expect(REAL2.run.feed).toBe('1.1');
+        expect(Object.fromEntries(Object.entries(REAL2.reports).map(([k, v]) => [k, v.count]))).toEqual({
+            'date-parts': 3, 'dependent-title': 39, 'files-no-images': 32, 'first-letter': 10, 'no-parent': 105, 'no-tags': 38,
+        });
+        expect(REAL2.pages[NEWS78]).toEqual({ 'date-parts': { missing: ['22'], wrong: ['23'] } });
+        // No show among the date pages: a show's date tags are batch 3's.
+        const dated = Object.keys(REAL2.pages).filter(n => REAL2.pages[n]['date-parts']);
+        expect(dated.filter(n => /^(gig|nogig|interview|rehearsal|recording):/.test(n))).toEqual([]);
+    });
+
+    test('date-parts is two findings of two levels; the page in front drops the tags it has (or no longer has)', async ({ page }) => {
+        await load1972(page, feedOn(REAL2));
+        const facts = n => page.evaluate(x => window.__saTest.bbFeed(x).facts.map(f => [f.kind, f.value]), n);
+        expect(await facts(NEWS78)).toEqual([['date-missing', ['22']], ['date-wrong', ['23']]]);
+        expect(await facts('news:essay-1975-12-31-tower-theater-philadelphia-pa')).toEqual([['date-missing', ['1975']]]);
+        expect(await facts('files:pass-1989')).toEqual([['files-no-images', true]]);
+        const kept = (n, live) => page.evaluate(([x, l]) => window.__saTest.bbFeed(x, l).kept.map(f => [f.kind, f.value]), [n, live]);
+        const two = { title: null, parent: null, images: null };
+        expect(await kept('x:none', two)).toEqual([]);
+        // The page fixed on both counts: nothing left.
+        expect(await kept(NEWS78, { ...two, tags: ['22', '1978', 'august', 'news'] })).toEqual([]);
+        // A missing and a wrong tag in one fact: only what still holds stays.
+        const page2 = { 'news:x-2000-01-02-y': { 'date-parts': { missing: ['02', 'january'], wrong: ['03', '1999'] } } };
+        await page.evaluate(f => window.__saTest.bbFeedSet(f), feedOf(page2));
+        expect(await kept('news:x-2000-01-02-y', { ...two, tags: ['02', '1999', 'news'] }))
+            .toEqual([['date-missing', ['january']], ['date-wrong', ['1999']]]);
+        expect(await kept('news:x-2000-01-02-y', { ...two, tags: null }), 'tags unknown (none shown): all stay')
+            .toEqual([['date-missing', ['02', 'january']], ['date-wrong', ['03', '1999']]]);
+    });
+
+    test('"files" without a picture: dropped once the page has no files tag or shows a picture; the shared icons are no picture', async ({ page }) => {
+        await load1972(page, feedOn(REAL2));
+        const kept = live => page.evaluate(l => window.__saTest.bbFeed('files:pass-1989', l).kept.map(f => f.kind), live);
+        const base = { title: null, parent: null, tags: ['1989', 'content', 'files', 'pass'] };
+        expect(await kept({ ...base, images: 0 })).toEqual(['files-no-images']);
+        expect(await kept({ ...base, images: null }), 'the window cannot tell').toEqual(['files-no-images']);
+        expect(await kept({ ...base, images: 2 })).toEqual([]);
+        expect(await kept({ ...base, images: 0, tags: ['1989', 'content', 'pass'] })).toEqual([]);
+        // The picture count of a page: the wiki's shared icons do not count.
+        expect(await page.evaluate(() => {
+            const doc = new DOMParser().parseFromString('<div id="page-content">' +
+                '<img src="https://brucebase.wdfiles.com/local--files/content:files/icon_facebook.png">' +
+                '<img src="https://brucebase.wdfiles.com/local--files/content:files/icon_youtube.png"></div>', 'text/html');
+            const doc2 = new DOMParser().parseFromString('<div id="page-content"><img src="https://brucebase.wdfiles.com/local--resized-images/files:artwork-disco/x.jpg/thumbnail.jpg"></div>', 'text/html');
+            return [window.__saTest.bbFeedPictures(doc), window.__saTest.bbFeedPictures(doc2), window.__saTest.bbFeedPictures(new DOMParser().parseFromString('<p></p>', 'text/html'))];
+        })).toEqual([0, 1, null]);
+    });
+
+    test('a venue\'s head: the date mark stays, "files" goes because the page shows pictures', async ({ page }) => {
+        const feed = feedOf({ [ROXY_VENUE]: { 'files-no-images': true, 'date-parts': { missing: ['07'] } } });
+        await loadBbEventPage(page, 'venue-roxy-theatre', { settingsOverride: feedOn(feed) });
+        await page.click('button[data-label="Show the venue"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const marks = page.locator('p.mb-fd-sub .mb-bb-feed-mark');
+        await expect(marks).toHaveCount(1);
+        await expect(marks).toHaveText('❌ ◷');
+        expect(await marks.getAttribute('title')).toContain(`${ROXY_VENUE} lacks the date tag "07" of the date in its name.`);
+        expect(await page.evaluate(() => window.__saTest.bbFeedPictures(document)), 'the Roxy\'s photos').toBeGreaterThan(0);
+    });
+
+    test('Songs: the new kinds on the Title cell, the two date findings on one cell, each with its switch', async ({ page }) => {
+        const feed = feedOf({ 'song:1945': { 'files-no-images': true }, 'song:30-days-out': { 'date-parts': { missing: ['1'], wrong: ['2'] } } });
+        await loadBbSongsPage(page, { settingsOverride: feedOn(feed) });
+        await page.click(`button[data-label="${BB_BUTTON}"]`);
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const cells = await feedCells(page, 'Title');
+        expect(cells.map(r => [r.name, r.ids.sort(), r.level]).sort()).toEqual([
+            ['song:1945', ['bb-feed-files'], 'warn'],
+            ['song:30-days-out', ['bb-feed-date-missing', 'bb-feed-date-wrong'], 'error'],
+        ]);
+        expect(cells.find(r => r.name === 'song:30-days-out').tip).toContain('lacks the date tag "1" of the date in its name');
+        expect((await findingRow(page, 'error', 'bb-feed-date-missing')).count).toBe(1);
+        expect((await findingRow(page, 'warn', 'bb-feed-date-wrong')).count).toBe(1);
+        expect((await findingRow(page, 'warn', 'bb-feed-files')).count).toBe(1);
+    });
+
+    test('the ☰ line names the BruceParser version of the file kept: 0.19.0 against 0.18.0 for one run', async ({ page }) => {
+        await load1972(page, feedOn(REAL2));
+        const row = page.locator('#mb-saed-bbfeed-btn');
+        await expect(row).toHaveText(/^Brucebase feed · run of 2026-11-15 · (\d+ days old · )?BruceParser 0\.19\.0 · 226 pages · read today · Read again$/);
+        expect(await row.getAttribute('title')).toContain('written by BruceParser 0.19.0 (feed.sh 1.1, commit edecd7e)');
+        expect(await row.getAttribute('title')).toContain('Pages: date-parts 3, dependent-title 39, files-no-images 32, first-letter 10, no-parent 105, no-tags 38.');
+    });
+
+    test('a switch off: the date-wrong finding goes, date-missing stays', async ({ page }) => {
+        const feed = feedOf({ 'song:30-days-out': { 'date-parts': { missing: ['1'], wrong: ['2'] } } });
+        await loadBbSongsPage(page, { settingsOverride: feedOn(feed, 1000, { sa_findings_bb_feed_date_wrong: false }) });
+        await page.click(`button[data-label="${BB_BUTTON}"]`);
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        expect((await feedCells(page, 'Title')).map(r => [r.name, r.ids])).toEqual([['song:30-days-out', ['bb-feed-date-missing']]]);
+        expect(await findingRow(page, 'warn', 'bb-feed-date-wrong')).toBeUndefined();
     });
 });
 
