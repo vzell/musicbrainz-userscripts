@@ -29833,3 +29833,4 @@ Env: 2026-11-17T17:41:30+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
   - `bb-findings-help-icon.spec.js:259`, "a show tagged help that the year page does not mark": fails beside other
     specs, passes alone (1 and 3 of 3), and fails the same way on `main` (`b369e7ca`, a worktree, the same three specs
     together with `--repeat-each=3`: 2 of 3 failed). Load-dependent, from the help-icon branch; not fixed here.
+- **`npm run test:full` again on petri, `a3e8fb6c`, 18:06:52–18:26:54 CET: 3,191 of 3,191 passed.**
