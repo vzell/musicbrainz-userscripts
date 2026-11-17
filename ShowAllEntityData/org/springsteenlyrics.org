@@ -1721,3 +1721,24 @@ The bug is gone on mobile on the IP (checked in firefox), but two other bugs sur
 SL-sticky-area-sticky-then-moved-IP.mp4 - On the IP the SAED menu line moves out of the window when scrolling down
 SL-sticky-area-stcky-then-moved-FRP.mp4 - On the FRP the SAED menu line moves out of the window when scrolling down
 #+end_example
+
+** still mobile bugs on the FRP
+
+1.)
+
+the SL desktop PTs now behave ok
+
+2.)
+
+The mobile IP is also OK, but the FRP on e.g. https://www.springsteenlyrics.com/collection.php does not have any sticky
+areas - [Image #12] from the firefox F12 console in mobile view but also confirmed live on my real mobile
+
+** firefox
+
+OK, the following files are from the FRP of https://www.springsteenlyrics.com/collection.php?cmd=list&category=sampler
+with just 100 rows (instead of the 2770 rows before) which still shows the problem in Firefox - [Image #14]
+
+#+begin_example
+SL-firefox-FRP-non-sticky.html - FRP from the Responsive Design Mode rendering
+SL-firefox-FRP-non-sticky.log - requested console log
+#+end_example

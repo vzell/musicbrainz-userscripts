@@ -29790,3 +29790,35 @@ Env: 2026-11-16T15:25:24+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
   pass: the resize re-measure, the second placement and taking the status line along, each covered by another path,
   reasons in the entries). `eslint.config.js`: `expectSamePlace` registered as an assertion helper. Deferred:
   `npm run test:full`, before the merge. Not yet checked in a real browser.
+
+## 2026-11-17 — springsteenlyrics.com on a phone: nothing sticks after the press (the widened layout viewport) (fix/sl-sticky-mask-narrow)
+
+Env: 2026-11-17T17:41:30+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium and Firefox (fixture and live probes; chromium-mobile: Pixel 7 emulation), no Tampermonkey (GM stubs); the report: vzell's Firefox in responsive design mode (908 × 1377) and Firefox on a Galaxy A34, versions unknown, Tampermonkey unknown
+
+- **Report (vzell, 2026-11-16):** after the header-block fix above, the mobile IP docks, but on the FRP nothing sticks
+  (collection.php with 5,389 rows; then `?cmd=list&category=sampler`, 100 rows). Material: `debug/SL-firefox-FRP-non-sticky.html`
+  (the FRP in responsive mode) and `.log` (the console reading below).
+- **Not reproducible here, and why:** `scripts/probe-sl-frp-sticky.probe.js` read the bars deep in the table on the
+  fixture and on the live page (Chromium Pixel 7, Chromium 908 px touch, Firefox 908 px, Firefox with the touch media
+  query answered): everything stuck. Two blind spots, both found afterwards: Playwright's Firefox ignores the viewport
+  tag, and the probe scrolled with `window.scrollTo()`, which moves the layout viewport directly; a user's scroll pans
+  the visual viewport first.
+- **vzell's reading in his Firefox (a console snippet):** `innerWidth 2601`, `clientWidth 908`, `visualViewport` 908 wide
+  at scale 1 and `offsetTop 1938`, `scrollY 0`; the header block, h2 and thead `position: sticky` with their tops, no
+  ancestor with overflow, transform or contain, and at 382/635/780 px: their natural places. So: the site's
+  `width=device-width, initial-scale=1` lets Firefox widen the layout viewport to the 2,601 px table (and in
+  proportion about 3,944 px tall) while keeping zoom 1; the visible window pans inside it, the layout viewport does not
+  move, and sticky elements pin to its top. On the IP the cards fit, nothing widens. Chromium zooms out to fit
+  instead (`innerWidth` 2,671 for the 412 px Pixel 7 on the SL fixture, `debug/probe-sl-frp-sticky-fixture.json`),
+  which leaves no slack.
+- **Fix, tried by vzell first by editing the tag in the console:** `minimum-scale=1` (no zooming out, so no widened
+  layout viewport). `_slViewportFit()` adds it while `scrollWidth > clientWidth` and restores the site's content
+  otherwise; after every render (before the sticky bars' setting test) and on resize. vzell accepted the cost: no
+  pinch-zoom out below 100 % on a rendered wide SL table. Not applied anywhere else; no other foreign site was
+  checked for the same effect.
+- **Tests:** `sl-sticky-mask.mobile.spec.js` +1 (sampler: the tag is the site's on the IP; after the press
+  `innerWidth == clientWidth`, scale 1, the tag with `minimum-scale=1`, h2 and thead at their docks; a window wider
+  than the table gets the site's tag back). All SL and sticky specs: 301 of 301 passed, 17:38:06–17:40:41 CET.
+  `scripts/mutations/sl-sticky-mask.json` +4, each failing the assertion it targets (the restore entry first failed on
+  a premise, because `initStickyFilterBars()` also runs at init; retargeted). HELP: a bullet under "On a phone or
+  tablet". Deferred: `npm run test:full`, before the merge.

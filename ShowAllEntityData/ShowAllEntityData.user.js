@@ -15882,6 +15882,8 @@
         // Rotation, or a window dragged across the site's breakpoint: the
         // navbar stops (or starts) being fixed, see _slNavbarOffset().
         window.addEventListener('resize', _slNavbarOffset, { passive: true });
+        // Rotation: the table may now fit, or no longer (_slViewportFit()).
+        window.addEventListener('resize', _slViewportFit, { passive: true });
 
         const section = document.querySelector('.breadcrumb-wrap h4')?.textContent.replace(/\s+/g, ' ').trim() || '';
         // An item page is named by its item (`_slItemName()`), a song page
@@ -15970,6 +15972,51 @@
         if (box.parentElement !== host || box.nextElementSibling !== branch) {
             host.insertBefore(box, branch);
             Lib.debug('init', `springsteenlyrics.com: the toolbar h1 placed before the ${branch.className || branch.tagName} branch (padding ${left}/${right}px), so it stays docked over the list.`);
+        }
+    }
+
+    /**
+     * springsteenlyrics.com: keeps a phone's layout viewport as wide as the
+     * screen while the page is wider than it (our table), so everything
+     * sticky (the header block, the data h2, the thead) can stay in view.
+     *
+     * The site declares `<meta name="viewport" content="width=device-width,
+     * initial-scale=1">`. With content wider than the screen, Firefox (on
+     * Android, and in its responsive design mode) widens the LAYOUT viewport
+     * to the content, 2,601 px for a 908 px screen, and in proportion its
+     * height, while keeping the zoom at 1: what shows is a window panning
+     * inside that box, `scrollY` stays 0 and sticky elements, which pin to
+     * the layout viewport's top, sit in their natural places until the
+     * window has panned to its bottom edge (vzell's reading 2026-11-17:
+     * innerWidth 2601, clientWidth 908, visualViewport.offsetTop 1938,
+     * scrollY 0; debug/SL-firefox-FRP-non-sticky.*). It widens because the
+     * page may be zoomed out to fit the content; `minimum-scale=1` forbids
+     * that, so the layout viewport stays the screen's width, the page
+     * scrolls sideways as on a desktop, and the bars stick (checked by
+     * vzell in the same responsive mode by editing the tag; accepted cost:
+     * no pinch-zoom out below 100 % while the wide table is shown).
+     *
+     * Added only while the page is wider than its window (`scrollWidth` >
+     * `clientWidth`), and the site's own content is put back otherwise (the
+     * cards of an initial page fit). The original is kept in
+     * `data-mb-sl-viewport`. Desktop browsers ignore the tag. Called after
+     * every render (`initStickyFilterBars()`, before its setting's test) and
+     * on resize (`_slPrepareLivePage()`). MusicBrainz has no viewport tag.
+     *
+     * @returns {void}
+     */
+    function _slViewportFit() {
+        const meta = document.querySelector('meta[name="viewport"]');
+        if (!meta) return;
+        if (meta.dataset.mbSlViewport === undefined) meta.dataset.mbSlViewport = meta.getAttribute('content') || '';
+        const orig = meta.dataset.mbSlViewport;
+        const root = document.documentElement;
+        const wide = root.scrollWidth > root.clientWidth + 1;
+        const want = wide && !/minimum-scale/i.test(orig)
+            ? `${orig ? `${orig}, ` : ''}minimum-scale=1` : orig;
+        if (meta.getAttribute('content') !== want) {
+            meta.setAttribute('content', want);
+            Lib.debug('ui', `springsteenlyrics.com: viewport "${want}" (page ${root.scrollWidth} px, window ${root.clientWidth} px).`);
         }
     }
 
@@ -68810,6 +68857,8 @@
      * @returns {void}
      */
     function initStickyFilterBars() {
+        // Before the setting's test: the sticky thead needs it too.
+        if (_isSlHost) _slViewportFit();
         if (!_stickyFilterBarsWanted()) return;
         // The table may sit in another container than the list did.
         if (_isSlHost) _slPlaceHead();

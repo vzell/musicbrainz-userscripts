@@ -772,6 +772,30 @@ without a margin. Specs: `sl-sticky-headers.spec.js` (docked past
 wrapper where the list is inside), `sl-sticky-mask.mobile.spec.js`;
 mutations: `scripts/mutations/sl-sticky-mask.json`.
 
+**No zooming out below 100 % while the table is wider than the screen**
+(`_slViewportFit()`, 2026-11-17). The site declares
+`<meta name="viewport" content="width=device-width, initial-scale=1">`. With
+our table wider than the screen, Firefox (Android, and its responsive design
+mode) widens the LAYOUT viewport to the content and keeps the zoom at 1: what
+shows is a window panning inside that box, `scrollY` stays 0, and nothing
+sticky reaches the visible top until the window has panned to the box's
+bottom (vzell's reading: innerWidth 2601, clientWidth 908,
+`visualViewport.offsetTop` 1938, `scrollY` 0; `debug/SL-firefox-FRP-non-sticky.*`).
+Chromium zooms out to fit instead, so it showed nothing wrong, and every probe
+that scrolled with `window.scrollTo()` moved the layout viewport directly and
+could not see it either. `minimum-scale=1` stops the widening (checked by
+vzell, editing the tag in responsive mode). The function adds it while
+`scrollWidth > clientWidth` and puts the site's own content back otherwise
+(kept in `data-mb-sl-viewport`); it runs after every render
+(`initStickyFilterBars()`, BEFORE its setting's test: the sticky thead needs
+it too) and on resize. Accepted cost (vzell): no pinch-zoom out below 100 %
+on a rendered wide table; zoomed in, the bars can still slide away. Desktop
+browsers ignore the tag; MusicBrainz has none. Spec:
+`sl-sticky-mask.mobile.spec.js` (Chromium's emulation widens the layout
+viewport the same way: `innerWidth` must equal `clientWidth`, and the tag
+returns when the table fits). No other foreign site was checked for the
+same effect.
+
 ## Page count and fetching need nothing
 
 - `fetchHtml()` is a same-origin `fetch()`; SL is behind CloudFlare, and the

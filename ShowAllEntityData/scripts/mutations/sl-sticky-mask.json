@@ -170,5 +170,61 @@
         "spec": "tests/fixtures/sl-sticky-headers.spec.js",
         "grep": "the header block stays docked past the end of .project-detail",
         "expect": "pass"
+    },
+    {
+        "name": "no viewport fit after a render",
+        "why": "Reported 2026-11-16/17 (debug/SL-firefox-FRP-non-sticky.*): with the site's width=device-width, initial-scale=1 a mobile browser widens the layout viewport to the table, and nothing sticky reaches the visible top.",
+        "edits": [
+            {
+                "find": "        if (_isSlHost) _slViewportFit();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-mask.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "phone, after the press: the layout viewport stays the screen",
+        "expect": "fail"
+    },
+    {
+        "name": "the viewport tag never gets minimum-scale=1",
+        "why": "minimum-scale=1 is what keeps the layout viewport at the screen's width (checked by vzell in Firefox's responsive mode, 2026-11-17).",
+        "edits": [
+            {
+                "find": "        const want = wide && !/minimum-scale/i.test(orig)\n",
+                "replace": "        const want = false && !/minimum-scale/i.test(orig)\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-mask.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "phone, after the press: the layout viewport stays the screen",
+        "expect": "fail"
+    },
+    {
+        "name": "the site's own viewport tag is never put back",
+        "why": "Once the table fits the window again (a rotation, a tablet), zooming out is the site's to allow.",
+        "edits": [
+            {
+                "find": "            ? `${orig ? `${orig}, ` : ''}minimum-scale=1` : orig;\n",
+                "replace": "            ? `${orig ? `${orig}, ` : ''}minimum-scale=1` : meta.getAttribute('content');\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-mask.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "phone, after the press: the layout viewport stays the screen",
+        "expect": "fail"
+    },
+    {
+        "name": "no viewport fit on resize",
+        "why": "The restore case widens the window without a render, so only the resize listener runs the fit again; after a rotation the tag would stay as it was.",
+        "edits": [
+            {
+                "find": "        window.addEventListener('resize', _slViewportFit, { passive: true });\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-mask.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "phone, after the press: the layout viewport stays the screen",
+        "expect": "fail"
     }
 ]

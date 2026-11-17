@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-11-17",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "springsteenlyrics.com on a phone (and in Firefox's responsive design mode): after pressing the button, nothing stayed at the top of the window: not the heading with the buttons, not the section bar, not the column headers. The site is set up for phones, and with a table wider than the screen Firefox let what you see slide around inside a much larger page area, which the docked bars do not follow. While a shown table is wider than the screen, the page can now no longer be zoomed out below 100 %, and the bars stay at the top. Zooming in still works; when the table fits the screen again, zooming out works as before."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-11-16",
     "sections": [

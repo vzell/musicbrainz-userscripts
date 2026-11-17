@@ -21,6 +21,7 @@
 
 const { test, expect } = require('../support/test');
 const { loadSlListPage } = require('../support/slFixture');
+const { waitForRenderComplete } = require('../support/browser');
 
 /** The site's navbar rules that matter here (css/style-red.css, read 2026-11-16). */
 const NAVBAR_CSS = [
@@ -107,4 +108,61 @@ test('phone: the toolbar h1 docks at the very top, stays there through the list,
 
     const back = await scrollAndRead(page, l.h1Y + 3);
     expect(back.maskOn, 'docked again: the backdrop is back').toBe(true);
+});
+
+// ---------------------------------------------------------------------------
+// The layout viewport after the press (reported 2026-11-16/17, vzell's
+// Firefox in responsive mode and on a phone, debug/SL-firefox-FRP-non-sticky.*):
+// the site's `width=device-width, initial-scale=1` lets a mobile browser
+// widen the layout viewport to a table wider than the screen; Firefox then
+// keeps the zoom at 1 and pans the visible window INSIDE that box, so
+// nothing sticky ever reached the visible top (innerWidth 2601, clientWidth
+// 908, scrollY 0 with the window 1,938 px down). _slViewportFit() adds
+// `minimum-scale=1` while the page is wider than the screen. Chromium's
+// emulation zooms out instead of panning, but it widens the layout
+// viewport the same way, which is the property pinned here: innerWidth
+// equals clientWidth after the press.
+// ---------------------------------------------------------------------------
+
+test('phone, after the press: the layout viewport stays the screen\'s width, so the bars stick', async ({ page }) => {
+    const { spec } = await loadSlListPage(page, { kind: 'sampler', settingsOverride: { sa_render_threshold: 100000 } });
+    const meta = () => page.evaluate(() => document.querySelector('meta[name="viewport"]').getAttribute('content'));
+    const original = await meta();
+    expect(original, 'premise: the site\'s own tag').toBe('width=device-width, initial-scale=1');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1),
+        'premise: the initial page fits the screen').toBe(true);
+    expect(await meta(), 'initial page: the tag is the site\'s').toBe(original);
+
+    await page.$eval(`button[data-label="${spec.button}"]`, (b) => b.click());
+    await waitForRenderComplete(page, { waitForAutoResize: false });
+    await frames(page);
+    const g = await page.evaluate(() => ({
+        scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth,
+        innerWidth: window.innerWidth, scale: window.visualViewport ? window.visualViewport.scale : 1,
+    }));
+    expect(g.scrollWidth, 'premise: the table is wider than the screen').toBeGreaterThan(g.clientWidth * 2);
+    expect(g.innerWidth, 'the layout viewport is the screen\'s width, not the table\'s').toBe(g.clientWidth);
+    expect(g.scale, 'not zoomed out').toBeGreaterThanOrEqual(0.99);
+    expect(await meta(), 'after the press: no zooming out below 100 %').toBe(`${original}, minimum-scale=1`);
+
+    // Deep in the table: the data h2 and the thead are at their docks.
+    await page.evaluate(() => window.scrollTo(0, Math.round((document.documentElement.scrollHeight - innerHeight) * 0.6)));
+    await frames(page);
+    const b = await page.evaluate(() => {
+        const h2 = document.getElementById('mb-global-filter-input').closest('h2');
+        const th = document.querySelector('table.tbl > thead');
+        return { h2: h2.getBoundingClientRect().top, h2Dock: parseFloat(getComputedStyle(h2).top),
+            th: th.getBoundingClientRect().top, thDock: parseFloat(getComputedStyle(th).top) };
+    });
+    expect(Math.abs(b.h2 - b.h2Dock), 'the h2 is at its dock').toBeLessThanOrEqual(1);
+    expect(Math.abs(b.th - b.thDock), 'the thead is at its dock').toBeLessThanOrEqual(1);
+
+    // A window wider than the table (a rotation, a tablet): the site's own tag again.
+    await page.setViewportSize({ width: g.scrollWidth + 400, height: 900 });
+    await frames(page);
+    await page.waitForFunction((o) => document.querySelector('meta[name="viewport"]').getAttribute('content') === o,
+        original, { timeout: 5000 }).catch(() => {});
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1),
+        'premise: the table fits the wider window').toBe(true);
+    expect(await meta(), 'the table fits: the site\'s own tag is back').toBe(original);
 });

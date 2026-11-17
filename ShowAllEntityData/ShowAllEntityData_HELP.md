@@ -5225,6 +5225,14 @@ behave differently from a desktop, on purpose:
 - **Sticky Page Headers is off.** Pinch-zoom moves what you see independently
   of what the browser pins, so the bars cannot reliably stay in view. To try it
   anyway, tick *Sticky Page Headers on touch devices* in 📌 Table stickiness.
+- **On springsteenlyrics.com a table you have shown cannot be zoomed out
+  below 100 %.** That site is set up for phones, and with a table wider than
+  the screen the browser would otherwise let what you see slide around inside
+  a much larger page area: the heading with the buttons, the section bar and
+  the column headers would stay behind instead of at the top. Zooming in still
+  works, but while you are zoomed in those bars can slide out of view. When
+  the table fits the screen again (turn the phone, or on a tablet), zooming
+  out works as before.
 - **The detail window can be made bigger.** Tap **⤢** beside its ✕ to fill
   what the screen shows (it follows when you zoom or pan; **⤡** gives it its
   size back, and the next window opens filled too), or drag the grip in its
