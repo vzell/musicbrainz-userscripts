@@ -2308,9 +2308,10 @@ Mockup https://claude.ai/artifact/65urMwgWSb6zq6xJa9Mf4x; vzell's answers of
     also links them, but in a `Song` column, which the feed does not mark
     (vzell, 2026-11-17). stats:relations leaves out 33 of 2,929 pages,
     among them the three no-tags relations (not on the live list either,
-    vzell, 2026-11-17). Rob DeMartin is on it because he is tagged "m". Until 2026-11-17 the probe and the checker counted
-    every page of the category as a row (songs 4 of 1,685, relations 4 of
-    2,929), and the browser check expected the four songs on stats:songs.
+    vzell, 2026-11-17). Rob DeMartin is on it because he is tagged "m".
+    Until 2026-11-17 the probe and the checker counted every page of the
+    category as a row (songs 4 of 1,685, relations 4 of 2,929), and the
+    browser check expected the four songs on stats:songs.
 
   **The checker** (`scripts/check-bb-feed.js FEED PROBE`) runs the shipped
   lookup and the live filter over the same pages: no difference.
@@ -2324,6 +2325,70 @@ Mockup https://claude.ai/artifact/65urMwgWSb6zq6xJa9Mf4x; vzell's answers of
   small feed for the story head, the event head, the 1985 window and the
   songs list. Mutations: `scripts/mutations/bb-feed.json`.
   `FIXTURE_SETTINGS_OVERRIDE` has `sa_bb_feed: false`.
+
+### Feed 1.1: date tags and the "files" tag (feed v2, branch 1, 2026-11-17)
+
+Env: 2026-11-17T19:20+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux
+6.18.58.1-microsoft-standard-WSL2) · n/a (the probe: Python over the mirror
+bb/2026-11-15; the checker and the spec: Playwright Chromium, no
+Tampermonkey)
+
+BruceParser 0.19.0 (`feed.sh` 1.1, `edecd7e`) adds two keys to a page. The
+file keeps format 1, because a reader ignores a key it does not know, so the
+v1 script reads a 1.1 feed unchanged. The decisions (vzell, 2026-11-17) are
+in org/bbp-parity.org, "Feed v2".
+
+- **`date-parts`** `{missing?: [tag], wrong?: [tag]}`, from
+  `MISSING-date-parts-in-tags-cleanedup.org`. In the script it is TWO kinds
+  with two levels, as the Tags findings have:
+  - ❌ `bb-feed-date-missing` ◷;
+  - ⚠️ `bb-feed-date-wrong` ◶.
+
+  `_BB_FEED_KINDS` gives them `src: 'date-parts'` and `part`, and
+  `_bbFeedFacts()` reads that list. `feed.sh` keeps only pages that are no
+  show: a show's date tags are batch 3's (`_bbTagCheck()`), so one error
+  never gets two marks. It also keeps only pages whose name holds a date
+  (efc.sh takes the expected date from the name, and calls every date tag
+  of `news:web-shea-s-theatre-buffalo-ny` "wrong"), and only pages with tags
+  (the rest is `no-tags`). That leaves 3 pages: `media:1975-11-10-…`,
+  `news:1978-08-22-…` and `news:essay-1975-12-31-…`.
+- **`files-no-images`** `true`, from `MISMATCH-images-files-tag.org`: a page
+  tagged "files" that shows no picture. ⚠️ `bb-feed-files` ▢. 32 pages: 30
+  `files:` index pages ("Sorry, no Passes available") and two venues (Werchter
+  Park, Samson Stages). The other direction, 880 pages with pictures and no
+  "files" tag, is left out: venue and retail pages carry no "files" tag by
+  rule.
+- **The page in front wins** (`_bbFeedLiveFilter()`):
+  - a missing date tag the page has now is dropped, and a wrong one it no
+    longer has, until the fact is empty;
+  - "files" is dropped once the page has no "files" tag or shows a picture.
+
+  `_bbFeedLiveOf()` gives `images` (`_bbFeedPictureCount()`): every `<img>`
+  of `#page-content` but the wiki's shared includes under
+  `/local--files/content:files/`. Those are the social icons every page has;
+  both venues have four. Over BruceParser's 7,023 pages the rule never
+  missed a page with pictures. It counts a picture on 290 pages BruceParser
+  calls "no", retail and news pages showing a cover stored under
+  `files:artwork-*`. A window cannot tell (`images` null), so there only
+  the tags count. A rule of "stored under the page's own name" missed 836
+  (gallery pages store theirs elsewhere).
+- **Where the marks show:** `news:`, `media:` and `files:` pages are
+  `bb-page` (no head). So their marks are in their windows and on the tag
+  pages that list them, and on a venue's head. The probe's tag lists (the
+  checker agrees):
+  - "files": 39 of 5,935 rows marked (files-no-images 32);
+  - "news": 42 of 6,613;
+  - "media": 2 of 1,974.
+
+  The probe now also counts a show marked through its dependent pages, as
+  the script does: 17 shows tagged "news" were missing from its count.
+- **Settings:** `sa_findings_bb_feed_date_missing`, `…_date_wrong` and
+  `…_files`, all on.
+- **Tests:** `tests/fixtures/bb-feed.spec.js`, 6 more (22 in all). They use
+  BruceParser 0.19.0's feed of the same run
+  (`tests/fixtures/bb-feed-2026-11-15-v2.json`, not published yet) and the
+  Roxy venue fixture: its photos drop "files", and the date mark stays.
+  `scripts/mutations/bb-feed.json` has 10 more entries; each fails its test.
 
 ## Show links on Brucebase's own pages (Phase 8, 2026-11-11)
 

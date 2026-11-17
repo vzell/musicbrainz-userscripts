@@ -142,5 +142,65 @@
         "why": "enabled() needs brucebase.wikidot.com. No MusicBrainz table cell links a Brucebase page in the fixtures, so the detector finds nothing there either way; a MusicBrainz fixture with a Brucebase URL in a table cell would cover it.",
         "edits": [{ "find": "            enabled: () => !!_isBbHost && _bbFeedKindOn(kind),", "replace": "            enabled: () => _bbFeedKindOn(kind)," }],
         "spec": "tests/fixtures/bb-feed.spec.js", "grep": "MusicBrainz page", "expect": "pass"
+    },
+    {
+        "name": "feed 1.1: date-parts is not split into its two lists",
+        "why": "date-parts.missing and .wrong are two findings of two levels.",
+        "edits": [{ "find": "                const list = kinds[k.src] && kinds[k.src][k.part];", "replace": "                const list = null;" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "date-parts is two findings", "expect": "fail"
+    },
+    {
+        "name": "feed 1.1: the wrong date tags are read from the missing list",
+        "why": "Each SAED kind reads its own part of date-parts.",
+        "edits": [{ "find": "src: 'date-parts', part: 'wrong' },", "replace": "src: 'date-parts', part: 'missing' }," }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "date-parts is two findings", "expect": "fail"
+    },
+    {
+        "name": "feed 1.1: the live filter keeps a date tag the page has now",
+        "why": "A missing date tag the page now has is dropped; a wrong one it no longer has, likewise.",
+        "edits": [{ "find": "                const left = f.value.filter(t => tags.includes(t.toLowerCase()) === (f.kind === 'date-wrong'));", "replace": "                const left = f.value;" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "date-parts is two findings", "expect": "fail"
+    },
+    {
+        "name": "feed 1.1: the files mark ignores the page's pictures",
+        "why": "A page that shows a picture now loses the files mark.",
+        "edits": [{ "find": "(tags && !tags.includes('files')) || live.images > 0 ? null : f;", "replace": "(tags && !tags.includes('files')) ? null : f;" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "dropped once the page has no files tag", "expect": "fail"
+    },
+    {
+        "name": "feed 1.1: the files mark ignores a removed files tag",
+        "why": "A page that no longer has the files tag loses the mark.",
+        "edits": [{ "find": "(tags && !tags.includes('files')) || live.images > 0 ? null : f;", "replace": "live.images > 0 ? null : f;" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "dropped once the page has no files tag", "expect": "fail"
+    },
+    {
+        "name": "feed 1.1: the wiki's shared icons count as pictures",
+        "why": "The social icons under content:files are on every page; they are no picture of the page.",
+        "edits": [{ "find": "filter(img => !/\\/local--files\\/content:files\\//.test(img.getAttribute('src') || '')).length;", "replace": "length;" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "dropped once the page has no files tag", "expect": "fail"
+    },
+    {
+        "name": "feed 1.1: the head's live state has no picture count",
+        "why": "The venue head drops the files mark because the page shows photos; without the count it stays.",
+        "edits": [{ "find": "            images: _bbFeedPictureCount(doc),\n", "replace": "" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "a venue's head", "expect": "fail"
+    },
+    {
+        "name": "feed 1.1: the date-missing fact text falls through",
+        "why": "Each new kind has its own words; without a branch it throws on f.deps.",
+        "edits": [{ "find": "        if (f.kind === 'date-missing') return `", "replace": "        if (false) return `" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "a venue's head", "expect": "fail"
+    },
+    {
+        "name": "feed 1.1: the date-wrong switch is ignored",
+        "why": "Each kind has its own finding switch.",
+        "edits": [{ "find": "'date-wrong': { id: 'bb-feed-date-wrong', glyph: '◶', level: 'warn', setting: 'sa_findings_bb_feed_date_wrong',", "replace": "'date-wrong': { id: 'bb-feed-date-wrong', glyph: '◶', level: 'warn', setting: 'sa_findings_bb_feed_date_missing'," }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "the date-wrong finding goes", "expect": "fail"
+    },
+    {
+        "name": "feed 1.1: files-no-images is a level of its own wrongly",
+        "why": "The files finding is a warning; an error would count it in the wrong menu.",
+        "edits": [{ "find": "'files-no-images': { id: 'bb-feed-files', glyph: '▢', level: 'warn',", "replace": "'files-no-images': { id: 'bb-feed-files', glyph: '▢', level: 'error'," }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "the new kinds on the Title cell", "expect": "fail"
     }
 ]

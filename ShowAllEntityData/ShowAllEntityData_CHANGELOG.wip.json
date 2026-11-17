@@ -1,0 +1,21 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-11-17",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase feed: three more findings from BruceParser's full read of the wiki. ❌ a page that is no show and lacks a tag of the date in its name (\"22\" for a page of 1978-08-22), ⚠️ one that carries a date tag its date does not have (\"23\"), ⚠️ a page tagged \"files\" that shows no picture (30 files index pages and two venues in the run of 2026-11-15). On the cell that names the page in every Brucebase list (the \"files\", \"news\" and \"media\" tag pages above all), in its window, and after a venue page's byline. A show's own date tags stay with the Tags findings, so one error never gets two marks.",
+          "What the page in front of you shows wins here too: a date tag it has now, a wrong one it no longer has, a picture it shows now or a \"files\" tag it no longer carries drops the mark. The wiki's social icons, which every page has, are no picture. New settings: a switch for each of the three findings, on."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Needs the feed of BruceParser 0.19.0 on GitHub; an older feed simply has none of the three. A script before this version ignores the new data."
+        ]
+      }
+    ]
+  }
+]

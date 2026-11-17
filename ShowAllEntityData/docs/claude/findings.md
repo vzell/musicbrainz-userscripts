@@ -509,9 +509,15 @@ docs/claude/brucebase.md, "The BruceParser feed". What this file must record:
 - **Also outside table cells**: a mark after a Brucebase head's byline and
   after a window's title (`_bbFeedMarksHtml()`), where the page in front of
   you wins (`_bbFeedLiveFilter()`). The registry does not know of them.
+- **Feed 1.1 (2026-11-17): three more entries from the same table**:
+  ❌ `bb-feed-date-missing`, ⚠️ `bb-feed-date-wrong` and ⚠️
+  `bb-feed-files`. The two date entries come from ONE key of the feed
+  (`date-parts`), and each reads its own list (`src`/`part` in
+  `_BB_FEED_KINDS`). That way each finding keeps a single level, as the Tags
+  findings do. The heading above keeps its v1 name, because it is cited.
 - Settings: `sa_findings_bb_feed_title`, `_no_tags`, `_no_parent`,
-  `_first_letter`; tint `sa_findings_tint_bb_feed`; the feed itself
-  `sa_bb_feed`.
+  `_first_letter`, `_date_missing`, `_date_wrong`, `_files`; tint
+  `sa_findings_tint_bb_feed`; the feed itself `sa_bb_feed`.
 - Spec `tests/fixtures/bb-feed.spec.js`; mutations
   `scripts/mutations/bb-feed.json`.
 

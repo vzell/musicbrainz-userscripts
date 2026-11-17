@@ -3148,13 +3148,42 @@
                          'Brucebase feed".'
         },
 
+        sa_findings_bb_feed_date_missing: {
+            label: 'Find Brucebase pages without a date tag of their date (Brucebase feed)',
+            type: 'checkbox',
+            default: true,
+            description: 'From the Brucebase feed: a news, media, story or other page that is no show and ' +
+                         'lacks a tag of the date in its name ("22" for a page of 1978-08-22). An ERROR on its ' +
+                         'rows and its window. A show\'s own date tags are checked on its page (the Tags ' +
+                         'findings). Needs "Read the Brucebase feed".'
+        },
+
+        sa_findings_bb_feed_date_wrong: {
+            label: 'Find Brucebase pages with a date tag that is not their date (Brucebase feed)',
+            type: 'checkbox',
+            default: true,
+            description: 'From the Brucebase feed: a page that is no show and carries a date tag the date in ' +
+                         'its name does not have ("23" on a page of 1978-08-22). A WARNING on its rows and its ' +
+                         'window. Needs "Read the Brucebase feed".'
+        },
+
+        sa_findings_bb_feed_files: {
+            label: 'Find Brucebase pages tagged "files" that show no picture (Brucebase feed)',
+            type: 'checkbox',
+            default: true,
+            description: 'From the Brucebase feed: a page tagged "files" with no picture on it, such as a ' +
+                         'files index page that says "Sorry, no Passes available". A WARNING on its rows, its ' +
+                         'page (a venue) and its window. Needs "Read the Brucebase feed".'
+        },
+
         sa_findings_tint_bb_feed: {
             label: 'Highlight cells of Brucebase pages the Brucebase feed names',
             type: 'checkbox',
             default: true,
             description: 'Tint the cell that names a page the Brucebase feed lists light red with a ❌ (a ' +
-                         'title that differs, no tag at all) or light yellow with a ⚠️ (no parent page, no ' +
-                         'first-letter tag).'
+                         'title that differs, no tag at all, a date tag missing) or light yellow with a ⚠️ (no ' +
+                         'parent page, no first-letter tag, a date tag that is not the page\'s date, the ' +
+                         '"files" tag without a picture).'
         },
 
         sa_findings_tint_bb_setlist: {
@@ -5497,7 +5526,8 @@
             default: true,
             description: 'BruceParser reads the whole of Brucebase offline and publishes what only that full ' +
                          'read can see: pages without a parent page, pages titled differently from their show, ' +
-                         'pages with no tag, pages without their first-letter tag. On: the file is read from ' +
+                         'pages with no tag, pages without their first-letter tag, date tags that do not fit a ' +
+                         'page\'s date, pages tagged "files" without a picture. On: the file is read from ' +
                          'GitHub (raw.githubusercontent.com/vzell/brucebase-feed, about 25 KB) at most once a ' +
                          'day, when you press a Brucebase page\'s button or open a Brucebase window with Space, ' +
                          'and the pages and rows it names are marked, with no request to the wiki. Every mark ' +
@@ -27821,8 +27851,11 @@
     /** @type {number} A run older than this many days is called old in every card (vzell, decision 3). */
     const _BB_FEED_OLD_DAYS = 14;
     /**
-     * The feed's kinds: their finding, mark, setting and words.
-     * @type {Object<string, {id: string, glyph: string, level: string, setting: string, label: string, report: string}>}
+     * The feed's kinds: their finding, mark, setting and words. `src` and
+     * `part` (feed 1.1): the kind is one list of another key of the feed's
+     * page, `date-parts.missing` and `.wrong`, two findings of two levels as
+     * the Tags findings have.
+     * @type {Object<string, {id: string, glyph: string, level: string, setting: string, label: string, report: string, src?: string, part?: string}>}
      */
     const _BB_FEED_KINDS = {
         'dependent-title': { id: 'bb-feed-title', glyph: '≢', level: 'error', setting: 'sa_findings_bb_feed_title',
@@ -27834,6 +27867,18 @@
             label: 'Brucebase page without a parent page', report: 'NO-PARENT-detail-pages' },
         'first-letter': { id: 'bb-feed-first-letter', glyph: 'Ⓐ', level: 'warn', setting: 'sa_findings_bb_feed_first_letter',
             label: 'Brucebase page without its first-letter tag', report: 'MISSING-first-character-tag-in-title' },
+        // Feed 1.1 (feed v2, branch 1; vzell, 2026-11-17): pages that are no
+        // show only (a show's date tags are batch 3's, `_bbTagCheck()`), and
+        // the "files" tag without a picture only (not the other way round:
+        // venue and retail pages carry no "files" tag by rule).
+        'date-missing': { id: 'bb-feed-date-missing', glyph: '◷', level: 'error', setting: 'sa_findings_bb_feed_date_missing',
+            label: 'Brucebase page without a date tag of its date', report: 'MISSING-date-parts-in-tags-cleanedup',
+            src: 'date-parts', part: 'missing' },
+        'date-wrong': { id: 'bb-feed-date-wrong', glyph: '◶', level: 'warn', setting: 'sa_findings_bb_feed_date_wrong',
+            label: 'Brucebase page with a date tag that is not its date', report: 'MISSING-date-parts-in-tags-cleanedup',
+            src: 'date-parts', part: 'wrong' },
+        'files-no-images': { id: 'bb-feed-files', glyph: '▢', level: 'warn', setting: 'sa_findings_bb_feed_files',
+            label: 'Brucebase page tagged "files" without a picture', report: 'MISMATCH-images-files-tag' },
     };
     /** @type {Set<string>} The columns that name a row's own page, on every Brucebase list (vzell, decision 5). */
     const _BB_FEED_COLS = new Set(['Event', 'Title', 'Name', 'Page']);
@@ -28042,6 +28087,11 @@
                     ...(_bbFeed.byEvent.get(name) || []),
                 ];
                 if (deps.length) out.push({ kind, value: own || null, deps });
+            } else if (_BB_FEED_KINDS[kind].src) {
+                // One list of another key: `date-parts.missing` / `.wrong`.
+                const k = _BB_FEED_KINDS[kind];
+                const list = kinds[k.src] && kinds[k.src][k.part];
+                if (Array.isArray(list) && list.length) out.push({ kind, value: list.map(String) });
             } else if (kinds[kind] !== undefined && kinds[kind] !== false) {
                 out.push({ kind, value: kinds[kind] });
             }
@@ -28071,13 +28121,18 @@
      * - no tags: dropped once the page has a tag;
      * - first-letter: dropped once it has that tag;
      * - no parent: dropped once the breadcrumb links a page;
+     * - a date tag missing: the tags the page has now are dropped, the fact
+     *   with the last; a date tag that is not the date: the tags the page no
+     *   longer has are dropped, likewise;
+     * - "files" without a picture: dropped once the page has no "files" tag
+     *   or shows a picture (`images`, the window cannot tell: null);
      * - a dependent page's own title: dropped when the title is not the one
      *   the run saw (edited since) or now equals its show's;
      * - a show's dependents: those whose title now equals the show's title
      *   are dropped.
      *
      * @param {Array<Object>} facts - `_bbFeedFacts()`.
-     * @param {?{title: ?string, tags: ?string[], parent: ?boolean}} live
+     * @param {?{title: ?string, tags: ?string[], parent: ?boolean, images?: ?number}} live
      * @returns {Array<Object>}
      */
     function _bbFeedLiveFilter(facts, live) {
@@ -28088,6 +28143,12 @@
             if (f.kind === 'no-tags') return tags && tags.length ? null : f;
             if (f.kind === 'first-letter') return tags && tags.includes(String(f.value).toLowerCase()) ? null : f;
             if (f.kind === 'no-parent') return live.parent === true ? null : f;
+            if (f.kind === 'date-missing' || f.kind === 'date-wrong') {
+                if (!tags) return f;
+                const left = f.value.filter(t => tags.includes(t.toLowerCase()) === (f.kind === 'date-wrong'));
+                return left.length ? { ...f, value: left } : null;
+            }
+            if (f.kind === 'files-no-images') return (tags && !tags.includes('files')) || live.images > 0 ? null : f;
             if (f.kind !== 'dependent-title' || title === null) return f;
             const deps = f.deps.filter(d => d.own
                 ? (title === _bbFeedTitleKey(d.title) && title !== _bbFeedTitleKey(d.eventTitle))
@@ -28124,6 +28185,9 @@
         if (f.kind === 'no-tags') return `${name} has no tag at all, so no tag list finds it.`;
         if (f.kind === 'first-letter') return `${name} lacks the tag "${f.value}" of its title's first letter.`;
         if (f.kind === 'no-parent') return `${name} has no parent page: its breadcrumb leads nowhere and its show does not list it.`;
+        if (f.kind === 'date-missing') return `${name} lacks the date tag${f.value.length > 1 ? 's' : ''} ${f.value.map(t => `"${t}"`).join(', ')} of the date in its name.`;
+        if (f.kind === 'date-wrong') return `${name} carries the date tag${f.value.length > 1 ? 's' : ''} ${f.value.map(t => `"${t}"`).join(', ')}, which the date in its name does not have.`;
+        if (f.kind === 'files-no-images') return `${name} is tagged "files" but shows no picture.`;
         return f.deps.map(d => (d.own
             ? `This page's title "${d.title}" differs from its ${d.event ? `show's (${d.event})` : 'parent page\'s'}: "${d.eventTitle}".`
             : `Its page ${d.name} is titled "${d.title}", the show "${d.eventTitle}".`)).join(' ');
@@ -28174,11 +28238,14 @@
 
     /**
      * What the page in front of you says, for `_bbFeedLiveFilter()`: its
-     * title as written, its tags, whether its breadcrumb links a parent;
-     * each null when the page does not show it.
+     * title as written, its tags, whether its breadcrumb links a parent, how
+     * many pictures its content shows (every `<img>` but the wiki's shared
+     * includes under `content:files`, the social icons every page has; the
+     * probe checked this rule against BruceParser's own count); each null
+     * when the page does not show it.
      *
      * @param {Document} doc
-     * @returns {{title: ?string, tags: ?string[], parent: ?boolean}}
+     * @returns {{title: ?string, tags: ?string[], parent: ?boolean, images: ?number}}
      */
     function _bbFeedLiveOf(doc) {
         const titleEl = doc.getElementById('page-title');
@@ -28188,7 +28255,23 @@
             title: titleEl ? _bbRawText(titleEl) : null,
             tags: tagsBox ? _bbRawTags(doc, window.location.href).map(t => t.text) : null,
             parent: crumbs ? !!crumbs.querySelector('a[href]') : null,
+            images: _bbFeedPictureCount(doc),
         };
+    }
+
+    /**
+     * The pictures in a page's content: every `<img>` of `#page-content` but
+     * the wiki's shared includes (src under `/local--files/content:files/`,
+     * the social icons every page has). The rule never missed a page with
+     * pictures over BruceParser's 7,023 pages (scripts/probe-bb-feed.py).
+     *
+     * @param {Document} doc
+     * @returns {?number} null without `#page-content`.
+     */
+    function _bbFeedPictureCount(doc) {
+        const box = doc.getElementById('page-content');
+        if (!box) return null;
+        return Array.from(box.querySelectorAll('img[src]')).filter(img => !/\/local--files\/content:files\//.test(img.getAttribute('src') || '')).length;
     }
 
     /**
@@ -76302,6 +76385,9 @@
                 'no-tags': 'The page carries no tag at all, so no tag list of the wiki finds it. ',
                 'no-parent': 'The page should have a parent page (its show) but has none: its breadcrumb leads nowhere and the show does not list it. ',
                 'first-letter': 'The page lacks the tag of its title\'s first letter ("d" for "Dinner At Eight", "0-9" for a digit). ',
+                'date-missing': 'A page that is no show lacks a tag of the date in its name ("22" for a page of 1978-08-22); a show\'s own date tags are the Tags findings\'. ',
+                'date-wrong': 'A page that is no show carries a date tag the date in its name does not have ("23" on a page of 1978-08-22). ',
+                'files-no-images': 'The page is tagged "files" but shows no picture. ',
             }[kind] + 'From the Brucebase feed: BruceParser\'s full read of the wiki, published at github.com/vzell/brucebase-feed; the hover text names the run, and Brucebase may have been fixed since.',
             enabled: () => !!_isBbHost && _bbFeedKindOn(kind),
             cols: name => _BB_FEED_COLS.has(name),
@@ -190474,6 +190560,26 @@ a { color: #1565c0; }`;
             bbFeedAge(ms) {
                 _bbFeedReadKept();
                 _bbFeed.at -= ms;
+            },
+            /**
+             * Takes `data` as the feed in memory, not kept (a spec's own
+             * feed after the page loaded; `_bbFeedTake()`).
+             *
+             * @param {Object} data
+             * @returns {void}
+             */
+            bbFeedSet(data) {
+                _bbFeedReadKept();
+                _bbFeedTake(data);
+            },
+            /**
+             * Thin wrapper around `_bbFeedPictureCount()`.
+             *
+             * @param {Document} doc
+             * @returns {?number}
+             */
+            bbFeedPictures(doc) {
+                return _bbFeedPictureCount(doc);
             },
             /**
              * Thin wrappers: a page's name from a link, a title's comparison key.

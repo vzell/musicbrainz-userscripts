@@ -29913,3 +29913,25 @@ Env: 2026-11-17T18:52:16+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 - **The other year-table test of the spec (1968) needs no poll:** a poll added to it could not be shown to matter.
   It passed without it under the same 2 s delay, because the row whose stamp it checks is read early, the others
   take several page requests each, and the last row expects no stamp. The change was dropped.
+
+## 2026-11-17 — Brucebase feed v2, branch 1: date tags and the "files" tag (feat/bb-feed-v2-kinds)
+
+Env: 2026-11-17T19:20+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · probe: Python over the mirror bb/2026-11-15, n/a; spec and checker: Playwright Chromium, no Tampermonkey (GM stubs)
+
+- **What:** BruceParser 0.19.0 (`feed.sh` 1.1) adds `date-parts` and `files-no-images` to the feed. The script shows
+  them as `bb-feed-date-missing` ❌, `bb-feed-date-wrong` ⚠️ and `bb-feed-files` ⚠️. Record and browser check:
+  org/bbp-parity.org, "Feed v2, branch 1"; design: docs/claude/brucebase.md, "Feed 1.1".
+- **Two false positives in BruceParser's date report, kept out by `feed.sh`:**
+  - efc.sh takes a page's expected date from its NAME. `news:web-shea-s-theatre-buffalo-ny` has none, so all three of
+    its date tags were "wrong".
+  - `news:web-2026-04-07-…` has no tag at all, so every date part was "missing". That is the no-tags finding, not three
+    date findings.
+- **The picture rule took two tries.** The two flagged venues have four `<img>` each: the wiki's social icons
+  (`/local--files/content:files/icon_*.png`), included on every page.
+  - "Stored under the page's own name" missed 836 of BruceParser's 7,023 pages (gallery pages store theirs elsewhere).
+  - "Every `<img>` but `content:files`" never missed a page with pictures. It counts a cover on 290 pages BruceParser
+    calls "no" (retail and news, covers under `files:artwork-*`), which is right for "does the page show a picture now".
+- **A probe gap, fixed:** the list counts did not count a show marked through its dependent pages (the reverse index),
+  as the script does. On the "news" tag page that was 17 shows; the checker found it (42 against 25).
+- **Not followed up:** `news:`, `media:` and `files:` pages are `bb-page` (no head), so their own page shows no mark;
+  their windows and the tag pages do.

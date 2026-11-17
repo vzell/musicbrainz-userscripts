@@ -510,3 +510,61 @@ The =song:two-of-us= row: tested live by vzell (2026-11-17, "tested live OK").
 Unverified:
 - the storyteller tag page's count (from the mirror's tags, not from the live tag page);
 - the failure line, which needs GitHub to fail (the spec serves 404 and a bad file).
+
+* Feed v2, branch 1: date tags and the "files" tag (=feat/bb-feed-v2-kinds=, 2026-11-17)
+
+Env: 2026-11-17T19:20+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · probe:
+Python over the mirror bb/2026-11-15, n/a; spec, checker: Playwright Chromium, no Tampermonkey (GM stubs)
+
+*Decisions (vzell, 2026-11-17):*
+1. *Feed v2 is three branches,* in this order: (1) new kinds of page finding, (2) the year listing's rows, marked
+   through an anchor map in the feed, (3) the MusicBrainz cross-checks.
+2. *The lookup tables wait for batch 3b.* The block batch 3 planned for the script was never built, so nothing moves.
+3. *Nothing that batches 1-2 check live goes into the feed:* the setlist, the three title comparisons, the anchor
+   postfix, the venue. One error never gets two marks.
+4. *URL shortening is out of v2* (4,312 pages in BruceParser's report, 1,096 after its own filters; 12 of them are
+   false, a "-" left at the 60-character cut, a BruceParser bug noted for when the report comes back).
+5. *The "files" tag:* only a page tagged "files" that shows no picture (32), not the 880 pages with pictures and no
+   tag, which is the rule on venue and retail pages.
+6. *Date tags:* only pages that are no show (batch 3 checks a show's).
+
+*Built:*
+- *BruceParser 0.19.0* (=edecd7e=, pushed, NOT published): =feed.sh= 1.1 adds =date-parts= ={missing, wrong}= and
+  =files-no-images=. The run of 2026-11-15 gives 226 pages, 27 KB. Format 1 stays, because a reader ignores a key it
+  does not know. =feed.sh= also leaves out a page whose name has no date (efc.sh calls every date tag of
+  =news:web-shea-s-theatre-buffalo-ny= "wrong") and a page without tags (=news:web-2026-04-07-…=, already no-tags).
+  That leaves *3 date pages*: =media:1975-11-10-…= (10 missing, 11 wrong), =news:1978-08-22-…= (22 / 23),
+  =news:essay-1975-12-31-…= (1975 missing; it has "197").
+- *SAED:* three findings from =_BB_FEED_KINDS=: ❌ =bb-feed-date-missing= ◷, ⚠️ =bb-feed-date-wrong= ◶, ⚠️
+  =bb-feed-files= ▢. Three switches, the shared tint. The page in front wins: a date tag it has now (or a wrong one
+  it no longer has) and a picture it shows now (=_bbFeedPictureCount()=, the social icons do not count) drop the mark.
+  Details: =docs/claude/brucebase.md=, "Feed 1.1".
+- *Where the marks show:* =news:=, =media:= and =files:= pages have no head (=bb-page=). Their marks are on the tag
+  pages' rows and in their windows. The two venues show it after their byline.
+- *The probe* (=scripts/probe-bb-feed.py=): every kind holds on its page. The picture rule never missed a page with
+  pictures among BruceParser's 7,023. The tag lists: "files" 39 of 5,935 rows marked, "news" 42 of 6,613, "media"
+  2 of 1,974. The probe now counts a show marked through its dependent pages, as the script does (17 shows tagged
+  "news" were missing). *The checker:* no difference.
+- *Tests* (NB-3641, 2026-11-17): =bb-feed.spec.js= 22 (6 new); 10 new mutations, each failing its test.
+
+** The browser check of feed v2, branch 1, for vzell (rows from the mirror of 2026-11-15; unverified on the live wiki)
+
+*First:* the feed of BruceParser 0.19.0 must be on GitHub (=./publish-feed.sh= in BruceParser, your call). Until then
+the script reads the v1 feed and none of the rows below shows. Install the script from =feat/bb-feed-v2-kinds=; then
+☰ → Brucebase → Read again (the feed kept is a day old at most).
+
+| Page                                                               | Step                                       | Expected                                                                                                                                 |
+|--------------------------------------------------------------------+--------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------|
+| https://brucebase.wikidot.com/system:page-tags/tag/pass            | Show the tagged pages                      | files:pass-1989, -1994, -1998, -2010, -2015, -2020: ⚠️ (the ⚠️ menu: "… tagged "files" without a picture" 6)                             |
+| https://brucebase.wikidot.com/system:page-tags/tag/pass            | Ctrl+hover the files:pass-1989 link, Space | the window's title ends in "⚠️ ▢"; the page itself says "Sorry, no Passes available"                                                     |
+| https://brucebase.wikidot.com/system:page-tags/tag/essay           | Show the tagged pages                      | news:essay-1975-12-31 Tower Theater: ❌ (hover: lacks the date tag "1975")                                                                |
+| https://brucebase.wikidot.com/system:page-tags/tag/23              | Show the tagged pages                      | news:1978-08-22 Madison Square Garden: ❌ and ⚠️ ("22" missing, "23" not its date)                                                        |
+| https://brucebase.wikidot.com/system:page-tags/tag/11              | Show the tagged pages                      | media:1975-11-10 Jai Alai Fronton: ❌ (date "10" missing, and its title); 6 rows marked in all                                            |
+| https://brucebase.wikidot.com/venue:park-werchter-belgium          | Show the venue                             | "⚠️ ▢" after the byline; the four social icons do not count as pictures                                                                  |
+| https://brucebase.wikidot.com/venue:samson-stages-brooklyn-ny      | Show the venue                             | the same                                                                                                                                 |
+| https://brucebase.wikidot.com/venue:roxy-theatre-west-hollywood-ca | Show the venue                             | no "▢" (the Roxy has photos and is not in the feed)                                                                                      |
+| any Brucebase page                                                 | ⚙️ Settings → ⚠️ Findings                  | three new switches: "… without a date tag of their date", "… a date tag that is not their date", "… tagged "files" that show no picture" |
+| https://brucebase.wikidot.com/system:page-tags/tag/23              | "… a date tag that is not their date" off  | the ⚠️ on 1978-08-22 goes, the ❌ stays                                                                                                   |
+
+Unverified: all of it on the live wiki (the rows are the mirror's of 2026-11-15; a page fixed since loses its mark
+in its window and head, not on a list).
