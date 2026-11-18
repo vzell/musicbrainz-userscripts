@@ -75,7 +75,7 @@ song's `<strong>` (a tour premiere), `<em>` and link survive.
    parentheses too — "Out There In Radioland (JEMS)" keeps JEMS.
 2. **In capitals**, every word is lowered and then capitalised by the rules,
    except acronyms (`_mbtcIsAcronym()`): `_MBTC_ACRONYMS` (USA, UK, EP, NYC,
-   ICC, JAP, …), dotted letters (U.S.A., M.G.'s), letters round an "&" (A&M,
+   ICC, JAP, QE, …), dotted letters (U.S.A., M.G.'s), letters round an "&" (A&M,
    R&B), a Roman numeral of two or more letters, and two to five letters with
    no vowel and no Y (NJ, TCB, PNC, DVD, MTV) unless an abbreviation of
    `_MBTC_ABBREVIATIONS` (St., Dr., Vol.). O'/D'/L' and Mc prefixes capitalise

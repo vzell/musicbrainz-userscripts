@@ -62,6 +62,8 @@ module.exports = [
     ['SPARE PARTS (ONE SIDED)', 'Spare Parts (one sided)'],
     ['MURDER INC. / SCIOGLI L\'AMORE', 'Murder Inc. / Sciogli L\'Amore'],
     ['THE WILD, THE INNOCENT & THE E STREET SHUFFLE (JAP)', 'The Wild, the Innocent & the E Street Shuffle (JAP)'],
+    // A listed acronym with a vowel and a Roman numeral (Brucebase's 1985 page, #310385b).
+    ['QE II JUBILEE SPORTS CENTRE, BRISBANE, QUEENSLAND, AUSTRALIA', 'QE II Jubilee Sports Centre, Brisbane, Queensland, Australia'],
     // "Up" and the phrasal "On": capitalised; the preposition "on" is not.
     ['Held Up Without A Gun', 'Held Up Without a Gun'],
     ['I Can\'t Stand Up For Falling Down', 'I Can\'t Stand Up for Falling Down'],
