@@ -30196,4 +30196,13 @@ Env: 2026-11-18T02:30–05:40+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6
       no job). My check plan was wrong again.
 - **`npm run test:full` on petri after the 503 fix, uncommitted on `53550758`, 16:55:10–17:15:39 CET (20 m 29 s):
   3,245 of 3,245 passed.** Lint within the baseline.
-- **Not yet:** a re-check of the 503 fix in the browser; the note to majkinetor (vzell sends it).
+- **Re-check of the 503 fix by vzell** (`a021f32d`, Firefox 160.0, Tampermonkey 5.5.0, series
+  aa3694d3-a3d0-48ed-8f07-5b576de87908, `rel-ws2` emptied, a hold planted ten minutes out; log
+  `debug/mb-firefox-debug-3.log`, read on petri 2026-11-18T20:13:56+01:00):
+  - The first request waited out the 60 s cap ("still waits, 19.9 s / 9.9 s to go (MusicBrainz asked every script
+    to wait)") and went at 20:11:44.6 CET; the rest followed about 1 s apart.
+  - Four real 503s (`Retry-After: 1`, 20:11:45.7, 47.9, 55.7 and 57.9). Each logged "every script holds 1 s" (not
+    about 520 s as before) and was answered on its retry about 1.2 s later. `hot` stayed at 1 because the 200 between
+    every two 503s gave its step back (the protocol's rule), so 1 s each time is right.
+  - The log starts at 20:11:24, so the first "waits 60 s" line and the job card are not in it.
+- **Not yet:** the note to majkinetor (vzell sends it).
