@@ -4,9 +4,17 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1821 versions; the month pages hold all of them.
+This page shows the newest 100 of 1822 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1651 — 2026-11-18
+
+**🐛 Fix**
+
+- A jump of the computer's clock (a time sync, a virtual machine catching up, waking from sleep) no longer cuts short or stretches a wait in the shared MusicBrainz request gate: the page now counts every wait on a clock that never jumps, while the times it shares with other tabs and scripts stay as they were.
+- Another script's "I am drawing a page" mark in the shared gate holds the page's background MusicBrainz requests for at most 10 s from the moment the page first saw it, so a broken or far-future mark can no longer stall them for minutes; a renewed mark still holds them again.
+
 
 ## 9.99.1650 — 2026-11-18
 
@@ -883,13 +891,6 @@ This page shows the newest 100 of 1821 versions; the month pages hold all of the
 **🐛 Fix**
 
 - springsteenlyrics.com, logged in: a song's preview card and window showed the page's "Private Info" notes and kept them in the preview cache. They are now left out, and previews read before the fix are read again. A logged-in read and a public read of a song page are now cached separately.
-
-
-## 9.99.1551 — 2026-11-04
-
-**🚀 Feature**
-
-- springsteenlyrics.com: an item's own page (collection.php?item=…, bootlegs.php?item=…, brucelegs.php?item=…) gets a button, Tracklist: the tracklist from the page itself, one table per disc or record (vinyl sides paired: A/B is Record 1), with Take and Note columns on bootlegs, Version, Note and Length on the CD and vinyl bootlegs, and an Artist column on various-artists albums. Above the tables: the item's facts (release, or show and recording), its runout etchings, its files, its scans or artwork (one section per copy, with the site's captions, opening in the viewer), the notes, and the original info file, which is read only when you open its section. Logged in, a "Your collection" card shows the MusicBrainz link (with its preview), Good scans, Kept in, the item number and the edit link, and "Private info" is shown closed; it never appears in a preview. A CD or vinyl bootleg whose page lists several versions (pressings) also gets All versions: every one of them as one table with the list's columns. The view uses the window's full width, as the lists do, instead of the site's centred 1170 px column. Mockups: https://claude.ai/artifact/GBFJp9Ebo8LDoGPSskVMkg
 
 
 ---

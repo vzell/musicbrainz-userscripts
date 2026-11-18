@@ -4478,3 +4478,13 @@ Env: 2026-11-18T21:14:17+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 | =npm run test:full=, merge check  |  3265 |      12 | *21 m 16 s* | =run-test-full.py=, 21:14:17–21:35:33 CET |
 
 3265 passed (main's 3259 plus the six new clock specs). No flake showed.
+
+* 2026-11-18 — =npm run test:full= on =petri=, =main= after the merge of feat/mb-gate-clock (6132d699 with the 9.99.1651 fold uncommitted)
+
+Env: 2026-11-18T23:22:20+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                         | Tests | Workers | Wall clock  | Basis                                     |
+|-----------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, merge check  |  3265 |      12 | *21 m 14 s* | =run-test-full.py=, 23:22:20–23:43:34 CET |
+
+3265 passed (the same tree as the branch's run, plus the fold). No flake showed.
