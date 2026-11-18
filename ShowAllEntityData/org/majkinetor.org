@@ -1233,6 +1233,18 @@ CLOSED: [2026-11-08 Sun]
   inlined copy (=@version 2026.10.16.181657=, =tests/fixtures/live-userscripts/=: booking, wait, =Retry-After= hold
   and =hot= all on =Date.now()=); SAED's =_mbGateSlot()=/=_mbGateAnswer()= the same. The newer
   =dev/net/mb-gate.mjs= (=0693aea=) is not on NB-3641; re-check it on the next refresh before sending.
+- *Before sending: recheck on petri* (vzell, 2026-11-18: the majkinetor work happens on petri, where his repo is
+  resynced before any post). The prompt to give Claude there:
+
+  #+begin_example
+  Run the refresh-majkinetor skill first. Then recheck the TODO "The shared gate's clock" in org/majkinetor.org
+  against his current dev/net/mb-gate.mjs and every inlined ST-NET copy (Event Horizon, String Theory, ISRC Scout):
+  1. does every booking, wait, hold and leadUntil still use Date.now()? cite file:line for each;
+  2. does he already clamp what is READ (tat, cool, leadUntil), and against what bound (MBN_MAX_HOLD, BURST x GAP)?
+  3. does any wait already run against performance.now()?
+  Rewrite the TODO's "What" and "Proposal" and the quoted draft so they claim only what his current code does,
+  drop any point he has already fixed, and record the commit you checked. Do not post anything; I send it.
+  #+end_example
 - *Seen*: 2026-11-09 on petri, the wall clock jumped +16.8 s and back about every 5 s (DEBUG-NOTES, "petri's clock
   spikes"). SAED moved its own schedulers to =_steadyNow()= (=performance.timeOrigin + performance.now()=), leaving
   =mbu:mb-gate= on the wall clock as the residual. 2026-11-17 on NB-3641 (clock source =tsc=):
