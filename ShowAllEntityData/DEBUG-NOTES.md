@@ -30207,3 +30207,15 @@ Env: 2026-11-18T00:54:56+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
   page's shape covers a prose first paragraph and a soundcheck label. `scripts/mutations/bb-date-links.json` has 3 more
   (prose as a set, plain paragraphs not read, a label lost). Four finds the rewrite moved are rewritten; all 16 entries
   of that run behave as recorded.
+
+## 2026-11-18 — "Qe II" for Brucebase's "QE II JUBILEE SPORTS CENTRE" (fix/title-case-qe)
+Env: 2026-11-18T19:04+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (chromium-fixtures), no Tampermonkey (GM stubs); the data: the mirror bb/2026-11-15
+
+vzell's screenshot of 2026-11-17 showed "Qe Ii Jubilee Spor…" for the 1985-03-31b show. Reproduced on today's
+`main` (a scratch spec, not kept) with the title style on: the `/1985-list` table's row reads "Qe II Jubilee
+Sports Centre" — `_mbtcIsAcronym()` already keeps a Roman numeral of two or more letters, but "QE" has a vowel and
+was not in `_MBTC_ACRONYMS`. The year-anchor window shows the wiki's capitals (its title is not styled), so the
+"Ii" of the screenshot was not reproduced; no code path lowers "II" today. Fix: `'QE'` in `_MBTC_ACRONYMS` (83
+"QE II" in the mirror, all this venue; "QEII" appears only in prose). `check-mb-title-case.js --sample`: the
+per-source counts are unchanged (the venue changes anyway); `--mb-sample`: no finding changes. New case in
+`tests/support/mbTitleCaseCases.js` (111), one mutation in `scripts/mutations/foreign-titles.json`.

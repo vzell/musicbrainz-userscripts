@@ -17767,7 +17767,9 @@
      * @type {Set<string>}
      */
     const _MBTC_ACRONYMS = new Set(['USA', 'UK', 'EU', 'EP', 'HBO', 'NYC', 'NY', 'NYU', 'UCLA', 'USO', 'UFO',
-        'ICC', 'AC', 'OK', 'VIP', 'UNICEF', 'AOR', 'ABC', 'ESPN', 'UNO', 'JAP']);
+        'ICC', 'AC', 'OK', 'VIP', 'UNICEF', 'AOR', 'ABC', 'ESPN', 'UNO', 'JAP',
+        // Queen Elizabeth: "QE II JUBILEE SPORTS CENTRE" (Brucebase, 1985-03-31b; 83 "QE II" in the mirror).
+        'QE']);
 
     /**
      * Abbreviations that have no vowel but are not acronyms ("ST. JAMES",

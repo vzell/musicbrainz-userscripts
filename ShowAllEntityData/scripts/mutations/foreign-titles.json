@@ -262,5 +262,13 @@
         "spec": "tests/fixtures/mb-title-case.spec.js",
         "grep": "1985: venues and songs",
         "expect": "pass"
+    },
+    {
+        "name": "QE is not a listed acronym",
+        "why": "\"QE II JUBILEE SPORTS CENTRE\" keeps QE (Queen Elizabeth): a word with a vowel is kept in capitals only when listed.",
+        "edits": [{ "find": "        'QE']);", "replace": "        ]);" }],
+        "spec": "tests/fixtures/mb-title-case.spec.js",
+        "grep": "the shared cases hold in the browser",
+        "expect": "fail"
     }
 ]
