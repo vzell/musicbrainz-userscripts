@@ -30075,5 +30075,9 @@ Env: 2026-11-18T00:13–00:33+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6
   (`scripts/config-default-history.json`) lacked the new key, and the run's output had been read only at its tail.
   Fixed in the second commit with `dump-default-history.py`. A new key retires no default, so no
   `_SETTINGS_MIGRATIONS` entry is owed.
-- **Not yet:** a browser check by vzell with the real Event Horizon (and the library from `main`, which
-  Tampermonkey's `@require` fetches only once it is pushed there); `test:full`; the #938 reply.
+- **Browser check by vzell, 2026-11-18: OK** ("tested live, OK"; browser, Tampermonkey and String Theory versions
+  not given this time). SAED from `feat/eh-artist-images` with the real Event Horizon. The settings row's greying
+  needs VZ_MBLibrary 4.6.0, which Tampermonkey's `@require` fetches from `main` only after the merge, so this check
+  did not cover it; the fixture specs did.
+- **`npm run test:full` on petri, `79f75afc`, 01:14:36–01:34:56 CET (20 m 20 s): 3,231 of 3,231 passed.**
+- **Not yet:** the #938 reply on 7 and 8.
