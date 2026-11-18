@@ -116,6 +116,47 @@ Plan for pickup on another host.
   and 4). Nothing of it exists. Plan mode first: what the first version carries, where BruceParser publishes it,
   how the script reads it (a new host, a setting, what happens when it cannot be read).
 
+** The prompt for the next session on NB-3641 (parity batch 4: the page tag checks; written 2026-11-18)
+
+Not the "Batch 4" of docs/claude/brucebase.md (G6, G7, done 2026-11-13): this is the matrix row "VENUE / SONG /
+RELATION / RETAIL page tag checks" of org/bbp-parity.org. Start in =~/git/musicbrainz-userscripts/ShowAllEntityData=.
+
+#+begin_example
+Continue the BruceBaseParser parity work: matrix batch 4, the tag checks of
+venue, song, relation and retail pages (BBP's annotate*PageTags).
+
+First:
+- cat /sys/devices/system/clocksource/clocksource0/current_clocksource
+  (must print hyperv_clocksource_tsc_page since the .wslconfig change)
+- git checkout main && git pull; main must be at 9.99.1649 or later. Say
+  whether petri's test:full of 9.99.1649 is recorded (PICKUP HERE).
+- ls -la ~/git/scripts/BruceParser/bb/latest and say which mirror it is
+
+Then read, in this order:
+- org/springsteen-marriage.org, the "PICKUP HERE" section
+- org/bbp-parity.org: the matrix (the row marked 4), "Batch 3" and "The
+  help-icon check" for how the last tag findings were built, probed, decided
+- docs/claude/findings.md; docs/claude/brucebase.md on the four pageTypes
+  (bb-venue, bb-song, bb-relation, bb-retail), their heads and Tags boxes
+
+Work as in batches 1 to 3:
+- plan mode first; branch feat/bb-findings-page-tags; list every new request
+  the findings would cost and every open decision before any code
+- a Python probe over EVERY page of the four families in the mirror,
+  compared with BruceBaseParser's annotate*PageTags rules and BruceParser's
+  reports in REPORTING/, every difference explained before code; then a
+  checker that runs the SHIPPED code over the same pages and must equal it
+- a mockup first if anything visible is new
+- findings through the add-finding skill; specs from real mirror pages, a
+  mutation list (warn me before it runs), the render ratio against main in
+  one session
+- WIP changelog only, no @version; docs, DEBUG-NOTES entry with Env stamp
+- commit and push the branch; then ask me for the browser check with real
+  URLs. No merge without my word.
+
+Do not run bbp.sh. Batch 3b (the five noisy tag families) stays set aside.
+#+end_example
+
 ** The prompt for the session of 2026-11-15 (batch 3; done, kept as the model for the next one)
 
 Start the session in =~/git/musicbrainz-userscripts/ShowAllEntityData= and paste the block. The working rules that
