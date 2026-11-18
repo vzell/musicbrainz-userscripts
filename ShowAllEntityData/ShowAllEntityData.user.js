@@ -3084,7 +3084,7 @@
         },
 
         sa_findings_bb_tag_missing: {
-            label: 'Find Brucebase shows that lack a tag their page calls for',
+            label: 'Find Brucebase shows and pages that lack a tag their page calls for',
             type: 'checkbox',
             default: true,
             description: 'A show\'s page should carry its date as tags (year, month, day, weekday), the letter ' +
@@ -3094,17 +3094,25 @@
                          'the show\'s On stage page count as present; on a year table that page is read too ' +
                          '(one more request per show with a cast) while this setting is on. A show the year page marks ' +
                          'with the Help Us or the Featured icon should carry "help" or "featured": for that, a ' +
-                         'show\'s page and its window read the show\'s year page once (kept afterwards).'
+                         'show\'s page and its window read the show\'s year page once (kept afterwards). ' +
+                         'A venue, song, person or band and release page should carry its kind (venue, song, ' +
+                         'person or band, retail), its first letter (not a release), "underconstruction" with ' +
+                         'the banner, a song its title and "lyricsheet" with a lyric sheet in its Gallery: ' +
+                         'marked on its Tags card and in its preview window, no request. With this on, that ' +
+                         'page leaves out the BruceParser feed\'s first-letter mark: the page is checked as it is now.'
         },
 
         sa_findings_bb_tag_spurious: {
-            label: 'Find Brucebase shows with a date, letter, kind or premiere tag that is not expected',
+            label: 'Find Brucebase shows and pages with a tag of a checked kind that is not expected',
             type: 'checkbox',
             default: true,
             description: 'A tag of the checked families that the page does not call for: another weekday, a ' +
                          'premiere count that differs from the songs in bold, a second kind of page ("recording" ' +
                          'on a gig), "help" or "featured" without the icon. Marked on the Tags card and in the preview window, and a WARNING on the ' +
-                         'year table\'s Tags cell once ▶ Pages has read the entry.'
+                         'year table\'s Tags cell once ▶ Pages has read the entry. On a venue, song, person or ' +
+                         'band and release page: "underconstruction" without the banner, "lyricsheet" without a ' +
+                         'lyric sheet, "person" on a band (a Members tab, no Bands tab) and "band" on a person; ' +
+                         'a second letter tag is never flagged.'
         },
 
         sa_findings_tint_bb_tags: {
@@ -28218,7 +28226,10 @@
      * itself says, each part null when it cannot tell: its title as written,
      * its tags, whether its breadcrumb links a parent.
      * - no tags: dropped once the page has a tag;
-     * - first-letter: dropped once it has that tag;
+     * - first-letter: dropped once it has that tag, and on a page whose
+     *   first letter the page tag check judges itself (`letterChecked`,
+     *   `_bbFeedLetterChecked()`; parity batch 4, vzell, 2026-11-18: the
+     *   check reads the page now, the feed is the run's);
      * - no parent: dropped once the breadcrumb links a page;
      * - a date tag missing: the tags the page has now are dropped, the fact
      *   with the last; a date tag that is not the date: the tags the page no
@@ -28231,7 +28242,7 @@
      *   are dropped.
      *
      * @param {Array<Object>} facts - `_bbFeedFacts()`.
-     * @param {?{title: ?string, tags: ?string[], parent: ?boolean, images?: ?number}} live
+     * @param {?{title: ?string, tags: ?string[], parent: ?boolean, images?: ?number, letterChecked?: boolean}} live
      * @returns {Array<Object>}
      */
     function _bbFeedLiveFilter(facts, live) {
@@ -28240,7 +28251,7 @@
         const title = live.title != null ? _bbFeedTitleKey(live.title) : null;
         return facts.map((f) => {
             if (f.kind === 'no-tags') return tags && tags.length ? null : f;
-            if (f.kind === 'first-letter') return tags && tags.includes(String(f.value).toLowerCase()) ? null : f;
+            if (f.kind === 'first-letter') return live.letterChecked || (tags && tags.includes(String(f.value).toLowerCase())) ? null : f;
             if (f.kind === 'no-parent') return live.parent === true ? null : f;
             if (f.kind === 'date-missing' || f.kind === 'date-wrong') {
                 if (!tags) return f;
@@ -28343,8 +28354,10 @@
      * probe checked this rule against BruceParser's own count); each null
      * when the page does not show it.
      *
+     * `letterChecked`: `_bbFeedLetterChecked()`.
+     *
      * @param {Document} doc
-     * @returns {{title: ?string, tags: ?string[], parent: ?boolean, images: ?number}}
+     * @returns {{title: ?string, tags: ?string[], parent: ?boolean, images: ?number, letterChecked: boolean}}
      */
     function _bbFeedLiveOf(doc) {
         const titleEl = doc.getElementById('page-title');
@@ -28355,7 +28368,21 @@
             tags: tagsBox ? _bbRawTags(doc, window.location.href).map(t => t.text) : null,
             parent: crumbs ? !!crumbs.querySelector('a[href]') : null,
             images: _bbFeedPictureCount(doc),
+            letterChecked: _bbFeedLetterChecked(_bbTagFacts(doc, window.location.href)),
         };
+    }
+
+    /**
+     * Whether the page tag check judges this page's first letter itself, so
+     * the feed's "first-letter" mark is left out (parity batch 4; vzell,
+     * 2026-11-18): a venue, song or relation page it checks, with missing
+     * tags looked for.
+     *
+     * @param {?Object} facts - `_bbTagFacts()`.
+     * @returns {boolean}
+     */
+    function _bbFeedLetterChecked(facts) {
+        return !!(facts && facts.page && facts.kind !== 'retail' && _bbTagMissingOn());
     }
 
     /**
@@ -28404,6 +28431,7 @@
             title: data.bbRawTitle || data.title || null,
             tags: Array.isArray(data.tags) ? data.tags.map(t => t.text) : null,
             parent: null,
+            letterChecked: _bbFeedLetterChecked(data.bbTagFacts),
         });
     }
 
@@ -35113,9 +35141,11 @@
      *    (`bbTagFacts`: kind, date, day letter, premiere count; batch 3).
      * 34: `bbTagFacts` says whether the page itself shows the Help Us or
      *    the Featured icon (the help-icon check).
+     * 35: `bbTagFacts` for a venue, song, relation and release page too
+     *    (`_bbTagPageFacts()`, parity batch 4).
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 34;
+    const _DP_PARSER_VERSION = 35;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -37741,7 +37771,8 @@
         const t = String(tag || '').toLowerCase();
         const c = ctx || {};
         if (/^\d{4}$/.test(t) || /^\d{2}$/.test(t) || _BB_TAG_MONTHS.has(t) || _BB_TAG_DAYS.has(t)) return 'date';
-        if (/^(?:[a-z]|0-9)$/.test(t)) return 'letter';
+        // "&": the wiki's letter for a band with "&" in its name (stats:relations' tab)
+        if (/^(?:[a-z]|0-9|&)$/.test(t)) return 'letter';
         const pre = t.match(/^(tour|r|ott|lbl|pl|key|toursnip)_/);
         if (pre) return { tour: 'tour', r: 'release', ott: 'ott', lbl: 'label', pl: 'playlist', key: 'key', toursnip: 'snippet' }[pre[1]];
         // The page's own category is its kind; another category word on it
@@ -37909,6 +37940,21 @@
 
     /** The page kinds whose tags are checked: a show's. */
     const _BB_TAGCHK_KINDS = /^(?:gig|nogig|rehearsal|recording|interview)$/;
+    /**
+     * The other page kinds whose tags are checked (parity batch 4,
+     * org/bbp-parity.org; BruceBaseParser's annotate*PageTags()): a venue,
+     * a song, a person or band, a release (not its tab pages).
+     */
+    const _BB_TAGCHK_PAGE_KINDS = /^(?:venue|song|relation|retail)$/;
+    /** A release's tab page ("retail:born-to-run-credits"): no check. */
+    const _BB_TAGCHK_RETAIL_TAB = /-(?:overview|credits|addinfo|release|recgig)$/;
+    /** The tag each page kind names itself by (a relation: by its tabs). */
+    const _BB_TAGCHK_PAGE_TYPE = { venue: 'venue', song: 'song', retail: 'retail' };
+    /** Letters NFD does not split (BruceBaseParser's `NON_DECOMPOSABLE_LETTERS`). */
+    const _BB_TAGCHK_FOLD = {
+        'ø': 'o', 'Ø': 'O', 'æ': 'ae', 'Æ': 'AE', 'œ': 'oe', 'Œ': 'OE', 'ß': 'ss', 'ð': 'd', 'Ð': 'D',
+        'þ': 'th', 'Þ': 'Th', 'ł': 'l', 'Ł': 'L', 'đ': 'd', 'Đ': 'D',
+    };
     /** Month tags, January first. */
     const _BB_TAGCHK_MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august',
         'september', 'october', 'november', 'december'];
@@ -37936,6 +37982,8 @@
      * Featured icon (BruceBaseParser's `hasHelpIcon(document)`); the year
      * page's icons are not the page's to know (`_bbTagCheck()`'s `icons`).
      *
+     * A venue, song, relation or release page: `_bbTagPageFacts()` (`page: true`).
+     *
      * @returns {?{kind: string, date: string, letter: string, prem: number, help: boolean, featured: boolean}}
      */
     function _bbTagFacts(doc, url) {
@@ -37944,6 +37992,7 @@
             name = decodeURIComponent(new URL(url).pathname.replace(/^\//, '').replace(/\/.*$/, ''));
         } catch (_) { return null; }
         const m = /^([a-z]+):(.+)$/.exec(name);
+        if (m && _BB_TAGCHK_PAGE_KINDS.test(m[1])) return _bbTagPageFacts(doc, m[1], name);
         if (!m || !_BB_TAGCHK_KINDS.test(m[1])) return null;
         const dm = /^(\d{4}-\d{2}-\d{2})/.exec(_bbRawText(doc.getElementById('page-title')));
         const lm = /^\d{4}-\d{2}-\d{2}([a-z])(?:-|$)/.exec(m[2]);
@@ -37955,6 +38004,169 @@
             help: !!doc.querySelector('img.image[title="Help Us"]'),
             featured: !!doc.querySelector('img.image[title="Featured"]'),
         };
+    }
+
+    /**
+     * A string with its accents taken off (BruceBaseParser's
+     * `stripDiacritics()`): decomposed, the combining marks dropped, the
+     * letters NFD does not split mapped (`_BB_TAGCHK_FOLD`).
+     *
+     * @param {string} s
+     * @returns {string}
+     */
+    function _bbTagFold(s) {
+        return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+            .replace(/[øØæÆœŒßðÐþÞłŁđĐ]/g, c => _BB_TAGCHK_FOLD[c]);
+    }
+
+    /**
+     * The first-letter tag a page's title calls for, by BruceParser's rule
+     * (efc.sh; the wiki's stats:songs and stats:relations tabs list a page
+     * under it): lower case; a relation drops a leading "the "; a leading
+     * quote is skipped; accents are folded; a digit is "0-9"; a relation
+     * with "&" anywhere in its title is "&". '' when that leaves no a–z,
+     * "0-9" or "&", and on a release page (BruceParser checks none there:
+     * vzell, 2026-11-18, the release letter is left out).
+     *
+     * @param {string} kind  - venue, song, relation, retail.
+     * @param {string} title - The page's title as written.
+     * @returns {string}
+     */
+    function _bbTagPageLetter(kind, title) {
+        if (kind === 'retail') return '';
+        let t = String(title || '').toLowerCase();
+        if (kind === 'relation' && t.startsWith('the ')) t = t.slice(4);
+        const chars = Array.from(t);
+        let c = chars[0] || '';
+        if (c === '"' || c === '\'') c = chars[1] || '';
+        c = _bbTagFold(c).toLowerCase().charAt(0);
+        if (/^[0-9]$/.test(c)) c = '0-9';
+        if (kind === 'relation' && t.includes('&')) c = '&';
+        return /^(?:[a-z]|0-9|&)$/.test(c) ? c : '';
+    }
+
+    /**
+     * A song's own title as the tags the wiki writes it: the slug (accents
+     * folded, a–z and 0–9) of the title without a cover's "( - Artist - )",
+     * also without a last "(…)", also with "&" as "and"; each also with
+     * "song" after it ("omahasong": a song named like a place), and on a
+     * "-N" page with N after it ("angeleyes2"). The first is the one a
+     * missing tag is named by. Probe: 14 songs carry none of them, most of
+     * them a typo ("downinthewhole"); BruceBaseParser's plain slug misses 44.
+     *
+     * @param {string} title
+     * @param {string} name - The page's name ("song:angel-eyes-2").
+     * @returns {Array<string>}
+     */
+    function _bbTagSongTitleTags(title, name) {
+        const base = String(title || '').replace(/\s*\(\s*-\s.*?-\s*\)\s*$/, '');
+        const n = /-(\d)$/.exec(name);
+        const slug = s => _bbTagFold(s).toLowerCase().replace(/[^a-z0-9]/g, '');
+        const out = [];
+        for (const v of [base, base.replace(/\s*\([^)]*\)\s*$/, ''), base.replace(/&/g, 'and')]) {
+            const s = slug(v);
+            if (!s) continue;
+            for (const c of [s, `${s}song`].concat(n ? [`${s}${n[1]}`] : [])) {
+                if (!out.includes(c)) out.push(c);
+            }
+        }
+        return out;
+    }
+
+    /**
+     * What a venue, song, relation or release page says about the tags it
+     * should carry (parity batch 4; vzell, 2026-11-18). Null for a page that
+     * gets no check: one tagged "redirect", a "-N" page without tabs (it
+     * keeps another page's tags), a release's tab page.
+     *
+     * The banner: an em in #page-content saying "Under Construction"
+     * (BruceBaseParser reads only `sup em`; the wiki also writes a plain
+     * `p > em`). The lyric sheet: an image of the Gallery tab whose address
+     * says "lyricsheet" (BruceBaseParser's rule).
+     *
+     * @param {Document} doc
+     * @param {string}   kind - venue, song, relation, retail.
+     * @param {string}   name - The page's name ("venue:stone-pony-asbury-park-nj").
+     * @returns {?{page: true, kind: string, title: string, letter: string, construction: boolean,
+     *   lyricsheet: boolean, bands: boolean, members: boolean, titleTags: Array<string>}}
+     */
+    function _bbTagPageFacts(doc, kind, name) {
+        const own = Array.from(doc.querySelectorAll('div.page-tags a'), a => a.textContent.trim().toLowerCase());
+        if (own.includes('redirect')) return null;
+        if (/-[1-9]$/.test(name) && !doc.querySelector('.yui-navset')) return null;
+        if (kind === 'retail' && _BB_TAGCHK_RETAIL_TAB.test(name)) return null;
+        const titleEl = doc.getElementById('page-title');
+        const title = titleEl ? titleEl.textContent.trim() : '';
+        const labels = Array.from(doc.querySelectorAll('.yui-nav em'), em => em.textContent.trim());
+        const pc = doc.getElementById('page-content');
+        const construction = !!pc && Array.from(pc.querySelectorAll('em')).some(em => /under construction/i.test(em.textContent));
+        let lyricsheet = false;
+        if (kind === 'song') {
+            // The last tab of that name, as BruceBaseParser's buildTabMap() keeps it.
+            const gi = labels.lastIndexOf('Gallery');
+            const tab = gi >= 0 ? doc.getElementById(`wiki-tab-0-${gi}`) : null;
+            lyricsheet = !!tab && Array.from(tab.querySelectorAll('img')).some(img => /lyricsheet/i.test(img.getAttribute('src') || ''));
+        }
+        return {
+            page: true, kind, title, letter: _bbTagPageLetter(kind, title), construction, lyricsheet,
+            bands: labels.includes('Bands'), members: labels.includes('Members'),
+            titleTags: kind === 'song' ? _bbTagSongTitleTags(title, name) : [],
+        };
+    }
+
+    /**
+     * The tags a venue, song, relation or release page should carry, each
+     * with its family and why. `alts`: other spellings that count too (the
+     * song's title tag).
+     *
+     * @param {Object} facts - `_bbTagPageFacts()`.
+     * @returns {Array<{tag: string, family: string, why: string, alts?: Array<string>}>}
+     */
+    function _bbTagPageExpected(facts) {
+        const out = [];
+        const k = facts.kind;
+        if (k === 'relation') {
+            if (facts.bands) out.push({ tag: 'person', family: 'type', why: 'The page has a Bands tab: a person.' });
+            if (facts.members) out.push({ tag: 'band', family: 'type', why: 'The page has a Members tab: a band.' });
+        } else {
+            out.push({ tag: _BB_TAGCHK_PAGE_TYPE[k], family: 'type', why: `The page is a ${k === 'retail' ? 'release' : k}: its address starts with "${k}:".` });
+        }
+        if (facts.letter) {
+            const what = facts.letter === '&' ? 'The name has "&": the wiki lists such a band under "&".'
+                : facts.letter === '0-9' ? `"${facts.title}" starts with a digit: the wiki lists it under "0-9".`
+                    : `"${facts.title}" starts with "${facts.letter.toUpperCase()}": the wiki lists a page under its first letter.`;
+            out.push({ tag: facts.letter, family: 'letter', why: what });
+        }
+        if (facts.construction) out.push({ tag: 'underconstruction', family: 'construction', why: 'The page shows the Under Construction banner.' });
+        if (facts.lyricsheet) out.push({ tag: 'lyricsheet', family: 'lyricsheet', why: 'The Gallery tab has a lyric sheet.' });
+        if (facts.titleTags && facts.titleTags.length) {
+            out.push({ tag: facts.titleTags[0], family: 'title', alts: facts.titleTags.slice(1),
+                why: `The song's title as a tag (also counted: ${facts.titleTags.slice(1).join(', ')}).` });
+        }
+        return out;
+    }
+
+    /**
+     * Whether one of a venue, song, relation or release page's OWN tags is
+     * not expected, and why; null when it is fine or not checked. Never a
+     * second letter tag (vzell, 2026-11-18: the wiki lists some pages under
+     * an alternative title too), never the page's own kind tag. A relation's
+     * "person" only on a page with a Members tab and no Bands tab, "band" the
+     * other way round (BruceBaseParser calls "person" not expected on every
+     * person without a Bands tab, 1,543 pages).
+     *
+     * @param {string} tag   - Lower case.
+     * @param {Object} facts - `_bbTagPageFacts()`.
+     * @returns {?{family: string, why: string}}
+     */
+    function _bbTagPageSpurious(tag, facts) {
+        if (tag === 'underconstruction' && !facts.construction) return { family: 'construction', why: 'The page shows no Under Construction banner.' };
+        if (facts.kind === 'song' && tag === 'lyricsheet' && !facts.lyricsheet) return { family: 'lyricsheet', why: 'The Gallery tab has no lyric sheet.' };
+        if (facts.kind === 'relation') {
+            if (tag === 'person' && facts.members && !facts.bands) return { family: 'type', why: 'The page has a Members tab and no Bands tab: a band.' };
+            if (tag === 'band' && facts.bands && !facts.members) return { family: 'type', why: 'The page has a Bands tab and no Members tab: a person.' };
+        }
+        return null;
     }
 
     /**
@@ -38046,6 +38258,9 @@
      * is then missing only for the page's own icon, and "help" or
      * "featured" is never called not expected.
      *
+     * A venue, song, relation or release page (`facts.page`, parity batch
+     * 4): `_bbTagPageExpected()` and `_bbTagPageSpurious()`; no icons.
+     *
      * @param {?Object} facts - `_bbTagFacts()`; null gives no finding.
      * @param {Array<string>} own - The page's own tags, lower case.
      * @param {Iterable<string>} [more] - The tags of its other pages, lower case.
@@ -38057,6 +38272,19 @@
         if (!facts) return res;
         const all = new Set(own);
         for (const t of more || []) all.add(t);
+        if (facts.page) {
+            // A venue, song, relation or release page (parity batch 4).
+            for (const e of _bbTagPageExpected(facts)) {
+                if (!_bbTagPresent(e.tag, all) && !(e.alts || []).some(a => all.has(a))) res.missing.push(e);
+            }
+            const seen = new Set();
+            for (const tag of own) {
+                const s = seen.has(tag) ? null : _bbTagPageSpurious(tag, facts);
+                seen.add(tag);
+                if (s) res.spurious.push({ tag, family: s.family, why: s.why });
+            }
+            return res;
+        }
         const expected = _bbTagExpected(facts);
         for (const [tag, name] of _BB_TAGCHK_ICONS) {
             const year = !!(icons && icons[tag]);
@@ -38381,7 +38609,11 @@
     }
 
     /** The Tags card's row (`_BB_TAG_FAMILIES` key) a missing tag of a checked family is drawn in. */
-    const _BB_TAGCHK_ROW = { date: 'date', letter: 'letter', type: 'category', prem: 'material', icon: 'material' };
+    const _BB_TAGCHK_ROW = {
+        date: 'date', letter: 'letter', type: 'category', prem: 'material', icon: 'material',
+        // Parity batch 4: where the same tag sits when the page has it.
+        construction: 'other', lyricsheet: 'other', title: 'other',
+    };
 
     /**
      * Whether a show's missing tags are looked for (`sa_findings_bb_tag_missing`).
@@ -38417,7 +38649,8 @@
      * @param {?{help: boolean, featured: boolean}} [icons] - The show's icons on its year page, from a
      *   caller that has them (the year table's row); left out: what `_bbTagIconsStart()` read
      *   for the record (the Tags card, the window), null while that is not known.
-     * @returns {?{missing: Array<Object>, spurious: Array<Object>, wait: string}} Null: not a show, or both findings off.
+     * @returns {?{missing: Array<Object>, spurious: Array<Object>, wait: string, ok: string}} Null: not a
+     *   show or a checked page (`_bbTagFacts()` null), or both findings off. `ok`: `_bbTagOkText()`.
      */
     function _bbTagFindings(tags, info, facts, icons) {
         if (!facts || (!_bbTagMissingOn() && !_bbTagSpuriousOn())) return null;
@@ -38434,8 +38667,26 @@
         return {
             missing: known && _bbTagMissingOn() ? res.missing : [],
             spurious: _bbTagSpuriousOn() ? res.spurious : [],
-            wait: known || !_bbTagMissingOn() ? '' : 'A missing tag is not looked for: not every page that keeps this show\'s tags is read.',
+            wait: known || !_bbTagMissingOn() ? '' : `A missing tag is not looked for: not every page that keeps this ${facts.page ? 'page' : 'show'}'s tags is read.`,
+            ok: _bbTagOkText(facts),
         };
+    }
+
+    /**
+     * What "as expected" covers, in words, for the kind of page checked.
+     *
+     * @param {Object} facts - `_bbTagFacts()`.
+     * @returns {string} "✓ date, letter, … tags as expected".
+     */
+    function _bbTagOkText(facts) {
+        if (!facts.page) return '✓ date, letter, kind, premiere and icon tags as expected';
+        const what = {
+            venue: 'kind, first-letter and construction',
+            song: 'kind, first-letter, title, lyric-sheet and construction',
+            relation: 'person/band, first-letter and construction',
+            retail: 'kind and construction',
+        }[facts.kind];
+        return `✓ ${what} tags as expected`;
     }
 
     /** @type {Map<string, {state: string, icons: ?Object}>} A show's icons on its year page, by the record's name (`_bbTagIconsStart()`). */
@@ -38471,7 +38722,8 @@
      * @returns {void}
      */
     function _bbTagIconsStart(info, facts, wanted = () => true) {
-        if (!info || !facts || (!_bbTagMissingOn() && !_bbTagSpuriousOn())) return;
+        // A venue, song, relation or release page has no year page (batch 4).
+        if (!info || !facts || facts.page || (!_bbTagMissingOn() && !_bbTagSpuriousOn())) return;
         const yearUrl = _bbTagYearUrl(facts.date);
         const cur = _bbTagIcons.get(info.name);
         if (!yearUrl || (cur && cur.state !== 'failed')) return;
@@ -38504,7 +38756,7 @@
         const esc = _mbttEscape;
         const n = find.missing.length + find.spurious.length;
         let head = find.wait ? `<div class="mb-cbx-wait">${esc(find.wait)}</div>` : '';
-        if (!n && !find.wait) head = '<div class="mb-cbx-pill-ok">✓ date, letter, kind, premiere and icon tags as expected</div>';
+        if (!n && !find.wait) head = `<div class="mb-cbx-pill-ok">${esc(find.ok || '✓ tags as expected')}</div>`;
         const line = (cls, glyph, x, text) => `<div class="${cls}"><b>${glyph} ${esc(x.tag)}</b> ${text}${x.why ? ` <span class="mb-cbx-why">${esc(x.why)}</span>` : ''}</div>`;
         const foot = n ? '<div class="mb-cbx-finds">' +
             find.missing.map(x => line('mb-cbx-find-e', '❌', x, 'is expected and missing.')).join('') +
@@ -41849,8 +42101,9 @@
         // show's /onstage: page, a full page's -2): read on a press or on
         // Space, never here (`_bbTagPagesStart()`).
         data.bbTagInfo = _bbTagInfo(doc, url, data.tags);
-        // What a show's page says about the tags it should carry (batch 3;
-        // null for any other page): checked where the tags are drawn.
+        // What a show's page says about the tags it should carry (batch 3),
+        // or a venue's, song's, relation's or release's (batch 4); null for
+        // any other page: checked where the tags are drawn.
         data.bbTagFacts = _bbTagFacts(doc, url);
         const sec = _bbTagsSection(data.tags);
         // `bbTags`: the window draws this section at every paint, with the

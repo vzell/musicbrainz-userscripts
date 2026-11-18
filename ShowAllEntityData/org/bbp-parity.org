@@ -38,7 +38,7 @@ State: DONE (SAED has it), PART, TODO, NOT (not ported, with the reason).
 | Expected tags: setlist songs                                                 | =checkSetlistSongTags=, =computeSongTagAlias=   | 1,114 shows as it is (the initials rule): to tune                                     | TODO  |    3b |
 | Spurious tags (present, not expected)                                        | =SPURIOUS_TAG_REASONS=                          | =bb-tag-spurious= for the four families; tour and content tags with 3b                | PART  |     3 |
 | Tag source highlight (which text made a tag expected)                        | doc/TAGS.md, opt-in                             | each finding says its reason in words (chip card, cell hover); no highlight on the page | PART  |     3 |
-| VENUE / SONG / RELATION / RETAIL page tag checks                             | =annotate*PageTags=                             | findings on bb-venue, bb-song, bb-relation, bb-retail heads                           | TODO  |     4 |
+| VENUE / SONG / RELATION / RETAIL page tag checks                             | =annotate*PageTags=                             | Tags card + window: kind, letter, banner, song title; dates/place/names left out      | PART  |     4 |
 | Help-icon tag check                                                          | =hasHelpIcon=                                   | the icon family of =bb-tag-missing= / =bb-tag-spurious= (Help Us and Featured)        | DONE  |     4 |
 | HOME page: fetch every year, mismatch filter                                 | doc/HOME_PAGE.md                                | bb-home + the findings above                                                          | PART  |     — |
 | ⇄ Original Page toggle                                                       | every page                                      | the wiki's page folded under "Brucebase page"                                         | DONE  |     — |
@@ -666,3 +666,82 @@ Env: 2026-11-18T17:09+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.58.1) 
 
 Unverified: all of it live (the events and counts are BruceParser's run of 2026-11-15; an event corrected on
 MusicBrainz since keeps its mark until the next run).
+
+* Batch 4: the page tag checks (=feat/bb-findings-page-tags=, 2026-11-18)
+
+Env: 2026-11-18T22:21:11+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · probe:
+Python over the mirror bb/2026-11-15 (NB-3641's own run), n/a; oracle, checker, spec: Playwright 1.62.1 Chromium, no
+Tampermonkey (GM stubs)
+
+The matrix row "VENUE / SONG / RELATION / RETAIL page tag checks": BruceBaseParser's =annotate*PageTags()=. Not the
+"Batch 4" of =docs/claude/brucebase.md= (G6, G7). The plan is =~/.claude/plans/act-on-the-synchronous-robin.md=
+(NB-3641 only); this section is the record. Details: =docs/claude/brucebase.md=, "The tag checks of venue, song,
+relation and release pages".
+
+*Decisions (vzell, 2026-11-18, all as recommended):*
+1. *Scope:* venue, song and relation pages and the 213 release MAIN pages; release tab pages and playlists counted only.
+2. *The feed:* on these pages, while missing tags are looked for, the head drops the feed's first-letter mark; its
+   no-tags mark stays. (Built for the window's title too: it draws the same check.)
+3. *Mockup:* only for a new element; none was needed (the chips, pills and words of batch 3).
+4. *Families:* the core (the kind tag, BruceParser's first letter, the banner, "lyricsheet") and the song's title tag.
+   Left out: a release's dates and letter, a venue's place tags, a relation's name and band tags.
+5. *A second letter tag:* never flagged.
+6. *Relations:* "person" with a Bands tab, "band" with a Members tab; "not expected" only against the other tab.
+7. *Settings:* the two tag switches cover these pages too, reworded; no default changed.
+
+*The probe* (=scripts/probe-bb-page-tags.py=, three readings per page: BruceBaseParser's, SAED's of BruceBaseParser's
+rule, the shipped rule):
+
+| Kind     | Pages | BruceBaseParser's rule flags                                         | Shipped rule flags                                      |
+|----------+-------+----------------------------------------------------------------------+---------------------------------------------------------|
+| venue    | 2,168 | 377 (place 369, kind 8, letter 1, second letter 2)                   | 10 (kind 8, letter 2)                                   |
+| song     | 1,685 | 62 (title 44, letter 4, kind 2, second letter 11, lyricsheet 1)      | 20 (title 14, letter 4, kind 1, lyricsheet 1)           |
+| relation | 2,924 | 1,875 (person 1,543 spurious, names 312, letter 45, kind 1, band 11) | 4 (letter 4, kind 1; three of them have no tags at all) |
+| retail   | 213   | 95 (letter 52, dates 26 / 37, kind 4, banner 5, second letter 7)     | 7 (kind 4, banner 3)                                    |
+
+- *Against BruceParser:* its first-letter report (venue 2, song 4, relation 1) is its rule as re-run here, and the
+  shipped letter's (plus the three relation pages with no tags, which BruceParser reports as having no tag at all).
+- *Against BruceBaseParser's own code* (=scripts/check-bbp-page-tag-oracle.js ROWS.json=): 0 of 6,990 pages differ;
+  planted errors are reported.
+- *The shipped code* (=scripts/check-bb-page-tag-findings.js ROWS.json=): 0 of 6,990 pages differ; 41 flagged, 7 not
+  checked (a redirect song, five redirect relations, one continuation release).
+- *Where BruceBaseParser is wrong about the wiki:* =person= on people without a Bands tab; no letter for a digit or
+  "&"; the banner as =p > em= (=retail:j-a-m-86=); a cover's title slug; the release dates (one of several tagged,
+  37 lines it cannot parse); the plain =Set.has()= on a day ("8" against "08").
+
+*Built:* =_bbTagPageFacts()=, =_bbTagPageExpected()=, =_bbTagPageSpurious()=, =_bbTagPageLetter()=,
+=_bbTagSongTitleTags()=, =_bbTagOkText()=, =_bbFeedLetterChecked()=; =_DP_PARSER_VERSION= 35; "&" in the Letter row.
+
+*Tests* (NB-3641, 2026-11-18): =bb-findings-page-tags.spec.js= 15 on 18 real mirror pages; one batch 3 assertion
+changed (a =venue:= address gets a page's facts now); 25 mutations as recorded (24 fail their test, 1 passes with the
+reason), three older finds rewritten and re-run (each fails its test); every =bb-*= spec 455 (454 before the batch 3
+assertion was changed). Render branch / main 1.00–1.10, the ranges overlapping (=tests/MEASUREMENTS.org=). Lint within
+the baseline. =npm run test:full= at =51c1d8e6=: 22:50:24–23:13:14 CET, 3,273 of 3,274 passed; the one failure,
+=filter-sliced.spec.js= "a pass replaced by the ✕ clear writes nothing" (a MusicBrainz typing-filter timing test,
+42 of 42 alone, three times each), is on no path this branch touches. Not run a second time.
+
+** The browser check of batch 4, for vzell (pages of the mirror of 2026-11-15; unverified on the live wiki)
+
+Install the script from the branch =feat/bb-findings-page-tags=. Every stored preview is read once more (the reader
+changed). The feed's mark rows need a kept feed (any Brucebase press reads it).
+
+| Page                                                                                | Step                                                                                         | Expected                                                                                                    |
+|-------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------|
+| https://brucebase.wikidot.com/venue:unknown-location-bayonne-nj                     | Show the venue                                                                               | Tags card: "u missing" red and dashed in the Letter row, ❌ 1 missing; NO ⚠️ Ⓐ after the byline              |
+| the same page                                                                       | ⚙️ Settings → ⚠️ Findings: "… shows and pages that lack a tag …" off, reload, Show the venue | no mark, "✓ kind, first-letter and construction tags as expected"; the feed's ⚠️ Ⓐ is back after the byline |
+| https://brucebase.wikidot.com/venue:ball-arena-denver-co                            | Show the venue                                                                               | "venue missing" in the Category row                                                                         |
+| https://brucebase.wikidot.com/venue:stone-pony-asbury-park-nj                       | Show the venue                                                                               | "✓ kind, first-letter and construction tags as expected"                                                    |
+| https://brucebase.wikidot.com/song:we-are-the-world                                 | Show the song                                                                                | "lyricsheet" amber with ⚠️, ⚠️ 1 not expected, "The Gallery tab has no lyric sheet."                        |
+| https://brucebase.wikidot.com/song:dinner-at-eight                                  | Show the song                                                                                | "d missing"                                                                                                 |
+| https://brucebase.wikidot.com/stats:songs-d                                         | Ctrl+hover "Down In The Hole", Space                                                         | the window's Tags: "downinthehole missing" (the page is tagged "downinthewhole")                            |
+| https://brucebase.wikidot.com/stats:relations                                       | the M tab: Ctrl+hover "DeMartin, Rob", Space                                                 | the window's Tags: "d missing"; no ⚠️ Ⓐ after the window's title                                            |
+| https://brucebase.wikidot.com/relation:usa-for-africa                               | Show the person                                                                              | one request (its "-2"), then "✓ person/band, first-letter and construction tags as expected"                |
+| https://brucebase.wikidot.com/relation:bob-seger-the-silver-bullet-band             | Show the person                                                                              | "&" in the Letter row, "✓ … as expected"                                                                    |
+| https://brucebase.wikidot.com/retail:rescue                                         | Show the release                                                                             | "retail missing" in the Category row                                                                        |
+| https://brucebase.wikidot.com/stats:awards-grammy-2026                              | Ctrl+hover "Tracks II", Space                                                                | the window's Tags: "underconstruction" amber with ⚠️ (no banner on the page)                                |
+| https://brucebase.wikidot.com/retail:born-to-run-credits                            | Ctrl+hover any link to it, Space (or open it)                                                | no pill, no ✓ line: a release's tab page is not checked                                                     |
+| https://brucebase.wikidot.com/gig:2016-05-21-estadio-santiago-bernabeu-madrid-spain | Show the event                                                                               | as before: "3 missing", "2" not expected, "✓"-line wording of a show unchanged                              |
+
+Unverified: all of it on the live site (the pages are the mirror's of 2026-11-15; Claude made no request to the wiki).
+Not checked here whether each page shows its button: =retail:tracks-ii= shows none in the fixture run, so its row
+uses the window.

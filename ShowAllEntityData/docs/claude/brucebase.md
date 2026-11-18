@@ -2216,6 +2216,79 @@ real (`scripts/build-bb-findings-batch3-fixtures.py`); the test hook
 `scripts/mutations/bb-findings-batch3.json`. `bb-onstage-tags.spec.js`
 runs with the tag check off: it counts the chips of the tags the pages have.
 
+### The tag checks of venue, song, relation and release pages (parity batch 4, 2026-11-18)
+
+org/bbp-parity.org, "Batch 4: the page tag checks" (matrix row "VENUE /
+SONG / RELATION / RETAIL page tag checks"); BruceBaseParser's
+`annotate{Venue,Song,Relation,Retail}PageTags()`; vzell's decisions of
+2026-11-18. The same two findings and the same drawing as a show's: marks
+on the head's Tags card and in the preview window (`_bbTagBoxSet()`), no
+registry row, no table column (these pages are no row of any list).
+
+- **Where:** `_bbTagFacts()` sends `venue:`, `song:`, `relation:` and
+  `retail:` pages to `_bbTagPageFacts()` (`page: true`); `_bbTagCheck()`
+  then uses `_bbTagPageExpected()` and `_bbTagPageSpurious()`. No check
+  (facts null) for a page tagged `redirect`, a "-N" page without tabs
+  (it keeps another page's tags: `relation:usa-for-africa-2`) and a
+  release's tab page (`-overview`, `-credits`, `-addinfo`, `-release`,
+  `-recgig`: 855 of the 1,068 retail pages). Playlist pages go through
+  bb-retail but are not checked.
+- **Families**, each judged on the page and its "-N" siblings (the same
+  read and the same wait as a show's, `_bbTagPagesStart()`):
+  - `type`: `venue` / `song` / `retail`; a relation's `person` with a
+    Bands tab, `band` with a Members tab. "Not expected" only against
+    the OTHER tab: BruceBaseParser calls `person` spurious on every
+    person without a Bands tab (1,543 pages).
+  - `letter`, missing only, by BRUCEPARSER's rule (`_bbTagPageLetter()`,
+    efc.sh): a digit is `0-9`, a relation drops a leading "The " and a
+    band with "&" is `&`, a leading quote is skipped, accents folded.
+    BruceBaseParser checks no digit and no "&", and only on a relation
+    with a Bands or Members tab. A second letter tag (11 songs, 7
+    releases, 1 venue: "I Can't Get No Satisfaction" also under s) is
+    never flagged. No letter on a release (52 of 213 lack one: not the
+    wiki's rule; BruceParser does not check them either).
+  - `construction`: `underconstruction` against the banner, any `em` in
+    `#page-content` saying "Under Construction" (BruceBaseParser reads
+    `sup em` only; `retail:j-a-m-86` writes `p > em`).
+  - `lyricsheet` (a song): against an image of the Gallery tab whose
+    address says "lyricsheet" (BruceBaseParser's rule).
+  - `title` (a song): its own title as a tag, any of the wiki's
+    spellings (`_bbTagSongTitleTags()`: a cover's "( - Artist - )" left
+    out, also without a last "(…)", "&" as "and", each also with "song"
+    after it and with the page's number on a "-N" page). Missing only.
+    BruceBaseParser's plain slug misses on 44 songs, this on 14.
+  - Left out (vzell: noisy, like batch 3b): a release's dates (the wiki
+    often tags one of several), a venue's place tags (369 pages), a
+    relation's name and band tags (310 pages).
+- **The feed's first-letter mark** is left out on the head and in the
+  window of a page the check judges (`_bbFeedLetterChecked()`, the
+  `letterChecked` of `_bbFeedLiveFilter()`'s `live`), while missing tags
+  are looked for: the check reads the page as it is now, the feed is the
+  run's. The `no-tags` mark stays (a page with no tags has no Tags card
+  at all).
+- **"As expected"** names what was checked, per kind (`_bbTagOkText()`).
+  `_bbTagIconsStart()` never starts for a page (no year page). `&` is a
+  tag of the Letter row now (`_bbTagFamily()`). `_DP_PARSER_VERSION` 35.
+- **Counts** (probe `scripts/probe-bb-page-tags.py`, mirror bb/2026-11-15,
+  2,168 venue, 1,685 song, 2,924 relation and 213 release pages; Env:
+  2026-11-18T22:21+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux
+  6.18.58.1-microsoft-standard-WSL2) · Python, n/a): 41 pages flagged:
+  venue 10 (`venue` 8, letter 2), song 20 (`song` 1, letter 4, title 14,
+  `lyricsheet` 1 not expected), relation 4 (letter 4, `person` 1; three of
+  them have no tags at all), release 7 (`retail` 4, `underconstruction` 3
+  not expected); 7 pages get no check. The letter equals BruceParser's
+  report (venue 2, song 4, relation 1) but for the three tagless pages it
+  leaves out. BruceBaseParser's own functions
+  (`scripts/check-bbp-page-tag-oracle.js`) differ from the probe's port of
+  them on 0 of 6,990 pages; the shipped check
+  (`scripts/check-bb-page-tag-findings.js`) differs from the probe's
+  shipped rule on 0.
+- Tests: `tests/fixtures/bb-findings-page-tags.spec.js` on 18 real mirror
+  pages (`scripts/build-bb-findings-page-tags-fixtures.py`); mutations
+  `scripts/mutations/bb-findings-page-tags.json`. `retail:tracks-ii` has
+  no "Show the release" button (its page has no table to show): its mark
+  is tested in the window.
+
 ## The BruceParser feed (bbp-parity, "The feed, version 1", 2026-11-16)
 
 Env: 2026-11-16T11:53:49+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux

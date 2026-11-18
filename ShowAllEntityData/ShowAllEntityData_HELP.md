@@ -4380,6 +4380,21 @@ site) show those tags too:
   as expected. For the Help Us and Featured icons, which are on the
   year page, the show's year page is read once at the press (or Space
   in the window) and kept. Switches: ⚙️ Settings → ⚠️ Findings.
+- **The tag check on venue, song, person, band and release pages:** the
+  same marks on their Tags card and in their window, with nothing more
+  read. Checked: the page's kind ("venue", "song", "retail"; "person" with
+  a Bands tab, "band" with a Members tab), its first letter as the wiki's
+  letter tabs list it ("0-9" for a digit, "&" for a band with "&", a
+  leading "The" left out on a person or band; not on a release), and
+  "underconstruction" with the Under Construction banner. A song also
+  needs its title as a tag (any of the wiki's spellings: "omahasong",
+  "angeleyes2", "devilsanddust") and "lyricsheet" with a lyric sheet in its
+  Gallery. A second letter tag is never flagged: the wiki lists some pages
+  under an alternative title too. Not checked: a page tagged "redirect",
+  a release's tab pages (Credits, Overview, …), playlists. While missing
+  tags are looked for, these pages leave out the BruceParser feed's
+  first-letter mark after the byline: the check reads the page as it is
+  now.
 - **A title with two blanks** (or a blank before a comma) gets a ⚠️ after
   the show page's byline and after the window's title; its hover text
   shows the title with ␣ where the blanks are.

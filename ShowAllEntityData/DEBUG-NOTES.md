@@ -30356,3 +30356,35 @@ Env: 2026-11-18T20:58–21:15+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6
     step was wrong (a page reload was needed before it). The hold path is covered by the specs and was checked in
     the browser before this branch (`a021f32d`, above); its code here changed only in which clock it reads.
 - **Not yet:** majkinetor's answer to the two questions on #938.
+
+## 2026-11-18 — Brucebase page tag checks: BruceBaseParser's rules against the wiki (feat/bb-findings-page-tags)
+Env: 2026-11-18T22:21:11+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · probe: Python over the mirror bb/2026-11-15 (local, NB-3641's run), n/a; the oracle and the checker: Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+Parity batch 4 (org/bbp-parity.org, "Batch 4: the page tag checks"). `scripts/probe-bb-page-tags.py` ports
+BruceBaseParser's `annotate{Venue,Song,Relation,Retail}PageTags()` and ran them over every page of the four kinds
+(2,168 venue, 1,685 song, 2,924 relation, 213 release main pages; 855 release tab pages and 132 playlists counted
+only). `scripts/check-bbp-page-tag-oracle.js` runs BruceBaseParser's OWN functions on the same pages: 0 of 6,990
+differ (it reports planted errors). What its rules say about the wiki:
+- **Relations:** it expects `person` only with a Bands tab, so 1,543 people without one have a "spurious" `person`.
+  Its letter (surname's, or a band's) is checked only with a Bands or Members tab, and a band with "&" (the wiki
+  lists it under "&", BruceParser's rule) gets a "missing" first letter: 45 bands. Its name and band tags: 310 pages.
+- **Releases:** the first letter is missing on 52 of 213 (BruceParser does not check releases; not the wiki's rule).
+  The dates: 37 release lines do not parse ("April, 1981", "Commercially Released*:", "Tracks commercially
+  released:"), and the wiki often tags one of several dates. The banner: `retail:j-a-m-86` writes it as `p > em`,
+  which `hasUnderConstructionBanner()` (`sup em` only) misses, so its tag is "spurious".
+- **Songs:** the plain title slug misses on 44 (covers "( - Artist - )", "omahasong", "angeleyes2"); with the
+  wiki's spellings 14 remain, most of them typos ("downinthewhole", "uponvripplecreek", "chickenlipsamdlizardhips").
+  11 songs carry a second letter tag on purpose ("I Can't Get No Satisfaction" also under s).
+- **Venues:** the place tags miss on 369 pages.
+- BruceParser's first-letter report (`MISSING-first-character-tag-in-title_<kind>.txt`: venue 2, song 4, relation
+  1) equals BruceParser's rule as re-run, and the shipped letter; the shipped letter adds the three relation pages
+  with no tags at all, which BruceParser reports as "doesn't have ANY tag".
+
+Shipped on vzell's word (kind, BruceParser's letter, the banner either way, lyricsheet, the song title; never a
+second letter; person/band by the tabs both ways): 41 pages flagged, 7 skipped (a redirect, a "-N" continuation, a
+tab page). `scripts/check-bb-page-tag-findings.js`: the shipped code against the probe, 0 of 6,990 differ. The
+fixture run found that `retail:tracks-ii` shows no "Show the release" button (its tag is tested in the window).
+- **`npm run test:full` at `51c1d8e6`, 22:50:24–23:13:14 CET (22 m 50 s): 3,273 of 3,274 passed.** The failure:
+  `filter-sliced.spec.js` "a pass replaced by the ✕ clear writes nothing" (tbody writes 42, expected 0), a timing
+  test of the MusicBrainz typing filter; alone 42 of 42 (`--repeat-each 3`), as the same spec family before (entry
+  above, `filter-sliced` "a pass outdated by a newer key never draws"). Nothing of this branch is on that path.

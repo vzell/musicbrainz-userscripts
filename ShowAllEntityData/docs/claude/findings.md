@@ -480,6 +480,12 @@ tags". What this file must record:
   The row's icons are on the Event cell's carrier
   (`data-mb-bb-icons`; `_bbEvpIcons()`), so the Tags cell's findings
   depend on another cell's carrier of the same row.
+- **Venue, song, relation and release pages** (parity batch 4,
+  2026-11-18): the same two findings on those pages' Tags card and
+  window only (`_bbTagPageFacts()`, `facts.page`) — no registry row, no
+  menu, no cell: these pages are no row of any list. Families and counts:
+  docs/claude/brucebase.md, "The tag checks of venue, song, relation and
+  release pages". Spec `tests/fixtures/bb-findings-page-tags.spec.js`.
 - Settings: `sa_findings_bb_tag_missing`, `sa_findings_bb_tag_spurious`;
   tint `sa_findings_tint_bb_tags`.
 - Spec `tests/fixtures/bb-findings-batch3.spec.js`; mutations
