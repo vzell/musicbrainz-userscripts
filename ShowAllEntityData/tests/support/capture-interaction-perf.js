@@ -262,6 +262,7 @@ function parseArgs(argv) {
     const samples = samplesArg ? parseInt(samplesArg.slice('--samples='.length), 10) : DEFAULT_SAMPLES;
     const onlyArg = argv.find((a) => a.startsWith('--only='));
     const delaysArg = argv.find((a) => a.startsWith('--typing-delays='));
+    const bbFeedArg = argv.find((a) => a.startsWith('--bb-feed='));
     const delays = delaysArg
         ? delaysArg.slice('--typing-delays='.length).split(',').map((s) => parseInt(s, 10)).filter((n) => Number.isFinite(n) && n >= 0)
         : DEFAULT_TYPING_DELAYS;
@@ -273,8 +274,38 @@ function parseArgs(argv) {
         samples: Number.isFinite(samples) && samples > 0 ? samples : DEFAULT_SAMPLES,
         only: onlyArg ? onlyArg.slice('--only='.length) : null,
         typingDelays: delays.length ? delays : DEFAULT_TYPING_DELAYS,
+        bbFeed: bbFeedArg ? bbFeedArg.slice('--bb-feed='.length) : null,
     };
 }
+
+/**
+ * `--bb-feed=<path>`: a BruceParser feed file (format 1) kept as if read a
+ * minute before the load, with `sa_bb_feed` and `sa_bb_feed_mb` on, so the
+ * Brucebase feed's MusicBrainz findings (feed 1.3, feed v2 branch 3) run on
+ * the page's Event cells in every bracket. Fresh and with every map this
+ * script reads, so no read of the feed starts during a sample (and a disk
+ * load presses nothing). A script without feed 1.3 (a `main` arm from before
+ * it) ignores the keys, which makes the pair the feature's cost.
+ *
+ * @param {string} file
+ * @returns {Object<string, *>} The GM values to seed.
+ */
+function bbFeedSeed(file) {
+    const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+    return {
+        sa_bb_feed: true,
+        sa_bb_feed_mb: true,
+        mb_sa_bb_feed: { at: Date.now() - 60 * 1000, data, err: '', errAt: 0 },
+    };
+}
+
+/**
+ * How many Event cells carry a feed 1.3 finding after the first load of a
+ * `--bb-feed=` run (null before it, or without the option): recorded, so an
+ * arm whose marks never drew is told apart from a cheap one.
+ * @type {?number}
+ */
+let BB_FEED_MARKS = null;
 
 /**
  * Key delays for `--only=typed`, in ms. 150 is quicker than the filter
@@ -447,6 +478,10 @@ async function loadPage(browser, config) {
     // master toggle reading "expanded", so a per-table metric's target is a
     // 0x0 element Playwright will never click. See that helper's own JSDoc.
     if (config.tableMode === 'multi') await ensureSubTableVisible(page, config.subTableIndex);
+    if (config.bbFeed && BB_FEED_MARKS === null) {
+        BB_FEED_MARKS = await page.evaluate(() => document.querySelectorAll('td[data-mb-findings*="bb-mb-"]').length);
+        console.log(`  --bb-feed: ${BB_FEED_MARKS} Event cell(s) marked by the feed on the first load`);
+    }
     // A seeded arm that fetches anything is not measuring what it claims: every
     // request carries a 1100 ms queue gap, so even a handful of them put real
     // network latency inside the brackets that follow. Fail the run rather than
@@ -935,7 +970,7 @@ async function runTyped(browser, config, delays) {
 }
 
 (async () => {
-    const { pageType, label, arm, relArm, samples, only, typingDelays } = parseArgs(process.argv.slice(2));
+    const { pageType, label, arm, relArm, samples, only, typingDelays, bbFeed } = parseArgs(process.argv.slice(2));
     if (only && only !== 'typed') {
         console.error(`--only=${only}: the only supported value is "typed".`);
         process.exit(1);
@@ -977,6 +1012,7 @@ async function runTyped(browser, config, delays) {
         config = { ...config, relSeedPath: seedPath };
     }
     if (relArm) config = { ...config, relArm };
+    if (bbFeed) config = { ...config, bbFeed, seedGmValues: { ...config.seedGmValues, ...bbFeedSeed(bbFeed) } };
 
     const branch = readCurrentBranch();
     // Both arms can be active at once, so the name carries whichever are set
@@ -989,6 +1025,7 @@ async function runTyped(browser, config, delays) {
         // A typed run measures different things than a full run, so it must
         // never land on (or be read as) a full run's file.
         only === 'typed' ? 'typed' : null,
+        bbFeed ? 'bbfeed' : null,
     ].filter(Boolean).join('-');
     const outName = label || (armSuffix ? `${branch}-${armSuffix}` : branch);
     const startedAt = new Date();
@@ -1037,7 +1074,11 @@ async function runTyped(browser, config, delays) {
             // is a number with no denominator.
             relIconsRendered,
             relSettleMs,
-            seedGmValues: { ...PREVIEWS_OFF, ...config.seedGmValues },
+            // The kept feed is the file named in bbFeed, not copied here (1.5 MB).
+            seedGmValues: Object.fromEntries(Object.entries({ ...PREVIEWS_OFF, ...config.seedGmValues })
+                .map(([k, v]) => [k, k === 'mb_sa_bb_feed' ? `(the file ${bbFeed})` : v])),
+            bbFeed: bbFeed || null,
+            bbFeedMarks: BB_FEED_MARKS,
             branch: outName,
             gitBranch: branch,
             capturedAt,
