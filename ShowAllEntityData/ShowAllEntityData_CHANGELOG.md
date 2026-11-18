@@ -4,9 +4,17 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1818 versions; the month pages hold all of them.
+This page shows the newest 100 of 1819 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1648 — 2026-11-18
+
+**🐛 Fix**
+
+- Brucebase date windows read a show's year-page entry as the year table does. The year page's note on a setlist ("Incomplete setlist.", "Setlist may be incorrect or out of order.") was read as part of the last song, and "No set details known." as a one-song setlist (951 songs across the year pages): the note is now a line of its own under the songs, and an entry with only that note shows no song.
+- An entry whose first paragraph is a description rather than a setlist (2016-10-03 Barnes & Noble) no longer shows it as a one-song setlist (275 such songs), and an entry whose description is plain paragraphs rather than a box (1985-03-31, QE II Jubilee Sports Centre) now has its Notes in the window: 4,838 of 5,017 shows have a description there, 2,212 before. A soundcheck is a group of its own. Year pages read before are read once more.
+
 
 ## 9.99.1647 — 2026-11-18
 
@@ -885,15 +893,6 @@ This page shows the newest 100 of 1818 versions; the month pages hold all of the
 **🔧 Refactor**
 
 - springsteenlyrics.com previews: a page read while logged in and one read logged out are no longer one cache entry. Each record notes the login state it was read in, and a record of the other state is read again.
-
-
-## 9.99.1548 — 2026-11-04
-
-**🐛 Fix**
-
-- springsteenlyrics.com: the preview of a CD or vinyl bootleg (brucelegs.php?item=…) said "The page has no tracklist." It now shows the tracklist, with the lengths the page gives, the runout etchings and the release info.
-- springsteenlyrics.com: the preview of a box set with "Record 2: …" headers (the Born In The U.S.A. 12" Single Collection) showed record 1 only; the other records ended up in the notes.
-- springsteenlyrics.com: artwork in a preview carries the page's own captions ("front", "booklet p2,3").
 
 
 ---
