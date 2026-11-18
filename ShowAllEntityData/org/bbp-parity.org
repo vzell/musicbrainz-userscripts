@@ -636,7 +636,10 @@ Mockup: https://claude.ai/artifact/Tip5CShMevQp8ycqBjjnRZ (=debug/bb-feed-mb-moc
 - *The probe* (part 6) and *the checker* (part 5): all 4,180 events, 197 / 18 / 1 both, no difference.
 - *Tests* (NB-3641, 2026-11-18): =bb-feed.spec.js= 36 (8 new); 8 new mutations, each failing its test; one older find
   rewritten. =test:full= at =a57c1982=: 02:24:28–02:46:14 CET, 3,247 passed, 0 failed.
-- *Not measured yet:* render and filter on =artist-events= with a feed kept (the perf harness runs with the feed off).
+- *Performance* (NB-3641, 2026-11-18T17:26:49+01:00 → 18:15:08+01:00): =artist-events= with 0.21.0's feed kept
+  (=capture-interaction-perf.js --bb-feed==, new), main against the branch, A,B,B,A: 216 Event cells marked, every
+  ratio 0.94–1.04, inside the run-to-run spread: no cost (tests/MEASUREMENTS.org, 2026-11-18).
+- *Live check:* vzell, 2026-11-18, after the kept-feed fix: all rows OK.
 
 ** The browser check of feed v2, branch 3, for vzell (events of BruceParser's run of 2026-11-15; unverified live)
 
