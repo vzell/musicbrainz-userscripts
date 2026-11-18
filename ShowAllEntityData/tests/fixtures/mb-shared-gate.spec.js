@@ -516,6 +516,40 @@ test.describe('shared request gate: aligned with upstream (lock race, sleep, hol
         expect(r.b.ms).toBeLessThan(1500);
     });
 
+    test("behind a broken hold, the tab's own 503 still holds it for its own time, and says so", async ({ page }) => {
+        // vzell's browser check (2026-11-18): with a hold planted ten minutes
+        // out, a real 503 (Retry-After: 1) logged "every script holds 522.3 s".
+        // `max(cool, now + ms)` leaves such a stored value as it is, so the
+        // answer must read the hold as this tab counts it (`_mbGateCool()`),
+        // and remember its own.
+        await loadRelPage(page, null);
+        await seedGate(page, { version: 1, tat: 0, coolIn: 600000, hot: 1, lead: '', leadUntil: 0 });
+        const r = await page.evaluate(async () => {
+            const g = window.__saTest.mbGate;
+            const realNow = Date.now;
+            let off = 0;
+            Date.now = () => realNow.call(Date) + off;
+            try {
+                await g.answer(200, null);   // the tab first sees the planted value
+                off += 61000;                // ... and its minute is over
+                const h = await g.answer(503, '2');
+                const t = performance.now();
+                const told = [];
+                const s = await g.slot({ background: false, onWait: (m) => told.push(m) });
+                return { h, hot: g.read().hot, ok: s.ok, ms: performance.now() - t, told };
+            } finally {
+                Date.now = realNow;
+            }
+        });
+        expect(r.h, `the reported hold is the 503's own (${JSON.stringify(r)})`).toBeGreaterThan(1500);
+        expect(r.h).toBeLessThanOrEqual(2000);
+        expect(r.hot, 'a new episode: hot steps up behind the broken value too (the 200 took it to 0)').toBe(1);
+        expect(r.ok).toBe(true);
+        expect(r.ms, 'the next request waits out that hold').toBeGreaterThan(1200);
+        expect(r.ms).toBeLessThan(3500);
+        expect(r.told.join(' | ')).toMatch(/waits \d.*MusicBrainz asked every script to wait/);
+    });
+
     test("a wait ends on time with the page's timers held back, and its wakers rest afterwards", async ({ page }) => {
         await loadRelPage(page, null);
         await seedGate(page, { version: 1, tat: 0, cool: 0, hot: 0, lead: '', leadUntil: 0 });

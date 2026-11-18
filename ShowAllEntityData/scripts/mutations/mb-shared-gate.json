@@ -160,7 +160,7 @@
     "why": "The in-flight requests of one throttle all answer 503; each must not stretch the hold again.",
     "edits": [
       {
-        "find": "                if (now >= (s.cool || 0)) s.hot = Math.min((s.hot || 0) + 1, 6);",
+        "find": "                if (now >= cool) s.hot = Math.min((s.hot || 0) + 1, 6);",
         "replace": "                s.hot = Math.min((s.hot || 0) + 1, 6);"
       }
     ],
@@ -173,7 +173,7 @@
     "why": "A throttle long gone must not slow every later page (hot persists in the shared store).",
     "edits": [
       {
-        "find": "                if (now > (s.cool || 0) + _MBG_QUIET_MS) s.hot = 0;",
+        "find": "                if (now > cool + _MBG_QUIET_MS) s.hot = 0;",
         "replace": ""
       }
     ],
@@ -264,8 +264,8 @@
     "why": "Upstream's form (cap in the wait only): a cool ten minutes out still books at (and tat, for everyone after) ten minutes out.",
     "edits": [
       {
-        "find": "            const cool = _mbGateCool(s.cool, now);",
-        "replace": "            const cool = s.cool || 0;"
+        "find": "            const cool = _mbGateCool(s.cool, now);\n            const tat = s.tat || 0;",
+        "replace": "            const cool = s.cool || 0;\n            const tat = s.tat || 0;"
       }
     ],
     "spec": "tests/fixtures/mb-shared-gate.spec.js",
@@ -303,8 +303,8 @@
     "why": "Capped per request only: the next request books 60 s out again behind the same broken value, so a column's requests one after another each wait a minute.",
     "edits": [
       {
-        "find": "            const cool = _mbGateCool(s.cool, now);",
-        "replace": "            const cool = Math.min(s.cool || 0, now + _MBG_MAX_HOLD);"
+        "find": "            const cool = _mbGateCool(s.cool, now);\n            const tat = s.tat || 0;",
+        "replace": "            const cool = Math.min(s.cool || 0, now + _MBG_MAX_HOLD);\n            const tat = s.tat || 0;"
       }
     ],
     "spec": "tests/fixtures/mb-shared-gate.spec.js",
@@ -322,6 +322,36 @@
     ],
     "spec": "tests/fixtures/mb-shared-gate.spec.js",
     "grep": "ends 60 s after the tab first saw it",
+    "expect": "fail"
+  },
+  {
+    "name": "the answer reads the stored cool raw",
+    "why": "Behind a broken far-future cool, hot never steps and the hold reported for a 1 s 503 is that value's ten minutes (vzell's browser check: 522.3 s).",
+    "edits": [
+      {
+        "find": "                const cool = _mbGateCool(s.cool, now);\n                if (now > cool + _MBG_QUIET_MS) s.hot = 0;",
+        "replace": "                const cool = s.cool || 0;\n                if (now > cool + _MBG_QUIET_MS) s.hot = 0;"
+      },
+      {
+        "find": "                return Math.max(0, _mbGateCool(s.cool, now) - now);",
+        "replace": "                return s.cool - now;"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "the tab's own 503 still holds it",
+    "expect": "fail"
+  },
+  {
+    "name": "the tab forgets its own 503's hold",
+    "why": "Behind a broken cool, max(cool, now + ms) leaves the stored value unchanged and the cap counts it as over: the tab would not hold for its own throttle.",
+    "edits": [
+      {
+        "find": "                _mbgHoldSeen.own = Math.max(_mbgHoldSeen.own, now + ms);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "the tab's own 503 still holds it",
     "expect": "fail"
   },
   {

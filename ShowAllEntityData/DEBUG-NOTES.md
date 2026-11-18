@@ -30174,4 +30174,26 @@ Env: 2026-11-18T02:30–05:40+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6
 - **HELP:** checked; it does not describe the gate, so no edit is owed.
 - **Lint:** within the baseline.
 - **`npm run test:full` on petri, uncommitted on `3905684c`, 05:19:30–05:39:52 CET (20 m 22 s): 3,244 of 3,244 passed.**
-- **Not yet:** the browser check by vzell; the note to majkinetor (vzell sends it).
+- **Browser check by vzell, 2026-11-18T16:33–16:42+01:00** · Firefox 160.0 (64-bit) · Tampermonkey 5.5.0 · SAED from
+  this branch (`53550758`), series-releases
+  https://musicbrainz.org/series/aa3694d3-a3d0-48ed-8f07-5b576de87908 (12 releases). Logs: `debug/mb-firefox-debug.log`,
+  `debug/mb-firefox-debug-2.log`.
+  - First run: nothing to see. The 12 answers came from the `rel-ws2` IndexedDB cache (30 days), so no request reached
+    the gate. My check plan had missed the cache.
+  - Second run: `rel-ws2` emptied, a hold planted ten minutes out, `sa_enable_relationship_debug` on.
+    - The first request waited about 60 s. `mbgate` logged "still waits, 50 s / 39.9 s / … / 9.8 s to go
+      (MusicBrainz asked every script to wait)" every 10 s and no "waits longer" line, then the request went at
+      16:41:26.9. The other eleven followed at about 1.1 s each. The cap works in Firefox.
+    - Two real 503s (`Retry-After: 1`, 16:41:33 and 16:41:35), each retried after about 1.2 s and answered. But the
+      gate logged "every script holds 522.3 s" / "520.1 s": `_mbGateAnswer()` still read the raw stored value. Behind
+      such a value `max(cool, now + ms)` changes nothing, so the tab did not count its own 503's hold, and `hot`
+      could not step. Fixed: the answer reads the hold through `_mbGateCool()`, which also keeps the tab's own hold
+      (`_mbgHoldSeen.own`). Spec "behind a broken hold, the tab's own 503 still holds it for its own time, and says
+      so": on `53550758` it reported about 539 s; now 16/16. Two mutations were added and four finds moved.
+    - The job card did not open on hovering ▼🔗; a click collapsed the column. Not this branch: the Relationships
+      card exists only for a job the user started (▶🔗 on a collapsed column, `_relAjBegin()`). An automatic load
+      under `sa_rel_collapse_threshold` (200) starts none, and its `onWait` lines are dropped (`_ajLog()` finds
+      no job). My check plan was wrong again.
+- **`npm run test:full` on petri after the 503 fix, uncommitted on `53550758`, 16:55:10–17:15:39 CET (20 m 29 s):
+  3,245 of 3,245 passed.** Lint within the baseline.
+- **Not yet:** a re-check of the 503 fix in the browser; the note to majkinetor (vzell sends it).

@@ -304,7 +304,12 @@ version 1 (on his `main` since `7eb7c563`). Anchors `gate-version`,
   moves the end along so the wait lasts the whole length anyway (found
   2026-11-18: spec "ends 60 s after the tab first saw it"). Both parts go
   further than upstream on purpose. The stored value is never lowered
-  (protocol v1 has no such write). `tat` itself is not capped (a long
+  (protocol v1 has no such write). `_mbGateAnswer()` reads the hold the same
+  way (the episode and quiet rules, the hold it reports), and the tab keeps
+  the end of its own 429/503's hold (`_mbgHoldSeen.own`): behind a broken
+  value `max(cool, now + ms)` changes nothing, so without it the tab would not
+  hold for its own throttle (vzell's Firefox check, 2026-11-18: "every
+  script holds 522.3 s" for a `Retry-After: 1`). `tat` itself is not capped (a long
   legitimate queue is possible; upstream does not either).
 - **What a wait tells.** The reason is decided at the booking (a hold, or
   pacing), as upstream does. A wait over a second is told to `onWait` (the

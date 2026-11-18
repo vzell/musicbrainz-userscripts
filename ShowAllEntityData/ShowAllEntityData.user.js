@@ -68126,11 +68126,12 @@
     }
 
     /**
-     * The stored `cool` this tab read last, and when it first read that value
-     * (`_mbGateCool()`).
-     * @type {{cool: number, at: number}}
+     * The stored `cool` this tab read last, when it first read that value, and
+     * the end of the last hold this tab's own 429/503 asked for
+     * (`_mbGateCool()`, `_mbGateAnswer()`).
+     * @type {{cool: number, at: number, own: number}}
      */
-    const _mbgHoldSeen = { cool: 0, at: 0 };
+    const _mbgHoldSeen = { cool: 0, at: 0, own: 0 };
 
     /**
      * A stored `cool` as this tab counts it: at most `_MBG_MAX_HOLD` past the
@@ -68141,7 +68142,10 @@
      * request and every later one in the tab. Measured from `now` instead
      * (upstream's wait), the cap moves along with each re-read, and such a
      * value would still hold every request for its whole length. The stored
-     * value is left alone: lowering it is not in protocol v1.
+     * value is left alone: lowering it is not in protocol v1. A hold this
+     * tab's own 429/503 asked for (`own`) still counts in full: behind such a
+     * value, `max(cool, now + ms)` leaves the stored value as it was, and
+     * without it the tab would not hold for its own throttle at all.
      * @param {number} raw The stored `cool` (0 or missing: no hold).
      * @param {number} now `Date.now()` of the caller's read.
      * @returns {number} The time this tab treats as the end of the hold.
@@ -68152,7 +68156,7 @@
             _mbgHoldSeen.cool = v;
             _mbgHoldSeen.at = now;
         }
-        return Math.min(v, _mbgHoldSeen.at + _MBG_MAX_HOLD);
+        return Math.min(v, Math.max(_mbgHoldSeen.at + _MBG_MAX_HOLD, _mbgHoldSeen.own));
     }
 
     /**
@@ -68266,6 +68270,12 @@
      * other answer below 500 earns a step of `hot` back. 502/504 change
      * nothing here (the protocol's rule); `_ws2GetJson()` still retries them.
      *
+     * The stored `cool` is read as this tab counts it (`_mbGateCool()`), for
+     * the episode and quiet rules and for the hold it reports: behind a
+     * corrupt far-future value, the raw one would never let `hot` step or
+     * reset, and would report that value's ten minutes for a one-second 503
+     * (seen in vzell's browser check, 2026-11-18).
+     *
      * `X-RateLimit-*` is NOT read, on purpose. Probe
      * (`scripts/probe-ws2-throttle-shape.py`, 2026-11-09T00:37:52+01:00,
      * vzell-lap, n/a browser): 10 lookups at 1.1 s, all 200, no
@@ -68290,11 +68300,13 @@
             const ra = Number.isFinite(secs) ? secs * 1000 : Number.isFinite(date) ? Math.max(0, date - Date.now()) : 0;
             const res = await _mbGateState(s => {
                 const now = Date.now();
-                if (now > (s.cool || 0) + _MBG_QUIET_MS) s.hot = 0;
-                if (now >= (s.cool || 0)) s.hot = Math.min((s.hot || 0) + 1, 6);
+                const cool = _mbGateCool(s.cool, now);
+                if (now > cool + _MBG_QUIET_MS) s.hot = 0;
+                if (now >= cool) s.hot = Math.min((s.hot || 0) + 1, 6);
                 const ms = Math.min(Math.max(1000, ra) * Math.max(1, s.hot), _MBG_MAX_HOLD);
-                s.cool = Math.max(s.cool || 0, Date.now() + ms);
-                return s.cool - Date.now();
+                s.cool = Math.max(s.cool || 0, now + ms);
+                _mbgHoldSeen.own = Math.max(_mbgHoldSeen.own, now + ms);
+                return Math.max(0, _mbGateCool(s.cool, now) - now);
             });
             if (!res.ok) return 0;
             _mbgStats.holds++;
@@ -68304,7 +68316,8 @@
         }
         if (status >= 200 && status < 500) {
             await _mbGateState(s => {
-                if (s.hot) s.hot = Date.now() > (s.cool || 0) + _MBG_QUIET_MS ? 0 : s.hot - 1;
+                const now = Date.now();
+                if (s.hot) s.hot = now > _mbGateCool(s.cool, now) + _MBG_QUIET_MS ? 0 : s.hot - 1;
             });
         }
         return 0;

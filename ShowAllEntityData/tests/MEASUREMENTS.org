@@ -4417,3 +4417,13 @@ Env: 2026-11-18T05:19:30+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 | =npm run test:full=, merge check  |  3244 |      12 | *20 m 22 s* | =run-test-full.py=, 05:19:30–05:39:52 CET |
 
 3244 passed (main's 3239 plus the five new gate specs). No flake showed.
+
+* 2026-11-18 — =npm run test:full= on =petri=, feat/mb-gate-upstream-align after the 503 fix from vzell's browser check (uncommitted on 53550758, 9.99.1646)
+
+Env: 2026-11-18T16:55:10+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                         | Tests | Workers | Wall clock  | Basis                                     |
+|-----------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, merge check  |  3245 |      12 | *20 m 29 s* | =run-test-full.py=, 16:55:10–17:15:39 CET |
+
+3245 passed (one more gate spec than the 05:19 run). No flake showed.
