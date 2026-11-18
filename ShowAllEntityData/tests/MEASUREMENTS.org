@@ -4507,3 +4507,18 @@ tree (uncommitted, on =bd4cb6d5=). Alternated M, B, M, B in one session; median 
 The ranges of the two arms overlap on every page. A page as expected costs nothing measurable; a page with a mark
 costs about 5–20 ms more (the marked chip, the pills and the words under the chips), on a render of 160–230 ms. No
 table, sort or filter path is touched: the check runs once per head and per window.
+
+* 2026-11-19 — release-check findings, =artist-releases-dylan= (2301 rows, single, "Bob Dylan" releases), typed global filter, =main= vs feat/release-check-findings
+
+Env: 2026-11-19T00:21:45–00:54:21+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs).
+=python3 scripts/run-perf-arms.py artist-releases-dylan -- --only=typed --label=…=, =main= at =4d574b43= (9.99.1652). Median ms
+of 5 samples per arm; files =tests/snapshots/artist-releases-dylan/interaction-perf-rc*-9.99.1652-2026-11-18-petri.json=.
+
+| Round | Branch commit | Order (A = main, B = branch) | =globalFilterTyped@150= A / B   | ratio B/A | =@400= A / B          | ratio B/A |
+|-------+---------------+------------------------------+---------------------------------+-----------+-----------------------+-----------|
+| 1     | =7a9b839b=    | A, B, B, A                   | 803, 819 / 878, 845             |     1.062 | 447, 456 / 459, 443   |     0.999 |
+| 2     | =be830987=    | B, A, A, B                   | 840, 853 / 836, 833             |     0.986 | 436, 440 / 443, 452   |     1.022 |
+
+Round 1 tinted every new finding: on this list 959 rows "no barcode entered", 220 "label without a catalog number" and
+310 "no release event" (counted from the saved data). Round 2 has the "no barcode entered" tint off by default (vzell's
+choice); the finding is still stamped, counted and filterable. Round 2 is within noise of =main=.
