@@ -7,6 +7,9 @@
  *   node tests/support/capture-interaction-perf.js --pageType=artist-events
  *   node tests/support/capture-interaction-perf.js --pageType=artist-releases-dylan \
  *        --arm=collapsed
+ *   node tests/support/capture-interaction-perf.js --pageType=artist-events --gate-wait
+ *        (a shared-gate request waits through every bracket: `startGateWait()`;
+ *        with SA_USERSCRIPT_PATH=<copy of main's userscript> for the main arm)
  *
  * Unlike `capture-snapshots.js`'s `--perf` mode (which times the INITIAL
  * fetch+render of a "Show all" click), this times the *interactions*
@@ -275,6 +278,7 @@ function parseArgs(argv) {
         only: onlyArg ? onlyArg.slice('--only='.length) : null,
         typingDelays: delays.length ? delays : DEFAULT_TYPING_DELAYS,
         bbFeed: bbFeedArg ? bbFeedArg.slice('--bb-feed='.length) : null,
+        gateWait: argv.includes('--gate-wait'),
     };
 }
 
@@ -306,6 +310,38 @@ function bbFeedSeed(file) {
  * @type {?number}
  */
 let BB_FEED_MARKS = null;
+
+/**
+ * `--gate-wait`: before every bracket, one background request of the shared
+ * MusicBrainz request gate (`__saTest.mbGate.slot()`) is left waiting behind
+ * a hold of 55 s seeded into `mbu:mb-gate`, so the gate's waiting machinery
+ * runs through the whole measurement — since 2026-11-18 `_mbGateSleep()`'s
+ * wakers (a MutationObserver on the whole document, a frame loop, a worker
+ * tick); before, plain 250 ms timer slices. Each measurement loads a fresh
+ * page, so the hold never runs out inside one. Asserted: the request is
+ * booked and, where the hook exists, a sleeper is running — an arm whose
+ * request is not waiting would read as "the wait costs nothing".
+ *
+ * @param {import('playwright').Page} page
+ * @returns {Promise<void>}
+ */
+async function startGateWait(page) {
+    const r = await page.evaluate(async () => {
+        const g = window.__saTest && window.__saTest.mbGate;
+        if (!g || !g.active()) return { error: 'the shared gate is not active on this page' };
+        localStorage.setItem('mbu:mb-gate', JSON.stringify(
+            { version: 1, tat: 0, cool: Date.now() + 55000, hot: 1, lead: '', leadUntil: 0 }));
+        window.__saPerfGateWait = g.slot({ background: true });
+        for (let i = 0; i < 40 && g.stats().booked < 1; i++) await new Promise((res) => setTimeout(res, 50));
+        return {
+            booked: g.stats().booked,
+            sleepers: typeof g.wakers === 'function' ? g.wakers().sleepers : null,
+        };
+    });
+    if (r.error || r.booked < 1 || r.sleepers === 0) {
+        throw new Error(`--gate-wait: no request is waiting in the gate (${JSON.stringify(r)})`);
+    }
+}
 
 /**
  * Key delays for `--only=typed`, in ms. 150 is quicker than the filter
@@ -553,6 +589,7 @@ async function loadPage(browser, config) {
             + `not cover this page. First: ${ws2Requests[0]}. Re-capture with `
             + 'python3 scripts/capture-rel-ws2-seed.py (it verifies coverage before writing).');
     }
+    if (config.gateWait) await startGateWait(page);
     return page;
 }
 
@@ -970,7 +1007,7 @@ async function runTyped(browser, config, delays) {
 }
 
 (async () => {
-    const { pageType, label, arm, relArm, samples, only, typingDelays, bbFeed } = parseArgs(process.argv.slice(2));
+    const { pageType, label, arm, relArm, samples, only, typingDelays, bbFeed, gateWait } = parseArgs(process.argv.slice(2));
     if (only && only !== 'typed') {
         console.error(`--only=${only}: the only supported value is "typed".`);
         process.exit(1);
@@ -1013,6 +1050,7 @@ async function runTyped(browser, config, delays) {
     }
     if (relArm) config = { ...config, relArm };
     if (bbFeed) config = { ...config, bbFeed, seedGmValues: { ...config.seedGmValues, ...bbFeedSeed(bbFeed) } };
+    if (gateWait) config = { ...config, gateWait: true };
 
     const branch = readCurrentBranch();
     // Both arms can be active at once, so the name carries whichever are set
@@ -1026,6 +1064,7 @@ async function runTyped(browser, config, delays) {
         // never land on (or be read as) a full run's file.
         only === 'typed' ? 'typed' : null,
         bbFeed ? 'bbfeed' : null,
+        gateWait ? 'gate-wait' : null,
     ].filter(Boolean).join('-');
     const outName = label || (armSuffix ? `${branch}-${armSuffix}` : branch);
     const startedAt = new Date();
@@ -1079,6 +1118,10 @@ async function runTyped(browser, config, delays) {
                 .map(([k, v]) => [k, k === 'mb_sa_bb_feed' ? `(the file ${bbFeed})` : v])),
             bbFeed: bbFeed || null,
             bbFeedMarks: BB_FEED_MARKS,
+            // `--gate-wait` (startGateWait()) and the userscript copy the arm loaded
+            // (SA_USERSCRIPT_PATH, a `main` arm run from a branch's harness).
+            gateWait: !!gateWait,
+            userscript: process.env.SA_USERSCRIPT_PATH || null,
             branch: outName,
             gitBranch: branch,
             capturedAt,

@@ -275,9 +275,48 @@ version 1 (on his `main` since `7eb7c563`). Anchors `gate-version`,
   `cancelled`, so a hover that moved on during a shared hold makes no request;
   `_ws2GetJson()` then resolves `{skipped: true}`, which `_mbLoad()` and the
   other `_rgWsGet()` callers already treat as "not asked".
-- **Lock:** held only for the synchronous read-modify-write; aborted after 3 s
-  (a stuck holder) and done unlocked, like no Web Locks at all. Waits poll the
-  stored `cool`/`lead` in 250 ms slices without the lock.
+- **Lock:** held only for the synchronous read-modify-write; after 3 s (a
+  stuck holder) it is given up on and the write is done unlocked, like no Web
+  Locks at all. The 3 s timer is RACED against the lock request
+  (`Promise.race`), never left to the abort signal alone: some userscript
+  bridges never settle the request on abort, and the booking would hang. A
+  grant that arrives after the timeout runs nothing (`expired`), so nothing is
+  booked twice. Waits poll the stored `cool`/`lead` in 250 ms slices without
+  the lock. *(Aligned with upstream's `mbnState()` at `0693aea`, 2026-11-18,
+  `feat/mb-gate-upstream-align`.)*
+- **Every gate sleep is `_mbGateSleep()`, never a bare `setTimeout`** (port of
+  upstream's `mbnSleep()`, #999): Firefox/Violentmonkey were seen holding a
+  MusicBrainz page's timers back for minutes, so a sleep also wakes on
+  animation frames, on DOM changes (a `MutationObserver` on
+  `documentElement`) and on a blob worker's 100 ms tick. **The wakers run
+  only while someone sleeps**: the last sleeper stops the frame loop,
+  disconnects the observer and stops the tick, and `_mbGateState()`'s
+  `finally` ends the lock timer's sleeper at once, so a render while no
+  request waits pays nothing (`__saTest.mbGate.wakers()`). Its state is this
+  script's own (`_mbgWake`), not upstream's `globalThis.__mbnWake1`.
+- **A stored `cool` counts for at most 60 s from the moment this tab first
+  read that value (`_mbGateCool()`), at the booking AND in the wait.** Every
+  writer sets `cool = max(cool, now + ms)` with `ms ≤ 60 s`, so a real hold
+  is never cut; a corrupt or far-future one stops counting a minute after the
+  tab first saw it, for every later request too. Upstream caps it in the
+  wait only, which leaves `at` (and `tat`, for everyone after) booked as far
+  out as a corrupt `cool` says, and caps it from each re-read's `now`, which
+  moves the end along so the wait lasts the whole length anyway (found
+  2026-11-18: spec "ends 60 s after the tab first saw it"). Both parts go
+  further than upstream on purpose. The stored value is never lowered
+  (protocol v1 has no such write). `_mbGateAnswer()` reads the hold the same
+  way (the episode and quiet rules, the hold it reports), and the tab keeps
+  the end of its own 429/503's hold (`_mbgHoldSeen.own`): behind a broken
+  value `max(cool, now + ms)` changes nothing, so without it the tab would not
+  hold for its own throttle (vzell's Firefox check, 2026-11-18: "every
+  script holds 522.3 s" for a `Retry-After: 1`). `tat` itself is not capped (a long
+  legitimate queue is possible; upstream does not either).
+- **What a wait tells.** The reason is decided at the booking (a hold, or
+  pacing), as upstream does. A wait over a second is told to `onWait` (the
+  Relationships job log) and to `mbgate`; it is told again, to both, when a
+  new hold moves its end more than a second later; the 10 s "still waits"
+  repeat and a late-timer note go to `mbgate` only, so the job log does not
+  fill.
 - **Specs that answer many 503s.** The harness runs with the gate ON (its
   default), so a spec that refuses request after request pays the shared hold:
   `hot` steps per episode, 1 s … 6 s each. A spec that pins SAED's OWN retry
@@ -290,7 +329,9 @@ sites). A shared wait over a second is also a line in the Relationships
 column's async job log (`onWait`). Tests: `tests/fixtures/mb-shared-gate.spec.js`
 (the hold honoured through the real click path, the write rules, the version
 refusal, the lead, two tabs in one context, off, foreign host, the formulas via
-`__saTest.mbGate`); mutations `scripts/mutations/mb-shared-gate.json`.
+`__saTest.mbGate`; since 2026-11-18 also the never-settling lock, the
+far-future hold, waits with the page's timers held back and the wakers at
+rest, the job log's second line); mutations `scripts/mutations/mb-shared-gate.json`.
 
 ## The in-tab request schedulers book on `_steadyNow()`, never the wall clock (2026-11-09)
 

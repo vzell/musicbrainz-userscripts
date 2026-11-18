@@ -30219,3 +30219,88 @@ was not in `_MBTC_ACRONYMS`. The year-anchor window shows the wiki's capitals (i
 "QE II" in the mirror, all this venue; "QEII" appears only in prose). `check-mb-title-case.js --sample`: the
 per-source counts are unchanged (the venue changes anyway); `--mb-sample`: no finding changes. New case in
 `tests/support/mbTitleCaseCases.js` (111), one mutation in `scripts/mutations/foreign-titles.json`.
+
+## 2026-11-18 — The shared request gate brought in line with upstream: lock race, waking sleep, hold cap (feat/mb-gate-upstream-align)
+
+Env: 2026-11-18T02:30–05:40+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · Playwright 1.62.1, bundled Chromium (headless), no Tampermonkey (GM stubs) · code reading of upstream `dev/net/mb-gate.mjs` at `6a311c3` (unchanged since `0693aea`): n/a.
+
+- **Why:** the TODO "Bring SAED's request-gate port in line with upstream (lock race, mbnSleep, hold cap)" in
+  `org/majkinetor.org`. Plan approved with four recommendations: no cap on `tat`; SAED's own waker state; the job
+  log hears only the first wait and "waits longer"; measure, and bring numbers before trimming the observer.
+- **What** (`ShowAllEntityData.user.js`, grep `_MBG_KEY`):
+  - `_mbGateState()`: the Web Lock races a 3 s `_mbGateSleep()`; a grant after the timeout runs nothing, so nothing
+    is booked twice; `finally` wakes the timer's sleeper, so the wakers stop with each write.
+  - `_mbGateSleep()` (upstream's `mbnSleep`, #999): a sleep also wakes on animation frames, a MutationObserver on
+    `documentElement` and a blob worker's 100 ms tick, all only while something sleeps (`_mbgWake`, not
+    `globalThis.__mbnWake1`). A timer found more than 2 s late is noted once a minute on `mbgate`.
+  - `_mbGateSlot()`: the lead loop and the wait sleep in it; the reason ("MusicBrainz asked every script to wait"
+    vs pacing) is decided at the booking. Before, SAED's wait called a hold "pacing" (`booked.value === cool`).
+    `onWait` hears the first wait and "waits longer" when a new hold moves the end over a second later; the 10 s
+    repeat and the late-timer note go to `mbgate` only.
+  - The hold cap: `_mbGateCool()` counts a stored `cool` for at most 60 s from the moment the tab first read that
+    value, at the booking and in the wait. Upstream caps in the wait only (so `at`, and `tat` for everyone after,
+    are booked ten minutes out), and from each re-read's `now`.
+  - The header credit gained a line for `mbnSleep()` and the lock race.
+- **Found while porting, twice** (both in the majkinetor note in `org/majkinetor.org`):
+  1. Upstream's booking takes the uncapped `cool`.
+  2. Found the same night, after my first port copied it: a cap of `now + 60 s` re-read every slice moves along
+     with the clock, so a far-future `cool` still held the request for its whole length, and the job log heard
+     "waits longer, 60 s to go" about once a second. A per-request cap was not enough either: the Relationships
+     column's requests run one after another, so each would wait its own minute; hence the per-tab memory. The
+     stored value is never lowered (a new write in v1: a question for majkinetor).
+- **Tests:** `mb-shared-gate.spec.js` "shared request gate: aligned with upstream (lock race, sleep, hold cap)", 5
+  tests. Each failed on the earlier code first:
+  - "a lock that never settles": hung;
+  - "a hold ten minutes out counts as at most 60 s": "waits 600 s";
+  - "a wait ends on time with the page's timers held back": hung;
+  - "the job log is told again only when a new hold moves the wait later": one line instead of two;
+  - "… ends 60 s after the tab first saw it, for the next request too" (moves the page's `Date.now()` 61 s on
+    mid-wait): hung on the rolling cap.
+
+  The whole file: 15/15.
+- **Mutations:** `scripts/mutations/mb-shared-gate.json`, 34 entries, all as expected (16 new, three finds moved;
+  "no rAF waker" and "no worker waker" are `"expect": "pass"`, each waker covers for the other).
+  `check-mutation-finds.py`: 306 lists, 0 stale.
+- **Perf** (`tests/MEASUREMENTS.org`, same date): ten artist-events arms with a request waiting
+  (`capture-interaction-perf.js --gate-wait`, new; `SA_USERSCRIPT_PATH` in `tests/support/loadPage.js`, new).
+  - No cost from the wakers.
+  - uniqDropWarm read 1.45 while waiting because main ran fast: the branch sat at 789–830 ms in all five of its arms.
+  - The observer on `childList/subtree` only changed nothing (1.00), so it keeps its four options (question 4: no
+    deviation to bring).
+  - `scripts/probe-gate-wakers-at-rest.js` (new) shows the wakers at rest on that page.
+  - PERFORMANCE.org's gate paragraph (the gate "only ever adds waiting") is still true; no edit.
+- **HELP:** checked; it does not describe the gate, so no edit is owed.
+- **Lint:** within the baseline.
+- **`npm run test:full` on petri, uncommitted on `3905684c`, 05:19:30–05:39:52 CET (20 m 22 s): 3,244 of 3,244 passed.**
+- **Browser check by vzell, 2026-11-18T16:33–16:42+01:00** · Firefox 160.0 (64-bit) · Tampermonkey 5.5.0 · SAED from
+  this branch (`53550758`), series-releases
+  https://musicbrainz.org/series/aa3694d3-a3d0-48ed-8f07-5b576de87908 (12 releases). Logs: `debug/mb-firefox-debug.log`,
+  `debug/mb-firefox-debug-2.log`.
+  - First run: nothing to see. The 12 answers came from the `rel-ws2` IndexedDB cache (30 days), so no request reached
+    the gate. My check plan had missed the cache.
+  - Second run: `rel-ws2` emptied, a hold planted ten minutes out, `sa_enable_relationship_debug` on.
+    - The first request waited about 60 s. `mbgate` logged "still waits, 50 s / 39.9 s / … / 9.8 s to go
+      (MusicBrainz asked every script to wait)" every 10 s and no "waits longer" line, then the request went at
+      16:41:26.9. The other eleven followed at about 1.1 s each. The cap works in Firefox.
+    - Two real 503s (`Retry-After: 1`, 16:41:33 and 16:41:35), each retried after about 1.2 s and answered. But the
+      gate logged "every script holds 522.3 s" / "520.1 s": `_mbGateAnswer()` still read the raw stored value. Behind
+      such a value `max(cool, now + ms)` changes nothing, so the tab did not count its own 503's hold, and `hot`
+      could not step. Fixed: the answer reads the hold through `_mbGateCool()`, which also keeps the tab's own hold
+      (`_mbgHoldSeen.own`). Spec "behind a broken hold, the tab's own 503 still holds it for its own time, and says
+      so": on `53550758` it reported about 539 s; now 16/16. Two mutations were added and four finds moved.
+    - The job card did not open on hovering ▼🔗; a click collapsed the column. Not this branch: the Relationships
+      card exists only for a job the user started (▶🔗 on a collapsed column, `_relAjBegin()`). An automatic load
+      under `sa_rel_collapse_threshold` (200) starts none, and its `onWait` lines are dropped (`_ajLog()` finds
+      no job). My check plan was wrong again.
+- **`npm run test:full` on petri after the 503 fix, uncommitted on `53550758`, 16:55:10–17:15:39 CET (20 m 29 s):
+  3,245 of 3,245 passed.** Lint within the baseline.
+- **Re-check of the 503 fix by vzell** (`a021f32d`, Firefox 160.0, Tampermonkey 5.5.0, series
+  aa3694d3-a3d0-48ed-8f07-5b576de87908, `rel-ws2` emptied, a hold planted ten minutes out; log
+  `debug/mb-firefox-debug-3.log`, read on petri 2026-11-18T20:13:56+01:00):
+  - The first request waited out the 60 s cap ("still waits, 19.9 s / 9.9 s to go (MusicBrainz asked every script
+    to wait)") and went at 20:11:44.6 CET; the rest followed about 1 s apart.
+  - Four real 503s (`Retry-After: 1`, 20:11:45.7, 47.9, 55.7 and 57.9). Each logged "every script holds 1 s" (not
+    about 520 s as before) and was answered on its retry about 1.2 s later. `hot` stayed at 1 because the 200 between
+    every two 503s gave its step back (the protocol's rule), so 1 s each time is right.
+  - The log starts at 20:11:24, so the first "waits 60 s" line and the job card are not in it.
+- **Not yet:** the note to majkinetor (vzell sends it).

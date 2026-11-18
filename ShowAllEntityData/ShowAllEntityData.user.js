@@ -274,6 +274,9 @@
 //   browser-check frame (mbnReverify) are not taken.
 //   The data-mbu-* marks (#938) and Event Horizon's ⋯ menu launchers are shared
 //   conventions agreed with him, not his code.
+//   Added 2026-11-18: _mbGateSleep() is PORTED from his mbnSleep() (#999: a wait also wakes
+//   on animation frames, page changes and a worker's timer), and _mbGateState() takes his
+//   lock race (a 3 s timeout; a grant after it books nothing).
 // ============================================================================================================================================
 
 (function() {
@@ -68209,7 +68212,7 @@
     // (measured: probe case D, org/majkinetor.org "Coexistence").
     //
     // PORTED from his dev/net/mb-gate.mjs (`mbnState()`, `mbnSlot()`,
-    // `mbnAnswer()`; GPL-3.0, credited in this script's header) and kept to
+    // `mbnAnswer()`, `mbnSleep()`; GPL-3.0, credited in this script's header) and kept to
     // the contract his DEVELOP.md documents as "Shared request-gate protocol",
     // version 1 (on his main since 7eb7c563, checked 2026-11-09):
     //   - fields `version`, `tat` (the next request's theoretical arrival
@@ -68317,6 +68320,128 @@
     }
 
     /**
+     * The gate's sleepers and what wakes them (upstream's `globalThis.__mbnWake1`,
+     * kept in this script: the userscript sandbox would not share a global with
+     * his scripts anyway). The wakers run only while `all` is not empty.
+     * @type {{all: Set<function(): void>, due: Map<Object, number>, raf: number,
+     *         mo: ?MutationObserver, worker: (?Worker|false), ticking: boolean,
+     *         stall: ?{ms: number, at: number, state: string, hidden: boolean, told: boolean}}}
+     */
+    const _mbgWake = { all: new Set(), due: new Map(), raf: 0, mo: null, worker: null, ticking: false, stall: null };
+
+    /**
+     * Asks every sleeper whether it is done (its time is up or it was
+     * cancelled), after noting a plain timer found more than 2 s overdue
+     * (at most once a minute, for the wait to log).
+     *
+     * @returns {void}
+     */
+    function _mbGateWakeAll() {
+        const now = Date.now();
+        if (!_mbgWake.stall || now - _mbgWake.stall.at >= 60000) {
+            for (const d of _mbgWake.due.values()) {
+                if (now - d <= 2000) continue;
+                let state = '';
+                let hidden = false;
+                try { state = document.readyState; hidden = !!document.hidden; } catch (_) { /* no document */ }
+                _mbgWake.stall = { ms: now - d, at: now, state, hidden, told: false };
+                break;
+            }
+        }
+        for (const f of Array.from(_mbgWake.all)) f();
+    }
+
+    /**
+     * Sleeps `ms`, or less once `cancelled()` turns true — PORTED from
+     * upstream's `mbnSleep()` (#999). On a MusicBrainz page (Firefox,
+     * Violentmonkey) the page's plain timers were seen held back for minutes,
+     * and every gate wait hung with them. So a sleep also wakes on animation
+     * frames, on DOM changes and on a worker's timer (a worker's timers run
+     * apart from the page's), whichever comes first, and checks the clock each
+     * time. All three wakers run only while someone sleeps: the last sleeper
+     * to finish stops the frame loop, disconnects the observer and stops the
+     * worker's tick, so a render while no request waits pays nothing.
+     *
+     * @param {number} ms
+     * @param {?function(): boolean} [cancelled] - Asked at every wake; with it the plain timer runs in 250 ms slices.
+     * @returns {Promise<number>} How long past `ms` it woke, ms.
+     */
+    function _mbGateSleep(ms, cancelled) {
+        const end = Date.now() + Math.max(0, +ms || 0);
+        const w = _mbgWake;
+        return new Promise(resolve => {
+            let done = false;
+            const tok = {};
+            const me = () => {
+                if (done) return;
+                let stop = false;
+                try { stop = !!(cancelled && cancelled()); } catch (_) { /* a throwing check does not stop */ }
+                const now = Date.now();
+                if (!stop && now < end) return;
+                done = true;
+                w.all.delete(me);
+                // `due` keeps this sleep's entry until its own timer fires: a
+                // timer that fires late after another waker ended the sleep
+                // still tells (`tick`).
+                if (!w.all.size) {
+                    try { if (w.raf) cancelAnimationFrame(w.raf); } catch (_) { /* no frames */ }
+                    w.raf = 0;
+                    try { if (w.mo) w.mo.disconnect(); } catch (_) { /* gone */ }
+                    w.mo = null;
+                    try { if (w.worker && w.ticking) w.worker.postMessage(0); } catch (_) { /* gone */ }
+                    w.ticking = false;
+                }
+                resolve(Math.max(0, now - end));
+            };
+            const arm = () => {
+                const d = Math.max(1, Math.min(cancelled ? _MBG_SLICE_MS : 2147483647, end - Date.now()));
+                if (w.due.size < 500) w.due.set(tok, Date.now() + d);
+                setTimeout(tick, d);
+            };
+            // The plain timer: when it fires late, it says so; it re-arms until the sleep ends.
+            const tick = () => {
+                if (Date.now() - (w.due.get(tok) || Infinity) > 2000) _mbGateWakeAll();
+                w.due.delete(tok);
+                me();
+                if (!done) arm();
+            };
+            me();
+            if (done) return;
+            w.all.add(me);
+            arm();
+            try {
+                if (!w.raf && typeof requestAnimationFrame === 'function') {
+                    const frame = () => {
+                        w.raf = 0;
+                        _mbGateWakeAll();
+                        if (w.all.size) w.raf = requestAnimationFrame(frame);
+                    };
+                    w.raf = requestAnimationFrame(frame);
+                }
+            } catch (_) { /* no frames */ }
+            try {
+                if (!w.mo && typeof MutationObserver === 'function' && document.documentElement) {
+                    w.mo = new MutationObserver(_mbGateWakeAll);
+                    w.mo.observe(document.documentElement, { childList: true, subtree: true, attributes: true, characterData: true });
+                }
+            } catch (_) { w.mo = null; }
+            // A page that forbids blob workers goes without (musicbrainz.org sent no CSP, 2026-11-18).
+            try {
+                if (w.worker === null && typeof Worker === 'function' && typeof Blob === 'function'
+                    && typeof URL !== 'undefined' && URL.createObjectURL) {
+                    w.worker = false;
+                    const src = 'let t=0;onmessage=e=>{clearInterval(t);t=0;if(e.data>0)t=setInterval(()=>postMessage(1),e.data)}';
+                    const wk = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+                    wk.onmessage = _mbGateWakeAll;
+                    wk.onerror = () => { w.worker = false; w.ticking = false; };
+                    w.worker = wk;
+                }
+                if (w.worker && !w.ticking) { w.ticking = true; w.worker.postMessage(100); }
+            } catch (_) { w.worker = false; }
+        });
+    }
+
+    /**
      * Read-modify-writes the shared schedule under the Web Lock (upstream's
      * `mbnState()`). `fn(state)` may change `state`; its result is returned.
      *
@@ -68327,6 +68452,12 @@
      * - The lock is held only for that synchronous moment; one that does not
      *   come within `_MBG_LOCK_ABORT_MS` is stuck, and the write goes ahead
      *   unlocked, as with no Web Locks at all (an insecure context).
+     * - That timeout is raced against the lock request rather than left to
+     *   the abort signal (upstream's "lock race"): some userscript bridges
+     *   never settle the request on abort, which would hang the request
+     *   forever. A grant that comes after the timeout runs nothing, so the
+     *   booking is never made twice. The timer is a `_mbGateSleep()`, woken
+     *   at once when the lock answers first, so its wakers stop with it.
      *
      * @param {function(Object): *} fn
      * @returns {Promise<{ok: boolean, value: *}>} `ok` false when the version was refused.
@@ -68359,19 +68490,66 @@
             } catch (_) { /* no storage: this page's copy only */ }
             return { ok: true, value };
         };
-        let timer = 0;
+        let expired = false;
+        let settled = false;
+        let raced = false;
         try {
             if (typeof navigator !== 'undefined' && navigator.locks && navigator.locks.request) {
+                raced = true;
                 const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
-                if (ctrl) timer = setTimeout(() => ctrl.abort(), _MBG_LOCK_ABORT_MS);
-                return await navigator.locks.request(_MBG_LOCK, ctrl ? { signal: ctrl.signal } : {}, rw);
+                const timeout = _mbGateSleep(_MBG_LOCK_ABORT_MS, () => settled).then(() => {
+                    if (settled) return new Promise(() => {}); // the lock answered first
+                    expired = true;
+                    try { if (ctrl) ctrl.abort(); } catch (_) { /* aborted already */ }
+                    throw new Error('shared request gate: lock timed out');
+                });
+                const locked = navigator.locks.request(_MBG_LOCK, ctrl ? { signal: ctrl.signal } : {},
+                    () => (expired ? undefined : rw()));
+                return await Promise.race([locked, timeout]);
             }
         } catch (_) {
             /* no Web Locks here, or the lock is stuck: unlocked, like a lone script */
         } finally {
-            clearTimeout(timer);
+            settled = true;
+            // The timeout's sleeper ends now, not at its next slice, so the
+            // wakers do not run on after every booking.
+            if (raced) _mbGateWakeAll();
         }
         return rw();
+    }
+
+    /**
+     * The stored `cool` this tab read last, when it first read that value, and
+     * the end of the last hold this tab's own 429/503 asked for
+     * (`_mbGateCool()`, `_mbGateAnswer()`).
+     * @type {{cool: number, at: number, own: number}}
+     */
+    const _mbgHoldSeen = { cool: 0, at: 0, own: 0 };
+
+    /**
+     * A stored `cool` as this tab counts it: at most `_MBG_MAX_HOLD` past the
+     * moment this tab first read that value. Every writer sets
+     * `cool = max(cool, now + ms)` with `ms ≤ _MBG_MAX_HOLD`, so a real hold is
+     * never more than that past its writing and is never cut; a corrupt or
+     * far-future one stops counting 60 s after it was first seen, for this
+     * request and every later one in the tab. Measured from `now` instead
+     * (upstream's wait), the cap moves along with each re-read, and such a
+     * value would still hold every request for its whole length. The stored
+     * value is left alone: lowering it is not in protocol v1. A hold this
+     * tab's own 429/503 asked for (`own`) still counts in full: behind such a
+     * value, `max(cool, now + ms)` leaves the stored value as it was, and
+     * without it the tab would not hold for its own throttle at all.
+     * @param {number} raw The stored `cool` (0 or missing: no hold).
+     * @param {number} now `Date.now()` of the caller's read.
+     * @returns {number} The time this tab treats as the end of the hold.
+     */
+    function _mbGateCool(raw, now) {
+        const v = +raw || 0;
+        if (v !== _mbgHoldSeen.cool) {
+            _mbgHoldSeen.cool = v;
+            _mbgHoldSeen.at = now;
+        }
+        return Math.min(v, Math.max(_mbgHoldSeen.at + _MBG_MAX_HOLD, _mbgHoldSeen.own));
     }
 
     /**
@@ -68385,6 +68563,20 @@
      *    foreground request: `max(now, cool)`), `tat = max(tat, at) + GAP`.
      * 3. Then it waits until `max(at, cool)`, re-reading `cool` each slice,
      *    so a hold that appeared while it queued still applies.
+     *
+     * A stored `cool` counts for at most `_MBG_MAX_HOLD`, the longest hold
+     * any writer sets, from the moment this tab first read it
+     * (`_mbGateCool()`), so a corrupt or far-future one cannot stall every
+     * request. Upstream caps it in the wait only, and from `now`, which moves
+     * along with each re-read; here it is capped at the booking too, or `at`
+     * (and with it `tat`, for everyone after) would still be booked ten
+     * minutes out.
+     *
+     * The waits sleep in `_mbGateSleep()` slices, which wake even while the
+     * page's timers are held back (#999). A wait over a second is told
+     * (`onWait` and the `mbgate` debug channel); it is told again, to both,
+     * when a new hold moves its end later by more than a second, and every
+     * 10 s it goes on to the debug channel only (the job log would fill).
      *
      * `cancelled()` is asked between slices; true resolves `{ok: false}` and
      * the request is not made (the booked slot is spent, as upstream).
@@ -68411,31 +68603,50 @@
             if (left <= 0) break;
             if (o.cancelled && o.cancelled()) { _mbgStats.cancelled++; return { ok: false, waited: Date.now() - t0, shared: true }; }
             if (!told) { told = true; tell(`${label}: waits for a page another script is drawing`); }
-            await new Promise(r => setTimeout(r, Math.min(left, _MBG_SLICE_MS)));
+            await _mbGateSleep(Math.min(left, _MBG_SLICE_MS), o.cancelled);
         }
+        const HOLD = 'MusicBrainz asked every script to wait';
         const booked = await _mbGateState(s => {
             const now = Date.now();
-            const cool = s.cool || 0;
+            const cool = _mbGateCool(s.cool, now);
             const tat = s.tat || 0;
             let at = background ? Math.max(now, tat - (_MBG_BURST - 1) * _MBG_GAP) : now;
             at = Math.max(at, cool);
             s.tat = Math.max(tat, at) + _MBG_GAP;
-            return at;
+            return { at, why: cool > now && cool >= at ? HOLD : 'shared pacing, one request a second' };
         });
         if (!booked.ok) return { ok: true, waited: Date.now() - t0, shared: false };
         _mbgStats.booked++;
-        for (let told = false; ;) {
+        const secs = (ms) => Math.round(ms / 100) / 10;
+        for (let toldUntil = 0, toldAt = 0; ;) {
             if (o.cancelled && o.cancelled()) { _mbgStats.cancelled++; return { ok: false, waited: Date.now() - t0, shared: true }; }
-            const cool = _mbGateRead().cool || 0;
-            const until = Math.max(booked.value, cool);
-            const left = until - Date.now();
+            const now = Date.now();
+            const cool = _mbGateCool(_mbGateRead().cool, now);
+            const until = Math.max(booked.value.at, cool);
+            const left = until - now;
             if (left <= 0) break;
-            if (!told && until - t0 > 1000) {
-                told = true;
-                tell(`${label}: waits ${Math.round((until - t0) / 100) / 10} s (`
-                    + (cool > booked.value ? 'MusicBrainz asked every script to wait' : 'shared pacing, one request a second') + ')');
+            if (until - t0 > 1000) {
+                const why = cool > booked.value.at ? HOLD : booked.value.why;
+                if (!toldAt) {
+                    tell(`${label}: waits ${secs(until - t0)} s (${why})`);
+                    toldUntil = until;
+                    toldAt = now;
+                } else if (until > toldUntil + 1000) {
+                    tell(`${label}: waits longer, ${secs(left)} s to go (${why})`);
+                    toldUntil = until;
+                    toldAt = now;
+                } else if (now - toldAt >= 10000) {
+                    Lib.debug('mbgate', `${label}: still waits, ${secs(left)} s to go (${why})`);
+                    toldAt = now;
+                }
             }
-            await new Promise(r => setTimeout(r, Math.min(left, _MBG_SLICE_MS)));
+            await _mbGateSleep(Math.min(left, _MBG_SLICE_MS), o.cancelled);
+            const st = _mbgWake.stall;
+            if (st && !st.told) {
+                st.told = true;
+                Lib.debug('mbgate', `this page's timer fired ${secs(st.ms)} s late (page ${st.state || '?'}`
+                    + `${st.hidden ? ', hidden' : ''}); the gate's waits wake on page activity too`);
+            }
         }
         const waited = Date.now() - t0;
         _mbgStats.waitedMs += waited;
@@ -68451,6 +68662,12 @@
      * — `Retry-After` a floor, since MusicBrainz sends `Retry-After: 0`. Any
      * other answer below 500 earns a step of `hot` back. 502/504 change
      * nothing here (the protocol's rule); `_ws2GetJson()` still retries them.
+     *
+     * The stored `cool` is read as this tab counts it (`_mbGateCool()`), for
+     * the episode and quiet rules and for the hold it reports: behind a
+     * corrupt far-future value, the raw one would never let `hot` step or
+     * reset, and would report that value's ten minutes for a one-second 503
+     * (seen in vzell's browser check, 2026-11-18).
      *
      * `X-RateLimit-*` is NOT read, on purpose. Probe
      * (`scripts/probe-ws2-throttle-shape.py`, 2026-11-09T00:37:52+01:00,
@@ -68476,11 +68693,13 @@
             const ra = Number.isFinite(secs) ? secs * 1000 : Number.isFinite(date) ? Math.max(0, date - Date.now()) : 0;
             const res = await _mbGateState(s => {
                 const now = Date.now();
-                if (now > (s.cool || 0) + _MBG_QUIET_MS) s.hot = 0;
-                if (now >= (s.cool || 0)) s.hot = Math.min((s.hot || 0) + 1, 6);
+                const cool = _mbGateCool(s.cool, now);
+                if (now > cool + _MBG_QUIET_MS) s.hot = 0;
+                if (now >= cool) s.hot = Math.min((s.hot || 0) + 1, 6);
                 const ms = Math.min(Math.max(1000, ra) * Math.max(1, s.hot), _MBG_MAX_HOLD);
-                s.cool = Math.max(s.cool || 0, Date.now() + ms);
-                return s.cool - Date.now();
+                s.cool = Math.max(s.cool || 0, now + ms);
+                _mbgHoldSeen.own = Math.max(_mbgHoldSeen.own, now + ms);
+                return Math.max(0, _mbGateCool(s.cool, now) - now);
             });
             if (!res.ok) return 0;
             _mbgStats.holds++;
@@ -68490,7 +68709,8 @@
         }
         if (status >= 200 && status < 500) {
             await _mbGateState(s => {
-                if (s.hot) s.hot = Date.now() > (s.cool || 0) + _MBG_QUIET_MS ? 0 : s.hot - 1;
+                const now = Date.now();
+                if (s.hot) s.hot = now > _mbGateCool(s.cool, now) + _MBG_QUIET_MS ? 0 : s.hot - 1;
             });
         }
         return 0;
@@ -189980,6 +190200,16 @@ a { color: #1565c0; }`;
                  * @returns {Promise<{ok: boolean, waited: number, shared: boolean}>}
                  */
                 slot: (o) => _mbGateSlot(o || {}),
+                /**
+                 * What `_mbGateSleep()` has running (it must all rest once no one waits).
+                 * @returns {{sleepers: number, frame: boolean, observer: boolean, ticking: boolean}}
+                 */
+                wakers: () => ({
+                    sleepers: _mbgWake.all.size,
+                    frame: !!_mbgWake.raf,
+                    observer: !!_mbgWake.mo,
+                    ticking: !!_mbgWake.ticking,
+                }),
                 /**
                  * @param {number} status
                  * @param {?string} retryAfter

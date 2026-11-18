@@ -25,7 +25,12 @@ const PAKO_PATH = require.resolve('pako/dist/pako.min.js');
 // needs neither of them.
 const CDN_RE = /^https?:\/\/(?:cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com)\//;
 const MB_LIBRARY_PATH = path.join(REPO_ROOT, 'lib', 'VZ_MBLibrary.user.js');
-const USERSCRIPT_PATH = path.join(PROJECT_ROOT, 'ShowAllEntityData.user.js');
+// SA_USERSCRIPT_PATH loads another copy of the userscript instead (a perf arm of
+// `main` run from a branch's harness: `git show main:ShowAllEntityData.user.js`
+// into the scratchpad). Unset in every suite run.
+const USERSCRIPT_PATH = process.env.SA_USERSCRIPT_PATH
+    ? path.resolve(process.env.SA_USERSCRIPT_PATH)
+    : path.join(PROJECT_ROOT, 'ShowAllEntityData.user.js');
 
 // Both default to `true` in configSchema. CAA/EAA fetches via GM_xmlhttpRequest
 // (already stubbed to a fake 404 by gmStubs.js) so they're harmless either way,

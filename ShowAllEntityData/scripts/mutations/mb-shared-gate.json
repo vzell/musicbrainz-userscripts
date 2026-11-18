@@ -69,8 +69,8 @@
     "why": "The wait loop re-reads cool each slice; without it, a 503 another script sees while we queue does not hold us.",
     "edits": [
       {
-        "find": "            const cool = _mbGateRead().cool || 0;\n            const until = Math.max(booked.value, cool);",
-        "replace": "            const cool = 0;\n            const until = Math.max(booked.value, cool);"
+        "find": "            const cool = _mbGateCool(_mbGateRead().cool, now);\n            const until = Math.max(booked.value.at, cool);",
+        "replace": "            const cool = 0;\n            const until = Math.max(booked.value.at, cool);"
       }
     ],
     "spec": "tests/fixtures/mb-shared-gate.spec.js",
@@ -160,7 +160,7 @@
     "why": "The in-flight requests of one throttle all answer 503; each must not stretch the hold again.",
     "edits": [
       {
-        "find": "                if (now >= (s.cool || 0)) s.hot = Math.min((s.hot || 0) + 1, 6);",
+        "find": "                if (now >= cool) s.hot = Math.min((s.hot || 0) + 1, 6);",
         "replace": "                s.hot = Math.min((s.hot || 0) + 1, 6);"
       }
     ],
@@ -173,7 +173,7 @@
     "why": "A throttle long gone must not slow every later page (hot persists in the shared store).",
     "edits": [
       {
-        "find": "                if (now > (s.cool || 0) + _MBG_QUIET_MS) s.hot = 0;",
+        "find": "                if (now > cool + _MBG_QUIET_MS) s.hot = 0;",
         "replace": ""
       }
     ],
@@ -231,6 +231,248 @@
     ],
     "spec": "tests/fixtures/popup-mb.spec.js",
     "grep": "during a hold of the cross-tab gate",
+    "expect": "fail"
+  },
+  {
+    "name": "the lock request is not raced against its timeout",
+    "why": "Upstream's lock race: a bridge that never settles the request on abort hangs the booking forever unless the 3 s timer releases the wait itself.",
+    "edits": [
+      {
+        "find": "                return await Promise.race([locked, timeout]);",
+        "replace": "                return await locked;"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "a lock that never settles",
+    "expect": "fail"
+  },
+  {
+    "name": "a late lock grant books again",
+    "why": "After the timeout the booking went ahead unlocked; a grant that comes later must run nothing, or tat moves a second time.",
+    "edits": [
+      {
+        "find": "                    () => (expired ? undefined : rw()));",
+        "replace": "                    () => rw());"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "a lock that never settles",
+    "expect": "fail"
+  },
+  {
+    "name": "the booking reads cool uncapped",
+    "why": "Upstream's form (cap in the wait only): a cool ten minutes out still books at (and tat, for everyone after) ten minutes out.",
+    "edits": [
+      {
+        "find": "            const cool = _mbGateCool(s.cool, now);\n            const tat = s.tat || 0;",
+        "replace": "            const cool = s.cool || 0;\n            const tat = s.tat || 0;"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "a hold ten minutes out",
+    "expect": "fail"
+  },
+  {
+    "name": "the wait reads cool uncapped",
+    "why": "With only the booking capped, the wait's re-read of a far-future cool still waits ten minutes.",
+    "edits": [
+      {
+        "find": "            const cool = _mbGateCool(_mbGateRead().cool, now);",
+        "replace": "            const cool = _mbGateRead().cool || 0;"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "a hold ten minutes out",
+    "expect": "fail"
+  },
+  {
+    "name": "the wait's cap counts from each re-read's now",
+    "why": "Upstream's wait: the cap moves along with now, so a cool ten minutes out still holds the request for all ten (and the job log hears 'waits longer' every second).",
+    "edits": [
+      {
+        "find": "            const cool = _mbGateCool(_mbGateRead().cool, now);",
+        "replace": "            const cool = Math.min(_mbGateRead().cool || 0, now + _MBG_MAX_HOLD);"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "ends 60 s after the tab first saw it",
+    "expect": "fail"
+  },
+  {
+    "name": "the booking's cap counts from its own now",
+    "why": "Capped per request only: the next request books 60 s out again behind the same broken value, so a column's requests one after another each wait a minute.",
+    "edits": [
+      {
+        "find": "            const cool = _mbGateCool(s.cool, now);\n            const tat = s.tat || 0;",
+        "replace": "            const cool = Math.min(s.cool || 0, now + _MBG_MAX_HOLD);\n            const tat = s.tat || 0;"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "ends 60 s after the tab first saw it",
+    "expect": "fail"
+  },
+  {
+    "name": "the tab forgets when it first saw the value",
+    "why": "_mbGateCool() restarts the 60 s at every read: the cap rolls along at the booking and in the wait.",
+    "edits": [
+      {
+        "find": "        if (v !== _mbgHoldSeen.cool) {",
+        "replace": "        if (true) {"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "ends 60 s after the tab first saw it",
+    "expect": "fail"
+  },
+  {
+    "name": "the answer reads the stored cool raw",
+    "why": "Behind a broken far-future cool, hot never steps and the hold reported for a 1 s 503 is that value's ten minutes (vzell's browser check: 522.3 s).",
+    "edits": [
+      {
+        "find": "                const cool = _mbGateCool(s.cool, now);\n                if (now > cool + _MBG_QUIET_MS) s.hot = 0;",
+        "replace": "                const cool = s.cool || 0;\n                if (now > cool + _MBG_QUIET_MS) s.hot = 0;"
+      },
+      {
+        "find": "                return Math.max(0, _mbGateCool(s.cool, now) - now);",
+        "replace": "                return s.cool - now;"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "the tab's own 503 still holds it",
+    "expect": "fail"
+  },
+  {
+    "name": "the tab forgets its own 503's hold",
+    "why": "Behind a broken cool, max(cool, now + ms) leaves the stored value unchanged and the cap counts it as over: the tab would not hold for its own throttle.",
+    "edits": [
+      {
+        "find": "                _mbgHoldSeen.own = Math.max(_mbgHoldSeen.own, now + ms);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "the tab's own 503 still holds it",
+    "expect": "fail"
+  },
+  {
+    "name": "the wait sleeps on the page's plain timers",
+    "why": "#999: with the page's timers held back, a plain setTimeout slice hangs the wait with them.",
+    "edits": [
+      {
+        "find": "            await _mbGateSleep(Math.min(left, _MBG_SLICE_MS), o.cancelled);\n            const st = _mbgWake.stall;",
+        "replace": "            await new Promise(r => setTimeout(r, Math.min(left, _MBG_SLICE_MS)));\n            const st = _mbgWake.stall;"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "timers held back",
+    "expect": "fail"
+  },
+  {
+    "name": "no animation-frame waker",
+    "why": "Redundant in Chromium on purpose: the worker's tick alone wakes the wait in time, so the spec cannot see this one. It matters where a worker is forbidden or throttled.",
+    "edits": [
+      {
+        "find": "                if (!w.raf && typeof requestAnimationFrame === 'function') {",
+        "replace": "                if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "timers held back",
+    "expect": "pass"
+  },
+  {
+    "name": "no worker waker",
+    "why": "Redundant in a visible page on purpose: animation frames alone wake the wait in time, so the spec cannot see this one. It matters in a hidden tab, where frames stop.",
+    "edits": [
+      {
+        "find": "                if (w.worker && !w.ticking) { w.ticking = true; w.worker.postMessage(100); }",
+        "replace": "                if (false) { w.ticking = true; }"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "timers held back",
+    "expect": "pass"
+  },
+  {
+    "name": "neither frames nor worker wake the wait",
+    "why": "With both gone only DOM changes wake it, and an idle page makes none: the wait hangs with the held-back timers.",
+    "edits": [
+      {
+        "find": "                if (!w.raf && typeof requestAnimationFrame === 'function') {",
+        "replace": "                if (false) {"
+      },
+      {
+        "find": "                if (w.worker && !w.ticking) { w.ticking = true; w.worker.postMessage(100); }",
+        "replace": "                if (false) { w.ticking = true; }"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "timers held back",
+    "expect": "fail"
+  },
+  {
+    "name": "the page observer is left running after the last sleeper",
+    "why": "The observer sees every DOM change of a render; it must run only while a request waits.",
+    "edits": [
+      {
+        "find": "                    try { if (w.mo) w.mo.disconnect(); } catch (_) { /* gone */ }\n                    w.mo = null;",
+        "replace": "                    /* the observer is left running */"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "timers held back",
+    "expect": "fail"
+  },
+  {
+    "name": "the worker keeps ticking after the last sleeper",
+    "why": "The worker's 100 ms tick must stop once nobody waits.",
+    "edits": [
+      {
+        "find": "                    try { if (w.worker && w.ticking) w.worker.postMessage(0); } catch (_) { /* gone */ }\n                    w.ticking = false;",
+        "replace": "                    /* the worker keeps ticking */"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "timers held back",
+    "expect": "fail"
+  },
+  {
+    "name": "the lock timer's sleeper outlives the write",
+    "why": "Without the wake in _mbGateState()'s finally, every booking and answer leaves its timeout sleeper (and the wakers) running for up to a slice.",
+    "edits": [
+      {
+        "find": "            if (raced) _mbGateWakeAll();",
+        "replace": "            /* not woken */"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "timers held back",
+    "expect": "fail"
+  },
+  {
+    "name": "a wait moved later is not told again",
+    "why": "The job log hears a new hold that moves the wait's end later; without it the log still says the first, shorter wait.",
+    "edits": [
+      {
+        "find": "                } else if (until > toldUntil + 1000) {",
+        "replace": "                } else if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "job log is told again",
+    "expect": "fail"
+  },
+  {
+    "name": "a hold's wait is called pacing",
+    "why": "The booking took cool as its slot, so only the booking-time reason (upstream's) can say the wait is a hold.",
+    "edits": [
+      {
+        "find": "            return { at, why: cool > now && cool >= at ? HOLD : 'shared pacing, one request a second' };",
+        "replace": "            return { at, why: 'shared pacing, one request a second' };"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "job log is told again",
     "expect": "fail"
   }
 ]
