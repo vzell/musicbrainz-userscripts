@@ -1,7 +1,11 @@
 #+TITLE: Follow-up on #938: mbLastWrite (C7) and MBU.artistImage (C8) adopted in SAED
 #+DATE: 2026-11-18
 
-* TODO Post: C7/C8 report on https://github.com/majkinetor/musicbrainz-userscripts/issues/938
+* DONE Post: C7/C8 report on https://github.com/majkinetor/musicbrainz-userscripts/issues/938
+
+*Posted* by vzell 2026-11-18 01:53:55 CET: https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-6965609936
+(identical to the block below, with vzell's screenshot of an artist window in place of "[screenshot]"; checked
+against the comment's body).
 
 Drafted 2026-11-18 at vzell's request, for vzell to post (never posted by Claude). It answers milic-bot's comment of
 2026-11-17 11:40 UTC ([[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-6946992441][comment]]),
