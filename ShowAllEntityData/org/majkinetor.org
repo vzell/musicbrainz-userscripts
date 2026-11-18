@@ -1469,6 +1469,39 @@ Each is one =FINDINGS= entry (=add-finding= skill) that reads source-row data th
   - all-zero: search MB for =barcode:000000000000=;
   - shared ISRC: a release where two tracks show the same ISRC;
   - no length: any release with a "?:??" track.
+- *Pre-test result* (Env: 2026-11-19T00:00–00:10+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux
+  6.18.58.1-microsoft-standard-WSL2) · n/a browser; =scripts/probe-release-check-examples.py=, output
+  =debug/probe-release-check-examples.json=; branch =feat/release-check-findings=):
+  - *all-zero barcode*: the search finds them in several lengths, so the test is "every digit 0", any length:
+    [[https://musicbrainz.org/release/89adcecc-f207-4e19-a7f5-465a0f2b72ea][Pete Townshend Live]] (12),
+    [[https://musicbrainz.org/release/6d19140a-3852-484e-b739-f4fcc95a6095][Alessandro Alessandroni … "El Puro"]]
+    (13), [[https://musicbrainz.org/release/d9ea9503-dcd1-4b0b-b050-c58aa6b4fc45][Are You There God? It's Us, the
+    Monsignors]] (11; =barcode-invalid= flags that one too, by its length).
+  - *no barcode vs "[none]"*: MusicBrainz's =formatBarcode()= (musicbrainz-server, =root/static/scripts/common/utility/formatBarcode.js=)
+    returns =''= for =null= and "[none]" for =''=. So an empty Barcode cell is "not entered" and "[none]" is "the
+    release has none". Example without one:
+    [[https://musicbrainz.org/release/46e5c6a9-b0a7-4e42-9162-8f412705b09d][Born to Run]] (XE 1975-08-25,
+    =barcode: null=); with "[none]":
+    [[https://musicbrainz.org/release/02a3c67f-d415-4a79-bd26-5432bd44466e][Greetings From Asbury Park, N.J.]].
+    The list page's own HTML could not be read: musicbrainz.org now answers a script's request for an HTML page
+    with a "Verifying your browser" JavaScript check (=/ws/2= is not affected).
+  - *catalog number*: =ReleaseCatnoList.js= lists only non-empty numbers, as a set, apart from the labels, so a
+    list row cannot say WHICH label lacks one. On list pages the finding is "a label, and an empty Catalog#
+    cell"; "[no label]" does not count as a label. Example:
+    [[https://musicbrainz.org/release/c9c1961b-43ce-4609-9ebc-975d6adbe1e0][Darkness on the Edge of Town]]
+    (Columbia, no number).
+  - *no release event*: none among 400 browsed Springsteen releases; the search =arid:… AND -date:* AND
+    -country:*= finds bootlegs, e.g. [[https://musicbrainz.org/release/d71651c3-8c0a-4bc9-be11-60b10c98c26c][Cologne
+    Night]], [[https://musicbrainz.org/release/83b703dc-d8b8-497d-a65a-c28d913abf76][DoubleTake Magazine Benefit]].
+  - *no track length*: [[https://musicbrainz.org/release/0ba86ef0-05da-459b-93e6-877ac7c96e3d][Janey Needs a
+    Shooter]] (track A), [[https://musicbrainz.org/release/1c95ee35-1c2f-49ba-9326-07dbfe75c228][Song to
+    Orphans]].
+  - *shared ISRC*: none among the 400. From MusicBrainz's report "ISRCs with multiple recordings" (=/ws/2='s ISRC
+    lookup returns no releases, so each recording is looked up):
+    [[https://musicbrainz.org/release/f6b30d03-7e13-48e5-b413-1160307d3580][Five O'Clock]], where the ISRCs
+    =AEA2M2298352= … are shifted by one track, so each sits on two neighbouring tracks' recordings.
+  - *release-tracks has no ISRC column by default* (=sa_enable_release_tracks_isrc_column= is =false=); the codes
+    sit in each track's Title cell then. The shared-ISRC finding must read them there too.
 - *Perf*: cell findings run in =stampFindings()= over source rows. They are O(rows), and the shared-ISRC one needs a
   per-render map ISRC → recording MBIDs.
 - *Optional, costs requests*: "barcode already on another MB release" (PC =pcBarcodeOnMb= 9692, one search per
