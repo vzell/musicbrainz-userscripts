@@ -30310,3 +30310,49 @@ Env: 2026-11-18T02:30–05:40+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6
 - **Not yet:** the one reply to majkinetor (hold cap, lead wait, clock steps; `org/majkinetor.org`, TODO "The
   shared gate's clock"; vzell sends it), and SAED's half of the clock fix (the `leadUntil` bound and the sleep on
   `performance.now()`; a branch of its own, on petri).
+
+## 2026-11-18 — The shared request gate waits on the monotonic clock; a far-future lead holds 10 s once (feat/mb-gate-clock)
+
+Env: 2026-11-18T20:58–21:15+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1, bundled Chromium (headless), no Tampermonkey (GM stubs) · upstream read at `687b8b1` (code reading, n/a).
+
+- **Why:** SAED's half of the TODO "The shared gate's clock" in `org/majkinetor.org`, started right after vzell
+  posted the one reply on #938 (issuecomment-6989864530, checked word for word). It changes only how SAED reads
+  the schedule, so it did not wait for majkinetor's answer.
+- **What:**
+  - The stored `tat`/`cool`/`leadUntil` stay `Date.now()` epochs (protocol v1). A stored `cool` gets a monotonic
+    end (`_steadyNow()`) when the tab first reads that value, at most 60 s away (`_mbGateHoldEnd()`, which
+    replaces `_mbGateCool()`); the tab's own 429/503 hold is kept on the same clock, never past the stored value.
+  - `leadUntil` the same, at most 10 s (`_mbGateLeadLeft()`); a renewal is a new value and holds again.
+  - The booked `at` becomes a monotonic deadline once, at the booking.
+  - `_mbGateSleep()` and its late-timer note time themselves on `_steadyNow()`.
+  - `tat` is still not capped (a long real queue is normal; a capped `tat` written back would overlap it).
+  - Test hook `__saTest.mbGate.stall()`.
+- **Tests:** `mb-shared-gate.spec.js` 16 → 22, with `installClock()` (`pass()` moves both clocks, `step()` the
+  wall clock only). The two specs that faked "61 s pass" by moving `Date.now()` alone now `pass()`. New, each
+  predicted and run on the old code first:
+  - backward step −16.8 s during a 1 s hold: hung (8 s race), now ~1 s;
+  - forward step +16.8 s during a 3 s hold: sent after 305 ms, now 3 s, and no late-timer note;
+  - forward step during a 2 s paced slot: sent after 316 ms, now 2 s;
+  - forward step after a hold appeared while the request queued: sent after 705 ms, now ~3.3 s (added after the
+    mutation run: the booked deadline masks the first-sight memory for a hold seen at the booking);
+  - a `leadUntil` ten minutes out: hung, now 10 s once (both clocks moved on 10.5 s), and the next request does
+    not wait again;
+  - a renewed lead holds again (a guard; it passed before too).
+- **Mutations:** `scripts/mutations/mb-shared-gate.json` 36 → 42, ten finds moved to the new code. The first run:
+  41 OK, 1 unexpected pass ("a hold's end follows the wall clock at every read", masked as above); with the new
+  spec it fails as expected. `check-mutation-finds.py`: 306 lists, 0 stale.
+- **Perf:** not measured. Nothing on the filter/sort/render path changed; the gate's waits read
+  `performance.now()` where they read `Date.now()`.
+- **HELP:** checked, no edit (the help file does not describe the gate's timing).
+- **Lint:** within the baseline.
+- **`npm run test:full` on petri, uncommitted on `bd4cb6d5`, 21:14:17–21:35:33 CET (21 m 16 s): 3,265 of 3,265
+  passed.**
+- **Browser check by vzell, 2026-11-18 around 22:10+01:00** (`7245bf59`, Firefox and Tampermonkey versions not
+  restated; 160.0 and 5.5.0 at 16:33 the same day), series `aa3694d3-a3d0-48ed-8f07-5b576de87908`, a `leadUntil`
+  ten minutes out planted in `mbu:mb-gate`: "looks good". The lead step (the new part) is his observation; the
+  console log (`debug/mb-firefox-mb-gate-clock.log`) starts only at the end of that first load (22:11:05.3).
+  - The optional hold re-check did not exercise the gate: after ▼🔗/▶🔗 (22:11:11.9 / 22:11:21.8) all 12 lookups
+    were "L1 memory hit", done 40 ms later, because emptying `rel-ws2` does not empty the tab's memory cache. My
+    step was wrong (a page reload was needed before it). The hold path is covered by the specs and was checked in
+    the browser before this branch (`a021f32d`, above); its code here changed only in which clock it reads.
+- **Not yet:** majkinetor's answer to the two questions on #938.

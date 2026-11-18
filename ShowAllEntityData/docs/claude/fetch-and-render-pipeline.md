@@ -295,7 +295,7 @@ version 1 (on his `main` since `7eb7c563`). Anchors `gate-version`,
   request waits pays nothing (`__saTest.mbGate.wakers()`). Its state is this
   script's own (`_mbgWake`), not upstream's `globalThis.__mbnWake1`.
 - **A stored `cool` counts for at most 60 s from the moment this tab first
-  read that value (`_mbGateCool()`), at the booking AND in the wait.** Every
+  read that value (`_mbGateHoldEnd()`), at the booking AND in the wait.** Every
   writer sets `cool = max(cool, now + ms)` with `ms ≤ 60 s`, so a real hold
   is never cut; a corrupt or far-future one stops counting a minute after the
   tab first saw it, for every later request too. Upstream caps it in the
@@ -311,6 +311,23 @@ version 1 (on his `main` since `7eb7c563`). Anchors `gate-version`,
   hold for its own throttle (vzell's Firefox check, 2026-11-18: "every
   script holds 522.3 s" for a `Retry-After: 1`). `tat` itself is not capped (a long
   legitimate queue is possible; upstream does not either).
+- **The stored times are wall-clock epochs; the waits run on `_steadyNow()`**
+  (2026-11-18, `feat/mb-gate-clock`). `tat`, `cool` and `leadUntil` stay
+  `Date.now()` values, because every tab and every script must read them alike
+  (each tab's `performance.timeOrigin` is its own start). But a tab turns a
+  stored `cool` or `leadUntil` into a monotonic end when it FIRST reads that
+  value (`_mbGateHoldEnd()`, `_mbGateLeadLeft()`; at most 60 s / 10 s away),
+  the booked `at` becomes a monotonic deadline once, at the booking, and
+  `_mbGateSleep()` and its late-timer note time themselves on `_steadyNow()`.
+  So a step of the wall clock during a wait neither ends it early (NB-3641,
+  2026-11-17: a 3 s hold sent after 842 ms) nor stretches it (petri's 16.8 s
+  spikes, 2026-11-09). A `leadUntil` ten minutes out holds background
+  requests for 10 s once, not ten minutes (upstream's
+  `min(leadUntil − now, MAX_LEAD)` is re-read every slice); a renewal writes a
+  new value and holds again. What is left: a value written INSIDE a forward
+  step is stored that much ahead, and costs every reader at most one hold or
+  one lead; a `tat` booked inside one costs the step once (not capped, see
+  above). Proposed to majkinetor on #938 (2026-11-18).
 - **What a wait tells.** The reason is decided at the booking (a hold, or
   pacing), as upstream does. A wait over a second is told to `onWait` (the
   Relationships job log) and to `mbgate`; it is told again, to both, when a
@@ -331,7 +348,10 @@ column's async job log (`onWait`). Tests: `tests/fixtures/mb-shared-gate.spec.js
 refusal, the lead, two tabs in one context, off, foreign host, the formulas via
 `__saTest.mbGate`; since 2026-11-18 also the never-settling lock, the
 far-future hold, waits with the page's timers held back and the wakers at
-rest, the job log's second line); mutations `scripts/mutations/mb-shared-gate.json`.
+rest, the job log's second line; and the wall clock stepped back and forward
+during a hold and a paced slot, the ten-minute lead and its renewal, through
+the spec's `installClock()`: `pass()` moves both clocks, `step()` the wall
+clock only); mutations `scripts/mutations/mb-shared-gate.json`.
 
 ## The in-tab request schedulers book on `_steadyNow()`, never the wall clock (2026-11-09)
 
@@ -354,10 +374,11 @@ does the same on a user's machine.
 
 **Rules:** a new scheduler that reserves a future slot books on `_steadyNow()`.
 `Date.now()` stays right for what is compared with other tabs' or other
-scripts' epoch values. The shared gate `mbu:mb-gate` is still on `Date.now()`
-(its `tat`/`cool` are written by majkinetor's scripts too), so a booking made
-inside a spike there still holds everyone for the spike's size: the one
-residual. Test a scheduler by stepping `Date.now()` around one reservation
+scripts' epoch values. The shared gate `mbu:mb-gate` stores `Date.now()`
+values (its `tat`/`cool` are written by majkinetor's scripts too), but since
+2026-11-18 it waits on `_steadyNow()` (see "The stored times are wall-clock
+epochs" above); what is left is a value written inside a spike, bounded to one
+hold or lead. Test a scheduler by stepping `Date.now()` around one reservation
 (`tests/fixtures/rate-slot-clock-step.spec.js`, hooks `reserveMbRateSlots()`,
 `reserveDpRateSlots()`, `reserveExtRateSlots()`); mutations
 `scripts/mutations/steady-rate-slots.json`.

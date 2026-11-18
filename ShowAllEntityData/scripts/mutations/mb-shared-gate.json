@@ -69,8 +69,8 @@
     "why": "The wait loop re-reads cool each slice; without it, a 503 another script sees while we queue does not hold us.",
     "edits": [
       {
-        "find": "            const cool = _mbGateCool(_mbGateRead().cool, now);\n            const until = Math.max(booked.value.at, cool);",
-        "replace": "            const cool = 0;\n            const until = Math.max(booked.value.at, cool);"
+        "find": "            const cool = _mbGateHoldEnd(_mbGateRead().cool, Date.now(), now);\n            const until = Math.max(booked.value.atMono, cool);",
+        "replace": "            const cool = -Infinity;\n            const until = Math.max(booked.value.atMono, cool);"
       }
     ],
     "spec": "tests/fixtures/mb-shared-gate.spec.js",
@@ -160,7 +160,7 @@
     "why": "The in-flight requests of one throttle all answer 503; each must not stretch the hold again.",
     "edits": [
       {
-        "find": "                if (now >= cool) s.hot = Math.min((s.hot || 0) + 1, 6);",
+        "find": "                if (mono >= cool) s.hot = Math.min((s.hot || 0) + 1, 6);",
         "replace": "                s.hot = Math.min((s.hot || 0) + 1, 6);"
       }
     ],
@@ -173,7 +173,7 @@
     "why": "A throttle long gone must not slow every later page (hot persists in the shared store).",
     "edits": [
       {
-        "find": "                if (now > cool + _MBG_QUIET_MS) s.hot = 0;",
+        "find": "                if (mono > cool + _MBG_QUIET_MS) s.hot = 0;",
         "replace": ""
       }
     ],
@@ -264,7 +264,7 @@
     "why": "Upstream's form (cap in the wait only): a cool ten minutes out still books at (and tat, for everyone after) ten minutes out.",
     "edits": [
       {
-        "find": "            const cool = _mbGateCool(s.cool, now);\n            const tat = s.tat || 0;",
+        "find": "            const cool = now + (_mbGateHoldEnd(s.cool, now, mono) - mono);\n            const tat = s.tat || 0;",
         "replace": "            const cool = s.cool || 0;\n            const tat = s.tat || 0;"
       }
     ],
@@ -277,8 +277,8 @@
     "why": "With only the booking capped, the wait's re-read of a far-future cool still waits ten minutes.",
     "edits": [
       {
-        "find": "            const cool = _mbGateCool(_mbGateRead().cool, now);",
-        "replace": "            const cool = _mbGateRead().cool || 0;"
+        "find": "            const cool = _mbGateHoldEnd(_mbGateRead().cool, Date.now(), now);",
+        "replace": "            const cool = now + ((_mbGateRead().cool || 0) - Date.now());"
       }
     ],
     "spec": "tests/fixtures/mb-shared-gate.spec.js",
@@ -290,8 +290,8 @@
     "why": "Upstream's wait: the cap moves along with now, so a cool ten minutes out still holds the request for all ten (and the job log hears 'waits longer' every second).",
     "edits": [
       {
-        "find": "            const cool = _mbGateCool(_mbGateRead().cool, now);",
-        "replace": "            const cool = Math.min(_mbGateRead().cool || 0, now + _MBG_MAX_HOLD);"
+        "find": "            const cool = _mbGateHoldEnd(_mbGateRead().cool, Date.now(), now);",
+        "replace": "            const cool = now + Math.min((_mbGateRead().cool || 0) - Date.now(), _MBG_MAX_HOLD);"
       }
     ],
     "spec": "tests/fixtures/mb-shared-gate.spec.js",
@@ -303,7 +303,7 @@
     "why": "Capped per request only: the next request books 60 s out again behind the same broken value, so a column's requests one after another each wait a minute.",
     "edits": [
       {
-        "find": "            const cool = _mbGateCool(s.cool, now);\n            const tat = s.tat || 0;",
+        "find": "            const cool = now + (_mbGateHoldEnd(s.cool, now, mono) - mono);\n            const tat = s.tat || 0;",
         "replace": "            const cool = Math.min(s.cool || 0, now + _MBG_MAX_HOLD);\n            const tat = s.tat || 0;"
       }
     ],
@@ -329,11 +329,11 @@
     "why": "Behind a broken far-future cool, hot never steps and the hold reported for a 1 s 503 is that value's ten minutes (vzell's browser check: 522.3 s).",
     "edits": [
       {
-        "find": "                const cool = _mbGateCool(s.cool, now);\n                if (now > cool + _MBG_QUIET_MS) s.hot = 0;",
-        "replace": "                const cool = s.cool || 0;\n                if (now > cool + _MBG_QUIET_MS) s.hot = 0;"
+        "find": "                const cool = _mbGateHoldEnd(s.cool, now, mono);\n                if (mono > cool + _MBG_QUIET_MS) s.hot = 0;",
+        "replace": "                const cool = mono + ((s.cool || 0) - now);\n                if (mono > cool + _MBG_QUIET_MS) s.hot = 0;"
       },
       {
-        "find": "                return Math.max(0, _mbGateCool(s.cool, now) - now);",
+        "find": "                return Math.max(0, _mbGateHoldEnd(s.cool, now, mono) - mono);",
         "replace": "                return s.cool - now;"
       }
     ],
@@ -346,7 +346,7 @@
     "why": "Behind a broken cool, max(cool, now + ms) leaves the stored value unchanged and the cap counts it as over: the tab would not hold for its own throttle.",
     "edits": [
       {
-        "find": "                _mbgHoldSeen.own = Math.max(_mbgHoldSeen.own, now + ms);\n",
+        "find": "                _mbgHoldSeen.own = Math.max(_mbgHoldSeen.own, mono + ms);\n",
         "replace": ""
       }
     ],
@@ -467,12 +467,106 @@
     "why": "The booking took cool as its slot, so only the booking-time reason (upstream's) can say the wait is a hold.",
     "edits": [
       {
-        "find": "            return { at, why: cool > now && cool >= at ? HOLD : 'shared pacing, one request a second' };",
-        "replace": "            return { at, why: 'shared pacing, one request a second' };"
+        "find": "                why: cool > now && cool >= at ? HOLD : 'shared pacing, one request a second',",
+        "replace": "                why: 'shared pacing, one request a second',"
       }
     ],
     "spec": "tests/fixtures/mb-shared-gate.spec.js",
     "grep": "job log is told again",
+    "expect": "fail"
+  },
+  {
+    "name": "the sleep runs on the wall clock",
+    "why": "Upstream's mbnSleep(): a backward step of the wall clock inside a slice stretches it by the whole step (16.8 s on petri).",
+    "edits": [
+      {
+        "find": "        const end = _steadyNow() + Math.max(0, +ms || 0);\n        const w = _mbgWake;",
+        "replace": "        const end = Date.now() + Math.max(0, +ms || 0);\n        const w = _mbgWake;"
+      },
+      {
+        "find": "                const now = _steadyNow();\n                if (!stop && now < end) return;",
+        "replace": "                const now = Date.now();\n                if (!stop && now < end) return;"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "a backward step during a hold",
+    "expect": "fail"
+  },
+  {
+    "name": "the booked slot is re-read on the wall clock each slice",
+    "why": "The booked at kept as a Date.now() epoch: a forward step of the wall clock during a paced wait ends it at once.",
+    "edits": [
+      {
+        "find": "                atMono: mono + (at - now),",
+        "replace": "                atMono: mono + (at - now), atWall: at,"
+      },
+      {
+        "find": "            const until = Math.max(booked.value.atMono, cool);",
+        "replace": "            const until = Math.max(now + (booked.value.atWall - Date.now()), cool);"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "a forward step does not end a paced slot early",
+    "expect": "fail"
+  },
+  {
+    "name": "a hold's end follows the wall clock at every read",
+    "why": "Without the first-sight memory the hold's end is re-derived from the stepped wall clock each slice: a forward step ends a 3 s hold at once (NB-3641: 842 ms).",
+    "edits": [
+      {
+        "find": "        if (v !== _mbgHoldSeen.cool) {",
+        "replace": "        if (true) {"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "a hold that appeared while the request queued",
+    "expect": "fail"
+  },
+  {
+    "name": "the late-timer note runs on the wall clock",
+    "why": "A forward step of the wall clock looks like a plain timer that fired 16.8 s late, and the debug log says so.",
+    "edits": [
+      {
+        "find": "        const now = _steadyNow();\n        if (!_mbgWake.stall",
+        "replace": "        const now = Date.now();\n        if (!_mbgWake.stall"
+      },
+      {
+        "find": "                if (w.due.size < 500) w.due.set(tok, _steadyNow() + d);",
+        "replace": "                if (w.due.size < 500) w.due.set(tok, Date.now() + d);"
+      },
+      {
+        "find": "                if (_steadyNow() - (w.due.get(tok) || Infinity) > 2000) _mbGateWakeAll();",
+        "replace": "                if (Date.now() - (w.due.get(tok) || Infinity) > 2000) _mbGateWakeAll();"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "is not taken for a late timer",
+    "expect": "fail"
+  },
+  {
+    "name": "the lead's cap counts from each re-read's now",
+    "why": "Upstream's min(leadUntil - now, MAX_LEAD), re-read every slice: a leadUntil ten minutes out holds every background request for ten minutes.",
+    "edits": [
+      {
+        "find": "        if (v !== _mbgLeadSeen.until) {",
+        "replace": "        if (true) {"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "a lead ten minutes out",
+    "expect": "fail"
+  },
+  {
+    "name": "a renewed lead is not seen",
+    "why": "Only the first leadUntil gets an end: Event Horizon's renewal while it draws no longer holds background requests.",
+    "edits": [
+      {
+        "find": "        if (v !== _mbgLeadSeen.until) {",
+        "replace": "        if (_mbgLeadSeen.end === -Infinity) {"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "a renewed lead holds again",
     "expect": "fail"
   }
 ]

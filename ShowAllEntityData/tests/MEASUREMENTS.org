@@ -4468,3 +4468,13 @@ Env: 2026-11-18T20:30:20+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 
 3259 passed (the branch's 3245 plus the 14 tests main gained from 9.99.1647–1649 on NB-3641). No flake showed.
 =check-clock-jumps.js= at 20:43 CET, during the run: 0 jumps in 30 s (clock source =tsc=, =systemd-timesyncd= off).
+
+* 2026-11-18 — =npm run test:full= on =petri=, feat/mb-gate-clock (uncommitted on bd4cb6d5, 9.99.1650)
+
+Env: 2026-11-18T21:14:17+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                         | Tests | Workers | Wall clock  | Basis                                     |
+|-----------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, merge check  |  3265 |      12 | *21 m 16 s* | =run-test-full.py=, 21:14:17–21:35:33 CET |
+
+3265 passed (main's 3259 plus the six new clock specs). No flake showed.
