@@ -4359,3 +4359,61 @@ Env: 2026-11-15T22:52:41+01:00–22:53:46+01:00 · NB-3641 · WSL2 Ubuntu 24.04.
 |     2 | 501 (487–519) | 502 (489–520) | 66 (64–76) | 66 (63–78) |
 
 B/M: render 1.04 and 1.00, sort 0.99 and 1.00. The ranges of the two arms overlap in both rounds: one more empty cell a row (24 columns for 23) is at most a few per cent of the render and nothing at a sort. Not measured: the start page's 5,018 rows, and the table after ▶ Pages has filled the Tags cells (up to about 70 list rows a cell, folded).
+
+* 2026-11-18 — =npm run test:full= on =petri=, =main= (main at 3905684c, 9.99.1646)
+
+Env: 2026-11-18T02:02:48+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                         | Tests | Workers | Wall clock  | Basis                                     |
+|-----------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, =main=       |  3239 |      12 | *20 m 21 s* | =run-test-full.py=, 02:02:48–02:23:09 CET |
+
+3239 passed, before feat/mb-gate-upstream-align branched off it. No flake showed.
+
+* 2026-11-18 — interaction timings while a request waits in the shared gate, main vs feat/mb-gate-upstream-align (=_mbGateSleep()='s wakers) (=petri=)
+
+Env: 2026-11-18T03:09:01+01:00 → 2026-11-18T05:16:31+01:00 · petri (24 CPUs, 31 GB) · WSL2 Ubuntu 24.04.3 LTS
+(Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), node v24.16.0 · no
+Tampermonkey (GM stubs). Both arms at 9.99.1646: main = =3905684c='s userscript copied to the scratchpad, the branch =
+the working tree on top of it (uncommitted): gw branch 1–2 and nw branch 1 read it in place, the later arms a copy taken
+at 04:26 CET (=SA_USERSCRIPT_PATH=), after a comment-only change. The hold-cap fix found later that night
+(=_mbGateCool()=) is in neither; it touches only the booking and the wait, never a render.
+
+pageType =artist-events= (=tableMode: single=), "Bruce Springsteen — Events", 4,174 rows, disk fixture;
+=capture-interaction-perf.js= through =scripts/run-perf-arms.py=, 5 samples per metric. =--gate-wait= (new) seeds a
+hold 55 s out and starts one background =__saTest.mbGate.slot()= after the render, so a request waits through every
+measurement; on the branch the gate's wakers (a frame loop, a MutationObserver on =documentElement= with
+=childList/subtree/attributes/characterData=, a worker's 100 ms tick) run all that time, and the arm asserts a sleeper
+exists. "lite" is the branch with the observer on =childList/subtree= only (a scratch copy, never committed). Order:
+gw M, B, B, M; nw B, M, M, B; gw lite, B
+(=tests/snapshots/artist-events/interaction-perf-{gatewait,nowait}-*-9.99.1646-2026-11-18-petri.json=). Medians in ms:
+
+| interaction         | gw main 1, 2 | gw branch 1, 2, 3 | gw lite | nw main 1, 2 | nw branch 1, 2 | gw B/M | nw B/M | lite/B3 |
+|---------------------+--------------+-------------------+---------+--------------+----------------+--------+--------+---------|
+| globalFilter        | 2274 2322    | 1920 1705 1801    |    1658 | 2171 2088    | 2058 2215      |   0.79 |   1.00 |    0.92 |
+| columnFilter        | 2748 2768    | 2217 2128 2481    |    2073 | 2344 3251    | 2820 2580      |   0.79 |   0.97 |    0.84 |
+| sort                | 6006 5990    | 5804 5799 5772    |    5859 | 6073 6145    | 6107 6244      |   0.97 |   1.01 |    1.02 |
+| uniqDropCold        | 27648 26519  | 28122 27785 25548 |   26591 | 26257 29601  | 26630 26088    |   1.03 |   0.94 |    1.04 |
+| uniqDropWarm        | 565 551      | 789 830 814       |     812 | 730 766      | 794 827        |   1.45 |   1.08 |    1.00 |
+| headerCountsInitial | 4133 4449    | 3872 3782 3958    |    3913 | 4516 4605    | 4538 4674      |   0.89 |   1.01 |    0.99 |
+| headerCountsRestore | 5424 5396    | 5588 5555 5474    |    5207 | 5360 5285    | 5044 5385      |   1.03 |   0.98 |    0.95 |
+
+(B/M: the ratio of the arms' mean medians, gw arms 1–2 only.)
+
+*Read as:* no cost from the wakers. The one outlier, uniqDropWarm at 1.45 while waiting, is main being fast (551, 565)
+rather than the branch being slow: the branch sits at 789–830 in all five of its arms, waiting or not, and trimming the
+observer changes nothing (1.00). Without a wait the branch is 1.08 on that metric and every other ratio is 0.94–1.01;
+=node scripts/probe-gate-wakers-at-rest.js= (05:17 CET, same host) found the wakers at rest after the render and after
+both dropdown opens (no sleeper, no frame loop, no observer, no tick) and a single warm open of 523 ms (branch) vs 569 ms
+(main), so that gap is not the gate's. The filter metrics' 0.79 while waiting reversed to 1.00 without one, inside this
+page's known spread (2026-10-23 above: columnFilter 1.20 from one run). The observer keeps its four options.
+
+* 2026-11-18 — =npm run test:full= on =petri=, feat/mb-gate-upstream-align's merge check (uncommitted on 3905684c, 9.99.1646)
+
+Env: 2026-11-18T05:19:30+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                         | Tests | Workers | Wall clock  | Basis                                     |
+|-----------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, merge check  |  3244 |      12 | *20 m 22 s* | =run-test-full.py=, 05:19:30–05:39:52 CET |
+
+3244 passed (main's 3239 plus the five new gate specs). No flake showed.

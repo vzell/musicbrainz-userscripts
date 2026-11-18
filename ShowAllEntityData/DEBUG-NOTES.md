@@ -30121,3 +30121,57 @@ Env: 2026-11-18T00:13–00:33+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6
   did not cover it; the fixture specs did.
 - **`npm run test:full` on petri, `79f75afc`, 01:14:36–01:34:56 CET (20 m 20 s): 3,231 of 3,231 passed.**
 - **Not yet:** the #938 reply on 7 and 8.
+
+## 2026-11-18 — The shared request gate brought in line with upstream: lock race, waking sleep, hold cap (feat/mb-gate-upstream-align)
+
+Env: 2026-11-18T02:30–05:40+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · Playwright 1.62.1, bundled Chromium (headless), no Tampermonkey (GM stubs) · code reading of upstream `dev/net/mb-gate.mjs` at `6a311c3` (unchanged since `0693aea`): n/a.
+
+- **Why:** the TODO "Bring SAED's request-gate port in line with upstream (lock race, mbnSleep, hold cap)" in
+  `org/majkinetor.org`. Plan approved with four recommendations: no cap on `tat`; SAED's own waker state; the job
+  log hears only the first wait and "waits longer"; measure, and bring numbers before trimming the observer.
+- **What** (`ShowAllEntityData.user.js`, grep `_MBG_KEY`):
+  - `_mbGateState()`: the Web Lock races a 3 s `_mbGateSleep()`; a grant after the timeout runs nothing, so nothing
+    is booked twice; `finally` wakes the timer's sleeper, so the wakers stop with each write.
+  - `_mbGateSleep()` (upstream's `mbnSleep`, #999): a sleep also wakes on animation frames, a MutationObserver on
+    `documentElement` and a blob worker's 100 ms tick, all only while something sleeps (`_mbgWake`, not
+    `globalThis.__mbnWake1`). A timer found more than 2 s late is noted once a minute on `mbgate`.
+  - `_mbGateSlot()`: the lead loop and the wait sleep in it; the reason ("MusicBrainz asked every script to wait"
+    vs pacing) is decided at the booking. Before, SAED's wait called a hold "pacing" (`booked.value === cool`).
+    `onWait` hears the first wait and "waits longer" when a new hold moves the end over a second later; the 10 s
+    repeat and the late-timer note go to `mbgate` only.
+  - The hold cap: `_mbGateCool()` counts a stored `cool` for at most 60 s from the moment the tab first read that
+    value, at the booking and in the wait. Upstream caps in the wait only (so `at`, and `tat` for everyone after,
+    are booked ten minutes out), and from each re-read's `now`.
+  - The header credit gained a line for `mbnSleep()` and the lock race.
+- **Found while porting, twice** (both in the majkinetor note in `org/majkinetor.org`):
+  1. Upstream's booking takes the uncapped `cool`.
+  2. Found the same night, after my first port copied it: a cap of `now + 60 s` re-read every slice moves along
+     with the clock, so a far-future `cool` still held the request for its whole length, and the job log heard
+     "waits longer, 60 s to go" about once a second. A per-request cap was not enough either: the Relationships
+     column's requests run one after another, so each would wait its own minute; hence the per-tab memory. The
+     stored value is never lowered (a new write in v1: a question for majkinetor).
+- **Tests:** `mb-shared-gate.spec.js` "shared request gate: aligned with upstream (lock race, sleep, hold cap)", 5
+  tests. Each failed on the earlier code first:
+  - "a lock that never settles": hung;
+  - "a hold ten minutes out counts as at most 60 s": "waits 600 s";
+  - "a wait ends on time with the page's timers held back": hung;
+  - "the job log is told again only when a new hold moves the wait later": one line instead of two;
+  - "… ends 60 s after the tab first saw it, for the next request too" (moves the page's `Date.now()` 61 s on
+    mid-wait): hung on the rolling cap.
+
+  The whole file: 15/15.
+- **Mutations:** `scripts/mutations/mb-shared-gate.json`, 34 entries, all as expected (16 new, three finds moved;
+  "no rAF waker" and "no worker waker" are `"expect": "pass"`, each waker covers for the other).
+  `check-mutation-finds.py`: 306 lists, 0 stale.
+- **Perf** (`tests/MEASUREMENTS.org`, same date): ten artist-events arms with a request waiting
+  (`capture-interaction-perf.js --gate-wait`, new; `SA_USERSCRIPT_PATH` in `tests/support/loadPage.js`, new).
+  - No cost from the wakers.
+  - uniqDropWarm read 1.45 while waiting because main ran fast: the branch sat at 789–830 ms in all five of its arms.
+  - The observer on `childList/subtree` only changed nothing (1.00), so it keeps its four options (question 4: no
+    deviation to bring).
+  - `scripts/probe-gate-wakers-at-rest.js` (new) shows the wakers at rest on that page.
+  - PERFORMANCE.org's gate paragraph (the gate "only ever adds waiting") is still true; no edit.
+- **HELP:** checked; it does not describe the gate, so no edit is owed.
+- **Lint:** within the baseline.
+- **`npm run test:full` on petri, uncommitted on `3905684c`, 05:19:30–05:39:52 CET (20 m 22 s): 3,244 of 3,244 passed.**
+- **Not yet:** the browser check by vzell; the note to majkinetor (vzell sends it).

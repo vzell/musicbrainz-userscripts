@@ -1224,6 +1224,39 @@ CLOSED: [2026-11-08 Sun]
   sleeps). Measure that an FRP render is not slower while a request waits (=run-perf-comparison=).
 - *Tests*: extend =tests/fixtures/mb-shared-gate.spec.js= (the never-settling lock, the far-future hold), plus
   mutation entries in =scripts/mutations/mb-shared-gate.json=.
+- *In progress (2026-11-18, =feat/mb-gate-upstream-align=, WIP.1)*: upstream's =mb-gate.mjs= unchanged from
+  =0693aea= to =6a311c3=. Ported: the lock race (=_mbGateState()=), =mbnSleep= as =_mbGateSleep()= (own state
+  =_mbgWake=, not =globalThis.__mbnWake1=; the lock timer's sleeper is woken in =finally= so the wakers stop with
+  each write), the hold cap, the re-told wait (=onWait= hears only "waits longer"; the 10 s repeat and the
+  late-timer note are =mbgate= only), and the booking-time reason (SAED's wait called a hold "pacing" before).
+  Five new specs failed on the earlier code first (hang, "waits 600 s", hang, one line instead of two, and a hang
+  on the rolling cap below). Perf: no cost from the wakers while a request waits (=tests/MEASUREMENTS.org=,
+  2026-11-18), so the observer keeps its four options.
+  - *Found while porting*: upstream's hold cap is applied in the wait only. =mbnSlot()= books
+    =at = max(at, cool)= with the stored, uncapped =cool= and sets =tat = at + GAP=, so a =cool= ten minutes out
+    still books (and announces) a ten-minute wait, for the caller and for every booking after it. SAED caps at
+    the booking too. =tat= is capped by neither.
+  - *Found later the same night*: the wait's cap itself does not bound the wait. =now + MBN_MAX_HOLD= is
+    re-read every slice, so the end moves along with the clock: a =cool= ten minutes out holds the request for
+    all ten minutes (SAED's first port did the same, and told "waits longer" every second). SAED now counts a
+    stored value for at most 60 s from the moment the tab first read it (=_mbGateCool()=, one memory per tab):
+    a real hold is never more than 60 s past its writing, so it is never cut. The stored value is not lowered;
+    that would be a new write in protocol v1, so it is a question for majkinetor (in the note below), not ours
+    to decide.
+  - *Note for majkinetor* (draft; vzell sends, on #938 or as a new issue):
+    #+begin_quote
+    A small one in =dev/net/mb-gate.mjs= (=0693aea=): the hold cap (=cool = Math.min(cool, now + MBN_MAX_HOLD)=)
+    is applied in =mbnSlot()='s wait loop only. The booking just above it still takes the stored value
+    (=at = Math.max(at, cool)=, then =s.tat = Math.max(tat, at) + MBN_GAP=), so a corrupt =cool= ten minutes out
+    is booked as a ten-minute wait anyway, and =tat= carries it to every booking after. And the wait's cap does
+    not hold the wait to a minute either: =now= moves on with every slice, so =now + MBN_MAX_HOLD= moves with
+    it and the loop waits the whole ten minutes. SAED (9.99.NNNN, with your lock race and =mbnSleep= ported,
+    thanks) now counts a stored =cool= for at most 60 s from the moment the tab first read that value, at the
+    booking and in the wait. Every writer sets =max(cool, now + ms)= with =ms ≤ MBN_MAX_HOLD=, so a real hold is
+    never cut. Would you want the gate to also lower such a value in storage (=cool = now + MBN_MAX_HOLD= under
+    the lock), so a fresh tab does not wait its minute again? That is a new write in v1, so I left it out. =tat=
+    has no cap either, but a long real queue is possible, so I left that alone.
+    #+end_quote
 
 ** TODO String Theory's idle mode over our FRP (random theme, EH effect layers)
 

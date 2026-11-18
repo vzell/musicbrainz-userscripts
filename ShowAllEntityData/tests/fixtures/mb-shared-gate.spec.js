@@ -395,3 +395,182 @@ test.describe('shared MusicBrainz request gate (mbu:mb-gate v1)', () => {
         expect((await read()).cool, 'and write no hold').toBe(coolBefore);
     });
 });
+
+// ── In line with upstream (dev/net/mb-gate.mjs at 0693aea; org/majkinetor.org,
+//    "Bring SAED's request-gate port in line with upstream") ──
+//
+//  8. A STUCK LOCK. A `navigator.locks.request` that never settles, not even
+//     on abort (some userscript bridges): the booking goes ahead unlocked
+//     after ~3 s, and the grant that comes late books NOTHING a second time.
+//     "It resolves" alone would pass a port that books twice, so `tat` is
+//     asserted across the late grant.
+//  9. A FAR-FUTURE HOLD IS READ AS AT MOST 60 s — at booking AND in the wait.
+//     Asserted on the wait the gate announces and on the `tat` it books, then
+//     cancelled (no 60 s wait). Capping only the wait (upstream's form) still
+//     books `tat` ten minutes out and announces "600 s", so both are pinned.
+// 10. A WAIT WAKES WITH THE PAGE'S TIMERS HELD BACK (#999). Every page
+//     `setTimeout` is delayed 8 s; a 1 s hold must still end in ~1 s (the
+//     worker's timer and animation frames wake it). Afterwards every waker
+//     rests: the page observer is off and the worker stops ticking — the
+//     property that keeps a render's DOM changes free of it.
+// 11. THE JOB LOG HEARS A LONGER WAIT ONCE. When a hold appears that moves
+//     the wait's end later, `onWait` is told again, with the reason; a wait
+//     that does not move is told once.
+
+test.describe('shared request gate: aligned with upstream (lock race, sleep, hold cap)', () => {
+
+    test('a lock that never settles: unlocked after ~3 s, and its late grant books nothing', async ({ page }) => {
+        await loadRelPage(page, null);
+        await seedGate(page, { version: 1, tat: 0, cool: 0, hot: 0, lead: '', leadUntil: 0 });
+        const r = await page.evaluate(async () => {
+            window.__lockCbs = [];
+            const real = navigator.locks.request;
+            // A bridge that takes the request and never answers, abort or not.
+            navigator.locks.request = (name, opts, cb) => {
+                window.__lockCbs.push(cb || opts);
+                return new Promise(() => {});
+            };
+            const t = performance.now();
+            const out = await Promise.race([
+                window.__saTest.mbGate.slot({ background: false }).then((s) => ({ ok: s.ok })),
+                new Promise((res) => setTimeout(() => res({ hung: true }), 8000)),
+            ]);
+            out.ms = performance.now() - t;
+            out.tatAfterBooking = JSON.parse(localStorage.getItem('mbu:mb-gate')).tat;
+            // The lock is granted at last: the callback must not book again.
+            out.lateResult = window.__lockCbs.length ? window.__lockCbs[0]() : 'no callback';
+            out.tatAfterGrant = JSON.parse(localStorage.getItem('mbu:mb-gate')).tat;
+            navigator.locks.request = real;
+            return out;
+        });
+        expect(r.hung, 'the request does not hang behind the stuck lock').toBeUndefined();
+        expect(r.ok).toBe(true);
+        expect(r.ms, 'it waited the lock timeout').toBeGreaterThan(2800);
+        expect(r.ms, 'and not much more').toBeLessThan(5000);
+        expect(r.tatAfterBooking, 'the unlocked booking was written').toBeGreaterThan(0);
+        expect(r.lateResult, 'the late grant runs nothing').toBeUndefined();
+        expect(r.tatAfterGrant, 'and books nothing a second time').toBe(r.tatAfterBooking);
+    });
+
+    test('a hold ten minutes out counts as at most 60 s, at booking and in the wait', async ({ page }) => {
+        await loadRelPage(page, null);
+        await seedGate(page, { version: 1, tat: 0, coolIn: 600000, hot: 1, lead: '', leadUntil: 0 });
+        const r = await page.evaluate(async () => {
+            const told = [];
+            const t0 = performance.now();
+            const now = Date.now();
+            const s = await window.__saTest.mbGate.slot({
+                background: false,
+                onWait: (m) => told.push(m),
+                cancelled: () => performance.now() - t0 > 800,
+            });
+            return { ok: s.ok, told, tat: JSON.parse(localStorage.getItem('mbu:mb-gate')).tat - now };
+        });
+        expect(r.ok, 'cancelled while waiting').toBe(false);
+        expect(r.told).toHaveLength(1);
+        const secs = Number((/waits (\d+(?:\.\d+)?) s/.exec(r.told[0]) || [])[1]);
+        expect(secs, `the announced wait (${r.told[0]})`).toBeGreaterThan(55);
+        expect(secs).toBeLessThanOrEqual(61);
+        expect(r.tat, 'the booked slot is within the cap, not ten minutes out').toBeLessThanOrEqual(62000);
+    });
+
+    test('a hold ten minutes out ends 60 s after the tab first saw it, for the next request too', async ({ page }) => {
+        // The cap counts from the first read of that stored value, not from
+        // each re-read's `now` (upstream's wait, which moves the end along and
+        // so still waits the whole ten minutes). The page's clock is moved
+        // 61 s on in the middle of the wait instead of waiting a minute.
+        await loadRelPage(page, null);
+        await seedGate(page, { version: 1, tat: 0, coolIn: 600000, hot: 1, lead: '', leadUntil: 0 });
+        const r = await page.evaluate(async () => {
+            const realNow = Date.now;
+            const realTimeout = window.setTimeout;
+            let off = 0;
+            Date.now = () => realNow.call(Date) + off;
+            const told = [];
+            const t = performance.now();
+            const within = (p, ms) => Promise.race([p, new Promise((res) => realTimeout(() => res({ hung: true }), ms))]);
+            try {
+                const first = within(window.__saTest.mbGate.slot({
+                    background: false,
+                    onWait: (m) => told.push(m),
+                }).then((x) => ({ ok: x.ok })), 4000);
+                realTimeout(() => { off += 61000; }, 400);
+                const a = await first;
+                a.ms = performance.now() - t;
+                const t2 = performance.now();
+                const b = await within(window.__saTest.mbGate.slot({
+                    background: false,
+                    onWait: (m) => told.push(m),
+                }).then((x) => ({ ok: x.ok, waited: x.waited })), 3000);
+                b.ms = performance.now() - t2;
+                return { a, b, told };
+            } finally {
+                Date.now = realNow;
+            }
+        });
+        expect(r.a.hung, `the first request ends once its 60 s are up (${JSON.stringify(r)})`).toBeUndefined();
+        expect(r.a.ok).toBe(true);
+        expect(r.told, 'told once: the end does not move along').toHaveLength(1);
+        expect(r.b.hung, 'the next request does not wait another 60 s').toBeUndefined();
+        expect(r.b.ok).toBe(true);
+        expect(r.b.ms).toBeLessThan(1500);
+    });
+
+    test("a wait ends on time with the page's timers held back, and its wakers rest afterwards", async ({ page }) => {
+        await loadRelPage(page, null);
+        await seedGate(page, { version: 1, tat: 0, cool: 0, hot: 0, lead: '', leadUntil: 0 });
+        const r = await page.evaluate(async () => {
+            const real = window.setTimeout;
+            // #999: the page's timers fire seconds late (Firefox, Violentmonkey).
+            window.setTimeout = (fn, ms, ...a) => real(fn, (ms || 0) + 8000, ...a);
+            const s = JSON.parse(localStorage.getItem('mbu:mb-gate'));
+            s.cool = Date.now() + 1000;
+            localStorage.setItem('mbu:mb-gate', JSON.stringify(s));
+            const t = performance.now();
+            let out;
+            try {
+                out = await Promise.race([
+                    window.__saTest.mbGate.slot({ background: false }).then((x) => ({ ok: x.ok })),
+                    new Promise((res) => real(() => res({ hung: true }), 7000)),
+                ]);
+            } finally {
+                window.setTimeout = real;
+            }
+            out.ms = performance.now() - t;
+            return out;
+        });
+        expect(r.hung, 'the wait is not held back with the timers').toBeUndefined();
+        expect(r.ok).toBe(true);
+        expect(r.ms, 'the 1 s hold is waited out').toBeGreaterThan(800);
+        expect(r.ms, 'and ends on time, not 8 s late').toBeLessThan(3000);
+        await expect.poll(() => page.evaluate(() => window.__saTest.mbGate.wakers()),
+            { message: 'no sleeper, no frame loop, no observer, no worker tick' })
+            .toEqual({ sleepers: 0, frame: false, observer: false, ticking: false });
+        // A plain write under the lock leaves no sleeper behind either: the
+        // lock timer's sleep ends when the lock answers, not a slice later.
+        const left = await page.evaluate(async () => {
+            await window.__saTest.mbGate.answer(200, null);
+            return window.__saTest.mbGate.wakers().sleepers;
+        });
+        expect(left, 'no sleeper outlives the write').toBe(0);
+    });
+
+    test('the job log is told again only when a new hold moves the wait later', async ({ page }) => {
+        await loadRelPage(page, null);
+        await seedGate(page, { version: 1, tat: 0, coolIn: 1500, hot: 1, lead: '', leadUntil: 0 });
+        const told = await page.evaluate(async () => {
+            const msgs = [];
+            const p = window.__saTest.mbGate.slot({ background: false, onWait: (m) => msgs.push(m) });
+            setTimeout(() => {
+                const s = JSON.parse(localStorage.getItem('mbu:mb-gate'));
+                s.cool = Date.now() + 2500;
+                localStorage.setItem('mbu:mb-gate', JSON.stringify(s));
+            }, 400);
+            await p;
+            return msgs;
+        });
+        expect(told, told.join(' | ')).toHaveLength(2);
+        expect(told[0], 'a wait caused by a hold says so, not "pacing"').toMatch(/waits \d.*MusicBrainz asked every script to wait/);
+        expect(told[1], 'the second line names the new end and why').toMatch(/longer.*MusicBrainz asked every script to wait/);
+    });
+});
