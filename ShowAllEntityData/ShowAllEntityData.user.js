@@ -68227,6 +68227,11 @@
     //     the per-tab slot alone paces, `_mbgRefused`);
     //   - the lock covers the synchronous read-modify-write only, never the
     //     wait or the request.
+    // The stored times are `Date.now()` epochs, as the protocol says; this
+    // script WAITS on `_steadyNow()` (since 2026-11-18): a stored `cool` or
+    // `leadUntil` gets a monotonic end when the tab first reads it
+    // (`_mbGateHoldEnd()`, `_mbGateLeadLeft()`), so a step of the wall clock
+    // neither ends a wait early nor stretches it.
     //
     // It is ADDED to this script's own pacing, never a replacement: callers
     // still wait for `_relAwaitRateSlot()` (1100 ms, per tab) first, so this
@@ -68337,7 +68342,7 @@
      * @returns {void}
      */
     function _mbGateWakeAll() {
-        const now = Date.now();
+        const now = _steadyNow();
         if (!_mbgWake.stall || now - _mbgWake.stall.at >= 60000) {
             for (const d of _mbgWake.due.values()) {
                 if (now - d <= 2000) continue;
@@ -68362,12 +68367,17 @@
      * to finish stops the frame loop, disconnects the observer and stops the
      * worker's tick, so a render while no request waits pays nothing.
      *
+     * Timed on the monotonic clock (`_steadyNow()`), not `Date.now()` as
+     * upstream: a backward step of the wall clock would otherwise stretch
+     * even one slice by the whole step (16.8 s on petri), and a forward one
+     * would be noted as a timer that fired late.
+     *
      * @param {number} ms
      * @param {?function(): boolean} [cancelled] - Asked at every wake; with it the plain timer runs in 250 ms slices.
      * @returns {Promise<number>} How long past `ms` it woke, ms.
      */
     function _mbGateSleep(ms, cancelled) {
-        const end = Date.now() + Math.max(0, +ms || 0);
+        const end = _steadyNow() + Math.max(0, +ms || 0);
         const w = _mbgWake;
         return new Promise(resolve => {
             let done = false;
@@ -68376,7 +68386,7 @@
                 if (done) return;
                 let stop = false;
                 try { stop = !!(cancelled && cancelled()); } catch (_) { /* a throwing check does not stop */ }
-                const now = Date.now();
+                const now = _steadyNow();
                 if (!stop && now < end) return;
                 done = true;
                 w.all.delete(me);
@@ -68394,13 +68404,13 @@
                 resolve(Math.max(0, now - end));
             };
             const arm = () => {
-                const d = Math.max(1, Math.min(cancelled ? _MBG_SLICE_MS : 2147483647, end - Date.now()));
-                if (w.due.size < 500) w.due.set(tok, Date.now() + d);
+                const d = Math.max(1, Math.min(cancelled ? _MBG_SLICE_MS : 2147483647, end - _steadyNow()));
+                if (w.due.size < 500) w.due.set(tok, _steadyNow() + d);
                 setTimeout(tick, d);
             };
             // The plain timer: when it fires late, it says so; it re-arms until the sleep ends.
             const tick = () => {
-                if (Date.now() - (w.due.get(tok) || Infinity) > 2000) _mbGateWakeAll();
+                if (_steadyNow() - (w.due.get(tok) || Infinity) > 2000) _mbGateWakeAll();
                 w.due.delete(tok);
                 me();
                 if (!done) arm();
@@ -68519,37 +68529,87 @@
     }
 
     /**
-     * The stored `cool` this tab read last, when it first read that value, and
-     * the end of the last hold this tab's own 429/503 asked for
-     * (`_mbGateCool()`, `_mbGateAnswer()`).
-     * @type {{cool: number, at: number, own: number}}
+     * The stored `cool` this tab read last and the end this tab gave it when
+     * it first read that value, and the end of the last hold this tab's own
+     * 429/503 asked for; both ends on the monotonic clock (`_steadyNow()`;
+     * `_mbGateHoldEnd()`, `_mbGateAnswer()`). `raw` is the same value
+     * uncapped, which bounds `own`.
+     * @type {{cool: number, end: number, raw: number, own: number}}
      */
-    const _mbgHoldSeen = { cool: 0, at: 0, own: 0 };
+    const _mbgHoldSeen = { cool: 0, end: -Infinity, raw: -Infinity, own: -Infinity };
 
     /**
-     * A stored `cool` as this tab counts it: at most `_MBG_MAX_HOLD` past the
-     * moment this tab first read that value. Every writer sets
-     * `cool = max(cool, now + ms)` with `ms ≤ _MBG_MAX_HOLD`, so a real hold is
-     * never more than that past its writing and is never cut; a corrupt or
-     * far-future one stops counting 60 s after it was first seen, for this
-     * request and every later one in the tab. Measured from `now` instead
-     * (upstream's wait), the cap moves along with each re-read, and such a
-     * value would still hold every request for its whole length. The stored
-     * value is left alone: lowering it is not in protocol v1. A hold this
-     * tab's own 429/503 asked for (`own`) still counts in full: behind such a
-     * value, `max(cool, now + ms)` leaves the stored value as it was, and
-     * without it the tab would not hold for its own throttle at all.
-     * @param {number} raw The stored `cool` (0 or missing: no hold).
-     * @param {number} now `Date.now()` of the caller's read.
-     * @returns {number} The time this tab treats as the end of the hold.
+     * The stored `leadUntil` this tab read last, and the end this tab gave it
+     * when it first read that value, on the monotonic clock
+     * (`_mbGateLeadLeft()`).
+     * @type {{until: number, end: number}}
      */
-    function _mbGateCool(raw, now) {
+    const _mbgLeadSeen = { until: 0, end: -Infinity };
+
+    /**
+     * The end of a stored hold as this tab counts it, on the monotonic clock
+     * (`_steadyNow()`).
+     *
+     * The stored `cool` is a `Date.now()` epoch (protocol v1: every tab must
+     * read it alike). When this tab first reads a value, it turns it into a
+     * monotonic end, at most `_MBG_MAX_HOLD` away, and keeps that end while
+     * the stored value stays the same. So:
+     * - a step of the wall clock after that moves nothing: a forward one does
+     *   not end a hold early, a backward one does not stretch it;
+     * - a corrupt or far-future value stops counting 60 s after it was first
+     *   seen, for this request and every later one in the tab. Every writer
+     *   sets `cool = max(cool, now + ms)` with `ms ≤ _MBG_MAX_HOLD`, so a real
+     *   hold is never cut. Capped from each re-read's `now` instead
+     *   (upstream's wait), the cap moves along, and such a value still holds
+     *   every request for its whole length.
+     * The stored value is left alone: lowering it is not in protocol v1. A
+     * hold this tab's own 429/503 asked for (`own`) still counts in full:
+     * behind a broken value, `max(cool, now + ms)` leaves the stored value as
+     * it was, and without it the tab would not hold for its own throttle.
+     * It never outlasts the stored value, though (a schedule written over or
+     * cleared ends it too).
+     * A step at the moment of the first read still counts once (the value is
+     * read against the stepped clock), bounded by the 60 s.
+     *
+     * @param {number} raw The stored `cool` (0 or missing: no hold).
+     * @param {number} wall `Date.now()` of the caller's read.
+     * @param {number} mono `_steadyNow()` of the same read.
+     * @returns {number} The hold's end on the monotonic clock (in the past: no hold).
+     */
+    function _mbGateHoldEnd(raw, wall, mono) {
         const v = +raw || 0;
         if (v !== _mbgHoldSeen.cool) {
             _mbgHoldSeen.cool = v;
-            _mbgHoldSeen.at = now;
+            _mbgHoldSeen.raw = mono + (v - wall);
+            _mbgHoldSeen.end = mono + Math.min(v - wall, _MBG_MAX_HOLD);
         }
-        return Math.min(v, Math.max(_mbgHoldSeen.at + _MBG_MAX_HOLD, _mbgHoldSeen.own));
+        return Math.max(_mbgHoldSeen.end, Math.min(_mbgHoldSeen.own, _mbgHoldSeen.raw));
+    }
+
+    /**
+     * How long another script's lead still holds a background request, as
+     * this tab counts it: a stored `leadUntil` gets a monotonic end, at most
+     * `_MBG_MAX_LEAD` away, when this tab first reads that value, exactly as
+     * `_mbGateHoldEnd()` does for a hold. A renewal writes a new value, which
+     * counts again from its own first read; a `leadUntil` ten minutes out (a
+     * corrupt value, or one written inside a forward step of the wall clock)
+     * holds for 10 s once, not ten minutes. Upstream's
+     * `min(leadUntil − now, MAX_LEAD)` is re-read every slice, so its cap
+     * moves along and bounds nothing.
+     *
+     * @param {Object} s The stored schedule.
+     * @param {number} wall `Date.now()` of the read.
+     * @param {number} mono `_steadyNow()` of the same read.
+     * @returns {number} ms the lead still holds (≤ 0: none).
+     */
+    function _mbGateLeadLeft(s, wall, mono) {
+        if (!s.lead) return 0;
+        const v = +s.leadUntil || 0;
+        if (v !== _mbgLeadSeen.until) {
+            _mbgLeadSeen.until = v;
+            _mbgLeadSeen.end = mono + Math.min(v - wall, _MBG_MAX_LEAD);
+        }
+        return _mbgLeadSeen.end - mono;
     }
 
     /**
@@ -68566,11 +68626,21 @@
      *
      * A stored `cool` counts for at most `_MBG_MAX_HOLD`, the longest hold
      * any writer sets, from the moment this tab first read it
-     * (`_mbGateCool()`), so a corrupt or far-future one cannot stall every
+     * (`_mbGateHoldEnd()`), so a corrupt or far-future one cannot stall every
      * request. Upstream caps it in the wait only, and from `now`, which moves
      * along with each re-read; here it is capped at the booking too, or `at`
      * (and with it `tat`, for everyone after) would still be booked ten
-     * minutes out.
+     * minutes out. A lead counts the same way, at most `_MBG_MAX_LEAD`
+     * (`_mbGateLeadLeft()`).
+     *
+     * The stored times are `Date.now()` epochs (protocol v1), but the waits
+     * run on the monotonic clock (`_steadyNow()`): the booked `at` becomes a
+     * monotonic deadline once, at the booking, and a hold's end is fixed when
+     * the tab first reads its value. A step of the wall clock during a wait
+     * then neither ends it early nor stretches it (petri's 16.8 s spikes,
+     * 2026-11-09; on NB-3641 a 3 s hold once sent after 842 ms, 2026-11-17).
+     * `tat` is not capped on read: a long real queue is normal, and a capped
+     * `tat` written back would let new bookings overlap it.
      *
      * The waits sleep in `_mbGateSleep()` slices, which wake even while the
      * page's timers are held back (#999). A wait over a second is told
@@ -68587,7 +68657,7 @@
      */
     async function _mbGateSlot(o = {}) {
         if (!_mbGateActive()) return { ok: true, waited: 0, shared: false };
-        const t0 = Date.now();
+        const t0 = _steadyNow();
         const background = o.background !== false;
         const label = o.label || 'request';
         const tell = (msg) => {
@@ -68599,34 +68669,39 @@
             // A schedule of an unknown version is not read at all: the booking
             // below refuses it (`_mbGateState()`).
             if (s.version != null && s.version !== _MBG_VERSION) break;
-            const left = s.lead ? Math.min((s.leadUntil || 0) - Date.now(), _MBG_MAX_LEAD) : 0;
+            const left = _mbGateLeadLeft(s, Date.now(), _steadyNow());
             if (left <= 0) break;
-            if (o.cancelled && o.cancelled()) { _mbgStats.cancelled++; return { ok: false, waited: Date.now() - t0, shared: true }; }
+            if (o.cancelled && o.cancelled()) { _mbgStats.cancelled++; return { ok: false, waited: _steadyNow() - t0, shared: true }; }
             if (!told) { told = true; tell(`${label}: waits for a page another script is drawing`); }
             await _mbGateSleep(Math.min(left, _MBG_SLICE_MS), o.cancelled);
         }
         const HOLD = 'MusicBrainz asked every script to wait';
         const booked = await _mbGateState(s => {
             const now = Date.now();
-            const cool = _mbGateCool(s.cool, now);
+            const mono = _steadyNow();
+            // The hold as this tab counts it, back on the wall clock for the booking.
+            const cool = now + (_mbGateHoldEnd(s.cool, now, mono) - mono);
             const tat = s.tat || 0;
             let at = background ? Math.max(now, tat - (_MBG_BURST - 1) * _MBG_GAP) : now;
             at = Math.max(at, cool);
             s.tat = Math.max(tat, at) + _MBG_GAP;
-            return { at, why: cool > now && cool >= at ? HOLD : 'shared pacing, one request a second' };
+            return {
+                atMono: mono + (at - now),
+                why: cool > now && cool >= at ? HOLD : 'shared pacing, one request a second',
+            };
         });
-        if (!booked.ok) return { ok: true, waited: Date.now() - t0, shared: false };
+        if (!booked.ok) return { ok: true, waited: _steadyNow() - t0, shared: false };
         _mbgStats.booked++;
         const secs = (ms) => Math.round(ms / 100) / 10;
         for (let toldUntil = 0, toldAt = 0; ;) {
-            if (o.cancelled && o.cancelled()) { _mbgStats.cancelled++; return { ok: false, waited: Date.now() - t0, shared: true }; }
-            const now = Date.now();
-            const cool = _mbGateCool(_mbGateRead().cool, now);
-            const until = Math.max(booked.value.at, cool);
+            if (o.cancelled && o.cancelled()) { _mbgStats.cancelled++; return { ok: false, waited: _steadyNow() - t0, shared: true }; }
+            const now = _steadyNow();
+            const cool = _mbGateHoldEnd(_mbGateRead().cool, Date.now(), now);
+            const until = Math.max(booked.value.atMono, cool);
             const left = until - now;
             if (left <= 0) break;
             if (until - t0 > 1000) {
-                const why = cool > booked.value.at ? HOLD : booked.value.why;
+                const why = cool > booked.value.atMono ? HOLD : booked.value.why;
                 if (!toldAt) {
                     tell(`${label}: waits ${secs(until - t0)} s (${why})`);
                     toldUntil = until;
@@ -68648,7 +68723,7 @@
                     + `${st.hidden ? ', hidden' : ''}); the gate's waits wake on page activity too`);
             }
         }
-        const waited = Date.now() - t0;
+        const waited = _steadyNow() - t0;
         _mbgStats.waitedMs += waited;
         return { ok: true, waited, shared: true };
     }
@@ -68663,7 +68738,7 @@
      * other answer below 500 earns a step of `hot` back. 502/504 change
      * nothing here (the protocol's rule); `_ws2GetJson()` still retries them.
      *
-     * The stored `cool` is read as this tab counts it (`_mbGateCool()`), for
+     * The stored `cool` is read as this tab counts it (`_mbGateHoldEnd()`), for
      * the episode and quiet rules and for the hold it reports: behind a
      * corrupt far-future value, the raw one would never let `hot` step or
      * reset, and would report that value's ten minutes for a one-second 503
@@ -68693,13 +68768,14 @@
             const ra = Number.isFinite(secs) ? secs * 1000 : Number.isFinite(date) ? Math.max(0, date - Date.now()) : 0;
             const res = await _mbGateState(s => {
                 const now = Date.now();
-                const cool = _mbGateCool(s.cool, now);
-                if (now > cool + _MBG_QUIET_MS) s.hot = 0;
-                if (now >= cool) s.hot = Math.min((s.hot || 0) + 1, 6);
+                const mono = _steadyNow();
+                const cool = _mbGateHoldEnd(s.cool, now, mono);
+                if (mono > cool + _MBG_QUIET_MS) s.hot = 0;
+                if (mono >= cool) s.hot = Math.min((s.hot || 0) + 1, 6);
                 const ms = Math.min(Math.max(1000, ra) * Math.max(1, s.hot), _MBG_MAX_HOLD);
                 s.cool = Math.max(s.cool || 0, now + ms);
-                _mbgHoldSeen.own = Math.max(_mbgHoldSeen.own, now + ms);
-                return Math.max(0, _mbGateCool(s.cool, now) - now);
+                _mbgHoldSeen.own = Math.max(_mbgHoldSeen.own, mono + ms);
+                return Math.max(0, _mbGateHoldEnd(s.cool, now, mono) - mono);
             });
             if (!res.ok) return 0;
             _mbgStats.holds++;
@@ -68709,8 +68785,8 @@
         }
         if (status >= 200 && status < 500) {
             await _mbGateState(s => {
-                const now = Date.now();
-                if (s.hot) s.hot = now > _mbGateCool(s.cool, now) + _MBG_QUIET_MS ? 0 : s.hot - 1;
+                const mono = _steadyNow();
+                if (s.hot) s.hot = mono > _mbGateHoldEnd(s.cool, Date.now(), mono) + _MBG_QUIET_MS ? 0 : s.hot - 1;
             });
         }
         return 0;
@@ -190210,6 +190286,11 @@ a { color: #1565c0; }`;
                     observer: !!_mbgWake.mo,
                     ticking: !!_mbgWake.ticking,
                 }),
+                /**
+                 * The late plain timer `_mbGateSleep()` noted last (null: none).
+                 * @returns {?{ms: number, at: number, state: string, hidden: boolean, told: boolean}}
+                 */
+                stall: () => _mbgWake.stall,
                 /**
                  * @param {number} status
                  * @param {?string} retryAfter

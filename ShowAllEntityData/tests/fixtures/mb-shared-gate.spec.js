@@ -150,6 +150,34 @@ const seedGate = (page, s) => page.evaluate(([k, seed]) => {
     localStorage.setItem(k, JSON.stringify(o));
 }, [KEY, s]);
 
+/**
+ * Puts a controllable clock into the page as `window.__clk`:
+ * - `pass(ms)`: time passes: `Date.now()` AND `performance.now()` move on;
+ * - `step(ms)`: the wall clock steps (an NTP or VM resync, WSL2's spikes):
+ *   only `Date.now()` moves, the monotonic clock does not;
+ * - `realPerf()`: the unpatched `performance.now()`, to measure with;
+ * - `restore()`.
+ * Since the gate counts its waits on `performance.now()` (feat/mb-gate-clock),
+ * moving `Date.now()` alone no longer stands for time passing.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<void>}
+ */
+const installClock = (page) => page.evaluate(() => {
+    const realNow = Date.now;
+    const realPerfNow = performance.now.bind(performance);
+    let wall = 0;
+    let mono = 0;
+    Date.now = () => realNow.call(Date) + wall;
+    performance.now = () => realPerfNow() + mono;
+    window.__clk = {
+        pass: (ms) => { wall += ms; mono += ms; },
+        step: (ms) => { wall += ms; },
+        realPerf: realPerfNow,
+        restore: () => { Date.now = realNow; delete performance.now; },
+    };
+});
+
 test.describe('shared MusicBrainz request gate (mbu:mb-gate v1)', () => {
 
     test('a hold another script wrote delays our request until it passes', async ({ page }) => {
@@ -477,35 +505,34 @@ test.describe('shared request gate: aligned with upstream (lock race, sleep, hol
     test('a hold ten minutes out ends 60 s after the tab first saw it, for the next request too', async ({ page }) => {
         // The cap counts from the first read of that stored value, not from
         // each re-read's `now` (upstream's wait, which moves the end along and
-        // so still waits the whole ten minutes). The page's clock is moved
+        // so still waits the whole ten minutes). The page's clocks are moved
         // 61 s on in the middle of the wait instead of waiting a minute.
         await loadRelPage(page, null);
         await seedGate(page, { version: 1, tat: 0, coolIn: 600000, hot: 1, lead: '', leadUntil: 0 });
+        await installClock(page);
         const r = await page.evaluate(async () => {
-            const realNow = Date.now;
+            const clk = window.__clk;
             const realTimeout = window.setTimeout;
-            let off = 0;
-            Date.now = () => realNow.call(Date) + off;
             const told = [];
-            const t = performance.now();
+            const t = clk.realPerf();
             const within = (p, ms) => Promise.race([p, new Promise((res) => realTimeout(() => res({ hung: true }), ms))]);
             try {
                 const first = within(window.__saTest.mbGate.slot({
                     background: false,
                     onWait: (m) => told.push(m),
                 }).then((x) => ({ ok: x.ok })), 4000);
-                realTimeout(() => { off += 61000; }, 400);
+                realTimeout(() => clk.pass(61000), 400);
                 const a = await first;
-                a.ms = performance.now() - t;
-                const t2 = performance.now();
+                a.ms = clk.realPerf() - t;
+                const t2 = clk.realPerf();
                 const b = await within(window.__saTest.mbGate.slot({
                     background: false,
                     onWait: (m) => told.push(m),
                 }).then((x) => ({ ok: x.ok, waited: x.waited })), 3000);
-                b.ms = performance.now() - t2;
+                b.ms = clk.realPerf() - t2;
                 return { a, b, told };
             } finally {
-                Date.now = realNow;
+                clk.restore();
             }
         });
         expect(r.a.hung, `the first request ends once its 60 s are up (${JSON.stringify(r)})`).toBeUndefined();
@@ -520,25 +547,24 @@ test.describe('shared request gate: aligned with upstream (lock race, sleep, hol
         // vzell's browser check (2026-11-18): with a hold planted ten minutes
         // out, a real 503 (Retry-After: 1) logged "every script holds 522.3 s".
         // `max(cool, now + ms)` leaves such a stored value as it is, so the
-        // answer must read the hold as this tab counts it (`_mbGateCool()`),
+        // answer must read the hold as this tab counts it (`_mbGateHoldEnd()`),
         // and remember its own.
         await loadRelPage(page, null);
         await seedGate(page, { version: 1, tat: 0, coolIn: 600000, hot: 1, lead: '', leadUntil: 0 });
+        await installClock(page);
         const r = await page.evaluate(async () => {
             const g = window.__saTest.mbGate;
-            const realNow = Date.now;
-            let off = 0;
-            Date.now = () => realNow.call(Date) + off;
+            const clk = window.__clk;
             try {
                 await g.answer(200, null);   // the tab first sees the planted value
-                off += 61000;                // ... and its minute is over
+                clk.pass(61000);             // ... and its minute is over
                 const h = await g.answer(503, '2');
-                const t = performance.now();
+                const t = clk.realPerf();
                 const told = [];
                 const s = await g.slot({ background: false, onWait: (m) => told.push(m) });
-                return { h, hot: g.read().hot, ok: s.ok, ms: performance.now() - t, told };
+                return { h, hot: g.read().hot, ok: s.ok, ms: clk.realPerf() - t, told };
             } finally {
-                Date.now = realNow;
+                clk.restore();
             }
         });
         expect(r.h, `the reported hold is the 503's own (${JSON.stringify(r)})`).toBeGreaterThan(1500);
@@ -606,5 +632,162 @@ test.describe('shared request gate: aligned with upstream (lock race, sleep, hol
         expect(told, told.join(' | ')).toHaveLength(2);
         expect(told[0], 'a wait caused by a hold says so, not "pacing"').toMatch(/waits \d.*MusicBrainz asked every script to wait/);
         expect(told[1], 'the second line names the new end and why').toMatch(/longer.*MusicBrainz asked every script to wait/);
+    });
+});
+
+// ── A step of the wall clock (feat/mb-gate-clock) ──
+//
+// The stored times stay `Date.now()` epochs (protocol v1, every tab must read
+// them alike), but a tab counts its waits on `performance.now()`: a stored
+// value is turned into a monotonic end when the tab first sees it, so a step
+// of the wall clock afterwards moves nothing. Before, a backward step during a
+// wait stretched it by the step (16.8 s on petri, 2026-11-09), a forward one
+// ended a hold or a paced slot early (NB-3641, 2026-11-17: a 3 s hold sent
+// after 842 ms), and a `leadUntil` ten minutes out held background requests
+// for ten minutes, its 10 s cap re-read from `now` each slice.
+test.describe('shared request gate: a step of the wall clock', () => {
+
+    /**
+     * Runs one foreground or background slot while `act(clk)` runs after
+     * `atMs`, and measures it on the real monotonic clock.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {{background: boolean, atMs: number, act: string, arg: number, hangMs: number}} o
+     *   `act`: 'step' or 'pass'; `arg`: its ms.
+     * @returns {Promise<{ok?: boolean, hung?: boolean, ms: number, stall: *}>}
+     */
+    const slotAcross = (page, o) => page.evaluate(async (opt) => {
+        const g = window.__saTest.mbGate;
+        const clk = window.__clk;
+        const realTimeout = window.setTimeout;
+        const t = clk.realPerf();
+        try {
+            const p = g.slot({ background: opt.background }).then((x) => ({ ok: x.ok }));
+            realTimeout(() => clk[opt.act](opt.arg), opt.atMs);
+            const out = await Promise.race([p, new Promise((res) => realTimeout(() => res({ hung: true }), opt.hangMs))]);
+            out.ms = clk.realPerf() - t;
+            out.stall = typeof g.stall === 'function' ? g.stall() : 'no hook';
+            return out;
+        } finally {
+            clk.restore();
+        }
+    }, o);
+
+    test('a backward step during a hold does not stretch the wait', async ({ page }) => {
+        await loadRelPage(page, null);
+        await seedGate(page, { version: 1, tat: 0, coolIn: 1000, hot: 1, lead: '', leadUntil: 0 });
+        await installClock(page);
+        const r = await slotAcross(page, { background: false, atMs: 300, act: 'step', arg: -16800, hangMs: 6000 });
+        expect(r.hung, `the wait is not stretched by the step (${JSON.stringify(r)})`).toBeUndefined();
+        expect(r.ok).toBe(true);
+        expect(r.ms, 'the 1 s hold is waited out').toBeGreaterThan(800);
+        expect(r.ms, 'and no longer').toBeLessThan(3000);
+    });
+
+    test('a forward step during a hold does not end it early, and is not taken for a late timer', async ({ page }) => {
+        await loadRelPage(page, null);
+        await seedGate(page, { version: 1, tat: 0, coolIn: 3000, hot: 1, lead: '', leadUntil: 0 });
+        await installClock(page);
+        const r = await slotAcross(page, { background: false, atMs: 300, act: 'step', arg: 16800, hangMs: 8000 });
+        expect(r.hung).toBeUndefined();
+        expect(r.ok).toBe(true);
+        expect(r.ms, `the 3 s hold is waited out in full (${JSON.stringify(r)})`).toBeGreaterThan(2700);
+        expect(r.ms, 'and no longer').toBeLessThan(4500);
+        expect(r.stall, 'no "timer fired 16.8 s late" note for a clock step').toBeNull();
+    });
+
+    test('a forward step does not end a paced slot early', async ({ page }) => {
+        // Background, behind a busy schedule: `at = tat − (BURST − 1) × GAP`,
+        // 2 s out; no hold involved, so the booked slot itself is what counts.
+        await loadRelPage(page, null);
+        await page.evaluate(() => localStorage.setItem('mbu:mb-gate', JSON.stringify(
+            { version: 1, tat: Date.now() + 4000, cool: 0, hot: 0, lead: '', leadUntil: 0 })));
+        await installClock(page);
+        const r = await slotAcross(page, { background: true, atMs: 300, act: 'step', arg: 16800, hangMs: 8000 });
+        expect(r.hung).toBeUndefined();
+        expect(r.ok).toBe(true);
+        expect(r.ms, `the 2 s slot is waited out (${JSON.stringify(r)})`).toBeGreaterThan(1700);
+        expect(r.ms, 'and no longer').toBeLessThan(3500);
+    });
+
+    test('a forward step does not end a hold that appeared while the request queued', async ({ page }) => {
+        // The booked deadline covers a hold seen at the booking; one that
+        // appears later is kept only by its own end, fixed at first sight.
+        await loadRelPage(page, null);
+        await page.evaluate(() => localStorage.setItem('mbu:mb-gate', JSON.stringify(
+            { version: 1, tat: Date.now() + 4000, cool: 0, hot: 0, lead: '', leadUntil: 0 })));
+        await installClock(page);
+        const r = await page.evaluate(async () => {
+            const g = window.__saTest.mbGate;
+            const clk = window.__clk;
+            const realTimeout = window.setTimeout;
+            const t = clk.realPerf();
+            try {
+                const p = g.slot({ background: true }).then((x) => ({ ok: x.ok }));   // paced to ~2 s
+                realTimeout(() => {   // another script's 503: everyone holds until ~3.3 s
+                    const s = JSON.parse(localStorage.getItem('mbu:mb-gate'));
+                    s.cool = Date.now() + 3000;
+                    localStorage.setItem('mbu:mb-gate', JSON.stringify(s));
+                }, 300);
+                realTimeout(() => clk.step(16800), 700);
+                const out = await Promise.race([p, new Promise((res) => realTimeout(() => res({ hung: true }), 8000))]);
+                out.ms = clk.realPerf() - t;
+                return out;
+            } finally {
+                clk.restore();
+            }
+        });
+        expect(r.hung).toBeUndefined();
+        expect(r.ok).toBe(true);
+        expect(r.ms, `the hold, not the 2 s slot, ends the wait (${JSON.stringify(r)})`).toBeGreaterThan(3000);
+        expect(r.ms, 'and no longer').toBeLessThan(4800);
+    });
+
+    test('a lead ten minutes out holds background requests for 10 s from the first sight, once', async ({ page }) => {
+        await loadRelPage(page, null);
+        await seedGate(page, { version: 1, tat: 0, cool: 0, hot: 0, lead: 'eh-page-draw', leadFor: 600000 });
+        await installClock(page);
+        const r = await page.evaluate(async () => {
+            const g = window.__saTest.mbGate;
+            const clk = window.__clk;
+            const realTimeout = window.setTimeout;
+            const within = (p, ms) => Promise.race([p, new Promise((res) => realTimeout(() => res({ hung: true }), ms))]);
+            try {
+                const t = clk.realPerf();
+                const first = within(g.slot({ background: true }).then((x) => ({ ok: x.ok })), 4000);
+                realTimeout(() => clk.pass(10500), 400);
+                const a = await first;
+                a.ms = clk.realPerf() - t;
+                const t2 = clk.realPerf();
+                const b = await within(g.slot({ background: true }).then((x) => ({ ok: x.ok })), 3000);
+                b.ms = clk.realPerf() - t2;
+                return { a, b };
+            } finally {
+                clk.restore();
+            }
+        });
+        expect(r.a.hung, `the first request ends once its 10 s are up (${JSON.stringify(r)})`).toBeUndefined();
+        expect(r.a.ok).toBe(true);
+        expect(r.a.ms, 'it waited for the lead first').toBeGreaterThan(350);
+        expect(r.b.hung, 'the same stored lead does not hold the next request again').toBeUndefined();
+        expect(r.b.ms).toBeLessThan(1500);
+    });
+
+    test('a renewed lead holds again: each new leadUntil counts from its own first sight', async ({ page }) => {
+        await loadRelPage(page, null);
+        await seedGate(page, { version: 1, tat: 0, cool: 0, hot: 0, lead: 'eh-page-draw', leadFor: 1500 });
+        const ms = await page.evaluate(async () => {
+            const t = performance.now();
+            const p = window.__saTest.mbGate.slot({ background: true });
+            setTimeout(() => {
+                const s = JSON.parse(localStorage.getItem('mbu:mb-gate'));
+                s.leadUntil = Date.now() + 1500;   // Event Horizon renews its lead
+                localStorage.setItem('mbu:mb-gate', JSON.stringify(s));
+            }, 1000);
+            await p;
+            return performance.now() - t;
+        });
+        expect(ms, 'waits out the renewal, about 2.5 s').toBeGreaterThan(2300);
+        expect(ms).toBeLessThan(4000);
     });
 });

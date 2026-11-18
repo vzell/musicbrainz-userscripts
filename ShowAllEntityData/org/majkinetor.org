@@ -1309,6 +1309,14 @@ CLOSED: [2026-11-08 Sun]
   Specs, each predicted before the fix: =Date.now()= stepped −16.8 s inside a slice (today the slice sleeps
   about 17 s); +16.8 s during a 3 s hold (today the request goes at once); a =leadUntil= ten minutes out (today a
   background request waits ten minutes). Mutations in =scripts/mutations/mb-shared-gate.json=.
+  - *In progress (2026-11-18, petri, =feat/mb-gate-clock=, WIP.1)*, started right after the post, without
+    waiting for his answer (only how SAED reads changes, nothing he reads): =_mbGateHoldEnd()= (was
+    =_mbGateCool()=) and =_mbGateLeadLeft()= give a stored =cool= / =leadUntil= a monotonic end at first sight;
+    the booked =at= becomes a =_steadyNow()= deadline; =_mbGateSleep()= and its late-timer note run on
+    =_steadyNow()=. Five new specs (backward step, forward step during a hold and during a paced slot, the
+    ten-minute lead, a renewed lead); four failed before as predicted (hung / sent after 305 ms / 316 ms /
+    hung), the renewal is a guard. The two specs that faked "61 s pass" by moving =Date.now()= now move both
+    clocks (=installClock()=).
 - *ONE reply for majkinetor, POSTED* by vzell on #938, 2026-11-18T20:55:34+01:00:
   https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-6989864530 (checked on petri:
   the text below word for word, in its org markup). It replaces the separate hold-cap note under the port TODO
