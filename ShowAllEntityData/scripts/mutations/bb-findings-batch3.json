@@ -355,7 +355,7 @@
         "why": "The card says why nothing is called missing.",
         "edits": [
             {
-                "find": "            wait: known || !_bbTagMissingOn() ? '' : 'A missing tag is not looked for: not every page that keeps this show\\'s tags is read.',",
+                "find": "            wait: known || !_bbTagMissingOn() ? '' : `A missing tag is not looked for: not every page that keeps this ${facts.page ? 'page' : 'show'}'s tags is read.`,",
                 "replace": "            wait: '',"
             }
         ],
@@ -368,8 +368,8 @@
         "why": "Only with nothing found.",
         "edits": [
             {
-                "find": "        if (!n && !find.wait) head = '<div class=\"mb-cbx-pill-ok\">✓ date, letter, kind, premiere and icon tags as expected</div>';",
-                "replace": "        if (!find.wait) head = '<div class=\"mb-cbx-pill-ok\">✓ date, letter, kind, premiere and icon tags as expected</div>';"
+                "find": "        if (!n && !find.wait) head = `<div class=\"mb-cbx-pill-ok\">${esc(find.ok || '✓ tags as expected')}</div>`;",
+                "replace": "        if (!find.wait) head = `<div class=\"mb-cbx-pill-ok\">${esc(find.ok || '✓ tags as expected')}</div>`;"
             }
         ],
         "spec": "tests/fixtures/bb-findings-batch3.spec.js",

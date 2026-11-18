@@ -403,7 +403,11 @@ test.describe('Brucebase tag check: the rule (bbp-parity batch 3)', () => {
         expect(await facts(MAD)).toEqual({ kind: 'gig', date: '2016-05-21', letter: '', prem: 3, help: false, featured: false });
         expect(await facts(INT)).toEqual({ kind: 'interview', date: '2016-09-06', letter: '', prem: 0, help: false, featured: false });
         expect((await facts(MAD, 'gig:2016-05-21b-estadio-santiago-bernabeu-madrid-spain')).letter).toBe('b');
-        expect(await facts(MAD, 'venue:estadio-santiago-bernabeu-madrid-spain'), 'not a show').toBeNull();
+        // Not a show: a venue address gets a page's facts (batch 4), no date or premiere count;
+        // a kind no check covers gets none.
+        const asVenue = await facts(MAD, 'venue:estadio-santiago-bernabeu-madrid-spain');
+        expect([asVenue.page, asVenue.kind, 'date' in asVenue, 'prem' in asVenue], 'not a show').toEqual([true, 'venue', false, false]);
+        expect(await facts(MAD, 'lyrics:estadio-santiago-bernabeu-madrid-spain'), 'not a checked kind').toBeNull();
     });
 });
 

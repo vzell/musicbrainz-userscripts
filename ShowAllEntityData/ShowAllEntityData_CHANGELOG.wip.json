@@ -1,0 +1,22 @@
+[
+    {
+        "version": "WIP.1",
+        "date": "2026-11-18",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "Brucebase venue, song, person and band, and release pages: their tags are checked like a show's (BruceBaseParser's page tag checks, parity batch 4). On the page's Tags card and in its preview window, a missing tag gets a red dashed chip and a tag that is not expected an amber ⚠️, with the ❌/⚠️ pills and the reasons in words. Checked: the page's kind (venue, song, retail; person with a Bands tab, band with a Members tab), the first letter as the wiki's letter tabs list it (0-9 for a digit, & for a band with &; not on a release), underconstruction against the Under Construction banner, and on a song its title as a tag and lyricsheet against a lyric sheet in its Gallery. Nothing more is read. Over the whole mirror of 2026-11-15 this flags 41 of 6,990 pages; the first letter matches BruceParser's own report.",
+                    "Never flagged: a second letter tag (the wiki lists some pages under an alternative title), a page tagged redirect, a release's tab pages, playlists. Left out as too noisy: a release's dates, a venue's place tags, a person's or band's name tags."
+                ]
+            },
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "On those pages the BruceParser feed's first-letter mark after the byline (and after the window's title) is left out while missing tags are looked for: the check reads the page as it is now. The two settings Find Brucebase shows and pages that lack a tag / … with a tag of a checked kind that is not expected now cover these pages too; their defaults are unchanged.",
+                    "\"&\" counts as a letter tag in a Brucebase Tags card's rows (the wiki's letter for a band with \"&\")."
+                ]
+            }
+        ]
+    }
+]

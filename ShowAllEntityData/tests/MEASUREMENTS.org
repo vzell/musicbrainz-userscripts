@@ -4468,3 +4468,22 @@ Env: 2026-11-18T20:30:20+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 
 3259 passed (the branch's 3245 plus the 14 tests main gained from 9.99.1647–1649 on NB-3641). No flake showed.
 =check-clock-jumps.js= at 20:43 CET, during the run: 0 jumps in 30 s (clock source =tsc=, =systemd-timesyncd= off).
+
+* 2026-11-18 — Brucebase detail pages: the cost of the page tag check at render (=NB-3641=, feat/bb-findings-page-tags)
+
+Env: 2026-11-18T22:47:17+01:00–22:49:42+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs).
+
+=node scripts/measure-bb-page-render.js 9 venue:stone-pony-asbury-park-nj venue:unknown-location-bayonne-nj song:we-are-the-world=
+(bb-venue and bb-song, =tableMode: multi=, the page's own button to =waitForRenderComplete=; fixtures of
+=tests/fixtures/bb-findings/=). Arm M: =main= at =bd4cb6d5= (9.99.1650, a git worktree). Arm B: the branch's working
+tree (uncommitted, on =bd4cb6d5=). Alternated M, B, M, B in one session; median (range) of 9, ms.
+
+| Page                       | M1            | B1            | M2            | B2            | B/M        |
+|----------------------------+---------------+---------------+---------------+---------------+------------|
+| Stone Pony (as expected)   | 221 (208–229) | 221 (208–239) | 218 (205–228) | 221 (216–232) | 1.00, 1.01 |
+| Bayonne ("u" missing)      | 164 (151–179) | 169 (160–187) | 162 (156–167) | 169 (156–176) | 1.03, 1.04 |
+| We Are The World (⚠️ chip) | 213 (193–225) | 220 (207–223) | 207 (201–222) | 227 (202–245) | 1.03, 1.10 |
+
+The ranges of the two arms overlap on every page. A page as expected costs nothing measurable; a page with a mark
+costs about 5–20 ms more (the marked chip, the pills and the words under the chips), on a render of 160–230 ms. No
+table, sort or filter path is touched: the check runs once per head and per window.

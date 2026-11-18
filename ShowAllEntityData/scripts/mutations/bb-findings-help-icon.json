@@ -173,8 +173,8 @@
         "why": "A check that costs a request switches it off with itself.",
         "edits": [
             {
-                "find": "        if (!info || !facts || (!_bbTagMissingOn() && !_bbTagSpuriousOn())) return;",
-                "replace": "        if (!info || !facts) return;"
+                "find": "        if (!info || !facts || facts.page || (!_bbTagMissingOn() && !_bbTagSpuriousOn())) return;",
+                "replace": "        if (!info || !facts || facts.page) return;"
             }
         ],
         "spec": "tests/fixtures/bb-findings-help-icon.spec.js",

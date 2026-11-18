@@ -1,0 +1,327 @@
+[
+    {
+        "name": "page kinds: a venue, song, relation or release page gets no facts",
+        "why": "_bbTagFacts() routes the four kinds to _bbTagPageFacts().",
+        "edits": [
+            {
+                "find": "        if (m && _BB_TAGCHK_PAGE_KINDS.test(m[1])) return _bbTagPageFacts(doc, m[1], name);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "every fixture page",
+        "expect": "fail"
+    },
+    {
+        "name": "skip: a page tagged redirect is checked",
+        "why": "song:born-in-the-usa is a redirect: no check.",
+        "edits": [
+            {
+                "find": "        if (own.includes('redirect')) return null;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "every fixture page",
+        "expect": "fail"
+    },
+    {
+        "name": "skip: a -N page without tabs is checked",
+        "why": "relation:usa-for-africa-2 only keeps its band's tags.",
+        "edits": [
+            {
+                "find": "        if (/-[1-9]$/.test(name) && !doc.querySelector('.yui-navset')) return null;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "every fixture page",
+        "expect": "fail"
+    },
+    {
+        "name": "skip: a release's tab page is checked",
+        "why": "retail:born-to-run-credits: no check (vzell, 2026-11-18).",
+        "edits": [
+            {
+                "find": "        if (kind === 'retail' && _BB_TAGCHK_RETAIL_TAB.test(name)) return null;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "every fixture page",
+        "expect": "fail"
+    },
+    {
+        "name": "letter: a digit is not 0-9",
+        "why": "BruceParser's rule: a title starting with a digit is listed under 0-9.",
+        "edits": [
+            {
+                "find": "        if (/^[0-9]$/.test(c)) c = '0-9';\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "the first letter: BruceParser",
+        "expect": "fail"
+    },
+    {
+        "name": "letter: a relation keeps its leading The",
+        "why": "\"The Sessions Band\" is listed under s.",
+        "edits": [
+            {
+                "find": "        if (kind === 'relation' && t.startsWith('the ')) t = t.slice(4);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "the first letter: BruceParser",
+        "expect": "fail"
+    },
+    {
+        "name": "letter: a band with & is not &",
+        "why": "The wiki lists such a band under &.",
+        "edits": [
+            {
+                "find": "        if (kind === 'relation' && t.includes('&')) c = '&';\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "the first letter: BruceParser",
+        "expect": "fail"
+    },
+    {
+        "name": "letter: a leading quote is not skipped",
+        "why": "'Til We Outnumber 'Em is listed under t.",
+        "edits": [
+            {
+                "find": "        if (c === '\"' || c === '\\'') c = chars[1] || '';\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "the first letter: BruceParser",
+        "expect": "fail"
+    },
+    {
+        "name": "letter: accents not folded",
+        "why": "Ōsaka is listed under o.",
+        "edits": [
+            {
+                "find": "        c = _bbTagFold(c).toLowerCase().charAt(0);",
+                "replace": "        c = c.toLowerCase().charAt(0);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "the first letter: BruceParser",
+        "expect": "fail"
+    },
+    {
+        "name": "letter: a release gets a letter",
+        "why": "vzell, 2026-11-18: the release letter is left out (52 pages, not the wiki's rule).",
+        "edits": [
+            {
+                "find": "        if (kind === 'retail') return '';\n        let t = String(title || '').toLowerCase();",
+                "replace": "        let t = String(title || '').toLowerCase();"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "the first letter: BruceParser",
+        "expect": "fail"
+    },
+    {
+        "name": "banner: only sup > em is read",
+        "why": "retail:j-a-m-86 writes the banner as p > em.",
+        "edits": [
+            {
+                "find": "Array.from(pc.querySelectorAll('em')).some(em => /under construction/i.test(em.textContent));",
+                "replace": "Array.from(pc.querySelectorAll('sup em')).some(em => /under construction/i.test(em.textContent));"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "a release tagged",
+        "expect": "fail"
+    },
+    {
+        "name": "lyricsheet: every song has one",
+        "why": "song:we-are-the-world is tagged lyricsheet without one.",
+        "edits": [
+            {
+                "find": "            lyricsheet = !!tab && Array.from(tab.querySelectorAll('img'))",
+                "replace": "            lyricsheet = true || Array.from(tab.querySelectorAll('img'))"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "every fixture page",
+        "expect": "fail"
+    },
+    {
+        "name": "title: the other spellings do not count",
+        "why": "song:angel-eyes-2 carries angeleyes2.",
+        "edits": [
+            {
+                "find": "                if (!_bbTagPresent(e.tag, all) && !(e.alts || []).some(a => all.has(a))) res.missing.push(e);",
+                "replace": "                if (!_bbTagPresent(e.tag, all)) res.missing.push(e);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "every fixture page",
+        "expect": "fail"
+    },
+    {
+        "name": "title: a cover's artist stays in the title",
+        "why": "Cupid ( - Sam Cooke - ) is tagged cupid / cupid2.",
+        "edits": [
+            {
+                "find": "        const base = String(title || '').replace(/\\s*\\(\\s*-\\s.*?-\\s*\\)\\s*$/, '');",
+                "replace": "        const base = String(title || '');"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "title tags: a cover",
+        "expect": "fail"
+    },
+    {
+        "name": "relation: person not expected without a Members tab",
+        "why": "A person without a Bands tab is still a person (BruceBaseParser flags 1,543).",
+        "edits": [
+            {
+                "find": "            if (tag === 'person' && facts.members && !facts.bands)",
+                "replace": "            if (tag === 'person' && !facts.bands)"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "the families",
+        "expect": "fail"
+    },
+    {
+        "name": "relation: a Bands tab does not call for person",
+        "why": "The tab says the page is a person.",
+        "edits": [
+            {
+                "find": "            if (facts.bands) out.push({ tag: 'person', family: 'type', why: 'The page has a Bands tab: a person.' });",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "the families",
+        "expect": "fail"
+    },
+    {
+        "name": "type: a release does not call for retail",
+        "why": "retail:rescue lacks retail.",
+        "edits": [
+            {
+                "find": "            out.push({ tag: _BB_TAGCHK_PAGE_TYPE[k], family: 'type',",
+                "replace": "            if (0) out.push({ tag: _BB_TAGCHK_PAGE_TYPE[k], family: 'type',"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "a release without",
+        "expect": "fail"
+    },
+    {
+        "name": "feed: the head keeps the first-letter mark",
+        "why": "vzell, 2026-11-18: the live check replaces it.",
+        "edits": [
+            {
+                "find": "            letterChecked: _bbFeedLetterChecked(_bbTagFacts(doc, window.location.href)),",
+                "replace": "            letterChecked: false,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "a venue without its letter",
+        "expect": "fail"
+    },
+    {
+        "name": "feed: the window keeps the first-letter mark",
+        "why": "The window draws the same check.",
+        "edits": [
+            {
+                "find": "            letterChecked: _bbFeedLetterChecked(data.bbTagFacts),",
+                "replace": "            letterChecked: false,"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "the window's title leaves out",
+        "expect": "fail"
+    },
+    {
+        "name": "feed: the mark is left out with missing tags not looked for",
+        "why": "Only the check that runs replaces the feed.",
+        "edits": [
+            {
+                "find": "        return !!(facts && facts.page && facts.kind !== 'retail' && _bbTagMissingOn());",
+                "replace": "        return !!(facts && facts.page && facts.kind !== 'retail');"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "missing tags not looked for",
+        "expect": "fail"
+    },
+    {
+        "name": "feed: the live filter ignores letterChecked",
+        "why": "The filter is where the mark is dropped.",
+        "edits": [
+            {
+                "find": "            if (f.kind === 'first-letter') return live.letterChecked || (tags && tags.includes(String(f.value).toLowerCase())) ? null : f;",
+                "replace": "            if (f.kind === 'first-letter') return (tags && tags.includes(String(f.value).toLowerCase())) ? null : f;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "a venue without its letter",
+        "expect": "fail"
+    },
+    {
+        "name": "card: a page says the show's \"as expected\"",
+        "why": "What was checked differs by kind.",
+        "edits": [
+            {
+                "find": "        if (!facts.page) return '✓ date, letter, kind, premiere and icon tags as expected';",
+                "replace": "        return '✓ date, letter, kind, premiere and icon tags as expected';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "a venue as expected",
+        "expect": "fail"
+    },
+    {
+        "name": "card: the wait note speaks of a show",
+        "why": "A page's -2 is not read: the note names a page.",
+        "edits": [
+            {
+                "find": "this ${facts.page ? 'page' : 'show'}'s tags is read.",
+                "replace": "this show's tags is read."
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "is not read",
+        "expect": "fail"
+    },
+    {
+        "name": "chips: & is no letter",
+        "why": "The wiki's letter for a band with &.",
+        "edits": [
+            {
+                "find": "        if (/^(?:[a-z]|0-9|&)$/.test(t)) return 'letter';",
+                "replace": "        if (/^(?:[a-z]|0-9)$/.test(t)) return 'letter';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "title tags: a cover",
+        "expect": "fail"
+    },
+    {
+        "name": "icons: a page's facts may start a year read",
+        "why": "Guard only: a page's facts have no date, so _bbTagYearUrl('') returns '' and nothing is asked either way. Kept as a guard against a page fact that one day carries a date.",
+        "edits": [
+            {
+                "find": "        if (!info || !facts || facts.page || (!_bbTagMissingOn() && !_bbTagSpuriousOn())) return;",
+                "replace": "        if (!info || !facts || (!_bbTagMissingOn() && !_bbTagSpuriousOn())) return;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "a venue without its letter",
+        "expect": "pass"
+    }
+]
