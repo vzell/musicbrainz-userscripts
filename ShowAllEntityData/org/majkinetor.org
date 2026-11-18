@@ -1225,6 +1225,51 @@ CLOSED: [2026-11-08 Sun]
 - *Tests*: extend =tests/fixtures/mb-shared-gate.spec.js= (the never-settling lock, the far-future hold), plus
   mutation entries in =scripts/mutations/mb-shared-gate.json=.
 
+** TODO The shared gate's clock: a step of the wall clock moves every script's slots (draft for vzell to send)
+
+- *Who fixes it*: a *shared convention* (both sides read and write =mbu:mb-gate=), with a reader-side change that
+  keeps =MBN_VERSION = 1=; SAED's half is *ours* and goes with the port TODO above (its item 3, the hold cap).
+- *What*: =tat=, =cool= and =leadUntil= are epoch ms from =Date.now()=, on both sides. Checked in ISRC Scout's
+  inlined copy (=@version 2026.10.16.181657=, =tests/fixtures/live-userscripts/=: booking, wait, =Retry-After= hold
+  and =hot= all on =Date.now()=); SAED's =_mbGateSlot()=/=_mbGateAnswer()= the same. The newer
+  =dev/net/mb-gate.mjs= (=0693aea=) is not on NB-3641; re-check it on the next refresh before sending.
+- *Seen*: 2026-11-09 on petri, the wall clock jumped +16.8 s and back about every 5 s (DEBUG-NOTES, "petri's clock
+  spikes"). SAED moved its own schedulers to =_steadyNow()= (=performance.timeOrigin + performance.now()=), leaving
+  =mbu:mb-gate= on the wall clock as the residual. 2026-11-17 on NB-3641 (clock source =tsc=):
+  =mb-shared-gate.spec.js= "a hold another script wrote delays our request until it passes" sent after 842 ms where
+  a 3 s hold was seeded. That fits a forward step shortening the hold; not traced. The step frequency fell to zero
+  with =hyperv_clocksource_tsc_page= (tests/README.org, clock section).
+- *Why =performance.now()= alone is no fix*: the stored times must mean the same in every tab, and
+  =performance.timeOrigin= is the wall clock once, at each page's start. Two tabs started on either side of a step
+  disagree by the step for their whole life. So the stored values stay wall-clock epochs, and the defence is on the
+  reading side.
+- *Proposal* (reader-side, protocol version unchanged, each script can adopt it alone):
+  1. *Bound what is read*: =tat= as at most =now + BURST × GAP=, =cool= as at most =now + MBN_MAX_HOLD= (upstream
+     already caps a hold it writes, and since =0693aea= one it reads), =leadUntil= as at most =now + MAX_LEAD=. A
+     booking made inside a forward spike then costs one burst window, not the spike.
+  2. *Wait on the monotonic clock*: take =left = until − Date.now()= once per slice and sleep against a
+     =performance.now()= deadline, so a step during the wait neither ends it early nor stretches it. Re-read =cool=
+     each slice as today (a new hold must still be seen).
+  3. Nothing changes in the stored shape; a script without the change keeps today's behaviour.
+- *SAED's half*: the same two reader rules in =_mbGateRead()=/=_mbGateSlot()=; a spec with =Date.now()= stepped
+  +16.8 s around a booking (as =tests/fixtures/rate-slot-clock-step.spec.js= does for the other schedulers),
+  predicted before: the next request 16.8 s late; mutations in =scripts/mutations/mb-shared-gate.json=.
+- *Draft* (for vzell to post on majkinetor's repo; not sent):
+
+  #+begin_quote
+  The shared gate (=mbu:mb-gate=) books on =Date.now()= on every side, mine included. On WSL I have seen the wall
+  clock step by +16.8 s and back every few seconds (Hyper-V time sync fighting systemd-timesyncd). A booking made
+  inside such a step stores a =tat= 16.8 s ahead, and every script then waits that long; a backward step does the
+  same to =cool=, a forward one shortens a 503 hold. Real browsers on laptops coming out of sleep can step too.
+
+  Switching the stored values to =performance.now()= would not work across tabs (each tab's =timeOrigin= is its
+  own start), so I'd keep the format and harden the reader, which needs no version bump:
+  1. clamp what is read: =tat= to =now + BURST × GAP=, =cool= to =now + MBN_MAX_HOLD=, =leadUntil= to =now + MAX_LEAD=;
+  2. wait against a =performance.now()= deadline computed once per slice, re-reading =cool= each slice as now.
+  I'll do the same in SAED's copy. Does that fit how you see the gate, or would you rather put it in =mb-gate.mjs=
+  first and I port it?
+  #+end_quote
+
 ** TODO String Theory's idle mode over our FRP (random theme, EH effect layers)
 
 - *Who fixes it*: *ours* since 2026-11-16 (low priority). majkinetor *declined* the convention:
