@@ -131,6 +131,9 @@ const FIXTURE_SETTINGS_OVERRIDE = {
     // version 1"): a Brucebase press reads raw.githubusercontent.com once a
     // day. bb-feed.spec.js seeds it back on and serves the file.
     sa_bb_feed: false,
+    // ... and on MusicBrainz (2026-11-18, "Feed v2, branch 3"): an event
+    // list's or event page's press reads it too. bb-feed.spec.js seeds it on.
+    sa_bb_feed_mb: false,
     sa_dp_path_label: 'kind',
 };
 

@@ -2,13 +2,13 @@
     {
         "name": "feed: a fresh kept feed is read again",
         "why": "A feed younger than a day is not read again.",
-        "edits": [{ "find": "        if (!force && _bbFeed.data && now - _bbFeed.at < _BB_FEED_TTL_MS) return Promise.resolve(false);", "replace": "" }],
+        "edits": [{ "find": "        if (!force && _bbFeed.data && now - _bbFeed.at < _BB_FEED_TTL_MS && !_bbFeedLacksMap(now)) return Promise.resolve(false);", "replace": "" }],
         "spec": "tests/fixtures/bb-feed.spec.js", "grep": "younger than a day", "expect": "fail"
     },
     {
         "name": "feed: a stale kept feed is never read again",
         "why": "A feed older than a day is read on the next press.",
-        "edits": [{ "find": "now - _bbFeed.at < _BB_FEED_TTL_MS)", "replace": "true)" }],
+        "edits": [{ "find": "now - _bbFeed.at < _BB_FEED_TTL_MS && !_bbFeedLacksMap(now))", "replace": "true)" }],
         "spec": "tests/fixtures/bb-feed.spec.js", "grep": "an older one is read once", "expect": "fail"
     },
     {
@@ -50,7 +50,7 @@
     {
         "name": "feed: a feed that comes in late is not stamped",
         "why": "_bbFeedChanged() stamps the tables once.",
-        "edits": [{ "find": "            stampFindings();\n            const ids = Object.values(_BB_FEED_KINDS).map(k => k.id);", "replace": "            const ids = Object.values(_BB_FEED_KINDS).map(k => k.id);" }],
+        "edits": [{ "find": "            stampFindings();\n            const ids = Object.values(_isBbHost ? _BB_FEED_KINDS : _BB_FEED_MB_KINDS).map(k => k.id);", "replace": "            const ids = Object.values(_isBbHost ? _BB_FEED_KINDS : _BB_FEED_MB_KINDS).map(k => k.id);" }],
         "spec": "tests/fixtures/bb-feed.spec.js", "grep": "comes in after the render", "expect": "fail"
     },
     {
@@ -256,5 +256,65 @@
         "why": "On Brucebase only for now (vzell, 2026-11-17; MusicBrainz is branch 3). No MusicBrainz fixture opens a Brucebase anchor's window with a feed kept, and a MusicBrainz press reads no feed, so no spec can see it.",
         "edits": [{ "find": "            if (!_isBbHost || !data) return '';\n            const d = String(data.subtitle", "replace": "            if (!data) return '';\n            const d = String(data.subtitle" }],
         "spec": "tests/fixtures/bb-feed.spec.js", "grep": "MusicBrainz page", "expect": "pass"
+    },
+    {
+        "name": "feed 1.3: the Event cell's lookup finds nothing",
+        "why": "The Event cell's event MBID is looked up in the feed's mb.",
+        "edits": [{ "find": "                return !!(r && r.fact && r.fact.kind === kind);", "replace": "                return false;" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "an event list: the three events", "expect": "fail"
+    },
+    {
+        "name": "feed 1.3: no-entry is a warning",
+        "why": "A link that reaches no entry is an error.",
+        "edits": [{ "find": "'no-entry': { id: 'bb-mb-no-entry', glyph: '⚓', level: 'error',", "replace": "'no-entry': { id: 'bb-mb-no-entry', glyph: '⚓', level: 'warn'," }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "an event list: the three events", "expect": "fail"
+    },
+    {
+        "name": "feed 1.3: the MusicBrainz switch ignored",
+        "why": "sa_bb_feed_mb off: nothing is read or marked on MusicBrainz.",
+        "edits": [{ "find": "        return !_isBbHost && !_foreignHost && _bbFeedOn() && Lib.settings.sa_bb_feed_mb !== false;", "replace": "        return !_isBbHost && !_foreignHost && _bbFeedOn();" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "the MusicBrainz switch off", "expect": "fail"
+    },
+    {
+        "name": "feed 1.3: every MusicBrainz press reads the feed",
+        "why": "Only an event list's or an event page's press reads it.",
+        "edits": [{ "find": "        else if (baseDef && _BB_FEED_MB_PAGES.has(baseDef.type) && _bbFeedMbOn()) {", "replace": "        else if (_bbFeedMbOn()) {" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "a press on a MusicBrainz page that lists no events", "expect": "fail"
+    },
+    {
+        "name": "feed 1.3: an event list's press never reads the feed",
+        "why": "A stale feed is read on an event list's press.",
+        "edits": [{ "find": "            _bbMbCardInit();\n            _bbFeedKick();\n", "replace": "            _bbMbCardInit();\n" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "a stale feed is read on an event list", "expect": "fail"
+    },
+    {
+        "name": "feed 1.3: the card marks no candidate likely",
+        "why": "The candidate whose heading names the event's place is marked likely.",
+        "edits": [{ "find": "`<li class=\"${c.likely ? 'mb-bbmb-likely' : ''}\">", "replace": "`<li class=\"\">" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "the card: the wiki's entries", "expect": "fail"
+    },
+    {
+        "name": "feed 1.3: no sidebar mark at load",
+        "why": "An event page shows its mark from the kept feed at load.",
+        "edits": [{ "find": "/^\\/event\\/[0-9a-f-]{36}\\/?$/.test(window.location.pathname)) _bbFeedMbSidebarDraw();", "replace": "/^\\/event\\/[0-9a-f-]{36}\\/?$/.test(window.location.pathname)) void 0;" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "an event page: the mark beside", "expect": "fail"
+    },
+    {
+        "name": "feed 1.3: the menus' feed line missing on MusicBrainz",
+        "why": "With a feed finding on the page, the menus end with the feed's line.",
+        "edits": [{ "find": ": _bbFeedMbOn() && list.some(x => x.f.id.startsWith('bb-mb-')) ? _bbFeedStatus() : null;", "replace": ": null;" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "an event list: the three events", "expect": "fail"
+    },
+    {
+        "name": "feed: a kept file without a map is fresh for its whole day",
+        "why": "A kept feed lacking a map this script reads (0.20.0's file has no mb) is read again on the press once it was read an hour ago (vzell's live check of 2026-11-18).",
+        "edits": [{ "find": " && !_bbFeedLacksMap(now)) return Promise.resolve(false);", "replace": ") return Promise.resolve(false);" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "a kept file older than 1.3", "expect": "fail"
+    },
+    {
+        "name": "feed: a kept file without a map is read on every press",
+        "why": "The hour bounds the reads when the published file itself lacks a map.",
+        "edits": [{ "find": "return !!d && now - _bbFeed.at >= _BB_FEED_RETRY_MS && _BB_FEED_MAPS.some(", "replace": "return !!d && _BB_FEED_MAPS.some(" }],
+        "spec": "tests/fixtures/bb-feed.spec.js", "grep": "read within the hour, is not read again", "expect": "fail"
     }
 ]

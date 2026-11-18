@@ -3177,6 +3177,43 @@
                          'page (a venue) and its window. Needs "Read the Brucebase feed".'
         },
 
+        sa_findings_bb_mb_no_entry: {
+            label: 'Find MusicBrainz events whose Brucebase link reaches no entry (Brucebase feed)',
+            type: 'checkbox',
+            default: true,
+            description: 'From the Brucebase feed: an event whose Brucebase "reviews" link names a year-page anchor ' +
+                         'the wiki does not have; most often the wiki writes that date with a letter now (#120923a). ' +
+                         'An ERROR on the event\'s Event cell in every event list and beside its Brucebase link on its ' +
+                         'page; hover it for the wiki\'s entries of the date. Needs "Read the Brucebase feed on ' +
+                         'MusicBrainz".'
+        },
+
+        sa_findings_bb_mb_shared: {
+            label: 'Find MusicBrainz events that link one Brucebase entry together (Brucebase feed)',
+            type: 'checkbox',
+            default: true,
+            description: 'From the Brucebase feed: two or more events whose Brucebase links name the same entry; the ' +
+                         'one whose date differs from the entry\'s likely has the wrong link. A WARNING on their Event ' +
+                         'cells and pages. Needs "Read the Brucebase feed on MusicBrainz".'
+        },
+
+        sa_findings_bb_mb_not_anchor: {
+            label: 'Find MusicBrainz events whose Brucebase link is no year-page anchor (Brucebase feed)',
+            type: 'checkbox',
+            default: true,
+            description: 'From the Brucebase feed: an event that links a show\'s page instead of its year-page anchor, ' +
+                         'the form every other event uses. A WARNING on its Event cell and page. Needs "Read the ' +
+                         'Brucebase feed on MusicBrainz".'
+        },
+
+        sa_findings_tint_bb_mb: {
+            label: 'Highlight the Event cells of MusicBrainz events the Brucebase feed names',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint the Event cell light red with a ❌ (the Brucebase link reaches no entry) or light ' +
+                         'yellow with a ⚠️ (one entry for two events, a link that is no anchor).'
+        },
+
         sa_findings_tint_bb_feed: {
             label: 'Highlight cells of Brucebase pages the Brucebase feed names',
             type: 'checkbox',
@@ -5519,6 +5556,18 @@
                          'They are read when you press the page\'s button or open the window with Space: one ' +
                          'more page for a show with an On Stage tab, sometimes two or three, one a second, ' +
                          'and kept like the other preview pages. Off: only the page\'s own tags, no request.'
+        },
+
+        sa_bb_feed_mb: {
+            label: 'Read the Brucebase feed on MusicBrainz too: event links that reach no Brucebase entry',
+            type: 'checkbox',
+            default: true,
+            description: 'BruceParser also compares the artist\'s MusicBrainz events with Brucebase. On: an event ' +
+                         'list\'s or an event page\'s press reads the feed (as on Brucebase, at most once a day; the ' +
+                         'copy is shared), and an event whose Brucebase link reaches no entry, shares one with ' +
+                         'another event, or is no year-page anchor is marked on its Event cell and beside its ' +
+                         'Brucebase link, with the wiki\'s entries of the date to choose from. Needs "Read the ' +
+                         'Brucebase feed". Off: nothing is read or marked on MusicBrainz.'
         },
 
         sa_bb_feed: {
@@ -27865,6 +27914,17 @@
     const _BB_FEED_TTL_MS = 24 * 3600 * 1000;
     /** @type {number} After a failed read, the next try waits this long (Retry does not). */
     const _BB_FEED_RETRY_MS = 3600 * 1000;
+    /**
+     * The feed's maps this script reads, each added by a later BruceParser
+     * (`anchors` 1.2, `mb` 1.3). A kept file without one of them was written
+     * before it, so it counts as old once it was read an hour ago, whatever
+     * its day: vzell's live check of 2026-11-18 kept 0.20.0's file from a
+     * Brucebase page, and a MusicBrainz press then read nothing new and
+     * marked nothing. The hour bounds the reads when the published file
+     * itself lacks a map.
+     * @type {string[]}
+     */
+    const _BB_FEED_MAPS = ['anchors', 'mb'];
     /** @type {number} A run older than this many days is called old in every card (vzell, decision 3). */
     const _BB_FEED_OLD_DAYS = 14;
     /**
@@ -27980,8 +28040,9 @@
     }
 
     /**
-     * Reads the feed from GitHub when the kept one is older than a day (or
-     * with `force`, Read again / Retry), never twice at once, and after a
+     * Reads the feed from GitHub when the kept one is older than a day, or
+     * lacks a map this script reads (`_bbFeedLacksMap()`), or with `force`
+     * (Read again / Retry); never twice at once, and after a
      * failed read not again within the hour unless forced. A failure keeps
      * the old feed and records why. Nothing when the setting is off. Callers:
      * a Brucebase page's button (`_bbFeedKick()`), a Brucebase window
@@ -27994,7 +28055,7 @@
         _bbFeedReadKept();
         if (!_bbFeedOn()) return Promise.resolve(false);
         const now = Date.now();
-        if (!force && _bbFeed.data && now - _bbFeed.at < _BB_FEED_TTL_MS) return Promise.resolve(false);
+        if (!force && _bbFeed.data && now - _bbFeed.at < _BB_FEED_TTL_MS && !_bbFeedLacksMap(now)) return Promise.resolve(false);
         if (!force && _bbFeed.err && now - _bbFeed.errAt < _BB_FEED_RETRY_MS) return Promise.resolve(false);
         if (_bbFeed.loading) return _bbFeed.loading;
         _bbFeed.loading = (async () => {
@@ -28035,6 +28096,19 @@
     }
 
     /**
+     * Whether the kept feed lacks one of the maps this script reads
+     * (`_BB_FEED_MAPS`) and was read at least an hour ago: then it is read
+     * again before its day is up.
+     *
+     * @param {number} now - `Date.now()`.
+     * @returns {boolean}
+     */
+    function _bbFeedLacksMap(now) {
+        const d = _bbFeed.data;
+        return !!d && now - _bbFeed.at >= _BB_FEED_RETRY_MS && _BB_FEED_MAPS.some(k => !d[k] || typeof d[k] !== 'object');
+    }
+
+    /**
      * Starts a read of the feed when a Brucebase page's button is pressed or
      * a Brucebase window opens (the read waits for nothing; what it changes
      * is drawn by `_bbFeedChanged()`).
@@ -28055,11 +28129,14 @@
      * @returns {void}
      */
     function _bbFeedChanged() {
-        if (_isBbHost && document.querySelector('table.tbl') && typeof stampFindings === 'function') {
+        const onMb = _bbFeedMbOn();
+        if ((_isBbHost || onMb) && document.querySelector('table.tbl') && typeof stampFindings === 'function') {
             stampFindings();
-            const ids = Object.values(_BB_FEED_KINDS).map(k => k.id);
+            const ids = Object.values(_isBbHost ? _BB_FEED_KINDS : _BB_FEED_MB_KINDS).map(k => k.id);
             if (ids.some(id => { const f = _FINDING_BY_ID.get(id); return f && _findingState(f) !== 'off'; })) runFilter();
         }
+        // On MusicBrainz (feed 1.3): the event page's sidebar mark.
+        if (onMb) _bbFeedMbSidebarDraw();
         _bbFeedRefreshMarks();
         _bbFeedSaedRow();
         if (typeof _updateFindingMenus === 'function') _updateFindingMenus();
@@ -28484,6 +28561,313 @@
         row.textContent = `${st.bad ? '⚠ ' : ''}${st.text}${st.action ? ` · ${st.action}` : ''}`;
         row.classList.toggle('mb-bb-feed-bad', st.bad);
         _setTip(row, `${st.action ? `${st.action}: one request to raw.githubusercontent.com. ` : ''}The feed is BruceParser's full read of Brucebase (github.com/vzell/brucebase-feed); its marks name the run they come from.${st.detail ? `\n${st.detail}` : ''}`);
+    }
+
+    // --- The BruceParser feed on MusicBrainz (feed 1.3; feed v2, branch 3) --
+    // The feed's `mb` names, by event MBID, the artist's MusicBrainz events
+    // whose Brucebase "reviews" link is doubtful: it reaches no entry
+    // (`no-entry`, most often a date the wiki writes with a letter now),
+    // shares one entry with another event (`shared`), or is no year-page
+    // anchor (`not-anchor`). Marked on the Event cell of every MusicBrainz
+    // event list and beside the event page's Brucebase link, with no request
+    // to MusicBrainz or the wiki. Mockup
+    // https://claude.ai/artifact/Tip5CShMevQp8ycqBjjnRZ, vzell's answers of
+    // 2026-11-18 all as recommended (org/bbp-parity.org, "Feed v2, branch 3").
+
+    /**
+     * The feed's MusicBrainz kinds: their finding, mark, setting and words.
+     * @type {Object<string, {id: string, glyph: string, level: string, setting: string, label: string, tip: string}>}
+     */
+    const _BB_FEED_MB_KINDS = {
+        'no-entry': { id: 'bb-mb-no-entry', glyph: '⚓', level: 'error', setting: 'sa_findings_bb_mb_no_entry',
+            label: 'Brucebase link reaches no entry',
+            tip: 'The event\'s Brucebase link names a year-page anchor the wiki does not have: most often it writes that date with a letter now (#120923 against #120923a and #120923b). Hover the cell for the wiki\'s entries of the date. ' },
+        'shared': { id: 'bb-mb-shared', glyph: '⇉', level: 'warn', setting: 'sa_findings_bb_mb_shared',
+            label: 'Two events link one Brucebase entry',
+            tip: 'Another MusicBrainz event links the same Brucebase entry. The one whose date differs from the entry\'s likely has the wrong link; hover the cell for the entry of its own date. ' },
+        'not-anchor': { id: 'bb-mb-not-anchor', glyph: '⌗', level: 'warn', setting: 'sa_findings_bb_mb_not_anchor',
+            label: 'Brucebase link is no year-page anchor',
+            tip: 'The event\'s Brucebase link names a show\'s page, not its year-page anchor as every other event does. Hover the cell for the wiki\'s entries of the date. ' },
+    };
+    /** @type {Set<string>} The MusicBrainz pageTypes whose press reads the feed (vzell, answers 3 and 4). */
+    const _BB_FEED_MB_PAGES = new Set(['artist-events', 'place-events', 'area-events', 'event-collections', 'event-tags', 'event-overview']);
+    /** @type {RegExp} An event MBID in a link. */
+    const _BB_FEED_MB_EVENT_RE = /\/event\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/;
+
+    /** @returns {boolean} Whether the feed is read and marked on this MusicBrainz page (`sa_bb_feed_mb`). */
+    function _bbFeedMbOn() {
+        return !_isBbHost && !_foreignHost && _bbFeedOn() && Lib.settings.sa_bb_feed_mb !== false;
+    }
+
+    /**
+     * Whether one MusicBrainz kind's finding is on.
+     *
+     * @param {string} kind - A `_BB_FEED_MB_KINDS` key.
+     * @returns {boolean}
+     */
+    function _bbFeedMbKindOn(kind) {
+        const k = _BB_FEED_MB_KINDS[kind];
+        return !!k && Lib.settings[k.setting] !== false;
+    }
+
+    /**
+     * What the feed says about one MusicBrainz event, when its kind is on.
+     *
+     * @param {string} mbid
+     * @returns {?Object} The feed's `mb` entry, or null.
+     */
+    function _bbFeedMbFact(mbid) {
+        _bbFeedReadKept();
+        const map = _bbFeed.data && _bbFeed.data.mb;
+        const f = map && typeof map === 'object' ? map[mbid] : null;
+        return f && typeof f === 'object' && _BB_FEED_MB_KINDS[f.kind] && _bbFeedMbKindOn(f.kind) ? f : null;
+    }
+
+    /**
+     * The event an Event cell names (its first `/event/<mbid>` link) and what
+     * the feed says about it, memoized per MBID and feed generation.
+     *
+     * @param {HTMLTableCellElement} cell
+     * @returns {?{mbid: string, name: string, fact: ?Object}}
+     */
+    function _bbFeedMbCellFact(cell) {
+        const a = cell.querySelector('a[href*="/event/"]');
+        const m = a ? (a.getAttribute('href') || '').match(_BB_FEED_MB_EVENT_RE) : null;
+        if (!m) return null;
+        const key = `${_bbFeed.gen}|mb|${m[1]}`;
+        if (_bbFeed.memo.has(key)) return _bbFeed.memo.get(key);
+        const r = { mbid: m[1], name: _dpText(a.textContent), fact: _bbFeedMbFact(m[1]) };
+        _bbFeed.memo.set(key, r);
+        return r;
+    }
+
+    /**
+     * One MusicBrainz fact in words, for a cell's tooltip line and the card.
+     *
+     * @param {Object} f - A feed `mb` entry.
+     * @returns {string}
+     */
+    function _bbFeedMbText(f) {
+        const [slug, anchor] = String(f.link || '').split('#');
+        const cands = Array.isArray(f.candidates) ? f.candidates : [];
+        const list = cands.length ? ` The wiki's entries of ${f.date || 'the date'}: ${cands.map(c => `#${String(c.anchor).split('#')[1]} ${c.heading}${c.likely ? ' (likely)' : ''}`).join('; ')}.` : '';
+        if (f.kind === 'no-entry') {
+            const lettered = cands.some(c => String(c.anchor).startsWith(`${f.link}`) && c.anchor !== f.link);
+            return `Brucebase's ${slug} page has no entry #${anchor}${lettered ? ': it writes this date with a letter now' : ''}.${list}`;
+        }
+        if (f.kind === 'shared') {
+            const others = Array.isArray(f.others) ? f.others.length : 0;
+            return `Its link #${anchor} is the entry "${f.heading || f.page || ''}", which ${others === 1 ? 'another event links' : `${others} other events link`} too. ` +
+                (f.dateDiffers ? `This event's date differs from the entry's: likely this link is the wrong one.${list}` : 'The dates agree here: the other event\'s link is likely the wrong one.');
+        }
+        return `It links a show's page (${f.link}), not its year-page anchor as every other event does.${list}`;
+    }
+
+    /**
+     * The card of a marked event (the approved mockup): the kind, the event,
+     * its link, the words, the candidates as links to their year-page anchors
+     * (the likely one marked), the run.
+     *
+     * @param {Object} f - A feed `mb` entry.
+     * @param {string} name - The event as the page names it.
+     * @returns {string} HTML.
+     */
+    function _bbFeedMbCardHtml(f, name) {
+        const k = _BB_FEED_MB_KINDS[f.kind];
+        const esc = _mbttEscape;
+        const link = String(f.link || '');
+        const cands = (Array.isArray(f.candidates) ? f.candidates : []).map(c =>
+            `<li class="${c.likely ? 'mb-bbmb-likely' : ''}">${c.likely ? '<span class="mb-bbmb-k">likely</span>' : ''}` +
+            `<a href="https://brucebase.wikidot.com/${esc(c.anchor)}" target="_blank" rel="noopener">${esc(c.heading || c.anchor)}</a>` +
+            `<span class="mb-bbmb-pg">#${esc(String(c.anchor).split('#')[1] || '')} · ${esc(c.page || '')}</span></li>`).join('');
+        const words = _bbFeedMbText({ ...f, candidates: [] });
+        return `<div class="mb-bbmb-ttl" data-mb-level="${k.level}">${k.level === 'error' ? '❌' : '⚠️'} ${k.glyph} ${esc(k.label)}</div>` +
+            `<dl class="mb-bbmb-cmp"><dt>Event</dt><dd>${esc(name || '')}</dd><dt>Links</dt><dd><a href="https://brucebase.wikidot.com/${esc(link)}" target="_blank" rel="noopener">${esc(link)}</a></dd></dl>` +
+            `<p>${esc(words)}${cands ? ` The wiki's entries of ${esc(f.date || 'the date')}:` : ''}</p>` +
+            (cands ? `<ul class="mb-bbmb-cands">${cands}</ul>` : '') +
+            `<div class="mb-bbmb-src">${esc(_bbFeedSource())}</div>`;
+    }
+
+    /** The open card: its element, what it is open for, the close timer. */
+    const _bbMbCard = { for: null, timer: 0 };
+
+    /**
+     * Installs the card's stylesheet on MusicBrainz, once (the "Liner notes"
+     * look of `.mb-tt-liner`, which the card also carries).
+     *
+     * @returns {void}
+     */
+    function _ensureBbMbCardStyle() {
+        if (document.getElementById('mb-bbmb-style')) return;
+        const style = GM_addStyle(`
+            #mb-bbmb-card { position: absolute; z-index: 2147483300; width: min(440px, calc(100vw - 32px)); box-sizing: border-box;
+                padding: 12px 14px; display: grid; gap: 7px; border-radius: 4px; font-size: 13.5px; }
+            #mb-bbmb-card .mb-bbmb-ttl { font-weight: bold; }
+            #mb-bbmb-card .mb-bbmb-ttl[data-mb-level="error"] { color: #a3361f; }
+            #mb-bbmb-card .mb-bbmb-ttl[data-mb-level="warn"] { color: #9a6a00; }
+            #mb-bbmb-card .mb-bbmb-cmp { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 10px; margin: 0; }
+            #mb-bbmb-card .mb-bbmb-cmp dt { font-style: italic; color: #7a6d5c; }
+            #mb-bbmb-card .mb-bbmb-cmp dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+            #mb-bbmb-card p { margin: 0; }
+            #mb-bbmb-card .mb-bbmb-cands { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+            #mb-bbmb-card .mb-bbmb-cands li { border: 1px solid #d9cfbd; border-radius: 3px; padding: 5px 7px; display: grid; gap: 1px; }
+            #mb-bbmb-card .mb-bbmb-cands li.mb-bbmb-likely { background: #e3efdc; }
+            #mb-bbmb-card .mb-bbmb-k { font: 600 10px/1 system-ui, -apple-system, "Segoe UI", sans-serif; letter-spacing: .08em; text-transform: uppercase; color: #3f7a3a; }
+            #mb-bbmb-card .mb-bbmb-pg { font: 12px ui-monospace, Menlo, Consolas, monospace; color: #7a6d5c; overflow-wrap: anywhere; }
+            #mb-bbmb-card .mb-bbmb-src { color: #7a6d5c; font-size: 12px; border-top: 1px solid #d9cfbd; padding-top: 6px; }
+            .mb-bbmb-mark { border: 0; background: none; padding: 0 2px; cursor: pointer; font: 600 12px system-ui, -apple-system, "Segoe UI", sans-serif; }
+            .mb-bbmb-mark[data-mb-level="error"] { color: #a3361f; }
+            .mb-bbmb-mark[data-mb-level="warn"] { color: #9a6a00; }
+        `);
+        if (style) style.id = 'mb-bbmb-style';
+    }
+
+    /**
+     * The card's element, made once: it keeps open while the pointer is on it.
+     *
+     * @returns {HTMLElement}
+     */
+    function _bbMbCardEl() {
+        let card = document.getElementById('mb-bbmb-card');
+        if (card) return card;
+        _ensureBbMbCardStyle();
+        card = document.createElement('div');
+        card.id = 'mb-bbmb-card';
+        card.className = 'mb-tt-liner';
+        card.setAttribute('role', 'dialog');
+        card.setAttribute('aria-label', 'Brucebase link');
+        card.style.display = 'none';
+        _saBody().appendChild(card);
+        card.addEventListener('mouseenter', () => clearTimeout(_bbMbCard.timer));
+        card.addEventListener('mouseleave', _bbMbCardLater);
+        return card;
+    }
+
+    /**
+     * What an element the card can open for says: an Event cell with a feed
+     * finding, or the sidebar's mark.
+     *
+     * @param {EventTarget} t
+     * @returns {?{el: Element, fact: Object, name: string}}
+     */
+    function _bbMbCardTargetOf(t) {
+        if (!(t instanceof Element) || !_bbFeedMbOn()) return null;
+        const mark = t.closest('button.mb-bbmb-mark[data-mb-bbmb]');
+        if (mark) {
+            const f = _bbFeedMbFact(mark.dataset.mbBbmb);
+            return f ? { el: mark, fact: f, name: mark.dataset.mbBbmbName || '' } : null;
+        }
+        const td = t.closest('table.tbl td[data-mb-findings]');
+        if (!td || !/(?:^| )bb-mb-/.test(td.dataset.mbFindings || '')) return null;
+        const r = _bbFeedMbCellFact(td);
+        return r && r.fact ? { el: td, fact: r.fact, name: r.name } : null;
+    }
+
+    /**
+     * Opens the card under its element (above it when only there it is in
+     * view), inside the window's width.
+     *
+     * @param {{el: Element, fact: Object, name: string}} tg
+     * @returns {void}
+     */
+    function _bbMbCardShow(tg) {
+        clearTimeout(_bbMbCard.timer);
+        const card = _bbMbCardEl();
+        if (_bbMbCard.for !== tg.el || card.style.display === 'none') {
+            _bbMbCard.for = tg.el;
+            card.innerHTML = _bbFeedMbCardHtml(tg.fact, tg.name);
+        }
+        card.style.display = 'grid';
+        const b = tg.el.getBoundingClientRect();
+        const left = Math.max(16, Math.min(b.left, document.documentElement.clientWidth - card.offsetWidth - 16));
+        card.style.left = `${left + window.scrollX}px`;
+        const h = card.offsetHeight;
+        const above = b.bottom + 6 + h > window.innerHeight && b.top - 6 - h >= 0;
+        card.style.top = `${(above ? b.top - 6 - h : b.bottom + 6) + window.scrollY}px`;
+    }
+
+    /** @returns {void} Closes the card. */
+    function _bbMbCardHide() {
+        clearTimeout(_bbMbCard.timer);
+        const card = document.getElementById('mb-bbmb-card');
+        if (card) card.style.display = 'none';
+        _bbMbCard.for = null;
+    }
+
+    /** @returns {void} Closes the card after the grace period that lets the pointer reach it. */
+    function _bbMbCardLater() {
+        clearTimeout(_bbMbCard.timer);
+        _bbMbCard.timer = setTimeout(_bbMbCardHide, 350);
+    }
+
+    /**
+     * Installs the card's listeners, once, on a MusicBrainz page with the
+     * feed on: hover, a click, Enter or Space open it; leaving, Esc and a
+     * press elsewhere close it.
+     *
+     * @returns {void}
+     */
+    function _bbMbCardInit() {
+        if (_bbMbCardInit.done || !_bbFeedMbOn()) return;
+        _bbMbCardInit.done = true;
+        document.addEventListener('mouseover', (e) => {
+            const tg = _bbMbCardTargetOf(e.target);
+            if (tg && !(e.relatedTarget instanceof Node && tg.el.contains(e.relatedTarget))) _bbMbCardShow(tg);
+        });
+        document.addEventListener('mouseout', (e) => {
+            const tg = _bbMbCardTargetOf(e.target);
+            if (tg && tg.el === _bbMbCard.for && !(e.relatedTarget instanceof Node && tg.el.contains(e.relatedTarget))) _bbMbCardLater();
+        });
+        document.addEventListener('click', (e) => {
+            const tg = _bbMbCardTargetOf(e.target);
+            if (tg && !(e.target instanceof Element && e.target.closest('a[href]'))) _bbMbCardShow(tg);
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && _bbMbCard.for) {
+                _bbMbCardHide();
+                return;
+            }
+            if ((e.key !== 'Enter' && e.key !== ' ') || e.ctrlKey || e.altKey || e.metaKey) return;
+            const tg = _bbMbCardTargetOf(e.target);
+            if (!tg || tg.el !== e.target) return;
+            e.preventDefault();
+            _bbMbCardShow(tg);
+        });
+        document.addEventListener('pointerdown', (e) => {
+            if (!_bbMbCard.for || !(e.target instanceof Element)) return;
+            if (e.target.closest('#mb-bbmb-card') || (_bbMbCardTargetOf(e.target) || {}).el === _bbMbCard.for) return;
+            _bbMbCardHide();
+        });
+    }
+
+    /**
+     * The event page's mark (vzell, answer 3): beside its Brucebase link in
+     * the sidebar, from the kept feed (no request at load); drawn again when
+     * a read brings a feed. Removed when the feed no longer names the event.
+     *
+     * @returns {void}
+     */
+    function _bbFeedMbSidebarDraw() {
+        if (!_bbFeedMbOn()) return;
+        const m = window.location.pathname.match(/^\/event\/([0-9a-f-]{36})\/?$/);
+        if (!m) return;
+        document.querySelectorAll('button.mb-bbmb-mark[data-mb-bbmb]').forEach(b => b.remove());
+        const f = _bbFeedMbFact(m[1]);
+        const link = document.querySelector('ul.external_links a[href*="brucebase.wikidot.com"]');
+        if (!f || !link) return;
+        _ensureBbMbCardStyle();
+        _bbMbCardInit();
+        const k = _BB_FEED_MB_KINDS[f.kind];
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'mb-bbmb-mark';
+        b.dataset.mbBbmb = m[1];
+        b.dataset.mbLevel = k.level;
+        const h1 = document.querySelector('#content h1, .eventheader h1, h1');
+        b.dataset.mbBbmbName = h1 ? _dpText(h1.textContent) : '';
+        b.setAttribute('aria-label', `${k.label}: ${_bbFeedMbText(f)}`);
+        b.textContent = `${k.level === 'error' ? '❌' : '⚠️'} ${k.glyph}`;
+        link.after(' ', b);
     }
 
     /**
@@ -76507,6 +76891,26 @@
             detail: cell => _bbFeedCellDetail(cell, kind),
             tint: _findingTintSetting('sa_findings_tint_bb_feed'),
         })),
+        // The feed on MusicBrainz (feed 1.3; feed v2, branch 3): the Event
+        // cell of every event list, by the row's event MBID. `test()` reads
+        // the cell's own link and the kept feed, memoized per MBID.
+        ...Object.entries(_BB_FEED_MB_KINDS).map(([kind, k]) => ({
+            id: k.id, level: k.level, glyph: k.glyph, scope: 'cell',
+            label: k.label,
+            tip: k.tip + 'From the Brucebase feed: BruceParser\'s comparison of the artist\'s MusicBrainz events with the wiki, published at github.com/vzell/brucebase-feed; the hover text names the run.',
+            enabled: () => _bbFeedMbOn() && _bbFeedMbKindOn(kind),
+            cols: name => name === 'Event',
+            rowGate: row => _bbFeedHasData() && !!row.querySelector('a[href*="/event/"]'),
+            test: (cell) => {
+                const r = _bbFeedMbCellFact(cell);
+                return !!(r && r.fact && r.fact.kind === kind);
+            },
+            detail: (cell) => {
+                const r = _bbFeedMbCellFact(cell);
+                return r && r.fact ? `${_bbFeedMbText(r.fact)} ${_bbFeedSource()}` : '';
+            },
+            tint: _findingTintSetting('sa_findings_tint_bb_mb'),
+        })),
         {
             id: 'pending', level: 'warn', glyph: '⏳', scope: 'row',
             label: 'Pending edits',
@@ -113765,6 +114169,10 @@ a { color: #1565c0; }`;
     // switch sa_pop_enabled keeps the whole engine out.
     if (pageType && headerContainer && Lib.settings.sa_pop_enabled !== false) _initDetailPreview();
 
+    // An event page on MusicBrainz: the BruceParser feed's mark beside its
+    // Brucebase link, from the kept feed only (feed 1.3; no request here).
+    if (!_isBbHost && !_foreignHost && /^\/event\/[0-9a-f-]{36}\/?$/.test(window.location.pathname)) _bbFeedMbSidebarDraw();
+
     if (pageType) Lib.prefix = `[VZ-${SCRIPT_BASE_NAME}: ${pageType}]`;
     Lib.debug('init', 'Initializing script for path:', path);
 
@@ -116685,7 +117093,10 @@ a { color: #1565c0; }`;
             menu = menu || _ensureFindingMenu(level);
             // On brucebase.wikidot.com, the BruceParser feed's line at the
             // menus' foot (vzell, decision 3: quiet, and saying why).
-            const feedLine = _isBbHost ? _bbFeedStatus() : null;
+            // On MusicBrainz only when a feed finding is on the page (feed
+            // 1.3, vzell's answer 6).
+            const feedLine = _isBbHost ? _bbFeedStatus()
+                : _bbFeedMbOn() && list.some(x => x.f.id.startsWith('bb-mb-')) ? _bbFeedStatus() : null;
             const sig = (styleRow ? `style:${styleRow.text}|` : '') + list.map(x => `${x.f.id}:${x.n}:${x.state}`).join('|') +
                 (feedLine ? `|feed:${feedLine.text}` : '');
             if (menu.panel.dataset.mbSig === sig) return;
@@ -134760,6 +135171,13 @@ a { color: #1565c0; }`;
         // kept one is a day old (`_bbFeedKick()`); the render stamps from
         // the kept one, and a newer one is stamped when it comes in.
         if (_isBbHost) _bbFeedKick();
+        // On MusicBrainz, an event list's or an event page's press reads it
+        // too (feed 1.3, vzell's answer 3; `sa_bb_feed_mb`), and the card's
+        // listeners are installed.
+        else if (baseDef && _BB_FEED_MB_PAGES.has(baseDef.type) && _bbFeedMbOn()) {
+            _bbMbCardInit();
+            _bbFeedKick();
+        }
 
         // MERGE LOGIC: Combine base definition with button-specific overrides.
         // For page types that carry an `entityFeatures` map (e.g.
@@ -190975,6 +191393,18 @@ a { color: #1565c0; }`;
              */
             bbFeedPictures(doc) {
                 return _bbFeedPictureCount(doc);
+            },
+            /**
+             * The feed on MusicBrainz (feed 1.3): what it says about an event
+             * MBID (`_bbFeedMbFact()`), in words (`_bbFeedMbText()`), and
+             * whether it is on here (`_bbFeedMbOn()`).
+             *
+             * @param {string} mbid
+             * @returns {{on: boolean, fact: ?Object, text: string}}
+             */
+            bbFeedMb(mbid) {
+                const fact = _bbFeedMbFact(mbid);
+                return { on: _bbFeedMbOn(), fact, text: fact ? _bbFeedMbText(fact) : '' };
             },
             /**
              * Thin wrapper around `_bbFeedAnchorPage()`.

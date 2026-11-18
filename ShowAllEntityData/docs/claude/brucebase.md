@@ -2238,7 +2238,13 @@ Mockup https://claude.ai/artifact/65urMwgWSb6zq6xJa9Mf4x; vzell's answers of
   (`_BB_FEED_TTL_MS`) is read again on a Brucebase press
   (`startFetchingProcess()`, host-gated) or when a Brucebase window opens
   with Space (the site's `windowKick`; `_extExtracted()` on other hosts).
-  Never from a hover, and never on a MusicBrainz press. A failed read keeps
+  Never from a hover; on MusicBrainz only on the press of an event list or
+  an event page (feed 1.3, `sa_bb_feed_mb`). A kept copy that lacks a map
+  this script reads (`_BB_FEED_MAPS`: `anchors`, `mb`) was written by an
+  older BruceParser and is read again before its day is up, once it was
+  read an hour ago (`_bbFeedLacksMap()`): vzell's live check of 2026-11-18
+  kept 0.20.0's file from a Brucebase page, and the MusicBrainz press that
+  followed read nothing new and marked nothing. A failed read keeps
   the old copy, records why (`err`), and is not tried again within the hour
   (`_BB_FEED_RETRY_MS`); Retry and Read again (`force`) ask at once.
 - **Where it is kept:** the GM key `_BB_FEED_KEY` (`mb_sa_bb_feed`, `{at,
@@ -2448,6 +2454,73 @@ branch 2".
   `scripts/mutations/bb-feed.json` has 8 more entries, 4 of them
   `"expect": "pass"` with the reason (the memo key, either half of the
   window's two sources, MusicBrainz).
+
+### Feed 1.3: MusicBrainz events with a doubtful Brucebase link (feed v2, branch 3, 2026-11-18)
+
+Env: 2026-11-18T02:22:38+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux
+6.18.58.1-microsoft-standard-WSL2) · n/a (the probe: Python over BruceParser's
+run of 2026-11-15; the checker and the spec: Playwright Chromium, no
+Tampermonkey)
+
+BruceParser 0.21.0 (`feed.sh` 1.3, `b6d7be7`) adds a top-level `mb`, keyed by
+event MBID: the artist's MusicBrainz events whose Brucebase "reviews" link
+is doubtful. The data is the run's `search/event_linked_to_artist.org`
+(4,180 events with a link) against `brucebase-event.txt`. The feed keeps
+format 1. Mockup https://claude.ai/artifact/Tip5CShMevQp8ycqBjjnRZ (source
+`debug/bb-feed-mb-mockup.html`); vzell's answers of 2026-11-18 all as
+recommended (org/bbp-parity.org, "Feed v2, branch 3").
+
+- **The kinds** (`_BB_FEED_MB_KINDS`, three FINDINGS entries):
+  - ❌ `bb-mb-no-entry` ⚓: the anchor is not on the wiki. 197 events, 172
+    of them because the wiki writes that date with a letter now;
+  - ⚠️ `bb-mb-shared` ⇉: two events link one entry. 18 events; the one
+    whose date differs from the entry's (`dateDiffers`) is called likely
+    wrong;
+  - ⚠️ `bb-mb-not-anchor` ⌗: a show's page instead of an anchor. 1 event.
+
+  Each comes with `candidates`, the wiki's entries of the event's date (for
+  no-entry also its anchor with a letter), and `likely` on the one whose
+  heading names the event's place.
+- **Where:**
+  - the Event cell of every MusicBrainz event list (`cols` "Event"; the
+    cell's `/event/<mbid>` link, `_bbFeedMbCellFact()`, memoized per MBID
+    and feed generation);
+  - an event page: a mark beside its Brucebase link in the sidebar
+    (`_bbFeedMbSidebarDraw()`), drawn at load from the kept feed, with no
+    request, and again in `_bbFeedChanged()`.
+- **The card** (`_bbMbCard*`, `#mb-bbmb-card`): the setlist card's pattern.
+  It opens on hover, a click, Enter or Space on a marked Event cell or on
+  the sidebar mark, stays open while the pointer is on it, and Esc or a
+  press elsewhere closes it. It lists the candidates as links to their
+  year-page anchors, the likely one green. Its own small stylesheet
+  (`_ensureBbMbCardStyle()`), on the shared `.mb-tt-liner` look; the
+  Brucebase stylesheet is not on MusicBrainz.
+- **The read:** a press of `_BB_FEED_MB_PAGES` (artist, place and area
+  events, event collections, event tags, the event page) calls
+  `_bbFeedKick()` with `sa_bb_feed_mb` on (`_bbFeedMbOn()`: not Brucebase,
+  no foreign host, `sa_bb_feed` and `sa_bb_feed_mb` on). It is the same read
+  and the same GM copy as on Brucebase, at most once a day, never from a
+  hover.
+- **The menus' feed line** on MusicBrainz only when a `bb-mb-*` finding is
+  on the page (vzell, answer 6); no ☰ group there.
+- **Settings:** `sa_bb_feed_mb` (on); `sa_findings_bb_mb_no_entry`,
+  `…_shared`, `…_not_anchor`; tint `sa_findings_tint_bb_mb`.
+  `FIXTURE_SETTINGS_OVERRIDE` has `sa_bb_feed_mb: false`.
+- **Size:** the feed is 149 KB as written (pretty-printed) and 25 KB
+  gzipped; the kept copy holds about 107 KB compact.
+- **The probe** (part 6) classifies all 4,180 events independently, and the
+  checker runs the shipped `_bbFeedMbFact()` on a MusicBrainz page over
+  every MBID: both 197 / 18 / 1, no difference.
+- **Tests:** `tests/fixtures/bb-feed.spec.js`, 8 more (36). A planted feed on
+  the artist-events fixture's MBIDs covers the three kinds and the card. The
+  rest: the read on a press but not before it, no read with the switch off
+  or on a page that lists no events, Save/Load to Disk, and the event page's
+  sidebar mark (`event-overview.html`). `scripts/mutations/bb-feed.json` has
+  8 more, each failing its test.
+- **Not measured yet:** render and filter on `artist-events` with a feed
+  kept (the perf harness runs with the fixture overrides, which switch the
+  feed off). The added work is three findings per Event cell, a cheap
+  `rowGate` and a memoized lookup.
 
 ## Show links on Brucebase's own pages (Phase 8, 2026-11-11)
 

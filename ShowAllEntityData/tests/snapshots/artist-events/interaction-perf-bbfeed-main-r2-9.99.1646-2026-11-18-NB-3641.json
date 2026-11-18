@@ -1,0 +1,76 @@
+{
+  "pageType": "artist-events",
+  "url": "https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events",
+  "tableMode": "single",
+  "subTableIndex": null,
+  "totalRows": 4174,
+  "picardArm": null,
+  "relArm": null,
+  "relSeedPath": null,
+  "relIconsRendered": null,
+  "relSettleMs": null,
+  "seedGmValues": {
+    "sa_pop_mb": false,
+    "sa_pop_mb_page": false,
+    "sa_pop_ext": false,
+    "sa_dp_hover_without_ctrl": false,
+    "sa_event_rg_tooltip_without_ctrl": false,
+    "sa_enable_caa_pics": false,
+    "sa_bb_feed": true,
+    "sa_bb_feed_mb": true,
+    "mb_sa_bb_feed": "(the file tests/fixtures/bb-feed-2026-11-15-v4.json)"
+  },
+  "bbFeed": "tests/fixtures/bb-feed-2026-11-15-v4.json",
+  "bbFeedMarks": 0,
+  "branch": "bbfeed-main-r2",
+  "gitBranch": "feat/bb-feed-v2-mb",
+  "capturedAt": "2026-11-18",
+  "startedAt": "2026-11-18T17:03:28.083Z",
+  "finishedAt": "2026-11-18T17:15:08.438Z",
+  "machine": {
+    "hostname": "NB-3641",
+    "platform": "linux",
+    "release": "6.18.58.1-microsoft-standard-WSL2",
+    "cpus": 28,
+    "totalMemGb": 31,
+    "node": "v24.19.0",
+    "playwright": "1.62.1",
+    "uptimeHours": 24.4,
+    "claudeResident": {
+      "count": 1,
+      "oldestSessionHours": 23.4
+    },
+    "claudeSinceBoot": true
+  },
+  "scriptVersion": "9.99.1646+2026-11-18",
+  "interactions": {
+    "globalFilter": {
+      "medianMs": 1732,
+      "samples": 5
+    },
+    "columnFilter": {
+      "medianMs": 2115,
+      "samples": 5
+    },
+    "sort": {
+      "medianMs": 5257,
+      "samples": 5
+    },
+    "uniqDropCold": {
+      "medianMs": 29857,
+      "samples": 5
+    },
+    "uniqDropWarm": {
+      "medianMs": 652,
+      "samples": 5
+    },
+    "headerCountsInitial": {
+      "medianMs": 3874,
+      "samples": 5
+    },
+    "headerCountsRestore": {
+      "medianMs": 4907,
+      "samples": 5
+    }
+  }
+}
