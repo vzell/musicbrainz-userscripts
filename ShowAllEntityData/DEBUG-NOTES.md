@@ -30347,4 +30347,12 @@ Env: 2026-11-18T20:58–21:15+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6
 - **Lint:** within the baseline.
 - **`npm run test:full` on petri, uncommitted on `bd4cb6d5`, 21:14:17–21:35:33 CET (21 m 16 s): 3,265 of 3,265
   passed.**
-- **Not yet:** a browser check by vzell; majkinetor's answer to the two questions on #938.
+- **Browser check by vzell, 2026-11-18 around 22:10+01:00** (`7245bf59`, Firefox and Tampermonkey versions not
+  restated; 160.0 and 5.5.0 at 16:33 the same day), series `aa3694d3-a3d0-48ed-8f07-5b576de87908`, a `leadUntil`
+  ten minutes out planted in `mbu:mb-gate`: "looks good". The lead step (the new part) is his observation; the
+  console log (`debug/mb-firefox-mb-gate-clock.log`) starts only at the end of that first load (22:11:05.3).
+  - The optional hold re-check did not exercise the gate: after ▼🔗/▶🔗 (22:11:11.9 / 22:11:21.8) all 12 lookups
+    were "L1 memory hit", done 40 ms later, because emptying `rel-ws2` does not empty the tab's memory cache. My
+    step was wrong (a page reload was needed before it). The hold path is covered by the specs and was checked in
+    the browser before this branch (`a021f32d`, above); its code here changed only in which clock it reads.
+- **Not yet:** majkinetor's answer to the two questions on #938.
