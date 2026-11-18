@@ -4,9 +4,16 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1816 versions; the month pages hold all of them.
+This page shows the newest 100 of 1817 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1646 — 2026-11-18
+
+**🚀 Feature**
+
+- Artist and label pictures from majkinetor's Event Horizon, when it is installed: an artist's or a label's window (Space) shows the pictures Event Horizon finds on Discogs, Deezer, Tidal, Apple Music, SoundCloud, Bandcamp, YouTube Music and Wikipedia after this script's own, in the order you set in Event Horizon. They are marked "via Event Horizon" under the large picture and with a small EH on their thumbnails, and the viewer links each provider's page. This script's pictures show at once; one line says while Event Horizon is still asking, and when it gives no answer this script's pictures stand alone, with nothing said. Event Horizon's Wikipedia picture is left out when the window already shows a Wikimedia Commons file. The card on hover and the picture beside an artist's or label's name show the picture Event Horizon already knows, without asking anybody; beside the name it joins the turn last, its dot ringed in blue. New setting: Also Event Horizon's pictures, when it is installed (on; it needs Pictures in artist, label and place previews, and the settings dialog greys it out while that one is off, with VZ\_MBLibrary 4.6.0). This uses the shared lookup Event Horizon offers other scripts (MBU.artistImage, agreed on majkinetor/musicbrainz-userscripts \#938).
+
 
 ## 9.99.1645 — 2026-11-17
 
@@ -882,14 +889,6 @@ This page shows the newest 100 of 1816 versions; the month pages hold all of the
 **🚀 Feature**
 
 - setlist.fm: a link to a festival or one of its editions has a card and a window, without the setlist.fm API key, wherever such links appear (setlist.fm's own festival pages before you press a button, the tables, the top of an edition's page, MusicBrainz). An edition's window lists all its setlists by day, with a chip per stage, its stages and its most attended setlists; a festival's window lists its editions and its Artist charts.
-
-
-## 9.99.1546 — 2026-11-04
-
-**🚀 Feature**
-
-- setlist.fm: a festival edition's page (setlist.fm/festival/2025/…) gets a button, Setlists: every setlist of the festival from the page itself, one table per day, with Time, Artist (its setlist), Stage and Attendees. Above the tables: the dates and venue, and Details with the festival's facts (setlists, stages, attendances), its stages with their number of setlists, and the ten most attended setlists.
-- setlist.fm: a festival's page (setlist.fm/festivals/…) gets a button, Editions: every edition as one table (Year, Edition, Stages, Venues, Start, End), with the festival's facts and its Artist charts above.
 
 
 ---
