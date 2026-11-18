@@ -629,7 +629,7 @@ Mockup: https://claude.ai/artifact/Tip5CShMevQp8ycqBjjnRZ (=debug/bb-feed-mb-moc
 6. *The feed's line:* at the foot of the ⚠️/❌ menus only when a feed mark is on the page; no ☰ group on MusicBrainz.
 
 *Built:*
-- *BruceParser 0.21.0* (=b6d7be7=, pushed, NOT published): =feed.sh= 1.3 adds =mb=, keyed by event MBID: 197
+- *BruceParser 0.21.0* (=b6d7be7=, pushed; its feed published 2026-11-18, feed repo =19e6258=, FORMAT.md =c9add41=): =feed.sh= 1.3 adds =mb=, keyed by event MBID: 197
   no-entry, 18 shared, 1 not-anchor, with candidates and =likely=. The feed is 149 KB as written, 25 KB gzipped.
 - *SAED:* three findings from =_BB_FEED_MB_KINDS=, the card =#mb-bbmb-card=, the sidebar mark, the read on a press.
   Details: =docs/claude/brucebase.md=, "Feed 1.3".
@@ -640,8 +640,8 @@ Mockup: https://claude.ai/artifact/Tip5CShMevQp8ycqBjjnRZ (=debug/bb-feed-mb-moc
 
 ** The browser check of feed v2, branch 3, for vzell (events of BruceParser's run of 2026-11-15; unverified live)
 
-*First:* the feed of BruceParser 0.21.0 must be on GitHub (=./publish-feed.sh= in BruceParser, plus FORMAT.md, your
-call). Then install the script from =feat/bb-feed-v2-mb=. A kept feed from before is used for up to a day: on Brucebase
+The feed of BruceParser 0.21.0 is on GitHub since 2026-11-18 (=19e6258=; the raw file is byte-identical to the spec's
+fixture). Install the script from =feat/bb-feed-v2-mb=. A kept feed from before is used for up to a day: on Brucebase
 press ☰ → Brucebase → Read again, or wait for the first event list's press.
 
 | Page                                                                       | Step                                                                                       | Expected                                                                                                                                                       |
