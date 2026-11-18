@@ -539,6 +539,45 @@ docs/claude/brucebase.md, "The BruceParser feed". What this file must record:
 - Spec `tests/fixtures/bb-feed.spec.js`; mutations
   `scripts/mutations/bb-feed.json`.
 
+### Release checks: `barcode-zero`, `barcode-missing`, `catno-missing`, `release-event-none`
+
+Branch `feat/release-check-findings` (2026-11-19). The release checks of
+majkinetor's Platform Check and Mission Control (org/majkinetor.org,
+"Findings from the release checks …"), as findings over a release-list row
+alone: no requests, MusicBrainz only (`enabled()` is `!_foreignHost`). The
+real examples and the rendering rules below are in that TODO's
+"Pre-test result" (probe `scripts/probe-release-check-examples.py`).
+
+- **Which tables**: `plan.releaseList`, a table with a "Barcode" or
+  "Catalog#" column (release group, artist, label, series and tag release
+  lists). `plan.labelIdx`/`plan.countryIdx` name its "Label" and split
+  "Country" columns.
+- **`barcode-zero`** (error, Barcode): every digit 0, any length (12, 13 and
+  11 zeros exist). `barcode-invalid` lets 12 and 13 zeros through, because
+  their check digit adds up; 11 zeros carry both.
+- **`barcode-missing`** (warn, Barcode): an EMPTY cell. MusicBrainz's
+  `formatBarcode()` draws `null` (never entered) as `''` and `''` (known
+  to have none) as "[none]", so "[none]" is never flagged. Many old releases
+  have no barcode entered; the tint setting is the switch for that noise.
+- **`catno-missing`** (warn, Catalog#): an empty Catalog# cell in a row whose
+  Label cell links a label other than "[no label]" (`_RC_NO_LABEL_MBID`,
+  `_rcHasRealLabel()`). `ReleaseCatnoList` lists only the non-empty numbers,
+  as a set, apart from the labels, so a list row cannot say WHICH of two
+  labels lacks its number: such a release is flagged only when neither has
+  one.
+- **`release-event-none`** (warn): neither date nor country. ONE column per
+  table: the split "Date" (with the row's "Country" empty) where the page
+  splits Country/Date, since the source column stays beside the split ones;
+  the unsplit "Country/Date" otherwise. A date-only or a country-only event
+  is an event.
+- `_rcIsReleaseRow()` keeps a row without a release link from being flagged
+  for empty cells (`barcode-missing`, `release-event-none`).
+- Tint settings `sa_findings_tint_barcode_zero`, `_barcode_missing`,
+  `_catno_missing`, `_release_event_none`. Spec
+  `tests/fixtures/release-check-findings.spec.js` (fixture
+  `release-check-findings.html`, ten rows with each rule's near misses);
+  mutations `scripts/mutations/release-check-findings.json`.
+
 ## On demand: the title-style findings
 
 `title-case`, `title-typography`, `title-series-sep`, `title-feat` and

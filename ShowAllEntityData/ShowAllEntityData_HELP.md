@@ -837,6 +837,9 @@ back).
 | ⚠️     | ASCII punctuation in event name (after "Check title style")     | Event columns                               |
 | ⚠️     | 🟠 Release has low data quality                                 | Release / Title columns                     |
 | ⚠️     | Invalid ISRC / ISWC / barcode format                            | ISRCs, ISRC, ISWC, Barcode                  |
+| ⚠️     | Release has no barcode entered (an empty cell, not "[none]")    | Release lists: Barcode                      |
+| ⚠️     | Label without a catalog number ("[no label]" excepted)          | Release lists: Catalog#                     |
+| ⚠️     | Release has no release event (no date, no country)              | Release lists: Date (or Country/Date)       |
 | ⚠️     | Artwork has no Front image (releases with artwork only)         | CAA                                         |
 | ⚠️     | Physical release artwork has no Medium image                    | CAA (needs a Format column)                 |
 | ⚠️     | Several links to one site in Relationships (once loaded)        | Relationships                               |
@@ -886,6 +889,7 @@ back).
 | ❌    | Recorded at event differs from the comment                      | Release tracklist: Recorded at event        |
 | ❌    | Recorded at place differs from the comment venue                | Release tracklist: Recorded at place        |
 | ❌    | Live credit date differs from the recording date                | Release tracklist: credit columns           |
+| ❌    | Barcode is all zeros (000000000000)                             | Release lists: Barcode                      |
 
 A flagged cell's hover card names the problem and, where there is one, the
 cell's own detail. *Live credit without a date* names the date the credit is

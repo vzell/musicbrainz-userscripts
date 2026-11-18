@@ -1,0 +1,14 @@
+[
+    {
+        "version": "WIP.1",
+        "date": "2026-11-19",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "Four release checks from majkinetor's Platform Check and Mission Control now show in the ⚠️ WARNING / ❌ ERROR menus, the 📊 Findings sections and as a cell tint on release lists (release group, artist, label, series and tag pages), with no extra requests: an all-zero barcode such as 000000000000 (❌, it passes the format check), a release with no barcode entered (an empty cell; \"[none]\" is not flagged), a label without a catalog number (\"[no label]\" excepted) and a release with neither a date nor a country. Each tint has its own switch in ⚙️ Settings → ⚠️ Findings."
+                ]
+            }
+        ]
+    }
+]

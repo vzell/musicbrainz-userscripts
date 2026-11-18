@@ -1,0 +1,132 @@
+[
+  {
+    "name": "barcode-zero never matches",
+    "why": "The all-zero detector is the whole finding: without it rows B and I lose their error. Must fail on the per-cell map.",
+    "edits": [
+      {
+        "find": "            test: cell => { const p = _findCellBarcodeParts(cell)[0]; return !!p && !!p.digits && /^0+$/.test(p.digits); },",
+        "replace": "            test: cell => false,"
+      }
+    ],
+    "spec": "tests/fixtures/release-check-findings.spec.js",
+    "grep": "each cell carries exactly its finding",
+    "expect": "fail"
+  },
+  {
+    "name": "barcode-zero matches any barcode with a zero",
+    "why": "A looser test (a zero anywhere, not every digit) flags the valid barcodes of rows A, E, F, G and H. Must fail on the per-cell map, which pins the near misses too.",
+    "edits": [
+      {
+        "find": "return !!p && !!p.digits && /^0+$/.test(p.digits); },",
+        "replace": "return !!p && !!p.digits && /0/.test(p.digits); },"
+      }
+    ],
+    "spec": "tests/fixtures/release-check-findings.spec.js",
+    "grep": "each cell carries exactly its finding",
+    "expect": "fail"
+  },
+  {
+    "name": "barcode-missing also flags \"[none]\"",
+    "why": "\"[none]\" is MusicBrainz's known absence (formatBarcode()), not a missing value. Reading the cell's text as empty-or-[none] flags row D. Must fail on the per-cell map.",
+    "edits": [
+      {
+        "find": "            test: (cell, row) => _rcIsReleaseRow(row) && cell.textContent.trim() === '',",
+        "replace": "            test: (cell, row) => _rcIsReleaseRow(row) && (cell.textContent.trim() === '' || cell.textContent.trim() === '[none]'),"
+      }
+    ],
+    "spec": "tests/fixtures/release-check-findings.spec.js",
+    "grep": "each cell carries exactly its finding",
+    "expect": "fail"
+  },
+  {
+    "name": "catno-missing counts \"[no label]\" as a label",
+    "why": "\"[no label]\" marks a release known to have no label, so no catalog number is owed. Without the MBID check row F is flagged. Must fail on the per-cell map.",
+    "edits": [
+      {
+        "find": "            .some(a => !a.getAttribute('href').includes(_RC_NO_LABEL_MBID));",
+        "replace": "            .some(a => true);"
+      }
+    ],
+    "spec": "tests/fixtures/release-check-findings.spec.js",
+    "grep": "each cell carries exactly its finding",
+    "expect": "fail"
+  },
+  {
+    "name": "catno-missing ignores the Label cell",
+    "why": "An empty Catalog# cell alone is no finding: row G has no label at all. Must fail on the per-cell map.",
+    "edits": [
+      {
+        "find": "            test: (cell, row, plan) => cell.textContent.trim() === '' && _rcHasRealLabel(row.cells[plan.labelIdx]),",
+        "replace": "            test: (cell, row, plan) => cell.textContent.trim() === '',"
+      }
+    ],
+    "spec": "tests/fixtures/release-check-findings.spec.js",
+    "grep": "each cell carries exactly its finding",
+    "expect": "fail"
+  },
+  {
+    "name": "release-event-none ignores the Country cell",
+    "why": "A release with a country but no date has a release event. Reading the Date cell alone flags row J (GB, no date). Must fail on the per-cell map.",
+    "edits": [
+      {
+        "find": "(plan.nameOf(cell.cellIndex) === 'Country/Date' || !(row.cells[plan.countryIdx]?.textContent.trim())),",
+        "replace": "true,"
+      }
+    ],
+    "spec": "tests/fixtures/release-check-findings.spec.js",
+    "grep": "each cell carries exactly its finding",
+    "expect": "fail"
+  },
+  {
+    "name": "release-event-none flags both Country/Date and Date",
+    "why": "The split pages keep the source Country/Date column beside Country and Date, so a cols() that takes both puts one finding in two columns of the row (the 📊 ticks would then AND). Must fail on the per-cell map.",
+    "edits": [
+      {
+        "find": "                (plan.countryIdx >= 0 ? name === 'Date' : name === 'Country/Date'),",
+        "replace": "                (name === 'Date' || name === 'Country/Date'),"
+      }
+    ],
+    "spec": "tests/fixtures/release-check-findings.spec.js",
+    "grep": "each cell carries exactly its finding",
+    "expect": "fail"
+  },
+  {
+    "name": "a heading row counts as a release row",
+    "why": "_rcIsReleaseRow() keeps note and heading rows of a release list from being flagged for empty cells. The fixture has no such row, so nothing sees it. Recorded as a pass; a fixture with a colspan note row inside a release table would catch it.",
+    "edits": [
+      {
+        "find": "        return !!row.querySelector('a[href*=\"/release/\"]');",
+        "replace": "        return true;"
+      }
+    ],
+    "spec": "tests/fixtures/release-check-findings.spec.js",
+    "grep": "each cell carries exactly its finding",
+    "expect": "pass"
+  },
+  {
+    "name": "the barcode-zero tint setting is ignored",
+    "why": "The tint must follow sa_findings_tint_barcode_zero. Must fail on the tint-settings test.",
+    "edits": [
+      {
+        "find": "            tint: _findingTintSetting('sa_findings_tint_barcode_zero'),",
+        "replace": "            tint: () => true,"
+      }
+    ],
+    "spec": "tests/fixtures/release-check-findings.spec.js",
+    "grep": "the tint settings turn the paint off",
+    "expect": "fail"
+  },
+  {
+    "name": "barcode-zero is a warning",
+    "why": "An all-zero barcode is an error (red ❌, the ERROR menu). Must fail on the menu test, which looks for it under ERROR.",
+    "edits": [
+      {
+        "find": "            id: 'barcode-zero', level: 'error', glyph: '▥', scope: 'cell',",
+        "replace": "            id: 'barcode-zero', level: 'warn', glyph: '▥', scope: 'cell',"
+      }
+    ],
+    "spec": "tests/fixtures/release-check-findings.spec.js",
+    "grep": "the menus list each finding under its level",
+    "expect": "fail"
+  }
+]
