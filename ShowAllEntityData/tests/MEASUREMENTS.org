@@ -4457,3 +4457,14 @@ Env: 2026-11-18T16:55:10+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 | =npm run test:full=, merge check  |  3245 |      12 | *20 m 29 s* | =run-test-full.py=, 16:55:10–17:15:39 CET |
 
 3245 passed (one more gate spec than the 05:19 run). No flake showed.
+
+* 2026-11-18 — =npm run test:full= on =petri=, =main= after the merge of feat/mb-gate-upstream-align (8db4d591 with the 9.99.1650 fold uncommitted)
+
+Env: 2026-11-18T20:30:20+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                         | Tests | Workers | Wall clock  | Basis                                     |
+|-----------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, merge check  |  3259 |      12 | *21 m 16 s* | =run-test-full.py=, 20:30:20–20:51:36 CET |
+
+3259 passed (the branch's 3245 plus the 14 tests main gained from 9.99.1647–1649 on NB-3641). No flake showed.
+=check-clock-jumps.js= at 20:43 CET, during the run: 0 jumps in 30 s (clock source =tsc=, =systemd-timesyncd= off).

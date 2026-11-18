@@ -30303,4 +30303,10 @@ Env: 2026-11-18T02:30–05:40+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6
     about 520 s as before) and was answered on its retry about 1.2 s later. `hot` stayed at 1 because the 200 between
     every two 503s gave its step back (the protocol's rule), so 1 s each time is right.
   - The log starts at 20:11:24, so the first "waits 60 s" line and the job card are not in it.
-- **Not yet:** the note to majkinetor (vzell sends it).
+- **Merged into `main` as 9.99.1650** (merge `8db4d591`; main had gained 9.99.1647–1649 from NB-3641; three
+  conflicts where both sides appended: this file, `tests/MEASUREMENTS.org`, and
+  `tests/support/capture-interaction-perf.js`, which now takes `--bb-feed=` and `--gate-wait` together).
+  **`npm run test:full` on petri, 20:30:20–20:51:36 CET (21 m 16 s): 3,259 of 3,259 passed.**
+- **Not yet:** the one reply to majkinetor (hold cap, lead wait, clock steps; `org/majkinetor.org`, TODO "The
+  shared gate's clock"; vzell sends it), and SAED's half of the clock fix (the `leadUntil` bound and the sleep on
+  `performance.now()`; a branch of its own, on petri).

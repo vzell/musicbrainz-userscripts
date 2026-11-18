@@ -4,9 +4,19 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1820 versions; the month pages hold all of them.
+This page shows the newest 100 of 1821 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1650 — 2026-11-18
+
+**🐛 Fix**
+
+- The shared MusicBrainz request gate (mbu:mb-gate, shared with majkinetor's scripts) can no longer hang a request behind a Web Lock that never answers: after 3 s the booking goes ahead without the lock, and a lock granted later books nothing a second time (ported from his dev/net/mb-gate.mjs).
+- A hold stored in the shared gate counts for at most 60 s from the moment the page first saw it, both when a request is booked and while it waits, so a broken or far-future hold can no longer stall the page's MusicBrainz requests for minutes. Behind such a hold, a 503 the page gets itself still holds it for the time MusicBrainz asked, and the debug log reports that time, not the broken one.
+- Waits in the shared gate now end on time even when the browser holds the page's timers back (seen in Firefox with Violentmonkey): they also wake on animation frames, page changes and a worker's timer, and all of that stops as soon as nothing waits (ported from his mbnSleep, \#999).
+- The Relationships column's job log now says that a wait is a hold MusicBrainz asked for, not pacing, and adds a line when a new hold makes the wait longer.
+
 
 ## 9.99.1649 — 2026-11-18
 
@@ -880,19 +890,6 @@ This page shows the newest 100 of 1820 versions; the month pages hold all of the
 **🚀 Feature**
 
 - springsteenlyrics.com: an item's own page (collection.php?item=…, bootlegs.php?item=…, brucelegs.php?item=…) gets a button, Tracklist: the tracklist from the page itself, one table per disc or record (vinyl sides paired: A/B is Record 1), with Take and Note columns on bootlegs, Version, Note and Length on the CD and vinyl bootlegs, and an Artist column on various-artists albums. Above the tables: the item's facts (release, or show and recording), its runout etchings, its files, its scans or artwork (one section per copy, with the site's captions, opening in the viewer), the notes, and the original info file, which is read only when you open its section. Logged in, a "Your collection" card shows the MusicBrainz link (with its preview), Good scans, Kept in, the item number and the edit link, and "Private info" is shown closed; it never appears in a preview. A CD or vinyl bootleg whose page lists several versions (pressings) also gets All versions: every one of them as one table with the list's columns. The view uses the window's full width, as the lists do, instead of the site's centred 1170 px column. Mockups: https://claude.ai/artifact/GBFJp9Ebo8LDoGPSskVMkg
-
-
-## 9.99.1550 — 2026-11-04
-
-**🚀 Feature**
-
-- springsteenlyrics.com lists, logged in: the collection gets MusicBrainz, Good scans and Kept in columns (one column for every "In &lt;country&gt;" icon), the bootlegs a MusicBrainz column, all from the cards themselves, with no extra request. The MusicBrainz cell, and the site's own MusicBrainz icon on its cards, show MusicBrainz's card on hover and open in the window. Logged out, the tables are as before.
-- springsteenlyrics.com bootleg lists: the Info file cell links the bootleg's original info file. Its card names the file, and Space reads it into the window.
-- springsteenlyrics.com CD and vinyl bootleg lists: PDF and Artwork columns (vzell, although every card has both today); PDF links the item page, where the PDFs are.
-
-**🐛 Fix**
-
-- springsteenlyrics.com lists, logged in: the Version column was empty on every card, because a logged-in card puts its item number and a second marker before the title.
 
 
 ---
