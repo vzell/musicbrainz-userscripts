@@ -28,6 +28,14 @@
 // link /1973#290173, not the show's page) and a year-anchor window are
 // marked too. tests/fixtures/bb-feed-2026-11-15-v3.json is BruceParser
 // 0.20.0's feed of the same run.
+//
+// Feed 1.3 (feed v2, branch 3; mockup https://claude.ai/artifact/Tip5CShMevQp8ycqBjjnRZ,
+// vzell's answers of 2026-11-18 all as recommended): the feed's `mb` names
+// MusicBrainz events whose Brucebase link reaches no entry (bb-mb-no-entry ❌ ⚓),
+// shares one with another event (bb-mb-shared ⚠️ ⇉) or is no anchor
+// (bb-mb-not-anchor ⚠️ ⌗): the Event cell of every event list, a card with
+// the wiki's entries of the date, and the event page's sidebar mark.
+// tests/fixtures/bb-feed-2026-11-15-v4.json is BruceParser 0.21.0's feed.
 
 const fs = require('fs');
 const os = require('os');
@@ -45,6 +53,34 @@ const FEED_URL = 'https://raw.githubusercontent.com/vzell/brucebase-feed/main/bb
 const REAL = JSON.parse(fs.readFileSync(path.join(__dirname, 'bb-feed-2026-11-15.json'), 'utf8'));
 const REAL2 = JSON.parse(fs.readFileSync(path.join(__dirname, 'bb-feed-2026-11-15-v2.json'), 'utf8'));
 const REAL3 = JSON.parse(fs.readFileSync(path.join(__dirname, 'bb-feed-2026-11-15-v3.json'), 'utf8'));
+const REAL4 = JSON.parse(fs.readFileSync(path.join(__dirname, 'bb-feed-2026-11-15-v4.json'), 'utf8'));
+const MB_EVENTS_URL = 'https://musicbrainz.org/artist/89729b97-90a3-4f84-9e88-e16f96cab350/events';
+const MB_EVENTS_FILE = path.join(__dirname, 'artist-events-names.html');
+const EV = n => `eeeeeeee-0000-0000-0000-00000000000${n}`;
+// A feed naming three events of the artist-events fixture, in the shapes of
+// the real run (2023-09-12 Pittsburgh, 2026-04-16 Phoenix, 2020-10-23).
+/**
+ * A feed naming three events of the artist-events fixture, `daysAgo` back.
+ *
+ * @param {number} [daysAgo]
+ * @returns {Object}
+ */
+function mbFeed(daysAgo = 1) {
+    return {
+        ...feedOf({}, daysAgo),
+        mb: {
+            [EV(1)]: { kind: 'no-entry', link: '2023#120923', date: '2023-09-12', candidates: [
+                { anchor: '2023#120923a', page: 'interview:2023-09-12a-stone-hill-farm-colts-neck-nj', heading: '2023-09-12 - STONE HILL FARM, COLTS NECK, NJ' },
+                { anchor: '2023#120923b', page: 'nogig:2023-09-12b-ppg-paints-arena-pittsburgh-pa', heading: '2023-09-12 - PPG PAINTS ARENA, PITTSBURGH, PA', likely: true },
+            ] },
+            [EV(2)]: { kind: 'shared', link: '2026#130426', date: '2026-04-16', dateDiffers: true, page: 'gig:2026-04-13-chase-center-san-francisco-ca',
+                heading: '2026-04-13 - CHASE CENTER, SAN FRANCISCO, CA', others: [EV(3)], candidates: [
+                    { anchor: '2026#160426', page: 'gig:2026-04-16-mortgage-matchup-center-phoenix-az', heading: '2026-04-16 - MORTGAGE MATCHUP CENTER, PHOENIX, AZ', likely: true },
+                ] },
+            [EV(4)]: { kind: 'not-anchor', link: 'interview:2020-10-23-siriusxm-studio-new-york-city-ny', date: '2020-10-23' },
+        },
+    };
+}
 // The 1973 listing's rows of shows the feed names (scripts/probe-bb-feed.py, part 5).
 const LIST1973 = [
     ['1973#290173', 'recording:1973-01-29-914-sound-studios-blauvelt-ny'],
@@ -679,6 +715,162 @@ test.describe('the Brucebase feed 1.2: a year listing\'s rows, through the ancho
         await expect(title).toContainText('CAPTAIN\'S GARTER');
         await expect(title.locator('.mb-bb-feed-mark')).toHaveText('❌ ⊘');
         expect(await title.locator('.mb-bb-feed-mark').getAttribute('title')).toContain(`${show} has no tag at all`);
+    });
+});
+
+test.describe('the Brucebase feed 1.3: MusicBrainz events', () => {
+    /**
+     * Loads the artist-events fixture with the feed on MusicBrainz.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {Object<string, *>} settings
+     * @returns {Promise<void>}
+     */
+    async function loadMbEvents(page, settings) {
+        await page.route(/^https?:\/\//, route => route.abort('blockedbyclient'));
+        await loadUserscriptPage(page, { url: MB_EVENTS_URL, fixtureFile: MB_EVENTS_FILE, testMode: true, settingsOverride: settings });
+        await page.route(`${MB_EVENTS_URL}*`, r => r.fulfill({ path: MB_EVENTS_FILE, contentType: 'text/html' }));
+    }
+    /** @returns {Promise<Array<{mbid: string, ids: string[], level: string, tip: string}>>} The Event cells with a feed finding. */
+    const mbCells = page => page.evaluate(() => {
+        const t = document.querySelector('table.tbl');
+        const names = Array.from(t.querySelectorAll('thead tr:first-child th')).map(th => th.dataset.colName || th.textContent.trim());
+        const i = names.indexOf('Event');
+        return Array.from(t.querySelectorAll('tbody tr')).filter(tr => tr.cells[i]).map((tr) => {
+            const td = tr.cells[i];
+            const a = td.querySelector('a[href*="/event/"]');
+            return { mbid: a ? a.getAttribute('href').split('/event/')[1] : '', ids: (td.dataset.mbFindings || '').split(' ').filter(x => x.startsWith('bb-mb-')),
+                level: td.dataset.mbFinding || '', tip: td.getAttribute('title') || '' };
+        }).filter(r => r.ids.length);
+    });
+
+    test('BruceParser 0.21.0\'s mb: the counts of the run, the Pittsburgh case with its likely entry', () => {
+        expect(REAL4.run.feed).toBe('1.3');
+        const kinds = {};
+        Object.values(REAL4.mb).forEach((f) => { kinds[f.kind] = (kinds[f.kind] || 0) + 1; });
+        expect(kinds).toEqual({ 'no-entry': 197, 'shared': 18, 'not-anchor': 1 });
+        const pit = REAL4.mb['f60ec13f-0c48-4c64-b80d-b4a226207017'];
+        expect(pit.kind).toBe('no-entry');
+        expect(pit.candidates.filter(c => c.likely).map(c => c.anchor)).toEqual(['2023#120923b']);
+        expect(Object.keys(REAL4.mb).every(k => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(k))).toBe(true);
+    });
+
+    test('an event list: the three events on their Event cell, each kind its level; the menus count them and end with the feed\'s line', async ({ page }) => {
+        await loadMbEvents(page, { ...feedOn(mbFeed()), sa_bb_feed_mb: true });
+        await page.click('button[data-label="Show all Events for Artist"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const cells = await mbCells(page);
+        expect(cells.map(r => [r.mbid, r.ids, r.level])).toEqual([
+            [EV(1), ['bb-mb-no-entry'], 'error'],
+            [EV(2), ['bb-mb-shared'], 'warn'],
+            [EV(4), ['bb-mb-not-anchor'], 'warn'],
+        ]);
+        expect(cells[0].tip).toContain('has no entry #120923: it writes this date with a letter now');
+        expect(cells[1].tip).toContain('likely this link is the wrong one');
+        expect((await findingRow(page, 'error', 'bb-mb-no-entry')).count).toBe(1);
+        expect((await findingRow(page, 'warn', 'bb-mb-shared')).count).toBe(1);
+        expect(await page.evaluate(() => [...document.querySelectorAll('.mb-findings-feed-item')].map(x => x.textContent))).toEqual(
+            expect.arrayContaining([expect.stringMatching(/^Brucebase feed · run of /)]));
+    });
+
+    test('the card: the wiki\'s entries of the date as links, the likely one marked; Esc closes it', async ({ page }) => {
+        await loadMbEvents(page, { ...feedOn(mbFeed()), sa_bb_feed_mb: true });
+        await page.click('button[data-label="Show all Events for Artist"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const cell = page.locator(`table.tbl tbody td[data-mb-findings~="bb-mb-no-entry"]`).first();
+        await cell.hover();
+        const card = page.locator('#mb-bbmb-card');
+        await expect(card).toBeVisible();
+        await expect(card.locator('.mb-bbmb-ttl')).toHaveText('❌ ⚓ Brucebase link reaches no entry');
+        expect(await card.locator('.mb-bbmb-cands a').evaluateAll(as => as.map(a => a.getAttribute('href')))).toEqual([
+            'https://brucebase.wikidot.com/2023#120923a', 'https://brucebase.wikidot.com/2023#120923b',
+        ]);
+        await expect(card.locator('li.mb-bbmb-likely')).toContainText('PPG PAINTS ARENA, PITTSBURGH, PA');
+        await page.keyboard.press('Escape');
+        await expect(card).toBeHidden();
+    });
+
+    test('a stale feed is read on an event list\'s press, not before it', async ({ page }) => {
+        await answerFeed(page, { body: JSON.stringify(mbFeed()) });
+        await loadMbEvents(page, { ...feedOn(mbFeed(), 2 * DAY), sa_bb_feed_mb: true });
+        expect(await feedAsks(page), 'not before the press').toBe(0);
+        await page.click('button[data-label="Show all Events for Artist"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        await expect.poll(() => feedAsks(page)).toBe(1);
+    });
+
+    test('the MusicBrainz switch off: no read, no mark', async ({ page }) => {
+        await answerFeed(page, { body: JSON.stringify(mbFeed()) });
+        await loadMbEvents(page, { ...feedOn(mbFeed(), 2 * DAY), sa_bb_feed_mb: false });
+        await page.click('button[data-label="Show all Events for Artist"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        expect(await feedAsks(page)).toBe(0);
+        expect(await mbCells(page)).toEqual([]);
+        expect(await page.evaluate(() => window.__saTest.bbFeedMb('eeeeeeee-0000-0000-0000-000000000001').on)).toBe(false);
+    });
+
+    test('a press on a MusicBrainz page that lists no events reads nothing, the switch on', async ({ page }) => {
+        const rgUrl = 'https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f';
+        const rgFile = path.join(__dirname, 'html-fetch-transient-rg.html');
+        await answerFeed(page, { body: JSON.stringify(mbFeed()) });
+        await page.route(/^https?:\/\//, route => route.abort('blockedbyclient'));
+        await loadUserscriptPage(page, { url: rgUrl, fixtureFile: rgFile, testMode: true, settingsOverride: { ...feedOn(mbFeed(), 2 * DAY), sa_bb_feed_mb: true } });
+        await page.route('https://musicbrainz.org/artist/**', r => r.fulfill({ path: rgFile, contentType: 'text/html' }));
+        await page.locator('#mb-saed-bar button.mb-seg-action[data-label*="Artist RGs"]').first().click();
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        expect(await feedAsks(page)).toBe(0);
+    });
+
+    test('Save to Disk → Load from Disk keeps the Event cells\' marks', async ({ context }) => {
+        const settings = { ...feedOn(mbFeed()), sa_bb_feed_mb: true };
+        const source = await context.newPage();
+        source.on('pageerror', e => pageErrors.push(String(e.stack || e)));
+        await loadMbEvents(source, settings);
+        await source.click('button[data-label="Show all Events for Artist"]');
+        await waitForRenderComplete(source, { waitForAutoResize: false });
+        expect(await mbCells(source)).toHaveLength(3);
+        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sa-bb-feed-mb-'));
+        try {
+            const downloadPromise = source.waitForEvent('download', { timeout: 60000 });
+            await clickToolbarItem(source, '#mb-save-to-disk-btn');
+            await source.locator('#sa-sd-save-confirm').waitFor({ state: 'visible', timeout: 15000 });
+            await source.click('#sa-sd-save-confirm');
+            const saved = path.join(tmpDir, 'artist-events.json.gz');
+            await (await downloadPromise).saveAs(saved);
+            await source.close();
+            const page = await context.newPage();
+            page.on('pageerror', e => pageErrors.push(String(e.stack || e)));
+            await loadMbEvents(page, settings);
+            await clickToolbarItem(page, '#mb-load-from-disk-btn');
+            await page.locator('input[type="file"][accept*="json"]').setInputFiles(saved);
+            const renderBtn = page.locator('#sa-render-no-filter-confirm');
+            await renderBtn.waitFor({ state: 'attached', timeout: 15000 });
+            await renderBtn.evaluate(el => el.click());
+            await waitForRenderComplete(page, { waitForAutoResize: false });
+            expect((await mbCells(page)).map(r => [r.mbid, r.ids])).toEqual([
+                [EV(1), ['bb-mb-no-entry']], [EV(2), ['bb-mb-shared']], [EV(4), ['bb-mb-not-anchor']],
+            ]);
+        } finally {
+            fs.rmSync(tmpDir, { recursive: true, force: true });
+        }
+    });
+
+    test('an event page: the mark beside its Brucebase link, from the kept feed, with no request at load', async ({ page }) => {
+        const id = '3f2ca30a-7de4-4964-ad30-48376535fec8';
+        const feed = { ...feedOf({}), mb: { [id]: { kind: 'no-entry', link: '2025#200525', date: '2025-05-20', candidates: [
+            { anchor: '2025#200525a', page: 'gig:2025-05-20a-x', heading: '2025-05-20 - SOMEWHERE', likely: true }] } } };
+        await answerFeed(page, { body: JSON.stringify(feed) });
+        await page.route(/^https?:\/\//, route => route.abort('blockedbyclient'));
+        await loadUserscriptPage(page, {
+            url: `https://musicbrainz.org/event/${id}`, fixtureFile: path.join(__dirname, 'event-overview.html'), testMode: true,
+            settingsOverride: { ...feedOn(feed, 2 * DAY), sa_bb_feed_mb: true },
+        });
+        const mark = page.locator('ul.external_links button.mb-bbmb-mark');
+        await expect(mark).toHaveText('❌ ⚓');
+        expect(await mark.evaluate(b => b.previousSibling && b.previousSibling.previousSibling && b.previousSibling.previousSibling.getAttribute('href'))).toContain('brucebase.wikidot.com/2025#200525');
+        expect(await feedAsks(page), 'the page load reads nothing').toBe(0);
+        await mark.click();
+        await expect(page.locator('#mb-bbmb-card li.mb-bbmb-likely')).toContainText('2025-05-20 - SOMEWHERE');
     });
 });
 

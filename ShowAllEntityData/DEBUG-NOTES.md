@@ -30121,3 +30121,22 @@ Env: 2026-11-18T00:13–00:33+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6
   did not cover it; the fixture specs did.
 - **`npm run test:full` on petri, `79f75afc`, 01:14:36–01:34:56 CET (20 m 20 s): 3,231 of 3,231 passed.**
 - **Not yet:** the #938 reply on 7 and 8.
+
+## 2026-11-18 — Brucebase feed v2, branch 3: MusicBrainz events with a doubtful Brucebase link (feat/bb-feed-v2-mb)
+
+Env: 2026-11-18T02:22:38+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · probe: Python over BruceParser's run of 2026-11-15, n/a; spec and checker: Playwright Chromium, no Tampermonkey (GM stubs)
+
+- **What:** BruceParser 0.21.0 (`feed.sh` 1.3) adds `mb`, keyed by event MBID. The script marks MusicBrainz events
+  whose Brucebase link reaches no entry (197), shares one (18) or is no anchor (1), on event lists and event pages.
+  Record and browser check: org/bbp-parity.org, "Feed v2, branch 3"; design: docs/claude/brucebase.md, "Feed 1.3".
+- **What the data says** (probe, all 4,180 events with a link): of the 197 links that reach no entry, the wiki writes
+  172 dates with a letter now. MusicBrainz's six-digit link then reaches nothing: a fix on the MusicBrainz side, and
+  the wiki's entries of that date are the choice. The rest: 13 dates with no entry, 6 undated anchors the wiki lacks,
+  4 dates under another anchor, 2 with a letter the wiki lacks.
+- **Two shared anchors are also missing on the wiki** (the probe counted 11 shared anchors, the feed 9): `no-entry`
+  goes first, so their 4 events are no-entry.
+- **The one non-anchor link** (`interview:2020-10-23-siriusxm-…`) names a page that does not exist either: the wiki
+  splits that date into -23a, -23b and -23c.
+- **The card** follows the setlist card's pattern (an element made once, kept open while the pointer is on it). The
+  Brucebase stylesheet is not on MusicBrainz, so it has its own small one on the shared `.mb-tt-liner` look.
+- **Not measured yet:** render and filter on `artist-events` with a feed kept.

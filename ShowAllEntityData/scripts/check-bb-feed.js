@@ -24,7 +24,10 @@
  *      read backwards) — the probe's 25;
  *   4. (feed 1.2) every row of every year listing of the mirror, its show
  *      found by the shipped `_bbFeedAnchorPage()` (the row's anchor and
- *      date) — the probe's rows, marked rows and kinds.
+ *      date) — the probe's rows, marked rows and kinds;
+ *   5. (feed 1.3) every MusicBrainz event of the probe, through the shipped
+ *      `_bbFeedMbFact()` on a MusicBrainz page with the feed kept — the
+ *      probe's kinds, event by event.
  *
  * Read-only, no network. Exit code 1 when anything differs.
  *
@@ -168,6 +171,28 @@ function kinds(lists) {
         const same = got.rows === want.rows && got.marked === want.marked && JSON.stringify(Object.entries(got.kinds).sort()) === JSON.stringify(Object.entries(want.kinds).sort());
         if (!same) diffs++;
         console.log(`4. listings: ${JSON.stringify(got)} ${same ? '= probe' : `≠ probe ${JSON.stringify({ rows: want.rows, marked: want.marked, kinds: want.kinds })}`}`);
+    }
+
+    // 5. the MusicBrainz part (feed 1.3), on a MusicBrainz page
+    if (probe.mb && feed.mb) {
+        const mbPage = await context.newPage();
+        await loadUserscriptPage(mbPage, {
+            url: 'https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events',
+            fixtureFile: path.join(__dirname, '..', 'tests', 'fixtures', 'html-fetch-transient-events.html'), testMode: true,
+            settingsOverride: { sa_bb_feed: true, sa_bb_feed_mb: true, mb_sa_bb_feed: { at: Date.now(), data: feed, err: '', errAt: 0 } },
+        });
+        await mbPage.waitForFunction(() => window.__saTest && window.__saTest.bbFeedMb);
+        const ids = Object.keys(feed.mb);
+        const got = await mbPage.evaluate(xs => xs.map(x => { const r = window.__saTest.bbFeedMb(x); return [x, r.on, r.fact ? r.fact.kind : '', !!r.text]; }), ids);
+        const kindsMb = {};
+        let off = 0;
+        let noText = 0;
+        got.forEach(([, on, kind, text]) => { if (!on) off++; if (!text) noText++; kindsMb[kind] = (kindsMb[kind] || 0) + 1; });
+        const want = probe.mb.byKind;
+        const same = off === 0 && noText === 0 && JSON.stringify(Object.entries(kindsMb).sort()) === JSON.stringify(Object.entries(want).sort()) && (probe.mb.differ || []).length === 0;
+        if (!same) diffs++;
+        console.log(`5. MusicBrainz events: ${JSON.stringify(kindsMb)}${off ? `, ${off} not on` : ''}${noText ? `, ${noText} without words` : ''} ${same ? '= probe' : `≠ probe ${JSON.stringify(want)}`}`);
+        await mbPage.close();
     }
 
     // 3. the shows marked through their dependent pages

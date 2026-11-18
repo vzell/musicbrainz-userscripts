@@ -857,6 +857,8 @@ back).
 | ⚠️     | Brucebase page without its first-letter tag (Brucebase feed)    | Brucebase lists: Event, Title, Name, Page   |
 | ⚠️     | Brucebase page with a date tag that is not its date (Brucebase feed) | Brucebase lists: Event, Title, Name, Page   |
 | ⚠️     | Brucebase page tagged "files" without a picture (Brucebase feed) | Brucebase lists: Event, Title, Name, Page   |
+| ⚠️     | Two events link one Brucebase entry (Brucebase feed)            | Event lists: Event                          |
+| ⚠️     | Brucebase link is no year-page anchor (Brucebase feed)          | Event lists: Event                          |
 | ⚠️     | Pending edits                                                   | any column                                  |
 | ⚠️     | Live credit without a date                                      | Release tracklist: credit columns           |
 | ❌    | MB-Event: the Brucebase link differs (once looked up)           | Brucebase year: MB-Event                    |
@@ -870,6 +872,7 @@ back).
 | ❌    | Brucebase page titled differently from its show (Brucebase feed)      | Brucebase lists: Event, Title, Name, Page |
 | ❌    | Brucebase page without any tag (Brucebase feed)                       | Brucebase lists: Event, Title, Name, Page |
 | ❌    | Brucebase page without a date tag of its date (Brucebase feed)        | Brucebase lists: Event, Title, Name, Page |
+| ❌    | Brucebase link reaches no entry (Brucebase feed)                      | Event lists: Event                        |
 | ❌    | Double-encoded text (springsteenlyrics.com)                     | springsteenlyrics.com: any column (the lyrics index: once the song's page was read) |
 | ❌    | Track and recording length far apart                            | Release tracklist: Length, Recording length |
 | ❌    | Video on a medium that cannot carry video                       | Release tracklist: Video                    |
@@ -3958,6 +3961,17 @@ site.
   their marks are in their windows and on the tag pages that list them. The
   page in front of you wins here too: a date tag it has now, or a picture
   it shows now, drops the mark.
+- **On MusicBrainz** (since the feed of BruceParser 0.21.0): BruceParser also
+  compares the artist's MusicBrainz events with Brucebase. An event whose
+  Brucebase link reaches no entry (❌; most often the wiki writes that date
+  with a letter now, `#120923a`), shares one with another event (⚠️), or
+  links a show's page instead of its year-page anchor (⚠️) is marked on its
+  Event cell in every event list, and beside its Brucebase link on its own
+  page. Hover the mark: the card lists the wiki's entries of that date as
+  links, the likely one first in green, so the link can be corrected. An
+  event list's or an event page's press reads the feed (at most once a day,
+  shared with Brucebase); *Read the Brucebase feed on MusicBrainz too*
+  (⚙️ Settings → 📚 BRUCEBASE) turns this part off.
 
 </details>
 

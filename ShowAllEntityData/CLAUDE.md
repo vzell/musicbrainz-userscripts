@@ -776,7 +776,8 @@ The harness lives under `tests/`; how to run each suite and what it costs:
   `sa_bb_onstage_tags` (2026-11-14: a show's /onstage: page and a full
   page's "-2", read on a press or Space) and `sa_bb_feed` (2026-11-16:
   BruceParser's feed from raw.githubusercontent.com, read on a Brucebase
-  press or Space) OFF
+  press or Space) and `sa_bb_feed_mb` (2026-11-18: the same feed read on a
+  MusicBrainz event list's or event page's press) OFF
   — a "cannot reproduce" means nothing until they are back on. Seeding a key
   as `undefined` in `settingsOverride` un-seeds it (the schema default).
   That list applies only to a spec that serves an HTML fixture

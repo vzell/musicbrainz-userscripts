@@ -519,6 +519,14 @@ docs/claude/brucebase.md, "The BruceParser feed". What this file must record:
   anchor link through the feed's `anchors` (`_bbFeedAnchorPage()`), with
   the row's date from the cell's own carrier: still source-row data, and no
   new entry.
+- **Feed 1.3 (2026-11-18): three entries on MusicBrainz**, from their own
+  table `_BB_FEED_MB_KINDS`: ❌ `bb-mb-no-entry`, ⚠️ `bb-mb-shared`, ⚠️
+  `bb-mb-not-anchor`. They sit on the Event cell of every event list and
+  are keyed by the cell's `/event/<mbid>` link. `enabled()` is
+  `_bbFeedMbOn()`, MusicBrainz only, so they never run on Brucebase, and the
+  Brucebase entries never run on MusicBrainz. Settings
+  `sa_findings_bb_mb_no_entry`, `_shared`, `_not_anchor`; tint
+  `sa_findings_tint_bb_mb`.
 - Settings: `sa_findings_bb_feed_title`, `_no_tags`, `_no_parent`,
   `_first_letter`, `_date_missing`, `_date_wrong`, `_files`; tint
   `sa_findings_tint_bb_feed`; the feed itself `sa_bb_feed`.

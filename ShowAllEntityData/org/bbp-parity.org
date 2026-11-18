@@ -612,3 +612,48 @@ the script from =feat/bb-feed-v2-listing= and press ☰ → Brucebase → Read a
 
 Unverified: all of it on the live wiki (rows from the mirror of 2026-11-15; a listing fixed since keeps the mark until the
 next run).
+
+* Feed v2, branch 3: MusicBrainz events with a doubtful Brucebase link (=feat/bb-feed-v2-mb=, 2026-11-18)
+
+Env: 2026-11-18T02:22:38+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · probe:
+Python over BruceParser's run of 2026-11-15, n/a; spec, checker: Playwright Chromium, no Tampermonkey (GM stubs)
+
+Mockup: https://claude.ai/artifact/Tip5CShMevQp8ycqBjjnRZ (=debug/bb-feed-mb-mockup.html=).
+
+*Decisions (vzell, 2026-11-18):*
+1. *All three findings:* no entry ❌ ⚓, two events on one entry ⚠️ ⇉, a link that is no anchor ⚠️ ⌗.
+2. *Where:* the Event cell of every event list, and beside the Brucebase link on the event's page (sidebar only).
+3. *The read:* on the press of an event list or an event page, with its own switch =sa_bb_feed_mb= (on).
+4. *The card:* the wiki's entries of the date as links, the one naming the event's place "likely".
+5. *Two events, one entry:* both marked; the one whose date differs from the entry's called likely wrong.
+6. *The feed's line:* at the foot of the ⚠️/❌ menus only when a feed mark is on the page; no ☰ group on MusicBrainz.
+
+*Built:*
+- *BruceParser 0.21.0* (=b6d7be7=, pushed, NOT published): =feed.sh= 1.3 adds =mb=, keyed by event MBID: 197
+  no-entry, 18 shared, 1 not-anchor, with candidates and =likely=. The feed is 149 KB as written, 25 KB gzipped.
+- *SAED:* three findings from =_BB_FEED_MB_KINDS=, the card =#mb-bbmb-card=, the sidebar mark, the read on a press.
+  Details: =docs/claude/brucebase.md=, "Feed 1.3".
+- *The probe* (part 6) and *the checker* (part 5): all 4,180 events, 197 / 18 / 1 both, no difference.
+- *Tests* (NB-3641, 2026-11-18): =bb-feed.spec.js= 36 (8 new); 8 new mutations, each failing its test; one older find
+  rewritten.
+- *Not measured yet:* render and filter on =artist-events= with a feed kept (the perf harness runs with the feed off).
+
+** The browser check of feed v2, branch 3, for vzell (events of BruceParser's run of 2026-11-15; unverified live)
+
+*First:* the feed of BruceParser 0.21.0 must be on GitHub (=./publish-feed.sh= in BruceParser, plus FORMAT.md, your
+call). Then install the script from =feat/bb-feed-v2-mb=. A kept feed from before is used for up to a day: on Brucebase
+press ☰ → Brucebase → Read again, or wait for the first event list's press.
+
+| Page                                                                       | Step                                                                                       | Expected                                                                                                                                                       |
+|----------------------------------------------------------------------------+--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events | Show all Events                                                                            | ❌ menu "Brucebase link reaches no entry" 197; ⚠️ menu "Two events link one Brucebase entry" 18, "… no year-page anchor" 1; at each menu's foot the feed's line |
+| the same list                                                              | hover 2023-09-12 PPG Paints Arena's Event cell                                             | the card: "❌ ⚓ Brucebase link reaches no entry", #120923a Stone Hill Farm and #120923b PPG Paints Arena (green, likely), both links to the 2023 page           |
+| the same list                                                              | hover 2026-04-16 Mortgage Matchup Center                                                   | "⚠️ ⇉ Two events link one Brucebase entry": its date differs, likely the wrong link; #160426 suggested                                                         |
+| https://musicbrainz.org/event/f60ec13f-0c48-4c64-b80d-b4a226207017         | load the page (after a feed is kept)                                                       | "❌ ⚓" beside the Brucebase link in the sidebar; a click opens the card; no request at load                                                                     |
+| https://musicbrainz.org/event/cabf4768-6517-4c97-b74c-c7f551a92c93         | load the page                                                                              | "⚠️ ⇉" beside its Brucebase link; the card: the dates agree, the other event's link is likely wrong                                                            |
+| https://musicbrainz.org/event/4ce084be-d3bf-4da4-92c0-5538f149b8e2         | load the page                                                                              | "⚠️ ⌗": it links a show's page; #231020a and #231020b (likely), #231020c                                                                                       |
+| any MusicBrainz event list                                                 | ⚙️ Settings → 📚 BRUCEBASE: "Read the Brucebase feed on MusicBrainz too" off, reload, press | no request to raw.githubusercontent.com, no mark                                                                                                               |
+| https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f        | press a release-group button                                                               | no request for the feed (no event list)                                                                                                                        |
+
+Unverified: all of it live (the events and counts are BruceParser's run of 2026-11-15; an event corrected on
+MusicBrainz since keeps its mark until the next run).

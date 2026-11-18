@@ -35,6 +35,12 @@ For every page the feed names:
      of the category no list links, the storyteller tag page (every story:
      page tagged storyteller, from the mirror's tags), and the year tables
      (the shows of point 3).
+  6. (feed 1.3) the MusicBrainz part: every event of BruceParser's
+     search/event_linked_to_artist.org with a Brucebase link, classified here
+     independently (no-entry: the anchor is not in brucebase-event.txt;
+     shared: two or more events link one entry; not-anchor: no year-page
+     anchor), against the feed's "mb"; and the test fixtures holding such
+     events.
   5. (feed 1.2) the year listings: every row of every <year>-list.html links
      "/<year>#<anchor>" with its own date first; the feed's "anchors" give
      its page (one page, or among several the one whose name has the row's
@@ -231,6 +237,41 @@ def main():
     lst['anchorsUnlinked'] = sorted(set(anchors) - linked)
     out['listings'] = lst
 
+    # 6. the MusicBrainz part (feed 1.3)
+    mbmap = feed.get('mb') or {}
+    if mbmap:
+        wiki = set()
+        for line in open(os.path.join(run_dir, 'brucebase-event.txt'), encoding='utf-8', errors='replace'):
+            f = [x.strip() for x in line.split('|')]
+            if len(f) > 5 and f[4]:
+                wiki.add(f[4])
+        bp = os.path.dirname(os.path.dirname(os.path.realpath(run_dir)))
+        evs = []
+        for line in open(os.path.join(bp, 'search/event_linked_to_artist.org'), encoding='utf-8', errors='replace'):
+            m = re.search(r'musicbrainz\.org/event/([0-9a-f-]{36})\]', line)
+            b = re.search(r'\[\[https?://brucebase\.wikidot\.com/([^\]]+)\]\[BB\]\]', line)
+            if m and b:
+                evs.append((m.group(1), b.group(1)))
+        cnt = Counter(b for _, b in evs)
+        mine = {}
+        for mbid, b in evs:
+            if not re.match(r'^(\d{4}|1949-64)#[0-9a-z]+$', b):
+                mine[mbid] = 'not-anchor'
+            elif b not in wiki:
+                mine[mbid] = 'no-entry'
+            elif cnt[b] > 1:
+                mine[mbid] = 'shared'
+        theirs = {k: v['kind'] for k, v in mbmap.items()}
+        fixtures = {}
+        for fn in sorted(os.listdir(os.path.join(os.path.dirname(__file__), '..', 'tests', 'fixtures'))):
+            if fn.endswith('.html'):
+                src = read(os.path.join(os.path.dirname(__file__), '..', 'tests', 'fixtures', fn))
+                hit = sorted(set(re.findall(r'/event/([0-9a-f-]{36})', src)) & set(mbmap))
+                if hit:
+                    fixtures[fn] = hit
+        out['mb'] = {'events': len(evs), 'byKind': Counter(mine.values()), 'feedByKind': Counter(theirs.values()),
+                     'differ': sorted(set(mine.items()) ^ set(theirs.items())), 'fixtures': fixtures}
+
     json.dump(out, open(out_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=1, default=dict)
     print(f"feed pages {len(feed['pages'])}, missing in the mirror {len(out['missing'])}: {out['missing'][:5]}")
     print(f"by kind {dict(out['byKind'])} (feed reports {({k: v['count'] for k, v in feed['reports'].items()})})")
@@ -244,6 +285,10 @@ def main():
         print('    odd:', x)
     print(f"reverse index: {out['reverse']['shows']} shows, {out['reverse']['dependents']} dependents, "
           f"{out['reverse']['showExists']} show pages in the mirror, years {dict(out['reverse']['perYear'])}")
+    if out.get('mb'):
+        M = out['mb']
+        print(f"mb: {M['events']} events with a Brucebase link; here {dict(M['byKind'])}, the feed {dict(M['feedByKind'])}, differing {len(M['differ'])}")
+        print(f"    fixtures holding such events: {M['fixtures']}")
     L = out['listings']
     print(f"listings: {L['rows']} rows, {L['marked']} marked {dict(L['kinds'])}")
     for r in L['shared']:
