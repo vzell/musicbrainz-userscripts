@@ -1195,7 +1195,7 @@ CLOSED: [2026-11-08 Sun]
   protocol is the clean path. This touches the fetch path, not filter/sort/render, but measure fetch wall clock
   with and without String Theory (=run-perf-comparison=).
 
-** TODO Bring SAED's request-gate port in line with upstream (lock race, mbnSleep, hold cap)
+** DONE Bring SAED's request-gate port in line with upstream (lock race, mbnSleep, hold cap)
 
 - *Who fixes it*: *ours*. The protocol is still version 1 (=MBN_VERSION = 1=, the same key, lock and fields), so
   nothing is broken; upstream's reference code got more robust and SAED's port (9.99.1583, =_mbGate*=) did not.
@@ -1224,7 +1224,8 @@ CLOSED: [2026-11-08 Sun]
   sleeps). Measure that an FRP render is not slower while a request waits (=run-perf-comparison=).
 - *Tests*: extend =tests/fixtures/mb-shared-gate.spec.js= (the never-settling lock, the far-future hold), plus
   mutation entries in =scripts/mutations/mb-shared-gate.json=.
-- *In progress (2026-11-18, =feat/mb-gate-upstream-align=, WIP.1)*: upstream's =mb-gate.mjs= unchanged from
+- *Done (9.99.1650, merged 2026-11-18 from =feat/mb-gate-upstream-align=; tested in Firefox 160.0 with
+  Tampermonkey 5.5.0 by vzell)*: upstream's =mb-gate.mjs= unchanged from
   =0693aea= to =6a311c3=. Ported: the lock race (=_mbGateState()=), =mbnSleep= as =_mbGateSleep()= (own state
   =_mbgWake=, not =globalThis.__mbnWake1=; the lock timer's sleeper is woken in =finally= so the wakers stop with
   each write), the hold cap, the re-told wait (=onWait= hears only "waits longer"; the 10 s repeat and the
@@ -1241,33 +1242,34 @@ CLOSED: [2026-11-08 Sun]
     all ten minutes (SAED's first port did the same, and told "waits longer" every second). SAED now counts a
     stored value for at most 60 s from the moment the tab first read it (=_mbGateCool()=, one memory per tab):
     a real hold is never more than 60 s past its writing, so it is never cut. The stored value is not lowered;
-    that would be a new write in protocol v1, so it is a question for majkinetor (in the note below), not ours
+    that would be a new write in protocol v1, so it is a question for majkinetor (in the reply below), not ours
     to decide.
-  - *Note for majkinetor* (draft; vzell sends, on #938 or as a new issue):
-    #+begin_quote
-    A small one in =dev/net/mb-gate.mjs= (=0693aea=): the hold cap (=cool = Math.min(cool, now + MBN_MAX_HOLD)=)
-    is applied in =mbnSlot()='s wait loop only. The booking just above it still takes the stored value
-    (=at = Math.max(at, cool)=, then =s.tat = Math.max(tat, at) + MBN_GAP=), so a corrupt =cool= ten minutes out
-    is booked as a ten-minute wait anyway, and =tat= carries it to every booking after. And the wait's cap does
-    not hold the wait to a minute either: =now= moves on with every slice, so =now + MBN_MAX_HOLD= moves with
-    it and the loop waits the whole ten minutes. SAED (9.99.NNNN, with your lock race and =mbnSleep= ported,
-    thanks) now counts a stored =cool= for at most 60 s from the moment the tab first read that value, at the
-    booking and in the wait. Every writer sets =max(cool, now + ms)= with =ms ≤ MBN_MAX_HOLD=, so a real hold is
-    never cut. Would you want the gate to also lower such a value in storage (=cool = now + MBN_MAX_HOLD= under
-    the lock), so a fresh tab does not wait its minute again? That is a new write in v1, so I left it out. =tat=
-    has no cap either, but a long real queue is possible, so I left that alone.
-    #+end_quote
+  - *Note for majkinetor*: folded into the ONE reply drafted under the next TODO, "The shared gate's clock"
+    (2026-11-18), so the hold cap and the clock go to him in a single post.
 
 ** TODO The shared gate's clock: a step of the wall clock moves every script's slots (draft for vzell to send)
 
 - *Who fixes it*: a *shared convention* (both sides read and write =mbu:mb-gate=), with a reader-side change that
-  keeps =MBN_VERSION = 1=; SAED's half is *ours* and goes with the port TODO above (its item 3, the hold cap).
-- *What*: =tat=, =cool= and =leadUntil= are epoch ms from =Date.now()=, on both sides. Checked in ISRC Scout's
-  inlined copy (=@version 2026.10.16.181657=, =tests/fixtures/live-userscripts/=: booking, wait, =Retry-After= hold
-  and =hot= all on =Date.now()=); SAED's =_mbGateSlot()=/=_mbGateAnswer()= the same. The newer
-  =dev/net/mb-gate.mjs= (=0693aea=) is not on NB-3641; re-check it on the next refresh before sending.
-- *Before sending: recheck on petri* (vzell, 2026-11-18: the majkinetor work happens on petri, where his repo is
-  resynced before any post). The prompt to give Claude there:
+  keeps =MBN_VERSION = 1=. SAED's half is *ours*, and still open: the port above (9.99.1650) did not touch the
+  clock.
+- *What* (rechecked on petri, 2026-11-18T20:32:41+01:00, code reading, n/a browser; his repo at =687b8b1=, where
+  =dev/net/mb-gate.mjs= is unchanged since =0693aea=; the same code inlined in Event Horizon
+  =2026.11.19.100201=, String Theory =2026.11.18.201615= and ISRC Scout =2026.11.18.193622=, all at =687b8b1=):
+  1. *Every clock read is =Date.now()=.* =mb-gate.mjs=: the sleep (=mbnSleep()=, 101, 122, 145), the lead wait
+     (195), the booking (202–205), the wait (215–216), the lead write (240), the hold (257–266), =hot= (271, 308).
+     Inlined: Event Horizon 182, 266, 276, 287, 325; String Theory 4223, 4307, 4317, 4328, 4366; ISRC Scout 124,
+     208, 218, 229, 267 (sleep, lead wait, booking, wait cap, hold). SAED 9.99.1650 the same: =_mbGateSleep()=,
+     =_mbGateSlot()=, =_mbGateAnswer()=, =_mbGateCool()=.
+  2. *What is read is clamped in two places, and neither clamp bounds anything.* =cool= is read as at most
+     =now + MBN_MAX_HOLD=, in the wait only (216), and re-read every slice, so the bound moves along with the clock
+     (the port TODO's "Found later the same night"); the booking takes =cool= raw (202–204). =leadUntil= is read
+     as =min(leadUntil − now, MBN_MAX_LEAD)= (195), re-read every slice the same way, so a =leadUntil= far ahead
+     holds every background request until it passes. SAED's lead loop in =_mbGateSlot()= does the same (new
+     finding, not fixed). =tat= is not clamped anywhere.
+  3. *No wait runs on =performance.now()=.* =mbnSleep()= ends at =Date.now() + ms= (101) and sleeps while
+     =now < end= (122), so a backward step stretches even one 250 ms slice by the whole step (16.8 s on petri).
+     SAED's =_mbGateSleep()= is the same port.
+- *Recheck prompt* (vzell, 2026-11-18; run on petri this evening, result in "What" above):
 
   #+begin_example
   Run the refresh-majkinetor skill first. Then recheck the TODO "The shared gate's clock" in org/majkinetor.org
@@ -1288,31 +1290,65 @@ CLOSED: [2026-11-08 Sun]
   =performance.timeOrigin= is the wall clock once, at each page's start. Two tabs started on either side of a step
   disagree by the step for their whole life. So the stored values stay wall-clock epochs, and the defence is on the
   reading side.
-- *Proposal* (reader-side, protocol version unchanged, each script can adopt it alone):
-  1. *Bound what is read*: =tat= as at most =now + BURST × GAP=, =cool= as at most =now + MBN_MAX_HOLD= (upstream
-     already caps a hold it writes, and since =0693aea= one it reads), =leadUntil= as at most =now + MAX_LEAD=. A
-     booking made inside a forward spike then costs one burst window, not the spike.
-  2. *Wait on the monotonic clock*: take =left = until − Date.now()= once per slice and sleep against a
-     =performance.now()= deadline, so a step during the wait neither ends it early nor stretches it. Re-read =cool=
-     each slice as today (a new hold must still be seen).
-  3. Nothing changes in the stored shape; a script without the change keeps today's behaviour.
-- *SAED's half*: the same two reader rules in =_mbGateRead()=/=_mbGateSlot()=; a spec with =Date.now()= stepped
-  +16.8 s around a booking (as =tests/fixtures/rate-slot-clock-step.spec.js= does for the other schedulers),
-  predicted before: the next request 16.8 s late; mutations in =scripts/mutations/mb-shared-gate.json=.
-- *Draft* (for vzell to post on majkinetor's repo; not sent):
+- *Proposal* (reader-side, protocol version unchanged, each script can adopt it alone; revised 2026-11-18 on
+  petri):
+  1. *Bound =cool= and =leadUntil= from first sight, not from =now=*: count a stored value for at most
+     =MBN_MAX_HOLD= (=cool=) or =MBN_MAX_LEAD= (=leadUntil=) from the moment this tab first read that value. A
+     value a step pushed ahead then costs at most one hold or one lead, and a broken one stalls no one for long.
+     SAED does this for =cool= since 9.99.1650 (=_mbGateCool()=); writers set at most =now + MAX=, so a real value
+     is never cut.
+  2. *Do NOT clamp =tat= on read* (the earlier draft did): a real queue puts =tat= one =GAP= ahead per booking
+     waiting in any tab, and a clamped read writes back =max(clamped, at) + GAP=, below bookings already made, so
+     the next requests overlap them and break one-a-second. A =tat= a step pushed ahead costs that step once.
+  3. *Sleep on the monotonic clock*: =mbnSleep()= takes =end = performance.now() + ms=, so a step cannot stretch a
+     slice. The booked =at= can be turned into a monotonic deadline once, at the booking; only a newly seen =cool=
+     moves it later (converted at first sight, as in 1). A step during the wait then neither ends it early nor
+     stretches it.
+  4. Nothing changes in the stored shape; a script without the change keeps today's behaviour.
+- *SAED's half* (not started; a branch of its own): 1 for =leadUntil=, 3 in =_mbGateSleep()= and =_mbGateSlot()=.
+  Specs, each predicted before the fix: =Date.now()= stepped −16.8 s inside a slice (today the slice sleeps
+  about 17 s); +16.8 s during a 3 s hold (today the request goes at once); a =leadUntil= ten minutes out (today a
+  background request waits ten minutes). Mutations in =scripts/mutations/mb-shared-gate.json=.
+- *Draft: ONE reply for majkinetor* (2026-11-18, petri; it replaces the separate hold-cap note under the port TODO
+  above and the earlier clock draft. vzell sends it, on #938 or as a new issue; not sent):
 
   #+begin_quote
-  The shared gate (=mbu:mb-gate=) books on =Date.now()= on every side, mine included. On WSL I have seen the wall
-  clock step by +16.8 s and back every few seconds (Hyper-V time sync fighting systemd-timesyncd). A booking made
-  inside such a step stores a =tat= 16.8 s ahead, and every script then waits that long; a backward step does the
-  same to =cool=, a forward one shortens a 503 hold. Real browsers on laptops coming out of sleep can step too.
+  Thanks again for "use anything from my repo": SAED 9.99.1650 now has your lock race and =mbnSleep()= (credited
+  in its header). While porting I went through =dev/net/mb-gate.mjs= (=687b8b1=, unchanged since =0693aea=; the
+  copies in Event Horizon, String Theory and ISRC Scout are the same) and found a few things. All of them are in
+  how a script reads the shared schedule, so none needs a version bump.
 
-  Switching the stored values to =performance.now()= would not work across tabs (each tab's =timeOrigin= is its
-  own start), so I'd keep the format and harden the reader, which needs no version bump:
-  1. clamp what is read: =tat= to =now + BURST × GAP=, =cool= to =now + MBN_MAX_HOLD=, =leadUntil= to =now + MAX_LEAD=;
-  2. wait against a =performance.now()= deadline computed once per slice, re-reading =cool= each slice as now.
-  I'll do the same in SAED's copy. Does that fit how you see the gate, or would you rather put it in =mb-gate.mjs=
-  first and I port it?
+  *1. The hold cap does not cap.*
+  - The booking takes the stored value: =at = Math.max(at, cool)=, then =s.tat = Math.max(tat, at) + MBN_GAP=. A
+    broken =cool= ten minutes out is booked as a ten-minute wait, and =tat= carries it to every booking after.
+  - The wait's cap, =cool = Math.min(cool, now + MBN_MAX_HOLD)=, moves on with =now= every slice, so the loop
+    still waits the whole ten minutes.
+  - The lead wait has the same shape: =Math.min((s.leadUntil || 0) - Date.now(), MBN_MAX_LEAD)= is re-read every
+    slice, so a =leadUntil= ten minutes out holds every background request for ten minutes.
+  SAED now counts a stored =cool= for at most 60 s from the moment the tab first read that value, at the booking
+  and in the wait. Every writer sets =max(cool, now + ms)= with =ms ≤ MBN_MAX_HOLD=, so a real hold is never cut.
+  I'll do the same for =leadUntil= (at most =MBN_MAX_LEAD=).
+
+  *2. A step of the wall clock.* Everything runs on =Date.now()=, mine included. On WSL I have seen the clock step
+  +16.8 s and back every few seconds (Hyper-V's time sync against systemd-timesyncd), and laptops coming out of
+  sleep can step too. What a step does today:
+  - a booking made inside a forward step stores =tat=, =cool= or =leadUntil= that much ahead, and every script
+    waits it out once the clock is back (the first-seen bound in 1 limits that to one hold or one lead);
+  - a forward step during a wait ends a 503 hold early;
+  - a backward step during =mbnSleep()= stretches even a 250 ms slice by the whole step, because it sleeps until
+    =Date.now() >= end=.
+  Storing =performance.now()= values would not work across tabs (each tab's =timeOrigin= is its own start), so
+  I'd keep the stored format and fix the reading side: =mbnSleep()= sleeps until =performance.now() + ms=, and
+  the booked slot becomes a =performance.now()= deadline once, at the booking, moved later only by a newly seen
+  =cool=.
+
+  *Not changed, on purpose:* =tat= is not capped on read. A long real queue is normal (one =MBN_GAP= per booking
+  waiting in any tab), and a capped =tat= written back would let new bookings overlap the queue.
+
+  *Questions:*
+  1. Does this fit how you see the gate, or would you rather put it into =mb-gate.mjs= first, and I port it?
+  2. Should the gate also lower a broken =cool= in storage (=cool = now + MBN_MAX_HOLD= under the lock), so a tab
+     opened later does not wait its minute again? That is a new write in v1, so I left it out.
   #+end_quote
 
 ** TODO String Theory's idle mode over our FRP (random theme, EH effect layers)
