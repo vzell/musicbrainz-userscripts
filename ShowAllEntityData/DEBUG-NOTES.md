@@ -30338,3 +30338,7 @@ Shipped on vzell's word (kind, BruceParser's letter, the banner either way, lyri
 second letter; person/band by the tabs both ways): 41 pages flagged, 7 skipped (a redirect, a "-N" continuation, a
 tab page). `scripts/check-bb-page-tag-findings.js`: the shipped code against the probe, 0 of 6,990 differ. The
 fixture run found that `retail:tracks-ii` shows no "Show the release" button (its tag is tested in the window).
+- **`npm run test:full` at `51c1d8e6`, 22:50:24–23:13:14 CET (22 m 50 s): 3,273 of 3,274 passed.** The failure:
+  `filter-sliced.spec.js` "a pass replaced by the ✕ clear writes nothing" (tbody writes 42, expected 0), a timing
+  test of the MusicBrainz typing filter; alone 42 of 42 (`--repeat-each 3`), as the same spec family before (entry
+  above, `filter-sliced` "a pass outdated by a newer key never draws"). Nothing of this branch is on that path.

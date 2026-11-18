@@ -712,6 +712,14 @@ rule, the shipped rule):
 *Built:* =_bbTagPageFacts()=, =_bbTagPageExpected()=, =_bbTagPageSpurious()=, =_bbTagPageLetter()=,
 =_bbTagSongTitleTags()=, =_bbTagOkText()=, =_bbFeedLetterChecked()=; =_DP_PARSER_VERSION= 35; "&" in the Letter row.
 
+*Tests* (NB-3641, 2026-11-18): =bb-findings-page-tags.spec.js= 15 on 18 real mirror pages; one batch 3 assertion
+changed (a =venue:= address gets a page's facts now); 25 mutations as recorded (24 fail their test, 1 passes with the
+reason), three older finds rewritten and re-run (each fails its test); every =bb-*= spec 455 (454 before the batch 3
+assertion was changed). Render branch / main 1.00–1.10, the ranges overlapping (=tests/MEASUREMENTS.org=). Lint within
+the baseline. =npm run test:full= at =51c1d8e6=: 22:50:24–23:13:14 CET, 3,273 of 3,274 passed; the one failure,
+=filter-sliced.spec.js= "a pass replaced by the ✕ clear writes nothing" (a MusicBrainz typing-filter timing test,
+42 of 42 alone, three times each), is on no path this branch touches. Not run a second time.
+
 ** The browser check of batch 4, for vzell (pages of the mirror of 2026-11-15; unverified on the live wiki)
 
 Install the script from the branch =feat/bb-findings-page-tags=. Every stored preview is read once more (the reader
