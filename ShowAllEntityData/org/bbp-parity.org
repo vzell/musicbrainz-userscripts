@@ -667,7 +667,7 @@ Env: 2026-11-18T17:09+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.58.1) 
 Unverified: all of it live (the events and counts are BruceParser's run of 2026-11-15; an event corrected on
 MusicBrainz since keeps its mark until the next run).
 
-* Batch 4: the page tag checks (=feat/bb-findings-page-tags=, 2026-11-18)
+* Batch 4: the page tag checks (=feat/bb-findings-page-tags=, 2026-11-18; merged 2026-11-18 as 9.99.1652; vzell: "all tested live, OK")
 
 Env: 2026-11-18T22:21:11+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · probe:
 Python over the mirror bb/2026-11-15 (NB-3641's own run), n/a; oracle, checker, spec: Playwright 1.62.1 Chromium, no

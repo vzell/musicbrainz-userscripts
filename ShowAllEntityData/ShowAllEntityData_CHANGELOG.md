@@ -4,9 +4,22 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1822 versions; the month pages hold all of them.
+This page shows the newest 100 of 1823 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1652 — 2026-11-18
+
+**🚀 Feature**
+
+- Brucebase venue, song, person and band, and release pages: their tags are checked like a show's (BruceBaseParser's page tag checks, parity batch 4). On the page's Tags card and in its preview window, a missing tag gets a red dashed chip and a tag that is not expected an amber ⚠️, with the ❌/⚠️ pills and the reasons in words. Checked: the page's kind (venue, song, retail; person with a Bands tab, band with a Members tab), the first letter as the wiki's letter tabs list it (0-9 for a digit, & for a band with &; not on a release), underconstruction against the Under Construction banner, and on a song its title as a tag and lyricsheet against a lyric sheet in its Gallery. Nothing more is read. Over the whole mirror of 2026-11-15 this flags 41 of 6,990 pages; the first letter matches BruceParser's own report.
+- Never flagged: a second letter tag (the wiki lists some pages under an alternative title), a page tagged redirect, a release's tab pages, playlists. Left out as too noisy: a release's dates, a venue's place tags, a person's or band's name tags.
+
+**✨ Improve**
+
+- On those pages the BruceParser feed's first-letter mark after the byline (and after the window's title) is left out while missing tags are looked for: the check reads the page as it is now. The two settings Find Brucebase shows and pages that lack a tag / … with a tag of a checked kind that is not expected now cover these pages too; their defaults are unchanged.
+- "&" counts as a letter tag in a Brucebase Tags card's rows (the wiki's letter for a band with "&").
+
 
 ## 9.99.1651 — 2026-11-18
 
@@ -884,13 +897,6 @@ This page shows the newest 100 of 1822 versions; the month pages hold all of the
 **✨ Improve**
 
 - springsteenlyrics.com lyrics index: a letter page (e.g. lyrics starting with B) now has a "This letter" button. It shows that page's songs as a table without loading anything. "Show all lyrics" still loads all 32 letters; on the lyrics start page it is the only button.
-
-
-## 9.99.1552 — 2026-11-05
-
-**🐛 Fix**
-
-- springsteenlyrics.com, logged in: a song's preview card and window showed the page's "Private Info" notes and kept them in the preview cache. They are now left out, and previews read before the fix are read again. A logged-in read and a public read of a song page are now cached separately.
 
 
 ---
