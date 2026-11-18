@@ -557,8 +557,13 @@ real examples and the rendering rules below are in that TODO's
   their check digit adds up; 11 zeros carry both.
 - **`barcode-missing`** (warn, Barcode): an EMPTY cell. MusicBrainz's
   `formatBarcode()` draws `null` (never entered) as `''` and `''` (known
-  to have none) as "[none]", so "[none]" is never flagged. Many old releases
-  have no barcode entered; the tint setting is the switch for that noise.
+  to have none) as "[none]", so "[none]" is never flagged. Its tint is the
+  one that starts OFF (`sa_findings_tint_barcode_missing: false`, read as
+  `=== true`, not through `_findingTintSetting()`'s `!== false`): on Bob
+  Dylan's 2,301 releases it flagged 959 rows, and with the other three
+  tints on, typing in the global filter (150 ms between keys) took ~6%
+  longer than on `main` (vzell chose "menu only", 2026-11-19; numbers in
+  tests/MEASUREMENTS.org).
 - **`catno-missing`** (warn, Catalog#): an empty Catalog# cell in a row whose
   Label cell links a label other than "[no label]" (`_RC_NO_LABEL_MBID`,
   `_rcHasRealLabel()`). `ReleaseCatnoList` lists only the non-empty numbers,

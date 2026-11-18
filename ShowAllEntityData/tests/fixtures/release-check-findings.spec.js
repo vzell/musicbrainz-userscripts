@@ -147,7 +147,7 @@ test.describe('release-check findings', () => {
             expect(c.bg).toBe(ERROR_BG);
             expect(c.after).toBe('"❌"');
         });
-        for (const id of ['barcode-missing', 'catno-missing', 'release-event-none']) {
+        for (const id of ['catno-missing', 'release-event-none']) {
             const cells = await cellsWith(page, id);
             expect(cells.length, id).toBeGreaterThan(0);
             cells.forEach((c) => {
@@ -156,6 +156,22 @@ test.describe('release-check findings', () => {
                 expect(c.title, `${id}: the stamp writes its label as the tooltip`).not.toBe('');
             });
         }
+    });
+
+    test('"no barcode entered" is counted but not painted by default; its switch paints it', async ({ page }) => {
+        // Off by default (vzell, 2026-11-19): it flagged 42% of a large list.
+        await open(page);
+        const off = await cellsWith(page, 'barcode-missing');
+        expect(off.length, 'still detected').toBe(1);
+        expect(off[0].level, 'no tint by default').toBeNull();
+        expect(off[0].after, 'no glyph by default').not.toBe('"⚠️"');
+        expect((await findingRow(page, 'warn', 'barcode-missing')).count, 'the menu still counts it').toBe(1);
+
+        await open(page, { sa_findings_tint_barcode_missing: true });
+        const on = await cellsWith(page, 'barcode-missing');
+        expect(on[0].level).toBe('warn');
+        expect(on[0].bg).toBe(WARN_BG);
+        expect(on[0].after).toBe('"⚠️"');
     });
 
     test('the tint settings turn the paint off but keep the findings and their menu rows', async ({ page }) => {

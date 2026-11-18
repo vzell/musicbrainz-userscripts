@@ -998,7 +998,7 @@
     "sa_findings_rel_multi_site_ignore": "",
     "sa_findings_tint_allcaps": true,
     "sa_findings_tint_barcode": true,
-    "sa_findings_tint_barcode_missing": true,
+    "sa_findings_tint_barcode_missing": false,
     "sa_findings_tint_barcode_zero": true,
     "sa_findings_tint_bb_anchor": true,
     "sa_findings_tint_bb_date_comma": true,

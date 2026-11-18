@@ -2815,9 +2815,11 @@
         sa_findings_tint_barcode_missing: {
             label: 'Highlight releases with no barcode entered as WARNING',
             type: 'checkbox',
-            default: true,
+            default: false,
             description: 'Tint an empty Barcode cell of a release list light yellow with a ⚠️. "[none]", a release known ' +
-                         'to have no barcode, is not flagged.'
+                         'to have no barcode, is not flagged. Off by default: most older releases never had a barcode ' +
+                         'entered, so this would tint a large part of a long list. The ⚠️ WARNING menu counts and ' +
+                         'filters them either way.'
         },
 
         sa_findings_tint_catno_missing: {
@@ -77079,7 +77081,13 @@
             enabled: () => !_foreignHost,
             cols: (name, plan) => name === 'Barcode' && plan.releaseList,
             test: (cell, row) => _rcIsReleaseRow(row) && cell.textContent.trim() === '',
-            tint: _findingTintSetting('sa_findings_tint_barcode_missing'),
+            // The one tint that is OFF by default (vzell, 2026-11-19): most
+            // old releases never had a barcode entered, so on a large list
+            // it painted ~42% of the rows (959 of Bob Dylan's 2,301) and
+            // slowed typing in the filter by ~6%. The menu row and the 📊
+            // entry still count and filter them. `=== true`, not the shared
+            // `!== false`, so an unloaded setting stays off too.
+            tint: () => Lib.settings.sa_findings_tint_barcode_missing === true,
         },
         {
             id: 'catno-missing', level: 'warn', glyph: '🏷️', scope: 'cell',

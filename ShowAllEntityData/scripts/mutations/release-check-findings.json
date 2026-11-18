@@ -128,5 +128,18 @@
     "spec": "tests/fixtures/release-check-findings.spec.js",
     "grep": "the menus list each finding under its level",
     "expect": "fail"
+  },
+  {
+    "name": "the barcode-missing tint ignores its off default",
+    "why": "Its setting defaults to false; a tint that paints anyway puts ⚠️ on ~42% of a long list again (959 of Dylan's 2,301). Must fail on the off-by-default test. (The narrower slip, the shared `!== false` reading, differs only for an unloaded profile, which no fixture has: the harness always fills schema defaults.)",
+    "edits": [
+      {
+        "find": "            tint: () => Lib.settings.sa_findings_tint_barcode_missing === true,",
+        "replace": "            tint: () => Lib.settings.sa_findings_tint_barcode_missing !== undefined || true,"
+      }
+    ],
+    "spec": "tests/fixtures/release-check-findings.spec.js",
+    "grep": "is counted but not painted by default",
+    "expect": "fail"
   }
 ]

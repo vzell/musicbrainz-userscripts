@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "f4d88e1eef361cf54b430d2af5244df9dd473a7d",
-    "revisions_walked": 1281
+    "head": "7a9b839bf9186149322acfba4ee7f33ff473e32a",
+    "revisions_walked": 1309
   },
   "changes": [
     {
@@ -954,6 +954,10 @@
     "sa_findings_tint_isrc": true,
     "sa_findings_tint_iswc": true,
     "sa_findings_tint_barcode": true,
+    "sa_findings_tint_barcode_zero": true,
+    "sa_findings_tint_barcode_missing": true,
+    "sa_findings_tint_catno_missing": true,
+    "sa_findings_tint_release_event_none": true,
     "sa_findings_tint_live_credit": true,
     "sa_findings_no_front_image": true,
     "sa_findings_tint_no_front_image": true,
@@ -995,6 +999,10 @@
     "sa_findings_bb_feed_date_missing": true,
     "sa_findings_bb_feed_date_wrong": true,
     "sa_findings_bb_feed_files": true,
+    "sa_findings_bb_mb_no_entry": true,
+    "sa_findings_bb_mb_shared": true,
+    "sa_findings_bb_mb_not_anchor": true,
+    "sa_findings_tint_bb_mb": true,
     "sa_findings_tint_bb_feed": true,
     "sa_findings_tint_bb_setlist": true,
     "sa_findings_tint_bb_venue": true,
@@ -1161,6 +1169,7 @@
     "sa_bb_event_preview": true,
     "sa_bb_history": true,
     "sa_bb_onstage_tags": true,
+    "sa_bb_feed_mb": true,
     "sa_bb_feed": true,
     "sa_bb_mb_event_lookup": true,
     "sa_bb_tip_images": true,

@@ -900,7 +900,9 @@ The tint of each newly highlighted problem has its own switch in ⚙️ Settings
 ⚠️ Findings; turning one off keeps the problem in the menu. The menus
 themselves can be switched off there too. Length, video, no-work and live-title
 flags keep their existing switches in 💿 Release tracklist and the live title
-settings.
+settings. One tint starts off: *Release has no barcode entered*. Most older
+releases never had a barcode entered, so it would colour a large part of a long
+list; the ⚠️ menu counts and filters those releases either way.
 
 </details>
 
