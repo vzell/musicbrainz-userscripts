@@ -27914,6 +27914,17 @@
     const _BB_FEED_TTL_MS = 24 * 3600 * 1000;
     /** @type {number} After a failed read, the next try waits this long (Retry does not). */
     const _BB_FEED_RETRY_MS = 3600 * 1000;
+    /**
+     * The feed's maps this script reads, each added by a later BruceParser
+     * (`anchors` 1.2, `mb` 1.3). A kept file without one of them was written
+     * before it, so it counts as old once it was read an hour ago, whatever
+     * its day: vzell's live check of 2026-11-18 kept 0.20.0's file from a
+     * Brucebase page, and a MusicBrainz press then read nothing new and
+     * marked nothing. The hour bounds the reads when the published file
+     * itself lacks a map.
+     * @type {string[]}
+     */
+    const _BB_FEED_MAPS = ['anchors', 'mb'];
     /** @type {number} A run older than this many days is called old in every card (vzell, decision 3). */
     const _BB_FEED_OLD_DAYS = 14;
     /**
@@ -28029,8 +28040,9 @@
     }
 
     /**
-     * Reads the feed from GitHub when the kept one is older than a day (or
-     * with `force`, Read again / Retry), never twice at once, and after a
+     * Reads the feed from GitHub when the kept one is older than a day, or
+     * lacks a map this script reads (`_bbFeedLacksMap()`), or with `force`
+     * (Read again / Retry); never twice at once, and after a
      * failed read not again within the hour unless forced. A failure keeps
      * the old feed and records why. Nothing when the setting is off. Callers:
      * a Brucebase page's button (`_bbFeedKick()`), a Brucebase window
@@ -28043,7 +28055,7 @@
         _bbFeedReadKept();
         if (!_bbFeedOn()) return Promise.resolve(false);
         const now = Date.now();
-        if (!force && _bbFeed.data && now - _bbFeed.at < _BB_FEED_TTL_MS) return Promise.resolve(false);
+        if (!force && _bbFeed.data && now - _bbFeed.at < _BB_FEED_TTL_MS && !_bbFeedLacksMap(now)) return Promise.resolve(false);
         if (!force && _bbFeed.err && now - _bbFeed.errAt < _BB_FEED_RETRY_MS) return Promise.resolve(false);
         if (_bbFeed.loading) return _bbFeed.loading;
         _bbFeed.loading = (async () => {
@@ -28081,6 +28093,19 @@
             return changed;
         })();
         return _bbFeed.loading;
+    }
+
+    /**
+     * Whether the kept feed lacks one of the maps this script reads
+     * (`_BB_FEED_MAPS`) and was read at least an hour ago: then it is read
+     * again before its day is up.
+     *
+     * @param {number} now - `Date.now()`.
+     * @returns {boolean}
+     */
+    function _bbFeedLacksMap(now) {
+        const d = _bbFeed.data;
+        return !!d && now - _bbFeed.at >= _BB_FEED_RETRY_MS && _BB_FEED_MAPS.some(k => !d[k] || typeof d[k] !== 'object');
     }
 
     /**

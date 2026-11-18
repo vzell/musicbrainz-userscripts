@@ -30140,3 +30140,15 @@ Env: 2026-11-18T02:22:38+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
 - **The card** follows the setlist card's pattern (an element made once, kept open while the pointer is on it). The
   Brucebase stylesheet is not on MusicBrainz, so it has its own small one on the shared `.mb-tt-liner` look.
 - **Not measured yet:** render and filter on `artist-events` with a feed kept.
+
+## 2026-11-18 — Brucebase feed 1.3: no mark on MusicBrainz, a kept 0.20.0 file (feat/bb-feed-v2-mb)
+Env: 2026-11-18T17:09+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.58.1) · Playwright Chromium (fixture suite) · no Tampermonkey (GM stubs); the live symptom in vzell's browser (Tampermonkey 5.5.1)
+
+vzell's first live check of branch 3 on the Springsteen events list: no ❌ menu, no mark, no feed line. The script
+reads the feed when the kept copy is older than a day (`_BB_FEED_TTL_MS`), and GM storage is shared across sites, so
+the 0.20.0 file kept from the Brucebase checks of the day before served the MusicBrainz press, and that file has no
+`mb` map. The checklist said so ("Read again" on Brucebase), which is a step nobody should need. Fix:
+`_bbFeedLacksMap()` — a kept file without one of `_BB_FEED_MAPS` (`anchors`, `mb`) counts as old once it was read
+an hour ago; the hour bounds the reads if the published file itself lacks a map. The same trap existed for 1.2's
+`anchors`, unnoticed because the Brucebase checks then happened to read a fresh copy. Specs "a kept file older than
+1.3 …" and "… read within the hour, is not read again"; the "younger than a day" spec now keeps REAL4 (every map).

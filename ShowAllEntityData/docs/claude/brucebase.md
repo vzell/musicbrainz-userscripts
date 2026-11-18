@@ -2238,7 +2238,13 @@ Mockup https://claude.ai/artifact/65urMwgWSb6zq6xJa9Mf4x; vzell's answers of
   (`_BB_FEED_TTL_MS`) is read again on a Brucebase press
   (`startFetchingProcess()`, host-gated) or when a Brucebase window opens
   with Space (the site's `windowKick`; `_extExtracted()` on other hosts).
-  Never from a hover, and never on a MusicBrainz press. A failed read keeps
+  Never from a hover; on MusicBrainz only on the press of an event list or
+  an event page (feed 1.3, `sa_bb_feed_mb`). A kept copy that lacks a map
+  this script reads (`_BB_FEED_MAPS`: `anchors`, `mb`) was written by an
+  older BruceParser and is read again before its day is up, once it was
+  read an hour ago (`_bbFeedLacksMap()`): vzell's live check of 2026-11-18
+  kept 0.20.0's file from a Brucebase page, and the MusicBrainz press that
+  followed read nothing new and marked nothing. A failed read keeps
   the old copy, records why (`err`), and is not tried again within the hour
   (`_BB_FEED_RETRY_MS`); Retry and Read again (`force`) ask at once.
 - **Where it is kept:** the GM key `_BB_FEED_KEY` (`mb_sa_bb_feed`, `{at,

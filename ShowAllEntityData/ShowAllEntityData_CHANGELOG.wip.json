@@ -13,7 +13,7 @@
       {
         "label": "📝 Docs",
         "items": [
-          "Needs the feed of BruceParser 0.21.0 on GitHub; an older feed marks nothing on MusicBrainz."
+          "Needs the feed of BruceParser 0.21.0 on GitHub; an older feed marks nothing on MusicBrainz. A kept feed written by an older BruceParser (without a map this version reads) is read again on the next press once it was read an hour ago, instead of being used for the rest of its day."
         ]
       }
     ]

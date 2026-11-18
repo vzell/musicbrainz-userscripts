@@ -641,8 +641,14 @@ Mockup: https://claude.ai/artifact/Tip5CShMevQp8ycqBjjnRZ (=debug/bb-feed-mb-moc
 ** The browser check of feed v2, branch 3, for vzell (events of BruceParser's run of 2026-11-15; unverified live)
 
 The feed of BruceParser 0.21.0 is on GitHub since 2026-11-18 (=19e6258=; the raw file is byte-identical to the spec's
-fixture). Install the script from =feat/bb-feed-v2-mb=. A kept feed from before is used for up to a day: on Brucebase
-press ☰ → Brucebase → Read again, or wait for the first event list's press.
+fixture). Install the script from =feat/bb-feed-v2-mb=. A kept feed of an older BruceParser (no =mb= map) is read
+again on the first event list's press, once it was read an hour ago (since the fix below).
+
+First live check, 2026-11-18 (vzell's browser, the artist's events list): no mark, only the ⚠️ menu of the title
+style, no feed line. Cause: the 0.20.0 file kept from the Brucebase checks the day before, younger than a day, so the
+press read nothing and the kept copy had no =mb= map. Fixed by =_bbFeedLacksMap()= (a kept file without a map this
+script reads counts as old after an hour); spec "a kept file older than 1.3" and its hour bound, two mutations caught.
+Env: 2026-11-18T17:09+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.58.1) · Playwright Chromium · no Tampermonkey (GM stubs).
 
 | Page                                                                       | Step                                                                                       | Expected                                                                                                                                                       |
 |----------------------------------------------------------------------------+--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------|

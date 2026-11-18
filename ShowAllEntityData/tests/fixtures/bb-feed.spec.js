@@ -225,8 +225,10 @@ test.describe('the Brucebase feed: reading it', () => {
     });
 
     test('a kept feed younger than a day is not read again', async ({ page }) => {
-        await answerFeed(page, { body: JSON.stringify(REAL) });
-        await show1972(page, feedOn(REAL, 2 * 3600 * 1000));
+        // REAL4 has every map this script reads: a file without one is read
+        // again after an hour (the 1.3 test "a kept file older than 1.3").
+        await answerFeed(page, { body: JSON.stringify(REAL4) });
+        await show1972(page, feedOn(REAL4, 2 * 3600 * 1000));
         expect((await page.evaluate(() => window.__saTest.bbFeed())).date).toBe('2026-11-15');
         expect(await feedAsks(page), 'fresh: no request').toBe(0);
     });
@@ -797,6 +799,31 @@ test.describe('the Brucebase feed 1.3: MusicBrainz events', () => {
         await page.click('button[data-label="Show all Events for Artist"]');
         await waitForRenderComplete(page, { waitForAutoResize: false });
         await expect.poll(() => feedAsks(page)).toBe(1);
+    });
+
+    test('a kept file older than 1.3 (no mb map) is read on the press once it was read an hour ago, then marks; not within the hour', async ({ page }) => {
+        // vzell's live check of 2026-11-18: 0.20.0's file, kept from a
+        // Brucebase page less than a day before, and nothing marked.
+        const old = mbFeed();
+        delete old.mb;
+        await answerFeed(page, { body: JSON.stringify(mbFeed()) });
+        await loadMbEvents(page, { ...feedOn(old, 2 * 3600 * 1000), sa_bb_feed_mb: true });
+        expect(await feedAsks(page), 'not before the press').toBe(0);
+        await page.click('button[data-label="Show all Events for Artist"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        await expect.poll(() => feedAsks(page)).toBe(1);
+        await expect.poll(async () => (await mbCells(page)).map(r => r.mbid)).toEqual([EV(1), EV(2), EV(4)]);
+    });
+
+    test('a kept file without the mb map, read within the hour, is not read again', async ({ page }) => {
+        const old = mbFeed();
+        delete old.mb;
+        await answerFeed(page, { body: JSON.stringify(mbFeed()) });
+        await loadMbEvents(page, { ...feedOn(old, 10 * 60 * 1000), sa_bb_feed_mb: true });
+        await page.click('button[data-label="Show all Events for Artist"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        expect(await feedAsks(page)).toBe(0);
+        expect(await mbCells(page)).toEqual([]);
     });
 
     test('the MusicBrainz switch off: no read, no mark', async ({ page }) => {
