@@ -1,0 +1,127 @@
+[
+  {
+    "name": "the row does not carry its dependency",
+    "why": "Without data-vz-enabled-by applyEnabledBy() finds no row to grey out.",
+    "edits": [
+      {
+        "find": "                    if (cfg.enabledBy) row.dataset.vzEnabledBy = String(cfg.enabledBy);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog.spec.js",
+    "grep": "the row follows its checkbox live",
+    "expect": "fail",
+    "file": "../lib/VZ_MBLibrary.user.js"
+  },
+  {
+    "name": "a widget edit does not re-grey the rows",
+    "why": "The delegated body listener is how the row follows the checkbox live.",
+    "edits": [
+      {
+        "find": "                            refreshChangedMarks();\n                            applyEnabledBy();\n",
+        "replace": "                            refreshChangedMarks();\n"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog.spec.js",
+    "grep": "the row follows its checkbox live",
+    "expect": "fail",
+    "file": "../lib/VZ_MBLibrary.user.js"
+  },
+  {
+    "name": "opening and RESET do not grey the rows",
+    "why": "refreshSettingsView() runs on open and after both RESETs; without the call a row opened under an unticked checkbox looks enabled.",
+    "edits": [
+      {
+        "find": "                    refreshChangedMarks();\n                    applyEnabledBy();\n                    applyVisibility();",
+        "replace": "                    refreshChangedMarks();\n                    applyVisibility();"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog.spec.js",
+    "grep": "opened with the checkbox off",
+    "expect": "fail",
+    "file": "../lib/VZ_MBLibrary.user.js"
+  },
+  {
+    "name": "the row is not marked",
+    "why": "The class carries the grey look.",
+    "edits": [
+      {
+        "find": "                        row.classList.toggle('vz-setting-disabled', off);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog.spec.js",
+    "grep": "the row follows its checkbox live",
+    "expect": "fail",
+    "file": "../lib/VZ_MBLibrary.user.js"
+  },
+  {
+    "name": "the controls stay enabled",
+    "why": "A greyed row whose checkbox still toggles is a trap.",
+    "edits": [
+      {
+        "find": "                        row.querySelectorAll('input, select, textarea, button').forEach(el => { el.disabled = off; });\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog.spec.js",
+    "grep": "the row follows its checkbox live",
+    "expect": "fail",
+    "file": "../lib/VZ_MBLibrary.user.js"
+  },
+  {
+    "name": "the tooltip does not say what it needs",
+    "why": "The label tells why the row is grey.",
+    "edits": [
+      {
+        "find": "                            label.title = `Needs \"${depCfg.label}\" ticked.` + (label.dataset.vzTitle ? `\\n\\n${label.dataset.vzTitle}` : '');",
+        "replace": "                            label.title = label.dataset.vzTitle;"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog.spec.js",
+    "grep": "the row follows its checkbox live",
+    "expect": "fail",
+    "file": "../lib/VZ_MBLibrary.user.js"
+  },
+  {
+    "name": "the tooltip is not given back",
+    "why": "Ticked again, the label keeps saying it needs the other setting.",
+    "edits": [
+      {
+        "find": "                            label.title = label.dataset.vzTitle;\n                            delete label.dataset.vzTitle;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog.spec.js",
+    "grep": "the row follows its checkbox live",
+    "expect": "fail",
+    "file": "../lib/VZ_MBLibrary.user.js"
+  },
+  {
+    "name": "a dependency that is not a checkbox greys the row",
+    "why": "Only a checkbox can be ticked; any other type is ignored. No schema entry in ShowAllEntityData names a non-checkbox, so no spec can see this guard: recorded as expect pass.",
+    "edits": [
+      {
+        "find": "                        if (!depCfg || depCfg.type !== 'checkbox' || !ctl) return;",
+        "replace": "                        if (!depCfg || !ctl) return;"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog.spec.js",
+    "grep": "the row follows its checkbox live",
+    "expect": "pass",
+    "file": "../lib/VZ_MBLibrary.user.js"
+  },
+  {
+    "name": "ShowAllEntityData does not name the dependency",
+    "why": "The schema line is what makes sa_pop_mb_eh_images follow sa_pop_mb_image.",
+    "edits": [
+      {
+        "find": "            enabledBy: 'sa_pop_mb_image',\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog.spec.js",
+    "grep": "the row follows its checkbox live",
+    "expect": "fail"
+  }
+]

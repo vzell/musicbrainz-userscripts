@@ -29,6 +29,7 @@ const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('../support/test');
 const { loadUserscriptPage, addRequiredLibs, MB_LIBRARY_PATH, USERSCRIPT_PATH } = require('../support/loadPage');
+const { installEhArtistImage, routeEhImages, ehCalls, EH_BRUCE } = require('../support/ehArtistImage');
 
 const RG_URL = 'https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c';
 const FIXTURE = path.join(__dirname, 'releasegroup-releases-multirow-catalog.html');
@@ -394,5 +395,119 @@ test.describe('every picture of the links (sa_entity_images, mockup B4)', () => 
         await ctrlHover(page, labelLink(page));
         await expect(card(page).locator('.mb-pop-pic img')).toHaveAttribute('src', /3\.bp\.blogspot\.com/);
         await expect(card(page).locator('.mb-pop-pic-more')).toHaveText('+3');
+    });
+});
+
+// Event Horizon's pictures (convention C8, majkinetor/musicbrainz-userscripts
+// #938; mockup https://claude.ai/artifact/6hYoqwr8EEQdNs2Bo8tvfD, approved
+// 2026-11-18). Event Horizon publishes `MBU.artistImage`; a stand-in
+// (tests/support/ehArtistImage.js) logs every call. Pinned: SAED's pictures
+// first, Event Horizon's after them (its Wikipedia picture left out when SAED
+// shows a Commons file), marked "via Event Horizon" and EH on the
+// thumbnails; `findAll` only on Space and only for an artist or a label; the
+// card shows what Event Horizon already knows (`cached`), asking nothing; the
+// setting switches all of it off; a failure, a throw or no answer leaves
+// SAED's pictures, with no error.
+test.describe('Event Horizon\'s pictures (sa_pop_mb_eh_images, C8)', () => {
+    const ehAlts = (page) => winPic(page).locator('.mb-ei-strip a img').evaluateAll(imgs => imgs.map(i => i.alt));
+    const COMMONS = 'https://commons.wikimedia.org/wiki/File:Bruce_Springsteen_-_Roskilde_Festival_2012.jpg';
+
+    test('Space on an artist: SAED\'s picture first, then Event Horizon\'s in its order, marked; its Wikipedia picture left out', async ({ page }) => {
+        await installEhArtistImage(page.context());
+        await routeEhImages(page.context());
+        await open(page);
+        await pin(page, artistLink(page));
+        await expect(winPic(page).locator('.mb-ei-strip a')).toHaveCount(3, QUEUE);
+        expect(await ehAlts(page)).toEqual(['Wikimedia Commons', 'Discogs · via Event Horizon', 'Deezer · via Event Horizon']);
+        await expect(winPic(page).locator('.mb-ei-strip .mb-ei-ehtag')).toHaveCount(2);
+        await expect(winPic(page).locator(`img[src="${EH_BRUCE[2].src}"]`), 'the same photograph as the Commons file').toHaveCount(0);
+        const calls = await ehCalls(page, 'findAll');
+        expect(calls, 'asked once, on Space').toHaveLength(1);
+        expect(calls[0].mbid).toBe(ARTIST);
+        expect(calls[0].urls, 'the relationship URLs as plain strings').toContain(COMMONS);
+
+        await winPic(page).locator('.mb-ei-strip a').nth(1).click();
+        await expect(winPic(page).locator('figcaption')).toContainText('Discogs');
+        await expect(winPic(page).locator('figcaption .mb-ei-via')).toHaveText('via Event Horizon');
+        await expect(dialog(page).locator('.mb-dp-spin')).toHaveCount(0, QUEUE);
+        await winPic(page).locator('img.mb-dp-xcover').click();
+        const viewer = page.locator('#mb-art-viewer');
+        await expect(viewer).toBeVisible();
+        await expect(viewer.locator('[data-mb-artv-page]')).toHaveAttribute('href', 'https://www.discogs.com/artist/57103');
+        await expect(viewer.locator('[data-mb-artv-page]')).toContainText('Open on Discogs');
+        // A picture that is only in the strip carries the EH tag inside its
+        // link: the viewer's words for it are still the provider's.
+        await page.keyboard.press('ArrowRight');
+        await expect(viewer.locator('.mb-artv-pos')).toHaveText('3 / 3');
+        await expect(viewer.locator('.mb-artv-info')).toContainText('Deezer · via Event Horizon');
+    });
+
+    test('a hover asks Event Horizon nothing; the card shows the picture it already knows', async ({ page }) => {
+        await installEhArtistImage(page.context(), { cached: EH_BRUCE[0] });
+        await routeEhImages(page.context());
+        await open(page);
+        await ctrlHover(page, artistLink(page));
+        await expect(card(page).locator('.mb-pop-pic img')).toHaveAttribute('src', EH_BRUCE[0].src);
+        await expect(card(page).locator('.mb-ei-ehtag'), 'no mark on the card').toHaveCount(0);
+        expect(await ehCalls(page, 'findAll'), 'a hover never asks').toEqual([]);
+        expect((await ehCalls(page, 'cached')).length).toBeGreaterThan(0);
+    });
+
+    test('switched off: Event Horizon is not called at all, the pictures are SAED\'s', async ({ page }) => {
+        await installEhArtistImage(page.context(), { cached: EH_BRUCE[0] });
+        await routeEhImages(page.context());
+        await open(page, { settings: { sa_pop_mb_eh_images: false } });
+        await ctrlHover(page, artistLink(page));
+        await expect(card(page).locator('.mb-tt-foot')).toBeVisible();
+        await expect(card(page).locator('.mb-pop-pic')).toHaveCount(0);
+        await page.keyboard.press('Space');
+        await expect(dialog(page)).toBeVisible();
+        await expect(winPic(page).locator('img.mb-dp-xcover')).toHaveAttribute('src', /Bruce_Springsteen_-_Roskilde_Festival_2012\.jpg/, QUEUE);
+        await expect(winPic(page).locator('.mb-ei-strip'), 'one picture, SAED\'s').toHaveCount(0);
+        expect(await ehCalls(page), 'neither findAll nor cached').toEqual([]);
+    });
+
+    test('a place is not Event Horizon\'s: never asked', async ({ page }) => {
+        await installEhArtistImage(page.context(), { cached: EH_BRUCE[0] });
+        await routeEhImages(page.context());
+        await open(page);
+        await page.evaluate((h) => {
+            const a = document.createElement('a');
+            a.href = h;
+            a.className = 'pop-probe';
+            a.textContent = 'The Stone Pony';
+            document.querySelector('table.tbl tbody tr td:first-child').append(' ', a);
+        }, `/place/${PLACE}`);
+        await pin(page, page.locator('a.pop-probe'));
+        await expect(winPic(page)).toBeVisible(QUEUE);
+        await expect(dialog(page).locator('.mb-dp-spin')).toHaveCount(0, QUEUE);
+        expect(await ehCalls(page), 'a place asks Event Horizon nothing').toEqual([]);
+    });
+
+    for (const mode of ['reject', 'throw']) {
+        test(`Event Horizon fails (${mode}): SAED's picture, no error line`, async ({ page }) => {
+            await installEhArtistImage(page.context(), { mode });
+            await routeEhImages(page.context());
+            await open(page);
+            await pin(page, artistLink(page));
+            await expect(winPic(page).locator('img.mb-dp-xcover')).toHaveAttribute('src', /Bruce_Springsteen_-_Roskilde_Festival_2012\.jpg/, QUEUE);
+            await expect(dialog(page).locator('.mb-pop-xpic-eh-wait')).toHaveCount(0);
+            await expect(winPic(page).locator('.mb-ei-strip'), 'only SAED\'s picture').toHaveCount(0);
+            await expect(dialog(page)).not.toContainText('Event Horizon');
+            expect(await ehCalls(page, 'findAll')).toHaveLength(1);
+        });
+    }
+
+    test('Event Horizon never answers: a line while it asks, gone after the time limit; SAED\'s picture stays', async ({ page }) => {
+        await page.clock.install();
+        await installEhArtistImage(page.context(), { mode: 'hang' });
+        await routeEhImages(page.context());
+        await open(page);
+        await pin(page, artistLink(page));
+        await expect(winPic(page).locator('img.mb-dp-xcover')).toHaveAttribute('src', /Bruce_Springsteen_-_Roskilde_Festival_2012\.jpg/, QUEUE);
+        await expect(winPic(page).locator('.mb-pop-xpic-eh-wait')).toHaveText(/Asking Event Horizon's sources/);
+        await page.clock.fastForward(21000);
+        await expect(dialog(page).locator('.mb-pop-xpic-eh-wait')).toHaveCount(0, QUEUE);
+        await expect(winPic(page).locator('img.mb-dp-xcover')).toHaveAttribute('src', /Bruce_Springsteen_-_Roskilde_Festival_2012\.jpg/);
     });
 });

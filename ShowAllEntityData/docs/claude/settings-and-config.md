@@ -185,6 +185,20 @@ stored collapse state. A filter opens the sections holding matches WITHOUT
 touching their stored state, so clearing it restores the user's own layout;
 mutations exist for both directions of getting that wrong.
 
+**Dependent settings** (`enabledBy`, VZ_MBLibrary 4.6.0, 2026-11-18). A schema
+entry may name another setting's key, a checkbox: `enabledBy: 'sa_pop_mb_image'`.
+The dialog greys that row out while the checkbox is unticked IN THE DIALOG
+(`applyEnabledBy()`, run with the changed marks: every widget edit, both
+RESETs, opening): `vz-setting-disabled`, `aria-disabled`, its controls
+`disabled`, and its label's tooltip "Needs "<label>" ticked.". Widget-only:
+the value stays, SAVE stores it as before. **The userscript must still ignore
+the setting itself while the checkbox is off**, because a published library
+can be older (it shows the row as usual) and an import or the GM storage can
+hold any value. A key naming no checkbox leaves the row as it is. First user:
+`sa_pop_mb_eh_images` (docs/claude/sidebar.md, "Event Horizon's pictures
+(C8)"). Specs: settings-dialog.spec.js "enabledBy (VZ_MBLibrary 4.6.0)";
+mutations: `scripts/mutations/vz-lib-enabled-by.json`.
+
 **Select settings** (`type: 'select'`, VZ_MBLibrary 4.4.0, 2026-10-15). A fixed
 set of choices, drawn as segmented buttons. Design and mockups:
 `https://claude.ai/artifact/9NX1da57DZZrKRShQJ2V78` (picked: B, segmented).

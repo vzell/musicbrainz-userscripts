@@ -1,0 +1,249 @@
+[
+  {
+    "name": "the setting does not switch Event Horizon off",
+    "why": "sa_pop_mb_eh_images is the user's off switch: ignored, the card and the window call Event Horizon anyway.",
+    "edits": [
+      {
+        "find": "        if (Lib.settings.sa_pop_mb_image === false || Lib.settings.sa_pop_mb_eh_images === false) return null;",
+        "replace": "        if (Lib.settings.sa_pop_mb_image === false) return null;"
+      }
+    ],
+    "spec": "tests/fixtures/pop-mb-image.spec.js",
+    "grep": "switched off: Event Horizon is not called at all",
+    "expect": "fail"
+  },
+  {
+    "name": "the setting does not switch the heading's Event Horizon picture off",
+    "why": "The same switch, seen from the picture beside the name.",
+    "edits": [
+      {
+        "find": "        if (Lib.settings.sa_pop_mb_image === false || Lib.settings.sa_pop_mb_eh_images === false) return null;",
+        "replace": "        if (Lib.settings.sa_pop_mb_image === false) return null;"
+      }
+    ],
+    "spec": "tests/fixtures/entity-images.spec.js",
+    "grep": "switched off: not called, the four logos only",
+    "expect": "fail"
+  },
+  {
+    "name": "any kind is asked",
+    "why": "Event Horizon looks up artists' pictures and labels' logos only; a place window must not call findAll.",
+    "edits": [
+      {
+        "find": "        if (!_MB_EH_IMG_KINDS.has(t.type)) return;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/pop-mb-image.spec.js",
+    "grep": "a place is not Event Horizon",
+    "expect": "fail"
+  },
+  {
+    "name": "a hover asks Event Horizon to look the entity up",
+    "why": "A card never asks anybody: only cached() (or a window's answer of this page load). findAll from a hover would make Event Horizon contact providers.",
+    "edits": [
+      {
+        "find": "        const images = own.concat(_ehExtra(own, _ehImagesKnown(t.type, t.id)));",
+        "replace": "        _ehImagesLoad(t, [], false, repaint);\n        const images = own.concat(_ehExtra(own, _ehImagesKnown(t.type, t.id)));"
+      }
+    ],
+    "spec": "tests/fixtures/pop-mb-image.spec.js",
+    "grep": "a hover asks Event Horizon nothing",
+    "expect": "fail"
+  },
+  {
+    "name": "the card ignores what Event Horizon knows",
+    "why": "Without the concat the card shows no picture when SAED has none kept.",
+    "edits": [
+      {
+        "find": "        const images = own.concat(_ehExtra(own, _ehImagesKnown(t.type, t.id)));",
+        "replace": "        const images = own;"
+      }
+    ],
+    "spec": "tests/fixtures/pop-mb-image.spec.js",
+    "grep": "a hover asks Event Horizon nothing",
+    "expect": "fail"
+  },
+  {
+    "name": "the heading ignores what Event Horizon knows",
+    "why": "The picture beside the name takes Event Horizon's cached logo last.",
+    "edits": [
+      {
+        "find": "        images = images.concat(_ehExtra(images, _ehImagesKnown(ent.type, ent.id)));",
+        "replace": "        images = images.slice();"
+      }
+    ],
+    "spec": "tests/fixtures/entity-images.spec.js",
+    "grep": "the logo Event Horizon knows joins the turn",
+    "expect": "fail"
+  },
+  {
+    "name": "the page asks Event Horizon to look the entity up",
+    "why": "A page load never calls findAll: only cached().",
+    "edits": [
+      {
+        "find": "        images = images.concat(_ehExtra(images, _ehImagesKnown(ent.type, ent.id)));",
+        "replace": "        _ehImagesLoad(ent, [], false, null);\n        images = images.concat(_ehExtra(images, _ehImagesKnown(ent.type, ent.id)));"
+      }
+    ],
+    "spec": "tests/fixtures/entity-images.spec.js",
+    "grep": "the logo Event Horizon knows joins the turn",
+    "expect": "fail"
+  },
+  {
+    "name": "Event Horizon's Wikipedia picture shown beside SAED's Commons file",
+    "why": "As a rule the same photograph twice.",
+    "edits": [
+      {
+        "find": "        return (eh || []).filter(im => im && !(hasCommons && im.key === 'wikipedia') && !seen.has(im.src) && seen.add(im.src));",
+        "replace": "        return (eh || []).filter(im => im && !seen.has(im.src) && seen.add(im.src));"
+      }
+    ],
+    "spec": "tests/fixtures/pop-mb-image.spec.js",
+    "grep": "Space on an artist: SAED's picture first",
+    "expect": "fail"
+  },
+  {
+    "name": "Event Horizon's pictures before SAED's",
+    "why": "vzell's order: SAED's own pictures first, Event Horizon's after them.",
+    "edits": [
+      {
+        "find": "        const images = (rec.images || []).concat(eh && eh.status === 'done' ? _ehExtra(rec.images || [], eh.images) : []);",
+        "replace": "        const images = (eh && eh.status === 'done' ? _ehExtra(rec.images || [], eh.images) : []).concat(rec.images || []);"
+      }
+    ],
+    "spec": "tests/fixtures/pop-mb-image.spec.js",
+    "grep": "Space on an artist: SAED's picture first",
+    "expect": "fail"
+  },
+  {
+    "name": "a rejected answer is not caught",
+    "why": "Promise.race rejects with it: the state stays loading, the line stays, and the rejection goes unhandled.",
+    "edits": [
+      {
+        "find": "        Promise.race([ask.catch(() => null), timeout]).then((res) => {",
+        "replace": "        Promise.race([ask, timeout]).then((res) => {"
+      }
+    ],
+    "spec": "tests/fixtures/pop-mb-image.spec.js",
+    "grep": "Event Horizon fails \\(reject\\)",
+    "expect": "fail"
+  },
+  {
+    "name": "a throwing call is not caught",
+    "why": "In Firefox the object can come wrapped across sandboxes, and a call can throw at once.",
+    "edits": [
+      {
+        "find": "        let ask;\n        try {\n            ask = Promise.resolve(api.findAll(t.id, _ehRelUrls(relations)));\n        } catch (e) {\n            ask = Promise.resolve(null);\n        }",
+        "replace": "        let ask;\n        ask = Promise.resolve(api.findAll(t.id, _ehRelUrls(relations)));"
+      }
+    ],
+    "spec": "tests/fixtures/pop-mb-image.spec.js",
+    "grep": "Event Horizon fails \\(throw\\)",
+    "expect": "fail"
+  },
+  {
+    "name": "no time limit",
+    "why": "An answer that never comes keeps the line for good.",
+    "edits": [
+      {
+        "find": "    const _EH_IMG_TIMEOUT_MS = 20000;",
+        "replace": "    const _EH_IMG_TIMEOUT_MS = 600000;"
+      }
+    ],
+    "spec": "tests/fixtures/pop-mb-image.spec.js",
+    "grep": "Event Horizon never answers",
+    "expect": "fail"
+  },
+  {
+    "name": "no line while Event Horizon asks",
+    "why": "Open question 4: one line under the strip until it answers.",
+    "edits": [
+      {
+        "find": "        const ehWait = eh && eh.status === 'loading'",
+        "replace": "        const ehWait = false"
+      }
+    ],
+    "spec": "tests/fixtures/pop-mb-image.spec.js",
+    "grep": "Event Horizon never answers",
+    "expect": "fail"
+  },
+  {
+    "name": "no EH tag on Event Horizon's thumbnails",
+    "why": "Open question 2: a small EH on its thumbnails in the window's strip.",
+    "edits": [
+      {
+        "find": "        const ehTag = im => (im.via === 'eh' ? '<span class=\"mb-ei-ehtag\" aria-hidden=\"true\">EH</span>' : '');",
+        "replace": "        const ehTag = im => '';"
+      }
+    ],
+    "spec": "tests/fixtures/pop-mb-image.spec.js",
+    "grep": "Space on an artist: SAED's picture first",
+    "expect": "fail"
+  },
+  {
+    "name": "no \"via Event Horizon\" in the caption",
+    "why": "Open question 1: the caption names the provider and marks it.",
+    "edits": [
+      {
+        "find": "                ' <span class=\"mb-ei-via\">via Event Horizon</span>'",
+        "replace": "                ''"
+      }
+    ],
+    "spec": "tests/fixtures/pop-mb-image.spec.js",
+    "grep": "Space on an artist: SAED's picture first",
+    "expect": "fail"
+  },
+  {
+    "name": "the window's viewer says \"Open on Commons\" for a provider's page",
+    "why": "An Event Horizon picture links its provider's page and names it.",
+    "edits": [
+      {
+        "find": "pageLabel: l.dataset.mbArtvPageLabel || 'Open on Commons' }",
+        "replace": "pageLabel: 'Open on Commons' }"
+      }
+    ],
+    "spec": "tests/fixtures/pop-mb-image.spec.js",
+    "grep": "Space on an artist: SAED's picture first",
+    "expect": "fail"
+  },
+  {
+    "name": "the viewer takes the EH tag as the picture's words",
+    "why": "The strip's links carry the EH span; the viewer must read the image's alt.",
+    "edits": [
+      {
+        "find": "            const label = l.querySelector('span:not(.mb-ei-ehtag)');",
+        "replace": "            const label = l.querySelector('span');"
+      }
+    ],
+    "spec": "tests/fixtures/pop-mb-image.spec.js",
+    "grep": "Space on an artist: SAED's picture first",
+    "expect": "fail"
+  },
+  {
+    "name": "no ring on Event Horizon's dot",
+    "why": "Open question 2: a blue ring on its dot beside the name.",
+    "edits": [
+      {
+        "find": "                    const cls = [i ? '' : 'mb-ei-on', im.via === 'eh' ? 'mb-ei-eh' : ''].filter(Boolean).join(' ');",
+        "replace": "                    const cls = [i ? '' : 'mb-ei-on'].filter(Boolean).join(' ');"
+      }
+    ],
+    "spec": "tests/fixtures/entity-images.spec.js",
+    "grep": "the logo Event Horizon knows joins the turn",
+    "expect": "fail"
+  },
+  {
+    "name": "the heading's viewer says \"Open the link\" for a provider's page",
+    "why": "It names the provider, as the window's does.",
+    "edits": [
+      {
+        "find": "pageLabel: im.file ? 'Open on Commons' : im.via === 'eh' ? `Open on ${im.from}` : 'Open the link',",
+        "replace": "pageLabel: im.file ? 'Open on Commons' : 'Open the link',"
+      }
+    ],
+    "spec": "tests/fixtures/entity-images.spec.js",
+    "grep": "the logo Event Horizon knows joins the turn",
+    "expect": "fail"
+  }
+]
