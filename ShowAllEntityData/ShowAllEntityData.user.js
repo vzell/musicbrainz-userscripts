@@ -37929,6 +37929,53 @@
         };
     }
 
+    // --- BruceBaseParser on the same page (org/bbp-parity.org, "Coexistence") ---
+    // BruceBaseParser (vzell's own userscript, which this script replaces)
+    // changes a Brucebase page at its load: it wraps a year page's entries
+    // (the year table then finds none), puts " ⚠️" into a show's tab labels
+    // (the setlist and cast tables are lost), adds its On stage tags to
+    // `.page-tags` and glyphs to the title. A table made from such a page is
+    // empty or wrong, so SAED stands aside there and says why (vzell,
+    // 2026-11-19; mockup https://claude.ai/artifact/Mji5y7i2vZzTkK1WQ4JWi7,
+    // questions 1-3): checked when the buttons are made and at every press.
+
+    /**
+     * Whether BruceBaseParser runs on this page. It puts `div#bb-tooltip`
+     * into the body first thing (`createTooltipElement()`, before it changes
+     * anything), on every page it runs on; this script has no element of
+     * that id. Brucebase only.
+     *
+     * @returns {boolean}
+     */
+    function _bbBbpPresent() {
+        return _isBbHost && !!document.getElementById('bb-tooltip');
+    }
+
+    /**
+     * Stands aside for BruceBaseParser: the SAED button's actions give way to
+     * one muted notice segment, "🎛 BruceBaseParser is on this page", whose
+     * hover text says why and what to do. The buttons leave the bar (their
+     * Load rows and Ctrl+M digits still reach `startFetchingProcess()`,
+     * which asks `_bbBbpPresent()` first). Once per page.
+     *
+     * @param {?Element} [actions] - The SAED button's actions area; default: the bar's.
+     * @returns {void}
+     */
+    function _bbBbpStandAside(actions) {
+        const area = actions || (_saedBarEl ? _saedBarEl.querySelector('[data-mb-area="actions"]') : null);
+        if (!area || area.querySelector('.mb-bb-bbp-notice')) return;
+        Array.from(area.children).forEach(el => el.remove());
+        const seg = document.createElement('span');
+        seg.className = 'mb-seg mb-seg-label mb-bb-bbp-notice';
+        seg.textContent = '🎛 BruceBaseParser is on this page';
+        _setTip(seg, 'BruceBaseParser has already changed this page (its sections, tab labels and tags), so a table ' +
+            'made from it now would be empty or wrong. Link previews, the BruceParser feed and every other page keep ' +
+            'working. Switch BruceBaseParser off for brucebase.wikidot.com in Tampermonkey and reload to get this ' +
+            'page\'s buttons back.');
+        area.appendChild(seg);
+        Lib.debug('init', 'BruceBaseParser runs on this page (#bb-tooltip): the Brucebase buttons stand aside.');
+    }
+
     // --- A show's expected tags against its actual tags (org/bbp-parity.org, batch 3) ---
     // BruceBaseParser's computeExpectedTags(), four families of it: the date
     // parts, the day letter, the event type and the premiere count. Probe
@@ -115308,6 +115355,9 @@ a { color: #1565c0; }`;
         saedActions.appendChild(eb);
         allActionButtons.push(eb);
     });
+    // BruceBaseParser on the same page: its changes would make every table
+    // here empty or wrong, so the actions stand aside (`_bbBbpStandAside()`).
+    if (/^bb-/.test(pageType) && _bbBbpPresent()) _bbBbpStandAside(saedActions);
 
     // The same actions as rows of the SAED menu's "Load" group, shown only on
     // a narrow screen, where the action segments leave the bar
@@ -135733,6 +135783,13 @@ a { color: #1565c0; }`;
      */
     async function startFetchingProcess(e, buttonConfig, baseDef, resumeFrom = null) {
         const _isResume = !!resumeFrom;
+
+        // BruceBaseParser started after the buttons were made (Tampermonkey
+        // ran it second): this press makes nothing, the actions stand aside.
+        if (_bbBbpPresent()) {
+            _bbBbpStandAside();
+            return;
+        }
 
         // Reload the page if a fetch process has already run to fix column-level filter unresponsiveness
         //

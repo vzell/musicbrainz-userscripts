@@ -30388,3 +30388,21 @@ fixture run found that `retail:tracks-ii` shows no "Show the release" button (it
   `filter-sliced.spec.js` "a pass replaced by the ✕ clear writes nothing" (tbody writes 42, expected 0), a timing
   test of the MusicBrainz typing filter; alone 42 of 42 (`--repeat-each 3`), as the same spec family before (entry
   above, `filter-sliced` "a pass outdated by a newer key never draws"). Nothing of this branch is on that path.
+
+## 2026-11-19 — BruceBaseParser and SAED on one Brucebase page: SAED stands aside (fix/bb-bbp-coexistence)
+Env: 2026-11-19T00:46:09+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (chromium-fixtures), no Tampermonkey (GM stubs); BruceBaseParser 3.33 at `0e4e8a0`
+
+Track A idea 6 (org/bbp-parity.org, "Closing the matrix"). Code reading found BruceBaseParser changes a page at
+its load in ways that break SAED's readers; the new spec, which loads the real BruceBaseParser beside SAED
+(`loadUserscriptPage()`'s new `extraScripts`), confirmed the year page: the 2016 fixture has 4 entry headings as
+direct `<p>` children of `#page-content` (what `_bbYearEntries()` reads) without BruceBaseParser and 0 with it
+(`wrapYearSections()` moves them into `div.bb-section-processed`), so "Show all events" would convert nothing.
+The show-page breakages (" ⚠️" in tab labels, its On stage tags inside `.page-tags`, title glyphs) are from code
+reading only (BruceBaseParser.user.js 3606/3636, 9771, 11382-11469); BruceBaseParser marks a show page only after
+three requests, which the fixture answers with 404s.
+
+Fix (vzell: SAED stands aside, says why): `_bbBbpPresent()` reads BruceBaseParser's first element, `div#bb-tooltip`
+(created before it changes anything, on every page it runs on), and `_bbBbpStandAside()` replaces the SAED button's
+actions with "🎛 BruceBaseParser is on this page"; asked when the buttons are made and at the top of
+`startFetchingProcess()`. Spec `bb-bbp-coexistence.spec.js` 7 of 7; 7 mutations, each failing its test (the
+MusicBrainz one by a timeout: its press never rendered).

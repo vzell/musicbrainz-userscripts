@@ -1,0 +1,93 @@
+[
+    {
+        "name": "BruceBaseParser is never seen",
+        "why": "_bbBbpPresent() reads BruceBaseParser's first element, div#bb-tooltip.",
+        "edits": [
+            {
+                "find": "        return _isBbHost && !!document.getElementById('bb-tooltip');",
+                "replace": "        return false;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-bbp-coexistence.spec.js",
+        "grep": "start mark before SAED",
+        "expect": "fail"
+    },
+    {
+        "name": "BruceBaseParser is seen on MusicBrainz too",
+        "why": "The guard is Brucebase's only.",
+        "edits": [
+            {
+                "find": "        return _isBbHost && !!document.getElementById('bb-tooltip');",
+                "replace": "        return !!document.getElementById('bb-tooltip');"
+            }
+        ],
+        "spec": "tests/fixtures/bb-bbp-coexistence.spec.js",
+        "grep": "on MusicBrainz",
+        "expect": "fail"
+    },
+    {
+        "name": "the buttons are made beside BruceBaseParser",
+        "why": "Checked when the buttons are made (question 2).",
+        "edits": [
+            {
+                "find": "    if (/^bb-/.test(pageType) && _bbBbpPresent()) _bbBbpStandAside(saedActions);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-bbp-coexistence.spec.js",
+        "grep": "start mark before SAED",
+        "expect": "fail"
+    },
+    {
+        "name": "a press after BruceBaseParser started makes a table",
+        "why": "Checked again at every press (question 2).",
+        "edits": [
+            {
+                "find": "        if (_bbBbpPresent()) {\n            _bbBbpStandAside();\n            return;\n        }\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-bbp-coexistence.spec.js",
+        "grep": "started after SAED",
+        "expect": "fail"
+    },
+    {
+        "name": "the real BruceBaseParser second: a press makes a table",
+        "why": "The same guard against the real script: what a year table made from its page looks like is the failure message.",
+        "edits": [
+            {
+                "find": "        if (_bbBbpPresent()) {\n            _bbBbpStandAside();\n            return;\n        }\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-bbp-coexistence.spec.js",
+        "grep": "BruceBaseParser second",
+        "expect": "fail"
+    },
+    {
+        "name": "the buttons stay beside the notice",
+        "why": "The notice takes the buttons' place (question 1).",
+        "edits": [
+            {
+                "find": "        Array.from(area.children).forEach(el => el.remove());\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-bbp-coexistence.spec.js",
+        "grep": "start mark before SAED",
+        "expect": "fail"
+    },
+    {
+        "name": "the notice has no hover text",
+        "why": "It says why and what to do.",
+        "edits": [
+            {
+                "find": "        _setTip(seg, 'BruceBaseParser has already changed this page",
+                "replace": "        if (0) _setTip(seg, 'BruceBaseParser has already changed this page"
+            }
+        ],
+        "spec": "tests/fixtures/bb-bbp-coexistence.spec.js",
+        "grep": "start mark before SAED",
+        "expect": "fail"
+    }
+]

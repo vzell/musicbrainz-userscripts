@@ -270,10 +270,18 @@ const MB_BROWSER_CHECK_STUB =
  * function's setup.
  *
  * @param {import('@playwright/test').Page} page
- * @param {{ url: string, fixtureFile?: string, testMode?: boolean, settingsOverride?: Object<string, *> }} opts
+ * `extraScripts` puts other userscripts on the page as Tampermonkey would
+ * run them beside this one: each `{ path, when }` is injected after the
+ * library (so a script that uses `VZ_MBLibrary`, as BruceBaseParser does,
+ * finds it; the library is never injected twice) and `when: 'before'` or
+ * `'after'` this userscript (org/bbp-parity.org, "Coexistence").
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {{ url: string, fixtureFile?: string, testMode?: boolean, settingsOverride?: Object<string, *>,
+ *     extraScripts?: Array<{path: string, when: ('before'|'after')}> }} opts
  * @returns {Promise<void>}
  */
-async function loadUserscriptPage(page, { url, fixtureFile, testMode, settingsOverride }) {
+async function loadUserscriptPage(page, { url, fixtureFile, testMode, settingsOverride, extraScripts = [] }) {
     if (testMode) {
         await page.context().addInitScript({ content: 'window.__SA_TEST_MODE__ = true;' });
     }
@@ -322,7 +330,9 @@ async function loadUserscriptPage(page, { url, fixtureFile, testMode, settingsOv
 
     await addRequiredLibs(page);
     await page.addScriptTag({ path: MB_LIBRARY_PATH });
+    for (const s of extraScripts.filter(x => x.when === 'before')) await page.addScriptTag({ path: s.path });
     await page.addScriptTag({ path: USERSCRIPT_PATH });
+    for (const s of extraScripts.filter(x => x.when === 'after')) await page.addScriptTag({ path: s.path });
 }
 
 /**

@@ -2289,6 +2289,37 @@ registry row, no table column (these pages are no row of any list).
   no "Show the release" button (its page has no table to show): its mark
   is tested in the window.
 
+## BruceBaseParser on the same page (bbp-parity, "Coexistence", 2026-11-19)
+
+org/bbp-parity.org, "Closing the matrix"; mockup
+https://claude.ai/artifact/Mji5y7i2vZzTkK1WQ4JWi7 (questions 1-3; vzell: all as
+recommended). BruceBaseParser (vzell's older Brucebase script, which this one
+replaces) changes a page at its load, and a table made from it is empty or
+wrong: a year page's entries move into `div.bb-section-processed`, so
+`_bbYearEntries()` finds none; " ⚠️" in a tab label loses the Setlist and cast
+tables (`_bbNavTabs()`, `_BB_EVENT_CAST_TABS` are anchored); its On stage tags
+inside `.page-tags` count as the page's own (`_bbRawTags()`); its title glyphs
+reach the byline and the feed's live title.
+
+- **The rule:** SAED stands aside. `_bbBbpPresent()` asks for `div#bb-tooltip`,
+  BruceBaseParser's first act on every page it runs on (`createTooltipElement()`,
+  before it changes anything; SAED has no element of that id), on
+  `_isBbHost` only. `_bbBbpStandAside()` empties the SAED button's actions
+  area and puts one muted segment there, "🎛 BruceBaseParser is on this page",
+  with a hover text (why, and switch it off in Tampermonkey). Asked when the
+  buttons are made (a `bb-*` pageType) and first thing in
+  `startFetchingProcess()`, so either run order ends the same way: a press
+  after BruceBaseParser started makes no table.
+- **Untouched:** link previews and windows, the feed, every page BruceBaseParser
+  does not run on, MusicBrainz.
+- **Not handled:** Ctrl+M and `?`, which both scripts claim (whichever runs
+  first wins): a sentence in HELP, no code (BruceBaseParser retires).
+- Tests: `tests/fixtures/bb-bbp-coexistence.spec.js` (the stand-in
+  `thirdPartyScripts/bbp-start-mark.js` everywhere; the real BruceBaseParser
+  where its checkout is, `BBP_USERSCRIPT`), `loadUserscriptPage()`'s
+  `extraScripts` (docs/claude/testing-playwright.md); mutations
+  `scripts/mutations/bb-bbp-coexistence.json`.
+
 ## The BruceParser feed (bbp-parity, "The feed, version 1", 2026-11-16)
 
 Env: 2026-11-16T11:53:49+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux
