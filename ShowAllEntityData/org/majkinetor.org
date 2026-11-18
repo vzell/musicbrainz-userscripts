@@ -1250,8 +1250,8 @@ CLOSED: [2026-11-08 Sun]
 ** TODO The shared gate's clock: a step of the wall clock moves every script's slots (draft for vzell to send)
 
 - *Who fixes it*: a *shared convention* (both sides read and write =mbu:mb-gate=), with a reader-side change that
-  keeps =MBN_VERSION = 1=. SAED's half is *ours*, and still open: the port above (9.99.1650) did not touch the
-  clock.
+  keeps =MBN_VERSION = 1=. SAED's half is *ours*, and shipped in 9.99.1651 (see "SAED's half" below); upstream's
+  half waits on his answer to the posted reply.
 - *What* (rechecked on petri, 2026-11-18T20:32:41+01:00, code reading, n/a browser; his repo at =687b8b1=, where
   =dev/net/mb-gate.mjs= is unchanged since =0693aea=; the same code inlined in Event Horizon
   =2026.11.19.100201=, String Theory =2026.11.18.201615= and ISRC Scout =2026.11.18.193622=, all at =687b8b1=):
@@ -1305,18 +1305,18 @@ CLOSED: [2026-11-08 Sun]
      moves it later (converted at first sight, as in 1). A step during the wait then neither ends it early nor
      stretches it.
   4. Nothing changes in the stored shape; a script without the change keeps today's behaviour.
-- *SAED's half* (not started; a branch of its own): 1 for =leadUntil=, 3 in =_mbGateSleep()= and =_mbGateSlot()=.
-  Specs, each predicted before the fix: =Date.now()= stepped −16.8 s inside a slice (today the slice sleeps
-  about 17 s); +16.8 s during a 3 s hold (today the request goes at once); a =leadUntil= ten minutes out (today a
-  background request waits ten minutes). Mutations in =scripts/mutations/mb-shared-gate.json=.
-  - *In progress (2026-11-18, petri, =feat/mb-gate-clock=, WIP.1)*, started right after the post, without
-    waiting for his answer (only how SAED reads changes, nothing he reads): =_mbGateHoldEnd()= (was
-    =_mbGateCool()=) and =_mbGateLeadLeft()= give a stored =cool= / =leadUntil= a monotonic end at first sight;
-    the booked =at= becomes a =_steadyNow()= deadline; =_mbGateSleep()= and its late-timer note run on
-    =_steadyNow()=. Five new specs (backward step, forward step during a hold and during a paced slot, the
-    ten-minute lead, a renewed lead); four failed before as predicted (hung / sent after 305 ms / 316 ms /
-    hung), the renewal is a guard. The two specs that faked "61 s pass" by moving =Date.now()= now move both
-    clocks (=installClock()=).
+- *SAED's half: DONE, shipped in 9.99.1651* (2026-11-18, petri; branch =feat/mb-gate-clock=, merge =6132d699=,
+  fold =1bf79d09=; started right after the post, without waiting for his answer, since only how SAED reads
+  changes, nothing he reads). Points 1 and 3 of the Proposal: =_mbGateHoldEnd()= (was =_mbGateCool()=) and
+  =_mbGateLeadLeft()= give a stored =cool= / =leadUntil= a monotonic end at first sight; the booked =at= becomes a
+  =_steadyNow()= deadline; =_mbGateSleep()= and its late-timer note run on =_steadyNow()=.
+  - Six new specs in =mb-shared-gate.spec.js= (backward step in a hold, forward step in a hold, in a paced slot,
+    after a hold appeared while queued, the ten-minute lead, a renewed lead); five failed on the old code as
+    predicted (hung / sent after 305 ms / 316 ms / 705 ms / hung), the renewal is a guard. The two specs that
+    faked "61 s pass" by moving =Date.now()= now move both clocks (=installClock()=). Mutations 36 → 42.
+  - =npm run test:full= 3265/3265 on the branch and again on the merged =main= (23:22:20–23:43:34 CET).
+  - Browser check by vzell (Firefox, a =leadUntil= ten minutes out): background requests went after about 10 s,
+    "looks good" (DEBUG-NOTES, the 2026-11-18 entry for =feat/mb-gate-clock=).
 - *ONE reply for majkinetor, POSTED* by vzell on #938, 2026-11-18T20:55:34+01:00:
   https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-6989864530 (checked on petri:
   the text below word for word, in its org markup). It replaces the separate hold-cap note under the port TODO
