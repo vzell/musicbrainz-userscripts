@@ -93,5 +93,96 @@
         "spec": "tests/fixtures/bb-date-links.spec.js",
         "grep": "taken: a lettered anchor",
         "expect": "pass"
+    },
+    {
+        "name": "year reader: the setlist's note dropped",
+        "why": "The year page's <sup> note ends the setlist paragraph; it is no song. Since version 6 _bbSplitSet() takes it out, and the reader keeps it as setlistNote: dropped, the note is gone from the window.",
+        "edits": [
+            {
+                "find": "                            setNotes.push(...set.notes);",
+                "replace": "                            void set.notes;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-date-links.spec.js",
+        "grep": "the note is no song",
+        "expect": "fail"
+    },
+    {
+        "name": "year reader: the note not drawn under the tracks",
+        "why": "The window shows the note on its own line under the tracklist.",
+        "edits": [
+            {
+                "find": "            if (data.tracksNote) right.push(`<div class=\"mb-dp-note mb-dp-tracks-note\">${_mbttEscape(data.tracksNote)}</div>`);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-date-links.spec.js",
+        "grep": "the note is no song",
+        "expect": "fail"
+    },
+    {
+        "name": "year reader: a note without tracks not drawn",
+        "why": "An entry with only \"No set details known.\" shows it under a plain Tracklist heading.",
+        "edits": [
+            {
+                "find": "            right.push(`<h4>Tracklist</h4><div class=\"mb-dp-note mb-dp-tracks-note\">${_mbttEscape(data.tracksNote)}</div>`);",
+                "replace": "            void 0;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-date-links.spec.js",
+        "grep": "a show with only the note",
+        "expect": "fail"
+    },
+    {
+        "name": "year reader: the cache version not bumped",
+        "why": "Year pages kept with the glued song must be read again (version 5). The specs parse fresh pages, so no spec can see a stale IndexedDB entry.",
+        "edits": [
+            {
+                "find": "    const _EXT_BB_YEAR_VERSION = 6;",
+                "replace": "    const _EXT_BB_YEAR_VERSION = 5;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-date-links.spec.js",
+        "grep": "the note is no song",
+        "expect": "pass"
+    },
+    {
+        "name": "year reader: a prose first paragraph read as a set",
+        "why": "Version 6: only paragraphs the year table's classifier calls set or note are sets; a description paragraph is no one-song setlist (2016-10-03 Barnes & Noble).",
+        "edits": [
+            {
+                "find": "                    if (ps && ps.length && ps.every(x => _bbSetParagraphKind(x) !== null)) {",
+                "replace": "                    if (ps && ps.length) {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-date-links.spec.js",
+        "grep": "an entry read as the year table reads it",
+        "expect": "fail"
+    },
+    {
+        "name": "year reader: a description of plain paragraphs not read",
+        "why": "2,732 of 5,009 entries have their description as plain paragraphs, not a .list-pages-box (1985-03-31b).",
+        "edits": [
+            {
+                "find": "                descEls.push(el);\n",
+                "replace": "                if (el.matches('.list-pages-box') || el.querySelector('.list-pages-box')) descEls.push(el);\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-date-links.spec.js",
+        "grep": "the note is no song",
+        "expect": "fail"
+    },
+    {
+        "name": "year reader: a set's label lost",
+        "why": "A label (\"Soundcheck\") groups its songs in the window.",
+        "edits": [
+            {
+                "find": "                                setLabels.push(set.label || '');",
+                "replace": "                                setLabels.push('');"
+            }
+        ],
+        "spec": "tests/fixtures/bb-date-links.spec.js",
+        "grep": "an entry read as the year table reads it",
+        "expect": "fail"
     }
 ]

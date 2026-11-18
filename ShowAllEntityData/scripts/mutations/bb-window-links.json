@@ -43,8 +43,8 @@
         "why": "A year parsed before the icons (version 1) sits in IndexedDB without them: version 2 reads it again. No spec can see it: every test starts with an empty IndexedDB and memory. A spec seeding an ext-bbyear:<year> row of version 1 would.",
         "edits": [
             {
-                "find": "    const _EXT_BB_YEAR_VERSION = 4;",
-                "replace": "    const _EXT_BB_YEAR_VERSION = 3;"
+                "find": "    const _EXT_BB_YEAR_VERSION = 6;",
+                "replace": "    const _EXT_BB_YEAR_VERSION = 5;"
             }
         ],
         "spec": "tests/fixtures/bb-date-links.spec.js",

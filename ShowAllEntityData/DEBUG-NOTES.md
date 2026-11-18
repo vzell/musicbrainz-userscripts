@@ -30152,3 +30152,58 @@ the 0.20.0 file kept from the Brucebase checks of the day before served the Musi
 an hour ago; the hour bounds the reads if the published file itself lacks a map. The same trap existed for 1.2's
 `anchors`, unnoticed because the Brucebase checks then happened to read a fresh copy. Specs "a kept file older than
 1.3 …" and "… read within the hour, is not read again"; the "younger than a day" spec now keeps REAL4 (every map).
+
+## 2026-11-18 — The year reader read a setlist's note as a song (fix/bb-year-setlist-note)
+
+Env: 2026-11-18T00:17:58+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2, clock source hyperv_clocksource_tsc_page) · Playwright Chromium (chromium-fixtures), no Tampermonkey (GM stubs); the check: the shipped parser over the mirror bb/2026-11-15
+
+- **Symptom** (vzell's browser check of the lettered-anchor fix, 2026-11-17): the window of `/1985#310385b` listed
+  track 29 as "TWIST AND SHOUT - DO YOU LOVE ME Setlist may be incorrect or out of order."
+- **Cause:** `_extBbParseYear()` took the setlist paragraph's whole text and split it on " / ". The year page ends the
+  paragraph with `<br><sup><em>…</em></sup>` ("Incomplete setlist." 196 times, "Setlist may be incomplete." 22, …), and
+  645 entries hold only `<sup>No set details known.</sup>`, which became a one-song setlist. With the old line,
+  `scripts/check-bb-year-setlist-notes.js` counts 951 songs that are, or end with, such a note; with the fix 0.
+- **Fix:** the `<sup>`s are taken out of a copy of the paragraph (`setlistNote`) before the split. The window draws it
+  under the tracks (`dp.tracksNote`; under a plain "Tracklist" heading when there are no tracks).
+  `_EXT_BB_YEAR_VERSION` 5 reads the kept year pages again. Only the window uses the reader's setlist.
+- **The check took three tries:**
+  - a count of notes against the parser's (248 against 952: my first regex wanted " / " in the paragraph, so it
+    missed one-song setlists and the notes alone);
+  - any `<sup>` text inside a song (2016's prose entries contain the note "Bruce Springsteen");
+  - the defect's exact shape, a song that IS a note or ENDS with one. That is what it checks now.
+- **Seen on the way, not changed:** an entry whose first paragraph is a description, not a setlist (2016-10-03
+  Barnes & Noble), is read as a one-song setlist by this reader. The year table's converter tells the two apart by
+  content.
+- **Tests:** `bb-date-links.spec.js` 3 more (12): the 1985 fixture's 310385b (29 tracks, the note under them), 300785
+  (no track, "No set details known."), the parser over the whole fixture. `scripts/mutations/bb-date-links.json` has 4
+  more (one `"expect": "pass"`: the cache version, no spec sees a stale IndexedDB entry). Two older finds rewritten
+  (`bb-window-links.json`, `popup-ext.json`).
+
+## 2026-11-18 — The year reader reads an entry as the year table does (fix/bb-year-setlist-note, version 6)
+
+Env: 2026-11-18T00:54:56+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2, clock source hyperv_clocksource_tsc_page) · Playwright Chromium (chromium-fixtures), no Tampermonkey (GM stubs); the check: the shipped parser over the mirror bb/2026-11-15
+
+- **vzell's two follow-ups** (after the setlist-note fix, his browser check of 2026-11-18, Image #3/#4):
+  1. an entry whose first paragraph is a description (2016-10-03 Barnes & Noble) was a one-song setlist;
+  2. 1985-03-31b's window had no description at all, though the year page has a long one.
+- **Cause, both:** `_extBbParseYear()` took the first plain paragraph as the setlist and only a `.list-pages-box` as the
+  notes. The year table's converter has known since 2026-10-09 that 2,732 of 5,009 entries write their description as
+  plain paragraphs, and tells a set paragraph from prose by content (`_bbSetParagraphKind()`).
+- **Fix:** the reader uses the table's two phases. The leading set or note paragraphs go through `_bbSplitSet()`
+  (songs, a label such as "Soundcheck" as the window's group, the note). Everything after, up to the icons
+  (`_bbIconsOf()`), is the description: notes and people. `_EXT_BB_YEAR_VERSION` 6 (vzell had version 5 records from
+  testing the branch).
+- **The check** (`scripts/check-bb-year-setlist-notes.js`, now also prose songs and two pinned shows) over all 63 year
+  pages:
+
+  | Parser            | Songs that are or end with a note | Songs that are prose | Shows with notes |
+  |-------------------+-----------------------------------+----------------------+------------------|
+  | `main`'s          |                               951 |                  275 |            2,212 |
+  | version 6         |                                 0 |                    0 |            4,838 |
+
+  The first prose test flagged songs with a long "(with Sting, Peter Gabriel, …)": parentheses are set aside, as the
+  classifier does.
+- **Tests:** `bb-date-links.spec.js` 13. The 1985-03-31b window shows its Notes. A parser test on an entry in the year
+  page's shape covers a prose first paragraph and a soundcheck label. `scripts/mutations/bb-date-links.json` has 3 more
+  (prose as a set, plain paragraphs not read, a label lost). Four finds the rewrite moved are rewritten; all 16 entries
+  of that run behave as recorded.

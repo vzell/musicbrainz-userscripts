@@ -3372,8 +3372,11 @@ A **Brucebase date** link (the "reviews:" link of many events,
 `brucebase.wikidot.com/2025#261025`, also with a letter for one of several
 shows of a date, `…/1985#310385b`, and on the early years' page
 `…/1949-64#230949`) shows that one show of the year page:
-venue and date, the setlist, the people, the notes, and a link to the gig
-page; its *Live page* is the year page, scrolled to the show and marked
+venue and date, the setlist (a soundcheck as its own group, and the year
+page's note on it, "Incomplete setlist.", on a line under the songs), the
+people, the notes (the entry's description, as the year page writes it),
+and a link to the gig page; its *Live page* is the year page, scrolled to
+the show and marked
 before the year's pictures have loaded, and scrolled to it again once they
 have (unless you have scrolled the page yourself by then). One
 request reads the whole year, so other dates of that year then cost nothing —
