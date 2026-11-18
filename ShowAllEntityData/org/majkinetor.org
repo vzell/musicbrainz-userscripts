@@ -670,6 +670,9 @@ All three verified identical to their drafts. The rest of the thread that day (n
   on that by the refresh (EH 2026.11.18.011000 still returns early for V, anchor =conv-c3=). #938 is open.
 - No reply drafted to 7/8 (vzell's choice, 2026-11-17): it gets written once SAED honours =mbLastWrite= and
   =MBU.artistImage=, so it can report them working.
+- 2026-11-18: both work (9.99.1643, 9.99.1646); the report is drafted in
+  [[file:reply-to-938-c7-c8.org][org/reply-to-938-c7-c8.org]] (not posted yet). It asks one question: whether
+  Apollo, Group Therapy or Falcon will set =mbLastWrite= on their edits too.
 
 *** Refresh log
 

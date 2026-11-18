@@ -1,0 +1,59 @@
+#+TITLE: Follow-up on #938: mbLastWrite (C7) and MBU.artistImage (C8) adopted in SAED
+#+DATE: 2026-11-18
+
+* TODO Post: C7/C8 report on https://github.com/majkinetor/musicbrainz-userscripts/issues/938
+
+Drafted 2026-11-18 at vzell's request, for vzell to post (never posted by Claude). It answers milic-bot's comment of
+2026-11-17 11:40 UTC ([[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-6946992441][comment]]),
+which delivered points 7 and 8 of the adoption questions. vzell's choice (2026-11-17): report both together, once
+both work.
+
+- What shipped: C7 in 9.99.1643 (=feat/mb-last-write=), C8 in 9.99.1646 (=feat/eh-artist-images=, with
+  VZ_MBLibrary 4.6.0), both on =vzell/musicbrainz-userscripts= =main= (the development copy the 2026-11-08 dev-link
+  post pointed to). Not yet on the published mirror =vzell/mb-userscripts=.
+- Checked in vzell's browser: C7 on 2026-11-17 (Vivaldi 8.2.4133.96, Tampermonkey 5.5.5, String Theory
+  2026.11.17.210830); C8 on 2026-11-18 (versions not recorded). Chromium-based only: the Firefox wrapping he warned
+  about is handled (every call guarded, SAED's own pictures as the fallback) but not tried in Firefox. The post
+  says so.
+- One question, not a request: only Event Horizon sets =mbLastWrite= at =0693aea= (12 =kpWrote()= sites);
+  Apollo, Group Therapy and Falcon write relationships and edits without it. If they set it too, an edit made there
+  would refresh SAED's cards as well, and SAED could then let it drop the Relationships column's 30-day cache,
+  which only relationship edits change (org/majkinetor.org, the "Stale-while-revalidate" TODO).
+- Left out on purpose: "V under =data-mbu-keys-off=". vzell asked again on 2026-11-17 18:51 CET; repeating it here
+  would nag.
+- Optional: a screenshot of an artist window with Event Horizon's pictures in the strip, where it says
+  "[screenshot]", or delete that line.
+
+#+begin_src markdown
+Hi Miodrag - @majkinetor,
+
+thanks for points 7 and 8, and for listing SAED as complementary. Both are in SAED's development version now
+(`main` of vzell/musicbrainz-userscripts: 9.99.1643 and 9.99.1646), checked with String Theory from your `main`.
+
+**7. `mbLastWrite`.** SAED reads it. Its link previews (entity cards, a release group's releases and facts, edit and
+editor pages, the paged lists in its windows) treat an answer kept at or before that time as stale, in memory and
+in IndexedDB, so after a rating or a tag vote in Event Horizon, SAED's next card or window asks again. SAED writes nothing to
+MusicBrainz, so it never sets the key. Its long-lived caches (the Relationships column's, 30 days) don't follow it,
+because none of the writes Event Horizon reports can change relationships.
+
+**8. `MBU.artistImage`.** Looked up at call time, artists and labels only:
+- an artist's or a label's window (opened with Space) calls `findAll()` and shows your pictures after SAED's own
+  (MusicBrainz's image and logo links, else Wikidata), in the user's Event Horizon order, marked "via Event Horizon".
+  Your Wikipedia picture is left out when SAED already shows a Commons file, since it's usually the same photo;
+- the hover card and the picture beside an artist's or label's name use `cached()` only, so a hover or a page load
+  asks nobody;
+- a throw, a reject or no answer within 20 s leaves SAED's own pictures, with nothing said; a setting turns it
+  off.
+
+[screenshot]
+
+Tested in Chromium-based browsers with Tampermonkey. The Firefox wrapping you mentioned is handled the way you
+suggested (SAED's own lookup as the fallback), but I haven't tried it there.
+
+One question, no hurry: at the moment only Event Horizon sets `mbLastWrite`. Do you plan to set it in Apollo,
+Group Therapy or Falcon too, when they submit edits? Then a relationship edit made there would also refresh SAED's
+cards, and I could let SAED's Relationships cache follow it as well.
+
+Thanks!
+Volker
+#+end_src
