@@ -4,9 +4,21 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1817 versions; the month pages hold all of them.
+This page shows the newest 100 of 1818 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1647 — 2026-11-18
+
+**🚀 Feature**
+
+- Brucebase feed on MusicBrainz: BruceParser compares the artist's MusicBrainz events with Brucebase, and an event whose Brucebase "reviews" link is doubtful is marked on its Event cell in every event list (an artist's, a place's, an area's events, event collections, event tags) and beside its Brucebase link on its own page. ❌ the link reaches no entry (197 events in the run of 2026-11-15, 172 of them because the wiki now writes that date with a letter: 2023\#120923 against \#120923a and \#120923b), ⚠️ two events link one entry (18; the one whose date differs from the entry's is called likely wrong), ⚠️ the link is a show's page, not its year-page anchor (1).
+- Hover a mark: the card lists the wiki's entries of the event's date as links to the year page, the one whose heading names the event's place marked likely, so the link can be corrected. No request to MusicBrainz or the wiki: an event list's or an event page's press reads the feed at most once a day, shared with Brucebase. New setting "Read the Brucebase feed on MusicBrainz too" (on), a switch for each finding and one tint.
+
+**📝 Docs**
+
+- Needs the feed of BruceParser 0.21.0 on GitHub; an older feed marks nothing on MusicBrainz. A kept feed written by an older BruceParser (without a map this version reads) is read again on the next press once it was read an hour ago, instead of being used for the rest of its day.
+
 
 ## 9.99.1646 — 2026-11-18
 
@@ -882,13 +894,6 @@ This page shows the newest 100 of 1817 versions; the month pages hold all of the
 - springsteenlyrics.com: the preview of a CD or vinyl bootleg (brucelegs.php?item=…) said "The page has no tracklist." It now shows the tracklist, with the lengths the page gives, the runout etchings and the release info.
 - springsteenlyrics.com: the preview of a box set with "Record 2: …" headers (the Born In The U.S.A. 12" Single Collection) showed record 1 only; the other records ended up in the notes.
 - springsteenlyrics.com: artwork in a preview carries the page's own captions ("front", "booklet p2,3").
-
-
-## 9.99.1547 — 2026-11-04
-
-**🚀 Feature**
-
-- setlist.fm: a link to a festival or one of its editions has a card and a window, without the setlist.fm API key, wherever such links appear (setlist.fm's own festival pages before you press a button, the tables, the top of an edition's page, MusicBrainz). An edition's window lists all its setlists by day, with a chip per stage, its stages and its most attended setlists; a festival's window lists its editions and its Artist charts.
 
 
 ---

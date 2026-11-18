@@ -3921,7 +3921,8 @@ publishes these in one small file on GitHub
 ([vzell/brucebase-feed](https://github.com/vzell/brucebase-feed)). The script
 reads it at most once a day, when you press a Brucebase page's button or open
 a Brucebase window with **Space** (never from a hover), and keeps it for every
-site.
+site. A kept file written by an older BruceParser, without a part this version
+reads, is read again on the next press once it is an hour old.
 
 - **The marks** are findings like the others (the ❌ / ⚠️ menus, the 📊
   Findings sections, the cell tint), on the cell that names a row's own page
