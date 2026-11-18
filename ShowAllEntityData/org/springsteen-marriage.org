@@ -7,6 +7,13 @@ Plan for pickup on another host.
 
 * PICKUP HERE: status of 2026-11-18 evening: feed v2 DONE — branch 3 (MusicBrainz) MERGED as 9.99.1647, the year reader (=fix/bb-year-setlist-note=) MERGED as 9.99.1648; neither published to the mirror yet; batch 3b SET ASIDE
 
+- *OPEN, first thing on petri:* =test:full= on =main= at 9.99.1649 (the "QE" title-case fix, =fix/title-case-qe=,
+  plus the docs-only =docs/mb-gate-clock-draft=). Started on NB-3641 at 19:43 CET and stopped by vzell (WSL
+  restart for the permanent clock source); merged and pushed untested, on vzell's word that it runs on petri. Its
+  own specs passed on the branch (mb-title-case + findings-title-style 28 of 28). Also from that evening: BruceParser
+  0.21.1 (=c789cfb=, the "-" at the URL cut), and the gate-clock draft for majkinetor, to recheck on petri before
+  posting (org/majkinetor.org, "The shared gate's clock", its prompt).
+
 - *Feed v2, branch 3 (2026-11-18, NB-3641):* MusicBrainz events whose Brucebase link reaches no entry (197), shares
   one (18) or is no anchor (1), on event lists and event pages, with a card of the wiki's entries of the date. Mockup
   https://claude.ai/artifact/Tip5CShMevQp8ycqBjjnRZ (all as recommended).

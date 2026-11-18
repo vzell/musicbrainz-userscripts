@@ -4,9 +4,16 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1819 versions; the month pages hold all of them.
+This page shows the newest 100 of 1820 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1649 — 2026-11-18
+
+**🐛 Fix**
+
+- MusicBrainz title style on the Springsteen sites: "QE" (Queen Elizabeth) stays in capitals, so Brucebase's "QE II JUBILEE SPORTS CENTRE" (1985-03-31) reads "QE II Jubilee Sports Centre" in the year tables and listings instead of "Qe II Jubilee Sports Centre".
+
 
 ## 9.99.1648 — 2026-11-18
 
@@ -886,13 +893,6 @@ This page shows the newest 100 of 1819 versions; the month pages hold all of the
 **🐛 Fix**
 
 - springsteenlyrics.com lists, logged in: the Version column was empty on every card, because a logged-in card puts its item number and a second marker before the title.
-
-
-## 9.99.1549 — 2026-11-04
-
-**🔧 Refactor**
-
-- springsteenlyrics.com previews: a page read while logged in and one read logged out are no longer one cache entry. Each record notes the login state it was read in, and a record of the other state is read again.
 
 
 ---

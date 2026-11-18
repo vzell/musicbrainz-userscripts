@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.1649",
+    "date": "2026-11-18",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "MusicBrainz title style on the Springsteen sites: \"QE\" (Queen Elizabeth) stays in capitals, so Brucebase's \"QE II JUBILEE SPORTS CENTRE\" (1985-03-31) reads \"QE II Jubilee Sports Centre\" in the year tables and listings instead of \"Qe II Jubilee Sports Centre\"."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1648",
     "date": "2026-11-18",
     "sections": [
