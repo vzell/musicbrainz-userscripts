@@ -30455,3 +30455,23 @@ Env: 2026-11-19T00:00–01:30+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6
 - **`npm run test:full` on petri, `1323867a`, 01:09:28–01:30:02 CET (20 m 34 s): 3,291 of 3,291 passed.**
 - **Browser check by vzell, 2026-11-19: "tested live, OK"** (the five URLs of the request: Pete Townshend Live,
   Darkness on the Edge of Town, Cologne Night, Born to Run release groups; Janey Needs a Shooter release).
+
+## 2026-11-19 — "All errors / All warnings" in the findings menus (feat/findings-any-level)
+Env: 2026-11-19T01:35+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (chromium-fixtures), no Tampermonkey (GM stubs)
+
+BruceBaseParser's mismatch filter, closing the HOME row with branch 3 (org/bbp-parity.org, "Closing the matrix").
+The single findings rows AND across columns (each ticks a 📊 entry of its column, or the row filter "for EACH
+id"), so "every flagged row" could not be said: on the live album fixture the two warnings (no-work in one column,
+an undated live credit in another) are on no common row, and ticking both shows 0 rows. `_findingLevelFilter` is an
+OR over a level's findings per row, beside `_findingRowFilter` and keyed, cleared and counted like it; its count
+comes from `_findingRowTally()`'s own walk (`@error`/`@warn`). One older mutation find moved
+(`findings-menus.json`, the cache-key entry) and still fails its test. Playwright treats `aria-disabled="true"` as
+disabled, so the spec clicks a greyed row through the DOM. Perf: tests/MEASUREMENTS.org, 2026-11-19 (ratios
+0.95–1.04, no cost); the first A,B,B,A run overwrote its JSON (every arm writes the branch's file name), so the
+second copies each arm's file aside.
+- **`npm run test:full` at `fc6ae52e`, 02:58:23–03:21:06 CET (22 m 43 s): 3,290 of 3,292 passed.** The failures:
+  `filter-sliced.spec.js` "a pass replaced by the ✕ clear writes nothing" (the third run in a row on NB-3641 with it,
+  the two before on other branches) and `pop-mb-image.mobile.spec.js` "a tap opens the window …" (its pre-tap check
+  that the element is under the tap point, `elementFromPoint`, false under load). Alone, `--repeat-each 3`: 45 of 45.
+  This branch is on the typing filter's path (`testRowMatch()`, the cache keys), so the first was checked alone on
+  purpose rather than assumed: green; the level filter is empty there and costs one empty loop.

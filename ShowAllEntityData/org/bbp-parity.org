@@ -800,3 +800,37 @@ guard is one element lookup when the buttons are made and at a press.
 
 Unverified: all of it in a real browser; which script Tampermonkey runs first decides only whether the notice shows at
 load or at the first press.
+
+** All errors / All warnings (=feat/findings-any-level=)
+
+Env: 2026-11-19T01:35+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright
+1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+BruceBaseParser's mismatch filter (doc/HOME_PAGE.md: hide the clean sections) as one row per findings menu, on every
+page (mockup questions 4-7). Details: =docs/claude/findings.md=, "All errors / All warnings".
+
+*Built:* =_findingLevelFilter= beside =_findingRowFilter= (=testRowMatch()=, both cache keys, every clear path),
+=_rowHasFindingLevel()=, =_toggleFindingLevel()=, the level rows' count in =_findingRowTally()='s own walk (=@error=,
+=@warn=), the row first in each menu, its chip, the single rows greyed while it is on; =__saTest.findingLevel()=.
+
+*Tests* (NB-3641, 2026-11-19): =findings-any-level.spec.js= 5 (the live album's two warnings in two columns: the single
+ticks show 0 rows together, All warnings all warned rows; every way out; both levels AND on the live-titles release
+group; All errors on the Brucebase 1972 year, before any page is read); =findings-menus.spec.js= and
+=findings-stamp.spec.js= unchanged and green; 12 mutations as recorded (11 fail their test, the incremental key's
+passes with the reason), one older find of =findings-menus.json= moved and re-run (fails its test). Perf on
+=artist-events=, A,B,B,A, 5 samples: every ratio 0.95–1.04, no cost (=tests/MEASUREMENTS.org=, 2026-11-19).
+=npm run test:full= at =fc6ae52e=: 02:58:23–03:21:06 CET, 3,290 of 3,292; the two failures (=filter-sliced=, the
+known flake; =pop-mb-image.mobile=, a tap-point check under load) pass alone, 45 of 45 with =--repeat-each 3=.
+
+** The browser check of All errors / All warnings, for vzell
+
+| Page                                                                       | Step                                                          | Expected                                                                                                 |
+|----------------------------------------------------------------------------+---------------------------------------------------------------+----------------------------------------------------------------------------------------------------------|
+| https://brucebase.wikidot.com/1972                                         | Show all events, open ❌                                       | "❌ All errors" first, its number the rows with any error; click: only those rows, a chip, singles greyed |
+| the same page                                                              | ✕ on the chip                                                 | every row back                                                                                           |
+| https://brucebase.wikidot.com/2016                                         | Show all events, ▶ Pages on a few rows, ❌ All errors          | the rows read with an error; rows not read yet hidden; its hover text says only what is known counts     |
+| https://musicbrainz.org/release/20a52f17-ce0b-48bf-911e-9f962a518185       | Show all Tracks, ⚠️: tick both single rows, then All warnings | two ticks: no row; All warnings: every track with a warning, the two ticks released and greyed           |
+| the same page                                                              | Clear ALL filters                                             | every row back, All warnings unticked                                                                    |
+| https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events | Show all Events, ❌ All errors and ⚠️ All warnings             | rows with an error AND a warning                                                                         |
+
+Unverified: all of it in a real browser.

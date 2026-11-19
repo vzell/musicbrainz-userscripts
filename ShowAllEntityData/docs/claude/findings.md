@@ -743,6 +743,37 @@ entries by hand, and runs `runFilter()` once.
   column names across tables, a table without that column, or a target column
   in Exclude mode.
 
+**"All errors" / "All warnings": a whole level** (2026-11-19, org/bbp-parity.org
+"Closing the matrix", BruceBaseParser's mismatch filter; mockup
+https://claude.ai/artifact/Mji5y7i2vZzTkK1WQ4JWi7, questions 4-7, all as
+recommended). The first finding row of each menu (after the WARNING menu's
+"Check title style" row), `.mb-findings-level-item`, `data-mb-finding-level`.
+
+- `_findingLevelFilter`, a page-wide Set of levels next to `_findingRowFilter`:
+  a row passes when some cell carries a finding of that level
+  (`_rowHasFindingLevel()`, the registry's `level` of each stamped id) — an OR
+  over every finding and column of the level, where the single ticks AND
+  across columns. Read in `testRowMatch()` after the row filter, keyed into
+  both filter-cache keys (`l`), emptied by `clearAllFilters()` and the
+  menu's Clear row; `_findingFiltersActive()` replaces the three
+  `_findingRowFilter.size > 0` checks (the Clear ALL button, the hidden
+  sub-tables note, `_syncEmptySubtableVisibility()`).
+- **It replaces its level's single rows**: `_toggleFindingLevel()` releases the
+  ticked ones first; while it is on they are `aria-disabled` and greyed, and
+  `_toggleFinding()` ignores them. The other level and every typed filter still
+  AND (both levels on: rows with an error AND a warning).
+- **The count is rows**, from the same walk: `_findingRowTally()` adds the keys
+  `@error`/`@warn` (rows with any id of the level), so no second pass and the
+  same memo and stamp generation.
+- **A chip**, first in `#mb-findings-chips`, its ✕ the level row's toggle.
+- **Late findings**: a row whose data has not arrived carries no finding, so the
+  level filter hides it, as a single finding does; the row's hover text says
+  that only what is known so far counts.
+- Spec `tests/fixtures/findings-any-level.spec.js` (MusicBrainz live album and
+  release group, the Brucebase 1972 year); helpers `findingLevelRow()`,
+  `clickFindingLevel()` in `tests/support/findingsMenu.js`; mutations
+  `scripts/mutations/findings-any-level.json`.
+
 **Pending edits is a plain row finding and does NOT drive the ⏳ toggles.** The
 global ⏳ filters only the sub-tables that have pending edits and leaves the
 others showing every row; "only these rows, page-wide" is what a menu row

@@ -110,6 +110,47 @@ async function findingRowState(page, id) {
     }, id || null);
 }
 
+/**
+ * A findings menu's "All errors" / "All warnings" row (`_findingLevelFilter`),
+ * read without opening it, and the single rows' disabled state.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {'warn'|'error'} level
+ * @returns {Promise<null|{label: string, count: number, checked: string|null, title: string, first: boolean,
+ *           greyed: string[]}>} `null` without that row. `first`: it is the first finding row of the
+ *   menu (only the WARNING menu's "Check title style" row may stand above it); `greyed`: the ids
+ *   of the single rows marked aria-disabled.
+ */
+async function findingLevelRow(page, level) {
+    return page.evaluate((btnId) => {
+        const panel = document.getElementById(`${btnId}-panel`);
+        const row = panel && panel.querySelector('.mb-findings-level-item');
+        if (!row) return null;
+        const items = Array.from(panel.querySelectorAll('.mb-findings-menu-item'))
+            .filter(r => !r.classList.contains('mb-findings-style-item'));
+        return {
+            label: (row.querySelector('.mb-findings-item-label') || {}).textContent || '',
+            count: Number((row.querySelector('.mb-findings-item-count') || {}).textContent || NaN),
+            checked: row.getAttribute('aria-checked'),
+            title: row.title,
+            first: items[0] === row,
+            greyed: Array.from(panel.querySelectorAll('.mb-findings-menu-item[data-mb-finding-id][aria-disabled="true"]'))
+                .map(r => r.dataset.mbFindingId),
+        };
+    }, FINDINGS_MENU_BUTTON[level]);
+}
+
+/**
+ * Clicks a findings menu's "All errors" / "All warnings" row (opening its menu first).
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {'warn'|'error'} level
+ */
+async function clickFindingLevel(page, level) {
+    await clickToolbarItem(page, `#${FINDINGS_MENU_BUTTON[level]}-panel .mb-findings-level-item`);
+}
+
 module.exports = {
     FINDINGS_MENU_BUTTON, findingsMenuState, findingRow, clickFinding, clickClearFindings, findingRowState,
+    findingLevelRow, clickFindingLevel,
 };

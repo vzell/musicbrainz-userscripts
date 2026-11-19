@@ -69,8 +69,8 @@
     "why": "The row filter is no query, so with it absent from _buildFilterKey() the cache replays the previous pass's rows when only the row filter changed — the bug the LENGTH button had once. Must fail on the row-finding test (releasing it via the chip leaves the rows narrowed).",
     "edits": [
       {
-        "find": "            m: Array.from(_findingRowFilter).sort(),\n            // Same reasoning",
-        "replace": "            // Same reasoning"
+        "find": "            m: Array.from(_findingRowFilter).sort(),\n            // \"All errors\" / \"All warnings\", for the same reason.\n            l: Array.from(_findingLevelFilter).sort(),\n            // Same reasoning",
+        "replace": "            // \"All errors\" / \"All warnings\", for the same reason.\n            l: Array.from(_findingLevelFilter).sort(),\n            // Same reasoning"
       }
     ],
     "spec": "tests/fixtures/findings-menus.spec.js",

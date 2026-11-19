@@ -77805,6 +77805,48 @@
     const _findingRowFilter = new Set();
 
     /**
+     * The levels ('error', 'warn') whose "All errors" / "All warnings" row of
+     * the ⚠️/❌ menus is on (BruceBaseParser's mismatch filter, org/bbp-parity.org
+     * "Closing the matrix"; mockup https://claude.ai/artifact/Mji5y7i2vZzTkK1WQ4JWi7,
+     * questions 4-7). A row passes when some cell of it carries a finding of
+     * that level (`_rowHasFindingLevel()`): one OR across every finding and
+     * column of the level, where the single ticks AND. While a level is on,
+     * its single findings are released and greyed (question 5). Read, keyed
+     * and emptied exactly where `_findingRowFilter` is.
+     *
+     * @type {Set<string>}
+     */
+    const _findingLevelFilter = new Set();
+
+    /**
+     * Whether some cell of a row carries a finding of a level (the stamp's
+     * `data-mb-findings`, whose ids are only those of active findings).
+     *
+     * @param {HTMLTableRowElement} row
+     * @param {string} level - 'error' or 'warn'.
+     * @returns {boolean}
+     */
+    function _rowHasFindingLevel(row, level) {
+        for (const td of row.querySelectorAll('td[data-mb-findings]')) {
+            for (const id of td.dataset.mbFindings.split(' ')) {
+                const f = _FINDING_BY_ID.get(id);
+                if (f && f.level === level) return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Whether a findings-menu filter that no input holds is engaged: a row
+     * finding (`_findingRowFilter`) or a whole level (`_findingLevelFilter`).
+     *
+     * @returns {boolean}
+     */
+    function _findingFiltersActive() {
+        return _findingRowFilter.size > 0 || _findingLevelFilter.size > 0;
+    }
+
+    /**
      * The findings a page can have at all — the registry minus those whose
      * own feature setting is off.
      *
@@ -99807,6 +99849,12 @@
             row.querySelectorAll('td[data-mb-findings]').forEach(td =>
                 td.dataset.mbFindings.split(' ').forEach(id => ids.add(id)));
             ids.forEach(id => counts.set(id, (counts.get(id) || 0) + 1));
+            // The rows with any finding of a level, for "All errors" /
+            // "All warnings" (`_findingLevelFilter`): keys "@error", "@warn",
+            // in the same walk (ids are [a-z-] tokens, never "@…").
+            const levels = new Set();
+            ids.forEach(id => { const f = _FINDING_BY_ID.get(id); if (f) levels.add(f.level); });
+            levels.forEach(lv => counts.set(`@${lv}`, (counts.get(`@${lv}`) || 0) + 1));
         });
         _findingTallyMemo.set(rows, { gen: _findingStampGen, length: rows.length, counts });
         return counts;
@@ -105692,6 +105740,7 @@ ${sections.join('\n')}
         // The findings-menu row filter is structural, not a query, so clearing
         // the inputs above would otherwise leave it silently engaged.
         _findingRowFilter.clear();
+        _findingLevelFilter.clear();
 
         // Same for the ⏳ pending-edits toggles. On multi-table pages the state
         // lives on each sub-table's own button, so every one of them has to be
@@ -116872,6 +116921,8 @@ a { color: #1565c0; }`;
     function _toggleFinding(id) {
         const f = _FINDING_BY_ID.get(id);
         if (!f) return;
+        // Its level's "All" row is on: the single rows are greyed (question 5).
+        if (_findingLevelFilter.has(f.level)) return;
         const turnOn = _findingState(f) !== 'on';
         _setFinding(f, turnOn);
         Lib.debug('filter', `_toggleFinding(): "${id}" now ${turnOn ? 'on' : 'off'}.`);
@@ -116879,12 +116930,33 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Releases every finding of one level — the menu's trailing "Clear" row.
-     * Leaves every filter the menu did not set alone.
+     * Toggles a menu's "All errors" / "All warnings" row (`_findingLevelFilter`).
+     * Turning it on releases that level's single findings first: the level row
+     * replaces them (mockup question 5); the other level's filters and every
+     * typed filter still AND.
+     *
+     * @param {('warn'|'error')} level
+     */
+    function _toggleFindingLevel(level) {
+        if (_findingLevelFilter.has(level)) {
+            _findingLevelFilter.delete(level);
+        } else {
+            FINDINGS.filter(f => f.level === level && _findingState(f) !== 'off')
+                .forEach(f => _setFinding(f, false));
+            _findingLevelFilter.add(level);
+        }
+        Lib.debug('filter', `_toggleFindingLevel(): "${level}" now ${_findingLevelFilter.has(level) ? 'on' : 'off'}.`);
+        runFilter();
+    }
+
+    /**
+     * Releases every finding of one level — the menu's trailing "Clear" row —
+     * and its "All" row. Leaves every filter the menu did not set alone.
      *
      * @param {('warn'|'error')} level
      */
     function _clearFindingLevel(level) {
+        _findingLevelFilter.delete(level);
         FINDINGS.filter(f => f.level === level && _findingState(f) !== 'off')
             .forEach(f => _setFinding(f, false));
         runFilter();
@@ -116925,10 +116997,41 @@ a { color: #1565c0; }`;
      * @param {?{bad: boolean, text: string, action: string, detail?: string}} [feedLine] - The
      *   Brucebase feed's line (`_bbFeedStatus()`), last; a click reads the
      *   feed again (Retry after a failure).
+     * @param {?{n: number, on: boolean}} [levelRow] - The "All errors" / "All
+     *   warnings" row (`_findingLevelFilter`): the rows with a finding of this
+     *   level, and whether it is on (the single rows are then greyed).
      */
-    function _buildFindingMenuRows(menu, level, list, styleRow = null, feedLine = null) {
+    function _buildFindingMenuRows(menu, level, list, styleRow = null, feedLine = null, levelRow = null) {
         menu.panel.querySelectorAll('.mb-toolbar-menu-item').forEach(el => el.remove());
         if (styleRow) _buildTitleStyleMenuRow(menu, styleRow);
+        const isErr = level === 'error';
+        if (levelRow) {
+            // "All errors" / "All warnings" (`_findingLevelFilter`), above the
+            // single findings (mockup questions 4-7).
+            const all = document.createElement('button');
+            all.type = 'button';
+            all.className = 'mb-findings-menu-item mb-findings-level-item';
+            all.dataset.mbFindingLevel = level;
+            const g = document.createElement('span');
+            g.className = 'mb-findings-item-glyph';
+            g.textContent = isErr ? '❌' : '⚠️';
+            const label = document.createElement('span');
+            label.className = 'mb-findings-item-label';
+            label.textContent = isErr ? 'All errors' : 'All warnings';
+            const count = document.createElement('span');
+            count.className = 'mb-findings-item-count';
+            count.textContent = String(levelRow.n);
+            all.append(g, label, count);
+            _setTip(all, `${levelRow.n} row${levelRow.n === 1 ? '' : 's'} with at least one ${isErr ? 'error' : 'warning'}, `
+                + 'in any column. Replaces the single rows below while it is on; other filters still apply.\n'
+                + 'Only what is known so far counts: rows whose data arrives later (Brucebase ▶ Pages, artwork) join once it is in.\n'
+                + (levelRow.on ? 'Click to remove this filter.' : 'Click to show only these rows.'));
+            menu.adopt(all);
+            all.setAttribute('role', 'menuitemcheckbox');
+            all.setAttribute('aria-checked', levelRow.on ? 'true' : 'false');
+            all.addEventListener('click', () => _toggleFindingLevel(level));
+        }
+        const levelOn = !!(levelRow && levelRow.on);
         list.forEach(({ f, n, state }) => {
             const row = document.createElement('button');
             row.type = 'button';
@@ -116948,13 +117051,18 @@ a { color: #1565c0; }`;
                 ? 'Filters by row: a row stays when any of its cells has it.'
                 : `Ticks 📊 "${_structureModeLabel(`finding-${f.id}`)}" (Findings - ${level === 'error' ? 'Error' : 'Warning'}) in the column that holds it, in every table.`;
             _setTip(row, `${n} row${n === 1 ? '' : 's'}. ${f.tip}\n${how}\n`
-                      + (state === 'on' ? 'Click to remove this filter.' : 'Click to show only these rows.'));
+                      + (levelOn ? `Included in "${isErr ? 'All errors' : 'All warnings'}"; remove that filter to pick this one.`
+                          : state === 'on' ? 'Click to remove this filter.' : 'Click to show only these rows.'));
             menu.adopt(row);
             row.setAttribute('role', 'menuitemcheckbox');
             row.setAttribute('aria-checked', state === 'on' ? 'true' : 'false');
+            if (levelOn) {
+                row.setAttribute('aria-disabled', 'true');
+                row.classList.add('mb-findings-item-dim');
+            }
             row.addEventListener('click', () => _toggleFinding(f.id));
         });
-        const anyOn = list.some(x => x.state !== 'off');
+        const anyOn = levelOn || list.some(x => x.state !== 'off');
         const clear = document.createElement('button');
         clear.type = 'button';
         clear.className = 'mb-findings-menu-item mb-findings-clear-item';
@@ -117839,40 +117947,52 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * One chip per finding the row filter holds (see `findingChips`), each
-     * with a ✕ that releases it.
+     * One chip per findings-menu filter no input holds (see `findingChips`):
+     * "All errors" / "All warnings" first, then each row finding; each with
+     * a ✕ that releases it.
      */
     function _updateFindingChips() {
         const host = document.getElementById('mb-findings-chips');
         if (!host) return;
-        const sig = Array.from(_findingRowFilter).sort().join(' ');
+        const levels = ['error', 'warn'].filter(lv => _findingLevelFilter.has(lv));
+        const sig = levels.map(lv => `@${lv}`).concat(Array.from(_findingRowFilter).sort()).join(' ');
         if (host.dataset.mbSig === sig) return;
         host.dataset.mbSig = sig;
         host.textContent = '';
-        Array.from(_findingRowFilter).forEach(id => {
-            const f = _FINDING_BY_ID.get(id);
-            if (!f) return;
-            const isErr = f.level === 'error';
+        // "All errors" / "All warnings" first, as in the menus: the same
+        // chip, its ✕ the level row's toggle.
+        const items = levels.map(lv => ({
+            level: lv, label: lv === 'error' ? 'All errors' : 'All warnings', key: `@${lv}`,
+            tip: `Row filter set from the ${lv === 'error' ? '❌ ERROR' : '⚠️ WARNING'} menu: only rows where some cell has any ${lv === 'error' ? 'error' : 'warning'}.`,
+            off: () => _toggleFindingLevel(lv),
+        })).concat(Array.from(_findingRowFilter).map(id => _FINDING_BY_ID.get(id)).filter(Boolean).map(f => ({
+            level: f.level, label: f.label, key: f.id,
+            tip: `Row filter set from the ${f.level === 'error' ? '❌ ERROR' : '⚠️ WARNING'} menu: only rows where some cell has "${f.label}".`,
+            off: () => _toggleFinding(f.id),
+        })));
+        items.forEach(({ level, label, key, tip, off }) => {
+            const isErr = level === 'error';
             const chip = document.createElement('span');
             chip.className = 'mb-findings-chip';
-            chip.dataset.mbFindingId = id;
-            _setTip(chip, `Row filter set from the ${isErr ? '❌ ERROR' : '⚠️ WARNING'} menu: only rows where some cell has "${f.label}".`);
+            if (key.startsWith('@')) chip.dataset.mbFindingLevel = level;
+            else chip.dataset.mbFindingId = key;
+            _setTip(chip, tip);
             chip.style.cssText = 'display:inline-flex; align-items:center; gap:4px; border-radius:10px; padding:1px 3px 1px 8px; font-size:0.85em; font-weight:normal; '
                 + `background:${isErr ? (Lib.settings.sa_release_tracks_length_mismatch_severe_bg || '#f8d7da') : (Lib.settings.sa_release_tracks_length_mismatch_warn_bg || '#fff3cd')}; `
                 + `color:${isErr ? '#a33' : '#8a6d00'}; border:1px solid ${isErr ? '#e08a8a' : '#e0c14a'};`;
-            chip.appendChild(document.createTextNode(`${isErr ? '❌' : '⚠️'} ${f.label}`));
+            chip.appendChild(document.createTextNode(`${isErr ? '❌' : '⚠️'} ${label}`));
             const x = document.createElement('button');
             x.type = 'button';
             x.className = 'mb-findings-chip-remove';
             x.textContent = '✕';
             _setTip(x, 'Remove this row filter');
-            x.setAttribute('aria-label', `Remove the row filter "${f.label}"`);
+            x.setAttribute('aria-label', `Remove the row filter "${label}"`);
             x.style.cssText = 'border:none; background:none; cursor:pointer; font-weight:bold; color:inherit; padding:0 4px;';
-            x.addEventListener('click', () => _toggleFinding(id));
+            x.addEventListener('click', off);
             chip.appendChild(x);
             host.appendChild(chip);
         });
-        host.style.display = _findingRowFilter.size ? 'inline-flex' : 'none';
+        host.style.display = items.length ? 'inline-flex' : 'none';
     }
 
     /**
@@ -117908,12 +118028,14 @@ a { color: #1565c0; }`;
             // 1.3, vzell's answer 6).
             const feedLine = _isBbHost ? _bbFeedStatus()
                 : _bbFeedMbOn() && list.some(x => x.f.id.startsWith('bb-mb-')) ? _bbFeedStatus() : null;
+            // "All errors" / "All warnings": with any finding of the level.
+            const levelRow = list.length ? { n: counts.get(`@${level}`) || 0, on: _findingLevelFilter.has(level) } : null;
             const sig = (styleRow ? `style:${styleRow.text}|` : '') + list.map(x => `${x.f.id}:${x.n}:${x.state}`).join('|') +
-                (feedLine ? `|feed:${feedLine.text}` : '');
+                (levelRow ? `|all:${levelRow.n}:${levelRow.on}` : '') + (feedLine ? `|feed:${feedLine.text}` : '');
             if (menu.panel.dataset.mbSig === sig) return;
             menu.panel.dataset.mbSig = sig;
             changed = true;
-            if (list.length || styleRow) _buildFindingMenuRows(menu, level, list, styleRow, feedLine);
+            if (list.length || styleRow) _buildFindingMenuRows(menu, level, list, styleRow, feedLine, levelRow);
             else menu.panel.querySelectorAll('.mb-toolbar-menu-item').forEach(el => el.remove());
             const total = list.reduce((s, x) => s + x.n, 0);
             const word = level === 'error' ? 'ERROR' : 'WARNING';
@@ -117930,7 +118052,7 @@ a { color: #1565c0; }`;
                     + list.map(x => `${x.f.label} (${x.n})`).join(', ')
                     + '. Pick one to show only those rows in every table.'
                 : `No ${word.toLowerCase()} on this page so far. "Check title style" checks its titles against the MusicBrainz style guide.`);
-            const anyOn = list.some(x => x.state !== 'off');
+            const anyOn = _findingLevelFilter.has(level) || list.some(x => x.state !== 'off');
             menu.btn.setAttribute('aria-pressed', anyOn ? 'true' : 'false');
         });
         // A menu with rows whose segment is not in the bar yet (the bar was
@@ -118007,7 +118129,7 @@ a { color: #1565c0; }`;
         // The ⏳ pending-edits toggles count for exactly the same reason — no
         // input holds them either.
         clearAllFiltersBtn.style.display =
-            (globalFilterActive || stfFiltersActive || _findingRowFilter.size > 0 || _pendingEditsAnyActive())
+            (globalFilterActive || stfFiltersActive || _findingFiltersActive() || _pendingEditsAnyActive())
                 ? 'inline-block' : 'none';
 
         // Update visibility, labels, and in-panel clear button for per-subtable controls.
@@ -121263,6 +121385,16 @@ a { color: #1565c0; }`;
             border-top: 1px solid #d9cfbd !important;
         }
         .mb-findings-clear-item[aria-disabled="true"] {
+            opacity: 0.45;
+            cursor: default;
+        }
+        /* "All errors" / "All warnings" (_findingLevelFilter): above the
+           single findings, set off by a rule; while it is on, the single rows
+           are greyed and inert (mockup question 5). */
+        .mb-toolbar-menu-panel .mb-findings-level-item {
+            border-bottom: 1px solid #d9cfbd !important;
+        }
+        .mb-toolbar-menu-panel .mb-findings-menu-item.mb-findings-item-dim {
             opacity: 0.45;
             cursor: default;
         }
@@ -126739,7 +126871,7 @@ a { color: #1565c0; }`;
         const hidden = tables.filter(t => t.dataset.mbEmptyHidden === '1').length;
         if (!hidden) return '';
         const byGf = stripFilterPrefix(filterInput.value) !== '';
-        const byFindings = _findingRowFilter.size > 0 ||
+        const byFindings = _findingFiltersActive() ||
             tables.some(t => Array.from(t.querySelectorAll('thead tr.mb-col-filter-row .mb-col-filter-input'))
                 .some(_isFindingOnlyColFilter));
         const what = [byGf ? `the ${_mbttLabel('global', 'gf')} filter` : '',
@@ -132829,6 +132961,10 @@ a { color: #1565c0; }`;
         for (const _fid of _findingRowFilter) {
             if (!row.querySelector(`td[data-mb-findings~="${_fid}"]`)) return false;
         }
+        // "All errors" / "All warnings": any finding of the level, anywhere in the row.
+        for (const _lv of _findingLevelFilter) {
+            if (!_rowHasFindingLevel(row, _lv)) return false;
+        }
 
         // The ⏳ pending-edits toggle is engaged for THIS table. Same placement
         // rationale as the length-mismatch check above (after the highlight
@@ -133504,6 +133640,8 @@ a { color: #1565c0; }`;
             // clear did nothing at all, because "no query, no column filters"
             // hashed identically in both states.
             m: Array.from(_findingRowFilter).sort(),
+            // "All errors" / "All warnings", for the same reason.
+            l: Array.from(_findingLevelFilter).sort(),
             // Same reasoning, same bug if omitted — and this one is per-group
             // rather than page-wide, so it has to come off matchCtx (which
             // runFilter() rebuilds per group) rather than a module variable.
@@ -133565,6 +133703,8 @@ a { color: #1565c0; }`;
             // single-table pages (pending edits, low data quality, ISRCs, …),
             // and toggling it may well be followed by an extending keystroke.
             m: Array.from(_findingRowFilter).sort(),
+            // "All errors" / "All warnings", for the same reason.
+            l: Array.from(_findingLevelFilter).sort(),
             f: matchCtx.colFilters.map(f => f.isMultiValueFilter
                 ? { i: f.idx, u: Array.from(f.valueSet).sort(),
                     sm: Array.from(f.structureModes || []).sort(),
@@ -142158,7 +142298,7 @@ a { color: #1565c0; }`;
      * means its h3, the table and every element between them (the
      * `.mb-group-intro`, the CAA/EAA bigboxes).
      *
-     * Page-wide: the global filter text, `_findingRowFilter`, or a findings
+     * Page-wide: the global filter text, `_findingRowFilter`, `_findingLevelFilter`, or a findings
      * tick in a column filter (`_isFindingOnlyColFilter()`). A sub-table with
      * a filter of its own (a typed column filter or 📊 pick, its STF text,
      * its ⏳ scope) is never hidden, because its inputs live in its h3/thead
@@ -142188,7 +142328,7 @@ a { color: #1565c0; }`;
         const colInputs = t => Array.from(t.querySelectorAll('thead tr.mb-col-filter-row .mb-col-filter-input'));
         const pageWide = enabled && (
             stripFilterPrefix(filterInput.value) !== '' ||
-            _findingRowFilter.size > 0 ||
+            _findingFiltersActive() ||
             tables.some(t => colInputs(t).some(_isFindingOnlyColFilter)));
         const focused = document.activeElement;
         // Decide every sub-table first: whether any is hidden depends on
@@ -192147,6 +192287,17 @@ a { color: #1565c0; }`;
                 return _bbImageCaption(_bbParseImageName(url), folderKind);
             },
 
+            /**
+             * A finding's level from the registry ("All errors" / "All
+             * warnings", `_findingLevelFilter`), null for an unknown id.
+             *
+             * @param {string} id
+             * @returns {?string} 'error', 'warn' or null.
+             */
+            findingLevel(id) {
+                const f = _FINDING_BY_ID.get(id);
+                return f ? f.level : null;
+            },
             /**
              * `_bbTagFacts()` of a Brucebase page given as markup: what a
              * show's page says about the tags it should carry.
