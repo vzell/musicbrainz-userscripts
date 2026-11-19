@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-11-19",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase: a show's place tags can now be checked too (⚙️ Settings, \"Also check a Brucebase show's place tags\", off by default while the remaining tag checks are tuned). A show should carry tags for the city, the US state or Canadian province (\"newjersey(nj)\") and the country its title names, \"usa\" or \"canada\" after a state or province, and \"europe\" or \"oceania\" for a country there. Like the other tag checks, it is marked on the Tags card, in the preview window and in the year table's Tags column; a place tag is never called not expected. A few names the wiki tags its own way (\"West Germany\" is \"germany\", \"Atlantic City\" is \"atlanticcitynj\") and the regions come from the Brucebase feed, so BruceParser keeps them up to date without a new script version. Without the feed the Tags card says the place is not checked. On the wiki today it flags 35 shows, most of them without \"usa\" or \"canada\", one with the city written \"Los Angels\". The venue's own tag will follow through the feed."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-11-19",
     "sections": [

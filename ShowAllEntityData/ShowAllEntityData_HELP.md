@@ -4196,6 +4196,13 @@ entry, with these columns:
   feed*), so they change without a new script version; without the feed
   the tour is not checked. Rehearsals, recordings, interviews and dates
   with "00" are not checked.
+  With *Also check a Brucebase show's place tags* on (off by default), a
+  show should carry tags for the city, the US state or Canadian province
+  ("newjersey(nj)") and the country of its title ("usa" or "canada" after a
+  state or province), and "europe" or "oceania" for a country there. A few
+  names the wiki tags its own way ("West Germany" is "germany") and the
+  regions come from the Brucebase feed too; a place tag is never marked as
+  not expected.
 - **On stage**, **Content**, **Images**, **Start** and **Tags** come from each entry's
   own page, so they stay empty (—) until that page is read. **▶ Pages** in
   the On stage header reads the pages of the rows you can see, and then of
@@ -4429,8 +4436,8 @@ site) show those tags too:
   only the marked chips; press again for all. Nothing is marked while the
   On stage page is still being read, and with that page unread the card
   says that no missing tag is looked for. ✓ means the four families are
-  as expected (and the tour, where it is checked; without the feed the
-  card says the tour is not checked). For the Help Us and Featured icons, which are on the
+  as expected (and the tour and the place, where they are checked; without the feed the
+  card says they are not checked). For the Help Us and Featured icons, which are on the
   year page, the show's year page is read once at the press (or Space
   in the window) and kept. Switches: ⚙️ Settings → ⚠️ Findings.
 - **The tag check on venue, song, person, band and release pages:** the

@@ -2,25 +2,26 @@
 'use strict';
 
 /**
- * Track A batch 3b, the tour family (org/springsteen-marriage.org; vzell,
- * 2026-11-19): runs the SHIPPED tag check of a Brucebase show with
- * `sa_bb_tag_family_tour` on and a kept feed over every event page of
- * BruceParser's mirror, and compares its tour findings with the Python
- * probe's rule (scripts/probe-bb-tour-tags.py --json FILE).
+ * Track A batch 3b (org/springsteen-marriage.org): runs the SHIPPED tag
+ * check of a Brucebase show with ONE family's setting on and a kept feed
+ * over every event page of BruceParser's mirror, and compares that family's
+ * findings with the Python probe's rule:
+ *   --family tour   scripts/probe-bb-tour-tags.py ROWS TABLES --json RULE   (sa_bb_tag_family_tour)
+ *   --family place  scripts/probe-bb-place-tags.py ROWS TABLES --json RULE  (sa_bb_tag_family_place)
  *
  * Per event, in the real userscript loaded through the test harness:
  * `__saTest.bbTagFacts()` on the page, its own tags from the link previews'
  * parser (`__saTest.dpParse()`), the probe's tags of its other pages, and
- * `__saTest.bbTagCheck()`; the findings of family "tour" against the
- * probe's. A second pass with the setting off must find no tour finding at
- * all, and one with the feed lacking its tables neither.
+ * `__saTest.bbTagCheck()`; the findings of the family against the probe's.
+ * Then three passes that must find none of the family's findings: the
+ * setting off, a feed without its tables, the feed off.
  *
  * Read-only, no network. Exit code 1 when anything differs.
  *
- * usage: node scripts/check-bb-tour-tags.js ROWS.json RULE.json FEED.json [--mirror DIR]
+ * usage: node scripts/check-bb-batch3b-findings.js --family F ROWS.json RULE.json FEED.json [--mirror DIR]
  *   ROWS.json  scripts/probe-bb-batch3-findings.py --rows
- *   RULE.json  scripts/probe-bb-tour-tags.py ROWS.json TABLES.json --json
- *   FEED.json  a bb-feed.json of feed 1.4 (its tagTables are the probe's TABLES.json)
+ *   RULE.json  the family's probe --json (above)
+ *   FEED.json  a bb-feed.json whose tagTables are the probe's TABLES
  */
 
 const fs = require('fs');
@@ -29,11 +30,14 @@ const path = require('path');
 const { chromium } = require('@playwright/test');
 const { loadUserscriptPage } = require('../tests/support/loadPage');
 
+const FAMILIES = { tour: 'sa_bb_tag_family_tour', place: 'sa_bb_tag_family_place' };
 const args = process.argv.slice(2);
-const mi = args.indexOf('--mirror');
-const pos = args.filter((a, i) => !a.startsWith('--') && (mi < 0 || i !== mi + 1));
+const opt = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : null; };
+const valued = new Set(['--mirror', '--family'].map(o => args.indexOf(o) + 1).filter(i => i > 0));
+const pos = args.filter((a, i) => !a.startsWith('--') && !valued.has(i));
 const [ROWS, RULE, FEED] = pos;
-const MIRROR = fs.realpathSync(mi >= 0 ? args[mi + 1] : path.join(os.homedir(), 'git/scripts/BruceParser/bb/latest'));
+const FAMILY = opt('--family');
+const MIRROR = fs.realpathSync(opt('--mirror') || path.join(os.homedir(), 'git/scripts/BruceParser/bb/latest'));
 
 /**
  * The mirror's file of a page name ("gig:1985-01-13-…").
@@ -68,13 +72,13 @@ async function open(browser, settings) {
 }
 
 /**
- * The tour findings of every row, as the shipped check gives them.
+ * The family's findings of every row, as the shipped check gives them.
  *
  * @param {import('@playwright/test').Page} page
  * @param {Array<Object>} rows - The probe's rows.
  * @returns {Promise<Array<{missing: string[], spurious: string[], noWhy: string[]}>>}
  */
-async function tourFindings(page, rows) {
+async function findings(page, rows) {
     const out = [];
     const BATCH = 40;
     for (let at = 0; at < rows.length; at += BATCH) {
@@ -82,27 +86,28 @@ async function tourFindings(page, rows) {
             name: r.name, html: fs.readFileSync(fileOf(r.name), 'utf8'),
             more: [].concat(...r.pages.map(p => p[1].map(t => t.toLowerCase()))),
         }));
-        out.push(...await page.evaluate(list => list.map((x) => {
+        out.push(...await page.evaluate(([list, family]) => list.map((x) => {
             const url = 'https://brucebase.wikidot.com/' + x.name;
             const facts = window.__saTest.bbTagFacts(x.html, url);
             const rec = window.__saTest.dpParse('brucebase.wikidot.com', x.html, url);
             const own = ((rec && rec.tags) || []).map(t => t.text.toLowerCase());
             const res = window.__saTest.bbTagCheck(facts, own, x.more, null);
-            const tour = list => list.filter(m => m.family === 'tour');
+            const mine = l => l.filter(m => m.family === family);
             return {
-                missing: tour(res.missing).map(m => m.tag), spurious: tour(res.spurious).map(m => m.tag),
-                noWhy: tour(res.missing.concat(res.spurious)).filter(m => !m.why).map(m => m.tag),
+                missing: mine(res.missing).map(m => m.tag), spurious: mine(res.spurious).map(m => m.tag),
+                noWhy: mine(res.missing.concat(res.spurious)).filter(m => !m.why).map(m => m.tag),
             };
-        }), part));
+        }), [part, FAMILY]));
     }
     return out;
 }
 
 (async () => {
-    if (!ROWS || !RULE || !FEED) {
-        console.error('usage: node scripts/check-bb-tour-tags.js ROWS.json RULE.json FEED.json [--mirror DIR]');
+    if (!ROWS || !RULE || !FEED || !FAMILIES[FAMILY]) {
+        console.error('usage: node scripts/check-bb-batch3b-findings.js --family tour|place ROWS.json RULE.json FEED.json [--mirror DIR]');
         process.exit(2);
     }
+    const key = FAMILIES[FAMILY];
     const rows = JSON.parse(fs.readFileSync(ROWS, 'utf8'));
     const rule = JSON.parse(fs.readFileSync(RULE, 'utf8'));
     const feed = JSON.parse(fs.readFileSync(FEED, 'utf8'));
@@ -111,8 +116,8 @@ async function tourFindings(page, rows) {
     const sorted = list => list.slice().sort().join(' ');
 
     // 1. The family on, the feed kept: equal to the probe's rule.
-    let { page, context } = await open(browser, { sa_bb_feed: true, sa_bb_tag_family_tour: true, ...kept(feed) });
-    const got = await tourFindings(page, rows);
+    let { page, context } = await open(browser, { sa_bb_feed: true, [key]: true, ...kept(feed) });
+    const got = await findings(page, rows);
     await context.close();
     let diffs = 0;
     let flagged = 0;
@@ -129,21 +134,21 @@ async function tourFindings(page, rows) {
             if (diffs <= 40) console.log(`DIFF ${r.name}\n   ${bad.join('\n   ')}`);
         }
     });
-    console.log(`${rows.length} events, the shipped tour check against the probe: ${diffs} differ; ${flagged} events flagged`);
+    console.log(`${rows.length} events, the shipped ${FAMILY} check against the probe: ${diffs} differ; ${flagged} events flagged`);
 
-    // 2. The family off, and 3. the feed without its tables: no tour finding.
+    // 2.–4. The family off, a feed without its tables, the feed off: none of its findings.
     const quiet = [
-        ['the setting off', { sa_bb_feed: true, sa_bb_tag_family_tour: false, ...kept(feed) }],
-        ['a feed without tagTables', { sa_bb_feed: true, sa_bb_tag_family_tour: true, ...kept({ ...feed, tagTables: undefined }) }],
-        ['the feed off', { sa_bb_feed: false, sa_bb_tag_family_tour: true, ...kept(feed) }],
+        ['the setting off', { sa_bb_feed: true, [key]: false, ...kept(feed) }],
+        ['a feed without tagTables', { sa_bb_feed: true, [key]: true, ...kept({ ...feed, tagTables: undefined }) }],
+        ['the feed off', { sa_bb_feed: false, [key]: true, ...kept(feed) }],
     ];
     let loud = 0;
     for (const [label, settings] of quiet) {
         ({ page, context } = await open(browser, settings));
-        const res = await tourFindings(page, rows);
+        const res = await findings(page, rows);
         await context.close();
         const n = res.filter(g => g.missing.length || g.spurious.length).length;
-        console.log(`${label}: ${n} events with a tour finding (want 0)`);
+        console.log(`${label}: ${n} events with a ${FAMILY} finding (want 0)`);
         loud += n;
     }
     await browser.close();

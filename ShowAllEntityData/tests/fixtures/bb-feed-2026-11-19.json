@@ -4664,10 +4664,10 @@
     }
   },
   "run": {
-    "bruceparser": "0.22.0",
-    "commit": "455a63a",
+    "bruceparser": "0.22.1",
+    "commit": "9294282",
     "date": "2026-11-19",
-    "feed": "1.4"
+    "feed": "1.4.1"
   },
   "site": "https://brucebase.wikidot.com",
   "tagTables": {
@@ -4790,6 +4790,34 @@
       "roy bittan": "roy.bittan",
       "soozie tyrell": "soozie.tyrell",
       "steven van zandt": "steven.vanzandt"
+    },
+    "expectedRegions": [
+      "europe",
+      "oceania"
+    ],
+    "placeTags": {
+      "Atlantic City": [
+        "atlanticcitynj"
+      ],
+      "East Berlin": [
+        "berlin"
+      ],
+      "East Germany": [
+        "germany"
+      ],
+      "Mt. Macedon": [
+        "macedon"
+      ],
+      "The Netherlands": [
+        "thenetherlands",
+        "netherlands"
+      ],
+      "West Berlin": [
+        "berlin"
+      ],
+      "West Germany": [
+        "germany"
+      ]
     },
     "relationAlias": {
       "the 1992–93 world tour band": "otherband"

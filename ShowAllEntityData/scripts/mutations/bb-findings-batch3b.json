@@ -134,8 +134,8 @@
         "why": "The card says why the tour is not checked.",
         "edits": [
             {
-                "find": "        if (!_bbTagTourOn() || !_bbTagTourApplies(facts) || _bbFeedTables()) return '';",
-                "replace": "        if (facts || !_bbTagTourOn() || !_bbTagTourApplies(facts) || _bbFeedTables()) return '';"
+                "find": "        if (!facts || facts.page || _bbFeedTables()) return '';",
+                "replace": "        if (!facts || facts.page || _bbFeedTables() || facts) return '';"
             }
         ],
         "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
@@ -147,8 +147,8 @@
         "why": "It names the families that were checked.",
         "edits": [
             {
-                "find": "            return `✓ date, letter, kind, premiere${tour ? ', icon and tour' : ' and icon'} tags as expected`;",
-                "replace": "            return `✓ date, letter, kind, premiere${tour && !tour ? ', icon and tour' : ' and icon'} tags as expected`;"
+                "find": "            const more = [tables && _bbTagTourOn() && _bbTagTourApplies(facts) ? 'tour' : '', tables && _bbTagPlaceOn() ? 'place' : ''].filter(Boolean);",
+                "replace": "            const more = [tables && _bbTagPlaceOn() ? 'place' : ''].filter(Boolean);"
             }
         ],
         "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
@@ -160,7 +160,7 @@
         "why": "_bbFeedMapsWanted() adds tagTables while the family is on.",
         "edits": [
             {
-                "find": "        return _bbTagTourOn() ? _BB_FEED_MAPS.concat('tagTables') : _BB_FEED_MAPS;",
+                "find": "        return _bbTagTableFamiliesOn() ? _BB_FEED_MAPS.concat('tagTables') : _BB_FEED_MAPS;",
                 "replace": "        return _BB_FEED_MAPS;"
             }
         ],
@@ -173,7 +173,7 @@
         "why": "With every family off a kept 1.3 file is not read again for them.",
         "edits": [
             {
-                "find": "        return _bbTagTourOn() ? _BB_FEED_MAPS.concat('tagTables') : _BB_FEED_MAPS;",
+                "find": "        return _bbTagTableFamiliesOn() ? _BB_FEED_MAPS.concat('tagTables') : _BB_FEED_MAPS;",
                 "replace": "        return _BB_FEED_MAPS.concat('tagTables');"
             }
         ],
@@ -186,7 +186,7 @@
         "why": "_bbTagFamiliesFeedChanged() fills the cards again and writes the read Tags cells again.",
         "edits": [
             {
-                "find": "    function _bbTagFamiliesFeedChanged() {\n        if (!_bbTagTourOn()) return;",
+                "find": "    function _bbTagFamiliesFeedChanged() {\n        if (!_bbTagTableFamiliesOn()) return;",
                 "replace": "    function _bbTagFamiliesFeedChanged() {\n        return;"
             }
         ],
@@ -206,5 +206,174 @@
         "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
         "grep": "a kept feed without tables, read an hour ago",
         "expect": "fail"
+    },
+    {
+        "name": "place: the switch is always on",
+        "why": "sa_bb_tag_family_place is off by default (vzell, 2026-11-19).",
+        "edits": [
+            {
+                "find": "        return Lib.settings.sa_bb_tag_family_place === true;",
+                "replace": "        return Lib.settings.sa_bb_tag_family_place !== 'never';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "off, a feed without its tables, the feed off: no place finding",
+        "expect": "fail"
+    },
+    {
+        "name": "place: the tables of a feed with the family off",
+        "why": "No place check without the feed's tables.",
+        "edits": [
+            {
+                "find": "        if (!_bbTagPlaceOn() || !facts || facts.page) return null;\n        const tables = _bbFeedTables();\n        if (!tables) return null;",
+                "replace": "        if (!_bbTagPlaceOn() || !facts || facts.page) return null;\n        const tables = _bbFeedTables() || JSON.parse(JSON.stringify(_bbFeed.data && _bbFeed.data.tagTables || {usStates: {NJ: 'New Jersey'}, caProvinces: {}}));"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "off, a feed without its tables, the feed off: no place finding",
+        "expect": "fail"
+    },
+    {
+        "name": "place: \"NJ (First)\" stays part of the place",
+        "why": "A trailing \"(…)\" of the last title part is no place.",
+        "edits": [
+            {
+                "find": "        p[p.length - 1] = p[p.length - 1].replace(/\\s*\\([^)]*\\)\\s*$/, '').trim();",
+                "replace": "        void 0;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "on, with the feed's tables: each page as the probe found it, with its reason",
+        "expect": "fail"
+    },
+    {
+        "name": "place: \"usa\"/\"canada\" not expected after a state",
+        "why": "The country of a US state or Canadian province.",
+        "edits": [
+            {
+                "find": "            add([us[last] ? 'usa' : 'canada'], `${last} is ${us[last] ? 'a US state' : 'a Canadian province'}.`);",
+                "replace": "            void 0;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "on, with the feed's tables: each page as the probe found it, with its reason",
+        "expect": "fail"
+    },
+    {
+        "name": "place: the state tag not expected",
+        "why": "\"newjersey(nj)\" for NJ.",
+        "edits": [
+            {
+                "find": "            add([`${_bbTagPlaceSlug(full)}(${last.toLowerCase()})`], `The title names ${us[last] ? 'the state' : 'the province'} ${last}, ${full}.`);",
+                "replace": "            void full;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "on, with the feed's tables: each page as the probe found it, with its reason",
+        "expect": "fail"
+    },
+    {
+        "name": "place: the city not expected",
+        "why": "The title names the city (outside a US state: \"West Berlin\" without placeTags is \"westberlin\").",
+        "edits": [
+            {
+                "find": "            add(tagsOf(city), `The title names the city \"${city}\".`);",
+                "replace": "            void city;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "the feed's placeTags and expectedRegions decide",
+        "expect": "fail"
+    },
+    {
+        "name": "place: an Australian title's state taken as its city",
+        "why": "The wiki never tags an Australian state (0 of 57).",
+        "edits": [
+            {
+                "find": "            const city = last === 'Australia' && p.length >= 4 ? p[p.length - 3] : p[p.length - 2];",
+                "replace": "            const city = p[p.length - 2];"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "on, with the feed's tables: each page as the probe found it, with its reason",
+        "expect": "fail"
+    },
+    {
+        "name": "place: placeTags ignored",
+        "why": "\"West Germany\" is tagged \"germany\" (the feed's placeTags).",
+        "edits": [
+            {
+                "find": "        const place = tables.placeTags || {};",
+                "replace": "        const place = {};"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "on, with the feed's tables: each page as the probe found it, with its reason",
+        "expect": "fail"
+    },
+    {
+        "name": "place: every region of the table expected",
+        "why": "Only the feed's expectedRegions (europe, oceania).",
+        "edits": [
+            {
+                "find": "            ((tables.countryRegions || {})[last] || []).filter(r => want.has(r))",
+                "replace": "            ((tables.countryRegions || {})[last] || []).filter(r => r)"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "the feed's placeTags and expectedRegions decide",
+        "expect": "fail"
+    },
+    {
+        "name": "place: a second accepted tag does not count",
+        "why": "\"netherlands\" counts for \"The Netherlands\" (alts).",
+        "edits": [
+            {
+                "find": "        for (const e of expected) {\n            if (!_bbTagPresent(e.tag, all) && !(e.alts || []).some(a => all.has(a))) res.missing.push(e);",
+                "replace": "        for (const e of expected) {\n            if (!_bbTagPresent(e.tag, all)) res.missing.push(e);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "on, with the feed's tables: each page as the probe found it, with its reason",
+        "expect": "fail"
+    },
+    {
+        "name": "place: a missing chip in the Other row",
+        "why": "The Place row is where the tag sits when the page has it.",
+        "edits": [
+            {
+                "find": "tour: 'tour', place: 'place',",
+                "replace": "tour: 'tour', place: 'other',"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "the Mark Twain House",
+        "expect": "fail"
+    },
+    {
+        "name": "place: the wait line leaves the place out",
+        "why": "The card names every family it cannot check.",
+        "edits": [
+            {
+                "find": "_bbTagPlaceOn() ? 'place' : ''].filter(Boolean);\n        if (!what.length) return '';",
+                "replace": "''].filter(Boolean);\n        if (!what.length) return '';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "both families on, the feed off",
+        "expect": "fail"
+    },
+    {
+        "name": "place: a feed that comes in later is ignored with only the place on",
+        "why": "Only the feed reread and the repaint read _bbTagTableFamiliesOn(); no place spec has a late feed, the tour spec covers both paths. Known overlap, recorded.",
+        "edits": [
+            {
+                "find": "        return _bbTagTourOn() || _bbTagPlaceOn();",
+                "replace": "        return _bbTagTourOn();"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "off, a feed without its tables, the feed off: no place finding",
+        "expect": "pass"
     }
 ]

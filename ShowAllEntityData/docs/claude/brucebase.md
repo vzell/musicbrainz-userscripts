@@ -2377,14 +2377,54 @@ its hand-edited `brucebase/tag-tables.json`; vzell, question 6), read by
   (`_bbTagPagesNotify()`), and on Brucebase every read Tags cell of a year
   table is written again (`_bbEvpRenderCell()`, which queues the changed
   rows' re-stamp), then `_bbEvpScheduleRefresh()`.
-- **No new request, no parser change:** the rule reads the facts batch 3
-  already keeps (kind, date) and the tags; `_DP_PARSER_VERSION` stays.
-- **Checks:** `node scripts/check-bb-tour-tags.js ROWS RULE FEED` runs the
+- **No new request:** the rule reads the facts batch 3 already keeps
+  (kind, date) and the tags.
+- **Checks:** `node scripts/check-bb-batch3b-findings.js --family tour ROWS RULE FEED` runs the
   shipped rule over all 5,007 shows against the probe's (0 differences, 49
   flagged), then with the setting off, a feed without tables and the feed
   off (0 findings each). Tests: `tests/fixtures/bb-findings-batch3b.spec.js`
   on seven real pages (`scripts/build-bb-findings-batch3b-fixtures.py`) and
   batch 3's 2016 year; mutations `scripts/mutations/bb-findings-batch3b.json`.
+
+**The place family** (`sa_bb_tag_family_place`; `_bbTagPlaceOn()`,
+`_bbTagPlaceSlug()`, `_bbTagPlaceExpected()`):
+- **What the wiki tags** (`scripts/probe-bb-place-tags.py`, Env:
+  2026-11-19T19:20+01:00 · NB-3641 · Python over bb/2026-11-19 · n/a;
+  gigs and nogigs, 4,043 shows): the city 99.7 %, the US/CA state 99.8 %,
+  the country 99.2 % (as the title writes it: `thenetherlands`), the venue
+  83.7 % (its tag is the venue page's own, `rai` for Amsterdam RAI, so a
+  title slug misses 658), an Australian state 0 of 57; `europe` 554 of
+  558, `unitedkingdom` 81 of 141, `scandinavia` 69 of 97. The other kinds
+  of page carry city, state and country as often (98–100 %).
+- **Decisions (vzell, 2026-11-19):** city, state and country; the venue
+  through a venue→tag map from the feed (not built yet: it comes with the
+  songs' map, the same derivation); regions `europe` and `oceania` only;
+  West and East Germany → `germany` through the feed.
+- **The rule:** every kind of event. The title "DATE Venue, [detail,] City,
+  ST|Country", a trailing "(…)" of its last part cut ("NJ (First)", "NJ
+  (Early)"): a US state or Canadian province gives the city before it, its
+  tag `newjersey(nj)` and `usa`/`canada`; else the city before the last
+  part (an Australian title's: the part before its state), the country,
+  and the country's regions in the feed's `expectedRegions`. A name in the
+  feed's `placeTags` takes its tags from there, the first named when
+  missing, the others counted too (`alts`, read by `_bbTagCheck()`'s
+  missing loop): West/East Germany, West/East Berlin, The Netherlands,
+  Mt. Macedon, Atlantic City (`atlanticcitynj`; the plain tag is the song).
+  A place tag is never called not expected.
+- **Counts** (bb/2026-11-19, 5,007 events): 35 shows, 41 missing tags:
+  `usa` 14, `canada` 6, `europe` 4, states 8, cities 6 (one a typo in the
+  title, "Los Angels").
+- **The title in the facts:** `_bbTagFacts()` keeps the page's title as
+  written (`title`; `_DP_PARSER_VERSION` 36, so every stored preview of a
+  foreign host is read once more). A record kept before has no title and
+  gets no place finding.
+- **Shared with the tour family:** `_bbTagTableFamiliesOn()` (the feed's
+  tables wanted, a late feed repainted), the one wait line naming every
+  family that cannot be checked, "as expected" naming each family checked.
+- **Checks:** `node scripts/check-bb-batch3b-findings.js --family place
+  ROWS RULE FEED`: 0 differences, 35 flagged; 0 with the setting off, a
+  feed without tables, the feed off. The batch 3 checker still finds 0
+  differences with the title in the facts.
 
 ## BruceBaseParser on the same page (bbp-parity, "Coexistence", 2026-11-19)
 

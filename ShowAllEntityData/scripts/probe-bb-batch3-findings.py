@@ -966,7 +966,7 @@ def analyse(mirror, name, icons):
                               {'help': name in icons['file:help'], 'featured': name in icons['file:featured']},
                               {'help': help_page, 'featured': feat_page}),
         'iconsYear': {'help': name in icons['file:help'], 'featured': name in icons['file:featured']},
-        'facts': {'kind': kind, 'date': date, 'letter': letter or '',
+        'facts': {'title': title, 'kind': kind, 'date': date, 'letter': letter or '',
                   'prem': sum(1 for a in song_links(setlist_container(doc) or doc) if a.inside('strong')),
                   'help': help_page, 'featured': feat_page},
         'dateDiffers': bool(am and date and am.group(1) != date),

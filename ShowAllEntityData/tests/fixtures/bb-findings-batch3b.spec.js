@@ -7,12 +7,18 @@
 // tagTables, feed 1.4) should carry that tour's tag, every covering tour's
 // when two overlap, unless a page of the show carries "tour_no"; a tour tag
 // of the page whose tour has other dates is not expected. Rehearsals,
-// recordings, interviews and "00" dates are not looked at.
+// recordings, interviews and "00" dates are not looked at. The place
+// family (vzell, 2026-11-19): every show should carry its title's city, US
+// state or Canadian province with "usa"/"canada", or its country, and the
+// country's regions the feed's expectedRegions lists; the feed's placeTags
+// name a few places the wiki tags its own way. A place tag is never "not
+// expected".
 //
 // Every page is real (mirror 2026-11-19, scripts/build-bb-findings-batch3b-fixtures.py;
-// the 2016 year and its pages from batch 3), the feed is the published one
-// of that run. What scripts/probe-bb-tour-tags.py found on them is WANT;
-// scripts/check-bb-tour-tags.js runs the shipped rule over all 5,007 shows.
+// the 2016 year and its pages, and Stone Pony 2026, from batch 3), the feed
+// is that run's (BruceParser 0.22.1). What scripts/probe-bb-tour-tags.py and
+// scripts/probe-bb-place-tags.py found on them is WANT and WANT_PLACE;
+// scripts/check-bb-batch3b-findings.js runs the shipped rules over all 5,007 shows.
 
 const fs = require('fs');
 const path = require('path');
@@ -39,6 +45,23 @@ const CHI = 'gig:2016-01-19-united-center-chicago-il';
 const PIT = 'gig:2016-01-16-consol-energy-center-pittsburgh-pa';
 const MAD = 'gig:2016-05-21-estadio-santiago-bernabeu-madrid-spain';
 const INT = 'interview:2016-09-06-stone-hill-studio-colts-neck-nj';
+// The place family's pages.
+const STONE = 'gig:2026-08-28-stone-pony-asbury-park-nj';
+const KEN = 'gig:2022-04-24-kennedy-center-concert-hall-washington-dc';
+const CNE = 'gig:1984-07-23-cne-grandstand-toronto-on';
+const SOLNA = 'gig:2013-05-11-friends-arena-solna-sweden';
+const BERLIN = 'gig:1981-04-09-icc-berlin-germany';
+const NIJ = 'gig:2024-06-27-goffertpark-nijmegen-netherlands';
+const WAN = 'gig:1969-05-28a-pandemonium-wanamassa-nj';
+const SYD = 'gig:1985-03-21-entertainment-centre-sydney-australia';
+const LA = 'interview:2025-04-28-saban-media-center-los-angels-ca';
+const TWAIN = 'nogig:2003-09-17-mark-twain-house-hartford-ct';
+/** The place family's missing tags of each page (probe, mirror 2026-11-19; a place tag is never "not expected"). */
+const WANT_PLACE = {
+    [STONE]: ['newjersey(nj)'], [KEN]: ['usa'], [CNE]: ['canada'], [SOLNA]: ['europe'], [LA]: ['losangels'], [TWAIN]: ['usa'],
+    // placeTags: West Berlin and West Germany, The Netherlands as "netherlands"; "NJ (First)"; an Australian state.
+    [BERLIN]: [], [NIJ]: [], [WAN]: [], [SYD]: [], [CHI]: [],
+};
 /** The tour family's findings of each page (probe, mirror 2026-11-19): [missing, not expected]. */
 const WANT = {
     [RATH]: [['tour_23int'], []],
@@ -240,7 +263,7 @@ test.describe('Brucebase tag check, batch 3b: the tour family on the event page\
         await answerFeed(page, FEED, 2500);
         await showEvent(page, BRUS, { ...TOUR, ...kept(FEED_13, 2 * 3600 * 1000) });
         const c = card(page);
-        await expect(c.locator('.mb-cbx-wait')).toHaveText('The tour tag is checked once the Brucebase feed with its tour table is read.');
+        await expect(c.locator('.mb-cbx-wait')).toHaveText('The tour tag is checked once the Brucebase feed with its tables is read.');
         await expect(c.locator('.mb-sb-chip.mb-cbx-miss')).toHaveText(['tour_mgc missing'], { timeout: 10000 });
         await expect(c.locator('.mb-sb-chip.mb-cbx-spur')).toHaveText(['tour_rsng']);
         await expect(c.locator('.mb-cbx-wait')).toHaveCount(0);
@@ -320,5 +343,103 @@ test.describe('Brucebase tag check, batch 3b: the tour family on the year table'
         ]);
         const row = await findingRow(page, 'warn', 'bb-tag-spurious');
         expect(row && row.count, 'every row with a tag that is not expected, in the menu').toBe(4);
+    });
+});
+
+test.describe('Brucebase tag check, batch 3b: the place family', () => {
+    const PLACE = { sa_bb_feed: true, sa_bb_tag_family_place: true };
+
+    /**
+     * Loads a fixture page with the given settings and returns a function
+     * giving a page's place findings through the shipped check.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {Object<string, *>} settings
+     * @returns {Promise<function(string): Promise<{missing: string[], spurious: string[], why: string[]}>>}
+     */
+    async function rule(page, settings) {
+        await page.route(/^https?:\/\//, route => route.abort('blockedbyclient'));
+        await loadUserscriptPage(page, { url: BB + CHI, fixtureFile: fileOf(CHI), testMode: true, settingsOverride: { ...BASE, ...settings } });
+        await page.waitForFunction(() => window.__saTest && window.__saTest.bbTagCheck);
+        return name => page.evaluate(([html, url]) => {
+            const facts = window.__saTest.bbTagFacts(html, url);
+            const rec = window.__saTest.dpParse('brucebase.wikidot.com', html, url);
+            const r = window.__saTest.bbTagCheck(facts, ((rec && rec.tags) || []).map(t => t.text.toLowerCase()), []);
+            const place = list => list.filter(x => x.family === 'place');
+            return { missing: place(r.missing).map(x => x.tag), spurious: place(r.spurious).map(x => x.tag), why: place(r.missing).map(x => x.why) };
+        }, [fs.readFileSync(fileOf(name), 'utf8'), BB + name]);
+    }
+
+    test('on, with the feed\'s tables: each page as the probe found it, with its reason; a place tag is never "not expected"', async ({ page }) => {
+        const check = await rule(page, { ...PLACE, ...kept(FEED) });
+        for (const [name, missing] of Object.entries(WANT_PLACE)) {
+            const got = await check(name);
+            expect({ name, missing: got.missing, spurious: got.spurious }).toEqual({ name, missing, spurious: [] });
+        }
+        expect((await check(STONE)).why).toEqual(['The title names the state NJ, New Jersey.']);
+        expect((await check(KEN)).why).toEqual(['DC is a US state.']);
+        expect((await check(SOLNA)).why).toEqual(['"Sweden" is in Europe.']);
+        expect((await check(LA)).why).toEqual(['The title names the city "Los Angels".']);
+    });
+
+    test('the feed\'s placeTags and expectedRegions decide: without them, the names as written and no region', async ({ page }) => {
+        const bare = JSON.parse(JSON.stringify(FEED));
+        delete bare.tagTables.placeTags;
+        delete bare.tagTables.expectedRegions;
+        const check = await rule(page, { ...PLACE, ...kept(bare) });
+        expect((await check(BERLIN)).missing).toEqual(['westberlin', 'westgermany']);
+        expect((await check(NIJ)).missing).toEqual(['thenetherlands']);
+        expect((await check(SOLNA)).missing).toEqual([]);
+    });
+
+    test('off, a feed without its tables, the feed off: no place finding', async ({ browser }) => {
+        for (const settings of [{ sa_bb_feed: true, sa_bb_tag_family_place: false, ...kept(FEED) },
+            { ...PLACE, ...kept(FEED_13) }, { sa_bb_feed: false, sa_bb_tag_family_place: true, ...kept(FEED) }]) {
+            const page = await browser.newPage();
+            page.on('pageerror', e => pageErrors.push(String(e)));
+            const check = await rule(page, settings);
+            for (const name of [STONE, KEN, TWAIN]) expect(await check(name), `${name} with ${JSON.stringify(settings).slice(0, 80)}`).toMatchObject({ missing: [], spurious: [] });
+            await page.close();
+        }
+    });
+
+    /**
+     * Loads an event page fixture at its address and presses its button.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {string} name
+     * @param {Object<string, *>} settings
+     * @returns {Promise<void>}
+     */
+    async function showEvent(page, name, settings) {
+        await page.setViewportSize({ width: 1500, height: 1200 });
+        await page.route(/^https?:\/\//, route => route.abort('blockedbyclient'));
+        const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
+        await page.route(/brucebase\.wdfiles\.com\//, route => route.fulfill({ status: 200, contentType: 'image/png', body: png }));
+        await loadUserscriptPage(page, { url: BB + name, fixtureFile: fileOf(name), testMode: true, settingsOverride: { ...BASE, sa_bb_detail_pages: true, ...settings } });
+        await servePages(page);
+        await page.click(`button[data-label="${BB_EVENT_BUTTON}"]`);
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+    }
+    const card = page => page.locator('section.mb-sb-card').filter({ has: page.locator(':scope > .mb-sb-card-head', { hasText: /^Tags/ }) });
+    const row = (c, label) => c.locator('.mb-sb-chip-row').filter({ has: c.page().locator(':scope > .mb-sb-chip-kind', { hasText: new RegExp(`^${label}$`) }) });
+
+    test('the Mark Twain House (a nogig): "usa missing" in the Place row; with the tour on too, "tour_rsng missing" in the Tour row', async ({ page }) => {
+        await showEvent(page, TWAIN, { ...PLACE, sa_bb_tag_family_tour: true, ...kept(FEED) });
+        const c = card(page);
+        await expect(row(c, 'Place').locator('.mb-sb-chip.mb-cbx-miss')).toHaveText(['usa missing']);
+        await expect(row(c, 'Tour').locator('.mb-sb-chip.mb-cbx-miss')).toHaveText(['tour_rsng missing']);
+        await expect(c.locator('.mb-cbx-finds .mb-cbx-find-e')).toContainText(['usa is expected and missing. CT is a US state.']);
+    });
+
+    test('both families on, the feed off: one line says neither is checked', async ({ page }) => {
+        await showEvent(page, TWAIN, { sa_bb_feed: false, sa_bb_tag_family_tour: true, sa_bb_tag_family_place: true });
+        await expect(card(page).locator('.mb-cbx-wait')).toHaveText('The tour and place tags are not checked: the Brucebase feed is off.');
+        await expect(card(page).locator('.mb-cbx-miss')).toHaveCount(0);
+    });
+
+    test('a show found as expected: "as expected" names the tour and the place', async ({ page }) => {
+        await showEvent(page, WELL, { ...PLACE, sa_bb_tag_family_tour: true, ...kept(FEED), sa_bb_onstage_tags: true });
+        await expect(card(page).locator('.mb-cbx-pill-ok')).toHaveText('✓ date, letter, kind, premiere, icon, tour and place tags as expected');
     });
 });

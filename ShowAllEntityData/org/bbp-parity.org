@@ -33,7 +33,7 @@ State: DONE (SAED has it), PART, TODO, NOT (not ported, with the reason).
 | Expected tags: content (bootleg, livedl, news, memorabilia, ticket, …)       | =computeExpectedTags= table                     | the rule flags 2,469 shows as it is: to tune with vzell                               | TODO  |    3b |
 | Expected tags: tour premiere count + prem                                    | =countTourPremiereSongs=                        | same two findings                                                                     | DONE  |     3 |
 | Expected tags: tour association                                              | =checkEventTourTags=, =TOUR_DEFINITIONS=        | the tour family (=sa_bb_tag_family_tour=, off), the table in the feed: 49 shows       | DONE  |    3b |
-| Expected tags: location (title / venue)                                      | =checkEventNameLocationTags= …                  | 663 shows as it is: to tune                                                           | TODO  |    3b |
+| Expected tags: location (title / venue)                                      | =checkEventNameLocationTags= …                  | the place family (=…_place=, off): city, state, country, regions; venue: feed map     | PART  |    3b |
 | Expected tags: relations of the cast tab                                     | =checkOnStageRelationTags=                      | 1,859 shows as it is: to tune                                                         | TODO  |    3b |
 | Expected tags: setlist songs                                                 | =checkSetlistSongTags=, =computeSongTagAlias=   | 1,114 shows as it is (the initials rule): to tune                                     | TODO  |    3b |
 | Spurious tags (present, not expected)                                        | =SPURIOUS_TAG_REASONS=                          | =bb-tag-spurious= for the shipped families; tour and content tags: batch 3b           | PART  |  3/3b |
@@ -902,7 +902,7 @@ tour where checked; =_bbFeedTables()=, =_bbFeedMapsWanted()= (the tables are a w
 on), =_bbTagFamiliesFeedChanged()= (cards and read Tags cells written again when the feed comes in). No request, no
 parser change. +8.4 kB in the userscript.
 
-*Tests* (NB-3641, 2026-11-19): =node scripts/check-bb-tour-tags.js= over all 5,007 shows: 0 differences from the
+*Tests* (NB-3641, 2026-11-19): =node scripts/check-bb-batch3b-findings.js= over all 5,007 shows: 0 differences from the
 probe, 49 flagged; 0 findings with the setting off, a feed without tables, the feed off.
 =bb-findings-batch3b.spec.js= 9; 19 mutations (16 new, 3 older finds this change moved) all fail their test — the
 first run let 3 pass (the "00" guard, the =tour_no= excuse, the Tour row), each a gap in the spec, closed. The
@@ -926,3 +926,54 @@ First: ⚙️ Settings → "Also check a Brucebase show's tour tag" on ("Read th
 
 Unverified: all of it in a real browser; the window on the 2008 year page (the link is on the page, its window not
 tried).
+
+** The place family (=sa_bb_tag_family_place=, off by default)
+
+*Decisions (vzell, 2026-11-19):* city, US/CA state and country; the venue through a venue→tag map from the feed (not
+built yet, it comes with the songs' map); regions =europe= and =oceania= only; West and East Germany → =germany= through
+the feed (BruceParser 0.22.1: =placeTags= and =expectedRegions= in =tagTables=, committed, not published).
+
+*The probe* (=scripts/probe-bb-place-tags.py=, gigs and nogigs, 4,043 shows):
+
+| Part             | Shows | Carry the tag | Share  |
+|------------------+-------+---------------+--------|
+| venue            | 4,043 |         3,385 | 83.7 % |
+| city             | 4,043 |         4,032 | 99.7 % |
+| US/CA state      | 3,346 |         3,339 | 99.8 % |
+| Australian state |    57 |             0 |  0.0 % |
+| country          | 4,043 |         4,011 | 99.2 % |
+| region           |   819 |           716 | 87.4 % |
+
+The rule as decided, every kind of event: *35 shows*, 41 missing tags (=usa= 14, =canada= 6, =europe= 4, states 8,
+cities 6, one of them the title's "Los Angels"). =placeTags= takes West/East Germany, West/East Berlin, The
+Netherlands, Mt. Macedon and Atlantic City (=atlanticcitynj=; the plain tag is the song); a trailing "(…)" of the
+title's last part ("NJ (First)") is cut.
+
+*Built* (details: =docs/claude/brucebase.md=, "The tuned tag families (batch 3b)"): =_bbTagPlaceExpected()= with
+=alts=; the title in =_bbTagFacts()= (=_DP_PARSER_VERSION= 36); =_bbTagTableFamiliesOn()= shared with the tour
+family; one wait line for both. +6.1 kB in the userscript (batch 3b so far +14.5 kB).
+
+*Tests* (NB-3641, 2026-11-19): =check-bb-batch3b-findings.js --family place=: 0 differences, 35 flagged, 0 in the
+three quiet passes; the batch 3 checker 0 differences with the title in the facts (416 flagged as before);
+=bb-findings-batch3b.spec.js= 15 (6 new) and =bb-findings-batch3.spec.js= (the facts with their title) 34/34; 13 new
+mutations (12 fail their test, 1 recorded as passing: only a late feed reads =_bbTagTableFamiliesOn()=, which the tour
+spec covers), 6 older finds moved; the first run let the city mutation pass (it pointed at a test without a non-US
+city miss; re-pointed, fails). The neighbouring specs (page tags, feed, On stage tags, help icon, batch 3b) 87/87;
+lint within the baseline.
+
+** The browser check of the place family, for vzell (pages of the mirror of 2026-11-19)
+
+First: ⚙️ Settings → "Also check a Brucebase show's place tags" on. Its =placeTags= and =expectedRegions= are in
+BruceParser 0.22.1, not yet published: until =./publish-feed.sh= runs, Berlin 1981 shows "westberlin" and "westgermany"
+missing and no region is expected.
+
+| URL                                                                                 | Step                       | What should appear                                                                    |
+|-------------------------------------------------------------------------------------+----------------------------+---------------------------------------------------------------------------------------|
+| https://brucebase.wikidot.com/nogig:2003-09-17-mark-twain-house-hartford-ct         | press "Show the event"     | Tags card: "usa missing" in the Place row (with the tour on too: "tour_rsng missing") |
+| https://brucebase.wikidot.com/gig:1984-07-23-cne-grandstand-toronto-on              | press, wait for On stage   | "canada missing"                                                                      |
+| https://brucebase.wikidot.com/interview:2025-04-28-saban-media-center-los-angels-ca | press, wait for On stage   | "losangels missing" (the title's typo)                                                |
+| https://brucebase.wikidot.com/gig:1981-04-09-icc-berlin-germany                     | press (after the publish)  | no place mark: West Berlin and West Germany as "berlin" and "germany"                 |
+| https://brucebase.wikidot.com/1984                                                  | Show all events, ▶ Pages   | the four Toronto/Montreal rows of July ❌ on Tags ("canada")                           |
+| the Mark Twain page again                                                           | both families on, feed off | "The tour and place tags are not checked: the Brucebase feed is off."                 |
+
+Unverified: all of it in a real browser.

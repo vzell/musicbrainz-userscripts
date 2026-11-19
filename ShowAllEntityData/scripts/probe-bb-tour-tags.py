@@ -20,7 +20,7 @@ Usage:
     --list WHAT  print the shows of one group: missing, spurious, overlap
     --kinds      the event kinds to count (default: all five)
     --json FILE  write the rule's findings of EVERY row as JSON {name: {missing, spurious}}:
-                 the input of scripts/check-bb-tour-tags.js
+                 the input of scripts/check-bb-batch3b-findings.js
 """
 import argparse
 import json

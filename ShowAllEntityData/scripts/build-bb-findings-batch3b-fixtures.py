@@ -23,9 +23,20 @@ families BruceBaseParser guessed at, tuned with vzell one at a time).
                                       not looked at (a rehearsal)
       nogig 1975-10-00 Memphis        tour_btr on a date with "00": not
                                       looked at
+      The place family (scripts/probe-bb-place-tags.py; city, state,
+      country, expectedRegions, placeTags):
+      gig 2022-04-24 Washington, DC   usa missing
+      gig 1984-07-23 Toronto, ON      canada missing
+      gig 2013-05-11 Solna, Sweden    europe missing
+      interview 2025-04-28 "Los Angels", CA   losangels missing (the typo)
+      nogig 2003-09-17 Hartford, CT   usa missing (no cast tab; and tour_rsng)
+      gig 1981-04-09 West Berlin, West Germany   nothing (placeTags)
+      gig 2024-06-27 Nijmegen, The Netherlands   nothing ("netherlands")
+      gig 1969-05-28a Wanamassa, NJ (First)      nothing (the "(First)" cut)
+      gig 1985-03-21 Sydney, New South Wales, Australia   nothing
   tests/fixtures/bb-feed-2026-11-19.json
-      the feed of the run of 2026-11-19 (BruceParser 0.22.0, feed 1.4), whose
-      tagTables are the tables the probe used.
+      the feed of the run of 2026-11-19 (BruceParser 0.22.1, feed 1.4.1),
+      whose tagTables are the tables the probes used.
 
 Usage: python3 scripts/build-bb-findings-batch3b-fixtures.py [mirror_dir]
 """
@@ -47,6 +58,16 @@ PAGES = [
     'gig:2025-05-14-co-op-live-manchester-england',
     'rehearsal:2016-01-15-consol-energy-center-pittsburgh-pa',
     'nogig:1975-10-00-unknown-location-memphis-tn',
+    # The place family (scripts/probe-bb-place-tags.py, mirror 2026-11-19).
+    'gig:2022-04-24-kennedy-center-concert-hall-washington-dc',
+    'gig:1984-07-23-cne-grandstand-toronto-on',
+    'gig:2013-05-11-friends-arena-solna-sweden',
+    'gig:1981-04-09-icc-berlin-germany',
+    'gig:2024-06-27-goffertpark-nijmegen-netherlands',
+    'gig:1969-05-28a-pandemonium-wanamassa-nj',
+    'gig:1985-03-21-entertainment-centre-sydney-australia',
+    'interview:2025-04-28-saban-media-center-los-angels-ca',
+    'nogig:2003-09-17-mark-twain-house-hartford-ct',
 ]
 FEED = 'bb-feed.json'
 

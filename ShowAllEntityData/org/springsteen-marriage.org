@@ -40,8 +40,8 @@ left out by decision), NOT (not done, with the reason).
 | Idea 2, the help-icon check                              | DONE  | 9.99.1636–1637      | "The help-icon check …"                               |
 | Idea 2, batch 4: venue, song, relation, release tags     | PART  | 9.99.1652           | "Batch 4: the page tag checks …"                      |
 | Idea 2, closing the matrix (coexistence, HOME row)       | DONE  | 9.99.1653–1658      | "Closing the matrix …"                                |
-| Idea 2, batch 3b: the five noisy tag families            | NEXT  | WIP (tour built)    | "Batch 3b: …"                                         |
-| Idea 3: the lookup tables into the feed                  | PART  | BruceParser 0.22.0  | "Batch 3b: …" (=tagTables=; =songTags= to come)       |
+| Idea 2, batch 3b: the five noisy tag families            | NEXT  | WIP (tour, place)   | "Batch 3b: …"                                         |
+| Idea 3: the lookup tables into the feed                  | PART  | BruceParser 0.22.1  | "Batch 3b: …" (=tagTables=; the venue and song maps)  |
 | Idea 4, feed v1                                          | DONE  | 9.99.1638           | "The feed, version 1 …"                               |
 | Idea 4, feed v2 branch 1: date tags, the "files" tag     | DONE  | 9.99.1642           | "Feed v2, branch 1 …"                                 |
 | Idea 4, lettered date anchors                            | DONE  | 9.99.1644           | —                                                     |
@@ -294,7 +294,11 @@ and the songs' medleys) and its real cases; a family's switch comes with its rul
 - *Tour* (WIP.1, =sa_bb_tag_family_tour=): vzell, 2026-11-19: gigs and nogigs ("I go with 2"), =tour_no= excuses a
   missing tour tag, two tours on one date both expected. 49 shows flagged on =bb/2026-11-19=. Record and browser
   check: =org/bbp-parity.org=, "Batch 3b".
-- *Next:* place (question 4).
+- *Place* (WIP.2, =sa_bb_tag_family_place=): vzell, 2026-11-19: city, US/CA state and country; the venue through a
+  venue→tag map from the feed; regions =europe= and =oceania= only; West/East Germany → =germany= through the feed
+  (BruceParser 0.22.1, =placeTags=, =expectedRegions=; committed, not published). 35 shows flagged. The venue part is
+  still open: its map (=venueTags=) shares the songs' derivation and comes with =songTags=.
+- *Next:* content (question 1), then cast (question 2), then songs and the venue map together.
 
 ** PART Idea 3: the lookup tables into the feed
 

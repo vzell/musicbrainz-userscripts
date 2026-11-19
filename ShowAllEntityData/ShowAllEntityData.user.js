@@ -3199,6 +3199,20 @@
                          '(org/springsteen-marriage.org, batch 3b).'
         },
 
+        sa_bb_tag_family_place: {
+            label: 'Also check a Brucebase show\'s place tags',
+            type: 'checkbox',
+            default: false,
+            description: 'With the two settings above: a show should carry tags for the city, the US state or ' +
+                         'Canadian province ("newjersey(nj)") and the country its title names ("usa" after a ' +
+                         'state), and "europe" or "oceania" for a country there. A few names the wiki tags its ' +
+                         'own way ("West Germany" as "germany") and the regions come from the Brucebase feed ' +
+                         '(setting "Read the Brucebase feed"), which BruceParser keeps; without the feed the ' +
+                         'place is not checked and the Tags card says so. A place tag is never called not ' +
+                         'expected. Off by default while the families are tuned (org/springsteen-marriage.org, ' +
+                         'batch 3b).'
+        },
+
         sa_findings_tint_bb_tags: {
             label: 'Highlight Tags cells of Brucebase entries with a missing or not expected tag',
             type: 'checkbox',
@@ -28214,13 +28228,13 @@
     /**
      * The feed's maps this script reads now: `_BB_FEED_MAPS`, and
      * `tagTables` (feed 1.4) while a tag family that needs it is on
-     * (`sa_bb_tag_family_tour`; batch 3b). With every such family off a
+     * (`sa_bb_tag_family_tour`, `sa_bb_tag_family_place`; batch 3b). With every such family off a
      * kept 1.3 file is not read again for it.
      *
      * @returns {string[]}
      */
     function _bbFeedMapsWanted() {
-        return _bbTagTourOn() ? _BB_FEED_MAPS.concat('tagTables') : _BB_FEED_MAPS;
+        return _bbTagTableFamiliesOn() ? _BB_FEED_MAPS.concat('tagTables') : _BB_FEED_MAPS;
     }
 
     /**
@@ -35455,9 +35469,11 @@
      *    the Featured icon (the help-icon check).
      * 35: `bbTagFacts` for a venue, song, relation and release page too
      *    (`_bbTagPageFacts()`, parity batch 4).
+     * 36: a show's `bbTagFacts` carries its title as written (`title`; the
+     *    place family, batch 3b).
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 35;
+    const _DP_PARSER_VERSION = 36;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -38343,7 +38359,7 @@
      *
      * A venue, song, relation or release page: `_bbTagPageFacts()` (`page: true`).
      *
-     * @returns {?{kind: string, date: string, letter: string, prem: number, help: boolean, featured: boolean}}
+     * @returns {?{title: string, kind: string, date: string, letter: string, prem: number, help: boolean, featured: boolean}}
      */
     function _bbTagFacts(doc, url) {
         let name;
@@ -38358,6 +38374,8 @@
         const box = doc.querySelector('#wiki-tab-0-1 td') || doc.getElementById('wiki-tab-0-1')
             || doc.getElementById('page-content');
         return {
+            // The title as written: the place family reads its parts (batch 3b).
+            title: _bbRawText(doc.getElementById('page-title')),
             kind: m[1], date: dm ? dm[1] : '', letter: lm ? lm[1] : '',
             prem: box ? box.querySelectorAll('strong a[href^="/song:"]').length : 0,
             help: !!doc.querySelector('img.image[title="Help Us"]'),
@@ -38643,6 +38661,92 @@
     }
 
     /**
+     * Whether a show's place tags are checked (`sa_bb_tag_family_place`;
+     * batch 3b, off by default while the families are tuned).
+     *
+     * @returns {boolean}
+     */
+    function _bbTagPlaceOn() {
+        return Lib.settings.sa_bb_tag_family_place === true;
+    }
+
+    /**
+     * A place name as the wiki's tag writes it: accents folded
+     * (`_bbTagFold()`), a trailing "(The)" or "(A)" left out, lower case,
+     * a–z and 0–9 only ("Asbury Park" → "asburypark").
+     *
+     * @param {string} s
+     * @returns {string}
+     */
+    function _bbTagPlaceSlug(s) {
+        return _bbTagFold(String(s || '').replace(/\s*\((?:The|A)\)\s*$/, '')).toLowerCase().replace(/[^a-z0-9]/g, '');
+    }
+
+    /**
+     * The place family of a show (batch 3b; vzell, 2026-11-19): the tags the
+     * places of its title call for. The title "DATE Venue, [detail,] City,
+     * ST|Country" (a trailing "(…)" of its last part, "NJ (First)", is no
+     * place) gives the city, a US state or Canadian province
+     * ("newjersey(nj)") with "usa" or "canada", or the country, and the
+     * country's regions that the feed's `expectedRegions` lists ("europe",
+     * "oceania"); an Australian title's state is not tagged on the wiki
+     * (0 of 57), so its city is the part before. A name in the feed's
+     * `placeTags` ("West Germany" → "germany") takes its tags from there,
+     * the first named when missing (`alts`: the others count too). The
+     * venue waits for the feed's venue map. Probe
+     * (`scripts/probe-bb-place-tags.py`, bb/2026-11-19): the city carried
+     * 99.7 %, the state 99.8 %, the country 99.2 %; 35 shows flagged. Null
+     * when the family is off, the title has no place, or the feed has no
+     * tables.
+     *
+     * @param {Object} facts - `_bbTagFacts()`.
+     * @returns {?Array<{tag: string, family: string, why: string, alts: Array<string>}>}
+     */
+    function _bbTagPlaceExpected(facts) {
+        if (!_bbTagPlaceOn() || !facts || facts.page) return null;
+        const tables = _bbFeedTables();
+        if (!tables) return null;
+        const m = /^\d{4}-\d{2}-\d{2}\s+([\s\S]+)$/.exec(facts.title || '');
+        if (!m) return null;
+        const p = m[1].split(',').map(s => s.trim()).filter(Boolean);
+        if (p.length < 3) return null;
+        p[p.length - 1] = p[p.length - 1].replace(/\s*\([^)]*\)\s*$/, '').trim();
+        const last = p[p.length - 1];
+        const us = tables.usStates || {};
+        const ca = tables.caProvinces || {};
+        const place = tables.placeTags || {};
+        const want = new Set(Array.isArray(tables.expectedRegions) ? tables.expectedRegions : []);
+        const tagsOf = name => (Array.isArray(place[name]) && place[name].length ? place[name] : [_bbTagPlaceSlug(name)]);
+        const out = [];
+        const add = (tags, why) => {
+            const list = tags.filter(Boolean);
+            if (list.length) out.push({ tag: list[0], family: 'place', why, alts: list.slice(1) });
+        };
+        if (/^[A-Z]{2}$/.test(last) && (us[last] || ca[last])) {
+            const full = us[last] || ca[last];
+            add(tagsOf(p[p.length - 2]), `The title names the city "${p[p.length - 2]}".`);
+            add([`${_bbTagPlaceSlug(full)}(${last.toLowerCase()})`], `The title names ${us[last] ? 'the state' : 'the province'} ${last}, ${full}.`);
+            add([us[last] ? 'usa' : 'canada'], `${last} is ${us[last] ? 'a US state' : 'a Canadian province'}.`);
+        } else {
+            const city = last === 'Australia' && p.length >= 4 ? p[p.length - 3] : p[p.length - 2];
+            add(tagsOf(city), `The title names the city "${city}".`);
+            add(tagsOf(last), `The title names the country "${last}".`);
+            ((tables.countryRegions || {})[last] || []).filter(r => want.has(r))
+                .forEach(r => add([r], `"${last}" is in ${r === 'europe' ? 'Europe' : r === 'oceania' ? 'Oceania' : r}.`));
+        }
+        return out;
+    }
+
+    /**
+     * Whether a family that reads the feed's tables is on (tour, place).
+     *
+     * @returns {boolean}
+     */
+    function _bbTagTableFamiliesOn() {
+        return _bbTagTourOn() || _bbTagPlaceOn();
+    }
+
+    /**
      * The words the Tags card shows for a family that wants the feed's
      * tables while they are not there; '' when nothing is missing.
      *
@@ -38650,14 +38754,17 @@
      * @returns {string}
      */
     function _bbTagFamiliesWait(facts) {
-        if (!_bbTagTourOn() || !_bbTagTourApplies(facts) || _bbFeedTables()) return '';
-        return _bbFeedOn() ? 'The tour tag is checked once the Brucebase feed with its tour table is read.'
-            : 'The tour tag is not checked: the Brucebase feed is off.';
+        if (!facts || facts.page || _bbFeedTables()) return '';
+        const what = [_bbTagTourOn() && _bbTagTourApplies(facts) ? 'tour' : '', _bbTagPlaceOn() ? 'place' : ''].filter(Boolean);
+        if (!what.length) return '';
+        const the = `The ${what.join(' and ')} tag${what.length > 1 || what[0] === 'place' ? 's are' : ' is'}`;
+        return _bbFeedOn() ? `${the} checked once the Brucebase feed with its tables is read.`
+            : `${the} not checked: the Brucebase feed is off.`;
     }
 
     /**
-     * The feed came in or changed (`_bbFeedChanged()`): with the tour family
-     * on, its tables may be new, so every Tags card and window box that
+     * The feed came in or changed (`_bbFeedChanged()`): with a family that
+     * reads its tables on (tour, place), they may be new, so every Tags card and window box that
      * shows a record is filled again (`_bbTagPagesNotify()`), and on
      * Brucebase every read Tags cell of a year table is written again
      * (`_bbEvpRenderCell()`, live and source rows; it queues a changed
@@ -38666,7 +38773,7 @@
      * @returns {void}
      */
     function _bbTagFamiliesFeedChanged() {
-        if (!_bbTagTourOn()) return;
+        if (!_bbTagTableFamiliesOn()) return;
         Array.from(_bbTagPagesBoxes.keys()).forEach(name => _bbTagPagesNotify(name));
         if (!_isBbHost) return;
         let n = 0;
@@ -38747,11 +38854,14 @@
                 expected.push({ tag, family: 'icon', why: year ? `The year page marks this show with the ${name} icon.` : `The show's page has the ${name} icon.` });
             }
         }
-        // Batch 3b, the tour family (off by default; the feed's tour table).
+        // Batch 3b, the tour and place families (off by default; the feed's tables).
         const tour = _bbTagTourCheck(facts, all);
         if (tour) expected.push(...tour.expected);
+        expected.push(...(_bbTagPlaceExpected(facts) || []));
         const want = new Set(expected.map(e => e.tag));
-        for (const e of expected) if (!_bbTagPresent(e.tag, all)) res.missing.push(e);
+        for (const e of expected) {
+            if (!_bbTagPresent(e.tag, all) && !(e.alts || []).some(a => all.has(a))) res.missing.push(e);
+        }
         const seen = new Set();
         for (const tag of own) {
             // An icon tag only with the year page known.
@@ -39087,7 +39197,7 @@
 
     /** The Tags card's row (`_BB_TAG_FAMILIES` key) a missing tag of a checked family is drawn in. */
     const _BB_TAGCHK_ROW = {
-        date: 'date', letter: 'letter', type: 'category', prem: 'material', icon: 'material', tour: 'tour',
+        date: 'date', letter: 'letter', type: 'category', prem: 'material', icon: 'material', tour: 'tour', place: 'place',
         // Parity batch 4: where the same tag sits when the page has it.
         construction: 'other', lyricsheet: 'other', title: 'other',
     };
@@ -39158,8 +39268,9 @@
      */
     function _bbTagOkText(facts) {
         if (!facts.page) {
-            const tour = _bbTagTourOn() && _bbTagTourApplies(facts) && _bbFeedTables();
-            return `✓ date, letter, kind, premiere${tour ? ', icon and tour' : ' and icon'} tags as expected`;
+            const tables = !!_bbFeedTables();
+            const more = [tables && _bbTagTourOn() && _bbTagTourApplies(facts) ? 'tour' : '', tables && _bbTagPlaceOn() ? 'place' : ''].filter(Boolean);
+            return `✓ date, letter, kind, premiere, icon${more.map(x => `, ${x}`).join('')} tags as expected`.replace(/, ([a-z]+) tags as expected$/, ' and $1 tags as expected');
         }
         const what = {
             venue: 'kind, first-letter and construction',
