@@ -36,13 +36,14 @@ State: DONE (SAED has it), PART, TODO, NOT (not ported, with the reason).
 | Expected tags: location (title / venue)                                      | =checkEventNameLocationTags= …                  | 663 shows as it is: to tune                                                           | TODO  |    3b |
 | Expected tags: relations of the cast tab                                     | =checkOnStageRelationTags=                      | 1,859 shows as it is: to tune                                                         | TODO  |    3b |
 | Expected tags: setlist songs                                                 | =checkSetlistSongTags=, =computeSongTagAlias=   | 1,114 shows as it is (the initials rule): to tune                                     | TODO  |    3b |
-| Spurious tags (present, not expected)                                        | =SPURIOUS_TAG_REASONS=                          | =bb-tag-spurious= for the four families; tour and content tags with 3b                | PART  |     3 |
-| Tag source highlight (which text made a tag expected)                        | doc/TAGS.md, opt-in                             | each finding says its reason in words (chip card, cell hover); no highlight on the page | PART  |     3 |
+| Spurious tags (present, not expected)                                        | =SPURIOUS_TAG_REASONS=                          | =bb-tag-spurious= for the shipped families; tour and content tags: batch 3b           | PART  |  3/3b |
+| Tag source highlight (which text made a tag expected)                        | doc/TAGS.md, opt-in                             | NOT for now: each finding says its reason in words; back with 3b (setlist, cast)      | NOT   |    3b |
 | VENUE / SONG / RELATION / RETAIL page tag checks                             | =annotate*PageTags=                             | Tags card + window: kind, letter, banner, song title; dates/place/names left out      | PART  |     4 |
 | Help-icon tag check                                                          | =hasHelpIcon=                                   | the icon family of =bb-tag-missing= / =bb-tag-spurious= (Help Us and Featured)        | DONE  |     4 |
-| HOME page: fetch every year, mismatch filter                                 | doc/HOME_PAGE.md                                | bb-home + the findings above                                                          | PART  |     — |
+| HOME page: fetch every year, mismatch filter                                 | doc/HOME_PAGE.md                                | bb-home; list overview: /YYYY-list "all years"; to come: All errors, read every row   | PART  |     — |
 | ⇄ Original Page toggle                                                       | every page                                      | the wiki's page folded under "Brucebase page"                                         | DONE  |     — |
 | The sticky bar, Ctrl+B                                                       | =toggleStickyBar=                               | SAED's toolbar                                                                        | DONE  |     — |
+| Running beside SAED on one page (Track A idea 6)                             | every page it changes                           | SAED stands aside with a notice (=_bbBbpPresent()=), never a broken table             | DONE  |     — |
 
 * Batch 1: the year table's name and anchor findings (next)
 
@@ -745,3 +746,57 @@ changed). The feed's mark rows need a kept feed (any Brucebase press reads it).
 Unverified: all of it on the live site (the pages are the mirror's of 2026-11-15; Claude made no request to the wiki).
 Not checked here whether each page shows its button: =retail:tracks-ii= shows none in the fixture run, so its row
 uses the window.
+
+* Closing the matrix (2026-11-19): coexistence, then the HOME row
+
+Env: 2026-11-19T00:46:09+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright
+1.62.1 Chromium, no Tampermonkey (GM stubs); BruceBaseParser 3.33 at =0e4e8a0= (=~/git/userscripts/BruceBaseParser=)
+
+Mockup: https://claude.ai/artifact/Mji5y7i2vZzTkK1WQ4JWi7 (=debug/bb-parity-close-mockup.html=); vzell, 2026-11-19: all
+eleven questions as recommended. Three branches, each merged on vzell's word: =fix/bb-bbp-coexistence=,
+=feat/findings-any-level=, =feat/bb-evp-read-all=.
+
+*Decisions (vzell, 2026-11-19):* the HOME row closes with "All errors / All warnings" rows in the ⚠️/❌ menus and a
+▶ Pages "Read every row"; its list-overview mode is covered by =/YYYY-list='s "Show the events of all years"; the
+tag-source highlight is NOT for now (back with batch 3b, where its sources are setlist and cast rows); the spurious row
+stays PART (its rest is batch 3b); SAED stands aside on a page BruceBaseParser has changed.
+
+** Coexistence (=fix/bb-bbp-coexistence=)
+
+*What breaks with both on one page* (code reading, then the spec with the real BruceBaseParser):
+- a year page: =wrapYearSections()= moves every entry into =div.bb-section-processed=, so =_bbYearEntries()= (direct
+  =<p>= children of =#page-content=) finds none: the 2016 fixture has 4 entry headings there without BruceBaseParser and
+  0 with it (spec "a year page: …");
+- a show page: " ⚠️" in a tab label (=BruceBaseParser.user.js= 3606, 3636) loses the Setlist and cast tables; its On
+  stage tags, appended inside =.page-tags= (9771), count as the page's own; its title glyphs reach the byline, the
+  feed's live title and the h1;
+- Ctrl+M (both capture it) and =?= (both open their help): whichever Tampermonkey runs first.
+
+*Built:* =_bbBbpPresent()= (BruceBaseParser's first act on every page it runs on is =div#bb-tooltip=, before it changes
+anything) and =_bbBbpStandAside()=: the SAED button's actions give way to "🎛 BruceBaseParser is on this page", whose
+hover text says why and what to do. Checked when the buttons are made and at every press (=startFetchingProcess()=),
+so the order Tampermonkey runs the two in does not matter. Link previews, the feed and MusicBrainz are untouched.
+Ctrl+M and =?=: a sentence in HELP. The harness: =loadUserscriptPage()='s =extraScripts= (another userscript before or
+after this one, after the library).
+
+*Tests* (NB-3641, 2026-11-19): =bb-bbp-coexistence.spec.js= 7 (4 with the stand-in
+=tests/fixtures/thirdPartyScripts/bbp-start-mark.js=, everywhere; 3 with the real BruceBaseParser, skipped where its
+checkout is missing, =BBP_USERSCRIPT= names another place); 7 mutations, each failing its test. =npm run test:full=
+at =abcf4351=: 00:48:13–01:10:58 CET, 3,286 of 3,287; the failure =filter-sliced.spec.js= "a pass replaced by the ✕
+clear writes nothing", the same flake as in batch 4's run, on no path of this branch. No render measurement: the
+guard is one element lookup when the buttons are made and at a press.
+
+** The browser check of the coexistence guard, for vzell (Tampermonkey with both scripts on)
+
+| Page                                                                                | Step                                        | Expected                                                                                      |
+|-------------------------------------------------------------------------------------+---------------------------------------------+-----------------------------------------------------------------------------------------------|
+| https://brucebase.wikidot.com/2016                                                  | load the page                               | BruceBaseParser's own bar; SAED's button reads "🎛 BruceBaseParser is on this page", no button |
+| the same page                                                                       | hover the notice                            | "BruceBaseParser has already changed this page …, switch BruceBaseParser off …"               |
+| https://brucebase.wikidot.com/song:dinner-at-eight                                  | load the page                               | the same notice; BruceBaseParser's tag box as before                                          |
+| https://brucebase.wikidot.com/gig:2016-05-21-estadio-santiago-bernabeu-madrid-spain | load, wait for BruceBaseParser's ✅/❌        | the notice                                                                                    |
+| any of them                                                                         | Ctrl+hover a song link, Space               | SAED's preview window as always                                                               |
+| https://brucebase.wikidot.com/2016                                                  | BruceBaseParser off in Tampermonkey, reload | "Show all events" as always, the table as always                                              |
+| https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events          | load, press                                 | unchanged                                                                                     |
+
+Unverified: all of it in a real browser; which script Tampermonkey runs first decides only whether the notice shows at
+load or at the first press.

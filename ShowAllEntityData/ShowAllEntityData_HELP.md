@@ -3988,6 +3988,16 @@ so you can switch it off or on from a MusicBrainz page or from the Tampermonkey 
 on Brucebase itself. While it is off, the script leaves the wiki's pages
 untouched.
 
+**With BruceBaseParser installed too.** BruceBaseParser, the older Brucebase
+script this one replaces, changes a page as it loads (it regroups a year
+page's shows, marks tab labels and tags). A table made from such a page would
+be empty or wrong, so on a page where BruceBaseParser runs the action button
+reads **🎛 BruceBaseParser is on this page** instead; its hover text says
+why. Link previews and every other page keep working. Switch BruceBaseParser
+off for brucebase.wikidot.com in Tampermonkey and reload to get the buttons
+back. Both scripts also claim **Ctrl+M** and **?**: only the one Tampermonkey
+runs first gets them.
+
 It works on the wiki's list of every song Bruce Springsteen is known to have
 performed live or released: `https://brucebase.wikidot.com/stats:songs`. The
 page gets a heading with the usual toolbar and one action button, **Songs**.

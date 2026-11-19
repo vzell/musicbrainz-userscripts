@@ -5,7 +5,13 @@ Env: 2026-11-13 · plan written in a Claude Code session (plan mode), code readi
 
 Plan for pickup on another host.
 
-* PICKUP HERE: status of 2026-11-18 late evening: parity batch 4 (the page tag checks) MERGED as 9.99.1652 (vzell: "all tested live, OK"); feed v2 DONE (9.99.1647, 9.99.1648); nothing published to the mirror yet; batch 3b SET ASIDE
+* PICKUP HERE: status of 2026-11-19 night: closing the parity matrix, branch 1 of 3 (=fix/bb-bbp-coexistence=) BUILT, waiting for vzell's browser check; batch 4 MERGED as 9.99.1652; nothing published to the mirror yet; batch 3b SET ASIDE
+
+- *Closing the parity matrix (2026-11-19, NB-3641):* mockup https://claude.ai/artifact/Mji5y7i2vZzTkK1WQ4JWi7, all
+  as recommended. Three branches, each merged on vzell's word: (1) =fix/bb-bbp-coexistence= (SAED stands aside on a
+  page BruceBaseParser changed), BUILT; (2) =feat/findings-any-level= (All errors / All warnings in the ⚠️/❌ menus,
+  MusicBrainz too); (3) =feat/bb-evp-read-all= (▶ Pages: Read every row). Record: =org/bbp-parity.org=, "Closing the
+  matrix". The plan is =~/.claude/plans/act-on-the-synchronous-robin.md= (NB-3641 only).
 
 - *Parity batch 4, the page tag checks (2026-11-18, NB-3641):* venue, song, relation and release pages get batch 3's
   marks on their Tags card and in their window: the kind tag, BruceParser's first letter, the banner, "lyricsheet",

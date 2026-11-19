@@ -290,6 +290,16 @@ version moves without the devDependency; `scripts/check-vendored-libs.py`
 compares the bytes with the CDNs by hand. `PLAYWRIGHT_BLOCK_CDN=1` blocks both
 CDN hosts for a whole run.
 
+**Another userscript beside this one: `extraScripts`.** `loadUserscriptPage()`
+takes `extraScripts: [{ path, when: 'before' | 'after' }]` and injects each
+after VZ_MBLibrary (a script that uses `Lib`, as BruceBaseParser does, finds it;
+the library's top-level `const` must never be injected twice) and before or
+after this userscript, as Tampermonkey's order would run them. First user:
+`bb-bbp-coexistence.spec.js` (org/bbp-parity.org, "Coexistence"), with the
+real BruceBaseParser from `~/git/userscripts/BruceBaseParser` (`BBP_USERSCRIPT`
+names another place; skipped where missing) and the committed stand-in
+`tests/fixtures/thirdPartyScripts/bbp-start-mark.js`.
+
 **MusicBrainz's CDN comes from a disk cache in the fixture projects.**
 `static.metabrainz.org` (every saved page's scripts, stylesheets and images,
 about 0.93 MB for a release) is served by `serveStaticMb()` in
