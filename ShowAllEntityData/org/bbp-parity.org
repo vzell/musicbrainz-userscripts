@@ -932,7 +932,8 @@ tried).
 
 *Decisions (vzell, 2026-11-19):* city, US/CA state and country; the venue through a venue→tag map from the feed (not
 built yet, it comes with the songs' map); regions =europe= and =oceania= only; West and East Germany → =germany= through
-the feed (BruceParser 0.22.1: =placeTags= and =expectedRegions= in =tagTables=, committed, not published).
+the feed (BruceParser 0.22.1: =placeTags= and =expectedRegions= in =tagTables=; published 2026-11-19, vzell: "Publish";
+=132acc0=, =ac000ab= in =vzell/brucebase-feed=).
 
 *The probe* (=scripts/probe-bb-place-tags.py=, gigs and nogigs, 4,043 shows):
 
@@ -964,9 +965,9 @@ lint within the baseline.
 
 ** The browser check of the place family, for vzell (pages of the mirror of 2026-11-19)
 
-First: ⚙️ Settings → "Also check a Brucebase show's place tags" on. Its =placeTags= and =expectedRegions= are in
-BruceParser 0.22.1, not yet published: until =./publish-feed.sh= runs, Berlin 1981 shows "westberlin" and "westgermany"
-missing and no region is expected.
+First: ⚙️ Settings → "Also check a Brucebase show's place tags" on. The feed with =placeTags= and =expectedRegions=
+(BruceParser 0.22.1) is published. A feed kept since this afternoon (0.22.0: =tagTables= without them) lacks no map,
+so it is not read again before its day is up: press the ☰ menu's Brucebase "Read again" first.
 
 | URL                                                                                 | Step                       | What should appear                                                                    |
 |-------------------------------------------------------------------------------------+----------------------------+---------------------------------------------------------------------------------------|

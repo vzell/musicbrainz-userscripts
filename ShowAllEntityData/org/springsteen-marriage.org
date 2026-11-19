@@ -296,7 +296,7 @@ and the songs' medleys) and its real cases; a family's switch comes with its rul
   check: =org/bbp-parity.org=, "Batch 3b".
 - *Place* (WIP.2, =sa_bb_tag_family_place=): vzell, 2026-11-19: city, US/CA state and country; the venue through a
   venue→tag map from the feed; regions =europe= and =oceania= only; West/East Germany → =germany= through the feed
-  (BruceParser 0.22.1, =placeTags=, =expectedRegions=; committed, not published). 35 shows flagged. The venue part is
+  (BruceParser 0.22.1, =placeTags=, =expectedRegions=; published 2026-11-19 on vzell's word). 35 shows flagged. The venue part is
   still open: its map (=venueTags=) shares the songs' derivation and comes with =songTags=.
 - *Content* (WIP.3, =sa_bb_tag_family_content=): vzell, 2026-11-19: the reliable six (setlist, handwritten, printed,
   storyteller, eyewitness, ticket from a ticket image only as missing); news, memorabilia, bootleg, livedl, soundcheck
