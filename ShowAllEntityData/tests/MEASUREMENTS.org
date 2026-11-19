@@ -4522,3 +4522,13 @@ of 5 samples per arm; files =tests/snapshots/artist-releases-dylan/interaction-p
 Round 1 tinted every new finding: on this list 959 rows "no barcode entered", 220 "label without a catalog number" and
 310 "no release event" (counted from the saved data). Round 2 has the "no barcode entered" tint off by default (vzell's
 choice); the finding is still stamped, counted and filterable. Round 2 is within noise of =main=.
+
+* 2026-11-19 — =npm run test:full= on =petri=, feat/release-check-findings (1323867a, on 9.99.1652)
+
+Env: 2026-11-19T01:09:28+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                         | Tests | Workers | Wall clock  | Basis                                     |
+|-----------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, merge check  |  3291 |      12 | *20 m 34 s* | =run-test-full.py=, 01:09:28–01:30:02 CET |
+
+3291 passed (main's 3280 at 9.99.1652 plus the 11 release-check tests). No flake showed.
