@@ -309,9 +309,10 @@ and the songs' medleys) and its real cases; a family's switch comes with its rul
   (=tag-maps.awk=, feed 1.5 =songTags=, =venueTags=; committed, not published). vzell, 2026-11-19: only songs whose
   tags ≥ 90 % of their shows carry, only linked songs, =songCombos= for medleys, the venue through the feed. A song's
   map is a tag SET (=btr=, =borntorun=). 465 shows flagged for songs; the place family 45 with the venue.
-- *All five families are built.* Next, the closing steps: publish feed 1.5 (vzell's call), =test:full=, the render
-  ratio against =main=, the browser check of all of 3b (=org/bbp-parity.org=, "Batch 3b", five lists), the merge on
-  vzell's word.
+- *All five families are built and tested live* (vzell, 2026-11-20, on vzell-lap: "all tested live OK"). Feed 1.5 is
+  published (2026-11-19); =test:full= 3356/3356 (NB-3641, =e654a82d=); the Brucebase year table costs nothing; the
+  artist-events comparison finds no cost in both orders (=tests/MEASUREMENTS.org=). Then the merge on vzell's
+  word (=main= has moved to 9.99.1660 meanwhile).
 
 ** DONE Idea 3: the lookup tables into the feed
 

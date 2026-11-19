@@ -866,7 +866,7 @@ row is DONE. Of the matrix, only batch 3b's rows remain open (the tag-source hig
 
 Unverified: all of it in a real browser.
 
-* Batch 3b: the five noisy tag families (=feat/bb-findings-batch3b=, 2026-11-19; not merged)
+* Batch 3b: the five noisy tag families (=feat/bb-findings-batch3b=, 2026-11-19; tested live OK on 2026-11-20, not merged)
 
 Env: 2026-11-19T19:16:49+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · probe:
 Python over the mirror bb/2026-11-19, n/a; the checker and the specs: Playwright Chromium, no Tampermonkey
@@ -925,8 +925,7 @@ First: ⚙️ Settings → "Also check a Brucebase show's tour tag" on ("Read th
 | https://brucebase.wikidot.com/2008                                                       | Ctrl+hover the Brussels 2008-06-23 link, Space | the window's Tags section: the same two marks as the event page                                            |
 | the Brussels page again                                                                  | the setting off, reload, press                 | no tour mark; "✓ date, letter, kind, premiere and icon tags as expected"                                   |
 
-Unverified: all of it in a real browser; the window on the 2008 year page (the link is on the page, its window not
-tried).
+vzell, 2026-11-20 (on vzell-lap, every family on): "all tested live OK".
 
 ** The place family (=sa_bb_tag_family_place=, off by default)
 
@@ -978,7 +977,7 @@ so it is not read again before its day is up: press the ☰ menu's Brucebase "Re
 | https://brucebase.wikidot.com/1984                                                  | Show all events, ▶ Pages   | the four Toronto/Montreal rows of July ❌ on Tags ("canada")                           |
 | the Mark Twain page again                                                           | both families on, feed off | "The tour and place tags are not checked: the Brucebase feed is off."                 |
 
-Unverified: all of it in a real browser.
+vzell, 2026-11-20 (on vzell-lap, every family on): "all tested live OK".
 
 ** The content family (=sa_bb_tag_family_content=, off by default)
 
@@ -1035,7 +1034,7 @@ First: ⚙️ Settings → "Also check a Brucebase show's content tags" on.
 | https://brucebase.wikidot.com/gig:1971-05-14-sunshine-in-asbury-park-nj   | press                    | no content mark: "setlist" and "handwritten" without a picture are left alone |
 | https://brucebase.wikidot.com/1974                                        | Show all events, ▶ Pages | Schenectady 1974-10-19 ❌ on Tags ("setlist", "handwritten")                   |
 
-Unverified: all of it in a real browser.
+vzell, 2026-11-20 (on vzell-lap, every family on): "all tested live OK".
 
 ** The cast family (=sa_bb_tag_family_cast=, off by default)
 
@@ -1077,7 +1076,7 @@ First: ⚙️ Settings → "Also check a Brucebase show's cast tags" on ("Show t
 | https://brucebase.wikidot.com/1969                                                     | Show all events, ▶ Pages                                          | the rows without an On stage page ❌ on Tags ("onstage")                                    |
 | the Wanamassa page again                                                               | "Show the tags kept on a show's On stage page" off, reload, press | no cast mark                                                                               |
 
-Unverified: all of it in a real browser.
+vzell, 2026-11-20 (on vzell-lap, every family on): "all tested live OK".
 
 ** The songs family (=sa_bb_tag_family_songs=, off by default) and the place family's venue
 
@@ -1125,4 +1124,4 @@ venue rows).
 | https://brucebase.wikidot.com/gig:1981-04-26-forest-national-brussels-belgium           | place tags on, press     | "forestnational missing" in the Place row                                  |
 | https://brucebase.wikidot.com/2013                                                      | Show all events, ▶ Pages | the Australian rows of March ❌ on Tags (song tags)                         |
 
-Unverified: all of it in a real browser.
+vzell, 2026-11-20 (on vzell-lap, every family on): "all tested live OK".

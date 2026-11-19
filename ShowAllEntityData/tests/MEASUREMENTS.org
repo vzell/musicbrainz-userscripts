@@ -4700,24 +4700,28 @@ B/M: render 0.99 and 1.00, sort 0.96 and 0.97.
 
 *artist-events* (=tableMode: single=, "Bruce Springsteen — Events", disk fixture;
 =node tests/support/capture-interaction-perf.js --pageType=artist-events --label=batch3b-<arm>=, 5 samples per
-metric), planned M, B, B, M. Both runs of round 2 in the order B, M lost the branch arm: =page.goto= of
-musicbrainz.org's events page (the disk fixture's first load) timed out three times from 22:25 and again at 22:44
-(=main= failed the same way at 22:36). Complete: M 22:00, B 22:12, M 22:50
-(=tests/snapshots/artist-events/interaction-perf-batch3b-{main-r1,branch-r1,main-r2}-9.99.1659-2026-11-19-NB-3641.json=).
-Medians in ms; the ratio of B to the mean of the two M runs:
+metric). Round 1 in the order M, B (2026-11-19 22:00, 22:12); round 2 in the order B, M (2026-11-20 00:16, 00:28,
+Env: 2026-11-20T00:16:48+01:00 → 00:40:15+01:00, the same host and arms). On the evening of 2026-11-19 two tries of
+round 2 lost the branch arm: =page.goto= of musicbrainz.org's events page (the disk fixture's first load) timed out
+three times from 22:25 and at 22:44 (=main= failed the same way at 22:36); the =main= run of 22:50 completed and
+is kept as a third M (=tests/snapshots/artist-events/interaction-perf-batch3b-{main-r1,branch-r1,main-r2,branch-r2,main-r3}-9.99.1659-2026-11-19-NB-3641.json=;
+the file date is the userscript's). Medians in ms; the ratio of the arms' means over both orders, (B r1 + B r2) /
+(M r1 + M r3):
 
-| interaction         | M 22:00 | B 22:12 | M 22:50 | B / M |
-|---------------------+---------+---------+---------+-------|
-| globalFilter        |    2120 |    2120 |    2020 | 1.024 |
-| columnFilter        |    2333 |    2474 |    2368 | 1.053 |
-| sort                |    5475 |    5659 |    5487 | 1.032 |
-| uniqDropCold        |   30216 |   31396 |   29403 | 1.053 |
-| uniqDropWarm        |     616 |     723 |     716 | 1.086 |
-| headerCountsInitial |    3873 |    4153 |    4000 | 1.055 |
-| headerCountsRestore |    4729 |    4708 |    4583 | 1.011 |
+| interaction         | M r1  | B r1  | B r2  | M r3  | (M 22:50) | B / M |
+|---------------------+-------+-------+-------+-------+-----------+-------|
+| globalFilter        |  2120 |  2120 |  2066 |  2162 |      2020 | 0.978 |
+| columnFilter        |  2333 |  2474 |  2324 |  2249 |      2368 | 1.047 |
+| sort                |  5475 |  5659 |  5309 |  5270 |      5487 | 1.021 |
+| uniqDropCold        | 30216 | 31396 | 29462 | 29685 |     29403 | 1.016 |
+| uniqDropWarm        |   616 |   723 |   716 |   689 |       716 | 1.103 |
+| headerCountsInitial |  3873 |  4153 |  3772 |  3810 |      4000 | 1.031 |
+| headerCountsRestore |  4729 |  4708 |  4749 |  4809 |      4583 | 0.992 |
 
-*Inconclusive*: one B run. It lies above both M runs on columnFilter, sort, uniqDropCold and headerCountsInitial
-(by 2–4 %), within their spread on the rest (M to M: 5 % on globalFilter, 16 % on uniqDropWarm). Nothing the
-branch adds runs on this page by code reading (the tag families, the feed's maps and the tag facts are Brucebase
-only; =_bbFeedChanged()= runs only when a feed comes in, none is read here; the five settings show only in the
-dialog). A second B run, in the order B, M, is owed before the merge.
+*No cost found.* In round 2, with the branch first, B/M is 0.96–1.04 on every interaction (globalFilter 0.96,
+columnFilter 1.03, sort 1.01, uniqDropCold 0.99, uniqDropWarm 1.04, headerCountsInitial 0.99, headerCountsRestore
+0.99): round 1's gap (1.00–1.17, the branch second) went with the order. Over both orders 0.98–1.05, uniqDropWarm
+1.10 (about 70 ms; the three M runs alone span 616–716). The 2026-11-18 comparison read 0.94–1.04 as no cost. By
+code reading nothing the branch adds runs on this page (the tag families, the feed's maps and the tag facts are
+Brucebase only; =_bbFeedChanged()= runs only when a feed comes in, none is read here; the five settings show only in
+the dialog).
