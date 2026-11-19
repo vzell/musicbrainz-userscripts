@@ -2426,6 +2426,40 @@ its hand-edited `brucebase/tag-tables.json`; vzell, question 6), read by
   feed without tables, the feed off. The batch 3 checker still finds 0
   differences with the title in the facts.
 
+**The content family** (`sa_bb_tag_family_content`; `_bbTagContentOn()`,
+`_bbTagContentFacts()`, `_BB_TAGCHK_CONTENT`, `_bbTagContentExpected()`):
+- **What the wiki follows** (`scripts/probe-bb-content-tags.py`, Env:
+  2026-11-19T19:45+01:00 · NB-3641 · Python over bb/2026-11-19 · n/a;
+  5,007 events): BruceBaseParser's rule matches for setlist (696 of 726),
+  handwritten, printed, storyteller (1,447 of 1,475) and eyewitness (969
+  of 991); not for news (948 missing), memorabilia (1,134: a ticket-only
+  tab carries neither in 197 of 217 shows; passes and posters go with
+  memorabilia, press clippings half the time), bootleg (436: a Recording
+  tab that only remarks a tape "may be from this show"), livedl (210: the
+  official releases are tagged retail), soundcheck (129), rescheduled (151
+  carry it unexpected). vzell: the six, the others NOT.
+- **What the page holds** (`_bbTagContentFacts()`, `facts.content`,
+  BruceBaseParser's reading): the News/Memorabilia tab, else the News tab,
+  when not "Sorry, no …": a picture named "ticket" (a pass no longer
+  counts: pass-only shows rarely carry "ticket"; 103 → 57 missing), a
+  picture named "setlist" and not "ticket", "handwritten"/"printed" among
+  those; the Storyteller and Eyewitness tabs filled. A label's LAST tab
+  counts, numbered across every tab bar (`buildTabMap()`).
+- **Not expected:** only "storyteller" and "eyewitness" (their tabs hold
+  their entry: `gig:1982-10-03-stone-pony-asbury-park-nj` says "Sorry, no
+  Eyewitness-report" and carries the tag). A ticket or setlist picture can
+  sit on a news: page the tab lists through a list-pages module, or in a
+  Flickr gallery module, neither of which is in the page (16 shows of
+  1971–1978 carry "setlist"/"handwritten" with no picture in the page).
+- **Counts:** 154 shows, 145 with a missing tag (ticket 57, setlist 30,
+  storyteller 28, eyewitness 22, handwritten 20, printed 12), 9 with one
+  not expected (storyteller 5, eyewitness 4). No feed, no request; every
+  kind of event. The facts' `content` is part of `_DP_PARSER_VERSION` 36.
+- **Checks:** `check-bb-batch3b-findings.js --family content`: 0
+  differences, 154 flagged, 0 with the setting off; the batch 3 checker 0
+  with `content` in the facts. A built-markup test pins the reading (a
+  pass, a "ticket" setlist, "Sorry, no", the News tab, the last tab).
+
 ## BruceBaseParser on the same page (bbp-parity, "Coexistence", 2026-11-19)
 
 org/bbp-parity.org, "Closing the matrix"; mockup

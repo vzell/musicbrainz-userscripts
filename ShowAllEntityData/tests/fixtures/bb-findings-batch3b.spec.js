@@ -443,3 +443,130 @@ test.describe('Brucebase tag check, batch 3b: the place family', () => {
         await expect(card(page).locator('.mb-cbx-pill-ok')).toHaveText('✓ date, letter, kind, premiere, icon, tour and place tags as expected');
     });
 });
+
+test.describe('Brucebase tag check, batch 3b: the content family', () => {
+    const CONTENT = { sa_bb_tag_family_content: true };
+    const MEM = 'gig:1978-07-19-ellis-auditorium-memphis-tn';
+    const SCH = 'gig:1974-10-19-memorial-chapel-concert-hall-schenectady-ny';
+    const RB = 'gig:2005-04-04-joan-and-robert-rechnitz-theater-red-bank-nj';
+    const NAS = 'gig:1980-12-31-nassau-coliseum-uniondale-ny';
+    const NB = 'gig:1974-12-14a-auditorium-new-brunswick-nj';
+    const PONY = 'gig:1982-10-03-stone-pony-asbury-park-nj';
+    const ALLEN = 'gig:1976-04-07-allen-theatre-cleveland-oh';
+    const SUN = 'gig:1971-05-14-sunshine-in-asbury-park-nj';
+    /** The content family's findings (probe, mirror 2026-11-19): [missing, not expected]. */
+    const WANT_CONTENT = {
+        [MEM]: [['ticket'], []],
+        [SCH]: [['setlist', 'handwritten'], []],
+        [RB]: [['setlist', 'printed'], []],
+        [NAS]: [['storyteller'], []],
+        [NB]: [['eyewitness'], []],
+        [PONY]: [[], ['eyewitness']],
+        [ALLEN]: [[], ['storyteller']],
+        // "setlist" and "handwritten" with no setlist picture in the page: never "not expected".
+        [SUN]: [[], []],
+        // Every content tag its page calls for is there.
+        [PIT]: [[], []],
+    };
+
+    /**
+     * Loads a fixture page with the given settings and returns a function
+     * giving a page's content findings through the shipped check.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {Object<string, *>} settings
+     * @returns {Promise<function(string): Promise<{missing: string[], spurious: string[], why: string[]}>>}
+     */
+    async function rule(page, settings) {
+        await page.route(/^https?:\/\//, route => route.abort('blockedbyclient'));
+        await loadUserscriptPage(page, { url: BB + CHI, fixtureFile: fileOf(CHI), testMode: true, settingsOverride: { ...BASE, ...settings } });
+        await page.waitForFunction(() => window.__saTest && window.__saTest.bbTagCheck);
+        return name => page.evaluate(([html, url]) => {
+            const facts = window.__saTest.bbTagFacts(html, url);
+            const rec = window.__saTest.dpParse('brucebase.wikidot.com', html, url);
+            const r = window.__saTest.bbTagCheck(facts, ((rec && rec.tags) || []).map(t => t.text.toLowerCase()), []);
+            const mine = list => list.filter(x => x.family === 'content');
+            return { missing: mine(r.missing).map(x => x.tag), spurious: mine(r.spurious).map(x => x.tag), why: mine(r.missing.concat(r.spurious)).map(x => x.why) };
+        }, [fs.readFileSync(fileOf(name), 'utf8'), BB + name]);
+    }
+
+    test('on: each page as the probe found it, every finding with its reason; no feed needed', async ({ page }) => {
+        const check = await rule(page, { ...CONTENT, sa_bb_feed: false });
+        for (const [name, [missing, spurious]] of Object.entries(WANT_CONTENT)) {
+            const got = await check(name);
+            expect({ name, missing: got.missing, spurious: got.spurious }).toEqual({ name, missing, spurious });
+            expect(got.why.every(Boolean), `${name}: every finding says why`).toBe(true);
+        }
+        expect((await check(MEM)).why).toEqual(['The News/Memorabilia tab shows a ticket (an image named "ticket").']);
+        expect((await check(PONY)).why).toEqual(['The page has no Eyewitness entry.']);
+    });
+
+    test('off: no content finding', async ({ page }) => {
+        const check = await rule(page, { sa_bb_tag_family_content: false });
+        for (const name of [MEM, SCH, PONY, ALLEN]) expect(await check(name), name).toMatchObject({ missing: [], spurious: [] });
+    });
+
+    test('what the tabs hold, on built markup: a pass is no ticket, a picture named "ticket" no setlist, "Sorry, no" is empty, a label\'s last tab counts', async ({ page }) => {
+        await rule(page, CONTENT);
+        // A page's tab bar and tabs as the wiki writes them, the news tab's pictures given.
+        const html = (news, opts = {}) => `<html><body><div id="page-title">2016-01-19 United Center, Chicago, IL</div>
+            <div class="yui-navset"><ul class="yui-nav"><li><em>Setlist</em></li><li><em>${opts.label || 'News/Memorabilia'}</em></li>
+            <li><em>Storyteller</em></li><li><em>Eyewitness</em></li>${opts.second ? '<li><em>Storyteller</em></li>' : ''}</ul>
+            <div class="yui-content"><div id="wiki-tab-0-0"><p>songs</p></div><div id="wiki-tab-0-1">${news}</div>
+            <div id="wiki-tab-0-2">${opts.story || 'Sorry, no Storyteller available.'}</div><div id="wiki-tab-0-3">Sorry no Eyewitness-report available.</div>
+            ${opts.second ? `<div id="wiki-tab-0-4">${opts.second}</div>` : ''}</div></div></body></html>`;
+        const content = (h) => page.evaluate(([x, url]) => window.__saTest.bbTagFacts(x, url).content, [h, BB + CHI]);
+        const img = src => `<img src="https://brucebase.wdfiles.com/local--files/content:files/${src}" class="image">`;
+        expect(await content(html(img('backstage-pass-1988.jpg')))).toMatchObject({ ticket: false });
+        expect(await content(html(img('ticket-1988.jpg')))).toMatchObject({ ticket: true, setlist: false });
+        expect(await content(html(img('ticket-and-setlist-1988.jpg')))).toMatchObject({ ticket: true, setlist: false });
+        expect(await content(html(img('setlist-handwritten-1988.jpg')))).toMatchObject({ setlist: true, handwritten: true, printed: false });
+        expect(await content(html(img('setlist-printed-1988.jpg')))).toMatchObject({ setlist: true, handwritten: false, printed: true });
+        expect(await content(html(`Sorry, no News available. ${img('ticket-1988.jpg')}`))).toMatchObject({ ticket: false });
+        expect(await content(html(img('ticket-1988.jpg'), { label: 'News' }))).toMatchObject({ ticket: true });
+        expect(await content(html('', { story: '<p>I was there.</p>' }))).toMatchObject({ storyteller: true, eyewitness: false });
+        // Two Storyteller tabs: the last one decides (BruceBaseParser's buildTabMap()).
+        expect(await content(html('', { story: '<p>I was there.</p>', second: 'Sorry, no Storyteller available.' }))).toMatchObject({ storyteller: false });
+    });
+
+    /**
+     * Loads an event page fixture at its address and presses its button.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {string} name
+     * @param {Object<string, *>} settings
+     * @returns {Promise<void>}
+     */
+    async function showEvent(page, name, settings) {
+        await page.setViewportSize({ width: 1500, height: 1200 });
+        await page.route(/^https?:\/\//, route => route.abort('blockedbyclient'));
+        const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
+        await page.route(/brucebase\.wdfiles\.com\//, route => route.fulfill({ status: 200, contentType: 'image/png', body: png }));
+        await loadUserscriptPage(page, { url: BB + name, fixtureFile: fileOf(name), testMode: true, settingsOverride: { ...BASE, sa_bb_detail_pages: true, ...settings } });
+        await servePages(page);
+        await page.click(`button[data-label="${BB_EVENT_BUTTON}"]`);
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+    }
+    const card = page => page.locator('section.mb-sb-card').filter({ has: page.locator(':scope > .mb-sb-card-head', { hasText: /^Tags/ }) });
+    const row = (c, label) => c.locator('.mb-sb-chip-row').filter({ has: c.page().locator(':scope > .mb-sb-chip-kind', { hasText: new RegExp(`^${label}$`) }) });
+
+    test('Nassau 1980-12-31: once its On stage page is read, "storyteller missing" in the "On the page" row', async ({ page }) => {
+        await showEvent(page, NAS, { ...CONTENT, sa_bb_onstage_tags: true });
+        const c = card(page);
+        await expect(row(c, 'On the page').locator('.mb-sb-chip.mb-cbx-miss')).toHaveText(['storyteller missing']);
+        await expect(c.locator('.mb-cbx-finds .mb-cbx-find-e')).toContainText(['storyteller is expected and missing. The Storyteller tab has an entry.']);
+    });
+
+    test('the Stone Pony 1982-10-03, its On stage page not read: "eyewitness" still marked (a tag of the page itself)', async ({ page }) => {
+        await showEvent(page, PONY, { ...CONTENT, sa_bb_onstage_tags: false });
+        const c = card(page);
+        await expect(c.locator('.mb-sb-chip.mb-cbx-spur')).toHaveText(['eyewitness']);
+        await expect(c.locator('.mb-cbx-finds .mb-cbx-find-w')).toContainText(['eyewitness is not expected. The page has no Eyewitness entry.']);
+        await expect(c.locator('.mb-cbx-wait')).toContainText('A missing tag is not looked for');
+    });
+
+    test('Chicago 2016: "as expected" names the content too', async ({ page }) => {
+        await showEvent(page, CHI, { ...CONTENT, sa_bb_onstage_tags: true });
+        await expect(card(page).locator('.mb-cbx-pill-ok')).toHaveText('✓ date, letter, kind, premiere, icon and content tags as expected');
+    });
+});

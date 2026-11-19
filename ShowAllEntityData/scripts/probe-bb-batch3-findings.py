@@ -786,6 +786,33 @@ def expected_tags(doc, tabs, date, kind, letter, has_help, has_featured, tour_ta
     return exp
 
 
+def content_facts(doc, tabs):
+    """Batch 3b's content family (vzell, 2026-11-19): what the page holds.
+
+    BBP's computeExpectedTags() content rules for the six tags kept: the
+    News/Memorabilia (else News) tab, when filled, showing a ticket (an
+    image whose name says "ticket"; a pass no longer counts), a setlist
+    (an image whose name says "setlist" and not "ticket"), handwritten or
+    printed among those; the Storyteller and Eyewitness tabs filled.
+    """
+    def filled(tab):
+        return tab is not None and not SORRY_RE.match(strip(tab.text()))
+
+    news = tab_el(doc, tabs, 'News/Memorabilia')
+    if news is None:
+        news = tab_el(doc, tabs, 'News')
+    srcs = [i.attrs.get('src') or '' for i in news.find_all('img')] if filled(news) else []
+    sets = [s for s in srcs if re.search('setlist', s, re.I) and not re.search('ticket', s, re.I)]
+    return {
+        'ticket': any(re.search('ticket', s, re.I) for s in srcs),
+        'setlist': bool(sets),
+        'handwritten': any(re.search('handwritten', s, re.I) for s in sets),
+        'printed': any(re.search('printed', s, re.I) for s in sets),
+        'storyteller': filled(tab_el(doc, tabs, 'Storyteller')),
+        'eyewitness': filled(tab_el(doc, tabs, 'Eyewitness')),
+    }
+
+
 def notes_text(node):
     """textContent without script elements."""
     out = []
@@ -968,7 +995,7 @@ def analyse(mirror, name, icons):
         'iconsYear': {'help': name in icons['file:help'], 'featured': name in icons['file:featured']},
         'facts': {'title': title, 'kind': kind, 'date': date, 'letter': letter or '',
                   'prem': sum(1 for a in song_links(setlist_container(doc) or doc) if a.inside('strong')),
-                  'help': help_page, 'featured': feat_page},
+                  'help': help_page, 'featured': feat_page, 'content': content_facts(doc, tabs)},
         'dateDiffers': bool(am and date and am.group(1) != date),
         'helpYearOnly': (help_year and not help_page), 'featYearOnly': (feat_year and not feat_page),
         'venueDropped': place_venue_dropped, 'noTitleDate': not date,

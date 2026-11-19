@@ -30,13 +30,14 @@ State: DONE (SAED has it), PART, TODO, NOT (not ported, with the reason).
 | Setlist YEAR vs DETAIL (LCS diff, char diffs)                                | doc/SETLIST.md                                  | finding + a diff card on the year row (the window's setlist is the DETAIL one)        | DONE  |     2 |
 | Venue name: DETAIL title's venue part vs the venue page's title              | =findVenueLink=, =renderVenueInfo=              | finding; one more request per row (the venue page), on ▶ Pages only                   | DONE  |     2 |
 | Expected tags: date parts, day suffix, event type                            | =computeExpectedTags=                           | =bb-tag-missing= / =bb-tag-spurious=: the Tags card, the window, the year table's Tags | DONE  |     3 |
-| Expected tags: content (bootleg, livedl, news, memorabilia, ticket, …)       | =computeExpectedTags= table                     | the rule flags 2,469 shows as it is: to tune with vzell                               | TODO  |    3b |
+| Expected tags: content: setlist, handwr., printed, storyteller, eyewitness   | =computeExpectedTags= table                     | the content family (=…_content=, off): 154 shows; ticket from a ticket image          | DONE  |    3b |
+| Expected tags: content: news, memorabilia, bootleg, livedl, soundcheck, …    | =computeExpectedTags= table                     | not ported: the wiki does not tag them by a rule the page shows (probe)               | NOT   |    3b |
 | Expected tags: tour premiere count + prem                                    | =countTourPremiereSongs=                        | same two findings                                                                     | DONE  |     3 |
 | Expected tags: tour association                                              | =checkEventTourTags=, =TOUR_DEFINITIONS=        | the tour family (=sa_bb_tag_family_tour=, off), the table in the feed: 49 shows       | DONE  |    3b |
 | Expected tags: location (title / venue)                                      | =checkEventNameLocationTags= …                  | the place family (=…_place=, off): city, state, country, regions; venue: feed map     | PART  |    3b |
 | Expected tags: relations of the cast tab                                     | =checkOnStageRelationTags=                      | 1,859 shows as it is: to tune                                                         | TODO  |    3b |
 | Expected tags: setlist songs                                                 | =checkSetlistSongTags=, =computeSongTagAlias=   | 1,114 shows as it is (the initials rule): to tune                                     | TODO  |    3b |
-| Spurious tags (present, not expected)                                        | =SPURIOUS_TAG_REASONS=                          | =bb-tag-spurious= for the shipped families; tour and content tags: batch 3b           | PART  |  3/3b |
+| Spurious tags (present, not expected)                                        | =SPURIOUS_TAG_REASONS=                          | =bb-tag-spurious=: batch 3, tour; content: storyteller, eyewitness                    | DONE  |  3/3b |
 | Tag source highlight (which text made a tag expected)                        | doc/TAGS.md, opt-in                             | NOT for now: each finding says its reason in words; back with 3b (setlist, cast)      | NOT   |    3b |
 | VENUE / SONG / RELATION / RETAIL page tag checks                             | =annotate*PageTags=                             | Tags card + window: kind, letter, banner, song title; dates/place/names left out      | PART  |     4 |
 | Help-icon tag check                                                          | =hasHelpIcon=                                   | the icon family of =bb-tag-missing= / =bb-tag-spurious= (Help Us and Featured)        | DONE  |     4 |
@@ -975,5 +976,62 @@ missing and no region is expected.
 | https://brucebase.wikidot.com/gig:1981-04-09-icc-berlin-germany                     | press (after the publish)  | no place mark: West Berlin and West Germany as "berlin" and "germany"                 |
 | https://brucebase.wikidot.com/1984                                                  | Show all events, ▶ Pages   | the four Toronto/Montreal rows of July ❌ on Tags ("canada")                           |
 | the Mark Twain page again                                                           | both families on, feed off | "The tour and place tags are not checked: the Brucebase feed is off."                 |
+
+Unverified: all of it in a real browser.
+
+** The content family (=sa_bb_tag_family_content=, off by default)
+
+*Decisions (vzell, 2026-11-19):* the reliable six only (setlist, handwritten, printed, storyteller, eyewitness, and
+ticket from a ticket image, only as missing); news, memorabilia, bootleg, livedl, soundcheck and rescheduled NOT, with
+the reasons below.
+
+*The probe* (=scripts/probe-bb-content-tags.py=, 5,007 events; BruceBaseParser's rule as its code has it):
+
+| Tag         | Carried | Expected | Expected, carried | Expected, missing | Carried, not expected |
+|-------------+---------+----------+-------------------+-------------------+-----------------------|
+| bootleg     |   2,488 |    2,913 |             2,477 |               436 |                    11 |
+| livedl      |     379 |      589 |               379 |               210 |                     0 |
+| news        |   2,573 |    3,510 |             2,562 |               948 |                    11 |
+| memorabilia |   1,615 |    2,744 |             1,610 |             1,134 |                     5 |
+| ticket      |   2,024 |    1,936 |             1,833 |               103 |                   191 |
+| setlist     |     713 |      726 |               696 |                30 |                    17 |
+| handwritten |     549 |      552 |               532 |                20 |                    17 |
+| printed     |     214 |      217 |               205 |                12 |                     9 |
+| soundcheck  |     564 |      685 |               556 |               129 |                     8 |
+| storyteller |   1,452 |    1,475 |             1,447 |                28 |                     5 |
+| eyewitness  |     974 |      991 |               969 |                22 |                     4 |
+| rescheduled |     178 |       90 |                27 |                63 |                   151 |
+
+*Why the six left out are NOT:* news and memorabilia follow what an item IS, not that the News tab has pictures (a
+ticket-only tab carries neither in 197 of 217 shows; a pass goes with memorabilia in 41 of 46, press clippings about
+half the time); bootleg is expected from any text on the Recording tab, also a remark that a tape "may be from this
+show" (=gig:1970-05-10-monmouth-college-west-long-branch-nj=); livedl is expected for official releases the wiki tags
+=retail= (Max's 1973, the 1984 shows); soundcheck (129 missing) and rescheduled (151 carried without "rescheduled
+from") follow no text the page shows.
+
+*Tuned on the way:* a pass no longer calls for =ticket= (103 → 57 missing); setlist, handwritten and printed are never
+called not expected, because their picture can sit on a =news:= page the tab lists, or in a Flickr gallery module,
+neither of which is in the page (16 shows of 1971–1978).
+
+*The rule:* *154 shows*, 145 with a missing tag (ticket 57, setlist 30, storyteller 28, eyewitness 22, handwritten 20,
+printed 12), 9 with one not expected (storyteller 5, eyewitness 4). No feed, no request, every kind of event. +6.2 kB
+in the userscript (batch 3b so far +20.6 kB).
+
+*Tests* (NB-3641, 2026-11-19): =check-bb-batch3b-findings.js --family content=: 0 differences, 154 flagged, 0 with the
+setting off; the batch 3 checker 0 with =content= in the facts. =bb-findings-batch3b.spec.js= 6 new on eight more real
+pages and one On stage page, plus a built-markup test of the reading; 12 new mutations all fail their test on the first
+run (2 tour finds moved, both fail).
+
+** The browser check of the content family, for vzell (pages of the mirror of 2026-11-19)
+
+First: ⚙️ Settings → "Also check a Brucebase show's content tags" on.
+
+| URL                                                                       | Step                     | What should appear                                                            |
+|---------------------------------------------------------------------------+--------------------------+-------------------------------------------------------------------------------|
+| https://brucebase.wikidot.com/gig:1980-12-31-nassau-coliseum-uniondale-ny | press, wait for On stage | Tags card: "storyteller missing" in the "On the page" row                     |
+| https://brucebase.wikidot.com/gig:1978-07-19-ellis-auditorium-memphis-tn  | press, wait for On stage | "ticket missing" (the News/Memorabilia tab shows a ticket)                    |
+| https://brucebase.wikidot.com/gig:1982-10-03-stone-pony-asbury-park-nj    | press                    | "eyewitness" ⚠️: the Eyewitness tab says "Sorry, no Eyewitness-report"        |
+| https://brucebase.wikidot.com/gig:1971-05-14-sunshine-in-asbury-park-nj   | press                    | no content mark: "setlist" and "handwritten" without a picture are left alone |
+| https://brucebase.wikidot.com/1974                                        | Show all events, ▶ Pages | Schenectady 1974-10-19 ❌ on Tags ("setlist", "handwritten")                   |
 
 Unverified: all of it in a real browser.

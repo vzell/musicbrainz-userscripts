@@ -4203,6 +4203,14 @@ entry, with these columns:
   names the wiki tags its own way ("West Germany" is "germany") and the
   regions come from the Brucebase feed too; a place tag is never marked as
   not expected.
+  With *Also check a Brucebase show's content tags* on (off by default), a
+  show whose News/Memorabilia tab shows a setlist should carry "setlist"
+  (and "handwritten" or "printed" when the picture's name says so), one
+  showing a ticket "ticket", one with an entry on its Storyteller or
+  Eyewitness tab "storyteller" or "eyewitness". A "storyteller" or
+  "eyewitness" tag without its tab's entry is marked ⚠️; the picture tags
+  never are, since a picture can sit on a news page the tab lists. No
+  request and no feed: the page alone is read.
 - **On stage**, **Content**, **Images**, **Start** and **Tags** come from each entry's
   own page, so they stay empty (—) until that page is read. **▶ Pages** in
   the On stage header reads the pages of the rows you can see, and then of
@@ -4436,7 +4444,7 @@ site) show those tags too:
   only the marked chips; press again for all. Nothing is marked while the
   On stage page is still being read, and with that page unread the card
   says that no missing tag is looked for. ✓ means the four families are
-  as expected (and the tour and the place, where they are checked; without the feed the
+  as expected (and the tour, the place and the content, where they are checked; without the feed the
   card says they are not checked). For the Help Us and Featured icons, which are on the
   year page, the show's year page is read once at the press (or Space
   in the window) and kept. Switches: ⚙️ Settings → ⚠️ Findings.

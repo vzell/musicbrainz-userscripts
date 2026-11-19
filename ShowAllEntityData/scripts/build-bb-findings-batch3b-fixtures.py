@@ -68,6 +68,16 @@ PAGES = [
     'gig:1985-03-21-entertainment-centre-sydney-australia',
     'interview:2025-04-28-saban-media-center-los-angels-ca',
     'nogig:2003-09-17-mark-twain-house-hartford-ct',
+    # The content family (scripts/probe-bb-content-tags.py, mirror 2026-11-19).
+    'gig:1978-07-19-ellis-auditorium-memphis-tn',
+    'gig:1974-10-19-memorial-chapel-concert-hall-schenectady-ny',
+    'gig:2005-04-04-joan-and-robert-rechnitz-theater-red-bank-nj',
+    'gig:1980-12-31-nassau-coliseum-uniondale-ny',
+    'onstage:1980-12-31-nassau-coliseum-uniondale-ny',
+    'gig:1974-12-14a-auditorium-new-brunswick-nj',
+    'gig:1982-10-03-stone-pony-asbury-park-nj',
+    'gig:1976-04-07-allen-theatre-cleveland-oh',
+    'gig:1971-05-14-sunshine-in-asbury-park-nj',
 ]
 FEED = 'bb-feed.json'
 

@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-11-19",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase: a show's content tags can now be checked too (⚙️ Settings, \"Also check a Brucebase show's content tags\", off by default while the remaining tag checks are tuned). A show whose News/Memorabilia tab shows a setlist should carry \"setlist\" (and \"handwritten\" or \"printed\" when the picture's name says so), one showing a ticket should carry \"ticket\", and one with an entry on its Storyteller or Eyewitness tab should carry \"storyteller\" or \"eyewitness\". A \"storyteller\" or \"eyewitness\" tag without its tab's entry is a ⚠️. The picture tags never are: a picture can sit on a news page the tab lists, or in its Flickr gallery. It reads only the page itself, with no request and no feed. Like the other tag checks, it is marked on the Tags card, in the preview window and in the year table's Tags column. On the wiki today it flags 154 shows. \"news\", \"memorabilia\", \"bootleg\", \"livedl\", \"soundcheck\" and \"rescheduled\" are not checked: the wiki does not tag them by a rule the page shows."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-11-19",
     "sections": [

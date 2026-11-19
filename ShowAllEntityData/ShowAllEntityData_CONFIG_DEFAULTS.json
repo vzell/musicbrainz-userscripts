@@ -3,10 +3,10 @@
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
     "script_version": "9.99.1659+2026-11-19",
-    "schema_entries": 555,
+    "schema_entries": 556,
     "sections": 54,
-    "settings": 501,
-    "settings_with_default": 496,
+    "settings": 502,
+    "settings_with_default": 497,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 324,
+      "checkbox": 325,
       "color_picker": 62,
       "divider": 54,
       "number": 53,
@@ -278,6 +278,7 @@
     "sa_bb_mb_event_lookup": "MB-Event column: look the events up on MusicBrainz",
     "sa_bb_onstage_tags": "Show the tags kept on a show's On stage page",
     "sa_bb_sidebar_right": "Show the Brucebase side bar on the right",
+    "sa_bb_tag_family_content": "Also check a Brucebase show's content tags",
     "sa_bb_tag_family_place": "Also check a Brucebase show's place tags",
     "sa_bb_tag_family_tour": "Also check a Brucebase show's tour tag",
     "sa_bb_tip_images": "Media icons and song glyphs: the page's images on hover",
@@ -781,6 +782,7 @@
     "sa_bb_mb_event_lookup": true,
     "sa_bb_onstage_tags": true,
     "sa_bb_sidebar_right": false,
+    "sa_bb_tag_family_content": false,
     "sa_bb_tag_family_place": false,
     "sa_bb_tag_family_tour": false,
     "sa_bb_tip_images": true,

@@ -3213,6 +3213,21 @@
                          'batch 3b).'
         },
 
+        sa_bb_tag_family_content: {
+            label: 'Also check a Brucebase show\'s content tags',
+            type: 'checkbox',
+            default: false,
+            description: 'With the two settings above: a show whose News/Memorabilia tab shows a setlist should ' +
+                         'carry "setlist" (and "handwritten" or "printed" when the picture\'s name says so), one ' +
+                         'that shows a ticket "ticket", one with an entry on its Storyteller or Eyewitness tab ' +
+                         '"storyteller" or "eyewitness". "storyteller" and "eyewitness" without their tab\'s entry ' +
+                         'are not expected; the picture tags never are (a picture can sit on a news page the tab ' +
+                         'lists, or in its Flickr gallery). Read from the page itself, no ' +
+                         'request. "news", "memorabilia", "bootleg", "livedl", "soundcheck" and "rescheduled" are ' +
+                         'not checked: the wiki does not tag them by a rule a page shows. Off by default while the ' +
+                         'families are tuned (org/springsteen-marriage.org, batch 3b).'
+        },
+
         sa_findings_tint_bb_tags: {
             label: 'Highlight Tags cells of Brucebase entries with a missing or not expected tag',
             type: 'checkbox',
@@ -35470,7 +35485,8 @@
      * 35: `bbTagFacts` for a venue, song, relation and release page too
      *    (`_bbTagPageFacts()`, parity batch 4).
      * 36: a show's `bbTagFacts` carries its title as written (`title`; the
-     *    place family, batch 3b).
+     *    place family, batch 3b) and what its tabs hold (`content`, the
+     *    content family).
      * @type {number}
      */
     const _DP_PARSER_VERSION = 36;
@@ -38359,7 +38375,7 @@
      *
      * A venue, song, relation or release page: `_bbTagPageFacts()` (`page: true`).
      *
-     * @returns {?{title: string, kind: string, date: string, letter: string, prem: number, help: boolean, featured: boolean}}
+     * @returns {?{title: string, kind: string, date: string, letter: string, prem: number, help: boolean, featured: boolean, content: Object}}
      */
     function _bbTagFacts(doc, url) {
         let name;
@@ -38380,6 +38396,41 @@
             prem: box ? box.querySelectorAll('strong a[href^="/song:"]').length : 0,
             help: !!doc.querySelector('img.image[title="Help Us"]'),
             featured: !!doc.querySelector('img.image[title="Featured"]'),
+            content: _bbTagContentFacts(doc),
+        };
+    }
+
+    /**
+     * What a show's page holds for the content family (batch 3b; vzell,
+     * 2026-11-19), as BruceBaseParser's `computeExpectedTags()` reads it:
+     * the News/Memorabilia tab (else the News tab), when it is filled (not
+     * "Sorry, no …"), showing a ticket (an image whose name says "ticket";
+     * a pass no longer counts: such shows rarely carry the tag) or a
+     * setlist (an image whose name says "setlist" and not "ticket"),
+     * "handwritten" or "printed" among those; the Storyteller and the
+     * Eyewitness tab filled. A label's LAST tab counts, numbered across
+     * every tab bar of the page (BruceBaseParser's `buildTabMap()`).
+     *
+     * @param {Document} doc
+     * @returns {{ticket: boolean, setlist: boolean, handwritten: boolean, printed: boolean, storyteller: boolean, eyewitness: boolean}}
+     */
+    function _bbTagContentFacts(doc) {
+        const labels = Array.from(doc.querySelectorAll('.yui-nav em'), em => em.textContent.trim());
+        const tab = (label) => {
+            const i = labels.lastIndexOf(label);
+            return i >= 0 ? doc.getElementById(`wiki-tab-0-${i}`) : null;
+        };
+        const filled = el => !!el && !/^Sorry,? no /i.test((el.textContent || '').trim());
+        const news = tab('News/Memorabilia') || tab('News');
+        const srcs = filled(news) ? Array.from(news.querySelectorAll('img'), img => img.getAttribute('src') || '') : [];
+        const sets = srcs.filter(s => /setlist/i.test(s) && !/ticket/i.test(s));
+        return {
+            ticket: srcs.some(s => /ticket/i.test(s)),
+            setlist: sets.length > 0,
+            handwritten: sets.some(s => /handwritten/i.test(s)),
+            printed: sets.some(s => /printed/i.test(s)),
+            storyteller: filled(tab('Storyteller')),
+            eyewitness: filled(tab('Eyewitness')),
         };
     }
 
@@ -38738,6 +38789,52 @@
     }
 
     /**
+     * Whether a show's content tags are checked (`sa_bb_tag_family_content`;
+     * batch 3b, off by default while the families are tuned).
+     *
+     * @returns {boolean}
+     */
+    function _bbTagContentOn() {
+        return Lib.settings.sa_bb_tag_family_content === true;
+    }
+
+    /**
+     * The content family's tags and what calls for each, in words (vzell,
+     * 2026-11-19: the six whose rule the wiki follows; "news",
+     * "memorabilia", "bootleg", "livedl", "soundcheck" and "rescheduled"
+     * are not ported, org/bbp-parity.org). `spur`: whether the tag is
+     * called not expected without it: only "storyteller" and "eyewitness",
+     * whose tabs hold their entry; a ticket or setlist picture can sit on
+     * a news: page the tab lists, or in a Flickr gallery, so the page not
+     * showing one proves nothing (16 such shows on the mirror).
+     * @type {Array<{tag: string, has: string, lacks: string, spur: boolean}>}
+     */
+    const _BB_TAGCHK_CONTENT = [
+        { tag: 'ticket', has: 'The News/Memorabilia tab shows a ticket (an image named "ticket").', lacks: '', spur: false },
+        { tag: 'setlist', has: 'The News/Memorabilia tab shows a setlist (an image named "setlist").', lacks: '', spur: false },
+        { tag: 'handwritten', has: 'The News/Memorabilia tab shows a handwritten setlist (an image named "handwritten").', lacks: '', spur: false },
+        { tag: 'printed', has: 'The News/Memorabilia tab shows a printed setlist (an image named "printed").', lacks: '', spur: false },
+        { tag: 'storyteller', has: 'The Storyteller tab has an entry.', lacks: 'The page has no Storyteller entry.', spur: true },
+        { tag: 'eyewitness', has: 'The Eyewitness tab has an entry.', lacks: 'The page has no Eyewitness entry.', spur: true },
+    ];
+
+    /**
+     * The content family of a show (batch 3b): the tags its page's tabs
+     * call for (`facts.content`, `_bbTagContentFacts()`). Probe
+     * (`scripts/probe-bb-content-tags.py`, bb/2026-11-19): BruceBaseParser's
+     * rule matches the wiki for these six (setlist 696 of 726, storyteller
+     * 1,447 of 1,475, eyewitness 969 of 991). Null when the family is off
+     * or the facts are older than the family.
+     *
+     * @param {Object} facts - `_bbTagFacts()`.
+     * @returns {?Array<{tag: string, family: string, why: string}>}
+     */
+    function _bbTagContentExpected(facts) {
+        if (!_bbTagContentOn() || !facts || facts.page || !facts.content) return null;
+        return _BB_TAGCHK_CONTENT.filter(c => facts.content[c.tag]).map(c => ({ tag: c.tag, family: 'content', why: c.has }));
+    }
+
+    /**
      * Whether a family that reads the feed's tables is on (tour, place).
      *
      * @returns {boolean}
@@ -38858,6 +38955,8 @@
         const tour = _bbTagTourCheck(facts, all);
         if (tour) expected.push(...tour.expected);
         expected.push(...(_bbTagPlaceExpected(facts) || []));
+        const content = _bbTagContentExpected(facts);
+        if (content) expected.push(...content);
         const want = new Set(expected.map(e => e.tag));
         for (const e of expected) {
             if (!_bbTagPresent(e.tag, all) && !(e.alts || []).some(a => all.has(a))) res.missing.push(e);
@@ -38866,7 +38965,8 @@
         for (const tag of own) {
             // An icon tag only with the year page known.
             const icon = icons ? _BB_TAGCHK_ICONS.find(i => i[0] === tag) : null;
-            const family = icon ? 'icon' : tour && tour.table.has(tag) ? 'tour' : _bbTagCheckedFamily(tag);
+            const cont = content ? _BB_TAGCHK_CONTENT.find(c => c.spur && c.tag === tag) : null;
+            const family = icon ? 'icon' : tour && tour.table.has(tag) ? 'tour' : cont ? 'content' : _bbTagCheckedFamily(tag);
             if (!family || seen.has(tag) || _bbTagPresent(tag, want)) continue;
             // A covering tour's tag on a show tagged "tour_no" is not expected
             // and not wrong either.
@@ -38875,7 +38975,8 @@
             res.spurious.push({
                 tag, family,
                 why: icon ? `Neither the year page nor the show's page has the ${icon[1]} icon.`
-                    : family === 'tour' ? _bbTagTourSpuriousWhy(tag, facts, tour) : _bbTagSpuriousWhy(tag, family, facts, expected),
+                    : family === 'tour' ? _bbTagTourSpuriousWhy(tag, facts, tour)
+                        : family === 'content' ? cont.lacks : _bbTagSpuriousWhy(tag, family, facts, expected),
             });
         }
         return res;
@@ -39197,7 +39298,7 @@
 
     /** The Tags card's row (`_BB_TAG_FAMILIES` key) a missing tag of a checked family is drawn in. */
     const _BB_TAGCHK_ROW = {
-        date: 'date', letter: 'letter', type: 'category', prem: 'material', icon: 'material', tour: 'tour', place: 'place',
+        date: 'date', letter: 'letter', type: 'category', prem: 'material', icon: 'material', tour: 'tour', place: 'place', content: 'material',
         // Parity batch 4: where the same tag sits when the page has it.
         construction: 'other', lyricsheet: 'other', title: 'other',
     };
@@ -39269,7 +39370,8 @@
     function _bbTagOkText(facts) {
         if (!facts.page) {
             const tables = !!_bbFeedTables();
-            const more = [tables && _bbTagTourOn() && _bbTagTourApplies(facts) ? 'tour' : '', tables && _bbTagPlaceOn() ? 'place' : ''].filter(Boolean);
+            const more = [tables && _bbTagTourOn() && _bbTagTourApplies(facts) ? 'tour' : '', tables && _bbTagPlaceOn() ? 'place' : '',
+                _bbTagContentOn() && facts.content ? 'content' : ''].filter(Boolean);
             return `✓ date, letter, kind, premiere, icon${more.map(x => `, ${x}`).join('')} tags as expected`.replace(/, ([a-z]+) tags as expected$/, ' and $1 tags as expected');
         }
         const what = {

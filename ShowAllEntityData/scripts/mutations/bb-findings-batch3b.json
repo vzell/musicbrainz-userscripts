@@ -95,8 +95,8 @@
         "why": "A tour tag whose tour has other dates is a warning.",
         "edits": [
             {
-                "find": "            const family = icon ? 'icon' : tour && tour.table.has(tag) ? 'tour' : _bbTagCheckedFamily(tag);",
-                "replace": "            const family = icon ? 'icon' : _bbTagCheckedFamily(tag);"
+                "find": "            const family = icon ? 'icon' : tour && tour.table.has(tag) ? 'tour' : cont ? 'content' : _bbTagCheckedFamily(tag);",
+                "replace": "            const family = icon ? 'icon' : cont ? 'content' : _bbTagCheckedFamily(tag);"
             }
         ],
         "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
@@ -147,8 +147,8 @@
         "why": "It names the families that were checked.",
         "edits": [
             {
-                "find": "            const more = [tables && _bbTagTourOn() && _bbTagTourApplies(facts) ? 'tour' : '', tables && _bbTagPlaceOn() ? 'place' : ''].filter(Boolean);",
-                "replace": "            const more = [tables && _bbTagPlaceOn() ? 'place' : ''].filter(Boolean);"
+                "find": "            const more = [tables && _bbTagTourOn() && _bbTagTourApplies(facts) ? 'tour' : '', tables && _bbTagPlaceOn() ? 'place' : '',",
+                "replace": "            const more = [tables && _bbTagPlaceOn() ? 'place' : '',"
             }
         ],
         "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
@@ -375,5 +375,161 @@
         "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
         "grep": "off, a feed without its tables, the feed off: no place finding",
         "expect": "pass"
+    },
+    {
+        "name": "content: the switch is always on",
+        "why": "sa_bb_tag_family_content is off by default (vzell, 2026-11-19).",
+        "edits": [
+            {
+                "find": "        return Lib.settings.sa_bb_tag_family_content === true;",
+                "replace": "        return Lib.settings.sa_bb_tag_family_content !== 'never';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "off: no content finding",
+        "expect": "fail"
+    },
+    {
+        "name": "content: no expected tag",
+        "why": "The tabs call for their tags.",
+        "edits": [
+            {
+                "find": "        const content = _bbTagContentExpected(facts);\n        if (content) expected.push(...content);",
+                "replace": "        const content = _bbTagContentExpected(facts);\n        if (content && !content) expected.push(...content);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "on: each page as the probe found it, every finding with its reason; no feed needed",
+        "expect": "fail"
+    },
+    {
+        "name": "content: a pass counts as a ticket",
+        "why": "Such shows rarely carry \"ticket\" (vzell: a ticket from a ticket image).",
+        "edits": [
+            {
+                "find": "            ticket: srcs.some(s => /ticket/i.test(s)),",
+                "replace": "            ticket: srcs.some(s => /ticket|pass/i.test(s)),"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "what the tabs hold, on built markup",
+        "expect": "fail"
+    },
+    {
+        "name": "content: a picture named \"ticket\" is a setlist too",
+        "why": "BruceBaseParser's rule: a setlist image is not named ticket.",
+        "edits": [
+            {
+                "find": "        const sets = srcs.filter(s => /setlist/i.test(s) && !/ticket/i.test(s));",
+                "replace": "        const sets = srcs.filter(s => /setlist/i.test(s));"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "what the tabs hold, on built markup",
+        "expect": "fail"
+    },
+    {
+        "name": "content: \"Sorry, no\" counts as filled",
+        "why": "An empty tab calls for nothing.",
+        "edits": [
+            {
+                "find": "        const filled = el => !!el && !/^Sorry,? no /i.test((el.textContent || '').trim());",
+                "replace": "        const filled = el => !!el;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "what the tabs hold, on built markup",
+        "expect": "fail"
+    },
+    {
+        "name": "content: a label's first tab counts",
+        "why": "BruceBaseParser's buildTabMap() keeps the last.",
+        "edits": [
+            {
+                "find": "            const i = labels.lastIndexOf(label);",
+                "replace": "            const i = labels.indexOf(label);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "what the tabs hold, on built markup",
+        "expect": "fail"
+    },
+    {
+        "name": "content: the News tab alone is not read",
+        "why": "A page without a News/Memorabilia tab has a News tab.",
+        "edits": [
+            {
+                "find": "        const news = tab('News/Memorabilia') || tab('News');",
+                "replace": "        const news = tab('News/Memorabilia');"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "what the tabs hold, on built markup",
+        "expect": "fail"
+    },
+    {
+        "name": "content: a setlist picture without its tag is \"not expected\"",
+        "why": "The picture may sit on a news: page the tab lists, or in a Flickr gallery.",
+        "edits": [
+            {
+                "find": "        { tag: 'setlist', has: 'The News/Memorabilia tab shows a setlist (an image named \"setlist\").', lacks: '', spur: false },",
+                "replace": "        { tag: 'setlist', has: 'The News/Memorabilia tab shows a setlist (an image named \"setlist\").', lacks: 'x', spur: true },"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "on: each page as the probe found it, every finding with its reason; no feed needed",
+        "expect": "fail"
+    },
+    {
+        "name": "content: storyteller without its tab is not marked",
+        "why": "The Storyteller tab holds its entry.",
+        "edits": [
+            {
+                "find": "        { tag: 'storyteller', has: 'The Storyteller tab has an entry.', lacks: 'The page has no Storyteller entry.', spur: true },",
+                "replace": "        { tag: 'storyteller', has: 'The Storyteller tab has an entry.', lacks: 'The page has no Storyteller entry.', spur: false },"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "on: each page as the probe found it, every finding with its reason; no feed needed",
+        "expect": "fail"
+    },
+    {
+        "name": "content: a missing chip in the Other row",
+        "why": "The \"On the page\" row is where the tag sits when the page has it.",
+        "edits": [
+            {
+                "find": "tour: 'tour', place: 'place', content: 'material',",
+                "replace": "tour: 'tour', place: 'place', content: 'other',"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "Nassau 1980-12-31",
+        "expect": "fail"
+    },
+    {
+        "name": "content: \"as expected\" never names the content",
+        "why": "It names the families checked.",
+        "edits": [
+            {
+                "find": "                _bbTagContentOn() && facts.content ? 'content' : ''].filter(Boolean);",
+                "replace": "                ''].filter(Boolean);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "Chicago 2016: \"as expected\" names the content too",
+        "expect": "fail"
+    },
+    {
+        "name": "content: the facts lack what the tabs hold",
+        "why": "_bbTagFacts() keeps the content facts.",
+        "edits": [
+            {
+                "find": "            content: _bbTagContentFacts(doc),\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "on: each page as the probe found it, every finding with its reason; no feed needed",
+        "expect": "fail"
     }
 ]

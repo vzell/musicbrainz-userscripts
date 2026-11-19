@@ -8,13 +8,15 @@
  * findings with the Python probe's rule:
  *   --family tour   scripts/probe-bb-tour-tags.py ROWS TABLES --json RULE   (sa_bb_tag_family_tour)
  *   --family place  scripts/probe-bb-place-tags.py ROWS TABLES --json RULE  (sa_bb_tag_family_place)
+ *   --family content  scripts/probe-bb-content-tags.py ROWS --json RULE      (sa_bb_tag_family_content)
  *
  * Per event, in the real userscript loaded through the test harness:
  * `__saTest.bbTagFacts()` on the page, its own tags from the link previews'
  * parser (`__saTest.dpParse()`), the probe's tags of its other pages, and
  * `__saTest.bbTagCheck()`; the findings of the family against the probe's.
- * Then three passes that must find none of the family's findings: the
- * setting off, a feed without its tables, the feed off.
+ * Then the passes that must find none of the family's findings: the
+ * setting off and, for a family that reads the feed's tables (tour,
+ * place), a feed without its tables and the feed off.
  *
  * Read-only, no network. Exit code 1 when anything differs.
  *
@@ -30,7 +32,9 @@ const path = require('path');
 const { chromium } = require('@playwright/test');
 const { loadUserscriptPage } = require('../tests/support/loadPage');
 
-const FAMILIES = { tour: 'sa_bb_tag_family_tour', place: 'sa_bb_tag_family_place' };
+const FAMILIES = { tour: 'sa_bb_tag_family_tour', place: 'sa_bb_tag_family_place', content: 'sa_bb_tag_family_content' };
+/** The families that read the feed's tables. */
+const FEED_FAMILIES = new Set(['tour', 'place']);
 const args = process.argv.slice(2);
 const opt = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : null; };
 const valued = new Set(['--mirror', '--family'].map(o => args.indexOf(o) + 1).filter(i => i > 0));
@@ -104,7 +108,7 @@ async function findings(page, rows) {
 
 (async () => {
     if (!ROWS || !RULE || !FEED || !FAMILIES[FAMILY]) {
-        console.error('usage: node scripts/check-bb-batch3b-findings.js --family tour|place ROWS.json RULE.json FEED.json [--mirror DIR]');
+        console.error('usage: node scripts/check-bb-batch3b-findings.js --family tour|place|content ROWS.json RULE.json FEED.json [--mirror DIR]');
         process.exit(2);
     }
     const key = FAMILIES[FAMILY];
@@ -136,12 +140,11 @@ async function findings(page, rows) {
     });
     console.log(`${rows.length} events, the shipped ${FAMILY} check against the probe: ${diffs} differ; ${flagged} events flagged`);
 
-    // 2.–4. The family off, a feed without its tables, the feed off: none of its findings.
-    const quiet = [
-        ['the setting off', { sa_bb_feed: true, [key]: false, ...kept(feed) }],
+    // 2.–4. The family off (and a feed without its tables, the feed off): none of its findings.
+    const quiet = [['the setting off', { sa_bb_feed: true, [key]: false, ...kept(feed) }]].concat(FEED_FAMILIES.has(FAMILY) ? [
         ['a feed without tagTables', { sa_bb_feed: true, [key]: true, ...kept({ ...feed, tagTables: undefined }) }],
         ['the feed off', { sa_bb_feed: false, [key]: true, ...kept(feed) }],
-    ];
+    ] : []);
     let loud = 0;
     for (const [label, settings] of quiet) {
         ({ page, context } = await open(browser, settings));

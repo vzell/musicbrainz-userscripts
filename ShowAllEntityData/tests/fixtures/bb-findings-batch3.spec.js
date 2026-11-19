@@ -399,10 +399,21 @@ test.describe('Brucebase tag check: the rule (bbp-parity batch 3)', () => {
     test('what a page says: its kind and letter from the address, its date from the title, the songs in bold', async ({ page }) => {
         await loadYear(page);
         const facts = (name, addr) => page.evaluate(([html, url]) => window.__saTest.bbTagFacts(html, url), [fs.readFileSync(fileOf(name), 'utf8'), BB + (addr || name)]);
-        // The title as written (batch 3b's place family reads its parts).
-        expect(await facts(PIT)).toEqual({ title: '2016-01-16 Consol Energy Center, Pittsburgh, PA', kind: 'gig', date: '2016-01-16', letter: '', prem: 35, help: false, featured: false });
-        expect(await facts(MAD)).toEqual({ title: '2016-05-21 Estadio Santiago Bernabéu, Madrid, Spain', kind: 'gig', date: '2016-05-21', letter: '', prem: 3, help: false, featured: false });
-        expect(await facts(INT)).toEqual({ title: '2016-09-06 Stone Hill Studio, Colts Neck, NJ', kind: 'interview', date: '2016-09-06', letter: '', prem: 0, help: false, featured: false });
+        // The title as written (batch 3b's place family reads its parts) and
+        // what the tabs hold (its content family).
+        const none = { ticket: false, setlist: false, handwritten: false, printed: false, storyteller: false, eyewitness: false };
+        expect(await facts(PIT)).toEqual({
+            title: '2016-01-16 Consol Energy Center, Pittsburgh, PA', kind: 'gig', date: '2016-01-16', letter: '', prem: 35, help: false, featured: false,
+            content: { ...none, ticket: true, setlist: true, printed: true, storyteller: true },
+        });
+        expect(await facts(MAD)).toEqual({
+            title: '2016-05-21 Estadio Santiago Bernabéu, Madrid, Spain', kind: 'gig', date: '2016-05-21', letter: '', prem: 3, help: false, featured: false,
+            content: { ...none, ticket: true, storyteller: true },
+        });
+        expect(await facts(INT)).toEqual({
+            title: '2016-09-06 Stone Hill Studio, Colts Neck, NJ', kind: 'interview', date: '2016-09-06', letter: '', prem: 0, help: false, featured: false,
+            content: none,
+        });
         expect((await facts(MAD, 'gig:2016-05-21b-estadio-santiago-bernabeu-madrid-spain')).letter).toBe('b');
         // Not a show: a venue address gets a page's facts (batch 4), no date or premiere count;
         // a kind no check covers gets none.
