@@ -1,546 +1,58 @@
 #+title: Bringing BruceParser, BruceBaseParser and volkerzell.de into ShowAllEntityData
 #+date: 2026-11-13
+#+TODO: TODO NEXT WAIT | DONE PART NOT
 
 Env: 2026-11-13 · plan written in a Claude Code session (plan mode), code reading only · n/a
-
-Plan for pickup on another host.
-
-* PICKUP HERE: status of 2026-11-19 afternoon: the parity matrix CLOSED except batch 3b: branches 1-3 MERGED (9.99.1653, 9.99.1655, 9.99.1658), the filter-sliced flake fixed (9.99.1656); batch 4 MERGED as 9.99.1652; nothing published to the mirror yet; batch 3b SET ASIDE
-
-- *Closing the parity matrix (2026-11-19, NB-3641):* mockup https://claude.ai/artifact/Mji5y7i2vZzTkK1WQ4JWi7, all
-  as recommended. Three branches, each merged on vzell's word: (1) =fix/bb-bbp-coexistence= (SAED stands aside on a
-  page BruceBaseParser changed), MERGED as 9.99.1653 (vzell: "tested live, OK"); (2) =feat/findings-any-level= (All errors / All warnings in the ⚠️/❌ menus,
-  MusicBrainz too), MERGED as 9.99.1655 (vzell: "all tested live, OK"); (3) =feat/bb-evp-read-all= (▶ Pages: Read every row), MERGED as 9.99.1658. Record: =org/bbp-parity.org=, "Closing the
-  matrix". The plan is =~/.claude/plans/act-on-the-synchronous-robin.md= (NB-3641 only).
-
-- *Parity batch 4, the page tag checks (2026-11-18, NB-3641):* venue, song, relation and release pages get batch 3's
-  marks on their Tags card and in their window: the kind tag, BruceParser's first letter, the banner, "lyricsheet",
-  a song's title tag. 41 of 6,990 mirror pages flagged. Record and browser list: =org/bbp-parity.org=, "Batch 4: the
-  page tag checks". *petri's =test:full= of 9.99.1649:* recorded (3,259 of 3,259 at 9.99.1650, tests/MEASUREMENTS.org).
-  *Merged* as 9.99.1652 (2026-11-18; vzell: "all tested live, OK"; no new =test:full= on his word, the batch's and its
-  neighbours' specs 83 of 83 on the merged tree). The branch is deleted. Next on the matrix: batch 3b, still set aside.
-
-- *DONE on petri (2026-11-18, 20:30:20–20:51:36 CET, 3,259 of 3,259 at 9.99.1650, which includes 1649):* =test:full= on =main= at 9.99.1649 (the "QE" title-case fix, =fix/title-case-qe=,
-  plus the docs-only =docs/mb-gate-clock-draft=). Started on NB-3641 at 19:43 CET and stopped by vzell (WSL
-  restart for the permanent clock source); merged and pushed untested, on vzell's word that it runs on petri. Its
-  own specs passed on the branch (mb-title-case + findings-title-style 28 of 28). vzell tested the fix live: OK (2026-11-18). Also from that evening: BruceParser
-  0.21.1 (=c789cfb=, the "-" at the URL cut), and the gate-clock draft for majkinetor, to recheck on petri before
-  posting (org/majkinetor.org, "The shared gate's clock", its prompt).
-
-- *Feed v2, branch 3 (2026-11-18, NB-3641):* MusicBrainz events whose Brucebase link reaches no entry (197), shares
-  one (18) or is no anchor (1), on event lists and event pages, with a card of the wiki's entries of the date. Mockup
-  https://claude.ai/artifact/Tip5CShMevQp8ycqBjjnRZ (all as recommended).
-  - *Merged* as 9.99.1647 (2026-11-18; vzell: "all tested live, OK", after the kept-feed fix: a kept 0.20.0 file
-    served the first press). Perf on =artist-events= with the feed kept: no cost (tests/MEASUREMENTS.org).
-    =test:full= on the merged tree: 3,249 of 3,249 (NB-3641, 18:16:53–18:39:34 CET).
-  - *The year reader* merged right after as 9.99.1648 (vzell: without a new =test:full=; bb-date-links + bb-feed 51
-    of 51 on the merged tree).
-  - *On vzell's side:* NB-3641's clock source in =%UserProfile%\.wslconfig= (=tests/README.org=, clock section).
-
-- *Feed v2, branch 2 (2026-11-17, NB-3641):* a year listing's rows marked through the feed's new =anchors=, and the
-  year-anchor window on Brucebase. 5,010 listing rows in the mirror, 25 marked.
-  - *Merged* (vzell: "Everything tested live OK") with =fix/bb-date-lettered-anchors=: a lettered anchor and the
-    1949-64 page open their window now. The 0.20.0 feed is published (feed repo =2ba2b2a=).
-  - *Found in vzell's check:* the year reader glued the year page's setlist note ("Incomplete setlist.", "Setlist may
-    be incorrect …") to the last song, or made "No set details known." a one-song setlist: 951 songs. Fixed on
-    =fix/bb-year-setlist-note= (2026-11-18, pushed, not merged), with vzell's two follow-ups of the same night: a
-    description paragraph is no longer a one-song setlist (275 songs, 2016-10-03 Barnes & Noble), and a description
-    of plain paragraphs is read (1985-03-31b had no Notes): the reader now reads an entry as the year table does.
-    =test:full= on the branch at =8436e4d2=: 3,232 of 3,232 (2026-11-18, 00:55:30–01:17:21 CET, NB-3641). Waiting for
-    vzell's browser check: "tested live, OK" (2026-11-18); NOT merged yet, on his word ("do not merge yet").
-  - *After it:* branch 3 (MusicBrainz), its own plan. NB-3641's clock: see =tests/README.org= (clock source).
-
-- *Feed v2, branch 1 (2026-11-17, NB-3641):* three findings from BruceParser 0.19.0's two new keys. ❌ a date tag
-  missing and ⚠️ a date tag that is not the page's date, both on pages that are no show (3 pages). ⚠️ "files" tagged
-  without a picture (32 pages).
-  - *Merged* as 9.99.1642 (2026-11-17; vzell: "everything tested live OK"), with the ☰ line naming the BruceParser
-    version of the file kept. Merged beside it: the fix of =discogs-rate-limit.spec.js= (it read the shared slot on the
-    wall clock; DEBUG-NOTES.md, 2026-11-17). =test:full= on the merged =main=: 3,215 of 3,215 (20:46:45–21:08:18 CET).
-    Not published to =vzell/mb-userscripts=.
-  - *After it:* branch 2 (the year listing's rows, an anchor map in the feed), then branch 3 (MusicBrainz: an MB
-    event whose Brucebase anchor the wiki lacks, keyed by MBID). Both get their own plan.
-  - *The plan* (NB-3641 only): =~/.claude/plans/pasted-content-id-4795-i-just-giggly-cake.md=; the record is
-    =org/bbp-parity.org=, "Feed v2, branch 1".
-
-- *The feed v1 is MERGED (9.99.1638, 2026-11-17, NB-3641; vzell: every browser-check row tested live OK):*
-  - Two rows of the browser check were wrong, not the code. The wiki builds stats:songs and stats:relations from the
-    first-letter tags, so a page without its letter tag, or without any tag, is never on them. The probe and the
-    checker now read each list's own links. Record: =org/bbp-parity.org=, "The browser check of the feed".
-  - =test:full= on the merged =main=: 3,189 of 3,189 (15:14:30–15:40:27 CET).
-  - Not published to =vzell/mb-userscripts= (vzell's call). The HELP file changed, so the ❓ Help is behind until then.
-  - *Next (v2), from Track A ideas 3, 4 and 5 below:* the reports v1 left out (=URL-shortening=, =files= tag vs
-    images, missing date-part tags), the year listing's rows, the lookup tables (=TOUR_DEFINITIONS=, the alias
-    overrides; they also unblock batch 3b), and the MusicBrainz cross-checks (idea 5).
-  - *Seen on the way:* the M tab of stats:relations stops before "Mu" (19 pages tagged "m" are missing). Looks like a
-    list limit on the wiki; not checked live.
-
-- *The feed, 2026-11-16 (NB-3641):*
-  - *Done:* BruceParser 0.18.0 (=e3f821a=, pushed) writes and publishes it. The public repo
-    https://github.com/vzell/brucebase-feed holds the run of 2026-11-15: 192 pages, 24 KB.
-  - *The mockup:* https://claude.ai/artifact/65urMwgWSb6zq6xJa9Mf4x, answered by vzell, all as recommended.
-  - *Built, on =feat/bb-feed= (pushed, not merged):* the reader and four findings.
-  - *Tests:* the spec 16 of 16; the mutations 24 as recorded; =test:full= 3,188 of 3,189, the one failure the
-    Discogs rate-limit timing test, which fails on =main= too.
-  - *Next:* vzell's browser check (the list is in =org/bbp-parity.org=, "The browser check of the feed"), then the
-    merge on his word.
-  - *Later:* the year listing's rows (they link the year page, not the show's page), and v2 of the feed: the lookup
-    tables and the MusicBrainz cross-checks.
-  - *The record:* =org/bbp-parity.org=, "The feed, version 1".
-
-- *BruceParser 0.17.0 is pushed* (=4978b0e=): =dc.sh= 1.5 with =-j "${BBP_JOBS:-4}"= on both =parallel= calls, =checkURLandTitles.sh= 1.5 with the literal word removal in three places. Checked with =bash -n= and =-V= only. Still to do there, by vzell: a full =bbp.sh= run for the report comparison, and the download time with 4 jobs.
-- *Track A batch 1 is MERGED into =main= (9.99.1626 and 9.99.1627, 2026-11-14), the branch is deleted:* six findings on the year table's Event cell. What was built, the probe's counts and three points that differ from the plan are in =org/bbp-parity.org=, "Batch 1: built on …".
-- *vzell's browser check (2026-11-14, afternoon):* all rows OK live; the nine variant words stay. Three things came out of it and are built on the same branch: the finding =bb-anchor-shared= (two entries with one anchor), a saved year keeping the MB-Event column's findings (39 errors had become 3 after Load from Disk), and the Save to Disk dialog's title on Brucebase. Details: =org/bbp-parity.org=, "After vzell's browser check".
-- *vzell, 2026-11-14 evening:* "error is OK, all tested live"; merged. Not yet published to =vzell/mb-userscripts=; that is vzell's call.
-- *Batch 2 is MERGED into =main= (9.99.1628–1631, 2026-11-15), the branch is deleted:* parts 1 and 2 (=bb-list-title=, =bb-list-anchor=,
-  =bb-venue-mismatch=) and, after vzell's "Yes" of 2026-11-15, =bb-year-unlisted= (a year entry the listing lacks)
-  are built, tested and documented; =org/bbp-parity.org=, "Batch 2", has the counts and the
-  browser list.
-- *2026-11-15:* vzell answered the mockup's points (a medley is an error; set names a finding now; differences by
-  default, the full set possible). Part 3 is built on the same branch: =bb-setlist-songs=, =bb-setlist-spelling=,
-  =bb-setlist-sections= and the setlist card (mockup https://claude.ai/artifact/T1D2ghbx9zHHCh8jgfr5g7).
-- *vzell, 2026-11-15 afternoon:* "Everything tested OK"; =bb-year-unlisted= is an ERROR, not a warning; "merge".
-- *Next:* a reload for the ▶ Pages cells as the Relationships column has (vzell, 2026-11-15: one row by a click on
-  its cell; the whole table forgets its kept pages and reads each again as it scrolls into view; no mockup), on a
-  branch of its own. After that batch 3 of the matrix (the expected tags).
-- *The reload is MERGED (9.99.1632, 2026-11-15; vzell: "tested live, OK"), the branch is deleted:* a read row's ⟳ and
-  "Read every row again" in the ▶ Pages progress card. The suite was not run again on =main= (vzell: it had just
-  passed 3,143 of 3,143 on the branch at =edd3d590=). Next: batch 3 of the matrix (the expected tags). The plan is =~/.claude/plans/curried-bouncing-nygaard.md=. By vzell, in BruceParser: a full =bbp.sh= run and the =dc.sh= timing with 4 jobs.
-
-- *Batch 3 (2026-11-15, NB-3641):* four families of BruceBaseParser's expected-tags check are built (date parts, day
-  letter, event type, premiere count): marks on the Tags card and in the window, a Tags column on the year table with
-  =bb-tag-missing= (❌) and =bb-tag-spurious= (⚠️), a title's two blanks on the byline and the window title. The
-  record, the decisions, the counts and the browser list are in =org/bbp-parity.org=, "Batch 3". With every family
-  of BruceBaseParser's, 88 % of all shows would be flagged: the other five families (tour, place, cast, songs,
-  content) are batch 3b, tuned with vzell one by one.
-- *BruceParser:* 0.17.1 (=2a546fd=, pushed): =bbp-status.sh= read =docs/timings.tsv= rows with empty columns wrong.
-  The full run vzell owed is done: 2026-11-15 on NB-3641, 40 min 49 s, the download with 4 jobs 37 min (2,219 s), no
-  failed step; its row is in =docs/timings.tsv=, uncommitted there with the regenerated =bb/*.org= reports. Still
-  open: the comparison of that run's reports with the run before (the 0.16.0/0.17.0 changes). The run's data is
-  committed there (=3fc392e=), with its counts in =docs/run-history.md=. 0.17.2 (=fa03525=, 2026-11-16, pushed) fixes
-  the two bugs found: =MULTI-title-postfix.txt= gets its lines, and a stopped =bbp.sh= ends the whole run and no
-  longer empties =brucebase/DETAIL-title-from-YEAR-array.txt=. Not run in full since.
-  *Not traced:* =setlist-differences.txt= has 542 lines on NB-3641 (564 in October) against 342 on petri two days
-  earlier, with the same setlist line counts: it looks like the host, cause unknown.
-
-- *The help-icon check (2026-11-16, NB-3641):* =help= and =featured= against the wiki's Help Us and Featured icons, a
-  fifth family of the two tag findings; the record and the browser list are in =org/bbp-parity.org=, "The help-icon
-  check". With it: the On stage page's name cut to 60 characters (101 shows had no cast tags).
-- *Next, on vzell's word (2026-11-16: "do the help-icon check first, then the feed"):* the feed (Track A, idea 3
-  and 4). Nothing of it exists. Plan mode first: what the first version carries, where BruceParser publishes it,
-  how the script reads it (a new host, a setting, what happens when it cannot be read).
-
-** The prompt for the next session on NB-3641 (parity batch 4: the page tag checks; written 2026-11-18)
-
-Not the "Batch 4" of docs/claude/brucebase.md (G6, G7, done 2026-11-13): this is the matrix row "VENUE / SONG /
-RELATION / RETAIL page tag checks" of org/bbp-parity.org. Start in =~/git/musicbrainz-userscripts/ShowAllEntityData=.
-
-#+begin_example
-Continue the BruceBaseParser parity work: matrix batch 4, the tag checks of
-venue, song, relation and retail pages (BBP's annotate*PageTags).
-
-First:
-- cat /sys/devices/system/clocksource/clocksource0/current_clocksource
-  (must print hyperv_clocksource_tsc_page since the .wslconfig change)
-- git checkout main && git pull; main must be at 9.99.1649 or later. Say
-  whether petri's test:full of 9.99.1649 is recorded (PICKUP HERE).
-- ls -la ~/git/scripts/BruceParser/bb/latest and say which mirror it is
-
-Then read, in this order:
-- org/springsteen-marriage.org, the "PICKUP HERE" section
-- org/bbp-parity.org: the matrix (the row marked 4), "Batch 3" and "The
-  help-icon check" for how the last tag findings were built, probed, decided
-- docs/claude/findings.md; docs/claude/brucebase.md on the four pageTypes
-  (bb-venue, bb-song, bb-relation, bb-retail), their heads and Tags boxes
-
-Work as in batches 1 to 3:
-- plan mode first; branch feat/bb-findings-page-tags; list every new request
-  the findings would cost and every open decision before any code
-- a Python probe over EVERY page of the four families in the mirror,
-  compared with BruceBaseParser's annotate*PageTags rules and BruceParser's
-  reports in REPORTING/, every difference explained before code; then a
-  checker that runs the SHIPPED code over the same pages and must equal it
-- a mockup first if anything visible is new
-- findings through the add-finding skill; specs from real mirror pages, a
-  mutation list (warn me before it runs), the render ratio against main in
-  one session
-- WIP changelog only, no @version; docs, DEBUG-NOTES entry with Env stamp
-- commit and push the branch; then ask me for the browser check with real
-  URLs. No merge without my word.
-
-Do not run bbp.sh. Batch 3b (the five noisy tag families) stays set aside.
-#+end_example
-
-** The prompt for the session of 2026-11-15 (batch 3; done, kept as the model for the next one)
-
-Start the session in =~/git/musicbrainz-userscripts/ShowAllEntityData= and paste the block. The working rules that
-were in Claude's memory on =petri= only are in =CLAUDE.md= ("Working rules") since 2026-11-15.
-
-#+begin_example
-Continue the BruceBaseParser parity work: Track A batch 3 (the expected tags).
-
-First: git checkout main && git pull. main must be at 9.99.1632 or later.
-
-Then read, in this order:
-- org/springsteen-marriage.org, the "PICKUP HERE" section
-- org/bbp-parity.org: the matrix (the rows marked batch 3), and "Batch 1" and
-  "Batch 2" for how the earlier batches were built, probed and decided
-- docs/claude/findings.md and docs/claude/brucebase.md ("The year table's name
-  and anchor checks", "The listing and venue checks", "The setlist comparison",
-  "Reading again")
-
-Work as in batches 1 and 2:
-- plan mode first; name the branch (feat/bb-findings-batch3); list every new
-  request the findings would cost and every open decision before any code
-- a Python probe over the whole mirror (~/git/scripts/BruceParser/bb/latest)
-  compared with BruceParser's own reports in REPORTING/, every difference
-  explained before code; then a checker that runs the SHIPPED code over the
-  same pages and must equal the probe
-- findings through the add-finding skill; a spec from real mirror pages, a
-  mutation list, the render ratio against main in one session
-- WIP changelog only, no @version; docs, DEBUG-NOTES entry with Env stamp
-- commit and push the branch; then ask me for the browser check with real
-  URLs. No merge without my word.
-
-Do not run bbp.sh. The plan file of batches 1 and 2 was on petri only
-(~/.claude/plans/), so do not look for it here: org/bbp-parity.org is the
-record.
-
-The working rules are in ShowAllEntityData/CLAUDE.md, "Working rules".
-#+end_example
-
-* Status at the end of the session of 2026-11-14 (01:40 CET)
-
-- *Shipped:* Phase 1 is MERGED. =main= is at 9.99.1625 (=afd922fb=, pushed), the branch is deleted, and =test:full=
-  passed 3097/3097. It is not yet published to =vzell/mb-userscripts=; that is vzell's call.
-- *BruceParser:* 0.16.0 (=69114f8=, pushed) carries the audit's bugs 1–4 and the risk fixes.
-- *Next session, two tasks:*
-  1. *BruceParser, two more changes (vzell: "Yes to the BruceParser changes"):*
-     - =dc.sh=: a job limit for both =parallel= calls (=:338=, =:352=), =-j "${BBP_JOBS:-4}"=. Document it in =docs/claude/brucebase.md= / =conventions-and-performance.md=.
-     - =checkURLandTitles.sh:409=, =:425=, =:477=: =sed -e "s/${pattern}//"= becomes the literal =${before_pattern/"${pattern}"/}=, leaving the =sed 's/^-//'= part as it is (or =${x#-}=).
-     - Then: bump the versions, add a CHANGELOG 0.17.0 entry, =bash -n=, =-V=, and commit and push (the push is allowed as =git -C /home/vzell/git/scripts/BruceParser push=).
-     - Do NOT run =bbp.sh= without vzell; the report comparison needs a full run, which vzell starts.
-  2. *ShowAllEntityData, Track A batch 1:* the year table's findings, with vzell's decisions in =org/bbp-parity.org=
-     ("Batch 1", "Decisions"): =bb-name-mismatch=, =bb-name-variant=, =bb-anchor-date=, =bb-anchor-link=,
-     =bb-anchor-postfix=, =bb-title-spaces=.
-     - Branch =feat/bb-findings-batch1=, a WIP changelog, the add-finding skill.
-     - Probe first (the mirror + BruceParser's reports as the oracle), then specs, mutations, docs and =test:full=.
-     - No merge without vzell.
-- *Mirror:* =~/git/scripts/BruceParser/bb/latest= on petri points to the local =bb/2026-11-13=. On other hosts check =ls -la= first.
-- *The rest of this file:* below, the Phase 1 history, the BruceParser audit, and Track B (volkerzell.de, Ionos: =org/ionos.org=).
-
-** Probe results (Phase 1 step 1)
-
-Env: 2026-11-13T23:29:43+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · n/a (Python over the mirror =bb/2026-11-13=) · code at =871bd93e=
-
-42,531 pages read, 42,236 of them with tags, 3,998 redirect pages.
-
-1. *The limit is 512 characters, not a tag count. vzell remembered it right.* The tags of a page, joined by one space,
-   never exceed 512 characters. Four pages sit at exactly 512 and eleven more at 507–511. The tag count varies freely at
-   the limit, from 45 to 65 tags. Largest pages:
-   - =gig:2009-11-08-madison-square-garden-new-york-city-ny=: 512 chars, 60 tags
-   - =gig:1978-08-09-agora-cleveland-oh=: 512 chars, 48 tags
-   - =recording:1986-02-00b-shorefire-studios-long-branch-nj=: 512 chars, 45 tags
-   - =gig:1988-07-03-stockholms-stadion-stockholm-sweden=: 511 chars, 65 tags (most tags)
-
-   BBP's =doc/TAGS.md= says "caps the number of tags per page", which is wrong and should be corrected there.
-2. */onstage: pages are not only overflow: they are where the cast tags live.*
-   - *Counts:* there are 3,479 onstage pages. 3,307 carry tags their event lacks; 172 targets are missing from the mirror.
-   - *Kinds:* the events behind them are gig 3,134, rehearsal 170, nogig 2 and interview 1.
-   - *Tab:* 3,303 of these events have an On Stage tab; 4 do not.
-   - *Event size:* the event can be as small as 84 characters and 10 tags when tags are still on its onstage page. So this is not only spillover at 512.
-   - *What is there:* the =onstage= tag itself (3,304) and the band and cast names: garrytallent 2,091, estreetband 1,949, roybittan 1,759, …
-   - *How many per page:* median 9, maximum 44 (=gig:1990-01-17-waldorf-astoria-hotel-new-york-city-ny=).
-   - *Consequences for the plan:*
-     - Name the feature "the show's tags from its On stage page", not "spilled". The UI should say that the cast tags are kept on the On stage page.
-     - The address rule needs =nogig= too, not only gig, rehearsal and interview (BBP lacks it as well).
-     - The On Stage tab is a near-perfect predictor: 3,303 of 3,307 events with onstage tags have one. As a pre-check it
-       saves the request on every page without a cast and misses only 4 pages. Whether to keep it is an *open question
-       for vzell* (below).
-     - The onstage page itself is a Redirect module. Fetch it with =/noredirect/true=, as BBP does, or the server answers with the event.
-3. *Redirecting -N siblings ("-2", "-3", …): 46 pages, 35 with tags the target lacks.* By kind:
-   - gig 18
-   - relation 8
-   - recording 6
-   - rehearsal 2
-   - retail 1
-
-   Biggest:
-   - =recording:1985-07-00-shakedown-studios-new-york-city-ny= (40 + 13 from two siblings)
-   - =relation:artists-united-against-apartheid= (39)
-   - =recording:1985-01-28-a-m-studios-hollywood-ca= (29)
-   - =relation:usa-for-africa= (15)
-
-   The targets sit at 482–508 characters, so these really are overflow pages. Unlike onstage, a sibling cannot be derived from the event page alone. Two options:
-   - try =-2= with =/noredirect/true= for every page whose own tags are near 512 characters (for example over 400), which costs one request only on full pages;
-   - take the list of siblings from BruceParser's feed (=MULTI-title-postfix.txt=, Track A idea 4).
-
-   *Open question for vzell; the recommendation is the near-full check.*
-
-** Status 2026-11-14: built, tested, documented, CONFIRMED LIVE by vzell ("all confirmed live, OK"). Still to do before the merge: a complete test:full (the 00:28 CET run was stopped at 136 passed, 0 failed)
-
-Done since the list below:
-- *Spec:* =tests/fixtures/bb-onstage-tags.spec.js=, 8/8. Its fixtures are three shows and six onstage pages from the 2026-11-13 mirror, via =scripts/build-bb-event-fixtures.py=.
-- *Mutations:* =scripts/mutations/bb-onstage-tags.json=, 10/10 as recorded. Three stale finds were moved.
-- *The specs that touch heads and chips:* 310/310.
-- *Docs:* brucebase.md "Tags kept on other pages, and the chip boxes"; HELP; DEBUG-NOTES; CLAUDE.md (=sa_bb_onstage_tags= is in =FIXTURE_SETTINGS_OVERRIDE=).
-- *Changed after the first wide run:*
-  - the row counts are drawn by CSS;
-  - only Brucebase tags start A–Z, every other card keeps its page's order;
-  - the window refreshes in place, never repaints.
-
-Next:
-1. =test:full=: rerun (the 00:28 CET run on petri was stopped at 136 passed, 0 failed).
-2. DONE vzell checked it in his browser on the real URLs (2026-11-14, browser and Tampermonkey versions: unknown): the
-   five BB show pages, the 2016 year page window, the MB event, a Discogs release.
-3. Only on vzell's word: merge (=merge-push-remove=).
-
-** Phase 1 step 3: the build (2026-11-14)
-
-What is in place in =ShowAllEntityData.user.js=. It is not yet tested in a browser; =node --check= and =lint-summary.py --check= pass.
-- =_bbTagCtx()=, =_bbRawTags()=: split out of =_bbPageTags()=.
-- =_bbSiblingName()= (the 60-character rule) and =_bbTagInfo()=, now in =_dpParseBb()= as =data.bbTagInfo=.
-- =_bbTagPagesEligible()=, =_bbTagPageGet()=: one tag page, cached under the IDB key "bbtags:<url>". A 404 is "missing"; the request goes through =_dpAwaitSlot()= on BB and =_extGet()= elsewhere.
-- =_bbTagPagesStart()=: the chain walker, with the state in =_bbTagPages=.
-- =_bbTagRows()=, =_bbTagPagesParts()=, =_bbTagBoxSet()=, =_bbTagPagesNotify()=.
-- =_bbTagChips(dp)=: now used by the 6 BB heads.
-- =_bbTagsWindowPart()=: drawn in =_dpExtractedCols()= for a section with =bbTags=.
-- *Kicks:* the BB site's =windowKick= starts the reads on BB; =_extExtracted()= adds =_bbTagPagesWant= on the other hosts.
-- *The chip box* =_cbx*= (=_cbxSet=, =_cbxInner=, =_cbxRefresh=, =_cbxInit=, =_cbxEnsureStyle=). =_fdChips()= now builds one, so EVERY chip card gets the tool row from 6 chips on (=_CBX_TOOLS_MIN=).
-- *Storage:* =MB_FD_CHIP_VIEW_KEY= (Group by and sort per card kind) and the workspace group "fdchips".
-- *Setting* =sa_bb_onstage_tags=; =_DP_PARSER_VERSION= 28 → 29; WIP.1 in =ShowAllEntityData_CHANGELOG.wip.json=.
-
-Still to do:
-- *Fixture specs:*
-  - BB event head + window with a routed onstage page, -2 chain, -1 start, a 404, a failure with Retry;
-  - the tool row (Show / filter highlight / Group by / sort remembered);
-  - a non-BB chip card (Discogs or SL head) keeps working.
-- *Checks:*
-  - mutation entries;
-  - the MusicBrainz fixture suite;
-  - =test:full=.
-- *Docs:*
-  - =docs/claude/brucebase.md=;
-  - =docs/non-mb-coverage.json=;
-  - HELP;
-  - =DEBUG-NOTES.md=;
-  - delete =scripts/oneoff-bb-tag-chips-callers.py= before the merge.
-- *Choices to report to vzell:*
-  - A–Z is now the DEFAULT order of every chip card (the mockup's default); before, cards kept the page's order.
-  - The tool row appears only from 6 chips on.
-
-** DONE Phase 1 step 2: mockup APPROVED (vzell, 2026-11-14)
-
-Decisions:
-- Mockup version 2 is the build target.
-- Group by and the sort direction are remembered between pages; the filter text is not.
-- The tool row goes on EVERY chip card (=_fdChips()=), on every non-MusicBrainz detail page, not only Brucebase's Tags card. Group by Page applies only where a card has several pages.
-
-** Phase 1 step 2 history: the mockup
-
-Mockup M1: https://claude.ai/artifact/18teQxyrom93rWw5mvY98D. The local copy is [[file:bb-onstage-tags-mockup.html][bb-onstage-tags-mockup.html]]; republish from it to keep the URL. It covers:
-- *Two places:* the bb-event head's Tags card, and the preview window's "Tags (N)" section.
-- *Four real shows* from the mirror:
-  - Pittsburgh 2016: 58 own tags + 11 from the onstage page.
-  - MSG 2009, Pete Seeger's 90th: 27 own + three onstage pages (40/34/17 new tags).
-  - Waldorf 1990: no base page, the chain starts at =-1=, then =-2=.
-  - Golden Globes 2024: no On Stage tab, so no request.
-- *Network states:* normal (a page every 0.9 s, the new tags tinted), from cache, the last page fails (Retry), setting off.
-- *Marks:* a tag from an onstage page has a dashed outline and ↪. Its hover card gives the family, which page keeps it,
-  and that page's character count; Esc closes it, it has a grace period, and touch opens it with a tap.
-- *Under the tags:* a footer naming each onstage page and how many tags it adds.
-- *Progress:* a segmented progress bar.
-- *The setting row* =sa_bb_onstage_tags=.
-
-vzell, 2026-11-14: "YES; there should be a possibility to filter (inclusive highlighting) and sort tags". Mockup version 2 adds a tool row to BOTH panels, each with its own state:
-- *Show:* All / This page / On stage, with counts.
-- *Filter box:* keeps the tags that contain the text and highlights every occurrence, without regard to case. Families
-  with no match disappear and "N of M" says how many are left. Esc or ✕ clears it, and the caret survives the re-render
-  while pages are being read.
-- *Group by:* Family / Page / None.
-- *Sort:* A–Z / Z–A inside each group; each row's label carries its count.
-
-Open question in version 2: should Group by and the sort direction be remembered between pages (the filter text never is)?
-
-Notes for the build:
-- The head card is built by =_fdChips()= and the window section by =_bbTagsSection()= as an HTML string. Both need the tool row.
-- The window's markup is a string, so wire its tool row by delegation on the dialog, not by per-element listeners (the window re-renders).
-- Check whether the shared head-card code (=_fdChips=, used by every foreign detail head) should get the tool row for all cards, or only the BB Tags card. *Ask vzell.*
-
-** Decisions (vzell, 2026-11-14: "I agree to the open questions")
-
-1. *Naming:* "Tags from the On stage page". The setting is =sa_bb_onstage_tags= and the helper =_bbOnstageTags()=. Replace every =spilled= name in Phase 1 with these.
-2. *The On Stage tab stays a pre-check.* Pages without it make no extra request; the cost is 4 missed pages.
-3. *-N siblings are tried only on nearly full pages*, never from the feed.
-
-** Probe, second pass: the -N chains (same Env as above)
-
-Section 4 of the probe treats every redirect page named =<base>-N=, onstage pages included:
-- *Pages and bases:* 56 sibling pages, 28 bases found. The other 25 are =multi:…-1/-2=: "several shows on one date" pages, not overflow, with no base page.
-- *Naming rule:* base =[:60 - len("-N")]=, a trailing =-= dropped, then =-N=. It holds for all 31 siblings with a base,
-  with 0 failures. Wikidot page names are at most 60 characters, so a long name is CUT before the suffix:
-  - =onstage:2026-06-04-oceanfirst-bank-center-west-long-branch-2= (the =-nj= is gone);
-  - =onstage:2004-10-13-continental-airlines-arena-east-rutherf-2=.
-
-  Build the address with this rule, never by appending =-2=.
-- *Overflow vs alias:* the base of a real overflow chain is over 400 characters. 19 of the 28 bases are; the rest are renamed pages (=relation:steve-van-zandt-2=, 24 characters) or =multi:= pages.
-- *Onstage pages have chains too.* =onstage:2009-05-03-madison-square-garden-new-york-city-ny= (Pete Seeger's 90th) goes
-  on to =-2= and =-3=. The gig itself carries 27 tags, and its three onstage pages 40 + 35 + 18. The reader therefore
-  walks: event page → On stage page → its siblings while each read page is nearly full.
-- *A chain can start at -1:* =gig:1990-01-17-waldorf-astoria…= has no base onstage page, only =onstage:…-1= (44 tags) and =-2= (7 tags). So when the onstage page is missing, try =-1= once.
-- *Suffixes:* =-2= 24, =-3= 3, =-1= 4.
-- *What the trigger costs*, as pages over N characters and how many of them really have a sibling:
-
-  | over | pages | with a sibling |
-  |------+-------+----------------|
-  |  400 |   828 |             19 |
-  |  450 |   253 |             18 |
-  |  480 |    94 |             16 |
-  |  500 |    35 |             10 |
-
-  Recommendation: use *450*, not 400. It is 3× fewer wasted requests and misses 1 chain. It is one constant, easy to move.
-
-The reader that follows from this:
-1. *The show's own tags* come from the event page (no request).
-2. *The On stage page:* if the On Stage tab exists, fetch =onstage:<slug>/noredirect/true=. If that page does not exist, fetch =…-1= once.
-3. *Siblings:* for each page read so far whose tags are over 450 characters, fetch its =-2= (by the name rule), then =-3=, … until one is missing. That is at most 3 pages deep in the mirror.
-4. *The result:* the union of all their tags, each tag knowing which page it came from. The families are classified with
-   the EVENT page's context, because the onstage pages have no =/relation:= links of their own.
-
-Also: =_dpParseBb()= is SYNCHRONOUS (the plan said async). The extra requests belong in the Brucebase loader
-(=_extDpLoad()= / the =_dpGet()= path) after the parse, and must go through the same rate slot.
-
-* BruceParser's shell logic: an audit (2026-11-14)
-
-vzell: "Don't take the logic of the shell BruceBase Parsers scripts for granted, they have been written by a human (me). Could you check if there is something bogus with it".
-
-Env: 2026-11-14T00:55:51+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · BruceParser
-at =37dae46=, its run =bb/2026-11-13= · n/a (ShellCheck 0.9.0 and Python over the mirror)
-
-*Method.*
-1. A mechanical pass: =shellcheck -S warning= over all 15 scripts gave 50 warnings, 21 of them unused variables.
-2. The logic behind the reports Track A wants to reuse (titles, anchors, URLs, date tags), read line by line. Each
-   suspicion was checked against tonight's mirror and reports, with =scripts/probe-bruceparser-title-rules.py= (in this
-   repo; it reads every one of the 8,926 event titles).
-
-Nothing below has been changed in BruceParser: the fixes are yours to approve.
-
-** Bugs (confirmed with tonight's data)
-
-1. *=eefyp.sh=: the "(The)" rule is greedy, so it moves the article in front of the wrong part.*
-   - *The code:* =(.*) \((The|Le|De)\)(.*)= puts "The" in front of everything before the article, not in front of its own comma part.
-   - *Example:* "2025-10-14 Spotify HQ, Adelphi (The), London, England" becomes "the spotify hq, adelphi, …", while the year page rightly says "spotify hq, the adelphi".
-   - *Effect:* 3 FALSE "Differing TITLE" reports tonight:
-     - =gig:1997-05-16-opera-berlioz-montpellier-france= ("Corum (Le)")
-     - =gig:2007-06-11-chelsea-piers-new-york-city-ny= ("Lighthouse (The)")
-     - =interview:2025-10-14-adelphi-london-england=
-   - *How it was hidden:* the Chelsea Piers one is hard-coded as an exception (=eefyp.sh:1047=, =1066=, =1083=). That exception papers over this bug; Spotify HQ is still in the cleaned-up report.
-   - *Fix:* move the article per comma part, as BruceBaseParser's =normalizeDetailName()= already does
-     (=/\b([^,(]+?)\s*\((The|Le|De)\)/g=, whose comment names the Spotify HQ case). Then drop the three hard-coded
-     exceptions.
-2. *=checkURLandTitles.sh:609–617=: a "-N" sibling's generated URL is cut AFTER its suffix is added.*
-   - *What Wikidot does* (the probe of 2026-11-13, 31 of 31 siblings): it cuts the base name to 60 − len("-N") characters, drops a trailing "-", then appends "-N".
-   - *What the script does:* it appends first and cuts at 60 after, so the suffix is lost.
-   - *Effect:* false "wrongly shortened" rows tonight, for example:
-     - =onstage:2004-10-13-continental-airlines-arena-east-rutherf-2= vs the generated =…-east-rutherfor=;
-     - =onstage:2026-06-04-oceanfirst-bank-center-west-long-branch-2= vs =…-west-long-branch-n=.
-   - *Fix:* cut =${generated:0:$((60-${#suffix}))}=, strip a trailing "-", then append the suffix. This is the same rule as SAED's =_bbSiblingName()=.
-3. *=checkURLandTitles.sh:398=: =${before_pattern/-/ /}= replaces only the FIRST "-", and replaces it with " /".*
-   - The comment says "get first part before ' ' or '-'". In fact "Oakland-Alameda County Coliseum" splits into "Oakland", "/Alameda", "County", "Coliseum", and a second hyphen is never split.
-   - *Meant:* =${before_pattern//-/ }=.
-   - *Effect:* the "same word before and after the comma" rule misses or garbles hyphenated venue names. The number of affected rows was not measured.
-4. *=eefyp.sh:395–423=: the anchor report mislabels its date and links a page that does not exist.*
-   - *The label:* the date compared is =${year_title:2:8}=, the YEAR page's title date, but the report calls it "TITLE DATE on DETAIL page".
-   - *The link:* it is built from =${detail_id}= (tonight: https://brucebase.wikidot.com/1972-05-00-cbs-records-new-york-city-ny, no such page) instead of =${anchor_id}= (=1972#000472b=).
-   - *Effect:* the check itself is right; only the report misleads. Tonight's only entry, 1972-05-00 Mediasound with anchor =000472b= (April) and a title in May, is a real Brucebase error.
-
-** A Brucebase data error the probe found on the way
-
-- "2026-08-28 Stone Pony (The), Summer Stage,  Asbury Park, NJ" has a DOUBLE space before "Asbury Park". The page to fix is the show's own.
-
-** Risks (not wrong on petri today)
-
-1. *No locale is pinned anywhere.*
-   - =efc.sh= takes month and weekday names from =date +%B= / =%A=, which follow the locale. petri runs =C.UTF-8=, so
-     the names are English. On a host with a German locale, every date-part tag would be reported "wrong".
-   - NB-3641 and vzell-lap: unknown.
-   - *Fix:* =export LC_ALL=C.UTF-8= once in =logging.sh=. That also pins =sort=/=uniq= order between hosts.
-2. *=bbp.sh:136= =cd ./search= has no =|| exit=.* If it fails, =search.sh= runs in the repo root and writes its results there.
-3. *=dc.sh:268=: =curl_args+=( -o ${category_file} … )= is unquoted.* A page name with a glob character (=*=, =?=, =[=)
-   would expand against the working directory. None was seen in the mirror; quoting costs nothing.
-4. *=efc.sh:783–805=: =[[ ${tag} != ${dd_ok} ]]= has an unquoted right-hand side, which makes it a glob pattern.* Harmless for digits and month names; quote it anyway.
-
-** Checked and fine
-
-- The two copies of =year_page_normalize= (=eefyp.sh:44=, =extract-all-event-info-and-setlists.sh:50=) are identical, as CLAUDE.md requires.
-- =efc.sh='s date-part check covers both cases:
-  - a MISSING date tag (=:752–757=, against =category_date_fraction_list=);
-  - a WRONG one (=:780–810=).
-- The =all-media= / =all-news= / =all-recnote= names in its =case= match the loop's list (=:670=).
-- The anchor-to-date check (=eefyp.sh:395–402=, DDMMYY to YY-MM-DD) is right: only its report text is off (bug 4).
-- The "Early/Late/…" suffix rule drops everything after the suffix, but no title has text after one: 0 of 8,926.
-- ShellCheck false alarms:
-  - =bbp-status.sh:307= (=state[…]=done= is a value);
-  - =esfsl.sh:119= (the ’ is meant);
-  - =page-extract.sh:165= (split on purpose, commented);
-  - =logging.sh:40= (=verb_lvl= is set by every caller).
-
-** Not checked yet
-
-- The setlist comparison (=extract-setlists-from-detail-pages.sh=, =extract-all-event-info-and-setlists.sh=).
-- springsteenlyrics.com, brucespringsteen.it and jungleland.it parsing (=esfsl.sh=, =erfsl.sh=).
-- The MusicBrainz side (=search/*.sh=).
-- *The hard-coded exceptions* (the long =sed -e '/…/d'= lists in =eefyp.sh:1040–1090= and elsewhere). Bug 1 shows that
-  an exception can hide a rule bug. Each one deserves a comment saying why it is an exception, and a re-check whenever a
-  rule changes.
-
-** Second pass: performance, sed/awk, loops (2026-11-14, after the fixes of 0.16.0)
-
-vzell: "anything else which should be checked in the shell scripts, as they are hand made, e.g performance aspects, sed/awk etc statements, loops and so on".
-
-*Where the time goes* (=docs/timings.tsv=, the 2026-11-13 run on petri, 681 s in all):
-- =dc.sh= 454 s: the Brucebase downloads;
-- =search= 225 s: MusicBrainz, at 1 request a second, running alongside;
-- every parsing step together about 150 s: =erfsl= 52, =efc= 29 + 28, =esfdp= 23, =checkURLandTitles= 16, =eefyp= 15.
-
-So the CPU side is no problem. The run time is network time, and that is where the one real performance question is.
-
-*Findings*
-
-1. *=dc.sh=: no job limit.*
-   - =parallel … download_categories_batch= (=dc.sh:352=) and the list-page download (=:338=) start one job per CPU
-     core: 24 on petri, 28 on NB-3641. Each job's curl fetches 50 pages back to back, so the wiki gets about two dozen
-     connections at once from one machine.
-   - That is hard on a community wiki and a likely cause of the empty-page retries (=MISSING-category-pages.txt=). It
-     also makes the run time depend on the host, the "7 to 196 min" in CLAUDE.md.
-   - *Proposal:* =-j 4= (a setting, =BBP_JOBS=), then compare the run time and the number of empty pages. *Your call*, because it trades run time for politeness.
-2. *=checkURLandTitles.sh:409=, =:425=, =:477=: =sed -e "s/${pattern}//"= uses a venue word as a REGEX.*
-   - A "." matches any character, and a "/" in the word ("C/O") is a =sed= syntax error, which silently leaves the word in.
-   - It removes the word inside other words too: "Park" out of "Parkway".
-   - It costs two forks per word (=$(echo | sed)=).
-   - *Fix:* =${before_pattern/"${pattern}"/}=, literal (the quotes stop globbing) and without a fork. Not applied yet:
-     it changes which rows the report lists, so it belongs in a run of its own whose report you compare with tonight's.
-3. *=extract-setlists-from-detail-pages.sh:154=: =echo -e "${event_title}:…"=* would read a backslash in a title as an escape (=\c= cuts the line). No title has one today. Use =printf '%s:%s\n'=.
-4. *Small things:*
-   - =cat file | sed …= (=checkURLandTitles.sh:699= and three more): one fork each run, harmless.
-   - The 21 unused variables ShellCheck lists (SC2034) are left over from earlier versions; worth a cleanup commit of their own.
-
-*Checked and fine*
-- *Pacing on MusicBrainz:* =search/*.sh= sleeps 1 s after every request and identifies itself with a User-Agent and a
-  contact address, as MusicBrainz asks. A 503 or rate-limit answer retries the same offset.
-- *Paging:* =offset= follows the rows actually received.
-- *Loops:*
-  - every =read= has =-r=;
-  - no =while= loop sits in a pipe (no variables lost in a subshell);
-  - forks inside loops are few: =date= is used for timings, and =efc.sh= caches date parts per date;
-  - =grep_fw= is a fork-free, fixed-string whole-word match.
-- *Data as a pattern:* no =grep= takes data as a pattern except through =grep_fw=, and no =awk= program has data spliced in.
-- *Parallel output:* =check_urls_batch= and =process_year= write a part file per job (=PARALLEL_SEQ=) and join them in
-  input order, so lines never interleave. =rm -rf -- "${parts_dir:?}"= is guarded against an empty variable.
-
-** What this means for Track A
-
-- *Batch 1's name check* (=org/bbp-parity.org=) follows BruceBaseParser's per-comma-part rule, not =eefyp.sh='s.
-- *The test oracle:* BruceParser's title report is the oracle only after bug 1 is fixed. Until then, the three shows above are expected to DIFFER between the two.
+Reorganized: 2026-11-19T15:51:18+01:00 · NB-3641 · the dated session notes condensed into one entry per piece of
+work (vzell: "condense, drop the rest"; the old text is in git history)
+
+The plan for two tracks, for pickup on any host. *Track A* brings BruceBaseParser's checks and BruceParser's reports
+into ShowAllEntityData (SAED). *Track B* is volkerzell.de. The detailed record of Track A (probes, counts, decisions,
+browser checks) is [[file:bbp-parity.org][bbp-parity.org]]; this file holds the plan and the state, and points there.
+
+Keywords: TODO (open), NEXT (the next one to start), WAIT (someone else's call), DONE, PART (partly done, the rest
+left out by decision), NOT (not done, with the reason).
+
+* PICKUP HERE (2026-11-19)
+
+- *Track A is closed except batch 3b.* Every row of the parity matrix is DONE or decided, except the five noisy tag
+  families (batch 3b, set aside by vzell on 2026-11-16) and what depends on them (idea 3). The last merge is
+  9.99.1658 (=feat/bb-evp-read-all=).
+- *Also open in Track A:* URL-shortening through the feed (idea 4), two MusicBrainz cross-checks (idea 5), and
+  freezing BruceBaseParser (idea 6). See "Status at a glance".
+- *Nothing since 9.99.1625 is published* to =vzell/mb-userscripts=; that is vzell's call. The ❓ Help on GitHub is
+  behind until then.
+- *Mirror:* =~/git/scripts/BruceParser/bb/latest=; check =ls -la= first (CLAUDE.md, working rule 7). The recent
+  probes ran on the run of 2026-11-15 (=bb/2026-11-15=).
+- *Do not run =bbp.sh= without vzell.*
+
+* Status at a glance
+
+| Item                                                     | State | Version(s)          | Record in bbp-parity.org                              |
+|----------------------------------------------------------+-------+---------------------+-------------------------------------------------------|
+| Idea 1, Phase 1: tags from the On stage page             | DONE  | 9.99.1625           | the matrix, first row                                 |
+| Idea 2, batch 1: the year table's names and anchors      | DONE  | 9.99.1626–1627      | "Batch 1: built on …"                                 |
+| Idea 2, batch 2: listings, venues, setlists              | DONE  | 9.99.1628–1631      | "Batch 2: …"                                          |
+| Idea 2, ▶ Pages: reading again                           | DONE  | 9.99.1632           | (docs/claude/brucebase.md, "Reading again")           |
+| Idea 2, batch 3: four expected-tag families              | DONE  | 9.99.1633–1635      | "Batch 3: …"                                          |
+| Idea 2, the help-icon check                              | DONE  | 9.99.1636–1637      | "The help-icon check …"                               |
+| Idea 2, batch 4: venue, song, relation, release tags     | PART  | 9.99.1652           | "Batch 4: the page tag checks …"                      |
+| Idea 2, closing the matrix (coexistence, HOME row)       | DONE  | 9.99.1653–1658      | "Closing the matrix …"                                |
+| Idea 2, batch 3b: the five noisy tag families            | NEXT  | —                   | "Batch 3", "Next (3b)"                                |
+| Idea 3: the lookup tables into the feed                  | TODO  | —                   | "Feed v2, branch 1", decision 2                       |
+| Idea 4, feed v1                                          | DONE  | 9.99.1638           | "The feed, version 1 …"                               |
+| Idea 4, feed v2 branch 1: date tags, the "files" tag     | DONE  | 9.99.1642           | "Feed v2, branch 1 …"                                 |
+| Idea 4, lettered date anchors                            | DONE  | 9.99.1644           | —                                                     |
+| Idea 4, feed v2 branch 2: a year listing's rows          | DONE  | 9.99.1645           | "Feed v2, branch 2 …"                                 |
+| Idea 4, the year reader's setlist note                   | DONE  | 9.99.1648           | —                                                     |
+| Idea 4: URL-shortening through the feed                  | TODO  | —                   | "Feed v2, branch 1", decision 4                       |
+| Idea 5, feed v2 branch 3: MusicBrainz event links        | DONE  | 9.99.1647           | "Feed v2, branch 3 …"                                 |
+| Idea 5: MB event titles, works against Brucebase songs   | TODO  | —                   | —                                                     |
+| Idea 6: freeze BruceBaseParser                           | TODO  | —                   | the matrix                                            |
+| Publish to =vzell/mb-userscripts=                        | WAIT  | since 9.99.1625     | —                                                     |
+| BruceParser: the audit's fixes                           | DONE  | 0.16.0–0.21.1       | —                                                     |
+| BruceParser: what is still open                          | TODO  | —                   | —                                                     |
+| Track B: volkerzell.de                                   | TODO  | —                   | —                                                     |
 
 * Track A: BruceParser and BruceBaseParser into ShowAllEntityData
 
@@ -561,95 +73,303 @@ Decisions (vzell, 2026-11-13):
 
 Generic MusicBrainz behaviour must not change.
 
-*The gap vzell named: tags that spill onto the onstage page.* Wikidot limits how many tags one page can hold. A gig,
- rehearsal or interview page with an "On Stage" tab can park its overflow tags on =/onstage:<slug>/noredirect/true=. BBP
- handles this in =fetchOnstageCompanionTags()= (=BruceBaseParser.user.js:6831=, doc =doc/TAGS.md= "Onstage companion
- page tags"). BruceParser's =efc.sh:331= notes a second form: category pages that reach the limit get =-2=, =-3= …
- sibling pages that redirect to the main one (=MULTI-title-postfix.txt=). SAED's =_bbPageTags(doc, url)= reads only
- =div.page-tags= of the page itself. So three places miss the spilled tags:
-- the bb-event head and its Tags card;
-- every BB preview window, through =_dpParseBb()=, including windows opened on musicbrainz.org;
-- the year table's ▶ Pages columns.
+*The six ideas, ordered by value per byte* (the numbering is cited elsewhere, keep it):
+1. *Tags kept on other pages* (Phase 1). One shared reader change fixes the event head, every BB preview window and
+   the year table's ▶ Pages.
+2. *BBP's checks become FINDINGS entries, not ported code.* SAED already has the registry, the ⚠️/❌ menus, the cell
+   tint and the 📊 sections. BBP's own UI is not ported: Save/Load, SmartTable, the lightbox and the keyboard
+   shortcuts all already exist in SAED.
+3. *BBP's lookup tables move into the feed instead of the script* (=TOUR_DEFINITIONS=, =SONG_TAG_ALIAS_OVERRIDES=,
+   =VENUE_TAG_ALIAS_OVERRIDES=, =RELATION_TAG_ALIAS_OVERRIDES=). BruceParser generates or curates them, SAED fetches
+   them once a day and caches them, vzell updates them without a release.
+4. *BruceParser's site-wide reports become findings in the browser*, through =bb-feed.json=, keyed by page path. SAED
+   stamps them on BB rows and in previews without extra requests; each card names its report and the feed's date.
+5. *Cross-checks on MusicBrainz*, gated to entities with a =brucebase.wikidot.com= URL relationship and a loaded feed.
+   Any other MB page makes zero requests and takes no new code path; the MB fixture suite proves it.
+6. *Retirement matrix* (=org/bbp-parity.org=): every BBP check with its SAED counterpart and a state. BBP is frozen
+   when every row is done; until then SAED and BBP must be able to run on one page.
 
-** The ideas, ordered by value per byte
+*Size budget.* Port checks as data and findings, never as BBP's code. Target for the whole of Track A: at most about
+150 KB (~1.5 %). Each batch records its bytes in its changelog entry (batch 3: +38.6 kB). *Never totalled yet.*
 
-1. *Spilled tags (phase 1, below).* One shared reader change fixes all three places.
-2. *BBP's checks become FINDINGS entries, not ported code.* SAED already has the registry, the ⚠️/❌ menus, the cell tint
-   and the 📊 sections, and four BB findings already exist (=bb-mbev-link-*=, =bb-date-comma=, =bb-onstage-tab=). BBP's
-   checks fit as entries over data SAED already reads (the =_bbEvp*= year columns read each event's page, as BBP's
-   =processOneYearEvent= does):
-   - YEAR vs DETAIL event name (=extractDetailEventName= / =normalizeDetailName=)
-   - venue name
-   - the year page's anchor date (=checkYearAnchorConsistency=)
-   - setlist songs without their tag (=checkSetlistSongTags=)
-   - expected vs actual tags: date parts, places, relations, tours and premieres (=computeExpectedTags= and its siblings)
-   - spurious tags
-   BBP's own UI is not ported. Save/Load, SmartTable, the lightbox and the keyboard shortcuts all already exist in SAED, and some came from SAED in the first place.
-3. *BBP's lookup tables move into the feed instead of the script.* Examples: =TOUR_DEFINITIONS=,
-   =SONG_TAG_ALIAS_OVERRIDES=, =VENUE_TAG_ALIAS_OVERRIDES=, =RELATION_TAG_ALIAS_OVERRIDES=. BruceParser generates or
-   curates them, and SAED fetches them once a day and caches them. That keeps them out of the 10 MB file and lets vzell
-   update them without a release.
-4. *BruceParser's site-wide reports become findings in the browser.* =bbp.sh= writes =bb-feed.json=, keyed by page path:
-   - setlist differences YEAR vs DETAIL
-   - titles that differ between YEAR, YEAR-LIST and DETAIL
-   - URLs shortened at a different place (=URL-shortening=)
-   - pages missing their first-character tag or a date-part tag
-   - =files= tag vs images
-   - pages with no parent
-   SAED stamps these on BB rows and in previews without extra requests. Each finding's card names the report it came from and the feed's date.
-5. *Cross-checks on MusicBrainz, gated to entities with a brucebase URL relationship.* On an E with a BB "reviews" link,
-   the feed already holds BruceParser's =search/= comparison (MB event title vs the MB-style title derived from BB), and
-   the same goes for W vs BB song (=esfsl.sh=). Shown as findings only when the row's entity carries a
-   =brucebase.wikidot.com= URL and the feed is loaded. Any other MB page makes zero requests and takes no new code path,
-   and the MB fixture suite proves it.
-6. *Retirement matrix.* =org/bbp-parity.org= lists every BBP check and feature with its SAED counterpart (finding id,
-   pageType or feed key) and a state. BBP is frozen when every row is done. Until then, test that SAED and BBP can run
-   on the same page together, since both match the same URLs.
+** DONE Phase 1: tags from the On stage page (idea 1; 9.99.1625, 2026-11-14)
 
-*Size budget.* Port checks as data and findings, never as BBP's code. Target for the whole of Track A: at most about 150
-KB (~1.5 %). Record the bytes each phase adds in its changelog entry. Data goes through the feed.
+*What:* Wikidot limits a page's tags, so a show's tags can live on other pages. SAED read only the page's own
+=div.page-tags=, so the event head's Tags card, every Brucebase preview window (also on musicbrainz.org) and the year
+table's ▶ Pages missed them. Now =_bbTagPagesStart()= walks the show's other tag pages and every Tags card shows the
+union, each tag knowing its page. Setting =sa_bb_onstage_tags= (default on). Every chip card got a tool row (Show,
+filter, Group by, sort) from 6 chips on. Mockup: https://claude.ai/artifact/18teQxyrom93rWw5mvY98D (local copy
+[[file:bb-onstage-tags-mockup.html][bb-onstage-tags-mockup.html]]). Details: =docs/claude/brucebase.md=, "Tags kept on other pages, and the chip boxes".
+vzell: "all confirmed live, OK"; =test:full= 3097/3097.
 
-** TODO Phase 1: spilled tags in SAED
+The plan was written as "spilled tags" (=_bbSpilledTags=, =sa_bb_spilled_tags=, =feat/bb-spilled-tags=); the probe
+changed the name and the reader, so those names exist nowhere in the code.
 
-Branch =feat/bb-spilled-tags=. Track changes in =ShowAllEntityData_CHANGELOG.wip.json=: no =@version= bump or real changelog entry on the branch; those come at merge.
+*Decisions* (vzell, 2026-11-14: "I agree to the open questions"; "YES; there should be a possibility to filter
+(inclusive highlighting) and sort tags"):
+1. *Naming:* "Tags from the On stage page", the setting =sa_bb_onstage_tags=.
+2. *The On Stage tab stays a pre-check.* Pages without it make no extra request; the cost is 4 missed pages.
+3. *-N siblings are tried only on nearly full pages*, never from the feed.
+4. Group by and the sort direction are remembered between pages, the filter text is not. The tool row goes on EVERY
+   chip card (=_fdChips()=); A–Z is the default order of every chip card.
 
-1. *Probe first.* =scripts/probe-bb-tag-spillover.py= runs over the =bb/latest= mirror on the NAS (slow; sample first). It answers:
-   - How many gig, rehearsal and interview pages have an On Stage tab and an onstage page whose tags the main page lacks?
-   - What is the actual limit: tag count, or total tag characters as vzell remembers it? Measure from the largest =div.page-tags=.
-   - How common are the =-N= redirecting siblings?
-   The result goes into =docs/claude/brucebase.md= with an Env stamp.
-2. *Mockup first (LAF).* How a spilled tag looks: in the Tags card or section, a small "from the On stage page" mark per
-   tag, or a separate group, plus the link to that page. Publish the mockup and wait for approval.
-3. *Reader.* A helper =_bbSpilledTags(doc, url)= builds the onstage address the way BBP's =fetchOnstageCompanionTags=
-   does (gig, rehearsal, interview, only when the On Stage tab exists, =/noredirect/true=). It reads the extra tags with
-   =_bbPageTags()= and returns the tags the main page lacks, each marked =spill: true=. It is called from:
-   - =_dpParseBb()=, which is already async with a request; one more GET there goes through the preview's own rate slot, and =_DP_PARSER_VERSION= goes from 28 to 29;
-   - the bb-event head (its "no request" rule gets one documented exception, made at the press);
-   - the =_bbEvp*= year columns.
-   If the probe confirms the =-N= siblings, it covers them too.
-4. *Setting* =sa_bb_spilled_tags=, default =true= per the non-MB rule. It is listed in =ShowAllEntityData_CONFIG_DEFAULTS.json=. Phase 1 does not add it to the fixture override list.
-5. *Docs:*
-   - =docs/claude/brucebase.md=: a section on spilled tags
-   - =docs/non-mb-coverage.json=, then =build-coverage-report.py=
-   - HELP
-   - a =DEBUG-NOTES.md= entry
+*** Probe results (kept in full: they are the reasoning behind constants in the code)
 
-*** Critical files
+Env: 2026-11-13T23:29:43+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · n/a (Python over the mirror =bb/2026-11-13=) · code at =871bd93e=
 
-- =ShowAllEntityData.user.js=: =_bbPageTags=, =_bbTagsSection=, =_dpParseBb=, =_DP_PARSER_VERSION=, the bb-event head (=_bbEventHeadSpec=), =_bbEvp*=, =configSchema=
-- Reference only: =~/git/userscripts/BruceBaseParser/BruceBaseParser.user.js:6831= and =doc/TAGS.md=; =~/git/scripts/BruceParser/efc.sh:331=
-- New: =scripts/probe-bb-tag-spillover.py=, a fixture =tests/fixtures/bb-event-spilled-tags.spec.js= (+ the gig page and its onstage page, from the mirror), and an entry in =scripts/mutations/*.json=
+42,531 pages read, 42,236 of them with tags, 3,998 redirect pages.
 
-*** Verification
+1. *The limit is 512 characters, not a tag count.* The tags of a page, joined by one space, never exceed 512
+   characters. Four pages sit at exactly 512 and eleven more at 507–511. The tag count varies freely at the limit,
+   from 45 to 65 tags. Largest pages:
+   - =gig:2009-11-08-madison-square-garden-new-york-city-ny=: 512 chars, 60 tags
+   - =gig:1978-08-09-agora-cleveland-oh=: 512 chars, 48 tags
+   - =recording:1986-02-00b-shorefire-studios-long-branch-nj=: 512 chars, 45 tags
+   - =gig:1988-07-03-stockholms-stadion-stockholm-sweden=: 511 chars, 65 tags (most tags)
+2. */onstage: pages are not only overflow: they are where the cast tags live.*
+   - 3,479 onstage pages; 3,307 carry tags their event lacks; 172 targets are missing from the mirror.
+   - The events behind them: gig 3,134, rehearsal 170, nogig 2, interview 1. So the address rule needs =nogig= too
+     (BBP lacks it).
+   - 3,303 of these events have an On Stage tab, 4 do not: the tab is a near-perfect pre-check.
+   - An event can be as small as 84 characters and 10 tags and still have tags on its onstage page.
+   - What is there: the =onstage= tag itself (3,304) and the band and cast names (garrytallent 2,091, estreetband
+     1,949, roybittan 1,759, …); median 9 per page, maximum 44.
+   - The onstage page is a Redirect module: fetch it with =/noredirect/true=, or the server answers with the event.
+3. *Redirecting -N siblings: 46 pages, 35 with tags the target lacks* (gig 18, relation 8, recording 6, rehearsal 2,
+   retail 1). The targets sit at 482–508 characters, so these are real overflow pages.
 
-- A fixture spec serves a gig page plus its onstage page. It asserts that the window's and the head's Tags show the
-  spilled tags as marked and that their count includes them. A second case, a page without an On Stage tab, asserts that
-  no second request is made. Mutation check: plant an early =return= in =_bbSpilledTags=, and the spec must fail.
-- The MusicBrainz fixture suite and =npm run test:full= via =python3 scripts/run-test-full.py=, with the start
-  announced. Plus =lint-summary.py --check=, =build-coverage-report.py --check= and =audit-config-defaults.py=.
-- vzell checks in the real browser on a gig with spilled tags, on BB and from an MB event's BB link, before any merge.
+*Second pass, the -N chains* (same Env):
+- *Pages and bases:* 56 sibling pages, 28 bases found. The other 25 are =multi:…-1/-2=: several shows on one date,
+  not overflow, with no base page.
+- *Naming rule:* base =[:60 - len("-N")]=, a trailing =-= dropped, then =-N=. It holds for all 31 siblings with a
+  base. Wikidot page names are at most 60 characters, so a long name is CUT before the suffix
+  (=onstage:2026-06-04-oceanfirst-bank-center-west-long-branch-2=, the =-nj= is gone). Build the address with this
+  rule (=_bbSiblingName()=), never by appending =-2=.
+- *Overflow vs alias:* the base of a real overflow chain is over 400 characters (19 of the 28 bases); the rest are
+  renamed pages (=relation:steve-van-zandt-2=) or =multi:= pages.
+- *Onstage pages have chains too:* Pete Seeger's 90th (=onstage:2009-05-03-madison-square-garden-…=) goes on to =-2=
+  and =-3=.
+- *A chain can start at -1:* =gig:1990-01-17-waldorf-astoria…= has no base onstage page, only =-1= and =-2=.
+- *Suffixes:* =-2= 24, =-3= 3, =-1= 4.
+- *What the trigger costs*, as pages over N characters and how many of them really have a sibling:
 
-Later phases (ideas 2–6 above) each get their own plan, branch and mockup.
+  | over | pages | with a sibling |
+  |------+-------+----------------|
+  |  400 |   828 |             19 |
+  |  450 |   253 |             18 |
+  |  480 |    94 |             16 |
+  |  500 |    35 |             10 |
+
+  *450* was chosen: 3× fewer wasted requests than 400, one chain missed.
+
+*** The reader as built
+
+1. *The show's own tags* come from the event page (no request).
+2. *The On stage page:* if the On Stage tab exists, fetch =onstage:<slug>/noredirect/true=; if it does not exist,
+   fetch =…-1= once.
+3. *Siblings:* for each page read so far whose tags are over 450 characters, fetch its =-2= (by the name rule), then
+   =-3=, … until one is missing.
+4. *The result:* the union of all their tags, each knowing its page. The families are classified with the EVENT
+   page's context, because the onstage pages have no =/relation:= links of their own.
+
+=_dpParseBb()= is synchronous, so the requests sit in the Brucebase loader after the parse, through the same rate slot.
+
+** Idea 2: BruceBaseParser's checks as findings
+
+The pattern of every batch: plan mode, a branch, a Python probe over EVERY page of the family in the mirror compared
+with BruceBaseParser's rules and BruceParser's reports, a checker that runs the SHIPPED code over the same pages and
+must equal the probe, a mockup for anything new and visible, findings through the add-finding skill, specs from real
+mirror pages, a mutation list, the render ratio against main, a WIP changelog, then vzell's browser check with real
+URLs and the merge on his word.
+
+*** DONE Batch 1: the year table's names and anchors (9.99.1626–1627, 2026-11-14)
+
+Six findings on the year table's Event cell, once ▶ Pages has read the row: =bb-name-mismatch=, =bb-name-variant=,
+=bb-anchor-date=, =bb-anchor-link=, =bb-anchor-postfix=, =bb-title-spaces=. vzell's browser check added
+=bb-anchor-shared= (two entries, one anchor), a saved year keeping the MB-Event column's findings, and the Save to Disk
+dialog's title on Brucebase. vzell: "error is OK, all tested live".
+
+*** DONE Batch 2: listings, venues, setlists (9.99.1628–1631, 2026-11-15)
+
+=bb-list-title=, =bb-list-anchor=, =bb-venue-mismatch=, =bb-year-unlisted= (an ERROR, vzell), =bb-setlist-songs=,
+=bb-setlist-spelling=, =bb-setlist-sections= and the setlist card (mockup
+https://claude.ai/artifact/T1D2ghbx9zHHCh8jgfr5g7). vzell: "Everything tested OK".
+
+*** DONE ▶ Pages: reading again (9.99.1632, 2026-11-15)
+
+A read row's ⟳ and "Read every row again" in the ▶ Pages progress card. vzell: "tested live, OK".
+
+*** DONE Batch 3: four expected-tag families (9.99.1633–1635, 2026-11-16)
+
+Date parts, day letter, event type, premiere count: marks on the Tags card and in the window, a Tags column on the
+year table with =bb-tag-missing= (❌) and =bb-tag-spurious= (⚠️), a title's two blanks on the byline and the window
+title. 234 of 5,007 shows flagged, all real. vzell: "everything tested live, OK".
+
+*** DONE The help-icon check (9.99.1636–1637, 2026-11-16)
+
+=help= and =featured= against the wiki's Help Us and Featured icons, a fifth family of the two tag findings. With it:
+the On stage page's name cut to 60 characters (101 shows had no cast tags). vzell: "all testing live, OK".
+
+*** PART Batch 4: the page tag checks (9.99.1652, 2026-11-18)
+
+Venue, song, relation and release pages get batch 3's marks on their Tags card and in their window: the kind tag,
+BruceParser's first letter, the banner, "lyricsheet", a song's title tag. 41 of 6,990 mirror pages flagged. Left out
+by decision (that is why PART): a release's dates and letter, a venue's place tags, a relation's name and band tags.
+vzell: "all tested live, OK".
+
+*** DONE Closing the matrix (9.99.1653–1658, 2026-11-19)
+
+Mockup https://claude.ai/artifact/Mji5y7i2vZzTkK1WQ4JWi7, all eleven questions as recommended. Three branches:
+- =fix/bb-bbp-coexistence= (9.99.1653): SAED stands aside with a notice on a page BruceBaseParser has changed.
+- =feat/findings-any-level= (9.99.1655): "All errors" / "All warnings" in the ⚠️/❌ menus, MusicBrainz too.
+- =feat/bb-evp-read-all= (9.99.1658): ▶ Pages "Read every row".
+vzell, each: "tested live, OK".
+
+*** NEXT Batch 3b: the five noisy tag families (set aside by vzell, 2026-11-16)
+
+Batch 3 ported four of BruceBaseParser's nine expected-tag families. Run as BBP's code has them, all nine flag 88 % of
+shows, because these five guess at how the wiki is tagged (the counts: =org/bbp-parity.org=, "Batch 3", the probe's
+table of 4,998 events):
+
+| Family  | Shows flagged     | Why it is noisy                                                                                |
+|---------+-------------------+------------------------------------------------------------------------------------------------|
+| content | 2,459             | a News/Memorabilia tab expects =news= and =memorabilia= even when it only holds ticket scans   |
+| cast    | 1,842             | =onstage= 584 and =studio= 464 from the tab alone, =guest= 407, a per-name tag on 684          |
+| songs   | 1,115             | the initials rule (=computeSongTagAlias=): "Mona" expects =m=                                  |
+| place   | 662               | =springsteenresidence= 70, =unitedkingdom= 60, Australian states, studios                      |
+| tour    | 169 (+847 spur.)  | =TOUR_DEFINITIONS= date ranges; =tour_no= guessed from an alias line (116 of the 169)          |
+
+Also part of 3b: the matrix's "spurious tags" row (PART: tour and content are left) and the tag-source highlight (NOT
+for now; it comes back with 3b, whose sources are setlist and cast rows).
+
+*Open questions*, each put to vzell with its most frequent cases, one family at a time:
+1. *Content:* does a ticket-only News/Memorabilia tab call for =ticket= alone? Is =bootleg= / =livedl= from the
+   Recording tab right?
+2. *Cast:* is =onstage= expected from the tab alone (BBP: gig and rehearsal yes, interview no)? Is =studio=? A name
+   tag for EVERY listed person, or only some (BBP's dotted E Street tags, =RELATION_TAG_ALIAS_OVERRIDES=)?
+3. *Songs:* take a song's tag from its song page's own title tag (batch 4 reads it) instead of the initials guess?
+   That needs a song→tag map, best from the feed (BruceParser has every song page), not a request per song.
+4. *Place:* which parts of the title must have a tag (venue, city, state, country)? Is =unitedkingdom= expected
+   besides =england= / =scotland=?
+5. *Tour:* expect the tour tag only and never guess =tour_no=? Flag a tour tag whose dates do not cover the show?
+6. *All five:* the lookup tables (tours, states, aliases, about 8 KB) in the script (decision of 2026-11-15) or in
+   the feed (idea 3)?
+
+*The switch* (vzell, 2026-11-19): ONE setting PER family (for example =sa_bb_tag_family_content=, =…_cast=, …), each
+=default: false=, so 3b can ship before every family is tuned and a family is turned on once its count is believable.
+This overrides the non-MB "default true" rule on vzell's word; a new key needs no =_SETTINGS_MIGRATIONS= entry. The
+families join the two existing findings on the same surfaces (Tags card, window, year table's Tags column), so the
+only new UI is the settings rows. Batch 3 already gates families (=_bbTagCheckedFamily()=). Requests: cast needs the
+On stage pages (read anyway while =sa_bb_onstage_tags= is on); songs through the feed costs none; the rest are
+page-local. A switch makes the noise optional, not right: each family still needs its tuning.
+
+*To start it:* plan mode on a branch of its own (=feat/bb-findings-batch3b=), first re-run
+=scripts/probe-bb-batch3-findings.py= on the newest mirror and put question 1–6 to vzell with real pages, then work
+as in the batches above. Do not run =bbp.sh=.
+
+** TODO Idea 3: the lookup tables into the feed
+
+Not started. Decision (vzell, 2026-11-17): the lookup tables wait for batch 3b; the block batch 3 planned for the
+script was never built, so nothing moves yet. Decided together with batch 3b's question 6.
+
+** Idea 4: BruceParser's reports through the feed
+
+The feed: BruceParser writes and publishes it (=feed.sh=, =./publish-feed.sh=); the public repo is
+https://github.com/vzell/brucebase-feed. Nothing that batches 1–2 check live goes into the feed (the setlist, the
+three title comparisons, the anchor postfix, the venue): one error never gets two marks.
+
+*** DONE Feed v1 (9.99.1638, 2026-11-17)
+
+BruceParser 0.18.0 (=e3f821a=). The reader and four findings (a differing title and a page with no tag ❌; no parent
+page and a missing first-letter tag ⚠️). Mockup https://claude.ai/artifact/65urMwgWSb6zq6xJa9Mf4x. vzell: every
+browser-check row tested live OK. Seen on the way, not checked live: the M tab of stats:relations stops before "Mu"
+(19 pages tagged "m" missing; looks like a list limit on the wiki).
+
+*** DONE Feed v2, branch 1: date tags and the "files" tag (9.99.1642, 2026-11-17)
+
+BruceParser 0.19.0. ❌ a date tag missing, ⚠️ a date tag that is not the page's date (on pages that are no show), ⚠️
+"files" tagged without a picture (32 pages). vzell: "everything tested live OK".
+
+*** DONE Lettered date anchors and feed v2, branch 2 (9.99.1644–1645, 2026-11-17)
+
+A lettered anchor (=1985#310385b=) and the 1949-64 page open their window (9.99.1644). A year listing's rows marked
+through the feed's new =anchors= (BruceParser 0.20.0; 5,010 listing rows, 25 marked; 9.99.1645). vzell: "Everything
+tested live OK".
+
+*** DONE The year reader's setlist note (9.99.1648, 2026-11-18)
+
+Found in vzell's check of branch 2: the year reader glued the setlist note ("Incomplete setlist.", …) to the last song
+(951 songs), made a description paragraph a one-song setlist, and missed a description of plain paragraphs. It now
+reads an entry as the year table does. vzell: "tested live, OK".
+
+*** TODO URL-shortening through the feed
+
+Left out of v2 (decision 4 of 2026-11-17: 4,312 pages in the report, 1,096 after its filters, 12 false from a "-"
+left at the 60-character cut). BruceParser 0.21.1 (=c789cfb=) fixed that "-", so it can come back.
+
+** Idea 5: cross-checks on MusicBrainz
+
+*** DONE Feed v2, branch 3: MusicBrainz events with a doubtful Brucebase link (9.99.1647, 2026-11-18)
+
+BruceParser 0.21.0 (=b6d7be7=). On event lists and event pages: a Brucebase link that reaches no entry ❌ (197),
+shares one entry ⚠️ (18) or is no anchor ⚠️ (1), with a card of the wiki's entries of the date. Its own switch
+=sa_bb_feed_mb=. Mockup https://claude.ai/artifact/Tip5CShMevQp8ycqBjjnRZ. Perf on =artist-events=: no cost. vzell:
+"all tested live, OK".
+
+*** TODO The other two cross-checks
+
+Not started, not decided: an MB event's title against the MB-style title BruceParser derives from Brucebase (its
+=search/= comparison), and an MB work against its Brucebase song (=esfsl.sh=).
+
+** TODO Idea 6: freeze BruceBaseParser
+
+Every matrix row is DONE or decided except batch 3b's. Once 3b is done (or its rows are declared NOT), BBP is frozen.
+Also in BBP's repo, for vzell: =doc/TAGS.md= still says the wiki "caps the number of tags per page"; the limit is 512
+characters (Phase 1's probe).
+
+** WAIT Publish to =vzell/mb-userscripts=
+
+Nothing since 9.99.1625 is published; vzell's call. Before it: =python3 scripts/check-publish-ready.py=.
+
+* BruceParser (the shell pipeline)
+
+** DONE The audit and its fixes (0.16.0 – 0.21.1, 2026-11-14 to 2026-11-18)
+
+vzell: "Don't take the logic of the shell BruceBase Parsers scripts for granted, they have been written by a human
+(me)." Env of the audit: 2026-11-14T00:55:51+01:00 · petri · BruceParser at =37dae46=, its run =bb/2026-11-13= ·
+ShellCheck 0.9.0 and Python over the mirror (=scripts/probe-bruceparser-title-rules.py=, 8,926 event titles).
+
+- *0.16.0* (=69114f8=), the four bugs and the risks:
+  1. =eefyp.sh=: the greedy "(The)" rule moved the article in front of the wrong comma part (3 false "Differing
+     TITLE" reports); now per comma part as BBP's =normalizeDetailName()=, the hard-coded exceptions dropped.
+  2. =checkURLandTitles.sh=: a "-N" sibling's URL was cut AFTER its suffix; now Wikidot's rule (=_bbSiblingName()=).
+  3. =checkURLandTitles.sh=: =${before_pattern/-/ /}= replaced only the first "-", with " /".
+  4. =eefyp.sh=: the anchor report mislabelled its date and linked a page that does not exist.
+  - Risks: =LC_ALL=C.UTF-8= in =logging.sh=; =cd ./search || exit=; the unquoted =curl -o= and =[[ != ]]= operands.
+- *0.17.0* (=4978b0e=): =dc.sh= with =-j "${BBP_JOBS:-4}"= on both =parallel= calls; =checkURLandTitles.sh= removes
+  a venue word literally, not as a regex.
+- *0.17.1* (=2a546fd=): =bbp-status.sh= reads =docs/timings.tsv= rows with empty columns.
+- *0.17.2* (=fa03525=): =MULTI-title-postfix.txt= gets its lines; a stopped =bbp.sh= ends the run and no longer
+  empties =brucebase/DETAIL-title-from-YEAR-array.txt=.
+- *0.18.0 – 0.21.1*: the feed (see idea 4 and 5); 0.21.1 drops a "-" left at the 60-character URL cut.
+- *The full run with 4 jobs* (2026-11-15, NB-3641): 40 min 49 s, the download 37 min (2,219 s), no failed step; its
+  data is committed there (=3fc392e=), its counts in =docs/run-history.md=.
+- *A Brucebase data error the audit found* ("2026-08-28 Stone Pony (The), Summer Stage,  Asbury Park, NJ", two
+  blanks) became the finding =bb-title-spaces=.
+
+** TODO Still open in BruceParser
+
+- *The report comparison* of the 2026-11-15 run with the run before (the 0.16.0 / 0.17.0 changes). No full run since
+  0.17.2.
+- *Not traced:* =setlist-differences.txt= has 542 lines on NB-3641 (564 in October) against 342 on petri two days
+  earlier, with the same setlist line counts. It looks like the host; cause unknown.
+- *Small fixes not applied:* =extract-setlists-from-detail-pages.sh:154= =echo -e "${event_title}:…"= (a backslash
+  in a title would be read as an escape; use =printf '%s:%s\n'=); the 21 unused variables ShellCheck lists (SC2034),
+  a cleanup commit of their own; =cat file | sed …= (harmless).
+- *Not checked yet:* the setlist comparison scripts (=extract-setlists-from-detail-pages.sh=,
+  =extract-all-event-info-and-setlists.sh=); the SL, KF and JL parsing (=esfsl.sh=, =erfsl.sh=); the MusicBrainz side
+  (=search/*.sh=); the hard-coded exceptions (=eefyp.sh:1040–1090= and elsewhere): bug 1 showed that an exception can
+  hide a rule bug, so each deserves a comment saying why and a re-check whenever a rule changes.
 
 * Track B: volkerzell.de (Ionos shared hosting: PHP + MySQL/MariaDB)
 
