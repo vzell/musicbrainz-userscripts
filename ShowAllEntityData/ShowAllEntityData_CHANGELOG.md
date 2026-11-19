@@ -4,9 +4,20 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1829 versions; the month pages hold all of them.
+This page shows the newest 100 of 1830 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1659 — 2026-11-19
+
+**🚀 Feature**
+
+- Two more ⚠️ WARNING checks on a release tracklist, from the track's own data and with no requests: a title that names a remixer ("Everlasting (Psyche remix)") while the track credits no remixer, and a medley title ("A / B") whose recording links works for fewer of its parts. Anonymous mixes ("(Extended Mix)", "(mono mix)", "(5.1 mix)", "(U.S. remix)") and non-musical parts in square brackets ("\[band intro\]") are not counted; the cell's tooltip names the remixer or the counts. The remix rules come from majkinetor's Credit Hoarder. Each tint has its own switch in ⚙️ Settings → ⚠️ Findings.
+
+**🐛 Fix**
+
+- The release tracklist's "Recording of work" column showed only the first work of a recording that links several; it now lists every work, one line each (with ▶ to fold a long list), each with its own "(live)"/"(cover)". The songs a medley work is made of stay in its "Work medley of" column.
+
 
 ## 9.99.1658 — 2026-11-19
 
@@ -876,19 +887,6 @@ This page shows the newest 100 of 1829 versions; the month pages hold all of the
 - Every non-MusicBrainz detail page (springsteenlyrics.com items and songs, Discogs releases and masters, archive.org items, setlist.fm): resting on a picture above the tables shows it large, larger while Shift is held; Space opens the artwork viewer, as a click does.
 - springsteenlyrics.com: in a label's window, every item links its page, with its own preview.
 - springsteenlyrics.com: in an item's preview window, the MusicBrainz work icons sit in the line before each title (they were shown below it while read-ahead was on).
-
-
-## 9.99.1559 — 2026-11-05
-
-**🚀 Feature**
-
-- springsteenlyrics.com tracklists: in an item's tracklist (collection, bootleg, CD and vinyl bootleg), its preview window and a song page's edition tables, each song links its page in the lyrics index. Only songs the site has a page for are linked (an unknown address shows the site's "does not exist!" page): the script carries the site's list of 1,381 songs, and finds a title written differently from its page ("4TH OF JULY, ASBURY PARK (SANDY)", "(GET YOUR KICKS ON) ROUTE 66", 19 exceptions such as "FOURTY MILES OF BAD ROAD"). A medley links each of its songs; another artist's song on a various-artists album stays plain. Setting: Tracklists: link each song to its page on springsteenlyrics.com (on).
-- springsteenlyrics.com: on a bootleg of one show, a song links the site's page of that very performance when there is one, marked "this show" (the 5 Feb 2014 Perth bootleg's E Street Shuffle opens theestreetshuffle\_2014-02-05). The script reads the lyrics index once (32 letter pages, about one a second) and keeps it 30 days; every lyrics letter page shown keeps it current. Setting: Tracklists: link a bootleg's songs to the version of that show (on).
-- springsteenlyrics.com: a MusicBrainz work icon before each song of those tracklists, with MusicBrainz's card of the work on hover. Solid: the work's annotation links this song's page, or (logged in) the item's MusicBrainz release has it; dashed: matched by title only; several icons with a count: several works of that title. Bruce Springsteen's works are read once (16 requests, about 18 s, the icons faded meanwhile) and kept 30 days. Setting: Tracklists: MusicBrainz work glyph before each song (on).
-
-**✨ Improve**
-
-- springsteenlyrics.com song pages: a song the site leaves unlinked in a release's edition table (no page for that version) now links the song's main page when the site has one; the site's own links stay as written.
 
 
 ---
