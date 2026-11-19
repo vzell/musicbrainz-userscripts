@@ -682,6 +682,7 @@ have it. The bar is there only when the page has something to show. The same two
 
 ```
 ⚠️ 12 ▾
+   ⚠️ All warnings                              10
    ⏱️ Track and recording length differ          3
    🚫 Recording has no associated work           2
    🔠 Title in ALL UPPERCASE                     1
@@ -707,6 +708,16 @@ column's filter box, and every way of clearing a column filter clears it too.
 Problems that can sit in several different columns of one row (pending edits,
 live credit dates) filter by row instead, and show a chip beside the global
 filter with a ✕ to remove it.
+
+**All warnings / All errors, the first row of each list, shows every row with
+a problem of that kind in any column at once**: where two single rows in
+different columns show only rows with both, this shows rows with either. Its
+number counts rows, so a row with two warnings counts once. While it is on,
+the single rows below it are greyed and do nothing; it shows a chip beside the
+global filter, and its ✕, the row itself, **✗ Clear … filters** or *Clear ALL
+filters* turn it off. All errors and All warnings together show rows with
+both. Only what is known so far counts: rows whose data arrives later (a
+Brucebase row ▶ Pages has not read, artwork still loading) join once it is in.
 
 **A problem that compares two values shows them one under the other.** Rest
 the pointer on the cell: the track name over the recording name, the comment's

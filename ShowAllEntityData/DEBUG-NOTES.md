@@ -30411,3 +30411,17 @@ MusicBrainz one by a timeout: its press never rendered).
   earlier on this host (entry above): twice in a row under the full suite on NB-3641, 42 of 42 alone. A flake of
   that test under load on this machine, not of either branch; worth its own look (it asserts that no tbody write
   happens after ✕, a timing the 14-worker load stretches).
+
+## 2026-11-19 — "All errors / All warnings" in the findings menus (feat/findings-any-level)
+Env: 2026-11-19T01:35+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (chromium-fixtures), no Tampermonkey (GM stubs)
+
+BruceBaseParser's mismatch filter, closing the HOME row with branch 3 (org/bbp-parity.org, "Closing the matrix").
+The single findings rows AND across columns (each ticks a 📊 entry of its column, or the row filter "for EACH
+id"), so "every flagged row" could not be said: on the live album fixture the two warnings (no-work in one column,
+an undated live credit in another) are on no common row, and ticking both shows 0 rows. `_findingLevelFilter` is an
+OR over a level's findings per row, beside `_findingRowFilter` and keyed, cleared and counted like it; its count
+comes from `_findingRowTally()`'s own walk (`@error`/`@warn`). One older mutation find moved
+(`findings-menus.json`, the cache-key entry) and still fails its test. Playwright treats `aria-disabled="true"` as
+disabled, so the spec clicks a greyed row through the DOM. Perf: tests/MEASUREMENTS.org, 2026-11-19 (ratios
+0.95–1.04, no cost); the first A,B,B,A run overwrote its JSON (every arm writes the branch's file name), so the
+second copies each arm's file aside.

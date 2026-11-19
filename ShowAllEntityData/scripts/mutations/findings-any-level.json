@@ -1,0 +1,158 @@
+[
+    {
+        "name": "the level filter is never applied to a row",
+        "why": "testRowMatch() reads _findingLevelFilter like the row filter.",
+        "edits": [
+            {
+                "find": "        for (const _lv of _findingLevelFilter) {\n            if (!_rowHasFindingLevel(row, _lv)) return false;\n        }\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/findings-any-level.spec.js",
+        "grep": "an OR across columns",
+        "expect": "fail"
+    },
+    {
+        "name": "a row passes with a finding of the OTHER level",
+        "why": "Only findings of the row's level count.",
+        "edits": [
+            {
+                "find": "                if (f && f.level === level) return true;",
+                "replace": "                if (f) return true;"
+            }
+        ],
+        "spec": "tests/fixtures/findings-any-level.spec.js",
+        "grep": "the two levels AND",
+        "expect": "fail"
+    },
+    {
+        "name": "the full filter key leaves the levels out",
+        "why": "Without them a toggle off returns the previous pass's rows from the cache.",
+        "edits": [
+            {
+                "find": "            l: Array.from(_findingLevelFilter).sort(),\n            // Same reasoning, same bug if omitted",
+                "replace": "            // Same reasoning, same bug if omitted"
+            }
+        ],
+        "spec": "tests/fixtures/findings-any-level.spec.js",
+        "grep": "every way out",
+        "expect": "fail"
+    },
+    {
+        "name": "the incremental filter key leaves the levels out",
+        "why": "Guard only: this key narrows the previous match set while typing, and no spec types after a level toggle; the full key above already catches a toggle. Kept for the same contract as the row filter's m key.",
+        "edits": [
+            {
+                "find": "            l: Array.from(_findingLevelFilter).sort(),\n            f: matchCtx.colFilters.map(f => f.isMultiValueFilter",
+                "replace": "            f: matchCtx.colFilters.map(f => f.isMultiValueFilter"
+            }
+        ],
+        "spec": "tests/fixtures/findings-any-level.spec.js",
+        "grep": "every way out",
+        "expect": "pass"
+    },
+    {
+        "name": "Clear ALL filters keeps a level on",
+        "why": "No input holds it.",
+        "edits": [
+            {
+                "find": "        _findingRowFilter.clear();\n        _findingLevelFilter.clear();\n",
+                "replace": "        _findingRowFilter.clear();\n"
+            }
+        ],
+        "spec": "tests/fixtures/findings-any-level.spec.js",
+        "grep": "every way out",
+        "expect": "fail"
+    },
+    {
+        "name": "the menu's Clear row keeps its level on",
+        "why": "Clear releases everything the menu set.",
+        "edits": [
+            {
+                "find": "    function _clearFindingLevel(level) {\n        _findingLevelFilter.delete(level);\n",
+                "replace": "    function _clearFindingLevel(level) {\n"
+            }
+        ],
+        "spec": "tests/fixtures/findings-any-level.spec.js",
+        "grep": "every way out",
+        "expect": "fail"
+    },
+    {
+        "name": "Clear ALL filters is hidden while only a level filters",
+        "why": "_findingFiltersActive() counts the levels.",
+        "edits": [
+            {
+                "find": "        return _findingRowFilter.size > 0 || _findingLevelFilter.size > 0;",
+                "replace": "        return _findingRowFilter.size > 0;"
+            }
+        ],
+        "spec": "tests/fixtures/findings-any-level.spec.js",
+        "grep": "every way out",
+        "expect": "fail"
+    },
+    {
+        "name": "turning a level on keeps its single ticks",
+        "why": "The level row replaces them (question 5).",
+        "edits": [
+            {
+                "find": "        } else {\n            FINDINGS.filter(f => f.level === level && _findingState(f) !== 'off')\n                .forEach(f => _setFinding(f, false));\n            _findingLevelFilter.add(level);",
+                "replace": "        } else {\n            _findingLevelFilter.add(level);"
+            }
+        ],
+        "spec": "tests/fixtures/findings-any-level.spec.js",
+        "grep": "an OR across columns",
+        "expect": "fail"
+    },
+    {
+        "name": "a greyed single row still toggles",
+        "why": "While its level is on, a single row is inert.",
+        "edits": [
+            {
+                "find": "        if (_findingLevelFilter.has(f.level)) return;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/findings-any-level.spec.js",
+        "grep": "an OR across columns",
+        "expect": "fail"
+    },
+    {
+        "name": "the tally counts no level rows",
+        "why": "The row's count comes from the same walk.",
+        "edits": [
+            {
+                "find": "            levels.forEach(lv => counts.set(`@${lv}`, (counts.get(`@${lv}`) || 0) + 1));",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/findings-any-level.spec.js",
+        "grep": "comes first",
+        "expect": "fail"
+    },
+    {
+        "name": "no level row in the menus",
+        "why": "One row per menu, first (question 4).",
+        "edits": [
+            {
+                "find": "            const levelRow = list.length ? { n: counts.get(`@${level}`) || 0, on: _findingLevelFilter.has(level) } : null;",
+                "replace": "            const levelRow = null;"
+            }
+        ],
+        "spec": "tests/fixtures/findings-any-level.spec.js",
+        "grep": "comes first",
+        "expect": "fail"
+    },
+    {
+        "name": "no chip for a level",
+        "why": "Every filter no input holds shows a chip with a way out.",
+        "edits": [
+            {
+                "find": "        const items = levels.map(lv => ({",
+                "replace": "        const items = [].map(lv => ({"
+            }
+        ],
+        "spec": "tests/fixtures/findings-any-level.spec.js",
+        "grep": "an OR across columns",
+        "expect": "fail"
+    }
+]

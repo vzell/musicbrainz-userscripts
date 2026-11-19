@@ -4507,3 +4507,30 @@ tree (uncommitted, on =bd4cb6d5=). Alternated M, B, M, B in one session; median 
 The ranges of the two arms overlap on every page. A page as expected costs nothing measurable; a page with a mark
 costs about 5–20 ms more (the marked chip, the pills and the words under the chips), on a render of 160–230 ms. No
 table, sort or filter path is touched: the check runs once per head and per window.
+
+* 2026-11-19 — interaction timings, main vs feat/findings-any-level (NB-3641)
+
+Env: 2026-11-19T02:07:24+01:00 → 2026-11-19T02:56:27+01:00 · NB-3641 (28 cores) · WSL2 Ubuntu 24.04.4 LTS
+(Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium, node v24.19.0 · no Tampermonkey (GM
+stubs). Main at 02b1472a (9.99.1653); the branch's userscript uncommitted on it.
+
+pageType =artist-events= (=tableMode: single=), "Bruce Springsteen — Events", disk fixture;
+=node tests/support/capture-interaction-perf.js= through =scripts/run-perf-arms.py artist-events -- --samples=5=,
+four runs in the order A,B,B,A (the main arms with =main='s userscript copied into the working tree, so their JSON
+names the branch; =tests/snapshots/artist-events/interaction-perf-anylevel-{main,branch}-r{1,2}-9.99.1653-2026-11-19-NB-3641.json=).
+"All errors / All warnings" is off, as by default: what is measured is the row test's empty level loop and the
+tally's per-row level set. Medians in ms, and the ratio of the arms' means (branch / main):
+
+| interaction         | main r1 r2  | branch r1 r2 | ratio |
+|---------------------+-------------+--------------+-------|
+| globalFilter        | 2074 1621   | 1947 1878    | 1.035 |
+| columnFilter        | 2009 2394   | 2433 2108    | 1.031 |
+| sort                | 5512 5358   | 5573 5683    | 1.036 |
+| uniqDropCold        | 32718 31259 | 32979 32434  | 1.022 |
+| uniqDropWarm        | 660 746     | 618 762      | 0.982 |
+| headerCountsInitial | 4070 4154   | 3822 4005    | 0.952 |
+| headerCountsRestore | 4702 4808   | 4903 4819    | 1.022 |
+
+Every ratio 0.95–1.04, inside the run-to-run spread (the two main arms alone differ by 28 % on globalFilter): no
+cost. A 3-sample A,B,B,A run before it (01:37–02:07 CET, a plumbing check) gave 0.84–1.04. Not measured: the
+level filter ON (one cell scan per row while it filters, as the row filter's).
