@@ -1567,6 +1567,13 @@ Before coding each one, write a real example page into this item, with the click
     recording [[https://musicbrainz.org/recording/455d1c86-5d55-4634-b7cf-4a1e0988aad1][455d1c86]] ("Heuss
     l’enfoiré & Genezio" + "feat."). So batch 1 builds ONE finding, =credit-trailing-join= (vzell's choice);
     details in docs/claude/findings.md.
+- *Batch 2 started* (2026-11-19, petri, branch =feat/apollo-findings-2=; vzell's choice): the two a release page
+  answers from its own data, on =release-tracks=: "title names a remixer, no remixer relationship" (Credit
+  Hoarder's =src/derive/remix.js= rules) and "medley title with fewer linked works than ' / ' parts".
+  - Deferred to batch 3, each with its own data plan: "relationship role that doesn't fit the format" (the release
+    lists' Relationships column loads url-rels only, so label/place/artist rels would mean more requests; on a
+    release page they are there) and First Contact's guesses (wrong primary type, looks like a VA compilation:
+    track counts and lengths are not on a release-group list).
 
 ** TODO Possible duplicate recordings (Fusion's algorithm, zero requests)
 
