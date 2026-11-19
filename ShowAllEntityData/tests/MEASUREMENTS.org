@@ -4613,3 +4613,13 @@ Env: 2026-11-19T09:52:49+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 | =npm run test:full=, merge check  |  3303 |      12 | *21 m 13 s* | =run-test-full.py=, 09:52:49–10:14:02 CET |
 
 3303 passed (main's 3298 plus the 5 credit-trailing-join tests). No flake showed.
+
+* 2026-11-19 — =npm run test:full= on =petri=, =main= after the merge of feat/apollo-findings-1 (193f35f5 with the 9.99.1657 fold uncommitted)
+
+Env: 2026-11-19T10:45:35+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                         | Tests | Workers | Wall clock  | Basis                                     |
+|-----------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, merge check  |  3310 |      12 | *22 m 11 s* | =run-test-full.py=, 10:45:35–11:07:46 CET |
+
+3310 passed (the branch's 3303 plus the 7 tests main gained from 9.99.1655–1656 on NB-3641). No flake showed.

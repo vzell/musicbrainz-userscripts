@@ -1548,7 +1548,8 @@ Also =FINDINGS= entries, zero requests, re-implemented from the description (GPL
 
 Before coding each one, write a real example page into this item, with the clicks and the predicted result.
 
-- *Batch 1 started* (2026-11-19, petri, branch =feat/apollo-findings-1=): the three that read only the cell's own
+- *Batch 1 shipped in 9.99.1657* (merge =193f35f5=; test:full 3310/3310 on the merged =main=; vzell's live check OK)
+  as ONE finding, =credit-trailing-join=. Started 2026-11-19, petri, branch =feat/apollo-findings-1=: the three that read only the cell's own
   text: invisible or odd characters in titles and names, extra spaces, join phrases without their space. The rest
   (they need the Relationships column, a release-type guess or the annotation) come in later batches.
   - *Pre-test result* (Env: 2026-11-19T09:06–09:40+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux

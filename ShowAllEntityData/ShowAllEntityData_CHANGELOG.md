@@ -4,9 +4,16 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1827 versions; the month pages hold all of them.
+This page shows the newest 100 of 1828 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1657 — 2026-11-19
+
+**🚀 Feature**
+
+- An artist credit that ends with a join phrase after its last artist ("Bad Legs, SeekFlow,", "… feat."), usually left over from a removed artist, now shows in the ⚠️ WARNING menu and the 📊 Findings section of the Artist columns, with a yellow tint and the phrase in the cell's tooltip; the same list as MusicBrainz's report "Artist credits with dubious trailing join phrases". No requests. The tint has its own switch in ⚙️ Settings → ⚠️ Findings.
+
 
 ## 9.99.1656 — 2026-11-19
 
@@ -878,17 +885,6 @@ This page shows the newest 100 of 1827 versions; the month pages hold all of the
 **🐛 Fix**
 
 - MusicBrainz search pages whose address does not start with the query (e.g. search?type=annotation&query=…, typed by hand or bookmarked) got no buttons: the script only ran when query= came first.
-
-
-## 9.99.1557 — 2026-11-05
-
-**✨ Improve**
-
-- MusicBrainz → springsteenlyrics.com: the site's two old addresses that MusicBrainz still carries, mostly in work annotations (/lyrics/&lt;letter&gt;/&lt;song&gt;.php and /collection/moreinfo.php?item=N), answer 404 today. Their preview now reads the page at its current address (lyrics.php?song=…, collection.php?item=…), and the card's first line says "Old address" with the new one.
-
-**🚀 Feature**
-
-- New ⚠️ WARNING "Old springsteenlyrics.com address in the annotation": an Annotation cell (annotation search, annotation reports such as Works with annotations) that links springsteenlyrics.com at an old address is tinted, and the menu filters to those rows so the annotations can be edited. The cell's tooltip names each link's current address. Setting: "Highlight Annotation cells with an old springsteenlyrics.com address as WARNING".
 
 
 ---
