@@ -4,8 +4,8 @@
         "why": "_bbTagCheck() compares the expected tags with every tag of the show.",
         "edits": [
             {
-                "find": "        for (const e of expected) if (!_bbTagPresent(e.tag, all)) res.missing.push(e);",
-                "replace": "        for (const e of expected) if (!e) res.missing.push(e);"
+                "find": "            if (!_bbTagPresent(e.tag, all) && !(e.alts || []).some(a => all.has(a))) res.missing.push(e);\n        }",
+                "replace": "            if (!e) res.missing.push(e);\n        }"
             }
         ],
         "spec": "tests/fixtures/bb-findings-batch3.spec.js",
@@ -355,8 +355,8 @@
         "why": "The card says why nothing is called missing.",
         "edits": [
             {
-                "find": "            wait: known || !_bbTagMissingOn() ? '' : `A missing tag is not looked for: not every page that keeps this ${facts.page ? 'page' : 'show'}'s tags is read.`,",
-                "replace": "            wait: '',"
+                "find": "        const wait = known || !_bbTagMissingOn() ? '' : `A missing tag is not looked for: not every page that keeps this ${facts.page ? 'page' : 'show'}'s tags is read.`;",
+                "replace": "        const wait = '';"
             }
         ],
         "spec": "tests/fixtures/bb-findings-batch3.spec.js",

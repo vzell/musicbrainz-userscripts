@@ -4194,6 +4194,46 @@ entry, with these columns:
   page calls for* off (⚙️ Settings → ⚠️ Findings), or with the On stage
   tags switched off, that page is not read, and no show with a cast is
   said to lack a tag.
+  With *Also check a Brucebase show's tour tag* on (off by default), a
+  gig or a cancelled show whose date lies in a tour's dates should also
+  carry that tour's tag ("tour_wb"; both tags where two tours overlap),
+  unless it is tagged "tour_no", the wiki's mark of a one-off show between
+  a tour's dates; a tour tag whose tour has other dates is marked ⚠️. The
+  tours and their dates come from the Brucebase feed (*Read the Brucebase
+  feed*), so they change without a new script version; without the feed
+  the tour is not checked. Rehearsals, recordings, interviews and dates
+  with "00" are not checked.
+  With *Also check a Brucebase show's place tags* on (off by default), a
+  show should carry tags for the city, the US state or Canadian province
+  ("newjersey(nj)") and the country of its title ("usa" or "canada" after a
+  state or province), "europe" or "oceania" for a country there, and its
+  venue's tag (the venue page its "Venue" link names). A few names the wiki
+  tags its own way ("West Germany" is "germany"), the regions and the
+  venues' tags come from the Brucebase feed too; a place tag is never marked
+  as not expected.
+  With *Also check a Brucebase show's content tags* on (off by default), a
+  show whose News/Memorabilia tab shows a setlist should carry "setlist"
+  (and "handwritten" or "printed" when the picture's name says so), one
+  showing a ticket "ticket", one with an entry on its Storyteller or
+  Eyewitness tab "storyteller" or "eyewitness". A "storyteller" or
+  "eyewitness" tag without its tab's entry is marked ⚠️; the picture tags
+  never are, since a picture can sit on a news page the tab lists. No
+  request and no feed: the page alone is read.
+  With *Also check a Brucebase show's cast tags* on (off by default), every
+  person and band of a show's cast tab (On Stage, In Studio, On Audio, On
+  Set) should have its tag, counted the ways the wiki writes names
+  ("garrytallent", "vini.lopez", without "The" or a nickname, each part of
+  "Flo & Eddie"), and a show with an On Stage tab should carry "onstage".
+  A show with an On Stage tab but no On stage page gets "onstage" missing
+  alone: its cast is not tagged at all. The cast is checked once the On
+  stage page is read; the dotted E Street names and other aliases come
+  from the Brucebase feed.
+  With *Also check a Brucebase show's song tags* on (off by default), every
+  song the setlist links should carry its tag as the Brucebase feed's song
+  map names it, the tags the shows of that song carry ("btr" or "borntorun"
+  for Born to Run); the link's own title as a tag counts too, and a medley
+  the feed names its combined tag. Only songs whose tag the wiki uses on at
+  least 9 of 10 of their shows are checked, and only linked ones.
 - **On stage**, **Content**, **Images**, **Start** and **Tags** come from each entry's
   own page, so they stay empty (—) until that page is read. **▶ Pages** in
   the On stage header reads the pages of the rows you can see, and then of
@@ -4427,7 +4467,8 @@ site) show those tags too:
   only the marked chips; press again for all. Nothing is marked while the
   On stage page is still being read, and with that page unread the card
   says that no missing tag is looked for. ✓ means the four families are
-  as expected. For the Help Us and Featured icons, which are on the
+  as expected (and the tour, the place, the content, the cast and the songs, where they are checked; without the feed the
+  card says they are not checked). For the Help Us and Featured icons, which are on the
   year page, the show's year page is read once at the press (or Space
   in the window) and kept. Switches: ⚙️ Settings → ⚠️ Findings.
 - **The tag check on venue, song, person, band and release pages:** the

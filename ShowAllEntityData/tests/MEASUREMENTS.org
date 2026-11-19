@@ -4695,3 +4695,54 @@ Env: 2026-11-19T22:02:10+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 | =npm run test:full=, =c94f7d73= + fold      |  3328 |      12 | *21 m 33 s* | =run-test-full.py=, 22:02:10–22:23:43 CET |
 
 3328 passed. With no probe beside it, the run took 1 m 32 s less than the branch run of 18:45.
+
+* 2026-11-19 — =npm run test:full= on =NB-3641=, feat/bb-findings-batch3b (the five tag families of batch 3b)
+
+Env: 2026-11-19T21:35:14+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                         | Tests | Workers | Wall clock  | Basis                                     |
+|-----------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, =e654a82d=   |  3356 |      14 | *23 m 0 s*  | =run-test-full.py=, 21:35:14–21:58:14 CET |
+
+3356 passed, no flake.
+
+* 2026-11-19 — Brucebase year table and artist-events, main vs feat/bb-findings-batch3b (=NB-3641=)
+
+Env: 2026-11-19T21:59:12+01:00 → 23:02:26+01:00 · NB-3641 (28 cores) · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (headless), no Tampermonkey (GM stubs). Arm M: =main= at =63914fe5= (a git worktree with this checkout's =node_modules=); arm B: the branch at =e654a82d=. Both 9.99.1659. Every family of batch 3b is off (the defaults).
+
+*Brucebase year table* (=node scripts/measure-bb-year-render.js 1985 9=, bb-year, =tableMode: single=, "Brucebase — 1985", 94 rows, before any page is read), alternated M, B, M, B; median of 9, ms:
+
+| Round | M render | B render | M sort | B sort |
+|-------+----------+----------+--------+--------|
+|     1 |      568 |      565 |     74 |     71 |
+|     2 |      564 |      562 |     73 |     71 |
+
+B/M: render 0.99 and 1.00, sort 0.96 and 0.97.
+
+*artist-events* (=tableMode: single=, "Bruce Springsteen — Events", disk fixture;
+=node tests/support/capture-interaction-perf.js --pageType=artist-events --label=batch3b-<arm>=, 5 samples per
+metric). Round 1 in the order M, B (2026-11-19 22:00, 22:12); round 2 in the order B, M (2026-11-20 00:16, 00:28,
+Env: 2026-11-20T00:16:48+01:00 → 00:40:15+01:00, the same host and arms). On the evening of 2026-11-19 two tries of
+round 2 lost the branch arm: =page.goto= of musicbrainz.org's events page (the disk fixture's first load) timed out
+three times from 22:25 and at 22:44 (=main= failed the same way at 22:36); the =main= run of 22:50 completed and
+is kept as a third M (=tests/snapshots/artist-events/interaction-perf-batch3b-{main-r1,branch-r1,main-r2,branch-r2,main-r3}-9.99.1659-2026-11-19-NB-3641.json=;
+the file date is the userscript's). Medians in ms; the ratio of the arms' means over both orders, (B r1 + B r2) /
+(M r1 + M r3):
+
+| interaction         | M r1  | B r1  | B r2  | M r3  | (M 22:50) | B / M |
+|---------------------+-------+-------+-------+-------+-----------+-------|
+| globalFilter        |  2120 |  2120 |  2066 |  2162 |      2020 | 0.978 |
+| columnFilter        |  2333 |  2474 |  2324 |  2249 |      2368 | 1.047 |
+| sort                |  5475 |  5659 |  5309 |  5270 |      5487 | 1.021 |
+| uniqDropCold        | 30216 | 31396 | 29462 | 29685 |     29403 | 1.016 |
+| uniqDropWarm        |   616 |   723 |   716 |   689 |       716 | 1.103 |
+| headerCountsInitial |  3873 |  4153 |  3772 |  3810 |      4000 | 1.031 |
+| headerCountsRestore |  4729 |  4708 |  4749 |  4809 |      4583 | 0.992 |
+
+*No cost found.* In round 2, with the branch first, B/M is 0.96–1.04 on every interaction (globalFilter 0.96,
+columnFilter 1.03, sort 1.01, uniqDropCold 0.99, uniqDropWarm 1.04, headerCountsInitial 0.99, headerCountsRestore
+0.99): round 1's gap (1.00–1.17, the branch second) went with the order. Over both orders 0.98–1.05, uniqDropWarm
+1.10 (about 70 ms; the three M runs alone span 616–716). The 2026-11-18 comparison read 0.94–1.04 as no cost. By
+code reading nothing the branch adds runs on this page (the tag families, the feed's maps and the tag facts are
+Brucebase only; =_bbFeedChanged()= runs only when a feed comes in, none is read here; the five settings show only in
+the dialog).

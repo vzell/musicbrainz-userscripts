@@ -277,8 +277,8 @@
         "why": "What was checked differs by kind.",
         "edits": [
             {
-                "find": "        if (!facts.page) return '✓ date, letter, kind, premiere and icon tags as expected';",
-                "replace": "        return '✓ date, letter, kind, premiere and icon tags as expected';"
+                "find": "    function _bbTagOkText(facts) {\n        if (!facts.page) {",
+                "replace": "    function _bbTagOkText(facts) {\n        {"
             }
         ],
         "spec": "tests/fixtures/bb-findings-page-tags.spec.js",

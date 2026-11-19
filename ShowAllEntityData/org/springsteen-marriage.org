@@ -22,8 +22,10 @@ left out by decision), NOT (not done, with the reason).
   freezing BruceBaseParser (idea 6). See "Status at a glance".
 - *Nothing since 9.99.1625 is published* to =vzell/mb-userscripts=; that is vzell's call. The ❓ Help on GitHub is
   behind until then.
-- *Mirror:* =~/git/scripts/BruceParser/bb/latest=; check =ls -la= first (CLAUDE.md, working rule 7). The recent
-  probes ran on the run of 2026-11-15 (=bb/2026-11-15=).
+- *Mirror:* =~/git/scripts/BruceParser/bb/latest=; check =ls -la= first (CLAUDE.md, working rule 7). The newest run
+  is 2026-11-19 on NB-3641 (=bb/2026-11-19=, BruceParser 0.21.3); the batch 3 probe was re-run on it.
+- *Batch 3b has started* on =feat/bb-findings-batch3b=: the plan is =~/.claude/plans/start-batch-3b-the-expressive-dongarra.md=
+  (NB-3641 only; its decisions are copied into the 3b entry below).
 - *Do not run =bbp.sh= without vzell.*
 
 * Status at a glance
@@ -38,8 +40,8 @@ left out by decision), NOT (not done, with the reason).
 | Idea 2, the help-icon check                              | DONE  | 9.99.1636–1637      | "The help-icon check …"                               |
 | Idea 2, batch 4: venue, song, relation, release tags     | PART  | 9.99.1652           | "Batch 4: the page tag checks …"                      |
 | Idea 2, closing the matrix (coexistence, HOME row)       | DONE  | 9.99.1653–1658      | "Closing the matrix …"                                |
-| Idea 2, batch 3b: the five noisy tag families            | NEXT  | —                   | "Batch 3", "Next (3b)"                                |
-| Idea 3: the lookup tables into the feed                  | TODO  | —                   | "Feed v2, branch 1", decision 2                       |
+| Idea 2, batch 3b: the five noisy tag families            | NEXT  | WIP (5 of 5 built)  | "Batch 3b: …"                                         |
+| Idea 3: the lookup tables into the feed                  | DONE  | BruceParser 0.23.0  | "Batch 3b: …" (=tagTables=, =songTags=, =venueTags=)  |
 | Idea 4, feed v1                                          | DONE  | 9.99.1638           | "The feed, version 1 …"                               |
 | Idea 4, feed v2 branch 1: date tags, the "files" tag     | DONE  | 9.99.1642           | "Feed v2, branch 1 …"                                 |
 | Idea 4, lettered date anchors                            | DONE  | 9.99.1644           | —                                                     |
@@ -51,6 +53,7 @@ left out by decision), NOT (not done, with the reason).
 | Idea 6: freeze BruceBaseParser                           | TODO  | —                   | the matrix                                            |
 | Publish to =vzell/mb-userscripts=                        | WAIT  | since 9.99.1625     | —                                                     |
 | BruceParser: the audit's fixes                           | DONE  | 0.16.0–0.21.1       | —                                                     |
+| BruceParser: before 3b (setlist list, SC2034, run)       | DONE  | 0.21.2–0.21.3       | —                                                     |
 | BruceParser: what is still open                          | TODO  | —                   | —                                                     |
 | Track B: volkerzell.de                                   | TODO  | —                   | —                                                     |
 
@@ -239,8 +242,8 @@ table of 4,998 events):
 | place   | 662               | =springsteenresidence= 70, =unitedkingdom= 60, Australian states, studios                      |
 | tour    | 169 (+847 spur.)  | =TOUR_DEFINITIONS= date ranges; =tour_no= guessed from an alias line (116 of the 169)          |
 
-Also part of 3b: the matrix's "spurious tags" row (PART: tour and content are left) and the tag-source highlight (NOT
-for now; it comes back with 3b, whose sources are setlist and cast rows).
+Also part of 3b: the matrix's "spurious tags" row (DONE since the content family) and the tag-source highlight (NOT,
+vzell, 2026-11-19: "I go with your decision"; every finding already says its reason in words).
 
 *Open questions*, each put to vzell with its most frequent cases, one family at a time:
 1. *Content:* does a ticket-only News/Memorabilia tab call for =ticket= alone? Is =bootleg= / =livedl= from the
@@ -263,14 +266,59 @@ only new UI is the settings rows. Batch 3 already gates families (=_bbTagChecked
 On stage pages (read anyway while =sa_bb_onstage_tags= is on); songs through the feed costs none; the rest are
 page-local. A switch makes the noise optional, not right: each family still needs its tuning.
 
-*To start it:* plan mode on a branch of its own (=feat/bb-findings-batch3b=), first re-run
-=scripts/probe-bb-batch3-findings.py= on the newest mirror and put question 1–6 to vzell with real pages, then work
-as in the batches above. Do not run =bbp.sh=.
+*Started* (2026-11-19, plan mode, then =feat/bb-findings-batch3b=). The probe on =bb/2026-11-19= (Env:
+2026-11-19T18:34:31+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1) · n/a): 5,007 events, missing in
+shows content 2,469, cast 1,766, songs 1,115, place 663, tour 171; spurious 1,517 tags on 1,364 shows (=tour_no= 663,
+=ticket= 191, =rescheduled= 151). The same as on =bb/2026-11-15= but one more song show.
 
-** TODO Idea 3: the lookup tables into the feed
+*vzell's answers (2026-11-19):*
+- *Question 6, the tables:* in the feed. Idea 3 becomes part of 3b: BruceParser publishes the tables as
+  =tagTables= in =bb-feed.json= (feed 1.4), from a curated =brucebase/tag-tables.json=.
+- *Question 3, songs:* both. The setlist link always counts (its text and href through batch 4's
+  =_bbTagSongTitleTags()=: FIRE is =song:fire-2= and tagged =fire2=; OMAHA is =omahasong=). A song→tag map from the
+  feed (=songTags=) fills in the rest. BruceBaseParser's initials rule is dropped.
+- *Question 5, tour:* table tours only. A tour's tag is expected where the table's ranges cover the date; =tour_no= is
+  never expected or flagged (the wiki tags festival shows with the tour, e.g.
+  =gig:2012-06-03-bela-vista-park-lisbon-portugal= =tour_wb=); a table tour tag whose ranges miss the date is a ⚠️;
+  tags not in the table (=tour_cstls=) are left alone.
+- *Shipping:* one branch, one merge, once every family is tuned or declared NOT.
+- *Before any implementation:* BruceParser's open items and a fresh run (done, see "Before batch 3b" under
+  BruceParser).
 
-Not started. Decision (vzell, 2026-11-17): the lookup tables wait for batch 3b; the block batch 3 planned for the
-script was never built, so nothing moves yet. Decided together with batch 3b's question 6.
+*Order:* feed 1.4 (=tagTables=), then tour, place, content, cast, songs, each with its own question to vzell (1, 4, 2
+and the songs' medleys) and its real cases; a family's switch comes with its rule. Do not run =bbp.sh= without vzell.
+
+*Done so far (2026-11-19):*
+- *Feed 1.4* (BruceParser 0.22.0, =455a63a=): =brucebase/tag-tables.json= published as =tagTables=; the feed of the
+  run of 2026-11-19 is on GitHub (vzell: "publish feed").
+- *Tour* (WIP.1, =sa_bb_tag_family_tour=): vzell, 2026-11-19: gigs and nogigs ("I go with 2"), =tour_no= excuses a
+  missing tour tag, two tours on one date both expected. 49 shows flagged on =bb/2026-11-19=. Record and browser
+  check: =org/bbp-parity.org=, "Batch 3b".
+- *Place* (WIP.2, =sa_bb_tag_family_place=): vzell, 2026-11-19: city, US/CA state and country; the venue through a
+  venue→tag map from the feed; regions =europe= and =oceania= only; West/East Germany → =germany= through the feed
+  (BruceParser 0.22.1, =placeTags=, =expectedRegions=; published 2026-11-19 on vzell's word). 35 shows flagged. The venue part is
+  still open: its map (=venueTags=) shares the songs' derivation and comes with =songTags=.
+- *Content* (WIP.3, =sa_bb_tag_family_content=): vzell, 2026-11-19: the reliable six (setlist, handwritten, printed,
+  storyteller, eyewitness, ticket from a ticket image only as missing); news, memorabilia, bootleg, livedl, soundcheck
+  and rescheduled NOT. Only storyteller and eyewitness are ever "not expected" (a setlist picture can sit on a =news:=
+  page). 154 shows flagged.
+- *Cast* (WIP.4, =sa_bb_tag_family_cast=): vzell, 2026-11-19: an On Stage tab without an On stage page is ONE finding
+  ("onstage" alone); every listed name, its dotted form counting; =onstage= only, =studio= and =guest= not checked.
+  628 shows flagged (475 for the missing On stage page).
+- *Songs and the venue* (WIP.5, =sa_bb_tag_family_songs=; the venue in the place family): BruceParser 0.23.0
+  (=tag-maps.awk=, feed 1.5 =songTags=, =venueTags=; committed, not published). vzell, 2026-11-19: only songs whose
+  tags ≥ 90 % of their shows carry, only linked songs, =songCombos= for medleys, the venue through the feed. A song's
+  map is a tag SET (=btr=, =borntorun=). 465 shows flagged for songs; the place family 45 with the venue.
+- *All five families are built and tested live* (vzell, 2026-11-20, on vzell-lap: "all tested live OK"). Feed 1.5 is
+  published (2026-11-19); =test:full= 3356/3356 (NB-3641, =e654a82d=); the Brucebase year table costs nothing; the
+  artist-events comparison finds no cost in both orders (=tests/MEASUREMENTS.org=). Then the merge on vzell's
+  word (=main= has moved to 9.99.1660 meanwhile).
+
+** DONE Idea 3: the lookup tables into the feed
+
+Decided with batch 3b's question 6 (vzell, 2026-11-19): in the feed. =tagTables= is published (feed 1.4, BruceParser
+0.22.0, 1.4.1 with 0.22.1); =songTags= and =venueTags= came with BruceParser 0.23.0 (feed 1.5, =tag-maps.awk=).
+See "Batch 3b" above.
 
 ** Idea 4: BruceParser's reports through the feed
 
@@ -357,19 +405,33 @@ ShellCheck 0.9.0 and Python over the mirror (=scripts/probe-bruceparser-title-ru
 - *A Brucebase data error the audit found* ("2026-08-28 Stone Pony (The), Summer Stage,  Asbury Park, NJ", two
   blanks) became the finding =bb-title-spaces=.
 
+** DONE Before batch 3b: the open items and a fresh run (0.21.2 – 0.21.3, 2026-11-19)
+
+vzell, 2026-11-19: a new run before any 3b implementation, with the open BruceParser items before it.
+- *0.21.2* (=fb0d14e=): =setlist-differences.txt= is built from the two cleaned setlist files, event by event. It was
+  the event names left in the side-by-side HTML, which keeps an unchanged event as diff context: on the run of
+  2026-11-15, 542 lines for the 341 events that differ (a Python comparison of the two files agrees). That was the
+  "not traced" difference to petri's 342; why petri's HTML left fewer is not known (=ydiff= 1.3 here). Also =printf=
+  for an event's heading lines (=echo -e= read a backslash as an escape).
+- *0.21.3* (=328805c=): ShellCheck's unused variables 22 → 1 (=feed.sh='s =report_dir=, for the feed's next change);
+  =search/search.sh= no longer asks MusicBrainz once more for an answer it never used.
+- *The run* (=19143e7=), Env: 2026-11-19T17:46:48+01:00 to 18:32:23+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux
+  6.18.58.1) · n/a. 45 min 19 s, the download 2,519 s, no failed step, not published. =bb/latest= → =bb/2026-11-19=.
+- *The report comparison* with 2026-11-15: BruceBase +2 pages, the same events and setlist lines. Three reports
+  changed their count, each from a fix: =setlist-differences.txt= 542 → 341, =MULTI-title-postfix.txt= 0 → 128
+  (0.17.2's first full run), a new tag; =URL-shortening-CLEANEDUP.org= −8 rows (0.21.1). Details:
+  =docs/run-history.md= there.
+- *Seen in the audit, not changed:* =extract-all-event-info-and-setlists.sh='s =sed 's#&quot;#''#g'= deletes every
+  =&quot;= on the YEAR side (the =''= is shell quoting, not a replacement), while the DETAIL side keeps it: one setlist
+  line on the 2026-11-15 data (two SiriusXM interviews). Worth a fix together with both sides' entity handling.
+
 ** TODO Still open in BruceParser
 
-- *The report comparison* of the 2026-11-15 run with the run before (the 0.16.0 / 0.17.0 changes). No full run since
-  0.17.2.
-- *Not traced:* =setlist-differences.txt= has 542 lines on NB-3641 (564 in October) against 342 on petri two days
-  earlier, with the same setlist line counts. It looks like the host; cause unknown.
-- *Small fixes not applied:* =extract-setlists-from-detail-pages.sh:154= =echo -e "${event_title}:…"= (a backslash
-  in a title would be read as an escape; use =printf '%s:%s\n'=); the 21 unused variables ShellCheck lists (SC2034),
-  a cleanup commit of their own; =cat file | sed …= (harmless).
-- *Not checked yet:* the setlist comparison scripts (=extract-setlists-from-detail-pages.sh=,
-  =extract-all-event-info-and-setlists.sh=); the SL, KF and JL parsing (=esfsl.sh=, =erfsl.sh=); the MusicBrainz side
-  (=search/*.sh=); the hard-coded exceptions (=eefyp.sh:1040–1090= and elsewhere): bug 1 showed that an exception can
-  hide a rule bug, so each deserves a comment saying why and a re-check whenever a rule changes.
+- *Small fixes not applied:* =cat file | sed …= (harmless); the =&quot;= asymmetry above.
+- *Not checked yet:* the YEAR- and DETAIL-page =sed= pipelines line by line (only the list step and the quoting were
+  checked on 2026-11-19); the SL, KF and JL parsing (=esfsl.sh=, =erfsl.sh=); the MusicBrainz side (=search/*.sh=); the
+  hard-coded exceptions (=eefyp.sh:1040–1090= and elsewhere): bug 1 showed that an exception can hide a rule bug, so
+  each deserves a comment saying why and a re-check whenever a rule changes.
 
 * Track B: volkerzell.de (Ionos shared hosting: PHP + MySQL/MariaDB)
 

@@ -2329,6 +2329,232 @@ registry row, no table column (these pages are no row of any list).
   no "Show the release" button (its page has no table to show): its mark
   is tested in the window.
 
+## The tuned tag families (batch 3b, 2026-11-19)
+
+org/springsteen-marriage.org, "Batch 3b"; the plan
+`~/.claude/plans/start-batch-3b-the-expressive-dongarra.md` (NB-3641).
+BruceBaseParser's other five families (content, cast, songs, place, tour)
+flag 88 % of shows as its code has them. Each comes back tuned with vzell,
+behind ONE setting of its own, `default: false` (vzell, 2026-11-19: this
+overrides the non-MB "default true" rule; a new key needs no migration),
+and joins batch 3's surfaces: the same two findings, the Tags card, the
+window, the year table's Tags column. Their lookup tables are not in the
+script: BruceParser publishes them in the feed (`tagTables`, feed 1.4, from
+its hand-edited `brucebase/tag-tables.json`; vzell, question 6), read by
+`_bbFeedTables()` (null with the feed off or a feed without them).
+
+**The tour family** (`sa_bb_tag_family_tour`; `_bbTagTourOn()`,
+`_bbTagTourApplies()`, `_bbTagTourCheck()`, `_bbTagTourSpuriousWhy()`):
+- **Which shows:** a gig or a nogig whose title gives a whole date
+  (vzell). The probe (`scripts/probe-bb-tour-tags.py`, Env:
+  2026-11-19T19:00+01:00 · NB-3641 · Python over bb/2026-11-19 · n/a):
+  recordings carry the tour's tag 0 times in 35, interviews 6 in 47, and
+  a rehearsal carries the coming tour's tag before its first date (157
+  shows); a "00" date lies in no range or in several.
+- **Expected:** every tour of the table whose ranges cover the date, each
+  tag once (two tours on one date: both; all 73 shows in an overlap that
+  carry a tour tag carry every covering one), unless any page of the show
+  carries `tour_no` (125 of the 126 gigs in a tour's dates without its tag
+  carry it; vzell). `tour_no` itself is never expected or flagged.
+- **Not expected:** a tag of the page itself that is a table tour tag and
+  no covering tour's (⚠️). A covering tour's tag beside `tour_no` is
+  neither. A tour tag not in the table (`tour_cstls`, `tour_rqs`, the typo
+  `tour_wies`) is left alone.
+- **Counts** (bb/2026-11-19, 5,007 events): 49 shows, 41 with a missing
+  tour tag, 9 with one not expected. Real wiki errors among them: the four
+  Bijou Cafe pages of 1973-12 tagged `tour_wies`, Brussels 2008-06-23a
+  tagged `tour_rsng` for `tour_mgc`. Most nogig misses are appearances
+  that are no tour show (White House, dinners): vzell kept nogigs in.
+- **Without the tables** (the feed off, not read yet, or older than 1.4):
+  no tour finding; the Tags card's wait line says why
+  (`_bbTagFamiliesWait()`), and "as expected" names the tour only where it
+  was checked (`_bbTagOkText()`).
+- **The feed later than the page:** `_bbFeedMapsWanted()` adds `tagTables`
+  to the maps a kept feed must have while the family is on, so a kept 1.3
+  file is read again after its hour (never with the family off). When a
+  feed comes in, `_bbFeedChanged()` calls `_bbTagFamiliesFeedChanged()`:
+  every Tags box that shows a record is filled again
+  (`_bbTagPagesNotify()`), and on Brucebase every read Tags cell of a year
+  table is written again (`_bbEvpRenderCell()`, which queues the changed
+  rows' re-stamp), then `_bbEvpScheduleRefresh()`.
+- **No new request:** the rule reads the facts batch 3 already keeps
+  (kind, date) and the tags.
+- **Checks:** `node scripts/check-bb-batch3b-findings.js --family tour ROWS RULE FEED` runs the
+  shipped rule over all 5,007 shows against the probe's (0 differences, 49
+  flagged), then with the setting off, a feed without tables and the feed
+  off (0 findings each). Tests: `tests/fixtures/bb-findings-batch3b.spec.js`
+  on seven real pages (`scripts/build-bb-findings-batch3b-fixtures.py`) and
+  batch 3's 2016 year; mutations `scripts/mutations/bb-findings-batch3b.json`.
+
+**The place family** (`sa_bb_tag_family_place`; `_bbTagPlaceOn()`,
+`_bbTagPlaceSlug()`, `_bbTagPlaceExpected()`):
+- **What the wiki tags** (`scripts/probe-bb-place-tags.py`, Env:
+  2026-11-19T19:20+01:00 · NB-3641 · Python over bb/2026-11-19 · n/a;
+  gigs and nogigs, 4,043 shows): the city 99.7 %, the US/CA state 99.8 %,
+  the country 99.2 % (as the title writes it: `thenetherlands`), the venue
+  83.7 % (its tag is the venue page's own, `rai` for Amsterdam RAI, so a
+  title slug misses 658), an Australian state 0 of 57; `europe` 554 of
+  558, `unitedkingdom` 81 of 141, `scandinavia` 69 of 97. The other kinds
+  of page carry city, state and country as often (98–100 %).
+- **Decisions (vzell, 2026-11-19):** city, state and country; the venue
+  through a venue→tag map from the feed (not built yet: it comes with the
+  songs' map, the same derivation); regions `europe` and `oceania` only;
+  West and East Germany → `germany` through the feed.
+- **The rule:** every kind of event. The title "DATE Venue, [detail,] City,
+  ST|Country", a trailing "(…)" of its last part cut ("NJ (First)", "NJ
+  (Early)"): a US state or Canadian province gives the city before it, its
+  tag `newjersey(nj)` and `usa`/`canada`; else the city before the last
+  part (an Australian title's: the part before its state), the country,
+  and the country's regions in the feed's `expectedRegions`. A name in the
+  feed's `placeTags` takes its tags from there, the first named when
+  missing, the others counted too (`alts`, read by `_bbTagCheck()`'s
+  missing loop): West/East Germany, West/East Berlin, The Netherlands,
+  Mt. Macedon, Atlantic City (`atlanticcitynj`; the plain tag is the song).
+  A place tag is never called not expected.
+- **Counts** (bb/2026-11-19, 5,007 events): 35 shows, 41 missing tags:
+  `usa` 14, `canada` 6, `europe` 4, states 8, cities 6 (one a typo in the
+  title, "Los Angels").
+- **The title in the facts:** `_bbTagFacts()` keeps the page's title as
+  written (`title`; `_DP_PARSER_VERSION` 36, so every stored preview of a
+  foreign host is read once more). A record kept before has no title and
+  gets no place finding.
+- **Shared with the tour family:** `_bbTagTableFamiliesOn()` (the feed's
+  tables wanted, a late feed repainted), the one wait line naming every
+  family that cannot be checked, "as expected" naming each family checked.
+- **Checks:** `node scripts/check-bb-batch3b-findings.js --family place
+  ROWS RULE FEED`: 0 differences, 35 flagged; 0 with the setting off, a
+  feed without tables, the feed off. The batch 3 checker still finds 0
+  differences with the title in the facts.
+
+**The content family** (`sa_bb_tag_family_content`; `_bbTagContentOn()`,
+`_bbTagContentFacts()`, `_BB_TAGCHK_CONTENT`, `_bbTagContentExpected()`):
+- **What the wiki follows** (`scripts/probe-bb-content-tags.py`, Env:
+  2026-11-19T19:45+01:00 · NB-3641 · Python over bb/2026-11-19 · n/a;
+  5,007 events): BruceBaseParser's rule matches for setlist (696 of 726),
+  handwritten, printed, storyteller (1,447 of 1,475) and eyewitness (969
+  of 991); not for news (948 missing), memorabilia (1,134: a ticket-only
+  tab carries neither in 197 of 217 shows; passes and posters go with
+  memorabilia, press clippings half the time), bootleg (436: a Recording
+  tab that only remarks a tape "may be from this show"), livedl (210: the
+  official releases are tagged retail), soundcheck (129), rescheduled (151
+  carry it unexpected). vzell: the six, the others NOT.
+- **What the page holds** (`_bbTagContentFacts()`, `facts.content`,
+  BruceBaseParser's reading): the News/Memorabilia tab, else the News tab,
+  when not "Sorry, no …": a picture named "ticket" (a pass no longer
+  counts: pass-only shows rarely carry "ticket"; 103 → 57 missing), a
+  picture named "setlist" and not "ticket", "handwritten"/"printed" among
+  those; the Storyteller and Eyewitness tabs filled. A label's LAST tab
+  counts, numbered across every tab bar (`buildTabMap()`).
+- **Not expected:** only "storyteller" and "eyewitness" (their tabs hold
+  their entry: `gig:1982-10-03-stone-pony-asbury-park-nj` says "Sorry, no
+  Eyewitness-report" and carries the tag). A ticket or setlist picture can
+  sit on a news: page the tab lists through a list-pages module, or in a
+  Flickr gallery module, neither of which is in the page (16 shows of
+  1971–1978 carry "setlist"/"handwritten" with no picture in the page).
+- **Counts:** 154 shows, 145 with a missing tag (ticket 57, setlist 30,
+  storyteller 28, eyewitness 22, handwritten 20, printed 12), 9 with one
+  not expected (storyteller 5, eyewitness 4). No feed, no request; every
+  kind of event. The facts' `content` is part of `_DP_PARSER_VERSION` 36.
+- **Checks:** `check-bb-batch3b-findings.js --family content`: 0
+  differences, 154 flagged, 0 with the setting off; the batch 3 checker 0
+  with `content` in the facts. A built-markup test pins the reading (a
+  pass, a "ticket" setlist, "Sorry, no", the News tab, the last tab).
+
+**The cast family** (`sa_bb_tag_family_cast`; `_bbTagCastOn()`,
+`_bbTagCastFacts()`, `_bbTagNameSlug()`, `_bbTagCastItems()`,
+`_bbTagCastExpected()`):
+- **What the wiki tags** (`scripts/probe-bb-cast-tags.py`, Env:
+  2026-11-19T20:20+01:00 · NB-3641 · Python over bb/2026-11-19 · n/a):
+  583 shows have an On Stage tab and no On stage page, so their cast is
+  untagged (490 of the 492 `onstage` misses, 979 of the 1,214 name
+  misses); where the page exists BruceBaseParser's name forms plus the
+  dotted form match 99.4 % of ~37,000 listings; `onstage` 3,344 of 3,346
+  shows with the page; `studio` 90 of 565 In Studio shows; `guest` 817 of
+  1,224 shows that mark a person "(Guest)". The wiki writes many members
+  dotted (`vini.lopez` 239, `david.sancious` 207, `ernest.carter` 86),
+  which BruceBaseParser's E Street table misses (532 shows).
+- **Decisions (vzell, 2026-11-19):** a missing On stage page is ONE
+  finding ("onstage" alone, with the reason), not a miss per person; every
+  name, its dotted form counting; `onstage` only, `studio` and `guest` not
+  checked.
+- **The facts** (`facts.cast`, `_DP_PARSER_VERSION` 36): the cast tab (the
+  first of On Stage, In Studio, On Audio, On Set) and the names listed, a
+  port of BruceBaseParser's `extractRelations()` (the first tab's lists,
+  after an alias line, members under their band, until a rule, an ordered
+  list or a paragraph without bold). The batch 3 checker finds the
+  browser's reading equal to the Python one on all 5,007 shows.
+- **The rule:** an On Stage tab on a gig, nogig, rehearsal or interview:
+  without an On stage page "onstage" alone (not for an interview), with
+  one "onstage" (not for an interview) and the names. Any other cast tab:
+  the names. A name's items (`_bbTagCastItems()`): the slug, without
+  "The", without Jr./Sr./II/III/IV, without a nickname, the feed's
+  `eStreetDotted` and `relationAlias`, the dotted forms; "A & B" two items
+  with the two run together counting for both; the tag named when missing
+  is BruceBaseParser's (the dotted table's on a gig or rehearsal On Stage
+  tab without "The E Street Band" listed, else the slug). Never "not
+  expected".
+- **The pages:** `_bbTagCheck()`'s `pages`, the names of the show's other
+  tag pages read; `_bbTagFindings()` passes them only once the read is
+  done, without a failure or a skip, else null, which leaves an On Stage
+  tab's cast unchecked (with the On stage tags off the pages are never
+  read; `_bbTagPagesMay()` already keeps such a show's missing tags
+  unsaid, so the guard is recorded as an overlap in the mutation list).
+- **Counts:** 628 shows, 475 for a missing On stage page alone, 153 with a
+  name (`brucespringsteen` 56 on early guest spots, Big Danny Gallagher,
+  Robert Higgins, Ed Manion, …).
+- **Checks:** `check-bb-batch3b-findings.js --family cast` (it passes each
+  row's pages): 0 differences, 628 flagged; 0 with the setting off, a feed
+  without tables, the feed off.
+
+**The song and venue maps** (feed 1.5, BruceParser 0.23.0 `tag-maps.awk`;
+`_bbFeedMap()`): a page → the tags the shows linking it carry. The probe
+(`scripts/probe-bb-page-tag-maps.py`, Env: 2026-11-19T20:50+01:00 · NB-3641
+· Python over bb/2026-11-19 · n/a) found two shapes:
+- **A song is often tagged two ways,** both only on its shows: Born to Run
+  "btr" (1,618 shows) and "borntorun" (295), Dancing in the Dark "ditd" and
+  "dancinginthedark". A song's map is every own tag with precision ≥ 0.9
+  (the share of all shows carrying it that link the song), most carried
+  first; its recall is that of any of them. The link's own title as a tag
+  alone covers 54 % of 61,372 linked songs; the map 96.8 %, both 97.5 %.
+- **A venue's tag can be shared by two venue pages** (the Stone Pony and
+  its Summer Stage), so a venue keeps its single best-F1 tag (4,970 of
+  4,983 shows carry it).
+- **Candidates:** a page's own tags without kind, letter, number, tour,
+  release (`r_`), playlist (`pl_`), month and weekday tags and a few
+  states ("lyricsheet", …). Derived from the show pages' own tags (the On
+  stage pages change no song and 2 of 1,558 venues), so BruceParser needs
+  no On stage logic; its maps equal the probe's but one song (linked only
+  from a page without tabs).
+- **The feed keeps** the songs whose tags ≥ 90 % of their shows carry
+  (vzell; 1,188 songs) and every venue (1,558). It grew to 354 KB as
+  written, 71 KB compressed.
+
+**The songs family** (`sa_bb_tag_family_songs`; `_bbTagSongsOn()`,
+`_bbTagSongGroups()`, `_bbTagSongsExpected()`):
+- **Decisions (vzell, 2026-11-19):** the setlist link AND the feed's map;
+  only the map's songs (the ≥ 90 % threshold); only linked songs (an
+  "unidentified title" is never checked); a medley the feed's `songCombos`
+  names counts through its combined tag.
+- **The facts** (`facts.songs`, `_DP_PARSER_VERSION` 36): the setlist
+  container's `/song:` links by line (`li`), a medley's songs on one line.
+- **The rule:** each linked page once; a page in the map expects the map's
+  first tag, its other tags, the link's title tags (batch 4's
+  `_bbTagSongTitleTags()`) and a combination's tag counting too. The rule
+  judges presence itself (`all`) and returns only missing songs, each tag
+  named once, because two pages can share a map's first tag.
+- **Counts:** 465 shows, 825 missing song tags. On today's data
+  `songCombos` changes nothing (People Get Ready's map already holds
+  "lohad.pgr"); a test with an edited map pins it.
+- **Checks:** `check-bb-batch3b-findings.js --family song`: 0 differences,
+  465 flagged; 0 with the setting off, a feed without tables, the feed off.
+
+**The place family's venue** (feed 1.5): `facts.venue`, the page of the
+show's "Venue" link (`_bbTagVenueFact()`), → the feed's `venueTags`, after
+the title's parts (`_bbTagPlaceExpected()` around `_bbTagPlaceTitleExpected()`;
+checked also when the title has no place parts). 45 shows now (35 + 10 with
+only the venue missing; e.g. 1981-04-26 Forest National, 1995-12-08 Tower
+Theater, five Stone Hill Farm interviews).
+
 ## BruceBaseParser on the same page (bbp-parity, "Coexistence", 2026-11-19)
 
 org/bbp-parity.org, "Closing the matrix"; mockup
@@ -2384,7 +2610,8 @@ Mockup https://claude.ai/artifact/65urMwgWSb6zq6xJa9Mf4x; vzell's answers of
   with Space (the site's `windowKick`; `_extExtracted()` on other hosts).
   Never from a hover; on MusicBrainz only on the press of an event list or
   an event page (feed 1.3, `sa_bb_feed_mb`). A kept copy that lacks a map
-  this script reads (`_BB_FEED_MAPS`: `anchors`, `mb`) was written by an
+  this script reads (`_BB_FEED_MAPS`: `anchors`, `mb`; and `tagTables`, feed
+  1.4, while a tag family needs it: `_bbFeedMapsWanted()`) was written by an
   older BruceParser and is read again before its day is up, once it was
   read an hour ago (`_bbFeedLacksMap()`): vzell's live check of 2026-11-18
   kept 0.20.0's file from a Brucebase page, and the MusicBrainz press that

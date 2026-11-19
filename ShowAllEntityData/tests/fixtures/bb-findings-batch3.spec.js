@@ -399,9 +399,29 @@ test.describe('Brucebase tag check: the rule (bbp-parity batch 3)', () => {
     test('what a page says: its kind and letter from the address, its date from the title, the songs in bold', async ({ page }) => {
         await loadYear(page);
         const facts = (name, addr) => page.evaluate(([html, url]) => window.__saTest.bbTagFacts(html, url), [fs.readFileSync(fileOf(name), 'utf8'), BB + (addr || name)]);
-        expect(await facts(PIT)).toEqual({ kind: 'gig', date: '2016-01-16', letter: '', prem: 35, help: false, featured: false });
-        expect(await facts(MAD)).toEqual({ kind: 'gig', date: '2016-05-21', letter: '', prem: 3, help: false, featured: false });
-        expect(await facts(INT)).toEqual({ kind: 'interview', date: '2016-09-06', letter: '', prem: 0, help: false, featured: false });
+        // The title as written (batch 3b's place family reads its parts) and
+        // what the tabs hold (its content family).
+        const none = { ticket: false, setlist: false, handwritten: false, printed: false, storyteller: false, eyewitness: false };
+        // The 2016 tour's On Stage tab: the band as the page lists it (batch 3b's cast family).
+        const band = { tab: 'On Stage', names: ['Bruce Springsteen', 'The E Street Band', 'Roy Bittan', 'Nils Lofgren', 'Patti Scialfa',
+            'Garry Tallent', 'Steven Van Zandt', 'Max Weinberg', 'Jake Clemons', 'Charles Giordano', 'Soozie Tyrell'] };
+        expect(await facts(PIT)).toEqual({
+            title: '2016-01-16 Consol Energy Center, Pittsburgh, PA', kind: 'gig', date: '2016-01-16', letter: '', prem: 35, help: false, featured: false,
+            content: { ...none, ticket: true, setlist: true, printed: true, storyteller: true }, cast: band,
+            venue: 'venue:consol-energy-center-pittsburgh-pa', songs: expect.any(Array),
+        });
+        expect(await facts(MAD)).toEqual({
+            title: '2016-05-21 Estadio Santiago Bernabéu, Madrid, Spain', kind: 'gig', date: '2016-05-21', letter: '', prem: 3, help: false, featured: false,
+            content: { ...none, ticket: true, storyteller: true }, cast: band,
+            venue: 'venue:estadio-santiago-bernabeu-madrid-spain', songs: expect.any(Array),
+        });
+        expect(await facts(INT)).toEqual({
+            title: '2016-09-06 Stone Hill Studio, Colts Neck, NJ', kind: 'interview', date: '2016-09-06', letter: '', prem: 0, help: false, featured: false,
+            content: none, cast: { tab: 'On Stage', names: ['Rahni Sadler', 'Bruce Springsteen'] },
+            venue: 'venue:stone-hill-studio-colts-neck-nj', songs: [],
+        });
+        // The setlist's song links by line (batch 3b's songs family): Pittsburgh's first line.
+        expect((await facts(PIT)).songs[0]).toEqual([{ page: 'song:rebel-rebel', text: 'REBEL REBEL' }]);
         expect((await facts(MAD, 'gig:2016-05-21b-estadio-santiago-bernabeu-madrid-spain')).letter).toBe('b');
         // Not a show: a venue address gets a page's facts (batch 4), no date or premiere count;
         // a kind no check covers gets none.

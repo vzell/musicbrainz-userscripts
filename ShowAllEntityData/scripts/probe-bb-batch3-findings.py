@@ -786,6 +786,73 @@ def expected_tags(doc, tabs, date, kind, letter, has_help, has_featured, tour_ta
     return exp
 
 
+def content_facts(doc, tabs):
+    """Batch 3b's content family (vzell, 2026-11-19): what the page holds.
+
+    BBP's computeExpectedTags() content rules for the six tags kept: the
+    News/Memorabilia (else News) tab, when filled, showing a ticket (an
+    image whose name says "ticket"; a pass no longer counts), a setlist
+    (an image whose name says "setlist" and not "ticket"), handwritten or
+    printed among those; the Storyteller and Eyewitness tabs filled.
+    """
+    def filled(tab):
+        return tab is not None and not SORRY_RE.match(strip(tab.text()))
+
+    news = tab_el(doc, tabs, 'News/Memorabilia')
+    if news is None:
+        news = tab_el(doc, tabs, 'News')
+    srcs = [i.attrs.get('src') or '' for i in news.find_all('img')] if filled(news) else []
+    sets = [s for s in srcs if re.search('setlist', s, re.I) and not re.search('ticket', s, re.I)]
+    return {
+        'ticket': any(re.search('ticket', s, re.I) for s in srcs),
+        'setlist': bool(sets),
+        'handwritten': any(re.search('handwritten', s, re.I) for s in sets),
+        'printed': any(re.search('printed', s, re.I) for s in sets),
+        'storyteller': filled(tab_el(doc, tabs, 'Storyteller')),
+        'eyewitness': filled(tab_el(doc, tabs, 'Eyewitness')),
+    }
+
+
+def cast_facts(doc, tabs):
+    """Batch 3b's cast family: the cast tab (BBP's RELATION_TAB_CONFIGS order) and its names, once each, or None."""
+    entry = next((lab for lab, _ in RELATION_TABS if lab in tabs), None)
+    if entry is None:
+        return None
+    return {'tab': entry, 'names': list(dict.fromkeys(n for n, _ in relations(doc)))}
+
+
+def venue_fact(doc):
+    """Batch 3b: the show's venue page name ("venue:…") from its "Venue" link, '' without one."""
+    pc = by_id(doc, 'page-content') or doc
+    for a in pc.find_all('a', lambda a: '/venue:' in (a.attrs.get('href') or '')):
+        if strip(a.text()) == 'Venue':
+            m = re.match(r'^/(venue:[^/#?]+)', a.attrs.get('href') or '')
+            return m.group(1) if m else ''
+    return ''
+
+
+def song_groups(doc):
+    """Batch 3b: the setlist's song links by line: [[{page, text}, …], …] in order (BBP's container)."""
+    cont = setlist_container(doc)
+    if cont is None:
+        return []
+    groups = []
+    keys = {}
+    for a in song_links(cont):
+        m = re.match(r'^/(song:[^/#?]+)', a.attrs.get('href') or '')
+        if not m:
+            continue
+        li = a.parent
+        while li is not None and li is not cont and li.tag != 'li':
+            li = li.parent
+        key = id(li) if li is not None and li is not cont else id(a)
+        if key not in keys:
+            keys[key] = len(groups)
+            groups.append([])
+        groups[keys[key]].append({'page': m.group(1), 'text': strip(a.text())})
+    return groups
+
+
 def notes_text(node):
     """textContent without script elements."""
     out = []
@@ -966,9 +1033,10 @@ def analyse(mirror, name, icons):
                               {'help': name in icons['file:help'], 'featured': name in icons['file:featured']},
                               {'help': help_page, 'featured': feat_page}),
         'iconsYear': {'help': name in icons['file:help'], 'featured': name in icons['file:featured']},
-        'facts': {'kind': kind, 'date': date, 'letter': letter or '',
+        'facts': {'title': title, 'kind': kind, 'date': date, 'letter': letter or '',
                   'prem': sum(1 for a in song_links(setlist_container(doc) or doc) if a.inside('strong')),
-                  'help': help_page, 'featured': feat_page},
+                  'help': help_page, 'featured': feat_page, 'content': content_facts(doc, tabs),
+                  'cast': cast_facts(doc, tabs), 'venue': venue_fact(doc), 'songs': song_groups(doc)},
         'dateDiffers': bool(am and date and am.group(1) != date),
         'helpYearOnly': (help_year and not help_page), 'featYearOnly': (feat_year and not feat_page),
         'venueDropped': place_venue_dropped, 'noTitleDate': not date,

@@ -314,7 +314,7 @@
     {
         "name": "feed: a kept file without a map is read on every press",
         "why": "The hour bounds the reads when the published file itself lacks a map.",
-        "edits": [{ "find": "return !!d && now - _bbFeed.at >= _BB_FEED_RETRY_MS && _BB_FEED_MAPS.some(", "replace": "return !!d && _BB_FEED_MAPS.some(" }],
+        "edits": [{ "find": "return !!d && now - _bbFeed.at >= _BB_FEED_RETRY_MS && _bbFeedMapsWanted().some(", "replace": "return !!d && _bbFeedMapsWanted().some(" }],
         "spec": "tests/fixtures/bb-feed.spec.js", "grep": "read within the hour, is not read again", "expect": "fail"
     }
 ]
