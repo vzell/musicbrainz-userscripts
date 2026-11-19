@@ -3,10 +3,10 @@
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
     "script_version": "9.99.1652+2026-11-18",
-    "schema_entries": 549,
+    "schema_entries": 550,
     "sections": 54,
-    "settings": 495,
-    "settings_with_default": 490,
+    "settings": 496,
+    "settings_with_default": 491,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 318,
+      "checkbox": 319,
       "color_picker": 62,
       "divider": 54,
       "number": 53,
@@ -522,6 +522,7 @@
     "sa_findings_tint_event_style": "Highlight event names that almost follow the style guide as WARNING",
     "sa_findings_tint_isrc": "Highlight invalid ISRCs as WARNING",
     "sa_findings_tint_iswc": "Highlight invalid ISWCs as WARNING",
+    "sa_findings_tint_len_unknown": "Highlight tracks with no length as WARNING",
     "sa_findings_tint_live_credit": "Highlight live-recording credit dates as WARNING/ERROR",
     "sa_findings_tint_low_quality": "Highlight 🟠 low data quality releases as WARNING",
     "sa_findings_tint_mbid_case": "Highlight setlist MBIDs written with uppercase letters as WARNING",
@@ -1018,6 +1019,7 @@
     "sa_findings_tint_event_style": true,
     "sa_findings_tint_isrc": true,
     "sa_findings_tint_iswc": true,
+    "sa_findings_tint_len_unknown": true,
     "sa_findings_tint_live_credit": true,
     "sa_findings_tint_low_quality": true,
     "sa_findings_tint_mbid_case": true,

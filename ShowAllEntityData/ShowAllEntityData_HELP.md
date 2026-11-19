@@ -840,6 +840,7 @@ back).
 | ⚠️     | Release has no barcode entered (an empty cell, not "[none]")    | Release lists: Barcode                      |
 | ⚠️     | Label without a catalog number ("[no label]" excepted)          | Release lists: Catalog#                     |
 | ⚠️     | Release has no release event (no date, no country)              | Release lists: Date (or Country/Date)       |
+| ⚠️     | Track has no length ("?:??")                                    | Release tracklist: Length                   |
 | ⚠️     | Artwork has no Front image (releases with artwork only)         | CAA                                         |
 | ⚠️     | Physical release artwork has no Medium image                    | CAA (needs a Format column)                 |
 | ⚠️     | Several links to one site in Relationships (once loaded)        | Relationships                               |

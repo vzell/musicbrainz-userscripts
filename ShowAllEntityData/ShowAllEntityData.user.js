@@ -2838,6 +2838,14 @@
                          'yellow with a ⚠️.'
         },
 
+        sa_findings_tint_len_unknown: {
+            label: 'Highlight tracks with no length as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint a release tracklist Length cell light yellow with a ⚠️ when MusicBrainz knows no length ' +
+                         'for the track ("?:??").'
+        },
+
         sa_findings_tint_live_credit: {
             label: 'Highlight live-recording credit dates as WARNING/ERROR',
             type: 'checkbox',
@@ -76797,6 +76805,21 @@
             cols: name => name === 'Length' || name === 'Recording length',
             test: cell => _findCellLenFlag(cell) === 'warn',
             tint: () => false,
+        },
+        // Mission Control's "track without a length" (org/majkinetor.org,
+        // release checks): MusicBrainz draws an unknown track length as
+        // "?:??". Only the track's own Length, on a release tracklist; an
+        // unknown length is never compared, so len-warn/len-severe never
+        // paint this cell.
+        {
+            id: 'len-unknown', level: 'warn', glyph: '⏱️', scope: 'cell',
+            label: 'Track has no length',
+            tip: 'MusicBrainz knows no length for this track: it shows "?:??".',
+            enabled: () => !_foreignHost && activeDefinition?.type === 'release-tracks',
+            cols: name => name === 'Length',
+            test: (cell, row) => !!row.querySelector('a[href*="/recording/"]') &&
+                _parseDurationToMs(cell.textContent) === null,
+            tint: _findingTintSetting('sa_findings_tint_len_unknown'),
         },
         {
             id: 'no-work', level: 'warn', glyph: '🚫', scope: 'cell',

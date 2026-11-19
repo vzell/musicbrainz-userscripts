@@ -192,3 +192,97 @@ test.describe('release-check findings', () => {
         expect(await stamps(page)).toEqual(EXPECTED);
     });
 });
+
+// len-unknown: Mission Control's "track without a length", on a release
+// tracklist. A real two-track release with track 1's length set to "?:??"
+// (tests/fixtures/release-tracks-length-unknown.html); track 2 (11:26) is the
+// near miss.
+const REL_URL = 'https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897';
+const REL_FIXTURE = path.join(__dirname, 'release-tracks-length-unknown.html');
+
+/**
+ * Loads the release fixture and presses "Show all Tracks for Release".
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {Object} [settingsOverride]
+ */
+async function openRelease(page, settingsOverride = {}) {
+    await loadUserscriptPage(page, { url: REL_URL, fixtureFile: REL_FIXTURE, testMode: true,
+        settingsOverride: { ...SETTINGS, sa_enable_release_tracks: true, ...settingsOverride } });
+    await page.route(`${REL_URL}*`, (r) => r.fulfill({ path: REL_FIXTURE, contentType: 'text/html' }));
+    await page.click('button[data-label="Show all Tracks for Release"]');
+    await waitForRenderComplete(page, { waitForAutoResize: false });
+}
+
+/**
+ * Every visible track row's Length text and whether its Length cell carries
+ * len-unknown, with the cell's tint level and glyph.
+ *
+ * @param {import('@playwright/test').Page} page
+ */
+const lengthCells = (page) => page.evaluate(() => {
+    const out = [];
+    document.querySelectorAll('table.tbl').forEach((t) => {
+        const names = Array.from(t.querySelectorAll('thead tr:first-child th')).map((th) => th.dataset.colName || '');
+        const li = names.indexOf('Length');
+        if (li < 0) return;
+        t.querySelectorAll('tbody tr').forEach((tr) => {
+            if (tr.style.display === 'none' || !tr.querySelector('a[href*="/recording/"]')) return;
+            const td = tr.cells[li];
+            out.push({
+                text: td.textContent.trim(),
+                flagged: (td.dataset.mbFindings || '').split(' ').includes('len-unknown'),
+                level: td.dataset.mbFinding || null,
+                after: getComputedStyle(td, '::after').content,
+            });
+        });
+    });
+    return out;
+});
+
+test.describe('release-check findings: track without a length', () => {
+    test('only the "?:??" track is flagged, counted, tinted and filterable', async ({ page }) => {
+        await openRelease(page);
+        const cells = await lengthCells(page);
+        expect(cells.map((c) => [c.text, c.flagged]), 'track 1 unknown, track 2 known').toEqual([['?:??', true], ['11:26', false]]);
+        expect(cells[0].level).toBe('warn');
+        expect(cells[0].after).toBe('"⚠️"');
+        expect((await findingRow(page, 'warn', 'len-unknown')).count).toBe(1);
+
+        const total = (await findingRowState(page)).visible;
+        await clickFinding(page, 'len-unknown');
+        await expect.poll(async () => (await findingRowState(page)).visible, { timeout: 15000 }).toBe(1);
+        expect((await findingRowState(page, 'len-unknown')).withFinding).toBe(1);
+        await clickFinding(page, 'len-unknown');
+        await expect.poll(async () => (await findingRowState(page)).visible, { timeout: 15000 }).toBe(total);
+    });
+
+    test('its tint setting turns the paint off but keeps the finding', async ({ page }) => {
+        await openRelease(page, { sa_findings_tint_len_unknown: false });
+        const cells = await lengthCells(page);
+        expect(cells[0].flagged, 'still detected').toBe(true);
+        expect(cells[0].level, 'not tinted').toBeNull();
+        expect(await findingRow(page, 'warn', 'len-unknown'), 'the menu row stays').toBeTruthy();
+    });
+
+    test('a release list never carries it (release tracklists only)', async ({ page }) => {
+        await open(page);
+        expect(await findingRow(page, 'warn', 'len-unknown')).toBeUndefined();
+    });
+
+    test('a recordings list with "?:??" lengths does not carry it either', async ({ page }) => {
+        // The TODO scopes the check to release tracklists; an artist's
+        // recordings list has a Length column with "?:??" too.
+        const url = 'https://musicbrainz.org/artist/89729b97-90a3-4f84-9e88-e16f96cab350/recordings';
+        const fixture = path.join(__dirname, 'artist-recordings-ms-batch.html');
+        await loadUserscriptPage(page, { url, fixtureFile: fixture, testMode: true,
+            settingsOverride: { ...SETTINGS, sa_enable_ms_track_length: false } });
+        await page.route(`${url}?**`, (r) => r.fulfill({ path: fixture, contentType: 'text/html' }));
+        await page.click('button[data-label="⊚ All recordings"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const unknown = await page.evaluate(() => Array.from(document.querySelectorAll('table.tbl tbody td'))
+            .filter((td) => td.textContent.trim() === '?:??').length);
+        expect(unknown, 'the page does have unknown lengths').toBeGreaterThan(0);
+        expect(await page.locator('td[data-mb-findings~="len-unknown"]').count()).toBe(0);
+    });
+});

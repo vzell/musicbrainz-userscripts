@@ -1500,10 +1500,20 @@ Each is one =FINDINGS= entry (=add-finding= skill) that reads source-row data th
     lookup returns no releases, so each recording is looked up):
     [[https://musicbrainz.org/release/f6b30d03-7e13-48e5-b413-1160307d3580][Five O'Clock]], where the ISRCs
     =AEA2M2298352= … are shifted by one track, so each sits on two neighbouring tracks' recordings.
-  - *release-tracks has no ISRC column by default* (=sa_enable_release_tracks_isrc_column= is =false=); the codes
-    sit in each track's Title cell then. The shared-ISRC finding must read them there too.
-- *Perf*: cell findings run in =stampFindings()= over source rows. They are O(rows), and the shared-ISRC one needs a
-  per-render map ISRC → recording MBIDs.
+  - *ISRCs on release-tracks* (corrected the same night): MusicBrainz's release page shows NO ISRCs. They reach a
+    track row only from a third-party script, jesus2099's SUPER MIND CONTROL (=div.ars.ISRC…= in the Title cell,
+    after an async lookup, so after our render) or ISRC Scout's own column (=td.ii-col-isrc=, which already
+    highlights duplicates itself, =highlightDuplicates=). =sa_enable_release_tracks_isrc_column= only moves what
+    those scripts put there.
+- *Done on =feat/release-check-findings=* (2026-11-19, petri; not merged yet): =barcode-zero= (error),
+  =barcode-missing=, =catno-missing=, =release-event-none= on release lists, =len-unknown= on release tracklists.
+  - The "no barcode entered" tint is OFF by default (vzell): it flagged 959 of Bob Dylan's 2,301 releases, and with
+    it on, typing in the filter took ~6% longer (tests/MEASUREMENTS.org, 2026-11-19); counted and filterable either
+    way.
+  - *Not built* (vzell): "one ISRC on two recordings" (third-party data only, after our render; ISRC Scout does it
+    already) and "recording without an ISRC" (most recordings have none, so it would flag most rows).
+  - Details: docs/claude/findings.md, "Release checks".
+- *Perf*: cell findings run in =stampFindings()= over source rows, O(rows). Measured: see "Done" above.
 - *Optional, costs requests*: "barcode already on another MB release" (PC =pcBarcodeOnMb= 9692, one search per
   barcode) and "Discogs master missing on the RG" (from the RG's url-rels). Only behind a button or setting.
 

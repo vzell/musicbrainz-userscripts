@@ -141,5 +141,57 @@
     "spec": "tests/fixtures/release-check-findings.spec.js",
     "grep": "is counted but not painted by default",
     "expect": "fail"
+  },
+  {
+    "name": "len-unknown never matches",
+    "why": "The \"?:??\" track loses its warning. Must fail on the len-unknown test.",
+    "edits": [
+      {
+        "find": "                _parseDurationToMs(cell.textContent) === null,",
+        "replace": "                false,"
+      }
+    ],
+    "spec": "tests/fixtures/release-check-findings.spec.js",
+    "grep": "track is flagged, counted, tinted and filterable",
+    "expect": "fail"
+  },
+  {
+    "name": "len-unknown flags every track length",
+    "why": "Without the unknown-duration test the known 11:26 track is flagged too. Must fail on the len-unknown test.",
+    "edits": [
+      {
+        "find": "                _parseDurationToMs(cell.textContent) === null,",
+        "replace": "                true,"
+      }
+    ],
+    "spec": "tests/fixtures/release-check-findings.spec.js",
+    "grep": "track is flagged, counted, tinted and filterable",
+    "expect": "fail"
+  },
+  {
+    "name": "len-unknown runs on every page with a Length column",
+    "why": "Artist and work recording lists have a Length column with \"?:??\" too; the TODO scopes the check to release tracklists. Must fail on the recordings-list test (artist-recordings-ms-batch.html).",
+    "edits": [
+      {
+        "find": "            enabled: () => !_foreignHost && activeDefinition?.type === 'release-tracks',",
+        "replace": "            enabled: () => !_foreignHost,"
+      }
+    ],
+    "spec": "tests/fixtures/release-check-findings.spec.js",
+    "grep": "a recordings list with",
+    "expect": "fail"
+  },
+  {
+    "name": "the len-unknown tint setting is ignored",
+    "why": "The tint must follow sa_findings_tint_len_unknown. Must fail on its tint test.",
+    "edits": [
+      {
+        "find": "            tint: _findingTintSetting('sa_findings_tint_len_unknown'),",
+        "replace": "            tint: () => true,"
+      }
+    ],
+    "spec": "tests/fixtures/release-check-findings.spec.js",
+    "grep": "its tint setting turns the paint off but keeps the finding",
+    "expect": "fail"
   }
 ]

@@ -577,11 +577,26 @@ real examples and the rendering rules below are in that TODO's
   is an event.
 - `_rcIsReleaseRow()` keeps a row without a release link from being flagged
   for empty cells (`barcode-missing`, `release-event-none`).
+- **`len-unknown`** (warn, Length; Mission Control's "track without a
+  length"): a track row's Length that `_parseDurationToMs()` cannot read,
+  i.e. MusicBrainz's "?:??". `release-tracks` only (`enabled()` reads
+  `activeDefinition.type`): recording lists have "?:??" lengths too, and
+  the TODO scoped the check to the tracklist. An unknown length is never
+  compared, so `len-warn`/`len-severe` never paint the same cell.
+- **Not built, on purpose** (vzell, 2026-11-19): "one ISRC on two
+  recordings of the release" and "recording without an ISRC". MusicBrainz's
+  release page shows no ISRCs; on `release-tracks` they come only from a
+  third-party script (jesus2099's SUPER MIND CONTROL, after our render, or
+  ISRC Scout's column, which already marks duplicates itself), so the
+  finding would need a re-stamp on late data and would work only with one of
+  those installed. Most recordings have no ISRC, so the second would flag
+  most rows.
 - Tint settings `sa_findings_tint_barcode_zero`, `_barcode_missing`,
-  `_catno_missing`, `_release_event_none`. Spec
-  `tests/fixtures/release-check-findings.spec.js` (fixture
-  `release-check-findings.html`, ten rows with each rule's near misses);
-  mutations `scripts/mutations/release-check-findings.json`.
+  `_catno_missing`, `_release_event_none`, `_len_unknown`. Spec
+  `tests/fixtures/release-check-findings.spec.js` (fixtures
+  `release-check-findings.html`, ten rows with each rule's near misses, and
+  `release-tracks-length-unknown.html`, a real two-track release with track
+  1 set to "?:??"); mutations `scripts/mutations/release-check-findings.json`.
 
 ## On demand: the title-style findings
 
