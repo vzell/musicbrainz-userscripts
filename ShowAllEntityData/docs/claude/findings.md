@@ -768,7 +768,13 @@ recommended). The first finding row of each menu (after the WARNING menu's
 - **A chip**, first in `#mb-findings-chips`, its ✕ the level row's toggle.
 - **Late findings**: a row whose data has not arrived carries no finding, so the
   level filter hides it, as a single finding does; the row's hover text says
-  that only what is known so far counts.
+  that only what is known so far counts. When its stamp arrives,
+  `_flushFindingsRestamp()` re-filters while a level is on (as for a ticked
+  `_LATE_FINDING_IDS` finding), and drops the filter cache first: the key
+  (query, ticks, levels) is unchanged, so `runFilter()` would replay the
+  pass from before the stamp. Both were missing in 9.99.1655 and found by
+  ▶ Pages' Read every row (docs/claude/brucebase.md): the last row read was
+  stamped after the refresh's pass and never joined "All errors".
 - Spec `tests/fixtures/findings-any-level.spec.js` (MusicBrainz live album and
   release group, the Brucebase 1972 year); helpers `findingLevelRow()`,
   `clickFindingLevel()` in `tests/support/findingsMenu.js`; mutations

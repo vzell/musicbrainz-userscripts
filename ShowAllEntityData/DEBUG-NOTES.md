@@ -30508,3 +30508,23 @@ Env: 2026-11-19T09:49:14+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
   long synchronous task after ✕ or a sort.
 - **`npm run test:full` at `b4beedaa`, 09:50:17–10:14:45 CET (24 m 28 s): 3,305 of 3,305 passed**, the first full run
   on NB-3641 in five with no `filter-sliced.spec.js` failure.
+
+## 2026-11-19 — ▶ Pages "Read every row", and two gaps of "All errors" with late stamps (feat/bb-evp-read-all)
+Env: 2026-11-19T11:11:54+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (chromium-fixtures), no Tampermonkey (GM stubs); the mirror count: n/a browser
+
+- **What:** branch 3 of "Closing the matrix" (org/bbp-parity.org): `_bbEvpReadAll()` in the ▶ Pages card and the ☰
+  menu's Brucebase group; design in docs/claude/brucebase.md, "Read every row". Pages per row from the mirror
+  (`~/git/scripts/BruceParser/bb/latest` → 2026-11-15, local on NB-3641): 5,030 event pages, 3,484 onstage:, 2,168 venue:.
+- **Found while writing the spec, both in 9.99.1655's code:** with "All errors" on, the last row read stayed hidden
+  although its source row carried three error stamps and the menu counted it. (1) `_flushFindingsRestamp()` re-filters
+  only for a ticked `_LATE_FINDING_IDS` finding, not for a level; (2) when it does, `runFilter()` answers from
+  `_filterResultCache`: the key (query, ticks, levels) is unchanged by a stamp, so it replays the pass from before.
+  Both fixed (re-filter for a level, drop the cache first). Also ▶ Pages' refresh re-filtered for a typed filter only
+  (`_anyFilterActive()`); it now counts `_findingFiltersActive()` too (a guard: the re-stamp covers it in the spec).
+- **Two test traps:** Playwright scrolls the page to click inside the job card, so "without scrolling" is checked
+  after a scroll back to the top, with rows far below the window as the premise. A page answered while Stop was pressed
+  is not counted as read and is later taken from memory, not asked again: "every row once" is a set, not a count.
+- **Tests:** `bb-evp-read-all.spec.js` (4), twice with the ▶ Pages, findings-menu and stamp specs: 94 of 94.
+  Mutations `bb-evp-read-all.json`: 11 as recorded (one `"expect": "pass"` guard, reason in its entry).
+- **Perf:** tests/MEASUREMENTS.org, 1985 year render 1.004, sort 1.009 (main/branch from a worktree).
+- **Not run yet:** `npm run test:full`.

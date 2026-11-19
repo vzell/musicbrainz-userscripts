@@ -4591,3 +4591,20 @@ Env: 2026-11-19T09:50:17+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
 
 3305 passed (main's 3303 plus the two "gives way" tests). The first run on NB-3641 in five without a
 =filter-sliced.spec.js= failure.
+
+* 2026-11-19 — Brucebase year render and sort, main vs feat/bb-evp-read-all (NB-3641)
+
+Env: 2026-11-19T11:10:04–11:11:44+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs).
+
+pageType =bb-year= (=tableMode: single=), "1985" (100 rows), fixture; =node scripts/measure-bb-year-render.js 1985 9=,
+main (=c8a99412=, 9.99.1656) from a git worktree, the branch's userscript uncommitted on it. Medians of 9 reps, ms,
+arms in the order A,B,B,A,A,B:
+
+| Measure | main (A)      | branch (B)    | ratio B/A (means) |
+|---------+---------------+---------------+-------------------|
+| render  | 539, 554, 542 | 548, 536, 557 |             1.004 |
+| sort    | 69, 70, 74    | 69, 76, 70    |             1.009 |
+
+No cost: the branch changes no render or sort path (the ☰ row is added once, the refresh and re-stamp change only
+while reading every row or with a level filter on). A first A,B,B,A run (11:08–11:09) is not usable: the machine's
+render times fell from about 1,020 to about 540 ms in its third arm.

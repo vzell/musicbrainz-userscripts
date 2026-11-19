@@ -4203,7 +4203,17 @@ entry, with these columns:
   it for the whole table: every row goes back to — and is read again when
   you can see it, never all at once; a venue and a year's listing are read
   again once. Rows you do not scroll to before leaving the page keep their
-  stored copy. The year listings (`/1985-list`) have
+  stored copy. **Read every row**, in the progress card and in the ☰ menu's
+  Brucebase group, reads the rows not read yet without scrolling: every row of
+  the table in its current order (sorted as you sorted it), including rows a
+  filter hides, still one page a second. Above 200 rows it first says how
+  many, and about how many pages and how long (the start page: about 10,000
+  pages, nearly three hours the first time). The card then shows the time
+  left, how many rows are flagged so far and the row being read; a filter,
+  such as *All errors*, takes in the rows read every 25 rows or 10 seconds,
+  and the window stays where it is. Stop (■ Pages, or Stop in the card) puts
+  the rest back; a later Read every row goes on where it stopped, as the rows
+  read come from the browser's store. The year listings (`/1985-list`) have
   the same four columns; there a row's page is found on its year page first
   (one request for the year).
 - **What the wiki got wrong** shows on the Event cell and in the ⚠️ / ❌
