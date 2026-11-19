@@ -1,0 +1,210 @@
+[
+    {
+        "name": "tour: the switch is always on",
+        "why": "sa_bb_tag_family_tour is off by default while the families are tuned (vzell, 2026-11-19).",
+        "edits": [
+            {
+                "find": "        return Lib.settings.sa_bb_tag_family_tour === true;",
+                "replace": "        return Lib.settings.sa_bb_tag_family_tour !== 'never';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "off, a feed without its tables, the feed off",
+        "expect": "fail"
+    },
+    {
+        "name": "tour: nogigs are not looked at",
+        "why": "vzell, 2026-11-19: gigs and nogigs.",
+        "edits": [
+            {
+                "find": "        return !!facts && !facts.page && (facts.kind === 'gig' || facts.kind === 'nogig')",
+                "replace": "        return !!facts && !facts.page && (facts.kind === 'gig')"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "each page as the probe found it",
+        "expect": "fail"
+    },
+    {
+        "name": "tour: rehearsals are looked at too",
+        "why": "A rehearsal carries the coming tour's tag before its first date (157 shows).",
+        "edits": [
+            {
+                "find": "        return !!facts && !facts.page && (facts.kind === 'gig' || facts.kind === 'nogig')",
+                "replace": "        return !!facts && !facts.page && (facts.kind === 'gig' || facts.kind === 'nogig' || facts.kind === 'rehearsal')"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "each page as the probe found it",
+        "expect": "fail"
+    },
+    {
+        "name": "tour: a date with \"00\" is looked at",
+        "why": "Such a date lies in no range or in several; \"1975-10-00\" sorts inside Born to Run's dates.",
+        "edits": [
+            {
+                "find": "            && /^\\d{4}-(?!00)\\d{2}-(?!00)\\d{2}$/.test(facts.date || '');",
+                "replace": "            && /^\\d{4}-\\d{2}-\\d{2}$/.test(facts.date || '');"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "two tours on one date",
+        "expect": "fail"
+    },
+    {
+        "name": "tour: \"tour_no\" excuses nothing",
+        "why": "tour_no marks a one-off show between a tour's dates (vzell, 2026-11-19).",
+        "edits": [
+            {
+                "find": "        const expected = all.has('tour_no') ? [] : Array.from(cov, tag => ({",
+                "replace": "        const expected = all.has('tour_none') ? [] : Array.from(cov, tag => ({"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "two tours on one date",
+        "expect": "fail"
+    },
+    {
+        "name": "tour: only the first covering tour counts",
+        "why": "Two tours on one date: both are expected (vzell, 2026-11-19).",
+        "edits": [
+            {
+                "find": "            if ((t.ranges || []).some(r => Array.isArray(r) && r[0] <= facts.date && facts.date <= r[1])) cov.add(tag);",
+                "replace": "            if (!cov.size && (t.ranges || []).some(r => Array.isArray(r) && r[0] <= facts.date && facts.date <= r[1])) cov.add(tag);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "two tours on one date",
+        "expect": "fail"
+    },
+    {
+        "name": "tour: a covering tour's tag beside tour_no is called not expected",
+        "why": "It is not expected, and not wrong either.",
+        "edits": [
+            {
+                "find": "            if (family === 'tour' && tour.cov.has(tag)) continue;",
+                "replace": "            if (family === 'tour' && tour.cov.has(tag) && !tour) continue;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "two tours on one date",
+        "expect": "fail"
+    },
+    {
+        "name": "tour: no table tour tag is ever not expected",
+        "why": "A tour tag whose tour has other dates is a warning.",
+        "edits": [
+            {
+                "find": "            const family = icon ? 'icon' : tour && tour.table.has(tag) ? 'tour' : _bbTagCheckedFamily(tag);",
+                "replace": "            const family = icon ? 'icon' : _bbTagCheckedFamily(tag);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "each page as the probe found it",
+        "expect": "fail"
+    },
+    {
+        "name": "tour: the tables are read with the feed off",
+        "why": "Off means no feed, kept copy included.",
+        "edits": [
+            {
+                "find": "        _bbFeedReadKept();\n        if (!_bbFeedOn()) return null;\n        const t = _bbFeed.data && _bbFeed.data.tagTables;",
+                "replace": "        _bbFeedReadKept();\n        const t = _bbFeed.data && _bbFeed.data.tagTables;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "off, a feed without its tables, the feed off",
+        "expect": "fail"
+    },
+    {
+        "name": "tour: a missing tag's chip in the Other row",
+        "why": "The Tour row is where the tag sits when the page has it.",
+        "edits": [
+            {
+                "find": "prem: 'material', icon: 'material', tour: 'tour',",
+                "replace": "prem: 'material', icon: 'material', tour: 'other',"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "Brussels: \"tour_mgc\" missing in the Tour row",
+        "expect": "fail"
+    },
+    {
+        "name": "tour: no word while the tables are not there",
+        "why": "The card says why the tour is not checked.",
+        "edits": [
+            {
+                "find": "        if (!_bbTagTourOn() || !_bbTagTourApplies(facts) || _bbFeedTables()) return '';",
+                "replace": "        if (facts || !_bbTagTourOn() || !_bbTagTourApplies(facts) || _bbFeedTables()) return '';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "the feed off: the card says the tour is not checked",
+        "expect": "fail"
+    },
+    {
+        "name": "tour: \"as expected\" never names the tour",
+        "why": "It names the families that were checked.",
+        "edits": [
+            {
+                "find": "            return `✓ date, letter, kind, premiere${tour ? ', icon and tour' : ' and icon'} tags as expected`;",
+                "replace": "            return `✓ date, letter, kind, premiere${tour && !tour ? ', icon and tour' : ' and icon'} tags as expected`;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "names the tour only where it is checked",
+        "expect": "fail"
+    },
+    {
+        "name": "tour: a kept feed without tables is never read again for them",
+        "why": "_bbFeedMapsWanted() adds tagTables while the family is on.",
+        "edits": [
+            {
+                "find": "        return _bbTagTourOn() ? _BB_FEED_MAPS.concat('tagTables') : _BB_FEED_MAPS;",
+                "replace": "        return _BB_FEED_MAPS;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "a kept feed without tables, read an hour ago",
+        "expect": "fail"
+    },
+    {
+        "name": "tour: the tables are wanted with the switch off too",
+        "why": "With every family off a kept 1.3 file is not read again for them.",
+        "edits": [
+            {
+                "find": "        return _bbTagTourOn() ? _BB_FEED_MAPS.concat('tagTables') : _BB_FEED_MAPS;",
+                "replace": "        return _BB_FEED_MAPS.concat('tagTables');"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "a kept feed without tables, read an hour ago",
+        "expect": "fail"
+    },
+    {
+        "name": "tour: a feed that comes in later repaints nothing",
+        "why": "_bbTagFamiliesFeedChanged() fills the cards again and writes the read Tags cells again.",
+        "edits": [
+            {
+                "find": "    function _bbTagFamiliesFeedChanged() {\n        if (!_bbTagTourOn()) return;",
+                "replace": "    function _bbTagFamiliesFeedChanged() {\n        return;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "the tables come after the rows were read",
+        "expect": "fail"
+    },
+    {
+        "name": "tour: a feed that comes in later leaves the cards as they were",
+        "why": "The card boxes are filled again (_bbTagPagesNotify()), not only the year table's cells.",
+        "edits": [
+            {
+                "find": "        Array.from(_bbTagPagesBoxes.keys()).forEach(name => _bbTagPagesNotify(name));\n        if (!_isBbHost) return;",
+                "replace": "        if (!_isBbHost) return;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "a kept feed without tables, read an hour ago",
+        "expect": "fail"
+    }
+]

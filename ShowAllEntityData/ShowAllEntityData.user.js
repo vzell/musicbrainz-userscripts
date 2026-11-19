@@ -3184,6 +3184,21 @@
                          'a second letter tag is never flagged.'
         },
 
+        sa_bb_tag_family_tour: {
+            label: 'Also check a Brucebase show\'s tour tag',
+            type: 'checkbox',
+            default: false,
+            description: 'With the two settings above: a gig or a cancelled show (nogig) whose date lies in a ' +
+                         'tour\'s dates should carry that tour\'s tag ("tour_wb"; two tours on one date: ' +
+                         'both), unless it is tagged "tour_no" (a one-off show between the tour\'s dates). A ' +
+                         'tour tag whose tour has other dates is not expected. The tours and their dates come ' +
+                         'from the Brucebase feed (setting "Read the Brucebase feed"), which BruceParser keeps; ' +
+                         'without the feed the tour is not checked and the Tags card says so. A date with ' +
+                         '"00" and the other kinds of page are not checked (a rehearsal carries the coming ' +
+                         'tour\'s tag before its first date). Off by default while the families are tuned ' +
+                         '(org/springsteen-marriage.org, batch 3b).'
+        },
+
         sa_findings_tint_bb_tags: {
             label: 'Highlight Tags cells of Brucebase entries with a missing or not expected tag',
             type: 'checkbox',
@@ -5658,7 +5673,7 @@
                          'read can see: pages without a parent page, pages titled differently from their show, ' +
                          'pages with no tag, pages without their first-letter tag, date tags that do not fit a ' +
                          'page\'s date, pages tagged "files" without a picture. On: the file is read from ' +
-                         'GitHub (raw.githubusercontent.com/vzell/brucebase-feed, about 25 KB) at most once a ' +
+                         'GitHub (raw.githubusercontent.com/vzell/brucebase-feed, about 28 KB compressed) at most once a ' +
                          'day, when you press a Brucebase page\'s button or open a Brucebase window with Space, ' +
                          'and the pages and rows it names are marked, with no request to the wiki. Every mark ' +
                          'names the run it comes from; the wiki may have been fixed since. The ☰ menu\'s ' +
@@ -28003,7 +28018,8 @@
     const _BB_FEED_RETRY_MS = 3600 * 1000;
     /**
      * The feed's maps this script reads, each added by a later BruceParser
-     * (`anchors` 1.2, `mb` 1.3). A kept file without one of them was written
+     * (`anchors` 1.2, `mb` 1.3; `tagTables` 1.4 only while a tag family needs
+     * it, `_bbFeedMapsWanted()`). A kept file without one of them was written
      * before it, so it counts as old once it was read an hour ago, whatever
      * its day: vzell's live check of 2026-11-18 kept 0.20.0's file from a
      * Brucebase page, and a MusicBrainz press then read nothing new and
@@ -28192,7 +28208,34 @@
      */
     function _bbFeedLacksMap(now) {
         const d = _bbFeed.data;
-        return !!d && now - _bbFeed.at >= _BB_FEED_RETRY_MS && _BB_FEED_MAPS.some(k => !d[k] || typeof d[k] !== 'object');
+        return !!d && now - _bbFeed.at >= _BB_FEED_RETRY_MS && _bbFeedMapsWanted().some(k => !d[k] || typeof d[k] !== 'object');
+    }
+
+    /**
+     * The feed's maps this script reads now: `_BB_FEED_MAPS`, and
+     * `tagTables` (feed 1.4) while a tag family that needs it is on
+     * (`sa_bb_tag_family_tour`; batch 3b). With every such family off a
+     * kept 1.3 file is not read again for it.
+     *
+     * @returns {string[]}
+     */
+    function _bbFeedMapsWanted() {
+        return _bbTagTourOn() ? _BB_FEED_MAPS.concat('tagTables') : _BB_FEED_MAPS;
+    }
+
+    /**
+     * The feed's lookup tables of the tag families (feed 1.4, `tagTables`:
+     * tours, states, provinces, country regions, tag overrides; BruceParser's
+     * `brucebase/tag-tables.json`). Null with the feed off or without them
+     * (a feed of 1.3 or older, none kept yet).
+     *
+     * @returns {?{tours: Array<{name: string, tag: string, ranges: Array<Array<string>>}>}}
+     */
+    function _bbFeedTables() {
+        _bbFeedReadKept();
+        if (!_bbFeedOn()) return null;
+        const t = _bbFeed.data && _bbFeed.data.tagTables;
+        return t && typeof t === 'object' && Array.isArray(t.tours) ? t : null;
     }
 
     /**
@@ -28225,6 +28268,8 @@
         // On MusicBrainz (feed 1.3): the event page's sidebar mark.
         if (onMb) _bbFeedMbSidebarDraw();
         _bbFeedRefreshMarks();
+        // Batch 3b: the tour family's tables came with it.
+        _bbTagFamiliesFeedChanged();
         _bbFeedSaedRow();
         if (typeof _updateFindingMenus === 'function') _updateFindingMenus();
     }
@@ -38538,6 +38583,102 @@
     }
 
     /**
+     * Whether a show's tour tag is checked (`sa_bb_tag_family_tour`; batch
+     * 3b, off by default while the families are tuned: vzell, 2026-11-19).
+     *
+     * @returns {boolean}
+     */
+    function _bbTagTourOn() {
+        return Lib.settings.sa_bb_tag_family_tour === true;
+    }
+
+    /**
+     * Whether the tour family looks at a show (vzell, 2026-11-19): a gig or a
+     * nogig whose title gives a whole date. Probe
+     * (`scripts/probe-bb-tour-tags.py`, mirror bb/2026-11-19): a recording
+     * carries the tour's tag 0 times in 35, an interview 6 in 47, and a
+     * rehearsal carries the coming tour's tag before its first date (157
+     * shows); a date with "00" lies in no range or in several.
+     *
+     * @param {?Object} facts - `_bbTagFacts()`.
+     * @returns {boolean}
+     */
+    function _bbTagTourApplies(facts) {
+        return !!facts && !facts.page && (facts.kind === 'gig' || facts.kind === 'nogig')
+            && /^\d{4}-(?!00)\d{2}-(?!00)\d{2}$/.test(facts.date || '');
+    }
+
+    /**
+     * The tour family of a show (batch 3b; vzell, 2026-11-19): every tour of
+     * the feed's table whose dates cover the show's date is expected (two
+     * tours on one date: both; every show of the mirror in such an overlap
+     * carries both), unless a page of the show carries "tour_no", the wiki's
+     * mark of a one-off show between a tour's dates (125 of the 126 gigs in
+     * a tour's dates without its tag). Null when the family is off, the show
+     * is not looked at, or the feed has no tables.
+     *
+     * @param {Object} facts - `_bbTagFacts()`.
+     * @param {Set<string>} all - The tags of every page of the show, lower case.
+     * @returns {?{expected: Array<{tag: string, family: string, why: string}>, cov: Set<string>, table: Set<string>, names: Map<string, string>}}
+     *   `cov`: the covering tours' tags; `table`: every tour tag of the table; `names`: a tag's tour names.
+     */
+    function _bbTagTourCheck(facts, all) {
+        if (!_bbTagTourOn() || !_bbTagTourApplies(facts)) return null;
+        const tables = _bbFeedTables();
+        if (!tables) return null;
+        const names = new Map();
+        const cov = new Set();
+        tables.tours.forEach((t) => {
+            if (!t || typeof t.tag !== 'string') return;
+            const tag = t.tag.toLowerCase();
+            const nm = names.get(tag);
+            if (!nm) names.set(tag, String(t.name || tag));
+            else if (t.name && !nm.split(' / ').includes(t.name)) names.set(tag, `${nm} / ${t.name}`);
+            if ((t.ranges || []).some(r => Array.isArray(r) && r[0] <= facts.date && facts.date <= r[1])) cov.add(tag);
+        });
+        const expected = all.has('tour_no') ? [] : Array.from(cov, tag => ({
+            tag, family: 'tour', why: `${facts.date} is in the dates of the tour "${names.get(tag)}" (the Brucebase feed's tour table).`,
+        }));
+        return { expected, cov, table: new Set(names.keys()), names };
+    }
+
+    /**
+     * The words the Tags card shows for a family that wants the feed's
+     * tables while they are not there; '' when nothing is missing.
+     *
+     * @param {?Object} facts - `_bbTagFacts()`.
+     * @returns {string}
+     */
+    function _bbTagFamiliesWait(facts) {
+        if (!_bbTagTourOn() || !_bbTagTourApplies(facts) || _bbFeedTables()) return '';
+        return _bbFeedOn() ? 'The tour tag is checked once the Brucebase feed with its tour table is read.'
+            : 'The tour tag is not checked: the Brucebase feed is off.';
+    }
+
+    /**
+     * The feed came in or changed (`_bbFeedChanged()`): with the tour family
+     * on, its tables may be new, so every Tags card and window box that
+     * shows a record is filled again (`_bbTagPagesNotify()`), and on
+     * Brucebase every read Tags cell of a year table is written again
+     * (`_bbEvpRenderCell()`, live and source rows; it queues a changed
+     * row's re-stamp), then the post-write duties.
+     *
+     * @returns {void}
+     */
+    function _bbTagFamiliesFeedChanged() {
+        if (!_bbTagTourOn()) return;
+        Array.from(_bbTagPagesBoxes.keys()).forEach(name => _bbTagPagesNotify(name));
+        if (!_isBbHost) return;
+        let n = 0;
+        _bbEvpCellIndex().forEach(tds => tds.forEach((td) => {
+            if (td.dataset.mbBbevpCol !== 'Tags' || !_bbEvpMem.has(td.dataset.mbBbevpKey)) return;
+            _bbEvpRenderCell(td);
+            n++;
+        }));
+        if (n) _bbEvpScheduleRefresh(true);
+    }
+
+    /**
      * The family of a tag the check may call not expected, '' for a tag it
      * leaves alone (songs, people, places, tours, what the page holds). A
      * single digit is a premiere count before it is a day, as
@@ -38606,21 +38747,43 @@
                 expected.push({ tag, family: 'icon', why: year ? `The year page marks this show with the ${name} icon.` : `The show's page has the ${name} icon.` });
             }
         }
+        // Batch 3b, the tour family (off by default; the feed's tour table).
+        const tour = _bbTagTourCheck(facts, all);
+        if (tour) expected.push(...tour.expected);
         const want = new Set(expected.map(e => e.tag));
         for (const e of expected) if (!_bbTagPresent(e.tag, all)) res.missing.push(e);
         const seen = new Set();
         for (const tag of own) {
             // An icon tag only with the year page known.
             const icon = icons ? _BB_TAGCHK_ICONS.find(i => i[0] === tag) : null;
-            const family = icon ? 'icon' : _bbTagCheckedFamily(tag);
+            const family = icon ? 'icon' : tour && tour.table.has(tag) ? 'tour' : _bbTagCheckedFamily(tag);
             if (!family || seen.has(tag) || _bbTagPresent(tag, want)) continue;
+            // A covering tour's tag on a show tagged "tour_no" is not expected
+            // and not wrong either.
+            if (family === 'tour' && tour.cov.has(tag)) continue;
             seen.add(tag);
             res.spurious.push({
                 tag, family,
-                why: icon ? `Neither the year page nor the show's page has the ${icon[1]} icon.` : _bbTagSpuriousWhy(tag, family, facts, expected),
+                why: icon ? `Neither the year page nor the show's page has the ${icon[1]} icon.`
+                    : family === 'tour' ? _bbTagTourSpuriousWhy(tag, facts, tour) : _bbTagSpuriousWhy(tag, family, facts, expected),
             });
         }
         return res;
+    }
+
+    /**
+     * Why a tour tag is not expected, in words: the table gives its tour
+     * other dates, and names the tour(s) of the show's date.
+     *
+     * @param {string} tag
+     * @param {Object} facts - `_bbTagFacts()`.
+     * @param {Object} tour  - `_bbTagTourCheck()`.
+     * @returns {string}
+     */
+    function _bbTagTourSpuriousWhy(tag, facts, tour) {
+        const of = Array.from(tour.cov, t => `"${tour.names.get(t)}" (${t})`);
+        return `${facts.date} is not in the dates of the tour "${tour.names.get(tag)}" (the Brucebase feed's tour table)` +
+            (of.length ? `; it is in those of ${of.join(' and ')}.` : '.');
     }
 
     /**
@@ -38924,7 +39087,7 @@
 
     /** The Tags card's row (`_BB_TAG_FAMILIES` key) a missing tag of a checked family is drawn in. */
     const _BB_TAGCHK_ROW = {
-        date: 'date', letter: 'letter', type: 'category', prem: 'material', icon: 'material',
+        date: 'date', letter: 'letter', type: 'category', prem: 'material', icon: 'material', tour: 'tour',
         // Parity batch 4: where the same tag sits when the page has it.
         construction: 'other', lyricsheet: 'other', title: 'other',
     };
@@ -38978,10 +39141,11 @@
         const own = tags.map(t => t.text.toLowerCase());
         const more = st ? st.pages.flatMap(p => p.tags.map(t => t.text.toLowerCase())) : [];
         const res = _bbTagCheck(facts, own, more, icons);
+        const wait = known || !_bbTagMissingOn() ? '' : `A missing tag is not looked for: not every page that keeps this ${facts.page ? 'page' : 'show'}'s tags is read.`;
         return {
             missing: known && _bbTagMissingOn() ? res.missing : [],
             spurious: _bbTagSpuriousOn() ? res.spurious : [],
-            wait: known || !_bbTagMissingOn() ? '' : `A missing tag is not looked for: not every page that keeps this ${facts.page ? 'page' : 'show'}'s tags is read.`,
+            wait: [wait, _bbTagFamiliesWait(facts)].filter(Boolean).join(' '),
             ok: _bbTagOkText(facts),
         };
     }
@@ -38993,7 +39157,10 @@
      * @returns {string} "✓ date, letter, … tags as expected".
      */
     function _bbTagOkText(facts) {
-        if (!facts.page) return '✓ date, letter, kind, premiere and icon tags as expected';
+        if (!facts.page) {
+            const tour = _bbTagTourOn() && _bbTagTourApplies(facts) && _bbFeedTables();
+            return `✓ date, letter, kind, premiere${tour ? ', icon and tour' : ' and icon'} tags as expected`;
+        }
         const what = {
             venue: 'kind, first-letter and construction',
             song: 'kind, first-letter, title, lyric-sheet and construction',
@@ -77869,7 +78036,7 @@
         {
             id: 'bb-tag-missing', level: 'error', glyph: '🏷', scope: 'cell',
             label: 'Brucebase tags: an expected tag is missing',
-            tip: 'The show\'s page should carry a tag it lacks: a part of its date (year, month, day, weekday), the letter of a second show of the day, its kind of page (gig, recording, …), or how many songs of its setlist are tour premieres (with "prem"). Tags kept on the show\'s On stage page count as present. Known once ▶ Pages has read the entry\'s page and its other tag pages; hover the cell for the tags and why each is expected.',
+            tip: 'The show\'s page should carry a tag it lacks: a part of its date (year, month, day, weekday), the letter of a second show of the day, its kind of page (gig, recording, …), or how many songs of its setlist are tour premieres (with "prem"); with the tour check on (settings), the tour of its date. Tags kept on the show\'s On stage page count as present. Known once ▶ Pages has read the entry\'s page and its other tag pages; hover the cell for the tags and why each is expected.',
             enabled: () => !!_isBbHost && _bbTagMissingOn(),
             cols: name => name === 'Tags',
             rowGate: row => !!row.querySelector('span.mb-bb-tag-data[data-mb-bb-tag-check]'),
@@ -77880,7 +78047,7 @@
         {
             id: 'bb-tag-spurious', level: 'warn', glyph: '🏷', scope: 'cell',
             label: 'Brucebase tags: a tag that is not expected',
-            tip: 'The show\'s page carries a date, letter, kind or premiere tag that its page does not call for: another weekday or year, a premiere count that differs from the songs in bold on its Setlist tab, a second kind of page ("recording" on a gig). Known once ▶ Pages has read the entry\'s page; hover the cell for the tags and why.',
+            tip: 'The show\'s page carries a date, letter, kind or premiere tag that its page does not call for: another weekday or year, a premiere count that differs from the songs in bold on its Setlist tab, a second kind of page ("recording" on a gig); with the tour check on (settings), a tour tag whose tour has other dates. Known once ▶ Pages has read the entry\'s page; hover the cell for the tags and why.',
             enabled: () => !!_isBbHost && _bbTagSpuriousOn(),
             cols: name => name === 'Tags',
             rowGate: row => !!row.querySelector('span.mb-bb-tag-data[data-mb-bb-tag-check]'),

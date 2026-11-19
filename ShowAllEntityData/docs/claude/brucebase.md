@@ -2329,6 +2329,63 @@ registry row, no table column (these pages are no row of any list).
   no "Show the release" button (its page has no table to show): its mark
   is tested in the window.
 
+## The tuned tag families (batch 3b, 2026-11-19)
+
+org/springsteen-marriage.org, "Batch 3b"; the plan
+`~/.claude/plans/start-batch-3b-the-expressive-dongarra.md` (NB-3641).
+BruceBaseParser's other five families (content, cast, songs, place, tour)
+flag 88 % of shows as its code has them. Each comes back tuned with vzell,
+behind ONE setting of its own, `default: false` (vzell, 2026-11-19: this
+overrides the non-MB "default true" rule; a new key needs no migration),
+and joins batch 3's surfaces: the same two findings, the Tags card, the
+window, the year table's Tags column. Their lookup tables are not in the
+script: BruceParser publishes them in the feed (`tagTables`, feed 1.4, from
+its hand-edited `brucebase/tag-tables.json`; vzell, question 6), read by
+`_bbFeedTables()` (null with the feed off or a feed without them).
+
+**The tour family** (`sa_bb_tag_family_tour`; `_bbTagTourOn()`,
+`_bbTagTourApplies()`, `_bbTagTourCheck()`, `_bbTagTourSpuriousWhy()`):
+- **Which shows:** a gig or a nogig whose title gives a whole date
+  (vzell). The probe (`scripts/probe-bb-tour-tags.py`, Env:
+  2026-11-19T19:00+01:00 · NB-3641 · Python over bb/2026-11-19 · n/a):
+  recordings carry the tour's tag 0 times in 35, interviews 6 in 47, and
+  a rehearsal carries the coming tour's tag before its first date (157
+  shows); a "00" date lies in no range or in several.
+- **Expected:** every tour of the table whose ranges cover the date, each
+  tag once (two tours on one date: both; all 73 shows in an overlap that
+  carry a tour tag carry every covering one), unless any page of the show
+  carries `tour_no` (125 of the 126 gigs in a tour's dates without its tag
+  carry it; vzell). `tour_no` itself is never expected or flagged.
+- **Not expected:** a tag of the page itself that is a table tour tag and
+  no covering tour's (⚠️). A covering tour's tag beside `tour_no` is
+  neither. A tour tag not in the table (`tour_cstls`, `tour_rqs`, the typo
+  `tour_wies`) is left alone.
+- **Counts** (bb/2026-11-19, 5,007 events): 49 shows, 41 with a missing
+  tour tag, 9 with one not expected. Real wiki errors among them: the four
+  Bijou Cafe pages of 1973-12 tagged `tour_wies`, Brussels 2008-06-23a
+  tagged `tour_rsng` for `tour_mgc`. Most nogig misses are appearances
+  that are no tour show (White House, dinners): vzell kept nogigs in.
+- **Without the tables** (the feed off, not read yet, or older than 1.4):
+  no tour finding; the Tags card's wait line says why
+  (`_bbTagFamiliesWait()`), and "as expected" names the tour only where it
+  was checked (`_bbTagOkText()`).
+- **The feed later than the page:** `_bbFeedMapsWanted()` adds `tagTables`
+  to the maps a kept feed must have while the family is on, so a kept 1.3
+  file is read again after its hour (never with the family off). When a
+  feed comes in, `_bbFeedChanged()` calls `_bbTagFamiliesFeedChanged()`:
+  every Tags box that shows a record is filled again
+  (`_bbTagPagesNotify()`), and on Brucebase every read Tags cell of a year
+  table is written again (`_bbEvpRenderCell()`, which queues the changed
+  rows' re-stamp), then `_bbEvpScheduleRefresh()`.
+- **No new request, no parser change:** the rule reads the facts batch 3
+  already keeps (kind, date) and the tags; `_DP_PARSER_VERSION` stays.
+- **Checks:** `node scripts/check-bb-tour-tags.js ROWS RULE FEED` runs the
+  shipped rule over all 5,007 shows against the probe's (0 differences, 49
+  flagged), then with the setting off, a feed without tables and the feed
+  off (0 findings each). Tests: `tests/fixtures/bb-findings-batch3b.spec.js`
+  on seven real pages (`scripts/build-bb-findings-batch3b-fixtures.py`) and
+  batch 3's 2016 year; mutations `scripts/mutations/bb-findings-batch3b.json`.
+
 ## BruceBaseParser on the same page (bbp-parity, "Coexistence", 2026-11-19)
 
 org/bbp-parity.org, "Closing the matrix"; mockup
@@ -2384,7 +2441,8 @@ Mockup https://claude.ai/artifact/65urMwgWSb6zq6xJa9Mf4x; vzell's answers of
   with Space (the site's `windowKick`; `_extExtracted()` on other hosts).
   Never from a hover; on MusicBrainz only on the press of an event list or
   an event page (feed 1.3, `sa_bb_feed_mb`). A kept copy that lacks a map
-  this script reads (`_BB_FEED_MAPS`: `anchors`, `mb`) was written by an
+  this script reads (`_BB_FEED_MAPS`: `anchors`, `mb`; and `tagTables`, feed
+  1.4, while a tag family needs it: `_bbFeedMapsWanted()`) was written by an
   older BruceParser and is read again before its day is up, once it was
   read an hour ago (`_bbFeedLacksMap()`): vzell's live check of 2026-11-18
   kept 0.20.0's file from a Brucebase page, and the MusicBrainz press that

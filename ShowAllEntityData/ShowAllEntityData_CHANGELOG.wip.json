@@ -1,0 +1,20 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-11-19",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase: a show's tour tag can now be checked too (⚙️ Settings, \"Also check a Brucebase show's tour tag\", off by default while the remaining tag checks are tuned). A gig or a cancelled show whose date lies in a tour's dates should carry that tour's tag (both tags where two tours overlap), unless it is tagged \"tour_no\", the wiki's mark of a one-off show between a tour's dates. A tour tag whose tour has other dates is a ⚠️. Like the other tag checks, it is marked on the Tags card, in the preview window and in the year table's Tags column. The tours and their dates come from the Brucebase feed, so BruceParser keeps them up to date without a new script version. Without the feed the Tags card says the tour is not checked. Rehearsals, recordings, interviews and dates with \"00\" are not checked. On the wiki today it flags 49 shows, for example the four Bijou Cafe pages of December 1973 tagged \"tour_wies\" and the Brussels show of 2008 tagged \"tour_rsng\" instead of \"tour_mgc\"."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "The setting \"Read the Brucebase feed\" gave the file's size as about 25 KB; it is about 28 KB compressed now."
+        ]
+      }
+    ]
+  }
+]

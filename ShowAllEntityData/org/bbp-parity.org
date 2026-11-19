@@ -32,7 +32,7 @@ State: DONE (SAED has it), PART, TODO, NOT (not ported, with the reason).
 | Expected tags: date parts, day suffix, event type                            | =computeExpectedTags=                           | =bb-tag-missing= / =bb-tag-spurious=: the Tags card, the window, the year table's Tags | DONE  |     3 |
 | Expected tags: content (bootleg, livedl, news, memorabilia, ticket, …)       | =computeExpectedTags= table                     | the rule flags 2,469 shows as it is: to tune with vzell                               | TODO  |    3b |
 | Expected tags: tour premiere count + prem                                    | =countTourPremiereSongs=                        | same two findings                                                                     | DONE  |     3 |
-| Expected tags: tour association                                              | =checkEventTourTags=, =TOUR_DEFINITIONS=        | the =tour_no= guess flags 118 missing, 663 spurious: to tune; the table in the script | TODO  |    3b |
+| Expected tags: tour association                                              | =checkEventTourTags=, =TOUR_DEFINITIONS=        | the tour family (=sa_bb_tag_family_tour=, off), the table in the feed: 49 shows       | DONE  |    3b |
 | Expected tags: location (title / venue)                                      | =checkEventNameLocationTags= …                  | 663 shows as it is: to tune                                                           | TODO  |    3b |
 | Expected tags: relations of the cast tab                                     | =checkOnStageRelationTags=                      | 1,859 shows as it is: to tune                                                         | TODO  |    3b |
 | Expected tags: setlist songs                                                 | =checkSetlistSongTags=, =computeSongTagAlias=   | 1,114 shows as it is (the initials rule): to tune                                     | TODO  |    3b |
@@ -864,3 +864,65 @@ row is DONE. Of the matrix, only batch 3b's rows remain open (the tag-source hig
 | the same page                      | the same, OK, wait a minute, then sort by a column and look at the card       | the card: "Left", "Flagged so far", "Now reading"; the reading keeps the order it started with                 |
 
 Unverified: all of it in a real browser.
+
+* Batch 3b: the five noisy tag families (=feat/bb-findings-batch3b=, 2026-11-19; not merged)
+
+Env: 2026-11-19T19:16:49+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · probe:
+Python over the mirror bb/2026-11-19, n/a; the checker and the specs: Playwright Chromium, no Tampermonkey
+
+The plan is =~/.claude/plans/start-batch-3b-the-expressive-dongarra.md= (NB-3641 only); this section is the record,
+=org/springsteen-marriage.org= has the decisions.
+
+*Before it* (vzell): BruceParser's open items and a fresh run (0.21.2, 0.21.3; the run of 2026-11-19), and the feed's
+tag tables (0.22.0, feed 1.4, =tagTables=, published 2026-11-19 on vzell's word: =9693d39=, =11f6639= in
+=vzell/brucebase-feed=).
+
+** The tour family (=sa_bb_tag_family_tour=, off by default)
+
+*Decisions (vzell, 2026-11-19):* table tours only; =tour_no= never expected or flagged, and it excuses a missing tour
+tag; gigs AND nogigs ("I go with 2"); two tours on one date: both expected.
+
+*The probe* (=scripts/probe-bb-tour-tags.py ROWS TABLES=, the rows of =probe-bb-batch3-findings.py --rows=):
+
+| Kind      | Shows | In a tour's dates | With its tag | Without | In an overlap | A tour tag outside its dates |
+|-----------+-------+-------------------+--------------+---------+---------------+------------------------------|
+| gig       | 3,591 |             2,626 |        2,500 |     126 |            73 |                            0 |
+| nogig     |   454 |               279 |          236 |      43 |             5 |                           14 |
+| rehearsal |   211 |                 7 |            4 |       3 |             0 |                          157 |
+| recording |   564 |                35 |            0 |      35 |             1 |                            0 |
+| interview |   187 |                47 |            6 |      41 |             3 |                            3 |
+
+125 of the 126 gigs without their tour's tag carry =tour_no=. The rule as decided flags *49 shows* (41 with a missing
+tag, 9 with one not expected), among them real wiki errors: the four Bijou Cafe pages of 1973-12 tagged =tour_wies=,
+Brussels 2008-06-23a tagged =tour_rsng= for =tour_mgc=. Most nogig misses are appearances that are no tour show.
+
+*Built* (details: =docs/claude/brucebase.md=, "The tuned tag families (batch 3b)"): =_bbTagTourCheck()= in
+=_bbTagCheck()=, its words, the Tour row for a missing chip, the wait line without the tables, "as expected" naming the
+tour where checked; =_bbFeedTables()=, =_bbFeedMapsWanted()= (the tables are a wanted map only while the family is
+on), =_bbTagFamiliesFeedChanged()= (cards and read Tags cells written again when the feed comes in). No request, no
+parser change. +8.4 kB in the userscript.
+
+*Tests* (NB-3641, 2026-11-19): =node scripts/check-bb-tour-tags.js= over all 5,007 shows: 0 differences from the
+probe, 49 flagged; 0 findings with the setting off, a feed without tables, the feed off.
+=bb-findings-batch3b.spec.js= 9; 19 mutations (16 new, 3 older finds this change moved) all fail their test — the
+first run let 3 pass (the "00" guard, the =tour_no= excuse, the Tour row), each a gap in the spec, closed. The
+neighbouring specs (batch 3, page tags, feed, On stage tags) 80/80; lint within the baseline. Deferred to the merge:
+=test:full=, the render ratio.
+
+** The browser check of the tour family, for vzell (pages of the mirror of 2026-11-19; the feed 1.4 is published)
+
+First: ⚙️ Settings → "Also check a Brucebase show's tour tag" on ("Read the Brucebase feed" on).
+
+| URL                                                                                      | Step                                           | What should appear                                                                                         |
+|------------------------------------------------------------------------------------------+------------------------------------------------+------------------------------------------------------------------------------------------------------------|
+| https://brucebase.wikidot.com/nogig:2008-06-23a-koning-boudewijnstadion-brussels-belgium | press "Show the event"                         | Tags card: "tour_mgc missing" (red dashed) in the Tour row, "tour_rsng" ⚠️; both explained under the chips |
+| https://brucebase.wikidot.com/gig:2023-05-04-burrow-rathangan-ireland                    | press "Show the event"                         | after the On stage page is read: "tour_23int missing"                                                      |
+| https://brucebase.wikidot.com/nogig:1973-12-12-bijou-cafe-philadelphia-pa                | press "Show the event"                         | "tour_wiess missing"; its "tour_wies" is not marked (not a tour of the table)                              |
+| https://brucebase.wikidot.com/gig:2016-01-22-louisburg-farm-wellington-fl                | press "Show the event"                         | no tour mark (tagged tour_no); "✓ … icon and tour tags as expected"                                        |
+| https://brucebase.wikidot.com/1975                                                       | Show all events, ▶ Pages, scroll to March      | the 1975-03-13/14/15 Electric Ballroom rows: ⚠️ on Tags, "tour_wiess" flagged                              |
+| https://brucebase.wikidot.com/2023                                                       | Show all events, ▶ Pages, then ⚠️/❌ menus      | Rathangan ❌ (tour_23int); the nogig rows (2023-03-21 White House, …) ❌                                     |
+| https://brucebase.wikidot.com/2008                                                       | Ctrl+hover the Brussels 2008-06-23 link, Space | the window's Tags section: the same two marks as the event page                                            |
+| the Brussels page again                                                                  | the setting off, reload, press                 | no tour mark; "✓ date, letter, kind, premiere and icon tags as expected"                                   |
+
+Unverified: all of it in a real browser; the window on the 2008 year page (the link is on the page, its window not
+tried).

@@ -355,8 +355,8 @@
         "why": "The card says why nothing is called missing.",
         "edits": [
             {
-                "find": "            wait: known || !_bbTagMissingOn() ? '' : `A missing tag is not looked for: not every page that keeps this ${facts.page ? 'page' : 'show'}'s tags is read.`,",
-                "replace": "            wait: '',"
+                "find": "        const wait = known || !_bbTagMissingOn() ? '' : `A missing tag is not looked for: not every page that keeps this ${facts.page ? 'page' : 'show'}'s tags is read.`;",
+                "replace": "        const wait = '';"
             }
         ],
         "spec": "tests/fixtures/bb-findings-batch3.spec.js",

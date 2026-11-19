@@ -4187,6 +4187,15 @@ entry, with these columns:
   page calls for* off (⚙️ Settings → ⚠️ Findings), or with the On stage
   tags switched off, that page is not read, and no show with a cast is
   said to lack a tag.
+  With *Also check a Brucebase show's tour tag* on (off by default), a
+  gig or a cancelled show whose date lies in a tour's dates should also
+  carry that tour's tag ("tour_wb"; both tags where two tours overlap),
+  unless it is tagged "tour_no", the wiki's mark of a one-off show between
+  a tour's dates; a tour tag whose tour has other dates is marked ⚠️. The
+  tours and their dates come from the Brucebase feed (*Read the Brucebase
+  feed*), so they change without a new script version; without the feed
+  the tour is not checked. Rehearsals, recordings, interviews and dates
+  with "00" are not checked.
 - **On stage**, **Content**, **Images**, **Start** and **Tags** come from each entry's
   own page, so they stay empty (—) until that page is read. **▶ Pages** in
   the On stage header reads the pages of the rows you can see, and then of
@@ -4420,7 +4429,8 @@ site) show those tags too:
   only the marked chips; press again for all. Nothing is marked while the
   On stage page is still being read, and with that page unread the card
   says that no missing tag is looked for. ✓ means the four families are
-  as expected. For the Help Us and Featured icons, which are on the
+  as expected (and the tour, where it is checked; without the feed the
+  card says the tour is not checked). For the Help Us and Featured icons, which are on the
   year page, the show's year page is read once at the press (or Space
   in the window) and kept. Switches: ⚙️ Settings → ⚠️ Findings.
 - **The tag check on venue, song, person, band and release pages:** the

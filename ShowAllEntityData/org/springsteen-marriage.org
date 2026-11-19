@@ -40,8 +40,8 @@ left out by decision), NOT (not done, with the reason).
 | Idea 2, the help-icon check                              | DONE  | 9.99.1636–1637      | "The help-icon check …"                               |
 | Idea 2, batch 4: venue, song, relation, release tags     | PART  | 9.99.1652           | "Batch 4: the page tag checks …"                      |
 | Idea 2, closing the matrix (coexistence, HOME row)       | DONE  | 9.99.1653–1658      | "Closing the matrix …"                                |
-| Idea 2, batch 3b: the five noisy tag families            | NEXT  | —                   | "Batch 3", "Next (3b)"                                |
-| Idea 3: the lookup tables into the feed                  | TODO  | —                   | "Feed v2, branch 1", decision 2                       |
+| Idea 2, batch 3b: the five noisy tag families            | NEXT  | WIP (tour built)    | "Batch 3b: …"                                         |
+| Idea 3: the lookup tables into the feed                  | PART  | BruceParser 0.22.0  | "Batch 3b: …" (=tagTables=; =songTags= to come)       |
 | Idea 4, feed v1                                          | DONE  | 9.99.1638           | "The feed, version 1 …"                               |
 | Idea 4, feed v2 branch 1: date tags, the "files" tag     | DONE  | 9.99.1642           | "Feed v2, branch 1 …"                                 |
 | Idea 4, lettered date anchors                            | DONE  | 9.99.1644           | —                                                     |
@@ -285,13 +285,21 @@ shows content 2,469, cast 1,766, songs 1,115, place 663, tour 171; spurious 1,51
 - *Before any implementation:* BruceParser's open items and a fresh run (done, see "Before batch 3b" under
   BruceParser).
 
-*Order:* feed 1.4 (=tagTables=), the five switches and the shared facts, then tour, place, content, cast, songs, each
-with its own question to vzell (1, 4, 2 and the songs' medleys) and its real cases. Do not run =bbp.sh= without vzell.
+*Order:* feed 1.4 (=tagTables=), then tour, place, content, cast, songs, each with its own question to vzell (1, 4, 2
+and the songs' medleys) and its real cases; a family's switch comes with its rule. Do not run =bbp.sh= without vzell.
 
-** TODO Idea 3: the lookup tables into the feed
+*Done so far (2026-11-19):*
+- *Feed 1.4* (BruceParser 0.22.0, =455a63a=): =brucebase/tag-tables.json= published as =tagTables=; the feed of the
+  run of 2026-11-19 is on GitHub (vzell: "publish feed").
+- *Tour* (WIP.1, =sa_bb_tag_family_tour=): vzell, 2026-11-19: gigs and nogigs ("I go with 2"), =tour_no= excuses a
+  missing tour tag, two tours on one date both expected. 49 shows flagged on =bb/2026-11-19=. Record and browser
+  check: =org/bbp-parity.org=, "Batch 3b".
+- *Next:* place (question 4).
 
-Not started. Decision (vzell, 2026-11-17): the lookup tables wait for batch 3b; the block batch 3 planned for the
-script was never built, so nothing moves yet. Decided together with batch 3b's question 6.
+** PART Idea 3: the lookup tables into the feed
+
+Decided with batch 3b's question 6 (vzell, 2026-11-19): in the feed. =tagTables= is published (feed 1.4, BruceParser
+0.22.0); =songTags=, the song→tag map, comes with the songs family. See "Batch 3b" above.
 
 ** Idea 4: BruceParser's reports through the feed
 
