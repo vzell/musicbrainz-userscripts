@@ -2,11 +2,11 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1657+2026-11-19",
-    "schema_entries": 553,
+    "script_version": "9.99.1659+2026-11-19",
+    "schema_entries": 554,
     "sections": 54,
-    "settings": 499,
-    "settings_with_default": 494,
+    "settings": 500,
+    "settings_with_default": 495,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 322,
+      "checkbox": 323,
       "color_picker": 62,
       "divider": 54,
       "number": 53,
@@ -521,6 +521,7 @@
     "sa_findings_tint_eti_case": "Highlight capitalized extra title information as WARNING",
     "sa_findings_tint_event_state": "Highlight a missing state for USA/Canada as WARNING",
     "sa_findings_tint_event_style": "Highlight event names that almost follow the style guide as WARNING",
+    "sa_findings_tint_format_role": "Highlight release roles that do not fit the format as WARNING",
     "sa_findings_tint_isrc": "Highlight invalid ISRCs as WARNING",
     "sa_findings_tint_iswc": "Highlight invalid ISWCs as WARNING",
     "sa_findings_tint_len_unknown": "Highlight tracks with no length as WARNING",
@@ -1021,6 +1022,7 @@
     "sa_findings_tint_eti_case": true,
     "sa_findings_tint_event_state": true,
     "sa_findings_tint_event_style": true,
+    "sa_findings_tint_format_role": true,
     "sa_findings_tint_isrc": true,
     "sa_findings_tint_iswc": true,
     "sa_findings_tint_len_unknown": true,

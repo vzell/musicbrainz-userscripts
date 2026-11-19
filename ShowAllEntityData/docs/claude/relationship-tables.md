@@ -132,6 +132,18 @@ release-group link (2026-10-14, `debug/release-tracks-with-sidebar-initial.html`
 pinned by "jesus2099's cover-art icon before a release group is never the
 target").
 
+**A release's own rows carry its media's formats** (2026-11-19, the
+`format-role` finding, docs/claude/findings.md "A role that doesn't fit the
+format"). With `credits: true` the converter writes
+`_releaseMediumFormatIds(doc)` (the embedded release payload's medium format
+ids, else the sidebar's "Format" by English name; `''` when any medium is
+unknown) onto the Relationship cell of every row of the release's OWN
+tables as `data-mb-rel-formats`. It is read from the document being
+converted and travels with the cell (`relFormats` in a disk save), so the
+stamp never asks the page it runs on. A "Via release group" table gets
+none; in the one-table layout the From column decides (only rows whose From
+is the release's own label).
+
 **Inline artwork** (`addCAA: ['Target', 'Release group', 'Release']`,
 `addEAA: ['Target', 'Event']` in `_relTablesFeatures()`): each row's link
 decides (`CAA_CTX`/`EAA_CTX.inlineLinkSel`), so a mixed Target column gets a

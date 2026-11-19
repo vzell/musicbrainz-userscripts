@@ -689,6 +689,81 @@ Title cell. The title is the track link's own text (`_findCellTitleEl()`).
   copy, the title and part rules through `__saTest.remixNamedInTitle` /
   `.medleyParts`); mutations `scripts/mutations/apollo-findings-2.json`.
 
+### A role that doesn't fit the format: `format-role`
+
+Branch `feat/apollo-findings-3` (2026-11-19), the one item of the Apollo
+findings' batch 3 vzell picked (org/majkinetor.org). Group Therapy's format
+rules (`FORMAT_EXCLUDE_DEFAULT` / `FORMAT_ONLY_DEFAULT`, which it uses to
+untick credits when copying them to another edition) as a finding on one
+release's own relationships. No requests.
+
+- **Where**: pageType `release-credit-tables` only (the release page's
+  "Credits" button; `enabled()` reads `activeDefinition.type`), column
+  "Relationship". On `release-tracks` the release relationships stay native
+  `table.details`; release lists load url-rels only, so the check is not
+  offered there at all (no extra requests).
+- **The data is on the cell**: `applyRelDetailsToTables()` writes the
+  release's medium format ids onto the Relationship cell of each OWN row as
+  `data-mb-rel-formats` (docs/claude/relationship-tables.md, "A release's own
+  rows carry its media's formats"). `_releaseMediumFormatIds()` reads the
+  embedded release payload (`release.mediums[].format.id`, language-free),
+  else the sidebar's "Format" ("2×CD + DVD-Video": split on " + ", "N×"
+  dropped, by English name through `_mediumFormatIdByName()`). Any medium of
+  unknown format ("Other", none, a name not in `MEDIUM_FORMAT_VIDEO_CAPABLE`,
+  a translated name) gives `''`: never flagged, as the Video flag fires only
+  on a positive "cannot". A disk save carries the mark as `relFormats`
+  (`_buildDiskCellData()`, `_restoreRelFormats()`): a saved row is its
+  cells' records, so a `<tr>` attribute would be lost.
+- **The rules** (`_formatRoleMismatch()`, `FORMAT_ROLE_FAMILIES`, by format
+  id): "pressed"/"printed"/"manufactured" (any form) when EVERY medium is
+  Digital Media; "lacquer cut" when NO medium is a phonograph record; "glass
+  mastered" when NO medium is a replicated optical disc. Deviations from
+  Group Therapy, each recorded in the JSDoc:
+  - a release is judged on all its media, so "pressed at" on "CD + Digital
+    Media" is right for the CD (Group Therapy's substring test, one format
+    at a time, flags it);
+  - lacquer: every phonograph record (vinyl, flexi-disc, shellac, acetate),
+    the Vinyl side of a VinylDisc, Edison and Pathé discs, not "vinyl" only;
+  - glass: the recordable discs (CD-R, 8cm CD-R, DVD-R, Blu-ray-R) are
+    burned, never glass mastered, so they do not count; MiniDisc,
+    LaserDisc, CDV, UMD, DualDisc, DVDplus, VinylDisc and DataPlay do;
+  - a Download Card is a printed card: "printed by" fits it.
+- `detail()` names the role and the formats ("glass mastered by, but the
+  release is 12\" Vinyl").
+- **Pre-test** (`scripts/probe-apollo-findings-3.py`,
+  `debug/probe-apollo-findings-3.json`; Env: 2026-11-19T18:41:17–19:10:32+01:00
+  · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2)
+  · n/a browser). MusicBrainz's search answered 503 all evening, so the probe
+  crawls: four seed pressing plants (from local fixtures), then every label
+  or place met with one of the roles; 800 requests, 568 releases. SAED's rule
+  flags 9 relationships on 6 of them, all real:
+  - `c2371cf9` "Sleeps Like a Curse", Digital Media: pressed and glass
+    mastered by/at Technicolor Australia (four flags);
+  - `828b14c3` "Born to Run", 12" Vinyl: glass mastered by DADC Austria;
+  - `2b884516` "What You See Is What You Get", 2×12" Vinyl: glass mastered
+    at Technicolor Australia;
+  - `b4144faa` "Мяу кисс ми", CD: lacquer cut at Sony DADC Australia;
+  - `827b5ce9` "Original Album Classics", 5×CD: lacquer cut at Sony DADC;
+  - `45cebc15` "Sevens and Twelves", 2×CD-R: glass mastered at Nimbus (the
+    recordable-disc call; Group Therapy's "cd" substring lets it through).
+
+  The edge formats seen were all left alone: glass mastered on HDCD, Hybrid
+  SACD, DVD-Video, "Blu-ray + CD", "CD + DVD-Video"; manufactured on
+  Cassette, HDCD, DVD-Video. No shellac, acetate, flexi-disc, MiniDisc or
+  Download Card release was met, so those calls rest on the formats, not on
+  data. MusicBrainz writes the roles as `glass mastered`, `lacquer cut`,
+  `manufactured`, `manufactured for`, `pressed`, `printed` (label/artist) and
+  `… at` / `… in` (place/area).
+- Tint `sa_findings_tint_format_role`. Spec
+  `tests/fixtures/apollo-findings-3.spec.js` (fixtures
+  `release-credits-format-role.html` and `-digital.html`, written by
+  `scripts/make-format-role-fixtures.py` from the real 12" Vinyl release
+  3ce46b79 — two rows added, plus a constructed "pressed at" in the release
+  group block; the Digital copy has the payload removed so the sidebar is
+  read); mutations `scripts/mutations/apollo-findings-3.json` (13, one
+  `"expect": "pass"`: no render but this one writes the mark, so
+  `enabled()`'s pageType gate is invisible).
+
 ## On demand: the title-style findings
 
 `title-case`, `title-typography`, `title-series-sep`, `title-feat` and

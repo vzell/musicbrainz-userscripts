@@ -280,6 +280,10 @@
 //   Added 2026-11-19: _remixNamedInTitle() and _remixCleanName() are PORTED from Credit
 //   Hoarder's src/derive/remix.js (parseRemixTitle, cleanName: TRAILING_RE, BY_RE, SEP_RE,
 //   the STRONG and WEAK word sets), with this script's own mix words added.
+//   Added 2026-11-19: the format-role finding (_formatRoleMismatch()) takes its three rules
+//   from Group Therapy's FORMAT_EXCLUDE_DEFAULT / FORMAT_ONLY_DEFAULT (digital: no pressed,
+//   printed or manufactured; lacquer cut: vinyl only; glass mastered: CD/DVD/SACD/Blu-ray
+//   only), judged here on every medium of a release by format id instead of by substring.
 // ============================================================================================================================================
 
 (function() {
@@ -2871,6 +2875,16 @@
             default: true,
             description: 'Tint a release tracklist Title cell light yellow with a ⚠️ when a medley title ("A / B") has ' +
                          'more parts than its recording links works for.'
+        },
+
+        sa_findings_tint_format_role: {
+            label: 'Highlight release roles that do not fit the format as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint the Relationship cell of a release\'s "Credits" tables light yellow with a ⚠️ when the ' +
+                         'role does not fit the release\'s format: pressed, printed or manufactured on a release that is ' +
+                         'only Digital Media, lacquer cut with no phonograph record, glass mastered with no pressed ' +
+                         'optical disc.'
         },
 
         sa_findings_tint_live_credit: {
@@ -53858,17 +53872,37 @@
 
         const frag = doc.createDocumentFragment();
         const attrs = { attrs: true, fromLabel: cfg.ownLabel || 'Page' };
+        // A release's own rows carry its media's format ids on their
+        // Relationship cell (`data-mb-rel-formats`), which the format-role
+        // finding compares with the cell's role. Read from the document being
+        // converted, so it never depends on the page the stamp later runs on;
+        // on the cell, so it rides every clone and, as `relFormats`, a disk
+        // save (`_buildDiskCellData()`, `_restoreRelFormats()`).
+        const formatIds = cfg.credits ? _releaseMediumFormatIds(doc) : '';
+        const markOwn = (built, cols, keep = () => true) => {
+            const relIdx = cols.indexOf('Relationship');
+            if (!formatIds || relIdx < 0) return;
+            built.querySelectorAll('tbody tr').forEach(tr => {
+                if (keep(tr) && tr.cells[relIdx]) tr.cells[relIdx].dataset.mbRelFormats = formatIds;
+            });
+        };
         if (Lib.settings.sa_relationship_tables_one_table) {
             const all = [...own, ...relatedRows];
             const { cols, cells } = _eventRelColumns(all, 'Target', true, relatedRows.length > 0, attrs);
-            frag.appendChild(_eventBuildTable(doc, cfg.credits ? 'Credits' : 'Relationships', cols, cells));
+            const built = _eventBuildTable(doc, cfg.credits ? 'Credits' : 'Relationships', cols, cells);
+            // With related rows, the From column tells them apart.
+            const fromIdx = cols.indexOf('From');
+            markOwn(built, cols, tr => fromIdx < 0 || tr.cells[fromIdx]?.textContent.trim() === attrs.fromLabel);
+            frag.appendChild(built);
         } else {
             const order = [];
             own.forEach(r => { if (!order.includes(r.type)) order.push(r.type); });
             order.forEach(t => {
                 const rows = own.filter(r => r.type === t);
                 const { cols, cells } = _eventRelColumns(rows, _EVENT_REL_TARGET_COLS[t] || 'Target', false, false, attrs);
-                frag.appendChild(_eventBuildTable(doc, _EVENT_REL_GROUP_NAMES[t] || 'Other', cols, cells));
+                const built = _eventBuildTable(doc, _EVENT_REL_GROUP_NAMES[t] || 'Other', cols, cells);
+                markOwn(built, cols);
+                frag.appendChild(built);
             });
             related.forEach(g => {
                 if (!g.rows.length) return;
@@ -67698,13 +67732,156 @@
             const id = medium?.format?.id ?? medium?.format_id;
             if (typeof id === 'number') return id;
         }
-        const text = (table?.dataset?.mbMediumFormat || '').split(': ')[0].trim().toLowerCase();
+        return _mediumFormatIdByName((table?.dataset?.mbMediumFormat || '').split(': ')[0]);
+    }
+
+    /**
+     * A medium format's id from its ENGLISH name (`MEDIUM_FORMAT_VIDEO_CAPABLE`),
+     * case-insensitive. MusicBrainz translates format names, so a translated
+     * interface gives `null`: every caller treats that as "unknown".
+     *
+     * @param   {string} name - "12\" Vinyl", "CD", …
+     * @returns {?number}
+     */
+    function _mediumFormatIdByName(name) {
+        const text = String(name || '').trim().toLowerCase();
         if (!text) return null;
         if (!_mediumFormatIdByNameCache) {
             _mediumFormatIdByNameCache = new Map();
             MEDIUM_FORMAT_VIDEO_CAPABLE.forEach((v, id) => _mediumFormatIdByNameCache.set(v.name.toLowerCase(), id));
         }
         return _mediumFormatIdByNameCache.get(text) ?? null;
+    }
+
+    /**
+     * The medium formats a release relationship role needs, for the
+     * `format-role` finding: Group Therapy's (majkinetor) format rules,
+     * `FORMAT_EXCLUDE_DEFAULT` / `FORMAT_ONLY_DEFAULT`, as sets of the format
+     * ids of `MEDIUM_FORMAT_VIDEO_CAPABLE`.
+     *
+     * Group Therapy tests the format NAME by substring, one format at a time.
+     * Here a release is judged on ALL its media, and a role is wrong only when
+     * NO medium fits it: "pressed" on "CD + Digital Media" is right for the CD.
+     *
+     * - `digital`: the formats a "pressed", "printed" or "manufactured" role
+     *   can never apply to. Only Digital Media (12): a Download Card is a
+     *   printed card.
+     * - `lacquer`: the formats a lacquer can be cut for. Every phonograph
+     *   record (vinyl, flexi-disc, shellac, acetate — an acetate IS a cut
+     *   lacquer), the Vinyl side of a VinylDisc, and the two other disc
+     *   records (Edison Diamond Disc, Pathé disc). Group Therapy says "vinyl"
+     *   only; shellac 78s and acetates are cut the same way.
+     * - `glass`: the formats a glass master is made for: the replicated
+     *   optical discs (CD and its pressed variants, DVD, SACD, DualDisc,
+     *   Blu-ray, HD-DVD, MiniDisc, CDV, VCD, LaserDisc, UMD, DVDplus,
+     *   VinylDisc, DataPlay). NOT the recordable ones — CD-R, 8cm CD-R,
+     *   Data DVD-R, DVD-R Video, Blu-ray-R are burned, never glass mastered.
+     *
+     * "Other" (13) and an id not in the table are unknown: a release with
+     * such a medium is never flagged (`_formatRoleMismatch()`).
+     *
+     * @type {{digital: Set<number>, lacquer: Set<number>, glass: Set<number>}}
+     */
+    const FORMAT_ROLE_FAMILIES = {
+        digital: new Set([12]),
+        lacquer: new Set([73, 7, 29, 30, 31, 51, 52, 207, 53, 56, 54, 55, 203, 204, 205, 206, 48, 81, 50, 58]),
+        glass: new Set([
+            1, 61, 43, 44, 42, 25, 129, 34, 35, 165, 36, 37, 209, 39, 40,      // CD
+            2, 94, 18, 19, 166, 168, 169, 167, 170, 171,                        // DVD
+            3, 84, 85, 38, 63, 64, 87, 86, 57, 89, 88,                          // SACD
+            4, 67, 66, 65, 130, 6, 20, 211, 41, 22, 23, 5, 71, 72,              // DualDisc … LaserDisc
+            17, 28, 47, 70, 69, 68, 48, 80, 82, 128,                            // HD-DVD, UMD, DVDplus, VinylDisc, DataPlay
+        ]),
+    };
+
+    /**
+     * The format ids of every medium of a release page, for the
+     * `format-role` finding: `"12 1"`, or `''` when ANY medium's format is
+     * unknown (none, "Other", not in `MEDIUM_FORMAT_VIDEO_CAPABLE`), so a
+     * release that might have a fitting medium is never flagged.
+     *
+     * Two sources, in order, as `_mediumFormatId()`:
+     *   1. the page's embedded release payload (`release.mediums[].format.id`),
+     *      language-independent — on the live page through
+     *      `_readEmbeddedReleaseJson()`, on a fetched document from its own
+     *      `script[type="application/json"]`;
+     *   2. the sidebar's "Format" (`dd.format`: "2×CD + DVD-Video"), split on
+     *      " + ", the "N×" dropped, by English name (`_mediumFormatIdByName()`).
+     *
+     * @param   {Document} doc - The release page (live or fetched).
+     * @returns {string}
+     */
+    function _releaseMediumFormatIds(doc) {
+        let payload = null;
+        if (doc === document) payload = _readEmbeddedReleaseJson();
+        else {
+            for (const s of doc.querySelectorAll('script[type="application/json"]')) {
+                const raw = s.textContent;
+                if (!raw || raw.indexOf('"mediums"') === -1) continue;
+                try {
+                    const p = JSON.parse(raw);
+                    if (p && p.release && Array.isArray(p.release.mediums)) { payload = p; break; }
+                } catch (_) { /* not the payload */ }
+            }
+        }
+        let ids = null;
+        const mediums = payload?.release?.mediums;
+        if (Array.isArray(mediums) && mediums.length) {
+            ids = mediums.map(m => {
+                const id = m?.format?.id ?? m?.format_id;
+                return typeof id === 'number' ? id : null;
+            });
+        } else {
+            const dd = doc.querySelector('#sidebar dd.format');
+            const text = dd ? dd.textContent.replace(/\s+/g, ' ').trim() : '';
+            if (text) ids = text.split(' + ').map(p => _mediumFormatIdByName(p.replace(/^\d+\s*×\s*/, '')));
+        }
+        if (!ids || !ids.length) return '';
+        if (ids.some(id => id === null || id === 13 || !MEDIUM_FORMAT_VIDEO_CAPABLE.has(id))) return '';
+        return ids.join(' ');
+    }
+
+    /**
+     * The `format-role` finding's rule: whether a release relationship's
+     * role does not fit any medium of its release (`FORMAT_ROLE_FAMILIES`).
+     *
+     * | Role (the Relationship cell's phrase)           | Flagged when                          |
+     * |-------------------------------------------------|---------------------------------------|
+     * | "pressed", "printed", "manufactured" (any form) | every medium is Digital Media         |
+     * | "lacquer cut"                                   | no medium is a phonograph record      |
+     * | "glass mastered"                                | no medium is a replicated optical disc |
+     *
+     * @param   {string} role - The phrase ("pressed at", "glass mastered by", …).
+     * @param   {string} formatIds - `_releaseMediumFormatIds()`'s value (the
+     *   Relationship cell's `data-mb-rel-formats`); empty = unknown, never flagged.
+     * @returns {?string} Which rule broke (`'digital'`, `'lacquer'`,
+     *   `'glass'`), or `null`.
+     */
+    function _formatRoleMismatch(role, formatIds) {
+        const ids = String(formatIds || '').split(' ').filter(Boolean).map(Number);
+        if (!ids.length) return null;
+        const r = String(role || '').toLowerCase();
+        if (/lacquer[\s-]*cut/.test(r)) return ids.some(id => FORMAT_ROLE_FAMILIES.lacquer.has(id)) ? null : 'lacquer';
+        if (/glass[\s-]*master/.test(r)) return ids.some(id => FORMAT_ROLE_FAMILIES.glass.has(id)) ? null : 'glass';
+        if (/\b(?:press|print|manufactur)/.test(r)) return ids.every(id => FORMAT_ROLE_FAMILIES.digital.has(id)) ? 'digital' : null;
+        return null;
+    }
+
+    /**
+     * The `format-role` finding's detail: the role and the release's formats
+     * by name ("glass mastered, but the release is 12\" Vinyl").
+     *
+     * @param   {string} role
+     * @param   {string} formatIds
+     * @returns {string}
+     */
+    function _formatRoleDetail(role, formatIds) {
+        const names = [];
+        String(formatIds || '').split(' ').filter(Boolean).forEach(id => {
+            const n = MEDIUM_FORMAT_VIDEO_CAPABLE.get(Number(id))?.name;
+            if (n && !names.includes(n)) names.push(n);
+        });
+        return `${String(role || '').trim()}, but the release is ${names.join(' + ')}`;
     }
 
     /**
@@ -77232,6 +77409,26 @@
                 return `${parts.length} parts, works for ${w.covered}`;
             },
             tint: _findingTintSetting('sa_findings_tint_medley_works'),
+        },
+        // Apollo findings, batch 3 (org/majkinetor.org): Group Therapy's
+        // format rules, on the release's own rows of its "Credits" render.
+        // The Relationship cell carries its media's format ids
+        // (`data-mb-rel-formats`, written by applyRelDetailsToTables()); a
+        // "Via release group" row's cell has none, nor has a release with a
+        // medium of unknown format.
+        {
+            id: 'format-role', level: 'warn', glyph: '💿', scope: 'cell',
+            label: 'Release role does not fit its format',
+            tip: 'A relationship of the release whose role only fits other formats: pressed, printed or manufactured ' +
+                 'on a release that is only Digital Media; lacquer cut with no phonograph record (vinyl, shellac, ' +
+                 'acetate); glass mastered with no pressed optical disc (CD, DVD, SACD, Blu-ray, …; a CD-R is burned, ' +
+                 'not glass mastered). A release with a medium of unknown format is never flagged. The rules are ' +
+                 'Group Therapy\'s (majkinetor).',
+            enabled: () => !_foreignHost && activeDefinition?.type === 'release-credit-tables',
+            cols: name => name === 'Relationship',
+            test: cell => !!_formatRoleMismatch(cell.textContent, cell.dataset.mbRelFormats),
+            detail: cell => _formatRoleDetail(cell.textContent, cell.dataset.mbRelFormats),
+            tint: _findingTintSetting('sa_findings_tint_format_role'),
         },
         {
             id: 'live-sep', level: 'warn', glyph: '➖', scope: 'cell',
@@ -113455,7 +113652,7 @@ a { color: #1565c0; }`;
      * @param {HTMLTableCellElement} cell
      * @returns {{html: string, colSpan: number, rowSpan: number, mbid?: (string|null), relDone?: boolean,
      *            lenFlag?: string, lenTip?: string, lenCmp?: Array<object>, videoFlag?: string, videoTip?: string,
-     *            workFlag?: string, bb?: object}}
+     *            workFlag?: string, relFormats?: string, bb?: object}}
      */
     function _buildDiskCellData(cell) {
         const data = {
@@ -113480,6 +113677,8 @@ a { color: #1565c0; }`;
             if (cell.dataset.mbColTip === '1' && cell.title) data.videoTip = cell.title;
         }
         if (cell.dataset.mbWorkFlag) data.workFlag = cell.dataset.mbWorkFlag;
+        // A release Credits row's media formats (format-role finding).
+        if (cell.dataset.mbRelFormats) data.relFormats = cell.dataset.mbRelFormats;
         // "Recording of" cells: their identity lives on the <td> (class,
         // data-mbid, data-recof), not in the HTML — without these a reloaded
         // row could neither show its 🎼 glyph nor be loaded. Only a SETTLED
@@ -113632,6 +113831,24 @@ a { color: #1565c0; }`;
     function _restoreNoWorkFlag(td, cellData) {
         if (!cellData || cellData.workFlag !== 'none') return;
         _applyNoWorkFlag(td);
+    }
+
+    /**
+     * Re-marks a hydrated Relationship `<td>` of a release's "Credits" render
+     * with its release's medium format ids (`relFormats`, written by
+     * `_buildDiskCellData()` from `data-mb-rel-formats`, which
+     * `applyRelDetailsToTables()` writes and the `format-role` finding reads).
+     * A saved file is user-supplied data, so only space-separated numbers are
+     * accepted.
+     *
+     * @param {HTMLTableCellElement} td - The reconstructed cell.
+     * @param {Object} cellData - Its saved record.
+     * @returns {void}
+     */
+    function _restoreRelFormats(td, cellData) {
+        const v = cellData && cellData.relFormats;
+        if (typeof v !== 'string' || !/^\d{1,4}(?: \d{1,4}){0,199}$/.test(v)) return;
+        td.dataset.mbRelFormats = v;
     }
 
     /**
@@ -169664,6 +169881,7 @@ a { color: #1565c0; }`;
                             _restoreVideoMediumFlag(td, cellData);
                             _recOfRestoreCell(td, cellData);
                             _restoreNoWorkFlag(td, cellData);
+                            _restoreRelFormats(td, cellData);
                             _bbRestoreDiskCell(td, cellData);
                             tr.appendChild(td);
                         });
@@ -169830,6 +170048,7 @@ a { color: #1565c0; }`;
                         _restoreVideoMediumFlag(td, cellData);
                         _recOfRestoreCell(td, cellData);
                         _restoreNoWorkFlag(td, cellData);
+                        _restoreRelFormats(td, cellData);
                         _bbRestoreDiskCell(td, cellData);
                         if (_beforeFp !== null) {
                             const _afterFp = _caaArtDebugFingerprint(td.innerHTML);
@@ -191501,6 +191720,18 @@ a { color: #1565c0; }`;
              * @returns {string[]} `_medleyParts()`.
              */
             medleyParts: (title) => _medleyParts(title),
+            /**
+             * @param {string} role - A Relationship cell's phrase.
+             * @param {string} formatIds - Space-separated medium format ids.
+             * @returns {?string} `_formatRoleMismatch()`.
+             */
+            formatRoleMismatch: (role, formatIds) => _formatRoleMismatch(role, formatIds),
+            /**
+             * @param {string} formatIdsSource - 'live' (the page's own) or an HTML string.
+             * @returns {string} `_releaseMediumFormatIds()` of that document.
+             */
+            releaseMediumFormatIds: (formatIdsSource) => _releaseMediumFormatIds(formatIdsSource === 'live'
+                ? document : new DOMParser().parseFromString(formatIdsSource, 'text/html')),
             /**
              * Reserves `n` slots of the foreign hosts' detail-page rate gate
              * (`_dpAwaitSlot()`, the shipping function), so a spec can put the

@@ -472,8 +472,8 @@
         "why": "The year table is a single table: its loop calls _bbRestoreDiskCell().",
         "edits": [
             {
-                "find": "                        _restoreNoWorkFlag(td, cellData);\n                        _bbRestoreDiskCell(td, cellData);\n",
-                "replace": "                        _restoreNoWorkFlag(td, cellData);\n"
+                "find": "                        _restoreNoWorkFlag(td, cellData);\n                        _restoreRelFormats(td, cellData);\n                        _bbRestoreDiskCell(td, cellData);\n",
+                "replace": "                        _restoreNoWorkFlag(td, cellData);\n                        _restoreRelFormats(td, cellData);\n"
             }
         ],
         "spec": "tests/fixtures/bb-mb-event.spec.js",
