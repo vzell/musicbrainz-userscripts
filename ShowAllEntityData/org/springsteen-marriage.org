@@ -242,8 +242,8 @@ table of 4,998 events):
 | place   | 662               | =springsteenresidence= 70, =unitedkingdom= 60, Australian states, studios                      |
 | tour    | 169 (+847 spur.)  | =TOUR_DEFINITIONS= date ranges; =tour_no= guessed from an alias line (116 of the 169)          |
 
-Also part of 3b: the matrix's "spurious tags" row (PART: tour and content are left) and the tag-source highlight (NOT
-for now; it comes back with 3b, whose sources are setlist and cast rows).
+Also part of 3b: the matrix's "spurious tags" row (DONE since the content family) and the tag-source highlight (NOT,
+vzell, 2026-11-19: "I go with your decision"; every finding already says its reason in words).
 
 *Open questions*, each put to vzell with its most frequent cases, one family at a time:
 1. *Content:* does a ticket-only News/Memorabilia tab call for =ticket= alone? Is =bootleg= / =livedl= from the
