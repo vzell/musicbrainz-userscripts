@@ -1,0 +1,145 @@
+[
+    {
+        "name": "a queued row out of view is taken back while every row is read",
+        "why": "The observer's first callback reports every watched row below the window as not intersecting; it must not empty the queue.",
+        "edits": [
+            {
+                "find": "            } else if (_bbEvp.queued.has(key) && !_bbEvp.all) {",
+                "replace": "            } else if (_bbEvp.queued.has(key)) {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-evp-read-all.spec.js",
+        "grep": "without scrolling",
+        "expect": "fail"
+    },
+    {
+        "name": "the queue is not in the table's order",
+        "why": "Question 10: what is seen first is read first.",
+        "edits": [
+            {
+                "find": "        _bbEvp.queue = now.slice();",
+                "replace": "        _bbEvp.queue = now.slice().reverse();"
+            }
+        ],
+        "spec": "tests/fixtures/bb-evp-read-all.spec.js",
+        "grep": "follows a sort",
+        "expect": "fail"
+    },
+    {
+        "name": "the refresh re-filters for a typed filter only",
+        "why": "Guard only: with \"All errors\" on, each row read is re-stamped, and the re-stamp re-filters (and drops the cache) on its own, so the spec still sees every row join. Kept so the refresh does not depend on the re-stamp.",
+        "edits": [
+            {
+                "find": "            if (_anyFilterActive() || _findingFiltersActive()) {",
+                "replace": "            if (_anyFilterActive()) {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-evp-read-all.spec.js",
+        "grep": "join \"All errors\"",
+        "expect": "pass"
+    },
+    {
+        "name": "a late stamp does not re-filter for a level",
+        "why": "The last row read is stamped after the refresh's pass: it never joins \"All errors\".",
+        "edits": [
+            {
+                "find": "        if (_findingLevelFilter.size > 0\n            || _LATE_FINDING_IDS",
+                "replace": "        if (_LATE_FINDING_IDS"
+            }
+        ],
+        "spec": "tests/fixtures/bb-evp-read-all.spec.js",
+        "grep": "join \"All errors\"",
+        "expect": "fail"
+    },
+    {
+        "name": "a late stamp re-filters from the stale cache",
+        "why": "Same query and filters: runFilter() replays the pass from before the stamp.",
+        "edits": [
+            {
+                "find": "            _invalidateFilterCache();\n            runFilter();\n        }\n    }",
+                "replace": "            runFilter();\n        }\n    }"
+            }
+        ],
+        "spec": "tests/fixtures/bb-evp-read-all.spec.js",
+        "grep": "join \"All errors\"",
+        "expect": "fail"
+    },
+    {
+        "name": "no question above 200 rows",
+        "why": "Question 9: hours of requests are asked first.",
+        "edits": [
+            {
+                "find": "        if (keys.length > _BB_EVP_READ_ALL_ASK) {",
+                "replace": "        if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-evp-read-all.spec.js",
+        "grep": "asks first",
+        "expect": "fail"
+    },
+    {
+        "name": "Cancel reads anyway",
+        "why": "The answer is ignored.",
+        "edits": [
+            {
+                "find": "            if (!ok) return;\n        }\n        if (!_bbEvp.active) _bbEvpToggle(anchor);",
+                "replace": "        }\n        if (!_bbEvp.active) _bbEvpToggle(anchor);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-evp-read-all.spec.js",
+        "grep": "asks first",
+        "expect": "fail"
+    },
+    {
+        "name": "Stop leaves the mode on",
+        "why": "A second press is then ignored (it is already reading every row): no resume.",
+        "edits": [
+            {
+                "find": "            _bbEvp.active = false;\n            _bbEvp.all = null;",
+                "replace": "            _bbEvp.active = false;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-evp-read-all.spec.js",
+        "grep": "follows a sort",
+        "expect": "fail"
+    },
+    {
+        "name": "no row in the ☰ menu",
+        "why": "Question 8: in the card and in the menu.",
+        "edits": [
+            {
+                "find": "        if (document.querySelector('.mb-bbevp-col-hdr-btn')) _bbEvpSaedRow();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-evp-read-all.spec.js",
+        "grep": "follows a sort",
+        "expect": "fail"
+    },
+    {
+        "name": "no action in the card",
+        "why": "Question 8.",
+        "edits": [
+            {
+                "find": "        if (!all && _bbEvpUnread().keys.length) actions.push({ id: 'all', label: 'Read every row' });",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-evp-read-all.spec.js",
+        "grep": "without scrolling",
+        "expect": "fail"
+    },
+    {
+        "name": "the rows hidden by a filter are left out",
+        "why": "Question 10: hidden and filtered rows are included; only the live rows would be read.",
+        "edits": [
+            {
+                "find": "        _msSourceRows().forEach((row) => {\n            const td = row.querySelector('td.mb-bbevp-cell[data-mb-bbevp-col=\"On stage\"][data-mb-bbevp-key]');",
+                "replace": "        Array.from(document.querySelectorAll('table.tbl tbody tr')).forEach((row) => {\n            const td = row.querySelector('td.mb-bbevp-cell[data-mb-bbevp-col=\"On stage\"][data-mb-bbevp-key]');"
+            }
+        ],
+        "spec": "tests/fixtures/bb-evp-read-all.spec.js",
+        "grep": "join \"All errors\"",
+        "expect": "fail"
+    }
+]

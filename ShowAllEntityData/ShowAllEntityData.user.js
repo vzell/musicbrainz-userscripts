@@ -30864,7 +30864,29 @@
         // pages already read again since the last "every row", and the
         // listings and year pages to read again.
         again: new Map(), againVenues: new Set(), againLists: new Set(), againYears: new Set(),
+        // "Read every row" (`_bbEvpReadAll()`; org/bbp-parity.org, "Closing
+        // the matrix", branch 3): null, or {t0, base, total, since} — when it
+        // began, the rows read (done + failed) then, the rows it queued, and
+        // the rows read since the last re-filter. `current`: the row the pump
+        // is reading now (no longer queued, not yet known).
+        all: null, current: null,
     };
+
+    /**
+     * Pages read per row by "Read every row", beside the event page itself:
+     * its On stage page (when the tag check reads it) and its venue's page
+     * (once per venue). From the mirror of 2026-11-15 (NB-3641): 5,030
+     * event pages (gig, nogig, recording, rehearsal, interview, nobruce),
+     * 3,484 onstage: pages, 2,168 venue: pages — 0.69 and 0.43 per event
+     * page. Only for the question's "about"; the card's time left is
+     * measured from the rows read.
+     * @type {{onstage: number, venue: number}}
+     */
+    const _BB_EVP_PAGES_PER_ROW = { onstage: 0.69, venue: 0.43 };
+    /** @type {number} Above this many unread rows "Read every row" asks first (mockup question 9). */
+    const _BB_EVP_READ_ALL_ASK = 200;
+    /** @type {{rows: number, ms: number}} While reading every row, re-filter after this many rows or this long (question 11). */
+    const _BB_EVP_READ_ALL_REFILTER = { rows: 25, ms: 10000 };
 
     /**
      * The four cells of a row, empty until its page is read: what they need
@@ -31260,21 +31282,31 @@
      * filter itself when one is set (its re-render lays out On stage's
      * lists); with no filter the collapse toggles of On stage are laid out
      * here, at most every 3 s while pages arrive. At most once a second, or
-     * at once.
+     * at once; while reading every row (`_bbEvp.all`), after 25 rows or
+     * 10 s, whichever comes first (mockup question 11): a filter pass over
+     * thousands of rows each second would cost more than the rows it adds.
+     * A findings filter (a row finding, "All errors") counts as a filter: a
+     * row read now can join it. `runFilter()` keeps the window's scroll
+     * position.
      *
      * @param {boolean} [now]
      * @returns {void}
      */
     function _bbEvpScheduleRefresh(now) {
         clearTimeout(_bbEvp.refreshTimer);
-        const wait = now ? 0 : Math.max(0, 1000 - (Date.now() - _bbEvp.lastRefresh));
+        const since = Date.now() - _bbEvp.lastRefresh;
+        const all = _bbEvp.all;
+        const wait = now ? 0
+            : all ? (all.since >= _BB_EVP_READ_ALL_REFILTER.rows ? 0 : Math.max(0, _BB_EVP_READ_ALL_REFILTER.ms - since))
+            : Math.max(0, 1000 - since);
         _bbEvp.refreshTimer = setTimeout(() => {
             _bbEvp.lastRefresh = Date.now();
+            if (_bbEvp.all) _bbEvp.all.since = 0;
             const tables = Array.from(document.querySelectorAll('body.mb-sa-host-bb table.tbl')).filter(t => t.querySelector('td.mb-bbevp-cell'));
             tables.forEach(t => _invalidateUniqDropDataCacheForTable(t));
             _invalidateFilterCache();
             _bbEvpUpdateHdrBtns();
-            if (_anyFilterActive()) {
+            if (_anyFilterActive() || _findingFiltersActive()) {
                 runFilter();
             } else if (now || !_bbEvp.running || Date.now() - _bbEvp.collapseAt >= 3000) {
                 _bbEvp.collapseAt = Date.now();
@@ -31370,6 +31402,7 @@
                 continue;
             }
             _bbEvpRepaint(_bbEvpCellIndex(), [key], 'run');
+            _bbEvp.current = key;
             let rec = null;
             try {
                 const page = await _bbEvpPageUrl(key);
@@ -31405,12 +31438,20 @@
                 } else {
                     _bbEvp.done++;
                 }
+                if (_bbEvp.all) _bbEvp.all.since++;
             }
+            _bbEvp.current = null;
             _bbEvpRepaint(_bbEvpCellIndex(), [key]);
             _ajChanged('bbevp', null);
             _bbEvpScheduleRefresh(false);
         }
         _bbEvp.running = false;
+        // Every row is read: back to reading what comes into view.
+        if (_bbEvp.all && _bbEvp.active) {
+            const n = _bbEvp.done + _bbEvp.failed - _bbEvp.all.base;
+            _bbEvp.all = null;
+            _ajLog('bbevp', null, `Every row read (${Number(n).toLocaleString('en-US')} this time)`);
+        }
         // While the reading is on, the job lasts: the next rows scrolled to
         // carry it on. It ends when the button stops it.
         if (!_bbEvp.active) _ajFinish('bbevp', null, _bbEvp.failed);
@@ -31466,7 +31507,8 @@
             if (!key) return;
             if (en.isIntersecting) {
                 _bbEvpEnqueue(key);
-            } else if (_bbEvp.queued.has(key)) {
+            } else if (_bbEvp.queued.has(key) && !_bbEvp.all) {
+                // While every row is read, a row out of view stays queued.
                 _bbEvp.queued.delete(key);
                 _bbEvp.queue = _bbEvp.queue.filter(k => k !== key);
                 back.push(key);
@@ -31486,6 +31528,7 @@
     function _bbEvpToggle(anchor) {
         if (_bbEvp.active) {
             _bbEvp.active = false;
+            _bbEvp.all = null;
             if (_bbEvp.io) _bbEvp.io.disconnect();
             const back = _bbEvp.queue.splice(0);
             _bbEvp.queued.clear();
@@ -31605,6 +31648,7 @@
             const flex = th.querySelector('.mb-col-hdr-flex');
             (flex || th).prepend(btn);
         });
+        if (document.querySelector('.mb-bbevp-col-hdr-btn')) _bbEvpSaedRow();
         _bbEvpUpdateHdrBtns();
     }
 
@@ -31704,6 +31748,7 @@
         const index = _bbEvpCellIndex();
         const back = _bbEvp.queue.splice(0);
         _bbEvp.queued.clear();
+        _bbEvp.all = null;
         _bbEvp.againVenues.clear();
         _bbEvp.pageOf.clear();
         index.forEach((tds, key) => {
@@ -31744,6 +31789,134 @@
     }
 
     /**
+     * The rows "Read every row" would read, once each, in the table's current
+     * order: the source rows' order (a sort reorders them), so rows hidden by
+     * a filter or in a closed sub-table are included (mockup question 10). A
+     * row is unread when nothing is known of it, or when it was painted from
+     * the store with its venue or tag pages still to read (`venueDue`,
+     * `tagsDue`); a failed row is left to "Retry the N failed"; the row being
+     * read now is not unread. Also how many rows have a page at all.
+     *
+     * @returns {{keys: string[], rows: number}}
+     */
+    function _bbEvpUnread() {
+        const keys = [];
+        const seen = new Set();
+        _msSourceRows().forEach((row) => {
+            const td = row.querySelector('td.mb-bbevp-cell[data-mb-bbevp-col="On stage"][data-mb-bbevp-key]');
+            const key = td && td.dataset.mbBbevpKey;
+            if (!key || seen.has(key)) return;
+            seen.add(key);
+            const rec = _bbEvpMem.get(key);
+            if (key === _bbEvp.current || (rec && (rec.failed || !(rec.venueDue || rec.tagsDue)))) return;
+            keys.push(key);
+        });
+        return { keys, rows: seen.size };
+    }
+
+    /**
+     * A time left, as words ("about 2 h 42 min", "about 4 min", "under a
+     * minute"). At one page a second, pages are seconds.
+     *
+     * @param {number} seconds
+     * @returns {string}
+     */
+    function _bbEvpDuration(seconds) {
+        const s = Math.max(0, Math.round(seconds));
+        if (s < 60) return 'under a minute';
+        const h = Math.floor(s / 3600);
+        const m = Math.round((s % 3600) / 60);
+        return `about ${h ? `${h} h ` : ''}${m} min`;
+    }
+
+    /** @returns {number} Pages a row costs, about: its event page, its On stage and venue pages when read. */
+    function _bbEvpPagesPerRow() {
+        return 1 + (_bbEvpTagPagesOn() ? _BB_EVP_PAGES_PER_ROW.onstage : 0) + (_bbVenueOn() ? _BB_EVP_PAGES_PER_ROW.venue : 0);
+    }
+
+    /**
+     * "Read every row" (the ▶ Pages card and the ☰ menu's Brucebase group;
+     * org/bbp-parity.org, "Closing the matrix", branch 3; mockup
+     * https://claude.ai/artifact/Mji5y7i2vZzTkK1WQ4JWi7, questions 8-11, all
+     * as recommended): queues every unread row (`_bbEvpUnread()`) in the
+     * table's order, out of view or not, through the same pump and the same
+     * one-page-a-second slot as the rows in view. Above 200 unread rows it
+     * asks first, with the count and the time. The queue is rebuilt in table
+     * order with the rows already queued in it, and painted in ONE pass (one
+     * cell index for all; per row it would be quadratic on the start page's
+     * 5,018 rows). Stop (▶ Pages, the card) sends the queue back to "not
+     * read"; a later press goes on, as the rows read come from memory or, on
+     * a new visit, the previews' store. A year whose listing is not read yet
+     * (`bb-year-unlisted`) asks for it too.
+     *
+     * @param {?Element} anchor - What was clicked, for the dialog and the card.
+     * @returns {Promise<void>}
+     */
+    async function _bbEvpReadAll(anchor) {
+        if (_bbEvp.all) return;
+        const { keys, rows } = _bbEvpUnread();
+        const fmt = n => Number(n).toLocaleString('en-US');
+        if (!keys.length) {
+            if (!_bbEvp.active) _bbEvpToggle(anchor);
+            _ajLog('bbevp', null, 'Every row is read already');
+            _ajChanged('bbevp', null);
+            return;
+        }
+        if (keys.length > _BB_EVP_READ_ALL_ASK) {
+            const pages = Math.round(keys.length * _bbEvpPagesPerRow());
+            const ok = await Lib.showCustomConfirm(
+                `Rows not read yet: ${fmt(keys.length)} of ${fmt(rows)}\n`
+                + `Pages to read, about: ${fmt(Math.round(pages / 100) * 100 || pages)}\n`
+                + `Time: ${_bbEvpDuration(pages)}\n\n`
+                + '▶ Pages reads each show\'s page, its On stage page and its venue\'s page, one page a second, shared with the hover cards. '
+                + 'Pages read before come from the browser\'s store and cost nothing. Stop at any time; a later press goes on where it stopped.',
+                '▶ Read every row of this table?',
+                anchor
+            );
+            if (!ok) return;
+        }
+        if (!_bbEvp.active) _bbEvpToggle(anchor);
+        // The unread rows again: the dialog may have stood open while rows were read.
+        const now = _bbEvpUnread().keys;
+        const was = new Set(_bbEvp.queue);
+        _bbEvp.queue = now.slice();
+        _bbEvp.queued = new Set(now);
+        _bbEvp.all = { t0: Date.now(), base: _bbEvp.done + _bbEvp.failed, total: now.length, since: 0 };
+        const paint = now.filter((k) => {
+            const rec = _bbEvpMem.get(k);
+            return !was.has(k) && !(rec && (rec.venueDue || rec.tagsDue));
+        });
+        if (paint.length) _bbEvpRepaint(_bbEvpCellIndex(), paint, 'queued');
+        if (_bbYearUnlistedOn()) {
+            _bbYearRowIndex().forEach((ds, slug) => {
+                if (Array.from(ds).some(d => !d.hasAttribute('data-mb-bb-listed'))) _bbYearListingWant(slug);
+            });
+        }
+        _ajLog('bbevp', null, `Reading every row (${fmt(now.length)} not read yet), in the table's order`);
+        _ajChanged('bbevp', null);
+        _bbEvpUpdateHdrBtns();
+        _bbEvpPump();
+    }
+
+    /**
+     * The ☰ menu's Brucebase group row of "Read every row" (mockup question
+     * 8: "▶ Pages' own menu" — ▶ Pages is one button, so its menu is the
+     * SAED button's Brucebase group). Added with the ▶ Pages headers, once.
+     *
+     * @returns {void}
+     */
+    function _bbEvpSaedRow() {
+        if (document.getElementById('mb-saed-bbevp-all-btn') || typeof _saedGroup !== 'function' || !_toolbarMenus.get('saed')) return;
+        const row = document.createElement('button');
+        row.id = 'mb-saed-bbevp-all-btn';
+        row.type = 'button';
+        row.textContent = '▶ Pages: read every row';
+        _setTip(row, 'Reads the event page of every row of the table, in its order, out of view or not: one page a second. Asks first above 200 rows.');
+        row.addEventListener('click', () => { _bbEvpReadAll(row); });
+        _saedGroup('bb').adopt(row);
+    }
+
+    /**
      * Registers the event-page columns' provider of the async job popup.
      *
      * @returns {void}
@@ -31757,6 +31930,7 @@
             act: (scope, id) => {
                 if (id === 'retry') _bbEvpRetryFailed();
                 if (id === 'again') _bbEvpReloadAll();
+                if (id === 'all') _bbEvpReadAll(_ajAnchorFor('bbevp', null));
                 if (id === 'stop' && _bbEvp.active) _bbEvpToggle(null);
             },
         });
@@ -31772,29 +31946,48 @@
         const fmt = n => Number(n).toLocaleString('en-US');
         const failedNow = Array.from(_bbEvpMem.values()).filter(r => r.failed).length;
         const actions = [];
+        const all = _bbEvp.all;
         if (_bbEvp.active) actions.push({ id: 'stop', label: 'Stop', kind: 'danger' });
         if (failedNow) actions.push({ id: 'retry', label: `Retry the ${fmt(failedNow)} failed`, kind: 'danger' });
+        // Rows not read yet: they can all be read (mockup question 8).
+        if (!all && _bbEvpUnread().keys.length) actions.push({ id: 'all', label: 'Read every row' });
         // Something is read: it can be read again.
         if (document.querySelector('body.mb-sa-host-bb td.mb-bbevp-cell[data-mb-bbevp-state="done"]')) actions.push({ id: 'again', label: 'Read every row again' });
         const cache = [['Store', 'the link previews\' own, 30 days: a row whose card was opened costs nothing']];
         const queued = _bbEvp.queue.length + (_bbEvp.running ? 1 : 0);
         if (!job) {
             return {
-                phase: 'idle', summary: 'Nothing read yet. Click ▶ Pages: the rows in view, then the rows you scroll to, one a second.',
+                phase: 'idle', summary: 'Nothing read yet. Click ▶ Pages: the rows in view, then the rows you scroll to, one a second; or Read every row.',
                 facts: [['Rate', 'one page a second, shared with the hover cards']], cache, actions,
             };
         }
         const s = Math.round(((job.t1 || Date.now()) - job.t0) / 1000);
+        const facts = [];
+        if (all) {
+            // Time left: measured from the rows read since the press; until
+            // three are read, the pages a row costs, about.
+            const read = _bbEvp.done + _bbEvp.failed - all.base;
+            const perRow = read >= 3 ? (Date.now() - all.t0) / 1000 / read : _bbEvpPagesPerRow();
+            facts.push(['Left', _bbEvpDuration(queued * perRow)]);
+            let err = 0, warn = 0;
+            _findingTablePairs().forEach((p) => {
+                const c = _findingRowTally(p.rows);
+                err += c.get('@error') || 0;
+                warn += c.get('@warn') || 0;
+            });
+            facts.push(['Flagged so far', `❌ ${fmt(err)} · ⚠️ ${fmt(warn)} rows`]);
+            if (_bbEvp.current) facts.push(['Now reading', _bbEvp.current.replace(/^https?:\/\/[^/]+\//, '')]);
+        }
+        facts.push(
+            ['Requests', `${fmt(_bbEvp.requests)} made (the rest were read before)`],
+            ['Rate', 'one page a second, shared with the hover cards'],
+            ['Time', `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}${job.t1 ? '' : ' elapsed'}`],
+        );
         return {
             phase: job.phase,
-            summary: _bbEvp.active ? 'Reading the event pages of the rows in view' : 'Stopped',
+            summary: !_bbEvp.active ? 'Stopped' : all ? 'Reading every row, in the table\'s order' : 'Reading the event pages of the rows in view',
             done: _bbEvp.done, total: _bbEvp.done + _bbEvp.failed + queued, failed: failedNow, queued, unit: 'rows',
-            facts: [
-                ['Requests', `${fmt(_bbEvp.requests)} made (the rest were read before)`],
-                ['Rate', 'one page a second, shared with the hover cards'],
-                ['Time', `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}${job.t1 ? '' : ' elapsed'}`],
-            ],
-            cache, actions,
+            facts, cache, actions,
         };
     }
 
@@ -184455,7 +184648,8 @@ a { color: #1565c0; }`;
      * Only when a stamp actually CHANGED does it go on: bump
      * `_findingStampGen` (the menu tally memo), drop the touched tables' 📊
      * caches, refresh the menus, and re-run the filter if a late finding
-     * (`_LATE_FINDING_IDS`) is filtering. That condition is what keeps this
+     * (`_LATE_FINDING_IDS`) or a whole level ("All errors") is filtering.
+     * That condition is what keeps this
      * from looping: the re-render re-enriches its clones from the artwork
      * cache, which queues their rows again, and their stamps then come out
      * unchanged (a Relationships cell is never written twice: `relDone`).
@@ -184490,7 +184684,16 @@ a { color: #1565c0; }`;
         touched.forEach(t => _invalidateUniqDropDataCacheForTable(t));
         Lib.debug('filter', `_flushFindingsRestamp(): ${rows.length} row(s), ${touched.size} table(s) changed.`);
         if (typeof window.updateFilterButtonsVisibility === 'function') window.updateFilterButtonsVisibility();
-        if (_LATE_FINDING_IDS.some(id => { const f = _FINDING_BY_ID.get(id); return f && _findingState(f) !== 'off'; })) runFilter();
+        // "All errors" / "All warnings" filter by whatever is stamped, so any
+        // changed stamp can move a row in or out (bb-evp-read-all.spec.js:
+        // the last row ▶ Pages read was stamped after its re-filter). The
+        // stamp is what the row test reads, so the cached results are stale:
+        // with the same query and filters, runFilter() would replay them.
+        if (_findingLevelFilter.size > 0
+            || _LATE_FINDING_IDS.some(id => { const f = _FINDING_BY_ID.get(id); return f && _findingState(f) !== 'off'; })) {
+            _invalidateFilterCache();
+            runFilter();
+        }
     }
 
 
@@ -192358,6 +192561,15 @@ a { color: #1565c0; }`;
             findingLevel(id) {
                 const f = _FINDING_BY_ID.get(id);
                 return f ? f.level : null;
+            },
+            /**
+             * The ▶ Pages On stage cells of the SOURCE rows, one per row, live
+             * or filtered out ("Read every row" reads both; bb-evp-read-all.spec.js).
+             *
+             * @returns {HTMLTableCellElement[]}
+             */
+            bbEvpSourceCells() {
+                return _msSourceRows().map(r => r.querySelector('td.mb-bbevp-cell[data-mb-bbevp-col="On stage"]')).filter(Boolean);
             },
             /**
              * `_bbTagFacts()` of a Brucebase page given as markup: what a

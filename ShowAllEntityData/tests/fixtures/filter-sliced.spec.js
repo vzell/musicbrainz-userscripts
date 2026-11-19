@@ -43,14 +43,21 @@ const RG_SHELL = path.join(__dirname, '..', 'snapshots', 'releasegroup-releases'
 const RG_FIXTURE = path.join(__dirname, 'saved-data', 'releasegroup-releases.json.gz');
 
 /**
- * Loads the BoDeans single-table fixture.
+ * Loads the BoDeans single-table fixture, cover art off. A disk load without
+ * a page fixture keeps the schema's defaults, so the release cells' cover art
+ * was filled in after every render, asynchronously: under a full suite's load
+ * that came after a held pass was released, and the "writes nothing" tests
+ * counted it (`ul.mb-caa-art-ul` items added and removed, 10 to 54 records;
+ * NB-3641, 2026-11-19, reproduced at 20-25× CPU throttling with 14 workers,
+ * gone with cover art off: 40 of 40 watched releases wrote nothing). A filter
+ * pass replaces rows; it never touches those lists.
  * @param {import('@playwright/test').Page} page
  * @returns {Promise<void>}
  */
 async function openSingle(page) {
     await loadFromDiskFixture(page, {
         url: BODEANS_URL, fixturePath: BODEANS_FIXTURE, testMode: true,
-        settingsOverride: { sa_enable_relationships_column: false },
+        settingsOverride: { sa_enable_relationships_column: false, sa_enable_caa_pics: false },
     });
     await expect(page.locator('h2 .mb-row-count-stat')).toHaveText('(56)', { timeout: 30000 });
 }

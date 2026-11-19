@@ -30537,3 +30537,48 @@ Env: 2026-11-19T09:06–10:14+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6
   Genezio's recordings (`609a9087…/recordings`, "2, 3 Shots"). The artist credit's own Recordings tab
   (`/artist-credit/4295467/recording`) shows nothing: those pages carry the credit only in the h1, no Artist column
   (my request had wrongly expected a flag there).
+
+## 2026-11-19 — ▶ Pages "Read every row", and two gaps of "All errors" with late stamps (feat/bb-evp-read-all)
+Env: 2026-11-19T11:11:54+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (chromium-fixtures), no Tampermonkey (GM stubs); the mirror count: n/a browser
+
+- **What:** branch 3 of "Closing the matrix" (org/bbp-parity.org): `_bbEvpReadAll()` in the ▶ Pages card and the ☰
+  menu's Brucebase group; design in docs/claude/brucebase.md, "Read every row". Pages per row from the mirror
+  (`~/git/scripts/BruceParser/bb/latest` → 2026-11-15, local on NB-3641): 5,030 event pages, 3,484 onstage:, 2,168 venue:.
+- **Found while writing the spec, both in 9.99.1655's code:** with "All errors" on, the last row read stayed hidden
+  although its source row carried three error stamps and the menu counted it. (1) `_flushFindingsRestamp()` re-filters
+  only for a ticked `_LATE_FINDING_IDS` finding, not for a level; (2) when it does, `runFilter()` answers from
+  `_filterResultCache`: the key (query, ticks, levels) is unchanged by a stamp, so it replays the pass from before.
+  Both fixed (re-filter for a level, drop the cache first). Also ▶ Pages' refresh re-filtered for a typed filter only
+  (`_anyFilterActive()`); it now counts `_findingFiltersActive()` too (a guard: the re-stamp covers it in the spec).
+- **Two test traps:** Playwright scrolls the page to click inside the job card, so "without scrolling" is checked
+  after a scroll back to the top, with rows far below the window as the premise. A page answered while Stop was pressed
+  is not counted as read and is later taken from memory, not asked again: "every row once" is a set, not a count.
+- **Tests:** `bb-evp-read-all.spec.js` (4), twice with the ▶ Pages, findings-menu and stamp specs: 94 of 94.
+  Mutations `bb-evp-read-all.json`: 11 as recorded (one `"expect": "pass"` guard, reason in its entry).
+- **Perf:** tests/MEASUREMENTS.org, 1985 year render 1.004, sort 1.009 (main/branch from a worktree).
+- **Not run yet:** `npm run test:full`.
+- **`npm run test:full` at `79205b7f`, 11:13:11–11:39:51 CET (26 m 40 s): 3,307 of 3,309.** Neither failure was in
+  this branch's code; both are fixed in the tests (vzell: "also fix the discogs.com tag card stuff"):
+  - `filter-sliced.spec.js` "a call waiting behind a held pass gives way to the ✕ clear" (new in 9.99.1656): 54 tbody
+    writes after the release. Reproduced at 25× CPU throttling with 14 copies in parallel (1 of 14): the writes were
+    removals inside `ul.mb-caa-art-ul`; a filter pass replaces rows, never that. FIRST FIX WRONG (`30a31f60`): a
+    500 ms quiet gate before the release, on the guess that the ✕ clear's render tail was still running. The next
+    full run (11:52:51–12:19:09 CET, 26 m 18 s, 3,306 of 3,309) failed three "writes nothing" tests (48, 48, 26
+    writes), and a throttled diagnostic showed the art writes coming AFTER 509–951 ms of quiet: the cover art is
+    filled in asynchronously after every render, at any time. The gate also made the guard "C5: a stale chunked
+    render keeps drawing" look caught 3 of 3, from that noise. REAL FIX: the BoDeans disk load keeps the schema's
+    defaults (no page fixture, so no `FIXTURE_SETTINGS_OVERRIDE`), cover art on; `openSingle()` now turns it off
+    (`sa_enable_caa_pics: false`) and the gate is gone. Throttled ×20 at 14 workers: 40 of 40 watched releases wrote
+    nothing (one test ran out of its 2 minutes, the slow end of 1.3–1.9-minute runs). The seven mutations aimed at
+    these tests are all as originally recorded again, the C5 guard back to "pass".
+  - `discogs-mb-column.spec.js` "in a MusicBrainz window, a genre's tag link opens here and has its card": the peek
+    still held the Artist card after 30 s. The cause on record (2026-11-04): a fresh window repaints on each follow-up
+    answer and can move "americana" from under the pointer during the card's delay. The two repaint tests had been
+    given `windowQuiet()`; this one had not. It now opens the window through `openGenreWindow()` (the same steps,
+    then quiet). 14 workers × 14: 42 of 42.
+- **`npm run test:full` at `b39d8b5e`, 12:40:14–13:04:39 CET (24 m 25 s): 3,308 of 3,309.** `filter-sliced` and the
+  Discogs genre test green. The one failure: `pop-mb-image.mobile.spec.js` "a tap opens the window …", its SECOND tap
+  (the picture inside the window): "Element is not attached to the DOM" in `scrollIntoViewIfNeeded`. The window
+  repaints its area on each follow-up answer in its first seconds (as on discogs.com), replacing the picture; the
+  branch-2 run's failure of this test (the tap point no longer on the element) is the same race. Fixed in the spec:
+  `windowQuiet()` (1.5 s without a repaint of `.mb-dp-area`) before the tap. 14 workers × 28: 28 of 28.

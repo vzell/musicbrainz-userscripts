@@ -1742,6 +1742,46 @@ out). A page is 37 KB (median), 1978 7.1 MB; 5,010 entries in all.
   (`_extBbYears`, `_extBbYearLists`), and an older promise no longer
   removes a newer entry. Spec `bb-pages-reload.spec.js` (5), mutations
   `bb-pages-reload.json` (18).
+- **Read every row** (org/bbp-parity.org, "Closing the matrix", branch 3;
+  mockup https://claude.ai/artifact/Mji5y7i2vZzTkK1WQ4JWi7, questions 8-11,
+  vzell 2026-11-19 "all as recommended"). `_bbEvpReadAll()`, from the job
+  card's `all` action (offered while `_bbEvpUnread()` finds a row) and the
+  ☰ menu's Brucebase group row `#mb-saed-bbevp-all-btn` (`_bbEvpSaedRow()`,
+  added with the header buttons). DEVIATION from the mockup's "▶ Pages' own
+  menu": ▶ Pages is one button with no menu, so the menu is the SAED
+  button's `bb` group.
+  - **Which rows, in which order:** `_bbEvpUnread()` walks the SOURCE rows
+    (`_msSourceRows()`: a sort reorders them, a filter does not drop them),
+    one key each, leaving out rows known (`_bbEvpMem`, unless `venueDue`/
+    `tagsDue`), failed (Retry has its own action) and the one being read
+    (`_bbEvp.current`, set by the pump).
+  - **Asks first** above `_BB_EVP_READ_ALL_ASK` (200) unread rows,
+    `Lib.showCustomConfirm()` with the rows, pages and time:
+    `_bbEvpPagesPerRow()` is 1 + `_BB_EVP_PAGES_PER_ROW` (On stage 0.69 and
+    venue 0.43 per event page, the mirror of 2026-11-15) for the checks that
+    are on. DEVIATION: the mockup's numbers grid is the library dialog's
+    lines of text, and its buttons OK / Cancel.
+  - **The queue** is rebuilt in table order with the rows already queued in
+    it, and painted 'queued' in ONE `_bbEvpRepaint()` (one cell index; per
+    row it is quadratic on 5,018 rows). `_bbEvp.all` = {t0, base, total,
+    since}: while set, `_bbEvpOnSeen()` does not take back a row that left
+    the window (its first callback reports every row below the window as
+    not intersecting), and `_bbEvpScheduleRefresh()` waits for 25 rows
+    (`all.since`) or 10 s (`_BB_EVP_READ_ALL_REFILTER`). The pump clears it
+    when the queue is empty ("Every row read"), Stop and "Read every row
+    again" too. A year whose listing is unread (`bb-year-unlisted`) is asked
+    for at the press (`_bbYearListingWant()`).
+  - **The card** (`_bbEvpSnapshot()`): "Left" from the rows read since the
+    press (the pages-per-row estimate until three are read), "Flagged so far"
+    from `_findingRowTally()`'s `@error`/`@warn` (memoized per stamp
+    generation), "Now reading".
+  - **Filters:** the refresh re-filters for a findings filter too
+    (`_findingFiltersActive()`), not only a typed one; and
+    `_flushFindingsRestamp()` re-filters for a level filter, after dropping
+    the filter cache (docs/claude/findings.md). `runFilter()` keeps the
+    window's scroll.
+  - Spec `bb-evp-read-all.spec.js` (4: 2011's 28 rows, the start page's
+    ~398 for the question), mutations `bb-evp-read-all.json` (11).
 - **Rows read before** paint at a fresh render or a disk load
   (`_bbEvpAfterRender(true)`: once a page load the previews' store is read,
   `_fiDpPeek()`, one IndexedDB read, no request); a re-render (sort, filter

@@ -4623,3 +4623,20 @@ Env: 2026-11-19T10:45:35+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 | =npm run test:full=, merge check  |  3310 |      12 | *22 m 11 s* | =run-test-full.py=, 10:45:35–11:07:46 CET |
 
 3310 passed (the branch's 3303 plus the 7 tests main gained from 9.99.1655–1656 on NB-3641). No flake showed.
+
+* 2026-11-19 — Brucebase year render and sort, main vs feat/bb-evp-read-all (NB-3641)
+
+Env: 2026-11-19T11:10:04–11:11:44+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs).
+
+pageType =bb-year= (=tableMode: single=), "1985" (100 rows), fixture; =node scripts/measure-bb-year-render.js 1985 9=,
+main (=c8a99412=, 9.99.1656) from a git worktree, the branch's userscript uncommitted on it. Medians of 9 reps, ms,
+arms in the order A,B,B,A,A,B:
+
+| Measure | main (A)      | branch (B)    | ratio B/A (means) |
+|---------+---------------+---------------+-------------------|
+| render  | 539, 554, 542 | 548, 536, 557 |             1.004 |
+| sort    | 69, 70, 74    | 69, 76, 70    |             1.009 |
+
+No cost: the branch changes no render or sort path (the ☰ row is added once, the refresh and re-stamp change only
+while reading every row or with a level filter on). A first A,B,B,A run (11:08–11:09) is not usable: the machine's
+render times fell from about 1,020 to about 540 ms in its third arm.

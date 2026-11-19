@@ -801,7 +801,7 @@ guard is one element lookup when the buttons are made and at a press.
 Unverified: all of it in a real browser; which script Tampermonkey runs first decides only whether the notice shows at
 load or at the first press.
 
-** All errors / All warnings (=feat/findings-any-level=)
+** All errors / All warnings (=feat/findings-any-level=; merged 2026-11-19 as 9.99.1655; vzell: "all tested live, OK")
 
 Env: 2026-11-19T01:35+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright
 1.62.1 Chromium, no Tampermonkey (GM stubs)
@@ -832,5 +832,35 @@ known flake; =pop-mb-image.mobile=, a tap-point check under load) pass alone, 45
 | https://musicbrainz.org/release/20a52f17-ce0b-48bf-911e-9f962a518185       | Show all Tracks, ⚠️: tick both single rows, then All warnings | two ticks: no row; All warnings: every track with a warning, the two ticks released and greyed           |
 | the same page                                                              | Clear ALL filters                                             | every row back, All warnings unticked                                                                    |
 | https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events | Show all Events, ❌ All errors and ⚠️ All warnings             | rows with an error AND a warning                                                                         |
+
+Unverified: all of it in a real browser.
+
+** Read every row (=feat/bb-evp-read-all=)
+
+=_bbEvpReadAll()=: "Read every row" in the ▶ Pages card and in the ☰ menu's Brucebase group (DEVIATION: the mockup's
+"▶ Pages' own menu"; ▶ Pages has none). It queues every unread row in the table's current order, rows a filter hides
+included, through the same pump and the one-page-a-second slot; above 200 rows it asks first, with rows, pages and
+time (DEVIATION: the library's confirm dialog, its numbers as lines of text). The card shows the time left, the rows
+flagged so far and the row being read; filters take the rows in every 25 rows or 10 s. Stop puts the rest back; a
+later press goes on (rows read come from memory or the store). Pages per row from the mirror of 2026-11-15: 5,030
+event pages, 3,484 onstage:, 2,168 venue: (1 + 0.69 + 0.43).
+
+Found on the way, in branch 2's code (9.99.1655), fixed here: a row whose findings are stamped late (▶ Pages, artwork)
+never joined "All errors": =_flushFindingsRestamp()= re-filtered only for a ticked late finding, and from the stale
+filter cache. And ▶ Pages' refresh re-filtered for a typed filter only, not for a findings filter.
+
+Spec =tests/fixtures/bb-evp-read-all.spec.js= (4), mutations =scripts/mutations/bb-evp-read-all.json= (11). With it
+the HOME row is DONE once merged.
+
+** The browser check of Read every row, for vzell
+
+| Page                               | Step                                                                          | Expected                                                                                                       |
+|------------------------------------+-------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------|
+| https://brucebase.wikidot.com/1972 | Show all events, hover ▶ Pages, "Read every row" in the card                  | no question (under 200 rows); every row fills in from the top without scrolling, the card's "Left" counts down |
+| the same page, reloaded            | Show all events                                                               | every row read paints at once from the store, no request                                                       |
+| https://brucebase.wikidot.com/2016 | Show all events, ❌ All errors, then ☰ → Brucebase → "▶ Pages: read every row" | rows with an error join the view while reading (every 25 rows or 10 s); the window does not jump               |
+| the same page                      | ■ Pages after a few rows, then the ☰ row again                                | the rest goes back to —; the second press goes on, no row read twice                                           |
+| https://brucebase.wikidot.com/     | Show all events of all years, then "Read every row" in the card               | a question: rows not read of about 5,018, about 10,000 pages, nearly three hours; Cancel reads nothing         |
+| the same page                      | the same, OK, wait a minute, then sort by a column and look at the card       | the card: "Left", "Flagged so far", "Now reading"; the reading keeps the order it started with                 |
 
 Unverified: all of it in a real browser.
