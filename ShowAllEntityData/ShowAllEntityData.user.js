@@ -2804,6 +2804,48 @@
                          'after the barcode itself is shown either way.'
         },
 
+        sa_findings_tint_barcode_zero: {
+            label: 'Highlight all-zero barcodes as ERROR',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint a Barcode cell light red with a ❌ when the barcode is only zeros (000000000000). Such a ' +
+                         'placeholder passes the format check, because its check digit adds up.'
+        },
+
+        sa_findings_tint_barcode_missing: {
+            label: 'Highlight releases with no barcode entered as WARNING',
+            type: 'checkbox',
+            default: false,
+            description: 'Tint an empty Barcode cell of a release list light yellow with a ⚠️. "[none]", a release known ' +
+                         'to have no barcode, is not flagged. Off by default: most older releases never had a barcode ' +
+                         'entered, so this would tint a large part of a long list. The ⚠️ WARNING menu counts and ' +
+                         'filters them either way.'
+        },
+
+        sa_findings_tint_catno_missing: {
+            label: 'Highlight a label without a catalog number as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint the empty Catalog# cell of a release that has a label light yellow with a ⚠️. "[no label]" ' +
+                         'does not count as a label.'
+        },
+
+        sa_findings_tint_release_event_none: {
+            label: 'Highlight releases with no release event as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint the Date cell (or Country/Date) of a release with neither a date nor a country light ' +
+                         'yellow with a ⚠️.'
+        },
+
+        sa_findings_tint_len_unknown: {
+            label: 'Highlight tracks with no length as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint a release tracklist Length cell light yellow with a ⚠️ when MusicBrainz knows no length ' +
+                         'for the track ("?:??").'
+        },
+
         sa_findings_tint_live_credit: {
             label: 'Highlight live-recording credit dates as WARNING/ERROR',
             type: 'checkbox',
@@ -6295,6 +6337,11 @@
         { key: 'sa_enable_show_single_table_btn',  was: [false] },
         { key: 'sa_enable_springsteenlyrics',      was: [false] },
         { key: 'sa_event_rg_tooltip_without_ctrl', was: [false] },
+        // true for one commit inside one branch (7a9b839b → be830987,
+        // 2026-11-19, feat/release-check-findings), never in a release;
+        // listed because the audit walks every revision. Off: it tinted 42%
+        // of a long release list (vzell, "menu only").
+        { key: 'sa_findings_tint_barcode_missing', was: [true] },
         { key: 'sa_jl_detail_preview',             was: [false] },
         { key: 'sa_pop_ext',                       was: [false] },
         { key: 'sa_pop_mb',                        was: [false] },
@@ -76811,6 +76858,21 @@
             test: cell => _findCellLenFlag(cell) === 'warn',
             tint: () => false,
         },
+        // Mission Control's "track without a length" (org/majkinetor.org,
+        // release checks): MusicBrainz draws an unknown track length as
+        // "?:??". Only the track's own Length, on a release tracklist; an
+        // unknown length is never compared, so len-warn/len-severe never
+        // paint this cell.
+        {
+            id: 'len-unknown', level: 'warn', glyph: '⏱️', scope: 'cell',
+            label: 'Track has no length',
+            tip: 'MusicBrainz knows no length for this track: it shows "?:??".',
+            enabled: () => !_foreignHost && activeDefinition?.type === 'release-tracks',
+            cols: name => name === 'Length',
+            test: (cell, row) => !!row.querySelector('a[href*="/recording/"]') &&
+                _parseDurationToMs(cell.textContent) === null,
+            tint: _findingTintSetting('sa_findings_tint_len_unknown'),
+        },
         {
             id: 'no-work', level: 'warn', glyph: '🚫', scope: 'cell',
             label: 'Recording has no associated work',
@@ -77070,6 +77132,62 @@
             cols: name => name === 'Barcode',
             test: cell => { const p = _findCellBarcodeParts(cell)[0]; return !!p && !p.valid; },
             tint: _findingTintSetting('sa_findings_tint_barcode'),
+        },
+        // The release checks of majkinetor's Platform Check and Mission
+        // Control (org/majkinetor.org, "Findings from the release checks …"),
+        // as findings over the release-list row alone: no requests. The
+        // examples and MusicBrainz's own rendering rules they rest on are in
+        // that TODO's "Pre-test result".
+        {
+            id: 'barcode-zero', level: 'error', glyph: '▥', scope: 'cell',
+            label: 'Barcode is all zeros',
+            tip: 'A barcode made only of zeros (000000000000) is a placeholder, not a barcode: its check digit adds up, ' +
+                 'so it passes the format check. Enter the real barcode, or "[none]" if the release has none.',
+            enabled: () => !_foreignHost,
+            cols: (name, plan) => name === 'Barcode' && plan.releaseList,
+            test: cell => { const p = _findCellBarcodeParts(cell)[0]; return !!p && !!p.digits && /^0+$/.test(p.digits); },
+            tint: _findingTintSetting('sa_findings_tint_barcode_zero'),
+        },
+        {
+            id: 'barcode-missing', level: 'warn', glyph: '▥', scope: 'cell',
+            label: 'Release has no barcode entered',
+            tip: 'The Barcode cell is empty: nobody has entered one yet. MusicBrainz shows "[none]" for a release ' +
+                 'that is known to have no barcode, and that is not flagged.',
+            enabled: () => !_foreignHost,
+            cols: (name, plan) => name === 'Barcode' && plan.releaseList,
+            test: (cell, row) => _rcIsReleaseRow(row) && cell.textContent.trim() === '',
+            // The one tint that is OFF by default (vzell, 2026-11-19): most
+            // old releases never had a barcode entered, so on a large list
+            // it painted ~42% of the rows (959 of Bob Dylan's 2,301) and
+            // slowed typing in the filter by ~6%. The menu row and the 📊
+            // entry still count and filter them. `=== true`, not the shared
+            // `!== false`, so an unloaded setting stays off too.
+            tint: () => Lib.settings.sa_findings_tint_barcode_missing === true,
+        },
+        {
+            id: 'catno-missing', level: 'warn', glyph: '🏷️', scope: 'cell',
+            label: 'Label without a catalog number',
+            tip: 'The release has a label but no catalog number on it. MusicBrainz lists catalog numbers apart from the ' +
+                 'labels, so a release with two labels is flagged only when neither has one. "[no label]" is not a label.',
+            enabled: () => !_foreignHost,
+            cols: (name, plan) => name === 'Catalog#' && plan.releaseList && plan.labelIdx >= 0,
+            test: (cell, row, plan) => cell.textContent.trim() === '' && _rcHasRealLabel(row.cells[plan.labelIdx]),
+            tint: _findingTintSetting('sa_findings_tint_catno_missing'),
+        },
+        {
+            id: 'release-event-none', level: 'warn', glyph: '📅', scope: 'cell',
+            label: 'Release has no release event',
+            tip: 'The release has neither a date nor a country. Add at least one release event, even if only the ' +
+                 'year or [Worldwide] is known.',
+            enabled: () => !_foreignHost,
+            cols: (name, plan) => plan.releaseList &&
+                // ONE column per table: the split Date when the page splits
+                // Country/Date (the source column stays beside it), else the
+                // unsplit Country/Date.
+                (plan.countryIdx >= 0 ? name === 'Date' : name === 'Country/Date'),
+            test: (cell, row, plan) => _rcIsReleaseRow(row) && cell.textContent.trim() === '' &&
+                (plan.nameOf(cell.cellIndex) === 'Country/Date' || !(row.cells[plan.countryIdx]?.textContent.trim())),
+            tint: _findingTintSetting('sa_findings_tint_release_event_none'),
         },
         // The two artwork findings (org/redesign-CAA-EAA-column.org) are the
         // first to rest on data that arrives AFTER stampFindings() ran: the
@@ -77703,11 +77821,17 @@
      * @returns {{byCol: Map<number, object[]>, rowWide: object[], recOfIdx: number,
      *            titleInfo: function(string): boolean, eventName: function(string): boolean,
      *            recComment: function(string): ?string, recPlainIdx: number,
-     *            eventStateIdx: number, formatIdx: number, nameOf: function(number): string}}
+     *            eventStateIdx: number, formatIdx: number, releaseList: boolean,
+     *            labelIdx: number, countryIdx: number, nameOf: function(number): string}}
      *   `recComment` is `_recCommentColumnKind()`; `recPlainIdx` the first
      *   plain recording comment column ("Disambiguation"), `-1` if none;
      *   `eventStateIdx` the "Event-State" column, `-1` if none; `formatIdx`
      *   the "Format" column (for `art-no-medium`), `-1` if none.
+     *   `releaseList`: the table is a list of releases (it has a "Barcode"
+     *   or "Catalog#" column), for the release checks (`barcode-zero`,
+     *   `barcode-missing`, `catno-missing`, `release-event-none`);
+     *   `labelIdx`/`countryIdx` its "Label" and split "Country" columns,
+     *   `-1` if none.
      */
     function _findingPlanForTable(table) {
         const count = table.querySelectorAll('thead tr:first-child th').length;
@@ -77726,6 +77850,9 @@
             recPlainIdx: names.findIndex(n => plainCols.has(n)),
             eventStateIdx: names.indexOf('Event-State'),
             formatIdx: names.indexOf('Format'),
+            releaseList: names.includes('Barcode') || names.includes('Catalog#'),
+            labelIdx: names.indexOf('Label'),
+            countryIdx: names.indexOf('Country'),
             nameOf: i => names[i] || '',
         };
         _activeFindings().forEach(f => {
@@ -100520,6 +100647,40 @@
         const raw = cell.textContent.trim();
         if (!raw || raw === '[none]') return [];
         return [{ raw, ..._parseBarcodeCode(raw), el: cell }];
+    }
+
+    /**
+     * MBID of MusicBrainz's special "[no label]" label, which marks a release
+     * known to have no label (https://musicbrainz.org/doc/Style/Unknown_and_untitled/Special_purpose_label).
+     *
+     * @type {string}
+     */
+    const _RC_NO_LABEL_MBID = '157afde4-4bf5-4039-8ad2-5a15acc85176';
+
+    /**
+     * Whether a list row is a release's own row (it links a release), for
+     * the release checks: a heading or note row inside a release list is
+     * never flagged for an empty cell. Reads the row's own markup only, so a
+     * detached master row answers the same.
+     *
+     * @param {HTMLTableRowElement} row
+     * @returns {boolean}
+     */
+    function _rcIsReleaseRow(row) {
+        return !!row.querySelector('a[href*="/release/"]');
+    }
+
+    /**
+     * Whether a Label cell names at least one real label: a label link that
+     * is not "[no label]" (`_RC_NO_LABEL_MBID`). For `catno-missing`.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {boolean}
+     */
+    function _rcHasRealLabel(cell) {
+        if (!cell) return false;
+        return Array.from(cell.querySelectorAll('a[href*="/label/"]'))
+            .some(a => !a.getAttribute('href').includes(_RC_NO_LABEL_MBID));
     }
 
     /**

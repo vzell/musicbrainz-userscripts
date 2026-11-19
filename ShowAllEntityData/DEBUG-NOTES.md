@@ -30411,3 +30411,47 @@ MusicBrainz one by a timeout: its press never rendered).
   earlier on this host (entry above): twice in a row under the full suite on NB-3641, 42 of 42 alone. A flake of
   that test under load on this machine, not of either branch; worth its own look (it asserts that no tbody write
   happens after ✕, a timing the 14-worker load stretches).
+
+## 2026-11-19 — Release checks as findings: all-zero barcode, no barcode, no catalog number, no release event, no track length (feat/release-check-findings)
+
+Env: 2026-11-19T00:00–01:30+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1, bundled Chromium (headless), no Tampermonkey (GM stubs); the probe: n/a browser.
+
+- **Why:** the TODO "Findings from the release checks of Mission Control / Platform Check / ISRC Scout" in
+  `org/majkinetor.org` (ours alone, no requests), picked by vzell as petri's next task.
+- **Pre-test** (the TODO's own rule): `scripts/probe-release-check-examples.py` (`/ws/2` browse of 400 Springsteen
+  releases, two searches, the report "ISRCs with multiple recordings"), output `debug/probe-release-check-examples.json`;
+  the examples are in the TODO's "Pre-test result". Two rules from MusicBrainz's own source: `formatBarcode()` draws
+  `null` as an empty cell and `''` as "[none]"; `ReleaseCatnoList` lists only non-empty numbers, as a set, apart from
+  the labels. musicbrainz.org now answers a script's request for an HTML page with a "Verifying your browser"
+  JavaScript check, so no list page was saved; `/ws/2` is unaffected. The `/ws/2` ISRC lookup returns no releases
+  even with `inc=releases`.
+- **What:** five `FINDINGS` entries, MusicBrainz only:
+  - `barcode-zero` (error), `barcode-missing`, `catno-missing`, `release-event-none` on release lists
+    (`plan.releaseList`: a "Barcode" or "Catalog#" column; `plan.labelIdx`, `plan.countryIdx`);
+  - `len-unknown` on release tracklists only.
+  - Helpers `_rcIsReleaseRow()`, `_rcHasRealLabel()`, `_RC_NO_LABEL_MBID` ("[no label]", checked against `/ws/2`).
+  - `release-event-none` tests ONE column per table: the split Date where the page splits Country/Date (the source
+    column stays beside it; the first run flagged both), the unsplit Country/Date otherwise.
+  - Five tint settings; `sa_findings_tint_barcode_missing` defaults to `false` (below), with a migration entry for
+    its one-commit branch-only `true` (the audit walks every revision).
+- **Perf:** `run-perf-arms.py artist-releases-dylan -- --only=typed`, `main` vs branch, both orders
+  (tests/MEASUREMENTS.org). With every tint on, typing at 150 ms took ×1.062 (×0.999 at 400 ms): on Dylan's 2,301
+  releases the new findings tinted 959 rows "no barcode", 220 "no catalog number", 310 "no release event". vzell
+  chose "menu only" for the barcode one; round 2 ×0.986 / ×1.022, within noise.
+- **Not built** (vzell): "one ISRC on two recordings" and "recording without an ISRC". MusicBrainz's release page
+  shows no ISRCs; on `release-tracks` they come from jesus2099's SUPER MIND CONTROL (after our render) or ISRC
+  Scout's column, which already marks duplicates itself.
+- **Tests:** `tests/fixtures/release-check-findings.spec.js`, 11 tests. Fixtures `release-check-findings.html`
+  (synthetic, ten rows: each rule plus its near misses: "[none]", a valid barcode, "[no label]", no label, a date-only
+  and a country-only event) and `release-tracks-length-unknown.html` (a real two-track release with track 1 set to
+  "?:??"). A recordings list with "?:??" lengths (`artist-recordings-ms-batch.html`) must carry no `len-unknown`.
+  The neighbouring findings and barcode specs: 81 passed.
+- **Mutations:** `scripts/mutations/release-check-findings.json`, 15 entries, all as expected (one
+  `"expect": "pass"`: no fixture has a heading row inside a release table). Two greps first selected nothing:
+  "?:??" is a regex to Playwright.
+- **HELP:** five rows in "What is checked", and a sentence that the no-barcode tint starts off.
+- **Lint:** within the baseline. `audit-config-defaults.py`, `audit-docs.py`, `check-mutation-finds.py` (308 lists,
+  0 stale): clean.
+- **`npm run test:full` on petri, `1323867a`, 01:09:28–01:30:02 CET (20 m 34 s): 3,291 of 3,291 passed.**
+- **Browser check by vzell, 2026-11-19: "tested live, OK"** (the five URLs of the request: Pete Townshend Live,
+  Darkness on the Edge of Town, Cologne Night, Born to Run release groups; Janey Needs a Shooter release).

@@ -837,6 +837,10 @@ back).
 | ⚠️     | ASCII punctuation in event name (after "Check title style")     | Event columns                               |
 | ⚠️     | 🟠 Release has low data quality                                 | Release / Title columns                     |
 | ⚠️     | Invalid ISRC / ISWC / barcode format                            | ISRCs, ISRC, ISWC, Barcode                  |
+| ⚠️     | Release has no barcode entered (an empty cell, not "[none]")    | Release lists: Barcode                      |
+| ⚠️     | Label without a catalog number ("[no label]" excepted)          | Release lists: Catalog#                     |
+| ⚠️     | Release has no release event (no date, no country)              | Release lists: Date (or Country/Date)       |
+| ⚠️     | Track has no length ("?:??")                                    | Release tracklist: Length                   |
 | ⚠️     | Artwork has no Front image (releases with artwork only)         | CAA                                         |
 | ⚠️     | Physical release artwork has no Medium image                    | CAA (needs a Format column)                 |
 | ⚠️     | Several links to one site in Relationships (once loaded)        | Relationships                               |
@@ -886,6 +890,7 @@ back).
 | ❌    | Recorded at event differs from the comment                      | Release tracklist: Recorded at event        |
 | ❌    | Recorded at place differs from the comment venue                | Release tracklist: Recorded at place        |
 | ❌    | Live credit date differs from the recording date                | Release tracklist: credit columns           |
+| ❌    | Barcode is all zeros (000000000000)                             | Release lists: Barcode                      |
 
 A flagged cell's hover card names the problem and, where there is one, the
 cell's own detail. *Live credit without a date* names the date the credit is
@@ -896,7 +901,9 @@ The tint of each newly highlighted problem has its own switch in ⚙️ Settings
 ⚠️ Findings; turning one off keeps the problem in the menu. The menus
 themselves can be switched off there too. Length, video, no-work and live-title
 flags keep their existing switches in 💿 Release tracklist and the live title
-settings.
+settings. One tint starts off: *Release has no barcode entered*. Most older
+releases never had a barcode entered, so it would colour a large part of a long
+list; the ⚠️ menu counts and filters those releases either way.
 
 </details>
 
