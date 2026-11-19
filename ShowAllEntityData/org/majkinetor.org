@@ -1574,6 +1574,26 @@ Before coding each one, write a real example page into this item, with the click
     lists' Relationships column loads url-rels only, so label/place/artist rels would mean more requests; on a
     release page they are there) and First Contact's guesses (wrong primary type, looks like a VA compilation:
     track counts and lengths are not on a release-group list).
+  - *Pre-test result* (Env: 2026-11-19T12:10–12:40+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux
+    6.18.58.1-microsoft-standard-WSL2) · n/a browser; =scripts/probe-apollo-findings-2.py=, outputs
+    =debug/probe-apollo-findings-2*.json=; 2,500 Springsteen, 2,000 Beatles and 2,000 Elvis recordings):
+    - remix: Credit Hoarder's rules alone named mix descriptions ("1982 stereo", "5.1", "take 3 Monitor") about
+      half the time, so SAED adds its own mix words; afterwards about 25 of ~30 are people. Real cases: Elvis
+      [[https://musicbrainz.org/recording/0155452c-2196-4e36-880e-5443dac439b1]["A Little Less Conversation (JXL
+      radio edit remix)"]] (on [[https://musicbrainz.org/release/a4573e33-f5f5-4c3d-adaa-e0c9ff933376][It's Party
+      Time!]]), no remixer relationship; in the repo the real Seren E.P. fixture ("Everlasting (Psyche remix)").
+    - medley: every first hit was a "[band intro] / Song" title; bracketed parts no longer count. One real case:
+      The Beatles
+      [[https://musicbrainz.org/recording/01bbbab1-dd6d-446a-8bf9-b0ae55a64578]["1969-03-29: Don't Let Me Down /
+      Those Were the Days"]] links only "Don't Let Me Down" (on
+      [[https://musicbrainz.org/release/74d2602f-4a60-402b-904b-e3deadec6d1c][The Ballad of John and Yoko]]).
+      Elvis's "Teddy Bear / Don't Be Cruel" links one medley WORK of the same name: complete.
+    - Found on the way: the release tracklist's "Recording of work" column shows only a recording's FIRST work
+      (=applyExtractTrackTitleData()= takes the first link of the first "recording of:"), so a medley's other works
+      are not in the row; the finding counts them from attributes the extraction writes. Fixed on the same branch
+      at vzell's request: the column lists every work the recording itself links (one line each, ▶ toggle); a
+      medley work's own "medley of" works stay in "Work medley of" (vzell's choice). The full suite also caught
+      "(U.S. remix)" naming "U.S.": regions and markets joined SAED's mix words.
 
 ** TODO Possible duplicate recordings (Fusion's algorithm, zero requests)
 

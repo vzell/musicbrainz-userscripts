@@ -4651,3 +4651,15 @@ Env: 2026-11-19T13:07:16+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
 
 3313 passed. The failure: =bb-year-event-pages.spec.js= "the read rows are flagged on Content …", a race in its
 =readSome()= (rows counted before the row under way at Stop had finished), fixed in the spec: 52 of 52 at 14 workers.
+
+* 2026-11-19 — =npm run test:full= on =petri=, feat/apollo-findings-2 (two runs, on 9.99.1657)
+
+Env: 2026-11-19T12:45:22+01:00 / 13:58:00+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                         | Tests | Workers | Wall clock  | Basis                                     |
+|-----------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, =d7d6c97f=   |  3316 |      12 | *21 m 53 s* | =run-test-full.py=, 12:45:22–13:07:15 CET |
+| =npm run test:full=, =4fb06898=   |  3317 |      12 | *21 m 42 s* | =run-test-full.py=, 13:58:00–14:19:42 CET |
+
+Run 1: 3315 passed, 1 failed (=uniq-drop-title-anatomy=, "(U.S. remix)" named a remixer: a real false positive,
+fixed in =9e24cdc4=). Run 2: 3316 passed, 1 failed (=filter-sliced=, the waiting-call test of 9.99.1656; 48/48 alone).

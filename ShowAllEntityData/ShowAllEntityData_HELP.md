@@ -828,6 +828,8 @@ back).
 |-------|-----------------------------------------------------------------|---------------------------------------------|
 | ⚠️     | Track and recording length differ by more than the threshold    | Release tracklist: Length, Recording length |
 | ⚠️     | Recording has no associated work                                | Release tracklist: Title                    |
+| ⚠️     | Title names a remixer ("(X remix)"), no remixer credited        | Release tracklist: Title                    |
+| ⚠️     | Medley title ("A / B") has more parts than linked works         | Release tracklist: Title                    |
 | ⚠️     | Live title date uses a plain "-" instead of "‐" (U+2010)        | Release and release group titles            |
 | ⚠️     | Event name date uses a plain "-" instead of "‐" (U+2010)        | Event columns                               |
 | ⚠️     | Event name almost follows the event style guide                 | Event columns                               |
@@ -1965,7 +1967,9 @@ A release page gains **Tracks for Release**, which consolidates every
 medium into one table and unpacks each track's relationships into columns:
 *Recording of work*, *Recorded at* event and place, *Recorded in area*, *Mixed
 at*, *Performer*, the engineer / producer / mixer credit family, phonographic
-copyright, *Instruments* and *Vocals*.
+copyright, *Instruments* and *Vocals*. *Recording of work* lists every work
+the recording links, one line each; the songs a medley work is made of show in
+its own *Work medley of* column.
 
 **Anything else is discovered automatically.** A relationship type with no
 dedicated column gets one named after its own phrase, so a new MusicBrainz

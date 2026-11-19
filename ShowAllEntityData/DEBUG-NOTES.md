@@ -30588,3 +30588,52 @@ Env: 2026-11-19T11:11:54+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
   `readSome()` pressed Stop and counted the read rows at once, but the row under way finishes (as designed); a third
   row finished after the count, and the filter rightly showed 3 where 2 were expected. It now waits until no row is
   being read or waits before counting. The spec at 14 workers × 4: 52 of 52.
+
+## 2026-11-19 — Release tracklist titles: remix-no-remixer, medley-works; Recording of work lists every work (Apollo findings batch 2, feat/apollo-findings-2)
+
+Env: 2026-11-19T12:10–14:25+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1, bundled Chromium (headless), no Tampermonkey (GM stubs); the probe: n/a browser.
+
+- **Why:** batch 2 of the Apollo / Group Therapy / First Contact / Credit Hoarder findings (`org/majkinetor.org`),
+  vzell's choice: (a) a title that names a remixer, no remixer relationship; (b) a medley title with more parts than
+  linked works. Role vs format and First Contact's guesses are deferred (data the list pages do not load).
+- **Pre-test** (`scripts/probe-apollo-findings-2.py`, `debug/probe-apollo-findings-2*.json`; 2,500 Springsteen,
+  2,000 Beatles, 2,000 Elvis recordings): Credit Hoarder's remix rules alone named mix descriptions about half the
+  time ("1982 stereo", "5.1", "take 3 Monitor"), so SAED adds its own mix words (`_REMIX_SAED_MIX`, channel counts,
+  years, dates, take numbers); about 25 of ~30 names left are people (JXL on 15 Elvis remixes). Medleys: every
+  first hit was "[band intro] / Song", so bracketed parts do not count; one real case left (The Beatles,
+  01bbbab1, "Don't Let Me Down / Those Were the Days", one work).
+- **What:**
+  - `remix-no-remixer` (`_remixNamedInTitle()`, ported from Credit Hoarder's `src/derive/remix.js`, credited in the
+    attribution block; `plan.remixerIdxs`, `_rowCreditsRemixer()`).
+  - `medley-works` (`_medleyParts()`, counts from `data-mb-rec-of-works`/`-covered`, `_recOfWorksCover()`).
+  - **Recording of work lists every work** (vzell: "tackle that too"). The cell cloned the FIRST work link of
+    the first "recording of:" `<dt>`, while MusicBrainz renders each work relationship as its own `<dt>`/`<dd>`
+    pair (`GroupedTrackRelationships.js`). Now `_recOfTopLevelWorks()`: one `<li>` per work the recording itself
+    links (the ▶ toggle via `collapsableColumns`), one work unchanged; a medley work's nested "medley of" works stay
+    in "Work medley of" (vzell's choice).
+  - Test hook `__saTest.remixNamedInTitle` / `.medleyParts`.
+- **Found by test:full** (the first run, `d7d6c97f`): `uniq-drop-title-anatomy` "(U.S. remix)" named "U.S." as a
+  remixer. Regions and markets joined the mix words; the spec covers "(U.S. remix)", "(UK radio edit)",
+  "(Japanese remix)".
+- **Fixture:** `release-tracks-medley-missing-work.html`, a copy of the real `release-tracks-medley.html`:
+  - "Medley 2" is cut to one work;
+  - Volare links its two works directly;
+  - Drink and "Medley 1" are real (the near misses).
+
+  MusicBrainz's scripts are stripped. **The original fixture loads them from static.metabrainz.org**, and they
+  re-render the tracklist from the embedded JSON. An HTML edit is undone by them, and the specs using that
+  fixture (`art-image-retry`, `release-tracks-cover-art.mobile`, `image-section.mobile`) depend on the network;
+  not changed here.
+- **Perf:** release-tracks has no perf arm; both tests are a regex on one title per row, and the extraction reads
+  the same `<dt>`s it already read. Not measured.
+- **Tests:** `tests/fixtures/apollo-findings-2.spec.js`, 7 tests. Neighbouring release-tracks/findings specs (44
+  files): 343 passed. **Mutations:** `scripts/mutations/apollo-findings-2.json`, 14, all as expected (one
+  `"expect": "pass"`: no fixture has a medley work whose own title names its parts without nested "medley of"
+  works); `isrc-scout-column.json` and `release-check-findings.json` had one find each re-anchored.
+- **HELP:** two rows in "What is checked"; the release tracklist paragraph says the column lists every work.
+- **`npm run test:full` on petri, `4fb06898`, 13:58:00–14:19:42 CET (21 m 42 s): 3,316 of 3,317.** The one failure,
+  `filter-sliced` "a call waiting behind a held pass gives way to the ✕ clear: neither writes" (32 tbody writes,
+  expected 0), is the test NB-3641's 9.99.1656 added; alone `--repeat-each 3`: 48 of 48. Nothing of this branch is
+  on the filter path. So that fix's test still flakes under full-suite load on petri.
+- **Browser check by vzell, 2026-11-19: "tested live, OK"** (Seren E.P., It's Party Time!, The Ballad of John and Yoko,
+  Back in 2014!, the Dean Martin Rat Pack release).

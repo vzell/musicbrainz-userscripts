@@ -1,0 +1,20 @@
+[
+    {
+        "version": "WIP.1",
+        "date": "2026-11-19",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "Two more ⚠️ WARNING checks on a release tracklist, from the track's own data and with no requests: a title that names a remixer (\"Everlasting (Psyche remix)\") while the track credits no remixer, and a medley title (\"A / B\") whose recording links works for fewer of its parts. Anonymous mixes (\"(Extended Mix)\", \"(mono mix)\", \"(5.1 mix)\", \"(U.S. remix)\") and non-musical parts in square brackets (\"[band intro]\") are not counted; the cell's tooltip names the remixer or the counts. The remix rules come from majkinetor's Credit Hoarder. Each tint has its own switch in ⚙️ Settings → ⚠️ Findings."
+                ]
+            },
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "The release tracklist's \"Recording of work\" column showed only the first work of a recording that links several; it now lists every work, one line each (with ▶ to fold a long list), each with its own \"(live)\"/\"(cover)\". The songs a medley work is made of stay in its \"Work medley of\" column."
+                ]
+            }
+        ]
+    }
+]

@@ -630,6 +630,65 @@ findings' batch 1 (org/majkinetor.org) that MusicBrainz's data can still show.
   `credit-trailing-join.html`, eight rows); mutations
   `scripts/mutations/credit-trailing-join.json`.
 
+### Release tracklist titles: `remix-no-remixer`, `medley-works`
+
+Branch `feat/apollo-findings-2` (2026-11-19), the Apollo findings' batch 2
+(org/majkinetor.org): two checks a release page answers from its own data,
+`release-tracks` only (`enabled()` reads `activeDefinition.type`), on the
+Title cell. The title is the track link's own text (`_findCellTitleEl()`).
+
+- **`remix-no-remixer`**: `_remixNamedInTitle()` returns a name AND no cell
+  under a column whose name says "remixer" has content
+  (`plan.remixerIdxs`, `_rowCreditsRemixer()`; the dynamic AR column exists
+  only when some track has a remixer). The title rules are PORTED from
+  Credit Hoarder's `src/derive/remix.js` (credited in the attribution block):
+  a name before (or after "…by") a remix keyword; STRONG words trimmed off
+  the trailing edge; all-decoration means anonymous. SAED adds
+  `_REMIX_SAED_MIX` plus channel counts, years, dates and take numbers: on
+  the Beatles' and Elvis's recordings his rules alone named "1982 stereo",
+  "5.1", "take 3 Monitor", "new mono to stereo" (about half of 80 names). With
+  the additions, about 25 of the ~30 left are people (JXL on 15 Elvis
+  remixes, Spankox, Masterjedi, …); still wrong: "Beatles 1964-04-16 Abbey
+  Road", "Rooftop" (a film mix). A "[…]" special-purpose title is never
+  parsed. `detail()` names the remixer(s).
+- **`medley-works`**: `_medleyParts()` splits on " / " WITH its spaces
+  ("AC/DC" stays whole). A part that starts with "[" is non-musical and does
+  not count ("[band intro] / Jenny Take a Ride": all six first-probe hits
+  were such titles), and a title that is one bracket ("[encore / break]") has
+  no parts. Flags when ≥ 2 parts, ≥ 1 work, and the works cover fewer parts.
+  With no work at all, `no-work` already flags the track, so the two never
+  stack.
+  - **The count includes works the cell does not show.** The "Recording of
+    work" cell lists the works the recording ITSELF links (since the same
+    branch it lists all of them, not the first only: docs/claude/
+    release-tracks-and-length.md, "Recording of work: every work"). A medley
+    work's nested "medley of:" works stay in "Work medley of", yet they are
+    what completes a medley whose medley work's own title has no " / "
+    (Dean Martin's "Medley; Drink To Me Only…, When Your Smiling, …"). So the
+    count comes from attributes the extraction writes from EVERY work link:
+    `data-mb-rec-of-works` and `data-mb-rec-of-covered` (`_recOfWorksCover()`).
+    Each work covers its own title's medley parts, at least one, so a medley
+    WORK "Teddy Bear / Don't Be Cruel" covers both. These are attributes only,
+    so no filter or cache duty applies. A cell without them (an older saved
+    page) counts its own links.
+  - Real case (probe): The Beatles, recording 01bbbab1 "1969-03-29: Don't Let
+    Me Down / Those Were the Days", on release 74d2602f, links only "Don't
+    Let Me Down". Its page is behind musicbrainz.org's browser check for
+    scripts, so the fixture is `release-tracks-medley-missing-work.html`, a
+    copy of the real `release-tracks-medley.html`:
+    - "Medley 2" (seven parts) is cut to one work, the same shape as the
+      Beatles case;
+    - Volare links its two works directly (the column test);
+    - Drink and "Medley 1" are real and complete.
+
+    Its MusicBrainz scripts are removed. The original fixture loads them from
+    static.metabrainz.org, and they re-render the tracklist from the embedded
+    JSON, undoing any HTML edit.
+- Tints `sa_findings_tint_remix_no_remixer`, `sa_findings_tint_medley_works`.
+  Spec `tests/fixtures/apollo-findings-2.spec.js` (Seren E.P., the medley
+  copy, the title and part rules through `__saTest.remixNamedInTitle` /
+  `.medleyParts`); mutations `scripts/mutations/apollo-findings-2.json`.
+
 ## On demand: the title-style findings
 
 `title-case`, `title-typography`, `title-series-sep`, `title-feat` and
