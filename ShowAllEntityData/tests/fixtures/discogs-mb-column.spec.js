@@ -591,18 +591,14 @@ test.describe('discogs.com: MusicBrainz cards for the MusicBrainz icons (2026-10
     // not an entity by MBID: `_dgMbWinTarget()` now reads every link a
     // MusicBrainz card knows, its page with the browser's cookies.
     test('in a MusicBrainz window, a genre\'s tag link opens here and has its card', async ({ page }) => {
-        const { errors } = await openDg(page, 'release', { settings: { sa_pop_mb: true } });
-        await press(page, 'Show credits, companies and other versions');
-        await settled(page);
-        await expandAll(page);
-        await answerArtistCards(page);
-        await answerMbPages(page);
-        await ctrlHover(page, mbCell(sub(page, 'Credits'), 'artist/219986').locator('a.mb-dg-mb-link'));
-        await expect(page.locator('#mb-dp-peek')).toContainText('fetched now');
-        await page.keyboard.press('Space');
+        // Through openGenreWindow(), which waits for the window to stop
+        // repainting before the hover: a natural repaint during the card's
+        // delay can move "americana" from under the pointer, and no Tag card
+        // comes (the two tests below; failed again here once in a full run,
+        // NB-3641, 2026-11-19: the peek still held the Artist card).
+        const { errors, genre } = await openGenreWindow(page, {});
         const dialog = page.locator('#mb-dp-dialog');
         const title = dialog.locator(':scope > div > span').first();
-        const genre = dialog.locator('.mb-dp-area a[href="https://musicbrainz.org/tag/americana"]');
         await expect(genre).toBeVisible();
         // Marked as opening here, not as leaving the page (↗).
         await expect(genre).toHaveClass(/\bmb-dp-l-here\b/);

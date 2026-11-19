@@ -103,11 +103,29 @@ const holdNextPassAtSlice5 = (page) => page.evaluate(() => {
 /**
  * After the held pass is released: whether it changed anything. Watches the
  * tbody and the status line, and the cache keys, for `ms` after the release.
+ *
+ * First waits until the table has been quiet for 500 ms (at most 10 s): the
+ * pass that replaced the held one (the ✕ clear, a sort) has render-tail work
+ * of its own, and under a full suite's load its cover-art cells were still
+ * being set up when the watch began (NB-3641, 2026-11-19: 10 to 54 removals
+ * inside `ul.mb-caa-art-ul`, reproduced at 25× CPU throttling). The held pass
+ * and a call waiting behind it can only write after the release, so nothing
+ * they write is missed.
  * @param {import('@playwright/test').Page} page
  * @param {number} [ms]
  * @returns {Promise<{tbody: number, status: number, keysBefore: string[], keysAfter: string[]}>}
  */
 const releaseAndWatch = (page, ms = 400) => page.evaluate(async (wait) => {
+    await new Promise((resolve) => {
+        let last = Date.now();
+        const quiet = new MutationObserver(() => { last = Date.now(); });
+        quiet.observe(document.querySelector('table.tbl tbody'), { childList: true, characterData: true, subtree: true, attributes: true });
+        const t0 = Date.now();
+        const tick = () => {
+            if (Date.now() - last >= 500 || Date.now() - t0 > 10000) { quiet.disconnect(); resolve(); } else setTimeout(tick, 50);
+        };
+        tick();
+    });
     const rec = { tbody: 0, status: 0 };
     const obs = [
         [document.querySelector('table.tbl tbody'), 'tbody'],

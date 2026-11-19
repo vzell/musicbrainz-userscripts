@@ -30528,3 +30528,18 @@ Env: 2026-11-19T11:11:54+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
   Mutations `bb-evp-read-all.json`: 11 as recorded (one `"expect": "pass"` guard, reason in its entry).
 - **Perf:** tests/MEASUREMENTS.org, 1985 year render 1.004, sort 1.009 (main/branch from a worktree).
 - **Not run yet:** `npm run test:full`.
+- **`npm run test:full` at `79205b7f`, 11:13:11–11:39:51 CET (26 m 40 s): 3,307 of 3,309.** Neither failure was in
+  this branch's code; both are fixed in the tests (vzell: "also fix the discogs.com tag card stuff"):
+  - `filter-sliced.spec.js` "a call waiting behind a held pass gives way to the ✕ clear" (new in 9.99.1656): 54 tbody
+    writes after the release. Reproduced at 25× CPU throttling with 14 copies in parallel (1 of 14): the writes were
+    removals inside `ul.mb-caa-art-ul`, the ✕ clear's own render tail setting up the cover-art cells, still running when
+    the watch began; a filter pass replaces rows, never that. `releaseAndWatch()` now waits for 500 ms of quiet in the
+    tbody first: the held pass and a call waiting behind it can only write after the release. Side effect, recorded in
+    `faster-filtering.json`: the guard "C5: a stale chunked render keeps drawing" (`"expect": "pass"`, a known gap) is
+    now caught 3 of 3 (6 writes after the release when planted by hand); the ungated spec caught it 1 time in 3. The
+    other six mutations aimed at these tests: as recorded.
+  - `discogs-mb-column.spec.js` "in a MusicBrainz window, a genre's tag link opens here and has its card": the peek
+    still held the Artist card after 30 s. The cause on record (2026-11-04): a fresh window repaints on each follow-up
+    answer and can move "americana" from under the pointer during the card's delay. The two repaint tests had been
+    given `windowQuiet()`; this one had not. It now opens the window through `openGenreWindow()` (the same steps,
+    then quiet). 14 workers × 14: 42 of 42.
