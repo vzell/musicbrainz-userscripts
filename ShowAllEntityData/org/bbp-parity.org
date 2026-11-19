@@ -819,6 +819,8 @@ group; All errors on the Brucebase 1972 year, before any page is read); =finding
 =findings-stamp.spec.js= unchanged and green; 12 mutations as recorded (11 fail their test, the incremental key's
 passes with the reason), one older find of =findings-menus.json= moved and re-run (fails its test). Perf on
 =artist-events=, A,B,B,A, 5 samples: every ratio 0.95–1.04, no cost (=tests/MEASUREMENTS.org=, 2026-11-19).
+=npm run test:full= at =fc6ae52e=: 02:58:23–03:21:06 CET, 3,290 of 3,292; the two failures (=filter-sliced=, the
+known flake; =pop-mb-image.mobile=, a tap-point check under load) pass alone, 45 of 45 with =--repeat-each 3=.
 
 ** The browser check of All errors / All warnings, for vzell
 

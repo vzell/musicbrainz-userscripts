@@ -30425,3 +30425,9 @@ comes from `_findingRowTally()`'s own walk (`@error`/`@warn`). One older mutatio
 disabled, so the spec clicks a greyed row through the DOM. Perf: tests/MEASUREMENTS.org, 2026-11-19 (ratios
 0.95–1.04, no cost); the first A,B,B,A run overwrote its JSON (every arm writes the branch's file name), so the
 second copies each arm's file aside.
+- **`npm run test:full` at `fc6ae52e`, 02:58:23–03:21:06 CET (22 m 43 s): 3,290 of 3,292 passed.** The failures:
+  `filter-sliced.spec.js` "a pass replaced by the ✕ clear writes nothing" (the third run in a row on NB-3641 with it,
+  the two before on other branches) and `pop-mb-image.mobile.spec.js` "a tap opens the window …" (its pre-tap check
+  that the element is under the tap point, `elementFromPoint`, false under load). Alone, `--repeat-each 3`: 45 of 45.
+  This branch is on the typing filter's path (`testRowMatch()`, the cache keys), so the first was checked alone on
+  purpose rather than assumed: green; the level filter is empty there and costs one empty loop.
