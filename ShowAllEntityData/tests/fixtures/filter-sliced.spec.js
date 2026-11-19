@@ -43,14 +43,21 @@ const RG_SHELL = path.join(__dirname, '..', 'snapshots', 'releasegroup-releases'
 const RG_FIXTURE = path.join(__dirname, 'saved-data', 'releasegroup-releases.json.gz');
 
 /**
- * Loads the BoDeans single-table fixture.
+ * Loads the BoDeans single-table fixture, cover art off. A disk load without
+ * a page fixture keeps the schema's defaults, so the release cells' cover art
+ * was filled in after every render, asynchronously: under a full suite's load
+ * that came after a held pass was released, and the "writes nothing" tests
+ * counted it (`ul.mb-caa-art-ul` items added and removed, 10 to 54 records;
+ * NB-3641, 2026-11-19, reproduced at 20-25× CPU throttling with 14 workers,
+ * gone with cover art off: 40 of 40 watched releases wrote nothing). A filter
+ * pass replaces rows; it never touches those lists.
  * @param {import('@playwright/test').Page} page
  * @returns {Promise<void>}
  */
 async function openSingle(page) {
     await loadFromDiskFixture(page, {
         url: BODEANS_URL, fixturePath: BODEANS_FIXTURE, testMode: true,
-        settingsOverride: { sa_enable_relationships_column: false },
+        settingsOverride: { sa_enable_relationships_column: false, sa_enable_caa_pics: false },
     });
     await expect(page.locator('h2 .mb-row-count-stat')).toHaveText('(56)', { timeout: 30000 });
 }
@@ -103,29 +110,11 @@ const holdNextPassAtSlice5 = (page) => page.evaluate(() => {
 /**
  * After the held pass is released: whether it changed anything. Watches the
  * tbody and the status line, and the cache keys, for `ms` after the release.
- *
- * First waits until the table has been quiet for 500 ms (at most 10 s): the
- * pass that replaced the held one (the ✕ clear, a sort) has render-tail work
- * of its own, and under a full suite's load its cover-art cells were still
- * being set up when the watch began (NB-3641, 2026-11-19: 10 to 54 removals
- * inside `ul.mb-caa-art-ul`, reproduced at 25× CPU throttling). The held pass
- * and a call waiting behind it can only write after the release, so nothing
- * they write is missed.
  * @param {import('@playwright/test').Page} page
  * @param {number} [ms]
  * @returns {Promise<{tbody: number, status: number, keysBefore: string[], keysAfter: string[]}>}
  */
 const releaseAndWatch = (page, ms = 400) => page.evaluate(async (wait) => {
-    await new Promise((resolve) => {
-        let last = Date.now();
-        const quiet = new MutationObserver(() => { last = Date.now(); });
-        quiet.observe(document.querySelector('table.tbl tbody'), { childList: true, characterData: true, subtree: true, attributes: true });
-        const t0 = Date.now();
-        const tick = () => {
-            if (Date.now() - last >= 500 || Date.now() - t0 > 10000) { quiet.disconnect(); resolve(); } else setTimeout(tick, 50);
-        };
-        tick();
-    });
     const rec = { tbody: 0, status: 0 };
     const obs = [
         [document.querySelector('table.tbl tbody'), 'tbody'],

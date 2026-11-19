@@ -30532,12 +30532,16 @@ Env: 2026-11-19T11:11:54+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
   this branch's code; both are fixed in the tests (vzell: "also fix the discogs.com tag card stuff"):
   - `filter-sliced.spec.js` "a call waiting behind a held pass gives way to the ✕ clear" (new in 9.99.1656): 54 tbody
     writes after the release. Reproduced at 25× CPU throttling with 14 copies in parallel (1 of 14): the writes were
-    removals inside `ul.mb-caa-art-ul`, the ✕ clear's own render tail setting up the cover-art cells, still running when
-    the watch began; a filter pass replaces rows, never that. `releaseAndWatch()` now waits for 500 ms of quiet in the
-    tbody first: the held pass and a call waiting behind it can only write after the release. Side effect, recorded in
-    `faster-filtering.json`: the guard "C5: a stale chunked render keeps drawing" (`"expect": "pass"`, a known gap) is
-    now caught 3 of 3 (6 writes after the release when planted by hand); the ungated spec caught it 1 time in 3. The
-    other six mutations aimed at these tests: as recorded.
+    removals inside `ul.mb-caa-art-ul`; a filter pass replaces rows, never that. FIRST FIX WRONG (`30a31f60`): a
+    500 ms quiet gate before the release, on the guess that the ✕ clear's render tail was still running. The next
+    full run (11:52:51–12:19:09 CET, 26 m 18 s, 3,306 of 3,309) failed three "writes nothing" tests (48, 48, 26
+    writes), and a throttled diagnostic showed the art writes coming AFTER 509–951 ms of quiet: the cover art is
+    filled in asynchronously after every render, at any time. The gate also made the guard "C5: a stale chunked
+    render keeps drawing" look caught 3 of 3, from that noise. REAL FIX: the BoDeans disk load keeps the schema's
+    defaults (no page fixture, so no `FIXTURE_SETTINGS_OVERRIDE`), cover art on; `openSingle()` now turns it off
+    (`sa_enable_caa_pics: false`) and the gate is gone. Throttled ×20 at 14 workers: 40 of 40 watched releases wrote
+    nothing (one test ran out of its 2 minutes, the slow end of 1.3–1.9-minute runs). The seven mutations aimed at
+    these tests are all as originally recorded again, the C5 guard back to "pass".
   - `discogs-mb-column.spec.js` "in a MusicBrainz window, a genre's tag link opens here and has its card": the peek
     still held the Artist card after 30 s. The cause on record (2026-11-04): a fresh window repaints on each follow-up
     answer and can move "americana" from under the pointer during the card's delay. The two repaint tests had been

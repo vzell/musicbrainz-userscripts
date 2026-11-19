@@ -175,7 +175,7 @@
   },
   {
     "name": "C5: a stale chunked render keeps drawing",
-    "why": "The pass no longer bumps _renderGeneration, so a chunked render of the previous result would go on drawing (no fixture is over 500 rows, so renderRowsChunked never has a second chunk to abort; the perf A/B on artist-events exercises that). Was recorded as a KNOWN GAP ('pass'); since releaseAndWatch() waits for a quiet table before the release (2026-11-19) the ✕ clear test catches it every time: 6 tbody writes after the release in a hand-planted run, 3 of 3 here, where before it failed 1 run in 3. Not traced which tail writes them; most likely work waiting on the held pass's _renderSettled that checks _renderGeneration.",
+    "why": "KNOWN GAP, recorded honestly: the pass no longer bumps _renderGeneration, so a chunked render of the previous result would go on drawing. No fixture is over 500 rows, so renderRowsChunked never has a second chunk to abort in any spec; the perf A/B on artist-events is what exercises it.",
     "edits": [
       {
         "find": "        _renderGeneration++;\n        let _settlePass;",
@@ -184,7 +184,7 @@
     ],
     "spec": "tests/fixtures/filter-sliced.spec.js",
     "grep": "replaced by the ✕ clear",
-    "expect": "fail"
+    "expect": "pass"
   },
   {
     "name": "C5: no row-array identity check",
