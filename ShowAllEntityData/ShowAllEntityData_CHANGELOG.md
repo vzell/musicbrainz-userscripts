@@ -4,9 +4,16 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1826 versions; the month pages hold all of them.
+This page shows the newest 100 of 1827 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1656 — 2026-11-19
+
+**🐛 Fix**
+
+- Typing in a filter on a large table (over 1,000 rows), then pressing ✕ or sorting while the filter was still working, no longer redraws the table a second time afterwards. The extra redraw showed the right rows, but on a big table it was one long pause.
+
 
 ## 9.99.1655 — 2026-11-19
 
@@ -882,14 +889,6 @@ This page shows the newest 100 of 1826 versions; the month pages hold all of the
 **🚀 Feature**
 
 - New ⚠️ WARNING "Old springsteenlyrics.com address in the annotation": an Annotation cell (annotation search, annotation reports such as Works with annotations) that links springsteenlyrics.com at an old address is tinted, and the menu filters to those rows so the annotations can be edited. The cell's tooltip names each link's current address. Setting: "Highlight Annotation cells with an old springsteenlyrics.com address as WARNING".
-
-
-## 9.99.1556 — 2026-11-05
-
-**✨ Improve**
-
-- springsteenlyrics.com: a song's preview card and window now show the version's Type, Date and Show (as the lyrics index reads them), the song number (logged in), the versions by type ("Album 1, Unofficial studio 3, Live 57"), and the releases, live releases, covers and movies the page lists, counted. A live version adds its venue, place, tour and release, and the window shows that release's tracklist with the song marked ●.
-- springsteenlyrics.com: a song preview's Request section no longer shows the contact form's field names.
 
 
 ---

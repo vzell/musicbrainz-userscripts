@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.1656",
+    "date": "2026-11-19",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Typing in a filter on a large table (over 1,000 rows), then pressing ✕ or sorting while the filter was still working, no longer redraws the table a second time afterwards. The extra redraw showed the right rows, but on a big table it was one long pause."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1655",
     "date": "2026-11-19",
     "sections": [
