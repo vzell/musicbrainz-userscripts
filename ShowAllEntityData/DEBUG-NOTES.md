@@ -30506,3 +30506,5 @@ Env: 2026-11-19T09:49:14+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
   `scripts/mutations/filter-sliced-waiting.json` (1): caught.
 - **Not real-world harmful on screen:** the second draw showed the right rows; on a table over 1,000 rows it was one
   long synchronous task after ✕ or a sort.
+- **`npm run test:full` at `b4beedaa`, 09:50:17–10:14:45 CET (24 m 28 s): 3,305 of 3,305 passed**, the first full run
+  on NB-3641 in five with no `filter-sliced.spec.js` failure.

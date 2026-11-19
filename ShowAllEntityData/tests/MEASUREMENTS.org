@@ -4580,3 +4580,14 @@ Env: 2026-11-19T09:09:07+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
 
 3301 passed (main's 3298 at 9.99.1654 plus the branch's 5). The two failures are both =filter-sliced.spec.js=, "a pass
 replaced by the ✕ clear writes nothing" and "… by a sort writes nothing"; alone, =--repeat-each 5=: 70 of 70.
+
+* 2026-11-19 — =npm run test:full= on =NB-3641=, fix/filter-sliced-flake (b4beedaa, on 9.99.1655)
+
+Env: 2026-11-19T09:50:17+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                         | Tests | Workers | Wall clock  | Basis                                     |
+|-----------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, merge check  |  3305 |      14 | *24 m 28 s* | =run-test-full.py=, 09:50:17–10:14:45 CET |
+
+3305 passed (main's 3303 plus the two "gives way" tests). The first run on NB-3641 in five without a
+=filter-sliced.spec.js= failure.
