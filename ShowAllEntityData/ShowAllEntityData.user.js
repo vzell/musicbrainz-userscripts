@@ -100101,11 +100101,20 @@
     /** @type {Set<string>} Credit Hoarder's WEAK: never trimmed, only count as decoration. */
     const _REMIX_WEAK = new Set(['club', 'deep', 'tech', 'soulful', 'disco', 'electro', 'house', 'techno', 'progressive',
         'tribal', 'vocal', 'classic', 'clean', 'dirty', 'censored', 'uncensored', 'studio', 'live', 'the', 'a', 'an']);
-    /** @type {Set<string>} SAED's mix words (see the block comment). */
+    /**
+     * SAED's mix words (see the block comment). The regions and markets came
+     * from the full suite (2026-11-19): "Situations Like These… (U.S. remix)"
+     * on a real release named "U.S." as the remixer. `_remixNorm()` has already
+     * dropped a trailing dot, so "U.S." is "u.s".
+     * @type {Set<string>}
+     */
     const _REMIX_SAED_MIX = new Set(['mono', 'stereo', 'surround', 'quad', 'quadraphonic', 'binaural', 'atmos', 'dolby',
         'monitor', 'reduction', 'reduced', 'multitrack', 'movie', 'film', 'tv', 'new', 'first', 'unused', 'rough',
         'early', 'take', 'to', 'of', 'and', 'concert', 'session', 'sessions', 'outtake', 'anthology', 'rockband', 'rock',
-        'band', 'mixdown', 'master']);
+        'band', 'mixdown', 'master',
+        'u.s', 'us', 'usa', 'u.k', 'uk', 'eu', 'euro', 'europe', 'european', 'international', 'american', 'british',
+        'english', 'german', 'french', 'italian', 'spanish', 'latin', 'japan', 'japanese', 'canadian', 'australian',
+        'brazilian', 'mexican', 'dutch', 'swedish', 'asian', 'domestic', 'export']);
     const _REMIX_SEP_RE = /\s*(?:&|\+|,|\/|\bfeat\.?\b|\bft\.?\b|\bfeaturing\b)\s*/i;
     const _REMIX_TRAILING_RE = /^(.+?)\s+((?:re[-_ ]?)?(?:remix|rework|remodel|reshuffle|reprise|edit|dub|mix))(?:es|ed|s|d)?$/i;
     const _REMIX_BY_RE = /^(?:re[-_ ]?)?(?:remix|rework|remodel|reshuffle|rerub)(?:es|ed|s|d)?\s+by\s+(.+)$/i;

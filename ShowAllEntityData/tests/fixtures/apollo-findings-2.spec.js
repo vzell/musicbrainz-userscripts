@@ -100,6 +100,7 @@ test.describe('remix-no-remixer', () => {
             'Song (Extended Mix)', 'Song (Club Mix)', 'Song (Remix)', 'Song (Radio Edit)', 'Song (Mixed by Someone)',
             'A Day in the Life (1982 stereo remix)', 'Teddy Bear (5.1 mix)', 'Song (Take 2 - 1965 Mono Mix)',
             'Song (take 3 Monitor mix)', 'Teddy Bear (new mono to stereo mix)', '[first show] (pro‐shot mix)',
+            'Situations Like These (U.S. remix)', 'Song (UK radio edit)', 'Song (Japanese remix)',
         ].map((t) => [t, window.__saTest.remixNamedInTitle(t)])));
         expect(got).toEqual({
             'Everlasting (Psyche remix)': ['Psyche'],
@@ -112,6 +113,7 @@ test.describe('remix-no-remixer', () => {
             'A Day in the Life (1982 stereo remix)': [], 'Teddy Bear (5.1 mix)': [],
             'Song (Take 2 - 1965 Mono Mix)': [], 'Song (take 3 Monitor mix)': [],
             'Teddy Bear (new mono to stereo mix)': [], '[first show] (pro‐shot mix)': [],
+            'Situations Like These (U.S. remix)': [], 'Song (UK radio edit)': [], 'Song (Japanese remix)': [],
         });
     });
 
