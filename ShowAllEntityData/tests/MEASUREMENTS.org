@@ -4640,3 +4640,14 @@ arms in the order A,B,B,A,A,B:
 No cost: the branch changes no render or sort path (the ☰ row is added once, the refresh and re-stamp change only
 while reading every row or with a level filter on). A first A,B,B,A run (11:08–11:09) is not usable: the machine's
 render times fell from about 1,020 to about 540 ms in its third arm.
+
+* 2026-11-19 — =npm run test:full= on =NB-3641=, =main= after the merge of feat/bb-evp-read-all (a46d7418 with the 9.99.1658 fold uncommitted)
+
+Env: 2026-11-19T13:07:16+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                         | Tests | Workers | Wall clock  | Basis                                     |
+|-----------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, merge check  |  3314 |      14 | *28 m 21 s* | =run-test-full.py=, 13:07:16–13:35:37 CET |
+
+3313 passed. The failure: =bb-year-event-pages.spec.js= "the read rows are flagged on Content …", a race in its
+=readSome()= (rows counted before the row under way at Stop had finished), fixed in the spec: 52 of 52 at 14 workers.

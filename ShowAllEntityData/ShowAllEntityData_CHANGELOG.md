@@ -4,9 +4,20 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1828 versions; the month pages hold all of them.
+This page shows the newest 100 of 1829 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1658 — 2026-11-19
+
+**🚀 Feature**
+
+- Brucebase: "Read every row" reads the event page of every row of a year table or the start page, not only the rows you scroll to. It is in ▶ Pages' progress card and in the ☰ menu's Brucebase group. Rows are read in the table's current order, rows a filter hides included, still one page a second. Above 200 rows it first says how many rows, pages and about how long. The card shows the time left, the rows flagged so far and the row being read. Stop puts the rest back, and a later press goes on where it stopped. Filters such as "All errors" take in the new rows every 25 rows or 10 seconds, without moving the window.
+
+**🐛 Fix**
+
+- "All errors" / "All warnings" now takes in a row whose problem is found later (a Brucebase row read by ▶ Pages, artwork that loads late). Before, such a row stayed hidden until the filter was changed.
+
 
 ## 9.99.1657 — 2026-11-19
 
@@ -878,13 +889,6 @@ This page shows the newest 100 of 1828 versions; the month pages hold all of the
 **✨ Improve**
 
 - springsteenlyrics.com song pages: a song the site leaves unlinked in a release's edition table (no page for that version) now links the song's main page when the site has one; the site's own links stay as written.
-
-
-## 9.99.1558 — 2026-11-05
-
-**🐛 Fix**
-
-- MusicBrainz search pages whose address does not start with the query (e.g. search?type=annotation&query=…, typed by hand or bookmarked) got no buttons: the script only ran when query= came first.
 
 
 ---

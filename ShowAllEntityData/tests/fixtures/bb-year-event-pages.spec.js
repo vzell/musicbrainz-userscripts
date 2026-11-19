@@ -347,6 +347,10 @@ test.describe('Brucebase year table: the bb-onstage-tab finding (Phase 16)', () 
         await pagesBtn(page).click();
         await expect.poll(async () => (await cells(page)).filter(r => r.state === 'done').length, { timeout: 20000 }).toBeGreaterThanOrEqual(2);
         await pagesBtn(page).click();
+        // Stop lets the row under way finish: count once none is being read
+        // or waits (a full run, NB-3641, 2026-11-19: n was 2, a third row
+        // finished after the count, and the filter rightly showed 3).
+        await expect.poll(async () => (await cells(page)).filter(r => r.state === 'run' || r.state === 'queued').length, { timeout: 20000 }).toBe(0);
         return (await cells(page)).filter(r => r.state === 'done').length;
     }
 

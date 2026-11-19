@@ -1,5 +1,23 @@
 [
   {
+    "version": "9.99.1658",
+    "date": "2026-11-19",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase: \"Read every row\" reads the event page of every row of a year table or the start page, not only the rows you scroll to. It is in ▶ Pages' progress card and in the ☰ menu's Brucebase group. Rows are read in the table's current order, rows a filter hides included, still one page a second. Above 200 rows it first says how many rows, pages and about how long. The card shows the time left, the rows flagged so far and the row being read. Stop puts the rest back, and a later press goes on where it stopped. Filters such as \"All errors\" take in the new rows every 25 rows or 10 seconds, without moving the window."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "\"All errors\" / \"All warnings\" now takes in a row whose problem is found later (a Brucebase row read by ▶ Pages, artwork that loads late). Before, such a row stayed hidden until the filter was changed."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1657",
     "date": "2026-11-19",
     "sections": [

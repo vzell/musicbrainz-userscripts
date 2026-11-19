@@ -30582,3 +30582,9 @@ Env: 2026-11-19T11:11:54+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
   repaints its area on each follow-up answer in its first seconds (as on discogs.com), replacing the picture; the
   branch-2 run's failure of this test (the tap point no longer on the element) is the same race. Fixed in the spec:
   `windowQuiet()` (1.5 s without a repaint of `.mb-dp-area`) before the tap. 14 workers × 28: 28 of 28.
+- **Merged into `main` as 9.99.1658 (vzell: "all tested live, OK").** On top of 9.99.1657 (petri: Apollo findings
+  batch 1, `credit-trailing-join`). `npm run test:full` on the merged tree, `a46d7418`, 13:07:16–13:35:37 CET
+  (28 m 21 s): 3,313 of 3,314. The failure, `bb-year-event-pages.spec.js` "the read rows are flagged on Content":
+  `readSome()` pressed Stop and counted the read rows at once, but the row under way finishes (as designed); a third
+  row finished after the count, and the filter rightly showed 3 where 2 were expected. It now waits until no row is
+  being read or waits before counting. The spec at 14 workers × 4: 52 of 52.
