@@ -1,29 +1,27 @@
 ---
 name: refresh-majkinetor
-description: Periodically refresh the analysis of majkinetor's "Musicbrainz Toolset" (github.com/majkinetor/musicbrainz-userscripts) — update the shallow clone under debug/majkinetor/, re-copy the three majkinetor scripts the live-interop harness carries (Event Horizon, String Theory, ISRC Scout) into tests/fixtures/live-userscripts/, re-scan their manifest entries, re-run the coexistence probe, re-check every code anchor the analysis cites (scripts/check-majkinetor-anchors.py), and update the "** Analysis …" section and the TODO items of org/majkinetor.org. Use whenever the user asks to "refresh majkinetor", "update the majkinetor analysis", "re-check majkinetor's scripts", "pull the latest String Theory / Event Horizon / ISRC Scout", "re-inventory the majkinetor scripts", "majkinetor has a new version", or reports that a String Theory / Event Horizon / ISRC Scout update changed something on a page SAED renders.
+description: Periodically refresh the analysis of majkinetor's "Musicbrainz Toolset" (github.com/majkinetor/musicbrainz-userscripts) — update the shallow clone under debug/majkinetor/, re-copy the three majkinetor scripts the live-interop harness carries (Event Horizon, String Theory, ISRC Scout) into tests/fixtures/live-userscripts/, re-scan their manifest entries, re-run the coexistence probe, re-check every code anchor the analysis cites (scripts/check-majkinetor-anchors.py), and update the "* Analysis … (reference)" section, the items, the PICKUP and the status table of org/majkinetor.org. Use whenever the user asks to "refresh majkinetor", "update the majkinetor analysis", "re-check majkinetor's scripts", "pull the latest String Theory / Event Horizon / ISRC Scout", "re-inventory the majkinetor scripts", "majkinetor has a new version", or reports that a String Theory / Event Horizon / ISRC Scout update changed something on a page SAED renders.
 ---
 
 # Refreshing the majkinetor analysis
 
-`org/majkinetor.org` holds a dated analysis of majkinetor's toolset (method, inventory, per-script
-features with verdicts, the coexistence probe results) and one `** TODO` per fix and feature that came
-out of it. It cites line numbers in a clone pinned at one commit, and the probe results belong to
-specific script versions. Upstream moves several times a day, so the analysis goes stale quickly.
-This skill brings it up to date without rewriting it.
+`org/majkinetor.org` (reorganized 2026-11-19 by DONE/TODO, like `org/springsteen-marriage.org`) holds, in
+this order: PICKUP HERE, Status at a glance (one table), Working with majkinetor (with "Shared conventions
+(agreed in #938)", C1…), the items ("Interop: SAED beside his scripts", "Adoptions: what SAED takes from his
+scripts"; keywords TODO NEXT WAIT | DONE PART NOT), the dated analysis ("* Analysis — <date> (reference)":
+method, inventory, per-script features with verdicts, the coexistence probe results, "** Refresh log"), "On
+the record: posts to majkinetor", and vzell's notes. The analysis cites line numbers in a clone pinned at one
+commit, and the probe results belong to specific script versions. Upstream moves several times a day, so the
+analysis goes stale quickly. This skill brings it up to date without rewriting it.
 
-**vzell knows majkinetor personally, and majkinetor fixes interop issues on his side.** So the analysis is
-also a list of requests: every TODO says who fixes it (ours / upstream / a shared convention), and
-"Working with majkinetor" in the org file holds the proposed conventions (C1…). The posts to him are two org
-files, each holding its GitHub-Markdown body in a `#+begin_src markdown` block:
-- `org/majkinetor-vzell-interoperability-issue.org`: ONE new issue for all interop points. It has the
-  findings, the requests, what we fix ourselves, and two appendices: EH's data views compared with SAED's,
-  and how we keep up.
-- `org/reply-to-839-issue.org`: a reply on #839 about that race only, with a diff, linking the new issue
-  (`#NEW` until it exists).
-
-They are the only copies; keep them consistent with each other.
+**vzell knows majkinetor personally, and majkinetor fixes interop issues on his side.** So every item says
+who fixes it (ours / upstream / a shared convention). Every post to him is a heading under "On the record:
+posts to majkinetor", with its GitHub-Markdown body in a `#+begin_src markdown` block and its link once
+posted (until 2026-11-19 they were separate files, `org/majkinetor-vzell-interoperability-issue.org`,
+`org/reply-to-*.org`; git history has them). Posted text is the record of what was said: never edit it.
 *Never post* issues, comments or pull requests on majkinetor's repo, and never contact him yourself: you
-draft, vzell sends. Reading his repo with `gh` (issues, PRs, commits) is fine.
+draft (a new TODO heading under "On the record"), vzell sends. Reading his repo with `gh` (issues, PRs,
+commits) is fine.
 
 Nothing here changes `ShowAllEntityData.user.js`: no `// @version` bump and no changelog entry
 (`tests/`, `scripts/`, `org/` and `.claude/` are exempt). Work on a docs branch, or on the open feature
@@ -72,7 +70,7 @@ gh search commits --repo majkinetor/musicbrainz-userscripts 'SAED OR ShowAllEnti
 ```
 
 #938 is where majkinetor answers. Every answer there, such as an agreed attribute name, a "no", or a counter-proposal,
-goes into "Proposed shared conventions" and the matching TODOs. A request he declined gets *ours* as its new
+goes into "Shared conventions (agreed in #938)" and the matching TODOs. A request he declined gets *ours* as its new
 "Who fixes it".
 
 The CHANGELOG diff is the cheapest way to see what is new. For each entry that touches something the
@@ -187,7 +185,7 @@ usually one TODO (`todo`):
   the fixing commit, and remove or flip the anchor (`expect: absent` for the old shape).
 - `BACK`: something expected absent returned (e.g. ISRC Scout's `title`); the related TODO may be moot.
   For a `conv-*` anchor it means **a proposed convention was adopted upstream**. Read how it was done, write
-  the actual attribute name and behaviour into "Proposed shared conventions" (mark it *adopted, <version>*),
+  the actual attribute name and behaviour into "Shared conventions (agreed in #938)" (mark it *adopted, <version>*),
   rewrite the TODO's fix around it, and flip the anchor to `present`.
 - `MULTI`: tighten the regex, or set `count`.
 
@@ -197,7 +195,7 @@ gets one. Finish with `--update-lines`, so the next refresh measures drift from 
 Then update `org/majkinetor.org` **in place**. The analysis stays one current document, not a pile of
 dated copies:
 
-1. The "Env:" line under "** Analysis …" (the new stamp) and the heading's date.
+1. The "Env:" line under "* Analysis … (reference)" (the new stamp) and the heading's date.
 2. "Method": the pinned SHA and its commit date and subject; `main` or `stable`.
 3. "Inventory": sizes and lines (`wc -c -l`), `@run-at`, `@match`, new or removed scripts.
 4. Every section the CHANGELOG notes (step 1), the anchor report and the probe comparison touched:
@@ -205,9 +203,9 @@ dated copies:
    - keep the *measured* / *from code* marks honest: a re-run result is *measured* with today's stamp;
      an unrun one keeps its old stamp.
 5. "Verdict on 2.)": re-judge a row only when the evidence changed.
-6. A short `*** Refresh log` subsection (create it after "Recommendations" if missing), newest
-   first, one entry per refresh: date, old → new SHA, versions, what changed in the analysis, which
-   TODOs moved.
+6. One line in `** Refresh log` (the analysis's last subsection), newest first: date, host, old → new SHA,
+   what changed upstream, the probe and the anchors in a phrase, which items moved.
+7. PICKUP HERE and "Status at a glance": any item whose state moved, and what now waits on majkinetor.
 
 TODO hygiene:
 
@@ -219,20 +217,13 @@ TODO hygiene:
   - *upstream*: the cause is in his code and a small change there beats a workaround here;
   - *convention*: both sides need one shared mark; add a C-row and a `conv-*` anchor for it.
 
-  Upstream or convention items also get a numbered point under "Requests" in
-  `org/majkinetor-vzell-interoperability-issue.org`. Keep it short and concrete: what we see, the one change
-  asked, the attribute name. Even then keep a defensive fix on our side when users can run an older String
-  Theory.
-- Keep both posts' facts current:
-  - the versions and commit in their opening lines;
-  - measured numbers (the 503s, the launcher count);
-  - the appendix rows when either script gained or lost a capability;
-  - the anchor count;
-  - the diff in the #839 reply, against ISRC Scout's current `showTrackData()` / `fillTrackData()`.
-
-  A request majkinetor adopted leaves "Requests". The file's top heading says whether it was posted
-  (`TODO Post:` / `DONE`, with the URL); once posted, the file is history and follow-ups go into a new
-  comment on the main issue (draft it in a new file next to these).
+  Upstream or convention items that need asking get a draft: a new `** TODO <date> · Post: …` heading
+  under "On the record: posts to majkinetor", with a `:CUSTOM_ID:` and the comment for #938 in a
+  `#+begin_src markdown` block. Keep it short and concrete: what we see, the one change asked, the
+  attribute name. vzell posts it; then it turns `DONE` with the comment's link and the time it went. Even
+  then keep a defensive fix on our side when users can run an older String Theory.
+- Posted entries are history: never update their text. "The thread" (under "On the record") gets a line
+  for each new comment of his or vzell's that was not drafted here.
 - An item majkinetor fixed → its TODO keeps only our remaining part, or is `DONE` with his version.
 - A new feature worth taking → a new `** TODO`.
 - org/TODO.org's majkinetor umbrella item links into this file by heading. If you rename a heading, fix
