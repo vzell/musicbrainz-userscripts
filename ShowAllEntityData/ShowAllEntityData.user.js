@@ -56120,16 +56120,29 @@
                         // href prefix instead mirrors `_recordedAtDdAnchor`'s
                         // own fix for the equivalent `name-variation`
                         // wrapping case.
-                        const _workAnchor = _recOfDd ? _recOfDd.querySelector('a[href^="/work/"]') : null;
-                        // The cell shows the FIRST work only; medley-works
-                        // needs them all (every "recording of:" <dt> and the
-                        // "medley of:" works nested in its <dd>), so their
-                        // count and the medley parts they cover ride along as
-                        // attributes — no text, so nothing a filter reads.
+                        // EVERY work the recording itself links: each
+                        // "recording of:" <dt> (a .filter(), never the first
+                        // only — that silently dropped a medley's other works
+                        // until 2026-11-19), each work link in its <dd> that is
+                        // not inside a nested <dl> (the "medley of:" works
+                        // MusicBrainz nests under a medley work have their own
+                        // dynamic "Work medley of" column). One work: the
+                        // cell's markup is what it always was; several: one
+                        // <li> each, which initCollapsableColumns() gives the
+                        // ▶ toggle ('Recording of work' is declared there).
+                        const _recOfWorks = _recOfTopLevelWorks(_titleTd);
+                        // medley-works counts the nested works too, from
+                        // these attributes — no text, so nothing a filter reads.
                         const _recOfCover = _recOfWorksCover(_titleTd);
                         _td.dataset.mbRecOfWorks = String(_recOfCover.works);
                         _td.dataset.mbRecOfCovered = String(_recOfCover.covered);
-                        if (_workAnchor) {
+                        /**
+                         * Appends one work, with its relationship's attribute
+                         * words, to `host`.
+                         * @param {Element} host
+                         * @param {{anchor: HTMLAnchorElement, dt: HTMLElement}} w
+                         */
+                        const _appendRecOfWork = (host, w) => {
                             // Clone the wrapping <span class="mp">/
                             // <span class="name-variation"> (if any) rather
                             // than the bare <a> — see
@@ -56137,7 +56150,7 @@
                             // the pending-edits highlight and
                             // _findCellPendingEdits()'s column-agnostic scan
                             // still find it here.
-                            _td.appendChild(_outerCreditAnchorWrapper(_workAnchor).cloneNode(true));
+                            host.appendChild(_outerCreditAnchorWrapper(w.anchor).cloneNode(true));
                             // Attribute words (e.g. "live"/"cover") used to
                             // get their own column per word; reverted to
                             // render inline instead, matching every
@@ -56145,15 +56158,26 @@
                             // convention (so the unique-values dropdown's
                             // per-attribute synthetic filter entries work
                             // here too, for free).
-                            const _recOfAttrs = _parseRecOfAttributes(_recOfDt);
+                            const _recOfAttrs = _parseRecOfAttributes(w.dt);
                             if (_recOfAttrs.length > 0) {
-                                _td.appendChild(document.createTextNode(' ('));
+                                host.appendChild(document.createTextNode(' ('));
                                 const _attrSpan = document.createElement('span');
                                 _attrSpan.className = 'mb-credit-attr';
                                 _attrSpan.textContent = _recOfAttrs.join('/');
-                                _td.appendChild(_attrSpan);
-                                _td.appendChild(document.createTextNode(')'));
+                                host.appendChild(_attrSpan);
+                                host.appendChild(document.createTextNode(')'));
                             }
+                        };
+                        if (_recOfWorks.length === 1) {
+                            _appendRecOfWork(_td, _recOfWorks[0]);
+                        } else if (_recOfWorks.length > 1) {
+                            const _ul = document.createElement('ul');
+                            _recOfWorks.forEach(w => {
+                                const _li = document.createElement('li');
+                                _appendRecOfWork(_li, w);
+                                _ul.appendChild(_li);
+                            });
+                            _td.appendChild(_ul);
                         } else {
                             // No work at all: flag the Title cell (⚠️ tint).
                             _applyNoWorkFlag(_titleTd);
@@ -56545,6 +56569,39 @@
      * @returns {{works: number, covered: number}}
      */
     function _recOfWorksCover(titleTd) {
+        return _recOfWorksCoverImpl(titleTd);
+    }
+
+    /**
+     * Every work a track's recording ITSELF links, in page order, each with
+     * the "recording of:" `<dt>` it hangs under (for its attribute words):
+     * all such `<dt>`s, every work link in each `<dd>` that is not inside a
+     * nested `<dl>`. The nested "medley of:" works under a medley work are
+     * the work's own relationships and stay out (they have the dynamic
+     * "Work medley of" column). Feeds the "Recording of work" cell.
+     *
+     * @param {HTMLTableCellElement} titleTd - The native Title cell, before
+     *   `applyExtractTrackTitleData()` moves its ARs out.
+     * @returns {Array<{anchor: HTMLAnchorElement, dt: HTMLElement}>}
+     */
+    function _recOfTopLevelWorks(titleTd) {
+        const out = [];
+        _findAllArDts(titleTd).filter(dt => /recording of:$/i.test(dt.textContent.trim())).forEach(dt => {
+            const dd = dt.nextElementSibling;
+            if (!dd || dd.tagName !== 'DD') return;
+            dd.querySelectorAll('a[href^="/work/"]').forEach(a => {
+                if (a.closest('dl') === dt.parentElement) out.push({ anchor: a, dt });
+            });
+        });
+        return out;
+    }
+
+    /**
+     * The body of `_recOfWorksCover()`.
+     * @param {HTMLTableCellElement} titleTd
+     * @returns {{works: number, covered: number}}
+     */
+    function _recOfWorksCoverImpl(titleTd) {
         let works = 0, covered = 0;
         _findAllArDts(titleTd).filter(dt => /recording of:$/i.test(dt.textContent.trim())).forEach(dt => {
             const dd = dt.nextElementSibling;
@@ -64198,7 +64255,9 @@
                 // programmatically, since its name isn't known here at
                 // authoring time. "ISRC" is the third-party ISRC Scout's
                 // column, a list once _normalizeIsrcScoutTd() has rebuilt it.
-                collapsableColumns: [ 'ARs', 'Streaming/Downloads', 'AcoustIDs', 'ISRCs', 'ISRC', 'Recording engineer', 'Engineer', 'Producer', 'Mixer', 'Miscellaneous support', 'Mixed at place', 'Phonographic copyright (℗) by artist', 'Phonographic copyright (℗) by label', 'Produced for label', 'Recorded at place', 'Recorded in area', 'Performer', 'Instruments', 'Vocals' ],
+                // "Recording of work" is a list when a recording links
+                // several works (since 2026-11-19; one work stays a bare link).
+                collapsableColumns: [ 'ARs', 'Streaming/Downloads', 'AcoustIDs', 'ISRCs', 'ISRC', 'Recording of work', 'Recording engineer', 'Engineer', 'Producer', 'Mixer', 'Miscellaneous support', 'Mixed at place', 'Phonographic copyright (℗) by artist', 'Phonographic copyright (℗) by label', 'Produced for label', 'Recorded at place', 'Recorded in area', 'Performer', 'Instruments', 'Vocals' ],
                 stickyColumn: 'Title'
             },
             tableMode: 'multi',

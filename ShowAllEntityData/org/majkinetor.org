@@ -1590,8 +1590,10 @@ Before coding each one, write a real example page into this item, with the click
       Elvis's "Teddy Bear / Don't Be Cruel" links one medley WORK of the same name: complete.
     - Found on the way: the release tracklist's "Recording of work" column shows only a recording's FIRST work
       (=applyExtractTrackTitleData()= takes the first link of the first "recording of:"), so a medley's other works
-      are not in the row; the finding counts them from attributes the extraction writes. Showing them all is a
-      change of its own (not done here).
+      are not in the row; the finding counts them from attributes the extraction writes. Fixed on the same branch
+      at vzell's request: the column lists every work the recording itself links (one line each, ▶ toggle); a
+      medley work's own "medley of" works stay in "Work medley of" (vzell's choice). The full suite also caught
+      "(U.S. remix)" naming "U.S.": regions and markets joined SAED's mix words.
 
 ** TODO Possible duplicate recordings (Fusion's algorithm, zero requests)
 

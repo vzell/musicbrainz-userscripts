@@ -53,7 +53,7 @@
   },
   {
     "name": "medley-works never matches",
-    "why": "The Volare medley with one work for two parts loses its warning. Must fail on the medley test.",
+    "why": "Medley 2 with one work for seven parts loses its warning. Must fail on the medley test.",
     "edits": [
       {
         "find": "                return w.works >= 1 && w.covered < parts.length;",
@@ -61,12 +61,12 @@
       }
     ],
     "spec": "tests/fixtures/apollo-findings-2.spec.js",
-    "grep": "the medley with one work for two parts is flagged",
+    "grep": "the medley with one work for seven parts is flagged",
     "expect": "fail"
   },
   {
     "name": "the medley count reads the visible cell only",
-    "why": "The Recording of work cell SHOWS only the first work; counting its links flags the complete Drink to Me Only medley (a medley work plus three medley-of works). Must fail on the medley test.",
+    "why": "The Recording of work cell SHOWS only the first work; counting its links flags the complete Drink to Me Only medley (its medley work has no \" / \" in its title; only its three medley-of works complete it). Must fail on the medley test.",
     "edits": [
       {
         "find": "        if (cell.dataset && cell.dataset.mbRecOfWorks !== undefined) {",
@@ -74,7 +74,7 @@
       }
     ],
     "spec": "tests/fixtures/apollo-findings-2.spec.js",
-    "grep": "the medley with one work for two parts is flagged",
+    "grep": "the medley with one work for seven parts is flagged",
     "expect": "fail"
   },
   {
@@ -82,12 +82,12 @@
     "why": "The nested medley-of works are what make a medley complete; counting one work per dd flags the Drink to Me Only medley. Must fail on the medley test.",
     "edits": [
       {
-        "find": "            dd.querySelectorAll('a[href^=\"/work/\"]').forEach(a => {",
-        "replace": "            [dd.querySelector('a[href^=\"/work/\"]')].filter(Boolean).forEach(a => {"
+        "find": "            dd.querySelectorAll('a[href^=\"/work/\"]').forEach(a => {\n                works++;",
+        "replace": "            [dd.querySelector('a[href^=\"/work/\"]')].filter(Boolean).forEach(a => {\n                works++;"
       }
     ],
     "spec": "tests/fixtures/apollo-findings-2.spec.js",
-    "grep": "the medley with one work for two parts is flagged",
+    "grep": "the medley with one work for seven parts is flagged",
     "expect": "fail"
   },
   {
@@ -113,7 +113,7 @@
       }
     ],
     "spec": "tests/fixtures/apollo-findings-2.spec.js",
-    "grep": "the medley with one work for two parts is flagged",
+    "grep": "the medley with one work for seven parts is flagged",
     "expect": "pass"
   },
   {
@@ -140,6 +140,45 @@
     ],
     "spec": "tests/fixtures/apollo-findings-2.spec.js",
     "grep": "its stamp survives a filter re-render",
+    "expect": "fail"
+  },
+  {
+    "name": "the Recording of work cell keeps the first work only",
+    "why": "The column showed a recording's FIRST work until 2026-11-19; the Volare medley links two directly. Must fail on the column test.",
+    "edits": [
+      {
+        "find": "                        const _recOfWorks = _recOfTopLevelWorks(_titleTd);",
+        "replace": "                        const _recOfWorks = _recOfTopLevelWorks(_titleTd).slice(0, 1);"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-2.spec.js",
+    "grep": "two direct works are two items",
+    "expect": "fail"
+  },
+  {
+    "name": "the nested medley-of works are listed too",
+    "why": "A medley work's own parts belong to the Work medley of column (vzell); listing them repeats 13 works in Medley 1's cell. Must fail on the column test.",
+    "edits": [
+      {
+        "find": "                if (a.closest('dl') === dt.parentElement) out.push({ anchor: a, dt });",
+        "replace": "                out.push({ anchor: a, dt });"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-2.spec.js",
+    "grep": "two direct works are two items",
+    "expect": "fail"
+  },
+  {
+    "name": "Recording of work is not declared collapsable",
+    "why": "A cell with several works gets the ▶ toggle only through collapsableColumns. Must fail on the column test.",
+    "edits": [
+      {
+        "find": "'ISRCs', 'ISRC', 'Recording of work', 'Recording engineer',",
+        "replace": "'ISRCs', 'ISRC', 'Recording engineer',"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-2.spec.js",
+    "grep": "two direct works are two items",
     "expect": "fail"
   }
 ]

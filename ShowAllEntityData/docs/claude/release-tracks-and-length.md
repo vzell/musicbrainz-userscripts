@@ -566,7 +566,7 @@ a plain HTTP client with a JavaScript proof-of-work page as of 2026-10-01):
 A track whose recording links no work (empty "Recording of work" cell) gets
 `data-mb-work-flag="none"` on its **Title** `<td>`, stamped by
 `_applyNoWorkFlag()` in the row loop's `_recOfTh` block — the `else` of the
-`_workAnchor` test, so the flag and the column can never disagree. Painted with
+`_recOfWorks.length` test (was `_workAnchor` until 2026-11-19), so the flag and the column can never disagree. Painted with
 the over-threshold length look: `sa_release_tracks_length_mismatch_warn_bg`
 and a ⚠️ `::after`. Setting: `sa_enable_release_tracks_no_work_flag`
 (default on). The 📊 "Title info - Work" counts do NOT depend on it — they read
@@ -588,6 +588,40 @@ Rules that fail silently if broken:
 
 Spec: `release-tracks-no-work-flag.spec.js`; mutations in
 `scripts/mutations/uvd-title-sections.json`.
+
+## Recording of work: every work the recording links
+
+Until 2026-11-19 (branch `feat/apollo-findings-2`) the cell held ONE work: it
+cloned `_recOfDd.querySelector(work)` of the first "recording of:" `<dt>`, so
+a recording linking two works showed the first, with no hint of the second.
+MusicBrainz renders EACH work relationship as its own `<dt>`/`<dd>` pair
+(`root/components/GroupedTrackRelationships.js`: "Work relationships are not
+grouped together on a single line"), so a take-first finder dropped them
+silently, the pitfall CLAUDE.md names for AR finders.
+
+- `_recOfTopLevelWorks()` returns every work link of every "recording of:"
+  `<dt>` (a `.filter()`), each with its own `<dt>`, so each keeps its
+  attribute words ("(live)", "(cover/live)").
+- **Only the works the recording ITSELF links.** A work link inside a nested
+  `<dl>` of the `<dd>` (MusicBrainz nests a medley work's "medley of:" works,
+  or a work's "part of:", there) stays out: those are the WORK's
+  relationships and have their dynamic "Work medley of" / … columns (vzell,
+  2026-11-19).
+- One work: the cell's markup is unchanged (the bare link plus attributes).
+  Several: one `<li>` each in a `<ul>`. 'Recording of work' is in the
+  release-tracks `collapsableColumns`, so such a cell gets the ▶ toggle. A
+  work suggestion (`_wsugRenderCell()`) writes a single `<li>` into an EMPTY
+  cell and is never touched by it.
+- The readers (`_rowHasRecordingOfWork()`, the 📊 "Title info - Work"
+  counts, `no-work`, the 💡 suggestions) ask "is there a work link", which
+  holds for any number of them.
+- `data-mb-rec-of-works` / `data-mb-rec-of-covered` on the same cell count
+  ALL work links, nested ones included, for `medley-works`
+  (docs/claude/findings.md, "Release tracklist titles").
+
+Spec: `apollo-findings-2.spec.js` ("Recording of work lists every work",
+fixture `release-tracks-medley-missing-work.html`); mutations in
+`scripts/mutations/apollo-findings-2.json`.
 
 ## Work suggestions for tracks with no work
 

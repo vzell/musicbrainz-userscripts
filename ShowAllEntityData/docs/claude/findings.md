@@ -658,24 +658,32 @@ Title cell. The title is the track link's own text (`_findCellTitleEl()`).
   no parts. Flags when ≥ 2 parts, ≥ 1 work, and the works cover fewer parts.
   With no work at all, `no-work` already flags the track, so the two never
   stack.
-  - **The "Recording of work" cell shows only the FIRST work.**
-    `applyExtractTrackTitleData()` clones `_recOfDd.querySelector(work)` of
-    the first "recording of:" `<dt>`. So the count comes from attributes the
-    same extraction writes from ALL of them: `data-mb-rec-of-works` and
-    `data-mb-rec-of-covered` (`_recOfWorksCover()`: every "recording of:"
-    `<dt>`, every work link in its `<dd>`, the nested "medley of:" works
-    included). Each work covers its own title's medley parts, at least one,
-    so a medley WORK "Teddy Bear / Don't Be Cruel" covers both. These are
-    attributes only, so no filter or cache duty applies. A cell without them
-    (an older saved page) counts its own links.
+  - **The count includes works the cell does not show.** The "Recording of
+    work" cell lists the works the recording ITSELF links (since the same
+    branch it lists all of them, not the first only: docs/claude/
+    release-tracks-and-length.md, "Recording of work: every work"). A medley
+    work's nested "medley of:" works stay in "Work medley of", yet they are
+    what completes a medley whose medley work's own title has no " / "
+    (Dean Martin's "Medley; Drink To Me Only…, When Your Smiling, …"). So the
+    count comes from attributes the extraction writes from EVERY work link:
+    `data-mb-rec-of-works` and `data-mb-rec-of-covered` (`_recOfWorksCover()`).
+    Each work covers its own title's medley parts, at least one, so a medley
+    WORK "Teddy Bear / Don't Be Cruel" covers both. These are attributes only,
+    so no filter or cache duty applies. A cell without them (an older saved
+    page) counts its own links.
   - Real case (probe): The Beatles, recording 01bbbab1 "1969-03-29: Don't Let
     Me Down / Those Were the Days", on release 74d2602f, links only "Don't
     Let Me Down". Its page is behind musicbrainz.org's browser check for
-    scripts, so the fixture is `release-tracks-medley-missing-work.html`: a
-    copy of the real `release-tracks-medley.html` with the Volare medley cut
-    to one work, the same shape. Its MusicBrainz scripts are removed: the
-    original fixture loads them from static.metabrainz.org, and they re-render
-    the tracklist from the embedded JSON, undoing any HTML edit.
+    scripts, so the fixture is `release-tracks-medley-missing-work.html`, a
+    copy of the real `release-tracks-medley.html`:
+    - "Medley 2" (seven parts) is cut to one work, the same shape as the
+      Beatles case;
+    - Volare links its two works directly (the column test);
+    - Drink and "Medley 1" are real and complete.
+
+    Its MusicBrainz scripts are removed. The original fixture loads them from
+    static.metabrainz.org, and they re-render the tracklist from the embedded
+    JSON, undoing any HTML edit.
 - Tints `sa_findings_tint_remix_no_remixer`, `sa_findings_tint_medley_works`.
   Spec `tests/fixtures/apollo-findings-2.spec.js` (Seren E.P., the medley
   copy, the title and part rules through `__saTest.remixNamedInTitle` /

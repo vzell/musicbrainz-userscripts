@@ -43,8 +43,8 @@
     "why": "The list alone is not enough: initCollapsableColumns() only builds toggles for declared columns, so the 2- and 3-ISRC cells get no ▶ and the header no collapse button.",
     "edits": [
       {
-        "find": "'ISRCs', 'ISRC', 'Recording engineer'",
-        "replace": "'ISRCs', 'Recording engineer'"
+        "find": "'ISRCs', 'ISRC', 'Recording of work', 'Recording engineer'",
+        "replace": "'ISRCs', 'Recording of work', 'Recording engineer'"
       }
     ],
     "spec": "tests/fixtures/release-tracks-isrc-scout.spec.js",

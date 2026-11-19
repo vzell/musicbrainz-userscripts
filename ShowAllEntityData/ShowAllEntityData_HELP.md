@@ -1967,7 +1967,9 @@ A release page gains **Tracks for Release**, which consolidates every
 medium into one table and unpacks each track's relationships into columns:
 *Recording of work*, *Recorded at* event and place, *Recorded in area*, *Mixed
 at*, *Performer*, the engineer / producer / mixer credit family, phonographic
-copyright, *Instruments* and *Vocals*.
+copyright, *Instruments* and *Vocals*. *Recording of work* lists every work
+the recording links, one line each; the songs a medley work is made of show in
+its own *Work medley of* column.
 
 **Anything else is discovered automatically.** A relationship type with no
 dedicated column gets one named after its own phrase, so a new MusicBrainz

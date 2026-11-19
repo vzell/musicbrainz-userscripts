@@ -12,9 +12,15 @@
 //   - the title rules themselves (Credit Hoarder's, plus SAED's mix words),
 //     through the shipping function: anonymous mixes and mix descriptions
 //     ("mono", "5.1", "take 2") name nobody; a person does.
-//   - medley on a copy of a real release where one medley links one work for
-//     two parts; the three real medleys (a medley work plus a work per part)
-//     are the near misses; "[band intro] / Song" and "AC/DC" are not medleys.
+//   - medley on a copy of a real release where "Medley 2" links one work for
+//     seven parts; Volare links its two works directly; Drink and "Medley 1"
+//     link a medley work plus its "medley of" works (near misses; Drink's
+//     medley work has no " / " in its title, so only the nested works complete
+//     it); "[band intro] / Song" and "AC/DC" are not medleys.
+//   - the "Recording of work" column lists EVERY work the recording links (it
+//     showed the first only): two direct works are two list items with the ▶
+//     toggle; a single work keeps its bare link; a medley work's nested parts
+//     stay in "Work medley of".
 //   - menu count, filter, look, tint switch, survival after a filter pass.
 
 const path = require('path');
@@ -32,6 +38,8 @@ const REMIX_URL = 'https://musicbrainz.org/release/f6215982-62e1-4b81-b88f-754dc
 const REMIX_FIXTURE = path.join(__dirname, 'release-tracks-remix-eti.html');
 const MEDLEY_URL = 'https://musicbrainz.org/release/a9a3b139-cf22-4d28-801e-3f3d49521d0e';
 const MEDLEY_FIXTURE = path.join(__dirname, 'release-tracks-medley-missing-work.html');
+const MEDLEY2 = 'Medley 2: I Can’t Give You Anything but Love / Too Marvelous for Words / Pennies From Heaven / ' +
+    'A Foggy Day / Embraceable You / The Lady Is a Tramp / Where or When';
 
 /**
  * Loads a release fixture and presses "Show all Tracks for Release".
@@ -136,12 +144,12 @@ test.describe('remix-no-remixer', () => {
 });
 
 test.describe('medley-works', () => {
-    test('the medley with one work for two parts is flagged; the complete medleys are not', async ({ page }) => {
+    test('the medley with one work for seven parts is flagged; the complete medleys are not', async ({ page }) => {
         await open(page, MEDLEY_URL, MEDLEY_FIXTURE);
         const cells = await titleCells(page, 'medley-works');
         expect(cells.filter((c) => c.title.includes(' / ')).length, 'the release has four medleys').toBe(4);
-        expect(flaggedTitles(cells)).toEqual(['Medley: Volare / On an Evening in Roma']);
-        expect(cells.find((c) => c.flagged).tip).toContain('2 parts, works for 1');
+        expect(flaggedTitles(cells)).toEqual([MEDLEY2]);
+        expect(cells.find((c) => c.flagged).tip).toContain('7 parts, works for 1');
         expect((await findingRow(page, 'warn', 'medley-works')).count).toBe(1);
     });
 
@@ -160,11 +168,46 @@ test.describe('medley-works', () => {
     test('its stamp survives a filter re-render, and its tint switch keeps it', async ({ page }) => {
         await open(page, MEDLEY_URL, MEDLEY_FIXTURE);
         await waitForFilterSettled(page, () => typeGlobalFilter(page, 'Medley'));
-        expect(flaggedTitles(await titleCells(page, 'medley-works'))).toEqual(['Medley: Volare / On an Evening in Roma']);
+        expect(flaggedTitles(await titleCells(page, 'medley-works'))).toEqual([MEDLEY2]);
 
         await open(page, MEDLEY_URL, MEDLEY_FIXTURE, { sa_findings_tint_medley_works: false });
         const off = (await titleCells(page, 'medley-works')).find((c) => c.flagged);
         expect(off, 'still detected').toBeTruthy();
         expect(off.level, 'not tinted').toBeNull();
+    });
+});
+
+test.describe('Recording of work lists every work', () => {
+    test('two direct works are two items; one work stays a bare link; nested medley parts stay out', async ({ page }) => {
+        await open(page, MEDLEY_URL, MEDLEY_FIXTURE);
+        const rows = await page.evaluate(() => {
+            const out = {};
+            document.querySelectorAll('table.tbl').forEach((t) => {
+                const names = Array.from(t.querySelectorAll('thead tr:first-child th')).map((th) => th.dataset.colName || '');
+                const ti = names.indexOf('Title'), ri = names.indexOf('Recording of work'), mi = names.indexOf('Work medley of');
+                t.querySelectorAll('tbody tr').forEach((tr) => {
+                    const a = tr.cells[ti] && tr.cells[ti].querySelector('a[href*="/recording/"]');
+                    if (!a || ri < 0) return;
+                    const rc = tr.cells[ri];
+                    out[a.textContent.trim()] = {
+                        items: Array.from(rc.querySelectorAll(':scope > ul > li')).map((li) => li.textContent.replace(/\s+/g, ' ').trim()),
+                        links: rc.querySelectorAll('a[href*="/work/"]').length,
+                        toggle: !!rc.querySelector('.mb-cell-collapse-toggle'),
+                        medleyOf: mi >= 0 && tr.cells[mi] ? tr.cells[mi].querySelectorAll('a[href*="/work/"]').length : 0,
+                    };
+                });
+            });
+            return out;
+        });
+        const volare = rows['Medley: Volare / On an Evening in Roma'];
+        expect(volare.items, 'one item per work, each with its "(live)"').toEqual([
+            'Volare (Nel blu dipinto di blu) (live)', 'On an Evening in Roma (live)']);
+        expect(volare.toggle, 'a list gets the collapse toggle').toBe(true);
+        const goody = rows['Goody Goody'];
+        expect(goody.items, 'a single work is no list').toEqual([]);
+        expect(goody.links).toBe(1);
+        const m1 = Object.entries(rows).find(([t]) => t.startsWith('Medley 1:'))[1];
+        expect(m1.links, 'the medley work alone, its parts are not repeated here').toBe(1);
+        expect(m1.medleyOf, '…they are in "Work medley of"').toBe(13);
     });
 });
