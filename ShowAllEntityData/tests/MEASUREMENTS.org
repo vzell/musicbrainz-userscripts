@@ -4554,3 +4554,13 @@ Env: 2026-11-19T09:42:19–09:52:26+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (L
 | A, B, B, A                   | 984, 806 / 815, 882             |     0.948 | 476, 455 / 453, 477   |     0.999 |
 
 Within noise (main's first arm, 984 ms, is the slow one of the four). The finding reads one <bdi> per Artist cell.
+
+* 2026-11-19 — =npm run test:full= on =petri=, feat/apollo-findings-1 (61c4d6df, on 9.99.1654)
+
+Env: 2026-11-19T09:52:49+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                         | Tests | Workers | Wall clock  | Basis                                     |
+|-----------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, merge check  |  3303 |      12 | *21 m 13 s* | =run-test-full.py=, 09:52:49–10:14:02 CET |
+
+3303 passed (main's 3298 plus the 5 credit-trailing-join tests). No flake showed.
