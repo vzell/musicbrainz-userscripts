@@ -1449,7 +1449,7 @@ CLOSED: [2026-11-08 Sun]
   or a new =data-mbu-busy="saed"= while SAED fetches/renders. Do not ask before measuring.
   *Measured, and asked* (posted 2026-11-09 21:01 CET): the =data-mbu-quiet= variant, [[file:reply-to-938-idle.org][org/reply-to-938-idle.org]].
 
-** TODO Findings from the release checks of Mission Control / Platform Check / ISRC Scout
+** DONE Findings from the release checks of Mission Control / Platform Check / ISRC Scout
 
 - *Who fixes it*: *ours* (SAED-only analysis; ideas, not code).
 
@@ -1505,7 +1505,8 @@ Each is one =FINDINGS= entry (=add-finding= skill) that reads source-row data th
     after an async lookup, so after our render) or ISRC Scout's own column (=td.ii-col-isrc=, which already
     highlights duplicates itself, =highlightDuplicates=). =sa_enable_release_tracks_isrc_column= only moves what
     those scripts put there.
-- *Done on =feat/release-check-findings=* (2026-11-19, petri; not merged yet): =barcode-zero= (error),
+- *Shipped in 9.99.1654* (branch =feat/release-check-findings=, 2026-11-19, petri; merge =43365bba=, fold =864ae68d=;
+  test:full 3298/3298 on the merged =main=; vzell's live check "tested live, OK"): =barcode-zero= (error),
   =barcode-missing=, =catno-missing=, =release-event-none= on release lists, =len-unknown= on release tracklists.
   - The "no barcode entered" tint is OFF by default (vzell): it flagged 959 of Bob Dylan's 2,301 releases, and with
     it on, typing in the filter took ~6% longer (tests/MEASUREMENTS.org, 2026-11-19); counted and filterable either
@@ -1546,6 +1547,10 @@ Also =FINDINGS= entries, zero requests, re-implemented from the description (GPL
   Artists / [unknown].
 
 Before coding each one, write a real example page into this item, with the clicks and the predicted result.
+
+- *Batch 1 started* (2026-11-19, petri, branch =feat/apollo-findings-1=): the three that read only the cell's own
+  text: invisible or odd characters in titles and names, extra spaces, join phrases without their space. The rest
+  (they need the Relationships column, a release-type guess or the annotation) come in later batches.
 
 ** TODO Possible duplicate recordings (Fusion's algorithm, zero requests)
 
