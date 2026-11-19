@@ -828,6 +828,8 @@ back).
 |-------|-----------------------------------------------------------------|---------------------------------------------|
 | ⚠️     | Track and recording length differ by more than the threshold    | Release tracklist: Length, Recording length |
 | ⚠️     | Recording has no associated work                                | Release tracklist: Title                    |
+| ⚠️     | Title names a remixer ("(X remix)"), no remixer credited        | Release tracklist: Title                    |
+| ⚠️     | Medley title ("A / B") has more parts than linked works         | Release tracklist: Title                    |
 | ⚠️     | Live title date uses a plain "-" instead of "‐" (U+2010)        | Release and release group titles            |
 | ⚠️     | Event name date uses a plain "-" instead of "‐" (U+2010)        | Event columns                               |
 | ⚠️     | Event name almost follows the event style guide                 | Event columns                               |

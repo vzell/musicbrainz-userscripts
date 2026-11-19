@@ -277,6 +277,9 @@
 //   Added 2026-11-18: _mbGateSleep() is PORTED from his mbnSleep() (#999: a wait also wakes
 //   on animation frames, page changes and a worker's timer), and _mbGateState() takes his
 //   lock race (a 3 s timeout; a grant after it books nothing).
+//   Added 2026-11-19: _remixNamedInTitle() and _remixCleanName() are PORTED from Credit
+//   Hoarder's src/derive/remix.js (parseRemixTitle, cleanName: TRAILING_RE, BY_RE, SEP_RE,
+//   the STRONG and WEAK word sets), with this script's own mix words added.
 // ============================================================================================================================================
 
 (function() {
@@ -2852,6 +2855,22 @@
             default: true,
             description: 'Tint an Artist cell light yellow with a ⚠️ when its artist credit ends with a join phrase after ' +
                          'the last artist ("Bad Legs, SeekFlow,", "… feat."), usually left over from a removed artist.'
+        },
+
+        sa_findings_tint_remix_no_remixer: {
+            label: 'Highlight a remixer named in the title but not credited as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint a release tracklist Title cell light yellow with a ⚠️ when the title names a remix by ' +
+                         'someone ("(Psyche remix)") and the track has no remixer relationship.'
+        },
+
+        sa_findings_tint_medley_works: {
+            label: 'Highlight medley titles with more parts than works as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint a release tracklist Title cell light yellow with a ⚠️ when a medley title ("A / B") has ' +
+                         'more parts than its recording links works for.'
         },
 
         sa_findings_tint_live_credit: {
@@ -56102,6 +56121,14 @@
                         // own fix for the equivalent `name-variation`
                         // wrapping case.
                         const _workAnchor = _recOfDd ? _recOfDd.querySelector('a[href^="/work/"]') : null;
+                        // The cell shows the FIRST work only; medley-works
+                        // needs them all (every "recording of:" <dt> and the
+                        // "medley of:" works nested in its <dd>), so their
+                        // count and the medley parts they cover ride along as
+                        // attributes — no text, so nothing a filter reads.
+                        const _recOfCover = _recOfWorksCover(_titleTd);
+                        _td.dataset.mbRecOfWorks = String(_recOfCover.works);
+                        _td.dataset.mbRecOfCovered = String(_recOfCover.covered);
                         if (_workAnchor) {
                             // Clone the wrapping <span class="mp">/
                             // <span class="name-variation"> (if any) rather
@@ -56501,6 +56528,33 @@
      */
     function _findRecOfDt(titleTd) {
         return _findAllArDts(titleTd).find(dt => /recording of:$/i.test(dt.textContent.trim())) || null;
+    }
+
+    /**
+     * Every work a track's recording links, and how many medley parts they
+     * cover, for `medley-works`. Reads EVERY "recording of:" `<dt>` (a
+     * `.filter()`, not `_findRecOfDt()`'s first one) and every work link in
+     * its `<dd>`, the "medley of:" works MusicBrainz nests there included.
+     * Each work covers its own title's medley parts (`_medleyParts()`), at
+     * least one. "Medley: Volare / On an Evening in Roma" linking the medley
+     * work and its two "medley of" works covers 3 (of 2 parts); linking only
+     * "Volare" covers 1. Over-counting only ever un-flags.
+     *
+     * @param {HTMLTableCellElement} titleTd - The native Title cell, before
+     *   `applyExtractTrackTitleData()` moves its ARs out.
+     * @returns {{works: number, covered: number}}
+     */
+    function _recOfWorksCover(titleTd) {
+        let works = 0, covered = 0;
+        _findAllArDts(titleTd).filter(dt => /recording of:$/i.test(dt.textContent.trim())).forEach(dt => {
+            const dd = dt.nextElementSibling;
+            if (!dd || dd.tagName !== 'DD') return;
+            dd.querySelectorAll('a[href^="/work/"]').forEach(a => {
+                works++;
+                covered += Math.max(1, _medleyParts(a.textContent).length);
+            });
+        });
+        return { works, covered };
     }
 
     /**
@@ -76889,6 +76943,44 @@
             test: (cell, row, plan) => _rowHasRecordingOfWork(row, plan.recOfIdx) === false,
             tint: () => false,
         },
+        // Apollo findings, batch 2 (org/majkinetor.org): the two a release
+        // tracklist answers from its own data. Real examples and the probe
+        // that tightened both rules: that TODO's "Batch 2" notes.
+        {
+            id: 'remix-no-remixer', level: 'warn', glyph: '🎛️', scope: 'cell',
+            label: 'Title names a remixer, no remixer credited',
+            tip: 'The track title names a remix by someone ("(Psyche remix)", "(Remixed by X)"), but the track has no ' +
+                 'remixer relationship. Anonymous mixes ("(Extended Mix)", "(mono mix)", "(5.1 mix)") are not counted. ' +
+                 'The title rules are Credit Hoarder\'s (majkinetor).',
+            enabled: () => !_foreignHost && activeDefinition?.type === 'release-tracks',
+            cols: name => name === 'Title',
+            test: (cell, row, plan) => !!row.querySelector('a[href*="/recording/"]') &&
+                _remixNamedInTitle(_findCellTitleEl(cell)?.textContent).length > 0 &&
+                !_rowCreditsRemixer(row, plan.remixerIdxs),
+            detail: cell => `names ${_remixNamedInTitle(_findCellTitleEl(cell)?.textContent).map(n => `"${n}"`).join(', ')}`,
+            tint: _findingTintSetting('sa_findings_tint_remix_no_remixer'),
+        },
+        {
+            id: 'medley-works', level: 'warn', glyph: '🧩', scope: 'cell',
+            label: 'Medley title has more parts than linked works',
+            tip: 'The track title is a medley, "A / B / C", but its recording links works for fewer of the parts. ' +
+                 'A part in square brackets ("[band intro]") is not music and does not count; a work whose own title ' +
+                 'is a medley covers its parts. A track with no work at all is "Recording has no associated work".',
+            enabled: () => !_foreignHost && activeDefinition?.type === 'release-tracks',
+            cols: (name, plan) => name === 'Title' && plan.recOfIdx >= 0,
+            test: (cell, row, plan) => {
+                const parts = _medleyParts(_findCellTitleEl(cell)?.textContent);
+                if (parts.length < 2) return false;
+                const w = _medleyWorksCovered(row.cells[plan.recOfIdx]);
+                return w.works >= 1 && w.covered < parts.length;
+            },
+            detail: (cell, row, plan) => {
+                const parts = _medleyParts(_findCellTitleEl(cell)?.textContent);
+                const w = _medleyWorksCovered(row.cells[plan.recOfIdx]);
+                return `${parts.length} parts, works for ${w.covered}`;
+            },
+            tint: _findingTintSetting('sa_findings_tint_medley_works'),
+        },
         {
             id: 'live-sep', level: 'warn', glyph: '➖', scope: 'cell',
             label: 'Live title date uses "-" instead of "‐"',
@@ -77900,7 +77992,8 @@
      *   or "Catalog#" column), for the release checks (`barcode-zero`,
      *   `barcode-missing`, `catno-missing`, `release-event-none`);
      *   `labelIdx`/`countryIdx` its "Label" and split "Country" columns,
-     *   `-1` if none.
+     *   `-1` if none. `remixerIdxs`: every column whose name says "remixer"
+     *   (release-tracks' dynamic AR columns), for `remix-no-remixer`.
      */
     function _findingPlanForTable(table) {
         const count = table.querySelectorAll('thead tr:first-child th').length;
@@ -77922,6 +78015,7 @@
             releaseList: names.includes('Barcode') || names.includes('Catalog#'),
             labelIdx: names.indexOf('Label'),
             countryIdx: names.indexOf('Country'),
+            remixerIdxs: names.reduce((a, n, i) => (/remixer/i.test(n) ? a.concat(i) : a), []),
             nameOf: i => names[i] || '',
         };
         _activeFindings().forEach(f => {
@@ -99987,6 +100081,158 @@
             if (!a.closest('li.mb-recof-suggested')) return true;
         }
         return false;
+    }
+
+    // ── Remixer named in a title (remix-no-remixer) ─────────────────────────
+    // Ported from majkinetor's Credit Hoarder, src/derive/remix.js
+    // (parseRemixTitle: TRAILING_RE, BY_RE, SEP_RE, STRONG, WEAK; permission
+    // #938, 2026-11-17). Only a NAME before (or after "…by") a remix keyword
+    // counts: "(Psyche remix)", "(Remixed by X)"; "(Extended Mix)", "(Remix)"
+    // are anonymous. _REMIX_SAED_MIX is SAED's addition (2026-11-19, from the
+    // Beatles/Elvis probe in org/majkinetor.org): words that describe the mix,
+    // never its maker ("mono", "5.1", "1965", "take 2", "monitor"); without
+    // them half the "names" were mix descriptions.
+
+    /** @type {Set<string>} Credit Hoarder's STRONG: trimmed off the trailing edge. */
+    const _REMIX_STRONG = new Set(['extended', 'original', 'radio', 'instrumental', 'acapella', 'acappella', 'acoustic',
+        'album', 'single', 'main', 'long', 'short', 'full', 'special', 'bonus', 'alternative', 'alternate', 'vip', 'rmx',
+        'redux', 'dancefloor', 'unplugged', 'demo', 'remastered', 'dub', 'edit', 'mix', 'remix', 'rework', 'remodel',
+        'reshuffle', 'reprise', 'version', 're-edit', 'reedit']);
+    /** @type {Set<string>} Credit Hoarder's WEAK: never trimmed, only count as decoration. */
+    const _REMIX_WEAK = new Set(['club', 'deep', 'tech', 'soulful', 'disco', 'electro', 'house', 'techno', 'progressive',
+        'tribal', 'vocal', 'classic', 'clean', 'dirty', 'censored', 'uncensored', 'studio', 'live', 'the', 'a', 'an']);
+    /** @type {Set<string>} SAED's mix words (see the block comment). */
+    const _REMIX_SAED_MIX = new Set(['mono', 'stereo', 'surround', 'quad', 'quadraphonic', 'binaural', 'atmos', 'dolby',
+        'monitor', 'reduction', 'reduced', 'multitrack', 'movie', 'film', 'tv', 'new', 'first', 'unused', 'rough',
+        'early', 'take', 'to', 'of', 'and', 'concert', 'session', 'sessions', 'outtake', 'anthology', 'rockband', 'rock',
+        'band', 'mixdown', 'master']);
+    const _REMIX_SEP_RE = /\s*(?:&|\+|,|\/|\bfeat\.?\b|\bft\.?\b|\bfeaturing\b)\s*/i;
+    const _REMIX_TRAILING_RE = /^(.+?)\s+((?:re[-_ ]?)?(?:remix|rework|remodel|reshuffle|reprise|edit|dub|mix))(?:es|ed|s|d)?$/i;
+    const _REMIX_BY_RE = /^(?:re[-_ ]?)?(?:remix|rework|remodel|reshuffle|rerub)(?:es|ed|s|d)?\s+by\s+(.+)$/i;
+
+    /**
+     * A token normalised for the remix word lists: lower case, a trailing
+     * dot or apostrophe dropped.
+     * @param {string} t
+     * @returns {string}
+     */
+    function _remixNorm(t) {
+        return t.toLowerCase().replace(/[.'’`]+$/, '');
+    }
+
+    /**
+     * Whether a normalised token describes the mix: Credit Hoarder's STRONG
+     * set or a vinyl size, plus SAED's mix words, a channel count ("5.1"), a
+     * year or date ("1965", "1964-04-16"), a lone number ("take 2") or dash.
+     * @param {string} n
+     * @returns {boolean}
+     */
+    function _remixIsStrong(n) {
+        return _REMIX_STRONG.has(n) || _REMIX_SAED_MIX.has(n) ||
+            /^\d+(?:"|''|”|″|inch|in)?$/.test(n) ||
+            /^(?:\d+(?:\.\d)?|(?:19|20)\d\d[-‐/.\d]*|\d+[-‐]\d+[-‐]\d+|-|‐)$/.test(n);
+    }
+
+    /**
+     * Credit Hoarder's `cleanName()`: drops a nested bracket and a trailing
+     * possessive, trims mix words off the trailing edge, and returns `null`
+     * when only decoration is left.
+     * @param {string} raw
+     * @returns {?string}
+     */
+    function _remixCleanName(raw) {
+        const s = String(raw || '').replace(/\s*[([].*$/, '').replace(/[)\]]+\s*$/, '');
+        let tokens = s.trim().split(/\s+/).filter(Boolean);
+        const p = tokens.findIndex(t => /['’]s$/i.test(t));
+        if (p !== -1) {
+            tokens = tokens.slice(0, p + 1);
+            tokens[p] = tokens[p].replace(/['’]s$/i, '');
+        }
+        while (tokens.length && _remixIsStrong(_remixNorm(tokens[tokens.length - 1]))) tokens.pop();
+        if (!tokens.length) return null;
+        if (tokens.every(t => { const n = _remixNorm(t); return _remixIsStrong(n) || _REMIX_WEAK.has(n); })) return null;
+        const name = tokens.join(' ').replace(/['’]s$/i, '').trim();
+        return /[A-Za-z0-9]/.test(name) ? name : null;
+    }
+
+    /**
+     * The remixers a track title names in its parentheticals (Credit
+     * Hoarder's `parseRemixTitle()`), e.g. `['Psyche']` for "Everlasting
+     * (Psyche remix)", `[]` for "Song (Extended Mix)". A title that is a
+     * "[…]" special-purpose title names none.
+     * @param {string} title
+     * @returns {string[]}
+     */
+    function _remixNamedInTitle(title) {
+        const out = [];
+        const t = String(title || '');
+        if (t.trimStart().startsWith('[')) return out;
+        for (const g of t.match(/[([][^)\]]*[)\]]/g) || []) {
+            const inner = g.slice(1, -1).trim();
+            const m = _REMIX_BY_RE.exec(inner) || _REMIX_TRAILING_RE.exec(inner);
+            if (!m) continue;
+            for (const n of m[1].split(_REMIX_SEP_RE).map(_remixCleanName)) {
+                if (n && !out.includes(n)) out.push(n);
+            }
+        }
+        return out;
+    }
+
+    /**
+     * Whether a release-tracklist row credits a remixer: any non-empty cell
+     * under a column whose name says "remixer" (the dynamic AR columns
+     * "Remixer", "Additional remixer", …; `plan.remixerIdxs`). A release
+     * where no track has one has no such column at all.
+     * @param {HTMLTableRowElement} row
+     * @param {number[]} idxs
+     * @returns {boolean}
+     */
+    function _rowCreditsRemixer(row, idxs) {
+        return idxs.some(i => row.cells[i] && row.cells[i].textContent.trim() !== '');
+    }
+
+    // ── Medley titles (medley-works) ─────────────────────────────────────────
+
+    /**
+     * The musical parts of a medley title "A / B / C" (split on " / " with
+     * its spaces, so "AC/DC" stays whole). A part beginning with "[" is
+     * MusicBrainz's mark for non-musical content ("[band intro]",
+     * https://musicbrainz.org/doc/Style/Unknown_and_untitled/Special_purpose_track_title)
+     * and does not count; a title that is one bracket ("[encore / break]")
+     * has no parts.
+     * @param {string} title
+     * @returns {string[]}
+     */
+    function _medleyParts(title) {
+        const t = String(title || '').trim();
+        if (/^\[[^\]]*\]$/.test(t)) return [];
+        return t.split(' / ').map(p => p.trim()).filter(p => p && !p.startsWith('['));
+    }
+
+    /**
+     * How many medley parts a "Recording of work" cell covers. The cell
+     * SHOWS only the first work, so the count comes from the attributes
+     * `applyExtractTrackTitleData()` wrote from all of them
+     * (`data-mb-rec-of-works`/`-covered`, `_recOfWorksCover()`); a cell
+     * without them (an older saved page) counts its own links. Each work
+     * covers its own title's parts, at least one: Elvis's "Teddy Bear /
+     * Don't Be Cruel" links one medley WORK of that name and is complete. A
+     * suggestion never counts, as in `_cellHasLinkedWork()`.
+     * @param {?Element} cell
+     * @returns {{works: number, covered: number}}
+     */
+    function _medleyWorksCovered(cell) {
+        let works = 0, covered = 0;
+        if (!cell) return { works, covered };
+        if (cell.dataset && cell.dataset.mbRecOfWorks !== undefined) {
+            return { works: Number(cell.dataset.mbRecOfWorks) || 0, covered: Number(cell.dataset.mbRecOfCovered) || 0 };
+        }
+        for (const a of cell.querySelectorAll('a[href*="/work/"]')) {
+            if (a.closest('li.mb-recof-suggested')) continue;
+            works++;
+            covered += Math.max(1, _medleyParts(a.textContent).length);
+        }
+        return { works, covered };
     }
 
     /**
@@ -190970,6 +191216,20 @@ a { color: #1565c0; }`;
                  */
                 answer: (status, retryAfter) => _mbGateAnswer(status, retryAfter == null ? null : retryAfter),
             },
+            /**
+             * The title rules of the batch-2 findings (`remix-no-remixer`,
+             * `medley-works`), the shipping functions, for the unit-style
+             * cases a fixture would need one release per title for.
+             *
+             * @param {string} title
+             * @returns {string[]}
+             */
+            remixNamedInTitle: (title) => _remixNamedInTitle(title),
+            /**
+             * @param {string} title
+             * @returns {string[]} `_medleyParts()`.
+             */
+            medleyParts: (title) => _medleyParts(title),
             /**
              * Reserves `n` slots of the foreign hosts' detail-page rate gate
              * (`_dpAwaitSlot()`, the shipping function), so a spec can put the

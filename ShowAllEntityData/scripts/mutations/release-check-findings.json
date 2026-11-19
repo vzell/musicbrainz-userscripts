@@ -173,8 +173,8 @@
     "why": "Artist and work recording lists have a Length column with \"?:??\" too; the TODO scopes the check to release tracklists. Must fail on the recordings-list test (artist-recordings-ms-batch.html).",
     "edits": [
       {
-        "find": "            enabled: () => !_foreignHost && activeDefinition?.type === 'release-tracks',",
-        "replace": "            enabled: () => !_foreignHost,"
+        "find": "            tip: 'MusicBrainz knows no length for this track: it shows \"?:??\".',\n            enabled: () => !_foreignHost && activeDefinition?.type === 'release-tracks',",
+        "replace": "            tip: 'MusicBrainz knows no length for this track: it shows \"?:??\".',\n            enabled: () => !_foreignHost,"
       }
     ],
     "spec": "tests/fixtures/release-check-findings.spec.js",

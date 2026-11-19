@@ -1,0 +1,145 @@
+[
+  {
+    "name": "remix-no-remixer never matches",
+    "why": "Everlasting (Psyche remix) loses its warning. Must fail on the Seren E.P. test.",
+    "edits": [
+      {
+        "find": "                !_rowCreditsRemixer(row, plan.remixerIdxs),",
+        "replace": "                false,"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-2.spec.js",
+    "grep": "a named remix without a remixer is flagged",
+    "expect": "fail"
+  },
+  {
+    "name": "the remixer column is ignored",
+    "why": "Situations Like These (Moonitor remix) credits Moonitor in the dynamic Remixer column; without that check it is flagged too. Must fail on the Seren E.P. test.",
+    "edits": [
+      {
+        "find": "        return idxs.some(i => row.cells[i] && row.cells[i].textContent.trim() !== '');",
+        "replace": "        return false;"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-2.spec.js",
+    "grep": "a named remix without a remixer is flagged",
+    "expect": "fail"
+  },
+  {
+    "name": "SAED's mix words are dropped",
+    "why": "Without them Credit Hoarder's rules name \"1982 stereo\", \"5.1\", \"take 3 Monitor\" as remixers (half the probe's names). Must fail on the title-rules test.",
+    "edits": [
+      {
+        "find": "        return _REMIX_STRONG.has(n) || _REMIX_SAED_MIX.has(n) ||",
+        "replace": "        return _REMIX_STRONG.has(n) ||"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-2.spec.js",
+    "grep": "the title rules: people count",
+    "expect": "fail"
+  },
+  {
+    "name": "a bracketed special-purpose title is parsed",
+    "why": "\"[first show] (pro‐shot mix)\" is no song; parsing it names \"pro‐shot\". Must fail on the title-rules test.",
+    "edits": [
+      {
+        "find": "        if (t.trimStart().startsWith('[')) return out;",
+        "replace": "        void t;"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-2.spec.js",
+    "grep": "the title rules: people count",
+    "expect": "fail"
+  },
+  {
+    "name": "medley-works never matches",
+    "why": "The Volare medley with one work for two parts loses its warning. Must fail on the medley test.",
+    "edits": [
+      {
+        "find": "                return w.works >= 1 && w.covered < parts.length;",
+        "replace": "                return false;"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-2.spec.js",
+    "grep": "the medley with one work for two parts is flagged",
+    "expect": "fail"
+  },
+  {
+    "name": "the medley count reads the visible cell only",
+    "why": "The Recording of work cell SHOWS only the first work; counting its links flags the complete Drink to Me Only medley (a medley work plus three medley-of works). Must fail on the medley test.",
+    "edits": [
+      {
+        "find": "        if (cell.dataset && cell.dataset.mbRecOfWorks !== undefined) {",
+        "replace": "        if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-2.spec.js",
+    "grep": "the medley with one work for two parts is flagged",
+    "expect": "fail"
+  },
+  {
+    "name": "only the first work of a recording-of dd is counted",
+    "why": "The nested medley-of works are what make a medley complete; counting one work per dd flags the Drink to Me Only medley. Must fail on the medley test.",
+    "edits": [
+      {
+        "find": "            dd.querySelectorAll('a[href^=\"/work/\"]').forEach(a => {",
+        "replace": "            [dd.querySelector('a[href^=\"/work/\"]')].filter(Boolean).forEach(a => {"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-2.spec.js",
+    "grep": "the medley with one work for two parts is flagged",
+    "expect": "fail"
+  },
+  {
+    "name": "a bracketed part counts as music",
+    "why": "\"[band intro] / Jenny Take a Ride\" is one song; all six first-probe hits were such titles. Must fail on the part-rules test.",
+    "edits": [
+      {
+        "find": "        return t.split(' / ').map(p => p.trim()).filter(p => p && !p.startsWith('['));",
+        "replace": "        return t.split(' / ').map(p => p.trim()).filter(p => p);"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-2.spec.js",
+    "grep": "the part rules: brackets are not music",
+    "expect": "fail"
+  },
+  {
+    "name": "a work's own medley parts are not counted",
+    "why": "A medley WORK titled \"A / B\" (Elvis's \"Teddy Bear / Don't Be Cruel\") covers both parts. The fixture's medley works carry their parts as nested medley-of works as well, so each still covers enough without this; recorded as a pass. A release linking one medley work with \" / \" in its title and no medley-of works would catch it.",
+    "edits": [
+      {
+        "find": "                works++;\n                covered += Math.max(1, _medleyParts(a.textContent).length);",
+        "replace": "                works++;\n                covered += 1;"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-2.spec.js",
+    "grep": "the medley with one work for two parts is flagged",
+    "expect": "pass"
+  },
+  {
+    "name": "the remix-no-remixer tint setting is ignored",
+    "why": "The tint must follow sa_findings_tint_remix_no_remixer. Must fail on its tint test.",
+    "edits": [
+      {
+        "find": "            tint: _findingTintSetting('sa_findings_tint_remix_no_remixer'),",
+        "replace": "            tint: () => true,"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-2.spec.js",
+    "grep": "a click filters to the flagged track",
+    "expect": "fail"
+  },
+  {
+    "name": "the medley-works tint setting is ignored",
+    "why": "The tint must follow sa_findings_tint_medley_works. Must fail on its survival/tint test.",
+    "edits": [
+      {
+        "find": "            tint: _findingTintSetting('sa_findings_tint_medley_works'),",
+        "replace": "            tint: () => true,"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-2.spec.js",
+    "grep": "its stamp survives a filter re-render",
+    "expect": "fail"
+  }
+]
