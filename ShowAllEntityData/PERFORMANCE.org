@@ -3835,8 +3835,10 @@ the invalidation removed. The next typed pass WAITS for an outdated predecessor 
 still comparing when its result will be the narrowing state (single table, plain text,
 the new text extends the old: ~_filterQueryExtends()~) — the outdated pass yields as it
 goes, so keys stay answered — and a call that waited gives way if a newer call began
-(~_filterSlicedCalls~). Multi-table pages do not narrow (Step 31), so there a newer pass
-simply takes the generation.
+(~_filterSlicedCalls~), or, since 2026-11-19, if a synchronous ~runFilter()~ drew
+meanwhile (~_filterGen~ moved: the ✕ clear, a sort; filter-sliced.spec.js "gives way").
+Multi-table pages do not narrow (Step 31), so there a newer pass simply takes the
+generation.
 
 *Quick check* (one sample, not publishable; Env 2026-10-10T21:2xZ petri, as above):
 =artist-events= after last key 446 ms at 400 ms keys (was 909-963 ms), 702 ms at 150 ms
