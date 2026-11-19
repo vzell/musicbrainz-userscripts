@@ -4532,3 +4532,13 @@ Env: 2026-11-19T01:09:28+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 | =npm run test:full=, merge check  |  3291 |      12 | *20 m 34 s* | =run-test-full.py=, 01:09:28–01:30:02 CET |
 
 3291 passed (main's 3280 at 9.99.1652 plus the 11 release-check tests). No flake showed.
+
+* 2026-11-19 — =npm run test:full= on =petri=, =main= after the merge of feat/release-check-findings (43365bba with the 9.99.1654 fold uncommitted)
+
+Env: 2026-11-19T01:41:44+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                         | Tests | Workers | Wall clock  | Basis                                     |
+|-----------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, merge check  |  3298 |      12 | *20 m 27 s* | =run-test-full.py=, 01:41:44–02:02:11 CET |
+
+3298 passed (the branch's 3291 plus the 7 tests main gained from 9.99.1653 on NB-3641). No flake showed.

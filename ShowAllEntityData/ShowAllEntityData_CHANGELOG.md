@@ -4,9 +4,16 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1824 versions; the month pages hold all of them.
+This page shows the newest 100 of 1825 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1654 — 2026-11-19
+
+**🚀 Feature**
+
+- Five release checks from majkinetor's Platform Check and Mission Control now show in the ⚠️ WARNING / ❌ ERROR menus, the 📊 Findings sections and as a cell tint on release lists (release group, artist, label, series and tag pages), with no extra requests: an all-zero barcode such as 000000000000 (❌, it passes the format check), a release with no barcode entered (an empty cell; "\[none\]" is not flagged; counted in the menu, its tint is off by default), a label without a catalog number ("\[no label\]" excepted), a release with neither a date nor a country, and, on a release tracklist, a track with no length ("?:??"). Each tint has its own switch in ⚙️ Settings → ⚠️ Findings.
+
 
 ## 9.99.1653 — 2026-11-19
 
@@ -885,18 +892,6 @@ This page shows the newest 100 of 1824 versions; the month pages hold all of the
 - springsteenlyrics.com song pages (lyrics.php?song=…, and lyrics.php?item=N): new "Show the song" button. Each edition of the song's releases becomes a sub-table (vinyl sides paired into records), followed by Other official releases, Live releases (Date, Show, Release, Kind, Released and this song's page of that show), Covers, Appearance in movies and Available versions (the lyrics index's columns). This version is marked ● wherever it appears. Above the tables: the lyrics, the page's texts (Request without its contact form), Details (version, a live version's show and release, the studio recording, what the page lists), the pictures, and Private Info (closed, logged in only). No request: the page itself is the data.
 - springsteenlyrics.com song pages: "Show all versions of this song" shows the page's versions alone as one table, with the ID column (logged in) sorting as a number.
 - springsteenlyrics.com song pages, logged in: covers get an Item column (the cover release's page and its edit link). The "add N songs" links are left out.
-
-
-## 9.99.1554 — 2026-11-05
-
-**✨ Improve**
-
-- springsteenlyrics.com lyrics index, logged in: a new ID column holds the song's number, which links to its page (lyrics.php?item=N), and a ✎ link to edit it on the site. The column sorts by number. Logged out, the table is unchanged.
-- springsteenlyrics.com: hovering a song's number (lyrics.php?item=N) shows the song's preview, as its title does.
-
-**🐛 Fix**
-
-- springsteenlyrics.com lyrics index, logged in: the Lyrics column showed ✗ on every song, because it read the edit pencil instead of the lyrics icon.
 
 
 ---
