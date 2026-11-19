@@ -4,9 +4,16 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1830 versions; the month pages hold all of them.
+This page shows the newest 100 of 1831 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1660 — 2026-11-19
+
+**🚀 Feature**
+
+- A new ⚠️ WARNING on a release's "Credits" tables: a relationship whose role does not fit the release's format, from the page's own data and with no requests. Pressed, printed or manufactured on a release that is only Digital Media, lacquer cut with no phonograph record (vinyl, shellac, acetate), glass mastered with no pressed optical disc (a CD-R is burned, not glass mastered). A release with "CD + Digital Media" is judged on both media, so its pressing plant is fine. A medium of unknown format and the release group's rows are never flagged. The cell's tooltip names the role and the formats. The rules come from majkinetor's Group Therapy. The tint has its own switch in ⚙️ Settings → ⚠️ Findings.
+
 
 ## 9.99.1659 — 2026-11-19
 
@@ -871,22 +878,6 @@ This page shows the newest 100 of 1830 versions; the month pages hold all of the
 - springsteenlyrics.com: a medium written with its kind in brackets ("Disc 1: \[CD\]", "Disc 2: \[DVD\]", collection item 7457) is a medium of its own: the item's tables get a sub-table for each, its preview window both lists, and the initial page links the second one's songs too (until now its tracks were read as notes).
 - springsteenlyrics.com: in an item's preview window, the titles of a tracklist line up after the numbers "10" and on (the site's fonts have figures of different widths).
 - springsteenlyrics.com: a box set whose page lists its records without their tracklists (sampler items 5618 and 5619: Record 1: "Greetings From Asbury Park N.J.", its pressing, catalogue number and sleeve) gets one Contents table, a row per record (until now the first record's three lines were shown as three tracks and the others as notes); its preview counts the records and lists them.
-
-
-## 9.99.1560 — 2026-11-05
-
-**✨ Improve**
-
-- springsteenlyrics.com item pages: the site's own tracklist already links each song (with its preview) before any button is pressed; its MusicBrainz icons and "this show" links appear there once they have been read (a press or a window reads them; a visit alone asks nothing).
-- springsteenlyrics.com tracklists: on a bootleg of one show the title now links the song's main page, and the "this show" mark after it is a link of its own to that show's version, each with its own preview (until 9.99.1559 the title linked the show's version).
-- springsteenlyrics.com tracklists: a song the site has no page for ("Circus Song") still gets its MusicBrainz work icon when MusicBrainz knows the work by that name or an alias; "Rosalita (Come Out Tonight) (instrumental)" and "Phantoms aka Wild Zero And Blind Terry" now find their songs.
-- springsteenlyrics.com: the MusicBrainz work icons pulse while Bruce Springsteen's works load.
-- springsteenlyrics.com: an item's preview window opened from a list now shows the MusicBrainz work icons too (the works are read when the window opens), and a various-artists line there ("Bruce Springsteen: BORN TO RUN") links Bruce's song.
-- springsteenlyrics.com, logged in: the collection and bootleg lists get an ID column, the item's number on the site, linked, with the site's edit pencil, sorted as a number.
-- springsteenlyrics.com: the CD and vinyl bootleg list's Label cell links the label's own list, and resting on it, or on the item page's Release card label, shows the label's card: how many CD and vinyl bootlegs, the first of them and their covers.
-- Every non-MusicBrainz detail page (springsteenlyrics.com items and songs, Discogs releases and masters, archive.org items, setlist.fm): resting on a picture above the tables shows it large, larger while Shift is held; Space opens the artwork viewer, as a click does.
-- springsteenlyrics.com: in a label's window, every item links its page, with its own preview.
-- springsteenlyrics.com: in an item's preview window, the MusicBrainz work icons sit in the line before each title (they were shown below it while read-ahead was on).
 
 
 ---

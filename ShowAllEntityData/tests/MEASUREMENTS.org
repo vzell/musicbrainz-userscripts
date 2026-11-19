@@ -4685,3 +4685,13 @@ Env: 2026-11-19T18:45:23+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 
 3328 passed. The probe =scripts/probe-apollo-findings-3.py= ran beside it the whole time (one /ws/2 request per
 1.1 s, network-bound), which may account for part of the 1 m 20 s over the 3321-test run of 15:16.
+
+* 2026-11-19 — =npm run test:full= on =petri=, main after merging feat/apollo-findings-3 (9.99.1660)
+
+Env: 2026-11-19T22:02:10+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                                   | Tests | Workers | Wall clock  | Basis                                     |
+|---------------------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, =c94f7d73= + fold      |  3328 |      12 | *21 m 33 s* | =run-test-full.py=, 22:02:10–22:23:43 CET |
+
+3328 passed. With no probe beside it, the run took 1 m 32 s less than the branch run of 18:45.
