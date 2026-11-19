@@ -6337,6 +6337,11 @@
         { key: 'sa_enable_show_single_table_btn',  was: [false] },
         { key: 'sa_enable_springsteenlyrics',      was: [false] },
         { key: 'sa_event_rg_tooltip_without_ctrl', was: [false] },
+        // true for one commit inside one branch (7a9b839b → be830987,
+        // 2026-11-19, feat/release-check-findings), never in a release;
+        // listed because the audit walks every revision. Off: it tinted 42%
+        // of a long release list (vzell, "menu only").
+        { key: 'sa_findings_tint_barcode_missing', was: [true] },
         { key: 'sa_jl_detail_preview',             was: [false] },
         { key: 'sa_pop_ext',                       was: [false] },
         { key: 'sa_pop_mb',                        was: [false] },
