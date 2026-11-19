@@ -30475,3 +30475,10 @@ second copies each arm's file aside.
   that the element is under the tap point, `elementFromPoint`, false under load). Alone, `--repeat-each 3`: 45 of 45.
   This branch is on the typing filter's path (`testRowMatch()`, the cache keys), so the first was checked alone on
   purpose rather than assumed: green; the level filter is empty there and costs one empty loop.
+- **Merged into `main` as 9.99.1655 (vzell: "all tested live, OK").** On top of 9.99.1654 (feat/release-check-findings,
+  merged from petri meanwhile; five more FINDINGS entries in the same menus). `npm run test:full` on the merged tree,
+  `b4dc48f5`, 09:09:07–09:36:32 CET (27 m 25 s): 3,301 of 3,303. Both failures `filter-sliced.spec.js` (the ✕ clear
+  one again, and now "a pass replaced by a sort writes nothing" too: 42 and 4 tbody writes where 0 are expected),
+  70 of 70 alone with `--repeat-each 5`. Four full runs in a row on NB-3641, each on a different tree, have hit this
+  family; petri's runs have not. A load-timing flake of the spec on this 14-worker host, not of any branch; it
+  deserves its own look before it hides a real regression on the replaced-pass path.

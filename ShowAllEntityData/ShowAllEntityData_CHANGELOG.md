@@ -4,9 +4,16 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1825 versions; the month pages hold all of them.
+This page shows the newest 100 of 1826 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1655 — 2026-11-19
+
+**🚀 Feature**
+
+- The ❌ and ⚠️ lists of problems start with All errors / All warnings: one click shows every row with a problem of that kind in any column (two single rows in different columns show only rows with both). Its number counts rows; while it is on, the single rows are greyed, a chip beside the global filter has a ✕ to remove it, and All errors with All warnings together show rows with both. On every page, MusicBrainz and Brucebase alike; on Brucebase it is BruceBaseParser's "only the mismatches" view.
+
 
 ## 9.99.1654 — 2026-11-19
 
@@ -883,15 +890,6 @@ This page shows the newest 100 of 1825 versions; the month pages hold all of the
 
 - springsteenlyrics.com: a song's preview card and window now show the version's Type, Date and Show (as the lyrics index reads them), the song number (logged in), the versions by type ("Album 1, Unofficial studio 3, Live 57"), and the releases, live releases, covers and movies the page lists, counted. A live version adds its venue, place, tour and release, and the window shows that release's tracklist with the song marked ●.
 - springsteenlyrics.com: a song preview's Request section no longer shows the contact form's field names.
-
-
-## 9.99.1555 — 2026-11-05
-
-**🚀 Feature**
-
-- springsteenlyrics.com song pages (lyrics.php?song=…, and lyrics.php?item=N): new "Show the song" button. Each edition of the song's releases becomes a sub-table (vinyl sides paired into records), followed by Other official releases, Live releases (Date, Show, Release, Kind, Released and this song's page of that show), Covers, Appearance in movies and Available versions (the lyrics index's columns). This version is marked ● wherever it appears. Above the tables: the lyrics, the page's texts (Request without its contact form), Details (version, a live version's show and release, the studio recording, what the page lists), the pictures, and Private Info (closed, logged in only). No request: the page itself is the data.
-- springsteenlyrics.com song pages: "Show all versions of this song" shows the page's versions alone as one table, with the ID column (logged in) sorting as a number.
-- springsteenlyrics.com song pages, logged in: covers get an Item column (the cover release's page and its edit link). The "add N songs" links are left out.
 
 
 ---

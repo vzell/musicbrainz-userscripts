@@ -4569,3 +4569,14 @@ tally's per-row level set. Medians in ms, and the ratio of the arms' means (bran
 Every ratio 0.95–1.04, inside the run-to-run spread (the two main arms alone differ by 28 % on globalFilter): no
 cost. A 3-sample A,B,B,A run before it (01:37–02:07 CET, a plumbing check) gave 0.84–1.04. Not measured: the
 level filter ON (one cell scan per row while it filters, as the row filter's).
+
+* 2026-11-19 — =npm run test:full= on =NB-3641=, =main= after the merge of feat/findings-any-level (b4dc48f5 with the 9.99.1655 fold uncommitted)
+
+Env: 2026-11-19T09:09:07+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                         | Tests | Workers | Wall clock  | Basis                                     |
+|-----------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, merge check  |  3303 |      14 | *27 m 25 s* | =run-test-full.py=, 09:09:07–09:36:32 CET |
+
+3301 passed (main's 3298 at 9.99.1654 plus the branch's 5). The two failures are both =filter-sliced.spec.js=, "a pass
+replaced by the ✕ clear writes nothing" and "… by a sort writes nothing"; alone, =--repeat-each 5=: 70 of 70.
