@@ -841,6 +841,7 @@ back).
 | ⚠️     | Label without a catalog number ("[no label]" excepted)          | Release lists: Catalog#                     |
 | ⚠️     | Release has no release event (no date, no country)              | Release lists: Date (or Country/Date)       |
 | ⚠️     | Track has no length ("?:??")                                    | Release tracklist: Length                   |
+| ⚠️     | Artist credit ends with a join phrase ("A, B,", "… feat.")      | Artist, Track artist, Recording artist      |
 | ⚠️     | Artwork has no Front image (releases with artwork only)         | CAA                                         |
 | ⚠️     | Physical release artwork has no Medium image                    | CAA (needs a Format column)                 |
 | ⚠️     | Several links to one site in Relationships (once loaded)        | Relationships                               |

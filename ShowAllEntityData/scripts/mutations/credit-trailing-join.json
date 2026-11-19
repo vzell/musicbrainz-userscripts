@@ -1,0 +1,80 @@
+[
+  {
+    "name": "credit-trailing-join never matches",
+    "why": "The four report credits lose their warning. Must fail on the per-cell map.",
+    "edits": [
+      {
+        "find": "            test: cell => _creditTrailingJoin(cell) !== '',",
+        "replace": "            test: cell => false,"
+      }
+    ],
+    "spec": "tests/fixtures/credit-trailing-join.spec.js",
+    "grep": "only the credits that end with a join phrase are flagged",
+    "expect": "fail"
+  },
+  {
+    "name": "the trailing text is read from the whole cell, not the credit's bdi",
+    "why": "An alias page's \"(see uses)\" sits after the credit's <bdi> in the same cell; reading past the bdi flags row F. Must fail on the per-cell map.",
+    "edits": [
+      {
+        "find": "            while (top.parentNode && top.parentNode !== bdi) top = top.parentNode;",
+        "replace": "            while (top.parentNode && top.parentNode !== cell) top = top.parentNode;"
+      }
+    ],
+    "spec": "tests/fixtures/credit-trailing-join.spec.js",
+    "grep": "only the credits that end with a join phrase are flagged",
+    "expect": "fail"
+  },
+  {
+    "name": "the text after the FIRST artist link is taken",
+    "why": "A join BETWEEN two artists (rows C and D) is correct; reading after the first link flags them. Must fail on the per-cell map.",
+    "edits": [
+      {
+        "find": "            let top = links[links.length - 1];",
+        "replace": "            let top = links[0];"
+      }
+    ],
+    "spec": "tests/fixtures/credit-trailing-join.spec.js",
+    "grep": "only the credits that end with a join phrase are flagged",
+    "expect": "fail"
+  },
+  {
+    "name": "a name-variation wrapper is not climbed",
+    "why": "A credited name that differs from the artist's own wraps the link in span.name-variation, so the link's own next sibling is nothing; without climbing to the bdi's child, row E (\"Die Traktor feat.\") goes unflagged. Must fail on the per-cell map.",
+    "edits": [
+      {
+        "find": "            while (top.parentNode && top.parentNode !== bdi) top = top.parentNode;",
+        "replace": "            void bdi;"
+      }
+    ],
+    "spec": "tests/fixtures/credit-trailing-join.spec.js",
+    "grep": "only the credits that end with a join phrase are flagged",
+    "expect": "fail"
+  },
+  {
+    "name": "the tooltip drops the phrase",
+    "why": "The detail names the phrase the credit ends with. Must fail on the tooltip test.",
+    "edits": [
+      {
+        "find": "            detail: cell => `ends with \"${_creditTrailingJoin(cell)}\"`,",
+        "replace": "            detail: cell => '',"
+      }
+    ],
+    "spec": "tests/fixtures/credit-trailing-join.spec.js",
+    "grep": "the tooltip names the trailing phrase",
+    "expect": "fail"
+  },
+  {
+    "name": "the credit-trailing-join tint setting is ignored",
+    "why": "The tint must follow sa_findings_tint_credit_trailing_join. Must fail on the look test.",
+    "edits": [
+      {
+        "find": "            tint: _findingTintSetting('sa_findings_tint_credit_trailing_join'),",
+        "replace": "            tint: () => true,"
+      }
+    ],
+    "spec": "tests/fixtures/credit-trailing-join.spec.js",
+    "grep": "the tint switch keeps the finding but not the paint",
+    "expect": "fail"
+  }
+]
