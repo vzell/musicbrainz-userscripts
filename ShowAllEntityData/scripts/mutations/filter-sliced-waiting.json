@@ -1,0 +1,15 @@
+[
+    {
+        "name": "a waiting call ignores a synchronous pass meanwhile",
+        "why": "The ✕ clear or a sort drew the inputs as they are; the call that waited behind a held pass then draws again after the release (the filter-sliced load flake on NB-3641, 2026-11-19).",
+        "edits": [
+            {
+                "find": "            if (call !== _filterSlicedCalls || _filterGen !== genAtCall) return;",
+                "replace": "            if (call !== _filterSlicedCalls) return;"
+            }
+        ],
+        "spec": "tests/fixtures/filter-sliced.spec.js",
+        "grep": "gives way",
+        "expect": "fail"
+    }
+]

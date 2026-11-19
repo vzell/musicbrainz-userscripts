@@ -30482,3 +30482,29 @@ second copies each arm's file aside.
   70 of 70 alone with `--repeat-each 5`. Four full runs in a row on NB-3641, each on a different tree, have hit this
   family; petri's runs have not. A load-timing flake of the spec on this 14-worker host, not of any branch; it
   deserves its own look before it hides a real regression on the replaced-pass path.
+
+## 2026-11-19 — The filter-sliced "flake" was a real bug: a waiting typed call drew after the ✕ clear or a sort (fix/filter-sliced-flake)
+Env: 2026-11-19T09:49:14+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (chromium-fixtures), no Tampermonkey (GM stubs)
+
+- **Symptom:** `filter-sliced.spec.js` "a pass replaced by the ✕ clear writes nothing" failed on four full runs in a
+  row on NB-3641 (most recently with "… by a sort writes nothing" too: 42 and 4 tbody writes after the release, where
+  0 are expected), never alone and never on petri.
+- **Cause:** `runFilterSliced()` (Step 43) lets a typed call WAIT for an outdated pass that is still comparing, when
+  its text extends that pass's. After the wait it gave way only to a newer sliced call (`_filterSlicedCalls`), not to
+  a synchronous `runFilter()` that ran meanwhile. The ✕ clear and a sort are such passes: they draw the inputs as they
+  are, and the waiting call then drew once more after the held pass ended. The tests type "Home" with
+  `pressSequentially`; under a full suite's load a key came more than the 300 ms debounce after the one before, so
+  the pass that the test held was "H"/"Ho"/"Hom" and a "Home" call waited behind it.
+- **Evidence:** a throwaway spec with `pressSequentially('Home', { delay: 400 })` (deleted) fails without the fix
+  (717 and 71 tbody writes) and passes with it. The spec-only stress (`--repeat-each 40 --workers 14`) did NOT
+  reproduce it unfixed: 120 of 120, as only a full run slows a worker's keys that much.
+- **Fix:** the waiting call notes `_filterGen` before it waits and returns if it moved. One integer compare, off the
+  per-row path; no perf run.
+- **Tests:** two new tests in `filter-sliced.spec.js` ("a call waiting behind a held pass gives way to the ✕ clear /
+  a sort") build the case on purpose: type "Hom", hold, press "e", wait for the call (`calls()`), act, release. Both
+  failed before the fix (727 and 71 writes). The spec 3× and filter-sliced ×10 at 14 workers: 160 of 160.
+  `scripts/mutations/filter-sliced-waiting.json` (1): caught.
+- **Not real-world harmful on screen:** the second draw showed the right rows; on a table over 1,000 rows it was one
+  long synchronous task after ✕ or a sort.
+- **`npm run test:full` at `b4beedaa`, 09:50:17–10:14:45 CET (24 m 28 s): 3,305 of 3,305 passed**, the first full run
+  on NB-3641 in five with no `filter-sliced.spec.js` failure.

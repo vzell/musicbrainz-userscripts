@@ -134758,12 +134758,17 @@ a { color: #1565c0; }`;
         // finish first — it stores its result, and this pass then compares only
         // those rows, as a synchronous pass after a synchronous pass would
         // (Step 43). It yields as it goes, so keys stay answered. If a newer
-        // call starts while this one waits, this one gives way to it.
+        // call starts while this one waits, this one gives way to it — and to
+        // a synchronous runFilter() meanwhile (the ✕ clear, a sort, a
+        // checkbox): it read the inputs as they are now and drew them, so this
+        // call has nothing left to draw, and drawing anyway is the write a
+        // replaced pass must never make (filter-sliced.spec.js, "gives way").
         const call = ++_filterSlicedCalls;
         const prev = _filterComparing;
         if (prev && prev.narrowable && _filterQueryExtends(prev.queryRaw)) {
+            const genAtCall = _filterGen;
             await prev.matchDone;
-            if (call !== _filterSlicedCalls) return;
+            if (call !== _filterSlicedCalls || _filterGen !== genAtCall) return;
         }
 
         const gen = ++_filterGen;

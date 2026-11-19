@@ -401,6 +401,42 @@ test.describe('time-sliced typing filter', () => {
         expect(after.keysAfter).toEqual(after.keysBefore);
     });
 
+    // A key typed while a pass is held queues a newer call that WAITS for the
+    // held one's comparing (Step 43). A synchronous pass meanwhile (✕, a sort)
+    // already drew the inputs as they now are, so the waiting call must give
+    // way too. Under load pressSequentially's keys come slower than the
+    // debounce, so the two tests above met this case by accident: the held
+    // pass was "Hom" and a "Home" call waited behind it, then drew after the
+    // release (42 and 4 tbody writes, NB-3641, 2026-11-19). Here it is made
+    // on purpose.
+    for (const [what, act] of [
+        ['the ✕ clear', async (page) => {
+            await page.locator('#mb-global-filter-clear').click();
+            await expect(page.locator('h2 .mb-row-count-stat')).toHaveText('(56)');
+        }],
+        ['a sort', async (page) => {
+            const sortBtn = page.locator('table.tbl thead tr:first-child th .sort-icon-btn', { hasText: '▼' }).first();
+            await waitForSortSettled(page, () => sortBtn.click());
+        }],
+    ]) {
+        test(`a call waiting behind a held pass gives way to ${what}: neither writes`, async ({ page }) => {
+            test.setTimeout(120000);
+            await openSingle(page);
+            await holdNextPassAtSlice5(page);
+            await typeGlobalFilter(page, 'Hom');
+            await expect.poll(() => page.evaluate(() => window.__held)).toBe(true);
+            const calls = await page.evaluate(() => window.__saTest.filterSlicing.calls());
+            await page.locator('#mb-global-filter-input').press('e');
+            await expect.poll(() => page.evaluate(() => window.__saTest.filterSlicing.calls()),
+                { message: 'the "Home" call started and waits behind "Hom"' }).toBe(calls + 1);
+            await act(page);
+            const after = await releaseAndWatch(page);
+            expect(after.tbody, 'nothing drawn after the release').toBe(0);
+            expect(after.status).toBe(0);
+            expect(after.keysAfter).toEqual(after.keysBefore);
+        });
+    }
+
     test('the ⏳ card shows a pass that runs over 500 ms, then its result', async ({ page }) => {
         test.setTimeout(120000);
         await setupRecordingOf(page, { settings: { sa_async_pop_auto_open: true } });
