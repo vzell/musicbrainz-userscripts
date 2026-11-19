@@ -30547,3 +30547,9 @@ Env: 2026-11-19T11:11:54+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
     answer and can move "americana" from under the pointer during the card's delay. The two repaint tests had been
     given `windowQuiet()`; this one had not. It now opens the window through `openGenreWindow()` (the same steps,
     then quiet). 14 workers × 14: 42 of 42.
+- **`npm run test:full` at `b39d8b5e`, 12:40:14–13:04:39 CET (24 m 25 s): 3,308 of 3,309.** `filter-sliced` and the
+  Discogs genre test green. The one failure: `pop-mb-image.mobile.spec.js` "a tap opens the window …", its SECOND tap
+  (the picture inside the window): "Element is not attached to the DOM" in `scrollIntoViewIfNeeded`. The window
+  repaints its area on each follow-up answer in its first seconds (as on discogs.com), replacing the picture; the
+  branch-2 run's failure of this test (the tap point no longer on the element) is the same race. Fixed in the spec:
+  `windowQuiet()` (1.5 s without a repaint of `.mb-dp-area`) before the tap. 14 workers × 28: 28 of 28.

@@ -33,6 +33,26 @@ async function tap(page, el) {
     await page.touchscreen.tap(x, y);
 }
 
+/**
+ * Waits until the window has not repainted for `ms`. A fresh window repaints
+ * its area on each answer of its follow-up requests in its first seconds,
+ * replacing the picture: under a full suite's load the tap's element was
+ * detached mid-scroll (NB-3641, 2026-11-19, "Element is not attached") or no
+ * longer under the finger (an earlier run). The same wait as
+ * discogs-mb-column.spec.js's windowQuiet().
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {number} [ms]
+ */
+async function windowQuiet(page, ms = 1500) {
+    await page.evaluate(() => {
+        const area = document.querySelector('#mb-dp-dialog .mb-dp-area');
+        window.__mbAreaChangedAt = performance.now();
+        new MutationObserver(() => { window.__mbAreaChangedAt = performance.now(); }).observe(area, { childList: true, subtree: true });
+    });
+    await page.waitForFunction((q) => performance.now() - window.__mbAreaChangedAt >= q, ms, { timeout: 30000 });
+}
+
 test('a tap opens the window with the artist\'s picture; a tap on it opens the viewer', async ({ page }) => {
     const ctx = page.context();
     await ctx.route('https://static.metabrainz.org/**', (route) => route.abort('blockedbyclient'));
@@ -61,6 +81,7 @@ test('a tap opens the window with the artist\'s picture; a tap on it opens the v
     await expect(pic.locator('img')).toHaveAttribute('src', /Special:FilePath\/Bruce_Springsteen_-_Roskilde_Festival_2012\.jpg\?width=330$/, { timeout: 15000 });
     expect(page.url(), 'the tap stayed on the page').toBe(RG_URL);
 
+    await windowQuiet(page);
     await tap(page, pic.locator('img'));
     await expect(page.locator('#mb-art-viewer')).toBeVisible();
     await expect(page.locator('#mb-art-viewer [data-mb-artv-page]')).toHaveAttribute('href', /File:Bruce_Springsteen_-_Roskilde_Festival_2012\.jpg$/);
