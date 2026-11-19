@@ -761,7 +761,7 @@ eleven questions as recommended. Three branches, each merged on vzell's word: =f
 tag-source highlight is NOT for now (back with batch 3b, where its sources are setlist and cast rows); the spurious row
 stays PART (its rest is batch 3b); SAED stands aside on a page BruceBaseParser has changed.
 
-** Coexistence (=fix/bb-bbp-coexistence=)
+** Coexistence (=fix/bb-bbp-coexistence=; merged 2026-11-19 as 9.99.1653; vzell: "tested live, OK")
 
 *What breaks with both on one page* (code reading, then the spec with the real BruceBaseParser):
 - a year page: =wrapYearSections()= moves every entry into =div.bb-section-processed=, so =_bbYearEntries()= (direct

@@ -4,9 +4,16 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1823 versions; the month pages hold all of them.
+This page shows the newest 100 of 1824 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1653 — 2026-11-19
+
+**🐛 Fix**
+
+- Brucebase with BruceBaseParser installed too: on a page where BruceBaseParser runs, the action button now reads 🎛 BruceBaseParser is on this page, with a hover text saying why, instead of making a table from the page BruceBaseParser has already changed (a year page's table came out empty, a show page lost its setlist and cast tables and counted BruceBaseParser's own tags and title marks as the wiki's). Link previews and every other page work as before; switch BruceBaseParser off for brucebase.wikidot.com to get the buttons back.
+
 
 ## 9.99.1652 — 2026-11-18
 
@@ -890,13 +897,6 @@ This page shows the newest 100 of 1823 versions; the month pages hold all of the
 **🐛 Fix**
 
 - springsteenlyrics.com lyrics index, logged in: the Lyrics column showed ✗ on every song, because it read the edit pencil instead of the lyrics icon.
-
-
-## 9.99.1553 — 2026-11-05
-
-**✨ Improve**
-
-- springsteenlyrics.com lyrics index: a letter page (e.g. lyrics starting with B) now has a "This letter" button. It shows that page's songs as a table without loading anything. "Show all lyrics" still loads all 32 letters; on the lyrics start page it is the only button.
 
 
 ---
