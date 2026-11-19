@@ -813,6 +813,14 @@ def content_facts(doc, tabs):
     }
 
 
+def cast_facts(doc, tabs):
+    """Batch 3b's cast family: the cast tab (BBP's RELATION_TAB_CONFIGS order) and its names, once each, or None."""
+    entry = next((lab for lab, _ in RELATION_TABS if lab in tabs), None)
+    if entry is None:
+        return None
+    return {'tab': entry, 'names': list(dict.fromkeys(n for n, _ in relations(doc)))}
+
+
 def notes_text(node):
     """textContent without script elements."""
     out = []
@@ -995,7 +1003,8 @@ def analyse(mirror, name, icons):
         'iconsYear': {'help': name in icons['file:help'], 'featured': name in icons['file:featured']},
         'facts': {'title': title, 'kind': kind, 'date': date, 'letter': letter or '',
                   'prem': sum(1 for a in song_links(setlist_container(doc) or doc) if a.inside('strong')),
-                  'help': help_page, 'featured': feat_page, 'content': content_facts(doc, tabs)},
+                  'help': help_page, 'featured': feat_page, 'content': content_facts(doc, tabs),
+                  'cast': cast_facts(doc, tabs)},
         'dateDiffers': bool(am and date and am.group(1) != date),
         'helpYearOnly': (help_year and not help_page), 'featYearOnly': (feat_year and not feat_page),
         'venueDropped': place_venue_dropped, 'noTitleDate': not date,

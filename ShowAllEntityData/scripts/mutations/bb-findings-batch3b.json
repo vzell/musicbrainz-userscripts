@@ -355,8 +355,8 @@
         "why": "The card names every family it cannot check.",
         "edits": [
             {
-                "find": "_bbTagPlaceOn() ? 'place' : ''].filter(Boolean);\n        if (!what.length) return '';",
-                "replace": "''].filter(Boolean);\n        if (!what.length) return '';"
+                "find": "        const what = [_bbTagTourOn() && _bbTagTourApplies(facts) ? 'tour' : '', _bbTagPlaceOn() ? 'place' : '',",
+                "replace": "        const what = [_bbTagTourOn() && _bbTagTourApplies(facts) ? 'tour' : '', '',"
             }
         ],
         "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
@@ -368,8 +368,8 @@
         "why": "Only the feed reread and the repaint read _bbTagTableFamiliesOn(); no place spec has a late feed, the tour spec covers both paths. Known overlap, recorded.",
         "edits": [
             {
-                "find": "        return _bbTagTourOn() || _bbTagPlaceOn();",
-                "replace": "        return _bbTagTourOn();"
+                "find": "        return _bbTagTourOn() || _bbTagPlaceOn() || _bbTagCastOn();",
+                "replace": "        return _bbTagTourOn() || _bbTagCastOn();"
             }
         ],
         "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
@@ -511,8 +511,8 @@
         "why": "It names the families checked.",
         "edits": [
             {
-                "find": "                _bbTagContentOn() && facts.content ? 'content' : ''].filter(Boolean);",
-                "replace": "                ''].filter(Boolean);"
+                "find": "                _bbTagContentOn() && facts.content ? 'content' : '', tables && _bbTagCastOn() && facts.cast ? 'cast' : ''].filter(Boolean);",
+                "replace": "                '', tables && _bbTagCastOn() && facts.cast ? 'cast' : ''].filter(Boolean);"
             }
         ],
         "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
@@ -530,6 +530,149 @@
         ],
         "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
         "grep": "on: each page as the probe found it, every finding with its reason; no feed needed",
+        "expect": "fail"
+    },
+    {
+        "name": "cast: the switch is always on",
+        "why": "sa_bb_tag_family_cast is off by default (vzell, 2026-11-19).",
+        "edits": [
+            {
+                "find": "        return Lib.settings.sa_bb_tag_family_cast === true;",
+                "replace": "        return Lib.settings.sa_bb_tag_family_cast !== 'never';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "off, a feed without its tables, the feed off: no cast finding",
+        "expect": "fail"
+    },
+    {
+        "name": "cast: checked without the feed's tables",
+        "why": "Its aliases are the feed's.",
+        "edits": [
+            {
+                "find": "        if (!_bbTagCastOn() || !facts || facts.page || !facts.cast) return null;\n        const tables = _bbFeedTables();\n        if (!tables) return null;",
+                "replace": "        if (!_bbTagCastOn() || !facts || facts.page || !facts.cast) return null;\n        const tables = _bbFeedTables() || {};"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "off, a feed without its tables, the feed off: no cast finding",
+        "expect": "fail"
+    },
+    {
+        "name": "cast: no On stage page, every name missing",
+        "why": "vzell: \"onstage\" alone, the cast being untagged.",
+        "edits": [
+            {
+                "find": "            if (!pages.some(n => /^onstage:/.test(n))) {\n                return fixed ?",
+                "replace": "            if (!pages.some(n => /^onstage:/.test(n)) && !pages) {\n                return fixed ?"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "on, with the feed's tables: each page as the probe found it, with its reason; a cast tag is never",
+        "expect": "fail"
+    },
+    {
+        "name": "cast: an interview's On Stage tab asks for \"onstage\"",
+        "why": "BruceBaseParser's rule: not for an interview.",
+        "edits": [
+            {
+                "find": "            const fixed = facts.kind !== 'interview';",
+                "replace": "            const fixed = true;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "on, with the feed's tables: each page as the probe found it, with its reason; a cast tag is never",
+        "expect": "fail"
+    },
+    {
+        "name": "cast: pages not known taken as none",
+        "why": "Unknown pages leave an On Stage tab's cast unchecked.",
+        "edits": [
+            {
+                "find": "            if (!pages) return null;\n            const fixed",
+                "replace": "            pages = pages || [];\n            const fixed"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "the pages not known: an On Stage tab's cast is not checked",
+        "expect": "fail"
+    },
+    {
+        "name": "cast: the findings pass no pages read as none",
+        "why": "Known overlap: every show with an On Stage tab counts as one whose tags may sit on other pages (_bbTagPagesMay(), whatever the setting), so with those pages unread _bbTagFindings() says no missing tag at all; null against [] cannot show. The guard stays for a caller without that gate.",
+        "edits": [
+            {
+                "find": "&& !st.failed.length && !st.skipped ? st.pages.map(p => p.name) : null);",
+                "replace": "&& !st.failed.length && !st.skipped ? st.pages.map(p => p.name) : []);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "the On stage tags switched off: nothing about the cast",
+        "expect": "pass"
+    },
+    {
+        "name": "cast: no dotted form",
+        "why": "The wiki writes many members \"first.last\" (vini.lopez).",
+        "edits": [
+            {
+                "find": "                .concat(dot ? [dot] : [], alias[key] ? [alias[key]] : [], dotted(n));",
+                "replace": "                .concat(dot ? [dot] : [], alias[key] ? [alias[key]] : []);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "on, with the feed's tables: each page as the probe found it, with its reason; a cast tag is never",
+        "expect": "fail"
+    },
+    {
+        "name": "cast: \"A & B\" is one name",
+        "why": "Each part has its tag.",
+        "edits": [
+            {
+                "find": "        const m = /^(.+?)\\s*&\\s*(.+)$/.exec(name);\n        if (!m) {",
+                "replace": "        const m = null;\n        if (!m) {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "on, with the feed's tables: each page as the probe found it, with its reason; a cast tag is never",
+        "expect": "fail"
+    },
+    {
+        "name": "cast: a missing chip in the Other row",
+        "why": "The People row is where the tag sits when the page has it.",
+        "edits": [
+            {
+                "find": "content: 'material', cast: 'person',",
+                "replace": "content: 'material', cast: 'other',"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "Wanamassa 1969",
+        "expect": "fail"
+    },
+    {
+        "name": "cast: \"as expected\" never names the cast",
+        "why": "It names the families checked.",
+        "edits": [
+            {
+                "find": "tables && _bbTagCastOn() && facts.cast ? 'cast' : ''].filter(Boolean);",
+                "replace": "''].filter(Boolean);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "Chicago 2016: \"as expected\" names the cast",
+        "expect": "fail"
+    },
+    {
+        "name": "cast: the wait line leaves the cast out",
+        "why": "The card names every family it cannot check.",
+        "edits": [
+            {
+                "find": "            _bbTagCastOn() && facts.cast ? 'cast' : ''].filter(Boolean);",
+                "replace": "            ''].filter(Boolean);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "Chicago 2016: \"as expected\" names the cast",
         "expect": "fail"
     }
 ]

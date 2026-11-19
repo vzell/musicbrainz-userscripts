@@ -78,6 +78,15 @@ PAGES = [
     'gig:1982-10-03-stone-pony-asbury-park-nj',
     'gig:1976-04-07-allen-theatre-cleveland-oh',
     'gig:1971-05-14-sunshine-in-asbury-park-nj',
+    # The cast family (scripts/probe-bb-cast-tags.py, mirror 2026-11-19).
+    'gig:1969-04-05-pandemonium-wanamassa-nj',
+    'gig:1971-03-27-sunshine-in-asbury-park-nj-early',
+    'onstage:1971-03-27-sunshine-in-asbury-park-nj-early',
+    'gig:1972-10-25-shipbottom-lounge-point-pleasant-beach-nj',
+    'onstage:1972-10-25-shipbottom-lounge-point-pleasant-beach-nj',
+    'recording:1979-06-21-power-station-new-york-city-ny',
+    'interview:1995-04-07-sony-music-studios-new-york-city-ny',
+    'interview:1974-03-08-klol-studio-houston-tx',
 ]
 FEED = 'bb-feed.json'
 

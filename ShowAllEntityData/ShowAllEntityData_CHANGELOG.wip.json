@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-11-19",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase: a show's cast tags can now be checked too (⚙️ Settings, \"Also check a Brucebase show's cast tags\", off by default while the remaining tag checks are tuned). Every person and band that a show's cast tab (On Stage, In Studio, On Audio, On Set) lists should have a tag. A tag counts in the ways the wiki writes names: \"garrytallent\", the dotted \"vini.lopez\", without \"The\", without a nickname, and each part of \"Flo & Eddie\". A show with an On Stage tab should carry \"onstage\". One with an On Stage tab but no On stage page gets \"onstage\" marked missing alone, since its cast is not tagged at all, rather than one mark per person. The cast is checked once the show's On stage page has been read, and the E Street Band's dotted names and other aliases come from the Brucebase feed. On the wiki today it flags 628 shows, 475 of them for the missing On stage page. \"studio\" and \"guest\" are not checked: the wiki uses them too unevenly."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-11-19",
     "sections": [

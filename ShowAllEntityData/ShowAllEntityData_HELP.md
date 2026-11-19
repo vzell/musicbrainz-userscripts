@@ -4211,6 +4211,15 @@ entry, with these columns:
   "eyewitness" tag without its tab's entry is marked ⚠️; the picture tags
   never are, since a picture can sit on a news page the tab lists. No
   request and no feed: the page alone is read.
+  With *Also check a Brucebase show's cast tags* on (off by default), every
+  person and band of a show's cast tab (On Stage, In Studio, On Audio, On
+  Set) should have its tag, counted the ways the wiki writes names
+  ("garrytallent", "vini.lopez", without "The" or a nickname, each part of
+  "Flo & Eddie"), and a show with an On Stage tab should carry "onstage".
+  A show with an On Stage tab but no On stage page gets "onstage" missing
+  alone: its cast is not tagged at all. The cast is checked once the On
+  stage page is read; the dotted E Street names and other aliases come
+  from the Brucebase feed.
 - **On stage**, **Content**, **Images**, **Start** and **Tags** come from each entry's
   own page, so they stay empty (—) until that page is read. **▶ Pages** in
   the On stage header reads the pages of the rows you can see, and then of
@@ -4444,7 +4453,7 @@ site) show those tags too:
   only the marked chips; press again for all. Nothing is marked while the
   On stage page is still being read, and with that page unread the card
   says that no missing tag is looked for. ✓ means the four families are
-  as expected (and the tour, the place and the content, where they are checked; without the feed the
+  as expected (and the tour, the place, the content and the cast, where they are checked; without the feed the
   card says they are not checked). For the Help Us and Featured icons, which are on the
   year page, the show's year page is read once at the press (or Space
   in the window) and kept. Switches: ⚙️ Settings → ⚠️ Findings.

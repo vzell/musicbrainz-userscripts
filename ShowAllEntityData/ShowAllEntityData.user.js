@@ -3228,6 +3228,21 @@
                          'families are tuned (org/springsteen-marriage.org, batch 3b).'
         },
 
+        sa_bb_tag_family_cast: {
+            label: 'Also check a Brucebase show\'s cast tags',
+            type: 'checkbox',
+            default: false,
+            description: 'With the two settings above: every person and band a show\'s cast tab (On Stage, In ' +
+                         'Studio, On Audio, On Set) lists should have its tag, found as the wiki writes names ' +
+                         '("garrytallent", "vini.lopez", without "The", without a nickname, …), and a show with an ' +
+                         'On Stage tab should carry "onstage" (its On stage page\'s tag). A show with an On Stage tab ' +
+                         'but no On stage page gets "onstage" missing alone: its cast is not tagged. Read once the On ' +
+                         'stage page is read (setting "Show the tags kept on a show\'s On stage page"); the E Street ' +
+                         'Band\'s dotted names and other aliases come from the Brucebase feed, without which the cast ' +
+                         'is not checked. A cast tag is never called not expected. Off by default while the families ' +
+                         'are tuned (org/springsteen-marriage.org, batch 3b).'
+        },
+
         sa_findings_tint_bb_tags: {
             label: 'Highlight Tags cells of Brucebase entries with a missing or not expected tag',
             type: 'checkbox',
@@ -35485,8 +35500,8 @@
      * 35: `bbTagFacts` for a venue, song, relation and release page too
      *    (`_bbTagPageFacts()`, parity batch 4).
      * 36: a show's `bbTagFacts` carries its title as written (`title`; the
-     *    place family, batch 3b) and what its tabs hold (`content`, the
-     *    content family).
+     *    place family, batch 3b), what its tabs hold (`content`, the
+     *    content family) and its cast tab with the names listed (`cast`).
      * @type {number}
      */
     const _DP_PARSER_VERSION = 36;
@@ -38375,7 +38390,7 @@
      *
      * A venue, song, relation or release page: `_bbTagPageFacts()` (`page: true`).
      *
-     * @returns {?{title: string, kind: string, date: string, letter: string, prem: number, help: boolean, featured: boolean, content: Object}}
+     * @returns {?{title: string, kind: string, date: string, letter: string, prem: number, help: boolean, featured: boolean, content: Object, cast: ?Object}}
      */
     function _bbTagFacts(doc, url) {
         let name;
@@ -38397,7 +38412,56 @@
             help: !!doc.querySelector('img.image[title="Help Us"]'),
             featured: !!doc.querySelector('img.image[title="Featured"]'),
             content: _bbTagContentFacts(doc),
+            cast: _bbTagCastFacts(doc),
         };
+    }
+
+    /** @type {string[]} The cast tabs in BruceBaseParser's order (`RELATION_TAB_CONFIGS`): the first a page has counts. */
+    const _BB_TAGCHK_CAST_TABS = ['On Stage', 'In Studio', 'On Audio', 'On Set'];
+
+    /**
+     * A show's cast for the cast family (batch 3b): its cast tab (the first
+     * of `_BB_TAGCHK_CAST_TABS` its tab bar has) and the people and bands
+     * listed, once each, in order. BruceBaseParser's `extractRelations()`:
+     * the first tab's top-level elements after an optional alias line (a
+     * paragraph that is only its bold text, then a rule), its lists' items
+     * with a `/relation:` link as a direct child and the members listed
+     * under them, until a rule, an ordered list or a paragraph without
+     * bold text. Null without a cast tab.
+     *
+     * @param {Document} doc
+     * @returns {?{tab: string, names: Array<string>}}
+     */
+    function _bbTagCastFacts(doc) {
+        const labels = Array.from(doc.querySelectorAll('.yui-nav em'), em => em.textContent.trim());
+        const tab = _BB_TAGCHK_CAST_TABS.find(l => labels.includes(l));
+        if (!tab) return null;
+        const first = doc.getElementById('wiki-tab-0-0');
+        const kids = first ? Array.from(first.children) : [];
+        const text = el => (el.textContent || '').trim();
+        const link = li => Array.from(li.children).find(k => k.tagName === 'A' && (k.getAttribute('href') || '').startsWith('/relation:'));
+        const items = el => Array.from(el.children).filter(k => k.tagName === 'LI');
+        let start = 0;
+        if (kids.length >= 2 && kids[0].tagName === 'P' && kids[1].tagName === 'HR') {
+            const strong = kids[0].querySelector('strong');
+            if (strong && text(kids[0]) === text(strong)) start = 2;
+        }
+        const names = [];
+        for (const el of kids.slice(start)) {
+            if (el.tagName === 'HR' || el.tagName === 'OL') break;
+            if (el.tagName === 'P') {
+                if (!el.querySelector('strong')) break;
+            } else if (el.tagName === 'UL') {
+                for (const li of items(el)) {
+                    const a = link(li);
+                    if (!a) continue;
+                    names.push(text(a));
+                    const sub = Array.from(li.children).find(k => k.tagName === 'UL');
+                    if (sub) items(sub).forEach((m) => { const ma = link(m); if (ma) names.push(text(ma)); });
+                }
+            }
+        }
+        return { tab, names: Array.from(new Set(names)) };
     }
 
     /**
@@ -38835,12 +38899,126 @@
     }
 
     /**
-     * Whether a family that reads the feed's tables is on (tour, place).
+     * Whether a show's cast tags are checked (`sa_bb_tag_family_cast`;
+     * batch 3b, off by default while the families are tuned).
+     *
+     * @returns {boolean}
+     */
+    function _bbTagCastOn() {
+        return Lib.settings.sa_bb_tag_family_cast === true;
+    }
+
+    /**
+     * A name as the wiki's relation tags write it: accents folded, lower
+     * case, a–z and 0–9 only (BruceBaseParser's `relationTagSlug()`).
+     *
+     * @param {string} s
+     * @returns {string}
+     */
+    function _bbTagNameSlug(s) {
+        return _bbTagFold(String(s || '')).toLowerCase().replace(/[^a-z0-9]/g, '');
+    }
+
+    /**
+     * The items a listed person or band is checked as (batch 3b; vzell,
+     * 2026-11-19): BruceBaseParser's `checkRelationNameTags()` and
+     * `checkSingleRelationName()` candidates — the slug, without a leading
+     * "The", without "Jr."/"Sr."/"II"/"III"/"IV", without a nickname in
+     * quotes, the E Street Band member's dotted form (the feed's
+     * `eStreetDotted`), the feed's `relationAlias` — and every name's
+     * dotted form, first word "." the rest, also without the nickname: the
+     * wiki writes many members so (`vini.lopez` 239 times, `david.sancious`
+     * 207, `ernest.carter` 86; 532 shows BruceBaseParser's forms miss).
+     * "A & B" is two items, and the two run together count for both.
+     * `dot`: the dotted table's form, named when the item is missing on a
+     * gig or rehearsal On Stage tab without "The E Street Band" listed
+     * (BruceBaseParser's `preferDottedEStreetTag`); else the first of `alts`.
+     *
+     * @param {string} name
+     * @param {Object} tables - `_bbFeedTables()`.
+     * @returns {Array<{label: string, dot: string, alts: Array<string>}>}
+     */
+    function _bbTagCastItems(name, tables) {
+        const dottedTable = tables.eStreetDotted || {};
+        const alias = tables.relationAlias || {};
+        const nickless = n => n.replace(/\s*"[^"]*"\s*/g, ' ').replace(/\s+/g, ' ').trim();
+        const dotted = (n) => {
+            const out = [];
+            for (const v of [n, nickless(n)]) {
+                const parts = v.replace(/^the\s+/i, '').split(/\s+/).filter(Boolean);
+                if (parts.length >= 2) out.push(`${_bbTagNameSlug(parts[0])}.${_bbTagNameSlug(parts.slice(1).join(' '))}`);
+            }
+            return out;
+        };
+        const one = (n) => {
+            const key = n.toLowerCase().trim();
+            const dot = dottedTable[key] || '';
+            const alts = [_bbTagNameSlug(n), _bbTagNameSlug(n.replace(/^the\s+/i, '')),
+                _bbTagNameSlug(n.replace(/\s+(?:Jr\.?|Sr\.?|III|II|IV)$/i, '').trim()), _bbTagNameSlug(nickless(n))]
+                .concat(dot ? [dot] : [], alias[key] ? [alias[key]] : [], dotted(n));
+            return { dot, alts: Array.from(new Set(alts.filter(Boolean))) };
+        };
+        const m = /^(.+?)\s*&\s*(.+)$/.exec(name);
+        if (!m) {
+            const o = one(name);
+            return [{ label: name, dot: o.dot, alts: o.alts }];
+        }
+        const combined = _bbTagNameSlug(name.replace(/^the\s+/i, '').replace(/\s*&\s*/g, ''));
+        return [m[1].trim(), m[2].trim()].map((part) => {
+            const o = one(part);
+            return { label: part, dot: o.dot, alts: Array.from(new Set(o.alts.concat(combined).filter(Boolean))) };
+        });
+    }
+
+    /**
+     * The cast family of a show (batch 3b; vzell, 2026-11-19): a gig, nogig
+     * or rehearsal with an On Stage tab carries "onstage" (its On stage
+     * page's tag: 3,344 of 3,346 shows that have the page); with an On Stage
+     * tab and NO On stage page (583 shows of the mirror) only "onstage" is
+     * called missing, its cast being untagged; every listed person and band
+     * has its tag (`_bbTagCastItems()`; 99.4 % where the page exists).
+     * "studio" and "guest" are not checked (90 of 565 and 817 of 1,224
+     * shows carry them). `pages`: the names of the show's other tag pages
+     * read (`_bbTagPagesStart()`); null when not known, which leaves an On
+     * Stage tab's cast unchecked. Null when the family is off, the show has
+     * no cast tab, or the feed has no tables.
+     *
+     * @param {Object} facts - `_bbTagFacts()`.
+     * @param {?Array<string>} pages
+     * @returns {?Array<{tag: string, family: string, why: string, alts?: Array<string>}>}
+     */
+    function _bbTagCastExpected(facts, pages) {
+        if (!_bbTagCastOn() || !facts || facts.page || !facts.cast) return null;
+        const tables = _bbFeedTables();
+        if (!tables) return null;
+        const { tab, names } = facts.cast;
+        const out = [];
+        if (tab === 'On Stage' && /^(?:gig|nogig|rehearsal|interview)$/.test(facts.kind)) {
+            if (!pages) return null;
+            const fixed = facts.kind !== 'interview';
+            if (!pages.some(n => /^onstage:/.test(n))) {
+                return fixed ? [{ tag: 'onstage', family: 'cast', why: 'The show has an On Stage tab but no On stage page: its cast is not tagged.' }] : [];
+            }
+            if (fixed) out.push({ tag: 'onstage', family: 'cast', why: 'The show has an On Stage tab: its On stage page carries "onstage".' });
+        }
+        const prefer = tab === 'On Stage' && /^(?:gig|rehearsal)$/.test(facts.kind) && !names.some(n => n.toLowerCase() === 'the e street band');
+        const named = new Set(out.map(e => e.tag));
+        names.forEach(n => _bbTagCastItems(n, tables).forEach((it) => {
+            const tag = prefer && it.dot ? it.dot : it.alts[0];
+            if (!tag || named.has(tag)) return;
+            named.add(tag);
+            out.push({ tag, family: 'cast', why: `The ${tab} tab lists "${it.label}".`, alts: it.alts.filter(a => a !== tag) });
+        }));
+        return out;
+    }
+
+    /**
+     * Whether a family that reads the feed's tables is on (tour, place, cast).
      *
      * @returns {boolean}
      */
     function _bbTagTableFamiliesOn() {
-        return _bbTagTourOn() || _bbTagPlaceOn();
+        return _bbTagTourOn() || _bbTagPlaceOn() || _bbTagCastOn();
     }
 
     /**
@@ -38852,9 +39030,11 @@
      */
     function _bbTagFamiliesWait(facts) {
         if (!facts || facts.page || _bbFeedTables()) return '';
-        const what = [_bbTagTourOn() && _bbTagTourApplies(facts) ? 'tour' : '', _bbTagPlaceOn() ? 'place' : ''].filter(Boolean);
+        const what = [_bbTagTourOn() && _bbTagTourApplies(facts) ? 'tour' : '', _bbTagPlaceOn() ? 'place' : '',
+            _bbTagCastOn() && facts.cast ? 'cast' : ''].filter(Boolean);
         if (!what.length) return '';
-        const the = `The ${what.join(' and ')} tag${what.length > 1 || what[0] === 'place' ? 's are' : ' is'}`;
+        const list = what.length > 1 ? `${what.slice(0, -1).join(', ')} and ${what[what.length - 1]}` : what[0];
+        const the = `The ${list} tag${what.length > 1 || what[0] !== 'tour' ? 's are' : ' is'}`;
         return _bbFeedOn() ? `${the} checked once the Brucebase feed with its tables is read.`
             : `${the} not checked: the Brucebase feed is off.`;
     }
@@ -38924,9 +39104,11 @@
      * @param {Array<string>} own - The page's own tags, lower case.
      * @param {Iterable<string>} [more] - The tags of its other pages, lower case.
      * @param {?{help: boolean, featured: boolean}} [icons] - The show's icons on its year page; null: not known.
+     * @param {?Array<string>} [pages] - The names of the show's other tag pages read (the cast family asks
+     *   whether an On stage page exists); null: not known.
      * @returns {{missing: Array<{tag: string, family: string, why: string}>, spurious: Array<{tag: string, family: string, why: string}>}}
      */
-    function _bbTagCheck(facts, own, more, icons = null) {
+    function _bbTagCheck(facts, own, more, icons = null, pages = null) {
         const res = { missing: [], spurious: [] };
         if (!facts) return res;
         const all = new Set(own);
@@ -38957,6 +39139,7 @@
         expected.push(...(_bbTagPlaceExpected(facts) || []));
         const content = _bbTagContentExpected(facts);
         if (content) expected.push(...content);
+        expected.push(...(_bbTagCastExpected(facts, pages) || []));
         const want = new Set(expected.map(e => e.tag));
         for (const e of expected) {
             if (!_bbTagPresent(e.tag, all) && !(e.alts || []).some(a => all.has(a))) res.missing.push(e);
@@ -39298,7 +39481,7 @@
 
     /** The Tags card's row (`_BB_TAG_FAMILIES` key) a missing tag of a checked family is drawn in. */
     const _BB_TAGCHK_ROW = {
-        date: 'date', letter: 'letter', type: 'category', prem: 'material', icon: 'material', tour: 'tour', place: 'place', content: 'material',
+        date: 'date', letter: 'letter', type: 'category', prem: 'material', icon: 'material', tour: 'tour', place: 'place', content: 'material', cast: 'person',
         // Parity batch 4: where the same tag sits when the page has it.
         construction: 'other', lyricsheet: 'other', title: 'other',
     };
@@ -39351,7 +39534,8 @@
         const known = !_bbTagPagesMay(info) || (_bbTagPagesEligible(info) && !!st && !st.failed.length && !st.skipped);
         const own = tags.map(t => t.text.toLowerCase());
         const more = st ? st.pages.flatMap(p => p.tags.map(t => t.text.toLowerCase())) : [];
-        const res = _bbTagCheck(facts, own, more, icons);
+        // The pages read, for the cast family; null while they are not (the setting off, not read yet).
+        const res = _bbTagCheck(facts, own, more, icons, st && st.state === 'done' && !st.failed.length && !st.skipped ? st.pages.map(p => p.name) : null);
         const wait = known || !_bbTagMissingOn() ? '' : `A missing tag is not looked for: not every page that keeps this ${facts.page ? 'page' : 'show'}'s tags is read.`;
         return {
             missing: known && _bbTagMissingOn() ? res.missing : [],
@@ -39371,7 +39555,7 @@
         if (!facts.page) {
             const tables = !!_bbFeedTables();
             const more = [tables && _bbTagTourOn() && _bbTagTourApplies(facts) ? 'tour' : '', tables && _bbTagPlaceOn() ? 'place' : '',
-                _bbTagContentOn() && facts.content ? 'content' : ''].filter(Boolean);
+                _bbTagContentOn() && facts.content ? 'content' : '', tables && _bbTagCastOn() && facts.cast ? 'cast' : ''].filter(Boolean);
             return `✓ date, letter, kind, premiere, icon${more.map(x => `, ${x}`).join('')} tags as expected`.replace(/, ([a-z]+) tags as expected$/, ' and $1 tags as expected');
         }
         const what = {
@@ -193298,10 +193482,11 @@ a { color: #1565c0; }`;
              * @param {Array<string>} own
              * @param {Array<string>} [more]
              * @param {?{help: boolean, featured: boolean}} [icons]
+             * @param {?Array<string>} [pages] - The names of the show's other tag pages read.
              * @returns {{missing: Array<Object>, spurious: Array<Object>}}
              */
-            bbTagCheck(facts, own, more, icons) {
-                return _bbTagCheck(facts, own, more, icons || null);
+            bbTagCheck(facts, own, more, icons, pages) {
+                return _bbTagCheck(facts, own, more, icons || null, pages || null);
             },
             /**
              * The BruceParser feed's state and lookups (org/bbp-parity.org,

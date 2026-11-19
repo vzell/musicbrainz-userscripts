@@ -402,17 +402,20 @@ test.describe('Brucebase tag check: the rule (bbp-parity batch 3)', () => {
         // The title as written (batch 3b's place family reads its parts) and
         // what the tabs hold (its content family).
         const none = { ticket: false, setlist: false, handwritten: false, printed: false, storyteller: false, eyewitness: false };
+        // The 2016 tour's On Stage tab: the band as the page lists it (batch 3b's cast family).
+        const band = { tab: 'On Stage', names: ['Bruce Springsteen', 'The E Street Band', 'Roy Bittan', 'Nils Lofgren', 'Patti Scialfa',
+            'Garry Tallent', 'Steven Van Zandt', 'Max Weinberg', 'Jake Clemons', 'Charles Giordano', 'Soozie Tyrell'] };
         expect(await facts(PIT)).toEqual({
             title: '2016-01-16 Consol Energy Center, Pittsburgh, PA', kind: 'gig', date: '2016-01-16', letter: '', prem: 35, help: false, featured: false,
-            content: { ...none, ticket: true, setlist: true, printed: true, storyteller: true },
+            content: { ...none, ticket: true, setlist: true, printed: true, storyteller: true }, cast: band,
         });
         expect(await facts(MAD)).toEqual({
             title: '2016-05-21 Estadio Santiago Bernabéu, Madrid, Spain', kind: 'gig', date: '2016-05-21', letter: '', prem: 3, help: false, featured: false,
-            content: { ...none, ticket: true, storyteller: true },
+            content: { ...none, ticket: true, storyteller: true }, cast: band,
         });
         expect(await facts(INT)).toEqual({
             title: '2016-09-06 Stone Hill Studio, Colts Neck, NJ', kind: 'interview', date: '2016-09-06', letter: '', prem: 0, help: false, featured: false,
-            content: none,
+            content: none, cast: { tab: 'On Stage', names: ['Rahni Sadler', 'Bruce Springsteen'] },
         });
         expect((await facts(MAD, 'gig:2016-05-21b-estadio-santiago-bernabeu-madrid-spain')).letter).toBe('b');
         // Not a show: a venue address gets a page's facts (batch 4), no date or premiere count;

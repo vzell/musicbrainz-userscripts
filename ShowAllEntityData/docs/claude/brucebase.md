@@ -2460,6 +2460,52 @@ its hand-edited `brucebase/tag-tables.json`; vzell, question 6), read by
   with `content` in the facts. A built-markup test pins the reading (a
   pass, a "ticket" setlist, "Sorry, no", the News tab, the last tab).
 
+**The cast family** (`sa_bb_tag_family_cast`; `_bbTagCastOn()`,
+`_bbTagCastFacts()`, `_bbTagNameSlug()`, `_bbTagCastItems()`,
+`_bbTagCastExpected()`):
+- **What the wiki tags** (`scripts/probe-bb-cast-tags.py`, Env:
+  2026-11-19T20:20+01:00 · NB-3641 · Python over bb/2026-11-19 · n/a):
+  583 shows have an On Stage tab and no On stage page, so their cast is
+  untagged (490 of the 492 `onstage` misses, 979 of the 1,214 name
+  misses); where the page exists BruceBaseParser's name forms plus the
+  dotted form match 99.4 % of ~37,000 listings; `onstage` 3,344 of 3,346
+  shows with the page; `studio` 90 of 565 In Studio shows; `guest` 817 of
+  1,224 shows that mark a person "(Guest)". The wiki writes many members
+  dotted (`vini.lopez` 239, `david.sancious` 207, `ernest.carter` 86),
+  which BruceBaseParser's E Street table misses (532 shows).
+- **Decisions (vzell, 2026-11-19):** a missing On stage page is ONE
+  finding ("onstage" alone, with the reason), not a miss per person; every
+  name, its dotted form counting; `onstage` only, `studio` and `guest` not
+  checked.
+- **The facts** (`facts.cast`, `_DP_PARSER_VERSION` 36): the cast tab (the
+  first of On Stage, In Studio, On Audio, On Set) and the names listed, a
+  port of BruceBaseParser's `extractRelations()` (the first tab's lists,
+  after an alias line, members under their band, until a rule, an ordered
+  list or a paragraph without bold). The batch 3 checker finds the
+  browser's reading equal to the Python one on all 5,007 shows.
+- **The rule:** an On Stage tab on a gig, nogig, rehearsal or interview:
+  without an On stage page "onstage" alone (not for an interview), with
+  one "onstage" (not for an interview) and the names. Any other cast tab:
+  the names. A name's items (`_bbTagCastItems()`): the slug, without
+  "The", without Jr./Sr./II/III/IV, without a nickname, the feed's
+  `eStreetDotted` and `relationAlias`, the dotted forms; "A & B" two items
+  with the two run together counting for both; the tag named when missing
+  is BruceBaseParser's (the dotted table's on a gig or rehearsal On Stage
+  tab without "The E Street Band" listed, else the slug). Never "not
+  expected".
+- **The pages:** `_bbTagCheck()`'s `pages`, the names of the show's other
+  tag pages read; `_bbTagFindings()` passes them only once the read is
+  done, without a failure or a skip, else null, which leaves an On Stage
+  tab's cast unchecked (with the On stage tags off the pages are never
+  read; `_bbTagPagesMay()` already keeps such a show's missing tags
+  unsaid, so the guard is recorded as an overlap in the mutation list).
+- **Counts:** 628 shows, 475 for a missing On stage page alone, 153 with a
+  name (`brucespringsteen` 56 on early guest spots, Big Danny Gallagher,
+  Robert Higgins, Ed Manion, …).
+- **Checks:** `check-bb-batch3b-findings.js --family cast` (it passes each
+  row's pages): 0 differences, 628 flagged; 0 with the setting off, a feed
+  without tables, the feed off.
+
 ## BruceBaseParser on the same page (bbp-parity, "Coexistence", 2026-11-19)
 
 org/bbp-parity.org, "Closing the matrix"; mockup

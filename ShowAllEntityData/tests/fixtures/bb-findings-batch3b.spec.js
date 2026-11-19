@@ -570,3 +570,138 @@ test.describe('Brucebase tag check, batch 3b: the content family', () => {
         await expect(card(page).locator('.mb-cbx-pill-ok')).toHaveText('✓ date, letter, kind, premiere, icon and content tags as expected');
     });
 });
+
+test.describe('Brucebase tag check, batch 3b: the cast family', () => {
+    const CAST = { sa_bb_feed: true, sa_bb_tag_family_cast: true };
+    const WAN69 = 'gig:1969-04-05-pandemonium-wanamassa-nj';
+    const SUN71 = 'gig:1971-03-27-sunshine-in-asbury-park-nj-early';
+    const SHIP = 'gig:1972-10-25-shipbottom-lounge-point-pleasant-beach-nj';
+    const FLO = 'recording:1979-06-21-power-station-new-york-city-ny';
+    const SONY = 'interview:1995-04-07-sony-music-studios-new-york-city-ny';
+    const KLOL = 'interview:1974-03-08-klol-studio-houston-tx';
+    /** The cast family's missing tags (probe, mirror 2026-11-19; a cast tag is never "not expected"). */
+    const WANT_CAST = {
+        // An On Stage tab, no On stage page: "onstage" alone, not a tag per person.
+        [WAN69]: ['onstage'],
+        // "Big Danny" Gallagher is not tagged; the rest of the cast is, on the On stage page.
+        [SUN71]: ['bigdannygallagher'],
+        // Vini Lopez as "vini.lopez", the dotted form.
+        [SHIP]: [],
+        // "Flo & Eddie": each part.
+        [FLO]: ['flo', 'eddie'],
+        [SONY]: ['ianmollymeldrum'],
+        // An interview's On Stage tab without an On stage page: no "onstage" asked.
+        [KLOL]: [],
+        [CHI]: [],
+    };
+    /** A show's other tag pages, as the fixtures hold them (the mirror's). */
+    const pagesOf = (name) => {
+        const on = name.replace(/^[a-z]+:/, 'onstage:');
+        return fs.existsSync(fileOf(on)) ? [on] : [];
+    };
+
+    /**
+     * Loads a fixture page with the given settings and returns a function
+     * giving a page's cast findings through the shipped check.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {Object<string, *>} settings
+     * @returns {Promise<function(string, ?Array<string>=): Promise<{missing: string[], spurious: string[], why: string[]}>>}
+     */
+    async function rule(page, settings) {
+        await page.route(/^https?:\/\//, route => route.abort('blockedbyclient'));
+        await loadUserscriptPage(page, { url: BB + CHI, fixtureFile: fileOf(CHI), testMode: true, settingsOverride: { ...BASE, ...settings } });
+        await page.waitForFunction(() => window.__saTest && window.__saTest.bbTagCheck);
+        return (name, pages = pagesOf(name)) => {
+            const more = (pages || []).flatMap((p) => {
+                const box = (fs.readFileSync(fileOf(p), 'utf8').match(/<div class="page-tags">([\s\S]*?)<\/div>/) || [])[1] || '';
+                return Array.from(box.matchAll(/<a href="\/system:page-tags\/tag\/[^"#]*#pages">([^<]*)<\/a>/g), m => m[1].trim().toLowerCase());
+            });
+            return page.evaluate(([html, url, m, p]) => {
+                const facts = window.__saTest.bbTagFacts(html, url);
+                const rec = window.__saTest.dpParse('brucebase.wikidot.com', html, url);
+                const r = window.__saTest.bbTagCheck(facts, ((rec && rec.tags) || []).map(t => t.text.toLowerCase()), m, null, p);
+                const mine = list => list.filter(x => x.family === 'cast');
+                return { missing: mine(r.missing).map(x => x.tag), spurious: mine(r.spurious).map(x => x.tag), why: mine(r.missing).map(x => x.why) };
+            }, [fs.readFileSync(fileOf(name), 'utf8'), BB + name, more, pages]);
+        };
+    }
+
+    test('on, with the feed\'s tables: each page as the probe found it, with its reason; a cast tag is never "not expected"', async ({ page }) => {
+        const check = await rule(page, { ...CAST, ...kept(FEED) });
+        for (const [name, missing] of Object.entries(WANT_CAST)) {
+            const got = await check(name);
+            expect({ name, missing: got.missing, spurious: got.spurious }).toEqual({ name, missing, spurious: [] });
+        }
+        expect((await check(WAN69)).why).toEqual(['The show has an On Stage tab but no On stage page: its cast is not tagged.']);
+        expect((await check(SUN71)).why).toEqual(['The On Stage tab lists ""Big Danny" Gallagher".']);
+        expect((await check(FLO)).why).toEqual(['The In Studio tab lists "Flo".', 'The In Studio tab lists "Eddie".']);
+    });
+
+    test('the pages not known: an On Stage tab\'s cast is not checked; an In Studio tab\'s is', async ({ page }) => {
+        const check = await rule(page, { ...CAST, ...kept(FEED) });
+        expect((await check(WAN69, null)).missing).toEqual([]);
+        expect((await check(SUN71, null)).missing).toEqual([]);
+        expect((await check(FLO, null)).missing).toEqual(['flo', 'eddie']);
+    });
+
+    test('off, a feed without its tables, the feed off: no cast finding', async ({ browser }) => {
+        for (const settings of [{ sa_bb_feed: true, sa_bb_tag_family_cast: false, ...kept(FEED) },
+            { ...CAST, ...kept(FEED_13) }, { sa_bb_feed: false, sa_bb_tag_family_cast: true, ...kept(FEED) }]) {
+            const page = await browser.newPage();
+            page.on('pageerror', e => pageErrors.push(String(e)));
+            const check = await rule(page, settings);
+            for (const name of [WAN69, SUN71, FLO]) expect(await check(name), name).toMatchObject({ missing: [], spurious: [] });
+            await page.close();
+        }
+    });
+
+    /**
+     * Loads an event page fixture at its address and presses its button.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {string} name
+     * @param {Object<string, *>} settings
+     * @returns {Promise<void>}
+     */
+    async function showEvent(page, name, settings) {
+        await page.setViewportSize({ width: 1500, height: 1200 });
+        await page.route(/^https?:\/\//, route => route.abort('blockedbyclient'));
+        const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
+        await page.route(/brucebase\.wdfiles\.com\//, route => route.fulfill({ status: 200, contentType: 'image/png', body: png }));
+        await loadUserscriptPage(page, { url: BB + name, fixtureFile: fileOf(name), testMode: true, settingsOverride: { ...BASE, sa_bb_detail_pages: true, ...settings } });
+        await servePages(page);
+        await page.click(`button[data-label="${BB_EVENT_BUTTON}"]`);
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+    }
+    const card = page => page.locator('section.mb-sb-card').filter({ has: page.locator(':scope > .mb-sb-card-head', { hasText: /^Tags/ }) });
+    const row = (c, label) => c.locator('.mb-sb-chip-row').filter({ has: c.page().locator(':scope > .mb-sb-chip-kind', { hasText: new RegExp(`^${label}$`) }) });
+
+    test('Wanamassa 1969: its On stage page asked and not there, then "onstage missing" in the People row with the reason', async ({ page }) => {
+        await showEvent(page, WAN69, { ...CAST, ...kept(FEED), sa_bb_onstage_tags: true });
+        const c = card(page);
+        await expect(row(c, 'People').locator('.mb-sb-chip.mb-cbx-miss')).toHaveText(['onstage missing']);
+        await expect(c.locator('.mb-cbx-finds .mb-cbx-find-e')).toContainText(['onstage is expected and missing. The show has an On Stage tab but no On stage page: its cast is not tagged.']);
+    });
+
+    test('the On stage tags switched off: nothing about the cast of an On Stage tab', async ({ page }) => {
+        await showEvent(page, WAN69, { ...CAST, ...kept(FEED), sa_bb_onstage_tags: false });
+        await expect(card(page).locator('.mb-sb-chip').first()).toBeVisible();
+        await expect(card(page).locator('.mb-cbx-miss')).toHaveCount(0);
+    });
+
+    test('Sunshine In 1971: "bigdannygallagher missing" once the On stage page is read', async ({ page }) => {
+        await showEvent(page, SUN71, { ...CAST, ...kept(FEED), sa_bb_onstage_tags: true });
+        await expect(row(card(page), 'People').locator('.mb-sb-chip.mb-cbx-miss')).toHaveText(['bigdannygallagher missing']);
+    });
+
+    test('Chicago 2016: "as expected" names the cast; the feed off, the wait line names it', async ({ page, browser }) => {
+        await showEvent(page, CHI, { ...CAST, ...kept(FEED), sa_bb_onstage_tags: true });
+        await expect(card(page).locator('.mb-cbx-pill-ok')).toHaveText('✓ date, letter, kind, premiere, icon and cast tags as expected');
+        const off = await browser.newPage();
+        off.on('pageerror', e => pageErrors.push(String(e)));
+        await showEvent(off, CHI, { sa_bb_feed: false, sa_bb_tag_family_cast: true, sa_bb_onstage_tags: true });
+        await expect(card(off).locator('.mb-cbx-wait')).toHaveText('The cast tags are not checked: the Brucebase feed is off.');
+        await off.close();
+    });
+});

@@ -35,7 +35,7 @@ State: DONE (SAED has it), PART, TODO, NOT (not ported, with the reason).
 | Expected tags: tour premiere count + prem                                    | =countTourPremiereSongs=                        | same two findings                                                                     | DONE  |     3 |
 | Expected tags: tour association                                              | =checkEventTourTags=, =TOUR_DEFINITIONS=        | the tour family (=sa_bb_tag_family_tour=, off), the table in the feed: 49 shows       | DONE  |    3b |
 | Expected tags: location (title / venue)                                      | =checkEventNameLocationTags= …                  | the place family (=…_place=, off): city, state, country, regions; venue: feed map     | PART  |    3b |
-| Expected tags: relations of the cast tab                                     | =checkOnStageRelationTags=                      | 1,859 shows as it is: to tune                                                         | TODO  |    3b |
+| Expected tags: relations of the cast tab                                     | =checkOnStageRelationTags=                      | the cast family (=…_cast=, off): onstage, names; studio and guest not checked         | DONE  |    3b |
 | Expected tags: setlist songs                                                 | =checkSetlistSongTags=, =computeSongTagAlias=   | 1,114 shows as it is (the initials rule): to tune                                     | TODO  |    3b |
 | Spurious tags (present, not expected)                                        | =SPURIOUS_TAG_REASONS=                          | =bb-tag-spurious=: batch 3, tour; content: storyteller, eyewitness                    | DONE  |  3/3b |
 | Tag source highlight (which text made a tag expected)                        | doc/TAGS.md, opt-in                             | NOT for now: each finding says its reason in words; back with 3b (setlist, cast)      | NOT   |    3b |
@@ -1034,5 +1034,47 @@ First: ⚙️ Settings → "Also check a Brucebase show's content tags" on.
 | https://brucebase.wikidot.com/gig:1982-10-03-stone-pony-asbury-park-nj    | press                    | "eyewitness" ⚠️: the Eyewitness tab says "Sorry, no Eyewitness-report"        |
 | https://brucebase.wikidot.com/gig:1971-05-14-sunshine-in-asbury-park-nj   | press                    | no content mark: "setlist" and "handwritten" without a picture are left alone |
 | https://brucebase.wikidot.com/1974                                        | Show all events, ▶ Pages | Schenectady 1974-10-19 ❌ on Tags ("setlist", "handwritten")                   |
+
+Unverified: all of it in a real browser.
+
+** The cast family (=sa_bb_tag_family_cast=, off by default)
+
+*Decisions (vzell, 2026-11-19):* a show with an On Stage tab and no On stage page is ONE finding, "onstage" missing
+with the reason (583 shows; not a miss per person); every listed person and band, the dotted "first.last" form
+counting too; =onstage= only, =studio= (90 of 565) and =guest= (817 of 1,224) not checked.
+
+*The probe* (=scripts/probe-bb-cast-tags.py=): cast tabs on 4,542 shows (gig On Stage 3,583, recording In Studio 521,
+rehearsal On Stage 210, …). 583 On Stage shows have no On stage page: 490 of the 492 =onstage= misses and 979 of the
+1,214 name misses. Where the page exists, BruceBaseParser's name forms plus the dotted form match 99.4 % of ~37,000
+listings; 532 names are found only in the dotted form (=vini.lopez=, =david.sancious=, =ernest.carter=), which
+BruceBaseParser would call missing.
+
+*The rule:* *628 shows*, 475 for the missing On stage page alone, 153 with a name (=brucespringsteen= 56 on early
+guest spots, Big Danny Gallagher, Robert Higgins, Ed Manion, …). The names' aliases come from the feed
+(=eStreetDotted=, =relationAlias=), so without the feed the cast is not checked.
+
+*Built* (details: =docs/claude/brucebase.md=, "The tuned tag families (batch 3b)"): =_bbTagCastFacts()= (a port of
+=extractRelations()=; equal to the Python reading on all 5,007 shows), =_bbTagCastItems()=, =_bbTagCastExpected()=;
+=_bbTagCheck()= takes the names of the pages read, which =_bbTagFindings()= passes once the read is done. +10.4 kB in
+the userscript (batch 3b so far +31.1 kB).
+
+*Tests* (NB-3641, 2026-11-19): =check-bb-batch3b-findings.js --family cast=: 0 differences, 628 flagged, 0 in the three
+quiet passes; the batch 3 checker 0 with =cast= in the facts. =bb-findings-batch3b.spec.js= 7 new on six more real
+pages and two On stage pages; 11 new mutations (10 fail their test, 1 recorded as an overlap: =_bbTagPagesMay()=
+already keeps the missing tags of an unread On Stage show unsaid), 3 older finds moved, all as expected.
+
+** The browser check of the cast family, for vzell (pages of the mirror of 2026-11-19)
+
+First: ⚙️ Settings → "Also check a Brucebase show's cast tags" on ("Show the tags kept on a show's On stage page" and
+"Read the Brucebase feed" on).
+
+| URL                                                                                    | Step                                                              | What should appear                                                                         |
+|----------------------------------------------------------------------------------------+-------------------------------------------------------------------+--------------------------------------------------------------------------------------------|
+| https://brucebase.wikidot.com/gig:1969-04-05-pandemonium-wanamassa-nj                  | press, wait for the tag pages                                     | Tags card: "onstage missing" in the People row: "no On stage page: its cast is not tagged" |
+| https://brucebase.wikidot.com/gig:1971-03-27-sunshine-in-asbury-park-nj-early          | press, wait for On stage                                          | "bigdannygallagher missing"                                                                |
+| https://brucebase.wikidot.com/gig:1972-10-25-shipbottom-lounge-point-pleasant-beach-nj | press, wait for On stage                                          | no cast mark: Vini Lopez as "vini.lopez" counts                                            |
+| https://brucebase.wikidot.com/recording:1979-06-21-power-station-new-york-city-ny      | press                                                             | "flo missing" and "eddie missing" (Flo & Eddie)                                            |
+| https://brucebase.wikidot.com/1969                                                     | Show all events, ▶ Pages                                          | the rows without an On stage page ❌ on Tags ("onstage")                                    |
+| the Wanamassa page again                                                               | "Show the tags kept on a show's On stage page" off, reload, press | no cast mark                                                                               |
 
 Unverified: all of it in a real browser.

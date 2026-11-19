@@ -9,6 +9,7 @@
  *   --family tour   scripts/probe-bb-tour-tags.py ROWS TABLES --json RULE   (sa_bb_tag_family_tour)
  *   --family place  scripts/probe-bb-place-tags.py ROWS TABLES --json RULE  (sa_bb_tag_family_place)
  *   --family content  scripts/probe-bb-content-tags.py ROWS --json RULE      (sa_bb_tag_family_content)
+ *   --family cast     scripts/probe-bb-cast-tags.py ROWS --json RULE         (sa_bb_tag_family_cast)
  *
  * Per event, in the real userscript loaded through the test harness:
  * `__saTest.bbTagFacts()` on the page, its own tags from the link previews'
@@ -32,9 +33,9 @@ const path = require('path');
 const { chromium } = require('@playwright/test');
 const { loadUserscriptPage } = require('../tests/support/loadPage');
 
-const FAMILIES = { tour: 'sa_bb_tag_family_tour', place: 'sa_bb_tag_family_place', content: 'sa_bb_tag_family_content' };
+const FAMILIES = { tour: 'sa_bb_tag_family_tour', place: 'sa_bb_tag_family_place', content: 'sa_bb_tag_family_content', cast: 'sa_bb_tag_family_cast' };
 /** The families that read the feed's tables. */
-const FEED_FAMILIES = new Set(['tour', 'place']);
+const FEED_FAMILIES = new Set(['tour', 'place', 'cast']);
 const args = process.argv.slice(2);
 const opt = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : null; };
 const valued = new Set(['--mirror', '--family'].map(o => args.indexOf(o) + 1).filter(i => i > 0));
@@ -89,13 +90,14 @@ async function findings(page, rows) {
         const part = rows.slice(at, at + BATCH).map(r => ({
             name: r.name, html: fs.readFileSync(fileOf(r.name), 'utf8'),
             more: [].concat(...r.pages.map(p => p[1].map(t => t.toLowerCase()))),
+            pages: r.pages.map(p => p[0]),
         }));
         out.push(...await page.evaluate(([list, family]) => list.map((x) => {
             const url = 'https://brucebase.wikidot.com/' + x.name;
             const facts = window.__saTest.bbTagFacts(x.html, url);
             const rec = window.__saTest.dpParse('brucebase.wikidot.com', x.html, url);
             const own = ((rec && rec.tags) || []).map(t => t.text.toLowerCase());
-            const res = window.__saTest.bbTagCheck(facts, own, x.more, null);
+            const res = window.__saTest.bbTagCheck(facts, own, x.more, null, x.pages);
             const mine = l => l.filter(m => m.family === family);
             return {
                 missing: mine(res.missing).map(m => m.tag), spurious: mine(res.spurious).map(m => m.tag),
@@ -108,7 +110,7 @@ async function findings(page, rows) {
 
 (async () => {
     if (!ROWS || !RULE || !FEED || !FAMILIES[FAMILY]) {
-        console.error('usage: node scripts/check-bb-batch3b-findings.js --family tour|place|content ROWS.json RULE.json FEED.json [--mirror DIR]');
+        console.error('usage: node scripts/check-bb-batch3b-findings.js --family tour|place|content|cast ROWS.json RULE.json FEED.json [--mirror DIR]');
         process.exit(2);
     }
     const key = FAMILIES[FAMILY];

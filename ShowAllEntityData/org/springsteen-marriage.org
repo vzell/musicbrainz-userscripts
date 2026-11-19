@@ -40,7 +40,7 @@ left out by decision), NOT (not done, with the reason).
 | Idea 2, the help-icon check                              | DONE  | 9.99.1636–1637      | "The help-icon check …"                               |
 | Idea 2, batch 4: venue, song, relation, release tags     | PART  | 9.99.1652           | "Batch 4: the page tag checks …"                      |
 | Idea 2, closing the matrix (coexistence, HOME row)       | DONE  | 9.99.1653–1658      | "Closing the matrix …"                                |
-| Idea 2, batch 3b: the five noisy tag families            | NEXT  | WIP (3 of 5 built)  | "Batch 3b: …"                                         |
+| Idea 2, batch 3b: the five noisy tag families            | NEXT  | WIP (4 of 5 built)  | "Batch 3b: …"                                         |
 | Idea 3: the lookup tables into the feed                  | PART  | BruceParser 0.22.1  | "Batch 3b: …" (=tagTables=; the venue and song maps)  |
 | Idea 4, feed v1                                          | DONE  | 9.99.1638           | "The feed, version 1 …"                               |
 | Idea 4, feed v2 branch 1: date tags, the "files" tag     | DONE  | 9.99.1642           | "Feed v2, branch 1 …"                                 |
@@ -302,7 +302,12 @@ and the songs' medleys) and its real cases; a family's switch comes with its rul
   storyteller, eyewitness, ticket from a ticket image only as missing); news, memorabilia, bootleg, livedl, soundcheck
   and rescheduled NOT. Only storyteller and eyewitness are ever "not expected" (a setlist picture can sit on a =news:=
   page). 154 shows flagged.
-- *Next:* cast (question 2), then songs and the venue map together.
+- *Cast* (WIP.4, =sa_bb_tag_family_cast=): vzell, 2026-11-19: an On Stage tab without an On stage page is ONE finding
+  ("onstage" alone); every listed name, its dotted form counting; =onstage= only, =studio= and =guest= not checked.
+  628 shows flagged (475 for the missing On stage page).
+- *Next:* songs (question 3, decided: the setlist link and the feed's =songTags=) together with the place family's
+  venue map (=venueTags=): one BruceParser change for both maps, then the two SAED parts. Then the closing steps
+  (=test:full=, the render ratio, the browser check of all of 3b, the merge on vzell's word).
 
 ** PART Idea 3: the lookup tables into the feed
 
