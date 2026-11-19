@@ -4623,3 +4623,15 @@ Env: 2026-11-19T10:45:35+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 | =npm run test:full=, merge check  |  3310 |      12 | *22 m 11 s* | =run-test-full.py=, 10:45:35–11:07:46 CET |
 
 3310 passed (the branch's 3303 plus the 7 tests main gained from 9.99.1655–1656 on NB-3641). No flake showed.
+
+* 2026-11-19 — =npm run test:full= on =petri=, feat/apollo-findings-2 (two runs, on 9.99.1657)
+
+Env: 2026-11-19T12:45:22+01:00 / 13:58:00+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                         | Tests | Workers | Wall clock  | Basis                                     |
+|-----------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, =d7d6c97f=   |  3316 |      12 | *21 m 53 s* | =run-test-full.py=, 12:45:22–13:07:15 CET |
+| =npm run test:full=, =4fb06898=   |  3317 |      12 | *21 m 42 s* | =run-test-full.py=, 13:58:00–14:19:42 CET |
+
+Run 1: 3315 passed, 1 failed (=uniq-drop-title-anatomy=, "(U.S. remix)" named a remixer: a real false positive,
+fixed in =9e24cdc4=). Run 2: 3316 passed, 1 failed (=filter-sliced=, the waiting-call test of 9.99.1656; 48/48 alone).
