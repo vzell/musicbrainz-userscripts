@@ -30637,3 +30637,43 @@ Env: 2026-11-19T12:10–14:25+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6
   on the filter path. So that fix's test still flakes under full-suite load on petri.
 - **Browser check by vzell, 2026-11-19: "tested live, OK"** (Seren E.P., It's Party Time!, The Ballad of John and Yoko,
   Back in 2014!, the Dean Martin Rat Pack release).
+
+## 2026-11-19 — A release role that doesn't fit the format: format-role (Apollo findings batch 3, feat/apollo-findings-3)
+
+Env: 2026-11-19T18:24–19:20+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1, bundled Chromium (headless), no Tampermonkey (GM stubs); the probe: n/a browser.
+
+- **Why:** batch 3 of the Apollo / Group Therapy / First Contact / Credit Hoarder findings (`org/majkinetor.org`).
+  vzell picked the format-role check alone (plan mode): First Contact's guesses and the ℗/© notice are facts about
+  the whole release with no cell to carry them, so they move to batch 4.
+- **Where it can live:** only the release page's Credits render (`release-credit-tables`) has the release's own
+  relationships as rows. On `release-tracks` they stay native `table.details`, and release lists load url-rels only.
+- **Pre-test** (`scripts/probe-apollo-findings-3.py`, `debug/probe-apollo-findings-3.json`, 18:41:17–19:10:32):
+  MusicBrainz's search answered 503 at once on every try all evening, while lookups worked, with one spell of "The
+  MusicBrainz web server is currently busy" on lookups too (~18:30). So the probe crawls from four seed plants taken
+  from local HTML (`label|place` links beside a role `<th>`): 800 requests, 568 releases. SAED's rule: 9
+  relationships on 6 releases, all real (Digital Media pressed and glass mastered; "Born to Run" 12" Vinyl glass
+  mastered by DADC Austria; CDs lacquer cut; 2×CD-R glass mastered).
+- **What:** `format-role` (warn, Relationship column). `_releaseMediumFormatIds()` (payload ids, else the sidebar's
+  Format by English name; `''` on any unknown medium), `FORMAT_ROLE_FAMILIES`, `_formatRoleMismatch()`,
+  `_formatRoleDetail()`. `applyRelDetailsToTables()` writes the ids onto each OWN row's Relationship cell
+  (`data-mb-rel-formats`); the one-table layout keeps the release group's rows out by their From cell. Ported from
+  Group Therapy, credited in the attribution block; judged on all media by id, not one format by substring.
+- **Found while writing the spec:** a saved row is its cells' records (`_buildDiskCellData()`), so a mark on the
+  `<tr>` (the first draft) would not survive Save to Disk. It is on the cell, and it travels as `relFormats`
+  (`_restoreRelFormats()`, both hydrate loops). The round-trip test loads the Digital release's save on the vinyl
+  release's page: the flags follow the saved cells, not the page.
+- **Fixtures:** `scripts/make-format-role-fixtures.py` writes `release-credits-format-role.html` (12" Vinyl, read
+  from the payload) and `-digital.html` (sidebar "Digital Media", payload removed) from the real
+  `release-tracks-instrument-icons.html` (3ce46b79), plus a "lacquer cut by" and a "glass mastered by" row and a
+  constructed "pressed at" in the release group block.
+- **Perf:** the stamp runs once per render over the Credits tables (a few dozen rows); the formats are read once
+  per conversion, not per cell. Not on any filter, sort or render hot path, so not measured.
+- **Tests:** `tests/fixtures/apollo-findings-3.spec.js`, 7. Neighbouring specs (findings, rel-tables, event-overview,
+  disk round trips, video medium flag; fixtures and mobile): 211 passed. **Mutations:**
+  `scripts/mutations/apollo-findings-3.json`, 13, all as recorded (one `"expect": "pass"`: no other render writes
+  the mark, so `enabled()`'s pageType gate is invisible). `bb-findings-batch1.json` and `len-flag-disk-roundtrip.json`
+  had one find each re-anchored for the new restore call (same meaning).
+- **HELP:** one row in "What is checked", a paragraph under "Relationships as tables on other pages". **Lint:**
+  within the baseline. Audits clean.
+- **`npm run test:full` on petri, `63914fe5` + working tree, 18:45:23–19:08:28 CET (23 m 5 s): 3,328 of 3,328
+  passed.**

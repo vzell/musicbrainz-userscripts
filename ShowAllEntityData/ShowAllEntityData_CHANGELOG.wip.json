@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-11-19",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "A new ⚠️ WARNING on a release's \"Credits\" tables: a relationship whose role does not fit the release's format, from the page's own data and with no requests. Pressed, printed or manufactured on a release that is only Digital Media, lacquer cut with no phonograph record (vinyl, shellac, acetate), glass mastered with no pressed optical disc (a CD-R is burned, not glass mastered). A release with \"CD + Digital Media\" is judged on both media, so its pressing plant is fine. A medium of unknown format and the release group's rows are never flagged. The cell's tooltip names the role and the formats. The rules come from majkinetor's Group Therapy. The tint has its own switch in ⚙️ Settings → ⚠️ Findings."
+        ]
+      }
+    ]
+  }
+]

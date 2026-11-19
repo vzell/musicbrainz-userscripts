@@ -16,10 +16,11 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 
 * PICKUP HERE (2026-11-19)
 
-- *Next:* batch 3 of the Apollo findings (NEXT, under "Adoptions"): a relationship role that doesn't fit the format,
-  First Contact's guesses (wrong primary type, looks like a VA compilation), a ℗/© notice in the annotation that no
-  relationship has. Each needs its own data plan. Start in plan mode on =feat/apollo-findings-3=, a probe with real
-  examples first.
+- *Now:* batch 3 of the Apollo findings, =format-role= (a release role that doesn't fit the format), is built on
+  =feat/apollo-findings-3= (test:full 3328/3328); waiting for vzell's browser check before the merge. The real
+  examples to check are in "Batch 3".
+- *Next:* batch 4 (TODO, under "Adoptions"): First Contact's guesses and the ℗/© notice. Neither has a cell to carry
+  it, so each starts with where to show a release-wide finding (a mockup); see "Batch 4".
 - *Waiting on majkinetor* (#938):
   - his answer to the two questions of the gate-clock reply (posted 2026-11-18 20:55);
   - "keep V under =data-mbu-keys-off=" (C3; asked 2026-11-08, again 2026-11-17);
@@ -49,7 +50,8 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | Release checks (Mission Control / Platform Check / ISRC Scout) | DONE  | 9.99.1654     | Adoptions          |
 | Apollo findings, batch 1: credit ends with a join phrase       | DONE  | 9.99.1657     | Adoptions          |
 | Apollo findings, batch 2: remixer, medley, Recording of work   | DONE  | 9.99.1659     | Adoptions          |
-| Apollo findings, batch 3: format roles, type guesses, ℗/©      | NEXT  | —             | Adoptions          |
+| Apollo findings, batch 3: a role that doesn't fit the format   | NEXT  | —             | Adoptions          |
+| Apollo findings, batch 4: type guesses, ℗/© notices            | TODO  | —             | Adoptions          |
 | Possible duplicate recordings (Fusion)                         | TODO  | —             | Adoptions          |
 | Discogs credits as MB relationships (Credit Hoarder)           | TODO  | —             | Adoptions          |
 | Query mode for the global filter (EH's language)               | TODO  | —             | Adoptions          |
@@ -317,9 +319,9 @@ OFF by default: it flagged 959 of Bob Dylan's 2,301 releases and slowed typing b
   | Title names a remixer, no remixer relationship (CH =src/derive/remix.js=)           | 2     | DONE  |
   | Medley title with fewer linked works than " / " parts (GT "Medleys")                | 2     | DONE  |
   | Relationship role that doesn't fit the format (GT =FORMAT_EXCLUDE_DEFAULT= 3756)    | 3     | NEXT  |
-  | Primary type looks wrong (FC =guessReleaseType= 270)                                | 3     | NEXT  |
-  | Credited to one artist but looks like a VA compilation (FC =variousArtistsWhy= 374) | 3     | NEXT  |
-  | ℗/© notice in the annotation that no relationship has (GT =txpParseCopyrightLine=)  | 3     | NEXT  |
+  | Primary type looks wrong (FC =guessReleaseType= 270)                                | 4     | TODO  |
+  | Credited to one artist but looks like a VA compilation (FC =variousArtistsWhy= 374) | 4     | TODO  |
+  | ℗/© notice in the annotation that no relationship has (GT =txpParseCopyrightLine=)  | 4     | TODO  |
 
 - Before coding each one, write a real example page into its batch, with the clicks and the predicted result.
 
@@ -342,25 +344,46 @@ live, OK"). The remix rules are ported from Credit Hoarder (credited), with SAED
 Beatles, Elvis); details: =docs/claude/findings.md=, "Release tracklist titles", and
 =docs/claude/release-tracks-and-length.md=, "Recording of work: every work the recording links".
 
-*** NEXT Batch 3: a role that doesn't fit the format, First Contact's guesses, ℗/© notices
+*** NEXT Batch 3: a release role that doesn't fit the format (=feat/apollo-findings-3=)
 
-The three left, each with data the earlier batches did not have to plan for:
-1. *A relationship role that doesn't fit the format* (GT =FORMAT_EXCLUDE_DEFAULT= 3756: digital ⇏ vinyl / pressed /
-   printed / manufactured; =FORMAT_ONLY_DEFAULT=: lacquer cut → vinyl only, glass mastered → CD/DVD/SACD/Blu-ray).
-   - On a *release page* both are there: the release's own relationships at the foot of the page and its Format
-     (sidebar =dd.format=, the medium headings). Check first where SAED's release-tracks render puts the release
-     relationships (the relationship tables, "Sidebar as tables").
-   - On *release lists* the Relationships column loads url-rels only (=_relInc…=: =['url-rels']= for releases),
-     so label/place/artist rels would mean more requests: behind a setting, or not at all.
-2. *First Contact's guesses*: the primary type looks wrong for N tracks / M minutes (=guessReleaseType= 270), and
+vzell picked this one of the three (2026-11-19, plan mode): it is the only one with a cell to carry it. Built,
+test:full 3328/3328 (petri, 18:45:23–19:08:28 CET); waiting for vzell's browser check, then the merge.
+- *What*: =format-role= (warn), Group Therapy's =FORMAT_EXCLUDE_DEFAULT= / =FORMAT_ONLY_DEFAULT= (credited) on the
+  Relationship cell of a release's own rows in its *Credits* render (=release-credit-tables=), no requests. Judged
+  on every medium by format id, not by substring: "CD + Digital Media" with a pressing plant is fine; lacquer takes
+  every phonograph record (shellac, acetate too); CD-R and the other recordable discs are not glass mastered; an
+  unknown medium blocks the flag. Details: =docs/claude/findings.md=, "A role that doesn't fit the format".
+- *Not on release lists*: their Relationships column loads url-rels only, so this would cost requests (the TODO's
+  "or not at all").
+- *Probe* (=scripts/probe-apollo-findings-3.py=, MusicBrainz's search down all evening, so a crawl from four seed
+  plants: 800 requests, 568 releases): 9 relationships on 6 releases, all real.
+- *Browser check* (vzell; press *Credits* on each, then ⚠️ → "Release role does not fit its format"; the data may
+  have been fixed since 2026-11-19):
+  - https://musicbrainz.org/release/c2371cf9-4b31-40a0-acd2-16d97d3461fa ("Sleeps Like a Curse", Digital Media):
+    four tinted Relationship cells, pressed and glass mastered by/at Technicolor Australia;
+  - https://musicbrainz.org/release/828b14c3-5bf3-402f-ae88-853867147486 ("Born to Run", 12" Vinyl): "glass mastered
+    by" DADC Austria;
+  - https://musicbrainz.org/release/827b5ce9-af12-4479-af1e-23238f3c0f31 ("Original Album Classics", 5×CD): "lacquer
+    cut at" Sony DADC;
+  - https://musicbrainz.org/release/45cebc15-11e9-4a75-9d91-9e07065e8e47 ("Sevens and Twelves", 2×CD-R): "glass
+    mastered at" Nimbus;
+  - a near miss: https://musicbrainz.org/release/3ce46b79-5e8c-470a-bcdc-45f301d09f60 (12" Vinyl, pressed at Pitman,
+    manufactured, printed in): no ⚠️ row at all.
+
+*** TODO Batch 4: First Contact's guesses, ℗/© notices
+
+The two left from batch 3, both about the whole release, so no table cell can carry them as the =FINDINGS=
+registry stands. Each starts with where a release-wide finding is shown (new visible UI: a mockup first).
+1. *First Contact's guesses*: the primary type looks wrong for N tracks / M minutes (=guessReleaseType= 270), and
    "credited to one artist but looks like a VA compilation" (=variousArtistsWhy= 374: track artists on fewer than
    half the tracks and ≥ 5 of them). Both need a release's tracks and lengths: on a release page they are there;
-   a release-group list does not show them. So: release-tracks only, or a request per release group.
-3. *℗/© notice in the annotation that no relationship has* (GT =txpParseCopyrightLine= 6800, compound split 6919;
-   kellnerd's year rule). The same parser serves Discogs release notes and companies.
-- Also the constant =MBM_SPECIAL_PURPOSE= (Apollo 293), so none of these flags Various Artists / [unknown].
-- *To start it:* plan mode on =feat/apollo-findings-3=; pick one of the three with vzell; a probe with real
-  examples first, as in batches 1 and 2.
+   a release-group list does not show them. FC uses them only at import, for a platform that gives no type
+   (=finishRelease()= 4248), so on MusicBrainz's curated data expect noise (a 3-track CD single reads as an EP):
+   a probe first, and possibly a NOT with its numbers.
+2. *℗/© notice in the annotation that no relationship has* (GT =txpParseCopyrightLine= 7073, compound split
+   =txpSplitCompoundCopyrightLines()= 7192; kellnerd's year rule). The notice sits in the annotation's prose and the
+   missing relationship has no row. The same parser serves Discogs release notes and companies.
+- Also the constant =MBM_SPECIAL_PURPOSE= (Apollo 460, GT 6660), so none of these flags Various Artists / [unknown].
 
 ** TODO Possible duplicate recordings (Fusion's algorithm, zero requests)
 

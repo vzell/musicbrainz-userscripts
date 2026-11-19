@@ -1,0 +1,171 @@
+[
+  {
+    "name": "format-role never matches",
+    "why": "\"glass mastered by\" on the 12\" Vinyl release loses its warning. Must fail on the vinyl test.",
+    "edits": [
+      {
+        "find": "            test: cell => !!_formatRoleMismatch(cell.textContent, cell.dataset.mbRelFormats),",
+        "replace": "            test: () => false,"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-3.spec.js",
+    "grep": "only \"glass mastered\" is flagged",
+    "expect": "fail"
+  },
+  {
+    "name": "the glass rule takes vinyl as an optical disc",
+    "why": "With 12\" Vinyl (31) in the glass family, the vinyl release's \"glass mastered by\" is not flagged. Must fail on the vinyl test.",
+    "edits": [
+      {
+        "find": "            1, 61, 43, 44, 42, 25, 129, 34, 35, 165, 36, 37, 209, 39, 40,      // CD",
+        "replace": "            31, 1, 61, 43, 44, 42, 25, 129, 34, 35, 165, 36, 37, 209, 39, 40,      // CD"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-3.spec.js",
+    "grep": "only \"glass mastered\" is flagged",
+    "expect": "fail"
+  },
+  {
+    "name": "the physical roles are judged on one medium, not all (Group Therapy's substring test)",
+    "why": "\"pressed at\" on \"CD + Digital Media\" is right for the CD; with some() it is flagged. Must fail on the rules test.",
+    "edits": [
+      {
+        "find": "ids.every(id => FORMAT_ROLE_FAMILIES.digital.has(id)) ? 'digital' : null;",
+        "replace": "ids.some(id => FORMAT_ROLE_FAMILIES.digital.has(id)) ? 'digital' : null;"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-3.spec.js",
+    "grep": "the rules, through the shipping function",
+    "expect": "fail"
+  },
+  {
+    "name": "the lacquer rule is vinyl only (Group Therapy's)",
+    "why": "Shellac 78s and acetates take a lacquer; with the shellac and acetate ids gone they are flagged. Must fail on the rules test.",
+    "edits": [
+      {
+        "find": "        lacquer: new Set([73, 7, 29, 30, 31, 51, 52, 207, 53, 56, 54, 55, 203, 204, 205, 206, 48, 81, 50, 58]),",
+        "replace": "        lacquer: new Set([73, 7, 29, 30, 31, 51, 52, 207, 48, 81, 50, 58]),"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-3.spec.js",
+    "grep": "the rules, through the shipping function",
+    "expect": "fail"
+  },
+  {
+    "name": "the lacquer rule never fires",
+    "why": "\"lacquer cut by\" on Digital Media is no longer flagged. Must fail on the digital test.",
+    "edits": [
+      {
+        "find": "        if (/lacquer[\\s-]*cut/.test(r)) return ids.some(id => FORMAT_ROLE_FAMILIES.lacquer.has(id)) ? null : 'lacquer';",
+        "replace": "        if (/lacquer[\\s-]*cut/.test(r)) return null;"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-3.spec.js",
+    "grep": "every physical role is flagged, copyright is not",
+    "expect": "fail"
+  },
+  {
+    "name": "an unknown medium does not block the flag",
+    "why": "A release with a medium of unknown format might have the fitting one; without the guard the reader keeps the known ids. Must fail on the format-reader test.",
+    "edits": [
+      {
+        "find": "        if (ids.some(id => id === null || id === 13 || !MEDIUM_FORMAT_VIDEO_CAPABLE.has(id))) return '';",
+        "replace": "        ids = ids.filter(id => id !== null);"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-3.spec.js",
+    "grep": "the format reader",
+    "expect": "fail"
+  },
+  {
+    "name": "the sidebar fallback is gone",
+    "why": "The Digital fixture has no release payload: without the sidebar, no row knows its format and nothing is flagged. Must fail on the digital test.",
+    "edits": [
+      {
+        "find": "            if (text) ids = text.split(' + ').map(p => _mediumFormatIdByName(p.replace(/^\\d+\\s*×\\s*/, '')));",
+        "replace": "            if (text) ids = null;"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-3.spec.js",
+    "grep": "every physical role is flagged, copyright is not",
+    "expect": "fail"
+  },
+  {
+    "name": "the payload is not read (sidebar only)",
+    "why": "The vinyl fixture's sidebar says 12\" Vinyl too, so its render cannot see this; the format-reader test's jsonTwo (payload \"CD + Digital Media\", sidebar \"Other\") gives '' without the payload. Must fail there.",
+    "edits": [
+      {
+        "find": "        if (Array.isArray(mediums) && mediums.length) {\n            ids = mediums.map(m => {",
+        "replace": "        if (false) {\n            ids = mediums.map(m => {"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-3.spec.js",
+    "grep": "the format reader",
+    "expect": "fail"
+  },
+  {
+    "name": "the release group's rows get the format too (one-table layout)",
+    "why": "Without the From column check, the constructed \"pressed at\" of the release group is flagged as well. Must fail on the one-table test.",
+    "edits": [
+      {
+        "find": "            markOwn(built, cols, tr => fromIdx < 0 || tr.cells[fromIdx]?.textContent.trim() === attrs.fromLabel);",
+        "replace": "            markOwn(built, cols);"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-3.spec.js",
+    "grep": "one-table layout",
+    "expect": "fail"
+  },
+  {
+    "name": "the format mark is not saved to disk",
+    "why": "A reloaded Credits render loses data-mb-rel-formats and flags nothing. Must fail on the round-trip test.",
+    "edits": [
+      {
+        "find": "        if (cell.dataset.mbRelFormats) data.relFormats = cell.dataset.mbRelFormats;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-3.spec.js",
+    "grep": "Save to Disk",
+    "expect": "fail"
+  },
+  {
+    "name": "the saved format mark is not restored",
+    "why": "Same, from the reading side. Must fail on the round-trip test.",
+    "edits": [
+      {
+        "find": "        td.dataset.mbRelFormats = v;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-3.spec.js",
+    "grep": "Save to Disk",
+    "expect": "fail"
+  },
+  {
+    "name": "the tint setting is ignored",
+    "why": "sa_findings_tint_format_role off must keep the finding but drop the paint. Must fail on the tint test.",
+    "edits": [
+      {
+        "find": "            tint: _findingTintSetting('sa_findings_tint_format_role'),",
+        "replace": "            tint: () => true,"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-3.spec.js",
+    "grep": "its stamp survives a filter re-render",
+    "expect": "fail"
+  },
+  {
+    "name": "the finding runs on every pageType",
+    "why": "No other render has a Relationship cell marked with formats, so this guard (enabled() names release-credit-tables) is invisible to every spec: the mark exists only where applyRelDetailsToTables() writes it with credits:true. Recorded as pass; a spec would need a non-release render whose Relationship cells carry data-mb-rel-formats.",
+    "edits": [
+      {
+        "find": "            enabled: () => !_foreignHost && activeDefinition?.type === 'release-credit-tables',\n            cols: name => name === 'Relationship',",
+        "replace": "            enabled: () => true,\n            cols: name => name === 'Relationship',"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-3.spec.js",
+    "grep": "only \"glass mastered\" is flagged",
+    "expect": "pass"
+  }
+]

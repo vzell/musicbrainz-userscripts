@@ -830,6 +830,7 @@ back).
 | ⚠️     | Recording has no associated work                                | Release tracklist: Title                    |
 | ⚠️     | Title names a remixer ("(X remix)"), no remixer credited        | Release tracklist: Title                    |
 | ⚠️     | Medley title ("A / B") has more parts than linked works         | Release tracklist: Title                    |
+| ⚠️     | Release role does not fit its format (glass mastered on vinyl)  | Release Credits: Relationship               |
 | ⚠️     | Live title date uses a plain "-" instead of "‐" (U+2010)        | Release and release group titles            |
 | ⚠️     | Event name date uses a plain "-" instead of "‐" (U+2010)        | Event columns                               |
 | ⚠️     | Event name almost follows the event style guide                 | Event columns                               |
@@ -2351,7 +2352,13 @@ the event page gets are available on:
   (which consolidates the tables further down).
 - **Release pages**: **Credits**, beside **Tracks** — the release's own
   credits under "Credits", never the track credits (those stay with
-  **Tracks**, also when MusicBrainz shows them at the bottom).
+  **Tracks**, also when MusicBrainz shows them at the bottom). A role that
+  does not fit the release's format is a ⚠️ warning on its Relationship
+  cell: pressed, printed or manufactured on a release that is only Digital
+  Media, lacquer cut with no phonograph record, glass mastered with no
+  pressed optical disc (a CD-R is burned, not glass mastered). A release
+  with a medium of unknown format is never flagged, and neither are the
+  release group's rows.
 
 The two buttons on one page are **either/or**: the page's own button renders
 as it always did, with the relationship lists left as a section you can
