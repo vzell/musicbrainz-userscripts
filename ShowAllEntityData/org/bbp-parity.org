@@ -781,7 +781,10 @@ after this one, after the library).
 
 *Tests* (NB-3641, 2026-11-19): =bb-bbp-coexistence.spec.js= 7 (4 with the stand-in
 =tests/fixtures/thirdPartyScripts/bbp-start-mark.js=, everywhere; 3 with the real BruceBaseParser, skipped where its
-checkout is missing, =BBP_USERSCRIPT= names another place); 7 mutations, each failing its test.
+checkout is missing, =BBP_USERSCRIPT= names another place); 7 mutations, each failing its test. =npm run test:full=
+at =abcf4351=: 00:48:13–01:10:58 CET, 3,286 of 3,287; the failure =filter-sliced.spec.js= "a pass replaced by the ✕
+clear writes nothing", the same flake as in batch 4's run, on no path of this branch. No render measurement: the
+guard is one element lookup when the buttons are made and at a press.
 
 ** The browser check of the coexistence guard, for vzell (Tampermonkey with both scripts on)
 

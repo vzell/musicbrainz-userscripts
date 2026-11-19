@@ -30406,3 +30406,8 @@ Fix (vzell: SAED stands aside, says why): `_bbBbpPresent()` reads BruceBaseParse
 actions with "🎛 BruceBaseParser is on this page"; asked when the buttons are made and at the top of
 `startFetchingProcess()`. Spec `bb-bbp-coexistence.spec.js` 7 of 7; 7 mutations, each failing its test (the
 MusicBrainz one by a timeout: its press never rendered).
+- **`npm run test:full` at `abcf4351`, 00:48:13–01:10:58 CET (22 m 45 s): 3,286 of 3,287 passed.** The one failure is
+  again `filter-sliced.spec.js` "a pass replaced by the ✕ clear writes nothing", as in the batch 4 run three hours
+  earlier on this host (entry above): twice in a row under the full suite on NB-3641, 42 of 42 alone. A flake of
+  that test under load on this machine, not of either branch; worth its own look (it asserts that no tbody write
+  happens after ✕, a timing the 14-worker load stretches).
