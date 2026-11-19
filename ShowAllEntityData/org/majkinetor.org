@@ -1551,6 +1551,21 @@ Before coding each one, write a real example page into this item, with the click
 - *Batch 1 started* (2026-11-19, petri, branch =feat/apollo-findings-1=): the three that read only the cell's own
   text: invisible or odd characters in titles and names, extra spaces, join phrases without their space. The rest
   (they need the Relationships column, a release-type guess or the annotation) come in later batches.
+  - *Pre-test result* (Env: 2026-11-19T09:06–09:40+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux
+    6.18.58.1-microsoft-standard-WSL2) · n/a browser; =scripts/probe-apollo-findings-1.py=, output
+    =debug/probe-apollo-findings-1.json=): 3,378 releases and recordings (Springsteen 1,500 + 1,500, Utada Hikaru
+    378): 0 invisible characters, 0 extra spaces, 0 joins without their space. MusicBrainz's =sanitize()=
+    (=lib/MusicBrainz/Server/Data/Utils.pm=) runs on every save: =\s= (NBSP and the other Unicode spaces) → " ",
+    U+200B/U+FEFF/U+00AD and every Cc removed, spaces collapsed and trimmed. So the first two cannot occur; dropped
+    (vzell).
+  - What the data does show: MusicBrainz's report
+    [[https://musicbrainz.org/report/ArtistCreditsWithDubiousTrailingPhrases][Artist credits with dubious trailing
+    join phrases]] (281). Checked by =/ws/2=: release
+    [[https://musicbrainz.org/release/8e1cfe1c-22af-4895-b627-75c6b0927f92][8e1cfe1c]] ("Bad Legs, SeekFlow,", on
+    release group [[https://musicbrainz.org/release-group/69aed540-18fc-4725-87f9-f1bb13e4fad4][69aed540]]),
+    recording [[https://musicbrainz.org/recording/455d1c86-5d55-4634-b7cf-4a1e0988aad1][455d1c86]] ("Heuss
+    l’enfoiré & Genezio" + "feat."). So batch 1 builds ONE finding, =credit-trailing-join= (vzell's choice);
+    details in docs/claude/findings.md.
 
 ** TODO Possible duplicate recordings (Fusion's algorithm, zero requests)
 

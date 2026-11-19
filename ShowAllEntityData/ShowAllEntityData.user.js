@@ -2846,6 +2846,14 @@
                          'for the track ("?:??").'
         },
 
+        sa_findings_tint_credit_trailing_join: {
+            label: 'Highlight artist credits that end with a join phrase as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint an Artist cell light yellow with a ⚠️ when its artist credit ends with a join phrase after ' +
+                         'the last artist ("Bad Legs, SeekFlow,", "… feat."), usually left over from a removed artist.'
+        },
+
         sa_findings_tint_live_credit: {
             label: 'Highlight live-recording credit dates as WARNING/ERROR',
             type: 'checkbox',
@@ -76994,6 +77002,25 @@
             tint: _findingTintSetting('sa_findings_tint_allcaps'),
         },
         {
+            // Apollo findings, batch 1 (org/majkinetor.org): the one check of
+            // the three planned that MusicBrainz's data can still show.
+            // sanitize() on every save turns Unicode spaces into ' ', removes
+            // zero-width spaces, BOMs and soft hyphens and collapses and trims
+            // spaces, so "invisible characters" and "extra spaces" cannot
+            // occur (0 in 3,378 probed). A credit that ENDS with a join phrase
+            // can: MusicBrainz's own report lists 281.
+            id: 'credit-trailing-join', level: 'warn', glyph: '🔗', scope: 'cell',
+            label: 'Artist credit ends with a join phrase',
+            tip: 'The artist credit ends with a join phrase after its last artist (", ", " feat.", " & "), usually left ' +
+                 'over from a removed artist. MusicBrainz lists these in its report "Artist credits with dubious trailing ' +
+                 'join phrases" (https://musicbrainz.org/report/ArtistCreditsWithDubiousTrailingPhrases).',
+            enabled: () => !_foreignHost,
+            cols: name => name === 'Artist' || name === 'Track artist' || name === 'Recording artist',
+            test: cell => _creditTrailingJoin(cell) !== '',
+            detail: cell => `ends with "${_creditTrailingJoin(cell)}"`,
+            tint: _findingTintSetting('sa_findings_tint_credit_trailing_join'),
+        },
+        {
             id: 'truncated', level: 'warn', glyph: '✂️', scope: 'cell',
             label: 'Title truncated with "…"',
             tip: 'A title ending in "…", usually cut off at the 1,024-character limit or copied from a cut-off source.',
@@ -100729,6 +100756,35 @@
         if (!cell) return false;
         return Array.from(cell.querySelectorAll('a[href*="/label/"]'))
             .some(a => !a.getAttribute('href').includes(_RC_NO_LABEL_MBID));
+    }
+
+    /**
+     * The join phrase an artist credit cell ENDS with, or `''`: the text after
+     * the credit's last artist link, inside the `<bdi>` that holds the credit.
+     * MusicBrainz renders a credit as `<bdi><a>A</a> &amp; <a>B</a></bdi>`,
+     * each link possibly wrapped in `span.name-variation`, with each join
+     * phrase as the text between them; a last artist's join phrase is the
+     * text after its link ("Bad Legs, SeekFlow,", "Genezio" + "feat."). Text
+     * outside the `<bdi>` (an alias page's "(see uses)") is never read.
+     * For `credit-trailing-join` (org/majkinetor.org, Apollo findings batch 1;
+     * MusicBrainz's own report "Artist credits with dubious trailing join
+     * phrases").
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {string} The trailing join phrase, trimmed; `''` when none.
+     */
+    function _creditTrailingJoin(cell) {
+        if (!cell) return '';
+        for (const bdi of cell.querySelectorAll('bdi')) {
+            const links = Array.from(bdi.querySelectorAll('a[href*="/artist/"]'));
+            if (!links.length) continue;
+            let top = links[links.length - 1];
+            while (top.parentNode && top.parentNode !== bdi) top = top.parentNode;
+            let after = '';
+            for (let n = top.nextSibling; n; n = n.nextSibling) after += n.textContent;
+            return after.trim();
+        }
+        return '';
     }
 
     /**

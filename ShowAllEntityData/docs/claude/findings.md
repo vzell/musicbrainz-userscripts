@@ -598,6 +598,38 @@ real examples and the rendering rules below are in that TODO's
   `release-tracks-length-unknown.html`, a real two-track release with track
   1 set to "?:??"); mutations `scripts/mutations/release-check-findings.json`.
 
+### An artist credit that ends with a join phrase: `credit-trailing-join`
+
+Branch `feat/apollo-findings-1` (2026-11-19), the one check of the Apollo
+findings' batch 1 (org/majkinetor.org) that MusicBrainz's data can still show.
+
+- **The rule**: the text after a credit's last artist link, inside the
+  `<bdi>` that holds the credit (`_creditTrailingJoin()`), is not empty. A
+  link in `span.name-variation` is climbed to the `<bdi>`'s child first; text
+  after the `<bdi>` (an alias page's "(see uses)") is never read. Columns
+  "Artist", "Track artist", "Recording artist"; `detail()` names the phrase.
+  MusicBrainz keeps the same list as its report "Artist credits with dubious
+  trailing join phrases" (281 on 2026-11-19); fixture rows A, B, E and G copy
+  real ones from it. CJK is not exempt: a trailing "," is trailing in any
+  script.
+- **Dropped, with the evidence** (vzell, 2026-11-19):
+  - "invisible or odd characters" and "extra spaces": MusicBrainz's
+    `sanitize()` (lib/MusicBrainz/Server/Data/Utils.pm) runs on every save. It
+    turns `\s` (NBSP and the other Unicode spaces) into " ", removes U+200B,
+    U+FEFF, U+00AD and every Cc, collapses runs of spaces and trims. The probe
+    (`scripts/probe-apollo-findings-1.py`, `debug/probe-apollo-findings-1.json`)
+    found 0 of either in 3,378 releases and recordings (Springsteen, Utada
+    Hikaru). Left by sanitize(): ZWJ/ZWNJ (right in joining scripts), tag
+    characters, the braille blank and the Hangul fillers. None was in the
+    sample.
+  - "a join phrase between two artists without its space" (Apollo's
+    `joinNeed()`): 0 in the same sample, so no real example. The report's
+    "Geneziofeat." is a TRAILING phrase and is caught by this finding.
+- Tint `sa_findings_tint_credit_trailing_join`. Spec
+  `tests/fixtures/credit-trailing-join.spec.js` (fixture
+  `credit-trailing-join.html`, eight rows); mutations
+  `scripts/mutations/credit-trailing-join.json`.
+
 ## On demand: the title-style findings
 
 `title-case`, `title-typography`, `title-series-sep`, `title-feat` and

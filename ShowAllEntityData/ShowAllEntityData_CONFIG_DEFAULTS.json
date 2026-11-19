@@ -2,11 +2,11 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1652+2026-11-18",
-    "schema_entries": 550,
+    "script_version": "9.99.1654+2026-11-19",
+    "schema_entries": 551,
     "sections": 54,
-    "settings": 496,
-    "settings_with_default": 491,
+    "settings": 497,
+    "settings_with_default": 492,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 319,
+      "checkbox": 320,
       "color_picker": 62,
       "divider": 54,
       "number": 53,
@@ -517,6 +517,7 @@
     "sa_findings_tint_bb_title_spaces": "Highlight Event cells of Brucebase titles with two blanks or a blank before a comma",
     "sa_findings_tint_bb_venue": "Highlight Venue cells of Brucebase entries whose venue is named differently",
     "sa_findings_tint_catno_missing": "Highlight a label without a catalog number as WARNING",
+    "sa_findings_tint_credit_trailing_join": "Highlight artist credits that end with a join phrase as WARNING",
     "sa_findings_tint_eti_case": "Highlight capitalized extra title information as WARNING",
     "sa_findings_tint_event_state": "Highlight a missing state for USA/Canada as WARNING",
     "sa_findings_tint_event_style": "Highlight event names that almost follow the style guide as WARNING",
@@ -1014,6 +1015,7 @@
     "sa_findings_tint_bb_title_spaces": true,
     "sa_findings_tint_bb_venue": true,
     "sa_findings_tint_catno_missing": true,
+    "sa_findings_tint_credit_trailing_join": true,
     "sa_findings_tint_eti_case": true,
     "sa_findings_tint_event_state": true,
     "sa_findings_tint_event_style": true,

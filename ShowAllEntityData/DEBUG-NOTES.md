@@ -30508,3 +30508,32 @@ Env: 2026-11-19T09:49:14+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
   long synchronous task after ✕ or a sort.
 - **`npm run test:full` at `b4beedaa`, 09:50:17–10:14:45 CET (24 m 28 s): 3,305 of 3,305 passed**, the first full run
   on NB-3641 in five with no `filter-sliced.spec.js` failure.
+
+## 2026-11-19 — An artist credit that ends with a join phrase: credit-trailing-join (Apollo findings batch 1, feat/apollo-findings-1)
+
+Env: 2026-11-19T09:06–10:14+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1, bundled Chromium (headless), no Tampermonkey (GM stubs); the probe: n/a browser.
+
+- **Why:** batch 1 of the TODO "Findings from Apollo / Group Therapy / First Contact / Credit Hoarder"
+  (`org/majkinetor.org`), picked by vzell: invisible characters, extra spaces, join phrases without their space.
+- **Pre-test** (`scripts/probe-apollo-findings-1.py`, `debug/probe-apollo-findings-1.json`): 3,378 releases and
+  recordings (Springsteen, Utada Hikaru), 0 of all three. MusicBrainz's `sanitize()`
+  (`lib/MusicBrainz/Server/Data/Utils.pm`) runs on every save: Unicode spaces become " ", U+200B/U+FEFF/U+00AD and
+  every Cc are removed, spaces are collapsed and trimmed. What the data does show: MusicBrainz's report
+  "Artist credits with dubious trailing join phrases" (281), checked by `/ws/2` on release `8e1cfe1c` ("Bad Legs,
+  SeekFlow,") and recording `455d1c86` ("Genezio" + "feat."). The artist-credit pages
+  (`debug/af1-artist-credit-*.html`) were not behind the HTML browser check this morning; a release group page was.
+- **What** (vzell chose "trailing join only"): `credit-trailing-join` (warn), `_creditTrailingJoin()`: the text
+  after a credit's last artist link inside its `<bdi>`, through `span.name-variation`; columns Artist, Track
+  artist, Recording artist; `detail()` names the phrase. Tint `sa_findings_tint_credit_trailing_join`.
+- **Perf:** A/B on `artist-releases-dylan` (typed filter), A,B,B,A: ×0.948 at 150 ms, ×0.999 at 400 ms, within noise
+  (tests/MEASUREMENTS.org).
+- **Tests:** `tests/fixtures/credit-trailing-join.spec.js`, 5 tests; fixture `credit-trailing-join.html` (eight rows:
+  four real report credits, near misses: a join between artists, "(see uses)" after the `<bdi>`, a single artist).
+  Neighbouring findings specs: 76 passed.
+- **Mutations:** `scripts/mutations/credit-trailing-join.json`, 6 entries, all fail as expected.
+- **HELP:** one row in "What is checked". **Lint:** within the baseline. Audits clean.
+- **`npm run test:full` on petri, `61c4d6df`, 09:52:49–10:14:02 CET (21 m 13 s): 3,303 of 3,303 passed.**
+- **Browser check by vzell, 2026-11-19: "tested live, OK"**: release group `69aed540` ("Bad Legs, SeekFlow,") and
+  Genezio's recordings (`609a9087…/recordings`, "2, 3 Shots"). The artist credit's own Recordings tab
+  (`/artist-credit/4295467/recording`) shows nothing: those pages carry the credit only in the h1, no Artist column
+  (my request had wrongly expected a flag there).

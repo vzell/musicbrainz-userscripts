@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Release group "Trailing Join Test" by Various Artists - MusicBrainz</title>
+</head>
+<body>
+    <!--
+        Synthetic releasegroup-releases fixture for credit-trailing-join
+        (org/majkinetor.org, Apollo findings batch 1). The Artist cells use
+        MusicBrainz's credit markup (<bdi><a>A</a> &amp; <a>B</a></bdi>, links
+        possibly in span.name-variation; artist-aliases-springsteen.html and
+        artist-releasegroups-live-titles.html are real pages with it). Rows A,
+        B, E and G copy real credits from MusicBrainz's report "Artist credits
+        with dubious trailing join phrases" (2026-11-19). Every barcode is
+        "[none]" and every catalog number set, so the release checks stay quiet.
+
+        Generated once by a scratch script; eight rows:
+          A (flag): report: "Bad Legs, SeekFlow," (a trailing ", ")
+          B (flag): report: "Heuss l’enfoiré & Geneziofeat." (no space, at the end)
+          C (none): a normal two-artist credit
+          D (none): name-variation links, a join BETWEEN artists
+          E (flag): report: "Die Traktor feat." through a name-variation span
+          F (none): text after the credit but outside its bdi
+          G (flag): report: "宮之上貴昭," (CJK is not exempt from a trailing join)
+          H (none): a single artist
+    -->
+    <div id="page">
+        <div id="content">
+            <div class="wrap-anywhere rgheader">
+                <h1><a href="/release-group/aaaaaaaa-0000-0000-0000-00000000000a"><bdi>Trailing Join Test</bdi></a></h1>
+            </div>
+            <div class="tabs">
+                <ul class="tabs">
+                    <li class="sel"><a href="/release-group/aaaaaaaa-0000-0000-0000-00000000000a"><bdi>Overview</bdi></a></li>
+                </ul>
+            </div>
+            <h2>Album</h2>
+            <table class="tbl mergeable-table">
+                <thead>
+                    <tr>
+                        <th class="checkbox-cell"><input type="checkbox"></th>
+                        <th>Release</th>
+                        <th>Artist</th>
+                        <th>Format</th>
+                        <th>Tracks</th>
+                        <th>Country/Date</th>
+                        <th>Label</th>
+                        <th>Catalog#</th>
+                        <th>Barcode</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="odd">
+                        <td><input type="checkbox" name="add-to-merge" value="1"></td>
+                        <td><a class="wrap-anywhere" href="/release/dddddddd-0000-4000-8000-000000000001"><bdi>Release A</bdi></a></td>
+                        <td><bdi><a href="/artist/11111111-0000-4000-8000-000000000001" title="Bad Legs">Bad Legs</a>, <a href="/artist/11111111-0000-4000-8000-000000000002" title="SeekFlow">SeekFlow</a>,</bdi></td>
+                        <td>CD</td>
+                        <td>4</td>
+                        <td><div class="release-events-container"><ul aria-label="Release events" class="release-events abbreviated"><li aria-label="Release event" class="release-event"><span class="flag flag-US release-country"><a href="/area/489ce91b-6658-3307-9877-795b68554c98"><abbr title="United States">US</abbr></a></span><span class="release-date">2020-01-01</span></li></ul></div></td>
+                        <td><a href="/label/011d1192-6f65-45bd-85c4-0400dd45693e"><bdi>Columbia</bdi></a></td>
+                        <td><span class="catalog-number">COL A</span></td>
+                        <td class="barcode-cell">[none]</td>
+                    </tr>
+                    <tr class="even">
+                        <td><input type="checkbox" name="add-to-merge" value="2"></td>
+                        <td><a class="wrap-anywhere" href="/release/dddddddd-0000-4000-8000-000000000002"><bdi>Release B</bdi></a></td>
+                        <td><bdi><a href="/artist/11111111-0000-4000-8000-000000000003" title="Heuss l’enfoiré">Heuss l’enfoiré</a> &amp; <a href="/artist/11111111-0000-4000-8000-000000000004" title="Genezio">Genezio</a>feat.</bdi></td>
+                        <td>CD</td>
+                        <td>4</td>
+                        <td><div class="release-events-container"><ul aria-label="Release events" class="release-events abbreviated"><li aria-label="Release event" class="release-event"><span class="flag flag-US release-country"><a href="/area/489ce91b-6658-3307-9877-795b68554c98"><abbr title="United States">US</abbr></a></span><span class="release-date">2020-01-01</span></li></ul></div></td>
+                        <td><a href="/label/011d1192-6f65-45bd-85c4-0400dd45693e"><bdi>Columbia</bdi></a></td>
+                        <td><span class="catalog-number">COL B</span></td>
+                        <td class="barcode-cell">[none]</td>
+                    </tr>
+                    <tr class="odd">
+                        <td><input type="checkbox" name="add-to-merge" value="3"></td>
+                        <td><a class="wrap-anywhere" href="/release/dddddddd-0000-4000-8000-000000000003"><bdi>Release C</bdi></a></td>
+                        <td><bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Springsteen, Bruce">Bruce Springsteen</a> &amp; <a href="/artist/d6652e7b-33fe-49ef-8336-4c863b4f996f" title="E Street Band, The">The E Street Band</a></bdi></td>
+                        <td>CD</td>
+                        <td>4</td>
+                        <td><div class="release-events-container"><ul aria-label="Release events" class="release-events abbreviated"><li aria-label="Release event" class="release-event"><span class="flag flag-US release-country"><a href="/area/489ce91b-6658-3307-9877-795b68554c98"><abbr title="United States">US</abbr></a></span><span class="release-date">2020-01-01</span></li></ul></div></td>
+                        <td><a href="/label/011d1192-6f65-45bd-85c4-0400dd45693e"><bdi>Columbia</bdi></a></td>
+                        <td><span class="catalog-number">COL C</span></td>
+                        <td class="barcode-cell">[none]</td>
+                    </tr>
+                    <tr class="even">
+                        <td><input type="checkbox" name="add-to-merge" value="4"></td>
+                        <td><a class="wrap-anywhere" href="/release/dddddddd-0000-4000-8000-000000000004"><bdi>Release D</bdi></a></td>
+                        <td><bdi><span class="name-variation"><a href="/artist/e5d299ba-e587-43e2-8795-aa8eee0cb2f3" title="Die Traktor">Die Traktor</a></span> feat. <span class="name-variation"><a href="/artist/11111111-0000-4000-8000-000000000005" title="Jochen Till">Jochen Till</a></span></bdi></td>
+                        <td>CD</td>
+                        <td>4</td>
+                        <td><div class="release-events-container"><ul aria-label="Release events" class="release-events abbreviated"><li aria-label="Release event" class="release-event"><span class="flag flag-US release-country"><a href="/area/489ce91b-6658-3307-9877-795b68554c98"><abbr title="United States">US</abbr></a></span><span class="release-date">2020-01-01</span></li></ul></div></td>
+                        <td><a href="/label/011d1192-6f65-45bd-85c4-0400dd45693e"><bdi>Columbia</bdi></a></td>
+                        <td><span class="catalog-number">COL D</span></td>
+                        <td class="barcode-cell">[none]</td>
+                    </tr>
+                    <tr class="odd">
+                        <td><input type="checkbox" name="add-to-merge" value="5"></td>
+                        <td><a class="wrap-anywhere" href="/release/dddddddd-0000-4000-8000-000000000005"><bdi>Release E</bdi></a></td>
+                        <td><bdi><span class="name-variation"><a href="/artist/e5d299ba-e587-43e2-8795-aa8eee0cb2f3" title="Die Traktor">Die Traktor</a></span> feat.</bdi></td>
+                        <td>CD</td>
+                        <td>4</td>
+                        <td><div class="release-events-container"><ul aria-label="Release events" class="release-events abbreviated"><li aria-label="Release event" class="release-event"><span class="flag flag-US release-country"><a href="/area/489ce91b-6658-3307-9877-795b68554c98"><abbr title="United States">US</abbr></a></span><span class="release-date">2020-01-01</span></li></ul></div></td>
+                        <td><a href="/label/011d1192-6f65-45bd-85c4-0400dd45693e"><bdi>Columbia</bdi></a></td>
+                        <td><span class="catalog-number">COL E</span></td>
+                        <td class="barcode-cell">[none]</td>
+                    </tr>
+                    <tr class="even">
+                        <td><input type="checkbox" name="add-to-merge" value="6"></td>
+                        <td><a class="wrap-anywhere" href="/release/dddddddd-0000-4000-8000-000000000006"><bdi>Release F</bdi></a></td>
+                        <td><bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Springsteen, Bruce">Bruce Springsteen</a></bdi> <span class="small">(<a href="/artist-credit/1572342">see uses</a>)</span></td>
+                        <td>CD</td>
+                        <td>4</td>
+                        <td><div class="release-events-container"><ul aria-label="Release events" class="release-events abbreviated"><li aria-label="Release event" class="release-event"><span class="flag flag-US release-country"><a href="/area/489ce91b-6658-3307-9877-795b68554c98"><abbr title="United States">US</abbr></a></span><span class="release-date">2020-01-01</span></li></ul></div></td>
+                        <td><a href="/label/011d1192-6f65-45bd-85c4-0400dd45693e"><bdi>Columbia</bdi></a></td>
+                        <td><span class="catalog-number">COL F</span></td>
+                        <td class="barcode-cell">[none]</td>
+                    </tr>
+                    <tr class="odd">
+                        <td><input type="checkbox" name="add-to-merge" value="7"></td>
+                        <td><a class="wrap-anywhere" href="/release/dddddddd-0000-4000-8000-000000000007"><bdi>Release G</bdi></a></td>
+                        <td><bdi><a href="/artist/11111111-0000-4000-8000-000000000006" title="宮之上貴昭">宮之上貴昭</a>,</bdi></td>
+                        <td>CD</td>
+                        <td>4</td>
+                        <td><div class="release-events-container"><ul aria-label="Release events" class="release-events abbreviated"><li aria-label="Release event" class="release-event"><span class="flag flag-US release-country"><a href="/area/489ce91b-6658-3307-9877-795b68554c98"><abbr title="United States">US</abbr></a></span><span class="release-date">2020-01-01</span></li></ul></div></td>
+                        <td><a href="/label/011d1192-6f65-45bd-85c4-0400dd45693e"><bdi>Columbia</bdi></a></td>
+                        <td><span class="catalog-number">COL G</span></td>
+                        <td class="barcode-cell">[none]</td>
+                    </tr>
+                    <tr class="even">
+                        <td><input type="checkbox" name="add-to-merge" value="8"></td>
+                        <td><a class="wrap-anywhere" href="/release/dddddddd-0000-4000-8000-000000000008"><bdi>Release H</bdi></a></td>
+                        <td><bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Springsteen, Bruce">Bruce Springsteen</a></bdi></td>
+                        <td>CD</td>
+                        <td>4</td>
+                        <td><div class="release-events-container"><ul aria-label="Release events" class="release-events abbreviated"><li aria-label="Release event" class="release-event"><span class="flag flag-US release-country"><a href="/area/489ce91b-6658-3307-9877-795b68554c98"><abbr title="United States">US</abbr></a></span><span class="release-date">2020-01-01</span></li></ul></div></td>
+                        <td><a href="/label/011d1192-6f65-45bd-85c4-0400dd45693e"><bdi>Columbia</bdi></a></td>
+                        <td><span class="catalog-number">COL H</span></td>
+                        <td class="barcode-cell">[none]</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
