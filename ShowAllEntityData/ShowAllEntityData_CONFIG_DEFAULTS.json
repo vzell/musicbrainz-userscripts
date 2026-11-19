@@ -3,10 +3,10 @@
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
     "script_version": "9.99.1659+2026-11-19",
-    "schema_entries": 557,
+    "schema_entries": 558,
     "sections": 54,
-    "settings": 503,
-    "settings_with_default": 498,
+    "settings": 504,
+    "settings_with_default": 499,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 326,
+      "checkbox": 327,
       "color_picker": 62,
       "divider": 54,
       "number": 53,
@@ -281,6 +281,7 @@
     "sa_bb_tag_family_cast": "Also check a Brucebase show's cast tags",
     "sa_bb_tag_family_content": "Also check a Brucebase show's content tags",
     "sa_bb_tag_family_place": "Also check a Brucebase show's place tags",
+    "sa_bb_tag_family_songs": "Also check a Brucebase show's song tags",
     "sa_bb_tag_family_tour": "Also check a Brucebase show's tour tag",
     "sa_bb_tip_images": "Media icons and song glyphs: the page's images on hover",
     "sa_bb_year_pages": "Enable on the Brucebase year pages (event lists)",
@@ -786,6 +787,7 @@
     "sa_bb_tag_family_cast": false,
     "sa_bb_tag_family_content": false,
     "sa_bb_tag_family_place": false,
+    "sa_bb_tag_family_songs": false,
     "sa_bb_tag_family_tour": false,
     "sa_bb_tip_images": true,
     "sa_bb_year_pages": true,

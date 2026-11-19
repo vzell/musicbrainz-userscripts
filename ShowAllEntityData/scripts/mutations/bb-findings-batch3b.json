@@ -134,8 +134,8 @@
         "why": "The card says why the tour is not checked.",
         "edits": [
             {
-                "find": "        if (!facts || facts.page || _bbFeedTables()) return '';",
-                "replace": "        if (!facts || facts.page || _bbFeedTables() || facts) return '';"
+                "find": "        const tables = !!_bbFeedTables();\n        const what = tables ? [] : [",
+                "replace": "        const tables = true;\n        const what = tables ? [] : ["
             }
         ],
         "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
@@ -160,7 +160,7 @@
         "why": "_bbFeedMapsWanted() adds tagTables while the family is on.",
         "edits": [
             {
-                "find": "        return _bbTagTableFamiliesOn() ? _BB_FEED_MAPS.concat('tagTables') : _BB_FEED_MAPS;",
+                "find": "        return _BB_FEED_MAPS.concat('tagTables', _bbTagSongsOn() ? ['songTags'] : [], _bbTagPlaceOn() ? ['venueTags'] : []);",
                 "replace": "        return _BB_FEED_MAPS;"
             }
         ],
@@ -173,8 +173,8 @@
         "why": "With every family off a kept 1.3 file is not read again for them.",
         "edits": [
             {
-                "find": "        return _bbTagTableFamiliesOn() ? _BB_FEED_MAPS.concat('tagTables') : _BB_FEED_MAPS;",
-                "replace": "        return _BB_FEED_MAPS.concat('tagTables');"
+                "find": "        if (!_bbTagTableFamiliesOn()) return _BB_FEED_MAPS;\n        return _BB_FEED_MAPS.concat(",
+                "replace": "        return _BB_FEED_MAPS.concat("
             }
         ],
         "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
@@ -355,8 +355,8 @@
         "why": "The card names every family it cannot check.",
         "edits": [
             {
-                "find": "        const what = [_bbTagTourOn() && _bbTagTourApplies(facts) ? 'tour' : '', _bbTagPlaceOn() ? 'place' : '',",
-                "replace": "        const what = [_bbTagTourOn() && _bbTagTourApplies(facts) ? 'tour' : '', '',"
+                "find": "_bbTagPlaceOn() ? 'place' : '',\n            _bbTagCastOn() && facts.cast ? 'cast' : ''].filter(Boolean);",
+                "replace": "'',\n            _bbTagCastOn() && facts.cast ? 'cast' : ''].filter(Boolean);"
             }
         ],
         "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
@@ -368,8 +368,8 @@
         "why": "Only the feed reread and the repaint read _bbTagTableFamiliesOn(); no place spec has a late feed, the tour spec covers both paths. Known overlap, recorded.",
         "edits": [
             {
-                "find": "        return _bbTagTourOn() || _bbTagPlaceOn() || _bbTagCastOn();",
-                "replace": "        return _bbTagTourOn() || _bbTagCastOn();"
+                "find": "        return _bbTagTourOn() || _bbTagPlaceOn() || _bbTagCastOn() || _bbTagSongsOn();",
+                "replace": "        return _bbTagTourOn() || _bbTagCastOn() || _bbTagSongsOn();"
             }
         ],
         "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
@@ -511,8 +511,8 @@
         "why": "It names the families checked.",
         "edits": [
             {
-                "find": "                _bbTagContentOn() && facts.content ? 'content' : '', tables && _bbTagCastOn() && facts.cast ? 'cast' : ''].filter(Boolean);",
-                "replace": "                '', tables && _bbTagCastOn() && facts.cast ? 'cast' : ''].filter(Boolean);"
+                "find": "                _bbTagContentOn() && facts.content ? 'content' : '', tables && _bbTagCastOn() && facts.cast ? 'cast' : '',",
+                "replace": "                '', tables && _bbTagCastOn() && facts.cast ? 'cast' : '',"
             }
         ],
         "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
@@ -654,8 +654,8 @@
         "why": "It names the families checked.",
         "edits": [
             {
-                "find": "tables && _bbTagCastOn() && facts.cast ? 'cast' : ''].filter(Boolean);",
-                "replace": "''].filter(Boolean);"
+                "find": "facts.content ? 'content' : '', tables && _bbTagCastOn() && facts.cast ? 'cast' : '',",
+                "replace": "facts.content ? 'content' : '', '',"
             }
         ],
         "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
@@ -673,6 +673,149 @@
         ],
         "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
         "grep": "Chicago 2016: \"as expected\" names the cast",
+        "expect": "fail"
+    },
+    {
+        "name": "songs: the switch is always on",
+        "why": "sa_bb_tag_family_songs is off by default (vzell, 2026-11-19).",
+        "edits": [
+            {
+                "find": "        return Lib.settings.sa_bb_tag_family_songs === true;",
+                "replace": "        return Lib.settings.sa_bb_tag_family_songs !== 'never';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "songs off, a feed without its tables or its song map",
+        "expect": "fail"
+    },
+    {
+        "name": "songs: a song outside the map is checked by its title",
+        "why": "Only the map's songs, those the wiki tags reliably (vzell).",
+        "edits": [
+            {
+                "find": "            const tags = map[page];\n            if (!Array.isArray(tags) || !tags.length) return;",
+                "replace": "            const tags = map[page] || _bbTagSongTitleTags(text, page);\n            if (!Array.isArray(tags) || !tags.length) return;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "the feed decides: a song outside its map is not checked",
+        "expect": "fail"
+    },
+    {
+        "name": "songs: the map's other tags do not count",
+        "why": "\"borntorun\" counts for Born to Run as well as \"btr\".",
+        "edits": [
+            {
+                "find": "            const alts = tags.slice(1).concat(_bbTagSongTitleTags(text, page), extra.get(page));",
+                "replace": "            const alts = _bbTagSongTitleTags(text, page).concat(extra.get(page));"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "a song counts under the map's other tags and under its link's title",
+        "expect": "fail"
+    },
+    {
+        "name": "songs: the link's title tags do not count",
+        "why": "The link's own title as a tag counts too.",
+        "edits": [
+            {
+                "find": "            const alts = tags.slice(1).concat(_bbTagSongTitleTags(text, page), extra.get(page));",
+                "replace": "            const alts = tags.slice(1).concat(extra.get(page));"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "a song counts under the map's other tags and under its link's title",
+        "expect": "fail"
+    },
+    {
+        "name": "songs: songCombos ignored",
+        "why": "A medley the feed names counts through its combined tag.",
+        "edits": [
+            {
+                "find": "            const combo = combos[line.map(x => x.text).join(' - ').toLowerCase().trim()];",
+                "replace": "            const combo = '';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "the feed decides: a song outside its map is not checked",
+        "expect": "fail"
+    },
+    {
+        "name": "songs: every link a line of its own",
+        "why": "A medley's songs share a line (its li).",
+        "edits": [
+            {
+                "find": "            const key = li && li !== box && box.contains(li) ? li : a;",
+                "replace": "            const key = a;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "the feed decides: a song outside its map is not checked",
+        "expect": "fail"
+    },
+    {
+        "name": "songs: a missing chip in the Other row",
+        "why": "The Songs row is where the tag sits when the page has it.",
+        "edits": [
+            {
+                "find": "cast: 'person', song: 'song',",
+                "replace": "cast: 'person', song: 'other',"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "Brisbane 2013",
+        "expect": "fail"
+    },
+    {
+        "name": "songs: \"as expected\" never names the songs",
+        "why": "It names the families checked.",
+        "edits": [
+            {
+                "find": "                tables && _bbTagSongsOn() && _bbFeedMap('songTags') && Array.isArray(facts.songs) && facts.songs.length ? 'song' : ''].filter(Boolean);",
+                "replace": "                ''].filter(Boolean);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "Chicago 2016: \"as expected\" names the songs",
+        "expect": "fail"
+    },
+    {
+        "name": "songs: the wait line leaves the songs out",
+        "why": "The card names every family it cannot check.",
+        "edits": [
+            {
+                "find": "        if (_bbTagSongsOn() && Array.isArray(facts.songs) && facts.songs.length && (!tables || !_bbFeedMap('songTags'))) what.push('song');",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "Chicago 2016: \"as expected\" names the songs",
+        "expect": "fail"
+    },
+    {
+        "name": "venue: not checked",
+        "why": "The show's venue page's tag (the feed's venueTags).",
+        "edits": [
+            {
+                "find": "        if (Array.isArray(vt) && vt.length) {\n            out.push({ tag: vt[0], family: 'place',",
+                "replace": "        if (Array.isArray(vt) && vt.length && !vt) {\n            out.push({ tag: vt[0], family: 'place',"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "the venue: the place family expects the venue page's tag",
+        "expect": "fail"
+    },
+    {
+        "name": "venue: the facts lack the venue page",
+        "why": "_bbTagFacts() keeps the \"Venue\" link's page.",
+        "edits": [
+            {
+                "find": "        const m = a ? /^\\/(venue:[^/#?]+)/.exec(a.getAttribute('href') || '') : null;",
+                "replace": "        const m = null;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
+        "grep": "the venue: the place family expects the venue page's tag",
         "expect": "fail"
     }
 ]

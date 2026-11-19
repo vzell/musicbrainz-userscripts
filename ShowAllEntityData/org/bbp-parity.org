@@ -34,9 +34,9 @@ State: DONE (SAED has it), PART, TODO, NOT (not ported, with the reason).
 | Expected tags: content: news, memorabilia, bootleg, livedl, soundcheck, …    | =computeExpectedTags= table                     | not ported: the wiki does not tag them by a rule the page shows (probe)               | NOT   |    3b |
 | Expected tags: tour premiere count + prem                                    | =countTourPremiereSongs=                        | same two findings                                                                     | DONE  |     3 |
 | Expected tags: tour association                                              | =checkEventTourTags=, =TOUR_DEFINITIONS=        | the tour family (=sa_bb_tag_family_tour=, off), the table in the feed: 49 shows       | DONE  |    3b |
-| Expected tags: location (title / venue)                                      | =checkEventNameLocationTags= …                  | the place family (=…_place=, off): city, state, country, regions; venue: feed map     | PART  |    3b |
+| Expected tags: location (title / venue)                                      | =checkEventNameLocationTags= …                  | the place family (=…_place=, off): city, state, country, regions, venue (feed map)    | DONE  |    3b |
 | Expected tags: relations of the cast tab                                     | =checkOnStageRelationTags=                      | the cast family (=…_cast=, off): onstage, names; studio and guest not checked         | DONE  |    3b |
-| Expected tags: setlist songs                                                 | =checkSetlistSongTags=, =computeSongTagAlias=   | 1,114 shows as it is (the initials rule): to tune                                     | TODO  |    3b |
+| Expected tags: setlist songs                                                 | =checkSetlistSongTags=, =computeSongTagAlias=   | the songs family (=…_songs=, off): the feed's song map, the link's title; 465 shows   | DONE  |    3b |
 | Spurious tags (present, not expected)                                        | =SPURIOUS_TAG_REASONS=                          | =bb-tag-spurious=: batch 3, tour; content: storyteller, eyewitness                    | DONE  |  3/3b |
 | Tag source highlight (which text made a tag expected)                        | doc/TAGS.md, opt-in                             | NOT (vzell, 2026-11-19): each finding says its reason in words, in the cell and card  | NOT   |    3b |
 | VENUE / SONG / RELATION / RETAIL page tag checks                             | =annotate*PageTags=                             | Tags card + window: kind, letter, banner, song title; dates/place/names left out      | PART  |     4 |
@@ -1076,5 +1076,53 @@ First: ⚙️ Settings → "Also check a Brucebase show's cast tags" on ("Show t
 | https://brucebase.wikidot.com/recording:1979-06-21-power-station-new-york-city-ny      | press                                                             | "flo missing" and "eddie missing" (Flo & Eddie)                                            |
 | https://brucebase.wikidot.com/1969                                                     | Show all events, ▶ Pages                                          | the rows without an On stage page ❌ on Tags ("onstage")                                    |
 | the Wanamassa page again                                                               | "Show the tags kept on a show's On stage page" off, reload, press | no cast mark                                                                               |
+
+Unverified: all of it in a real browser.
+
+** The songs family (=sa_bb_tag_family_songs=, off by default) and the place family's venue
+
+*Decisions (vzell, 2026-11-19):* the setlist link AND a song→tag map from the feed; only songs whose map tags at least
+90 % of their shows carry; only linked songs; a medley the feed's =songCombos= names counts through its tag; the venue
+through a venue→tag map from the feed.
+
+*The maps* (=scripts/probe-bb-page-tag-maps.py=; BruceParser 0.23.0 =tag-maps.awk=, feed 1.5, not published): a
+song is often tagged two ways, both only on its shows (Born to Run =btr= 1,618 shows, =borntorun= 295), so a song's
+map is every own tag with precision ≥ 0.9, most carried first; a venue's tag can be shared by two venue pages, so a
+venue keeps its best-F1 tag. Kind, letter, number, tour, release (=r_=), playlist (=pl_=) and date tags are no
+candidates. The link's title alone covers 54 % of 61,372 linked songs, the map 96.8 %, both 97.5 %; the venue map
+4,970 of 4,983 shows. The feed keeps 1,188 songs and 1,558 venues (354 KB, 71 KB compressed). BruceParser's maps equal
+the probe's but one song (linked only from a page without tabs).
+
+*Counted on the way:* the threshold variants (every linked song 870 shows, ≥ 80 % 530, ≥ 90 % 391 with single tags);
+with the tag sets the decided ≥ 90 % flags *465 shows, 825 missing song tags* (more songs now reach it: Born to Run
+counts). =songCombos= changes nothing on today's data: People Get Ready's map already holds =lohad.pgr=.
+
+*The venue:* the place family now flags *45 shows* (35 + 10 with only the venue missing: Forest National 1981, Tower
+Theater 1995, five Stone Hill Farm interviews, …).
+
+*Built:* =_bbTagSongGroups()=, =_bbTagVenueFact()= (facts, =_DP_PARSER_VERSION= 36), =_bbFeedMap()=,
+=_bbTagSongsExpected()= (judges presence itself: two pages can share a map's first tag), the venue in
+=_bbTagPlaceExpected()=; the feed's =songTags= and =venueTags= wanted with their families. +8.2 kB in the userscript
+(batch 3b in all +39.3 kB, about 0.4 %).
+
+*Tests* (NB-3641, 2026-11-19): =check-bb-batch3b-findings.js --family song=: 0 differences, 465 flagged; =--family
+place=: 0, 45; the batch 3 checker 0 with the venue and the songs in the facts; 0 in every quiet pass.
+=bb-findings-batch3b.spec.js= 7 new on five more real pages and one On stage page, with edited maps for the medley and
+the alternatives; 11 new mutations, 7 older finds moved; the first run let 2 pass (no fixture show relied on a map's
+second tag or a link's title alone), a test with edited map entries closed both.
+
+** The browser check of the songs family and the venue, for vzell (pages of the mirror of 2026-11-19)
+
+First: the feed 1.5 must be on GitHub (BruceParser 0.23.0, =./publish-feed.sh -r 2026-11-19=, your call), then the ☰
+menu's Brucebase "Read again"; ⚙️ Settings → "Also check a Brucebase show's song tags" on (and "… place tags" for the
+venue rows).
+
+| URL                                                                                     | Step                     | What should appear                                                         |
+|-----------------------------------------------------------------------------------------+--------------------------+----------------------------------------------------------------------------|
+| https://brucebase.wikidot.com/gig:2013-03-14-entertainment-centre-brisbane-australia    | press, wait for On stage | Tags card, Songs row: "highhopes missing", "night missing", "tess missing" |
+| https://brucebase.wikidot.com/gig:1975-02-23-music-fair-westbury-ny                     | press, wait for On stage | "dtbsa82s missing"                                                         |
+| https://brucebase.wikidot.com/gig:2014-01-26-bellville-velodrome-cape-town-south-africa | press, wait for On stage | only "jlfw missing": the LOHAD medley counts                               |
+| https://brucebase.wikidot.com/gig:1981-04-26-forest-national-brussels-belgium           | place tags on, press     | "forestnational missing" in the Place row                                  |
+| https://brucebase.wikidot.com/2013                                                      | Show all events, ▶ Pages | the Australian rows of March ❌ on Tags (song tags)                         |
 
 Unverified: all of it in a real browser.

@@ -10,6 +10,7 @@
  *   --family place  scripts/probe-bb-place-tags.py ROWS TABLES --json RULE  (sa_bb_tag_family_place)
  *   --family content  scripts/probe-bb-content-tags.py ROWS --json RULE      (sa_bb_tag_family_content)
  *   --family cast     scripts/probe-bb-cast-tags.py ROWS --json RULE         (sa_bb_tag_family_cast)
+ *   --family song     scripts/probe-bb-page-tag-maps.py ROWS --feed FEED --rule-json RULE (sa_bb_tag_family_songs)
  *
  * Per event, in the real userscript loaded through the test harness:
  * `__saTest.bbTagFacts()` on the page, its own tags from the link previews'
@@ -33,9 +34,9 @@ const path = require('path');
 const { chromium } = require('@playwright/test');
 const { loadUserscriptPage } = require('../tests/support/loadPage');
 
-const FAMILIES = { tour: 'sa_bb_tag_family_tour', place: 'sa_bb_tag_family_place', content: 'sa_bb_tag_family_content', cast: 'sa_bb_tag_family_cast' };
+const FAMILIES = { tour: 'sa_bb_tag_family_tour', place: 'sa_bb_tag_family_place', content: 'sa_bb_tag_family_content', cast: 'sa_bb_tag_family_cast', song: 'sa_bb_tag_family_songs' };
 /** The families that read the feed's tables. */
-const FEED_FAMILIES = new Set(['tour', 'place', 'cast']);
+const FEED_FAMILIES = new Set(['tour', 'place', 'cast', 'song']);
 const args = process.argv.slice(2);
 const opt = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : null; };
 const valued = new Set(['--mirror', '--family'].map(o => args.indexOf(o) + 1).filter(i => i > 0));
@@ -110,7 +111,7 @@ async function findings(page, rows) {
 
 (async () => {
     if (!ROWS || !RULE || !FEED || !FAMILIES[FAMILY]) {
-        console.error('usage: node scripts/check-bb-batch3b-findings.js --family tour|place|content|cast ROWS.json RULE.json FEED.json [--mirror DIR]');
+        console.error('usage: node scripts/check-bb-batch3b-findings.js --family tour|place|content|cast|song ROWS.json RULE.json FEED.json [--mirror DIR]');
         process.exit(2);
     }
     const key = FAMILIES[FAMILY];

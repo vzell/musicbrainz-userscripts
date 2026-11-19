@@ -821,6 +821,38 @@ def cast_facts(doc, tabs):
     return {'tab': entry, 'names': list(dict.fromkeys(n for n, _ in relations(doc)))}
 
 
+def venue_fact(doc):
+    """Batch 3b: the show's venue page name ("venue:…") from its "Venue" link, '' without one."""
+    pc = by_id(doc, 'page-content') or doc
+    for a in pc.find_all('a', lambda a: '/venue:' in (a.attrs.get('href') or '')):
+        if strip(a.text()) == 'Venue':
+            m = re.match(r'^/(venue:[^/#?]+)', a.attrs.get('href') or '')
+            return m.group(1) if m else ''
+    return ''
+
+
+def song_groups(doc):
+    """Batch 3b: the setlist's song links by line: [[{page, text}, …], …] in order (BBP's container)."""
+    cont = setlist_container(doc)
+    if cont is None:
+        return []
+    groups = []
+    keys = {}
+    for a in song_links(cont):
+        m = re.match(r'^/(song:[^/#?]+)', a.attrs.get('href') or '')
+        if not m:
+            continue
+        li = a.parent
+        while li is not None and li is not cont and li.tag != 'li':
+            li = li.parent
+        key = id(li) if li is not None and li is not cont else id(a)
+        if key not in keys:
+            keys[key] = len(groups)
+            groups.append([])
+        groups[keys[key]].append({'page': m.group(1), 'text': strip(a.text())})
+    return groups
+
+
 def notes_text(node):
     """textContent without script elements."""
     out = []
@@ -1004,7 +1036,7 @@ def analyse(mirror, name, icons):
         'facts': {'title': title, 'kind': kind, 'date': date, 'letter': letter or '',
                   'prem': sum(1 for a in song_links(setlist_container(doc) or doc) if a.inside('strong')),
                   'help': help_page, 'featured': feat_page, 'content': content_facts(doc, tabs),
-                  'cast': cast_facts(doc, tabs)},
+                  'cast': cast_facts(doc, tabs), 'venue': venue_fact(doc), 'songs': song_groups(doc)},
         'dateDiffers': bool(am and date and am.group(1) != date),
         'helpYearOnly': (help_year and not help_page), 'featYearOnly': (feat_year and not feat_page),
         'venueDropped': place_venue_dropped, 'noTitleDate': not date,

@@ -2506,6 +2506,55 @@ its hand-edited `brucebase/tag-tables.json`; vzell, question 6), read by
   row's pages): 0 differences, 628 flagged; 0 with the setting off, a feed
   without tables, the feed off.
 
+**The song and venue maps** (feed 1.5, BruceParser 0.23.0 `tag-maps.awk`;
+`_bbFeedMap()`): a page → the tags the shows linking it carry. The probe
+(`scripts/probe-bb-page-tag-maps.py`, Env: 2026-11-19T20:50+01:00 · NB-3641
+· Python over bb/2026-11-19 · n/a) found two shapes:
+- **A song is often tagged two ways,** both only on its shows: Born to Run
+  "btr" (1,618 shows) and "borntorun" (295), Dancing in the Dark "ditd" and
+  "dancinginthedark". A song's map is every own tag with precision ≥ 0.9
+  (the share of all shows carrying it that link the song), most carried
+  first; its recall is that of any of them. The link's own title as a tag
+  alone covers 54 % of 61,372 linked songs; the map 96.8 %, both 97.5 %.
+- **A venue's tag can be shared by two venue pages** (the Stone Pony and
+  its Summer Stage), so a venue keeps its single best-F1 tag (4,970 of
+  4,983 shows carry it).
+- **Candidates:** a page's own tags without kind, letter, number, tour,
+  release (`r_`), playlist (`pl_`), month and weekday tags and a few
+  states ("lyricsheet", …). Derived from the show pages' own tags (the On
+  stage pages change no song and 2 of 1,558 venues), so BruceParser needs
+  no On stage logic; its maps equal the probe's but one song (linked only
+  from a page without tabs).
+- **The feed keeps** the songs whose tags ≥ 90 % of their shows carry
+  (vzell; 1,188 songs) and every venue (1,558). It grew to 354 KB as
+  written, 71 KB compressed.
+
+**The songs family** (`sa_bb_tag_family_songs`; `_bbTagSongsOn()`,
+`_bbTagSongGroups()`, `_bbTagSongsExpected()`):
+- **Decisions (vzell, 2026-11-19):** the setlist link AND the feed's map;
+  only the map's songs (the ≥ 90 % threshold); only linked songs (an
+  "unidentified title" is never checked); a medley the feed's `songCombos`
+  names counts through its combined tag.
+- **The facts** (`facts.songs`, `_DP_PARSER_VERSION` 36): the setlist
+  container's `/song:` links by line (`li`), a medley's songs on one line.
+- **The rule:** each linked page once; a page in the map expects the map's
+  first tag, its other tags, the link's title tags (batch 4's
+  `_bbTagSongTitleTags()`) and a combination's tag counting too. The rule
+  judges presence itself (`all`) and returns only missing songs, each tag
+  named once, because two pages can share a map's first tag.
+- **Counts:** 465 shows, 825 missing song tags. On today's data
+  `songCombos` changes nothing (People Get Ready's map already holds
+  "lohad.pgr"); a test with an edited map pins it.
+- **Checks:** `check-bb-batch3b-findings.js --family song`: 0 differences,
+  465 flagged; 0 with the setting off, a feed without tables, the feed off.
+
+**The place family's venue** (feed 1.5): `facts.venue`, the page of the
+show's "Venue" link (`_bbTagVenueFact()`), → the feed's `venueTags`, after
+the title's parts (`_bbTagPlaceExpected()` around `_bbTagPlaceTitleExpected()`;
+checked also when the title has no place parts). 45 shows now (35 + 10 with
+only the venue missing; e.g. 1981-04-26 Forest National, 1995-12-08 Tower
+Theater, five Stone Hill Farm interviews).
+
 ## BruceBaseParser on the same page (bbp-parity, "Coexistence", 2026-11-19)
 
 org/bbp-parity.org, "Closing the matrix"; mockup

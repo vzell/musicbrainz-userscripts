@@ -40,8 +40,8 @@ left out by decision), NOT (not done, with the reason).
 | Idea 2, the help-icon check                              | DONE  | 9.99.1636–1637      | "The help-icon check …"                               |
 | Idea 2, batch 4: venue, song, relation, release tags     | PART  | 9.99.1652           | "Batch 4: the page tag checks …"                      |
 | Idea 2, closing the matrix (coexistence, HOME row)       | DONE  | 9.99.1653–1658      | "Closing the matrix …"                                |
-| Idea 2, batch 3b: the five noisy tag families            | NEXT  | WIP (4 of 5 built)  | "Batch 3b: …"                                         |
-| Idea 3: the lookup tables into the feed                  | PART  | BruceParser 0.22.1  | "Batch 3b: …" (=tagTables=; the venue and song maps)  |
+| Idea 2, batch 3b: the five noisy tag families            | NEXT  | WIP (5 of 5 built)  | "Batch 3b: …"                                         |
+| Idea 3: the lookup tables into the feed                  | DONE  | BruceParser 0.23.0  | "Batch 3b: …" (=tagTables=, =songTags=, =venueTags=)  |
 | Idea 4, feed v1                                          | DONE  | 9.99.1638           | "The feed, version 1 …"                               |
 | Idea 4, feed v2 branch 1: date tags, the "files" tag     | DONE  | 9.99.1642           | "Feed v2, branch 1 …"                                 |
 | Idea 4, lettered date anchors                            | DONE  | 9.99.1644           | —                                                     |
@@ -305,14 +305,19 @@ and the songs' medleys) and its real cases; a family's switch comes with its rul
 - *Cast* (WIP.4, =sa_bb_tag_family_cast=): vzell, 2026-11-19: an On Stage tab without an On stage page is ONE finding
   ("onstage" alone); every listed name, its dotted form counting; =onstage= only, =studio= and =guest= not checked.
   628 shows flagged (475 for the missing On stage page).
-- *Next:* songs (question 3, decided: the setlist link and the feed's =songTags=) together with the place family's
-  venue map (=venueTags=): one BruceParser change for both maps, then the two SAED parts. Then the closing steps
-  (=test:full=, the render ratio, the browser check of all of 3b, the merge on vzell's word).
+- *Songs and the venue* (WIP.5, =sa_bb_tag_family_songs=; the venue in the place family): BruceParser 0.23.0
+  (=tag-maps.awk=, feed 1.5 =songTags=, =venueTags=; committed, not published). vzell, 2026-11-19: only songs whose
+  tags ≥ 90 % of their shows carry, only linked songs, =songCombos= for medleys, the venue through the feed. A song's
+  map is a tag SET (=btr=, =borntorun=). 465 shows flagged for songs; the place family 45 with the venue.
+- *All five families are built.* Next, the closing steps: publish feed 1.5 (vzell's call), =test:full=, the render
+  ratio against =main=, the browser check of all of 3b (=org/bbp-parity.org=, "Batch 3b", five lists), the merge on
+  vzell's word.
 
-** PART Idea 3: the lookup tables into the feed
+** DONE Idea 3: the lookup tables into the feed
 
 Decided with batch 3b's question 6 (vzell, 2026-11-19): in the feed. =tagTables= is published (feed 1.4, BruceParser
-0.22.0); =songTags=, the song→tag map, comes with the songs family. See "Batch 3b" above.
+0.22.0, 1.4.1 with 0.22.1); =songTags= and =venueTags= came with BruceParser 0.23.0 (feed 1.5, =tag-maps.awk=).
+See "Batch 3b" above.
 
 ** Idea 4: BruceParser's reports through the feed
 

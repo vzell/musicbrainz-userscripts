@@ -3205,7 +3205,8 @@
             default: false,
             description: 'With the two settings above: a show should carry tags for the city, the US state or ' +
                          'Canadian province ("newjersey(nj)") and the country its title names ("usa" after a ' +
-                         'state), and "europe" or "oceania" for a country there. A few names the wiki tags its ' +
+                         'state), and "europe" or "oceania" for a country there, and its venue\'s tag (the venue ' +
+                         'page\'s, from the Brucebase feed\'s venue map). A few names the wiki tags its ' +
                          'own way ("West Germany" as "germany") and the regions come from the Brucebase feed ' +
                          '(setting "Read the Brucebase feed"), which BruceParser keeps; without the feed the ' +
                          'place is not checked and the Tags card says so. A place tag is never called not ' +
@@ -3241,6 +3242,19 @@
                          'Band\'s dotted names and other aliases come from the Brucebase feed, without which the cast ' +
                          'is not checked. A cast tag is never called not expected. Off by default while the families ' +
                          'are tuned (org/springsteen-marriage.org, batch 3b).'
+        },
+
+        sa_bb_tag_family_songs: {
+            label: 'Also check a Brucebase show\'s song tags',
+            type: 'checkbox',
+            default: false,
+            description: 'With the two settings above: every song its setlist links should have its tag, as the ' +
+                         'Brucebase feed\'s song map names it ("btr" or "borntorun" for Born to Run: the tags the ' +
+                         'shows of a song carry). The link\'s own title as a tag counts too, and a medley the feed ' +
+                         'names ("Land Of Hope And Dreams - People Get Ready") its combined tag. Only songs whose ' +
+                         'tag the wiki uses on at least 9 of 10 of their shows are checked, and only linked songs. ' +
+                         'Without the feed the songs are not checked. A song tag is never called not expected. Off by ' +
+                         'default while the families are tuned (org/springsteen-marriage.org, batch 3b).'
         },
 
         sa_findings_tint_bb_tags: {
@@ -28258,13 +28272,15 @@
     /**
      * The feed's maps this script reads now: `_BB_FEED_MAPS`, and
      * `tagTables` (feed 1.4) while a tag family that needs it is on
-     * (`sa_bb_tag_family_tour`, `sa_bb_tag_family_place`; batch 3b). With every such family off a
+     * (`sa_bb_tag_family_tour`, `…_place`, `…_cast`, `…_songs`; batch 3b), and `songTags` (feed 1.5) with
+     * the songs family on, `venueTags` with the place family on. With every such family off a
      * kept 1.3 file is not read again for it.
      *
      * @returns {string[]}
      */
     function _bbFeedMapsWanted() {
-        return _bbTagTableFamiliesOn() ? _BB_FEED_MAPS.concat('tagTables') : _BB_FEED_MAPS;
+        if (!_bbTagTableFamiliesOn()) return _BB_FEED_MAPS;
+        return _BB_FEED_MAPS.concat('tagTables', _bbTagSongsOn() ? ['songTags'] : [], _bbTagPlaceOn() ? ['venueTags'] : []);
     }
 
     /**
@@ -28280,6 +28296,23 @@
         if (!_bbFeedOn()) return null;
         const t = _bbFeed.data && _bbFeed.data.tagTables;
         return t && typeof t === 'object' && Array.isArray(t.tours) ? t : null;
+    }
+
+    /**
+     * One of the feed's page maps (feed 1.5): `songTags` (a song page → the
+     * tags its shows carry, the first named when missing; songs whose tags
+     * at least 90 % of their shows carry) or `venueTags` (a venue page →
+     * its tag). BruceParser's `tag-maps.awk`. Null with the feed off or
+     * without the map.
+     *
+     * @param {string} name - 'songTags' or 'venueTags'.
+     * @returns {?Object<string, Array<string>>}
+     */
+    function _bbFeedMap(name) {
+        _bbFeedReadKept();
+        if (!_bbFeedOn()) return null;
+        const m = _bbFeed.data && _bbFeed.data[name];
+        return m && typeof m === 'object' && !Array.isArray(m) ? m : null;
     }
 
     /**
@@ -38413,7 +38446,51 @@
             featured: !!doc.querySelector('img.image[title="Featured"]'),
             content: _bbTagContentFacts(doc),
             cast: _bbTagCastFacts(doc),
+            venue: _bbTagVenueFact(doc),
+            songs: _bbTagSongGroups(box),
         };
+    }
+
+    /**
+     * A show's venue page for the place family's venue part (batch 3b): the
+     * page its "Venue" link names ("venue:stone-pony-asbury-park-nj", the
+     * link under the Scheduled block), '' without one.
+     *
+     * @param {Document} doc
+     * @returns {string}
+     */
+    function _bbTagVenueFact(doc) {
+        const pc = doc.getElementById('page-content') || doc;
+        const a = Array.from(pc.querySelectorAll('a[href*="/venue:"]')).find(x => (x.textContent || '').trim() === 'Venue');
+        const m = a ? /^\/(venue:[^/#?]+)/.exec(a.getAttribute('href') || '') : null;
+        return m ? m[1] : '';
+    }
+
+    /**
+     * A show's setlist song links by line for the songs family (batch 3b):
+     * the `/song:` links of BruceBaseParser's setlist container (the one the
+     * premiere count reads), each line (`li`) a group, a link outside a line
+     * a group of its own, in order: a medley's songs share a line.
+     *
+     * @param {?Element} box - The setlist container.
+     * @returns {Array<Array<{page: string, text: string}>>}
+     */
+    function _bbTagSongGroups(box) {
+        if (!box) return [];
+        const groups = [];
+        const keys = new Map();
+        box.querySelectorAll('a[href^="/song:"]').forEach((a) => {
+            const m = /^\/(song:[^/#?]+)/.exec(a.getAttribute('href') || '');
+            if (!m) return;
+            const li = a.closest('li');
+            const key = li && li !== box && box.contains(li) ? li : a;
+            if (!keys.has(key)) {
+                keys.set(key, groups.length);
+                groups.push([]);
+            }
+            groups[keys.get(key)].push({ page: m[1], text: (a.textContent || '').trim() });
+        });
+        return groups;
     }
 
     /** @type {string[]} The cast tabs in BruceBaseParser's order (`RELATION_TAB_CONFIGS`): the first a page has counts. */
@@ -38808,7 +38885,7 @@
      * (0 of 57), so its city is the part before. A name in the feed's
      * `placeTags` ("West Germany" → "germany") takes its tags from there,
      * the first named when missing (`alts`: the others count too). The
-     * venue waits for the feed's venue map. Probe
+     * venue: the show's "Venue" link through the feed's `venueTags`. Probe
      * (`scripts/probe-bb-place-tags.py`, bb/2026-11-19): the city carried
      * 99.7 %, the state 99.8 %, the country 99.2 %; 35 shows flagged. Null
      * when the family is off, the title has no place, or the feed has no
@@ -38821,10 +38898,30 @@
         if (!_bbTagPlaceOn() || !facts || facts.page) return null;
         const tables = _bbFeedTables();
         if (!tables) return null;
+        const out = _bbTagPlaceTitleExpected(facts, tables);
+        // The venue (feed 1.5): the show's "Venue" link → the venue page's
+        // tag in the feed's venueTags (4,970 of 4,983 shows carry it).
+        const venues = _bbFeedMap('venueTags');
+        const vt = venues && facts.venue ? venues[facts.venue] : null;
+        if (Array.isArray(vt) && vt.length) {
+            out.push({ tag: vt[0], family: 'place', why: `The show's venue page (${facts.venue}) is tagged "${vt[0]}" (the Brucebase feed's venue map).`, alts: vt.slice(1) });
+        }
+        return out;
+    }
+
+    /**
+     * The tags the places of a show's title call for (`_bbTagPlaceExpected()`,
+     * its title part); [] for a title without venue, city and last part.
+     *
+     * @param {Object} facts - `_bbTagFacts()`.
+     * @param {Object} tables - `_bbFeedTables()`.
+     * @returns {Array<{tag: string, family: string, why: string, alts: Array<string>}>}
+     */
+    function _bbTagPlaceTitleExpected(facts, tables) {
         const m = /^\d{4}-\d{2}-\d{2}\s+([\s\S]+)$/.exec(facts.title || '');
-        if (!m) return null;
+        if (!m) return [];
         const p = m[1].split(',').map(s => s.trim()).filter(Boolean);
-        if (p.length < 3) return null;
+        if (p.length < 3) return [];
         p[p.length - 1] = p[p.length - 1].replace(/\s*\([^)]*\)\s*$/, '').trim();
         const last = p[p.length - 1];
         const us = tables.usStates || {};
@@ -39013,12 +39110,73 @@
     }
 
     /**
-     * Whether a family that reads the feed's tables is on (tour, place, cast).
+     * Whether a show's song tags are checked (`sa_bb_tag_family_songs`;
+     * batch 3b, off by default while the families are tuned).
+     *
+     * @returns {boolean}
+     */
+    function _bbTagSongsOn() {
+        return Lib.settings.sa_bb_tag_family_songs === true;
+    }
+
+    /**
+     * The songs family of a show (batch 3b; vzell, 2026-11-19): every song
+     * its setlist links (`facts.songs`, by line), once, that the feed's
+     * `songTags` holds expects that map's first tag; the map's other tags,
+     * the link's own title as tags (batch 4's `_bbTagSongTitleTags()`) and,
+     * on a line the feed's `songCombos` names ("land of hope and dreams -
+     * people get ready" → "lohad.pgr"), the combination's tag count too.
+     * The map holds the songs whose tags at least 90 % of their shows carry
+     * (vzell): a song outside it, and an entry without a link ("unidentified
+     * title"), are not checked. Probe (`scripts/probe-bb-page-tag-maps.py`,
+     * bb/2026-11-19): the map's tags or the link's cover 97.5 % of 61,372
+     * linked songs. Each linked page is judged on its own and a missing tag
+     * named once (two pages can share a map's first tag): only the missing
+     * songs are returned. Null when the family is off or the feed lacks the
+     * map.
+     *
+     * @param {Object} facts - `_bbTagFacts()`.
+     * @param {Set<string>} all - The tags of every page of the show, lower case.
+     * @returns {?Array<{tag: string, family: string, why: string, alts: Array<string>}>}
+     */
+    function _bbTagSongsExpected(facts, all) {
+        if (!_bbTagSongsOn() || !facts || facts.page || !Array.isArray(facts.songs)) return null;
+        const map = _bbFeedMap('songTags');
+        const tables = _bbFeedTables();
+        if (!map || !tables) return null;
+        const combos = tables.songCombos || {};
+        const extra = new Map();
+        const order = [];
+        facts.songs.forEach((line) => {
+            const combo = combos[line.map(x => x.text).join(' - ').toLowerCase().trim()];
+            line.forEach((x) => {
+                if (!extra.has(x.page)) {
+                    extra.set(x.page, []);
+                    order.push(x);
+                }
+                if (combo && !extra.get(x.page).includes(combo)) extra.get(x.page).push(combo);
+            });
+        });
+        const out = [];
+        const named = new Set();
+        order.forEach(({ page, text }) => {
+            const tags = map[page];
+            if (!Array.isArray(tags) || !tags.length) return;
+            const alts = tags.slice(1).concat(_bbTagSongTitleTags(text, page), extra.get(page));
+            if (_bbTagPresent(tags[0], all) || alts.some(t => all.has(t)) || named.has(tags[0])) return;
+            named.add(tags[0]);
+            out.push({ tag: tags[0], family: 'song', why: `The setlist has "${text}" (the Brucebase feed's song map: ${tags.join(', ')}).`, alts });
+        });
+        return out;
+    }
+
+    /**
+     * Whether a family that reads the feed's tables is on (tour, place, cast, songs).
      *
      * @returns {boolean}
      */
     function _bbTagTableFamiliesOn() {
-        return _bbTagTourOn() || _bbTagPlaceOn() || _bbTagCastOn();
+        return _bbTagTourOn() || _bbTagPlaceOn() || _bbTagCastOn() || _bbTagSongsOn();
     }
 
     /**
@@ -39029,9 +39187,11 @@
      * @returns {string}
      */
     function _bbTagFamiliesWait(facts) {
-        if (!facts || facts.page || _bbFeedTables()) return '';
-        const what = [_bbTagTourOn() && _bbTagTourApplies(facts) ? 'tour' : '', _bbTagPlaceOn() ? 'place' : '',
+        if (!facts || facts.page) return '';
+        const tables = !!_bbFeedTables();
+        const what = tables ? [] : [_bbTagTourOn() && _bbTagTourApplies(facts) ? 'tour' : '', _bbTagPlaceOn() ? 'place' : '',
             _bbTagCastOn() && facts.cast ? 'cast' : ''].filter(Boolean);
+        if (_bbTagSongsOn() && Array.isArray(facts.songs) && facts.songs.length && (!tables || !_bbFeedMap('songTags'))) what.push('song');
         if (!what.length) return '';
         const list = what.length > 1 ? `${what.slice(0, -1).join(', ')} and ${what[what.length - 1]}` : what[0];
         const the = `The ${list} tag${what.length > 1 || what[0] !== 'tour' ? 's are' : ' is'}`;
@@ -39140,6 +39300,7 @@
         const content = _bbTagContentExpected(facts);
         if (content) expected.push(...content);
         expected.push(...(_bbTagCastExpected(facts, pages) || []));
+        expected.push(...(_bbTagSongsExpected(facts, all) || []));
         const want = new Set(expected.map(e => e.tag));
         for (const e of expected) {
             if (!_bbTagPresent(e.tag, all) && !(e.alts || []).some(a => all.has(a))) res.missing.push(e);
@@ -39481,7 +39642,7 @@
 
     /** The Tags card's row (`_BB_TAG_FAMILIES` key) a missing tag of a checked family is drawn in. */
     const _BB_TAGCHK_ROW = {
-        date: 'date', letter: 'letter', type: 'category', prem: 'material', icon: 'material', tour: 'tour', place: 'place', content: 'material', cast: 'person',
+        date: 'date', letter: 'letter', type: 'category', prem: 'material', icon: 'material', tour: 'tour', place: 'place', content: 'material', cast: 'person', song: 'song',
         // Parity batch 4: where the same tag sits when the page has it.
         construction: 'other', lyricsheet: 'other', title: 'other',
     };
@@ -39555,7 +39716,8 @@
         if (!facts.page) {
             const tables = !!_bbFeedTables();
             const more = [tables && _bbTagTourOn() && _bbTagTourApplies(facts) ? 'tour' : '', tables && _bbTagPlaceOn() ? 'place' : '',
-                _bbTagContentOn() && facts.content ? 'content' : '', tables && _bbTagCastOn() && facts.cast ? 'cast' : ''].filter(Boolean);
+                _bbTagContentOn() && facts.content ? 'content' : '', tables && _bbTagCastOn() && facts.cast ? 'cast' : '',
+                tables && _bbTagSongsOn() && _bbFeedMap('songTags') && Array.isArray(facts.songs) && facts.songs.length ? 'song' : ''].filter(Boolean);
             return `✓ date, letter, kind, premiere, icon${more.map(x => `, ${x}`).join('')} tags as expected`.replace(/, ([a-z]+) tags as expected$/, ' and $1 tags as expected');
         }
         const what = {

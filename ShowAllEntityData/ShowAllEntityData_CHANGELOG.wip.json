@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.5",
+    "date": "2026-11-19",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase: a show's song tags can now be checked too (⚙️ Settings, \"Also check a Brucebase show's song tags\", off by default while the tag checks are tuned). Every song the setlist links should carry its tag as the Brucebase feed's song map names it: the tags the shows of that song carry, such as \"btr\" or \"borntorun\" for Born to Run. The link's own title as a tag counts too, and a medley the feed names (\"Land Of Hope And Dreams - People Get Ready\") counts through its combined tag. Only songs whose tag the wiki uses on at least 9 of 10 of their shows are checked, and only linked songs. On the wiki today it flags 465 shows with 825 missing song tags.",
+          "Brucebase: the place tags check now also expects the show's venue tag: its \"Venue\" link leads to the venue page, and the feed's venue map gives that page's tag. It adds 10 shows, for example 1981-04-26 Forest National without \"forestnational\"."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.4",
     "date": "2026-11-19",
     "sections": [

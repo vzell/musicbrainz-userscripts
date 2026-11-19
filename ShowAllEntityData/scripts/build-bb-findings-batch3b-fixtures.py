@@ -87,6 +87,13 @@ PAGES = [
     'recording:1979-06-21-power-station-new-york-city-ny',
     'interview:1995-04-07-sony-music-studios-new-york-city-ny',
     'interview:1974-03-08-klol-studio-houston-tx',
+    # The songs family and the place family's venue (scripts/probe-bb-page-tag-maps.py, mirror 2026-11-19).
+    'gig:2014-01-26-bellville-velodrome-cape-town-south-africa',
+    'gig:2013-03-14-entertainment-centre-brisbane-australia',
+    'onstage:2013-03-14-entertainment-centre-brisbane-australia',
+    'gig:1975-02-23-music-fair-westbury-ny',
+    'gig:1981-04-26-forest-national-brussels-belgium',
+    'gig:1995-12-08-tower-theater-philadelphia-pa',
 ]
 FEED = 'bb-feed.json'
 

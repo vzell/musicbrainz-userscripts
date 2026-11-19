@@ -705,3 +705,150 @@ test.describe('Brucebase tag check, batch 3b: the cast family', () => {
         await off.close();
     });
 });
+
+test.describe('Brucebase tag check, batch 3b: the songs family, and the place family\'s venue', () => {
+    const SONGS = { sa_bb_feed: true, sa_bb_tag_family_songs: true };
+    const CAPE = 'gig:2014-01-26-bellville-velodrome-cape-town-south-africa';
+    const BRIS = 'gig:2013-03-14-entertainment-centre-brisbane-australia';
+    const WESTB = 'gig:1975-02-23-music-fair-westbury-ny';
+    const FOREST = 'gig:1981-04-26-forest-national-brussels-belgium';
+    const TOWER = 'gig:1995-12-08-tower-theater-philadelphia-pa';
+    /** The songs family's missing tags (probe on the feed of 2026-11-19; a song tag is never "not expected"). */
+    const WANT_SONGS = {
+        // "LAND OF HOPE AND DREAMS - PEOPLE GET READY" counts through the feed's songCombos (lohad.pgr).
+        [CAPE]: ['jlfw'],
+        [BRIS]: ['highhopes', 'night', 'tess'],
+        [WESTB]: ['dtbsa82s'],
+        [CHI]: [],
+    };
+
+    /**
+     * Loads a fixture page with the given settings and returns a function
+     * giving a page's findings of one family through the shipped check.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {Object<string, *>} settings
+     * @param {string} family
+     * @returns {Promise<function(string): Promise<{missing: string[], spurious: string[], why: string[]}>>}
+     */
+    async function rule(page, settings, family) {
+        await page.route(/^https?:\/\//, route => route.abort('blockedbyclient'));
+        await loadUserscriptPage(page, { url: BB + CHI, fixtureFile: fileOf(CHI), testMode: true, settingsOverride: { ...BASE, ...settings } });
+        await page.waitForFunction(() => window.__saTest && window.__saTest.bbTagCheck);
+        return name => page.evaluate(([html, url, fam]) => {
+            const facts = window.__saTest.bbTagFacts(html, url);
+            const rec = window.__saTest.dpParse('brucebase.wikidot.com', html, url);
+            const r = window.__saTest.bbTagCheck(facts, ((rec && rec.tags) || []).map(t => t.text.toLowerCase()), []);
+            const mine = list => list.filter(x => x.family === fam);
+            return { missing: mine(r.missing).map(x => x.tag), spurious: mine(r.spurious).map(x => x.tag), why: mine(r.missing).map(x => x.why) };
+        }, [fs.readFileSync(fileOf(name), 'utf8'), BB + name, family]);
+    }
+    const edited = (fn) => { const f = JSON.parse(JSON.stringify(FEED)); fn(f); return f; };
+
+    test('songs on, the feed 1.5: each page as the probe found it, with the map\'s tags in the reason', async ({ page }) => {
+        const check = await rule(page, { ...SONGS, ...kept(FEED) }, 'song');
+        for (const [name, missing] of Object.entries(WANT_SONGS)) {
+            const got = await check(name);
+            expect({ name, missing: got.missing, spurious: got.spurious }).toEqual({ name, missing, spurious: [] });
+        }
+        expect((await check(WESTB)).why).toEqual([`The setlist has "DOES THIS BUS STOP AT 82ND STREET?" (the Brucebase feed's song map: ${FEED.songTags['song:does-this-bus-stop-at-82nd-street'].join(', ')}).`]);
+    });
+
+    test('the feed decides: a song outside its map is not checked; without songCombos the medley\'s songs are missing', async ({ browser }) => {
+        const pg = await browser.newPage();
+        pg.on('pageerror', e => pageErrors.push(String(e)));
+        const lessMap = await rule(pg, { ...SONGS, ...kept(edited(f => delete f.songTags['song:high-hopes'])) }, 'song');
+        expect((await lessMap(BRIS)).missing).toEqual(['night', 'tess']);
+        await pg.close();
+        const pg2 = await browser.newPage();
+        pg2.on('pageerror', e => pageErrors.push(String(e)));
+        // People Get Ready's map without the medley's tag: Cape Town (tagged "lohad.pgr", not "peoplegetready")
+        // still carries it through the feed's songCombos, and not without them.
+        const pgrOnly = f => { f.songTags['song:people-get-ready'] = ['peoplegetready']; };
+        const withCombos = await rule(pg2, { ...SONGS, ...kept(edited(pgrOnly)) }, 'song');
+        expect((await withCombos(CAPE)).missing).toEqual(['jlfw']);
+        await pg2.close();
+        const pg3 = await browser.newPage();
+        pg3.on('pageerror', e => pageErrors.push(String(e)));
+        const noCombos = await rule(pg3, { ...SONGS, ...kept(edited(f => { pgrOnly(f); f.tagTables.songCombos = {}; })) }, 'song');
+        expect((await noCombos(CAPE)).missing).toEqual(['jlfw', 'peoplegetready']);
+        await pg3.close();
+    });
+
+    test('a song counts under the map\'s other tags and under its link\'s title (edited map entries, Westbury 1975)', async ({ browser }) => {
+        // The bus stop under a second tag the show carries; Kitty's Back under a tag no show has, so only
+        // its title ("kittysback", which Westbury carries) can count.
+        const feed = edited((f) => {
+            f.songTags['song:does-this-bus-stop-at-82nd-street'] = ['dtbsa82s', 'gig'];
+            f.songTags['song:kitty-s-back'] = ['zzzkittysback'];
+        });
+        const page = await browser.newPage();
+        page.on('pageerror', e => pageErrors.push(String(e)));
+        const check = await rule(page, { ...SONGS, ...kept(feed) }, 'song');
+        expect((await check(WESTB)).missing).toEqual([]);
+        await page.close();
+    });
+
+    test('songs off, a feed without its tables or its song map, the feed off: no song finding', async ({ browser }) => {
+        for (const settings of [{ sa_bb_feed: true, sa_bb_tag_family_songs: false, ...kept(FEED) }, { ...SONGS, ...kept(FEED_13) },
+            { ...SONGS, ...kept(edited(f => delete f.songTags)) }, { sa_bb_feed: false, sa_bb_tag_family_songs: true, ...kept(FEED) }]) {
+            const page = await browser.newPage();
+            page.on('pageerror', e => pageErrors.push(String(e)));
+            const check = await rule(page, settings, 'song');
+            for (const name of [BRIS, WESTB]) expect(await check(name), name).toMatchObject({ missing: [], spurious: [] });
+            await page.close();
+        }
+    });
+
+    test('the venue: the place family expects the venue page\'s tag from the feed\'s venueTags, not without the map', async ({ browser }) => {
+        const pg = await browser.newPage();
+        pg.on('pageerror', e => pageErrors.push(String(e)));
+        const check = await rule(pg, { sa_bb_feed: true, sa_bb_tag_family_place: true, ...kept(FEED) }, 'place');
+        expect((await check(FOREST)).missing).toEqual(['forestnational']);
+        expect((await check(TOWER)).missing).toEqual(['towertheater']);
+        expect((await check(FOREST)).why).toEqual(['The show\'s venue page (venue:forest-national-brussels-belgium) is tagged "forestnational" (the Brucebase feed\'s venue map).']);
+        expect((await check(CHI)).missing).toEqual([]);
+        await pg.close();
+        const pg2 = await browser.newPage();
+        pg2.on('pageerror', e => pageErrors.push(String(e)));
+        const noMap = await rule(pg2, { sa_bb_feed: true, sa_bb_tag_family_place: true, ...kept(edited(f => delete f.venueTags)) }, 'place');
+        expect((await noMap(FOREST)).missing).toEqual([]);
+        await pg2.close();
+    });
+
+    /**
+     * Loads an event page fixture at its address and presses its button.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {string} name
+     * @param {Object<string, *>} settings
+     * @returns {Promise<void>}
+     */
+    async function showEvent(page, name, settings) {
+        await page.setViewportSize({ width: 1500, height: 1200 });
+        await page.route(/^https?:\/\//, route => route.abort('blockedbyclient'));
+        const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
+        await page.route(/brucebase\.wdfiles\.com\//, route => route.fulfill({ status: 200, contentType: 'image/png', body: png }));
+        await loadUserscriptPage(page, { url: BB + name, fixtureFile: fileOf(name), testMode: true, settingsOverride: { ...BASE, sa_bb_detail_pages: true, ...settings } });
+        await servePages(page);
+        await page.click(`button[data-label="${BB_EVENT_BUTTON}"]`);
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+    }
+    const card = page => page.locator('section.mb-sb-card').filter({ has: page.locator(':scope > .mb-sb-card-head', { hasText: /^Tags/ }) });
+    const row = (c, label) => c.locator('.mb-sb-chip-row').filter({ has: c.page().locator(':scope > .mb-sb-chip-kind', { hasText: new RegExp(`^${label}$`) }) });
+
+    test('Brisbane 2013: the three missing song tags in the Songs row once the On stage page is read', async ({ page }) => {
+        await showEvent(page, BRIS, { ...SONGS, ...kept(FEED), sa_bb_onstage_tags: true });
+        await expect(row(card(page), 'Songs').locator('.mb-sb-chip.mb-cbx-miss')).toHaveText(['highhopes missing', 'night missing', 'tess missing']);
+    });
+
+    test('Chicago 2016: "as expected" names the songs; the feed off, the wait line names them', async ({ page, browser }) => {
+        await showEvent(page, CHI, { ...SONGS, ...kept(FEED), sa_bb_onstage_tags: true });
+        await expect(card(page).locator('.mb-cbx-pill-ok')).toHaveText('✓ date, letter, kind, premiere, icon and song tags as expected');
+        const off = await browser.newPage();
+        off.on('pageerror', e => pageErrors.push(String(e)));
+        await showEvent(off, CHI, { sa_bb_feed: false, sa_bb_tag_family_songs: true, sa_bb_onstage_tags: true });
+        await expect(card(off).locator('.mb-cbx-wait')).toHaveText('The song tags are not checked: the Brucebase feed is off.');
+        await off.close();
+    });
+});

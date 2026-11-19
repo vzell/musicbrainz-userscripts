@@ -116,9 +116,16 @@ def rule_expected(title, tables):
     return [(part, name, [t for t in tags if t]) for part, name, tags in out if any(tags)]
 
 
-def rule_findings(r, tables):
-    """The place family's missing tags of one row (every kind of event)."""
-    exp = rule_expected(r['title'], tables)
+def rule_findings(r, tables, venue_tags=None):
+    """The place family's missing tags of one row (every kind of event).
+
+    With the feed's venueTags: also the show's venue (its "Venue" link,
+    facts.venue) -> the venue page's tag, after the title's parts.
+    """
+    exp = rule_expected(r['title'], tables) or []
+    venue = (r.get('facts') or {}).get('venue') or ''
+    if venue_tags and venue_tags.get(venue):
+        exp = exp + [('venue', venue, venue_tags[venue])]
     if not exp:
         return []
     tags = set(r['tags'])
@@ -135,6 +142,7 @@ def main(argv):
     ap.add_argument('--kinds', default='gig,nogig')
     ap.add_argument('--json')
     ap.add_argument('--list-rule', action='store_true')
+    ap.add_argument('--feed', help='a bb-feed.json: the venue is checked with ITS venueTags')
     args = ap.parse_args(argv)
     rows = json.load(open(args.rows, encoding='utf-8'))
     tables = json.load(open(args.tables, encoding='utf-8'))
@@ -188,7 +196,8 @@ def main(argv):
         for name, tag in miss[args.miss]:
             print(f'  {name}  {tag}')
     # The rule as decided (vzell, 2026-11-19), over every kind of event.
-    every = {r['name']: rule_findings(r, tables) for r in rows}
+    venue_tags = json.load(open(args.feed, encoding='utf-8')).get('venueTags') if args.feed else None
+    every = {r['name']: rule_findings(r, tables, venue_tags) for r in rows}
     flagged = {n: m for n, m in every.items() if m}
     print(f'\nthe rule (city, state, country, expectedRegions; placeTags; every kind): {len(flagged)} shows, '
           f'{sum(len(m) for m in flagged.values())} missing tags: '
