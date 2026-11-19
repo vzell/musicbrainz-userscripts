@@ -40,7 +40,7 @@ State: DONE (SAED has it), PART, TODO, NOT (not ported, with the reason).
 | Tag source highlight (which text made a tag expected)                        | doc/TAGS.md, opt-in                             | NOT for now: each finding says its reason in words; back with 3b (setlist, cast)      | NOT   |    3b |
 | VENUE / SONG / RELATION / RETAIL page tag checks                             | =annotate*PageTags=                             | Tags card + window: kind, letter, banner, song title; dates/place/names left out      | PART  |     4 |
 | Help-icon tag check                                                          | =hasHelpIcon=                                   | the icon family of =bb-tag-missing= / =bb-tag-spurious= (Help Us and Featured)        | DONE  |     4 |
-| HOME page: fetch every year, mismatch filter                                 | doc/HOME_PAGE.md                                | bb-home; list overview: /YYYY-list "all years"; to come: All errors, read every row   | PART  |     — |
+| HOME page: fetch every year, mismatch filter                                 | doc/HOME_PAGE.md                                | bb-home; /YYYY-list "all years"; All errors (9.99.1655); Read every row (9.99.1658)   | DONE  |     — |
 | ⇄ Original Page toggle                                                       | every page                                      | the wiki's page folded under "Brucebase page"                                         | DONE  |     — |
 | The sticky bar, Ctrl+B                                                       | =toggleStickyBar=                               | SAED's toolbar                                                                        | DONE  |     — |
 | Running beside SAED on one page (Track A idea 6)                             | every page it changes                           | SAED stands aside with a notice (=_bbBbpPresent()=), never a broken table             | DONE  |     — |
@@ -835,7 +835,7 @@ known flake; =pop-mb-image.mobile=, a tap-point check under load) pass alone, 45
 
 Unverified: all of it in a real browser.
 
-** Read every row (=feat/bb-evp-read-all=)
+** Read every row (=feat/bb-evp-read-all=; merged 2026-11-19 as 9.99.1658; vzell: "all tested live, OK")
 
 =_bbEvpReadAll()=: "Read every row" in the ▶ Pages card and in the ☰ menu's Brucebase group (DEVIATION: the mockup's
 "▶ Pages' own menu"; ▶ Pages has none). It queues every unread row in the table's current order, rows a filter hides
@@ -849,8 +849,8 @@ Found on the way, in branch 2's code (9.99.1655), fixed here: a row whose findin
 never joined "All errors": =_flushFindingsRestamp()= re-filtered only for a ticked late finding, and from the stale
 filter cache. And ▶ Pages' refresh re-filtered for a typed filter only, not for a findings filter.
 
-Spec =tests/fixtures/bb-evp-read-all.spec.js= (4), mutations =scripts/mutations/bb-evp-read-all.json= (11). With it
-the HOME row is DONE once merged.
+Spec =tests/fixtures/bb-evp-read-all.spec.js= (4), mutations =scripts/mutations/bb-evp-read-all.json= (11). The HOME
+row is DONE. Of the matrix, only batch 3b's rows remain open (the tag-source highlight NOT, the spurious row PART).
 
 ** The browser check of Read every row, for vzell
 
