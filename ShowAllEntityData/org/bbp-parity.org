@@ -1219,6 +1219,16 @@ Both now: no difference in any part.
 probe and the checker: 7 / 197 / 18 / 1 on both sides. =test:full= 3391/3391 (2026-11-20T16:31:08+01:00 –
 16:55:45+01:00, NB-3641, =f8addb5c=, Playwright Chromium, no Tampermonkey).
 
+*vzell's live check, 2026-11-20:* the artist's events list OK. The two event pages: "the ⚠️ ± are there but nothing
+on hover over it". Cause, shown by a diagnostic spec (Env: 2026-11-20T17:40+01:00 · NB-3641 · Playwright Chromium, no
+Tampermonkey): after the page's press the native sidebar is collapsed with the live mark in it, and the rendered
+"Sidebar" card copies the link with its item's text, so the chip showed the mark as dead text. Fixed: =_sbOwnText()=
+leaves =.mb-bbmb-mark= out, and =_bbFeedMbSidebarDraw()= draws a live mark after the copied link (called again when
+=_sbInlineInsertSection()= builds the cards). The same dead text was on the three feed 1.3 kinds after a press. Tests:
+2 more in =bb-feed.spec.js= (the hover before and after the press, the link previews on, the card on top); 3 more
+mutations, each failing that test; the sidebar specs and =bb-feed.spec.js=, 130/130. One find of
+=sidebar-search-card.json= updated to the changed =_sbOwnText()= line.
+
 ** The browser check of check 1, for vzell (the run of 2026-11-19; unverified on the live MusicBrainz)
 
 The feed 1.7 is published (2026-11-20, feed repo =1450799=). Install the script from =feat/bb-feed-mb-date=. A kept 1.6 feed has the =mb= map but no =date-differs=, so it is not read again before its

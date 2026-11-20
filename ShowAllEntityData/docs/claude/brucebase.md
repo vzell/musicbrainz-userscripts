@@ -3018,6 +3018,17 @@ slice, the date. Mockup https://claude.ai/artifact/8iqJ2nM2xVb8JTkLgSwbod
 
   The cell's hover text says the same in one line. The three older kinds'
   cards are unchanged.
+- **The event page after its press** (vzell's live check, 2026-11-20:
+  "the ⚠️ ± are there but nothing on hover over it"). The press collapses
+  the native sidebar, where the mark is, and the rendered "Sidebar"
+  cards copy a link with its item's TEXT (`_sbOwnText()`), so the chip
+  showed a dead "⚠️ ±". Now `_sbOwnText()` leaves `.mb-bbmb-mark` out,
+  and `_bbFeedMbSidebarDraw()` puts a live copy of the mark after each
+  copy of the event's Brucebase link in `.mb-sb-inline`; it runs again
+  when `_sbInlineInsertSection()` builds the cards. Before the press it
+  always worked, and on all four kinds alike (the three of feed 1.3 had
+  the same dead text after a press; the specs opened the card by a
+  click, before any press, with the link previews off).
 - **A guard, not a fix:** `_bbFeedMbCellFact()` now prefers the cell's
   `/event/<mbid>` link to its first `/event/` link, which on MusicBrainz's
   own markup is an event-art icon's (`…/event-art`, no text). On the

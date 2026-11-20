@@ -29240,6 +29240,15 @@
      * the sidebar, from the kept feed (no request at load); drawn again when
      * a read brings a feed. Removed when the feed no longer names the event.
      *
+     * Also after each copy of that link in the rendered "Sidebar" cards
+     * (`.mb-sb-inline`, `_sbInlineInsertSection()` calls this when it builds
+     * them): after a press the native sidebar is collapsed, and the cards
+     * copy a link with its item's TEXT only, so until 2026-11-20 the card
+     * showed a dead "⚠️ ±" and the live mark stayed out of sight (vzell's
+     * live check). `_sbOwnText()` leaves the mark out now; the copies here
+     * are buttons like the original, and the card's delegated listeners read
+     * their `data-mb-bbmb*`.
+     *
      * @returns {void}
      */
     function _bbFeedMbSidebarDraw() {
@@ -29265,6 +29274,14 @@
         b.setAttribute('aria-label', `${k.label}: ${_bbFeedMbText(f, b.dataset.mbBbmbName)}`);
         b.textContent = `${k.level === 'error' ? '❌' : '⚠️'} ${k.glyph}`;
         link.after(' ', b);
+        const href = link.getAttribute('href');
+        document.querySelectorAll('.mb-sb-inline a[href]').forEach((a) => {
+            if (a.getAttribute('href') !== href) return;
+            const at = a.closest('.mb-sb-chip') || a;
+            const copy = b.cloneNode(true);
+            at.after(copy);
+            if (!(copy.previousSibling && copy.previousSibling.nodeType === Node.TEXT_NODE)) copy.before(' ');
+        });
     }
 
     /**
@@ -147934,7 +147951,7 @@ a { color: #1565c0; }`;
             if (n === a) return;
             if (n.nodeType === Node.TEXT_NODE) s += n.textContent;
             else if (n.nodeType === Node.ELEMENT_NODE &&
-                     !n.matches('ul, ol, a, h3, h4, .icon, .mb-sb-count, .mb-sb-h3-icon, .mb-toggle-icon') &&
+                     !n.matches('ul, ol, a, h3, h4, .icon, .mb-sb-count, .mb-sb-h3-icon, .mb-toggle-icon, .mb-bbmb-mark') &&
                      !n.querySelector('a, ul, ol')) s += ' ' + n.textContent;
         });
         return s.replace(/\s+/g, ' ').trim();
@@ -149456,9 +149473,14 @@ a { color: #1565c0; }`;
             if (wrap) wrap.remove();
             return null;
         }
+        const built = !wrap;
         if (!wrap) wrap = _sbInlineBuild();
         if (!wrap) return null;
         const where = _sbInlinePlace(root, wrap);
+        // A Brucebase feed mark on an event page is a button the cards do not
+        // copy: drawn after its copied link too, once the new cards are in
+        // the page (a no-op unless the page is an event the feed names).
+        if (built) _bbFeedMbSidebarDraw();
         Lib.debug('render', `_sbInlineInsertSection: "Sidebar" section ${where}.`);
         return wrap.querySelector('h2');
     }

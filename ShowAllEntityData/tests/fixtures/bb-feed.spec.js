@@ -1023,6 +1023,65 @@ test.describe('the Brucebase feed 1.3: MusicBrainz events', () => {
         await mark.click();
         await expect(page.locator('#mb-bbmb-card .mb-bbmb-verdict')).toHaveText('Its name says 2025-05-20, as Brucebase does: likely the event\'s date is wrong.');
     });
+
+    // vzell's live check (2026-11-20): on the rendered event page, with the link previews on (his defaults, which
+    // FIXTURE_SETTINGS_OVERRIDE switches off), the sidebar's "⚠️ ±" opened nothing on hover.
+    const SB_EVENT = '3f2ca30a-7de4-4964-ad30-48376535fec8';
+    const SB_FILE = path.join(__dirname, 'event-overview.html');
+    /**
+     * The event-overview fixture with a date-differs fact on its event, the
+     * link previews on (vzell's defaults) and the "Sidebar" section open.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @returns {Promise<void>}
+     */
+    async function loadMarkedEvent(page) {
+        const feed = { ...feedOf({}), mb: { [SB_EVENT]: { kind: 'date-differs', link: '2025#200525', date: '2025-05-21',
+            page: 'gig:2025-05-20-co-op-live-manchester-england', heading: '2025-05-20 - CO-OP LIVE, MANCHESTER, ENGLAND' } } };
+        await page.route(/^https?:\/\//, route => route.abort('blockedbyclient'));
+        await loadUserscriptPage(page, {
+            url: `https://musicbrainz.org/event/${SB_EVENT}`, fixtureFile: SB_FILE, testMode: true,
+            settingsOverride: { ...feedOn(feed), sa_bb_feed_mb: true, sa_pop_mb: undefined, sa_pop_mb_page: undefined, sa_pop_ext: undefined,
+                sa_dp_hover_without_ctrl: undefined, sa_sidebar_inline_collapsed: false },
+        });
+    }
+    /**
+     * Hovers the one visible mark and asserts its card opens, topmost at its place.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @returns {Promise<void>}
+     */
+    async function hoverMarkOpensCard(page) {
+        const mark = page.locator('button.mb-bbmb-mark:visible');
+        await expect(mark).toHaveCount(1);
+        await mark.hover();
+        const card = page.locator('#mb-bbmb-card');
+        await expect(card).toBeVisible();
+        const onTop = await card.evaluate((c) => {
+            const r = c.getBoundingClientRect();
+            const hit = document.elementFromPoint(r.left + r.width / 2, r.top + Math.min(20, r.height / 2));
+            return !!hit && (hit === c || c.contains(hit));
+        });
+        expect(onTop, 'the card is the topmost element at its own place').toBe(true);
+    }
+
+    test('an event page, the link previews on: hovering the sidebar mark opens its card, on top', async ({ page }) => {
+        await loadMarkedEvent(page);
+        await expect(page.locator('#sidebar ul.external_links button.mb-bbmb-mark')).toHaveText('⚠️ ±');
+        await hoverMarkOpensCard(page);
+    });
+
+    test('an event page after its press, the link previews on: the Sidebar card has a live mark, no dead text, and its hover opens the card', async ({ page }) => {
+        await loadMarkedEvent(page);
+        await page.route(`https://musicbrainz.org/event/${SB_EVENT}*`, r => r.fulfill({ path: SB_FILE, contentType: 'text/html' }));
+        await page.click('button[data-label="Show all Relationships for Event"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const chip = page.locator('.mb-sb-inline .mb-sb-chip:has(a[href*="brucebase.wikidot.com"])');
+        await expect(chip).toHaveCount(1);
+        await expect(chip).not.toContainText('±');
+        await expect(page.locator('.mb-sb-inline button.mb-bbmb-mark')).toHaveCount(1);
+        await hoverMarkOpensCard(page);
+    });
 });
 
 test.describe('the Brucebase feed: MusicBrainz', () => {
