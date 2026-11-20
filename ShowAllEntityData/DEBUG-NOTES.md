@@ -30751,3 +30751,23 @@ Env: 2026-11-20T12:40–15:09+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6
   `global-filter-art-search.json` re-pointed to the moved code; all six behave as before.
 - **Browser check** (vzell, 2026-11-20, live): OK. Env: Vivaldi 8.2.4133.96 (Chromium 152.0.7977.170) · Tampermonkey
   5.5.1. Follow-up asked at the same time: a card like Q's for Rx (the expression in words, or why it is invalid).
+
+## 2026-11-20 — The Rx card: a regular expression read in words (feat/gf-query-mode, WIP.2)
+
+Env: 2026-11-20T15:40–16:05+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1, bundled Chromium (headless), chromium-mobile Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+- **Why:** vzell's follow-up to the query mode's browser check: a card like Q's when Rx is on. Mockup
+  https://claude.ai/artifact/P2mgvatkWwPXYkTHJAYfFX approved as is (eight questions). Design:
+  `docs/claude/filter-and-cache-invariants.md`, "The same card for Rx".
+- **The reader was written in the mockup and checked there first** (a headless Playwright script over 18 patterns,
+  valid and broken, no page errors), then ported as `_rxRead()`/`_rxDiagnose()`. The port's spec found one slip the
+  mockup had: with alternatives, the first branch was read one level less deep than the others (its depth was
+  decided before the parser knew a `|` would follow). Every branch is now read one level in and a lone branch comes
+  back out; a mutation plants the mockup's version back.
+- **A guard that turned out unneeded:** an `applying` flag kept the card's own input event from clearing "Back to …".
+  It never could: the example click sets the Back text AFTER `_gfqCardApply()`, and the Back click clears it first.
+  Removed; the order is what the mutation "Back is offered before the example's own input" pins.
+- **Tests:** `gf-rx-card.spec.js` (reader and diagnosis case by case, each diagnosed pattern confirmed invalid by
+  the browser; the card valid/invalid with the table unfiltered; an example and Back with its rows; Esc),
+  `gf-rx-card.mobile.spec.js` (taps on Examples, an example, Back). 12 mutations, all caught. No perf run: the card
+  parses the field once per key and never touches a row; `runFilter()` is unchanged by this step.

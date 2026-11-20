@@ -118117,7 +118117,11 @@ a { color: #1565c0; }`;
     _gfqCard.className = 'mb-tt-liner';
     _gfqCard.hidden = true;
     filterWrapper.appendChild(_gfqCard);
-    const _gfqState = { hover: false, dismissed: false, syntax: false, note: '', noteTimer: 0, hideTimer: 0, html: '' };
+    // `examples`/`back`: the Rx card's Examples list and the text an example
+    // replaced ("↶ Back to …", until the next input: set AFTER the example's
+    // own input event, see the card's click handler).
+    const _gfqState = { hover: false, dismissed: false, syntax: false, note: '', noteTimer: 0, hideTimer: 0, html: '',
+                        examples: false, back: null };
 
     /** The syntax list in the card (the mockup's "Syntax" card). */
     const _GFQ_SYNTAX_HTML =
@@ -118179,11 +118183,13 @@ a { color: #1565c0; }`;
     function _gfqCardSync() {
         const raw = stripFilterPrefix(filterInput.value).trim();
         const q = _gfqOn();
+        // Rx: the pattern as runFilter() compiles it, spaces included.
+        const rx = !q && regexpCheckbox.checked;
         const plainHint = !q && !regexpCheckbox.checked && /[a-z]:\S/i.test(raw);
         // The focus inside the card counts as the field's: on a touch screen
         // a tap on Syntax takes the focus (no mousedown comes first to keep it).
         const focusHere = document.activeElement === filterInput || _gfqCard.contains(document.activeElement);
-        const wanted = (q || plainHint || _gfqState.note) && !_gfqState.dismissed &&
+        const wanted = (q || rx || plainHint || _gfqState.note) && !_gfqState.dismissed &&
             (focusHere || _gfqState.hover || _gfqState.note);
         if (!wanted) { _gfqCard.hidden = true; return; }
         const e = _mbttEscape;
@@ -118205,11 +118211,24 @@ a { color: #1565c0; }`;
                 `<span class="mb-gfq-what">${what}</span></div>`;
             p.blank.forEach(c => { html += `<div class="mb-gfq-hint">${e(_colLabel(names[c]))}: type a value</div>`; });
             p.unknown.forEach(k => { html += `<div class="mb-gfq-note">No column ‘${e(k)}’: matched as text</div>`; });
+        } else if (rx) {
+            html += _gfqRxCardHtml(stripFilterPrefix(filterInput.value));
         } else if (plainHint) {
             html += '<div class="mb-gfq-note">Plain text: a <code>column:value</code> term is searched as written. ' +
                 'Tick <b>Q</b> to read it as a column filter.</div>';
         }
         if (_gfqState.note) html += `<div class="mb-gfq-hint">${e(_gfqState.note)}</div>`;
+        if (rx) {
+            const back = _gfqState.back;
+            html += '<div class="mb-gfq-foot">' +
+                (back != null ? `<button type="button" class="mb-gfq-syn-btn" data-gfq-back>↶ Back to ${e(back || '(empty)')}</button>` : '') +
+                `<button type="button" class="mb-gfq-syn-btn" data-gfq-examples aria-expanded="${_gfqState.examples}">Examples</button>` +
+                '<span class="mb-tt-dim">Esc hides this</span></div>';
+            if (_gfqState.examples) {
+                html += '<div class="mb-gfq-ex">' + _RX_EXAMPLES.map(([pat, w]) =>
+                    `<button type="button" data-gfq-ex="${e(pat)}">${e(pat)}</button><span>${e(w)}</span>`).join('') + '</div>';
+            }
+        }
         if (q) {
             html += `<div class="mb-gfq-foot"><button type="button" class="mb-gfq-syn-btn" aria-expanded="${_gfqState.syntax}"` +
                 ` aria-controls="mb-gfq-syn">Syntax</button><span class="mb-tt-dim">Esc hides this</span></div>` +
@@ -118224,6 +118243,59 @@ a { color: #1565c0; }`;
         const r = _gfqCard.getBoundingClientRect();
         const over = r.right - (document.documentElement.clientWidth - 8);
         if (over > 0) _gfqCard.style.left = `${-Math.min(over, Math.max(0, r.left - 8))}px`;
+    }
+
+    /**
+     * The Rx card's body for a pattern: an empty field asks for one; a valid
+     * one gets a green Valid pill, its reading (`_rxRead()`, one row per piece,
+     * groups indented) and what Cc and Ex do to it; an invalid one a red
+     * Invalid pill, the pattern with the faulty spot marked and the reason
+     * with its fix (`_rxDiagnose()`, else the browser's own message).
+     * Compiled exactly as runFilter() compiles the global query.
+     *
+     * @param {string} raw - The field's text, prefix stripped, NOT trimmed.
+     * @returns {string} HTML.
+     */
+    function _gfqRxCardHtml(raw) {
+        const e = _mbttEscape;
+        const pill = '<span class="mb-tt-ajpill mb-tt-ajpill-run">Regular expression</span>';
+        if (!raw) return `<div class="mb-gfq-head">${pill}<span class="mb-tt-dim">Type a pattern, or pick an example.</span></div>`;
+        let err = null;
+        try { new RegExp(raw, caseCheckbox.checked ? '' : 'i'); } catch (ex) { err = ex.message; }
+        if (err) {
+            const bad = _rxDiagnose(raw) || { at: -1, why: err.replace(/^Invalid regular expression: \/.*\/\w*: /, '') + '.', fix: '' };
+            const len = bad.len || 1;
+            const pat = bad.at < 0 ? e(raw)
+                : e(raw.slice(0, bad.at)) + `<span class="mb-gfq-bad">${e(raw.slice(bad.at, bad.at + len))}</span>` + e(raw.slice(bad.at + len));
+            return `<div class="mb-gfq-head">${pill}<span class="mb-tt-ajpill mb-tt-ajpill-err">Invalid</span>` +
+                '<span class="mb-tt-dim">nothing is filtered until it is fixed</span></div>' +
+                `<div class="mb-gfq-pat">${pat}</div><div class="mb-gfq-why">${e(bad.why)}</div>` +
+                (bad.fix ? `<div>${e(bad.fix)}</div>` : '');
+        }
+        const rows = _rxRead(raw).map(([d, code, w]) => {
+            const lv = Math.min(d, 3);
+            return `<dt class="mb-gfq-d${lv}">${code ? `<code>${e(code)}</code>` : ''}</dt><dd class="mb-gfq-d${lv}">${e(w)}</dd>`;
+        }).join('');
+        const notes = ['Each cell is tested on its own: ^ and $ are its start and end.',
+                       caseCheckbox.checked ? 'Case counts (Cc).' : 'Case is ignored (Cc is off).'];
+        if (excludeCheckbox.checked) notes.push('Rows that match are hidden (Ex).');
+        return `<div class="mb-gfq-head">${pill}<span class="mb-tt-ajpill mb-tt-ajpill-ok">Valid</span></div>` +
+            `<dl class="mb-gfq-read">${rows}</dl><div class="mb-gfq-note">${notes.join(' ')}</div>`;
+    }
+
+    /**
+     * Puts `text` into the global filter from the card (an example, or Back),
+     * exactly as the history widget applies an entry: the focus prefix, an
+     * internal input event (the ✕ and the narrowing see it), then one pass.
+     *
+     * @param {string} text
+     */
+    function _gfqCardApply(text) {
+        filterInput.value = getFilterFocusPrefix() + text;
+        filterInput.setSelectionRange(filterInput.value.length, filterInput.value.length);
+        _dispatchInternalInputEvent(filterInput, { bubbles: false });
+        runFilter();
+        filterInput.focus();
     }
 
     /**
@@ -118253,8 +118325,12 @@ a { color: #1565c0; }`;
         clearTimeout(_gfqState.hideTimer);
         _gfqState.hideTimer = setTimeout(() => _gfqCardSync(), 200);
     });
-    filterInput.addEventListener('input', () => { _gfqState.dismissed = false; _gfqCardSync(); });
-    [caseCheckbox, excludeCheckbox, queryCheckbox].forEach(cb => cb.addEventListener('change', () => _gfqCardSync()));
+    filterInput.addEventListener('input', () => {
+        _gfqState.back = null;
+        _gfqState.dismissed = false;
+        _gfqCardSync();
+    });
+    [caseCheckbox, regexpCheckbox, excludeCheckbox, queryCheckbox].forEach(cb => cb.addEventListener('change', () => _gfqCardSync()));
     // Esc: the open syntax first, then the card; with the card gone the
     // field's own Esc (clear) applies again.
     filterInput.addEventListener('keydown', (e) => {
@@ -118262,6 +118338,7 @@ a { color: #1565c0; }`;
         e.preventDefault();
         e.stopPropagation();
         if (_gfqState.syntax) _gfqState.syntax = false;
+        else if (_gfqState.examples) _gfqState.examples = false;
         else _gfqState.dismissed = true;
         _gfqCardSync();
     });
@@ -118269,8 +118346,22 @@ a { color: #1565c0; }`;
     // and the Syntax button opens or shuts the list.
     _gfqCard.addEventListener('mousedown', (e) => e.preventDefault());
     _gfqCard.addEventListener('click', (e) => {
-        if (!e.target.closest('.mb-gfq-syn-btn')) return;
-        _gfqState.syntax = !_gfqState.syntax;
+        const btn = e.target.closest('button');
+        if (!btn) return;
+        if (btn.dataset.gfqEx != null) {
+            const before = stripFilterPrefix(filterInput.value);
+            _gfqState.examples = false;
+            _gfqCardApply(btn.dataset.gfqEx);
+            _gfqState.back = before;
+        } else if (btn.hasAttribute('data-gfq-back')) {
+            const back = _gfqState.back || '';
+            _gfqState.back = null;
+            _gfqCardApply(back);
+        } else if (btn.hasAttribute('data-gfq-examples')) {
+            _gfqState.examples = !_gfqState.examples;
+        } else if (btn.classList.contains('mb-gfq-syn-btn')) {
+            _gfqState.syntax = !_gfqState.syntax;
+        }
         _gfqCardSync();
     });
 
@@ -121155,6 +121246,24 @@ a { color: #1565c0; }`;
         #mb-gfq-card dl.mb-gfq-syn dt { font-style: italic; color: #7a6d5c; }
         #mb-gfq-card dl.mb-gfq-syn dd { margin: 0; min-width: 0; }
         #mb-gfq-card code { font: 0.92em ui-monospace, Consolas, monospace; }
+        /* The Rx card (_gfqRxCardHtml): mockup approved 2026-11-20,
+           https://claude.ai/artifact/P2mgvatkWwPXYkTHJAYfFX */
+        #mb-gfq-card dl.mb-gfq-read { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 12px; margin: 8px 0 0;
+            padding-top: 8px; border-top: 1px solid #d9cfbd; }
+        #mb-gfq-card dl.mb-gfq-read dt { white-space: pre; }
+        #mb-gfq-card dl.mb-gfq-read dt code { background: #f3ede1; border-radius: 2px; padding: 0 3px; }
+        #mb-gfq-card dl.mb-gfq-read dd { margin: 0; min-width: 0; }
+        #mb-gfq-card dl.mb-gfq-read .mb-gfq-d1 { padding-left: 14px; }
+        #mb-gfq-card dl.mb-gfq-read .mb-gfq-d2 { padding-left: 28px; }
+        #mb-gfq-card dl.mb-gfq-read .mb-gfq-d3 { padding-left: 42px; }
+        #mb-gfq-card .mb-gfq-pat { font: 14px ui-monospace, Consolas, monospace; margin-top: 6px; white-space: pre-wrap; word-break: break-all; }
+        #mb-gfq-card .mb-gfq-bad { background: #f3d1cb; color: #9b2218; text-decoration: underline wavy #9b2218; }
+        #mb-gfq-card .mb-gfq-why { color: #9b2218; margin-top: 4px; }
+        #mb-gfq-card .mb-gfq-ex { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 12px; margin-top: 8px;
+            padding-top: 8px; border-top: 1px solid #d9cfbd; align-items: baseline; }
+        #mb-gfq-card .mb-gfq-ex button { font: 13px ui-monospace, Consolas, monospace; text-align: left; background: #f3ede1; color: #2b2622;
+            border: 1px solid transparent; border-radius: 3px; padding: 0 5px; cursor: pointer; }
+        #mb-gfq-card .mb-gfq-ex button:hover, #mb-gfq-card .mb-gfq-ex button:focus-visible { border-color: #7a6d5c; }
         /* Comparison block (_cmpHtml, _cmpLenCardHtml): two values one under
            the other, only what differs marked, in both rows (neither side is
            the wrong one). Mockup approved 2026-10-17, variant A:
@@ -135543,6 +135652,273 @@ a { color: #1565c0; }`;
             if (cc ? artText.includes(needle) : artText.toLowerCase().includes(needle)) return true;
         }
         return false;
+    }
+
+    // ── The global filter's Rx card: a regular expression in words ────────────
+    // What the card under the field says while Rx is on (_gfqCardSync()):
+    // the pattern read piece by piece, or where and why it is invalid.
+    // Mockup approved 2026-11-20: https://claude.ai/artifact/P2mgvatkWwPXYkTHJAYfFX
+    // The filter compiles its regexps WITHOUT the Unicode flag (runFilter():
+    // '' or 'i'), so this reads them the same way: \p is the letter p, and a
+    // "{" that is no quantifier is text.
+
+    /** What a backslash escape means outside a character class. */
+    const _RX_ESC_WORDS = {
+        d: 'a digit (0–9)', D: 'anything but a digit', w: 'a letter, digit or _ (A–Z only, no accents)',
+        W: 'anything but A–Z, 0–9 and _', s: 'a space, tab or line break', S: 'anything but a space',
+        b: 'a word edge', B: 'not a word edge', t: 'a tab', n: 'a line break', r: 'a carriage return',
+        f: 'a form feed', v: 'a vertical tab', 0: 'the NUL character',
+    };
+
+    /** What a backslash escape means inside a character class. */
+    const _RX_CLASS_ESC = {
+        d: 'a digit', D: 'a non-digit', w: 'a word character', W: 'a non-word character',
+        s: 'a space', S: 'a non-space', t: 'a tab', n: 'a line break',
+    };
+
+    /** A quantifier at the start of a string: `*`, `+`, `?`, `{n}`, `{n,}`, `{n,m}`. */
+    const _RX_QUANT_RE = /^(\*|\+|\?|\{(\d+)(,(\d*))?\})(\?)?/;
+
+    /**
+     * The examples behind the Rx card's Examples button: [pattern, words].
+     * @type {Array<Array<string>>}
+     */
+    const _RX_EXAMPLES = [
+        ['^The ', 'cells that start with “The ”'],
+        ['live$', 'cells that end with “live”'],
+        ['\\b19[89]\\d\\b', 'a year from 1980 to 1999'],
+        ['(demo|outtake)', '“demo” or “outtake”'],
+        ['^\\d+$', 'cells that are only digits'],
+        ['\\(.*\\)', 'something in brackets (the brackets escaped)'],
+        ['[^\\x00-\\x7F]', 'a character outside plain ASCII (accents, curly quotes)'],
+        ['\\s{2,}', 'two or more spaces in a row'],
+        ['^$', 'an empty cell'],
+    ];
+
+    /**
+     * Reads a VALID regular expression (no Unicode flag) as rows of words: one
+     * row per piece, literal text joined into one row, a group's contents
+     * indented one level under its own row, alternatives as "either" / "or",
+     * a quantifier said after its piece. Never throws on a pattern
+     * `new RegExp()` accepted; a construct it does not know reads as text.
+     *
+     * @param {string} p - The pattern, as typed.
+     * @returns {Array<Array<*>>} `[depth, code, words]` per row.
+     */
+    function _rxRead(p) {
+        let i = 0, groupNo = 0;
+        const quote = (s) => '“' + s.replace(/ /g, '␣') + '”';
+        const isQuant = () => /^(\*|\+|\?|\{\d+(,\d*)?\})/.test(p.slice(i));
+        const escAt = (j) => {
+            const c = p[j + 1];
+            const rest = p.slice(j + 1);
+            let m;
+            if (c === undefined) return { len: 1, lit: '\\' };
+            if ((m = /^x([0-9a-fA-F]{2})/.exec(rest))) {
+                const ch = String.fromCharCode(parseInt(m[1], 16));
+                return { len: 4, lit: ch, words: `the character “${ch}” (U+00${m[1].toUpperCase()})` };
+            }
+            if ((m = /^u([0-9a-fA-F]{4})/.exec(rest))) {
+                const ch = String.fromCharCode(parseInt(m[1], 16));
+                return { len: 6, lit: ch, words: `the character “${ch}” (U+${m[1].toUpperCase()})` };
+            }
+            if (/[1-9]/.test(c)) {
+                m = /^[1-9]\d*/.exec(rest);
+                return { len: 1 + m[0].length, words: `the same text again as group ${m[0]}` };
+            }
+            if (c === 'p' || c === 'P') {
+                return { len: 2, lit: c, words: `the letter “${c}” (\\${c}{…} needs the Unicode flag, which the filter does not use)` };
+            }
+            if (_RX_ESC_WORDS[c]) return { len: 2, words: _RX_ESC_WORDS[c] };
+            return { len: 2, lit: c };
+        };
+        const quant = () => {
+            const m = _RX_QUANT_RE.exec(p.slice(i));
+            if (!m) return null;
+            i += m[0].length;
+            let w;
+            if (m[1] === '*') w = 'any number of times, also none';
+            else if (m[1] === '+') w = 'one or more times';
+            else if (m[1] === '?') w = 'optional';
+            else if (m[3] === undefined) w = `exactly ${m[2]} times`;
+            else if (m[4] === '') w = `${m[2]} or more times`;
+            else w = `${m[2]} to ${m[4]} times`;
+            return { code: m[0], words: w + (m[5] ? ', as few as possible' : '') };
+        };
+        const classWords = (body) => {
+            let neg = false, k = 0;
+            const parts = [];
+            if (body[0] === '^') { neg = true; k = 1; }
+            const item = () => {
+                if (body[k] === '\\') {
+                    const c = body[k + 1];
+                    const m = /^x([0-9a-fA-F]{2})/.exec(body.slice(k + 1));
+                    if (m) { k += 4; return { ch: String.fromCharCode(parseInt(m[1], 16)), show: '\\x' + m[1] }; }
+                    k += 2;
+                    if (_RX_CLASS_ESC[c]) return { word: _RX_CLASS_ESC[c] };
+                    return { ch: c, show: c };
+                }
+                const ch = body[k++];
+                return { ch, show: ch };
+            };
+            while (k < body.length) {
+                const a = item();
+                if (a.ch !== undefined && body[k] === '-' && k + 1 < body.length) {
+                    k++;
+                    const b = item();
+                    parts.push(b.ch !== undefined ? `${a.show}–${b.show}` : `${a.show}, -, ${b.word}`);
+                } else parts.push(a.word || (a.ch === ' ' ? 'a space' : a.show));
+            }
+            return (neg ? 'any character except: ' : 'one of: ') + parts.join(', ');
+        };
+        let alt;
+        const seq = (depth, rows) => {
+            let lit = '', litCode = '';
+            const flush = () => {
+                if (litCode) { rows.push([depth, litCode, 'the text ' + quote(lit)]); lit = ''; litCode = ''; }
+            };
+            while (i < p.length && p[i] !== ')' && p[i] !== '|') {
+                const start = i, c = p[i];
+                let atom;
+                if (c === '\\') {
+                    const e = escAt(i);
+                    i += e.len;
+                    if (e.words) atom = { code: p.slice(start, i), words: e.words };
+                    else if (!isQuant()) { lit += e.lit; litCode += p.slice(start, i); continue; }
+                    else atom = { code: p.slice(start, i), words: 'the text ' + quote(e.lit) };
+                } else if (c === '^') { i++; atom = { code: '^', words: 'the start of the cell' }; }
+                else if (c === '$') { i++; atom = { code: '$', words: 'the end of the cell' }; }
+                else if (c === '.') { i++; atom = { code: '.', words: 'any character' }; }
+                else if (c === '[') {
+                    let j = i + 1;
+                    if (p[j] === '^') j++;
+                    if (p[j] === ']') j++;
+                    while (j < p.length && p[j] !== ']') j += p[j] === '\\' ? 2 : 1;
+                    atom = { code: p.slice(i, j + 1), words: classWords(p.slice(i + 1, j)) };
+                    i = j + 1;
+                } else if (c === '(') {
+                    flush();
+                    const m = /^\((\?:|\?=|\?!|\?<=|\?<!|\?<([A-Za-z_$][\w$]*)>)?/.exec(p.slice(i));
+                    i += m[0].length;
+                    const kind = m[1] === '?:' ? 'a group of' : m[1] === '?=' ? 'followed by'
+                        : m[1] === '?!' ? 'not followed by' : m[1] === '?<=' ? 'preceded by'
+                        : m[1] === '?<!' ? 'not preceded by'
+                        : m[2] ? `group “${m[2]}”, holding` : `group ${++groupNo}, holding`;
+                    const head = rows.length;
+                    rows.push(null);
+                    const inner = [];
+                    alt(depth + 1, inner);
+                    if (p[i] === ')') i++;
+                    const q = quant();
+                    rows[head] = [depth, p.slice(start, i - (q ? q.code.length : 0)), kind + (q ? ` — ${q.words}` : '') + ':'];
+                    rows.push(...inner);
+                    continue;
+                } else {
+                    i++;
+                    if (!isQuant()) { lit += c; litCode += c; continue; }
+                    atom = { code: c, words: 'the text ' + quote(c) };
+                }
+                flush();
+                const q = quant();
+                rows.push([depth, atom.code + (q ? q.code : ''), atom.words + (q ? ` — ${q.words}` : '')]);
+            }
+            flush();
+        };
+        alt = (depth, rows) => {
+            // Every branch is read one level in (under its "either"/"or");
+            // whether there is more than one is known only at the end, so a
+            // lone branch comes back out by one level.
+            const branches = [];
+            for (;;) {
+                const b = [];
+                seq(depth + 1, b);
+                branches.push(b);
+                if (p[i] === '|') { i++; continue; }
+                break;
+            }
+            if (branches.length === 1) {
+                rows.push(...branches[0].map(r => r && [r[0] - 1, r[1], r[2]]));
+                return;
+            }
+            branches.forEach((b, k) => { rows.push([depth, k ? '|' : '', k ? 'or' : 'either']); rows.push(...b); });
+        };
+        const rows = [];
+        alt(0, rows);
+        // A stray ")" at the top (impossible for a valid pattern) would stop
+        // the walk early; what is left reads as text rather than vanishing.
+        if (i < p.length) rows.push([0, p.slice(i), 'the text ' + quote(p.slice(i))]);
+        return rows.filter(Boolean);
+    }
+
+    /**
+     * Where and why an INVALID regular expression goes wrong, found by its own
+     * walk so the words are the same in every browser: an unclosed ( or [, a )
+     * that closes nothing, a \ at the end, a repeat with nothing to repeat,
+     * {m,n} the wrong way round, a backwards range, a "(?" that is no group.
+     * Returns null for an error it does not know (the card then shows the
+     * browser's own message).
+     *
+     * @param {string} p - The pattern, as typed.
+     * @returns {?{at: number, len?: number, why: string, fix: string}}
+     */
+    function _rxDiagnose(p) {
+        const stack = [];
+        let cls = -1, prev = 'start';
+        const endEsc = (i) => ({ at: i, why: 'A \\ at the very end escapes nothing.', fix: 'Write \\\\ for a backslash.' });
+        for (let i = 0; i < p.length; i++) {
+            const c = p[i];
+            if (cls >= 0) {
+                if (c === '\\') { if (i === p.length - 1) return endEsc(i); i++; continue; }
+                if (c === ']') { cls = -1; prev = 'atom'; continue; }
+                if (c === '-' && p[i - 1] !== '[' && p[i + 1] && p[i + 1] !== ']' && p[i + 1] !== '\\'
+                    && p[i - 2] !== '\\' && p[i - 1] > p[i + 1]) {
+                    return { at: i - 1, len: 3, why: `The range ${p[i - 1]}-${p[i + 1]} runs backwards.`, fix: `Write ${p[i + 1]}-${p[i - 1]}.` };
+                }
+                continue;
+            }
+            if (c === '\\') {
+                if (i === p.length - 1) return endEsc(i);
+                prev = /[bB]/.test(p[i + 1]) ? 'anchor' : 'atom';
+                i++;
+                continue;
+            }
+            if (c === '[') { cls = i; continue; }
+            if (c === '(') {
+                if (p[i + 1] === '?' && !/^\?(:|=|!|<=|<!|<[A-Za-z_$][\w$]*>)/.test(p.slice(i + 1))) {
+                    return { at: i, len: 2, why: '“(?” starts a special group and must go on with :, =, !, <=, <! or <name>.',
+                             fix: 'Write \\( for a bracket, or (?: for a plain group.' };
+                }
+                stack.push(i);
+                prev = 'open';
+                continue;
+            }
+            if (c === ')') {
+                if (!stack.length) return { at: i, why: 'This ) closes nothing: there is no ( before it.', fix: 'Write \\) for a bracket.' };
+                stack.pop();
+                prev = 'atom';
+                continue;
+            }
+            if (c === '|') { prev = 'open'; continue; }
+            const m = /^(\*|\+|\?|\{(\d+)(,(\d*))?\})/.exec(p.slice(i));
+            if (m) {
+                if (m[2] !== undefined && m[4] && +m[4] < +m[2]) {
+                    return { at: i, len: m[0].length, why: `In ${m[0]} the numbers are the wrong way round.`, fix: `Write {${m[4]},${m[2]}}.` };
+                }
+                const lazy = c === '?' && prev === 'quant';
+                if (!lazy && (prev === 'start' || prev === 'open' || prev === 'quant' || prev === 'anchor')) {
+                    const note = prev === 'quant' ? ' (it follows another repeat)' : prev === 'anchor' ? ' (^, $ and \\b cannot repeat)' : '';
+                    return { at: i, len: m[0].length, why: `${m[0]} repeats the piece before it, and there is none${note}.`,
+                             fix: `Write \\${c} for the character itself.` };
+                }
+                i += m[0].length - 1;
+                prev = lazy ? 'lazy' : 'quant';
+                continue;
+            }
+            prev = (c === '^' || c === '$') ? 'anchor' : 'atom';
+        }
+        if (cls >= 0) return { at: cls, why: 'This [ has no closing ].', fix: 'Write \\[ for a bracket.' };
+        if (stack.length) return { at: stack[stack.length - 1], why: 'This ( has no closing ).', fix: 'Write \\( for a bracket.' };
+        return null;
     }
 
     /**
@@ -193206,6 +193582,14 @@ a { color: #1565c0; }`;
             gfq: {
                 parse: (q, keys, cc) => _gfqParse(q, keys, !!cc),
                 key:   (h) => _gfqKey(h),
+            },
+            /**
+             * The Rx card's reader (`_rxRead()`: rows of [depth, code, words])
+             * and diagnosis (`_rxDiagnose()`), the shipping functions.
+             */
+            rx: {
+                read:     (p) => _rxRead(p),
+                diagnose: (p) => _rxDiagnose(p),
             },
             /**
              * An area's flag markup (`_mbPopFlagHtml()`, the shipping

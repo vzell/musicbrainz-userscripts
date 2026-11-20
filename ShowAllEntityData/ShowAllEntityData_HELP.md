@@ -349,6 +349,26 @@ Half-typed queries never fail: an open bracket closes itself at the end.
 - Q is off on every new page, like Cc, Rx and Ex. With Q off, the same text is
   plain text again: `format:cd` then looks for "format:cd" in the cells.
 
+### Regular expressions (Rx): the card
+
+With **Rx** on, the same card opens under the global field and reads your
+pattern:
+
+- **Valid** (green): the pattern piece by piece. `^Born (to|in)` reads "the
+  start of the cell · the text 'Born ' · group 1, holding: either 'to' or
+  'in'". Repeats are said after their piece ("one or more times", "optional").
+  Under it: each cell is tested on its own, so `^` and `$` are a cell's start
+  and end, and whether case counts (Cc) and matching rows are hidden (Ex).
+- **Invalid** (red): the faulty spot is marked, with the reason and the fix,
+  for example "This ( has no closing ). Write \( for a bracket." Nothing is
+  filtered until the pattern is fixed.
+- **Examples**: nine patterns (a year from 1980 to 1999, an empty cell, two
+  spaces in a row, …). A click puts one into the field; **↶ Back to …** brings
+  back what you had typed, until your next key.
+
+The filter's regular expressions have no Unicode flag, so `\p{L}` matches the
+letters "p{L}"; the card says so. Esc closes the Examples list, then the card.
+
 **Empty sub-tables disappear.** On a page with sub-tables, while the global
 filter or a ⚠️ / ❌ list filter is active, a sub-table left with
 no matching row is hidden: its heading line and the table go together. Widen or

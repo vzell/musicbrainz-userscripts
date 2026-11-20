@@ -19,7 +19,8 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 - *Now:* the query mode for the global filter (Event Horizon's language, the Q box) is built on =feat/gf-query-mode=
   as the mockup was approved (https://claude.ai/artifact/Y7tjYtaS82RTaZ5Admz2wk, all nine questions as recommended);
   vzell's browser check OK (2026-11-20). Follow-up on the same branch, asked then: a card like Q's for Rx (the
-  regexp read in words, or why it is invalid, with examples); mockup first. See the item.
+  regexp read in words, or why it is invalid, with examples), mockup https://claude.ai/artifact/P2mgvatkWwPXYkTHJAYfFX
+  approved as is; built (WIP.2), waiting for vzell's browser check before the merge. See the item.
 - *Next:* the next adoption is open (Fusion's duplicate recordings, the Credit Hoarder role map, column reorder, …).
   The Apollo item finished with batch 4 (9.99.1666).
 - *Waiting on majkinetor* (#938):
@@ -476,6 +477,8 @@ recommendations").
   narrowing in query mode (a query can widen); both cache keys carry =q=. One deviation from the mockup: the reading
   line and the Syntax button live in a card under the field (the h2's bar is one nowrap line). Design:
   =docs/claude/filter-and-cache-invariants.md=, "The global filter's query mode (Event Horizon's language)".
+- *Rx card* (WIP.2, same branch, vzell's follow-up): the same card explains a regular expression with Rx on;
+  ours, not from EH (its filter boxes have no regexps). Same doc, "The same card for Rx".
 
 - *Grammar* (=tqParse= EH:7480-7519):
   - =column:value=, =-term=, =-(…)=, =OR= / =AND= (capitals only), brackets, quoted phrases;

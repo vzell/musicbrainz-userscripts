@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-11-20",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "With Rx on, the card under the global filter (the one query mode got in WIP.1) reads your regular expression: a green \"Valid\" and the pattern piece by piece (\"^Born (to|in)\": the start of the cell · the text \"Born \" · group 1, holding: either \"to\" or \"in\"; repeats said after their piece), plus that each cell is tested on its own and what Cc and Ex do to it; or a red \"Invalid\" with the faulty spot marked and the reason and fix in plain words (\"This ( has no closing ). Write \\( for a bracket.\"), the same in every browser. An Examples button offers nine patterns (a year from 1980 to 1999, an empty cell, two spaces in a row, …); a click puts one into the field and \"↶ Back to …\" restores what you typed. The filter's regular expressions have no Unicode flag, so \\p{L} is the letters \"p{L}\", and the card says so."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-11-20",
     "sections": [

@@ -542,6 +542,38 @@ filters of the same page: a column term equals that column's filter, a word
 the plain filter, OR their union, `-` the complement); mutations in
 `scripts/mutations/gf-query-mode.json`.
 
+### The same card for Rx
+
+Mockup approved 2026-11-20 (eight questions, all as recommended):
+https://claude.ai/artifact/P2mgvatkWwPXYkTHJAYfFX. With Rx on (and Q off),
+`_gfqCardSync()` shows `_gfqRxCardHtml()`: the global filter only, same place,
+same show/hide, Esc closes the Examples list, then the card.
+
+- **Compiled as `runFilter()` compiles it**: the field's text with the prefix
+  stripped and NOT trimmed (`^The ` ends in a space), flags `''` or `'i'` by
+  Cc, no Unicode flag. So `\p{L}` is the letters "p{L}"; `_rxRead()` says so on
+  that row instead of pretending (question 7: adding the flag would change
+  what existing filters match).
+- **Valid**: `_rxRead()` returns `[depth, code, words]` rows: literal text
+  joined into one row, a group's row with its contents one level in, either/or
+  for alternatives (every branch is read one level in, and a lone branch comes
+  back out: the mockup indented the first branch one level less, fixed here),
+  a quantifier after its piece. Under it: cells are tested one by one (`^`/`$`
+  are a cell's ends), and what Cc and Ex do right now.
+- **Invalid**: `_rxDiagnose()` walks the pattern itself so the words are the
+  same in every browser (unclosed `(`/`[`, a `)` that closes nothing, a
+  trailing `\`, nothing to repeat, `{m,n}` backwards, a backwards range, a bad
+  `(?`), marks the spot and says the fix; anything else shows the browser's
+  message without its "Invalid regular expression: /…/:" head. The table stays
+  unfiltered, as before (`runFilter()` returns early on a bad pattern).
+- **Examples** (`_RX_EXAMPLES`, nine): a click goes through `_gfqCardApply()`
+  (prefix, an internal input event, one `runFilter()`), as the history widget
+  applies an entry; "↶ Back to …" holds what was typed until the next input.
+  The Back text is set AFTER the example's own input event, which clears it.
+
+Specs: `tests/fixtures/gf-rx-card{,.mobile}.spec.js`; mutations in
+`scripts/mutations/gf-rx-card.json`.
+
 ## A time-sliced filter pass writes nothing until it is current and complete
 
 Typing on a table over `sa_chunked_render_threshold` rows goes through
