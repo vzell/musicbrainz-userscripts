@@ -310,6 +310,65 @@ that apply to each part in brackets:
 ✓ Sorted by: "Year"▲ (133 rows)
 ```
 
+### Query mode (Q)
+
+The global filter has a fourth switch, **Q**. With it on, the global box reads
+a small query language, the one majkinetor's Event Horizon uses in its filter
+boxes:
+
+| Type                            | Keeps the rows…                                                |
+|---------------------------------|----------------------------------------------------------------|
+| `born to run`                   | with that phrase in one cell (neighbouring words are a phrase) |
+| `format:cd`                     | whose *Format* column contains "cd"                            |
+| `form:cd`                       | the same: a key is the start of a column name                  |
+| `catalog#:"9 25"`               | quotes keep a space inside a value                             |
+| `-live`, `-(live OR demo)`      | without it                                                     |
+| `cd OR vinyl`, `slash AND burn` | with either / both; `OR` and `AND` count in capitals only      |
+| `date:1990-1995`, `date:2016-`  | whose *Date* (or *Year*) column shows a year in that range     |
+
+Side by side means AND, and OR binds last: `type:album year:1975-1985 -live`
+is albums of those years that are not live. A lower-case "and" stays part of a
+phrase, so `rock and roll` is one phrase. Keys ignore case, spaces and
+accents; values keep their accents, as in the plain filter. A key that is
+exactly a column's name wins over one that only starts it (`country:` is
+*Country*, not *Country/Date*), and a column's short label works too.
+
+While you type, a card under the field says what the query means
+("Format contains cd · Date 1990–1995 · not any column contains live"), what
+is still missing ("Format: type a value"), and when a key names no column
+("No column ‘foo’: matched as text"). Its **Syntax** button lists the rules
+above. Esc closes the list, then the card; the next Esc clears the field.
+Half-typed queries never fail: an open bracket closes itself at the end.
+
+- **Ex** turns the whole query round; **Cc** applies to every term.
+- **Q** and **Rx** cannot be on together; ticking one switches the other off.
+- Only the matching terms are highlighted, not the ones after a `-`.
+- On a page with sub-tables each sub-table uses its own columns: `area:` keeps
+  nothing in a sub-table without an *Area* column.
+- A pinned or recent filter remembers its Q (a **Q** badge in the history).
+- Q is off on every new page, like Cc, Rx and Ex. With Q off, the same text is
+  plain text again: `format:cd` then looks for "format:cd" in the cells.
+
+### Regular expressions (Rx): the card
+
+With **Rx** on, the same card opens under the global field and reads your
+pattern:
+
+- **Valid** (green): the pattern piece by piece. `^Born (to|in)` reads "the
+  start of the cell · the text 'Born ' · group 1, holding: either 'to' or
+  'in'". Repeats are said after their piece ("one or more times", "optional").
+  Under it: each cell is tested on its own, so `^` and `$` are a cell's start
+  and end, and whether case counts (Cc) and matching rows are hidden (Ex).
+- **Invalid** (red): the faulty spot is marked, with the reason and the fix,
+  for example "This ( has no closing ). Write \( for a bracket." Nothing is
+  filtered until the pattern is fixed.
+- **Examples**: nine patterns (a year from 1980 to 1999, an empty cell, two
+  spaces in a row, …). A click puts one into the field; **↶ Back to …** brings
+  back what you had typed, until your next key.
+
+The filter's regular expressions have no Unicode flag, so `\p{L}` matches the
+letters "p{L}"; the card says so. Esc closes the Examples list, then the card.
+
 **Empty sub-tables disappear.** On a page with sub-tables, while the global
 filter or a ⚠️ / ❌ list filter is active, a sub-table left with
 no matching row is hidden: its heading line and the table go together. Widen or

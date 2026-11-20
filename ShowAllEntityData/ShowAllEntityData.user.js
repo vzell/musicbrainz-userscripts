@@ -287,6 +287,11 @@
 //   Added 2026-11-20: the release-notice finding's _rnSplitCompound() and _rnParseNotice() are
 //   PORTED from Group Therapy's txpSplitCompoundCopyrightLines() and the ℗/© half of
 //   txpParseCopyrightLine() (MARKER_ALT, GLUE, the year and the holder split).
+//   Added 2026-11-20: the global filter's query mode — _gfqParse(), _gfqRange() and _gfqKey()
+//   are PORTED from Event Horizon's tqParse(), tqRange() and tqKey() (its filter boxes'
+//   language: column:value, -term, OR/AND, brackets, quotes, year ranges), with an exact
+//   key preferred over a prefix and values keeping their accents; compiled once per
+//   filter pass here instead of parsed per row.
 // ============================================================================================================================================
 
 (function() {
@@ -109167,6 +109172,7 @@ ${sections.join('\n')}
             .mb-fhw-badge-cs { color: #1976D2; border: 1px solid #1976D2; }
             .mb-fhw-badge-re { color: #7B1FA2; border: 1px solid #7B1FA2; }
             .mb-fhw-badge-ex { color: #c62828; border: 1px solid #c62828; }
+            .mb-fhw-badge-q  { color: #2b2622; border: 1px solid #2b2622; }
             .mb-fhw-mark {
                 background: #fff176;
                 padding: 0;
@@ -109223,6 +109229,9 @@ ${sections.join('\n')}
      * @param {HTMLInputElement} cfg.caseCheckbox  – "Case sensitive" checkbox.
      * @param {HTMLInputElement} cfg.rxCheckbox    – "RegExp" checkbox.
      * @param {HTMLInputElement} cfg.exCheckbox    – "Exclude matches" checkbox.
+     * @param {HTMLInputElement} [cfg.qCheckbox]   – "Query mode" checkbox (the global filter's
+     *                                               only): saved as `useQuery`, a "Q" badge,
+     *                                               restored on apply.
      * @param {Function}         cfg.onApply       – Called with no arguments after an entry is
      *                                               applied so the caller can trigger a filter run.
      * @param {Function}         [cfg.getQuery]    – Returns the effective query string to save
@@ -109243,6 +109252,7 @@ ${sections.join('\n')}
     function createFilterHistoryWidget(cfg) {
         _ensureFilterHistoryWidgetStyle();
         const { filterInput, caseCheckbox, rxCheckbox, exCheckbox, onApply } = cfg;
+        const qCheckbox = cfg.qCheckbox || null;
         const getQuery  = cfg.getQuery  || (() => filterInput.value.trim());
         const setQuery  = cfg.setQuery  || ((q) => { filterInput.value = q; });
         const ctx       = cfg.context   || 'filter-hist';
@@ -109269,7 +109279,26 @@ ${sections.join('\n')}
             if (e.useCase)    parts.push('<span data-mb-tip title="Case Sensitive" class="mb-fhw-badge mb-fhw-badge-cs">Cs</span>');
             if (e.useRegex)   parts.push('<span data-mb-tip title="Regular Expression" class="mb-fhw-badge mb-fhw-badge-re">Re</span>');
             if (e.useExclude) parts.push('<span data-mb-tip title="Exclude Matches" class="mb-fhw-badge mb-fhw-badge-ex">Ex</span>');
+            if (e.useQuery)   parts.push('<span data-mb-tip title="Query mode" class="mb-fhw-badge mb-fhw-badge-q">Q</span>');
             return parts.length ? '&nbsp;' + parts.join('&nbsp;') : '';
+        };
+
+        /**
+         * The entry for the current query and boxes. `useQuery` is written
+         * only while Q is ticked, so every other entry keeps its old shape.
+         *
+         * @param {string} query
+         * @returns {{query: string, useCase: boolean, useRegex: boolean, useExclude: boolean, useQuery?: boolean}}
+         */
+        const _histCurrentEntry = (query) => {
+            const entry = {
+                query,
+                useCase:    !!(caseCheckbox && caseCheckbox.checked),
+                useRegex:   !!(rxCheckbox   && rxCheckbox.checked),
+                useExclude: !!(exCheckbox   && exCheckbox.checked),
+            };
+            if (qCheckbox && qCheckbox.checked) entry.useQuery = true;
+            return entry;
         };
 
         const _histHighlight = (haystack, needle) => {
@@ -109444,6 +109473,7 @@ ${sections.join('\n')}
             if (caseCheckbox) caseCheckbox.checked = !!e.useCase;
             if (rxCheckbox)   rxCheckbox.checked   = !!e.useRegex;
             if (exCheckbox)   exCheckbox.checked   = !!e.useExclude;
+            if (qCheckbox)    qCheckbox.checked    = !!e.useQuery;
             _histClose();
             filterInput.focus();
             onApply();
@@ -109472,12 +109502,7 @@ ${sections.join('\n')}
             if (historyLimit <= 0) return;
             const query = getQuery();
             if (!query) return;
-            const entry = {
-                query,
-                useCase:    !!(caseCheckbox && caseCheckbox.checked),
-                useRegex:   !!(rxCheckbox   && rxCheckbox.checked),
-                useExclude: !!(exCheckbox   && exCheckbox.checked),
-            };
+            const entry = _histCurrentEntry(query);
             _reloadStorage();
             const updated = [entry, ...lruHistory.filter(h => _histEntry(h).query !== query)]
                 .slice(0, historyLimit);
@@ -109493,12 +109518,7 @@ ${sections.join('\n')}
             ev.stopPropagation();
             const query = getQuery();
             if (!query) { filterInput.focus(); return; }
-            const entry = {
-                query,
-                useCase:    !!(caseCheckbox && caseCheckbox.checked),
-                useRegex:   !!(rxCheckbox   && rxCheckbox.checked),
-                useExclude: !!(exCheckbox   && exCheckbox.checked),
-            };
+            const entry = _histCurrentEntry(query);
             _reloadStorage();
             pinHistory = [entry, ...pinHistory.filter(h => _histEntry(h).query !== query)];
             GM_setValue('persistent-sa-hist-list', pinHistory);
@@ -112180,10 +112200,12 @@ ${sections.join('\n')}
         const _gfCc  = document.getElementById('mb-global-filter-case-checkbox');
         const _gfRx  = document.getElementById('mb-global-filter-rx-checkbox');
         const _gfEx  = document.getElementById('mb-global-filter-exclude-checkbox');
+        const _gfQ   = document.getElementById('mb-global-filter-query-checkbox');
         const _gfFlags = {
             cc: _gfCc ? _gfCc.checked : false,
             rx: _gfRx ? _gfRx.checked : false,
             ex: _gfEx ? _gfEx.checked : false,
+            q:  _gfQ  ? _gfQ.checked  : false,
         };
 
         /**
@@ -112195,13 +112217,14 @@ ${sections.join('\n')}
          * @returns {string}  HTML fragment, e.g. ' <span …>Cc</span> <span …>Rx</span>'
          */
         const _filterFlagsHtml = (flags) => {
-            if (!flags || (!flags.cc && !flags.rx && !flags.ex)) return '';
+            if (!flags || (!flags.cc && !flags.rx && !flags.ex && !flags.q)) return '';
             const pill = (label, title) =>
                 `<span class="sa-stats-pill" data-mb-tip title="${title}">${label}</span>`;
             let out = '';
             if (flags.cc) out += pill('Cc', 'Case-sensitive filter');
             if (flags.rx) out += pill('Rx', 'RegExp filter');
             if (flags.ex) out += pill('Ex', 'Exclude-matches filter');
+            if (flags.q)  out += pill('Q', 'Query-mode filter');
             return out;
         };
         const _colFlt = Array.from(document.querySelectorAll('.mb-col-filter-input'))
@@ -118085,6 +118108,307 @@ a { color: #1565c0; }`;
     excludeLabel.appendChild(document.createTextNode('Ex'));
     _setTip(excludeLabel, _globalBoxTitle('Exclude Matches'));
 
+    // Q: the global filter's query mode (Event Horizon's language, _gfqParse()).
+    // Off by default and not remembered, like the other three; it and Rx
+    // exclude each other (approved mockup, questions 1 and 2).
+    const queryLabel = document.createElement('label');
+    queryLabel.id = 'mb-global-filter-query-label';
+    queryLabel.style.cssText = `${uiCheckboxLabelCSS()} font-weight:normal; height:24px;`;
+    const queryCheckbox = document.createElement('input');
+    queryCheckbox.id = 'mb-global-filter-query-checkbox';
+    queryCheckbox.type = 'checkbox';
+    queryCheckbox.style.cssText = uiCheckboxInputCSS();
+    queryLabel.appendChild(queryCheckbox);
+    queryLabel.appendChild(document.createTextNode('Q'));
+    _setTip(queryLabel, 'Query mode: column:value, -term, OR, AND, brackets, "phrases" and year ranges ' +
+        '(type:album year:1975-1985 -live). Cannot be combined with RegExp. Focus the field for what the query means and the syntax.');
+
+    /**
+     * Whether the global filter is in query mode (its Q box is ticked).
+     *
+     * @returns {boolean}
+     */
+    function _gfqOn() {
+        return !!(queryCheckbox && queryCheckbox.checked);
+    }
+
+    // Q and Rx exclude each other. Registered before the boxes' runFilter
+    // listeners (further down), so the pass that follows sees both boxes
+    // settled; the card says what happened (_gfqCardNote()).
+    queryCheckbox.addEventListener('change', () => {
+        if (queryCheckbox.checked && regexpCheckbox.checked) {
+            regexpCheckbox.checked = false;
+            _gfqCardNote('Regular expressions are off: Rx and Q cannot be combined.');
+        }
+    });
+    regexpCheckbox.addEventListener('change', () => {
+        if (regexpCheckbox.checked && queryCheckbox.checked) {
+            queryCheckbox.checked = false;
+            _gfqCardNote('Query mode is off: Rx and Q cannot be combined.');
+        }
+    });
+
+    // ── The query-mode card under the field ──────────────────────────────────
+    // What the query means in words, "type a value" for a half-typed key,
+    // "no column 'foo'" for an unknown one, and the syntax on demand
+    // (approved mockup, question 5). A child of #mb-global-filter-wrapper
+    // (position:relative), so it travels with a sticky filter bar and needs
+    // no floating host. Shown while the field has focus or the pointer is over
+    // the field, with a grace period to reach its Syntax button; Esc hides it
+    // first, the next Esc clears the field as before.
+    const _gfqCard = document.createElement('div');
+    _gfqCard.id = 'mb-gfq-card';
+    _gfqCard.className = 'mb-tt-liner';
+    _gfqCard.hidden = true;
+    filterWrapper.appendChild(_gfqCard);
+    // `examples`/`back`: the Rx card's Examples list and the text an example
+    // replaced ("↶ Back to …", until the next input: set AFTER the example's
+    // own input event, see the card's click handler).
+    const _gfqState = { hover: false, dismissed: false, syntax: false, note: '', noteTimer: 0, hideTimer: 0, html: '',
+                        examples: false, back: null };
+
+    /** The syntax list in the card (the mockup's "Syntax" card). */
+    const _GFQ_SYNTAX_HTML =
+        '<dt>words</dt><dd><code>born to run</code>: neighbouring words are one phrase, found inside one cell of any column</dd>' +
+        '<dt>column:value</dt><dd><code>type:album</code>, <code>ti:"born to run"</code>: the key is the start of a column name, ' +
+        'spaces and case ignored (<code>first:</code> = First release)</dd>' +
+        '<dt>not</dt><dd><code>-live</code>, <code>-(live OR compilation)</code></dd>' +
+        '<dt>or, and</dt><dd><code>OR</code> and <code>AND</code> count in capitals only; side by side means AND; OR binds last. ' +
+        '<code>rock and roll</code> stays a phrase</dd>' +
+        '<dt>"quotes"</dt><dd>keep words apart from their neighbours, or keep a space inside a value</dd>' +
+        '<dt>years</dt><dd>on a Year or Date column: <code>year:1975-1985</code>, <code>year:2005-</code>, <code>year:-1980</code></dd>' +
+        '<dt>half-typed</dt><dd>never an error: an open bracket closes at the end, <code>artist:</code> with no value counts for nothing yet</dd>';
+
+    /**
+     * The filtered tables' column names, each once, in page order — the
+     * card reads a query against all of them (a key that one sub-table has
+     * is a column key, not text, for the reading).
+     *
+     * @returns {Array<string>}
+     */
+    function _gfqPageColumnNames() {
+        const seen = new Set();
+        document.querySelectorAll('table.tbl').forEach(t => {
+            if (!t.querySelector('.mb-col-filter-row')) return;
+            t.querySelectorAll('thead tr:first-child th').forEach(th => seen.add(_cleanColHeaderText(th)));
+        });
+        return [...seen];
+    }
+
+    /**
+     * A parsed query in words, as EH's suggestion row says it: "Type contains
+     * “album” · Year 1975–1985 · not any column contains “live”".
+     *
+     * @param {Object} n - A `_gfqParse()` node.
+     * @param {Array<string>} names - Column names, by the leaves' `c`.
+     * @param {boolean} [inner] - Bracket a compound (inside another node).
+     * @returns {string} HTML.
+     */
+    function _gfqSay(n, names, inner) {
+        const e = _mbttEscape;
+        if (n.not) return `<span class="mb-gfq-not">not</span> ${_gfqSay(n.not, names, true)}`;
+        if (!n.and && !n.or) {
+            if (n.c == null) return `any column contains <b>${e(n.v)}</b>`;
+            const name = e(_colLabel(names[n.c]));
+            if (n.r) {
+                const [a, z] = n.r;
+                return `${name} <b>${a && z ? `${a}–${z}` : a ? `from ${a}` : z ? `to ${z}` : 'any year'}</b>`;
+            }
+            return `${name} contains <b>${e(n.v)}</b>`;
+        }
+        const s = (n.and || n.or).map(x => _gfqSay(x, names, true)).join(n.and ? ' · ' : ' <i>or</i> ');
+        return inner ? `( ${s} )` : s;
+    }
+
+    /**
+     * Repaints the card from the field and the boxes, and shows or hides it.
+     * Cheap: one parse of the field (no rows), so it runs on every key.
+     */
+    function _gfqCardSync() {
+        const raw = stripFilterPrefix(filterInput.value).trim();
+        const q = _gfqOn();
+        // Rx: the pattern as runFilter() compiles it, spaces included.
+        const rx = !q && regexpCheckbox.checked;
+        const plainHint = !q && !regexpCheckbox.checked && /[a-z]:\S/i.test(raw);
+        // The focus inside the card counts as the field's: on a touch screen
+        // a tap on Syntax takes the focus (no mousedown comes first to keep it).
+        const focusHere = document.activeElement === filterInput || _gfqCard.contains(document.activeElement);
+        const wanted = (q || rx || plainHint || _gfqState.note) && !_gfqState.dismissed &&
+            (focusHere || _gfqState.hover || _gfqState.note);
+        if (!wanted) { _gfqCard.hidden = true; return; }
+        const e = _mbttEscape;
+        let html = '';
+        if (q) {
+            const names = _gfqPageColumnNames();
+            const keys = names.map(nm => {
+                const ks = [_gfqKey(nm), _gfqKey(_colLabel(nm))].filter(Boolean);
+                return ks[0] === ks[1] ? [ks[0]] : ks;
+            });
+            const p = _gfqParse(raw, keys, caseCheckbox.checked);
+            let what;
+            if (!raw) what = '<span class="mb-tt-dim">Type a query, or open the syntax.</span>';
+            else if (p.tree) {
+                const said = _gfqSay(p.tree, names, false);
+                what = excludeCheckbox.checked ? `<span class="mb-gfq-not">everything except</span> ( ${said} )` : said;
+            } else what = '';
+            html += `<div class="mb-gfq-head"><span class="mb-tt-ajpill mb-tt-ajpill-run">Query mode</span>` +
+                `<span class="mb-gfq-what">${what}</span></div>`;
+            p.blank.forEach(c => { html += `<div class="mb-gfq-hint">${e(_colLabel(names[c]))}: type a value</div>`; });
+            p.unknown.forEach(k => { html += `<div class="mb-gfq-note">No column ‘${e(k)}’: matched as text</div>`; });
+        } else if (rx) {
+            html += _gfqRxCardHtml(stripFilterPrefix(filterInput.value));
+        } else if (plainHint) {
+            html += '<div class="mb-gfq-note">Plain text: a <code>column:value</code> term is searched as written. ' +
+                'Tick <b>Q</b> to read it as a column filter.</div>';
+        }
+        if (_gfqState.note) html += `<div class="mb-gfq-hint">${e(_gfqState.note)}</div>`;
+        if (rx) {
+            const back = _gfqState.back;
+            html += '<div class="mb-gfq-foot">' +
+                (back != null ? `<button type="button" class="mb-gfq-syn-btn" data-gfq-back>↶ Back to ${e(back || '(empty)')}</button>` : '') +
+                `<button type="button" class="mb-gfq-syn-btn" data-gfq-examples aria-expanded="${_gfqState.examples}">Examples</button>` +
+                '<span class="mb-tt-dim">Esc hides this</span></div>';
+            if (_gfqState.examples) {
+                html += '<div class="mb-gfq-ex">' + _RX_EXAMPLES.map(([pat, w]) =>
+                    `<button type="button" data-gfq-ex="${e(pat)}">${e(pat)}</button><span>${e(w)}</span>`).join('') + '</div>';
+            }
+        }
+        if (q) {
+            html += `<div class="mb-gfq-foot"><button type="button" class="mb-gfq-syn-btn" aria-expanded="${_gfqState.syntax}"` +
+                ` aria-controls="mb-gfq-syn">Syntax</button><span class="mb-tt-dim">Esc hides this</span></div>` +
+                `<dl class="mb-gfq-syn" id="mb-gfq-syn"${_gfqState.syntax ? '' : ' hidden'}>${_GFQ_SYNTAX_HTML}</dl>`;
+        }
+        // Unchanged text is not rewritten: a tap's click goes to the button
+        // the finger went down on, and a rebuilt card no longer has it.
+        if (_gfqState.html !== html) { _gfqState.html = html; _gfqCard.innerHTML = html; }
+        _gfqCard.hidden = false;
+        // Keep it on screen: shift left when the field sits near the right edge.
+        _gfqCard.style.left = '0px';
+        const r = _gfqCard.getBoundingClientRect();
+        const over = r.right - (document.documentElement.clientWidth - 8);
+        if (over > 0) _gfqCard.style.left = `${-Math.min(over, Math.max(0, r.left - 8))}px`;
+    }
+
+    /**
+     * The Rx card's body for a pattern: an empty field asks for one; a valid
+     * one gets a green Valid pill, its reading (`_rxRead()`, one row per piece,
+     * groups indented) and what Cc and Ex do to it; an invalid one a red
+     * Invalid pill, the pattern with the faulty spot marked and the reason
+     * with its fix (`_rxDiagnose()`, else the browser's own message).
+     * Compiled exactly as runFilter() compiles the global query.
+     *
+     * @param {string} raw - The field's text, prefix stripped, NOT trimmed.
+     * @returns {string} HTML.
+     */
+    function _gfqRxCardHtml(raw) {
+        const e = _mbttEscape;
+        const pill = '<span class="mb-tt-ajpill mb-tt-ajpill-run">Regular expression</span>';
+        if (!raw) return `<div class="mb-gfq-head">${pill}<span class="mb-tt-dim">Type a pattern, or pick an example.</span></div>`;
+        let err = null;
+        try { new RegExp(raw, caseCheckbox.checked ? '' : 'i'); } catch (ex) { err = ex.message; }
+        if (err) {
+            const bad = _rxDiagnose(raw) || { at: -1, why: err.replace(/^Invalid regular expression: \/.*\/\w*: /, '') + '.', fix: '' };
+            const len = bad.len || 1;
+            const pat = bad.at < 0 ? e(raw)
+                : e(raw.slice(0, bad.at)) + `<span class="mb-gfq-bad">${e(raw.slice(bad.at, bad.at + len))}</span>` + e(raw.slice(bad.at + len));
+            return `<div class="mb-gfq-head">${pill}<span class="mb-tt-ajpill mb-tt-ajpill-err">Invalid</span>` +
+                '<span class="mb-tt-dim">nothing is filtered until it is fixed</span></div>' +
+                `<div class="mb-gfq-pat">${pat}</div><div class="mb-gfq-why">${e(bad.why)}</div>` +
+                (bad.fix ? `<div>${e(bad.fix)}</div>` : '');
+        }
+        const rows = _rxRead(raw).map(([d, code, w]) => {
+            const lv = Math.min(d, 3);
+            return `<dt class="mb-gfq-d${lv}">${code ? `<code>${e(code)}</code>` : ''}</dt><dd class="mb-gfq-d${lv}">${e(w)}</dd>`;
+        }).join('');
+        const notes = ['Each cell is tested on its own: ^ and $ are its start and end.',
+                       caseCheckbox.checked ? 'Case counts (Cc).' : 'Case is ignored (Cc is off).'];
+        if (excludeCheckbox.checked) notes.push('Rows that match are hidden (Ex).');
+        return `<div class="mb-gfq-head">${pill}<span class="mb-tt-ajpill mb-tt-ajpill-ok">Valid</span></div>` +
+            `<dl class="mb-gfq-read">${rows}</dl><div class="mb-gfq-note">${notes.join(' ')}</div>`;
+    }
+
+    /**
+     * Puts `text` into the global filter from the card (an example, or Back),
+     * exactly as the history widget applies an entry: the focus prefix, an
+     * internal input event (the ✕ and the narrowing see it), then one pass.
+     *
+     * @param {string} text
+     */
+    function _gfqCardApply(text) {
+        filterInput.value = getFilterFocusPrefix() + text;
+        filterInput.setSelectionRange(filterInput.value.length, filterInput.value.length);
+        _dispatchInternalInputEvent(filterInput, { bubbles: false });
+        runFilter();
+        filterInput.focus();
+    }
+
+    /**
+     * Shows a short note in the card for a few seconds (the Q/Rx exclusion).
+     *
+     * @param {string} text
+     */
+    function _gfqCardNote(text) {
+        clearTimeout(_gfqState.noteTimer);
+        _gfqState.note = text;
+        _gfqState.dismissed = false;
+        _gfqCardSync();
+        _gfqState.noteTimer = setTimeout(() => { _gfqState.note = ''; _gfqCardSync(); }, 3500);
+    }
+
+    filterWrapper.addEventListener('mouseenter', () => {
+        clearTimeout(_gfqState.hideTimer);
+        _gfqState.hover = true;
+        _gfqCardSync();
+    });
+    filterWrapper.addEventListener('mouseleave', () => {
+        clearTimeout(_gfqState.hideTimer);
+        _gfqState.hideTimer = setTimeout(() => { _gfqState.hover = false; _gfqCardSync(); }, 400);
+    });
+    filterInput.addEventListener('focus', () => { _gfqState.dismissed = false; _gfqCardSync(); });
+    filterInput.addEventListener('blur', () => {
+        clearTimeout(_gfqState.hideTimer);
+        _gfqState.hideTimer = setTimeout(() => _gfqCardSync(), 200);
+    });
+    filterInput.addEventListener('input', () => {
+        _gfqState.back = null;
+        _gfqState.dismissed = false;
+        _gfqCardSync();
+    });
+    [caseCheckbox, regexpCheckbox, excludeCheckbox, queryCheckbox].forEach(cb => cb.addEventListener('change', () => _gfqCardSync()));
+    // Esc: the open syntax first, then the card; with the card gone the
+    // field's own Esc (clear) applies again.
+    filterInput.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape' || _gfqCard.hidden) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (_gfqState.syntax) _gfqState.syntax = false;
+        else if (_gfqState.examples) _gfqState.examples = false;
+        else _gfqState.dismissed = true;
+        _gfqCardSync();
+    });
+    // A press inside the card keeps the caret in the field (so the card stays),
+    // and the Syntax button opens or shuts the list.
+    _gfqCard.addEventListener('mousedown', (e) => e.preventDefault());
+    _gfqCard.addEventListener('click', (e) => {
+        const btn = e.target.closest('button');
+        if (!btn) return;
+        if (btn.dataset.gfqEx != null) {
+            const before = stripFilterPrefix(filterInput.value);
+            _gfqState.examples = false;
+            _gfqCardApply(btn.dataset.gfqEx);
+            _gfqState.back = before;
+        } else if (btn.hasAttribute('data-gfq-back')) {
+            const back = _gfqState.back || '';
+            _gfqState.back = null;
+            _gfqCardApply(back);
+        } else if (btn.hasAttribute('data-gfq-examples')) {
+            _gfqState.examples = !_gfqState.examples;
+        } else if (btn.classList.contains('mb-gfq-syn-btn')) {
+            _gfqState.syntax = !_gfqState.syntax;
+        }
+        _gfqCardSync();
+    });
+
     // ── History widget (Pin + History toggle + dropdown) ──────────────────────
     // Outer anchor is position:relative so the dropdown can be positioned below it.
     const gfHistAnchor = document.createElement('span');
@@ -118095,6 +118419,7 @@ a { color: #1565c0; }`;
         caseCheckbox,
         rxCheckbox:  regexpCheckbox,
         exCheckbox:  excludeCheckbox,
+        qCheckbox:   queryCheckbox,
         context:     'gf',
         getQuery:    () => stripFilterPrefix(filterInput.value).trim(),
         setQuery:    (q) => {
@@ -118145,6 +118470,7 @@ a { color: #1565c0; }`;
     filterGroup.appendChild(caseLabel);
     filterGroup.appendChild(regexpLabel);
     filterGroup.appendChild(excludeLabel);
+    filterGroup.appendChild(queryLabel);
     actionsGroup.appendChild(preFilterMsg);
 
     // Create prefilter toggle button (only visible when data loaded from disk with prefilter)
@@ -119427,7 +119753,9 @@ a { color: #1565c0; }`;
         const total = scopes.reduce((s, x) => s + x.rows.length, 0);
         scopes.forEach(sc => {
             const inHeading = !!sc.h3;
-            const host = inHeading ? sc.h3 : document.getElementById('mb-global-filter-exclude-label');
+            // After Q, the last of the four switches, so they stay together.
+            const host = inHeading ? sc.h3 : (document.getElementById('mb-global-filter-query-label')
+                || document.getElementById('mb-global-filter-exclude-label'));
             if (!host) return;
             const state = _titleStyleState(sc.rows);
             const off = state === 'found' ? _titleStyleOffRows(sc.rows) : 0;
@@ -119446,7 +119774,7 @@ a { color: #1565c0; }`;
                 btn = _titleStyleBtnCreate(state);
                 if (!inHeading) btn.id = 'mb-title-style-global-btn';
             }
-            // Placement: the global bar after Ex; a heading after its filter
+            // Placement: the global bar after Ex and Q; a heading after its filter
             // panel (or 🔍), the anchor the pending-edits button uses too.
             const anchor = inHeading
                 ? (sc.h3.querySelector('.mb-subtable-filter-container') || sc.h3.querySelector('.mb-subtable-filter-toggle-icon'))
@@ -120940,6 +121268,46 @@ a { color: #1565c0; }`;
         .mb-tt-liner .mb-tt-rule { height: 0; border-top: 1px solid #d9cfbd; margin: 5px 0; }
         .mb-tt-liner .mb-tt-pill { display: inline-block; background: #efe6d4; color: #4a3f33; border: 1px solid #d9cfbd; border-radius: 3px; padding: 0 5px; font-size: 0.88em; font-weight: 700; line-height: 1.45; white-space: nowrap; }
         .mb-tt-liner .mb-tt-alert { color: #9b2218; font-weight: 700; }
+        /* The global filter's query-mode card (_gfqCardSync): what the query
+           means, under the field. Mockup approved 2026-11-20:
+           https://claude.ai/artifact/Y7tjYtaS82RTaZ5Admz2wk */
+        #mb-gfq-card { position: absolute; top: calc(100% + 4px); left: 0; width: max-content; min-width: 260px;
+            max-width: min(520px, 92vw); white-space: normal; font-weight: normal; pointer-events: auto; }
+        #mb-gfq-card .mb-gfq-head { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+        #mb-gfq-card .mb-gfq-what { min-width: 0; }
+        #mb-gfq-card .mb-gfq-what b { font: 400 0.95em ui-monospace, Consolas, monospace; background: #f6e7bd; border-radius: 2px; padding: 0 3px; }
+        #mb-gfq-card .mb-gfq-not { color: #9b2218; font-style: italic; }
+        #mb-gfq-card .mb-gfq-hint { color: #9a6a00; font-style: italic; margin-top: 3px; }
+        #mb-gfq-card .mb-gfq-note { color: #7a6d5c; font-style: italic; margin-top: 3px; }
+        #mb-gfq-card .mb-gfq-foot { display: flex; gap: 10px; align-items: center; margin-top: 6px; }
+        #mb-gfq-card .mb-gfq-syn-btn { font: 600 10.5px/1.6 system-ui, Arial, sans-serif; letter-spacing: 0.08em; text-transform: uppercase;
+            color: #7a6d5c; background: transparent; border: 1px solid #d9cfbd; border-radius: 3px; padding: 1px 8px; cursor: pointer; }
+        #mb-gfq-card .mb-gfq-syn-btn:hover, #mb-gfq-card .mb-gfq-syn-btn[aria-expanded="true"] { color: #2b2622; border-color: #7a6d5c; }
+        #mb-gfq-card .mb-gfq-syn-btn:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 1px; }
+        #mb-gfq-card dl.mb-gfq-syn { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 12px; margin: 8px 0 0;
+            padding-top: 8px; border-top: 1px solid #d9cfbd; }
+        #mb-gfq-card dl.mb-gfq-syn[hidden] { display: none; }
+        #mb-gfq-card dl.mb-gfq-syn dt { font-style: italic; color: #7a6d5c; }
+        #mb-gfq-card dl.mb-gfq-syn dd { margin: 0; min-width: 0; }
+        #mb-gfq-card code { font: 0.92em ui-monospace, Consolas, monospace; }
+        /* The Rx card (_gfqRxCardHtml): mockup approved 2026-11-20,
+           https://claude.ai/artifact/P2mgvatkWwPXYkTHJAYfFX */
+        #mb-gfq-card dl.mb-gfq-read { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 12px; margin: 8px 0 0;
+            padding-top: 8px; border-top: 1px solid #d9cfbd; }
+        #mb-gfq-card dl.mb-gfq-read dt { white-space: pre; }
+        #mb-gfq-card dl.mb-gfq-read dt code { background: #f3ede1; border-radius: 2px; padding: 0 3px; }
+        #mb-gfq-card dl.mb-gfq-read dd { margin: 0; min-width: 0; }
+        #mb-gfq-card dl.mb-gfq-read .mb-gfq-d1 { padding-left: 14px; }
+        #mb-gfq-card dl.mb-gfq-read .mb-gfq-d2 { padding-left: 28px; }
+        #mb-gfq-card dl.mb-gfq-read .mb-gfq-d3 { padding-left: 42px; }
+        #mb-gfq-card .mb-gfq-pat { font: 14px ui-monospace, Consolas, monospace; margin-top: 6px; white-space: pre-wrap; word-break: break-all; }
+        #mb-gfq-card .mb-gfq-bad { background: #f3d1cb; color: #9b2218; text-decoration: underline wavy #9b2218; }
+        #mb-gfq-card .mb-gfq-why { color: #9b2218; margin-top: 4px; }
+        #mb-gfq-card .mb-gfq-ex { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 12px; margin-top: 8px;
+            padding-top: 8px; border-top: 1px solid #d9cfbd; align-items: baseline; }
+        #mb-gfq-card .mb-gfq-ex button { font: 13px ui-monospace, Consolas, monospace; text-align: left; background: #f3ede1; color: #2b2622;
+            border: 1px solid transparent; border-radius: 3px; padding: 0 5px; cursor: pointer; }
+        #mb-gfq-card .mb-gfq-ex button:hover, #mb-gfq-card .mb-gfq-ex button:focus-visible { border-color: #7a6d5c; }
         /* Comparison block (_cmpHtml, _cmpLenCardHtml): two values one under
            the other, only what differs marked, in both rows (neither side is
            the wrong one). Mockup approved 2026-10-17, variant A:
@@ -132629,6 +132997,8 @@ a { color: #1565c0; }`;
         if (flags.isCaseSensitive) mods.push('case');
         if (flags.isRegExp)        mods.push('rx');
         if (flags.isExclude)       mods.push('ex');
+        // Only the global query has a query mode; column flags never carry it.
+        if (flags.isQuery)         mods.push('q');
         return mods.length ? `(${mods.join(',')}) ` : '';
     }
 
@@ -132695,7 +133065,7 @@ a { color: #1565c0; }`;
         const parts = [];
         const gfInput = document.getElementById('mb-global-filter-input');
         const globalRaw = gfInput ? stripFilterPrefix(gfInput.value) : '';
-        if (globalRaw) parts.push(`GLOBAL:${_filterModsLabel(_globalFilterFlags())}"${globalRaw}"`);
+        if (globalRaw) parts.push(`GLOBAL:${_filterModsLabel({ ..._globalFilterFlags(), isQuery: _gfqOn() })}"${globalRaw}"`);
         const stfInput = _getStfInput(findH3ForTable(table));
         const stfRaw = stfInput ? stfInput.value : '';
         if (stfRaw) parts.push(`SUB-TABLE:${_filterModsLabel(_resolveColFilterFlags(table))}"${stfRaw}"`);
@@ -135028,6 +135398,573 @@ a { color: #1565c0; }`;
         return c.cols[idx];
     }
 
+    // ── The global filter's query mode (Q) ───────────────────────────────────
+    // Event Horizon's filter language (majkinetor; tqParse/tqRange/tqKey,
+    // event_horizon.user.js, anchor eh-tqparse in scripts/majkinetor-anchors.json),
+    // ported in _gfqParse(). Mockup approved 2026-11-20:
+    // https://claude.ai/artifact/Y7tjYtaS82RTaZ5Admz2wk. Unlike EH, a query is
+    // parsed and compiled ONCE per filter pass and column set (_gfqForTable()),
+    // never per row. Design: docs/claude/filter-and-cache-invariants.md, "The
+    // global filter's query mode (Event Horizon's language)".
+
+    /**
+     * A column name as a query key: accents and case dropped, every character
+     * but a–z, 0–9 and # removed ("Catalog#" → "catalog#", "Release group"
+     * → "releasegroup"). EH's `tqKey`.
+     *
+     * @param {string} h - A column name or label.
+     * @returns {string}
+     */
+    function _gfqKey(h) {
+        return String(h || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+            .toLowerCase().replace(/[^a-z0-9#]+/g, '');
+    }
+
+    /**
+     * A year or date column's value as a range, or null: `2022-2024`,
+     * `2022-`, `-2024`. A year whose end is still being typed leaves that end
+     * open; on a date column `2022-01` stays text. EH's `tqRange`.
+     *
+     * @param {string} keys - The column's keys, joined (only "year"/"date" in them matters).
+     * @param {string} v - The term's value.
+     * @returns {?Array<string>} `[from, to]`, either '' for an open end.
+     */
+    function _gfqRange(keys, v) {
+        if (!/year|date/.test(keys)) return null;
+        const m = (/year/.test(keys) ? /^(\d{4})?-(\d{0,4})$/ : /^(\d{4})?-(\d{4})?$/).exec(v);
+        return m && [m[1] || '', (m[2] || '').length === 4 ? m[2] : ''];
+    }
+
+    /**
+     * Parses a query-mode global filter (a port of Event Horizon's `tqParse`):
+     * words and `column:value` terms side by side or with `AND`, `OR` binding
+     * last, `-` before a term or a bracket excluding it, `"quotes"`;
+     * neighbouring words are one phrase, quotes keep one apart; `AND`/`OR`
+     * count in capitals only. Half-typed text never fails: an open bracket
+     * shuts at the end, a `)` that opens nothing goes, and a column with no
+     * value counts for nothing and is listed in `blank`.
+     *
+     * Two changes from EH (approved questions 4 and 6): values are lower-cased
+     * (unless `cc`) but keep their accents, as the plain filter does; a key
+     * that equals one of a column's keys beats a prefix of an earlier column,
+     * and each column may have more than one key (its name and its label).
+     * A `foo:bar` whose key names no column is text, as in EH, and `foo` is
+     * listed in `unknown` for the reading.
+     *
+     * @param {string} q - The query as typed (focus prefix stripped).
+     * @param {Array<Array<string>>} keys - Per column, its keys (`_gfqKey()`); `[]` for none.
+     * @param {boolean} cc - Case-sensitive (Cc).
+     * @returns {{tree: ?Object, blank: Array<number>, unknown: Array<string>}}
+     *   A leaf is `{v}` (any column) or `{c, v, r}` (column `c`, `r` a range or null);
+     *   inner nodes are `{and: […]}`, `{or: […]}`, `{not: node}`.
+     */
+    function _gfqParse(q, keys, cc) {
+        const toks = [...String(q || '').matchAll(/(-(?=\S))|([()])|"([^"]*)"?|([^\s()":]+):("[^"]*"?|[^\s()]*)|([^\s()]+)/g)];
+        const blank = [], unknown = [];
+        const fold = (s) => cc ? s : s.toLowerCase();
+        const col = (k) => {
+            const f = _gfqKey(k);
+            if (!f) return -1;
+            const exact = keys.findIndex(ks => ks.includes(f));
+            return exact >= 0 ? exact : keys.findIndex(ks => ks.some(x => x.startsWith(f)));
+        };
+        const isWord = (t) => t[6] != null || (t[4] != null && col(t[4]) < 0);
+        const join = (k, xs) => { xs = xs.filter(Boolean); return xs.length > 1 ? { [k]: xs } : xs[0] || null; };
+        let i = 0;
+        let or;
+        const atom = () => {
+            const [t, neg, br, qt, k, val] = toks[i++];
+            if (neg) {
+                if (i >= toks.length) return null;
+                const n = atom();
+                return n && { not: n };
+            }
+            if (br === ')') { i--; return null; }
+            if (br) {
+                const n = or();
+                if (toks[i] && toks[i][0] === ')') i++;
+                return n;
+            }
+            const c = k == null ? -1 : col(k);
+            if (c >= 0) {
+                const v = fold(val.replace(/"/g, '').trim());
+                if (!v) { if (!blank.includes(c)) blank.push(c); return null; }
+                return { c, v, r: _gfqRange(keys[c].join(' '), v) };
+            }
+            if (k != null && !unknown.includes(k)) unknown.push(k);
+            const v = fold(qt != null ? qt : t);
+            return v ? { v } : null;
+        };
+        const and = () => {
+            const xs = [];
+            let word = false;
+            while (i < toks.length && toks[i][0] !== ')' && toks[i][0] !== 'OR') {
+                if (toks[i][0] === 'AND') { i++; word = false; continue; }
+                const w = isWord(toks[i]), n = atom();
+                const last = xs[xs.length - 1];
+                if (w && word && n && last && last.c == null && last.v != null) last.v += ' ' + n.v;
+                else if (n) xs.push(n);
+                word = w;
+            }
+            return join('and', xs);
+        };
+        or = () => {
+            const xs = [and()];
+            while (toks[i] && toks[i][0] === 'OR') { i++; xs.push(and()); }
+            return join('or', xs);
+        };
+        let tree = null;
+        // or() stops only at the end, or at a bracket that opens nothing.
+        while (i < toks.length) { tree = join('and', [tree, or()]); i++; }
+        return { tree, blank, unknown };
+    }
+
+    /**
+     * The leaves of a parsed query that a matching row highlights: every leaf
+     * not under a `not` (a row kept because it LACKS something has nothing
+     * of it to mark).
+     *
+     * @param {?Object} n - A `_gfqParse()` tree.
+     * @param {Array<Object>} [out]
+     * @returns {Array<Object>}
+     */
+    function _gfqPositiveLeaves(n, out = []) {
+        if (!n) return out;
+        if (n.and || n.or) (n.and || n.or).forEach(x => _gfqPositiveLeaves(x, out));
+        else if (!n.not) out.push(n);
+        return out;
+    }
+
+    /**
+     * Whether a 4-digit year lies in a range leaf's bounds.
+     *
+     * @param {string} y
+     * @param {Array<string>} r - `[from, to]`, '' for an open end.
+     * @returns {boolean}
+     */
+    function _gfqInRange(y, r) {
+        return (!r[0] || y >= r[0]) && (!r[1] || y <= r[1]);
+    }
+
+    /**
+     * Compiles a parsed query into one closure per node, so a filter pass
+     * walks no tree and parses nothing per row. A word leaf is the plain
+     * global filter's own test (`_rowPlainHit()`: inside one cell, plus the
+     * Relationships and artwork fallbacks); a column leaf reads that column's
+     * clean text (cached on source rows, as the column filters do); a range
+     * leaf looks for a 4-digit year in the bounds.
+     *
+     * @param {{tree: ?Object}} p - `_gfqParse()`'s answer.
+     * @param {boolean} cc - Case-sensitive (Cc); leaf values are already folded to match.
+     * @returns {?function(HTMLTableRowElement, boolean): boolean} null for an empty query.
+     */
+    function _gfqCompile(p, cc) {
+        const colText = (row, c, matchOnly) => {
+            if (!row.cells[c]) return '';
+            return matchOnly ? _cachedColText(row, c) : getCleanColumnText(row.cells[c]);
+        };
+        const build = (n) => {
+            if (n.and) { const fs = n.and.map(build); return (row, m) => fs.every(f => f(row, m)); }
+            if (n.or)  { const fs = n.or.map(build);  return (row, m) => fs.some(f => f(row, m)); }
+            if (n.not) { const f = build(n.not);      return (row, m) => !f(row, m); }
+            const v = n.v;
+            if (n.c == null) return (row, m) => _rowPlainHit(row, v, cc, m);
+            const c = n.c, r = n.r;
+            if (r) return (row, m) => (colText(row, c, m).match(/\b\d{4}\b/g) || []).some(y => _gfqInRange(y, r));
+            return (row, m) => {
+                const t = colText(row, c, m);
+                return (cc ? t : t.toLowerCase()).includes(v);
+            };
+        };
+        return p.tree ? build(p.tree) : null;
+    }
+
+    /**
+     * Recently compiled queries, by flags, query and column set — so the
+     * groups of one pass, the next pass with the same text, and the artwork
+     * rebuilds (`_artHighlightArtCell()`) share one parse. Bounded.
+     * @type {Map<string, Object>}
+     */
+    const _gfqCache = new Map();
+
+    /**
+     * The query compiled for one table's columns: its keys are that table's
+     * own headers (`_cleanColHeaderText()`, and the display label
+     * `_colLabel()` when it differs), in cell order, so on a multi-table page
+     * `label:` keeps nothing in a sub-table that has no Label column.
+     *
+     * @param {?HTMLTableElement} table - The live table (null: no columns).
+     * @param {string} raw - The query as typed.
+     * @param {boolean} cc - Case-sensitive (Cc).
+     * @returns {{test: ?Function, tree: ?Object, leaves: Array<Object>, blank: Array<number>,
+     *            unknown: Array<string>, names: Array<string>}}
+     */
+    function _gfqForTable(table, raw, cc) {
+        const ths = table ? Array.from(table.querySelectorAll('thead tr:first-child th')) : [];
+        const names = ths.map(th => _cleanColHeaderText(th));
+        const sig = (cc ? '1' : '0') + '\u001e' + raw + '\u001e' + names.join('\u001f');
+        let g = _gfqCache.get(sig);
+        if (g) return g;
+        const keys = names.map(n => {
+            const ks = [_gfqKey(n), _gfqKey(_colLabel(n))].filter(Boolean);
+            return ks[0] === ks[1] ? [ks[0]] : ks;
+        });
+        const p = _gfqParse(raw, keys, cc);
+        g = { test: _gfqCompile(p, cc), tree: p.tree, leaves: _gfqPositiveLeaves(p.tree),
+              blank: p.blank, unknown: p.unknown, names };
+        if (_gfqCache.size >= 32) _gfqCache.delete(_gfqCache.keys().next().value);
+        _gfqCache.set(sig, g);
+        return g;
+    }
+
+    /**
+     * Marks a matching row's query-mode leaves, as the plain filter marks its
+     * one string: a word anywhere, a column term in its column, a range on the
+     * in-range years of its column; the Relationships icons the same way.
+     * Leaves under a `not` mark nothing (`_gfqPositiveLeaves()`).
+     *
+     * @param {HTMLTableRowElement} row - A clone going into the DOM.
+     * @param {Object} g - `_gfqForTable()`'s answer.
+     * @param {boolean} cc - Case-sensitive (Cc).
+     */
+    function _gfqHighlightRow(row, g, cc) {
+        for (const n of g.leaves) {
+            if (n.r) {
+                const cell = row.cells[n.c];
+                if (!cell) continue;
+                const ys = [...new Set((getCleanColumnText(cell).match(/\b\d{4}\b/g) || [])
+                    .filter(y => _gfqInRange(y, n.r)))];
+                if (ys.length) highlightText(row, `\\b(?:${ys.join('|')})\\b`, true, n.c, true, 'global');
+                continue;
+            }
+            highlightText(row, n.v, cc, n.c == null ? -1 : n.c, false, 'global');
+            Array.from(row.cells).forEach((cell, i) => {
+                if ((n.c == null || n.c === i) && cell.classList.contains('mb-rel-cell')) {
+                    _highlightRelCellIcons(cell, n.v, cc, false);
+                }
+            });
+        }
+    }
+
+    /**
+     * Whether a row holds `needle` the way the PLAIN global filter tests it:
+     * inside one cell (`_cachedFullText()`, cells joined by `_CELL_TEXT_SEP`),
+     * else in a Relationships cell's URL keys, else in an artwork cell's
+     * search text. Shared by the plain filter and every word of a query-mode
+     * filter, so the two cannot drift apart.
+     *
+     * @param {HTMLTableRowElement} row
+     * @param {string} needle - Already lower-cased unless `cc`.
+     * @param {boolean} cc - Case-sensitive (Cc).
+     * @param {boolean} matchOnly - A source row (cached text) rather than a clone.
+     * @returns {boolean}
+     */
+    function _rowPlainHit(row, needle, cc, matchOnly) {
+        // Cell-separated, so a plain query matches inside one cell only —
+        // the same unit the regexp branch tests. See _CELL_TEXT_SEP.
+        const text = matchOnly ? _cachedFullText(row) : getCleanVisibleText(row, _CELL_TEXT_SEP);
+        if (cc ? text.includes(needle) : text.toLowerCase().includes(needle)) return true;
+        // getCleanVisibleText deliberately FILTER_REJECTs .mb-rel-filter-key
+        // spans (by design — their URL content must not pollute sort keys or
+        // the aggregated visible text of non-rel columns).  As a consequence,
+        // plain-text global filter never matches against Relationships column
+        // URLs even though both the column filter and the sub-table filter do.
+        // Fix: when getCleanVisibleText misses, additionally test each
+        // .mb-rel-cell via getCleanColumnText, mirroring the same targeted
+        // rel-cell fallback already applied to the regexp path.
+        const cells = row.cells;
+        for (let i = 0; i < cells.length; i++) {
+            const cell = cells[i];
+            if (!cell.classList.contains('mb-rel-cell')) continue;
+            const relText = matchOnly ? _cachedColText(row, i) : getCleanColumnText(cell);
+            if (cc ? relText.includes(needle) : relText.toLowerCase().includes(needle)) return true;
+        }
+        // getCleanVisibleText also does not include the CAA/EAA art search
+        // index (image types and comments stored by
+        // _artBuildMultiRowArtCell), so filtering for e.g. "Front" or
+        // "Booklet" via the global plain-text filter never matches a
+        // CAA/EAA art cell even though the column filter and global regexp
+        // filter do.  Add the same targeted fallback — through
+        // _artSearchTextFor(), the same resolver getCleanColumnText() uses,
+        // because the row tested here is usually the SOURCE row: on
+        // `tableMode: 'multi'` it carries the synced dataset attribute and
+        // never the `<ul>` this used to read, so the plain global query
+        // matched nothing at all (AUDIT.md §3.1 H5).
+        for (let i = 0; i < cells.length; i++) {
+            const artText = _artSearchTextFor(cells[i]);
+            if (!artText) continue;
+            if (cc ? artText.includes(needle) : artText.toLowerCase().includes(needle)) return true;
+        }
+        return false;
+    }
+
+    // ── The global filter's Rx card: a regular expression in words ────────────
+    // What the card under the field says while Rx is on (_gfqCardSync()):
+    // the pattern read piece by piece, or where and why it is invalid.
+    // Mockup approved 2026-11-20: https://claude.ai/artifact/P2mgvatkWwPXYkTHJAYfFX
+    // The filter compiles its regexps WITHOUT the Unicode flag (runFilter():
+    // '' or 'i'), so this reads them the same way: \p is the letter p, and a
+    // "{" that is no quantifier is text.
+
+    /** What a backslash escape means outside a character class. */
+    const _RX_ESC_WORDS = {
+        d: 'a digit (0–9)', D: 'anything but a digit', w: 'a letter, digit or _ (A–Z only, no accents)',
+        W: 'anything but A–Z, 0–9 and _', s: 'a space, tab or line break', S: 'anything but a space',
+        b: 'a word edge', B: 'not a word edge', t: 'a tab', n: 'a line break', r: 'a carriage return',
+        f: 'a form feed', v: 'a vertical tab', 0: 'the NUL character',
+    };
+
+    /** What a backslash escape means inside a character class. */
+    const _RX_CLASS_ESC = {
+        d: 'a digit', D: 'a non-digit', w: 'a word character', W: 'a non-word character',
+        s: 'a space', S: 'a non-space', t: 'a tab', n: 'a line break',
+    };
+
+    /** A quantifier at the start of a string: `*`, `+`, `?`, `{n}`, `{n,}`, `{n,m}`. */
+    const _RX_QUANT_RE = /^(\*|\+|\?|\{(\d+)(,(\d*))?\})(\?)?/;
+
+    /**
+     * The examples behind the Rx card's Examples button: [pattern, words].
+     * @type {Array<Array<string>>}
+     */
+    const _RX_EXAMPLES = [
+        ['^The ', 'cells that start with “The ”'],
+        ['live$', 'cells that end with “live”'],
+        ['\\b19[89]\\d\\b', 'a year from 1980 to 1999'],
+        ['(demo|outtake)', '“demo” or “outtake”'],
+        ['^\\d+$', 'cells that are only digits'],
+        ['\\(.*\\)', 'something in brackets (the brackets escaped)'],
+        ['[^\\x00-\\x7F]', 'a character outside plain ASCII (accents, curly quotes)'],
+        ['\\s{2,}', 'two or more spaces in a row'],
+        ['^$', 'an empty cell'],
+    ];
+
+    /**
+     * Reads a VALID regular expression (no Unicode flag) as rows of words: one
+     * row per piece, literal text joined into one row, a group's contents
+     * indented one level under its own row, alternatives as "either" / "or",
+     * a quantifier said after its piece. Never throws on a pattern
+     * `new RegExp()` accepted; a construct it does not know reads as text.
+     *
+     * @param {string} p - The pattern, as typed.
+     * @returns {Array<Array<*>>} `[depth, code, words]` per row.
+     */
+    function _rxRead(p) {
+        let i = 0, groupNo = 0;
+        const quote = (s) => '“' + s.replace(/ /g, '␣') + '”';
+        const isQuant = () => /^(\*|\+|\?|\{\d+(,\d*)?\})/.test(p.slice(i));
+        const escAt = (j) => {
+            const c = p[j + 1];
+            const rest = p.slice(j + 1);
+            let m;
+            if (c === undefined) return { len: 1, lit: '\\' };
+            if ((m = /^x([0-9a-fA-F]{2})/.exec(rest))) {
+                const ch = String.fromCharCode(parseInt(m[1], 16));
+                return { len: 4, lit: ch, words: `the character “${ch}” (U+00${m[1].toUpperCase()})` };
+            }
+            if ((m = /^u([0-9a-fA-F]{4})/.exec(rest))) {
+                const ch = String.fromCharCode(parseInt(m[1], 16));
+                return { len: 6, lit: ch, words: `the character “${ch}” (U+${m[1].toUpperCase()})` };
+            }
+            if (/[1-9]/.test(c)) {
+                m = /^[1-9]\d*/.exec(rest);
+                return { len: 1 + m[0].length, words: `the same text again as group ${m[0]}` };
+            }
+            if (c === 'p' || c === 'P') {
+                return { len: 2, lit: c, words: `the letter “${c}” (\\${c}{…} needs the Unicode flag, which the filter does not use)` };
+            }
+            if (_RX_ESC_WORDS[c]) return { len: 2, words: _RX_ESC_WORDS[c] };
+            return { len: 2, lit: c };
+        };
+        const quant = () => {
+            const m = _RX_QUANT_RE.exec(p.slice(i));
+            if (!m) return null;
+            i += m[0].length;
+            let w;
+            if (m[1] === '*') w = 'any number of times, also none';
+            else if (m[1] === '+') w = 'one or more times';
+            else if (m[1] === '?') w = 'optional';
+            else if (m[3] === undefined) w = `exactly ${m[2]} times`;
+            else if (m[4] === '') w = `${m[2]} or more times`;
+            else w = `${m[2]} to ${m[4]} times`;
+            return { code: m[0], words: w + (m[5] ? ', as few as possible' : '') };
+        };
+        const classWords = (body) => {
+            let neg = false, k = 0;
+            const parts = [];
+            if (body[0] === '^') { neg = true; k = 1; }
+            const item = () => {
+                if (body[k] === '\\') {
+                    const c = body[k + 1];
+                    const m = /^x([0-9a-fA-F]{2})/.exec(body.slice(k + 1));
+                    if (m) { k += 4; return { ch: String.fromCharCode(parseInt(m[1], 16)), show: '\\x' + m[1] }; }
+                    k += 2;
+                    if (_RX_CLASS_ESC[c]) return { word: _RX_CLASS_ESC[c] };
+                    return { ch: c, show: c };
+                }
+                const ch = body[k++];
+                return { ch, show: ch };
+            };
+            while (k < body.length) {
+                const a = item();
+                if (a.ch !== undefined && body[k] === '-' && k + 1 < body.length) {
+                    k++;
+                    const b = item();
+                    parts.push(b.ch !== undefined ? `${a.show}–${b.show}` : `${a.show}, -, ${b.word}`);
+                } else parts.push(a.word || (a.ch === ' ' ? 'a space' : a.show));
+            }
+            return (neg ? 'any character except: ' : 'one of: ') + parts.join(', ');
+        };
+        let alt;
+        const seq = (depth, rows) => {
+            let lit = '', litCode = '';
+            const flush = () => {
+                if (litCode) { rows.push([depth, litCode, 'the text ' + quote(lit)]); lit = ''; litCode = ''; }
+            };
+            while (i < p.length && p[i] !== ')' && p[i] !== '|') {
+                const start = i, c = p[i];
+                let atom;
+                if (c === '\\') {
+                    const e = escAt(i);
+                    i += e.len;
+                    if (e.words) atom = { code: p.slice(start, i), words: e.words };
+                    else if (!isQuant()) { lit += e.lit; litCode += p.slice(start, i); continue; }
+                    else atom = { code: p.slice(start, i), words: 'the text ' + quote(e.lit) };
+                } else if (c === '^') { i++; atom = { code: '^', words: 'the start of the cell' }; }
+                else if (c === '$') { i++; atom = { code: '$', words: 'the end of the cell' }; }
+                else if (c === '.') { i++; atom = { code: '.', words: 'any character' }; }
+                else if (c === '[') {
+                    let j = i + 1;
+                    if (p[j] === '^') j++;
+                    if (p[j] === ']') j++;
+                    while (j < p.length && p[j] !== ']') j += p[j] === '\\' ? 2 : 1;
+                    atom = { code: p.slice(i, j + 1), words: classWords(p.slice(i + 1, j)) };
+                    i = j + 1;
+                } else if (c === '(') {
+                    flush();
+                    const m = /^\((\?:|\?=|\?!|\?<=|\?<!|\?<([A-Za-z_$][\w$]*)>)?/.exec(p.slice(i));
+                    i += m[0].length;
+                    const kind = m[1] === '?:' ? 'a group of' : m[1] === '?=' ? 'followed by'
+                        : m[1] === '?!' ? 'not followed by' : m[1] === '?<=' ? 'preceded by'
+                        : m[1] === '?<!' ? 'not preceded by'
+                        : m[2] ? `group “${m[2]}”, holding` : `group ${++groupNo}, holding`;
+                    const head = rows.length;
+                    rows.push(null);
+                    const inner = [];
+                    alt(depth + 1, inner);
+                    if (p[i] === ')') i++;
+                    const q = quant();
+                    rows[head] = [depth, p.slice(start, i - (q ? q.code.length : 0)), kind + (q ? ` — ${q.words}` : '') + ':'];
+                    rows.push(...inner);
+                    continue;
+                } else {
+                    i++;
+                    if (!isQuant()) { lit += c; litCode += c; continue; }
+                    atom = { code: c, words: 'the text ' + quote(c) };
+                }
+                flush();
+                const q = quant();
+                rows.push([depth, atom.code + (q ? q.code : ''), atom.words + (q ? ` — ${q.words}` : '')]);
+            }
+            flush();
+        };
+        alt = (depth, rows) => {
+            // Every branch is read one level in (under its "either"/"or");
+            // whether there is more than one is known only at the end, so a
+            // lone branch comes back out by one level.
+            const branches = [];
+            for (;;) {
+                const b = [];
+                seq(depth + 1, b);
+                branches.push(b);
+                if (p[i] === '|') { i++; continue; }
+                break;
+            }
+            if (branches.length === 1) {
+                rows.push(...branches[0].map(r => r && [r[0] - 1, r[1], r[2]]));
+                return;
+            }
+            branches.forEach((b, k) => { rows.push([depth, k ? '|' : '', k ? 'or' : 'either']); rows.push(...b); });
+        };
+        const rows = [];
+        alt(0, rows);
+        // A stray ")" at the top (impossible for a valid pattern) would stop
+        // the walk early; what is left reads as text rather than vanishing.
+        if (i < p.length) rows.push([0, p.slice(i), 'the text ' + quote(p.slice(i))]);
+        return rows.filter(Boolean);
+    }
+
+    /**
+     * Where and why an INVALID regular expression goes wrong, found by its own
+     * walk so the words are the same in every browser: an unclosed ( or [, a )
+     * that closes nothing, a \ at the end, a repeat with nothing to repeat,
+     * {m,n} the wrong way round, a backwards range, a "(?" that is no group.
+     * Returns null for an error it does not know (the card then shows the
+     * browser's own message).
+     *
+     * @param {string} p - The pattern, as typed.
+     * @returns {?{at: number, len?: number, why: string, fix: string}}
+     */
+    function _rxDiagnose(p) {
+        const stack = [];
+        let cls = -1, prev = 'start';
+        const endEsc = (i) => ({ at: i, why: 'A \\ at the very end escapes nothing.', fix: 'Write \\\\ for a backslash.' });
+        for (let i = 0; i < p.length; i++) {
+            const c = p[i];
+            if (cls >= 0) {
+                if (c === '\\') { if (i === p.length - 1) return endEsc(i); i++; continue; }
+                if (c === ']') { cls = -1; prev = 'atom'; continue; }
+                if (c === '-' && p[i - 1] !== '[' && p[i + 1] && p[i + 1] !== ']' && p[i + 1] !== '\\'
+                    && p[i - 2] !== '\\' && p[i - 1] > p[i + 1]) {
+                    return { at: i - 1, len: 3, why: `The range ${p[i - 1]}-${p[i + 1]} runs backwards.`, fix: `Write ${p[i + 1]}-${p[i - 1]}.` };
+                }
+                continue;
+            }
+            if (c === '\\') {
+                if (i === p.length - 1) return endEsc(i);
+                prev = /[bB]/.test(p[i + 1]) ? 'anchor' : 'atom';
+                i++;
+                continue;
+            }
+            if (c === '[') { cls = i; continue; }
+            if (c === '(') {
+                if (p[i + 1] === '?' && !/^\?(:|=|!|<=|<!|<[A-Za-z_$][\w$]*>)/.test(p.slice(i + 1))) {
+                    return { at: i, len: 2, why: '“(?” starts a special group and must go on with :, =, !, <=, <! or <name>.',
+                             fix: 'Write \\( for a bracket, or (?: for a plain group.' };
+                }
+                stack.push(i);
+                prev = 'open';
+                continue;
+            }
+            if (c === ')') {
+                if (!stack.length) return { at: i, why: 'This ) closes nothing: there is no ( before it.', fix: 'Write \\) for a bracket.' };
+                stack.pop();
+                prev = 'atom';
+                continue;
+            }
+            if (c === '|') { prev = 'open'; continue; }
+            const m = /^(\*|\+|\?|\{(\d+)(,(\d*))?\})/.exec(p.slice(i));
+            if (m) {
+                if (m[2] !== undefined && m[4] && +m[4] < +m[2]) {
+                    return { at: i, len: m[0].length, why: `In ${m[0]} the numbers are the wrong way round.`, fix: `Write {${m[4]},${m[2]}}.` };
+                }
+                const lazy = c === '?' && prev === 'quant';
+                if (!lazy && (prev === 'start' || prev === 'open' || prev === 'quant' || prev === 'anchor')) {
+                    const note = prev === 'quant' ? ' (it follows another repeat)' : prev === 'anchor' ? ' (^, $ and \\b cannot repeat)' : '';
+                    return { at: i, len: m[0].length, why: `${m[0]} repeats the piece before it, and there is none${note}.`,
+                             fix: `Write \\${c} for the character itself.` };
+                }
+                i += m[0].length - 1;
+                prev = lazy ? 'lazy' : 'quant';
+                continue;
+            }
+            prev = (c === '^' || c === '$') ? 'anchor' : 'atom';
+        }
+        if (cls >= 0) return { at: cls, why: 'This [ has no closing ].', fix: 'Write \\[ for a bracket.' };
+        if (stack.length) return { at: stack[stack.length - 1], why: 'This ( has no closing ).', fix: 'Write \\( for a bracket.' };
+        return null;
+    }
+
     /**
      * Tests whether a row passes the current global + column filters.
      * When `matchOnly` is false (default): resets previous highlight markup and applies
@@ -135043,6 +135980,8 @@ a { color: #1565c0; }`;
      *   isCaseSensitive: boolean,
      *   isRegExp:       boolean,
      *   isExclude:      boolean,
+     *   isQuery?:       boolean - The global filter is in query mode (Q): `gfq` decides it.
+     *   gfq?:           ?Object - `_gfqForTable()`'s answer for this row's table (query mode).
      *   colFilters:     Array<
      *     { val: string, idx: number, isRegExp: boolean, isCaseSensitive: boolean, isExclude: boolean } |
      *     { val: string, idx: number, isMultiValueFilter: true, valueSet: Set<string>,
@@ -135099,7 +136038,17 @@ a { color: #1565c0; }`;
 
         // --- Global filter ---
         let globalHit = !globalQuery;
-        if (!globalHit) {
+        if (!globalHit && ctx.isQuery) {
+            // Query mode (Q): the query compiled for this row's table. An
+            // empty one (only `artist:` typed so far) filters nothing, and so
+            // Ex has nothing to turn round either.
+            const _gt = ctx.gfq && ctx.gfq.test;
+            if (!_gt) globalHit = true;
+            else {
+                const matchFound = _gt(row, matchOnly);
+                globalHit = isExclude ? !matchFound : matchFound;
+            }
+        } else if (!globalHit) {
             let matchFound;
             if (isRegExp && globalRegex) {
                 // Test each cell individually so anchored patterns like ^Thunder Road work correctly
@@ -135107,49 +136056,9 @@ a { color: #1565c0; }`;
                     globalRegex.test(matchOnly ? _cachedColText(row, i) : getCleanColumnText(cell))
                 );
             } else {
-                // Cell-separated, so a plain query matches inside one cell only —
-                // the same unit the regexp branch above tests. See _CELL_TEXT_SEP.
-                const text = matchOnly ? _cachedFullText(row) : getCleanVisibleText(row, _CELL_TEXT_SEP);
-                matchFound = isCaseSensitive
-                    ? text.includes(globalQuery)
-                    : text.toLowerCase().includes(globalQuery);
-                // getCleanVisibleText deliberately FILTER_REJECTs .mb-rel-filter-key
-                // spans (by design — their URL content must not pollute sort keys or
-                // the aggregated visible text of non-rel columns).  As a consequence,
-                // plain-text global filter never matches against Relationships column
-                // URLs even though both the column filter and the sub-table filter do.
-                // Fix: when getCleanVisibleText misses, additionally test each
-                // .mb-rel-cell via getCleanColumnText, mirroring the same targeted
-                // rel-cell fallback already applied to the regexp path.
-                if (!matchFound) {
-                    matchFound = Array.from(row.cells).some((cell, i) => {
-                        if (!cell.classList.contains('mb-rel-cell')) return false;
-                        const relText = matchOnly ? _cachedColText(row, i) : getCleanColumnText(cell);
-                        return isCaseSensitive
-                            ? relText.includes(globalQuery)
-                            : relText.toLowerCase().includes(globalQuery);
-                    });
-                }
-                // getCleanVisibleText also does not include the CAA/EAA art search
-                // index (image types and comments stored by
-                // _artBuildMultiRowArtCell), so filtering for e.g. "Front" or
-                // "Booklet" via the global plain-text filter never matches a
-                // CAA/EAA art cell even though the column filter and global regexp
-                // filter do.  Add the same targeted fallback — through
-                // _artSearchTextFor(), the same resolver getCleanColumnText() uses,
-                // because the row tested here is usually the SOURCE row: on
-                // `tableMode: 'multi'` it carries the synced dataset attribute and
-                // never the `<ul>` this used to read, so the plain global query
-                // matched nothing at all (AUDIT.md §3.1 H5).
-                if (!matchFound) {
-                    matchFound = Array.from(row.cells).some(cell => {
-                        const artText = _artSearchTextFor(cell);
-                        if (!artText) return false;
-                        return isCaseSensitive
-                            ? artText.includes(globalQuery)
-                            : artText.toLowerCase().includes(globalQuery);
-                    });
-                }
+                // Inside one cell, then the Relationships and artwork
+                // fallbacks — see _rowPlainHit(), shared with query mode.
+                matchFound = _rowPlainHit(row, globalQuery, isCaseSensitive, matchOnly);
             }
             globalHit = isExclude ? !matchFound : matchFound;
         }
@@ -135323,7 +136232,12 @@ a { color: #1565c0; }`;
             // _highlightRowPendingEdits().
             if (ctx.pendingEditsOnly) _highlightRowPendingEdits(row);
             // Highlighting on excluded matches would be misleading, so skip it
-            if (globalQuery && !isExclude) highlightText(row, globalQueryRaw, isCaseSensitive, -1, isRegExp);
+            // Query mode marks its leaves instead (and their Relationships
+            // icons, which the block further down does for a plain query).
+            if (globalQuery && !isExclude) {
+                if (ctx.isQuery) { if (ctx.gfq) _gfqHighlightRow(row, ctx.gfq, isCaseSensitive); }
+                else highlightText(row, globalQueryRaw, isCaseSensitive, -1, isRegExp);
+            }
             // Value-set filters carry no matchable text for a whole-cell match —
             // that gets no highlight — EXCEPT the item/entity fallbacks, the
             // 'attr:'/'task:' structure-mode compound entries (which DO correspond
@@ -135553,7 +136467,7 @@ a { color: #1565c0; }`;
             // plain highlightText() cannot produce a visible highlight there because
             // the filter key lives in a display:none span and the icon is an <img>.
             // Global filter: guard with !isExclude (excluded rows carry no match highlight).
-            if (globalQuery && !isExclude) {
+            if (globalQuery && !isExclude && !ctx.isQuery) {
                 Array.from(row.cells).forEach(cell => {
                     if (cell.classList.contains('mb-rel-cell')) {
                         _highlightRelCellIcons(cell, globalQueryRaw, isCaseSensitive, isRegExp);
@@ -135755,6 +136669,9 @@ a { color: #1565c0; }`;
             c: matchCtx.isCaseSensitive,
             r: matchCtx.isRegExp,
             x: matchCtx.isExclude,
+            // Query mode (Q): the same text means something else with it on
+            // ("type:album" is a column term, or eleven characters to find).
+            q: !!matchCtx.isQuery,
             // The findings-menu row filter is structural, not a query, so it
             // appears NOWHERE else in this key — and leaving it out makes the
             // cache return the previous pass's rows when the only thing that
@@ -135806,6 +136723,9 @@ a { color: #1565c0; }`;
             c: matchCtx.isCaseSensitive,
             r: matchCtx.isRegExp,
             x: matchCtx.isExclude,
+            // Query mode, for this key's contract (everything except the
+            // query); `_canNarrow` also refuses to narrow while it is on.
+            q: !!matchCtx.isQuery,
             // The ⏳ pending-edits toggle, upholding this key's contract that it
             // covers everything EXCEPT globalQuery.
             //
@@ -135946,12 +136866,17 @@ a { color: #1565c0; }`;
         }
 
         const isCaseSensitive = caseCheckbox.checked;
-        const isRegExp = regexpCheckbox.checked;
+        // Query mode (Q) and Rx exclude each other (the boxes' own handlers
+        // untick the other); should both still be ticked, Q wins.
+        const isQuery = !!(queryCheckbox && queryCheckbox.checked);
+        const isRegExp = regexpCheckbox.checked && !isQuery;
         const isExclude = excludeCheckbox.checked;
         // Strip the decorative focus prefix before using the value as a filter query.
         // When the global filter input has focus it may carry e.g. "🔍 " at the start.
         const globalQueryRaw = stripFilterPrefix(filterInput.value);
-        const globalQuery = (isCaseSensitive || isRegExp) ? globalQueryRaw : globalQueryRaw.toLowerCase();
+        // A query is kept as typed: "a OR b" and "a or b" mean different things,
+        // and the cache key (_buildFilterKey()'s `g`) must tell them apart.
+        const globalQuery = (isCaseSensitive || isRegExp || isQuery) ? globalQueryRaw : globalQueryRaw.toLowerCase();
 
         let globalRegex = null;
         let regexpError = null; // holds the Error message when the pattern is invalid
@@ -135990,8 +136915,11 @@ a { color: #1565c0; }`;
         Lib.debug('filter', 'runFilter(): active element =', __activeEl?.className || '(none)');
 
         // Shared context object passed to testRowMatch()
+        // `gfq`: the query-mode query compiled for the table being matched
+        // (_gfqForTable()), set per group below; null outside query mode.
         const matchCtx = { globalQuery, globalQueryRaw, globalRegex,
-                           isCaseSensitive, isRegExp, isExclude, colFilters: [] };
+                           isCaseSensitive, isRegExp, isExclude, isQuery, gfq: null, colFilters: [] };
+        const _gfqFor = (table) => (isQuery && globalQuery) ? _gfqForTable(table, globalQueryRaw, isCaseSensitive) : null;
 
         // Publish the active highlight context so _artHighlightImageLi() can re-apply
         // filter highlights to freshly-built CAA/EAA image <li> elements after
@@ -136012,7 +136940,10 @@ a { color: #1565c0; }`;
                 globalQueryRaw,
                 colFilters:      [],   // replaced at each getColFilters() call below
                 isCaseSensitive,
-                isRegExp
+                isRegExp,
+                isQuery,
+                isExclude,
+                gfq:             null  // replaced with each group's, as colFilters
             };
         } else {
             _activeFilterHighlightCtx = null;
@@ -136050,6 +136981,8 @@ a { color: #1565c0; }`;
                 // not-yet-inserted clone) — needed by the 'lengthdeviation-*'
                 // fixed-flag family.
                 matchCtx.table = _subTable;
+                // Query mode: keys are THIS sub-table's columns.
+                matchCtx.gfq = _gfqFor(_subTable);
                 // Resolve this sub-table's own ⏳ toggle ONCE per group. It has
                 // to live on matchCtx (not a module variable like
                 // _findingRowFilter) precisely because it differs per
@@ -136068,6 +137001,7 @@ a { color: #1565c0; }`;
                 // off (and vice versa for Cc).
                 if (_activeFilterHighlightCtx && !_collect) {
                     _activeFilterHighlightCtx.colFilters = matchCtx.colFilters;
+                    _activeFilterHighlightCtx.gfq        = matchCtx.gfq;
                 }
 
                 // ── Merged-view row source ────────────────────────────────────
@@ -136366,6 +137300,7 @@ a { color: #1565c0; }`;
             // not-yet-inserted clone) — needed by the 'lengthdeviation-*'
             // fixed-flag family.
             matchCtx.table = _singleTable;
+            matchCtx.gfq = _gfqFor(_singleTable);
             // Single-table pages have one scope, so the page-global flag IS the
             // per-table one — see _pendingEditsFilterActive's own JSDoc for why
             // multi-table deliberately does not use that variable at all.
@@ -136375,6 +137310,7 @@ a { color: #1565c0; }`;
             if (_activeFilterHighlightCtx && !_collect) {
                 _activeFilterHighlightCtx.colFilters      = matchCtx.colFilters;
                 _activeFilterHighlightCtx.isCaseSensitive = isCaseSensitive;
+                _activeFilterHighlightCtx.gfq             = matchCtx.gfq;
             }
             // In single-table mode there is no h3 before the table, so getColFilters
             // cannot write regexp errors to a sub-table status span.  Capture any errors
@@ -136396,9 +137332,10 @@ a { color: #1565c0; }`;
                 // Unsafe for regex (semantics change non-monotonically) and for
                 // exclude mode (extending a NOT-query widens, not narrows, results).
                 const _partialKey = _buildIncrPartialKey(matchCtx);
+                // Unsafe for a query too: "live" → "live OR studio" widens.
                 const _canNarrow  =
                     _incrMatchSet        !== null &&
-                    !isRegExp && !isExclude &&
+                    !isRegExp && !isExclude && !isQuery &&
                     _partialKey          === _incrLastPartialKey &&
                     globalQuery.length   >  _incrLastGlobalQuery.length &&
                     globalQuery.startsWith(_incrLastGlobalQuery);
@@ -136675,7 +137612,7 @@ a { color: #1565c0; }`;
             // shows e.g. (ex) while the global field is empty.
             const filterParts = [];
             if (globalQuery) {
-                filterParts.push(`GLOBAL:${_filterModsLabel({ isCaseSensitive, isRegExp, isExclude })}"${globalQueryRaw}"`);
+                filterParts.push(`GLOBAL:${_filterModsLabel({ isCaseSensitive, isRegExp, isExclude, isQuery })}"${globalQueryRaw}"`);
             }
 
             // Count active column filters and build a detail string
@@ -136704,6 +137641,7 @@ a { color: #1565c0; }`;
                 // Build a label that reflects the active filter modes
                 const activeModeParts = [];
                 if (isRegExp)        activeModeParts.push('Regexp');
+                if (isQuery)         activeModeParts.push('Query');
                 if (isCaseSensitive) activeModeParts.push('Case-sensitive');
                 if (isExclude)       activeModeParts.push('Exclude');
                 const modeLabel = activeModeParts.length > 0
@@ -137059,7 +137997,7 @@ a { color: #1565c0; }`;
      * @returns {boolean}
      */
     function _filterQueryExtends(prevRaw) {
-        if (regexpCheckbox.checked || excludeCheckbox.checked) return false;
+        if (regexpCheckbox.checked || excludeCheckbox.checked || _gfqOn()) return false;
         let cur = stripFilterPrefix(filterInput.value);
         let prev = prevRaw || '';
         if (!caseCheckbox.checked) { cur = cur.toLowerCase(); prev = prev.toLowerCase(); }
@@ -137143,6 +138081,7 @@ a { color: #1565c0; }`;
     caseCheckbox.addEventListener('change', runFilter);
     regexpCheckbox.addEventListener('change', runFilter);
     excludeCheckbox.addEventListener('change', runFilter);
+    queryCheckbox.addEventListener('change', runFilter);
     // Ctrl+Click (Cmd+Click) on a global box: also set that mode on EVERY column
     // filter of the page (column modes on only). `click`, because only the
     // mouse event carries the modifier keys; the box is already toggled, and
@@ -138930,6 +139869,7 @@ a { color: #1565c0; }`;
         filterInput.style.boxShadow = '';
         caseCheckbox.checked = false;
         excludeCheckbox.checked = false;
+        queryCheckbox.checked = false;
         document.querySelectorAll('.mb-col-filter-input').forEach(inp => {
             inp.value = '';
             inp.style.boxShadow = '';
@@ -173822,12 +174762,15 @@ a { color: #1565c0; }`;
      *   isCaseSensitive {boolean}       — the GLOBAL boxes: what the global query
      *   isRegExp        {boolean}         is compiled with. Never a sub-table's
      *                                     flags, even on a multi-table page.
+     *   isQuery         {boolean}       — query mode (Q): `gfq`'s leaves are marked
+     *   isExclude       {boolean}         instead of the raw string, none under Ex;
+     *   gfq             {?Object}         `gfq` is `_gfqForTable()`'s, per group.
      *
      * Null when no filter is active (no global query and no column filters), which
      * means _artHighlightImageLi() becomes a cheap no-op.
      *
      * @type {{ globalQueryRaw: string, colFilters: Array, isCaseSensitive: boolean,
-     *          isRegExp: boolean }|null}
+     *          isRegExp: boolean, isQuery?: boolean, isExclude?: boolean, gfq?: ?Object }|null}
      */
     let _activeFilterHighlightCtx = null;
 
@@ -178549,9 +179492,20 @@ a { color: #1565c0; }`;
         };
 
         // Global query applies to every column — no colIdx check needed.
-        const globalRegex = makeRegex(ctx.globalQueryRaw, ctx.isRegExp);
-        if (globalRegex) {
-            highlightCrossTag(li, globalRegex, 'mb-global-filter-highlight');
+        // In query mode: its leaves instead, a column term only in its own
+        // column, nothing while Ex is on (as testRowMatch()), and no range.
+        if (ctx.isQuery) {
+            if (ctx.gfq && !ctx.isExclude) {
+                for (const n of ctx.gfq.leaves) {
+                    if (n.r || (n.c != null && n.c !== colIdx)) continue;
+                    highlightCrossTag(li, makeRegex(n.v, false), 'mb-global-filter-highlight');
+                }
+            }
+        } else {
+            const globalRegex = makeRegex(ctx.globalQueryRaw, ctx.isRegExp);
+            if (globalRegex) {
+                highlightCrossTag(li, globalRegex, 'mb-global-filter-highlight');
+            }
         }
 
         // Column-scoped filters — only apply when the filter targets this art column.
@@ -178734,7 +179688,10 @@ a { color: #1565c0; }`;
         // the sub-table's (colIsCase/colIsRegExp), which highlighted a global
         // regexp as literal text whenever that sub-table's Rx was off. Column
         // filters are unaffected: each descriptor carries its own flags.
-        const ctxSnap = { globalQueryRaw, colFilters, isCaseSensitive, isRegExp };
+        const isQuery = _gfqOn();
+        const ctxSnap = { globalQueryRaw, colFilters, isCaseSensitive, isRegExp: isRegExp && !isQuery,
+                          isQuery, isExclude: !!(excludeCheckbox && excludeCheckbox.checked),
+                          gfq: isQuery && hasGlobal ? _gfqForTable(_owningTable, globalQueryRaw, isCaseSensitive) : null };
         artCell.querySelectorAll(':scope > ul.mb-caa-art-ul > li.mb-caa-art-li-image')
             .forEach(li => {
                 // Apply global + column filter highlights via the standard path.
@@ -192661,6 +193618,23 @@ a { color: #1565c0; }`;
              * @returns {?{kind: string, id: string, list: string}}
              */
             ytParse: (href) => _ytParse(href),
+            /**
+             * The global filter's query-mode parser (`_gfqParse()`) and key
+             * folding (`_gfqKey()`), the shipping functions, so a spec can
+             * pin the grammar case by case without a table for each.
+             */
+            gfq: {
+                parse: (q, keys, cc) => _gfqParse(q, keys, !!cc),
+                key:   (h) => _gfqKey(h),
+            },
+            /**
+             * The Rx card's reader (`_rxRead()`: rows of [depth, code, words])
+             * and diagnosis (`_rxDiagnose()`), the shipping functions.
+             */
+            rx: {
+                read:     (p) => _rxRead(p),
+                diagnose: (p) => _rxDiagnose(p),
+            },
             /**
              * An area's flag markup (`_mbPopFlagHtml()`, the shipping
              * builder) as on musicbrainz.org or on another host, so a spec

@@ -1,0 +1,159 @@
+[
+  {
+    "name": "a lone branch keeps its extra level",
+    "why": "Drops the flattening of a pattern without alternatives, so every row of a plain pattern reads one level in. Must fail on the reader's first case (depth 0 rows).",
+    "edits": [
+      {
+        "find": "                rows.push(...branches[0].map(r => r && [r[0] - 1, r[1], r[2]]));",
+        "replace": "                rows.push(...branches[0]);"
+      }
+    ],
+    "spec": "tests/fixtures/gf-rx-card.spec.js",
+    "grep": "every construct is read",
+    "expect": "fail"
+  },
+  {
+    "name": "every branch at the parent's level (the mockup's slip)",
+    "why": "Reads the first branch of an alternation at the parent's level, as the approved mockup did: 'either' and the first branch then sit side by side while the later branches are indented. Must fail on '(to|in)'.",
+    "edits": [
+      {
+        "find": "                seq(depth + 1, b);",
+        "replace": "                seq(depth + (branches.length ? 1 : 0), b);"
+      }
+    ],
+    "spec": "tests/fixtures/gf-rx-card.spec.js",
+    "grep": "every construct is read",
+    "expect": "fail"
+  },
+  {
+    "name": "a lazy repeat reads as a greedy one",
+    "why": "Drops ', as few as possible'. Must fail on 'a+?'.",
+    "edits": [
+      {
+        "find": "            return { code: m[0], words: w + (m[5] ? ', as few as possible' : '') };",
+        "replace": "            return { code: m[0], words: w };"
+      }
+    ],
+    "spec": "tests/fixtures/gf-rx-card.spec.js",
+    "grep": "every construct is read",
+    "expect": "fail"
+  },
+  {
+    "name": "an unclosed ( is not found",
+    "why": "Drops the last check of _rxDiagnose(). '(Live' then has no diagnosis (the card would show the browser's own words). Must fail in the unit test and on the page test's marked spot.",
+    "edits": [
+      {
+        "find": "        if (stack.length) return { at: stack[stack.length - 1], why: 'This ( has no closing ).', fix: 'Write \\\\( for a bracket.' };",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/gf-rx-card.spec.js",
+    "grep": "valid: the pill",
+    "expect": "fail"
+  },
+  {
+    "name": "a repeat after a repeat is not found",
+    "why": "Lets a quantifier follow another one. 'a**' then has no diagnosis. Must fail on that case.",
+    "edits": [
+      {
+        "find": "                if (!lazy && (prev === 'start' || prev === 'open' || prev === 'quant' || prev === 'anchor')) {",
+        "replace": "                if (!lazy && (prev === 'start' || prev === 'open' || prev === 'anchor')) {"
+      }
+    ],
+    "spec": "tests/fixtures/gf-rx-card.spec.js",
+    "grep": "every construct is read",
+    "expect": "fail"
+  },
+  {
+    "name": "a backwards range is not found",
+    "why": "Turns the backwards-range test off. '[z-a]' then has no diagnosis. Must fail on that case.",
+    "edits": [
+      {
+        "find": "                    && p[i - 2] !== '\\\\' && p[i - 1] > p[i + 1]) {",
+        "replace": "                    && p[i - 2] !== '\\\\' && false) {"
+      }
+    ],
+    "spec": "tests/fixtures/gf-rx-card.spec.js",
+    "grep": "every construct is read",
+    "expect": "fail"
+  },
+  {
+    "name": "Back restores the text but not the rows",
+    "why": "Writes the old text into the field without the input event and the pass. The example's rows stay. Must fail on 'Back restores the rows too'.",
+    "edits": [
+      {
+        "find": "            _gfqState.back = null;\n            _gfqCardApply(back);",
+        "replace": "            _gfqState.back = null;\n            filterInput.value = getFilterFocusPrefix() + back;"
+      }
+    ],
+    "spec": "tests/fixtures/gf-rx-card.spec.js",
+    "grep": "an example filters, and Back",
+    "expect": "fail"
+  },
+  {
+    "name": "Back is offered before the example's own input",
+    "why": "Sets the Back text BEFORE applying the example, whose own input event then clears it: no Back button. Must fail where Back must read 'Back to home'.",
+    "edits": [
+      {
+        "find": "            _gfqState.examples = false;\n            _gfqCardApply(btn.dataset.gfqEx);\n            _gfqState.back = before;",
+        "replace": "            _gfqState.examples = false;\n            _gfqState.back = before;\n            _gfqCardApply(btn.dataset.gfqEx);"
+      }
+    ],
+    "spec": "tests/fixtures/gf-rx-card.spec.js",
+    "grep": "an example filters, and Back",
+    "expect": "fail"
+  },
+  {
+    "name": "Esc skips the Examples list",
+    "why": "Drops the Examples step of the card's Esc. The first Esc then hides the whole card. Must fail on 'Esc closes the Examples list first'.",
+    "edits": [
+      {
+        "find": "        else if (_gfqState.examples) _gfqState.examples = false;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/gf-rx-card.spec.js",
+    "grep": "Esc closes the Examples list first",
+    "expect": "fail"
+  },
+  {
+    "name": "the notes do not follow Ex",
+    "why": "Drops the Ex note. Must fail where ticking Ex should add 'Rows that match are hidden (Ex).'.",
+    "edits": [
+      {
+        "find": "        if (excludeCheckbox.checked) notes.push('Rows that match are hidden (Ex).');",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/gf-rx-card.spec.js",
+    "grep": "valid: the pill",
+    "expect": "fail"
+  },
+  {
+    "name": "no card for Rx",
+    "why": "Never shows the card for Rx. Must fail on the first page test.",
+    "edits": [
+      {
+        "find": "        const rx = !q && regexpCheckbox.checked;",
+        "replace": "        const rx = false;"
+      }
+    ],
+    "spec": "tests/fixtures/gf-rx-card.spec.js",
+    "grep": "valid: the pill",
+    "expect": "fail"
+  },
+  {
+    "name": "mobile: the card is rebuilt on every sync (Rx taps)",
+    "why": "The same planted defect as gf-query-mode.json's, seen from the Rx card: a tap on Examples loses its click. Must fail on the Rx mobile spec.",
+    "edits": [
+      {
+        "find": "        if (_gfqState.html !== html) { _gfqState.html = html; _gfqCard.innerHTML = html; }",
+        "replace": "        _gfqState.html = html; _gfqCard.innerHTML = html;"
+      }
+    ],
+    "spec": "tests/fixtures/gf-rx-card.mobile.spec.js",
+    "grep": "Rx card on mobile",
+    "project": "chromium-mobile",
+    "expect": "fail"
+  }
+]

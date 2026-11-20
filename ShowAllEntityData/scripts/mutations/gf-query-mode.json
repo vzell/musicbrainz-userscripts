@@ -1,0 +1,250 @@
+[
+  {
+    "name": "the result cache key does not know query mode",
+    "why": "Drops `q` from _buildFilterKey(). 'format:cd' is the same lower-cased text in both modes, so after the plain pass (0 rows) the query-mode pass is served the plain pass's cached rows. Must fail where ticking Q again should bring the CD rows back.",
+    "edits": [
+      {
+        "find": "            q: !!matchCtx.isQuery,\n            // The findings-menu row filter is structural",
+        "replace": "            // The findings-menu row filter is structural"
+      }
+    ],
+    "spec": "tests/fixtures/gf-query-mode.spec.js",
+    "grep": "the same text is another filter with Q off",
+    "expect": "fail"
+  },
+  {
+    "name": "a query is lower-cased for the cache key",
+    "why": "Lower-cases the query in query mode as in plain mode. 'slash and burn' (a phrase) and 'slash AND burn' (two words) then share one cache key, and the second is served the first one's rows. Must fail on the AND assertion.",
+    "edits": [
+      {
+        "find": "const globalQuery = (isCaseSensitive || isRegExp || isQuery) ? globalQueryRaw : globalQueryRaw.toLowerCase();",
+        "replace": "const globalQuery = (isCaseSensitive || isRegExp) ? globalQueryRaw : globalQueryRaw.toLowerCase();"
+      }
+    ],
+    "spec": "tests/fixtures/gf-query-mode.spec.js",
+    "grep": "OR is the union",
+    "expect": "fail"
+  },
+  {
+    "name": "a query narrows like plain text",
+    "why": "Allows the incremental narrowing in query mode. 'format:cassette' typed on to 'format:cassette OR format:vinyl' extends the text, so the scan starts from the cassette rows and the vinyl rows can never come back. Must fail on the widening assertion.",
+    "edits": [
+      {
+        "find": "                    !isRegExp && !isExclude && !isQuery &&",
+        "replace": "                    !isRegExp && !isExclude &&"
+      }
+    ],
+    "spec": "tests/fixtures/gf-query-mode.spec.js",
+    "grep": "the same text is another filter with Q off",
+    "expect": "fail"
+  },
+  {
+    "name": "OR needs every side",
+    "why": "Compiles an OR node as every() instead of some(). Must fail on the union of cassette and vinyl.",
+    "edits": [
+      {
+        "find": "            if (n.or)  { const fs = n.or.map(build);  return (row, m) => fs.some(f => f(row, m)); }",
+        "replace": "            if (n.or)  { const fs = n.or.map(build);  return (row, m) => fs.every(f => f(row, m)); }"
+      }
+    ],
+    "spec": "tests/fixtures/gf-query-mode.spec.js",
+    "grep": "OR is the union",
+    "expect": "fail"
+  },
+  {
+    "name": "- is ignored",
+    "why": "Compiles a not node as its inner term. '-format:cd' then keeps the CD rows instead of the rest. Must fail on the complement.",
+    "edits": [
+      {
+        "find": "            if (n.not) { const f = build(n.not);      return (row, m) => !f(row, m); }",
+        "replace": "            if (n.not) { const f = build(n.not);      return (row, m) => f(row, m); }"
+      }
+    ],
+    "spec": "tests/fixtures/gf-query-mode.spec.js",
+    "grep": "OR is the union",
+    "expect": "fail"
+  },
+  {
+    "name": "a column term searches the whole row",
+    "why": "Compiles a column leaf as a word (any column). 'format:home' then finds the Home releases through their Release column. Must fail on the column-only assertion.",
+    "edits": [
+      {
+        "find": "            if (n.c == null) return (row, m) => _rowPlainHit(row, v, cc, m);",
+        "replace": "            if (n.c == null || !n.r) return (row, m) => _rowPlainHit(row, v, cc, m);"
+      }
+    ],
+    "spec": "tests/fixtures/gf-query-mode.spec.js",
+    "grep": "a column term keeps exactly what that column filter keeps",
+    "expect": "fail"
+  },
+  {
+    "name": "keys by prefix only (EH's rule)",
+    "why": "Drops the exact-key preference: 'country:' then picks Country/Date, the first column whose key starts with it, as Event Horizon does. Must fail on the grammar test's exact-key case.",
+    "edits": [
+      {
+        "find": "            return exact >= 0 ? exact : keys.findIndex(ks => ks.some(x => x.startsWith(f)));",
+        "replace": "            return keys.findIndex(ks => ks.some(x => x.startsWith(f)));"
+      }
+    ],
+    "spec": "tests/fixtures/gf-query-mode.spec.js",
+    "grep": "every rule of the language",
+    "expect": "fail"
+  },
+  {
+    "name": "AND/OR in any case",
+    "why": "Treats a lower-case 'and' as AND, so 'rock and roll' splits into two words. Must fail on the grammar test's lower-case 'and' case, which must stay a phrase.",
+    "edits": [
+      {
+        "find": "                if (toks[i][0] === 'AND') { i++; word = false; continue; }",
+        "replace": "                if (toks[i][0].toUpperCase() === 'AND') { i++; word = false; continue; }"
+      }
+    ],
+    "spec": "tests/fixtures/gf-query-mode.spec.js",
+    "grep": "every rule of the language",
+    "expect": "fail"
+  },
+  {
+    "name": "a range leaves out its upper bound",
+    "why": "Makes the range end exclusive. 'date:1990-1995' then loses the 1995 releases. Must fail on the range rows.",
+    "edits": [
+      {
+        "find": "        return (!r[0] || y >= r[0]) && (!r[1] || y <= r[1]);",
+        "replace": "        return (!r[0] || y >= r[0]) && (!r[1] || y < r[1]);"
+      }
+    ],
+    "spec": "tests/fixtures/gf-query-mode.spec.js",
+    "grep": "a range on the Date column",
+    "expect": "fail"
+  },
+  {
+    "name": "a range marks nothing",
+    "why": "Drops the in-range years' highlight. Must fail on 'the years are highlighted'.",
+    "edits": [
+      {
+        "find": "                if (ys.length) highlightText(row, `\\\\b(?:${ys.join('|')})\\\\b`, true, n.c, true, 'global');",
+        "replace": "                if (ys.length && false) highlightText(row, `\\\\b(?:${ys.join('|')})\\\\b`, true, n.c, true, 'global');"
+      }
+    ],
+    "spec": "tests/fixtures/gf-query-mode.spec.js",
+    "grep": "a range on the Date column",
+    "expect": "fail"
+  },
+  {
+    "name": "query mode highlights the raw text",
+    "why": "Highlights the raw query string as the plain filter does. 'format:cassette' is in no cell, so nothing is marked. Must fail on 'the term is marked'.",
+    "edits": [
+      {
+        "find": "                if (ctx.isQuery) { if (ctx.gfq) _gfqHighlightRow(row, ctx.gfq, isCaseSensitive); }",
+        "replace": "                if (false) { if (ctx.gfq) _gfqHighlightRow(row, ctx.gfq, isCaseSensitive); }"
+      }
+    ],
+    "spec": "tests/fixtures/gf-query-mode.spec.js",
+    "grep": "highlights mark the leaves",
+    "expect": "fail"
+  },
+  {
+    "name": "a negated leaf is highlighted too",
+    "why": "Hands the leaves under a not to the highlighter. No spec can see it, by construction: a kept row LACKS a negated word in every cell (the word test is row-wide, the artwork text included), and a negated column term is only ever marked in its own column, where the kept row lacks it too. The guard is kept for clarity and cost (no pointless highlightText() passes).",
+    "edits": [
+      {
+        "find": "        else if (!n.not) out.push(n);",
+        "replace": "        else out.push(n.not || n);"
+      }
+    ],
+    "spec": "tests/fixtures/gf-query-mode.spec.js",
+    "grep": "highlights mark the leaves",
+    "expect": "pass"
+  },
+  {
+    "name": "Ex is ignored in query mode",
+    "why": "Drops the inversion in the query branch. Q + Ex 'format:cd' then keeps the CD rows. Must fail on 'Q + Ex = -( … )'.",
+    "edits": [
+      {
+        "find": "                const matchFound = _gt(row, matchOnly);\n                globalHit = isExclude ? !matchFound : matchFound;",
+        "replace": "                const matchFound = _gt(row, matchOnly);\n                globalHit = matchFound;"
+      }
+    ],
+    "spec": "tests/fixtures/gf-query-mode.spec.js",
+    "grep": "Ex turns the whole query round",
+    "expect": "fail"
+  },
+  {
+    "name": "Q does not untick Rx",
+    "why": "Removes the exclusion on the Q side. Must fail where ticking Q must untick Rx.",
+    "edits": [
+      {
+        "find": "        if (queryCheckbox.checked && regexpCheckbox.checked) {",
+        "replace": "        if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/gf-query-mode.spec.js",
+    "grep": "Q and Rx exclude each other",
+    "expect": "fail"
+  },
+  {
+    "name": "multi-table: every sub-table read with the first one's columns",
+    "why": "Compiles the query for the first sub-table in every group. The first one (Artist) has no Area column, so 'area:manchester' is text no row holds and the Place row is lost. Must fail on the multi-table test.",
+    "edits": [
+      {
+        "find": "                matchCtx.gfq = _gfqFor(_subTable);",
+        "replace": "                matchCtx.gfq = _gfqFor(tables[0]);"
+      }
+    ],
+    "spec": "tests/fixtures/gf-query-mode.spec.js",
+    "grep": "keys are each sub-table",
+    "expect": "fail"
+  },
+  {
+    "name": "a history entry does not restore Q",
+    "why": "Drops the Q line of _applyEntry(). Must fail where the pinned query brings its Q back.",
+    "edits": [
+      {
+        "find": "            if (qCheckbox)    qCheckbox.checked    = !!e.useQuery;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/gf-query-mode.spec.js",
+    "grep": "a pinned query keeps its Q",
+    "expect": "fail"
+  },
+  {
+    "name": "the syntax list cannot be hidden",
+    "why": "Removes the [hidden] rule: the list's display:grid beats the hidden attribute, so Esc cannot shut it (the defect the first run of the spec found). Must fail on 'Esc shuts the syntax first'.",
+    "edits": [
+      {
+        "find": "        #mb-gfq-card dl.mb-gfq-syn[hidden] { display: none; }\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/gf-query-mode.spec.js",
+    "grep": "the card: Esc hides it first",
+    "expect": "fail"
+  },
+  {
+    "name": "the card is rebuilt on every sync",
+    "why": "Rewrites the card's markup even when it did not change. On a touch screen the tap on Syntax then loses its click (the defect the first mobile run found: touchend, then no mousedown or click). Must fail on the mobile spec's Syntax tap.",
+    "edits": [
+      {
+        "find": "        if (_gfqState.html !== html) { _gfqState.html = html; _gfqCard.innerHTML = html; }",
+        "replace": "        _gfqState.html = html; _gfqCard.innerHTML = html;"
+      }
+    ],
+    "spec": "tests/fixtures/gf-query-mode.mobile.spec.js",
+    "grep": "query mode on mobile",
+    "project": "chromium-mobile",
+    "expect": "fail"
+  },
+  {
+    "name": "the plain filter loses the artwork fallback (shared _rowPlainHit())",
+    "why": "The plain global filter's three tests moved into _rowPlainHit(), which query mode's words share. Dropping its artwork loop must still fail the spec that pins it for the plain filter (AUDIT.md H5).",
+    "edits": [
+      {
+        "find": "            const artText = _artSearchTextFor(cells[i]);\n            if (!artText) continue;",
+        "replace": "            const artText = '';\n            if (!artText) continue;"
+      }
+    ],
+    "spec": "tests/fixtures/global-filter-art-search.spec.js",
+    "grep": "H5: a plain global filter finds",
+    "expect": "fail"
+  }
+]

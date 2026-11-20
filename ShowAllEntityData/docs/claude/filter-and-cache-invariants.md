@@ -454,7 +454,125 @@ consistent, each written after it had been broken (findings F3–F7 of
 `getCleanVisibleText(row, cellSeparator)`, so "Rest Bruce" can no longer match
 the end of one cell plus the start of the next. Text nodes INSIDE one cell are
 still joined with a space — a name and its disambiguation comment must stay
-matchable, which the spec's `guard: F6` test pins.
+matchable, which the spec's `guard: F6` test pins. That test is
+`_rowPlainHit()`, which query mode's words share (next section).
+
+**Q, the fourth global box, is the global query's own** (query mode, next
+section). It never reaches a column or sub-table filter: `_globalFilterFlags()`
+does NOT carry it, because `_resolveColFilterFlags()` hands that object out as
+COLUMN flags on a single table, and `_filterModsLabel()` would then print `q`
+on a column. The global status parts add it explicitly (`isQuery: _gfqOn()`).
+The box costs the h2 filter bar 33 px (28 px + the 5 px gap), and that bar is
+one line that never wraps: on the series fixture at 900 px it ran 19 px past the
+window, so `sticky-page-headers.spec.js`'s "disengages once the overflow is
+gone" test now opens at 940 px (vzell chose that over a narrower bar,
+2026-11-20). The title-style Aa button goes after Q, so the four boxes stay
+together.
+
+## The global filter's query mode (Event Horizon's language)
+
+Mockup approved 2026-11-20 (all nine questions as recommended):
+https://claude.ai/artifact/Y7tjYtaS82RTaZ5Admz2wk. Item "Query mode for the
+global filter" in `org/majkinetor.org`; the grammar is majkinetor's
+(Event Horizon's `tqParse`, anchor `eh-tqparse`), ported with credit in the
+attribution block.
+
+- **The language** (`_gfqParse()`): words and `column:value` terms side by
+  side (AND) or with `AND`/`OR` in capitals only (`OR` binds last), `-term`
+  and `-( … )`, brackets, `"quotes"`. Neighbouring words are one phrase
+  (`rock and roll`); quotes keep one apart. `year:`/`date:` columns take
+  `1975-1985`, `2005-`, `-1980` (a date column keeps `2022-06` as text).
+  Half-typed text never fails: an open bracket shuts at the end, a stray `)`
+  goes, `artist:` with no value counts for nothing (`blank`), and an unknown
+  key makes the whole `foo:bar` text (`unknown`).
+- **Our two changes to EH's grammar**: an exact key beats a prefix of an
+  earlier column (`country:` is Country, not Country/Date), and a column's
+  display label (`_colLabel()`) is a key beside its name. Values keep their
+  accents (Q4: the plain filter and the highlighter match literal text);
+  only KEYS are folded (`_gfqKey()`).
+- **A word is the plain filter's test**: `_rowPlainHit()` — inside one cell,
+  then the Relationships URL keys, then the artwork search text. A column
+  term reads `_cachedColText()` (the column filters' cache). Never give query
+  mode a matcher of its own: the two would drift.
+- **Compiled once per pass and column set, never per row.** `_gfqForTable()`
+  reads the table's own headers, parses, compiles one closure per node
+  (`_gfqCompile()`) and memoises by flags + text + column names
+  (`_gfqCache`, 32 entries). `runFilter()` sets `matchCtx.gfq` per GROUP on a
+  multi-table page, so a key only counts in the sub-tables that have that
+  column (`area:` on the event page keeps the Place table's row only).
+  `_artHighlightArtCell()` compiles for the art cell's own table the same way.
+- **Cache and narrowing.** In query mode `globalQuery` is the text AS TYPED
+  (not lower-cased): `slash and burn` and `slash AND burn` are different
+  queries and must not share a `_filterResultCache` key. Both keys carry `q`
+  (the same text is another filter with Q off). `_canNarrow` and
+  `_filterQueryExtends()` refuse query mode: extending a query can WIDEN it
+  (`live` → `live OR studio`). So query mode always scans every row; a query
+  already seen still comes from the result cache (approved question 9).
+- **Ex and Rx.** Ex turns the whole query round (an empty query filters
+  nothing, so there is nothing to turn); Cc applies to every leaf. Q and Rx
+  exclude each other (their `change` handlers, registered BEFORE the boxes'
+  `runFilter` listeners, untick the other and say so in the card); should
+  both be ticked anyway, `runFilter()` lets Q win.
+- **Highlights**: every leaf not under a `not` (`_gfqPositiveLeaves()`) —
+  a word anywhere, a column term in its column, a range on its in-range
+  years (`_gfqHighlightRow()`), and their Relationships icons; nothing while
+  Ex is on. Leaving the negated leaves out is cost, not correctness: a kept
+  row lacks them by construction (the mutation list records it as
+  `"expect": "pass"`).
+- **The card** (`#mb-gfq-card`, a `.mb-tt-liner` child of
+  `#mb-global-filter-wrapper`): the reading in words, "Format: type a value",
+  "No column ‘foo’: matched as text", the Rx/Q note, and the syntax behind a
+  button. Shown while the field (or something in the card) has focus or the
+  pointer is over the field, 400 ms grace; Esc shuts the syntax first, then
+  the card, then the field's own Esc applies. With Q off it says, for a
+  `column:value`-looking text, that the text is searched as written.
+  **It rewrites its markup only when the markup changed** (`_gfqState.html`):
+  a card rebuilt between a touch and its click loses that click on a phone
+  (touchend, then no mousedown or click; the first mobile run found it).
+  Deviation from the mockup, named at the build: the mockup drew the reading
+  as a line under the bar and the Syntax button in the bar; in the h2's
+  nowrap bar both live in the card under the field instead.
+- **History**: an entry gets `useQuery: true` only while Q is ticked (every
+  other entry keeps its shape), a "Q" badge, and `_applyEntry()` restores the
+  box (`qCheckbox`, the global widget's only). The load dialog's prefilter has
+  no query mode and ignores the flag.
+
+Specs: `tests/fixtures/gf-query-mode{,.mobile}.spec.js` (oracles are the other
+filters of the same page: a column term equals that column's filter, a word
+the plain filter, OR their union, `-` the complement); mutations in
+`scripts/mutations/gf-query-mode.json`.
+
+### The same card for Rx
+
+Mockup approved 2026-11-20 (eight questions, all as recommended):
+https://claude.ai/artifact/P2mgvatkWwPXYkTHJAYfFX. With Rx on (and Q off),
+`_gfqCardSync()` shows `_gfqRxCardHtml()`: the global filter only, same place,
+same show/hide, Esc closes the Examples list, then the card.
+
+- **Compiled as `runFilter()` compiles it**: the field's text with the prefix
+  stripped and NOT trimmed (`^The ` ends in a space), flags `''` or `'i'` by
+  Cc, no Unicode flag. So `\p{L}` is the letters "p{L}"; `_rxRead()` says so on
+  that row instead of pretending (question 7: adding the flag would change
+  what existing filters match).
+- **Valid**: `_rxRead()` returns `[depth, code, words]` rows: literal text
+  joined into one row, a group's row with its contents one level in, either/or
+  for alternatives (every branch is read one level in, and a lone branch comes
+  back out: the mockup indented the first branch one level less, fixed here),
+  a quantifier after its piece. Under it: cells are tested one by one (`^`/`$`
+  are a cell's ends), and what Cc and Ex do right now.
+- **Invalid**: `_rxDiagnose()` walks the pattern itself so the words are the
+  same in every browser (unclosed `(`/`[`, a `)` that closes nothing, a
+  trailing `\`, nothing to repeat, `{m,n}` backwards, a backwards range, a bad
+  `(?`), marks the spot and says the fix; anything else shows the browser's
+  message without its "Invalid regular expression: /…/:" head. The table stays
+  unfiltered, as before (`runFilter()` returns early on a bad pattern).
+- **Examples** (`_RX_EXAMPLES`, nine): a click goes through `_gfqCardApply()`
+  (prefix, an internal input event, one `runFilter()`), as the history widget
+  applies an entry; "↶ Back to …" holds what was typed until the next input.
+  The Back text is set AFTER the example's own input event, which clears it.
+
+Specs: `tests/fixtures/gf-rx-card{,.mobile}.spec.js`; mutations in
+`scripts/mutations/gf-rx-card.json`.
 
 ## A time-sliced filter pass writes nothing until it is current and complete
 

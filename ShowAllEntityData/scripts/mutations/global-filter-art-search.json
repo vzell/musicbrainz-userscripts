@@ -4,8 +4,8 @@
     "why": "Reverts testRowMatch()'s fallback to cell.querySelector(':scope > ul.mb-caa-art-ul').dataset.mbArtSearch. runFilter() matches SOURCE rows, which on a multi-table page carry the synced dataset attribute and never that <ul>, so a plain global query for an image type matches nothing. Must fail on 'H5: the plain global filter narrows to the one \"Back\" row' (1 expected, 0 rendered), while the regexp and column-filter controls stay green — they already went through getCleanColumnText().",
     "edits": [
       {
-        "find": "                        const artText = _artSearchTextFor(cell);\n                        if (!artText) return false;",
-        "replace": "                        const artUl = cell.querySelector(':scope > ul.mb-caa-art-ul');\n                        if (!artUl || !artUl.dataset.mbArtSearch) return false;\n                        const artText = artUl.dataset.mbArtSearch;"
+        "find": "            const artText = _artSearchTextFor(cells[i]);\n            if (!artText) continue;",
+        "replace": "            const artUl = cells[i].querySelector(':scope > ul.mb-caa-art-ul');\n            if (!artUl || !artUl.dataset.mbArtSearch) continue;\n            const artText = artUl.dataset.mbArtSearch;"
       }
     ],
     "spec": "tests/fixtures/global-filter-art-search.spec.js",
