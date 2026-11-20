@@ -117,10 +117,11 @@ async function settleFocusAndPointer(page) {
  *   native position/z-index on first sight)
  * @param {function(import('@playwright/test').Page): Promise<void>} [opts.beforeRender]
  *   - runs after the userscript is loaded and before the render is started
+ * @param {{width: number, height: number}} [opts.viewport] - instead of VIEWPORT
  * @returns {Promise<void>}
  */
-async function openSeries(page, { settingsOverride = {}, css, beforeRender } = {}) {
-    await page.setViewportSize(VIEWPORT);
+async function openSeries(page, { settingsOverride = {}, css, beforeRender, viewport = VIEWPORT } = {}) {
+    await page.setViewportSize(viewport);
     await loadUserscriptPage(page, {
         url: SERIES_URL,
         fixtureFile: SERIES_SHELL,
@@ -554,7 +555,12 @@ test.describe('sticky page headers — single-table page', () => {
     });
 
     test('disengages once the overflow is gone, and re-engages when it returns (no ratchet)', async ({ page }) => {
-        await openSeries(page, { settingsOverride: { sa_auto_resize_columns: false } });
+        // 940 px, not 900: with the tables hidden, the h2 filter bar (one line
+        // that never wraps) must fit, or the page still overflows and nothing
+        // can disengage. Since the global filter's Q box (query mode, 28 px +
+        // 5 px gap) it is 884 px wide on this page and ran 19 px past 900
+        // (vzell chose a wider window over a narrower bar, 2026-11-20).
+        await openSeries(page, { settingsOverride: { sa_auto_resize_columns: false }, viewport: { width: 940, height: 800 } });
         await waitEngaged(page);
         await scrollToRightEnd(page);
 

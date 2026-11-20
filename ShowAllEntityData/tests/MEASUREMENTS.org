@@ -4781,3 +4781,46 @@ Env: 2026-11-20T01:29:32+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 3377 passed, 1 failed: =rel-retry-anchor-placement.spec.js:208=, "locator.waitFor: Timeout 90000ms exceeded" waiting
 for =#mb-filter-container= (the render), not one of the branch run's three. Rerun alone at 01:51:21–01:51:56 CET: 4 of
 4 passed. Each 12-worker run on petri tonight timed out on a different render wait.
+
+* 2026-11-20 — artist-events, main vs feat/gf-query-mode, and the query mode (=petri=)
+
+Env: 2026-11-20T13:23:54+01:00 → 14:33:31+01:00 · petri (24 cores) · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (headless), no Tampermonkey (GM stubs). Arm M: =main='s =ShowAllEntityData.user.js= (9.99.1666) put into this tree; arm B: the branch at =05095094=; arm Q: the branch with =--gf-query= (the global filter's Q box ticked before each =globalFilter= sample, outside the bracket).
+
+*artist-events* (=tableMode: single=, "Bruce Springsteen — Events", 4174 rows, disk fixture;
+=python3 scripts/run-perf-arms.py artist-events -- --label=gfq-<arm> [--gf-query]=, 5 samples per metric), in the
+order M, B, Q, B, M, one arm after the other
+(=tests/snapshots/artist-events/interaction-perf-gfq-{main-A,branch-A,branch-Q,branch-B,main-B}-9.99.1666-2026-11-20-petri.json=).
+Medians in ms; B / M is the ratio of the two arms' means, Q / B the Q arm over the mean of the two B arms:
+
+| interaction         | M A   | B A   | Q     | B B   | M B   | B / M | Q / B |
+|---------------------+-------+-------+-------+-------+-------+-------+-------|
+| globalFilter        |  2249 |  2233 |  2642 |  2415 |  2301 | 1.022 | 1.137 |
+| columnFilter        |  2700 |  3065 |  2845 |  3051 |  3277 | 1.023 |       |
+| sort                |  6214 |  6656 |  6276 |  6209 |  6095 | 1.045 |       |
+| uniqDropCold        | 31316 | 36923 | 29104 | 30141 | 29132 | 1.109 |       |
+| uniqDropWarm        |   841 |   884 |   892 |   850 |   566 | 1.232 |       |
+| headerCountsInitial |  4918 |  5140 |  4740 |  4884 |  5175 | 0.993 |       |
+| headerCountsRestore |  5480 |  6175 |  5554 |  5657 |  5472 | 1.080 |       |
+
+*Plain filtering: no cost found.* globalFilter B / M is 1.02, inside the spread of each arm with itself (M 2249 vs
+2301, B 2233 vs 2415). The interactions the branch does not touch at all (sort, the 📊 dropdown, the header counts:
+no code of theirs changed) read 0.99–1.23 in the same run, which is this run's noise; uniqDropWarm's M arms alone
+span 566–841. The plain path's one change is a function call per row (=_rowPlainHit()=).
+
+*Query mode: globalFilter 1.14 (about 320 ms more for the typed words on 4174 rows).* One Q arm, between the two B
+arms, not repeated in another order. Expected from the design: in query mode every pass scans every row (no
+narrowing: a query can widen), where a plain word typed letter by letter narrows from the previous letter's rows
+(approved question 9). The other columns of the Q arm are a third B run (Q only changes =globalFilter=).
+
+* 2026-11-20 — =npm run test:full= on =petri=, feat/gf-query-mode (the global filter's query mode)
+
+Env: 2026-11-20T14:34:19+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                                   | Tests | Workers | Wall clock  | Basis                                     |
+|---------------------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, =05095094=             |  3392 |      12 | *21 m 33 s* | =run-test-full.py=, 14:34:19–14:55:52 CET |
+
+3391 passed, 1 failed, and not a flake: =sticky-page-headers.spec.js:556= ("disengages once the overflow is gone")
+failed 3 of 3 alone on the branch and passed 2 of 2 with =main='s userscript (14:58 CET). The Q box widens the h2
+filter bar by 33 px; with the tables hidden the bar alone ran 19 px past the 900 px window (scrollWidth 919). The
+test now opens at 940 px (vzell's choice); the spec file then passed 120 of 120 (=--repeat-each=3=, 15:06–15:09 CET).

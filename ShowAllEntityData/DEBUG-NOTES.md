@@ -30718,3 +30718,34 @@ Env: 2026-11-20T00:31–01:17+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6
 - **`npm run test:full` on petri, `a1c5e47e` + working tree, 00:52:22–01:15:25 CET (23 m 3 s): 3,340 of 3,343;**
   three 90 s render timeouts on pages the change does not touch (`uvd-live-titles.spec.js:384`,
   `saed-narrow.mobile.spec.js:28`, `sidebar-sections.mobile.spec.js:36`), 20 of 20 when rerun alone.
+
+## 2026-11-20 — The global filter's query mode: Event Horizon's language behind a Q box (feat/gf-query-mode)
+
+Env: 2026-11-20T12:40–15:09+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1, bundled Chromium (headless), chromium-mobile Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+- **Why:** item "Query mode for the global filter" of `org/majkinetor.org` (adoption question 6, permission
+  2026-11-17). Mockup https://claude.ai/artifact/Y7tjYtaS82RTaZ5Admz2wk, approved as is (nine questions): a fourth
+  global box Q, exclusive with Rx, Ex inverts the whole query, no accent folding for values, a reading of the query,
+  exact key before prefix plus label keys, global filter only with keys per sub-table, history keeps Q, no
+  narrowing. Design: `docs/claude/filter-and-cache-invariants.md`, "The global filter's query mode (Event Horizon's
+  language)".
+- **The port:** `_gfqParse()` is EH's `tqParse` (event_horizon.user.js 8529 at `0693aea`, anchor `eh-tqparse`) with
+  two changes; `_gfqCompile()` builds one closure per node, `_gfqForTable()` memoises per flags, text and column
+  names. EH re-parses per row; this compiles once per pass. Words go through `_rowPlainHit()`, the plain filter's
+  three tests moved out of `testRowMatch()` unchanged, so both modes match a word the same way.
+- **Three defects the new specs found before any user did:** (1) the syntax list's `display: grid` beat its
+  `hidden` attribute, so Esc could not shut it (fix: a `[hidden]` rule); (2) on a phone a tap on Syntax did
+  nothing: the card was rebuilt between the touch and its click (traced with capture-phase listeners: touchstart,
+  touchend, then no mousedown or click at all), fix: rewrite the card's markup only when it changed
+  (`_gfqState.html`); (3) the mutation "a query narrows like plain text" survived the first spec, because the
+  widening step got a CACHE HIT for its first query and so the narrowing state was never built from it: the spec now
+  clears the result cache first. All three are pinned by mutation entries.
+- **The bar is 33 px wider** (the Q box, 28 px + gap). `test:full` 3391/3392: `sticky-page-headers.spec.js:556`
+  failed 3/3 on the branch, passed with `main`'s userscript; a probe of the series fixture at 900 px with the tables
+  hidden found `#mb-filter-container` 884 px wide, scrollWidth 919. vzell kept the box; that test opens at 940 px.
+  The title-style Aa button now follows Q (`findings-title-style.spec.js`, `filter-bar-containers.spec.js`).
+- **Perf** (`tests/MEASUREMENTS.org`, same date): plain globalFilter B / M 1.02, inside each arm's own spread; query
+  mode Q / B 1.14 on artist-events (4174 rows), the price of scanning every row on each pass.
+- **Mutations:** `scripts/mutations/gf-query-mode.json`, 19 entries, 18 caught, one `"expect": "pass"` by
+  construction (a negated leaf can never be marked in a kept row). Six finds of `filter-flag-scoping.json` and
+  `global-filter-art-search.json` re-pointed to the moved code; all six behave as before.

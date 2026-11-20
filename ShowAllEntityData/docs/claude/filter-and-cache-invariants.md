@@ -462,6 +462,12 @@ section). It never reaches a column or sub-table filter: `_globalFilterFlags()`
 does NOT carry it, because `_resolveColFilterFlags()` hands that object out as
 COLUMN flags on a single table, and `_filterModsLabel()` would then print `q`
 on a column. The global status parts add it explicitly (`isQuery: _gfqOn()`).
+The box costs the h2 filter bar 33 px (28 px + the 5 px gap), and that bar is
+one line that never wraps: on the series fixture at 900 px it ran 19 px past the
+window, so `sticky-page-headers.spec.js`'s "disengages once the overflow is
+gone" test now opens at 940 px (vzell chose that over a narrower bar,
+2026-11-20). The title-style Aa button goes after Q, so the four boxes stay
+together.
 
 ## The global filter's query mode (Event Horizon's language)
 
