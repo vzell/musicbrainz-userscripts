@@ -82,8 +82,8 @@
         "why": "The card shows the event's disambiguation (the mockup's Event row).",
         "edits": [
             {
-                "find": "            dis: comment ? _dpText(comment.textContent).replace(/^\\((.*)\\)$/, '$1') : '',",
-                "replace": "            dis: '',"
+                "find": "            dis: comment ? _dpText(comment.textContent).replace(/^\\((.*)\\)$/, '$1') : '',\n            fact: _bbFeedMbFact(m[1]),",
+                "replace": "            dis: '',\n            fact: _bbFeedMbFact(m[1]),"
             }
         ],
         "spec": "tests/fixtures/bb-feed.spec.js",
@@ -121,8 +121,8 @@
         "why": "The sidebar mark's words get the page's heading as the name.",
         "edits": [
             {
-                "find": "b.setAttribute('aria-label', `${k.label}: ${_bbFeedMbText(f, b.dataset.mbBbmbName)}`);",
-                "replace": "b.setAttribute('aria-label', `${k.label}: ${_bbFeedMbText(f)}`);"
+                "find": "b.setAttribute('aria-label', `${k.label}: ${work ? _bbFeedMbwText(f) : _bbFeedMbText(f, b.dataset.mbBbmbName)}`);",
+                "replace": "b.setAttribute('aria-label', `${k.label}: ${work ? _bbFeedMbwText(f) : _bbFeedMbText(f)}`);"
             }
         ],
         "spec": "tests/fixtures/bb-feed.spec.js",
@@ -134,8 +134,8 @@
         "why": "The card is drawn with the target's disambiguation.",
         "edits": [
             {
-                "find": "card.innerHTML = _bbFeedMbCardHtml(tg.fact, tg.name, tg.dis || '');",
-                "replace": "card.innerHTML = _bbFeedMbCardHtml(tg.fact, tg.name, '');"
+                "find": "card.innerHTML = tg.type === 'work' ? _bbFeedMbwCardHtml(tg.fact, tg.name) : _bbFeedMbCardHtml(tg.fact, tg.name, tg.dis || '');",
+                "replace": "card.innerHTML = tg.type === 'work' ? _bbFeedMbwCardHtml(tg.fact, tg.name) : _bbFeedMbCardHtml(tg.fact, tg.name, '');"
             }
         ],
         "spec": "tests/fixtures/bb-feed.spec.js",
