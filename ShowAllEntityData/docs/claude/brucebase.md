@@ -2888,10 +2888,12 @@ recommended (org/bbp-parity.org, "Feed v2, branch 3").
   or on a page that lists no events, Save/Load to Disk, and the event page's
   sidebar mark (`event-overview.html`). `scripts/mutations/bb-feed.json` has
   8 more, each failing its test.
-- **Not measured yet:** render and filter on `artist-events` with a feed
-  kept (the perf harness runs with the fixture overrides, which switch the
-  feed off). The added work is three findings per Event cell, a cheap
-  `rowGate` and a memoized lookup.
+- **Measured** (2026-11-18, NB-3641, `capture-interaction-perf.js
+  --bb-feed=`, tests/MEASUREMENTS.org): render and filter on
+  `artist-events` with the feed kept, main against the branch, every ratio
+  0.94–1.04, no cost. The added work was three findings per Event cell, a
+  cheap `rowGate` and a memoized lookup; feed 1.7 adds a fourth on the same
+  memoized lookup (not measured on its own).
 
 ### Feed 1.6: a page named differently from its show (Track A idea 4, 2026-11-20)
 

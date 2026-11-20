@@ -4,9 +4,16 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1840 versions; the month pages hold all of them.
+This page shows the newest 100 of 1841 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1670 — 2026-11-20
+
+**🚀 Feature**
+
+- MusicBrainz event lists and event pages: a fourth mark from the Brucebase feed (BruceParser 0.26.0, feed 1.7): ⚠️ ± "Brucebase entry has another date", an event whose Brucebase link names the entry of another date than the event's (1971\#030771b, the Upstage show of 1971-07-03, on an event dated 1971-07-04). Dates are compared as far as both go; a span such as a month of studio sessions fits when it holds the entry's date. The card says which side is likely wrong by the date at the start of the event's own name: the name agrees with Brucebase, so likely the event's date; or the name agrees with the date, so likely the link or the wiki's date. It shows the event with its disambiguation, its date, and the wiki's entries of the event's date, or that it has none. 7 events in the run of 2026-11-19, 6 of them a day late against their own name. On the Event cell of every event list and beside the Brucebase link on an event's page, after the page's press also in its "Sidebar" card; its own switch in ⚙️ Settings → ⚠️ Findings, on by default.
+
 
 ## 9.99.1669 — 2026-11-20
 
@@ -868,13 +875,6 @@ This page shows the newest 100 of 1840 versions; the month pages hold all of the
 **🐛 Fix**
 
 - Artwork viewer on a touch screen: dragging an Adjust slider with a finger no longer steps to the next picture (which also undid the adjustment); in Compare a swipe changes the right picture, as ← → do, and the left one stays; with the loupe on, one finger moves the lens (it followed only a mouse, so on a phone the Loupe button did nothing).
-
-
-## 9.99.1570 — 2026-11-06
-
-**🚀 Feature**
-
-- Artwork viewer: Adjust (A) brightness, contrast, grayscale and invert to read a dark scan or a faded insert (view only; Download keeps the file); Compare (C) two pictures side by side (a page of a Spreads pair opens both); a loupe (L) under the pointer; Copy URL (Y; Shift+Y as an edit-note line); and ? for every key. On MusicBrainz and the other sites alike.
 
 
 ---

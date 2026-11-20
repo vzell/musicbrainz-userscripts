@@ -23,12 +23,13 @@ left out by decision), NOT (not done, with the reason).
   URL-shortening (its rows are its own derivation's variants) but a page named differently from its show, the feed
   kind "dependent-name" (BruceParser 0.24.0, feed 1.6, 36 pages), ⚠️ =bb-feed-name= in SAED; =test:full= 3370/3370.
   The feed 1.6 is published (=c52f356=). Record and browser check: bbp-parity.org, "Track A idea 4 …".
-- *Idea 5, check 1 is built* on =feat/bb-feed-mb-date= (2026-11-20, not merged): not the event-title comparison
-  (598 differing titles, nearly all conventions) but its date slice, the feed kind "date-differs" (BruceParser
-  0.26.0, feed 1.7, 7 events, published), ⚠️ ± =bb-mb-date= in SAED; =bb-feed.spec.js= 44/44, mutations 11 + 1
-  ="expect": "pass"=. Before it, BruceParser 0.25.0: the country-suffix bug, the 503 handling in =search.sh= and the
-  work search in =bbp.sh=. =test:full= 3391/3391 (=f8addb5c=). The feed 1.7 is published (vzell, 2026-11-20). Next:
-  vzell's browser check (bbp-parity.org, "Track A idea 5, check 1 …"), then check 2 (works, =mbWorks=).
+- *Idea 5, check 1 is DONE*: merged on 2026-11-20 as 9.99.1670 (=feat/bb-feed-mb-date=, vzell: "tested live, OK"):
+  not the event-title comparison (598 differing titles, nearly all conventions) but its date slice, the feed kind
+  "date-differs" (BruceParser 0.26.0, feed 1.7, 7 events, published: feed repo =1450799=), ⚠️ ± =bb-mb-date= in
+  SAED. vzell's live check found the event page's mark dead after the press (copied as text into the rendered
+  "Sidebar" card); fixed before the merge. =test:full= on the merged tree 3412/3412. Before it, BruceParser 0.25.0:
+  the country-suffix bug, the 503 handling in =search.sh=, the work search in =bbp.sh=. Record: bbp-parity.org,
+  "Track A idea 5, check 1 …".
 - *Open in Track A:* check 2 of idea 5. Freezing BruceBaseParser (idea 6) is possible but waits: vzell, 2026-11-20,
   "We will actually NOT yet freeze BruceBaseParser right now". See "Status at a glance".
 - *Nothing since 9.99.1625 is published* to =vzell/mb-userscripts=; that is vzell's call. The ❓ Help on GitHub is
@@ -60,7 +61,7 @@ left out by decision), NOT (not done, with the reason).
 | Idea 4, the year reader's setlist note                   | DONE  | 9.99.1648           | —                                                     |
 | Idea 4: a page named differently (not URL-shortening)    | DONE  | 9.99.1667           | "Track A idea 4: a page named differently …"          |
 | Idea 5, feed v2 branch 3: MusicBrainz event links        | DONE  | 9.99.1647           | "Feed v2, branch 3 …"                                 |
-| Idea 5, check 1: MB event dates (not titles)             | WAIT  | BruceParser 0.26.0  | "Track A idea 5, check 1 …" (vzell's browser check)   |
+| Idea 5, check 1: MB event dates (not titles)             | DONE  | 9.99.1670           | "Track A idea 5, check 1 …"                           |
 | Idea 5, check 2: MB works against Brucebase songs        | TODO  | —                   | "Track A idea 5, check 1 …" (the works probe)         |
 | Idea 6: freeze BruceBaseParser                           | WAIT  | —                   | the matrix (vzell, 2026-11-20: not yet)               |
 | Publish to =vzell/mb-userscripts=                        | WAIT  | since 9.99.1625     | —                                                     |
@@ -383,7 +384,7 @@ shares one entry ⚠️ (18) or is no anchor ⚠️ (1), with a card of the wiki
 =sa_bb_feed_mb=. Mockup https://claude.ai/artifact/Tip5CShMevQp8ycqBjjnRZ. Perf on =artist-events=: no cost. vzell:
 "all tested live, OK".
 
-*** WAIT Check 1: an MB event whose Brucebase entry has another date (=feat/bb-feed-mb-date=, 2026-11-20)
+*** DONE Check 1: an MB event whose Brucebase entry has another date (9.99.1670, 2026-11-20; vzell: "tested live, OK")
 
 Probed first (vzell, 2026-11-20). BruceParser's event-title report is no list of errors: 598 differing titles, nearly
 all MusicBrainz conventions (the venue's name of the time, named events) and BruceParser's own derivation. So NOT the
@@ -392,7 +393,9 @@ events, 6 of them a day late against their own name), ⚠️ ± =bb-mb-date= wit
 https://claude.ai/artifact/8iqJ2nM2xVb8JTkLgSwbod, every answer as recommended. Before it, BruceParser 0.25.0 (vzell:
 "fix BruceParser first"): the country-suffix bug (5 titles cut), the 503 handling in =search.sh=, the work search as
 the step =search-work= in =bbp.sh=. =test:full= 3391/3391. The feed 1.7 is published (feed repo =1450799=). Waits
-for: vzell's browser check. Record: bbp-parity.org, "Track A idea 5, check 1 …".
+for: vzell's browser check. Record: bbp-parity.org, "Track A idea 5, check 1 …". vzell's check found the event
+page's mark dead after the press (the rendered "Sidebar" card copied it as text); fixed, then "tested live, OK";
+merged as 9.99.1670, =test:full= 3412/3412 on the merged tree.
 
 *** TODO Check 2: an MB work against its Brucebase song
 
