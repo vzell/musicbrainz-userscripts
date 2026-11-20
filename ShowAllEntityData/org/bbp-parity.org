@@ -1270,7 +1270,11 @@ way:* 9 mutation finds of =bb-feed.json=, =bb-feed-mb-date.json= and =bb-finding
 named are entity-aware now); each still fails its test.
 
 *Tests:* =bb-feed-mb-works.spec.js= 8, green; =scripts/mutations/bb-feed-mb-works.json= 11, each failing its test;
-the checker's new part 6 (works) and every other part: no difference.
+the checker's new part 6 (works) and every other part: no difference. =test:full= 3419/3420
+(2026-11-20T20:51:22+01:00 – 21:15:41+01:00, NB-3641, =f22cd1bf=, Playwright Chromium, no Tampermonkey): the one
+failure, =bb-place.spec.js= "an /onstage: link previews its event", timed out with its preview still "Loading the
+detail page…"; alone, =--repeat-each=3=, 36/36. Far from this branch's code (a Brucebase preview), so a timing flake
+under the suite's load; first seen here, to watch.
 
 ** The browser check of check 2, for vzell (the run of 2026-11-19; unverified on the live MusicBrainz)
 
