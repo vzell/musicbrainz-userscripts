@@ -866,7 +866,7 @@ row is DONE. Of the matrix, only batch 3b's rows remain open (the tag-source hig
 
 Unverified: all of it in a real browser.
 
-* Batch 3b: the five noisy tag families (=feat/bb-findings-batch3b=, 2026-11-19; tested live OK on 2026-11-20, not merged)
+* Batch 3b: the five noisy tag families (=feat/bb-findings-batch3b=, 2026-11-19; tested live OK and merged on 2026-11-20 as 9.99.1661–9.99.1665)
 
 Env: 2026-11-19T19:16:49+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · probe:
 Python over the mirror bb/2026-11-19, n/a; the checker and the specs: Playwright Chromium, no Tampermonkey

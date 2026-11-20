@@ -13,19 +13,20 @@ browser checks) is [[file:bbp-parity.org][bbp-parity.org]]; this file holds the 
 Keywords: TODO (open), NEXT (the next one to start), WAIT (someone else's call), DONE, PART (partly done, the rest
 left out by decision), NOT (not done, with the reason).
 
-* PICKUP HERE (2026-11-19)
+* PICKUP HERE (2026-11-20)
 
-- *Track A is closed except batch 3b.* Every row of the parity matrix is DONE or decided, except the five noisy tag
-  families (batch 3b, set aside by vzell on 2026-11-16) and what depends on them (idea 3). The last merge is
-  9.99.1658 (=feat/bb-evp-read-all=).
-- *Also open in Track A:* URL-shortening through the feed (idea 4), two MusicBrainz cross-checks (idea 5), and
-  freezing BruceBaseParser (idea 6). See "Status at a glance".
+- *Every row of the parity matrix is DONE or decided.* Batch 3b (the five tag families, each behind its own switch,
+  off by default) and idea 3 (the lookup tables and the song and venue maps in the feed) are merged as
+  9.99.1661–9.99.1665 (=feat/bb-findings-batch3b=, vzell: "all tested live OK"). BruceParser is at 0.23.0, the
+  published feed is 1.5.
+- *Next in Track A:* freezing BruceBaseParser (idea 6, now possible); then URL-shortening through the feed (idea 4)
+  and two MusicBrainz cross-checks (idea 5). See "Status at a glance".
 - *Nothing since 9.99.1625 is published* to =vzell/mb-userscripts=; that is vzell's call. The ❓ Help on GitHub is
   behind until then.
 - *Mirror:* =~/git/scripts/BruceParser/bb/latest=; check =ls -la= first (CLAUDE.md, working rule 7). The newest run
   is 2026-11-19 on NB-3641 (=bb/2026-11-19=, BruceParser 0.21.3); the batch 3 probe was re-run on it.
-- *Batch 3b has started* on =feat/bb-findings-batch3b=: the plan is =~/.claude/plans/start-batch-3b-the-expressive-dongarra.md=
-  (NB-3641 only; its decisions are copied into the 3b entry below).
+- *Batch 3b's plan* was =~/.claude/plans/start-batch-3b-the-expressive-dongarra.md= (NB-3641 only; its decisions are
+  in the 3b entry below).
 - *Do not run =bbp.sh= without vzell.*
 
 * Status at a glance
@@ -40,7 +41,7 @@ left out by decision), NOT (not done, with the reason).
 | Idea 2, the help-icon check                              | DONE  | 9.99.1636–1637      | "The help-icon check …"                               |
 | Idea 2, batch 4: venue, song, relation, release tags     | PART  | 9.99.1652           | "Batch 4: the page tag checks …"                      |
 | Idea 2, closing the matrix (coexistence, HOME row)       | DONE  | 9.99.1653–1658      | "Closing the matrix …"                                |
-| Idea 2, batch 3b: the five noisy tag families            | NEXT  | WIP (5 of 5 built)  | "Batch 3b: …"                                         |
+| Idea 2, batch 3b: the five noisy tag families            | DONE  | 9.99.1661–1665      | "Batch 3b: …"                                         |
 | Idea 3: the lookup tables into the feed                  | DONE  | BruceParser 0.23.0  | "Batch 3b: …" (=tagTables=, =songTags=, =venueTags=)  |
 | Idea 4, feed v1                                          | DONE  | 9.99.1638           | "The feed, version 1 …"                               |
 | Idea 4, feed v2 branch 1: date tags, the "files" tag     | DONE  | 9.99.1642           | "Feed v2, branch 1 …"                                 |
@@ -50,7 +51,7 @@ left out by decision), NOT (not done, with the reason).
 | Idea 4: URL-shortening through the feed                  | TODO  | —                   | "Feed v2, branch 1", decision 4                       |
 | Idea 5, feed v2 branch 3: MusicBrainz event links        | DONE  | 9.99.1647           | "Feed v2, branch 3 …"                                 |
 | Idea 5: MB event titles, works against Brucebase songs   | TODO  | —                   | —                                                     |
-| Idea 6: freeze BruceBaseParser                           | TODO  | —                   | the matrix                                            |
+| Idea 6: freeze BruceBaseParser                           | NEXT  | —                   | the matrix                                            |
 | Publish to =vzell/mb-userscripts=                        | WAIT  | since 9.99.1625     | —                                                     |
 | BruceParser: the audit's fixes                           | DONE  | 0.16.0–0.21.1       | —                                                     |
 | BruceParser: before 3b (setlist list, SC2034, run)       | DONE  | 0.21.2–0.21.3       | —                                                     |
@@ -228,7 +229,7 @@ Mockup https://claude.ai/artifact/Mji5y7i2vZzTkK1WQ4JWi7, all eleven questions a
 - =feat/bb-evp-read-all= (9.99.1658): ▶ Pages "Read every row".
 vzell, each: "tested live, OK".
 
-*** NEXT Batch 3b: the five noisy tag families (set aside by vzell, 2026-11-16)
+*** DONE Batch 3b: the five noisy tag families (9.99.1661–1665, 2026-11-20; vzell: "all tested live OK")
 
 Batch 3 ported four of BruceBaseParser's nine expected-tag families. Run as BBP's code has them, all nine flag 88 % of
 shows, because these five guess at how the wiki is tagged (the counts: =org/bbp-parity.org=, "Batch 3", the probe's
@@ -369,9 +370,10 @@ shares one entry ⚠️ (18) or is no anchor ⚠️ (1), with a card of the wiki
 Not started, not decided: an MB event's title against the MB-style title BruceParser derives from Brucebase (its
 =search/= comparison), and an MB work against its Brucebase song (=esfsl.sh=).
 
-** TODO Idea 6: freeze BruceBaseParser
+** NEXT Idea 6: freeze BruceBaseParser
 
-Every matrix row is DONE or decided except batch 3b's. Once 3b is done (or its rows are declared NOT), BBP is frozen.
+Every matrix row is DONE or decided (batch 3b merged as 9.99.1661–1665 on 2026-11-20), so BBP can be frozen now:
+vzell's call, in BBP's repo.
 Also in BBP's repo, for vzell: =doc/TAGS.md= still says the wiki "caps the number of tags per page"; the limit is 512
 characters (Phase 1's probe).
 
