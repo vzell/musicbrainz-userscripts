@@ -1168,3 +1168,66 @@ First: the feed 1.6 is on GitHub (BruceParser 0.24.0, published 2026-11-20); the
 | https://brucebase.wikidot.com/1999                                                  | Show all events, Ctrl+hover 06-02, Space | the window's title ⚠️ ⇋: its gallery and recnote pages say "palais-omnisport"          |
 | https://brucebase.wikidot.com/system:page-tags/tag/media                            | Show the tagged pages                    | the row of media:1975-11-10-jai-alai-fronton-tampa-fl ⚠️ ⇋ (and ❌ for its date tag)    |
 | ⚙️ Settings → ⚠️ Findings → "Find Brucebase pages named differently …"              | off, then 1968 again                     | no ⚠️ on the Off Broad Street row                                                      |
+
+* Track A idea 5, check 1: an MB event whose Brucebase entry has another date (=feat/bb-feed-mb-date=, 2026-11-20; feed 1.7)
+
+Env: 2026-11-20T13:27:21+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · n/a
+(the probes: Python over BruceParser's run bb/2026-11-19 and one read-only MusicBrainz browse; the spec and the checker:
+Playwright Chromium, no Tampermonkey)
+
+Mockup: https://claude.ai/artifact/8iqJ2nM2xVb8JTkLgSwbod (=debug/bb-feed-mb-date-mockup.html=). Plan:
+=~/.claude/plans/pasted-content-id-562f-start-idea-precious-brooks.md= (NB-3641 only).
+
+*Decisions (vzell, 2026-11-20):* the plan's questions 1-5 as recommended. Check 1 is NOT the title comparison but its
+date slice, ⚠️, with branch 3's card. Check 2 (works) is a keyed feed map =mbWorks= with three kinds, next. The 1,001
+works without a Brucebase link stay out. The mockup's answers, all as recommended: glyph ±, the verdict by the name, the
+wiki's entries listed, all seven marked (the late show too), "Brucebase entry has another date".
+
+*The probe of BruceParser's two reports* (read-only, the run of 2026-11-19):
+- *Event titles* (=search/extract-mb-event-titles.sh=): 4,184 events, 3,358 titles equal, 228 anchors not on the wiki
+  (branch 3), 598 differ. The 598 are nearly all conventions: MusicBrainz names the venue as it was called at the time,
+  in English and its own forms (188); 71 named events; BB's ", early show" in the date; 76 case rows from
+  BruceParser's =sed=; 107 parts added or dropped. About 30 real errors (MB typos "Steetcar", "Pollack Theatre" x2,
+  "Toronto, On", dropped accents; disagreements such as 1982-02 Power Station / The Hit Factory) follow no rule. The
+  event's held-at place does not help (1,292 titles name the venue otherwise, by the name of the time). The precise
+  slice is the date: 7 events (after the span rule) whose anchor names another date.
+- *Works* (=esfsl.sh=): an unkeyed diff of title lists whose MB side was 2024-10-21 (1,472 works; 1,587 now): 998
+  equal, 458 MB-only, 686 BB-only, mostly coverage and BruceParser's own capitalizer. Keyed by the works' own
+  Brucebase links (176 of 1,587): 9 link the gone page =stats:greetings-from-asbury-park-studio-sessions= (live 404;
+  now =...-nj-studio-sessions=), 1 anchor missing (King's Rock), 1 song page linked by two works, 3-4 titles differ.
+
+*BruceParser first* (vzell): 0.25.0 (=d4e549c=): =eefyp.sh='s country suffix judged by the last comma part (5 titles
+were cut: "Wogan House, BB, USA", "The Concert Hall, QP, USA" x2, "…, CO, USA", "Moncton, NB, USA"); =search.sh='s
+MusicBrainz requests through =mb_get()= (HTTP 200 + XML only, 503 retried, 4xx not, partial output removed);
+=search.sh -b=; the step =search-work= in =bbp.sh= (=esfsl= waits for it). The standalone work run, 14:08:47-15:28:24
++01:00: 1,587 works, 496 busy answers retried, exit 0. 0.26.0 (=cfce494=): =feed.sh= 1.7, the kind =date-differs=.
+Not published.
+
+*Built in SAED:* ⚠️ =bb-mb-date= ±, =sa_findings_bb_mb_date= (on); =_bbFeedMbVerdict()=, =_bbFeedMbDateOf()=; the
+card with disambiguation, date, verdict, entries or "no entry". Details: docs/claude/brucebase.md, "Feed 1.7".
+*Deviations from the mockup:* the setting's label ends in "(Brucebase feed)" like its three siblings; the event page's
+card takes the name from the page's heading, which also carries the date in brackets, as the three older kinds do.
+*Seen on the way:* the probe's parts 2 and 4 do not count =dependent-name= (feed 1.6), so the checker shows 2
+differences (the news tag list, the year listings) on the 1.6 feed as on 1.7; not part of this branch.
+
+*Tests:* =bb-feed.spec.js= 44 (6 new), green; =scripts/mutations/bb-feed-mb-date.json= 12, 11 fail their test, 1
+="expect": "pass"= (the event-art link guard: the =caa= extractor moves that link out of the Event cell first). The
+probe and the checker: 7 / 197 / 18 / 1 on both sides. =test:full= deferred to before the merge.
+
+** The browser check of check 1, for vzell (the run of 2026-11-19; unverified on the live MusicBrainz)
+
+First: publish the feed 1.7 (BruceParser =./publish-feed.sh -r 2026-11-19=, your word), then install the script from
+=feat/bb-feed-mb-date=. A kept 1.6 feed has the =mb= map but no =date-differs=, so it is not read again before its
+day is up: on the artist's events, after "Show all Events", the feed line at the foot of the ⚠️/❌ menus → "Read
+again", then the press once more.
+
+| URL                                                                                | Step                                      | What should appear                                                                                                                                                                                                                 |
+|------------------------------------------------------------------------------------+-------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events         | Show all Events                           | ⚠️ menu "Brucebase entry has another date" 7, beside "Two events link …" 18 and "… no year-page anchor" 1                                                                                                                          |
+| the same list                                                                      | click that menu row                       | only the 7 events: 1971-07-03 and 1971-10-29 The Upstage, 1971-07-25 Rumson, 1974-04-26 Providence, 1975-10-11 Red Bank, 1991-02-17 Malibu, 2012-06-03 Lisbon                                                                      |
+| the same list                                                                      | hover 1971-07-03 The Upstage's Event cell | the card ⚠️ ± with Event (… The Sundance Blues Band), Date 1971-07-04, link 1971#030771b; in bold "Its name says 1971-07-03, as Brucebase does: likely the event's date is wrong."; the wiki's entry of 1971-07-04: Student Prince |
+| https://musicbrainz.org/event/fe126f9a-b359-47e2-964c-3d118a179c54                 | load the page (after a feed is kept)      | "⚠️ ±" beside the Brucebase link in the sidebar; a click opens the same card; no request at load                                                                                                                                   |
+| https://musicbrainz.org/event/20326b65-08df-4a9e-893c-8803a75ac244                 | load the page, click the mark             | "Its name says 1991-02-17 too: likely the link, or the wiki's date, is wrong." and "The wiki has no entry of 1991-02-17."                                                                                                          |
+| ⚙️ Settings → ⚠️ Findings → "Find events whose Brucebase entry has another date …" | off, then the artist's events again       | no ± mark and no such menu row; ⇉, ⌗ and ❌ ⚓ stay                                                                                                                                                                                  |
+
+Unverified: all of it live (an event corrected on MusicBrainz since 2026-11-19 keeps its mark until the next run).

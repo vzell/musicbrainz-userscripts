@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-11-20",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "MusicBrainz event lists and event pages: a fourth mark from the Brucebase feed (BruceParser 0.26.0, feed 1.7): ⚠️ ± \"Brucebase entry has another date\", an event whose Brucebase link names the entry of another date than the event's (1971#030771b, the Upstage show of 1971-07-03, on an event dated 1971-07-04). Dates are compared as far as both go; a span such as a month of studio sessions fits when it holds the entry's date. The card says which side is likely wrong by the date at the start of the event's own name: the name agrees with Brucebase, so likely the event's date; or the name agrees with the date, so likely the link or the wiki's date. It shows the event with its disambiguation, its date, and the wiki's entries of the event's date, or that it has none. 7 events in the run of 2026-11-19, 6 of them a day late against their own name. On the Event cell of every event list and beside the Brucebase link on an event's page; its own switch in ⚙️ Settings → ⚠️ Findings, on by default."
+        ]
+      }
+    ]
+  }
+]

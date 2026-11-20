@@ -39,7 +39,10 @@ For every page the feed names:
      search/event_linked_to_artist.org with a Brucebase link, classified here
      independently (no-entry: the anchor is not in brucebase-event.txt;
      shared: two or more events link one entry; not-anchor: no year-page
-     anchor), against the feed's "mb"; and the test fixtures holding such
+     anchor; since feed 1.7 date-differs: a link of none of those three
+     whose anchor's date is not the event's date, compared as far as both
+     go: an anchor's "00" and a date without month or day leave that part
+     out), against the feed's "mb"; and the test fixtures holding such
      events.
   5. (feed 1.2) the year listings: every row of every <year>-list.html links
      "/<year>#<anchor>" with its own date first; the feed's "anchors" give
@@ -247,12 +250,37 @@ def main():
                 wiki.add(f[4])
         bp = os.path.dirname(os.path.dirname(os.path.realpath(run_dir)))
         evs = []
+        dates = {}
         for line in open(os.path.join(bp, 'search/event_linked_to_artist.org'), encoding='utf-8', errors='replace'):
             m = re.search(r'musicbrainz\.org/event/([0-9a-f-]{36})\]', line)
             b = re.search(r'\[\[https?://brucebase\.wikidot\.com/([^\]]+)\]\[BB\]\]', line)
             if m and b:
                 evs.append((m.group(1), b.group(1)))
+                cols = line.split('|')
+                # the Date column: the begin date, or "begin - end" (a span)
+                dates[m.group(1)] = cols[5].strip() if len(cols) > 5 else ''
         cnt = Counter(b for _, b in evs)
+
+        def anchor_date(b):
+            """'1985#050185b' -> '1985-01-05'; '1976#000276' -> '1976-02'; '1949-64#230949' -> '1949-09-23'."""
+            am = re.match(r'^(\d{4}|1949-64)#(\d\d)(\d\d)(\d\d)[a-z]?$', b)
+            if not am:
+                return None
+            d = '19' + am.group(4) if am.group(1) == '1949-64' else am.group(1)
+            if am.group(3) != '00':
+                d += '-' + am.group(3) + ('-' + am.group(2) if am.group(2) != '00' else '')
+            return d
+
+        def date_differs(date, b):
+            """The anchor's date outside the event's date or span, each pair cut to the shorter."""
+            a = anchor_date(b)
+            lo, _, hi = (date or '').partition(' - ')
+            hi = hi or lo
+            if not a or not all(re.match(r'^\d{4}(-\d\d){0,2}$', x) for x in (lo, hi)):
+                return False
+            n, k = min(len(a), len(lo)), min(len(a), len(hi))
+            return a[:n] < lo[:n] or a[:k] > hi[:k]
+
         mine = {}
         for mbid, b in evs:
             if not re.match(r'^(\d{4}|1949-64)#[0-9a-z]+$', b):
@@ -261,6 +289,8 @@ def main():
                 mine[mbid] = 'no-entry'
             elif cnt[b] > 1:
                 mine[mbid] = 'shared'
+            elif date_differs(dates.get(mbid, ''), b):
+                mine[mbid] = 'date-differs'
         theirs = {k: v['kind'] for k, v in mbmap.items()}
         fixtures = {}
         for fn in sorted(os.listdir(os.path.join(os.path.dirname(__file__), '..', 'tests', 'fixtures'))):

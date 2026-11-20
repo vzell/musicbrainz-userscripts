@@ -1,0 +1,4484 @@
+{
+ "anchors": {},
+ "credit": "The data is Brucebase (brucebase.wikidot.com, Danny van der Linden and its editors); the checks are BruceParser's.",
+ "format": 1,
+ "mb": {
+  "02d6c019-b135-4e96-8857-b252a1bcd6f9": {
+   "candidates": [
+    {
+     "anchor": "1973#010873a",
+     "heading": "1973-08-01 - MY FATHER'S PLACE, ROSLYN, NY",
+     "likely": true,
+     "page": "gig:1973-08-01-my-father-s-place-roslyn-ny-early"
+    },
+    {
+     "anchor": "1973#010873b",
+     "heading": "1973-08-01 - MY FATHER'S PLACE, ROSLYN, NY",
+     "likely": true,
+     "page": "gig:1973-08-01-my-father-s-place-roslyn-ny-late"
+    }
+   ],
+   "date": "1973-08-01",
+   "kind": "no-entry",
+   "link": "1973#010873"
+  },
+  "071f15e2-b372-47c0-a2d9-f3bd10e41ff0": {
+   "candidates": [
+    {
+     "anchor": "1975#250775a",
+     "heading": "1975-07-25 - RECORD PLANT, NEW YORK CITY, NY",
+     "page": "recording:1975-07-25a-record-plant-new-york-city-ny"
+    },
+    {
+     "anchor": "1975#250775b",
+     "heading": "1975-07-25 - KEYSTONE HALL, KUTZTOWN STATE COLLEGE, KUTZTOWN, PA",
+     "likely": true,
+     "page": "gig:1975-07-25b-keystone-hall-kutztown-pa"
+    }
+   ],
+   "date": "1975-07-25",
+   "kind": "no-entry",
+   "link": "1975#250775"
+  },
+  "084116ae-8199-42aa-b2c5-072d82e88183": {
+   "candidates": [
+    {
+     "anchor": "1974#120474a",
+     "heading": "1974-04-12 - CHARLIE'S PLACE, CAMBRIDGE, MA",
+     "likely": true,
+     "page": "gig:1974-04-12-charlie-s-place-cambridge-ma-early"
+    },
+    {
+     "anchor": "1974#120474b",
+     "heading": "1974-04-12 - CHARLIE'S PLACE, CAMBRIDGE, MA",
+     "likely": true,
+     "page": "gig:1974-04-12-charlie-s-place-cambridge-ma-late"
+    }
+   ],
+   "date": "1974-04-12",
+   "kind": "no-entry",
+   "link": "1974#120474"
+  },
+  "0865bacd-c9c9-4c28-9349-6541b5dce7cc": {
+   "candidates": [
+    {
+     "anchor": "1970#100270",
+     "heading": "1970-02-10 - FILLMORE WEST, SAN FRANCISCO, CA",
+     "likely": true,
+     "page": "gig:1970-02-10-fillmore-west-san-francisco-ca"
+    }
+   ],
+   "date": "1970-02-10",
+   "kind": "no-entry",
+   "link": "1970#090270"
+  },
+  "086c1d58-4e55-4abf-bcf2-0bc996f47d7e": {
+   "candidates": [
+    {
+     "anchor": "1972#090872a",
+     "heading": "1972-08-09 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1972-08-09-max-s-kansas-city-new-york-city-ny-early"
+    },
+    {
+     "anchor": "1972#090872b",
+     "heading": "1972-08-09 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1972-08-09-max-s-kansas-city-new-york-city-ny-late"
+    }
+   ],
+   "date": "1972-08-09",
+   "kind": "no-entry",
+   "link": "1972#090872"
+  },
+  "0b06f58b-84da-442b-8a70-64a815d5cf6d": {
+   "candidates": [
+    {
+     "anchor": "1979#001279a",
+     "heading": "1979-12-00 - POWER STATION, NEW YORK CITY, NY",
+     "page": "recording:1979-12-00a-power-station-new-york-city-ny"
+    },
+    {
+     "anchor": "1979#001279b",
+     "heading": "1979-12-00 - SPRINGSTEEN RESIDENCE, HOLMDEL, NJ",
+     "page": "recording:1979-12-00b-private-residence-holmdel-nj"
+    }
+   ],
+   "date": "1979-12",
+   "kind": "no-entry",
+   "link": "1979#001279"
+  },
+  "0f0e7f4f-d5ea-46e3-98c5-aabde6995ffe": {
+   "candidates": [
+    {
+     "anchor": "1971#160471a",
+     "heading": "1971-04-16 - THE UPSTAGE, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:1971-04-16-upstage-asbury-park-nj-early"
+    },
+    {
+     "anchor": "1971#160471b",
+     "heading": "1971-04-16 - THE UPSTAGE, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:1971-04-16-upstage-asbury-park-nj-late"
+    }
+   ],
+   "date": "1971-04-16 - 1971-04-17",
+   "kind": "no-entry",
+   "link": "1971#160471"
+  },
+  "100e0ae5-81bb-4a11-8de8-5d03d9a7d106": {
+   "candidates": [
+    {
+     "anchor": "1973#090773a",
+     "heading": "1973-07-09 - OLIVER'S, BOSTON, MA",
+     "page": "nogig:1973-07-09-oliver-s-boston-ma"
+    },
+    {
+     "anchor": "1973#090773b",
+     "heading": "1973-07-09 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1973-07-09-main-point-bryn-mawr-pa"
+    }
+   ],
+   "date": "1973-07-09",
+   "kind": "no-entry",
+   "link": "1973#090773"
+  },
+  "111d1b33-c474-4cf2-8d79-221408ca31f6": {
+   "candidates": [
+    {
+     "anchor": "1973#060773a",
+     "heading": "1973-07-06 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1973-07-06-main-point-bryn-mawr-pa-early"
+    },
+    {
+     "anchor": "1973#060773b",
+     "heading": "1973-07-06 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1973-07-06-main-point-bryn-mawr-pa-late"
+    }
+   ],
+   "date": "1973-07-06",
+   "kind": "no-entry",
+   "link": "1973#060773"
+  },
+  "120cd4e7-2a7a-4dc2-bade-40f7cb596f66": {
+   "candidates": [
+    {
+     "anchor": "1974#140874a",
+     "heading": "1974-08-14 - MONMOUTH ARTS CENTER, RED BANK, NJ",
+     "likely": true,
+     "page": "gig:1974-08-14-monmouth-arts-center-red-bank-nj-early"
+    },
+    {
+     "anchor": "1974#140874b",
+     "heading": "1974-08-14 - MONMOUTH ARTS CENTER, RED BANK, NJ",
+     "likely": true,
+     "page": "gig:1974-08-14-monmouth-arts-center-red-bank-nj-late"
+    }
+   ],
+   "date": "1974-08-14 - 1974-08-15",
+   "kind": "no-entry",
+   "link": "1974#140874"
+  },
+  "130c126c-77c6-4368-bf0e-ee60a6dbea72": {
+   "candidates": [
+    {
+     "anchor": "1971#301071",
+     "heading": "1971-10-30 - VCU NEW GYM, VIRGINIA COMMONWEALTH UNIVERSITY, RICHMOND, VA",
+     "page": "gig:1971-10-30-vcu-new-gym-richmond-va"
+    }
+   ],
+   "date": "1971-10-30",
+   "heading": "1971-10-29 - THE UPSTAGE, ASBURY PARK, NJ",
+   "kind": "date-differs",
+   "link": "1971#291071b",
+   "page": "gig:1971-10-29-upstage-asbury-park-nj"
+  },
+  "13271b7c-3df7-4905-acf2-37b94efa6b3a": {
+   "date": "2002-05",
+   "kind": "no-entry",
+   "link": "2002#000502"
+  },
+  "139493f9-2399-4f5b-9207-2a4746bd0d63": {
+   "candidates": [
+    {
+     "anchor": "1973#210773a",
+     "heading": "1973-07-21 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1973-07-21-max-s-kansas-city-new-york-city-ny-early"
+    },
+    {
+     "anchor": "1973#210773b",
+     "heading": "1973-07-21 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1973-07-21-max-s-kansas-city-new-york-city-ny-late"
+    }
+   ],
+   "date": "1973-07-21",
+   "kind": "no-entry",
+   "link": "1973#210773"
+  },
+  "15bc37fa-172d-4d95-993d-e8ae6e4acaa5": {
+   "candidates": [
+    {
+     "anchor": "1973#190173a",
+     "heading": "1973-01-19 - MY FATHER'S PLACE, ROSLYN, NY",
+     "likely": true,
+     "page": "gig:1973-01-19-my-father-s-place-roslyn-ny-early"
+    },
+    {
+     "anchor": "1973#190173b",
+     "heading": "1973-01-19 - MY FATHER'S PLACE, ROSLYN, NY",
+     "likely": true,
+     "page": "gig:1973-01-19-my-father-s-place-roslyn-ny-late"
+    }
+   ],
+   "date": "1973-01-19",
+   "kind": "no-entry",
+   "link": "1973#190173"
+  },
+  "177bb704-5973-4955-a0e0-a103762a178c": {
+   "candidates": [
+    {
+     "anchor": "1982#160582a",
+     "heading": "1982-05-16 - BIG MAN'S WEST, RED BANK, NJ",
+     "likely": true,
+     "page": "gig:1982-05-16a-big-man-s-west-red-bank-nj"
+    },
+    {
+     "anchor": "1982#160582b",
+     "heading": "1982-05-16 - THE STONE PONY, ASBURY PARK, NJ",
+     "page": "gig:1982-05-16b-stone-pony-asbury-park-nj"
+    }
+   ],
+   "date": "1982-05-16",
+   "kind": "no-entry",
+   "link": "1982#160582"
+  },
+  "1837fb2b-9342-4dac-bac0-a3a970e02270": {
+   "candidates": [
+    {
+     "anchor": "1972#061272a",
+     "heading": "1972-12-06 - KENNY'S CASTAWAYS, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1972-12-06-kenny-s-castaways-new-york-city-ny-early"
+    },
+    {
+     "anchor": "1972#061272b",
+     "heading": "1972-12-06 - KENNY'S CASTAWAYS, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1972-12-06-kenny-s-castaways-new-york-city-ny-late"
+    }
+   ],
+   "date": "1972-12-06",
+   "kind": "no-entry",
+   "link": "1972#061272"
+  },
+  "18b70589-bf38-4817-a666-d329a4eb279b": {
+   "candidates": [
+    {
+     "anchor": "1973#020973a",
+     "heading": "1973-09-02 - FAT CITY, SEASIDE HEIGHTS, NJ",
+     "likely": true,
+     "page": "gig:1973-09-02-fat-city-seaside-heights-nj-early"
+    },
+    {
+     "anchor": "1973#020973b",
+     "heading": "1973-09-02 - FAT CITY, SEASIDE HEIGHTS, NJ",
+     "likely": true,
+     "page": "gig:1973-09-02-fat-city-seaside-heights-nj-late"
+    }
+   ],
+   "date": "1973-09-02",
+   "kind": "no-entry",
+   "link": "1973#020973"
+  },
+  "1a44a59a-3486-4b15-8f27-994899aa7f16": {
+   "candidates": [
+    {
+     "anchor": "1974#290474a",
+     "heading": "1974-04-29 - ROXY THEATER, NORTHAMPTON, PA",
+     "likely": true,
+     "page": "gig:1974-04-29-roxy-theater-northampton-pa-early"
+    },
+    {
+     "anchor": "1974#290474b",
+     "heading": "1974-04-29 - ROXY THEATER, NORTHAMPTON, PA",
+     "likely": true,
+     "page": "gig:1974-04-29-roxy-theater-northampton-pa-late"
+    }
+   ],
+   "date": "1974-04-29",
+   "kind": "no-entry",
+   "link": "1974#290474"
+  },
+  "1cc49d8e-7199-49bf-849a-16d02c861b6e": {
+   "candidates": [
+    {
+     "anchor": "1972#101272a",
+     "heading": "1972-12-10 - KENNY'S CASTAWAYS, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1972-12-10-kenny-s-castaways-new-york-city-ny-early"
+    },
+    {
+     "anchor": "1972#101272b",
+     "heading": "1972-12-10 - KENNY'S CASTAWAYS, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1972-12-10-kenny-s-castaways-new-york-city-ny-late"
+    }
+   ],
+   "date": "1972-12-10",
+   "kind": "no-entry",
+   "link": "1972#101272"
+  },
+  "1cec3417-27ee-40d3-ae2e-21a51c97783d": {
+   "candidates": [
+    {
+     "anchor": "1972#110872a",
+     "heading": "1972-08-11 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1972-08-11-max-s-kansas-city-new-york-city-ny-early"
+    },
+    {
+     "anchor": "1972#110872b",
+     "heading": "1972-08-11 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1972-08-11-max-s-kansas-city-new-york-city-ny-late"
+    }
+   ],
+   "date": "1972-08-11",
+   "kind": "no-entry",
+   "link": "1972#110872"
+  },
+  "1ea401bc-f0fb-4b13-8497-c4c3ca41ed96": {
+   "candidates": [
+    {
+     "anchor": "1973#160373a",
+     "heading": "1973-03-16 - LIBERTY HALL, HOUSTON, TX",
+     "page": "nogig:1973-03-16a-liberty-hall-houston-tx"
+    },
+    {
+     "anchor": "1973#160373b",
+     "heading": "1973-03-16 - OLIVER'S, BOSTON, MA",
+     "likely": true,
+     "page": "gig:1973-03-16b-oliver-s-boston-ma"
+    }
+   ],
+   "date": "1973-03-16",
+   "kind": "no-entry",
+   "link": "1973#160373"
+  },
+  "1fa59f5e-f4d8-4091-b440-02f801b6e8b7": {
+   "date": "2021-06-10",
+   "heading": "2021-06-10 - SIRIUSXM STUDIO, NEW YORK CITY, NY",
+   "kind": "shared",
+   "link": "2021#100621",
+   "others": [
+    "de9b15c5-862e-4c15-94b2-a946e5c3ee92"
+   ],
+   "page": "interview:2021-06-10-siriusxm-studio-new-york-city-ny"
+  },
+  "20326b65-08df-4a9e-893c-8803a75ac244": {
+   "date": "1991-02-17",
+   "heading": "1991-02-16 - MCENROE RESIDENCE, MALIBU, CA",
+   "kind": "date-differs",
+   "link": "1991#160291",
+   "page": "gig:1991-02-16-private-residence-malibu-ca"
+  },
+  "2244040b-155a-4308-9950-c1b3bc8840f5": {
+   "candidates": [
+    {
+     "anchor": "1987#000287a",
+     "heading": "1987-02-00 - SHAKEDOWN STUDIOS, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "recording:1987-02-00a-shakedown-studios-new-york-city-ny"
+    },
+    {
+     "anchor": "1987#000287b",
+     "heading": "1987-02-00 - THRILL HILL EAST, RUMSON, NJ",
+     "page": "recording:1987-02-00b-thrill-hill-east-rumson-nj"
+    }
+   ],
+   "date": "1987-02",
+   "kind": "no-entry",
+   "link": "1987#000287"
+  },
+  "248ab464-3005-464d-b636-22969adc3d66": {
+   "candidates": [
+    {
+     "anchor": "1978#300878a",
+     "heading": "1978-08-30 - RICHFIELD COLISEUM, RICHFIELD, OH",
+     "page": "gig:1978-08-30a-coliseum-richfield-oh"
+    },
+    {
+     "anchor": "1978#300878b",
+     "heading": "1978-08-30 - THE AGORA, CLEVELAND, OH",
+     "likely": true,
+     "page": "gig:1978-08-30b-agora-cleveland-oh"
+    }
+   ],
+   "date": "1978-08-30",
+   "kind": "no-entry",
+   "link": "1978#310878"
+  },
+  "287e9856-e7fa-42e7-9b53-67cd4334f318": {
+   "candidates": [
+    {
+     "anchor": "1982#000382a",
+     "heading": "1982-03-00 - WESTLAKE STUDIOS, LOS ANGELES, CA",
+     "likely": true,
+     "page": "recording:1982-03-00a-westlake-studios-los-angeles-ca"
+    },
+    {
+     "anchor": "1982#000382b",
+     "heading": "1982-03-00 - THE ROXY THEATRE, WEST HOLLYWOOD, CA",
+     "page": "nogig:1982-03-00b-roxy-theatre-west-hollywood-ca"
+    }
+   ],
+   "date": "1982-03",
+   "kind": "no-entry",
+   "link": "1982#000382"
+  },
+  "28c730a9-70fc-45e1-b417-748da8fabe95": {
+   "candidates": [
+    {
+     "anchor": "1992#211192a",
+     "heading": "1992-11-21 - RUPP ARENA, LEXINGTON, KY",
+     "likely": true,
+     "page": "nogig:1992-11-21a-rupp-arena-lexington-ky"
+    },
+    {
+     "anchor": "1992#211192b",
+     "heading": "1992-11-21 - COUNT BASIE THEATRE, RED BANK, NJ",
+     "page": "nobruce:1992-11-21b-count-basie-theatre-red-bank-nj"
+    }
+   ],
+   "date": "1992-11-21",
+   "kind": "no-entry",
+   "link": "1992#211192"
+  },
+  "29dfab9b-eb08-42ab-b1c2-cd58450b1ae5": {
+   "candidates": [
+    {
+     "anchor": "1974#190374a",
+     "heading": "1974-03-19 - GERTIE'S, DALLAS, TX",
+     "likely": true,
+     "page": "gig:1974-03-19-gertie-s-dallas-tx-early"
+    },
+    {
+     "anchor": "1974#190374b",
+     "heading": "1974-03-19 - GERTIE'S, DALLAS, TX",
+     "likely": true,
+     "page": "gig:1974-03-19-gertie-s-dallas-tx-late"
+    }
+   ],
+   "date": "1974-03-19",
+   "kind": "no-entry",
+   "link": "1974#190374"
+  },
+  "2d11adbc-3e09-4a29-9fd0-7c3d15e1cb9b": {
+   "candidates": [
+    {
+     "anchor": "1985#070185",
+     "heading": "1985-01-07 - MARKET SQUARE ARENA, INDIANAPOLIS, IN",
+     "likely": true,
+     "page": "gig:1985-01-07-market-square-arena-indianapolis-in"
+    }
+   ],
+   "date": "1985-01-07",
+   "dateDiffers": true,
+   "heading": "1985-01-05 - HAMPTON ROADS COLISEUM, HAMPTON, VA",
+   "kind": "shared",
+   "link": "1985#050185",
+   "others": [
+    "908c3a5b-d28b-410c-8f53-aec6b533d10b"
+   ],
+   "page": "gig:1985-01-05-roads-coliseum-hampton-va"
+  },
+  "2e8dab4a-c99f-4672-98e4-4989d4bf2a7c": {
+   "candidates": [
+    {
+     "anchor": "1982#230782a",
+     "heading": "1982-07-23 - EAST FREEHOLD SHOWGROUNDS, FREEHOLD, NJ",
+     "likely": true,
+     "page": "gig:1982-07-23a-east-showgrounds-freehold-nj"
+    },
+    {
+     "anchor": "1982#230782b",
+     "heading": "1982-07-23 - THE FAST LANE, ASBURY PARK, NJ",
+     "page": "gig:1982-07-23b-fast-lane-asbury-park-nj"
+    }
+   ],
+   "date": "1982-07-23",
+   "kind": "no-entry",
+   "link": "1982#230782"
+  },
+  "2f1b7505-a597-4ffb-8e6e-85d069cb2cf5": {
+   "candidates": [
+    {
+     "anchor": "1973#310873a",
+     "heading": "1973-08-31 - FAT CITY, SEASIDE HEIGHTS, NJ",
+     "likely": true,
+     "page": "gig:1973-08-31-fat-city-seaside-heights-nj-early"
+    },
+    {
+     "anchor": "1973#310873b",
+     "heading": "1973-08-31 - FAT CITY, SEASIDE HEIGHTS, NJ",
+     "likely": true,
+     "page": "gig:1973-08-31-fat-city-seaside-heights-nj-late"
+    }
+   ],
+   "date": "1973-08-31",
+   "kind": "no-entry",
+   "link": "1973#310873"
+  },
+  "2f343310-6e21-4a06-8aef-84623026af11": {
+   "candidates": [
+    {
+     "anchor": "1972#111172a",
+     "heading": "1972-11-11 - GYM \"A\", YORK COLLEGE OF PENNSYLVANIA, YORK, PA",
+     "page": "gig:1972-11-11-gym-a-york-pa"
+    },
+    {
+     "anchor": "1972#111172b",
+     "heading": "1972-11-11 - 615 NIGHT CLUB, YORK, PA",
+     "page": "gig:1972-11-11-615-night-club-york-pa"
+    }
+   ],
+   "date": "1972-11-11",
+   "kind": "no-entry",
+   "link": "1972#111172"
+  },
+  "2fc2495f-7d6c-4366-9f89-76fed36af3a5": {
+   "candidates": [
+    {
+     "anchor": "1974#260674a",
+     "heading": "1974-06-26 - LAFAYETTE'S MUSIC ROOM, MEMPHIS, TN",
+     "likely": true,
+     "page": "nogig:1974-06-26a-lafayette-s-music-room-memphis-tn"
+    },
+    {
+     "anchor": "1974#260674b",
+     "heading": "1974-06-26 - 914 SOUND STUDIOS, BLAUVELT, NY",
+     "page": "recording:1974-06-26b-914-sound-studios-blauvelt-ny"
+    }
+   ],
+   "date": "1974-06-26",
+   "kind": "no-entry",
+   "link": "1974#260674"
+  },
+  "304f6b68-6d3a-49cc-8bda-091230ca4b23": {
+   "candidates": [
+    {
+     "anchor": "1974#210674a",
+     "heading": "1974-06-21 - LE GARAGE, SPRAY BEACH, NJ",
+     "likely": true,
+     "page": "gig:1974-06-21-garage-spray-beach-nj-early"
+    },
+    {
+     "anchor": "1974#210674b",
+     "heading": "1974-06-21 - LE GARAGE, SPRAY BEACH, NJ",
+     "likely": true,
+     "page": "gig:1974-06-21-garage-spray-beach-nj-late"
+    }
+   ],
+   "date": "1974-06-21",
+   "kind": "no-entry",
+   "link": "1974#210674"
+  },
+  "3275fd4c-cca5-4900-8c2d-ff0d34671dd2": {
+   "candidates": [
+    {
+     "anchor": "2004#191204a",
+     "heading": "2004-12-19 - HARRY'S ROADHOUSE, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:2004-12-19a-harry-s-roadhouse-asbury-park-nj"
+    },
+    {
+     "anchor": "2004#191204b",
+     "heading": "2004-12-19 - HARRY'S ROADHOUSE, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:2004-12-19b-harry-s-roadhouse-asbury-park-nj"
+    }
+   ],
+   "date": "2004-12-19",
+   "kind": "no-entry",
+   "link": "2004#191204"
+  },
+  "3301f63c-bb67-45a4-95da-8cf746f76434": {
+   "candidates": [
+    {
+     "anchor": "1971#080171a",
+     "heading": "1971-01-08 - THE UPSTAGE, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:1971-01-08-upstage-asbury-park-nj-early"
+    },
+    {
+     "anchor": "1971#080171b",
+     "heading": "1971-01-08 - THE UPSTAGE, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:1971-01-08-upstage-asbury-park-nj-late"
+    }
+   ],
+   "date": "1971-01-08 - 1971-01-09",
+   "kind": "no-entry",
+   "link": "1971#080171"
+  },
+  "357de1df-5a01-4093-a858-8c27cf2c3fb9": {
+   "candidates": [
+    {
+     "anchor": "1974#240274a",
+     "heading": "1974-02-24 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1974-02-24-main-point-bryn-mawr-pa-early"
+    },
+    {
+     "anchor": "1974#240274b",
+     "heading": "1974-02-24 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1974-02-24-main-point-bryn-mawr-pa-late"
+    }
+   ],
+   "date": "1974-02-24",
+   "kind": "no-entry",
+   "link": "1974#240274"
+  },
+  "3664ce65-ace2-4ec3-b655-6bdf0da643b3": {
+   "candidates": [
+    {
+     "anchor": "1973#101173a",
+     "heading": "1973-11-10 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1973-11-10-max-s-kansas-city-new-york-city-ny-early"
+    },
+    {
+     "anchor": "1973#101173b",
+     "heading": "1973-11-10 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1973-11-10-max-s-kansas-city-new-york-city-ny-late"
+    }
+   ],
+   "date": "1973-11-10",
+   "kind": "no-entry",
+   "link": "1973#101173"
+  },
+  "37877b6a-3350-4de4-abc1-343109adfbc8": {
+   "date": "2007-06-28",
+   "kind": "no-entry",
+   "link": "2007#280607"
+  },
+  "38bece93-6c5d-434b-8cfd-169442600a24": {
+   "candidates": [
+    {
+     "anchor": "1968#170768a",
+     "heading": "1968-07-17 - OFF BROAD STREET COFFEE HOUSE, RED BANK, NJ",
+     "likely": true,
+     "page": "gig:1968-07-17a-off-broad-street-coffee-house-red-bank-nj"
+    },
+    {
+     "anchor": "1968#170768b",
+     "heading": "1968-07-17 - OFF BROAD STREET COFFEE HOUSE, RED BANK, NJ",
+     "likely": true,
+     "page": "gig:1968-07-17b-off-broad-street-coffee-house-red-bank-nj"
+    }
+   ],
+   "date": "1968-07-17",
+   "kind": "no-entry",
+   "link": "1968#170768"
+  },
+  "390f8fcb-efc1-4b77-930c-6aed84a777d3": {
+   "candidates": [
+    {
+     "anchor": "1973#150373a",
+     "heading": "1973-03-15 - LIBERTY HALL, HOUSTON, TX",
+     "page": "nogig:1973-03-15a-liberty-hall-houston-tx"
+    },
+    {
+     "anchor": "1973#150373b",
+     "heading": "1973-03-15 - OLIVER'S, BOSTON, MA",
+     "likely": true,
+     "page": "gig:1973-03-15b-oliver-s-boston-ma"
+    }
+   ],
+   "date": "1973-03-15",
+   "kind": "no-entry",
+   "link": "1973#150373"
+  },
+  "394b1dd2-6077-475d-9239-12bead6dc206": {
+   "candidates": [
+    {
+     "anchor": "2007#280907a",
+     "heading": "2007-09-28 - ROCKEFELLER PLAZA, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:2007-09-28a-rockefeller-plaza-new-york-city-ny"
+    },
+    {
+     "anchor": "2007#280907b",
+     "heading": "2007-09-28 - CONTINENTAL AIRLINES ARENA, EAST RUTHERFORD, NJ",
+     "page": "rehearsal:2007-09-28b-continental-airlines-arena-east-ruther"
+    }
+   ],
+   "date": "2007-09-28",
+   "kind": "no-entry",
+   "link": "2007#280907"
+  },
+  "3a788d3d-d46c-4e95-a79f-927adf8e1517": {
+   "date": "1965",
+   "heading": "1965-00-00 - FREEHOLD ELKS LODGE, FREEHOLD, NJ",
+   "kind": "shared",
+   "link": "1965#000065b",
+   "others": [
+    "f4c0a58b-6c64-449c-accc-272a1e6ce4c5"
+   ],
+   "page": "gig:1965-00-00b-elks-lodge-freehold-nj"
+  },
+  "3d626017-eb82-49e6-96ce-2e8c82483553": {
+   "candidates": [
+    {
+     "anchor": "1970#130670a",
+     "heading": "1970-06-13 - OCEAN ICE PALACE, BRICKTOWN, NJ",
+     "likely": true,
+     "page": "gig:1970-06-13-ocean-ice-palace-bricktown-nj-early"
+    },
+    {
+     "anchor": "1970#130670b",
+     "heading": "1970-06-13 - OCEAN ICE PALACE, BRICKTOWN, NJ",
+     "likely": true,
+     "page": "gig:1970-06-13-ocean-ice-palace-bricktown-nj-late"
+    }
+   ],
+   "date": "1970-06-13",
+   "kind": "no-entry",
+   "link": "1970#130670"
+  },
+  "3faed6ce-5e63-4109-8d28-d5d1dec11939": {
+   "candidates": [
+    {
+     "anchor": "1982#270682a",
+     "heading": "1982-06-27 - BIG MAN'S WEST, RED BANK, NJ",
+     "page": "gig:1982-06-27a-big-man-s-west-red-bank-nj"
+    },
+    {
+     "anchor": "1982#270682b",
+     "heading": "1982-06-27 - THE STONE PONY, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:1982-06-27b-stone-pony-asbury-park-nj"
+    }
+   ],
+   "date": "1982-06-27",
+   "kind": "no-entry",
+   "link": "1982#270682"
+  },
+  "408163c6-581c-4a11-b407-1312073dd13e": {
+   "candidates": [
+    {
+     "anchor": "1971#290171a",
+     "heading": "1971-01-29 - THE UPSTAGE, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:1971-01-29-upstage-asbury-park-nj-early"
+    },
+    {
+     "anchor": "1971#290171b",
+     "heading": "1971-01-29 - THE UPSTAGE, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:1971-01-29-upstage-asbury-park-nj-late"
+    }
+   ],
+   "date": "1971-01-29 - 1971-01-30",
+   "kind": "no-entry",
+   "link": "1971#290171"
+  },
+  "40ae3e2e-394f-483b-af6d-b5ffc4aea048": {
+   "candidates": [
+    {
+     "anchor": "2021#000121a",
+     "heading": "2021-01-00 - STONE HILL STUDIO, COLTS NECK, NJ",
+     "page": "recording:2021-01-00a-stone-hill-studio-colts-neck-nj"
+    },
+    {
+     "anchor": "2021#000121b",
+     "heading": "2021-01-00 - VARIOUS LOCATIONS, CO/KS/NE",
+     "likely": true,
+     "page": "recording:2021-01-00b-various-locations-co-ks-ne"
+    }
+   ],
+   "date": "2021-01",
+   "kind": "no-entry",
+   "link": "2021#000121"
+  },
+  "40c39e11-b664-429c-9476-37f636a2393f": {
+   "candidates": [
+    {
+     "anchor": "1971#230471a",
+     "heading": "1971-04-23 - THE UPSTAGE, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:1971-04-23-upstage-asbury-park-nj-early"
+    },
+    {
+     "anchor": "1971#230471b",
+     "heading": "1971-04-23 - THE UPSTAGE, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:1971-04-23-upstage-asbury-park-nj-late"
+    }
+   ],
+   "date": "1971-04-23 - 1971-04-24",
+   "kind": "no-entry",
+   "link": "1971#230471"
+  },
+  "416ade12-640c-46c6-a47d-e567bf176e76": {
+   "date": "2009-06-27",
+   "heading": "2009-06-27 - WORTHY FARM, PILTON, ENGLAND",
+   "kind": "shared",
+   "link": "2009#270609b",
+   "others": [
+    "a5658328-60bb-448a-afd1-412ebcd9880b"
+   ],
+   "page": "gig:2009-06-27b-worthy-farm-pilton-england"
+  },
+  "4193d9e6-cbb0-4470-8152-c06d615ef6da": {
+   "candidates": [
+    {
+     "anchor": "2006#050606a",
+     "heading": "2006-06-05 - NBC STUDIOS, STUDIO 3, BURBANK, CA",
+     "likely": true,
+     "page": "gig:2006-06-05a-nbc-studios-burbank-ca"
+    },
+    {
+     "anchor": "2006#050606b",
+     "heading": "2006-06-05 - GREEK THEATRE, LOS ANGELES, CA",
+     "page": "gig:2006-06-05b-greek-theatre-los-angeles-ca"
+    }
+   ],
+   "date": "2006-06-05",
+   "kind": "no-entry",
+   "link": "2006#050606"
+  },
+  "423bc946-0d68-44be-90ba-bf7a15395881": {
+   "date": "2002-12",
+   "kind": "no-entry",
+   "link": "2002#001202"
+  },
+  "427c0bd0-1fa5-4a95-a708-9f8107851fa4": {
+   "candidates": [
+    {
+     "anchor": "1974#290574a",
+     "heading": "1974-05-29 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1974-05-29-main-point-bryn-mawr-pa-early"
+    },
+    {
+     "anchor": "1974#290574b",
+     "heading": "1974-05-29 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1974-05-29-main-point-bryn-mawr-pa-late"
+    }
+   ],
+   "date": "1974-05-29",
+   "kind": "no-entry",
+   "link": "1974#290574"
+  },
+  "473b7be6-f00f-4964-9d56-6c6388462083": {
+   "candidates": [
+    {
+     "anchor": "1973#050773a",
+     "heading": "1973-07-05 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1973-07-05-main-point-bryn-mawr-pa-early"
+    },
+    {
+     "anchor": "1973#050773b",
+     "heading": "1973-07-05 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1973-07-05-main-point-bryn-mawr-pa-late"
+    }
+   ],
+   "date": "1973-07-05",
+   "kind": "no-entry",
+   "link": "1973#050773"
+  },
+  "47797e34-b723-4ab6-bf00-7d65347a6e88": {
+   "candidates": [
+    {
+     "anchor": "1972#120272a",
+     "heading": "1972-02-12 - SUNSHINE IN, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:1972-02-12-sunshine-in-asbury-park-nj-early"
+    },
+    {
+     "anchor": "1972#120272b",
+     "heading": "1972-02-12 - SUNSHINE IN, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:1972-02-12-sunshine-in-asbury-park-nj-late"
+    }
+   ],
+   "date": "1972-02-12",
+   "kind": "no-entry",
+   "link": "1972#120272"
+  },
+  "481c8331-d17d-47b9-80e6-d6bb8a3f9cf4": {
+   "date": "1971-07-26",
+   "heading": "1971-07-25 - MONMOUTH HILLS CLUBHOUSE, RUMSON, NJ",
+   "kind": "date-differs",
+   "link": "1971#250771",
+   "page": "gig:1971-07-25-monmouth-hills-clubhouse-rumson-nj"
+  },
+  "48cdf2ae-0800-469e-8ef9-161cf4377e1c": {
+   "candidates": [
+    {
+     "anchor": "1973#040273a",
+     "heading": "1973-02-04 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1973-02-04-max-s-kansas-city-new-york-city-ny-early"
+    },
+    {
+     "anchor": "1973#040273b",
+     "heading": "1973-02-04 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1973-02-04-max-s-kansas-city-new-york-city-ny-late"
+    }
+   ],
+   "date": "1973-02-04",
+   "kind": "no-entry",
+   "link": "1973#040273"
+  },
+  "4923eddc-f91b-41d2-b355-9ef82f07b064": {
+   "candidates": [
+    {
+     "anchor": "1973#250473a",
+     "heading": "1973-04-25 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1973-04-25-main-point-bryn-mawr-pa-early"
+    },
+    {
+     "anchor": "1973#250473b",
+     "heading": "1973-04-25 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1973-04-25-main-point-bryn-mawr-pa-late"
+    }
+   ],
+   "date": "1973-04-25",
+   "kind": "no-entry",
+   "link": "1973#250473"
+  },
+  "4b1b94db-501e-4c67-9815-66b286fb7e62": {
+   "candidates": [
+    {
+     "anchor": "1974#251074a",
+     "heading": "1974-10-25 - SPAULDING AUDITORIUM, DARTMOUTH COLLEGE, HANOVER, NH",
+     "likely": true,
+     "page": "gig:1974-10-25-spaulding-auditorium-hanover-nh-early"
+    },
+    {
+     "anchor": "1974#251074b",
+     "heading": "1974-10-25 - SPAULDING AUDITORIUM, DARTMOUTH COLLEGE, HANOVER, NH",
+     "likely": true,
+     "page": "gig:1974-10-25-spaulding-auditorium-hanover-nh-late"
+    }
+   ],
+   "date": "1974-10-25",
+   "kind": "no-entry",
+   "link": "1974#251074"
+  },
+  "4be88a76-091d-4dc5-ba89-5030c931e72a": {
+   "candidates": [
+    {
+     "anchor": "1974#130474a",
+     "heading": "1974-04-13 - RICHMOND COLISEUM, RICHMOND, VA",
+     "likely": true,
+     "page": "nogig:1974-04-13-coliseum-richmond-va"
+    },
+    {
+     "anchor": "1974#130474b",
+     "heading": "1974-04-13 - THE JOINT IN THE WOODS, PARSIPPANY, NJ",
+     "page": "gig:1974-04-13-joint-in-the-woods-parsippany-nj"
+    }
+   ],
+   "date": "1974-04-13",
+   "kind": "no-entry",
+   "link": "1974#130474"
+  },
+  "4c2c7243-32d3-41df-8238-03c98479e6e6": {
+   "candidates": [
+    {
+     "anchor": "1973#151173a",
+     "heading": "1973-11-15 - MY FATHER'S PLACE, ROSLYN, NY",
+     "likely": true,
+     "page": "gig:1973-11-15-my-father-s-place-roslyn-ny-early"
+    },
+    {
+     "anchor": "1973#151173b",
+     "heading": "1973-11-15 - MY FATHER'S PLACE, ROSLYN, NY",
+     "likely": true,
+     "page": "gig:1973-11-15-my-father-s-place-roslyn-ny-late"
+    }
+   ],
+   "date": "1973-11-15",
+   "kind": "no-entry",
+   "link": "1973#151173"
+  },
+  "4ce084be-d3bf-4da4-92c0-5538f149b8e2": {
+   "candidates": [
+    {
+     "anchor": "2020#231020a",
+     "heading": "2020-10-23 - SIRIUSXM STUDIO, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "interview:2020-10-23a-siriusxm-studio-new-york-city-ny"
+    },
+    {
+     "anchor": "2020#231020b",
+     "heading": "2020-10-23 - SIRIUSXM STUDIO, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "interview:2020-10-23b-siriusxm-studio-new-york-city-ny"
+    },
+    {
+     "anchor": "2020#231020c",
+     "heading": "2020-10-23 - SPRINGSTEEN RESIDENCE, COLTS NECK, NJ",
+     "page": "interview:2020-10-23c-private-residence-colts-neck-nj"
+    }
+   ],
+   "date": "2020-10-23",
+   "kind": "not-anchor",
+   "link": "interview:2020-10-23-siriusxm-studio-new-york-city-ny"
+  },
+  "4f8553e8-1959-44e5-9221-5784d9ab1fbd": {
+   "date": "1981-04-29",
+   "heading": "1981-04-29 - SPORTPALEIS AHOY, ROTTERDAM, THE NETHERLANDS",
+   "kind": "shared",
+   "link": "1981#290481",
+   "others": [
+    "7b4446f6-1dc7-4329-b0d9-37efb94c5b55"
+   ],
+   "page": "gig:1981-04-29-sportpaleis-ahoy-rotterdam-netherlands"
+  },
+  "4fa93ccc-1e25-4d45-b4fa-36557fe46e58": {
+   "candidates": [
+    {
+     "anchor": "1971#270371a",
+     "heading": "1971-03-27 - SUNSHINE IN, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:1971-03-27-sunshine-in-asbury-park-nj-early"
+    },
+    {
+     "anchor": "1971#270371b",
+     "heading": "1971-03-27 - SUNSHINE IN, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:1971-03-27-sunshine-in-asbury-park-nj-late"
+    }
+   ],
+   "date": "1971-03-27",
+   "kind": "no-entry",
+   "link": "1971#270371"
+  },
+  "51b309f2-489a-465e-8221-2f6ea4529ee0": {
+   "date": "2002-10-05",
+   "heading": "2002-10-05 - ROCKEFELLER CENTER, GE BUILDING, STUDIO 8H, NEW YORK CITY, NY",
+   "kind": "shared",
+   "link": "2002#051002",
+   "others": [
+    "a5118fe5-a513-4be3-9501-4e8481d931a2"
+   ],
+   "page": "gig:2002-10-05-rockefeller-center-new-york-city-ny"
+  },
+  "541eb3de-602e-419c-84c3-affd0b4885a6": {
+   "candidates": [
+    {
+     "anchor": "1973#141173a",
+     "heading": "1973-11-14 - MY FATHER'S PLACE, ROSLYN, NY",
+     "likely": true,
+     "page": "gig:1973-11-14-my-father-s-place-roslyn-ny-early"
+    },
+    {
+     "anchor": "1973#141173b",
+     "heading": "1973-11-14 - MY FATHER'S PLACE, ROSLYN, NY",
+     "likely": true,
+     "page": "gig:1973-11-14-my-father-s-place-roslyn-ny-late"
+    }
+   ],
+   "date": "1973-11-14",
+   "kind": "no-entry",
+   "link": "1973#141173"
+  },
+  "548dc081-1b2e-48a7-971f-1e3a8a6036c8": {
+   "candidates": [
+    {
+     "anchor": "1995#000395a",
+     "heading": "1995-03-00 - THRILL HILL WEST, BEVERLY HILLS, CA",
+     "page": "recording:1995-03-00a-thrill-hill-west-beverly-hills-ca"
+    },
+    {
+     "anchor": "1995#000395b",
+     "heading": "1995-03-00 - VARIOUS LOCATIONS, LOS ANGELES, CA",
+     "page": "recording:1995-03-00b-unknown-location-los-angeles-ca"
+    }
+   ],
+   "date": "1995-03",
+   "kind": "no-entry",
+   "link": "1995#000395"
+  },
+  "5582ce0a-9f84-45b3-a444-f63e517ab926": {
+   "candidates": [
+    {
+     "anchor": "1973#130173a",
+     "heading": "1973-01-13 - PAUL'S MALL, BOSTON, MA",
+     "likely": true,
+     "page": "gig:1973-01-13-paul-s-mall-boston-ma-early"
+    },
+    {
+     "anchor": "1973#130173b",
+     "heading": "1973-01-13 - PAUL'S MALL, BOSTON, MA",
+     "likely": true,
+     "page": "gig:1973-01-13-paul-s-mall-boston-ma-late"
+    }
+   ],
+   "date": "1973-01-13",
+   "kind": "no-entry",
+   "link": "1973#130173"
+  },
+  "55992f21-108e-4cc5-8b83-e5a93b374ed5": {
+   "candidates": [
+    {
+     "anchor": "1969#230269",
+     "heading": "1969-02-23 - THE UPSTAGE, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:1969-02-23-upstage-asbury-park-nj"
+    }
+   ],
+   "date": "1969-02-23",
+   "kind": "no-entry",
+   "link": "1969#220269"
+  },
+  "562c0928-80b7-4ad1-9d2b-b5cc5ce6c7a5": {
+   "candidates": [
+    {
+     "anchor": "1973#100173a",
+     "heading": "1973-01-10 - PAUL'S MALL, BOSTON, MA",
+     "likely": true,
+     "page": "gig:1973-01-10-paul-s-mall-boston-ma-early"
+    },
+    {
+     "anchor": "1973#100173b",
+     "heading": "1973-01-10 - PAUL'S MALL, BOSTON, MA",
+     "likely": true,
+     "page": "gig:1973-01-10-paul-s-mall-boston-ma-late"
+    }
+   ],
+   "date": "1973-01-10",
+   "kind": "no-entry",
+   "link": "1973#100173"
+  },
+  "56b7a053-a118-4d7f-9f15-f834324c69f7": {
+   "candidates": [
+    {
+     "anchor": "1973#020873a",
+     "heading": "1973-08-02 - MY FATHER'S PLACE, ROSLYN, NY",
+     "likely": true,
+     "page": "gig:1973-08-02-my-father-s-place-roslyn-ny-early"
+    },
+    {
+     "anchor": "1973#020873b",
+     "heading": "1973-08-02 - MY FATHER'S PLACE, ROSLYN, NY",
+     "likely": true,
+     "page": "gig:1973-08-02-my-father-s-place-roslyn-ny-late"
+    }
+   ],
+   "date": "1973-08-02",
+   "kind": "no-entry",
+   "link": "1973#020873"
+  },
+  "59af72cc-c08e-4ce2-9ddf-0635fe8de020": {
+   "candidates": [
+    {
+     "anchor": "1990#001290a",
+     "heading": "1990-12-00 - RECORD PLANT WEST, LOS ANGELES, CA",
+     "page": "recording:1990-12-00a-record-plant-west-los-angeles-ca"
+    },
+    {
+     "anchor": "1990#001290b",
+     "heading": "1990-12-00 - OCEAN WAY STUDIOS, LOS ANGELES, CA",
+     "likely": true,
+     "page": "recording:1990-12-00b-ocean-way-studios-los-angeles-ca"
+    }
+   ],
+   "date": "1990-12",
+   "kind": "no-entry",
+   "link": "1990#001290"
+  },
+  "5a751265-bf6e-40f2-be6c-43b3b91bac03": {
+   "candidates": [
+    {
+     "anchor": "1973#061173a",
+     "heading": "1973-11-06 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1973-11-06-max-s-kansas-city-new-york-city-ny-early"
+    },
+    {
+     "anchor": "1973#061173b",
+     "heading": "1973-11-06 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1973-11-06-max-s-kansas-city-new-york-city-ny-late"
+    }
+   ],
+   "date": "1973-11-06",
+   "kind": "no-entry",
+   "link": "1973#061173"
+  },
+  "5abae15d-b097-44e6-8ebc-1908085565b2": {
+   "candidates": [
+    {
+     "anchor": "1985#310385a",
+     "heading": "1985-03-31 - BRISBANE CHANDLER VELODROME, BRISBANE, QUEENSLAND, AUSTRALIA",
+     "page": "nogig:1985-03-31a-chandler-velodrome-brisbane-australia"
+    },
+    {
+     "anchor": "1985#310385b",
+     "heading": "1985-03-31 - QE II JUBILEE SPORTS CENTRE, BRISBANE, QUEENSLAND, AUSTRALIA",
+     "page": "gig:1985-03-31b-qe-ii-brisbane-australia"
+    }
+   ],
+   "date": "1985-03-31",
+   "kind": "no-entry",
+   "link": "1985#310385"
+  },
+  "5ae0e6f6-d40b-4c73-9b3c-4be78b33e400": {
+   "candidates": [
+    {
+     "anchor": "1973#160573a",
+     "heading": "1973-05-16 - MINNESOTA STATE UNIVERSITY, MANKATO, MN",
+     "likely": true,
+     "page": "nogig:1973-05-16a-state-university-mankato-mn"
+    },
+    {
+     "anchor": "1973#160573b",
+     "heading": "1973-05-16 - 914 SOUND STUDIOS, BLAUVELT, NY",
+     "page": "recording:1973-05-16b-914-sound-studios-blauvelt-ny"
+    }
+   ],
+   "date": "1973-05-16",
+   "kind": "no-entry",
+   "link": "1973#160573"
+  },
+  "5af0fe0a-0476-4cf4-beab-b46f28bb6a09": {
+   "date": "1975-10-12",
+   "heading": "1975-10-11 - MONMOUTH ARTS CENTER, RED BANK, NJ",
+   "kind": "date-differs",
+   "link": "1975#111075c",
+   "page": "gig:1975-10-11-monmouth-arts-center-red-bank-nj-late"
+  },
+  "5cb41a91-042f-4780-9532-093327265ffa": {
+   "candidates": [
+    {
+     "anchor": "2004#191204a",
+     "heading": "2004-12-19 - HARRY'S ROADHOUSE, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:2004-12-19a-harry-s-roadhouse-asbury-park-nj"
+    },
+    {
+     "anchor": "2004#191204b",
+     "heading": "2004-12-19 - HARRY'S ROADHOUSE, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:2004-12-19b-harry-s-roadhouse-asbury-park-nj"
+    }
+   ],
+   "date": "2004-12-19",
+   "kind": "no-entry",
+   "link": "2004#191204"
+  },
+  "5cc4cadc-fcd4-4df0-88fd-3be133f92058": {
+   "candidates": [
+    {
+     "anchor": "1970#001270a",
+     "heading": "1970-12-00 - SPRINGSTEEN RESIDENCE, BELMONT, CA",
+     "likely": true,
+     "page": "nogig:1970-12-00a-private-residence-belmont-ca"
+    },
+    {
+     "anchor": "1970#001270b",
+     "heading": "1970-12-00 - UNKNOWN CLUB(S), SAN MATEO, CA",
+     "page": "gig:1970-12-00b-unknown-club-san-mateo-ca"
+    }
+   ],
+   "date": "1970-12",
+   "kind": "no-entry",
+   "link": "1970#001270"
+  },
+  "5ce4fda7-1fac-416c-836b-383224298d97": {
+   "candidates": [
+    {
+     "anchor": "1973#151273a",
+     "heading": "1973-12-15 - BIJOU CAFE, PHILADELPHIA, PA",
+     "page": "nogig:1973-12-15a-bijou-cafe-philadelphia-pa"
+    },
+    {
+     "anchor": "1973#151273b",
+     "heading": "1973-12-15 - NASSAU COMMUNITY COLLEGE, GARDEN CITY, NY",
+     "likely": true,
+     "page": "gig:1973-12-15b-nassau-community-college-garden-city-ny"
+    }
+   ],
+   "date": "1973-12-15",
+   "kind": "no-entry",
+   "link": "1973#151273"
+  },
+  "5e0fab2c-6f21-4d0a-9742-5ae4dd28696e": {
+   "candidates": [
+    {
+     "anchor": "1973#170373a",
+     "heading": "1973-03-17 - LIBERTY HALL, HOUSTON, TX",
+     "page": "nogig:1973-03-17a-liberty-hall-houston-tx"
+    },
+    {
+     "anchor": "1973#170373b",
+     "heading": "1973-03-17 - OLIVER'S, BOSTON, MA",
+     "likely": true,
+     "page": "gig:1973-03-17b-oliver-s-boston-ma"
+    }
+   ],
+   "date": "1973-03-17",
+   "kind": "no-entry",
+   "link": "1973#170373"
+  },
+  "609ec99e-cb52-449e-8b6c-3ea5377cea37": {
+   "candidates": [
+    {
+     "anchor": "1974#280574a",
+     "heading": "1974-05-28 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1974-05-28-main-point-bryn-mawr-pa-early"
+    },
+    {
+     "anchor": "1974#280574b",
+     "heading": "1974-05-28 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1974-05-28-main-point-bryn-mawr-pa-late"
+    }
+   ],
+   "date": "1974-05-28",
+   "kind": "no-entry",
+   "link": "1974#280574"
+  },
+  "6206a6b6-db15-4e84-8a3a-42ddec4ec2f4": {
+   "candidates": [
+    {
+     "anchor": "1979#000379a",
+     "heading": "1979-03-00 - ZEVON RESIDENCE, LOS ANGELES, CA",
+     "page": "recording:1979-03-00a-private-residence-los-angeles-ca"
+    },
+    {
+     "anchor": "1979#000379b",
+     "heading": "1979-03-00 - TELEGRAPH HILL STUDIO, HOLMDEL, NJ",
+     "page": "recording:1979-03-00b-telegraph-hill-studio-holmdel-nj"
+    }
+   ],
+   "date": "1979-03",
+   "kind": "no-entry",
+   "link": "1979#000379"
+  },
+  "62de4823-b8c3-4e56-9b35-9d8d6b819253": {
+   "candidates": [
+    {
+     "anchor": "1973#080773a",
+     "heading": "1973-07-08 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1973-07-08-main-point-bryn-mawr-pa-early"
+    },
+    {
+     "anchor": "1973#080773b",
+     "heading": "1973-07-08 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1973-07-08-main-point-bryn-mawr-pa-late"
+    }
+   ],
+   "date": "1973-07-08",
+   "kind": "no-entry",
+   "link": "1973#080773"
+  },
+  "63720025-93ea-44d7-bbd6-597448eee999": {
+   "candidates": [
+    {
+     "anchor": "1973#271273a",
+     "heading": "1973-12-27 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1973-12-27-main-point-bryn-mawr-pa-early"
+    },
+    {
+     "anchor": "1973#271273b",
+     "heading": "1973-12-27 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1973-12-27-main-point-bryn-mawr-pa-late"
+    }
+   ],
+   "date": "1973-12-27",
+   "kind": "no-entry",
+   "link": "1973#271273"
+  },
+  "6385de17-8b7a-4451-ae97-76e1b376919d": {
+   "candidates": [
+    {
+     "anchor": "1968#201268a",
+     "heading": "1968-12-20 - OFF BROAD STREET COFFEE HOUSE, RED BANK, NJ",
+     "likely": true,
+     "page": "gig:1968-12-20a-off-broad-street-coffee-house-red-bank-nj"
+    },
+    {
+     "anchor": "1968#201268b",
+     "heading": "1968-12-20 - OFF BROAD STREET COFFEE HOUSE, RED BANK, NJ",
+     "likely": true,
+     "page": "gig:1968-12-20b-off-broad-street-coffee-house-red-bank-nj"
+    }
+   ],
+   "date": "1968-12-20",
+   "kind": "no-entry",
+   "link": "1968#201268"
+  },
+  "63da6090-d495-45c7-8dc2-0ba54f01339a": {
+   "date": "1993-05-15",
+   "kind": "no-entry",
+   "link": "1993#150593"
+  },
+  "66164710-13e3-4a00-a479-73020bab1756": {
+   "candidates": [
+    {
+     "anchor": "1974#220674a",
+     "heading": "1974-06-22 - LE GARAGE, SPRAY BEACH, NJ",
+     "likely": true,
+     "page": "gig:1974-06-22-garage-spray-beach-nj-early"
+    },
+    {
+     "anchor": "1974#220674b",
+     "heading": "1974-06-22 - LE GARAGE, SPRAY BEACH, NJ",
+     "likely": true,
+     "page": "gig:1974-06-22-garage-spray-beach-nj-late"
+    }
+   ],
+   "date": "1974-06-22",
+   "kind": "no-entry",
+   "link": "1974#220674"
+  },
+  "66233e15-c88d-4f93-9c11-d567af6a72b7": {
+   "date": "1972-03-03",
+   "kind": "no-entry",
+   "link": "1972#030372"
+  },
+  "669438e1-47d7-4f8f-bfad-b026768dcc80": {
+   "candidates": [
+    {
+     "anchor": "1976#001276a",
+     "heading": "1976-12-00 - COLUMBIA RECORDING STUDIOS, NEW YORK CITY, NY",
+     "page": "recording:1976-12-00a-columbia-recording-studios-new-york-ci"
+    },
+    {
+     "anchor": "1976#001276b",
+     "heading": "1976-12-00 - TELEGRAPH HILL STUDIO, HOLMDEL, NJ",
+     "page": "rehearsal:1976-12-00b-telegraph-hill-studio-holmdel-nj"
+    }
+   ],
+   "date": "1976-12",
+   "kind": "no-entry",
+   "link": "1976#001276"
+  },
+  "6828d6be-6d87-4986-98f9-59791a6d1594": {
+   "candidates": [
+    {
+     "anchor": "2016#171016a",
+     "heading": "2016-10-17 - INSTITUTE OF CONTEMPORARY ARTS, LONDON, ENGLAND",
+     "page": "interview:2016-10-17a-ica-london-england"
+    },
+    {
+     "anchor": "2016#171016b",
+     "heading": "2016-10-17 - WATERSTONES PICCADILLY, LONDON, ENGLAND",
+     "likely": true,
+     "page": "nogig:2016-10-17b-waterstones-london-england"
+    }
+   ],
+   "date": "2016-10-17",
+   "kind": "no-entry",
+   "link": "2016#171016"
+  },
+  "69b691f8-a97f-47ec-b4a2-d87ae494c675": {
+   "candidates": [
+    {
+     "anchor": "1974#210374a",
+     "heading": "1974-03-21 - GERTIE'S, DALLAS, TX",
+     "likely": true,
+     "page": "gig:1974-03-21-gertie-s-dallas-tx-early"
+    },
+    {
+     "anchor": "1974#210374b",
+     "heading": "1974-03-21 - GERTIE'S, DALLAS, TX",
+     "likely": true,
+     "page": "gig:1974-03-21-gertie-s-dallas-tx-late"
+    }
+   ],
+   "date": "1974-03-21",
+   "kind": "no-entry",
+   "link": "1974#210374"
+  },
+  "6b6a9665-b315-449a-b3cd-6d02b69f93ad": {
+   "candidates": [
+    {
+     "anchor": "1973#171173a",
+     "heading": "1973-11-17 - ROXY THEATRE, PHILADELPHIA, PA",
+     "likely": true,
+     "page": "gig:1973-11-17-roxy-theatre-philadelphia-pa-early"
+    },
+    {
+     "anchor": "1973#171173b",
+     "heading": "1973-11-17 - ROXY THEATRE, PHILADELPHIA, PA",
+     "likely": true,
+     "page": "gig:1973-11-17-roxy-theatre-philadelphia-pa-late"
+    }
+   ],
+   "date": "1973-11-17",
+   "kind": "no-entry",
+   "link": "1973#171173"
+  },
+  "6d1ba949-994a-4e63-9730-e97698f13aa5": {
+   "candidates": [
+    {
+     "anchor": "1974#121074a",
+     "heading": "1974-10-12 - ALEXANDER HALL, PRINCETON UNIVERSITY, PRINCETON, NJ",
+     "likely": true,
+     "page": "gig:1974-10-12-alexander-hall-princeton-nj-early"
+    },
+    {
+     "anchor": "1974#121074b",
+     "heading": "1974-10-12 - ALEXANDER HALL, PRINCETON UNIVERSITY, PRINCETON, NJ",
+     "likely": true,
+     "page": "gig:1974-10-12-alexander-hall-princeton-nj-late"
+    }
+   ],
+   "date": "1974-10-12",
+   "kind": "no-entry",
+   "link": "1974#121074"
+  },
+  "6da8f1a3-4d20-47d1-b134-c9a4ed9cabed": {
+   "candidates": [
+    {
+     "anchor": "1971#240471a",
+     "heading": "1971-04-24 - THE UPSTAGE, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:1971-04-24-upstage-asbury-park-nj-early"
+    },
+    {
+     "anchor": "1971#240471b",
+     "heading": "1971-04-24 - THE UPSTAGE, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:1971-04-24-upstage-asbury-park-nj-late"
+    }
+   ],
+   "date": "1971-04-24 - 1971-04-25",
+   "kind": "no-entry",
+   "link": "1971#240471"
+  },
+  "6df3e08d-ee55-444f-942b-a8716ccaa7f9": {
+   "candidates": [
+    {
+     "anchor": "1973#291273a",
+     "heading": "1973-12-29 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1973-12-29-main-point-bryn-mawr-pa-early"
+    },
+    {
+     "anchor": "1973#291273b",
+     "heading": "1973-12-29 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1973-12-29-main-point-bryn-mawr-pa-late"
+    }
+   ],
+   "date": "1973-12-29",
+   "kind": "no-entry",
+   "link": "1973#291273"
+  },
+  "6e874365-f662-4a19-9af3-278a3352ff6e": {
+   "candidates": [
+    {
+     "anchor": "2006#000206a",
+     "heading": "2006-02-00 - THRILL HILL EAST, RUMSON, NJ",
+     "likely": true,
+     "page": "recording:2006-02-00a-thrill-hill-east-rumson-nj"
+    },
+    {
+     "anchor": "2006#000206b",
+     "heading": "2006-02-00 - THRILL HILL EAST, RUMSON, NJ",
+     "likely": true,
+     "page": "recording:2006-02-00b-thrill-hill-east-rumson-nj"
+    }
+   ],
+   "date": "2006-02",
+   "kind": "no-entry",
+   "link": "2006#000206"
+  },
+  "6ea207de-3bbb-44ab-90bf-85eaf81f1553": {
+   "candidates": [
+    {
+     "anchor": "1973#060173a",
+     "heading": "1973-01-06 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1973-01-06-main-point-bryn-mawr-pa-early"
+    },
+    {
+     "anchor": "1973#060173b",
+     "heading": "1973-01-06 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1973-01-06-main-point-bryn-mawr-pa-late"
+    }
+   ],
+   "date": "1973-01-06",
+   "kind": "no-entry",
+   "link": "1973#060173"
+  },
+  "7115edf7-a591-4212-9929-a9a5107361a7": {
+   "candidates": [
+    {
+     "anchor": "1973#161173a",
+     "heading": "1973-11-16 - MY FATHER'S PLACE, ROSLYN, NY",
+     "likely": true,
+     "page": "gig:1973-11-16-my-father-s-place-roslyn-ny-early"
+    },
+    {
+     "anchor": "1973#161173b",
+     "heading": "1973-11-16 - MY FATHER'S PLACE, ROSLYN, NY",
+     "likely": true,
+     "page": "gig:1973-11-16-my-father-s-place-roslyn-ny-late"
+    }
+   ],
+   "date": "1973-11-16",
+   "kind": "no-entry",
+   "link": "1973#161173"
+  },
+  "733eb46c-fe1e-4a49-947d-afa4f9e2c38f": {
+   "candidates": [
+    {
+     "anchor": "1974#180374a",
+     "heading": "1974-03-18 - GERTIE'S, DALLAS, TX",
+     "likely": true,
+     "page": "gig:1974-03-18-gertie-s-dallas-tx-early"
+    },
+    {
+     "anchor": "1974#180374b",
+     "heading": "1974-03-18 - GERTIE'S, DALLAS, TX",
+     "likely": true,
+     "page": "gig:1974-03-18-gertie-s-dallas-tx-late"
+    }
+   ],
+   "date": "1974-03-18",
+   "kind": "no-entry",
+   "link": "1974#180374"
+  },
+  "7416ea6d-002e-4717-bff0-02e962f26481": {
+   "candidates": [
+    {
+     "anchor": "1992#231192a",
+     "heading": "1992-11-23 - FLORIDA SUNCOAST DOME, ST. PETERSBURG, FL",
+     "page": "nogig:1992-11-23a-florida-suncoast-dome-st-petersburg-fl"
+    },
+    {
+     "anchor": "1992#231192b",
+     "heading": "1992-11-23 - ORLANDO ARENA, ORLANDO, FL",
+     "likely": true,
+     "page": "gig:1992-11-23b-arena-orlando-fl"
+    }
+   ],
+   "date": "1992-11-23",
+   "kind": "no-entry",
+   "link": "1992#231192"
+  },
+  "74bf2944-0bdd-4185-86db-2f708d8c140b": {
+   "candidates": [
+    {
+     "anchor": "1973#220673a",
+     "heading": "1973-06-22 - 914 SOUND STUDIOS, BLAUVELT, NY",
+     "page": "recording:1973-06-22a-914-sound-studios-blauvelt-ny"
+    },
+    {
+     "anchor": "1973#220673b",
+     "heading": "1973-06-22 - FAT CITY, SEASIDE HEIGHTS, NJ",
+     "likely": true,
+     "page": "gig:1973-06-22b-fat-city-seaside-heights-nj"
+    }
+   ],
+   "date": "1973-06-22",
+   "kind": "no-entry",
+   "link": "1973#220673"
+  },
+  "74efe842-b2ef-4785-993f-ea942e351cb6": {
+   "candidates": [
+    {
+     "anchor": "1971#090171a",
+     "heading": "1971-01-09 - THE UPSTAGE, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:1971-01-09-upstage-asbury-park-nj-early"
+    },
+    {
+     "anchor": "1971#090171b",
+     "heading": "1971-01-09 - THE UPSTAGE, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:1971-01-09-upstage-asbury-park-nj-late"
+    }
+   ],
+   "date": "1971-01-09 - 1971-01-10",
+   "kind": "no-entry",
+   "link": "1971#090171"
+  },
+  "7966072f-ffac-4f5d-8364-b98482dd608a": {
+   "candidates": [
+    {
+     "anchor": "1973#301273a",
+     "heading": "1973-12-30 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1973-12-30-main-point-bryn-mawr-pa-early"
+    },
+    {
+     "anchor": "1973#301273b",
+     "heading": "1973-12-30 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1973-12-30-main-point-bryn-mawr-pa-late"
+    }
+   ],
+   "date": "1973-12-30",
+   "kind": "no-entry",
+   "link": "1973#301273"
+  },
+  "79f3259e-ce60-4fa7-9a7b-18afbc4afb04": {
+   "date": "1994-10",
+   "kind": "no-entry",
+   "link": "1994#001094"
+  },
+  "7a35f8b2-d409-42e5-8f18-17a610900966": {
+   "candidates": [
+    {
+     "anchor": "1973#281273a",
+     "heading": "1973-12-28 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1973-12-28-main-point-bryn-mawr-pa-early"
+    },
+    {
+     "anchor": "1973#281273b",
+     "heading": "1973-12-28 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1973-12-28-main-point-bryn-mawr-pa-late"
+    }
+   ],
+   "date": "1973-12-28",
+   "kind": "no-entry",
+   "link": "1973#281273"
+  },
+  "7b4446f6-1dc7-4329-b0d9-37efb94c5b55": {
+   "candidates": [
+    {
+     "anchor": "1981#280481",
+     "heading": "1981-04-28 - SPORTPALEIS AHOY, ROTTERDAM, THE NETHERLANDS",
+     "likely": true,
+     "page": "gig:1981-04-28-sportpaleis-ahoy-rotterdam-netherlands"
+    }
+   ],
+   "date": "1981-04-28",
+   "dateDiffers": true,
+   "heading": "1981-04-29 - SPORTPALEIS AHOY, ROTTERDAM, THE NETHERLANDS",
+   "kind": "shared",
+   "link": "1981#290481",
+   "others": [
+    "4f8553e8-1959-44e5-9221-5784d9ab1fbd"
+   ],
+   "page": "gig:1981-04-29-sportpaleis-ahoy-rotterdam-netherlands"
+  },
+  "7d49533d-435c-4642-9b39-fe382996a4c8": {
+   "candidates": [
+    {
+     "anchor": "1968#160868a",
+     "heading": "1968-08-16 - OFF BROAD STREET COFFEE HOUSE, RED BANK, NJ",
+     "likely": true,
+     "page": "gig:1968-08-16a-off-broad-street-coffee-house-red-bank-nj"
+    },
+    {
+     "anchor": "1968#160868b",
+     "heading": "1968-08-16 - OFF BROAD STREET COFFEE HOUSE, RED BANK, NJ",
+     "likely": true,
+     "page": "gig:1968-08-16b-off-broad-street-coffee-house-red-bank-nj"
+    }
+   ],
+   "date": "1968-08-16",
+   "kind": "no-entry",
+   "link": "1968#160868"
+  },
+  "7da5b30c-511e-4632-8333-8b50586323c3": {
+   "candidates": [
+    {
+     "anchor": "1969#280569a",
+     "heading": "1969-05-28 - PANDEMONIUM, WANAMASSA, NJ",
+     "likely": true,
+     "page": "gig:1969-05-28a-pandemonium-wanamassa-nj"
+    },
+    {
+     "anchor": "1969#280569b",
+     "heading": "1969-05-28 - PANDEMONIUM, WANAMASSA, NJ",
+     "likely": true,
+     "page": "gig:1969-05-28b-pandemonium-wanamassa-nj"
+    },
+    {
+     "anchor": "1969#280569c",
+     "heading": "1969-05-28 - PANDEMONIUM, WANAMASSA, NJ",
+     "likely": true,
+     "page": "gig:1969-05-28c-pandemonium-wanamassa-nj"
+    }
+   ],
+   "date": "1969-05-28 - 1969-05-29",
+   "kind": "no-entry",
+   "link": "1969#280569"
+  },
+  "7ebfc63b-a1e9-4655-ade2-ee2cdc0880a7": {
+   "date": "1997-01-27",
+   "heading": "1997-01-27 - TŌKYŌ KOKUSAI FŌRAMU, FORUM HALL A, TOKYO, JAPAN",
+   "kind": "shared",
+   "link": "1997#270197b",
+   "others": [
+    "84812d3a-dfd7-4644-9513-ec171cc9037d"
+   ],
+   "page": "gig:1997-01-27b-kokusai-foramu-tokyo-japan"
+  },
+  "81fcb62e-62ff-4378-9f7a-5d5844820924": {
+   "candidates": [
+    {
+     "anchor": "1973#040173a",
+     "heading": "1973-01-04 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1973-01-04-main-point-bryn-mawr-pa-early"
+    },
+    {
+     "anchor": "1973#040173b",
+     "heading": "1973-01-04 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1973-01-04-main-point-bryn-mawr-pa-late"
+    }
+   ],
+   "date": "1973-01-04",
+   "kind": "no-entry",
+   "link": "1973#040173"
+  },
+  "8201e12e-ae4c-4ebd-b39c-aa2a61347501": {
+   "candidates": [
+    {
+     "anchor": "2002#041002a",
+     "heading": "2002-10-04 - LEONARD P. ZAKIM BUNKER HILL MEMORIAL BRIDGE, BOSTON, MA",
+     "likely": true,
+     "page": "gig:2002-10-04a-zakim-bridge-boston-ma"
+    },
+    {
+     "anchor": "2002#041002b",
+     "heading": "2002-10-04 - FLEETCENTER, BOSTON, MA",
+     "page": "gig:2002-10-04b-fleetcenter-boston-ma"
+    }
+   ],
+   "date": "2002-10-04",
+   "kind": "no-entry",
+   "link": "2002#041002"
+  },
+  "84812d3a-dfd7-4644-9513-ec171cc9037d": {
+   "date": "1997-01-27",
+   "heading": "1997-01-27 - TŌKYŌ KOKUSAI FŌRAMU, FORUM HALL A, TOKYO, JAPAN",
+   "kind": "shared",
+   "link": "1997#270197b",
+   "others": [
+    "7ebfc63b-a1e9-4655-ade2-ee2cdc0880a7"
+   ],
+   "page": "gig:1997-01-27b-kokusai-foramu-tokyo-japan"
+  },
+  "8493f71f-d39f-40c1-bd7a-46f37caf60b3": {
+   "candidates": [
+    {
+     "anchor": "1974#110474a",
+     "heading": "1974-04-11 - JOE'S PLACE, CAMBRIDGE, MA",
+     "page": "nogig:1974-04-11-joe-s-place-cambridge-ma"
+    },
+    {
+     "anchor": "1974#110474b",
+     "heading": "1974-04-11 - CHARLIE'S PLACE, CAMBRIDGE, MA",
+     "likely": true,
+     "page": "gig:1974-04-11-charlie-s-place-cambridge-ma-early"
+    },
+    {
+     "anchor": "1974#110474c",
+     "heading": "1974-04-11 - CHARLIE'S PLACE, CAMBRIDGE, MA",
+     "likely": true,
+     "page": "gig:1974-04-11-charlie-s-place-cambridge-ma-late"
+    }
+   ],
+   "date": "1974-04-11",
+   "kind": "no-entry",
+   "link": "1974#110474"
+  },
+  "879eeaef-1257-4b29-8660-446125aef7f4": {
+   "candidates": [
+    {
+     "anchor": "1973#221273a",
+     "heading": "1973-12-22 - SIR MORGAN'S COVE, WORCESTER, MA",
+     "page": "nogig:1973-12-22a-sir-morgan-s-cove-worcester-ma"
+    },
+    {
+     "anchor": "1973#221273b",
+     "heading": "1973-12-22 - UNCLE AL'S ERLTON THEATRE LOUNGE, CHERRY HILL, NJ",
+     "likely": true,
+     "page": "gig:1973-12-22b-uncle-al-s-erlton-lounge-cherry-hill-nj"
+    }
+   ],
+   "date": "1973-12-22 - 1973-12-23",
+   "kind": "no-entry",
+   "link": "1973#221273"
+  },
+  "87af4d61-5443-490f-87c2-e167907aa330": {
+   "candidates": [
+    {
+     "anchor": "1974#200374a",
+     "heading": "1974-03-20 - GERTIE'S, DALLAS, TX",
+     "likely": true,
+     "page": "gig:1974-03-20-gertie-s-dallas-tx-early"
+    },
+    {
+     "anchor": "1974#200374b",
+     "heading": "1974-03-20 - GERTIE'S, DALLAS, TX",
+     "likely": true,
+     "page": "gig:1974-03-20-gertie-s-dallas-tx-late"
+    }
+   ],
+   "date": "1974-03-20",
+   "kind": "no-entry",
+   "link": "1974#200374"
+  },
+  "88921df5-21b3-4b41-b108-0042035a578f": {
+   "candidates": [
+    {
+     "anchor": "2001#180801a",
+     "heading": "2001-08-18 - WATERFRONT, ASBURY PARK, NJ",
+     "page": "gig:2001-08-18a-waterfront-asbury-park-nj"
+    },
+    {
+     "anchor": "2001#180801b",
+     "heading": "2001-08-18 - THE STONE PONY, ASBURY PARK, NJ",
+     "page": "gig:2001-08-18b-stone-pony-asbury-park-nj"
+    }
+   ],
+   "date": "2001-08-18",
+   "kind": "no-entry",
+   "link": "2001#180801"
+  },
+  "88d729cf-5078-4cb1-bafc-3bd8c488866e": {
+   "candidates": [
+    {
+     "anchor": "1972#140872a",
+     "heading": "1972-08-14 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1972-08-14-max-s-kansas-city-new-york-city-ny-early"
+    },
+    {
+     "anchor": "1972#140872b",
+     "heading": "1972-08-14 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1972-08-14-max-s-kansas-city-new-york-city-ny-late"
+    }
+   ],
+   "date": "1972-08-14",
+   "kind": "no-entry",
+   "link": "1972#140872"
+  },
+  "8945498c-215d-4c8d-a5b1-44f4b5c695f4": {
+   "candidates": [
+    {
+     "anchor": "2011#020411a",
+     "heading": "2011-04-02 - WONDER BAR, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:2011-04-02a-wonder-bar-asbury-park-nj"
+    },
+    {
+     "anchor": "2011#020411b",
+     "heading": "2011-04-02 - SYNAXIS, ASBURY PARK, NJ",
+     "page": "nogig:2011-04-02b-synaxis-asbury-park-nj"
+    }
+   ],
+   "date": "2011-04-02",
+   "kind": "no-entry",
+   "link": "2011#020411"
+  },
+  "89bbc541-d25f-4863-9e89-31671d96db02": {
+   "candidates": [
+    {
+     "anchor": "1975#060975a",
+     "heading": "1975-09-06 - THEATRE OF PERFORMING ARTS, NEW ORLEANS, LA",
+     "page": "gig:1975-09-06-theatre-of-performing-arts-new-orleans-la"
+    },
+    {
+     "anchor": "1975#060975b",
+     "heading": "1975-09-06 - YA YA LOUNGE, NEW ORLEANS, LA",
+     "page": "nogig:1975-09-06-ya-ya-lounge-new-orleans-la"
+    }
+   ],
+   "date": "1975-09-06",
+   "kind": "no-entry",
+   "link": "1975#060975"
+  },
+  "8c3db84a-1168-46e4-9a38-0690b28bfcdd": {
+   "candidates": [
+    {
+     "anchor": "1974#190774a",
+     "heading": "1974-07-19 - MISSOURI STATE FAIRGROUNDS, SEDALIA, MO",
+     "likely": true,
+     "page": "nogig:1974-07-19-state-fairgrounds-sedalia-mo"
+    },
+    {
+     "anchor": "1974#190774b",
+     "heading": "1974-07-19 - THE MAIN POINT, BRYN MAWR, PA",
+     "page": "nogig:1974-07-19-main-point-bryn-mawr-pa"
+    }
+   ],
+   "date": "1974-07-19",
+   "kind": "no-entry",
+   "link": "1974#190774"
+  },
+  "8ce69266-040b-4c69-bc9f-16f9ad759f9f": {
+   "candidates": [
+    {
+     "anchor": "1979#250379a",
+     "heading": "1979-03-25 - TELEGRAPH HILL STUDIO, HOLMDEL, NJ",
+     "page": "recording:1979-03-25a-telegraph-hill-studio-holmdel-nj"
+    },
+    {
+     "anchor": "1979#250379b",
+     "heading": "1979-03-25 - THE FAST LANE, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "nogig:1979-03-25b-fast-lane-asbury-park-nj"
+    }
+   ],
+   "date": "1979-03-25",
+   "kind": "no-entry",
+   "link": "1979#250379"
+  },
+  "8d75327f-2861-4060-bd32-0a55ac917086": {
+   "date": "1966-09-03",
+   "kind": "no-entry",
+   "link": "1966#030966"
+  },
+  "8e86b30e-14bf-4159-b524-3a5df3c608c3": {
+   "candidates": [
+    {
+     "anchor": "1972#100872a",
+     "heading": "1972-08-10 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1972-08-10-max-s-kansas-city-new-york-city-ny-early"
+    },
+    {
+     "anchor": "1972#100872b",
+     "heading": "1972-08-10 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1972-08-10-max-s-kansas-city-new-york-city-ny-late"
+    }
+   ],
+   "date": "1972-08-10",
+   "kind": "no-entry",
+   "link": "1972#100872"
+  },
+  "8f4cd0f4-6eb3-428a-a6b9-442d1c754a39": {
+   "date": "1992-05-09 - 1992-05-10",
+   "dateDiffers": true,
+   "heading": "1992-05-09 - ROCKEFELLER CENTER, GE BUILDING, STUDIO 8H, NEW YORK CITY, NY",
+   "kind": "shared",
+   "link": "1992#090592",
+   "others": [
+    "a8d1239b-3683-43d4-9951-9d5f3b84d7b4"
+   ],
+   "page": "gig:1992-05-09-rockefeller-center-new-york-city-ny"
+  },
+  "908c3a5b-d28b-410c-8f53-aec6b533d10b": {
+   "date": "1985-01-05",
+   "heading": "1985-01-05 - HAMPTON ROADS COLISEUM, HAMPTON, VA",
+   "kind": "shared",
+   "link": "1985#050185",
+   "others": [
+    "2d11adbc-3e09-4a29-9fd0-7c3d15e1cb9b"
+   ],
+   "page": "gig:1985-01-05-roads-coliseum-hampton-va"
+  },
+  "90bb4114-199b-45e1-9937-ef68ddd103bd": {
+   "candidates": [
+    {
+     "anchor": "1971#170471a",
+     "heading": "1971-04-17 - THE UPSTAGE, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:1971-04-17-upstage-asbury-park-nj-early"
+    },
+    {
+     "anchor": "1971#170471b",
+     "heading": "1971-04-17 - THE UPSTAGE, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:1971-04-17-upstage-asbury-park-nj-late"
+    }
+   ],
+   "date": "1971-04-17 - 1971-04-18",
+   "kind": "no-entry",
+   "link": "1971#170471"
+  },
+  "91733849-5613-4c50-91a7-4b01a2e6fbf9": {
+   "candidates": [
+    {
+     "anchor": "2009#290109a",
+     "heading": "2009-01-29 - RAYMOND JAMES STADIUM, TAMPA, FL",
+     "likely": true,
+     "page": "rehearsal:2009-01-29a-raymond-james-stadium-tampa-fl"
+    },
+    {
+     "anchor": "2009#290109b",
+     "heading": "2009-01-29 - RAYMOND JAMES STADIUM, TAMPA, FL",
+     "likely": true,
+     "page": "interview:2009-01-29b-raymond-james-stadium-tampa-fl"
+    }
+   ],
+   "date": "2009-01-29",
+   "kind": "no-entry",
+   "link": "2009#290109"
+  },
+  "92093c98-bb45-47be-a7d4-5e0719d3fdb9": {
+   "candidates": [
+    {
+     "anchor": "1973#050173a",
+     "heading": "1973-01-05 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1973-01-05-main-point-bryn-mawr-pa-early"
+    },
+    {
+     "anchor": "1973#050173b",
+     "heading": "1973-01-05 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1973-01-05-main-point-bryn-mawr-pa-late"
+    }
+   ],
+   "date": "1973-01-05",
+   "kind": "no-entry",
+   "link": "1973#050173"
+  },
+  "9289f896-891f-4c8c-ba92-d77f09370d97": {
+   "date": "2012-06-04",
+   "heading": "2012-06-03 - BELA VISTA PARK, LISBON, PORTUGAL",
+   "kind": "date-differs",
+   "link": "2012#030612",
+   "page": "gig:2012-06-03-bela-vista-park-lisbon-portugal"
+  },
+  "92bbd86f-8ccb-4410-9dd9-21384bfaf531": {
+   "candidates": [
+    {
+     "anchor": "1970#271170a",
+     "heading": "1970-11-27 - SUNSHINE IN, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:1970-11-27-sunshine-in-asbury-park-nj-early"
+    },
+    {
+     "anchor": "1970#271170b",
+     "heading": "1970-11-27 - SUNSHINE IN, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:1970-11-27-sunshine-in-asbury-park-nj-late"
+    }
+   ],
+   "date": "1970-11-27",
+   "kind": "no-entry",
+   "link": "1970#271170"
+  },
+  "94734606-66d8-4a43-a2bd-0b5beef6c9aa": {
+   "candidates": [
+    {
+     "anchor": "1974#100474a",
+     "heading": "1974-04-10 - JOE'S PLACE, CAMBRIDGE, MA",
+     "page": "nogig:1974-04-10-joe-s-place-cambridge-ma"
+    },
+    {
+     "anchor": "1974#100474b",
+     "heading": "1974-04-10 - CHARLIE'S PLACE, CAMBRIDGE, MA",
+     "likely": true,
+     "page": "gig:1974-04-10-charlie-s-place-cambridge-ma-early"
+    },
+    {
+     "anchor": "1974#100474c",
+     "heading": "1974-04-10 - CHARLIE'S PLACE, CAMBRIDGE, MA",
+     "likely": true,
+     "page": "gig:1974-04-10-charlie-s-place-cambridge-ma-late"
+    }
+   ],
+   "date": "1974-04-10",
+   "kind": "no-entry",
+   "link": "1974#100474"
+  },
+  "96156216-7d42-41a9-ad9b-bb9eccf03406": {
+   "candidates": [
+    {
+     "anchor": "1972#120872a",
+     "heading": "1972-08-12 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1972-08-12-max-s-kansas-city-new-york-city-ny-early"
+    },
+    {
+     "anchor": "1972#120872b",
+     "heading": "1972-08-12 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1972-08-12-max-s-kansas-city-new-york-city-ny-late"
+    }
+   ],
+   "date": "1972-08-12",
+   "kind": "no-entry",
+   "link": "1972#120872"
+  },
+  "9666d260-2a39-4d72-8ff5-ead46e44d7e0": {
+   "candidates": [
+    {
+     "anchor": "1973#070773a",
+     "heading": "1973-07-07 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1973-07-07-main-point-bryn-mawr-pa-early"
+    },
+    {
+     "anchor": "1973#070773b",
+     "heading": "1973-07-07 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1973-07-07-main-point-bryn-mawr-pa-late"
+    }
+   ],
+   "date": "1973-07-07",
+   "kind": "no-entry",
+   "link": "1973#070773"
+  },
+  "96dd45ac-9403-4cd8-bbc0-e68ea064bd4b": {
+   "candidates": [
+    {
+     "anchor": "1967#120867a",
+     "heading": "1967-08-12 - SEE 'N' SURF CLUB, SEA BRIGHT, NJ",
+     "likely": true,
+     "page": "gig:1967-08-12a-see-n-surf-club-sea-bright-nj"
+    },
+    {
+     "anchor": "1967#120867b",
+     "heading": "1967-08-12 - CONVENTION HALL, ASBURY PARK, NJ",
+     "page": "nogig:1967-08-12b-convention-hall-asbury-park-nj"
+    }
+   ],
+   "date": "1967-08-12",
+   "kind": "no-entry",
+   "link": "1967#120867"
+  },
+  "9864db6c-6597-4c2b-b5da-e41b8c451945": {
+   "date": "2002-01-12",
+   "kind": "no-entry",
+   "link": "2002#120102"
+  },
+  "998b6583-7d05-46fe-853d-c8ba36e7b2c8": {
+   "candidates": [
+    {
+     "anchor": "2012#000112a",
+     "heading": "2012-01-00 - EXPO THEATER, FORT MONMOUTH, NJ",
+     "likely": true,
+     "page": "rehearsal:2012-01-00a-expo-theater-fort-monmouth-nj"
+    },
+    {
+     "anchor": "2012#000112b",
+     "heading": "2012-01-00 - NEP STUDIOS, STUDIO 52, NEW YORK CITY, NY",
+     "page": "interview:2012-01-00b-nep-studios-new-york-city-ny"
+    },
+    {
+     "anchor": "2012#000112c",
+     "heading": "2012-01-00 - STONE HILL STUDIO, COLTS NECK, NJ",
+     "page": "recording:2012-01-00c-stone-hill-studio-colts-neck-nj"
+    }
+   ],
+   "date": "2012-01",
+   "kind": "no-entry",
+   "link": "2012#000112"
+  },
+  "9a17ce2f-ac77-4040-8588-074c4db9f9e3": {
+   "candidates": [
+    {
+     "anchor": "1968#220668a",
+     "heading": "1968-06-22 - OFF BROAD STREET COFFEE HOUSE, RED BANK, NJ",
+     "likely": true,
+     "page": "gig:1968-06-22a-off-broad-street-coffee-house-red-bank-nj"
+    },
+    {
+     "anchor": "1968#220668b",
+     "heading": "1968-06-22 - OFF BROAD STREET COFFEE HOUSE, RED BANK, NJ",
+     "likely": true,
+     "page": "gig:1968-06-22b-off-broad-street-coffee-house-red-bank-nj"
+    }
+   ],
+   "date": "1968-06-22",
+   "kind": "no-entry",
+   "link": "1968#220668"
+  },
+  "9bbd202b-e59a-4779-8af6-1e9aa6dc0039": {
+   "date": "1973-01-03",
+   "kind": "no-entry",
+   "link": "1973#030173"
+  },
+  "9ee53f61-fb96-472a-b04b-f837ebac0197": {
+   "date": "1976-06-12 - 1976-06-13",
+   "kind": "no-entry",
+   "link": "1976#120676"
+  },
+  "9f6ddbd7-07df-42b2-a324-943445ef06c2": {
+   "candidates": [
+    {
+     "anchor": "2004#180404a",
+     "heading": "2004-04-18 - THE HIT FACTORY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:2004-04-18a-hit-factory-new-york-city-ny"
+    },
+    {
+     "anchor": "2004#180404b",
+     "heading": "2004-04-18 - THE HIT FACTORY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:2004-04-18b-hit-factory-new-york-city-ny"
+    }
+   ],
+   "date": "2004-04-18",
+   "kind": "no-entry",
+   "link": "2004#180404"
+  },
+  "a31337f0-51b8-49dc-9bbf-1c0c9ea26cba": {
+   "candidates": [
+    {
+     "anchor": "1967#000967a",
+     "heading": "1967-09-00 - CAFÉ WHA?, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1967-09-00a-cafe-wha-new-york-city-ny"
+    },
+    {
+     "anchor": "1967#000967b",
+     "heading": "1967-09-00 - CAFÉ WHA?, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1967-09-00b-cafe-wha-new-york-city-ny"
+    }
+   ],
+   "date": "1967-09",
+   "kind": "no-entry",
+   "link": "1967#000967"
+  },
+  "a5118fe5-a513-4be3-9501-4e8481d931a2": {
+   "date": "2002-10-05",
+   "heading": "2002-10-05 - ROCKEFELLER CENTER, GE BUILDING, STUDIO 8H, NEW YORK CITY, NY",
+   "kind": "shared",
+   "link": "2002#051002",
+   "others": [
+    "51b309f2-489a-465e-8221-2f6ea4529ee0"
+   ],
+   "page": "gig:2002-10-05-rockefeller-center-new-york-city-ny"
+  },
+  "a5658328-60bb-448a-afd1-412ebcd9880b": {
+   "date": "2009-06-27",
+   "heading": "2009-06-27 - WORTHY FARM, PILTON, ENGLAND",
+   "kind": "shared",
+   "link": "2009#270609b",
+   "others": [
+    "416ade12-640c-46c6-a47d-e567bf176e76"
+   ],
+   "page": "gig:2009-06-27b-worthy-farm-pilton-england"
+  },
+  "a5d0277b-8480-4a87-92b1-9963a18ab0b6": {
+   "candidates": [
+    {
+     "anchor": "1973#200173a",
+     "heading": "1973-01-20 - MY FATHER'S PLACE, ROSLYN, NY",
+     "likely": true,
+     "page": "gig:1973-01-20-my-father-s-place-roslyn-ny-early"
+    },
+    {
+     "anchor": "1973#200173b",
+     "heading": "1973-01-20 - MY FATHER'S PLACE, ROSLYN, NY",
+     "likely": true,
+     "page": "gig:1973-01-20-my-father-s-place-roslyn-ny-late"
+    }
+   ],
+   "date": "1973-01-20",
+   "kind": "no-entry",
+   "link": "1973#200173"
+  },
+  "a5f128f6-5b7c-4a1a-9c96-94c26aa113c7": {
+   "candidates": [
+    {
+     "anchor": "1973#030273a",
+     "heading": "1973-02-03 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1973-02-03-max-s-kansas-city-new-york-city-ny-early"
+    },
+    {
+     "anchor": "1973#030273b",
+     "heading": "1973-02-03 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1973-02-03-max-s-kansas-city-new-york-city-ny-late"
+    }
+   ],
+   "date": "1973-02-03",
+   "kind": "no-entry",
+   "link": "1973#030273"
+  },
+  "a815a751-e21b-4b91-9d11-56e8bfe3aac4": {
+   "date": "1973-09-06",
+   "kind": "no-entry",
+   "link": "1973#060973"
+  },
+  "a87de3a2-4ba0-4b9e-ae32-4815ac649e12": {
+   "candidates": [
+    {
+     "anchor": "1973#080173a",
+     "heading": "1973-01-08 - PAUL'S MALL, BOSTON, MA",
+     "likely": true,
+     "page": "gig:1973-01-08-paul-s-mall-boston-ma-early"
+    },
+    {
+     "anchor": "1973#080173b",
+     "heading": "1973-01-08 - PAUL'S MALL, BOSTON, MA",
+     "likely": true,
+     "page": "gig:1973-01-08-paul-s-mall-boston-ma-late"
+    }
+   ],
+   "date": "1973-01-08",
+   "kind": "no-entry",
+   "link": "1973#080173"
+  },
+  "a8d1239b-3683-43d4-9951-9d5f3b84d7b4": {
+   "date": "1992-05-09",
+   "heading": "1992-05-09 - ROCKEFELLER CENTER, GE BUILDING, STUDIO 8H, NEW YORK CITY, NY",
+   "kind": "shared",
+   "link": "1992#090592",
+   "others": [
+    "8f4cd0f4-6eb3-428a-a6b9-442d1c754a39"
+   ],
+   "page": "gig:1992-05-09-rockefeller-center-new-york-city-ny"
+  },
+  "a9a2d85b-6e4c-41cf-bb2d-dc6ffa1073a6": {
+   "candidates": [
+    {
+     "anchor": "1975#190775a",
+     "heading": "1975-07-19 - CONVENTION HALL, ASBURY PARK, NJ",
+     "page": "nogig:1975-07-19a-convention-hall-asbury-park-nj"
+    },
+    {
+     "anchor": "1975#190775b",
+     "heading": "1975-07-19 - RECORD PLANT, NEW YORK CITY, NY",
+     "page": "recording:1975-07-19b-record-plant-new-york-city-ny"
+    },
+    {
+     "anchor": "1975#190775c",
+     "heading": "1975-07-19 - RECORD PLANT, REHEARSAL ROOM, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "rehearsal:1975-07-19c-record-plant-new-york-city-ny"
+    }
+   ],
+   "date": "1975-07-19 - 1975-07-20",
+   "kind": "no-entry",
+   "link": "1975#190775"
+  },
+  "aa312506-357c-4332-a780-7b902912ef10": {
+   "candidates": [
+    {
+     "anchor": "1973#301073a",
+     "heading": "1973-10-30 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1973-10-30-main-point-bryn-mawr-pa-early"
+    },
+    {
+     "anchor": "1973#301073b",
+     "heading": "1973-10-30 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1973-10-30-main-point-bryn-mawr-pa-late"
+    }
+   ],
+   "date": "1973-10-30",
+   "kind": "no-entry",
+   "link": "1973#301073"
+  },
+  "ab303f98-7af3-4f8f-86a9-c0010e46789c": {
+   "candidates": [
+    {
+     "anchor": "1973#140173a",
+     "heading": "1973-01-14 - PAUL'S MALL, BOSTON, MA",
+     "likely": true,
+     "page": "gig:1973-01-14-paul-s-mall-boston-ma-early"
+    },
+    {
+     "anchor": "1973#140173b",
+     "heading": "1973-01-14 - PAUL'S MALL, BOSTON, MA",
+     "likely": true,
+     "page": "gig:1973-01-14-paul-s-mall-boston-ma-late"
+    }
+   ],
+   "date": "1973-01-14",
+   "kind": "no-entry",
+   "link": "1973#140173"
+  },
+  "afc137f3-3f81-432f-87bc-7a04caf22175": {
+   "candidates": [
+    {
+     "anchor": "1972#130872a",
+     "heading": "1972-08-13 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1972-08-13-max-s-kansas-city-new-york-city-ny-early"
+    },
+    {
+     "anchor": "1972#130872b",
+     "heading": "1972-08-13 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1972-08-13-max-s-kansas-city-new-york-city-ny-late"
+    }
+   ],
+   "date": "1972-08-13",
+   "kind": "no-entry",
+   "link": "1972#130872"
+  },
+  "b145f7e1-5da3-4df0-8524-f7f1657cf673": {
+   "candidates": [
+    {
+     "anchor": "1976#010476a",
+     "heading": "1976-04-01 - CLOWES MEMORIAL HALL, BUTLER UNIVERSITY, INDIANAPOLIS, IN",
+     "page": "nogig:1976-04-01-clowes-memorial-hall-indianapolis-in"
+    },
+    {
+     "anchor": "1976#010476b",
+     "heading": "1976-04-01 - MEMORIAL AUDITORIUM, OHIO UNIVERSITY, ATHENS, OH",
+     "likely": true,
+     "page": "gig:1976-04-01-memorial-auditorium-athens-oh"
+    }
+   ],
+   "date": "1976-04-01",
+   "kind": "no-entry",
+   "link": "1976#010476"
+  },
+  "b432bdbc-9fcd-4e6a-acd4-beeb76b275fb": {
+   "candidates": [
+    {
+     "anchor": "1978#300878a",
+     "heading": "1978-08-30 - RICHFIELD COLISEUM, RICHFIELD, OH",
+     "likely": true,
+     "page": "gig:1978-08-30a-coliseum-richfield-oh"
+    },
+    {
+     "anchor": "1978#300878b",
+     "heading": "1978-08-30 - THE AGORA, CLEVELAND, OH",
+     "page": "gig:1978-08-30b-agora-cleveland-oh"
+    }
+   ],
+   "date": "1978-08-30",
+   "kind": "no-entry",
+   "link": "1978#300878"
+  },
+  "b4bbdcaa-5e62-4da8-946e-462729d8f580": {
+   "candidates": [
+    {
+     "anchor": "1972#000972a",
+     "heading": "1972-09-00 - GASLIGHT AU GO GO, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1972-09-00-gaslight-au-go-go-new-york-city-ny"
+    },
+    {
+     "anchor": "1972#000972b",
+     "heading": "1972-09-00 - HERRING'S GUITAR SHOP, POINT PLEASANT BEACH, NJ",
+     "page": "rehearsal:1972-09-00-herring-s-guitar-shop-point-pleasant-be"
+    }
+   ],
+   "date": "1972-09",
+   "kind": "no-entry",
+   "link": "1972#000972"
+  },
+  "b551552a-1501-4059-8d54-15716394c162": {
+   "candidates": [
+    {
+     "anchor": "1973#291073a",
+     "heading": "1973-10-29 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1973-10-29-main-point-bryn-mawr-pa-early"
+    },
+    {
+     "anchor": "1973#291073b",
+     "heading": "1973-10-29 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "gig:1973-10-29-main-point-bryn-mawr-pa-late"
+    }
+   ],
+   "date": "1973-10-29",
+   "kind": "no-entry",
+   "link": "1973#291073"
+  },
+  "b63d1649-ad9d-4257-8ee5-a5aa3dd5fa8e": {
+   "candidates": [
+    {
+     "anchor": "1972#051272a",
+     "heading": "1972-12-05 - KENNY'S CASTAWAYS, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1972-12-05-kenny-s-castaways-new-york-city-ny-early"
+    },
+    {
+     "anchor": "1972#051272b",
+     "heading": "1972-12-05 - KENNY'S CASTAWAYS, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1972-12-05-kenny-s-castaways-new-york-city-ny-late"
+    }
+   ],
+   "date": "1972-12-05",
+   "kind": "no-entry",
+   "link": "1972#051272"
+  },
+  "b64db879-fdab-4e84-858d-db359e1638f2": {
+   "date": "1998-11-06",
+   "kind": "no-entry",
+   "link": "1998#061198"
+  },
+  "bc06ec5c-32a7-4f8e-9af8-03c12d973abd": {
+   "date": "1981-08-08",
+   "kind": "no-entry",
+   "link": "1981#080881"
+  },
+  "bc1ce5ca-1fe2-4ece-96c8-3f91e2dfb926": {
+   "candidates": [
+    {
+     "anchor": "1972#081272a",
+     "heading": "1972-12-08 - LOZITO RESIDENCE, BRADLEY BEACH, NJ",
+     "page": "interview:1972-12-08-lozito-residence-bradley-beach-nj"
+    },
+    {
+     "anchor": "1972#081272b",
+     "heading": "1972-12-08 - KENNY'S CASTAWAYS, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1972-12-08-kenny-s-castaways-new-york-city-ny-early"
+    },
+    {
+     "anchor": "1972#081272c",
+     "heading": "1972-12-08 - KENNY'S CASTAWAYS, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1972-12-08-kenny-s-castaways-new-york-city-ny-late"
+    }
+   ],
+   "date": "1972-12-08",
+   "kind": "no-entry",
+   "link": "1972#081272"
+  },
+  "bc77de57-7910-451c-9c75-2847bf9d0d3e": {
+   "candidates": [
+    {
+     "anchor": "2004#281004a",
+     "heading": "2004-10-28 - CAPITOL SQUARE, MADISON, WI",
+     "page": "gig:2004-10-28a-capitol-square-madison-wi"
+    },
+    {
+     "anchor": "2004#281004b",
+     "heading": "2004-10-28 - SOUTH OVAL, OHIO STATE UNIVERSITY, COLUMBUS, OH",
+     "likely": true,
+     "page": "gig:2004-10-28b-south-oval-columbus-oh"
+    }
+   ],
+   "date": "2004-10-28",
+   "kind": "no-entry",
+   "link": "2004#2810b04"
+  },
+  "bca931eb-19e6-45ba-ad2b-e4fa67a73c9e": {
+   "candidates": [
+    {
+     "anchor": "1973#190773a",
+     "heading": "1973-07-19 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1973-07-19-max-s-kansas-city-new-york-city-ny-early"
+    },
+    {
+     "anchor": "1973#190773b",
+     "heading": "1973-07-19 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1973-07-19-max-s-kansas-city-new-york-city-ny-late"
+    }
+   ],
+   "date": "1973-07-19",
+   "kind": "no-entry",
+   "link": "1973#190773"
+  },
+  "bfbb06f5-5742-484c-b994-a1d823ef3357": {
+   "candidates": [
+    {
+     "anchor": "1975#200775a",
+     "heading": "1975-07-20 - RECORD PLANT, NEW YORK CITY, NY",
+     "page": "recording:1975-07-20a-record-plant-new-york-city-ny"
+    },
+    {
+     "anchor": "1975#200775b",
+     "heading": "1975-07-20 - PALACE CONCERT THEATER, PROVIDENCE, RI",
+     "page": "gig:1975-07-20b-palace-concert-theater-providence-ri"
+    }
+   ],
+   "date": "1975-07-20",
+   "kind": "no-entry",
+   "link": "1975#200775"
+  },
+  "c0753495-a1fe-430f-8384-ceac92a1e7f8": {
+   "candidates": [
+    {
+     "anchor": "2017#060517a",
+     "heading": "2017-05-06 - BUCKLEY FUNERAL HOME, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "nogig:2017-05-06a-buckley-funeral-home-asbury-park-nj"
+    },
+    {
+     "anchor": "2017#060517b",
+     "heading": "2017-05-06 - TRIBECA GRILL, NEW YORK CITY, NY",
+     "page": "nogig:2017-05-06b-tribeca-grill-new-york-city-ny"
+    }
+   ],
+   "date": "2017-05-06",
+   "kind": "no-entry",
+   "link": "2017#060517"
+  },
+  "c094cedf-613d-43eb-8333-144cbd2f634d": {
+   "candidates": [
+    {
+     "anchor": "1971#220771a",
+     "heading": "1971-07-22 - D'SCENE, SOUTH AMBOY, NJ",
+     "likely": true,
+     "page": "gig:1971-07-22-d-scene-south-amboy-nj-early"
+    },
+    {
+     "anchor": "1971#220771b",
+     "heading": "1971-07-22 - D'SCENE, SOUTH AMBOY, NJ",
+     "likely": true,
+     "page": "gig:1971-07-22-d-scene-south-amboy-nj-late"
+    }
+   ],
+   "date": "1971-07-22 - 1971-07-23",
+   "kind": "no-entry",
+   "link": "1971#220771"
+  },
+  "c0ad5c23-5141-4d71-ad33-751f7e807617": {
+   "candidates": [
+    {
+     "anchor": "1994#000294",
+     "heading": "1994-02-00 - CBS BROADCAST CENTER, NEW YORK CITY, NY",
+     "page": "recording:1994-02-00-cbs-broadcast-center-new-york-city-ny"
+    }
+   ],
+   "date": "1994-02",
+   "kind": "no-entry",
+   "link": "1994#000294a"
+  },
+  "c2c981db-4ae9-449e-ae44-33271bd21fd1": {
+   "date": "1988-02",
+   "kind": "no-entry",
+   "link": "1988#000288"
+  },
+  "c3b2f55d-51ef-4555-b051-5739ff025efc": {
+   "candidates": [
+    {
+     "anchor": "1968#280968a",
+     "heading": "1968-09-28 - OFF BROAD STREET COFFEE HOUSE, RED BANK, NJ",
+     "likely": true,
+     "page": "gig:1968-09-28a-off-broad-street-coffee-house-red-bank-nj"
+    },
+    {
+     "anchor": "1968#280968b",
+     "heading": "1968-09-28 - OFF BROAD STREET COFFEE HOUSE, RED BANK, NJ",
+     "likely": true,
+     "page": "gig:1968-09-28b-off-broad-street-coffee-house-red-bank-nj"
+    }
+   ],
+   "date": "1968-09-28",
+   "kind": "no-entry",
+   "link": "1968#280968"
+  },
+  "c4e89808-65ea-4f9e-9ed5-58864a858d50": {
+   "candidates": [
+    {
+     "anchor": "1974#270474a",
+     "heading": "1974-04-27 - UCONN ICE ARENA, PARKING LOT, UNIVERSITY OF CONNECTICUT, STORRS, CT",
+     "page": "gig:1974-04-27-uconn-ice-arena-storrs-ct"
+    },
+    {
+     "anchor": "1974#270474b",
+     "heading": "1974-04-27 - GYMNASIUM, UNIVERSITY OF HARTFORD, HARTFORD, CT",
+     "page": "gig:1974-04-27-gymnasium-hartford-ct"
+    }
+   ],
+   "date": "1974-04-27",
+   "heading": "1974-04-26 - ALUMNAE HALL, BROWN UNIVERSITY, PROVIDENCE, RI",
+   "kind": "date-differs",
+   "link": "1974#260474",
+   "page": "gig:1974-04-26-alumnae-hall-providence-ri"
+  },
+  "c52aae7a-e03d-4ea9-b91e-9c1ba77106fc": {
+   "candidates": [
+    {
+     "anchor": "1973#210173a",
+     "heading": "1973-01-21 - MY FATHER'S PLACE, ROSLYN, NY",
+     "likely": true,
+     "page": "gig:1973-01-21-my-father-s-place-roslyn-ny-early"
+    },
+    {
+     "anchor": "1973#210173b",
+     "heading": "1973-01-21 - MY FATHER'S PLACE, ROSLYN, NY",
+     "likely": true,
+     "page": "gig:1973-01-21-my-father-s-place-roslyn-ny-late"
+    }
+   ],
+   "date": "1973-01-21",
+   "kind": "no-entry",
+   "link": "1973#210173"
+  },
+  "c532473d-4fc0-4bdb-992f-4332c81b787c": {
+   "candidates": [
+    {
+     "anchor": "1973#220773a",
+     "heading": "1973-07-22 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1973-07-22-max-s-kansas-city-new-york-city-ny-early"
+    },
+    {
+     "anchor": "1973#220773b",
+     "heading": "1973-07-22 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1973-07-22-max-s-kansas-city-new-york-city-ny-late"
+    }
+   ],
+   "date": "1973-07-22",
+   "kind": "no-entry",
+   "link": "1973#220773"
+  },
+  "c581b8ff-4a98-414a-bc42-fa256fd13b4e": {
+   "candidates": [
+    {
+     "anchor": "1968#130968a",
+     "heading": "1968-09-13 - OFF BROAD STREET COFFEE HOUSE, RED BANK, NJ",
+     "likely": true,
+     "page": "gig:1968-09-13a-off-broad-street-coffee-house-red-bank-nj"
+    },
+    {
+     "anchor": "1968#130968b",
+     "heading": "1968-09-13 - OFF BROAD STREET COFFEE HOUSE, RED BANK, NJ",
+     "likely": true,
+     "page": "gig:1968-09-13b-off-broad-street-coffee-house-red-bank-nj"
+    }
+   ],
+   "date": "1968-09-13",
+   "kind": "no-entry",
+   "link": "1968#130968"
+  },
+  "c6500053-9a33-4b44-b057-6af661e1870b": {
+   "candidates": [
+    {
+     "anchor": "1980#000980a",
+     "heading": "1980-09-00 - CLAIR BROTHERS AUDIO, LITITZ, PA",
+     "likely": true,
+     "page": "rehearsal:1980-09-00a-clair-brothers-audio-lititz-pa"
+    },
+    {
+     "anchor": "1980#000980b",
+     "heading": "1980-09-00 - CLAIR BROTHERS AUDIO, LITITZ, PA",
+     "likely": true,
+     "page": "rehearsal:1980-09-00b-clair-brothers-audio-lititz-pa"
+    },
+    {
+     "anchor": "1980#000980c",
+     "heading": "1980-09-00 - CLAIR BROTHERS AUDIO, LITITZ, PA",
+     "likely": true,
+     "page": "rehearsal:1980-09-00c-clair-brothers-audio-lititz-pa"
+    },
+    {
+     "anchor": "1980#000980d",
+     "heading": "1980-09-00 - CLAIR BROTHERS AUDIO, LITITZ, PA",
+     "likely": true,
+     "page": "rehearsal:1980-09-00d-clair-brothers-audio-lititz-pa"
+    }
+   ],
+   "date": "1980-09",
+   "kind": "no-entry",
+   "link": "1980#000980"
+  },
+  "c79cae46-6af4-413c-bdee-3fed0e2a5250": {
+   "candidates": [
+    {
+     "anchor": "1995#211195a",
+     "heading": "1995-11-21 - COUNT BASIE THEATRE, RED BANK, NJ",
+     "page": "rehearsal:1995-11-21a-count-basie-theatre-red-bank-nj"
+    },
+    {
+     "anchor": "1995#211195b",
+     "heading": "1995-11-21 - STATE THEATRE, NEW BRUNSWICK, NJ",
+     "likely": true,
+     "page": "rehearsal:1995-11-21b-state-theatre-new-brunswick-nj"
+    }
+   ],
+   "date": "1995-11-21",
+   "kind": "no-entry",
+   "link": "1995#211195"
+  },
+  "c8e9c355-f298-4551-b998-ae264fff0304": {
+   "candidates": [
+    {
+     "anchor": "1974#200774a",
+     "heading": "1974-07-20 - COWTOWN BALLROOM, KANSAS CITY, MO",
+     "likely": true,
+     "page": "nogig:1974-07-20-cowtown-ballroom-kansas-city-mo"
+    },
+    {
+     "anchor": "1974#200774b",
+     "heading": "1974-07-20 - THE MAIN POINT, BRYN MAWR, PA",
+     "page": "nogig:1974-07-20-main-point-bryn-mawr-pa"
+    }
+   ],
+   "date": "1974-07-20",
+   "kind": "no-entry",
+   "link": "1974#200774"
+  },
+  "ca4242a1-c9d9-4cdc-b5e2-8c699bd5a93e": {
+   "candidates": [
+    {
+     "anchor": "1973#110173a",
+     "heading": "1973-01-11 - PAUL'S MALL, BOSTON, MA",
+     "likely": true,
+     "page": "gig:1973-01-11-paul-s-mall-boston-ma-early"
+    },
+    {
+     "anchor": "1973#110173b",
+     "heading": "1973-01-11 - PAUL'S MALL, BOSTON, MA",
+     "likely": true,
+     "page": "gig:1973-01-11-paul-s-mall-boston-ma-late"
+    }
+   ],
+   "date": "1973-01-11",
+   "kind": "no-entry",
+   "link": "1973#110173"
+  },
+  "cabf4768-6517-4c97-b74c-c7f551a92c93": {
+   "date": "2026-04-13",
+   "heading": "2026-04-13 - CHASE CENTER, SAN FRANCISCO, CA",
+   "kind": "shared",
+   "link": "2026#130426",
+   "others": [
+    "eb4bbf18-bf72-40ad-893e-5218a78e1f01"
+   ],
+   "page": "gig:2026-04-13-chase-center-san-francisco-ca"
+  },
+  "cd418431-827c-404a-ab62-22e7bad32d5b": {
+   "candidates": [
+    {
+     "anchor": "1993#160593a",
+     "heading": "1993-05-16 - ALTER FLUGHAFEN-RIEM, MUNICH, GERMANY",
+     "likely": true,
+     "page": "gig:1993-05-16a-alter-flughafen-riem-munich-germany"
+    },
+    {
+     "anchor": "1993#160593b",
+     "heading": "1993-05-16 - HOTEL BAYERISCHER HOF, MUNICH, GERMANY",
+     "page": "gig:1993-05-16b-hotel-bayerischer-hof-munich-germany"
+    }
+   ],
+   "date": "1993-05-16",
+   "kind": "no-entry",
+   "link": "1993#160593"
+  },
+  "cecd9da0-5732-496c-9235-6f406e430e09": {
+   "date": "1971-07",
+   "kind": "no-entry",
+   "link": "1971#000771"
+  },
+  "d03d9c5a-9f5e-4302-b708-54efe2185a26": {
+   "candidates": [
+    {
+     "anchor": "1971#180671a",
+     "heading": "1971-06-18 - THE UPSTAGE, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:1971-06-18-upstage-asbury-park-nj-early"
+    },
+    {
+     "anchor": "1971#180671b",
+     "heading": "1971-06-18 - THE UPSTAGE, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:1971-06-18-upstage-asbury-park-nj-late"
+    }
+   ],
+   "date": "1971-06-18 - 1971-06-19",
+   "kind": "no-entry",
+   "link": "1971#180671"
+  },
+  "d0674354-1c44-4519-b5e7-ee7153545f9f": {
+   "candidates": [
+    {
+     "anchor": "1973#050273a",
+     "heading": "1973-02-05 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1973-02-05-max-s-kansas-city-new-york-city-ny-early"
+    },
+    {
+     "anchor": "1973#050273b",
+     "heading": "1973-02-05 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1973-02-05-max-s-kansas-city-new-york-city-ny-late"
+    }
+   ],
+   "date": "1973-02-05",
+   "kind": "no-entry",
+   "link": "1973#050273"
+  },
+  "d131bd60-2dcf-40b8-aacc-098e8cea58cd": {
+   "candidates": [
+    {
+     "anchor": "1974#190974a",
+     "heading": "1974-09-19 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "rehearsal:1974-09-19-main-point-bryn-mawr-pa-early"
+    },
+    {
+     "anchor": "1974#190974b",
+     "heading": "1974-09-19 - THE MAIN POINT, BRYN MAWR, PA",
+     "likely": true,
+     "page": "rehearsal:1974-09-19-main-point-bryn-mawr-pa-late"
+    }
+   ],
+   "date": "1974-09-19 - 1974-09-20",
+   "kind": "no-entry",
+   "link": "1974#190974"
+  },
+  "d3234b87-5a93-47ec-abc2-34e7deab3c87": {
+   "candidates": [
+    {
+     "anchor": "1973#120173a",
+     "heading": "1973-01-12 - PAUL'S MALL, BOSTON, MA",
+     "likely": true,
+     "page": "gig:1973-01-12-paul-s-mall-boston-ma-early"
+    },
+    {
+     "anchor": "1973#120173b",
+     "heading": "1973-01-12 - PAUL'S MALL, BOSTON, MA",
+     "likely": true,
+     "page": "gig:1973-01-12-paul-s-mall-boston-ma-late"
+    }
+   ],
+   "date": "1973-01-12",
+   "kind": "no-entry",
+   "link": "1973#120173"
+  },
+  "d4ce078f-0d43-4597-a132-9c26cf72eb8d": {
+   "candidates": [
+    {
+     "anchor": "1977#000177a",
+     "heading": "1977-01-00 - COLUMBIA RECORDING STUDIOS, NEW YORK CITY, NY",
+     "page": "recording:1977-01-00a-columbia-recording-studios-new-york-ci"
+    },
+    {
+     "anchor": "1977#000177b",
+     "heading": "1977-01-00 - TELEGRAPH HILL STUDIO, HOLMDEL, NJ",
+     "page": "rehearsal:1977-01-00b-telegraph-hill-studio-holmdel-nj"
+    }
+   ],
+   "date": "1977-01",
+   "kind": "no-entry",
+   "link": "1977#000177"
+  },
+  "d5b29b0b-720a-45ef-8844-50884dd9fa99": {
+   "candidates": [
+    {
+     "anchor": "2006#250406a",
+     "heading": "2006-04-25 - CONVENTION HALL, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:2006-04-25a-convention-hall-asbury-park-nj"
+    },
+    {
+     "anchor": "2006#250406b",
+     "heading": "2006-04-25 - CONVENTION HALL, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "rehearsal:2006-04-25b-convention-hall-asbury-park-nj"
+    }
+   ],
+   "date": "2006-04-25",
+   "kind": "no-entry",
+   "link": "2006#250406"
+  },
+  "d5e16e2d-14bc-4a10-8e18-819db570638b": {
+   "candidates": [
+    {
+     "anchor": "1972#000472a",
+     "heading": "1972-04-00 - LAUREL CANYON, MIKE APPEL'S OFFICE, NEW YORK CITY, NY",
+     "page": "recording:1972-04-00a-laurel-canyon-new-york-city-ny"
+    },
+    {
+     "anchor": "1972#000472b",
+     "heading": "1972-04-00 - MEDIASOUND STUDIOS, STUDIO C, NEW YORK CITY, NY",
+     "page": "recording:1972-04-00b-mediasound-studios-new-york-city-ny"
+    },
+    {
+     "anchor": "1972#000472c",
+     "heading": "1972-04-00 - CRETECOS RESIDENCE, NEW YORK CITY, NY",
+     "page": "recording:1972-04-00c-cretecos-residence-new-york-city-ny"
+    },
+    {
+     "anchor": "1972#000472d",
+     "heading": "1972-04-00 - FREEHOLD TOWNSHIP HIGH SCHOOL, FREEHOLD, NJ",
+     "likely": true,
+     "page": "gig:1972-04-00d-township-high-school-freehold-nj"
+    }
+   ],
+   "date": "1972-04",
+   "kind": "no-entry",
+   "link": "1972#000472"
+  },
+  "d8a749fd-2209-4fe6-bcc9-6cd1c89c6964": {
+   "date": "2004-02",
+   "kind": "no-entry",
+   "link": "2004#000204"
+  },
+  "d8bc131d-7049-49cf-96d2-a47b8c18aa30": {
+   "candidates": [
+    {
+     "anchor": "1972#091272a",
+     "heading": "1972-12-09 - KENNY'S CASTAWAYS, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1972-12-09-kenny-s-castaways-new-york-city-ny-early"
+    },
+    {
+     "anchor": "1972#091272b",
+     "heading": "1972-12-09 - KENNY'S CASTAWAYS, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1972-12-09-kenny-s-castaways-new-york-city-ny-late"
+    }
+   ],
+   "date": "1972-12-09",
+   "kind": "no-entry",
+   "link": "1972#091272"
+  },
+  "d934480a-8ce4-459a-b053-2edd20c61c04": {
+   "candidates": [
+    {
+     "anchor": "1973#081173a",
+     "heading": "1973-11-08 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1973-11-08-max-s-kansas-city-new-york-city-ny-early"
+    },
+    {
+     "anchor": "1973#081173b",
+     "heading": "1973-11-08 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1973-11-08-max-s-kansas-city-new-york-city-ny-late"
+    }
+   ],
+   "date": "1973-11-08",
+   "kind": "no-entry",
+   "link": "1973#081173"
+  },
+  "d9848eff-61d3-4926-8d7f-300e3f142841": {
+   "candidates": [
+    {
+     "anchor": "1971#300171a",
+     "heading": "1971-01-30 - THE UPSTAGE, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:1971-01-30-upstage-asbury-park-nj-early"
+    },
+    {
+     "anchor": "1971#300171b",
+     "heading": "1971-01-30 - THE UPSTAGE, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:1971-01-30-upstage-asbury-park-nj-late"
+    }
+   ],
+   "date": "1971-01-30 - 1971-01-31",
+   "kind": "no-entry",
+   "link": "1971#300171"
+  },
+  "dacc4d91-4045-45d8-9063-bec43a9e63c7": {
+   "candidates": [
+    {
+     "anchor": "1973#010973a",
+     "heading": "1973-09-01 - FAT CITY, SEASIDE HEIGHTS, NJ",
+     "likely": true,
+     "page": "gig:1973-09-01-fat-city-seaside-heights-nj-early"
+    },
+    {
+     "anchor": "1973#010973b",
+     "heading": "1973-09-01 - FAT CITY, SEASIDE HEIGHTS, NJ",
+     "likely": true,
+     "page": "gig:1973-09-01-fat-city-seaside-heights-nj-late"
+    }
+   ],
+   "date": "1973-09-01",
+   "kind": "no-entry",
+   "link": "1973#010973"
+  },
+  "dc237151-28b7-4bcb-a75e-4dd1e0f72b92": {
+   "candidates": [
+    {
+     "anchor": "1969#140269a",
+     "heading": "1969-02-14 - PADDOCK LOUNGE, LONG BRANCH, NJ",
+     "page": "nogig:1969-02-14a-paddock-lounge-long-branch-nj"
+    },
+    {
+     "anchor": "1969#140269b",
+     "heading": "1969-02-14 - I.A.M.A. CLUBHOUSE, LONG BRANCH, NJ",
+     "likely": true,
+     "page": "gig:1969-02-14b-i-a-m-a-clubhouse-long-branch-nj"
+    }
+   ],
+   "date": "1969-02-14",
+   "kind": "no-entry",
+   "link": "1969#140269"
+  },
+  "dcf84485-1b09-457c-a736-384e3c727bf7": {
+   "candidates": [
+    {
+     "anchor": "1974#180774a",
+     "heading": "1974-07-18 - LE GARAGE, SPRAY BEACH, NJ",
+     "likely": true,
+     "page": "gig:1974-07-18-garage-spray-beach-nj-early"
+    },
+    {
+     "anchor": "1974#180774b",
+     "heading": "1974-07-18 - LE GARAGE, SPRAY BEACH, NJ",
+     "likely": true,
+     "page": "gig:1974-07-18-garage-spray-beach-nj-late"
+    }
+   ],
+   "date": "1974-07-18",
+   "kind": "no-entry",
+   "link": "1974#180774"
+  },
+  "de9b15c5-862e-4c15-94b2-a946e5c3ee92": {
+   "candidates": [
+    {
+     "anchor": "2021#160621",
+     "heading": "2021-06-16 - STONE HILL FARM, COLTS NECK, NJ",
+     "likely": true,
+     "page": "interview:2021-06-16-stone-hill-farm-colts-neck-nj"
+    }
+   ],
+   "date": "2021-06-16",
+   "dateDiffers": true,
+   "heading": "2021-06-10 - SIRIUSXM STUDIO, NEW YORK CITY, NY",
+   "kind": "shared",
+   "link": "2021#100621",
+   "others": [
+    "1fa59f5e-f4d8-4091-b440-02f801b6e8b7"
+   ],
+   "page": "interview:2021-06-10-siriusxm-studio-new-york-city-ny"
+  },
+  "df82405f-4346-42e7-91c0-01bbf928e605": {
+   "candidates": [
+    {
+     "anchor": "1974#270774a",
+     "heading": "1974-07-27 - CELEBRITY THEATRE, PHOENIX, AZ",
+     "likely": true,
+     "page": "gig:1974-07-27-celebrity-theatre-phoenix-az-early"
+    },
+    {
+     "anchor": "1974#270774b",
+     "heading": "1974-07-27 - CELEBRITY THEATRE, PHOENIX, AZ",
+     "likely": true,
+     "page": "gig:1974-07-27-celebrity-theatre-phoenix-az-late"
+    }
+   ],
+   "date": "1974-07-27",
+   "kind": "no-entry",
+   "link": "1974#270774"
+  },
+  "e1f40e1e-3196-4cb9-b2b7-26a698d036af": {
+   "candidates": [
+    {
+     "anchor": "2008#210408a",
+     "heading": "2008-04-21 - UNITED METHODIST CHURCH OF RED BANK, RED BANK, NJ",
+     "likely": true,
+     "page": "gig:2008-04-21a-united-methodist-church-red-bank-nj"
+    },
+    {
+     "anchor": "2008#210408b",
+     "heading": "2008-04-21 - ST. PETE TIMES FORUM, TAMPA, FL",
+     "page": "nogig:2008-04-21b-st-pete-times-forum-tampa-fl"
+    }
+   ],
+   "date": "2008-04-21",
+   "kind": "no-entry",
+   "link": "2008#210408"
+  },
+  "e396c4c9-baea-48d1-873b-8d5c31a7e610": {
+   "candidates": [
+    {
+     "anchor": "1973#141273a",
+     "heading": "1973-12-14 - BIJOU CAFE, PHILADELPHIA, PA",
+     "page": "nogig:1973-12-14a-bijou-cafe-philadelphia-pa"
+    },
+    {
+     "anchor": "1973#141273b",
+     "heading": "1973-12-14 - PINECREST COUNTRY CLUB, SHELTON, CT",
+     "likely": true,
+     "page": "gig:1973-12-14b-pinecrest-country-club-shelton-ct"
+    }
+   ],
+   "date": "1973-12-14",
+   "kind": "no-entry",
+   "link": "1973#141273"
+  },
+  "e55da082-58de-48f3-bec6-fb661f64815f": {
+   "candidates": [
+    {
+     "anchor": "1980#000180a",
+     "heading": "1980-01-00 - THE FAST LANE, ASBURY PARK, NJ",
+     "page": "nogig:1980-01-00a-fast-lane-asbury-park-nj"
+    },
+    {
+     "anchor": "1980#000180b",
+     "heading": "1980-01-00 - SPRINGSTEEN RESIDENCE, HOLMDEL, NJ",
+     "page": "recording:1980-01-00b-private-residence-holmdel-nj"
+    },
+    {
+     "anchor": "1980#000180c",
+     "heading": "1980-01-00 - POWER STATION, NEW YORK CITY, NY",
+     "page": "recording:1980-01-00c-power-station-new-york-city-ny"
+    },
+    {
+     "anchor": "1980#000180d",
+     "heading": "1980-01-00 - POWER STATION, NEW YORK CITY, NY",
+     "page": "gig:1980-01-00d-power-station-new-york-city-ny"
+    }
+   ],
+   "date": "1980-01",
+   "kind": "no-entry",
+   "link": "1980#000180"
+  },
+  "e6bc91e1-ed17-49bd-819a-c4a8254963f7": {
+   "candidates": [
+    {
+     "anchor": "1973#010273a",
+     "heading": "1973-02-01 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1973-02-01-max-s-kansas-city-new-york-city-ny-early"
+    },
+    {
+     "anchor": "1973#010273b",
+     "heading": "1973-02-01 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1973-02-01-max-s-kansas-city-new-york-city-ny-late"
+    }
+   ],
+   "date": "1973-02-01",
+   "kind": "no-entry",
+   "link": "1973#010273"
+  },
+  "e6d1773a-7bd3-4fdb-b5a0-1c653c79ca0b": {
+   "candidates": [
+    {
+     "anchor": "1973#180173a",
+     "heading": "1973-01-18 - MY FATHER'S PLACE, ROSLYN, NY",
+     "likely": true,
+     "page": "gig:1973-01-18-my-father-s-place-roslyn-ny-early"
+    },
+    {
+     "anchor": "1973#180173b",
+     "heading": "1973-01-18 - MY FATHER'S PLACE, ROSLYN, NY",
+     "likely": true,
+     "page": "gig:1973-01-18-my-father-s-place-roslyn-ny-late"
+    }
+   ],
+   "date": "1973-01-18",
+   "kind": "no-entry",
+   "link": "1973#180173"
+  },
+  "e8171269-410e-4749-b9e1-29360318cfab": {
+   "candidates": [
+    {
+     "anchor": "1968#090868a",
+     "heading": "1968-08-09 - OFF BROAD STREET COFFEE HOUSE, RED BANK, NJ",
+     "likely": true,
+     "page": "gig:1968-08-09a-off-broad-street-coffee-house-red-bank-nj"
+    },
+    {
+     "anchor": "1968#090868b",
+     "heading": "1968-08-09 - OFF BROAD STREET COFFEE HOUSE, RED BANK, NJ",
+     "likely": true,
+     "page": "gig:1968-08-09b-off-broad-street-coffee-house-red-bank-nj"
+    }
+   ],
+   "date": "1968-08-09",
+   "kind": "no-entry",
+   "link": "1968#090868"
+  },
+  "e9edc2d1-eba8-4c8c-ba51-8d8b4a8dbcd4": {
+   "candidates": [
+    {
+     "anchor": "1973#071173a",
+     "heading": "1973-11-07 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1973-11-07-max-s-kansas-city-new-york-city-ny-early"
+    },
+    {
+     "anchor": "1973#071173b",
+     "heading": "1973-11-07 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1973-11-07-max-s-kansas-city-new-york-city-ny-late"
+    }
+   ],
+   "date": "1973-11-07",
+   "kind": "no-entry",
+   "link": "1973#071173"
+  },
+  "e9f16d92-93f1-4d72-8f27-221db36b87c2": {
+   "candidates": [
+    {
+     "anchor": "1995#000495",
+     "heading": "1995-04-00 - SPUR STUDIOS, AUSTIN, TX",
+     "likely": true,
+     "page": "recording:1995-04-00-spur-studios-austin-tx"
+    }
+   ],
+   "date": "1995-04",
+   "kind": "no-entry",
+   "link": "1995#000495b"
+  },
+  "ea075fc1-83d1-46ad-89eb-3d7e24b41c7f": {
+   "candidates": [
+    {
+     "anchor": "2014#030514a",
+     "heading": "2014-05-03 - NEW ORLEANS FAIR GROUNDS, NEW ORLEANS, LA",
+     "likely": true,
+     "page": "gig:2014-05-03a-fair-grounds-new-orleans-la"
+    },
+    {
+     "anchor": "2014#030514b",
+     "heading": "2014-05-03 - SAENGER THEATRE, NEW ORLEANS, LA",
+     "page": "gig:2014-05-03b-saenger-theatre-new-orleans-la"
+    }
+   ],
+   "date": "2014-05-03",
+   "kind": "no-entry",
+   "link": "2014#030514"
+  },
+  "ea699850-5b98-47b3-8af1-36c52d351449": {
+   "candidates": [
+    {
+     "anchor": "1974#170774a",
+     "heading": "1974-07-17 - LE GARAGE, SPRAY BEACH, NJ",
+     "likely": true,
+     "page": "gig:1974-07-17-garage-spray-beach-nj-early"
+    },
+    {
+     "anchor": "1974#170774b",
+     "heading": "1974-07-17 - LE GARAGE, SPRAY BEACH, NJ",
+     "likely": true,
+     "page": "gig:1974-07-17-garage-spray-beach-nj-late"
+    }
+   ],
+   "date": "1974-07-17",
+   "kind": "no-entry",
+   "link": "1974#170774"
+  },
+  "eb254282-e72a-4e75-bc2e-2ef93e253654": {
+   "candidates": [
+    {
+     "anchor": "1973#091173a",
+     "heading": "1973-11-09 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1973-11-09-max-s-kansas-city-new-york-city-ny-early"
+    },
+    {
+     "anchor": "1973#091173b",
+     "heading": "1973-11-09 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1973-11-09-max-s-kansas-city-new-york-city-ny-late"
+    }
+   ],
+   "date": "1973-11-09",
+   "kind": "no-entry",
+   "link": "1973#091173"
+  },
+  "eb41fd04-dbab-4fca-a68d-301863d80765": {
+   "candidates": [
+    {
+     "anchor": "1977#011277a",
+     "heading": "1977-12-01 - RECORD PLANT, NEW YORK CITY, NY",
+     "page": "recording:1977-12-01a-record-plant-new-york-city-ny"
+    },
+    {
+     "anchor": "1977#011277b",
+     "heading": "1977-12-01 - PLAZA SOUND STUDIOS, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "recording:1977-12-01b-plaza-sound-studios-new-york-city-ny"
+    }
+   ],
+   "date": "1977-12-01",
+   "kind": "no-entry",
+   "link": "1977#011277"
+  },
+  "eb4bbf18-bf72-40ad-893e-5218a78e1f01": {
+   "candidates": [
+    {
+     "anchor": "2026#160426",
+     "heading": "2026-04-16 - MORTGAGE MATCHUP CENTER, PHOENIX, AZ",
+     "likely": true,
+     "page": "gig:2026-04-16-mortgage-matchup-center-phoenix-az"
+    }
+   ],
+   "date": "2026-04-16",
+   "dateDiffers": true,
+   "heading": "2026-04-13 - CHASE CENTER, SAN FRANCISCO, CA",
+   "kind": "shared",
+   "link": "2026#130426",
+   "others": [
+    "cabf4768-6517-4c97-b74c-c7f551a92c93"
+   ],
+   "page": "gig:2026-04-13-chase-center-san-francisco-ca"
+  },
+  "edac8d62-adfe-491f-a7b4-b5ef627fd919": {
+   "date": "1973-11-03",
+   "kind": "no-entry",
+   "link": "1973#031173"
+  },
+  "ee99dead-4f43-47e2-92d2-2a899d984296": {
+   "candidates": [
+    {
+     "anchor": "2008#230608a",
+     "heading": "2008-06-23 - KONING BOUDEWIJNSTADION, BRUSSELS, BELGIUM",
+     "page": "nogig:2008-06-23a-koning-boudewijnstadion-brussels-belgium"
+    },
+    {
+     "anchor": "2008#230608b",
+     "heading": "2008-06-23 - SPORTPALEIS, ANTWERP, BELGIUM",
+     "likely": true,
+     "page": "gig:2008-06-23b-sportpaleis-antwerp-belgium"
+    }
+   ],
+   "date": "2008-06-23",
+   "kind": "no-entry",
+   "link": "2008#230608"
+  },
+  "eee0f7d8-fc28-42d7-94f6-dde33fe8e3c5": {
+   "candidates": [
+    {
+     "anchor": "1982#270682a",
+     "heading": "1982-06-27 - BIG MAN'S WEST, RED BANK, NJ",
+     "likely": true,
+     "page": "gig:1982-06-27a-big-man-s-west-red-bank-nj"
+    },
+    {
+     "anchor": "1982#270682b",
+     "heading": "1982-06-27 - THE STONE PONY, ASBURY PARK, NJ",
+     "page": "gig:1982-06-27b-stone-pony-asbury-park-nj"
+    }
+   ],
+   "date": "1982-06-27",
+   "kind": "no-entry",
+   "link": "1982#270682"
+  },
+  "efce82c4-a032-4111-8b9e-e8f04b6d09a8": {
+   "candidates": [
+    {
+     "anchor": "1965#001065a",
+     "heading": "1965-10-00 - RECREATION HALL, FORT MONMOUTH, NJ",
+     "page": "gig:1965-10-00a-recreation-hall-fort-monmouth-nj"
+    },
+    {
+     "anchor": "1965#001065b",
+     "heading": "1965-10-00 - RECEPTION HALL, MONMOUTH COUNTY, NJ",
+     "page": "gig:1965-10-00b-reception-hall-monmouth-county-nj"
+    },
+    {
+     "anchor": "1965#001065c",
+     "heading": "1965-10-00 - MARLBORO STATE HOSPITAL, MARLBORO, NJ",
+     "page": "gig:1965-10-00c-state-hospital-marlboro-nj"
+    }
+   ],
+   "date": "1965-10",
+   "kind": "no-entry",
+   "link": "1965#001065"
+  },
+  "f0441a80-f1ab-4e31-8217-d2372811cef5": {
+   "date": "1969-05-05",
+   "kind": "no-entry",
+   "link": "1969#050569"
+  },
+  "f438d0da-15ba-46cb-a76a-eaca86892cb4": {
+   "candidates": [
+    {
+     "anchor": "1974#070474a",
+     "heading": "1974-04-07 - WMMR STUDIO, PHILADELPHIA, PA",
+     "page": "interview:1974-04-07-wmmr-studio-philadelphia-pa"
+    },
+    {
+     "anchor": "1974#070474b",
+     "heading": "1974-04-07 - BISHOP DOUGHERTY STUDENT CENTER, SETON HALL UNIVERSITY, SOUTH ORANGE, NJ",
+     "likely": true,
+     "page": "gig:1974-04-07-bishop-dougherty-student-center-south-orange"
+    }
+   ],
+   "date": "1974-04-07",
+   "kind": "no-entry",
+   "link": "1974#070474"
+  },
+  "f4c0a58b-6c64-449c-accc-272a1e6ce4c5": {
+   "date": "1965",
+   "heading": "1965-00-00 - FREEHOLD ELKS LODGE, FREEHOLD, NJ",
+   "kind": "shared",
+   "link": "1965#000065b",
+   "others": [
+    "3a788d3d-d46c-4e95-a79f-927adf8e1517"
+   ],
+   "page": "gig:1965-00-00b-elks-lodge-freehold-nj"
+  },
+  "f5b251c0-7580-4b24-83e8-18fd64317f39": {
+   "candidates": [
+    {
+     "anchor": "1973#100273a",
+     "heading": "1973-02-10 - SUNSHINE IN, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:1973-02-10-sunshine-in-asbury-park-nj-early"
+    },
+    {
+     "anchor": "1973#100273b",
+     "heading": "1973-02-10 - SUNSHINE IN, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "gig:1973-02-10-sunshine-in-asbury-park-nj-late"
+    }
+   ],
+   "date": "1973-02-10",
+   "kind": "no-entry",
+   "link": "1973#100273"
+  },
+  "f60ec13f-0c48-4c64-b80d-b4a226207017": {
+   "candidates": [
+    {
+     "anchor": "2023#120923a",
+     "heading": "2023-09-12 - STONE HILL FARM, COLTS NECK, NJ",
+     "page": "interview:2023-09-12a-stone-hill-farm-colts-neck-nj"
+    },
+    {
+     "anchor": "2023#120923b",
+     "heading": "2023-09-12 - PPG PAINTS ARENA, PITTSBURGH, PA",
+     "likely": true,
+     "page": "nogig:2023-09-12b-ppg-paints-arena-pittsburgh-pa"
+    }
+   ],
+   "date": "2023-09-12",
+   "kind": "no-entry",
+   "link": "2023#120923"
+  },
+  "f6ab547e-a0a1-4e93-be8c-40616c696e5d": {
+   "candidates": [
+    {
+     "anchor": "1992#000392a",
+     "heading": "1992-03-00 - ROY BITTAN'S RECORDING STUDIO, MALIBU, CA",
+     "likely": true,
+     "page": "rehearsal:1992-03-00a-private-studio-malibu-ca"
+    },
+    {
+     "anchor": "1992#000392b",
+     "heading": "1992-03-00 - HOLLYWOOD CENTER STUDIOS, SOUNDSTAGE, LOS ANGELES, CA",
+     "page": "recording:1992-03-00b-hollywood-center-studios-los-angeles-c"
+    }
+   ],
+   "date": "1992-03",
+   "kind": "no-entry",
+   "link": "1992#000392"
+  },
+  "f7d4f911-58b3-48a6-9efe-47c5b4e17ee9": {
+   "candidates": [
+    {
+     "anchor": "1973#220973a",
+     "heading": "1973-09-22 - JAI ALAI FRONTON, MIAMI, FL",
+     "likely": true,
+     "page": "nogig:1973-09-22a-jai-alai-fronton-miami-fl"
+    },
+    {
+     "anchor": "1973#220973b",
+     "heading": "1973-09-22 - 914 SOUND STUDIOS, BLAUVELT, NY",
+     "page": "recording:1973-09-22b-914-sound-studios-blauvelt-ny"
+    }
+   ],
+   "date": "1973-09-22",
+   "kind": "no-entry",
+   "link": "1973#220973"
+  },
+  "f93487eb-c3e6-4ec7-be33-3785f6eaaf0f": {
+   "candidates": [
+    {
+     "anchor": "1998#141298a",
+     "heading": "1998-12-14 - TEATRO REAL, MADRID, SPAIN",
+     "likely": true,
+     "page": "interview:1998-12-14a-teatro-real-madrid-spain"
+    },
+    {
+     "anchor": "1998#141298b",
+     "heading": "1998-12-14 - CADENA STUDIO, MADRID, SPAIN",
+     "page": "interview:1998-12-14b-cadena-studio-madrid-spain"
+    },
+    {
+     "anchor": "1998#141298c",
+     "heading": "1998-12-14 - TVE STUDIOS, MADRID, SPAIN",
+     "page": "gig:1998-12-14c-tve-studios-madrid-spain"
+    }
+   ],
+   "date": "1998-12-14",
+   "kind": "no-entry",
+   "link": "1998#141298"
+  },
+  "facf42d8-9ac7-47ba-bcbb-578919adabad": {
+   "candidates": [
+    {
+     "anchor": "2006#060406a",
+     "heading": "2006-04-06 - PARAMOUNT THEATRE, ASBURY PARK, NJ",
+     "likely": true,
+     "page": "rehearsal:2006-04-06a-paramount-theatre-asbury-park-nj"
+    },
+    {
+     "anchor": "2006#060406b",
+     "heading": "2006-04-06 - FREEHOLD REGIONAL HIGH SCHOOL, GARDENS, FREEHOLD, NJ",
+     "page": "nobruce:2006-04-06b-regional-high-school-freehold-nj"
+    }
+   ],
+   "date": "2006-04-06",
+   "kind": "no-entry",
+   "link": "2006#060406"
+  },
+  "fb5743ce-b4e6-4c8d-b3da-818c809a53ce": {
+   "date": "1967-07-26",
+   "kind": "no-entry",
+   "link": "1967#260767"
+  },
+  "fe126f9a-b359-47e2-964c-3d118a179c54": {
+   "candidates": [
+    {
+     "anchor": "1971#040771",
+     "heading": "1971-07-04 - STUDENT PRINCE, ASBURY PARK, NJ",
+     "page": "gig:1971-07-04-student-prince-asbury-park-nj"
+    }
+   ],
+   "date": "1971-07-04",
+   "heading": "1971-07-03 - THE UPSTAGE, ASBURY PARK, NJ",
+   "kind": "date-differs",
+   "link": "1971#030771b",
+   "page": "gig:1971-07-03-upstage-asbury-park-nj"
+  },
+  "fe60af3b-38e0-48a2-bd83-6ecd783fc4cf": {
+   "candidates": [
+    {
+     "anchor": "1973#020273a",
+     "heading": "1973-02-02 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1973-02-02-max-s-kansas-city-new-york-city-ny-early"
+    },
+    {
+     "anchor": "1973#020273b",
+     "heading": "1973-02-02 - MAX'S KANSAS CITY, NEW YORK CITY, NY",
+     "likely": true,
+     "page": "gig:1973-02-02-max-s-kansas-city-new-york-city-ny-late"
+    }
+   ],
+   "date": "1973-02-02",
+   "kind": "no-entry",
+   "link": "1973#020273"
+  }
+ },
+ "pages": {},
+ "reports": {
+  "date-parts": {
+   "count": 3,
+   "files": [
+    "REPORTING/MISSING-date-parts-in-tags-cleanedup.org"
+   ]
+  },
+  "dependent-name": {
+   "count": 36,
+   "files": [
+    "gignote/*.html",
+    "gallery/*.html",
+    "eye/*.html",
+    "media/*.html",
+    "recnote/*.html"
+   ]
+  },
+  "dependent-title": {
+   "count": 39,
+   "files": [
+    "REPORTING/differences-detail-title-category-title-cleanedup.txt",
+    "REPORTING/DIFFERENCES-in-titles-between-year-and-detail-pages-CLEANEDUP.txt"
+   ]
+  },
+  "files-no-images": {
+   "count": 32,
+   "files": [
+    "REPORTING/MISMATCH-images-files-tag.org"
+   ]
+  },
+  "first-letter": {
+   "count": 10,
+   "files": [
+    "REPORTING/MISSING-first-character-tag-in-title.txt"
+   ]
+  },
+  "mb": {
+   "count": 223,
+   "files": [
+    "search/event_linked_to_artist.org",
+    "brucebase-event.txt"
+   ]
+  },
+  "no-parent": {
+   "count": 105,
+   "files": [
+    "REPORTING/NO-PARENT-detail-pages.org"
+   ]
+  },
+  "no-tags": {
+   "count": 38,
+   "files": [
+    "REPORTING/MISSING-tags.txt"
+   ]
+  }
+ },
+ "run": {
+  "bruceparser": "0.26.0",
+  "commit": "cfce494",
+  "date": "2026-11-19",
+  "feed": "1.7"
+ },
+ "site": "https://brucebase.wikidot.com",
+ "songTags": {},
+ "tagTables": {
+  "caProvinces": {
+   "AB": "Alberta",
+   "BC": "British Columbia",
+   "MB": "Manitoba",
+   "NB": "New Brunswick",
+   "NL": "Newfoundland and Labrador",
+   "NS": "Nova Scotia",
+   "NT": "Northwest Territories",
+   "NU": "Nunavut",
+   "ON": "Ontario",
+   "PE": "Prince Edward Island",
+   "QC": "Quebec",
+   "SK": "Saskatchewan",
+   "YT": "Yukon"
+  },
+  "countryRegions": {
+   "Australia": [
+    "oceania"
+   ],
+   "Austria": [
+    "europe"
+   ],
+   "Belgium": [
+    "europe"
+   ],
+   "Brazil": [
+    "southamerica"
+   ],
+   "Czech Republic": [
+    "europe"
+   ],
+   "Denmark": [
+    "europe",
+    "scandinavia"
+   ],
+   "England": [
+    "unitedkingdom",
+    "europe"
+   ],
+   "Finland": [
+    "europe",
+    "scandinavia"
+   ],
+   "France": [
+    "europe"
+   ],
+   "Germany": [
+    "europe"
+   ],
+   "Greece": [
+    "europe"
+   ],
+   "Iceland": [
+    "europe",
+    "scandinavia"
+   ],
+   "Ireland": [
+    "europe"
+   ],
+   "Italy": [
+    "europe"
+   ],
+   "Japan": [
+    "asia"
+   ],
+   "Mexico": [
+    "northamerica"
+   ],
+   "Netherlands": [
+    "europe"
+   ],
+   "New Zealand": [
+    "oceania"
+   ],
+   "Northern Ireland": [
+    "unitedkingdom",
+    "europe"
+   ],
+   "Norway": [
+    "europe",
+    "scandinavia"
+   ],
+   "Poland": [
+    "europe"
+   ],
+   "Portugal": [
+    "europe"
+   ],
+   "Scotland": [
+    "unitedkingdom",
+    "europe"
+   ],
+   "Spain": [
+    "europe"
+   ],
+   "Sweden": [
+    "europe",
+    "scandinavia"
+   ],
+   "Switzerland": [
+    "europe"
+   ],
+   "Wales": [
+    "unitedkingdom",
+    "europe"
+   ]
+  },
+  "eStreetDotted": {
+   "charles giordano": "charles.giordano",
+   "clarence clemons": "clarence.clemons",
+   "danny federici": "danny.federici",
+   "garry tallent": "garry.tallent",
+   "jake clemons": "jake.clemons",
+   "max weinberg": "max.weinberg",
+   "nils lofgren": "nils.lofgren",
+   "patti scialfa": "patti.scialfa",
+   "roy bittan": "roy.bittan",
+   "soozie tyrell": "soozie.tyrell",
+   "steven van zandt": "steven.vanzandt"
+  },
+  "expectedRegions": [
+   "europe",
+   "oceania"
+  ],
+  "placeTags": {
+   "Atlantic City": [
+    "atlanticcitynj"
+   ],
+   "East Berlin": [
+    "berlin"
+   ],
+   "East Germany": [
+    "germany"
+   ],
+   "Mt. Macedon": [
+    "macedon"
+   ],
+   "The Netherlands": [
+    "thenetherlands",
+    "netherlands"
+   ],
+   "West Berlin": [
+    "berlin"
+   ],
+   "West Germany": [
+    "germany"
+   ]
+  },
+  "relationAlias": {
+   "the 1992–93 world tour band": "otherband"
+  },
+  "songCombos": {
+   "land of hope and dreams - people get ready": "lohad.pgr"
+  },
+  "tours": [
+   {
+    "name": "Greetings From Asbury Park",
+    "ranges": [
+     [
+      "1972-10-28",
+      "1973-09-22"
+     ]
+    ],
+    "tag": "tour_gfap"
+   },
+   {
+    "name": "The Wild, The Innocent & The E Street Shuffle",
+    "ranges": [
+     [
+      "1973-09-28",
+      "1975-03-09"
+     ]
+    ],
+    "tag": "tour_wiess"
+   },
+   {
+    "name": "Born to Run",
+    "ranges": [
+     [
+      "1975-07-20",
+      "1975-12-31"
+     ],
+     [
+      "1976-03-25",
+      "1976-05-28"
+     ]
+    ],
+    "tag": "tour_btr"
+   },
+   {
+    "name": "Chicken Scratch",
+    "ranges": [
+     [
+      "1976-03-25",
+      "1976-05-28"
+     ]
+    ],
+    "tag": "tour_cs"
+   },
+   {
+    "name": "The Lawsuit",
+    "ranges": [
+     [
+      "1976-09-26",
+      "1976-11-04"
+     ],
+     [
+      "1977-02-07",
+      "1977-03-25"
+     ]
+    ],
+    "tag": "tour_lwst"
+   },
+   {
+    "name": "Darkness On The Edge Of Town",
+    "ranges": [
+     [
+      "1978-05-23",
+      "1979-01-01"
+     ]
+    ],
+    "tag": "tour_doteot"
+   },
+   {
+    "name": "The River",
+    "ranges": [
+     [
+      "1980-10-03",
+      "1981-06-08"
+     ],
+     [
+      "1981-07-02",
+      "1981-09-14"
+     ]
+    ],
+    "tag": "tour_rvr"
+   },
+   {
+    "name": "Born In The U.S.A.",
+    "ranges": [
+     [
+      "1984-06-29",
+      "1985-01-27"
+     ],
+     [
+      "1985-03-21",
+      "1985-04-23"
+     ],
+     [
+      "1985-06-01",
+      "1985-07-07"
+     ],
+     [
+      "1985-08-05",
+      "1985-10-02"
+     ]
+    ],
+    "tag": "tour_bitusa"
+   },
+   {
+    "name": "Tunnel Of Love",
+    "ranges": [
+     [
+      "1988-02-25",
+      "1988-05-23"
+     ],
+     [
+      "1988-06-11",
+      "1988-08-03"
+     ]
+    ],
+    "tag": "tour_tol"
+   },
+   {
+    "name": "Amnesty International - Human Rights Now!",
+    "ranges": [
+     [
+      "1988-09-02",
+      "1988-10-15"
+     ]
+    ],
+    "tag": "tour_hrn"
+   },
+   {
+    "name": "The 1992-93 World Tour",
+    "ranges": [
+     [
+      "1992-06-15",
+      "1992-12-17"
+     ],
+     [
+      "1993-03-31",
+      "1993-06-01"
+     ]
+    ],
+    "tag": "tour_htlt"
+   },
+   {
+    "name": "Solo Acoustic",
+    "ranges": [
+     [
+      "1995-11-22",
+      "1996-01-28"
+     ],
+     [
+      "1996-02-12",
+      "1996-05-08"
+     ],
+     [
+      "1996-09-16",
+      "1996-12-14"
+     ],
+     [
+      "1997-01-27",
+      "1997-02-17"
+     ],
+     [
+      "1997-05-06",
+      "1997-05-26"
+     ]
+    ],
+    "tag": "tour_gotj"
+   },
+   {
+    "name": "Reunion",
+    "ranges": [
+     [
+      "1999-04-09",
+      "1999-06-27"
+     ],
+     [
+      "1999-07-15",
+      "1999-11-29"
+     ],
+     [
+      "2000-02-28",
+      "2000-07-01"
+     ]
+    ],
+    "tag": "tour_rnn"
+   },
+   {
+    "name": "The Rising",
+    "ranges": [
+     [
+      "2002-08-07",
+      "2002-10-27"
+     ],
+     [
+      "2002-11-03",
+      "2002-12-17"
+     ],
+     [
+      "2003-02-28",
+      "2003-04-19"
+     ],
+     [
+      "2003-05-06",
+      "2003-10-04"
+     ]
+    ],
+    "tag": "tour_rsng"
+   },
+   {
+    "name": "Vote For Change",
+    "ranges": [
+     [
+      "2004-10-01",
+      "2004-10-13"
+     ]
+    ],
+    "tag": "tour_vfc"
+   },
+   {
+    "name": "Devils & Dust Solo and Acoustic",
+    "ranges": [
+     [
+      "2005-04-25",
+      "2005-06-28"
+     ],
+     [
+      "2005-07-13",
+      "2005-11-22"
+     ]
+    ],
+    "tag": "tour_dd"
+   },
+   {
+    "name": "Seeger Sessions",
+    "ranges": [
+     [
+      "2006-04-30",
+      "2006-06-25"
+     ],
+     [
+      "2006-10-01",
+      "2006-11-21"
+     ]
+    ],
+    "tag": "tour_sgrs"
+   },
+   {
+    "name": "Magic",
+    "ranges": [
+     [
+      "2007-10-02",
+      "2007-12-19"
+     ],
+     [
+      "2008-02-28",
+      "2008-05-02"
+     ],
+     [
+      "2008-05-22",
+      "2008-07-20"
+     ],
+     [
+      "2008-07-27",
+      "2008-08-24"
+     ]
+    ],
+    "tag": "tour_mgc"
+   },
+   {
+    "name": "Working On A Dream",
+    "ranges": [
+     [
+      "2009-04-01",
+      "2009-08-02"
+     ],
+     [
+      "2009-08-19",
+      "2009-11-22"
+     ]
+    ],
+    "tag": "tour_woad"
+   },
+   {
+    "name": "Wrecking Ball",
+    "ranges": [
+     [
+      "2012-03-18",
+      "2012-05-02"
+     ],
+     [
+      "2012-05-13",
+      "2012-07-31"
+     ],
+     [
+      "2012-08-14",
+      "2012-12-10"
+     ],
+     [
+      "2013-03-14",
+      "2013-03-31"
+     ],
+     [
+      "2013-04-29",
+      "2013-07-28"
+     ],
+     [
+      "2013-09-12",
+      "2013-09-21"
+     ]
+    ],
+    "tag": "tour_wb"
+   },
+   {
+    "name": "High Hopes",
+    "ranges": [
+     [
+      "2014-01-26",
+      "2014-03-02"
+     ],
+     [
+      "2014-04-08",
+      "2014-05-18"
+     ]
+    ],
+    "tag": "tour_hh"
+   },
+   {
+    "name": "The River 2016",
+    "ranges": [
+     [
+      "2016-01-16",
+      "2016-04-25"
+     ],
+     [
+      "2016-05-14",
+      "2016-09-14"
+     ]
+    ],
+    "tag": "tour_rvr16"
+   },
+   {
+    "name": "Book Promotion",
+    "ranges": [
+     [
+      "2016-09-27",
+      "2016-12-02"
+     ]
+    ],
+    "tag": "tour_book"
+   },
+   {
+    "name": "Summer 17",
+    "ranges": [
+     [
+      "2017-01-22",
+      "2017-02-25"
+     ]
+    ],
+    "tag": "tour_sumr17"
+   },
+   {
+    "name": "Springsteen On Broadway",
+    "ranges": [
+     [
+      "2017-10-03",
+      "2018-12-15"
+     ],
+     [
+      "2021-06-26",
+      "2021-09-04"
+     ]
+    ],
+    "tag": "tour_sob"
+   },
+   {
+    "name": "2023-24 International",
+    "ranges": [
+     [
+      "2023-02-01",
+      "2023-04-14"
+     ],
+     [
+      "2023-04-28",
+      "2023-12-12"
+     ]
+    ],
+    "tag": "tour_23int"
+   },
+   {
+    "name": "2023-25 International",
+    "ranges": [
+     [
+      "2024-03-19",
+      "2024-04-21"
+     ],
+     [
+      "2024-05-05",
+      "2024-07-27"
+     ],
+     [
+      "2024-08-15",
+      "2024-11-22"
+     ],
+     [
+      "2025-05-14",
+      "2025-07-03"
+     ]
+    ],
+    "tag": "tour_23int"
+   },
+   {
+    "name": "Land Of Hope And Dreams",
+    "ranges": [
+     [
+      "2025-05-14",
+      "2025-07-03"
+     ],
+     [
+      "2026-03-31",
+      "2026-05-30"
+     ]
+    ],
+    "tag": "tour_lohad"
+   },
+   {
+    "name": "Land Of Hope And Dreams - No Kings",
+    "ranges": [
+     [
+      "2026-03-31",
+      "2026-05-30"
+     ]
+    ],
+    "tag": "tour_lohadnk"
+   }
+  ],
+  "usStates": {
+   "AK": "Alaska",
+   "AL": "Alabama",
+   "AR": "Arkansas",
+   "AZ": "Arizona",
+   "CA": "California",
+   "CO": "Colorado",
+   "CT": "Connecticut",
+   "DC": "District of Columbia",
+   "DE": "Delaware",
+   "FL": "Florida",
+   "GA": "Georgia",
+   "HI": "Hawaii",
+   "IA": "Iowa",
+   "ID": "Idaho",
+   "IL": "Illinois",
+   "IN": "Indiana",
+   "KS": "Kansas",
+   "KY": "Kentucky",
+   "LA": "Louisiana",
+   "MA": "Massachusetts",
+   "MD": "Maryland",
+   "ME": "Maine",
+   "MI": "Michigan",
+   "MN": "Minnesota",
+   "MO": "Missouri",
+   "MS": "Mississippi",
+   "MT": "Montana",
+   "NC": "North Carolina",
+   "ND": "North Dakota",
+   "NE": "Nebraska",
+   "NH": "New Hampshire",
+   "NJ": "New Jersey",
+   "NM": "New Mexico",
+   "NV": "Nevada",
+   "NY": "New York",
+   "OH": "Ohio",
+   "OK": "Oklahoma",
+   "OR": "Oregon",
+   "PA": "Pennsylvania",
+   "RI": "Rhode Island",
+   "SC": "South Carolina",
+   "SD": "South Dakota",
+   "TN": "Tennessee",
+   "TX": "Texas",
+   "UT": "Utah",
+   "VA": "Virginia",
+   "VT": "Vermont",
+   "WA": "Washington",
+   "WI": "Wisconsin",
+   "WV": "West Virginia",
+   "WY": "Wyoming"
+  },
+  "venueAlias": {
+   "bruce springsteen center for american music": "bscfam"
+  }
+ },
+ "venueTags": {}
+}

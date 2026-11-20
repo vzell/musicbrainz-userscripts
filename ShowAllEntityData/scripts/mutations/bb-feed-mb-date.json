@@ -1,0 +1,158 @@
+[
+    {
+        "name": "mb date: the kind is unknown to the script",
+        "why": "Feed 1.7's date-differs is one _BB_FEED_MB_KINDS entry; without it no cell is marked.",
+        "edits": [
+            {
+                "find": "        'date-differs': { id: 'bb-mb-date', glyph: '±', level: 'warn', setting: 'sa_findings_bb_mb_date',",
+                "replace": "        'date-differs-x': { id: 'bb-mb-date', glyph: '±', level: 'warn', setting: 'sa_findings_bb_mb_date',"
+            }
+        ],
+        "spec": "tests/fixtures/bb-feed.spec.js",
+        "grep": "date-differs ⚠️ ± on the Event cell",
+        "expect": "fail"
+    },
+    {
+        "name": "mb date: the kind follows another kind's switch",
+        "why": "date-differs has its own setting, sa_findings_bb_mb_date.",
+        "edits": [
+            {
+                "find": "glyph: '±', level: 'warn', setting: 'sa_findings_bb_mb_date',",
+                "replace": "glyph: '±', level: 'warn', setting: 'sa_findings_bb_mb_shared',"
+            }
+        ],
+        "spec": "tests/fixtures/bb-feed.spec.js",
+        "grep": "own switch off: no ± mark",
+        "expect": "fail"
+    },
+    {
+        "name": "mb date: no verdict when the name agrees with the entry",
+        "why": "The name agreeing with Brucebase says the event's date is likely wrong (mockup answer 2).",
+        "edits": [
+            {
+                "find": "        if (nd === ed && nd !== evd) return `Its name says ${nd}, as Brucebase does: likely the event's date is wrong.`;",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-feed.spec.js",
+        "grep": "the verdict: by the date at the start of the name",
+        "expect": "fail"
+    },
+    {
+        "name": "mb date: no verdict when the name agrees with the event's date",
+        "why": "The name agreeing with the event's date says the link or the wiki's date is likely wrong.",
+        "edits": [
+            {
+                "find": "        if (nd === evd && nd !== ed) return `Its name says ${nd} too: likely the link, or the wiki's date, is wrong.`;",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-feed.spec.js",
+        "grep": "the verdict: by the date at the start of the name",
+        "expect": "fail"
+    },
+    {
+        "name": "mb date: a name's U+2010 hyphens are not read",
+        "why": "MusicBrainz names write their dates with U+2010 (1971‐07‐03).",
+        "edits": [
+            {
+                "find": "String(s || '').replace(/[\\u2010\\u2011\\u2012\\u2013]/g, '-')",
+                "replace": "String(s || '')"
+            }
+        ],
+        "spec": "tests/fixtures/bb-feed.spec.js",
+        "grep": "the verdict: by the date at the start of the name",
+        "expect": "fail"
+    },
+    {
+        "name": "mb date: the cell's first event link is taken (the artwork icon's)",
+        "why": "A guard no spec can see: on the artist's, place's and area's event lists the caa extractor moves the event-art icon link (/event/<mbid>/event-art, no text) out of the Event cell before any finding reads it (mutation run of 2026-11-20: the card test passed with it).",
+        "edits": [
+            {
+                "find": "        const a = links.find(x => /\\/event\\/[0-9a-f-]{36}\\/?$/.test(x.getAttribute('href') || '')) || links[0];",
+                "replace": "        const a = links[0];"
+            }
+        ],
+        "spec": "tests/fixtures/bb-feed.spec.js",
+        "grep": "the date-differs card",
+        "expect": "pass"
+    },
+    {
+        "name": "mb date: the disambiguation is not read from the cell",
+        "why": "The card shows the event's disambiguation (the mockup's Event row).",
+        "edits": [
+            {
+                "find": "            dis: comment ? _dpText(comment.textContent).replace(/^\\((.*)\\)$/, '$1') : '',",
+                "replace": "            dis: '',"
+            }
+        ],
+        "spec": "tests/fixtures/bb-feed.spec.js",
+        "grep": "the date-differs card",
+        "expect": "fail"
+    },
+    {
+        "name": "mb date: the hover text says nothing when the wiki has no entry of the date",
+        "why": "With no candidates the words say that the wiki has no entry of the event's date.",
+        "edits": [
+            {
+                "find": "(withList ? (list || ` The wiki has no entry of ${f.date || 'the date'}.`) : '')",
+                "replace": "(withList ? list : '')"
+            }
+        ],
+        "spec": "tests/fixtures/bb-feed.spec.js",
+        "grep": "date-differs ⚠️ ± on the Event cell",
+        "expect": "fail"
+    },
+    {
+        "name": "mb date: the hover text has no verdict",
+        "why": "The cell's hover text gets the name, so it can say which side is likely wrong.",
+        "edits": [
+            {
+                "find": "return r && r.fact ? `${_bbFeedMbText(r.fact, r.name)} ${_bbFeedSource()}` : '';",
+                "replace": "return r && r.fact ? `${_bbFeedMbText(r.fact)} ${_bbFeedSource()}` : '';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-feed.spec.js",
+        "grep": "date-differs ⚠️ ± on the Event cell",
+        "expect": "fail"
+    },
+    {
+        "name": "mb date: the event page's mark has no verdict",
+        "why": "The sidebar mark's words get the page's heading as the name.",
+        "edits": [
+            {
+                "find": "b.setAttribute('aria-label', `${k.label}: ${_bbFeedMbText(f, b.dataset.mbBbmbName)}`);",
+                "replace": "b.setAttribute('aria-label', `${k.label}: ${_bbFeedMbText(f)}`);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-feed.spec.js",
+        "grep": "an event page: ⚠️ ± beside its Brucebase link",
+        "expect": "fail"
+    },
+    {
+        "name": "mb date: the card loses the disambiguation",
+        "why": "The card is drawn with the target's disambiguation.",
+        "edits": [
+            {
+                "find": "card.innerHTML = _bbFeedMbCardHtml(tg.fact, tg.name, tg.dis || '');",
+                "replace": "card.innerHTML = _bbFeedMbCardHtml(tg.fact, tg.name, '');"
+            }
+        ],
+        "spec": "tests/fixtures/bb-feed.spec.js",
+        "grep": "the date-differs card",
+        "expect": "fail"
+    },
+    {
+        "name": "mb date: the card says nothing when the wiki has no entry of the date",
+        "why": "A date-differs card without candidates says the wiki has none of the event's date.",
+        "edits": [
+            {
+                "find": "                    : `<p>The wiki has no entry of ${esc(f.date || 'the date')}.</p>`) +",
+                "replace": "                    : '') +"
+            }
+        ],
+        "spec": "tests/fixtures/bb-feed.spec.js",
+        "grep": "the date-differs card",
+        "expect": "fail"
+    }
+]

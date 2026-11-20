@@ -880,6 +880,7 @@ back).
 | ⚠️     | Brucebase page named differently from its show (Brucebase feed) | Brucebase lists: Event, Title, Name, Page   |
 | ⚠️     | Two events link one Brucebase entry (Brucebase feed)            | Event lists: Event                          |
 | ⚠️     | Brucebase link is no year-page anchor (Brucebase feed)          | Event lists: Event                          |
+| ⚠️     | Brucebase entry has another date (Brucebase feed)               | Event lists: Event                          |
 | ⚠️     | Pending edits                                                   | any column                                  |
 | ⚠️     | Live credit without a date                                      | Release tracklist: credit columns           |
 | ❌    | MB-Event: the Brucebase link differs (once looked up)           | Brucebase year: MB-Event                    |
@@ -4038,7 +4039,14 @@ reads, is read again on the next press once it is an hour old.
   links a show's page instead of its year-page anchor (⚠️) is marked on its
   Event cell in every event list, and beside its Brucebase link on its own
   page. Hover the mark: the card lists the wiki's entries of that date as
-  links, the likely one first in green, so the link can be corrected. An
+  links, the likely one first in green, so the link can be corrected.
+  Since the feed of BruceParser 0.26.0 also an event whose Brucebase entry
+  has another date than the event (⚠️ ±; 1971#030771b, the show of
+  1971-07-03, on an event dated 1971-07-04). Its card says which side is
+  likely wrong by the date the event's own name starts with: the name
+  agrees with Brucebase, so likely the event's date; or with the event's
+  date, so likely the link or the wiki's date. A span, such as a month of
+  studio sessions, fits when it holds the entry's date. An
   event list's or an event page's press reads the feed (at most once a day,
   shared with Brucebase); *Read the Brucebase feed on MusicBrainz too*
   (⚙️ Settings → 📚 BRUCEBASE) turns this part off.

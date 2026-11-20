@@ -2958,6 +2958,87 @@ show's. A WARNING.
   Recent changes' Page cell (a small feed). Mutations:
   `scripts/mutations/bb-feed-dependent-name.json`.
 
+### Feed 1.7: a MusicBrainz event whose Brucebase entry has another date (Track A idea 5, check 1, 2026-11-20)
+
+Env: 2026-11-20T13:27:21+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux
+6.18.58.1-microsoft-standard-WSL2) · n/a (the probes: Python over
+BruceParser's run of 2026-11-19 and one read-only MusicBrainz browse; the
+spec: Playwright Chromium, no Tampermonkey)
+
+Idea 5's first remaining check was "an MB event's title against the MB-style
+title BruceParser derives from Brucebase" (`search/extract-mb-event-titles.sh`).
+Of its 4,184 events, 3,358 titles are equal, 228 link no entry (feed 1.3's
+no-entry) and 598 differ. Nearly all of the 598 are naming conventions:
+MusicBrainz names the venue as it was called at the time ("Fleet Center"),
+in English ("Globe Arena") and in its own forms ("Radio Station WBCN‐FM"),
+and allows named events ("The 1987 Induction Ceremony"). The rest come from
+the derivation's own rules (", early show" in the date, a 12-rule case
+`sed`). About 30 real errors (MusicBrainz typos such as "Pollack Theatre",
+dropped accents, real disagreements on the venue) follow no rule that tells
+them apart. vzell (2026-11-20): NO title comparison. Instead, the one precise
+slice, the date. Mockup https://claude.ai/artifact/8iqJ2nM2xVb8JTkLgSwbod
+(source `debug/bb-feed-mb-date-mockup.html`), every answer as recommended.
+
+- **The kind** (BruceParser 0.26.0 `feed.sh` 1.7, `parse_mb`'s `adiff()`):
+  `date-differs`, an event whose link reaches one entry of its own (none of
+  no-entry, shared, not-anchor) whose anchor names a date outside the
+  event's:
+  - compared as far as both go: the anchor without its `00` parts, each
+    date cut to the shorter;
+  - a span in the Date column (`1976-01 - 1976-03`) fits when it holds the
+    anchor's date. The first version flagged the Record Plant sessions
+    against the wiki's 1976-02 entry.
+
+  It carries the entry's `page` and `heading` and the wiki's entries of the
+  event's date as `candidates`. 7 events in the run of 2026-11-19. In 6 the
+  event's name agrees with the wiki and its begin date is a day later
+  (1971-07-03 The Upstage, begin 1971-07-04; one is the "late, second show"
+  of 1975-10-11 Red Bank, marked like the others, answer 4). In 1
+  (1991-02-17 McEnroe Residence) name and date agree and the entry is of
+  1991-02-16.
+- **In the script:** `_BB_FEED_MB_KINDS['date-differs']`, ⚠️ `bb-mb-date` ±,
+  "Brucebase entry has another date", `sa_findings_bb_mb_date` (on). Where
+  and how it is read: as the three kinds of feed 1.3.
+- **The verdict** (`_bbFeedMbVerdict()`, answer 2): `_bbFeedMbDateOf()`
+  reads the date at the start of the event's name (U+2010 or "-"), the
+  entry's heading (its `00` parts left out) and the feed's date (a span's
+  begin). It says one of two things:
+  - the name agrees with the entry: "likely the event's date is wrong";
+  - the name agrees with the event's date: "likely the link, or the wiki's
+    date, is wrong".
+
+  Otherwise it says nothing. The name is the Event cell's link text (rows),
+  or the event page's h1 (the sidebar mark).
+- **The card** (`_bbFeedMbCardHtml()`):
+  - Event (with the cell's or h1's `.comment` disambiguation), Date and
+    Links;
+  - the words, and the verdict in bold on a line of its own;
+  - the wiki's entries of the event's date as links (answer 3), or "The
+    wiki has no entry of …".
+
+  The cell's hover text says the same in one line. The three older kinds'
+  cards are unchanged.
+- **A guard, not a fix:** `_bbFeedMbCellFact()` now prefers the cell's
+  `/event/<mbid>` link to its first `/event/` link, which on MusicBrainz's
+  own markup is an event-art icon's (`…/event-art`, no text). On the
+  artist's, place's and area's event lists the `caa` extractor has moved
+  that link into the EAA column before a finding reads the cell, so the
+  name was never empty there; its mutation is `"expect": "pass"`.
+- **The probe** (`scripts/probe-bb-feed.py`, part 6, now with the date rule)
+  and the feed agree: 7 / 197 / 18 / 1, no difference. The rest of feed
+  1.7 is unchanged against 1.6.
+- **Tests:** `tests/fixtures/bb-feed.spec.js`, 6 more:
+  - the real feed's counts and the Upstage case;
+  - the Event cells and the menu count;
+  - the card (verdict both ways, the disambiguation, no entry);
+  - the switch;
+  - the verdict's cases through `__saTest.bbFeedMb(mbid, name)`;
+  - the event page's mark.
+
+  The real feed is `tests/fixtures/bb-feed-2026-11-19-dates.json` (its
+  envelope and whole `mb`, `scripts/build-bb-feed-dates-fixture.py`).
+  Mutations: `scripts/mutations/bb-feed-mb-date.json` (12).
+
 ## Show links on Brucebase's own pages (Phase 8, 2026-11-11)
 
 A show on its year page (`/<yyyy>#<ddmmyy>`: an event's "Info & Setlist", a
