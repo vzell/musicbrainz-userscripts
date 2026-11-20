@@ -162,6 +162,15 @@ test.describe('rec-dup: strict on an artist\'s recordings (Petty)', () => {
             for (const m of members) {
                 expect(members.some(o => o !== m && o.isrcs.some(x => m.isrcs.includes(x))), `${m.mbid} shares an ISRC in its group`).toBe(true);
             }
+            // half 3: the gates hold for the whole group (Fusion's gatedUnionFind):
+            // one kind (audio or video), at most 30 s between its shortest and
+            // longest, no two different live dates
+            const secs = members.map(m => m.secs).filter(s => s != null);
+            const dates = new Set(members.map(m => m.date).filter(Boolean));
+            expect(new Set(members.map(m => m.video)).size, `group ${members[0].key}: one kind`).toBe(1);
+            expect(Math.max(...secs) - Math.min(...secs), `group ${members[0].key}: lengths`).toBeLessThanOrEqual(30);
+            expect(dates.size, `group ${members[0].key}: dates`).toBeLessThanOrEqual(1);
+            expect(members.some(m => m.pending), `group ${members[0].key}: no open edit`).toBe(false);
         }
     });
 
@@ -408,6 +417,30 @@ test.describe('rec-dup: normal on a release tracklist (planted cases)', () => {
         }
     });
 
+    test('a track that links no work: the card under the "no work" text', async ({ page }) => {
+        await openRt(page);
+        const mbid = RT.expected.recordings[RT.expected.noWork[0]];
+        const cell = await page.evaluate((m) => {
+            const td = document.querySelector(`a[href="/recording/${m}"]`).closest('td');
+            const cmp = JSON.parse(td.getAttribute('data-mb-tip-cmp') || '{"c":[]}');
+            return { work: td.dataset.mbWorkFlag || null, title: td.getAttribute('title') || '', dup: cmp.c.find(c => c.kind === 'dup') || null };
+        }, mbid);
+        // the family keeps its paint; its text comes first, the finding's line under it
+        expect(cell.work).toBe('none');
+        const lines = cell.title.split('\n');
+        expect(lines[0]).toContain('not linked to any work');
+        expect(lines[1]).toContain('Possible duplicate recording: same recording as');
+        expect(cell.dup && cell.dup.at).toBe(1);
+        const td = page.locator(`a[href="/recording/${mbid}"]`).locator('xpath=ancestor::td[1]');
+        await td.scrollIntoViewIfNeeded();
+        await td.hover();
+        const tip = page.locator('#mb-stat-tooltip');
+        await expect(tip).toBeVisible({ timeout: 5000 });
+        await expect(tip).toContainText('not linked to any work');
+        await expect(tip.locator('.mb-tt-pill.mb-recdup-normal')).toHaveText('normal');
+        await expect(tip.locator('ul.mb-recdup-list li')).toHaveCount(1);
+    });
+
     test('the cutoff setting: strict groups nothing here (no ISRC on the page)', async ({ page }) => {
         await openRt(page, { sa_findings_rec_dup_cutoff: 'strict' });
         const ctx = await page.evaluate(() => window.__saTest.recDup());
@@ -422,5 +455,10 @@ test.describe('rec-dup: normal on a release tracklist (planted cases)', () => {
         expect((await findingRow(page, 'warn', 'rec-dup')).count).toBe(n);
         await clickFinding(page, 'rec-dup');
         await expect.poll(() => findingRowState(page, 'rec-dup'), SETTLE).toEqual({ visible: n, withFinding: n });
+        // the re-rendered rows are clones of the master rows: they still carry
+        // the group key (the 📊 entries' mode reads it)
+        const shown = await plantedRows(page);
+        expect(shown.length).toBe(n);
+        expect(shown.every(r => r.group)).toBe(true);
     });
 });

@@ -78706,6 +78706,8 @@
         // https://claude.ai/artifact/LCthm5p9EiftZC6znZsqVB.
         {
             id: 'rec-dup', level: 'warn', glyph: '👯', scope: 'cell',
+            // under the "no work" flag's own text on a tracklist title (_writeFamilyTipFindings())
+            underFamilyTip: true,
             label: 'Possible duplicate recording',
             tip: 'Another recording on this page looks like the same one, by the rules of majkinetor\'s Fusion: a shared ' +
                  'ISRC (or AcoustID), or at the normal cutoff the same title and artists with lengths within 5 s. Never ' +
@@ -79819,6 +79821,7 @@
      */
     function _writeFindingAttrs(td, ids, details = {}, compares = {}) {
         if (!ids.length) {
+            _writeFamilyTipFindings(td, [], details, compares);
             if (td.dataset.mbFindings === undefined) return;
             delete td.dataset.mbFindings;
             delete td.dataset.mbFinding;
@@ -79839,6 +79842,10 @@
         // cannot apply.
         const familyPainted = !!(td.dataset.mbLenFlag || td.dataset.mbVideoFlag === 'mismatch' ||
                                  td.dataset.mbWorkFlag || td.dataset.mbLiveFlag);
+        // A finding marked `underFamilyTip` still shows its lines, and its
+        // card entry, under the family's own text (vzell, 2026-11-20: a
+        // duplicate recording that links no work).
+        _writeFamilyTipFindings(td, familyPainted ? ids.filter(id => _FINDING_BY_ID.get(id).underFamilyTip) : [], details, compares);
         const tinted = familyPainted ? [] : ids.map(id => _FINDING_BY_ID.get(id)).filter(f => f.tint(td));
         const level = tinted.some(f => f.level === 'error') ? 'error' : tinted.length ? 'warn' : null;
         if (level) td.dataset.mbFinding = level; else delete td.dataset.mbFinding;
@@ -79857,6 +79864,44 @@
             else _setTipCmp(td, text, cmp);
             td.dataset.mbFindingTip = '1';
         }
+    }
+
+    /**
+     * On a cell one of the per-family rules paints (`data-mb-work-flag`, …),
+     * which keeps its own tint, glyph and tooltip, writes the lines of the
+     * findings marked `underFamilyTip` (and their card entries) UNDER the
+     * family's text, or puts the family's text back when there are none. The
+     * family's text is remembered in `data-mb-family-tip` the first time, so
+     * every later stamp (a late regroup) starts from it, not from its own
+     * output. Only `rec-dup` is marked (vzell, 2026-11-20): a duplicate
+     * recording often links no work yet, and its card must still show.
+     *
+     * @param {HTMLTableCellElement} td
+     * @param {string[]} ids the findings to write under the family's text
+     * @param {Object<string, string>} details
+     * @param {Object<string, object>} compares
+     */
+    function _writeFamilyTipFindings(td, ids, details, compares) {
+        const saved = td.getAttribute('data-mb-family-tip');
+        if (!ids.length) {
+            if (saved === null) return;
+            td.removeAttribute('data-mb-family-tip');
+            td.removeAttribute('data-mb-tip-cmp');
+            if (saved) _setTip(td, saved);
+            else td.removeAttribute('title');
+            return;
+        }
+        // A title restored from a disk file may already carry the findings'
+        // lines ("⚠️ …"/"❌ …", which no family text starts with): the family's
+        // text is what comes before them.
+        const own = (td.getAttribute('title') || '').split('\n');
+        const cut = own.findIndex(l => /^(?:⚠️|❌) /.test(l.trim()));
+        const fam = saved !== null ? saved : (cut < 0 ? own : own.slice(0, cut)).join('\n').trim();
+        if (saved === null) td.setAttribute('data-mb-family-tip', fam);
+        const { text, cmp } = _findingTitle(ids, details, compares);
+        // Entries count the card's non-empty lines (_tipTextToHtml()).
+        const famLines = fam.split('\n').filter(s => s.trim()).length;
+        _setTipCmp(td, fam ? `${fam}\n${text}` : text, cmp.map(c => ({ ...c, at: c.at + famLines })));
     }
 
     /**

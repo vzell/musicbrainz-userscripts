@@ -17,7 +17,8 @@ page carried.
 Requests are spaced >= 1.5 s and retried on 429/502/503 up to ten times, backing off to 60 s
 (the documented ~1 req/s; on the evening of 2026-11-20 six tries spaced 1.1 s were not enough).
 Resumable: each page is appended to a checkpoint, so an interrupted run continues
-where it stopped. The User-Agent is generic and carries no contact details.
+where it stopped. The User-Agent names the script and its public repository as contact (vzell, 2026-11-20), as
+MusicBrainz asks.
 
 Output (gitignored): debug/probe-rec-dup/<MBID>.json.gz, one record per recording:
 {id, title, length, video, disambiguation, isrcs, ac: [[artist id, credited name,
@@ -39,7 +40,7 @@ import time
 import urllib.error
 import urllib.request
 
-UA = 'userscript-probe/1.0'
+UA = 'ShowAllEntityData-probe/1.0 (+https://github.com/vzell/mb-userscripts)'
 BASE = 'https://musicbrainz.org/ws/2'
 OUT_DIR = 'debug/probe-rec-dup'
 _last = [0.0]

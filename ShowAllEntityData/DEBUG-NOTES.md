@@ -30803,3 +30803,41 @@ live probe: Playwright 1.62.1, Chromium 151.0.7922.34, no Tampermonkey (GM stubs
   its one retry got 503 (MusicBrainz throttling); the re-run was normal.
 - **Fusion** (for the rec-dup port on this branch): the matching functions are unchanged from 0693aea; 19 `fusion-*`
   anchors added. Anchors in all: 98/98 hold (`eh-ed-full`, `gate-hold-cap` rewritten to the new code).
+
+## 2026-11-20 — Possible duplicate recordings: Fusion's gates ported, the page's groups (feat/fusion-rec-dup, WIP.1)
+
+Env: 2026-11-20T22:10–23:10+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · Playwright 1.62.1,
+Chromium 151.0.7922.34, no Tampermonkey (GM stubs) for the specs; Node 24.16.0 for the port checker · the probe:
+n/a (Python, ws/2).
+
+- **What**: org/majkinetor.org's "Possible duplicate recordings". Fusion's matching code is generated into the
+  userscript verbatim (`scripts/gen-fusion-port.py`, map `scripts/fusion-port-map.json`) and checked line for line
+  against the clone (`scripts/check-fusion-port.js`); design in docs/claude/findings.md, "Possible duplicate
+  recordings: `rec-dup`". Mockup https://claude.ai/artifact/LCthm5p9EiftZC6znZsqVB, approved with all eleven
+  recommendations.
+- **Union order**: Fusion's `gatedUnionFind()` gives different groups for different union orders (a bridge is
+  refused only once a conflicting set exists). The bucketed search therefore sorts its candidate pairs by (i, j),
+  which is `autoMatch()`'s own loop restricted to them.
+- **Bucketing, measured** on the Petty dump (2,630 recordings): first/last-four title keys alone missed 7 groups at
+  normal (5 extra): Fusion calls "Last Dance With Mary Jane" and "Mary Jane's Last Dance" alike (3 of 5 words), and
+  the two share neither end; the missing pairs then changed which bridges were refused elsewhere. A prefix filter
+  over the words (each title under its k − c + 1 rarest words) is exact for Fusion's word test; after it, all three
+  cutoffs equal all pairs (strict 13 groups, normal 427, loose 494), 0.6 s against 40 s.
+- **Kept apart**: a 40 s difference fails "lengths within 5 s" too, so "would it match without the gate" said no;
+  Fusion's own log counts such a pair when title and artist agree (`lengthBlocked`), and the card now does. The
+  date skip in the candidate search dropped the "two dates at one venue" note; skipped pairs are kept and judged
+  after the unions when they touch a group.
+- **Found, decided by vzell the same evening**: (1) a title cell the "no work" family paints (`data-mb-work-flag`) keeps its own tint
+  and tooltip, so a duplicate without a work link shows no rec-dup card (menu and 📊 still list it); the planted
+  fixture gives its tracks works. (2) The shared card shows nothing on a tap, for every finding; the mockup's
+  "tap to pin" would be new.
+- **The probe**: MusicBrainz answered 503 most of the evening (six, then ten retries with backoff were not enough
+  on several pages); Petty's dump completed (12 retries), Springsteen's stands at 33,800 of 74,630 in its
+  checkpoint (`debug/probe-rec-dup/70248960-….pages.jsonl`), resumable. A single request with the generic
+  User-Agent got 503 at 23:00.
+- **vzell's answers (2026-11-20, 23:05)**: the probe's User-Agent carries the public repository as contact
+  (`ShowAllEntityData-probe/1.0 (+https://github.com/vzell/mb-userscripts)`, as 17 other probes do); the rec-dup
+  card goes UNDER the "no work" text (`_writeFamilyTipFindings()`, finding flag `underFamilyTip`, planted case G5);
+  "tap to pin" on touch is left for later. Mutation run 1 (26 entries, 23:05): 22 as expected; the gross-length,
+  live/place and video gates of `shouldUnion` are each covered by `gatedUnionFind()`'s own conflict check (now
+  expect-pass, with that reason), and "records ignore the live copy" DOES fail on a disk load (now expect-fail).

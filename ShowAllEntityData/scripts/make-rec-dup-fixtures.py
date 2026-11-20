@@ -18,6 +18,7 @@ Cases (Auto picks the normal cutoff on a tracklist; Fusion's rules, org/majkinet
   N1  "Dwell I" / "Dwell IV": not grouped, not listed (titles differ in a word on each side)
   S1  the same recording on two tracks (medium 1 and 2): one recording, not a duplicate
   G3  "Unknown Length" ?:?? + 4:00: one group (an unknown length does not veto at normal, #565)
+  G5  "No Work Song" twice, no work linked: one group; its card under the "no work" text
   G4  "Hammersmith Song" live 1975-11-18 on medium 2: one group with A2's first (same date, venue)
 
 usage: python3 scripts/make-rec-dup-fixtures.py   # writes the two files below
@@ -56,12 +57,16 @@ PLANTS = [
     (2, 's1', 'Same Recording Twice', '6:00', '', ''),
     (1, 'g3a', 'Unknown Length', '?:??', '', ''),
     (2, 'g3b', 'Unknown Length', '4:00', '', ''),
+    (1, 'g5a', 'No Work Song', '3:20', '', 'nowork'),
+    (2, 'g5b', 'No Work Song', '3:21', '', 'nowork'),
 ]
 
 # The planted truth: groups by recording key, and what the card's "Kept apart" must name.
 EXPECTED = {
     'cutoff': 'normal',
-    'groups': [['g1a', 'g1b'], ['a2a', 'g4'], ['g3a', 'g3b']],
+    'groups': [['g1a', 'g1b'], ['a2a', 'g4'], ['g3a', 'g3b'], ['g5a', 'g5b']],
+    # G5's tracks link no work: the "no work" flag paints the title cell, the card goes under its text
+    'noWork': ['g5a', 'g5b'],
     'notGrouped': ['a1', 'a2b', 'a3a', 'a3b', 'a4a', 'a4b', 'a5a', 'a5b', 'n1a', 'n1b', 's1'],
     # The card's "Kept apart" line is on a GROUPED row's card: card owner -> [other, reason].
     # The live/studio, open-edit and video pairs form no group, so no card names them.
@@ -99,8 +104,9 @@ def main():
         # a work of its own: a track without one is painted by the "no work" family, which then
         # owns the title cell's tint and tooltip (_writeFindingAttrs()), and the card is not shown
         work = f'cccccccc-0000-4000-8000-{n:012d}'
-        tr = tr.replace('<div class="ars"></div>', '<div class="ars"><dl class="ars"><dt>recording of:</dt><dd><span class="worklink"></span>'
-                        f'<a class="wrap-anywhere" href="/work/{work}"><bdi>{title}</bdi></a></dd></dl></div>', 1)
+        if flags != 'nowork':
+            tr = tr.replace('<div class="ars"></div>', '<div class="ars"><dl class="ars"><dt>recording of:</dt><dd><span class="worklink"></span>'
+                            f'<a class="wrap-anywhere" href="/work/{work}"><bdi>{title}</bdi></a></dd></dl></div>', 1)
         rows[medium].append(tr)
     # append each medium's planted rows at the end of ITS tbody (the first </tbody> after
     # each '<table class="tbl medium">'), last medium first so earlier offsets stay valid

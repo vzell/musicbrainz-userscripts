@@ -1,0 +1,366 @@
+[
+  {
+    "name": "Fusion's shouldUnion never accepts",
+    "why": "No group anywhere. Must fail the Petty stamp test (more than 3 groups).",
+    "edits": [
+      {
+        "find": "    function _fzShouldUnion(sig, cutoff) {\n",
+        "replace": "    function _fzShouldUnion(sig, cutoff) {\n        return false;\n"
+      }
+    ],
+    "spec": "tests/fixtures/findings-rec-dup.spec.js",
+    "grep": "the stamp groups exactly the rows the page says belong together",
+    "expect": "fail"
+  },
+  {
+    "name": "a shared ISRC does not group",
+    "why": "Strict forms nothing on Petty. Must fail the stamp test.",
+    "edits": [
+      {
+        "find": "        if (sig.isrc) return true;\n",
+        "replace": "        if (sig.isrc) return false;\n"
+      }
+    ],
+    "spec": "tests/fixtures/findings-rec-dup.spec.js",
+    "grep": "the stamp groups exactly the rows the page says belong together",
+    "expect": "fail"
+  },
+  {
+    "name": "the gross-length gate is gone",
+    "why": "Covered by a second guard: _fzGatedUnionFind() refuses the same conflict when it unions (lengths more than 30 s apart), so the pair never joins; the bridge mutation (\"the union-find lets a member bridge\") is the one that removes that guard. Measured expect-pass on the planted tracklist, 2026-11-20.",
+    "edits": [
+      {
+        "find": "        if (sig.lengthConflict) return false;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/findings-rec-dup.spec.js",
+    "grep": "the stamp groups exactly the rows the page says belong together",
+    "expect": "pass"
+  },
+  {
+    "name": "the live/place gate is gone",
+    "why": "Covered by a second guard: _fzGatedUnionFind() refuses the same conflict when it unions (live and studio, two places), so the pair never joins; the bridge mutation (\"the union-find lets a member bridge\") is the one that removes that guard. Measured expect-pass on the planted tracklist, 2026-11-20.",
+    "edits": [
+      {
+        "find": "        if (sig.liveMismatch || sig.placeConflict) return false;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/findings-rec-dup.spec.js",
+    "grep": "the planted groups form, across media; everything else stays apart",
+    "expect": "pass"
+  },
+  {
+    "name": "the ISRC-batch gate is gone",
+    "why": "Covered by node scripts/check-fusion-port.js (Fusion's spec vectors and the bucketed = all-pairs check on the Petty dump), which mutation-check.py cannot run; no page fixture plants the case. Fusion's 760 Interlude case.",
+    "edits": [
+      {
+        "find": "        if (sig.isrcConflict) return false;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/findings-rec-dup.spec.js",
+    "grep": "the stamp groups exactly the rows the page says belong together",
+    "expect": "pass"
+  },
+  {
+    "name": "the open-edit gate is gone",
+    "why": "\"Pending Song\" (one with span.mp) groups. Must fail the planted test.",
+    "edits": [
+      {
+        "find": "        if (sig.pendingEdit) return false;   // never auto-group a recording with an open edit (#529)\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/findings-rec-dup.spec.js",
+    "grep": "the planted groups form, across media; everything else stays apart",
+    "expect": "fail"
+  },
+  {
+    "name": "the video gate is gone",
+    "why": "Covered by a second guard: _fzGatedUnionFind() refuses the same conflict when it unions (video and audio), so the pair never joins; the bridge mutation (\"the union-find lets a member bridge\") is the one that removes that guard. Measured expect-pass on the planted tracklist, 2026-11-20.",
+    "edits": [
+      {
+        "find": "        if (sig.videoMismatch) return false;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/findings-rec-dup.spec.js",
+    "grep": "the planted groups form, across media; everything else stays apart",
+    "expect": "pass"
+  },
+  {
+    "name": "the union-find lets a member bridge",
+    "why": "Covered by node scripts/check-fusion-port.js (Fusion's spec vectors and the bucketed = all-pairs check on the Petty dump), which mutation-check.py cannot run; no page fixture plants the case. Fusion's 623 and 789 bridges.",
+    "edits": [
+      {
+        "find": "            const a = info.get(ra), b = info.get(rb), why = conflict(a, b);\n",
+        "replace": "            const a = info.get(ra), b = info.get(rb), why = '';\n"
+      }
+    ],
+    "spec": "tests/fixtures/findings-rec-dup.spec.js",
+    "grep": "the stamp groups exactly the rows the page says belong together",
+    "expect": "pass"
+  },
+  {
+    "name": "distinct title words no longer keep titles apart",
+    "why": "\"Dwell I\" / \"Dwell IV\" group. Must fail the planted test.",
+    "edits": [
+      {
+        "find": "    function _fzTitleDistinctWords(a, b) {\n",
+        "replace": "    function _fzTitleDistinctWords(a, b) {\n        return null;\n"
+      }
+    ],
+    "spec": "tests/fixtures/findings-rec-dup.spec.js",
+    "grep": "the planted groups form, across media; everything else stays apart",
+    "expect": "fail"
+  },
+  {
+    "name": "the candidate pairs are not sorted",
+    "why": "Covered by node scripts/check-fusion-port.js (Fusion's spec vectors and the bucketed = all-pairs check on the Petty dump), which mutation-check.py cannot run; no page fixture plants the case. Union order matters only where a bridge refuses; no fixture plants an order-dependent pool.",
+    "edits": [
+      {
+        "find": "        const pairs = Float64Array.from(set).sort();\n",
+        "replace": "        const pairs = Float64Array.from(set);\n"
+      }
+    ],
+    "spec": "tests/fixtures/findings-rec-dup.spec.js",
+    "grep": "the stamp groups exactly the rows the page says belong together",
+    "expect": "pass"
+  },
+  {
+    "name": "the ISRC index is skipped",
+    "why": "Strict has no candidate pairs. Must fail the Petty stamp test.",
+    "edits": [
+      {
+        "find": "            for (const x of r.isrcs || []) put('i:' + x, i);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/findings-rec-dup.spec.js",
+    "grep": "the stamp groups exactly the rows the page says belong together",
+    "expect": "fail"
+  },
+  {
+    "name": "the word prefix filter is skipped",
+    "why": "Covered by node scripts/check-fusion-port.js (Fusion's spec vectors and the bucketed = all-pairs check on the Petty dump), which mutation-check.py cannot run; no page fixture plants the case. Petty normal/loose: 7 groups missed without it.",
+    "edits": [
+      {
+        "find": "                ws.slice(0, k - c + 1).forEach(w => putT('w:' + w, i));\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/findings-rec-dup.spec.js",
+    "grep": "the stamp groups exactly the rows the page says belong together",
+    "expect": "pass"
+  },
+  {
+    "name": "the comment's date is dropped",
+    "why": "Hammersmith 11-18 and 11-24 at one venue would group. Must fail the planted test.",
+    "edits": [
+      {
+        "find": "        const date = dm ? dm[1] : null;\n",
+        "replace": "        const date = null;\n"
+      }
+    ],
+    "spec": "tests/fixtures/findings-rec-dup.spec.js",
+    "grep": "the planted groups form, across media; everything else stays apart",
+    "expect": "fail"
+  },
+  {
+    "name": "one recording on two tracks counts twice",
+    "why": "\"Same Recording Twice\" becomes a group of itself. Must fail the planted test.",
+    "edits": [
+      {
+        "find": "                if (!rec || seen.has(rec.gid)) return;\n",
+        "replace": "                if (!rec) return;\n"
+      }
+    ],
+    "spec": "tests/fixtures/findings-rec-dup.spec.js",
+    "grep": "the planted groups form, across media; everything else stays apart",
+    "expect": "fail"
+  },
+  {
+    "name": "the group key only on live rows",
+    "why": "The ⚠️ filter re-renders clones of the master rows, which then lack data-mb-rec-dup. Must fail the sub-table filter test.",
+    "edits": [
+      {
+        "find": "                if (cols) _forEachStampRow(table, master, r => _stampRecDupKey(r, cols));\n",
+        "replace": "                if (cols) Array.from(table.tBodies[0].rows).forEach(r => _stampRecDupKey(r, cols));\n"
+      }
+    ],
+    "spec": "tests/fixtures/findings-rec-dup.spec.js",
+    "grep": "the ⚠️ row filters every sub-table to the grouped rows",
+    "expect": "fail"
+  },
+  {
+    "name": "the 📊 matcher never matches",
+    "why": "Ticking a group entry leaves no row. Must fail the 📊 test.",
+    "edits": [
+      {
+        "find": "            return !!cell && cell.dataset.mbRecDup === mode.slice(9);\n",
+        "replace": "            return false;\n"
+      }
+    ],
+    "spec": "tests/fixtures/findings-rec-dup.spec.js",
+    "grep": "📊 lists one entry per group",
+    "expect": "fail"
+  },
+  {
+    "name": "the tint setting is ignored",
+    "why": "Tint off still tints. Must fail the tint-off test.",
+    "edits": [
+      {
+        "find": "            tint: _findingTintSetting('sa_findings_tint_rec_dup'),\n",
+        "replace": "            tint: () => true,\n"
+      }
+    ],
+    "spec": "tests/fixtures/findings-rec-dup.spec.js",
+    "grep": "tint off: no tint, the finding and its menu row stay",
+    "expect": "fail"
+  },
+  {
+    "name": "the cutoff setting is ignored",
+    "why": "Strict on the tracklist still groups at normal. Must fail the cutoff test.",
+    "edits": [
+      {
+        "find": "        if (v === 'strict' || v === 'normal' || v === 'loose') return v;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/findings-rec-dup.spec.js",
+    "grep": "the cutoff setting: strict groups nothing here",
+    "expect": "fail"
+  },
+  {
+    "name": "the switch is ignored",
+    "why": "sa_findings_rec_dup off still stamps. Must fail the switch test.",
+    "edits": [
+      {
+        "find": "        return !_foreignHost && Lib.settings.sa_findings_rec_dup !== false && _REC_DUP_PAGETYPES.has(activeDefinition?.type);\n",
+        "replace": "        return !_foreignHost && _REC_DUP_PAGETYPES.has(activeDefinition?.type);\n"
+      }
+    ],
+    "spec": "tests/fixtures/findings-rec-dup.spec.js",
+    "grep": "the switch off: no stamp, no menu row",
+    "expect": "fail"
+  },
+  {
+    "name": "the card entry is refused",
+    "why": "_cmpTipData() drops kind dup: the card has no pill. Must fail the card test.",
+    "edits": [
+      {
+        "find": "                    : c.kind === 'dup'\n                        ? str(c.tier) &&",
+        "replace": "                    : c.kind === 'dup'\n                        ? false && str(c.tier) &&"
+      }
+    ],
+    "spec": "tests/fixtures/findings-rec-dup.spec.js",
+    "grep": "the card: a dup entry with its tier pill",
+    "expect": "fail"
+  },
+  {
+    "name": "a gross-length pair is not \"kept apart\"",
+    "why": "g1a's card no longer names the 3:40 take. Must fail the cards test.",
+    "edits": [
+      {
+        "find": "        if (sig.lengthConflict && !sig.videoMismatch && !sig.pendingEdit &&\n",
+        "replace": "        if (false && sig.lengthConflict && !sig.videoMismatch && !sig.pendingEdit &&\n"
+      }
+    ],
+    "spec": "tests/fixtures/findings-rec-dup.spec.js",
+    "grep": "the cards name what was kept apart, and why",
+    "expect": "fail"
+  },
+  {
+    "name": "date-skipped pairs are never named",
+    "why": "a2a's card no longer names the 11-24 take. Must fail the cards test.",
+    "edits": [
+      {
+        "find": "            if (!grouped(i) && !grouped(j)) continue;\n",
+        "replace": "            continue;\n"
+      }
+    ],
+    "spec": "tests/fixtures/findings-rec-dup.spec.js",
+    "grep": "the cards name what was kept apart, and why",
+    "expect": "fail"
+  },
+  {
+    "name": "the late regroup re-stamps nothing",
+    "why": "The joined pair gets its key but no finding. Must fail the late-data test.",
+    "edits": [
+      {
+        "find": "                    if (was !== is || (is && old.get(is) !== now.get(is))) _queueFindingsRestamp(r, ['rec-dup'], table);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/findings-rec-dup.spec.js",
+    "grep": "late data regroups",
+    "expect": "fail"
+  },
+  {
+    "name": "the AcoustID/ISRC observer does not regroup",
+    "why": "The production trigger: no fixture runs jesus2099's late AcoustIDs into an existing column (the late test calls the regroup itself). A live browser check covers it.",
+    "edits": [
+      {
+        "find": "        if (acoustIdDiv || isrcDiv) _recDupRegroupSoon();\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/findings-rec-dup.spec.js",
+    "grep": "late data regroups",
+    "expect": "pass"
+  },
+  {
+    "name": "the Recording of refresh does not regroup",
+    "why": "The production trigger: the recording-of load needs ws/2; the late test calls the regroup itself. A live browser check covers it.",
+    "edits": [
+      {
+        "find": "            _recDupRegroupSoon();\n        }, wait);\n",
+        "replace": "        }, wait);\n"
+      }
+    ],
+    "spec": "tests/fixtures/findings-rec-dup.spec.js",
+    "grep": "late data regroups",
+    "expect": "pass"
+  },
+  {
+    "name": "records ignore the live copy",
+    "why": "On a disk load the live rows are not the source rows: the ISRC the late test writes into the live row never reaches the record. Must fail the late-data test.",
+    "edits": [
+      {
+        "find": "                const r = (src.dataset.mbRowIdx !== undefined && live.get(src.dataset.mbRowIdx)) || src;\n",
+        "replace": "                const r = src;\n"
+      }
+    ],
+    "spec": "tests/fixtures/findings-rec-dup.spec.js",
+    "grep": "late data regroups",
+    "expect": "fail"
+  },
+  {
+    "name": "nothing is written under a family's text",
+    "why": "A duplicate whose track links no work shows only the \"no work\" card again. Must fail the no-work test.",
+    "edits": [
+      {
+        "find": "        _writeFamilyTipFindings(td, familyPainted ? ids.filter(id => _FINDING_BY_ID.get(id).underFamilyTip) : [], details, compares);\n",
+        "replace": "        _writeFamilyTipFindings(td, [], details, compares);\n"
+      }
+    ],
+    "spec": "tests/fixtures/findings-rec-dup.spec.js",
+    "grep": "a track that links no work",
+    "expect": "fail"
+  },
+  {
+    "name": "a title from a disk file is taken whole as the family text",
+    "why": "A disk load would repeat the finding lines under the family text. No fixture round-trips a release tracklist through a disk file (release-tracks has no Save to disk fixture); a live check covers it.",
+    "edits": [
+      {
+        "find": "        const fam = saved !== null ? saved : (cut < 0 ? own : own.slice(0, cut)).join('\\n').trim();\n",
+        "replace": "        const fam = saved !== null ? saved : own.join('\\n').trim();\n"
+      }
+    ],
+    "spec": "tests/fixtures/findings-rec-dup.spec.js",
+    "grep": "a track that links no work",
+    "expect": "pass"
+  }
+]

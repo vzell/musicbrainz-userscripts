@@ -108,8 +108,8 @@
         "why": "This is the user's own explicit ask (2026-09-26): the \"Same As\" section must list the ACTUAL textual representations involved (e.g. \"0196587565725 / 196587565725\"), not an opaque canonical number a person can't match back to what's on the page.",
         "edits": [
             {
-                "find": "            const _displayValue = (kind === 'barcodesameas')\n                ? _barcodeSameAsGroupLabel((_getBarcodeCanonicalGroups(table).get(value) || { raws: new Set([value]) }).raws)\n                : value;",
-                "replace": "            const _displayValue = value;"
+                "find": "            const _displayValue = (kind === 'barcodesameas')\n                ? _barcodeSameAsGroupLabel((_getBarcodeCanonicalGroups(table).get(value) || { raws: new Set([value]) }).raws)\n                : (kind === 'dupgroup') ? _recDupGroupLabel(value)\n                : value;",
+                "replace": "            const _displayValue = (kind === 'dupgroup') ? _recDupGroupLabel(value) : value;"
             }
         ],
         "spec": "tests/fixtures/barcode-column-validity.spec.js",
