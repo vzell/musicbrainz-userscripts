@@ -19,8 +19,9 @@ left out by decision), NOT (not done, with the reason).
   off by default) and idea 3 (the lookup tables and the song and venue maps in the feed) are merged as
   9.99.1661–9.99.1665 (=feat/bb-findings-batch3b=, vzell: "all tested live OK"). BruceParser is at 0.23.0, the
   published feed is 1.5.
-- *Next in Track A:* freezing BruceBaseParser (idea 6, now possible); then URL-shortening through the feed (idea 4)
-  and two MusicBrainz cross-checks (idea 5). See "Status at a glance".
+- *Open in Track A:* URL-shortening through the feed (idea 4) and two MusicBrainz cross-checks (idea 5). Freezing
+  BruceBaseParser (idea 6) is possible but waits: vzell, 2026-11-20, "We will actually NOT yet freeze
+  BruceBaseParser right now". See "Status at a glance".
 - *Nothing since 9.99.1625 is published* to =vzell/mb-userscripts=; that is vzell's call. The ❓ Help on GitHub is
   behind until then.
 - *Mirror:* =~/git/scripts/BruceParser/bb/latest=; check =ls -la= first (CLAUDE.md, working rule 7). The newest run
@@ -51,7 +52,7 @@ left out by decision), NOT (not done, with the reason).
 | Idea 4: URL-shortening through the feed                  | TODO  | —                   | "Feed v2, branch 1", decision 4                       |
 | Idea 5, feed v2 branch 3: MusicBrainz event links        | DONE  | 9.99.1647           | "Feed v2, branch 3 …"                                 |
 | Idea 5: MB event titles, works against Brucebase songs   | TODO  | —                   | —                                                     |
-| Idea 6: freeze BruceBaseParser                           | NEXT  | —                   | the matrix                                            |
+| Idea 6: freeze BruceBaseParser                           | WAIT  | —                   | the matrix (vzell, 2026-11-20: not yet)               |
 | Publish to =vzell/mb-userscripts=                        | WAIT  | since 9.99.1625     | —                                                     |
 | BruceParser: the audit's fixes                           | DONE  | 0.16.0–0.21.1       | —                                                     |
 | BruceParser: before 3b (setlist list, SC2034, run)       | DONE  | 0.21.2–0.21.3       | —                                                     |
@@ -370,10 +371,11 @@ shares one entry ⚠️ (18) or is no anchor ⚠️ (1), with a card of the wiki
 Not started, not decided: an MB event's title against the MB-style title BruceParser derives from Brucebase (its
 =search/= comparison), and an MB work against its Brucebase song (=esfsl.sh=).
 
-** NEXT Idea 6: freeze BruceBaseParser
+** WAIT Idea 6: freeze BruceBaseParser
 
-Every matrix row is DONE or decided (batch 3b merged as 9.99.1661–1665 on 2026-11-20), so BBP can be frozen now:
-vzell's call, in BBP's repo.
+Every matrix row is DONE or decided (batch 3b merged as 9.99.1661–1665 on 2026-11-20), so BBP could be frozen. vzell,
+2026-11-20: "We will actually NOT yet freeze BruceBaseParser right now." It keeps running beside SAED (the coexistence
+guard, 9.99.1653, handles a page both touch); freezing stays vzell's call, in BBP's repo.
 Also in BBP's repo, for vzell: =doc/TAGS.md= still says the wiki "caps the number of tags per page"; the limit is 512
 characters (Phase 1's probe).
 
