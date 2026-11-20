@@ -18,7 +18,7 @@ left out by decision), NOT (not done, with the reason).
 - *Every row of the parity matrix is DONE or decided.* Batch 3b (the five tag families, each behind its own switch,
   off by default) and idea 3 (the lookup tables and the song and venue maps in the feed) are merged as
   9.99.1661–9.99.1665 (=feat/bb-findings-batch3b=, vzell: "all tested live OK"). BruceParser is at 0.26.0; the
-  published feed is 1.7 (2026-11-20, feed repo =1450799=, its FORMAT.md =022fac2=).
+  published feed is 1.8 (2026-11-20, feed repo =17d9cb0=, its FORMAT.md =8b9f139=).
 - *Idea 4 is DONE*: merged on 2026-11-20 as 9.99.1667 (=feat/bb-feed-dependent-name=, vzell: "all tested live, OK"): not
   URL-shortening (its rows are its own derivation's variants) but a page named differently from its show, the feed
   kind "dependent-name" (BruceParser 0.24.0, feed 1.6, 36 pages), ⚠️ =bb-feed-name= in SAED; =test:full= 3370/3370.
@@ -31,8 +31,8 @@ left out by decision), NOT (not done, with the reason).
   the country-suffix bug, the 503 handling in =search.sh=, the work search in =bbp.sh=. Record: bbp-parity.org,
   "Track A idea 5, check 1 …".
 - *Idea 5, check 2 is built* on =feat/bb-feed-mb-works= (2026-11-20, not merged): the feed map =mbWorks= (BruceParser
-  0.27.0, feed 1.8, 14 works, NOT published), ❌ ⚓ / ⚠️ ⇉ / ⚠️ ≉ on the Work cells and the work page. Next: publishing
-  the feed 1.8 (vzell's word), vzell's browser check (bbp-parity.org, "Track A idea 5, check 2 …").
+  0.27.0, feed 1.8, 14 works, published: =17d9cb0=), ❌ ⚓ / ⚠️ ⇉ / ⚠️ ≉ on the Work cells and the work page. Next:
+  vzell's browser check (bbp-parity.org, "Track A idea 5, check 2 …").
 - *Open in Track A:* nothing but check 2's merge. Freezing BruceBaseParser (idea 6) is possible but waits: vzell, 2026-11-20,
   "We will actually NOT yet freeze BruceBaseParser right now". See "Status at a glance".
 - *Nothing since 9.99.1625 is published* to =vzell/mb-userscripts=; that is vzell's call. The ❓ Help on GitHub is
@@ -41,7 +41,9 @@ left out by decision), NOT (not done, with the reason).
   is 2026-11-19 on NB-3641 (=bb/2026-11-19=, BruceParser 0.21.3); the batch 3 probe was re-run on it.
 - *Batch 3b's plan* was =~/.claude/plans/start-batch-3b-the-expressive-dongarra.md= (NB-3641 only; its decisions are
   in the 3b entry below).
-- *Do not run =bbp.sh= without vzell.*
+- *Do not run =bbp.sh= without vzell.* Publishing the feed is Claude's own step (vzell, 2026-11-20: "publish yourself
+  from now on"): =./publish-feed.sh -r <run>= after its dry run, then FORMAT.md into the feed repo; the userscript's
+  publication to =vzell/mb-userscripts= and every merge into =main= stay vzell's.
 
 * Status at a glance
 
@@ -411,8 +413,8 @@ Decided (vzell, 2026-11-20, the plan's question 3): a keyed feed map =mbWorks= w
 Not the =esfsl.sh= list report (stale and unkeyed). The 1,001 works without a link stay out. The fresh works browse
 it needs is BruceParser's =search-work= step since 0.25.0. Built (mockup
 https://claude.ai/artifact/5fTN5NNCgvMNehzPscurWn, vzell: "Approved"): BruceParser 0.27.0 =mb-works.awk=, feed 1.8,
-14 works (no-target 10 with their likely target, shared 2, title 2); SAED ❌ ⚓ / ⚠️ ⇉ / ⚠️ ≉. Waits for: publishing the
-feed 1.8, vzell's browser check. Record: bbp-parity.org, "Track A idea 5, check 2 …".
+14 works (no-target 10 with their likely target, shared 2, title 2); SAED ❌ ⚓ / ⚠️ ⇉ / ⚠️ ≉. The feed 1.8 is published
+(=17d9cb0=). Waits for: vzell's browser check. Record: bbp-parity.org, "Track A idea 5, check 2 …".
 
 ** WAIT Idea 6: freeze BruceBaseParser
 

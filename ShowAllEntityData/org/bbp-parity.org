@@ -1262,7 +1262,8 @@ live 404, its songs on =...-nj-studio-sessions=; King's Rock =#kingsrockkingsbig
 (Don't Back Down, Don't Back Down on Our Love), title 2 (Tarantella Napolitana / Napoletana, In the City Tonight / Meet
 Me In The City). 34 titles pass by case, typography or the cover credit, 3 by an alias.
 
-*Built:* BruceParser 0.27.0 (=917a36f=, pushed, not published): =mb-works.awk=, =feed.sh= 1.8 (=mbWorks=, every
+*Built:* BruceParser 0.27.0 (=917a36f=, pushed; published 2026-11-20, feed repo =17d9cb0=, FORMAT.md =8b9f139=, the raw
+file byte-identical to the run's): =mb-works.awk=, =feed.sh= 1.8 (=mbWorks=, every
 other part unchanged); the probe agrees field by field. SAED: =_BB_FEED_MBW_KINDS=, three settings, the events'
 card, listeners, sidebar draw and feed line made entity-aware. Details: docs/claude/brucebase.md, "Feed 1.8".
 *Deviation from the mockup:* candidates by their address, not by page title (the feed has none). *Re-anchored on the
@@ -1278,8 +1279,7 @@ under the suite's load; first seen here, to watch.
 
 ** The browser check of check 2, for vzell (the run of 2026-11-19; unverified on the live MusicBrainz)
 
-First: publish the feed 1.8 (BruceParser =./publish-feed.sh -r 2026-11-19=, your word); install the script from
-=feat/bb-feed-mb-works=. A kept 1.7 file is read again on a works page's press once it was read an hour ago.
+The feed 1.8 is published (2026-11-20, feed repo =17d9cb0=). Install the script from =feat/bb-feed-mb-works=. A kept 1.7 file is read again on a works page's press once it was read an hour ago.
 
 | URL                                                                         | Step                                    | What should appear                                                                                                 |
 |-----------------------------------------------------------------------------+-----------------------------------------+--------------------------------------------------------------------------------------------------------------------|
