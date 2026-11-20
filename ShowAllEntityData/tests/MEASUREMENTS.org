@@ -4834,3 +4834,13 @@ Env: 2026-11-20T16:05:15+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 | =npm run test:full=, =37b4a365=             |  3397 |      12 | *22 m 48 s* | =run-test-full.py=, 16:05:15–16:28:03 CET |
 
 3397 passed, no flake.
+
+* 2026-11-20 — =npm run test:full= on =petri=, main after merging feat/gf-query-mode (9.99.1669)
+
+Env: 2026-11-20T16:37:55+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                                   | Tests | Workers | Wall clock  | Basis                                     |
+|---------------------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, =7ea48217= + fold      |  3404 |      12 | *23 m 8 s*  | =run-test-full.py=, 16:37:55–17:01:03 CET |
+
+3404 passed (the branch's 3397 and main's feed 1.6 tests), no flake.

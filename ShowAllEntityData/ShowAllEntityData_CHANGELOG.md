@@ -4,9 +4,23 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1838 versions; the month pages hold all of them.
+This page shows the newest 100 of 1840 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1669 — 2026-11-20
+
+**🚀 Feature**
+
+- With Rx on, the card under the global filter (the one query mode got in 9.99.1668) reads your regular expression: a green "Valid" and the pattern piece by piece ("^Born (to\|in)": the start of the cell · the text "Born " · group 1, holding: either "to" or "in"; repeats said after their piece), plus that each cell is tested on its own and what Cc and Ex do to it; or a red "Invalid" with the faulty spot marked and the reason and fix in plain words ("This ( has no closing ). Write \\( for a bracket."), the same in every browser. An Examples button offers nine patterns (a year from 1980 to 1999, an empty cell, two spaces in a row, …); a click puts one into the field and "↶ Back to …" restores what you typed. The filter's regular expressions have no Unicode flag, so \\p{L} is the letters "p{L}", and the card says so.
+
+
+## 9.99.1668 — 2026-11-20
+
+**🚀 Feature**
+
+- The global filter has a query mode: tick the new Q box beside Cc, Rx and Ex, and the box reads the query language majkinetor's Event Horizon uses (credited). "format:cd" keeps the rows whose Format column contains "cd" (the start of a column name will do: "form:cd"), "-live" and "-(live OR demo)" leave rows out, OR and AND (in capitals) combine terms, quotes keep a phrase or a space together, and a Date or Year column takes ranges such as "date:1990-1995", "2016-" or "-1987". Side by side means AND, so "type:album year:1975-1985 -live" is the albums of those years that are not live; a lower-case "rock and roll" stays one phrase. A card under the field says what the query means as you type, what is still missing ("Format: type a value") and when a key names no column, and its Syntax button lists the rules. Ex turns the whole query round, Cc applies to every term, Q and Rx switch each other off, only the matching terms are highlighted, each sub-table uses its own columns, and a pinned or recent filter remembers its Q. Off on every new page; with Q off nothing changes, and plain filtering is as fast as before. A query searches every row on each key (a query can widen as you type), so on a very large table it is a little slower than a plain word.
+
 
 ## 9.99.1667 — 2026-11-20
 
@@ -861,21 +875,6 @@ This page shows the newest 100 of 1838 versions; the month pages hold all of the
 **🚀 Feature**
 
 - Artwork viewer: Adjust (A) brightness, contrast, grayscale and invert to read a dark scan or a faded insert (view only; Download keeps the file); Compare (C) two pictures side by side (a page of a Spreads pair opens both); a loupe (L) under the pointer; Copy URL (Y; Shift+Y as an edit-note line); and ? for every key. On MusicBrainz and the other sites alike.
-
-
-## 9.99.1569 — 2026-11-06
-
-**🐛 Fix**
-
-- Pictures that do not load (the Cover Art or Event Art Archive slow or down, or another site's pictures) no longer show the browser's broken image: a dashed box with ⟳ asks for the picture again. In a picture section a tile has its own ⟳ and the tool row "⟳ Reload N failed"; a medium's thumb in its heading and the cover beside the page heading ask again when clicked; the viewer offers "⟳ Try again" for a large image that did not come; a hover card says to rest on the link again. Until now only the archive's record ("⟳ Retry") and the CAA/EAA column's icon (⚠⟳) could be asked for again.
-
-
-## 9.99.1568 — 2026-11-06
-
-**🚀 Feature**
-
-- Picture sections (a release's Cover art, an event's Event art, and the pictures on other sites' detail pages): a Table layout lists the pictures one per row (\#, picture, type, comment, ★ / ⏳, file name, and the copy on a springsteenlyrics item), sortable by any column; the viewer then steps through the rows in that order.
-- Picture sections: a filter box narrows the pictures as you type (by type, comment or file name) in every layout, says how many are shown and highlights what it found; a Tiles slider makes the thumbnails bigger or smaller (remembered; ↺ takes them back to the original size); Show missing turns a springsteenlyrics copy's "no scans yet" box on and off.
 
 
 ---

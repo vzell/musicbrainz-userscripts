@@ -1,5 +1,29 @@
 [
   {
+    "version": "9.99.1669",
+    "date": "2026-11-20",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "With Rx on, the card under the global filter (the one query mode got in 9.99.1668) reads your regular expression: a green \"Valid\" and the pattern piece by piece (\"^Born (to|in)\": the start of the cell · the text \"Born \" · group 1, holding: either \"to\" or \"in\"; repeats said after their piece), plus that each cell is tested on its own and what Cc and Ex do to it; or a red \"Invalid\" with the faulty spot marked and the reason and fix in plain words (\"This ( has no closing ). Write \\( for a bracket.\"), the same in every browser. An Examples button offers nine patterns (a year from 1980 to 1999, an empty cell, two spaces in a row, …); a click puts one into the field and \"↶ Back to …\" restores what you typed. The filter's regular expressions have no Unicode flag, so \\p{L} is the letters \"p{L}\", and the card says so."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1668",
+    "date": "2026-11-20",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "The global filter has a query mode: tick the new Q box beside Cc, Rx and Ex, and the box reads the query language majkinetor's Event Horizon uses (credited). \"format:cd\" keeps the rows whose Format column contains \"cd\" (the start of a column name will do: \"form:cd\"), \"-live\" and \"-(live OR demo)\" leave rows out, OR and AND (in capitals) combine terms, quotes keep a phrase or a space together, and a Date or Year column takes ranges such as \"date:1990-1995\", \"2016-\" or \"-1987\". Side by side means AND, so \"type:album year:1975-1985 -live\" is the albums of those years that are not live; a lower-case \"rock and roll\" stays one phrase. A card under the field says what the query means as you type, what is still missing (\"Format: type a value\") and when a key names no column, and its Syntax button lists the rules. Ex turns the whole query round, Cc applies to every term, Q and Rx switch each other off, only the matching terms are highlighted, each sub-table uses its own columns, and a pinned or recent filter remembers its Q. Off on every new page; with Q off nothing changes, and plain filtering is as fast as before. A query searches every row on each key (a query can widen as you type), so on a very large table it is a little slower than a plain word."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1667",
     "date": "2026-11-20",
     "sections": [

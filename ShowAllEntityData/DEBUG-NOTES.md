@@ -30719,7 +30719,7 @@ Env: 2026-11-20T00:31–01:17+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6
   three 90 s render timeouts on pages the change does not touch (`uvd-live-titles.spec.js:384`,
   `saed-narrow.mobile.spec.js:28`, `sidebar-sections.mobile.spec.js:36`), 20 of 20 when rerun alone.
 
-## 2026-11-20 — The global filter's query mode: Event Horizon's language behind a Q box (feat/gf-query-mode)
+## 2026-11-20 — The global filter's query mode: Event Horizon's language behind a Q box (feat/gf-query-mode, 9.99.1668)
 
 Env: 2026-11-20T12:40–15:09+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1, bundled Chromium (headless), chromium-mobile Pixel 7 emulation, no Tampermonkey (GM stubs).
 
@@ -30752,7 +30752,7 @@ Env: 2026-11-20T12:40–15:09+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6
 - **Browser check** (vzell, 2026-11-20, live): OK. Env: Vivaldi 8.2.4133.96 (Chromium 152.0.7977.170) · Tampermonkey
   5.5.1. Follow-up asked at the same time: a card like Q's for Rx (the expression in words, or why it is invalid).
 
-## 2026-11-20 — The Rx card: a regular expression read in words (feat/gf-query-mode, WIP.2)
+## 2026-11-20 — The Rx card: a regular expression read in words (feat/gf-query-mode, 9.99.1669)
 
 Env: 2026-11-20T15:40–16:05+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1, bundled Chromium (headless), chromium-mobile Pixel 7 emulation, no Tampermonkey (GM stubs).
 
