@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-11-20",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase: a new warning from the Brucebase feed (BruceParser 0.24.0): ⚠️ ⇋ a show's Notes, Gallery, Eyewitness, Media or Recording notes page whose name is not the show's, as its breadcrumb names the show. For example gallery:1967-11-00-… under gig:1967-11-00a-… (a missing day letter), \"palais-omnisport\" under \"palais-omnisports\" (a typo), or a page under a show of another date or place. A name Wikidot cut at its 60 characters, a \"-1\"/\"-2\" of two pages of one date and the \"dl-\" of a download's note count as fine. The show is marked on its rows, its page and its window, the page itself on its rows (Recent changes, the tag lists); the hover text names the page and the name it would have. 36 pages in the run of 2026-11-19. Its own switch in ⚙️ Settings → ⚠️ Findings, on by default."
+        ]
+      }
+    ]
+  }
+]

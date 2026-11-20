@@ -1,0 +1,44 @@
+[
+    {
+        "name": "dependent-name: the show index is never built",
+        "why": "A show is marked through the feed's event read backwards (_bbFeed.byEventName).",
+        "edits": [{ "find": "                _bbFeed.byEventName.get(dn.event).push({ name, event: dn.event, expected: String(dn.expected || '') });", "replace": "" }],
+        "spec": "tests/fixtures/bb-feed-dependent-name.spec.js", "grep": "1968: the show whose gallery", "expect": "fail"
+    },
+    {
+        "name": "dependent-name: the page's own entry is left out",
+        "why": "The page itself is marked too, on its own row (Recent changes' Page cell).",
+        "edits": [{ "find": "                    ...(own && own.event ? [{ name, event: String(own.event), expected: String(own.expected || ''), own: true }] : []),", "replace": "" }],
+        "spec": "tests/fixtures/bb-feed-dependent-name.spec.js", "grep": "the page's own row", "expect": "fail"
+    },
+    {
+        "name": "dependent-name: the kind is not handled as a show's list",
+        "why": "Without its own branch the kind falls to the plain one: the show is never marked, the page's value has no deps.",
+        "edits": [{ "find": "            } else if (kind === 'dependent-name') {", "replace": "            } else if (kind === 'dependent-name-x') {" }],
+        "spec": "tests/fixtures/bb-feed-dependent-name.spec.js", "grep": "the facts: the show gets its pages", "expect": "fail"
+    },
+    {
+        "name": "dependent-name: its switch is ignored",
+        "why": "sa_findings_bb_feed_name off takes its marks away (_bbFeedKindOn()).",
+        "edits": [{ "find": "setting: 'sa_findings_bb_feed_name',", "replace": "setting: 'sa_findings_bb_feed_name_x'," }],
+        "spec": "tests/fixtures/bb-feed-dependent-name.spec.js", "grep": "its switch off", "expect": "fail"
+    },
+    {
+        "name": "dependent-name: the words of the show's side are the page's",
+        "why": "On the show the text names its page; on the page it names the show.",
+        "edits": [{ "find": "                : `Its page ${d.name} is named differently from this show: a page of it would be named ${d.expected}.`)).join(' ');", "replace": "                : `${name} is named differently from its show ${d.event}: a page of that show would be named ${d.expected}.`)).join(' ');" }],
+        "spec": "tests/fixtures/bb-feed-dependent-name.spec.js", "grep": "1968: the show whose gallery", "expect": "fail"
+    },
+    {
+        "name": "dependent-name: the level is an error",
+        "why": "vzell, 2026-11-20: a WARNING.",
+        "edits": [{ "find": "'dependent-name': { id: 'bb-feed-name', glyph: '⇋', level: 'warn',", "replace": "'dependent-name': { id: 'bb-feed-name', glyph: '⇋', level: 'error'," }],
+        "spec": "tests/fixtures/bb-feed-dependent-name.spec.js", "grep": "a show's head", "expect": "fail"
+    },
+    {
+        "name": "dependent-name: the live filter drops the kind",
+        "why": "Nothing the page in front shows contradicts the kind, so it is never dropped.",
+        "edits": [{ "find": "            if (f.kind === 'files-no-images') return (tags && !tags.includes('files')) || live.images > 0 ? null : f;", "replace": "            if (f.kind === 'files-no-images') return (tags && !tags.includes('files')) || live.images > 0 ? null : f;\n            if (f.kind === 'dependent-name') return null;" }],
+        "spec": "tests/fixtures/bb-feed-dependent-name.spec.js", "grep": "a show's head", "expect": "fail"
+    }
+]

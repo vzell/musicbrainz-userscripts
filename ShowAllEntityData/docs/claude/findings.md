@@ -533,8 +533,13 @@ docs/claude/brucebase.md, "The BruceParser feed". What this file must record:
   Brucebase entries never run on MusicBrainz. Settings
   `sa_findings_bb_mb_no_entry`, `_shared`, `_not_anchor`; tint
   `sa_findings_tint_bb_mb`.
+- **Feed 1.6 (2026-11-20): one more entry from `_BB_FEED_KINDS`**, ⚠️
+  `bb-feed-name` ⇋ (dependent-name: a show's dependent page named
+  differently from its show). Like dependent-title it marks the show too,
+  through `_bbFeed.byEventName`; the live filter never drops it
+  (docs/claude/brucebase.md, "Feed 1.6").
 - Settings: `sa_findings_bb_feed_title`, `_no_tags`, `_no_parent`,
-  `_first_letter`, `_date_missing`, `_date_wrong`, `_files`; tint
+  `_first_letter`, `_date_missing`, `_date_wrong`, `_files`, `_name`; tint
   `sa_findings_tint_bb_feed`; the feed itself `sa_bb_feed`.
 - Spec `tests/fixtures/bb-feed.spec.js`; mutations
   `scripts/mutations/bb-feed.json`.

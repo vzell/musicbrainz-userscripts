@@ -3344,6 +3344,17 @@
                          'page (a venue) and its window. Needs "Read the Brucebase feed".'
         },
 
+        sa_findings_bb_feed_name: {
+            label: 'Find Brucebase pages named differently from their show (Brucebase feed)',
+            type: 'checkbox',
+            default: true,
+            description: 'From the Brucebase feed: a show\'s own page (its Notes, Gallery, Eyewitness, Media or ' +
+                         'Recording notes page) whose name differs from the show its breadcrumb names ' +
+                         '("gallery:1967-11-00-…" under "gig:1967-11-00a-…": a missing day letter, a typo, a wrong ' +
+                         'date or show). A WARNING on the page and on the show: their rows in every Brucebase ' +
+                         'list, and the show\'s page and window. Needs "Read the Brucebase feed".'
+        },
+
         sa_findings_bb_mb_no_entry: {
             label: 'Find MusicBrainz events whose Brucebase link reaches no entry (Brucebase feed)',
             type: 'checkbox',
@@ -28131,6 +28142,13 @@
             src: 'date-parts', part: 'wrong' },
         'files-no-images': { id: 'bb-feed-files', glyph: '▢', level: 'warn', setting: 'sa_findings_bb_feed_files',
             label: 'Brucebase page tagged "files" without a picture', report: 'MISMATCH-images-files-tag' },
+        // Feed 1.6 (Track A idea 4; vzell, 2026-11-20: instead of the
+        // URL-shortening report, a WARNING): a show's dependent page whose
+        // name is not its show's, marked on that page and on the show as
+        // dependent-title is (`_bbFeed.byEventName`).
+        'dependent-name': { id: 'bb-feed-name', glyph: '⇋', level: 'warn', setting: 'sa_findings_bb_feed_name',
+            label: 'Brucebase page named differently from its show',
+            report: 'the run\'s gignote, gallery, eye, media and recnote pages (dependent-names.awk)' },
     };
     /** @type {Set<string>} The columns that name a row's own page, on every Brucebase list (vzell, decision 5). */
     const _BB_FEED_COLS = new Set(['Event', 'Title', 'Name', 'Page']);
@@ -28138,9 +28156,10 @@
      * The feed in memory: `data` (null without one), `at` (when it was read),
      * `err`/`errAt` (the last failed read), `gen` (bumped on every change,
      * the cell memo's key), `byEvent` (show → its dependent pages whose
-     * title differs, the feed's `event` read backwards), `loading`.
+     * title differs, the feed's `event` read backwards), `byEventName`
+     * (show → its dependent pages whose name differs, feed 1.6), `loading`.
      */
-    const _bbFeed = { read: false, data: null, at: 0, err: '', errAt: 0, gen: 0, byEvent: new Map(), loading: null, memo: new Map() };
+    const _bbFeed = { read: false, data: null, at: 0, err: '', errAt: 0, gen: 0, byEvent: new Map(), byEventName: new Map(), loading: null, memo: new Map() };
 
     /** @returns {boolean} Whether the feed is read and its marks drawn (`sa_bb_feed`). */
     function _bbFeedOn() {
@@ -28186,14 +28205,21 @@
     function _bbFeedTake(data) {
         _bbFeed.data = _bbFeedValid(data) ? data : null;
         _bbFeed.byEvent = new Map();
+        _bbFeed.byEventName = new Map();
         _bbFeed.gen++;
         _bbFeed.memo = new Map();
         if (!_bbFeed.data) return;
         Object.entries(_bbFeed.data.pages).forEach(([name, kinds]) => {
             const dt = kinds && kinds['dependent-title'];
-            if (!dt || !dt.event) return;
-            if (!_bbFeed.byEvent.has(dt.event)) _bbFeed.byEvent.set(dt.event, []);
-            _bbFeed.byEvent.get(dt.event).push({ name, title: dt.title || '', eventTitle: dt.eventTitle || '', event: dt.event });
+            if (dt && dt.event) {
+                if (!_bbFeed.byEvent.has(dt.event)) _bbFeed.byEvent.set(dt.event, []);
+                _bbFeed.byEvent.get(dt.event).push({ name, title: dt.title || '', eventTitle: dt.eventTitle || '', event: dt.event });
+            }
+            const dn = kinds && kinds['dependent-name'];
+            if (dn && dn.event) {
+                if (!_bbFeed.byEventName.has(dn.event)) _bbFeed.byEventName.set(dn.event, []);
+                _bbFeed.byEventName.get(dn.event).push({ name, event: dn.event, expected: String(dn.expected || '') });
+            }
         });
     }
 
@@ -28385,7 +28411,8 @@
     /**
      * What the feed says about a page: one fact per kind, each `{kind,
      * value}`; for a show, `dependent-title` with `deps` (its pages whose
-     * title differs; vzell, decision 1). Only kinds whose finding is on.
+     * title differs; vzell, decision 1), and `dependent-name` likewise (its
+     * pages whose name differs; feed 1.6). Only kinds whose finding is on.
      *
      * @param {string} name - A page name (`_bbFeedPageName()`).
      * @returns {Array<{kind: string, value: *, deps?: Array<Object>}>}
@@ -28402,6 +28429,13 @@
                 const deps = [
                     ...(own ? [{ name, title: own.title || '', eventTitle: own.eventTitle || '', event: own.event || '', own: true }] : []),
                     ...(_bbFeed.byEvent.get(name) || []),
+                ];
+                if (deps.length) out.push({ kind, value: own || null, deps });
+            } else if (kind === 'dependent-name') {
+                const own = kinds[kind];
+                const deps = [
+                    ...(own && own.event ? [{ name, event: String(own.event), expected: String(own.expected || ''), own: true }] : []),
+                    ...(_bbFeed.byEventName.get(name) || []),
                 ];
                 if (deps.length) out.push({ kind, value: own || null, deps });
             } else if (_BB_FEED_KINDS[kind].src) {
@@ -28450,6 +28484,10 @@
      *   the run saw (edited since) or now equals its show's;
      * - a show's dependents: those whose title now equals the show's title
      *   are dropped.
+     * The dependent-name kind (feed 1.6) is never dropped: a show's page
+     * cannot see its dependents' names, and a dependent page (gignote,
+     * gallery, eye, media, recnote) has no head and no window of ours, only
+     * rows, which know nothing of the page now.
      *
      * @param {Array<Object>} facts - `_bbFeedFacts()`.
      * @param {?{title: ?string, tags: ?string[], parent: ?boolean, images?: ?number, letterChecked?: boolean}} live
@@ -28508,6 +28546,11 @@
         if (f.kind === 'date-missing') return `${name} lacks the date tag${f.value.length > 1 ? 's' : ''} ${f.value.map(t => `"${t}"`).join(', ')} of the date in its name.`;
         if (f.kind === 'date-wrong') return `${name} carries the date tag${f.value.length > 1 ? 's' : ''} ${f.value.map(t => `"${t}"`).join(', ')}, which the date in its name does not have.`;
         if (f.kind === 'files-no-images') return `${name} is tagged "files" but shows no picture.`;
+        if (f.kind === 'dependent-name') {
+            return f.deps.map(d => (d.own
+                ? `${name} is named differently from its show ${d.event}: a page of that show would be named ${d.expected}.`
+                : `Its page ${d.name} is named differently from this show: a page of it would be named ${d.expected}.`)).join(' ');
+        }
         return f.deps.map(d => (d.own
             ? `This page's title "${d.title}" differs from its ${d.event ? `show's (${d.event})` : 'parent page\'s'}: "${d.eventTitle}".`
             : `Its page ${d.name} is titled "${d.title}", the show "${d.eventTitle}".`)).join(' ');
@@ -78900,6 +78943,7 @@
                 'date-missing': 'A page that is no show lacks a tag of the date in its name ("22" for a page of 1978-08-22); a show\'s own date tags are the Tags findings\'. ',
                 'date-wrong': 'A page that is no show carries a date tag the date in its name does not have ("23" on a page of 1978-08-22). ',
                 'files-no-images': 'The page is tagged "files" but shows no picture. ',
+                'dependent-name': 'A page of a show (its Notes, Gallery, Eyewitness, Media or Recording notes page) is named differently from the show its breadcrumb names ("gallery:1967-11-00-…" under "gig:1967-11-00a-…": a missing day letter, a typo, a wrong date or show); marked on that page and on the show. ',
             }[kind] + 'From the Brucebase feed: BruceParser\'s full read of the wiki, published at github.com/vzell/brucebase-feed; the hover text names the run, and Brucebase may have been fixed since.',
             enabled: () => !!_isBbHost && _bbFeedKindOn(kind),
             cols: name => _BB_FEED_COLS.has(name),
