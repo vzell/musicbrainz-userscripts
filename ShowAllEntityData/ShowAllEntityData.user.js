@@ -3402,6 +3402,17 @@
                          'Brucebase feed on MusicBrainz".'
         },
 
+        sa_findings_bb_mb_date: {
+            label: 'Find events whose Brucebase entry has another date (Brucebase feed)',
+            type: 'checkbox',
+            default: true,
+            description: 'From the Brucebase feed: an event whose Brucebase link names the entry of another date ' +
+                         '(1971#030771b, an entry of 1971-07-03, on an event of 1971-07-04), compared as far as both ' +
+                         'dates go; a span such as a month of sessions fits when it holds the entry\'s date. The card ' +
+                         'says which side is likely wrong by the date at the start of the event\'s name. A WARNING on ' +
+                         'its Event cell and page. Needs "Read the Brucebase feed on MusicBrainz".'
+        },
+
         sa_findings_tint_bb_mb: {
             label: 'Highlight the Event cells of MusicBrainz events the Brucebase feed names',
             type: 'checkbox',
@@ -28877,6 +28888,11 @@
     // to MusicBrainz or the wiki. Mockup
     // https://claude.ai/artifact/Tip5CShMevQp8ycqBjjnRZ, vzell's answers of
     // 2026-11-18 all as recommended (org/bbp-parity.org, "Feed v2, branch 3").
+    // Feed 1.7 (Track A idea 5, check 1) adds `date-differs`: a link of none
+    // of those three whose entry is of another date than the event; the card
+    // says which side the event's own name agrees with (mockup
+    // https://claude.ai/artifact/8iqJ2nM2xVb8JTkLgSwbod, vzell's answers of
+    // 2026-11-20 all as recommended).
 
     /**
      * The feed's MusicBrainz kinds: their finding, mark, setting and words.
@@ -28892,6 +28908,9 @@
         'not-anchor': { id: 'bb-mb-not-anchor', glyph: '⌗', level: 'warn', setting: 'sa_findings_bb_mb_not_anchor',
             label: 'Brucebase link is no year-page anchor',
             tip: 'The event\'s Brucebase link names a show\'s page, not its year-page anchor as every other event does. Hover the cell for the wiki\'s entries of the date. ' },
+        'date-differs': { id: 'bb-mb-date', glyph: '±', level: 'warn', setting: 'sa_findings_bb_mb_date',
+            label: 'Brucebase entry has another date',
+            tip: 'The event\'s Brucebase link names the entry of another date than the event\'s: most often the event\'s date is a day later than its own name and the wiki say. Hover the cell for which side is likely wrong and the wiki\'s entries of the event\'s date. ' },
     };
     /** @type {Set<string>} The MusicBrainz pageTypes whose press reads the feed (vzell, answers 3 and 4). */
     const _BB_FEED_MB_PAGES = new Set(['artist-events', 'place-events', 'area-events', 'event-collections', 'event-tags', 'event-overview']);
@@ -28928,33 +28947,92 @@
     }
 
     /**
-     * The event an Event cell names (its first `/event/<mbid>` link) and what
-     * the feed says about it, memoized per MBID and feed generation.
+     * The event an Event cell names and what the feed says about it,
+     * memoized per MBID and feed generation. The event's own link
+     * (`/event/<mbid>`) is preferred to the first one, a guard: MusicBrainz
+     * puts an event with event art's artwork icon link
+     * (`/event/<mbid>/event-art`, no text) first. On the artist's, place's
+     * and area's event lists the `caa` extractor has moved it into the EAA
+     * column before any finding reads the cell, so there it changes nothing.
      *
      * @param {HTMLTableCellElement} cell
-     * @returns {?{mbid: string, name: string, fact: ?Object}}
+     * @returns {?{mbid: string, name: string, dis: string, fact: ?Object}}
      */
     function _bbFeedMbCellFact(cell) {
-        const a = cell.querySelector('a[href*="/event/"]');
+        const links = Array.from(cell.querySelectorAll('a[href*="/event/"]'));
+        const a = links.find(x => /\/event\/[0-9a-f-]{36}\/?$/.test(x.getAttribute('href') || '')) || links[0];
         const m = a ? (a.getAttribute('href') || '').match(_BB_FEED_MB_EVENT_RE) : null;
         if (!m) return null;
         const key = `${_bbFeed.gen}|mb|${m[1]}`;
         if (_bbFeed.memo.has(key)) return _bbFeed.memo.get(key);
-        const r = { mbid: m[1], name: _dpText(a.textContent), fact: _bbFeedMbFact(m[1]) };
+        const comment = cell.querySelector('.comment');
+        const r = {
+            mbid: m[1], name: _dpText(a.textContent),
+            dis: comment ? _dpText(comment.textContent).replace(/^\((.*)\)$/, '$1') : '',
+            fact: _bbFeedMbFact(m[1]),
+        };
         _bbFeed.memo.set(key, r);
         return r;
+    }
+
+    /**
+     * The date a text starts with, as YYYY, YYYY-MM or YYYY-MM-DD with "-":
+     * an event's name ("1971‐07‐03: The Upstage, …", U+2010 or "-"), an
+     * entry's heading ("1976-02-00 - RECORD PLANT, …", whose "00" parts are
+     * left out) or a feed date ("1976-01 - 1976-03", its begin).
+     *
+     * @param {string} s
+     * @returns {string} The date, or '' when the text starts with none.
+     */
+    function _bbFeedMbDateOf(s) {
+        const m = String(s || '').replace(/[\u2010\u2011\u2012\u2013]/g, '-').match(/^(\d{4})(?:-(\d\d)(?:-(\d\d))?)?(?!\d)/);
+        if (!m) return '';
+        if (!m[2] || m[2] === '00') return m[1];
+        return !m[3] || m[3] === '00' ? `${m[1]}-${m[2]}` : `${m[1]}-${m[2]}-${m[3]}`;
+    }
+
+    /**
+     * Which side of a `date-differs` fact is likely wrong, by the date the
+     * event's own name starts with (vzell, mockup answer 2): the name agrees
+     * with the entry, so likely the event's date; or with the event's date,
+     * so likely the link or the wiki's date. '' when the name has no date or
+     * agrees with neither.
+     *
+     * @param {Object} f - A feed `mb` entry of kind `date-differs`.
+     * @param {string} name - The event as the page names it.
+     * @returns {string}
+     */
+    function _bbFeedMbVerdict(f, name) {
+        const nd = _bbFeedMbDateOf(name);
+        if (!nd) return '';
+        const ed = _bbFeedMbDateOf(f.heading);
+        const evd = _bbFeedMbDateOf(f.date);
+        if (nd === ed && nd !== evd) return `Its name says ${nd}, as Brucebase does: likely the event's date is wrong.`;
+        if (nd === evd && nd !== ed) return `Its name says ${nd} too: likely the link, or the wiki's date, is wrong.`;
+        return '';
     }
 
     /**
      * One MusicBrainz fact in words, for a cell's tooltip line and the card.
      *
      * @param {Object} f - A feed `mb` entry.
+     * @param {string} [name] - The event as the page names it (`date-differs`
+     *     says by it which side is likely wrong).
+     * @param {{list?: boolean}} [opts] - `list: false` leaves out the wiki's
+     *     entries of the date (the card lists them itself).
      * @returns {string}
      */
-    function _bbFeedMbText(f) {
+    function _bbFeedMbText(f, name = '', { list: withList = true } = {}) {
         const [slug, anchor] = String(f.link || '').split('#');
-        const cands = Array.isArray(f.candidates) ? f.candidates : [];
+        const cands = withList && Array.isArray(f.candidates) ? f.candidates : [];
         const list = cands.length ? ` The wiki's entries of ${f.date || 'the date'}: ${cands.map(c => `#${String(c.anchor).split('#')[1]} ${c.heading}${c.likely ? ' (likely)' : ''}`).join('; ')}.` : '';
+        if (f.kind === 'date-differs') {
+            const heading = String(f.heading || '');
+            const rest = heading.includes(' - ') ? heading.slice(heading.indexOf(' - ') + 3) : '';
+            const verdict = _bbFeedMbVerdict(f, name);
+            return `Its link #${anchor} is the entry of ${_bbFeedMbDateOf(heading) || heading}${rest ? ` (${rest})` : ''}; the event's date is ${f.date || 'unknown'}.` +
+                (verdict ? ` ${verdict}` : '') + (withList ? (list || ` The wiki has no entry of ${f.date || 'the date'}.`) : '');
+        }
         if (f.kind === 'no-entry') {
             const lettered = cands.some(c => String(c.anchor).startsWith(`${f.link}`) && c.anchor !== f.link);
             return `Brucebase's ${slug} page has no entry #${anchor}${lettered ? ': it writes this date with a letter now' : ''}.${list}`;
@@ -28972,11 +29050,16 @@
      * its link, the words, the candidates as links to their year-page anchors
      * (the likely one marked), the run.
      *
+     * A `date-differs` card (feed 1.7, the mockup of 2026-11-20) also has the
+     * event's disambiguation and date, the verdict on its own line, and says
+     * so when the wiki has no entry of the event's date.
+     *
      * @param {Object} f - A feed `mb` entry.
      * @param {string} name - The event as the page names it.
+     * @param {string} [dis] - Its disambiguation, when the page shows one.
      * @returns {string} HTML.
      */
-    function _bbFeedMbCardHtml(f, name) {
+    function _bbFeedMbCardHtml(f, name, dis = '') {
         const k = _BB_FEED_MB_KINDS[f.kind];
         const esc = _mbttEscape;
         const link = String(f.link || '');
@@ -28984,6 +29067,18 @@
             `<li class="${c.likely ? 'mb-bbmb-likely' : ''}">${c.likely ? '<span class="mb-bbmb-k">likely</span>' : ''}` +
             `<a href="https://brucebase.wikidot.com/${esc(c.anchor)}" target="_blank" rel="noopener">${esc(c.heading || c.anchor)}</a>` +
             `<span class="mb-bbmb-pg">#${esc(String(c.anchor).split('#')[1] || '')} · ${esc(c.page || '')}</span></li>`).join('');
+        if (f.kind === 'date-differs') {
+            const verdict = _bbFeedMbVerdict(f, name);
+            const words = _bbFeedMbText(f, '', { list: false });
+            return `<div class="mb-bbmb-ttl" data-mb-level="${k.level}">⚠️ ${k.glyph} ${esc(k.label)}</div>` +
+                `<dl class="mb-bbmb-cmp"><dt>Event</dt><dd>${esc(name || '')}${dis ? ` <span class="mb-bbmb-pg">(${esc(dis)})</span>` : ''}</dd>` +
+                `<dt>Date</dt><dd>${esc(f.date || '')}</dd>` +
+                `<dt>Links</dt><dd><a href="https://brucebase.wikidot.com/${esc(link)}" target="_blank" rel="noopener">${esc(link)}</a></dd></dl>` +
+                `<p>${esc(words)}</p>` + (verdict ? `<p class="mb-bbmb-verdict">${esc(verdict)}</p>` : '') +
+                (cands ? `<p>The wiki's entries of ${esc(f.date || 'the date')}:</p><ul class="mb-bbmb-cands">${cands}</ul>`
+                    : `<p>The wiki has no entry of ${esc(f.date || 'the date')}.</p>`) +
+                `<div class="mb-bbmb-src">${esc(_bbFeedSource())}</div>`;
+        }
         const words = _bbFeedMbText({ ...f, candidates: [] });
         return `<div class="mb-bbmb-ttl" data-mb-level="${k.level}">${k.level === 'error' ? '❌' : '⚠️'} ${k.glyph} ${esc(k.label)}</div>` +
             `<dl class="mb-bbmb-cmp"><dt>Event</dt><dd>${esc(name || '')}</dd><dt>Links</dt><dd><a href="https://brucebase.wikidot.com/${esc(link)}" target="_blank" rel="noopener">${esc(link)}</a></dd></dl>` +
@@ -29019,6 +29114,7 @@
             #mb-bbmb-card .mb-bbmb-k { font: 600 10px/1 system-ui, -apple-system, "Segoe UI", sans-serif; letter-spacing: .08em; text-transform: uppercase; color: #3f7a3a; }
             #mb-bbmb-card .mb-bbmb-pg { font: 12px ui-monospace, Menlo, Consolas, monospace; color: #7a6d5c; overflow-wrap: anywhere; }
             #mb-bbmb-card .mb-bbmb-src { color: #7a6d5c; font-size: 12px; border-top: 1px solid #d9cfbd; padding-top: 6px; }
+            #mb-bbmb-card .mb-bbmb-verdict { font-weight: bold; }
             .mb-bbmb-mark { border: 0; background: none; padding: 0 2px; cursor: pointer; font: 600 12px system-ui, -apple-system, "Segoe UI", sans-serif; }
             .mb-bbmb-mark[data-mb-level="error"] { color: #a3361f; }
             .mb-bbmb-mark[data-mb-level="warn"] { color: #9a6a00; }
@@ -29052,26 +29148,26 @@
      * finding, or the sidebar's mark.
      *
      * @param {EventTarget} t
-     * @returns {?{el: Element, fact: Object, name: string}}
+     * @returns {?{el: Element, fact: Object, name: string, dis: string}}
      */
     function _bbMbCardTargetOf(t) {
         if (!(t instanceof Element) || !_bbFeedMbOn()) return null;
         const mark = t.closest('button.mb-bbmb-mark[data-mb-bbmb]');
         if (mark) {
             const f = _bbFeedMbFact(mark.dataset.mbBbmb);
-            return f ? { el: mark, fact: f, name: mark.dataset.mbBbmbName || '' } : null;
+            return f ? { el: mark, fact: f, name: mark.dataset.mbBbmbName || '', dis: mark.dataset.mbBbmbDis || '' } : null;
         }
         const td = t.closest('table.tbl td[data-mb-findings]');
         if (!td || !/(?:^| )bb-mb-/.test(td.dataset.mbFindings || '')) return null;
         const r = _bbFeedMbCellFact(td);
-        return r && r.fact ? { el: td, fact: r.fact, name: r.name } : null;
+        return r && r.fact ? { el: td, fact: r.fact, name: r.name, dis: r.dis } : null;
     }
 
     /**
      * Opens the card under its element (above it when only there it is in
      * view), inside the window's width.
      *
-     * @param {{el: Element, fact: Object, name: string}} tg
+     * @param {{el: Element, fact: Object, name: string, dis?: string}} tg
      * @returns {void}
      */
     function _bbMbCardShow(tg) {
@@ -29079,7 +29175,7 @@
         const card = _bbMbCardEl();
         if (_bbMbCard.for !== tg.el || card.style.display === 'none') {
             _bbMbCard.for = tg.el;
-            card.innerHTML = _bbFeedMbCardHtml(tg.fact, tg.name);
+            card.innerHTML = _bbFeedMbCardHtml(tg.fact, tg.name, tg.dis || '');
         }
         card.style.display = 'grid';
         const b = tg.el.getBoundingClientRect();
@@ -29149,6 +29245,15 @@
      * the sidebar, from the kept feed (no request at load); drawn again when
      * a read brings a feed. Removed when the feed no longer names the event.
      *
+     * Also after each copy of that link in the rendered "Sidebar" cards
+     * (`.mb-sb-inline`, `_sbInlineInsertSection()` calls this when it builds
+     * them): after a press the native sidebar is collapsed, and the cards
+     * copy a link with its item's TEXT only, so until 2026-11-20 the card
+     * showed a dead "⚠️ ±" and the live mark stayed out of sight (vzell's
+     * live check). `_sbOwnText()` leaves the mark out now; the copies here
+     * are buttons like the original, and the card's delegated listeners read
+     * their `data-mb-bbmb*`.
+     *
      * @returns {void}
      */
     function _bbFeedMbSidebarDraw() {
@@ -29169,9 +29274,19 @@
         b.dataset.mbLevel = k.level;
         const h1 = document.querySelector('#content h1, .eventheader h1, h1');
         b.dataset.mbBbmbName = h1 ? _dpText(h1.textContent) : '';
-        b.setAttribute('aria-label', `${k.label}: ${_bbFeedMbText(f)}`);
+        const comment = h1 && h1.querySelector('.comment');
+        b.dataset.mbBbmbDis = comment ? _dpText(comment.textContent).replace(/^\((.*)\)$/, '$1') : '';
+        b.setAttribute('aria-label', `${k.label}: ${_bbFeedMbText(f, b.dataset.mbBbmbName)}`);
         b.textContent = `${k.level === 'error' ? '❌' : '⚠️'} ${k.glyph}`;
         link.after(' ', b);
+        const href = link.getAttribute('href');
+        document.querySelectorAll('.mb-sb-inline a[href]').forEach((a) => {
+            if (a.getAttribute('href') !== href) return;
+            const at = a.closest('.mb-sb-chip') || a;
+            const copy = b.cloneNode(true);
+            at.after(copy);
+            if (!(copy.previousSibling && copy.previousSibling.nodeType === Node.TEXT_NODE)) copy.before(' ');
+        });
     }
 
     /**
@@ -79443,7 +79558,7 @@
             },
             detail: (cell) => {
                 const r = _bbFeedMbCellFact(cell);
-                return r && r.fact ? `${_bbFeedMbText(r.fact)} ${_bbFeedSource()}` : '';
+                return r && r.fact ? `${_bbFeedMbText(r.fact, r.name)} ${_bbFeedSource()}` : '';
             },
             tint: _findingTintSetting('sa_findings_tint_bb_mb'),
         })),
@@ -148776,7 +148891,7 @@ a { color: #1565c0; }`;
             if (n === a) return;
             if (n.nodeType === Node.TEXT_NODE) s += n.textContent;
             else if (n.nodeType === Node.ELEMENT_NODE &&
-                     !n.matches('ul, ol, a, h3, h4, .icon, .mb-sb-count, .mb-sb-h3-icon, .mb-toggle-icon') &&
+                     !n.matches('ul, ol, a, h3, h4, .icon, .mb-sb-count, .mb-sb-h3-icon, .mb-toggle-icon, .mb-bbmb-mark') &&
                      !n.querySelector('a, ul, ol')) s += ' ' + n.textContent;
         });
         return s.replace(/\s+/g, ' ').trim();
@@ -150298,9 +150413,14 @@ a { color: #1565c0; }`;
             if (wrap) wrap.remove();
             return null;
         }
+        const built = !wrap;
         if (!wrap) wrap = _sbInlineBuild();
         if (!wrap) return null;
         const where = _sbInlinePlace(root, wrap);
+        // A Brucebase feed mark on an event page is a button the cards do not
+        // copy: drawn after its copied link too, once the new cards are in
+        // the page (a no-op unless the page is an event the feed names).
+        if (built) _bbFeedMbSidebarDraw();
         Lib.debug('render', `_sbInlineInsertSection: "Sidebar" section ${where}.`);
         return wrap.querySelector('h2');
     }
@@ -195548,14 +195668,19 @@ a { color: #1565c0; }`;
             /**
              * The feed on MusicBrainz (feed 1.3): what it says about an event
              * MBID (`_bbFeedMbFact()`), in words (`_bbFeedMbText()`), and
-             * whether it is on here (`_bbFeedMbOn()`).
+             * whether it is on here (`_bbFeedMbOn()`); with `name`, the
+             * verdict of a `date-differs` fact (`_bbFeedMbVerdict()`, feed 1.7).
              *
              * @param {string} mbid
-             * @returns {{on: boolean, fact: ?Object, text: string}}
+             * @param {string} [name] - The event's name, as a page shows it.
+             * @returns {{on: boolean, fact: ?Object, text: string, verdict: string}}
              */
-            bbFeedMb(mbid) {
+            bbFeedMb(mbid, name = '') {
                 const fact = _bbFeedMbFact(mbid);
-                return { on: _bbFeedMbOn(), fact, text: fact ? _bbFeedMbText(fact) : '' };
+                return {
+                    on: _bbFeedMbOn(), fact, text: fact ? _bbFeedMbText(fact, name) : '',
+                    verdict: fact && fact.kind === 'date-differs' ? _bbFeedMbVerdict(fact, name) : '',
+                };
             },
             /**
              * Thin wrapper around `_bbFeedAnchorPage()`.

@@ -899,6 +899,189 @@ test.describe('the Brucebase feed 1.3: MusicBrainz events', () => {
         await mark.click();
         await expect(page.locator('#mb-bbmb-card li.mb-bbmb-likely')).toContainText('2025-05-20 - SOMEWHERE');
     });
+
+    // Feed 1.7 (Track A idea 5, check 1; mockup https://claude.ai/artifact/8iqJ2nM2xVb8JTkLgSwbod,
+    // vzell's answers of 2026-11-20 all as recommended): `date-differs`, an
+    // event whose Brucebase entry is of another date. ⚠️ ±, and the card
+    // says by the date the event's own name starts with which side is
+    // likely wrong.
+
+    /**
+     * A feed naming two events of the artist-events fixture `date-differs`
+     * (and one `not-anchor`, which a date switch must not touch):
+     * EV(1) "2026‐11‐09: David Geffen Hall, …" (Stand Up For Heroes; event
+     * art) on an entry of
+     * 2026-11-08: its name agrees with its date; EV(2) "2026‐10‐03:
+     * Merriweather Post Pavilion, …" dated 2026-10-04 on the entry of
+     * 2026-10-03: its name agrees with the wiki.
+     *
+     * @returns {Object}
+     */
+    function mbDateFeed() {
+        return {
+            ...feedOf({}),
+            mb: {
+                [EV(1)]: { kind: 'date-differs', link: '2026#081126', date: '2026-11-09', page: 'gig:2026-11-08-david-geffen-hall-new-york-city-ny',
+                    heading: '2026-11-08 - DAVID GEFFEN HALL, LINCOLN CENTER, NEW YORK CITY, NY' },
+                [EV(2)]: { kind: 'date-differs', link: '2026#031026', date: '2026-10-04', page: 'gig:2026-10-03-merriweather-post-pavilion-columbia-md',
+                    heading: '2026-10-03 - MERRIWEATHER POST PAVILION, COLUMBIA, MD', candidates: [
+                        { anchor: '2026#041026', page: 'gig:2026-10-04-jiffy-lube-live-bristow-va', heading: '2026-10-04 - JIFFY LUBE LIVE, BRISTOW, VA' }] },
+                [EV(4)]: { kind: 'not-anchor', link: 'interview:2020-10-23-siriusxm-studio-new-york-city-ny', date: '2020-10-23' },
+            },
+        };
+    }
+
+    test('BruceParser 0.26.0\'s feed 1.7: seven events whose entry has another date, the 1971 Upstage case', () => {
+        const real = JSON.parse(fs.readFileSync(path.join(__dirname, 'bb-feed-2026-11-19-dates.json'), 'utf8'));
+        expect(real.run.feed).toBe('1.7');
+        const kinds = {};
+        Object.values(real.mb).forEach((f) => { kinds[f.kind] = (kinds[f.kind] || 0) + 1; });
+        expect(kinds).toEqual({ 'no-entry': 197, 'shared': 18, 'not-anchor': 1, 'date-differs': 7 });
+        expect(real.mb['fe126f9a-b359-47e2-964c-3d118a179c54']).toEqual({
+            kind: 'date-differs', link: '1971#030771b', date: '1971-07-04', page: 'gig:1971-07-03-upstage-asbury-park-nj',
+            heading: '1971-07-03 - THE UPSTAGE, ASBURY PARK, NJ',
+            candidates: [{ anchor: '1971#040771', page: 'gig:1971-07-04-student-prince-asbury-park-nj', heading: '1971-07-04 - STUDENT PRINCE, ASBURY PARK, NJ' }],
+        });
+        // a span holding the entry's date is no date-differs: the Record Plant sessions of 1976-01 to 1976-03
+        expect(real.mb['02a9cbe2-8114-4552-8594-bf59a5f03825']).toBeUndefined();
+    });
+
+    test('an event list: date-differs ⚠️ ± on the Event cell, counted in the menu; the hover text says by the name which side is likely wrong', async ({ page }) => {
+        await loadMbEvents(page, { ...feedOn(mbDateFeed()), sa_bb_feed_mb: true });
+        await page.click('button[data-label="Show all Events for Artist"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const cells = await mbCells(page);
+        expect(cells.map(r => [r.mbid, r.ids, r.level])).toEqual([
+            [EV(1), ['bb-mb-date'], 'warn'],
+            [EV(2), ['bb-mb-date'], 'warn'],
+            [EV(4), ['bb-mb-not-anchor'], 'warn'],
+        ]);
+        expect(cells[0].tip).toContain('Its link #081126 is the entry of 2026-11-08 (DAVID GEFFEN HALL, LINCOLN CENTER, NEW YORK CITY, NY); the event\'s date is 2026-11-09.');
+        expect(cells[0].tip).toContain('Its name says 2026-11-09 too: likely the link, or the wiki\'s date, is wrong.');
+        expect(cells[0].tip).toContain('The wiki has no entry of 2026-11-09.');
+        expect(cells[1].tip).toContain('Its name says 2026-10-03, as Brucebase does: likely the event\'s date is wrong.');
+        expect(cells[1].tip).toContain('The wiki\'s entries of 2026-10-04: #041026 2026-10-04 - JIFFY LUBE LIVE, BRISTOW, VA.');
+        const row = await findingRow(page, 'warn', 'bb-mb-date');
+        expect(row.count).toBe(2);
+    });
+
+    test('the date-differs card: the event with its disambiguation, its date, the verdict, the wiki\'s entries or that it has none', async ({ page }) => {
+        await loadMbEvents(page, { ...feedOn(mbDateFeed()), sa_bb_feed_mb: true });
+        await page.click('button[data-label="Show all Events for Artist"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const card = page.locator('#mb-bbmb-card');
+        const cellOf = id => page.locator(`table.tbl tbody td[data-mb-findings~="bb-mb-date"]:has(a[href="/event/${id}"])`);
+        await cellOf(EV(2)).hover();
+        await expect(card).toBeVisible();
+        await expect(card.locator('.mb-bbmb-ttl')).toHaveText('⚠️ ± Brucebase entry has another date');
+        await expect(card.locator('.mb-bbmb-cmp dt')).toHaveText(['Event', 'Date', 'Links']);
+        await expect(card.locator('.mb-bbmb-cmp dd').nth(1)).toHaveText('2026-10-04');
+        await expect(card.locator('.mb-bbmb-verdict')).toHaveText('Its name says 2026-10-03, as Brucebase does: likely the event\'s date is wrong.');
+        expect(await card.locator('.mb-bbmb-cands a').evaluateAll(as => as.map(a => a.getAttribute('href')))).toEqual(['https://brucebase.wikidot.com/2026#041026']);
+        await page.keyboard.press('Escape');
+        await expect(card).toBeHidden();
+        // the event with event art (its icon link is in the EAA column by now): the name, the disambiguation, no entry
+        await cellOf(EV(1)).hover();
+        await expect(card).toBeVisible();
+        await expect(card.locator('.mb-bbmb-cmp dd').first()).toHaveText('2026‐11‐09: David Geffen Hall, Lincoln Center, New York City, NY, USA (Stand Up For Heroes)');
+        await expect(card.locator('.mb-bbmb-verdict')).toHaveText('Its name says 2026-11-09 too: likely the link, or the wiki\'s date, is wrong.');
+        await expect(card).toContainText('The wiki has no entry of 2026-11-09.');
+        expect(await card.locator('.mb-bbmb-cands').count()).toBe(0);
+    });
+
+    test('date-differs\' own switch off: no ± mark, the other kinds stay', async ({ page }) => {
+        await loadMbEvents(page, { ...feedOn(mbDateFeed()), sa_bb_feed_mb: true, sa_findings_bb_mb_date: false });
+        await page.click('button[data-label="Show all Events for Artist"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        expect((await mbCells(page)).map(r => [r.mbid, r.ids])).toEqual([[EV(4), ['bb-mb-not-anchor']]]);
+    });
+
+    test('the verdict: by the date at the start of the name (U+2010 or "-"), none for a name without a date or agreeing with neither', async ({ page }) => {
+        await loadMbEvents(page, { ...feedOn(mbDateFeed()), sa_bb_feed_mb: true });
+        await page.waitForFunction(() => window.__saTest && window.__saTest.bbFeedMb);
+        const v = (id, name) => page.evaluate(([i, n]) => window.__saTest.bbFeedMb(i, n).verdict, [id, name]);
+        expect(await v(EV(2), '2026‐10‐03: Merriweather Post Pavilion, Columbia, MD, USA')).toBe('Its name says 2026-10-03, as Brucebase does: likely the event\'s date is wrong.');
+        expect(await v(EV(2), '2026-10-03: Merriweather Post Pavilion')).toBe('Its name says 2026-10-03, as Brucebase does: likely the event\'s date is wrong.');
+        expect(await v(EV(2), '2026‐10‐04: Merriweather Post Pavilion')).toBe('Its name says 2026-10-04 too: likely the link, or the wiki\'s date, is wrong.');
+        expect(await v(EV(2), 'Merriweather Post Pavilion 2026')).toBe('');
+        expect(await v(EV(2), '2026‐10‐05: Merriweather Post Pavilion')).toBe('');
+        expect(await v(EV(4), '2020‐10‐23: SiriusXM Studio')).toBe('');
+    });
+
+    test('an event page: ⚠️ ± beside its Brucebase link; the card\'s verdict by the page\'s heading', async ({ page }) => {
+        const id = '3f2ca30a-7de4-4964-ad30-48376535fec8';
+        const feed = { ...feedOf({}), mb: { [id]: { kind: 'date-differs', link: '2025#200525', date: '2025-05-21',
+            page: 'gig:2025-05-20-co-op-live-manchester-england', heading: '2025-05-20 - CO-OP LIVE, MANCHESTER, ENGLAND' } } };
+        await page.route(/^https?:\/\//, route => route.abort('blockedbyclient'));
+        await loadUserscriptPage(page, {
+            url: `https://musicbrainz.org/event/${id}`, fixtureFile: path.join(__dirname, 'event-overview.html'), testMode: true,
+            settingsOverride: { ...feedOn(feed), sa_bb_feed_mb: true },
+        });
+        const mark = page.locator('ul.external_links button.mb-bbmb-mark');
+        await expect(mark).toHaveText('⚠️ ±');
+        expect(await mark.getAttribute('aria-label')).toContain('Its name says 2025-05-20, as Brucebase does: likely the event\'s date is wrong.');
+        await mark.click();
+        await expect(page.locator('#mb-bbmb-card .mb-bbmb-verdict')).toHaveText('Its name says 2025-05-20, as Brucebase does: likely the event\'s date is wrong.');
+    });
+
+    // vzell's live check (2026-11-20): on the rendered event page, with the link previews on (his defaults, which
+    // FIXTURE_SETTINGS_OVERRIDE switches off), the sidebar's "⚠️ ±" opened nothing on hover.
+    const SB_EVENT = '3f2ca30a-7de4-4964-ad30-48376535fec8';
+    const SB_FILE = path.join(__dirname, 'event-overview.html');
+    /**
+     * The event-overview fixture with a date-differs fact on its event, the
+     * link previews on (vzell's defaults) and the "Sidebar" section open.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @returns {Promise<void>}
+     */
+    async function loadMarkedEvent(page) {
+        const feed = { ...feedOf({}), mb: { [SB_EVENT]: { kind: 'date-differs', link: '2025#200525', date: '2025-05-21',
+            page: 'gig:2025-05-20-co-op-live-manchester-england', heading: '2025-05-20 - CO-OP LIVE, MANCHESTER, ENGLAND' } } };
+        await page.route(/^https?:\/\//, route => route.abort('blockedbyclient'));
+        await loadUserscriptPage(page, {
+            url: `https://musicbrainz.org/event/${SB_EVENT}`, fixtureFile: SB_FILE, testMode: true,
+            settingsOverride: { ...feedOn(feed), sa_bb_feed_mb: true, sa_pop_mb: undefined, sa_pop_mb_page: undefined, sa_pop_ext: undefined,
+                sa_dp_hover_without_ctrl: undefined, sa_sidebar_inline_collapsed: false },
+        });
+    }
+    /**
+     * Hovers the one visible mark and asserts its card opens, topmost at its place.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @returns {Promise<void>}
+     */
+    async function hoverMarkOpensCard(page) {
+        const mark = page.locator('button.mb-bbmb-mark:visible');
+        await expect(mark).toHaveCount(1);
+        await mark.hover();
+        const card = page.locator('#mb-bbmb-card');
+        await expect(card).toBeVisible();
+        const onTop = await card.evaluate((c) => {
+            const r = c.getBoundingClientRect();
+            const hit = document.elementFromPoint(r.left + r.width / 2, r.top + Math.min(20, r.height / 2));
+            return !!hit && (hit === c || c.contains(hit));
+        });
+        expect(onTop, 'the card is the topmost element at its own place').toBe(true);
+    }
+
+    test('an event page, the link previews on: hovering the sidebar mark opens its card, on top', async ({ page }) => {
+        await loadMarkedEvent(page);
+        await expect(page.locator('#sidebar ul.external_links button.mb-bbmb-mark')).toHaveText('⚠️ ±');
+        await hoverMarkOpensCard(page);
+    });
+
+    test('an event page after its press, the link previews on: the Sidebar card has a live mark, no dead text, and its hover opens the card', async ({ page }) => {
+        await loadMarkedEvent(page);
+        await page.route(`https://musicbrainz.org/event/${SB_EVENT}*`, r => r.fulfill({ path: SB_FILE, contentType: 'text/html' }));
+        await page.click('button[data-label="Show all Relationships for Event"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const chip = page.locator('.mb-sb-inline .mb-sb-chip:has(a[href*="brucebase.wikidot.com"])');
+        await expect(chip).toHaveCount(1);
+        await expect(chip).not.toContainText('±');
+        await expect(page.locator('.mb-sb-inline button.mb-bbmb-mark')).toHaveCount(1);
+        await hoverMarkOpensCard(page);
+    });
 });
 
 test.describe('the Brucebase feed: MusicBrainz', () => {

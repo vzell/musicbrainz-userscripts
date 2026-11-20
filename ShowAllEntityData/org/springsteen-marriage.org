@@ -17,15 +17,20 @@ left out by decision), NOT (not done, with the reason).
 
 - *Every row of the parity matrix is DONE or decided.* Batch 3b (the five tag families, each behind its own switch,
   off by default) and idea 3 (the lookup tables and the song and venue maps in the feed) are merged as
-  9.99.1661–9.99.1665 (=feat/bb-findings-batch3b=, vzell: "all tested live OK"). BruceParser is at 0.24.0; the
-  published feed is 1.6 (2026-11-20, feed repo =c52f356=).
+  9.99.1661–9.99.1665 (=feat/bb-findings-batch3b=, vzell: "all tested live OK"). BruceParser is at 0.26.0; the
+  published feed is 1.7 (2026-11-20, feed repo =1450799=, its FORMAT.md =022fac2=).
 - *Idea 4 is DONE*: merged on 2026-11-20 as 9.99.1667 (=feat/bb-feed-dependent-name=, vzell: "all tested live, OK"): not
   URL-shortening (its rows are its own derivation's variants) but a page named differently from its show, the feed
   kind "dependent-name" (BruceParser 0.24.0, feed 1.6, 36 pages), ⚠️ =bb-feed-name= in SAED; =test:full= 3370/3370.
   The feed 1.6 is published (=c52f356=). Record and browser check: bbp-parity.org, "Track A idea 4 …".
-- *Open in Track A:* two MusicBrainz cross-checks (idea 5). Freezing
-  BruceBaseParser (idea 6) is possible but waits: vzell, 2026-11-20, "We will actually NOT yet freeze
-  BruceBaseParser right now". See "Status at a glance".
+- *Idea 5, check 1 is built* on =feat/bb-feed-mb-date= (2026-11-20, not merged): not the event-title comparison
+  (598 differing titles, nearly all conventions) but its date slice, the feed kind "date-differs" (BruceParser
+  0.26.0, feed 1.7, 7 events, published), ⚠️ ± =bb-mb-date= in SAED; =bb-feed.spec.js= 44/44, mutations 11 + 1
+  ="expect": "pass"=. Before it, BruceParser 0.25.0: the country-suffix bug, the 503 handling in =search.sh= and the
+  work search in =bbp.sh=. =test:full= 3391/3391 (=f8addb5c=). The feed 1.7 is published (vzell, 2026-11-20). Next:
+  vzell's browser check (bbp-parity.org, "Track A idea 5, check 1 …"), then check 2 (works, =mbWorks=).
+- *Open in Track A:* check 2 of idea 5. Freezing BruceBaseParser (idea 6) is possible but waits: vzell, 2026-11-20,
+  "We will actually NOT yet freeze BruceBaseParser right now". See "Status at a glance".
 - *Nothing since 9.99.1625 is published* to =vzell/mb-userscripts=; that is vzell's call. The ❓ Help on GitHub is
   behind until then.
 - *Mirror:* =~/git/scripts/BruceParser/bb/latest=; check =ls -la= first (CLAUDE.md, working rule 7). The newest run
@@ -55,11 +60,13 @@ left out by decision), NOT (not done, with the reason).
 | Idea 4, the year reader's setlist note                   | DONE  | 9.99.1648           | —                                                     |
 | Idea 4: a page named differently (not URL-shortening)    | DONE  | 9.99.1667           | "Track A idea 4: a page named differently …"          |
 | Idea 5, feed v2 branch 3: MusicBrainz event links        | DONE  | 9.99.1647           | "Feed v2, branch 3 …"                                 |
-| Idea 5: MB event titles, works against Brucebase songs   | TODO  | —                   | —                                                     |
+| Idea 5, check 1: MB event dates (not titles)             | WAIT  | BruceParser 0.26.0  | "Track A idea 5, check 1 …" (vzell's browser check)   |
+| Idea 5, check 2: MB works against Brucebase songs        | TODO  | —                   | "Track A idea 5, check 1 …" (the works probe)         |
 | Idea 6: freeze BruceBaseParser                           | WAIT  | —                   | the matrix (vzell, 2026-11-20: not yet)               |
 | Publish to =vzell/mb-userscripts=                        | WAIT  | since 9.99.1625     | —                                                     |
 | BruceParser: the audit's fixes                           | DONE  | 0.16.0–0.21.1       | —                                                     |
 | BruceParser: before 3b (setlist list, SC2034, run)       | DONE  | 0.21.2–0.21.3       | —                                                     |
+| BruceParser: before idea 5 (country, 503, work search)   | DONE  | 0.25.0              | "Track A idea 5, check 1 …"                           |
 | BruceParser: what is still open                          | TODO  | —                   | —                                                     |
 | Track B: volkerzell.de                                   | TODO  | —                   | —                                                     |
 
@@ -376,10 +383,27 @@ shares one entry ⚠️ (18) or is no anchor ⚠️ (1), with a card of the wiki
 =sa_bb_feed_mb=. Mockup https://claude.ai/artifact/Tip5CShMevQp8ycqBjjnRZ. Perf on =artist-events=: no cost. vzell:
 "all tested live, OK".
 
-*** TODO The other two cross-checks
+*** WAIT Check 1: an MB event whose Brucebase entry has another date (=feat/bb-feed-mb-date=, 2026-11-20)
 
-Not started, not decided: an MB event's title against the MB-style title BruceParser derives from Brucebase (its
-=search/= comparison), and an MB work against its Brucebase song (=esfsl.sh=).
+Probed first (vzell, 2026-11-20). BruceParser's event-title report is no list of errors: 598 differing titles, nearly
+all MusicBrainz conventions (the venue's name of the time, named events) and BruceParser's own derivation. So NOT the
+title comparison but its precise slice, the date: the feed kind "date-differs" (BruceParser 0.26.0, feed 1.7, 7
+events, 6 of them a day late against their own name), ⚠️ ± =bb-mb-date= with a verdict by the event's name. Mockup
+https://claude.ai/artifact/8iqJ2nM2xVb8JTkLgSwbod, every answer as recommended. Before it, BruceParser 0.25.0 (vzell:
+"fix BruceParser first"): the country-suffix bug (5 titles cut), the 503 handling in =search.sh=, the work search as
+the step =search-work= in =bbp.sh=. =test:full= 3391/3391. The feed 1.7 is published (feed repo =1450799=). Waits
+for: vzell's browser check. Record: bbp-parity.org, "Track A idea 5, check 1 …".
+
+*** TODO Check 2: an MB work against its Brucebase song
+
+Decided (vzell, 2026-11-20, the plan's question 3): a keyed feed map =mbWorks= with three kinds:
+- ❌ link reaches nothing (10: 9 works link the gone =stats:greetings-from-asbury-park-studio-sessions=, 1 missing
+  anchor);
+- ⚠️ two works link one song page (1);
+- ⚠️ title differs after case, typography and aliases (3-4).
+
+Not the =esfsl.sh= list report (stale and unkeyed). The 1,001 works without a link stay out. The fresh works browse
+it needs is BruceParser's =search-work= step since 0.25.0.
 
 ** WAIT Idea 6: freeze BruceBaseParser
 

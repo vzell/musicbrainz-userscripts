@@ -703,7 +703,11 @@ and the tables reading the search lists too. Branch
 - **The reader now.** Only a section's OUTERMOST `ul.external_links` is read.
   An item's link is `_sbItemLink()` (a direct child, else one not in a
   nested list); its Details are `_sbOwnText()` (its own text nodes and
-  link-free, list-free children; never `.icon`, never a list) plus
+  link-free, list-free children; never `.icon`, never a list, never the
+  Brucebase feed's `button.mb-bbmb-mark`, which `_bbFeedMbSidebarDraw()`
+  draws again after the copied link once `_sbInlineInsertSection()` has
+  built the cards: until 2026-11-20 it became dead text "⚠️ ±" on the chip,
+  vzell's live check; docs/claude/brucebase.md, "Feed 1.7") plus
   `_sbItemKids()` (the links of a list nested in it, labelled by their own
   item's text, "en"). Rows carry `own` and `kids` as properties for the
   cards; the filter in `_sbAppendRelTablesGroups()` keeps the same row

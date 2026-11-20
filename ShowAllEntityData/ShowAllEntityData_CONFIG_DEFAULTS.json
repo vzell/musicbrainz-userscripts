@@ -3,10 +3,10 @@
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
     "script_version": "9.99.1667+2026-11-20",
-    "schema_entries": 561,
+    "schema_entries": 562,
     "sections": 54,
-    "settings": 507,
-    "settings_with_default": 502,
+    "settings": 508,
+    "settings_with_default": 503,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 330,
+      "checkbox": 331,
       "color_picker": 62,
       "divider": 54,
       "number": 53,
@@ -483,6 +483,7 @@
     "sa_findings_bb_feed_title": "Find Brucebase pages titled differently from their show (Brucebase feed)",
     "sa_findings_bb_list_anchor": "Find Brucebase listing entries with a wrong link to the year page",
     "sa_findings_bb_list_title": "Find Brucebase listing entries named differently from the year page",
+    "sa_findings_bb_mb_date": "Find events whose Brucebase entry has another date (Brucebase feed)",
     "sa_findings_bb_mb_no_entry": "Find MusicBrainz events whose Brucebase link reaches no entry (Brucebase feed)",
     "sa_findings_bb_mb_not_anchor": "Find MusicBrainz events whose Brucebase link is no year-page anchor (Brucebase feed)",
     "sa_findings_bb_mb_shared": "Find MusicBrainz events that link one Brucebase entry together (Brucebase feed)",
@@ -991,6 +992,7 @@
     "sa_findings_bb_feed_title": true,
     "sa_findings_bb_list_anchor": true,
     "sa_findings_bb_list_title": true,
+    "sa_findings_bb_mb_date": true,
     "sa_findings_bb_mb_no_entry": true,
     "sa_findings_bb_mb_not_anchor": true,
     "sa_findings_bb_mb_shared": true,
