@@ -14,18 +14,18 @@ Claude drafts, vzell sends.*
 Keywords: TODO (open), NEXT (the next one to start), WAIT (someone else's call, here mostly majkinetor's), DONE,
 PART (partly done, the rest left out by decision), NOT (not done, with the reason).
 
-* PICKUP HERE (2026-11-19)
+* PICKUP HERE (2026-11-20)
 
-- *Now:* batch 3 of the Apollo findings, =format-role= (a release role that doesn't fit the format), is built on
-  =feat/apollo-findings-3= (test:full 3328/3328); waiting for vzell's browser check before the merge. The real
-  examples to check are in "Batch 3".
-- *Next:* batch 4 (TODO, under "Adoptions"): First Contact's guesses and the ℗/© notice. Neither has a cell to carry
-  it, so each starts with where to show a release-wide finding (a mockup); see "Batch 4".
+- *Now:* batch 4 of the Apollo findings, =release-notice= (a ℗ notice in a release's annotation that no relationship
+  has), is built on =feat/apollo-findings-4= as the mockup was approved; waiting for vzell's browser check before the
+  merge. The real examples to check are in "Batch 4". First Contact's two guesses are NOT, with the probe's numbers.
+- *Next:* the Apollo item is finished with this batch; the next adoption is open (Fusion's duplicate recordings, the
+  Credit Hoarder role map, …).
 - *Waiting on majkinetor* (#938):
   - his answer to the two questions of the gate-clock reply (posted 2026-11-18 20:55);
   - "keep V under =data-mbu-keys-off=" (C3; asked 2026-11-08, again 2026-11-17);
   - whether Apollo, Group Therapy or Falcon will set =mbLastWrite= (C7; asked 2026-11-18).
-- *Last merge:* 9.99.1659 (=feat/apollo-findings-2=). Nothing since 9.99.1625 is published to
+- *Last merge:* 9.99.1660 (=feat/apollo-findings-3=). Nothing since 9.99.1625 is published to
   =vzell/mb-userscripts= (vzell's call).
 - *Last refresh* of the analysis: 2026-11-17 at his =0693aea= (refresh-majkinetor skill); the gate code was
   rechecked 2026-11-18 at =687b8b1=. The clone lives in =debug/majkinetor/= (not synced between hosts: on another
@@ -50,8 +50,9 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | Release checks (Mission Control / Platform Check / ISRC Scout) | DONE  | 9.99.1654     | Adoptions          |
 | Apollo findings, batch 1: credit ends with a join phrase       | DONE  | 9.99.1657     | Adoptions          |
 | Apollo findings, batch 2: remixer, medley, Recording of work   | DONE  | 9.99.1659     | Adoptions          |
-| Apollo findings, batch 3: a role that doesn't fit the format   | NEXT  | —             | Adoptions          |
-| Apollo findings, batch 4: type guesses, ℗/© notices            | TODO  | —             | Adoptions          |
+| Apollo findings, batch 3: a role that doesn't fit the format   | DONE  | 9.99.1660     | Adoptions          |
+| Apollo findings, batch 4: a ℗ notice no relationship has       | NEXT  | —             | Adoptions          |
+| Apollo findings, batch 4: First Contact's type and VA guesses  | NOT   | —             | Adoptions          |
 | Possible duplicate recordings (Fusion)                         | TODO  | —             | Adoptions          |
 | Discogs credits as MB relationships (Credit Hoarder)           | TODO  | —             | Adoptions          |
 | Query mode for the global filter (EH's language)               | TODO  | —             | Adoptions          |
@@ -318,10 +319,10 @@ OFF by default: it flagged 959 of Bob Dylan's 2,301 releases and slowed typing b
   | Join-phrase spacing in artist credits (Apollo =joinNeed=, CJK exempt)               | 1     | PART  |
   | Title names a remixer, no remixer relationship (CH =src/derive/remix.js=)           | 2     | DONE  |
   | Medley title with fewer linked works than " / " parts (GT "Medleys")                | 2     | DONE  |
-  | Relationship role that doesn't fit the format (GT =FORMAT_EXCLUDE_DEFAULT= 3756)    | 3     | NEXT  |
-  | Primary type looks wrong (FC =guessReleaseType= 270)                                | 4     | TODO  |
-  | Credited to one artist but looks like a VA compilation (FC =variousArtistsWhy= 374) | 4     | TODO  |
-  | ℗/© notice in the annotation that no relationship has (GT =txpParseCopyrightLine=)  | 4     | TODO  |
+  | Relationship role that doesn't fit the format (GT =FORMAT_EXCLUDE_DEFAULT= 3756)    | 3     | DONE  |
+  | Primary type looks wrong (FC =guessReleaseType= 270)                                | 4     | NOT   |
+  | Credited to one artist but looks like a VA compilation (FC =variousArtistsWhy= 374) | 4     | NOT   |
+  | ℗/© notice in the annotation that no relationship has (GT =txpParseCopyrightLine=)  | 4     | NEXT  |
 
 - Before coding each one, write a real example page into its batch, with the clicks and the predicted result.
 
@@ -344,10 +345,11 @@ live, OK"). The remix rules are ported from Credit Hoarder (credited), with SAED
 Beatles, Elvis); details: =docs/claude/findings.md=, "Release tracklist titles", and
 =docs/claude/release-tracks-and-length.md=, "Recording of work: every work the recording links".
 
-*** NEXT Batch 3: a release role that doesn't fit the format (=feat/apollo-findings-3=)
+*** DONE Batch 3: a release role that doesn't fit the format (9.99.1660)
 
-vzell picked this one of the three (2026-11-19, plan mode): it is the only one with a cell to carry it. Built,
-test:full 3328/3328 (petri, 18:45:23–19:08:28 CET); waiting for vzell's browser check, then the merge.
+vzell picked this one of the three (2026-11-19, plan mode): it is the only one with a cell to carry it.
+=feat/apollo-findings-3=, merge =c94f7d73=; test:full 3328/3328 on the branch (petri, 18:45:23–19:08:28 CET) and on
+=main= after the merge (22:02:10–22:23:43 CET); vzell: "tested live, OK".
 - *What*: =format-role= (warn), Group Therapy's =FORMAT_EXCLUDE_DEFAULT= / =FORMAT_ONLY_DEFAULT= (credited) on the
   Relationship cell of a release's own rows in its *Credits* render (=release-credit-tables=), no requests. Judged
   on every medium by format id, not by substring: "CD + Digital Media" with a pressing plant is fine; lacquer takes
@@ -370,20 +372,52 @@ test:full 3328/3328 (petri, 18:45:23–19:08:28 CET); waiting for vzell's browse
   - a near miss: https://musicbrainz.org/release/3ce46b79-5e8c-470a-bcdc-45f301d09f60 (12" Vinyl, pressed at Pitman,
     manufactured, printed in): no ⚠️ row at all.
 
-*** TODO Batch 4: First Contact's guesses, ℗/© notices
+*** NEXT Batch 4: a ℗ notice no relationship has; First Contact's guesses NOT (=feat/apollo-findings-4=)
 
-The two left from batch 3, both about the whole release, so no table cell can carry them as the =FINDINGS=
-registry stands. Each starts with where a release-wide finding is shown (new visible UI: a mockup first).
-1. *First Contact's guesses*: the primary type looks wrong for N tracks / M minutes (=guessReleaseType= 270), and
-   "credited to one artist but looks like a VA compilation" (=variousArtistsWhy= 374: track artists on fewer than
-   half the tracks and ≥ 5 of them). Both need a release's tracks and lengths: on a release page they are there;
-   a release-group list does not show them. FC uses them only at import, for a platform that gives no type
-   (=finishRelease()= 4248), so on MusicBrainz's curated data expect noise (a 3-track CD single reads as an EP):
-   a probe first, and possibly a NOT with its numbers.
-2. *℗/© notice in the annotation that no relationship has* (GT =txpParseCopyrightLine= 7073, compound split
-   =txpSplitCompoundCopyrightLines()= 7192; kellnerd's year rule). The notice sits in the annotation's prose and the
-   missing relationship has no row. The same parser serves Discogs release notes and companies.
-- Also the constant =MBM_SPECIAL_PURPOSE= (Apollo 460, GT 6660), so none of these flags Various Artists / [unknown].
+The two left from batch 3, both about the whole release, so no table cell carries them. Probe first, then a mockup
+of where a release-wide finding shows: https://claude.ai/artifact/7X3bbpdfmSuqr4jU85Q4Bn (source
+=debug/mockup-release-notice-finding.html=), approved 2026-11-20 with every recommendation ("I go with your
+recommendations").
+- *Probe* (=scripts/probe-apollo-findings-4.py=, =scripts/analyze-apollo-findings-4.py=,
+  =scripts/check-apollo-findings-4-notices.py=; output =debug/probe-apollo-findings-4.json=. Env:
+  2026-11-19T22:49:43+01:00 – 23:20:22+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux
+  6.18.58.1-microsoft-standard-WSL2) · n/a, Python against /ws/2). Seeds: Springsteen, the Beatles, Elvis, Aphex Twin,
+  Taylor Swift, Armin van Buuren, Paul Oakenfold; the labels Ace, K-tel, Ministry of Sound, Hyperdub; plus an
+  annotation search. 1,722 releases, 700 requests.
+- *NOT: First Contact's type guess* (=guessReleaseType= 270). 363 of 1,699 guesses disagree with the release group,
+  and none of the samples was a real mistyping: 153 are two-track 7" singles over 7 minutes read as EP, about 100
+  radio broadcasts and DJ mixes, the rest CD singles of 30+ minutes and EPs of 8 tracks (Aphex Twin's "Come to
+  Daddy"). FC uses it only at import, for a platform that gives no type (=finishRelease()= 4248); on MusicBrainz's
+  edited data it flags the house style.
+- *NOT: First Contact's "looks like VA"* (=variousArtistsWhy= 374). 144 hits, 142 of them DJ mixes and compilations
+  that MusicBrainz credits to the DJ on purpose (Ministry of Sound 58, Oakenfold 51, van Buuren 24); the other two a
+  remix EP and a radio show.
+- *Built: =release-notice=* (warn), ℗ only. 257 releases of the sample have a notice line, 235 no relationship of
+  that kind on the release; of 93 such notices re-checked with their recordings, 7 have it on every recording, 6 on
+  some, 80 nowhere. The approved answers:
+  1. FC's two guesses NOT (above);
+  2. variant A: the line itself is tinted with a ⚠️ in MusicBrainz's annotation, with a hover (tap) card; the ⚠️
+     menu gets a "This release" group whose row opens the Annotation, scrolls to the line and flashes it;
+  3. ℗ only; *© NOT*: a © line is often the songs' publisher ("© 1974 Laurel Canyon Music Ltd.", a work's
+     publisher) or the artwork's owner, so the "copyright" relationship it would ask for is a guess;
+  4. a ℗ relationship on the release OR on any recording backs it (Born to Run: 7 of 8); the holder is shown, never
+     compared (the parser's names are rough: "CBS Inc./", "by Radio Corporation of America, 1960");
+  5. both release renders (Tracklist, Credits), read from the page at the press, zero requests;
+  6. lines that start with ℗, (P) or "Phonographic copyright", Group Therapy's compound split (ported, credited);
+  7. tint =sa_findings_tint_release_notice=, on.
+  Details: =docs/claude/findings.md=, "A release-wide finding: a ℗ notice no relationship has".
+- *Browser check* (vzell; press *Tracklist*, then *Credits* on the same page; the data may have changed since
+  2026-11-20, and the two near misses are predicted from their embedded data, not yet seen in a browser):
+  - https://musicbrainz.org/release/65f35399-f638-4295-8c78-0ddea0e36ed8 ("Blinded by the Light", 7" Vinyl): ⚠️ 1+
+    in the attention bar; ⚠️ → "This release" → "℗ notice with no relationship" (CBS, Inc.) opens the Annotation and
+    flashes the last line "℗ 1973 CBS, Inc. / Manufactured by …", tinted with a ⚠️; hovering it shows the card
+    ("… any of its 2 recordings …"); the © line above it ("Copyright © 1972 LAUREL CANYON …") is not marked. Same
+    after *Credits*.
+  - near miss https://musicbrainz.org/release/1e212454-76da-4b04-8649-0c877d765e76 ("Born to Run", 12" Vinyl,
+    "℗ 1975 CBS Inc." with a ℗ on most recordings): no mark, no "This release" group;
+  - near miss https://musicbrainz.org/release/bbfabca0-ef57-428f-860d-eece549c0a99 ("Greetings From Asbury Park,
+    N.J.", two ℗ lines, ℗ on every recording): no mark.
+- Also the constant =MBM_SPECIAL_PURPOSE= (Apollo 460, GT 6660) was only needed by the VA guess: not taken.
 
 ** TODO Possible duplicate recordings (Fusion's algorithm, zero requests)
 

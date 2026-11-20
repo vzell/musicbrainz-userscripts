@@ -284,6 +284,9 @@
 //   from Group Therapy's FORMAT_EXCLUDE_DEFAULT / FORMAT_ONLY_DEFAULT (digital: no pressed,
 //   printed or manufactured; lacquer cut: vinyl only; glass mastered: CD/DVD/SACD/Blu-ray
 //   only), judged here on every medium of a release by format id instead of by substring.
+//   Added 2026-11-20: the release-notice finding's _rnSplitCompound() and _rnParseNotice() are
+//   PORTED from Group Therapy's txpSplitCompoundCopyrightLines() and the ℗/© half of
+//   txpParseCopyrightLine() (MARKER_ALT, GLUE, the year and the holder split).
 // ============================================================================================================================================
 
 (function() {
@@ -2885,6 +2888,16 @@
                          'role does not fit the release\'s format: pressed, printed or manufactured on a release that is ' +
                          'only Digital Media, lacquer cut with no phonograph record, glass mastered with no pressed ' +
                          'optical disc.'
+        },
+
+        sa_findings_tint_release_notice: {
+            label: 'Highlight ℗ notices in a release\'s annotation that no relationship has as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'On a release page, tint a line of the annotation light yellow with a ⚠️ when it is a ℗ notice ' +
+                         '("℗ 1975 CBS Inc.") and neither the release nor any of its recordings has a phonographic ' +
+                         'copyright relationship; hovering it explains why. Off: the line is not marked, and the ⚠️ ' +
+                         'menu still lists it under "This release".'
         },
 
         sa_findings_tint_live_credit: {
@@ -68610,6 +68623,463 @@
         return `${String(role || '').trim()}, but the release is ${names.join(' + ')}`;
     }
 
+    // ── A ℗ notice in the annotation that no relationship has ───────────────
+    // (`release-notice`, the Apollo findings' batch 4, org/majkinetor.org;
+    // docs/claude/findings.md "A release-wide finding: a ℗ notice no
+    // relationship has"). Group Therapy's (majkinetor) notice parser, as a
+    // finding about the WHOLE release: no table cell carries it, so the line
+    // itself is marked in MusicBrainz's annotation and the ⚠️ menu gets a
+    // "This release" group. Mockup https://claude.ai/artifact/7X3bbpdfmSuqr4jU85Q4Bn
+    // (variant A, approved 2026-11-20 with every recommendation).
+
+    /**
+     * Group Therapy's notice markers (`txpParseCopyrightLine()`'s MARKER_ALT,
+     * group_therapy.user.js 7040–7220), as a RegExp source.
+     * @type {string}
+     */
+    const _RN_MARKER = String.raw`(?:marketed\s+and\s+distributed\s+by|under\s+(?:exclusive\s+)?licen[sc]e\s+to|licen[sc]ed\s+to|under\s+(?:exclusive\s+)?licen[sc]e\s+from|licen[sc]ed\s+from|distributed\s+by|marketed\s+by|℗|\(p\)|phonographic\s+copyright|©|\(c\)|copyright)`;
+
+    /** @type {string} Group Therapy's GLUE: what may sit between markers. */
+    const _RN_GLUE = String.raw`\s,.:;&+/‐–—-`;
+
+    /** @type {RegExp} A notice PART that starts with ℗ (after list bullets). */
+    const _RN_START = /^[\s\-–—•*·]*(?:℗|\(p\)|phonographic\s+copyright)/i;
+
+    /**
+     * The phonographic copyright link types MusicBrainz has (label → release
+     * 711, artist → release 710, label → recording 867, artist → recording
+     * 869). The page's own link type table (`initialLinkedEntities.link_type`,
+     * by English name) is asked first; this set covers a payload without it.
+     * @type {Set<number>}
+     */
+    const _RN_PHONO_LINK_TYPES = new Set([710, 711, 867, 869]);
+
+    /**
+     * Counts letters, digits and `_` (Python's Unicode `\w`, which Group
+     * Therapy's JavaScript `\w` approximates on its ASCII data).
+     *
+     * @param   {string} s
+     * @returns {number}
+     */
+    function _rnWordChars(s) {
+        return (String(s).match(/[\p{L}\p{N}_]/gu) || []).length;
+    }
+
+    /**
+     * Group Therapy's `txpSplitCompoundCopyrightLines()` for one line: cut
+     * before every later marker that has at least three word characters
+     * before it, so "© 1975 A / ℗ 1975 B" gives two notices.
+     *
+     * @param   {string} line
+     * @returns {string[]}
+     */
+    function _rnSplitCompound(line) {
+        const re = new RegExp(_RN_MARKER, 'gi');
+        const pos = [];
+        let m;
+        while ((m = re.exec(line))) pos.push([m.index, m.index + m[0].length]);
+        if (pos.length < 2) return [line];
+        const cuts = [];
+        for (let i = 1; i < pos.length; i++) {
+            if (_rnWordChars(line.slice(pos[i - 1][1], pos[i][0])) >= 3) cuts.push(pos[i][0]);
+        }
+        if (!cuts.length) return [line];
+        const out = [];
+        let last = 0;
+        cuts.forEach(c => { out.push(line.slice(last, c).trim()); last = c; });
+        out.push(line.slice(last).trim());
+        return out;
+    }
+
+    /**
+     * Group Therapy's `txpParseCopyrightLine()`, its ℗/© half: the kinds a
+     * notice names and its holders (the markers, the glue, one year and the
+     * quotes taken off; "A / B" split into two holders when both have three
+     * word characters). Its licensee/distributor kinds are not needed here.
+     *
+     * @param   {string} line - One notice part (`_rnSplitCompound()`).
+     * @returns {?{types: string[], year: ?string, holders: string[]}}
+     */
+    function _rnParseNotice(line) {
+        const s = String(line || '').trim();
+        const types = [];
+        if (/℗|\(p\)|\bphonographic\s+copyright\b/i.test(s)) types.push('phonographic');
+        const sans = s.replace(/℗|\(p\)|\bphonographic\s+copyright\b/gi, ' ');
+        if (/©|\(c\)|\bcopyright\b/i.test(sans)) types.push('copyright');
+        if (!types.length) return null;
+        const lead = new RegExp(`^(?:[${_RN_GLUE}]|and\\b)*${_RN_MARKER}`, 'i');
+        const lg = new RegExp(`^[${_RN_GLUE}]+`);
+        let rest = s;
+        while (lead.test(rest)) rest = rest.replace(lead, '');
+        rest = rest.replace(lg, '').replace(/^[«"“”'’‘]+/, '').replace(lg, '');
+        let year = null;
+        const ym = rest.match(/^(\d{4})(?:\s*[,&/+]\s*(\d{4}))*\s*/);
+        if (ym) {
+            const ys = ym[0].match(/\d{4}/g);
+            year = ys.length === 1 ? ys[0] : null;
+            rest = rest.slice(ym[0].length);
+        }
+        let holder = rest.replace(lg, '').replace(/^and\s+/i, '');
+        holder = holder.replace(/^[«"“”'’‘]+/, '').replace(/[»"“”'’‘]+$/, '').replace(/\s+/g, ' ').trim();
+        if (!holder) return null;
+        const parts = holder.split(/\s*[/|]\s*/).map(p => p.trim()).filter(Boolean);
+        const holders = parts.length > 1 && parts.every(p => _rnWordChars(p) >= 3) ? parts : [holder];
+        return { types, year, holders };
+    }
+
+    /**
+     * The ℗ notice of one annotation line, as on a sleeve: a part of it
+     * (`_rnSplitCompound()`) that STARTS with ℗, (P) or "Phonographic
+     * copyright" and parses as a phonographic notice with a holder. A
+     * sentence that only mentions copyright in passing is not a notice
+     * (mockup question 6); © lines are not checked (question 3: a © line is
+     * often the songs' publisher, which belongs on the work).
+     *
+     * @param   {string} line - The line's text as the page shows it.
+     * @returns {?{text: string, holder: string}} The notice part and its
+     *   first holder as read, or `null`.
+     */
+    function _rnNoticeOf(line) {
+        for (const part of _rnSplitCompound(String(line || '').replace(/\s+/g, ' ').trim())) {
+            if (!_RN_START.test(part)) continue;
+            const p = _rnParseNotice(part);
+            if (p && p.types.includes('phonographic')) return { text: part.replace(/^[\s\-–—•*·]+/, ''), holder: p.holders[0] };
+        }
+        return null;
+    }
+
+    /** @type {Set<string>} Elements that end a line of annotation prose. */
+    const _RN_BLOCK_TAGS = new Set(['P', 'DIV', 'LI', 'UL', 'OL', 'DL', 'DT', 'DD', 'TABLE', 'TBODY', 'THEAD', 'TR', 'TD', 'TH', 'BLOCKQUOTE', 'PRE', 'HR']);
+
+    /** @type {RegExp} Headings: a wiki heading is never a notice line. */
+    const _RN_HEADING_RE = /^H[1-6]$/;
+
+    /**
+     * The lines of a rendered annotation, as the reader sees them: runs of
+     * sibling inline nodes between two `<br>`s or block boundaries. MusicBrainz
+     * renders a wiki paragraph as `<p><bdi>line<br>line<br></bdi></p>`; an
+     * inline element holding a `<br>` (`<strong>a<br>b</strong>`) is split
+     * inside it. Headings are skipped.
+     *
+     * @param   {Element} root - `div.annotation-body`.
+     * @returns {Array<{nodes: Node[], text: string}>} Each line's nodes share
+     *   one parent, so they can be wrapped in one span.
+     */
+    function _rnAnnotationLines(root) {
+        const lines = [];
+        const walk = (el) => {
+            let run = [];
+            const flush = () => {
+                if (run.length) {
+                    const text = run.map(n => n.textContent).join('');
+                    if (text.trim()) lines.push({ nodes: run, text });
+                }
+                run = [];
+            };
+            Array.from(el.childNodes).forEach(n => {
+                if (n.nodeType === Node.ELEMENT_NODE) {
+                    if (n.tagName === 'BR') { flush(); return; }
+                    if (_RN_HEADING_RE.test(n.tagName) || n.classList.contains('mb-toggle-icon')) { flush(); return; }
+                    if (_RN_BLOCK_TAGS.has(n.tagName) || n.querySelector('br')) { flush(); walk(n); return; }
+                    run.push(n);
+                } else if (n.nodeType === Node.TEXT_NODE) {
+                    run.push(n);
+                }
+            });
+            flush();
+        };
+        walk(root);
+        return lines;
+    }
+
+    /** @type {?Object|undefined} `undefined` = not read yet. */
+    let _rnFactsCache;
+
+    /**
+     * Whether the release has a phonographic copyright relationship, on itself
+     * or on any of its recordings — read ONCE per page load, before a render
+     * changes the page (`startFetchingProcess()` primes it; the Credits render
+     * removes the tracklist). Zero requests (mockup questions 4 and 5).
+     *
+     * From the page's embedded release payload (`_readEmbeddedReleaseJson()`:
+     * `release.relationships`, `mediums[].tracks[].recording.relationships`,
+     * by link type), else from the page itself (`#release-relationships`'s
+     * phrases, the tracklist's `dl.ars`, the bottom credits), English only.
+     * `complete` is false when a medium's tracks are not all on the page
+     * (MusicBrainz loads a long release's media on demand): then nothing is
+     * flagged.
+     *
+     * @returns {?{complete: boolean, own: boolean, recs: number, onRecs: number}}
+     */
+    function _releasePhonoFacts() {
+        if (_rnFactsCache !== undefined) return _rnFactsCache;
+        _rnFactsCache = null;
+        const p = _readEmbeddedReleaseJson();
+        const rel = p && p.release;
+        if (rel && Array.isArray(rel.mediums)) {
+            const lt = (p.initialLinkedEntities && p.initialLinkedEntities.link_type) || {};
+            const isPhono = id => _RN_PHONO_LINK_TYPES.has(id) || (lt[id] && lt[id].name === 'phonographic copyright');
+            const has = list => Array.isArray(list) && list.some(r => r && isPhono(r.linkTypeID));
+            let recs = 0;
+            let onRecs = 0;
+            let complete = rel.mediums.length > 0;
+            rel.mediums.forEach(m => {
+                const tracks = Array.isArray(m && m.tracks) ? m.tracks : [];
+                if (!tracks.length || (typeof m.track_count === 'number' && tracks.length < m.track_count)) complete = false;
+                tracks.forEach(t => {
+                    recs++;
+                    if (has(t && t.recording && t.recording.relationships)) onRecs++;
+                });
+            });
+            _rnFactsCache = { complete, own: has(rel.relationships), recs, onRecs };
+        } else {
+            const root = document.getElementById('content');
+            if (root) {
+                const phono = el => /^\s*phonographic copyright/i.test(el.textContent);
+                const mediums = Array.from(root.querySelectorAll('table.tbl.medium'));
+                const rows = mediums.flatMap(t => Array.from(t.querySelectorAll('tbody tr'))
+                    .filter(tr => tr.querySelector('a[href*="/recording/"]')));
+                const inRows = rows.filter(tr => Array.from(tr.querySelectorAll('dl.ars > dt')).some(phono)).length;
+                const bottom = Array.from(root.querySelectorAll('#bottom-credits th, #bottom-credits dt')).some(phono);
+                _rnFactsCache = {
+                    complete: mediums.length > 0 && mediums.every(t => t.querySelector('tbody tr a[href*="/recording/"]')),
+                    own: Array.from(root.querySelectorAll('#release-relationships th')).some(phono),
+                    recs: rows.length,
+                    onRecs: Math.max(inRows, bottom ? 1 : 0),
+                };
+            }
+        }
+        Lib.debug('filter', `_releasePhonoFacts(): ${JSON.stringify(_rnFactsCache)}`);
+        return _rnFactsCache;
+    }
+
+    /**
+     * The release-wide findings of the last `stampFindings()` pass: one entry
+     * per flagged ℗ notice line (`_stampReleaseNotices()`). The ⚠️ menu's
+     * "This release" group reads it.
+     *
+     * @type {Array<{el: HTMLSpanElement, text: string, holder: string, recs: number}>}
+     */
+    let _releaseFindings = [];
+
+    /**
+     * Marks every ℗ notice line of the release's annotation that no ℗
+     * relationship backs — not on the release, not on any recording
+     * (`_releasePhonoFacts()`) — as `release-notice`: the line's nodes are
+     * wrapped in one `span.mb-release-notice` (tinted with a ⚠️ while
+     * `sa_findings_tint_release_notice` is on, `data-mb-finding="warn"`),
+     * and `_releaseFindings` lists them for the ⚠️ menu.
+     *
+     * Release pages only (`release-tracks`, `release-credit-tables`), on
+     * MusicBrainz; called from `stampFindings()`, so once per fetch or disk
+     * load. Idempotent: a line already wrapped is reused, never wrapped
+     * twice. The annotation is MusicBrainz's own and stays through both
+     * renders; the holder is shown, never compared (the parser's names are
+     * rough: "CBS Inc./", "by Radio Corporation of America, 1960").
+     */
+    function _stampReleaseNotices() {
+        _releaseFindings = [];
+        const type = activeDefinition && activeDefinition.type;
+        if (_foreignHost || (type !== 'release-tracks' && type !== 'release-credit-tables')) return;
+        const sidebar = document.getElementById('sidebar');
+        const body = Array.from(document.querySelectorAll('#content div.annotation > div.annotation-body'))
+            .find(b => !b.closest('table') && !(sidebar && sidebar.contains(b)));
+        if (!body) return;
+        let spans = Array.from(body.querySelectorAll('span.mb-release-notice'));
+        const facts = _releasePhonoFacts();
+        const flag = !!facts && facts.complete && !facts.own && facts.onRecs === 0;
+        if (flag && !spans.length) {
+            _rnAnnotationLines(body).forEach(line => {
+                const notice = _rnNoticeOf(line.text);
+                if (!notice) return;
+                const span = document.createElement('span');
+                span.className = 'mb-release-notice';
+                span.dataset.mbRnText = notice.text;
+                span.dataset.mbRnHolder = notice.holder;
+                line.nodes[0].before(span);
+                span.append(...line.nodes);
+                spans.push(span);
+            });
+        }
+        const tint = Lib.settings.sa_findings_tint_release_notice !== false;
+        spans.forEach(span => {
+            if (!flag) {
+                span.removeAttribute('data-mb-finding');
+                span.removeAttribute('data-mb-findings');
+                span.removeAttribute('tabindex');
+                return;
+            }
+            span.dataset.mbFindings = 'release-notice';
+            if (tint) {
+                span.dataset.mbFinding = 'warn';
+                span.tabIndex = 0;
+            } else {
+                span.removeAttribute('data-mb-finding');
+                span.removeAttribute('tabindex');
+            }
+            _releaseFindings.push({ el: span, text: span.dataset.mbRnText || '', holder: span.dataset.mbRnHolder || '', recs: facts.recs });
+        });
+        if (_releaseFindings.length) _rnCardInstall();
+        Lib.debug('filter', `_stampReleaseNotices(): ${_releaseFindings.length} ℗ notice(s) with no relationship.`);
+    }
+
+    /**
+     * The hover card's HTML for one flagged notice (the mockup's card).
+     *
+     * @param   {{text: string, holder: string, recs: number}} f
+     * @returns {string}
+     */
+    function _rnCardHtml(f) {
+        const e = _mbttEscape;
+        const recs = f.recs === 1 ? 'its recording' : `any of its ${f.recs} recordings`;
+        return '<div class="mb-tt-title">⚠️ ℗ notice with no relationship</div>' +
+            `<div class="mb-tt-body">The annotation says “${e(f.text)}”. Neither the release nor ${recs} has a ` +
+            'phonographic copyright (℗) relationship.</div>' +
+            '<div class="mb-tt-body"><span class="mb-tt-pill mb-rn-pill">Warning</span></div>' +
+            `<div class="mb-tt-foot">Holder as read: ${e(f.holder)} · rule from majkinetor's Group Therapy · no requests</div>`;
+    }
+
+    /** @type {number} The card's pending hide (the grace period). */
+    let _rnCardHideTimer = 0;
+
+    /** @type {?HTMLSpanElement} The notice whose card is up. */
+    let _rnCardFor = null;
+
+    /**
+     * Shows the notice card under a flagged line, in the window.
+     *
+     * @param {HTMLSpanElement} span
+     */
+    function _rnCardShow(span) {
+        const f = _releaseFindings.find(x => x.el === span);
+        if (!f || !span.isConnected) return;
+        clearTimeout(_rnCardHideTimer);
+        let card = document.getElementById('mb-release-notice-card');
+        if (!card) {
+            card = document.createElement('div');
+            card.id = 'mb-release-notice-card';
+            card.className = 'mb-tt-liner';
+            card.setAttribute('role', 'tooltip');
+            _saBody().appendChild(card);
+        }
+        card.innerHTML = _rnCardHtml(f);
+        card.style.display = 'block';
+        _rnCardFor = span;
+        span.setAttribute('aria-describedby', 'mb-release-notice-card');
+        const r = span.getBoundingClientRect();
+        const w = Math.min(340, window.innerWidth - 32);
+        card.style.maxWidth = `${w}px`;
+        card.style.left = `${Math.max(16, Math.min(r.left, window.innerWidth - w - 16))}px`;
+        const below = r.bottom + 8;
+        const h = card.offsetHeight;
+        card.style.top = `${below + h > window.innerHeight - 8 && r.top - h - 8 > 8 ? r.top - h - 8 : below}px`;
+    }
+
+    /** Hides the notice card. */
+    function _rnCardHide() {
+        clearTimeout(_rnCardHideTimer);
+        const card = document.getElementById('mb-release-notice-card');
+        if (card) card.style.display = 'none';
+        if (_rnCardFor) _rnCardFor.removeAttribute('aria-describedby');
+        _rnCardFor = null;
+    }
+
+    /** @returns {boolean} Whether the notice card is up. */
+    function _rnCardShown() {
+        const card = document.getElementById('mb-release-notice-card');
+        return !!card && card.style.display === 'block';
+    }
+
+    /** @type {boolean} The card's listeners are installed. */
+    let _rnCardWired = false;
+
+    /**
+     * Installs (once) the notice card's behaviour, delegated on the document:
+     * hover shows it, leaving hides it after a grace period that lets the
+     * pointer reach the card; a tap toggles it (touch has no hover); keyboard
+     * focus shows it; Esc and a press elsewhere close it. Its own card, not
+     * `#mb-stat-tooltip`: the shared engine shows nothing on a tap and has no
+     * way to be opened from the ⚠️ menu's "This release" row.
+     */
+    function _rnCardInstall() {
+        if (_rnCardWired) return;
+        _rnCardWired = true;
+        const flagged = t => t instanceof Element ? t.closest('span.mb-release-notice[data-mb-finding]') : null;
+        const inCard = t => t instanceof Element && !!t.closest('#mb-release-notice-card');
+        // A press focuses the line (it is focusable) BEFORE its click: that
+        // focus must not open the card, or the click right after closes it.
+        let pressed = null;
+        document.addEventListener('pointerdown', e => { pressed = flagged(e.target); }, true);
+        document.addEventListener('mouseover', e => {
+            const s = flagged(e.target);
+            if (s && !_isTouchCompatMouseEvent(e)) _rnCardShow(s);
+            else if (inCard(e.target)) clearTimeout(_rnCardHideTimer);
+        }, true);
+        document.addEventListener('mouseout', e => {
+            // A tap's compatibility mouseout (it follows the click) must not
+            // start the hover grace: the card a tap opened stays.
+            if (!_rnCardShown() || _isTouchCompatMouseEvent(e) || (!flagged(e.target) && !inCard(e.target))) return;
+            if (e.relatedTarget && (flagged(e.relatedTarget) === _rnCardFor || inCard(e.relatedTarget))) return;
+            clearTimeout(_rnCardHideTimer);
+            _rnCardHideTimer = setTimeout(_rnCardHide, 350);
+        }, true);
+        document.addEventListener('click', e => {
+            pressed = null;
+            const s = flagged(e.target);
+            if (s) {
+                if (_rnCardShown() && _rnCardFor === s) _rnCardHide();
+                else _rnCardShow(s);
+                return;
+            }
+            if (!inCard(e.target) && _rnCardShown()) _rnCardHide();
+        }, true);
+        document.addEventListener('focusin', e => {
+            const s = flagged(e.target);
+            if (s && s !== pressed) _rnCardShow(s);
+        });
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && _rnCardShown()) _rnCardHide();
+        }, true);
+        // A scroll moves the card with its line (the menu row's smooth scroll
+        // may still run when the card comes up).
+        window.addEventListener('scroll', () => { if (_rnCardShown() && _rnCardFor) _rnCardShow(_rnCardFor); }, { passive: true });
+    }
+
+    /**
+     * The ⚠️ menu's "This release" row: closes the menus, opens what hides
+     * the line (the collapsed Annotation h2, a collapsed wiki sub-section,
+     * MusicBrainz's own "Show more" clamp), scrolls it to the middle, flashes
+     * it, and shows its card half a second later — there are no table rows
+     * to filter.
+     *
+     * @param {number} i - Index into `_releaseFindings`.
+     */
+    function _rnShowLine(i) {
+        const f = _releaseFindings[i];
+        if (!f || !f.el.isConnected) return;
+        _closeToolbarMenus();
+        const span = f.el;
+        const box = span.closest('div.annotation');
+        const h2 = box && box.querySelector(':scope > h2');
+        if (h2 && typeof h2._mbToggle === 'function') h2._mbToggle(true);   // starts collapsed after a render
+        const body = span.closest('div.annotation-body');
+        if (body && body.classList.contains('annotation-collapsed')) {
+            const more = box.querySelector('a.annotation-toggle');
+            if (more) more.click();
+        }
+        for (let n = span.closest('.mb-annotation-sub-content'); n; n = n.parentElement ? n.parentElement.closest('.mb-annotation-sub-content') : null) {
+            let h3 = n.previousElementSibling;
+            while (h3 && !h3.matches('h3.mb-annotation-toggle-h3')) h3 = h3.previousElementSibling;
+            if (h3 && typeof h3._mbSubToggle === 'function' && n.style.display === 'none') h3._mbSubToggle(true);
+        }
+        span.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        span.classList.remove('mb-rn-flash');
+        void span.offsetWidth;
+        span.classList.add('mb-rn-flash');
+        setTimeout(() => span.classList.remove('mb-rn-flash'), 1500);
+        if (span.dataset.mbFinding) setTimeout(() => _rnCardShow(span), 500);
+    }
+
     /**
      * Decides whether one medium table's format can carry video, from
      * `MEDIUM_FORMAT_VIDEO_CAPABLE`.
@@ -101080,6 +101550,10 @@
             _invalidateUniqDropDataCacheForTable(table);
         });
         Lib.debug('filter', `stampFindings(): pass ${_findingStampGen}, ${stamped} source row(s) stamped.`);
+        // The release-wide findings: no table row carries them, so they ride
+        // the stamp's timing only (docs/claude/findings.md, "A release-wide
+        // finding"). Before the menus refresh below.
+        _stampReleaseNotices();
         if (typeof window.updateFilterButtonsVisibility === 'function') window.updateFilterButtonsVisibility();
         initReleaseGroupLink();
     }
@@ -118506,9 +118980,61 @@ a { color: #1565c0; }`;
      * @param {?{n: number, on: boolean}} [levelRow] - The "All errors" / "All
      *   warnings" row (`_findingLevelFilter`): the rows with a finding of this
      *   level, and whether it is on (the single rows are then greyed).
+     * @param {Array<{el: Element, text: string, holder: string}>} [relRows] - The
+     *   release-wide findings (`_releaseFindings`): first, in a "This release"
+     *   group, then an "In the tables" heading over everything else (mockup
+     *   https://claude.ai/artifact/7X3bbpdfmSuqr4jU85Q4Bn). A row shows its line
+     *   (`_rnShowLine()`); there is nothing to filter.
      */
-    function _buildFindingMenuRows(menu, level, list, styleRow = null, feedLine = null, levelRow = null) {
-        menu.panel.querySelectorAll('.mb-toolbar-menu-item').forEach(el => el.remove());
+    function _buildFindingMenuRows(menu, level, list, styleRow = null, feedLine = null, levelRow = null, relRows = []) {
+        menu.panel.querySelectorAll('.mb-toolbar-menu-item, .mb-findings-menu-extra').forEach(el => el.remove());
+        if (relRows.length) {
+            const head = (text) => {
+                const h = document.createElement('div');
+                h.className = 'mb-findings-menu-extra mb-findings-group-head';
+                h.setAttribute('role', 'presentation');
+                h.textContent = text;
+                menu.panel.appendChild(h);
+            };
+            head('This release');
+            relRows.forEach(f => {
+                const row = document.createElement('button');
+                row.type = 'button';
+                row.className = 'mb-findings-menu-item mb-findings-rel-item';
+                row.dataset.mbFindingId = 'release-notice';
+                const g = document.createElement('span');
+                g.className = 'mb-findings-item-glyph';
+                g.textContent = '℗';
+                const label = document.createElement('span');
+                label.className = 'mb-findings-item-label';
+                label.textContent = '℗ notice with no relationship';
+                const sub = document.createElement('span');
+                sub.className = 'mb-findings-item-sub';
+                sub.textContent = `${f.holder} · click to show it in the annotation`;
+                label.appendChild(sub);
+                const count = document.createElement('span');
+                count.className = 'mb-findings-item-count';
+                count.textContent = '1';
+                row.append(g, label, count);
+                _setTip(row, `The annotation says “${f.text}”, and neither the release nor any of its recordings has a `
+                    + 'phonographic copyright (℗) relationship. The rule is Group Therapy\'s (majkinetor).\n'
+                    + 'Click to show the line.');
+                menu.adopt(row);
+                row.setAttribute('role', 'menuitem');
+                row.addEventListener('click', () => _rnShowLine(_releaseFindings.indexOf(f)));
+            });
+            const rule = document.createElement('div');
+            rule.className = 'mb-findings-menu-extra mb-findings-group-rule';
+            rule.setAttribute('role', 'separator');
+            menu.panel.appendChild(rule);
+            head('In the tables');
+            if (!list.length) {
+                const none = document.createElement('div');
+                none.className = 'mb-findings-menu-extra mb-findings-group-empty';
+                none.textContent = 'No table findings on this release.';
+                menu.panel.appendChild(none);
+            }
+        }
         if (styleRow) _buildTitleStyleMenuRow(menu, styleRow);
         const isErr = level === 'error';
         if (levelRow) {
@@ -118569,14 +119095,17 @@ a { color: #1565c0; }`;
             row.addEventListener('click', () => _toggleFinding(f.id));
         });
         const anyOn = levelOn || list.some(x => x.state !== 'off');
-        const clear = document.createElement('button');
-        clear.type = 'button';
-        clear.className = 'mb-findings-menu-item mb-findings-clear-item';
-        clear.textContent = `✗ Clear ${level === 'error' ? 'error' : 'warning'} filters`;
-        _setTip(clear, `Remove every ${level === 'error' ? 'error' : 'warning'} filter this menu set; your own filters stay.`);
-        clear.setAttribute('aria-disabled', anyOn ? 'false' : 'true');
-        menu.adopt(clear);
-        clear.addEventListener('click', () => { if (anyOn) _clearFindingLevel(level); });
+        // No Clear row under a release-wide finding alone: nothing filters.
+        if (list.length || !relRows.length) {
+            const clear = document.createElement('button');
+            clear.type = 'button';
+            clear.className = 'mb-findings-menu-item mb-findings-clear-item';
+            clear.textContent = `✗ Clear ${level === 'error' ? 'error' : 'warning'} filters`;
+            _setTip(clear, `Remove every ${level === 'error' ? 'error' : 'warning'} filter this menu set; your own filters stay.`);
+            clear.setAttribute('aria-disabled', anyOn ? 'false' : 'true');
+            menu.adopt(clear);
+            clear.addEventListener('click', () => { if (anyOn) _clearFindingLevel(level); });
+        }
         if (feedLine) {
             const feed = document.createElement('button');
             feed.type = 'button';
@@ -119525,8 +120054,11 @@ a { color: #1565c0; }`;
                     .map(f => ({ f, n: counts.get(f.id), state: _findingState(f) }))
                 : [];
             const styleRow = enabled && level === 'warn' ? _titleStyleMenuRow() : null;
+            // The release-wide findings (`_stampReleaseNotices()`): warnings,
+            // in their own "This release" group above the table findings.
+            const relRows = enabled && level === 'warn' ? _releaseFindings.filter(f => f.el.isConnected) : [];
             let menu = _toolbarMenus.get(key);
-            if (!list.length && !styleRow && !menu) return;
+            if (!list.length && !styleRow && !relRows.length && !menu) return;
             menu = menu || _ensureFindingMenu(level);
             // On brucebase.wikidot.com, the BruceParser feed's line at the
             // menus' foot (vzell, decision 3: quiet, and saying why).
@@ -119536,28 +120068,34 @@ a { color: #1565c0; }`;
                 : _bbFeedMbOn() && list.some(x => x.f.id.startsWith('bb-mb-')) ? _bbFeedStatus() : null;
             // "All errors" / "All warnings": with any finding of the level.
             const levelRow = list.length ? { n: counts.get(`@${level}`) || 0, on: _findingLevelFilter.has(level) } : null;
-            const sig = (styleRow ? `style:${styleRow.text}|` : '') + list.map(x => `${x.f.id}:${x.n}:${x.state}`).join('|') +
+            const sig = (relRows.length ? `rel:${relRows.map(f => f.text).join('/')}|` : '') +
+                (styleRow ? `style:${styleRow.text}|` : '') + list.map(x => `${x.f.id}:${x.n}:${x.state}`).join('|') +
                 (levelRow ? `|all:${levelRow.n}:${levelRow.on}` : '') + (feedLine ? `|feed:${feedLine.text}` : '');
             if (menu.panel.dataset.mbSig === sig) return;
             menu.panel.dataset.mbSig = sig;
             changed = true;
-            if (list.length || styleRow) _buildFindingMenuRows(menu, level, list, styleRow, feedLine, levelRow);
-            else menu.panel.querySelectorAll('.mb-toolbar-menu-item').forEach(el => el.remove());
-            const total = list.reduce((s, x) => s + x.n, 0);
+            if (list.length || styleRow || relRows.length) _buildFindingMenuRows(menu, level, list, styleRow, feedLine, levelRow, relRows);
+            else menu.panel.querySelectorAll('.mb-toolbar-menu-item, .mb-findings-menu-extra').forEach(el => el.remove());
+            const total = list.reduce((s, x) => s + x.n, 0) + relRows.length;
             const word = level === 'error' ? 'ERROR' : 'WARNING';
             // Only the "Check title style" row: no count to show yet, and the
             // segment stays (the one indicator shown at zero: it is where that
             // check is started).
-            menu.indicatorCount = list.length ? total : 0;
-            menu.setLabel(`${level === 'error' ? '❌' : '⚠️'}${list.length ? ` ${total}` : ''}`);
-            menu.btn.setAttribute('aria-label', list.length
+            const any = list.length || relRows.length;
+            menu.indicatorCount = any ? total : 0;
+            menu.setLabel(`${level === 'error' ? '❌' : '⚠️'}${any ? ` ${total}` : ''}`);
+            menu.btn.setAttribute('aria-label', any
                 ? `${total} ${level === 'error' ? 'error' : 'warning'}${total === 1 ? '' : 's'}`
                 : 'Warnings: check title style');
+            const relTip = relRows.length
+                ? `About this release: ${relRows.length} ℗ notice${relRows.length === 1 ? '' : 's'} in the annotation with no relationship. `
+                : '';
             _setTip(menu.btn, list.length
-                ? `${list.length} kind${list.length === 1 ? '' : 's'} of ${word.toLowerCase()} on this page: `
+                ? `${relTip}${list.length} kind${list.length === 1 ? '' : 's'} of ${word.toLowerCase()} on this page: `
                     + list.map(x => `${x.f.label} (${x.n})`).join(', ')
                     + '. Pick one to show only those rows in every table.'
-                : `No ${word.toLowerCase()} on this page so far. "Check title style" checks its titles against the MusicBrainz style guide.`);
+                : relRows.length ? `${relTip}Pick it to see the line.`
+                    : `No ${word.toLowerCase()} on this page so far. "Check title style" checks its titles against the MusicBrainz style guide.`);
             const anyOn = _findingLevelFilter.has(level) || list.some(x => x.state !== 'off');
             menu.btn.setAttribute('aria-pressed', anyOn ? 'true' : 'false');
         });
@@ -122925,6 +123463,41 @@ a { color: #1565c0; }`;
             font-size: 0.88em !important;
         }
         .mb-toolbar-menu-panel .mb-bb-feed-bad { color: #9b2218 !important; }
+        /* The WARNING menu's release-wide group (_buildFindingMenuRows'
+           relRows, the release-notice finding): "This release", its rows
+           (label over a muted sub-line), a rule, then "In the tables" over
+           the table findings. Mockup https://claude.ai/artifact/7X3bbpdfmSuqr4jU85Q4Bn. */
+        .mb-findings-group-head {
+            padding: 4px 12px 2px;
+            font: 11px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #7a6d5c;
+        }
+        .mb-findings-group-rule { border-top: 1px solid #d9cfbd; margin: 6px 0; }
+        .mb-findings-group-empty { padding: 4px 12px 6px; color: #7a6d5c; font-style: italic; font-size: 0.92em; }
+        .mb-toolbar-menu-panel .mb-findings-rel-item { align-items: baseline; }
+        .mb-findings-item-sub { display: block; font-size: 0.85em; color: #7a6d5c; font-weight: normal; }
+        /* A flagged ℗ notice line in the annotation (_stampReleaseNotices):
+           the generic warning tint and ⚠️, on a line of prose instead of a
+           cell; the menu's "This release" row flashes it (mb-rn-flash). */
+        span.mb-release-notice { border-radius: 3px; }
+        span.mb-release-notice[data-mb-finding="warn"] {
+            background-color: ${Lib.settings.sa_release_tracks_length_mismatch_warn_bg || '#fff3cd'};
+            box-shadow: inset 0 0 0 1px #e8c766;
+            padding: 0 4px;
+            cursor: help;
+        }
+        span.mb-release-notice[data-mb-finding="warn"]::after { content: '⚠️'; font-size: 11px; margin-left: 4px; }
+        span.mb-release-notice.mb-rn-flash { animation: mb-rn-flash 1.4s ease-out 1; }
+        @keyframes mb-rn-flash {
+            0%, 40% { background-color: #ffe08a; box-shadow: inset 0 0 0 2px #9a6a00; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            span.mb-release-notice.mb-rn-flash { animation: none; outline: 2px solid #9a6a00; }
+        }
+        #mb-release-notice-card { position: fixed; }
+        .mb-tt-liner .mb-tt-pill.mb-rn-pill { background: #fff3cd; color: #9a6a00; border-color: #e8c766; }
         /* The feed's marks after a Brucebase head's byline and a window's title. */
         .mb-bb-feed-mark { cursor: help; white-space: nowrap; font-size: 0.85em; font-weight: 600; }
         .mb-bb-feed-mark[data-mb-level="error"] { color: #9b2218; }
@@ -137692,6 +138265,9 @@ a { color: #1565c0; }`;
             Lib.debug('init', `Button "${buttonConfig.label}" runs as pageType '${buttonConfig.type}' (page: '${pageType}').`);
             pageType = buttonConfig.type;
         }
+        // The release-notice finding reads the release's ℗ relationships from
+        // the page as it is NOW: the Credits render removes the tracklist.
+        if (!_foreignHost && (pageType === 'release-tracks' || pageType === 'release-credit-tables')) _releasePhonoFacts();
 
         // Per-entity tableMode override: when the resolved entityFeatures block declares
         // its own tableMode (e.g. 'Release groups' in collections-releases is 'multi'
@@ -192452,6 +193028,20 @@ a { color: #1565c0; }`;
              * @returns {?string} `_formatRoleMismatch()`.
              */
             formatRoleMismatch: (role, formatIds) => _formatRoleMismatch(role, formatIds),
+            /**
+             * @param {string} line - One annotation line's text.
+             * @returns {?{text: string, holder: string}} `_rnNoticeOf()`.
+             */
+            rnNoticeOf: (line) => _rnNoticeOf(line),
+            /**
+             * @returns {?Object} `_releasePhonoFacts()` (memoized per page load).
+             */
+            releasePhonoFacts: () => _releasePhonoFacts(),
+            /**
+             * @returns {Array<{text: string, holder: string, recs: number}>} The
+             *   release-wide findings of the last stamp (`_releaseFindings`).
+             */
+            releaseFindings: () => _releaseFindings.map(f => ({ text: f.text, holder: f.holder, recs: f.recs })),
             /**
              * @param {string} formatIdsSource - 'live' (the page's own) or an HTML string.
              * @returns {string} `_releaseMediumFormatIds()` of that document.

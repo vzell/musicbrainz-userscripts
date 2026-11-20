@@ -3,10 +3,10 @@
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
     "script_version": "9.99.1665+2026-11-20",
-    "schema_entries": 559,
+    "schema_entries": 560,
     "sections": 54,
-    "settings": 505,
-    "settings_with_default": 500,
+    "settings": 506,
+    "settings_with_default": 501,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 328,
+      "checkbox": 329,
       "color_picker": 62,
       "divider": 54,
       "number": 53,
@@ -541,6 +541,7 @@
     "sa_findings_tint_rec_event": "Highlight events and places that disagree with the comment",
     "sa_findings_tint_rel_multi_discogs": "Highlight Relationships cells with more than one link to the same site as WARNING",
     "sa_findings_tint_release_event_none": "Highlight releases with no release event as WARNING",
+    "sa_findings_tint_release_notice": "Highlight ℗ notices in a release's annotation that no relationship has as WARNING",
     "sa_findings_tint_remix_no_remixer": "Highlight a remixer named in the title but not credited as WARNING",
     "sa_findings_tint_rg_title": "Highlight main-event tracks that disagree with the release group title as WARNING",
     "sa_findings_tint_sl_double_utf8": "Highlight springsteenlyrics.com rows with double-encoded text as ERROR",
@@ -1047,6 +1048,7 @@
     "sa_findings_tint_rec_event": true,
     "sa_findings_tint_rel_multi_discogs": true,
     "sa_findings_tint_release_event_none": true,
+    "sa_findings_tint_release_notice": true,
     "sa_findings_tint_remix_no_remixer": true,
     "sa_findings_tint_rg_title": true,
     "sa_findings_tint_sl_double_utf8": true,
