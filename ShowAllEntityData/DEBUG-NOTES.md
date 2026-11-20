@@ -30771,3 +30771,5 @@ Env: 2026-11-20T15:40–16:05+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6
   the browser; the card valid/invalid with the table unfiltered; an example and Back with its rows; Esc),
   `gf-rx-card.mobile.spec.js` (taps on Examples, an example, Back). 12 mutations, all caught. No perf run: the card
   parses the field once per key and never touches a row; `runFilter()` is unchanged by this step.
+- **Browser check** (vzell, 2026-11-20, live): OK, then merged. Env: Vivaldi 8.2.4133.96 (Chromium 152.0.7977.170)
+  · Tampermonkey 5.5.1 (as reported for the query mode the same afternoon). `test:full` before it: 3397/3397.
