@@ -270,11 +270,157 @@ test.describe('rec-dup: strict on an artist\'s recordings (Petty)', () => {
         expect(after).toEqual(before);
     });
 
+    test('late data regroups: a shared ISRC that arrives later joins two rows, and the menu follows', async ({ page }) => {
+        await openPetty(page);
+        const rows = await pageRows(page);
+        const before = (await findingRow(page, 'warn', 'rec-dup')).count;
+        // two ungrouped audio rows of one title, no ISRCs, no dates, no open edit, within 30 s
+        let pick = null;
+        for (let i = 0; i < rows.length && !pick; i++) {
+            for (let j = i + 1; j < rows.length && !pick; j++) {
+                const a = rows[i], b = rows[j];
+                if (a.key || b.key || a.isrcs.length || b.isrcs.length || a.date || b.date || a.pending || b.pending) continue;
+                if (a.video !== b.video || a.secs == null || b.secs == null || Math.abs(a.secs - b.secs) > 30) continue;
+                pick = [a.mbid, b.mbid];
+            }
+        }
+        expect(pick, 'the fixture has two such rows').not.toBeNull();
+        await page.evaluate((mbids) => {
+            const t = document.querySelector('table.tbl');
+            const iIsrc = Array.from(t.querySelectorAll('thead tr:first-child th')).findIndex(th => th.dataset.colName === 'ISRCs');
+            mbids.forEach(m => {
+                const r = document.querySelector(`a[href="/recording/${m}"]`).closest('tr');
+                r.cells[iIsrc].insertAdjacentHTML('beforeend', '<ul class="isrcs"><li class="isrc"><a href="/isrc/ZZTST2600001"><bdi><code>ZZTST2600001</code></bdi></a></li></ul>');
+            });
+            window.__saTest.recDupRegroup();
+        }, pick);
+        await expect.poll(async () => (await page.evaluate(() => window.__saTest.recDup())).groups
+            .some(g => pick.every(m => g.members.includes(m))), SETTLE).toBe(true);
+        await expect.poll(async () => (await pageRows(page)).filter(r => pick.includes(r.mbid) && r.stamped && r.key).length, SETTLE).toBe(2);
+        await expect.poll(async () => (await findingRow(page, 'warn', 'rec-dup')).count, SETTLE).toBe(before + 2);
+    });
+
     test('the switch off: no stamp, no menu row, no 📊 section', async ({ page }) => {
         await openPetty(page, { sa_findings_rec_dup: false });
         expect((await pageRows(page)).filter(r => r.stamped || r.key).length).toBe(0);
         expect(await findingRow(page, 'warn', 'rec-dup')).toBeUndefined();
         await openUniq(page, 'Name');
         expect(await sectionItems(page, SECTION)).toBeNull();
+    });
+});
+
+// ── A release tracklist with planted cases (scripts/make-rec-dup-fixtures.py) ──
+// The oracle is the planted truth, release-tracks-rec-dup.expected.json,
+// written by the maker beside the fixture: which planted recordings group,
+// which stay apart, and what the grouped rows' cards name as kept apart.
+
+const RT = {
+    url: 'https://musicbrainz.org/release/20a52f17-ce0b-48bf-911e-9f962a518185',
+    fixture: path.join(__dirname, 'release-tracks-rec-dup.html'),
+    expected: require('./release-tracks-rec-dup.expected.json'),
+};
+const { loadUserscriptPage } = require('../support/loadPage');
+
+/**
+ * Loads the planted tracklist and runs "Show all Tracks for Release", every
+ * sub-table open.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {Object} [settings]
+ */
+async function openRt(page, settings = {}) {
+    await loadUserscriptPage(page, {
+        url: RT.url, fixtureFile: RT.fixture, testMode: true,
+        settingsOverride: { sa_enable_relationships_column: false, sa_enable_caa_pics: false, ...settings },
+    });
+    await page.click('button[data-label="Show all Tracks for Release"]');
+    await waitForRenderComplete(page, { waitForAutoResize: false });
+    const master = page.locator('.mb-master-toggle');
+    if (await master.count() && (await master.getAttribute('data-state')) === 'collapsed') await master.click();
+    await expect.poll(() => page.evaluate(() => window.__saTest.recDup().why.stampGen), SETTLE).toBeGreaterThan(0);
+}
+
+/**
+ * The planted rows of every sub-table: their recording key (from the
+ * expected file's MBIDs), the sub-table, the stamp, the group key and the
+ * card's kept-apart entries.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<Array<{key: string, table: number, stamped: boolean, group: ?string, apart: Array<{t: string, r: string}>}>>}
+ */
+function plantedRows(page) {
+    return page.evaluate((recs) => {
+        const byMbid = Object.fromEntries(Object.entries(recs).map(([k, v]) => [v, k]));
+        const out = [];
+        document.querySelectorAll('table.tbl').forEach((t, ti) => {
+            Array.from(t.tBodies[0] ? t.tBodies[0].rows : []).forEach(r => {
+                const a = r.querySelector('a[href*="/recording/bbbbbbbb-"]');
+                if (!a || r.style.display === 'none') return;
+                const td = a.closest('td');
+                const cmp = td.getAttribute('data-mb-tip-cmp');
+                const dup = cmp ? (JSON.parse(cmp).c || []).find(c => c.kind === 'dup') : null;
+                out.push({
+                    key: byMbid[(/\/recording\/([0-9a-f-]{36})/.exec(a.getAttribute('href')) || [])[1]],
+                    table: ti,
+                    stamped: (td.dataset.mbFindings || '').split(' ').includes('rec-dup'),
+                    group: td.dataset.mbRecDup || null,
+                    apart: dup ? dup.ap : [],
+                });
+            });
+        });
+        return out;
+    }, RT.expected.recordings);
+}
+
+test.describe('rec-dup: normal on a release tracklist (planted cases)', () => {
+    test('the planted groups form, across media; everything else stays apart', async ({ page }) => {
+        await openRt(page);
+        const ctx = await page.evaluate(() => window.__saTest.recDup());
+        expect(ctx.active, JSON.stringify(ctx.why)).toBe(true);
+        expect(ctx.cutoff).toBe(RT.expected.cutoff);
+        const rows = await plantedRows(page);
+        expect(rows.length).toBe(RT.expected.planted);
+        const keyOf = k => rows.filter(r => r.key === k).map(r => r.group);
+        for (const g of RT.expected.groups) {
+            const keys = g.flatMap(keyOf);
+            expect(keys.every(x => x && x === keys[0]), `${g.join(' + ')} form one group (${JSON.stringify(keys)})`).toBe(true);
+        }
+        // G1 sits on both media: the group spans two sub-tables
+        expect(new Set(rows.filter(r => RT.expected.groups[0].includes(r.key)).map(r => r.table)).size).toBe(2);
+        // three groups of planted rows and no other group anywhere on the page
+        expect(ctx.groups.length).toBe(RT.expected.groups.length);
+        for (const k of RT.expected.notGrouped) {
+            expect(rows.filter(r => r.key === k).every(r => !r.stamped && !r.group), `${k} is not grouped`).toBe(true);
+        }
+        // the same recording on two tracks: two rows, one recording, no group
+        expect(rows.filter(r => r.key === 's1').length).toBe(2);
+    });
+
+    test('the cards name what was kept apart, and why', async ({ page }) => {
+        await openRt(page);
+        const rows = await plantedRows(page);
+        const titleOf = { a1: 'Planted Song', a2b: 'Hammersmith Song' };
+        for (const [owner, [other, reason]] of Object.entries(RT.expected.apart)) {
+            const card = rows.find(r => r.key === owner);
+            expect(card && card.stamped, `${owner} is grouped`).toBe(true);
+            expect(card.apart.some(x => x.t === titleOf[other] && x.r.includes(reason)),
+                `${owner}'s card keeps ${other} apart for "${reason}" (${JSON.stringify(card.apart)})`).toBe(true);
+        }
+    });
+
+    test('the cutoff setting: strict groups nothing here (no ISRC on the page)', async ({ page }) => {
+        await openRt(page, { sa_findings_rec_dup_cutoff: 'strict' });
+        const ctx = await page.evaluate(() => window.__saTest.recDup());
+        expect(ctx.cutoff).toBe('strict');
+        expect(ctx.groups.length).toBe(0);
+        expect((await plantedRows(page)).some(r => r.stamped)).toBe(false);
+    });
+
+    test('the ⚠️ row filters every sub-table to the grouped rows', async ({ page }) => {
+        await openRt(page);
+        const n = RT.expected.groups.flat().length;
+        expect((await findingRow(page, 'warn', 'rec-dup')).count).toBe(n);
+        await clickFinding(page, 'rec-dup');
+        await expect.poll(() => findingRowState(page, 'rec-dup'), SETTLE).toEqual({ visible: n, withFinding: n });
     });
 });

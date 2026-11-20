@@ -60220,6 +60220,8 @@
 
         if (acoustIdDiv) _relocateOne(acoustIdDiv, 'AcoustIDs', /* pairToggleLink= */ true);
         if (isrcDiv) _relocateOne(isrcDiv, 'ISRCs', /* pairToggleLink= */ false);
+        // An AcoustID or ISRC can join two recordings (rec-dup): group again, once the burst is over.
+        if (acoustIdDiv || isrcDiv) _recDupRegroupSoon();
     }
 
     /**
@@ -102406,6 +102408,9 @@
     /** Above this many candidate pairs the grouping gives up (no stamp at all), so a pathological page cannot freeze the render. */
     const _REC_DUP_MAX_PAIRS = 2000000;
 
+    /** How many pairs skipped for two different live dates are kept for the card's "Kept apart" line. */
+    const _REC_DUP_MAX_SKIPPED = 200000;
+
     /**
      * What a recording comment says about where and when it was recorded, in
      * the shape Fusion reads from relationships (`recordingSetting()`), for
@@ -102455,6 +102460,12 @@
      * @returns {?string}
      */
     function _recDupGateReason(sig, cutoff, a, b) {
+        // Fusion's own test for "held back by the gross-length guard"
+        // (autoMatch()'s lengthBlocked): the lengths cannot also be close.
+        if (sig.lengthConflict && !sig.videoMismatch && !sig.pendingEdit &&
+            (sig.isrc || sig.acoustid || (sig.title && sig.artist) || (sig.title && sig.length))) {
+            return 'lengths ' + Math.round(Math.abs(a.length - b.length) / 1000) + ' s apart';
+        }
         const open = Object.assign({}, sig, { videoMismatch: false, pendingEdit: false, lengthConflict: false, liveMismatch: false, placeConflict: null, isrcConflict: null });
         if (!_fzShouldUnion(open, cutoff)) return null;
         if (sig.videoMismatch) return 'video and audio';
@@ -102487,11 +102498,15 @@
      *
      * @param {Array<Object>} pool
      * @param {string} cutoff
-     * @returns {?Float64Array} null when there are more than `_REC_DUP_MAX_PAIRS`
+     * @returns {?Float64Array} null when there are more than `_REC_DUP_MAX_PAIRS`;
+     *     its `skipped` property lists the pairs skipped for two different live
+     *     dates (at most `_REC_DUP_MAX_SKIPPED`), which `_recDupGroups()` names
+     *     on a group's card
      */
     function _recDupCandidatePairs(pool, cutoff) {
         const n = pool.length;
         const set = new Set();
+        const skipped = [];
         let over = false;
         const add = (i, j) => {
             if (i === j) return;
@@ -102538,14 +102553,19 @@
                     const dp = pool[l[p]].liveDate;
                     for (let q = p + 1; q < l.length && !over; q++) {
                         const dq = pool[l[q]].liveDate;
-                        if (dp && dq && dp !== dq) continue;
+                        if (dp && dq && dp !== dq) {
+                            if (skipped.length < _REC_DUP_MAX_SKIPPED) skipped.push(l[p] < l[q] ? l[p] * n + l[q] : l[q] * n + l[p]);
+                            continue;
+                        }
                         add(l[p], l[q]);
                     }
                 }
                 if (over) return null;
             }
         }
-        return Float64Array.from(set).sort();
+        const pairs = Float64Array.from(set).sort();
+        pairs.skipped = skipped;
+        return pairs;
     }
 
     /**
@@ -102584,6 +102604,17 @@
                 const why = _recDupGateReason(sig, cutoff, a, b);
                 if (why) note(i, j, why);
             }
+        }
+        // The pairs skipped for two live dates: only the card of a grouped
+        // recording names them, so only those are judged (the mockup's Roxy take).
+        const size = new Map();
+        pool.forEach(r => { const k = uf.find(r.gid); size.set(k, (size.get(k) || 0) + 1); });
+        const grouped = i => size.get(uf.find(pool[i].gid)) > 1;
+        for (const p of pairs.skipped || []) {
+            const i = Math.floor(p / n), j = p - i * n;
+            if (!grouped(i) && !grouped(j)) continue;
+            const why = _recDupGateReason(_fzPairSignals(pool[i], pool[j], _FZ_SETTINGS.lengthToleranceMs), cutoff, pool[i], pool[j]);
+            if (why) note(i, j, why);
         }
         const byRoot = new Map();
         pool.forEach((r, i) => {
@@ -102789,8 +102820,15 @@
             const plan = plans.get(table) || _findingPlanForTable(table);
             const cols = _recDupColsForTable(table, plan);
             if (!cols) return;
-            rows.forEach(r => {
-                if (r.classList.contains('mb-nd-row')) return;
+            // A row's live copy when it has one: late data (the AcoustIDs and
+            // ISRCs initAcoustIdIsrcObserver() relocates) lands there first.
+            const live = new Map();
+            Array.from(table.tBodies[0] ? table.tBodies[0].rows : []).forEach(lr => {
+                if (lr.dataset.mbRowIdx !== undefined) live.set(lr.dataset.mbRowIdx, lr);
+            });
+            rows.forEach(src => {
+                if (src.classList.contains('mb-nd-row')) return;
+                const r = (src.dataset.mbRowIdx !== undefined && live.get(src.dataset.mbRowIdx)) || src;
                 const rec = _recDupRecord(r, cols);
                 if (!rec || seen.has(rec.gid)) return;
                 seen.add(rec.gid);
@@ -102818,6 +102856,53 @@
         ctx.groups.sort((a, b) => fold(a.members[0].title).localeCompare(fold(b.members[0].title)) || (a.key < b.key ? -1 : 1));
         res.apart.forEach((list, i) => ctx.apart.set(pool[i].gid, list.map(x => ({ other: pool[x.other], reason: x.reason }))));
         return ctx;
+    }
+
+    /**
+     * Groups the page again once late data is in (mockup question 7: once per
+     * finished column load, never per cell): the AcoustIDs and ISRCs
+     * `initAcoustIdIsrcObserver()` relocates, the Recording of and
+     * Performance attributes cells (`_recOfScheduleRefresh()`). Debounced
+     * (600 ms); then the title-cell keys are written again on every row a
+     * stamp reaches, and every row whose group changed, or whose group's
+     * members did, is re-stamped through `_queueFindingsRestamp()` (which
+     * refreshes the menus, the 📊 caches and a filtering pass).
+     *
+     * @returns {void}
+     */
+    function _recDupRegroupSoon() {
+        if (!_recDupPageOn()) return;
+        clearTimeout(_recDupRegroupSoon.timer);
+        _recDupRegroupSoon.timer = setTimeout(() => {
+            const before = _recDupCtx;
+            const sig = ctx => new Map(ctx.groups.map(g => [g.key, g.members.map(m => m.gid).join(',')]));
+            const old = sig(before);
+            const tables = Array.from(document.querySelectorAll('table.tbl')).filter(t => t.tBodies[0]);
+            const plans = new Map(tables.map(t => [t, _findingPlanForTable(t)]));
+            try {
+                _recDupCtx = _computeRecDupCtx(plans);
+            } catch (e) {
+                Lib.warn('findings', 'rec-dup: regrouping failed, the groups stay as they were', e);
+                _recDupCtx = before;
+                return;
+            }
+            const now = sig(_recDupCtx);
+            if (old.size === now.size && [...now].every(([k, v]) => old.get(k) === v)) return;
+            const master = _buildMasterRowIndex();
+            tables.forEach(table => {
+                const cols = _recDupColsForTable(table, plans.get(table));
+                if (!cols) return;
+                _forEachStampRow(table, master, r => {
+                    const tc = r.cells[cols.title];
+                    const was = tc ? tc.dataset.mbRecDup || null : null;
+                    _stampRecDupKey(r, cols);
+                    const is = tc ? tc.dataset.mbRecDup || null : null;
+                    if (was !== is || (is && old.get(is) !== now.get(is))) _queueFindingsRestamp(r, ['rec-dup'], table);
+                });
+                _invalidateUniqDropDataCacheForTable(table);
+            });
+            Lib.debug('findings', `rec-dup: regrouped after late data, ${before.groups.length} -> ${_recDupCtx.groups.length} groups`);
+        }, 600);
     }
 
     /**
@@ -166066,6 +166151,8 @@ a { color: #1565c0; }`;
             _invalidateFilterCache();
             _recOfUpdateHdrBtns();
             if (_anyFilterActive()) runFilter();
+            // "live" in Performance attributes / Recording of work keeps live and studio apart (rec-dup).
+            _recDupRegroupSoon();
         }, wait);
     }
 
@@ -188469,11 +188556,13 @@ a { color: #1565c0; }`;
 
     /**
      * The ids of the findings whose data arrives AFTER `stampFindings()` ran
-     * (it runs ONCE per fetch): the artwork record, and the deferred
-     * Relationships column (`rel-multi-site`). Each is re-stamped per row
+     * (it runs ONCE per fetch): the artwork record, the deferred
+     * Relationships column (`rel-multi-site`), and the late AcoustIDs, ISRCs
+     * and "live" cells that regroup duplicate recordings (`rec-dup`,
+     * `_recDupRegroupSoon()`). Each is re-stamped per row
      * through `_queueFindingsRestamp()`.
      */
-    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-site', 'bb-mbev-link-mismatch', 'bb-mbev-link-missing', 'sl-double-utf8', 'bb-onstage-tab', 'bb-venue-mismatch', ..._BB_EVENT_CHECK_LATE_IDS, ..._BB_LIST_CHECK_IDS, ..._BB_UNLISTED_IDS, ..._BB_SETLIST_IDS, ..._BB_TAG_IDS];
+    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-site', 'rec-dup', 'bb-mbev-link-mismatch', 'bb-mbev-link-missing', 'sl-double-utf8', 'bb-onstage-tab', 'bb-venue-mismatch', ..._BB_EVENT_CHECK_LATE_IDS, ..._BB_LIST_CHECK_IDS, ..._BB_UNLISTED_IDS, ..._BB_SETLIST_IDS, ..._BB_TAG_IDS];
 
     /**
      * Queues a re-stamp of a row whose late data (`_LATE_FINDING_IDS`) has
@@ -194686,6 +194775,12 @@ a { color: #1565c0; }`;
                 active: _recDupCtx.active, cutoff: _recDupCtx.cutoff, capped: _recDupCtx.capped,
                 groups: _recDupCtx.groups.map(g => ({ key: g.key, tier: g.tier, sig: g.sig, isrc: g.isrc, members: g.members.map(m => m.gid) })),
             }),
+            /**
+             * Runs the shipping late-data regroup (`_recDupRegroupSoon()`), whose
+             * production triggers (initAcoustIdIsrcObserver()'s relocation, the
+             * Recording of refresh) a fixture cannot reach.
+             */
+            recDupRegroup: () => _recDupRegroupSoon(),
             /**
              * An area's flag markup (`_mbPopFlagHtml()`, the shipping
              * builder) as on musicbrainz.org or on another host, so a spec
