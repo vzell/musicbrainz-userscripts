@@ -1146,7 +1146,7 @@ of its 4,304 rows are variants of those rules, not wiki errors (its page is OBSO
   the 47 =recnote:dl-…= pages (and one media page) name a download's note, a convention (all flagged by the bare
   rule). Every one of the 149 excused pages was read by hand (=--excused=).
 - *Result:* 36 pages (gignote 5, gallery 8, eye 4, media 10, recnote 9); the feed (=./feed.sh -r 2026-11-19=, 1.6)
-  holds the same 36, every other part of it unchanged, and 28 more anchors. Not published (vzell's call).
+  holds the same 36, every other part of it unchanged, and 28 more anchors. Published on 2026-11-20 at vzell's word (feed repo =c52f356=, its FORMAT.md =f3ca18c=).
 - *In SAED:* ⚠️ =bb-feed-name= ⇋, =sa_findings_bb_feed_name= (on); the show is marked for its pages
   (=_bbFeed.byEventName=). *Deviation from the plan:* the live filter never drops the mark. The plan had it dropped
   when the page's breadcrumb now names another show, but a dependent page has no head and no window of ours (it is
@@ -1157,7 +1157,7 @@ of its 4,304 rows are variants of those rules, not wiki errors (its page is OBSO
 
 ** The browser check of idea 4, for vzell (the run of 2026-11-19; unverified on the live wiki)
 
-First: the feed 1.6 must be on GitHub (BruceParser 0.24.0, =./publish-feed.sh -r 2026-11-19=, your call), then the
+First: the feed 1.6 is on GitHub (BruceParser 0.24.0, published 2026-11-20); then use the
 ☰ menu's Brucebase "Read again". The finding is on by default.
 
 | URL                                                                                 | Step                                     | What should appear                                                                     |
