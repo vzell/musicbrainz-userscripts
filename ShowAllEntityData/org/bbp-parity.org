@@ -1245,3 +1245,45 @@ again", then the press once more.
 | ⚙️ Settings → ⚠️ Findings → "Find events whose Brucebase entry has another date …" | off, then the artist's events again       | no ± mark and no such menu row; ⇉, ⌗ and ❌ ⚓ stay                                                                                                                                                                                  |
 
 Unverified: all of it live (an event corrected on MusicBrainz since 2026-11-19 keeps its mark until the next run).
+
+* Track A idea 5, check 2: MusicBrainz works and their Brucebase link (=feat/bb-feed-mb-works=, 2026-11-20; feed 1.8)
+
+Env: 2026-11-20T18:31:16+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · n/a
+(the probe: Python over the work search of 2026-11-20 and the mirror bb/2026-11-19; the spec and the checker:
+Playwright Chromium, no Tampermonkey)
+
+Mockup: https://claude.ai/artifact/5fTN5NNCgvMNehzPscurWn (=debug/bb-feed-mb-works-mockup.html=). vzell: "Approved",
+every answer as recommended: glyphs ⚓ ⇉ ≉, the likely target in the card, the title check as a WARNING, an artist's
+and an area's works and the work page, one MusicBrainz switch.
+
+*The probe* (=scripts/probe-bb-mb-works.py=): 1,587 works, 176 with a Brucebase link (99 a song page, 78 a
+studio-sessions row). 14 marked: no-target 10 (9 link the renamed =stats:greetings-from-asbury-park-studio-sessions=,
+live 404, its songs on =...-nj-studio-sessions=; King's Rock =#kingsrockkingsbigchance=, live =#kingsrock=), shared 2
+(Don't Back Down, Don't Back Down on Our Love), title 2 (Tarantella Napolitana / Napoletana, In the City Tonight / Meet
+Me In The City). 34 titles pass by case, typography or the cover credit, 3 by an alias.
+
+*Built:* BruceParser 0.27.0 (=917a36f=, pushed, not published): =mb-works.awk=, =feed.sh= 1.8 (=mbWorks=, every
+other part unchanged); the probe agrees field by field. SAED: =_BB_FEED_MBW_KINDS=, three settings, the events'
+card, listeners, sidebar draw and feed line made entity-aware. Details: docs/claude/brucebase.md, "Feed 1.8".
+*Deviation from the mockup:* candidates by their address, not by page title (the feed has none). *Re-anchored on the
+way:* 9 mutation finds of =bb-feed.json=, =bb-feed-mb-date.json= and =bb-findings-batch3b.json= (the lines they
+named are entity-aware now); each still fails its test.
+
+*Tests:* =bb-feed-mb-works.spec.js= 8, green; =scripts/mutations/bb-feed-mb-works.json= 11, each failing its test;
+the checker's new part 6 (works) and every other part: no difference.
+
+** The browser check of check 2, for vzell (the run of 2026-11-19; unverified on the live MusicBrainz)
+
+First: publish the feed 1.8 (BruceParser =./publish-feed.sh -r 2026-11-19=, your word); install the script from
+=feat/bb-feed-mb-works=. A kept 1.7 file is read again on a works page's press once it was read an hour ago.
+
+| URL                                                                         | Step                                    | What should appear                                                                                                 |
+|-----------------------------------------------------------------------------+-----------------------------------------+--------------------------------------------------------------------------------------------------------------------|
+| https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works   | Show all Works                          | ❌ menu "Brucebase link reaches nothing" 10; ⚠️ menu "Two works link one Brucebase song" 2, "Work title differs …" 2 |
+| the same list                                                               | hover Blinded by the Light's Work cell  | the card ❌ ⚓, likely =stats:greetings-from-asbury-park-nj-studio-sessions#blindedbythelight=                        |
+| https://musicbrainz.org/work/fdb63bfc-2429-474a-816d-281d1d33ceb3           | load the page, hover the sidebar mark   | ❌ ⚓ beside the Brucebase link; "… has no anchor #kingsrockkingsbigchance", likely =#kingsrock=                      |
+| https://musicbrainz.org/work/904c52a3-2cd7-4c3e-867a-340581b0971f           | load the page, hover the mark           | ⚠️ ⇉; the card lists Don't Back Down on Our Love                                                                    |
+| https://musicbrainz.org/work/f78b04ca-bf32-41cc-bd36-70d7d6144059           | press "Show all Recordings", hover mark | ⚠️ ≉ in the Sidebar card too: "Its link is the song "Tarantella Napoletana"; the work is "Tarantella Napolitana" …"  |
+| ⚙️ Settings → ⚠️ Findings → "Find MusicBrainz works titled differently …"   | off, then the works again               | no ≉ mark and no such menu row; ⚓ and ⇉ stay                                                                        |
+
+Unverified: all of it live (a work corrected on MusicBrainz since 2026-11-20 keeps its mark until the next run).

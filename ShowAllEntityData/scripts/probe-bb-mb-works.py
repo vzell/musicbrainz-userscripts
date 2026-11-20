@@ -19,6 +19,15 @@ that applies (one mark per work):
               both are compared loosely: case, quotes, dashes, the
               ellipsis, blanks, the wiki's "( - Artist - )" credit after a
               cover's title; the work's aliases count as its title too.
+A no-target link gets candidates, the likely one first: for a page that is
+not in the mirror, the pages of its category that carry its anchor and
+share the longest start with its name (likely: the shortest of them, a
+renamed page); for an anchor, its page's anchors (four characters or more)
+that start like it, or it like them (likely when only one).
+
+--feed FILE compares the feed's "mbWorks" (BruceParser's feed.sh 1.8,
+mb-works.awk) with these marks entry by entry: kind, link, missing, title,
+the other works, the candidates. Exit code 1 when anything differs.
 A link to a stats:<album>-studio-sessions#<song> anchor is checked for its
 page and anchor only: those anchors name session songs, often by an earlier
 title (Candy's Room -> #thefastsong), on purpose.
@@ -88,6 +97,7 @@ def main():
     ap.add_argument('--run', default=os.path.join(BP, 'bb', 'latest'))
     ap.add_argument('--out', default=os.path.join(os.path.dirname(__file__), '..', 'debug', 'probe-bb-mb-works.json'))
     ap.add_argument('--list', action='store_true', help='print every marked and excused work')
+    ap.add_argument('--feed', help='a feed 1.8 whose mbWorks to compare with the marks')
     args = ap.parse_args()
     run = os.path.realpath(args.run)
 
@@ -105,6 +115,44 @@ def main():
             f = page_file(run, name)
             page_ids[name] = set(re.findall(r'\b(?:id|name)="([^"]+)"', open(f, encoding='utf-8', errors='replace').read())) if os.path.exists(f) else None
         return page_ids[name]
+
+    cat_ids = {}
+
+    def pages_with(cat, anchor):
+        """The mirror's pages of a category that carry an anchor, sorted."""
+        if cat not in cat_ids:
+            cat_ids[cat] = {}
+            d = os.path.join(run, cat)
+            for fn in sorted(os.listdir(d)) if os.path.isdir(d) else []:
+                if fn.startswith(cat + '_') and fn.endswith('.html'):
+                    src = open(os.path.join(d, fn), encoding='utf-8', errors='replace').read()
+                    cat_ids[cat][f'{cat}:{fn[len(cat) + 1:-5]}'] = set(re.findall(r'\b(?:id|name)="([^"]+)"', src))
+        return sorted(n for n, ids in cat_ids[cat].items() if anchor in ids)
+
+    def lcp(a, b):
+        """The length of the common start of two strings."""
+        n = 0
+        while n < min(len(a), len(b)) and a[n] == b[n]:
+            n += 1
+        return n
+
+    def page_candidates(page, anchor):
+        """Candidates of a missing page: the anchor's pages of the closest family, the shortest likely."""
+        if not anchor:
+            return []
+        found = pages_with(page.split(':')[0], anchor)
+        if not found:
+            return []
+        best = max(lcp(f, page) for f in found)
+        family = [f for f in found if lcp(f, page) == best]
+        likely = min(family, key=len)
+        return [{'link': f'{likely}#{anchor}', 'likely': True}] + [{'link': f'{f}#{anchor}'} for f in family if f != likely]
+
+    def anchor_candidates(page, anchor):
+        """Candidates of a missing anchor: its page's anchors that start like it or it like them."""
+        hits = sorted(a for a in ids_of(page) if len(a) >= 4 and len(anchor) >= 4 and a != anchor
+                      and (a.startswith(anchor) or anchor.startswith(a)))
+        return [{'link': f'{page}#{a}', **({'likely': True} if len(hits) == 1 else {})} for a in hits]
 
     all_works = list(works(args.xml))
     linked = [w for w in all_works if w['links']]
@@ -126,14 +174,14 @@ def main():
             c['links to ' + page.split(':')[0]] += 1
             ids = ids_of(page)
             if ids is None:
-                kind = kind or {'kind': 'no-target', 'link': l, 'missing': 'page'}
+                kind = kind or {'kind': 'no-target', 'link': l.rstrip('/'), 'missing': 'page', 'candidates': page_candidates(page, anchor)}
             elif anchor and anchor not in ids and f'u-{anchor}' not in ids:
-                kind = kind or {'kind': 'no-target', 'link': l, 'missing': 'anchor'}
+                kind = kind or {'kind': 'no-target', 'link': l.rstrip('/'), 'missing': 'anchor', 'candidates': anchor_candidates(page, anchor)}
         if not kind:
             for l in w['links']:
                 page = l.rstrip('/')
                 if page.startswith('song:') and '#' not in page and len(by_song[page]) > 1:
-                    kind = {'kind': 'shared', 'link': l, 'title': titles.get(page, ''),
+                    kind = {'kind': 'shared', 'link': page, 'title': titles.get(page, ''),
                             'others': [{'mbid': o['mbid'], 'title': o['title']} for o in by_song[page] if o is not w]}
                     break
         if not kind:
@@ -149,7 +197,7 @@ def main():
                 if any(loose(a) == loose(bt) for a in w['aliases']):
                     excused['title: an alias'].append(f"{w['title']} || {bt}")
                     continue
-                kind = {'kind': 'title', 'link': l, 'title': bt}
+                kind = {'kind': 'title', 'link': page, 'title': bt}
                 break
         if kind:
             kind['work'] = w['title']
@@ -172,6 +220,23 @@ def main():
                   f"{' | others: ' + ', '.join(o['title'] for o in m['others']) if m.get('others') else ''}  {mbid}")
         for k, v in excused.items():
             print(f'  excused, {k}: {len(v)}; e.g. ' + ' / '.join(v[:4]))
+    if args.feed:
+        feed = json.load(open(args.feed, encoding='utf-8'))
+        theirs = feed.get('mbWorks') or {}
+        diffs = []
+        for mbid in sorted(set(marks) | set(theirs)):
+            mine, got = dict(marks.get(mbid) or {}), dict(theirs.get(mbid) or {})
+            for d in (mine, got):
+                if not d.get('candidates'):
+                    d.pop('candidates', None)
+                if not d.get('title'):
+                    d.pop('title', None)
+            if mine != got:
+                diffs.append({'mbid': mbid, 'probe': mine, 'feed': got})
+        print(f"feed {feed.get('run', {}).get('feed')}: mbWorks {len(theirs)}, the probe {len(marks)}, differing {len(diffs)}")
+        for d in diffs[:10]:
+            print('   ', json.dumps(d, ensure_ascii=False))
+        return 1 if diffs else 0
     return 0
 
 

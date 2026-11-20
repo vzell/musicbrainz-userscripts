@@ -3413,6 +3413,35 @@
                          'its Event cell and page. Needs "Read the Brucebase feed on MusicBrainz".'
         },
 
+        sa_findings_bb_mbw_none: {
+            label: 'Find MusicBrainz works whose Brucebase link reaches nothing (Brucebase feed)',
+            type: 'checkbox',
+            default: true,
+            description: 'From the Brucebase feed: a work whose Brucebase link names a page the wiki does not have ' +
+                         '(a renamed page) or an anchor its page does not have. An ERROR on the work\'s Work cell in ' +
+                         'an artist\'s or area\'s works and beside its Brucebase link on its page; hover it for where ' +
+                         'the link likely should go. Needs "Read the Brucebase feed on MusicBrainz".'
+        },
+
+        sa_findings_bb_mbw_shared: {
+            label: 'Find MusicBrainz works that link one Brucebase song together (Brucebase feed)',
+            type: 'checkbox',
+            default: true,
+            description: 'From the Brucebase feed: two or more works whose Brucebase links name the same song page. A ' +
+                         'WARNING on their Work cells and pages; the card names the other works. Needs "Read the ' +
+                         'Brucebase feed on MusicBrainz".'
+        },
+
+        sa_findings_bb_mbw_title: {
+            label: 'Find MusicBrainz works titled differently from their Brucebase song (Brucebase feed)',
+            type: 'checkbox',
+            default: true,
+            description: 'From the Brucebase feed: a work whose title, and none of its aliases, is the title of the ' +
+                         'song page it links, compared loosely (case, quotes, dashes and the wiki\'s "( - Artist - )" ' +
+                         'after a cover\'s title do not count). A WARNING on its Work cell and page. Needs "Read the ' +
+                         'Brucebase feed on MusicBrainz".'
+        },
+
         sa_findings_tint_bb_mb: {
             label: 'Highlight the Event cells of MusicBrainz events the Brucebase feed names',
             type: 'checkbox',
@@ -5766,15 +5795,17 @@
         },
 
         sa_bb_feed_mb: {
-            label: 'Read the Brucebase feed on MusicBrainz too: event links that reach no Brucebase entry',
+            label: 'Read the Brucebase feed on MusicBrainz too (events and works)',
             type: 'checkbox',
             default: true,
-            description: 'BruceParser also compares the artist\'s MusicBrainz events with Brucebase. On: an event ' +
-                         'list\'s or an event page\'s press reads the feed (as on Brucebase, at most once a day; the ' +
-                         'copy is shared), and an event whose Brucebase link reaches no entry, shares one with ' +
-                         'another event, or is no year-page anchor is marked on its Event cell and beside its ' +
-                         'Brucebase link, with the wiki\'s entries of the date to choose from. Needs "Read the ' +
-                         'Brucebase feed". Off: nothing is read or marked on MusicBrainz.'
+            description: 'BruceParser also compares the artist\'s MusicBrainz events and works with Brucebase. On: ' +
+                         'an event list\'s, an event page\'s, a works list\'s or a work page\'s press reads the feed ' +
+                         '(as on Brucebase, at most once a day; the copy is shared). An event whose Brucebase link ' +
+                         'reaches no entry, shares one with another event, is no year-page anchor or names another ' +
+                         'date is marked on its Event cell and beside its Brucebase link; a work whose link reaches ' +
+                         'nothing, shares a song page with another work, or whose title is not the song\'s is marked ' +
+                         'on its Work cell and beside its Brucebase link. Needs "Read the Brucebase feed". Off: ' +
+                         'nothing is read or marked on MusicBrainz.'
         },
 
         sa_bb_feed: {
@@ -28339,7 +28370,8 @@
     }
 
     /**
-     * The feed's maps this script reads now: `_BB_FEED_MAPS`, and
+     * The feed's maps this script reads now: `_BB_FEED_MAPS` (and
+     * `mbWorks`, feed 1.8, on a page of works: `_bbFeedMbwPage()`), and
      * `tagTables` (feed 1.4) while a tag family that needs it is on
      * (`sa_bb_tag_family_tour`, `…_place`, `…_cast`, `…_songs`; batch 3b), and `songTags` (feed 1.5) with
      * the songs family on, `venueTags` with the place family on. With every such family off a
@@ -28348,8 +28380,23 @@
      * @returns {string[]}
      */
     function _bbFeedMapsWanted() {
-        if (!_bbTagTableFamiliesOn()) return _BB_FEED_MAPS;
-        return _BB_FEED_MAPS.concat('tagTables', _bbTagSongsOn() ? ['songTags'] : [], _bbTagPlaceOn() ? ['venueTags'] : []);
+        const base = _bbFeedMbwPage() ? _BB_FEED_MAPS.concat('mbWorks') : _BB_FEED_MAPS;
+        if (!_bbTagTableFamiliesOn()) return base;
+        return base.concat('tagTables', _bbTagSongsOn() ? ['songTags'] : [], _bbTagPlaceOn() ? ['venueTags'] : []);
+    }
+
+    /**
+     * Whether this is a MusicBrainz page of works (a works list, a work's
+     * page), where feed 1.8's `mbWorks` is read: a kept file without it is
+     * read again after an hour there only (`_bbFeedLacksMap()`), so Brucebase
+     * pages ask for nothing new.
+     *
+     * @returns {boolean}
+     */
+    function _bbFeedMbwPage() {
+        if (_isBbHost || _foreignHost) return false;
+        const path = window.location.pathname;
+        return /^\/work\/[0-9a-f-]{36}(?:\/|$)/.test(path) || /\/works(?:\/|$)/.test(path);
     }
 
     /**
@@ -28913,7 +28960,8 @@
             tip: 'The event\'s Brucebase link names the entry of another date than the event\'s: most often the event\'s date is a day later than its own name and the wiki say. Hover the cell for which side is likely wrong and the wiki\'s entries of the event\'s date. ' },
     };
     /** @type {Set<string>} The MusicBrainz pageTypes whose press reads the feed (vzell, answers 3 and 4). */
-    const _BB_FEED_MB_PAGES = new Set(['artist-events', 'place-events', 'area-events', 'event-collections', 'event-tags', 'event-overview']);
+    const _BB_FEED_MB_PAGES = new Set(['artist-events', 'place-events', 'area-events', 'event-collections', 'event-tags', 'event-overview',
+        'artist-works', 'area-works', 'area-works-filtered', 'work-recordings', 'work-recordings-filtered']);
     /** @type {RegExp} An event MBID in a link. */
     const _BB_FEED_MB_EVENT_RE = /\/event\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/;
 
@@ -29087,6 +29135,146 @@
             `<div class="mb-bbmb-src">${esc(_bbFeedSource())}</div>`;
     }
 
+    // --- The feed on MusicBrainz works (feed 1.8; Track A idea 5, check 2) --
+    // `mbWorks` names, by work MBID, the artist's works whose Brucebase link
+    // reaches nothing (`no-target`: a page the wiki does not have, or an
+    // anchor its page does not have, with the likely right target), names a
+    // song page another work links too (`shared`), or names a song whose
+    // title is not the work's (`title`). Marked on the Work cell of an
+    // artist's or area's works and beside a work page's Brucebase link, in
+    // the events' card. Mockup https://claude.ai/artifact/5fTN5NNCgvMNehzPscurWn,
+    // vzell's answers of 2026-11-20 all as recommended.
+
+    /**
+     * The feed's work kinds: their finding, mark, setting and words.
+     * @type {Object<string, {id: string, glyph: string, level: string, setting: string, label: string, tip: string}>}
+     */
+    const _BB_FEED_MBW_KINDS = {
+        'no-target': { id: 'bb-mbw-none', glyph: '⚓', level: 'error', setting: 'sa_findings_bb_mbw_none',
+            label: 'Brucebase link reaches nothing',
+            tip: 'The work\'s Brucebase link names a page the wiki does not have (a renamed page) or an anchor its page does not have. Hover the cell for where it likely should go. ' },
+        'shared': { id: 'bb-mbw-shared', glyph: '⇉', level: 'warn', setting: 'sa_findings_bb_mbw_shared',
+            label: 'Two works link one Brucebase song',
+            tip: 'Another MusicBrainz work links the same Brucebase song page. Hover the cell for the other work. ' },
+        'title': { id: 'bb-mbw-title', glyph: '≉', level: 'warn', setting: 'sa_findings_bb_mbw_title',
+            label: 'Work title differs from its Brucebase song',
+            tip: 'The work\'s title, and none of its aliases, is the title of the Brucebase song page it links (case, quotes, dashes and the wiki\'s "( - Artist - )" after a cover\'s title do not count). ' },
+    };
+    /** @type {RegExp} A work MBID in a link. */
+    const _BB_FEED_MBW_WORK_RE = /\/work\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/;
+
+    /**
+     * Whether one work kind's finding is on.
+     *
+     * @param {string} kind - A `_BB_FEED_MBW_KINDS` key.
+     * @returns {boolean}
+     */
+    function _bbFeedMbwKindOn(kind) {
+        const k = _BB_FEED_MBW_KINDS[kind];
+        return !!k && Lib.settings[k.setting] !== false;
+    }
+
+    /**
+     * What the feed says about one MusicBrainz work, when its kind is on.
+     *
+     * @param {string} mbid
+     * @returns {?Object} The feed's `mbWorks` entry, or null.
+     */
+    function _bbFeedMbwFact(mbid) {
+        _bbFeedReadKept();
+        const map = _bbFeed.data && _bbFeed.data.mbWorks;
+        const f = map && typeof map === 'object' ? map[mbid] : null;
+        return f && typeof f === 'object' && _BB_FEED_MBW_KINDS[f.kind] && _bbFeedMbwKindOn(f.kind) ? f : null;
+    }
+
+    /**
+     * The work a Work cell names (its `/work/<mbid>` link) and what the feed
+     * says about it, memoized per MBID and feed generation.
+     *
+     * @param {HTMLTableCellElement} cell
+     * @returns {?{mbid: string, name: string, dis: string, fact: ?Object}}
+     */
+    function _bbFeedMbwCellFact(cell) {
+        const links = Array.from(cell.querySelectorAll('a[href*="/work/"]'));
+        const a = links.find(x => /\/work\/[0-9a-f-]{36}\/?$/.test(x.getAttribute('href') || '')) || links[0];
+        const m = a ? (a.getAttribute('href') || '').match(_BB_FEED_MBW_WORK_RE) : null;
+        if (!m) return null;
+        const key = `${_bbFeed.gen}|mbw|${m[1]}`;
+        if (_bbFeed.memo.has(key)) return _bbFeed.memo.get(key);
+        const comment = cell.querySelector('.comment');
+        const r = {
+            mbid: m[1], name: _dpText(a.textContent),
+            dis: comment ? _dpText(comment.textContent).replace(/^\((.*)\)$/, '$1') : '',
+            fact: _bbFeedMbwFact(m[1]),
+        };
+        _bbFeed.memo.set(key, r);
+        return r;
+    }
+
+    /**
+     * One work fact in words, for a cell's tooltip line and the card.
+     *
+     * @param {Object} f - A feed `mbWorks` entry.
+     * @param {{list?: boolean}} [opts] - `list: false` leaves out the
+     *     candidates and the other works (the card lists them itself).
+     * @returns {string}
+     */
+    function _bbFeedMbwText(f, { list: withList = true } = {}) {
+        const [page, anchor] = String(f.link || '').split('#');
+        const cands = withList && Array.isArray(f.candidates) ? f.candidates : [];
+        const others = Array.isArray(f.others) ? f.others : [];
+        if (f.kind === 'no-target') {
+            const head = f.missing === 'anchor' ? `The page ${page} has no anchor #${anchor}.` : `Brucebase has no page ${page}.`;
+            const list = cands.length ? ` ${_bbFeedMbwCandHead(f)} ${cands.map(c => `${c.link}${c.likely ? ' (likely)' : ''}`).join('; ')}.` : '';
+            return head + list;
+        }
+        if (f.kind === 'shared') {
+            const names = withList && others.length ? `: ${others.map(o => o.title).join('; ')}` : '';
+            return `Its link is the song page "${f.title || page}", which ${others.length === 1 ? 'another work links' : `${others.length} other works link`} too${names}.`;
+        }
+        return `Its link is the song "${f.title || page}"; the work is "${f.work || ''}", and none of its aliases is the song's title.`;
+    }
+
+    /**
+     * The words before a no-target fact's candidates.
+     *
+     * @param {Object} f - A feed `mbWorks` entry of kind `no-target`.
+     * @returns {string}
+     */
+    function _bbFeedMbwCandHead(f) {
+        const anchor = String(f.link || '').split('#')[1] || '';
+        return f.missing === 'anchor' ? 'Its anchors that start the same:' : `Pages with its anchor #${anchor}:`;
+    }
+
+    /**
+     * The card of a marked work (the approved mockup): the kind, the work,
+     * its link, the words, then where the link likely should go (no-target)
+     * or the other works (shared), the run.
+     *
+     * @param {Object} f - A feed `mbWorks` entry.
+     * @param {string} name - The work as the page names it.
+     * @returns {string} HTML.
+     */
+    function _bbFeedMbwCardHtml(f, name) {
+        const k = _BB_FEED_MBW_KINDS[f.kind];
+        const esc = _mbttEscape;
+        const link = String(f.link || '');
+        let extra = '';
+        if (f.kind === 'no-target' && Array.isArray(f.candidates) && f.candidates.length) {
+            extra = `<p>${esc(_bbFeedMbwCandHead(f))}</p><ul class="mb-bbmb-cands">` + f.candidates.map(c =>
+                `<li class="${c.likely ? 'mb-bbmb-likely' : ''}">${c.likely ? '<span class="mb-bbmb-k">likely</span>' : ''}` +
+                `<a href="https://brucebase.wikidot.com/${esc(c.link)}" target="_blank" rel="noopener">${esc(c.link)}</a></li>`).join('') + '</ul>';
+        } else if (f.kind === 'shared' && Array.isArray(f.others) && f.others.length) {
+            extra = '<ul class="mb-bbmb-cands">' + f.others.map(o =>
+                `<li><a href="/work/${esc(o.mbid)}" target="_blank" rel="noopener">${esc(o.title || o.mbid)}</a>` +
+                `<span class="mb-bbmb-pg">work ${esc(o.mbid)}</span></li>`).join('') + '</ul>';
+        }
+        return `<div class="mb-bbmb-ttl" data-mb-level="${k.level}">${k.level === 'error' ? '❌' : '⚠️'} ${k.glyph} ${esc(k.label)}</div>` +
+            `<dl class="mb-bbmb-cmp"><dt>Work</dt><dd>${esc(name || f.work || '')}</dd><dt>Links</dt><dd><a href="https://brucebase.wikidot.com/${esc(link)}" target="_blank" rel="noopener">${esc(link)}</a></dd></dl>` +
+            `<p>${esc(_bbFeedMbwText(f, { list: false }))}</p>${extra}` +
+            `<div class="mb-bbmb-src">${esc(_bbFeedSource())}</div>`;
+    }
+
     /** The open card: its element, what it is open for, the close timer. */
     const _bbMbCard = { for: null, timer: 0 };
 
@@ -29144,30 +29332,37 @@
     }
 
     /**
-     * What an element the card can open for says: an Event cell with a feed
-     * finding, or the sidebar's mark.
+     * What an element the card can open for says: an Event or Work cell
+     * with a feed finding, or the sidebar's mark (`data-mb-bbmb-type`
+     * "work" for a work, feed 1.8).
      *
      * @param {EventTarget} t
-     * @returns {?{el: Element, fact: Object, name: string, dis: string}}
+     * @returns {?{el: Element, fact: Object, name: string, dis: string, type: string}}
      */
     function _bbMbCardTargetOf(t) {
         if (!(t instanceof Element) || !_bbFeedMbOn()) return null;
         const mark = t.closest('button.mb-bbmb-mark[data-mb-bbmb]');
         if (mark) {
-            const f = _bbFeedMbFact(mark.dataset.mbBbmb);
-            return f ? { el: mark, fact: f, name: mark.dataset.mbBbmbName || '', dis: mark.dataset.mbBbmbDis || '' } : null;
+            const type = mark.dataset.mbBbmbType === 'work' ? 'work' : 'event';
+            const f = type === 'work' ? _bbFeedMbwFact(mark.dataset.mbBbmb) : _bbFeedMbFact(mark.dataset.mbBbmb);
+            return f ? { el: mark, fact: f, name: mark.dataset.mbBbmbName || '', dis: mark.dataset.mbBbmbDis || '', type } : null;
         }
         const td = t.closest('table.tbl td[data-mb-findings]');
-        if (!td || !/(?:^| )bb-mb-/.test(td.dataset.mbFindings || '')) return null;
+        const ids = td ? td.dataset.mbFindings || '' : '';
+        if (/(?:^| )bb-mbw-/.test(ids)) {
+            const r = _bbFeedMbwCellFact(td);
+            return r && r.fact ? { el: td, fact: r.fact, name: r.name, dis: r.dis, type: 'work' } : null;
+        }
+        if (!/(?:^| )bb-mb-/.test(ids)) return null;
         const r = _bbFeedMbCellFact(td);
-        return r && r.fact ? { el: td, fact: r.fact, name: r.name, dis: r.dis } : null;
+        return r && r.fact ? { el: td, fact: r.fact, name: r.name, dis: r.dis, type: 'event' } : null;
     }
 
     /**
      * Opens the card under its element (above it when only there it is in
      * view), inside the window's width.
      *
-     * @param {{el: Element, fact: Object, name: string, dis?: string}} tg
+     * @param {{el: Element, fact: Object, name: string, dis?: string, type?: string}} tg
      * @returns {void}
      */
     function _bbMbCardShow(tg) {
@@ -29175,7 +29370,7 @@
         const card = _bbMbCardEl();
         if (_bbMbCard.for !== tg.el || card.style.display === 'none') {
             _bbMbCard.for = tg.el;
-            card.innerHTML = _bbFeedMbCardHtml(tg.fact, tg.name, tg.dis || '');
+            card.innerHTML = tg.type === 'work' ? _bbFeedMbwCardHtml(tg.fact, tg.name) : _bbFeedMbCardHtml(tg.fact, tg.name, tg.dis || '');
         }
         card.style.display = 'grid';
         const b = tg.el.getBoundingClientRect();
@@ -29244,6 +29439,7 @@
      * The event page's mark (vzell, answer 3): beside its Brucebase link in
      * the sidebar, from the kept feed (no request at load); drawn again when
      * a read brings a feed. Removed when the feed no longer names the event.
+     * A work's page (feed 1.8, `mbWorks`) gets its mark the same way.
      *
      * Also after each copy of that link in the rendered "Sidebar" cards
      * (`.mb-sb-inline`, `_sbInlineInsertSection()` calls this when it builds
@@ -29258,25 +29454,27 @@
      */
     function _bbFeedMbSidebarDraw() {
         if (!_bbFeedMbOn()) return;
-        const m = window.location.pathname.match(/^\/event\/([0-9a-f-]{36})\/?$/);
+        const m = window.location.pathname.match(/^\/(event|work)\/([0-9a-f-]{36})\/?$/);
         if (!m) return;
         document.querySelectorAll('button.mb-bbmb-mark[data-mb-bbmb]').forEach(b => b.remove());
-        const f = _bbFeedMbFact(m[1]);
+        const work = m[1] === 'work';
+        const f = work ? _bbFeedMbwFact(m[2]) : _bbFeedMbFact(m[2]);
         const link = document.querySelector('ul.external_links a[href*="brucebase.wikidot.com"]');
         if (!f || !link) return;
         _ensureBbMbCardStyle();
         _bbMbCardInit();
-        const k = _BB_FEED_MB_KINDS[f.kind];
+        const k = (work ? _BB_FEED_MBW_KINDS : _BB_FEED_MB_KINDS)[f.kind];
         const b = document.createElement('button');
         b.type = 'button';
         b.className = 'mb-bbmb-mark';
-        b.dataset.mbBbmb = m[1];
+        b.dataset.mbBbmb = m[2];
+        if (work) b.dataset.mbBbmbType = 'work';
         b.dataset.mbLevel = k.level;
         const h1 = document.querySelector('#content h1, .eventheader h1, h1');
         b.dataset.mbBbmbName = h1 ? _dpText(h1.textContent) : '';
         const comment = h1 && h1.querySelector('.comment');
         b.dataset.mbBbmbDis = comment ? _dpText(comment.textContent).replace(/^\((.*)\)$/, '$1') : '';
-        b.setAttribute('aria-label', `${k.label}: ${_bbFeedMbText(f, b.dataset.mbBbmbName)}`);
+        b.setAttribute('aria-label', `${k.label}: ${work ? _bbFeedMbwText(f) : _bbFeedMbText(f, b.dataset.mbBbmbName)}`);
         b.textContent = `${k.level === 'error' ? '❌' : '⚠️'} ${k.glyph}`;
         link.after(' ', b);
         const href = link.getAttribute('href');
@@ -79562,6 +79760,25 @@
             },
             tint: _findingTintSetting('sa_findings_tint_bb_mb'),
         })),
+        // The feed on MusicBrainz works (feed 1.8; idea 5, check 2): the Work
+        // cell of an artist's or area's works, by the row's work MBID.
+        ...Object.entries(_BB_FEED_MBW_KINDS).map(([kind, k]) => ({
+            id: k.id, level: k.level, glyph: k.glyph, scope: 'cell',
+            label: k.label,
+            tip: k.tip + 'From the Brucebase feed: BruceParser\'s comparison of the artist\'s MusicBrainz works with the wiki, published at github.com/vzell/brucebase-feed; the hover text names the run.',
+            enabled: () => _bbFeedMbOn() && _bbFeedMbwKindOn(kind),
+            cols: name => name === 'Work',
+            rowGate: row => _bbFeedHasData() && !!row.querySelector('a[href*="/work/"]'),
+            test: (cell) => {
+                const r = _bbFeedMbwCellFact(cell);
+                return !!(r && r.fact && r.fact.kind === kind);
+            },
+            detail: (cell) => {
+                const r = _bbFeedMbwCellFact(cell);
+                return r && r.fact ? `${_bbFeedMbwText(r.fact)} ${_bbFeedSource()}` : '';
+            },
+            tint: _findingTintSetting('sa_findings_tint_bb_mb'),
+        })),
         {
             id: 'pending', level: 'warn', glyph: '⏳', scope: 'row',
             label: 'Pending edits',
@@ -117188,9 +117405,10 @@ a { color: #1565c0; }`;
     // switch sa_pop_enabled keeps the whole engine out.
     if (pageType && headerContainer && Lib.settings.sa_pop_enabled !== false) _initDetailPreview();
 
-    // An event page on MusicBrainz: the BruceParser feed's mark beside its
-    // Brucebase link, from the kept feed only (feed 1.3; no request here).
-    if (!_isBbHost && !_foreignHost && /^\/event\/[0-9a-f-]{36}\/?$/.test(window.location.pathname)) _bbFeedMbSidebarDraw();
+    // An event or work page on MusicBrainz: the BruceParser feed's mark
+    // beside its Brucebase link, from the kept feed only (feed 1.3, works
+    // 1.8; no request here).
+    if (!_isBbHost && !_foreignHost && /^\/(?:event|work)\/[0-9a-f-]{36}\/?$/.test(window.location.pathname)) _bbFeedMbSidebarDraw();
 
     if (pageType) Lib.prefix = `[VZ-${SCRIPT_BASE_NAME}: ${pageType}]`;
     Lib.debug('init', 'Initializing script for path:', path);
@@ -120552,7 +120770,7 @@ a { color: #1565c0; }`;
             // On MusicBrainz only when a feed finding is on the page (feed
             // 1.3, vzell's answer 6).
             const feedLine = _isBbHost ? _bbFeedStatus()
-                : _bbFeedMbOn() && list.some(x => x.f.id.startsWith('bb-mb-')) ? _bbFeedStatus() : null;
+                : _bbFeedMbOn() && list.some(x => x.f.id.startsWith('bb-mb-') || x.f.id.startsWith('bb-mbw-')) ? _bbFeedStatus() : null;
             // "All errors" / "All warnings": with any finding of the level.
             const levelRow = list.length ? { n: counts.get(`@${level}`) || 0, on: _findingLevelFilter.has(level) } : null;
             const sig = (relRows.length ? `rel:${relRows.map(f => f.text).join('/')}|` : '') +
@@ -195664,6 +195882,17 @@ a { color: #1565c0; }`;
              */
             bbFeedPictures(doc) {
                 return _bbFeedPictureCount(doc);
+            },
+            /**
+             * The feed on MusicBrainz works (feed 1.8): what it says about a
+             * work MBID (`_bbFeedMbwFact()`), in words (`_bbFeedMbwText()`).
+             *
+             * @param {string} mbid
+             * @returns {{on: boolean, fact: ?Object, text: string}}
+             */
+            bbFeedMbw(mbid) {
+                const fact = _bbFeedMbwFact(mbid);
+                return { on: _bbFeedMbOn(), fact, text: fact ? _bbFeedMbwText(fact) : '' };
             },
             /**
              * The feed on MusicBrainz (feed 1.3): what it says about an event

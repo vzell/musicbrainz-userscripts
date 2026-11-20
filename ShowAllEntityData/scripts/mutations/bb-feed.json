@@ -260,7 +260,7 @@
     {
         "name": "feed 1.3: the Event cell's lookup finds nothing",
         "why": "The Event cell's event MBID is looked up in the feed's mb.",
-        "edits": [{ "find": "                return !!(r && r.fact && r.fact.kind === kind);", "replace": "                return false;" }],
+        "edits": [{ "find": "                const r = _bbFeedMbCellFact(cell);\n                return !!(r && r.fact && r.fact.kind === kind);", "replace": "                const r = _bbFeedMbCellFact(cell);\n                return false;" }],
         "spec": "tests/fixtures/bb-feed.spec.js", "grep": "an event list: the three events", "expect": "fail"
     },
     {
@@ -290,19 +290,19 @@
     {
         "name": "feed 1.3: the card marks no candidate likely",
         "why": "The candidate whose heading names the event's place is marked likely.",
-        "edits": [{ "find": "`<li class=\"${c.likely ? 'mb-bbmb-likely' : ''}\">", "replace": "`<li class=\"\">" }],
+        "edits": [{ "find": "`<li class=\"${c.likely ? 'mb-bbmb-likely' : ''}\">${c.likely ? '<span class=\"mb-bbmb-k\">likely</span>' : ''}` +\n            `<a href=\"https://brucebase.wikidot.com/${esc(c.anchor)}\"", "replace": "`<li class=\"\">${c.likely ? '<span class=\"mb-bbmb-k\">likely</span>' : ''}` +\n            `<a href=\"https://brucebase.wikidot.com/${esc(c.anchor)}\"" }],
         "spec": "tests/fixtures/bb-feed.spec.js", "grep": "the card: the wiki's entries", "expect": "fail"
     },
     {
         "name": "feed 1.3: no sidebar mark at load",
         "why": "An event page shows its mark from the kept feed at load.",
-        "edits": [{ "find": "/^\\/event\\/[0-9a-f-]{36}\\/?$/.test(window.location.pathname)) _bbFeedMbSidebarDraw();", "replace": "/^\\/event\\/[0-9a-f-]{36}\\/?$/.test(window.location.pathname)) void 0;" }],
+        "edits": [{ "find": "/^\\/(?:event|work)\\/[0-9a-f-]{36}\\/?$/.test(window.location.pathname)) _bbFeedMbSidebarDraw();", "replace": "/^\\/(?:event|work)\\/[0-9a-f-]{36}\\/?$/.test(window.location.pathname)) void 0;" }],
         "spec": "tests/fixtures/bb-feed.spec.js", "grep": "an event page: the mark beside", "expect": "fail"
     },
     {
         "name": "feed 1.3: the menus' feed line missing on MusicBrainz",
         "why": "With a feed finding on the page, the menus end with the feed's line.",
-        "edits": [{ "find": ": _bbFeedMbOn() && list.some(x => x.f.id.startsWith('bb-mb-')) ? _bbFeedStatus() : null;", "replace": ": null;" }],
+        "edits": [{ "find": ": _bbFeedMbOn() && list.some(x => x.f.id.startsWith('bb-mb-') || x.f.id.startsWith('bb-mbw-')) ? _bbFeedStatus() : null;", "replace": ": null;" }],
         "spec": "tests/fixtures/bb-feed.spec.js", "grep": "an event list: the three events", "expect": "fail"
     },
     {

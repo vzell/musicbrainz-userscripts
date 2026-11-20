@@ -1,0 +1,68 @@
+[
+    {
+        "name": "mb works: the no-target kind is unknown to the script",
+        "why": "Feed 1.8's kinds are _BB_FEED_MBW_KINDS entries; without one its works are not marked.",
+        "edits": [{ "find": "        'no-target': { id: 'bb-mbw-none', glyph: '⚓', level: 'error', setting: 'sa_findings_bb_mbw_none',", "replace": "        'no-target-x': { id: 'bb-mbw-none', glyph: '⚓', level: 'error', setting: 'sa_findings_bb_mbw_none'," }],
+        "spec": "tests/fixtures/bb-feed-mb-works.spec.js", "grep": "each kind on its Work cell", "expect": "fail"
+    },
+    {
+        "name": "mb works: the findings look at another column",
+        "why": "The works' marks sit on the Work column.",
+        "edits": [{ "find": "            cols: name => name === 'Work',\n            rowGate: row => _bbFeedHasData() && !!row.querySelector('a[href*=\"/work/\"]'),", "replace": "            cols: name => name === 'Workx',\n            rowGate: row => _bbFeedHasData() && !!row.querySelector('a[href*=\"/work/\"]')," }],
+        "spec": "tests/fixtures/bb-feed-mb-works.spec.js", "grep": "each kind on its Work cell", "expect": "fail"
+    },
+    {
+        "name": "mb works: the title kind follows another kind's switch",
+        "why": "Each work kind has its own setting.",
+        "edits": [{ "find": "glyph: '≉', level: 'warn', setting: 'sa_findings_bb_mbw_title',", "replace": "glyph: '≉', level: 'warn', setting: 'sa_findings_bb_mbw_shared'," }],
+        "spec": "tests/fixtures/bb-feed-mb-works.spec.js", "grep": "own switch: the title check off", "expect": "fail"
+    },
+    {
+        "name": "mb works: a Work cell opens no card",
+        "why": "_bbMbCardTargetOf() takes a cell with a bb-mbw- finding.",
+        "edits": [{ "find": "        if (/(?:^| )bb-mbw-/.test(ids)) {", "replace": "        if (false) {" }],
+        "spec": "tests/fixtures/bb-feed-mb-works.spec.js", "grep": "the card: where a link that reaches nothing", "expect": "fail"
+    },
+    {
+        "name": "mb works: a work gets the event card",
+        "why": "The card is drawn by its target's type.",
+        "edits": [{ "find": "            card.innerHTML = tg.type === 'work' ? _bbFeedMbwCardHtml(tg.fact, tg.name) : _bbFeedMbCardHtml(tg.fact, tg.name, tg.dis || '');", "replace": "            card.innerHTML = _bbFeedMbCardHtml(tg.fact, tg.name, tg.dis || '');" }],
+        "spec": "tests/fixtures/bb-feed-mb-works.spec.js", "grep": "the card: where a link that reaches nothing", "expect": "fail"
+    },
+    {
+        "name": "mb works: a missing anchor is worded as a missing page",
+        "why": "The words say which of the two is missing.",
+        "edits": [{ "find": "            const head = f.missing === 'anchor' ? `The page ${page} has no anchor #${anchor}.` : `Brucebase has no page ${page}.`;", "replace": "            const head = `Brucebase has no page ${page}.`;" }],
+        "spec": "tests/fixtures/bb-feed-mb-works.spec.js", "grep": "the words of a missing anchor", "expect": "fail"
+    },
+    {
+        "name": "mb works: a work page draws the event's fact",
+        "why": "_bbFeedMbSidebarDraw() reads mbWorks on a work page.",
+        "edits": [{ "find": "        const work = m[1] === 'work';", "replace": "        const work = false;" }],
+        "spec": "tests/fixtures/bb-feed-mb-works.spec.js", "grep": "a work page: ❌ ⚓ beside its Brucebase link", "expect": "fail"
+    },
+    {
+        "name": "mb works: no mark at a work page's load",
+        "why": "The load-time draw covers work pages too.",
+        "edits": [{ "find": "/^\\/(?:event|work)\\/[0-9a-f-]{36}\\/?$/.test(window.location.pathname)) _bbFeedMbSidebarDraw();", "replace": "/^\\/(?:event)\\/[0-9a-f-]{36}\\/?$/.test(window.location.pathname)) _bbFeedMbSidebarDraw();" }],
+        "spec": "tests/fixtures/bb-feed-mb-works.spec.js", "grep": "a work page: ❌ ⚓ beside its Brucebase link", "expect": "fail"
+    },
+    {
+        "name": "mb works: a kept 1.7 file is fresh for its day on a works page",
+        "why": "_bbFeedMbwPage() makes mbWorks a wanted map on a page of works.",
+        "edits": [{ "find": "        return /^\\/work\\/[0-9a-f-]{36}(?:\\/|$)/.test(path) || /\\/works(?:\\/|$)/.test(path);", "replace": "        return false;" }],
+        "spec": "tests/fixtures/bb-feed-mb-works.spec.js", "grep": "a kept feed without mbWorks", "expect": "fail"
+    },
+    {
+        "name": "mb works: a works list's press reads no feed",
+        "why": "The works pages are in _BB_FEED_MB_PAGES.",
+        "edits": [{ "find": "        'artist-works', 'area-works', 'area-works-filtered', 'work-recordings', 'work-recordings-filtered']);", "replace": "        'area-works', 'area-works-filtered', 'work-recordings', 'work-recordings-filtered']);" }],
+        "spec": "tests/fixtures/bb-feed-mb-works.spec.js", "grep": "a kept feed without mbWorks", "expect": "fail"
+    },
+    {
+        "name": "mb works: no feed line under the works' marks",
+        "why": "The menus end with the feed's line when a works mark is on the page.",
+        "edits": [{ "find": "list.some(x => x.f.id.startsWith('bb-mb-') || x.f.id.startsWith('bb-mbw-'))", "replace": "list.some(x => x.f.id.startsWith('bb-mb-'))" }],
+        "spec": "tests/fixtures/bb-feed-mb-works.spec.js", "grep": "each kind on its Work cell", "expect": "fail"
+    }
+]

@@ -3059,6 +3059,68 @@ slice, the date. Mockup https://claude.ai/artifact/8iqJ2nM2xVb8JTkLgSwbod
   envelope and whole `mb`, `scripts/build-bb-feed-dates-fixture.py`).
   Mutations: `scripts/mutations/bb-feed-mb-date.json` (12).
 
+### Feed 1.8: MusicBrainz works and their Brucebase link (Track A idea 5, check 2, 2026-11-20)
+
+Env: 2026-11-20T18:31:16+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux
+6.18.58.1-microsoft-standard-WSL2) · n/a (the probe: Python over BruceParser's
+work search of 2026-11-20 and the mirror bb/2026-11-19; the spec and the
+checker: Playwright Chromium, no Tampermonkey)
+
+Idea 5's second check was "a MusicBrainz work against its Brucebase song"
+(BruceParser's `esfsl.sh`). Its report diffs two title lists without a key,
+and its MusicBrainz side was a hand copy of 2024-10-21; so a keyed map
+instead (vzell, 2026-11-20, the plan's question 3). Mockup
+https://claude.ai/artifact/5fTN5NNCgvMNehzPscurWn (source
+`debug/bb-feed-mb-works-mockup.html`), every answer as recommended.
+
+- **The data** (BruceParser 0.27.0 `feed.sh` 1.8, `mb-works.awk`; the work
+  search is the step `search-work` since 0.25.0): `mbWorks`, keyed by work
+  MBID, one entry per work, the first kind that applies:
+  - `no-target`: the link's page is not on the wiki, or its anchor is on
+    none of its page's ids (`missing` page / anchor), with `candidates`,
+    the likely one first: the pages of the category carrying the anchor
+    that share the longest start with the page's name (a renamed page), or
+    the page's anchors that start like the missing one;
+  - `shared`: a song page two or more works link (`others`);
+  - `title`: the work's title, and none of its aliases, is the song's,
+    compared loosely (case, quotes, dashes, the ellipsis, blanks, the
+    wiki's `( - Artist - )` after a cover's title).
+
+  A studio-sessions row (`stats:…#anchor`) is checked for its page and
+  anchor only: its anchors name session songs, often by an earlier title,
+  on purpose. 14 of 176 linked works (1,587 in all): no-target 10 (9 link
+  the renamed `stats:greetings-from-asbury-park-studio-sessions`, its songs
+  on `…-nj-studio-sessions`; King's Rock's `#kingsrockkingsbigchance` is
+  `#kingsrock` on the live wiki too), shared 2, title 2. 34 titles pass by
+  case, typography or the cover credit, 3 by an alias.
+- **In the script:** `_BB_FEED_MBW_KINDS` (❌ `bb-mbw-none` ⚓, ⚠️
+  `bb-mbw-shared` ⇉, ⚠️ `bb-mbw-title` ≉), `sa_findings_bb_mbw_none`,
+  `…_shared`, `…_title` (on), the tint and the MusicBrainz switch of the
+  events (`sa_bb_feed_mb`, its label now "… (events and works)").
+  `_bbFeedMbwFact()`, `_bbFeedMbwCellFact()` (the Work column, memoized per
+  MBID), `_bbFeedMbwText()`, `_bbFeedMbwCardHtml()`. The events' card, its
+  delegated listeners, the sidebar draw (with its copy in the rendered
+  "Sidebar" card) and the menus' feed line serve works too: a mark carries
+  `data-mb-bbmb-type="work"`, a cell a `bb-mbw-` finding.
+- **The read:** `_BB_FEED_MB_PAGES` has the works pages (artist and area
+  works, a work's page). `mbWorks` is a wanted map on a page of works only
+  (`_bbFeedMbwPage()`): a kept 1.7 file is read again after an hour there,
+  and Brucebase pages ask for nothing new.
+- **Deviation from the mockup:** a candidate is shown by its address
+  (`stats:…-nj-studio-sessions#blindedbythelight`), not by the page's title,
+  which the feed does not carry.
+- **The probe** (`scripts/probe-bb-mb-works.py`, independent of the awk)
+  and the feed agree field by field (`--feed`); the checker's part 6
+  (`scripts/check-bb-feed.js … --works debug/probe-bb-mb-works.json`) runs
+  the shipped lookup over every work: no difference.
+- **Tests:** `tests/fixtures/bb-feed-mb-works.spec.js` (8): the real feed's
+  counts and candidates (`tests/fixtures/bb-feed-2026-11-19-works.json`,
+  `scripts/build-bb-feed-dates-fixture.py --map mbWorks`), the Work cells
+  and menus, the card both ways, the switches, the words of a missing
+  anchor, a kept 1.7 file read again on a works page, a work page's mark
+  before and after the press. Mutations: `scripts/mutations/bb-feed-mb-works.json`
+  (11, each failing its test).
+
 ## Show links on Brucebase's own pages (Phase 8, 2026-11-11)
 
 A show on its year page (`/<yyyy>#<ddmmyy>`: an event's "Info & Setlist", a

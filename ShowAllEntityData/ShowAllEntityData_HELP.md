@@ -940,6 +940,8 @@ back).
 | ⚠️     | Two events link one Brucebase entry (Brucebase feed)            | Event lists: Event                          |
 | ⚠️     | Brucebase link is no year-page anchor (Brucebase feed)          | Event lists: Event                          |
 | ⚠️     | Brucebase entry has another date (Brucebase feed)               | Event lists: Event                          |
+| ⚠️     | Two works link one Brucebase song (Brucebase feed)              | Works lists: Work                           |
+| ⚠️     | Work title differs from its Brucebase song (Brucebase feed)     | Works lists: Work                           |
 | ⚠️     | Pending edits                                                   | any column                                  |
 | ⚠️     | Live credit without a date                                      | Release tracklist: credit columns           |
 | ❌    | MB-Event: the Brucebase link differs (once looked up)           | Brucebase year: MB-Event                    |
@@ -954,6 +956,7 @@ back).
 | ❌    | Brucebase page without any tag (Brucebase feed)                       | Brucebase lists: Event, Title, Name, Page |
 | ❌    | Brucebase page without a date tag of its date (Brucebase feed)        | Brucebase lists: Event, Title, Name, Page |
 | ❌    | Brucebase link reaches no entry (Brucebase feed)                      | Event lists: Event                        |
+| ❌    | Brucebase link reaches nothing (Brucebase feed)                       | Works lists: Work                         |
 | ❌    | Double-encoded text (springsteenlyrics.com)                     | springsteenlyrics.com: any column (the lyrics index: once the song's page was read) |
 | ❌    | Track and recording length far apart                            | Release tracklist: Length, Recording length |
 | ❌    | Video on a medium that cannot carry video                       | Release tracklist: Video                    |
@@ -4105,7 +4108,13 @@ reads, is read again on the next press once it is an hour old.
   likely wrong by the date the event's own name starts with: the name
   agrees with Brucebase, so likely the event's date; or with the event's
   date, so likely the link or the wiki's date. A span, such as a month of
-  studio sessions, fits when it holds the entry's date. An
+  studio sessions, fits when it holds the entry's date. Since the feed of
+  BruceParser 0.27.0 the artist's works too, on the Work cell of an
+  artist's or area's works and beside a work page's Brucebase link: a link
+  that reaches nothing (❌ ⚓; a renamed page, a gone anchor; the card names
+  where it likely should go), a song page two works link (⚠️ ⇉), or a title
+  that is not the song's (⚠️ ≉; case, quotes and the wiki's "( - Artist - )"
+  after a cover's title do not count, and an alias of the work does). An
   event list's or an event page's press reads the feed (at most once a day,
   shared with Brucebase); *Read the Brucebase feed on MusicBrainz too*
   (⚙️ Settings → 📚 BRUCEBASE) turns this part off.
