@@ -4,9 +4,23 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1841 versions; the month pages hold all of them.
+This page shows the newest 100 of 1843 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1672 — 2026-11-20
+
+**✨ Improve**
+
+- The card of a Brucebase mark on MusicBrainz (events and works) no longer lies over the link's preview: hovering a marked cell's link opens the card and, a moment later, the link's preview with its "Finding" box. The card now moves to the right of them when the window has room, else below them.
+
+
+## 9.99.1671 — 2026-11-20
+
+**🚀 Feature**
+
+- MusicBrainz works: marks from the Brucebase feed (BruceParser 0.27.0, feed 1.8), on the Work cell of an artist's or area's works and beside a work page's Brucebase link (after the page's press also in its "Sidebar" card). ❌ ⚓ "Brucebase link reaches nothing": the link names a page the wiki does not have, or an anchor its page does not have; the card names where it likely should go (the nine works that link the renamed Greetings sessions page get its new …-nj-studio-sessions page, King's Rock gets \#kingsrock). ⚠️ ⇉ "Two works link one Brucebase song", with the other work in the card. ⚠️ ≉ "Work title differs from its Brucebase song": case, quotes, dashes and the wiki's "( - Artist - )" after a cover's title do not count, and one of the work's aliases may be the song's title. 14 works in the run of 2026-11-19. Each mark has its own switch in ⚙️ Settings → ⚠️ Findings, on by default; "Read the Brucebase feed on MusicBrainz too (events and works)" turns all of it off.
+
 
 ## 9.99.1670 — 2026-11-20
 
@@ -861,20 +875,6 @@ This page shows the newest 100 of 1841 versions; the month pages hold all of the
 **🚀 Feature**
 
 - brucespringsteen.it song and show previews: on a record page, its song and show links (until now dead "\#" links) show a card on hover and open in the window on Space, as they do in the rendered table and on the other sites. A song shows its lyric versions, each with its note; a show its date, venue, setlist, notes and the records it is on, and a record there opens in the same window, with Back. On the record page a plain click still opens the site's own small window.
-
-
-## 9.99.1572 — 2026-11-07
-
-**🚀 Feature**
-
-- brucespringsteen.it record pages (DB/detrec.aspx): a new "Tracklist" button shows the record the way MusicBrainz shows a release: a sub-table per record or disc (vinyl sides paired into records when the count adds up), Date, Show and Country split out of the source show, Notes, Ver and a Play tile; above it the record's notes, its facts as the page names them, the shows its tracks come from, and its photo. No request: everything comes from the page itself. It also works in the site's frameset, in the right-hand frame where the site shows the record you click in its list. Mockup: https://claude.ai/artifact/XULiW1dUFME9F4nbsrQokD
-
-
-## 9.99.1571 — 2026-11-06
-
-**🐛 Fix**
-
-- Artwork viewer on a touch screen: dragging an Adjust slider with a finger no longer steps to the next picture (which also undid the adjustment); in Compare a swipe changes the right picture, as ← → do, and the left one stays; with the loupe on, one finger moves the lens (it followed only a mouse, so on a phone the Loupe button did nothing).
 
 
 ---
