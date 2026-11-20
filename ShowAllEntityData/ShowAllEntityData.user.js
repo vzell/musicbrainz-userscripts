@@ -292,6 +292,15 @@
 //   language: column:value, -term, OR/AND, brackets, quotes, year ranges), with an exact
 //   key preferred over a prefix and values keeping their accents; compiled once per
 //   filter pass here instead of parsed per row.
+//   Added 2026-11-20: the rec-dup finding ("Possible duplicate recording") PORTS Fusion's
+//   duplicate-recording matching verbatim — normName, tokenMatch, levenshtein, fuzzyRatio,
+//   titleAlike, TITLE_QUALIFIERS, titleDistinctWords, isrcConflict, placeConflict,
+//   artistSimilar, lengthClose, shouldUnion, gatedUnionFind, groupTier,
+//   computeGroupConfidence, pairSignals and its SETTINGS_DEFAULTS lengths — as _fz*(),
+//   only renamed (scripts/gen-fusion-port.py writes the section, scripts/check-fusion-port.js
+//   compares it with his code). His autoMatch() loop is followed over candidate pairs
+//   (_recDupGroups()); recordingSetting() is replaced by a reader of the page's comments
+//   and recorded-at cells.
 // ============================================================================================================================================
 
 (function() {
@@ -2903,6 +2912,40 @@
                          '("℗ 1975 CBS Inc.") and neither the release nor any of its recordings has a phonographic ' +
                          'copyright relationship; hovering it explains why. Off: the line is not marked, and the ⚠️ ' +
                          'menu still lists it under "This release".'
+        },
+
+        sa_findings_rec_dup: {
+            label: 'Find possible duplicate recordings',
+            type: 'checkbox',
+            default: true,
+            description: 'On an artist\'s recordings and a release tracklist, a recording that looks like another one on ' +
+                         'the same page is a WARNING ("Possible duplicate recording"), by the rules of majkinetor\'s ' +
+                         'Fusion: a shared ISRC, or at the normal cutoff the same title and artists with lengths within 5 s, ' +
+                         'and never a video beside audio, live beside studio, two venues or dates, lengths more than 30 s ' +
+                         'apart, ISRCs of one batch, or a recording with an open edit. Read from the page, no requests. ' +
+                         'The 📊 of the title column lists each group.'
+        },
+
+        sa_findings_rec_dup_cutoff: {
+            label: 'Possible duplicate recordings: how close is a match',
+            type: 'select',
+            default: 'auto',
+            options: [
+                { value: 'auto', label: 'Auto: strict on lists, normal on a release' },
+                { value: 'strict', label: 'Strict: a shared ISRC only' },
+                { value: 'normal', label: 'Normal: or the same title, artists and length' },
+                { value: 'loose', label: 'Loose: or the same title and length, any artist' },
+            ],
+            description: 'Fusion\'s three cutoffs. Auto is strict on an artist\'s recordings (many live takes share a ' +
+                         'title and a length) and normal on a release tracklist.'
+        },
+
+        sa_findings_tint_rec_dup: {
+            label: 'Highlight possible duplicate recordings as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint the title cell of a possible duplicate recording light yellow with a ⚠️; hovering it lists ' +
+                         'the other recordings of its group and what kept others apart.'
         },
 
         sa_findings_tint_live_credit: {
@@ -60537,6 +60580,8 @@
 
         if (acoustIdDiv) _relocateOne(acoustIdDiv, 'AcoustIDs', /* pairToggleLink= */ true);
         if (isrcDiv) _relocateOne(isrcDiv, 'ISRCs', /* pairToggleLink= */ false);
+        // An AcoustID or ISRC can join two recordings (rec-dup): group again, once the burst is over.
+        if (acoustIdDiv || isrcDiv) _recDupRegroupSoon();
     }
 
     /**
@@ -79014,6 +79059,28 @@
             },
             tint: _findingTintSetting('sa_findings_tint_medley_works'),
         },
+        // Fusion's duplicate recordings (org/majkinetor.org, "Possible
+        // duplicate recordings"): its gates ported verbatim (_fz*), the page's
+        // groups decided once per stamp (_computeRecDupCtx()), its card a
+        // `kind: 'dup'` entry (_cmpDupHtml()). Mockup approved 2026-11-20:
+        // https://claude.ai/artifact/LCthm5p9EiftZC6znZsqVB.
+        {
+            id: 'rec-dup', level: 'warn', glyph: '👯', scope: 'cell',
+            // under the "no work" flag's own text on a tracklist title (_writeFamilyTipFindings())
+            underFamilyTip: true,
+            label: 'Possible duplicate recording',
+            tip: 'Another recording on this page looks like the same one, by the rules of majkinetor\'s Fusion: a shared ' +
+                 'ISRC (or AcoustID), or at the normal cutoff the same title and artists with lengths within 5 s. Never ' +
+                 'grouped: a video beside audio, live beside studio, two venues or dates, lengths more than 30 s apart, ' +
+                 'ISRCs of one batch, a recording with an open edit. Read from this page, no requests; the 📊 of the ' +
+                 'title column lists every group.',
+            enabled: () => _recDupPageOn(),
+            cols: name => name === 'Name' || name === 'Title',
+            test: cell => _recDupCtx.active && _recDupCtx.byMbid.has(_recDupMbidOf(cell)),
+            detail: cell => _recDupDetail(cell),
+            compare: cell => _recDupCompare(cell),
+            tint: _findingTintSetting('sa_findings_tint_rec_dup'),
+        },
         // Apollo findings, batch 3 (org/majkinetor.org): Group Therapy's
         // format rules, on the release's own rows of its "Credits" render.
         // The Relationship cell carries its media's format ids
@@ -80133,6 +80200,7 @@
      */
     function _writeFindingAttrs(td, ids, details = {}, compares = {}) {
         if (!ids.length) {
+            _writeFamilyTipFindings(td, [], details, compares);
             if (td.dataset.mbFindings === undefined) return;
             delete td.dataset.mbFindings;
             delete td.dataset.mbFinding;
@@ -80153,6 +80221,10 @@
         // cannot apply.
         const familyPainted = !!(td.dataset.mbLenFlag || td.dataset.mbVideoFlag === 'mismatch' ||
                                  td.dataset.mbWorkFlag || td.dataset.mbLiveFlag);
+        // A finding marked `underFamilyTip` still shows its lines, and its
+        // card entry, under the family's own text (vzell, 2026-11-20: a
+        // duplicate recording that links no work).
+        _writeFamilyTipFindings(td, familyPainted ? ids.filter(id => _FINDING_BY_ID.get(id).underFamilyTip) : [], details, compares);
         const tinted = familyPainted ? [] : ids.map(id => _FINDING_BY_ID.get(id)).filter(f => f.tint(td));
         const level = tinted.some(f => f.level === 'error') ? 'error' : tinted.length ? 'warn' : null;
         if (level) td.dataset.mbFinding = level; else delete td.dataset.mbFinding;
@@ -80171,6 +80243,44 @@
             else _setTipCmp(td, text, cmp);
             td.dataset.mbFindingTip = '1';
         }
+    }
+
+    /**
+     * On a cell one of the per-family rules paints (`data-mb-work-flag`, …),
+     * which keeps its own tint, glyph and tooltip, writes the lines of the
+     * findings marked `underFamilyTip` (and their card entries) UNDER the
+     * family's text, or puts the family's text back when there are none. The
+     * family's text is remembered in `data-mb-family-tip` the first time, so
+     * every later stamp (a late regroup) starts from it, not from its own
+     * output. Only `rec-dup` is marked (vzell, 2026-11-20): a duplicate
+     * recording often links no work yet, and its card must still show.
+     *
+     * @param {HTMLTableCellElement} td
+     * @param {string[]} ids the findings to write under the family's text
+     * @param {Object<string, string>} details
+     * @param {Object<string, object>} compares
+     */
+    function _writeFamilyTipFindings(td, ids, details, compares) {
+        const saved = td.getAttribute('data-mb-family-tip');
+        if (!ids.length) {
+            if (saved === null) return;
+            td.removeAttribute('data-mb-family-tip');
+            td.removeAttribute('data-mb-tip-cmp');
+            if (saved) _setTip(td, saved);
+            else td.removeAttribute('title');
+            return;
+        }
+        // A title restored from a disk file may already carry the findings'
+        // lines ("⚠️ …"/"❌ …", which no family text starts with): the family's
+        // text is what comes before them.
+        const own = (td.getAttribute('title') || '').split('\n');
+        const cut = own.findIndex(l => /^(?:⚠️|❌) /.test(l.trim()));
+        const fam = saved !== null ? saved : (cut < 0 ? own : own.slice(0, cut)).join('\n').trim();
+        if (saved === null) td.setAttribute('data-mb-family-tip', fam);
+        const { text, cmp } = _findingTitle(ids, details, compares);
+        // Entries count the card's non-empty lines (_tipTextToHtml()).
+        const famLines = fam.split('\n').filter(s => s.trim()).length;
+        _setTipCmp(td, fam ? `${fam}\n${text}` : text, cmp.map(c => ({ ...c, at: c.at + famLines })));
     }
 
     /**
@@ -101945,6 +102055,7 @@
      * medium" section count — same once-per-fetch, source-row reasons.
      */
     function stampFindings() {
+        performance.mark('sa-findings-stamp-start');
         _findingStampGen++;
         const master = _buildMasterRowIndex();
         const tables = Array.from(document.querySelectorAll('table.tbl')).filter(t => t.tBodies[0]);
@@ -101963,6 +102074,24 @@
             if (evCols) _forEachStampRow(table, master, r => _stampRowEventKey(r, evCols, plan));
         });
         _mainEventCtx = _computeMainEventCtx(tables, master);
+        // The page's duplicate-recording groups (rec-dup), from every source
+        // row at once, before pass 2's test() reads them; each title cell's
+        // group key for the 📊 entries in the same rows.
+        performance.mark('sa-findings-recdup-start');
+        try {
+            _recDupCtx = _computeRecDupCtx(plans);
+        } catch (e) {
+            // A fault here must never cost the page its other findings.
+            Lib.warn('findings', 'rec-dup: grouping failed, no duplicate recordings marked', e);
+            _recDupCtx = { active: false, cutoff: 'strict', capped: false, byMbid: new Map(), groups: [], apart: new Map(), error: String(e && e.stack || e) };
+        }
+        if (_recDupCtx.active) {
+            tables.forEach(table => {
+                const cols = _recDupColsForTable(table, plans.get(table));
+                if (cols) _forEachStampRow(table, master, r => _stampRecDupKey(r, cols));
+            });
+        }
+        performance.measure('sa-findings-recdup', 'sa-findings-recdup-start');
         // Pass 2: main-event flag, then findings (rg-title-mismatch reads it).
         let stamped = 0;
         tables.forEach(table => {
@@ -101984,6 +102113,7 @@
         _stampReleaseNotices();
         if (typeof window.updateFilterButtonsVisibility === 'function') window.updateFilterButtonsVisibility();
         initReleaseGroupLink();
+        performance.measure('sa-findings-stamp', 'sa-findings-stamp-start');
     }
 
     /**
@@ -102319,6 +102449,1007 @@
             covered += Math.max(1, _medleyParts(a.textContent).length);
         }
         return { works, covered };
+    }
+
+    // ── Fusion port BEGIN (generated by scripts/gen-fusion-port.py; do not edit by hand) ──
+    // ── Possible duplicate recordings (rec-dup): Fusion's matching ──
+    // Ported from majkinetor's Fusion (userscripts/fusion/fusion.user.js),
+    // verbatim: only renamed (normName -> _fzNormName, ...; the table is
+    // scripts/fusion-port-map.json) and indented. Permission #938
+    // (2026-11-17). Fusion reads its SETTINGS; here they are its defaults, fixed.
+    // scripts/check-fusion-port.js compares every body with the clone.
+
+    /** Fusion's SETTINGS_DEFAULTS this port reads (length tolerance, gross length), in ms. */
+    const _FZ_SETTINGS = Object.freeze({ lengthToleranceMs: 5000, grossLengthMs: 30000 });
+
+    /**
+     * Fusion's name normalisation: lower case, diacritics folded on Latin, Greek and Cyrillic letters (other scripts keep their marks, #623), everything but letters, digits and marks to one space.
+     * @param {?string} s
+     * @returns {string}
+     */
+    function _fzNormName(s) { return (s || '').toLowerCase().normalize('NFKD').replace(/(?<=[\p{Script=Latin}\p{Script=Greek}\p{Script=Cyrillic}])\p{M}+/gu, '').normalize('NFC').replace(/[^\p{L}\p{N}\p{M}]+/gu, ' ').trim(); }
+
+    /**
+     * Fusion's token overlap: the share of words (two letters or more) both sides have, over the larger ('max') or the smaller ('min') side's count, at least `threshold` (0.6 by default).
+     * @param {string} a
+     * @param {string} b
+     * @param {('max'|'min')} [mode]
+     * @param {number} [threshold]
+     * @returns {boolean}
+     */
+    function _fzTokenMatch(a, b, mode, threshold) {
+        mode = mode || 'max'; threshold = threshold == null ? 0.6 : threshold;
+        const na = _fzNormName(a), nb = _fzNormName(b);
+        if (!na || !nb) return false;
+        if (na === nb) return true;
+        const tokensOf = s => new Set(s.split(' ').filter(t => t.length >= 2));
+        const ta = tokensOf(na), tb = tokensOf(nb);
+        if (!ta.size || !tb.size) return false;
+        let common = 0;
+        for (const t of ta) if (tb.has(t)) common++;
+        const denom = mode === 'min' ? Math.min(ta.size, tb.size) : Math.max(ta.size, tb.size);
+        return common / denom >= threshold;
+    }
+
+    /**
+     * Edit distance of two strings (Fusion's, for the one-letter typo of a single-word title, #529: "Oburumankoma" / "Oburumakoma").
+     * @param {string} a
+     * @param {string} b
+     * @returns {number}
+     */
+    function _fzLevenshtein(a, b) {
+        const m = a.length, n = b.length;
+        if (!m) return n; if (!n) return m;
+        let prev = Array.from({ length: n + 1 }, (_, i) => i);
+        for (let i = 1; i <= m; i++) {
+            const cur = [i];
+            for (let j = 1; j <= n; j++) {
+                cur[j] = a[i - 1] === b[j - 1] ? prev[j - 1] : 1 + Math.min(prev[j], cur[j - 1], prev[j - 1]);
+            }
+            prev = cur;
+        }
+        return prev[n];
+    }
+
+    /**
+     * 1 minus the edit distance over the longer length, of the normalised titles without spaces (Fusion's).
+     * @param {string} a
+     * @param {string} b
+     * @returns {number}
+     */
+    function _fzFuzzyRatio(a, b) {
+        const na = _fzNormName(a).replace(/ /g, ''), nb = _fzNormName(b).replace(/ /g, '');
+        if (!na || !nb) return 0;
+        if (na === nb) return 1;
+        const maxLen = Math.max(na.length, nb.length);
+        return 1 - _fzLevenshtein(na, nb) / maxLen;
+    }
+
+    /**
+     * Fusion's "titles alike": token overlap of at least 0.6, or a fuzzy ratio of at least 0.85.
+     * @type {function(string, string): boolean}
+     */
+    const _fzTitleAlike = (a, b) => _fzTokenMatch(a, b, 'max', 0.6) || _fzFuzzyRatio(a, b) >= 0.85;
+
+    /**
+     * Words that only name a mix, edit or edition; `_fzTitleDistinctWords()` never counts them as a difference (Fusion's, #760).
+     * @type {Set<string>}
+     */
+    const _FZ_TITLE_QUALIFIERS = new Set(['mix', 'mixed', 'edit', 'edited', 'version', 'ver', 'radio', 'album', 'single', 'lp', 'ep', 'extended',
+        'original', 'remaster', 'remastered', 'mastered', 'mono', 'stereo', 'explicit', 'clean', 'dirty', 'censored', 'uncensored',
+        'feat', 'ft', 'featuring', 'with', 'and', 'n', 'the', 'part', 'pt']);
+
+    /**
+     * A digit run or a short Roman numeral: never paired off as a typo, so "Dwell I" stays apart from "Dwell IV" (Fusion's).
+     * @type {function(string): boolean}
+     */
+    const _fzIsNumberWord = t => /^\d+$/.test(t) || /^[ivxlcdm]{1,4}$/.test(t);
+
+    /**
+     * When EACH title has a word the other lacks (not a qualifier, a year, or a typo of the other side's word), the two sides' distinct words; null otherwise. Words on one side only still match (Fusion's, #760: "In Volo - Drift" / "In Volo - Trace").
+     * @param {string} a
+     * @param {string} b
+     * @returns {?{a: string[], b: string[]}}
+     */
+    function _fzTitleDistinctWords(a, b) {
+        const wa = new Set(_fzNormName(a).split(' ').filter(Boolean)), wb = new Set(_fzNormName(b).split(' ').filter(Boolean));
+        const own = (w, other) => [...w].filter(t => !other.has(t) && !_FZ_TITLE_QUALIFIERS.has(t) && !/^(19|20)\d\d$/.test(t));
+        const da = own(wa, wb), db = own(wb, wa);
+        // pair off a typo on one side with its spelling on the other; never numbers (I / IV)
+        const typo = (t, u) => t.length >= 4 && u.length >= 4 && !_fzIsNumberWord(t) && !_fzIsNumberWord(u) && _fzFuzzyRatio(t, u) >= 0.75;
+        const left = da.filter(t => { const k = db.findIndex(u => typo(t, u)); if (k < 0) return true; db.splice(k, 1); return false; });
+        return left.length && db.length ? { a: left, b: db } : null;
+    }
+
+    /**
+     * An ISRC's first seven characters: country, registrant and year (Fusion's).
+     * @type {function(string): string}
+     */
+    const _fzIsrcStem = x => String(x).toUpperCase().slice(0, 7);
+
+    /**
+     * Two recordings that share no ISRC, but carry one each from the same registrant and year, are different tracks of one batch: QZTRX2699407 / QZTRX2699409. Returns the two codes, or null (Fusion's, #760).
+     * @param {{isrcs: string[]}} a
+     * @param {{isrcs: string[]}} b
+     * @returns {?string}
+     */
+    function _fzIsrcConflict(a, b) {
+        const ia = a.isrcs || [], ib = b.isrcs || [];
+        if (!ia.length || !ib.length || ia.some(x => ib.includes(x))) return null;
+        for (const x of ia) for (const y of ib) if (_fzIsrcStem(x) === _fzIsrcStem(y)) return x + ' / ' + y;
+        return null;
+    }
+
+    /**
+     * A place or area as a card shows it, with its date (Fusion's).
+     * @type {function({name: string, date: ?string}): string}
+     */
+    const _fzPlaceText = p => p.name + (p.date ? ' ' + p.date : '');
+
+    /**
+     * Two recordings made at different places, or at one place on different dates, are different recordings; places compared with places, areas with areas, an unknown date never conflicts. Returns the two sides' locations, or null (Fusion's, #789).
+     * @param {{places: ?Array<{gid: string, name: string, kind: string, date: ?string}>}} a
+     * @param {{places: ?Array<{gid: string, name: string, kind: string, date: ?string}>}} b
+     * @returns {?string}
+     */
+    function _fzPlaceConflict(a, b) {
+        if (!a.places || !b.places) return null;
+        for (const kind of ['place', 'area']) {
+            const pa = a.places.filter(p => p.kind === kind), pb = b.places.filter(p => p.kind === kind);
+            if (!pa.length || !pb.length) continue;
+            const same = pa.some(x => pb.some(y => x.gid === y.gid && (!x.date || !y.date || x.date === y.date)));
+            if (!same) return pa.map(_fzPlaceText).join(', ') + ' / ' + pb.map(_fzPlaceText).join(', ');
+        }
+        return null;
+    }
+
+    /**
+     * How many words of two letters or more a credit has (Fusion's).
+     * @type {function(string): number}
+     */
+    const _fzArtistTokenCount = s => _fzNormName(s).split(' ').filter(t => t.length >= 2).length;
+
+    /**
+     * Two artist credit strings alike: a token overlap of 0.8 over the shorter credit (Fusion's; the fallback when a side has no artist MBIDs).
+     * @type {function(string, string): boolean}
+     */
+    const _fzArtistSimilar = (a, b) => _fzTokenMatch(a, b, _fzArtistTokenCount(b) <= _fzArtistTokenCount(a) ? 'min' : 'max', 0.8);
+
+    /**
+     * Both lengths known and at most `tolMs` apart (Fusion's).
+     * @param {?number} a
+     * @param {?number} b
+     * @param {number} tolMs
+     * @returns {boolean}
+     */
+    function _fzLengthClose(a, b, tolMs) { if (a == null || b == null) return false; return Math.abs(a - b) <= tolMs; }
+
+    /**
+     * Fusion's three cutoffs, from the strictest.
+     * @type {string[]}
+     */
+    const _FZ_MATCH_CUTOFFS = ['strict', 'normal', 'loose'];
+
+    /**
+     * Fusion's verdict on one pair: the gates first (video and audio, an open edit, lengths grossly apart, live and studio or two places, one ISRC batch), then a shared ISRC, a shared AcoustID unless the titles differ, then the cutoff: strict nothing more, normal title + artist + length (an unknown length does not veto, #565), loose title + length or title + artist.
+     * @param {Object} sig `_fzPairSignals()`
+     * @param {('strict'|'normal'|'loose')} cutoff
+     * @returns {boolean}
+     */
+    function _fzShouldUnion(sig, cutoff) {
+        // #529 follow-up (majkinetor): "Video recordings should never be added to
+        // groups with audio recordings." A hard gate — no cutoff level, no signal
+        // strength (not even a shared ISRC) overrides it.
+        if (sig.videoMismatch) return false;
+        if (sig.pendingEdit) return false;   // never auto-group a recording with an open edit (#529)
+        // #529 (majkinetor): "we should never have such a big difference in length
+        // in auto merge" — a 0:42 reprise was auto-grouped with 4:11/4:17 takes,
+        // because the loose cutoff's title+artist path checks no length at all.
+        // A grossly different KNOWN length now blocks auto-grouping outright, ahead
+        // of even ISRC/AcoustID: those identify a work, not necessarily the same
+        // take, and four minutes apart is never the same recording. Manual grouping
+        // is still allowed — that's a deliberate human decision, not a guess.
+        if (sig.lengthConflict) return false;
+        // #789: live and studio, or two places or dates, are never the same recording; ahead of
+        // ISRC and AcoustID, which a live take can wrongly carry from its studio original
+        if (sig.liveMismatch || sig.placeConflict) return false;
+        // #760: different tracks of one ISRC batch. Ahead of AcoustID, which can
+        // collide on short or quiet tracks; a shared ISRC never sets this.
+        if (sig.isrcConflict) return false;
+        if (sig.isrc) return true;
+        // #760 follow-up (majkinetor): "Feel What You Feel" and "Suspended Space"
+        // share AcoustIDs, which are user-submitted and land on the wrong recording,
+        // so an AcoustID alone grouped two different tracks. It no longer carries a
+        // pair whose titles each have a word the other lacks; a shared ISRC does.
+        if (sig.acoustid && !sig.titleDiffers) return true;
+        if (cutoff === 'strict') return false;
+        if (cutoff === 'loose') return (sig.title && sig.length) || (sig.title && sig.artist);
+        // 'normal' — identifiers, or title AND artist corroborated by length.
+        // #565 (majkinetor): an UNKNOWN length must not veto. _fzPairSignals already
+        // documents that a missing length "just means we can't tell", but requiring
+        // sig.length here made "can't tell" behave exactly like "they disagree": on a
+        // release-group where one release carries no lengths at all, normal formed
+        // zero groups even for titles that were identical bar their capitalisation,
+        // and the only way to get any match was to drop to loose — which weakens
+        // every OTHER pair in the pool at the same time.
+        //
+        // Two lengths that are both KNOWN and not close still block, which is the
+        // case worth blocking; grossly different ones are already out above.
+        return sig.title && sig.artist && (sig.length || sig.lengthUnknown);
+    }
+
+    /**
+     * The signals a group's card can name as shared by every pair (Fusion's).
+     * @type {string[]}
+     */
+    const _FZ_SIGNAL_KEYS = ['isrc', 'acoustid', 'length', 'title', 'artist'];
+
+    /**
+     * Fusion's union-find whose gates hold for the whole merged set (#623 U3): each set keeps what its members know (video, audio, live, studio, the shortest and longest known length, the members with ISRCs or places), and two sets join only when no member of one conflicts with a member of the other. `union()` returns true, or why it refused. The result depends on the order of the unions, so `_computeRecDupCtx()` feeds the pairs in Fusion's own order (i < j in pool order).
+     * @param {Array<Object>} recs records with gid, length, video, isrcs, live, places
+     * @returns {{find: function(string): string, union: function(string, string): (true|string)}}
+     */
+    function _fzGatedUnionFind(recs) {
+        const parent = new Map(), info = new Map();
+        for (const r of recs) {
+            parent.set(r.gid, r.gid);
+            const known = r.length != null;
+            info.set(r.gid, { video: r.video === true, audio: r.video === false, min: known ? r.length : Infinity, max: known ? r.length : -Infinity, withIsrcs: r.isrcs && r.isrcs.length ? [r] : [],
+                live: r.live === true, studio: r.live === false, withPlaces: r.places && r.places.length ? [r] : [] });
+        }
+        // #789: nor a recording of unknown setting bridge a live and a studio one, or two places
+        const placeClash = (a, b) => { for (const x of a.withPlaces) for (const y of b.withPlaces) { const c = _fzPlaceConflict(x, y); if (c) return c; } return null; };
+        // #760: an ISRC-less recording must not bridge two tracks of one ISRC batch
+        const isrcClash = (a, b) => { for (const x of a.withIsrcs) for (const y of b.withIsrcs) { const c = _fzIsrcConflict(x, y); if (c) return c; } return null; };
+        const find = x => { while (parent.get(x) !== x) { parent.set(x, parent.get(parent.get(x))); x = parent.get(x); } return x; };
+        const gross = _FZ_SETTINGS.grossLengthMs || 30000;
+        // why sets A and B may not join ('' when they may)
+        const conflict = (a, b) => ((a.video && b.audio) || (a.audio && b.video)) ? 'video and audio'
+            : ((a.live && b.studio) || (a.studio && b.live)) ? 'live and studio'
+            : (Math.max(a.max, b.max) - Math.min(a.min, b.min) > gross) ? 'lengths ' + Math.round((Math.max(a.max, b.max) - Math.min(a.min, b.min)) / 1000) + 's apart'
+            : (() => { const c = isrcClash(a, b); if (c) return 'ISRCs ' + c + ' from one batch'; const p = placeClash(a, b); return p ? 'recorded at ' + p : ''; })();
+        // true when joined (or already one set); a string saying why when refused
+        const union = (x, y) => {
+            const ra = find(x), rb = find(y);
+            if (ra === rb) return true;
+            const a = info.get(ra), b = info.get(rb), why = conflict(a, b);
+            if (why) return why;
+            parent.set(ra, rb);
+            info.set(rb, { video: a.video || b.video, audio: a.audio || b.audio, min: Math.min(a.min, b.min), max: Math.max(a.max, b.max), withIsrcs: a.withIsrcs.concat(b.withIsrcs),
+                live: a.live || b.live, studio: a.studio || b.studio, withPlaces: a.withPlaces.concat(b.withPlaces) });
+            return true;
+        };
+        return { find, union };
+    }
+
+    /**
+     * The strictest cutoff that forms the whole group, or 'manual' (Fusion's).
+     * @param {Array<Object>} members
+     * @returns {string}
+     */
+    function _fzGroupTier(members) {
+        if (members.length < 2) return 'manual';
+        for (const cutoff of _FZ_MATCH_CUTOFFS) {
+            const uf = _fzGatedUnionFind(members);
+            for (let i = 0; i < members.length; i++) for (let j = i + 1; j < members.length; j++) {
+                const sig = _fzPairSignals(members[i], members[j], _FZ_SETTINGS.lengthToleranceMs);
+                if (_fzShouldUnion(sig, cutoff)) uf.union(members[i].gid, members[j].gid);
+            }
+            const root = uf.find(members[0].gid);
+            if (members.every(m => uf.find(m.gid) === root)) return cutoff;
+        }
+        return 'manual';   // only hand-built grouping explains it (including a group no cutoff could form, U3)
+    }
+
+    /**
+     * A group's confidence, tier, the signals some pair shares and the signals every pair shares (Fusion's computeGroupConfidence()).
+     * @param {Array<Object>} members
+     * @returns {{confidence: string, tier: string, signals: string[], signalsAll: string[]}}
+     */
+    function _fzGroupConfidence(members) {
+        let confidence = null;
+        const signals = new Set();
+        const all = new Set(members.length > 1 ? _FZ_SIGNAL_KEYS : []);   // intersection seed
+        for (let i = 0; i < members.length; i++) for (let j = i + 1; j < members.length; j++) {
+            const sig = _fzPairSignals(members[i], members[j], _FZ_SETTINGS.lengthToleranceMs);
+            if (sig.isrc) { signals.add('isrc'); confidence = 'high'; }
+            if (sig.acoustid) { signals.add('acoustid'); confidence = 'high'; }
+            if (sig.length) signals.add('length');
+            if (sig.title) signals.add('title');
+            if (sig.artist) signals.add('artist');
+            _FZ_SIGNAL_KEYS.forEach(k => { if (!sig[k]) all.delete(k); });   // drop any pair disagrees on
+        }
+        // Without a shared identifier, a group is medium when some cutoff would form it, whatever the
+        // cutoff picked now: judged by _FZ_SETTINGS.matchCutoff, a group Match formed at "normal" read as
+        // manual once the default became "strict", and changed label with the setting.
+        const tier = _fzGroupTier(members);
+        if (!confidence && tier !== 'manual') confidence = 'medium';
+        return { confidence: confidence || 'manual', tier, signals: [...signals], signalsAll: [...all] };
+    }
+
+    /**
+     * Every signal of one pair that `_fzShouldUnion()` judges: shared ISRC or AcoustID, close length, alike title (and the distinct words that refused one), same artist (by MBID set when both sides have them, #594, else by credit string), and the gates (video, open edit, gross length, live, place, ISRC batch). Unknown never blocks (Fusion's).
+     * @param {Object} a
+     * @param {Object} b
+     * @param {number} tolMs
+     * @returns {Object}
+     */
+    function _fzPairSignals(a, b, tolMs) {
+        const sig = { isrc: false, acoustid: false, length: false, title: false, artist: false, artistByMbid: false, videoMismatch: false, pendingEdit: false, lengthConflict: false, lengthUnknown: false, isrcConflict: null, titleDistinct: null, titleDiffers: null, liveMismatch: false, placeConflict: null };
+        // #565: three states, not two. `length` false meant BOTH "the lengths differ"
+        // and "we have no length to compare", and the normal cutoff required it — so a
+        // release whose recordings carry no length at all could never form a group,
+        // however exactly the titles agreed. Keep them apart.
+        if (a.length == null || b.length == null) sig.lengthUnknown = true;
+        if (a.editsPending || b.editsPending) sig.pendingEdit = true;
+        // both lengths known and far apart — see _fzShouldUnion. Unknown length never
+        // counts as a conflict; it just means we can't tell.
+        if (a.length != null && b.length != null && Math.abs(a.length - b.length) > (_FZ_SETTINGS.grossLengthMs || 30000)) sig.lengthConflict = true;
+        // null (unknown) video status never blocks — only a KNOWN true vs. false mismatch does.
+        if (a.video != null && b.video != null && a.video !== b.video) sig.videoMismatch = true;
+        // #789: unknown never blocks here either
+        if (a.live != null && b.live != null && a.live !== b.live) sig.liveMismatch = true;
+        sig.placeConflict = _fzPlaceConflict(a, b);
+        if (a.isrcs.length && b.isrcs.length && a.isrcs.some(x => b.isrcs.includes(x))) sig.isrc = true;
+        if (a.acoustids && b.acoustids && a.acoustids.length && b.acoustids.length && a.acoustids.some(x => b.acoustids.includes(x))) sig.acoustid = true;
+        if (_fzLengthClose(a.length, b.length, tolMs)) sig.length = true;
+        sig.isrcConflict = _fzIsrcConflict(a, b);
+        // #760: keep the words that refused an otherwise alike title, for the log;
+        // titleDiffers holds them for any two titles, and refuses an AcoustID match
+        if (a.title && b.title) {
+            const d = _fzTitleDistinctWords(a.title, b.title);
+            sig.titleDiffers = d;
+            if (_fzTitleAlike(a.title, b.title)) { if (d) sig.titleDistinct = d; else sig.title = true; }
+        }
+        /* #594 (chaban-mb): "auto-matching with normal cutoff fails due to differing
+           artists credits even though the artist themselves are identical."
+           Measured on his release group: both releases credit artist
+           5b44eac2-b29e-42ba-bd99-213a270149d6, one as "Radium" and the other as
+           "DJ Radium". _fzArtistSimilar scores that 1 token of 2 = 0.5, under its 0.8
+           threshold, so sig.artist was false and `normal` — which needs
+           title && artist && length — could not group even the pair whose titles and
+           5:05 lengths were identical. Dropping to `loose` was the only way through,
+           and that weakens every other pair in the pool at the same time.
+           A credit string is a display form; the MBID is the artist. When both sides
+           carry MBIDs, compare those and let the string disagree. Sets, not sequence:
+           "A & B" and "B & A" are the same two artists. The string comparison stays
+           as the fallback for recordings fetched without artist credits. */
+        if (a.artistGids && a.artistGids.length && b.artistGids && b.artistGids.length) {
+            const ka = a.artistGids.slice().sort().join(','), kb = b.artistGids.slice().sort().join(',');
+            if (ka === kb) { sig.artist = true; sig.artistByMbid = true; }
+        } else if (a.artistCredit && b.artistCredit && _fzArtistSimilar(a.artistCredit, b.artistCredit)) {
+            sig.artist = true;
+        }
+        return sig;
+    }
+    // ── Fusion port END ──
+
+    // ── rec-dup grouping: Fusion's autoMatch() loop over candidate pairs ──
+    // Pure functions on Fusion-shaped records ({gid, title, length, isrcs,
+    // acoustids, artistGids, artistCredit, video, editsPending, live, places});
+    // scripts/check-fusion-port.js runs them in Node against the all-pairs loop.
+
+    /** Above this many candidate pairs the grouping gives up (no stamp at all), so a pathological page cannot freeze the render. */
+    const _REC_DUP_MAX_PAIRS = 2000000;
+
+    /** How many pairs skipped for two different live dates are kept for the card's "Kept apart" line. */
+    const _REC_DUP_MAX_SKIPPED = 200000;
+
+    /**
+     * What a recording comment says about where and when it was recorded, in
+     * the shape Fusion reads from relationships (`recordingSetting()`), for
+     * the gates `live and studio` and `_fzPlaceConflict()` (mockup question 3:
+     * read from the page). "live, 1975‐11‐18: Hammersmith Odeon, London, UK"
+     * gives `live: true` and one place `{gid: 'comment:hammersmith odeon',
+     * kind: 'place', date: '1975-11-18'}`; "studio, …" `live: false`; a comment
+     * without an event type (EVENT_TYPE_KEYWORDS) nothing (`null`, unknown,
+     * which never blocks). The place's gid is the folded venue, '' when the
+     * comment names none, so two dates at one venue, or two venues, keep two
+     * recordings apart, and so does a venue against no venue on one date
+     * (conservative: fewer false groups). `liveDate` is the date when the
+     * comment gave one (`_recDupCandidatePairs()` skips a pair whose two
+     * dates differ, which `_fzPlaceConflict()` refuses anyway).
+     *
+     * @param {?string} text the comment, without its parentheses
+     * @returns {{live: ?boolean, places: ?Array<{gid: string, name: string, kind: string, date: ?string}>, liveDate: ?string}}
+     */
+    function _recDupCommentSetting(text) {
+        const none = { live: null, places: null, liveDate: null };
+        const raw = String(text || '').replace(/‐/g, '-').trim();
+        if (!raw) return none;
+        const lower = raw.toLowerCase();
+        const type = EVENT_TYPE_KEYWORDS.find(k => lower.startsWith(k) && /^($|[ ,:;])/.test(lower.slice(k.length)));
+        if (!type) return none;
+        const live = type === 'live' || type === 'live rehearsal' ? true : type === 'studio' ? false : null;
+        const head = raw.slice(type.length).replace(/^[ ,]+/, '');
+        const dm = /^(\d{4}(?:-[\d?]{2}(?:-[\d?]{2}(?:\/\d{2})*)?)?)(?=$|[,:;])/.exec(head);
+        const date = dm ? dm[1] : null;
+        const colon = raw.indexOf(': ');
+        const venue = colon === -1 ? '' : raw.slice(colon + 2).split(/[,;]/)[0].trim();
+        if (!date && !venue) return { live, places: null, liveDate: null };
+        const gid = 'comment:' + _fzNormName(venue);
+        return { live, places: [{ gid, name: venue, kind: 'place', date }], liveDate: date };
+    }
+
+    /**
+     * Why a pair that `_fzShouldUnion()` refused would have matched but for
+     * one of Fusion's gates, in the card's words; null when it would not have
+     * matched anyway (or only its title words differ, which the card does not
+     * list: the mockup's rule, approved 2026-11-20).
+     *
+     * @param {Object} sig `_fzPairSignals()`
+     * @param {string} cutoff
+     * @param {Object} a
+     * @param {Object} b
+     * @returns {?string}
+     */
+    function _recDupGateReason(sig, cutoff, a, b) {
+        // Fusion's own test for "held back by the gross-length guard"
+        // (autoMatch()'s lengthBlocked): the lengths cannot also be close.
+        if (sig.lengthConflict && !sig.videoMismatch && !sig.pendingEdit &&
+            (sig.isrc || sig.acoustid || (sig.title && sig.artist) || (sig.title && sig.length))) {
+            return 'lengths ' + Math.round(Math.abs(a.length - b.length) / 1000) + ' s apart';
+        }
+        const open = Object.assign({}, sig, { videoMismatch: false, pendingEdit: false, lengthConflict: false, liveMismatch: false, placeConflict: null, isrcConflict: null });
+        if (!_fzShouldUnion(open, cutoff)) return null;
+        if (sig.videoMismatch) return 'video and audio';
+        if (sig.pendingEdit) return 'an open edit';
+        if (sig.lengthConflict) return 'lengths ' + Math.round(Math.abs(a.length - b.length) / 1000) + ' s apart';
+        if (sig.liveMismatch) return 'live and studio';
+        if (sig.placeConflict) return 'recorded at ' + sig.placeConflict;
+        if (sig.isrcConflict) return 'ISRCs ' + sig.isrcConflict + ' from one batch';
+        return null;
+    }
+
+    /**
+     * The candidate pairs of a pool, as `i * n + j` (i < j), sorted, so the
+     * unions run in the order of Fusion's own loop (`autoMatch()`: every
+     * pair i < j in pool order), restricted to pairs that can match:
+     *   - a shared ISRC or AcoustID (an index each). At `strict` every pair
+     *     `_fzShouldUnion()` accepts shares one, so these are exact;
+     *   - at `normal`/`loose` also title blocks. Fusion calls two titles
+     *     alike by shared words (`_fzTokenMatch()`, 0.6 of the larger set) or
+     *     by spelling (`_fzFuzzyRatio()` 0.85). The words are blocked
+     *     exactly, by a prefix filter over the page's word frequencies: each
+     *     title is listed under its k - c + 1 rarest words, which any pair
+     *     sharing 0.6 must have in common. The spelling path is approximate:
+     *     the folded title's first and last four characters, so a typo near
+     *     both ends is missed (scripts/check-fusion-port.js measures how
+     *     often). Inside a block, two recordings whose live dates are both
+     *     known and differ are skipped: `_fzPlaceConflict()` refuses them
+     *     anyway (`liveDate` is set only when every place entry carries that
+     *     date, see `_recDupRecord()`), so skipping changes nothing.
+     *
+     * @param {Array<Object>} pool
+     * @param {string} cutoff
+     * @returns {?Float64Array} null when there are more than `_REC_DUP_MAX_PAIRS`
+     *     (decided up front when the title blocks' head or tail family alone
+     *     is over it, `_recDupBlockPairs()`);
+     *     its `skipped` property lists the pairs skipped for two different live
+     *     dates (at most `_REC_DUP_MAX_SKIPPED`), which `_recDupGroups()` names
+     *     on a group's card
+     */
+    function _recDupCandidatePairs(pool, cutoff) {
+        const n = pool.length;
+        const set = new Set();
+        const skipped = [];
+        let over = false;
+        const add = (i, j) => {
+            if (i === j) return;
+            set.add(i < j ? i * n + j : j * n + i);
+            if (set.size > _REC_DUP_MAX_PAIRS) over = true;
+        };
+        const block = new Map();
+        const put = (k, i) => { let l = block.get(k); if (!l) block.set(k, l = []); l.push(i); };
+        pool.forEach((r, i) => {
+            for (const x of r.isrcs || []) put('i:' + x, i);
+            for (const x of r.acoustids || []) put('a:' + x, i);
+        });
+        for (const l of block.values()) {
+            for (let p = 0; p < l.length && !over; p++) for (let q = p + 1; q < l.length && !over; q++) add(l[p], l[q]);
+        }
+        if (over) return null;
+        if (cutoff !== 'strict') {
+            const titles = new Map();
+            const putT = (k, i) => { let l = titles.get(k); if (!l) titles.set(k, l = []); l.push(i); };
+            // Fusion's fuzzy path (a ratio of 0.85): the folded title's two ends.
+            pool.forEach((r, i) => {
+                const f = _fzNormName(r.title).replace(/ /g, '');
+                if (!f) return;
+                putT('h:' + f.slice(0, 4), i);
+                putT('t:' + f.slice(-4), i);
+            });
+            // A lower bound first (vzell, 2026-11-21): every title has ONE
+            // head key and ONE tail key, so the pairs inside one of those two
+            // families' blocks are all different pairs, and the set built
+            // below holds every one of them. When either family alone is
+            // over the cap, the loop below would end over it too: give up
+            // now, before the word index and before building two million
+            // pairs (about 0.8 s on Springsteen's 74,630 recordings at normal).
+            const fam = { h: 0, t: 0 };
+            for (const [k, l] of titles) fam[k[0]] += _recDupBlockPairs(pool, l);
+            if (Math.max(fam.h, fam.t) > _REC_DUP_MAX_PAIRS) return null;
+            // Its token path, exactly (a prefix filter): two titles that share
+            // at least 0.6 of the larger word set share a word among the
+            // k - c + 1 rarest words of each, c the fewest shared words that
+            // reach 0.6 of k (counted as _fzTokenMatch() divides). Words as
+            // _fzTokenMatch() counts them (two letters or more).
+            const words = pool.map(r => [...new Set(_fzNormName(r.title).split(' ').filter(t => t.length >= 2))]);
+            const freq = new Map();
+            words.forEach(ws => ws.forEach(w => freq.set(w, (freq.get(w) || 0) + 1)));
+            pool.forEach((r, i) => {
+                const ws = words[i];
+                const k = ws.length;
+                if (!k) return;
+                let c = 0;
+                while (c < k && !(c / k >= 0.6)) c++;
+                ws.sort((x, y) => (freq.get(x) - freq.get(y)) || (x < y ? -1 : x > y ? 1 : 0));
+                ws.slice(0, k - c + 1).forEach(w => putT('w:' + w, i));
+            });
+            for (const l of titles.values()) {
+                for (let p = 0; p < l.length && !over; p++) {
+                    const dp = pool[l[p]].liveDate;
+                    for (let q = p + 1; q < l.length && !over; q++) {
+                        const dq = pool[l[q]].liveDate;
+                        if (dp && dq && dp !== dq) {
+                            if (skipped.length < _REC_DUP_MAX_SKIPPED) skipped.push(l[p] < l[q] ? l[p] * n + l[q] : l[q] * n + l[p]);
+                            continue;
+                        }
+                        add(l[p], l[q]);
+                    }
+                }
+                if (over) return null;
+            }
+        }
+        const pairs = Float64Array.from(set).sort();
+        pairs.skipped = skipped;
+        return pairs;
+    }
+
+    /**
+     * How many pairs `_recDupCandidatePairs()` takes from one title block:
+     * all pairs, less those whose two live dates are both known and differ
+     * (the loop skips those). Counted, not built.
+     *
+     * @param {Array<Object>} pool
+     * @param {number[]} block pool indices
+     * @returns {number}
+     */
+    function _recDupBlockPairs(pool, block) {
+        const c2 = x => x * (x - 1) / 2;
+        const byDate = new Map();
+        let dated = 0;
+        for (const i of block) {
+            const d = pool[i].liveDate;
+            if (!d) continue;
+            dated++;
+            byDate.set(d, (byDate.get(d) || 0) + 1);
+        }
+        let sameDate = 0;
+        for (const x of byDate.values()) sameDate += c2(x);
+        return c2(block.length) - (c2(dated) - sameDate);
+    }
+
+    /**
+     * Fusion's grouping of a pool at one cutoff: `autoMatch()`'s loop, over
+     * the candidate pairs only (`_recDupCandidatePairs()`), unions through
+     * `_fzGatedUnionFind()`, then each group's tier and signals
+     * (`_fzGroupConfidence()`). Also what the card's "Kept apart" line names:
+     * pairs a gate held back, and unions refused because the group they would
+     * join holds a conflicting member.
+     *
+     * @param {Array<Object>} pool Fusion-shaped records, distinct gids, in page order
+     * @param {('strict'|'normal'|'loose')} cutoff
+     * @returns {?{groups: Array<{members: number[], tier: string, signals: string[], signalsAll: string[], isrc: ?string}>, apart: Map<number, Array<{other: number, reason: string}>>, pairs: number}}
+     *     null when the page has too many candidate pairs
+     */
+    function _recDupGroups(pool, cutoff) {
+        const pairs = _recDupCandidatePairs(pool, cutoff);
+        if (!pairs) return null;
+        const n = pool.length;
+        const uf = _fzGatedUnionFind(pool);
+        const apart = new Map();
+        const note = (i, j, reason) => {
+            for (const [x, y] of [[i, j], [j, i]]) {
+                let l = apart.get(x); if (!l) apart.set(x, l = []);
+                l.push({ other: y, reason });
+            }
+        };
+        for (const p of pairs) {
+            const i = Math.floor(p / n), j = p - i * n;
+            const a = pool[i], b = pool[j];
+            const sig = _fzPairSignals(a, b, _FZ_SETTINGS.lengthToleranceMs);
+            if (_fzShouldUnion(sig, cutoff)) {
+                const joined = uf.union(a.gid, b.gid);
+                if (joined !== true) note(i, j, joined + ' in the group it would join');
+            } else {
+                const why = _recDupGateReason(sig, cutoff, a, b);
+                if (why) note(i, j, why);
+            }
+        }
+        // The pairs skipped for two live dates: only the card of a grouped
+        // recording names them, so only those are judged (the mockup's Roxy take).
+        const size = new Map();
+        pool.forEach(r => { const k = uf.find(r.gid); size.set(k, (size.get(k) || 0) + 1); });
+        const grouped = i => size.get(uf.find(pool[i].gid)) > 1;
+        for (const p of pairs.skipped || []) {
+            const i = Math.floor(p / n), j = p - i * n;
+            if (!grouped(i) && !grouped(j)) continue;
+            const why = _recDupGateReason(_fzPairSignals(pool[i], pool[j], _FZ_SETTINGS.lengthToleranceMs), cutoff, pool[i], pool[j]);
+            if (why) note(i, j, why);
+        }
+        const byRoot = new Map();
+        pool.forEach((r, i) => {
+            const k = uf.find(r.gid);
+            let l = byRoot.get(k); if (!l) byRoot.set(k, l = []);
+            l.push(i);
+        });
+        const groups = [];
+        for (const members of byRoot.values()) {
+            if (members.length < 2) continue;
+            const recs = members.map(i => pool[i]);
+            const meta = _fzGroupConfidence(recs);
+            const shared = recs.map(r => r.isrcs || []).reduce((acc, l) => acc.filter(x => l.includes(x)));
+            groups.push({ members, tier: meta.tier, signals: meta.signals, signalsAll: meta.signalsAll, isrc: shared[0] || null });
+        }
+        return { groups, apart, pairs: pairs.length };
+    }
+
+    // ── rec-dup grouping END ──
+
+    // ── rec-dup on the page: records from the rows, the page's groups ──
+    // Mockup (approved by vzell 2026-11-20 with its eleven recommendations):
+    // https://claude.ai/artifact/LCthm5p9EiftZC6znZsqVB. docs/claude/findings.md,
+    // "Possible duplicate recordings: rec-dup".
+
+    /** The pageTypes the finding runs on (mockup question 1: work recordings come in a second batch). */
+    const _REC_DUP_PAGETYPES = new Set(['artist-recordings', 'release-tracks']);
+
+    /**
+     * The page's duplicate groups, decided once per `stampFindings()` pass
+     * (`_computeRecDupCtx()`), like `_mainEventCtx`. `byMbid`: a recording's
+     * group; `groups` in title order, each keyed by its smallest member MBID
+     * (the 📊 entry's mode `dupgroup:<key>`, stable across sorts and disk
+     * round trips); `cutoff` the one in use; `capped` when the page had too
+     * many candidate pairs to group at all.
+     *
+     * @type {{active: boolean, cutoff: string, capped: boolean, byMbid: Map<string, Object>, groups: Array<Object>, apart: Map<string, Array<{other: Object, reason: string}>>}}
+     */
+    let _recDupCtx = { active: false, cutoff: 'strict', capped: false, byMbid: new Map(), groups: [], apart: new Map() };
+
+    /**
+     * Whether the finding runs on this page: MusicBrainz, one of
+     * `_REC_DUP_PAGETYPES`, `sa_findings_rec_dup` on.
+     *
+     * @returns {boolean}
+     */
+    function _recDupPageOn() {
+        return !_foreignHost && Lib.settings.sa_findings_rec_dup !== false && _REC_DUP_PAGETYPES.has(activeDefinition?.type);
+    }
+
+    /**
+     * The cutoff in use: `sa_findings_rec_dup_cutoff`, where `auto` (the
+     * default, mockup question 2) is Fusion's own strict on a list of an
+     * artist's recordings, where many live takes share a title and a length,
+     * and normal on a release tracklist.
+     *
+     * @returns {('strict'|'normal'|'loose')}
+     */
+    function _recDupCutoff() {
+        const v = Lib.settings.sa_findings_rec_dup_cutoff;
+        if (v === 'strict' || v === 'normal' || v === 'loose') return v;
+        return activeDefinition?.type === 'release-tracks' ? 'normal' : 'strict';
+    }
+
+    /**
+     * The columns a table's rows feed the records from, by name (-1 when the
+     * table has none): the recording title (Name on an artist's recordings,
+     * Title on a tracklist), its length (Recording length before Length), its
+     * artist (Recording artist before Artist, per row), ISRCs, AcoustIDs,
+     * Video, the comment (Comment, Disambiguation), Recorded at place,
+     * Recorded in area, and what says "live" (Performance attributes,
+     * Recording of work).
+     *
+     * @param {HTMLTableElement} table
+     * @param {ReturnType<typeof _findingPlanForTable>} plan
+     * @returns {?Object} null when the table has no recording title column
+     */
+    function _recDupColsForTable(table, plan) {
+        const n = table.querySelectorAll('thead tr:first-child th').length;
+        const idx = (...names) => {
+            for (const name of names) for (let i = 0; i < n; i++) if (plan.nameOf(i) === name) return i;
+            return -1;
+        };
+        const title = idx('Name', 'Title');
+        if (title < 0) return null;
+        return {
+            title, length: idx('Length'), recLength: idx('Recording length'), artist: idx('Artist'), recArtist: idx('Recording artist'),
+            isrc: idx('ISRCs', 'ISRC'), acoustid: idx('AcoustIDs'), video: idx('Video'), comment: idx('Comment', 'Disambiguation'),
+            place: idx('Recorded at place'), area: idx('Recorded in area'), perf: idx('Performance attributes', 'Recording of work'),
+        };
+    }
+
+    /**
+     * The recording MBID a title cell links, or null.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {?string}
+     */
+    function _recDupMbidOf(cell) {
+        const a = cell && cell.querySelector('a[href*="/recording/"]');
+        const m = a && /\/recording\/([0-9a-f-]{36})/i.exec(a.getAttribute('href') || '');
+        return m ? m[1].toLowerCase() : null;
+    }
+
+    /**
+     * The places or areas a "Recorded at place" / "Recorded in area" cell
+     * names, in Fusion's shape: the linked MBID, its name, and the begin date
+     * of the cell's date note ("on 1975-11-18", "from 1975-04-18 until …").
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @param {('place'|'area')} kind
+     * @returns {Array<{gid: string, name: string, kind: string, date: ?string}>}
+     */
+    function _recDupPlacesOf(cell, kind) {
+        const out = [];
+        if (!cell) return out;
+        cell.querySelectorAll('li').forEach(li => {
+            const a = li.querySelector(`a[href*="/${kind}/"]`);
+            const m = a && new RegExp(`/${kind}/([0-9a-f-]{36})`, 'i').exec(a.getAttribute('href') || '');
+            if (!m) return;
+            const note = li.querySelector('.mb-credit-date');
+            const dm = note && /(\d{4}(?:-\d{2}){0,2})/.exec(note.textContent.replace(/‐/g, '-'));
+            out.push({ gid: m[1].toLowerCase(), name: a.textContent.trim(), kind, date: dm ? dm[1] : null });
+        });
+        return out;
+    }
+
+    /**
+     * One row as a Fusion record (the shape `_fzPairSignals()` reads), from
+     * SOURCE-row markup only: links, `span.mp`, the Video column's sort key,
+     * cell text — nothing a render-tail pass adds.
+     *   - `video`: known only where the page has a Video column;
+     *   - `acoustids`: null (unknown) without an AcoustIDs column;
+     *   - `editsPending`: the recording link itself sits in MusicBrainz's
+     *     open-edit marker (`span.mp`), not an artist's;
+     *   - `live`/`places`: the comment (`_recDupCommentSetting()`), the
+     *     tracklist's Recorded at place / in area cells, and "live" in the
+     *     Performance attributes or Recording of work cell (mockup question 3);
+     *   - `liveDate`: set only when every place entry carries that one date,
+     *     so `_recDupCandidatePairs()` may skip two different ones exactly.
+     *
+     * @param {HTMLTableRowElement} row
+     * @param {Object} cols `_recDupColsForTable()`
+     * @returns {?Object} null for a row without a recording link
+     */
+    function _recDupRecord(row, cols) {
+        const cell = i => (i >= 0 ? row.cells[i] || null : null);
+        const tc = cell(cols.title);
+        const gid = _recDupMbidOf(tc);
+        if (!gid) return null;
+        const titleEl = _findCellTitleEl(tc);
+        const title = (titleEl ? titleEl.textContent : '').replace(/\s+/g, ' ').trim();
+        const lenCell = cell(cols.recLength) && cell(cols.recLength).textContent.trim() ? cell(cols.recLength) : cell(cols.length);
+        const lm = lenCell && /(?:\d+:)?\d+:\d{2}(?:\.\d{1,3})?/.exec(lenCell.textContent.replace(/\s+/g, ''));
+        const length = lm ? _parseDurationToMs(lm[0]) : null;
+        const isrcs = _findCellIsrcParts(cell(cols.isrc)).map(p => p.raw.toUpperCase());
+        const acCell = cell(cols.acoustid);
+        const acoustids = acCell ? Array.from(acCell.querySelectorAll('a[href*="acoustid.org/track/"]'))
+            .map(a => (/\/track\/([0-9a-f-]{36})/i.exec(a.getAttribute('href') || '') || [])[1]).filter(Boolean).map(x => x.toLowerCase()) : null;
+        const ra = cell(cols.recArtist);
+        const artCell = ra && ra.textContent.trim() ? ra : cell(cols.artist);
+        const artistGids = artCell ? Array.from(artCell.querySelectorAll('a[href*="/artist/"]'))
+            .map(a => (/\/artist\/([0-9a-f-]{36})/i.exec(a.getAttribute('href') || '') || [])[1]).filter(Boolean).map(x => x.toLowerCase()) : [];
+        const artistCredit = artCell ? artCell.textContent.replace(/\s+/g, ' ').trim() : '';
+        const vk = cell(cols.video) && cell(cols.video).querySelector('.mb-video-sort-key');
+        const video = vk ? vk.textContent.trim() === 'video' : null;
+        const recLink = tc.querySelector('a[href*="/recording/"]');
+        const editsPending = !!(recLink && recLink.closest('span.mp'));
+        const cc = cell(cols.comment);
+        const commentEl = cc || (tc && tc.querySelector('.comment'));
+        const comment = commentEl ? _recCommentTextOf(commentEl) : '';
+        const st = _recDupCommentSetting(comment);
+        let live = st.live;
+        const perf = cell(cols.perf);
+        if (perf && Array.from(perf.querySelectorAll('.mb-credit-attr, li, span')).some(e => e.textContent.trim().toLowerCase() === 'live')) live = true;
+        let places = st.places;
+        const ars = [..._recDupPlacesOf(cell(cols.place), 'place'), ..._recDupPlacesOf(cell(cols.area), 'area')];
+        if (ars.length) places = (places || []).concat(ars);
+        const dates = places ? [...new Set(places.map(p => p.date))] : [];
+        const liveDate = dates.length === 1 && dates[0] ? dates[0] : null;
+        return { gid, title, length, isrcs, acoustids, artistGids, artistCredit, video, editsPending, live, places, liveDate, comment };
+    }
+
+    /**
+     * Groups the page's recordings (mockup: "Possible duplicate recording"),
+     * once per `stampFindings()` pass, after pass 1 and before the findings
+     * read it: one pool for the whole page (a tracklist's media together),
+     * from the SOURCE rows in page order (`_findingTablePairs()`), one record
+     * per recording MBID (the same recording on two tracks is one recording,
+     * not a duplicate). Inactive off its pageTypes or with the switch off.
+     *
+     * @param {Map<HTMLTableElement, Object>} plans
+     * @returns {typeof _recDupCtx}
+     */
+    function _computeRecDupCtx(plans) {
+        const off = { active: false, cutoff: _recDupCutoff(), capped: false, byMbid: new Map(), groups: [], apart: new Map() };
+        if (!_recDupPageOn()) return off;
+        const pool = [];
+        const seen = new Set();
+        let pairs = _findingTablePairs();
+        if (!pairs.length) pairs = Array.from(plans.keys()).map(t => ({ table: t, rows: Array.from(t.tBodies[0].rows) }));
+        pairs.forEach(({ table, rows }) => {
+            const plan = plans.get(table) || _findingPlanForTable(table);
+            const cols = _recDupColsForTable(table, plan);
+            if (!cols) return;
+            // A row's live copy when it has one: late data (the AcoustIDs and
+            // ISRCs initAcoustIdIsrcObserver() relocates) lands there first.
+            const live = new Map();
+            Array.from(table.tBodies[0] ? table.tBodies[0].rows : []).forEach(lr => {
+                if (lr.dataset.mbRowIdx !== undefined) live.set(lr.dataset.mbRowIdx, lr);
+            });
+            rows.forEach(src => {
+                if (src.classList.contains('mb-nd-row')) return;
+                const r = (src.dataset.mbRowIdx !== undefined && live.get(src.dataset.mbRowIdx)) || src;
+                const rec = _recDupRecord(r, cols);
+                if (!rec || seen.has(rec.gid)) return;
+                seen.add(rec.gid);
+                pool.push(rec);
+            });
+        });
+        const cutoff = _recDupCutoff();
+        const t0 = performance.now();
+        const res = _recDupGroups(pool, cutoff);
+        Lib.debug('findings', `rec-dup: ${pool.length} recordings, cutoff ${cutoff}, ` +
+            (res ? `${res.pairs} candidate pairs, ${res.groups.length} groups` : `over ${_REC_DUP_MAX_PAIRS} candidate pairs, not grouped`) +
+            ` in ${Math.round(performance.now() - t0)} ms`);
+        if (!res) return Object.assign(off, { active: true, capped: true });
+        const ctx = { active: true, cutoff, capped: false, byMbid: new Map(), groups: [], apart: new Map() };
+        res.groups.forEach(g => {
+            const members = g.members.map(i => pool[i]);
+            const key = members.map(m => m.gid).sort()[0];
+            const sig = g.signals.includes('isrc') ? 'ISRC' : g.signals.includes('acoustid') ? 'AcoustID'
+                : g.signalsAll.includes('artist') ? 'title + length' : 'title + length, other artist';
+            const group = { key, members, tier: g.tier, sig, isrc: g.isrc };
+            ctx.groups.push(group);
+            members.forEach(m => ctx.byMbid.set(m.gid, group));
+        });
+        const fold = s => _fzNormName(s);
+        ctx.groups.sort((a, b) => fold(a.members[0].title).localeCompare(fold(b.members[0].title)) || (a.key < b.key ? -1 : 1));
+        res.apart.forEach((list, i) => ctx.apart.set(pool[i].gid, list.map(x => ({ other: pool[x.other], reason: x.reason }))));
+        return ctx;
+    }
+
+    /**
+     * Groups the page again once late data is in (mockup question 7: once per
+     * finished column load, never per cell): the AcoustIDs and ISRCs
+     * `initAcoustIdIsrcObserver()` relocates, the Recording of and
+     * Performance attributes cells (`_recOfScheduleRefresh()`). Debounced
+     * (600 ms); then the title-cell keys are written again on every row a
+     * stamp reaches, and every row whose group changed, or whose group's
+     * members did, is re-stamped through `_queueFindingsRestamp()` (which
+     * refreshes the menus, the 📊 caches and a filtering pass).
+     *
+     * @returns {void}
+     */
+    function _recDupRegroupSoon() {
+        if (!_recDupPageOn()) return;
+        clearTimeout(_recDupRegroupSoon.timer);
+        _recDupRegroupSoon.timer = setTimeout(() => {
+            const before = _recDupCtx;
+            const sig = ctx => new Map(ctx.groups.map(g => [g.key, g.members.map(m => m.gid).join(',')]));
+            const old = sig(before);
+            const tables = Array.from(document.querySelectorAll('table.tbl')).filter(t => t.tBodies[0]);
+            const plans = new Map(tables.map(t => [t, _findingPlanForTable(t)]));
+            try {
+                _recDupCtx = _computeRecDupCtx(plans);
+            } catch (e) {
+                Lib.warn('findings', 'rec-dup: regrouping failed, the groups stay as they were', e);
+                _recDupCtx = before;
+                return;
+            }
+            const now = sig(_recDupCtx);
+            if (old.size === now.size && [...now].every(([k, v]) => old.get(k) === v)) return;
+            const master = _buildMasterRowIndex();
+            tables.forEach(table => {
+                const cols = _recDupColsForTable(table, plans.get(table));
+                if (!cols) return;
+                _forEachStampRow(table, master, r => {
+                    const tc = r.cells[cols.title];
+                    const was = tc ? tc.dataset.mbRecDup || null : null;
+                    _stampRecDupKey(r, cols);
+                    const is = tc ? tc.dataset.mbRecDup || null : null;
+                    if (was !== is || (is && old.get(is) !== now.get(is))) _queueFindingsRestamp(r, ['rec-dup'], table);
+                });
+                _invalidateUniqDropDataCacheForTable(table);
+            });
+            Lib.debug('findings', `rec-dup: regrouped after late data, ${before.groups.length} -> ${_recDupCtx.groups.length} groups`);
+        }, 600);
+    }
+
+    /**
+     * Writes (or clears) a row's group key on its title cell,
+     * `data-mb-rec-dup`, which the 📊 entry's `dupgroup:<key>` mode matches.
+     * Same pass and same rows as the findings (`_forEachStampRow()`).
+     *
+     * @param {HTMLTableRowElement} row
+     * @param {Object} cols `_recDupColsForTable()`
+     */
+    function _stampRecDupKey(row, cols) {
+        const tc = row.cells[cols.title];
+        if (!tc) return;
+        const g = _recDupCtx.active ? _recDupCtx.byMbid.get(_recDupMbidOf(tc)) : null;
+        if (g) tc.dataset.mbRecDup = g.key;
+        else delete tc.dataset.mbRecDup;
+    }
+
+    /**
+     * A 📊 "Duplicate recordings - Group" entry's label, "Thunder Road ·
+     * ISRC" (the mockup's): the group's first title and what binds it. The
+     * key itself when the group is gone (a chip left from an earlier render).
+     *
+     * @param {string} key the group's smallest member MBID
+     * @returns {string}
+     */
+    function _recDupGroupLabel(key) {
+        const g = _recDupCtx.groups.find(x => x.key === key);
+        return g ? `${g.members[0].title} · ${g.sig}` : key;
+    }
+
+    /**
+     * A 📊 group entry's tip: the label, then one line per member with its
+     * length and comment, then the tier.
+     *
+     * @param {string} key
+     * @returns {string}
+     */
+    function _recDupGroupTip(key) {
+        const g = _recDupCtx.groups.find(x => x.key === key);
+        if (!g) return key;
+        const dur = ms => (ms == null ? '?:??' : `${Math.floor(Math.round(ms / 1000) / 60)}:${String(Math.round(ms / 1000) % 60).padStart(2, '0')}`);
+        return `${_recDupGroupLabel(key)}\n` + g.members.map(m => `“${m.title}” ${dur(m.length)}${m.comment ? ` · ${m.comment}` : ''}`).join('\n') +
+            `\nFusion's ${g.tier} tier · ${g.members.length} recordings`;
+    }
+
+    /**
+     * The finding's per-cell detail (the plain title's prose, and the native
+     * fallback): the other members of the row's group.
+     *
+     * @param {HTMLTableCellElement} cell
+     * @returns {string}
+     */
+    function _recDupDetail(cell) {
+        const g = _recDupCtx.byMbid.get(_recDupMbidOf(cell));
+        if (!g) return '';
+        const me = _recDupMbidOf(cell);
+        const others = g.members.filter(m => m.gid !== me);
+        const dur = ms => (ms == null ? '?:??' : `${Math.floor(Math.round(ms / 1000) / 60)}:${String(Math.round(ms / 1000) % 60).padStart(2, '0')}`);
+        return `same recording as ${others.map(m => `"${m.title}" ${dur(m.length)}`).join(', ')}` +
+            (g.isrc ? ` (ISRC ${g.isrc})` : '') + ` · ${g.tier}`;
+    }
+
+    /**
+     * The finding's card entry (`data-mb-tip-cmp`, `kind: 'dup'`,
+     * `_cmpDupHtml()`): the group as the approved mockup's card shows it, the
+     * tier, the other members with length, comment and ISRCs, the shared ISRC
+     * or "same title and artists", and what was kept apart.
+     *
+     * @param {HTMLTableCellElement} cell
+     * @returns {?Object}
+     */
+    function _recDupCompare(cell) {
+        const me = _recDupMbidOf(cell);
+        const g = _recDupCtx.byMbid.get(me);
+        if (!g) return null;
+        const inGroup = new Set(g.members.map(m => m.gid));
+        const apart = (_recDupCtx.apart.get(me) || []).filter(x => !inGroup.has(x.other.gid));
+        const seenApart = new Set();
+        return {
+            kind: 'dup', tier: g.tier, cut: _recDupCtx.cutoff, sig: g.sig, isrc: g.isrc || '',
+            m: g.members.filter(m => m.gid !== me).map(m => ({ t: m.title, l: m.length, c: m.comment || '', i: m.isrcs.slice(0, 4) })),
+            ap: apart.filter(x => !seenApart.has(x.other.gid) && seenApart.add(x.other.gid)).slice(0, 5)
+                .map(x => ({ t: x.other.title, l: x.other.length, r: x.reason })),
+        };
     }
 
     /**
@@ -104481,6 +105612,12 @@
             // release/release group title, see _liveTitleMatchesMode().
             const live = _findCellLiveTitle(cell);
             return !!live && _liveTitleMatchesMode(live, mode);
+        }
+        if (mode.startsWith('dupgroup:')) {
+            // "Duplicate recordings - Group" — the title cell's group key,
+            // stamped by stampFindings() (_stampRecDupKey()); an attribute,
+            // so clones carry it.
+            return !!cell && cell.dataset.mbRecDup === mode.slice(9);
         }
         if (mode.startsWith('mediumevent:')) {
             // "Event info - Events on this medium" — the row's event key,
@@ -124290,6 +125427,14 @@ a { color: #1565c0; }`;
         }
         #mb-release-notice-card { position: fixed; }
         .mb-tt-liner .mb-tt-pill.mb-rn-pill { background: #fff3cd; color: #9a6a00; border-color: #e8c766; }
+        /* The rec-dup card (_cmpDupHtml()): Fusion's tier as a pill, the group's members as a list. */
+        .mb-tt-liner .mb-tt-pill.mb-recdup-strict { background: #e3efdf; color: #3f7a3a; border-color: #b7d3b0; }
+        .mb-tt-liner .mb-tt-pill.mb-recdup-normal { background: #e2eaf5; color: #2f5f9e; border-color: #b4c7e3; }
+        .mb-tt-liner .mb-tt-pill.mb-recdup-loose { background: #fff3cd; color: #9a6a00; border-color: #e8c766; }
+        .mb-tt-liner ul.mb-recdup-list { margin: 2px 0 4px 1.1em; padding: 0; }
+        .mb-tt-liner ul.mb-recdup-list li { margin: 1px 0; }
+        .mb-tt-liner ul.mb-recdup-list code, .mb-tt-liner .mb-tt-body code { font-size: 0.92em; }
+        .mb-tt-liner .mb-recdup-apart { color: #7a6d5c; }
         /* The feed's marks after a Brucebase head's byline and a window's title. */
         .mb-bb-feed-mark { cursor: help; white-space: nowrap; font-size: 0.85em; font-weight: 600; }
         .mb-bb-feed-mark[data-mb-level="error"] { color: #9b2218; }
@@ -128284,6 +129429,37 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * The "Possible duplicate recording" card's body (`kind: 'dup'`, from
+     * `_recDupCompare()`), as the approved mockup draws it
+     * (https://claude.ai/artifact/LCthm5p9EiftZC6znZsqVB): the other members,
+     * each with its length, comment and ISRCs; what they share; what was
+     * kept apart and why; the footer naming Fusion's rules and the cutoff.
+     * The heading line and its tier pill come from `_tipTextToHtml()`.
+     *
+     * @param {{kind: 'dup', tier: string, cut: string, sig: string, isrc: string,
+     *   m: Array<{t: string, l: ?number, c: string, i: string[]}>,
+     *   ap: Array<{t: string, l: ?number, r: string}>}} c
+     * @returns {string}
+     */
+    function _cmpDupHtml(c) {
+        const esc = _mbttEscape;
+        const dur = ms => (typeof ms === 'number' ? `${Math.floor(Math.round(ms / 1000) / 60)}:${String(Math.round(ms / 1000) % 60).padStart(2, '0')}` : '?:??');
+        const intro = c.m.length === 1 ? 'Looks like the same recording as:' : `Looks like the same recording as these ${c.m.length}:`;
+        const items = c.m.map(m => `<li>“${esc(m.t)}” <span class="mb-tt-dim">${dur(m.l)} · ${m.c ? esc(m.c) : 'no comment'}</span>` +
+            (m.i.length ? `<br><code>${m.i.map(esc).join(', ')}</code>` : '') + '</li>').join('');
+        const why = c.isrc ? `They share the ISRC <code>${esc(c.isrc)}</code>.`
+            : c.sig === 'AcoustID' ? 'They share an AcoustID, and their titles agree.'
+            : c.sig === 'title + length' ? 'Same title and artists, lengths within 5 s; no ISRC tells them apart.'
+            : 'Same title, lengths within 5 s; the artists differ (loose cutoff).';
+        const apart = c.ap.length ? `<div class="mb-tt-body mb-recdup-apart">Kept apart: ${c.ap.map(x =>
+            `<b>“${esc(x.t)}” ${dur(x.l)}</b> (${esc(x.r)})`).join('; ')}.</div>` : '';
+        return `<div class="mb-tt-body">${intro}</div><ul class="mb-recdup-list">${items}</ul>` +
+            `<div class="mb-tt-body">${why}</div>${apart}` +
+            `<div class="mb-tt-foot">Fusion's rules (majkinetor), cutoff ${esc(c.cut)}. Read from this page, no requests. ` +
+            '📊 on the title column lists every group.</div>';
+    }
+
+    /**
      * A duration with the digits that differ from the other one marked,
      * position by position from the right (both are right-aligned).
      *
@@ -128385,7 +129561,11 @@ a { color: #1565c0; }`;
                   num(c.thresholdMs) && (c.severeMs === null || num(c.severeMs))
                 : c.kind === 'mark'
                     ? str(c.a) && str(c.la) && num(c.s) && num(c.e) && (c.sum === undefined || str(c.sum))
-                    : str(c.a) && str(c.b) && str(c.la) && str(c.lb)));
+                    : c.kind === 'dup'
+                        ? str(c.tier) && str(c.cut) && str(c.sig) && str(c.isrc) && Array.isArray(c.m) && Array.isArray(c.ap) &&
+                          c.m.every(m => m && str(m.t) && str(m.c) && Array.isArray(m.i) && m.i.every(str) && (m.l === null || num(m.l))) &&
+                          c.ap.every(x => x && str(x.t) && str(x.r) && (x.l === null || num(x.l)))
+                        : str(c.a) && str(c.b) && str(c.la) && str(c.lb)));
         } catch (e) {
             return [];
         }
@@ -128474,6 +129654,12 @@ a { color: #1565c0; }`;
             const c = at.get(i);
             const shown = c && typeof c.head === 'string' ? c.head : b;
             const body = keycaps(_mbttEscape(shown));
+            // A duplicate-recording entry is a heading with its tier pill and
+            // its own body (_cmpDupHtml()), wherever in the card its line is.
+            if (c && c.kind === 'dup') {
+                const pill = { strict: 'mb-recdup-strict', normal: 'mb-recdup-normal', loose: 'mb-recdup-loose' }[c.tier] || '';
+                return `<div class="mb-tt-title">${body} <span class="mb-tt-pill ${pill}">${_mbttEscape(c.tier)}</span></div>${_cmpDupHtml(c)}`;
+            }
             const after = c && !(opts.noOrigin && c.origin) ? (c.kind === 'mark' ? _cmpMarkHtml(c) : _cmpHtml(c)) : '';
             if (i === 0 && (blocks.length > 1 || shown.length <= 60 || c)) {
                 return `<div class="mb-tt-title">${body}</div>${after}`;
@@ -132444,6 +133630,11 @@ a { color: #1565c0; }`;
         // `stampFindings()`), on the plain comment column, shown only when a
         // medium mixes two or more events (org/live-bootleg.org 3).
         mediumEvents:      { label: 'Event info - Events on this medium',             glyph: '🎪' },
+        // "Duplicate recordings - Group" — the rec-dup finding's groups (Fusion's
+        // rules, `_recDupCtx`), one entry per group on the recording title column
+        // (mode `dupgroup:<key>`, the group's smallest MBID, read off the title
+        // cell's `data-mb-rec-dup`, stamped by stampFindings()).
+        recDupGroup:       { label: 'Duplicate recordings - Group',                   glyph: '👯' },
         // "Findings - Warning"/"- Error" — one entry per FINDINGS entry present
         // in the open column (mode `finding-<id>`, read off the
         // data-mb-findings attribute stampFindings() writes). The entries the
@@ -132811,6 +134002,7 @@ a { color: #1565c0; }`;
         evstylemiss: 'evStyleNearMiss', evedition: 'evFestEdition',
         rcliveshape: 'rcLiveDate', rcliveextra: 'rcLiveExtra', rcliveloc: 'rcLiveLoc',
         rctype: 'rcType', rcmiss: 'rcNearMiss', rcinfo: 'rcInfo', mediumevent: 'mediumEvents',
+        dupgroup: 'recDupGroup',
         eventdetail: 'eventPartsDetail', eventaddinfo: 'eventPartsAddInfo',
     };
 
@@ -152911,7 +154103,7 @@ a { color: #1565c0; }`;
         const _rc = _uniqCacheHit ? _uniqCacheHit.recCommentCounts : {
             form: { typeonly: 0, date: 0, location: 0, datelocation: 0, other: 0, nearmiss: 0 },
             type: new Map(), miss: new Map(), info: new Map(), infoHas: 0, infoNone: 0, multiDay: 0,
-            live: _newLiveCounts(), mediumEvent: new Map(),
+            live: _newLiveCounts(), mediumEvent: new Map(), recDup: new Map(),
         };
         let ratingHasCount  = _uniqCacheHit ? _uniqCacheHit.ratingHasCount  : 0;
         let ratingNoneCount = _uniqCacheHit ? _uniqCacheHit.ratingNoneCount : 0;
@@ -153083,6 +154275,9 @@ a { color: #1565c0; }`;
         // "Recording comment info - …": 'plain' (Disambiguation) or 'link'
         // (Name, Recording, Title, …), see _recCommentColumnKind().
         const recCommentKind = _recCommentColumnKind(_colHeaderName);
+        // "Duplicate recordings - Group": the recording title column of a page
+        // the rec-dup finding grouped (`_recDupCtx`).
+        const isRecDupCol = _recDupCtx.active && (_colHeaderName === 'Name' || _colHeaderName === 'Title');
         // Discogs' "Cat#" on discogs.com too (2026-10-18: the same
         // "Catalog info" sections as MusicBrainz's Catalog#, `_dgCatnoCell()`).
         const isCatalogCol = _colHeaderName === 'Catalog#' || (_isDgHost && _colHeaderName === 'Cat#');
@@ -153407,6 +154602,9 @@ a { color: #1565c0; }`;
                         if (_ev.edition) _bump(_te.edition, _ev.edition);
                         _countLiveVerdict(_te.live, _ev.live);
                     }
+                }
+                if (isRecDupCol && cell && cell.dataset.mbRecDup) {
+                    _rc.recDup.set(cell.dataset.mbRecDup, (_rc.recDup.get(cell.dataset.mbRecDup) || 0) + 1);
                 }
                 if (recCommentKind) {
                     // "Event info - Events on this medium": the row's stamp
@@ -155977,7 +157175,8 @@ a { color: #1565c0; }`;
             // appended after the value — see CATALOG_PREFIX_TOOLTIP's own
             // JSDoc for why this is one static string for every entry
             // rather than a per-prefix lookup.
-            _setTip(item, (kind === 'catalogprefix') ? `${value}\n\n${CATALOG_PREFIX_TOOLTIP}`
+            _setTip(item, (kind === 'dupgroup') ? _recDupGroupTip(value)
+                : (kind === 'catalogprefix') ? `${value}\n\n${CATALOG_PREFIX_TOOLTIP}`
                 : (kind === 'linkfamily') ? `${value}\n\n${Array.from(linkFamilyHosts.get(value) || []).sort().join('\n')}`
                 : value);
 
@@ -156118,6 +157317,7 @@ a { color: #1565c0; }`;
                  : kind === 'dateyear'           ? '» year: '
                  : kind === 'dateweekday'        ? '» weekday: '
                  : kind === 'pendingedit'        ? '» pending edit: '
+                 : kind === 'dupgroup'           ? ''
                  : '» ');
             // The prefix as built, so _uvdFinalizeSynGroups() can hide exactly
             // it (never a guessed "» …: " — a value may contain ": " itself).
@@ -156131,6 +157331,7 @@ a { color: #1565c0; }`;
             // is keyed on everywhere else in this function.
             const _displayValue = (kind === 'barcodesameas')
                 ? _barcodeSameAsGroupLabel((_getBarcodeCanonicalGroups(table).get(value) || { raws: new Set([value]) }).raws)
+                : (kind === 'dupgroup') ? _recDupGroupLabel(value)
                 : value;
             if (kind === 'arttype') {
                 // Render the value as an actual pill (see
@@ -156712,6 +157913,9 @@ a { color: #1565c0; }`;
             _pushLiveSections('rc', _rc.live, '');
             // Only a medium that mixes events gets the section.
             if (_rc.mediumEvent.size >= 2) _pushVals('mediumevent', _rc.mediumEvent, _byText(_rc.mediumEvent));
+        }
+        if (isRecDupCol && _rc.recDup.size) {
+            _pushVals('dupgroup', _rc.recDup, _recDupCtx.groups.map(g => g.key).filter(k => _rc.recDup.has(k)));
         }
         _pushSyn('evcountry-abbr', _structureModeLabel('evcountry-abbr'), _ep.abbr);
         _pushSyn('evcountry-full', _structureModeLabel('evcountry-full'), _ep.full);
@@ -157755,6 +158959,7 @@ a { color: #1565c0; }`;
         }
         if (mode.startsWith('rctype:'))      return `» type: ${mode.slice(7)}`;
         if (mode.startsWith('mediumevent:')) return `» event: ${mode.slice(12)}`;
+        if (mode.startsWith('dupgroup:')) return `👯 ${_recDupGroupLabel(mode.slice(9))}`;
         if (mode.startsWith('rcmiss:'))      return `» problem: ${mode.slice(7)}`;
         if (mode.startsWith('rcinfo:'))      return `» info: ${mode.slice(7)}`;
         if (mode === 'rc-multiday')          return '❔ uncertain day ("2001-12-22/23")';
@@ -157999,6 +159204,7 @@ a { color: #1565c0; }`;
             }[mode.slice(7)] || '';
         }
         if (mode.startsWith('rctype:'))      return 'The event type the comment starts with (live, soundcheck, rehearsal, live rehearsal, interview, audition, studio).';
+        if (mode.startsWith('dupgroup:')) return 'One group of possible duplicate recordings (Fusion\'s rules, majkinetor): the recordings this page shows that look like the same one.';
         if (mode.startsWith('mediumevent:')) return 'One event this medium\'s rows come from: the linked "Recorded at event", else the event the recording comment names, else the "Recording date".';
         if (mode.startsWith('rcmiss:'))      return 'Why a recording comment almost follows "live, YYYY-MM-DD: Venue, City, …".';
         if (mode.startsWith('rcinfo:'))      return 'One text after the ";" that ends a recording comment.';
@@ -165413,6 +166619,8 @@ a { color: #1565c0; }`;
             _invalidateFilterCache();
             _recOfUpdateHdrBtns();
             if (_anyFilterActive()) runFilter();
+            // "live" in Performance attributes / Recording of work keeps live and studio apart (rec-dup).
+            _recDupRegroupSoon();
         }, wait);
     }
 
@@ -187816,11 +189024,13 @@ a { color: #1565c0; }`;
 
     /**
      * The ids of the findings whose data arrives AFTER `stampFindings()` ran
-     * (it runs ONCE per fetch): the artwork record, and the deferred
-     * Relationships column (`rel-multi-site`). Each is re-stamped per row
+     * (it runs ONCE per fetch): the artwork record, the deferred
+     * Relationships column (`rel-multi-site`), and the late AcoustIDs, ISRCs
+     * and "live" cells that regroup duplicate recordings (`rec-dup`,
+     * `_recDupRegroupSoon()`). Each is re-stamped per row
      * through `_queueFindingsRestamp()`.
      */
-    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-site', 'bb-mbev-link-mismatch', 'bb-mbev-link-missing', 'sl-double-utf8', 'bb-onstage-tab', 'bb-venue-mismatch', ..._BB_EVENT_CHECK_LATE_IDS, ..._BB_LIST_CHECK_IDS, ..._BB_UNLISTED_IDS, ..._BB_SETLIST_IDS, ..._BB_TAG_IDS];
+    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-site', 'rec-dup', 'bb-mbev-link-mismatch', 'bb-mbev-link-missing', 'sl-double-utf8', 'bb-onstage-tab', 'bb-venue-mismatch', ..._BB_EVENT_CHECK_LATE_IDS, ..._BB_LIST_CHECK_IDS, ..._BB_UNLISTED_IDS, ..._BB_SETLIST_IDS, ..._BB_TAG_IDS];
 
     /**
      * Queues a re-stamp of a row whose late data (`_LATE_FINDING_IDS`) has
@@ -194020,6 +195230,25 @@ a { color: #1565c0; }`;
                 read:     (p) => _rxRead(p),
                 diagnose: (p) => _rxDiagnose(p),
             },
+            /**
+             * The rec-dup finding's page groups (`_recDupCtx`, read-only): the
+             * cutoff in use and each group's key, tier, signal and member
+             * MBIDs, so a spec can compare the stamp with what was decided.
+             *
+             * @returns {{active: boolean, cutoff: string, capped: boolean,
+             *   groups: Array<{key: string, tier: string, sig: string, isrc: ?string, members: string[]}>}}
+             */
+            recDup: () => ({
+                why: { pageOn: _recDupPageOn(), type: activeDefinition?.type || null, error: _recDupCtx.error || null, stampGen: _findingStampGen },
+                active: _recDupCtx.active, cutoff: _recDupCtx.cutoff, capped: _recDupCtx.capped,
+                groups: _recDupCtx.groups.map(g => ({ key: g.key, tier: g.tier, sig: g.sig, isrc: g.isrc, members: g.members.map(m => m.gid) })),
+            }),
+            /**
+             * Runs the shipping late-data regroup (`_recDupRegroupSoon()`), whose
+             * production triggers (initAcoustIdIsrcObserver()'s relocation, the
+             * Recording of refresh) a fixture cannot reach.
+             */
+            recDupRegroup: () => _recDupRegroupSoon(),
             /**
              * An area's flag markup (`_mbPopFlagHtml()`, the shipping
              * builder) as on musicbrainz.org or on another host, so a spec

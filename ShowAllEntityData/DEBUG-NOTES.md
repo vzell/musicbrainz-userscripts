@@ -30773,3 +30773,77 @@ Env: 2026-11-20T15:40–16:05+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6
   parses the field once per key and never touches a row; `runFilter()` is unchanged by this step.
 - **Browser check** (vzell, 2026-11-20, live): OK, then merged. Env: Vivaldi 8.2.4133.96 (Chromium 152.0.7977.170)
   · Tampermonkey 5.5.1 (as reported for the query mode the same afternoon). `test:full` before it: 3397/3397.
+
+## 2026-11-20 — majkinetor refresh: 0693aea → a1e8f54; #938 answered all three open questions (feat/fusion-rec-dup)
+
+Env: 2026-11-20T21:58:51–22:20+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) ·
+live probe: Playwright 1.62.1, Chromium 151.0.7922.34, no Tampermonkey (GM stubs), SAED 9.99.1669 (`main` 029625a4)
+· code reading: n/a. vzell's own browser ran String Theory 2026.11.20.165956 in Vivaldi (his report).
+
+- **Clone**: `debug/majkinetor/` `0693aea` → `a1e8f54` (2026-11-20T21:57:11+01:00, a build commit). Harness copies
+  re-taken from it: String Theory 2026.11.20.215710 (its `@description` names EH 2026.11.21.190000 and ISRC Scout
+  2026.11.20.200000, the same as the standalone copies); main's raw link served the same `@version`.
+- **#938, milic-bot 2026-11-20 17:00 CET** ("Done, on main"), checked in the code:
+  - the gate: `mbnState()` lowers a stored `cool` past now + 60 s and a `leadUntil` past now + 10 s on every write;
+    a wait caps both from when it first saw the value (`seen()`); wall-clock steps left. SAED's port has the
+    first-sight cap (9.99.1651) but not the write clamp (anchor `saed-no-gate-clamp`; TODO in org/majkinetor.org).
+  - C3: `<html data-mbu-keys-keep="toggle">` beside `data-mbu-keys-off` keeps EH's V (EH:17970–17972).
+  - C7: Group Therapy (2 sites) and Falcon (4) set `mbLastWrite`; Apollo, named in the answer, has no
+    `mbLastWrite` at all in this build (anchor `c7-writer-apollo`; a question drafted for vzell).
+- **New in EH since 0693aea, from code**: bare `u` (profile), Ctrl+P (its player) and, while its player runs,
+  Space/arrows/Ctrl+Space/Alt+1–3, on every MusicBrainz page with its view off too. `u` and Ctrl+P are not in
+  SAED's `_EH_SINGLE_KEYS`; new TODO "Event Horizon's new keys on our FRP: adopt C3 with data-mbu-keys-keep". Not
+  measured (the probe runs logged out, and `u` needs the header's profile link).
+- **Probe** (`tests/support/probe-majkinetor-interop.js`): String Theory A/B/C 22:01–22:03, I 22:03; EH 0/A/B/C/D
+  22:03–22:06; ISRC Scout I 22:06–22:07 and again 22:07:43–22:07:56. Every structural row as on 2026-11-17: bodies,
+  bar visibility, FRP kept over V/V, hover card in the document, `h` stopped on IP and FRP, the C reload, the eight
+  corner launchers. Case D: SAED's fetch 26.6 s (alone 28.1 s), seven 503s, all on EH's gated GM requests; SAED's one
+  ws/2 waited 9.1 s in the shared gate. Case I: 51/51 cells, 37/37 icons with `data-ii-platform`, 37/37 stamped on
+  the FRP, in the bundle and alone. The first standalone ISRC Scout run showed no columns: both its release load and
+  its one retry got 503 (MusicBrainz throttling); the re-run was normal.
+- **Fusion** (for the rec-dup port on this branch): the matching functions are unchanged from 0693aea; 19 `fusion-*`
+  anchors added. Anchors in all: 98/98 hold (`eh-ed-full`, `gate-hold-cap` rewritten to the new code).
+
+## 2026-11-20 — Possible duplicate recordings: Fusion's gates ported, the page's groups (feat/fusion-rec-dup, WIP.1)
+
+Env: 2026-11-20T22:10–23:10+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · Playwright 1.62.1,
+Chromium 151.0.7922.34, no Tampermonkey (GM stubs) for the specs; Node 24.16.0 for the port checker · the probe:
+n/a (Python, ws/2).
+
+- **What**: org/majkinetor.org's "Possible duplicate recordings". Fusion's matching code is generated into the
+  userscript verbatim (`scripts/gen-fusion-port.py`, map `scripts/fusion-port-map.json`) and checked line for line
+  against the clone (`scripts/check-fusion-port.js`); design in docs/claude/findings.md, "Possible duplicate
+  recordings: `rec-dup`". Mockup https://claude.ai/artifact/LCthm5p9EiftZC6znZsqVB, approved with all eleven
+  recommendations.
+- **Union order**: Fusion's `gatedUnionFind()` gives different groups for different union orders (a bridge is
+  refused only once a conflicting set exists). The bucketed search therefore sorts its candidate pairs by (i, j),
+  which is `autoMatch()`'s own loop restricted to them.
+- **Bucketing, measured** on the Petty dump (2,630 recordings): first/last-four title keys alone missed 7 groups at
+  normal (5 extra): Fusion calls "Last Dance With Mary Jane" and "Mary Jane's Last Dance" alike (3 of 5 words), and
+  the two share neither end; the missing pairs then changed which bridges were refused elsewhere. A prefix filter
+  over the words (each title under its k − c + 1 rarest words) is exact for Fusion's word test; after it, all three
+  cutoffs equal all pairs (strict 13 groups, normal 427, loose 494), 0.6 s against 40 s.
+- **Kept apart**: a 40 s difference fails "lengths within 5 s" too, so "would it match without the gate" said no;
+  Fusion's own log counts such a pair when title and artist agree (`lengthBlocked`), and the card now does. The
+  date skip in the candidate search dropped the "two dates at one venue" note; skipped pairs are kept and judged
+  after the unions when they touch a group.
+- **Found, decided by vzell the same evening**: (1) a title cell the "no work" family paints (`data-mb-work-flag`) keeps its own tint
+  and tooltip, so a duplicate without a work link shows no rec-dup card (menu and 📊 still list it); the planted
+  fixture gives its tracks works. (2) The shared card shows nothing on a tap, for every finding; the mockup's
+  "tap to pin" would be new.
+- **The probe**: MusicBrainz answered 503 most of the evening (six, then ten retries with backoff were not enough
+  on several pages); Petty's dump completed (12 retries), Springsteen's stands at 33,800 of 74,630 in its
+  checkpoint (`debug/probe-rec-dup/70248960-….pages.jsonl`), resumable. A single request with the generic
+  User-Agent got 503 at 23:00.
+- **vzell's answers (2026-11-20, 23:05)**: the probe's User-Agent carries the public repository as contact
+  (`ShowAllEntityData-probe/1.0 (+https://github.com/vzell/mb-userscripts)`, as 17 other probes do); the rec-dup
+  card goes UNDER the "no work" text (`_writeFamilyTipFindings()`, finding flag `underFamilyTip`, planted case G5);
+  "tap to pin" on touch is left for later. Mutation run 1 (26 entries, 23:05): 22 as expected; the gross-length,
+  live/place and video gates of `shouldUnion` are each covered by `gatedUnionFind()`'s own conflict check (now
+  expect-pass, with that reason), and "records ignore the live copy" DOES fail on a disk load (now expect-fail).
+- **The up-front lower bound** (vzell, 2026-11-21T00:25+01:00, petri, Node 24.16.0): the head and the tail
+  key families each count distinct pairs, so either one's sum (with the date skip, `_recDupBlockPairs()`) is a
+  lower bound on the candidate set; over the cap, the search gives up before the word index. Springsteen at
+  normal/loose: 737–788 ms → 59–69 ms, same "capped"; Petty's groups unchanged; 14/14 rec-dup tests.
+- **Browser check** (vzell, 2026-11-21, live, Vivaldi; versions not restated, the same evening's report was
+  Vivaldi 8.2.4133.96 · Tampermonkey 5.5.1): OK, merge asked. `test:full` at `ea89cd30` before the merge.

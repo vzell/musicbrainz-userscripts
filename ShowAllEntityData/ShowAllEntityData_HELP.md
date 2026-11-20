@@ -889,6 +889,7 @@ back).
 | ⚠️     | Recording has no associated work                                | Release tracklist: Title                    |
 | ⚠️     | Title names a remixer ("(X remix)"), no remixer credited        | Release tracklist: Title                    |
 | ⚠️     | Medley title ("A / B") has more parts than linked works         | Release tracklist: Title                    |
+| ⚠️     | Possible duplicate recording (Fusion's rules, see below)        | Recordings: Name; tracklist: Title          |
 | ⚠️     | Release role does not fit its format (glass mastered on vinyl)  | Release Credits: Relationship               |
 | ⚠️     | ℗ notice in the annotation that no relationship has             | Release page: Annotation                    |
 | ⚠️     | Live title date uses a plain "-" instead of "‐" (U+2010)        | Release and release group titles            |
@@ -1000,6 +1001,31 @@ majkinetor's Group Therapy.
    IN THE TABLES
    No table findings on this release.
 ```
+
+**Possible duplicate recordings.** On an artist's recordings and on a release
+tracklist, a recording that looks like another one on the same page gets a ⚠️
+👯 *Possible duplicate recording* on its title. The rules are those of
+majkinetor's Fusion, taken over unchanged, so this script and Fusion agree on
+what a duplicate is; Fusion does not need to be installed, and nothing is
+looked up, only what the page shows is read. Two recordings count as the same
+one when they share an ISRC (or an AcoustID, where the page has that column),
+or, at the *normal* cutoff, when they have the same title and artists and
+lengths within 5 seconds. Never put together: a video and an audio recording,
+a live and a studio one, two different venues or dates (read from the
+recording comment, "live, 1975‐11‐18: Hammersmith Odeon, …", and from the
+Recorded at place / in area columns), lengths more than 30 seconds apart, two
+ISRCs of one batch (same registrant and year, none shared), and a recording
+with an open edit. Hover the title for the group: the other recordings with
+their length, comment and ISRCs, what they share, Fusion's tier (strict /
+normal / loose) and which other recordings were kept apart, and why. The 📊
+of the title column has a section *Duplicate recordings - Group* with one
+entry per group ("Thunder Road · ISRC"); ticking one shows that group's rows.
+How close a match must be is set in ⚙️ Settings → ⚠️ Findings → *Possible
+duplicate recordings: how close is a match*. *Auto* is strict (a shared ISRC
+only) on an artist's recordings, where many live takes share a title and a
+length, and normal on a release tracklist. Columns that load later (AcoustIDs,
+Performance attributes, Recording of work) group the page again once they are
+in.
 
 The tint of each newly highlighted problem has its own switch in ⚙️ Settings →
 ⚠️ Findings; turning one off keeps the problem in the menu. The menus

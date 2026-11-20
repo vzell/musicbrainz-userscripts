@@ -868,6 +868,129 @@ row tally, "All warnings". So it is its own small path beside the registry:
   payload, no payload with a native ℗ list); mutations
   `scripts/mutations/apollo-findings-4.json` (20).
 
+### Possible duplicate recordings: `rec-dup`
+
+Branch `feat/fusion-rec-dup` (2026-11-20, org/majkinetor.org "Possible duplicate
+recordings (Fusion's algorithm, zero requests)"). Mockup, approved by vzell with
+all eleven recommendations: https://claude.ai/artifact/LCthm5p9EiftZC6znZsqVB
+(source `debug/mockup-rec-dup-finding.html`).
+
+- **Fusion's code, verbatim.** `_fz*()` and `_FZ_*` are majkinetor's Fusion
+  (`userscripts/fusion/fusion.user.js`): `normName`, `tokenMatch`,
+  `levenshtein`, `fuzzyRatio`, `titleAlike`, `TITLE_QUALIFIERS`,
+  `titleDistinctWords`, `isrcConflict`, `placeConflict`, `artistSimilar`,
+  `lengthClose`, `shouldUnion`, `gatedUnionFind`, `groupTier`,
+  `computeGroupConfidence`, `pairSignals`, and `SETTINGS_DEFAULTS`' two
+  lengths as `_FZ_SETTINGS`. The section between `Fusion port BEGIN` / `END`
+  is GENERATED: `python3 scripts/gen-fusion-port.py --write` cuts each
+  declaration named in `scripts/fusion-port-map.json` out of the clone and only
+  renames it (never a property: `sig.isrcConflict` stays). Never edit it by
+  hand. `node scripts/check-fusion-port.js` undoes the renames and compares
+  every body with the clone line for line, so a refresh of the clone that
+  changed Fusion fails there (anchors `fusion-*` in
+  `scripts/majkinetor-anchors.json`). `recordingSetting()` is not ported: it
+  reads ws/2 relations; `_recDupCommentSetting()` and the recorded-at cells
+  stand in for it.
+- **Fusion's order, over candidate pairs.** `gatedUnionFind()` depends on the
+  order of the unions (which union is refused as a bridge). Fusion's
+  `autoMatch()` loops every pair i < j in pool order. `_recDupGroups()` runs
+  the same loop over `_recDupCandidatePairs()`, sorted by (i, j), so its groups
+  are Fusion's whenever the candidates hold every pair `_fzShouldUnion()`
+  accepts:
+  - strict: an ISRC and an AcoustID index, exact (every accepted pair shares
+    one);
+  - normal/loose: title blocks. Fusion's word test (`tokenMatch` 0.6 of the
+    larger set) is blocked EXACTLY by a prefix filter: each title is listed
+    under its k − c + 1 rarest words (page word frequencies), c the fewest
+    shared words reaching 0.6 of k, computed with Fusion's own division. Its
+    spelling test (`fuzzyRatio` ≥ 0.85) only by the folded title's first and
+    last four characters: a typo near both ends is missed.
+  - Inside a block a pair with two known, different live dates is skipped
+    (`_fzPlaceConflict()` refuses it anyway: `liveDate` is set only when every
+    place entry carries that one date). The skipped pairs are kept (at most
+    `_REC_DUP_MAX_SKIPPED`) and judged after the unions when they touch a
+    group, for the card's "Kept apart".
+  - More than `_REC_DUP_MAX_PAIRS` (2 × 10⁶) candidates: nothing is grouped
+    (`capped`), so a pathological page cannot freeze the render. Decided up
+    front where it can be (vzell, 2026-11-21): every title has one head and
+    one tail key, so either family's pairs (`_recDupBlockPairs()`, counted
+    with the date skip, not built) are distinct and all in the final set; when
+    one family alone is over the cap the search gives up before the word index
+    and before building any pair. Same verdict as before; Springsteen at
+    normal/loose gives up after 59–69 ms instead of 737–788 ms.
+
+  Measured with `scripts/check-fusion-port.js` on the probe dump of Tom Petty
+  and the Heartbreakers (2,630 recordings, `debug/probe-rec-dup/`, dumped
+  2026-11-20T22:18+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) · n/a,
+  Node): bucketed groups equal the all-pairs loop at all three cutoffs (strict
+  13 groups / 27 rows, normal 427 / 1,465, loose 494 / 1,749); about 0.6 s at
+  normal against 40 s for all pairs, 4 ms at strict. Before the word prefix
+  filter, normal missed 7 groups ("Last Dance With Mary Jane" ~ "Mary Jane's
+  Last Dance" share neither end). Normal on an artist's recordings marks
+  every undated live take of a song as one group, which is why Auto is strict
+  there.
+- **The adapter** `_recDupRecord(row, cols)` reads SOURCE-row markup only (a
+  row's live copy first, where late data lands): the recording link (MBID),
+  `_findCellTitleEl()`'s title, Recording length before Length, Recording
+  artist before Artist (MBIDs and the credit string), `_findCellIsrcParts()`,
+  AcoustID links, the Video column's sort key (known only where the column
+  is), `span.mp` around the recording link (its own open edit, not an
+  artist's), the comment (`_recDupCommentSetting()`: live/studio, the date, the
+  folded venue as a place gid, so two dates at one venue, two venues, or a
+  venue against none on one date keep recordings apart), the Recorded at
+  place / in area cells (MBIDs and begin dates), and "live" in Performance
+  attributes / Recording of work. One record per recording MBID: the same
+  recording on two tracks is one recording.
+- **The stamp.** `_computeRecDupCtx(plans)` runs inside `stampFindings()` after
+  pass 1, like `_mainEventCtx`, over `_findingTablePairs()`' source rows in
+  page order (a tracklist's media together); `_stampRecDupKey()` writes each
+  title cell's `data-mb-rec-dup` (the group's smallest member MBID) on every
+  row `_forEachStampRow()` reaches; the finding's `test()` only asks the
+  context. A failure is caught (`Lib.warn`), the page keeps its other
+  findings. Measures `sa-findings-stamp` (the whole stamp) and
+  `sa-findings-recdup`.
+- **Late data** (mockup question 7): `_recDupRegroupSoon()`, debounced 600 ms,
+  after `initAcoustIdIsrcObserver()` relocates AcoustIDs/ISRCs and after
+  `_recOfScheduleRefresh()`. It groups the page again and re-stamps, through
+  `_queueFindingsRestamp()`, only rows whose group changed or whose group's
+  members did; `rec-dup` is in `_LATE_FINDING_IDS`.
+- **The card** is a `kind: 'dup'` entry of `data-mb-tip-cmp`
+  (`_recDupCompare()` → `_cmpDupHtml()`), drawn in place of the finding's
+  line by `_tipTextToHtml()` with the tier pill (`mb-recdup-strict` green,
+  `-normal` blue, `-loose` amber); `detail` keeps the plain prose for the
+  native title. "Kept apart" names pairs a gate held back (the gross-length
+  test as `autoMatch()` counts it: title and artist agree) and unions refused
+  as a bridge. **Not on touch**: the shared card shows nothing on a tap
+  (`_isTouchCompatMouseEvent()`), for every finding; the mockup's "tap to pin"
+  is left for later (vzell, 2026-11-20).
+- **A family-painted title cell** (`data-mb-work-flag`, the "no work" flag)
+  keeps its own tint, glyph and tooltip (`_writeFindingAttrs()`). A finding
+  marked `underFamilyTip` (only `rec-dup`; vzell, 2026-11-20: a new recording
+  added as a duplicate often has no work yet) still writes its lines and card
+  entry UNDER the family's text (`_writeFamilyTipFindings()`): the family text
+  is remembered in `data-mb-family-tip` so a later stamp starts from it, and a
+  title restored from a disk file is cut before its first "⚠️ "/"❌ " line;
+  without such findings the family text is put back. Planted case G5.
+- **📊** "Duplicate recordings - Group" (`recDupGroup`, kind `dupgroup`, mode
+  `dupgroup:<key>`), entries "Title · ISRC" from `_recDupGroupLabel()`, in the
+  context's title order, the tip from `_recDupGroupTip()`; counted in the row
+  loop off `data-mb-rec-dup`.
+- **Settings**: `sa_findings_rec_dup`, `sa_findings_rec_dup_cutoff` (auto |
+  strict | normal | loose), `sa_findings_tint_rec_dup`.
+- **Tests**: `node scripts/check-fusion-port.js` (parity, Fusion's spec cases
+  760/789/565/594/623, the adapter's comment cases; with a dump, bucketed =
+  all pairs); `tests/fixtures/findings-rec-dup.spec.js` (Petty disk fixture:
+  an oracle read off the page, three halves; the menu, 📊, tint, card,
+  survival, switch, late regroup; the planted tracklist
+  `release-tracks-rec-dup.html` with its truth `….expected.json`, written by
+  `scripts/make-rec-dup-fixtures.py`); mutations `scripts/mutations/rec-dup.json`.
+- **Data**: `scripts/probe-rec-dup-examples.py` dumps an artist's recordings
+  (browse, `inc=artist-credits+isrcs`, resumable) to
+  `debug/probe-rec-dup/<MBID>.json.gz`: id, title, length, video, comment,
+  ISRCs, artist credit per recording. Keep the dumps (vzell, 2026-11-20): they
+  serve other analyses too. Springsteen's (74,630 recordings) was at 33,800 on
+  2026-11-20, MusicBrainz answering 503.
+
 ## On demand: the title-style findings
 
 `title-case`, `title-typography`, `title-series-sep`, `title-feat` and

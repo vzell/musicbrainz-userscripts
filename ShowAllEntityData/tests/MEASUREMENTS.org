@@ -541,6 +541,46 @@ per-row residue measured above (header counts +5–8 %, sort +5–6 %), accepted
 with "on by default" (2026-10-19). JSON:
 =tests/snapshots/artist-recordings-petty/interaction-perf-recof-ab-{main,branch}-{p1,p2}-9.99.1389-2026-10-19-NB-3641.json=.
 
+** Disk load, main vs =feat/fusion-rec-dup= (the rec-dup grouping in the stamp), 2026-11-20
+
+The question: what the "Possible duplicate recording" finding costs where it runs, once per
+fetch or disk load inside =stampFindings()= (it does nothing per keystroke, so the interaction
+metrics above are not its question). =tests/support/measure-disk-load.js=: per sample a fresh
+page, =loadFromDiskFixture()= of the Petty fixture, then the render tail; the wall clock of
+that and the page's =sa-*= measures. Main ran through =SA_USERSCRIPT_PATH= (=git show
+main:…=, 9.99.1669); for pairs 3 the scratch copy of main got the branch's two
+=sa-findings-stamp= marks added (that copy only, never the repo).
+
+Env: 2026-11-20T23:22:25+01:00 → 23:33+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux
+6.18.58.1-microsoft-standard-WSL2), 24 cores, 30 GB · Node v24.16.0 · Playwright 1.62.1
+bundled Chromium 151.0.7922.34, no Tampermonkey (GM stubs) · branch =c5b52c28= (9.99.1669 +
+WIP.1) · 7 samples, median · pageType =artist-recordings= (single), "Tom Petty and the
+Heartbreakers — Recordings", 2512 rows, cutoff Auto = strict.
+
+| Arm (order)   | Wall, load → render | sa-findings-stamp | sa-findings-recdup |
+|---------------+---------------------+-------------------+--------------------|
+| main-1 (1st)  |                9074 | —                 | —                  |
+| branch-1      |                9097 | 567               | 79                 |
+| branch-2      |                9255 | 561               | 77                 |
+| main-2 (4th)  |                8440 | —                 | —                  |
+| main-3 (1st)  |                8198 | 401               | —                  |
+| branch-3      |                8204 | 491               | 75                 |
+| main-4 (3rd)  |                8162 | 436               | —                  |
+
+Reading it: the stamp grows by about 70 ms (401–436 → 491), which is the grouping itself
+(=sa-findings-recdup= 75–79 ms); the extra per-cell =getAttribute()= in
+=_writeFindingAttrs()= does not show. The wall clock moves within its own noise (main
+alone spans 7964–9250 ms over its samples). JSON: the scratchpad (not committed).
+
+Full size, the grouping alone in Node (=node scripts/check-fusion-port.js --dump=, the
+Springsteen probe dump, 74,630 recordings, dumped 2026-11-20T23:27:47+01:00, same host):
+strict 56 groups / 113 rows in 149–153 ms; normal and loose exceed =_REC_DUP_MAX_PAIRS=
+(2 × 10⁶ candidate pairs) and give up after 737–788 ms, marking nothing. Auto is strict on
+an artist's recordings, so the give-up costs only who sets the cutoff to normal or loose
+there. With the up-front lower bound (vzell, 2026-11-21T00:25+01:00, same host, =_recDupBlockPairs()=):
+the same verdict after 59–69 ms; strict 86–95 ms; Petty's groups unchanged at all three cutoffs. Petty (2,630): strict 4 ms, normal 597 ms, loose 604 ms; Fusion's all-pairs loop
+about 40 s each.
+
 * Typed filtering — per-keystroke latency and the longest block (=main=, 2026-10-10)
 
 The "measure first" half of the faster-filtering branch (=perf/faster-filtering=): how
@@ -4844,3 +4884,13 @@ Env: 2026-11-20T16:37:55+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 | =npm run test:full=, =7ea48217= + fold      |  3404 |      12 | *23 m 8 s*  | =run-test-full.py=, 16:37:55–17:01:03 CET |
 
 3404 passed (the branch's 3397 and main's feed 1.6 tests), no flake.
+
+* 2026-11-20 — =npm run test:full= on =petri=, feat/fusion-rec-dup (WIP.1)
+
+Env: 2026-11-20T23:32:10+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                                   | Tests | Workers | Wall clock  | Basis                                     |
+|---------------------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, =546d8b29=             |  3418 |      12 | *23 m 7 s*  | =run-test-full.py=, 23:32:10–23:55:17 CET |
+
+3418 passed (main's 3404 and the rec-dup spec's 14), no flake.
