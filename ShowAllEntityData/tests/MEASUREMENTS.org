@@ -4746,3 +4746,13 @@ columnFilter 1.03, sort 1.01, uniqDropCold 0.99, uniqDropWarm 1.04, headerCounts
 code reading nothing the branch adds runs on this page (the tag families, the feed's maps and the tag facts are
 Brucebase only; =_bbFeedChanged()= runs only when a feed comes in, none is read here; the five settings show only in
 the dialog).
+
+* 2026-11-20 — =npm run test:full= on =NB-3641=, main after merging feat/bb-findings-batch3b (9.99.1665)
+
+Env: 2026-11-20T00:44:05+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                                   | Tests | Workers | Wall clock  | Basis                                     |
+|---------------------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, =a93d898a= + fold      |  3363 |      14 | *22 m 49 s* | =run-test-full.py=, 00:44:05–01:06:54 CET |
+
+3363 passed (the branch's 3356 and main's Apollo batch 3 tests), no flake.

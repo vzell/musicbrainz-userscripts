@@ -4,9 +4,49 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1831 versions; the month pages hold all of them.
+This page shows the newest 100 of 1836 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1665 — 2026-11-20
+
+**🚀 Feature**
+
+- Brucebase: a show's song tags can now be checked too (⚙️ Settings, "Also check a Brucebase show's song tags", off by default while the tag checks are tuned). Every song the setlist links should carry its tag as the Brucebase feed's song map names it: the tags the shows of that song carry, such as "btr" or "borntorun" for Born to Run. The link's own title as a tag counts too, and a medley the feed names ("Land Of Hope And Dreams - People Get Ready") counts through its combined tag. Only songs whose tag the wiki uses on at least 9 of 10 of their shows are checked, and only linked songs. On the wiki today it flags 465 shows with 825 missing song tags.
+- Brucebase: the place tags check now also expects the show's venue tag: its "Venue" link leads to the venue page, and the feed's venue map gives that page's tag. It adds 10 shows, for example 1981-04-26 Forest National without "forestnational".
+
+
+## 9.99.1664 — 2026-11-20
+
+**🚀 Feature**
+
+- Brucebase: a show's cast tags can now be checked too (⚙️ Settings, "Also check a Brucebase show's cast tags", off by default while the remaining tag checks are tuned). Every person and band that a show's cast tab (On Stage, In Studio, On Audio, On Set) lists should have a tag. A tag counts in the ways the wiki writes names: "garrytallent", the dotted "vini.lopez", without "The", without a nickname, and each part of "Flo & Eddie". A show with an On Stage tab should carry "onstage". One with an On Stage tab but no On stage page gets "onstage" marked missing alone, since its cast is not tagged at all, rather than one mark per person. The cast is checked once the show's On stage page has been read, and the E Street Band's dotted names and other aliases come from the Brucebase feed. On the wiki today it flags 628 shows, 475 of them for the missing On stage page. "studio" and "guest" are not checked: the wiki uses them too unevenly.
+
+
+## 9.99.1663 — 2026-11-20
+
+**🚀 Feature**
+
+- Brucebase: a show's content tags can now be checked too (⚙️ Settings, "Also check a Brucebase show's content tags", off by default while the remaining tag checks are tuned). A show whose News/Memorabilia tab shows a setlist should carry "setlist" (and "handwritten" or "printed" when the picture's name says so), one showing a ticket should carry "ticket", and one with an entry on its Storyteller or Eyewitness tab should carry "storyteller" or "eyewitness". A "storyteller" or "eyewitness" tag without its tab's entry is a ⚠️. The picture tags never are: a picture can sit on a news page the tab lists, or in its Flickr gallery. It reads only the page itself, with no request and no feed. Like the other tag checks, it is marked on the Tags card, in the preview window and in the year table's Tags column. On the wiki today it flags 154 shows. "news", "memorabilia", "bootleg", "livedl", "soundcheck" and "rescheduled" are not checked: the wiki does not tag them by a rule the page shows.
+
+
+## 9.99.1662 — 2026-11-20
+
+**🚀 Feature**
+
+- Brucebase: a show's place tags can now be checked too (⚙️ Settings, "Also check a Brucebase show's place tags", off by default while the remaining tag checks are tuned). A show should carry tags for the city, the US state or Canadian province ("newjersey(nj)") and the country its title names, "usa" or "canada" after a state or province, and "europe" or "oceania" for a country there. Like the other tag checks, it is marked on the Tags card, in the preview window and in the year table's Tags column; a place tag is never called not expected. A few names the wiki tags its own way ("West Germany" is "germany", "Atlantic City" is "atlanticcitynj") and the regions come from the Brucebase feed, so BruceParser keeps them up to date without a new script version. Without the feed the Tags card says the place is not checked. On the wiki today it flags 35 shows, most of them without "usa" or "canada", one with the city written "Los Angels". The venue's own tag will follow through the feed.
+
+
+## 9.99.1661 — 2026-11-20
+
+**🚀 Feature**
+
+- Brucebase: a show's tour tag can now be checked too (⚙️ Settings, "Also check a Brucebase show's tour tag", off by default while the remaining tag checks are tuned). A gig or a cancelled show whose date lies in a tour's dates should carry that tour's tag (both tags where two tours overlap), unless it is tagged "tour\_no", the wiki's mark of a one-off show between a tour's dates. A tour tag whose tour has other dates is a ⚠️. Like the other tag checks, it is marked on the Tags card, in the preview window and in the year table's Tags column. The tours and their dates come from the Brucebase feed, so BruceParser keeps them up to date without a new script version. Without the feed the Tags card says the tour is not checked. Rehearsals, recordings, interviews and dates with "00" are not checked. On the wiki today it flags 49 shows, for example the four Bijou Cafe pages of December 1973 tagged "tour\_wies" and the Brussels show of 2008 tagged "tour\_rsng" instead of "tour\_mgc".
+
+**📝 Docs**
+
+- The setting "Read the Brucebase feed" gave the file's size as about 25 KB; it is about 28 KB compressed now.
+
 
 ## 9.99.1660 — 2026-11-19
 
@@ -841,43 +881,6 @@ This page shows the newest 100 of 1831 versions; the month pages hold all of the
 **✨ Improve**
 
 - springsteenlyrics.com item pages: an item's scans and artwork are one section. With several copies it has a chip per copy and By copy instead of By type, and the viewer steps through every copy's scans (before, each copy was its own section with its own viewer).
-
-
-## 9.99.1565 — 2026-11-06
-
-**✨ Improve**
-
-- Other sites' detail pages (a Discogs release's or master's Tracks view, an archive.org item, a springsteenlyrics item or song page): their pictures now work like a release's Cover art on MusicBrainz. Type chips (Discogs' Primary and Secondary, archive.org's Front, Back, Booklet or Medium guessed from the file names, springsteenlyrics' Scan or Artwork), ★ on Discogs' primary image, Grid or By type (remembered for these pages, separately from MusicBrainz), and a click or Space opens the viewer over the pictures shown, with the page's title in its bar.
-
-
-## 9.99.1564 — 2026-11-06
-
-**🔧 Refactor**
-
-- Cover art and Event art sections (release and event pages): the section now gets its pictures, loading and retry from one adapter, the first step toward one picture section for every detail page (springsteenlyrics scans, Discogs images, archive.org pictures). Nothing changes on screen. One fix comes with it: the Cover art tab finds its own section even when another picture section stands before it on the page.
-
-
-## 9.99.1563 — 2026-11-05
-
-**🐛 Fix**
-
-- springsteenlyrics.com (and the other Springsteen sites): in a preview window, a link whose page its card has loaded gets the green "already loaded" dot, as MusicBrainz links do, also when the answer comes in after the pointer has moved on; resting on it again says "(read before, no request)".
-
-
-## 9.99.1562 — 2026-11-05
-
-**🐛 Fix**
-
-- 📊 dropdown: on a site whose stylesheet sizes every element with its padding (springsteenlyrics.com's Bootstrap), the badge of the largest count was wider than the others, so its label started further right ("(176) Live" in the Type column of a lyrics letter page). Every badge now has one width on every site.
-
-
-## 9.99.1561 — 2026-11-05
-
-**🐛 Fix**
-
-- springsteenlyrics.com: a medium written with its kind in brackets ("Disc 1: \[CD\]", "Disc 2: \[DVD\]", collection item 7457) is a medium of its own: the item's tables get a sub-table for each, its preview window both lists, and the initial page links the second one's songs too (until now its tracks were read as notes).
-- springsteenlyrics.com: in an item's preview window, the titles of a tracklist line up after the numbers "10" and on (the site's fonts have figures of different widths).
-- springsteenlyrics.com: a box set whose page lists its records without their tracklists (sampler items 5618 and 5619: Record 1: "Greetings From Asbury Park N.J.", its pressing, catalogue number and sleeve) gets one Contents table, a row per record (until now the first record's three lines were shown as three tracks and the others as notes); its preview counts the records and lists them.
 
 
 ---
