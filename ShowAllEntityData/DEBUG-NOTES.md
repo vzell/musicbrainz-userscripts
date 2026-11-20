@@ -30749,3 +30749,5 @@ Env: 2026-11-20T12:40–15:09+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6
 - **Mutations:** `scripts/mutations/gf-query-mode.json`, 19 entries, 18 caught, one `"expect": "pass"` by
   construction (a negated leaf can never be marked in a kept row). Six finds of `filter-flag-scoping.json` and
   `global-filter-art-search.json` re-pointed to the moved code; all six behave as before.
+- **Browser check** (vzell, 2026-11-20, live): OK. Env: Vivaldi 8.2.4133.96 (Chromium 152.0.7977.170) · Tampermonkey
+  5.5.1. Follow-up asked at the same time: a card like Q's for Rx (the expression in words, or why it is invalid).

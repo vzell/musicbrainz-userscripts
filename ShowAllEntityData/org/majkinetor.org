@@ -18,7 +18,8 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 
 - *Now:* the query mode for the global filter (Event Horizon's language, the Q box) is built on =feat/gf-query-mode=
   as the mockup was approved (https://claude.ai/artifact/Y7tjYtaS82RTaZ5Admz2wk, all nine questions as recommended);
-  waiting for vzell's browser check before the merge. See the item.
+  vzell's browser check OK (2026-11-20). Follow-up on the same branch, asked then: a card like Q's for Rx (the
+  regexp read in words, or why it is invalid, with examples); mockup first. See the item.
 - *Next:* the next adoption is open (Fusion's duplicate recordings, the Credit Hoarder role map, column reorder, …).
   The Apollo item finished with batch 4 (9.99.1666).
 - *Waiting on majkinetor* (#938):
@@ -466,7 +467,8 @@ recommendations").
 
 - *Who fixes it*: *ours*. Adoption question 6 also asked whether the grammar is stable; no answer on that, so follow
   EH's =tqParse= as it is and let the refresh's anchor =eh-tqparse= flag a change.
-- *Built* on =feat/gf-query-mode= (2026-11-20; waiting for vzell's browser check). Mockup approved as is:
+- *Built* on =feat/gf-query-mode= (2026-11-20; vzell's browser check OK the same day, live, in Vivaldi 8.2.4133.96
+  (Chromium 152.0.7977.170) with Tampermonkey 5.5.1). Mockup approved as is:
   https://claude.ai/artifact/Y7tjYtaS82RTaZ5Admz2wk. A fourth global box Q; =_gfqParse()= ports =tqParse= (credited
   in the attribution block) with two changes: an exact key beats an earlier prefix, and a column's display label is
   a key too; values keep their accents (only keys are folded). Compiled once per pass and column set
