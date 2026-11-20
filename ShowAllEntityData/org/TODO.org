@@ -6451,3 +6451,387 @@ Until then, what is the way to still clear the cached entry and get the ERROR fi
 1. merge; 2. as recommended; 3. no mockup + YES you were right, I was running an older userscript version, after installing the latest everything is fine even on "petri"
 
 
+* bb overwhole - Here is Claude's plan:
+
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ BruceParser: the open items before the next full run, plus two loose ends
+
+ Env (read-only probes): 2026-11-20 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.58.1) · n/a (Python/Bash over
+ the mirror bb/latest → bb/2026-11-19, local on NB-3641, BruceParser 0.21.3 run; MB event data of the same run)
+
+ Context
+
+ org/springsteen-marriage.org → "TODO Still open in BruceParser" lists what the 2026-11-19 audit left unchecked:
+ the YEAR/DETAIL sed pipelines (incl. the &quot; asymmetry), the SL/KF/JL parsing (esfsl.sh, erfsl.sh) and
+ the hard-coded exceptions (an exception can hide a rule bug, as the Chelsea Piers/Montpellier ones did). vzell
+ wants findings with counts and a plan per fix before any code, and before his next full bbp.sh run. Two loose
+ ends from 2026-11-20 join: the ~30 MusicBrainz event-title errors found by hand in check 1, as a list for vzell to
+ fix on MusicBrainz, and the once-seen bb-place.spec.js "/onstage: link previews its event" timeout.
+
+ Order problem: the prompt asks for a full bbp.sh run first. Plan mode allows no run, so the probes below
+ ran on bb/2026-11-19 (one day old, BruceParser 0.21.3). Step 0 of execution is the run; every count below is
+ then re-measured on the new run before any code (the probe scripts are kept for that).
+
+ Step 0: the full run (vzell asked for it; the PICKUP's "not without vzell" is lifted for this run only)
+
+ - From ~/git/scripts/BruceParser: BBP_NOTE="before the open-items fixes (0.27.0)" ./bbp.sh, in the
+   background, log to the scratchpad. Not BBP_PUBLISH=1. The publication of the feed afterwards is my own step
+   anyway (publish-feed.sh -n, then -r), only if feed.sh passes and the feed differs.
+ - Midnight rule: the whole run must fall on one calendar day; ~45 min on NB-3641 (2,719 s on 2026-11-19), the
+   download alone 7–196 min. Decided (vzell): start after midnight, ~00:05 CET, as run bb/2026-11-21
+   (scheduled wake-up; TZ=Europe/Berlin date checked before the start).
+ - Afterwards: bb/latest → the new run; the run's tracked artefacts (docs/timings.tsv, bb/*.org titles,
+   search/work_linked_to_artist-title_sort.txt) plus a docs/run-history.md section, committed like 19143e7
+   ("docs: report data from <date> run").
+ - Then every count below is re-measured on the new run (step 1) and this plan's numbers updated before code.
+
+ Step 1: probes become re-runnable checks
+
+ BruceParser has no tests (tests/ and debug/ are empty). The agents' read-only probe commands become
+ tests/probe-<area>.sh scripts in BruceParser (year-detail, sl-kf-jl, exceptions), each printing one
+ name count line per finding, run as bash tests/probe-x.sh bb/latest. Their output before and after each fix
+ is the regression evidence (the count drops to the expected value, others stay). Expected counts recorded in
+ tests/README.md. Measure with /usr/bin/grep (an interactive grep may be a ugrep wrapper).
+
+ Findings (bb/2026-11-19; to be re-measured on the new run)
+
+ (1) YEAR and DETAIL pipelines
+
+ Both copies of year_page_normalize are byte-identical (eefyp.sh:44, extract-all-event-info-and-setlists.sh:48);
+ all 539 <blockquote> blocks are rewritten. Spot-checked by me: F4 (1974-04-07 WMMR).
+ Script short names: eaeias = extract-all-event-info-and-setlists.sh (YEAR), esfdp =
+ extract-setlists-from-detail-pages.sh (DETAIL + the diff).
+
+ The 341 rows of setlist-differences.txt: 23 pipeline artefacts (16 confirmed by re-running the pipeline with
+ the fix in an eval harness that reproduces both outputs byte for byte, 7 from the markup), 54 shows whose YEAR page
+ has no setlist (40 radio playlists), 1 DETAIL without a Setlist tab, 263 real wiki differences (2 whitespace typos,
+ 19 case only, 76 set label/line break, 61 annotations, 105 songs/order/spelling). Only ~4 of the 23 are encodings.
+
+ The &quot; asymmetry (F1), confirmed but small: eaeias:142 deletes every leftover &quot; → 1 YEAR setlist
+ line (1998-10-27 "BBC BLUES") and 2 prose lines; the DETAIL side keeps &quot; in 1 line (2020-04-08 Huey &quot;Piano&quot; Smith, a show without a YEAR setlist). Hidden coupling: esfdp:372 and :377 delete those two
+ prose lines only because their quotes are gone, so F1 alone raises the count to 343; with F3 it goes to 340.
+
+ ┌─────┬─────────────────────────────┬────────────────────────────────────────────────────────┬──────────────────────────────────────────────────┬─────────────────────────────────────────────────────┐
+ │  #  │            Where            │                        Finding                         │               Count on 2026-11-19                │                       Example                       │
+ ├─────┼─────────────────────────────┼────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼─────────────────────────────────────────────────────┤
+ │ F1  │ eaeias:142; esfdp:233,      │ &quot; deleted (YEAR) vs kept (DETAIL); two deletes    │ 1 setlist line each side, 2 prose lines          │ 1998-10-27 BBC BLUES                                │
+ │     │ :372, :377                  │ depend on it                                           │                                                  │                                                     │
+ ├─────┼─────────────────────────────┼────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼─────────────────────────────────────────────────────┤
+ │ F2  │ eaeias:136-141              │ <em>/<a> become “ ” on YEAR only; a setlist wholly in  │ 2 lines with curly quotes; 2 setlists dropped    │ 2018-07-17, 2018-07-18a                             │
+ │     │                             │ <em> then starts with “ and esfdp:369 drops it         │                                                  │                                                     │
+ ├─────┼─────────────────────────────┼────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼─────────────────────────────────────────────────────┤
+ │ F3  │ esfdp:216 (+ :220 runs      │ DETAIL <li> filter wants [0-9A-Z] or a song link:      │ 13 items on 11 pages, all in the report          │ <li>(I LOVE) EVERYTHING ABOUT YOU                   │
+ │     │ after it)                   │ drops (, ?, &quot;, &#8230;, <em>, Á                   │                                                  │                                                     │
+ ├─────┼─────────────────────────────┼────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼─────────────────────────────────────────────────────┤
+ │ F4  │ esfdp:227-237               │ Greedy href="/song:.*"> eats up to the last ">: text   │ 222 lines on 36 pages; 10 report rows            │ 1974-04-07 WMMR: "GOOD LOVIN' (" gone; 9 Thrill     │
+ │     │                             │ before a second link or span is lost                   │                                                  │ Hill 1983 sessions; "Soundcheck" headings           │
+ ├─────┼─────────────────────────────┼────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼─────────────────────────────────────────────────────┤
+ │ F5  │ esfdp:239                   │ Split at the LAST colon of any line                    │ 8 song titles on 4 pages                         │ GJEILO: NOCTURNAL; the :311 hack exists for it      │
+ ├─────┼─────────────────────────────┼────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼─────────────────────────────────────────────────────┤
+ │ F6  │ esfdp:369 (+ :371-382)      │ YEAR line filter: unanchored greedy (.*): … lets prose │ 2 prose rows in; 7 lines dropped (6 in the       │ "Power: A Celebration" (2025-03-26); 30 DAYS OUT;   │
+ │     │                             │  in; [1-9A-Z][A-Z'.] drops digit/“/accent lines        │ report)                                          │ SÓLO LE PIDO A DIOS                                 │
+ ├─────┼─────────────────────────────┼────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼─────────────────────────────────────────────────────┤
+ │ F7  │ esfdp:370                   │ (with …) removed on YEAR only, case-sensitive          │ 0 rows today                                     │ —                                                   │
+ ├─────┼─────────────────────────────┼────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼─────────────────────────────────────────────────────┤
+ │ F8  │ esfdp:309, :310, :319-324   │ Show:, duplicates, (Instrumental) lower-casing on      │ 1 YEAR line each, 0 rows today                   │ —                                                   │
+ │     │                             │ DETAIL only                                            │                                                  │                                                     │
+ ├─────┼─────────────────────────────┼────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼─────────────────────────────────────────────────────┤
+ │ F9  │ eaeias:158, :209            │ Title swap regexes unanchored, run on every line; <a   │ 168 non-title lines mangled, 1 reaches the       │ 2025-03-26                                          │
+ │     │                             │ target=…>/<a class=…> not converted (1,445)            │ cleaned file                                     │                                                     │
+ ├─────┼─────────────────────────────┼────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼─────────────────────────────────────────────────────┤
+ │     │                             │ detail_* not reset for 00-NO-DETAIL events (= rule bug │ 2 events: 5,018 rows / 5,016 ids; wrong          │                                                     │
+ │ F10 │ eefyp.sh:464-535            │  1 of the exceptions, E1)                              │ musicbrainz.txt rows; 1 report row (1980-05-09   │ 1980#300580|1980‐05‐09: Clover Studios…             │
+ │     │                             │                                                        │ twice)                                           │                                                     │
+ ├─────┼─────────────────────────────┼────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼─────────────────────────────────────────────────────┤
+ │ F11 │ eefyp.sh:315                │ regex lacks its closing "; works only because :310     │ 2 titles, correct today                          │ —                                                   │
+ │     │                             │ runs first                                             │                                                  │                                                     │
+ ├─────┼─────────────────────────────┼────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼─────────────────────────────────────────────────────┤
+ │ F12 │ eefyp.sh:334-343, :354      │ YEAR-LIST: one <li> per line assumed; unanchored       │ 1 false MISSING (2010#230710)                    │ 2010-07-22/23 in one <li>                           │
+ │     │                             │ bracket regex                                          │                                                  │                                                     │
+ ├─────┼─────────────────────────────┼────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼─────────────────────────────────────────────────────┤
+ │ F13 │ page-extract.sh:164-177     │ html_title_normalize word-splits and globs (Café       │ 5 double-space DETAIL titles never reported      │ 1966-07-28                                          │
+ │     │                             │ Wha?), collapses DETAIL spaces only                    │                                                  │                                                     │
+ ├─────┼─────────────────────────────┼────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼─────────────────────────────────────────────────────┤
+ │ F14 │ esfdp:215                   │ assumes tab 0-1 is the Setlist tab                     │ Setlist on 4,379/5,018; 31 pages have no tab 0-2 │ —                                                   │
+ │     │                             │                                                        │  (range to EOF)                                  │                                                     │
+ └─────┴─────────────────────────────┴────────────────────────────────────────────────────────┴──────────────────────────────────────────────────┴─────────────────────────────────────────────────────┘
+
+ (2) SpringsteenLyrics, KillingFloor (brucespringsteen.it), Jungleland (esfsl.sh, erfsl.sh)
+
+ Nothing here feeds feed.sh; the outputs are the published bb/bruce.org DataTables (releases_*.org,
+ works-*.org) and two side-by-side HTML pages. Spot-checked by me: findings 1 and 3.
+
+ ┌─────┬────────────────────────┬─────────────────────────────────────────────────────────────────────────────────────────┬──────────────────────────────────────┬─────────────────────────────────────┐
+ │  #  │ Where (erfsl.sh unless │                                         Finding                                         │         Count on 2026-11-19          │               Example               │
+ │     │         named)         │                                                                                         │                                      │                                     │
+ ├─────┼────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────┼─────────────────────────────────────┤
+ │     │ :138-152, :185-206,    │                                                                                         │ 8 pages: collection album 11→14,     │                                     │
+ │ S1  │ :318                   │ Hard-coded page counts miss pages; the last page is never checked for a further one     │ single 13→14, vaalbum 4→5, audioboot │ album-11.html links page=12, 13, 14 │
+ │     │                        │                                                                                         │  3→4; Stefano 3→5                    │                                     │
+ ├─────┼────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────┼─────────────────────────────────────┤
+ │     │ same arrays;           │ Category/letter lists drifted: 3 gone (collection old, video_mov; bootlegs              │ 3 dead, ~9 new; "96 Tears" missing   │                                     │
+ │ S2  │ esfsl.sh:159           │ vid_official) give 0 rows silently; new ones unknown (nugs, video_movie,                │ from works-sl.org                    │ —                                   │
+ │     │                        │ video_cover/doc/unauth, printed matter); songs letter=9 not fetched                     │                                      │                                     │
+ ├─────┼────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────┼─────────────────────────────────────┤
+ │ S3  │ :330-352               │ Stefano pages are CRLF, \r stripped LAST: every row shifted by one column               │ 300/300 rows have 13-14 fields (11   │ row 133: Info empty, Label holds    │
+ │     │                        │                                                                                         │ expected), 218 keep </a              │ the info                            │
+ ├─────┼────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────┼─────────────────────────────────────┤
+ │ S4  │ :281-304               │ CR in every Eddy collection row                                                         │ 4,159/4,159                          │ CBS Home Of The Hits^M              │
+ ├─────┼────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────┼─────────────────────────────────────┤
+ │ S5  │ :281-304, :434         │ Fields by position: a missing Format line shifts Country/Date; a raw <span> splits a    │ 5 blocks (9706, 7790, 9976, 9977,    │ 9976>guest>Dion -- Blues With       │
+ │     │                        │ row                                                                                     │ 8877)                                │ Friends>>…                          │
+ ├─────┼────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────┼─────────────────────────────────────┤
+ │ S6  │ :232, :254             │ Bootleg "Lossy" warning: stray > field, and it pushes the info line out of -A 7         │ 72 rows, 51 lose their info          │ 5629>aud_live2014>…>Lossy>          │
+ ├─────┼────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────┼─────────────────────────────────────┤
+ │ S7  │ :253, :302             │ Unanchored s/original // eats the word in data, misses it in the info column            │ 34 labels damaged; 33 rows keep      │ "Backstreet Records, original       │
+ │     │                        │                                                                                         │ "original info file"                 │ pressing" → "…, pressing"           │
+ ├─────┼────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────┼─────────────────────────────────────┤
+ │ S8  │ :255, :303, :350;      │ Entities decoded without g (once per line) or not at all                                │ &quot; 171 collection, 15 bootleg,   │ Paradise By the &quot;c&quot; in    │
+ │     │ esfsl.sh:184-186       │                                                                                         │ 10 Stefano, 1 song                   │ works-sl.org                        │
+ ├─────┼────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────┼─────────────────────────────────────┤
+ │ S9  │ :234, :284, :333, :386 │ Perl join splits on ANY -- (grep's separator test) — latent                             │ 0 today; 633 titles contain --, safe │ —                                   │
+ │     │                        │                                                                                         │  only by line position               │                                     │
+ ├─────┼────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────┼─────────────────────────────────────┤
+ │ S10 │ :383-392 (KF)          │ grep -A 2 assumes 3-line entries: 2 entries without an Mx line merge 3 records; 70 note │ 1,876 rows for 1,878 entries; 70     │ COL6629497L + COL6630317L in one    │
+ │     │                        │  lines cut                                                                              │ notes lost                           │ row                                 │
+ ├─────┼────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────┼─────────────────────────────────────┤
+ │ S11 │ KF hand copy           │ brucespringsteen.it unchanged since the hand copy                                       │ 0 (only "Last computed")             │ —                                   │
+ ├─────┼────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────┼─────────────────────────────────────┤
+ │ S12 │ JL hand copy           │ jungleland.it changed: 120 new releases not in the hand copy; the fresh download is one │ 129 new hrefs, 9 hand-renamed        │ 20260407.htm Inglewood #1           │
+ │     │                        │  937 KB line in cp1252, so the doc's diff recipe is useless                             │ (Latin-1 names, likely dead links)   │                                     │
+ ├─────┼────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────┼─────────────────────────────────────┤
+ │ S13 │ :413-414 (JL)          │ GNU grep under C.UTF-8 drops lines with invalid UTF-8 ("binary file matches" in the     │ 2 rows lost (75 if the fresh copy    │ 19730731_5.htm (\xba)               │
+ │     │                        │ log, not an error)                                                                      │ were used)                           │                                     │
+ ├─────┼────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────┼─────────────────────────────────────┤
+ │ S14 │ :415-418 (JL)          │ sed order breaks the "Others" removal; [Adult Version] rewrite hits the href, not the   │ 1 garbled row, 2 broken links        │ SPL 6 (… (Adult Version)).htm       │
+ │     │                        │ title; one dead pattern                                                                 │                                      │                                     │
+ ├─────┼────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────┼─────────────────────────────────────┤
+ │     │ esfsl.sh:235;          │ The MB side was the 2024-10-21 hand copy on 2026-11-19; regenerated since (1,587).      │                                      │                                     │
+ │ S15 │ bbp.sh:179-186         │ bbp.sh waits for search-work's timing file, not its success: a failed work search diffs │ —                                    │ —                                   │
+ │     │                        │  the old list silently                                                                  │                                      │                                     │
+ ├─────┼────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────┼─────────────────────────────────────┤
+ │ S16 │ esfsl.sh:101-137,      │ Unkeyed title diff, only BB/SL capitalised (MB not), MB duplicates                      │ ~95 of 461 MB-not-in-BB are          │ Hang On Sloopy / Hang on Sloopy     │
+ │     │ 202-251                │                                                                                         │ artefacts                            │                                     │
+ ├─────┼────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────┼─────────────────────────────────────┤
+ │ S17 │ esfsl.sh:202, 206      │ SL sorted before capitalising                                                           │ 52 inversions, 121 spurious diff     │ Angel’s Blues on both sides, shown  │
+ │     │                        │                                                                                         │ lines                                │ as different                        │
+ ├─────┼────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────┼─────────────────────────────────────┤
+ │ S18 │ both                   │ Always exit 0; curl -s without -f; failed cd ignored; esfsl.sh needs REPORTING/ from    │ —                                    │ docs/timings.tsv "failed −" despite │
+ │     │                        │ dc.sh; bruce.org includes a file no run writes                                          │                                      │  S1-S17                             │
+ └─────┴────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────┴──────────────────────────────────────┴─────────────────────────────────────┘
+
+ (3) Hard-coded exceptions (31 found; 7 dead, ~10 hide a rule bug, the rest genuine)
+
+ Spot-checked by me: E1 and E12.
+
+ ┌─────┬────────────────────────────────────────────────────┬──────────────────────────────────────────────────┬──────────────┬────────────────┬───────────────────────────────────────────────────────┐
+ │  #  │                       Where                        │                    Exception                     │   Matches    │     Class      │        Evidence / victims without an exception        │
+ ├─────┼────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼──────────────┼────────────────┼───────────────────────────────────────────────────────┤
+ │     │                                                    │                                                  │              │ HIDES BUG      │ Events with no DETAIL page get an empty title         │
+ │ E1  │ eefyp.sh:1244 (+ dead :1248, :1255)                │ 1998#200998                                      │ 1            │ (rule bug 1)   │ (:327-330 before the swap :386-390); 1980#300580      │
+ │     │                                                    │                                                  │              │                │ leaks into side-by-side-CLEANEDUP row 24              │
+ ├─────┼────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼──────────────┼────────────────┼───────────────────────────────────────────────────────┤
+ │     │                                                    │                                                  │              │                │ Hide 2 real differences:                              │
+ │ E2  │ eefyp.sh:1061/1071/1087, :1062/1079/1094           │ -private-residence- URL filters                  │ 15 / 23      │ GENUINE, too   │ news:1985-12-24-private-residence-rumson-nj "…, NJ    │
+ │     │                                                    │                                                  │              │ broad          │ Rumson Nj"; gig:1991-02-09-…-malibu-ca Sumner vs      │
+ │     │                                                    │                                                  │              │                │ Sting                                                 │
+ ├─────┼────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼──────────────┼────────────────┼───────────────────────────────────────────────────────┤
+ │ E3  │ eefyp.sh:1063, 1072, 1088                          │ soundcheck 1988 deletes                          │ 0            │ DEAD           │ All 3 soundcheck pages now carry the gig's title      │
+ ├─────┼────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼──────────────┼────────────────┼───────────────────────────────────────────────────────┤
+ │ E4  │ eefyp.sh:1057                                      │ comment on "The/De/Le" expressions               │ —            │ stale comment  │ removed in 1.5                                        │
+ ├─────┼────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼──────────────┼────────────────┼───────────────────────────────────────────────────────┤
+ │ E5  │ efc.sh:952, 957                                    │ Stone Hill Farm podcast episodes                 │ 9            │ GENUINE,       │ rule: strip a trailing  - Episode N                   │
+ │     │                                                    │                                                  │              │ venue-bound    │                                                       │
+ ├─────┼────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼──────────────┼────────────────┼───────────────────────────────────────────────────────┤
+ │ E6  │ efc.sh:953, 958                                    │ Villa Park Part 1/2                              │ 2            │ GENUINE        │ rule: strip a trailing  (Part One/Two/…)              │
+ ├─────┼────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼──────────────┼────────────────┼───────────────────────────────────────────────────────┤
+ │ E7  │ efc.sh:991                                         │ ,storyteller |                                   │ 198          │ GENUINE,       │ matches only when it is the last tag; match the whole │
+ │     │                                                    │                                                  │              │ position-bound │  tag                                                  │
+ ├─────┼────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼──────────────┼────────────────┼───────────────────────────────────────────────────────┤
+ │     │                                                    │                                                  │              │ HIDES BUG      │ date-part state not reset for a page without a date;  │
+ │ E8  │ efc.sh:992                                         │ asteroid-23990-springsteen                       │ 3            │ (rule bug 2)   │ news:web-shea-s-theatre-buffalo-ny gets 3 false rows  │
+ │     │                                                    │                                                  │              │                │ against the previous page's date                      │
+ ├─────┼────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼──────────────┼────────────────┼───────────────────────────────────────────────────────┤
+ │ E9  │ efc.sh:994                                         │ gallery:2002-07-11                               │ 4            │ GENUINE (wiki  │ page lacks xdate; ask Brucebase, then drop            │
+ │     │                                                    │                                                  │              │ omission)      │                                                       │
+ ├─────┼────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼──────────────┼────────────────┼───────────────────────────────────────────────────────┤
+ │ E10 │ efc.sh:996                                         │ -[12]\s+| multi-title                            │ 23           │ partly HIDES   │ 7 are Villa Park parts (not redirects); -3…-9 not     │
+ │     │                                                    │                                                  │              │ BUG            │ covered                                               │
+ ├─────┼────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼──────────────┼────────────────┼───────────────────────────────────────────────────────┤
+ │     │                                                    │                                                  │              │ HIDES BUG      │ no general Wikidot rule (non-[a-z0-9] → -): 164 rows  │
+ │ E11 │ checkURLandTitles.sh:74-77                         │ A&amp;M, BB&amp;T, Canal+                        │ 36/21/10     │ (rule bug 3)   │ in URL-shortening-CLEANEDUP still hold / = + # & @ ;, │
+ │     │                                                    │                                                  │              │                │  e.g. content:at&t-park-…                             │
+ ├─────┼────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼──────────────┼────────────────┼───────────────────────────────────────────────────────┤
+ │ E12 │ eefyp.sh:915 (no exception: dead code)             │ story dependent pages looked up as               │ 0 of 1,399   │ BUG            │ saved as story_story-<id>: story pages are never      │
+ │     │                                                    │ story/story_<id>                                 │              │                │ compared; the strip at :957-963 is dead               │
+ ├─────┼────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼──────────────┼────────────────┼───────────────────────────────────────────────────────┤
+ │ E13 │ checkURLandTitles.sh:66, 45-46, 73, 238-239        │ At Seattle Center; West/East Germany/Berlin; For │ 27/106/87/68 │ over-broad     │ false rows: 18 / 11 / 3 / 8                           │
+ │     │                                                    │  The Performing Arts; New→NJ, Jersey→NJ          │              │                │ (gig:1971-11-23-new-plaza-theater-linden-nj)          │
+ ├─────┼────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼──────────────┼────────────────┼───────────────────────────────────────────────────────┤
+ │ E14 │ checkURLandTitles.sh:67, :244 Beverley             │ At Shadow Lane, Beverley                         │ 0            │ DEAD           │ —                                                     │
+ ├─────┼────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼──────────────┼────────────────┼───────────────────────────────────────────────────────┤
+ │     │                                                    │                                                  │              │                │ drops song lines with a digit 2nd char, a leading (,  │
+ │ E15 │ extract-setlists-from-detail-pages.sh:369          │ YEAR-side whitelist grep (634|\(YOUR LOVE…)      │ 26 lines     │ HIDES BUG      │ a non-ASCII capital: "30 DAYS OUT" (1990-03-00 A&M),  │
+ │     │                                                    │                                                  │              │ (rule bug 5)   │ "57 CHANNELS" (1990-12-00a): 2 false differences;     │
+ │     │                                                    │                                                  │              │                │ "SÓLO LE PIDO A DIOS" dropped                         │
+ ├─────┼────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼──────────────┼────────────────┼───────────────────────────────────────────────────────┤
+ │ E16 │ same, :371-382                                     │ 12 literal prose-line deletes                    │ 17 lines     │ HIDES BUG      │ 3 prose lines still leak                              │
+ │     │                                                    │                                                  │              │ (rule bug 6)   │                                                       │
+ ├─────┼────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼──────────────┼────────────────┼───────────────────────────────────────────────────────┤
+ │ E17 │ same, :311                                         │ awk join ^FIRE / GET OUT OF MY LIFE…             │ 1            │ HIDES BUG      │ the DETAIL side splits at every : (:239): 2020-09-02  │
+ │     │                                                    │                                                  │              │ (rule bug 7)   │ "GJEILO: NOCTURNAL", 2020-09-16 "MORNING: …"          │
+ ├─────┼────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼──────────────┼────────────────┼───────────────────────────────────────────────────────┤
+ │ E18 │ same, :233; extract-all-…:134                      │ &amp;quot;C&amp;quot; → "C"                      │ 76/75        │ HIDES BUG      │ no general decode: Huey &quot;Piano&quot; Smith       │
+ │     │                                                    │                                                  │              │                │ (2020-04-08) left; overlaps (1)                       │
+ ├─────┼────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼──────────────┼────────────────┼───────────────────────────────────────────────────────┤
+ │ E19 │ same, :417                                         │ 2024-07-12-olympiastadion-helsinki-finland:gig   │ 1            │ obsolete       │ the side-by-side HTML keeps 280 of 620 events that do │
+ │     │                                                    │ "last event"                                     │              │                │  NOT differ (the .txt has the right 341)              │
+ ├─────┼────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼──────────────┼────────────────┼───────────────────────────────────────────────────────┤
+ │ E20 │ extract-all-event-info-and-setlists.sh:164-186     │ 22 note phrases                                  │ 22           │ DEAD by        │ s#<br />## at :193 already strips every leftover      │
+ │     │                                                    │                                                  │              │ redundancy     │                                                       │
+ ├─────┼────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼──────────────┼────────────────┼───────────────────────────────────────────────────────┤
+ │ E21 │ efc.sh:361 (no exception)                          │ greedy "(The)" rule still in efc.sh (fixed in    │ 14 titles    │ BUG            │ gig:2007-06-11-chelsea-piers-…,                       │
+ │     │                                                    │ eefyp.sh 1.5)                                    │              │                │ gallery:2025-10-14-adelphi-…                          │
+ ├─────┼────────────────────────────────────────────────────┼──────────────────────────────────────────────────┼──────────────┼────────────────┼───────────────────────────────────────────────────────┤
+ │     │ ~30 more literals (checkURLandTitles.sh:44-78,     │                                                  │              │                │                                                       │
+ │ —   │ :234-240, 1949-64, ,xdate, Bruce @ , dc.sh         │ —                                                │ many, 0 hurt │ GENUINE        │ keep, one comment per block                           │
+ │     │ end_page=382, …)                                   │                                                  │              │                │                                                       │
+ └─────┴────────────────────────────────────────────────────┴──────────────────────────────────────────────────┴──────────────┴────────────────┴───────────────────────────────────────────────────────┘
+
+ Fix plan (BruceParser, on main as its earlier releases; one version + CHANGELOG.md entry per block)
+
+ Rules for every block: run the probe before and after on the SAME run (bb/latest, offline re-run of the
+ touched steps only, e.g. ./extract-all-event-info-and-setlists.sh && ./extract-setlists-from-detail-pages.sh);
+ bash -n; each script's version= bumped; docs/reports.md/topic doc updated; every kept exception gets a
+ comment saying why (known-issues.md rule); a word from the data never goes into a sed expression. Where a report
+ feeds feed.sh (the dependent-title, URL and setlist kinds), re-run feed.sh and SAED's
+ scripts/probe-bb-feed.py / probe-bb-dependent-names.py: the two sides must still agree. git diff shown,
+ commit and push after each block.
+
+ 1. 0.28.0 — the setlist pipeline (F1-F8, F14; E15-E20). Order matters (the agent's harness showed it):
+    - DETAIL first: tab by its label (Setlist/Playlist, range to the next wiki-tab-0-) (F14); move :220 before
+      the <li> filter and widen it (F3); a heading sentinel for <p><strong>…</strong></p>, then generic
+      <a …>/</a>/<span…> strips with [^"]* instead of .* (F4), then split only at the sentinel (F5), which
+      retires the :311 join (E17); &quot; → " with g (F1, E18).
+    - YEAR: &quot; → " (F1); <em>/<a> stripped without adding quotes, in the setlist paragraph only (F2);
+      anchor :158/:209 to the title line, convert every <a …> (F9); select the setlist paragraph by position in
+      eaeias instead of guessing in esfdp:369, which retires the whitelist and the 12 deletes :371-382 (F6, E15,
+      E16); drop the 22 redundant note phrases (E20).
+    - One shared normaliser for both cleaned files: Show:, duplicates, (Instrumental), (with …) (F7, F8).
+    - The side-by-side HTML lists only differing events, no "last event" literal (E19).
+    - Expected: 341 → about 318 (−23 artefacts), the 263 real + 55 empty-side rows unchanged; if F6's paragraph
+      selection lets prose in (the agent's widening test gave 502), stop and report instead of patching literals.
+ 2. 0.28.1 — eefyp.sh (F10-F13; E1-E4, E12). Reset detail_* and the tags per event; esfdp skips
+    00-NO-DETAIL (F10, retires E1 1998#200998 ×3); add the missing " (F11); split a YEAR-LIST <li> at *
+    (F12); html_title_normalize without word splitting (F13: +5 real double-space rows expected); treat
+    "Private/Springsteen Residence" as equal instead of deleting whole entries (E2: +2 real rows: Rumson Nj,
+    Sumner/Sting); remove the dead soundcheck deletes and the stale comment (E3, E4); story dependent pages as
+    story/story_story-<id> (E12; new rows expected — counted on the run before the commit, reported to vzell).
+ 3. 0.29.0 — efc.sh (E5-E10, E21). Reset the date-part state for a page without a date (retires E8, −3 false
+    rows for Shea's Theatre); trailing  - Episode N /  (Part One…) as rules (E5, E6, still 0 rows); match
+    storyteller as a whole tag (E7); -[1-9]$ with an existing base page (E10); port eefyp.sh 1.5's "(The)" fix
+    (E21, 14 titles). E9 (gallery:2002-07-11 lacks xdate) stays, with a note for vzell to fix on the wiki.
+ 4. 0.30.0 — checkURLandTitles.sh (E11, E13, E14). Wikidot's general rule (every char outside [a-z0-9] → -,
+    runs collapsed) replaces A&M/BB&T/Canal+ (−164 rows with / = + # & @ ; in URL-shortening-CLEANEDUP);
+    New Jersey → NJ as a phrase; narrow At Seattle Center / West Germany / Berlin / Performing Arts to the pages
+    that drop them (−42 false rows); remove At Shadow Lane and Beverley.
+ 5. 0.31.0 — erfsl.sh, SpringsteenLyrics (S1-S9, S18). Pages and categories from the first page's pager and menu
+    (loop to the last page=; ewarn on a vanished category or a 0-item list) (S1, S2); tr -d '\r' first (S3,
+    S4); one awk per list that parses each block by its labels, not positions (S5, S6, S7) and splits on ^--$ only
+    (S9); one shared entity decoder with g, &amp; last (S8, also esfsl.sh); curl -f, track failures, exit 1,
+    mkdir -p REPORTING (S18). Expected: rows up by the 8 pages; 11/8/9 fields uniform; 0 CR, 0 entities.
+    Needs downloads, so verified with erfsl.sh (not -p) once, then -p.
+ 6. 0.31.1 — erfsl.sh, KF and JL (S10-S14). KF: awk with RS="</p>", a Note column (1,878 rows, 70 notes).
+    JL (decided: parse the fresh download): split releases_jl.orig.html at </font></p>, iconv -f cp1252 -t utf-8, parse it every run; bb/releases_jl.html is no longer read (kept in git history), the doc's diff
+    recipe replaced by an href set comparison; expected +120 releases, 0 lost lines. In any case LC_ALL=C grep -a or iconv first (S13), the "Others" removal before
+    :416, [/] percent-encoded in the href (S14).
+ 7. 0.32.0 — esfsl.sh (S15-S17), decided: keep SL vs BB, drop MB. One normalised comparison key (lower case,
+    unified quotes and dashes, punctuation out), original titles displayed, sort -u AFTER capitalising (S17,
+    −121 spurious lines); the MB side and works-mb.org go (MB vs BB is mb-works.awk's job), bb/bruce.org's
+    includes and the volkerzell.de link adjusted, docs/reports.md too; and bbp.sh waits for search-work's SUCCESS, not just
+    its timing file (S15).
+
+ After all blocks: one more full bbp.sh run (vzell's, or mine if he says so), the run-history comparison, and the
+ feed published if it changed (publish-feed.sh -n, then -r, FORMAT.md if the format text changed).
+
+ SAED side (no userscript change, so no version bump): org/springsteen-marriage.org ("Still open in
+ BruceParser" → one line per block with its state; PICKUP), org/bbp-parity.org (the typo list and the flake
+ result, with Env stamps), scripts/probe-bb-mb-title-typos.py. Docs-only, committed on main like ec8d0311.
+
+ MusicBrainz event-title list for vzell (check 1's loose end)
+
+ Rebuilt by mb_typos.py/mb_pick.py (scratchpad; to be kept as scripts/probe-bb-mb-title-typos.py in SAED,
+ output debug/), MB data of 2026-11-19; re-run after step 0 to drop what was fixed since.
+
+ A. Typos and style errors (fix on MB):
+
+ ┌──────────┬─────────────────────────────────────────────────────────────────┬────────────────────┐
+ │  Event   │                          MB title now                           │    Should read     │
+ ├──────────┼─────────────────────────────────────────────────────────────────┼────────────────────┤
+ │ 5ca9be81 │ 1992‐01: St. Charles Avenue Steetcar Line, New Orleans, LA, USA │ Streetcar          │
+ ├──────────┼─────────────────────────────────────────────────────────────────┼────────────────────┤
+ │ 4713487c │ 2017‐09‐19: Pollack Theatre, Monmouth University, …             │ Pollak             │
+ ├──────────┼─────────────────────────────────────────────────────────────────┼────────────────────┤
+ │ bb6c1d8c │ 2017‐09‐22: Pollack Theatre, …                                  │ Pollak             │
+ ├──────────┼─────────────────────────────────────────────────────────────────┼────────────────────┤
+ │ 5a9c9a6d │ 1975‐12‐21: Convocation Hall, …, Toronto, On, Canada            │ ON                 │
+ ├──────────┼─────────────────────────────────────────────────────────────────┼────────────────────┤
+ │ 57b91acb │ 2013‐07‐24: first direct arena, Leeds, …                        │ First Direct Arena │
+ ├──────────┼─────────────────────────────────────────────────────────────────┼────────────────────┤
+ │ d36cb15d │ 2023‐09‐09: Oriole Park At Camden Yards, …                      │ at                 │
+ ├──────────┼─────────────────────────────────────────────────────────────────┼────────────────────┤
+ │ 1fd3133f │ 2017‐12‐23: Walter Kerr Theatre, New York City, NY; USA         │ NY, USA            │
+ ├──────────┼─────────────────────────────────────────────────────────────────┼────────────────────┤
+ │ b85fb122 │ 2021‐07‐09: St. James Theatre, New York, City NY, USA           │ New York City, NY  │
+ ├──────────┼─────────────────────────────────────────────────────────────────┼────────────────────┤
+ │ e97fbe44 │ 2013‐07‐03: Stade de Genève, Geneve, Switzerland                │ Geneva             │
+ ├──────────┼─────────────────────────────────────────────────────────────────┼────────────────────┤
+ │ cff64fec │ 1996‐08‐10: Grand Mountain Lodge, Whitefish, MT                 │ Grouse (check)     │
+ └──────────┴─────────────────────────────────────────────────────────────────┴────────────────────┘
+
+ B. Dropped accents (MB's area names carry them): Düsseldorf ×3 (ec63eb3c,
+ 6dc5adec, 1fae7591),
+ São Paulo (4738997b), Keflavík ×2 in one title
+ (086d2f9d), San Sebastián ×2
+ (a0dfe2a3, bd5b9284),
+ Bernabéu (b8f1e69f), Café Eckstein
+ (ca016b8b).
+
+ C. Disagreements — check a source before editing either side: 1982‐02 Power Station vs The Hit Factory
+ (d12c08c6); 1983‐07 Power Station vs Record
+ Plant (2b4dc146); 1995‐08‐06/10 Cheers vs The
+ Metro (f74adb5d,
+ a212dc66); 1974‐04‐09 Charlie's vs Joe's
+ Place (84ab5c59; 04‐10…12 are Charlie's on MB
+ and have no BB title to compare).
+
+ D. Probably conventions, listed for completeness (no action suggested): Theater/Theatre ×6, Feyenoord/Feijenoord
+ ×4, Tokyo Dome, missing possessive apostrophes (Hooligans, T‐Birds, Ripley, Macauley, Old Timer's), comma-less venue
+ sub-names (Cipriani 42nd Street, Barnes & Noble Union Square, …), St/St..
+ That gives 10 + 9 + 5 = 24 events to look at (A–C), the ~30 of 2026-11-20 minus the two BruceParser bugs fixed in
+ 0.25.0 (Moncton, Wogan House) and the D conventions.
+
+ Verification
+
+ - After step 0: the three probe scripts on bb/2026-11-21; the counts land in this plan's tables and in
+   org/springsteen-marriage.org. If a count moved by more than a few rows (the wiki changed), report it before
+   block 1; otherwise go on.
+ - Per block: the probe's line for each finding reaches its expected value, every other line is unchanged; the
+   touched step's outputs diffed against the pre-fix outputs of the same run (only the expected rows move);
+   feed.sh passes and the SAED checkers agree where a feed report moved.
+ - At the end: a full run, docs/run-history.md comparing it with 2026-11-21, docs/timings.tsv with no failed step.
+
+ The bb-place.spec.js "/onstage: link previews its event" timeout
+
+ - Seen once: test:full 2026-11-20 20:51 (f22cd1bf, NB-3641, 14 workers): #mb-dp-peek still "◌ Loading the
+   detail page…" after 5 s (the hovered link was right: the fixture's first /onstage: link is Pollak Theatre, which
+   the spec's route 301s to the Roxy gig). Alone --repeat-each=3: 36/36. Not seen again: the next test:full
+   (0908d542, 21:48–22:12) 3421/3421; no other kept log names it.
+ - Lead: the hover's request waits for the detail-page rate gate (_dpNextSlotAt, exposed as
+   dpRateSlotWaitMs()) right after the press, which itself fetched the person's pages; under 14 workers the 301 +
+   fulfil + gate can pass 5 s.
+ - Plan: bb-place.spec.js alone with --repeat-each=20 --workers=14 through run-test-full.py --script test;
+   if it fails, log dpRateSlotWaitMs() at the hover. Fix only with evidence: wait for the gate to be idle before the
+   hover (the honest precondition), not a bare longer timeout. If 0/20, record "not reproduced" in bbp-parity.org and
+   keep watching.
+

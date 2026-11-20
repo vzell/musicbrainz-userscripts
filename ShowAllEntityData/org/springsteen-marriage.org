@@ -13,11 +13,16 @@ browser checks) is [[file:bbp-parity.org][bbp-parity.org]]; this file holds the 
 Keywords: TODO (open), NEXT (the next one to start), WAIT (someone else's call), DONE, PART (partly done, the rest
 left out by decision), NOT (not done, with the reason).
 
-* PICKUP HERE (2026-11-20)
+* PICKUP HERE (2026-11-21)
+
+- *Now: BruceParser's open items* ("TODO Still open in BruceParser" below). Audit done, plan approved by vzell, probes
+  in BruceParser 0.27.1; the run of 2026-11-21 (started by Claude on vzell's word) is the baseline. Next: fix block 1
+  (0.28.0, the setlist pipeline). The MusicBrainz title list for vzell (24 events) and the =bb-place.spec.js= flake
+  (not reproduced): bbp-parity.org, "Loose ends of 2026-11-20".
 
 - *Every row of the parity matrix is DONE or decided.* Batch 3b (the five tag families, each behind its own switch,
   off by default) and idea 3 (the lookup tables and the song and venue maps in the feed) are merged as
-  9.99.1661–9.99.1665 (=feat/bb-findings-batch3b=, vzell: "all tested live OK"). BruceParser is at 0.26.0; the
+  9.99.1661–9.99.1665 (=feat/bb-findings-batch3b=, vzell: "all tested live OK"). BruceParser is at 0.27.1; the
   published feed is 1.8 (2026-11-20, feed repo =17d9cb0=, its FORMAT.md =8b9f139=).
 - *Idea 4 is DONE*: merged on 2026-11-20 as 9.99.1667 (=feat/bb-feed-dependent-name=, vzell: "all tested live, OK"): not
   URL-shortening (its rows are its own derivation's variants) but a page named differently from its show, the feed
@@ -40,7 +45,8 @@ Freezing BruceBaseParser (idea 6) is possible but waits: vzell, 2026-11-20,
 - *Nothing since 9.99.1625 is published* to =vzell/mb-userscripts=; that is vzell's call. The ❓ Help on GitHub is
   behind until then.
 - *Mirror:* =~/git/scripts/BruceParser/bb/latest=; check =ls -la= first (CLAUDE.md, working rule 7). The newest run
-  is 2026-11-19 on NB-3641 (=bb/2026-11-19=, BruceParser 0.21.3); the batch 3 probe was re-run on it.
+  is 2026-11-21 on NB-3641 (=bb/2026-11-21=, BruceParser 0.27.0; BruceBase unchanged since 2026-11-19, on which the
+  batch 3 probe was re-run). Its feed is published (feed repo =ff7fa1d=, only the run date changed).
 - *Batch 3b's plan* was =~/.claude/plans/start-batch-3b-the-expressive-dongarra.md= (NB-3641 only; its decisions are
   in the 3b entry below).
 - *Do not run =bbp.sh= without vzell.* Publishing the feed is Claude's own step (vzell, 2026-11-20: "publish yourself
@@ -484,6 +490,23 @@ vzell, 2026-11-19: a new run before any 3b implementation, with the open BrucePa
   checked on 2026-11-19); the SL, KF and JL parsing (=esfsl.sh=, =erfsl.sh=); the MusicBrainz side (=search/*.sh=); the
   hard-coded exceptions (=eefyp.sh:1040–1090= and elsewhere): bug 1 showed that an exception can hide a rule bug, so
   each deserves a comment saying why and a re-check whenever a rule changes.
+- *Audited 2026-11-20/21* (all but =search/*.sh=), read-only on =bb/2026-11-19=, re-measured on =bb/2026-11-21= (same
+  counts; only the MB works list grew, 1,472 → 1,587): 14 pipeline findings (F1–F14), 18 in the SL/KF/JL parsing
+  (S1–S18), 21 on the exceptions (E1–E21; 7 dead, about 10 hide a rule bug). The =&quot;= asymmetry is real but small
+  (1 setlist line a side). Of the 341 rows of =setlist-differences.txt=, 23 are pipeline artefacts. The plan with
+  every count and example: =~/.claude/plans/pasted-content-id-0e18-do-a-crispy-popcorn.md= (NB-3641; vzell's copy in
+  =org/TODO.org=, "bb overwhole"). BruceParser 0.27.1 has the probes (=tests/probe-*.sh=, =tests/README.md=).
+- *The fix blocks* (BruceParser, one version each, probes before/after on the same run):
+
+  | Block | Version | Scope                                                                | State |
+  |-------+---------+----------------------------------------------------------------------+-------|
+  |     1 | 0.28.0  | the setlist pipeline (F1–F8, F14; E15–E20): 341 → about 318          | TODO  |
+  |     2 | 0.28.1  | =eefyp.sh= (F10–F13; E1–E4, E12: the story pages)                    | TODO  |
+  |     3 | 0.29.0  | =efc.sh= (E5–E10, E21)                                               | TODO  |
+  |     4 | 0.30.0  | =checkURLandTitles.sh= (E11 Wikidot's URL rule, E13, E14)            | TODO  |
+  |     5 | 0.31.0  | =erfsl.sh=, SpringsteenLyrics (S1–S9, S18)                           | TODO  |
+  |     6 | 0.31.1  | =erfsl.sh=, KF and JL (S10–S14; JL from the fresh download)          | TODO  |
+  |     7 | 0.32.0  | =esfsl.sh= (S15–S17): SL vs BB kept, the MB side dropped             | TODO  |
 
 * Track B: volkerzell.de (Ionos shared hosting: PHP + MySQL/MariaDB)
 

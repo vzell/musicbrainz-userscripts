@@ -1298,3 +1298,80 @@ The feed 1.8 is published (2026-11-20, feed repo =17d9cb0=). Install the script 
 | ⚙️ Settings → ⚠️ Findings → "Find MusicBrainz works titled differently …"   | off, then the works again               | no ≉ mark and no such menu row; ⚓ and ⇉ stay                                                                        |
 
 Unverified: all of it live (a work corrected on MusicBrainz since 2026-11-20 keeps its mark until the next run).
+
+* Loose ends of 2026-11-20
+
+** The =bb-place.spec.js= "/onstage: link previews its event" timeout: not reproduced
+
+Env: 2026-11-20T23:01:05+01:00 – 23:02:55+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux
+6.18.58.1-microsoft-standard-WSL2) · Playwright Chromium, no Tampermonkey (GM stubs)
+
+- *Seen once:* =test:full= 2026-11-20T20:51:22+01:00 (=f22cd1bf=, 14 workers). =#mb-dp-peek= still read "Detail page
+  Pollak Theatre, Monmouth University, West Long Branch, NJ ◌ Loading the detail page…" when the 5 s expect ran out.
+  The hover was right: Pollak Theatre is the first =/onstage:= link of =bb-relation-patti-scialfa-p1.html=, and the
+  spec's route answers every =/onstage:= with a 301 to the Roxy gig. So the read of the 301 and the gig page did not
+  finish in 5 s, not a wrong link.
+- *Since:* the next =test:full= (=0908d542=, 21:48–22:12) 3421/3421; =bb-place.spec.js= alone, =--repeat-each=20
+  --workers=14= on =main= =ec8d0311=: 240/240 in 1 min 50 s.
+- *Lead, unproven:* the hover's request books the detail-page rate gate (=_dpNextSlotAt=, the harness's
+  =dpRateSlotWaitMs()=) right after the person's pages were read; under a loaded suite the gate plus the two routed
+  answers can pass 5 s. *No change made:* a fix needs the failure first. If it comes back, log
+  =dpRateSlotWaitMs()= at the hover; the honest fix is to wait for the gate to be idle before hovering, not a longer
+  timeout.
+
+** MusicBrainz event titles to fix by hand (check 1's "about 30 real errors")
+
+Env: 2026-11-21T00:54:50+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · n/a
+(Python over BruceParser's =search/event_linked_to_artist.org= of 2026-11-21 00:51 and the run =bb/2026-11-21=)
+
+- *Rebuilt with MBIDs* by =scripts/probe-bb-mb-title-typos.py= (read-only, no network; output
+  =debug/bb-mb-title-typos.txt=): the hand-found errors of check 1 were noted by name only. It joins each MusicBrainz
+  event to BruceParser's title for its Brucebase anchor and lists the slices a human can act on: =accent= (9),
+  =near= (23, one word differs: mostly conventions such as Theater/Theatre), =punct= (12) and =pick= (13, hand-found
+  regexes). The same 9/23/12/13 on the MusicBrainz data of 2026-11-19 and of 2026-11-21: nothing was fixed in between.
+- *24 events to look at* (A–C). Of the "about 30" of 2026-11-20, two were BruceParser bugs, fixed in 0.25.0 (Moncton,
+  Wogan House); the rest are conventions (D). Edit on MusicBrainz, then the next run's probe drops the row.
+
+*A. Typos and style errors (10):*
+
+| Event                                                                            | MusicBrainz title now                                                      | Should read             |
+|----------------------------------------------------------------------------------+----------------------------------------------------------------------------+-------------------------|
+| [[https://musicbrainz.org/event/5ca9be81-4cc4-4dd0-8a07-9d932e6b4b23][5ca9be81]] | 1992‐01: St. Charles Avenue *Steetcar* Line, New Orleans, LA, USA          | Streetcar               |
+| [[https://musicbrainz.org/event/4713487c-62d6-4151-b628-8a5804fea9d3][4713487c]] | 2017‐09‐19: *Pollack* Theatre, Monmouth University, …                      | Pollak                  |
+| [[https://musicbrainz.org/event/bb6c1d8c-1f4e-4675-ae5c-eafdb3edda81][bb6c1d8c]] | 2017‐09‐22: *Pollack* Theatre, Monmouth University, …                      | Pollak                  |
+| [[https://musicbrainz.org/event/5a9c9a6d-1c74-422e-a27f-2a52c7aeb8eb][5a9c9a6d]] | 1975‐12‐21: Convocation Hall, University of Toronto, Toronto, *On*, Canada | ON                      |
+| [[https://musicbrainz.org/event/57b91acb-7d48-44cb-9e46-8b1f0dfbef56][57b91acb]] | 2013‐07‐24: *first direct arena*, Leeds, England, UK                       | First Direct Arena      |
+| [[https://musicbrainz.org/event/d36cb15d-43df-41dc-b0ab-01d242bd0d6d][d36cb15d]] | 2023‐09‐09: Oriole Park *At* Camden Yards, Baltimore, MD, USA              | at                      |
+| [[https://musicbrainz.org/event/1fd3133f-6bd8-4a5f-a183-626fb00ad6cd][1fd3133f]] | 2017‐12‐23: Walter Kerr Theatre, New York City, *NY; USA*                  | NY, USA                 |
+| [[https://musicbrainz.org/event/b85fb122-d690-4c64-91ea-2396c006a274][b85fb122]] | 2021‐07‐09: St. James Theatre, *New York, City NY*, USA                    | New York City, NY       |
+| [[https://musicbrainz.org/event/e97fbe44-af64-4767-b857-d21e532d42bb][e97fbe44]] | 2013‐07‐03: Stade de Genève, *Geneve*, Switzerland                         | Geneva (BB)             |
+| [[https://musicbrainz.org/event/cff64fec-4c82-466d-ac24-8d6339b92e3d][cff64fec]] | 1996‐08‐10: *Grand* Mountain Lodge, Whitefish, MT, USA                     | Grouse (BB; check)      |
+
+*B. Dropped accents (9; MusicBrainz's own area names carry them):*
+
+| Event                                                                            | Word on MusicBrainz           | With its accent |
+|----------------------------------------------------------------------------------+-------------------------------+-----------------|
+| [[https://musicbrainz.org/event/ec63eb3c-f14d-4897-9cb0-523074ee2044][ec63eb3c]] | Dusseldorf                    | Düsseldorf      |
+| [[https://musicbrainz.org/event/6dc5adec-ea05-4ccf-b3a8-c46de9266b10][6dc5adec]] | Dusseldorf                    | Düsseldorf      |
+| [[https://musicbrainz.org/event/1fae7591-bd75-4618-9fa0-045fd2bd98a4][1fae7591]] | Dusseldorf                    | Düsseldorf      |
+| [[https://musicbrainz.org/event/4738997b-713b-4201-af76-ff998521a8d4][4738997b]] | Sao Paulo                     | São Paulo       |
+| [[https://musicbrainz.org/event/086d2f9d-8e65-4328-8c38-b0e46992b196][086d2f9d]] | Keflavik (twice in the title) | Keflavík        |
+| [[https://musicbrainz.org/event/a0dfe2a3-9fef-407d-8f76-2f3f3eaf47e1][a0dfe2a3]] | San Sebastian                 | San Sebastián   |
+| [[https://musicbrainz.org/event/bd5b9284-e097-4059-a803-01b6c174f483][bd5b9284]] | San Sebastian                 | San Sebastián   |
+| [[https://musicbrainz.org/event/b8f1e69f-7834-491e-a93f-e4973eb6e100][b8f1e69f]] | Bernabeu                      | Bernabéu        |
+| [[https://musicbrainz.org/event/ca016b8b-6657-404d-8950-00b11a5093ec][ca016b8b]] | Cafe Eckstein                 | Café Eckstein   |
+
+*C. Disagreements (5): check a source before editing either side.* 1974‐04‐10…12 are Charlie’s Place on
+MusicBrainz too and have no Brucebase title to compare.
+
+| Event                                                                            | MusicBrainz                            | Brucebase       |
+|----------------------------------------------------------------------------------+----------------------------------------+-----------------|
+| [[https://musicbrainz.org/event/d12c08c6-1b5a-413c-b0d0-866a0426652b][d12c08c6]] | 1982‐02: The Power Station             | The Hit Factory |
+| [[https://musicbrainz.org/event/2b4dc146-46c4-450c-b3c9-f2b7e46ec0b5][2b4dc146]] | 1983‐07: The Power Station             | Record Plant    |
+| [[https://musicbrainz.org/event/f74adb5d-c3a1-4058-880d-58b81eec41b8][f74adb5d]] | 1995‐08‐06: Cheers, Long Branch        | The Metro       |
+| [[https://musicbrainz.org/event/a212dc66-4f02-47f6-b120-7dafe5c3b781][a212dc66]] | 1995‐08‐10: Cheers, Long Branch        | The Metro       |
+| [[https://musicbrainz.org/event/84ab5c59-2e03-4071-884f-34a1090a332c][84ab5c59]] | 1974‐04‐09: Charlie’s Place, Cambridge | Joe’s Place     |
+
+*D. Probably conventions, no action suggested:* Theater/Theatre ×6, Feyenoord/Feijenoord ×4, Tokyo Dome, missing
+possessive apostrophes (Hooligans, T‐Birds, Ripley, Macauley, Old Timer's), venue sub-names without a comma (Cipriani
+42nd Street, Barnes & Noble Union Square, …), =St=/=St.=.
