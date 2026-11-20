@@ -25,7 +25,7 @@
  *     recordings is 2.7e9 pairs, so the all-pairs side runs only up to
  *     --max-all-pairs records (default 12000) unless raised.
  *
- * usage: node scripts/check-fusion-port.js [--vectors-only | --dump FILE] [--max-all-pairs N] [--examples N]
+ * usage: node scripts/check-fusion-port.js [--vectors-only | --dump FILE [--groups-out FILE]] [--max-all-pairs N] [--examples N]
  * exit:  0 when parity and vectors hold and strict bucketing is exact; 1 otherwise.
  */
 'use strict';
@@ -324,7 +324,7 @@ function recordsOfDump(F, dump) {
  * @param {number} maxAll
  * @param {number} nExamples
  */
-function bucketing(F, file, maxAll, nExamples) {
+function bucketing(F, file, maxAll, nExamples, groupsOut) {
     const dump = JSON.parse(zlib.gunzipSync(fs.readFileSync(file)).toString('utf8'));
     const pool = recordsOfDump(F, dump);
     console.log(`\n${path.basename(file)}: ${pool.length} recordings (artist ${dump.artist}, dumped ${dump.env && dump.env.finished})`);
@@ -335,6 +335,11 @@ function bucketing(F, file, maxAll, nExamples) {
         const ms = Number(process.hrtime.bigint() - t0) / 1e6;
         if (!r) { console.log(`  ${cutoff}: over the pair cap, given up after ${ms.toFixed(0)} ms`); check(cutoff !== 'strict', `${cutoff}: within the pair cap`); continue; }
         const b = r.groups.map(g => g.members.slice().sort((x, y) => x - y));
+        if (groupsOut && cutoff === 'strict') {
+            fs.writeFileSync(groupsOut, JSON.stringify({ dump: file, cutoff, groups: r.groups.map(g => ({
+                title: pool[g.members[0]].title, isrc: g.isrc, members: g.members.map(i => ({ gid: pool[i].gid, title: pool[i].title })),
+            })) }, null, 1) + '\n');
+        }
         const rows = b.reduce((n, g) => n + g.length, 0);
         const tiers = {};
         r.groups.forEach(g => { tiers[g.tier] = (tiers[g.tier] || 0) + 1; });
@@ -369,7 +374,7 @@ function main() {
     const dir = path.join(ROOT, 'debug/probe-rec-dup');
     const dumps = args.includes('--vectors-only') ? []
         : opt('--dump') ? [opt('--dump')] : (fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => f.endsWith('.json.gz')).map(f => path.join(dir, f)) : []);
-    dumps.forEach(f => bucketing(F, f, Number(opt('--max-all-pairs', 12000)), Number(opt('--examples', 0))));
+    dumps.forEach(f => bucketing(F, f, Number(opt('--max-all-pairs', 12000)), Number(opt('--examples', 0)), opt('--groups-out')));
     console.log(failures ? `\n${failures} check(s) failed` : '\nall checks hold');
     process.exit(failures ? 1 : 0);
 }
