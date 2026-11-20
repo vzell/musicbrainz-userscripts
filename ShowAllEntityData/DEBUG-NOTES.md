@@ -30677,3 +30677,44 @@ Env: 2026-11-19T18:24–19:20+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6
   within the baseline. Audits clean.
 - **`npm run test:full` on petri, `63914fe5` + working tree, 18:45:23–19:08:28 CET (23 m 5 s): 3,328 of 3,328
   passed.**
+
+## 2026-11-20 — A ℗ notice in the annotation that no relationship has: release-notice (Apollo findings batch 4, feat/apollo-findings-4)
+
+Env: 2026-11-20T00:31–01:17+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1, bundled Chromium (headless), chromium-mobile Pixel 7 emulation, no Tampermonkey (GM stubs); the probes: n/a browser.
+
+- **Why:** batch 4 of the Apollo findings (`org/majkinetor.org`). Probe first (2026-11-19 22:49–23:20, numbers in
+  the org file and `docs/claude/findings.md`): First Contact's type and VA guesses are noise on MusicBrainz's
+  edited data (NOT); the ℗/© notice is real. Mockup https://claude.ai/artifact/7X3bbpdfmSuqr4jU85Q4Bn, approved
+  with all seven recommendations: variant A (the line marked in the annotation), ℗ only, release or any recording
+  backs it, both renders, zero requests, lines that start with ℗/(P)/"Phonographic copyright", its own tint.
+- **Where the data is:** the release page's embedded payload has the annotation (`latest_annotation`), the
+  release's and every recording's relationships by `linkTypeID`, and the link type table by English name (711
+  label → release, 867 label → recording, 869 artist → recording ℗). Checked with
+  `scripts/inspect-release-payload-rels.py` on three raw pages saved by `scripts/fetch-release-fixture.js`
+  (`debug/rn-blinded.html`, `rn-borntorun.html`, `rn-greetings.html`, 00:31).
+- **What:** not a `FINDINGS` entry (no cell): `_stampReleaseNotices()` at the tail of `stampFindings()` wraps each
+  flagged line in `span.mb-release-notice`; `_releaseFindings` feeds a "This release" group of the WARNING menu
+  (`_buildFindingMenuRows(…, relRows)`); `_rnShowLine()` opens the collapsed Annotation h2 and flashes the line;
+  its own card `#mb-release-notice-card`. `_releasePhonoFacts()` is primed at the press in
+  `startFetchingProcess()`, because the Credits render removes the tracklist.
+- **Found while writing the specs:**
+  - The line is focusable, so a tap FOCUSES it before its click: `focusin` opened the card and the click closed it
+    again (mobile spec failed, card down). `pointerdown` now marks the press and `focusin` skips it. Desktop did not
+    show it because Playwright's click hovers first; the desktop test now blurs before the click it pins.
+  - A tap's compatibility `mouseout` comes AFTER its click (logged: click at 1643 ms, mouseout at 1651 ms) and
+    started the hover grace, closing the card the tap opened; the handler skips touch-compat events.
+  - The fixture's two tracks are "Blinded by the Light" mono and stereo (a promo copy), not "The Angel" as the
+    mockup's sample data had it.
+- **Mutation finds moved:** `sidebar-inline.json` "cards: never opened" matched twice (`_rnShowLine()` has the
+  same `_mbToggle(true)` line; mine now carries a comment); `title-style.json` "the menu is created only when a
+  finding has rows" re-anchored to the new gate line (same meaning, still fails as recorded).
+- **Fixtures:** `scripts/make-release-notice-fixtures.py`, six from the raw 65f35399 page (as is; a ℗ on one
+  recording; on the release; `track_count` 3 for two tracks; no payload; no payload with a native ℗ list).
+- **Perf:** one walk of one annotation per stamp and a memoized payload read; nothing per row or keystroke. Not
+  measured.
+- **Tests:** `apollo-findings-4.spec.js` (14) and `.mobile.spec.js` (1); neighbouring findings specs 69 passed.
+  **Mutations:** `scripts/mutations/apollo-findings-4.json`, 20, all fail as recorded. **Lint:** within the
+  baseline. **Audits:** docs, config defaults, mutation finds clean.
+- **`npm run test:full` on petri, `a1c5e47e` + working tree, 00:52:22–01:15:25 CET (23 m 3 s): 3,340 of 3,343;**
+  three 90 s render timeouts on pages the change does not touch (`uvd-live-titles.spec.js:384`,
+  `saed-narrow.mobile.spec.js:28`, `sidebar-sections.mobile.spec.js:36`), 20 of 20 when rerun alone.

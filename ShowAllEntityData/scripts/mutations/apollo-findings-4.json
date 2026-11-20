@@ -1,0 +1,267 @@
+[
+  {
+    "name": "release-notice never flags",
+    "why": "The ℗ line of Blinded by the Light (no ℗ relationship anywhere) loses its mark. Must fail on the Tracklist render test.",
+    "edits": [
+      {
+        "find": "        const flag = !!facts && facts.complete && !facts.own && facts.onRecs === 0;",
+        "replace": "        const flag = false;"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-4.spec.js",
+    "grep": "Tracklist render: only the ℗ line is marked",
+    "expect": "fail"
+  },
+  {
+    "name": "the stamp never asks for the release-wide findings",
+    "why": "stampFindings() without its _stampReleaseNotices() call: nothing is marked. Must fail on the Tracklist render test.",
+    "edits": [
+      {
+        "find": "        _stampReleaseNotices();\n        if (typeof window.updateFilterButtonsVisibility === 'function') window.updateFilterButtonsVisibility();",
+        "replace": "        if (typeof window.updateFilterButtonsVisibility === 'function') window.updateFilterButtonsVisibility();"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-4.spec.js",
+    "grep": "Tracklist render: only the ℗ line is marked",
+    "expect": "fail"
+  },
+  {
+    "name": "a ℗ must be on EVERY recording (not any)",
+    "why": "One of two recordings with a ℗ is enough (question 4: Born to Run has it on 7 of 8). Must fail on the rec-rel test.",
+    "edits": [
+      {
+        "find": "        const flag = !!facts && facts.complete && !facts.own && facts.onRecs === 0;",
+        "replace": "        const flag = !!facts && facts.complete && !facts.own && facts.onRecs < facts.recs;"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-4.spec.js",
+    "grep": "not flagged: a ℗ on one of the two recordings",
+    "expect": "fail"
+  },
+  {
+    "name": "the release's own ℗ relationship is ignored",
+    "why": "A label → release phonographic copyright (711) backs the notice. Must fail on the own-rel test.",
+    "edits": [
+      {
+        "find": "        const flag = !!facts && facts.complete && !facts.own && facts.onRecs === 0;",
+        "replace": "        const flag = !!facts && facts.complete && facts.onRecs === 0;"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-4.spec.js",
+    "grep": "not flagged: a ℗ on the release itself",
+    "expect": "fail"
+  },
+  {
+    "name": "a medium not all on the page still flags",
+    "why": "track_count 3 with two tracks: the third recording is unknown, so nothing may be flagged. Must fail on the incomplete test.",
+    "edits": [
+      {
+        "find": "        const flag = !!facts && facts.complete && !facts.own && facts.onRecs === 0;",
+        "replace": "        const flag = !!facts && !facts.own && facts.onRecs === 0;"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-4.spec.js",
+    "grep": "not flagged: a medium not all on the page",
+    "expect": "fail"
+  },
+  {
+    "name": "the known ℗ link type ids are dropped",
+    "why": "The payload's link type table lists only the types the page uses; Blinded by the Light has no ℗ at all, so the added 867 is found by id alone. Must fail on the rec-rel test.",
+    "edits": [
+      {
+        "find": "    const _RN_PHONO_LINK_TYPES = new Set([710, 711, 867, 869]);",
+        "replace": "    const _RN_PHONO_LINK_TYPES = new Set([]);"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-4.spec.js",
+    "grep": "not flagged: a ℗ on one of the two recordings",
+    "expect": "fail"
+  },
+  {
+    "name": "the DOM fallback ignores the tracklist's ℗ lists",
+    "why": "Without the payload, a native \"phonographic copyright (℗) by:\" list in a track row backs the notice. Must fail on the nopayload-rec test.",
+    "edits": [
+      {
+        "find": "                const inRows = rows.filter(tr => Array.from(tr.querySelectorAll('dl.ars > dt')).some(phono)).length;",
+        "replace": "                const inRows = 0;"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-4.spec.js",
+    "grep": "not flagged: no payload, a native ℗ list in a track row",
+    "expect": "fail"
+  },
+  {
+    "name": "the facts are not read at the press",
+    "why": "Without the payload, the Credits render has removed the tracklist by the time the stamp runs: the facts say 0 recordings, incomplete. Must fail on the nopayload Credits test.",
+    "edits": [
+      {
+        "find": "        if (!_foreignHost && (pageType === 'release-tracks' || pageType === 'release-credit-tables')) _releasePhonoFacts();",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-4.spec.js",
+    "grep": "without the payload, Credits render",
+    "expect": "fail"
+  },
+  {
+    "name": "a © notice counts as a ℗ notice",
+    "why": "℗ only (question 3). With © in the start rule and any parsed kind accepted, \"© 1974 Laurel Canyon Music Ltd.\" becomes a notice. Must fail on the parser test.",
+    "edits": [
+      {
+        "find": "    const _RN_START = /^[\\s\\-–—•*·]*(?:℗|\\(p\\)|phonographic\\s+copyright)/i;",
+        "replace": "    const _RN_START = /^[\\s\\-–—•*·]*(?:℗|\\(p\\)|phonographic\\s+copyright|©)/i;"
+      },
+      {
+        "find": "            if (p && p.types.includes('phonographic')) return",
+        "replace": "            if (p) return"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-4.spec.js",
+    "grep": "the notice parser",
+    "expect": "fail"
+  },
+  {
+    "name": "a ℗ in the middle of a sentence counts",
+    "why": "A notice starts the line, as on a sleeve (question 6). Without the anchor, \"The sleeve says ℗ 1975 CBS Inc. on the back.\" is one. Must fail on the parser test.",
+    "edits": [
+      {
+        "find": "    const _RN_START = /^[\\s\\-–—•*·]*(?:℗|\\(p\\)|phonographic\\s+copyright)/i;",
+        "replace": "    const _RN_START = /(?:℗|\\(p\\)|phonographic\\s+copyright)/i;"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-4.spec.js",
+    "grep": "the notice parser",
+    "expect": "fail"
+  },
+  {
+    "name": "a compound line is never split",
+    "why": "\"© 1975 Laurel Canyon Music Ltd. / ℗ 1975 CBS Inc.\" holds a ℗ notice after a © one (Group Therapy's split). Must fail on the parser test.",
+    "edits": [
+      {
+        "find": "        if (pos.length < 2) return [line];\n        const cuts = [];",
+        "replace": "        return [line];\n        const cuts = [];"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-4.spec.js",
+    "grep": "the notice parser",
+    "expect": "fail"
+  },
+  {
+    "name": "the tint setting is ignored",
+    "why": "sa_findings_tint_release_notice off must leave the line unmarked. Must fail on the tint-off test.",
+    "edits": [
+      {
+        "find": "        const tint = Lib.settings.sa_findings_tint_release_notice !== false;",
+        "replace": "        const tint = true;"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-4.spec.js",
+    "grep": "tint off",
+    "expect": "fail"
+  },
+  {
+    "name": "no \"This release\" group in the menu",
+    "why": "The release-wide finding has no row to tick, so without the group it is nowhere in the menu. Must fail on the menu test.",
+    "edits": [
+      {
+        "find": "        menu.panel.querySelectorAll('.mb-toolbar-menu-item, .mb-findings-menu-extra').forEach(el => el.remove());\n        if (relRows.length) {",
+        "replace": "        menu.panel.querySelectorAll('.mb-toolbar-menu-item, .mb-findings-menu-extra').forEach(el => el.remove());\n        if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-4.spec.js",
+    "grep": "the menu: a \"This release\" group",
+    "expect": "fail"
+  },
+  {
+    "name": "the ⚠️ count leaves the release-wide finding out",
+    "why": "The segment's number is every warning on the page, this one included. Must fail on the menu test.",
+    "edits": [
+      {
+        "find": "            const total = list.reduce((s, x) => s + x.n, 0) + relRows.length;",
+        "replace": "            const total = list.reduce((s, x) => s + x.n, 0);"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-4.spec.js",
+    "grep": "the menu: a \"This release\" group",
+    "expect": "fail"
+  },
+  {
+    "name": "the \"This release\" row does nothing",
+    "why": "Its click must show the line. Must fail on the menu-row test.",
+    "edits": [
+      {
+        "find": "                row.addEventListener('click', () => _rnShowLine(_releaseFindings.indexOf(f)));",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-4.spec.js",
+    "grep": "the menu row opens the collapsed Annotation",
+    "expect": "fail"
+  },
+  {
+    "name": "showing the line leaves the Annotation section collapsed",
+    "why": "The Annotation h2 starts collapsed after a render; a scroll to a hidden line shows nothing. Must fail on the menu-row test.",
+    "edits": [
+      {
+        "find": "        if (h2 && typeof h2._mbToggle === 'function') h2._mbToggle(true);   // starts collapsed after a render\n        const body = span.closest('div.annotation-body');",
+        "replace": "        const body = span.closest('div.annotation-body');"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-4.spec.js",
+    "grep": "the menu row opens the collapsed Annotation",
+    "expect": "fail"
+  },
+  {
+    "name": "leaving the line hides the card at once (no grace)",
+    "why": "The grace period lets the pointer reach the card. Must fail on the hover test (\"still up during the grace period\").",
+    "edits": [
+      {
+        "find": "            _rnCardHideTimer = setTimeout(_rnCardHide, 350);",
+        "replace": "            _rnCardHide();"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-4.spec.js",
+    "grep": "hover shows the card",
+    "expect": "fail"
+  },
+  {
+    "name": "Esc does not close the card",
+    "why": "Esc closes, as every card of the look. Must fail on the menu-row test.",
+    "edits": [
+      {
+        "find": "            if (e.key === 'Escape' && _rnCardShown()) _rnCardHide();",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-4.spec.js",
+    "grep": "the menu row opens the collapsed Annotation",
+    "expect": "fail"
+  },
+  {
+    "name": "the focus a press gives opens the card",
+    "why": "The line is focusable; a press focuses it before its click, and the click then closes the card the focus opened. Must fail on the hover test's second click.",
+    "edits": [
+      {
+        "find": "            if (s && s !== pressed) _rnCardShow(s);",
+        "replace": "            if (s) _rnCardShow(s);"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-4.spec.js",
+    "grep": "hover shows the card",
+    "expect": "fail"
+  },
+  {
+    "name": "a tap's compatibility mouseout starts the hover grace",
+    "why": "A tap opens the card; the mouseout the tap sends after its click must not close it. Must fail on the mobile spec.",
+    "edits": [
+      {
+        "find": "            if (!_rnCardShown() || _isTouchCompatMouseEvent(e) || (!flagged(e.target) && !inCard(e.target))) return;",
+        "replace": "            if (!_rnCardShown() || (!flagged(e.target) && !inCard(e.target))) return;"
+      }
+    ],
+    "spec": "tests/fixtures/apollo-findings-4.mobile.spec.js",
+    "project": "chromium-mobile",
+    "grep": "a tap opens the notice card",
+    "expect": "fail"
+  }
+]
