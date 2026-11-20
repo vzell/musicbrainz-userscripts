@@ -4883,3 +4883,13 @@ Env: 2026-11-20T16:37:55+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 | =npm run test:full=, =7ea48217= + fold      |  3404 |      12 | *23 m 8 s*  | =run-test-full.py=, 16:37:55–17:01:03 CET |
 
 3404 passed (the branch's 3397 and main's feed 1.6 tests), no flake.
+
+* 2026-11-20 — =npm run test:full= on =petri=, feat/fusion-rec-dup (WIP.1)
+
+Env: 2026-11-20T23:32:10+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                                   | Tests | Workers | Wall clock  | Basis                                     |
+|---------------------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, =546d8b29=             |  3418 |      12 | *23 m 7 s*  | =run-test-full.py=, 23:32:10–23:55:17 CET |
+
+3418 passed (main's 3404 and the rec-dup spec's 14), no flake.
