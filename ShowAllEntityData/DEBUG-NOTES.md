@@ -30773,3 +30773,33 @@ Env: 2026-11-20T15:40–16:05+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6
   parses the field once per key and never touches a row; `runFilter()` is unchanged by this step.
 - **Browser check** (vzell, 2026-11-20, live): OK, then merged. Env: Vivaldi 8.2.4133.96 (Chromium 152.0.7977.170)
   · Tampermonkey 5.5.1 (as reported for the query mode the same afternoon). `test:full` before it: 3397/3397.
+
+## 2026-11-20 — majkinetor refresh: 0693aea → a1e8f54; #938 answered all three open questions (feat/fusion-rec-dup)
+
+Env: 2026-11-20T21:58:51–22:20+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) ·
+live probe: Playwright 1.62.1, Chromium 151.0.7922.34, no Tampermonkey (GM stubs), SAED 9.99.1669 (`main` 029625a4)
+· code reading: n/a. vzell's own browser ran String Theory 2026.11.20.165956 in Vivaldi (his report).
+
+- **Clone**: `debug/majkinetor/` `0693aea` → `a1e8f54` (2026-11-20T21:57:11+01:00, a build commit). Harness copies
+  re-taken from it: String Theory 2026.11.20.215710 (its `@description` names EH 2026.11.21.190000 and ISRC Scout
+  2026.11.20.200000, the same as the standalone copies); main's raw link served the same `@version`.
+- **#938, milic-bot 2026-11-20 17:00 CET** ("Done, on main"), checked in the code:
+  - the gate: `mbnState()` lowers a stored `cool` past now + 60 s and a `leadUntil` past now + 10 s on every write;
+    a wait caps both from when it first saw the value (`seen()`); wall-clock steps left. SAED's port has the
+    first-sight cap (9.99.1651) but not the write clamp (anchor `saed-no-gate-clamp`; TODO in org/majkinetor.org).
+  - C3: `<html data-mbu-keys-keep="toggle">` beside `data-mbu-keys-off` keeps EH's V (EH:17970–17972).
+  - C7: Group Therapy (2 sites) and Falcon (4) set `mbLastWrite`; Apollo, named in the answer, has no
+    `mbLastWrite` at all in this build (anchor `c7-writer-apollo`; a question drafted for vzell).
+- **New in EH since 0693aea, from code**: bare `u` (profile), Ctrl+P (its player) and, while its player runs,
+  Space/arrows/Ctrl+Space/Alt+1–3, on every MusicBrainz page with its view off too. `u` and Ctrl+P are not in
+  SAED's `_EH_SINGLE_KEYS`; new TODO "Event Horizon's new keys on our FRP: adopt C3 with data-mbu-keys-keep". Not
+  measured (the probe runs logged out, and `u` needs the header's profile link).
+- **Probe** (`tests/support/probe-majkinetor-interop.js`): String Theory A/B/C 22:01–22:03, I 22:03; EH 0/A/B/C/D
+  22:03–22:06; ISRC Scout I 22:06–22:07 and again 22:07:43–22:07:56. Every structural row as on 2026-11-17: bodies,
+  bar visibility, FRP kept over V/V, hover card in the document, `h` stopped on IP and FRP, the C reload, the eight
+  corner launchers. Case D: SAED's fetch 26.6 s (alone 28.1 s), seven 503s, all on EH's gated GM requests; SAED's one
+  ws/2 waited 9.1 s in the shared gate. Case I: 51/51 cells, 37/37 icons with `data-ii-platform`, 37/37 stamped on
+  the FRP, in the bundle and alone. The first standalone ISRC Scout run showed no columns: both its release load and
+  its one retry got 503 (MusicBrainz throttling); the re-run was normal.
+- **Fusion** (for the rec-dup port on this branch): the matching functions are unchanged from 0693aea; 19 `fusion-*`
+  anchors added. Anchors in all: 98/98 hold (`eh-ed-full`, `gate-hold-cap` rewritten to the new code).
