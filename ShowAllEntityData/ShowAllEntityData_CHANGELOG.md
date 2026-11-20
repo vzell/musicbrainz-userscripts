@@ -4,9 +4,20 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1843 versions; the month pages hold all of them.
+This page shows the newest 100 of 1844 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1673 — 2026-11-21
+
+**🚀 Feature**
+
+- New WARNING "Possible duplicate recording" (👯) on an artist's recordings and a release tracklist: a recording that looks like another one on the same page, by the rules of majkinetor's Fusion, ported verbatim (credited in the header): a shared ISRC (or AcoustID), or at the normal cutoff the same title and artists with lengths within 5 s; never a video beside audio, live beside studio, two venues or dates, lengths more than 30 s apart, ISRCs of one batch, or a recording with an open edit. Read from the page, no requests. The title cell is tinted; its card names the other recordings of the group, what they share, its tier (strict / normal / loose) and what was kept apart. The ⚠️ menu filters to them, and the title column's 📊 has a new section "Duplicate recordings - Group" with one entry per group. Mockup approved 2026-11-20: https://claude.ai/artifact/LCthm5p9EiftZC6znZsqVB.
+- Three settings under ⚠️ FINDINGS: "Find possible duplicate recordings" (sa\_findings\_rec\_dup), "how close is a match" (sa\_findings\_rec\_dup\_cutoff: Auto = strict on an artist's recordings, normal on a release; or strict, normal, loose) and the tint (sa\_findings\_tint\_rec\_dup), all on.
+- The grouping never compares all pairs: an ISRC/AcoustID index, and for the normal and loose cutoffs title blocks (a prefix filter over the words, exact for Fusion's word test, and the title's two ends for its spelling test), walked in Fusion's own order, so the groups are Fusion's (checked against its all-pairs loop on Tom Petty's 2,630 recordings: identical at all three cutoffs; \_computeRecDupCtx(), \_recDupGroups(), \_recDupCandidatePairs(), \_recDupRecord(), \_recDupCommentSetting(), \_cmpDupHtml()).
+- On a release tracklist a duplicate whose recording links no work keeps the "no work" tint and ⚠️, and its hover card shows the duplicate group under the "no work" text (\_writeFamilyTipFindings(), a finding's underFamilyTip). Columns that load later (AcoustIDs, Performance attributes, Recording of work) group the page again (\_recDupRegroupSoon()).
+- A page too big to group at the normal or loose cutoff (more than two million candidate pairs: Springsteen's 74,630 recordings) is recognised up front from its title blocks and given up in about 0.07 s instead of 0.8 s (\_recDupBlockPairs()); on such a page nothing is marked, as before.
+
 
 ## 9.99.1672 — 2026-11-20
 
@@ -868,13 +879,6 @@ This page shows the newest 100 of 1843 versions; the month pages hold all of the
 **🐛 Fix**
 
 - brucespringsteen.it record previews: a line the site writes between a record's facts and its Notes ("The original version is numbered." on All Those Years' LP) is no longer dropped, and "\*PROMO\*" leaves the title to become "promo" beside the kind (Official release or Bootleg).
-
-
-## 9.99.1573 — 2026-11-07
-
-**🚀 Feature**
-
-- brucespringsteen.it song and show previews: on a record page, its song and show links (until now dead "\#" links) show a card on hover and open in the window on Space, as they do in the rendered table and on the other sites. A song shows its lyric versions, each with its note; a show its date, venue, setlist, notes and the records it is on, and a record there opens in the same window, with Back. On the record page a plain click still opens the site's own small window.
 
 
 ---
