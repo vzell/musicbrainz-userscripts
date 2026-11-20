@@ -2893,6 +2893,71 @@ recommended (org/bbp-parity.org, "Feed v2, branch 3").
   feed off). The added work is three findings per Event cell, a cheap
   `rowGate` and a memoized lookup.
 
+### Feed 1.6: a page named differently from its show (Track A idea 4, 2026-11-20)
+
+Env: 2026-11-20T01:51:46+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux
+6.18.58.1-microsoft-standard-WSL2) · n/a (the probe: Python over the mirror
+bb/2026-11-19; the spec: Playwright Chromium, no Tampermonkey)
+
+Idea 4 was "URL-shortening through the feed", BruceParser's
+`checkURLandTitles.sh` report. Its rows are not wiki errors: it derives an
+address from each title by many rules, and nearly all of its 4,304 rows are
+variants of those rules. vzell (2026-11-20) chose a check in the same area
+that finds real errors: a show's dependent page whose NAME is not its
+show's. A WARNING.
+
+- **The rule** (BruceParser 0.24.0 `dependent-names.awk`, and the probe
+  `scripts/probe-bb-dependent-names.py`, which must agree):
+  - pages: `gignote`, `gallery`, `eye`, `media`, `recnote`. Left out: `news`
+    (named by the article's date), `story` (its own prefixes) and `onstage`
+    (no breadcrumbs at all, 3,481 of 3,484);
+  - parent: the LAST link of `#breadcrumbs`, judged only when it is a show
+    (two eye/media pages sit under a gignote: not judged);
+  - expected: the page's prefix + ":" + the show's slug, cut to 60
+    characters, a trailing "-" dropped;
+  - fits when: equal; or equal once a `-N` suffix is stripped (two pages of
+    one date); or after a leading `dl-` is dropped (the note of a download,
+    `recnote:dl-2020-04-08-siriusxm-…`: 47 recnote pages, 1 media page, all
+    flagged by the bare rule); or a cut explains it: one slug starts with
+    the other and the cut name has ≥ 55 characters. Wikidot's cut names in
+    the mirror end at 56 to 60 characters, not at 60
+    (`media:1996-05-08-palacio-de-congresos-y-exposiciones-madri`, 58), so
+    the planned "≥ 59" let 67 cuts through as errors.
+- **Counts** (mirror bb/2026-11-19, 12,831 pages): 36 flagged (gignote 5,
+  gallery 8, eye 4, media 10, recnote 9); 149 excused (parent cut 80, `dl-`
+  45 + 1, page cut 21, `-N` 2), each listed by `--excused` and read by hand.
+  The feed (`./feed.sh -r 2026-11-19`) holds the same 36, as
+  `pages[<page>]["dependent-name"] = {event, expected}`; its `anchors` gained
+  the 28 anchored shows (one show, `nogig:1949-09-23-…`, is on no year page).
+- **What it finds:** missing day letters (`gallery:1967-11-00-…` under
+  `gig:1967-11-00a-…`, `gallery:2018-07-18-walter-kerr-…` under `…-18a-…`),
+  typos (`…palais-omnisport…`, `media:2023-04-11-ubs-arena-belmont-park-ny`
+  under `…-ubs-arena-elmont-ny`), wrong dates (`media:1975-11-10-…-tampa-fl`
+  under `gig:1975-11-11-…-miami-fl`, `eye:2024-06-20-…` under `…-06-22-…`)
+  and wrong parents (`gallery:2014-04-17-carnegie-hall-…` under the
+  Nashville gig, `gignote:2017-06-04-asbury-hotel-…` under a 1949 nogig).
+- **In the script:** `_BB_FEED_KINDS['dependent-name']`, ⚠️ `bb-feed-name` ⇋,
+  `sa_findings_bb_feed_name` (on). Like dependent-title, the show is marked
+  for its pages: `_bbFeedTake()` builds `_bbFeed.byEventName` (the feed's
+  `event` read backwards) and `_bbFeedFacts()` merges the page's own entry
+  with it into `deps`.
+- **Where the marks show:** a dependent page has no head and no window of
+  ours (it is `bb-page`, and the preview links leave its kinds out), so its
+  own mark is on its rows only (a Page, Title or Name cell: Recent changes,
+  the tag lists). The show's mark is on its rows (a year listing's through
+  the anchors), its head and its window.
+- **The live filter never drops it**, a deviation from the plan, which had
+  the mark dropped when the page's breadcrumb now names another show. No
+  page that shows a dependent page's breadcrumb carries the feed's marks
+  (see above), so that rule could never run, and a show's page cannot see
+  its dependents' names.
+- **Tests:** `tests/fixtures/bb-feed-dependent-name.spec.js` (7), on
+  `tests/fixtures/bb-feed-2026-11-19-names.json` (the run's feed cut to this
+  kind, `scripts/build-bb-feed-names-fixture.py`): the 1968 year page, the
+  1978 listing, the switch, the facts, the event head (a small feed) and
+  Recent changes' Page cell (a small feed). Mutations:
+  `scripts/mutations/bb-feed-dependent-name.json`.
+
 ## Show links on Brucebase's own pages (Phase 8, 2026-11-11)
 
 A show on its year page (`/<yyyy>#<ddmmyy>`: an event's "Info & Setlist", a

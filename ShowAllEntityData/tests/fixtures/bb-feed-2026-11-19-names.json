@@ -1,0 +1,330 @@
+{
+ "anchors": {
+  "1967#001167a": [
+   "gig:1967-11-00a-first-presbyterian-church-freehold-nj"
+  ],
+  "1968#001168": [
+   "gig:1968-11-00-off-broad-street-coffee-house-red-bank-nj"
+  ],
+  "1974#110574": [
+   "gig:1974-05-11-student-union-building-teaneck-nj"
+  ],
+  "1975#111175": [
+   "gig:1975-11-11-jai-alai-fronton-miami-fl"
+  ],
+  "1975#250775b": [
+   "gig:1975-07-25b-keystone-hall-kutztown-pa"
+  ],
+  "1978#030678": [
+   "gig:1978-06-03-nassau-coliseum-uniondale-ny"
+  ],
+  "1978#150778a": [
+   "interview:1978-07-15a-kilt-studio-houston-tx"
+  ],
+  "1978#300878b": [
+   "gig:1978-08-30b-agora-cleveland-oh"
+  ],
+  "1987#081087b": [
+   "gig:1987-10-08b-ritz-new-york-city-ny"
+  ],
+  "1987#260887a": [
+   "gig:1987-08-26a-key-largo-belmar-nj"
+  ],
+  "1987#260887b": [
+   "gig:1987-08-26b-columns-avon-nj"
+  ],
+  "1990#001290b": [
+   "recording:1990-12-00b-ocean-way-studios-los-angeles-ca"
+  ],
+  "1992#221192": [
+   "nobruce:1992-11-22-wkrk-studio-new-york-city-ny"
+  ],
+  "1999#020699": [
+   "gig:1999-06-02-palais-omnisports-paris-france"
+  ],
+  "1999#030699": [
+   "gig:1999-06-03-palais-omnisports-paris-france"
+  ],
+  "2002#300702b": [
+   "rehearsal:2002-07-30b-convention-hall-asbury-park-nj"
+  ],
+  "2006#220606": [
+   "gig:2006-06-22-madison-square-garden-new-york-city-ny"
+  ],
+  "2014#160214": [
+   "gig:2014-02-16-aami-park-melbourne-australia"
+  ],
+  "2014#170414": [
+   "gig:2014-04-17-bridgestone-arena-nashville-tn"
+  ],
+  "2016#171016b": [
+   "nogig:2016-10-17b-waterstones-london-england"
+  ],
+  "2018#180718a": [
+   "gig:2018-07-18a-walter-kerr-theatre-new-york-city-ny"
+  ],
+  "2020#100920c": [
+   "interview:2020-09-10c-private-residence-colts-neck-nj"
+  ],
+  "2020#191020a": [
+   "interview:2020-10-19a-private-residence-colts-neck-nj"
+  ],
+  "2020#231020a": [
+   "interview:2020-10-23a-siriusxm-studio-new-york-city-ny"
+  ],
+  "2021#121121b": [
+   "interview:2021-11-12b-basie-center-cinemas-red-bank-nj"
+  ],
+  "2021#140721a": [
+   "interview:2021-07-14a-stone-hill-farm-colts-neck-nj"
+  ],
+  "2023#110423": [
+   "gig:2023-04-11-ubs-arena-elmont-ny"
+  ],
+  "2024#220624": [
+   "gig:2024-06-22-estadi-olimpic-lluis-companys-barcelona-spain"
+  ],
+  "2025#151025": [
+   "interview:2025-10-15-royal-festival-hall-london-england"
+  ]
+ },
+ "credit": "The data is Brucebase (brucebase.wikidot.com, Danny van der Linden and its editors); the checks are BruceParser's.",
+ "format": 1,
+ "pages": {
+  "eye:1974-05-11-student-union-building-rutherford-nj": {
+   "dependent-name": {
+    "event": "gig:1974-05-11-student-union-building-teaneck-nj",
+    "expected": "eye:1974-05-11-student-union-building-teaneck-nj"
+   }
+  },
+  "eye:1975-07-25-keystone-hall-kutztown-pa": {
+   "dependent-name": {
+    "event": "gig:1975-07-25b-keystone-hall-kutztown-pa",
+    "expected": "eye:1975-07-25b-keystone-hall-kutztown-pa"
+   }
+  },
+  "eye:2014-02-26-entertainment-centre-brisbane-australia": {
+   "dependent-name": {
+    "event": "gig:2014-02-16-aami-park-melbourne-australia",
+    "expected": "eye:2014-02-16-aami-park-melbourne-australia"
+   }
+  },
+  "eye:2024-06-20-estadi-olimpic-lluis-companys-barcelona-spain": {
+   "dependent-name": {
+    "event": "gig:2024-06-22-estadi-olimpic-lluis-companys-barcelona-spain",
+    "expected": "eye:2024-06-22-estadi-olimpic-lluis-companys-barcelona-spain"
+   }
+  },
+  "gallery:1967-11-00-first-presbyterian-church-freehold-nj": {
+   "dependent-name": {
+    "event": "gig:1967-11-00a-first-presbyterian-church-freehold-nj",
+    "expected": "gallery:1967-11-00a-first-presbyterian-church-freehold-nj"
+   }
+  },
+  "gallery:1968-11-00-off-broad-street-red-bank-nj": {
+   "dependent-name": {
+    "event": "gig:1968-11-00-off-broad-street-coffee-house-red-bank-nj",
+    "expected": "gallery:1968-11-00-off-broad-street-coffee-house-red-bank-nj"
+   }
+  },
+  "gallery:1978-08-30-agora-cleveland-oh": {
+   "dependent-name": {
+    "event": "gig:1978-08-30b-agora-cleveland-oh",
+    "expected": "gallery:1978-08-30b-agora-cleveland-oh"
+   }
+  },
+  "gallery:1999-06-02-palais-omnisport-paris-france": {
+   "dependent-name": {
+    "event": "gig:1999-06-02-palais-omnisports-paris-france",
+    "expected": "gallery:1999-06-02-palais-omnisports-paris-france"
+   }
+  },
+  "gallery:2014-04-17-carnegie-hall-new-york-city-ny": {
+   "dependent-name": {
+    "event": "gig:2014-04-17-bridgestone-arena-nashville-tn",
+    "expected": "gallery:2014-04-17-bridgestone-arena-nashville-tn"
+   }
+  },
+  "gallery:2016-10-17-waterstones-london-england": {
+   "dependent-name": {
+    "event": "nogig:2016-10-17b-waterstones-london-england",
+    "expected": "gallery:2016-10-17b-waterstones-london-england"
+   }
+  },
+  "gallery:2018-07-18-walter-kerr-theatre-new-york-city-ny": {
+   "dependent-name": {
+    "event": "gig:2018-07-18a-walter-kerr-theatre-new-york-city-ny",
+    "expected": "gallery:2018-07-18a-walter-kerr-theatre-new-york-city-ny"
+   }
+  },
+  "gallery:2025-10-15b-unknown-location-hall-london-england": {
+   "dependent-name": {
+    "event": "interview:2025-10-15-royal-festival-hall-london-england",
+    "expected": "gallery:2025-10-15-royal-festival-hall-london-england"
+   }
+  },
+  "gignote:1978-07-15-kilt-studio-houston-tx": {
+   "dependent-name": {
+    "event": "interview:1978-07-15a-kilt-studio-houston-tx",
+    "expected": "gignote:1978-07-15a-kilt-studio-houston-tx"
+   }
+  },
+  "gignote:1987-08-26-columns-avon-nj": {
+   "dependent-name": {
+    "event": "gig:1987-08-26b-columns-avon-nj",
+    "expected": "gignote:1987-08-26b-columns-avon-nj"
+   }
+  },
+  "gignote:1987-08-26-key-largo-belmar-nj": {
+   "dependent-name": {
+    "event": "gig:1987-08-26a-key-largo-belmar-nj",
+    "expected": "gignote:1987-08-26a-key-largo-belmar-nj"
+   }
+  },
+  "gignote:1990-12-00-ocean-way-studios-los-angeles-ca": {
+   "dependent-name": {
+    "event": "recording:1990-12-00b-ocean-way-studios-los-angeles-ca",
+    "expected": "gignote:1990-12-00b-ocean-way-studios-los-angeles-ca"
+   }
+  },
+  "gignote:2017-06-04-asbury-hotel-asbury-park-nj": {
+   "dependent-name": {
+    "event": "nogig:1949-09-23-monmouth-medical-center-long-branch-nj",
+    "expected": "gignote:1949-09-23-monmouth-medical-center-long-branch-nj"
+   }
+  },
+  "media:1975-11-10-jai-alai-fronton-tampa-fl": {
+   "dependent-name": {
+    "event": "gig:1975-11-11-jai-alai-fronton-miami-fl",
+    "expected": "media:1975-11-11-jai-alai-fronton-miami-fl"
+   }
+  },
+  "media:1987-10-08-ritz-new-york-city-ny": {
+   "dependent-name": {
+    "event": "gig:1987-10-08b-ritz-new-york-city-ny",
+    "expected": "media:1987-10-08b-ritz-new-york-city-ny"
+   }
+  },
+  "media:1990-12-00-ocean-way-studios-los-angeles-ca": {
+   "dependent-name": {
+    "event": "recording:1990-12-00b-ocean-way-studios-los-angeles-ca",
+    "expected": "media:1990-12-00b-ocean-way-studios-los-angeles-ca"
+   }
+  },
+  "media:1992-11-22-radio-studio-new-york-city-ny": {
+   "dependent-name": {
+    "event": "nobruce:1992-11-22-wkrk-studio-new-york-city-ny",
+    "expected": "media:1992-11-22-wkrk-studio-new-york-city-ny"
+   }
+  },
+  "media:1999-06-03-palais-omnisport-paris-france": {
+   "dependent-name": {
+    "event": "gig:1999-06-03-palais-omnisports-paris-france",
+    "expected": "media:1999-06-03-palais-omnisports-paris-france"
+   }
+  },
+  "media:2006-06-22-new-york-city-ny": {
+   "dependent-name": {
+    "event": "gig:2006-06-22-madison-square-garden-new-york-city-ny",
+    "expected": "media:2006-06-22-madison-square-garden-new-york-city-ny"
+   }
+  },
+  "media:2020-10-23b-siriusxm-studio-new-york-city-ny": {
+   "dependent-name": {
+    "event": "interview:2020-10-23a-siriusxm-studio-new-york-city-ny",
+    "expected": "media:2020-10-23a-siriusxm-studio-new-york-city-ny"
+   }
+  },
+  "media:2021-07-14b-stone-hill-farm-colts-neck-nj": {
+   "dependent-name": {
+    "event": "interview:2021-07-14a-stone-hill-farm-colts-neck-nj",
+    "expected": "media:2021-07-14a-stone-hill-farm-colts-neck-nj"
+   }
+  },
+  "media:2023-04-11-ubs-arena-belmont-park-ny": {
+   "dependent-name": {
+    "event": "gig:2023-04-11-ubs-arena-elmont-ny",
+    "expected": "media:2023-04-11-ubs-arena-elmont-ny"
+   }
+  },
+  "media:dl-2020-09-10-springsteen-residence-colts-neck-nj": {
+   "dependent-name": {
+    "event": "interview:2020-09-10c-private-residence-colts-neck-nj",
+    "expected": "media:2020-09-10c-private-residence-colts-neck-nj"
+   }
+  },
+  "recnote:1978-06-05-sports-arena-toledo-oh": {
+   "dependent-name": {
+    "event": "gig:1978-06-03-nassau-coliseum-uniondale-ny",
+    "expected": "recnote:1978-06-03-nassau-coliseum-uniondale-ny"
+   }
+  },
+  "recnote:1990-12-00-ocean-way-studios-los-angeles-ca": {
+   "dependent-name": {
+    "event": "recording:1990-12-00b-ocean-way-studios-los-angeles-ca",
+    "expected": "recnote:1990-12-00b-ocean-way-studios-los-angeles-ca"
+   }
+  },
+  "recnote:1992-11-22-radio-studio-new-york-city-ny": {
+   "dependent-name": {
+    "event": "nobruce:1992-11-22-wkrk-studio-new-york-city-ny",
+    "expected": "recnote:1992-11-22-wkrk-studio-new-york-city-ny"
+   }
+  },
+  "recnote:1999-06-02-palais-omnisport-paris-france": {
+   "dependent-name": {
+    "event": "gig:1999-06-02-palais-omnisports-paris-france",
+    "expected": "recnote:1999-06-02-palais-omnisports-paris-france"
+   }
+  },
+  "recnote:1999-06-03-palais-omnisport-paris-france": {
+   "dependent-name": {
+    "event": "gig:1999-06-03-palais-omnisports-paris-france",
+    "expected": "recnote:1999-06-03-palais-omnisports-paris-france"
+   }
+  },
+  "recnote:2002-07-30-convention-hall-asbury-park-nj-evening": {
+   "dependent-name": {
+    "event": "rehearsal:2002-07-30b-convention-hall-asbury-park-nj",
+    "expected": "recnote:2002-07-30b-convention-hall-asbury-park-nj"
+   }
+  },
+  "recnote:2020-10-19a-recnote-residence-colts-neck-nj": {
+   "dependent-name": {
+    "event": "interview:2020-10-19a-private-residence-colts-neck-nj",
+    "expected": "recnote:2020-10-19a-private-residence-colts-neck-nj"
+   }
+  },
+  "recnote:2020-10-23b-siriusxm-studio-new-york-city-ny": {
+   "dependent-name": {
+    "event": "interview:2020-10-23a-siriusxm-studio-new-york-city-ny",
+    "expected": "recnote:2020-10-23a-siriusxm-studio-new-york-city-ny"
+   }
+  },
+  "recnote:dl-2021-11-12-basie-center-cinemas-red-bank-nj": {
+   "dependent-name": {
+    "event": "interview:2021-11-12b-basie-center-cinemas-red-bank-nj",
+    "expected": "recnote:2021-11-12b-basie-center-cinemas-red-bank-nj"
+   }
+  }
+ },
+ "reports": {
+  "dependent-name": {
+   "count": 36,
+   "files": [
+    "gignote/*.html",
+    "gallery/*.html",
+    "eye/*.html",
+    "media/*.html",
+    "recnote/*.html"
+   ]
+  }
+ },
+ "run": {
+  "bruceparser": "0.24.0",
+  "commit": "2c996c2",
+  "date": "2026-11-19",
+  "feed": "1.6"
+ },
+ "site": "https://brucebase.wikidot.com"
+}

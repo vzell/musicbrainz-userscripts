@@ -3,10 +3,10 @@
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
     "script_version": "9.99.1666+2026-11-20",
-    "schema_entries": 560,
+    "schema_entries": 561,
     "sections": 54,
-    "settings": 506,
-    "settings_with_default": 501,
+    "settings": 507,
+    "settings_with_default": 502,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 329,
+      "checkbox": 330,
       "color_picker": 62,
       "divider": 54,
       "number": 53,
@@ -477,6 +477,7 @@
     "sa_findings_bb_feed_date_wrong": "Find Brucebase pages with a date tag that is not their date (Brucebase feed)",
     "sa_findings_bb_feed_files": "Find Brucebase pages tagged \"files\" that show no picture (Brucebase feed)",
     "sa_findings_bb_feed_first_letter": "Find Brucebase pages without their first-letter tag (Brucebase feed)",
+    "sa_findings_bb_feed_name": "Find Brucebase pages named differently from their show (Brucebase feed)",
     "sa_findings_bb_feed_no_parent": "Find Brucebase pages without a parent page (Brucebase feed)",
     "sa_findings_bb_feed_no_tags": "Find Brucebase pages without any tag (Brucebase feed)",
     "sa_findings_bb_feed_title": "Find Brucebase pages titled differently from their show (Brucebase feed)",
@@ -984,6 +985,7 @@
     "sa_findings_bb_feed_date_wrong": true,
     "sa_findings_bb_feed_files": true,
     "sa_findings_bb_feed_first_letter": true,
+    "sa_findings_bb_feed_name": true,
     "sa_findings_bb_feed_no_parent": true,
     "sa_findings_bb_feed_no_tags": true,
     "sa_findings_bb_feed_title": true,

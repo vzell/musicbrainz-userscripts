@@ -45,6 +45,8 @@ State: DONE (SAED has it), PART, TODO, NOT (not ported, with the reason).
 | ⇄ Original Page toggle                                                       | every page                                      | the wiki's page folded under "Brucebase page"                                         | DONE  |     — |
 | The sticky bar, Ctrl+B                                                       | =toggleStickyBar=                               | SAED's toolbar                                                                        | DONE  |     — |
 | Running beside SAED on one page (Track A idea 6)                             | every page it changes                           | SAED stands aside with a notice (=_bbBbpPresent()=), never a broken table             | DONE  |     — |
+| Dependent page named differently from its show (Track A idea 4)              | =dependent-names.awk= (0.24.0), feed 1.6        | =bb-feed-name= ⚠️ ⇋ on the page and its show (rows, head, window): 36 pages           | DONE  | feed  |
+| URL shortened differently from the title                                     | =checkURLandTitles.sh= (=URL-shortening=)       | NOT (2026-11-20): nearly all 4,304 rows are its derivation's variants, not errors     | NOT   | feed  |
 
 * Batch 1: the year table's name and anchor findings (next)
 
@@ -71,7 +73,7 @@ does): =_bbEvpRenderCell()= marks the cell, live and source, and queues the row.
 | Year page anchor date ≠ title date          | 1972-05-00 Mediasound: anchor =000472b= (April), title May                                      | =bb-anchor-date=                       |                  1 |
 | YEAR heading ≠ DETAIL title (per-part rule) | 1967-08-00 Howell ("private property" vs "unknown location"), the rest of the cleaned-up report | =bb-name-mismatch=                     |                  1 |
 | Two blanks in a title                       | 2026-08-28 Stone Pony, Summer Stage                                                             | =bb-title-spaces=                      |                  1 |
-| URL shortened differently from the title    | BruceParser's =URL-shortening-CLEANEDUP= (with 0.16.0's suffix fix)                             | =bb-url-shortening= (feed)             |      feed (idea 4) |
+| URL shortened differently from the title    | BruceParser's =URL-shortening-CLEANEDUP= (with 0.16.0's suffix fix)                             | NOT; =bb-feed-name= (feed 1.6) instead |  feed 1.6 (idea 4) |
 | Anchor postfix ≠ URL postfix (a/b/c)        | =differences-date-postfix-detail-and-year.txt= (1,352 lines)                                    | =bb-anchor-postfix=, if vzell wants it | 1 (question above) |
 | Stray tag "onst2"                           | =onstage:1990-01-17-waldorf-astoria-hotel-new-york-city-ny-1=                                   | spurious tags                          |                  3 |
 
@@ -1125,3 +1127,44 @@ venue rows).
 | https://brucebase.wikidot.com/2013                                                      | Show all events, ▶ Pages | the Australian rows of March ❌ on Tags (song tags)                         |
 
 vzell, 2026-11-20 (on vzell-lap, every family on): "all tested live OK".
+
+* Track A idea 4: a page named differently from its show (=feat/bb-feed-dependent-name=, 2026-11-20; feed 1.6)
+
+Env: 2026-11-20T01:51:46+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · n/a
+(the probe: Python over the mirror bb/2026-11-19; the spec: Playwright Chromium, no Tampermonkey)
+
+vzell (2026-11-20): idea 4 becomes this check, the feed kind "dependent-name", a WARNING; URL-shortening NOT (the
+matrix). BruceParser's =URL-shortening-CLEANEDUP= derives every address from its title by many rules, and nearly all
+of its 4,304 rows are variants of those rules, not wiki errors (its page is OBSOLETE in =index.org=).
+
+- *The rule* (=dependent-names.awk=, BruceParser 0.24.0 =2c996c2=; =scripts/probe-bb-dependent-names.py=): a gignote,
+  gallery, eye, media or recnote page against the show its breadcrumb's last link names; expected the page's prefix
+  and the show's slug cut to 60 characters. A =-N= twin, a =dl-= note of a download and Wikidot's cut (one slug starts
+  with the other, the cut name ≥ 55 characters) fit. news, story and onstage (no breadcrumbs) are left out.
+- *Three changes to the planned rule, from the probe:* onstage pages have no breadcrumbs (3,481 of 3,484 not judged:
+  left out); Wikidot's cut names end at 56 to 60 characters, so "≥ 59" became "≥ 55" (67 cuts were flagged);
+  the 47 =recnote:dl-…= pages (and one media page) name a download's note, a convention (all flagged by the bare
+  rule). Every one of the 149 excused pages was read by hand (=--excused=).
+- *Result:* 36 pages (gignote 5, gallery 8, eye 4, media 10, recnote 9); the feed (=./feed.sh -r 2026-11-19=, 1.6)
+  holds the same 36, every other part of it unchanged, and 28 more anchors. Published on 2026-11-20 at vzell's word (feed repo =c52f356=, its FORMAT.md =f3ca18c=).
+- *In SAED:* ⚠️ =bb-feed-name= ⇋, =sa_findings_bb_feed_name= (on); the show is marked for its pages
+  (=_bbFeed.byEventName=). *Deviation from the plan:* the live filter never drops the mark. The plan had it dropped
+  when the page's breadcrumb now names another show, but a dependent page has no head and no window of ours (it is
+  =bb-page=, and the preview links leave its kinds out), so no page that shows its breadcrumb carries the mark.
+- *Tests:* =tests/fixtures/bb-feed-dependent-name.spec.js= (7, green); =scripts/mutations/bb-feed-dependent-name.json=
+  (7, each fails its test). =test:full= 3370/3370 (2026-11-20T01:58:32+01:00 – 02:21:24+01:00, NB-3641, =323382e4=,
+  Playwright Chromium, no Tampermonkey).
+
+** The browser check of idea 4, for vzell (the run of 2026-11-19; unverified on the live wiki)
+
+First: the feed 1.6 is on GitHub (BruceParser 0.24.0, published 2026-11-20); then use the
+☰ menu's Brucebase "Read again". The finding is on by default.
+
+| URL                                                                                 | Step                                     | What should appear                                                                     |
+|-------------------------------------------------------------------------------------+------------------------------------------+----------------------------------------------------------------------------------------|
+| https://brucebase.wikidot.com/1968                                                  | Show all events                          | the 1968-11-00 Off Broad Street Coffee House row ⚠️ on Event; hover names its gallery  |
+| https://brucebase.wikidot.com/gig:1967-11-00a-first-presbyterian-church-freehold-nj | Show the event                           | ⚠️ ⇋ after the byline: "Its page gallery:1967-11-00-first-presbyterian-… is named …"   |
+| https://brucebase.wikidot.com/1978-list                                             | Show this year's events                  | three rows ⚠️ on Event: 1978-06-03 Uniondale, 1978-07-15 Houston, 1978-08-30 Cleveland |
+| https://brucebase.wikidot.com/1999                                                  | Show all events, Ctrl+hover 06-02, Space | the window's title ⚠️ ⇋: its gallery and recnote pages say "palais-omnisport"          |
+| https://brucebase.wikidot.com/system:page-tags/tag/media                            | Show the tagged pages                    | the row of media:1975-11-10-jai-alai-fronton-tampa-fl ⚠️ ⇋ (and ❌ for its date tag)    |
+| ⚙️ Settings → ⚠️ Findings → "Find Brucebase pages named differently …"              | off, then 1968 again                     | no ⚠️ on the Off Broad Street row                                                      |

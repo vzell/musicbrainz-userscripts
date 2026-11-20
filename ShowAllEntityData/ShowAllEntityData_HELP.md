@@ -877,6 +877,7 @@ back).
 | ⚠️     | Brucebase page without its first-letter tag (Brucebase feed)    | Brucebase lists: Event, Title, Name, Page   |
 | ⚠️     | Brucebase page with a date tag that is not its date (Brucebase feed) | Brucebase lists: Event, Title, Name, Page   |
 | ⚠️     | Brucebase page tagged "files" without a picture (Brucebase feed) | Brucebase lists: Event, Title, Name, Page   |
+| ⚠️     | Brucebase page named differently from its show (Brucebase feed) | Brucebase lists: Event, Title, Name, Page   |
 | ⚠️     | Two events link one Brucebase entry (Brucebase feed)            | Event lists: Event                          |
 | ⚠️     | Brucebase link is no year-page anchor (Brucebase feed)          | Event lists: Event                          |
 | ⚠️     | Pending edits                                                   | any column                                  |
@@ -4008,7 +4009,7 @@ reads, is read again on the next press once it is an hour old.
   version and commit, when it was read, its pages per kind). A failed read
   is tried again after an hour.
 - **Settings:** *Read the Brucebase feed* (⚙️ Settings → 📚 BRUCEBASE) turns it
-  off: no request, no mark. Each of the seven findings has its own switch in
+  off: no request, no mark. Each of the eight findings has its own switch in
   ⚠️ Findings, and *Highlight cells of Brucebase pages the Brucebase feed
   names* is their tint.
 - **Date tags and the "files" tag** (since the feed of BruceParser 0.19.0):
@@ -4020,6 +4021,16 @@ reads, is read again on the next press once it is an hour old.
   their marks are in their windows and on the tag pages that list them. The
   page in front of you wins here too: a date tag it has now, or a picture
   it shows now, drops the mark.
+- **Pages named differently from their show** (since the feed of BruceParser
+  0.24.0): ⚠️ ⇋ a show's Notes, Gallery, Eyewitness, Media or Recording
+  notes page whose name is not the show's, as its breadcrumb names the show:
+  `gallery:1967-11-00-…` under `gig:1967-11-00a-…` (a missing day letter), a
+  typo (`…palais-omnisport…`), a wrong date or a wrong show. A name Wikidot
+  cut at its 60 characters, a `-1`/`-2` of two pages of one date and the
+  `dl-` of a download's note are no error. The show is marked too, on its
+  rows, its page and its window, and the hover text names the page and the
+  name it would have; the page itself is marked on its rows (Recent
+  changes, the tag lists), as it has no head or window of its own.
 - **On MusicBrainz** (since the feed of BruceParser 0.21.0): BruceParser also
   compares the artist's MusicBrainz events with Brucebase. An event whose
   Brucebase link reaches no entry (❌; most often the wiki writes that date
