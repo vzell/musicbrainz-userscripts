@@ -27,7 +27,8 @@ left out by decision), NOT (not done, with the reason).
   (598 differing titles, nearly all conventions) but its date slice, the feed kind "date-differs" (BruceParser
   0.26.0, feed 1.7, 7 events, NOT published), ⚠️ ± =bb-mb-date= in SAED; =bb-feed.spec.js= 44/44, mutations 11 + 1
   ="expect": "pass"=. Before it, BruceParser 0.25.0: the country-suffix bug, the 503 handling in =search.sh= and the
-  work search in =bbp.sh=. Next: =test:full=, publishing the feed 1.7 (vzell's word), vzell's browser check
+  work search in =bbp.sh=. =test:full= 3391/3391 (=f8addb5c=). Next: publishing the feed 1.7 (vzell's word), vzell's
+  browser check
   (bbp-parity.org, "Track A idea 5, check 1 …"), then check 2 (works, =mbWorks=).
 - *Open in Track A:* check 2 of idea 5. Freezing BruceBaseParser (idea 6) is possible but waits: vzell, 2026-11-20,
   "We will actually NOT yet freeze BruceBaseParser right now". See "Status at a glance".
@@ -391,7 +392,8 @@ title comparison but its precise slice, the date: the feed kind "date-differs" (
 events, 6 of them a day late against their own name), ⚠️ ± =bb-mb-date= with a verdict by the event's name. Mockup
 https://claude.ai/artifact/8iqJ2nM2xVb8JTkLgSwbod, every answer as recommended. Before it, BruceParser 0.25.0 (vzell:
 "fix BruceParser first"): the country-suffix bug (5 titles cut), the 503 handling in =search.sh=, the work search as
-the step =search-work= in =bbp.sh=. Waits for: =test:full=, publishing the feed 1.7, vzell's browser check. Record:
+the step =search-work= in =bbp.sh=. =test:full= 3391/3391. Waits for: publishing the feed 1.7, vzell's browser
+check. Record:
 bbp-parity.org, "Track A idea 5, check 1 …".
 
 *** TODO Check 2: an MB work against its Brucebase song

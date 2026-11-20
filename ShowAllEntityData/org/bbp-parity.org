@@ -1212,7 +1212,8 @@ differences (the news tag list, the year listings) on the 1.6 feed as on 1.7; no
 
 *Tests:* =bb-feed.spec.js= 44 (6 new), green; =scripts/mutations/bb-feed-mb-date.json= 12, 11 fail their test, 1
 ="expect": "pass"= (the event-art link guard: the =caa= extractor moves that link out of the Event cell first). The
-probe and the checker: 7 / 197 / 18 / 1 on both sides. =test:full= deferred to before the merge.
+probe and the checker: 7 / 197 / 18 / 1 on both sides. =test:full= 3391/3391 (2026-11-20T16:31:08+01:00 –
+16:55:45+01:00, NB-3641, =f8addb5c=, Playwright Chromium, no Tampermonkey).
 
 ** The browser check of check 1, for vzell (the run of 2026-11-19; unverified on the live MusicBrainz)
 
