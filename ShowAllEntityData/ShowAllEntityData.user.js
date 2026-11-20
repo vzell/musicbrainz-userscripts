@@ -29275,8 +29275,8 @@
             `<div class="mb-bbmb-src">${esc(_bbFeedSource())}</div>`;
     }
 
-    /** The open card: its element, what it is open for, the close timer. */
-    const _bbMbCard = { for: null, timer: 0 };
+    /** The open card: what it is open for, the close timer, the watch that keeps it clear of the link preview. */
+    const _bbMbCard = { for: null, timer: 0, watch: 0 };
 
     /**
      * Installs the card's stylesheet on MusicBrainz, once (the "Liner notes"
@@ -29379,11 +29379,58 @@
         const h = card.offsetHeight;
         const above = b.bottom + 6 + h > window.innerHeight && b.top - 6 - h >= 0;
         card.style.top = `${(above ? b.top - 6 - h : b.bottom + 6) + window.scrollY}px`;
+        _bbMbCardAvoid();
+        // The link preview comes up a moment after this card (its own delay
+        // on the link inside the cell): keep clear of it while open.
+        clearInterval(_bbMbCard.watch);
+        _bbMbCard.watch = setInterval(_bbMbCardAvoid, 150);
+    }
+
+    /** @type {string[]} The other floating cards a Brucebase card keeps clear of: the link preview, its stack of notes, the cell's hover card. */
+    const _BB_MB_CARD_AVOID = ['mb-dp-peek', 'mb-dp-notes', 'mb-stat-tooltip'];
+
+    /**
+     * Moves the open card clear of the other floating cards that cover it
+     * (vzell, 2026-11-20: they overlapped): to the right of all of them when
+     * the window has room, else below them. A card that covers nothing stays
+     * where it is.
+     *
+     * @returns {void}
+     */
+    function _bbMbCardAvoid() {
+        const card = document.getElementById('mb-bbmb-card');
+        if (!card || card.style.display === 'none') {
+            clearInterval(_bbMbCard.watch);
+            return;
+        }
+        const mine = card.getBoundingClientRect();
+        const others = _BB_MB_CARD_AVOID.map(id => document.getElementById(id)).filter((el) => {
+            if (!el) return false;
+            const cs = getComputedStyle(el);
+            return cs.display !== 'none' && cs.visibility !== 'hidden';
+        }).map(el => el.getBoundingClientRect()).filter(r => r.width > 0 && r.height > 0);
+        if (!others.some(r => r.left < mine.right && r.right > mine.left && r.top < mine.bottom && r.bottom > mine.top)) return;
+        const u = others.reduce((a, r) => ({ left: Math.min(a.left, r.left), top: Math.min(a.top, r.top),
+            right: Math.max(a.right, r.right), bottom: Math.max(a.bottom, r.bottom) }),
+        { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity });
+        const vw = document.documentElement.clientWidth;
+        let left;
+        let top;
+        if (u.right + 8 + mine.width <= vw - 16) {
+            left = u.right + 8;
+            top = Math.max(8, Math.min(u.top, window.innerHeight - mine.height - 8));
+        } else {
+            left = Math.max(16, Math.min(u.left, vw - mine.width - 16));
+            top = u.bottom + 8;
+        }
+        card.style.left = `${left + window.scrollX}px`;
+        card.style.top = `${top + window.scrollY}px`;
     }
 
     /** @returns {void} Closes the card. */
     function _bbMbCardHide() {
         clearTimeout(_bbMbCard.timer);
+        clearInterval(_bbMbCard.watch);
         const card = document.getElementById('mb-bbmb-card');
         if (card) card.style.display = 'none';
         _bbMbCard.for = null;

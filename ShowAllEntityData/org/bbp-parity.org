@@ -1277,6 +1277,13 @@ failure, =bb-place.spec.js= "an /onstage: link previews its event", timed out wi
 detail page…"; alone, =--repeat-each=3=, 36/36. Far from this branch's code (a Brucebase preview), so a timing flake
 under the suite's load; first seen here, to watch.
 
+*vzell's live check, 2026-11-20 (first part):* the marks show; hovering a marked Work cell's link, the feed card and
+the link's preview with its "Finding" box lay over each other (screenshot). vzell: "either all below each other or
+the new one on the right side of the others". Built: =_bbMbCardAvoid()= moves the card to the right of the preview
+and its notes when the window has room, else below them, checked at the show and every 150 ms while open (the
+preview comes later); events and works alike. Test "the card keeps clear …" (the previews on, Ctrl held), two
+mutations failing it; =bb-feed*= specs 62/62.
+
 ** The browser check of check 2, for vzell (the run of 2026-11-19; unverified on the live MusicBrainz)
 
 The feed 1.8 is published (2026-11-20, feed repo =17d9cb0=). Install the script from =feat/bb-feed-mb-works=. A kept 1.7 file is read again on a works page's press once it was read an hour ago.

@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-11-20",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The card of a Brucebase mark on MusicBrainz (events and works) no longer lies over the link's preview: hovering a marked cell's link opens the card and, a moment later, the link's preview with its \"Finding\" box. The card now moves to the right of them when the window has room, else below them."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-11-20",
     "sections": [

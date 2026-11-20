@@ -177,6 +177,30 @@ test.describe('the Brucebase feed 1.8: MusicBrainz works', () => {
         await expect(card.locator('.mb-bbmb-cands a')).toHaveAttribute('href', `/work/${W(3)}`);
     });
 
+    // vzell's live check (2026-11-20): hovering a marked Work cell's link opened the card and, a moment later, the
+    // link's preview with its "Finding" box, on top of each other. The card now keeps clear of them: to their right
+    // when there is room, else below them.
+    test('the card keeps clear of the link\'s preview and its notes (the previews on)', async ({ page }) => {
+        await showWorks(page, { ...feedOn(worksFeed()), sa_pop_mb: true, sa_rich_tooltip_delay_ms: 0 });
+        await page.route(/\/ws\/2\/work\//, route => route.fulfill({ status: 200, contentType: 'application/json',
+            body: JSON.stringify({ id: W(1), title: 'Livin’ on a Prayer', type: 'Song', relations: [], aliases: [] }) }));
+        await page.keyboard.down('Control');
+        await page.locator(`table.tbl tbody td[data-mb-findings~="bb-mbw-none"] a[href="/work/${W(1)}"]`).hover();
+        await expect(page.locator('#mb-bbmb-card')).toBeVisible();
+        await expect(page.locator('#mb-dp-peek')).toBeVisible({ timeout: 10000 });
+        const overlaps = () => page.evaluate(() => {
+            const r = el => el.getBoundingClientRect();
+            const card = r(document.getElementById('mb-bbmb-card'));
+            return ['mb-dp-peek', 'mb-dp-notes', 'mb-stat-tooltip'].map(id => document.getElementById(id))
+                .filter(el => el && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden')
+                .map(el => [el.id, r(el)])
+                .filter(([, o]) => o.width > 0 && o.height > 0 && o.left < card.right && o.right > card.left && o.top < card.bottom && o.bottom > card.top)
+                .map(([id]) => id);
+        });
+        await expect.poll(overlaps, { message: 'the Brucebase card overlaps none of the preview\'s boxes' }).toEqual([]);
+        await expect(page.locator('#mb-bbmb-card')).toBeVisible();
+    });
+
     test('each kind\'s own switch: the title check off leaves the others', async ({ page }) => {
         await showWorks(page, { ...feedOn(worksFeed()), sa_findings_bb_mbw_title: false });
         expect((await workCells(page)).map(r => [r.mbid, r.ids])).toEqual([

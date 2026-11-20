@@ -3106,6 +3106,16 @@ https://claude.ai/artifact/5fTN5NNCgvMNehzPscurWn (source
   works, a work's page). `mbWorks` is a wanted map on a page of works only
   (`_bbFeedMbwPage()`): a kept 1.7 file is read again after an hour there,
   and Brucebase pages ask for nothing new.
+- **The card keeps clear of the link preview** (vzell's live check,
+  2026-11-20: they overlapped). Hovering a marked cell's link opens the
+  card at once and the link's preview (`#mb-dp-peek` with its notes
+  `#mb-dp-notes`, the cell's "Finding" box among them) a moment later.
+  `_bbMbCardAvoid()` moves the card to the right of every visible one of
+  those and `#mb-stat-tooltip` when the window has room, else below them;
+  it runs at the show and every 150 ms while the card is open
+  (`_bbMbCard.watch`), so the late preview is caught. Events and works
+  alike. Test: "the card keeps clear of the link's preview …" in
+  `bb-feed-mb-works.spec.js`, two mutations.
 - **Deviation from the mockup:** a candidate is shown by its address
   (`stats:…-nj-studio-sessions#blindedbythelight`), not by the page's title,
   which the feed does not carry.
