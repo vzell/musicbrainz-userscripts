@@ -474,6 +474,13 @@ recommendations").
   its lines there: =normName= 512, =titleAlike= 551 (a =const=), =titleDistinctWords= 565, =isrcConflict= 580,
   =recordingSetting= 591, =placeConflict= 605, =shouldUnion= 623, =gatedUnionFind= 1241, =pairSignals= 1468,
   =autoMatch= 1538; the numbers in "Logic" below are from the first analysis. Anchors =fusion-*=.
+- *Built* (2026-11-20, WIP.1, commits =619dc719=, =e09f348b=, =c5b52c28=): the port is GENERATED from the clone
+  (=scripts/gen-fusion-port.py=) and checked line for line (=scripts/check-fusion-port.js=, which also runs
+  Fusion's spec cases 760/789/565/594/623); the grouping follows =autoMatch()='s order over candidate pairs (an
+  ISRC/AcoustID index, a word prefix filter, the title's two ends) and equals Fusion's all-pairs loop on Petty's
+  2,630 recordings at all three cutoffs. Design: docs/claude/findings.md, "Possible duplicate recordings:
+  =rec-dup=". vzell's answers on the way: the card under the "no work" text (yes), tap to pin on touch (later),
+  the probe's User-Agent with the repository as contact (yes). Left: the perf gate, =test:full=, the browser check.
 - *Who fixes it*: *ours*. On Fusion (adoption question 4): "you can port it or u can use Fusion card if that suites
   you (as EH does)". So either port the gates verbatim (SAED and Fusion then agree on what a duplicate is), or show
   Fusion's own group card, which EH shows on merge edits in place of MusicBrainz's Merge/Into tables (Fusion README

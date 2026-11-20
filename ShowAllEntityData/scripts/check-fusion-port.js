@@ -333,7 +333,7 @@ function bucketing(F, file, maxAll, nExamples) {
         const t0 = process.hrtime.bigint();
         const r = F._recDupGroups(pool, cutoff);
         const ms = Number(process.hrtime.bigint() - t0) / 1e6;
-        if (!r) { console.log(`  ${cutoff}: over the pair cap`); check(cutoff !== 'strict', `${cutoff}: within the pair cap`); continue; }
+        if (!r) { console.log(`  ${cutoff}: over the pair cap, given up after ${ms.toFixed(0)} ms`); check(cutoff !== 'strict', `${cutoff}: within the pair cap`); continue; }
         const b = r.groups.map(g => g.members.slice().sort((x, y) => x - y));
         const rows = b.reduce((n, g) => n + g.length, 0);
         const tiers = {};
