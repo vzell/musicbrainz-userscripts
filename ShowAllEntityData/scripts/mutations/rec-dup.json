@@ -362,5 +362,31 @@
     "spec": "tests/fixtures/findings-rec-dup.spec.js",
     "grep": "a track that links no work",
     "expect": "pass"
+  },
+  {
+    "name": "the lower bound is skipped",
+    "why": "Covered by node scripts/check-fusion-port.js (\"give up at once\": the verdict is the same, only the 0.8 s comes back), which mutation-check.py cannot run; no page fixture comes near two million candidate pairs.",
+    "edits": [
+      {
+        "find": "            if (Math.max(fam.h, fam.t) > _REC_DUP_MAX_PAIRS) return null;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/findings-rec-dup.spec.js",
+    "grep": "the planted groups form",
+    "expect": "pass"
+  },
+  {
+    "name": "the lower bound ignores the date skip",
+    "why": "Covered by node scripts/check-fusion-port.js (\"the block count is the loop's\": it would give up on pages the loop keeps under the cap), which mutation-check.py cannot run; no page fixture comes near two million candidate pairs.",
+    "edits": [
+      {
+        "find": "        return c2(block.length) - (c2(dated) - sameDate);\n",
+        "replace": "        return c2(block.length);\n"
+      }
+    ],
+    "spec": "tests/fixtures/findings-rec-dup.spec.js",
+    "grep": "the planted groups form",
+    "expect": "pass"
   }
 ]

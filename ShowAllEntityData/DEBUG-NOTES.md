@@ -30841,3 +30841,7 @@ n/a (Python, ws/2).
   "tap to pin" on touch is left for later. Mutation run 1 (26 entries, 23:05): 22 as expected; the gross-length,
   live/place and video gates of `shouldUnion` are each covered by `gatedUnionFind()`'s own conflict check (now
   expect-pass, with that reason), and "records ignore the live copy" DOES fail on a disk load (now expect-fail).
+- **The up-front lower bound** (vzell, 2026-11-21T00:25+01:00, petri, Node 24.16.0): the head and the tail
+  key families each count distinct pairs, so either one's sum (with the date skip, `_recDupBlockPairs()`) is a
+  lower bound on the candidate set; over the cap, the search gives up before the word index. Springsteen at
+  normal/loose: 737–788 ms → 59–69 ms, same "capped"; Petty's groups unchanged; 14/14 rec-dup tests.

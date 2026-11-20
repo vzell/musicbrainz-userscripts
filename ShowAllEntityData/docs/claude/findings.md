@@ -911,7 +911,13 @@ all eleven recommendations: https://claude.ai/artifact/LCthm5p9EiftZC6znZsqVB
     `_REC_DUP_MAX_SKIPPED`) and judged after the unions when they touch a
     group, for the card's "Kept apart".
   - More than `_REC_DUP_MAX_PAIRS` (2 × 10⁶) candidates: nothing is grouped
-    (`capped`), so a pathological page cannot freeze the render.
+    (`capped`), so a pathological page cannot freeze the render. Decided up
+    front where it can be (vzell, 2026-11-21): every title has one head and
+    one tail key, so either family's pairs (`_recDupBlockPairs()`, counted
+    with the date skip, not built) are distinct and all in the final set; when
+    one family alone is over the cap the search gives up before the word index
+    and before building any pair. Same verdict as before; Springsteen at
+    normal/loose gives up after 59–69 ms instead of 737–788 ms.
 
   Measured with `scripts/check-fusion-port.js` on the probe dump of Tom Petty
   and the Heartbreakers (2,630 recordings, `debug/probe-rec-dup/`, dumped

@@ -577,7 +577,8 @@ Springsteen probe dump, 74,630 recordings, dumped 2026-11-20T23:27:47+01:00, sam
 strict 56 groups / 113 rows in 149–153 ms; normal and loose exceed =_REC_DUP_MAX_PAIRS=
 (2 × 10⁶ candidate pairs) and give up after 737–788 ms, marking nothing. Auto is strict on
 an artist's recordings, so the give-up costs only who sets the cutoff to normal or loose
-there. Petty (2,630): strict 4 ms, normal 597 ms, loose 604 ms; Fusion's all-pairs loop
+there. With the up-front lower bound (vzell, 2026-11-21T00:25+01:00, same host, =_recDupBlockPairs()=):
+the same verdict after 59–69 ms; strict 86–95 ms; Petty's groups unchanged at all three cutoffs. Petty (2,630): strict 4 ms, normal 597 ms, loose 604 ms; Fusion's all-pairs loop
 about 40 s each.
 
 * Typed filtering — per-keystroke latency and the longest block (=main=, 2026-10-10)

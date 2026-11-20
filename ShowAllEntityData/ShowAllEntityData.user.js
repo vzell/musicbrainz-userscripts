@@ -102543,7 +102543,9 @@
      *
      * @param {Array<Object>} pool
      * @param {string} cutoff
-     * @returns {?Float64Array} null when there are more than `_REC_DUP_MAX_PAIRS`;
+     * @returns {?Float64Array} null when there are more than `_REC_DUP_MAX_PAIRS`
+     *     (decided up front when the title blocks' head or tail family alone
+     *     is over it, `_recDupBlockPairs()`);
      *     its `skipped` property lists the pairs skipped for two different live
      *     dates (at most `_REC_DUP_MAX_SKIPPED`), which `_recDupGroups()` names
      *     on a group's card
@@ -102571,20 +102573,32 @@
         if (cutoff !== 'strict') {
             const titles = new Map();
             const putT = (k, i) => { let l = titles.get(k); if (!l) titles.set(k, l = []); l.push(i); };
-            // Words as _fzTokenMatch() counts them (two letters or more).
+            // Fusion's fuzzy path (a ratio of 0.85): the folded title's two ends.
+            pool.forEach((r, i) => {
+                const f = _fzNormName(r.title).replace(/ /g, '');
+                if (!f) return;
+                putT('h:' + f.slice(0, 4), i);
+                putT('t:' + f.slice(-4), i);
+            });
+            // A lower bound first (vzell, 2026-11-21): every title has ONE
+            // head key and ONE tail key, so the pairs inside one of those two
+            // families' blocks are all different pairs, and the set built
+            // below holds every one of them. When either family alone is
+            // over the cap, the loop below would end over it too: give up
+            // now, before the word index and before building two million
+            // pairs (about 0.8 s on Springsteen's 74,630 recordings at normal).
+            const fam = { h: 0, t: 0 };
+            for (const [k, l] of titles) fam[k[0]] += _recDupBlockPairs(pool, l);
+            if (Math.max(fam.h, fam.t) > _REC_DUP_MAX_PAIRS) return null;
+            // Its token path, exactly (a prefix filter): two titles that share
+            // at least 0.6 of the larger word set share a word among the
+            // k - c + 1 rarest words of each, c the fewest shared words that
+            // reach 0.6 of k (counted as _fzTokenMatch() divides). Words as
+            // _fzTokenMatch() counts them (two letters or more).
             const words = pool.map(r => [...new Set(_fzNormName(r.title).split(' ').filter(t => t.length >= 2))]);
             const freq = new Map();
             words.forEach(ws => ws.forEach(w => freq.set(w, (freq.get(w) || 0) + 1)));
             pool.forEach((r, i) => {
-                const f = _fzNormName(r.title).replace(/ /g, '');
-                if (!f) return;
-                // Fusion's fuzzy path (a ratio of 0.85): the two ends.
-                putT('h:' + f.slice(0, 4), i);
-                putT('t:' + f.slice(-4), i);
-                // Its token path, exactly (a prefix filter): two titles that
-                // share at least 0.6 of the larger word set share a word among
-                // the k - c + 1 rarest words of each, c the fewest shared words
-                // that reach 0.6 of k (counted as _fzTokenMatch() divides).
                 const ws = words[i];
                 const k = ws.length;
                 if (!k) return;
@@ -102611,6 +102625,30 @@
         const pairs = Float64Array.from(set).sort();
         pairs.skipped = skipped;
         return pairs;
+    }
+
+    /**
+     * How many pairs `_recDupCandidatePairs()` takes from one title block:
+     * all pairs, less those whose two live dates are both known and differ
+     * (the loop skips those). Counted, not built.
+     *
+     * @param {Array<Object>} pool
+     * @param {number[]} block pool indices
+     * @returns {number}
+     */
+    function _recDupBlockPairs(pool, block) {
+        const c2 = x => x * (x - 1) / 2;
+        const byDate = new Map();
+        let dated = 0;
+        for (const i of block) {
+            const d = pool[i].liveDate;
+            if (!d) continue;
+            dated++;
+            byDate.set(d, (byDate.get(d) || 0) + 1);
+        }
+        let sameDate = 0;
+        for (const x of byDate.values()) sameDate += c2(x);
+        return c2(block.length) - (c2(dated) - sameDate);
     }
 
     /**

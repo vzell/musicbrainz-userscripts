@@ -134,7 +134,7 @@ function loadPort() {
     const b = USERSCRIPT.indexOf(GROUP_END);
     if (a < 0 || b < 0) throw new Error('port markers not found');
     const kw = /const EVENT_TYPE_KEYWORDS = (\[[^\]]*\]);/.exec(USERSCRIPT);
-    const body = `const EVENT_TYPE_KEYWORDS = ${kw[1]};\n${USERSCRIPT.slice(a, b)}\nreturn { _fzNormName, _fzTitleAlike, _fzTitleDistinctWords, _fzIsrcConflict, _fzPlaceConflict, _fzArtistSimilar, _fzShouldUnion, _fzPairSignals, _fzGatedUnionFind, _fzGroupTier, _fzGroupConfidence, _FZ_SETTINGS, _recDupGroups, _recDupCandidatePairs, _recDupCommentSetting };`;
+    const body = `const EVENT_TYPE_KEYWORDS = ${kw[1]};\n${USERSCRIPT.slice(a, b)}\nreturn { _fzNormName, _fzTitleAlike, _fzTitleDistinctWords, _fzIsrcConflict, _fzPlaceConflict, _fzArtistSimilar, _fzShouldUnion, _fzPairSignals, _fzGatedUnionFind, _fzGroupTier, _fzGroupConfidence, _FZ_SETTINGS, _recDupGroups, _recDupCandidatePairs, _recDupCommentSetting, _recDupBlockPairs };`;
     return new Function(body)();
 }
 
@@ -285,6 +285,22 @@ function vectors(F) {
     check(both([a1, a3], 'normal').length === 1, 'adapter: one date at one venue groups at normal');
     check(both([a1, mk('s', { title: 'Thunder Road', ...s('studio') })], 'normal').length === 0, 'adapter: live and studio stay apart');
     check(F._recDupCandidatePairs([a1, a2], 'normal').length === 0, 'adapter: two known different dates are not even a candidate pair');
+
+    // the up-front lower bound (2026-11-21): the count is the loop's, and an
+    // over-the-cap pool gives up before building its pairs
+    const dates = [null, '1975-11-18', '1975-11-18', '1975-11-24', null, '1978-07-07', '1975-11-24'];
+    const blk = dates.map((d, i) => mk('d' + i, { liveDate: d }));
+    let brute = 0;
+    for (let i = 0; i < blk.length; i++) for (let j = i + 1; j < blk.length; j++) {
+        if (!(blk[i].liveDate && blk[j].liveDate && blk[i].liveDate !== blk[j].liveDate)) brute++;
+    }
+    check(F._recDupBlockPairs(blk, blk.map((_, i) => i)) === brute, `the block count is the loop's (${brute})`);
+    const big = Array.from({ length: 2001 }, (_, i) => mk('big' + i, { title: 'Same Song' }));
+    const t0 = Date.now();
+    check(F._recDupCandidatePairs(big, 'normal') === null, '2001 identical titles are over the cap at normal');
+    const ms = Date.now() - t0;
+    check(ms < 400, `and give up at once (${ms} ms; building the pairs took about 1 s)`);
+    check(F._recDupCandidatePairs(big.slice(0, 2000), 'normal') !== null, '2000 identical titles (1,999,000 pairs) are not');
 
     // the driver's own outputs
     const r = F._recDupGroups([mk('x1', { title: 'Interlude', isrcs: ['QZTRX2699407'] }), mk('x2', { title: 'Interlude' }), mk('x3', { title: 'Interlude', isrcs: ['QZTRX2699409'] })], 'normal');
