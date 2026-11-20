@@ -30845,3 +30845,5 @@ n/a (Python, ws/2).
   key families each count distinct pairs, so either one's sum (with the date skip, `_recDupBlockPairs()`) is a
   lower bound on the candidate set; over the cap, the search gives up before the word index. Springsteen at
   normal/loose: 737–788 ms → 59–69 ms, same "capped"; Petty's groups unchanged; 14/14 rec-dup tests.
+- **Browser check** (vzell, 2026-11-21, live, Vivaldi; versions not restated, the same evening's report was
+  Vivaldi 8.2.4133.96 · Tampermonkey 5.5.1): OK, merge asked. `test:full` at `ea89cd30` before the merge.

@@ -14,10 +14,13 @@ Claude drafts, vzell sends.*
 Keywords: TODO (open), NEXT (the next one to start), WAIT (someone else's call, here mostly majkinetor's), DONE,
 PART (partly done, the rest left out by decision), NOT (not done, with the reason).
 
-* PICKUP HERE (2026-11-20)
+* PICKUP HERE (2026-11-21)
 
-- *Now:* Fusion's duplicate recordings, on =feat/fusion-rec-dup= (NEXT, see the item). Mockup approved by vzell
-  2026-11-20 with all eleven recommendations; the Fusion anchors are in (=fusion-*=, 28 new anchors in all).
+- *Now:* nothing in progress. Fusion's duplicate recordings shipped in 9.99.1670 (=feat/fusion-rec-dup=,
+  browser check OK by vzell 2026-11-21); see the item. Its follow-ups: work recordings (second batch), tap to pin
+  on touch (later).
+- *Next:* the next adoption is open (the Credit Hoarder role map, column reorder, …), and two small ours from
+  the 2026-11-20 refresh: C3 with =data-mbu-keys-keep=, the gate's write clamp.
 - *majkinetor answered all three open questions* on #938 (milic-bot, 2026-11-20 17:00 CET,
   [[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-7044153970][comment]]; on =main=
   since String Theory 2026.11.20.165956, which vzell runs in Vivaldi):
@@ -27,7 +30,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
     "Event Horizon's new keys on our FRP": EH added =u= and Ctrl+P, which our key list misses).
   - C7: Group Therapy and Falcon set =mbLastWrite=; Apollo, named in the answer, does not in =a1e8f54=.
 - *Waiting on majkinetor*: nothing. A short thank-you with the Apollo note is drafted under "On the record".
-- *Last merge:* 9.99.1669 (=feat/gf-query-mode=). Nothing since 9.99.1625 is published to
+- *Last merge:* 9.99.1670 (=feat/fusion-rec-dup=). Nothing since 9.99.1625 is published to
   =vzell/mb-userscripts= (vzell's call).
 - *Last refresh* of the analysis: 2026-11-20 at his =a1e8f54= (refresh-majkinetor skill). The clone lives in
   =debug/majkinetor/= (not synced between hosts: on another host, clone it fresh as "Method" says).
@@ -55,7 +58,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | Apollo findings, batch 3: a role that doesn't fit the format   | DONE  | 9.99.1660     | Adoptions          |
 | Apollo findings, batch 4: a ℗ notice no relationship has       | DONE  | 9.99.1666     | Adoptions          |
 | Apollo findings, batch 4: First Contact's type and VA guesses  | NOT   | —             | Adoptions          |
-| Possible duplicate recordings (Fusion)                         | NEXT  | —             | Adoptions          |
+| Possible duplicate recordings (Fusion)                         | DONE  | 9.99.1670     | Adoptions          |
 | Discogs credits as MB relationships (Credit Hoarder)           | TODO  | —             | Adoptions          |
 | Query mode for the global filter (EH's language)               | DONE  | 9.99.1668–69  | Adoptions          |
 | Columns: reorder, named sets, EH's resize rule                 | TODO  | —             | Adoptions          |
@@ -462,7 +465,8 @@ recommendations").
     N.J.", two ℗ lines, ℗ on every recording): no mark.
 - Also the constant =MBM_SPECIAL_PURPOSE= (Apollo 460, GT 6660) was only needed by the VA guess: not taken.
 
-** NEXT Possible duplicate recordings (Fusion's algorithm, zero requests)
+** DONE Possible duplicate recordings (Fusion's algorithm, zero requests)
+CLOSED: [2026-11-21 Sat]
 
 - *State* (2026-11-20, petri): on =feat/fusion-rec-dup=. The interactive mockup
   (https://claude.ai/artifact/LCthm5p9EiftZC6znZsqVB, source =debug/mockup-rec-dup-finding.html=) is approved by
@@ -480,7 +484,9 @@ recommendations").
   ISRC/AcoustID index, a word prefix filter, the title's two ends) and equals Fusion's all-pairs loop on Petty's
   2,630 recordings at all three cutoffs. Design: docs/claude/findings.md, "Possible duplicate recordings:
   =rec-dup=". vzell's answers on the way: the card under the "no work" text (yes), tap to pin on touch (later),
-  the probe's User-Agent with the repository as contact (yes). Left: the perf gate, =test:full=, the browser check.
+  the probe's User-Agent with the repository as contact (yes); the up-front give-up on a page too big to group
+  (yes). Shipped in 9.99.1670: =test:full= 3418/3418, browser check OK by vzell 2026-11-21. Follow-ups: work
+  recordings, tap to pin on touch.
 - *Who fixes it*: *ours*. On Fusion (adoption question 4): "you can port it or u can use Fusion card if that suites
   you (as EH does)". So either port the gates verbatim (SAED and Fusion then agree on what a duplicate is), or show
   Fusion's own group card, which EH shows on merge edits in place of MusicBrainz's Merge/Into tables (Fusion README
