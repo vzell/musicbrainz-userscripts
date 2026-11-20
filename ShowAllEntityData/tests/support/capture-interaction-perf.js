@@ -240,6 +240,11 @@ function sortStatusLocator(page, config) {
  * `--samples=N` overrides `DEFAULT_SAMPLES` for plumbing checks only; see that
  * constant's own JSDoc.
  *
+ * `--gf-query` ticks the global filter's Q box (query mode) before each
+ * `globalFilter` sample, outside its bracket, and adds `-gf-query` to the
+ * filename. Against a plain arm of the same script it is query mode's cost on
+ * the same words; a script without Q has no box to tick (fails loudly).
+ *
  * `--only=typed` runs `globalFilterTyped` alone (see `measureTypedFilterOnce()`)
  * instead of the six standard metrics, at each of `--typing-delays=150,400`
  * (ms between keys; that pair is the default). Its file carries a `-typed`
@@ -279,6 +284,7 @@ function parseArgs(argv) {
         typingDelays: delays.length ? delays : DEFAULT_TYPING_DELAYS,
         bbFeed: bbFeedArg ? bbFeedArg.slice('--bb-feed='.length) : null,
         gateWait: argv.includes('--gate-wait'),
+        gfQuery: argv.includes('--gf-query'),
     };
 }
 
@@ -597,6 +603,14 @@ async function loadPage(browser, config) {
 /** @param {import('playwright').Browser} browser @param {ReturnType<typeof toArm>} config @param {string} value @returns {Promise<number>} */
 async function measureGlobalFilterOnce(browser, config, value) {
     const page = await loadPage(browser, config);
+    // `--gf-query`: the global filter in query mode (its Q box), ticked
+    // OUTSIDE the bracket — the box's own pass on an empty field filters
+    // nothing. A word is then one phrase leaf, so the pair measures the
+    // query path against the plain one on the same values.
+    if (config.gfQuery) {
+        await page.locator('#mb-global-filter-query-label').click();
+        await page.locator('#mb-global-filter-query-checkbox').waitFor({ state: 'attached' });
+    }
     const input = page.locator('#mb-global-filter-input');
     await input.click();
     const start = Date.now();
@@ -1007,7 +1021,7 @@ async function runTyped(browser, config, delays) {
 }
 
 (async () => {
-    const { pageType, label, arm, relArm, samples, only, typingDelays, bbFeed, gateWait } = parseArgs(process.argv.slice(2));
+    const { pageType, label, arm, relArm, samples, only, typingDelays, bbFeed, gateWait, gfQuery } = parseArgs(process.argv.slice(2));
     if (only && only !== 'typed') {
         console.error(`--only=${only}: the only supported value is "typed".`);
         process.exit(1);
@@ -1051,6 +1065,7 @@ async function runTyped(browser, config, delays) {
     if (relArm) config = { ...config, relArm };
     if (bbFeed) config = { ...config, bbFeed, seedGmValues: { ...config.seedGmValues, ...bbFeedSeed(bbFeed) } };
     if (gateWait) config = { ...config, gateWait: true };
+    if (gfQuery) config = { ...config, gfQuery: true };
 
     const branch = readCurrentBranch();
     // Both arms can be active at once, so the name carries whichever are set
@@ -1065,6 +1080,7 @@ async function runTyped(browser, config, delays) {
         only === 'typed' ? 'typed' : null,
         bbFeed ? 'bbfeed' : null,
         gateWait ? 'gate-wait' : null,
+        gfQuery ? 'gf-query' : null,
     ].filter(Boolean).join('-');
     const outName = label || (armSuffix ? `${branch}-${armSuffix}` : branch);
     const startedAt = new Date();

@@ -16,16 +16,16 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 
 * PICKUP HERE (2026-11-20)
 
-- *Now:* batch 4 of the Apollo findings, =release-notice= (a ℗ notice in a release's annotation that no relationship
-  has), is built on =feat/apollo-findings-4= as the mockup was approved; waiting for vzell's browser check before the
-  merge. The real examples to check are in "Batch 4". First Contact's two guesses are NOT, with the probe's numbers.
-- *Next:* the Apollo item is finished with this batch; the next adoption is open (Fusion's duplicate recordings, the
-  Credit Hoarder role map, …).
+- *Now:* the query mode for the global filter (Event Horizon's language, the Q box) is built on =feat/gf-query-mode=
+  as the mockup was approved (https://claude.ai/artifact/Y7tjYtaS82RTaZ5Admz2wk, all nine questions as recommended);
+  waiting for vzell's browser check before the merge. See the item.
+- *Next:* the next adoption is open (Fusion's duplicate recordings, the Credit Hoarder role map, column reorder, …).
+  The Apollo item finished with batch 4 (9.99.1666).
 - *Waiting on majkinetor* (#938):
   - his answer to the two questions of the gate-clock reply (posted 2026-11-18 20:55);
   - "keep V under =data-mbu-keys-off=" (C3; asked 2026-11-08, again 2026-11-17);
   - whether Apollo, Group Therapy or Falcon will set =mbLastWrite= (C7; asked 2026-11-18).
-- *Last merge:* 9.99.1660 (=feat/apollo-findings-3=). Nothing since 9.99.1625 is published to
+- *Last merge:* 9.99.1666 (=feat/apollo-findings-4=). Nothing since 9.99.1625 is published to
   =vzell/mb-userscripts= (vzell's call).
 - *Last refresh* of the analysis: 2026-11-17 at his =0693aea= (refresh-majkinetor skill); the gate code was
   rechecked 2026-11-18 at =687b8b1=. The clone lives in =debug/majkinetor/= (not synced between hosts: on another
@@ -51,11 +51,11 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | Apollo findings, batch 1: credit ends with a join phrase       | DONE  | 9.99.1657     | Adoptions          |
 | Apollo findings, batch 2: remixer, medley, Recording of work   | DONE  | 9.99.1659     | Adoptions          |
 | Apollo findings, batch 3: a role that doesn't fit the format   | DONE  | 9.99.1660     | Adoptions          |
-| Apollo findings, batch 4: a ℗ notice no relationship has       | NEXT  | —             | Adoptions          |
+| Apollo findings, batch 4: a ℗ notice no relationship has       | DONE  | 9.99.1666     | Adoptions          |
 | Apollo findings, batch 4: First Contact's type and VA guesses  | NOT   | —             | Adoptions          |
 | Possible duplicate recordings (Fusion)                         | TODO  | —             | Adoptions          |
 | Discogs credits as MB relationships (Credit Hoarder)           | TODO  | —             | Adoptions          |
-| Query mode for the global filter (EH's language)               | TODO  | —             | Adoptions          |
+| Query mode for the global filter (EH's language)               | NEXT  | —             | Adoptions          |
 | Columns: reorder, named sets, EH's resize rule                 | TODO  | —             | Adoptions          |
 | Stale-while-revalidate: popup engine done, =rel-ws2= left      | PART  | 9.99.1643     | Adoptions          |
 | In-page log window (=mbuLog=)                                  | TODO  | —             | Adoptions          |
@@ -462,10 +462,18 @@ recommendations").
 - *Also*: =splitCreditName= (=src/split-credit.js:21=, "George & Ira Gershwin" → two Gershwins) for per-person
   counts; CH =fuzzyMax= / =stripInitials= for a near-duplicate-name finding.
 
-** TODO Query mode for the global filter (Event Horizon's filter language)
+** NEXT Query mode for the global filter (Event Horizon's filter language)
 
 - *Who fixes it*: *ours*. Adoption question 6 also asked whether the grammar is stable; no answer on that, so follow
   EH's =tqParse= as it is and let the refresh's anchor =eh-tqparse= flag a change.
+- *Built* on =feat/gf-query-mode= (2026-11-20; waiting for vzell's browser check). Mockup approved as is:
+  https://claude.ai/artifact/Y7tjYtaS82RTaZ5Admz2wk. A fourth global box Q; =_gfqParse()= ports =tqParse= (credited
+  in the attribution block) with two changes: an exact key beats an earlier prefix, and a column's display label is
+  a key too; values keep their accents (only keys are folded). Compiled once per pass and column set
+  (=_gfqForTable()=), per sub-table on a multi-table page; words share the plain filter's =_rowPlainHit()=. No
+  narrowing in query mode (a query can widen); both cache keys carry =q=. One deviation from the mockup: the reading
+  line and the Syntax button live in a card under the field (the h2's bar is one nowrap line). Design:
+  =docs/claude/filter-and-cache-invariants.md=, "The global filter's query mode (Event Horizon's language)".
 
 - *Grammar* (=tqParse= EH:7480-7519):
   - =column:value=, =-term=, =-(…)=, =OR= / =AND= (capitals only), brackets, quoted phrases;

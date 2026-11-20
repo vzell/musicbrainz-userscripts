@@ -405,7 +405,8 @@ test('headline: one button in the global filter bar on a single-table page', asy
     expect(await page.evaluate(() => document.getElementById('mb-title-style-global-btn').title))
         .toMatch(/^Title style · 5 titles, not checked yet\n/);
     const after = await page.evaluate(() => document.getElementById('mb-title-style-global-btn').previousElementSibling.id);
-    expect(after).toBe('mb-global-filter-exclude-label');
+    // After the last of the four switches: Q (the query mode) since it came.
+    expect(after).toBe('mb-global-filter-query-label');
     await page.click('#mb-title-style-global-btn');
     await checked(page);
     expect(await headButtons(page)).toEqual([{ scope: 'page', state: 'found', text: 'Aa2 titles off-style ▾' }]);

@@ -43,8 +43,8 @@
     "why": "The original applySubFilter() defect in its shared form: the GLOBAL part is labelled with the sub-table's flags instead of the global ones. With the sub-table Cc on and the global Cc off the span reads GLOBAL:(case) \"e\". Must fail.",
     "edits": [
       {
-        "find": "        if (globalRaw) parts.push(`GLOBAL:${_filterModsLabel(_globalFilterFlags())}\"${globalRaw}\"`);",
-        "replace": "        if (globalRaw) parts.push(`GLOBAL:${_filterModsLabel(_resolveColFilterFlags(table))}\"${globalRaw}\"`);"
+        "find": "        if (globalRaw) parts.push(`GLOBAL:${_filterModsLabel({ ..._globalFilterFlags(), isQuery: _gfqOn() })}\"${globalRaw}\"`);",
+        "replace": "        if (globalRaw) parts.push(`GLOBAL:${_filterModsLabel({ ..._resolveColFilterFlags(table), isQuery: _gfqOn() })}\"${globalRaw}\"`);"
       }
     ],
     "spec": "tests/fixtures/filter-flag-scoping.spec.js",
@@ -82,8 +82,8 @@
     "why": "Restores _artHighlightArtCell()'s ctxSnap to the sub-table's Cc/Rx. It runs LAST after every art-cell rebuild and unwraps earlier marks first, so a global regexp with the sub-table Rx off is compiled literally and the 'Back' badge loses its highlight. Must fail on both F5 tests.",
     "edits": [
       {
-        "find": "        const ctxSnap = { globalQueryRaw, colFilters, isCaseSensitive, isRegExp };",
-        "replace": "        const ctxSnap = { globalQueryRaw, colFilters, isCaseSensitive: colIsCase, isRegExp: colIsRegExp };"
+        "find": "        const ctxSnap = { globalQueryRaw, colFilters, isCaseSensitive, isRegExp: isRegExp && !isQuery,",
+        "replace": "        const ctxSnap = { globalQueryRaw, colFilters, isCaseSensitive: colIsCase, isRegExp: colIsRegExp && !isQuery,"
       }
     ],
     "spec": "tests/fixtures/filter-flag-scoping.spec.js",
@@ -95,8 +95,8 @@
     "why": "Restores the overwrite of _activeFilterHighlightCtx.isRegExp/isCaseSensitive in runFilter()'s multi-table loop. That context feeds the BUILD-time highlight in _artBuildMultiRowArtCell(); _artHighlightArtCell() then unwraps those marks and re-applies them from its own (correct) snapshot, so nothing on screen changes. KNOWN OVERLAP, recorded rather than hidden: the spec cannot see this half while the other half is in place.",
     "edits": [
       {
-        "find": "                    _activeFilterHighlightCtx.colFilters = matchCtx.colFilters;\n                }",
-        "replace": "                    _activeFilterHighlightCtx.colFilters = matchCtx.colFilters;\n                    _activeFilterHighlightCtx.isRegExp = _colFlags.isRegExp;\n                    _activeFilterHighlightCtx.isCaseSensitive = _colFlags.isCaseSensitive;\n                }"
+        "find": "                    _activeFilterHighlightCtx.colFilters = matchCtx.colFilters;\n                    _activeFilterHighlightCtx.gfq        = matchCtx.gfq;\n                }",
+        "replace": "                    _activeFilterHighlightCtx.colFilters = matchCtx.colFilters;\n                    _activeFilterHighlightCtx.gfq        = matchCtx.gfq;\n                    _activeFilterHighlightCtx.isRegExp = _colFlags.isRegExp;\n                    _activeFilterHighlightCtx.isCaseSensitive = _colFlags.isCaseSensitive;\n                }"
       }
     ],
     "spec": "tests/fixtures/filter-flag-scoping.spec.js",
@@ -186,8 +186,8 @@
     "why": "Same, in the single-table branch. 'BoDeans' must read GLOBAL:\"BoDeans\". Must fail.",
     "edits": [
       {
-        "find": "                filterParts.push(`GLOBAL:${_filterModsLabel({ isCaseSensitive, isRegExp, isExclude })}\"${globalQueryRaw}\"`);",
-        "replace": "                filterParts.push(`GLOBAL:${_filterModsLabel({ isCaseSensitive, isRegExp, isExclude })}\"${globalQuery}\"`);"
+        "find": "                filterParts.push(`GLOBAL:${_filterModsLabel({ isCaseSensitive, isRegExp, isExclude, isQuery })}\"${globalQueryRaw}\"`);",
+        "replace": "                filterParts.push(`GLOBAL:${_filterModsLabel({ isCaseSensitive, isRegExp, isExclude, isQuery })}\"${globalQuery}\"`);"
       }
     ],
     "spec": "tests/fixtures/filter-flag-scoping.spec.js",
@@ -199,7 +199,7 @@
     "why": "The single-table GLOBAL part loses its modifiers. With Cc ticked the line must read GLOBAL:(case) \"BoDeans\". Must fail.",
     "edits": [
       {
-        "find": "                filterParts.push(`GLOBAL:${_filterModsLabel({ isCaseSensitive, isRegExp, isExclude })}\"${globalQueryRaw}\"`);",
+        "find": "                filterParts.push(`GLOBAL:${_filterModsLabel({ isCaseSensitive, isRegExp, isExclude, isQuery })}\"${globalQueryRaw}\"`);",
         "replace": "                filterParts.push(`GLOBAL:\"${globalQueryRaw}\"`);"
       }
     ],
