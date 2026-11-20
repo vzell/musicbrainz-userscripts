@@ -26,7 +26,9 @@ For every page the feed names:
        the page's own name" missed 836 (gallery pages store theirs
        elsewhere).
   3. the reverse index: which shows have a dependent page with a differing
-     title (the feed's "event"), and on which year pages they are.
+     title (the feed's "event"), and on which year pages they are; and
+     (feed 1.6) which shows have a dependent page named differently
+     (dependent-name's "event"), which the userscript marks too.
   4. the rows each Brucebase list would mark: songs and relations from the
      links the mirror's stats:songs and stats:relations pages really have
      (stats:songs does NOT link every song: page: 1,679 of 1,685 on the run
@@ -180,6 +182,13 @@ def main():
         years[ev] = y.group(1) if y else None
     out['reverse'] = {'shows': len(rev), 'dependents': sum(len(v) for v in rev.values()),
                       'perYear': Counter(v for v in years.values()), 'showExists': sum(1 for ev in rev if os.path.exists(page_file(run_dir, ev)))}
+    # feed 1.6: the shows a dependent page named differently marks (the userscript's _bbFeed.byEventName)
+    rev_name = defaultdict(list)
+    for name, kinds in feed['pages'].items():
+        dn = kinds.get('dependent-name')
+        if dn and dn.get('event'):
+            rev_name[dn['event']].append(name)
+    out['reverseName'] = {'shows': len(rev_name), 'dependents': sum(len(v) for v in rev_name.values())}
 
     # 4. list rows: songs, relations, story pages tagged storyteller
     names = []
@@ -193,9 +202,16 @@ def main():
     def kinds_of(n):
         """A row's kinds as the userscript marks them: the page's own, and
         for a show dependent-title when one of its pages is titled
-        differently (the reverse index of point 3)."""
+        differently, dependent-name when one is named differently (the
+        reverse indexes of point 3; feed 1.6's dependent-name was missing
+        here until 2026-11-20, so the checker showed the shows it marks on
+        the news tag list and the year listings as differences)."""
         k = saed_kinds(flagged.get(n, {}))
-        return k + ['dependent-title'] if n in rev and 'dependent-title' not in k else k
+        if n in rev and 'dependent-title' not in k:
+            k = k + ['dependent-title']
+        if n in rev_name and 'dependent-name' not in k:
+            k = k + ['dependent-name']
+        return k
     for label, cat, list_page in [('songs (stats:songs)', 'song', 'stats:songs'),
                                   ('relations (stats:relations)', 'relation', 'stats:relations')]:
         linked = set(re.findall(r'href="/(' + cat + r':[^"#?/]+)"', read(page_file(run_dir, list_page))))
@@ -315,6 +331,7 @@ def main():
         print('    odd:', x)
     print(f"reverse index: {out['reverse']['shows']} shows, {out['reverse']['dependents']} dependents, "
           f"{out['reverse']['showExists']} show pages in the mirror, years {dict(out['reverse']['perYear'])}")
+    print(f"reverse index of dependent-name: {out['reverseName']['shows']} shows, {out['reverseName']['dependents']} pages")
     if out.get('mb'):
         M = out['mb']
         print(f"mb: {M['events']} events with a Brucebase link; here {dict(M['byKind'])}, the feed {dict(M['feedByKind'])}, differing {len(M['differ'])}")

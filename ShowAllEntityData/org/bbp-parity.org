@@ -1201,14 +1201,18 @@ were cut: "Wogan House, BB, USA", "The Concert Hall, QP, USA" x2, "…, CO, USA"
 MusicBrainz requests through =mb_get()= (HTTP 200 + XML only, 503 retried, 4xx not, partial output removed);
 =search.sh -b=; the step =search-work= in =bbp.sh= (=esfsl= waits for it). The standalone work run, 14:08:47-15:28:24
 +01:00: 1,587 works, 496 busy answers retried, exit 0. 0.26.0 (=cfce494=): =feed.sh= 1.7, the kind =date-differs=.
-Not published.
+Published at vzell's word on 2026-11-20 (feed repo =1450799=, its FORMAT.md =022fac2=; the raw file is byte-identical
+to the run's).
 
 *Built in SAED:* ⚠️ =bb-mb-date= ±, =sa_findings_bb_mb_date= (on); =_bbFeedMbVerdict()=, =_bbFeedMbDateOf()=; the
 card with disambiguation, date, verdict, entries or "no entry". Details: docs/claude/brucebase.md, "Feed 1.7".
 *Deviations from the mockup:* the setting's label ends in "(Brucebase feed)" like its three siblings; the event page's
 card takes the name from the page's heading, which also carries the date in brackets, as the three older kinds do.
-*Seen on the way:* the probe's parts 2 and 4 do not count =dependent-name= (feed 1.6), so the checker shows 2
-differences (the news tag list, the year listings) on the 1.6 feed as on 1.7; not part of this branch.
+*Seen on the way, fixed (vzell: "fix the pre-existing"):* the probe's parts 2 and 4 did not count =dependent-name=
+(feed 1.6) on a show, so the checker showed 2 differences, the news tag list (56 marked, the probe 42) and the year
+listings (53, the probe 25), on the 1.6 feed as on 1.7. =kinds_of()= now adds it through a reverse index of
+=dependent-name='s =event= (=reverseName=: 30 shows, 36 pages), and the checker's part 3 compares those shows too.
+Both now: no difference in any part.
 
 *Tests:* =bb-feed.spec.js= 44 (6 new), green; =scripts/mutations/bb-feed-mb-date.json= 12, 11 fail their test, 1
 ="expect": "pass"= (the event-art link guard: the =caa= extractor moves that link out of the Event cell first). The
@@ -1217,8 +1221,7 @@ probe and the checker: 7 / 197 / 18 / 1 on both sides. =test:full= 3391/3391 (20
 
 ** The browser check of check 1, for vzell (the run of 2026-11-19; unverified on the live MusicBrainz)
 
-First: publish the feed 1.7 (BruceParser =./publish-feed.sh -r 2026-11-19=, your word), then install the script from
-=feat/bb-feed-mb-date=. A kept 1.6 feed has the =mb= map but no =date-differs=, so it is not read again before its
+The feed 1.7 is published (2026-11-20, feed repo =1450799=). Install the script from =feat/bb-feed-mb-date=. A kept 1.6 feed has the =mb= map but no =date-differs=, so it is not read again before its
 day is up: on the artist's events, after "Show all Events", the feed line at the foot of the ⚠️/❌ menus → "Read
 again", then the press once more.
 

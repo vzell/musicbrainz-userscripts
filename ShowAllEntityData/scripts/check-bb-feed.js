@@ -21,7 +21,9 @@
  *      storyteller (from the run's all-sorted.txt) — the probe's counts and
  *      kinds;
  *   3. the shows marked through their dependent pages (the feed's `event`
- *      read backwards) — the probe's 25;
+ *      read backwards) — the probe's 25 of dependent-title, and since
+ *      2026-11-20 those of feed 1.6's dependent-name (the probe's
+ *      `reverseName`);
  *   4. (feed 1.2) every row of every year listing of the mirror, its show
  *      found by the shipped `_bbFeedAnchorPage()` (the row's anchor and
  *      date) — the probe's rows, marked rows and kinds;
@@ -195,15 +197,22 @@ function kinds(lists) {
         await mbPage.close();
     }
 
-    // 3. the shows marked through their dependent pages
-    const shows = lines.map(p => p[0]).filter(n => /^(?:gig|nogig|recording|rehearsal|interview):/.test(n));
-    const showFacts = await page.evaluate(ns => ns.map(n => [n, window.__saTest.bbFeed(n).facts
-        .filter(f => f.kind === 'dependent-title').flatMap(f => f.deps.filter(d => !d.own).map(d => d.name))]), shows);
-    const marked = showFacts.filter(([, d]) => d.length);
-    const deps = marked.reduce((s, [, d]) => s + d.length, 0);
-    const same = marked.length === probe.reverse.shows && deps === probe.reverse.dependents;
-    if (!same) diffs++;
-    console.log(`3. shows marked through a dependent page: ${marked.length} (${deps} pages) ${same ? '= probe' : `≠ probe ${probe.reverse.shows} (${probe.reverse.dependents})`}`);
+    // 3. the shows marked through their dependent pages: titled differently
+    // (dependent-title, the probe's `reverse`) and, feed 1.6, named
+    // differently (dependent-name, the probe's `reverseName`; its shows may
+    // also be nobruce pages, as feed.sh's check allows)
+    const shows = lines.map(p => p[0]).filter(n => /^(?:gig|nogig|recording|rehearsal|interview|nobruce):/.test(n));
+    for (const [kind, want, label] of [['dependent-title', probe.reverse, 'a dependent page'],
+        ['dependent-name', probe.reverseName, 'a dependent page named differently']]) {
+        if (!want) continue;
+        const showFacts = await page.evaluate(([ns, k]) => ns.map(n => [n, window.__saTest.bbFeed(n).facts
+            .filter(f => f.kind === k).flatMap(f => f.deps.filter(d => !d.own).map(d => d.name))]), [shows, kind]);
+        const marked = showFacts.filter(([, d]) => d.length);
+        const deps = marked.reduce((s, [, d]) => s + d.length, 0);
+        const same = marked.length === want.shows && deps === want.dependents;
+        if (!same) diffs++;
+        console.log(`3. shows marked through ${label}: ${marked.length} (${deps} pages) ${same ? '= probe' : `≠ probe ${want.shows} (${want.dependents})`}`);
+    }
 
     await browser.close();
     console.log(diffs ? `${diffs} difference(s)` : 'no difference');

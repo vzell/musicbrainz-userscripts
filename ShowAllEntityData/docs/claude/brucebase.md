@@ -3026,7 +3026,14 @@ slice, the date. Mockup https://claude.ai/artifact/8iqJ2nM2xVb8JTkLgSwbod
   name was never empty there; its mutation is `"expect": "pass"`.
 - **The probe** (`scripts/probe-bb-feed.py`, part 6, now with the date rule)
   and the feed agree: 7 / 197 / 18 / 1, no difference. The rest of feed
-  1.7 is unchanged against 1.6.
+  1.7 is unchanged against 1.6. Published on 2026-11-20 (feed repo
+  `1450799`, its FORMAT.md `022fac2`).
+- **The probe and the checker count dependent-name on a show** (fixed
+  the same day): `kinds_of()` lacked feed 1.6's kind on the shows its
+  pages name, so `scripts/check-bb-feed.js` showed 2 differences, the
+  news tag list and the year listings. The probe's `reverseName` (30
+  shows, 36 pages) now gives it, and the checker's part 3 compares those
+  shows as well: no difference in any part.
 - **Tests:** `tests/fixtures/bb-feed.spec.js`, 6 more:
   - the real feed's counts and the Upstage case;
   - the Event cells and the menu count;
