@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "9853fda56379285ff29a6d2290d8dd26e0d37804",
-    "revisions_walked": 1325
+    "head": "92b0cac91d48e283e54b10c7619591ee89266c26",
+    "revisions_walked": 1343
   },
   "changes": [
     {
@@ -978,6 +978,8 @@
     "sa_findings_tint_credit_trailing_join": true,
     "sa_findings_tint_remix_no_remixer": true,
     "sa_findings_tint_medley_works": true,
+    "sa_findings_tint_format_role": true,
+    "sa_findings_tint_release_notice": true,
     "sa_findings_tint_live_credit": true,
     "sa_findings_no_front_image": true,
     "sa_findings_tint_no_front_image": true,
@@ -1011,6 +1013,11 @@
     "sa_findings_bb_setlist_sections": true,
     "sa_findings_bb_tag_missing": true,
     "sa_findings_bb_tag_spurious": true,
+    "sa_bb_tag_family_tour": false,
+    "sa_bb_tag_family_place": false,
+    "sa_bb_tag_family_content": false,
+    "sa_bb_tag_family_cast": false,
+    "sa_bb_tag_family_songs": false,
     "sa_findings_tint_bb_tags": true,
     "sa_findings_bb_feed_title": true,
     "sa_findings_bb_feed_no_tags": true,

@@ -4,9 +4,16 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1836 versions; the month pages hold all of them.
+This page shows the newest 100 of 1837 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1666 — 2026-11-20
+
+**🚀 Feature**
+
+- A release page (Tracklist or Credits) marks a ℗ notice in its annotation that no relationship backs: a line that starts with ℗, (P) or "Phonographic copyright", as on a sleeve ("℗ 1973 CBS, Inc."), is tinted light yellow with a ⚠️ when neither the release nor any of its recordings has a phonographic copyright relationship. Hovering (or tapping) it explains why and shows the holder as read. The ⚠️ list shows it first, under "This release", with the table warnings under "In the tables"; clicking it opens the Annotation, scrolls to the line and flashes it. A ℗ on even one recording is enough, © lines are not checked, and nothing is flagged while some of a long release's tracks are not on the page. No requests: it reads the page's own data. The rule and the notice parser are majkinetor's Group Therapy (credited); its own tint switch, ⚙️ Settings → ⚠️ Findings → "Highlight ℗ notices in a release's annotation that no relationship has as WARNING" (on).
+
 
 ## 9.99.1665 — 2026-11-20
 
@@ -870,17 +877,6 @@ This page shows the newest 100 of 1836 versions; the month pages hold all of the
 
 - Other sites' detail pages: as on a MusicBrainz release, a disc's or record's own pictures show as small thumbs in its heading above the tracks, and a click opens them in the viewer. On archive.org a picture named after a disc ("Disc 2.jpg") goes into that disc's heading; on a springsteenlyrics bootleg the artwork whose caption names the disc, its label, a picture side or the runout goes into the record's. A picture is placed only when its name says where; anything else stays in the pictures section only.
 - springsteenlyrics bootleg pages: the artwork chips follow the site's captions — Front, Back, Booklet, Medium (disc, label, picture side, runout, matrix), else Artwork.
-
-
-## 9.99.1566 — 2026-11-06
-
-**🐛 Fix**
-
-- springsteenlyrics.com item pages: a copy the site has no scans of yet ("No scans available yet") was left out of the scans, so the page read as if the item had one copy. It now shows as a dashed box with the site's own words, in its place among the copies.
-
-**✨ Improve**
-
-- springsteenlyrics.com item pages: an item's scans and artwork are one section. With several copies it has a chip per copy and By copy instead of By type, and the viewer steps through every copy's scans (before, each copy was its own section with its own viewer).
 
 
 ---

@@ -56,8 +56,8 @@
     "why": "On a page with no other warning the check row would never show. The fixture page has no other warning, so must fail on the before-the-click test.",
     "edits": [
       {
-        "find": "            if (!list.length && !styleRow && !menu) return;",
-        "replace": "            if (!list.length && !menu) return;"
+        "find": "            if (!list.length && !styleRow && !relRows.length && !menu) return;",
+        "replace": "            if (!list.length && !relRows.length && !menu) return;"
       }
     ],
     "spec": "tests/fixtures/findings-title-style.spec.js",

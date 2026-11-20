@@ -769,6 +769,105 @@ release's own relationships. No requests.
   `"expect": "pass"`: no render but this one writes the mark, so
   `enabled()`'s pageType gate is invisible).
 
+### A release-wide finding: a ℗ notice no relationship has: `release-notice`
+
+Branch `feat/apollo-findings-4` (2026-11-20), the Apollo findings' batch 4
+(org/majkinetor.org). Group Therapy's notice parser (`txpParseCopyrightLine()`,
+`txpSplitCompoundCopyrightLines()`, ported and credited) as a finding about the
+WHOLE release: a line of the release's annotation that is a ℗ notice, when
+neither the release nor any of its recordings has a phonographic copyright
+relationship. Mockup https://claude.ai/artifact/7X3bbpdfmSuqr4jU85Q4Bn
+(variant A, approved 2026-11-20 with all seven recommendations; source
+`debug/mockup-release-notice-finding.html`). First Contact's type and VA
+guesses, the other two candidates of the batch, are NOT, with the probe's
+numbers in org/majkinetor.org.
+
+**It is not a `FINDINGS` entry.** No table cell carries it, and the registry
+is cells and rows all the way down: the 📊 sections, `_toggleFinding()`, the
+row tally, "All warnings". So it is its own small path beside the registry:
+
+- **The stamp**: `_stampReleaseNotices()`, called from `stampFindings()`
+  before the menus refresh (so once per fetch or disk load). Release pages
+  only (`activeDefinition.type` `release-tracks` or `release-credit-tables`),
+  MusicBrainz only. It walks the annotation body
+  (`#content div.annotation > div.annotation-body`, never one in the sidebar
+  or a table cell) into lines (`_rnAnnotationLines()`: runs of sibling inline
+  nodes between `<br>`s and block boundaries; MusicBrainz renders a paragraph
+  as `<p><bdi>line<br>line<br></bdi></p>`; headings skipped) and wraps each ℗
+  line's nodes in ONE `span.mb-release-notice` (`data-mb-rn-text`, the
+  notice part; `data-mb-rn-holder`, the first holder as read). Idempotent: a
+  wrapped line is reused, never wrapped twice. The marks are attributes on
+  that span: `data-mb-findings="release-notice"` always, and
+  `data-mb-finding="warn"` + `tabindex` while the tint setting is on.
+  `_releaseFindings` lists the flagged lines for the menu.
+- **What is a notice** (`_rnNoticeOf()`): a part of the line (the compound
+  split, `_rnSplitCompound()`: cut before every later marker with three word
+  characters before it) that STARTS with ℗, (P) or "Phonographic copyright"
+  after list bullets (`_RN_START`), and parses (`_rnParseNotice()`) as
+  phonographic with a holder. © lines are not checked: a © is often the
+  songs' publisher, which MusicBrainz records on the work. A ℗ in the middle
+  of a sentence is not a notice.
+- **What backs it** (`_releasePhonoFacts()`): a phonographic copyright
+  relationship on the release or on ANY recording — partial coverage is not
+  flagged (Born to Run: 7 of 8); the holder is never compared. From the
+  embedded release payload (`_readEmbeddedReleaseJson()`:
+  `release.relationships`, `mediums[].tracks[].recording.relationships`, by
+  link type: the page's own `initialLinkedEntities.link_type` by English
+  name, else `_RN_PHONO_LINK_TYPES` 710/711/867/869), else from the page
+  (`#release-relationships` th, the tracklist's `dl.ars > dt`, the bottom
+  credits). `complete` is false when a medium's tracks are not all on the
+  page (`track_count` above the tracks given): then nothing is flagged.
+- **Read at the press**: `startFetchingProcess()` primes the memo right after
+  the pageType switch, because the Credits render removes the tracklist
+  (`_relRemoveMainSections()`). With the payload it would not matter (the
+  script stays); without it, the page after the render has no recordings.
+- **The menu**: `_updateFindingMenus()` passes `relRows` (the connected
+  `_releaseFindings`) to `_buildFindingMenuRows()` for the WARNING menu.
+  With any, the panel starts with a "This release" heading, one row per line
+  (`.mb-findings-rel-item`, `data-mb-finding-id="release-notice"`, glyph ℗,
+  the holder in a sub-line, count 1), a rule, and "In the tables" over the
+  usual rows — "No table findings on this release." when there are none, and
+  then no Clear row (nothing filters). Headings, rule and note are
+  `.mb-findings-menu-extra`, removed with the rows on every rebuild. The ⚠️
+  segment's count adds the lines; the menu's signature includes them.
+- **The row shows the line** (`_rnShowLine()`): closes the menus, opens what
+  hides it — the Annotation h2 (`_mbToggle(true)`; it starts collapsed after
+  a render), a collapsed wiki sub-section (`_mbSubToggle(true)`),
+  MusicBrainz's own "Show more" (`a.annotation-toggle`) — scrolls it to the
+  middle, flashes it (`mb-rn-flash`, reduced motion: an outline), and shows
+  its card 0.5 s later.
+- **Its own card**, `#mb-release-notice-card` (`.mb-tt-liner`, so the look is
+  the shared one), not `#mb-stat-tooltip`: the shared engine shows nothing on
+  a tap and cannot be opened from a menu row. `_rnCardInstall()` (once, when
+  a line is first flagged) delegates hover (a 350 ms grace that lets the
+  pointer reach the card), click/tap toggle, keyboard focus, Esc, and a click
+  elsewhere; a scroll moves it with its line. Two touch rules, each found
+  failing first: the focus a press gives the line (it is focusable) must not
+  open the card, or the click right after closes it (`pointerdown` marks the
+  press); and a tap's compatibility `mouseout`, which follows its click, must
+  not start the grace (`_isTouchCompatMouseEvent()`). With the tint off the
+  line has no `data-mb-finding`, so no tint, no glyph and no card; the menu
+  row still shows (and flashes) it.
+- **Probe and examples** (`scripts/probe-apollo-findings-4.py`,
+  `scripts/check-apollo-findings-4-notices.py`; Env:
+  2026-11-19T22:49:43+01:00 – 23:20:22+01:00 · petri · WSL2 Ubuntu 24.04.3
+  LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · n/a browser): 257 of 1,722
+  releases have a notice line, 235 no relationship of that kind on the
+  release; of 93 re-checked with their recordings, 80 have it nowhere. The
+  flagged example is 65f35399 "Blinded by the Light"; Born to Run (1e212454)
+  and Greetings From Asbury Park (bbfabca0) are the near misses.
+  `scripts/list-annotation-notice-lines.py` lists a saved page's notice lines,
+  `scripts/inspect-release-payload-rels.py` its ℗ relationships.
+- **Performance**: one walk of one annotation per stamp, a memoized payload
+  read, nothing per keystroke or per row; no perf arm needed.
+- Tint `sa_findings_tint_release_notice`. Spec
+  `tests/fixtures/apollo-findings-4.spec.js` and `.mobile.spec.js` (fixtures
+  `release-notice*.html`, six, written by
+  `scripts/make-release-notice-fixtures.py` from the raw page of 65f35399:
+  as is, a ℗ on one recording, on the release, an incomplete medium, no
+  payload, no payload with a native ℗ list); mutations
+  `scripts/mutations/apollo-findings-4.json` (20).
+
 ## On demand: the title-style findings
 
 `title-case`, `title-typography`, `title-series-sep`, `title-feat` and

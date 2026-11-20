@@ -4756,3 +4756,28 @@ Env: 2026-11-20T00:44:05+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
 | =npm run test:full=, =a93d898a= + fold      |  3363 |      14 | *22 m 49 s* | =run-test-full.py=, 00:44:05–01:06:54 CET |
 
 3363 passed (the branch's 3356 and main's Apollo batch 3 tests), no flake.
+
+* 2026-11-20 — =npm run test:full= on =petri=, feat/apollo-findings-4 (release-notice)
+
+Env: 2026-11-20T00:52:22+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                                   | Tests | Workers | Wall clock  | Basis                                     |
+|---------------------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, =a1c5e47e= + tree      |  3343 |      12 | *23 m 3 s*  | =run-test-full.py=, 00:52:22–01:15:25 CET |
+
+3340 passed, 3 failed, all three "Test timeout of 90000ms exceeded" waiting for a render, on pages the change does
+not run on (=uvd-live-titles.spec.js:384= artist release groups; =saed-narrow.mobile.spec.js:28= and
+=sidebar-sections.mobile.spec.js:36=, the latter a known one under load). Rerun alone at 01:15:36–01:16:38 CET: the
+three files, 20 of 20 passed.
+
+* 2026-11-20 — =npm run test:full= on =petri=, main after merging feat/apollo-findings-4 (9.99.1666)
+
+Env: 2026-11-20T01:29:32+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                                   | Tests | Workers | Wall clock  | Basis                                     |
+|---------------------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, =92b0cac9= + fold      |  3378 |      12 | *21 m 38 s* | =run-test-full.py=, 01:29:32–01:51:10 CET |
+
+3377 passed, 1 failed: =rel-retry-anchor-placement.spec.js:208=, "locator.waitFor: Timeout 90000ms exceeded" waiting
+for =#mb-filter-container= (the render), not one of the branch run's three. Rerun alone at 01:51:21–01:51:56 CET: 4 of
+4 passed. Each 12-worker run on petri tonight timed out on a different render wait.

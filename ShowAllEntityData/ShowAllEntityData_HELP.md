@@ -831,6 +831,7 @@ back).
 | ⚠️     | Title names a remixer ("(X remix)"), no remixer credited        | Release tracklist: Title                    |
 | ⚠️     | Medley title ("A / B") has more parts than linked works         | Release tracklist: Title                    |
 | ⚠️     | Release role does not fit its format (glass mastered on vinyl)  | Release Credits: Relationship               |
+| ⚠️     | ℗ notice in the annotation that no relationship has             | Release page: Annotation                    |
 | ⚠️     | Live title date uses a plain "-" instead of "‐" (U+2010)        | Release and release group titles            |
 | ⚠️     | Event name date uses a plain "-" instead of "‐" (U+2010)        | Event columns                               |
 | ⚠️     | Event name almost follows the event style guide                 | Event columns                               |
@@ -912,6 +913,30 @@ A flagged cell's hover card names the problem and, where there is one, the
 cell's own detail. *Live credit without a date* names the date the credit is
 most likely from: the recording's own "live recording of" date, which the
 credit was checked against ("probably 1988-04-27").
+
+**One check is about the whole release, not a cell.** On a release page
+(Tracklist or Credits), a line of the annotation that is a ℗ notice, as on a
+sleeve ("℗ 1975 CBS Inc.", "(P) 1980 …", "Phonographic Copyright (p) – …"), is
+tinted with a ⚠️ when neither the release nor any of its recordings has a
+phonographic copyright relationship. Hover (or tap) the line for why; the
+card shows the holder as read, which is not compared with anything. The ⚠️
+list shows it first, under **This release**, and the table problems under
+**In the tables**; clicking it opens the Annotation, scrolls to the line and
+flashes it — there are no rows to filter. A ℗ on even one recording is enough,
+© lines are not checked (a © is often the songs' publisher, which belongs on
+the work), and nothing is flagged while some of a long release's tracks are not
+on the page. It reads only what the page already has. The rule comes from
+majkinetor's Group Therapy.
+
+```
+⚠️ 1 ▾
+   THIS RELEASE
+   ℗  ℗ notice with no relationship              1
+      CBS, Inc. · click to show it in the annotation
+   ─────────────
+   IN THE TABLES
+   No table findings on this release.
+```
 
 The tint of each newly highlighted problem has its own switch in ⚙️ Settings →
 ⚠️ Findings; turning one off keeps the problem in the menu. The menus
