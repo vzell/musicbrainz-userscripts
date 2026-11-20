@@ -4,9 +4,16 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1837 versions; the month pages hold all of them.
+This page shows the newest 100 of 1838 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1667 — 2026-11-20
+
+**🚀 Feature**
+
+- Brucebase: a new warning from the Brucebase feed (BruceParser 0.24.0): ⚠️ ⇋ a show's Notes, Gallery, Eyewitness, Media or Recording notes page whose name is not the show's, as its breadcrumb names the show. For example gallery:1967-11-00-… under gig:1967-11-00a-… (a missing day letter), "palais-omnisport" under "palais-omnisports" (a typo), or a page under a show of another date or place. A name Wikidot cut at its 60 characters, a "-1"/"-2" of two pages of one date and the "dl-" of a download's note count as fine. The show is marked on its rows, its page and its window, the page itself on its rows (Recent changes, the tag lists); the hover text names the page and the name it would have. 36 pages in the run of 2026-11-19. Its own switch in ⚙️ Settings → ⚠️ Findings, on by default.
+
 
 ## 9.99.1666 — 2026-11-20
 
@@ -869,14 +876,6 @@ This page shows the newest 100 of 1837 versions; the month pages hold all of the
 
 - Picture sections (a release's Cover art, an event's Event art, and the pictures on other sites' detail pages): a Table layout lists the pictures one per row (\#, picture, type, comment, ★ / ⏳, file name, and the copy on a springsteenlyrics item), sortable by any column; the viewer then steps through the rows in that order.
 - Picture sections: a filter box narrows the pictures as you type (by type, comment or file name) in every layout, says how many are shown and highlights what it found; a Tiles slider makes the thumbnails bigger or smaller (remembered; ↺ takes them back to the original size); Show missing turns a springsteenlyrics copy's "no scans yet" box on and off.
-
-
-## 9.99.1567 — 2026-11-06
-
-**✨ Improve**
-
-- Other sites' detail pages: as on a MusicBrainz release, a disc's or record's own pictures show as small thumbs in its heading above the tracks, and a click opens them in the viewer. On archive.org a picture named after a disc ("Disc 2.jpg") goes into that disc's heading; on a springsteenlyrics bootleg the artwork whose caption names the disc, its label, a picture side or the runout goes into the record's. A picture is placed only when its name says where; anything else stays in the pictures section only.
-- springsteenlyrics bootleg pages: the artwork chips follow the site's captions — Front, Back, Booklet, Medium (disc, label, picture side, runout, matrix), else Artwork.
 
 
 ---

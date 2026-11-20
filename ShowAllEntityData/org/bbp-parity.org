@@ -1128,7 +1128,7 @@ venue rows).
 
 vzell, 2026-11-20 (on vzell-lap, every family on): "all tested live OK".
 
-* Track A idea 4: a page named differently from its show (=feat/bb-feed-dependent-name=, 2026-11-20; feed 1.6)
+* Track A idea 4: a page named differently from its show (=feat/bb-feed-dependent-name=, 2026-11-20; feed 1.6; tested live OK and merged on 2026-11-20 as 9.99.1667)
 
 Env: 2026-11-20T01:51:46+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · n/a
 (the probe: Python over the mirror bb/2026-11-19; the spec: Playwright Chromium, no Tampermonkey)
