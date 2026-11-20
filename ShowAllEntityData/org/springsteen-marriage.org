@@ -21,8 +21,8 @@ left out by decision), NOT (not done, with the reason).
   1.6, not published); the published feed is 1.5.
 - *Idea 4's last item is built, waiting for vzell's browser check* (=feat/bb-feed-dependent-name=, 2026-11-20): not
   URL-shortening (its rows are its own derivation's variants) but a page named differently from its show, the feed
-  kind "dependent-name" (BruceParser 0.24.0, feed 1.6, 36 pages), ⚠️ =bb-feed-name= in SAED. Before the check: the
-  feed 1.6 published (vzell's call), =test:full=. Record and browser check: bbp-parity.org, "Track A idea 4 …".
+  kind "dependent-name" (BruceParser 0.24.0, feed 1.6, 36 pages), ⚠️ =bb-feed-name= in SAED; =test:full= 3370/3370.
+  Before the check: the feed 1.6 published (vzell's call). Record and browser check: bbp-parity.org, "Track A idea 4 …".
 - *Open in Track A:* two MusicBrainz cross-checks (idea 5). Freezing
   BruceBaseParser (idea 6) is possible but waits: vzell, 2026-11-20, "We will actually NOT yet freeze
   BruceBaseParser right now". See "Status at a glance".
@@ -364,7 +364,7 @@ left at the 60-character cut). BruceParser 0.21.1 (=c789cfb=) fixed that "-". A 
 and nearly every row is a variant of them. vzell (2026-11-20): instead, a show's dependent page (gignote, gallery,
 eye, media, recnote) named differently from the show its breadcrumbs name, a WARNING; URL-shortening NOT. BruceParser
 0.24.0 (=dependent-names.awk=, feed 1.6, =2c996c2=) and the probe agree on 36 pages; SAED marks them ⚠️ =bb-feed-name=
-on the page's rows and on the show. Waits for: the feed 1.6 published, =test:full=, vzell's browser check
+on the page's rows and on the show; =test:full= 3370/3370. Waits for: the feed 1.6 published, vzell's browser check
 (bbp-parity.org, "Track A idea 4 …").
 
 ** Idea 5: cross-checks on MusicBrainz

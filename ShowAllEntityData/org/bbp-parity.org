@@ -1152,7 +1152,8 @@ of its 4,304 rows are variants of those rules, not wiki errors (its page is OBSO
   when the page's breadcrumb now names another show, but a dependent page has no head and no window of ours (it is
   =bb-page=, and the preview links leave its kinds out), so no page that shows its breadcrumb carries the mark.
 - *Tests:* =tests/fixtures/bb-feed-dependent-name.spec.js= (7, green); =scripts/mutations/bb-feed-dependent-name.json=
-  (7, each fails its test). =test:full= is still to run before the merge.
+  (7, each fails its test). =test:full= 3370/3370 (2026-11-20T01:58:32+01:00 – 02:21:24+01:00, NB-3641, =323382e4=,
+  Playwright Chromium, no Tampermonkey).
 
 ** The browser check of idea 4, for vzell (the run of 2026-11-19; unverified on the live wiki)
 
