@@ -4824,3 +4824,13 @@ Env: 2026-11-20T14:34:19+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 failed 3 of 3 alone on the branch and passed 2 of 2 with =main='s userscript (14:58 CET). The Q box widens the h2
 filter bar by 33 px; with the tables hidden the bar alone ran 19 px past the 900 px window (scrollWidth 919). The
 test now opens at 940 px (vzell's choice); the spec file then passed 120 of 120 (=--repeat-each=3=, 15:06–15:09 CET).
+
+* 2026-11-20 — =npm run test:full= on =petri=, feat/gf-query-mode with the Rx card (WIP.2)
+
+Env: 2026-11-20T16:05:15+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                                   | Tests | Workers | Wall clock  | Basis                                     |
+|---------------------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, =37b4a365=             |  3397 |      12 | *22 m 48 s* | =run-test-full.py=, 16:05:15–16:28:03 CET |
+
+3397 passed, no flake.
