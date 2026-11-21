@@ -814,8 +814,8 @@ before EH's bubble listener. Spec: `tests/fixtures/eh-single-keys.spec.js`
 (the simulator `eh-body-swap.js` carries EH's key listener); mutations:
 `scripts/mutations/eh-single-keys.json`.
 
-**Convention C3 on our table** (`_mbuKeysSync()`, feat/eh-keys-keep-gate-clamp
-WIP.2, 2026-11-21). `<html data-mbu-keys-off>` suspends EVERY EH command,
+**Convention C3 on our table** (`_mbuKeysSync()`, 9.99.1675,
+2026-11-21). `<html data-mbu-keys-off>` suspends EVERY EH command,
 `v` included, so it was not set until majkinetor added
 `data-mbu-keys-keep="toggle"` (#938 answer 2026-11-20, EH:17972 at
 `a1e8f54`): beside keys-off it leaves the `view` command working, whatever

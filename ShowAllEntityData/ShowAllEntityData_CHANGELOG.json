@@ -1,5 +1,30 @@
 [
   {
+    "version": "9.99.1675",
+    "date": "2026-11-21",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "With majkinetor's String Theory 2026.11.20.165956 or newer, a table of ours now asks Event Horizon to leave all its keys alone except its on/off switch, through the shared marks <html data-mbu-keys-off=\"saed\" data-mbu-keys-keep=\"toggle\"> (#938 convention C3, keys-keep added by majkinetor 2026-11-20). Its newer keys stay off the table too: U (your profile, which left the page), Ctrl+P (its player, so the browser prints again) and its player's Space, arrows and Alt+1/2/3. A toggle rebound in Event Horizon to a letter keeps working. The marks come down while Event Horizon's view shows, and are never set over another script's (_mbuKeysSync(), _ehKeysKeepHonoured()).",
+          "Before a button is pressed, and with a standalone or older Event Horizon, the single-letter guard stays as it was, now with U. The setting is renamed \"Keep Event Horizon's keys off MusicBrainz's page\" (sa_block_eh_single_keys, same key and default)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1674",
+    "date": "2026-11-21",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The shared MusicBrainz request gate (mbu:mb-gate): every write of this script now lowers a broken hold or lead in the stored schedule, a cool past now + 60 s to now + 60 s and a leadUntil past now + 10 s to now + 10 s, as majkinetor's scripts do since a1e8f54 (#938, 2026-11-20). A value ten minutes out is then repaired for every tab and script after the write, not only counted capped by this tab (9.99.1651). A tab that already counts such a value keeps the end it gave it at first sight, so its own write does not restart the minute (_mbGateClampWrite(), in _mbGateState())."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1673",
     "date": "2026-11-21",
     "sections": [

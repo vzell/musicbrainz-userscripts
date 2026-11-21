@@ -303,7 +303,7 @@ version 1 (on his `main` since `7eb7c563`). Anchors `gate-version`,
   out as a corrupt `cool` says, and caps it from each re-read's `now`, which
   moves the end along so the wait lasts the whole length anyway (found
   2026-11-18: spec "ends 60 s after the tab first saw it"). Both parts go
-  further than upstream on purpose. Since WIP.1 of `feat/eh-keys-keep-gate-clamp`
+  further than upstream on purpose. Since 9.99.1674
   (2026-11-21) every write also LOWERS the stored value; see the next rule.
   `_mbGateAnswer()` reads the hold the same
   way (the episode and quiet rules, the hold it reports), and the tab keeps

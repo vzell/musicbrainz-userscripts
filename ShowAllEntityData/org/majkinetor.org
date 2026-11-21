@@ -16,22 +16,23 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 
 * PICKUP HERE (2026-11-21)
 
-- *Now:* =feat/eh-keys-keep-gate-clamp= (2026-11-21): the two small ours from the 2026-11-20 refresh are built,
-  WIP.1 the gate's write clamp, WIP.2 C3 with =data-mbu-keys-keep=; test:full 3449/3449, vzell's browser check OK
-  (keys and gate); merge pending vzell's go. Upstream =main= is at =3716624= (44 commits past the clone, EH UI only; the gate and the
-  keys-off check unchanged): refresh next time.
+- *Now:* nothing in progress. The two small ours from the 2026-11-20 refresh shipped: 9.99.1674 the gate's write
+  clamp, 9.99.1675 C3 with =data-mbu-keys-keep= (=feat/eh-keys-keep-gate-clamp=; vzell's browser check OK). Upstream
+  =main= is at =3716624= (44 commits past the clone, EH UI only; the gate and the keys-off check unchanged): refresh
+  next time.
 - *Next:* the next adoption is open (the Credit Hoarder role map, column reorder, …). Fusion's follow-ups: work
   recordings (second batch), tap to pin on touch (later).
 - *majkinetor answered all three open questions* on #938 (milic-bot, 2026-11-20 17:00 CET,
   [[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-7044153970][comment]]; on =main=
   since String Theory 2026.11.20.165956, which vzell runs in Vivaldi):
   - the gate: a stored hold or lead is capped from first sight in a wait, and lowered in storage on every write;
-    wall-clock steps left as they were. SAED's half: port the write clamp (TODO "The shared gate's clock").
-  - C3: =data-mbu-keys-keep="toggle"= beside =data-mbu-keys-off= keeps V. SAED can now adopt C3 (new TODO
-    "Event Horizon's new keys on our FRP": EH added =u= and Ctrl+P, which our key list misses).
+    wall-clock steps left as they were. SAED's half: the write clamp, ported in 9.99.1674.
+  - C3: =data-mbu-keys-keep="toggle"= beside =data-mbu-keys-off= keeps V. Adopted in 9.99.1675 (item
+    "Event Horizon's new keys on our FRP": EH added =u= and Ctrl+P, which our key list missed).
   - C7: Group Therapy and Falcon set =mbLastWrite=; Apollo, named in the answer, does not in =a1e8f54=.
-- *Waiting on majkinetor*: nothing. A short thank-you with the Apollo note is drafted under "On the record".
-- *Last merge:* 9.99.1673 (=feat/fusion-rec-dup=). Nothing since 9.99.1625 is published to
+- *Waiting on majkinetor*: nothing. A thank-you is drafted under "On the record" (updated 2026-11-21 with 9.99.1674/75;
+  the Apollo note, and a request for an EH version mark on =<html>= for standalone copies).
+- *Last merge:* 9.99.1675 (=feat/eh-keys-keep-gate-clamp=). Nothing since 9.99.1625 is published to
   =vzell/mb-userscripts= (vzell's call).
 - *Last refresh* of the analysis: 2026-11-20 at his =a1e8f54= (refresh-majkinetor skill). The clone lives in
   =debug/majkinetor/= (not synced between hosts: on another host, clone it fresh as "Method" says).
@@ -49,9 +50,9 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | The shared request gate: joined, port brought in line          | DONE  | 9.99.1583, 50 | Interop            |
 | The shared gate's clock: SAED's half                           | DONE  | 9.99.1651     | Interop            |
 | The shared gate's clock: upstream's half (=a1e8f54=)           | DONE  | —             | Interop            |
-| The shared gate's clock: port upstream's write clamp           | TODO  | —             | Interop            |
+| The shared gate's clock: port upstream's write clamp           | DONE  | 9.99.1674     | Interop            |
 | String Theory's idle mode over our FRP                         | TODO  | —             | Interop            |
-| C3: adopt =data-mbu-keys-off= + =keys-keep= (EH's new keys)    | TODO  | —             | Interop            |
+| C3: adopt =data-mbu-keys-off= + =keys-keep= (EH's new keys)    | DONE  | 9.99.1675     | Interop            |
 | C7 =mbLastWrite=, C8 =MBU.artistImage=                         | DONE  | 9.99.1643, 46 | Adoptions          |
 | Release checks (Mission Control / Platform Check / ISRC Scout) | DONE  | 9.99.1654     | Adoptions          |
 | Apollo findings, batch 1: credit ends with a join phrase       | DONE  | 9.99.1657     | Adoptions          |
@@ -104,7 +105,7 @@ is removed only while its value is still ours, and the setter offers its own way
 |----+-------------------------------------------------------------------------------------------------------+-------------+------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------|
 | C1 | =data-mbu-foreign="saed"= on a rendered table                                                         | SAED        | ISRC Scout's =fillTrackData()= / =showTrackData()= (insert, wipe, colspans); the shared =mbuTipFind()=      | *adopted* (9.99.1579, =_markForeignTable()=): every =table.tbl= a render builds                                                       |
 | C2 | =a.ii-trk-ln[data-ii-platform][data-ii-ended="true\|false"]=                                          | ISRC Scout  | SAED reads it instead of tip text                                                                          | *adopted* (9.99.1578, =_isrcScoutLinkPlatform()=): metadata, then =data-tip=, then =title=                                           |
-| C3 | =<html data-mbu-keys-off="saed">=                                                                     | SAED        | EH's keydown returns early: *every* command, V and Ctrl+L included                                        | *not adopted yet*: it took V. Asked to keep V working under it (2026-11-08, 2026-11-17); *answered 2026-11-20*: =<html data-mbu-keys-keep="toggle">= beside it keeps EH's on/off command (EH 2026.11.21.190000, =a1e8f54=; anchors =conv-c3-keep=, =saed-keys-off=). *Adopted on =feat/eh-keys-keep-gate-clamp=* (WIP.2, =_mbuKeysSync()=): both marks while a table shows, String Theory ≥ 2026.11.20.165956 |
+| C3 | =<html data-mbu-keys-off="saed">=                                                                     | SAED        | EH's keydown returns early: *every* command, V and Ctrl+L included                                        | *not adopted yet*: it took V. Asked to keep V working under it (2026-11-08, 2026-11-17); *answered 2026-11-20*: =<html data-mbu-keys-keep="toggle">= beside it keeps EH's on/off command (EH 2026.11.21.190000, =a1e8f54=; anchors =conv-c3-keep=, =saed-keys-off=). *Adopted* in 9.99.1675 (=_mbuKeysSync()=): both marks while a table shows, String Theory ≥ 2026.11.20.165956 |
 | C4 | =<html data-mbu-quiet="saed">=                                                                        | SAED        | =mbRestackCorner()=: =[data-mb-corner]= and =#mbu-dock-shelf= =visibility:hidden=                         | *adopted* (9.99.1580, =_mbuQuietSync()=, =sa_mbu_quiet_corner=, ☰ row)                                                              |
 | C5 | /dropped/ ("no SAED-specific detection"); replaced by EH's More (⋯) menu protocol: hidden =button[data-mbu-menu-item][data-mbu-menu-title]= under =<html>= | SAED | EH projects it into its header menus and =.click()=s it; =disabled= hides it                              | *adopted* (9.99.1581, =_ehMenuSync()=, =_ehHandoff()=): "Open in ShowAllEntityData" + one item per button                           |
 | C6 | =mbu:mb-gate= *version 1* (=version=, =tat=, =cool=, =hot=, =lead=, =leadUntil=; Web Lock =mbu-mb-gate=) | majkinetor (documents it) | SAED books its ws/2 there                                                                                  | adopted: SAED 9.99.1583 (TODO "Join majkinetor's cross-tab request gate"); upstream's code moved on since (TODO "Bring SAED's request-gate port in line with upstream") |
@@ -210,7 +211,8 @@ cost from the wakers (tests/MEASUREMENTS.org, 2026-11-18).
   ten-minute wait, and the wait's cap moves along with =now=, so it bounds nothing. SAED counts a stored =cool= for at
   most 60 s from first sight. Both went to majkinetor in the gate-clock reply.
 
-** TODO The shared gate's clock: a step of the wall clock moves every script's slots (draft for vzell to send)
+** DONE The shared gate's clock: a step of the wall clock moves every script's slots (draft for vzell to send)
+CLOSED: [2026-11-21 Sat]
 
 - *Answered 2026-11-20* (milic-bot on #938, on =main= at =a1e8f54=; rechecked on petri 2026-11-20T22:04+01:00, code
   reading, n/a browser). To question 1 he put point 1 into =mb-gate.mjs= himself: a wait caps a stored =cool= at
@@ -223,10 +225,10 @@ cost from the wakers (tests/MEASUREMENTS.org, 2026-11-18).
   Spec: seed =cool= ten minutes out, let SAED book one request, assert the stored =cool= is at most =now + 60 s=; the
   same for =leadUntil=. Mutation: the clamp removed. Not urgent: SAED's reader already counts such a value for at most
   60 s / 10 s (9.99.1651).
-  *Built* on =feat/eh-keys-keep-gate-clamp= (WIP.1, 2026-11-21, petri): =_mbGateClampWrite()=, with one addition
+  *Shipped* in 9.99.1674 (=feat/eh-keys-keep-gate-clamp=, 2026-11-21, petri): =_mbGateClampWrite()=, with one addition
   upstream does not need: a tab that already counts the broken value keeps the end it gave it at first sight (a
   write 30 s in would otherwise stretch the hold to 90 s). Five specs, six mutations; anchor =saed-gate-clamp=
-  (present). DONE at the merge.
+  (present).
 - *Who fixes it*: a *shared convention* (both sides read and write =mbu:mb-gate=), with a reader-side change that
   keeps =MBN_VERSION = 1=. SAED's half is *ours*, and shipped in 9.99.1651 (see "SAED's half" below); upstream's
   half is done (above).
@@ -274,7 +276,8 @@ cost from the wakers (tests/MEASUREMENTS.org, 2026-11-18).
 - *Upstream's half*: the reply is posted (2026-11-18, [[#post-938-gate-clock][On the record]]); answered
   2026-11-20, see the top of this item.
 
-** TODO Event Horizon's new keys on our FRP: adopt C3 with =data-mbu-keys-keep=
+** DONE Event Horizon's new keys on our FRP: adopt C3 with =data-mbu-keys-keep=
+CLOSED: [2026-11-21 Sat]
 
 - *Who fixes it*: *ours*, on convention *C3*, now usable: majkinetor added =<html data-mbu-keys-keep="toggle">=
   (#938 answer 2026-11-20; EH 2026.11.21.190000 at =a1e8f54=, EH:17970–17972; repo DEVELOP.md interoperability
@@ -302,7 +305,7 @@ cost from the wakers (tests/MEASUREMENTS.org, 2026-11-18).
   them, and V toggles in both cases; a foreign value (=data-mbu-keys-off="other"=) is never removed. Mutations: the
   marks never set; =keys-keep= missing (V dead); removal ignores the owner. Live: a probe field for the marks in case
   B.
-- *Built* on =feat/eh-keys-keep-gate-clamp= (WIP.2, 2026-11-21, petri): =_mbuKeysSync()= sets both marks while a
+- *Shipped* in 9.99.1675 (=feat/eh-keys-keep-gate-clamp=, 2026-11-21, petri): =_mbuKeysSync()= sets both marks while a
   table shows; *not on the IP* (vzell, 2026-11-21: they would take EH's player keys on every page SAED runs on), and
   only when =_ehKeysKeepHonoured()=: String Theory's =<html data-mbu-st>= ≥ 2026.11.20.165956 (upstream =352510c=;
   2026.11.20.164048 has keys-off without keep, checked through GitHub). A standalone EH publishes no version and keeps
@@ -315,7 +318,7 @@ cost from the wakers (tests/MEASUREMENTS.org, 2026-11-18).
   EH's V works under them and =h= on the table stays; with EH alone no keys marks (DEBUG-NOTES 2026-11-21).
   =test:full= 3449/3449 at =c515878d=. *vzell's browser check 2026-11-21: keys OK*, gate OK (a forced ⟳ wrote =cool= back to 57 s
   out from a planted ten minutes; DEBUG-NOTES). Anchor =saed-keys-off= (present; the duplicate
-  =saed-no-keys-off= pair merged). DONE at the merge.
+  =saed-no-keys-off= pair merged).
 
 ** TODO String Theory's idle mode over our FRP (random theme, EH effect layers)
 
@@ -1874,12 +1877,25 @@ Volker
   =add-alias= and =aliases= pages (=@match= lines 39–46) and leaves the submit to MusicBrainz's form, and
   =apollo_editor.user.js= holds no =mbLastWrite= at all (anchor =c7-writer-apollo=); Falcon's =submitAlias()= sets it.
 
-#+begin_src markdown
-Thanks, all three work for me, and I'm running String Theory 2026.11.20.165956.
+- *Updated* 2026-11-21 (petri) with what shipped in SAED 9.99.1674/9.99.1675, and one new question (point 3).
 
-- **Gate**: the first-sight cap is what SAED does since 9.99.1651; I'll add the write clamp to SAED's copy too.
-- **`data-mbu-keys-keep="toggle"`**: SAED will set it with `data-mbu-keys-off="saed"` while its table is shown, so
-  V keeps working and the new keys (`u`, Ctrl+P, the player keys) stay off our page.
+#+begin_src markdown
+Thanks, all three work for me, and I'm running String Theory 2026.11.20.165956. SAED 9.99.1675 uses both:
+
+- **Gate** (9.99.1674): SAED's copy now has your write clamp too, so a SAED tab that books or answers lowers a
+  broken `cool`/`leadUntil` in storage like your scripts do. One detail SAED needs and you don't: it gives a stored
+  value an end at first sight (since 9.99.1651), and the lowered value would otherwise read as a new value and
+  restart that count, so the tab that clamps keeps the end it already had.
+- **`data-mbu-keys-keep="toggle"`** (9.99.1675): while SAED's table is shown, it sets `data-mbu-keys-off="saed"`
+  with `data-mbu-keys-keep="toggle"`, so V (or whatever key the toggle is rebound to) keeps working and `u`,
+  Ctrl+P and the player keys stay off the table. They come down while Event Horizon's view shows, and before a
+  button is pressed SAED keeps its old single-letter guard (with `u` added), so your player keys still work while
+  browsing.
+- **A question on that**: SAED sets the marks only when it knows the Event Horizon on the page honours keys-keep,
+  and the only place it can tell is String Theory's `<html data-mbu-st="2026.11.20.165956">` (164048 has keys-off
+  without keep, and the marks there would take V). A standalone Event Horizon publishes no version, so it keeps
+  SAED's letter guard. Could Event Horizon put its own version on `<html>`, like `data-mbu-st` (say
+  `data-mbu-eh="2026.11.21.190000"`)? Then SAED could use the marks with a standalone copy too.
 - **`mbLastWrite`**: I see it in Group Therapy and Falcon on `main` (a1e8f54), but not in Apollo:
   `apollo_editor.user.js` has no `mbLastWrite` at all, and an alias added on MusicBrainz's own add-alias form is
   submitted by that form. Is that one still to come, or did you mean Falcon's alias edits?

@@ -4904,3 +4904,13 @@ Env: 2026-11-21T10:43:07+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 | =npm run test:full=, =c515878d=             |  3449 |      12 | *23 m 16 s* | =run-test-full.py=, 10:43:07–11:06:23 CET |
 
 3449 passed, no flake. This branch adds 15 tests (5 gate clamp, 9 C3 in =eh-single-keys.spec.js=, 1 Ctrl+L in =eh-interop-markers.spec.js=).
+
+* 2026-11-21 — =npm run test:full= on =petri=, main after merging feat/eh-keys-keep-gate-clamp (9.99.1675)
+
+Env: 2026-11-21T11:42:51+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                                   | Tests | Workers | Wall clock  | Basis                                     |
+|---------------------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, =c001553e= + the fold  |  3449 |      12 | *22 m 57 s* | =run-test-full.py=, 11:42:51–12:05:48 CET |
+
+3449 passed, no flake.
