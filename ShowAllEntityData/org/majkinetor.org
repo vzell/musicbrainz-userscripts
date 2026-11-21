@@ -57,7 +57,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | The shared gate's clock: port upstream's write clamp           | DONE  | 9.99.1674     | Interop       |
 | String Theory's idle mode over our FRP                         | TODO  | —             | Interop       |
 | C3: adopt =data-mbu-keys-off= + =keys-keep= (EH's new keys)    | DONE  | 9.99.1675     | Interop       |
-| Standalone EH: use =data-mbu-eh= for the keys marks            | TODO  | —             | Interop       |
+| Standalone EH: use =data-mbu-eh= for the keys marks            | TODO  | WIP.1 branch  | Interop       |
 | C7 =mbLastWrite=, C8 =MBU.artistImage=                         | DONE  | 9.99.1643, 46 | Adoptions     |
 | Release checks (Mission Control / Platform Check / ISRC Scout) | DONE  | 9.99.1654     | Adoptions     |
 | Apollo findings, batch 1: credit ends with a join phrase       | DONE  | 9.99.1657     | Adoptions     |
@@ -346,6 +346,10 @@ CLOSED: [2026-11-21 Sat]
   visible UI.
 - *Anchors* at the next refresh: a new =eh-version-mark= (EH:134); =c7-writer-apollo= turns present (Apollo's
   =aliasPost()=, Apollo:18356 at =d8c0030=).
+- *Built* on =feat/eh-version-mark= (WIP.1, 2026-11-21, petri): =_mbuVersionMarkAtLeast()=, =_EH_KEYS_KEEP_EH_MIN=,
+  the observer's filter with =data-mbu-st= and =data-mbu-eh=; four specs (three fail on the old code), four
+  mutations (17/17 caught); HELP and the setting's description name the standalone EH. SAED anchor
+  =saed-eh-version-mark=. Waiting for =test:full= and vzell's browser check.
 
 ** TODO String Theory's idle mode over our FRP (random theme, EH effect layers)
 

@@ -1,0 +1,15 @@
+[
+    {
+        "version": "WIP.1",
+        "date": "2026-11-21",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "Event Horizon's keys on our table: a standalone Event Horizon (2026.11.22.184100 or newer) now gets the same treatment as String Theory's. It marks the page with its version (<html data-mbu-eh>, majkinetor's answer on #938), so while a table of ours shows the page asks it to leave all its keys alone except its on/off switch: U, Ctrl+P (which prints again) and its player's keys no longer act on the table, and an on/off switch rebound to another letter keeps working. Before, only String Theory's version mark counted, and a standalone Event Horizon kept the older single-letter guard.",
+                    "The keys marks also follow when String Theory or Event Horizon starts after the table is shown: their version marks are watched, so the next render is no longer needed."
+                ]
+            }
+        ]
+    }
+]
