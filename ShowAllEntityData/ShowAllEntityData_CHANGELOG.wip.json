@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-11-21",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The shared MusicBrainz request gate (mbu:mb-gate): every write of this script now lowers a broken hold or lead in the stored schedule, a cool past now + 60 s to now + 60 s and a leadUntil past now + 10 s to now + 10 s, as majkinetor's scripts do since a1e8f54 (#938, 2026-11-20). A value ten minutes out is then repaired for every tab and script after the write, not only counted capped by this tab (9.99.1651). A tab that already counts such a value keeps the end it gave it at first sight, so its own write does not restart the minute (_mbGateClampWrite(), in _mbGateState())."
+        ]
+      }
+    ]
+  }
+]

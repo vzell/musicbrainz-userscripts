@@ -791,3 +791,126 @@ test.describe('shared request gate: a step of the wall clock', () => {
         expect(ms).toBeLessThan(4000);
     });
 });
+
+// Upstream's write clamp (majkinetor's #938 answer, 2026-11-20; mb-gate.mjs:64–68
+// at a1e8f54, anchor gate-write-clamp): every write lowers a stored `cool` past
+// now + 60 s and a `leadUntil` past now + 10 s IN STORAGE, so a broken value is
+// repaired for every tab and script after the writer, not only counted capped by
+// this one (9.99.1651). SAED's own twist, pinned by the third test: a tab that
+// already counts the broken value keeps the end it gave it at first sight, or
+// its own write would restart the 60 s.
+test.describe('shared request gate: a write lowers a broken hold or lead in storage', () => {
+
+    test('a write lowers a hold ten minutes out to at most now + 60 s in storage', async ({ page }) => {
+        await loadRelPage(page, null);
+        await seedGate(page, { version: 1, tat: 0, coolIn: 600000, hot: 1, lead: '', leadUntil: 0 });
+        const left = await page.evaluate(async () => {
+            const t0 = performance.now();
+            await window.__saTest.mbGate.slot({ background: false, cancelled: () => performance.now() - t0 > 300 });
+            return JSON.parse(localStorage.getItem('mbu:mb-gate')).cool - Date.now();
+        });
+        // Guarantee: the STORED value is lowered (not just read capped), and
+        // not below a real hold's longest (a cut to `now` would be ≤ 0).
+        expect(left, 'the stored cool after one booking').toBeLessThanOrEqual(60000);
+        expect(left).toBeGreaterThan(55000);
+    });
+
+    test('a write lowers a lead ten minutes out to at most now + 10 s in storage', async ({ page }) => {
+        await loadRelPage(page, null);
+        await seedGate(page, { version: 1, tat: 0, cool: 0, hot: 0, lead: 'eh-page-draw', leadFor: 600000 });
+        const r = await page.evaluate(async () => {
+            const s = await window.__saTest.mbGate.slot({ background: false });
+            const g = JSON.parse(localStorage.getItem('mbu:mb-gate'));
+            return { ok: s.ok, left: g.leadUntil - Date.now(), lead: g.lead };
+        });
+        expect(r.ok).toBe(true);
+        expect(r.left, 'the stored leadUntil after one booking').toBeLessThanOrEqual(10000);
+        expect(r.left).toBeGreaterThan(5000);
+        expect(r.lead, 'the lead itself is kept').toBe('eh-page-draw');
+    });
+
+    test('the tab that lowers a value it already counts keeps its first-sight end', async ({ page }) => {
+        // A request waits in the paced queue; another script (a stepped clock)
+        // writes a hold ten minutes out, which this tab first reads in its
+        // wait (end: +60 s). 30 s later this tab writes (an answer): the clamp
+        // stores now + 60 s, which must not count as a new first sight (+90 s).
+        await loadRelPage(page, null);
+        await seedGate(page, { version: 1, tat: 0, cool: 0, hot: 1, lead: '', leadUntil: 0 });
+        await installClock(page);
+        const r = await page.evaluate(async () => {
+            const g = window.__saTest.mbGate;
+            const clk = window.__clk;
+            const realTimeout = window.setTimeout;
+            const sleep = (ms) => new Promise((res) => realTimeout(res, ms));
+            const within = (p, ms) => Promise.race([p, new Promise((res) => realTimeout(() => res({ hung: true }), ms))]);
+            try {
+                const s0 = JSON.parse(localStorage.getItem('mbu:mb-gate'));
+                s0.tat = Date.now() + 5000;
+                localStorage.setItem('mbu:mb-gate', JSON.stringify(s0));
+                const first = within(g.slot({ background: true }).then((x) => ({ ok: x.ok })), 5000);
+                await sleep(300);
+                const s1 = JSON.parse(localStorage.getItem('mbu:mb-gate'));
+                s1.cool = Date.now() + 600000;   // another script's broken write
+                localStorage.setItem('mbu:mb-gate', JSON.stringify(s1));
+                await sleep(400);                // the wait reads it: first sight
+                clk.pass(30000);
+                await g.answer(200, null);       // this tab writes: the clamp
+                const stored = JSON.parse(localStorage.getItem('mbu:mb-gate')).cool - Date.now();
+                await sleep(300);
+                clk.pass(31000);
+                const a = await first;
+                return { a, stored };
+            } finally {
+                clk.restore();
+            }
+        });
+        expect(r.stored, 'the write lowered the stored hold').toBeLessThanOrEqual(60000);
+        expect(r.a.hung, `the request goes 60 s after the first sight, not 60 s after the clamp (${JSON.stringify(r)})`).toBeUndefined();
+        expect(r.a.ok).toBe(true);
+    });
+
+    test('a lead this tab already counts keeps its first-sight end when a write lowers it', async ({ page }) => {
+        // The lead's twin of the test above: a background request first reads
+        // a lead ten minutes out (end: +10 s); 5 s later this tab writes and
+        // the clamp stores now + 10 s, which must not hold it until +15 s.
+        await loadRelPage(page, null);
+        await seedGate(page, { version: 1, tat: 0, cool: 0, hot: 1, lead: 'eh-page-draw', leadFor: 600000 });
+        await installClock(page);
+        const r = await page.evaluate(async () => {
+            const g = window.__saTest.mbGate;
+            const clk = window.__clk;
+            const realTimeout = window.setTimeout;
+            const sleep = (ms) => new Promise((res) => realTimeout(res, ms));
+            const within = (p, ms) => Promise.race([p, new Promise((res) => realTimeout(() => res({ hung: true }), ms))]);
+            try {
+                const first = within(g.slot({ background: true }).then((x) => ({ ok: x.ok })), 3000);
+                await sleep(300);                // the lead wait reads it: first sight
+                clk.pass(5000);
+                await g.answer(200, null);       // this tab writes: the clamp
+                const stored = JSON.parse(localStorage.getItem('mbu:mb-gate')).leadUntil - Date.now();
+                await sleep(300);
+                clk.pass(5500);
+                const a = await first;
+                return { a, stored };
+            } finally {
+                clk.restore();
+            }
+        });
+        expect(r.stored, 'the write lowered the stored lead').toBeLessThanOrEqual(10000);
+        expect(r.a.hung, `the request goes 10 s after the first sight, not 10 s after the clamp (${JSON.stringify(r)})`).toBeUndefined();
+        expect(r.a.ok).toBe(true);
+    });
+
+    test('a real hold is not touched by a write', async ({ page }) => {
+        await loadRelPage(page, null);
+        await seedGate(page, { version: 1, tat: 0, coolIn: 3000, hot: 1, lead: 'eh-page-draw', leadFor: 4000 });
+        const r = await page.evaluate(async () => {
+            const before = JSON.parse(localStorage.getItem('mbu:mb-gate'));
+            await window.__saTest.mbGate.answer(200, null);
+            const after = JSON.parse(localStorage.getItem('mbu:mb-gate'));
+            return { cool: after.cool - before.cool, lead: after.leadUntil - before.leadUntil };
+        });
+        // Guarantee: only a value past what any writer sets is lowered.
+        expect(r).toEqual({ cool: 0, lead: 0 });
+    });
+});

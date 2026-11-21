@@ -568,5 +568,83 @@
     "spec": "tests/fixtures/mb-shared-gate.spec.js",
     "grep": "a renewed lead holds again",
     "expect": "fail"
+  },
+  {
+    "name": "the write clamp of cool removed",
+    "why": "Without it SAED writes a broken hold back unchanged, so every tab and script after it reads the ten-minute value again (upstream clamps since a1e8f54).",
+    "edits": [
+      {
+        "find": "            s.cool = now + _MBG_MAX_HOLD;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "a write lowers a hold ten minutes out",
+    "expect": "fail"
+  },
+  {
+    "name": "the write clamp of leadUntil removed",
+    "why": "A lead ten minutes out stays in storage, and every other script holds its background requests behind it for ten minutes.",
+    "edits": [
+      {
+        "find": "            s.leadUntil = now + _MBG_MAX_LEAD;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "a write lowers a lead ten minutes out",
+    "expect": "fail"
+  },
+  {
+    "name": "the clamp loses the first-sight end",
+    "why": "Without the carry-over the lowered value reads as a new first sight: a write 30 s into a broken hold stretches it to 90 s.",
+    "edits": [
+      {
+        "find": "            if (_mbgHoldSeen.cool === cool) {",
+        "replace": "            if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "keeps its first-sight end",
+    "expect": "fail"
+  },
+  {
+    "name": "the clamp cuts at now instead of now + the cap",
+    "why": "A real hold or lead (below its cap) must never be lowered; clamping to now would end every hold at the next write.",
+    "edits": [
+      {
+        "find": "        if (cool > now + _MBG_MAX_HOLD) {",
+        "replace": "        if (cool > now) {"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "a real hold is not touched",
+    "expect": "fail"
+  },
+  {
+    "name": "the clamp runs after fn(s) instead of before (covered by the reader's cap)",
+    "why": "Upstream clamps before the caller's change. Moved after it, the booking still reads the hold through _mbGateHoldEnd()'s 60 s cap and the stored value is lowered by the same write, so no spec can see the order: recorded as pass.",
+    "edits": [
+      {
+        "find": "            _mbGateClampWrite(s, Date.now(), _steadyNow());\n            const value = fn(s);\n",
+        "replace": "            const value = fn(s);\n            _mbGateClampWrite(s, Date.now(), _steadyNow());\n"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "a write lowers|ten minutes out|a real hold is not touched",
+    "expect": "pass"
+  },
+  {
+    "name": "the clamp loses the lead's first-sight end",
+    "why": "Without the lead's carry-over the lowered leadUntil reads as a new first sight: a write 5 s into a broken lead holds background requests until 15 s.",
+    "edits": [
+      {
+        "find": "            if (_mbgLeadSeen.until === until) _mbgLeadSeen.until = s.leadUntil;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "a lead this tab already counts",
+    "expect": "fail"
   }
 ]

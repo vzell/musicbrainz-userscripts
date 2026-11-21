@@ -30847,3 +30847,27 @@ n/a (Python, ws/2).
   normal/loose: 737–788 ms → 59–69 ms, same "capped"; Petty's groups unchanged; 14/14 rec-dup tests.
 - **Browser check** (vzell, 2026-11-21, live, Vivaldi; versions not restated, the same evening's report was
   Vivaldi 8.2.4133.96 · Tampermonkey 5.5.1): OK, merge asked. `test:full` at `ea89cd30` before the merge.
+
+## 2026-11-21 — The shared gate's write clamp, ported (feat/eh-keys-keep-gate-clamp, WIP.1)
+
+Env: 2026-11-21T01:18:28+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) · Playwright 1.62.1 Chromium · no
+Tampermonkey (GM stubs)
+
+- **Pre-flight**: `check-majkinetor-anchors.py --versions` all hold at the clone `a1e8f54`; upstream `main` has
+  moved to `3716624` (44 commits, Event Horizon UI only: search page, tags view, playlist). Read through the GitHub
+  compare and the files at `3716624`: `mb-gate.mjs` unchanged, String Theory's inlined gate lines identical, EH's
+  keys-off/keys-keep check byte-identical (EH:18088). Not refreshed on this branch.
+- **What**: `_mbGateClampWrite()` in `_mbGateState()`'s `rw()`, before `fn(s)`: a stored `cool` past `now + 60 s`
+  and a `leadUntil` past `now + 10 s` are lowered in storage (upstream's `mbnState()`, `mb-gate.mjs:64–68`).
+- **Found while porting**: SAED's first-sight bound (9.99.1651) keys `_mbgHoldSeen` on the stored VALUE. A clamp
+  changes the value, so without a carry-over the lowered value reads as a new first sight and a write 30 s into a
+  broken hold stretches it to 90 s (spec "keeps its first-sight end" hangs: `{"a":{"hung":true},"stored":60000}`).
+  The record now moves to the lowered value keeping its end; upstream has no such record, so nothing to port.
+- **Specs** (`mb-shared-gate.spec.js`, describe "a write lowers a broken hold or lead in storage"): before the fix 3
+  of 4 failed (stored cool 569,599 ms out after a booking; leadUntil likewise; the carry-over), the fourth ("a real
+  hold is not touched") is the guard against over-clamping; after it the whole spec 26/26. A fifth spec for the
+  lead's carry-over was added after the fix (its mutation fails as it should: `{"a":{"hung":true},"stored":10000}`).
+  Mutations: six new in `mb-shared-gate.json`, all as expected (the clamp after `fn(s)` is `"expect": "pass"`: the booking reads through
+  the 60 s cap anyway). Lint within the baseline; `check-mutation-finds.py` 0 stale.
+- **HELP**: checked, it does not describe the gate; no edit owed. **PERFORMANCE.org**: nothing about the gate's
+  writes; no edit.

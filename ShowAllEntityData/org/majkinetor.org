@@ -222,6 +222,10 @@ cost from the wakers (tests/MEASUREMENTS.org, 2026-11-18).
   Spec: seed =cool= ten minutes out, let SAED book one request, assert the stored =cool= is at most =now + 60 s=; the
   same for =leadUntil=. Mutation: the clamp removed. Not urgent: SAED's reader already counts such a value for at most
   60 s / 10 s (9.99.1651).
+  *Built* on =feat/eh-keys-keep-gate-clamp= (WIP.1, 2026-11-21, petri): =_mbGateClampWrite()=, with one addition
+  upstream does not need: a tab that already counts the broken value keeps the end it gave it at first sight (a
+  write 30 s in would otherwise stretch the hold to 90 s). Five specs, six mutations; anchor =saed-gate-clamp=
+  (present). DONE at the merge.
 - *Who fixes it*: a *shared convention* (both sides read and write =mbu:mb-gate=), with a reader-side change that
   keeps =MBN_VERSION = 1=. SAED's half is *ours*, and shipped in 9.99.1651 (see "SAED's half" below); upstream's
   half is done (above).

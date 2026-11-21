@@ -70946,6 +70946,9 @@
      *   refused WITHOUT writing, the refusal is logged once, and the gate is
      *   left for the session (`_mbgRefused`).
      * - The write keeps every field it does not know and stamps `version: 1`.
+     * - Before `fn` runs, a `cool` or `leadUntil` past what any writer sets
+     *   is lowered (`_mbGateClampWrite()`, upstream's write clamp since
+     *   `a1e8f54`), so the write repairs it for every tab after this one.
      * - The lock is held only for that synchronous moment; one that does not
      *   come within `_MBG_LOCK_ABORT_MS` is stuck, and the write goes ahead
      *   unlocked, as with no Web Locks at all (an insecure context).
@@ -70975,6 +70978,7 @@
                 return { ok: false, value: undefined };
             }
             s.version = _MBG_VERSION;
+            _mbGateClampWrite(s, Date.now(), _steadyNow());
             const value = fn(s);
             _mbgLocal.tat = s.tat || 0;
             _mbgLocal.cool = s.cool || 0;
@@ -71049,9 +71053,10 @@
      *   hold is never cut. Capped from each re-read's `now` instead
      *   (upstream's wait), the cap moves along, and such a value still holds
      *   every request for its whole length.
-     * The stored value is left alone: lowering it is not in protocol v1. A
-     * hold this tab's own 429/503 asked for (`own`) still counts in full:
-     * behind a broken value, `max(cool, now + ms)` leaves the stored value as
+     * Every write of this tab also lowers such a stored value to
+     * `now + _MBG_MAX_HOLD` (`_mbGateClampWrite()`, upstream's write clamp),
+     * keeping the end this tab gave it. A hold this tab's own 429/503 asked
+     * for (`own`) still counts in full: behind a broken value, `max(cool, now + ms)` leaves the stored value as
      * it was, and without it the tab would not hold for its own throttle.
      * It never outlasts the stored value, though (a schedule written over or
      * cleared ends it too).
@@ -71097,6 +71102,43 @@
             _mbgLeadSeen.end = mono + Math.min(v - wall, _MBG_MAX_LEAD);
         }
         return _mbgLeadSeen.end - mono;
+    }
+
+    /**
+     * Upstream's write clamp (majkinetor's `mbnState()`, `mb-gate.mjs:64–68`
+     * at `a1e8f54`, #938 answer 2026-11-20), run on every write under the
+     * lock before the caller's change: no writer sets a hold past
+     * `_MBG_MAX_HOLD` or a lead past `_MBG_MAX_LEAD`, so a stored value
+     * beyond them is broken (a bug, or written inside a forward step of the
+     * wall clock) and is lowered IN STORAGE, for every tab and script that
+     * reads it after this write. A real value is never below its cap.
+     *
+     * This script's own part: when this tab already counts the old value
+     * (`_mbGateHoldEnd()` / `_mbGateLeadLeft()` saw it), the record is moved
+     * to the lowered value with the END IT HAD. Read as a new value, it would
+     * count from now again, and a write 30 s into a broken hold would stretch
+     * it to 90 s. Another tab first reads the lowered value, which ends at
+     * this write's time + the cap.
+     *
+     * @param {Object} s The schedule being written (changed in place).
+     * @param {number} now `Date.now()` of the write.
+     * @param {number} mono `_steadyNow()` of the same moment.
+     * @returns {void}
+     */
+    function _mbGateClampWrite(s, now, mono) {
+        const cool = +s.cool || 0;
+        if (cool > now + _MBG_MAX_HOLD) {
+            s.cool = now + _MBG_MAX_HOLD;
+            if (_mbgHoldSeen.cool === cool) {
+                _mbgHoldSeen.cool = s.cool;
+                _mbgHoldSeen.raw = mono + _MBG_MAX_HOLD;
+            }
+        }
+        const until = +s.leadUntil || 0;
+        if (until > now + _MBG_MAX_LEAD) {
+            s.leadUntil = now + _MBG_MAX_LEAD;
+            if (_mbgLeadSeen.until === until) _mbgLeadSeen.until = s.leadUntil;
+        }
     }
 
     /**
