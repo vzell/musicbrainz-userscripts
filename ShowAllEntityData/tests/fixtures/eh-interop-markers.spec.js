@@ -232,6 +232,16 @@ test.describe('Ctrl+L with Event Horizon', () => {
         expect(await ctrlL(page)).toEqual(['ctrl+l']);
     });
 
+    test('under the C3 marks (a table, current String Theory): Ctrl+L is ours, EH leaves it', async ({ page }) => {
+        // Pins: with data-mbu-keys-off set, EH itself leaves Ctrl+L, and our
+        // guard steps aside (it takes nothing under the marks).
+        await page.context().addInitScript({ content: 'window.__EH_SIM_C3__ = "keep"; window.__EH_SIM_ST__ = "2026.11.20.165956";' });
+        await openRelease(page, { settings: { sa_enable_direct_ctrl_char_shortcuts: true } });
+        await renderTracks(page);
+        expect(await page.evaluate(() => document.documentElement.getAttribute('data-mbu-keys-off'))).toBe('saed');
+        expect(await ctrlL(page)).toEqual([]);
+    });
+
     test('inside Event Horizon\'s view Ctrl+L is its own', async ({ page }) => {
         await openRelease(page, { ehOn: true, settings: { sa_enable_direct_ctrl_char_shortcuts: true } });
         expect(await ctrlL(page)).toEqual(['ctrl+l']);

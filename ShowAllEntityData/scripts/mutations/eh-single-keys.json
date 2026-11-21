@@ -30,8 +30,8 @@
     "why": "V is Event Horizon's on/off switch, the user's way from MusicBrainz's page to EH's view and back; taking it would lock the user out of Event Horizon on every page this script runs on.",
     "edits": [
       {
-        "find": "new Set(['o', 'e', 'r', 'c', 'h', 't', 'd', 'a', 's', 'p', '.', ','])",
-        "replace": "new Set(['o', 'e', 'r', 'c', 'h', 't', 'd', 'a', 's', 'p', '.', ',', 'v'])"
+        "find": "new Set(['o', 'e', 'r', 'c', 'h', 't', 'd', 'a', 's', 'p', 'u', '.', ','])",
+        "replace": "new Set(['o', 'e', 'r', 'c', 'h', 't', 'd', 'a', 's', 'p', 'u', '.', ',', 'v'])"
       }
     ],
     "spec": "tests/fixtures/eh-single-keys.spec.js",

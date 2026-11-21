@@ -30847,3 +30847,65 @@ n/a (Python, ws/2).
   normal/loose: 737–788 ms → 59–69 ms, same "capped"; Petty's groups unchanged; 14/14 rec-dup tests.
 - **Browser check** (vzell, 2026-11-21, live, Vivaldi; versions not restated, the same evening's report was
   Vivaldi 8.2.4133.96 · Tampermonkey 5.5.1): OK, merge asked. `test:full` at `ea89cd30` before the merge.
+
+## 2026-11-21 — The shared gate's write clamp, ported (feat/eh-keys-keep-gate-clamp, WIP.1)
+
+Env: 2026-11-21T01:18:28+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) · Playwright 1.62.1 Chromium · no
+Tampermonkey (GM stubs)
+
+- **Pre-flight**: `check-majkinetor-anchors.py --versions` all hold at the clone `a1e8f54`; upstream `main` has
+  moved to `3716624` (44 commits, Event Horizon UI only: search page, tags view, playlist). Read through the GitHub
+  compare and the files at `3716624`: `mb-gate.mjs` unchanged, String Theory's inlined gate lines identical, EH's
+  keys-off/keys-keep check byte-identical (EH:18088). Not refreshed on this branch.
+- **What**: `_mbGateClampWrite()` in `_mbGateState()`'s `rw()`, before `fn(s)`: a stored `cool` past `now + 60 s`
+  and a `leadUntil` past `now + 10 s` are lowered in storage (upstream's `mbnState()`, `mb-gate.mjs:64–68`).
+- **Found while porting**: SAED's first-sight bound (9.99.1651) keys `_mbgHoldSeen` on the stored VALUE. A clamp
+  changes the value, so without a carry-over the lowered value reads as a new first sight and a write 30 s into a
+  broken hold stretches it to 90 s (spec "keeps its first-sight end" hangs: `{"a":{"hung":true},"stored":60000}`).
+  The record now moves to the lowered value keeping its end; upstream has no such record, so nothing to port.
+- **Specs** (`mb-shared-gate.spec.js`, describe "a write lowers a broken hold or lead in storage"): before the fix 3
+  of 4 failed (stored cool 569,599 ms out after a booking; leadUntil likewise; the carry-over), the fourth ("a real
+  hold is not touched") is the guard against over-clamping; after it the whole spec 26/26. A fifth spec for the
+  lead's carry-over was added after the fix (its mutation fails as it should: `{"a":{"hung":true},"stored":10000}`).
+  Mutations: six new in `mb-shared-gate.json`, all as expected (the clamp after `fn(s)` is `"expect": "pass"`: the booking reads through
+  the 60 s cap anyway). Lint within the baseline; `check-mutation-finds.py` 0 stale.
+- **HELP**: checked, it does not describe the gate; no edit owed. **PERFORMANCE.org**: nothing about the gate's
+  writes; no edit.
+
+## 2026-11-21 — C3 with data-mbu-keys-keep on our table (feat/eh-keys-keep-gate-clamp, WIP.2)
+
+Env: 2026-11-21T01:30+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) · Playwright 1.62.1 Chromium · no
+Tampermonkey (GM stubs)
+
+- **What**: `_mbuKeysSync()` sets `data-mbu-keys-off="saed"` + `data-mbu-keys-keep="toggle"` while a table shows
+  and String Theory's `data-mbu-st` ≥ 2026.11.20.165956 (`_ehKeysKeepHonoured()`; checked via GitHub: ST at `0d083b2`
+  = 164048 has keys-off without keep, `352510c` = 165956 has both). `_ehKeyGuardInstall()` takes nothing under the
+  marks; `_EH_SINGLE_KEYS` gains `u`. Setting relabelled, same key and default.
+- **Simulator trap**: `document.documentElement` is null when a context init script runs in this harness, so the
+  sim's `data-mbu-st` is set again at DOMContentLoaded (before the userscript starts).
+- **Specs**: nine new; on the old userscript six failed, three passed (they pin what must not happen); after, the
+  three EH specs 42/42. Mutations: `eh-keys-off.json` 13/13; `eh-single-keys.json` 11/11 after one stale find
+  (the letter set) was updated; `eh-interop-markers.json` all OK. `check-mutation-finds.py` 0 stale.
+- **Also**: `scripts/config-default-history.json` refreshed (it lacked 9.99.1673's three rec-dup settings; the
+  audit failed on `main` too).
+- **`npm run test:full`** on petri at `c515878d`, 10:43:07–11:06:23 CET (23 m 16 s): 3,449 of 3,449 passed.
+- **Live probe, case B** (`tests/support/probe-majkinetor-interop.js --cases=B`, 2026-11-21T11:06:38+01:00 –
+  11:08:08+01:00, petri, Playwright 1.62.1 Chromium, real network, logged out (the saved session expired
+  2026-11-12), no Tampermonkey; harness copies EH 2026.11.21.190000, ST 2026.11.20.215710; output
+  `debug/majkinetor-probe/caseB-{eh,st}-2026-11-21.json`):
+  - *EH alone*: no keys marks at any step (no `data-mbu-st`, so the letter guard): only `data-mbu-quiet=saed`
+    after the render, gone in EH's view.
+  - *String Theory bundle*: IP `data-mbu-st` only; after the render `data-mbu-keys-off=saed` and
+    `data-mbu-keys-keep=toggle` beside `data-mbu-quiet=saed`; in EH's view (V) all three gone; after V again all
+    back. With the marks up, the real EH's V switched it on and off, and `h` on the table did not navigate
+    (`{"navigated":false}`). So the real EH honours the marks as the simulator does.
+- **Browser check by vzell, 2026-11-21** (live, logged in; browser and Tampermonkey versions not restated, the
+  previous evening's report was Vivaldi 8.2.4133.96 · Tampermonkey 5.5.1; SAED from this branch):
+  - *Keys* (release 1d404e1d-fcb6-3a52-b478-e706e893c897, String Theory on): OK.
+  - *Gate* (series aa3694d3-a3d0-48ed-8f07-5b576de87908, String Theory OFF, a hold planted ten minutes out).
+    First try proved nothing: the Relationships column answered from the `rel-ws2` cache (`Rels: 1ms`), so no
+    request reached the gate and the stored `cool` read 577,512 ms out, untouched; my check plan had missed the
+    cache again (as on 2026-11-18). Second try: the hover ⟳ of one loaded cell (`_relLoadRow()` forced, both cache
+    tiers bypassed, foreground) at 10:37:54.939 — "waits 60 s (MusicBrainz asked every script to wait)" at
+    10:37:54.946, and the stored `cool` then read 57,459 ms out. The write clamp works in the browser.
+  - For a future gate check: force a request (the ⟳ of a loaded cell), never rely on a render's Relationships pass.

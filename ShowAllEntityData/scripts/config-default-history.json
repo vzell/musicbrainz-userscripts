@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "007967044f8434d0b5df2092cb8b6771d0d51b9b",
-    "revisions_walked": 1356
+    "head": "f1e13c0c033d6ed836e4a9251c34dc2ff7d952e9",
+    "revisions_walked": 1365
   },
   "changes": [
     {
@@ -980,6 +980,9 @@
     "sa_findings_tint_medley_works": true,
     "sa_findings_tint_format_role": true,
     "sa_findings_tint_release_notice": true,
+    "sa_findings_rec_dup": true,
+    "sa_findings_rec_dup_cutoff": "auto",
+    "sa_findings_tint_rec_dup": true,
     "sa_findings_tint_live_credit": true,
     "sa_findings_no_front_image": true,
     "sa_findings_tint_no_front_image": true,

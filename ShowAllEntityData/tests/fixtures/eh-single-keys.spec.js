@@ -40,11 +40,18 @@ const TRACKS_BTN = 'button[data-label="Show all Tracks for Release"]';
  * (MusicBrainz's page showing), as after the user switched it off once.
  *
  * @param {import('@playwright/test').Page} page
- * @param {{ settings?: Object, noLauncher?: boolean }} [opts]
+ * @param {{ settings?: Object, noLauncher?: boolean, c3?: string, st?: string, rebind?: Object }} [opts]
+ *   `c3`, `st`, `rebind`: the simulator's `__EH_SIM_C3__` ('keep' / 'off'),
+ *   String Theory's version mark and EH's rebound keys (eh-body-swap.js).
  * @returns {Promise<void>}
  */
-async function openRelease(page, { settings = {}, noLauncher = false } = {}) {
-    await page.context().addInitScript({ content: `window.__EH_SIM_START_ON__ = false;${noLauncher ? ' window.__EH_SIM_NO_LAUNCHER__ = true;' : ''}` });
+async function openRelease(page, { settings = {}, noLauncher = false, c3 = '', st = '', rebind = null } = {}) {
+    const flags = [`window.__EH_SIM_START_ON__ = false;`];
+    if (noLauncher) flags.push('window.__EH_SIM_NO_LAUNCHER__ = true;');
+    if (c3) flags.push(`window.__EH_SIM_C3__ = ${JSON.stringify(c3)};`);
+    if (st) flags.push(`window.__EH_SIM_ST__ = ${JSON.stringify(st)};`);
+    if (rebind) flags.push(`window.__EH_SIM_REBIND__ = ${JSON.stringify(rebind)};`);
+    await page.context().addInitScript({ content: flags.join(' ') });
     await page.context().addInitScript({ content: SIM });
     await loadUserscriptPage(page, {
         url: RELEASE_URL, fixtureFile: FIXTURE_FILE, testMode: true, settingsOverride: settings,
@@ -124,6 +131,144 @@ test.describe('Event Horizon\'s single-letter keys on MusicBrainz\'s page', () =
             document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'h', bubbles: true, cancelable: true }));
         }));
         expect(prevented).toBe(false);
+    });
+});
+
+// ── Convention C3 with data-mbu-keys-keep (#938, 2026-11-20) ────────────────
+//
+// While a table of ours shows, <html data-mbu-keys-off="saed"
+// data-mbu-keys-keep="toggle"> asks Event Horizon to leave every command but
+// its on/off one (EH:17972 at a1e8f54): its letters, `u`, Ctrl+P, its player
+// keys. EH exempts the `view` COMMAND, whatever key it is bound to, so our
+// letter guard steps aside under the marks — or a toggle rebound to `h` would
+// be swallowed. The marks need an EH that honours keys-keep, known only from
+// String Theory's <html data-mbu-st> version (≥ 2026.11.20.165956, upstream
+// 352510c; 2026.11.20.164048 has keys-off without keep, where the marks would
+// take V). Elsewhere, and on the initial page (vzell, 2026-11-21), the letter
+// guard stays, now with `u`.
+
+const ST_KEEP = '2026.11.20.165956';
+const ST_OLD = '2026.11.20.164048';
+
+/**
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<{off: ?string, keep: ?string}>} the two marks on <html>
+ */
+const keysMarks = (page) => page.evaluate(() => ({
+    off: document.documentElement.getAttribute('data-mbu-keys-off'),
+    keep: document.documentElement.getAttribute('data-mbu-keys-keep'),
+}));
+
+/**
+ * Presses "Show all Tracks for Release" and waits for the render.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<void>}
+ */
+async function renderTracks(page) {
+    await page.click(TRACKS_BTN);
+    await waitForRenderComplete(page, { waitForAutoResize: false });
+}
+
+/**
+ * Dispatches Ctrl+P on the page body as a synthetic event (a real Ctrl+P
+ * would open the browser's print dialog), and returns what the simulated
+ * Event Horizon ran and whether anything prevented the default.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<{fired: string[], prevented: boolean}>}
+ */
+const dispatchCtrlP = (page) => page.evaluate(() => {
+    window.__ehSim.fired = [];
+    const ev = new KeyboardEvent('keydown', { key: 'p', ctrlKey: true, bubbles: true, cancelable: true });
+    document.body.dispatchEvent(ev);
+    return { fired: window.__ehSim.fired.splice(0), prevented: ev.defaultPrevented };
+});
+
+test.describe('C3: data-mbu-keys-off + data-mbu-keys-keep while our table shows', () => {
+    test('current String Theory: the marks go up with the table, and EH leaves h, u, Ctrl+P', async ({ page }) => {
+        await openRelease(page, { c3: 'keep', st: ST_KEEP });
+        // Guarantee: no marks on the initial page (EH's player keys keep working there).
+        expect(await keysMarks(page)).toEqual({ off: null, keep: null });
+        await renderTracks(page);
+        expect(await keysMarks(page)).toEqual({ off: 'saed', keep: 'toggle' });
+        expect(await pressOnPage(page, ['h', 'u'])).toEqual([]);
+        // Ctrl+P: EH does not take it, nor do we, so the browser's print dialog is back.
+        expect(await dispatchCtrlP(page)).toEqual({ fired: [], prevented: false });
+        await expect(page.locator('#mb-filter-container')).toBeVisible();
+    });
+
+    test('a toggle rebound to "h" still toggles Event Horizon with the marks set', async ({ page }) => {
+        await openRelease(page, { c3: 'keep', st: ST_KEEP, rebind: { view: 'h' } });
+        await renderTracks(page);
+        expect(await keysMarks(page)).toEqual({ off: 'saed', keep: 'toggle' });
+        // Guarantee: our letter list steps aside under the marks (EH exempts the
+        // view COMMAND, whatever its key), so the rebound toggle reaches EH.
+        expect(await pressOnPage(page, ['h'])).toEqual(['h']);
+        expect(await page.evaluate(() => window.__ehSim.isOn())).toBe(true);
+        await expect.poll(() => keysMarks(page)).toEqual({ off: null, keep: null });
+        expect(await pressOnPage(page, ['h'])).toEqual(['h']);
+        expect(await page.evaluate(() => window.__ehSim.isOn())).toBe(false);
+        await expect.poll(() => keysMarks(page)).toEqual({ off: 'saed', keep: 'toggle' });
+    });
+
+    test('V toggles with the marks set; the marks are down in EH\'s view and back after it', async ({ page }) => {
+        await openRelease(page, { c3: 'keep', st: ST_KEEP });
+        await renderTracks(page);
+        expect(await pressOnPage(page, ['v'])).toEqual(['v']);
+        expect(await page.evaluate(() => window.__ehSim.isOn())).toBe(true);
+        await expect.poll(() => keysMarks(page)).toEqual({ off: null, keep: null });
+        expect(await pressOnPage(page, ['v'])).toEqual(['v']);
+        expect(await page.evaluate(() => window.__ehSim.isOn())).toBe(false);
+        await expect.poll(() => keysMarks(page)).toEqual({ off: 'saed', keep: 'toggle' });
+    });
+
+    test('an older String Theory (keys-off without keys-keep): no marks, V works, u is guarded', async ({ page }) => {
+        await openRelease(page, { c3: 'off', st: ST_OLD });
+        await renderTracks(page);
+        // Guarantee: the marks would take V here, so they stay down.
+        expect(await keysMarks(page)).toEqual({ off: null, keep: null });
+        expect(await pressOnPage(page, ['u', 'h'])).toEqual([]);
+        expect(await pressOnPage(page, ['v'])).toEqual(['v']);
+        expect(await page.evaluate(() => window.__ehSim.isOn())).toBe(true);
+    });
+
+    test('a standalone Event Horizon (no String Theory mark): no marks, u and h guarded on both pages', async ({ page }) => {
+        await openRelease(page, { c3: 'keep' });
+        expect(await pressOnPage(page, ['u', 'h'])).toEqual([]);
+        await renderTracks(page);
+        expect(await keysMarks(page)).toEqual({ off: null, keep: null });
+        expect(await pressOnPage(page, ['u', 'h'])).toEqual([]);
+        await expect(page.locator('#mb-filter-container')).toBeVisible();
+    });
+
+    test('another script\'s keys-off is never overwritten or removed, and gets no keys-keep', async ({ page }) => {
+        await openRelease(page, { c3: 'keep', st: ST_KEEP });
+        await page.evaluate(() => document.documentElement.setAttribute('data-mbu-keys-off', 'other'));
+        await renderTracks(page);
+        expect(await keysMarks(page)).toEqual({ off: 'other', keep: null });
+        await page.evaluate(() => window.__ehSim.toggle());
+        await page.waitForFunction(() => document.documentElement.hasAttribute('data-mbu-dock'));
+        await page.evaluate(() => new Promise((r) => setTimeout(r, 50)));
+        expect(await keysMarks(page), 'in EH\'s view').toEqual({ off: 'other', keep: null });
+        await page.evaluate(() => window.__ehSim.toggle());
+        await page.evaluate(() => new Promise((r) => setTimeout(r, 50)));
+        expect(await keysMarks(page), 'back on MusicBrainz\'s page').toEqual({ off: 'other', keep: null });
+    });
+
+    test('a keys-keep without "toggle" already there: no keys-off from us (V would die)', async ({ page }) => {
+        await openRelease(page, { c3: 'keep', st: ST_KEEP });
+        await page.evaluate(() => document.documentElement.setAttribute('data-mbu-keys-keep', 'other'));
+        await renderTracks(page);
+        expect(await keysMarks(page)).toEqual({ off: null, keep: 'other' });
+        expect(await pressOnPage(page, ['v'])).toEqual(['v']);
+    });
+
+    test('sa_block_eh_single_keys off: no marks, and EH\'s keys work', async ({ page }) => {
+        await openRelease(page, { c3: 'keep', st: ST_KEEP, settings: { sa_block_eh_single_keys: false } });
+        await renderTracks(page);
+        expect(await keysMarks(page)).toEqual({ off: null, keep: null });
+        expect(await pressOnPage(page, ['u'])).toEqual(['u']);
     });
 });
 

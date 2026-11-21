@@ -303,14 +303,25 @@ version 1 (on his `main` since `7eb7c563`). Anchors `gate-version`,
   out as a corrupt `cool` says, and caps it from each re-read's `now`, which
   moves the end along so the wait lasts the whole length anyway (found
   2026-11-18: spec "ends 60 s after the tab first saw it"). Both parts go
-  further than upstream on purpose. The stored value is never lowered
-  (protocol v1 has no such write). `_mbGateAnswer()` reads the hold the same
+  further than upstream on purpose. Since WIP.1 of `feat/eh-keys-keep-gate-clamp`
+  (2026-11-21) every write also LOWERS the stored value; see the next rule.
+  `_mbGateAnswer()` reads the hold the same
   way (the episode and quiet rules, the hold it reports), and the tab keeps
   the end of its own 429/503's hold (`_mbgHoldSeen.own`): behind a broken
   value `max(cool, now + ms)` changes nothing, so without it the tab would not
   hold for its own throttle (vzell's Firefox check, 2026-11-18: "every
   script holds 522.3 s" for a `Retry-After: 1`). `tat` itself is not capped (a long
   legitimate queue is possible; upstream does not either).
+- **Every write lowers a broken `cool` or `leadUntil` in storage**
+  (`_mbGateClampWrite()`, called in `_mbGateState()`'s `rw()` before `fn(s)`;
+  port of upstream's write clamp, `mb-gate.mjs:64–68` at `a1e8f54`, the answer
+  to our #938 question 2 of 2026-11-20). `cool` past `now + 60 s` becomes
+  `now + 60 s`, `leadUntil` past `now + 10 s` becomes `now + 10 s`; a real
+  value is never below its cap, so it is never touched. Our own part: when
+  this tab already counts the old value, `_mbgHoldSeen`/`_mbgLeadSeen` move to
+  the lowered value KEEPING their end, or the lowered value would read as a new
+  first sight and a write 30 s into a broken hold would stretch it to 90 s
+  (spec "keeps its first-sight end"). `tat` stays unclamped, as upstream.
 - **The stored times are wall-clock epochs; the waits run on `_steadyNow()`**
   (2026-11-18, `feat/mb-gate-clock`). `tat`, `cool` and `leadUntil` stay
   `Date.now()` values, because every tab and every script must read them alike
