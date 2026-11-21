@@ -18,10 +18,11 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 
 - *Now:* nothing in progress. The two small ours from the 2026-11-20 refresh shipped: 9.99.1674 the gate's write
   clamp, 9.99.1675 C3 with =data-mbu-keys-keep= (=feat/eh-keys-keep-gate-clamp=; vzell's browser check OK). Upstream
-  =main= is at =3716624= (44 commits past the clone, EH UI only; the gate and the keys-off check unchanged): refresh
-  next time.
-- *Next:* the next adoption is open (the Credit Hoarder role map, column reorder, …). Fusion's follow-ups: work
-  recordings (second batch), tap to pin on touch (later).
+  =main= is at =d8c0030= (past =3716624=, which was 44 commits past the clone: EH UI, then =data-mbu-eh= and Apollo's
+  =mbLastWrite=; the gate and the keys-off check unchanged): refresh next time.
+- *Next:* the small ours "A standalone Event Horizon: take its =data-mbu-eh=" (from the 2026-11-21 answer); then the
+  next adoption (the Credit Hoarder role map, column reorder, …). Fusion's follow-ups: work recordings (second
+  batch), tap to pin on touch (later).
 - *majkinetor answered all three open questions* on #938 (milic-bot, 2026-11-20 17:00 CET,
   [[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-7044153970][comment]]; on =main=
   since String Theory 2026.11.20.165956, which vzell runs in Vivaldi):
@@ -30,8 +31,11 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
   - C3: =data-mbu-keys-keep="toggle"= beside =data-mbu-keys-off= keeps V. Adopted in 9.99.1675 (item
     "Event Horizon's new keys on our FRP": EH added =u= and Ctrl+P, which our key list missed).
   - C7: Group Therapy and Falcon set =mbLastWrite=; Apollo, named in the answer, does not in =a1e8f54=.
-- *Waiting on majkinetor*: nothing. A thank-you is drafted under "On the record" (updated 2026-11-21 with 9.99.1674/75;
-  the Apollo note, and a request for an EH version mark on =<html>= for standalone copies).
+- *The thank-you is posted* (vzell, 2026-11-21 11:46 CET) and *answered* (milic-bot, 13:48 CET,
+  [[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-7062818955][comment]]; =main=
+  =d8c0030=, String Theory 2026.11.21.134741): a standalone EH marks =<html data-mbu-eh>= with its version (from
+  2026.11.22.184100), so new TODO "A standalone Event Horizon: take its =data-mbu-eh=" (small, ours); Apollo's bulk
+  alias editor now sets =mbLastWrite= (he says his earlier comment was wrong). *Waiting on majkinetor*: nothing.
 - *Last merge:* 9.99.1675 (=feat/eh-keys-keep-gate-clamp=). Nothing since 9.99.1625 is published to
   =vzell/mb-userscripts= (vzell's call).
 - *Last refresh* of the analysis: 2026-11-20 at his =a1e8f54= (refresh-majkinetor skill). The clone lives in
@@ -53,6 +57,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | The shared gate's clock: port upstream's write clamp           | DONE  | 9.99.1674     | Interop            |
 | String Theory's idle mode over our FRP                         | TODO  | —             | Interop            |
 | C3: adopt =data-mbu-keys-off= + =keys-keep= (EH's new keys)    | DONE  | 9.99.1675     | Interop            |
+| Standalone EH: use =data-mbu-eh= for the keys marks            | TODO  | —             | Interop            |
 | C7 =mbLastWrite=, C8 =MBU.artistImage=                         | DONE  | 9.99.1643, 46 | Adoptions          |
 | Release checks (Mission Control / Platform Check / ISRC Scout) | DONE  | 9.99.1654     | Adoptions          |
 | Apollo findings, batch 1: credit ends with a join phrase       | DONE  | 9.99.1657     | Adoptions          |
@@ -71,8 +76,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | Title style: guess-case lists, title-difference classes        | TODO  | —             | Adoptions          |
 | Links: canonical page keys; Discogs MB column barcode          | TODO  | —             | Adoptions          |
 | Smaller adoptions                                              | TODO  | —             | Adoptions          |
-| Posts to majkinetor: ten posted                                | DONE  | —             | On the record      |
-| Post: thanks, and Apollo's =mbLastWrite= (draft)               | TODO  | —             | On the record      |
+| Posts to majkinetor: eleven posted                             | DONE  | —             | On the record      |
 
 * Working with majkinetor
 
@@ -105,11 +109,11 @@ is removed only while its value is still ours, and the setter offers its own way
 |----+-------------------------------------------------------------------------------------------------------+-------------+------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------|
 | C1 | =data-mbu-foreign="saed"= on a rendered table                                                         | SAED        | ISRC Scout's =fillTrackData()= / =showTrackData()= (insert, wipe, colspans); the shared =mbuTipFind()=      | *adopted* (9.99.1579, =_markForeignTable()=): every =table.tbl= a render builds                                                       |
 | C2 | =a.ii-trk-ln[data-ii-platform][data-ii-ended="true\|false"]=                                          | ISRC Scout  | SAED reads it instead of tip text                                                                          | *adopted* (9.99.1578, =_isrcScoutLinkPlatform()=): metadata, then =data-tip=, then =title=                                           |
-| C3 | =<html data-mbu-keys-off="saed">=                                                                     | SAED        | EH's keydown returns early: *every* command, V and Ctrl+L included                                        | *not adopted yet*: it took V. Asked to keep V working under it (2026-11-08, 2026-11-17); *answered 2026-11-20*: =<html data-mbu-keys-keep="toggle">= beside it keeps EH's on/off command (EH 2026.11.21.190000, =a1e8f54=; anchors =conv-c3-keep=, =saed-keys-off=). *Adopted* in 9.99.1675 (=_mbuKeysSync()=): both marks while a table shows, String Theory ≥ 2026.11.20.165956 |
+| C3 | =<html data-mbu-keys-off="saed">=                                                                     | SAED        | EH's keydown returns early: *every* command, V and Ctrl+L included                                        | *not adopted yet*: it took V. Asked to keep V working under it (2026-11-08, 2026-11-17); *answered 2026-11-20*: =<html data-mbu-keys-keep="toggle">= beside it keeps EH's on/off command (EH 2026.11.21.190000, =a1e8f54=; anchors =conv-c3-keep=, =saed-keys-off=). *Adopted* in 9.99.1675 (=_mbuKeysSync()=): both marks while a table shows, String Theory ≥ 2026.11.20.165956. A standalone EH marks =<html data-mbu-eh>= from 2026.11.22.184100 (=d8c0030=): not used yet (TODO "A standalone Event Horizon") |
 | C4 | =<html data-mbu-quiet="saed">=                                                                        | SAED        | =mbRestackCorner()=: =[data-mb-corner]= and =#mbu-dock-shelf= =visibility:hidden=                         | *adopted* (9.99.1580, =_mbuQuietSync()=, =sa_mbu_quiet_corner=, ☰ row)                                                              |
 | C5 | /dropped/ ("no SAED-specific detection"); replaced by EH's More (⋯) menu protocol: hidden =button[data-mbu-menu-item][data-mbu-menu-title]= under =<html>= | SAED | EH projects it into its header menus and =.click()=s it; =disabled= hides it                              | *adopted* (9.99.1581, =_ehMenuSync()=, =_ehHandoff()=): "Open in ShowAllEntityData" + one item per button                           |
 | C6 | =mbu:mb-gate= *version 1* (=version=, =tat=, =cool=, =hot=, =lead=, =leadUntil=; Web Lock =mbu-mb-gate=) | majkinetor (documents it) | SAED books its ws/2 there                                                                                  | adopted: SAED 9.99.1583 (TODO "Join majkinetor's cross-tab request gate"); upstream's code moved on since (TODO "Bring SAED's request-gate port in line with upstream") |
-| C7 | =localStorage['mbLastWrite']= (Unix ms): a script that writes to MusicBrainz sets it to =Date.now()=; a kept answer older than it is a miss | any script that writes: EH; since =a1e8f54= Group Therapy and Falcon too (Apollo not yet; anchors =c7-writer-*=) | EH's =kpWrote()= / kept answers (2026-11-17, #938 point 7; =eh.kept.drop= retired; anchor =conv-c7=) | *adopted* in 9.99.1643 (=feat/mb-last-write=, 2026-11-17): =_mbKeptStale()= for the popup engine's MusicBrainz records; the 30-day bulk stores and external readers left out (vzell's choice); SAED only reads it (anchor =saed-c7-read=) |
+| C7 | =localStorage['mbLastWrite']= (Unix ms): a script that writes to MusicBrainz sets it to =Date.now()=; a kept answer older than it is a miss | any script that writes: EH; since =a1e8f54= Group Therapy and Falcon too, since =d8c0030= Apollo's bulk alias editor (anchors =c7-writer-*=) | EH's =kpWrote()= / kept answers (2026-11-17, #938 point 7; =eh.kept.drop= retired; anchor =conv-c7=) | *adopted* in 9.99.1643 (=feat/mb-last-write=, 2026-11-17): =_mbKeptStale()= for the popup engine's MusicBrainz records; the 30-day bulk stores and external readers left out (vzell's choice); SAED only reads it (anchor =saed-c7-read=) |
 | C8 | =unsafeWindow.MBU.artistImage= ={find, findAll, distinct, cached}= (EH's instance; answers are copies, in the user's provider order) | EH (publishes) | SAED, when present; own lookup otherwise (#938 point 8, 2026-11-17; anchor =conv-c8=) | *adopted* in 9.99.1646 (=feat/eh-artist-images=, 2026-11-18): the window (Space) =findAll()=, the card and the heading =cached()= only, artist and label, after SAED's own pictures; =@grant unsafeWindow=; any failure leaves SAED's (anchor =saed-c8-use=) |
 
 * Interop: SAED beside his scripts
@@ -319,6 +323,29 @@ CLOSED: [2026-11-21 Sat]
   =test:full= 3449/3449 at =c515878d=. *vzell's browser check 2026-11-21: keys OK*, gate OK (a forced ⟳ wrote =cool= back to 57 s
   out from a planted ten minutes; DEBUG-NOTES). Anchor =saed-keys-off= (present; the duplicate
   =saed-no-keys-off= pair merged).
+
+** TODO A standalone Event Horizon: take its =data-mbu-eh= for the keys marks
+
+- *Who fixes it*: *ours*, on convention *C3*. majkinetor answered our 2026-11-21 question (milic-bot, 2026-11-21
+  13:48 CET, [[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-7062818955][comment]];
+  =main= =d8c0030=): a standalone EH sets =<html data-mbu-eh="<its @version>">= at its start (EH:134: only when
+  =GM_info.script.name= starts with "Event Horizon", and not in its settings-only copy), first in 2026.11.22.184100,
+  which honours =data-mbu-keys-keep=. Inside String Theory it sets none (=data-mbu-st= tells). The repo DEVELOP.md
+  interoperability section names both marks. Checked 2026-11-21 through GitHub's raw files at =d8c0030= (the clone
+  is still at =a1e8f54=); the keys-off/keep check itself is unchanged (now EH:18325).
+- *Now*: =_ehKeysKeepHonoured()= reads only =data-mbu-st=, so with a standalone EH our table keeps the letter guard:
+  =u= is guarded, Ctrl+P and the player keys are not.
+- *Fix*: =_ehKeysKeepHonoured()= is also true for =data-mbu-eh= ≥ 2026.11.22.184100 (the same dot-group compare).
+  Timing: EH sets the mark at its own start, which can come after SAED's; the =_ehInteropObserve()= observer watches
+  only =data-mbu-dock= and =data-mbu-page= (=attributeFilter=), so add =data-mbu-eh= and =data-mbu-st= there, or a
+  late mark is seen only at the next render.
+- *Tests*: the simulator gets =__EH_SIM_EH__= (sets =data-mbu-eh=). Specs: a standalone EH with a current mark → both
+  marks after the render, a toggle rebound to =h= works; an older mark (2026.11.21.190000) → no marks, letter guard;
+  the mark set after the render → the marks follow. Mutations: the =data-mbu-eh= branch removed; the floor ignored;
+  the attribute filter without =data-mbu-eh=. HELP's "Event Horizon's keys" names String Theory only: reconcile. No
+  visible UI.
+- *Anchors* at the next refresh: a new =eh-version-mark= (EH:134); =c7-writer-apollo= turns present (Apollo's
+  =aliasPost()=, Apollo:18356 at =d8c0030=).
 
 ** TODO String Theory's idle mode over our FRP (random theme, EH effect layers)
 
@@ -1188,7 +1215,14 @@ turns DONE with its link. Never posted by Claude.
   =main=": the gate's hold/lead cap (from first sight in a wait, lowered on every write; wall-clock steps left);
   =data-mbu-keys-keep="toggle"= for V under keys-off; =mbLastWrite= set by Apollo (alias edits), Group Therapy and
   Falcon; documented in DEVELOP.md; String Theory 2026.11.20.165956 (pinned =352510c9=).
-- Open: nothing on his side. Apollo's =mbLastWrite= is not in =a1e8f54= (the draft below asks).
+- milic-bot 2026-11-21 13:48 CET
+  ([[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-7062818955][comment]]), answering
+  the thank-you: both on =main= (=d8c0030=). A standalone EH sets =<html data-mbu-eh="<its @version>">= from
+  2026.11.22.184100 (none inside String Theory), named in the root DEVELOP.md; Apollo's bulk alias editor
+  (=/add-alias=, =/aliases=) posts the forms itself and now sets =mbLastWrite= after each accepted post ("my earlier
+  comment was wrong"); MusicBrainz's own alias form, without Apollo's editor, still sets nothing. String Theory
+  2026.11.21.134741 (pinned =d8c0030b=). Checked against the raw files at =d8c0030= the same day.
+- Open: nothing on his side.
 - Note on the #839 comment: one sentence says SAED "re-reads them on your =is:counts-changed= event", which was
   only planned (and later not built: the fix came upstream with C1).
 
@@ -1867,10 +1901,14 @@ Volker
      opened later does not wait its minute again? That is a new write in v1, so I left it out.
   #+end_quote
 
-** TODO 2026-11-20 · Post: thanks, and one note on Apollo's =mbLastWrite= (#938)
+** DONE 2026-11-21 11:46 · Post: thanks, and one note on Apollo's =mbLastWrite= (#938)
 :PROPERTIES:
 :CUSTOM_ID: post-938-thanks-keys-keep
 :END:
+
+- *Posted* by vzell 2026-11-21T11:46:25+01:00:
+  https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-7061458890 (checked through the
+  GitHub API: the block below word for word). Answered 13:48 CET (see "The thread").
 
 - *Draft* (petri, 2026-11-20T22:10+01:00; checked against his =main= at =a1e8f54=). For vzell to send on #938 as a
   reply to the 2026-11-20 comment; never posted by Claude. Apollo's alias edits: it runs on MusicBrainz's own
